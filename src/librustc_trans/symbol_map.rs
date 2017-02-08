@@ -97,7 +97,7 @@ impl<'tcx> SymbolMap<'tcx> {
                               trans_item: TransItem<'tcx>) -> Option<Span> {
             match trans_item {
                 TransItem::Fn(Instance { def, .. }) => {
-                    tcx.hir.as_local_node_id(def)
+                    tcx.hir.as_local_node_id(def.def_id())
                 }
                 TransItem::Static(node_id) => Some(node_id),
                 TransItem::DropGlue(_) => None,

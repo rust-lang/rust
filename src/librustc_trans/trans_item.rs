@@ -96,7 +96,7 @@ impl<'a, 'tcx> TransItem<'tcx> {
             }
             TransItem::Fn(instance) => {
                 let _task = ccx.tcx().dep_graph.in_task(
-                    DepNode::TransCrateItem(instance.def)); // (*)
+                    DepNode::TransCrateItem(instance.def_id())); // (*)
 
                 base::trans_instance(&ccx, instance);
             }
@@ -147,7 +147,8 @@ impl<'a, 'tcx> TransItem<'tcx> {
                         linkage: llvm::Linkage,
                         symbol_name: &str) {
         let def_id = ccx.tcx().hir.local_def_id(node_id);
-        let ty = common::def_ty(ccx.shared(), def_id, Substs::empty());
+        let instance = Instance::mono(ccx.tcx(), def_id);
+        let ty = common::instance_ty(ccx.shared(), &instance);
         let llty = type_of::type_of(ccx, ty);
 
         let g = declare::define_global(ccx, symbol_name, llty).unwrap_or_else(|| {
@@ -157,7 +158,6 @@ impl<'a, 'tcx> TransItem<'tcx> {
 
         unsafe { llvm::LLVMRustSetLinkage(g, linkage) };
 
-        let instance = Instance::mono(ccx.shared(), def_id);
         ccx.instances().borrow_mut().insert(instance, g);
         ccx.statics().borrow_mut().insert(g, def_id);
     }
@@ -169,8 +169,8 @@ impl<'a, 'tcx> TransItem<'tcx> {
         assert!(!instance.substs.needs_infer() &&
                 !instance.substs.has_param_types());
 
-        let mono_ty = common::def_ty(ccx.shared(), instance.def, instance.substs);
-        let attrs = ccx.tcx().get_attrs(instance.def);
+        let mono_ty = common::instance_ty(ccx.shared(), &instance);
+        let attrs = instance.def.attrs(ccx.tcx());
         let lldecl = declare::declare_fn(ccx, symbol_name, mono_ty);
         unsafe { llvm::LLVMRustSetLinkage(lldecl, linkage) };
         base::set_link_section(ccx, lldecl, &attrs);
@@ -180,7 +180,7 @@ impl<'a, 'tcx> TransItem<'tcx> {
         }
 
         debug!("predefine_fn: mono_ty = {:?} instance = {:?}", mono_ty, instance);
-        match ccx.tcx().def_key(instance.def).disambiguated_data.data {
+        match ccx.tcx().def_key(instance.def_id()).disambiguated_data.data {
             DefPathData::StructCtor |
             DefPathData::EnumVariant(..) |
             DefPathData::ClosureExpr => {
@@ -229,10 +229,10 @@ impl<'a, 'tcx> TransItem<'tcx> {
     pub fn compute_symbol_name(&self,
                                scx: &SharedCrateContext<'a, 'tcx>) -> String {
         match *self {
-            TransItem::Fn(instance) => instance.symbol_name(scx),
+            TransItem::Fn(instance) => symbol_names::symbol_name(instance, scx),
             TransItem::Static(node_id) => {
                 let def_id = scx.tcx().hir.local_def_id(node_id);
-                Instance::mono(scx, def_id).symbol_name(scx)
+                symbol_names::symbol_name(Instance::mono(scx.tcx(), def_id), scx)
             }
             TransItem::DropGlue(dg) => {
                 let prefix = match dg {
@@ -244,21 +244,13 @@ impl<'a, 'tcx> TransItem<'tcx> {
         }
     }
 
-    pub fn is_from_extern_crate(&self) -> bool {
-        match *self {
-            TransItem::Fn(ref instance) => !instance.def.is_local(),
-            TransItem::DropGlue(..) |
-            TransItem::Static(..)   => false,
-        }
-    }
-
     pub fn instantiation_mode(&self,
                               tcx: TyCtxt<'a, 'tcx, 'tcx>)
                               -> InstantiationMode {
         match *self {
             TransItem::Fn(ref instance) => {
                 if self.explicit_linkage(tcx).is_none() &&
-                    common::requests_inline(tcx, instance.def)
+                    common::requests_inline(tcx, instance)
                 {
                     InstantiationMode::LocalCopy
                 } else {
@@ -282,7 +274,7 @@ impl<'a, 'tcx> TransItem<'tcx> {
 
     pub fn explicit_linkage(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Option<llvm::Linkage> {
         let def_id = match *self {
-            TransItem::Fn(ref instance) => instance.def,
+            TransItem::Fn(ref instance) => instance.def_id(),
             TransItem::Static(node_id) => tcx.hir.local_def_id(node_id),
             TransItem::DropGlue(..) => return None,
         };
@@ -587,7 +579,7 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
     pub fn push_instance_as_string(&self,
                                    instance: Instance<'tcx>,
                                    output: &mut String) {
-        self.push_def_path(instance.def, output);
+        self.push_def_path(instance.def_id(), output);
         self.push_type_params(instance.substs, iter::empty(), output);
     }
 }

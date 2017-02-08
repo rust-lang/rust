@@ -203,7 +203,9 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                                 // Now create its substs [Closure, Tuple]
                                 let input = bcx.tcx().closure_type(def_id)
                                     .subst(bcx.tcx(), substs.substs).input(0);
-                                let substs = bcx.tcx().mk_substs([operand.ty, input.skip_binder()]
+                                let input =
+                                    bcx.tcx().erase_late_bound_regions_and_normalize(&input);
+                                let substs = bcx.tcx().mk_substs([operand.ty, input]
                                     .iter().cloned().map(Kind::from));
                                 OperandValue::Immediate(
                                     Callee::def(bcx.ccx, call_once, substs)
