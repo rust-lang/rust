@@ -116,6 +116,7 @@ pub fn parse_config(args: Vec<String> ) -> Config {
           reqopt("", "llvm-components", "list of LLVM components built in", "LIST"),
           reqopt("", "llvm-cxxflags", "C++ flags for LLVM", "FLAGS"),
           optopt("", "nodejs", "the name of nodejs", "PATH"),
+          optopt("", "qemu-test-client", "path to the qemu test client", "PATH"),
           optflag("h", "help", "show this message")];
 
     let (argv0, args_) = args.split_first().unwrap();
@@ -196,6 +197,7 @@ pub fn parse_config(args: Vec<String> ) -> Config {
         lldb_python_dir: matches.opt_str("lldb-python-dir"),
         verbose: matches.opt_present("verbose"),
         quiet: matches.opt_present("quiet"),
+        qemu_test_client: matches.opt_str("qemu-test-client").map(PathBuf::from),
 
         cc: matches.opt_str("cc").unwrap(),
         cxx: matches.opt_str("cxx").unwrap(),
@@ -301,6 +303,14 @@ pub fn run_tests(config: &Config) {
             // instances running in parallel, so only run one test thread at a
             // time.
             env::set_var("RUST_TEST_THREADS", "1");
+        }
+
+        DebugInfoGdb => {
+            if config.qemu_test_client.is_some() {
+                println!("WARNING: debuginfo tests are not available when \
+                          testing with QEMU");
+                return
+            }
         }
         _ => { /* proceed */ }
     }
