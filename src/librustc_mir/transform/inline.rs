@@ -27,7 +27,7 @@ use rustc::util::nodemap::{DefIdSet};
 
 use super::simplify::{remove_dead_blocks, CfgSimplifier};
 
-use syntax::attr;
+use syntax::{attr};
 use syntax::abi::Abi;
 
 use callgraph;
@@ -184,6 +184,9 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                 let callsite = callsites[csi];
                 csi += 1;
 
+                let _task = self.tcx.dep_graph.in_task(DepNode::Mir(callsite.caller));
+                self.tcx.dep_graph.write(DepNode::Mir(callsite.caller));
+
                 let callee_mir = {
                     if let Some(callee_mir) = self.tcx.maybe_item_mir(callsite.callee) {
                         if !self.should_inline(callsite, &callee_mir) {
@@ -232,7 +235,6 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                     }
                 }
 
-
                 csi -= 1;
                 if scc.len() == 1 {
                     callsites.swap_remove(csi);
@@ -251,6 +253,9 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
 
         // Simplify functions we inlined into.
         for def_id in inlined_into {
+            let _task = self.tcx.dep_graph.in_task(DepNode::Mir(def_id));
+            self.tcx.dep_graph.write(DepNode::Mir(def_id));
+
             let mut caller_mir = {
                 let map = self.tcx.maps.mir.borrow();
                 let mir = map.get(&def_id).unwrap();
@@ -275,11 +280,6 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
             return false;
         }
 
-        // Don't inline calls to trait methods
-        // FIXME: Should try to resolve it to a concrete method, and
-        // only bail if that isn't possible
-        let trait_def = tcx.trait_of_item(callsite.callee);
-        if trait_def.is_some() { return false; }
 
         let attrs = tcx.get_attrs(callsite.callee);
         let hint = attr::find_inline_attr(None, &attrs[..]);
@@ -294,19 +294,13 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
             attr::InlineAttr::None => false,
         };
 
-        // Only inline local functions if they would be eligible for
-        // cross-crate inlining. This ensures that any symbols they
-        // use are reachable cross-crate
-        // FIXME(#36594): This shouldn't be necessary, and is more conservative
-        // than it could be, but trans should generate the reachable set from
-        // the MIR anyway, making any check obsolete.
+        // Only inline local functions if they would be eligible for cross-crate
+        // inlining. This is to ensure that the final crate doesn't have MIR that
+        // reference unexported symbols
         if callsite.callee.is_local() {
-            // No type substs and no inline hint means this function
-            // wouldn't be eligible for cross-crate inlining
             if callsite.substs.types().count() == 0 && !hinted {
                 return false;
             }
-
         }
 
         let mut threshold = if hinted {
