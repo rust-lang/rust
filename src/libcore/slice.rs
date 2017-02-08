@@ -2298,13 +2298,6 @@ impl<A> SlicePartialOrd<A> for [A]
     }
 }
 
-impl SlicePartialOrd<u8> for [u8] {
-    #[inline]
-    fn partial_compare(&self, other: &[u8]) -> Option<Ordering> {
-        Some(SliceOrd::compare(self, other))
-    }
-}
-
 #[doc(hidden)]
 // intermediate trait for specialization of slice's Ord
 trait SliceOrd<B> {
