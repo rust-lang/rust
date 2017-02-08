@@ -11,11 +11,13 @@
 
 set -e
 
-if [ "$LOCAL_USER_ID" != "" ]; then
-  useradd --shell /bin/bash -u $LOCAL_USER_ID -o -c "" -m user
-  export HOME=/home/user
-  unset LOCAL_USER_ID
-  exec su --preserve-environment -c "env PATH=$PATH \"$0\"" user
+if [ "$NO_CHANGE_USER" = "" ]; then
+  if [ "$LOCAL_USER_ID" != "" ]; then
+    useradd --shell /bin/bash -u $LOCAL_USER_ID -o -c "" -m user
+    export HOME=/home/user
+    unset LOCAL_USER_ID
+    exec su --preserve-environment -c "env PATH=$PATH \"$0\"" user
+  fi
 fi
 
 RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-sccache"
