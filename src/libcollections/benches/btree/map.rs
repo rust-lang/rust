@@ -1,4 +1,4 @@
-// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+
+use std::iter::Iterator;
+use std::vec::Vec;
+use std::collections::BTreeMap;
+use std::__rand::{Rng, thread_rng};
+use test::{Bencher, black_box};
+
 macro_rules! map_insert_rand_bench {
     ($name: ident, $n: expr, $map: ident) => (
         #[bench]
-        pub fn $name(b: &mut ::test::Bencher) {
-            use std::__rand::{thread_rng, Rng};
-            use test::black_box;
-
+        pub fn $name(b: &mut Bencher) {
             let n: usize = $n;
             let mut map = $map::new();
             // setup
@@ -39,9 +43,7 @@ macro_rules! map_insert_rand_bench {
 macro_rules! map_insert_seq_bench {
     ($name: ident, $n: expr, $map: ident) => (
         #[bench]
-        pub fn $name(b: &mut ::test::Bencher) {
-            use test::black_box;
-
+        pub fn $name(b: &mut Bencher) {
             let mut map = $map::new();
             let n: usize = $n;
             // setup
@@ -64,12 +66,7 @@ macro_rules! map_insert_seq_bench {
 macro_rules! map_find_rand_bench {
     ($name: ident, $n: expr, $map: ident) => (
         #[bench]
-        pub fn $name(b: &mut ::test::Bencher) {
-            use std::iter::Iterator;
-            use std::__rand::{thread_rng, Rng};
-            use std::vec::Vec;
-            use test::black_box;
-
+        pub fn $name(b: &mut Bencher) {
             let mut map = $map::new();
             let n: usize = $n;
 
@@ -97,9 +94,7 @@ macro_rules! map_find_rand_bench {
 macro_rules! map_find_seq_bench {
     ($name: ident, $n: expr, $map: ident) => (
         #[bench]
-        pub fn $name(b: &mut ::test::Bencher) {
-            use test::black_box;
-
+        pub fn $name(b: &mut Bencher) {
             let mut map = $map::new();
             let n: usize = $n;
 
@@ -117,4 +112,46 @@ macro_rules! map_find_seq_bench {
             })
         }
     )
+}
+
+map_insert_rand_bench!{insert_rand_100,    100,    BTreeMap}
+map_insert_rand_bench!{insert_rand_10_000, 10_000, BTreeMap}
+
+map_insert_seq_bench!{insert_seq_100,    100,    BTreeMap}
+map_insert_seq_bench!{insert_seq_10_000, 10_000, BTreeMap}
+
+map_find_rand_bench!{find_rand_100,    100,    BTreeMap}
+map_find_rand_bench!{find_rand_10_000, 10_000, BTreeMap}
+
+map_find_seq_bench!{find_seq_100,    100,    BTreeMap}
+map_find_seq_bench!{find_seq_10_000, 10_000, BTreeMap}
+
+fn bench_iter(b: &mut Bencher, size: i32) {
+    let mut map = BTreeMap::<i32, i32>::new();
+    let mut rng = thread_rng();
+
+    for _ in 0..size {
+        map.insert(rng.gen(), rng.gen());
+    }
+
+    b.iter(|| {
+        for entry in &map {
+            black_box(entry);
+        }
+    });
+}
+
+#[bench]
+pub fn iter_20(b: &mut Bencher) {
+    bench_iter(b, 20);
+}
+
+#[bench]
+pub fn iter_1000(b: &mut Bencher) {
+    bench_iter(b, 1000);
+}
+
+#[bench]
+pub fn iter_100000(b: &mut Bencher) {
+    bench_iter(b, 100000);
 }
