@@ -30,6 +30,10 @@ impl BitVector {
         }
     }
 
+    pub fn count(&self) -> usize {
+        self.data.iter().map(|e| e.count_ones() as usize).sum()
+    }
+
     #[inline]
     pub fn contains(&self, bit: usize) -> bool {
         let (word, mask) = word_mask(bit);

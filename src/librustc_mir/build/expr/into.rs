@@ -69,10 +69,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
                 let mut then_block = this.cfg.start_new_block();
                 let mut else_block = this.cfg.start_new_block();
-                this.cfg.terminate(block, source_info, TerminatorKind::If {
-                    cond: operand,
-                    targets: (then_block, else_block)
-                });
+                let term = TerminatorKind::if_(this.hir.tcx(), operand, then_block, else_block);
+                this.cfg.terminate(block, source_info, term);
 
                 unpack!(then_block = this.into(destination, then_block, then_expr));
                 else_block = if let Some(else_expr) = else_expr {
@@ -114,14 +112,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     LogicalOp::And => (else_block, false_block),
                     LogicalOp::Or => (true_block, else_block),
                 };
-                this.cfg.terminate(block, source_info,
-                                   TerminatorKind::If { cond: lhs, targets: blocks });
+                let term = TerminatorKind::if_(this.hir.tcx(), lhs, blocks.0, blocks.1);
+                this.cfg.terminate(block, source_info, term);
 
                 let rhs = unpack!(else_block = this.as_operand(else_block, rhs));
-                this.cfg.terminate(else_block, source_info, TerminatorKind::If {
-                    cond: rhs,
-                    targets: (true_block, false_block)
-                });
+                let term = TerminatorKind::if_(this.hir.tcx(), rhs, true_block, false_block);
+                this.cfg.terminate(else_block, source_info, term);
 
                 this.cfg.push_assign_constant(
                     true_block, source_info, destination,
@@ -179,11 +175,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                             let cond = unpack!(
                                 loop_block_end = this.as_operand(loop_block, cond_expr));
                             body_block = this.cfg.start_new_block();
-                            this.cfg.terminate(loop_block_end, source_info,
-                                               TerminatorKind::If {
-                                                   cond: cond,
-                                                   targets: (body_block, exit_block)
-                                               });
+                            let term = TerminatorKind::if_(this.hir.tcx(), cond,
+                                                           body_block, exit_block);
+                            this.cfg.terminate(loop_block_end, source_info, term);
 
                             // if the test is false, there's no `break` to assign `destination`, so
                             // we have to do it; this overwrites any `break`-assigned value but it's

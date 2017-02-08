@@ -16,7 +16,6 @@ std_unicode = { path = "../libstd_unicode" }
 name = "collectionstest"
 path = "../libcollectionstest/lib.rs"
 
-# FIXME: need to extract benchmarks to separate crate
-#[[bench]]
-#name = "collectionstest"
-#path = "../libcollectionstest/lib.rs"
+[[bench]]
+name = "collectionsbenches"
+path = "../libcollections/benches/lib.rs"

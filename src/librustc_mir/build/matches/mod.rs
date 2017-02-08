@@ -673,8 +673,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             let cond = unpack!(block = self.as_operand(block, guard));
             let otherwise = self.cfg.start_new_block();
             self.cfg.terminate(block, source_info,
-                               TerminatorKind::If { cond: cond,
-                                                    targets: (arm_block, otherwise)});
+                               TerminatorKind::if_(self.hir.tcx(), cond, arm_block, otherwise));
             Some(otherwise)
         } else {
             let source_info = self.source_info(candidate.span);

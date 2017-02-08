@@ -18,6 +18,7 @@ use ty::subst::{Subst, Substs};
 use ty::{self, AdtDef, Ty, TyCtxt};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use hir;
+use ty::util::IntTypeExt;
 
 #[derive(Copy, Clone, Debug)]
 pub enum LvalueTy<'tcx> {
@@ -135,15 +136,15 @@ impl<'tcx> Lvalue<'tcx> {
 impl<'tcx> Rvalue<'tcx> {
     pub fn ty<'a, 'gcx>(&self, mir: &Mir<'tcx>, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Option<Ty<'tcx>>
     {
-        match self {
-            &Rvalue::Use(ref operand) => Some(operand.ty(mir, tcx)),
-            &Rvalue::Repeat(ref operand, ref count) => {
+        match *self {
+            Rvalue::Use(ref operand) => Some(operand.ty(mir, tcx)),
+            Rvalue::Repeat(ref operand, ref count) => {
                 let op_ty = operand.ty(mir, tcx);
                 let count = count.value.as_u64(tcx.sess.target.uint_type);
                 assert_eq!(count as usize as u64, count);
                 Some(tcx.mk_array(op_ty, count as usize))
             }
-            &Rvalue::Ref(reg, bk, ref lv) => {
+            Rvalue::Ref(reg, bk, ref lv) => {
                 let lv_ty = lv.ty(mir, tcx).to_ty(tcx);
                 Some(tcx.mk_ref(reg,
                     ty::TypeAndMut {
@@ -152,27 +153,37 @@ impl<'tcx> Rvalue<'tcx> {
                     }
                 ))
             }
-            &Rvalue::Len(..) => Some(tcx.types.usize),
-            &Rvalue::Cast(.., ty) => Some(ty),
-            &Rvalue::BinaryOp(op, ref lhs, ref rhs) => {
+            Rvalue::Len(..) => Some(tcx.types.usize),
+            Rvalue::Cast(.., ty) => Some(ty),
+            Rvalue::BinaryOp(op, ref lhs, ref rhs) => {
                 let lhs_ty = lhs.ty(mir, tcx);
                 let rhs_ty = rhs.ty(mir, tcx);
                 Some(op.ty(tcx, lhs_ty, rhs_ty))
             }
-            &Rvalue::CheckedBinaryOp(op, ref lhs, ref rhs) => {
+            Rvalue::CheckedBinaryOp(op, ref lhs, ref rhs) => {
                 let lhs_ty = lhs.ty(mir, tcx);
                 let rhs_ty = rhs.ty(mir, tcx);
                 let ty = op.ty(tcx, lhs_ty, rhs_ty);
                 let ty = tcx.intern_tup(&[ty, tcx.types.bool], false);
                 Some(ty)
             }
-            &Rvalue::UnaryOp(_, ref operand) => {
+            Rvalue::UnaryOp(_, ref operand) => {
                 Some(operand.ty(mir, tcx))
             }
-            &Rvalue::Box(t) => {
+            Rvalue::Discriminant(ref lval) => {
+                let ty = lval.ty(mir, tcx).to_ty(tcx);
+                if let ty::TyAdt(adt_def, _) = ty.sty {
+                    Some(adt_def.discr_ty.to_ty(tcx))
+                } else {
+                    // Undefined behaviour, bug for now; may want to return something for
+                    // the `discriminant` intrinsic later.
+                    bug!("Rvalue::Discriminant on Lvalue of type {:?}", ty);
+                }
+            }
+            Rvalue::Box(t) => {
                 Some(tcx.mk_box(t))
             }
-            &Rvalue::Aggregate(ref ak, ref ops) => {
+            Rvalue::Aggregate(ref ak, ref ops) => {
                 match *ak {
                     AggregateKind::Array => {
                         if let Some(operand) = ops.get(0) {
@@ -196,7 +207,7 @@ impl<'tcx> Rvalue<'tcx> {
                     }
                 }
             }
-            &Rvalue::InlineAsm { .. } => None
+            Rvalue::InlineAsm { .. } => None
         }
     }
 }

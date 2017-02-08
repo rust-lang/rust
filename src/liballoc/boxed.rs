@@ -419,6 +419,23 @@ impl<T> From<T> for Box<T> {
     }
 }
 
+#[stable(feature = "box_from_slice", since = "1.17.0")]
+impl<'a, T: Copy> From<&'a [T]> for Box<[T]> {
+    fn from(slice: &'a [T]) -> Box<[T]> {
+        let mut boxed = unsafe { RawVec::with_capacity(slice.len()).into_box() };
+        boxed.copy_from_slice(slice);
+        boxed
+    }
+}
+
+#[stable(feature = "box_from_slice", since = "1.17.0")]
+impl<'a> From<&'a str> for Box<str> {
+    fn from(s: &'a str) -> Box<str> {
+        let boxed: Box<[u8]> = Box::from(s.as_bytes());
+        unsafe { mem::transmute(boxed) }
+    }
+}
+
 impl Box<Any> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
