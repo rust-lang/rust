@@ -878,6 +878,17 @@ impl Build {
             .map(|p| &**p)
     }
 
+    /// Returns the root of the "rootfs" image that this target will be using,
+    /// if one was configured.
+    ///
+    /// If `Some` is returned then that means that tests for this target are
+    /// emulated with QEMU and binaries will need to be shipped to the emulator.
+    fn qemu_rootfs(&self, target: &str) -> Option<&Path> {
+        self.config.target_config.get(target)
+            .and_then(|t| t.qemu_rootfs.as_ref())
+            .map(|p| &**p)
+    }
+
     /// Path to the python interpreter to use
     fn python(&self) -> &Path {
         self.config.python.as_ref().unwrap()

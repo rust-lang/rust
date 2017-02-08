@@ -47,8 +47,6 @@ fn detect_llvm_link(llvm_config: &Path) -> (&'static str, Option<&'static str>) 
 }
 
 fn main() {
-    println!("cargo:rustc-cfg=cargobuild");
-
     let target = env::var("TARGET").expect("TARGET was not set");
     let llvm_config = env::var_os("LLVM_CONFIG")
         .map(PathBuf::from)

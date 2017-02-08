@@ -9,11 +9,12 @@
 # except according to those terms.
 
 include config.mk
-include $(CFG_SRC_DIR)mk/util.mk
 
 ifdef VERBOSE
+Q :=
 BOOTSTRAP_ARGS := -v
 else
+Q := @
 BOOTSTRAP_ARGS :=
 endif
 

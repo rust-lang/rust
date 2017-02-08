@@ -39,9 +39,6 @@ pub fn print(w: &mut Write, idx: isize, addr: *mut libc::c_void,
                       msg: *const libc::c_char,
                       errnum: libc::c_int);
     enum backtrace_state {}
-    #[link(name = "backtrace", kind = "static")]
-    #[cfg(all(not(test), not(cargobuild)))]
-    extern {}
 
     extern {
         fn backtrace_create_state(filename: *const libc::c_char,

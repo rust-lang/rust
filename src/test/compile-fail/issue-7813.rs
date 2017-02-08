@@ -10,7 +10,7 @@
 
 fn main() {
     let v = &[];
-    let it = v.iter(); //~ ERROR unable to infer enough type information about `T` [E0282]
+    let it = v.iter(); //~ ERROR type annotations needed [E0282]
                        //~| NOTE cannot infer type for `T`
-                       //~| NOTE type annotations or generic parameter binding
+                       //~| NOTE consider giving `it` a type
 }

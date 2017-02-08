@@ -24,15 +24,18 @@ use path::{Path, PathBuf};
 use sys;
 use sys::os as os_imp;
 
-/// Returns the current working directory as a `PathBuf`.
+/// Returns the current working directory as a [`PathBuf`].
 ///
 /// # Errors
 ///
-/// Returns an `Err` if the current working directory value is invalid.
+/// Returns an [`Err`] if the current working directory value is invalid.
 /// Possible cases:
 ///
 /// * Current directory does not exist.
 /// * There are insufficient permissions to access the current directory.
+///
+/// [`PathBuf`]: ../../std/path/struct.PathBuf.html
+/// [`Err`]: ../../std/result/enum.Result.html#method.err
 ///
 /// # Examples
 ///
