@@ -2765,6 +2765,28 @@ let base = Point3d {x: 1, y: 2, z: 3};
 Point3d {y: 0, z: 10, .. base};
 ```
 
+#### Struct field init shorthand
+
+When initializing a data structure (struct, enum, union) with named fields,
+allow writing `fieldname` as a shorthand for `fieldname: fieldname`. This
+allows a compact syntax for initialization, with less duplication.
+
+In the initializer for a `struct` with named fields, a `union` with named
+fields, or an enum variant with named fields, accept an identifier `field` as a
+shorthand for `field: field`.
+
+Example:
+
+```
+# #![feature(field_init_shorthand)]
+# struct Point3d { x: i32, y: i32, z: i32 }
+# let x = 0;
+# let y_value = 0;
+# let z = 0;
+Point3d { x: x, y: y_value, z: z };
+Point3d { x, y: y_value, z };
+```
+
 ### Block expressions
 
 A _block expression_ is similar to a module in terms of the declarations that
