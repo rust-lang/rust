@@ -60,11 +60,95 @@
 //! by two zero-length breaks. The algorithm will try its best to fit it on a
 //! line (which it can't) and so naturally place the content on its own line to
 //! avoid combining it with other lines and making matters even worse.
+//!
+//! # Explanation
+//!
+//! In case you do not have the paper, here is an explanation of what's going
+//! on.
+//!
+//! There is a stream of input tokens flowing through this printer.
+//!
+//! The printer buffers up to 3N tokens inside itself, where N is linewidth.
+//! Yes, linewidth is chars and tokens are multi-char, but in the worst
+//! case every token worth buffering is 1 char long, so it's ok.
+//!
+//! Tokens are String, Break, and Begin/End to delimit blocks.
+//!
+//! Begin tokens can carry an offset, saying "how far to indent when you break
+//! inside here", as well as a flag indicating "consistent" or "inconsistent"
+//! breaking. Consistent breaking means that after the first break, no attempt
+//! will be made to flow subsequent breaks together onto lines. Inconsistent
+//! is the opposite. Inconsistent breaking example would be, say:
+//!
+//! ```
+//! foo(hello, there, good, friends)
+//! ```
+//!
+//! breaking inconsistently to become
+//!
+//! ```
+//! foo(hello, there
+//!     good, friends);
+//! ```
+//!
+//! whereas a consistent breaking would yield:
+//!
+//! ```
+//! foo(hello,
+//!     there
+//!     good,
+//!     friends);
+//! ```
+//!
+//! That is, in the consistent-break blocks we value vertical alignment
+//! more than the ability to cram stuff onto a line. But in all cases if it
+//! can make a block a one-liner, it'll do so.
+//!
+//! Carrying on with high-level logic:
+//!
+//! The buffered tokens go through a ring-buffer, 'tokens'. The 'left' and
+//! 'right' indices denote the active portion of the ring buffer as well as
+//! describing hypothetical points-in-the-infinite-stream at most 3N tokens
+//! apart (i.e. "not wrapped to ring-buffer boundaries"). The paper will switch
+//! between using 'left' and 'right' terms to denote the wrapped-to-ring-buffer
+//! and point-in-infinite-stream senses freely.
+//!
+//! There is a parallel ring buffer, 'size', that holds the calculated size of
+//! each token. Why calculated? Because for Begin/End pairs, the "size"
+//! includes everything between the pair. That is, the "size" of Begin is
+//! actually the sum of the sizes of everything between Begin and the paired
+//! End that follows. Since that is arbitrarily far in the future, 'size' is
+//! being rewritten regularly while the printer runs; in fact most of the
+//! machinery is here to work out 'size' entries on the fly (and give up when
+//! they're so obviously over-long that "infinity" is a good enough
+//! approximation for purposes of line breaking).
+//!
+//! The "input side" of the printer is managed as an abstract process called
+//! SCAN, which uses 'scan_stack', to manage calculating 'size'. SCAN is, in
+//! other words, the process of calculating 'size' entries.
+//!
+//! The "output side" of the printer is managed by an abstract process called
+//! PRINT, which uses 'print_stack', 'margin' and 'space' to figure out what to
+//! do with each token/size pair it consumes as it goes. It's trying to consume
+//! the entire buffered window, but can't output anything until the size is >=
+//! 0 (sizes are set to negative while they're pending calculation).
+//!
+//! So SCAN takes input and buffers tokens and pending calculations, while
+//! PRINT gobbles up completed calculations and tokens from the buffer. The
+//! theory is that the two can never get more than 3N tokens apart, because
+//! once there's "obviously" too much data to fit on a line, in a size
+//! calculation, SCAN will write "infinity" to the size and let PRINT consume
+//! it.
+//!
+//! In this implementation (following the paper, again) the SCAN process is
+//! the method called `Printer::pretty_print`, and the 'PRINT' process is the method
+//! called `Printer::print`.
 
 use std::collections::VecDeque;
 use std::fmt;
 use std::io;
 
+/// How to break. Described in more detail in the module docs.
 #[derive(Clone, Copy, PartialEq)]
 pub enum Breaks {
     Consistent,
@@ -177,81 +261,6 @@ pub fn mk_printer<'a>(out: Box<io::Write+'a>, linewidth: usize) -> Printer<'a> {
     }
 }
 
-
-/// In case you do not have the paper, here is an explanation of what's going
-/// on.
-///
-/// There is a stream of input tokens flowing through this printer.
-///
-/// The printer buffers up to 3N tokens inside itself, where N is linewidth.
-/// Yes, linewidth is chars and tokens are multi-char, but in the worst
-/// case every token worth buffering is 1 char long, so it's ok.
-///
-/// Tokens are String, Break, and Begin/End to delimit blocks.
-///
-/// Begin tokens can carry an offset, saying "how far to indent when you break
-/// inside here", as well as a flag indicating "consistent" or "inconsistent"
-/// breaking. Consistent breaking means that after the first break, no attempt
-/// will be made to flow subsequent breaks together onto lines. Inconsistent
-/// is the opposite. Inconsistent breaking example would be, say:
-///
-///  foo(hello, there, good, friends)
-///
-/// breaking inconsistently to become
-///
-///  foo(hello, there
-///      good, friends);
-///
-/// whereas a consistent breaking would yield:
-///
-///  foo(hello,
-///      there
-///      good,
-///      friends);
-///
-/// That is, in the consistent-break blocks we value vertical alignment
-/// more than the ability to cram stuff onto a line. But in all cases if it
-/// can make a block a one-liner, it'll do so.
-///
-/// Carrying on with high-level logic:
-///
-/// The buffered tokens go through a ring-buffer, 'tokens'. The 'left' and
-/// 'right' indices denote the active portion of the ring buffer as well as
-/// describing hypothetical points-in-the-infinite-stream at most 3N tokens
-/// apart (i.e. "not wrapped to ring-buffer boundaries"). The paper will switch
-/// between using 'left' and 'right' terms to denote the wrapped-to-ring-buffer
-/// and point-in-infinite-stream senses freely.
-///
-/// There is a parallel ring buffer, 'size', that holds the calculated size of
-/// each token. Why calculated? Because for Begin/End pairs, the "size"
-/// includes everything between the pair. That is, the "size" of Begin is
-/// actually the sum of the sizes of everything between Begin and the paired
-/// End that follows. Since that is arbitrarily far in the future, 'size' is
-/// being rewritten regularly while the printer runs; in fact most of the
-/// machinery is here to work out 'size' entries on the fly (and give up when
-/// they're so obviously over-long that "infinity" is a good enough
-/// approximation for purposes of line breaking).
-///
-/// The "input side" of the printer is managed as an abstract process called
-/// SCAN, which uses 'scan_stack', to manage calculating 'size'. SCAN is, in
-/// other words, the process of calculating 'size' entries.
-///
-/// The "output side" of the printer is managed by an abstract process called
-/// PRINT, which uses 'print_stack', 'margin' and 'space' to figure out what to
-/// do with each token/size pair it consumes as it goes. It's trying to consume
-/// the entire buffered window, but can't output anything until the size is >=
-/// 0 (sizes are set to negative while they're pending calculation).
-///
-/// So SCAN takes input and buffers tokens and pending calculations, while
-/// PRINT gobbles up completed calculations and tokens from the buffer. The
-/// theory is that the two can never get more than 3N tokens apart, because
-/// once there's "obviously" too much data to fit on a line, in a size
-/// calculation, SCAN will write "infinity" to the size and let PRINT consume
-/// it.
-///
-/// In this implementation (following the paper, again) the SCAN process is
-/// the method called 'pretty_print', and the 'PRINT' process is the method
-/// called 'print'.
 pub struct Printer<'a> {
     pub out: Box<io::Write+'a>,
     buf_len: usize,
@@ -292,7 +301,7 @@ impl<'a> Printer<'a> {
     pub fn last_token(&mut self) -> Token {
         self.buf[self.right].token.clone()
     }
-    // be very careful with this!
+    /// be very careful with this!
     pub fn replace_last_token(&mut self, t: Token) {
         self.buf[self.right].token = t;
     }
@@ -571,8 +580,8 @@ impl<'a> Printer<'a> {
 }
 
 // Convenience functions to talk to the printer.
-//
-// "raw box"
+
+/// "raw box"
 pub fn rbox(p: &mut Printer, indent: usize, b: Breaks) -> io::Result<()> {
     p.pretty_print(Token::Begin(BeginToken {
         offset: indent as isize,
@@ -580,10 +589,12 @@ pub fn rbox(p: &mut Printer, indent: usize, b: Breaks) -> io::Result<()> {
     }))
 }
 
+/// Inconsistent breaking box
 pub fn ibox(p: &mut Printer, indent: usize) -> io::Result<()> {
     rbox(p, indent, Breaks::Inconsistent)
 }
 
+/// Consistent breaking box
 pub fn cbox(p: &mut Printer, indent: usize) -> io::Result<()> {
     rbox(p, indent, Breaks::Consistent)
 }
