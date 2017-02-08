@@ -257,10 +257,6 @@ mod imp {
     #[allow(non_upper_case_globals)]
     const kSecRandomDefault: *const SecRandom = ptr::null();
 
-    #[link(name = "Security", kind = "framework")]
-    #[cfg(not(cargobuild))]
-    extern {}
-
     extern {
         fn SecRandomCopyBytes(rnd: *const SecRandom,
                               count: size_t, bytes: *mut u8) -> c_int;

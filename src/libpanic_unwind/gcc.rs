@@ -301,10 +301,6 @@ unsafe extern "C" fn rust_eh_unwind_resume(panic_ctx: *mut u8) -> ! {
 // with any GCC runtime.
 #[cfg(all(target_os="windows", target_arch = "x86", target_env="gnu"))]
 pub mod eh_frame_registry {
-    #[link(name = "gcc_eh")]
-    #[cfg(not(cargobuild))]
-    extern "C" {}
-
     extern "C" {
         fn __register_frame_info(eh_frame_begin: *const u8, object: *mut u8);
         fn __deregister_frame_info(eh_frame_begin: *const u8, object: *mut u8);
