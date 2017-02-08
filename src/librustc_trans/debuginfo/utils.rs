@@ -24,6 +24,8 @@ use type_::Type;
 use syntax_pos::{self, Span};
 use syntax::ast;
 
+use std::ops;
+
 pub fn is_node_local_to_unit(cx: &CrateContext, node_id: ast::NodeId) -> bool
 {
     // The is_local_to_unit flag indicates whether a function is local to the
@@ -49,12 +51,13 @@ pub fn span_start(cx: &CrateContext, span: Span) -> syntax_pos::Loc {
     cx.sess().codemap().lookup_char_pos(span.lo)
 }
 
-pub fn size_and_align_of(cx: &CrateContext, llvm_type: Type) -> (u64, u64) {
-    (machine::llsize_of_alloc(cx, llvm_type), machine::llalign_of_min(cx, llvm_type) as u64)
+pub fn size_and_align_of(cx: &CrateContext, llvm_type: Type) -> (u64, u32) {
+    (machine::llsize_of_alloc(cx, llvm_type), machine::llalign_of_min(cx, llvm_type))
 }
 
-pub fn bytes_to_bits(bytes: u64) -> u64 {
-    bytes * 8
+pub fn bytes_to_bits<T>(bytes: T) -> T
+    where T: ops::Mul<Output=T> + From<u8> {
+    bytes * 8u8.into()
 }
 
 #[inline]

@@ -513,7 +513,7 @@ extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateFunction(
 
 extern "C" LLVMRustMetadataRef
 LLVMRustDIBuilderCreateBasicType(LLVMRustDIBuilderRef Builder, const char *Name,
-                                 uint64_t SizeInBits, uint64_t AlignInBits,
+                                 uint64_t SizeInBits, uint32_t AlignInBits,
                                  unsigned Encoding) {
   return wrap(Builder->createBasicType(Name, SizeInBits,
 #if LLVM_VERSION_LE(3, 9)
@@ -524,7 +524,7 @@ LLVMRustDIBuilderCreateBasicType(LLVMRustDIBuilderRef Builder, const char *Name,
 
 extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreatePointerType(
     LLVMRustDIBuilderRef Builder, LLVMRustMetadataRef PointeeTy,
-    uint64_t SizeInBits, uint64_t AlignInBits, const char *Name) {
+    uint64_t SizeInBits, uint32_t AlignInBits, const char *Name) {
   return wrap(Builder->createPointerType(unwrapDI<DIType>(PointeeTy),
                                          SizeInBits, AlignInBits, Name));
 }
@@ -532,7 +532,7 @@ extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreatePointerType(
 extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateStructType(
     LLVMRustDIBuilderRef Builder, LLVMRustMetadataRef Scope, const char *Name,
     LLVMRustMetadataRef File, unsigned LineNumber, uint64_t SizeInBits,
-    uint64_t AlignInBits, LLVMRustDIFlags Flags,
+    uint32_t AlignInBits, LLVMRustDIFlags Flags,
     LLVMRustMetadataRef DerivedFrom, LLVMRustMetadataRef Elements,
     unsigned RunTimeLang, LLVMRustMetadataRef VTableHolder,
     const char *UniqueId) {
@@ -546,7 +546,7 @@ extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateStructType(
 extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateMemberType(
     LLVMRustDIBuilderRef Builder, LLVMRustMetadataRef Scope, const char *Name,
     LLVMRustMetadataRef File, unsigned LineNo, uint64_t SizeInBits,
-    uint64_t AlignInBits, uint64_t OffsetInBits, LLVMRustDIFlags Flags,
+    uint32_t AlignInBits, uint64_t OffsetInBits, LLVMRustDIFlags Flags,
     LLVMRustMetadataRef Ty) {
   return wrap(Builder->createMemberType(unwrapDI<DIDescriptor>(Scope), Name,
                                         unwrapDI<DIFile>(File), LineNo,
@@ -573,7 +573,7 @@ extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateStaticVariable(
     LLVMRustDIBuilderRef Builder, LLVMRustMetadataRef Context, const char *Name,
     const char *LinkageName, LLVMRustMetadataRef File, unsigned LineNo,
     LLVMRustMetadataRef Ty, bool IsLocalToUnit, LLVMValueRef V,
-    LLVMRustMetadataRef Decl = nullptr, uint64_t AlignInBits = 0) {
+    LLVMRustMetadataRef Decl = nullptr, uint32_t AlignInBits = 0) {
   Constant *InitVal = cast<Constant>(unwrap(V));
 
 #if LLVM_VERSION_GE(4, 0)
@@ -612,7 +612,7 @@ extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateVariable(
     LLVMRustDIBuilderRef Builder, unsigned Tag, LLVMRustMetadataRef Scope,
     const char *Name, LLVMRustMetadataRef File, unsigned LineNo,
     LLVMRustMetadataRef Ty, bool AlwaysPreserve, LLVMRustDIFlags Flags,
-    unsigned ArgNo, uint64_t AlignInBits) {
+    unsigned ArgNo, uint32_t AlignInBits) {
 #if LLVM_VERSION_GE(3, 8)
   if (Tag == 0x100) { // DW_TAG_auto_variable
     return wrap(Builder->createAutoVariable(
@@ -637,7 +637,7 @@ extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateVariable(
 
 extern "C" LLVMRustMetadataRef
 LLVMRustDIBuilderCreateArrayType(LLVMRustDIBuilderRef Builder, uint64_t Size,
-                                 uint64_t AlignInBits, LLVMRustMetadataRef Ty,
+                                 uint32_t AlignInBits, LLVMRustMetadataRef Ty,
                                  LLVMRustMetadataRef Subscripts) {
   return wrap(
       Builder->createArrayType(Size, AlignInBits, unwrapDI<DIType>(Ty),
@@ -646,7 +646,7 @@ LLVMRustDIBuilderCreateArrayType(LLVMRustDIBuilderRef Builder, uint64_t Size,
 
 extern "C" LLVMRustMetadataRef
 LLVMRustDIBuilderCreateVectorType(LLVMRustDIBuilderRef Builder, uint64_t Size,
-                                  uint64_t AlignInBits, LLVMRustMetadataRef Ty,
+                                  uint32_t AlignInBits, LLVMRustMetadataRef Ty,
                                   LLVMRustMetadataRef Subscripts) {
   return wrap(
       Builder->createVectorType(Size, AlignInBits, unwrapDI<DIType>(Ty),
@@ -687,7 +687,7 @@ LLVMRustDIBuilderCreateEnumerator(LLVMRustDIBuilderRef Builder,
 extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateEnumerationType(
     LLVMRustDIBuilderRef Builder, LLVMRustMetadataRef Scope, const char *Name,
     LLVMRustMetadataRef File, unsigned LineNumber, uint64_t SizeInBits,
-    uint64_t AlignInBits, LLVMRustMetadataRef Elements,
+    uint32_t AlignInBits, LLVMRustMetadataRef Elements,
     LLVMRustMetadataRef ClassTy) {
   return wrap(Builder->createEnumerationType(
       unwrapDI<DIDescriptor>(Scope), Name, unwrapDI<DIFile>(File), LineNumber,
@@ -698,7 +698,7 @@ extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateEnumerationType(
 extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateUnionType(
     LLVMRustDIBuilderRef Builder, LLVMRustMetadataRef Scope, const char *Name,
     LLVMRustMetadataRef File, unsigned LineNumber, uint64_t SizeInBits,
-    uint64_t AlignInBits, LLVMRustDIFlags Flags, LLVMRustMetadataRef Elements,
+    uint32_t AlignInBits, LLVMRustDIFlags Flags, LLVMRustMetadataRef Elements,
     unsigned RunTimeLang, const char *UniqueId) {
   return wrap(Builder->createUnionType(
       unwrapDI<DIDescriptor>(Scope), Name, unwrapDI<DIFile>(File), LineNumber,
