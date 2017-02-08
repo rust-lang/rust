@@ -4,6 +4,8 @@ macro_rules! ashl {
     ($intrinsic:ident: $ty:ty) => {
         /// Returns `a << b`, requires `b < $ty::bits()`
         #[cfg_attr(not(test), no_mangle)]
+        #[cfg_attr(all(not(test), not(target_arch = "arm")), no_mangle)]
+        #[cfg_attr(all(not(test), target_arch = "arm"), inline(always))]
         pub extern "C" fn $intrinsic(a: $ty, b: u32) -> $ty {
             let half_bits = <$ty>::bits() / 2;
             if b & half_bits != 0 {
@@ -21,6 +23,8 @@ macro_rules! ashr {
     ($intrinsic:ident: $ty:ty) => {
         /// Returns arithmetic `a >> b`, requires `b < $ty::bits()`
         #[cfg_attr(not(test), no_mangle)]
+        #[cfg_attr(all(not(test), not(target_arch = "arm")), no_mangle)]
+        #[cfg_attr(all(not(test), target_arch = "arm"), inline(always))]
         pub extern "C" fn $intrinsic(a: $ty, b: u32) -> $ty {
             let half_bits = <$ty>::bits() / 2;
             if b & half_bits != 0 {
@@ -75,7 +79,7 @@ mod tests {
 
     // NOTE We purposefully stick to `u32` for `b` here because we want "small" values (b < 64)
     check! {
-        fn __ashldi3(f: extern fn(u64, u32) -> u64, a: U64, b: u32) -> Option<u64> {
+        fn __ashldi3(f: extern "C" fn(u64, u32) -> u64, a: U64, b: u32) -> Option<u64> {
             let a = a.0;
             if b >= 64 {
                 None
@@ -84,7 +88,7 @@ mod tests {
             }
         }
 
-        fn __ashrdi3(f: extern fn(i64, u32) -> i64, a: I64, b: u32) -> Option<i64> {
+        fn __ashrdi3(f: extern "C" fn(i64, u32) -> i64, a: I64, b: u32) -> Option<i64> {
             let a = a.0;
             if b >= 64 {
                 None
@@ -93,7 +97,7 @@ mod tests {
             }
         }
 
-        fn __lshrdi3(f: extern fn(u64, u32) -> u64, a: U64, b: u32) -> Option<u64> {
+        fn __lshrdi3(f: extern "C" fn(u64, u32) -> u64, a: U64, b: u32) -> Option<u64> {
             let a = a.0;
             if b >= 64 {
                 None
@@ -114,7 +118,7 @@ mod tests_i128 {
 
     // NOTE We purposefully stick to `u32` for `b` here because we want "small" values (b < 64)
     check! {
-        fn __ashlti3(f: extern fn(u128, u32) -> u128, a: U128, b: u32) -> Option<u128> {
+        fn __ashlti3(f: extern "C" fn(u128, u32) -> u128, a: U128, b: u32) -> Option<u128> {
             let a = a.0;
             if b >= 64 {
                 None
@@ -123,7 +127,7 @@ mod tests_i128 {
             }
         }
 
-        fn __ashrti3(f: extern fn(i128, u32) -> i128, a: I128, b: u32) -> Option<i128> {
+        fn __ashrti3(f: extern "C" fn(i128, u32) -> i128, a: I128, b: u32) -> Option<i128> {
             let a = a.0;
             if b >= 64 {
                 None
@@ -132,7 +136,7 @@ mod tests_i128 {
             }
         }
 
-        fn __lshrti3(f: extern fn(u128, u32) -> u128, a: U128, b: u32) -> Option<u128> {
+        fn __lshrti3(f: extern "C" fn(u128, u32) -> u128, a: U128, b: u32) -> Option<u128> {
             let a = a.0;
             if b >= 128 {
                 None
