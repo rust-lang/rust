@@ -73,6 +73,8 @@ pub use self::contents::TypeContents;
 pub use self::context::{TyCtxt, GlobalArenas, tls};
 pub use self::context::{Lift, TypeckTables};
 
+pub use self::instance::{Instance, InstanceDef};
+
 pub use self::trait_def::{TraitDef, TraitFlags};
 
 pub use self::maps::queries;
@@ -98,6 +100,7 @@ pub mod util;
 mod contents;
 mod context;
 mod flags;
+mod instance;
 mod structural_impls;
 mod sty;
 
@@ -2307,6 +2310,16 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// Given the did of an item, returns its MIR, borrowed immutably.
     pub fn item_mir(self, did: DefId) -> Ref<'gcx, Mir<'gcx>> {
         queries::mir::get(self, DUMMY_SP, did).borrow()
+    }
+
+    /// Return the possibly-auto-generated MIR of a (DefId, Subst) pair.
+    pub fn instance_mir(self, instance: ty::InstanceDef<'gcx>)
+                        -> Ref<'gcx, Mir<'gcx>>
+    {
+        match instance {
+            ty::InstanceDef::Item(did) if true => self.item_mir(did),
+            _ => queries::mir_shims::get(self, DUMMY_SP, instance).borrow(),
+        }
     }
 
     /// Given the DefId of an item, returns its MIR, borrowed immutably.

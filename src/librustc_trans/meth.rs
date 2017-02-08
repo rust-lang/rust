@@ -21,6 +21,7 @@ use machine;
 use monomorphize::Instance;
 use type_::Type;
 use type_of::*;
+use back::symbol_names;
 use value::Value;
 use rustc::ty;
 
@@ -70,7 +71,7 @@ pub fn trans_object_shim<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
     let function_name = match callee.ty.sty {
         ty::TyFnDef(def_id, substs, _) => {
             let instance = Instance::new(def_id, substs);
-            instance.symbol_name(ccx.shared())
+            symbol_names::symbol_name(instance, ccx.shared())
         }
         _ => bug!()
     };

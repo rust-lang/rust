@@ -546,16 +546,6 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
         &self.translation_items
     }
 
-    /// Given the def-id of some item that has no type parameters, make
-    /// a suitable "empty substs" for it.
-    pub fn empty_substs_for_def_id(&self, item_def_id: DefId) -> &'tcx Substs<'tcx> {
-        Substs::for_item(self.tcx(), item_def_id,
-                         |_, _| self.tcx().mk_region(ty::ReErased),
-                         |_, _| {
-            bug!("empty_substs_for_def_id: {:?} has type parameters", item_def_id)
-        })
-    }
-
     pub fn metadata_symbol_name(&self) -> String {
         format!("rust_metadata_{}_{}",
                 self.link_meta().crate_name,
@@ -886,7 +876,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
     /// Given the def-id of some item that has no type parameters, make
     /// a suitable "empty substs" for it.
     pub fn empty_substs_for_def_id(&self, item_def_id: DefId) -> &'tcx Substs<'tcx> {
-        self.shared().empty_substs_for_def_id(item_def_id)
+        self.tcx().empty_substs_for_def_id(item_def_id)
     }
 
     /// Generate a new symbol name with the given prefix. This symbol name must

@@ -27,11 +27,12 @@ use common::{self, CrateContext};
 use cleanup::CleanupScope;
 use mir::lvalue::LvalueRef;
 use consts;
-use common::def_ty;
+use common::instance_ty;
 use declare;
 use value::Value;
 use meth;
 use monomorphize::Instance;
+use back::symbol_names::symbol_name;
 use trans_item::TransItem;
 use type_of;
 use rustc::ty::{self, Ty, TypeFoldable};
@@ -77,7 +78,8 @@ impl<'tcx> Callee<'tcx> {
             return Callee::trait_method(ccx, trait_id, def_id, substs);
         }
 
-        let fn_ty = def_ty(ccx.shared(), def_id, substs);
+        let instance = ty::Instance::new(def_id, substs);
+        let fn_ty = instance_ty(ccx.shared(), &instance);
         if let ty::TyFnDef(.., f) = fn_ty.sty {
             if f.abi() == Abi::RustIntrinsic || f.abi() == Abi::PlatformIntrinsic {
                 return Callee {
@@ -87,7 +89,7 @@ impl<'tcx> Callee<'tcx> {
             }
         }
 
-        let (llfn, ty) = get_fn(ccx, def_id, substs);
+        let (llfn, ty) = get_fn(ccx, instance);
         Callee::ptr(llfn, ty)
     }
 
@@ -104,13 +106,13 @@ impl<'tcx> Callee<'tcx> {
         match common::fulfill_obligation(ccx.shared(), DUMMY_SP, trait_ref) {
             traits::VtableImpl(vtable_impl) => {
                 let name = tcx.item_name(def_id);
-                let (def_id, substs) = traits::find_method(tcx, name, substs, &vtable_impl);
+                let instance = common::find_method(tcx, name, substs, &vtable_impl);
 
                 // Translate the function, bypassing Callee::def.
                 // That is because default methods have the same ID as the
                 // trait method used to look up the impl method that ended
                 // up here, so calling Callee::def would infinitely recurse.
-                let (llfn, ty) = get_fn(ccx, def_id, substs);
+                let (llfn, ty) = get_fn(ccx, instance);
                 Callee::ptr(llfn, ty)
             }
             traits::VtableClosure(vtable_closure) => {
@@ -125,7 +127,7 @@ impl<'tcx> Callee<'tcx> {
                     instance,
                     trait_closure_kind);
 
-                let method_ty = def_ty(ccx.shared(), def_id, substs);
+                let method_ty = instance_ty(ccx.shared(), &instance);
                 Callee::ptr(llfn, method_ty)
             }
             traits::VtableFnPointer(vtable_fn_pointer) => {
@@ -135,13 +137,13 @@ impl<'tcx> Callee<'tcx> {
                                                  trait_closure_kind,
                                                  vtable_fn_pointer.fn_ty);
 
-                let method_ty = def_ty(ccx.shared(), def_id, substs);
+                let method_ty = instance_ty(ccx.shared(), &instance);
                 Callee::ptr(llfn, method_ty)
             }
             traits::VtableObject(ref data) => {
                 Callee {
                     data: Virtual(tcx.get_vtable_index_of_object_method(data, def_id)),
-                    ty: def_ty(ccx.shared(), def_id, substs)
+                    ty: instance_ty(ccx.shared(), &Instance::new(def_id, substs))
                 }
             }
             vtable => {
@@ -183,7 +185,7 @@ fn trans_closure_method<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
                                   -> ValueRef
 {
     // If this is a closure, redirect to it.
-    let (llfn, _) = get_fn(ccx, def_id, substs.substs);
+    let (llfn, _) = get_fn(ccx, Instance::new(def_id, substs.substs));
 
     // If the closure is a Fn closure, but a FnOnce is needed (etc),
     // then adapt the self type
@@ -292,7 +294,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     let llonce_fn_ty = tcx.mk_fn_ptr(ty::Binder(sig));
 
     // Create the by-value helper.
-    let function_name = method_instance.symbol_name(ccx.shared());
+    let function_name = symbol_name(method_instance, ccx.shared());
     let lloncefn = declare::define_internal_fn(ccx, &function_name, llonce_fn_ty);
     attributes::set_frame_pointer_elimination(ccx, lloncefn);
 
@@ -438,7 +440,7 @@ fn trans_fn_pointer_shim<'a, 'tcx>(
     debug!("tuple_fn_ty: {:?}", tuple_fn_ty);
 
     //
-    let function_name = method_instance.symbol_name(ccx.shared());
+    let function_name = symbol_name(method_instance, ccx.shared());
     let llfn = declare::define_internal_fn(ccx, &function_name, tuple_fn_ty);
     attributes::set_frame_pointer_elimination(ccx, llfn);
     //
@@ -489,21 +491,17 @@ fn trans_fn_pointer_shim<'a, 'tcx>(
 /// - `def_id`: def id of the fn or method item being referenced
 /// - `substs`: values for each of the fn/method's parameters
 fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                    def_id: DefId,
-                    substs: &'tcx Substs<'tcx>)
+                    instance: Instance<'tcx>)
                     -> (ValueRef, Ty<'tcx>) {
     let tcx = ccx.tcx();
 
-    debug!("get_fn(def_id={:?}, substs={:?})", def_id, substs);
+    debug!("get_fn(instance={:?})", instance);
 
-    assert!(!substs.needs_infer());
-    assert!(!substs.has_escaping_regions());
-    assert!(!substs.has_param_types());
+    assert!(!instance.substs.needs_infer());
+    assert!(!instance.substs.has_escaping_regions());
+    assert!(!instance.substs.has_param_types());
 
-    let substs = tcx.normalize_associated_type(&substs);
-    let instance = Instance::new(def_id, substs);
-    let fn_ty = common::def_ty(ccx.shared(), def_id, substs);
-
+    let fn_ty = common::instance_ty(ccx.shared(), &instance);
     if let Some(&llfn) = ccx.instances().borrow().get(&instance) {
         return (llfn, fn_ty);
     }
@@ -553,7 +551,7 @@ fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         assert_eq!(common::val_ty(llfn), llptrty);
         debug!("get_fn: not casting pointer!");
 
-        let attrs = ccx.tcx().get_attrs(def_id);
+        let attrs = instance.def.attrs(ccx.tcx());
         attributes::from_fn_attrs(ccx, &attrs, llfn);
 
         let is_local_def = ccx.shared().translation_items().borrow()
@@ -565,7 +563,9 @@ fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                 llvm::LLVMRustSetLinkage(llfn, llvm::Linkage::ExternalLinkage);
             }
         }
-        if ccx.use_dll_storage_attrs() && ccx.sess().cstore.is_dllimport_foreign_item(def_id) {
+        if ccx.use_dll_storage_attrs() &&
+            ccx.sess().cstore.is_dllimport_foreign_item(instance.def_id())
+        {
             unsafe {
                 llvm::LLVMSetDLLStorageClass(llfn, llvm::DLLStorageClass::DllImport);
             }

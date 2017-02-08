@@ -602,7 +602,14 @@ pub fn ty_fn_sig<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     }
 }
 
-pub fn requests_inline(tcx: TyCtxt, def_id: DefId) -> bool {
+pub fn requests_inline<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    instance: &ty::Instance<'tcx>
+) -> bool {
+    let def_id = match instance.def {
+        ty::InstanceDef::Item(def_id) => def_id,
+        _ => return true
+    };
     match tcx.def_key(def_id).disambiguated_data.data {
         DefPathData::StructCtor |
         DefPathData::EnumVariant(..) |
@@ -610,7 +617,6 @@ pub fn requests_inline(tcx: TyCtxt, def_id: DefId) -> bool {
         _ => attr::requests_inline(&tcx.get_attrs(def_id)[..]),
     }
 }
-
 /// Given a DefId and some Substs, produces the monomorphic item type.
 pub fn def_ty<'a, 'tcx>(shared: &SharedCrateContext<'a, 'tcx>,
                         def_id: DefId,
@@ -619,4 +625,24 @@ pub fn def_ty<'a, 'tcx>(shared: &SharedCrateContext<'a, 'tcx>,
 {
     let ty = shared.tcx().item_type(def_id);
     monomorphize::apply_param_substs(shared, substs, &ty)
+}
+
+/// Return the substituted type of an instance.
+pub fn instance_ty<'a, 'tcx>(shared: &SharedCrateContext<'a, 'tcx>,
+                             instance: &ty::Instance<'tcx>)
+                             -> Ty<'tcx>
+{
+    let ty = instance.def.def_ty(shared.tcx());
+    monomorphize::apply_param_substs(shared, instance.substs, &ty)
+}
+
+pub fn find_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                             name: ast::Name,
+                             substs: &'tcx Substs<'tcx>,
+                             impl_data: &traits::VtableImplData<'tcx, ()>)
+                             -> ty::Instance<'tcx>
+{
+    let (def_id, substs) = traits::find_method(tcx, name, substs, impl_data);
+    let substs = tcx.erase_regions(&substs);
+    ty::Instance::new(def_id, substs)
 }

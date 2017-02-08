@@ -565,11 +565,11 @@ pub fn memcpy_ty<'a, 'tcx>(
 }
 
 pub fn call_memset<'a, 'tcx>(b: &Builder<'a, 'tcx>,
-                               ptr: ValueRef,
-                               fill_byte: ValueRef,
-                               size: ValueRef,
-                               align: ValueRef,
-                               volatile: bool) -> ValueRef {
+                             ptr: ValueRef,
+                             fill_byte: ValueRef,
+                             size: ValueRef,
+                             align: ValueRef,
+                             volatile: bool) -> ValueRef {
     let ptr_width = &b.ccx.sess().target.target.target_pointer_width[..];
     let intrinsic_key = format!("llvm.memset.p0i8.i{}", ptr_width);
     let llintrinsicfn = b.ccx.get_intrinsic(&intrinsic_key);
@@ -581,7 +581,7 @@ pub fn trans_instance<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, instance: Instance
     let _s = if ccx.sess().trans_stats() {
         let mut instance_name = String::new();
         DefPathBasedNames::new(ccx.tcx(), true, true)
-            .push_def_path(instance.def, &mut instance_name);
+            .push_def_path(instance.def_id(), &mut instance_name);
         Some(StatRecorder::new(ccx, instance_name))
     } else {
         None
@@ -592,7 +592,7 @@ pub fn trans_instance<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, instance: Instance
     // release builds.
     info!("trans_instance({})", instance);
 
-    let fn_ty = common::def_ty(ccx.shared(), instance.def, instance.substs);
+    let fn_ty = common::instance_ty(ccx.shared(), &instance);
     let sig = common::ty_fn_sig(ccx, fn_ty);
     let sig = ccx.tcx().erase_late_bound_regions_and_normalize(&sig);
 
@@ -607,7 +607,7 @@ pub fn trans_instance<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, instance: Instance
         attributes::emit_uwtable(lldecl, true);
     }
 
-    let mir = ccx.tcx().item_mir(instance.def);
+    let mir = ccx.tcx().instance_mir(instance.def);
     mir::trans_mir(ccx, lldecl, &mir, instance, sig);
 }
 
@@ -668,7 +668,7 @@ pub fn maybe_create_entry_wrapper(ccx: &CrateContext) {
         ccx.tcx().sess.span_fatal(span, "compilation successful");
     }
 
-    let instance = Instance::mono(ccx.shared(), main_def_id);
+    let instance = Instance::mono(ccx.tcx(), main_def_id);
 
     if !ccx.codegen_unit().contains_item(&TransItem::Fn(instance)) {
         // We want to create the wrapper in the same codegen unit as Rust's main

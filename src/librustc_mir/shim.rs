@@ -13,13 +13,30 @@ use rustc::infer;
 use rustc::mir::*;
 use rustc::mir::transform::MirSource;
 use rustc::ty;
+use rustc::ty::maps::Providers;
 
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 
 use syntax::ast;
 use syntax_pos::Span;
 
+use std::cell::RefCell;
 use std::iter;
+
+pub fn provide(providers: &mut Providers) {
+    providers.mir_shims = make_shim;
+}
+
+fn make_shim<'a, 'tcx>(_tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
+                       instance: ty::InstanceDef<'tcx>)
+                       -> &'tcx RefCell<Mir<'tcx>>
+{
+    match instance {
+        ty::InstanceDef::Item(..) =>
+            bug!("item {:?} passed to make_shim", instance),
+        ty::InstanceDef::FnPtrShim(..) => unimplemented!()
+    }
+}
 
 fn local_decls_for_sig<'tcx>(sig: &ty::FnSig<'tcx>)
     -> IndexVec<Local, LocalDecl<'tcx>>
