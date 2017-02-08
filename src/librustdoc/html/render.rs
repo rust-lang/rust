@@ -1936,7 +1936,9 @@ impl<'a> fmt::Display for Initializer<'a> {
 
 fn item_constant(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                  c: &clean::Constant) -> fmt::Result {
-    write!(w, "<pre class='rust const'>{vis}const \
+    write!(w, "<pre class='rust const'>")?;
+    render_attributes(w, it)?;
+    write!(w, "{vis}const \
                {name}: {typ}{init}</pre>",
            vis = VisSpace(&it.visibility),
            name = it.name.as_ref().unwrap(),
@@ -1947,7 +1949,9 @@ fn item_constant(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
 
 fn item_static(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                s: &clean::Static) -> fmt::Result {
-    write!(w, "<pre class='rust static'>{vis}static {mutability}\
+    write!(w, "<pre class='rust static'>")?;
+    render_attributes(w, it)?;
+    write!(w, "{vis}static {mutability}\
                {name}: {typ}{init}</pre>",
            vis = VisSpace(&it.visibility),
            mutability = MutableSpace(s.mutability),
@@ -1971,7 +1975,9 @@ fn item_function(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                          AbiSpace(f.abi),
                          it.name.as_ref().unwrap(),
                          f.generics).len();
-    write!(w, "<pre class='rust fn'>{vis}{constness}{unsafety}{abi}fn \
+    write!(w, "<pre class='rust fn'>")?;
+    render_attributes(w, it)?;
+    write!(w, "{vis}{constness}{unsafety}{abi}fn \
                {name}{generics}{decl}{where_clause}</pre>",
            vis = VisSpace(&it.visibility),
            constness = ConstnessSpace(vis_constness),
@@ -2006,7 +2012,9 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     }
 
     // Output the trait definition
-    write!(w, "<pre class='rust trait'>{}{}trait {}{}{}{} ",
+    write!(w, "<pre class='rust trait'>")?;
+    render_attributes(w, it)?;
+    write!(w, "{}{}trait {}{}{}{} ",
            VisSpace(&it.visibility),
            UnsafetySpace(t.unsafety),
            it.name.as_ref().unwrap(),
@@ -2987,7 +2995,9 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
 fn item_typedef(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                 t: &clean::Typedef) -> fmt::Result {
     let indent = format!("type {}{:#} ", it.name.as_ref().unwrap(), t.generics).len();
-    write!(w, "<pre class='rust typedef'>type {}{}{where_clause} = {type_};</pre>",
+    write!(w, "<pre class='rust typedef'>")?;
+    render_attributes(w, it)?;
+    write!(w, "type {}{}{where_clause} = {type_};</pre>",
            it.name.as_ref().unwrap(),
            t.generics,
            where_clause = WhereClause(&t.generics, indent),
