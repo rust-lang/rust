@@ -506,10 +506,8 @@ pub fn phase_1_parse_input<'a>(sess: &'a Session, input: &Input) -> PResult<'a, 
         println!("{}", json::as_json(&krate));
     }
 
-    if sess.opts.debugging_opts.input_stats {
-        println!("Lines of code:             {}", sess.codemap().count_lines());
-        println!("Pre-expansion node count:  {}", count_nodes(&krate));
-    }
+    info!("Lines of code:             {}", sess.codemap().count_lines());
+    info!("Pre-expansion node count:  {}", count_nodes(&krate));
 
     if let Some(ref s) = sess.opts.debugging_opts.show_span {
         syntax::show_span::run(sess.diagnostic(), s, &krate);
@@ -726,9 +724,7 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
         });
     }
 
-    if sess.opts.debugging_opts.input_stats {
-        println!("Post-expansion node count: {}", count_nodes(&krate));
-    }
+    info!("Post-expansion node count: {}", count_nodes(&krate));
 
     if sess.opts.debugging_opts.hir_stats {
         hir_stats::print_ast_stats(&krate, "POST EXPANSION AST STATS");
