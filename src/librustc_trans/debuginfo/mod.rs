@@ -464,7 +464,7 @@ pub fn declare_local<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                     cx.sess().opts.optimize != config::OptLevel::No,
                     DIFlags::FlagZero,
                     argument_index,
-                    align as u64,
+                    align,
                 )
             };
             source_loc::set_debug_location(bcx,
