@@ -48,7 +48,7 @@ impl<'tcx> MirMapPass<'tcx> for Inline {
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
         hooks: &mut [Box<for<'s> MirPassHook<'s>>]) {
 
-        //if tcx.sess.opts.debugging_opts.mir_opt_level < 2 { return; }
+        if tcx.sess.opts.debugging_opts.mir_opt_level < 2 { return; }
 
         let _ignore = tcx.dep_graph.in_ignore();
 
