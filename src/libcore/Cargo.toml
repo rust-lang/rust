@@ -14,5 +14,5 @@ name = "coretest"
 path = "../libcoretest/lib.rs"
 
 [[bench]]
-name = "corebench"
-path = "../libcore/bench/lib.rs"
+name = "corebenches"
+path = "../libcore/benches/lib.rs"
