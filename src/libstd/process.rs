@@ -844,9 +844,9 @@ impl Child {
     /// guaranteed to repeatedly return a successful exit status so long as the
     /// child has already exited.
     ///
-    /// If the child has exited, then `Ok(status)` is returned. If the exit
-    /// status is not available at this time then an error is returned with the
-    /// error kind `WouldBlock`. If an error occurs, then that error is returned.
+    /// If the child has exited, then `Ok(Some(status))` is returned. If the
+    /// exit status is not available at this time then `Ok(None)` is returned.
+    /// If an error occurs, then that error is returned.
     ///
     /// Note that unlike `wait`, this function will not attempt to drop stdin.
     ///
@@ -857,14 +857,13 @@ impl Child {
     /// ```no_run
     /// #![feature(process_try_wait)]
     ///
-    /// use std::io;
     /// use std::process::Command;
     ///
     /// let mut child = Command::new("ls").spawn().unwrap();
     ///
     /// match child.try_wait() {
-    ///     Ok(status) => println!("exited with: {}", status),
-    ///     Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
+    ///     Ok(Some(status)) => println!("exited with: {}", status),
+    ///     Ok(None) => {
     ///         println!("status not ready yet, let's really wait");
     ///         let res = child.wait();
     ///         println!("result: {:?}", res);
@@ -873,8 +872,8 @@ impl Child {
     /// }
     /// ```
     #[unstable(feature = "process_try_wait", issue = "38903")]
-    pub fn try_wait(&mut self) -> io::Result<ExitStatus> {
-        self.handle.try_wait().map(ExitStatus)
+    pub fn try_wait(&mut self) -> io::Result<Option<ExitStatus>> {
+        Ok(self.handle.try_wait()?.map(ExitStatus))
     }
 
     /// Simultaneously waits for the child to exit and collect all remaining
