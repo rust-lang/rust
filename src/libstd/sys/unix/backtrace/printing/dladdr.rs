@@ -11,10 +11,11 @@
 use io;
 use io::prelude::*;
 use libc;
+use sys_common::backtrace::Frame;
 
-pub fn print(w: &mut Write, idx: isize, addr: *mut libc::c_void,
-             _symaddr: *mut libc::c_void) -> io::Result<()> {
-    use sys_common::backtrace::{output};
+pub fn resolve_symname<F>(frame: Frame, callback: F) -> io::Result<()>
+    where F: FnOnce(Option<&str>) -> io::Result<()>
+{
     use intrinsics;
     use ffi::CStr;
 
@@ -31,11 +32,20 @@ pub fn print(w: &mut Write, idx: isize, addr: *mut libc::c_void,
     }
 
     let mut info: Dl_info = unsafe { intrinsics::init() };
-    if unsafe { dladdr(addr, &mut info) == 0 } {
-        output(w, idx,addr, None)
+    let symname = if unsafe { dladdr(frame.exact_position, &mut info) == 0 } {
+        None
     } else {
-        output(w, idx, addr, Some(unsafe {
-            CStr::from_ptr(info.dli_sname).to_bytes()
-        }))
-    }
+        unsafe {
+            CStr::from_ptr(info.dli_sname).to_str().ok()
+        }
+    };
+    callback(symname)
+}
+
+pub fn foreach_symbol_fileline<F>(_symbol_addr: Frame,
+                                  mut _f: F
+                                  _: &BacktraceContext) -> io::Result<bool>
+    where F: FnMut(&[u8], libc::c_int) -> io::Result<()>
+{
+    Ok(())
 }

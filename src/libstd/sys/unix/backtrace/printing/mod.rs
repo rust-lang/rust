@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub use self::imp::print;
+pub use self::imp::{foreach_symbol_fileline, resolve_symname};
 
 #[cfg(any(target_os = "macos", target_os = "ios",
           target_os = "emscripten"))]
@@ -17,5 +17,6 @@ mod imp;
 
 #[cfg(not(any(target_os = "macos", target_os = "ios",
               target_os = "emscripten")))]
-#[path = "gnu.rs"]
-mod imp;
+mod imp {
+    pub use sys_common::gnu::libbacktrace::{foreach_symbol_fileline, resolve_symname};
+}

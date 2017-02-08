@@ -32,7 +32,7 @@ use mem;
 use ptr;
 use sys::c;
 use sys::dynamic_lib::DynamicLibrary;
-use sys::mutex::Mutex;
+use sys_common::backtrace::Frame;
 
 macro_rules! sym {
     ($lib:expr, $e:expr, $t:ident) => (
@@ -43,82 +43,18 @@ macro_rules! sym {
     )
 }
 
-#[cfg(target_env = "msvc")]
-#[path = "printing/msvc.rs"]
-mod printing;
-
-#[cfg(target_env = "gnu")]
-#[path = "printing/gnu.rs"]
 mod printing;
 
 #[cfg(target_env = "gnu")]
 #[path = "backtrace_gnu.rs"]
 pub mod gnu;
 
-type SymInitializeFn =
-    unsafe extern "system" fn(c::HANDLE, *mut c_void,
-                              c::BOOL) -> c::BOOL;
-type SymCleanupFn =
-    unsafe extern "system" fn(c::HANDLE) -> c::BOOL;
+pub use printing::{resolve_symname, foreach_symbol_fileline};
 
-type StackWalk64Fn =
-    unsafe extern "system" fn(c::DWORD, c::HANDLE, c::HANDLE,
-                              *mut c::STACKFRAME64, *mut c::CONTEXT,
-                              *mut c_void, *mut c_void,
-                              *mut c_void, *mut c_void) -> c::BOOL;
-
-#[cfg(target_arch = "x86")]
-pub fn init_frame(frame: &mut c::STACKFRAME64,
-                  ctx: &c::CONTEXT) -> c::DWORD {
-    frame.AddrPC.Offset = ctx.Eip as u64;
-    frame.AddrPC.Mode = c::ADDRESS_MODE::AddrModeFlat;
-    frame.AddrStack.Offset = ctx.Esp as u64;
-    frame.AddrStack.Mode = c::ADDRESS_MODE::AddrModeFlat;
-    frame.AddrFrame.Offset = ctx.Ebp as u64;
-    frame.AddrFrame.Mode = c::ADDRESS_MODE::AddrModeFlat;
-    c::IMAGE_FILE_MACHINE_I386
-}
-
-#[cfg(target_arch = "x86_64")]
-pub fn init_frame(frame: &mut c::STACKFRAME64,
-                  ctx: &c::CONTEXT) -> c::DWORD {
-    frame.AddrPC.Offset = ctx.Rip as u64;
-    frame.AddrPC.Mode = c::ADDRESS_MODE::AddrModeFlat;
-    frame.AddrStack.Offset = ctx.Rsp as u64;
-    frame.AddrStack.Mode = c::ADDRESS_MODE::AddrModeFlat;
-    frame.AddrFrame.Offset = ctx.Rbp as u64;
-    frame.AddrFrame.Mode = c::ADDRESS_MODE::AddrModeFlat;
-    c::IMAGE_FILE_MACHINE_AMD64
-}
-
-struct Cleanup {
-    handle: c::HANDLE,
-    SymCleanup: SymCleanupFn,
-}
-
-impl Drop for Cleanup {
-    fn drop(&mut self) {
-        unsafe { (self.SymCleanup)(self.handle); }
-    }
-}
-
-pub fn write(w: &mut Write) -> io::Result<()> {
-    // According to windows documentation, all dbghelp functions are
-    // single-threaded.
-    static LOCK: Mutex = Mutex::new();
-    unsafe {
-        LOCK.lock();
-        let res = _write(w);
-        LOCK.unlock();
-        return res
-    }
-}
-
-unsafe fn _write(w: &mut Write) -> io::Result<()> {
-    let dbghelp = match DynamicLibrary::open("dbghelp.dll") {
-        Ok(lib) => lib,
-        Err(..) => return Ok(()),
-    };
+pub fn unwind_backtrace(frames: &mut [Frame])
+    -> io::Result<(usize, BacktraceContext)>
+{
+    let dbghelp = DynamicLibrary::open("dbghelp.dll")?;
 
     // Fetch the symbols necessary from dbghelp.dll
     let SymInitialize = sym!(dbghelp, "SymInitialize", SymInitializeFn);
@@ -133,31 +69,87 @@ unsafe fn _write(w: &mut Write) -> io::Result<()> {
     let mut frame: c::STACKFRAME64 = mem::zeroed();
     let image = init_frame(&mut frame, &context);
 
+    let backtrace_context = BacktraceContext {
+        handle: process,
+        SymCleanup: SymCleanup,
+        dbghelp: dbghelp,
+    };
+
     // Initialize this process's symbols
     let ret = SymInitialize(process, ptr::null_mut(), c::TRUE);
-    if ret != c::TRUE { return Ok(()) }
-    let _c = Cleanup { handle: process, SymCleanup: SymCleanup };
+    if ret != c::TRUE {
+        return Ok((0, backtrace_context))
+    }
 
     // And now that we're done with all the setup, do the stack walking!
     // Start from -1 to avoid printing this stack frame, which will
     // always be exactly the same.
-    let mut i = -1;
-    write!(w, "stack backtrace:\n")?;
-    while StackWalk64(image, process, thread, &mut frame, &mut context,
+    let mut i = 0;
+    while i < frames.len() &&
+          StackWalk64(image, process, thread, &mut frame, &mut context,
                       ptr::null_mut(),
                       ptr::null_mut(),
                       ptr::null_mut(),
-                      ptr::null_mut()) == c::TRUE {
+                      ptr::null_mut()) == c::TRUE
+    {
         let addr = frame.AddrPC.Offset;
         if addr == frame.AddrReturn.Offset || addr == 0 ||
            frame.AddrReturn.Offset == 0 { break }
 
-        i += 1;
-
-        if i >= 0 {
-            printing::print(w, i, addr - 1, process, &dbghelp)?;
+        frames[i] = Frame {
+            symbol_addr: addr - 1,
+            exact_position: addr - 1,
         }
+        i += 1;
     }
 
-    Ok(())
+    Ok((i, backtrace_context))
+}
+
+type SymInitializeFn =
+    unsafe extern "system" fn(c::HANDLE, *mut c_void,
+                              c::BOOL) -> c::BOOL;
+type SymCleanupFn =
+    unsafe extern "system" fn(c::HANDLE) -> c::BOOL;
+
+type StackWalk64Fn =
+    unsafe extern "system" fn(c::DWORD, c::HANDLE, c::HANDLE,
+                              *mut c::STACKFRAME64, *mut c::CONTEXT,
+                              *mut c_void, *mut c_void,
+                              *mut c_void, *mut c_void) -> c::BOOL;
+
+#[cfg(target_arch = "x86")]
+fn init_frame(frame: &mut c::STACKFRAME64,
+              ctx: &c::CONTEXT) -> c::DWORD {
+    frame.AddrPC.Offset = ctx.Eip as u64;
+    frame.AddrPC.Mode = c::ADDRESS_MODE::AddrModeFlat;
+    frame.AddrStack.Offset = ctx.Esp as u64;
+    frame.AddrStack.Mode = c::ADDRESS_MODE::AddrModeFlat;
+    frame.AddrFrame.Offset = ctx.Ebp as u64;
+    frame.AddrFrame.Mode = c::ADDRESS_MODE::AddrModeFlat;
+    c::IMAGE_FILE_MACHINE_I386
+}
+
+#[cfg(target_arch = "x86_64")]
+fn init_frame(frame: &mut c::STACKFRAME64,
+              ctx: &c::CONTEXT) -> c::DWORD {
+    frame.AddrPC.Offset = ctx.Rip as u64;
+    frame.AddrPC.Mode = c::ADDRESS_MODE::AddrModeFlat;
+    frame.AddrStack.Offset = ctx.Rsp as u64;
+    frame.AddrStack.Mode = c::ADDRESS_MODE::AddrModeFlat;
+    frame.AddrFrame.Offset = ctx.Rbp as u64;
+    frame.AddrFrame.Mode = c::ADDRESS_MODE::AddrModeFlat;
+    c::IMAGE_FILE_MACHINE_AMD64
+}
+
+pub struct BacktraceContext {
+    handle: c::HANDLE,
+    SymCleanup: SymCleanupFn,
+    dbghelp: DynamicLibrary,
+}
+
+impl Drop for BacktraceContext {
+    fn drop(&mut self) {
+        unsafe { (self.SymCleanup)(self.handle); }
+    }
 }
