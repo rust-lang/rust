@@ -148,8 +148,6 @@ impl<'a, 'tcx> mir_visit::Visitor<'tcx> for StatCollector<'a, 'tcx> {
         self.record("TerminatorKind", kind);
         self.record(match *kind {
             TerminatorKind::Goto { .. } => "TerminatorKind::Goto",
-            TerminatorKind::If { .. } => "TerminatorKind::If",
-            TerminatorKind::Switch { .. } => "TerminatorKind::Switch",
             TerminatorKind::SwitchInt { .. } => "TerminatorKind::SwitchInt",
             TerminatorKind::Resume => "TerminatorKind::Resume",
             TerminatorKind::Return => "TerminatorKind::Return",
@@ -186,6 +184,7 @@ impl<'a, 'tcx> mir_visit::Visitor<'tcx> for StatCollector<'a, 'tcx> {
             Rvalue::BinaryOp(..) => "Rvalue::BinaryOp",
             Rvalue::CheckedBinaryOp(..) => "Rvalue::CheckedBinaryOp",
             Rvalue::UnaryOp(..) => "Rvalue::UnaryOp",
+            Rvalue::Discriminant(..) => "Rvalue::Discriminant",
             Rvalue::Box(..) => "Rvalue::Box",
             Rvalue::Aggregate(ref kind, ref _operands) => {
                 // AggregateKind is not distinguished by visit API, so

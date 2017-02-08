@@ -20,7 +20,6 @@ use ty::{self, Ty, TyCtxt, TypeFoldable};
 use syntax::ast::{FloatTy, IntTy, UintTy};
 use syntax::attr;
 use syntax_pos::DUMMY_SP;
-use rustc_const_math::ConstInt;
 
 use std::cmp;
 use std::fmt;
@@ -1207,11 +1206,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                                                             i64::min_value(),
                                                             true);
                     for v in &def.variants {
-                        let x = match v.disr_val.erase_type() {
-                            ConstInt::InferSigned(i) => i as i64,
-                            ConstInt::Infer(i) => i as u64 as i64,
-                            _ => bug!()
-                        };
+                        let x = v.disr_val as i128 as i64;
                         if x == 0 { non_zero = false; }
                         if x < min { min = x; }
                         if x > max { max = x; }
@@ -1271,7 +1266,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                 // non-empty body, explicit discriminants should have
                 // been rejected by a checker before this point.
                 for (i, v) in def.variants.iter().enumerate() {
-                    if i as u128 != v.disr_val.to_u128_unchecked() {
+                    if i as u128 != v.disr_val {
                         bug!("non-C-like enum {} with specified discriminants",
                             tcx.item_path_str(def.did));
                     }

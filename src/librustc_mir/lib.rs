@@ -26,6 +26,8 @@ Rust MIR: a lowered representation of Rust. Also: an experiment!
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
+#![feature(placement_in_syntax)]
+#![feature(collection_placement)]
 
 #[macro_use] extern crate log;
 extern crate graphviz as dot;

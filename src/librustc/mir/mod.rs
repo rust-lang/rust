@@ -453,36 +453,30 @@ pub enum TerminatorKind<'tcx> {
         target: BasicBlock,
     },
 
-    /// jump to branch 0 if this lvalue evaluates to true
-    If {
-        cond: Operand<'tcx>,
-        targets: (BasicBlock, BasicBlock),
-    },
-
-    /// lvalue evaluates to some enum; jump depending on the branch
-    Switch {
-        discr: Lvalue<'tcx>,
-        adt_def: &'tcx AdtDef,
-        targets: Vec<BasicBlock>,
-    },
-
     /// operand evaluates to an integer; jump depending on its value
     /// to one of the targets, and otherwise fallback to `otherwise`
     SwitchInt {
         /// discriminant value being tested
-        discr: Lvalue<'tcx>,
+        discr: Operand<'tcx>,
 
         /// type of value being tested
         switch_ty: Ty<'tcx>,
 
         /// Possible values. The locations to branch to in each case
         /// are found in the corresponding indices from the `targets` vector.
-        values: Vec<ConstVal>,
+        values: Cow<'tcx, [ConstInt]>,
 
-        /// Possible branch sites. The length of this vector should be
-        /// equal to the length of the `values` vector plus 1 -- the
-        /// extra item is the block to branch to if none of the values
-        /// fit.
+        /// Possible branch sites. The last element of this vector is used
+        /// for the otherwise branch, so values.len() == targets.len() + 1
+        /// should hold.
+        // This invariant is quite non-obvious and also could be improved.
+        // One way to make this invariant is to have something like this instead:
+        //
+        // branches: Vec<(ConstInt, BasicBlock)>,
+        // otherwise: Option<BasicBlock> // exhaustive if None
+        //
+        // However we’ve decided to keep this as-is until we figure a case
+        // where some other approach seems to be strictly better than other.
         targets: Vec<BasicBlock>,
     },
 
@@ -546,12 +540,21 @@ impl<'tcx> Terminator<'tcx> {
 }
 
 impl<'tcx> TerminatorKind<'tcx> {
+    pub fn if_<'a, 'gcx>(tcx: ty::TyCtxt<'a, 'gcx, 'tcx>, cond: Operand<'tcx>,
+                         t: BasicBlock, f: BasicBlock) -> TerminatorKind<'tcx> {
+        static BOOL_SWITCH_FALSE: &'static [ConstInt] = &[ConstInt::Infer(0)];
+        TerminatorKind::SwitchInt {
+            discr: cond,
+            switch_ty: tcx.types.bool,
+            values: From::from(BOOL_SWITCH_FALSE),
+            targets: vec![f, t],
+        }
+    }
+
     pub fn successors(&self) -> Cow<[BasicBlock]> {
         use self::TerminatorKind::*;
         match *self {
             Goto { target: ref b } => slice::ref_slice(b).into_cow(),
-            If { targets: (b1, b2), .. } => vec![b1, b2].into_cow(),
-            Switch { targets: ref b, .. } => b[..].into_cow(),
             SwitchInt { targets: ref b, .. } => b[..].into_cow(),
             Resume => (&[]).into_cow(),
             Return => (&[]).into_cow(),
@@ -580,8 +583,6 @@ impl<'tcx> TerminatorKind<'tcx> {
         use self::TerminatorKind::*;
         match *self {
             Goto { target: ref mut b } => vec![b],
-            If { targets: (ref mut b1, ref mut b2), .. } => vec![b1, b2],
-            Switch { targets: ref mut b, .. } => b.iter_mut().collect(),
             SwitchInt { targets: ref mut b, .. } => b.iter_mut().collect(),
             Resume => Vec::new(),
             Return => Vec::new(),
@@ -659,8 +660,6 @@ impl<'tcx> TerminatorKind<'tcx> {
         use self::TerminatorKind::*;
         match *self {
             Goto { .. } => write!(fmt, "goto"),
-            If { cond: ref lv, .. } => write!(fmt, "if({:?})", lv),
-            Switch { discr: ref lv, .. } => write!(fmt, "switch({:?})", lv),
             SwitchInt { discr: ref lv, .. } => write!(fmt, "switchInt({:?})", lv),
             Return => write!(fmt, "return"),
             Resume => write!(fmt, "resume"),
@@ -710,18 +709,11 @@ impl<'tcx> TerminatorKind<'tcx> {
         match *self {
             Return | Resume | Unreachable => vec![],
             Goto { .. } => vec!["".into()],
-            If { .. } => vec!["true".into(), "false".into()],
-            Switch { ref adt_def, .. } => {
-                adt_def.variants
-                       .iter()
-                       .map(|variant| variant.name.to_string().into())
-                       .collect()
-            }
             SwitchInt { ref values, .. } => {
                 values.iter()
                       .map(|const_val| {
                           let mut buf = String::new();
-                          fmt_const_val(&mut buf, const_val).unwrap();
+                          fmt_const_val(&mut buf, &ConstVal::Integral(*const_val)).unwrap();
                           buf.into()
                       })
                       .chain(iter::once(String::from("otherwise").into()))
@@ -997,6 +989,12 @@ pub enum Rvalue<'tcx> {
 
     UnaryOp(UnOp, Operand<'tcx>),
 
+    /// Read the discriminant of an ADT.
+    ///
+    /// Undefined (i.e. no effort is made to make it defined, but there’s no reason why it cannot
+    /// be defined to return, say, a 0) if ADT is not an enum.
+    Discriminant(Lvalue<'tcx>),
+
     /// Creates an *uninitialized* Box
     Box(Ty<'tcx>),
 
@@ -1111,6 +1109,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                 write!(fmt, "Checked{:?}({:?}, {:?})", op, a, b)
             }
             UnaryOp(ref op, ref a) => write!(fmt, "{:?}({:?})", op, a),
+            Discriminant(ref lval) => write!(fmt, "discriminant({:?})", lval),
             Box(ref t) => write!(fmt, "Box({:?})", t),
             InlineAsm { ref asm, ref outputs, ref inputs } => {
                 write!(fmt, "asm!({:?} : {:?} : {:?})", asm, outputs, inputs)

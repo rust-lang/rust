@@ -12,20 +12,20 @@ const N: isize = 1;
 
 enum Foo {
     A = 1,
-    //~^ NOTE first use of `1isize`
-    //~| NOTE first use of `1isize`
-    //~| NOTE first use of `1isize`
+    //~^ NOTE first use of `1`
+    //~| NOTE first use of `1`
+    //~| NOTE first use of `1`
     B = 1,
-    //~^ ERROR discriminant value `1isize` already exists
-    //~| NOTE enum already has `1isize`
+    //~^ ERROR discriminant value `1` already exists
+    //~| NOTE enum already has `1`
     C = 0,
     D,
-    //~^ ERROR discriminant value `1isize` already exists
-    //~| NOTE enum already has `1isize`
+    //~^ ERROR discriminant value `1` already exists
+    //~| NOTE enum already has `1`
 
     E = N,
-    //~^ ERROR discriminant value `1isize` already exists
-    //~| NOTE enum already has `1isize`
+    //~^ ERROR discriminant value `1` already exists
+    //~| NOTE enum already has `1`
 
 }
 
