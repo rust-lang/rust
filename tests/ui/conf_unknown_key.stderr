@@ -1,0 +1,4 @@
+error: error reading Clippy's configuration file: unknown key `foobar`
+
+error: aborting due to previous error
+

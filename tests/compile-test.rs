@@ -14,6 +14,7 @@ fn run_mode(dir: &'static str, mode: &'static str) {
     }
 
     config.mode = cfg_mode;
+    config.build_base = PathBuf::from("target/debug/test_build_base");
     config.src_base = PathBuf::from(format!("tests/{}", dir));
 
     compiletest::run_tests(&config);
@@ -27,5 +28,5 @@ fn prepare_env() {
 fn compile_test() {
     prepare_env();
     run_mode("run-pass", "run-pass");
-    run_mode("compile-fail", "compile-fail");
+    run_mode("ui", "ui");
 }

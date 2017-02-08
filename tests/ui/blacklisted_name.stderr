@@ -1,0 +1,50 @@
+error: use of a blacklisted/placeholder name `foo`
+ --> $DIR/blacklisted_name.rs:9:9
+  |
+9 | fn test(foo: ()) {}
+  |         ^^^
+  |
+note: lint level defined here
+ --> $DIR/blacklisted_name.rs:7:9
+  |
+7 | #![deny(blacklisted_name)]
+  |         ^^^^^^^^^^^^^^^^
+
+error: use of a blacklisted/placeholder name `foo`
+  --> $DIR/blacklisted_name.rs:12:9
+   |
+12 |     let foo = 42;
+   |         ^^^
+
+error: use of a blacklisted/placeholder name `bar`
+  --> $DIR/blacklisted_name.rs:13:9
+   |
+13 |     let bar = 42;
+   |         ^^^
+
+error: use of a blacklisted/placeholder name `baz`
+  --> $DIR/blacklisted_name.rs:14:9
+   |
+14 |     let baz = 42;
+   |         ^^^
+
+error: use of a blacklisted/placeholder name `foo`
+  --> $DIR/blacklisted_name.rs:20:10
+   |
+20 |         (foo, Some(bar), baz @ Some(_)) => (),
+   |          ^^^
+
+error: use of a blacklisted/placeholder name `bar`
+  --> $DIR/blacklisted_name.rs:20:20
+   |
+20 |         (foo, Some(bar), baz @ Some(_)) => (),
+   |                    ^^^
+
+error: use of a blacklisted/placeholder name `baz`
+  --> $DIR/blacklisted_name.rs:20:26
+   |
+20 |         (foo, Some(bar), baz @ Some(_)) => (),
+   |                          ^^^^^^^^^^^^^
+
+error: aborting due to 7 previous errors
+

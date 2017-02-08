@@ -1,0 +1,47 @@
+error: you should consider deriving a `Default` implementation for `Foo`
+  --> $DIR/new_without_default.rs:13:5
+   |
+13 |     pub fn new() -> Foo { Foo }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/new_without_default.rs:5:30
+   |
+5  | #![deny(new_without_default, new_without_default_derive)]
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: try this
+   | #[derive(Default)]
+   | pub struct Foo;
+
+error: you should consider deriving a `Default` implementation for `Bar`
+  --> $DIR/new_without_default.rs:23:5
+   |
+23 |     pub fn new() -> Self { Bar }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: try this
+   | #[derive(Default)]
+   | pub struct Bar;
+
+error: you should consider adding a `Default` implementation for `LtKo<'c>`
+  --> $DIR/new_without_default.rs:72:5
+   |
+72 |     pub fn new() -> LtKo<'c> { unimplemented!() }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/new_without_default.rs:5:9
+   |
+5  | #![deny(new_without_default, new_without_default_derive)]
+   |         ^^^^^^^^^^^^^^^^^^^
+help: try this
+   |     impl Default for LtKo<'c> {
+   |         fn default() -> Self {
+   |             Self::new()
+   |         }
+   |     }
+   | 
+...
+
+error: aborting due to 3 previous errors
+

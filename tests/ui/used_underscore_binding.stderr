@@ -1,0 +1,38 @@
+error: used binding `_foo` which is prefixed with an underscore. A leading underscore signals that a binding will not be used.
+  --> $DIR/used_underscore_binding.rs:17:5
+   |
+17 |     _foo + 1
+   |     ^^^^
+   |
+note: lint level defined here
+  --> $DIR/used_underscore_binding.rs:6:9
+   |
+6  | #![deny(used_underscore_binding)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
+
+error: used binding `_foo` which is prefixed with an underscore. A leading underscore signals that a binding will not be used.
+  --> $DIR/used_underscore_binding.rs:22:20
+   |
+22 |     println!("{}", _foo);
+   |                    ^^^^
+
+error: used binding `_foo` which is prefixed with an underscore. A leading underscore signals that a binding will not be used.
+  --> $DIR/used_underscore_binding.rs:24:16
+   |
+24 |     assert_eq!(_foo, _foo);
+   |                ^^^^
+
+error: used binding `_foo` which is prefixed with an underscore. A leading underscore signals that a binding will not be used.
+  --> $DIR/used_underscore_binding.rs:24:22
+   |
+24 |     assert_eq!(_foo, _foo);
+   |                      ^^^^
+
+error: used binding `_underscore_field` which is prefixed with an underscore. A leading underscore signals that a binding will not be used.
+  --> $DIR/used_underscore_binding.rs:39:5
+   |
+39 |     s._underscore_field += 1;
+   |     ^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 5 previous errors
+

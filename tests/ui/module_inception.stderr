@@ -1,0 +1,26 @@
+error: module has the same name as its containing module
+ --> $DIR/module_inception.rs:7:9
+  |
+7 |           mod bar {
+  |  _________^ starting here...
+8 | |             mod foo {}
+9 | |         }
+  | |_________^ ...ending here
+  |
+note: lint level defined here
+ --> $DIR/module_inception.rs:3:9
+  |
+3 | #![deny(module_inception)]
+  |         ^^^^^^^^^^^^^^^^
+
+error: module has the same name as its containing module
+  --> $DIR/module_inception.rs:12:5
+   |
+12 |       mod foo {
+   |  _____^ starting here...
+13 | |         mod bar {}
+14 | |     }
+   | |_____^ ...ending here
+
+error: aborting due to 2 previous errors
+

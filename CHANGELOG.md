@@ -1,6 +1,10 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.114 — 2017-02-08
+* Rustup to rustc 1.17.0-nightly (c49d10207 2017-02-07)
+* Tests are now ui tests (testing the exact output of rustc)
+
 ## 0.0.113 — 2017-02-04
 * Rustup to *rustc 1.16.0-nightly (eedaa94e3 2017-02-02)*
 * New lint: [`large_enum_variant`]

@@ -1,0 +1,23 @@
+error: This generic shadows the built-in type `u32`
+ --> $DIR/builtin-type-shadow.rs:5:8
+  |
+5 | fn foo<u32>(a: u32) -> u32 {
+  |        ^^^
+  |
+note: lint level defined here
+ --> $DIR/builtin-type-shadow.rs:3:9
+  |
+3 | #![deny(builtin_type_shadow)]
+  |         ^^^^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+ --> $DIR/builtin-type-shadow.rs:6:5
+  |
+6 |     42
+  |     ^^ expected type parameter, found integral variable
+  |
+  = note: expected type `u32`
+             found type `{integer}`
+
+error: aborting due to previous error
+

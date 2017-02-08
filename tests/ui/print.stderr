@@ -1,0 +1,62 @@
+error: use of `Debug`-based formatting
+  --> $DIR/print.rs:12:27
+   |
+12 |         write!(f, "{:?}", 43.1415)
+   |                           ^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/print.rs:3:23
+   |
+3  | #![deny(print_stdout, use_debug)]
+   |                       ^^^^^^^^^
+
+error: use of `println!`
+  --> $DIR/print.rs:25:5
+   |
+25 |     println!("Hello");
+   |     ^^^^^^^^^^^^^^^^^^
+   |
+note: lint level defined here
+  --> $DIR/print.rs:3:9
+   |
+3  | #![deny(print_stdout, use_debug)]
+   |         ^^^^^^^^^^^^
+
+error: use of `print!`
+  --> $DIR/print.rs:26:5
+   |
+26 |     print!("Hello");
+   |     ^^^^^^^^^^^^^^^^
+
+error: use of `print!`
+  --> $DIR/print.rs:28:5
+   |
+28 |     print!("Hello {}", "World");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: use of `print!`
+  --> $DIR/print.rs:30:5
+   |
+30 |     print!("Hello {:?}", "World");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: use of `Debug`-based formatting
+  --> $DIR/print.rs:30:26
+   |
+30 |     print!("Hello {:?}", "World");
+   |                          ^^^^^^^
+
+error: use of `print!`
+  --> $DIR/print.rs:34:5
+   |
+34 |     print!("Hello {:#?}", "#orld");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: use of `Debug`-based formatting
+  --> $DIR/print.rs:34:27
+   |
+34 |     print!("Hello {:#?}", "#orld");
+   |                           ^^^^^^^
+
+error: aborting due to 8 previous errors
+

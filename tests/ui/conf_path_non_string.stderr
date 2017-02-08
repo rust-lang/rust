@@ -1,0 +1,14 @@
+error: `conf_file` value must be a string
+ --> $DIR/conf_path_non_string.rs:3:28
+  |
+3 | #![plugin(clippy(conf_file=42))]
+  |                            ^^
+  |
+note: Clippy will use default configuration
+ --> $DIR/conf_path_non_string.rs:3:28
+  |
+3 | #![plugin(clippy(conf_file=42))]
+  |                            ^^
+
+error: aborting due to previous error
+

@@ -1,0 +1,116 @@
+error: this looks like an `else if` but the `else` is missing
+  --> $DIR/formatting.rs:15:6
+   |
+15 |     } if foo() {
+   |      ^
+   |
+   = note: #[deny(suspicious_else_formatting)] implied by #[deny(clippy)]
+note: lint level defined here
+  --> $DIR/formatting.rs:4:9
+   |
+4  | #![deny(clippy)]
+   |         ^^^^^^
+   = note: to remove this lint, add the missing `else` or add a new line before the second `if`
+
+error: this looks like an `else if` but the `else` is missing
+  --> $DIR/formatting.rs:24:10
+   |
+24 |         } if foo() {
+   |          ^
+   |
+   = note: #[deny(suspicious_else_formatting)] implied by #[deny(clippy)]
+   = note: to remove this lint, add the missing `else` or add a new line before the second `if`
+
+error: this looks like an `else if` but the `else` is missing
+  --> $DIR/formatting.rs:34:10
+   |
+34 |         } if foo() {
+   |          ^
+   |
+   = note: #[deny(suspicious_else_formatting)] implied by #[deny(clippy)]
+   = note: to remove this lint, add the missing `else` or add a new line before the second `if`
+
+error: this is an `else if` but the formatting might hide it
+  --> $DIR/formatting.rs:45:6
+   |
+45 |       } else
+   |  ______^ starting here...
+46 | |
+47 | |
+48 | |     if foo() { // the span of the above error should continue here
+   | |____^ ...ending here
+   |
+   = note: #[deny(suspicious_else_formatting)] implied by #[deny(clippy)]
+   = note: to remove this lint, remove the `else` or remove the new line between `else` and `if`
+
+error: this is an `else if` but the formatting might hide it
+  --> $DIR/formatting.rs:52:6
+   |
+52 |       }
+   |  ______^ starting here...
+53 | |
+54 | |
+55 | |     else
+56 | |     if foo() { // the span of the above error should continue here
+   | |____^ ...ending here
+   |
+   = note: #[deny(suspicious_else_formatting)] implied by #[deny(clippy)]
+   = note: to remove this lint, remove the `else` or remove the new line between `else` and `if`
+
+error: this looks like you are trying to use `.. -= ..`, but you really are doing `.. = (- ..)`
+  --> $DIR/formatting.rs:83:6
+   |
+83 |     a =- 35;
+   |      ^^^^
+   |
+   = note: #[deny(suspicious_assignment_formatting)] implied by #[deny(clippy)]
+note: lint level defined here
+  --> $DIR/formatting.rs:4:9
+   |
+4  | #![deny(clippy)]
+   |         ^^^^^^
+   = note: to remove this lint, use either `-=` or `= -`
+
+error: this looks like you are trying to use `.. *= ..`, but you really are doing `.. = (* ..)`
+  --> $DIR/formatting.rs:86:6
+   |
+86 |     a =* &191;
+   |      ^^^^
+   |
+   = note: #[deny(suspicious_assignment_formatting)] implied by #[deny(clippy)]
+   = note: to remove this lint, use either `*=` or `= *`
+
+error: this looks like you are trying to use `.. != ..`, but you really are doing `.. = (! ..)`
+  --> $DIR/formatting.rs:91:6
+   |
+91 |     b =! false;
+   |      ^^^^
+   |
+   = note: #[deny(suspicious_assignment_formatting)] implied by #[deny(clippy)]
+   = note: to remove this lint, use either `!=` or `= !`
+
+error: possibly missing a comma here
+   --> $DIR/formatting.rs:102:19
+    |
+102 |         -1, -2, -3 // <= no coma here
+    |                   ^
+    |
+    = note: #[deny(possible_missing_comma)] implied by #[deny(clippy)]
+note: lint level defined here
+   --> $DIR/formatting.rs:4:9
+    |
+4   | #![deny(clippy)]
+    |         ^^^^^^
+    = note: to remove this lint, add a comma or write the expr in a single line
+
+error: possibly missing a comma here
+   --> $DIR/formatting.rs:108:19
+    |
+108 |         -1, -2, -3 // <= no coma here
+    |                   ^
+    |
+    = note: #[deny(possible_missing_comma)] implied by #[deny(clippy)]
+    = note: to remove this lint, add a comma or write the expr in a single line
+
+error: aborting due to 10 previous errors
+

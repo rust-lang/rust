@@ -158,7 +158,7 @@ fn check_copy_clone<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, item: &Item, trait_ref
                             TypeVariants::TyFnPtr(..) => {
                                 return;
                             },
-                            TypeVariants::TyTuple(tys) if tys.len() > 12 => {
+                            TypeVariants::TyTuple(tys, _) if tys.len() > 12 => {
                                 return;
                             },
                             _ => (),
