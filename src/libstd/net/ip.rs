@@ -656,6 +656,13 @@ impl From<[u8; 4]> for Ipv4Addr {
     }
 }
 
+#[stable(feature = "ip_from_slice", since = "1.17.0")]
+impl From<[u8; 4]> for IpAddr {
+    fn from(octets: [u8; 4]) -> IpAddr {
+        IpAddr::V4(Ipv4Addr::from(octets))
+    }
+}
+
 impl Ipv6Addr {
     /// Creates a new IPv6 address from eight 16-bit segments.
     ///
@@ -1183,6 +1190,21 @@ impl From<[u16; 8]> for Ipv6Addr {
     fn from(segments: [u16; 8]) -> Ipv6Addr {
         let [a, b, c, d, e, f, g, h] = segments;
         Ipv6Addr::new(a, b, c, d, e, f, g, h)
+    }
+}
+
+
+#[stable(feature = "ip_from_slice", since = "1.17.0")]
+impl From<[u8; 16]> for IpAddr {
+    fn from(octets: [u8; 16]) -> IpAddr {
+        IpAddr::V6(Ipv6Addr::from(octets))
+    }
+}
+
+#[stable(feature = "ip_from_slice", since = "1.17.0")]
+impl From<[u16; 8]> for IpAddr {
+    fn from(segments: [u16; 8]) -> IpAddr {
+        IpAddr::V6(Ipv6Addr::from(segments))
     }
 }
 
