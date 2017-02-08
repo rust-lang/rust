@@ -59,6 +59,7 @@ extern crate rustc_bitflags;
 #[macro_use] extern crate syntax;
 extern crate syntax_pos;
 extern crate rustc_errors as errors;
+extern crate serialize;
 
 pub use rustc::session;
 pub use rustc::middle;
