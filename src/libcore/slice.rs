@@ -2290,6 +2290,28 @@ impl<A> SlicePartialOrd<A> for [A]
     }
 }
 
+impl<A> SlicePartialOrd<A> for [A]
+    where A: Ord
+{
+    default fn partial_compare(&self, other: &[A]) -> Option<Ordering> {
+        let l = cmp::min(self.len(), other.len());
+
+        // Slice to the loop iteration range to enable bound check
+        // elimination in the compiler
+        let lhs = &self[..l];
+        let rhs = &other[..l];
+
+        for i in 0..l {
+            match lhs[i].cmp(&rhs[i]) {
+                Ordering::Equal => (),
+                non_eq => return Some(non_eq),
+            }
+        }
+
+        self.len().partial_cmp(&other.len())
+    }
+}
+
 impl SlicePartialOrd<u8> for [u8] {
     #[inline]
     fn partial_compare(&self, other: &[u8]) -> Option<Ordering> {
