@@ -43,7 +43,7 @@ travis build actually checks for this.
 Clippy uses UI tests. UI tests check that the output of the compiler is exactly as expected.
 Of course there's little sense in writing the output yourself or copying it around.
 Therefore you can simply run `tests/ui/update-all-references.sh` and check whether
-the output looks as you expect with `git diff`. Commit all `.stderr` files, too.
+the output looks as you expect with `git diff`. Commit all `*.stderr` files, too.
 
 Also please document your lint with a doc comment akin to the following:
 ```rust
