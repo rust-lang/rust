@@ -172,7 +172,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         // FIXME: cache these allocs
         let ptr = self.memory.allocate(s.len() as u64, 1)?;
         self.memory.write_bytes(ptr, s.as_bytes())?;
-        self.memory.mark_static(ptr.alloc_id, false)?;
+        self.memory.mark_static_initalized(ptr.alloc_id, false)?;
         Ok(Value::ByValPair(PrimVal::Ptr(ptr), PrimVal::from_u128(s.len() as u128)))
     }
 
@@ -194,9 +194,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             Str(ref s) => return self.str_to_value(s),
 
             ByteStr(ref bs) => {
+                // FIXME: cache these allocs
                 let ptr = self.memory.allocate(bs.len() as u64, 1)?;
                 self.memory.write_bytes(ptr, bs)?;
-                self.memory.mark_static(ptr.alloc_id, false)?;
+                self.memory.mark_static_initalized(ptr.alloc_id, false)?;
                 PrimVal::Ptr(ptr)
             }
 
@@ -316,19 +317,22 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let global_value = self.globals.get_mut(&id)
                     .expect("global should have been cached (static)");
                 match global_value.value {
-                    Value::ByRef(ptr) => self.memory.mark_static(ptr.alloc_id, mutable)?,
+                    Value::ByRef(ptr) => self.memory.mark_static_initalized(ptr.alloc_id, mutable)?,
                     Value::ByVal(val) => if let PrimVal::Ptr(ptr) = val {
-                        self.memory.mark_static(ptr.alloc_id, mutable)?;
+                        self.memory.mark_static_initalized(ptr.alloc_id, mutable)?;
                     },
                     Value::ByValPair(val1, val2) => {
                         if let PrimVal::Ptr(ptr) = val1 {
-                            self.memory.mark_static(ptr.alloc_id, mutable)?;
+                            self.memory.mark_static_initalized(ptr.alloc_id, mutable)?;
                         }
                         if let PrimVal::Ptr(ptr) = val2 {
-                            self.memory.mark_static(ptr.alloc_id, mutable)?;
+                            self.memory.mark_static_initalized(ptr.alloc_id, mutable)?;
                         }
                     },
                 }
+                // see comment on `initialized` field
+                assert!(!global_value.initialized);
+                global_value.initialized = true;
                 assert!(global_value.mutable);
                 global_value.mutable = mutable;
             } else {
@@ -867,8 +871,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     Value::ByRef(ptr) => Lvalue::from_ptr(ptr),
                     _ => {
                         let ptr = self.alloc_ptr_with_substs(global_val.ty, cid.substs)?;
+                        self.memory.mark_static(ptr.alloc_id);
                         self.write_value_to_ptr(global_val.value, ptr, global_val.ty)?;
-                        self.memory.mark_static(ptr.alloc_id, global_val.mutable)?;
+                        // see comment on `initialized` field
+                        if global_val.initialized {
+                            self.memory.mark_static_initalized(ptr.alloc_id, global_val.mutable)?;
+                        }
                         let lval = self.globals.get_mut(&cid).expect("already checked");
                         *lval = Global {
                             value: Value::ByRef(ptr),

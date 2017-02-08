@@ -57,6 +57,11 @@ pub struct GlobalId<'tcx> {
 #[derive(Copy, Clone, Debug)]
 pub struct Global<'tcx> {
     pub(super) value: Value,
+    /// Only used in `force_allocation` to ensure we don't mark the memory
+    /// before the static is initialized. It is possible to convert a
+    /// global which initially is `Value::ByVal(PrimVal::Undef)` and gets
+    /// lifted to an allocation before the static is fully initialized
+    pub(super) initialized: bool,
     pub(super) mutable: bool,
     pub(super) ty: Ty<'tcx>,
 }
@@ -102,6 +107,7 @@ impl<'tcx> Global<'tcx> {
             value: Value::ByVal(PrimVal::Undef),
             mutable: true,
             ty,
+            initialized: false,
         }
     }
 }

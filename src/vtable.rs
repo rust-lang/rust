@@ -112,7 +112,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
         }
 
-        self.memory.mark_static(vtable.alloc_id, false)?;
+        self.memory.mark_static_initalized(vtable.alloc_id, false)?;
 
         Ok(vtable)
     }
