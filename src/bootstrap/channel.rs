@@ -15,55 +15,45 @@
 //! `package_vers`, and otherwise indicating to the compiler what it should
 //! print out as part of its version information.
 
-use std::fs::File;
-use std::io::prelude::*;
 use std::process::Command;
 
 use build_helper::output;
 
 use Build;
 
-pub fn collect(build: &mut Build) {
-    // Currently the canonical source for the release number (e.g. 1.10.0) and
-    // the prerelease version (e.g. `.1`) is in `mk/main.mk`. We "parse" that
-    // here to learn about those numbers.
-    let mut main_mk = String::new();
-    t!(t!(File::open(build.src.join("mk/main.mk"))).read_to_string(&mut main_mk));
-    let mut release_num = "";
-    let mut prerelease_version = "";
-    for line in main_mk.lines() {
-        if line.starts_with("CFG_RELEASE_NUM") {
-            release_num = line.split('=').skip(1).next().unwrap().trim();
-        }
-        if line.starts_with("CFG_PRERELEASE_VERSION") {
-            prerelease_version = line.split('=').skip(1).next().unwrap().trim();
-        }
-    }
+// The version number
+const CFG_RELEASE_NUM: &'static str = "1.17.0";
 
-    build.release_num = release_num.to_string();
-    build.prerelease_version = release_num.to_string();
+// An optional number to put after the label, e.g. '.2' -> '-beta.2'
+// Be sure to make this starts with a dot to conform to semver pre-release
+// versions (section 9)
+const CFG_PRERELEASE_VERSION: &'static str = ".1";
+
+pub fn collect(build: &mut Build) {
+    build.release_num = CFG_RELEASE_NUM.to_string();
+    build.prerelease_version = CFG_RELEASE_NUM.to_string();
 
     // Depending on the channel, passed in `./configure --release-channel`,
     // determine various properties of the build.
     match &build.config.channel[..] {
         "stable" => {
-            build.release = release_num.to_string();
+            build.release = CFG_RELEASE_NUM.to_string();
             build.package_vers = build.release.clone();
             build.unstable_features = false;
         }
         "beta" => {
-            build.release = format!("{}-beta{}", release_num,
-                                   prerelease_version);
+            build.release = format!("{}-beta{}", CFG_RELEASE_NUM,
+                                   CFG_PRERELEASE_VERSION);
             build.package_vers = "beta".to_string();
             build.unstable_features = false;
         }
         "nightly" => {
-            build.release = format!("{}-nightly", release_num);
+            build.release = format!("{}-nightly", CFG_RELEASE_NUM);
             build.package_vers = "nightly".to_string();
             build.unstable_features = true;
         }
         _ => {
-            build.release = format!("{}-dev", release_num);
+            build.release = format!("{}-dev", CFG_RELEASE_NUM);
             build.package_vers = build.release.clone();
             build.unstable_features = true;
         }

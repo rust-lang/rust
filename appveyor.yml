@@ -15,11 +15,6 @@ environment:
     SCRIPT: python x.py test --host i686-pc-windows-msvc --target i686-pc-windows-msvc && python x.py dist
     DEPLOY: 1
 
-  # MSVC makefiles
-  - MSYS_BITS: 64
-    RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --disable-rustbuild
-    RUST_CHECK_TARGET: check
-
   # MSVC cargotest
   - MSYS_BITS: 64
     NO_VENDOR: 1
@@ -57,13 +52,6 @@ environment:
     MINGW_ARCHIVE: i686-4.9.2-release-win32-dwarf-rt_v4-rev4.7z
     MINGW_DIR: mingw32
     DEPLOY: 1
-
-  - MSYS_BITS: 32
-    RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu --disable-rustbuild
-    RUST_CHECK_TARGET: check
-    MINGW_URL: https://s3.amazonaws.com/rust-lang-ci
-    MINGW_ARCHIVE: i686-4.9.2-release-win32-dwarf-rt_v4-rev4.7z
-    MINGW_DIR: mingw32
 
   - MSYS_BITS: 64
     SCRIPT: python x.py test && python x.py dist

@@ -80,6 +80,8 @@ pub fn run(config: Config, testpaths: &TestPaths) {
     }
 
     base_cx.complete_all();
+
+    File::create(::stamp(&config, &testpaths)).unwrap();
 }
 
 struct TestCx<'test> {
