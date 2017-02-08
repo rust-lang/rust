@@ -528,8 +528,8 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             }
 
             let immutable = match alloc.static_kind {
-                StaticKind::Mutable => "(static mut)",
-                StaticKind::Immutable => "(immutable)",
+                StaticKind::Mutable => " (static mut)",
+                StaticKind::Immutable => " (immutable)",
                 StaticKind::NotStatic => "",
             };
             trace!("{}({} bytes){}", msg, alloc.bytes.len(), immutable);
