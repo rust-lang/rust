@@ -11,4 +11,5 @@
 fn main() {
     printlx!("oh noes!"); //~ ERROR macro undefined
     //~^ HELP did you mean `println!`?
+    //~^^ HELP have you added the `#[macro_use]` on the module/import?
 }

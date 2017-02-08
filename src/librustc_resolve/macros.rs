@@ -432,8 +432,14 @@ impl<'a> Resolver<'a> {
             if suggestion != name {
                 err.help(&format!("did you mean `{}!`?", suggestion));
             } else {
-                err.help(&format!("have you added the `#[macro_use]` on the module/import?"));
+                err.help(&format!("have you added the `#[macro_use]` on the module?"));
             }
+        }
+
+        let is_macro = |def| match def { Def::Macro(..) => true, _ => false };
+        let candidates = self.lookup_import_candidates(name, MacroNS, is_macro);
+        if candidates.len() > 0 {
+            err.help(&format!("have you added the `#[macro_use]` on the `extern crate`?"));
         }
     }
 
