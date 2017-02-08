@@ -141,12 +141,12 @@ fn run_test(me: &str) {
     use std::process::Command;
 
     let mut template = Command::new(me);
-    template.env("RUST_BACKTRACE", "1");
+    template.env("RUST_BACKTRACE", "full");
 
     let mut i = 0;
     loop {
         let out = Command::new(me)
-                          .env("RUST_BACKTRACE", "1")
+                          .env("RUST_BACKTRACE", "full")
                           .arg(i.to_string()).output().unwrap();
         let output = str::from_utf8(&out.stdout).unwrap();
         let error = str::from_utf8(&out.stderr).unwrap();

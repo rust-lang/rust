@@ -27,7 +27,7 @@ impl ::std::ops::BitAnd for Disr {
 impl From<::rustc::ty::Disr> for Disr {
     fn from(i: ::rustc::ty::Disr) -> Disr {
         // FIXME: what if discr has 128 bit discr?
-        Disr(i.to_u128_unchecked() as u64)
+        Disr(i as u64)
     }
 }
 

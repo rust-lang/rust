@@ -20,9 +20,13 @@ pub enum E {
 // CHECK-LABEL: @exhaustive_match
 #[no_mangle]
 pub fn exhaustive_match(e: E) {
-// CHECK: switch{{.*}}, label %[[DEFAULT:[a-zA-Z0-9_]+]]
-// CHECK: [[DEFAULT]]:
-// CHECK-NEXT: unreachable
+// CHECK: switch{{.*}}, label %[[OTHERWISE:[a-zA-Z0-9_]+]] [
+// CHECK-NEXT: i[[TY:[0-9]+]] [[DISCR:[0-9]+]], label %[[TRUE:[a-zA-Z0-9_]+]]
+// CHECK-NEXT: ]
+// CHECK: [[TRUE]]:
+// CHECK-NEXT: br label %[[EXIT:[a-zA-Z0-9_]+]]
+// CHECK: [[OTHERWISE]]:
+// CHECK-NEXT: br label %[[EXIT:[a-zA-Z0-9_]+]]
     match e {
         E::A => (),
         E::B => (),

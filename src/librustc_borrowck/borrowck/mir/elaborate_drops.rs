@@ -17,9 +17,10 @@ use super::{DropFlagState, MoveDataParamEnv};
 use super::patch::MirPatch;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::subst::{Kind, Subst, Substs};
+use rustc::ty::util::IntTypeExt;
 use rustc::mir::*;
 use rustc::mir::transform::{Pass, MirPass, MirSource};
-use rustc::middle::const_val::ConstVal;
+use rustc::middle::const_val::{ConstVal, ConstInt};
 use rustc::middle::lang_items;
 use rustc::util::nodemap::FxHashMap;
 use rustc_data_structures::indexed_set::IdxSetBuf;
@@ -619,47 +620,10 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         self.elaborated_drop_block(&inner_c)
     }
 
-    fn open_drop_for_variant<'a>(&mut self,
-                                 c: &DropCtxt<'a, 'tcx>,
-                                 drop_block: &mut Option<BasicBlock>,
-                                 adt: &'tcx ty::AdtDef,
-                                 substs: &'tcx Substs<'tcx>,
-                                 variant_index: usize)
-                                 -> BasicBlock
-    {
-        let subpath = super::move_path_children_matching(
-            self.move_data(), c.path, |proj| match proj {
-                &Projection {
-                    elem: ProjectionElem::Downcast(_, idx), ..
-                } => idx == variant_index,
-                _ => false
-            });
-
-        if let Some(variant_path) = subpath {
-            let base_lv = c.lvalue.clone().elem(
-                ProjectionElem::Downcast(adt, variant_index)
-            );
-            let fields = self.move_paths_for_fields(
-                &base_lv,
-                variant_path,
-                &adt.variants[variant_index],
-                substs);
-            self.drop_ladder(c, fields)
-        } else {
-            // variant not found - drop the entire enum
-            if let None = *drop_block {
-                *drop_block = Some(self.complete_drop(c, true));
-            }
-            return drop_block.unwrap();
-        }
-    }
-
     fn open_drop_for_adt<'a>(&mut self, c: &DropCtxt<'a, 'tcx>,
                              adt: &'tcx ty::AdtDef, substs: &'tcx Substs<'tcx>)
                              -> BasicBlock {
         debug!("open_drop_for_adt({:?}, {:?}, {:?})", c, adt, substs);
-
-        let mut drop_block = None;
 
         match adt.variants.len() {
             1 => {
@@ -672,12 +636,43 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                 self.drop_ladder(c, fields)
             }
             _ => {
-                let variant_drops : Vec<BasicBlock> =
-                    (0..adt.variants.len()).map(|i| {
-                        self.open_drop_for_variant(c, &mut drop_block,
-                                                   adt, substs, i)
-                    }).collect();
-
+                let mut values = Vec::with_capacity(adt.variants.len());
+                let mut blocks = Vec::with_capacity(adt.variants.len());
+                let mut otherwise = None;
+                for (variant_index, variant) in adt.variants.iter().enumerate() {
+                    let discr = ConstInt::new_inttype(variant.disr_val, adt.discr_ty,
+                                                      self.tcx.sess.target.uint_type,
+                                                      self.tcx.sess.target.int_type).unwrap();
+                    let subpath = super::move_path_children_matching(
+                        self.move_data(), c.path, |proj| match proj {
+                            &Projection {
+                                elem: ProjectionElem::Downcast(_, idx), ..
+                            } => idx == variant_index,
+                            _ => false
+                        });
+                    if let Some(variant_path) = subpath {
+                        let base_lv = c.lvalue.clone().elem(
+                            ProjectionElem::Downcast(adt, variant_index)
+                        );
+                        let fields = self.move_paths_for_fields(
+                            &base_lv,
+                            variant_path,
+                            &adt.variants[variant_index],
+                            substs);
+                        values.push(discr);
+                        blocks.push(self.drop_ladder(c, fields));
+                    } else {
+                        // variant not found - drop the entire enum
+                        if let None = otherwise {
+                            otherwise = Some(self.complete_drop(c, true));
+                        }
+                    }
+                }
+                if let Some(block) = otherwise {
+                    blocks.push(block);
+                } else {
+                    values.pop();
+                }
                 // If there are multiple variants, then if something
                 // is present within the enum the discriminant, tracked
                 // by the rest path, must be initialized.
@@ -685,14 +680,27 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                 // Additionally, we do not want to switch on the
                 // discriminant after it is free-ed, because that
                 // way lies only trouble.
-
-                let switch_block = self.new_block(
-                    c, c.is_cleanup, TerminatorKind::Switch {
-                        discr: c.lvalue.clone(),
-                        adt_def: adt,
-                        targets: variant_drops
-                    });
-
+                let discr_ty = adt.discr_ty.to_ty(self.tcx);
+                let discr = Lvalue::Local(self.patch.new_temp(discr_ty));
+                let switch_block = self.patch.new_block(BasicBlockData {
+                    statements: vec![
+                        Statement {
+                            source_info: c.source_info,
+                            kind: StatementKind::Assign(discr.clone(),
+                                                        Rvalue::Discriminant(c.lvalue.clone()))
+                        }
+                    ],
+                    terminator: Some(Terminator {
+                        source_info: c.source_info,
+                        kind: TerminatorKind::SwitchInt {
+                            discr: Operand::Consume(discr),
+                            switch_ty: discr_ty,
+                            values: From::from(values),
+                            targets: blocks,
+                        }
+                    }),
+                    is_cleanup: c.is_cleanup,
+                });
                 self.drop_flag_test_block(c, switch_block)
             }
         }
@@ -813,10 +821,8 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
             (true, false) => on_set,
             (true, true) => {
                 let flag = self.drop_flag(c.path).unwrap();
-                self.new_block(c, is_cleanup, TerminatorKind::If {
-                    cond: Operand::Consume(flag),
-                    targets: (on_set, on_unset)
-                })
+                let term = TerminatorKind::if_(self.tcx, Operand::Consume(flag), on_set, on_unset);
+                self.new_block(c, is_cleanup, term)
             }
         }
     }
