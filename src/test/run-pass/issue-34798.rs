@@ -8,21 +8,27 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: --test
-// check-test-line-numbers-match
+#![forbid(improper_ctypes)]
+#![allow(dead_code)]
 
-pub mod bar;
+#[repr(C)]
+pub struct Foo {
+    size: u8,
+    __value: ::std::marker::PhantomData<i32>,
+}
 
-/// This is a Foo;
-///
-/// ```
-/// println!("baaaaaar");
-/// ```
-pub struct Foo;
+#[repr(C)]
+pub struct ZeroSizeWithPhantomData<T>(::std::marker::PhantomData<T>);
 
-/// This is a Bar;
-///
-/// ```
-/// println!("fooooo");
-/// ```
-pub struct Bar;
+#[repr(C)]
+pub struct Bar {
+    size: u8,
+    baz: ZeroSizeWithPhantomData<i32>,
+}
+
+extern "C" {
+    pub fn bar(_: *mut Foo, _: *mut Bar);
+}
+
+fn main() {
+}

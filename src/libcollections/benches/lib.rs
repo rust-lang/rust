@@ -8,21 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: --test
-// check-test-line-numbers-match
+#![deny(warnings)]
 
-pub mod bar;
+#![feature(rand)]
+#![feature(test)]
 
-/// This is a Foo;
-///
-/// ```
-/// println!("baaaaaar");
-/// ```
-pub struct Foo;
+extern crate test;
 
-/// This is a Bar;
-///
-/// ```
-/// println!("fooooo");
-/// ```
-pub struct Bar;
+mod btree;
+mod linked_list;
+mod string;
+mod str;
+mod slice;
+mod vec;
+mod vec_deque;
