@@ -21,7 +21,6 @@ use std::process::Command;
 use build_helper::{run, rerun_if_changed_anything_in_dir, up_to_date};
 
 fn main() {
-    println!("cargo:rustc-cfg=cargobuild");
     println!("cargo:rerun-if-changed=build.rs");
 
     // FIXME: This is a hack to support building targets that don't

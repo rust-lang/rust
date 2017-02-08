@@ -15,5 +15,4 @@ fn main()
     let b:Box<Any> = Box::new(bar as fn(_)->_);
     b.downcast_ref::<fn(_)->_>(); //~ ERROR E0282
                                   //~| NOTE cannot infer type for `_`
-                                  //~| NOTE type annotations or generic parameter binding required
 }

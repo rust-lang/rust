@@ -33,7 +33,7 @@ pub mod weak;
 
 pub mod args;
 pub mod android;
-#[cfg(any(not(cargobuild), feature = "backtrace"))]
+#[cfg(feature = "backtrace")]
 pub mod backtrace;
 pub mod condvar;
 pub mod env;

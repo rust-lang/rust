@@ -80,6 +80,8 @@ pub fn run(config: Config, testpaths: &TestPaths) {
     }
 
     base_cx.complete_all();
+
+    File::create(::stamp(&config, &testpaths)).unwrap();
 }
 
 struct TestCx<'test> {
@@ -1190,7 +1192,45 @@ actual:\n\
             "arm-linux-androideabi" | "armv7-linux-androideabi" | "aarch64-linux-android" => {
                 self._arm_exec_compiled_test(env)
             }
-            _=> {
+
+            // This is pretty similar to below, we're transforming:
+            //
+            //      program arg1 arg2
+            //
+            // into
+            //
+            //      qemu-test-client run program:support-lib.so arg1 arg2
+            //
+            // The test-client program will upload `program` to the emulator
+            // along with all other support libraries listed (in this case
+            // `support-lib.so`. It will then execute the program on the
+            // emulator with the arguments specified (in the environment we give
+            // the process) and then report back the same result.
+            _ if self.config.qemu_test_client.is_some() => {
+                let aux_dir = self.aux_output_dir_name();
+                let mut args = self.make_run_args();
+                let mut program = args.prog.clone();
+                if let Ok(entries) = aux_dir.read_dir() {
+                    for entry in entries {
+                        let entry = entry.unwrap();
+                        if !entry.path().is_file() {
+                            continue
+                        }
+                        program.push_str(":");
+                        program.push_str(entry.path().to_str().unwrap());
+                    }
+                }
+                args.args.insert(0, program);
+                args.args.insert(0, "run".to_string());
+                args.prog = self.config.qemu_test_client.clone().unwrap()
+                                .into_os_string().into_string().unwrap();
+                self.compose_and_run(args,
+                                     env,
+                                     self.config.run_lib_path.to_str().unwrap(),
+                                     Some(aux_dir.to_str().unwrap()),
+                                     None)
+            }
+            _ => {
                 let aux_dir = self.aux_output_dir_name();
                 self.compose_and_run(self.make_run_args(),
                                      env,

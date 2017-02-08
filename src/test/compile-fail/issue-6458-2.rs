@@ -11,5 +11,5 @@
 fn main() {
     // Unconstrained type:
     format!("{:?}", None);
-    //~^ ERROR unable to infer enough type information about `T` [E0282]
+    //~^ ERROR type annotations needed [E0282]
 }

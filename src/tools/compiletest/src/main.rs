@@ -21,17 +21,11 @@
 extern crate libc;
 extern crate test;
 extern crate getopts;
-
-#[cfg(cargobuild)]
 extern crate rustc_serialize;
-#[cfg(not(cargobuild))]
-extern crate serialize as rustc_serialize;
-
 #[macro_use]
 extern crate log;
-
-#[cfg(cargobuild)]
 extern crate env_logger;
+extern crate filetime;
 
 use std::env;
 use std::ffi::OsString;
@@ -39,6 +33,7 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use filetime::FileTime;
 use getopts::{optopt, optflag, reqopt};
 use common::Config;
 use common::{Pretty, DebugInfoGdb, DebugInfoLldb, Mode};
@@ -58,11 +53,7 @@ mod raise_fd_limit;
 mod uidiff;
 
 fn main() {
-    #[cfg(cargobuild)]
-    fn log_init() { env_logger::init().unwrap(); }
-    #[cfg(not(cargobuild))]
-    fn log_init() {}
-    log_init();
+    env_logger::init().unwrap();
 
     let config = parse_config(env::args().collect());
 
@@ -116,6 +107,7 @@ pub fn parse_config(args: Vec<String> ) -> Config {
           reqopt("", "llvm-components", "list of LLVM components built in", "LIST"),
           reqopt("", "llvm-cxxflags", "C++ flags for LLVM", "FLAGS"),
           optopt("", "nodejs", "the name of nodejs", "PATH"),
+          optopt("", "qemu-test-client", "path to the qemu test client", "PATH"),
           optflag("h", "help", "show this message")];
 
     let (argv0, args_) = args.split_first().unwrap();
@@ -196,6 +188,7 @@ pub fn parse_config(args: Vec<String> ) -> Config {
         lldb_python_dir: matches.opt_str("lldb-python-dir"),
         verbose: matches.opt_present("verbose"),
         quiet: matches.opt_present("quiet"),
+        qemu_test_client: matches.opt_str("qemu-test-client").map(PathBuf::from),
 
         cc: matches.opt_str("cc").unwrap(),
         cxx: matches.opt_str("cxx").unwrap(),
@@ -301,6 +294,14 @@ pub fn run_tests(config: &Config) {
             // instances running in parallel, so only run one test thread at a
             // time.
             env::set_var("RUST_TEST_THREADS", "1");
+        }
+
+        DebugInfoGdb => {
+            if config.qemu_test_client.is_some() {
+                println!("WARNING: debuginfo tests are not available when \
+                          testing with QEMU");
+                return
+            }
         }
         _ => { /* proceed */ }
     }
@@ -468,7 +469,7 @@ pub fn make_test(config: &Config, testpaths: &TestPaths) -> test::TestDescAndFn 
     };
 
     // Debugging emscripten code doesn't make sense today
-    let mut ignore = early_props.ignore;
+    let mut ignore = early_props.ignore || !up_to_date(config, testpaths, &early_props);
     if (config.mode == DebugInfoGdb || config.mode == DebugInfoLldb) &&
         config.target.contains("emscripten") {
         ignore = true;
@@ -482,6 +483,42 @@ pub fn make_test(config: &Config, testpaths: &TestPaths) -> test::TestDescAndFn 
         },
         testfn: make_test_closure(config, testpaths),
     }
+}
+
+fn stamp(config: &Config, testpaths: &TestPaths) -> PathBuf {
+    let stamp_name = format!("{}-H-{}-T-{}-S-{}.stamp",
+                             testpaths.file.file_name().unwrap()
+                                           .to_str().unwrap(),
+                             config.host,
+                             config.target,
+                             config.stage_id);
+    config.build_base.canonicalize()
+          .unwrap_or(config.build_base.clone())
+          .join(stamp_name)
+}
+
+fn up_to_date(config: &Config, testpaths: &TestPaths, props: &EarlyProps) -> bool {
+    let stamp = mtime(&stamp(config, testpaths));
+    let mut inputs = vec![
+        mtime(&testpaths.file),
+        mtime(&config.rustc_path),
+    ];
+    for aux in props.aux.iter() {
+        inputs.push(mtime(&testpaths.file.parent().unwrap()
+                                         .join("auxiliary")
+                                         .join(aux)));
+    }
+    for lib in config.run_lib_path.read_dir().unwrap() {
+        let lib = lib.unwrap();
+        inputs.push(mtime(&lib.path()));
+    }
+    inputs.iter().any(|input| *input > stamp)
+}
+
+fn mtime(path: &Path) -> FileTime {
+    fs::metadata(path).map(|f| {
+        FileTime::from_last_modification_time(&f)
+    }).unwrap_or(FileTime::zero())
 }
 
 pub fn make_test_name(config: &Config, testpaths: &TestPaths) -> test::TestName {

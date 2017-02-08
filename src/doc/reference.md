@@ -2114,10 +2114,15 @@ Sometimes one wants to have different compiler outputs from the same code,
 depending on build target, such as targeted operating system, or to enable
 release builds.
 
-There are two kinds of configuration options, one that is either defined or not
-(`#[cfg(foo)]`), and the other that contains a string that can be checked
-against (`#[cfg(bar = "baz")]`). Currently, only compiler-defined configuration
-options can have the latter form.
+Configuration options are boolean (on or off) and are named either with a
+single identifier (e.g. `foo`) or an identifier and a string (e.g. `foo = "bar"`;
+the quotes are required and spaces around the `=` are unimportant). Note that
+similarly-named options, such as `foo`, `foo="bar"` and `foo="baz"` may each be set
+or unset independently.
+
+Configuration options are either provided by the compiler or passed in on the
+command line using `--cfg` (e.g. `rustc main.rs --cfg foo --cfg 'bar="baz"'`).
+Rust code then checks for their presence using the `#[cfg(...)]` attribute:
 
 ```
 // The function is only included in the build when compiling for OSX
@@ -2196,7 +2201,10 @@ You can also set another attribute based on a `cfg` variable with `cfg_attr`:
 #[cfg_attr(a, b)]
 ```
 
-Will be the same as `#[b]` if `a` is set by `cfg`, and nothing otherwise.
+This is the same as `#[b]` if `a` is set by `cfg`, and nothing otherwise.
+
+Lastly, configuration options can be used in expressions by invoking the `cfg!`
+macro: `cfg!(a)` evaluates to `true` if `a` is set, and `false` otherwise.
 
 ### Lint check attributes
 
@@ -2755,6 +2763,28 @@ fields.
 # struct Point3d { x: i32, y: i32, z: i32 }
 let base = Point3d {x: 1, y: 2, z: 3};
 Point3d {y: 0, z: 10, .. base};
+```
+
+#### Struct field init shorthand
+
+When initializing a data structure (struct, enum, union) with named fields,
+allow writing `fieldname` as a shorthand for `fieldname: fieldname`. This
+allows a compact syntax for initialization, with less duplication.
+
+In the initializer for a `struct` with named fields, a `union` with named
+fields, or an enum variant with named fields, accept an identifier `field` as a
+shorthand for `field: field`.
+
+Example:
+
+```
+# #![feature(field_init_shorthand)]
+# struct Point3d { x: i32, y: i32, z: i32 }
+# let x = 0;
+# let y_value = 0;
+# let z = 0;
+Point3d { x: x, y: y_value, z: z };
+Point3d { x, y: y_value, z };
 ```
 
 ### Block expressions

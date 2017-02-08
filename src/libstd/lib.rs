@@ -464,9 +464,6 @@ mod panicking;
 mod rand;
 mod memchr;
 
-// This module just defines per-platform native library dependencies
-mod rtdeps;
-
 // The runtime entry point and a few unstable public functions used by the
 // compiler
 pub mod rt;
