@@ -1,7 +1,7 @@
 error: generally you want to avoid `&mut &mut _` if possible
   --> $DIR/mut_mut.rs:10:12
    |
-10 | fn fun(x : &mut &mut u32) -> bool { //~ERROR generally you want to avoid `&mut &mut
+10 | fn fun(x : &mut &mut u32) -> bool {
    |            ^^^^^^^^^^^^^
    |
 note: lint level defined here
@@ -13,7 +13,7 @@ note: lint level defined here
 error: generally you want to avoid `&mut &mut _` if possible
   --> $DIR/mut_mut.rs:25:17
    |
-25 |     let mut x = &mut &mut 1u32; //~ERROR generally you want to avoid `&mut &mut
+25 |     let mut x = &mut &mut 1u32;
    |                 ^^^^^^^^^^^^^^
 
 error: generally you want to avoid `&mut &mut _` if possible
@@ -28,7 +28,7 @@ error: generally you want to avoid `&mut &mut _` if possible
 error: this expression mutably borrows a mutable reference. Consider reborrowing
   --> $DIR/mut_mut.rs:27:21
    |
-27 |         let mut y = &mut x; //~ERROR this expression mutably borrows a mutable reference
+27 |         let mut y = &mut x;
    |                     ^^^^^^
 
 error: generally you want to avoid `&mut &mut _` if possible

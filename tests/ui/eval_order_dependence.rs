@@ -6,21 +6,21 @@
 fn main() {
     let mut x = 0;
     let a = { x = 1; 1 } + x;
-                        //~^ ERROR unsequenced read
+
 
     // Example from iss#277
-    x += { x = 20; 2 }; //~ERROR unsequenced read
+    x += { x = 20; 2 };
 
     // Does it work in weird places?
     // ...in the base for a struct expression?
     struct Foo { a: i32, b: i32 };
     let base = Foo { a: 4, b: 5 };
     let foo = Foo { a: x, .. { x = 6; base } };
-                    //~^ ERROR unsequenced read
+
     // ...inside a closure?
     let closure = || {
         let mut x = 0;
-        x += { x = 20; 2 }; //~ERROR unsequenced read
+        x += { x = 20; 2 };
     };
     // ...not across a closure?
     let mut y = 0;

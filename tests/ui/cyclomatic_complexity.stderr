@@ -1,7 +1,7 @@
 error: the function has a cyclomatic complexity of 28
   --> $DIR/cyclomatic_complexity.rs:7:1
    |
-7  | fn main() { //~ERROR the function has a cyclomatic complexity of 28
+7  | fn main() {
    | ^
    |
 note: lint level defined here
@@ -14,7 +14,7 @@ note: lint level defined here
 error: the function has a cyclomatic complexity of 7
    --> $DIR/cyclomatic_complexity.rs:92:1
     |
-92  | fn kaboom() {  //~ ERROR: the function has a cyclomatic complexity of 7
+92  | fn kaboom() {
     | ^
     |
     = help: you could split it up into multiple smaller functions
@@ -22,7 +22,7 @@ error: the function has a cyclomatic complexity of 7
 error: the function has a cyclomatic complexity of 1
    --> $DIR/cyclomatic_complexity.rs:138:1
     |
-138 |   fn lots_of_short_circuits() -> bool { //~ ERROR: the function has a cyclomatic complexity of 1
+138 |   fn lots_of_short_circuits() -> bool {
     |  _^ starting here...
 139 | |     true && false && true && false && true && false && true
 140 | | }
@@ -33,7 +33,7 @@ error: the function has a cyclomatic complexity of 1
 error: the function has a cyclomatic complexity of 1
    --> $DIR/cyclomatic_complexity.rs:143:1
     |
-143 |   fn lots_of_short_circuits2() -> bool { //~ ERROR: the function has a cyclomatic complexity of 1
+143 |   fn lots_of_short_circuits2() -> bool {
     |  _^ starting here...
 144 | |     true || false || true || false || true || false || true
 145 | | }
@@ -44,7 +44,7 @@ error: the function has a cyclomatic complexity of 1
 error: the function has a cyclomatic complexity of 2
    --> $DIR/cyclomatic_complexity.rs:148:1
     |
-148 | fn baa() { //~ ERROR: the function has a cyclomatic complexity of 2
+148 | fn baa() {
     | ^
     |
     = help: you could split it up into multiple smaller functions
@@ -52,7 +52,7 @@ error: the function has a cyclomatic complexity of 2
 error: the function has a cyclomatic complexity of 2
    --> $DIR/cyclomatic_complexity.rs:149:13
     |
-149 |       let x = || match 99 { //~ ERROR: the function has a cyclomatic complexity of 2
+149 |       let x = || match 99 {
     |  _____________^ starting here...
 150 | |         0 => 0,
 151 | |         1 => 1,
@@ -69,7 +69,7 @@ error: the function has a cyclomatic complexity of 2
 error: the function has a cyclomatic complexity of 2
    --> $DIR/cyclomatic_complexity.rs:166:1
     |
-166 |   fn bar() { //~ ERROR: the function has a cyclomatic complexity of 2
+166 |   fn bar() {
     |  _^ starting here...
 167 | |     match 99 {
 168 | |         0 => println!("hi"),
@@ -83,7 +83,7 @@ error: the function has a cyclomatic complexity of 2
 error: the function has a cyclomatic complexity of 2
    --> $DIR/cyclomatic_complexity.rs:185:1
     |
-185 |   fn barr() { //~ ERROR: the function has a cyclomatic complexity of 2
+185 |   fn barr() {
     |  _^ starting here...
 186 | |     match 99 {
 187 | |         0 => println!("hi"),
@@ -99,7 +99,7 @@ error: the function has a cyclomatic complexity of 2
 error: the function has a cyclomatic complexity of 3
    --> $DIR/cyclomatic_complexity.rs:195:1
     |
-195 | fn barr2() { //~ ERROR: the function has a cyclomatic complexity of 3
+195 | fn barr2() {
     | ^
     |
     = help: you could split it up into multiple smaller functions
@@ -107,7 +107,7 @@ error: the function has a cyclomatic complexity of 3
 error: the function has a cyclomatic complexity of 2
    --> $DIR/cyclomatic_complexity.rs:211:1
     |
-211 |   fn barrr() { //~ ERROR: the function has a cyclomatic complexity of 2
+211 |   fn barrr() {
     |  _^ starting here...
 212 | |     match 99 {
 213 | |         0 => println!("hi"),
@@ -123,7 +123,7 @@ error: the function has a cyclomatic complexity of 2
 error: the function has a cyclomatic complexity of 3
    --> $DIR/cyclomatic_complexity.rs:221:1
     |
-221 | fn barrr2() { //~ ERROR: the function has a cyclomatic complexity of 3
+221 | fn barrr2() {
     | ^
     |
     = help: you could split it up into multiple smaller functions
@@ -131,7 +131,7 @@ error: the function has a cyclomatic complexity of 3
 error: the function has a cyclomatic complexity of 2
    --> $DIR/cyclomatic_complexity.rs:237:1
     |
-237 |   fn barrrr() { //~ ERROR: the function has a cyclomatic complexity of 2
+237 |   fn barrrr() {
     |  _^ starting here...
 238 | |     match 99 {
 239 | |         0 => println!("hi"),
@@ -147,7 +147,7 @@ error: the function has a cyclomatic complexity of 2
 error: the function has a cyclomatic complexity of 3
    --> $DIR/cyclomatic_complexity.rs:247:1
     |
-247 | fn barrrr2() { //~ ERROR: the function has a cyclomatic complexity of 3
+247 | fn barrrr2() {
     | ^
     |
     = help: you could split it up into multiple smaller functions
@@ -155,7 +155,7 @@ error: the function has a cyclomatic complexity of 3
 error: the function has a cyclomatic complexity of 2
    --> $DIR/cyclomatic_complexity.rs:263:1
     |
-263 |   fn cake() { //~ ERROR: the function has a cyclomatic complexity of 2
+263 |   fn cake() {
     |  _^ starting here...
 264 | |     if 4 == 5 {
 265 | |         println!("yea");
@@ -171,7 +171,7 @@ error: the function has a cyclomatic complexity of 2
 error: the function has a cyclomatic complexity of 4
    --> $DIR/cyclomatic_complexity.rs:274:1
     |
-274 | pub fn read_file(input_path: &str) -> String { //~ ERROR: the function has a cyclomatic complexity of 4
+274 | pub fn read_file(input_path: &str) -> String {
     | ^
     |
     = help: you could split it up into multiple smaller functions
@@ -179,7 +179,7 @@ error: the function has a cyclomatic complexity of 4
 error: the function has a cyclomatic complexity of 1
    --> $DIR/cyclomatic_complexity.rs:305:1
     |
-305 |   fn void(void: Void) { //~ ERROR: the function has a cyclomatic complexity of 1
+305 |   fn void(void: Void) {
     |  _^ starting here...
 306 | |     if true {
 307 | |         match void {
@@ -193,7 +193,7 @@ error: the function has a cyclomatic complexity of 1
 error: the function has a cyclomatic complexity of 1
    --> $DIR/cyclomatic_complexity.rs:319:1
     |
-319 |   fn try() -> Result<i32, &'static str> { //~ ERROR: cyclomatic complexity of 1
+319 |   fn try() -> Result<i32, &'static str> {
     |  _^ starting here...
 320 | |     match 5 {
 321 | |         5 => Ok(5),
@@ -207,7 +207,7 @@ error: the function has a cyclomatic complexity of 1
 error: the function has a cyclomatic complexity of 1
    --> $DIR/cyclomatic_complexity.rs:327:1
     |
-327 | fn try_again() -> Result<i32, &'static str> { //~ ERROR: cyclomatic complexity of 1
+327 | fn try_again() -> Result<i32, &'static str> {
     | ^
     |
     = help: you could split it up into multiple smaller functions
@@ -215,7 +215,7 @@ error: the function has a cyclomatic complexity of 1
 error: the function has a cyclomatic complexity of 1
    --> $DIR/cyclomatic_complexity.rs:343:1
     |
-343 | fn early() -> Result<i32, &'static str> { //~ ERROR: cyclomatic complexity of 1
+343 | fn early() -> Result<i32, &'static str> {
     | ^
     |
     = help: you could split it up into multiple smaller functions
@@ -223,7 +223,7 @@ error: the function has a cyclomatic complexity of 1
 error: the function has a cyclomatic complexity of 8
    --> $DIR/cyclomatic_complexity.rs:356:1
     |
-356 | fn early_ret() -> i32 { //~ ERROR: cyclomatic complexity of 8
+356 | fn early_ret() -> i32 {
     | ^
     |
     = help: you could split it up into multiple smaller functions

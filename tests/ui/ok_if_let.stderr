@@ -3,7 +3,7 @@ error: Matching on `Some` with `ok()` is redundant
    |
 7  |       if let Some(y) = x.parse().ok() { 
    |  _____^ starting here...
-8  | |     //~^ERROR Matching on `Some` with `ok()` is redundant
+8  | |
 9  | |         y
 10 | |     } else {
 11 | |         0

@@ -19,13 +19,13 @@ impl MyStruct {
 #[deny(unnecessary_mut_passed)]
 fn main() {
     // Functions
-    takes_an_immutable_reference(&mut 42); //~ERROR The function/method "takes_an_immutable_reference" doesn't need a mutable reference
+    takes_an_immutable_reference(&mut 42);
     let as_ptr: fn(&i32) = takes_an_immutable_reference;
-    as_ptr(&mut 42); //~ERROR The function/method "as_ptr" doesn't need a mutable reference
+    as_ptr(&mut 42);
 
     // Methods
     let my_struct = MyStruct;
-    my_struct.takes_an_immutable_reference(&mut 42); //~ERROR The function/method "takes_an_immutable_reference" doesn't need a mutable reference
+    my_struct.takes_an_immutable_reference(&mut 42);
 
 
     // No error

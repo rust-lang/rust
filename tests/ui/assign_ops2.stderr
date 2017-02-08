@@ -1,7 +1,7 @@
 error: variable appears on both sides of an assignment operation
  --> $DIR/assign_ops2.rs:8:5
   |
-8 |     a += a + 1; //~ ERROR variable appears on both sides of an assignment operation
+8 |     a += a + 1;
   |     ^^^^^^^^^^
   |
 note: lint level defined here
@@ -10,70 +10,70 @@ note: lint level defined here
 5 | #[deny(misrefactored_assign_op)]
   |        ^^^^^^^^^^^^^^^^^^^^^^^
 help: replace it with
-  |     a += 1; //~ ERROR variable appears on both sides of an assignment operation
+  |     a += 1;
 
 error: variable appears on both sides of an assignment operation
   --> $DIR/assign_ops2.rs:11:5
    |
-11 |     a += 1 + a; //~ ERROR variable appears on both sides of an assignment operation
+11 |     a += 1 + a;
    |     ^^^^^^^^^^
    |
 help: replace it with
-   |     a += 1; //~ ERROR variable appears on both sides of an assignment operation
+   |     a += 1;
 
 error: variable appears on both sides of an assignment operation
   --> $DIR/assign_ops2.rs:14:5
    |
-14 |     a -= a - 1; //~ ERROR variable appears on both sides of an assignment operation
+14 |     a -= a - 1;
    |     ^^^^^^^^^^
    |
 help: replace it with
-   |     a -= 1; //~ ERROR variable appears on both sides of an assignment operation
+   |     a -= 1;
 
 error: variable appears on both sides of an assignment operation
   --> $DIR/assign_ops2.rs:17:5
    |
-17 |     a *= a * 99; //~ ERROR variable appears on both sides of an assignment operation
+17 |     a *= a * 99;
    |     ^^^^^^^^^^^
    |
 help: replace it with
-   |     a *= 99; //~ ERROR variable appears on both sides of an assignment operation
+   |     a *= 99;
 
 error: variable appears on both sides of an assignment operation
   --> $DIR/assign_ops2.rs:20:5
    |
-20 |     a *= 42 * a; //~ ERROR variable appears on both sides of an assignment operation
+20 |     a *= 42 * a;
    |     ^^^^^^^^^^^
    |
 help: replace it with
-   |     a *= 42; //~ ERROR variable appears on both sides of an assignment operation
+   |     a *= 42;
 
 error: variable appears on both sides of an assignment operation
   --> $DIR/assign_ops2.rs:23:5
    |
-23 |     a /= a / 2; //~ ERROR variable appears on both sides of an assignment operation
+23 |     a /= a / 2;
    |     ^^^^^^^^^^
    |
 help: replace it with
-   |     a /= 2; //~ ERROR variable appears on both sides of an assignment operation
+   |     a /= 2;
 
 error: variable appears on both sides of an assignment operation
   --> $DIR/assign_ops2.rs:26:5
    |
-26 |     a %= a % 5; //~ ERROR variable appears on both sides of an assignment operation
+26 |     a %= a % 5;
    |     ^^^^^^^^^^
    |
 help: replace it with
-   |     a %= 5; //~ ERROR variable appears on both sides of an assignment operation
+   |     a %= 5;
 
 error: variable appears on both sides of an assignment operation
   --> $DIR/assign_ops2.rs:29:5
    |
-29 |     a &= a & 1; //~ ERROR variable appears on both sides of an assignment operation
+29 |     a &= a & 1;
    |     ^^^^^^^^^^
    |
 help: replace it with
-   |     a &= 1; //~ ERROR variable appears on both sides of an assignment operation
+   |     a &= 1;
 
 error: aborting due to 8 previous errors
 

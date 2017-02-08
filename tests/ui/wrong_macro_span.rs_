@@ -19,9 +19,9 @@ fn main() {
             let t = &thingy;
 
             match t.$idx { Foo::A(ref val) => { println!("42"); }, _ => {} }
-            //~^ ERROR you seem to be trying to use match
-            //~| HELP try this
-            //~| SUGGESTION if let Foo::A(ref val) = t.$idx { println!("42"); }
+
+
+
         }}
     }
 

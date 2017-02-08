@@ -22,33 +22,33 @@ impl Line {
 
 fn main() {
     on_slice(&vec![]);
-    //~^ ERROR useless use of `vec!`
-    //~| HELP you can use
-    //~| SUGGESTION on_slice(&[])
+
+
+
     on_slice(&[]);
 
     on_slice(&vec![1, 2]);
-    //~^ ERROR useless use of `vec!`
-    //~| HELP you can use
-    //~| SUGGESTION on_slice(&[1, 2])
+
+
+
     on_slice(&[1, 2]);
 
     on_slice(&vec ![1, 2]);
-    //~^ ERROR useless use of `vec!`
-    //~| HELP you can use
-    //~| SUGGESTION on_slice(&[1, 2])
+
+
+
     on_slice(&[1, 2]);
 
     on_slice(&vec!(1, 2));
-    //~^ ERROR useless use of `vec!`
-    //~| HELP you can use
-    //~| SUGGESTION on_slice(&[1, 2])
+
+
+
     on_slice(&[1, 2]);
 
     on_slice(&vec![1; 2]);
-    //~^ ERROR useless use of `vec!`
-    //~| HELP you can use
-    //~| SUGGESTION on_slice(&[1; 2])
+
+
+
     on_slice(&[1; 2]);
 
     on_vec(&vec![]);
@@ -62,9 +62,9 @@ fn main() {
     on_slice(&vec![2; line.length()]);
 
     for a in vec![1, 2, 3] {
-        //~^ ERROR useless use of `vec!`
-        //~| HELP you can use
-        //~| SUGGESTION for a in &[1, 2, 3] {
+
+
+
         println!("{:?}", a);
     }
 

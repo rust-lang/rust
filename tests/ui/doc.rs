@@ -1,5 +1,5 @@
 //! This file tests for the DOC_MARKDOWN lint
-//~^ ERROR: you should put `DOC_MARKDOWN` between ticks
+
 
 #![feature(plugin)]
 #![plugin(clippy)]
@@ -7,17 +7,17 @@
 #![deny(doc_markdown)]
 
 /// The foo_bar function does _nothing_. See also foo::bar. (note the dot there)
-//~^ ERROR: you should put `foo_bar` between ticks
-//~| ERROR: you should put `foo::bar` between ticks
+
+
 /// Markdown is _weird_. I mean _really weird_.  This \_ is ok. So is `_`. But not Foo::some_fun
-//~^ ERROR: you should put `Foo::some_fun` between ticks
+
 /// which should be reported only once despite being __doubly bad__.
 /// Here be ::is::a::global:path.
-//~^ ERROR: you should put `is::a::global:path` between ticks
+
 /// That's not code ~NotInCodeBlock~.
-//~^ ERROR: you should put `NotInCodeBlock` between ticks
+
 /// be_sure_we_got_to_the_end_of_it
-//~^ ERROR: you should put `be_sure_we_got_to_the_end_of_it` between ticks
+
 fn foo_bar() {
 }
 
@@ -32,7 +32,7 @@ fn foo_bar() {
 /// _foo bar_
 /// ~~~
 /// be_sure_we_got_to_the_end_of_it
-//~^ ERROR: you should put `be_sure_we_got_to_the_end_of_it` between ticks
+
 fn multiline_codeblock() {
 }
 
@@ -40,7 +40,7 @@ fn multiline_codeblock() {
 /// multiline
 /// emphasis_.
 /// be_sure_we_got_to_the_end_of_it
-//~^ ERROR: you should put `be_sure_we_got_to_the_end_of_it` between ticks
+
 fn test_emphasis() {
 }
 
@@ -55,7 +55,7 @@ fn test_emphasis() {
 /// 32kb 32Mb 32Gb 32Tb 32Pb 32Eb
 /// NaN
 /// be_sure_we_got_to_the_end_of_it
-//~^ ERROR: you should put `be_sure_we_got_to_the_end_of_it` between ticks
+
 fn test_units() {
 }
 
@@ -65,15 +65,15 @@ fn test_units() {
 /// `💣`
 /// `❤️`
 /// ß_foo
-//~^ ERROR: you should put `ß_foo` between ticks
+
 /// ℝ_foo
-//~^ ERROR: you should put `ℝ_foo` between ticks
+
 /// 💣_foo
 /// ❤️_foo
 /// foo_ß
-//~^ ERROR: you should put `foo_ß` between ticks
+
 /// foo_ℝ
-//~^ ERROR: you should put `foo_ℝ` between ticks
+
 /// foo_💣
 /// foo_❤️
 /// [ßdummy textß][foo_1ß]
@@ -89,16 +89,16 @@ fn test_units() {
 /// [foo3_💣]: dummy text
 /// [foo4_❤️]: dummy text
 /// be_sure_we_got_to_the_end_of_it
-//~^ ERROR: you should put `be_sure_we_got_to_the_end_of_it` between ticks
+
 fn test_unicode() {
 }
 
 /// This test has [a link_with_underscores][chunked-example] inside it. See #823.
-//~^ ERROR: you should put `link_with_underscores` between ticks
+
 /// See also [the issue tracker](https://github.com/Manishearth/rust-clippy/search?q=doc_markdown&type=Issues)
 /// on GitHub (which is a camel-cased word, but is OK). And here is another [inline link][inline_link].
 /// It can also be [inline_link2].
-//~^ ERROR: you should put `inline_link2` between ticks
+
 ///
 /// [chunked-example]: https://en.wikipedia.org/wiki/Chunked_transfer_encoding#Example
 /// [inline_link]: https://foobar
@@ -110,7 +110,7 @@ fn test_unicode() {
 /// expression of the type  `_ <bit_op> m <cmp_op> c` (where `<bit_op>`
 /// is one of {`&`, '|'} and `<cmp_op>` is one of {`!=`, `>=`, `>` ,
 /// be_sure_we_got_to_the_end_of_it
-//~^ ERROR: you should put `be_sure_we_got_to_the_end_of_it` between ticks
+
 fn main() {
     foo_bar();
     multiline_codeblock();
@@ -124,9 +124,9 @@ fn main() {
 /// # CamelCaseThing
 ///
 /// Not a title #897 CamelCaseThing
-//~^ ERROR: you should put `CamelCaseThing` between ticks
+
 /// be_sure_we_got_to_the_end_of_it
-//~^ ERROR: you should put `be_sure_we_got_to_the_end_of_it` between ticks
+
 fn issue897() {
 }
 
@@ -134,7 +134,7 @@ fn issue897() {
 /// I am confused by brackets? (foo `x_y`)
 /// I am confused by brackets? (`x_y` foo)
 /// be_sure_we_got_to_the_end_of_it
-//~^ ERROR: you should put `be_sure_we_got_to_the_end_of_it` between ticks
+
 fn issue900() {
 }
 
@@ -148,7 +148,7 @@ fn issue900() {
 /// [iterator]: https://doc.rust-lang.org/stable/std/iter/trait.Iterator.html
 /// [helper_types]: ../helper_types/index.html
 /// be_sure_we_got_to_the_end_of_it
-//~^ ERROR: you should put `be_sure_we_got_to_the_end_of_it` between ticks
+
 fn issue883() {
 }
 
@@ -167,9 +167,9 @@ That's in a code block: `PackedNode`
 And BarQuz too.
 be_sure_we_got_to_the_end_of_it
 */
-//~^^^^^^^^ ERROR: you should put `FooBar` between ticks
-//~^^^^ ERROR: you should put `BarQuz` between ticks
-//~^^^^ ERROR: you should put `be_sure_we_got_to_the_end_of_it` between ticks
+
+
+
 fn issue1073() {
 }
 
@@ -181,9 +181,9 @@ That's in a code block: PackedNode
 And BarQuz too.
 be_sure_we_got_to_the_end_of_it
 */
-//~^^^^^^^^ ERROR: you should put `FooBar` between ticks
-//~^^^^ ERROR: you should put `BarQuz` between ticks
-//~^^^^ ERROR: you should put `be_sure_we_got_to_the_end_of_it` between ticks
+
+
+
 fn issue1073_alt() {
 }
 
@@ -194,6 +194,6 @@ fn issue1073_alt() {
 /// StillDont
 /// ````
 /// be_sure_we_got_to_the_end_of_it
-//~^ ERROR: you should put `be_sure_we_got_to_the_end_of_it` between ticks
+
 fn four_quotes() {
 }

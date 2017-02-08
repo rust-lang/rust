@@ -6,54 +6,54 @@ fn main() {
     let x = "hello";
     let y = "world";
     if x == "hello" {
-    //~^ ERROR this if statement can be collapsed
-    //~| HELP try
-    //~| SUGGESTION if x == "hello" && y == "world" {
+
+
+
         if y == "world" {
             println!("Hello world!");
         }
     }
 
     if x == "hello" || x == "world" {
-    //~^ ERROR this if statement can be collapsed
-    //~| HELP try
-    //~| SUGGESTION if (x == "hello" || x == "world") && (y == "world" || y == "hello") {
+
+
+
         if y == "world" || y == "hello" {
             println!("Hello world!");
         }
     }
 
     if x == "hello" && x == "world" {
-    //~^ ERROR this if statement can be collapsed
-    //~| HELP try
-    //~| SUGGESTION if x == "hello" && x == "world" && (y == "world" || y == "hello") {
+
+
+
         if y == "world" || y == "hello" {
             println!("Hello world!");
         }
     }
 
     if x == "hello" || x == "world" {
-    //~^ ERROR this if statement can be collapsed
-    //~| HELP try
-    //~| SUGGESTION if (x == "hello" || x == "world") && y == "world" && y == "hello" {
+
+
+
         if y == "world" && y == "hello" {
             println!("Hello world!");
         }
     }
 
     if x == "hello" && x == "world" {
-    //~^ ERROR this if statement can be collapsed
-    //~| HELP try
-    //~| SUGGESTION if x == "hello" && x == "world" && y == "world" && y == "hello" {
+
+
+
         if y == "world" && y == "hello" {
             println!("Hello world!");
         }
     }
 
     if 42 == 1337 {
-    //~^ ERROR this if statement can be collapsed
-    //~| HELP try
-    //~| SUGGESTION if 42 == 1337 && 'a' != 'A' {
+
+
+
         if 'a' != 'A' {
             println!("world!")
         }
@@ -63,9 +63,9 @@ fn main() {
     if x == "hello" {
         print!("Hello ");
     } else {
-        //~^ ERROR: this `else { if .. }`
-        //~| HELP try
-        //~| SUGGESTION } else if y == "world"
+
+
+
         if y == "world" {
             println!("world!")
         }
@@ -74,9 +74,9 @@ fn main() {
     if x == "hello" {
         print!("Hello ");
     } else {
-        //~^ ERROR: this `else { if .. }`
-        //~| HELP try
-        //~| SUGGESTION } else if let Some(42)
+
+
+
         if let Some(42) = Some(42) {
             println!("world!")
         }
@@ -85,9 +85,9 @@ fn main() {
     if x == "hello" {
         print!("Hello ");
     } else {
-        //~^ ERROR this `else { if .. }`
-        //~| HELP try
-        //~| SUGGESTION } else if y == "world"
+
+
+
         if y == "world" {
             println!("world")
         }
@@ -99,9 +99,9 @@ fn main() {
     if x == "hello" {
         print!("Hello ");
     } else {
-        //~^ ERROR this `else { if .. }`
-        //~| HELP try
-        //~| SUGGESTION } else if let Some(42)
+
+
+
         if let Some(42) = Some(42) {
             println!("world")
         }
@@ -113,9 +113,9 @@ fn main() {
     if let Some(42) = Some(42) {
         print!("Hello ");
     } else {
-        //~^ ERROR this `else { if .. }`
-        //~| HELP try
-        //~| SUGGESTION } else if let Some(42)
+
+
+
         if let Some(42) = Some(42) {
             println!("world")
         }
@@ -127,9 +127,9 @@ fn main() {
     if let Some(42) = Some(42) {
         print!("Hello ");
     } else {
-        //~^ ERROR this `else { if .. }`
-        //~| HELP try
-        //~| SUGGESTION } else if x == "hello"
+
+
+
         if x == "hello" {
             println!("world")
         }
@@ -141,9 +141,9 @@ fn main() {
     if let Some(42) = Some(42) {
         print!("Hello ");
     } else {
-        //~^ ERROR this `else { if .. }`
-        //~| HELP try
-        //~| SUGGESTION } else if let Some(42)
+
+
+
         if let Some(42) = Some(42) {
             println!("world")
         }

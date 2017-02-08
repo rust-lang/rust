@@ -3,9 +3,9 @@ error: this if statement can be collapsed
    |
 8  |       if x == "hello" {
    |  _____^ starting here...
-9  | |     //~^ ERROR this if statement can be collapsed
-10 | |     //~| HELP try
-11 | |     //~| SUGGESTION if x == "hello" && y == "world" {
+9  | |
+10 | |
+11 | |
 12 | |         if y == "world" {
 13 | |             println!("Hello world!");
 14 | |         }
@@ -27,9 +27,9 @@ error: this if statement can be collapsed
    |
 17 |       if x == "hello" || x == "world" {
    |  _____^ starting here...
-18 | |     //~^ ERROR this if statement can be collapsed
-19 | |     //~| HELP try
-20 | |     //~| SUGGESTION if (x == "hello" || x == "world") && (y == "world" || y == "hello") {
+18 | |
+19 | |
+20 | |
 21 | |         if y == "world" || y == "hello" {
 22 | |             println!("Hello world!");
 23 | |         }
@@ -46,9 +46,9 @@ error: this if statement can be collapsed
    |
 26 |       if x == "hello" && x == "world" {
    |  _____^ starting here...
-27 | |     //~^ ERROR this if statement can be collapsed
-28 | |     //~| HELP try
-29 | |     //~| SUGGESTION if x == "hello" && x == "world" && (y == "world" || y == "hello") {
+27 | |
+28 | |
+29 | |
 30 | |         if y == "world" || y == "hello" {
 31 | |             println!("Hello world!");
 32 | |         }
@@ -65,9 +65,9 @@ error: this if statement can be collapsed
    |
 35 |       if x == "hello" || x == "world" {
    |  _____^ starting here...
-36 | |     //~^ ERROR this if statement can be collapsed
-37 | |     //~| HELP try
-38 | |     //~| SUGGESTION if (x == "hello" || x == "world") && y == "world" && y == "hello" {
+36 | |
+37 | |
+38 | |
 39 | |         if y == "world" && y == "hello" {
 40 | |             println!("Hello world!");
 41 | |         }
@@ -84,9 +84,9 @@ error: this if statement can be collapsed
    |
 44 |       if x == "hello" && x == "world" {
    |  _____^ starting here...
-45 | |     //~^ ERROR this if statement can be collapsed
-46 | |     //~| HELP try
-47 | |     //~| SUGGESTION if x == "hello" && x == "world" && y == "world" && y == "hello" {
+45 | |
+46 | |
+47 | |
 48 | |         if y == "world" && y == "hello" {
 49 | |             println!("Hello world!");
 50 | |         }
@@ -103,9 +103,9 @@ error: this if statement can be collapsed
    |
 53 |       if 42 == 1337 {
    |  _____^ starting here...
-54 | |     //~^ ERROR this if statement can be collapsed
-55 | |     //~| HELP try
-56 | |     //~| SUGGESTION if 42 == 1337 && 'a' != 'A' {
+54 | |
+55 | |
+56 | |
 57 | |         if 'a' != 'A' {
 58 | |             println!("world!")
 59 | |         }
@@ -122,9 +122,9 @@ error: this `else { if .. }` block can be collapsed
    |
 65 |       } else {
    |  ____________^ starting here...
-66 | |         //~^ ERROR: this `else { if .. }`
-67 | |         //~| HELP try
-68 | |         //~| SUGGESTION } else if y == "world"
+66 | |
+67 | |
+68 | |
 69 | |         if y == "world" {
 70 | |             println!("world!")
 71 | |         }
@@ -141,9 +141,9 @@ error: this `else { if .. }` block can be collapsed
    |
 76 |       } else {
    |  ____________^ starting here...
-77 | |         //~^ ERROR: this `else { if .. }`
-78 | |         //~| HELP try
-79 | |         //~| SUGGESTION } else if let Some(42)
+77 | |
+78 | |
+79 | |
 80 | |         if let Some(42) = Some(42) {
 81 | |             println!("world!")
 82 | |         }

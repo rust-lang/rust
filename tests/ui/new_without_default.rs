@@ -5,23 +5,23 @@
 #![deny(new_without_default, new_without_default_derive)]
 
 pub struct Foo;
-//~^HELP try this
-//~^^SUGGESTION #[derive(Default)]
-//~^^SUGGESTION pub struct Foo
+
+
+
 
 impl Foo {
     pub fn new() -> Foo { Foo }
-    //~^ERROR: you should consider deriving a `Default` implementation for `Foo`
+
 }
 
 pub struct Bar;
-//~^HELP try this
-//~^^SUGGESTION #[derive(Default)]
-//~^^SUGGESTION pub struct Bar
+
+
+
 
 impl Bar {
     pub fn new() -> Self { Bar }
-    //~^ERROR: you should consider deriving a `Default` implementation for `Bar`
+
 }
 
 pub struct Ok;
@@ -70,13 +70,13 @@ pub struct LtKo<'a> {
 
 impl<'c> LtKo<'c> {
     pub fn new() -> LtKo<'c> { unimplemented!() }
-    //~^ERROR: you should consider adding a `Default` implementation for
-    //~^^HELP try
-    //~^^^SUGGESTION impl Default for LtKo<'c> {
-    //~^^^SUGGESTION     fn default() -> Self {
-    //~^^^SUGGESTION         Self::new()
-    //~^^^SUGGESTION     }
-    //~^^^SUGGESTION }
+
+
+
+
+
+
+
     // FIXME: that suggestion is missing lifetimes
 }
 

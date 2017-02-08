@@ -1,7 +1,7 @@
 error: you seem to be trying to use `Box<Vec<T>>`. Consider using just `Vec<T>`
   --> $DIR/box_vec.rs:17:18
    |
-17 | pub fn test(foo: Box<Vec<bool>>) { //~ ERROR you seem to be trying to use `Box<Vec<T>>`
+17 | pub fn test(foo: Box<Vec<bool>>) {
    |                  ^^^^^^^^^^^^^^
    |
    = note: #[deny(box_vec)] implied by #[deny(clippy)]

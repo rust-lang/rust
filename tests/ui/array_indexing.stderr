@@ -1,7 +1,7 @@
 error: const index is out of bounds
   --> $DIR/array_indexing.rs:12:5
    |
-12 |     x[4]; //~ERROR: const index is out of bounds
+12 |     x[4];
    |     ^^^^
    |
    = note: #[deny(out_of_bounds_indexing)] on by default
@@ -9,7 +9,7 @@ error: const index is out of bounds
 error: const index is out of bounds
   --> $DIR/array_indexing.rs:13:5
    |
-13 |     x[1 << 3]; //~ERROR: const index is out of bounds
+13 |     x[1 << 3];
    |     ^^^^^^^^^
    |
    = note: #[deny(out_of_bounds_indexing)] on by default
@@ -17,7 +17,7 @@ error: const index is out of bounds
 error: range is out of bounds
   --> $DIR/array_indexing.rs:14:6
    |
-14 |     &x[1..5]; //~ERROR: range is out of bounds
+14 |     &x[1..5];
    |      ^^^^^^^
    |
    = note: #[deny(out_of_bounds_indexing)] on by default
@@ -25,7 +25,7 @@ error: range is out of bounds
 error: range is out of bounds
   --> $DIR/array_indexing.rs:16:6
    |
-16 |     &x[0...4]; //~ERROR: range is out of bounds
+16 |     &x[0...4];
    |      ^^^^^^^^
    |
    = note: #[deny(out_of_bounds_indexing)] on by default
@@ -33,7 +33,7 @@ error: range is out of bounds
 error: range is out of bounds
   --> $DIR/array_indexing.rs:17:6
    |
-17 |     &x[...4]; //~ERROR: range is out of bounds
+17 |     &x[...4];
    |      ^^^^^^^
    |
    = note: #[deny(out_of_bounds_indexing)] on by default
@@ -41,7 +41,7 @@ error: range is out of bounds
 error: range is out of bounds
   --> $DIR/array_indexing.rs:21:6
    |
-21 |     &x[5..]; //~ERROR: range is out of bounds
+21 |     &x[5..];
    |      ^^^^^^
    |
    = note: #[deny(out_of_bounds_indexing)] on by default
@@ -49,7 +49,7 @@ error: range is out of bounds
 error: range is out of bounds
   --> $DIR/array_indexing.rs:23:6
    |
-23 |     &x[..5]; //~ERROR: range is out of bounds
+23 |     &x[..5];
    |      ^^^^^^
    |
    = note: #[deny(out_of_bounds_indexing)] on by default
@@ -57,7 +57,7 @@ error: range is out of bounds
 error: indexing may panic
   --> $DIR/array_indexing.rs:26:5
    |
-26 |     y[0]; //~ERROR: indexing may panic
+26 |     y[0];
    |     ^^^^
    |
 note: lint level defined here
@@ -69,25 +69,25 @@ note: lint level defined here
 error: slicing may panic
   --> $DIR/array_indexing.rs:27:6
    |
-27 |     &y[1..2]; //~ERROR: slicing may panic
+27 |     &y[1..2];
    |      ^^^^^^^
 
 error: slicing may panic
   --> $DIR/array_indexing.rs:29:6
    |
-29 |     &y[0...4]; //~ERROR: slicing may panic
+29 |     &y[0...4];
    |      ^^^^^^^^
 
 error: slicing may panic
   --> $DIR/array_indexing.rs:30:6
    |
-30 |     &y[...4]; //~ERROR: slicing may panic
+30 |     &y[...4];
    |      ^^^^^^^
 
 error: const index is out of bounds
   --> $DIR/array_indexing.rs:33:5
    |
-33 |     empty[0]; //~ERROR: const index is out of bounds
+33 |     empty[0];
    |     ^^^^^^^^
    |
    = note: #[deny(out_of_bounds_indexing)] on by default
@@ -95,7 +95,7 @@ error: const index is out of bounds
 error: range is out of bounds
   --> $DIR/array_indexing.rs:34:6
    |
-34 |     &empty[1..5]; //~ERROR: range is out of bounds
+34 |     &empty[1..5];
    |      ^^^^^^^^^^^
    |
    = note: #[deny(out_of_bounds_indexing)] on by default
@@ -103,7 +103,7 @@ error: range is out of bounds
 error: range is out of bounds
   --> $DIR/array_indexing.rs:35:6
    |
-35 |     &empty[0...4]; //~ERROR: range is out of bounds
+35 |     &empty[0...4];
    |      ^^^^^^^^^^^^
    |
    = note: #[deny(out_of_bounds_indexing)] on by default
@@ -111,7 +111,7 @@ error: range is out of bounds
 error: range is out of bounds
   --> $DIR/array_indexing.rs:36:6
    |
-36 |     &empty[...4]; //~ERROR: range is out of bounds
+36 |     &empty[...4];
    |      ^^^^^^^^^^^
    |
    = note: #[deny(out_of_bounds_indexing)] on by default
@@ -119,7 +119,7 @@ error: range is out of bounds
 error: range is out of bounds
   --> $DIR/array_indexing.rs:40:6
    |
-40 |     &empty[0...0]; //~ERROR: range is out of bounds
+40 |     &empty[0...0];
    |      ^^^^^^^^^^^^
    |
    = note: #[deny(out_of_bounds_indexing)] on by default
@@ -127,7 +127,7 @@ error: range is out of bounds
 error: range is out of bounds
   --> $DIR/array_indexing.rs:41:6
    |
-41 |     &empty[...0]; //~ERROR: range is out of bounds
+41 |     &empty[...0];
    |      ^^^^^^^^^^^
    |
    = note: #[deny(out_of_bounds_indexing)] on by default
@@ -135,7 +135,7 @@ error: range is out of bounds
 error: range is out of bounds
   --> $DIR/array_indexing.rs:43:6
    |
-43 |     &empty[1..]; //~ERROR: range is out of bounds
+43 |     &empty[1..];
    |      ^^^^^^^^^^
    |
    = note: #[deny(out_of_bounds_indexing)] on by default
@@ -143,7 +143,7 @@ error: range is out of bounds
 error: range is out of bounds
   --> $DIR/array_indexing.rs:44:6
    |
-44 |     &empty[..4]; //~ERROR: range is out of bounds
+44 |     &empty[..4];
    |      ^^^^^^^^^^
    |
    = note: #[deny(out_of_bounds_indexing)] on by default

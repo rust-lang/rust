@@ -31,92 +31,92 @@ fn main() {
     let s = get_struct();
     let s2 = get_struct();
 
-    0; //~ERROR statement with no effect
-    s2; //~ERROR statement with no effect
-    Unit; //~ERROR statement with no effect
-    Tuple(0); //~ERROR statement with no effect
-    Struct { field: 0 }; //~ERROR statement with no effect
-    Struct { ..s }; //~ERROR statement with no effect
-    Union { a: 0 }; //~ERROR statement with no effect
-    Enum::Tuple(0); //~ERROR statement with no effect
-    Enum::Struct { field: 0 }; //~ERROR statement with no effect
-    5 + 6; //~ERROR statement with no effect
-    *&42; //~ERROR statement with no effect
-    &6; //~ERROR statement with no effect
-    (5, 6, 7); //~ERROR statement with no effect
-    box 42; //~ERROR statement with no effect
-    ..; //~ERROR statement with no effect
-    5..; //~ERROR statement with no effect
-    ..5; //~ERROR statement with no effect
-    5..6; //~ERROR statement with no effect
-    5...6; //~ERROR statement with no effect
-    [42, 55]; //~ERROR statement with no effect
-    [42, 55][1]; //~ERROR statement with no effect
-    (42, 55).1; //~ERROR statement with no effect
-    [42; 55]; //~ERROR statement with no effect
-    [42; 55][13]; //~ERROR statement with no effect
+    0;
+    s2;
+    Unit;
+    Tuple(0);
+    Struct { field: 0 };
+    Struct { ..s };
+    Union { a: 0 };
+    Enum::Tuple(0);
+    Enum::Struct { field: 0 };
+    5 + 6;
+    *&42;
+    &6;
+    (5, 6, 7);
+    box 42;
+    ..;
+    5..;
+    ..5;
+    5..6;
+    5...6;
+    [42, 55];
+    [42, 55][1];
+    (42, 55).1;
+    [42; 55];
+    [42; 55][13];
     let mut x = 0;
-    || x += 5; //~ERROR statement with no effect
+    || x += 5;
 
     // Do not warn
     get_number();
     unsafe { unsafe_fn() };
 
-    Tuple(get_number()); //~ERROR statement can be reduced
-    //~^HELP replace it with
-    //~|SUGGESTION get_number();
-    Struct { field: get_number() }; //~ERROR statement can be reduced
-    //~^HELP replace it with
-    //~|SUGGESTION get_number();
-    Struct { ..get_struct() }; //~ERROR statement can be reduced
-    //~^HELP replace it with
-    //~|SUGGESTION get_struct();
-    Enum::Tuple(get_number()); //~ERROR statement can be reduced
-    //~^HELP replace it with
-    //~|SUGGESTION get_number();
-    Enum::Struct { field: get_number() }; //~ERROR statement can be reduced
-    //~^HELP replace it with
-    //~|SUGGESTION get_number();
-    5 + get_number(); //~ERROR statement can be reduced
-    //~^HELP replace it with
-    //~|SUGGESTION 5;get_number();
-    *&get_number(); //~ERROR statement can be reduced
-    //~^HELP replace it with
-    //~|SUGGESTION get_number();
-    &get_number(); //~ERROR statement can be reduced
-    //~^HELP replace it with
-    //~|SUGGESTION get_number();
-    (5, 6, get_number()); //~ERROR statement can be reduced
-    //~^HELP replace it with
-    //~|SUGGESTION 5;6;get_number();
-    box get_number(); //~ERROR statement can be reduced
-    //~^HELP replace it with
-    //~|SUGGESTION get_number();
-    get_number()..; //~ERROR statement can be reduced
-    //~^HELP replace it with
-    //~|SUGGESTION get_number();
-    ..get_number(); //~ERROR statement can be reduced
-    //~^HELP replace it with
-    //~|SUGGESTION get_number();
-    5..get_number(); //~ERROR statement can be reduced
-    //~^HELP replace it with
-    //~|SUGGESTION 5;get_number();
-    [42, get_number()]; //~ERROR statement can be reduced
-    //~^HELP replace it with
-    //~|SUGGESTION 42;get_number();
-    [42, 55][get_number() as usize]; //~ERROR statement can be reduced
-    //~^HELP replace it with
-    //~|SUGGESTION [42, 55];get_number() as usize;
-    (42, get_number()).1; //~ERROR statement can be reduced
-    //~^HELP replace it with
-    //~|SUGGESTION 42;get_number();
-    [get_number(); 55]; //~ERROR statement can be reduced
-    //~^HELP replace it with
-    //~|SUGGESTION get_number();
-    [42; 55][get_number() as usize]; //~ERROR statement can be reduced
-    //~^HELP replace it with
-    //~|SUGGESTION [42; 55];get_number() as usize;
-    {get_number()}; //~ERROR statement can be reduced
-    //~^HELP replace it with
-    //~|SUGGESTION get_number();
+    Tuple(get_number());
+
+
+    Struct { field: get_number() };
+
+
+    Struct { ..get_struct() };
+
+
+    Enum::Tuple(get_number());
+
+
+    Enum::Struct { field: get_number() };
+
+
+    5 + get_number();
+
+
+    *&get_number();
+
+
+    &get_number();
+
+
+    (5, 6, get_number());
+
+
+    box get_number();
+
+
+    get_number()..;
+
+
+    ..get_number();
+
+
+    5..get_number();
+
+
+    [42, get_number()];
+
+
+    [42, 55][get_number() as usize];
+
+
+    (42, get_number()).1;
+
+
+    [get_number(); 55];
+
+
+    [42; 55][get_number() as usize];
+
+
+    {get_number()};
+
+
 }

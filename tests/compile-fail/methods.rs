@@ -15,21 +15,19 @@ use std::iter::FromIterator;
 struct T;
 
 impl T {
-    fn add(self, other: T) -> T { self } //~ERROR defining a method called `add`
-    fn drop(&mut self) { } //~ERROR defining a method called `drop`
+    fn add(self, other: T) -> T { self }
+    fn drop(&mut self) { }
 
     fn sub(&self, other: T) -> &T { self } // no error, self is a ref
     fn div(self) -> T { self } // no error, different #arguments
     fn rem(self, other: T) { } // no error, wrong return type
 
     fn into_u32(self) -> u32 { 0 } // fine
-    fn into_u16(&self) -> u16 { 0 } //~ERROR methods called `into_*` usually take self by value
+    fn into_u16(&self) -> u16 { 0 }
 
-    fn to_something(self) -> u32 { 0 } //~ERROR methods called `to_*` usually take self by reference
+    fn to_something(self) -> u32 { 0 }
 
     fn new(self) {}
-    //~^ ERROR methods called `new` usually take no self
-    //~| ERROR methods called `new` usually return `Self`
 }
 
 struct Lt<'a> {
@@ -96,15 +94,15 @@ fn option_methods() {
 
     // Check OPTION_MAP_UNWRAP_OR
     // single line case
-    let _ = opt.map(|x| x + 1) //~  ERROR called `map(f).unwrap_or(a)`
-                               //~| NOTE replace `map(|x| x + 1).unwrap_or(0)`
+    let _ = opt.map(|x| x + 1)
+
                .unwrap_or(0); // should lint even though this call is on a separate line
     // multi line cases
-    let _ = opt.map(|x| { //~ ERROR called `map(f).unwrap_or(a)`
+    let _ = opt.map(|x| {
                         x + 1
                     }
               ).unwrap_or(0);
-    let _ = opt.map(|x| x + 1) //~ ERROR called `map(f).unwrap_or(a)`
+    let _ = opt.map(|x| x + 1)
                .unwrap_or({
                     0
                 });
@@ -113,15 +111,15 @@ fn option_methods() {
 
     // Check OPTION_MAP_UNWRAP_OR_ELSE
     // single line case
-    let _ = opt.map(|x| x + 1) //~  ERROR called `map(f).unwrap_or_else(g)`
-                               //~| NOTE replace `map(|x| x + 1).unwrap_or_else(|| 0)`
+    let _ = opt.map(|x| x + 1)
+
                .unwrap_or_else(|| 0); // should lint even though this call is on a separate line
     // multi line cases
-    let _ = opt.map(|x| { //~ ERROR called `map(f).unwrap_or_else(g)`
+    let _ = opt.map(|x| {
                         x + 1
                     }
               ).unwrap_or_else(|| 0);
-    let _ = opt.map(|x| x + 1) //~ ERROR called `map(f).unwrap_or_else(g)`
+    let _ = opt.map(|x| x + 1)
                .unwrap_or_else(||
                     0
                 );
@@ -194,11 +192,11 @@ fn filter_next() {
 
     // check single-line case
     let _ = v.iter().filter(|&x| *x < 0).next();
-    //~^ ERROR called `filter(p).next()` on an `Iterator`.
-    //~| NOTE replace `filter(|&x| *x < 0).next()`
+
+
 
     // check multi-line case
-    let _ = v.iter().filter(|&x| { //~ERROR called `filter(p).next()` on an `Iterator`.
+    let _ = v.iter().filter(|&x| {
                                 *x < 0
                             }
                    ).next();
@@ -214,33 +212,33 @@ fn search_is_some() {
 
     // check `find().is_some()`, single-line
     let _ = v.iter().find(|&x| *x < 0).is_some();
-    //~^ ERROR called `is_some()` after searching
-    //~| NOTE replace `find(|&x| *x < 0).is_some()`
+
+
 
     // check `find().is_some()`, multi-line
-    let _ = v.iter().find(|&x| { //~ERROR called `is_some()` after searching
+    let _ = v.iter().find(|&x| {
                               *x < 0
                           }
                    ).is_some();
 
     // check `position().is_some()`, single-line
     let _ = v.iter().position(|&x| x < 0).is_some();
-    //~^ ERROR called `is_some()` after searching
-    //~| NOTE replace `position(|&x| x < 0).is_some()`
+
+
 
     // check `position().is_some()`, multi-line
-    let _ = v.iter().position(|&x| { //~ERROR called `is_some()` after searching
+    let _ = v.iter().position(|&x| {
                                   x < 0
                               }
                    ).is_some();
 
     // check `rposition().is_some()`, single-line
     let _ = v.iter().rposition(|&x| x < 0).is_some();
-    //~^ ERROR called `is_some()` after searching
-    //~| NOTE replace `rposition(|&x| x < 0).is_some()`
+
+
 
     // check `rposition().is_some()`, multi-line
-    let _ = v.iter().rposition(|&x| { //~ERROR called `is_some()` after searching
+    let _ = v.iter().rposition(|&x| {
                                    x < 0
                                }
                    ).is_some();
@@ -276,75 +274,75 @@ fn or_fun_call() {
 
     let with_constructor = Some(vec![1]);
     with_constructor.unwrap_or(make());
-    //~^ERROR use of `unwrap_or`
-    //~|HELP try this
-    //~|SUGGESTION with_constructor.unwrap_or_else(make)
+
+
+
 
     let with_new = Some(vec![1]);
     with_new.unwrap_or(Vec::new());
-    //~^ERROR use of `unwrap_or`
-    //~|HELP try this
-    //~|SUGGESTION with_new.unwrap_or_default();
+
+
+
 
     let with_const_args = Some(vec![1]);
     with_const_args.unwrap_or(Vec::with_capacity(12));
-    //~^ERROR use of `unwrap_or`
-    //~|HELP try this
-    //~|SUGGESTION with_const_args.unwrap_or_else(|| Vec::with_capacity(12));
+
+
+
 
     let with_err : Result<_, ()> = Ok(vec![1]);
     with_err.unwrap_or(make());
-    //~^ERROR use of `unwrap_or`
-    //~|HELP try this
-    //~|SUGGESTION with_err.unwrap_or_else(|_| make());
+
+
+
 
     let with_err_args : Result<_, ()> = Ok(vec![1]);
     with_err_args.unwrap_or(Vec::with_capacity(12));
-    //~^ERROR use of `unwrap_or`
-    //~|HELP try this
-    //~|SUGGESTION with_err_args.unwrap_or_else(|_| Vec::with_capacity(12));
+
+
+
 
     let with_default_trait = Some(1);
     with_default_trait.unwrap_or(Default::default());
-    //~^ERROR use of `unwrap_or`
-    //~|HELP try this
-    //~|SUGGESTION with_default_trait.unwrap_or_default();
+
+
+
 
     let with_default_type = Some(1);
     with_default_type.unwrap_or(u64::default());
-    //~^ERROR use of `unwrap_or`
-    //~|HELP try this
-    //~|SUGGESTION with_default_type.unwrap_or_default();
+
+
+
 
     let with_vec = Some(vec![1]);
     with_vec.unwrap_or(vec![]);
-    //~^ERROR use of `unwrap_or`
-    //~|HELP try this
+
+
     // FIXME #944: ~|SUGGESTION with_vec.unwrap_or_else(|| vec![]);
 
     let without_default = Some(Foo);
     without_default.unwrap_or(Foo::new());
-    //~^ERROR use of `unwrap_or`
-    //~|HELP try this
-    //~|SUGGESTION without_default.unwrap_or_else(Foo::new);
+
+
+
 
     let mut map = HashMap::<u64, String>::new();
     map.entry(42).or_insert(String::new());
-    //~^ERROR use of `or_insert` followed by a function call
-    //~|HELP try this
-    //~|SUGGESTION map.entry(42).or_insert_with(String::new);
+
+
+
 
     let mut btree = BTreeMap::<u64, String>::new();
     btree.entry(42).or_insert(String::new());
-    //~^ERROR use of `or_insert` followed by a function call
-    //~|HELP try this
-    //~|SUGGESTION btree.entry(42).or_insert_with(String::new);
+
+
+
 
     let stringy = Some(String::from(""));
     let _ = stringy.unwrap_or("".to_owned());
-    //~^ERROR use of `unwrap_or`
-    //~|HELP try this
-    //~|SUGGESTION stringy.unwrap_or_else(|| "".to_owned());
+
+
+
 }
 
 /// Checks implementation of `ITER_NTH` lint
@@ -356,27 +354,27 @@ fn iter_nth() {
     {
         // Make sure we lint `.iter()` for relevant types
         let bad_vec = some_vec.iter().nth(3);
-        //~^ERROR called `.iter().nth()` on a Vec. Calling `.get()` is both faster and more readable
+
         let bad_slice = &some_vec[..].iter().nth(3);
-        //~^ERROR called `.iter().nth()` on a slice. Calling `.get()` is both faster and more readable
+
         let bad_boxed_slice = boxed_slice.iter().nth(3);
-        //~^ERROR called `.iter().nth()` on a slice. Calling `.get()` is both faster and more readable
+
         let bad_vec_deque = some_vec_deque.iter().nth(3);
-        //~^ERROR called `.iter().nth()` on a VecDeque. Calling `.get()` is both faster and more readable
+
     }
 
     {
         // Make sure we lint `.iter_mut()` for relevant types
         let bad_vec = some_vec.iter_mut().nth(3);
-        //~^ERROR called `.iter_mut().nth()` on a Vec. Calling `.get_mut()` is both faster and more readable
+
     }
     {
         let bad_slice = &some_vec[..].iter_mut().nth(3);
-        //~^ERROR called `.iter_mut().nth()` on a slice. Calling `.get_mut()` is both faster and more readable
+
     }
     {
         let bad_vec_deque = some_vec_deque.iter_mut().nth(3);
-        //~^ERROR called `.iter_mut().nth()` on a VecDeque. Calling `.get_mut()` is both faster and more readable
+
     }
 
     // Make sure we don't lint for non-relevant types
@@ -390,16 +388,16 @@ fn iter_skip_next() {
     let mut some_vec = vec![0, 1, 2, 3];
 
     let _ = some_vec.iter().skip(42).next();
-    //~^ERROR called `skip(x).next()` on an iterator. This is more succinctly expressed by calling `nth(x)`
+
 
     let _ = some_vec.iter().cycle().skip(42).next();
-    //~^ERROR called `skip(x).next()` on an iterator. This is more succinctly expressed by calling `nth(x)`
+
 
     let _ = (1..10).skip(10).next();
-    //~^ERROR called `skip(x).next()` on an iterator. This is more succinctly expressed by calling `nth(x)`
+
 
     let _ = &some_vec[..].iter().skip(3).next();
-    //~^ERROR called `skip(x).next()` on an iterator. This is more succinctly expressed by calling `nth(x)`
+
 
     let foo = IteratorFalsePositives { foo : 0 };
     let _ = foo.skip(42).next();
@@ -427,50 +425,50 @@ fn get_unwrap() {
 
     { // Test `get().unwrap()`
         let _ = boxed_slice.get(1).unwrap();
-        //~^ERROR called `.get().unwrap()` on a slice. Using `[]` is more clear and more concise
-        //~|HELP try this
-        //~|SUGGESTION boxed_slice[1]
+
+
+
         let _ = some_slice.get(0).unwrap();
-        //~^ERROR called `.get().unwrap()` on a slice. Using `[]` is more clear and more concise
-        //~|HELP try this
-        //~|SUGGESTION some_slice[0]
+
+
+
         let _ = some_vec.get(0).unwrap();
-        //~^ERROR called `.get().unwrap()` on a Vec. Using `[]` is more clear and more concise
-        //~|HELP try this
-        //~|SUGGESTION some_vec[0]
+
+
+
         let _ = some_vecdeque.get(0).unwrap();
-        //~^ERROR called `.get().unwrap()` on a VecDeque. Using `[]` is more clear and more concise
-        //~|HELP try this
-        //~|SUGGESTION some_vecdeque[0]
+
+
+
         let _ = some_hashmap.get(&1).unwrap();
-        //~^ERROR called `.get().unwrap()` on a HashMap. Using `[]` is more clear and more concise
-        //~|HELP try this
-        //~|SUGGESTION some_hashmap[&1]
+
+
+
         let _ = some_btreemap.get(&1).unwrap();
-        //~^ERROR called `.get().unwrap()` on a BTreeMap. Using `[]` is more clear and more concise
-        //~|HELP try this
-        //~|SUGGESTION some_btreemap[&1]
+
+
+
 
         let _ = false_positive.get(0).unwrap();
     }
 
     { // Test `get_mut().unwrap()`
         *boxed_slice.get_mut(0).unwrap() = 1;
-        //~^ERROR called `.get_mut().unwrap()` on a slice. Using `[]` is more clear and more concise
-        //~|HELP try this
-        //~|SUGGESTION &mut boxed_slice[0]
+
+
+
         *some_slice.get_mut(0).unwrap() = 1;
-        //~^ERROR called `.get_mut().unwrap()` on a slice. Using `[]` is more clear and more concise
-        //~|HELP try this
-        //~|SUGGESTION &mut some_slice[0]
+
+
+
         *some_vec.get_mut(0).unwrap() = 1;
-        //~^ERROR called `.get_mut().unwrap()` on a Vec. Using `[]` is more clear and more concise
-        //~|HELP try this
-        //~|SUGGESTION &mut some_vec[0]
+
+
+
         *some_vecdeque.get_mut(0).unwrap() = 1;
-        //~^ERROR called `.get_mut().unwrap()` on a VecDeque. Using `[]` is more clear and more concise
-        //~|HELP try this
-        //~|SUGGESTION &mut some_vecdeque[0]
+
+
+
 
         // Check false positives
         *some_hashmap.get_mut(&1).unwrap() = 'b';
@@ -485,24 +483,24 @@ fn main() {
     use std::io;
 
     let opt = Some(0);
-    let _ = opt.unwrap();  //~ERROR used unwrap() on an Option
+    let _ = opt.unwrap();
 
     let res: Result<i32, ()> = Ok(0);
-    let _ = res.unwrap();  //~ERROR used unwrap() on a Result
+    let _ = res.unwrap();
 
-    res.ok().expect("disaster!"); //~ERROR called `ok().expect()`
+    res.ok().expect("disaster!");
     // the following should not warn, since `expect` isn't implemented unless
     // the error type implements `Debug`
     let res2: Result<i32, MyError> = Ok(0);
     res2.ok().expect("oh noes!");
     let res3: Result<u32, MyErrorWithParam<u8>>= Ok(0);
-    res3.ok().expect("whoof"); //~ERROR called `ok().expect()`
+    res3.ok().expect("whoof");
     let res4: Result<u32, io::Error> = Ok(0);
-    res4.ok().expect("argh"); //~ERROR called `ok().expect()`
+    res4.ok().expect("argh");
     let res5: io::Result<u32> = Ok(0);
-    res5.ok().expect("oops"); //~ERROR called `ok().expect()`
+    res5.ok().expect("oops");
     let res6: Result<u32, &str> = Ok(0);
-    res6.ok().expect("meh"); //~ERROR called `ok().expect()`
+    res6.ok().expect("meh");
 }
 
 struct MyError(()); // doesn't implement Debug
@@ -515,14 +513,14 @@ struct MyErrorWithParam<T> {
 #[allow(unnecessary_operation)]
 fn starts_with() {
     "".chars().next() == Some(' ');
-    //~^ ERROR starts_with
-    //~| HELP like this
-    //~| SUGGESTION "".starts_with(' ')
+
+
+
 
     Some(' ') != "".chars().next();
-    //~^ ERROR starts_with
-    //~| HELP like this
-    //~| SUGGESTION !"".starts_with(' ')
+
+
+
 }
 
 fn str_extend_chars() {
@@ -532,21 +530,21 @@ fn str_extend_chars() {
 
     s.push_str(abc);
     s.extend(abc.chars());
-    //~^ERROR calling `.extend(_.chars())`
-    //~|HELP try this
-    //~|SUGGESTION s.push_str(abc)
+
+
+
 
     s.push_str("abc");
     s.extend("abc".chars());
-    //~^ERROR calling `.extend(_.chars())`
-    //~|HELP try this
-    //~|SUGGESTION s.push_str("abc")
+
+
+
 
     s.push_str(&def);
     s.extend(def.chars());
-    //~^ERROR calling `.extend(_.chars())`
-    //~|HELP try this
-    //~|SUGGESTION s.push_str(&def)
+
+
+
 
     s.extend(abc.chars().skip(1));
     s.extend("abc".chars().skip(1));
@@ -557,40 +555,40 @@ fn str_extend_chars() {
 }
 
 fn clone_on_copy() {
-    42.clone(); //~ERROR using `clone` on a `Copy` type
-                //~| HELP try removing the `clone` call
-                //~| SUGGESTION 42
+    42.clone();
+
+
     vec![1].clone(); // ok, not a Copy type
     Some(vec![1]).clone(); // ok, not a Copy type
-    (&42).clone(); //~ERROR using `clone` on a `Copy` type
-                   //~| HELP try dereferencing it
-                   //~| SUGGESTION *(&42)
+    (&42).clone();
+
+
 }
 
 fn clone_on_copy_generic<T: Copy>(t: T) {
-    t.clone(); //~ERROR using `clone` on a `Copy` type
-               //~| HELP try removing the `clone` call
-               //~| SUGGESTION t
-    Some(t).clone(); //~ERROR using `clone` on a `Copy` type
-                     //~| HELP try removing the `clone` call
-                     //~| SUGGESTION Some(t)
+    t.clone();
+
+
+    Some(t).clone();
+
+
 }
 
 fn clone_on_double_ref() {
     let x = vec![1];
     let y = &&x;
-    let z: &Vec<_> = y.clone(); //~ERROR using `clone` on a double
-                                //~| HELP try dereferencing it
-                                //~| SUGGESTION let z: &Vec<_> = (*y).clone();
+    let z: &Vec<_> = y.clone();
+
+
     println!("{:p} {:p}",*y, z);
 }
 
 fn single_char_pattern() {
     let x = "foo";
     x.split("x");
-    //~^ ERROR single-character string constant used as pattern
-    //~| HELP try using a char instead:
-    //~| SUGGESTION x.split('x');
+
+
+
 
     x.split("xx");
 
@@ -612,69 +610,69 @@ fn single_char_pattern() {
     x.split("❤️");
 
     x.contains("x");
-    //~^ ERROR single-character string constant used as pattern
-    //~| HELP try using a char instead:
-    //~| SUGGESTION x.contains('x');
+
+
+
     x.starts_with("x");
-    //~^ ERROR single-character string constant used as pattern
-    //~| HELP try using a char instead:
-    //~| SUGGESTION x.starts_with('x');
+
+
+
     x.ends_with("x");
-    //~^ ERROR single-character string constant used as pattern
-    //~| HELP try using a char instead:
-    //~| SUGGESTION x.ends_with('x');
+
+
+
     x.find("x");
-    //~^ ERROR single-character string constant used as pattern
-    //~| HELP try using a char instead:
-    //~| SUGGESTION x.find('x');
+
+
+
     x.rfind("x");
-    //~^ ERROR single-character string constant used as pattern
-    //~| HELP try using a char instead:
-    //~| SUGGESTION x.rfind('x');
+
+
+
     x.rsplit("x");
-    //~^ ERROR single-character string constant used as pattern
-    //~| HELP try using a char instead:
-    //~| SUGGESTION x.rsplit('x');
+
+
+
     x.split_terminator("x");
-    //~^ ERROR single-character string constant used as pattern
-    //~| HELP try using a char instead:
-    //~| SUGGESTION x.split_terminator('x');
+
+
+
     x.rsplit_terminator("x");
-    //~^ ERROR single-character string constant used as pattern
-    //~| HELP try using a char instead:
-    //~| SUGGESTION x.rsplit_terminator('x');
+
+
+
     x.splitn(0, "x");
-    //~^ ERROR single-character string constant used as pattern
-    //~| HELP try using a char instead:
-    //~| SUGGESTION x.splitn(0, 'x');
+
+
+
     x.rsplitn(0, "x");
-    //~^ ERROR single-character string constant used as pattern
-    //~| HELP try using a char instead:
-    //~| SUGGESTION x.rsplitn(0, 'x');
+
+
+
     x.matches("x");
-    //~^ ERROR single-character string constant used as pattern
-    //~| HELP try using a char instead:
-    //~| SUGGESTION x.matches('x');
+
+
+
     x.rmatches("x");
-    //~^ ERROR single-character string constant used as pattern
-    //~| HELP try using a char instead:
-    //~| SUGGESTION x.rmatches('x');
+
+
+
     x.match_indices("x");
-    //~^ ERROR single-character string constant used as pattern
-    //~| HELP try using a char instead:
-    //~| SUGGESTION x.match_indices('x');
+
+
+
     x.rmatch_indices("x");
-    //~^ ERROR single-character string constant used as pattern
-    //~| HELP try using a char instead:
-    //~| SUGGESTION x.rmatch_indices('x');
+
+
+
     x.trim_left_matches("x");
-    //~^ ERROR single-character string constant used as pattern
-    //~| HELP try using a char instead:
-    //~| SUGGESTION x.trim_left_matches('x');
+
+
+
     x.trim_right_matches("x");
-    //~^ ERROR single-character string constant used as pattern
-    //~| HELP try using a char instead:
-    //~| SUGGESTION x.trim_right_matches('x');
+
+
+
 
     let h = HashSet::<String>::new();
     h.contains("X"); // should not warn
@@ -685,7 +683,7 @@ fn temporary_cstring() {
     use std::ffi::CString;
 
     CString::new("foo").unwrap().as_ptr();
-    //~^ ERROR you are getting the inner pointer of a temporary `CString`
-    //~| NOTE that pointer will be invalid outside this expression
-    //~| HELP assign the `CString` to a variable to extend its lifetime
+
+
+
 }

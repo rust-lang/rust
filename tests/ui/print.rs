@@ -10,7 +10,7 @@ struct Foo;
 impl Display for Foo {
     fn fmt(&self, f: &mut Formatter) -> Result {
         write!(f, "{:?}", 43.1415)
-        //~^ ERROR use of `Debug`-based formatting
+
     }
 }
 
@@ -22,18 +22,18 @@ impl Debug for Foo {
 }
 
 fn main() {
-    println!("Hello"); //~ERROR use of `println!`
-    print!("Hello"); //~ERROR use of `print!`
+    println!("Hello");
+    print!("Hello");
 
-    print!("Hello {}", "World"); //~ERROR use of `print!`
+    print!("Hello {}", "World");
 
     print!("Hello {:?}", "World");
-    //~^ ERROR use of `print!`
-    //~| ERROR use of `Debug`-based formatting
+
+
 
     print!("Hello {:#?}", "#orld");
-    //~^ ERROR use of `print!`
-    //~| ERROR use of `Debug`-based formatting
+
+
 
     assert_eq!(42, 1337);
 

@@ -14,7 +14,7 @@ macro_rules! boxit {
 fn test_macro() {
     boxit!(Vec::new(), Vec<u8>);
 }
-pub fn test(foo: Box<Vec<bool>>) { //~ ERROR you seem to be trying to use `Box<Vec<T>>`
+pub fn test(foo: Box<Vec<bool>>) {
     println!("{:?}", foo.get(0))
 }
 

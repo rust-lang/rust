@@ -5,7 +5,7 @@
 #![deny(unused_label)]
 
 fn unused_label() {
-    'label: for i in 1..2 { //~ERROR: unused label `'label`
+    'label: for i in 1..2 {
         if i > 4 { continue }
     }
 }
@@ -18,7 +18,7 @@ fn foo() {
 
 
 fn bla() {
-    'a: loop { break } //~ERROR: unused label `'a`
+    'a: loop { break }
     fn blub() {}
 }
 
@@ -29,7 +29,7 @@ fn main() {
         }
     }
 
-    'same_label_in_two_fns: loop { //~ERROR: unused label `'same_label_in_two_fns`
+    'same_label_in_two_fns: loop {
         let _ = 1;
     }
 }

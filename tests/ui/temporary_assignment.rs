@@ -26,8 +26,8 @@ fn main() {
     let mut s = Struct { field: 0 };
     let mut t = (0, 0);
 
-    Struct { field: 0 }.field = 1; //~ERROR assignment to temporary
-    (0, 0).0 = 1; //~ERROR assignment to temporary
+    Struct { field: 0 }.field = 1;
+    (0, 0).0 = 1;
 
     // no error
     s.field = 1;

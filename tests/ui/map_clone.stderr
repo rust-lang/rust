@@ -1,7 +1,7 @@
 error: you seem to be using .map() to clone the contents of an iterator, consider using `.cloned()`
   --> $DIR/map_clone.rs:12:5
    |
-12 |     x.iter().map(|y| y.clone()); //~ ERROR you seem to be using .map()
+12 |     x.iter().map(|y| y.clone());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: lint level defined here
@@ -15,7 +15,7 @@ note: lint level defined here
 error: you seem to be using .map() to clone the contents of an iterator, consider using `.cloned()`
   --> $DIR/map_clone.rs:14:5
    |
-14 |     x.iter().map(|&y| y); //~ ERROR you seem to be using .map()
+14 |     x.iter().map(|&y| y);
    |     ^^^^^^^^^^^^^^^^^^^^
    |
    = help: try
@@ -24,7 +24,7 @@ error: you seem to be using .map() to clone the contents of an iterator, conside
 error: you seem to be using .map() to clone the contents of an iterator, consider using `.cloned()`
   --> $DIR/map_clone.rs:16:5
    |
-16 |     x.iter().map(|y| *y); //~ ERROR you seem to be using .map()
+16 |     x.iter().map(|y| *y);
    |     ^^^^^^^^^^^^^^^^^^^^
    |
    = help: try
@@ -33,7 +33,7 @@ error: you seem to be using .map() to clone the contents of an iterator, conside
 error: you seem to be using .map() to clone the contents of an iterator, consider using `.cloned()`
   --> $DIR/map_clone.rs:18:5
    |
-18 |     x.iter().map(|y| { y.clone() }); //~ ERROR you seem to be using .map()
+18 |     x.iter().map(|y| { y.clone() });
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: try
@@ -42,7 +42,7 @@ error: you seem to be using .map() to clone the contents of an iterator, conside
 error: you seem to be using .map() to clone the contents of an iterator, consider using `.cloned()`
   --> $DIR/map_clone.rs:20:5
    |
-20 |     x.iter().map(|&y| { y }); //~ ERROR you seem to be using .map()
+20 |     x.iter().map(|&y| { y });
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: try
@@ -51,7 +51,7 @@ error: you seem to be using .map() to clone the contents of an iterator, conside
 error: you seem to be using .map() to clone the contents of an iterator, consider using `.cloned()`
   --> $DIR/map_clone.rs:22:5
    |
-22 |     x.iter().map(|y| { *y }); //~ ERROR you seem to be using .map()
+22 |     x.iter().map(|y| { *y });
    |     ^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: try
@@ -60,7 +60,7 @@ error: you seem to be using .map() to clone the contents of an iterator, conside
 error: you seem to be using .map() to clone the contents of an iterator, consider using `.cloned()`
   --> $DIR/map_clone.rs:24:5
    |
-24 |     x.iter().map(Clone::clone); //~ ERROR you seem to be using .map()
+24 |     x.iter().map(Clone::clone);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: try
@@ -69,7 +69,7 @@ error: you seem to be using .map() to clone the contents of an iterator, conside
 error: you seem to be using .map() to clone the contents of an Option, consider using `.cloned()`
   --> $DIR/map_clone.rs:30:5
    |
-30 |     x.as_ref().map(|y| y.clone()); //~ ERROR you seem to be using .map()
+30 |     x.as_ref().map(|y| y.clone());
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: try
@@ -78,7 +78,7 @@ error: you seem to be using .map() to clone the contents of an Option, consider 
 error: you seem to be using .map() to clone the contents of an Option, consider using `.cloned()`
   --> $DIR/map_clone.rs:32:5
    |
-32 |     x.as_ref().map(|&y| y); //~ ERROR you seem to be using .map()
+32 |     x.as_ref().map(|&y| y);
    |     ^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: try
@@ -87,7 +87,7 @@ error: you seem to be using .map() to clone the contents of an Option, consider 
 error: you seem to be using .map() to clone the contents of an Option, consider using `.cloned()`
   --> $DIR/map_clone.rs:34:5
    |
-34 |     x.as_ref().map(|y| *y); //~ ERROR you seem to be using .map()
+34 |     x.as_ref().map(|y| *y);
    |     ^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: try
@@ -96,7 +96,7 @@ error: you seem to be using .map() to clone the contents of an Option, consider 
 error: you seem to be using .map() to clone the contents of an Option, consider using `.cloned()`
   --> $DIR/map_clone.rs:90:35
    |
-90 |     let _: Option<UnusualDeref> = x.as_ref().map(|y| *y); //~ ERROR you seem to be using .map()
+90 |     let _: Option<UnusualDeref> = x.as_ref().map(|y| *y);
    |                                   ^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: try

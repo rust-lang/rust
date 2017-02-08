@@ -1,7 +1,7 @@
 error: assignment to temporary
   --> $DIR/temporary_assignment.rs:29:5
    |
-29 |     Struct { field: 0 }.field = 1; //~ERROR assignment to temporary
+29 |     Struct { field: 0 }.field = 1;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: lint level defined here
@@ -13,7 +13,7 @@ note: lint level defined here
 error: assignment to temporary
   --> $DIR/temporary_assignment.rs:30:5
    |
-30 |     (0, 0).0 = 1; //~ERROR assignment to temporary
+30 |     (0, 0).0 = 1;
    |     ^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors

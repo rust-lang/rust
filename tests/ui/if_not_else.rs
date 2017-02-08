@@ -6,12 +6,12 @@
 fn bla() -> bool { unimplemented!() }
 
 fn main() {
-    if !bla() { //~ ERROR: Unnecessary boolean `not` operation
+    if !bla() {
         println!("Bugs");
     } else {
         println!("Bunny");
     }
-    if 4 != 5 { //~ ERROR: Unnecessary `!=` operation
+    if 4 != 5 {
         println!("Bugs");
     } else {
         println!("Bunny");

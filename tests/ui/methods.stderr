@@ -1,7 +1,7 @@
 error: defining a method called `add` on this type; consider implementing the `std::ops::Add` trait or choosing a less ambiguous name
   --> $DIR/methods.rs:18:5
    |
-18 |     fn add(self, other: T) -> T { self } //~ERROR defining a method called `add`
+18 |     fn add(self, other: T) -> T { self }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: #[deny(should_implement_trait)] implied by #[deny(clippy)]
@@ -14,7 +14,7 @@ note: lint level defined here
 error: defining a method called `drop` on this type; consider implementing the `std::ops::Drop` trait or choosing a less ambiguous name
   --> $DIR/methods.rs:19:5
    |
-19 |     fn drop(&mut self) { } //~ERROR defining a method called `drop`
+19 |     fn drop(&mut self) { }
    |     ^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: #[deny(should_implement_trait)] implied by #[deny(clippy)]
@@ -22,7 +22,7 @@ error: defining a method called `drop` on this type; consider implementing the `
 error: methods called `into_*` usually take self by value; consider choosing a less ambiguous name
   --> $DIR/methods.rs:26:17
    |
-26 |     fn into_u16(&self) -> u16 { 0 } //~ERROR methods called `into_*` usually take self by value
+26 |     fn into_u16(&self) -> u16 { 0 }
    |                 ^^^^^
    |
    = note: #[deny(wrong_self_convention)] implied by #[deny(clippy)]
@@ -35,7 +35,7 @@ note: lint level defined here
 error: methods called `to_*` usually take self by reference; consider choosing a less ambiguous name
   --> $DIR/methods.rs:28:21
    |
-28 |     fn to_something(self) -> u32 { 0 } //~ERROR methods called `to_*` usually take self by reference
+28 |     fn to_something(self) -> u32 { 0 }
    |                     ^^^^
    |
    = note: #[deny(wrong_self_convention)] implied by #[deny(clippy)]
@@ -64,9 +64,9 @@ note: lint level defined here
 error: called `map(f).unwrap_or(a)` on an Option value. This can be done more directly by calling `map_or(a, f)` instead
    --> $DIR/methods.rs:99:13
     |
-99  |       let _ = opt.map(|x| x + 1) //~  ERROR called `map(f).unwrap_or(a)`
+99  |       let _ = opt.map(|x| x + 1)
     |  _____________^ starting here...
-100 | |                                //~| NOTE replace `map(|x| x + 1).unwrap_or(0)`
+100 | |
 101 | |                .unwrap_or(0); // should lint even though this call is on a separate line
     | |____________________________^ ...ending here
     |
@@ -81,7 +81,7 @@ note: lint level defined here
 error: called `map(f).unwrap_or(a)` on an Option value. This can be done more directly by calling `map_or(a, f)` instead
    --> $DIR/methods.rs:103:13
     |
-103 |       let _ = opt.map(|x| { //~ ERROR called `map(f).unwrap_or(a)`
+103 |       let _ = opt.map(|x| {
     |  _____________^ starting here...
 104 | |                         x + 1
 105 | |                     }
@@ -93,7 +93,7 @@ error: called `map(f).unwrap_or(a)` on an Option value. This can be done more di
 error: called `map(f).unwrap_or(a)` on an Option value. This can be done more directly by calling `map_or(a, f)` instead
    --> $DIR/methods.rs:107:13
     |
-107 |       let _ = opt.map(|x| x + 1) //~ ERROR called `map(f).unwrap_or(a)`
+107 |       let _ = opt.map(|x| x + 1)
     |  _____________^ starting here...
 108 | |                .unwrap_or({
 109 | |                     0
@@ -105,9 +105,9 @@ error: called `map(f).unwrap_or(a)` on an Option value. This can be done more di
 error: called `map(f).unwrap_or_else(g)` on an Option value. This can be done more directly by calling `map_or_else(g, f)` instead
    --> $DIR/methods.rs:116:13
     |
-116 |       let _ = opt.map(|x| x + 1) //~  ERROR called `map(f).unwrap_or_else(g)`
+116 |       let _ = opt.map(|x| x + 1)
     |  _____________^ starting here...
-117 | |                                //~| NOTE replace `map(|x| x + 1).unwrap_or_else(|| 0)`
+117 | |
 118 | |                .unwrap_or_else(|| 0); // should lint even though this call is on a separate line
     | |____________________________________^ ...ending here
     |
@@ -122,7 +122,7 @@ note: lint level defined here
 error: called `map(f).unwrap_or_else(g)` on an Option value. This can be done more directly by calling `map_or_else(g, f)` instead
    --> $DIR/methods.rs:120:13
     |
-120 |       let _ = opt.map(|x| { //~ ERROR called `map(f).unwrap_or_else(g)`
+120 |       let _ = opt.map(|x| {
     |  _____________^ starting here...
 121 | |                         x + 1
 122 | |                     }
@@ -134,7 +134,7 @@ error: called `map(f).unwrap_or_else(g)` on an Option value. This can be done mo
 error: called `map(f).unwrap_or_else(g)` on an Option value. This can be done more directly by calling `map_or_else(g, f)` instead
    --> $DIR/methods.rs:124:13
     |
-124 |       let _ = opt.map(|x| x + 1) //~ ERROR called `map(f).unwrap_or_else(g)`
+124 |       let _ = opt.map(|x| x + 1)
     |  _____________^ starting here...
 125 | |                .unwrap_or_else(||
 126 | |                     0
@@ -160,7 +160,7 @@ note: lint level defined here
 error: called `filter(p).next()` on an `Iterator`. This is more succinctly expressed by calling `.find(p)` instead.
    --> $DIR/methods.rs:201:13
     |
-201 |       let _ = v.iter().filter(|&x| { //~ERROR called `filter(p).next()` on an `Iterator`.
+201 |       let _ = v.iter().filter(|&x| {
     |  _____________^ starting here...
 202 | |                                 *x < 0
 203 | |                             }
@@ -186,7 +186,7 @@ note: lint level defined here
 error: called `is_some()` after searching an `Iterator` with find. This is more succinctly expressed by calling `any()`.
    --> $DIR/methods.rs:221:13
     |
-221 |       let _ = v.iter().find(|&x| { //~ERROR called `is_some()` after searching
+221 |       let _ = v.iter().find(|&x| {
     |  _____________^ starting here...
 222 | |                               *x < 0
 223 | |                           }
@@ -207,7 +207,7 @@ error: called `is_some()` after searching an `Iterator` with position. This is m
 error: called `is_some()` after searching an `Iterator` with position. This is more succinctly expressed by calling `any()`.
    --> $DIR/methods.rs:232:13
     |
-232 |       let _ = v.iter().position(|&x| { //~ERROR called `is_some()` after searching
+232 |       let _ = v.iter().position(|&x| {
     |  _____________^ starting here...
 233 | |                                   x < 0
 234 | |                               }
@@ -228,7 +228,7 @@ error: called `is_some()` after searching an `Iterator` with rposition. This is 
 error: called `is_some()` after searching an `Iterator` with rposition. This is more succinctly expressed by calling `any()`.
    --> $DIR/methods.rs:243:13
     |
-243 |       let _ = v.iter().rposition(|&x| { //~ERROR called `is_some()` after searching
+243 |       let _ = v.iter().rposition(|&x| {
     |  _____________^ starting here...
 244 | |                                    x < 0
 245 | |                                }
@@ -568,7 +568,7 @@ help: try this
 error: used unwrap() on an Option value. If you don't want to handle the None case gracefully, consider using expect() to provide a better panic message
    --> $DIR/methods.rs:488:13
     |
-488 |     let _ = opt.unwrap();  //~ERROR used unwrap() on an Option
+488 |     let _ = opt.unwrap();
     |             ^^^^^^^^^^^^
     |
     = note: #[deny(option_unwrap_used)] implied by #[deny(clippy_pedantic)]
@@ -581,7 +581,7 @@ note: lint level defined here
 error: used unwrap() on a Result value. If you don't want to handle the Err case gracefully, consider using expect() to provide a better panic message
    --> $DIR/methods.rs:491:13
     |
-491 |     let _ = res.unwrap();  //~ERROR used unwrap() on a Result
+491 |     let _ = res.unwrap();
     |             ^^^^^^^^^^^^
     |
     = note: #[deny(result_unwrap_used)] implied by #[deny(clippy_pedantic)]
@@ -594,7 +594,7 @@ note: lint level defined here
 error: called `ok().expect()` on a Result value. You can call `expect` directly on the `Result`
    --> $DIR/methods.rs:493:5
     |
-493 |     res.ok().expect("disaster!"); //~ERROR called `ok().expect()`
+493 |     res.ok().expect("disaster!");
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
     = note: #[deny(ok_expect)] implied by #[deny(clippy)]
@@ -607,7 +607,7 @@ note: lint level defined here
 error: called `ok().expect()` on a Result value. You can call `expect` directly on the `Result`
    --> $DIR/methods.rs:499:5
     |
-499 |     res3.ok().expect("whoof"); //~ERROR called `ok().expect()`
+499 |     res3.ok().expect("whoof");
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^
     |
     = note: #[deny(ok_expect)] implied by #[deny(clippy)]
@@ -615,7 +615,7 @@ error: called `ok().expect()` on a Result value. You can call `expect` directly 
 error: called `ok().expect()` on a Result value. You can call `expect` directly on the `Result`
    --> $DIR/methods.rs:501:5
     |
-501 |     res4.ok().expect("argh"); //~ERROR called `ok().expect()`
+501 |     res4.ok().expect("argh");
     |     ^^^^^^^^^^^^^^^^^^^^^^^^
     |
     = note: #[deny(ok_expect)] implied by #[deny(clippy)]
@@ -623,7 +623,7 @@ error: called `ok().expect()` on a Result value. You can call `expect` directly 
 error: called `ok().expect()` on a Result value. You can call `expect` directly on the `Result`
    --> $DIR/methods.rs:503:5
     |
-503 |     res5.ok().expect("oops"); //~ERROR called `ok().expect()`
+503 |     res5.ok().expect("oops");
     |     ^^^^^^^^^^^^^^^^^^^^^^^^
     |
     = note: #[deny(ok_expect)] implied by #[deny(clippy)]
@@ -631,7 +631,7 @@ error: called `ok().expect()` on a Result value. You can call `expect` directly 
 error: called `ok().expect()` on a Result value. You can call `expect` directly on the `Result`
    --> $DIR/methods.rs:505:5
     |
-505 |     res6.ok().expect("meh"); //~ERROR called `ok().expect()`
+505 |     res6.ok().expect("meh");
     |     ^^^^^^^^^^^^^^^^^^^^^^^
     |
     = note: #[deny(ok_expect)] implied by #[deny(clippy)]
@@ -699,7 +699,7 @@ help: try this
 error: using `clone` on a `Copy` type
    --> $DIR/methods.rs:560:5
     |
-560 |     42.clone(); //~ERROR using `clone` on a `Copy` type
+560 |     42.clone();
     |     ^^^^^^^^^^
     |
     = note: #[deny(clone_on_copy)] implied by #[deny(clippy)]
@@ -709,42 +709,42 @@ note: lint level defined here
 5   | #![deny(clippy, clippy_pedantic)]
     |         ^^^^^^
 help: try removing the `clone` call
-    |     42; //~ERROR using `clone` on a `Copy` type
+    |     42;
 
 error: using `clone` on a `Copy` type
    --> $DIR/methods.rs:565:5
     |
-565 |     (&42).clone(); //~ERROR using `clone` on a `Copy` type
+565 |     (&42).clone();
     |     ^^^^^^^^^^^^^
     |
     = note: #[deny(clone_on_copy)] implied by #[deny(clippy)]
 help: try dereferencing it
-    |     *(&42); //~ERROR using `clone` on a `Copy` type
+    |     *(&42);
 
 error: using `clone` on a `Copy` type
    --> $DIR/methods.rs:571:5
     |
-571 |     t.clone(); //~ERROR using `clone` on a `Copy` type
+571 |     t.clone();
     |     ^^^^^^^^^
     |
     = note: #[deny(clone_on_copy)] implied by #[deny(clippy)]
 help: try removing the `clone` call
-    |     t; //~ERROR using `clone` on a `Copy` type
+    |     t;
 
 error: using `clone` on a `Copy` type
    --> $DIR/methods.rs:574:5
     |
-574 |     Some(t).clone(); //~ERROR using `clone` on a `Copy` type
+574 |     Some(t).clone();
     |     ^^^^^^^^^^^^^^^
     |
     = note: #[deny(clone_on_copy)] implied by #[deny(clippy)]
 help: try removing the `clone` call
-    |     Some(t); //~ERROR using `clone` on a `Copy` type
+    |     Some(t);
 
 error: using `clone` on a double-reference; this will copy the reference instead of cloning the inner type
    --> $DIR/methods.rs:582:22
     |
-582 |     let z: &Vec<_> = y.clone(); //~ERROR using `clone` on a double
+582 |     let z: &Vec<_> = y.clone();
     |                      ^^^^^^^^^
     |
     = note: #[deny(clone_double_ref)] implied by #[deny(clippy)]
@@ -754,7 +754,7 @@ note: lint level defined here
 5   | #![deny(clippy, clippy_pedantic)]
     |         ^^^^^^
 help: try dereferencing it
-    |     let z: &Vec<_> = (*y).clone(); //~ERROR using `clone` on a double
+    |     let z: &Vec<_> = (*y).clone();
 
 error: single-character string constant used as pattern
    --> $DIR/methods.rs:590:13

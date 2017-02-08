@@ -1,7 +1,7 @@
 error: returning the result of a let binding from a block. Consider returning the expression directly.
   --> $DIR/let_return.rs:10:5
    |
-10 |     x            //~ERROR returning the result of a let binding
+10 |     x
    |     ^
    |
 note: lint level defined here
@@ -12,19 +12,19 @@ note: lint level defined here
 note: this expression can be directly returned
   --> $DIR/let_return.rs:9:13
    |
-9  |     let x = 5;   //~NOTE this expression can be directly returned
+9  |     let x = 5;
    |             ^
 
 error: returning the result of a let binding from a block. Consider returning the expression directly.
   --> $DIR/let_return.rs:16:9
    |
-16 |         x            //~ERROR returning the result of a let binding
+16 |         x
    |         ^
    |
 note: this expression can be directly returned
   --> $DIR/let_return.rs:15:17
    |
-15 |         let x = 5;   //~NOTE this expression can be directly returned
+15 |         let x = 5;
    |                 ^
 
 error: aborting due to 2 previous errors

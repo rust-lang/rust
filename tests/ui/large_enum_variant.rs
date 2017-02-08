@@ -7,19 +7,19 @@
 
 enum LargeEnum {
     A(i32),
-    B([i32; 8000]), //~ ERROR large enum variant found
-    //~^ HELP consider boxing the large fields to reduce the total size of the enum
-    //~| SUGGESTION Box<[i32; 8000]>
+    B([i32; 8000]),
+
+
 }
 
 enum GenericEnum<T> {
     A(i32),
-    B([i32; 8000]), //~ ERROR large enum variant found
-    //~^ HELP consider boxing the large fields to reduce the total size of the enum
-    //~| SUGGESTION Box<[i32; 8000]>
+    B([i32; 8000]),
+
+
     C([T; 8000]),
-    D(T, [i32; 8000]), //~ ERROR large enum variant found
-    //~^ HELP consider boxing the large fields to reduce the total size of the enum
+    D(T, [i32; 8000]),
+
 }
 
 trait SomeTrait {
@@ -32,19 +32,19 @@ enum LargeEnumGeneric<A: SomeTrait> {
 
 enum AnotherLargeEnum {
     VariantOk(i32, u32),
-    ContainingLargeEnum(LargeEnum), //~ ERROR large enum variant found
-    //~^ HELP consider boxing the large fields to reduce the total size of the enum
-    //~| SUGGESTION Box<LargeEnum>
-    ContainingMoreThanOneField(i32, [i32; 8000], [i32; 9500]), //~ ERROR large enum variant found
-    //~^ HELP consider boxing the large fields to reduce the total size of the enum
+    ContainingLargeEnum(LargeEnum),
+
+
+    ContainingMoreThanOneField(i32, [i32; 8000], [i32; 9500]),
+
     VoidVariant,
     StructLikeLittle { x: i32, y: i32 },
-    StructLikeLarge { x: [i32; 8000], y: i32 }, //~ ERROR large enum variant found
-    //~^ HELP consider boxing the large fields to reduce the total size of the enum
-    StructLikeLarge2 { //~ ERROR large enum variant found
+    StructLikeLarge { x: [i32; 8000], y: i32 },
+
+    StructLikeLarge2 {
         x:
-        [i32; 8000] //~ SUGGESTION Box<[i32; 8000]>
-        //~^ HELP consider boxing the large fields to reduce the total size of the enum
+        [i32; 8000]
+
     },
 }
 

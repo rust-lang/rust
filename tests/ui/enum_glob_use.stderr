@@ -1,7 +1,7 @@
 error: don't use glob imports for enum variants
  --> $DIR/enum_glob_use.rs:6:1
   |
-6 | use std::cmp::Ordering::*; //~ ERROR: don't use glob imports for enum variants
+6 | use std::cmp::Ordering::*;
   | ^^^^^^^^^^^^^^^^^^^^^^^^^^
   |
   = note: #[deny(enum_glob_use)] implied by #[deny(clippy_pedantic)]
@@ -14,7 +14,7 @@ note: lint level defined here
 error: don't use glob imports for enum variants
   --> $DIR/enum_glob_use.rs:12:1
    |
-12 | use self::Enum::*; //~ ERROR: don't use glob imports for enum variants
+12 | use self::Enum::*;
    | ^^^^^^^^^^^^^^^^^^
    |
    = note: #[deny(enum_glob_use)] implied by #[deny(clippy_pedantic)]

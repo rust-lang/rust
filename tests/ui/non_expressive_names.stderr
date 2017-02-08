@@ -1,7 +1,7 @@
 error: binding's name is too similar to existing binding
   --> $DIR/non_expressive_names.rs:29:9
    |
-29 |     let bpple: i32; //~ ERROR: name is too similar
+29 |     let bpple: i32;
    |         ^^^^^
    |
 note: lint level defined here
@@ -12,105 +12,105 @@ note: lint level defined here
 note: existing binding defined here
   --> $DIR/non_expressive_names.rs:27:9
    |
-27 |     let apple: i32; //~ NOTE: existing binding defined here
+27 |     let apple: i32;
    |         ^^^^^
 help: separate the discriminating character by an underscore like: `b_pple`
   --> $DIR/non_expressive_names.rs:29:9
    |
-29 |     let bpple: i32; //~ ERROR: name is too similar
+29 |     let bpple: i32;
    |         ^^^^^
 
 error: binding's name is too similar to existing binding
   --> $DIR/non_expressive_names.rs:31:9
    |
-31 |     let cpple: i32; //~ ERROR: name is too similar
+31 |     let cpple: i32;
    |         ^^^^^
    |
 note: existing binding defined here
   --> $DIR/non_expressive_names.rs:27:9
    |
-27 |     let apple: i32; //~ NOTE: existing binding defined here
+27 |     let apple: i32;
    |         ^^^^^
 help: separate the discriminating character by an underscore like: `c_pple`
   --> $DIR/non_expressive_names.rs:31:9
    |
-31 |     let cpple: i32; //~ ERROR: name is too similar
+31 |     let cpple: i32;
    |         ^^^^^
 
 error: binding's name is too similar to existing binding
   --> $DIR/non_expressive_names.rs:56:9
    |
-56 |     let bluby: i32; //~ ERROR: name is too similar
+56 |     let bluby: i32;
    |         ^^^^^
    |
 note: existing binding defined here
   --> $DIR/non_expressive_names.rs:55:9
    |
-55 |     let blubx: i32; //~ NOTE: existing binding defined here
+55 |     let blubx: i32;
    |         ^^^^^
 help: separate the discriminating character by an underscore like: `blub_y`
   --> $DIR/non_expressive_names.rs:56:9
    |
-56 |     let bluby: i32; //~ ERROR: name is too similar
+56 |     let bluby: i32;
    |         ^^^^^
 
 error: binding's name is too similar to existing binding
   --> $DIR/non_expressive_names.rs:61:9
    |
-61 |     let coke: i32; //~ ERROR: name is too similar
+61 |     let coke: i32;
    |         ^^^^
    |
 note: existing binding defined here
   --> $DIR/non_expressive_names.rs:59:9
    |
-59 |     let cake: i32; //~ NOTE: existing binding defined here
+59 |     let cake: i32;
    |         ^^^^
 
 error: binding's name is too similar to existing binding
   --> $DIR/non_expressive_names.rs:79:9
    |
-79 |     let xyzeabc: i32; //~ ERROR: name is too similar
+79 |     let xyzeabc: i32;
    |         ^^^^^^^
    |
 note: existing binding defined here
   --> $DIR/non_expressive_names.rs:77:9
    |
-77 |     let xyz1abc: i32; //~ NOTE: existing binding defined here
+77 |     let xyz1abc: i32;
    |         ^^^^^^^
 
 error: binding's name is too similar to existing binding
   --> $DIR/non_expressive_names.rs:83:9
    |
-83 |     let parsee: i32; //~ ERROR: name is too similar
+83 |     let parsee: i32;
    |         ^^^^^^
    |
 note: existing binding defined here
   --> $DIR/non_expressive_names.rs:81:9
    |
-81 |     let parser: i32; //~ NOTE: existing binding defined here
+81 |     let parser: i32;
    |         ^^^^^^
 help: separate the discriminating character by an underscore like: `parse_e`
   --> $DIR/non_expressive_names.rs:83:9
    |
-83 |     let parsee: i32; //~ ERROR: name is too similar
+83 |     let parsee: i32;
    |         ^^^^^^
 
 error: binding's name is too similar to existing binding
   --> $DIR/non_expressive_names.rs:97:16
    |
-97 |         bpple: sprang } = unimplemented!(); //~ ERROR: name is too similar
+97 |         bpple: sprang } = unimplemented!();
    |                ^^^^^^
    |
 note: existing binding defined here
   --> $DIR/non_expressive_names.rs:96:22
    |
-96 |     let Foo { apple: spring, //~NOTE existing binding defined here
+96 |     let Foo { apple: spring,
    |                      ^^^^^^
 
 error: 5th binding whose name is just one char
    --> $DIR/non_expressive_names.rs:131:17
     |
-131 |             let e: i32; //~ ERROR: 5th binding whose name is just one char
+131 |             let e: i32;
     |                 ^
     |
     = note: #[deny(many_single_char_names)] implied by #[deny(clippy)]
@@ -123,7 +123,7 @@ note: lint level defined here
 error: 5th binding whose name is just one char
    --> $DIR/non_expressive_names.rs:135:17
     |
-135 |             let e: i32; //~ ERROR: 5th binding whose name is just one char
+135 |             let e: i32;
     |                 ^
     |
     = note: #[deny(many_single_char_names)] implied by #[deny(clippy)]
@@ -131,7 +131,7 @@ error: 5th binding whose name is just one char
 error: 6th binding whose name is just one char
    --> $DIR/non_expressive_names.rs:137:17
     |
-137 |             let f: i32; //~ ERROR: 6th binding whose name is just one char
+137 |             let f: i32;
     |                 ^
     |
     = note: #[deny(many_single_char_names)] implied by #[deny(clippy)]
@@ -139,7 +139,7 @@ error: 6th binding whose name is just one char
 error: 5th binding whose name is just one char
    --> $DIR/non_expressive_names.rs:142:13
     |
-142 |             e => panic!(), //~ ERROR: 5th binding whose name is just one char
+142 |             e => panic!(),
     |             ^
     |
     = note: #[deny(many_single_char_names)] implied by #[deny(clippy)]

@@ -11,11 +11,11 @@ macro_rules! let_and_return {
 }
 
 fn main() {
-    let _x = println!("x");  //~ERROR this let-binding has unit value
+    let _x = println!("x");
     let _y = 1;   // this is fine
     let _z = ((), 1);  // this as well
     if true {
-        let _a = ();  //~ERROR this let-binding has unit value
+        let _a = ();
     }
 
     let_and_return!(()) // should be fine

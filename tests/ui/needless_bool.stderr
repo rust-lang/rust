@@ -1,7 +1,7 @@
 error: this if-then-else expression will always return true
  --> $DIR/needless_bool.rs:9:5
   |
-9 |     if x { true } else { true }; //~ERROR this if-then-else expression will always return true
+9 |     if x { true } else { true };
   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
   |
 note: lint level defined here
@@ -13,7 +13,7 @@ note: lint level defined here
 error: this if-then-else expression will always return false
   --> $DIR/needless_bool.rs:10:5
    |
-10 |     if x { false } else { false }; //~ERROR this if-then-else expression will always return false
+10 |     if x { false } else { false };
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this if-then-else expression returns a bool literal

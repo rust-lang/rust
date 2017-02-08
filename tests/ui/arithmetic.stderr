@@ -1,7 +1,7 @@
 error: integer arithmetic detected
  --> $DIR/arithmetic.rs:8:5
   |
-8 |     1 + i; //~ERROR integer arithmetic detected
+8 |     1 + i;
   |     ^^^^^
   |
 note: lint level defined here
@@ -13,13 +13,13 @@ note: lint level defined here
 error: integer arithmetic detected
  --> $DIR/arithmetic.rs:9:5
   |
-9 |     i * 2; //~ERROR integer arithmetic detected
+9 |     i * 2;
   |     ^^^^^
 
 error: integer arithmetic detected
   --> $DIR/arithmetic.rs:10:5
    |
-10 |       1 % //~ERROR integer arithmetic detected
+10 |       1 %
    |  _____^ starting here...
 11 | |     i / 2; // no error, this is part of the expression in the preceding line
    | |_________^ ...ending here
@@ -27,19 +27,19 @@ error: integer arithmetic detected
 error: integer arithmetic detected
   --> $DIR/arithmetic.rs:12:5
    |
-12 |     i - 2 + 2 - i; //~ERROR integer arithmetic detected
+12 |     i - 2 + 2 - i;
    |     ^^^^^^^^^^^^^
 
 error: integer arithmetic detected
   --> $DIR/arithmetic.rs:13:5
    |
-13 |     -i; //~ERROR integer arithmetic detected
+13 |     -i;
    |     ^^
 
 error: floating-point arithmetic detected
   --> $DIR/arithmetic.rs:23:5
    |
-23 |     f * 2.0; //~ERROR floating-point arithmetic detected
+23 |     f * 2.0;
    |     ^^^^^^^
    |
 note: lint level defined here
@@ -51,31 +51,31 @@ note: lint level defined here
 error: floating-point arithmetic detected
   --> $DIR/arithmetic.rs:25:5
    |
-25 |     1.0 + f; //~ERROR floating-point arithmetic detected
+25 |     1.0 + f;
    |     ^^^^^^^
 
 error: floating-point arithmetic detected
   --> $DIR/arithmetic.rs:26:5
    |
-26 |     f * 2.0; //~ERROR floating-point arithmetic detected
+26 |     f * 2.0;
    |     ^^^^^^^
 
 error: floating-point arithmetic detected
   --> $DIR/arithmetic.rs:27:5
    |
-27 |     f / 2.0; //~ERROR floating-point arithmetic detected
+27 |     f / 2.0;
    |     ^^^^^^^
 
 error: floating-point arithmetic detected
   --> $DIR/arithmetic.rs:28:5
    |
-28 |     f - 2.0 * 4.2; //~ERROR floating-point arithmetic detected
+28 |     f - 2.0 * 4.2;
    |     ^^^^^^^^^^^^^
 
 error: floating-point arithmetic detected
   --> $DIR/arithmetic.rs:29:5
    |
-29 |     -f; //~ERROR floating-point arithmetic detected
+29 |     -f;
    |     ^^
 
 error: aborting due to 11 previous errors

@@ -14,16 +14,16 @@ macro_rules! test_macro {
 
 /// Test that we lint if we use a binding with a single leading underscore
 fn prefix_underscore(_foo: u32) -> u32 {
-    _foo + 1 //~ ERROR used binding `_foo` which is prefixed with an underscore
+    _foo + 1
 }
 
 /// Test that we lint if we use a `_`-variable defined outside within a macro expansion
 fn in_macro(_foo: u32) {
     println!("{}", _foo);
-    //~^ ERROR used binding `_foo` which is prefixed with an underscore
+
     assert_eq!(_foo, _foo);
-    //~^ ERROR used binding `_foo` which is prefixed with an underscore
-    //~| ERROR used binding `_foo` which is prefixed with an underscore
+
+
 
     test_macro!() + 1;
 }
@@ -36,7 +36,7 @@ struct StructFieldTest {
 /// Test that we lint the use of a struct field which is prefixed with an underscore
 fn in_struct_field() {
     let mut s = StructFieldTest { _underscore_field: 0 };
-    s._underscore_field += 1; //~ Error used binding `_underscore_field` which is prefixed with an underscore
+    s._underscore_field += 1;
 }
 
 /// Test that we do not lint if the underscore is not a prefix

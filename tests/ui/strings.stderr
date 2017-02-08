@@ -1,7 +1,7 @@
 error: you added something to a string. Consider using `String::push_str()` instead
   --> $DIR/strings.rs:10:13
    |
-10 |         x = x + "."; //~ERROR you added something to a string.
+10 |         x = x + ".";
    |             ^^^^^^^
    |
 note: lint level defined here
@@ -13,13 +13,13 @@ note: lint level defined here
 error: you added something to a string. Consider using `String::push_str()` instead
   --> $DIR/strings.rs:14:13
    |
-14 |     let z = y + "..."; //~ERROR you added something to a string.
+14 |     let z = y + "...";
    |             ^^^^^^^^^
 
 error: you assigned the result of adding something to this string. Consider using `String::push_str()` instead
   --> $DIR/strings.rs:24:9
    |
-24 |         x = x + "."; //~ERROR you assigned the result of adding something to this string.
+24 |         x = x + ".";
    |         ^^^^^^^^^^^
    |
 note: lint level defined here
@@ -31,7 +31,7 @@ note: lint level defined here
 error: you assigned the result of adding something to this string. Consider using `String::push_str()` instead
   --> $DIR/strings.rs:38:9
    |
-38 |         x = x + "."; //~ERROR you assigned the result of adding something to this string.
+38 |         x = x + ".";
    |         ^^^^^^^^^^^
    |
 note: lint level defined here
@@ -43,7 +43,7 @@ note: lint level defined here
 error: you added something to a string. Consider using `String::push_str()` instead
   --> $DIR/strings.rs:42:13
    |
-42 |     let z = y + "..."; //~ERROR you added something to a string.
+42 |     let z = y + "...";
    |             ^^^^^^^^^
    |
 note: lint level defined here

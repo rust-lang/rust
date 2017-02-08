@@ -1,7 +1,7 @@
 error: doomed comparison with NAN, use `std::{f32,f64}::is_nan()` instead
  --> $DIR/cmp_nan.rs:8:5
   |
-8 |     x == std::f32::NAN; //~ERROR doomed comparison with NAN
+8 |     x == std::f32::NAN;
   |     ^^^^^^^^^^^^^^^^^^
   |
   = note: #[deny(cmp_nan)] on by default
@@ -9,7 +9,7 @@ error: doomed comparison with NAN, use `std::{f32,f64}::is_nan()` instead
 error: doomed comparison with NAN, use `std::{f32,f64}::is_nan()` instead
  --> $DIR/cmp_nan.rs:9:5
   |
-9 |     x != std::f32::NAN; //~ERROR doomed comparison with NAN
+9 |     x != std::f32::NAN;
   |     ^^^^^^^^^^^^^^^^^^
   |
   = note: #[deny(cmp_nan)] on by default
@@ -17,7 +17,7 @@ error: doomed comparison with NAN, use `std::{f32,f64}::is_nan()` instead
 error: doomed comparison with NAN, use `std::{f32,f64}::is_nan()` instead
   --> $DIR/cmp_nan.rs:10:5
    |
-10 |     x < std::f32::NAN;  //~ERROR doomed comparison with NAN
+10 |     x < std::f32::NAN;
    |     ^^^^^^^^^^^^^^^^^
    |
    = note: #[deny(cmp_nan)] on by default
@@ -25,7 +25,7 @@ error: doomed comparison with NAN, use `std::{f32,f64}::is_nan()` instead
 error: doomed comparison with NAN, use `std::{f32,f64}::is_nan()` instead
   --> $DIR/cmp_nan.rs:11:5
    |
-11 |     x > std::f32::NAN;  //~ERROR doomed comparison with NAN
+11 |     x > std::f32::NAN;
    |     ^^^^^^^^^^^^^^^^^
    |
    = note: #[deny(cmp_nan)] on by default
@@ -33,7 +33,7 @@ error: doomed comparison with NAN, use `std::{f32,f64}::is_nan()` instead
 error: doomed comparison with NAN, use `std::{f32,f64}::is_nan()` instead
   --> $DIR/cmp_nan.rs:12:5
    |
-12 |     x <= std::f32::NAN; //~ERROR doomed comparison with NAN
+12 |     x <= std::f32::NAN;
    |     ^^^^^^^^^^^^^^^^^^
    |
    = note: #[deny(cmp_nan)] on by default
@@ -41,7 +41,7 @@ error: doomed comparison with NAN, use `std::{f32,f64}::is_nan()` instead
 error: doomed comparison with NAN, use `std::{f32,f64}::is_nan()` instead
   --> $DIR/cmp_nan.rs:13:5
    |
-13 |     x >= std::f32::NAN; //~ERROR doomed comparison with NAN
+13 |     x >= std::f32::NAN;
    |     ^^^^^^^^^^^^^^^^^^
    |
    = note: #[deny(cmp_nan)] on by default
@@ -49,7 +49,7 @@ error: doomed comparison with NAN, use `std::{f32,f64}::is_nan()` instead
 error: doomed comparison with NAN, use `std::{f32,f64}::is_nan()` instead
   --> $DIR/cmp_nan.rs:16:5
    |
-16 |     y == std::f64::NAN; //~ERROR doomed comparison with NAN
+16 |     y == std::f64::NAN;
    |     ^^^^^^^^^^^^^^^^^^
    |
    = note: #[deny(cmp_nan)] on by default
@@ -57,7 +57,7 @@ error: doomed comparison with NAN, use `std::{f32,f64}::is_nan()` instead
 error: doomed comparison with NAN, use `std::{f32,f64}::is_nan()` instead
   --> $DIR/cmp_nan.rs:17:5
    |
-17 |     y != std::f64::NAN; //~ERROR doomed comparison with NAN
+17 |     y != std::f64::NAN;
    |     ^^^^^^^^^^^^^^^^^^
    |
    = note: #[deny(cmp_nan)] on by default
@@ -65,7 +65,7 @@ error: doomed comparison with NAN, use `std::{f32,f64}::is_nan()` instead
 error: doomed comparison with NAN, use `std::{f32,f64}::is_nan()` instead
   --> $DIR/cmp_nan.rs:18:5
    |
-18 |     y < std::f64::NAN;  //~ERROR doomed comparison with NAN
+18 |     y < std::f64::NAN;
    |     ^^^^^^^^^^^^^^^^^
    |
    = note: #[deny(cmp_nan)] on by default
@@ -73,7 +73,7 @@ error: doomed comparison with NAN, use `std::{f32,f64}::is_nan()` instead
 error: doomed comparison with NAN, use `std::{f32,f64}::is_nan()` instead
   --> $DIR/cmp_nan.rs:19:5
    |
-19 |     y > std::f64::NAN;  //~ERROR doomed comparison with NAN
+19 |     y > std::f64::NAN;
    |     ^^^^^^^^^^^^^^^^^
    |
    = note: #[deny(cmp_nan)] on by default
@@ -81,7 +81,7 @@ error: doomed comparison with NAN, use `std::{f32,f64}::is_nan()` instead
 error: doomed comparison with NAN, use `std::{f32,f64}::is_nan()` instead
   --> $DIR/cmp_nan.rs:20:5
    |
-20 |     y <= std::f64::NAN; //~ERROR doomed comparison with NAN
+20 |     y <= std::f64::NAN;
    |     ^^^^^^^^^^^^^^^^^^
    |
    = note: #[deny(cmp_nan)] on by default
@@ -89,7 +89,7 @@ error: doomed comparison with NAN, use `std::{f32,f64}::is_nan()` instead
 error: doomed comparison with NAN, use `std::{f32,f64}::is_nan()` instead
   --> $DIR/cmp_nan.rs:21:5
    |
-21 |     y >= std::f64::NAN; //~ERROR doomed comparison with NAN
+21 |     y >= std::f64::NAN;
    |     ^^^^^^^^^^^^^^^^^^
    |
    = note: #[deny(cmp_nan)] on by default

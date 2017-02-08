@@ -5,20 +5,20 @@
 
 fn main() {
     let a = Some(1u8).map(|a| foo(a));
-    //~^ ERROR redundant closure found
-    //~| HELP remove closure as shown
-    //~| SUGGESTION let a = Some(1u8).map(foo);
+
+
+
     meta(|a| foo(a));
-    //~^ ERROR redundant closure found
-    //~| HELP remove closure as shown
-    //~| SUGGESTION meta(foo);
+
+
+
     let c = Some(1u8).map(|a| {1+2; foo}(a));
-    //~^ ERROR redundant closure found
-    //~| HELP remove closure as shown
-    //~| SUGGESTION let c = Some(1u8).map({1+2; foo});
+
+
+
     let d = Some(1u8).map(|a| foo((|b| foo2(b))(a))); //is adjusted?
     all(&[1, 2, 3], &&2, |x, y| below(x, y)); //is adjusted
-    //~^ WARN needless_borrow
+
     unsafe {
         Some(1u8).map(|a| unsafe_fn(a)); // unsafe fn
     }
@@ -26,9 +26,9 @@ fn main() {
     // See #815
     let e = Some(1u8).map(|a| divergent(a));
     let e = Some(1u8).map(|a| generic(a));
-    //~^ ERROR redundant closure found
-    //~| HELP remove closure as shown
-    //~| SUGGESTION map(generic);
+
+
+
     let e = Some(1u8).map(generic);
 
     // See #515

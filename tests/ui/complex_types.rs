@@ -6,38 +6,38 @@
 
 type Alias = Vec<Vec<Box<(u32, u32, u32, u32)>>>; // no warning here
 
-const CST: (u32, (u32, (u32, (u32, u32)))) = (0, (0, (0, (0, 0)))); //~ERROR very complex type
-static ST: (u32, (u32, (u32, (u32, u32)))) = (0, (0, (0, (0, 0)))); //~ERROR very complex type
+const CST: (u32, (u32, (u32, (u32, u32)))) = (0, (0, (0, (0, 0))));
+static ST: (u32, (u32, (u32, (u32, u32)))) = (0, (0, (0, (0, 0))));
 
 struct S {
-    f: Vec<Vec<Box<(u32, u32, u32, u32)>>>, //~ERROR very complex type
+    f: Vec<Vec<Box<(u32, u32, u32, u32)>>>,
 }
 
-struct TS(Vec<Vec<Box<(u32, u32, u32, u32)>>>); //~ERROR very complex type
+struct TS(Vec<Vec<Box<(u32, u32, u32, u32)>>>);
 
 enum E {
-    Tuple(Vec<Vec<Box<(u32, u32, u32, u32)>>>), //~ERROR very complex type
-    Struct { f: Vec<Vec<Box<(u32, u32, u32, u32)>>> }, //~ERROR very complex type
+    Tuple(Vec<Vec<Box<(u32, u32, u32, u32)>>>),
+    Struct { f: Vec<Vec<Box<(u32, u32, u32, u32)>>> },
 }
 
 impl S {
-    const A: (u32, (u32, (u32, (u32, u32)))) = (0, (0, (0, (0, 0)))); //~ERROR very complex type
-    fn impl_method(&self, p: Vec<Vec<Box<(u32, u32, u32, u32)>>>) { } //~ERROR very complex type
+    const A: (u32, (u32, (u32, (u32, u32)))) = (0, (0, (0, (0, 0))));
+    fn impl_method(&self, p: Vec<Vec<Box<(u32, u32, u32, u32)>>>) { }
 }
 
 trait T {
-    const A: Vec<Vec<Box<(u32, u32, u32, u32)>>>; //~ERROR very complex type
-    type B = Vec<Vec<Box<(u32, u32, u32, u32)>>>; //~ERROR very complex type
-    fn method(&self, p: Vec<Vec<Box<(u32, u32, u32, u32)>>>); //~ERROR very complex type
-    fn def_method(&self, p: Vec<Vec<Box<(u32, u32, u32, u32)>>>) { } //~ERROR very complex type
+    const A: Vec<Vec<Box<(u32, u32, u32, u32)>>>;
+    type B = Vec<Vec<Box<(u32, u32, u32, u32)>>>;
+    fn method(&self, p: Vec<Vec<Box<(u32, u32, u32, u32)>>>);
+    fn def_method(&self, p: Vec<Vec<Box<(u32, u32, u32, u32)>>>) { }
 }
 
-fn test1() -> Vec<Vec<Box<(u32, u32, u32, u32)>>> { vec![] } //~ERROR very complex type
+fn test1() -> Vec<Vec<Box<(u32, u32, u32, u32)>>> { vec![] }
 
-fn test2(_x: Vec<Vec<Box<(u32, u32, u32, u32)>>>) { } //~ERROR very complex type
+fn test2(_x: Vec<Vec<Box<(u32, u32, u32, u32)>>>) { }
 
 fn test3() {
-    let _y: Vec<Vec<Box<(u32, u32, u32, u32)>>> = vec![]; //~ERROR very complex type
+    let _y: Vec<Vec<Box<(u32, u32, u32, u32)>>> = vec![];
 }
 
 fn main() {

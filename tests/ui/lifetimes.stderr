@@ -43,7 +43,7 @@ error: explicit lifetimes given in parameter types where they could be elided
 error: explicit lifetimes given in parameter types where they could be elided
   --> $DIR/lifetimes.rs:58:1
    |
-58 |   fn fn_bound_2<'a, F, I>(_m: Lt<'a, I>, _f: F) -> Lt<'a, I>  //~ERROR explicit lifetimes given
+58 |   fn fn_bound_2<'a, F, I>(_m: Lt<'a, I>, _f: F) -> Lt<'a, I>
    |  _^ starting here...
 59 | |     where for<'x> F: Fn(Lt<'x, I>) -> Lt<'x, I>
 60 | | { unreachable!() }
@@ -64,31 +64,31 @@ error: explicit lifetimes given in parameter types where they could be elided
 error: explicit lifetimes given in parameter types where they could be elided
   --> $DIR/lifetimes.rs:89:1
    |
-89 | fn struct_with_lt<'a>(_foo: Foo<'a>) -> &'a str { unimplemented!() } //~ERROR explicit lifetimes given
+89 | fn struct_with_lt<'a>(_foo: Foo<'a>) -> &'a str { unimplemented!() }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: explicit lifetimes given in parameter types where they could be elided
    --> $DIR/lifetimes.rs:109:1
     |
-109 | fn trait_obj_elided2<'a>(_arg: &'a Drop) -> &'a str { unimplemented!() } //~ERROR explicit lifetimes given
+109 | fn trait_obj_elided2<'a>(_arg: &'a Drop) -> &'a str { unimplemented!() }
     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: explicit lifetimes given in parameter types where they could be elided
    --> $DIR/lifetimes.rs:113:1
     |
-113 | fn alias_with_lt<'a>(_foo: FooAlias<'a>) -> &'a str { unimplemented!() } //~ERROR explicit lifetimes given
+113 | fn alias_with_lt<'a>(_foo: FooAlias<'a>) -> &'a str { unimplemented!() }
     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: explicit lifetimes given in parameter types where they could be elided
    --> $DIR/lifetimes.rs:124:1
     |
-124 | fn named_input_elided_output<'a>(_arg: &'a str) -> &str { unimplemented!() } //~ERROR explicit lifetimes given
+124 | fn named_input_elided_output<'a>(_arg: &'a str) -> &str { unimplemented!() }
     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: explicit lifetimes given in parameter types where they could be elided
    --> $DIR/lifetimes.rs:128:1
     |
-128 | fn trait_bound_ok<'a, T: WithLifetime<'static>>(_: &'a u8, _: T) { unimplemented!() } //~ERROR explicit lifetimes given
+128 | fn trait_bound_ok<'a, T: WithLifetime<'static>>(_: &'a u8, _: T) { unimplemented!() }
     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 14 previous errors

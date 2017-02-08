@@ -7,34 +7,34 @@
 
 #[repr(usize)]
 enum NonPortable {
-    X = 0x1_0000_0000, //~ ERROR: Clike enum variant discriminant is not portable to 32-bit targets
+    X = 0x1_0000_0000,
     Y = 0,
     Z = 0x7FFF_FFFF,
     A = 0xFFFF_FFFF,
 }
 
 enum NonPortableNoHint {
-    X = 0x1_0000_0000, //~ ERROR: Clike enum variant discriminant is not portable to 32-bit targets
+    X = 0x1_0000_0000,
     Y = 0,
     Z = 0x7FFF_FFFF,
-    A = 0xFFFF_FFFF, //~ ERROR: Clike enum variant discriminant is not portable to 32-bit targets
+    A = 0xFFFF_FFFF,
 }
 
 #[repr(isize)]
 enum NonPortableSigned {
     X = -1,
     Y = 0x7FFF_FFFF,
-    Z = 0xFFFF_FFFF, //~ ERROR: Clike enum variant discriminant is not portable to 32-bit targets
-    A = 0x1_0000_0000, //~ ERROR: Clike enum variant discriminant is not portable to 32-bit targets
+    Z = 0xFFFF_FFFF,
+    A = 0x1_0000_0000,
     B = std::i32::MIN as isize,
-    C = (std::i32::MIN as isize) - 1, //~ ERROR: Clike enum variant discriminant is not portable to 32-bit targets
+    C = (std::i32::MIN as isize) - 1,
 }
 
 enum NonPortableSignedNoHint {
     X = -1,
     Y = 0x7FFF_FFFF,
-    Z = 0xFFFF_FFFF, //~ ERROR: Clike enum variant discriminant is not portable to 32-bit targets
-    A = 0x1_0000_0000, //~ ERROR: Clike enum variant discriminant is not portable to 32-bit targets
+    Z = 0xFFFF_FFFF,
+    A = 0x1_0000_0000,
 }
 
 /*

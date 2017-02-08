@@ -3,9 +3,9 @@ error: `if _ { .. } else { .. }` is an expression
    |
 57 |       let mut foo = 0;
    |  _____^ starting here...
-58 | |     //~^ ERROR `if _ { .. } else { .. }` is an expression
-59 | |     //~| HELP more idiomatic
-60 | |     //~| SUGGESTION let <mut> foo = if f() { 42 } else { 0 };
+58 | |
+59 | |
+60 | |
 61 | |     if f() {
 62 | |         foo = 42;
 63 | |     }
@@ -44,9 +44,9 @@ error: `if _ { .. } else { .. }` is an expression
     |
 111 |       let mut baz = 0;
     |  _____^ starting here...
-112 | |     //~^ ERROR `if _ { .. } else { .. }` is an expression
-113 | |     //~| HELP more idiomatic
-114 | |     //~| SUGGESTION let <mut> baz = if f() { 42 } else { 0 };
+112 | |
+113 | |
+114 | |
 115 | |     if f() {
 116 | |         baz = 42;
 117 | |     }

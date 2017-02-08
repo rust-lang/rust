@@ -28,10 +28,10 @@ fn main() {
     let x = 0;
 
     x * -1;
-    //~^ ERROR Negation by multiplying with -1
+
 
     -1 * x;
-    //~^ ERROR Negation by multiplying with -1
+
 
     -1 * -1; // should be ok
 

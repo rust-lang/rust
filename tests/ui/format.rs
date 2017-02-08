@@ -3,16 +3,16 @@
 #![deny(useless_format)]
 
 fn main() {
-    format!("foo"); //~ERROR useless use of `format!`
+    format!("foo");
 
-    format!("{}", "foo"); //~ERROR useless use of `format!`
+    format!("{}", "foo");
     format!("{:?}", "foo"); // we only want to warn about `{}`
     format!("{:+}", "foo"); // we only want to warn about `{}`
     format!("foo {}", "bar");
     format!("{} bar", "foo");
 
     let arg: String = "".to_owned();
-    format!("{}", arg); //~ERROR useless use of `format!`
+    format!("{}", arg);
     format!("{:?}", arg); // we only want to warn about `{}`
     format!("{:+}", arg); // we only want to warn about `{}`
     format!("foo {}", arg);

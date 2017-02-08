@@ -10,7 +10,7 @@ use rustc::lint::{LintPass, LintArray};
 
 declare_lint! { GOOD_LINT, Warn, "good lint" }
 declare_lint! { MISSING_LINT, Warn, "missing lint" }
-//~^ ERROR: the lint `MISSING_LINT` is not added to any `LintPass`
+
 
 pub struct Pass;
 

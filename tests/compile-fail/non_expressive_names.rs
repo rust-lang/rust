@@ -1,17 +1,17 @@
 #![feature(plugin)]
 #![plugin(clippy)]
 #![deny(clippy,similar_names)]
-//~^ NOTE: lint level defined here
-//~| NOTE: lint level defined here
-//~| NOTE: lint level defined here
-//~| NOTE: lint level defined here
-//~| NOTE: lint level defined here
-//~| NOTE: lint level defined here
-//~| NOTE: lint level defined here
-//~| NOTE: lint level defined here
-//~| NOTE: lint level defined here
-//~| NOTE: lint level defined here
-//~| NOTE: lint level defined here
+
+
+
+
+
+
+
+
+
+
+
 #![allow(unused)]
 
 
@@ -24,12 +24,12 @@ fn main() {
     let specter: i32;
     let spectre: i32;
 
-    let apple: i32; //~ NOTE: existing binding defined here
-    //~^ NOTE: existing binding defined here
-    let bpple: i32; //~ ERROR: name is too similar
-    //~| HELP: separate the discriminating character by an underscore like: `b_pple`
-    let cpple: i32; //~ ERROR: name is too similar
-    //~| HELP: separate the discriminating character by an underscore like: `c_pple`
+    let apple: i32;
+
+    let bpple: i32;
+
+    let cpple: i32;
+
 
     let a_bar: i32;
     let b_bar: i32;
@@ -52,13 +52,13 @@ fn main() {
     let blubrhs: i32;
     let blublhs: i32;
 
-    let blubx: i32; //~ NOTE: existing binding defined here
-    let bluby: i32; //~ ERROR: name is too similar
-    //~| HELP: separate the discriminating character by an underscore like: `blub_y`
+    let blubx: i32;
+    let bluby: i32;
 
-    let cake: i32; //~ NOTE: existing binding defined here
+
+    let cake: i32;
     let cakes: i32;
-    let coke: i32; //~ ERROR: name is too similar
+    let coke: i32;
 
     match 5 {
         cheese @ 1 => {},
@@ -74,14 +74,14 @@ fn main() {
     let ipv6: i32;
     let abcd1: i32;
     let abdc2: i32;
-    let xyz1abc: i32; //~ NOTE: existing binding defined here
+    let xyz1abc: i32;
     let xyz2abc: i32;
-    let xyzeabc: i32; //~ ERROR: name is too similar
+    let xyzeabc: i32;
 
-    let parser: i32; //~ NOTE: existing binding defined here
+    let parser: i32;
     let parsed: i32;
-    let parsee: i32; //~ ERROR: name is too similar
-    //~| HELP: separate the discriminating character by an underscore like: `parse_e`
+    let parsee: i32;
+
 
     let setter: i32;
     let getter: i32;
@@ -93,8 +93,8 @@ fn main() {
 
 fn foo() {
     let Foo { apple, bpple } = unimplemented!();
-    let Foo { apple: spring, //~NOTE existing binding defined here
-        bpple: sprang } = unimplemented!(); //~ ERROR: name is too similar
+    let Foo { apple: spring,
+        bpple: sprang } = unimplemented!();
 }
 
 #[derive(Clone, Debug)]
@@ -128,19 +128,19 @@ fn bla() {
             let blar: i32;
         }
         {
-            let e: i32; //~ ERROR: 5th binding whose name is just one char
-            //~^ NOTE implied by
+            let e: i32;
+
         }
         {
-            let e: i32; //~ ERROR: 5th binding whose name is just one char
-            //~^ NOTE implied by
-            let f: i32; //~ ERROR: 6th binding whose name is just one char
-            //~^ NOTE implied by
+            let e: i32;
+
+            let f: i32;
+
         }
         match 5 {
             1 => println!(""),
-            e => panic!(), //~ ERROR: 5th binding whose name is just one char
-            //~^ NOTE implied by
+            e => panic!(),
+
         }
         match 5 {
             1 => println!(""),

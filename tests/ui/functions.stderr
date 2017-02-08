@@ -3,7 +3,7 @@ error: this function has too many arguments (8/7)
    |
 11 |   fn bad(_one: u32, _two: u32, _three: &str, _four: bool, _five: f32, _six: f32, _seven: bool, _eight: ()) {
    |  _^ starting here...
-12 | |     //~^ ERROR: this function has too many arguments (8/7)
+12 | |
 13 | | }
    | |_^ ...ending here
    |

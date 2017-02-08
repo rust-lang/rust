@@ -7,7 +7,7 @@ fn main() {
     let v = Some(true);
     match v {
         Some(x) => (),
-        y @ _   => (),  //~ERROR the `y @ _` pattern can be written as just `y`
+        y @ _   => (),
     }
     match v {
         Some(x)  => (),

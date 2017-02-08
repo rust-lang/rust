@@ -9,30 +9,30 @@ use std::ops::Deref;
 
 fn map_clone_iter() {
     let x = [1,2,3];
-    x.iter().map(|y| y.clone()); //~ ERROR you seem to be using .map()
-                                 //~^ HELP try
-    x.iter().map(|&y| y); //~ ERROR you seem to be using .map()
-                          //~^ HELP try
-    x.iter().map(|y| *y); //~ ERROR you seem to be using .map()
-                          //~^ HELP try
-    x.iter().map(|y| { y.clone() }); //~ ERROR you seem to be using .map()
-                                 //~^ HELP try
-    x.iter().map(|&y| { y }); //~ ERROR you seem to be using .map()
-                          //~^ HELP try
-    x.iter().map(|y| { *y }); //~ ERROR you seem to be using .map()
-                          //~^ HELP try
-    x.iter().map(Clone::clone); //~ ERROR you seem to be using .map()
-                                //~^ HELP try
+    x.iter().map(|y| y.clone());
+
+    x.iter().map(|&y| y);
+
+    x.iter().map(|y| *y);
+
+    x.iter().map(|y| { y.clone() });
+
+    x.iter().map(|&y| { y });
+
+    x.iter().map(|y| { *y });
+
+    x.iter().map(Clone::clone);
+
 }
 
 fn map_clone_option() {
     let x = Some(4);
-    x.as_ref().map(|y| y.clone()); //~ ERROR you seem to be using .map()
-                                   //~^ HELP try
-    x.as_ref().map(|&y| y); //~ ERROR you seem to be using .map()
-                            //~^ HELP try
-    x.as_ref().map(|y| *y); //~ ERROR you seem to be using .map()
-                            //~^ HELP try
+    x.as_ref().map(|y| y.clone());
+
+    x.as_ref().map(|&y| y);
+
+    x.as_ref().map(|y| *y);
+
 }
 
 fn not_linted_option() {
@@ -87,8 +87,8 @@ impl Deref for UnusualDeref {
 
 fn map_clone_deref() {
     let x = Some(UnusualDeref);
-    let _: Option<UnusualDeref> = x.as_ref().map(|y| *y); //~ ERROR you seem to be using .map()
-                                                          //~^ HELP try
+    let _: Option<UnusualDeref> = x.as_ref().map(|y| *y);
+
 
     // Not linted: using deref conversion
     let _: Option<i32> = x.map(|y| *y);

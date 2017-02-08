@@ -4,12 +4,12 @@
 
 mod foo {
     mod bar {
-        mod bar { //~ ERROR module has the same name as its containing module
+        mod bar {
             mod foo {}
         }
         mod foo {}
     }
-    mod foo { //~ ERROR module has the same name as its containing module
+    mod foo {
         mod bar {}
     }
 }

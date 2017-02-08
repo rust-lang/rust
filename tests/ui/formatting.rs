@@ -13,8 +13,8 @@ fn main() {
     // weird `else if` formatting:
     if foo() {
     } if foo() {
-    //~^ ERROR this looks like an `else if` but the `else` is missing
-    //~| NOTE add the missing `else` or
+
+
     }
 
     let _ = { // if as the last expression
@@ -22,8 +22,8 @@ fn main() {
 
         if foo() {
         } if foo() {
-        //~^ ERROR this looks like an `else if` but the `else` is missing
-        //~| NOTE add the missing `else` or
+
+
         }
         else {
         }
@@ -32,8 +32,8 @@ fn main() {
     let _ = { // if in the middle of a block
         if foo() {
         } if foo() {
-        //~^ ERROR this looks like an `else if` but the `else` is missing
-        //~| NOTE add the missing `else` or
+
+
         }
         else {
         }
@@ -43,15 +43,15 @@ fn main() {
 
     if foo() {
     } else
-    //~^ ERROR this is an `else if` but the formatting might hide it
-    //~| NOTE remove the `else` or
+
+
     if foo() { // the span of the above error should continue here
     }
 
     if foo() {
     }
-    //~^ ERROR this is an `else if` but the formatting might hide it
-    //~| NOTE remove the `else` or
+
+
     else
     if foo() { // the span of the above error should continue here
     }
@@ -81,16 +81,16 @@ fn main() {
     // weird op_eq formatting:
     let mut a = 42;
     a =- 35;
-    //~^ ERROR this looks like you are trying to use `.. -= ..`, but you really are doing `.. = (- ..)`
-    //~| NOTE to remove this lint, use either `-=` or `= -`
+
+
     a =* &191;
-    //~^ ERROR this looks like you are trying to use `.. *= ..`, but you really are doing `.. = (* ..)`
-    //~| NOTE to remove this lint, use either `*=` or `= *`
+
+
 
     let mut b = true;
     b =! false;
-    //~^ ERROR this looks like you are trying to use `.. != ..`, but you really are doing `.. = (! ..)`
-    //~| NOTE to remove this lint, use either `!=` or `= !`
+
+
 
     // those are ok:
     a = -35;
@@ -100,14 +100,14 @@ fn main() {
     // possible missing comma in an array
     let _ = &[
         -1, -2, -3 // <= no coma here
-        //~^ ERROR possibly missing a comma here
-        //~| NOTE to remove this lint, add a comma or write the expr in a single line
+
+
         -4, -5, -6
     ];
     let _ = &[
         -1, -2, -3 // <= no coma here
-        //~^ ERROR possibly missing a comma here
-        //~| NOTE to remove this lint, add a comma or write the expr in a single line
+
+
         *4, -5, -6
     ];
 

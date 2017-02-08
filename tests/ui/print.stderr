@@ -13,7 +13,7 @@ note: lint level defined here
 error: use of `println!`
   --> $DIR/print.rs:25:5
    |
-25 |     println!("Hello"); //~ERROR use of `println!`
+25 |     println!("Hello");
    |     ^^^^^^^^^^^^^^^^^^
    |
 note: lint level defined here
@@ -25,13 +25,13 @@ note: lint level defined here
 error: use of `print!`
   --> $DIR/print.rs:26:5
    |
-26 |     print!("Hello"); //~ERROR use of `print!`
+26 |     print!("Hello");
    |     ^^^^^^^^^^^^^^^^
 
 error: use of `print!`
   --> $DIR/print.rs:28:5
    |
-28 |     print!("Hello {}", "World"); //~ERROR use of `print!`
+28 |     print!("Hello {}", "World");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: use of `print!`

@@ -3,13 +3,13 @@
 #![deny(clippy, clippy_pedantic)]
 #![allow(unused_imports, dead_code, missing_docs_in_private_items)]
 
-use std::cmp::Ordering::*; //~ ERROR: don't use glob imports for enum variants
+use std::cmp::Ordering::*;
 
 enum Enum {
     _Foo,
 }
 
-use self::Enum::*; //~ ERROR: don't use glob imports for enum variants
+use self::Enum::*;
 
 fn blarg() {
     use self::Enum::*; // ok, just for a function

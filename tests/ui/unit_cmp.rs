@@ -13,9 +13,9 @@ fn main() {
     }
 
     // this warns
-    if { true; } == { false; } {  //~ERROR ==-comparison of unit values detected. This will always be true
+    if { true; } == { false; } {
     }
 
-    if { true; } > { false; } {  //~ERROR >-comparison of unit values detected. This will always be false
+    if { true; } > { false; } {
     }
 }

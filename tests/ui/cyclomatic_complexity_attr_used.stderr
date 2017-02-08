@@ -1,7 +1,7 @@
 error: the function has a cyclomatic complexity of 3
   --> $DIR/cyclomatic_complexity_attr_used.rs:11:1
    |
-11 |   fn kaboom() {  //~ ERROR: the function has a cyclomatic complexity of 3
+11 |   fn kaboom() {
    |  _^ starting here...
 12 | |     if 42 == 43 {
 13 | |         panic!();

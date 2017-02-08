@@ -1,7 +1,7 @@
 error: sub-expression diverges
   --> $DIR/diverging_sub_expression.rs:18:10
    |
-18 |     b || diverge(); //~ ERROR sub-expression diverges
+18 |     b || diverge();
    |          ^^^^^^^^^
    |
 note: lint level defined here
@@ -13,31 +13,31 @@ note: lint level defined here
 error: sub-expression diverges
   --> $DIR/diverging_sub_expression.rs:19:10
    |
-19 |     b || A.foo(); //~ ERROR sub-expression diverges
+19 |     b || A.foo();
    |          ^^^^^^^
 
 error: sub-expression diverges
   --> $DIR/diverging_sub_expression.rs:28:26
    |
-28 |             6 => true || return, //~ ERROR sub-expression diverges
+28 |             6 => true || return,
    |                          ^^^^^^
 
 error: sub-expression diverges
   --> $DIR/diverging_sub_expression.rs:29:26
    |
-29 |             7 => true || continue, //~ ERROR sub-expression diverges
+29 |             7 => true || continue,
    |                          ^^^^^^^^
 
 error: sub-expression diverges
   --> $DIR/diverging_sub_expression.rs:32:26
    |
-32 |             3 => true || diverge(), //~ ERROR sub-expression diverges
+32 |             3 => true || diverge(),
    |                          ^^^^^^^^^
 
 error: sub-expression diverges
   --> $DIR/diverging_sub_expression.rs:37:26
    |
-37 |             _ => true || break, //~ ERROR sub-expression diverges
+37 |             _ => true || break,
    |                          ^^^^^
 
 error: aborting due to 6 previous errors

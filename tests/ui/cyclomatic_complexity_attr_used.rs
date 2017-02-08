@@ -8,7 +8,7 @@ fn main() {
 }
 
 #[cyclomatic_complexity = "0"]
-fn kaboom() {  //~ ERROR: the function has a cyclomatic complexity of 3
+fn kaboom() {
     if 42 == 43 {
         panic!();
     } else if "cake" == "lie" {

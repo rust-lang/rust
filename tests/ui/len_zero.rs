@@ -7,7 +7,7 @@
 pub struct PubOne;
 
 impl PubOne {
-    pub fn len(self: &Self) -> isize { //~ERROR item `PubOne` has a public `len` method but no corresponding `is_empty`
+    pub fn len(self: &Self) -> isize {
         1
     }
 }
@@ -29,7 +29,7 @@ impl One {
 }
 
 pub trait PubTraitsToo {
-    fn len(self: &Self) -> isize; //~ERROR trait `PubTraitsToo` has a `len` method but no `is_empty`
+    fn len(self: &Self) -> isize;
 }
 
 impl PubTraitsToo for One {
@@ -63,7 +63,7 @@ impl HasPrivateIsEmpty {
 pub struct HasIsEmpty;
 
 impl HasIsEmpty {
-    pub fn len(self: &Self) -> isize { //~ERROR item `HasIsEmpty` has a public `len` method but a private `is_empty`
+    pub fn len(self: &Self) -> isize {
         1
     }
 
@@ -92,7 +92,7 @@ impl WithIsEmpty for Wither {
 pub struct HasWrongIsEmpty;
 
 impl HasWrongIsEmpty {
-    pub fn len(self: &Self) -> isize { //~ERROR item `HasWrongIsEmpty` has a public `len` method but no corresponding `is_empty`
+    pub fn len(self: &Self) -> isize {
         1
     }
 
@@ -104,16 +104,16 @@ impl HasWrongIsEmpty {
 fn main() {
     let x = [1, 2];
     if x.len() == 0 {
-        //~^ERROR length comparison to zero
-        //~|HELP consider using `is_empty`
-        //~|SUGGESTION x.is_empty()
+
+
+
         println!("This should not happen!");
     }
 
     if "".len() == 0 {
-        //~^ERROR length comparison to zero
-        //~|HELP consider using `is_empty`
-        //~|SUGGESTION "".is_empty()
+
+
+
     }
 
     let y = One;
@@ -128,30 +128,30 @@ fn main() {
 
     let has_is_empty = HasIsEmpty;
     if has_is_empty.len() == 0 {
-        //~^ERROR length comparison to zero
-        //~|HELP consider using `is_empty`
-        //~|SUGGESTION has_is_empty.is_empty()
+
+
+
         println!("Or this!");
     }
     if has_is_empty.len() != 0 {
-        //~^ERROR length comparison to zero
-        //~|HELP consider using `is_empty`
-        //~|SUGGESTION !has_is_empty.is_empty()
+
+
+
         println!("Or this!");
     }
     if has_is_empty.len() > 0 {
-        //~^ERROR length comparison to zero
-        //~|HELP consider using `is_empty`
-        //~|SUGGESTION !has_is_empty.is_empty()
+
+
+
         println!("Or this!");
     }
     assert!(!has_is_empty.is_empty());
 
     let with_is_empty: &WithIsEmpty = &Wither;
     if with_is_empty.len() == 0 {
-        //~^ERROR length comparison to zero
-        //~|HELP consider using `is_empty`
-        //~|SUGGESTION with_is_empty.is_empty()
+
+
+
         println!("Or this!");
     }
     assert!(!with_is_empty.is_empty());

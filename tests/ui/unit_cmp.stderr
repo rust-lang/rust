@@ -1,7 +1,7 @@
 error: ==-comparison of unit values detected. This will always be true
   --> $DIR/unit_cmp.rs:16:8
    |
-16 |     if { true; } == { false; } {  //~ERROR ==-comparison of unit values detected. This will always be true
+16 |     if { true; } == { false; } {
    |        ^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: lint level defined here
@@ -13,7 +13,7 @@ note: lint level defined here
 error: >-comparison of unit values detected. This will always be false
   --> $DIR/unit_cmp.rs:19:8
    |
-19 |     if { true; } > { false; } {  //~ERROR >-comparison of unit values detected. This will always be false
+19 |     if { true; } > { false; } {
    |        ^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors

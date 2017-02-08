@@ -40,7 +40,7 @@ error: you are implementing `Hash` explicitly but have derived `PartialEq`
    |
 37 |   impl Hash for Bah {
    |  _^ starting here...
-38 | | //~^ ERROR you are implementing `Hash` explicitly but have derived `PartialEq`
+38 | |
 39 | |     fn hash<H: Hasher>(&self, _: &mut H) {}
 40 | | }
    | |_^ ...ending here
@@ -57,7 +57,7 @@ error: you are implementing `Clone` explicitly on a `Copy` type
    |
 45 |   impl Clone for Qux {
    |  _^ starting here...
-46 | | //~^ ERROR you are implementing `Clone` explicitly on a `Copy` type
+46 | |
 47 | |     fn clone(&self) -> Self { Qux }
 48 | | }
    | |_^ ...ending here
@@ -73,7 +73,7 @@ note: consider deriving `Clone` or removing `Copy`
    |
 45 |   impl Clone for Qux {
    |  _^ starting here...
-46 | | //~^ ERROR you are implementing `Clone` explicitly on a `Copy` type
+46 | |
 47 | |     fn clone(&self) -> Self { Qux }
 48 | | }
    | |_^ ...ending here
@@ -83,7 +83,7 @@ error: you are implementing `Clone` explicitly on a `Copy` type
    |
 70 |   impl<'a> Clone for Lt<'a> {
    |  _^ starting here...
-71 | | //~^ ERROR you are implementing `Clone` explicitly on a `Copy` type
+71 | |
 72 | |     fn clone(&self) -> Self { unimplemented!() }
 73 | | }
    | |_^ ...ending here
@@ -94,7 +94,7 @@ note: consider deriving `Clone` or removing `Copy`
    |
 70 |   impl<'a> Clone for Lt<'a> {
    |  _^ starting here...
-71 | | //~^ ERROR you are implementing `Clone` explicitly on a `Copy` type
+71 | |
 72 | |     fn clone(&self) -> Self { unimplemented!() }
 73 | | }
    | |_^ ...ending here

@@ -5,10 +5,10 @@
 #![deny(unsafe_removed_from_name)]
 
 use std::cell::{UnsafeCell as TotallySafeCell};
-//~^ ERROR removed "unsafe" from the name of `UnsafeCell` in use as `TotallySafeCell`
+
 
 use std::cell::UnsafeCell as TotallySafeCellAgain;
-//~^ ERROR removed "unsafe" from the name of `UnsafeCell` in use as `TotallySafeCellAgain`
+
 
 // Shouldn't error
 use std::cell::{UnsafeCell as SuperDangerousUnsafeCell};
@@ -23,7 +23,7 @@ mod mod_with_some_unsafe_things {
 }
 
 use mod_with_some_unsafe_things::Unsafe as LieAboutModSafety;
-//~^ ERROR removed "unsafe" from the name of `Unsafe` in use as `LieAboutModSafety`
+
 
 // Shouldn't error
 use mod_with_some_unsafe_things::Safe as IPromiseItsSafeThisTime;

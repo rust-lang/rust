@@ -1,7 +1,7 @@
 error: this looks like you are swapping elements of `foo` manually
   --> $DIR/swap.rs:11:5
    |
-11 |       let temp = foo[0]; //~ NOTE implied by
+11 |       let temp = foo[0];
    |  _____^ starting here...
 12 | |     foo[0] = foo[1];
 13 | |     foo[1] = temp;
@@ -19,7 +19,7 @@ help: try
 error: this looks like you are swapping elements of `foo` manually
   --> $DIR/swap.rs:23:5
    |
-23 |       let temp = foo[0]; //~ NOTE implied by
+23 |       let temp = foo[0];
    |  _____^ starting here...
 24 | |     foo[0] = foo[1];
 25 | |     foo[1] = temp;
@@ -32,7 +32,7 @@ help: try
 error: this looks like you are swapping elements of `foo` manually
   --> $DIR/swap.rs:35:5
    |
-35 |       let temp = foo[0]; //~ NOTE implied by
+35 |       let temp = foo[0];
    |  _____^ starting here...
 36 | |     foo[0] = foo[1];
 37 | |     foo[1] = temp;
@@ -45,7 +45,7 @@ help: try
 error: this looks like you are swapping `a` and `b` manually
   --> $DIR/swap.rs:60:7
    |
-60 |       ; let t = a; //~ NOTE implied by
+60 |       ; let t = a;
    |  _______^ starting here...
 61 | |     a = b;
 62 | |     b = t;
@@ -59,7 +59,7 @@ help: try
 error: this looks like you are swapping `c.0` and `a` manually
   --> $DIR/swap.rs:77:7
    |
-77 |       ; let t = c.0; //~ NOTE implied by
+77 |       ; let t = c.0;
    |  _______^ starting here...
 78 | |     c.0 = a;
 79 | |     a = t;
@@ -73,7 +73,7 @@ help: try
 error: this looks like you are trying to swap `a` and `b`
   --> $DIR/swap.rs:53:5
    |
-53 |       a = b; //~ NOTE implied by
+53 |       a = b;
    |  _____^ starting here...
 54 | |     b = a;
    | |_________^ ...ending here
@@ -91,7 +91,7 @@ help: try
 error: this looks like you are trying to swap `c.0` and `a`
   --> $DIR/swap.rs:70:5
    |
-70 |       c.0 = a; //~ NOTE implied by
+70 |       c.0 = a;
    |  _____^ starting here...
 71 | |     a = c.0;
    | |___________^ ...ending here

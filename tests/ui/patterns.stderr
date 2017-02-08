@@ -1,7 +1,7 @@
 error: the `y @ _` pattern can be written as just `y`
   --> $DIR/patterns.rs:10:9
    |
-10 |         y @ _   => (),  //~ERROR the `y @ _` pattern can be written as just `y`
+10 |         y @ _   => (),
    |         ^^^^^
    |
    = note: #[deny(redundant_pattern)] implied by #[deny(clippy)]

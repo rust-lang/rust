@@ -1,7 +1,7 @@
 error: useless use of `format!`
  --> $DIR/format.rs:6:5
   |
-6 |     format!("foo"); //~ERROR useless use of `format!`
+6 |     format!("foo");
   |     ^^^^^^^^^^^^^^^
   |
 note: lint level defined here
@@ -13,13 +13,13 @@ note: lint level defined here
 error: useless use of `format!`
  --> $DIR/format.rs:8:5
   |
-8 |     format!("{}", "foo"); //~ERROR useless use of `format!`
+8 |     format!("{}", "foo");
   |     ^^^^^^^^^^^^^^^^^^^^^
 
 error: useless use of `format!`
   --> $DIR/format.rs:15:5
    |
-15 |     format!("{}", arg); //~ERROR useless use of `format!`
+15 |     format!("{}", arg);
    |     ^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 3 previous errors

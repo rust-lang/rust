@@ -1,7 +1,7 @@
 error: The function/method "takes_an_immutable_reference" doesn't need a mutable reference
   --> $DIR/mut_reference.rs:22:34
    |
-22 |     takes_an_immutable_reference(&mut 42); //~ERROR The function/method "takes_an_immutable_reference" doesn't need a mutable reference
+22 |     takes_an_immutable_reference(&mut 42);
    |                                  ^^^^^^^
    |
 note: lint level defined here
@@ -13,13 +13,13 @@ note: lint level defined here
 error: The function/method "as_ptr" doesn't need a mutable reference
   --> $DIR/mut_reference.rs:24:12
    |
-24 |     as_ptr(&mut 42); //~ERROR The function/method "as_ptr" doesn't need a mutable reference
+24 |     as_ptr(&mut 42);
    |            ^^^^^^^
 
 error: The function/method "takes_an_immutable_reference" doesn't need a mutable reference
   --> $DIR/mut_reference.rs:28:44
    |
-28 |     my_struct.takes_an_immutable_reference(&mut 42); //~ERROR The function/method "takes_an_immutable_reference" doesn't need a mutable reference
+28 |     my_struct.takes_an_immutable_reference(&mut 42);
    |                                            ^^^^^^^
 
 error: aborting due to 3 previous errors

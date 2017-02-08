@@ -1,7 +1,7 @@
 error: the operation is ineffective. Consider reducing it to `x`
   --> $DIR/identity_op.rs:13:5
    |
-13 |     x + 0;        //~ERROR the operation is ineffective
+13 |     x + 0;
    |     ^^^^^
    |
 note: lint level defined here
@@ -13,37 +13,37 @@ note: lint level defined here
 error: the operation is ineffective. Consider reducing it to `x`
   --> $DIR/identity_op.rs:14:5
    |
-14 |     x + (1 - 1);  //~ERROR the operation is ineffective
+14 |     x + (1 - 1);
    |     ^^^^^^^^^^^
 
 error: the operation is ineffective. Consider reducing it to `x`
   --> $DIR/identity_op.rs:16:5
    |
-16 |     0 + x;        //~ERROR the operation is ineffective
+16 |     0 + x;
    |     ^^^^^
 
 error: the operation is ineffective. Consider reducing it to `x`
   --> $DIR/identity_op.rs:19:5
    |
-19 |     x | (0);      //~ERROR the operation is ineffective
+19 |     x | (0);
    |     ^^^^^^^
 
 error: the operation is ineffective. Consider reducing it to `x`
   --> $DIR/identity_op.rs:22:5
    |
-22 |     x * 1;        //~ERROR the operation is ineffective
+22 |     x * 1;
    |     ^^^^^
 
 error: the operation is ineffective. Consider reducing it to `x`
   --> $DIR/identity_op.rs:23:5
    |
-23 |     1 * x;        //~ERROR the operation is ineffective
+23 |     1 * x;
    |     ^^^^^
 
 error: the operation is ineffective. Consider reducing it to `x`
   --> $DIR/identity_op.rs:29:5
    |
-29 |     -1 & x;       //~ERROR the operation is ineffective
+29 |     -1 & x;
    |     ^^^^^^
 
 error: aborting due to 7 previous errors

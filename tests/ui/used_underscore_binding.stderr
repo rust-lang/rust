@@ -1,7 +1,7 @@
 error: used binding `_foo` which is prefixed with an underscore. A leading underscore signals that a binding will not be used.
   --> $DIR/used_underscore_binding.rs:17:5
    |
-17 |     _foo + 1 //~ ERROR used binding `_foo` which is prefixed with an underscore
+17 |     _foo + 1
    |     ^^^^
    |
 note: lint level defined here
@@ -31,7 +31,7 @@ error: used binding `_foo` which is prefixed with an underscore. A leading under
 error: used binding `_underscore_field` which is prefixed with an underscore. A leading underscore signals that a binding will not be used.
   --> $DIR/used_underscore_binding.rs:39:5
    |
-39 |     s._underscore_field += 1; //~ Error used binding `_underscore_field` which is prefixed with an underscore
+39 |     s._underscore_field += 1;
    |     ^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 5 previous errors

@@ -1,7 +1,7 @@
 error: unused label `'label`
   --> $DIR/unused_labels.rs:8:5
    |
-8  |       'label: for i in 1..2 { //~ERROR: unused label `'label`
+8  |       'label: for i in 1..2 {
    |  _____^ starting here...
 9  | |         if i > 4 { continue }
 10 | |     }
@@ -16,13 +16,13 @@ note: lint level defined here
 error: unused label `'a`
   --> $DIR/unused_labels.rs:21:5
    |
-21 |     'a: loop { break } //~ERROR: unused label `'a`
+21 |     'a: loop { break }
    |     ^^^^^^^^^^^^^^^^^^
 
 error: unused label `'same_label_in_two_fns`
   --> $DIR/unused_labels.rs:32:5
    |
-32 |       'same_label_in_two_fns: loop { //~ERROR: unused label `'same_label_in_two_fns`
+32 |       'same_label_in_two_fns: loop {
    |  _____^ starting here...
 33 | |         let _ = 1;
 34 | |     }

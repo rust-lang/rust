@@ -35,8 +35,8 @@ error: this is an `else if` but the formatting might hide it
    |
 45 |       } else
    |  ______^ starting here...
-46 | |     //~^ ERROR this is an `else if` but the formatting might hide it
-47 | |     //~| NOTE remove the `else` or
+46 | |
+47 | |
 48 | |     if foo() { // the span of the above error should continue here
    | |____^ ...ending here
    |
@@ -48,8 +48,8 @@ error: this is an `else if` but the formatting might hide it
    |
 52 |       }
    |  ______^ starting here...
-53 | |     //~^ ERROR this is an `else if` but the formatting might hide it
-54 | |     //~| NOTE remove the `else` or
+53 | |
+54 | |
 55 | |     else
 56 | |     if foo() { // the span of the above error should continue here
    | |____^ ...ending here

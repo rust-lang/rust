@@ -9,11 +9,11 @@ fn ok() {
 
 fn last() {
     foo();
-    fn foo() { println!("foo"); } //~ ERROR adding items after statements is confusing
+    fn foo() { println!("foo"); }
 }
 
 fn main() {
     foo();
-    fn foo() { println!("foo"); } //~ ERROR adding items after statements is confusing
+    fn foo() { println!("foo"); }
     foo();
 }

@@ -1,7 +1,7 @@
 error: module has the same name as its containing module
  --> $DIR/module_inception.rs:7:9
   |
-7 |           mod bar { //~ ERROR module has the same name as its containing module
+7 |           mod bar {
   |  _________^ starting here...
 8 | |             mod foo {}
 9 | |         }
@@ -16,7 +16,7 @@ note: lint level defined here
 error: module has the same name as its containing module
   --> $DIR/module_inception.rs:12:5
    |
-12 |       mod foo { //~ ERROR module has the same name as its containing module
+12 |       mod foo {
    |  _____^ starting here...
 13 | |         mod bar {}
 14 | |     }

@@ -23,17 +23,17 @@
 //! Some garbage docs for the crate here
 #![doc="More garbage"]
 
-type Typedef = String; //~ ERROR: missing documentation for a type alias
-pub type PubTypedef = String; //~ ERROR: missing documentation for a type alias
+type Typedef = String;
+pub type PubTypedef = String;
 
-struct Foo { //~ ERROR: missing documentation for a struct
-    a: isize, //~ ERROR: missing documentation for a struct field
-    b: isize, //~ ERROR: missing documentation for a struct field
+struct Foo {
+    a: isize,
+    b: isize,
 }
 
-pub struct PubFoo { //~ ERROR: missing documentation for a struct
-    pub a: isize,      //~ ERROR: missing documentation for a struct field
-    b: isize, //~ ERROR: missing documentation for a struct field
+pub struct PubFoo {
+    pub a: isize,
+    b: isize,
 }
 
 #[allow(missing_docs_in_private_items)]
@@ -42,13 +42,13 @@ pub struct PubFoo2 {
     pub c: isize,
 }
 
-mod module_no_dox {} //~ ERROR: missing documentation for a module
-pub mod pub_module_no_dox {} //~ ERROR: missing documentation for a module
+mod module_no_dox {}
+pub mod pub_module_no_dox {}
 
 /// dox
 pub fn foo() {}
-pub fn foo2() {} //~ ERROR: missing documentation for a function
-fn foo3() {} //~ ERROR: missing documentation for a function
+pub fn foo2() {}
+fn foo3() {}
 #[allow(missing_docs_in_private_items)] pub fn foo4() {}
 
 /// dox
@@ -65,9 +65,9 @@ trait B {
     fn foo_with_impl(&self) {}
 }
 
-pub trait C { //~ ERROR: missing documentation for a trait
-    fn foo(&self); //~ ERROR: missing documentation for a trait method
-    fn foo_with_impl(&self) {} //~ ERROR: missing documentation for a trait method
+pub trait C {
+    fn foo(&self);
+    fn foo_with_impl(&self) {}
 }
 
 #[allow(missing_docs_in_private_items)]
@@ -77,8 +77,8 @@ pub trait D {
 
 /// dox
 pub trait E {
-    type AssociatedType; //~ ERROR: missing documentation for an associated type
-    type AssociatedTypeDef = Self; //~ ERROR: missing documentation for an associated type
+    type AssociatedType;
+    type AssociatedTypeDef = Self;
 
     /// dox
     type DocumentedType;
@@ -89,15 +89,15 @@ pub trait E {
 }
 
 impl Foo {
-    pub fn foo() {} //~ ERROR: missing documentation for a method
-    fn bar() {} //~ ERROR: missing documentation for a method
+    pub fn foo() {}
+    fn bar() {}
 }
 
 impl PubFoo {
-    pub fn foo() {} //~ ERROR: missing documentation for a method
+    pub fn foo() {}
     /// dox
     pub fn foo1() {}
-    fn foo2() {} //~ ERROR: missing documentation for a method
+    fn foo2() {}
     #[allow(missing_docs_in_private_items)] pub fn foo3() {}
 }
 
@@ -123,17 +123,17 @@ mod a {
     }
 }
 
-enum Baz { //~ ERROR: missing documentation for an enum
-    BazA { //~ ERROR: missing documentation for a variant
-        a: isize, //~ ERROR: missing documentation for a struct field
-        b: isize //~ ERROR: missing documentation for a struct field
+enum Baz {
+    BazA {
+        a: isize,
+        b: isize
     },
-    BarB //~ ERROR: missing documentation for a variant
+    BarB
 }
 
-pub enum PubBaz { //~ ERROR: missing documentation for an enum
-    PubBazA { //~ ERROR: missing documentation for a variant
-        a: isize, //~ ERROR: missing documentation for a struct field
+pub enum PubBaz {
+    PubBazA {
+        a: isize,
     },
 }
 
@@ -157,38 +157,38 @@ pub enum PubBaz3 {
 pub fn baz() {}
 
 
-const FOO: u32 = 0; //~ ERROR: missing documentation for a const
+const FOO: u32 = 0;
 /// dox
 pub const FOO1: u32 = 0;
 #[allow(missing_docs_in_private_items)]
 pub const FOO2: u32 = 0;
 #[doc(hidden)]
 pub const FOO3: u32 = 0;
-pub const FOO4: u32 = 0; //~ ERROR: missing documentation for a const
+pub const FOO4: u32 = 0;
 
 
-static BAR: u32 = 0; //~ ERROR: missing documentation for a static
+static BAR: u32 = 0;
 /// dox
 pub static BAR1: u32 = 0;
 #[allow(missing_docs_in_private_items)]
 pub static BAR2: u32 = 0;
 #[doc(hidden)]
 pub static BAR3: u32 = 0;
-pub static BAR4: u32 = 0; //~ ERROR: missing documentation for a static
+pub static BAR4: u32 = 0;
 
 
-mod internal_impl { //~ ERROR: missing documentation for a module
+mod internal_impl {
     /// dox
     pub fn documented() {}
-    pub fn undocumented1() {} //~ ERROR: missing documentation for a function
-    pub fn undocumented2() {} //~ ERROR: missing documentation for a function
-    fn undocumented3() {} //~ ERROR: missing documentation for a function
+    pub fn undocumented1() {}
+    pub fn undocumented2() {}
+    fn undocumented3() {}
     /// dox
     pub mod globbed {
         /// dox
         pub fn also_documented() {}
-        pub fn also_undocumented1() {} //~ ERROR: missing documentation for a function
-        fn also_undocumented2() {} //~ ERROR: missing documentation for a function
+        pub fn also_undocumented1() {}
+        fn also_undocumented2() {}
     }
 }
 /// dox
@@ -199,4 +199,4 @@ pub mod public_interface {
     pub use internal_impl::globbed::*;
 }
 
-fn main() {} //~ ERROR: missing documentation for a function
+fn main() {}

@@ -1,7 +1,7 @@
 error: Unnecessary boolean `not` operation
   --> $DIR/if_not_else.rs:9:5
    |
-9  |       if !bla() { //~ ERROR: Unnecessary boolean `not` operation
+9  |       if !bla() {
    |  _____^ starting here...
 10 | |         println!("Bugs");
 11 | |     } else {
@@ -19,7 +19,7 @@ note: lint level defined here
 error: Unnecessary `!=` operation
   --> $DIR/if_not_else.rs:14:5
    |
-14 |       if 4 != 5 { //~ ERROR: Unnecessary `!=` operation
+14 |       if 4 != 5 {
    |  _____^ starting here...
 15 | |         println!("Bugs");
 16 | |     } else {

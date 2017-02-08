@@ -1,7 +1,7 @@
 error: any number modulo 1 will be 0
  --> $DIR/modulo_one.rs:7:5
   |
-7 |     10 % 1; //~ERROR any number modulo 1 will be 0
+7 |     10 % 1;
   |     ^^^^^^
   |
 note: lint level defined here

@@ -1,7 +1,7 @@
 error: Variant name ends with the enum's name
   --> $DIR/enum_variants.rs:14:5
    |
-14 |     cFoo, //~ ERROR: Variant name ends with the enum's name
+14 |     cFoo,
    |     ^^^^
    |
    = note: #[deny(enum_variant_names)] implied by #[deny(clippy)]
@@ -14,7 +14,7 @@ note: lint level defined here
 error: Variant name starts with the enum's name
   --> $DIR/enum_variants.rs:25:5
    |
-25 |     FoodGood, //~ ERROR: Variant name starts with the enum's name
+25 |     FoodGood,
    |     ^^^^^^^^
    |
    = note: #[deny(enum_variant_names)] implied by #[deny(clippy)]
@@ -22,7 +22,7 @@ error: Variant name starts with the enum's name
 error: Variant name starts with the enum's name
   --> $DIR/enum_variants.rs:26:5
    |
-26 |     FoodMiddle, //~ ERROR: Variant name starts with the enum's name
+26 |     FoodMiddle,
    |     ^^^^^^^^^^
    |
    = note: #[deny(enum_variant_names)] implied by #[deny(clippy)]
@@ -30,7 +30,7 @@ error: Variant name starts with the enum's name
 error: Variant name starts with the enum's name
   --> $DIR/enum_variants.rs:27:5
    |
-27 |     FoodBad, //~ ERROR: Variant name starts with the enum's name
+27 |     FoodBad,
    |     ^^^^^^^
    |
    = note: #[deny(enum_variant_names)] implied by #[deny(clippy)]
@@ -38,11 +38,11 @@ error: Variant name starts with the enum's name
 error: All variants have the same prefix: `Food`
   --> $DIR/enum_variants.rs:24:1
    |
-24 |   enum Food { //~ ERROR: All variants have the same prefix: `Food`
+24 |   enum Food {
    |  _^ starting here...
-25 | |     FoodGood, //~ ERROR: Variant name starts with the enum's name
-26 | |     FoodMiddle, //~ ERROR: Variant name starts with the enum's name
-27 | |     FoodBad, //~ ERROR: Variant name starts with the enum's name
+25 | |     FoodGood,
+26 | |     FoodMiddle,
+27 | |     FoodBad,
 28 | | }
    | |_^ ...ending here
    |
@@ -52,7 +52,7 @@ error: All variants have the same prefix: `Food`
 error: All variants have the same prefix: `CallType`
   --> $DIR/enum_variants.rs:34:1
    |
-34 |   enum BadCallType { //~ ERROR: All variants have the same prefix: `CallType`
+34 |   enum BadCallType {
    |  _^ starting here...
 35 | |     CallTypeCall,
 36 | |     CallTypeCreate,
@@ -66,7 +66,7 @@ error: All variants have the same prefix: `CallType`
 error: All variants have the same prefix: `Constant`
   --> $DIR/enum_variants.rs:45:1
    |
-45 |   enum Consts { //~ ERROR: All variants have the same prefix: `Constant`
+45 |   enum Consts {
    |  _^ starting here...
 46 | |     ConstantInt,
 47 | |     ConstantCake,
@@ -80,7 +80,7 @@ error: All variants have the same prefix: `Constant`
 error: All variants have the same prefix: `With`
   --> $DIR/enum_variants.rs:78:1
    |
-78 |   enum Seallll { //~ ERROR: All variants have the same prefix: `With`
+78 |   enum Seallll {
    |  _^ starting here...
 79 | |     WithOutCake,
 80 | |     WithOutTea,
@@ -94,7 +94,7 @@ error: All variants have the same prefix: `With`
 error: All variants have the same prefix: `Prefix`
   --> $DIR/enum_variants.rs:84:1
    |
-84 |   enum NonCaps { //~ ERROR: All variants have the same prefix: `Prefix`
+84 |   enum NonCaps {
    |  _^ starting here...
 85 | |     Prefix的,
 86 | |     PrefixTea,
@@ -108,7 +108,7 @@ error: All variants have the same prefix: `Prefix`
 error: All variants have the same prefix: `With`
   --> $DIR/enum_variants.rs:90:1
    |
-90 |   pub enum PubSeall { //~ ERROR: All variants have the same prefix:
+90 |   pub enum PubSeall {
    |  _^ starting here...
 91 | |     WithOutCake,
 92 | |     WithOutTea,

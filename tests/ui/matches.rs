@@ -24,9 +24,9 @@ fn dummy() {
 
 fn unwrap_addr() -> Option<&'static ExprNode> {
     match ExprNode::Butterflies {
-        //~^ ERROR you seem to be trying to use match
-        //~| HELP try
-        //~| SUGGESTION if let ExprNode::ExprAddrOf = ExprNode::Butterflies { Some(&NODE) } else { let x = 5; None }
+
+
+
         ExprNode::ExprAddrOf => Some(&NODE),
         _ => { let x = 5; None },
     }
@@ -36,18 +36,18 @@ fn single_match(){
     let x = Some(1u8);
 
     match x {
-        //~^ ERROR you seem to be trying to use match
-        //~| HELP try
-        //~| SUGGESTION if let Some(y) = x { println!("{:?}", y); };
+
+
+
         Some(y) => { println!("{:?}", y); }
         _ => ()
     };
 
     let z = (1u8,1u8);
     match z {
-        //~^ ERROR you seem to be trying to use match
-        //~| HELP try
-        //~| SUGGESTION if let (2...3, 7...9) = z { dummy() };
+
+
+
         (2...3, 7...9) => dummy(),
         _ => {}
     };
@@ -70,17 +70,17 @@ fn single_match_know_enum() {
     let y : Result<_, i8> = Ok(1i8);
 
     match x {
-        //~^ ERROR you seem to be trying to use match
-        //~| HELP try
-        //~| SUGGESTION if let Some(y) = x { dummy() };
+
+
+
         Some(y) => dummy(),
         None => ()
     };
 
     match y {
-        //~^ ERROR you seem to be trying to use match
-        //~| HELP try
-        //~| SUGGESTION if let Ok(y) = y { dummy() };
+
+
+
         Ok(y) => dummy(),
         Err(..) => ()
     };
@@ -88,9 +88,9 @@ fn single_match_know_enum() {
     let c = Cow::Borrowed("");
 
     match c {
-        //~^ ERROR you seem to be trying to use match
-        //~| HELP try
-        //~| SUGGESTION if let Cow::Borrowed(..) = c { dummy() };
+
+
+
         Cow::Borrowed(..) => dummy(),
         Cow::Owned(..) => (),
     };
@@ -112,51 +112,51 @@ fn match_bool() {
     let test: bool = true;
 
     match test {
-    //~^ ERROR you seem to be trying to match on a boolean expression
-    //~| HELP consider
-    //~| SUGGESTION if test { 0 } else { 42 };
+
+
+
         true => 0,
         false => 42,
     };
 
     let option = 1;
     match option == 1 {
-    //~^ ERROR you seem to be trying to match on a boolean expression
-    //~| HELP consider
-    //~| SUGGESTION if option == 1 { 1 } else { 0 };
+
+
+
         true => 1,
         false => 0,
     };
 
     match test {
-    //~^ ERROR you seem to be trying to match on a boolean expression
-    //~| HELP consider
-    //~| SUGGESTION if !test { println!("Noooo!"); };
+
+
+
         true => (),
         false => { println!("Noooo!"); }
     };
 
     match test {
-    //~^ ERROR you seem to be trying to match on a boolean expression
-    //~| HELP consider
-    //~| SUGGESTION if !test { println!("Noooo!"); };
+
+
+
         false => { println!("Noooo!"); }
         _ => (),
     };
 
     match test && test {
-    //~^ ERROR you seem to be trying to match on a boolean expression
-    //~| HELP consider
-    //~| SUGGESTION if !(test && test) { println!("Noooo!"); };
-    //~| ERROR equal expressions as operands
+
+
+
+
         false => { println!("Noooo!"); }
         _ => (),
     };
 
     match test {
-    //~^ ERROR you seem to be trying to match on a boolean expression
-    //~| HELP consider
-    //~| SUGGESTION if test { println!("Yes!"); } else { println!("Noooo!"); };
+
+
+
         false => { println!("Noooo!"); }
         true => { println!("Yes!"); }
     };
@@ -173,9 +173,9 @@ fn ref_pats() {
     {
         let v = &Some(0);
         match v {
-            //~^ERROR add `&` to all patterns
-            //~|HELP instead of
-            //~|SUGGESTION match *v { .. }
+
+
+
             &Some(v) => println!("{:?}", v),
             &None => println!("none"),
         }
@@ -186,18 +186,18 @@ fn ref_pats() {
     }
     let tup =& (1, 2);
     match tup {
-        //~^ERROR add `&` to all patterns
-        //~|HELP instead of
-        //~|SUGGESTION match *tup { .. }
+
+
+
         &(v, 1) => println!("{}", v),
         _ => println!("none"),
     }
     // special case: using & both in expr and pats
     let w = Some(0);
     match &w {
-        //~^ERROR add `&` to both
-        //~|HELP try
-        //~|SUGGESTION match w { .. }
+
+
+
         &Some(v) => println!("{:?}", v),
         &None => println!("none"),
     }
@@ -209,17 +209,17 @@ fn ref_pats() {
 
     let a = &Some(0);
     if let &None = a {
-        //~^ERROR add `&` to all patterns
-        //~|HELP instead of
-        //~|SUGGESTION if let .. = *a { .. }
+
+
+
         println!("none");
     }
 
     let b = Some(0);
     if let &None = &b {
-        //~^ERROR add `&` to both
-        //~|HELP try
-        //~|SUGGESTION if let .. = b { .. }
+
+
+
         println!("none");
     }
 }
@@ -228,27 +228,27 @@ fn overlapping() {
     const FOO : u64 = 2;
 
     match 42 {
-        0 ... 10 => println!("0 ... 10"), //~ERROR: some ranges overlap
-        0 ... 11 => println!("0 ... 11"), //~NOTE overlaps with this
+        0 ... 10 => println!("0 ... 10"),
+        0 ... 11 => println!("0 ... 11"),
         _ => (),
     }
 
     match 42 {
-        0 ... 5 => println!("0 ... 5"), //~ERROR: some ranges overlap
+        0 ... 5 => println!("0 ... 5"),
         6 ... 7 => println!("6 ... 7"),
-        FOO ... 11 => println!("0 ... 11"), //~NOTE overlaps with this
+        FOO ... 11 => println!("0 ... 11"),
         _ => (),
     }
 
     match 42 {
-        2 => println!("2"), //~NOTE overlaps with this
-        0 ... 5 => println!("0 ... 5"), //~ERROR: some ranges overlap
+        2 => println!("2"),
+        0 ... 5 => println!("0 ... 5"),
         _ => (),
     }
 
     match 42 {
-        2 => println!("2"), //~NOTE overlaps with this
-        0 ... 2 => println!("0 ... 2"), //~ERROR: some ranges overlap
+        2 => println!("2"),
+        0 ... 2 => println!("0 ... 2"),
         _ => (),
     }
 
@@ -271,8 +271,8 @@ fn overlapping() {
     }
 
     match 42 {
-        0 .. 11 => println!("0 .. 11"), //~ERROR: some ranges overlap
-        0 ... 11 => println!("0 ... 11"), //~NOTE overlaps with this
+        0 .. 11 => println!("0 .. 11"),
+        0 ... 11 => println!("0 ... 11"),
         _ => (),
     }
 

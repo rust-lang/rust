@@ -30,11 +30,11 @@ fn ok_box_trait(boxed_trait: &Box<Z>) {
 }
 
 fn warn_call() {
-    let x = box A; //~ ERROR local variable
+    let x = box A;
     x.foo();
 }
 
-fn warn_arg(x: Box<A>) { //~ ERROR local variable
+fn warn_arg(x: Box<A>) {
     x.foo();
 }
 
@@ -46,16 +46,16 @@ fn nowarn_closure_arg() {
 fn warn_rename_call() {
     let x = box A;
 
-    let y = x; //~ ERROR local variable
+    let y = x;
     y.foo(); // via autoderef
 }
 
 fn warn_notuse() {
-    let bz = box A; //~ ERROR local variable
+    let bz = box A;
 }
 
 fn warn_pass() {
-    let bz = box A; //~ ERROR local variable
+    let bz = box A;
     take_ref(&bz); // via deref coercion
 }
 
@@ -85,7 +85,7 @@ fn take_ref(x: &A) {}
 
 fn nowarn_ref_take() {
     // false positive, should actually warn
-    let x = box A; //~ ERROR local variable
+    let x = box A;
     let y = &x;
     take_box(y);
 }
@@ -98,7 +98,7 @@ fn nowarn_match() {
 }
 
 fn warn_match() {
-    let x = box A; //~ ERROR local variable
+    let x = box A;
     match &x { // not moved
         ref y => ()
     }
@@ -127,5 +127,5 @@ pub struct PeekableSeekable<I: Foo> {
     _peeked: I::Item,
 }
 
-pub fn new(_needs_name: Box<PeekableSeekable<&()>>) -> () { //~ ERROR local variable doesn't need
+pub fn new(_needs_name: Box<PeekableSeekable<&()>>) -> () {
 }

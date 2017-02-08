@@ -40,7 +40,7 @@ error: you are iterating over `Iterator::next()` which is an Option; this will c
    |
 40 |       for x in v.iter().next() {
    |  _____^ starting here...
-41 | |         //~^ ERROR you are iterating over `Iterator::next()` which is an Option
+41 | |
 42 | |         println!("{}", x);
 43 | |     }
    | |_____^ ...ending here
@@ -75,10 +75,10 @@ error: the loop variable `i` is only used to index `vec`.
     |
 99  |       for i in 0..vec.len() {
     |  _____^ starting here...
-100 | |         //~^ ERROR `i` is only used to index `vec`
-101 | |         //~| HELP consider
-102 | |         //~| HELP consider
-103 | |         //~| SUGGESTION for <item> in &vec {
+100 | |
+101 | |
+102 | |
+103 | |
 104 | |         println!("{}", vec[i]);
 105 | |     }
     | |_____^ ...ending here
@@ -113,10 +113,10 @@ error: the loop variable `j` is only used to index `STATIC`.
     |
 120 |       for j in 0..4 {
     |  _____^ starting here...
-121 | |         //~^ ERROR `j` is only used to index `STATIC`
-122 | |         //~| HELP consider
-123 | |         //~| HELP consider
-124 | |         //~| SUGGESTION for <item> in STATIC.iter().take(4) {
+121 | |
+122 | |
+123 | |
+124 | |
 125 | |         println!("{:?}", STATIC[j]);
 126 | |     }
     | |_____^ ...ending here
@@ -129,10 +129,10 @@ error: the loop variable `j` is only used to index `CONST`.
     |
 128 |       for j in 0..4 {
     |  _____^ starting here...
-129 | |         //~^ ERROR `j` is only used to index `CONST`
-130 | |         //~| HELP consider
-131 | |         //~| HELP consider
-132 | |         //~| SUGGESTION for <item> in CONST.iter().take(4) {
+129 | |
+130 | |
+131 | |
+132 | |
 133 | |         println!("{:?}", CONST[j]);
 134 | |     }
     | |_____^ ...ending here
@@ -145,10 +145,10 @@ error: the loop variable `i` is used to index `vec`
     |
 136 |       for i in 0..vec.len() {
     |  _____^ starting here...
-137 | |         //~^ ERROR `i` is used to index `vec`
-138 | |         //~| HELP consider
-139 | |         //~| HELP consider
-140 | |         //~| SUGGESTION for (i, <item>) in vec.iter().enumerate() {
+137 | |
+138 | |
+139 | |
+140 | |
 141 | |         println!("{} {}", vec[i], i);
 142 | |     }
     | |_____^ ...ending here
@@ -161,10 +161,10 @@ error: the loop variable `i` is only used to index `vec2`.
     |
 147 |       for i in 0..vec.len() {
     |  _____^ starting here...
-148 | |         //~^ ERROR `i` is only used to index `vec2`
-149 | |         //~| HELP consider
-150 | |         //~| HELP consider
-151 | |         //~| SUGGESTION for <item> in vec2.iter().take(vec.len()) {
+148 | |
+149 | |
+150 | |
+151 | |
 152 | |         println!("{}", vec2[i]);
 153 | |     }
     | |_____^ ...ending here
@@ -177,10 +177,10 @@ error: the loop variable `i` is only used to index `vec`.
     |
 155 |       for i in 5..vec.len() {
     |  _____^ starting here...
-156 | |         //~^ ERROR `i` is only used to index `vec`
-157 | |         //~| HELP consider
-158 | |         //~| HELP consider
-159 | |         //~| SUGGESTION for <item> in vec.iter().skip(5) {
+156 | |
+157 | |
+158 | |
+159 | |
 160 | |         println!("{}", vec[i]);
 161 | |     }
     | |_____^ ...ending here
@@ -193,10 +193,10 @@ error: the loop variable `i` is only used to index `vec`.
     |
 163 |       for i in 0..MAX_LEN {
     |  _____^ starting here...
-164 | |         //~^ ERROR `i` is only used to index `vec`
-165 | |         //~| HELP consider
-166 | |         //~| HELP consider
-167 | |         //~| SUGGESTION for <item> in vec.iter().take(MAX_LEN) {
+164 | |
+165 | |
+166 | |
+167 | |
 168 | |         println!("{}", vec[i]);
 169 | |     }
     | |_____^ ...ending here
@@ -209,10 +209,10 @@ error: the loop variable `i` is only used to index `vec`.
     |
 171 |       for i in 0...MAX_LEN {
     |  _____^ starting here...
-172 | |         //~^ ERROR `i` is only used to index `vec`
-173 | |         //~| HELP consider
-174 | |         //~| HELP consider
-175 | |         //~| SUGGESTION for <item> in vec.iter().take(MAX_LEN + 1) {
+172 | |
+173 | |
+174 | |
+175 | |
 176 | |         println!("{}", vec[i]);
 177 | |     }
     | |_____^ ...ending here
@@ -225,10 +225,10 @@ error: the loop variable `i` is only used to index `vec`.
     |
 179 |       for i in 5..10 {
     |  _____^ starting here...
-180 | |         //~^ ERROR `i` is only used to index `vec`
-181 | |         //~| HELP consider
-182 | |         //~| HELP consider
-183 | |         //~| SUGGESTION for <item> in vec.iter().take(10).skip(5) {
+180 | |
+181 | |
+182 | |
+183 | |
 184 | |         println!("{}", vec[i]);
 185 | |     }
     | |_____^ ...ending here
@@ -241,10 +241,10 @@ error: the loop variable `i` is only used to index `vec`.
     |
 187 |       for i in 5...10 {
     |  _____^ starting here...
-188 | |         //~^ ERROR `i` is only used to index `vec`
-189 | |         //~| HELP consider
-190 | |         //~| HELP consider
-191 | |         //~| SUGGESTION for <item> in vec.iter().take(10 + 1).skip(5) {
+188 | |
+189 | |
+190 | |
+191 | |
 192 | |         println!("{}", vec[i]);
 193 | |     }
     | |_____^ ...ending here
@@ -257,10 +257,10 @@ error: the loop variable `i` is used to index `vec`
     |
 195 |       for i in 5..vec.len() {
     |  _____^ starting here...
-196 | |         //~^ ERROR `i` is used to index `vec`
-197 | |         //~| HELP consider
-198 | |         //~| HELP consider
-199 | |         //~| SUGGESTION for (i, <item>) in vec.iter().enumerate().skip(5) {
+196 | |
+197 | |
+198 | |
+199 | |
 200 | |         println!("{} {}", vec[i], i);
 201 | |     }
     | |_____^ ...ending here
@@ -273,10 +273,10 @@ error: the loop variable `i` is used to index `vec`
     |
 203 |       for i in 5..10 {
     |  _____^ starting here...
-204 | |         //~^ ERROR `i` is used to index `vec`
-205 | |         //~| HELP consider
-206 | |         //~| HELP consider
-207 | |         //~| SUGGESTION for (i, <item>) in vec.iter().enumerate().take(10).skip(5) {
+204 | |
+205 | |
+206 | |
+207 | |
 208 | |         println!("{} {}", vec[i], i);
 209 | |     }
     | |_____^ ...ending here
@@ -289,9 +289,9 @@ error: this range is empty so this for loop will never run
     |
 211 |       for i in 10..0 {
     |  _____^ starting here...
-212 | |         //~^ERROR this range is empty so this for loop will never run
-213 | |         //~|HELP consider
-214 | |         //~|SUGGESTION (0..10).rev()
+212 | |
+213 | |
+214 | |
 215 | |         println!("{}", i);
 216 | |     }
     | |_____^ ...ending here
@@ -309,9 +309,9 @@ error: this range is empty so this for loop will never run
     |
 218 |       for i in 10...0 {
     |  _____^ starting here...
-219 | |         //~^ERROR this range is empty so this for loop will never run
-220 | |         //~|HELP consider
-221 | |         //~|SUGGESTION (0...10).rev()
+219 | |
+220 | |
+221 | |
 222 | |         println!("{}", i);
 223 | |     }
     | |_____^ ...ending here
@@ -322,21 +322,21 @@ help: consider using the following if you are attempting to iterate over this ra
 error: this range is empty so this for loop will never run
    --> $DIR/for_loop.rs:225:5
     |
-225 |       for i in MAX_LEN..0 { //~ERROR this range is empty so this for loop will never run
+225 |       for i in MAX_LEN..0 {
     |  _____^ starting here...
-226 | |         //~|HELP consider
-227 | |         //~|SUGGESTION (0..MAX_LEN).rev()
+226 | |
+227 | |
 228 | |         println!("{}", i);
 229 | |     }
     | |_____^ ...ending here
     |
 help: consider using the following if you are attempting to iterate over this range in reverse
-    |     for i in (0..MAX_LEN).rev() { //~ERROR this range is empty so this for loop will never run
+    |     for i in (0..MAX_LEN).rev() {
 
 error: this range is empty so this for loop will never run
    --> $DIR/for_loop.rs:231:5
     |
-231 |       for i in 5..5 { //~ERROR this range is empty so this for loop will never run
+231 |       for i in 5..5 {
     |  _____^ starting here...
 232 | |         println!("{}", i);
 233 | |     }
@@ -347,9 +347,9 @@ error: this range is empty so this for loop will never run
     |
 252 |       for i in 10..5+4 {
     |  _____^ starting here...
-253 | |     //~^ ERROR this range is empty so this for loop will never run
-254 | |     //~| HELP if you are attempting to iterate over this range in reverse
-255 | |     //~| SUGGESTION for i in (5+4..10).rev() {
+253 | |
+254 | |
+255 | |
 256 | |         println!("{}", i);
 257 | |     }
     | |_____^ ...ending here
@@ -362,9 +362,9 @@ error: this range is empty so this for loop will never run
     |
 259 |       for i in (5+2)..(3-1) {
     |  _____^ starting here...
-260 | |     //~^ ERROR this range is empty so this for loop will never run
-261 | |     //~| HELP if you are attempting to iterate over this range in reverse
-262 | |     //~| SUGGESTION for i in ((3-1)..(5+2)).rev() {
+260 | |
+261 | |
+262 | |
 263 | |         println!("{}", i);
 264 | |     }
     | |_____^ ...ending here
@@ -375,7 +375,7 @@ help: consider using the following if you are attempting to iterate over this ra
 error: this range is empty so this for loop will never run
    --> $DIR/for_loop.rs:266:5
     |
-266 |       for i in (5+2)..(8-1) { //~ERROR this range is empty so this for loop will never run
+266 |       for i in (5+2)..(8-1) {
     |  _____^ starting here...
 267 | |         println!("{}", i);
 268 | |     }
@@ -502,7 +502,7 @@ help: to write this more concisely, try looping over
 error: you are iterating over `Iterator::next()` which is an Option; this will compile but is probably not what you want
    --> $DIR/for_loop.rs:365:5
     |
-365 |     for _v in vec.iter().next() { } //~ERROR you are iterating over `Iterator::next()`
+365 |     for _v in vec.iter().next() { }
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
 note: lint level defined here
@@ -514,7 +514,7 @@ note: lint level defined here
 error: you are collect()ing an iterator and throwing away the result. Consider using an explicit for loop to exhaust the iterator
    --> $DIR/for_loop.rs:372:5
     |
-372 |     vec.iter().map(|x| out.push(x)).collect::<Vec<_>>(); //~ERROR you are collect()ing an iterator
+372 |     vec.iter().map(|x| out.push(x)).collect::<Vec<_>>();
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
 note: lint level defined here
@@ -526,7 +526,7 @@ note: lint level defined here
 error: the variable `_index` is used as a loop counter. Consider using `for (_index, item) in &vec.enumerate()` or similar iterators
    --> $DIR/for_loop.rs:377:5
     |
-377 |     for _v in &vec { _index += 1 } //~ERROR the variable `_index` is used as a loop counter
+377 |     for _v in &vec { _index += 1 }
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     |
 note: lint level defined here
@@ -538,7 +538,7 @@ note: lint level defined here
 error: the variable `_index` is used as a loop counter. Consider using `for (_index, item) in &vec.enumerate()` or similar iterators
    --> $DIR/for_loop.rs:381:5
     |
-381 |     for _v in &vec { _index += 1 } //~ERROR the variable `_index` is used as a loop counter
+381 |     for _v in &vec { _index += 1 }
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: you seem to want to iterate on a map's values
@@ -546,10 +546,10 @@ error: you seem to want to iterate on a map's values
     |
 441 |       for (_, v) in &m {
     |  _____^ starting here...
-442 | |         //~^ you seem to want to iterate on a map's values
-443 | |         //~| HELP use the corresponding method
-444 | |         //~| HELP use the corresponding method
-445 | |         //~| SUGGESTION for v in m.values() {
+442 | |
+443 | |
+444 | |
+445 | |
 446 | |         let _v = v;
 447 | |     }
     | |_____^ ...ending here
@@ -567,10 +567,10 @@ error: you seem to want to iterate on a map's values
     |
 450 |       for (_, v) in &*m {
     |  _____^ starting here...
-451 | |         //~^ you seem to want to iterate on a map's values
-452 | |         //~| HELP use the corresponding method
-453 | |         //~| HELP use the corresponding method
-454 | |         //~| SUGGESTION for v in (*m).values() {
+451 | |
+452 | |
+453 | |
+454 | |
 455 | |         let _v = v;
 456 | |         // Here the `*` is not actually necesarry, but the test tests that we don't suggest
 457 | |         // `in *m.values()` as we used to
@@ -585,10 +585,10 @@ error: you seem to want to iterate on a map's values
     |
 461 |       for (_, v) in &mut m {
     |  _____^ starting here...
-462 | |         //~^ you seem to want to iterate on a map's values
-463 | |         //~| HELP use the corresponding method
-464 | |         //~| HELP use the corresponding method
-465 | |         //~| SUGGESTION for v in m.values_mut()
+462 | |
+463 | |
+464 | |
+465 | |
 466 | |         let _v = v;
 467 | |     }
     | |_____^ ...ending here
@@ -601,10 +601,10 @@ error: you seem to want to iterate on a map's values
     |
 470 |       for (_, v) in &mut *m {
     |  _____^ starting here...
-471 | |         //~^ you seem to want to iterate on a map's values
-472 | |         //~| HELP use the corresponding method
-473 | |         //~| HELP use the corresponding method
-474 | |         //~| SUGGESTION for v in (*m).values_mut()
+471 | |
+472 | |
+473 | |
+474 | |
 475 | |         let _v = v;
 476 | |     }
     | |_____^ ...ending here
@@ -617,10 +617,10 @@ error: you seem to want to iterate on a map's keys
     |
 480 |       for (k, _value) in rm {
     |  _____^ starting here...
-481 | |         //~^ you seem to want to iterate on a map's keys
-482 | |         //~| HELP use the corresponding method
-483 | |         //~| HELP use the corresponding method
-484 | |         //~| SUGGESTION for k in rm.keys() {
+481 | |
+482 | |
+483 | |
+484 | |
 485 | |         let _k = k;
 486 | |     }
     | |_____^ ...ending here

@@ -1,7 +1,7 @@
 error: this boolean expression contains a logic bug
   --> $DIR/booleans.rs:12:13
    |
-12 |     let _ = a && b || a; //~ ERROR this boolean expression contains a logic bug
+12 |     let _ = a && b || a;
    |             ^^^^^^^^^^^
    |
 note: lint level defined here
@@ -12,15 +12,15 @@ note: lint level defined here
 help: this expression can be optimized out by applying boolean operations to the outer expression
   --> $DIR/booleans.rs:12:18
    |
-12 |     let _ = a && b || a; //~ ERROR this boolean expression contains a logic bug
+12 |     let _ = a && b || a;
    |                  ^
 help: it would look like the following
-   |     let _ = a; //~ ERROR this boolean expression contains a logic bug
+   |     let _ = a;
 
 error: this boolean expression can be simplified
   --> $DIR/booleans.rs:17:13
    |
-17 |     let _ = !true; //~ ERROR this boolean expression can be simplified
+17 |     let _ = !true;
    |             ^^^^^
    |
 note: lint level defined here
@@ -29,57 +29,57 @@ note: lint level defined here
 3  | #![deny(nonminimal_bool, logic_bug)]
    |         ^^^^^^^^^^^^^^^
 help: try
-   |     let _ = false; //~ ERROR this boolean expression can be simplified
+   |     let _ = false;
 
 error: this boolean expression can be simplified
   --> $DIR/booleans.rs:20:13
    |
-20 |     let _ = !false; //~ ERROR this boolean expression can be simplified
+20 |     let _ = !false;
    |             ^^^^^^
    |
 help: try
-   |     let _ = true; //~ ERROR this boolean expression can be simplified
+   |     let _ = true;
 
 error: this boolean expression can be simplified
   --> $DIR/booleans.rs:23:13
    |
-23 |     let _ = !!a; //~ ERROR this boolean expression can be simplified
+23 |     let _ = !!a;
    |             ^^^
    |
 help: try
-   |     let _ = a; //~ ERROR this boolean expression can be simplified
+   |     let _ = a;
 
 error: this boolean expression contains a logic bug
   --> $DIR/booleans.rs:27:13
    |
-27 |     let _ = false && a; //~ ERROR this boolean expression contains a logic bug
+27 |     let _ = false && a;
    |             ^^^^^^^^^^
    |
 help: this expression can be optimized out by applying boolean operations to the outer expression
   --> $DIR/booleans.rs:27:22
    |
-27 |     let _ = false && a; //~ ERROR this boolean expression contains a logic bug
+27 |     let _ = false && a;
    |                      ^
 help: it would look like the following
-   |     let _ = false; //~ ERROR this boolean expression contains a logic bug
+   |     let _ = false;
 
 error: this boolean expression can be simplified
   --> $DIR/booleans.rs:32:13
    |
-32 |     let _ = false || a; //~ ERROR this boolean expression can be simplified
+32 |     let _ = false || a;
    |             ^^^^^^^^^^
    |
 help: try
-   |     let _ = a; //~ ERROR this boolean expression can be simplified
+   |     let _ = a;
 
 error: this boolean expression can be simplified
   --> $DIR/booleans.rs:43:13
    |
-43 |     let _ = !(!a && b); //~ ERROR this boolean expression can be simplified
+43 |     let _ = !(!a && b);
    |             ^^^^^^^^^^
    |
 help: try
-   |     let _ = !b || a; //~ ERROR this boolean expression can be simplified
+   |     let _ = !b || a;
 
 error: this boolean expression contains a logic bug
   --> $DIR/booleans.rs:55:13

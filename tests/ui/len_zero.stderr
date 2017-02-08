@@ -1,7 +1,7 @@
 error: item `PubOne` has a public `len` method but no corresponding `is_empty` method
   --> $DIR/len_zero.rs:10:5
    |
-10 |       pub fn len(self: &Self) -> isize { //~ERROR item `PubOne` has a public `len` method but no corresponding `is_empty`
+10 |       pub fn len(self: &Self) -> isize {
    |  _____^ starting here...
 11 | |         1
 12 | |     }
@@ -16,13 +16,13 @@ note: lint level defined here
 error: trait `PubTraitsToo` has a `len` method but no `is_empty` method
   --> $DIR/len_zero.rs:32:5
    |
-32 |     fn len(self: &Self) -> isize; //~ERROR trait `PubTraitsToo` has a `len` method but no `is_empty`
+32 |     fn len(self: &Self) -> isize;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: item `HasIsEmpty` has a public `len` method but a private `is_empty` method
   --> $DIR/len_zero.rs:66:5
    |
-66 |       pub fn len(self: &Self) -> isize { //~ERROR item `HasIsEmpty` has a public `len` method but a private `is_empty`
+66 |       pub fn len(self: &Self) -> isize {
    |  _____^ starting here...
 67 | |         1
 68 | |     }
@@ -31,7 +31,7 @@ error: item `HasIsEmpty` has a public `len` method but a private `is_empty` meth
 error: item `HasWrongIsEmpty` has a public `len` method but no corresponding `is_empty` method
   --> $DIR/len_zero.rs:95:5
    |
-95 |       pub fn len(self: &Self) -> isize { //~ERROR item `HasWrongIsEmpty` has a public `len` method but no corresponding `is_empty`
+95 |       pub fn len(self: &Self) -> isize {
    |  _____^ starting here...
 96 | |         1
 97 | |     }

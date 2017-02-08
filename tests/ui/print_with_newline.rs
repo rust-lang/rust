@@ -3,10 +3,10 @@
 #![deny(print_with_newline)]
 
 fn main() {
-    print!("Hello\n"); //~ERROR using `print!()` with a format string
-    print!("Hello {}\n", "world"); //~ERROR using `print!()` with a format string
-    print!("Hello {} {}\n\n", "world", "#2"); //~ERROR using `print!()` with a format string
-    print!("{}\n", 1265); //~ERROR using `print!()` with a format string
+    print!("Hello\n");
+    print!("Hello {}\n", "world");
+    print!("Hello {} {}\n\n", "world", "#2");
+    print!("{}\n", 1265);
 
     // these are all fine
     print!("");

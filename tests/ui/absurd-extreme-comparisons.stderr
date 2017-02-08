@@ -142,7 +142,7 @@ error: this comparison involving the minimum or maximum element for this type co
 warning: <-comparison of unit values detected. This will always be false
   --> $DIR/absurd-extreme-comparisons.rs:72:5
    |
-72 |     () < {}; //~WARNING <-comparison of unit values detected.
+72 |     () < {};
    |     ^^^^^^^
    |
    = note: #[warn(unit_cmp)] on by default

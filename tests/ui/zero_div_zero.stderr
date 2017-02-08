@@ -1,7 +1,7 @@
 warning: equal expressions as operands to `/`
  --> $DIR/zero_div_zero.rs:7:15
   |
-7 |     let nan = 0.0 / 0.0; //~ERROR constant division of 0.0 with 0.0 will always result in NaN
+7 |     let nan = 0.0 / 0.0;
   |               ^^^^^^^^^
   |
   = note: #[warn(eq_op)] on by default
@@ -9,7 +9,7 @@ warning: equal expressions as operands to `/`
 error: constant division of 0.0 with 0.0 will always result in NaN
  --> $DIR/zero_div_zero.rs:7:15
   |
-7 |     let nan = 0.0 / 0.0; //~ERROR constant division of 0.0 with 0.0 will always result in NaN
+7 |     let nan = 0.0 / 0.0;
   |               ^^^^^^^^^
   |
 note: lint level defined here
@@ -22,7 +22,7 @@ note: lint level defined here
 warning: equal expressions as operands to `/`
  --> $DIR/zero_div_zero.rs:9:19
   |
-9 |     let f64_nan = 0.0 / 0.0f64; //~ERROR constant division of 0.0 with 0.0 will always result in NaN
+9 |     let f64_nan = 0.0 / 0.0f64;
   |                   ^^^^^^^^^^^^
   |
   = note: #[warn(eq_op)] on by default
@@ -30,7 +30,7 @@ warning: equal expressions as operands to `/`
 error: constant division of 0.0 with 0.0 will always result in NaN
  --> $DIR/zero_div_zero.rs:9:19
   |
-9 |     let f64_nan = 0.0 / 0.0f64; //~ERROR constant division of 0.0 with 0.0 will always result in NaN
+9 |     let f64_nan = 0.0 / 0.0f64;
   |                   ^^^^^^^^^^^^
   |
   = help: Consider using `std::f64::NAN` if you would like a constant representing NaN
@@ -38,7 +38,7 @@ error: constant division of 0.0 with 0.0 will always result in NaN
 warning: equal expressions as operands to `/`
   --> $DIR/zero_div_zero.rs:11:25
    |
-11 |     let other_f64_nan = 0.0f64 / 0.0; //~ERROR constant division of 0.0 with 0.0 will always result in NaN
+11 |     let other_f64_nan = 0.0f64 / 0.0;
    |                         ^^^^^^^^^^^^
    |
    = note: #[warn(eq_op)] on by default
@@ -46,7 +46,7 @@ warning: equal expressions as operands to `/`
 error: constant division of 0.0 with 0.0 will always result in NaN
   --> $DIR/zero_div_zero.rs:11:25
    |
-11 |     let other_f64_nan = 0.0f64 / 0.0; //~ERROR constant division of 0.0 with 0.0 will always result in NaN
+11 |     let other_f64_nan = 0.0f64 / 0.0;
    |                         ^^^^^^^^^^^^
    |
    = help: Consider using `std::f64::NAN` if you would like a constant representing NaN
@@ -54,7 +54,7 @@ error: constant division of 0.0 with 0.0 will always result in NaN
 warning: equal expressions as operands to `/`
   --> $DIR/zero_div_zero.rs:13:28
    |
-13 |     let one_more_f64_nan = 0.0f64/0.0f64; //~ERROR constant division of 0.0 with 0.0 will always result in NaN
+13 |     let one_more_f64_nan = 0.0f64/0.0f64;
    |                            ^^^^^^^^^^^^^
    |
    = note: #[warn(eq_op)] on by default
@@ -62,7 +62,7 @@ warning: equal expressions as operands to `/`
 error: constant division of 0.0 with 0.0 will always result in NaN
   --> $DIR/zero_div_zero.rs:13:28
    |
-13 |     let one_more_f64_nan = 0.0f64/0.0f64; //~ERROR constant division of 0.0 with 0.0 will always result in NaN
+13 |     let one_more_f64_nan = 0.0f64/0.0f64;
    |                            ^^^^^^^^^^^^^
    |
    = help: Consider using `std::f64::NAN` if you would like a constant representing NaN

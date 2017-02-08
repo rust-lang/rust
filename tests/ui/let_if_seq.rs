@@ -55,17 +55,17 @@ fn main() {
     issue985_alt();
 
     let mut foo = 0;
-    //~^ ERROR `if _ { .. } else { .. }` is an expression
-    //~| HELP more idiomatic
-    //~| SUGGESTION let <mut> foo = if f() { 42 } else { 0 };
+
+
+
     if f() {
         foo = 42;
     }
 
     let mut bar = 0;
-    //~^ ERROR `if _ { .. } else { .. }` is an expression
-    //~| HELP more idiomatic
-    //~| SUGGESTION let <mut> bar = if f() { ..; 42 } else { ..; 0 };
+
+
+
     if f() {
         f();
         bar = 42;
@@ -75,9 +75,9 @@ fn main() {
     }
 
     let quz;
-    //~^ ERROR `if _ { .. } else { .. }` is an expression
-    //~| HELP more idiomatic
-    //~| SUGGESTION let quz = if f() { 42 } else { 0 };
+
+
+
 
     if f() {
         quz = 42;
@@ -109,9 +109,9 @@ fn main() {
 
     // baz needs to be mut
     let mut baz = 0;
-    //~^ ERROR `if _ { .. } else { .. }` is an expression
-    //~| HELP more idiomatic
-    //~| SUGGESTION let <mut> baz = if f() { 42 } else { 0 };
+
+
+
     if f() {
         baz = 42;
     }

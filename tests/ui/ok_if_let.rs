@@ -5,7 +5,7 @@
 
 fn str_to_int(x: &str) -> i32 {
     if let Some(y) = x.parse().ok() { 
-    //~^ERROR Matching on `Some` with `ok()` is redundant
+
         y
     } else {
         0

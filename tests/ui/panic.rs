@@ -5,11 +5,11 @@
 
 fn missing() {
     if true {
-        panic!("{}"); //~ERROR: you probably are missing some parameter
+        panic!("{}");
     } else if false {
-        panic!("{:?}"); //~ERROR: you probably are missing some parameter
+        panic!("{:?}");
     } else {
-        assert!(true, "here be missing values: {}"); //~ERROR you probably are missing some parameter
+        assert!(true, "here be missing values: {}");
     }
 }
 

@@ -10,17 +10,17 @@ fn first(x: (isize, isize)) -> isize { x.0 }
 
 fn main() {
     let mut x = 1;
-    let x = &mut x; //~ERROR `x` is shadowed by itself in `&mut x`
-    let x = { x }; //~ERROR `x` is shadowed by itself in `{ x }`
-    let x = (&*x); //~ERROR `x` is shadowed by itself in `(&*x)`
-    let x = { *x + 1 }; //~ERROR `x` is shadowed by `{ *x + 1 }` which reuses
-    let x = id(x); //~ERROR `x` is shadowed by `id(x)` which reuses
-    let x = (1, x); //~ERROR `x` is shadowed by `(1, x)` which reuses
-    let x = first(x); //~ERROR `x` is shadowed by `first(x)` which reuses
+    let x = &mut x;
+    let x = { x };
+    let x = (&*x);
+    let x = { *x + 1 };
+    let x = id(x);
+    let x = (1, x);
+    let x = first(x);
     let y = 1;
-    let x = y; //~ERROR `x` is shadowed by `y`
+    let x = y;
 
-    let x; //~ERROR `x` shadows a previous declaration
+    let x;
     x = 42;
 
     let o = Some(1_u8);

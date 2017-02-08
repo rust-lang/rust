@@ -28,7 +28,7 @@ pub enum Abc {
 #[deny(match_same_arms)]
 fn if_same_then_else() -> Result<&'static str, ()> {
     if true {
-        //~^NOTE same as this
+
         Foo { bar: 42 };
         0..10;
         ..;
@@ -37,7 +37,7 @@ fn if_same_then_else() -> Result<&'static str, ()> {
         0...10;
         foo();
     }
-    else { //~ERROR this `if` has identical blocks
+    else {
         Foo { bar: 42 };
         0..10;
         ..;
@@ -78,8 +78,8 @@ fn if_same_then_else() -> Result<&'static str, ()> {
 
     let _ = match 42 {
         42 => {
-            //~^ NOTE same as this
-            //~| NOTE removing
+
+
             foo();
             let mut a = 42 + [23].len() as i32;
             if true {
@@ -88,7 +88,7 @@ fn if_same_then_else() -> Result<&'static str, ()> {
             a = -31-a;
             a
         }
-        _ => { //~ERROR this `match` has identical arm bodies
+        _ => {
             foo();
             let mut a = 42 + [23].len() as i32;
             if true {
@@ -101,10 +101,10 @@ fn if_same_then_else() -> Result<&'static str, ()> {
 
     let _ = match Abc::A {
         Abc::A => 0,
-        //~^ NOTE same as this
-        //~| NOTE removing
+
+
         Abc::B => 1,
-        _ => 0, //~ERROR this `match` has identical arm bodies
+        _ => 0,
     };
 
     if true {
@@ -112,15 +112,15 @@ fn if_same_then_else() -> Result<&'static str, ()> {
     }
 
     let _ = if true {
-        //~^NOTE same as this
+
         42
     }
-    else { //~ERROR this `if` has identical blocks
+    else {
         42
     };
 
     if true {
-        //~^NOTE same as this
+
         for _ in &[42] {
             let foo: &Option<_> = &Some::<u8>(42);
             if true {
@@ -130,7 +130,7 @@ fn if_same_then_else() -> Result<&'static str, ()> {
             }
         }
     }
-    else { //~ERROR this `if` has identical blocks
+    else {
         for _ in &[42] {
             let foo: &Option<_> = &Some::<u8>(42);
             if true {
@@ -142,7 +142,7 @@ fn if_same_then_else() -> Result<&'static str, ()> {
     }
 
     if true {
-        //~^NOTE same as this
+
         let bar = if true {
             42
         }
@@ -153,7 +153,7 @@ fn if_same_then_else() -> Result<&'static str, ()> {
         while foo() { break; }
         bar + 1;
     }
-    else { //~ERROR this `if` has identical blocks
+    else {
         let bar = if true {
             42
         }
@@ -166,7 +166,7 @@ fn if_same_then_else() -> Result<&'static str, ()> {
     }
 
     if true {
-        //~^NOTE same as this
+
         let _ = match 42 {
             42 => 1,
             a if a > 0 => 2,
@@ -177,7 +177,7 @@ fn if_same_then_else() -> Result<&'static str, ()> {
     else if false {
         foo();
     }
-    else if foo() { //~ERROR this `if` has identical blocks
+    else if foo() {
         let _ = match 42 {
             42 => 1,
             a if a > 0 => 2,
@@ -187,18 +187,18 @@ fn if_same_then_else() -> Result<&'static str, ()> {
     }
 
     if true {
-        //~^NOTE same as this
+
         if let Some(a) = Some(42) {}
     }
-    else { //~ERROR this `if` has identical blocks
+    else {
         if let Some(a) = Some(42) {}
     }
 
     if true {
-        //~^NOTE same as this
+
         if let (1, .., 3) = (1, 2, 3) {}
     }
-    else { //~ERROR this `if` has identical blocks
+    else {
         if let (1, .., 3) = (1, 2, 3) {}
     }
 
@@ -253,17 +253,17 @@ fn if_same_then_else() -> Result<&'static str, ()> {
 
     let _ = match 42 {
         42 => foo(),
-        //~^NOTE same as this
-        //~|NOTE `42 | 51`
-        51 => foo(), //~ERROR this `match` has identical arm bodies
+
+
+        51 => foo(),
         _ => true,
     };
 
     let _ = match Some(42) {
         Some(_) => 24,
-        //~^NOTE same as this
-        //~|NOTE `Some(_) | None`
-        None => 24, //~ERROR this `match` has identical arm bodies
+
+
+        None => 24,
     };
 
     let _ = match Some(42) {
@@ -285,39 +285,39 @@ fn if_same_then_else() -> Result<&'static str, ()> {
 
     match (Some(42), Some(42)) {
         (Some(a), None) => bar(a),
-        //~^NOTE same as this
-        //~|NOTE `(Some(a), None) | (None, Some(a))`
-        (None, Some(a)) => bar(a), //~ERROR this `match` has identical arm bodies
+
+
+        (None, Some(a)) => bar(a),
         _ => (),
     }
 
     match (Some(42), Some(42)) {
         (Some(a), ..) => bar(a),
-        //~^NOTE same as this
-        //~|NOTE `(Some(a), ..) | (.., Some(a))`
-        (.., Some(a)) => bar(a), //~ERROR this `match` has identical arm bodies
+
+
+        (.., Some(a)) => bar(a),
         _ => (),
     }
 
     match (1, 2, 3) {
         (1, .., 3) => 42,
-        //~^NOTE same as this
-        //~|NOTE `(1, .., 3) | (.., 3)`
-        (.., 3) => 42, //~ERROR this `match` has identical arm bodies
+
+
+        (.., 3) => 42,
         _ => 0,
     };
 
     let _ = if true {
-        //~^NOTE same as this
+
         0.0
-    } else { //~ERROR this `if` has identical blocks
+    } else {
         0.0
     };
 
     let _ = if true {
-        //~^NOTE same as this
+
         -0.0
-    } else { //~ERROR this `if` has identical blocks
+    } else {
         -0.0
     };
 
@@ -336,9 +336,9 @@ fn if_same_then_else() -> Result<&'static str, ()> {
 
     // Same NaNs
     let _ = if true {
-        //~^NOTE same as this
+
         std::f32::NAN
-    } else { //~ERROR this `if` has identical blocks
+    } else {
         std::f32::NAN
     };
 
@@ -354,15 +354,15 @@ fn if_same_then_else() -> Result<&'static str, ()> {
     }
 
     if true {
-        //~^NOTE same as this
+
         try!(Ok("foo"));
     }
-    else { //~ERROR this `if` has identical blocks
+    else {
         try!(Ok("foo"));
     }
 
     if true {
-        //~^NOTE same as this
+
         let foo = "";
         return Ok(&foo[0..]);
     }
@@ -370,7 +370,7 @@ fn if_same_then_else() -> Result<&'static str, ()> {
         let foo = "bar";
         return Ok(&foo[0..]);
     }
-    else { //~ERROR this `if` has identical blocks
+    else {
         let foo = "";
         return Ok(&foo[0..]);
     }
@@ -383,23 +383,23 @@ fn ifs_same_cond() {
     let b = false;
 
     if b {
-        //~^NOTE same as this
+
     }
-    else if b { //~ERROR this `if` has the same condition as a previous if
+    else if b {
     }
 
     if a == 1 {
-        //~^NOTE same as this
+
     }
-    else if a == 1 { //~ERROR this `if` has the same condition as a previous if
+    else if a == 1 {
     }
 
     if 2*a == 1 {
-        //~^NOTE same as this
+
     }
     else if 2*a == 2 {
     }
-    else if 2*a == 1 { //~ERROR this `if` has the same condition as a previous if
+    else if 2*a == 1 {
     }
     else if a == 1 {
     }

@@ -3,9 +3,9 @@ error: you seem to be trying to use match for destructuring a single pattern. Co
    |
 26 |       match ExprNode::Butterflies {
    |  _____^ starting here...
-27 | |         //~^ ERROR you seem to be trying to use match
-28 | |         //~| HELP try
-29 | |         //~| SUGGESTION if let ExprNode::ExprAddrOf = ExprNode::Butterflies { Some(&NODE) } else { let x = 5; None }
+27 | |
+28 | |
+29 | |
 30 | |         ExprNode::ExprAddrOf => Some(&NODE),
 31 | |         _ => { let x = 5; None },
 32 | |     }
@@ -24,9 +24,9 @@ error: you seem to be trying to use match for destructuring a single pattern. Co
    |
 38 |       match x {
    |  _____^ starting here...
-39 | |         //~^ ERROR you seem to be trying to use match
-40 | |         //~| HELP try
-41 | |         //~| SUGGESTION if let Some(y) = x { println!("{:?}", y); };
+39 | |
+40 | |
+41 | |
 42 | |         Some(y) => { println!("{:?}", y); }
 43 | |         _ => ()
 44 | |     };
@@ -46,9 +46,9 @@ error: you seem to be trying to use match for destructuring a single pattern. Co
    |
 47 |       match z {
    |  _____^ starting here...
-48 | |         //~^ ERROR you seem to be trying to use match
-49 | |         //~| HELP try
-50 | |         //~| SUGGESTION if let (2...3, 7...9) = z { dummy() };
+48 | |
+49 | |
+50 | |
 51 | |         (2...3, 7...9) => dummy(),
 52 | |         _ => {}
 53 | |     };
@@ -63,9 +63,9 @@ error: you seem to be trying to use match for destructuring a single pattern. Co
    |
 72 |       match x {
    |  _____^ starting here...
-73 | |         //~^ ERROR you seem to be trying to use match
-74 | |         //~| HELP try
-75 | |         //~| SUGGESTION if let Some(y) = x { dummy() };
+73 | |
+74 | |
+75 | |
 76 | |         Some(y) => dummy(),
 77 | |         None => ()
 78 | |     };
@@ -80,9 +80,9 @@ error: you seem to be trying to use match for destructuring a single pattern. Co
    |
 80 |       match y {
    |  _____^ starting here...
-81 | |         //~^ ERROR you seem to be trying to use match
-82 | |         //~| HELP try
-83 | |         //~| SUGGESTION if let Ok(y) = y { dummy() };
+81 | |
+82 | |
+83 | |
 84 | |         Ok(y) => dummy(),
 85 | |         Err(..) => ()
 86 | |     };
@@ -97,9 +97,9 @@ error: you seem to be trying to use match for destructuring a single pattern. Co
    |
 90 |       match c {
    |  _____^ starting here...
-91 | |         //~^ ERROR you seem to be trying to use match
-92 | |         //~| HELP try
-93 | |         //~| SUGGESTION if let Cow::Borrowed(..) = c { dummy() };
+91 | |
+92 | |
+93 | |
 94 | |         Cow::Borrowed(..) => dummy(),
 95 | |         Cow::Owned(..) => (),
 96 | |     };
@@ -114,9 +114,9 @@ error: you seem to be trying to match on a boolean expression
     |
 114 |       match test {
     |  _____^ starting here...
-115 | |     //~^ ERROR you seem to be trying to match on a boolean expression
-116 | |     //~| HELP consider
-117 | |     //~| SUGGESTION if test { 0 } else { 42 };
+115 | |
+116 | |
+117 | |
 118 | |         true => 0,
 119 | |         false => 42,
 120 | |     };
@@ -136,9 +136,9 @@ error: you seem to be trying to match on a boolean expression
     |
 123 |       match option == 1 {
     |  _____^ starting here...
-124 | |     //~^ ERROR you seem to be trying to match on a boolean expression
-125 | |     //~| HELP consider
-126 | |     //~| SUGGESTION if option == 1 { 1 } else { 0 };
+124 | |
+125 | |
+126 | |
 127 | |         true => 1,
 128 | |         false => 0,
 129 | |     };
@@ -153,9 +153,9 @@ error: you seem to be trying to match on a boolean expression
     |
 131 |       match test {
     |  _____^ starting here...
-132 | |     //~^ ERROR you seem to be trying to match on a boolean expression
-133 | |     //~| HELP consider
-134 | |     //~| SUGGESTION if !test { println!("Noooo!"); };
+132 | |
+133 | |
+134 | |
 135 | |         true => (),
 136 | |         false => { println!("Noooo!"); }
 137 | |     };
@@ -170,9 +170,9 @@ error: you seem to be trying to match on a boolean expression
     |
 139 |       match test {
     |  _____^ starting here...
-140 | |     //~^ ERROR you seem to be trying to match on a boolean expression
-141 | |     //~| HELP consider
-142 | |     //~| SUGGESTION if !test { println!("Noooo!"); };
+140 | |
+141 | |
+142 | |
 143 | |         false => { println!("Noooo!"); }
 144 | |         _ => (),
 145 | |     };
@@ -187,10 +187,10 @@ error: you seem to be trying to match on a boolean expression
     |
 147 |       match test && test {
     |  _____^ starting here...
-148 | |     //~^ ERROR you seem to be trying to match on a boolean expression
-149 | |     //~| HELP consider
-150 | |     //~| SUGGESTION if !(test && test) { println!("Noooo!"); };
-151 | |     //~| ERROR equal expressions as operands
+148 | |
+149 | |
+150 | |
+151 | |
 152 | |         false => { println!("Noooo!"); }
 153 | |         _ => (),
 154 | |     };
@@ -218,9 +218,9 @@ error: you seem to be trying to match on a boolean expression
     |
 156 |       match test {
     |  _____^ starting here...
-157 | |     //~^ ERROR you seem to be trying to match on a boolean expression
-158 | |     //~| HELP consider
-159 | |     //~| SUGGESTION if test { println!("Yes!"); } else { println!("Noooo!"); };
+157 | |
+158 | |
+159 | |
 160 | |         false => { println!("Noooo!"); }
 161 | |         true => { println!("Yes!"); }
 162 | |     };
@@ -235,9 +235,9 @@ error: you don't need to add `&` to all patterns
     |
 175 |           match v {
     |  _________^ starting here...
-176 | |             //~^ERROR add `&` to all patterns
-177 | |             //~|HELP instead of
-178 | |             //~|SUGGESTION match *v { .. }
+176 | |
+177 | |
+178 | |
 179 | |             &Some(v) => println!("{:?}", v),
 180 | |             &None => println!("none"),
 181 | |         }
@@ -257,9 +257,9 @@ error: you don't need to add `&` to all patterns
     |
 188 |       match tup {
     |  _____^ starting here...
-189 | |         //~^ERROR add `&` to all patterns
-190 | |         //~|HELP instead of
-191 | |         //~|SUGGESTION match *tup { .. }
+189 | |
+190 | |
+191 | |
 192 | |         &(v, 1) => println!("{}", v),
 193 | |         _ => println!("none"),
 194 | |     }
@@ -274,9 +274,9 @@ error: you don't need to add `&` to both the expression and the patterns
     |
 197 |       match &w {
     |  _____^ starting here...
-198 | |         //~^ERROR add `&` to both
-199 | |         //~|HELP try
-200 | |         //~|SUGGESTION match w { .. }
+198 | |
+199 | |
+200 | |
 201 | |         &Some(v) => println!("{:?}", v),
 202 | |         &None => println!("none"),
 203 | |     }
@@ -291,9 +291,9 @@ error: you don't need to add `&` to all patterns
     |
 211 |       if let &None = a {
     |  _____^ starting here...
-212 | |         //~^ERROR add `&` to all patterns
-213 | |         //~|HELP instead of
-214 | |         //~|SUGGESTION if let .. = *a { .. }
+212 | |
+213 | |
+214 | |
 215 | |         println!("none");
 216 | |     }
     | |_____^ ...ending here
@@ -307,9 +307,9 @@ error: you don't need to add `&` to both the expression and the patterns
     |
 219 |       if let &None = &b {
     |  _____^ starting here...
-220 | |         //~^ERROR add `&` to both
-221 | |         //~|HELP try
-222 | |         //~|SUGGESTION if let .. = b { .. }
+220 | |
+221 | |
+222 | |
 223 | |         println!("none");
 224 | |     }
     | |_____^ ...ending here
@@ -321,7 +321,7 @@ help: try
 error: some ranges overlap
    --> $DIR/matches.rs:231:9
     |
-231 |         0 ... 10 => println!("0 ... 10"), //~ERROR: some ranges overlap
+231 |         0 ... 10 => println!("0 ... 10"),
     |         ^^^^^^^^
     |
     = note: #[deny(match_overlapping_arm)] implied by #[deny(clippy)]
@@ -333,59 +333,59 @@ note: lint level defined here
 note: overlaps with this
    --> $DIR/matches.rs:232:9
     |
-232 |         0 ... 11 => println!("0 ... 11"), //~NOTE overlaps with this
+232 |         0 ... 11 => println!("0 ... 11"),
     |         ^^^^^^^^
 
 error: some ranges overlap
    --> $DIR/matches.rs:237:9
     |
-237 |         0 ... 5 => println!("0 ... 5"), //~ERROR: some ranges overlap
+237 |         0 ... 5 => println!("0 ... 5"),
     |         ^^^^^^^
     |
     = note: #[deny(match_overlapping_arm)] implied by #[deny(clippy)]
 note: overlaps with this
    --> $DIR/matches.rs:239:9
     |
-239 |         FOO ... 11 => println!("0 ... 11"), //~NOTE overlaps with this
+239 |         FOO ... 11 => println!("0 ... 11"),
     |         ^^^^^^^^^^
 
 error: some ranges overlap
    --> $DIR/matches.rs:245:9
     |
-245 |         0 ... 5 => println!("0 ... 5"), //~ERROR: some ranges overlap
+245 |         0 ... 5 => println!("0 ... 5"),
     |         ^^^^^^^
     |
     = note: #[deny(match_overlapping_arm)] implied by #[deny(clippy)]
 note: overlaps with this
    --> $DIR/matches.rs:244:9
     |
-244 |         2 => println!("2"), //~NOTE overlaps with this
+244 |         2 => println!("2"),
     |         ^
 
 error: some ranges overlap
    --> $DIR/matches.rs:251:9
     |
-251 |         0 ... 2 => println!("0 ... 2"), //~ERROR: some ranges overlap
+251 |         0 ... 2 => println!("0 ... 2"),
     |         ^^^^^^^
     |
     = note: #[deny(match_overlapping_arm)] implied by #[deny(clippy)]
 note: overlaps with this
    --> $DIR/matches.rs:250:9
     |
-250 |         2 => println!("2"), //~NOTE overlaps with this
+250 |         2 => println!("2"),
     |         ^
 
 error: some ranges overlap
    --> $DIR/matches.rs:274:9
     |
-274 |         0 .. 11 => println!("0 .. 11"), //~ERROR: some ranges overlap
+274 |         0 .. 11 => println!("0 .. 11"),
     |         ^^^^^^^
     |
     = note: #[deny(match_overlapping_arm)] implied by #[deny(clippy)]
 note: overlaps with this
    --> $DIR/matches.rs:275:9
     |
-275 |         0 ... 11 => println!("0 ... 11"), //~NOTE overlaps with this
+275 |         0 ... 11 => println!("0 ... 11"),
     |         ^^^^^^^^
 
 error: aborting due to 23 previous errors

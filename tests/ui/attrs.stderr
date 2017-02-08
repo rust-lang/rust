@@ -1,7 +1,7 @@
 error: you have declared `#[inline(always)]` on `test_attr_lint`. This is usually a bad idea
  --> $DIR/attrs.rs:6:1
   |
-6 | #[inline(always)] //~ERROR you have declared `#[inline(always)]` on `test_attr_lint`.
+6 | #[inline(always)]
   | ^^^^^^^^^^^^^^^^^
   |
 note: lint level defined here
@@ -13,7 +13,7 @@ note: lint level defined here
 error: the since field must contain a semver-compliant version
   --> $DIR/attrs.rs:27:14
    |
-27 | #[deprecated(since = "forever")] //~ERROR the since field must contain a semver-compliant version
+27 | #[deprecated(since = "forever")]
    |              ^^^^^^^^^^^^^^^^^
    |
 note: lint level defined here
@@ -25,7 +25,7 @@ note: lint level defined here
 error: the since field must contain a semver-compliant version
   --> $DIR/attrs.rs:30:14
    |
-30 | #[deprecated(since = "1")] //~ERROR the since field must contain a semver-compliant version
+30 | #[deprecated(since = "1")]
    |              ^^^^^^^^^^^
 
 error: aborting due to 3 previous errors

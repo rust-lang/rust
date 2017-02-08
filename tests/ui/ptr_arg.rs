@@ -3,7 +3,7 @@
 #![allow(unused)]
 #![deny(ptr_arg)]
 
-fn do_vec(x: &Vec<i64>) { //~ERROR writing `&Vec<_>` instead of `&[_]`
+fn do_vec(x: &Vec<i64>) {
     //Nothing here
 }
 
@@ -11,7 +11,7 @@ fn do_vec_mut(x: &mut Vec<i64>) { // no error here
     //Nothing here
 }
 
-fn do_str(x: &String) { //~ERROR writing `&String` instead of `&str`
+fn do_str(x: &String) {
     //Nothing here either
 }
 
@@ -24,7 +24,7 @@ fn main() {
 
 trait Foo {
     type Item;
-    fn do_vec(x: &Vec<i64>); //~ERROR writing `&Vec<_>`
+    fn do_vec(x: &Vec<i64>);
     fn do_item(x: &Self::Item);
 }
 

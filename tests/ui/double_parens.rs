@@ -13,23 +13,23 @@ impl DummyStruct {
 }
 
 fn simple_double_parens() -> i32 {
-    ((0)) //~ERROR Consider removing unnecessary double parentheses
+    ((0))
 }
 
 fn fn_double_parens() {
-    dummy_fn((0)); //~ERROR Consider removing unnecessary double parentheses
+    dummy_fn((0));
 }
 
 fn method_double_parens(x: DummyStruct) {
-    x.dummy_method((0)); //~ERROR Consider removing unnecessary double parentheses
+    x.dummy_method((0));
 }
 
 fn tuple_double_parens() -> (i32, i32) {
-    ((1, 2)) //~ERROR Consider removing unnecessary double parentheses
+    ((1, 2))
 }
 
 fn unit_double_parens() {
-    (()) //~ERROR Consider removing unnecessary double parentheses
+    (())
 }
 
 fn fn_tuple_ok() {

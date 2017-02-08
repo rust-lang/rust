@@ -17,9 +17,9 @@ error: this loop could be written as a `while let` loop
    |
 25 |       loop {
    |  _____^ starting here...
-26 | |     //~^ERROR this loop could be written as a `while let` loop
-27 | |     //~|HELP try
-28 | |     //~|SUGGESTION while let Some(_x) = y {
+26 | |
+27 | |
+28 | |
 29 | |         match y {
 30 | |             Some(_x) => true,
 31 | |             None => break
@@ -62,9 +62,9 @@ error: this loop could be written as a `for` loop
    |
 83 |       while let Option::Some(x) = iter.next() {
    |  _____^ starting here...
-84 | |     //~^ ERROR this loop could be written as a `for` loop
-85 | |     //~| HELP try
-86 | |     //~| SUGGESTION for x in iter {
+84 | |
+85 | |
+86 | |
 87 | |         println!("{}", x);
 88 | |     }
    | |_____^ ...ending here
@@ -82,9 +82,9 @@ error: this loop could be written as a `for` loop
    |
 91 |       while let Some(x) = iter.next() {
    |  _____^ starting here...
-92 | |     //~^ ERROR this loop could be written as a `for` loop
-93 | |     //~| HELP try
-94 | |     //~| SUGGESTION for x in iter {
+92 | |
+93 | |
+94 | |
 95 | |         println!("{}", x);
 96 | |     }
    | |_____^ ...ending here
@@ -113,7 +113,7 @@ help: try
 error: empty `loop {}` detected. You may want to either use `panic!()` or add `std::thread::sleep(..);` to the loop body.
    --> $DIR/while_loop.rs:150:9
     |
-150 |         loop {} //~ERROR empty `loop {}` detected.
+150 |         loop {}
     |         ^^^^^^^
     |
 note: lint level defined here

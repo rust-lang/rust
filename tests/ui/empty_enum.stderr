@@ -1,7 +1,7 @@
 error: enum with no variants
  --> $DIR/empty_enum.rs:7:1
   |
-7 | enum Empty {} //~ ERROR enum with no variants
+7 | enum Empty {}
   | ^^^^^^^^^^^^^
   |
 note: lint level defined here
@@ -12,7 +12,7 @@ note: lint level defined here
 help: consider using the uninhabited type `!` or a wrapper around it
  --> $DIR/empty_enum.rs:7:1
   |
-7 | enum Empty {} //~ ERROR enum with no variants
+7 | enum Empty {}
   | ^^^^^^^^^^^^^
 
 error: aborting due to previous error

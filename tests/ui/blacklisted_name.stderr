@@ -1,7 +1,7 @@
 error: use of a blacklisted/placeholder name `foo`
  --> $DIR/blacklisted_name.rs:9:9
   |
-9 | fn test(foo: ()) {} //~ERROR use of a blacklisted/placeholder name `foo`
+9 | fn test(foo: ()) {}
   |         ^^^
   |
 note: lint level defined here
@@ -13,19 +13,19 @@ note: lint level defined here
 error: use of a blacklisted/placeholder name `foo`
   --> $DIR/blacklisted_name.rs:12:9
    |
-12 |     let foo = 42; //~ERROR use of a blacklisted/placeholder name `foo`
+12 |     let foo = 42;
    |         ^^^
 
 error: use of a blacklisted/placeholder name `bar`
   --> $DIR/blacklisted_name.rs:13:9
    |
-13 |     let bar = 42; //~ERROR use of a blacklisted/placeholder name `bar`
+13 |     let bar = 42;
    |         ^^^
 
 error: use of a blacklisted/placeholder name `baz`
   --> $DIR/blacklisted_name.rs:14:9
    |
-14 |     let baz = 42; //~ERROR use of a blacklisted/placeholder name `baz`
+14 |     let baz = 42;
    |         ^^^
 
 error: use of a blacklisted/placeholder name `foo`

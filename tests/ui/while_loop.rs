@@ -7,9 +7,9 @@
 fn main() {
     let y = Some(true);
     loop {
-    //~^ERROR this loop could be written as a `while let` loop
-    //~|HELP try
-    //~|SUGGESTION while let Some(_x) = y {
+
+
+
         if let Some(_x) = y {
             let _v = 1;
         } else {
@@ -23,18 +23,18 @@ fn main() {
         break;
     }
     loop {
-    //~^ERROR this loop could be written as a `while let` loop
-    //~|HELP try
-    //~|SUGGESTION while let Some(_x) = y {
+
+
+
         match y {
             Some(_x) => true,
             None => break
         };
     }
     loop {
-    //~^ERROR this loop could be written as a `while let` loop
-    //~|HELP try
-    //~|SUGGESTION while let Some(x) = y {
+
+
+
         let x = match y {
             Some(x) => x,
             None => break
@@ -43,9 +43,9 @@ fn main() {
         let _str = "foo";
     }
     loop {
-    //~^ERROR this loop could be written as a `while let` loop
-    //~|HELP try
-    //~|SUGGESTION while let Some(x) = y {
+
+
+
         let x = match y {
             Some(x) => x,
             None => break,
@@ -68,9 +68,9 @@ fn main() {
 
     // #675, this used to have a wrong suggestion
     loop {
-    //~^ERROR this loop could be written as a `while let` loop
-    //~|HELP try
-    //~|SUGGESTION while let Some(word) = "".split_whitespace().next() { .. }
+
+
+
         let (e, l) = match "".split_whitespace().next() {
             Some(word) => (word.is_empty(), word.len()),
             None => break
@@ -81,25 +81,25 @@ fn main() {
 
     let mut iter = 1..20;
     while let Option::Some(x) = iter.next() {
-    //~^ ERROR this loop could be written as a `for` loop
-    //~| HELP try
-    //~| SUGGESTION for x in iter {
+
+
+
         println!("{}", x);
     }
 
     let mut iter = 1..20;
     while let Some(x) = iter.next() {
-    //~^ ERROR this loop could be written as a `for` loop
-    //~| HELP try
-    //~| SUGGESTION for x in iter {
+
+
+
         println!("{}", x);
     }
 
     let mut iter = 1..20;
     while let Some(_) = iter.next() {}
-    //~^ ERROR this loop could be written as a `for` loop
-    //~| HELP try
-    //~| SUGGESTION for _ in iter {
+
+
+
 
     let mut iter = 1..20;
     while let None = iter.next() {} // this is fine (if nonsensical)
@@ -140,14 +140,14 @@ fn main() {
 fn no_panic<T>(slice: &[T]) {
     let mut iter = slice.iter();
     loop {
-    //~^ ERROR
-    //~| HELP try
-    //~| SUGGESTION while let Some(ele) = iter.next() { .. }
+
+
+
         let _ = match iter.next() {
             Some(ele) => ele,
             None => break
         };
-        loop {} //~ERROR empty `loop {}` detected.
+        loop {}
     }
 }
 

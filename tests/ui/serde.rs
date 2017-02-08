@@ -37,7 +37,7 @@ impl serde::de::Visitor for B {
     }
 
     fn visit_string<E>(self, _v: String) -> Result<Self::Value, E>
-    //~^ ERROR you should not implement `visit_string` without also implementing `visit_str`
+
         where E: serde::de::Error,
     {
         unimplemented!()

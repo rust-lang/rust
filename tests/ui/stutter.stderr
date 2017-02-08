@@ -1,7 +1,7 @@
 error: item name starts with its containing module's name
  --> $DIR/stutter.rs:8:5
   |
-8 |     pub fn foo_bar() {} //~ ERROR: item name starts with its containing module's name
+8 |     pub fn foo_bar() {}
   |     ^^^^^^^^^^^^^^^^^^^
   |
 note: lint level defined here
@@ -13,19 +13,19 @@ note: lint level defined here
 error: item name ends with its containing module's name
  --> $DIR/stutter.rs:9:5
   |
-9 |     pub fn bar_foo() {} //~ ERROR: item name ends with its containing module's name
+9 |     pub fn bar_foo() {}
   |     ^^^^^^^^^^^^^^^^^^^
 
 error: item name starts with its containing module's name
   --> $DIR/stutter.rs:10:5
    |
-10 |     pub struct FooCake {} //~ ERROR: item name starts with its containing module's name
+10 |     pub struct FooCake {}
    |     ^^^^^^^^^^^^^^^^^^^^^
 
 error: item name ends with its containing module's name
   --> $DIR/stutter.rs:11:5
    |
-11 |     pub enum CakeFoo {} //~ ERROR: item name ends with its containing module's name
+11 |     pub enum CakeFoo {}
    |     ^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 4 previous errors

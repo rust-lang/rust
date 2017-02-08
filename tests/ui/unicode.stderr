@@ -11,7 +11,7 @@ error: zero-width space detected
 error: non-nfc unicode sequence detected
   --> $DIR/unicode.rs:13:12
    |
-13 |     print!("̀àh?"); //~ERROR non-nfc unicode sequence detected
+13 |     print!("̀àh?");
    |            ^^^^^^^
    |
 note: lint level defined here
@@ -25,7 +25,7 @@ note: lint level defined here
 error: literal non-ASCII character detected
   --> $DIR/unicode.rs:19:12
    |
-19 |     print!("Üben!"); //~ERROR literal non-ASCII character detected
+19 |     print!("Üben!");
    |            ^^^^^^^
    |
 note: lint level defined here

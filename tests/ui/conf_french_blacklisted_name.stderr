@@ -1,7 +1,7 @@
 error: use of a blacklisted/placeholder name `toto`
  --> $DIR/conf_french_blacklisted_name.rs:9:9
   |
-9 | fn test(toto: ()) {} //~ERROR use of a blacklisted/placeholder name `toto`
+9 | fn test(toto: ()) {}
   |         ^^^^
   |
 note: lint level defined here
@@ -13,19 +13,19 @@ note: lint level defined here
 error: use of a blacklisted/placeholder name `toto`
   --> $DIR/conf_french_blacklisted_name.rs:12:9
    |
-12 |     let toto = 42; //~ERROR use of a blacklisted/placeholder name `toto`
+12 |     let toto = 42;
    |         ^^^^
 
 error: use of a blacklisted/placeholder name `tata`
   --> $DIR/conf_french_blacklisted_name.rs:13:9
    |
-13 |     let tata = 42; //~ERROR use of a blacklisted/placeholder name `tata`
+13 |     let tata = 42;
    |         ^^^^
 
 error: use of a blacklisted/placeholder name `titi`
   --> $DIR/conf_french_blacklisted_name.rs:14:9
    |
-14 |     let titi = 42; //~ERROR use of a blacklisted/placeholder name `titi`
+14 |     let titi = 42;
    |         ^^^^
 
 error: use of a blacklisted/placeholder name `toto`

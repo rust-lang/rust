@@ -27,7 +27,7 @@ fn macro_if() {
 }
 
 fn condition_has_block() -> i32 {
-    if { //~ERROR in an 'if' condition, avoid complex blocks or closures with blocks;
+    if {
         let x = 3;
         x == 3
     } {
@@ -38,7 +38,7 @@ fn condition_has_block() -> i32 {
 }
 
 fn condition_has_block_with_single_expression() -> i32 {
-    if { true } { //~ERROR omit braces around single expression condition
+    if { true } {
         6
     } else {
         10
@@ -56,18 +56,18 @@ fn pred_test() {
     // inside a closure that the condition is using.  same principle applies.  add some extra
     // expressions to make sure linter isn't confused by them.
     if v == 3 && sky == "blue" && predicate(|x| { let target = 3; x == target }, v) {
-        //~^ERROR in an 'if' condition, avoid complex blocks or closures with blocks;
+
     }
 
     if predicate(|x| { let target = 3; x == target }, v) {
-        //~^ERROR in an 'if' condition, avoid complex blocks or closures with blocks;
+
     }
 
 }
 
 fn condition_is_normal() -> i32 {
     let x = 3;
-    if true && x == 3 { //~ WARN this boolean expression can be simplified
+    if true && x == 3 {
         6
     } else {
         10

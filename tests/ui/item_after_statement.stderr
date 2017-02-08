@@ -1,7 +1,7 @@
 error: adding items after statements is confusing, since items exist from the start of the scope
   --> $DIR/item_after_statement.rs:12:5
    |
-12 |     fn foo() { println!("foo"); } //~ ERROR adding items after statements is confusing
+12 |     fn foo() { println!("foo"); }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: lint level defined here
@@ -13,7 +13,7 @@ note: lint level defined here
 error: adding items after statements is confusing, since items exist from the start of the scope
   --> $DIR/item_after_statement.rs:17:5
    |
-17 |     fn foo() { println!("foo"); } //~ ERROR adding items after statements is confusing
+17 |     fn foo() { println!("foo"); }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors

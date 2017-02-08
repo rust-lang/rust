@@ -11,7 +11,7 @@ enum FakeCallType2 {
 }
 
 enum Foo {
-    cFoo, //~ ERROR: Variant name ends with the enum's name
+    cFoo,
     cBar,
     cBaz,
 }
@@ -21,17 +21,17 @@ enum Fooo {
     cBar,
 }
 
-enum Food { //~ ERROR: All variants have the same prefix: `Food`
-    FoodGood, //~ ERROR: Variant name starts with the enum's name
-    FoodMiddle, //~ ERROR: Variant name starts with the enum's name
-    FoodBad, //~ ERROR: Variant name starts with the enum's name
+enum Food {
+    FoodGood,
+    FoodMiddle,
+    FoodBad,
 }
 
 enum Stuff {
     StuffBad, // no error
 }
 
-enum BadCallType { //~ ERROR: All variants have the same prefix: `CallType`
+enum BadCallType {
     CallTypeCall,
     CallTypeCreate,
     CallTypeDestroy,
@@ -42,7 +42,7 @@ enum TwoCallType { // no error
     CallTypeCreate,
 }
 
-enum Consts { //~ ERROR: All variants have the same prefix: `Constant`
+enum Consts {
     ConstantInt,
     ConstantCake,
     ConstantLie,
@@ -75,19 +75,19 @@ enum Sealll {
     WithOut,
 }
 
-enum Seallll { //~ ERROR: All variants have the same prefix: `With`
+enum Seallll {
     WithOutCake,
     WithOutTea,
     WithOut,
 }
 
-enum NonCaps { //~ ERROR: All variants have the same prefix: `Prefix`
+enum NonCaps {
     Prefix的,
     PrefixTea,
     PrefixCake,
 }
 
-pub enum PubSeall { //~ ERROR: All variants have the same prefix:
+pub enum PubSeall {
     WithOutCake,
     WithOutTea,
     WithOut,

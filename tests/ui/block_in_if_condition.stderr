@@ -1,7 +1,7 @@
 error: in an 'if' condition, avoid complex blocks or closures with blocks; instead, move the block or closure higher and bind it with a 'let'
   --> $DIR/block_in_if_condition.rs:30:8
    |
-30 |       if { //~ERROR in an 'if' condition, avoid complex blocks or closures with blocks;
+30 |       if {
    |  ________^ starting here...
 31 | |         let x = 3;
 32 | |         x == 3
@@ -14,7 +14,7 @@ note: lint level defined here
 5  | #![deny(block_in_if_condition_stmt)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
    = help: try
-           let res = { //~ERROR in an 'if' condition, avoid complex blocks or closures with blocks;
+           let res = {
                let x = 3;
                x == 3
            };
@@ -25,7 +25,7 @@ note: lint level defined here
 error: omit braces around single expression condition
   --> $DIR/block_in_if_condition.rs:41:8
    |
-41 |     if { true } { //~ERROR omit braces around single expression condition
+41 |     if { true } {
    |        ^^^^^^^^
    |
 note: lint level defined here
@@ -34,7 +34,7 @@ note: lint level defined here
 4  | #![deny(block_in_if_condition_expr)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
    = help: try
-           if true { //~ERROR omit braces around single expression condition
+           if true {
                6
            } ... 
 
@@ -53,7 +53,7 @@ error: in an 'if' condition, avoid complex blocks or closures with blocks; inste
 warning: this boolean expression can be simplified
   --> $DIR/block_in_if_condition.rs:70:8
    |
-70 |     if true && x == 3 { //~ WARN this boolean expression can be simplified
+70 |     if true && x == 3 {
    |        ^^^^^^^^^^^^^^
    |
 note: lint level defined here
@@ -62,7 +62,7 @@ note: lint level defined here
 7  | #![warn(nonminimal_bool)]
    |         ^^^^^^^^^^^^^^^
 help: try
-   |     if x == 3 { //~ WARN this boolean expression can be simplified
+   |     if x == 3 {
 
 error: aborting due to 4 previous errors
 
