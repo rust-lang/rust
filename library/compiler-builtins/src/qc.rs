@@ -240,7 +240,8 @@ arbitrary_float!(F64: f64);
 // fails.
 macro_rules! check {
     ($(
-        fn $name:ident($f:ident: extern fn($($farg:ty),*) -> $fret:ty,
+        $(#[$cfg:meta])*
+        fn $name:ident($f:ident: extern $abi:tt fn($($farg:ty),*) -> $fret:ty,
                        $($arg:ident: $t:ty),*)
                        -> Option<$ret:ty>
         {
@@ -248,7 +249,8 @@ macro_rules! check {
         }
     )*) => (
         $(
-            fn $name($f: extern fn($($farg),*) -> $fret,
+            $(#[$cfg])*
+            fn $name($f: extern $abi fn($($farg),*) -> $fret,
                      $($arg: $t),*) -> Option<$ret> {
                 $($code)*
             }
@@ -260,6 +262,7 @@ macro_rules! check {
             use quickcheck::TestResult;
 
             $(
+                $(#[$cfg])*
                 #[test]
                 fn $name() {
                     fn my_check($($arg:$t),*) -> TestResult {

@@ -99,12 +99,12 @@ mod tests {
     use qc::{I32, I64, U64};
 
     check! {
-        fn __muldi3(f: extern fn(u64, u64) -> u64, a: U64, b: U64)
+        fn __muldi3(f: extern "C" fn(u64, u64) -> u64, a: U64, b: U64)
                     -> Option<u64> {
             Some(f(a.0, b.0))
         }
 
-        fn __mulosi4(f: extern fn(i32, i32, &mut i32) -> i32,
+        fn __mulosi4(f: extern "C" fn(i32, i32, &mut i32) -> i32,
                      a: I32,
                      b: I32) -> Option<(i32, i32)> {
             let (a, b) = (a.0, b.0);
@@ -116,7 +116,7 @@ mod tests {
             Some((r, overflow))
         }
 
-        fn __mulodi4(f: extern fn(i64, i64, &mut i32) -> i64,
+        fn __mulodi4(f: extern "C" fn(i64, i64, &mut i32) -> i64,
                      a: I64,
                      b: I64) -> Option<(i64, i32)> {
             let (a, b) = (a.0, b.0);
@@ -139,11 +139,11 @@ mod tests_i128 {
     use qc::I128;
 
     check! {
-        fn __multi3(f: extern fn(i128, i128) -> i128, a: I128, b: I128)
+        fn __multi3(f: extern "C" fn(i128, i128) -> i128, a: I128, b: I128)
                     -> Option<i128> {
             Some(f(a.0, b.0))
         }
-        fn __muloti4(f: extern fn(i128, i128, &mut i32) -> i128,
+        fn __muloti4(f: extern "C" fn(i128, i128, &mut i32) -> i128,
                      a: I128,
                      b: I128) -> Option<(i128, i32)> {
             let (a, b) = (a.0, b.0);

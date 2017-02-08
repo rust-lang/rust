@@ -318,7 +318,7 @@ mod tests {
     use qc::{U32, U64};
 
     check! {
-        fn __udivdi3(f: extern fn(u64, u64) -> u64, n: U64, d: U64) -> Option<u64> {
+        fn __udivdi3(f: extern "C" fn(u64, u64) -> u64, n: U64, d: U64) -> Option<u64> {
             let (n, d) = (n.0, d.0);
             if d == 0 {
                 None
@@ -327,7 +327,7 @@ mod tests {
             }
         }
 
-        fn __umoddi3(f: extern fn(u64, u64) -> u64, n: U64, d: U64) -> Option<u64> {
+        fn __umoddi3(f: extern "C" fn(u64, u64) -> u64, n: U64, d: U64) -> Option<u64> {
             let (n, d) = (n.0, d.0);
             if d == 0 {
                 None
@@ -336,7 +336,7 @@ mod tests {
             }
         }
 
-        fn __udivmoddi4(f: extern fn(u64, u64, Option<&mut u64>) -> u64,
+        fn __udivmoddi4(f: extern "C" fn(u64, u64, Option<&mut u64>) -> u64,
                         n: U64,
                         d: U64) -> Option<(u64, u64)> {
             let (n, d) = (n.0, d.0);
@@ -349,7 +349,7 @@ mod tests {
             }
         }
 
-        fn __udivsi3(f: extern fn(u32, u32) -> u32, n: U32, d: U32) -> Option<u32> {
+        fn __udivsi3(f: extern "C" fn(u32, u32) -> u32, n: U32, d: U32) -> Option<u32> {
             let (n, d) = (n.0, d.0);
             if d == 0 {
                 None
@@ -358,7 +358,7 @@ mod tests {
             }
         }
 
-        fn __umodsi3(f: extern fn(u32, u32) -> u32, n: U32, d: U32) -> Option<u32> {
+        fn __umodsi3(f: extern "C" fn(u32, u32) -> u32, n: U32, d: U32) -> Option<u32> {
             let (n, d) = (n.0, d.0);
             if d == 0 {
                 None
@@ -367,7 +367,7 @@ mod tests {
             }
         }
 
-        fn __udivmodsi4(f: extern fn(u32, u32, Option<&mut u32>) -> u32,
+        fn __udivmodsi4(f: extern "C" fn(u32, u32, Option<&mut u32>) -> u32,
                         n: U32,
                         d: U32) -> Option<(u32, u32)> {
             let (n, d) = (n.0, d.0);
@@ -391,7 +391,7 @@ mod tests_i128 {
     use qc::U128;
 
     check! {
-        fn __udivti3(f: extern fn(u128, u128) -> u128,
+        fn __udivti3(f: extern "C" fn(u128, u128) -> u128,
                      n: U128,
                      d: U128) -> Option<u128> {
             let (n, d) = (n.0, d.0);
@@ -402,7 +402,7 @@ mod tests_i128 {
             }
         }
 
-        fn __umodti3(f: extern fn(u128, u128) -> u128,
+        fn __umodti3(f: extern "C" fn(u128, u128) -> u128,
                      n: U128,
                      d: U128) -> Option<u128> {
             let (n, d) = (n.0, d.0);
@@ -413,7 +413,7 @@ mod tests_i128 {
             }
         }
 
-        fn __udivmodti4(f: extern fn(u128, u128, Option<&mut u128>) -> u128,
+        fn __udivmodti4(f: extern "C" fn(u128, u128, Option<&mut u128>) -> u128,
                         n: U128,
                         d: U128) -> Option<u128> {
             let (n, d) = (n.0, d.0);

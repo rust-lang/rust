@@ -203,14 +203,14 @@ mod tests {
     use qc::{F32, F64};
 
     check! {
-        fn __addsf3(f: extern fn(f32, f32) -> f32,
+        fn __addsf3(f: extern "C" fn(f32, f32) -> f32,
                     a: F32,
                     b: F32)
                     -> Option<F32> {
             Some(F32(f(a.0, b.0)))
         }
 
-        fn __adddf3(f: extern fn(f64, f64) -> f64,
+        fn __adddf3(f: extern "C" fn(f64, f64) -> f64,
                     a: F64,
                     b: F64) -> Option<F64> {
             Some(F64(f(a.0, b.0)))

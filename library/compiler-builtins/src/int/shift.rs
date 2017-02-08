@@ -79,7 +79,7 @@ mod tests {
 
     // NOTE We purposefully stick to `u32` for `b` here because we want "small" values (b < 64)
     check! {
-        fn __ashldi3(f: extern fn(u64, u32) -> u64, a: U64, b: u32) -> Option<u64> {
+        fn __ashldi3(f: extern "C" fn(u64, u32) -> u64, a: U64, b: u32) -> Option<u64> {
             let a = a.0;
             if b >= 64 {
                 None
@@ -88,7 +88,7 @@ mod tests {
             }
         }
 
-        fn __ashrdi3(f: extern fn(i64, u32) -> i64, a: I64, b: u32) -> Option<i64> {
+        fn __ashrdi3(f: extern "C" fn(i64, u32) -> i64, a: I64, b: u32) -> Option<i64> {
             let a = a.0;
             if b >= 64 {
                 None
@@ -97,7 +97,7 @@ mod tests {
             }
         }
 
-        fn __lshrdi3(f: extern fn(u64, u32) -> u64, a: U64, b: u32) -> Option<u64> {
+        fn __lshrdi3(f: extern "C" fn(u64, u32) -> u64, a: U64, b: u32) -> Option<u64> {
             let a = a.0;
             if b >= 64 {
                 None
@@ -118,7 +118,7 @@ mod tests_i128 {
 
     // NOTE We purposefully stick to `u32` for `b` here because we want "small" values (b < 64)
     check! {
-        fn __ashlti3(f: extern fn(u128, u32) -> u128, a: U128, b: u32) -> Option<u128> {
+        fn __ashlti3(f: extern "C" fn(u128, u32) -> u128, a: U128, b: u32) -> Option<u128> {
             let a = a.0;
             if b >= 64 {
                 None
@@ -127,7 +127,7 @@ mod tests_i128 {
             }
         }
 
-        fn __ashrti3(f: extern fn(i128, u32) -> i128, a: I128, b: u32) -> Option<i128> {
+        fn __ashrti3(f: extern "C" fn(i128, u32) -> i128, a: I128, b: u32) -> Option<i128> {
             let a = a.0;
             if b >= 64 {
                 None
@@ -136,7 +136,7 @@ mod tests_i128 {
             }
         }
 
-        fn __lshrti3(f: extern fn(u128, u32) -> u128, a: U128, b: u32) -> Option<u128> {
+        fn __lshrti3(f: extern "C" fn(u128, u32) -> u128, a: U128, b: u32) -> Option<u128> {
             let a = a.0;
             if b >= 128 {
                 None
