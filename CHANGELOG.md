@@ -1,7 +1,7 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-## 0.0.114 — 2017-02-07
+## 0.0.114 — 2017-02-08
 * Rustup to rustc 1.17.0-nightly (c49d10207 2017-02-07)
 * Tests are now ui tests (testing the exact output of rustc)
 
