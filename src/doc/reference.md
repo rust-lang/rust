@@ -1271,10 +1271,12 @@ guaranteed to refer to the same memory address.
 
 Constant values must not have destructors, and otherwise permit most forms of
 data. Constants may refer to the address of other constants, in which case the
-address will have the `static` lifetime. (See below on [static lifetime
-elision](#static-lifetime-elision).) The compiler is, however, still at 
-liberty to translate the constant many times, so the address referred to may not
-be stable.
+address will have elided lifetimes where applicable, otherwise – in most cases –
+defaulting to the `static` lifetime. (See below on [static lifetime elision].)
+The compiler is, however, still at liberty to translate the constant many times,
+so the address referred to may not be stable.
+
+[static lifetime elision]: #static-lifetime-elision
 
 Constants must be explicitly typed. The type may be `bool`, `char`, a number, or
 a type derived from those primitive types. The derived types are references with
@@ -1297,6 +1299,8 @@ const BITS_N_STRINGS: BitsNStrings<'static> = BitsNStrings {
     mystring: STRING,
 };
 ```
+
+
 
 ### Static items
 
@@ -1364,7 +1368,7 @@ such, the constant declarations involving `'static` above may be written
 without the lifetimes. Returning to our previous example:
 
 ```rust
-#[feature(static_in_const)]
+# #![feature(static_in_const)]
 const BIT1: u32 = 1 << 0;
 const BIT2: u32 = 1 << 1;
 
@@ -1380,6 +1384,27 @@ const BITS_N_STRINGS: BitsNStrings = BitsNStrings {
     mybits: BITS,
     mystring: STRING,
 };
+```
+
+Note that if the `static` or `const` items include function or closure
+references, which themselves include references, the compiler will first try the
+standard elision rules ([see discussion in the nomicon][elision-nomicon]). If it
+is unable to resolve the lifetimes by its usual rules, it will default to using
+the `'static` lifetime. By way of example:
+
+[elision-nomicon]: https://doc.rust-lang.org/nomicon/lifetime-elision.html
+
+```rust,ignore
+// Resolved as `fn<'a>(&'a str) -> &'a str`.
+const RESOLVED_SINGLE: fn(&str) -> &str = ..
+
+// Resolved as `Fn<'a, 'b, 'c>(&'a Foo, &'b Bar, &'c Baz) -> usize`.
+const RESOLVED_MULTIPLE: Fn(&Foo, &Bar, &Baz) -> usize = ..
+
+// There is insufficient information to bound the return reference lifetime
+// relative to the argument lifetimes, so the signature is resolved as
+// `Fn(&'static Foo, &'static Bar) -> &'static Baz`.
+const RESOLVED_STATIC: Fn(&Foo, &Bar) -> &Baz = ..
 ```
 
 ### Traits
@@ -2079,7 +2104,9 @@ macro scope.
 
 ### Miscellaneous attributes
 
-- `deprecated` - mark the item as deprecated; the full attribute is `#[deprecated(since = "crate version", note = "...")`, where both arguments are optional.
+- `deprecated` - mark the item as deprecated; the full attribute is 
+  `#[deprecated(since = "crate version", note = "...")`, where both arguments 
+  are optional.
 - `export_name` - on statics and functions, this determines the name of the
   exported symbol.
 - `link_section` - on statics and functions, this specifies the section of the
