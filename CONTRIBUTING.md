@@ -93,11 +93,6 @@ system internals, try asking in [`#rust-internals`][pound-rust-internals].
 
 [bootstrap]: https://github.com/rust-lang/rust/tree/master/src/bootstrap/
 
-> **Note**: the build system was recently rewritten from a jungle of makefiles
-> to the current incarnation you'll see in `src/bootstrap`. If you experience
-> bugs you can temporarily revert back to the makefiles with
-> `--disable-rustbuild` passed to `./configure`.
-
 ### Configuration
 
 Before you can start building the compiler you need to configure the build for
