@@ -14,7 +14,6 @@ use ty::subst::Substs;
 use ty::{ClosureSubsts, Region, Ty};
 use mir::*;
 use rustc_const_math::ConstUsize;
-use rustc_data_structures::tuple_slice::TupleSlice;
 use rustc_data_structures::indexed_vec::Idx;
 use syntax_pos::Span;
 
@@ -224,6 +223,12 @@ macro_rules! make_mir_visitor {
                 self.super_const_val(const_val);
             }
 
+            fn visit_const_int(&mut self,
+                               const_int: &ConstInt,
+                               _: Location) {
+                self.super_const_int(const_int);
+            }
+
             fn visit_const_usize(&mut self,
                                  const_usize: & $($mutability)* ConstUsize,
                                  _: Location) {
@@ -363,31 +368,14 @@ macro_rules! make_mir_visitor {
                         self.visit_branch(block, target);
                     }
 
-                    TerminatorKind::If { ref $($mutability)* cond,
-                                         ref $($mutability)* targets } => {
-                        self.visit_operand(cond, source_location);
-                        for &target in targets.as_slice() {
-                            self.visit_branch(block, target);
-                        }
-                    }
-
-                    TerminatorKind::Switch { ref $($mutability)* discr,
-                                             adt_def: _,
-                                             ref targets } => {
-                        self.visit_lvalue(discr, LvalueContext::Inspect, source_location);
-                        for &target in targets {
-                            self.visit_branch(block, target);
-                        }
-                    }
-
                     TerminatorKind::SwitchInt { ref $($mutability)* discr,
                                                 ref $($mutability)* switch_ty,
-                                                ref $($mutability)* values,
+                                                ref values,
                                                 ref targets } => {
-                        self.visit_lvalue(discr, LvalueContext::Inspect, source_location);
+                        self.visit_operand(discr, source_location);
                         self.visit_ty(switch_ty);
-                        for value in values {
-                            self.visit_const_val(value, source_location);
+                        for value in &values[..] {
+                            self.visit_const_int(value, source_location);
                         }
                         for &target in targets {
                             self.visit_branch(block, target);
@@ -504,6 +492,10 @@ macro_rules! make_mir_visitor {
 
                     Rvalue::UnaryOp(_un_op, ref $($mutability)* op) => {
                         self.visit_operand(op, location);
+                    }
+
+                    Rvalue::Discriminant(ref $($mutability)* lvalue) => {
+                        self.visit_lvalue(lvalue, LvalueContext::Inspect, location);
                     }
 
                     Rvalue::Box(ref $($mutability)* ty) => {
@@ -712,10 +704,13 @@ macro_rules! make_mir_visitor {
                                     _substs: & $($mutability)* ClosureSubsts<'tcx>) {
             }
 
-            fn super_const_val(&mut self, _substs: & $($mutability)* ConstVal) {
+            fn super_const_val(&mut self, _const_val: & $($mutability)* ConstVal) {
             }
 
-            fn super_const_usize(&mut self, _substs: & $($mutability)* ConstUsize) {
+            fn super_const_int(&mut self, _const_int: &ConstInt) {
+            }
+
+            fn super_const_usize(&mut self, _const_usize: & $($mutability)* ConstUsize) {
             }
 
             // Convenience methods

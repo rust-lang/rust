@@ -209,8 +209,6 @@ impl<'a, 'tcx: 'a> CfgSimplifier<'a, 'tcx> {
     // turn a branch with all successors identical to a goto
     fn simplify_branch(&mut self, terminator: &mut Terminator<'tcx>) -> bool {
         match terminator.kind {
-            TerminatorKind::If { .. } |
-            TerminatorKind::Switch { .. } |
             TerminatorKind::SwitchInt { .. } => {},
             _ => return false
         };

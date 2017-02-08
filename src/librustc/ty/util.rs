@@ -23,7 +23,6 @@ use ty::TypeVariants::*;
 use util::nodemap::FxHashMap;
 use middle::lang_items;
 
-use rustc_const_math::{ConstInt, ConstIsize, ConstUsize};
 use rustc_data_structures::stable_hasher::{StableHasher, StableHasherResult};
 
 use std::cell::RefCell;
@@ -37,84 +36,20 @@ use syntax_pos::Span;
 use hir;
 
 pub trait IntTypeExt {
-    fn to_ty<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Ty<'tcx>;
-    fn disr_incr<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, val: Option<Disr>)
-                           -> Option<Disr>;
-    fn assert_ty_matches(&self, val: Disr);
-    fn initial_discriminant<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Disr;
+    fn to_ty<'a, 'gcx: 'a+'tcx, 'tcx: 'a>(self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx>;
+    fn initial_discriminant<'a, 'tcx>(&self, _: TyCtxt<'a, 'tcx, 'tcx>) -> Disr;
 }
 
 impl IntTypeExt for attr::IntType {
-    fn to_ty<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Ty<'tcx> {
-        match *self {
-            SignedInt(ast::IntTy::I8)      => tcx.types.i8,
-            SignedInt(ast::IntTy::I16)     => tcx.types.i16,
-            SignedInt(ast::IntTy::I32)     => tcx.types.i32,
-            SignedInt(ast::IntTy::I64)     => tcx.types.i64,
-            SignedInt(ast::IntTy::I128)     => tcx.types.i128,
-            SignedInt(ast::IntTy::Is)   => tcx.types.isize,
-            UnsignedInt(ast::UintTy::U8)    => tcx.types.u8,
-            UnsignedInt(ast::UintTy::U16)   => tcx.types.u16,
-            UnsignedInt(ast::UintTy::U32)   => tcx.types.u32,
-            UnsignedInt(ast::UintTy::U64)   => tcx.types.u64,
-            UnsignedInt(ast::UintTy::U128)   => tcx.types.u128,
-            UnsignedInt(ast::UintTy::Us) => tcx.types.usize,
+    fn to_ty<'a, 'gcx: 'a+'tcx, 'tcx: 'a>(self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx> {
+        match self {
+            SignedInt(i) => tcx.mk_mach_int(i),
+            UnsignedInt(i) => tcx.mk_mach_uint(i),
         }
     }
 
-    fn initial_discriminant<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Disr {
-        match *self {
-            SignedInt(ast::IntTy::I8)    => ConstInt::I8(0),
-            SignedInt(ast::IntTy::I16)   => ConstInt::I16(0),
-            SignedInt(ast::IntTy::I32)   => ConstInt::I32(0),
-            SignedInt(ast::IntTy::I64)   => ConstInt::I64(0),
-            SignedInt(ast::IntTy::I128)   => ConstInt::I128(0),
-            SignedInt(ast::IntTy::Is) => match tcx.sess.target.int_type {
-                ast::IntTy::I16 => ConstInt::Isize(ConstIsize::Is16(0)),
-                ast::IntTy::I32 => ConstInt::Isize(ConstIsize::Is32(0)),
-                ast::IntTy::I64 => ConstInt::Isize(ConstIsize::Is64(0)),
-                _ => bug!(),
-            },
-            UnsignedInt(ast::UintTy::U8)  => ConstInt::U8(0),
-            UnsignedInt(ast::UintTy::U16) => ConstInt::U16(0),
-            UnsignedInt(ast::UintTy::U32) => ConstInt::U32(0),
-            UnsignedInt(ast::UintTy::U64) => ConstInt::U64(0),
-            UnsignedInt(ast::UintTy::U128) => ConstInt::U128(0),
-            UnsignedInt(ast::UintTy::Us) => match tcx.sess.target.uint_type {
-                ast::UintTy::U16 => ConstInt::Usize(ConstUsize::Us16(0)),
-                ast::UintTy::U32 => ConstInt::Usize(ConstUsize::Us32(0)),
-                ast::UintTy::U64 => ConstInt::Usize(ConstUsize::Us64(0)),
-                _ => bug!(),
-            },
-        }
-    }
-
-    fn assert_ty_matches(&self, val: Disr) {
-        match (*self, val) {
-            (SignedInt(ast::IntTy::I8), ConstInt::I8(_)) => {},
-            (SignedInt(ast::IntTy::I16), ConstInt::I16(_)) => {},
-            (SignedInt(ast::IntTy::I32), ConstInt::I32(_)) => {},
-            (SignedInt(ast::IntTy::I64), ConstInt::I64(_)) => {},
-            (SignedInt(ast::IntTy::I128), ConstInt::I128(_)) => {},
-            (SignedInt(ast::IntTy::Is), ConstInt::Isize(_)) => {},
-            (UnsignedInt(ast::UintTy::U8), ConstInt::U8(_)) => {},
-            (UnsignedInt(ast::UintTy::U16), ConstInt::U16(_)) => {},
-            (UnsignedInt(ast::UintTy::U32), ConstInt::U32(_)) => {},
-            (UnsignedInt(ast::UintTy::U64), ConstInt::U64(_)) => {},
-            (UnsignedInt(ast::UintTy::U128), ConstInt::U128(_)) => {},
-            (UnsignedInt(ast::UintTy::Us), ConstInt::Usize(_)) => {},
-            _ => bug!("disr type mismatch: {:?} vs {:?}", self, val),
-        }
-    }
-
-    fn disr_incr<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, val: Option<Disr>)
-                           -> Option<Disr> {
-        if let Some(val) = val {
-            self.assert_ty_matches(val);
-            (val + ConstInt::Infer(1)).ok()
-        } else {
-            Some(self.initial_discriminant(tcx))
-        }
+    fn initial_discriminant<'a, 'tcx>(&self, _: TyCtxt<'a, 'tcx, 'tcx>) -> Disr {
+        0
     }
 }
 

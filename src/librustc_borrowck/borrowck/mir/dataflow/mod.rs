@@ -454,11 +454,6 @@ impl<'a, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D>
                 self.propagate_bits_into_entry_set_for(in_out, changed, target);
                 self.propagate_bits_into_entry_set_for(in_out, changed, unwind);
             }
-            mir::TerminatorKind::If { ref targets, .. } => {
-                self.propagate_bits_into_entry_set_for(in_out, changed, &targets.0);
-                self.propagate_bits_into_entry_set_for(in_out, changed, &targets.1);
-            }
-            mir::TerminatorKind::Switch { ref targets, .. } |
             mir::TerminatorKind::SwitchInt { ref targets, .. } => {
                 for target in targets {
                     self.propagate_bits_into_entry_set_for(in_out, changed, target);
