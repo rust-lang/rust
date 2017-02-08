@@ -30,6 +30,7 @@ use std::io::{self, BufReader};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output, ExitStatus};
 use std::str;
+use std::collections::HashMap;
 
 use extract_gdb_version;
 
@@ -1942,17 +1943,28 @@ actual:\n\
         }
     }
 
-    fn check_rustdoc_test_option(&self, res: ProcRes) {
-        let mut file = fs::File::open(&self.testpaths.file)
+    fn get_lines<P: AsRef<Path>>(&self, path: &P,
+                                 mut other_files: Option<&mut Vec<String>>) -> Vec<usize> {
+        let mut file = fs::File::open(path)
                                 .expect("markdown_test_output_check_entry File::open failed");
         let mut content = String::new();
         file.read_to_string(&mut content)
             .expect("markdown_test_output_check_entry read_to_string failed");
         let mut ignore = false;
-        let mut v: Vec<usize> =
-            content.lines()
-                   .enumerate()
-                   .filter_map(|(line_nb, line)| {
+        content.lines()
+               .enumerate()
+               .filter_map(|(line_nb, line)| {
+                   if (line.trim_left().starts_with("pub mod ") ||
+                       line.trim_left().starts_with("mod ")) &&
+                      line.ends_with(";") {
+                       if let Some(ref mut other_files) = other_files {
+                           other_files.push(line.rsplit("mod ")
+                                      .next()
+                                      .unwrap()
+                                      .replace(";", ""));
+                       }
+                       None
+                   } else {
                        let sline = line.split("///").last().unwrap_or("");
                        let line = sline.trim_left();
                        if line.starts_with("```") {
@@ -1966,8 +1978,21 @@ actual:\n\
                        } else {
                            None
                        }
-                   })
-                   .collect();
+                   }
+               })
+               .collect()
+    }
+
+    fn check_rustdoc_test_option(&self, res: ProcRes) {
+        let mut other_files = Vec::new();
+        let mut files: HashMap<String, Vec<usize>> = HashMap::new();
+        files.insert(self.testpaths.file.to_str().unwrap().to_owned(),
+                     self.get_lines(&self.testpaths.file, Some(&mut other_files)));
+        for other_file in other_files {
+            let mut path = self.testpaths.file.clone();
+            path.set_file_name(&format!("{}.rs", other_file));
+            files.insert(path.to_str().unwrap().to_owned(), self.get_lines(&path, None));
+        }
 
         let mut tested = 0;
         for _ in res.stdout.split("\n")
@@ -1975,27 +2000,35 @@ actual:\n\
                            .inspect(|s| {
                                let tmp: Vec<&str> = s.split(" - line ").collect();
                                if tmp.len() == 2 {
-                                   tested += 1;
-                                   let line = tmp[1].split(" ...")
-                                                    .next()
-                                                    .unwrap_or("0")
-                                                    .parse()
-                                                    .unwrap_or(0);
-                                   if let Ok(pos) = v.binary_search(&line) {
-                                       v.remove(pos);
-                                   } else {
-                                       self.fatal_proc_rec(
-                                           &format!("Not found doc test: \"{}\" in {:?}", s, v),
-                                           &res);
+                                   let path = tmp[0].rsplit("test ").next().unwrap();
+                                   if let Some(ref mut v) = files.get_mut(path) {
+                                       tested += 1;
+                                       let line = tmp[1].split(" ...")
+                                                        .next()
+                                                        .unwrap_or("0")
+                                                        .parse()
+                                                        .unwrap_or(0);
+                                       if let Ok(pos) = v.binary_search(&line) {
+                                           v.remove(pos);
+                                       } else {
+                                           self.fatal_proc_rec(
+                                               &format!("Not found doc test: \"{}\" in \"{}\":{:?}",
+                                                        s, path, v),
+                                               &res);
+                                       }
                                    }
                                }
                            }) {}
         if tested == 0 {
-            self.fatal_proc_rec("No test has been found", &res);
-        } else if v.len() != 0 {
-            self.fatal_proc_rec(&format!("Not found test at line{} {:?}",
-                                         if v.len() > 1 { "s" } else { "" }, v),
-                                &res);
+            self.fatal_proc_rec(&format!("No test has been found... {:?}", files), &res);
+        } else {
+            for (entry, v) in &files {
+                if v.len() != 0 {
+                    self.fatal_proc_rec(&format!("Not found test at line{} \"{}\":{:?}",
+                                                 if v.len() > 1 { "s" } else { "" }, entry, v),
+                                        &res);
+                }
+            }
         }
     }
 
