@@ -813,6 +813,10 @@ impl<'a> Parser<'a> {
         let mut first: bool = true;
         let mut v = vec![];
         while !kets.contains(&&self.token) {
+            match self.token {
+                token::CloseDelim(..) | token::Eof => break,
+                _ => {}
+            };
             match sep.sep {
                 Some(ref t) => {
                     if first {
@@ -2606,9 +2610,12 @@ impl<'a> Parser<'a> {
             return Ok((None, kleene_op));
         }
 
-        let separator = self.bump_and_get();
+        let separator = match self.token {
+            token::CloseDelim(..) => None,
+            _ => Some(self.bump_and_get()),
+        };
         match parse_kleene_op(self)? {
-            Some(zerok) => Ok((Some(separator), zerok)),
+            Some(zerok) => Ok((separator, zerok)),
             None => return Err(self.fatal("expected `*` or `+`"))
         }
     }
@@ -2645,7 +2652,7 @@ impl<'a> Parser<'a> {
                     tts: tts,
                 })))
             },
-            token::CloseDelim(_) | token::Eof => unreachable!(),
+            token::CloseDelim(..) | token::Eof => Ok(TokenTree::Token(self.span, token::Eof)),
             token::Dollar | token::SubstNt(..) if self.quote_depth > 0 => self.parse_unquoted(),
             _ => Ok(TokenTree::Token(self.span, self.bump_and_get())),
         }
