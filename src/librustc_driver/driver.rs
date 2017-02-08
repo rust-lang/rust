@@ -872,9 +872,10 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
     let index = stability::Index::new(&hir_map);
 
-    let local_providers = ty::maps::Providers::default();
-    let mut extern_providers = ty::maps::Providers::default();
+    let mut local_providers = ty::maps::Providers::default();
+    mir::mir_map::provide(&mut local_providers);
 
+    let mut extern_providers = ty::maps::Providers::default();
     cstore::provide(&mut extern_providers);
 
     TyCtxt::create_and_enter(sess,
