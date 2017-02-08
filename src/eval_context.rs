@@ -329,6 +329,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         }
                     },
                 }
+                // see comment on `initialized` field
+                assert!(!global_value.initialized);
+                global_value.initialized = true;
                 assert!(global_value.mutable);
                 global_value.mutable = mutable;
             } else {
@@ -868,7 +871,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     _ => {
                         let ptr = self.alloc_ptr_with_substs(global_val.ty, cid.substs)?;
                         self.write_value_to_ptr(global_val.value, ptr, global_val.ty)?;
-                        self.memory.mark_static(ptr.alloc_id, global_val.mutable)?;
+                        // see comment on `initialized` field
+                        if global_val.initialized {
+                            self.memory.mark_static(ptr.alloc_id, global_val.mutable)?;
+                        }
                         let lval = self.globals.get_mut(&cid).expect("already checked");
                         *lval = Global {
                             value: Value::ByRef(ptr),
