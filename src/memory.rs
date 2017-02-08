@@ -38,7 +38,7 @@ pub struct Allocation {
     /// The alignment of the allocation to detect unaligned reads.
     pub align: u64,
     /// Whether the allocation may be modified.
-    /// Use the `mark_static` method of `Memory` to ensure that an error occurs, if the memory of this
+    /// Use the `mark_static_initalized` method of `Memory` to ensure that an error occurs, if the memory of this
     /// allocation is modified or deallocated in the future.
     pub static_kind: StaticKind,
 }
@@ -152,6 +152,11 @@ impl<'tcx> Function<'tcx> {
 pub struct Memory<'a, 'tcx> {
     /// Actual memory allocations (arbitrary bytes, may contain pointers into other allocations)
     alloc_map: HashMap<AllocId, Allocation>,
+    /// Set of statics, constants, promoteds, vtables, ... to prevent `mark_static_initalized` from stepping
+    /// out of its own allocations.
+    /// This set only contains statics backed by an allocation. If they are ByVal or ByValPair they
+    /// are not here, but will be inserted once they become ByRef.
+    static_alloc: HashSet<AllocId>,
     /// Number of virtual bytes allocated
     memory_usage: u64,
     /// Maximum number of virtual bytes that may be allocated
@@ -189,6 +194,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             memory_size: max_memory,
             memory_usage: 0,
             packed: BTreeSet::new(),
+            static_alloc: HashSet::new(),
         }
     }
 
@@ -624,8 +630,15 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 
 /// Reading and writing
 impl<'a, 'tcx> Memory<'a, 'tcx> {
-    /// mark an allocation as static, either mutable or not
-    pub fn mark_static(&mut self, alloc_id: AllocId, mutable: bool) -> EvalResult<'tcx> {
+    /// mark an allocation as being the entry point to a static (see `static_alloc` field)
+    pub fn mark_static(&mut self, alloc_id: AllocId) {
+        if !self.static_alloc.insert(alloc_id) {
+            bug!("tried to mark an allocation ({:?}) as static twice", alloc_id);
+        }
+    }
+
+    /// mark an allocation as static and initialized, either mutable or not
+    pub fn mark_static_initalized(&mut self, alloc_id: AllocId, mutable: bool) -> EvalResult<'tcx> {
         // do not use `self.get_mut(alloc_id)` here, because we might have already marked a
         // sub-element or have circular pointers (e.g. `Rc`-cycles)
         let relocations = match self.alloc_map.get_mut(&alloc_id) {
@@ -645,7 +658,10 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         };
         // recurse into inner allocations
         for &alloc in relocations.values() {
-            self.mark_static(alloc, mutable)?;
+            // relocations into other statics are not "inner allocations"
+            if !self.static_alloc.contains(&alloc) {
+                self.mark_static_initalized(alloc, mutable)?;
+            }
         }
         // put back the relocations
         self.alloc_map.get_mut(&alloc_id).expect("checked above").relocations = relocations;
