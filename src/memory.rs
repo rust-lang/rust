@@ -632,7 +632,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 impl<'a, 'tcx> Memory<'a, 'tcx> {
     /// mark an allocation as being the entry point to a static (see `static_alloc` field)
     pub fn mark_static(&mut self, alloc_id: AllocId) {
-        if !self.static_alloc.insert(alloc_id) {
+        if alloc_id != NEVER_ALLOC_ID && alloc_id != ZST_ALLOC_ID && !self.static_alloc.insert(alloc_id) {
             bug!("tried to mark an allocation ({:?}) as static twice", alloc_id);
         }
     }
