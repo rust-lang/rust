@@ -24,6 +24,8 @@ extern {
     fn __adddf3();
     fn __powisf2();
     fn __powidf2();
+    fn __subsf3();
+    fn __subdf3();
 }
 
 macro_rules! declare {
@@ -57,6 +59,8 @@ declare!(___addsf3, __addsf3);
 declare!(___adddf3, __adddf3);
 declare!(___powisf2, __powisf2);
 declare!(___powidf2, __powidf2);
+declare!(___subsf3, __subsf3);
+declare!(___subdf3, __subdf3);
 
 #[cfg(all(not(windows),
           not(target_arch = "mips64"),
