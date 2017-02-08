@@ -14,6 +14,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   zlib1g-dev \
   g++-arm-linux-gnueabi \
   g++-arm-linux-gnueabihf \
+  gcc-sparc64-linux-gnu \
+  libc6-dev-sparc64-cross \
   bzip2 \
   patch
 
@@ -60,9 +62,11 @@ ENV TARGETS=$TARGETS,mipsel-unknown-linux-musl
 ENV TARGETS=$TARGETS,arm-unknown-linux-musleabi
 ENV TARGETS=$TARGETS,arm-unknown-linux-musleabihf
 ENV TARGETS=$TARGETS,armv7-unknown-linux-musleabihf
+ENV TARGETS=$TARGETS,sparc64-unknown-linux-gnu
 
 ENV CC_mipsel_unknown_linux_musl=mipsel-openwrt-linux-gcc \
-    CC_mips_unknown_linux_musl=mips-openwrt-linux-gcc
+    CC_mips_unknown_linux_musl=mips-openwrt-linux-gcc \
+    CC_sparc64_unknown_linux_gnu=sparc64-linux-gnu-gcc
 
 # Suppress some warnings in the openwrt toolchains we downloaded
 ENV STAGING_DIR=/tmp
