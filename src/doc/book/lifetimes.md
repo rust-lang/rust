@@ -108,7 +108,7 @@ fn skip_prefix<'a, 'b>(line: &'a str, prefix: &'b str) -> &'a str {
 
 Let's examine the changes without going too deep into the syntax for now -
 we'll get to that later. The first change was adding the `<'a, 'b>` after the
-method name. This introduces two lifetime parameters: `'a` and `'b`. Next each
+method name. This introduces two lifetime parameters: `'a` and `'b`. Next, each
 reference in the function signature was associated with one of the lifetime
 parameters by adding the lifetime name after the `&`. This tells the compiler
 how the lifetimes between different references are related.
