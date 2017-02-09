@@ -79,10 +79,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         self.drop(Lvalue::Ptr { ptr, extra }, contents_ty, drop)?;
                     },
                 }
+                // We cannot use Box's destructor, because it is a no-op and only exists to reduce
+                // the number of hacks required in the compiler around the Box type.
                 let box_free_fn = self.tcx.lang_items.box_free_fn().expect("no box_free lang item");
                 let substs = self.tcx.intern_substs(&[Kind::from(contents_ty)]);
                 // this is somewhat hacky, but hey, there's no representation difference between
-                // pointers and references, so
+                // pointers, `Box`es and references, so
                 // #[lang = "box_free"] unsafe fn box_free<T>(ptr: *mut T)
                 // is the same as
                 // fn drop(&mut self) if Self is Box<T>
@@ -164,7 +166,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let drop_fn = self.memory.read_ptr(vtable)?;
                 // some values don't need to call a drop impl, so the value is null
                 if drop_fn != Pointer::from_int(0) {
-                    let FunctionDefinition {def_id, substs, sig, ..} = self.memory.get_fn(drop_fn.alloc_id)?.expect_drop_glue()?;
+                    // FIXME: change the `DropGlue` variant of `Function` to only contain `real_ty`
+                    let FunctionDefinition {substs, sig, ..} = self.memory.get_fn(drop_fn.alloc_id)?.expect_drop_glue()?;
+                    // The real type is taken from the self argument in `fn drop(&mut self)`
                     let real_ty = match sig.inputs()[0].sty {
                         ty::TyRef(_, mt) => self.monomorphize(mt.ty, substs),
                         _ => bug!("first argument of Drop::drop must be &mut T"),
