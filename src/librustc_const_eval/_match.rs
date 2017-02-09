@@ -405,7 +405,7 @@ fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
         ty::TyAdt(def, substs) if def.is_enum() && def.variants.len() != 1 => {
             def.variants.iter().filter_map(|v| {
                 let mut visited = FxHashSet::default();
-                let forest = v.uninhabited_from(&mut visited,
+                let forest = v.uninhabited_from(&mut visited, 0,
                                                 cx.tcx, substs,
                                                 AdtKind::Enum);
                 if forest.contains(cx.tcx, cx.module)

@@ -1019,7 +1019,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
     /// visible.
     pub fn is_uninhabited_from(&self, module: DefId, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> bool {
         let mut visited = FxHashSet::default();
-        let forest = self.uninhabited_from(&mut visited, tcx);
+        let forest = self.uninhabited_from(&mut visited, 0, tcx);
 
         // To check whether this type is uninhabited at all (not just from the
         // given node) you could check whether the forest is empty.

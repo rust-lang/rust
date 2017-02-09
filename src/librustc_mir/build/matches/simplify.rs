@@ -103,7 +103,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     let irrefutable = adt_def.variants.iter().enumerate().all(|(i, v)| {
                         i == variant_index || {
                             let mut visited = FxHashSet::default();
-                            let node_set = v.uninhabited_from(&mut visited,
+                            let node_set = v.uninhabited_from(&mut visited, 0,
                                                               self.hir.tcx(),
                                                               substs,
                                                               adt_def.adt_kind());
