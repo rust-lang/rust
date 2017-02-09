@@ -65,7 +65,7 @@ use middle::const_val::ConstVal;
 use rustc_const_eval::EvalHint::UncheckedExprHint;
 use rustc_const_eval::{ConstContext, report_const_eval_err};
 use rustc::ty::subst::Substs;
-use rustc::ty::{ToPredicate, ImplContainer, AssociatedItemContainer, TraitContainer};
+use rustc::ty::{ToPredicate, ImplContainer, AssociatedItemContainer, TraitContainer, ReprOptions};
 use rustc::ty::{self, AdtKind, ToPolyTraitRef, Ty, TyCtxt};
 use rustc::ty::util::IntTypeExt;
 use rustc::dep_graph::DepNode;
@@ -1006,7 +1006,8 @@ fn convert_struct_def<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     let ctor_id = if !def.is_struct() { Some(ccx.tcx.hir.local_def_id(def.id())) } else { None };
     let variants = vec![convert_struct_variant(ccx, ctor_id.unwrap_or(did), it.name,
                                                ConstInt::Infer(0), def)];
-    let adt = ccx.tcx.alloc_adt_def(did, AdtKind::Struct, variants);
+    let adt = ccx.tcx.alloc_adt_def(did, AdtKind::Struct, variants,
+        ReprOptions::new(&ccx.tcx, did));
     if let Some(ctor_id) = ctor_id {
         // Make adt definition available through constructor id as well.
         ccx.tcx.adt_defs.borrow_mut().insert(ctor_id, adt);
@@ -1024,7 +1025,7 @@ fn convert_union_def<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     let did = ccx.tcx.hir.local_def_id(it.id);
     let variants = vec![convert_struct_variant(ccx, did, it.name, ConstInt::Infer(0), def)];
 
-    let adt = ccx.tcx.alloc_adt_def(did, AdtKind::Union, variants);
+    let adt = ccx.tcx.alloc_adt_def(did, AdtKind::Union, variants, ReprOptions::new(&ccx.tcx, did));
     ccx.tcx.adt_defs.borrow_mut().insert(did, adt);
     adt
 }
@@ -1112,7 +1113,7 @@ fn convert_enum_def<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         convert_struct_variant(ccx, did, v.node.name, disr, &v.node.data)
     }).collect();
 
-    let adt = tcx.alloc_adt_def(did, AdtKind::Enum, variants);
+    let adt = tcx.alloc_adt_def(did, AdtKind::Enum, variants, ReprOptions::new(&ccx.tcx, did));
     tcx.adt_defs.borrow_mut().insert(did, adt);
     adt
 }
