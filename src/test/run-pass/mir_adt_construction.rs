@@ -17,12 +17,12 @@ enum CEnum {
 }
 
 fn test1(c: CEnum) -> i32 {
-  let c2 = CEnum::Hello;
-  match (c, c2) {
-    (CEnum::Hello, CEnum::Hello) => 42,
-    (CEnum::World, CEnum::Hello) => 0,
-    _ => 1
-  }
+    let c2 = CEnum::Hello;
+    match (c, c2) {
+        (CEnum::Hello, CEnum::Hello) => 42,
+        (CEnum::World, CEnum::Hello) => 0,
+        _ => 1
+    }
 }
 
 #[repr(packed)]
@@ -90,12 +90,12 @@ fn test5(x: fn(u32) -> Option<u32>) -> (Option<u32>, Option<u32>) {
 }
 
 fn main() {
-  assert_eq!(test1(CEnum::Hello), 42);
-  assert_eq!(test1(CEnum::World), 0);
-  assert_eq!(test2(), Pakd { a: 42, b: 42, c: 42, d: 42, e: () });
-  assert_eq!(test3(), TupleLike(42, 42));
-  let t4 = test4(TupleLike);
-  assert_eq!(t4.0, t4.1);
-  let t5 = test5(Some);
-  assert_eq!(t5.0, t5.1);
+    assert_eq!(test1(CEnum::Hello), 42);
+    assert_eq!(test1(CEnum::World), 0);
+    assert_eq!(test2(), Pakd { a: 42, b: 42, c: 42, d: 42, e: () });
+    assert_eq!(test3(), TupleLike(42, 42));
+    let t4 = test4(TupleLike);
+    assert_eq!(t4.0, t4.1);
+    let t5 = test5(Some);
+    assert_eq!(t5.0, t5.1);
 }
