@@ -394,8 +394,6 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
                     return Qualif::empty();
                 }
 
-                TerminatorKind::If {..} |
-                TerminatorKind::Switch {..} |
                 TerminatorKind::SwitchInt {..} |
                 TerminatorKind::DropAndReplace { .. } |
                 TerminatorKind::Resume |
@@ -736,6 +734,14 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                             &format!("comparing raw pointers in static"))
                         .emit();
                     }
+                }
+            }
+
+            Rvalue::Discriminant(..) => {
+                // FIXME discriminant
+                self.add(Qualif::NOT_CONST);
+                if self.mode != Mode::Fn {
+                    bug!("implement discriminant const qualify");
                 }
             }
 

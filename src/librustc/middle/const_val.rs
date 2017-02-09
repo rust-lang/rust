@@ -14,6 +14,7 @@ use std::rc::Rc;
 use hir::def_id::DefId;
 use rustc_const_math::*;
 use self::ConstVal::*;
+pub use rustc_const_math::ConstInt;
 
 use std::collections::BTreeMap;
 
@@ -46,6 +47,16 @@ impl ConstVal {
             Array(..) => "array",
             Repeat(..) => "repeat",
             Char(..) => "char",
+        }
+    }
+
+    pub fn to_const_int(&self) -> Option<ConstInt> {
+        match *self {
+            ConstVal::Integral(i) => Some(i),
+            ConstVal::Bool(true) => Some(ConstInt::Infer(1)),
+            ConstVal::Bool(false) => Some(ConstInt::Infer(0)),
+            ConstVal::Char(ch) => Some(ConstInt::U32(ch as u32)),
+            _ => None
         }
     }
 }

@@ -261,7 +261,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         let data = VariantData {
             ctor_kind: variant.ctor_kind,
-            disr: variant.disr_val.to_u128_unchecked(),
+            disr: variant.disr_val,
             struct_ctor: None,
         };
 
@@ -388,7 +388,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         let data = VariantData {
             ctor_kind: variant.ctor_kind,
-            disr: variant.disr_val.to_u128_unchecked(),
+            disr: variant.disr_val,
             struct_ctor: Some(def_id.index),
         };
 
@@ -659,7 +659,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
             hir::ItemForeignMod(_) => EntryKind::ForeignMod,
             hir::ItemTy(..) => EntryKind::Type,
-            hir::ItemEnum(..) => EntryKind::Enum,
+            hir::ItemEnum(..) => EntryKind::Enum(self.lazy(&tcx.lookup_adt_def(def_id).discr_ty)),
             hir::ItemStruct(ref struct_def, _) => {
                 let variant = tcx.lookup_adt_def(def_id).struct_variant();
 
@@ -673,7 +673,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 };
                 EntryKind::Struct(self.lazy(&VariantData {
                     ctor_kind: variant.ctor_kind,
-                    disr: variant.disr_val.to_u128_unchecked(),
+                    disr: variant.disr_val,
                     struct_ctor: struct_ctor,
                 }))
             }
@@ -682,7 +682,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
                 EntryKind::Union(self.lazy(&VariantData {
                     ctor_kind: variant.ctor_kind,
-                    disr: variant.disr_val.to_u128_unchecked(),
+                    disr: variant.disr_val,
                     struct_ctor: None,
                 }))
             }
