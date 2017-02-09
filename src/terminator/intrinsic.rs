@@ -1,6 +1,6 @@
 use rustc::hir::def_id::DefId;
 use rustc::mir;
-use rustc::ty::layout::Layout;
+use rustc::ty::layout::{Layout, Size, Align};
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty};
 
@@ -426,10 +426,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                     let (sized_size, sized_align) = match *layout {
                         ty::layout::Layout::Univariant { ref variant, .. } => {
-                            // The offset of the start of the last field gives the size of the
-                            // sized part of the type.
-                            let size = variant.offsets.last().map_or(0, |f| f.bytes());
-                            (size, variant.align.abi())
+                            (variant.offsets.last().map_or(0, |o| o.bytes()), variant.align.abi())
                         }
                         _ => {
                             bug!("size_and_align_of_dst: expcted Univariant for `{}`, found {:#?}",
@@ -470,11 +467,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     //
                     //   `(size + (align-1)) & -align`
 
-                    if size & (align - 1) != 0 {
-                        Ok((size + align, align))
-                    } else {
-                        Ok((size, align))
-                    }
+                    let size = Size::from_bytes(size).abi_align(Align::from_bytes(align, align).unwrap()).bytes();
+                    Ok((size, align))
                 }
                 ty::TyDynamic(..) => {
                     let (_, vtable) = value.expect_ptr_vtable_pair(&self.memory)?;
