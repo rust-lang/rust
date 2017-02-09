@@ -15,16 +15,38 @@ use std::io::Read;
 use std::path::Path;
 
 static LICENSES: &'static [&'static str] = &[
-    "MIT/Apache-2.0"
+    "MIT/Apache-2.0",
+    "Apache-2.0/MIT",
+    "MIT OR Apache-2.0",
+    "MIT",
+    "Unlicense/MIT",
+];
+
+/// These MPL licensed projects are acceptable, but only these.
+static EXCEPTIONS: &'static [&'static str] = &[
+    "mdbook",
+    "pest",
+    "thread-id",
 ];
 
 pub fn check(path: &Path, bad: &mut bool) {
     let path = path.join("vendor");
     assert!(path.exists(), "vendor directory missing");
     let mut saw_dir = false;
-    for dir in t!(path.read_dir()) {
+    'next_path: for dir in t!(path.read_dir()) {
         saw_dir = true;
         let dir = t!(dir);
+
+        // skip our exceptions
+        for exception in EXCEPTIONS {
+            if dir.path()
+                .to_str()
+                .unwrap()
+                .contains(&format!("src/vendor/{}", exception)) {
+                continue 'next_path;
+            }
+        }
+
         let toml = dir.path().join("Cargo.toml");
         if !check_license(&toml) {
             *bad = true;
