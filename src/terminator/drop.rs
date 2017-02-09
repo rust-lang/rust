@@ -8,7 +8,7 @@ use syntax::codemap::Span;
 use error::{EvalError, EvalResult};
 use eval_context::{EvalContext, monomorphize_field_ty, StackPopCleanup};
 use lvalue::{Lvalue, LvalueExtra};
-use memory::{Pointer, FunctionDefinition};
+use memory::Pointer;
 use value::PrimVal;
 use value::Value;
 
@@ -166,13 +166,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let drop_fn = self.memory.read_ptr(vtable)?;
                 // some values don't need to call a drop impl, so the value is null
                 if drop_fn != Pointer::from_int(0) {
-                    // FIXME: change the `DropGlue` variant of `Function` to only contain `real_ty`
-                    let FunctionDefinition {substs, sig, ..} = self.memory.get_fn(drop_fn.alloc_id)?.expect_drop_glue()?;
-                    // The real type is taken from the self argument in `fn drop(&mut self)`
-                    let real_ty = match sig.inputs()[0].sty {
-                        ty::TyRef(_, mt) => self.monomorphize(mt.ty, substs),
-                        _ => bug!("first argument of Drop::drop must be &mut T"),
-                    };
+                    let real_ty = self.memory.get_fn(drop_fn.alloc_id)?.expect_drop_glue_real_ty()?;
                     self.drop(Lvalue::from_ptr(ptr), real_ty, drop)?;
                 } else {
                     // just a sanity check

@@ -120,9 +120,9 @@ pub enum Function<'tcx> {
     Concrete(FunctionDefinition<'tcx>),
     /// Glue required to call a regular function through a Fn(Mut|Once) trait object
     FnDefAsTraitObject(FunctionDefinition<'tcx>),
-    /// Glue required to call the actual drop impl's `drop` method.
-    /// Drop glue takes the `self` by value, while `Drop::drop` take `&mut self`
-    DropGlue(FunctionDefinition<'tcx>),
+    /// A drop glue function only needs to know the real type, and then miri can extract the
+    /// actual type at runtime.
+    DropGlue(ty::Ty<'tcx>),
     /// Glue required to treat the ptr part of a fat pointer
     /// as a function pointer
     FnPtrAsTraitObject(&'tcx ty::FnSig<'tcx>),
@@ -137,9 +137,9 @@ impl<'tcx> Function<'tcx> {
             other => Err(EvalError::ExpectedConcreteFunction(other)),
         }
     }
-    pub fn expect_drop_glue(self) -> EvalResult<'tcx, FunctionDefinition<'tcx>> {
+    pub fn expect_drop_glue_real_ty(self) -> EvalResult<'tcx, ty::Ty<'tcx>> {
         match self {
-            Function::DropGlue(fn_def) => Ok(fn_def),
+            Function::DropGlue(real_ty) => Ok(real_ty),
             other => Err(EvalError::ExpectedDropGlue(other)),
         }
     }
@@ -234,15 +234,8 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         self.create_fn_alloc(Function::FnPtrAsTraitObject(fn_ty.sig.skip_binder()))
     }
 
-    pub fn create_drop_glue(&mut self, _tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId, substs: &'tcx Substs<'tcx>, fn_ty: &'tcx BareFnTy<'tcx>) -> Pointer {
-        self.create_fn_alloc(Function::DropGlue(FunctionDefinition {
-            def_id,
-            substs,
-            abi: fn_ty.abi,
-            // FIXME: why doesn't this compile?
-            //sig: tcx.erase_late_bound_regions(&fn_ty.sig),
-            sig: fn_ty.sig.skip_binder(),
-        }))
+    pub fn create_drop_glue(&mut self, ty: ty::Ty<'tcx>) -> Pointer {
+        self.create_fn_alloc(Function::DropGlue(ty))
     }
 
     pub fn create_fn_ptr(&mut self, _tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId, substs: &'tcx Substs<'tcx>, fn_ty: &'tcx BareFnTy<'tcx>) -> Pointer {
@@ -495,8 +488,8 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
                     trace!("{} {}", msg, dump_fn_def(fn_def));
                     continue;
                 },
-                (None, Some(&Function::DropGlue(fn_def))) => {
-                    trace!("{} drop glue for {}", msg, dump_fn_def(fn_def));
+                (None, Some(&Function::DropGlue(real_ty))) => {
+                    trace!("{} drop glue for {}", msg, real_ty);
                     continue;
                 },
                 (None, Some(&Function::FnDefAsTraitObject(fn_def))) => {

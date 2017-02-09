@@ -98,7 +98,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     ty::TyFnDef(_, _, fn_ty) => self.tcx.erase_regions(&fn_ty),
                     _ => bug!("drop method is not a TyFnDef"),
                 };
-                let fn_ptr = self.memory.create_drop_glue(self.tcx, drop_def_id, substs, fn_ty);
+                // The real type is taken from the self argument in `fn drop(&mut self)`
+                let real_ty = match fn_ty.sig.skip_binder().inputs()[0].sty {
+                    ty::TyRef(_, mt) => self.monomorphize(mt.ty, substs),
+                    _ => bug!("first argument of Drop::drop must be &mut T"),
+                };
+                let fn_ptr = self.memory.create_drop_glue(real_ty);
                 self.memory.write_ptr(vtable, fn_ptr)?;
             }
         }
