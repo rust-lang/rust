@@ -1151,7 +1151,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     });
 
     let metadata_module = ModuleTranslation {
-        name: "metadata".to_string(),
+        name: link::METADATA_MODULE_NAME.to_string(),
         symbol_name_hash: 0, // we always rebuild metadata, at least for now
         source: ModuleSource::Translated(ModuleLlvm {
             llcx: shared_ccx.metadata_llcx(),
