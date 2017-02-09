@@ -305,6 +305,15 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                             "std::env::args" => return Err(EvalError::Unimplemented("miri does not support program arguments".to_owned())),
                             "std::panicking::rust_panic_with_hook" |
                             "std::rt::begin_panic_fmt" => return Err(EvalError::Panic),
+                            "std::panicking::panicking" |
+                            "std::rt::panicking" => {
+                                let (lval, block) = destination.expect("std::rt::panicking does not diverge");
+                                // we abort on panic -> `std::rt::panicking` always returns true
+                                let bool = self.tcx.types.bool;
+                                self.write_primval(lval, PrimVal::from_bool(false), bool)?;
+                                self.goto_block(block);
+                                return Ok(());
+                            }
                             _ => {},
                         }
                         return Err(EvalError::NoMirFor(path));
