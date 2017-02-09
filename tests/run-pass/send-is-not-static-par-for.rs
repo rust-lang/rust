@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//ignore-windows-gnu
+
 use std::sync::Mutex;
 
 fn par_for<I, F>(iter: I, f: F)
