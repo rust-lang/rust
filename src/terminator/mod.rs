@@ -308,7 +308,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                             "std::panicking::panicking" |
                             "std::rt::panicking" => {
                                 let (lval, block) = destination.expect("std::rt::panicking does not diverge");
-                                // we abort on panic -> `std::rt::panicking` always returns true
+                                // we abort on panic -> `std::rt::panicking` always returns false
                                 let bool = self.tcx.types.bool;
                                 self.write_primval(lval, PrimVal::from_bool(false), bool)?;
                                 self.goto_block(block);
