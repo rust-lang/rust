@@ -214,6 +214,14 @@ impl PrimValKind {
         }
     }
 
+    pub fn is_signed_int(self) -> bool {
+        use self::PrimValKind::*;
+        match self {
+            I8 | I16 | I32 | I64 | I128 => true,
+            _ => false,
+        }
+    }
+
     pub fn from_uint_size(size: u64) -> Self {
         match size {
             1 => PrimValKind::U8,
