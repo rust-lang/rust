@@ -138,13 +138,20 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             while span.expn_id != NO_EXPANSION && span.expn_id != COMMAND_LINE_EXPN {
                 if let Some(callsite_span) = cm.with_expn_info(span.expn_id,
                                                     |ei| ei.map(|ei| ei.call_site.clone())) {
+                    // When the current function itself is a result of macro expansion,
+                    // we stop at the function body level because no line stepping can occurr
+                    // at the level above that.
+                    if self.mir.span.expn_id != NO_EXPANSION &&
+                       span.expn_id == self.mir.span.expn_id {
+                        break;
+                    }
                     span = callsite_span;
                 } else {
                     break;
                 }
             }
             let scope = self.scope_metadata_for_loc(source_info.scope, span.lo);
-            // Use span of the outermost call site, while keeping the original lexical scope
+            // Use span of the outermost expansion site, while keeping the original lexical scope.
             (scope, span)
         }
     }
