@@ -134,7 +134,8 @@ pub enum ExprKind<'tcx> {
         op: LogicalOp,
         lhs: ExprRef<'tcx>,
         rhs: ExprRef<'tcx>,
-    },
+    }, // NOT overloaded!
+       // LogicalOp is distinct from BinaryOp because of lazy evaluation of the operands.
     Unary {
         op: UnOp,
         arg: ExprRef<'tcx>,
