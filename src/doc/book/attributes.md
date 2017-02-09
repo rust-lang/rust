@@ -64,7 +64,7 @@ mod macos_only {
 ```
 
 Rust attributes are used for a number of different things. There is a full list
-of attributes [in the reference][reference]. Currently, you are not allowed to
-create your own attributes, the Rust compiler defines them.
+of attributes [in the reference][reference]. The Rust compiler defines many standardized
+attributes but allows for customized attributes from a custom derive.
 
 [reference]: ../reference.html#attributes
