@@ -21,17 +21,7 @@ RUN yum upgrade -y && yum install -y \
 ENV PATH=/rustroot/bin:$PATH
 ENV LD_LIBRARY_PATH=/rustroot/lib64:/rustroot/lib
 WORKDIR /tmp
-
-# binutils < 2.22 has a bug where the 32-bit executables it generates
-# immediately segfault in Rust, so we need to install our own binutils.
-#
-# See https://github.com/rust-lang/rust/issues/20440 for more info
 COPY shared.sh build-binutils.sh /tmp/
-RUN ./build-binutils.sh
-
-# Need a newer version of gcc than centos has to compile LLVM nowadays
-COPY build-gcc.sh /tmp/
-RUN ./build-gcc.sh
 
 # We need a build of openssl which supports SNI to download artifacts from
 # static.rust-lang.org. This'll be used to link into libcurl below (and used
@@ -48,6 +38,16 @@ RUN ./build-openssl.sh
 # really need.
 COPY build-curl.sh /tmp/
 RUN ./build-curl.sh
+
+# binutils < 2.22 has a bug where the 32-bit executables it generates
+# immediately segfault in Rust, so we need to install our own binutils.
+#
+# See https://github.com/rust-lang/rust/issues/20440 for more info
+RUN ./build-binutils.sh
+
+# Need a newer version of gcc than centos has to compile LLVM nowadays
+COPY build-gcc.sh /tmp/
+RUN ./build-gcc.sh
 
 # CentOS 5.5 has Python 2.4 by default, but LLVM needs 2.7+
 COPY build-python.sh /tmp/
