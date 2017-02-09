@@ -126,6 +126,9 @@ pub enum Attribute {
     UWTable         = 17,
     ZExt            = 18,
     InReg           = 19,
+    SanitizeThread  = 20,
+    SanitizeAddress = 21,
+    SanitizeMemory  = 22,
 }
 
 /// LLVMIntPredicate

@@ -278,6 +278,16 @@ version = "0.3.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
+name = "rustc_asan"
+version = "0.0.0"
+dependencies = [
+ "alloc_system 0.0.0",
+ "build_helper 0.1.0",
+ "cmake 0.1.18 (registry+https://github.com/rust-lang/crates.io-index)",
+ "core 0.0.0",
+]
+
+[[package]]
 name = "rustc_back"
 version = "0.0.0"
 dependencies = [
@@ -411,6 +421,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustc_lsan"
+version = "0.0.0"
+dependencies = [
+ "alloc_system 0.0.0",
+ "build_helper 0.1.0",
+ "cmake 0.1.18 (registry+https://github.com/rust-lang/crates.io-index)",
+ "core 0.0.0",
+]
+
+[[package]]
 name = "rustc_metadata"
 version = "0.0.0"
 dependencies = [
@@ -442,6 +462,16 @@ dependencies = [
  "rustc_data_structures 0.0.0",
  "syntax 0.0.0",
  "syntax_pos 0.0.0",
+]
+
+[[package]]
+name = "rustc_msan"
+version = "0.0.0"
+dependencies = [
+ "alloc_system 0.0.0",
+ "build_helper 0.1.0",
+ "cmake 0.1.18 (registry+https://github.com/rust-lang/crates.io-index)",
+ "core 0.0.0",
 ]
 
 [[package]]
@@ -526,6 +556,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustc_tsan"
+version = "0.0.0"
+dependencies = [
+ "alloc_system 0.0.0",
+ "build_helper 0.1.0",
+ "cmake 0.1.18 (registry+https://github.com/rust-lang/crates.io-index)",
+ "core 0.0.0",
+]
+
+[[package]]
 name = "rustc_typeck"
 version = "0.0.0"
 dependencies = [
@@ -586,6 +626,10 @@ dependencies = [
  "panic_abort 0.0.0",
  "panic_unwind 0.0.0",
  "rand 0.0.0",
+ "rustc_asan 0.0.0",
+ "rustc_lsan 0.0.0",
+ "rustc_msan 0.0.0",
+ "rustc_tsan 0.0.0",
  "std_unicode 0.0.0",
  "unwind 0.0.0",
 ]

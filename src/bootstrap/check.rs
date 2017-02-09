@@ -242,6 +242,10 @@ pub fn compiletest(build: &Build,
     cmd.env("RUSTC_BOOTSTRAP", "1");
     build.add_rust_test_threads(&mut cmd);
 
+    if build.config.sanitizers {
+        cmd.env("SANITIZER_SUPPORT", "1");
+    }
+
     cmd.arg("--adb-path").arg("adb");
     cmd.arg("--adb-test-dir").arg(ADB_TEST_DIR);
     if target.contains("android") {
