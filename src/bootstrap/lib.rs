@@ -812,6 +812,11 @@ impl Build {
             },
             _ => {},
         }
+
+        if !target.contains("windows") && target.contains("i686") {
+            base.push("-fPIC".into());
+        }
+
         return base
     }
 
