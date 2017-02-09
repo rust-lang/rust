@@ -96,8 +96,16 @@ impl<'tcx> LazySeq<Index> {
 }
 
 #[repr(packed)]
-#[derive(Copy, Clone)]
+#[derive(Copy)]
 struct Unaligned<T>(T);
+
+// The derived Clone impl is unsafe for this packed struct since it needs to pass a reference to
+// the field to `T::clone`, but this reference may not be properly aligned.
+impl<T: Copy> Clone for Unaligned<T> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
 
 impl<T> Unaligned<T> {
     fn get(self) -> T { self.0 }
