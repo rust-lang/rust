@@ -292,7 +292,25 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     }
                 }
 
-                let mir = self.load_mir(resolved_def_id)?;
+                let mir = match self.load_mir(resolved_def_id) {
+                    Ok(mir) => mir,
+                    Err(EvalError::NoMirFor(path)) => {
+                        match &path[..] {
+                            // let's just ignore all output for now
+                            "std::io::_print" => {
+                                self.goto_block(destination.unwrap().1);
+                                return Ok(());
+                            },
+                            "std::thread::Builder::new" => return Err(EvalError::Unimplemented("miri does not support threading".to_owned())),
+                            "std::env::args" => return Err(EvalError::Unimplemented("miri does not support program arguments".to_owned())),
+                            "std::panicking::rust_panic_with_hook" |
+                            "std::rt::begin_panic_fmt" => return Err(EvalError::Panic),
+                            _ => {},
+                        }
+                        return Err(EvalError::NoMirFor(path));
+                    },
+                    Err(other) => return Err(other),
+                };
                 let (return_lvalue, return_to_block) = match destination {
                     Some((lvalue, block)) => (lvalue, StackPopCleanup::Goto(block)),
                     None => {
