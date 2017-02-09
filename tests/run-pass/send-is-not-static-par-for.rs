@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//error-pattern: no mir for `std::
+//ignore-windows-gnu
 
 use std::sync::Mutex;
 
