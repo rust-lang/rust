@@ -55,12 +55,6 @@ fn main() {
     // The pointers should be the same
     assert_eq!(ptr1, ptr2);
 
-    // Test that packed structs are handled correctly
-    let p : Packed<usize> = Packed { a: 0, b: 13 };
-    assert_eq!(p.b.get(), 13);
-    let p : &Packed<Bar> = &p;
-    assert_eq!(p.b.get(), 13);
-
     // Test that nested DSTs work properly
     let f : Foo<Foo<usize>> = Foo { a: 0, b: Foo { a: 1, b: 17 }};
     assert_eq!(f.b.b.get(), 17);
