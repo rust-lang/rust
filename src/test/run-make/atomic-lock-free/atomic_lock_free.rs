@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(cfg_target_has_atomic, no_core, intrinsics, lang_items, i128_type)]
+#![feature(cfg_target_has_atomic, no_core, intrinsics, lang_items)]
 #![crate_type="rlib"]
 #![no_core]
 
@@ -52,14 +52,6 @@ pub unsafe fn atomic_u64(x: *mut u64) {
 }
 #[cfg(target_has_atomic = "64")]
 pub unsafe fn atomic_i64(x: *mut i64) {
-    atomic_xadd(x, 1);
-}
-#[cfg(target_has_atomic = "128")]
-pub unsafe fn atomic_u128(x: *mut u128) {
-    atomic_xadd(x, 1);
-}
-#[cfg(target_has_atomic = "128")]
-pub unsafe fn atomic_i128(x: *mut i128) {
     atomic_xadd(x, 1);
 }
 #[cfg(target_has_atomic = "ptr")]

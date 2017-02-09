@@ -11,6 +11,8 @@ members = [
   "tools/rustbook",
   "tools/tidy",
   "tools/build-manifest",
+  "tools/qemu-test-client",
+  "tools/qemu-test-server",
 ]
 
 # Curiously, compiletest will segfault if compiled with opt-level=3 on 64-bit

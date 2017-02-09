@@ -78,31 +78,29 @@ pub fn find_tool(target: &str, tool: &str) -> Option<Tool> {
             add_env(&mut tool, "LIB", libs);
             add_env(&mut tool, "PATH", path);
             add_env(&mut tool, "INCLUDE", include);
-            return tool
+            tool
         }
     }
 
     // This logic is all tailored for MSVC, if we're not that then bail out
     // early.
     if !target.contains("msvc") {
-        return None
+        return None;
     }
 
     // Looks like msbuild isn't located in the same location as other tools like
     // cl.exe and lib.exe. To handle this we probe for it manually with
     // dedicated registry keys.
     if tool.contains("msbuild") {
-        return find_msbuild(target)
+        return find_msbuild(target);
     }
 
     // If VCINSTALLDIR is set, then someone's probably already run vcvars and we
     // should just find whatever that indicates.
     if env::var_os("VCINSTALLDIR").is_some() {
-        return env::var_os("PATH").and_then(|path| {
-            env::split_paths(&path).map(|p| p.join(tool)).find(|p| p.exists())
-        }).map(|path| {
-            Tool::new(path.into())
-        })
+        return env::var_os("PATH")
+            .and_then(|path| env::split_paths(&path).map(|p| p.join(tool)).find(|p| p.exists()))
+            .map(|path| Tool::new(path.into()));
     }
 
     // Ok, if we're here, now comes the fun part of the probing. Default shells
@@ -112,13 +110,10 @@ pub fn find_tool(target: &str, tool: &str) -> Option<Tool> {
     // environment variables like `LIB`, `INCLUDE`, and `PATH` to ensure that
     // the tool is actually usable.
 
-    return find_msvc_latest(tool, target, "15.0").or_else(|| {
-        find_msvc_latest(tool, target, "14.0")
-    }).or_else(|| {
-        find_msvc_12(tool, target)
-    }).or_else(|| {
-        find_msvc_11(tool, target)
-    });
+    return find_msvc_latest(tool, target, "15.0")
+        .or_else(|| find_msvc_latest(tool, target, "14.0"))
+        .or_else(|| find_msvc_12(tool, target))
+        .or_else(|| find_msvc_11(tool, target));
 
     // For MSVC 14 or newer we need to find the Universal CRT as well as either
     // the Windows 10 SDK or Windows 8.1 SDK.
@@ -151,7 +146,7 @@ pub fn find_tool(target: &str, tool: &str) -> Option<Tool> {
             tool.include.push(sdk_include.join("winrt"));
             tool.include.push(sdk_include.join("shared"));
         } else {
-            return None
+            return None;
         }
         Some(tool.into_tool())
     }
@@ -198,26 +193,27 @@ pub fn find_tool(target: &str, tool: &str) -> Option<Tool> {
     // Given a possible MSVC installation directory, we look for the linker and
     // then add the MSVC library path.
     fn get_tool(tool: &str, path: &Path, target: &str) -> Option<MsvcTool> {
-        bin_subdir(target).into_iter().map(|(sub, host)| {
-            (path.join("bin").join(sub).join(tool),
-             path.join("bin").join(host))
-        }).filter(|&(ref path, _)| {
-            path.is_file()
-        }).map(|(path, host)| {
-            let mut tool = MsvcTool::new(path);
-            tool.path.push(host);
-            tool
-        }).filter_map(|mut tool| {
-            let sub = otry!(vc_lib_subdir(target));
-            tool.libs.push(path.join("lib").join(sub));
-            tool.include.push(path.join("include"));
-            let atlmfc_path = path.join("atlmfc");
-            if atlmfc_path.exists() {
-                tool.libs.push(atlmfc_path.join("lib").join(sub));
-                tool.include.push(atlmfc_path.join("include"));
-            }
-            Some(tool)
-        }).next()
+        bin_subdir(target)
+            .into_iter()
+            .map(|(sub, host)| (path.join("bin").join(sub).join(tool), path.join("bin").join(host)))
+            .filter(|&(ref path, _)| path.is_file())
+            .map(|(path, host)| {
+                let mut tool = MsvcTool::new(path);
+                tool.path.push(host);
+                tool
+            })
+            .filter_map(|mut tool| {
+                let sub = otry!(vc_lib_subdir(target));
+                tool.libs.push(path.join("lib").join(sub));
+                tool.include.push(path.join("include"));
+                let atlmfc_path = path.join("atlmfc");
+                if atlmfc_path.exists() {
+                    tool.libs.push(atlmfc_path.join("lib").join(sub));
+                    tool.include.push(atlmfc_path.join("include"));
+                }
+                Some(tool)
+            })
+            .next()
     }
 
     // To find MSVC we look in a specific registry key for the version we are
@@ -240,17 +236,16 @@ pub fn find_tool(target: &str, tool: &str) -> Option<Tool> {
         let key = otry!(LOCAL_MACHINE.open(key.as_ref()).ok());
         let root = otry!(key.query_str("KitsRoot10").ok());
         let readdir = otry!(Path::new(&root).join("lib").read_dir().ok());
-        let max_libdir = otry!(readdir.filter_map(|dir| {
-            dir.ok()
-        }).map(|dir| {
-            dir.path()
-        }).filter(|dir| {
-            dir.components().last().and_then(|c| {
-                c.as_os_str().to_str()
-            }).map(|c| {
-                c.starts_with("10.") && dir.join("ucrt").is_dir()
-            }).unwrap_or(false)
-        }).max());
+        let max_libdir = otry!(readdir.filter_map(|dir| dir.ok())
+            .map(|dir| dir.path())
+            .filter(|dir| {
+                dir.components()
+                    .last()
+                    .and_then(|c| c.as_os_str().to_str())
+                    .map(|c| c.starts_with("10.") && dir.join("ucrt").is_dir())
+                    .unwrap_or(false)
+            })
+            .max());
         let version = max_libdir.components().last().unwrap();
         let version = version.as_os_str().to_str().unwrap().to_string();
         Some((root.into(), version))
@@ -270,12 +265,13 @@ pub fn find_tool(target: &str, tool: &str) -> Option<Tool> {
         let root = otry!(key.query_str("InstallationFolder").ok());
         let readdir = otry!(Path::new(&root).join("lib").read_dir().ok());
         let mut dirs = readdir.filter_map(|dir| dir.ok())
-                              .map(|dir| dir.path())
-                              .collect::<Vec<_>>();
+            .map(|dir| dir.path())
+            .collect::<Vec<_>>();
         dirs.sort();
-        let dir = otry!(dirs.into_iter().rev().filter(|dir| {
-            dir.join("um").join("x64").join("kernel32.lib").is_file()
-        }).next());
+        let dir = otry!(dirs.into_iter()
+            .rev()
+            .filter(|dir| dir.join("um").join("x64").join("kernel32.lib").is_file())
+            .next());
         let version = dir.components().last().unwrap();
         let version = version.as_os_str().to_str().unwrap().to_string();
         Some((root.into(), version))
@@ -319,10 +315,8 @@ pub fn find_tool(target: &str, tool: &str) -> Option<Tool> {
     fn bin_subdir(target: &str) -> Vec<(&'static str, &'static str)> {
         let arch = target.split('-').next().unwrap();
         match (arch, host_arch()) {
-            ("i586", X86) |
-            ("i686", X86) => vec![("", "")],
-            ("i586", X86_64) |
-            ("i686", X86_64) => vec![("amd64_x86", "amd64"), ("", "")],
+            ("i586", X86) | ("i686", X86) => vec![("", "")],
+            ("i586", X86_64) | ("i686", X86_64) => vec![("amd64_x86", "amd64"), ("", "")],
             ("x86_64", X86) => vec![("x86_amd64", "")],
             ("x86_64", X86_64) => vec![("amd64", "amd64"), ("x86_amd64", "")],
             ("arm", X86) => vec![("x86_arm", "")],
@@ -393,9 +387,8 @@ pub fn find_tool(target: &str, tool: &str) -> Option<Tool> {
         let mut max_vers = 0;
         let mut max_key = None;
         for subkey in key.iter().filter_map(|k| k.ok()) {
-            let val = subkey.to_str().and_then(|s| {
-                s.trim_left_matches("v").replace(".", "").parse().ok()
-            });
+            let val = subkey.to_str()
+                .and_then(|s| s.trim_left_matches("v").replace(".", "").parse().ok());
             let val = match val {
                 Some(s) => s,
                 None => continue,
@@ -407,24 +400,25 @@ pub fn find_tool(target: &str, tool: &str) -> Option<Tool> {
                 }
             }
         }
-        return max_key
+        max_key
     }
 
     // see http://stackoverflow.com/questions/328017/path-to-msbuild
     fn find_msbuild(target: &str) -> Option<Tool> {
         let key = r"SOFTWARE\Microsoft\MSBuild\ToolsVersions";
-        LOCAL_MACHINE.open(key.as_ref()).ok().and_then(|key| {
-            max_version(&key).and_then(|(_vers, key)| {
-                key.query_str("MSBuildToolsPath").ok()
+        LOCAL_MACHINE.open(key.as_ref())
+            .ok()
+            .and_then(|key| {
+                max_version(&key).and_then(|(_vers, key)| key.query_str("MSBuildToolsPath").ok())
             })
-        }).map(|path| {
-            let mut path = PathBuf::from(path);
-            path.push("MSBuild.exe");
-            let mut tool = Tool::new(path);
-            if target.contains("x86_64") {
-                tool.env.push(("Platform".into(), "X64".into()));
-            }
-            tool
-        })
+            .map(|path| {
+                let mut path = PathBuf::from(path);
+                path.push("MSBuild.exe");
+                let mut tool = Tool::new(path);
+                if target.contains("x86_64") {
+                    tool.env.push(("Platform".into(), "X64".into()));
+                }
+                tool
+            })
     }
 }

@@ -240,34 +240,3 @@ if #[cfg(not(all(target_os = "ios", target_arch = "arm")))] {
     }
 }
 } // cfg_if!
-
-#[cfg_attr(any(all(target_os = "linux", not(target_env = "musl")),
-               target_os = "freebsd",
-               target_os = "solaris",
-               target_os = "haiku",
-               all(target_os = "linux",
-                   target_env = "musl",
-                   not(target_arch = "x86"),
-                   not(target_arch = "x86_64"))),
-           link(name = "gcc_s"))]
-#[cfg_attr(all(target_os = "linux",
-               target_env = "musl",
-               any(target_arch = "x86", target_arch = "x86_64"),
-               not(test)),
-           link(name = "unwind", kind = "static"))]
-#[cfg_attr(target_os = "fuchsia",
-           link(name = "unwind"))]
-#[cfg_attr(any(target_os = "android", target_os = "openbsd"),
-           link(name = "gcc"))]
-#[cfg_attr(all(target_os = "netbsd", not(target_vendor = "rumprun")),
-           link(name = "gcc"))]
-#[cfg_attr(all(target_os = "netbsd", target_vendor = "rumprun"),
-           link(name = "unwind"))]
-#[cfg_attr(target_os = "dragonfly",
-           link(name = "gcc_pic"))]
-#[cfg_attr(target_os = "bitrig",
-           link(name = "c++abi"))]
-#[cfg_attr(all(target_os = "windows", target_env = "gnu"),
-           link(name = "gcc_eh"))]
-#[cfg(not(cargobuild))]
-extern "C" {}

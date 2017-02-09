@@ -11,6 +11,8 @@
 // compile-flags: --test
 // check-test-line-numbers-match
 
+pub mod bar;
+
 /// This is a Foo;
 ///
 /// ```

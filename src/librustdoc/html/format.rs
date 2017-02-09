@@ -671,9 +671,11 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter, use_absolute: bool) -> fmt:
                 }
                 _ => {
                     if f.alternate() {
-                        write!(f, "&{}{}{:#}", lt, m, **ty)
+                        write!(f, "&{}{}", lt, m)?;
+                        fmt_type(&ty, f, use_absolute)
                     } else {
-                        write!(f, "&amp;{}{}{}", lt, m, **ty)
+                        write!(f, "&amp;{}{}", lt, m)?;
+                        fmt_type(&ty, f, use_absolute)
                     }
                 }
             }
