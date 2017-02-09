@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// error-pattern:reached recursion limit
+
 #![feature(never_type)]
 
 struct Foo<'a, T: 'a> {
@@ -17,7 +19,6 @@ struct Foo<'a, T: 'a> {
 
 fn wub(f: Foo<!>) {
     match f {}
-    //~^ ERROR non-exhaustive
 }
 
 fn main() {}
