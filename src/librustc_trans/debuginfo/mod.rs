@@ -257,6 +257,16 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     let function_name = CString::new(name).unwrap();
     let linkage_name = CString::new(linkage_name).unwrap();
 
+    let mut flags = DIFlags::FlagPrototyped;
+    match *cx.sess().entry_fn.borrow() {
+        Some((id, _)) => {
+            if local_id == Some(id) {
+                flags = flags | DIFlags::FlagMainSubprogram;
+            }
+        }
+        None => {}
+    };
+
     let fn_metadata = unsafe {
         llvm::LLVMRustDIBuilderCreateFunction(
             DIB(cx),
@@ -269,7 +279,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             is_local_to_unit,
             true,
             scope_line as c_uint,
-            DIFlags::FlagPrototyped,
+            flags,
             cx.sess().opts.optimize != config::OptLevel::No,
             llfn,
             template_parameters,
