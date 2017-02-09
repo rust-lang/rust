@@ -1,3 +1,13 @@
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// file at the top-level directory of this distribution and at
+// http://rust-lang.org/COPYRIGHT.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+//
 extern crate mdbook;
 #[macro_use]
 extern crate clap;
@@ -11,19 +21,21 @@ use clap::{App, ArgMatches, SubCommand, AppSettings};
 
 use mdbook::MDBook;
 
-const NAME: &'static str = "rustbook";
-
 fn main() {
-    // Create a list of valid arguments and sub-commands
-    let matches = App::new(NAME)
+    let d_message = "-d, --dest-dir=[dest-dir]
+'The output directory for your book{n}(Defaults to ./book when omitted)'";
+    let dir_message = "[dir]
+'A directory for your book{n}(Defaults to Current Directory when omitted)'";
+
+    let matches = App::new("rustbook")
                     .about("Build a book with mdBook")
                     .author("Steve Klabnik <steve@steveklabnik.com>")
                     .version(&*format!("v{}", crate_version!()))
                     .setting(AppSettings::SubcommandRequired)
                     .subcommand(SubCommand::with_name("build")
                         .about("Build the book from the markdown files")
-                        .arg_from_usage("-d, --dest-dir=[dest-dir] 'The output directory for your book{n}(Defaults to ./book when omitted)'")
-                        .arg_from_usage("[dir] 'A directory for your book{n}(Defaults to Current Directory when omitted)'"))
+                        .arg_from_usage(d_message)
+                        .arg_from_usage(dir_message))
                     .get_matches();
 
     // Check which subcomamnd the user ran...
@@ -76,4 +88,3 @@ fn get_book_dir(args: &ArgMatches) -> PathBuf {
         env::current_dir().unwrap()
     }
 }
-
