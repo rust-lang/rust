@@ -36,6 +36,8 @@ use syntax_pos::Span;
 use std::cmp::Ordering;
 use std::iter;
 
+use mir::lvalue::Alignment;
+
 fn get_simple_intrinsic(ccx: &CrateContext, name: &str) -> Option<ValueRef> {
     let llvm_name = match name {
         "sqrtf32" => "llvm.sqrt.f32",
@@ -243,7 +245,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                 bcx.volatile_store(llargs[2], get_meta(bcx, llargs[0]));
             } else {
                 let val = if fn_ty.args[1].is_indirect() {
-                    bcx.load(llargs[1])
+                    bcx.load(llargs[1], None)
                 } else {
                     from_immediate(bcx, llargs[1])
                 };
@@ -348,7 +350,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
             let val_ty = substs.type_at(0);
             match val_ty.sty {
                 ty::TyAdt(adt, ..) if adt.is_enum() => {
-                    adt::trans_get_discr(bcx, val_ty, llargs[0],
+                    adt::trans_get_discr(bcx, val_ty, llargs[0], Alignment::AbiAligned,
                                          Some(llret_ty), true)
                 }
                 _ => C_null(llret_ty)
@@ -547,8 +549,11 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                         // destructors, and the contents are SIMD
                         // etc.
                         assert!(!bcx.ccx.shared().type_needs_drop(arg_type));
-                        let arg = LvalueRef::new_sized_ty(llarg, arg_type);
-                        (0..contents.len()).map(|i| bcx.load(arg.trans_field_ptr(bcx, i))).collect()
+                        let arg = LvalueRef::new_sized_ty(llarg, arg_type, Alignment::AbiAligned);
+                        (0..contents.len()).map(|i| {
+                            let (ptr, align) = arg.trans_field_ptr(bcx, i);
+                            bcx.load(ptr, align.to_align())
+                        }).collect()
                     }
                     intrinsics::Type::Pointer(_, Some(ref llvm_elem), _) => {
                         let llvm_elem = one(ty_to_type(bcx.ccx, llvm_elem, &mut false));
@@ -624,7 +629,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
             let ptr = bcx.pointercast(llresult, ty.ptr_to());
             bcx.store(llval, ptr, Some(type_of::align_of(ccx, ret_ty)));
         } else {
-            store_ty(bcx, llval, llresult, ret_ty);
+            store_ty(bcx, llval, llresult, Alignment::AbiAligned, ret_ty);
         }
     }
 }
@@ -780,10 +785,10 @@ fn trans_msvc_try<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
             None => bug!("msvc_try_filter not defined"),
         };
         let tok = catchpad.catch_pad(cs, &[tydesc, C_i32(ccx, 0), slot]);
-        let addr = catchpad.load(slot);
-        let arg1 = catchpad.load(addr);
+        let addr = catchpad.load(slot, None);
+        let arg1 = catchpad.load(addr, None);
         let val1 = C_i32(ccx, 1);
-        let arg2 = catchpad.load(catchpad.inbounds_gep(addr, &[val1]));
+        let arg2 = catchpad.load(catchpad.inbounds_gep(addr, &[val1]), None);
         let local_ptr = catchpad.bitcast(local_ptr, i64p);
         catchpad.store(arg1, local_ptr, None);
         catchpad.store(arg2, catchpad.inbounds_gep(local_ptr, &[val1]), None);
