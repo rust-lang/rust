@@ -148,6 +148,12 @@ static Attribute::AttrKind fromRust(LLVMRustAttribute Kind) {
     return Attribute::ZExt;
   case InReg:
     return Attribute::InReg;
+  case SanitizeThread:
+    return Attribute::SanitizeThread;
+  case SanitizeAddress:
+    return Attribute::SanitizeAddress;
+  case SanitizeMemory:
+    return Attribute::SanitizeMemory;
   }
   llvm_unreachable("bad AttributeKind");
 }
