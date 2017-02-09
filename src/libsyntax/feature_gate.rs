@@ -281,9 +281,6 @@ declare_features! (
     // Allows untagged unions `union U { ... }`
     (active, untagged_unions, "1.13.0", Some(32836)),
 
-    // elide `'static` lifetimes in `static`s and `const`s
-    (active, static_in_const, "1.13.0", Some(35897)),
-
     // Used to identify the `compiler_builtins` crate
     // rustc internal
     (active, compiler_builtins, "1.13.0", None),
@@ -386,6 +383,8 @@ declare_features! (
     (accepted, item_like_imports, "1.14.0", Some(35120)),
     // Allows using `Self` and associated types in struct expressions and patterns.
     (accepted, more_struct_aliases, "1.16.0", Some(37544)),
+    // elide `'static` lifetimes in `static`s and `const`s
+    (accepted, static_in_const, "1.17.0", Some(35897)),
 );
 // (changing above list without updating src/doc/reference.md makes @cmr sad)
 
