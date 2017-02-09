@@ -1291,15 +1291,18 @@ guaranteed to refer to the same memory address.
 
 Constant values must not have destructors, and otherwise permit most forms of
 data. Constants may refer to the address of other constants, in which case the
-address will have the `static` lifetime. The compiler is, however, still at
-liberty to translate the constant many times, so the address referred to may not
-be stable.
+address will have elided lifetimes where applicable, otherwise – in most cases –
+defaulting to the `static` lifetime. (See below on [static lifetime elision].)
+The compiler is, however, still at liberty to translate the constant many times,
+so the address referred to may not be stable.
+
+[static lifetime elision]: #static-lifetime-elision
 
 Constants must be explicitly typed. The type may be `bool`, `char`, a number, or
 a type derived from those primitive types. The derived types are references with
 the `static` lifetime, fixed-size arrays, tuples, enum variants, and structs.
 
-```
+```rust
 const BIT1: u32 = 1 << 0;
 const BIT2: u32 = 1 << 1;
 
@@ -1316,6 +1319,8 @@ const BITS_N_STRINGS: BitsNStrings<'static> = BitsNStrings {
     mystring: STRING,
 };
 ```
+
+
 
 ### Static items
 
@@ -1351,7 +1356,7 @@ running in the same process.
 Mutable statics are still very useful, however. They can be used with C
 libraries and can also be bound from C libraries (in an `extern` block).
 
-```
+```rust
 # fn atomic_add(_: &mut u32, _: u32) -> u32 { 2 }
 
 static mut LEVELS: u32 = 0;
@@ -1374,6 +1379,53 @@ unsafe fn bump_levels_unsafe2() -> u32 {
 
 Mutable statics have the same restrictions as normal statics, except that the
 type of the value is not required to ascribe to `Sync`.
+
+#### `'static` lifetime elision
+
+[Unstable] Both constant and static declarations of reference types have
+*implicit* `'static` lifetimes unless an explicit lifetime is specified. As
+such, the constant declarations involving `'static` above may be written
+without the lifetimes. Returning to our previous example:
+
+```rust
+# #![feature(static_in_const)]
+const BIT1: u32 = 1 << 0;
+const BIT2: u32 = 1 << 1;
+
+const BITS: [u32; 2] = [BIT1, BIT2];
+const STRING: &str = "bitstring";
+
+struct BitsNStrings<'a> {
+    mybits: [u32; 2],
+    mystring: &'a str,
+}
+
+const BITS_N_STRINGS: BitsNStrings = BitsNStrings {
+    mybits: BITS,
+    mystring: STRING,
+};
+```
+
+Note that if the `static` or `const` items include function or closure
+references, which themselves include references, the compiler will first try the
+standard elision rules ([see discussion in the nomicon][elision-nomicon]). If it
+is unable to resolve the lifetimes by its usual rules, it will default to using
+the `'static` lifetime. By way of example:
+
+[elision-nomicon]: https://doc.rust-lang.org/nomicon/lifetime-elision.html
+
+```rust,ignore
+// Resolved as `fn<'a>(&'a str) -> &'a str`.
+const RESOLVED_SINGLE: fn(&str) -> &str = ..
+
+// Resolved as `Fn<'a, 'b, 'c>(&'a Foo, &'b Bar, &'c Baz) -> usize`.
+const RESOLVED_MULTIPLE: Fn(&Foo, &Bar, &Baz) -> usize = ..
+
+// There is insufficient information to bound the return reference lifetime
+// relative to the argument lifetimes, so the signature is resolved as
+// `Fn(&'static Foo, &'static Bar) -> &'static Baz`.
+const RESOLVED_STATIC: Fn(&Foo, &Bar) -> &Baz = ..
+```
 
 ### Traits
 
@@ -2072,7 +2124,9 @@ macro scope.
 
 ### Miscellaneous attributes
 
-- `deprecated` - mark the item as deprecated; the full attribute is `#[deprecated(since = "crate version", note = "...")`, where both arguments are optional.
+- `deprecated` - mark the item as deprecated; the full attribute is 
+  `#[deprecated(since = "crate version", note = "...")`, where both arguments 
+  are optional.
 - `export_name` - on statics and functions, this determines the name of the
   exported symbol.
 - `link_section` - on statics and functions, this specifies the section of the
@@ -2488,9 +2542,6 @@ The currently implemented features of the reference compiler are:
 * `start` - Allows use of the `#[start]` attribute, which changes the entry point
             into a Rust program. This capability, especially the signature for the
             annotated function, is subject to change.
-
-* `static_in_const` - Enables lifetime elision with a `'static` default for
-                      `const` and `static` item declarations.
 
 * `thread_local` - The usage of the `#[thread_local]` attribute is experimental
                    and should be seen as unstable. This attribute is used to
