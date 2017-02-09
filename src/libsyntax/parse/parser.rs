@@ -5146,20 +5146,28 @@ impl<'a> Parser<'a> {
     }
 
     /// Returns either a path to a module, or .
-    pub fn default_submod_path(id: ast::Ident, dir_path: &Path, codemap: &CodeMap) -> ModulePath
+    pub fn default_submod_path(id: ast::Ident, dir: &Directory, codemap: &CodeMap) -> ModulePath
     {
         let mod_name = id.to_string();
+        let dir_path = &dir.path;
         let default_path_str = format!("{}.rs", mod_name);
         let secondary_path_str = format!("{}/mod.rs", mod_name);
-        let default_path = dir_path.join(&default_path_str);
-        let secondary_path = dir_path.join(&secondary_path_str);
+
+        let (default_path, secondary_path) = match dir.ownership {
+            DirectoryOwnership::OwnedUnder(under_id) => {
+                let under_path = dir_path.join(under_id.to_string());
+                (under_path.join(&default_path_str), under_path.join(&secondary_path_str))
+            }
+            _ => (dir_path.join(&default_path_str), dir_path.join(&secondary_path_str)),
+        };
+
         let default_exists = codemap.file_exists(&default_path);
         let secondary_exists = codemap.file_exists(&secondary_path);
 
         let result = match (default_exists, secondary_exists) {
             (true, false) => Ok(ModulePathSuccess {
                 path: default_path,
-                directory_ownership: DirectoryOwnership::UnownedViaMod(false),
+                directory_ownership: DirectoryOwnership::OwnedUnder(id),
                 warn: false,
             }),
             (false, true) => Ok(ModulePathSuccess {
@@ -5195,17 +5203,25 @@ impl<'a> Parser<'a> {
                    outer_attrs: &[ast::Attribute],
                    id_sp: Span) -> PResult<'a, ModulePathSuccess> {
         if let Some(path) = Parser::submod_path_from_attr(outer_attrs, &self.directory.path) {
-            return Ok(ModulePathSuccess {
-                directory_ownership: match path.file_name().and_then(|s| s.to_str()) {
+            let ownership = {
+                let file_name = path.file_name().unwrap();
+                match file_name.to_str() {
                     Some("mod.rs") => DirectoryOwnership::Owned,
+                    Some(s) if s.ends_with(".rs") && s.len() > 3 => {
+                        let directory_name = s.rsplitn(2, '.').skip(1).next().unwrap();
+                        DirectoryOwnership::OwnedUnder(Ident::from_str(directory_name))
+                    }
                     _ => DirectoryOwnership::UnownedViaMod(true),
-                },
+                }
+            };
+            return Ok(ModulePathSuccess {
+                directory_ownership: ownership,
                 path: path,
                 warn: false,
             });
         }
 
-        let paths = Parser::default_submod_path(id, &self.directory.path, self.sess.codemap());
+        let paths = Parser::default_submod_path(id, &self.directory, self.sess.codemap());
 
         if let DirectoryOwnership::UnownedViaBlock = self.directory.ownership {
             let msg =
