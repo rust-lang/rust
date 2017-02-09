@@ -62,11 +62,14 @@ mod def_id_forest;
 // This code should only compile in modules where the uninhabitedness of Foo is
 // visible.
 
+const ARBITRARY_RECURSION_LIMIT: u32 = 24;
+
 impl<'a, 'gcx, 'tcx> AdtDef {
     /// Calculate the forest of DefIds from which this adt is visibly uninhabited.
     pub fn uninhabited_from(
                 &self,
                 visited: &mut FxHashSet<(DefId, &'tcx Substs<'tcx>)>,
+                recursion_depth: u32,
                 tcx: TyCtxt<'a, 'gcx, 'tcx>,
                 substs: &'tcx Substs<'tcx>) -> DefIdForest
     {
@@ -75,7 +78,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
         }
 
         let ret = DefIdForest::intersection(tcx, self.variants.iter().map(|v| {
-            v.uninhabited_from(visited, tcx, substs, self.adt_kind())
+            v.uninhabited_from(visited, recursion_depth, tcx, substs, self.adt_kind())
         }));
         visited.remove(&(self.did, substs));
         ret
@@ -87,6 +90,7 @@ impl<'a, 'gcx, 'tcx> VariantDef {
     pub fn uninhabited_from(
                 &self,
                 visited: &mut FxHashSet<(DefId, &'tcx Substs<'tcx>)>,
+                recursion_depth: u32,
                 tcx: TyCtxt<'a, 'gcx, 'tcx>,
                 substs: &'tcx Substs<'tcx>,
                 adt_kind: AdtKind) -> DefIdForest
@@ -94,17 +98,17 @@ impl<'a, 'gcx, 'tcx> VariantDef {
         match adt_kind {
             AdtKind::Union => {
                 DefIdForest::intersection(tcx, self.fields.iter().map(|f| {
-                    f.uninhabited_from(visited, tcx, substs, false)
+                    f.uninhabited_from(visited, recursion_depth, tcx, substs, false)
                 }))
             },
             AdtKind::Struct => {
                 DefIdForest::union(tcx, self.fields.iter().map(|f| {
-                    f.uninhabited_from(visited, tcx, substs, false)
+                    f.uninhabited_from(visited, recursion_depth, tcx, substs, false)
                 }))
             },
             AdtKind::Enum => {
                 DefIdForest::union(tcx, self.fields.iter().map(|f| {
-                    f.uninhabited_from(visited, tcx, substs, true)
+                    f.uninhabited_from(visited, recursion_depth, tcx, substs, true)
                 }))
             },
         }
@@ -116,11 +120,14 @@ impl<'a, 'gcx, 'tcx> FieldDef {
     pub fn uninhabited_from(
                 &self,
                 visited: &mut FxHashSet<(DefId, &'tcx Substs<'tcx>)>,
+                recursion_depth: u32,
                 tcx: TyCtxt<'a, 'gcx, 'tcx>,
                 substs: &'tcx Substs<'tcx>,
                 is_enum: bool) -> DefIdForest
     {
-        let mut data_uninhabitedness = move || self.ty(tcx, substs).uninhabited_from(visited, tcx);
+        let mut data_uninhabitedness = move || {
+            self.ty(tcx, substs).uninhabited_from(visited, recursion_depth, tcx)
+        };
         // FIXME(canndrew): Currently enum fields are (incorrectly) stored with
         // Visibility::Invisible so we need to override self.vis if we're
         // dealing with an enum.
@@ -145,8 +152,14 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
     pub fn uninhabited_from(
                 &self,
                 visited: &mut FxHashSet<(DefId, &'tcx Substs<'tcx>)>,
+                mut recursion_depth: u32,
                 tcx: TyCtxt<'a, 'gcx, 'tcx>) -> DefIdForest
     {
+        recursion_depth += 1;
+        if recursion_depth >= ARBITRARY_RECURSION_LIMIT {
+            return DefIdForest::empty();
+        }
+
         match tcx.lift_to_global(&self) {
             Some(global_ty) => {
                 {
@@ -155,13 +168,13 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
                         return forest.clone();
                     }
                 }
-                let forest = global_ty.uninhabited_from_inner(visited, tcx);
+                let forest = global_ty.uninhabited_from_inner(visited, recursion_depth, tcx);
                 let mut cache = tcx.inhabitedness_cache.borrow_mut();
                 cache.insert(global_ty, forest.clone());
                 forest
             },
             None => {
-                let forest = self.uninhabited_from_inner(visited, tcx);
+                let forest = self.uninhabited_from_inner(visited, recursion_depth, tcx);
                 forest
             },
         }
@@ -170,28 +183,29 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
     fn uninhabited_from_inner(
                 &self,
                 visited: &mut FxHashSet<(DefId, &'tcx Substs<'tcx>)>,
+                recursion_depth: u32,
                 tcx: TyCtxt<'a, 'gcx, 'tcx>) -> DefIdForest
     {
         match self.sty {
             TyAdt(def, substs) => {
-                def.uninhabited_from(visited, tcx, substs)
+                def.uninhabited_from(visited, recursion_depth, tcx, substs)
             },
 
             TyNever => DefIdForest::full(tcx),
             TyTuple(ref tys, _) => {
                 DefIdForest::union(tcx, tys.iter().map(|ty| {
-                    ty.uninhabited_from(visited, tcx)
+                    ty.uninhabited_from(visited, recursion_depth, tcx)
                 }))
             },
             TyArray(ty, len) => {
                 if len == 0 {
                     DefIdForest::empty()
                 } else {
-                    ty.uninhabited_from(visited, tcx)
+                    ty.uninhabited_from(visited, recursion_depth, tcx)
                 }
             }
             TyRef(_, ref tm) => {
-                tm.ty.uninhabited_from(visited, tcx)
+                tm.ty.uninhabited_from(visited, recursion_depth, tcx)
             }
 
             _ => DefIdForest::empty(),
