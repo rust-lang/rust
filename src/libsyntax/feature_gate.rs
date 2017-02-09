@@ -328,6 +328,10 @@ declare_features! (
 
     // `extern "msp430-interrupt" fn()`
     (active, abi_msp430_interrupt, "1.16.0", Some(38487)),
+
+    // Used to identify crates that contain sanitizer runtimes
+    // rustc internal
+    (active, sanitizer_runtime, "1.17.0", None),
 );
 
 declare_features! (
@@ -647,6 +651,12 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
                                               contains compiler-rt intrinsics and will never be \
                                               stable",
                                           cfg_fn!(compiler_builtins))),
+    ("sanitizer_runtime", Whitelisted, Gated(Stability::Unstable,
+                                             "sanitizer_runtime",
+                                             "the `#[sanitizer_runtime]` attribute is used to \
+                                              identify crates that contain the runtime of a \
+                                              sanitizer and will never be stable",
+                                             cfg_fn!(sanitizer_runtime))),
 
     ("allow_internal_unstable", Normal, Gated(Stability::Unstable,
                                               "allow_internal_unstable",

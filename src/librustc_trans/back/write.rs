@@ -12,7 +12,7 @@ use back::lto;
 use back::link::{get_linker, remove};
 use back::symbol_export::ExportedSymbols;
 use rustc_incremental::{save_trans_partition, in_incr_comp_dir};
-use session::config::{OutputFilenames, OutputTypes, Passes, SomePasses, AllPasses};
+use session::config::{OutputFilenames, OutputTypes, Passes, SomePasses, AllPasses, Sanitizer};
 use session::Session;
 use session::config::{self, OutputType};
 use llvm;
@@ -678,6 +678,22 @@ pub fn run_passes(sess: &Session,
 
     let mut modules_config = ModuleConfig::new(tm, sess.opts.cg.passes.clone());
     let mut metadata_config = ModuleConfig::new(tm, vec![]);
+
+    if let Some(ref sanitizer) = sess.opts.debugging_opts.sanitizer {
+        match *sanitizer {
+            Sanitizer::Address => {
+                modules_config.passes.push("asan".to_owned());
+                modules_config.passes.push("asan-module".to_owned());
+            }
+            Sanitizer::Memory => {
+                modules_config.passes.push("msan".to_owned())
+            }
+            Sanitizer::Thread => {
+                modules_config.passes.push("tsan".to_owned())
+            }
+            _ => {}
+        }
+    }
 
     modules_config.opt_level = Some(get_llvm_opt_level(sess.opts.optimize));
     modules_config.opt_size = Some(get_llvm_opt_size(sess.opts.optimize));

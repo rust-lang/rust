@@ -21,17 +21,7 @@ RUN yum upgrade -y && yum install -y \
 ENV PATH=/rustroot/bin:$PATH
 ENV LD_LIBRARY_PATH=/rustroot/lib64:/rustroot/lib
 WORKDIR /tmp
-
-# binutils < 2.22 has a bug where the 32-bit executables it generates
-# immediately segfault in Rust, so we need to install our own binutils.
-#
-# See https://github.com/rust-lang/rust/issues/20440 for more info
 COPY shared.sh build-binutils.sh /tmp/
-RUN ./build-binutils.sh
-
-# Need a newer version of gcc than centos has to compile LLVM nowadays
-COPY build-gcc.sh /tmp/
-RUN ./build-gcc.sh
 
 # We need a build of openssl which supports SNI to download artifacts from
 # static.rust-lang.org. This'll be used to link into libcurl below (and used
@@ -49,6 +39,16 @@ RUN ./build-openssl.sh
 COPY build-curl.sh /tmp/
 RUN ./build-curl.sh
 
+# binutils < 2.22 has a bug where the 32-bit executables it generates
+# immediately segfault in Rust, so we need to install our own binutils.
+#
+# See https://github.com/rust-lang/rust/issues/20440 for more info
+RUN ./build-binutils.sh
+
+# Need a newer version of gcc than centos has to compile LLVM nowadays
+COPY build-gcc.sh /tmp/
+RUN ./build-gcc.sh
+
 # CentOS 5.5 has Python 2.4 by default, but LLVM needs 2.7+
 COPY build-python.sh /tmp/
 RUN ./build-python.sh
@@ -63,6 +63,11 @@ RUN ./build-git.sh
 COPY build-cmake.sh /tmp/
 RUN ./build-cmake.sh
 
+# for sanitizers, we need kernel headers files newer than the ones CentOS ships
+# with so we install newer ones here
+COPY build-headers.sh /tmp/
+RUN ./build-headers.sh
+
 RUN curl -Lo /rustroot/dumb-init \
       https://github.com/Yelp/dumb-init/releases/download/v1.2.0/dumb-init_1.2.0_amd64 && \
       chmod +x /rustroot/dumb-init
@@ -76,5 +81,5 @@ RUN curl -L https://api.pub.build.mozilla.org/tooltool/sha512/$SCCACHE_DIGEST | 
 ENV HOSTS=i686-unknown-linux-gnu
 ENV HOSTS=$HOSTS,x86_64-unknown-linux-gnu
 
-ENV RUST_CONFIGURE_ARGS --host=$HOSTS --enable-extended
+ENV RUST_CONFIGURE_ARGS --host=$HOSTS --enable-extended --enable-sanitizers
 ENV SCRIPT python2.7 ../x.py dist --host $HOSTS --target $HOSTS

@@ -400,14 +400,18 @@ pub struct JoinPathsError {
     inner: os_imp::JoinPathsError
 }
 
-/// Joins a collection of `Path`s appropriately for the `PATH`
+/// Joins a collection of [`Path`]s appropriately for the `PATH`
 /// environment variable.
 ///
-/// Returns an `OsString` on success.
+/// Returns an [`OsString`] on success.
 ///
-/// Returns an `Err` (containing an error message) if one of the input
-/// `Path`s contains an invalid character for constructing the `PATH`
+/// Returns an [`Err`][err] (containing an error message) if one of the input
+/// [`Path`]s contains an invalid character for constructing the `PATH`
 /// variable (a double quote on Windows or a colon on Unix).
+///
+/// [`Path`]: ../../std/path/struct.Path.html
+/// [`OsString`]: ../../std/ffi/struct.OsString.html
+/// [err]: ../../std/result/enum.Result.html#variant.Err
 ///
 /// # Examples
 ///

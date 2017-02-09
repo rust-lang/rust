@@ -17,7 +17,8 @@ use schema::CrateRoot;
 use rustc::hir::def_id::{CrateNum, DefIndex};
 use rustc::hir::svh::Svh;
 use rustc::middle::cstore::DepKind;
-use rustc::session::{config, Session};
+use rustc::session::Session;
+use rustc::session::config::{Sanitizer, self};
 use rustc_back::PanicStrategy;
 use rustc::session::search_paths::PathKind;
 use rustc::middle;
@@ -786,6 +787,64 @@ impl<'a> CrateLoader<'a> {
                                   &|data| data.needs_panic_runtime());
     }
 
+    fn inject_sanitizer_runtime(&mut self) {
+        if let Some(ref sanitizer) = self.sess.opts.debugging_opts.sanitizer {
+            // Sanitizers can only be used with x86_64 Linux executables linked
+            // to `std`
+            if self.sess.target.target.llvm_target != "x86_64-unknown-linux-gnu" {
+                self.sess.err(&format!("Sanitizers only work with the \
+                                        `x86_64-unknown-linux-gnu` target."));
+                return
+            }
+
+            if !self.sess.crate_types.borrow().iter().all(|ct| {
+                match *ct {
+                    // Link the runtime
+                    config::CrateTypeExecutable => true,
+                    // This crate will be compiled with the required
+                    // instrumentation pass
+                    config::CrateTypeRlib => false,
+                    _ => {
+                        self.sess.err(&format!("Only executables and rlibs can be \
+                                                compiled with `-Z sanitizer`"));
+                        false
+                    }
+                }
+            }) {
+                return
+            }
+
+            let mut uses_std = false;
+            self.cstore.iter_crate_data(|_, data| {
+                if data.name == "std" {
+                    uses_std = true;
+                }
+            });
+
+            if uses_std {
+                let name = match *sanitizer {
+                    Sanitizer::Address => "rustc_asan",
+                    Sanitizer::Leak => "rustc_lsan",
+                    Sanitizer::Memory => "rustc_msan",
+                    Sanitizer::Thread => "rustc_tsan",
+                };
+                info!("loading sanitizer: {}", name);
+
+                let symbol = Symbol::intern(name);
+                let dep_kind = DepKind::Implicit;
+                let (_, data) =
+                    self.resolve_crate(&None, symbol, symbol, None, DUMMY_SP,
+                                       PathKind::Crate, dep_kind);
+
+                // Sanity check the loaded crate to ensure it is indeed a sanitizer runtime
+                if !data.is_sanitizer_runtime() {
+                    self.sess.err(&format!("the crate `{}` is not a sanitizer runtime",
+                                           name));
+                }
+            }
+        }
+    }
+
     fn inject_allocator_crate(&mut self) {
         // Make sure that we actually need an allocator, if none of our
         // dependencies need one then we definitely don't!
@@ -982,6 +1041,9 @@ impl<'a> CrateLoader<'a> {
 
 impl<'a> middle::cstore::CrateLoader for CrateLoader<'a> {
     fn postprocess(&mut self, krate: &ast::Crate) {
+        // inject the sanitizer runtime before the allocator runtime because all
+        // sanitizers force the use of the `alloc_system` allocator
+        self.inject_sanitizer_runtime();
         self.inject_allocator_crate();
         self.inject_panic_runtime(krate);
 

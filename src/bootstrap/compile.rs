@@ -51,6 +51,17 @@ pub fn std(build: &Build, target: &str, compiler: &Compiler) {
     if compiler.stage == 0 && build.local_rebuild && !build.config.use_jemalloc {
         features.push_str(" force_alloc_system");
     }
+
+    if compiler.stage != 0 && build.config.sanitizers {
+        // This variable is used by the sanitizer runtime crates, e.g.
+        // rustc_lsan, to build the sanitizer runtime from C code
+        // When this variable is missing, those crates won't compile the C code,
+        // so we don't set this variable during stage0 where llvm-config is
+        // missing
+        // We also only build the runtimes when --enable-sanitizers (or its
+        // config.toml equivalent) is used
+        cargo.env("LLVM_CONFIG", build.llvm_config(target));
+    }
     cargo.arg("--features").arg(features)
          .arg("--manifest-path")
          .arg(build.src.join("src/rustc/std_shim/Cargo.toml"));
