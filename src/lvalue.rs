@@ -1,6 +1,6 @@
 use rustc::hir::def_id::DefId;
 use rustc::mir;
-use rustc::ty::layout::Size;
+use rustc::ty::layout::{Size, Align};
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty};
 use rustc_data_structures::indexed_vec::Idx;
@@ -214,7 +214,15 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     _ => bug!("field access on non-product type: {:?}", base_layout),
                 };
 
-                let ptr = base_ptr.offset(offset.bytes());
+                let offset = match base_extra {
+                    LvalueExtra::Vtable(tab) => {
+                        let (_, align) = self.size_and_align_of_dst(base_ty, Value::ByValPair(PrimVal::Ptr(base_ptr), PrimVal::Ptr(tab)))?;
+                        offset.abi_align(Align::from_bytes(align, align).unwrap()).bytes()
+                    }
+                    _ => offset.bytes(),
+                };
+
+                let ptr = base_ptr.offset(offset);
 
                 if packed {
                     let size = self.type_size(field_ty)?.expect("packed struct must be sized");
