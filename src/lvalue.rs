@@ -214,7 +214,16 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     _ => bug!("field access on non-product type: {:?}", base_layout),
                 };
 
-                let ptr = base_ptr.offset(offset.bytes());
+                let offset = match base_extra {
+                    LvalueExtra::Vtable(tab) => {
+                        let (_, align) = self.size_and_align_of_dst(base_ty, Value::ByValPair(PrimVal::Ptr(base_ptr), PrimVal::Ptr(tab)))?;
+                        // magical formula taken from rustc
+                        (offset.bytes() + (align - 1)) & (-(align as i64) as u64)
+                    }
+                    _ => offset.bytes(),
+                };
+
+                let ptr = base_ptr.offset(offset);
 
                 if packed {
                     let size = self.type_size(field_ty)?.expect("packed struct must be sized");

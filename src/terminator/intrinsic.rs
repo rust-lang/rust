@@ -405,7 +405,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         Ok(())
     }
 
-    fn size_and_align_of_dst(
+    pub fn size_and_align_of_dst(
         &self,
         ty: ty::Ty<'tcx>,
         value: Value,
