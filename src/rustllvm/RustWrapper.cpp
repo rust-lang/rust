@@ -352,6 +352,7 @@ enum class LLVMRustDIFlags : uint32_t {
   FlagStaticMember = (1 << 12),
   FlagLValueReference = (1 << 13),
   FlagRValueReference = (1 << 14),
+  FlagMainSubprogram      = (1 << 21),
   // Do not add values that are not supported by the minimum LLVM
   // version we support!
 };
@@ -438,6 +439,11 @@ static unsigned fromRust(LLVMRustDIFlags Flags) {
   if (isSet(Flags & LLVMRustDIFlags::FlagRValueReference)) {
     Result |= DINode::DIFlags::FlagRValueReference;
   }
+#if LLVM_RUSTLLVM || LLVM_VERSION_GE(4, 0)
+  if (isSet(Flags & LLVMRustDIFlags::FlagMainSubprogram)) {
+    Result |= DINode::DIFlags::FlagMainSubprogram;
+  }
+#endif
 
   return Result;
 }
