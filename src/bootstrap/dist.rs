@@ -515,9 +515,7 @@ pub fn cargo(build: &Build, stage: u32, target: &str) {
 
     let branch = match &build.config.channel[..] {
         "stable" |
-        "beta" => {
-            build.release.split(".").take(2).collect::<Vec<_>>().join(".")
-        }
+        "beta" => format!("rust-{}", build.release_num),
         _ => "master".to_string(),
     };
 
