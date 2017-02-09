@@ -63,6 +63,11 @@ RUN ./build-git.sh
 COPY build-cmake.sh /tmp/
 RUN ./build-cmake.sh
 
+# for sanitizers, we need kernel headers files newer than the ones CentOS ships
+# with so we install newer ones here
+COPY build-headers.sh /tmp/
+RUN ./build-headers.sh
+
 RUN curl -Lo /rustroot/dumb-init \
       https://github.com/Yelp/dumb-init/releases/download/v1.2.0/dumb-init_1.2.0_amd64 && \
       chmod +x /rustroot/dumb-init
@@ -76,5 +81,5 @@ RUN curl -L https://api.pub.build.mozilla.org/tooltool/sha512/$SCCACHE_DIGEST | 
 ENV HOSTS=i686-unknown-linux-gnu
 ENV HOSTS=$HOSTS,x86_64-unknown-linux-gnu
 
-ENV RUST_CONFIGURE_ARGS --host=$HOSTS --enable-extended
+ENV RUST_CONFIGURE_ARGS --host=$HOSTS --enable-extended --enable-sanitizers
 ENV SCRIPT python2.7 ../x.py dist --host $HOSTS --target $HOSTS

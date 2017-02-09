@@ -1,0 +1,17 @@
+[package]
+authors = ["The Rust Project Developers"]
+build = "build.rs"
+name = "rustc_asan"
+version = "0.0.0"
+
+[lib]
+name = "rustc_asan"
+path = "lib.rs"
+
+[build-dependencies]
+build_helper = { path = "../build_helper" }
+cmake = "0.1.18"
+
+[dependencies]
+alloc_system = { path = "../liballoc_system" }
+core = { path = "../libcore" }
