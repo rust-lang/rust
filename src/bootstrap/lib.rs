@@ -599,7 +599,8 @@ impl Build {
     /// Get the space-separated set of activated features for the standard
     /// library.
     fn std_features(&self) -> String {
-        let mut features = "panic-unwind".to_string();
+        let mut features = "panic-unwind asan lsan msan tsan".to_string();
+
         if self.config.debug_jemalloc {
             features.push_str(" debug-jemalloc");
         }
@@ -875,6 +876,17 @@ impl Build {
         self.config.target_config.get(target)
             .and_then(|t| t.musl_root.as_ref())
             .or(self.config.musl_root.as_ref())
+            .map(|p| &**p)
+    }
+
+    /// Returns the root of the "rootfs" image that this target will be using,
+    /// if one was configured.
+    ///
+    /// If `Some` is returned then that means that tests for this target are
+    /// emulated with QEMU and binaries will need to be shipped to the emulator.
+    fn qemu_rootfs(&self, target: &str) -> Option<&Path> {
+        self.config.target_config.get(target)
+            .and_then(|t| t.qemu_rootfs.as_ref())
             .map(|p| &**p)
     }
 

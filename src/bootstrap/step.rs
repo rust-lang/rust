@@ -295,7 +295,7 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
                  .dep(|s| s.name("libtest"))
                  .dep(|s| s.name("tool-compiletest").target(s.host).stage(0))
                  .dep(|s| s.name("test-helpers"))
-                 .dep(|s| s.name("android-copy-libs"))
+                 .dep(|s| s.name("emulator-copy-libs"))
                  .default(mode != "pretty") // pretty tests don't run everywhere
                  .run(move |s| {
                      check::compiletest(build, &s.compiler(), s.target, mode, dir)
@@ -333,7 +333,7 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
              .dep(|s| s.name("tool-compiletest").target(s.host).stage(0))
              .dep(|s| s.name("test-helpers"))
              .dep(|s| s.name("debugger-scripts"))
-             .dep(|s| s.name("android-copy-libs"))
+             .dep(|s| s.name("emulator-copy-libs"))
              .run(move |s| check::compiletest(build, &s.compiler(), s.target,
                                          "debuginfo-gdb", "debuginfo"));
         let mut rule = rules.test("check-debuginfo", "src/test/debuginfo");
@@ -387,14 +387,14 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
     for (krate, path, _default) in krates("std_shim") {
         rules.test(&krate.test_step, path)
              .dep(|s| s.name("libtest"))
-             .dep(|s| s.name("android-copy-libs"))
+             .dep(|s| s.name("emulator-copy-libs"))
              .run(move |s| check::krate(build, &s.compiler(), s.target,
                                         Mode::Libstd, TestKind::Test,
                                         Some(&krate.name)));
     }
     rules.test("check-std-all", "path/to/nowhere")
          .dep(|s| s.name("libtest"))
-         .dep(|s| s.name("android-copy-libs"))
+         .dep(|s| s.name("emulator-copy-libs"))
          .default(true)
          .run(move |s| check::krate(build, &s.compiler(), s.target,
                                     Mode::Libstd, TestKind::Test, None));
@@ -403,14 +403,14 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
     for (krate, path, _default) in krates("std_shim") {
         rules.bench(&krate.bench_step, path)
              .dep(|s| s.name("libtest"))
-             .dep(|s| s.name("android-copy-libs"))
+             .dep(|s| s.name("emulator-copy-libs"))
              .run(move |s| check::krate(build, &s.compiler(), s.target,
                                         Mode::Libstd, TestKind::Bench,
                                         Some(&krate.name)));
     }
     rules.bench("bench-std-all", "path/to/nowhere")
          .dep(|s| s.name("libtest"))
-         .dep(|s| s.name("android-copy-libs"))
+         .dep(|s| s.name("emulator-copy-libs"))
          .default(true)
          .run(move |s| check::krate(build, &s.compiler(), s.target,
                                     Mode::Libstd, TestKind::Bench, None));
@@ -418,21 +418,21 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
     for (krate, path, _default) in krates("test_shim") {
         rules.test(&krate.test_step, path)
              .dep(|s| s.name("libtest"))
-             .dep(|s| s.name("android-copy-libs"))
+             .dep(|s| s.name("emulator-copy-libs"))
              .run(move |s| check::krate(build, &s.compiler(), s.target,
                                         Mode::Libtest, TestKind::Test,
                                         Some(&krate.name)));
     }
     rules.test("check-test-all", "path/to/nowhere")
          .dep(|s| s.name("libtest"))
-         .dep(|s| s.name("android-copy-libs"))
+         .dep(|s| s.name("emulator-copy-libs"))
          .default(true)
          .run(move |s| check::krate(build, &s.compiler(), s.target,
                                     Mode::Libtest, TestKind::Test, None));
     for (krate, path, _default) in krates("rustc-main") {
         rules.test(&krate.test_step, path)
              .dep(|s| s.name("librustc"))
-             .dep(|s| s.name("android-copy-libs"))
+             .dep(|s| s.name("emulator-copy-libs"))
              .host(true)
              .run(move |s| check::krate(build, &s.compiler(), s.target,
                                         Mode::Librustc, TestKind::Test,
@@ -440,7 +440,7 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
     }
     rules.test("check-rustc-all", "path/to/nowhere")
          .dep(|s| s.name("librustc"))
-         .dep(|s| s.name("android-copy-libs"))
+         .dep(|s| s.name("emulator-copy-libs"))
          .default(true)
          .host(true)
          .run(move |s| check::krate(build, &s.compiler(), s.target,
@@ -481,9 +481,34 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
 
     rules.build("test-helpers", "src/rt/rust_test_helpers.c")
          .run(move |s| native::test_helpers(build, s.target));
-    rules.test("android-copy-libs", "path/to/nowhere")
+
+    // Some test suites are run inside emulators, and most of our test binaries
+    // are linked dynamically which means we need to ship the standard library
+    // and such to the emulator ahead of time. This step represents this and is
+    // a dependency of all test suites.
+    //
+    // Most of the time this step is a noop (the `check::emulator_copy_libs`
+    // only does work if necessary). For some steps such as shipping data to
+    // QEMU we have to build our own tools so we've got conditional dependencies
+    // on those programs as well. Note that the QEMU client is built for the
+    // build target (us) and the server is built for the target.
+    rules.test("emulator-copy-libs", "path/to/nowhere")
          .dep(|s| s.name("libtest"))
-         .run(move |s| check::android_copy_libs(build, &s.compiler(), s.target));
+         .dep(move |s| {
+             if build.qemu_rootfs(s.target).is_some() {
+                s.name("tool-qemu-test-client").target(s.host).stage(0)
+             } else {
+                 Step::noop()
+             }
+         })
+         .dep(move |s| {
+             if build.qemu_rootfs(s.target).is_some() {
+                s.name("tool-qemu-test-server")
+             } else {
+                 Step::noop()
+             }
+         })
+         .run(move |s| check::emulator_copy_libs(build, &s.compiler(), s.target));
 
     rules.test("check-bootstrap", "src/bootstrap")
          .default(true)
@@ -516,6 +541,12 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
     rules.build("tool-build-manifest", "src/tools/build-manifest")
          .dep(|s| s.name("libstd"))
          .run(move |s| compile::tool(build, s.stage, s.target, "build-manifest"));
+    rules.build("tool-qemu-test-server", "src/tools/qemu-test-server")
+         .dep(|s| s.name("libstd"))
+         .run(move |s| compile::tool(build, s.stage, s.target, "qemu-test-server"));
+    rules.build("tool-qemu-test-client", "src/tools/qemu-test-client")
+         .dep(|s| s.name("libstd"))
+         .run(move |s| compile::tool(build, s.stage, s.target, "qemu-test-client"));
 
     // ========================================================================
     // Documentation targets

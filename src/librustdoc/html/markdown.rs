@@ -35,6 +35,7 @@ use std::fmt::{self, Write};
 use std::slice;
 use std::str;
 use syntax::feature_gate::UnstableFeatures;
+use syntax::codemap::Span;
 
 use html::render::derive_id;
 use html::toc::TocBuilder;
@@ -161,11 +162,6 @@ struct hoedown_buffer {
     asize: libc::size_t,
     unit: libc::size_t,
 }
-
-// hoedown FFI
-#[link(name = "hoedown", kind = "static")]
-#[cfg(not(cargobuild))]
-extern {}
 
 extern {
     fn hoedown_html_renderer_new(render_flags: libc::c_uint,
@@ -429,7 +425,7 @@ pub fn render(w: &mut fmt::Formatter,
     }
 }
 
-pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector, start_line: usize) {
+pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector, position: Span) {
     extern fn block(_ob: *mut hoedown_buffer,
                     text: *const hoedown_buffer,
                     lang: *const hoedown_buffer,
@@ -454,11 +450,12 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector, start_line: 
             });
             let text = lines.collect::<Vec<&str>>().join("\n");
             let line = tests.get_line() + line;
+            let filename = tests.get_filename();
             tests.add_test(text.to_owned(),
                            block_info.should_panic, block_info.no_run,
                            block_info.ignore, block_info.test_harness,
                            block_info.compile_fail, block_info.error_codes,
-                           line);
+                           line, filename);
         }
     }
 
@@ -479,7 +476,7 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector, start_line: 
         }
     }
 
-    tests.set_line(start_line);
+    tests.set_position(position);
     unsafe {
         let ob = hoedown_buffer_new(DEF_OUNIT);
         let renderer = hoedown_html_renderer_new(0, 0);

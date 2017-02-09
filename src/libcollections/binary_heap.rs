@@ -228,6 +228,15 @@ pub struct PeekMut<'a, T: 'a + Ord> {
     sift: bool,
 }
 
+#[stable(feature = "collection_debug", since = "1.17.0")]
+impl<'a, T: Ord + fmt::Debug> fmt::Debug for PeekMut<'a, T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_tuple("PeekMut")
+         .field(&self.heap.data[0])
+         .finish()
+    }
+}
+
 #[stable(feature = "binary_heap_peek_mut", since = "1.12.0")]
 impl<'a, T: Ord> Drop for PeekMut<'a, T> {
     fn drop(&mut self) {
@@ -968,6 +977,15 @@ pub struct Iter<'a, T: 'a> {
     iter: slice::Iter<'a, T>,
 }
 
+#[stable(feature = "collection_debug", since = "1.17.0")]
+impl<'a, T: 'a + fmt::Debug> fmt::Debug for Iter<'a, T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_tuple("Iter")
+         .field(&self.iter.as_slice())
+         .finish()
+    }
+}
+
 // FIXME(#19839) Remove in favor of `#[derive(Clone)]`
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Clone for Iter<'a, T> {
@@ -1016,6 +1034,15 @@ pub struct IntoIter<T> {
     iter: vec::IntoIter<T>,
 }
 
+#[stable(feature = "collection_debug", since = "1.17.0")]
+impl<T: fmt::Debug> fmt::Debug for IntoIter<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_tuple("IntoIter")
+         .field(&self.iter.as_slice())
+         .finish()
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Iterator for IntoIter<T> {
     type Item = T;
@@ -1051,6 +1078,7 @@ impl<T> FusedIterator for IntoIter<T> {}
 
 /// An iterator that drains a `BinaryHeap`.
 #[stable(feature = "drain", since = "1.6.0")]
+#[derive(Debug)]
 pub struct Drain<'a, T: 'a> {
     iter: vec::Drain<'a, T>,
 }
@@ -1198,6 +1226,17 @@ pub struct BinaryHeapPlace<'a, T: 'a>
 where T: Clone + Ord {
     heap: *mut BinaryHeap<T>,
     place: vec::PlaceBack<'a, T>,
+}
+
+#[unstable(feature = "collection_placement",
+           reason = "placement protocol is subject to change",
+           issue = "30172")]
+impl<'a, T: Clone + Ord + fmt::Debug> fmt::Debug for BinaryHeapPlace<'a, T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_tuple("BinaryHeapPlace")
+         .field(&self.place)
+         .finish()
+    }
 }
 
 #[unstable(feature = "collection_placement",

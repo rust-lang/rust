@@ -48,6 +48,7 @@ pub struct Config {
     pub target_config: HashMap<String, Target>,
     pub full_bootstrap: bool,
     pub extended: bool,
+    pub sanitizers: bool,
 
     // llvm codegen options
     pub llvm_assertions: bool,
@@ -114,6 +115,7 @@ pub struct Target {
     pub cxx: Option<PathBuf>,
     pub ndk: Option<PathBuf>,
     pub musl_root: Option<PathBuf>,
+    pub qemu_rootfs: Option<PathBuf>,
 }
 
 /// Structure of the `config.toml` file that configuration is read from.
@@ -149,6 +151,7 @@ struct Build {
     full_bootstrap: Option<bool>,
     extended: Option<bool>,
     verbose: Option<usize>,
+    sanitizers: Option<bool>,
 }
 
 /// TOML representation of various global install decisions.
@@ -223,6 +226,7 @@ struct TomlTarget {
     cxx: Option<String>,
     android_ndk: Option<String>,
     musl_root: Option<String>,
+    qemu_rootfs: Option<String>,
 }
 
 impl Config {
@@ -294,6 +298,7 @@ impl Config {
         set(&mut config.full_bootstrap, build.full_bootstrap);
         set(&mut config.extended, build.extended);
         set(&mut config.verbose, build.verbose);
+        set(&mut config.sanitizers, build.sanitizers);
 
         if let Some(ref install) = toml.install {
             config.prefix = install.prefix.clone().map(PathBuf::from);
@@ -362,6 +367,7 @@ impl Config {
                 target.cxx = cfg.cxx.clone().map(PathBuf::from);
                 target.cc = cfg.cc.clone().map(PathBuf::from);
                 target.musl_root = cfg.musl_root.clone().map(PathBuf::from);
+                target.qemu_rootfs = cfg.qemu_rootfs.clone().map(PathBuf::from);
 
                 config.target_config.insert(triple.clone(), target);
             }
@@ -437,6 +443,7 @@ impl Config {
                 ("VENDOR", self.vendor),
                 ("FULL_BOOTSTRAP", self.full_bootstrap),
                 ("EXTENDED", self.extended),
+                ("SANITIZERS", self.sanitizers),
             }
 
             match key {
@@ -563,6 +570,12 @@ impl Config {
                     self.configure_args = value.split_whitespace()
                                                .map(|s| s.to_string())
                                                .collect();
+                }
+                "CFG_QEMU_ARMHF_ROOTFS" if value.len() > 0 => {
+                    let target = "arm-unknown-linux-gnueabihf".to_string();
+                    let target = self.target_config.entry(target)
+                                     .or_insert(Target::default());
+                    target.qemu_rootfs = Some(parse_configure_path(value));
                 }
                 _ => {}
             }

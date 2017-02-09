@@ -51,6 +51,17 @@ pub fn std(build: &Build, target: &str, compiler: &Compiler) {
     if compiler.stage == 0 && build.local_rebuild && !build.config.use_jemalloc {
         features.push_str(" force_alloc_system");
     }
+
+    if compiler.stage != 0 && build.config.sanitizers {
+        // This variable is used by the sanitizer runtime crates, e.g.
+        // rustc_lsan, to build the sanitizer runtime from C code
+        // When this variable is missing, those crates won't compile the C code,
+        // so we don't set this variable during stage0 where llvm-config is
+        // missing
+        // We also only build the runtimes when --enable-sanitizers (or its
+        // config.toml equivalent) is used
+        cargo.env("LLVM_CONFIG", build.llvm_config(target));
+    }
     cargo.arg("--features").arg(features)
          .arg("--manifest-path")
          .arg(build.src.join("src/rustc/std_shim/Cargo.toml"));
@@ -382,10 +393,10 @@ fn add_to_sysroot(out_dir: &Path, sysroot_dst: &Path) {
 ///
 /// This will build the specified tool with the specified `host` compiler in
 /// `stage` into the normal cargo output directory.
-pub fn tool(build: &Build, stage: u32, host: &str, tool: &str) {
-    println!("Building stage{} tool {} ({})", stage, tool, host);
+pub fn tool(build: &Build, stage: u32, target: &str, tool: &str) {
+    println!("Building stage{} tool {} ({})", stage, tool, target);
 
-    let compiler = Compiler::new(stage, host);
+    let compiler = Compiler::new(stage, &build.config.build);
 
     // FIXME: need to clear out previous tool and ideally deps, may require
     //        isolating output directories or require a pseudo shim step to
@@ -396,7 +407,7 @@ pub fn tool(build: &Build, stage: u32, host: &str, tool: &str) {
     // let out_dir = build.cargo_out(stage, &host, Mode::Librustc, target);
     // build.clear_if_dirty(&out_dir, &libstd_stamp(build, stage, &host, target));
 
-    let mut cargo = build.cargo(&compiler, Mode::Tool, host, "build");
+    let mut cargo = build.cargo(&compiler, Mode::Tool, target, "build");
     cargo.arg("--manifest-path")
          .arg(build.src.join(format!("src/tools/{}/Cargo.toml", tool)));
 

@@ -249,19 +249,19 @@ impl Process {
         Ok(ExitStatus::new(status))
     }
 
-    pub fn try_wait(&mut self) -> io::Result<ExitStatus> {
+    pub fn try_wait(&mut self) -> io::Result<Option<ExitStatus>> {
         if let Some(status) = self.status {
-            return Ok(status)
+            return Ok(Some(status))
         }
         let mut status = 0 as c_int;
         let pid = cvt(unsafe {
             libc::waitpid(self.pid, &mut status, libc::WNOHANG)
         })?;
         if pid == 0 {
-            Err(io::Error::from_raw_os_error(libc::EWOULDBLOCK))
+            Ok(None)
         } else {
             self.status = Some(ExitStatus::new(status));
-            Ok(ExitStatus::new(status))
+            Ok(Some(ExitStatus::new(status)))
         }
     }
 }

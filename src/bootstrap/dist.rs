@@ -381,13 +381,11 @@ pub fn rust_src(build: &Build) {
         "README.md",
         "RELEASES.md",
         "configure",
-        "Makefile.in",
         "x.py",
     ];
     let src_dirs = [
         "man",
         "src",
-        "mk"
     ];
 
     let filter_fn = move |path: &Path| {
@@ -517,9 +515,7 @@ pub fn cargo(build: &Build, stage: u32, target: &str) {
 
     let branch = match &build.config.channel[..] {
         "stable" |
-        "beta" => {
-            build.release.split(".").take(2).collect::<Vec<_>>().join(".")
-        }
+        "beta" => format!("rust-{}", build.release_num),
         _ => "master".to_string(),
     };
 

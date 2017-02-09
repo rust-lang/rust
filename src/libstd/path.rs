@@ -1265,6 +1265,13 @@ impl Borrow<Path> for PathBuf {
     }
 }
 
+#[stable(feature = "default_for_pathbuf", since = "1.16.0")]
+impl Default for PathBuf {
+    fn default() -> Self {
+        PathBuf::new()
+    }
+}
+
 #[stable(feature = "cow_from_path", since = "1.6.0")]
 impl<'a> From<&'a Path> for Cow<'a, Path> {
     #[inline]
