@@ -41,6 +41,8 @@ use std::iter;
 
 use syntax_pos::DUMMY_SP;
 
+use mir::lvalue::Alignment;
+
 #[derive(Debug)]
 pub enum CalleeData {
     /// Constructor for enum variant/tuple-like-struct.
@@ -358,29 +360,27 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     let fn_ty = callee.direct_fn_type(bcx.ccx, &[]);
     let self_idx = fn_ty.ret.is_indirect() as usize;
     let env_arg = &orig_fn_ty.args[0];
-    let llenv = if env_arg.is_indirect() {
-        llargs[self_idx]
+    let env = if env_arg.is_indirect() {
+        LvalueRef::new_sized_ty(llargs[self_idx], closure_ty, Alignment::AbiAligned)
     } else {
-        let scratch = bcx.alloca_ty(closure_ty, "self");
+        let scratch = LvalueRef::alloca(&bcx, closure_ty, "self");
         let mut llarg_idx = self_idx;
-        env_arg.store_fn_arg(&bcx, &mut llarg_idx, scratch);
+        env_arg.store_fn_arg(&bcx, &mut llarg_idx, scratch.llval);
         scratch
     };
 
-    debug!("trans_fn_once_adapter_shim: env={:?}", Value(llenv));
+    debug!("trans_fn_once_adapter_shim: env={:?}", env);
     // Adjust llargs such that llargs[self_idx..] has the call arguments.
     // For zero-sized closures that means sneaking in a new argument.
     if env_arg.is_ignore() {
-        llargs.insert(self_idx, llenv);
+        llargs.insert(self_idx, env.llval);
     } else {
-        llargs[self_idx] = llenv;
+        llargs[self_idx] = env.llval;
     }
 
     // Call the by-ref closure body with `self` in a cleanup scope,
     // to drop `self` when the body returns, or in case it unwinds.
-    let self_scope = CleanupScope::schedule_drop_mem(
-        &bcx, LvalueRef::new_sized_ty(llenv, closure_ty)
-    );
+    let self_scope = CleanupScope::schedule_drop_mem(&bcx, env);
 
     let llfn = callee.reify(bcx.ccx);
     let llret;
@@ -512,7 +512,7 @@ fn trans_fn_pointer_shim<'a, 'tcx>(
     let llfnpointer = llfnpointer.unwrap_or_else(|| {
         // the first argument (`self`) will be ptr to the fn pointer
         if is_by_ref {
-            bcx.load(self_arg)
+            bcx.load(self_arg, None)
         } else {
             self_arg
         }
