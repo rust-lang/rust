@@ -886,12 +886,12 @@ pub fn run_passes(sess: &Session,
     // Clean up unwanted temporary files.
 
     // We create the following files by default:
-    //  - crate.#module-name#.bc
-    //  - crate.#module-name#.o
-    //  - crate.metadata.bc
-    //  - crate.metadata.o
-    //  - crate.o (linked from crate.##.o)
-    //  - crate.bc (copied from crate.##.bc)
+    //  - #crate#.#module-name#.bc
+    //  - #crate#.#module-name#.o
+    //  - #crate#.crate.metadata.bc
+    //  - #crate#.crate.metadata.o
+    //  - #crate#.o (linked from crate.##.o)
+    //  - #crate#.bc (copied from crate.##.bc)
     // We may create additional files if requested by the user (through
     // `-C save-temps` or `--emit=` flags).
 
@@ -939,9 +939,9 @@ pub fn run_passes(sess: &Session,
     }
 
     // We leave the following files around by default:
-    //  - crate.o
-    //  - crate.metadata.o
-    //  - crate.bc
+    //  - #crate#.o
+    //  - #crate#.crate.metadata.o
+    //  - #crate#.bc
     // These are used in linking steps and will be cleaned up afterward.
 
     // FIXME: time_llvm_passes support - does this use a global context or
