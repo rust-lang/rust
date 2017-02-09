@@ -202,7 +202,9 @@ impl<'tcx> cmt_<'tcx> {
             Categorization::Downcast(ref cmt, _) => {
                 if let Categorization::Local(_) = cmt.cat {
                     if let ty::TyAdt(def, _) = self.ty.sty {
-                        return def.struct_variant().find_field_named(name).map(|x| x.did);
+                        if def.is_struct() {
+                            return def.struct_variant().find_field_named(name).map(|x| x.did);
+                        }
                     }
                     None
                 } else {

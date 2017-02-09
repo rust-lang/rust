@@ -425,8 +425,8 @@ impl<'tcx> EntryKind<'tcx> {
             EntryKind::ForeignImmStatic => Def::Static(did, false),
             EntryKind::MutStatic |
             EntryKind::ForeignMutStatic => Def::Static(did, true),
-            EntryKind::Struct(_) => Def::Struct(did),
-            EntryKind::Union(_) => Def::Union(did),
+            EntryKind::Struct(_, _) => Def::Struct(did),
+            EntryKind::Union(_, _) => Def::Union(did),
             EntryKind::Fn(_) |
             EntryKind::ForeignFn(_) => Def::Fn(did),
             EntryKind::Method(_) => Def::Method(did),
@@ -435,7 +435,7 @@ impl<'tcx> EntryKind<'tcx> {
             EntryKind::Mod(_) => Def::Mod(did),
             EntryKind::Variant(_) => Def::Variant(did),
             EntryKind::Trait(_) => Def::Trait(did),
-            EntryKind::Enum => Def::Enum(did),
+            EntryKind::Enum(_) => Def::Enum(did),
             EntryKind::MacroDef(_) => Def::Macro(did),
 
             EntryKind::ForeignMod |
@@ -519,8 +519,8 @@ impl<'a, 'tcx> CrateMetadata {
                    -> (ty::VariantDef, Option<DefIndex>) {
         let data = match item.kind {
             EntryKind::Variant(data) |
-            EntryKind::Struct(data) |
-            EntryKind::Union(data) => data.decode(self),
+            EntryKind::Struct(data, _) |
+            EntryKind::Union(data, _) => data.decode(self),
             _ => bug!(),
         };
 
@@ -547,7 +547,7 @@ impl<'a, 'tcx> CrateMetadata {
         let item = self.entry(item_id);
         let did = self.local_def_id(item_id);
         let mut ctor_index = None;
-        let variants = if let EntryKind::Enum = item.kind {
+        let variants = if let EntryKind::Enum(_) = item.kind {
             item.children
                 .decode(self)
                 .map(|index| {
@@ -561,14 +561,14 @@ impl<'a, 'tcx> CrateMetadata {
             ctor_index = struct_ctor;
             vec![variant]
         };
-        let kind = match item.kind {
-            EntryKind::Enum => ty::AdtKind::Enum,
-            EntryKind::Struct(_) => ty::AdtKind::Struct,
-            EntryKind::Union(_) => ty::AdtKind::Union,
+        let (kind, repr) = match item.kind {
+            EntryKind::Enum(repr) => (ty::AdtKind::Enum, repr),
+            EntryKind::Struct(_, repr) => (ty::AdtKind::Struct, repr),
+            EntryKind::Union(_, repr) => (ty::AdtKind::Union, repr),
             _ => bug!("get_adt_def called on a non-ADT {:?}", did),
         };
 
-        let adt = tcx.alloc_adt_def(did, kind, variants);
+        let adt = tcx.alloc_adt_def(did, kind, variants, repr);
         if let Some(ctor_index) = ctor_index {
             // Make adt definition available through constructor id as well.
             tcx.adt_defs.borrow_mut().insert(self.local_def_id(ctor_index), adt);
@@ -881,8 +881,8 @@ impl<'a, 'tcx> CrateMetadata {
 
     pub fn get_ctor_kind(&self, node_id: DefIndex) -> CtorKind {
         match self.entry(node_id).kind {
-            EntryKind::Struct(data) |
-            EntryKind::Union(data) |
+            EntryKind::Struct(data, _) |
+            EntryKind::Union(data, _) |
             EntryKind::Variant(data) => data.decode(self).ctor_kind,
             _ => CtorKind::Fictive,
         }
@@ -890,7 +890,7 @@ impl<'a, 'tcx> CrateMetadata {
 
     pub fn get_struct_ctor_def_id(&self, node_id: DefIndex) -> Option<DefId> {
         match self.entry(node_id).kind {
-            EntryKind::Struct(data) => {
+            EntryKind::Struct(data, _) => {
                 data.decode(self).struct_ctor.map(|index| self.local_def_id(index))
             }
             _ => None,

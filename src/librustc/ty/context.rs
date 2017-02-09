@@ -26,6 +26,7 @@ use middle::resolve_lifetime;
 use middle::stability;
 use mir::Mir;
 use ty::subst::{Kind, Substs};
+use ty::ReprOptions;
 use traits;
 use ty::{self, TraitRef, Ty, TypeAndMut};
 use ty::{TyS, TypeVariants, Slice};
@@ -672,9 +673,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn alloc_adt_def(self,
                          did: DefId,
                          kind: AdtKind,
-                         variants: Vec<ty::VariantDef>)
+                         variants: Vec<ty::VariantDef>,
+                         repr: ReprOptions)
                          -> &'gcx ty::AdtDef {
-        let def = ty::AdtDef::new(self, did, kind, variants);
+        let def = ty::AdtDef::new(self, did, kind, variants, repr);
         self.global_arenas.adt_def.alloc(def)
     }
 
