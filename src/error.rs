@@ -56,6 +56,7 @@ pub enum EvalError<'tcx> {
     ExpectedConcreteFunction(Function<'tcx>),
     ExpectedDropGlue(Function<'tcx>),
     ManuallyCalledDropGlue,
+    Panic,
 }
 
 pub type EvalResult<'tcx, T = ()> = Result<T, EvalError<'tcx>>;
@@ -134,6 +135,8 @@ impl<'tcx> Error for EvalError<'tcx> {
                 "tried to use non-drop-glue function as drop glue",
             EvalError::ManuallyCalledDropGlue =>
                 "tried to manually invoke drop glue",
+            EvalError::Panic =>
+                "the evaluated program panicked",
         }
     }
 
