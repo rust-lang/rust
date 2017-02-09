@@ -25,12 +25,6 @@ struct Baz<T: ?Sized> {
     a: T
 }
 
-#[repr(packed)]
-struct Packed<T: ?Sized> {
-    a: u8,
-    b: T
-}
-
 struct HasDrop<T: ?Sized> {
     ptr: Box<usize>,
     data: T
