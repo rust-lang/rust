@@ -426,14 +426,14 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                     let (sized_size, sized_align) = match *layout {
                         ty::layout::Layout::Univariant { ref variant, .. } => {
-                            (variant.offsets.last().map_or(0, |o| o.bytes()), variant.align.abi())
+                            (variant.offsets.last().map_or(0, |o| o.bytes()), variant.align)
                         }
                         _ => {
                             bug!("size_and_align_of_dst: expcted Univariant for `{}`, found {:#?}",
                                  ty, layout);
                         }
                     };
-                    debug!("DST {} statically sized prefix size: {} align: {}",
+                    debug!("DST {} statically sized prefix size: {} align: {:?}",
                            ty, sized_size, sized_align);
 
                     // Recurse to get the size of the dynamically sized field (must be
@@ -454,7 +454,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                     // Choose max of two known alignments (combined value must
                     // be aligned according to more restrictive of the two).
-                    let align = ::std::cmp::max(sized_align, unsized_align);
+                    let align = sized_align.max(Align::from_bytes(unsized_align, unsized_align).unwrap());
 
                     // Issue #27023: must add any necessary padding to `size`
                     // (to make it a multiple of `align`) before returning it.
@@ -467,8 +467,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     //
                     //   `(size + (align-1)) & -align`
 
-                    let size = Size::from_bytes(size).abi_align(Align::from_bytes(align, align).unwrap()).bytes();
-                    Ok((size, align))
+                    let size = Size::from_bytes(size).abi_align(align).bytes();
+                    Ok((size, align.abi()))
                 }
                 ty::TyDynamic(..) => {
                     let (_, vtable) = value.expect_ptr_vtable_pair(&self.memory)?;
