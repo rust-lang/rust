@@ -40,6 +40,7 @@ use syntax_pos::Span;
 use std::fmt;
 use std::ptr;
 
+use super::lvalue::Alignment;
 use super::operand::{OperandRef, OperandValue};
 use super::MirContext;
 
@@ -140,7 +141,7 @@ impl<'tcx> Const<'tcx> {
             // a constant LLVM global and cast its address if necessary.
             let align = type_of::align_of(ccx, self.ty);
             let ptr = consts::addr_of(ccx, self.llval, align, "const");
-            OperandValue::Ref(consts::ptrcast(ptr, llty.ptr_to()))
+            OperandValue::Ref(consts::ptrcast(ptr, llty.ptr_to()), Alignment::AbiAligned)
         };
 
         OperandRef {

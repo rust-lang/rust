@@ -56,6 +56,8 @@ use monomorphize;
 use type_::Type;
 use type_of;
 
+use mir::lvalue::Alignment;
+
 /// Given an enum, struct, closure, or tuple, extracts fields.
 /// Treats closures as a struct with one variant.
 /// `empty_if_no_variants` is a switch to deal with empty enums.
@@ -279,6 +281,7 @@ pub fn trans_get_discr<'a, 'tcx>(
     bcx: &Builder<'a, 'tcx>,
     t: Ty<'tcx>,
     scrutinee: ValueRef,
+    alignment: Alignment,
     cast_to: Option<Type>,
     range_assert: bool
 ) -> ValueRef {
@@ -292,11 +295,12 @@ pub fn trans_get_discr<'a, 'tcx>(
 
     let val = match *l {
         layout::CEnum { discr, min, max, .. } => {
-            load_discr(bcx, discr, scrutinee, min, max, range_assert)
+            load_discr(bcx, discr, scrutinee, alignment, min, max, range_assert)
         }
         layout::General { discr, .. } => {
             let ptr = bcx.struct_gep(scrutinee, 0);
-            load_discr(bcx, discr, ptr, 0, def.variants.len() as u64 - 1,
+            load_discr(bcx, discr, ptr, alignment,
+                       0, def.variants.len() as u64 - 1,
                        range_assert)
         }
         layout::Univariant { .. } | layout::UntaggedUnion { .. } => C_u8(bcx.ccx, 0),
@@ -305,10 +309,10 @@ pub fn trans_get_discr<'a, 'tcx>(
             let llptrty = type_of::sizing_type_of(bcx.ccx,
                 monomorphize::field_ty(bcx.tcx(), substs,
                 &def.variants[nndiscr as usize].fields[0]));
-            bcx.icmp(cmp, bcx.load(scrutinee), C_null(llptrty))
+            bcx.icmp(cmp, bcx.load(scrutinee, alignment.to_align()), C_null(llptrty))
         }
         layout::StructWrappedNullablePointer { nndiscr, ref discrfield, .. } => {
-            struct_wrapped_nullable_bitdiscr(bcx, nndiscr, discrfield, scrutinee)
+            struct_wrapped_nullable_bitdiscr(bcx, nndiscr, discrfield, scrutinee, alignment)
         },
         _ => bug!("{} is not an enum", t)
     };
@@ -322,17 +326,19 @@ fn struct_wrapped_nullable_bitdiscr(
     bcx: &Builder,
     nndiscr: u64,
     discrfield: &layout::FieldPath,
-    scrutinee: ValueRef
+    scrutinee: ValueRef,
+    alignment: Alignment,
 ) -> ValueRef {
     let llptrptr = bcx.gepi(scrutinee,
         &discrfield.iter().map(|f| *f as usize).collect::<Vec<_>>()[..]);
-    let llptr = bcx.load(llptrptr);
+    let llptr = bcx.load(llptrptr, alignment.to_align());
     let cmp = if nndiscr == 0 { IntEQ } else { IntNE };
     bcx.icmp(cmp, llptr, C_null(val_ty(llptr)))
 }
 
 /// Helper for cases where the discriminant is simply loaded.
-fn load_discr(bcx: &Builder, ity: layout::Integer, ptr: ValueRef, min: u64, max: u64,
+fn load_discr(bcx: &Builder, ity: layout::Integer, ptr: ValueRef,
+              alignment: Alignment, min: u64, max: u64,
               range_assert: bool)
     -> ValueRef {
     let llty = Type::from_integer(bcx.ccx, ity);
@@ -348,11 +354,12 @@ fn load_discr(bcx: &Builder, ity: layout::Integer, ptr: ValueRef, min: u64, max:
         // rejected by the LLVM verifier (it would mean either an
         // empty set, which is impossible, or the entire range of the
         // type, which is pointless).
-        bcx.load(ptr)
+        bcx.load(ptr, alignment.to_align())
     } else {
         // llvm::ConstantRange can deal with ranges that wrap around,
         // so an overflow on (max + 1) is fine.
-        bcx.load_range_assert(ptr, min, max.wrapping_add(1), /* signed: */ True)
+        bcx.load_range_assert(ptr, min, max.wrapping_add(1), /* signed: */ True,
+                              alignment.to_align())
     }
 }
 
