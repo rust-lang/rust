@@ -235,9 +235,13 @@ pub fn binary_op<'tcx>(
 
         (Eq, _) => PrimVal::from_bool(l == r),
         (Ne, _) => PrimVal::from_bool(l != r),
+        (Lt, k) if k.is_signed_int() => PrimVal::from_bool((l as i128) < (r as i128)),
         (Lt, _) => PrimVal::from_bool(l <  r),
+        (Le, k) if k.is_signed_int() => PrimVal::from_bool((l as i128) <= (r as i128)),
         (Le, _) => PrimVal::from_bool(l <= r),
+        (Gt, k) if k.is_signed_int() => PrimVal::from_bool((l as i128) > (r as i128)),
         (Gt, _) => PrimVal::from_bool(l >  r),
+        (Ge, k) if k.is_signed_int() => PrimVal::from_bool((l as i128) >= (r as i128)),
         (Ge, _) => PrimVal::from_bool(l >= r),
 
         (BitOr,  _) => PrimVal::Bytes(l | r),
