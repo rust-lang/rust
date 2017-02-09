@@ -165,9 +165,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 // some values don't need to call a drop impl, so the value is null
                 if drop_fn != Pointer::from_int(0) {
                     let FunctionDefinition {def_id, substs, sig, ..} = self.memory.get_fn(drop_fn.alloc_id)?.expect_drop_glue()?;
-                    let real_ty = sig.inputs()[0];
+                    let real_ty = match sig.inputs()[0].sty {
+                        ty::TyRef(_, mt) => self.monomorphize(mt.ty, substs),
+                        _ => bug!("first argument of Drop::drop must be &mut T"),
+                    };
                     self.drop(Lvalue::from_ptr(ptr), real_ty, drop)?;
-                    drop.push((def_id, Value::ByVal(PrimVal::Ptr(ptr)), substs));
                 } else {
                     // just a sanity check
                     assert_eq!(drop_fn.offset, 0);
