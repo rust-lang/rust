@@ -134,17 +134,14 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         } else {
             let cm = self.ccx.sess().codemap();
             // Walk up the macro expansion chain until we reach a non-expanded span.
+            // We also stop at the function body level because no line stepping can occurr
+            // at the level above that.
             let mut span = source_info.span;
-            while span.expn_id != NO_EXPANSION && span.expn_id != COMMAND_LINE_EXPN {
+            while span.expn_id != NO_EXPANSION &&
+                  span.expn_id != COMMAND_LINE_EXPN &&
+                  span.expn_id != self.mir.span.expn_id {
                 if let Some(callsite_span) = cm.with_expn_info(span.expn_id,
                                                     |ei| ei.map(|ei| ei.call_site.clone())) {
-                    // When the current function itself is a result of macro expansion,
-                    // we stop at the function body level because no line stepping can occurr
-                    // at the level above that.
-                    if self.mir.span.expn_id != NO_EXPANSION &&
-                       span.expn_id == self.mir.span.expn_id {
-                        break;
-                    }
                     span = callsite_span;
                 } else {
                     break;
