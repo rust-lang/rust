@@ -186,6 +186,7 @@ use fmt::{self, Debug, Display};
 use marker::Unsize;
 use mem;
 use ops::{Deref, DerefMut, CoerceUnsized};
+use ptr;
 
 /// A mutable memory location.
 ///
@@ -385,6 +386,32 @@ impl<T> Cell<T> {
     pub fn set(&self, val: T) {
         let old = self.replace(val);
         drop(old);
+    }
+
+    /// Swaps the values of two Cells.
+    /// Difference with `std::mem::swap` is that this function doesn't require `&mut` reference.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(move_cell)]
+    /// use std::cell::Cell;
+    ///
+    /// let c1 = Cell::new(5i32);
+    /// let c2 = Cell::new(10i32);
+    /// c1.swap(&c2);
+    /// assert_eq!(10, c1.get());
+    /// assert_eq!(5, c2.get());
+    /// ```
+    #[inline]
+    #[unstable(feature = "move_cell", issue = "39264")]
+    pub fn swap(&self, other: &Self) {
+        if ptr::eq(self, other) {
+            return;
+        }
+        unsafe {
+            ptr::swap(self.value.get(), other.value.get());
+        }
     }
 
     /// Replaces the contained value.
