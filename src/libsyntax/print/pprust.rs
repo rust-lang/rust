@@ -1479,7 +1479,7 @@ impl<'a> State<'a> {
                             (&Token::Comma, _) => {} // abc(a, b);
                                                      //     ^-
                             (_, Some(&&TokenTree::Token(_, Token::Comma))) => { // abc(a, b);
-                                zerobreak(&mut self.s)?                         //      ^ -
+                                space(&mut self.s, 1)?                          //      ^ -
                             },
                             (_, Some(&&TokenTree::Token(_, Token::Semi))) => {} // let a = 0;
                                                                                 //         ^-
