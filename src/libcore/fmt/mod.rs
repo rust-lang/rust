@@ -434,7 +434,7 @@ impl<'a> Display for Arguments<'a> {
 pub trait Debug {
     /// Formats the value using the given formatter.
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn fmt(&self, &mut Formatter) -> Result;
+    fn fmt(&self, f: &mut Formatter) -> Result;
 }
 
 /// Format trait for an empty format, `{}`.
@@ -477,7 +477,7 @@ pub trait Debug {
 pub trait Display {
     /// Formats the value using the given formatter.
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn fmt(&self, &mut Formatter) -> Result;
+    fn fmt(&self, f: &mut Formatter) -> Result;
 }
 
 /// Format trait for the `o` character.
@@ -524,7 +524,7 @@ pub trait Display {
 pub trait Octal {
     /// Formats the value using the given formatter.
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn fmt(&self, &mut Formatter) -> Result;
+    fn fmt(&self, f: &mut Formatter) -> Result;
 }
 
 /// Format trait for the `b` character.
@@ -571,7 +571,7 @@ pub trait Octal {
 pub trait Binary {
     /// Formats the value using the given formatter.
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn fmt(&self, &mut Formatter) -> Result;
+    fn fmt(&self, f: &mut Formatter) -> Result;
 }
 
 /// Format trait for the `x` character.
@@ -619,7 +619,7 @@ pub trait Binary {
 pub trait LowerHex {
     /// Formats the value using the given formatter.
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn fmt(&self, &mut Formatter) -> Result;
+    fn fmt(&self, f: &mut Formatter) -> Result;
 }
 
 /// Format trait for the `X` character.
@@ -667,7 +667,7 @@ pub trait LowerHex {
 pub trait UpperHex {
     /// Formats the value using the given formatter.
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn fmt(&self, &mut Formatter) -> Result;
+    fn fmt(&self, f: &mut Formatter) -> Result;
 }
 
 /// Format trait for the `p` character.
@@ -712,7 +712,7 @@ pub trait UpperHex {
 pub trait Pointer {
     /// Formats the value using the given formatter.
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn fmt(&self, &mut Formatter) -> Result;
+    fn fmt(&self, f: &mut Formatter) -> Result;
 }
 
 /// Format trait for the `e` character.
@@ -755,7 +755,7 @@ pub trait Pointer {
 pub trait LowerExp {
     /// Formats the value using the given formatter.
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn fmt(&self, &mut Formatter) -> Result;
+    fn fmt(&self, f: &mut Formatter) -> Result;
 }
 
 /// Format trait for the `E` character.
@@ -798,7 +798,7 @@ pub trait LowerExp {
 pub trait UpperExp {
     /// Formats the value using the given formatter.
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn fmt(&self, &mut Formatter) -> Result;
+    fn fmt(&self, f: &mut Formatter) -> Result;
 }
 
 /// The `write` function takes an output stream, a precompiled format string,
