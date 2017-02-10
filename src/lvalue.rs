@@ -168,11 +168,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         field_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx, Lvalue<'tcx>> {
         let base_layout = self.type_layout(base_ty)?;
-        // FIXME(solson)
-        let base = self.force_allocation(base)?;
-        let (base_ptr, base_extra) = base.to_ptr_and_extra();
-
-        let field_ty = self.monomorphize(field_ty, self.substs());
 
         use rustc::ty::layout::Layout::*;
         let (offset, packed) = match *base_layout {
@@ -181,6 +176,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             },
 
             General { ref variants, .. } => {
+                let (_, base_extra) = base.to_ptr_and_extra();
                 if let LvalueExtra::DowncastVariant(variant_idx) = base_extra {
                     // +1 for the discriminant, which is field 0
                     (variants[variant_idx].offsets[field + 1], variants[variant_idx].packed)
@@ -210,6 +206,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             _ => bug!("field access on non-product type: {:?}", base_layout),
         };
 
+        // FIXME(solson)
+        let base = self.force_allocation(base)?;
+        let (base_ptr, base_extra) = base.to_ptr_and_extra();
+
         let offset = match base_extra {
             LvalueExtra::Vtable(tab) => {
                 let (_, align) = self.size_and_align_of_dst(base_ty, Value::ByValPair(PrimVal::Ptr(base_ptr), PrimVal::Ptr(tab)))?;
@@ -219,6 +219,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         };
 
         let ptr = base_ptr.offset(offset);
+
+        let field_ty = self.monomorphize(field_ty, self.substs());
 
         if packed {
             let size = self.type_size(field_ty)?.expect("packed struct must be sized");
