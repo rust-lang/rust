@@ -180,6 +180,10 @@ pub struct Memory<'a, 'tcx> {
     /// the normal struct access will succeed even though it shouldn't.
     /// But even with mir optimizations, that situation is hard/impossible to produce.
     packed: BTreeSet<Entry>,
+
+    /// A cache for basic byte allocations keyed by their contents. This is used to deduplicate
+    /// allocations for string and bytestring literals.
+    literal_alloc_cache: HashMap<Vec<u8>, AllocId>,
 }
 
 const ZST_ALLOC_ID: AllocId = AllocId(0);
@@ -197,6 +201,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             memory_usage: 0,
             packed: BTreeSet::new(),
             static_alloc: HashSet::new(),
+            literal_alloc_cache: HashMap::new(),
         }
     }
 
@@ -261,6 +266,18 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         self.functions.insert(id, def);
         self.function_alloc_cache.insert(def, id);
         Pointer::new(id, 0)
+    }
+
+    pub fn allocate_cached(&mut self, bytes: &[u8]) -> EvalResult<'tcx, Pointer> {
+        if let Some(&alloc_id) = self.literal_alloc_cache.get(bytes) {
+            return Ok(Pointer::new(alloc_id, 0));
+        }
+
+        let ptr = self.allocate(bytes.len() as u64, 1)?;
+        self.write_bytes(ptr, bytes)?;
+        self.mark_static_initalized(ptr.alloc_id, false)?;
+        self.literal_alloc_cache.insert(bytes.to_vec(), ptr.alloc_id);
+        Ok(ptr)
     }
 
     pub fn allocate(&mut self, size: u64, align: u64) -> EvalResult<'tcx, Pointer> {

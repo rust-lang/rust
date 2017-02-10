@@ -168,11 +168,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         &self.stack
     }
 
-    pub(super) fn str_to_value(&mut self, s: &str) -> EvalResult<'tcx, Value> {
-        // FIXME: cache these allocs
-        let ptr = self.memory.allocate(s.len() as u64, 1)?;
-        self.memory.write_bytes(ptr, s.as_bytes())?;
-        self.memory.mark_static_initalized(ptr.alloc_id, false)?;
+    pub(crate) fn str_to_value(&mut self, s: &str) -> EvalResult<'tcx, Value> {
+        let ptr = self.memory.allocate_cached(s.as_bytes())?;
         Ok(Value::ByValPair(PrimVal::Ptr(ptr), PrimVal::from_u128(s.len() as u128)))
     }
 
@@ -194,10 +191,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             Str(ref s) => return self.str_to_value(s),
 
             ByteStr(ref bs) => {
-                // FIXME: cache these allocs
-                let ptr = self.memory.allocate(bs.len() as u64, 1)?;
-                self.memory.write_bytes(ptr, bs)?;
-                self.memory.mark_static_initalized(ptr.alloc_id, false)?;
+                let ptr = self.memory.allocate_cached(bs)?;
                 PrimVal::Ptr(ptr)
             }
 
