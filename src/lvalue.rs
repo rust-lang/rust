@@ -23,6 +23,8 @@ pub enum Lvalue<'tcx> {
     Local {
         frame: usize,
         local: mir::Local,
+        /// Optionally, this lvalue can point to a field of the stack value
+        field: Option<(usize, Ty<'tcx>)>,
     },
 
     /// An lvalue referring to a global
@@ -116,7 +118,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     pub(super) fn eval_and_read_lvalue(&mut self, lvalue: &mir::Lvalue<'tcx>) -> EvalResult<'tcx, Value> {
         if let mir::Lvalue::Projection(ref proj) = *lvalue {
             if let mir::Lvalue::Local(index) = proj.base {
-                if let Value::ByValPair(a, b) = self.frame().get_local(index) {
+                if let Value::ByValPair(a, b) = self.frame().get_local(index, None) {
                     if let mir::ProjectionElem::Field(ref field, _) = proj.elem {
                         let val = [a, b][field.index()];
                         return Ok(Value::ByVal(val));
@@ -134,7 +136,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 assert_eq!(extra, LvalueExtra::None);
                 Value::ByRef(ptr)
             }
-            Lvalue::Local { frame, local } => self.stack[frame].get_local(local),
+            Lvalue::Local { frame, local, field } => self.stack[frame].get_local(local, field.map(|(i, _)| i)),
             Lvalue::Global(cid) => self.globals.get(&cid).expect("global not cached").value,
         }
     }
@@ -143,7 +145,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         use rustc::mir::Lvalue::*;
         let lvalue = match *mir_lvalue {
             Local(mir::RETURN_POINTER) => self.frame().return_lvalue,
-            Local(local) => Lvalue::Local { frame: self.stack.len() - 1, local },
+            Local(local) => Lvalue::Local { frame: self.stack.len() - 1, local, field: None },
 
             Static(def_id) => {
                 let substs = self.tcx.intern_substs(&[]);
@@ -163,7 +165,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     pub fn lvalue_field(
         &mut self,
         base: Lvalue<'tcx>,
-        field: usize,
+        field_index: usize,
         base_ty: Ty<'tcx>,
         field_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx, Lvalue<'tcx>> {
@@ -172,32 +174,32 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         use rustc::ty::layout::Layout::*;
         let (offset, packed) = match *base_layout {
             Univariant { ref variant, .. } => {
-                (variant.offsets[field], variant.packed)
+                (variant.offsets[field_index], variant.packed)
             },
 
             General { ref variants, .. } => {
                 let (_, base_extra) = base.to_ptr_and_extra();
                 if let LvalueExtra::DowncastVariant(variant_idx) = base_extra {
                     // +1 for the discriminant, which is field 0
-                    (variants[variant_idx].offsets[field + 1], variants[variant_idx].packed)
+                    (variants[variant_idx].offsets[field_index + 1], variants[variant_idx].packed)
                 } else {
                     bug!("field access on enum had no variant index");
                 }
             }
 
             RawNullablePointer { .. } => {
-                assert_eq!(field, 0);
+                assert_eq!(field_index, 0);
                 return Ok(base);
             }
 
             StructWrappedNullablePointer { ref nonnull, .. } => {
-                (nonnull.offsets[field], nonnull.packed)
+                (nonnull.offsets[field_index], nonnull.packed)
             }
 
             UntaggedUnion { .. } => return Ok(base),
 
             Vector { element, count } => {
-                let field = field as u64;
+                let field = field_index as u64;
                 assert!(field < count);
                 let elem_size = element.size(&self.tcx.data_layout).bytes();
                 (Size::from_bytes(field * elem_size), false)
@@ -206,9 +208,29 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             _ => bug!("field access on non-product type: {:?}", base_layout),
         };
 
-        // FIXME(solson)
-        let base = self.force_allocation(base)?;
-        let (base_ptr, base_extra) = base.to_ptr_and_extra();
+        let (base_ptr, base_extra) = match base {
+            Lvalue::Ptr { ptr, extra } => (ptr, extra),
+            Lvalue::Local { frame, local, field } => match self.stack[frame].get_local(local, field.map(|(i, _)| i)) {
+                Value::ByRef(ptr) => {
+                    assert!(field.is_none(), "local can't be ByRef and have a field offset");
+                    (ptr, LvalueExtra::None)
+                },
+                Value::ByVal(_) => {
+                    assert_eq!(offset.bytes(), 0, "ByVal can only have 1 non zst field with offset 0");
+                    return Ok(base);
+                },
+                Value::ByValPair(_, _) => {
+                    assert!(field_index < 2);
+                    return Ok(Lvalue::Local {
+                        frame,
+                        local,
+                        field: Some((field_index, field_ty)),
+                    });
+                },
+            },
+            // FIXME: do for globals what we did for locals
+            Lvalue::Global(_) => self.force_allocation(base)?.to_ptr_and_extra(),
+        };
 
         let offset = match base_extra {
             LvalueExtra::Vtable(tab) => {
