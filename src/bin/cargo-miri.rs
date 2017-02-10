@@ -1,5 +1,3 @@
-#![feature(static_in_const)]
-
 extern crate cargo_metadata;
 
 use std::path::{PathBuf, Path};
