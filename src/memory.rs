@@ -120,8 +120,10 @@ pub enum Function<'tcx> {
     Concrete(FunctionDefinition<'tcx>),
     /// Glue required to call a regular function through a Fn(Mut|Once) trait object
     FnDefAsTraitObject(FunctionDefinition<'tcx>),
-    /// A drop glue function only needs to know the real type, and then miri can extract the
-    /// actual type at runtime.
+    /// A drop glue function only needs to know the real type, and then miri can extract
+    /// that type from a vtable's drop pointer.
+    /// Instead of storing some drop function, we act as if there are no trait objects, by
+    /// mapping trait objects to their real types before acting on them.
     DropGlue(ty::Ty<'tcx>),
     /// Glue required to treat the ptr part of a fat pointer
     /// as a function pointer
