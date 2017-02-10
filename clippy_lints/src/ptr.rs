@@ -44,13 +44,30 @@ declare_lint! {
     "comparing a pointer to a null pointer, suggesting to use `.is_null()` instead."
 }
 
+/// **What it does:** This lint checks for functions that take immutable refs and return
+/// mutable ones.
+///
+/// **Why is this bad?** This is trivially unsound, as one can create two mutable refs
+/// from the same source.
+///
+/// **Known problems:** This lint will overlook functions where input and output lifetimes differ
+///
+/// **Example:**
+/// ```rust
+/// fn foo(&Foo) -> &mut Bar { .. }
+/// ```
+declare_lint! {
+    pub MUT_FROM_REF,
+    Warn,
+    "fns that create mutable refs from immutable ref args"
+}
 
 #[derive(Copy,Clone)]
 pub struct PointerPass;
 
 impl LintPass for PointerPass {
     fn get_lints(&self) -> LintArray {
-        lint_array!(PTR_ARG, CMP_NULL)
+        lint_array!(PTR_ARG, CMP_NULL, MUT_FROM_REF)
     }
 }
 
@@ -111,6 +128,28 @@ fn check_fn(cx: &LateContext, decl: &FnDecl, fn_id: NodeId) {
             }
         }
     }
+
+    if let FunctionRetTy::Return(ref ty) = decl.output {
+        if let Some((out, MutMutable)) = get_rptr_lm(ty) {
+            if let Some(MutImmutable) = decl.inputs.iter()
+                     .filter_map(|ty| get_rptr_lm(ty))
+                     .filter(|&(lt, _)| lt.name == out.name)
+                     .fold(None, |x, (_, m)| match (x, m) {
+                        (Some(MutMutable), _) |
+                        (_, MutMutable) => Some(MutMutable),
+                        (_, m) => Some(m),
+                     }) {
+                span_lint(cx,
+                          MUT_FROM_REF,
+                          ty.span,
+                          "this function takes an immutable ref to return a mutable one:");
+            }
+        }
+    }
+}
+
+fn get_rptr_lm(ty: &Ty) -> Option<(&Lifetime, Mutability)> {
+    if let Ty_::TyRptr(ref lt, ref m) = ty.node { Some((lt, m.mutbl)) } else { None }
 }
 
 fn is_null_path(expr: &Expr) -> bool {

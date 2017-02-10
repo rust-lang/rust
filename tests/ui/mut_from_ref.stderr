@@ -1,0 +1,26 @@
+error: this function takes an immutable ref to return a mutable one:
+ --> $DIR/mut_from_ref.rs:9:39
+  |
+9 |     fn this_wont_hurt_a_bit(&self) -> &mut Foo {
+  |                                       ^^^^^^^^
+  |
+note: lint level defined here
+ --> $DIR/mut_from_ref.rs:4:9
+  |
+4 | #![deny(mut_from_ref)]
+  |         ^^^^^^^^^^^^
+
+error: this function takes an immutable ref to return a mutable one:
+  --> $DIR/mut_from_ref.rs:15:25
+   |
+15 |     fn ouch(x: &Foo) -> &mut Foo;
+   |                         ^^^^^^^^
+
+error: this function takes an immutable ref to return a mutable one:
+  --> $DIR/mut_from_ref.rs:24:21
+   |
+24 | fn fail(x: &u32) -> &mut u16 {
+   |                     ^^^^^^^^
+
+error: aborting due to 3 previous errors
+

@@ -1,6 +1,8 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+* New [`mut_from_ref`] lint
+
 ## 0.0.114 — 2017-02-08
 * Rustup to rustc 1.17.0-nightly (c49d10207 2017-02-07)
 * Tests are now ui tests (testing the exact output of rustc)
@@ -369,6 +371,7 @@ All notable changes to this project will be documented in this file.
 [`mixed_case_hex_literals`]: https://github.com/Manishearth/rust-clippy/wiki#mixed_case_hex_literals
 [`module_inception`]: https://github.com/Manishearth/rust-clippy/wiki#module_inception
 [`modulo_one`]: https://github.com/Manishearth/rust-clippy/wiki#modulo_one
+[`mut_from_ref`]: https://github.com/Manishearth/rust-clippy/wiki#mut_from_ref
 [`mut_mut`]: https://github.com/Manishearth/rust-clippy/wiki#mut_mut
 [`mutex_atomic`]: https://github.com/Manishearth/rust-clippy/wiki#mutex_atomic
 [`mutex_integer`]: https://github.com/Manishearth/rust-clippy/wiki#mutex_integer

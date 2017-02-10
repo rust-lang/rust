@@ -464,6 +464,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         precedence::PRECEDENCE,
         print::PRINT_WITH_NEWLINE,
         ptr::CMP_NULL,
+        ptr::MUT_FROM_REF,
         ptr::PTR_ARG,
         ranges::RANGE_STEP_BY_ZERO,
         ranges::RANGE_ZIP_WITH_LEN,

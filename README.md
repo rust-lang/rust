@@ -180,7 +180,7 @@ transparently:
 
 ## Lints
 
-There are 186 lints included in this crate:
+There are 187 lints included in this crate:
 
 name                                                                                                                   | default | triggers on
 -----------------------------------------------------------------------------------------------------------------------|---------|----------------------------------------------------------------------------------------------------------------------------------
@@ -278,6 +278,7 @@ name                                                                            
 [mixed_case_hex_literals](https://github.com/Manishearth/rust-clippy/wiki#mixed_case_hex_literals)                     | warn    | hex literals whose letter digits are not consistently upper- or lowercased
 [module_inception](https://github.com/Manishearth/rust-clippy/wiki#module_inception)                                   | warn    | modules that have the same name as their parent module
 [modulo_one](https://github.com/Manishearth/rust-clippy/wiki#modulo_one)                                               | warn    | taking a number modulo 1, which always returns 0
+[mut_from_ref](https://github.com/Manishearth/rust-clippy/wiki#mut_from_ref)                                           | warn    | fns that create mutable refs from immutable ref args
 [mut_mut](https://github.com/Manishearth/rust-clippy/wiki#mut_mut)                                                     | allow   | usage of double-mut refs, e.g. `&mut &mut ...`
 [mutex_atomic](https://github.com/Manishearth/rust-clippy/wiki#mutex_atomic)                                           | warn    | using a mutex where an atomic value could be used instead
 [mutex_integer](https://github.com/Manishearth/rust-clippy/wiki#mutex_integer)                                         | allow   | using a mutex for an integer type
