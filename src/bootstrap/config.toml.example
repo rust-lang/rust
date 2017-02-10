@@ -108,6 +108,10 @@
 # Note that Python 2 is currently required.
 #python = "python2.7"
 
+# Force Cargo to check that Cargo.lock describes the precise dependency
+# set that all the Cargo.toml files create, instead of updating it.
+#locked-deps = false
+
 # Indicate whether the vendored sources are used for Rust dependencies or not
 #vendor = false
 

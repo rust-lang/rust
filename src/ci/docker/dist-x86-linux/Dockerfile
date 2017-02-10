@@ -16,7 +16,8 @@ RUN yum upgrade -y && yum install -y \
       pkg-config \
       wget \
       autoconf \
-      gettext
+      gettext \
+      libssl-dev
 
 ENV PATH=/rustroot/bin:$PATH
 ENV LD_LIBRARY_PATH=/rustroot/lib64:/rustroot/lib
