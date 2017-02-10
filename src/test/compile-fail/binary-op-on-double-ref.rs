@@ -13,7 +13,7 @@ fn main() {
     let vr = v.iter().filter(|x| {
         x % 2 == 0
         //~^ ERROR binary operation `%` cannot be applied to type `&&{integer}`
-        //~| NOTE this is a reference of type that `%` can be applied to
+        //~| NOTE this is a reference to a type that `%` can be applied to
         //~| NOTE an implementation of `std::ops::Rem` might be missing for `&&{integer}`
     });
     println!("{:?}", vr);

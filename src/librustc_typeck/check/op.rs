@@ -212,11 +212,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 self.lookup_op_method(expr, ty_mut.ty, vec![rhs_ty_var],
                                     Symbol::intern(name), trait_def_id,
                                     lhs_expr).is_ok() {
-                                err.span_note(
-                                    lhs_expr.span,
+                                err.note(
                                     &format!(
-                                        "this is a reference of type that `{}` can be applied to, \
-                                        you need to dereference this variable once for this \
+                                        "this is a reference to a type that `{}` can be applied \
+                                        to; you need to dereference this variable once for this \
                                         operation to work",
                                     op.node.as_str()));
                             }
@@ -244,11 +243,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                          rhs_expr, rhs_ty_var, &mut err) {
                                 // This has nothing here because it means we did string
                                 // concatenation (e.g. "Hello " + "World!"). This means
-                                // we don't want the span in the else clause to be emmitted
+                                // we don't want the note in the else clause to be emitted
                             } else {
-                                span_note!(&mut err, lhs_expr.span,
-                                            "an implementation of `{}` might be missing for `{}`",
-                                            missing_trait, lhs_ty);
+                                err.note(
+                                    &format!("an implementation of `{}` might be missing for `{}`",
+                                             missing_trait, lhs_ty));
                             }
                         }
                         err.emit();
@@ -271,16 +270,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                           rhs_expr: &'gcx hir::Expr,
                           rhs_ty_var: Ty<'tcx>,
                           mut err: &mut errors::DiagnosticBuilder) -> bool {
-        // If this function returns false it means we use it to make sure we print
-        // out the an "implementation of span_note!" above where this function is
-        // called and if true we don't.
+        // If this function returns true it means a note was printed, so we don't need
+        // to print the normal "implementation of `std::ops::Add` might be missing" note
         let mut is_string_addition = false;
         let rhs_ty = self.check_expr_coercable_to_type(rhs_expr, rhs_ty_var);
         if let TyRef(_, l_ty) = lhs_ty.sty {
             if let TyRef(_, r_ty) = rhs_ty.sty {
                 if l_ty.ty.sty == TyStr && r_ty.ty.sty == TyStr {
-                    span_note!(&mut err, lhs_expr.span,
-                            "`+` can't be used to concatenate two `&str` strings");
+                    err.note("`+` can't be used to concatenate two `&str` strings");
                     let codemap = self.tcx.sess.codemap();
                     let suggestion =
                         match (codemap.span_to_snippet(lhs_expr.span),
