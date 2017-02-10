@@ -148,7 +148,13 @@ struct ConstantExtractor<'a, 'b: 'a, 'tcx: 'b> {
 }
 
 impl<'a, 'b, 'tcx> ConstantExtractor<'a, 'b, 'tcx> {
-    fn global_item(&mut self, def_id: DefId, substs: &'tcx subst::Substs<'tcx>, span: Span, immutable: bool) {
+    fn global_item(
+        &mut self,
+        def_id: DefId,
+        substs: &'tcx subst::Substs<'tcx>,
+        span: Span,
+        shared: bool,
+    ) {
         let (def_id, substs) = self.ecx.resolve_associated_const(def_id, substs);
         let cid = GlobalId { def_id, substs, promoted: None };
         if self.ecx.globals.contains_key(&cid) {
@@ -157,10 +163,19 @@ impl<'a, 'b, 'tcx> ConstantExtractor<'a, 'b, 'tcx> {
         self.try(|this| {
             let mir = this.ecx.load_mir(def_id)?;
             this.ecx.globals.insert(cid, Global::uninitialized(mir.return_ty));
-            let cleanup = StackPopCleanup::MarkStatic(!immutable || mir.return_ty.type_contents(this.ecx.tcx).interior_unsafe());
+            let mutable = !shared || mir.return_ty.type_contents(this.ecx.tcx).interior_unsafe();
+            let cleanup = StackPopCleanup::MarkStatic(mutable);
             let name = ty::tls::with(|tcx| tcx.item_path_str(def_id));
             trace!("pushing stack frame for global: {}", name);
-            this.ecx.push_stack_frame(def_id, span, mir, substs, Lvalue::Global(cid), cleanup, Vec::new())
+            this.ecx.push_stack_frame(
+                def_id,
+                span,
+                mir,
+                substs,
+                Lvalue::Global(cid),
+                cleanup,
+                Vec::new(),
+            )
         });
     }
     fn try<F: FnOnce(&mut Self) -> EvalResult<'tcx>>(&mut self, f: F) {
