@@ -51,7 +51,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             debug!("no need to drop {:?}", ty);
             return Ok(());
         }
-        trace!("-need to drop {:?} at {:?}", ty, lval);
+        trace!("need to drop {:?} at {:?}", ty, lval);
 
         match ty.sty {
             // special case `Box` to deallocate the inner allocation
@@ -89,7 +89,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 // is the same as
                 // fn drop(&mut self) if Self is Box<T>
                 drop.push((box_free_fn, val, substs));
-            },
+            }
 
             ty::TyAdt(adt_def, substs) => {
                 // FIXME: some structs are represented as ByValPair
@@ -165,8 +165,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     ty,
                     drop,
                 )?;
-            },
-            ty::TyTuple(fields, _) => self.drop_fields(fields.into_iter().cloned(), lval, ty, drop)?,
+            }
+
+            ty::TyTuple(fields, _) =>
+                self.drop_fields(fields.into_iter().cloned(), lval, ty, drop)?,
+
             ty::TyDynamic(..) => {
                 let (ptr, vtable) = match lval {
                     Lvalue::Ptr { ptr, extra: LvalueExtra::Vtable(vtable) } => (ptr, vtable),
@@ -181,7 +184,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     // just a sanity check
                     assert_eq!(drop_fn.offset, 0);
                 }
-            },
+            }
+
             ty::TySlice(elem_ty) => {
                 let (ptr, len) = match lval {
                     Lvalue::Ptr { ptr, extra: LvalueExtra::Length(len) } => (ptr, len),
@@ -193,7 +197,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 for i in 0..len {
                     self.drop(Lvalue::from_ptr(ptr.offset(i * size)), elem_ty, drop)?;
                 }
-            },
+            }
+
             ty::TyArray(elem_ty, len) => {
                 let lval = self.force_allocation(lval)?;
                 let (ptr, extra) = match lval {
@@ -206,10 +211,14 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 for i in 0..(len as u64) {
                     self.drop(Lvalue::Ptr { ptr: ptr.offset(i * size), extra }, elem_ty, drop)?;
                 }
-            },
-            // FIXME: what about TyClosure and TyAnon?
-            // other types do not need to process drop
-            _ => {},
+            }
+
+            ty::TyClosure(def_id, substs) => {
+                let fields = substs.upvar_tys(def_id, self.tcx);
+                self.drop_fields(fields, lval, ty, drop)?;
+            }
+
+            _ => bug!(),
         }
 
         Ok(())
