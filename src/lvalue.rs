@@ -164,13 +164,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         &mut self,
         proj: &mir::LvalueProjection<'tcx>,
     ) -> EvalResult<'tcx, Lvalue<'tcx>> {
-        let base = self.eval_lvalue(&proj.base)?;
-        let base_ty = self.lvalue_ty(&proj.base);
-        let base_layout = self.type_layout(base_ty)?;
-
         use rustc::mir::ProjectionElem::*;
         let (ptr, extra) = match proj.elem {
             Field(field, field_ty) => {
+                let base = self.eval_lvalue(&proj.base)?;
+                let base_ty = self.lvalue_ty(&proj.base);
+                let base_layout = self.type_layout(base_ty)?;
                 // FIXME(solson)
                 let base = self.force_allocation(base)?;
                 let (base_ptr, base_extra) = base.to_ptr_and_extra();
@@ -246,6 +245,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             Downcast(_, variant) => {
+                let base = self.eval_lvalue(&proj.base)?;
+                let base_ty = self.lvalue_ty(&proj.base);
+                let base_layout = self.type_layout(base_ty)?;
                 // FIXME(solson)
                 let base = self.force_allocation(base)?;
                 let (base_ptr, base_extra) = base.to_ptr_and_extra();
@@ -260,6 +262,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             Deref => {
+                let base_ty = self.lvalue_ty(&proj.base);
                 let val = self.eval_and_read_lvalue(&proj.base)?;
 
                 let pointee_type = match base_ty.sty {
@@ -285,6 +288,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             Index(ref operand) => {
+                let base = self.eval_lvalue(&proj.base)?;
+                let base_ty = self.lvalue_ty(&proj.base);
                 // FIXME(solson)
                 let base = self.force_allocation(base)?;
                 let (base_ptr, _) = base.to_ptr_and_extra();
@@ -300,6 +305,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             ConstantIndex { offset, min_length, from_end } => {
+                let base = self.eval_lvalue(&proj.base)?;
+                let base_ty = self.lvalue_ty(&proj.base);
                 // FIXME(solson)
                 let base = self.force_allocation(base)?;
                 let (base_ptr, _) = base.to_ptr_and_extra();
@@ -319,6 +326,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             Subslice { from, to } => {
+                let base = self.eval_lvalue(&proj.base)?;
+                let base_ty = self.lvalue_ty(&proj.base);
                 // FIXME(solson)
                 let base = self.force_allocation(base)?;
                 let (base_ptr, _) = base.to_ptr_and_extra();
