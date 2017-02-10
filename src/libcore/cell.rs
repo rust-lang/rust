@@ -186,6 +186,7 @@ use fmt::{self, Debug, Display};
 use marker::Unsize;
 use mem;
 use ops::{Deref, DerefMut, CoerceUnsized};
+use ptr;
 
 /// A mutable memory location.
 ///
@@ -280,6 +281,19 @@ unsafe impl<T> Send for Cell<T> where T: Send {}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> !Sync for Cell<T> {}
 
+#[unstable(feature = "move_cell", issue = "39264")]
+impl<T:Clone> Clone for Cell<T> {
+    #[inline]
+    default fn clone(&self) -> Cell<T> {
+        let temp = unsafe { mem::uninitialized() };
+        let inner = self.replace(temp);
+        // If `clone` panics, let it crash.
+        let another = inner.clone();
+        self.set(inner);
+        Cell::new(another)
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T:Copy> Clone for Cell<T> {
     #[inline]
@@ -289,11 +303,23 @@ impl<T:Copy> Clone for Cell<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T:Default + Copy> Default for Cell<T> {
+impl<T:Default> Default for Cell<T> {
     /// Creates a `Cell<T>`, with the `Default` value for T.
     #[inline]
     fn default() -> Cell<T> {
         Cell::new(Default::default())
+    }
+}
+
+#[unstable(feature = "move_cell", issue = "39264")]
+impl<T:PartialEq> PartialEq for Cell<T> {
+    #[inline]
+    default fn eq(&self, other: &Cell<T>) -> bool {
+        if ptr::eq(self, other) {
+            true
+        } else {
+            unsafe { Cell::take_and_restore(self, other, |l, r| l == r) }
+        }
     }
 }
 
@@ -305,8 +331,59 @@ impl<T:PartialEq + Copy> PartialEq for Cell<T> {
     }
 }
 
+#[unstable(feature = "move_cell", issue = "39264")]
+impl<T:Eq> Eq for Cell<T> {}
+
 #[stable(feature = "cell_eq", since = "1.2.0")]
 impl<T:Eq + Copy> Eq for Cell<T> {}
+
+#[unstable(feature = "move_cell", issue = "39264")]
+impl<T:PartialOrd> PartialOrd for Cell<T> {
+    #[inline]
+    default fn partial_cmp(&self, other: &Cell<T>) -> Option<Ordering> {
+        if ptr::eq(self, other) {
+            Some(Ordering::Equal)
+        } else {
+            unsafe { Cell::take_and_restore(self, other, |l, r| l.partial_cmp(r)) }
+        }
+    }
+
+    #[inline]
+    default fn lt(&self, other: &Cell<T>) -> bool {
+        if ptr::eq(self, other) {
+            true
+        } else {
+            unsafe { Cell::take_and_restore(self, other, |l, r| l < r) }
+        }
+    }
+
+    #[inline]
+    default fn le(&self, other: &Cell<T>) -> bool {
+        if ptr::eq(self, other) {
+            true
+        } else {
+            unsafe { Cell::take_and_restore(self, other, |l, r| l <= r) }
+        }
+    }
+
+    #[inline]
+    default fn gt(&self, other: &Cell<T>) -> bool {
+        if ptr::eq(self, other) {
+            true
+        } else {
+            unsafe { Cell::take_and_restore(self, other, |l, r| l > r) }
+        }
+    }
+
+    #[inline]
+    default fn ge(&self, other: &Cell<T>) -> bool {
+        if ptr::eq(self, other) {
+            true
+        } else {
+            unsafe { Cell::take_and_restore(self, other, |l, r| l >= r) }
+        }
+    }
+}
 
 #[stable(feature = "cell_ord", since = "1.10.0")]
 impl<T:PartialOrd + Copy> PartialOrd for Cell<T> {
@@ -336,6 +413,18 @@ impl<T:PartialOrd + Copy> PartialOrd for Cell<T> {
     }
 }
 
+#[unstable(feature = "move_cell", issue = "39264")]
+impl<T:Ord> Ord for Cell<T> {
+    #[inline]
+    default fn cmp(&self, other: &Cell<T>) -> Ordering {
+        if ptr::eq(self, other) {
+            Ordering::Equal
+        } else {
+            unsafe { Cell::take_and_restore(self, other, |l, r| l.cmp(r)) }
+        }
+    }
+}
+
 #[stable(feature = "cell_ord", since = "1.10.0")]
 impl<T:Ord + Copy> Ord for Cell<T> {
     #[inline]
@@ -345,7 +434,7 @@ impl<T:Ord + Copy> Ord for Cell<T> {
 }
 
 #[stable(feature = "cell_from", since = "1.12.0")]
-impl<T: Copy> From<T> for Cell<T> {
+impl<T> From<T> for Cell<T> {
     fn from(t: T) -> Cell<T> {
         Cell::new(t)
     }
@@ -421,6 +510,24 @@ impl<T> Cell<T> {
     #[unstable(feature = "move_cell", issue = "39264")]
     pub fn into_inner(self) -> T {
         unsafe { self.value.into_inner() }
+    }
+
+    /// Private function used for implementing other methods when `T` is not `Copy`.
+    ///
+    /// This is `unsafe` because `left` and `right` may point to the same object.
+    #[unstable(feature = "move_cell", issue = "39264")]
+    unsafe fn take_and_restore<Result, F>(left: &Self, right: &Self, f: F) -> Result
+        where F: FnOnce(&T, &T) -> Result
+    {
+        let temp_left = mem::uninitialized();
+        let temp_right = mem::uninitialized();
+        let lhs = left.replace(temp_left);
+        let rhs = right.replace(temp_right);
+        // If panic happens in `f`, just let it crash.
+        let result = f(&lhs, &rhs);
+        left.set(lhs);
+        right.set(rhs);
+        return result;
     }
 }
 
