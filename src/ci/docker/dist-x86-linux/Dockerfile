@@ -13,13 +13,14 @@ RUN yum upgrade -y && yum install -y \
       file \
       xz \
       which \
-      pkg-config \
+      pkgconfig \
       wget \
       autoconf \
       gettext
 
 ENV PATH=/rustroot/bin:$PATH
 ENV LD_LIBRARY_PATH=/rustroot/lib64:/rustroot/lib
+ENV PKG_CONFIG_PATH=/rustroot/lib/pkgconfig
 WORKDIR /tmp
 COPY shared.sh build-binutils.sh /tmp/
 
