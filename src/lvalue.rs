@@ -160,7 +160,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         Ok(lvalue)
     }
 
-    fn lvalue_field(
+    pub fn lvalue_field(
         &mut self,
         base: Lvalue<'tcx>,
         field: usize,

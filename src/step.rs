@@ -14,6 +14,7 @@ use rustc::ty::{subst, self};
 use error::{EvalResult, EvalError};
 use eval_context::{EvalContext, StackPopCleanup, MirRef};
 use lvalue::{Global, GlobalId, Lvalue};
+use value::{Value, PrimVal};
 use syntax::codemap::Span;
 
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
@@ -89,15 +90,15 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let dest_layout = self.type_layout(dest_ty)?;
 
                 match *dest_layout {
-                    Layout::General { discr, ref variants, .. } => {
-                        let discr_size = discr.size().bytes();
-                        let discr_offset = variants[variant_index].offsets[0].bytes();
+                    Layout::General { discr, .. } => {
+                        // FIXME: I (oli-obk) think we need to check the
+                        // `dest_ty` for the variant's discriminant and write
+                        // instead of the variant index
+                        // We don't have any tests actually going through these lines
+                        let discr_ty = discr.to_ty(&self.tcx, false);
+                        let discr_lval = self.lvalue_field(dest, 0, dest_ty, discr_ty)?;
 
-                        // FIXME(solson)
-                        let dest = self.force_allocation(dest)?;
-                        let discr_dest = (dest.to_ptr()).offset(discr_offset);
-
-                        self.memory.write_uint(discr_dest, variant_index as u128, discr_size)?;
+                        self.write_value(Value::ByVal(PrimVal::Bytes(variant_index as u128)), discr_lval, discr_ty)?;
                     }
 
                     Layout::RawNullablePointer { nndiscr, .. } => {

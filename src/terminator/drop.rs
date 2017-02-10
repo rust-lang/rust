@@ -93,7 +93,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             ty::TyAdt(adt_def, substs) => {
                 // FIXME: some structs are represented as ByValPair
-                let lval = self.force_allocation(lval)?;
+                let mut lval = self.force_allocation(lval)?;
                 let adt_ptr = match lval {
                     Lvalue::Ptr { ptr, .. } => ptr,
                     _ => bug!("force allocation can only yield Lvalue::Ptr"),
@@ -104,22 +104,26 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 }
                 let layout = self.type_layout(ty)?;
                 let fields = match *layout {
-                    Layout::Univariant { ref variant, .. } => {
-                        adt_def.struct_variant().fields.iter().zip(&variant.offsets)
-                    },
-                    Layout::General { ref variants, .. } => {
+                    Layout::Univariant { .. } => &adt_def.struct_variant().fields,
+                    Layout::General { .. } => {
                         let discr_val = self.read_discriminant_value(adt_ptr, ty)? as u128;
+                        let ptr = self.force_allocation(lval)?.to_ptr();
                         match adt_def.variants.iter().position(|v| discr_val == v.disr_val.to_u128_unchecked()) {
-                            // start at offset 1, to skip over the discriminant
-                            Some(i) => adt_def.variants[i].fields.iter().zip(&variants[i].offsets[1..]),
+                            Some(i) => {
+                                lval = Lvalue::Ptr {
+                                    ptr,
+                                    extra: LvalueExtra::DowncastVariant(i),
+                                };
+                                &adt_def.variants[i].fields
+                            },
                             None => return Err(EvalError::InvalidDiscriminant),
                         }
                     },
-                    Layout::StructWrappedNullablePointer { nndiscr, ref nonnull, .. } => {
+                    Layout::StructWrappedNullablePointer { nndiscr, .. } => {
                         let discr = self.read_discriminant_value(adt_ptr, ty)?;
                         if discr == nndiscr as u128 {
                             assert_eq!(discr as usize as u128, discr);
-                            adt_def.variants[discr as usize].fields.iter().zip(&nonnull.offsets)
+                            &adt_def.variants[discr as usize].fields
                         } else {
                             // FIXME: the zst variant might contain zst types that impl Drop
                             return Ok(()); // nothing to do, this is zero sized (e.g. `None`)
@@ -146,18 +150,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 };
                 let tcx = self.tcx;
                 self.drop_fields(
-                    fields.map(|(ty, &offset)| (monomorphize_field_ty(tcx, ty, substs), offset)),
+                    fields.iter().map(|field| monomorphize_field_ty(tcx, field, substs)),
                     lval,
+                    ty,
                     drop,
                 )?;
             },
-            ty::TyTuple(fields, _) => {
-                let offsets = match *self.type_layout(ty)? {
-                    Layout::Univariant { ref variant, .. } => &variant.offsets,
-                    _ => bug!("tuples must be univariant"),
-                };
-                self.drop_fields(fields.iter().cloned().zip(offsets.iter().cloned()), lval, drop)?;
-            },
+            ty::TyTuple(fields, _) => self.drop_fields(fields.into_iter().cloned(), lval, ty, drop)?,
             ty::TyDynamic(..) => {
                 let (ptr, vtable) = match lval {
                     Lvalue::Ptr { ptr, extra: LvalueExtra::Vtable(vtable) } => (ptr, vtable),
@@ -208,25 +207,18 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
     fn drop_fields<I>(
         &mut self,
-        mut fields: I,
+        fields: I,
         lval: Lvalue<'tcx>,
+        ty: Ty<'tcx>,
         drop: &mut Vec<(DefId, Value, &'tcx Substs<'tcx>)>,
     ) -> EvalResult<'tcx>
-        where I: Iterator<Item = (Ty<'tcx>, ty::layout::Size)>,
+        where I: Iterator<Item=Ty<'tcx>>,
     {
-        // FIXME: some aggregates may be represented by Value::ByValPair
-        let (adt_ptr, extra) = self.force_allocation(lval)?.to_ptr_and_extra();
-        // manual iteration, because we need to be careful about the last field if it is unsized
-        while let Some((field_ty, offset)) = fields.next() {
-            let ptr = adt_ptr.offset(offset.bytes());
-            if self.type_is_sized(field_ty) {
-                self.drop(Lvalue::from_ptr(ptr), field_ty, drop)?;
-            } else {
-                self.drop(Lvalue::Ptr { ptr, extra }, field_ty, drop)?;
-                break; // if it is not sized, then this is the last field anyway
-            }
+        trace!("drop_fields: {:?} of type {}", lval, ty);
+        for (i, field_ty) in fields.enumerate() {
+            let field_lval = self.lvalue_field(lval, i, ty, field_ty)?;
+            self.drop(field_lval, field_ty, drop)?;
         }
-        assert!(fields.next().is_none());
         Ok(())
     }
 
