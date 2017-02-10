@@ -44,13 +44,15 @@ declare_lint! {
     "comparing a pointer to a null pointer, suggesting to use `.is_null()` instead."
 }
 
-/// **What it does:** This lint checks for functions that take immutable refs and return
+/// **What it does:** This lint checks for functions that take immutable references and return
 /// mutable ones.
 ///
-/// **Why is this bad?** This is trivially unsound, as one can create two mutable refs
-/// from the same source.
+/// **Why is this bad?** This is trivially unsound, as one can create two mutable references
+/// from the same (immutable!) source. This [error](https://github.com/rust-lang/rust/issues/39465)
+/// actually lead to an interim Rust release 1.15.1.
 ///
-/// **Known problems:** This lint will overlook functions where input and output lifetimes differ
+/// **Known problems:** To be on the conservative side, if there's at least one mutable reference
+/// with the output lifetime, this lint will not trigger. In practice, this case is unlikely anyway.
 ///
 /// **Example:**
 /// ```rust
@@ -131,25 +133,31 @@ fn check_fn(cx: &LateContext, decl: &FnDecl, fn_id: NodeId) {
 
     if let FunctionRetTy::Return(ref ty) = decl.output {
         if let Some((out, MutMutable)) = get_rptr_lm(ty) {
-            if let Some(MutImmutable) = decl.inputs.iter()
-                     .filter_map(|ty| get_rptr_lm(ty))
-                     .filter(|&(lt, _)| lt.name == out.name)
-                     .fold(None, |x, (_, m)| match (x, m) {
+            if let Some(MutImmutable) =
+                decl.inputs
+                    .iter()
+                    .filter_map(|ty| get_rptr_lm(ty))
+                    .filter(|&(lt, _)| lt.name == out.name)
+                    .fold(None, |x, (_, m)| match (x, m) {
                         (Some(MutMutable), _) |
                         (_, MutMutable) => Some(MutMutable),
                         (_, m) => Some(m),
-                     }) {
+                    }) {
                 span_lint(cx,
                           MUT_FROM_REF,
                           ty.span,
-                          "this function takes an immutable ref to return a mutable one:");
+                          "this function takes an immutable ref to return a mutable one");
             }
         }
     }
 }
 
 fn get_rptr_lm(ty: &Ty) -> Option<(&Lifetime, Mutability)> {
-    if let Ty_::TyRptr(ref lt, ref m) = ty.node { Some((lt, m.mutbl)) } else { None }
+    if let Ty_::TyRptr(ref lt, ref m) = ty.node {
+        Some((lt, m.mutbl))
+    } else {
+        None
+    }
 }
 
 fn is_null_path(expr: &Expr) -> bool {
