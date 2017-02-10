@@ -217,12 +217,20 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.write_primval(dest, PrimVal::from_f64(f.abs()), dest_ty)?;
             }
 
-            "fadd_fast" => {
+            "fadd_fast" | "fsub_fast" | "fmul_fast" | "fdiv_fast" | "frem_fast" => {
                 let ty = substs.type_at(0);
                 let kind = self.ty_to_primval_kind(ty)?;
                 let a = self.value_to_primval(arg_vals[0], ty)?;
-                let b = self.value_to_primval(arg_vals[0], ty)?;
-                let result = operator::binary_op(mir::BinOp::Add, a, kind, b, kind)?;
+                let b = self.value_to_primval(arg_vals[1], ty)?;
+                let op = match intrinsic_name {
+                    "fadd_fast" => mir::BinOp::Add,
+                    "fsub_fast" => mir::BinOp::Sub,
+                    "fmul_fast" => mir::BinOp::Mul,
+                    "fdiv_fast" => mir::BinOp::Div,
+                    "frem_fast" => mir::BinOp::Rem,
+                    _ => bug!(),
+                };
+                let result = operator::binary_op(op, a, kind, b, kind)?;
                 self.write_primval(dest, result.0, dest_ty)?;
             }
 
