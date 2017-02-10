@@ -116,16 +116,6 @@ impl<'tcx> Global<'tcx> {
 
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     pub(super) fn eval_and_read_lvalue(&mut self, lvalue: &mir::Lvalue<'tcx>) -> EvalResult<'tcx, Value> {
-        if let mir::Lvalue::Projection(ref proj) = *lvalue {
-            if let mir::Lvalue::Local(index) = proj.base {
-                if let Value::ByValPair(a, b) = self.frame().get_local(index, None) {
-                    if let mir::ProjectionElem::Field(ref field, _) = proj.elem {
-                        let val = [a, b][field.index()];
-                        return Ok(Value::ByVal(val));
-                    }
-                }
-            }
-        }
         let lvalue = self.eval_lvalue(lvalue)?;
         Ok(self.read_lvalue(lvalue))
     }
