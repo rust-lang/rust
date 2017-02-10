@@ -1367,12 +1367,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         if let Lvalue::Local { frame, local, field } = lvalue {
             let mut allocs = Vec::new();
             let mut msg = format!("{:?}", local);
+            if let Some(field) = field {
+                write!(msg, ".{}", field).unwrap();
+            }
             let last_frame = self.stack.len() - 1;
             if frame != last_frame {
                 write!(msg, " ({} frames up)", last_frame - frame).unwrap();
-            }
-            if let Some(field) = field {
-                write!(msg, " (field {:?})", field).unwrap();
             }
             write!(msg, ":").unwrap();
 
