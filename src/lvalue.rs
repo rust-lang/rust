@@ -160,92 +160,103 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         Ok(lvalue)
     }
 
+    pub fn lvalue_field(
+        &mut self,
+        base: Lvalue<'tcx>,
+        field: usize,
+        base_ty: Ty<'tcx>,
+        field_ty: Ty<'tcx>,
+    ) -> EvalResult<'tcx, Lvalue<'tcx>> {
+        let base_layout = self.type_layout(base_ty)?;
+        // FIXME(solson)
+        let base = self.force_allocation(base)?;
+        let (base_ptr, base_extra) = base.to_ptr_and_extra();
+
+        let field_ty = self.monomorphize(field_ty, self.substs());
+
+        use rustc::ty::layout::Layout::*;
+        let (offset, packed) = match *base_layout {
+            Univariant { ref variant, .. } => {
+                (variant.offsets[field], variant.packed)
+            },
+
+            General { ref variants, .. } => {
+                if let LvalueExtra::DowncastVariant(variant_idx) = base_extra {
+                    // +1 for the discriminant, which is field 0
+                    (variants[variant_idx].offsets[field + 1], variants[variant_idx].packed)
+                } else {
+                    bug!("field access on enum had no variant index");
+                }
+            }
+
+            RawNullablePointer { .. } => {
+                assert_eq!(field, 0);
+                return Ok(base);
+            }
+
+            StructWrappedNullablePointer { ref nonnull, .. } => {
+                (nonnull.offsets[field], nonnull.packed)
+            }
+
+            UntaggedUnion { .. } => return Ok(base),
+
+            Vector { element, count } => {
+                let field = field as u64;
+                assert!(field < count);
+                let elem_size = element.size(&self.tcx.data_layout).bytes();
+                (Size::from_bytes(field * elem_size), false)
+            }
+
+            _ => bug!("field access on non-product type: {:?}", base_layout),
+        };
+
+        let offset = match base_extra {
+            LvalueExtra::Vtable(tab) => {
+                let (_, align) = self.size_and_align_of_dst(base_ty, Value::ByValPair(PrimVal::Ptr(base_ptr), PrimVal::Ptr(tab)))?;
+                offset.abi_align(Align::from_bytes(align, align).unwrap()).bytes()
+            }
+            _ => offset.bytes(),
+        };
+
+        let ptr = base_ptr.offset(offset);
+
+        if packed {
+            let size = self.type_size(field_ty)?.expect("packed struct must be sized");
+            self.memory.mark_packed(ptr, size);
+        }
+
+        let extra = if self.type_is_sized(field_ty) {
+            LvalueExtra::None
+        } else {
+            match base_extra {
+                LvalueExtra::None => bug!("expected fat pointer"),
+                LvalueExtra::DowncastVariant(..) =>
+                    bug!("Rust doesn't support unsized fields in enum variants"),
+                LvalueExtra::Vtable(_) |
+                LvalueExtra::Length(_) => {},
+            }
+            base_extra
+        };
+
+        Ok(Lvalue::Ptr { ptr, extra })
+    }
+
     fn eval_lvalue_projection(
         &mut self,
         proj: &mir::LvalueProjection<'tcx>,
     ) -> EvalResult<'tcx, Lvalue<'tcx>> {
-        let base = self.eval_lvalue(&proj.base)?;
-        let base_ty = self.lvalue_ty(&proj.base);
-        let base_layout = self.type_layout(base_ty)?;
-
         use rustc::mir::ProjectionElem::*;
         let (ptr, extra) = match proj.elem {
             Field(field, field_ty) => {
-                // FIXME(solson)
-                let base = self.force_allocation(base)?;
-                let (base_ptr, base_extra) = base.to_ptr_and_extra();
-
-                let field_ty = self.monomorphize(field_ty, self.substs());
-                let field = field.index();
-
-                use rustc::ty::layout::Layout::*;
-                let (offset, packed) = match *base_layout {
-                    Univariant { ref variant, .. } => {
-                        (variant.offsets[field], variant.packed)
-                    },
-
-                    General { ref variants, .. } => {
-                        if let LvalueExtra::DowncastVariant(variant_idx) = base_extra {
-                            // +1 for the discriminant, which is field 0
-                            (variants[variant_idx].offsets[field + 1], variants[variant_idx].packed)
-                        } else {
-                            bug!("field access on enum had no variant index");
-                        }
-                    }
-
-                    RawNullablePointer { .. } => {
-                        assert_eq!(field, 0);
-                        return Ok(base);
-                    }
-
-                    StructWrappedNullablePointer { ref nonnull, .. } => {
-                        (nonnull.offsets[field], nonnull.packed)
-                    }
-
-                    UntaggedUnion { .. } => return Ok(base),
-
-                    Vector { element, count } => {
-                        let field = field as u64;
-                        assert!(field < count);
-                        let elem_size = element.size(&self.tcx.data_layout).bytes();
-                        (Size::from_bytes(field * elem_size), false)
-                    }
-
-                    _ => bug!("field access on non-product type: {:?}", base_layout),
-                };
-
-                let offset = match base_extra {
-                    LvalueExtra::Vtable(tab) => {
-                        let (_, align) = self.size_and_align_of_dst(base_ty, Value::ByValPair(PrimVal::Ptr(base_ptr), PrimVal::Ptr(tab)))?;
-                        offset.abi_align(Align::from_bytes(align, align).unwrap()).bytes()
-                    }
-                    _ => offset.bytes(),
-                };
-
-                let ptr = base_ptr.offset(offset);
-
-                if packed {
-                    let size = self.type_size(field_ty)?.expect("packed struct must be sized");
-                    self.memory.mark_packed(ptr, size);
-                }
-
-                let extra = if self.type_is_sized(field_ty) {
-                    LvalueExtra::None
-                } else {
-                    match base_extra {
-                        LvalueExtra::None => bug!("expected fat pointer"),
-                        LvalueExtra::DowncastVariant(..) =>
-                            bug!("Rust doesn't support unsized fields in enum variants"),
-                        LvalueExtra::Vtable(_) |
-                        LvalueExtra::Length(_) => {},
-                    }
-                    base_extra
-                };
-
-                (ptr, extra)
+                let base = self.eval_lvalue(&proj.base)?;
+                let base_ty = self.lvalue_ty(&proj.base);
+                return self.lvalue_field(base, field.index(), base_ty, field_ty);
             }
 
             Downcast(_, variant) => {
+                let base = self.eval_lvalue(&proj.base)?;
+                let base_ty = self.lvalue_ty(&proj.base);
+                let base_layout = self.type_layout(base_ty)?;
                 // FIXME(solson)
                 let base = self.force_allocation(base)?;
                 let (base_ptr, base_extra) = base.to_ptr_and_extra();
@@ -260,6 +271,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             Deref => {
+                let base_ty = self.lvalue_ty(&proj.base);
                 let val = self.eval_and_read_lvalue(&proj.base)?;
 
                 let pointee_type = match base_ty.sty {
@@ -285,6 +297,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             Index(ref operand) => {
+                let base = self.eval_lvalue(&proj.base)?;
+                let base_ty = self.lvalue_ty(&proj.base);
                 // FIXME(solson)
                 let base = self.force_allocation(base)?;
                 let (base_ptr, _) = base.to_ptr_and_extra();
@@ -300,6 +314,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             ConstantIndex { offset, min_length, from_end } => {
+                let base = self.eval_lvalue(&proj.base)?;
+                let base_ty = self.lvalue_ty(&proj.base);
                 // FIXME(solson)
                 let base = self.force_allocation(base)?;
                 let (base_ptr, _) = base.to_ptr_and_extra();
@@ -319,6 +335,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             Subslice { from, to } => {
+                let base = self.eval_lvalue(&proj.base)?;
+                let base_ty = self.lvalue_ty(&proj.base);
                 // FIXME(solson)
                 let base = self.force_allocation(base)?;
                 let (base_ptr, _) = base.to_ptr_and_extra();

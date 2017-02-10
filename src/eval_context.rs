@@ -816,7 +816,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         } else {
                             let (def_id, substs) = self.resolve_associated_const(def_id, substs);
                             let cid = GlobalId { def_id, substs, promoted: None };
-                            self.read_lvalue(Lvalue::Global(cid))
+                            self.globals.get(&cid).expect("static/const not cached").value
                         }
                     }
 
@@ -826,7 +826,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                             substs: self.substs(),
                             promoted: Some(index),
                         };
-                        self.read_lvalue(Lvalue::Global(cid))
+                        self.globals.get(&cid).expect("promoted not cached").value
                     }
                 };
 
