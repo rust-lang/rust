@@ -285,11 +285,11 @@ impl<T> !Sync for Cell<T> {}
 impl<T:Clone> Clone for Cell<T> {
     #[inline]
     default fn clone(&self) -> Cell<T> {
-        let temp = unsafe { mem::uninitialized() };
-        let inner = self.replace(temp);
-        // If `clone` panics, let it crash.
+        // convert `*mut T` to `&T`, because we can ensure that
+        // there are no mutations or mutable aliases going on when casting to &T.
+        let inner : &T = unsafe { self.value.get().as_ref().unwrap() };
+        // If `clone` panics, the `Cell` itself is in a valid state.
         let another = inner.clone();
-        self.set(inner);
         Cell::new(another)
     }
 }
@@ -519,14 +519,12 @@ impl<T> Cell<T> {
     unsafe fn take_and_restore<Result, F>(left: &Self, right: &Self, f: F) -> Result
         where F: FnOnce(&T, &T) -> Result
     {
-        let temp_left = mem::uninitialized();
-        let temp_right = mem::uninitialized();
-        let lhs = left.replace(temp_left);
-        let rhs = right.replace(temp_right);
-        // If panic happens in `f`, just let it crash.
-        let result = f(&lhs, &rhs);
-        left.set(lhs);
-        right.set(rhs);
+        // convert `*mut T` to `&T`, because we can ensure that
+        // there are no mutations or mutable aliases going on when casting to &T.
+        let lhs = left.value.get().as_ref().unwrap();
+        let rhs = right.value.get().as_ref().unwrap();
+        // If panic happens in `f`, both `Cell`s are in a valid state.
+        let result = f(lhs, rhs);
         return result;
     }
 }
