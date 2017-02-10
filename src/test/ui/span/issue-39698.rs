@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
-    let x = Some(0);
+enum T {
+    T1(i32, i32),
+    T2(i32, i32),
+    T3(i32),
+    T4(i32),
+}
 
-    match x {
-        Some(y) | None => {} //~  ERROR variable `y` from pattern #1 isn't bound in pattern #2
-        _ => ()              //~| NOTE pattern doesn't bind `y`
-                             //~| NOTE variable not in all patterns
+fn main() {
+    match T::T1(123, 456) {
+        T::T1(a, d) | T::T2(d, b) | T::T3(c) | T::T4(a) => { println!("{:?}", a); }
     }
 }
