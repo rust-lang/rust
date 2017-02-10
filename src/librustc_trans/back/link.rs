@@ -722,9 +722,13 @@ fn link_natively(sess: &Session,
         cmd.arg(root.join(obj));
     }
 
-    if sess.target.target.options.is_like_emscripten &&
-       sess.panic_strategy() == PanicStrategy::Abort {
-        cmd.args(&["-s", "DISABLE_EXCEPTION_CATCHING=1"]);
+    if sess.target.target.options.is_like_emscripten {
+        cmd.arg("-s");
+        cmd.arg(if sess.panic_strategy() == PanicStrategy::Abort {
+            "DISABLE_EXCEPTION_CATCHING=1"
+        } else {
+            "DISABLE_EXCEPTION_CATCHING=0"
+        });
     }
 
     {
@@ -830,7 +834,8 @@ fn link_args(cmd: &mut Linker,
 
     // If we're building a dynamic library then some platforms need to make sure
     // that all symbols are exported correctly from the dynamic library.
-    if crate_type != config::CrateTypeExecutable {
+    if crate_type != config::CrateTypeExecutable ||
+       sess.target.target.options.is_like_emscripten {
         cmd.export_symbols(tmpdir, crate_type);
     }
 

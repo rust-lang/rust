@@ -551,6 +551,7 @@ dependencies = [
  "rustc_incremental 0.0.0",
  "rustc_llvm 0.0.0",
  "rustc_platform_intrinsics 0.0.0",
+ "serialize 0.0.0",
  "syntax 0.0.0",
  "syntax_pos 0.0.0",
 ]
