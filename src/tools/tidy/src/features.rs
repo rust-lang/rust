@@ -167,7 +167,7 @@ pub fn check(path: &Path, bad: &mut bool) {
     // FIXME get this whitelist empty.
     let whitelist = vec![
         "abi_ptx", "simd", "static_recursion",
-        "cfg_target_has_atomic", "staged_api", "const_indexing",
+        "cfg_target_has_atomic", "staged_api",
         "unboxed_closures", "stmt_expr_attributes",
         "cfg_target_thread_local", "unwind_attributes",
         "inclusive_range_syntax"

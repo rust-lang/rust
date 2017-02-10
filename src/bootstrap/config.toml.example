@@ -124,6 +124,9 @@
 # disabled by default.
 #extended = false
 
+# Verbosity level: 0 == not verbose, 1 == verbose, 2 == very verbose
+#verbose = 0
+
 # Build the sanitizer runtimes
 #sanitizers = false
 
