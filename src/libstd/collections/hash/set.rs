@@ -291,7 +291,8 @@ impl<T, S> HashSet<T, S>
         Iter { iter: self.map.keys() }
     }
 
-    /// Visit the values representing the difference.
+    /// Visit the values representing the difference,
+    /// i.e. the values that are in `self` but not in `other`.
     ///
     /// # Examples
     ///
@@ -321,7 +322,8 @@ impl<T, S> HashSet<T, S>
         }
     }
 
-    /// Visit the values representing the symmetric difference.
+    /// Visit the values representing the symmetric difference,
+    /// i.e. the values that are in `self` or in `other` but not in both.
     ///
     /// # Examples
     ///
@@ -348,7 +350,8 @@ impl<T, S> HashSet<T, S>
         SymmetricDifference { iter: self.difference(other).chain(other.difference(self)) }
     }
 
-    /// Visit the values representing the intersection.
+    /// Visit the values representing the intersection,
+    /// i.e. the values that are both in `self` and `other`.
     ///
     /// # Examples
     ///
@@ -373,7 +376,8 @@ impl<T, S> HashSet<T, S>
         }
     }
 
-    /// Visit the values representing the union.
+    /// Visit the values representing the union,
+    /// i.e. all the values in `self` or `other`, without duplicates.
     ///
     /// # Examples
     ///
@@ -489,7 +493,7 @@ impl<T, S> HashSet<T, S>
         Recover::get(&self.map, value)
     }
 
-    /// Returns `true` if the set has no elements in common with `other`.
+    /// Returns `true` if `self` has no elements in common with `other`.
     /// This is equivalent to checking for an empty intersection.
     ///
     /// # Examples
@@ -511,7 +515,8 @@ impl<T, S> HashSet<T, S>
         self.iter().all(|v| !other.contains(v))
     }
 
-    /// Returns `true` if the set is a subset of another.
+    /// Returns `true` if the set is a subset of another,
+    /// i.e. `other` contains at least all the values in `self`.
     ///
     /// # Examples
     ///
@@ -532,7 +537,8 @@ impl<T, S> HashSet<T, S>
         self.iter().all(|v| other.contains(v))
     }
 
-    /// Returns `true` if the set is a superset of another.
+    /// Returns `true` if the set is a superset of another,
+    /// i.e. `self` contains at least all the values in `other`.
     ///
     /// # Examples
     ///
