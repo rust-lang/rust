@@ -1000,6 +1000,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 }
 
 /// Run the translation phase to LLVM, after which the AST and analysis can
+/// be discarded.
 pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                            analysis: ty::CrateAnalysis,
                                            incremental_hashes_map: &IncrementalHashesMap)
