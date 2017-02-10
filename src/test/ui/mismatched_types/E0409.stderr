@@ -1,4 +1,4 @@
-error[E0409]: variable `y` is bound with different mode in pattern #2 than in pattern #1
+error[E0409]: variable `y` is bound in inconsistent ways within the same match arm
   --> $DIR/E0409.rs:15:23
    |
 15 |         (0, ref y) | (y, 0) => {} //~ ERROR E0409
