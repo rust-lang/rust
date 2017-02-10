@@ -44,6 +44,7 @@ pub struct Config {
     pub submodules: bool,
     pub compiler_docs: bool,
     pub docs: bool,
+    pub locked_deps: bool,
     pub vendor: bool,
     pub target_config: HashMap<String, Target>,
     pub full_bootstrap: bool,
@@ -145,6 +146,7 @@ struct Build {
     docs: Option<bool>,
     submodules: Option<bool>,
     gdb: Option<String>,
+    locked_deps: Option<bool>,
     vendor: Option<bool>,
     nodejs: Option<String>,
     python: Option<String>,
@@ -294,6 +296,7 @@ impl Config {
         set(&mut config.compiler_docs, build.compiler_docs);
         set(&mut config.docs, build.docs);
         set(&mut config.submodules, build.submodules);
+        set(&mut config.locked_deps, build.locked_deps);
         set(&mut config.vendor, build.vendor);
         set(&mut config.full_bootstrap, build.full_bootstrap);
         set(&mut config.extended, build.extended);
@@ -440,6 +443,7 @@ impl Config {
                 ("LOCAL_REBUILD", self.local_rebuild),
                 ("NINJA", self.ninja),
                 ("CODEGEN_TESTS", self.codegen_tests),
+                ("LOCKED_DEPS", self.locked_deps),
                 ("VENDOR", self.vendor),
                 ("FULL_BOOTSTRAP", self.full_bootstrap),
                 ("EXTENDED", self.extended),
