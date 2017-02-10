@@ -389,28 +389,23 @@ pub use realstd::rt::update_panic_count;
 
 /// Invoke a closure, capturing the cause of an unwinding panic if one occurs.
 pub unsafe fn try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<Any + Send>> {
-    struct Data<F, R> {
+    #[allow(unions_with_drop_fields)]
+    union Data<F, R> {
         f: F,
         r: R,
     }
 
     // We do some sketchy operations with ownership here for the sake of
-    // performance. The `Data` structure is never actually fully valid, but
-    // instead it always contains at least one uninitialized field. We can only
-    // pass pointers down to `__rust_maybe_catch_panic` (can't pass objects by
-    // value), so we do all the ownership tracking here manully.
+    // performance. We can only  pass pointers down to
+    // `__rust_maybe_catch_panic` (can't pass objects by value), so we do all
+    // the ownership tracking here manually using a union.
     //
-    // Note that this is all invalid if any of these functions unwind, but the
-    // whole point of this function is to prevent that! As a result we go
-    // through a transition where:
+    // We go through a transition where:
     //
-    // * First, only the closure we're going to call is initialized. The return
-    //   value is uninitialized.
+    // * First, we set the data to be the closure that we're going to call.
     // * When we make the function call, the `do_call` function below, we take
-    //   ownership of the function pointer, replacing it with uninitialized
-    //   data. At this point the `Data` structure is entirely uninitialized, but
-    //   it won't drop due to an unwind because it's owned on the other side of
-    //   the catch panic.
+    //   ownership of the function pointer. At this point the `Data` union is
+    //   entirely uninitialized.
     // * If the closure successfully returns, we write the return value into the
     //   data's return slot. Note that `ptr::write` is used as it's overwriting
     //   uninitialized data.
@@ -418,11 +413,10 @@ pub unsafe fn try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<Any + Send>> {
     //   in one of two states:
     //
     //      1. The closure didn't panic, in which case the return value was
-    //         filled in. We have to be careful to `forget` the closure,
-    //         however, as ownership was passed to the `do_call` function.
+    //         filled in. We move it out of `data` and return it.
     //      2. The closure panicked, in which case the return value wasn't
-    //         filled in. In this case the entire `data` structure is invalid,
-    //         so we forget the entire thing.
+    //         filled in. In this case the entire `data` union is invalid, so
+    //         there is no need to drop anything.
     //
     // Once we stack all that together we should have the "most efficient'
     // method of calling a catch panic whilst juggling ownership.
@@ -430,7 +424,6 @@ pub unsafe fn try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<Any + Send>> {
     let mut any_vtable = 0;
     let mut data = Data {
         f: f,
-        r: mem::uninitialized(),
     };
 
     let r = __rust_maybe_catch_panic(do_call::<F, R>,
@@ -439,12 +432,9 @@ pub unsafe fn try<R, F: FnOnce() -> R>(f: F) -> Result<R, Box<Any + Send>> {
                                      &mut any_vtable);
 
     return if r == 0 {
-        let Data { f, r } = data;
-        mem::forget(f);
         debug_assert!(update_panic_count(0) == 0);
-        Ok(r)
+        Ok(data.r)
     } else {
-        mem::forget(data);
         update_panic_count(-1);
         debug_assert!(update_panic_count(0) == 0);
         Err(mem::transmute(raw::TraitObject {
