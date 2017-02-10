@@ -30,8 +30,8 @@ mod memory;
 mod operator;
 mod step;
 mod terminator;
+mod traits;
 mod value;
-mod vtable;
 
 pub use error::{
     EvalError,
