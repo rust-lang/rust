@@ -546,12 +546,12 @@ impl<'a, 'tcx> CrateMetadata {
         let did = self.local_def_id(item_id);
         let (kind, ty) = match item.kind {
             EntryKind::Enum(dt, _) => (ty::AdtKind::Enum, Some(dt.decode(self))),
-            EntryKind::Struct(_) => (ty::AdtKind::Struct, None),
-            EntryKind::Union(_) => (ty::AdtKind::Union, None),
+            EntryKind::Struct(_, _) => (ty::AdtKind::Struct, None),
+            EntryKind::Union(_, _) => (ty::AdtKind::Union, None),
             _ => bug!("get_adt_def called on a non-ADT {:?}", did),
         };
         let mut ctor_index = None;
-        let variants = if let EntryKind::Enum(_) = item.kind {
+        let variants = if let ty::AdtKind::Enum = kind {
             item.children
                 .decode(self)
                 .map(|index| {

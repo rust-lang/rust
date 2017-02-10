@@ -1190,9 +1190,7 @@ impl<'a, 'gcx, 'tcx> Layout {
 
                     // FIXME: should handle i128? signed-value based impl is weird and hard to
                     // grok.
-                    let (discr, signed) = Integer::repr_discr(tcx, ty, &hints[..],
-                                                              min,
-                                                              max);
+                    let (discr, signed) = Integer::repr_discr(tcx, ty, &def.repr, min, max);
                     return success(CEnum {
                         discr: discr,
                         signed: signed,
@@ -1309,7 +1307,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                 // The general case.
                 let discr_max = (variants.len() - 1) as i64;
                 assert!(discr_max >= 0);
-                let (min_ity, _) = Integer::repr_discr(tcx, ty, &hints[..], 0, discr_max);
+                let (min_ity, _) = Integer::repr_discr(tcx, ty, &def.repr, 0, discr_max);
                 let mut align = dl.aggregate_align;
                 let mut size = Size::from_bytes(0);
 
