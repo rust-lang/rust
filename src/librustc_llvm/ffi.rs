@@ -1084,11 +1084,11 @@ extern "C" {
                                 DestTy: TypeRef,
                                 Name: *const c_char)
                                 -> ValueRef;
-    pub fn LLVMBuildIntCast(B: BuilderRef,
-                            Val: ValueRef,
-                            DestTy: TypeRef,
-                            Name: *const c_char)
-                            -> ValueRef;
+    pub fn LLVMRustBuildIntCast(B: BuilderRef,
+                                Val: ValueRef,
+                                DestTy: TypeRef,
+                                IsSized: bool)
+                                -> ValueRef;
     pub fn LLVMBuildFPCast(B: BuilderRef,
                            Val: ValueRef,
                            DestTy: TypeRef,

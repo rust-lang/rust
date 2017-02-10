@@ -1310,7 +1310,6 @@ impl<'a, 'gcx, 'tcx> Layout {
                 let discr_max = (variants.len() - 1) as i64;
                 assert!(discr_max >= 0);
                 let (min_ity, _) = Integer::repr_discr(tcx, ty, &hints[..], 0, discr_max);
-
                 let mut align = dl.aggregate_align;
                 let mut size = Size::from_bytes(0);
 
@@ -1349,6 +1348,23 @@ impl<'a, 'gcx, 'tcx> Layout {
 
                 if size.bytes() >= dl.obj_size_bound() {
                     return Err(LayoutError::SizeOverflow(ty));
+                }
+
+                let typeck_ity = Integer::from_attr(dl, def.discr_ty);
+                if typeck_ity < min_ity {
+                    // It is a bug if Layout decided on a greater discriminant size than typeck for
+                    // some reason at this point (based on values discriminant can take on). Mostly
+                    // because this discriminant will be loaded, and then stored into variable of
+                    // type calculated by typeck. Consider such case (a bug): typeck decided on
+                    // byte-sized discriminant, but layout thinks we need a 16-bit to store all
+                    // discriminant values. That would be a bug, because then, in trans, in order
+                    // to store this 16-bit discriminant into 8-bit sized temporary some of the
+                    // space necessary to represent would have to be discarded (or layout is wrong
+                    // on thinking it needs 16 bits)
+                    bug!("layout decided on a larger discriminant type ({:?}) than typeck ({:?})",
+                         min_ity, typeck_ity);
+                    // However, it is fine to make discr type however large (as an optimisation)
+                    // after this point – we’ll just truncate the value we load in trans.
                 }
 
                 // Check to see if we should use a different type for the

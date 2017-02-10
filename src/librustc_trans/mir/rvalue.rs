@@ -286,17 +286,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
                         let newval = match (r_t_in, r_t_out) {
                             (CastTy::Int(_), CastTy::Int(_)) => {
-                                let srcsz = ll_t_in.int_width();
-                                let dstsz = ll_t_out.int_width();
-                                if srcsz == dstsz {
-                                    bcx.bitcast(llval, ll_t_out)
-                                } else if srcsz > dstsz {
-                                    bcx.trunc(llval, ll_t_out)
-                                } else if signed {
-                                    bcx.sext(llval, ll_t_out)
-                                } else {
-                                    bcx.zext(llval, ll_t_out)
-                                }
+                                bcx.intcast(llval, ll_t_out, signed)
                             }
                             (CastTy::Float, CastTy::Float) => {
                                 let srcsz = ll_t_in.float_width();
@@ -439,7 +429,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 let discr_ty = rvalue.ty(&*self.mir, bcx.tcx()).unwrap();
                 let discr_type = type_of::immediate_type_of(bcx.ccx, discr_ty);
                 let discr = adt::trans_get_discr(&bcx, enum_ty, discr_lvalue.llval,
-                                                 Some(discr_type), true);
+                                                  discr_lvalue.alignment, Some(discr_type), true);
                 (bcx, OperandRef {
                     val: OperandValue::Immediate(discr),
                     ty: discr_ty
