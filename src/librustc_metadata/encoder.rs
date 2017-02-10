@@ -661,7 +661,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
             hir::ItemForeignMod(_) => EntryKind::ForeignMod,
             hir::ItemTy(..) => EntryKind::Type,
-            hir::ItemEnum(..) => EntryKind::Enum(self.lazy(&tcx.lookup_adt_def(def_id).discr_ty), get_repr_options(&tcx, def_id)),
+            hir::ItemEnum(..) => EntryKind::Enum(self.lazy(&tcx.lookup_adt_def(def_id).discr_ty),
+                                                 get_repr_options(&tcx, def_id)),
             hir::ItemStruct(ref struct_def, _) => {
                 let variant = tcx.lookup_adt_def(def_id).struct_variant();
 
