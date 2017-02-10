@@ -1324,7 +1324,7 @@ shr_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize }
 pub trait AddAssign<Rhs=Self> {
     /// The method for the `+=` operator
     #[stable(feature = "op_assign_traits", since = "1.8.0")]
-    fn add_assign(&mut self, Rhs);
+    fn add_assign(&mut self, rhs: Rhs);
 }
 
 macro_rules! add_assign_impl {
@@ -1380,7 +1380,7 @@ add_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 pub trait SubAssign<Rhs=Self> {
     /// The method for the `-=` operator
     #[stable(feature = "op_assign_traits", since = "1.8.0")]
-    fn sub_assign(&mut self, Rhs);
+    fn sub_assign(&mut self, rhs: Rhs);
 }
 
 macro_rules! sub_assign_impl {
@@ -1425,7 +1425,7 @@ sub_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 pub trait MulAssign<Rhs=Self> {
     /// The method for the `*=` operator
     #[stable(feature = "op_assign_traits", since = "1.8.0")]
-    fn mul_assign(&mut self, Rhs);
+    fn mul_assign(&mut self, rhs: Rhs);
 }
 
 macro_rules! mul_assign_impl {
@@ -1470,7 +1470,7 @@ mul_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 pub trait DivAssign<Rhs=Self> {
     /// The method for the `/=` operator
     #[stable(feature = "op_assign_traits", since = "1.8.0")]
-    fn div_assign(&mut self, Rhs);
+    fn div_assign(&mut self, rhs: Rhs);
 }
 
 macro_rules! div_assign_impl {
@@ -1514,7 +1514,7 @@ div_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 pub trait RemAssign<Rhs=Self> {
     /// The method for the `%=` operator
     #[stable(feature = "op_assign_traits", since = "1.8.0")]
-    fn rem_assign(&mut self, Rhs);
+    fn rem_assign(&mut self, rhs: Rhs);
 }
 
 macro_rules! rem_assign_impl {
@@ -1600,7 +1600,7 @@ rem_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 pub trait BitAndAssign<Rhs=Self> {
     /// The method for the `&=` operator
     #[stable(feature = "op_assign_traits", since = "1.8.0")]
-    fn bitand_assign(&mut self, Rhs);
+    fn bitand_assign(&mut self, rhs: Rhs);
 }
 
 macro_rules! bitand_assign_impl {
@@ -1644,7 +1644,7 @@ bitand_assign_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 pub trait BitOrAssign<Rhs=Self> {
     /// The method for the `|=` operator
     #[stable(feature = "op_assign_traits", since = "1.8.0")]
-    fn bitor_assign(&mut self, Rhs);
+    fn bitor_assign(&mut self, rhs: Rhs);
 }
 
 macro_rules! bitor_assign_impl {
@@ -1688,7 +1688,7 @@ bitor_assign_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 pub trait BitXorAssign<Rhs=Self> {
     /// The method for the `^=` operator
     #[stable(feature = "op_assign_traits", since = "1.8.0")]
-    fn bitxor_assign(&mut self, Rhs);
+    fn bitxor_assign(&mut self, rhs: Rhs);
 }
 
 macro_rules! bitxor_assign_impl {
@@ -1732,7 +1732,7 @@ bitxor_assign_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 pub trait ShlAssign<Rhs> {
     /// The method for the `<<=` operator
     #[stable(feature = "op_assign_traits", since = "1.8.0")]
-    fn shl_assign(&mut self, Rhs);
+    fn shl_assign(&mut self, rhs: Rhs);
 }
 
 macro_rules! shl_assign_impl {
@@ -1797,7 +1797,7 @@ shl_assign_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize }
 pub trait ShrAssign<Rhs=Self> {
     /// The method for the `>>=` operator
     #[stable(feature = "op_assign_traits", since = "1.8.0")]
-    fn shr_assign(&mut self, Rhs);
+    fn shr_assign(&mut self, rhs: Rhs);
 }
 
 macro_rules! shr_assign_impl {
