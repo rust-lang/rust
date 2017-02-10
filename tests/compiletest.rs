@@ -83,10 +83,15 @@ fn compile_test() {
     let host = host.split("\n").next().expect("no \n after host");
 
     if let Ok(path) = std::env::var("MIRI_RUSTC_TEST") {
-        let mut mir_not_found = 0;
-        let mut crate_not_found = 0;
+        let mut mir_not_found = Vec::new();
+        let mut crate_not_found = Vec::new();
         let mut success = 0;
-        let mut failed = 0;
+        let mut failed = Vec::new();
+        let mut c_abi_fns = Vec::new();
+        let mut abi = Vec::new();
+        let mut unsupported = Vec::new();
+        let mut unimplemented_intrinsic = Vec::new();
+        let mut limits = Vec::new();
         for file in std::fs::read_dir(path).unwrap() {
             let file = file.unwrap();
             let path = file.path();
@@ -110,15 +115,37 @@ fn compile_test() {
                 Ok(output) => {
                     let output_err = std::str::from_utf8(&output.stderr).unwrap();
                     if let Some(text) = output_err.splitn(2, "no mir for `").nth(1) {
-                        mir_not_found += 1;
                         let end = text.find('`').unwrap();
+                        mir_not_found.push(text[..end].to_string());
                         writeln!(stderr.lock(), "NO MIR FOR `{}`", &text[..end]).unwrap();
                     } else if let Some(text) = output_err.splitn(2, "can't find crate for `").nth(1) {
-                        crate_not_found += 1;
                         let end = text.find('`').unwrap();
+                        crate_not_found.push(text[..end].to_string());
                         writeln!(stderr.lock(), "CAN'T FIND CRATE FOR `{}`", &text[..end]).unwrap();
                     } else {
-                        failed += 1;
+                        for text in output_err.split("error: ").skip(1) {
+                            let end = text.find('\n').unwrap_or(text.len());
+                            let c_abi = "can't call C ABI function: ";
+                            let unimplemented_intrinsic_s = "unimplemented intrinsic: ";
+                            let unsupported_s = "miri does not support ";
+                            let abi_s = "can't handle function with ";
+                            let limit_s = "reached the configured maximum ";
+                            if text.starts_with(c_abi) {
+                                c_abi_fns.push(text[c_abi.len()..end].to_string());
+                            } else if text.starts_with(unimplemented_intrinsic_s) {
+                                unimplemented_intrinsic.push(text[unimplemented_intrinsic_s.len()..end].to_string());
+                            } else if text.starts_with(unsupported_s) {
+                                unsupported.push(text[unsupported_s.len()..end].to_string());
+                            } else if text.starts_with(abi_s) {
+                                abi.push(text[abi_s.len()..end].to_string());
+                            } else if text.starts_with(limit_s) {
+                                limits.push(text[limit_s.len()..end].to_string());
+                            } else {
+                                if text.find("aborting").is_none() {
+                                    failed.push(text[..end].to_string());
+                                }
+                            }
+                        }
                         writeln!(stderr.lock(), "FAILED with exit code {:?}", output.status.code()).unwrap();
                         writeln!(stderr.lock(), "stdout: \n {}", std::str::from_utf8(&output.stdout).unwrap()).unwrap();
                         writeln!(stderr.lock(), "stderr: \n {}", output_err).unwrap();
@@ -131,8 +158,34 @@ fn compile_test() {
             }
         }
         let stderr = std::io::stderr();
-        writeln!(stderr.lock(), "{} success, {} mir not found, {} crate not found, {} failed", success, mir_not_found, crate_not_found, failed).unwrap();
-        assert_eq!(failed, 0, "some tests failed");
+        let mut stderr = stderr.lock();
+        writeln!(stderr, "{} success, {} no mir, {} crate not found, {} failed, \
+                          {} C fn, {} ABI, {} unsupported, {} intrinsic",
+                          success, mir_not_found.len(), crate_not_found.len(), failed.len(),
+                          c_abi_fns.len(), abi.len(), unsupported.len(), unimplemented_intrinsic.len()).unwrap();
+        writeln!(stderr, "# The \"other reasons\" errors").unwrap();
+        writeln!(stderr, "(sorted, deduplicated)").unwrap();
+        print_vec(&mut stderr, failed);
+
+        writeln!(stderr, "# can't call C ABI function").unwrap();
+        print_vec(&mut stderr, c_abi_fns);
+
+        writeln!(stderr, "# unsupported ABI").unwrap();
+        print_vec(&mut stderr, abi);
+
+        writeln!(stderr, "# unsupported").unwrap();
+        print_vec(&mut stderr, unsupported);
+
+        writeln!(stderr, "# unimplemented intrinsics").unwrap();
+        print_vec(&mut stderr, unimplemented_intrinsic);
+
+        writeln!(stderr, "# mir not found").unwrap();
+        print_vec(&mut stderr, mir_not_found);
+
+        writeln!(stderr, "# crate not found").unwrap();
+        print_vec(&mut stderr, crate_not_found);
+
+        panic!("ran miri on rustc test suite. Test failing for convenience");
     } else {
         run_pass();
         for_all_targets(&sysroot, |target| {
@@ -140,4 +193,35 @@ fn compile_test() {
         });
         compile_fail(&sysroot);
     }
+}
+
+fn print_vec<W: std::io::Write>(stderr: &mut W, v: Vec<String>) {
+    writeln!(stderr, "```").unwrap();
+    for (n, s) in vec_to_hist(v).into_iter().rev() {
+        writeln!(stderr, "{:4} {}", n, s).unwrap();
+    }
+    writeln!(stderr, "```").unwrap();
+}
+
+fn vec_to_hist<T: PartialEq + Ord>(mut v: Vec<T>) -> Vec<(usize, T)> {
+    v.sort();
+    let mut v = v.into_iter();
+    let mut result = Vec::new();
+    let mut current = v.next();
+    'outer: while let Some(current_val) = current {
+        let mut n = 1;
+        while let Some(next) = v.next() {
+            if next == current_val {
+                n += 1;
+            } else {
+                result.push((n, current_val));
+                current = Some(next);
+                continue 'outer;
+            }
+        }
+        result.push((n, current_val));
+        break;
+    }
+    result.sort();
+    result
 }
