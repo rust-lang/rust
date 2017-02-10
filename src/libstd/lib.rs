@@ -305,8 +305,10 @@
 #![feature(unique)]
 #![feature(unwind_attributes)]
 #![feature(vec_push_all)]
+#![feature(untagged_unions)]
 #![feature(zero_one)]
 #![cfg_attr(test, feature(update_panic_count))]
+#![cfg_attr(not(stage0), feature(never_type))]
 
 // Explicitly import the prelude. The compiler uses this same unstable attribute
 // to import the prelude implicitly when building crates that depend on std.
