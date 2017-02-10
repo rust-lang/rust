@@ -208,12 +208,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             "fabsf32" => {
-                let f = self.value_to_primval(arg_vals[2], f32)?.to_f32()?;
+                let f = self.value_to_primval(arg_vals[0], f32)?.to_f32()?;
                 self.write_primval(dest, PrimVal::from_f32(f.abs()), dest_ty)?;
             }
 
             "fabsf64" => {
-                let f = self.value_to_primval(arg_vals[2], f64)?.to_f64()?;
+                let f = self.value_to_primval(arg_vals[0], f64)?.to_f64()?;
                 self.write_primval(dest, PrimVal::from_f64(f.abs()), dest_ty)?;
             }
 
