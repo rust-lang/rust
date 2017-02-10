@@ -14,6 +14,8 @@ use core::any::Any;
 use core::ops::Deref;
 use core::result::Result::{Err, Ok};
 use core::clone::Clone;
+use core::f64;
+use core::i64;
 
 use std::boxed::Box;
 
@@ -116,4 +118,25 @@ fn raw_trait() {
         let y: Box<Foo> = Box::from_raw(p);
         assert_eq!(19, y.get());
     }
+}
+
+#[test]
+fn f64_slice() {
+    let slice: &[f64] = &[-1.0, 0.0, 1.0, f64::INFINITY];
+    let boxed: Box<[f64]> = Box::from(slice);
+    assert_eq!(&*boxed, slice)
+}
+
+#[test]
+fn i64_slice() {
+    let slice: &[i64] = &[i64::MIN, -2, -1, 0, 1, 2, i64::MAX];
+    let boxed: Box<[i64]> = Box::from(slice);
+    assert_eq!(&*boxed, slice)
+}
+
+#[test]
+fn str_slice() {
+    let s = "Hello, world!";
+    let boxed: Box<str> = Box::from(s);
+    assert_eq!(&*boxed, s)
 }
