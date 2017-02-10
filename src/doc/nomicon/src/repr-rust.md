@@ -151,4 +151,4 @@ use fairly elaborate algorithms to cache bits throughout nested types with
 special constrained representations. As such it is *especially* desirable that
 we leave enum layout unspecified today.
 
-[dst]: exotic-sizes.html#dynamically-sized-types-dsts
+[dst]: exotic-sizes.html#Dynamically%20Sized%20Types%20(DSTs)

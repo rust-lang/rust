@@ -119,7 +119,7 @@ there are no arguments, and `{` starts the body of the function. Because
 we didn’t include a return type, it’s assumed to be `()`, an empty
 [tuple][tuples].
 
-[tuples]: primitive-types.html#tuples
+[tuples]: primitive-types.html#Tuples
 
 ```rust,ignore
     println!("Guess the number!");
@@ -727,7 +727,7 @@ thirty-two bit integer. Rust has [a number of built-in number types][number],
 but we’ve chosen `u32`. It’s a good default choice for a small positive number.
 
 [parse]: ../std/primitive.str.html#method.parse
-[number]: primitive-types.html#numeric-types
+[number]: primitive-types.html#Numeric%20types
 
 Just like `read_line()`, our call to `parse()` could cause an error. What if
 our string contained `A👍%`? There’d be no way to convert that to a number. As
