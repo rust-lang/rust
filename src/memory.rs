@@ -152,33 +152,45 @@ impl<'tcx> Function<'tcx> {
 ////////////////////////////////////////////////////////////////////////////////
 
 pub struct Memory<'a, 'tcx> {
-    /// Actual memory allocations (arbitrary bytes, may contain pointers into other allocations)
+    /// Actual memory allocations (arbitrary bytes, may contain pointers into other allocations).
     alloc_map: HashMap<AllocId, Allocation>,
-    /// Set of statics, constants, promoteds, vtables, ... to prevent `mark_static_initalized` from stepping
-    /// out of its own allocations.
-    /// This set only contains statics backed by an allocation. If they are ByVal or ByValPair they
-    /// are not here, but will be inserted once they become ByRef.
+
+    /// The AllocId to assign to the next new allocation. Always incremented, never gets smaller.
+    next_id: AllocId,
+
+    /// Set of statics, constants, promoteds, vtables, ... to prevent `mark_static_initalized` from
+    /// stepping out of its own allocations. This set only contains statics backed by an
+    /// allocation. If they are ByVal or ByValPair they are not here, but will be inserted once
+    /// they become ByRef.
     static_alloc: HashSet<AllocId>,
-    /// Number of virtual bytes allocated
+
+    /// Number of virtual bytes allocated.
     memory_usage: u64,
-    /// Maximum number of virtual bytes that may be allocated
+
+    /// Maximum number of virtual bytes that may be allocated.
     memory_size: u64,
+
     /// Function "allocations". They exist solely so pointers have something to point to, and
     /// we can figure out what they point to.
     functions: HashMap<AllocId, Function<'tcx>>,
+
     /// Inverse map of `functions` so we don't allocate a new pointer every time we need one
     function_alloc_cache: HashMap<Function<'tcx>, AllocId>,
-    next_id: AllocId,
+
+    /// Target machine data layout to emulate.
     pub layout: &'a TargetDataLayout,
-    /// List of memory regions containing packed structures
-    /// We mark memory as "packed" or "unaligned" for a single statement, and clear the marking afterwards.
-    /// In the case where no packed structs are present, it's just a single emptyness check of a set
-    /// instead of heavily influencing all memory access code as other solutions would.
+
+    /// List of memory regions containing packed structures.
     ///
-    /// One disadvantage of this solution is the fact that you can cast a pointer to a packed struct
-    /// to a pointer to a normal struct and if you access a field of both in the same MIR statement,
-    /// the normal struct access will succeed even though it shouldn't.
-    /// But even with mir optimizations, that situation is hard/impossible to produce.
+    /// We mark memory as "packed" or "unaligned" for a single statement, and clear the marking
+    /// afterwards. In the case where no packed structs are present, it's just a single emptyness
+    /// check of a set instead of heavily influencing all memory access code as other solutions
+    /// would.
+    ///
+    /// One disadvantage of this solution is the fact that you can cast a pointer to a packed
+    /// struct to a pointer to a normal struct and if you access a field of both in the same MIR
+    /// statement, the normal struct access will succeed even though it shouldn't. But even with
+    /// mir optimizations, that situation is hard/impossible to produce.
     packed: BTreeSet<Entry>,
 
     /// A cache for basic byte allocations keyed by their contents. This is used to deduplicate

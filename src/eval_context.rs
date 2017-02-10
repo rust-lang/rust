@@ -24,24 +24,24 @@ pub type MirRef<'tcx> = Ref<'tcx, mir::Mir<'tcx>>;
 
 pub struct EvalContext<'a, 'tcx: 'a> {
     /// The results of the type checker, from rustc.
-    pub(super) tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    pub(crate) tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     /// The virtual memory system.
-    pub(super) memory: Memory<'a, 'tcx>,
+    pub(crate) memory: Memory<'a, 'tcx>,
 
     /// Precomputed statics, constants and promoteds.
-    pub(super) globals: HashMap<GlobalId<'tcx>, Global<'tcx>>,
+    pub(crate) globals: HashMap<GlobalId<'tcx>, Global<'tcx>>,
 
     /// The virtual call stack.
-    pub(super) stack: Vec<Frame<'tcx>>,
+    pub(crate) stack: Vec<Frame<'tcx>>,
 
     /// The maximum number of stack frames allowed
-    pub(super) stack_limit: usize,
+    pub(crate) stack_limit: usize,
 
     /// The maximum number of operations that may be executed.
     /// This prevents infinite loops and huge computations from freezing up const eval.
     /// Remove once halting problem is solved.
-    pub(super) steps_remaining: u64,
+    pub(crate) steps_remaining: u64,
 }
 
 /// A stack frame.
