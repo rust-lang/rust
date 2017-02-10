@@ -150,6 +150,7 @@ struct Build {
     python: Option<String>,
     full_bootstrap: Option<bool>,
     extended: Option<bool>,
+    verbose: Option<usize>,
     sanitizers: Option<bool>,
 }
 
@@ -296,6 +297,7 @@ impl Config {
         set(&mut config.vendor, build.vendor);
         set(&mut config.full_bootstrap, build.full_bootstrap);
         set(&mut config.extended, build.extended);
+        set(&mut config.verbose, build.verbose);
         set(&mut config.sanitizers, build.sanitizers);
 
         if let Some(ref install) = toml.install {
