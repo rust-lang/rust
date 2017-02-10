@@ -23,8 +23,8 @@ use back::symbol_export::{self, ExportedSymbols};
 use middle::dependency_format::Linkage;
 use rustc::hir::def_id::{LOCAL_CRATE, CrateNum};
 use session::Session;
-use session::config::CrateType;
-use session::config;
+use session::config::{self, CrateType, OptLevel, DebugInfoLevel};
+use serialize::{json, Encoder};
 
 /// For all the linkers we support, and information they might
 /// need out of the shared crate context before we get rid of it.
@@ -47,6 +47,12 @@ impl<'a, 'tcx> LinkerInfo {
                      sess: &'a Session) -> Box<Linker+'a> {
         if sess.target.target.options.is_like_msvc {
             Box::new(MsvcLinker {
+                cmd: cmd,
+                sess: sess,
+                info: self
+            }) as Box<Linker>
+        } else if sess.target.target.options.is_like_emscripten {
+            Box::new(EmLinker {
                 cmd: cmd,
                 sess: sess,
                 info: self
@@ -485,6 +491,154 @@ impl<'a> Linker for MsvcLinker<'a> {
         if subsystem == "windows" {
             self.cmd.arg("/ENTRY:mainCRTStartup");
         }
+    }
+}
+
+pub struct EmLinker<'a> {
+    cmd: &'a mut Command,
+    sess: &'a Session,
+    info: &'a LinkerInfo
+}
+
+impl<'a> Linker for EmLinker<'a> {
+    fn include_path(&mut self, path: &Path) {
+        self.cmd.arg("-L").arg(path);
+    }
+
+    fn link_staticlib(&mut self, lib: &str) {
+        self.cmd.arg("-l").arg(lib);
+    }
+
+    fn output_filename(&mut self, path: &Path) {
+        self.cmd.arg("-o").arg(path);
+    }
+
+    fn add_object(&mut self, path: &Path) {
+        self.cmd.arg(path);
+    }
+
+    fn link_dylib(&mut self, lib: &str) {
+        // Emscripten always links statically
+        self.link_staticlib(lib);
+    }
+
+    fn link_whole_staticlib(&mut self, lib: &str, _search_path: &[PathBuf]) {
+        // not supported?
+        self.link_staticlib(lib);
+    }
+
+    fn link_whole_rlib(&mut self, lib: &Path) {
+        // not supported?
+        self.link_rlib(lib);
+    }
+
+    fn link_rust_dylib(&mut self, lib: &str, _path: &Path) {
+        self.link_dylib(lib);
+    }
+
+    fn link_rlib(&mut self, lib: &Path) {
+        self.add_object(lib);
+    }
+
+    fn position_independent_executable(&mut self) {
+        // noop
+    }
+
+    fn args(&mut self, args: &[String]) {
+        self.cmd.args(args);
+    }
+
+    fn framework_path(&mut self, _path: &Path) {
+        bug!("frameworks are not supported on Emscripten")
+    }
+
+    fn link_framework(&mut self, _framework: &str) {
+        bug!("frameworks are not supported on Emscripten")
+    }
+
+    fn gc_sections(&mut self, _keep_metadata: bool) {
+        // noop
+    }
+
+    fn optimize(&mut self) {
+        // Emscripten performs own optimizations
+        self.cmd.arg(match self.sess.opts.optimize {
+            OptLevel::No => "-O0",
+            OptLevel::Less => "-O1",
+            OptLevel::Default => "-O2",
+            OptLevel::Aggressive => "-O3",
+            OptLevel::Size => "-Os",
+            OptLevel::SizeMin => "-Oz"
+        });
+        // Unusable until https://github.com/rust-lang/rust/issues/38454 is resolved
+        self.cmd.args(&["--memory-init-file", "0"]);
+    }
+
+    fn debuginfo(&mut self) {
+        // Preserve names or generate source maps depending on debug info
+        self.cmd.arg(match self.sess.opts.debuginfo {
+            DebugInfoLevel::NoDebugInfo => "-g0",
+            DebugInfoLevel::LimitedDebugInfo => "-g3",
+            DebugInfoLevel::FullDebugInfo => "-g4"
+        });
+    }
+
+    fn no_default_libraries(&mut self) {
+        self.cmd.args(&["-s", "DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=[]"]);
+    }
+
+    fn build_dylib(&mut self, _out_filename: &Path) {
+        bug!("building dynamic library is unsupported on Emscripten")
+    }
+
+    fn whole_archives(&mut self) {
+        // noop
+    }
+
+    fn no_whole_archives(&mut self) {
+        // noop
+    }
+
+    fn hint_static(&mut self) {
+        // noop
+    }
+
+    fn hint_dynamic(&mut self) {
+        // noop
+    }
+
+    fn export_symbols(&mut self, _tmpdir: &Path, crate_type: CrateType) {
+        let symbols = &self.info.exports[&crate_type];
+
+        debug!("EXPORTED SYMBOLS:");
+
+        self.cmd.arg("-s");
+
+        let mut arg = OsString::from("EXPORTED_FUNCTIONS=");
+        let mut encoded = String::new();
+
+        {
+            let mut encoder = json::Encoder::new(&mut encoded);
+            let res = encoder.emit_seq(symbols.len(), |encoder| {
+                for (i, sym) in symbols.iter().enumerate() {
+                    encoder.emit_seq_elt(i, |encoder| {
+                        encoder.emit_str(&("_".to_string() + sym))
+                    })?;
+                }
+                Ok(())
+            });
+            if let Err(e) = res {
+                self.sess.fatal(&format!("failed to encode exported symbols: {}", e));
+            }
+        }
+        debug!("{}", encoded);
+        arg.push(encoded);
+
+        self.cmd.arg(arg);
+    }
+
+    fn subsystem(&mut self, _subsystem: &str) {
+        // noop
     }
 }
 
