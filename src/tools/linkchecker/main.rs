@@ -171,6 +171,13 @@ fn check(cache: &mut Cache,
             }
         }
 
+        if let Some(extension) = path.extension() {
+            // don't check these files
+            if extension == "png" {
+                return;
+            }
+        }
+
         // Alright, if we've found a file name then this file had better
         // exist! If it doesn't then we register and print an error.
         if path.exists() {
@@ -188,7 +195,9 @@ fn check(cache: &mut Cache,
             let res = load_file(cache, root, path.clone(), FromRedirect(false));
             let (pretty_path, contents) = match res {
                 Ok(res) => res,
-                Err(LoadError::IOError(err)) => panic!(format!("{}", err)),
+                Err(LoadError::IOError(err)) => {
+                    panic!(format!("error loading {}: {}", path.display(), err));
+                }
                 Err(LoadError::BrokenRedirect(target, _)) => {
                     *errors = true;
                     println!("{}:{}: broken redirect to {}",
@@ -199,6 +208,13 @@ fn check(cache: &mut Cache,
                 }
                 Err(LoadError::IsRedirect) => unreachable!(),
             };
+
+            // we don't check the book for fragments because they're added via JS
+            for book in ["book/", "nomicon/"].iter() {
+                if !pretty_path.to_str().unwrap().starts_with(book) {
+                    return;
+                }
+            }
 
             if let Some(ref fragment) = fragment {
                 // Fragments like `#1-6` are most likely line numbers to be
