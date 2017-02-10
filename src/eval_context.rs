@@ -1437,6 +1437,12 @@ pub fn eval_main<'a, 'tcx: 'a>(
     let mut ecx = EvalContext::new(tcx, limits);
     let mir = ecx.load_mir(def_id).expect("main function's MIR not found");
 
+    if !mir.return_ty.is_nil() || mir.arg_count != 0 {
+        let msg = "miri does not support main functions without `fn()` type signatures";
+        tcx.sess.err(&EvalError::Unimplemented(String::from(msg)).to_string());
+        return;
+    }
+
     ecx.push_stack_frame(
         def_id,
         DUMMY_SP,

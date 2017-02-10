@@ -116,7 +116,7 @@ impl<'tcx> Error for EvalError<'tcx> {
             EvalError::AssumptionNotHeld =>
                 "`assume` argument was false",
             EvalError::InlineAsm =>
-                "cannot evaluate inline assembly",
+                "miri does not support inline assembly",
             EvalError::TypeNotPrimitive(_) =>
                 "expected primitive type, got nonprimitive",
             EvalError::ReallocatedStaticMemory =>
