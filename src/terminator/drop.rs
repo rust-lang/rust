@@ -1,4 +1,5 @@
 use rustc::hir::def_id::DefId;
+use rustc::traits;
 use rustc::ty::layout::Layout;
 use rustc::ty::subst::{Substs, Kind};
 use rustc::ty::{self, Ty};
@@ -13,7 +14,6 @@ use value::PrimVal;
 use value::Value;
 
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
-
     /// Creates stack frames for all drop impls. See `drop` for the actual content.
     pub fn eval_drop_impls(&mut self, drops: Vec<(DefId, Value, &'tcx Substs<'tcx>)>, span: Span) -> EvalResult<'tcx> {
         // add them to the stack in reverse order, because the impl that needs to run the last
@@ -98,10 +98,20 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     Lvalue::Ptr { ptr, .. } => ptr,
                     _ => bug!("force allocation can only yield Lvalue::Ptr"),
                 };
+
                 // run drop impl before the fields' drop impls
                 if let Some(drop_def_id) = adt_def.destructor() {
-                    drop.push((drop_def_id, Value::ByVal(PrimVal::Ptr(adt_ptr)), substs));
+                    let trait_ref = ty::Binder(ty::TraitRef {
+                        def_id: self.tcx.lang_items.drop_trait().unwrap(),
+                        substs: self.tcx.mk_substs_trait(ty, &[]),
+                    });
+                    let vtable = match self.fulfill_obligation(trait_ref) {
+                        traits::VtableImpl(data) => data,
+                        _ => bug!("dtor for {:?} is not an impl???", ty)
+                    };
+                    drop.push((drop_def_id, Value::ByVal(PrimVal::Ptr(adt_ptr)), vtable.substs));
                 }
+
                 let layout = self.type_layout(ty)?;
                 let fields = match *layout {
                     Layout::Univariant { .. } => &adt_def.struct_variant().fields,
