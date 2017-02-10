@@ -6,4 +6,4 @@
 *.rs rust
 src/etc/installer/gfx/* binary
 *.woff binary
-src/vendor/* binary
+src/vendor/** -text
