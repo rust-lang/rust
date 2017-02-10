@@ -209,4 +209,24 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             fulfill_cx.select_all_or_error(&infcx).is_ok()
         })
     }
+
+    pub(crate) fn resolve_associated_const(
+        &self,
+        def_id: DefId,
+        substs: &'tcx Substs<'tcx>,
+    ) -> (DefId, &'tcx Substs<'tcx>) {
+        if let Some(trait_id) = self.tcx.trait_of_item(def_id) {
+            let trait_ref = ty::Binder(ty::TraitRef::new(trait_id, substs));
+            let vtable = self.fulfill_obligation(trait_ref);
+            if let traits::VtableImpl(vtable_impl) = vtable {
+                let name = self.tcx.item_name(def_id);
+                let assoc_const_opt = self.tcx.associated_items(vtable_impl.impl_def_id)
+                    .find(|item| item.kind == ty::AssociatedKind::Const && item.name == name);
+                if let Some(assoc_const) = assoc_const_opt {
+                    return (assoc_const.def_id, vtable_impl.substs);
+                }
+            }
+        }
+        (def_id, substs)
+    }
 }

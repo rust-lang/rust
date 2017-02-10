@@ -149,6 +149,7 @@ struct ConstantExtractor<'a, 'b: 'a, 'tcx: 'b> {
 
 impl<'a, 'b, 'tcx> ConstantExtractor<'a, 'b, 'tcx> {
     fn global_item(&mut self, def_id: DefId, substs: &'tcx subst::Substs<'tcx>, span: Span, immutable: bool) {
+        let (def_id, substs) = self.ecx.resolve_associated_const(def_id, substs);
         let cid = GlobalId { def_id, substs, promoted: None };
         if self.ecx.globals.contains_key(&cid) {
             return;

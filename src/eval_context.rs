@@ -814,6 +814,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                             // function items are zero sized
                             Value::ByRef(self.memory.allocate(0, 0)?)
                         } else {
+                            let (def_id, substs) = self.resolve_associated_const(def_id, substs);
                             let cid = GlobalId { def_id, substs, promoted: None };
                             self.read_lvalue(Lvalue::Global(cid))
                         }
