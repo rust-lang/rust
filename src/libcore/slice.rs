@@ -2290,9 +2290,10 @@ impl<A> SlicePartialOrd<A> for [A]
     }
 }
 
-impl SlicePartialOrd<u8> for [u8] {
-    #[inline]
-    fn partial_compare(&self, other: &[u8]) -> Option<Ordering> {
+impl<A> SlicePartialOrd<A> for [A]
+    where A: Ord
+{
+    default fn partial_compare(&self, other: &[A]) -> Option<Ordering> {
         Some(SliceOrd::compare(self, other))
     }
 }
