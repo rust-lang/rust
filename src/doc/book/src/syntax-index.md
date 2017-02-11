@@ -125,7 +125,7 @@
 <!-- Generics -->
 
 * `path<…>` (*e.g.* `Vec<u8>`): specifies parameters to generic type *in a type*.  See [Generics].
-* `path::<…>`, `method::<…>` (*e.g.* `"42".parse::<i32>()`): specifies parameters to generic type, function, or method *in an expression*.
+* `path::<…>`, `method::<…>` (*e.g.* `"42".parse::<i32>()`): specifies parameters to generic type, function, or method *in an expression*.  See [Generics § Resolving ambiguities](generics.html#resolving-ambiguities).
 * `fn ident<…> …`: define generic function.  See [Generics].
 * `struct ident<…> …`: define generic structure.  See [Generics].
 * `enum ident<…> …`: define generic enumeration.  See [Generics].
