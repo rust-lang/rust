@@ -1334,8 +1334,7 @@ extern "C" {
 
     pub fn LLVMRustDIBuilderCreateCompileUnit(Builder: DIBuilderRef,
                                               Lang: c_uint,
-                                              File: *const c_char,
-                                              Dir: *const c_char,
+                                              File: DIFile,
                                               Producer: *const c_char,
                                               isOptimized: bool,
                                               Flags: *const c_char,
