@@ -328,26 +328,23 @@ impl Item {
     }
 
     pub fn stability_class(&self) -> Option<String> {
-        match self.stability {
-            Some(ref s) => {
-                let mut classes = Vec::with_capacity(2);
+        self.stability.as_ref().and_then(|ref s| {
+            let mut classes = Vec::with_capacity(2);
 
-                if s.level == stability::Unstable {
-                    classes.push("unstable");
-                }
-
-                if !s.deprecated_since.is_empty() {
-                    classes.push("deprecated");
-                }
-
-                if classes.len() != 0 {
-                    Some(classes.join(" "))
-                } else {
-                    None
-                }
+            if s.level == stability::Unstable {
+                classes.push("unstable");
             }
-            None => None,
-        }
+
+            if !s.deprecated_since.is_empty() {
+                classes.push("deprecated");
+            }
+
+            if classes.len() != 0 {
+                Some(classes.join(" "))
+            } else {
+                None
+            }
+        })
     }
 
     pub fn stable_since(&self) -> Option<&str> {
