@@ -20,6 +20,7 @@ use rustc_data_structures::indexed_vec::IndexVec;
 use std::cell::RefCell;
 use std::rc::Rc;
 use syntax::attr;
+use syntax_pos::Span;
 
 trait Key {
     fn map_crate(&self) -> CrateNum;
@@ -31,13 +32,105 @@ impl Key for DefId {
     }
 }
 
+impl Key for (DefId, DefId) {
+    fn map_crate(&self) -> CrateNum {
+        self.0.krate
+    }
+}
+
+trait Value<'tcx>: Sized {
+    fn from_cycle_error<'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Self;
+}
+
+impl<'tcx, T> Value<'tcx> for T {
+    default fn from_cycle_error<'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> T {
+        tcx.sess.abort_if_errors();
+        bug!("Value::from_cycle_error called without errors");
+    }
+}
+
+impl<'tcx, T: Default> Value<'tcx> for T {
+    default fn from_cycle_error<'a>(_: TyCtxt<'a, 'tcx, 'tcx>) -> T {
+        T::default()
+    }
+}
+
+impl<'tcx> Value<'tcx> for Ty<'tcx> {
+    fn from_cycle_error<'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Ty<'tcx> {
+        tcx.types.err
+    }
+}
+
+impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
+    fn report_cycle(self, span: Span, cycle: &[(Span, Query)]) {
+        assert!(!cycle.is_empty());
+
+        let mut err = struct_span_err!(self.sess, span, E0391,
+            "unsupported cyclic reference between types/traits detected");
+        err.span_label(span, &format!("cyclic reference"));
+
+        err.span_note(cycle[0].0, &format!("the cycle begins when {}...",
+                                           cycle[0].1.describe(self)));
+
+        for &(span, ref query) in &cycle[1..] {
+            err.span_note(span, &format!("...which then requires {}...",
+                                         query.describe(self)));
+        }
+
+        err.note(&format!("...which then again requires {}, completing the cycle.",
+                          cycle[0].1.describe(self)));
+
+        err.emit();
+    }
+
+    pub fn cycle_check<F, R>(self, span: Span, query: Query, compute: F) -> R
+        where F: FnOnce() -> R
+    {
+        {
+            let mut stack = self.maps.query_stack.borrow_mut();
+            if let Some((i, _)) = stack.iter().enumerate().rev()
+                                       .find(|&(_, &(_, ref q))| *q == query) {
+                let cycle = &stack[i..];
+                self.report_cycle(span, cycle);
+                return R::from_cycle_error(self.global_tcx());
+            }
+            stack.push((span, query));
+        }
+
+        let result = compute();
+
+        self.maps.query_stack.borrow_mut().pop();
+        result
+    }
+}
+
+impl Query {
+    fn describe(&self, tcx: TyCtxt) -> String {
+        match *self {
+            Query::ty(def_id) => {
+                format!("processing `{}`", tcx.item_path_str(def_id))
+            }
+            Query::super_predicates(def_id) => {
+                format!("computing the supertraits of `{}`",
+                        tcx.item_path_str(def_id))
+            }
+            Query::type_param_predicates((_, def_id)) => {
+                let id = tcx.hir.as_local_node_id(def_id).unwrap();
+                format!("computing the bounds for type parameter `{}`",
+                        tcx.hir.ty_param_name(id))
+            }
+            _ => bug!("unexpected `{:?}`", self)
+        }
+    }
+}
+
 macro_rules! define_maps {
     (<$tcx:tt>
      $($(#[$attr:meta])*
        pub $name:ident: $node:ident($K:ty) -> $V:ty),*) => {
         pub struct Maps<$tcx> {
             providers: IndexVec<CrateNum, Providers<$tcx>>,
-            pub query_stack: RefCell<Vec<Query>>,
+            pub query_stack: RefCell<Vec<(Span, Query)>>,
             $($(#[$attr])* pub $name: RefCell<DepTrackingMap<queries::$name<$tcx>>>),*
         }
 
@@ -129,7 +222,7 @@ define_maps! { <'tcx>
 
     /// To avoid cycles within the predicates of a single item we compute
     /// per-type-parameter predicates for resolving `T::AssocTy`.
-    pub type_param_predicates: ItemSignature(DefId)
+    pub type_param_predicates: TypeParamPredicates((DefId, DefId))
         -> ty::GenericPredicates<'tcx>,
 
     pub trait_def: ItemSignature(DefId) -> &'tcx ty::TraitDef,

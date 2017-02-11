@@ -70,7 +70,7 @@ use rustc::ty::{ToPredicate, ImplContainer, AssociatedItemContainer, TraitContai
 use rustc::ty::{self, AdtKind, ToPolyTraitRef, Ty, TyCtxt};
 use rustc::ty::util::IntTypeExt;
 use rustc::dep_graph::DepNode;
-use util::common::{ErrorReported, MemoizationMap};
+use util::common::MemoizationMap;
 use util::nodemap::{NodeMap, FxHashMap};
 
 use rustc_const_math::ConstInt;
@@ -80,7 +80,7 @@ use std::collections::BTreeMap;
 
 use syntax::{abi, ast, attr};
 use syntax::symbol::{Symbol, keywords};
-use syntax_pos::Span;
+use syntax_pos::{Span, DUMMY_SP};
 
 use rustc::hir::{self, map as hir_map};
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
@@ -231,91 +231,6 @@ impl<'a, 'tcx> ItemCtxt<'a, 'tcx> {
     }
 }
 
-    fn cycle_check<F,R>(tcx: TyCtxt,
-                        span: Span,
-                        query: ty::maps::Query,
-                        code: F)
-                        -> Result<R,ErrorReported>
-        where F: FnOnce() -> Result<R,ErrorReported>
-    {
-        {
-            let mut stack = tcx.maps.query_stack.borrow_mut();
-            if let Some((i, _)) = stack.iter().enumerate().rev().find(|&(_, q)| *q == query) {
-                let cycle = &stack[i..];
-                report_cycle(tcx, span, cycle);
-                return Err(ErrorReported);
-            }
-            stack.push(query);
-        }
-
-        let result = code();
-
-        tcx.maps.query_stack.borrow_mut().pop();
-        result
-    }
-
-    fn report_cycle(tcx: TyCtxt,
-                    span: Span,
-                    cycle: &[ty::maps::Query])
-    {
-        assert!(!cycle.is_empty());
-
-        let mut err = struct_span_err!(tcx.sess, span, E0391,
-            "unsupported cyclic reference between types/traits detected");
-        err.span_label(span, &format!("cyclic reference"));
-
-        let describe = |query: ty::maps::Query| {
-            match query {
-                ty::maps::Query::ty(def_id) => {
-                    format!("processing `{}`", tcx.item_path_str(def_id))
-                }
-                ty::maps::Query::super_predicates(def_id) => {
-                    format!("computing the supertraits of `{}`",
-                            tcx.item_path_str(def_id))
-                }
-                ty::maps::Query::type_param_predicates(def_id) => {
-                    let id = tcx.hir.as_local_node_id(def_id).unwrap();
-                    format!("the cycle begins when computing the bounds \
-                             for type parameter `{}`",
-                            ::ty_param_name(tcx, id))
-                }
-                query => span_bug!(span, "unexpected `{:?}`", query)
-            }
-        };
-
-        err.note(&format!("the cycle begins when {}...",
-                          describe(cycle[0])));
-
-        for &query in &cycle[1..] {
-            err.note(&format!("...which then requires {}...",
-                              describe(query)));
-        }
-
-        err.note(&format!("...which then again requires {}, completing the cycle.",
-                          describe(cycle[0])));
-
-        err.emit();
-    }
-
-    /// Ensure that the (transitive) super predicates for
-    /// `trait_def_id` are available. This will report a cycle error
-    /// if a trait `X` (transitively) extends itself in some form.
-    fn ensure_super_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                         span: Span,
-                                         trait_def_id: DefId)
-                                         -> Result<(), ErrorReported>
-    {
-        cycle_check(tcx, span, ty::maps::Query::super_predicates(trait_def_id), || {
-            let def_ids = ensure_super_predicates_step(tcx, trait_def_id);
-
-            for def_id in def_ids {
-                ensure_super_predicates(tcx, span, def_id)?;
-            }
-
-            Ok(())
-        })
-    }
-
 impl<'a,'tcx> ItemCtxt<'a,'tcx> {
     fn to_ty(&self, ast_ty: &hir::Ty) -> Ty<'tcx> {
         AstConv::ast_ty_to_ty(self, ast_ty)
@@ -334,9 +249,9 @@ impl<'a, 'tcx> AstConv<'tcx, 'tcx> for ItemCtxt<'a, 'tcx> {
     }
 
     fn get_item_type(&self, span: Span, id: DefId) -> Ty<'tcx> {
-        cycle_check(self.tcx, span, ty::maps::Query::ty(id), || {
-            Ok(type_of_def_id(self.tcx, id))
-        }).unwrap_or(self.tcx.types.err)
+        self.tcx.cycle_check(span, ty::maps::Query::ty(id), || {
+            type_of_def_id(self.tcx, id)
+        })
     }
 
     fn get_trait_def(&self, def_id: DefId) -> &'tcx ty::TraitDef {
@@ -349,30 +264,36 @@ impl<'a, 'tcx> AstConv<'tcx, 'tcx> for ItemCtxt<'a, 'tcx> {
         }
     }
 
+    /// Ensure that the (transitive) super predicates for
+    /// `trait_def_id` are available. This will report a cycle error
+    /// if a trait `X` (transitively) extends itself in some form.
     fn ensure_super_predicates(&self,
                                span: Span,
-                               trait_def_id: DefId)
-                               -> Result<(), ErrorReported>
-    {
-        debug!("ensure_super_predicates(trait_def_id={:?})",
-               trait_def_id);
+                               trait_def_id: DefId) {
+        if !trait_def_id.is_local() {
+            // If this trait comes from an external crate, then all of the
+            // supertraits it may depend on also must come from external
+            // crates, and hence all of them already have their
+            // super-predicates "converted" (and available from crate
+            // meta-data), so there is no need to transitively test them.
+            return;
+        }
 
-        ensure_super_predicates(self.tcx, span, trait_def_id)
+        self.tcx.maps.super_predicates.memoize(trait_def_id, || {
+            self.tcx.cycle_check(span, ty::maps::Query::super_predicates(trait_def_id), || {
+                super_predicates(self.tcx, trait_def_id)
+            })
+        });
     }
 
     fn get_type_parameter_bounds(&self,
                                  span: Span,
-                                 node_id: ast::NodeId)
-                                 -> Result<Vec<ty::PolyTraitRef<'tcx>>, ErrorReported>
+                                 def_id: DefId)
+                                 -> Vec<ty::Predicate<'tcx>>
     {
-        let def_id = self.tcx.hir.local_def_id(node_id);
-        cycle_check(self.tcx, span, ty::maps::Query::type_param_predicates(def_id), || {
-            let v = get_type_parameter_bounds(self.tcx, self.item_def_id, node_id)
-                            .into_iter()
-                            .filter_map(|p| p.to_opt_poly_trait_ref())
-                            .collect();
-            Ok(v)
-        })
+        self.tcx.cycle_check(span,
+            ty::maps::Query::type_param_predicates((self.item_def_id, def_id)),
+            || get_type_parameter_bounds(self.tcx, self.item_def_id, def_id))
     }
 
     fn get_free_substs(&self) -> Option<&Substs<'tcx>> {
@@ -428,7 +349,7 @@ impl<'a, 'tcx> AstConv<'tcx, 'tcx> for ItemCtxt<'a, 'tcx> {
 
     fn get_type_parameter_bounds<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                            item_def_id: DefId,
-                                           param_id: ast::NodeId)
+                                           def_id: DefId)
                                            -> Vec<ty::Predicate<'tcx>>
     {
         use rustc::hir::map::*;
@@ -438,10 +359,12 @@ impl<'a, 'tcx> AstConv<'tcx, 'tcx> for ItemCtxt<'a, 'tcx> {
         // written inline like `<T:Foo>` or in a where clause like
         // `where T:Foo`.
 
-        let param_owner_def_id = tcx.hir.local_def_id(::ty_param_owner(tcx, param_id));
+        let param_id = tcx.hir.as_local_node_id(def_id).unwrap();
+        let param_owner = tcx.hir.ty_param_owner(param_id);
+        let param_owner_def_id = tcx.hir.local_def_id(param_owner);
         let generics = generics_of_def_id(tcx, param_owner_def_id);
-        let index = generics.type_param_to_index[&tcx.hir.local_def_id(param_id).index];
-        let ty = tcx.mk_param(index, ::ty_param_name(tcx, param_id));
+        let index = generics.type_param_to_index[&def_id.index];
+        let ty = tcx.mk_param(index, tcx.hir.ty_param_name(param_id));
 
         // Don't look for bounds where the type parameter isn't in scope.
         let parent = if item_def_id == param_owner_def_id {
@@ -450,8 +373,9 @@ impl<'a, 'tcx> AstConv<'tcx, 'tcx> for ItemCtxt<'a, 'tcx> {
             generics_of_def_id(tcx, item_def_id).parent
         };
 
-        let mut results = parent.map_or(vec![], |def_id| {
-            get_type_parameter_bounds(tcx, def_id, param_id)
+        let mut results = parent.map_or(vec![], |parent| {
+            let icx = ItemCtxt::new(tcx, parent);
+            icx.get_type_parameter_bounds(DUMMY_SP, def_id)
         });
 
         let item_node_id = tcx.hir.as_local_node_id(item_def_id).unwrap();
@@ -706,8 +630,7 @@ fn convert_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, it: &hir::Item) {
         hir::ItemTrait(..) => {
             generics_of_def_id(tcx, def_id);
             trait_def_of_item(tcx, it);
-            let _: Result<(), ErrorReported> = // any error is already reported, can ignore
-                ensure_super_predicates(tcx, it.span, def_id);
+            icx.ensure_super_predicates(it.span, def_id);
             predicates_of_item(tcx, it);
         },
         hir::ItemStruct(ref struct_def, _) |
@@ -1025,82 +948,54 @@ fn convert_enum_def<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 /// Ensures that the super-predicates of the trait with def-id
-/// trait_def_id are converted and stored. This does NOT ensure that
-/// the transitive super-predicates are converted; that is the job of
-/// the `ensure_super_predicates()` method in the `AstConv` impl
-/// above. Returns a list of trait def-ids that must be ensured as
-/// well to guarantee that the transitive superpredicates are
-/// converted.
-fn ensure_super_predicates_step<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                          trait_def_id: DefId)
-                                          -> Vec<DefId>
-{
-    debug!("ensure_super_predicates_step(trait_def_id={:?})", trait_def_id);
+/// trait_def_id are converted and stored. This also ensures that
+/// the transitive super-predicates are converted;
+fn super_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                              trait_def_id: DefId)
+                              -> ty::GenericPredicates<'tcx> {
+    debug!("super_predicates(trait_def_id={:?})", trait_def_id);
+    let trait_node_id = tcx.hir.as_local_node_id(trait_def_id).unwrap();
 
-    let trait_node_id = if let Some(n) = tcx.hir.as_local_node_id(trait_def_id) {
-        n
-    } else {
-        // If this trait comes from an external crate, then all of the
-        // supertraits it may depend on also must come from external
-        // crates, and hence all of them already have their
-        // super-predicates "converted" (and available from crate
-        // meta-data), so there is no need to transitively test them.
-        return Vec::new();
+    let item = match tcx.hir.get(trait_node_id) {
+        hir_map::NodeItem(item) => item,
+        _ => bug!("trait_node_id {} is not an item", trait_node_id)
     };
 
-    let superpredicates = tcx.maps.super_predicates.borrow().get(&trait_def_id).cloned();
-    let superpredicates = superpredicates.unwrap_or_else(|| {
-        let item = match tcx.hir.get(trait_node_id) {
-            hir_map::NodeItem(item) => item,
-            _ => bug!("trait_node_id {} is not an item", trait_node_id)
-        };
+    let (generics, bounds) = match item.node {
+        hir::ItemTrait(_, ref generics, ref supertraits, _) => (generics, supertraits),
+        _ => span_bug!(item.span,
+                       "super_predicates invoked on non-trait"),
+    };
 
-        let (generics, bounds) = match item.node {
-            hir::ItemTrait(_, ref generics, ref supertraits, _) => (generics, supertraits),
-            _ => span_bug!(item.span,
-                           "ensure_super_predicates_step invoked on non-trait"),
-        };
+    let icx = ItemCtxt::new(tcx, trait_def_id);
 
-        let icx = ItemCtxt::new(tcx, trait_def_id);
+    // Convert the bounds that follow the colon, e.g. `Bar+Zed` in `trait Foo : Bar+Zed`.
+    let self_param_ty = tcx.mk_self_type();
+    let superbounds1 = compute_bounds(&icx,
+                                      self_param_ty,
+                                      bounds,
+                                      SizedByDefault::No,
+                                      item.span);
 
-        // Convert the bounds that follow the colon, e.g. `Bar+Zed` in `trait Foo : Bar+Zed`.
-        let self_param_ty = tcx.mk_self_type();
-        let superbounds1 = compute_bounds(&icx,
-                                          self_param_ty,
-                                          bounds,
-                                          SizedByDefault::No,
-                                          item.span);
+    let superbounds1 = superbounds1.predicates(tcx, self_param_ty);
 
-        let superbounds1 = superbounds1.predicates(tcx, self_param_ty);
+    // Convert any explicit superbounds in the where clause,
+    // e.g. `trait Foo where Self : Bar`:
+    let superbounds2 = icx.type_parameter_bounds_in_generics(generics, item.id, self_param_ty);
 
-        // Convert any explicit superbounds in the where clause,
-        // e.g. `trait Foo where Self : Bar`:
-        let superbounds2 = icx.type_parameter_bounds_in_generics(generics, item.id, self_param_ty);
+    // Combine the two lists to form the complete set of superbounds:
+    let superbounds: Vec<_> = superbounds1.into_iter().chain(superbounds2).collect();
 
-        // Combine the two lists to form the complete set of superbounds:
-        let superbounds = superbounds1.into_iter().chain(superbounds2).collect();
-        let superpredicates = ty::GenericPredicates {
-            parent: None,
-            predicates: superbounds
-        };
-        debug!("superpredicates for trait {:?} = {:?}",
-               tcx.hir.local_def_id(item.id),
-               superpredicates);
+    // Now require that immediate supertraits are converted,
+    // which will, in turn, reach indirect supertraits.
+    for bound in superbounds.iter().filter_map(|p| p.to_opt_poly_trait_ref()) {
+        icx.ensure_super_predicates(item.span, bound.def_id());
+    }
 
-        tcx.maps.super_predicates.borrow_mut().insert(trait_def_id, superpredicates.clone());
-
-        superpredicates
-    });
-
-    let def_ids: Vec<_> = superpredicates.predicates
-                                         .iter()
-                                         .filter_map(|p| p.to_opt_poly_trait_ref())
-                                         .map(|tr| tr.def_id())
-                                         .collect();
-
-    debug!("ensure_super_predicates_step: def_ids={:?}", def_ids);
-
-    def_ids
+    ty::GenericPredicates {
+        parent: None,
+        predicates: superbounds
+    }
 }
 
 fn trait_def_of_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, it: &hir::Item) -> &'tcx ty::TraitDef {

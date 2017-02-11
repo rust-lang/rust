@@ -3417,23 +3417,6 @@ impl Bar for *mut Foo {
 ```
 "##,
 
-E0391: r##"
-This error indicates that some types or traits depend on each other
-and therefore cannot be constructed.
-
-The following example contains a circular dependency between two traits:
-
-```compile_fail,E0391
-trait FirstTrait : SecondTrait {
-
-}
-
-trait SecondTrait : FirstTrait {
-
-}
-```
-"##,
-
 E0392: r##"
 This error indicates that a type or lifetime parameter has been declared
 but not actually used. Here is an example that demonstrates the error:

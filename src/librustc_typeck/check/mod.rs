@@ -91,7 +91,7 @@ use rustc::ty::subst::{Kind, Subst, Substs};
 use rustc::traits::{self, ObligationCause, ObligationCauseCode, Reveal};
 use rustc::ty::{ParamTy, ParameterEnvironment};
 use rustc::ty::{LvaluePreference, NoPreference, PreferMutLvalue};
-use rustc::ty::{self, Ty, TyCtxt, Visibility, ToPolyTraitRef};
+use rustc::ty::{self, Ty, TyCtxt, Visibility};
 use rustc::ty::{MethodCall, MethodCallee};
 use rustc::ty::adjustment;
 use rustc::ty::fold::{BottomUpFolder, TypeFoldable};
@@ -1366,44 +1366,31 @@ impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
         self.tcx().lookup_trait_def(id)
     }
 
-    fn ensure_super_predicates(&self, _: Span, _: DefId) -> Result<(), ErrorReported> {
+    fn ensure_super_predicates(&self, _: Span, _: DefId) {
         // all super predicates are ensured during collect pass
-        Ok(())
     }
 
     fn get_free_substs(&self) -> Option<&Substs<'tcx>> {
         Some(&self.parameter_environment.free_substs)
     }
 
-    fn get_type_parameter_bounds(&self,
-                                 _: Span,
-                                 node_id: ast::NodeId)
-                                 -> Result<Vec<ty::PolyTraitRef<'tcx>>, ErrorReported>
+    fn get_type_parameter_bounds(&self, _: Span, def_id: DefId)
+                                 -> Vec<ty::Predicate<'tcx>>
     {
         let tcx = self.tcx;
-        let item_id = ::ty_param_owner(tcx, node_id);
+        let node_id = tcx.hir.as_local_node_id(def_id).unwrap();
+        let item_id = tcx.hir.ty_param_owner(node_id);
         let item_def_id = tcx.hir.local_def_id(item_id);
         let generics = tcx.item_generics(item_def_id);
-        let index = generics.type_param_to_index[&tcx.hir.local_def_id(node_id).index];
-        let r = self.parameter_environment
-                                  .caller_bounds
-                                  .iter()
-                                  .filter_map(|predicate| {
-                                      match *predicate {
-                                          ty::Predicate::Trait(ref data) => {
-                                              if data.0.self_ty().is_param(index) {
-                                                  Some(data.to_poly_trait_ref())
-                                              } else {
-                                                  None
-                                              }
-                                          }
-                                          _ => {
-                                              None
-                                          }
-                                      }
-                                  })
-                                  .collect();
-        Ok(r)
+        let index = generics.type_param_to_index[&def_id.index];
+        self.parameter_environment.caller_bounds.iter().filter(|predicate| {
+            match **predicate {
+                ty::Predicate::Trait(ref data) => {
+                    data.0.self_ty().is_param(index)
+                }
+                _ => false
+            }
+        }).cloned().collect()
     }
 
     fn re_infer(&self, span: Span, def: Option<&ty::RegionParameterDef>)

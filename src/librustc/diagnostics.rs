@@ -1390,6 +1390,23 @@ error. To resolve it, add an `else` block having the same type as the `if`
 block.
 "##,
 
+E0391: r##"
+This error indicates that some types or traits depend on each other
+and therefore cannot be constructed.
+
+The following example contains a circular dependency between two traits:
+
+```compile_fail,E0391
+trait FirstTrait : SecondTrait {
+
+}
+
+trait SecondTrait : FirstTrait {
+
+}
+```
+"##,
+
 E0398: r##"
 In Rust 1.3, the default object lifetime bounds are expected to change, as
 described in RFC #1156 [1]. You are getting a warning because the compiler
