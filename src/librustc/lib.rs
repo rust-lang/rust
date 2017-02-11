@@ -39,6 +39,7 @@
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
 #![feature(slice_patterns)]
+#![feature(specialization)]
 #![feature(staged_api)]
 #![feature(unboxed_closures)]
 

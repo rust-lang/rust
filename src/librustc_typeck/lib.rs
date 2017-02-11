@@ -116,7 +116,6 @@ use util::common::time;
 
 use syntax::ast;
 use syntax::abi::Abi;
-use syntax::symbol::keywords;
 use syntax_pos::Span;
 
 use std::iter;
@@ -168,30 +167,6 @@ fn require_same_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             }
         }
     })
-}
-
-fn ty_param_owner(tcx: TyCtxt, id: ast::NodeId) -> ast::NodeId {
-    match tcx.hir.get(id) {
-        hir::map::NodeItem(&hir::Item { node: hir::ItemTrait(..), .. }) => id,
-        hir::map::NodeTyParam(_) => tcx.hir.get_parent_node(id),
-        _ => {
-            bug!("ty_param_owner: {} not a type parameter",
-                 tcx.hir.node_to_string(id))
-        }
-    }
-}
-
-fn ty_param_name(tcx: TyCtxt, id: ast::NodeId) -> ast::Name {
-    match tcx.hir.get(id) {
-        hir::map::NodeItem(&hir::Item { node: hir::ItemTrait(..), .. }) => {
-            keywords::SelfType.name()
-        }
-        hir::map::NodeTyParam(tp) => tp.name,
-        _ => {
-            bug!("ty_param_name: {} not a type parameter",
-                 tcx.hir.node_to_string(id))
-        }
-    }
 }
 
 fn check_main_fn_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,

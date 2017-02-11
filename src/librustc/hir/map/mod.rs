@@ -437,6 +437,30 @@ impl<'hir> Map<'hir> {
         self.local_def_id(self.body_owner(id))
     }
 
+    pub fn ty_param_owner(&self, id: NodeId) -> NodeId {
+        match self.get(id) {
+            NodeItem(&Item { node: ItemTrait(..), .. }) => id,
+            NodeTyParam(_) => self.get_parent_node(id),
+            _ => {
+                bug!("ty_param_owner: {} not a type parameter",
+                    self.node_to_string(id))
+            }
+        }
+    }
+
+    pub fn ty_param_name(&self, id: NodeId) -> Name {
+        match self.get(id) {
+            NodeItem(&Item { node: ItemTrait(..), .. }) => {
+                keywords::SelfType.name()
+            }
+            NodeTyParam(tp) => tp.name,
+            _ => {
+                bug!("ty_param_name: {} not a type parameter",
+                    self.node_to_string(id))
+            }
+        }
+    }
+
     /// Get the attributes on the krate. This is preferable to
     /// invoking `krate.attrs` because it registers a tighter
     /// dep-graph access.

@@ -669,7 +669,7 @@ impl Generics {
 }
 
 /// Bounds on generics.
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct GenericPredicates<'tcx> {
     pub parent: Option<DefId>,
     pub predicates: Vec<Predicate<'tcx>>,

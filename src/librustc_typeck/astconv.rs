@@ -64,13 +64,12 @@ pub trait AstConv<'gcx, 'tcx> {
     /// Ensure that the super-predicates for the trait with the given
     /// id are available and also for the transitive set of
     /// super-predicates.
-    fn ensure_super_predicates(&self, span: Span, id: DefId)
-                               -> Result<(), ErrorReported>;
+    fn ensure_super_predicates(&self, span: Span, id: DefId);
 
     /// Returns the set of bounds in scope for the type parameter with
     /// the given id.
-    fn get_type_parameter_bounds(&self, span: Span, def_id: ast::NodeId)
-                                 -> Result<Vec<ty::PolyTraitRef<'tcx>>, ErrorReported>;
+    fn get_type_parameter_bounds(&self, span: Span, def_id: DefId)
+                                 -> Vec<ty::Predicate<'tcx>>;
 
     /// Return an (optional) substitution to convert bound type parameters that
     /// are in scope into free ones. This function should only return Some
@@ -599,7 +598,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
         // Otherwise, we have to walk through the supertraits to find
         // those that do.
-        self.ensure_super_predicates(binding.span, trait_ref.def_id())?;
+        self.ensure_super_predicates(binding.span, trait_ref.def_id());
 
         let candidates =
             traits::supertraits(tcx, trait_ref.clone())
@@ -685,10 +684,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             })
         });
 
-        // ensure the super predicates and stop if we encountered an error
-        if self.ensure_super_predicates(span, principal.def_id()).is_err() {
-            return tcx.types.err;
-        }
+        // ensure the super predicates
+        self.ensure_super_predicates(span, principal.def_id());
 
         // check that there are no gross object safety violations,
         // most importantly, that the supertraits don't contain Self,
@@ -774,29 +771,23 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
     }
 
     // Search for a bound on a type parameter which includes the associated item
-    // given by assoc_name. ty_param_node_id is the node id for the type parameter
-    // (which might be `Self`, but only if it is the `Self` of a trait, not an
-    // impl). This function will fail if there are no suitable bounds or there is
+    // given by `assoc_name`. `ty_param_def_id` is the `DefId` for the type parameter
+    // This function will fail if there are no suitable bounds or there is
     // any ambiguity.
     fn find_bound_for_assoc_item(&self,
-                                 ty_param_node_id: ast::NodeId,
-                                 ty_param_name: ast::Name,
+                                 ty_param_def_id: DefId,
                                  assoc_name: ast::Name,
                                  span: Span)
                                  -> Result<ty::PolyTraitRef<'tcx>, ErrorReported>
     {
         let tcx = self.tcx();
 
-        let bounds = match self.get_type_parameter_bounds(span, ty_param_node_id) {
-            Ok(v) => v,
-            Err(ErrorReported) => {
-                return Err(ErrorReported);
-            }
-        };
+        let bounds: Vec<_> = self.get_type_parameter_bounds(span, ty_param_def_id)
+            .into_iter().filter_map(|p| p.to_opt_poly_trait_ref()).collect();
 
-        // Ensure the super predicates and stop if we encountered an error.
-        if bounds.iter().any(|b| self.ensure_super_predicates(span, b.def_id()).is_err()) {
-            return Err(ErrorReported);
+        // Ensure the super predicates.
+        for b in &bounds {
+            self.ensure_super_predicates(span, b.def_id());
         }
 
         // Check that there is exactly one way to find an associated type with the
@@ -805,8 +796,10 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             traits::transitive_bounds(tcx, &bounds)
             .filter(|b| self.trait_defines_associated_type_named(b.def_id(), assoc_name));
 
+        let param_node_id = tcx.hir.as_local_node_id(ty_param_def_id).unwrap();
+        let param_name = tcx.hir.ty_param_name(param_node_id);
         self.one_bound_for_assoc_type(suitable_bounds,
-                                      &ty_param_name.as_str(),
+                                      &param_name.as_str(),
                                       &assoc_name.as_str(),
                                       span)
     }
@@ -914,9 +907,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                     trait_ref
                 };
 
-                if self.ensure_super_predicates(span, trait_ref.def_id).is_err() {
-                    return (tcx.types.err, Def::Err);
-                }
+                self.ensure_super_predicates(span, trait_ref.def_id);
 
                 let candidates =
                     traits::supertraits(tcx, ty::Binder(trait_ref))
@@ -933,12 +924,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             }
             (&ty::TyParam(_), Def::SelfTy(Some(param_did), None)) |
             (&ty::TyParam(_), Def::TyParam(param_did)) => {
-                let param_node_id = tcx.hir.as_local_node_id(param_did).unwrap();
-                let param_name = ::ty_param_name(tcx, param_node_id);
-                match self.find_bound_for_assoc_item(param_node_id,
-                                                     param_name,
-                                                     assoc_name,
-                                                     span) {
+                match self.find_bound_for_assoc_item(param_did, assoc_name, span) {
                     Ok(bound) => bound,
                     Err(ErrorReported) => return (tcx.types.err, Def::Err),
                 }
@@ -1375,9 +1361,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                existential_predicates);
 
         if let Some(principal) = existential_predicates.principal() {
-            if let Err(ErrorReported) = self.ensure_super_predicates(span, principal.def_id()) {
-                return Some(tcx.mk_region(ty::ReStatic));
-            }
+            self.ensure_super_predicates(span, principal.def_id());
         }
 
         // No explicit region bound specified. Therefore, examine trait

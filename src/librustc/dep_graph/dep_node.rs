@@ -109,6 +109,7 @@ pub enum DepNode<D: Clone + Debug> {
     // predicates for an item wind up in `ItemSignature`).
     AssociatedItems(D),
     ItemSignature(D),
+    TypeParamPredicates((D, D)),
     SizedConstraint(D),
     AssociatedItemDefIds(D),
     InherentImpls(D),
@@ -259,6 +260,9 @@ impl<D: Clone + Debug> DepNode<D> {
             TransInlinedItem(ref d) => op(d).map(TransInlinedItem),
             AssociatedItems(ref d) => op(d).map(AssociatedItems),
             ItemSignature(ref d) => op(d).map(ItemSignature),
+            TypeParamPredicates((ref item, ref param)) => {
+                Some(TypeParamPredicates((try_opt!(op(item)), try_opt!(op(param)))))
+            }
             SizedConstraint(ref d) => op(d).map(SizedConstraint),
             AssociatedItemDefIds(ref d) => op(d).map(AssociatedItemDefIds),
             InherentImpls(ref d) => op(d).map(InherentImpls),
