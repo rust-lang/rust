@@ -477,8 +477,16 @@ extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateCompileUnit(
     LLVMRustDIBuilderRef Builder, unsigned Lang, const char *File,
     const char *Dir, const char *Producer, bool isOptimized, const char *Flags,
     unsigned RuntimeVer, const char *SplitName) {
+#if LLVM_VERSION_GE(4, 0)
+  StringRef FileRef = StringRef(File);
+  StringRef DirRef = StringRef(Dir);
+  DIFile *DIFileRef = Builder->createFile(FileRef, DirRef);
+  return wrap(Builder->createCompileUnit(Lang, DIFileRef, Producer, isOptimized,
+                                         Flags, RuntimeVer, SplitName));
+#else
   return wrap(Builder->createCompileUnit(Lang, File, Dir, Producer, isOptimized,
                                          Flags, RuntimeVer, SplitName));
+#endif
 }
 
 extern "C" LLVMRustMetadataRef
