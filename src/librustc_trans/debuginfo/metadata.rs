@@ -787,17 +787,20 @@ pub fn compile_unit_metadata(scc: &SharedCrateContext,
                            (option_env!("CFG_VERSION")).expect("CFG_VERSION"));
 
     let compile_unit_name = compile_unit_name.as_ptr();
-    let work_dir = path2cstr(&work_dir);
-    let producer = CString::new(producer).unwrap();
+    let work_dir = path2cstr(&work_dir).as_ptr();
+    let producer = CString::new(producer).unwrap().as_ptr();
     let flags = "\0";
     let split_name = "\0";
-    return unsafe {
-        llvm::LLVMRustDIBuilderCreateCompileUnit(
+
+    unsafe {
+        let file_metadata = llvm::LLVMRustDIBuilderCreateFile(
+            debug_context.builder, compile_unit_name, work_dir);
+
+        return llvm::LLVMRustDIBuilderCreateCompileUnit(
             debug_context.builder,
             DW_LANG_RUST,
-            compile_unit_name,
-            work_dir.as_ptr(),
-            producer.as_ptr(),
+            file_metadata,
+            producer,
             sess.opts.optimize != config::OptLevel::No,
             flags.as_ptr() as *const _,
             0,

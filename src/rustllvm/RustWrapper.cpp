@@ -474,11 +474,19 @@ extern "C" void LLVMRustDIBuilderFinalize(LLVMRustDIBuilderRef Builder) {
 }
 
 extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateCompileUnit(
-    LLVMRustDIBuilderRef Builder, unsigned Lang, const char *File,
-    const char *Dir, const char *Producer, bool isOptimized, const char *Flags,
+    LLVMRustDIBuilderRef Builder, unsigned Lang, LLVMRustMetadataRef FileRef,
+    const char *Producer, bool isOptimized, const char *Flags,
     unsigned RuntimeVer, const char *SplitName) {
-  return wrap(Builder->createCompileUnit(Lang, File, Dir, Producer, isOptimized,
+  auto *File = unwrapDI<DIFile>(FileRef);
+
+#if LLVM_VERSION_GE(4, 0)
+  return wrap(Builder->createCompileUnit(Lang, File, Producer, isOptimized,
                                          Flags, RuntimeVer, SplitName));
+#else
+  return wrap(Builder->createCompileUnit(Lang, File->getFilename(),
+      File->getDirectory(), Producer, isOptimized,
+      Flags, RuntimeVer, SplitName));
+#endif
 }
 
 extern "C" LLVMRustMetadataRef
