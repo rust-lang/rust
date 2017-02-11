@@ -2417,7 +2417,6 @@ fn item_union(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                 write!(w, "<span class='stab {stab}'></span>",
                     stab = stability_class)?;
             }
-            write!(w, "</span>")?;
             document(w, cx, field)?;
         }
     }
