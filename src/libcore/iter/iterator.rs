@@ -209,10 +209,13 @@ pub trait Iterator {
 
     /// Returns the `n`th element of the iterator.
     ///
-    /// Note that all preceding elements will be consumed (i.e. discarded).
-    ///
     /// Like most indexing operations, the count starts from zero, so `nth(0)`
     /// returns the first value, `nth(1)` the second, and so on.
+    ///
+    /// Note that all preceding elements, as well as the returned element, will be
+    /// consumed from the iterator. That means that the preceding elements will be
+    /// discarded, and also that calling `nth(0)` multiple times on the same iterator
+    /// will return different elements.
     ///
     /// `nth()` will return [`None`] if `n` is greater than or equal to the length of the
     /// iterator.
