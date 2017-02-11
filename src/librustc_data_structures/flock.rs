@@ -27,7 +27,7 @@ mod imp {
     use std::io;
     use libc;
 
-    #[cfg(target_os = "linux")]
+    #[cfg(any(target_os = "linux", target_os = "android"))]
     mod os {
         use libc;
 
