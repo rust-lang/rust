@@ -303,6 +303,7 @@
 #![feature(unboxed_closures)]
 #![feature(unicode)]
 #![feature(unique)]
+#![feature(untagged_unions)]
 #![feature(unwind_attributes)]
 #![feature(vec_push_all)]
 #![feature(zero_one)]
