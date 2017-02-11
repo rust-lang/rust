@@ -1,31 +1,32 @@
 error: this function takes an immutable ref to return a mutable one
- --> tests/ui/mut_from_ref.rs:9:39
+ --> $DIR/mut_from_ref.rs:9:39
   |
 9 |     fn this_wont_hurt_a_bit(&self) -> &mut Foo {
   |                                       ^^^^^^^^
   |
 note: lint level defined here
- --> tests/ui/mut_from_ref.rs:4:9
+ --> $DIR/mut_from_ref.rs:4:9
   |
 4 | #![deny(mut_from_ref)]
   |         ^^^^^^^^^^^^
 
 error: this function takes an immutable ref to return a mutable one
-  --> tests/ui/mut_from_ref.rs:15:25
+  --> $DIR/mut_from_ref.rs:15:25
    |
 15 |     fn ouch(x: &Foo) -> &mut Foo;
    |                         ^^^^^^^^
 
 error: this function takes an immutable ref to return a mutable one
-  --> tests/ui/mut_from_ref.rs:24:21
+  --> $DIR/mut_from_ref.rs:24:21
    |
 24 | fn fail(x: &u32) -> &mut u16 {
    |                     ^^^^^^^^
 
 error: this function takes an immutable ref to return a mutable one
-  --> tests/ui/mut_from_ref.rs:28:50
+  --> $DIR/mut_from_ref.rs:28:50
    |
 28 | fn fail_lifetime<'a>(x: &'a u32, y: &mut u32) -> &'a mut u32 {
    |                                                  ^^^^^^^^^^^
 
 error: aborting due to 4 previous errors
+
