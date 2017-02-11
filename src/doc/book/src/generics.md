@@ -140,5 +140,51 @@ container types like [`Vec<T>`][Vec]. On the other hand, often you want to
 trade that flexibility for increased expressive power. Read about [trait
 bounds][traits] to see why and how.
 
+## Resolving ambiguities
+
+Most of the time when generics are involved, the compiler can infer the
+generic parameters automatically:
+
+```rust
+// v must be a Vec<T> but we don't know what T is yet
+let mut v = Vec::new();
+// v just got a bool value, so T must be bool!
+v.push(true);
+// Debug-print v
+println!("{:?}", v);
+```
+
+Sometimes though, the compiler needs a little help. For example, had we
+omitted the last line, we would get a compile error:
+
+```rust,ignore
+let v = Vec::new();
+//      ^^^^^^^^ cannot infer type for `T`
+//
+// note: type annotations or generic parameter binding required
+println!("{:?}", v);
+```
+
+We can solve this using either a type annotation:
+
+```rust
+let v: Vec<bool> = Vec::new();
+println!("{:?}", v);
+```
+
+or by binding the generic parameter `T` via the so-called
+[‘turbofish’][turbofish] `::<>` syntax:
+
+```rust
+let v = Vec::<bool>::new();
+println!("{:?}", v);
+```
+
+The second approach is useful in situations where we don’t want to bind the
+result to a variable. It can also be used to bind generic parameters in
+functions or methods. See [Iterators § Consumers](iterators.html#consumers)
+for an example.
+
 [traits]: traits.html
 [Vec]: ../std/vec/struct.Vec.html
+[turbofish]: https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.collect
