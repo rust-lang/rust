@@ -202,7 +202,7 @@ class RustBuild(object):
         if ostype != "Linux":
             return
 
-        if not os.path.exists("/etc/nixos"):
+        if not os.path.exists("/etc/NIXOS"):
             return
         if os.path.exists("/lib"):
             return
