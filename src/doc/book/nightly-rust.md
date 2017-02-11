@@ -6,10 +6,13 @@ process, see ‘[Stability as a deliverable][stability]’.
 
 [stability]: http://blog.rust-lang.org/2014/10/30/Stability.html
 
-To install nightly Rust, you can use `rustup.sh`:
+To install nightly Rust, you can use [rustup.rs][rustup]:
+
+[rustup]: https://rustup.rs
 
 ```bash
-$ curl -s https://static.rust-lang.org/rustup.sh | sh -s -- --channel=nightly
+$ curl https://sh.rustup.rs -sSf | sh
+$ rustup install nightly
 ```
 
 If you're concerned about the [potential insecurity][insecurity] of using `curl
@@ -17,30 +20,27 @@ If you're concerned about the [potential insecurity][insecurity] of using `curl
 use a two-step version of the installation and examine our installation script:
 
 ```bash
-$ curl -f -L https://static.rust-lang.org/rustup.sh -O
-$ sh rustup.sh --channel=nightly
+$ curl https://sh.rustup.rs -sSf -o rustup.sh
+$ sh rustup.sh
+$ rustup install nightly
 ```
 
 [insecurity]: http://curlpipesh.tumblr.com
 
-If you're on Windows, please download either the [32-bit installer][win32] or
-the [64-bit installer][win64] and run it.
+If you're on Windows, please download the [rustup installer][installer]
+and run it.
 
-[win32]: https://static.rust-lang.org/dist/rust-nightly-i686-pc-windows-gnu.msi
-[win64]: https://static.rust-lang.org/dist/rust-nightly-x86_64-pc-windows-gnu.msi
+[installer]: https://win.rustup.rs
 
 ## Uninstalling
 
 If you decide you don't want Rust anymore, we'll be a bit sad, but that's okay.
 Not every programming language is great for everyone. Just run the uninstall
-script:
+command:
 
 ```bash
-$ sudo /usr/local/lib/rustlib/uninstall.sh
+$ rustup self uninstall
 ```
-
-If you used the Windows installer, re-run the `.msi` and it will give you
-an uninstall option.
 
 Some people, and somewhat rightfully so, get very upset when we tell you to
 `curl | sh`. Basically, when you do this, you are trusting that the good
