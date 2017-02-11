@@ -10,7 +10,8 @@ use std::collections::Bound;
 use syntax::ast::LitKind;
 use syntax::codemap::Span;
 use utils::paths;
-use utils::{match_type, snippet, span_note_and_lint, span_lint_and_then, in_external_macro, expr_block, walk_ptrs_ty, is_expn_of};
+use utils::{match_type, snippet, span_note_and_lint, span_lint_and_then, in_external_macro, expr_block, walk_ptrs_ty,
+            is_expn_of};
 use utils::sugg::Sugg;
 
 /// **What it does:** Checks for matches with a single arm where an `if let`
@@ -352,10 +353,9 @@ fn check_wild_err_arm(cx: &LateContext, ex: &Expr, arms: &[Arm]) {
         for arm in arms {
             if let PatKind::TupleStruct(ref path, ref inner, _) = arm.pats[0].node {
                 let path_str = print::to_string(print::NO_ANN, |s| s.print_qpath(path, false));
-                if inner.iter().any(|pat| pat.node == PatKind::Wild) &&
-                    path_str == "Err" {
-                        // `Err(_)` arm found
-                        if_let_chain! {[
+                if inner.iter().any(|pat| pat.node == PatKind::Wild) && path_str == "Err" {
+                    // `Err(_)` arm found
+                    if_let_chain! {[
                             let ExprBlock(ref block) = arm.body.node,
                             is_panic_block(cx, block)
                         ], {
@@ -364,7 +364,8 @@ fn check_wild_err_arm(cx: &LateContext, ex: &Expr, arms: &[Arm]) {
                                                arm.pats[0].span,
                                                "Err(_) will match all errors, maybe not a good idea",
                                                arm.pats[0].span,
-                                               "to remove this warning, match each error seperately or use unreachable macro");
+                                               "to remove this warning, match each error seperately \
+                                                or use unreachable macro");
                         }}
                 }
             }
@@ -375,9 +376,13 @@ fn check_wild_err_arm(cx: &LateContext, ex: &Expr, arms: &[Arm]) {
 // If the block contains only a `panic!` macro (as expression or statement)
 fn is_panic_block(cx: &LateContext, block: &Block) -> bool {
     match (&block.expr, block.stmts.len(), block.stmts.first()) {
-        (&Some(ref exp), 0, _) => is_expn_of(cx, exp.span, "panic").is_some() && is_expn_of(cx, exp.span, "unreachable").is_none(),
-        (&None, 1, Some(ref stmt)) => is_expn_of(cx, stmt.span, "panic").is_some() && is_expn_of(cx, stmt.span, "unreachable").is_none(),
-        _ => false
+        (&Some(ref exp), 0, _) => {
+            is_expn_of(cx, exp.span, "panic").is_some() && is_expn_of(cx, exp.span, "unreachable").is_none()
+        },
+        (&None, 1, Some(ref stmt)) => {
+            is_expn_of(cx, stmt.span, "panic").is_some() && is_expn_of(cx, stmt.span, "unreachable").is_none()
+        },
+        _ => false,
     }
 }
 
