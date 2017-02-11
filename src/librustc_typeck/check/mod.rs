@@ -4566,14 +4566,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         } else if !infer_types && types.len() < required_len {
             let adjust = |len| if len > 1 { "parameters" } else { "parameter" };
             let required_param_str = adjust(required_len);
-            let actual_param_str = adjust(types.len());
             struct_span_err!(self.tcx.sess, span, E0089,
                              "too few type parameters provided: \
-                              expected {} {}, found {} {}",
+                              expected {}, found {}",
                              count(required_len),
-                             required_param_str,
-                             count(types.len()),
-                             actual_param_str)
+                             count(types.len()))
                 .span_label(span, &format!("expected {} type {}", required_len, required_param_str))
                 .emit();
         }
