@@ -381,7 +381,8 @@ pub fn rust_src(build: &Build) {
         "README.md",
         "RELEASES.md",
         "configure",
-        "Makefile.in"
+        "Makefile.in",
+        "x.py",
     ];
     let src_dirs = [
         "man",
