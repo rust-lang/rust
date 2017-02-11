@@ -7,9 +7,7 @@
 
 enum LargeEnum {
     A(i32),
-    B([i32; 8000]), //~ ERROR large size difference between variants
-    //~^ HELP consider boxing the large fields to reduce the total size of the enum
-    //~| SUGGESTION Box<[i32; 8000]>
+    B([i32; 8000]),
 }
 
 enum GenericEnumOk<T> {
@@ -20,8 +18,7 @@ enum GenericEnumOk<T> {
 enum GenericEnum2<T> {
     A(i32),
     B([i32; 8000]),
-    C(T, [i32; 8000]), //~ ERROR large size difference between variants
-    //~^ HELP consider boxing the large fields to reduce the total size of the enum
+    C(T, [i32; 8000]),
 }
 
 trait SomeTrait {
@@ -29,35 +26,27 @@ trait SomeTrait {
 }
 
 enum LargeEnumGeneric<A: SomeTrait> {
-    Var(A::Item), // regression test, this used to ICE
+    Var(A::Item),
 }
 
 enum LargeEnum2 {
     VariantOk(i32, u32),
-    ContainingLargeEnum(LargeEnum), //~ ERROR large size difference between variants
-    //~^ HELP consider boxing the large fields to reduce the total size of the enum
-    //~| SUGGESTION Box<LargeEnum>
+    ContainingLargeEnum(LargeEnum),
 }
 enum LargeEnum3 {
-    ContainingMoreThanOneField(i32, [i32; 8000], [i32; 9500]), //~ ERROR large size difference between variants
-    //~^ HELP consider boxing the large fields to reduce the total size of the enum
+    ContainingMoreThanOneField(i32, [i32; 8000], [i32; 9500]),
     VoidVariant,
     StructLikeLittle { x: i32, y: i32 },
 }
 
 enum LargeEnum4 {
     VariantOk(i32, u32),
-    StructLikeLarge { x: [i32; 8000], y: i32 }, //~ ERROR large size difference between variants
-    //~^ HELP consider boxing the large fields to reduce the total size of the enum
+    StructLikeLarge { x: [i32; 8000], y: i32 },
 }
 
 enum LargeEnum5 {
     VariantOk(i32, u32),
-    StructLikeLarge2 { //~ ERROR large size difference between variants
-        x:
-        [i32; 8000] //~ SUGGESTION Box<[i32; 8000]>
-        //~^ HELP consider boxing the large fields to reduce the total size of the enum
-    },
+    StructLikeLarge2 { x: [i32; 8000] },
 }
 
 enum LargeEnumOk {
@@ -65,6 +54,4 @@ enum LargeEnumOk {
     LargeB([i32; 8001]),
 }
 
-fn main() {
-
-}
+fn main() {}

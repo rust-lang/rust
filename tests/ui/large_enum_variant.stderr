@@ -1,4 +1,4 @@
-error: large enum variant found
+error: large size difference between variants
   --> $DIR/large_enum_variant.rs:10:5
    |
 10 |     B([i32; 8000]),
@@ -12,73 +12,59 @@ note: lint level defined here
 help: consider boxing the large fields to reduce the total size of the enum
    |     B(Box<[i32; 8000]>),
 
-error: large enum variant found
-  --> $DIR/large_enum_variant.rs:17:5
-   |
-17 |     B([i32; 8000]),
-   |     ^^^^^^^^^^^^^^
-   |
-help: consider boxing the large fields to reduce the total size of the enum
-   |     B(Box<[i32; 8000]>),
-
-error: large enum variant found
+error: large size difference between variants
   --> $DIR/large_enum_variant.rs:21:5
    |
-21 |     D(T, [i32; 8000]),
+21 |     C(T, [i32; 8000]),
    |     ^^^^^^^^^^^^^^^^^
    |
 help: consider boxing the large fields to reduce the total size of the enum
   --> $DIR/large_enum_variant.rs:21:5
    |
-21 |     D(T, [i32; 8000]),
+21 |     C(T, [i32; 8000]),
    |     ^^^^^^^^^^^^^^^^^
 
-error: large enum variant found
-  --> $DIR/large_enum_variant.rs:35:5
+error: large size difference between variants
+  --> $DIR/large_enum_variant.rs:34:5
    |
-35 |     ContainingLargeEnum(LargeEnum),
+34 |     ContainingLargeEnum(LargeEnum),
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 help: consider boxing the large fields to reduce the total size of the enum
    |     ContainingLargeEnum(Box<LargeEnum>),
 
-error: large enum variant found
-  --> $DIR/large_enum_variant.rs:38:5
+error: large size difference between variants
+  --> $DIR/large_enum_variant.rs:37:5
    |
-38 |     ContainingMoreThanOneField(i32, [i32; 8000], [i32; 9500]),
+37 |     ContainingMoreThanOneField(i32, [i32; 8000], [i32; 9500]),
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 help: consider boxing the large fields to reduce the total size of the enum
-  --> $DIR/large_enum_variant.rs:38:5
+  --> $DIR/large_enum_variant.rs:37:5
    |
-38 |     ContainingMoreThanOneField(i32, [i32; 8000], [i32; 9500]),
+37 |     ContainingMoreThanOneField(i32, [i32; 8000], [i32; 9500]),
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: large enum variant found
-  --> $DIR/large_enum_variant.rs:42:5
-   |
-42 |     StructLikeLarge { x: [i32; 8000], y: i32 },
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-help: consider boxing the large fields to reduce the total size of the enum
-  --> $DIR/large_enum_variant.rs:42:5
-   |
-42 |     StructLikeLarge { x: [i32; 8000], y: i32 },
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: large enum variant found
+error: large size difference between variants
   --> $DIR/large_enum_variant.rs:44:5
    |
-44 |       StructLikeLarge2 {
-   |  _____^ starting here...
-45 | |         x:
-46 | |         [i32; 8000]
-47 | |
-48 | |     },
-   | |_____^ ...ending here
+44 |     StructLikeLarge { x: [i32; 8000], y: i32 },
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 help: consider boxing the large fields to reduce the total size of the enum
-   |         Box<[i32; 8000]>
+  --> $DIR/large_enum_variant.rs:44:5
+   |
+44 |     StructLikeLarge { x: [i32; 8000], y: i32 },
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 7 previous errors
+error: large size difference between variants
+  --> $DIR/large_enum_variant.rs:49:5
+   |
+49 |     StructLikeLarge2 { x: [i32; 8000] },
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider boxing the large fields to reduce the total size of the enum
+   |     StructLikeLarge2 { x: Box<[i32; 8000]> },
+
+error: aborting due to 6 previous errors
 
