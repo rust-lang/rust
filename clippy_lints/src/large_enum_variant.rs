@@ -114,7 +114,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LargeEnumVariant {
     }
 }
 
-fn update_if<T, F>(old: &mut Option<T>, new: T, f: F) where F: Fn(&T, &T) -> bool {
+fn update_if<T, F>(old: &mut Option<T>, new: T, f: F)
+    where F: Fn(&T, &T) -> bool
+{
     if let Some(ref mut val) = *old {
         if f(val, &new) {
             *val = new;
