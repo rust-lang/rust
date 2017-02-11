@@ -179,8 +179,8 @@ impl Builder {
         // and wrap it up in a `Value::Table`.
         let mut manifest = BTreeMap::new();
         manifest.insert("manifest-version".to_string(),
-                        toml::encode(&manifest_version));
-        manifest.insert("date".to_string(), toml::encode(&date));
+                        toml::Value::String(manifest_version));
+        manifest.insert("date".to_string(), toml::Value::String(date));
         manifest.insert("pkg".to_string(), toml::encode(&pkg));
         let manifest = toml::Value::Table(manifest).to_string();
 
