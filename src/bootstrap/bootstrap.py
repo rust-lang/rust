@@ -345,6 +345,21 @@ class RustBuild(object):
             ostype = 'unknown-openbsd'
         elif ostype == 'NetBSD':
             ostype = 'unknown-netbsd'
+        elif ostype == 'SunOS':
+            ostype = 'sun-solaris'
+            # On Solaris, uname -m will return a machine classification instead
+            # of a cpu type, so uname -p is recommended instead.  However, the
+            # output from that option is too generic for our purposes (it will
+            # always emit 'i386' on x86/amd64 systems).  As such, isainfo -k
+            # must be used instead.
+            try:
+                cputype = subprocess.check_output(['isainfo',
+                  '-k']).strip().decode(default_encoding)
+            except (subprocess.CalledProcessError, WindowsError):
+                err = "isainfo not found"
+                if self.verbose:
+                    raise Exception(err)
+                sys.exit(err)
         elif ostype == 'Darwin':
             ostype = 'apple-darwin'
         elif ostype.startswith('MINGW'):
