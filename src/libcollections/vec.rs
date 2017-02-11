@@ -545,6 +545,9 @@ impl<T> Vec<T> {
     /// The [`drain`] method can emulate `truncate`, but causes the excess
     /// elements to be returned instead of dropped.
     ///
+    /// Note that this method has no effect on the allocated capacity
+    /// of the vector.
+    ///
     /// # Examples
     ///
     /// Truncating a five element vector to two elements:
@@ -1088,6 +1091,9 @@ impl<T> Vec<T> {
     }
 
     /// Clears the vector, removing all values.
+    ///
+    /// Note that this method has no effect on the allocated capacity
+    /// of the vector.
     ///
     /// # Examples
     ///

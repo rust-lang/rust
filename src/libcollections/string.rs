@@ -999,6 +999,9 @@ impl String {
     /// If `new_len` is greater than the string's current length, this has no
     /// effect.
     ///
+    /// Note that this method has no effect on the allocated capacity
+    /// of the string
+    ///
     /// # Panics
     ///
     /// Panics if `new_len` does not lie on a [`char`] boundary.
