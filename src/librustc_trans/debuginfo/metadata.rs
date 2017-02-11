@@ -791,12 +791,15 @@ pub fn compile_unit_metadata(scc: &SharedCrateContext,
     let producer = CString::new(producer).unwrap();
     let flags = "\0";
     let split_name = "\0";
-    return unsafe {
-        llvm::LLVMRustDIBuilderCreateCompileUnit(
+
+    unsafe {
+        let file_metadata = llvm::LLVMRustDIBuilderCreateFile(
+            debug_context.builder, compile_unit_name, work_dir.as_ptr());
+
+        return llvm::LLVMRustDIBuilderCreateCompileUnit(
             debug_context.builder,
             DW_LANG_RUST,
-            compile_unit_name,
-            work_dir.as_ptr(),
+            file_metadata,
             producer.as_ptr(),
             sess.opts.optimize != config::OptLevel::No,
             flags.as_ptr() as *const _,
