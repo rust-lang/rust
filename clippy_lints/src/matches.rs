@@ -353,21 +353,21 @@ fn check_wild_err_arm(cx: &LateContext, ex: &Expr, arms: &[Arm]) {
         for arm in arms {
             if let PatKind::TupleStruct(ref path, ref inner, _) = arm.pats[0].node {
                 let path_str = print::to_string(print::NO_ANN, |s| s.print_qpath(path, false));
-                if inner.iter().any(|pat| pat.node == PatKind::Wild) && path_str == "Err" {
-                    // `Err(_)` arm found
-                    if_let_chain! {[
-                            let ExprBlock(ref block) = arm.body.node,
-                            is_panic_block(cx, block)
-                        ], {
-                            span_note_and_lint(cx,
-                                               MATCH_WILD_ERR_ARM,
-                                               arm.pats[0].span,
-                                               "Err(_) will match all errors, maybe not a good idea",
-                                               arm.pats[0].span,
-                                               "to remove this warning, match each error seperately \
-                                                or use unreachable macro");
-                        }}
-                }
+                if_let_chain! {[
+                    path_str == "Err",
+                    inner.iter().any(|pat| pat.node == PatKind::Wild),
+                    let ExprBlock(ref block) = arm.body.node,
+                    is_panic_block(cx, block)
+                ], {
+                    // `Err(_)` arm with `panic!` found
+                    span_note_and_lint(cx,
+                                       MATCH_WILD_ERR_ARM,
+                                       arm.pats[0].span,
+                                       "Err(_) will match all errors, maybe not a good idea",
+                                       arm.pats[0].span,
+                                       "to remove this warning, match each error seperately \
+                                        or use unreachable macro");
+                }}
             }
         }
     }
