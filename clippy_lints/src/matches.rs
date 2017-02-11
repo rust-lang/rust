@@ -10,7 +10,7 @@ use std::collections::Bound;
 use syntax::ast::LitKind;
 use syntax::codemap::Span;
 use utils::paths;
-use utils::{match_type, snippet, span_note_and_lint, span_lint_and_then, in_external_macro, expr_block};
+use utils::{match_type, snippet, span_note_and_lint, span_lint_and_then, in_external_macro, expr_block, walk_ptrs_ty, is_expn_of};
 use utils::sugg::Sugg;
 
 /// **What it does:** Checks for matches with a single arm where an `if let`
@@ -121,6 +121,26 @@ declare_lint! {
     "a match with overlapping arms"
 }
 
+/// **What it does:** Checks for arm matches all errors with `Err(_)`.
+///
+/// **Why is this bad?** It is a bad practice to catch all errors the same way
+///
+/// **Known problems:** None.
+///
+/// **Example:**
+/// ```rust
+/// let x : Result(i32, &str) = Ok(3);
+/// match x {
+///     Ok(_) => println!("ok"),
+///     Err(_) => println!("err"),
+/// }
+/// ```
+declare_lint! {
+    pub MATCH_WILD_ERR_ARM,
+    Warn,
+    "a match with `Err(_)` arm"
+}
+
 #[allow(missing_copy_implementations)]
 pub struct MatchPass;
 
@@ -130,7 +150,8 @@ impl LintPass for MatchPass {
                     MATCH_REF_PATS,
                     MATCH_BOOL,
                     SINGLE_MATCH_ELSE,
-                    MATCH_OVERLAPPING_ARM)
+                    MATCH_OVERLAPPING_ARM,
+                    MATCH_WILD_ERR_ARM)
     }
 }
 
@@ -143,6 +164,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MatchPass {
             check_single_match(cx, ex, arms, expr);
             check_match_bool(cx, ex, arms, expr);
             check_overlapping_arms(cx, ex, arms);
+            check_wild_err_arm(cx, ex, arms);
         }
         if let ExprMatch(ref ex, ref arms, source) = expr.node {
             check_match_ref_pats(cx, ex, arms, source, expr);
@@ -319,6 +341,45 @@ fn check_overlapping_arms(cx: &LateContext, ex: &Expr, arms: &[Arm]) {
                                    "overlaps with this");
             }
         }
+    }
+}
+
+fn check_wild_err_arm(cx: &LateContext, ex: &Expr, arms: &[Arm]) {
+    let ex_ty = walk_ptrs_ty(cx.tables.expr_ty(ex));
+    if match_type(cx, ex_ty, &paths::RESULT) {
+        for arm in arms {
+            if let PatKind::TupleStruct(ref path, ref inner, _) = arm.pats[0].node {
+                let path_str = print::to_string(print::NO_ANN, |s| s.print_qpath(path, false));
+                if inner.iter().any(|pat| pat.node == PatKind::Wild) &&
+                    path_str == "Err" {
+                        // `Err(_)` arm found
+                        let mut need_lint = true;
+                        if let ExprBlock(ref block) = arm.body.node {
+                            if is_unreachable_block(cx, block) {
+                                need_lint = false;
+                            }
+                        }
+
+                        if need_lint {
+                            span_note_and_lint(cx,
+                                               MATCH_WILD_ERR_ARM,
+                                               arm.pats[0].span,
+                                               "Err(_) will match all errors, maybe not a good idea",
+                                               arm.pats[0].span,
+                                               "to remove this warning, match each error seperately or use unreachable macro");
+                        }
+                }
+            }
+        }
+    }
+}
+
+// If the block contains only a `unreachable!` macro (as expression or statement)
+fn is_unreachable_block(cx: &LateContext, block: &Block) -> bool {
+    match (&block.expr, block.stmts.len(), block.stmts.first()) {
+        (&Some(ref exp), 0, _) => is_expn_of(cx, exp.span, "unreachable").is_some(),
+        (&None, 1, Some(ref stmt)) => is_expn_of(cx, stmt.span, "unreachable").is_some(),
+        _ => false
     }
 }
 

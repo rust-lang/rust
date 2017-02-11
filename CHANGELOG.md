@@ -362,6 +362,7 @@ All notable changes to this project will be documented in this file.
 [`match_overlapping_arm`]: https://github.com/Manishearth/rust-clippy/wiki#match_overlapping_arm
 [`match_ref_pats`]: https://github.com/Manishearth/rust-clippy/wiki#match_ref_pats
 [`match_same_arms`]: https://github.com/Manishearth/rust-clippy/wiki#match_same_arms
+[`match_wild_err_arm`]: https://github.com/Manishearth/rust-clippy/wiki#match_wild_err_arm
 [`mem_forget`]: https://github.com/Manishearth/rust-clippy/wiki#mem_forget
 [`min_max`]: https://github.com/Manishearth/rust-clippy/wiki#min_max
 [`misrefactored_assign_op`]: https://github.com/Manishearth/rust-clippy/wiki#misrefactored_assign_op

@@ -388,5 +388,28 @@ note: overlaps with this
 275 |         0 ... 11 => println!("0 ... 11"),
     |         ^^^^^^^^
 
-error: aborting due to 23 previous errors
+error: Err(_) will match all errors, maybe not a good idea
+   --> $DIR/matches.rs:292:9
+    |
+292 |         Err(_) => println!("err")
+    |         ^^^^^^
+    |
+    = note: #[deny(match_wild_err_arm)] implied by #[deny(clippy)]
+note: lint level defined here
+   --> $DIR/matches.rs:5:9
+    |
+5   | #![deny(clippy)]
+    |         ^^^^^^
+    = note: to remove this warning, match each error seperately or use unreachable macro
+
+error: Err(_) will match all errors, maybe not a good idea
+   --> $DIR/matches.rs:298:9
+    |
+298 |         Err(_) => {
+    |         ^^^^^^
+    |
+    = note: #[deny(match_wild_err_arm)] implied by #[deny(clippy)]
+    = note: to remove this warning, match each error seperately or use unreachable macro
+
+error: aborting due to 25 previous errors
 

@@ -412,6 +412,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         matches::MATCH_BOOL,
         matches::MATCH_OVERLAPPING_ARM,
         matches::MATCH_REF_PATS,
+        matches::MATCH_WILD_ERR_ARM,
         matches::SINGLE_MATCH,
         methods::CHARS_NEXT_CMP,
         methods::CLONE_DOUBLE_REF,

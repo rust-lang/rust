@@ -180,7 +180,7 @@ transparently:
 
 ## Lints
 
-There are 186 lints included in this crate:
+There are 187 lints included in this crate:
 
 name                                                                                                                   | default | triggers on
 -----------------------------------------------------------------------------------------------------------------------|---------|----------------------------------------------------------------------------------------------------------------------------------
@@ -271,6 +271,7 @@ name                                                                            
 [match_overlapping_arm](https://github.com/Manishearth/rust-clippy/wiki#match_overlapping_arm)                         | warn    | a match with overlapping arms
 [match_ref_pats](https://github.com/Manishearth/rust-clippy/wiki#match_ref_pats)                                       | warn    | a match or `if let` with all arms prefixed with `&` instead of deref-ing the match expression
 [match_same_arms](https://github.com/Manishearth/rust-clippy/wiki#match_same_arms)                                     | warn    | `match` with identical arm bodies
+[match_wild_err_arm](https://github.com/Manishearth/rust-clippy/wiki#match_wild_err_arm)                               | warn    | a match with `Err(_)` arm
 [mem_forget](https://github.com/Manishearth/rust-clippy/wiki#mem_forget)                                               | allow   | `mem::forget` usage on `Drop` types, likely to cause memory leaks
 [min_max](https://github.com/Manishearth/rust-clippy/wiki#min_max)                                                     | warn    | `min(_, max(_, _))` (or vice versa) with bounds clamping the result to a constant
 [misrefactored_assign_op](https://github.com/Manishearth/rust-clippy/wiki#misrefactored_assign_op)                     | warn    | having a variable on both sides of an assign op
