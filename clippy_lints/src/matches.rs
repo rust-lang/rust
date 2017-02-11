@@ -121,9 +121,11 @@ declare_lint! {
     "a match with overlapping arms"
 }
 
-/// **What it does:** Checks for arm matches all errors with `Err(_)`.
+/// **What it does:** Checks for arm which matches all errors with `Err(_)`
+/// and take drastic actions like `panic!`.
 ///
-/// **Why is this bad?** It is a bad practice to catch all errors the same way
+/// **Why is this bad?** It is generally a bad practice, just like
+/// catching all exceptions in java with `catch(Exception)`
 ///
 /// **Known problems:** None.
 ///
@@ -132,13 +134,13 @@ declare_lint! {
 /// let x : Result(i32, &str) = Ok(3);
 /// match x {
 ///     Ok(_) => println!("ok"),
-///     Err(_) => println!("err"),
+///     Err(_) => panic!("err"),
 /// }
 /// ```
 declare_lint! {
     pub MATCH_WILD_ERR_ARM,
     Warn,
-    "a match with `Err(_)` arm"
+    "a match with `Err(_)` arm and take drastic actions"
 }
 
 #[allow(missing_copy_implementations)]
@@ -353,32 +355,28 @@ fn check_wild_err_arm(cx: &LateContext, ex: &Expr, arms: &[Arm]) {
                 if inner.iter().any(|pat| pat.node == PatKind::Wild) &&
                     path_str == "Err" {
                         // `Err(_)` arm found
-                        let mut need_lint = true;
-                        if let ExprBlock(ref block) = arm.body.node {
-                            if is_unreachable_block(cx, block) {
-                                need_lint = false;
-                            }
-                        }
-
-                        if need_lint {
+                        if_let_chain! {[
+                            let ExprBlock(ref block) = arm.body.node,
+                            is_panic_block(cx, block)
+                        ], {
                             span_note_and_lint(cx,
                                                MATCH_WILD_ERR_ARM,
                                                arm.pats[0].span,
                                                "Err(_) will match all errors, maybe not a good idea",
                                                arm.pats[0].span,
                                                "to remove this warning, match each error seperately or use unreachable macro");
-                        }
+                        }}
                 }
             }
         }
     }
 }
 
-// If the block contains only a `unreachable!` macro (as expression or statement)
-fn is_unreachable_block(cx: &LateContext, block: &Block) -> bool {
+// If the block contains only a `panic!` macro (as expression or statement)
+fn is_panic_block(cx: &LateContext, block: &Block) -> bool {
     match (&block.expr, block.stmts.len(), block.stmts.first()) {
-        (&Some(ref exp), 0, _) => is_expn_of(cx, exp.span, "unreachable").is_some(),
-        (&None, 1, Some(ref stmt)) => is_expn_of(cx, stmt.span, "unreachable").is_some(),
+        (&Some(ref exp), 0, _) => is_expn_of(cx, exp.span, "panic").is_some() && is_expn_of(cx, exp.span, "unreachable").is_none(),
+        (&None, 1, Some(ref stmt)) => is_expn_of(cx, stmt.span, "panic").is_some() && is_expn_of(cx, stmt.span, "unreachable").is_none(),
         _ => false
     }
 }

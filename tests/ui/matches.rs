@@ -289,29 +289,39 @@ fn match_wild_err_arm() {
     match x {
         Ok(3) => println!("ok"),
         Ok(_) => println!("ok"),
+        Err(_) => panic!("err")
+    }
+
+    match x {
+        Ok(3) => println!("ok"),
+        Ok(_) => println!("ok"),
+        Err(_) => {panic!()}
+    }
+
+    match x {
+        Ok(3) => println!("ok"),
+        Ok(_) => println!("ok"),
+        Err(_) => {panic!();}
+    }
+
+    // allowed when not with `panic!` block
+    match x {
+        Ok(3) => println!("ok"),
+        Ok(_) => println!("ok"),
         Err(_) => println!("err")
     }
 
-    match x {
-        Ok(3) => println!("ok"),
-        Ok(_) => println!("ok"),
-        Err(_) => {
-            println!("err");
-            unreachable!()
-        }
-    }
-
-    // allowed when using with unreachable as the only statement/expression
-    match x {
-        Ok(3) => println!("ok"),
-        Ok(_) => println!("ok"),
-        Err(_) => unreachable!()
-    }
-
+    // allowed when used with `unreachable!`
     match x {
         Ok(3) => println!("ok"),
         Ok(_) => println!("ok"),
         Err(_) => {unreachable!()}
+    }
+
+    match x {
+        Ok(3) => println!("ok"),
+        Ok(_) => println!("ok"),
+        Err(_) => unreachable!()
     }
 
     match x {
