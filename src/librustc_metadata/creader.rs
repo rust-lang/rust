@@ -616,10 +616,9 @@ impl<'a> CrateLoader<'a> {
                                       trait_name: &str,
                                       expand: fn(TokenStream) -> TokenStream,
                                       attributes: &[&'static str]) {
-                let attrs = attributes.iter().cloned().map(Symbol::intern).collect();
-                let derive = SyntaxExtension::ProcMacroDerive(
-                    Box::new(ProcMacroDerive::new(expand, attrs))
-                );
+                let attrs = attributes.iter().cloned().map(Symbol::intern).collect::<Vec<_>>();
+                let derive = ProcMacroDerive::new(expand, attrs.clone());
+                let derive = SyntaxExtension::ProcMacroDerive(Box::new(derive), attrs);
                 self.0.push((Symbol::intern(trait_name), Rc::new(derive)));
             }
 
