@@ -136,22 +136,23 @@ fn check_fn(cx: &LateContext, decl: &FnDecl, fn_id: NodeId) {
     if let FunctionRetTy::Return(ref ty) = decl.output {
         if let Some((out, MutMutable, _)) = get_rptr_lm(ty) {
             let mut immutables = vec![];
-            for (_, ref mutbl, ref argspan) in decl.inputs
-                          .iter()
-                          .filter_map(|ty| get_rptr_lm(ty))
-                          .filter(|&(lt, _, _)| lt.name == out.name) {
-                if *mutbl == MutMutable { return; }
+            for (_, ref mutbl, ref argspan) in
+                decl.inputs
+                    .iter()
+                    .filter_map(|ty| get_rptr_lm(ty))
+                    .filter(|&(lt, _, _)| lt.name == out.name) {
+                if *mutbl == MutMutable {
+                    return;
+                }
                 immutables.push(*argspan);
             }
-            if immutables.is_empty() { return; }
-            span_lint_and_then(cx,
-                               MUT_FROM_REF,
-                               ty.span,
-                               "mutable borrow from immutable input(s)",
-                               |db| {
-                                    let ms = MultiSpan::from_spans(immutables);
-                                    db.span_note(ms, "immutable borrow here");
-                               });
+            if immutables.is_empty() {
+                return;
+            }
+            span_lint_and_then(cx, MUT_FROM_REF, ty.span, "mutable borrow from immutable input(s)", |db| {
+                let ms = MultiSpan::from_spans(immutables);
+                db.span_note(ms, "immutable borrow here");
+            });
         }
     }
 }
