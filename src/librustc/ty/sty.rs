@@ -24,7 +24,7 @@ use std::cmp::Ordering;
 use syntax::abi;
 use syntax::ast::{self, Name};
 use syntax::symbol::{keywords, InternedString};
-use util::nodemap::FxHashSet;
+use util::nodemap::FxHashMap;
 
 use serialize;
 
@@ -1018,7 +1018,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
     /// This code should only compile in modules where the uninhabitedness of Foo is
     /// visible.
     pub fn is_uninhabited_from(&self, module: DefId, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> bool {
-        let mut visited = FxHashSet::default();
+        let mut visited = FxHashMap::default();
         let forest = self.uninhabited_from(&mut visited, tcx);
 
         // To check whether this type is uninhabited at all (not just from the
