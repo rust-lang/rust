@@ -26,7 +26,7 @@ use build::{BlockAnd, BlockAndExtension, Builder};
 use build::matches::{Binding, MatchPair, Candidate};
 use hair::*;
 use rustc::mir::*;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::FxHashMap;
 
 use std::mem;
 
@@ -102,7 +102,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 if self.hir.tcx().sess.features.borrow().never_type {
                     let irrefutable = adt_def.variants.iter().enumerate().all(|(i, v)| {
                         i == variant_index || {
-                            let mut visited = FxHashSet::default();
+                            let mut visited = FxHashMap::default();
                             let node_set = v.uninhabited_from(&mut visited,
                                                               self.hir.tcx(),
                                                               substs,

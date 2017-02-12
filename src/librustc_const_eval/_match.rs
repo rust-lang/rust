@@ -17,7 +17,7 @@ use eval::{compare_const_vals};
 
 use rustc_const_math::ConstInt;
 
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
 
 use pattern::{FieldPattern, Pattern, PatternKind};
@@ -404,7 +404,7 @@ fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
         }
         ty::TyAdt(def, substs) if def.is_enum() && def.variants.len() != 1 => {
             def.variants.iter().filter_map(|v| {
-                let mut visited = FxHashSet::default();
+                let mut visited = FxHashMap::default();
                 let forest = v.uninhabited_from(&mut visited,
                                                 cx.tcx, substs,
                                                 AdtKind::Enum);
