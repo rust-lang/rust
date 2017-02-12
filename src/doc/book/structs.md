@@ -117,8 +117,8 @@ fn main() {
 }
 ```
 
-Initialization of a data structure (struct, enum, union) can be simplified if
-fields of the data structure are initialized with variables which has same
+Initialization of a data structure (struct, enum, union) can be simplified when
+fields of the data structure are initialized with variables of the same
 names as the fields.
 
 ```

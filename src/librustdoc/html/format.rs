@@ -550,8 +550,8 @@ impl<'a> fmt::Display for HRef<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match href(self.did) {
             Some((url, shortty, fqp)) => if !f.alternate() {
-                write!(f, "<a class='{}' href='{}' title='{}'>{}</a>",
-                       shortty, url, fqp.join("::"), self.text)
+                write!(f, "<a class='{}' href='{}' title='{} {}'>{}</a>",
+                       shortty, url, shortty, fqp.join("::"), self.text)
             } else {
                 write!(f, "{}", self.text)
             },
