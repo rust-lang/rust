@@ -15,6 +15,7 @@
 #![allow(needless_lifetimes)]
 
 extern crate syntax;
+extern crate syntax_pos;
 #[macro_use]
 extern crate rustc;
 extern crate rustc_data_structures;

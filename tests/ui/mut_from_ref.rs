@@ -29,6 +29,10 @@ fn fail_lifetime<'a>(x: &'a u32, y: &mut u32) -> &'a mut u32 {
     unimplemented!()
 }
 
+fn fail_double<'a>(x: &'a u32, y: &'a u32, z: &'b mut u32) -> &'a mut u32 {
+    unimplemented!()
+}
+
 // this is OK, because the result borrows y
 fn works<'a>(x: &u32, y: &'a mut u32) -> &'a mut u32 {
     unimplemented!()

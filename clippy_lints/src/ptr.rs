@@ -5,7 +5,9 @@ use rustc::hir::map::NodeItem;
 use rustc::lint::*;
 use rustc::ty;
 use syntax::ast::NodeId;
-use utils::{match_path, match_type, paths, span_lint};
+use syntax::codemap::Span;
+use syntax_pos::MultiSpan;
+use utils::{match_path, match_type, paths, span_lint, span_lint_and_then};
 
 /// **What it does:** This lint checks for function arguments of type `&String` or `&Vec` unless
 /// the references are mutable.
@@ -132,29 +134,31 @@ fn check_fn(cx: &LateContext, decl: &FnDecl, fn_id: NodeId) {
     }
 
     if let FunctionRetTy::Return(ref ty) = decl.output {
-        if let Some((out, MutMutable)) = get_rptr_lm(ty) {
-            if let Some(MutImmutable) =
-                decl.inputs
-                    .iter()
-                    .filter_map(|ty| get_rptr_lm(ty))
-                    .filter(|&(lt, _)| lt.name == out.name)
-                    .fold(None, |x, (_, m)| match (x, m) {
-                        (Some(MutMutable), _) |
-                        (_, MutMutable) => Some(MutMutable),
-                        (_, m) => Some(m),
-                    }) {
-                span_lint(cx,
-                          MUT_FROM_REF,
-                          ty.span,
-                          "this function takes an immutable ref to return a mutable one");
+        if let Some((out, MutMutable, _)) = get_rptr_lm(ty) {
+            let mut immutables = vec![];
+            for (_, ref mutbl, ref argspan) in decl.inputs
+                          .iter()
+                          .filter_map(|ty| get_rptr_lm(ty))
+                          .filter(|&(lt, _, _)| lt.name == out.name) {
+                if *mutbl == MutMutable { return; }
+                immutables.push(*argspan);
             }
+            if immutables.is_empty() { return; }
+            span_lint_and_then(cx,
+                               MUT_FROM_REF,
+                               ty.span,
+                               "mutable borrow from immutable input(s)",
+                               |db| {
+                                    let ms = MultiSpan::from_spans(immutables);
+                                    db.span_note(ms, "immutable borrow here");
+                               });
         }
     }
 }
 
-fn get_rptr_lm(ty: &Ty) -> Option<(&Lifetime, Mutability)> {
+fn get_rptr_lm(ty: &Ty) -> Option<(&Lifetime, Mutability, Span)> {
     if let Ty_::TyRptr(ref lt, ref m) = ty.node {
-        Some((lt, m.mutbl))
+        Some((lt, m.mutbl, ty.span))
     } else {
         None
     }
