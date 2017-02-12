@@ -1818,7 +1818,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
                 write!(w, "
                        <tr class='{stab} module-item'>
                            <td><a class='{class}' href='{href}'
-                                  title='{title}'>{name}</a>{unsafety_flag}</td>
+                                  title='{title_type} {title}'>{name}</a>{unsafety_flag}</td>
                            <td class='docblock-short'>
                                {stab_docs} {docs}
                            </td>
@@ -1830,6 +1830,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
                        stab = myitem.stability_class(),
                        unsafety_flag = unsafety_flag,
                        href = item_path(myitem.type_(), myitem.name.as_ref().unwrap()),
+                       title_type = myitem.type_(),
                        title = full_path(cx, myitem))?;
             }
         }
