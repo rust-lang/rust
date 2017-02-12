@@ -379,7 +379,7 @@ fn is_panic_block(cx: &LateContext, block: &Block) -> bool {
         (&Some(ref exp), 0, _) => {
             is_expn_of(cx, exp.span, "panic").is_some() && is_expn_of(cx, exp.span, "unreachable").is_none()
         },
-        (&None, 1, Some(ref stmt)) => {
+        (&None, 1, Some(stmt)) => {
             is_expn_of(cx, stmt.span, "panic").is_some() && is_expn_of(cx, stmt.span, "unreachable").is_none()
         },
         _ => false,
