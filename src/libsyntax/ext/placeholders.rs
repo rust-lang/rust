@@ -84,8 +84,17 @@ impl<'a, 'b> PlaceholderExpander<'a, 'b> {
         }
     }
 
-    pub fn add(&mut self, id: ast::NodeId, expansion: Expansion) {
-        let expansion = expansion.fold_with(self);
+    pub fn add(&mut self, id: ast::NodeId, expansion: Expansion, derives: Vec<Mark>) {
+        let mut expansion = expansion.fold_with(self);
+        if let Expansion::Items(mut items) = expansion {
+            for derive in derives {
+                match self.remove(derive.as_placeholder_id()) {
+                    Expansion::Items(derived_items) => items.extend(derived_items),
+                    _ => unreachable!(),
+                }
+            }
+            expansion = Expansion::Items(items);
+        }
         self.expansions.insert(id, expansion);
     }
 

@@ -514,7 +514,7 @@ pub enum SyntaxExtension {
     /// The input is the annotated item.
     /// Allows generating code to implement a Trait for a given struct
     /// or enum item.
-    ProcMacroDerive(Box<MultiItemModifier>),
+    ProcMacroDerive(Box<MultiItemModifier>, Vec<Symbol> /* inert attribute names */),
 
     /// An attribute-like procedural macro that derives a builtin trait.
     BuiltinDerive(BuiltinDeriveFn),
@@ -528,15 +528,15 @@ pub trait Resolver {
     fn eliminate_crate_var(&mut self, item: P<ast::Item>) -> P<ast::Item>;
     fn is_whitelisted_legacy_custom_derive(&self, name: Name) -> bool;
 
-    fn visit_expansion(&mut self, mark: Mark, expansion: &Expansion);
+    fn visit_expansion(&mut self, mark: Mark, expansion: &Expansion, derives: &[Mark]);
     fn add_ext(&mut self, ident: ast::Ident, ext: Rc<SyntaxExtension>);
     fn add_expansions_at_stmt(&mut self, id: ast::NodeId, macros: Vec<Mark>);
 
     fn resolve_imports(&mut self);
-    fn find_attr_invoc(&mut self, attrs: &mut Vec<Attribute>) -> Option<Attribute>;
+    // Resolves attribute and derive legacy macros from `#![plugin(..)]`.
+    fn find_legacy_attr_invoc(&mut self, attrs: &mut Vec<Attribute>) -> Option<Attribute>;
     fn resolve_macro(&mut self, scope: Mark, path: &ast::Path, force: bool)
                      -> Result<Rc<SyntaxExtension>, Determinacy>;
-    fn resolve_builtin_macro(&mut self, tname: Name) -> Result<Rc<SyntaxExtension>, Determinacy>;
     fn resolve_derive_macro(&mut self, scope: Mark, path: &ast::Path, force: bool)
                             -> Result<Rc<SyntaxExtension>, Determinacy>;
 }
@@ -555,17 +555,14 @@ impl Resolver for DummyResolver {
     fn eliminate_crate_var(&mut self, item: P<ast::Item>) -> P<ast::Item> { item }
     fn is_whitelisted_legacy_custom_derive(&self, _name: Name) -> bool { false }
 
-    fn visit_expansion(&mut self, _invoc: Mark, _expansion: &Expansion) {}
+    fn visit_expansion(&mut self, _invoc: Mark, _expansion: &Expansion, _derives: &[Mark]) {}
     fn add_ext(&mut self, _ident: ast::Ident, _ext: Rc<SyntaxExtension>) {}
     fn add_expansions_at_stmt(&mut self, _id: ast::NodeId, _macros: Vec<Mark>) {}
 
     fn resolve_imports(&mut self) {}
-    fn find_attr_invoc(&mut self, _attrs: &mut Vec<Attribute>) -> Option<Attribute> { None }
+    fn find_legacy_attr_invoc(&mut self, _attrs: &mut Vec<Attribute>) -> Option<Attribute> { None }
     fn resolve_macro(&mut self, _scope: Mark, _path: &ast::Path, _force: bool)
                      -> Result<Rc<SyntaxExtension>, Determinacy> {
-        Err(Determinacy::Determined)
-    }
-    fn resolve_builtin_macro(&mut self, _tname: Name) -> Result<Rc<SyntaxExtension>, Determinacy> {
         Err(Determinacy::Determined)
     }
     fn resolve_derive_macro(&mut self, _scope: Mark, _path: &ast::Path, _force: bool)

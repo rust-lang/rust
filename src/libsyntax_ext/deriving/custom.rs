@@ -107,12 +107,10 @@ impl MultiItemModifier for ProcMacroDerive {
             }
         });
 
-        let mut res = vec![Annotatable::Item(item)];
         // Reassign spans of all expanded items to the input `item`
         // for better errors here.
-        res.extend(new_items.into_iter().flat_map(|item| {
-            ChangeSpan { span: span }.fold_item(item)
-        }).map(Annotatable::Item));
-        res
+        new_items.into_iter().map(|item| {
+            Annotatable::Item(ChangeSpan { span: span }.fold_item(item).expect_one(""))
+        }).collect()
     }
 }

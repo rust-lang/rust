@@ -12,12 +12,12 @@
 // gate
 
 __register_diagnostic!(E0001);
-//~^ ERROR macro undefined: '__register_diagnostic!'
+//~^ ERROR macro undefined: `__register_diagnostic`
 
 fn main() {
     __diagnostic_used!(E0001);
-    //~^ ERROR macro undefined: '__diagnostic_used!'
+    //~^ ERROR macro undefined: `__diagnostic_used`
 }
 
 __build_diagnostic_array!(DIAGNOSTICS);
-//~^ ERROR macro undefined: '__build_diagnostic_array!'
+//~^ ERROR macro undefined: `__build_diagnostic_array`
