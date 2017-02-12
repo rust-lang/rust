@@ -224,4 +224,8 @@ register_diagnostics! {
     E0555, // malformed feature attribute, expected #![feature(...)]
     E0556, // malformed feature, expected just one word
     E0557, // feature has been removed
+    E0583, // file not found for module
+    E0584, // file for module `..` found at both .. and ..
+    E0585, // documentation comment that doesn't document anything
+    E0586, // inclusive range with no end
 }
