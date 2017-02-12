@@ -835,41 +835,6 @@ then
     fi
 fi
 
-if [ -n "$CFG_LLDB" ]
-then
-    # Store LLDB's version
-    CFG_LLDB_VERSION=$($CFG_LLDB --version 2>/dev/null | head -1)
-    putvar CFG_LLDB_VERSION
-
-    # If CFG_LLDB_PYTHON_DIR is not already set from the outside and valid, try to read it from
-    # LLDB via the -P commandline options.
-    if [ -z "$CFG_LLDB_PYTHON_DIR" ] || [ ! -d "$CFG_LLDB_PYTHON_DIR" ]
-    then
-        CFG_LLDB_PYTHON_DIR=$($CFG_LLDB -P)
-
-        # If CFG_LLDB_PYTHON_DIR is not a valid directory, set it to something more readable
-        if [ ! -d "$CFG_LLDB_PYTHON_DIR" ]
-        then
-            CFG_LLDB_PYTHON_DIR="LLDB_PYTHON_DIRECTORY_NOT_FOUND"
-        fi
-
-        putvar CFG_LLDB_PYTHON_DIR
-    fi
-fi
-
-# LLDB tests on OSX require /usr/bin/python, not something like Homebrew's
-# /usr/local/bin/python. We're loading a compiled module for LLDB tests which is
-# only compatible with the system.
-case $CFG_BUILD in
-    *-apple-darwin)
-        CFG_LLDB_PYTHON=/usr/bin/python
-        ;;
-    *)
-        CFG_LLDB_PYTHON=$CFG_PYTHON
-        ;;
-esac
-putvar CFG_LLDB_PYTHON
-
 # Do some sanity checks if running on buildbot
 # (these env vars are set by rust-buildbot)
 if [ -n "$RUST_DIST_SERVER" -a -n "$ALLOW_NONZERO_RLIMIT_CORE" ]; then
