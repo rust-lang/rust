@@ -456,12 +456,12 @@ impl Config {
             }
 
             match key {
-                "CFG_BUILD" => self.build = value.to_string(),
-                "CFG_HOST" => {
+                "CFG_BUILD" if value.len() > 0 => self.build = value.to_string(),
+                "CFG_HOST" if value.len() > 0 => {
                     self.host = value.split(" ").map(|s| s.to_string())
                                      .collect();
                 }
-                "CFG_TARGET" => {
+                "CFG_TARGET" if value.len() > 0 => {
                     self.target = value.split(" ").map(|s| s.to_string())
                                        .collect();
                 }
