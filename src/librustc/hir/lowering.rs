@@ -251,6 +251,18 @@ impl<'a> LoweringContext<'a> {
         Symbol::gensym(s)
     }
 
+    fn desugaring_span(&self, reason: &'static str, mut span: Span) -> Span {
+        span.expn_id = self.sess.codemap().record_expansion(codemap::ExpnInfo {
+            call_site: span,
+            callee: codemap::NameAndSpan {
+                format: codemap::CompilerDesugaring(Symbol::intern(reason)),
+                span: Some(span),
+                allow_internal_unstable: false,
+            },
+        });
+        span
+    }
+
     fn allow_internal_unstable(&self, reason: &'static str, mut span: Span) -> Span {
         span.expn_id = self.sess.codemap().record_expansion(codemap::ExpnInfo {
             call_site: span,
@@ -1532,18 +1544,19 @@ impl<'a> LoweringContext<'a> {
                     let move_val_init = ["intrinsics", "move_val_init"];
                     let inplace_finalize = ["ops", "InPlace", "finalize"];
 
+                    let span = self.desugaring_span("<-", e.span);
                     let unstable_span = self.allow_internal_unstable("<-", e.span);
                     let make_call = |this: &mut LoweringContext, p, args| {
                         let path = P(this.expr_std_path(unstable_span, p, ThinVec::new()));
-                        P(this.expr_call(e.span, path, args))
+                        P(this.expr_call(span, path, args))
                     };
 
                     let mk_stmt_let = |this: &mut LoweringContext, bind, expr| {
-                        this.stmt_let(e.span, false, bind, expr)
+                        this.stmt_let(span, false, bind, expr)
                     };
 
                     let mk_stmt_let_mut = |this: &mut LoweringContext, bind, expr| {
-                        this.stmt_let(e.span, true, bind, expr)
+                        this.stmt_let(span, true, bind, expr)
                     };
 
                     // let placer = <placer_expr> ;
@@ -1553,15 +1566,15 @@ impl<'a> LoweringContext<'a> {
 
                     // let mut place = Placer::make_place(placer);
                     let (s2, place_binding) = {
-                        let placer = self.expr_ident(e.span, placer_ident, placer_binding);
+                        let placer = self.expr_ident(span, placer_ident, placer_binding);
                         let call = make_call(self, &make_place, hir_vec![placer]);
                         mk_stmt_let_mut(self, place_ident, call)
                     };
 
                     // let p_ptr = Place::pointer(&mut place);
                     let (s3, p_ptr_binding) = {
-                        let agent = P(self.expr_ident(e.span, place_ident, place_binding));
-                        let args = hir_vec![self.expr_mut_addr_of(e.span, agent)];
+                        let agent = P(self.expr_ident(span, place_ident, place_binding));
+                        let args = hir_vec![self.expr_mut_addr_of(span, agent)];
                         let call = make_call(self, &place_pointer, args);
                         mk_stmt_let(self, p_ptr_ident, call)
                     };
@@ -1570,7 +1583,7 @@ impl<'a> LoweringContext<'a> {
                     let pop_unsafe_expr = {
                         self.signal_block_expr(hir_vec![],
                                                value_expr,
-                                               e.span,
+                                               span,
                                                hir::PopUnsafeBlock(hir::CompilerGenerated),
                                                ThinVec::new())
                     };
@@ -1580,23 +1593,23 @@ impl<'a> LoweringContext<'a> {
                     //     InPlace::finalize(place)
                     // })
                     let expr = {
-                        let ptr = self.expr_ident(e.span, p_ptr_ident, p_ptr_binding);
+                        let ptr = self.expr_ident(span, p_ptr_ident, p_ptr_binding);
                         let call_move_val_init =
                             hir::StmtSemi(
                                 make_call(self, &move_val_init, hir_vec![ptr, pop_unsafe_expr]),
                                 self.next_id());
-                        let call_move_val_init = respan(e.span, call_move_val_init);
+                        let call_move_val_init = respan(span, call_move_val_init);
 
-                        let place = self.expr_ident(e.span, place_ident, place_binding);
+                        let place = self.expr_ident(span, place_ident, place_binding);
                         let call = make_call(self, &inplace_finalize, hir_vec![place]);
                         P(self.signal_block_expr(hir_vec![call_move_val_init],
                                                  call,
-                                                 e.span,
+                                                 span,
                                                  hir::PushUnsafeBlock(hir::CompilerGenerated),
                                                  ThinVec::new()))
                     };
 
-                    let block = self.block_all(e.span, hir_vec![s1, s2, s3], Some(expr));
+                    let block = self.block_all(span, hir_vec![s1, s2, s3], Some(expr));
                     // add the attributes to the outer returned expr node
                     return self.expr_block(P(block), e.attrs.clone());
                 }
@@ -1729,6 +1742,7 @@ impl<'a> LoweringContext<'a> {
                                    fields: &[(&str, &P<Expr>)]) -> hir::Expr {
                         let struct_path = &iter::once(&"ops").chain(path).map(|s| *s)
                                                              .collect::<Vec<_>>();
+                        let span = this.desugaring_span("...", ast_expr.span);
                         let unstable_span = this.allow_internal_unstable("...", ast_expr.span);
 
                         if fields.len() == 0 {
@@ -1737,7 +1751,7 @@ impl<'a> LoweringContext<'a> {
                         } else {
                             let fields = fields.into_iter().map(|&(s, e)| {
                                 let expr = P(this.lower_expr(&e));
-                                let unstable_span = this.allow_internal_unstable("...", e.span);
+                                let unstable_span = this.allow_internal_unstable("...", span);
                                 this.field(Symbol::intern(s), expr, unstable_span)
                             }).collect();
                             let attrs = ast_expr.attrs.clone();
@@ -1857,6 +1871,8 @@ impl<'a> LoweringContext<'a> {
                     //     _ => [<else_opt> | ()]
                     //   }
 
+                    let span = self.desugaring_span("if let", e.span);
+
                     // `<pat> => <body>`
                     let pat_arm = {
                         let body = self.lower_block(body);
@@ -1875,7 +1891,7 @@ impl<'a> LoweringContext<'a> {
                                     match els.node {
                                         // else if
                                         hir::ExprIf(cond, then, else_opt) => {
-                                            let pat_under = self.pat_wild(e.span);
+                                            let pat_under = self.pat_wild(span);
                                             arms.push(hir::Arm {
                                                 attrs: hir_vec![],
                                                 pats: hir_vec![pat_under],
@@ -1909,9 +1925,9 @@ impl<'a> LoweringContext<'a> {
 
                     // `_ => [<else_opt> | ()]`
                     let else_arm = {
-                        let pat_under = self.pat_wild(e.span);
+                        let pat_under = self.pat_wild(span);
                         let else_expr =
-                            else_opt.unwrap_or_else(|| self.expr_tuple(e.span, hir_vec![]));
+                            else_opt.unwrap_or_else(|| self.expr_tuple(span, hir_vec![]));
                         self.arm(hir_vec![pat_under], else_expr)
                     };
 
@@ -1922,7 +1938,7 @@ impl<'a> LoweringContext<'a> {
 
                     let sub_expr = P(self.lower_expr(sub_expr));
                     // add attributes to the outer returned expr node
-                    return self.expr(e.span,
+                    return self.expr(span,
                                      hir::ExprMatch(sub_expr,
                                                     arms.into(),
                                                     hir::MatchSource::IfLetDesugar {
@@ -1943,11 +1959,13 @@ impl<'a> LoweringContext<'a> {
                     //     }
                     //   }
 
+                    let span = self.desugaring_span("while let", e.span);
+
                     // Note that the block AND the condition are evaluated in the loop scope.
                     // This is done to allow `break` from inside the condition of the loop.
                     let (body, break_expr, sub_expr) = self.with_loop_scope(e.id, |this| (
                         this.lower_block(body),
-                        this.expr_break(e.span, ThinVec::new()),
+                        this.expr_break(span, ThinVec::new()),
                         this.with_loop_condition_scope(|this| P(this.lower_expr(sub_expr))),
                     ));
 
@@ -1960,13 +1978,13 @@ impl<'a> LoweringContext<'a> {
 
                     // `_ => break`
                     let break_arm = {
-                        let pat_under = self.pat_wild(e.span);
+                        let pat_under = self.pat_wild(span);
                         self.arm(hir_vec![pat_under], break_expr)
                     };
 
                     // `match <sub_expr> { ... }`
                     let arms = hir_vec![pat_arm, break_arm];
-                    let match_expr = self.expr(e.span,
+                    let match_expr = self.expr(span,
                                                hir::ExprMatch(sub_expr,
                                                               arms,
                                                               hir::MatchSource::WhileLetDesugar),
@@ -1978,7 +1996,7 @@ impl<'a> LoweringContext<'a> {
                                                   hir::LoopSource::WhileLet);
                     // add attributes to the outer returned expr node
                     let attrs = e.attrs.clone();
-                    return hir::Expr { id: e.id, node: loop_expr, span: e.span, attrs: attrs };
+                    return hir::Expr { id: e.id, node: loop_expr, span: span, attrs: attrs };
                 }
 
                 // Desugar ExprForLoop
@@ -2000,6 +2018,8 @@ impl<'a> LoweringContext<'a> {
                     //     result
                     //   }
 
+                    let span = self.desugaring_span("for", e.span);
+
                     // expand <head>
                     let head = self.lower_expr(head);
 
@@ -2010,7 +2030,7 @@ impl<'a> LoweringContext<'a> {
                         let body_block = self.with_loop_scope(e.id, |this| this.lower_block(body));
                         let body_expr = P(self.expr_block(body_block, ThinVec::new()));
                         let pat = self.lower_pat(pat);
-                        let some_pat = self.pat_some(e.span, pat);
+                        let some_pat = self.pat_some(span, pat);
 
                         self.arm(hir_vec![some_pat], body_expr)
                     };
@@ -2018,26 +2038,26 @@ impl<'a> LoweringContext<'a> {
                     // `::std::option::Option::None => break`
                     let break_arm = {
                         let break_expr = self.with_loop_scope(e.id, |this|
-                            this.expr_break(e.span, ThinVec::new()));
-                        let pat = self.pat_none(e.span);
+                            this.expr_break(span, ThinVec::new()));
+                        let pat = self.pat_none(span);
                         self.arm(hir_vec![pat], break_expr)
                     };
 
                     // `mut iter`
-                    let iter_pat = self.pat_ident_binding_mode(e.span, iter,
+                    let iter_pat = self.pat_ident_binding_mode(span, iter,
                                                                hir::BindByValue(hir::MutMutable));
 
                     // `match ::std::iter::Iterator::next(&mut iter) { ... }`
                     let match_expr = {
-                        let iter = P(self.expr_ident(e.span, iter, iter_pat.id));
-                        let ref_mut_iter = self.expr_mut_addr_of(e.span, iter);
+                        let iter = P(self.expr_ident(span, iter, iter_pat.id));
+                        let ref_mut_iter = self.expr_mut_addr_of(span, iter);
                         let next_path = &["iter", "Iterator", "next"];
-                        let next_path = P(self.expr_std_path(e.span, next_path, ThinVec::new()));
-                        let next_expr = P(self.expr_call(e.span, next_path,
+                        let next_path = P(self.expr_std_path(span, next_path, ThinVec::new()));
+                        let next_expr = P(self.expr_call(span, next_path,
                                           hir_vec![ref_mut_iter]));
                         let arms = hir_vec![pat_arm, break_arm];
 
-                        P(self.expr(e.span,
+                        P(self.expr(span,
                                     hir::ExprMatch(next_expr, arms,
                                                    hir::MatchSource::ForLoopDesugar),
                                     ThinVec::new()))
@@ -2050,7 +2070,7 @@ impl<'a> LoweringContext<'a> {
                     let loop_expr = P(hir::Expr {
                         id: e.id,
                         node: loop_expr,
-                        span: e.span,
+                        span: span,
                         attrs: ThinVec::new(),
                     });
 
@@ -2060,12 +2080,12 @@ impl<'a> LoweringContext<'a> {
                     // `match ::std::iter::IntoIterator::into_iter(<head>) { ... }`
                     let into_iter_expr = {
                         let into_iter_path = &["iter", "IntoIterator", "into_iter"];
-                        let into_iter = P(self.expr_std_path(e.span, into_iter_path,
+                        let into_iter = P(self.expr_std_path(span, into_iter_path,
                                                              ThinVec::new()));
-                        P(self.expr_call(e.span, into_iter, hir_vec![head]))
+                        P(self.expr_call(span, into_iter, hir_vec![head]))
                     };
 
-                    let match_expr = P(self.expr_match(e.span,
+                    let match_expr = P(self.expr_match(span,
                                                        into_iter_expr,
                                                        hir_vec![iter_arm],
                                                        hir::MatchSource::ForLoopDesugar));
@@ -2074,10 +2094,10 @@ impl<'a> LoweringContext<'a> {
                     // underscore prevents an unused_variables lint if the head diverges
                     let result_ident = self.str_to_ident("_result");
                     let (let_stmt, let_stmt_binding) =
-                        self.stmt_let(e.span, false, result_ident, match_expr);
+                        self.stmt_let(span, false, result_ident, match_expr);
 
-                    let result = P(self.expr_ident(e.span, result_ident, let_stmt_binding));
-                    let block = P(self.block_all(e.span, hir_vec![let_stmt], Some(result)));
+                    let result = P(self.expr_ident(span, result_ident, let_stmt_binding));
+                    let block = P(self.block_all(span, hir_vec![let_stmt], Some(result)));
                     // add the attributes to the outer returned expr node
                     return self.expr_block(block, e.attrs.clone());
                 }
@@ -2098,6 +2118,7 @@ impl<'a> LoweringContext<'a> {
                         bug!("`?` in catch scopes is unimplemented")
                     }
 
+                    let span = self.desugaring_span("?", e.span);
                     let unstable_span = self.allow_internal_unstable("?", e.span);
 
                     // Carrier::translate(<expr>)
@@ -2107,7 +2128,7 @@ impl<'a> LoweringContext<'a> {
 
                         let path = &["ops", "Carrier", "translate"];
                         let path = P(self.expr_std_path(unstable_span, path, ThinVec::new()));
-                        P(self.expr_call(e.span, path, hir_vec![sub_expr]))
+                        P(self.expr_call(span, path, hir_vec![sub_expr]))
                     };
 
                     // #[allow(unreachable_code)]
@@ -2116,24 +2137,24 @@ impl<'a> LoweringContext<'a> {
                         let allow = {
                             let allow_ident = self.str_to_ident("allow");
                             let uc_ident = self.str_to_ident("unreachable_code");
-                            let uc_meta_item = attr::mk_spanned_word_item(e.span, uc_ident);
+                            let uc_meta_item = attr::mk_spanned_word_item(span, uc_ident);
                             let uc_nested = NestedMetaItemKind::MetaItem(uc_meta_item);
-                            let uc_spanned = respan(e.span, uc_nested);
-                            attr::mk_spanned_list_item(e.span, allow_ident, vec![uc_spanned])
+                            let uc_spanned = respan(span, uc_nested);
+                            attr::mk_spanned_list_item(span, allow_ident, vec![uc_spanned])
                         };
-                        attr::mk_spanned_attr_outer(e.span, attr::mk_attr_id(), allow)
+                        attr::mk_spanned_attr_outer(span, attr::mk_attr_id(), allow)
                     };
                     let attrs = vec![attr];
 
                     // Ok(val) => #[allow(unreachable_code)] val,
                     let ok_arm = {
                         let val_ident = self.str_to_ident("val");
-                        let val_pat = self.pat_ident(e.span, val_ident);
-                        let val_expr = P(self.expr_ident_with_attrs(e.span,
+                        let val_pat = self.pat_ident(span, val_ident);
+                        let val_expr = P(self.expr_ident_with_attrs(span,
                                                                     val_ident,
                                                                     val_pat.id,
                                                                     ThinVec::from(attrs.clone())));
-                        let ok_pat = self.pat_ok(e.span, val_pat);
+                        let ok_pat = self.pat_ok(span, val_pat);
 
                         self.arm(hir_vec![ok_pat], val_expr)
                     };
@@ -2142,30 +2163,30 @@ impl<'a> LoweringContext<'a> {
                     //             return Carrier::from_error(From::from(err)),
                     let err_arm = {
                         let err_ident = self.str_to_ident("err");
-                        let err_local = self.pat_ident(e.span, err_ident);
+                        let err_local = self.pat_ident(span, err_ident);
                         let from_expr = {
                             let path = &["convert", "From", "from"];
-                            let from = P(self.expr_std_path(e.span, path, ThinVec::new()));
-                            let err_expr = self.expr_ident(e.span, err_ident, err_local.id);
+                            let from = P(self.expr_std_path(span, path, ThinVec::new()));
+                            let err_expr = self.expr_ident(span, err_ident, err_local.id);
 
-                            self.expr_call(e.span, from, hir_vec![err_expr])
+                            self.expr_call(span, from, hir_vec![err_expr])
                         };
                         let from_err_expr = {
                             let path = &["ops", "Carrier", "from_error"];
                             let from_err = P(self.expr_std_path(unstable_span, path,
                                                                 ThinVec::new()));
-                            P(self.expr_call(e.span, from_err, hir_vec![from_expr]))
+                            P(self.expr_call(span, from_err, hir_vec![from_expr]))
                         };
 
-                        let ret_expr = P(self.expr(e.span,
+                        let ret_expr = P(self.expr(span,
                                                    hir::Expr_::ExprRet(Some(from_err_expr)),
                                                                        ThinVec::from(attrs)));
 
-                        let err_pat = self.pat_err(e.span, err_local);
+                        let err_pat = self.pat_err(span, err_local);
                         self.arm(hir_vec![err_pat], ret_expr)
                     };
 
-                    return self.expr_match(e.span, discr, hir_vec![err_arm, ok_arm],
+                    return self.expr_match(span, discr, hir_vec![err_arm, ok_arm],
                                            hir::MatchSource::TryDesugar);
                 }
 
