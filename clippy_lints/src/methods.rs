@@ -500,21 +500,21 @@ declare_lint! {
     "using `x.extend(s.chars())` where s is a `&str` or `String`"
 }
 
-/// **What it does:** Checks for the use of `.cloned().collect()` on slice to create a Vec.
+/// **What it does:** Checks for the use of `.cloned().collect()` on slice to create a `Vec`.
 ///
-/// **Why is this bad?** `.to_owned()` is clearer
+/// **Why is this bad?** `.to_vec()` is clearer
 ///
 /// **Known problems:** None.
 ///
 /// **Example:**
 /// ```rust
 /// let s = [1,2,3,4,5];
-/// let s2 : Vec<isize> = s.iter().cloned().collect();
+/// let s2 : Vec<isize> = s[..].iter().cloned().collect();
 /// ```
-/// The correct use would be:
+/// The better use would be:
 /// ```rust
 /// let s = [1,2,3,4,5];
-/// let s2 : Vec<isize> = s.to_owned();
+/// let s2 : Vec<isize> = s.to_vec();
 /// ```
 declare_lint! {
     pub ITER_CLONED_COLLECT,
@@ -908,8 +908,7 @@ fn lint_iter_cloned_collect(cx: &LateContext, expr: &hir::Expr, iter_args: &[hir
         span_lint(cx,
                   ITER_CLONED_COLLECT,
                   expr.span,
-                  "called `cloned().collect()` on a slice to create a `Vec`. This is more succinctly expressed by \
-                  calling `to_owned(x)`");
+                  "called `cloned().collect()` on a slice to create a `Vec`. Calling `to_vec()` is both faster and more readable");
     }
 }
 
