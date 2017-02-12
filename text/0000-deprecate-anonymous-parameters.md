@@ -168,6 +168,11 @@ allow-by-default lint, a clippy lint, and an IntelliJ Rust inspection, but do
 not produce compiler warnings by default. This will make the update process more
 gradual, but will delay the benefits of deprecation.
 
+### Automatic transition
+
+Rustfmt and IntelliJ Rust can automatically change anonymous parameters to
+`_`. However it is better to manually add real names to make it obvious what
+name is expected on the `impl` side.
 
 # Drawbacks
 [drawbacks]: #drawbacks
