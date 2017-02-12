@@ -821,17 +821,6 @@ if [ $(echo $python_version | grep -c '^Python 2\.7') -ne 1 ]; then
     err "Found $python_version, but Python 2.7 is required"
 fi
 
-# If we have no git directory then we are probably a tarball distribution
-# and shouldn't attempt to load submodules
-if [ ! -e ${CFG_SRC_DIR}.git ]
-then
-    probe CFG_GIT          git
-    msg "git: no git directory. disabling submodules"
-    CFG_DISABLE_MANAGE_SUBMODULES=1
-else
-    probe_need CFG_GIT     git
-fi
-
 # Use `md5sum` on GNU platforms, or `md5 -q` on BSD
 probe CFG_MD5              md5
 probe CFG_MD5SUM           md5sum
