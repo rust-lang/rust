@@ -13,6 +13,8 @@ fn main() {
         //~^ expected (), found integral variable
         //~| expected type `()`
         //~| found type `{integer}`
+        //~| NOTE: in this expansion of desugaring of `if let`
+        //~| NOTE: in this expansion of desugaring of `if let`
         ()
     } else {                //~ NOTE: `if let` arm with an incompatible type
         1
