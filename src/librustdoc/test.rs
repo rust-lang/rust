@@ -418,8 +418,12 @@ impl Collector {
                     should_panic: bool, no_run: bool, should_ignore: bool,
                     as_test_harness: bool, compile_fail: bool, error_codes: Vec<String>,
                     line: usize, filename: String) {
-        let name = format!("{} - line {}", filename, line);
-        self.cnt += 1;
+        let name = if self.use_headers {
+            let s = self.current_header.as_ref().map(|s| &**s).unwrap_or("");
+            format!("{} - {} (line {})", filename, s, line)
+        } else {
+            format!("{} - {} (line {})", filename, self.names.join("::"), line)
+        };
         let cfgs = self.cfgs.clone();
         let libs = self.libs.clone();
         let externs = self.externs.clone();
