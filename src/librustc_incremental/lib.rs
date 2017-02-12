@@ -24,7 +24,7 @@
 #![feature(rand)]
 #![feature(core_intrinsics)]
 #![feature(conservative_impl_trait)]
-#![feature(field_init_shorthand)]
+#![cfg_attr(stage0,feature(field_init_shorthand))]
 #![feature(pub_restricted)]
 
 extern crate graphviz;
