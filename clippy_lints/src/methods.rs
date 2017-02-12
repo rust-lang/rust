@@ -904,11 +904,12 @@ fn lint_cstring_as_ptr(cx: &LateContext, expr: &hir::Expr, new: &hir::Expr, unwr
 
 fn lint_iter_cloned_collect(cx: &LateContext, expr: &hir::Expr, iter_args: &[hir::Expr]) {
     if match_type(cx, cx.tables.expr_ty(expr), &paths::VEC) &&
-        derefs_to_slice(cx, &iter_args[0], cx.tables.expr_ty(&iter_args[0])).is_some() {
+       derefs_to_slice(cx, &iter_args[0], cx.tables.expr_ty(&iter_args[0])).is_some() {
         span_lint(cx,
                   ITER_CLONED_COLLECT,
                   expr.span,
-                  "called `cloned().collect()` on a slice to create a `Vec`. This is more succinctly expressed by calling `to_owned(x)`");
+                  "called `cloned().collect()` on a slice to create a `Vec`. This is more succinctly expressed by \
+                  calling `to_owned(x)`");
     }
 }
 
