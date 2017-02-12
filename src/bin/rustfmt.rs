@@ -170,7 +170,7 @@ fn make_opts() -> Options {
     let mut opts = Options::new();
     opts.optflag("h", "help", "show this message");
     opts.optflag("V", "version", "show version information");
-    opts.optflag("v", "verbose", "show progress");
+    opts.optflag("v", "verbose", "print verbose output");
     opts.optopt("",
                 "write-mode",
                 "mode to write in (not usable when piping from stdin)",
@@ -234,8 +234,11 @@ fn execute(opts: &Options) -> FmtResult<Summary> {
                 config = cfg_tmp;
                 path = path_tmp;
             };
-            if let Some(path) = path.as_ref() {
-                println!("Using rustfmt config file {}", path.display());
+
+            if options.verbose {
+                if let Some(path) = path.as_ref() {
+                    println!("Using rustfmt config file {}", path.display());
+                }
             }
 
             let mut error_summary = Summary::new();
@@ -244,10 +247,12 @@ fn execute(opts: &Options) -> FmtResult<Summary> {
                 if path.is_none() {
                     let (config_tmp, path_tmp) = resolve_config(file.parent().unwrap())
                         .expect(&format!("Error resolving config for {}", file.display()));
-                    if let Some(path) = path_tmp.as_ref() {
-                        println!("Using rustfmt config file {} for {}",
-                                 path.display(),
-                                 file.display());
+                    if options.verbose {
+                        if let Some(path) = path_tmp.as_ref() {
+                            println!("Using rustfmt config file {} for {}",
+                                     path.display(),
+                                     file.display());
+                        }
                     }
                     config = config_tmp;
                 }
