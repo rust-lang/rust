@@ -950,5 +950,13 @@ help: assign the `CString` to a variable to extend its lifetime
 687 |     CString::new("foo").unwrap().as_ptr();
     |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+warning: called `cloned().collect()` on a slice to create a `Vec`. This is more succinctly expressed by calling `to_owned(x)`
+   --> $DIR/methods.rs:695:27
+    |
+695 |     let v2 : Vec<isize> = v.iter().cloned().collect();
+    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: #[warn(iter_cloned_collect)] on by default
+
 error: aborting due to 88 previous errors
 

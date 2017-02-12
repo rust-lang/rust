@@ -1,7 +1,6 @@
 // error-pattern:yummy
 #![feature(box_syntax)]
 #![feature(rustc_private)]
-#![feature(static_in_const)]
 
 #![allow(unknown_lints, missing_docs_in_private_items)]
 

@@ -689,3 +689,8 @@ fn temporary_cstring() {
 
 
 }
+
+fn iter_clone_collect() {
+    let v = [1,2,3,4,5];
+    let v2 : Vec<isize> = v.iter().cloned().collect();
+}
