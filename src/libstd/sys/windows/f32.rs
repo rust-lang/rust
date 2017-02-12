@@ -16,10 +16,10 @@ pub mod cmath {
     use libc::{c_float, c_int};
 
     extern {
-        #[cfg_attr(target_env = "msvc", link_name = "__lgamma_r")]
+        #[cfg_attr(target_env = "msvc", link_name = "__lgammaf_r")]
         pub fn lgammaf_r(n: c_float, sign: &mut c_int) -> c_float;
 
-        #[cfg_attr(target_env = "msvc", link_name = "_hypot")]
+        #[cfg_attr(target_env = "msvc", link_name = "_hypotf")]
         pub fn hypotf(x: c_float, y: c_float) -> c_float;
     }
 
