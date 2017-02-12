@@ -821,20 +821,6 @@ if [ $(echo $python_version | grep -c '^Python 2\.7') -ne 1 ]; then
     err "Found $python_version, but Python 2.7 is required"
 fi
 
-# Use `md5sum` on GNU platforms, or `md5 -q` on BSD
-probe CFG_MD5              md5
-probe CFG_MD5SUM           md5sum
-if [ -n "$CFG_MD5" ]
-then
-    CFG_HASH_COMMAND="$CFG_MD5 -q | cut -c 1-8"
-elif [ -n "$CFG_MD5SUM" ]
-then
-    CFG_HASH_COMMAND="$CFG_MD5SUM | cut -c 1-8"
-else
-    err 'could not find one of: md5 md5sum'
-fi
-putvar CFG_HASH_COMMAND
-
 probe CFG_CLANG            clang++
 probe CFG_CCACHE           ccache
 probe CFG_GCC              gcc
