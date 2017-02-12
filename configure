@@ -821,51 +821,6 @@ if [ $(echo $python_version | grep -c '^Python 2\.7') -ne 1 ]; then
     err "Found $python_version, but Python 2.7 is required"
 fi
 
-probe CFG_CLANG            clang++
-probe CFG_CCACHE           ccache
-probe CFG_GCC              gcc
-probe CFG_LD               ld
-probe CFG_VALGRIND         valgrind
-probe CFG_PERF             perf
-probe CFG_ISCC             iscc
-probe CFG_ANTLR4           antlr4
-probe CFG_GRUN             grun
-probe CFG_FLEX             flex
-probe CFG_BISON            bison
-probe CFG_GDB              gdb
-probe CFG_LLDB             lldb
-
-if [ -n "$CFG_ENABLE_NINJA" ]
-then
-  probe CFG_NINJA            ninja
-  if [ -z "$CFG_NINJA" ]
-  then
-    # On Debian and Fedora, the `ninja` binary is an IRC bot, so the build tool was
-    # renamed. Handle this case.
-    probe CFG_NINJA            ninja-build
-  fi
-fi
-
-# For building LLVM
-if [ -z "$CFG_LLVM_ROOT" ]
-then
-  probe_need CFG_CMAKE cmake
-fi
-
-# On MacOS X, invoking `javac` pops up a dialog if the JDK is not
-# installed. Since `javac` is only used if `antlr4` is available,
-# probe for it only in this case.
-if [ -n "$CFG_ANTLR4" ]
-then
-   CFG_ANTLR4_JAR="\"$(find /usr/ -name antlr-complete.jar 2>/dev/null | head -n 1)\""
-   if [ "x" = "x$CFG_ANTLR4_JAR" ]
-   then
-     CFG_ANTLR4_JAR="\"$(find ~ -name antlr-complete.jar 2>/dev/null | head -n 1)\""
-   fi
-   putvar CFG_ANTLR4_JAR      $CFG_ANTLR4_JAR
-   probe CFG_JAVAC            javac
-fi
-
 # the valgrind rpass tests will fail if you don't have a valgrind, but they're
 # only disabled if you opt out.
 if [ -z "$CFG_VALGRIND" ]
@@ -926,10 +881,6 @@ if [ -n "$RUST_DIST_SERVER" -a -n "$ALLOW_NONZERO_RLIMIT_CORE" ]; then
        rm -f "$llvm_lock"
    fi
 fi
-
-step_msg "looking for target specific programs"
-
-probe CFG_ADB        adb
 
 BIN_SUF=
 if [ "$CFG_OSTYPE" = "pc-windows-gnu" ] || [ "$CFG_OSTYPE" = "pc-windows-msvc" ]
