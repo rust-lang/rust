@@ -139,7 +139,7 @@
 //! assert!(file.write_all(b"important message").is_ok());
 //! ```
 //!
-//! Or propagate the error up the call stack with [`try!`]:
+//! Or propagate the error up the call stack with [`?`]:
 //!
 //! ```
 //! # use std::fs::File;
@@ -147,17 +147,17 @@
 //! # use std::io;
 //! # #[allow(dead_code)]
 //! fn write_message() -> io::Result<()> {
-//!     let mut file = try!(File::create("valuable_data.txt"));
-//!     try!(file.write_all(b"important message"));
+//!     let mut file = File::create("valuable_data.txt")?;
+//!     file.write_all(b"important message")?;
 //!     Ok(())
 //! }
 //! ```
 //!
-//! # The `try!` macro
+//! # The `?` syntax
 //!
 //! When writing code that calls many functions that return the
-//! [`Result`] type, the error handling can be tedious. The [`try!`]
-//! macro hides some of the boilerplate of propagating errors up the
+//! [`Result`] type, the error handling can be tedious. The [`?`]
+//! syntax hides some of the boilerplate of propagating errors up the
 //! call stack.
 //!
 //! It replaces this:
@@ -208,37 +208,29 @@
 //! }
 //!
 //! fn write_info(info: &Info) -> io::Result<()> {
-//!     let mut file = try!(File::create("my_best_friends.txt"));
+//!     let mut file = File::create("my_best_friends.txt")?;
 //!     // Early return on error
-//!     try!(file.write_all(format!("name: {}\n", info.name).as_bytes()));
-//!     try!(file.write_all(format!("age: {}\n", info.age).as_bytes()));
-//!     try!(file.write_all(format!("rating: {}\n", info.rating).as_bytes()));
+//!     file.write_all(format!("name: {}\n", info.name).as_bytes())?;
+//!     file.write_all(format!("age: {}\n", info.age).as_bytes())?;
+//!     file.write_all(format!("rating: {}\n", info.rating).as_bytes())?;
 //!     Ok(())
 //! }
 //! ```
 //!
 //! *It's much nicer!*
 //!
-//! Wrapping an expression in [`try!`] will result in the unwrapped
+//! Ending the expression with [`?`] will result in the unwrapped
 //! success ([`Ok`]) value, unless the result is [`Err`], in which case
-//! [`Err`] is returned early from the enclosing function. Its simple definition
-//! makes it clear:
+//! [`Err`] is returned early from the enclosing function.
 //!
-//! ```
-//! macro_rules! try {
-//!     ($e:expr) => (match $e { Ok(e) => e, Err(e) => return Err(e) })
-//! }
-//! ```
-//!
-//! [`try!`] is imported by the prelude and is available everywhere, but it can only
-//! be used in functions that return [`Result`] because of the early return of
-//! [`Err`] that it provides.
+//! [`?`] can only be used in functions that return [`Result`] because of the
+//! early return of [`Err`] that it provides.
 //!
 //! [`expect`]: enum.Result.html#method.expect
 //! [`Write`]: ../../std/io/trait.Write.html
 //! [`write_all`]: ../../std/io/trait.Write.html#method.write_all
 //! [`io::Result`]: ../../std/io/type.Result.html
-//! [`try!`]: ../../std/macro.try.html
+//! [`?`]: ../../std/macro.try.html
 //! [`Result`]: enum.Result.html
 //! [`Ok(T)`]: enum.Result.html#variant.Ok
 //! [`Err(E)`]: enum.Result.html#variant.Err

@@ -2819,12 +2819,8 @@ Point3d {y: 0, z: 10, .. base};
 #### Struct field init shorthand
 
 When initializing a data structure (struct, enum, union) with named fields,
-allow writing `fieldname` as a shorthand for `fieldname: fieldname`. This
-allows a compact syntax for initialization, with less duplication.
-
-In the initializer for a `struct` with named fields, a `union` with named
-fields, or an enum variant with named fields, accept an identifier `field` as a
-shorthand for `field: field`.
+it is allowed to write `fieldname` as a shorthand for `fieldname: fieldname`.
+This allows a compact syntax with less duplication.
 
 Example:
 

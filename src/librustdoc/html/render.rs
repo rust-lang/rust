@@ -1818,7 +1818,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
                 write!(w, "
                        <tr class='{stab} module-item'>
                            <td><a class='{class}' href='{href}'
-                                  title='{title}'>{name}</a>{unsafety_flag}</td>
+                                  title='{title_type} {title}'>{name}</a>{unsafety_flag}</td>
                            <td class='docblock-short'>
                                {stab_docs} {docs}
                            </td>
@@ -1827,9 +1827,10 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
                        stab_docs = stab_docs,
                        docs = shorter(Some(&Markdown(doc_value).to_string())),
                        class = myitem.type_(),
-                       stab = myitem.stability_class(),
+                       stab = myitem.stability_class().unwrap_or("".to_string()),
                        unsafety_flag = unsafety_flag,
                        href = item_path(myitem.type_(), myitem.name.as_ref().unwrap()),
+                       title_type = myitem.type_(),
                        title = full_path(cx, myitem))?;
             }
         }
@@ -1936,7 +1937,9 @@ impl<'a> fmt::Display for Initializer<'a> {
 
 fn item_constant(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                  c: &clean::Constant) -> fmt::Result {
-    write!(w, "<pre class='rust const'>{vis}const \
+    write!(w, "<pre class='rust const'>")?;
+    render_attributes(w, it)?;
+    write!(w, "{vis}const \
                {name}: {typ}{init}</pre>",
            vis = VisSpace(&it.visibility),
            name = it.name.as_ref().unwrap(),
@@ -1947,7 +1950,9 @@ fn item_constant(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
 
 fn item_static(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                s: &clean::Static) -> fmt::Result {
-    write!(w, "<pre class='rust static'>{vis}static {mutability}\
+    write!(w, "<pre class='rust static'>")?;
+    render_attributes(w, it)?;
+    write!(w, "{vis}static {mutability}\
                {name}: {typ}{init}</pre>",
            vis = VisSpace(&it.visibility),
            mutability = MutableSpace(s.mutability),
@@ -1971,7 +1976,9 @@ fn item_function(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                          AbiSpace(f.abi),
                          it.name.as_ref().unwrap(),
                          f.generics).len();
-    write!(w, "<pre class='rust fn'>{vis}{constness}{unsafety}{abi}fn \
+    write!(w, "<pre class='rust fn'>")?;
+    render_attributes(w, it)?;
+    write!(w, "{vis}{constness}{unsafety}{abi}fn \
                {name}{generics}{decl}{where_clause}</pre>",
            vis = VisSpace(&it.visibility),
            constness = ConstnessSpace(vis_constness),
@@ -2006,7 +2013,9 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     }
 
     // Output the trait definition
-    write!(w, "<pre class='rust trait'>{}{}trait {}{}{}{} ",
+    write!(w, "<pre class='rust trait'>")?;
+    render_attributes(w, it)?;
+    write!(w, "{}{}trait {}{}{}{} ",
            VisSpace(&it.visibility),
            UnsafetySpace(t.unsafety),
            it.name.as_ref().unwrap(),
@@ -2369,13 +2378,16 @@ fn item_struct(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                 write!(w, "<span id='{id}' class='{item_type}'>
                            <span id='{ns_id}' class='invisible'>
                            <code>{name}: {ty}</code>
-                           </span></span><span class='stab {stab}'></span>",
+                           </span></span>",
                        item_type = ItemType::StructField,
                        id = id,
                        ns_id = ns_id,
-                       stab = field.stability_class(),
                        name = field.name.as_ref().unwrap(),
                        ty = ty)?;
+                if let Some(stability_class) = field.stability_class() {
+                    write!(w, "<span class='stab {stab}'></span>",
+                        stab = stability_class)?;
+                }
                 document(w, cx, field)?;
             }
         }
@@ -2406,11 +2418,14 @@ fn item_union(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         write!(w, "<h2 class='fields'>Fields</h2>")?;
         for (field, ty) in fields {
             write!(w, "<span id='{shortty}.{name}' class='{shortty}'><code>{name}: {ty}</code>
-                       </span><span class='stab {stab}'></span>",
+                       </span>",
                    shortty = ItemType::StructField,
-                   stab = field.stability_class(),
                    name = field.name.as_ref().unwrap(),
                    ty = ty)?;
+            if let Some(stability_class) = field.stability_class() {
+                write!(w, "<span class='stab {stab}'></span>",
+                    stab = stability_class)?;
+            }
             document(w, cx, field)?;
         }
     }
@@ -3001,7 +3016,9 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
 fn item_typedef(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                 t: &clean::Typedef) -> fmt::Result {
     let indent = format!("type {}{:#} ", it.name.as_ref().unwrap(), t.generics).len();
-    write!(w, "<pre class='rust typedef'>type {}{}{where_clause} = {type_};</pre>",
+    write!(w, "<pre class='rust typedef'>")?;
+    render_attributes(w, it)?;
+    write!(w, "type {}{}{where_clause} = {type_};</pre>",
            it.name.as_ref().unwrap(),
            t.generics,
            where_clause = WhereClause(&t.generics, indent),
