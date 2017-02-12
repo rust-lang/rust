@@ -1998,16 +1998,20 @@ actual:\n\
         for _ in res.stdout.split("\n")
                            .filter(|s| s.starts_with("test "))
                            .inspect(|s| {
-                               let tmp: Vec<&str> = s.split(" - line ").collect();
+                               let tmp: Vec<&str> = s.split(" - ").collect();
                                if tmp.len() == 2 {
                                    let path = tmp[0].rsplit("test ").next().unwrap();
                                    if let Some(ref mut v) = files.get_mut(path) {
                                        tested += 1;
-                                       let line = tmp[1].split(" ...")
-                                                        .next()
-                                                        .unwrap_or("0")
-                                                        .parse()
-                                                        .unwrap_or(0);
+                                       let mut iter = tmp[1].split("(line ");
+                                       iter.next();
+                                       let line = iter.next()
+                                                      .unwrap_or(")")
+                                                      .split(")")
+                                                      .next()
+                                                      .unwrap_or("0")
+                                                      .parse()
+                                                      .unwrap_or(0);
                                        if let Ok(pos) = v.binary_search(&line) {
                                            v.remove(pos);
                                        } else {
