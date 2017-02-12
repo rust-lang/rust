@@ -1827,7 +1827,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
                        stab_docs = stab_docs,
                        docs = shorter(Some(&Markdown(doc_value).to_string())),
                        class = myitem.type_(),
-                       stab = myitem.stability_class(),
+                       stab = myitem.stability_class().unwrap_or("".to_string()),
                        unsafety_flag = unsafety_flag,
                        href = item_path(myitem.type_(), myitem.name.as_ref().unwrap()),
                        title_type = myitem.type_(),
@@ -2378,13 +2378,16 @@ fn item_struct(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                 write!(w, "<span id='{id}' class='{item_type}'>
                            <span id='{ns_id}' class='invisible'>
                            <code>{name}: {ty}</code>
-                           </span></span><span class='stab {stab}'></span>",
+                           </span></span>",
                        item_type = ItemType::StructField,
                        id = id,
                        ns_id = ns_id,
-                       stab = field.stability_class(),
                        name = field.name.as_ref().unwrap(),
                        ty = ty)?;
+                if let Some(stability_class) = field.stability_class() {
+                    write!(w, "<span class='stab {stab}'></span>",
+                        stab = stability_class)?;
+                }
                 document(w, cx, field)?;
             }
         }
@@ -2415,11 +2418,14 @@ fn item_union(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         write!(w, "<h2 class='fields'>Fields</h2>")?;
         for (field, ty) in fields {
             write!(w, "<span id='{shortty}.{name}' class='{shortty}'><code>{name}: {ty}</code>
-                       </span><span class='stab {stab}'></span>",
+                       </span>",
                    shortty = ItemType::StructField,
-                   stab = field.stability_class(),
                    name = field.name.as_ref().unwrap(),
                    ty = ty)?;
+            if let Some(stability_class) = field.stability_class() {
+                write!(w, "<span class='stab {stab}'></span>",
+                    stab = stability_class)?;
+            }
             document(w, cx, field)?;
         }
     }
