@@ -1837,22 +1837,27 @@ pub fn type_annotation_separator(config: &Config) -> &str {
 
 fn rewrite_field(context: &RewriteContext, field: &ast::Field, shape: Shape) -> Option<String> {
     let name = &field.ident.node.to_string();
-    let separator = type_annotation_separator(context.config);
-    let overhead = name.len() + separator.len();
-    let expr = field.expr.rewrite(context,
-                                  Shape::legacy(try_opt!(shape.width.checked_sub(overhead)),
-                                                shape.indent + overhead));
+    if field.is_shorthand {
+        Some(name.to_string())
+    } else {
+        let separator = type_annotation_separator(context.config);
+        let overhead = name.len() + separator.len();
+        let expr = field.expr.rewrite(context,
+                                      Shape::legacy(try_opt!(shape.width.checked_sub(overhead)),
+                                                    shape.indent + overhead));
 
-    match expr {
-        Some(e) => Some(format!("{}{}{}", name, separator, e)),
-        None => {
-            let expr_offset = shape.indent.block_indent(context.config);
-            let expr = field.expr.rewrite(context,
-                                          Shape::legacy(try_opt!(context.config
-                                                            .max_width
-                                                            .checked_sub(expr_offset.width())),
-                                                        expr_offset));
-            expr.map(|s| format!("{}:\n{}{}", name, expr_offset.to_string(&context.config), s))
+        match expr {
+            Some(e) => Some(format!("{}{}{}", name, separator, e)),
+            None => {
+                let expr_offset = shape.indent.block_indent(context.config);
+                let expr = field.expr
+                    .rewrite(context,
+                             Shape::legacy(try_opt!(context.config
+                                               .max_width
+                                               .checked_sub(expr_offset.width())),
+                                           expr_offset));
+                expr.map(|s| format!("{}:\n{}{}", name, expr_offset.to_string(&context.config), s))
+            }
         }
     }
 }

@@ -169,3 +169,18 @@ fn issue835() {
     };
     MyStruct {}
 }
+
+fn field_init_shorthand() {
+    MyStruct { x, y, z };
+    MyStruct { x, y, z, ..base };
+    Foo {
+        aaaaaaaaaa,
+        bbbbbbbb,
+        cccccccccc,
+        dddddddddd, // a comment
+        eeeeeeeee,
+    };
+    Record {
+        ffffffffffffffffffffffffffieldsaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa,
+    };
+}
