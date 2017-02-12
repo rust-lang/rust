@@ -951,31 +951,6 @@ putvar CFG_MANDIR
 putvar CFG_DOCDIR
 putvar CFG_USING_LIBCPP
 
-# Avoid spurious warnings from clang by feeding it original source on
-# ccache-miss rather than preprocessed input.
-if [ -n "$CFG_ENABLE_CCACHE" ] && [ -n "$CFG_USING_CLANG" ]
-then
-    CFG_CCACHE_CPP2=1
-    putvar CFG_CCACHE_CPP2
-fi
-
-if [ -n "$CFG_ENABLE_CCACHE" ]
-then
-    CFG_CCACHE_BASEDIR=${CFG_SRC_DIR}
-    putvar CFG_CCACHE_BASEDIR
-fi
-
-
-putvar CFG_LLVM_SRC_DIR
-
-for t in $CFG_HOST
-do
-    CFG_LLVM_BUILD_DIR=$(echo CFG_LLVM_BUILD_DIR_${t} | tr - _)
-    CFG_LLVM_INST_DIR=$(echo CFG_LLVM_INST_DIR_${t} | tr - _)
-    putvar $CFG_LLVM_BUILD_DIR
-    putvar $CFG_LLVM_INST_DIR
-done
-
 msg
 copy_if_changed ${CFG_SRC_DIR}src/bootstrap/mk/Makefile.in ./Makefile
 move_if_changed config.tmp config.mk
