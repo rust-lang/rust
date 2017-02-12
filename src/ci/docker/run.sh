@@ -49,6 +49,7 @@ exec docker \
   $args \
   --env CARGO_HOME=/cargo \
   --env DEPLOY=$DEPLOY \
+  --env DEPLOY_ALT=$DEPLOY_ALT \
   --env LOCAL_USER_ID=`id -u` \
   --volume "$HOME/.cargo:/cargo" \
   --rm \
