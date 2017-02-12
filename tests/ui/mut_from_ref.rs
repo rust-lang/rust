@@ -29,7 +29,7 @@ fn fail_lifetime<'a>(x: &'a u32, y: &mut u32) -> &'a mut u32 {
     unimplemented!()
 }
 
-fn fail_double<'a>(x: &'a u32, y: &'a u32, z: &'b mut u32) -> &'a mut u32 {
+fn fail_double<'a, 'b>(x: &'a u32, y: &'a u32, z: &'b mut u32) -> &'a mut u32 {
     unimplemented!()
 }
 
