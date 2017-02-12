@@ -355,7 +355,7 @@ class RustBuild(object):
             try:
                 cputype = subprocess.check_output(['isainfo',
                   '-k']).strip().decode(default_encoding)
-            except (subprocess.CalledProcessError, WindowsError):
+            except (subprocess.CalledProcessError, OSError):
                 err = "isainfo not found"
                 if self.verbose:
                     raise Exception(err)
