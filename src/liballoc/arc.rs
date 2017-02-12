@@ -282,6 +282,9 @@ impl<T> Arc<T> {
     /// To avoid a memory leak the pointer must be converted back to an `Arc` using
     /// [`Arc::from_raw`][from_raw].
     ///
+    /// If `T` is zero-sized (e.g. `Arc<()>`), the returned pointer address
+    /// will be meaningless.
+    ///
     /// [from_raw]: struct.Arc.html#method.from_raw
     ///
     /// # Examples

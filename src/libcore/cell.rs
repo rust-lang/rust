@@ -235,6 +235,9 @@ impl<T:Copy> Cell<T> {
 
     /// Returns a raw pointer to the underlying data in this cell.
     ///
+    /// If `T` is zero-sized (e.g. `Cell<()>`), the returned pointer address
+    /// will be meaningless.
+    ///
     /// # Examples
     ///
     /// ```
@@ -771,6 +774,9 @@ impl<T: ?Sized> RefCell<T> {
 
     /// Returns a raw pointer to the underlying data in this cell.
     ///
+    /// If `T` is zero-sized (e.g. `RefCell<()>`), the returned pointer address
+    /// will be meaningless.
+    ///
     /// # Examples
     ///
     /// ```
@@ -1187,6 +1193,9 @@ impl<T: ?Sized> UnsafeCell<T> {
     /// Ensure that the access is unique when casting to
     /// `&mut T`, and ensure that there are no mutations or mutable
     /// aliases going on when casting to `&T`
+    ///
+    /// If `T` is zero-sized (e.g. `UnsafeCell<()>`), the returned pointer
+    /// address will be meaningless.
     ///
     /// # Examples
     ///

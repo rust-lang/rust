@@ -359,6 +359,9 @@ impl<T> Rc<T> {
     /// To avoid a memory leak the pointer must be converted back to an `Rc` using
     /// [`Rc::from_raw`][from_raw].
     ///
+    /// If `T` is zero-sized (e.g. `Rc<()>`), the returned pointer address
+    /// will be meaningless.
+    ///
     /// [from_raw]: struct.Rc.html#method.from_raw
     ///
     /// # Examples
