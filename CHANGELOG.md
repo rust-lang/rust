@@ -346,6 +346,7 @@ All notable changes to this project will be documented in this file.
 [`invalid_regex`]: https://github.com/Manishearth/rust-clippy/wiki#invalid_regex
 [`invalid_upcast_comparisons`]: https://github.com/Manishearth/rust-clippy/wiki#invalid_upcast_comparisons
 [`items_after_statements`]: https://github.com/Manishearth/rust-clippy/wiki#items_after_statements
+[`iter_cloned_collect`]: https://github.com/Manishearth/rust-clippy/wiki#iter_cloned_collect
 [`iter_next_loop`]: https://github.com/Manishearth/rust-clippy/wiki#iter_next_loop
 [`iter_nth`]: https://github.com/Manishearth/rust-clippy/wiki#iter_nth
 [`iter_skip_next`]: https://github.com/Manishearth/rust-clippy/wiki#iter_skip_next

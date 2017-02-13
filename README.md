@@ -180,7 +180,7 @@ transparently:
 
 ## Lints
 
-There are 188 lints included in this crate:
+There are 189 lints included in this crate:
 
 name                                                                                                                   | default | triggers on
 -----------------------------------------------------------------------------------------------------------------------|---------|----------------------------------------------------------------------------------------------------------------------------------
@@ -253,6 +253,7 @@ name                                                                            
 [invalid_regex](https://github.com/Manishearth/rust-clippy/wiki#invalid_regex)                                         | deny    | invalid regular expressions
 [invalid_upcast_comparisons](https://github.com/Manishearth/rust-clippy/wiki#invalid_upcast_comparisons)               | allow   | a comparison involving an upcast which is always true or false
 [items_after_statements](https://github.com/Manishearth/rust-clippy/wiki#items_after_statements)                       | allow   | blocks where an item comes after a statement
+[iter_cloned_collect](https://github.com/Manishearth/rust-clippy/wiki#iter_cloned_collect)                             | warn    | using `.cloned().collect()` on slice to create a `Vec`
 [iter_next_loop](https://github.com/Manishearth/rust-clippy/wiki#iter_next_loop)                                       | warn    | for-looping over `_.next()` which is probably not intended
 [iter_nth](https://github.com/Manishearth/rust-clippy/wiki#iter_nth)                                                   | warn    | using `.iter().nth()` on a standard library type with O(1) element access
 [iter_skip_next](https://github.com/Manishearth/rust-clippy/wiki#iter_skip_next)                                       | warn    | using `.skip(x).next()` on an iterator
