@@ -26,8 +26,6 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
 
-use regex::Regex;
-
 const COLS: usize = 100;
 const LICENSE: &'static str = "\
 Copyright <year> The Rust Project Developers. See the COPYRIGHT
@@ -40,26 +38,54 @@ http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
 option. This file may not be copied, modified, or distributed
 except according to those terms.";
 
-/// True if LINE is allowed to be longer than the normal limit.
-///
-/// Currently there is only one exception: if the line is within a
-/// comment, and its entire text is one URL (possibly with a Markdown
-/// link label in front), then it's allowed to be overlength.  This is
-/// because Markdown offers no way to split a line in the middle of a
-/// URL, and the length of URLs for external references is beyond our
-/// control.
-fn long_line_is_ok(line: &str) -> bool {
-    lazy_static! {
-        static ref URL_RE: Regex = Regex::new(
-            // This regexp uses the CommonMark definition of link
-            // label.  It thinks any sequence of nonwhitespace
-            // characters beginning with "http://" or "https://" is a
-            // URL.  Add more schemas as necessary.
-            r"^\s*//[!/]?\s+(?:\[(?:[^\]\\]|\\.){1,999}\]:\s+)?https?://\S+$"
-        ).unwrap();
+/// Parser states for line_is_url.
+#[derive(PartialEq)]
+#[allow(non_camel_case_types)]
+enum LIUState { EXP_COMMENT_START,
+                EXP_LINK_LABEL_OR_URL,
+                EXP_URL,
+                EXP_END }
+
+/// True if LINE appears to be a line comment containing an URL,
+/// possibly with a Markdown link label in front, and nothing else.
+/// The Markdown link label, if present, may not contain whitespace.
+/// Lines of this form are allowed to be overlength, because Markdown
+/// offers no way to split a line in the middle of a URL, and the lengths
+/// of URLs to external references are beyond our control.
+fn line_is_url(line: &str) -> bool {
+    use self::LIUState::*;
+    let mut state: LIUState = EXP_COMMENT_START;
+
+    for tok in line.split_whitespace() {
+        match (state, tok) {
+            (EXP_COMMENT_START, "//") => state = EXP_LINK_LABEL_OR_URL,
+            (EXP_COMMENT_START, "///") => state = EXP_LINK_LABEL_OR_URL,
+            (EXP_COMMENT_START, "//!") => state = EXP_LINK_LABEL_OR_URL,
+
+            (EXP_LINK_LABEL_OR_URL, w)
+                if w.len() >= 4 && w.starts_with("[") && w.ends_with("]:")
+                => state = EXP_URL,
+
+            (EXP_LINK_LABEL_OR_URL, w)
+                if w.starts_with("http://") || w.starts_with("https://")
+                => state = EXP_END,
+
+            (EXP_URL, w)
+                if w.starts_with("http://") || w.starts_with("https://")
+                => state = EXP_END,
+
+            (_, _) => return false,
+        }
     }
 
-    if URL_RE.is_match(line) {
+    state == EXP_END
+}
+
+/// True if LINE is allowed to be longer than the normal limit.
+/// Currently there is only one exception, for long URLs, but more
+/// may be added in the future.
+fn long_line_is_ok(line: &str) -> bool {
+    if line_is_url(line) {
         return true;
     }
 
