@@ -501,13 +501,20 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 (&ty::TyTuple(fields, _),
                  &Layout::Univariant { ref variant, .. }) => {
                     let offsets = variant.offsets.iter().map(|s| s.bytes());
-                    let last_ptr = match last {
-                        Value::ByRef(ptr) => ptr,
-                        _ => bug!("rust-call ABI tuple argument wasn't Value::ByRef"),
-                    };
-                    for (offset, ty) in offsets.zip(fields) {
-                        let arg = Value::ByRef(last_ptr.offset(offset));
-                        args.push((arg, ty));
+                    match last {
+                        Value::ByRef(last_ptr) => {
+                            for (offset, ty) in offsets.zip(fields) {
+                                let arg = Value::ByRef(last_ptr.offset(offset));
+                                args.push((arg, ty));
+                            }
+                        },
+                        // propagate undefs
+                        undef @ Value::ByVal(PrimVal::Undef) => {
+                            for field_ty in fields {
+                                args.push((undef, field_ty));
+                            }
+                        },
+                        _ => bug!("rust-call ABI tuple argument was {:?}", last),
                     }
                 }
                 ty => bug!("expected tuple as last argument in function with 'rust-call' ABI, got {:?}", ty),

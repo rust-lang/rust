@@ -436,6 +436,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.write_primval(dest, operator::unary_op(un_op, val, kind)?, dest_ty)?;
             }
 
+            // Skip everything for zsts
+            Aggregate(..) if self.type_size(dest_ty)? == Some(0) => {}
+
             Aggregate(ref kind, ref operands) => {
                 self.inc_step_counter_and_check_limit(operands.len() as u64)?;
                 use rustc::ty::layout::Layout::*;
