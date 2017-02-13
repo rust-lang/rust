@@ -9,7 +9,8 @@
 // except according to those terms.
 
 fn foo<'a: 'b, 'b: 'a>() {}
+
 fn main() {
-    foo::<'static>();//~ ERROR E0090
-                     //~^ too few lifetime parameters
+    foo::<'static>(); //~ ERROR expected 2 lifetime parameters, found 1 lifetime parameter [E0090]
+                      //~^ NOTE expected 2 lifetime parameters
 }
