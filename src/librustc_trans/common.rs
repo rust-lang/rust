@@ -29,6 +29,7 @@ use type_::Type;
 use value::Value;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::layout::Layout;
+use rustc::ty::subst::Subst;
 use rustc::traits::{self, SelectionContext, Reveal};
 use rustc::hir;
 
@@ -579,7 +580,7 @@ pub fn ty_fn_sig<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         ty::TyFnPtr(sig) => sig,
         ty::TyClosure(def_id, substs) => {
             let tcx = ccx.tcx();
-            let sig = tcx.closure_type(def_id, substs);
+            let sig = tcx.closure_type(def_id).subst(tcx, substs.substs);
 
             let env_region = ty::ReLateBound(ty::DebruijnIndex::new(1), ty::BrEnv);
             let env_ty = match tcx.closure_kind(def_id) {

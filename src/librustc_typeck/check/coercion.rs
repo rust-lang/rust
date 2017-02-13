@@ -72,6 +72,7 @@ use rustc::ty::{self, LvaluePreference, TypeAndMut,
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::error::TypeError;
 use rustc::ty::relate::RelateResult;
+use rustc::ty::subst::Subst;
 use syntax::abi;
 use syntax::feature_gate;
 use util::common::indent;
@@ -587,7 +588,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
                 //     `extern "rust-call" fn((arg0,arg1,...)) -> _`
                 // to
                 //     `fn(arg0,arg1,...) -> _`
-                let sig = self.closure_type(def_id_a, substs_a);
+                let sig = self.closure_type(def_id_a).subst(self.tcx, substs_a.substs);
                 let converted_sig = sig.map_bound(|s| {
                     let params_iter = match s.inputs()[0].sty {
                         ty::TyTuple(params, _) => {

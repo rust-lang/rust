@@ -2467,16 +2467,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.maps.closure_kind(self, def_id)
     }
 
-    pub fn closure_type(self,
-                        def_id: DefId,
-                        substs: ClosureSubsts<'tcx>)
-                        -> ty::PolyFnSig<'tcx>
-    {
-        if let Some(ty) = self.maps.closure_type.borrow().get(&def_id) {
-            return ty.subst(self, substs.substs);
-        }
-
-        self.maps.closure_type(self, def_id).subst(self, substs.substs)
+    pub fn closure_type(self, def_id: DefId) -> ty::PolyFnSig<'tcx> {
+        self.maps.closure_type(self, def_id)
     }
 
     /// Given the def_id of an impl, return the def_id of the trait it implements.

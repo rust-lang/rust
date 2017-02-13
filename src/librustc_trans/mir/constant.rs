@@ -20,7 +20,7 @@ use rustc::mir;
 use rustc::mir::tcx::LvalueTy;
 use rustc::ty::{self, layout, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::cast::{CastTy, IntTy};
-use rustc::ty::subst::{Kind, Substs};
+use rustc::ty::subst::{Kind, Substs, Subst};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use {abi, adt, base, Disr, machine};
 use callee::Callee;
@@ -588,7 +588,8 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                                     .find(|it| it.kind == ty::AssociatedKind::Method)
                                     .unwrap().def_id;
                                 // Now create its substs [Closure, Tuple]
-                                let input = tcx.closure_type(def_id, substs).input(0);
+                                let input = tcx.closure_type(def_id)
+                                    .subst(tcx, substs.substs).input(0);
                                 let substs = tcx.mk_substs([operand.ty, input.skip_binder()]
                                     .iter().cloned().map(Kind::from));
                                 Callee::def(self.ccx, call_once, substs)

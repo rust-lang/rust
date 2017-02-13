@@ -18,7 +18,7 @@ pub use self::CalleeData::*;
 
 use llvm::{self, ValueRef, get_params};
 use rustc::hir::def_id::DefId;
-use rustc::ty::subst::Substs;
+use rustc::ty::subst::{Substs, Subst};
 use rustc::traits;
 use abi::{Abi, FnType};
 use attributes;
@@ -306,7 +306,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     let ref_closure_ty = tcx.mk_imm_ref(tcx.mk_region(ty::ReErased), closure_ty);
 
     // Make a version with the type of by-ref closure.
-    let sig = tcx.closure_type(def_id, substs);
+    let sig = tcx.closure_type(def_id).subst(tcx, substs.substs);
     let sig = tcx.erase_late_bound_regions_and_normalize(&sig);
     assert_eq!(sig.abi, Abi::RustCall);
     let llref_fn_ty = tcx.mk_fn_ptr(ty::Binder(tcx.mk_fn_sig(
