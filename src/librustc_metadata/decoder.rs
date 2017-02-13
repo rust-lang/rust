@@ -363,12 +363,6 @@ impl<'a, 'tcx> SpecializedDecoder<&'tcx ty::Slice<Ty<'tcx>>> for DecodeContext<'
     }
 }
 
-impl<'a, 'tcx> SpecializedDecoder<&'tcx ty::BareFnTy<'tcx>> for DecodeContext<'a, 'tcx> {
-    fn specialized_decode(&mut self) -> Result<&'tcx ty::BareFnTy<'tcx>, Self::Error> {
-        Ok(self.tcx().mk_bare_fn(Decodable::decode(self)?))
-    }
-}
-
 impl<'a, 'tcx> SpecializedDecoder<&'tcx ty::AdtDef> for DecodeContext<'a, 'tcx> {
     fn specialized_decode(&mut self) -> Result<&'tcx ty::AdtDef, Self::Error> {
         let def_id = DefId::decode(self)?;
@@ -1054,7 +1048,7 @@ impl<'a, 'tcx> CrateMetadata {
     pub fn closure_ty(&self,
                       closure_id: DefIndex,
                       tcx: TyCtxt<'a, 'tcx, 'tcx>)
-                      -> ty::ClosureTy<'tcx> {
+                      -> ty::PolyFnSig<'tcx> {
         match self.entry(closure_id).kind {
             EntryKind::Closure(data) => data.decode(self).ty.decode((self, tcx)),
             _ => bug!(),

@@ -337,5 +337,5 @@ pub struct MethodData {
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct ClosureData<'tcx> {
     pub kind: ty::ClosureKind,
-    pub ty: Lazy<ty::ClosureTy<'tcx>>,
+    pub ty: Lazy<ty::PolyFnSig<'tcx>>,
 }

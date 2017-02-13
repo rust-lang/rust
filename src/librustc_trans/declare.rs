@@ -132,11 +132,11 @@ pub fn declare_cfn(ccx: &CrateContext, name: &str, fn_type: Type) -> ValueRef {
 pub fn declare_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, name: &str,
                             fn_type: ty::Ty<'tcx>) -> ValueRef {
     debug!("declare_rust_fn(name={:?}, fn_type={:?})", name, fn_type);
-    let ty::BareFnTy { abi, ref sig, .. } = *common::ty_fn_ty(ccx, fn_type);
-    let sig = ccx.tcx().erase_late_bound_regions_and_normalize(sig);
+    let sig = common::ty_fn_sig(ccx, fn_type);
+    let sig = ccx.tcx().erase_late_bound_regions_and_normalize(&sig);
     debug!("declare_rust_fn (after region erasure) sig={:?}", sig);
 
-    let fty = FnType::new(ccx, abi, &sig, &[]);
+    let fty = FnType::new(ccx, sig, &[]);
     let llfn = declare_raw_fn(ccx, name, fty.cconv, fty.llvm_type(ccx));
 
     // FIXME(canndrew): This is_never should really be an is_uninhabited
@@ -144,7 +144,7 @@ pub fn declare_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, name: &str,
         llvm::Attribute::NoReturn.apply_llfn(Function, llfn);
     }
 
-    if abi != Abi::Rust && abi != Abi::RustCall {
+    if sig.abi != Abi::Rust && sig.abi != Abi::RustCall {
         attributes::unwind(llfn, false);
     }
 

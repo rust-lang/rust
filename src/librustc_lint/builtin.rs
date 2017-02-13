@@ -1082,9 +1082,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MutableTransmutes {
                 }
                 let typ = cx.tables.node_id_to_type(expr.id);
                 match typ.sty {
-                    ty::TyFnDef(.., ref bare_fn) if bare_fn.abi == RustIntrinsic => {
-                        let from = bare_fn.sig.skip_binder().inputs()[0];
-                        let to = bare_fn.sig.skip_binder().output();
+                    ty::TyFnDef(.., bare_fn) if bare_fn.abi() == RustIntrinsic => {
+                        let from = bare_fn.inputs().skip_binder()[0];
+                        let to = *bare_fn.output().skip_binder();
                         return Some((&from.sty, &to.sty));
                     }
                     _ => (),
@@ -1095,7 +1095,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MutableTransmutes {
 
         fn def_id_is_transmute(cx: &LateContext, def_id: DefId) -> bool {
             match cx.tcx.item_type(def_id).sty {
-                ty::TyFnDef(.., ref bfty) if bfty.abi == RustIntrinsic => (),
+                ty::TyFnDef(.., bfty) if bfty.abi() == RustIntrinsic => (),
                 _ => return false,
             }
             cx.tcx.item_name(def_id) == "transmute"

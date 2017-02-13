@@ -14,6 +14,7 @@ use hir::def::Def;
 use hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::{infer, traits};
 use rustc::ty::{self, TyCtxt, LvaluePreference, Ty};
+use syntax::abi;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
 
@@ -112,7 +113,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     let closure_ty = self.closure_type(def_id, substs);
                     let fn_sig = self.replace_late_bound_regions_with_fresh_var(call_expr.span,
                                                                    infer::FnCall,
-                                                                   &closure_ty.sig)
+                                                                   &closure_ty)
                         .0;
                     self.record_deferred_call_resolution(def_id,
                                                          Box::new(CallResolution {
@@ -186,13 +187,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             arg_exprs: &'gcx [hir::Expr],
                             expected: Expectation<'tcx>)
                             -> Ty<'tcx> {
-        let error_fn_sig;
-
         let (fn_sig, def_span) = match callee_ty.sty {
-            ty::TyFnDef(def_id, .., &ty::BareFnTy {ref sig, ..}) => {
+            ty::TyFnDef(def_id, .., sig) => {
                 (sig, self.tcx.hir.span_if_local(def_id))
             }
-            ty::TyFnPtr(&ty::BareFnTy {ref sig, ..}) => (sig, None),
+            ty::TyFnPtr(sig) => (sig, None),
             ref t => {
                 let mut unit_variant = None;
                 if let &ty::TyAdt(adt_def, ..) = t {
@@ -232,13 +231,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // This is the "default" function signature, used in case of error.
                 // In that case, we check each argument against "error" in order to
                 // set up all the node type bindings.
-                error_fn_sig = ty::Binder(self.tcx.mk_fn_sig(
+                (ty::Binder(self.tcx.mk_fn_sig(
                     self.err_args(arg_exprs.len()).into_iter(),
                     self.tcx.types.err,
                     false,
-                ));
-
-                (&error_fn_sig, None)
+                    hir::Unsafety::Normal,
+                    abi::Abi::Rust
+                )), None)
             }
         };
 
@@ -248,7 +247,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // previously appeared within a `Binder<>` and hence would not
         // have been normalized before.
         let fn_sig =
-            self.replace_late_bound_regions_with_fresh_var(call_expr.span, infer::FnCall, fn_sig)
+            self.replace_late_bound_regions_with_fresh_var(call_expr.span, infer::FnCall, &fn_sig)
                 .0;
         let fn_sig = self.normalize_associated_types_in(call_expr.span, &fn_sig);
 
@@ -355,7 +354,7 @@ impl<'gcx, 'tcx> DeferredCallResolution<'gcx, 'tcx> for CallResolution<'gcx, 'tc
                 // (This always bites me, should find a way to
                 // refactor it.)
                 let method_sig = fcx.tcx
-                    .no_late_bound_regions(method_callee.ty.fn_sig())
+                    .no_late_bound_regions(&method_callee.ty.fn_sig())
                     .unwrap();
 
                 debug!("attempt_resolution: method_callee={:?}", method_callee);

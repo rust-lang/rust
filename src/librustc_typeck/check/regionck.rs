@@ -927,7 +927,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                     // was applied on the base type, as that is always the case.
                     let fn_sig = method.ty.fn_sig();
                     let fn_sig = // late-bound regions should have been instantiated
-                        self.tcx.no_late_bound_regions(fn_sig).unwrap();
+                        self.tcx.no_late_bound_regions(&fn_sig).unwrap();
                     let self_ty = fn_sig.inputs()[0];
                     let (m, r) = match self_ty.sty {
                         ty::TyRef(r, ref m) => (m.mutbl, r),

@@ -39,11 +39,13 @@ fn equate_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                   |_, _| tcx.mk_region(ty::ReErased),
                                   |def, _| tcx.mk_param_from_def(def));
 
-    let fty = tcx.mk_fn_def(def_id, substs, tcx.mk_bare_fn(ty::BareFnTy {
-        unsafety: hir::Unsafety::Unsafe,
-        abi: abi,
-        sig: ty::Binder(tcx.mk_fn_sig(inputs.into_iter(), output, false)),
-    }));
+    let fty = tcx.mk_fn_def(def_id, substs, ty::Binder(tcx.mk_fn_sig(
+        inputs.into_iter(),
+        output,
+        false,
+        hir::Unsafety::Unsafe,
+        abi
+    )));
     let i_n_tps = tcx.item_generics(def_id).types.len();
     if i_n_tps != n_tps {
         let span = match it.node {
@@ -288,11 +290,13 @@ pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
             "try" => {
                 let mut_u8 = tcx.mk_mut_ptr(tcx.types.u8);
-                let fn_ty = tcx.mk_bare_fn(ty::BareFnTy {
-                    unsafety: hir::Unsafety::Normal,
-                    abi: Abi::Rust,
-                    sig: ty::Binder(tcx.mk_fn_sig(iter::once(mut_u8), tcx.mk_nil(), false)),
-                });
+                let fn_ty = ty::Binder(tcx.mk_fn_sig(
+                    iter::once(mut_u8),
+                    tcx.mk_nil(),
+                    false,
+                    hir::Unsafety::Normal,
+                    Abi::Rust,
+                ));
                 (0, vec![tcx.mk_fn_ptr(fn_ty), mut_u8, mut_u8], tcx.types.i32)
             }
 
@@ -363,7 +367,7 @@ pub fn check_platform_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     let mut structural_to_nomimal = FxHashMap();
 
                     let sig = tcx.item_type(def_id).fn_sig();
-                    let sig = tcx.no_late_bound_regions(sig).unwrap();
+                    let sig = tcx.no_late_bound_regions(&sig).unwrap();
                     if intr.inputs.len() != sig.inputs().len() {
                         span_err!(tcx.sess, it.span, E0444,
                                   "platform-specific intrinsic has invalid number of \

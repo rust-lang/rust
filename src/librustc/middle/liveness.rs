@@ -1434,7 +1434,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         let fn_ty = self.ir.tcx.item_type(self.ir.tcx.hir.local_def_id(id));
         let fn_ret = match fn_ty.sty {
             ty::TyClosure(closure_def_id, substs) =>
-                self.ir.tcx.closure_type(closure_def_id, substs).sig.output(),
+                self.ir.tcx.closure_type(closure_def_id, substs).output(),
             _ => fn_ty.fn_ret()
         };
 

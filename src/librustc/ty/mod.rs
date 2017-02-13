@@ -55,8 +55,8 @@ use hir;
 use hir::itemlikevisit::ItemLikeVisitor;
 
 pub use self::sty::{Binder, DebruijnIndex};
-pub use self::sty::{BareFnTy, FnSig, PolyFnSig};
-pub use self::sty::{ClosureTy, InferTy, ParamTy, ProjectionTy, ExistentialPredicate};
+pub use self::sty::{FnSig, PolyFnSig};
+pub use self::sty::{InferTy, ParamTy, ProjectionTy, ExistentialPredicate};
 pub use self::sty::{ClosureSubsts, TypeAndMut};
 pub use self::sty::{TraitRef, TypeVariants, PolyTraitRef};
 pub use self::sty::{ExistentialTraitRef, PolyExistentialTraitRef};
@@ -2470,7 +2470,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn closure_type(self,
                         def_id: DefId,
                         substs: ClosureSubsts<'tcx>)
-                        -> ty::ClosureTy<'tcx>
+                        -> ty::PolyFnSig<'tcx>
     {
         if let Some(ty) = self.maps.closure_type.borrow().get(&def_id) {
             return ty.subst(self, substs.substs);

@@ -600,7 +600,7 @@ impl_trans_normalize!('gcx,
     Ty<'gcx>,
     &'gcx Substs<'gcx>,
     ty::FnSig<'gcx>,
-    &'gcx ty::BareFnTy<'gcx>,
+    ty::PolyFnSig<'gcx>,
     ty::ClosureSubsts<'gcx>,
     ty::PolyTraitRef<'gcx>,
     ty::ExistentialTraitRef<'gcx>
@@ -1652,7 +1652,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     pub fn closure_type(&self,
                         def_id: DefId,
                         substs: ty::ClosureSubsts<'tcx>)
-                        -> ty::ClosureTy<'tcx>
+                        -> ty::PolyFnSig<'tcx>
     {
         if let InferTables::InProgress(tables) = self.tables {
             if let Some(id) = self.tcx.hir.as_local_node_id(def_id) {

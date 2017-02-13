@@ -411,8 +411,8 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 }
             }
 
-            ty::TyFnDef(.., &ty::BareFnTy { ref sig, .. }) |
-            ty::TyFnPtr(&ty::BareFnTy { ref sig, .. }) => {
+            ty::TyFnDef(.., sig) |
+            ty::TyFnPtr(sig) => {
                 self.add_constraints_from_sig(generics, sig, variance);
             }
 
@@ -465,7 +465,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
     /// `sig` appearing in a context with ambient variance `variance`
     fn add_constraints_from_sig(&mut self,
                                 generics: &ty::Generics,
-                                sig: &ty::PolyFnSig<'tcx>,
+                                sig: ty::PolyFnSig<'tcx>,
                                 variance: VarianceTermPtr<'a>) {
         let contra = self.contravariant(variance);
         for &input in sig.0.inputs() {

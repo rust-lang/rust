@@ -495,15 +495,6 @@ impl fmt::Debug for ty::Region {
     }
 }
 
-impl<'tcx> fmt::Debug for ty::ClosureTy<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "ClosureTy({},{:?},{})",
-               self.unsafety,
-               self.sig,
-               self.abi)
-    }
-}
-
 impl<'tcx> fmt::Debug for ty::ClosureUpvar<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "ClosureUpvar({:?},{:?})",
@@ -585,6 +576,14 @@ impl<'tcx> fmt::Debug for ty::InstantiatedPredicates<'tcx> {
 
 impl<'tcx> fmt::Display for ty::FnSig<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if self.unsafety == hir::Unsafety::Unsafe {
+            write!(f, "unsafe ")?;
+        }
+
+        if self.abi != Abi::Rust {
+            write!(f, "extern {} ", self.abi)?;
+        }
+
         write!(f, "fn")?;
         fn_sig(f, self.inputs(), self.variadic, self.output())
     }
@@ -741,28 +740,12 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
                 write!(f, ")")
             }
             TyFnDef(def_id, substs, ref bare_fn) => {
-                if bare_fn.unsafety == hir::Unsafety::Unsafe {
-                    write!(f, "unsafe ")?;
-                }
-
-                if bare_fn.abi != Abi::Rust {
-                    write!(f, "extern {} ", bare_fn.abi)?;
-                }
-
-                write!(f, "{} {{", bare_fn.sig.0)?;
+                write!(f, "{} {{", bare_fn.0)?;
                 parameterized(f, substs, def_id, &[])?;
                 write!(f, "}}")
             }
             TyFnPtr(ref bare_fn) => {
-                if bare_fn.unsafety == hir::Unsafety::Unsafe {
-                    write!(f, "unsafe ")?;
-                }
-
-                if bare_fn.abi != Abi::Rust {
-                    write!(f, "extern {} ", bare_fn.abi)?;
-                }
-
-                write!(f, "{}", bare_fn.sig.0)
+                write!(f, "{}", bare_fn.0)
             }
             TyInfer(infer_ty) => write!(f, "{}", infer_ty),
             TyError => write!(f, "[type error]"),

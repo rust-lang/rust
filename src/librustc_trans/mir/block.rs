@@ -365,20 +365,21 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 // Create the callee. This is a fn ptr or zero-sized and hence a kind of scalar.
                 let callee = self.trans_operand(&bcx, func);
 
-                let (mut callee, abi, sig) = match callee.ty.sty {
-                    ty::TyFnDef(def_id, substs, f) => {
-                        (Callee::def(bcx.ccx, def_id, substs), f.abi, &f.sig)
+                let (mut callee, sig) = match callee.ty.sty {
+                    ty::TyFnDef(def_id, substs, sig) => {
+                        (Callee::def(bcx.ccx, def_id, substs), sig)
                     }
-                    ty::TyFnPtr(f) => {
+                    ty::TyFnPtr(sig) => {
                         (Callee {
                             data: Fn(callee.immediate()),
                             ty: callee.ty
-                        }, f.abi, &f.sig)
+                        }, sig)
                     }
                     _ => bug!("{} is not callable", callee.ty)
                 };
 
-                let sig = bcx.tcx().erase_late_bound_regions_and_normalize(sig);
+                let sig = bcx.tcx().erase_late_bound_regions_and_normalize(&sig);
+                let abi = sig.abi;
 
                 // Handle intrinsics old trans wants Expr's for, ourselves.
                 let intrinsic = match (&callee.ty.sty, &callee.data) {

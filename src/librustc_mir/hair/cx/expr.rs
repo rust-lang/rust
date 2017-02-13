@@ -267,13 +267,10 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
 
                 let method = method_callee(cx, expr, ty::MethodCall::expr(expr.id));
 
-                let sig = match method.ty.sty {
-                    ty::TyFnDef(.., fn_ty) => &fn_ty.sig,
-                    _ => span_bug!(expr.span, "type of method is not an fn"),
-                };
+                let sig = method.ty.fn_sig();
 
                 let sig = cx.tcx
-                    .no_late_bound_regions(sig)
+                    .no_late_bound_regions(&sig)
                     .unwrap_or_else(|| span_bug!(expr.span, "method call has late-bound regions"));
 
                 assert_eq!(sig.inputs().len(), 2);

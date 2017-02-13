@@ -270,11 +270,13 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
     }
 
     pub fn t_fn(&self, input_tys: &[Ty<'tcx>], output_ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.infcx.tcx.mk_fn_ptr(self.infcx.tcx.mk_bare_fn(ty::BareFnTy {
-            unsafety: hir::Unsafety::Normal,
-            abi: Abi::Rust,
-            sig: ty::Binder(self.infcx.tcx.mk_fn_sig(input_tys.iter().cloned(), output_ty, false)),
-        }))
+        self.infcx.tcx.mk_fn_ptr(ty::Binder(self.infcx.tcx.mk_fn_sig(
+            input_tys.iter().cloned(),
+            output_ty,
+            false,
+            hir::Unsafety::Normal,
+            Abi::Rust
+        )))
     }
 
     pub fn t_nil(&self) -> Ty<'tcx> {

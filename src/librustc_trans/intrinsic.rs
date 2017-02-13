@@ -97,12 +97,12 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
     let ccx = bcx.ccx;
     let tcx = ccx.tcx();
 
-    let (def_id, substs, fty) = match callee_ty.sty {
-        ty::TyFnDef(def_id, substs, ref fty) => (def_id, substs, fty),
+    let (def_id, substs, sig) = match callee_ty.sty {
+        ty::TyFnDef(def_id, substs, sig) => (def_id, substs, sig),
         _ => bug!("expected fn item type, found {}", callee_ty)
     };
 
-    let sig = tcx.erase_late_bound_regions_and_normalize(&fty.sig);
+    let sig = tcx.erase_late_bound_regions_and_normalize(&sig);
     let arg_tys = sig.inputs();
     let ret_ty = sig.output();
     let name = &*tcx.item_name(def_id).as_str();
@@ -878,13 +878,13 @@ fn gen_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                     output: Ty<'tcx>,
                     trans: &mut for<'b> FnMut(Builder<'b, 'tcx>))
                     -> ValueRef {
-    let sig = ccx.tcx().mk_fn_sig(inputs.into_iter(), output, false);
-
-    let rust_fn_ty = ccx.tcx().mk_fn_ptr(ccx.tcx().mk_bare_fn(ty::BareFnTy {
-        unsafety: hir::Unsafety::Unsafe,
-        abi: Abi::Rust,
-        sig: ty::Binder(sig)
-    }));
+    let rust_fn_ty = ccx.tcx().mk_fn_ptr(ty::Binder(ccx.tcx().mk_fn_sig(
+        inputs.into_iter(),
+        output,
+        false,
+        hir::Unsafety::Unsafe,
+        Abi::Rust
+    )));
     let llfn = declare::define_internal_fn(ccx, name, rust_fn_ty);
     let bcx = Builder::new_block(ccx, llfn, "entry-block");
     trans(bcx);
@@ -905,11 +905,13 @@ fn get_rust_try_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     // Define the type up front for the signature of the rust_try function.
     let tcx = ccx.tcx();
     let i8p = tcx.mk_mut_ptr(tcx.types.i8);
-    let fn_ty = tcx.mk_fn_ptr(tcx.mk_bare_fn(ty::BareFnTy {
-        unsafety: hir::Unsafety::Unsafe,
-        abi: Abi::Rust,
-        sig: ty::Binder(tcx.mk_fn_sig(iter::once(i8p), tcx.mk_nil(), false)),
-    }));
+    let fn_ty = tcx.mk_fn_ptr(ty::Binder(tcx.mk_fn_sig(
+        iter::once(i8p),
+        tcx.mk_nil(),
+        false,
+        hir::Unsafety::Unsafe,
+        Abi::Rust
+    )));
     let output = tcx.types.i32;
     let rust_try = gen_fn(ccx, "__rust_try", vec![fn_ty, i8p, i8p], output, trans);
     ccx.rust_try_fn().set(Some(rust_try));
@@ -959,7 +961,7 @@ fn generic_simd_intrinsic<'a, 'tcx>(
 
 
     let tcx = bcx.tcx();
-    let sig = tcx.erase_late_bound_regions_and_normalize(callee_ty.fn_sig());
+    let sig = tcx.erase_late_bound_regions_and_normalize(&callee_ty.fn_sig());
     let arg_tys = sig.inputs();
 
     // every intrinsic takes a SIMD vector as its first argument

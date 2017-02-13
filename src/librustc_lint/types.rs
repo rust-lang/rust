@@ -568,8 +568,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
             ty::TyArray(ty, _) => self.check_type_for_ffi(cache, ty),
 
-            ty::TyFnPtr(bare_fn) => {
-                match bare_fn.abi {
+            ty::TyFnPtr(sig) => {
+                match sig.abi() {
                     Abi::Rust | Abi::RustIntrinsic | Abi::PlatformIntrinsic | Abi::RustCall => {
                         return FfiUnsafe("found function pointer with Rust calling convention in \
                                           foreign module; consider using an `extern` function \
@@ -578,7 +578,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                     _ => {}
                 }
 
-                let sig = cx.erase_late_bound_regions(&bare_fn.sig);
+                let sig = cx.erase_late_bound_regions(&sig);
                 if !sig.output().is_nil() {
                     let r = self.check_type_for_ffi(cache, sig.output());
                     match r {
