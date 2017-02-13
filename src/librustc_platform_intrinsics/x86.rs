@@ -21,1331 +21,4506 @@ use IntrinsicDef::Named;
 #[inline(never)]
 pub fn find(name: &str) -> Option<Intrinsic> {
     if !name.starts_with("x86") { return None }
-    Some(match &name["x86".len()..] {
-        "_mm256_abs_epi8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x32]; &INPUTS },
-            output: &::I8x32,
-            definition: Named("llvm.x86.avx2.pabs.b")
-        },
-        "_mm256_abs_epi16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x16]; &INPUTS },
-            output: &::I16x16,
-            definition: Named("llvm.x86.avx2.pabs.w")
-        },
-        "_mm256_abs_epi32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x8]; &INPUTS },
-            output: &::I32x8,
-            definition: Named("llvm.x86.avx2.pabs.d")
-        },
-        "_mm256_adds_epi8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x32, &::I8x32]; &INPUTS },
-            output: &::I8x32,
-            definition: Named("llvm.x86.avx2.padds.b")
-        },
-        "_mm256_adds_epu8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U8x32, &::U8x32]; &INPUTS },
-            output: &::U8x32,
-            definition: Named("llvm.x86.avx2.paddus.b")
-        },
-        "_mm256_adds_epi16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x16, &::I16x16]; &INPUTS },
-            output: &::I16x16,
-            definition: Named("llvm.x86.avx2.padds.w")
-        },
-        "_mm256_adds_epu16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U16x16, &::U16x16]; &INPUTS },
-            output: &::U16x16,
-            definition: Named("llvm.x86.avx2.paddus.w")
-        },
-        "_mm256_avg_epu8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U8x32, &::U8x32]; &INPUTS },
-            output: &::U8x32,
-            definition: Named("llvm.x86.avx2.pavg.b")
-        },
-        "_mm256_avg_epu16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U16x16, &::U16x16]; &INPUTS },
-            output: &::U16x16,
-            definition: Named("llvm.x86.avx2.pavg.w")
-        },
-        "_mm256_hadd_epi16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x16, &::I16x16]; &INPUTS },
-            output: &::I16x16,
-            definition: Named("llvm.x86.avx2.phadd.w")
-        },
-        "_mm256_hadd_epi32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x8, &::I32x8]; &INPUTS },
-            output: &::I32x8,
-            definition: Named("llvm.x86.avx2.phadd.d")
-        },
-        "_mm256_hadds_epi16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x16, &::I16x16]; &INPUTS },
-            output: &::I16x16,
-            definition: Named("llvm.x86.avx2.phadd.sw")
-        },
-        "_mm256_hsub_epi16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x16, &::I16x16]; &INPUTS },
-            output: &::I16x16,
-            definition: Named("llvm.x86.avx2.phsub.w")
-        },
-        "_mm256_hsub_epi32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x8, &::I32x8]; &INPUTS },
-            output: &::I32x8,
-            definition: Named("llvm.x86.avx2.phsub.d")
-        },
-        "_mm256_hsubs_epi16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x16, &::I16x16]; &INPUTS },
-            output: &::I16x16,
-            definition: Named("llvm.x86.avx2.phsub.sw")
-        },
-        "_mm256_madd_epi16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x16, &::I16x16]; &INPUTS },
-            output: &::I32x8,
-            definition: Named("llvm.x86.avx2.pmadd.wd")
-        },
-        "_mm256_maddubs_epi16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x32, &::I8x32]; &INPUTS },
-            output: &::I16x16,
-            definition: Named("llvm.x86.avx2.pmadd.ub.sw")
-        },
-        "_mm_mask_i32gather_epi32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 5] = [&::I32x4, { static PTR: Type = Type::Pointer(&::I32, Some(&::I8), true); &PTR }, &::I32x4, &::I32x4, &::I32_8]; &INPUTS },
-            output: &::I32x4,
-            definition: Named("llvm.x86.avx2.gather.d.d")
-        },
-        "_mm_mask_i32gather_ps" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 5] = [&::F32x4, { static PTR: Type = Type::Pointer(&::F32, Some(&::I8), true); &PTR }, &::I32x4, &::I32x4_F32, &::I32_8]; &INPUTS },
+    Some(match name {
+       "x86_mm_prefetch" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
             output: &::F32x4,
-            definition: Named("llvm.x86.avx2.gather.d.ps")
+            definition: Named("llvm.x86.sse.add.ss")
         },
-        "_mm256_mask_i32gather_epi32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 5] = [&::I32x8, { static PTR: Type = Type::Pointer(&::I32, Some(&::I8), true); &PTR }, &::I32x8, &::I32x8, &::I32_8]; &INPUTS },
-            output: &::I32x8,
-            definition: Named("llvm.x86.avx2.gather.d.d.256")
-        },
-        "_mm256_mask_i32gather_ps" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 5] = [&::F32x8, { static PTR: Type = Type::Pointer(&::F32, Some(&::I8), true); &PTR }, &::I32x8, &::I32x8_F32, &::I32_8]; &INPUTS },
-            output: &::F32x8,
-            definition: Named("llvm.x86.avx2.gather.d.ps.256")
-        },
-        "_mm_mask_i32gather_epi64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 5] = [&::I64x2, { static PTR: Type = Type::Pointer(&::I64, Some(&::I8), true); &PTR }, &::I32x4, &::I64x2, &::I32_8]; &INPUTS },
-            output: &::I64x2,
-            definition: Named("llvm.x86.avx2.gather.d.q")
-        },
-        "_mm_mask_i32gather_pd" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 5] = [&::F64x2, { static PTR: Type = Type::Pointer(&::F64, Some(&::I8), true); &PTR }, &::I32x4, &::I64x2_F64, &::I32_8]; &INPUTS },
-            output: &::F64x2,
-            definition: Named("llvm.x86.avx2.gather.d.pd")
-        },
-        "_mm256_mask_i32gather_epi64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 5] = [&::I64x4, { static PTR: Type = Type::Pointer(&::I64, Some(&::I8), true); &PTR }, &::I32x4, &::I64x4, &::I32_8]; &INPUTS },
-            output: &::I64x4,
-            definition: Named("llvm.x86.avx2.gather.d.q.256")
-        },
-        "_mm256_mask_i32gather_pd" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 5] = [&::F64x4, { static PTR: Type = Type::Pointer(&::F64, Some(&::I8), true); &PTR }, &::I32x4, &::I64x4_F64, &::I32_8]; &INPUTS },
-            output: &::F64x4,
-            definition: Named("llvm.x86.avx2.gather.d.pd.256")
-        },
-        "_mm_mask_i64gather_epi32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 5] = [&::I32x4, { static PTR: Type = Type::Pointer(&::I32, Some(&::I8), true); &PTR }, &::I64x2, &::I32x4, &::I32_8]; &INPUTS },
-            output: &::I32x4,
-            definition: Named("llvm.x86.avx2.gather.q.d")
-        },
-        "_mm_mask_i64gather_ps" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 5] = [&::F32x4, { static PTR: Type = Type::Pointer(&::F32, Some(&::I8), true); &PTR }, &::I64x2, &::I32x4_F32, &::I32_8]; &INPUTS },
+       "x86_mm_sub_ss" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
             output: &::F32x4,
-            definition: Named("llvm.x86.avx2.gather.q.ps")
+            definition: Named("llvm.x86.sse.sub.ss")
         },
-        "_mm256_mask_i64gather_epi32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 5] = [&::I32x4, { static PTR: Type = Type::Pointer(&::I32, Some(&::I8), true); &PTR }, &::I64x4, &::I32x4, &::I32_8]; &INPUTS },
-            output: &::I32x4,
-            definition: Named("llvm.x86.avx2.gather.q.d")
-        },
-        "_mm256_mask_i64gather_ps" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 5] = [&::F32x4, { static PTR: Type = Type::Pointer(&::F32, Some(&::I8), true); &PTR }, &::I64x4, &::I32x4_F32, &::I32_8]; &INPUTS },
+       "x86_mm_mul_ss" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
             output: &::F32x4,
-            definition: Named("llvm.x86.avx2.gather.q.ps")
+            definition: Named("llvm.x86.sse.mul.ss")
         },
-        "_mm_mask_i64gather_epi64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 5] = [&::I64x2, { static PTR: Type = Type::Pointer(&::I64, Some(&::I8), true); &PTR }, &::I64x2, &::I64x2, &::I32_8]; &INPUTS },
-            output: &::I64x2,
-            definition: Named("llvm.x86.avx2.gather.q.q")
-        },
-        "_mm_mask_i64gather_pd" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 5] = [&::F64x2, { static PTR: Type = Type::Pointer(&::F64, Some(&::I8), true); &PTR }, &::I64x2, &::I64x2_F64, &::I32_8]; &INPUTS },
-            output: &::F64x2,
-            definition: Named("llvm.x86.avx2.gather.q.pd")
-        },
-        "_mm256_mask_i64gather_epi64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 5] = [&::I64x4, { static PTR: Type = Type::Pointer(&::I64, Some(&::I8), true); &PTR }, &::I64x4, &::I64x4, &::I32_8]; &INPUTS },
-            output: &::I64x4,
-            definition: Named("llvm.x86.avx2.gather.q.q.256")
-        },
-        "_mm256_mask_i64gather_pd" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 5] = [&::F64x4, { static PTR: Type = Type::Pointer(&::F64, Some(&::I8), true); &PTR }, &::I64x4, &::I64x4_F64, &::I32_8]; &INPUTS },
-            output: &::F64x4,
-            definition: Named("llvm.x86.avx2.gather.q.pd.256")
-        },
-        "_mm_maskload_epi32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [{ static PTR: Type = Type::Pointer(&::I32x4, Some(&::I8), true); &PTR }, &::I32x4]; &INPUTS },
-            output: &::I32x4,
-            definition: Named("llvm.x86.avx2.maskload.d")
-        },
-        "_mm_maskload_epi64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [{ static PTR: Type = Type::Pointer(&::I64x2, Some(&::I8), true); &PTR }, &::I64x2]; &INPUTS },
-            output: &::I64x2,
-            definition: Named("llvm.x86.avx2.maskload.q")
-        },
-        "_mm256_maskload_epi32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [{ static PTR: Type = Type::Pointer(&::I32x8, Some(&::I8), true); &PTR }, &::I32x8]; &INPUTS },
-            output: &::I32x8,
-            definition: Named("llvm.x86.avx2.maskload.d.256")
-        },
-        "_mm256_maskload_epi64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [{ static PTR: Type = Type::Pointer(&::I64x4, Some(&::I8), true); &PTR }, &::I64x4]; &INPUTS },
-            output: &::I64x4,
-            definition: Named("llvm.x86.avx2.maskload.q.256")
-        },
-        "_mm_maskstore_epi32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 3] = [{ static PTR: Type = Type::Pointer(&::I32, Some(&::I8), false); &PTR }, &::I32x4, &::I32x4]; &INPUTS },
-            output: &::VOID,
-            definition: Named("llvm.x86.avx2.maskstore.d")
-        },
-        "_mm_maskstore_epi64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 3] = [{ static PTR: Type = Type::Pointer(&::I64, Some(&::I8), false); &PTR }, &::I64x2, &::I64x2]; &INPUTS },
-            output: &::VOID,
-            definition: Named("llvm.x86.avx2.maskstore.q")
-        },
-        "_mm256_maskstore_epi32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 3] = [{ static PTR: Type = Type::Pointer(&::I32, Some(&::I8), false); &PTR }, &::I32x8, &::I32x8]; &INPUTS },
-            output: &::VOID,
-            definition: Named("llvm.x86.avx2.maskstore.d.256")
-        },
-        "_mm256_maskstore_epi64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 3] = [{ static PTR: Type = Type::Pointer(&::I64, Some(&::I8), false); &PTR }, &::I64x4, &::I64x4]; &INPUTS },
-            output: &::VOID,
-            definition: Named("llvm.x86.avx2.maskstore.q.256")
-        },
-        "_mm256_max_epi8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x32, &::I8x32]; &INPUTS },
-            output: &::I8x32,
-            definition: Named("llvm.x86.avx2.pmaxs.b")
-        },
-        "_mm256_max_epu8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U8x32, &::U8x32]; &INPUTS },
-            output: &::U8x32,
-            definition: Named("llvm.x86.avx2.pmaxu.b")
-        },
-        "_mm256_max_epi16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x16, &::I16x16]; &INPUTS },
-            output: &::I16x16,
-            definition: Named("llvm.x86.avx2.pmaxs.w")
-        },
-        "_mm256_max_epu16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U16x16, &::U16x16]; &INPUTS },
-            output: &::U16x16,
-            definition: Named("llvm.x86.avx2.pmaxu.w")
-        },
-        "_mm256_max_epi32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x8, &::I32x8]; &INPUTS },
-            output: &::I32x8,
-            definition: Named("llvm.x86.avx2.pmaxs.d")
-        },
-        "_mm256_max_epu32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U32x8, &::U32x8]; &INPUTS },
-            output: &::U32x8,
-            definition: Named("llvm.x86.avx2.pmaxu.d")
-        },
-        "_mm256_min_epi8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x32, &::I8x32]; &INPUTS },
-            output: &::I8x32,
-            definition: Named("llvm.x86.avx2.pmins.b")
-        },
-        "_mm256_min_epu8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U8x32, &::U8x32]; &INPUTS },
-            output: &::U8x32,
-            definition: Named("llvm.x86.avx2.pminu.b")
-        },
-        "_mm256_min_epi16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x16, &::I16x16]; &INPUTS },
-            output: &::I16x16,
-            definition: Named("llvm.x86.avx2.pmins.w")
-        },
-        "_mm256_min_epu16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U16x16, &::U16x16]; &INPUTS },
-            output: &::U16x16,
-            definition: Named("llvm.x86.avx2.pminu.w")
-        },
-        "_mm256_min_epi32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x8, &::I32x8]; &INPUTS },
-            output: &::I32x8,
-            definition: Named("llvm.x86.avx2.pmins.d")
-        },
-        "_mm256_min_epu32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U32x8, &::U32x8]; &INPUTS },
-            output: &::U32x8,
-            definition: Named("llvm.x86.avx2.pminu.d")
-        },
-        "_mm256_movemask_epi8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x32]; &INPUTS },
-            output: &::I32,
-            definition: Named("llvm.x86.avx2.pmovmskb")
-        },
-        "_mm256_mpsadbw_epu8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 3] = [&::U8x32, &::U8x32, &::I32_8]; &INPUTS },
-            output: &::U16x16,
-            definition: Named("llvm.x86.avx2.mpsadbw")
-        },
-        "_mm256_mul_epi64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x8, &::I32x8]; &INPUTS },
-            output: &::I64x4,
-            definition: Named("llvm.x86.avx2.pmulq.dq")
-        },
-        "_mm256_mul_epu64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U32x8, &::U32x8]; &INPUTS },
-            output: &::U64x4,
-            definition: Named("llvm.x86.avx2.pmulq.dq")
-        },
-        "_mm256_mulhi_epi16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x16, &::I16x16]; &INPUTS },
-            output: &::I16x16,
-            definition: Named("llvm.x86.avx2.pmulhw.w")
-        },
-        "_mm256_mulhi_epu16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U16x16, &::U16x16]; &INPUTS },
-            output: &::U16x16,
-            definition: Named("llvm.x86.avx2.pmulhw.w")
-        },
-        "_mm256_mulhrs_epi16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x16, &::I16x16]; &INPUTS },
-            output: &::I16x16,
-            definition: Named("llvm.x86.avx2.pmul.hr.sw")
-        },
-        "_mm256_packs_epi16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x16, &::I16x16]; &INPUTS },
-            output: &::I8x32,
-            definition: Named("llvm.x86.avx2.packsswb")
-        },
-        "_mm256_packus_epi16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x16, &::I16x16]; &INPUTS },
-            output: &::U8x32,
-            definition: Named("llvm.x86.avx2.packuswb")
-        },
-        "_mm256_packs_epi32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x8, &::I32x8]; &INPUTS },
-            output: &::I16x16,
-            definition: Named("llvm.x86.avx2.packssdw")
-        },
-        "_mm256_packus_epi32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x8, &::I32x8]; &INPUTS },
-            output: &::U16x16,
-            definition: Named("llvm.x86.avx2.packusdw")
-        },
-        "_mm256_permutevar8x32_epi32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x8, &::I32x8]; &INPUTS },
-            output: &::I32x8,
-            definition: Named("llvm.x86.avx2.permd")
-        },
-        "_mm256_permutevar8x32_ps" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x8, &::I32x8]; &INPUTS },
-            output: &::F32x8,
-            definition: Named("llvm.x86.avx2.permps")
-        },
-        "_mm256_sad_epu8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U8x32, &::U8x32]; &INPUTS },
-            output: &::U8x32,
-            definition: Named("llvm.x86.avx2.psad.bw")
-        },
-        "_mm256_shuffle_epi8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x32, &::I8x32]; &INPUTS },
-            output: &::I8x32,
-            definition: Named("llvm.x86.avx2.pshuf.b")
-        },
-        "_mm256_sign_epi8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x32, &::I8x32]; &INPUTS },
-            output: &::I8x32,
-            definition: Named("llvm.x86.avx2.psign.b")
-        },
-        "_mm256_sign_epi16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x16, &::I16x16]; &INPUTS },
-            output: &::I16x16,
-            definition: Named("llvm.x86.avx2.psign.w")
-        },
-        "_mm256_sign_epi32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x8, &::I32x8]; &INPUTS },
-            output: &::I32x8,
-            definition: Named("llvm.x86.avx2.psign.d")
-        },
-        "_mm256_subs_epi8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x32, &::I8x32]; &INPUTS },
-            output: &::I8x32,
-            definition: Named("llvm.x86.avx2.psubs.b")
-        },
-        "_mm256_subs_epu8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U8x32, &::U8x32]; &INPUTS },
-            output: &::U8x32,
-            definition: Named("llvm.x86.avx2.psubus.b")
-        },
-        "_mm256_subs_epi16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x16, &::I16x16]; &INPUTS },
-            output: &::I16x16,
-            definition: Named("llvm.x86.avx2.psubs.w")
-        },
-        "_mm256_subs_epu16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U16x16, &::U16x16]; &INPUTS },
-            output: &::U16x16,
-            definition: Named("llvm.x86.avx2.psubus.w")
-        },
-        "_mm256_addsub_ps" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x8, &::F32x8]; &INPUTS },
-            output: &::F32x8,
-            definition: Named("llvm.x86.avx.addsub.ps.256")
-        },
-        "_mm256_addsub_pd" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x4, &::F64x4]; &INPUTS },
-            output: &::F64x4,
-            definition: Named("llvm.x86.avx.addsub.pd.256")
-        },
-        "_mm256_blendv_ps" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x8, &::F32x8, &::F32x8]; &INPUTS },
-            output: &::F32x8,
-            definition: Named("llvm.x86.avx.blendv.ps.256")
-        },
-        "_mm256_blendv_pd" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 3] = [&::F64x4, &::F64x4, &::F64x4]; &INPUTS },
-            output: &::F64x4,
-            definition: Named("llvm.x86.avx.blendv.pd.256")
-        },
-        "_mm256_broadcast_ps" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::I8, None, true); &PTR }]; &INPUTS },
-            output: &::F32x8,
-            definition: Named("llvm.x86.avx.vbroadcastf128.ps.256")
-        },
-        "_mm256_broadcast_pd" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::I8, None, true); &PTR }]; &INPUTS },
-            output: &::F64x4,
-            definition: Named("llvm.x86.avx.vbroadcastf128.pd.256")
-        },
-        "_mm256_cmp_ps" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x8, &::F32x8, &::I8]; &INPUTS },
-            output: &::F32x8,
-            definition: Named("llvm.x86.avx.cmp.ps.256")
-        },
-        "_mm256_cmp_pd" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 3] = [&::F64x4, &::F64x4, &::I8]; &INPUTS },
-            output: &::F64x4,
-            definition: Named("llvm.x86.avx.cmp.pd.256")
-        },
-        "_mm256_cvtepi32_pd" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
-            output: &::F64x4,
-            definition: Named("llvm.x86.avx.cvtdq2.pd.256")
-        },
-        "_mm256_cvtepi32_ps" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x8]; &INPUTS },
-            output: &::F32x8,
-            definition: Named("llvm.x86.avx.cvtdq2.ps.256")
-        },
-        "_mm256_cvtpd_epi32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x4]; &INPUTS },
-            output: &::I32x4,
-            definition: Named("llvm.x86.avx.cvt.pd2dq.256")
-        },
-        "_mm256_cvtpd_ps" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x4]; &INPUTS },
+       "x86_mm_div_ss" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
             output: &::F32x4,
-            definition: Named("llvm.x86.avx.cvt.pd2.ps.256")
+            definition: Named("llvm.x86.sse.div.ss")
         },
-        "_mm256_cvtps_epi32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x8]; &INPUTS },
-            output: &::I32x8,
-            definition: Named("llvm.x86.avx.cvt.ps2dq.256")
-        },
-        "_mm256_cvtps_pd" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
-            output: &::F64x4,
-            definition: Named("llvm.x86.avx.cvt.ps2.pd.256")
-        },
-        "_mm256_cvttpd_epi32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x4]; &INPUTS },
-            output: &::I32x4,
-            definition: Named("llvm.x86.avx.cvtt.pd2dq.256")
-        },
-        "_mm256_cvttps_epi32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x8]; &INPUTS },
-            output: &::I32x8,
-            definition: Named("llvm.x86.avx.cvtt.ps2dq.256")
-        },
-        "_mm256_dp_ps" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x8, &::F32x8, &::I32_8]; &INPUTS },
-            output: &::F32x8,
-            definition: Named("llvm.x86.avx.dp.ps.256")
-        },
-        "_mm256_hadd_ps" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x8, &::F32x8]; &INPUTS },
-            output: &::F32x8,
-            definition: Named("llvm.x86.avx.hadd.ps.256")
-        },
-        "_mm256_hadd_pd" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x4, &::F64x4]; &INPUTS },
-            output: &::F64x4,
-            definition: Named("llvm.x86.avx.hadd.pd.256")
-        },
-        "_mm256_hsub_ps" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x8, &::F32x8]; &INPUTS },
-            output: &::F32x8,
-            definition: Named("llvm.x86.avx.hsub.ps.256")
-        },
-        "_mm256_hsub_pd" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x4, &::F64x4]; &INPUTS },
-            output: &::F64x4,
-            definition: Named("llvm.x86.avx.hsub.pd.256")
-        },
-        "_mm256_max_ps" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x8, &::F32x8]; &INPUTS },
-            output: &::F32x8,
-            definition: Named("llvm.x86.avx.max.ps.256")
-        },
-        "_mm256_max_pd" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x4, &::F64x4]; &INPUTS },
-            output: &::F64x4,
-            definition: Named("llvm.x86.avx.max.pd.256")
-        },
-        "_mm_maskload_ps" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [{ static PTR: Type = Type::Pointer(&::F32, Some(&::I8), true); &PTR }, &::I32x4_F32]; &INPUTS },
-            output: &::F32x4,
-            definition: Named("llvm.x86.avx.maskload.ps")
-        },
-        "_mm_maskload_pd" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [{ static PTR: Type = Type::Pointer(&::F64, Some(&::I8), true); &PTR }, &::I64x2_F64]; &INPUTS },
-            output: &::F64x2,
-            definition: Named("llvm.x86.avx.maskload.pd")
-        },
-        "_mm256_maskload_ps" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [{ static PTR: Type = Type::Pointer(&::F32, Some(&::I8), true); &PTR }, &::I32x8_F32]; &INPUTS },
-            output: &::F32x8,
-            definition: Named("llvm.x86.avx.maskload.ps.256")
-        },
-        "_mm256_maskload_pd" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [{ static PTR: Type = Type::Pointer(&::F64, Some(&::I8), true); &PTR }, &::I64x4_F64]; &INPUTS },
-            output: &::F64x4,
-            definition: Named("llvm.x86.avx.maskload.pd.256")
-        },
-        "_mm_maskstore_ps" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 3] = [{ static PTR: Type = Type::Pointer(&::F32, Some(&::I8), false); &PTR }, &::I32x4_F32, &::F32x4]; &INPUTS },
-            output: &::VOID,
-            definition: Named("llvm.x86.avx.maskstore.ps")
-        },
-        "_mm_maskstore_pd" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 3] = [{ static PTR: Type = Type::Pointer(&::F64, Some(&::I8), false); &PTR }, &::I64x2_F64, &::F64x2]; &INPUTS },
-            output: &::VOID,
-            definition: Named("llvm.x86.avx.maskstore.pd")
-        },
-        "_mm256_maskstore_ps" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 3] = [{ static PTR: Type = Type::Pointer(&::F32, Some(&::I8), false); &PTR }, &::I32x8_F32, &::F32x8]; &INPUTS },
-            output: &::VOID,
-            definition: Named("llvm.x86.avx.maskstore.ps.256")
-        },
-        "_mm256_maskstore_pd" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 3] = [{ static PTR: Type = Type::Pointer(&::F64, Some(&::I8), false); &PTR }, &::I64x4_F64, &::F64x4]; &INPUTS },
-            output: &::VOID,
-            definition: Named("llvm.x86.avx.maskstore.pd.256")
-        },
-        "_mm256_min_ps" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x8, &::F32x8]; &INPUTS },
-            output: &::F32x8,
-            definition: Named("llvm.x86.avx.min.ps.256")
-        },
-        "_mm256_min_pd" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x4, &::F64x4]; &INPUTS },
-            output: &::F64x4,
-            definition: Named("llvm.x86.avx.min.pd.256")
-        },
-        "_mm256_movemask_ps" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x8]; &INPUTS },
-            output: &::I32,
-            definition: Named("llvm.x86.avx.movmsk.ps.256")
-        },
-        "_mm256_movemask_pd" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x4]; &INPUTS },
-            output: &::I32,
-            definition: Named("llvm.x86.avx.movmsk.pd.256")
-        },
-        "_mm_permutevar_ps" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4, &::I32x4]; &INPUTS },
-            output: &::F32x4,
-            definition: Named("llvm.x86.avx.vpermilvar.ps")
-        },
-        "_mm_permutevar_pd" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2, &::I64x2]; &INPUTS },
-            output: &::F64x2,
-            definition: Named("llvm.x86.avx.vpermilvar.pd")
-        },
-        "_mm256_permutevar_ps" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x8, &::I32x8]; &INPUTS },
-            output: &::F32x8,
-            definition: Named("llvm.x86.avx.vpermilvar.ps.256")
-        },
-        "_mm256_permutevar_pd" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x4, &::I64x4]; &INPUTS },
-            output: &::F64x4,
-            definition: Named("llvm.x86.avx.vpermilvar.pd.256")
-        },
-        "_mm256_rcp_ps" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x8]; &INPUTS },
-            output: &::F32x8,
-            definition: Named("llvm.x86.avx.rcp.ps.256")
-        },
-        "_mm256_rsqrt_ps" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x8]; &INPUTS },
-            output: &::F32x8,
-            definition: Named("llvm.x86.avx.rsqrt.ps.256")
-        },
-        "_mm256_storeu_ps" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [{ static PTR: Type = Type::Pointer(&::F32x8, Some(&::U8), false); &PTR }, &::F32x8]; &INPUTS },
-            output: &::VOID,
-            definition: Named("llvm.x86.avx.storeu.ps.256")
-        },
-        "_mm256_storeu_pd" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [{ static PTR: Type = Type::Pointer(&::F64x4, Some(&::U8), false); &PTR }, &::F64x4]; &INPUTS },
-            output: &::VOID,
-            definition: Named("llvm.x86.avx.storeu.ps.256")
-        },
-        "_mm256_storeu_si256" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [{ static PTR: Type = Type::Pointer(&::U8x32, Some(&::U8), false); &PTR }, &::U8x32]; &INPUTS },
-            output: &::VOID,
-            definition: Named("llvm.x86.avx.storeu.dq.256")
-        },
-        "_mm256_sqrt_ps" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x8]; &INPUTS },
-            output: &::F32x8,
-            definition: Named("llvm.sqrt.v8f32")
-        },
-        "_mm256_sqrt_pd" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x4]; &INPUTS },
-            output: &::F64x4,
-            definition: Named("llvm.sqrt.v4f64")
-        },
-        "_mm_testc_ps" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4, &::F32x4]; &INPUTS },
-            output: &::I32,
-            definition: Named("llvm.x86.avx.vtestc.ps")
-        },
-        "_mm256_testc_ps" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x8, &::F32x8]; &INPUTS },
-            output: &::I32,
-            definition: Named("llvm.x86.avx.vtestc.ps.256")
-        },
-        "_mm_testc_pd" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2, &::F64x2]; &INPUTS },
-            output: &::I32,
-            definition: Named("llvm.x86.avx.vtestc.pd")
-        },
-        "_mm256_testc_pd" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x4, &::F64x4]; &INPUTS },
-            output: &::I32,
-            definition: Named("llvm.x86.avx.vtestc.pd.256")
-        },
-        "_mm256_testc_si256" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U64x4, &::U64x4]; &INPUTS },
-            output: &::I32,
-            definition: Named("llvm.x86.avx.ptestc.256")
-        },
-        "_mm_testnzc_ps" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4, &::F32x4]; &INPUTS },
-            output: &::I32,
-            definition: Named("llvm.x86.avx.vtestnzc.ps")
-        },
-        "_mm256_testnzc_ps" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x8, &::F32x8]; &INPUTS },
-            output: &::I32,
-            definition: Named("llvm.x86.avx.vtestnzc.ps.256")
-        },
-        "_mm_testnzc_pd" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2, &::F64x2]; &INPUTS },
-            output: &::I32,
-            definition: Named("llvm.x86.avx.vtestnzc.pd")
-        },
-        "_mm256_testnzc_pd" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x4, &::F64x4]; &INPUTS },
-            output: &::I32,
-            definition: Named("llvm.x86.avx.vtestnzc.pd.256")
-        },
-        "_mm256_testnzc_si256" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U64x4, &::U64x4]; &INPUTS },
-            output: &::I32,
-            definition: Named("llvm.x86.avx.ptestnzc.256")
-        },
-        "_mm_testz_ps" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4, &::F32x4]; &INPUTS },
-            output: &::I32,
-            definition: Named("llvm.x86.avx.vtestz.ps")
-        },
-        "_mm256_testz_ps" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x8, &::F32x8]; &INPUTS },
-            output: &::I32,
-            definition: Named("llvm.x86.avx.vtestz.ps.256")
-        },
-        "_mm_testz_pd" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2, &::F64x2]; &INPUTS },
-            output: &::I32,
-            definition: Named("llvm.x86.avx.vtestz.pd")
-        },
-        "_mm256_testz_pd" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x4, &::F64x4]; &INPUTS },
-            output: &::I32,
-            definition: Named("llvm.x86.avx.vtestz.pd.256")
-        },
-        "_mm256_testz_si256" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U64x4, &::U64x4]; &INPUTS },
-            output: &::I32,
-            definition: Named("llvm.x86.avx.ptestz.256")
-        },
-        "_mm256_zeroall" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 0] = []; &INPUTS },
-            output: &::VOID,
-            definition: Named("llvm.x86.avx.vzeroall")
-        },
-        "_mm256_zeroupper" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 0] = []; &INPUTS },
-            output: &::VOID,
-            definition: Named("llvm.x86.avx.vzeroupper")
-        },
-        "_bmi2_bzhi_32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U32, &::U32]; &INPUTS },
-            output: &::U32,
-            definition: Named("llvm.x86.bmi.bzhi.32")
-        },
-        "_bmi2_bzhi_64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U64, &::U64]; &INPUTS },
-            output: &::U64,
-            definition: Named("llvm.x86.bmi.bzhi.64")
-        },
-        "_bmi2_pdep_32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U32, &::U32]; &INPUTS },
-            output: &::U32,
-            definition: Named("llvm.x86.bmi.pdep.32")
-        },
-        "_bmi2_pdep_64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U64, &::U64]; &INPUTS },
-            output: &::U64,
-            definition: Named("llvm.x86.bmi.pdep.64")
-        },
-        "_bmi2_pext_32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U32, &::U32]; &INPUTS },
-            output: &::U32,
-            definition: Named("llvm.x86.bmi.pext.32")
-        },
-        "_bmi2_pext_64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U64, &::U64]; &INPUTS },
-            output: &::U64,
-            definition: Named("llvm.x86.bmi.pext.64")
-        },
-        "_bmi_bextr_32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U32, &::U32]; &INPUTS },
-            output: &::U32,
-            definition: Named("llvm.x86.bmi.bextr.32")
-        },
-        "_bmi_bextr_64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U64, &::U64]; &INPUTS },
-            output: &::U64,
-            definition: Named("llvm.x86.bmi.bextr.64")
-        },
-        "_mm_fmadd_ps" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x4, &::F32x4, &::F32x4]; &INPUTS },
-            output: &::F32x4,
-            definition: Named("llvm.x86.fma.vfmadd.ps")
-        },
-        "_mm_fmadd_pd" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 3] = [&::F64x2, &::F64x2, &::F64x2]; &INPUTS },
-            output: &::F64x2,
-            definition: Named("llvm.x86.fma.vfmadd.pd")
-        },
-        "_mm256_fmadd_ps" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x8, &::F32x8, &::F32x8]; &INPUTS },
-            output: &::F32x8,
-            definition: Named("llvm.x86.fma.vfmadd.ps.256")
-        },
-        "_mm256_fmadd_pd" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 3] = [&::F64x4, &::F64x4, &::F64x4]; &INPUTS },
-            output: &::F64x4,
-            definition: Named("llvm.x86.fma.vfmadd.pd.256")
-        },
-        "_mm_fmaddsub_ps" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x4, &::F32x4, &::F32x4]; &INPUTS },
-            output: &::F32x4,
-            definition: Named("llvm.x86.fma.vfmaddsub.ps")
-        },
-        "_mm_fmaddsub_pd" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 3] = [&::F64x2, &::F64x2, &::F64x2]; &INPUTS },
-            output: &::F64x2,
-            definition: Named("llvm.x86.fma.vfmaddsub.pd")
-        },
-        "_mm256_fmaddsub_ps" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x8, &::F32x8, &::F32x8]; &INPUTS },
-            output: &::F32x8,
-            definition: Named("llvm.x86.fma.vfmaddsub.ps.256")
-        },
-        "_mm256_fmaddsub_pd" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 3] = [&::F64x4, &::F64x4, &::F64x4]; &INPUTS },
-            output: &::F64x4,
-            definition: Named("llvm.x86.fma.vfmaddsub.pd.256")
-        },
-        "_mm_fmsub_ps" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x4, &::F32x4, &::F32x4]; &INPUTS },
-            output: &::F32x4,
-            definition: Named("llvm.x86.fma.vfmsub.ps")
-        },
-        "_mm_fmsub_pd" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 3] = [&::F64x2, &::F64x2, &::F64x2]; &INPUTS },
-            output: &::F64x2,
-            definition: Named("llvm.x86.fma.vfmsub.pd")
-        },
-        "_mm256_fmsub_ps" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x8, &::F32x8, &::F32x8]; &INPUTS },
-            output: &::F32x8,
-            definition: Named("llvm.x86.fma.vfmsub.ps.256")
-        },
-        "_mm256_fmsub_pd" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 3] = [&::F64x4, &::F64x4, &::F64x4]; &INPUTS },
-            output: &::F64x4,
-            definition: Named("llvm.x86.fma.vfmsub.pd.256")
-        },
-        "_mm_fmsubadd_ps" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x4, &::F32x4, &::F32x4]; &INPUTS },
-            output: &::F32x4,
-            definition: Named("llvm.x86.fma.vfmsubadd.ps")
-        },
-        "_mm_fmsubadd_pd" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 3] = [&::F64x2, &::F64x2, &::F64x2]; &INPUTS },
-            output: &::F64x2,
-            definition: Named("llvm.x86.fma.vfmsubadd.pd")
-        },
-        "_mm256_fmsubadd_ps" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x8, &::F32x8, &::F32x8]; &INPUTS },
-            output: &::F32x8,
-            definition: Named("llvm.x86.fma.vfmsubadd.ps.256")
-        },
-        "_mm256_fmsubadd_pd" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 3] = [&::F64x4, &::F64x4, &::F64x4]; &INPUTS },
-            output: &::F64x4,
-            definition: Named("llvm.x86.fma.vfmsubadd.pd.256")
-        },
-        "_mm_fnmadd_ps" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x4, &::F32x4, &::F32x4]; &INPUTS },
-            output: &::F32x4,
-            definition: Named("llvm.x86.fma.vfnmadd.ps")
-        },
-        "_mm_fnmadd_pd" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 3] = [&::F64x2, &::F64x2, &::F64x2]; &INPUTS },
-            output: &::F64x2,
-            definition: Named("llvm.x86.fma.vfnmadd.pd")
-        },
-        "_mm256_fnmadd_ps" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x8, &::F32x8, &::F32x8]; &INPUTS },
-            output: &::F32x8,
-            definition: Named("llvm.x86.fma.vfnmadd.ps.256")
-        },
-        "_mm256_fnmadd_pd" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 3] = [&::F64x4, &::F64x4, &::F64x4]; &INPUTS },
-            output: &::F64x4,
-            definition: Named("llvm.x86.fma.vfnmadd.pd.256")
-        },
-        "_mm_fnmsub_ps" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x4, &::F32x4, &::F32x4]; &INPUTS },
-            output: &::F32x4,
-            definition: Named("llvm.x86.fma.vfnmsub.ps")
-        },
-        "_mm_fnmsub_pd" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 3] = [&::F64x2, &::F64x2, &::F64x2]; &INPUTS },
-            output: &::F64x2,
-            definition: Named("llvm.x86.fma.vfnmsub.pd")
-        },
-        "_mm256_fnmsub_ps" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x8, &::F32x8, &::F32x8]; &INPUTS },
-            output: &::F32x8,
-            definition: Named("llvm.x86.fma.vfnmsub.ps.256")
-        },
-        "_mm256_fnmsub_pd" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 3] = [&::F64x4, &::F64x4, &::F64x4]; &INPUTS },
-            output: &::F64x4,
-            definition: Named("llvm.x86.fma.vfnmsub.pd.256")
-        },
-        "_mm_adds_epi8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16, &::I8x16]; &INPUTS },
-            output: &::I8x16,
-            definition: Named("llvm.x86.sse2.padds.b")
-        },
-        "_mm_adds_epu8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U8x16, &::U8x16]; &INPUTS },
-            output: &::U8x16,
-            definition: Named("llvm.x86.sse2.paddus.b")
-        },
-        "_mm_adds_epi16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8, &::I16x8]; &INPUTS },
-            output: &::I16x8,
-            definition: Named("llvm.x86.sse2.padds.w")
-        },
-        "_mm_adds_epu16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U16x8, &::U16x8]; &INPUTS },
-            output: &::U16x8,
-            definition: Named("llvm.x86.sse2.paddus.w")
-        },
-        "_mm_avg_epu8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U8x16, &::U8x16]; &INPUTS },
-            output: &::U8x16,
-            definition: Named("llvm.x86.sse2.pavg.b")
-        },
-        "_mm_avg_epu16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U16x8, &::U16x8]; &INPUTS },
-            output: &::U16x8,
-            definition: Named("llvm.x86.sse2.pavg.w")
-        },
-        "_mm_lfence" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 0] = []; &INPUTS },
-            output: &::VOID,
-            definition: Named("llvm.x86.sse2.lfence")
-        },
-        "_mm_madd_epi16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8, &::I16x8]; &INPUTS },
-            output: &::I32x4,
-            definition: Named("llvm.x86.sse2.pmadd.wd")
-        },
-        "_mm_maskmoveu_si128" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 3] = [&::U8x16, &::U8x16, { static PTR: Type = Type::Pointer(&::U8, None, false); &PTR }]; &INPUTS },
-            output: &::VOID,
-            definition: Named("llvm.x86.sse2.maskmov.dqu")
-        },
-        "_mm_max_epi16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8, &::I16x8]; &INPUTS },
-            output: &::I16x8,
-            definition: Named("llvm.x86.sse2.pmaxs.w")
-        },
-        "_mm_max_epu8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U8x16, &::U8x16]; &INPUTS },
-            output: &::U8x16,
-            definition: Named("llvm.x86.sse2.pmaxu.b")
-        },
-        "_mm_max_pd" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2, &::F64x2]; &INPUTS },
-            output: &::F64x2,
-            definition: Named("llvm.x86.sse2.max.pd")
-        },
-        "_mm_mfence" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 0] = []; &INPUTS },
-            output: &::VOID,
-            definition: Named("llvm.x86.sse2.fence")
-        },
-        "_mm_min_epi16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8, &::I16x8]; &INPUTS },
-            output: &::I16x8,
-            definition: Named("llvm.x86.sse2.pmins.w")
-        },
-        "_mm_min_epu8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U8x16, &::U8x16]; &INPUTS },
-            output: &::U8x16,
-            definition: Named("llvm.x86.sse2.pminu.b")
-        },
-        "_mm_min_pd" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2, &::F64x2]; &INPUTS },
-            output: &::F64x2,
-            definition: Named("llvm.x86.sse2.min.pd")
-        },
-        "_mm_movemask_pd" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
-            output: &::I32,
-            definition: Named("llvm.x86.sse2.movmsk.pd")
-        },
-        "_mm_movemask_epi8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
-            output: &::I32,
-            definition: Named("llvm.x86.sse2.pmovmskb.128")
-        },
-        "_mm_mul_epu32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U32x4, &::U32x4]; &INPUTS },
-            output: &::U64x2,
-            definition: Named("llvm.x86.sse2.pmulu.dq")
-        },
-        "_mm_mulhi_epi16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8, &::I16x8]; &INPUTS },
-            output: &::I16x8,
-            definition: Named("llvm.x86.sse2.pmulh.w")
-        },
-        "_mm_mulhi_epu16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U16x8, &::U16x8]; &INPUTS },
-            output: &::U16x8,
-            definition: Named("llvm.x86.sse2.pmulhu.w")
-        },
-        "_mm_packs_epi16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8, &::I16x8]; &INPUTS },
-            output: &::I8x16,
-            definition: Named("llvm.x86.sse2.packsswb.128")
-        },
-        "_mm_packs_epi32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4, &::I32x4]; &INPUTS },
-            output: &::I16x8,
-            definition: Named("llvm.x86.sse2.packssdw.128")
-        },
-        "_mm_packus_epi16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8, &::I16x8]; &INPUTS },
-            output: &::U8x16,
-            definition: Named("llvm.x86.sse2.packuswb.128")
-        },
-        "_mm_sad_epu8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U8x16, &::U8x16]; &INPUTS },
-            output: &::U64x2,
-            definition: Named("llvm.x86.sse2.psad.bw")
-        },
-        "_mm_sfence" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 0] = []; &INPUTS },
-            output: &::VOID,
-            definition: Named("llvm.x86.sse2.sfence")
-        },
-        "_mm_sqrt_pd" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
-            output: &::F64x2,
-            definition: Named("llvm.sqrt.v2f64")
-        },
-        "_mm_storeu_pd" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [{ static PTR: Type = Type::Pointer(&::F64, Some(&::U8), false); &PTR }, &::F64x2]; &INPUTS },
-            output: &::VOID,
-            definition: Named("llvm.x86.sse2.storeu.pd")
-        },
-        "_mm_storeu_si128" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [{ static PTR: Type = Type::Pointer(&::U8x16, Some(&::U8), false); &PTR }, &::U8x16]; &INPUTS },
-            output: &::VOID,
-            definition: Named("llvm.x86.sse2.storeu.dq")
-        },
-        "_mm_subs_epi8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16, &::I8x16]; &INPUTS },
-            output: &::I8x16,
-            definition: Named("llvm.x86.sse2.psubs.b")
-        },
-        "_mm_subs_epu8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U8x16, &::U8x16]; &INPUTS },
-            output: &::U8x16,
-            definition: Named("llvm.x86.sse2.psubus.b")
-        },
-        "_mm_subs_epi16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8, &::I16x8]; &INPUTS },
-            output: &::I16x8,
-            definition: Named("llvm.x86.sse2.psubs.w")
-        },
-        "_mm_subs_epu16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U16x8, &::U16x8]; &INPUTS },
-            output: &::U16x8,
-            definition: Named("llvm.x86.sse2.psubus.w")
-        },
-        "_mm_addsub_ps" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4, &::F32x4]; &INPUTS },
-            output: &::F32x4,
-            definition: Named("llvm.x86.sse3.addsub.ps")
-        },
-        "_mm_addsub_pd" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2, &::F64x2]; &INPUTS },
-            output: &::F64x2,
-            definition: Named("llvm.x86.sse3.addsub.pd")
-        },
-        "_mm_hadd_ps" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4, &::F32x4]; &INPUTS },
-            output: &::F32x4,
-            definition: Named("llvm.x86.sse3.hadd.ps")
-        },
-        "_mm_hadd_pd" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2, &::F64x2]; &INPUTS },
-            output: &::F64x2,
-            definition: Named("llvm.x86.sse3.hadd.pd")
-        },
-        "_mm_hsub_ps" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4, &::F32x4]; &INPUTS },
-            output: &::F32x4,
-            definition: Named("llvm.x86.sse3.hsub.ps")
-        },
-        "_mm_hsub_pd" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2, &::F64x2]; &INPUTS },
-            output: &::F64x2,
-            definition: Named("llvm.x86.sse3.hsub.pd")
-        },
-        "_mm_lddqu_si128" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::U8x16, Some(&::I8), true); &PTR }]; &INPUTS },
-            output: &::U8x16,
-            definition: Named("llvm.x86.sse3.ldu.dq")
-        },
-        "_mm_dp_ps" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x4, &::F32x4, &::I32_8]; &INPUTS },
-            output: &::F32x4,
-            definition: Named("llvm.x86.sse41.dpps")
-        },
-        "_mm_dp_pd" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 3] = [&::F64x2, &::F64x2, &::I32_8]; &INPUTS },
-            output: &::F64x2,
-            definition: Named("llvm.x86.sse41.dppd")
-        },
-        "_mm_max_epi8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16, &::I8x16]; &INPUTS },
-            output: &::I8x16,
-            definition: Named("llvm.x86.sse41.pmaxsb")
-        },
-        "_mm_max_epu16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U16x8, &::U16x8]; &INPUTS },
-            output: &::U16x8,
-            definition: Named("llvm.x86.sse41.pmaxuw")
-        },
-        "_mm_max_epi32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4, &::I32x4]; &INPUTS },
-            output: &::I32x4,
-            definition: Named("llvm.x86.sse41.pmaxsd")
-        },
-        "_mm_max_epu32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U32x4, &::U32x4]; &INPUTS },
-            output: &::U32x4,
-            definition: Named("llvm.x86.sse41.pmaxud")
-        },
-        "_mm_min_epi8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16, &::I8x16]; &INPUTS },
-            output: &::I8x16,
-            definition: Named("llvm.x86.sse41.pminsb")
-        },
-        "_mm_min_epu16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U16x8, &::U16x8]; &INPUTS },
-            output: &::U16x8,
-            definition: Named("llvm.x86.sse41.pminuw")
-        },
-        "_mm_min_epi32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4, &::I32x4]; &INPUTS },
-            output: &::I32x4,
-            definition: Named("llvm.x86.sse41.pminsd")
-        },
-        "_mm_min_epu32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U32x4, &::U32x4]; &INPUTS },
-            output: &::U32x4,
-            definition: Named("llvm.x86.sse41.pminud")
-        },
-        "_mm_minpos_epu16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::U16x8]; &INPUTS },
-            output: &::U16x8,
-            definition: Named("llvm.x86.sse41.phminposuw")
-        },
-        "_mm_mpsadbw_epu8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 3] = [&::U8x16, &::U8x16, &::I32_8]; &INPUTS },
-            output: &::U16x8,
-            definition: Named("llvm.x86.sse41.mpsadbw")
-        },
-        "_mm_mul_epi32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4, &::I32x4]; &INPUTS },
-            output: &::I64x2,
-            definition: Named("llvm.x86.sse41.pmuldq")
-        },
-        "_mm_packus_epi32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4, &::I32x4]; &INPUTS },
-            output: &::U16x8,
-            definition: Named("llvm.x86.sse41.packusdw")
-        },
-        "_mm_testc_si128" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U64x2, &::U64x2]; &INPUTS },
-            output: &::I32,
-            definition: Named("llvm.x86.sse41.ptestc")
-        },
-        "_mm_testnzc_si128" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U64x2, &::U64x2]; &INPUTS },
-            output: &::I32,
-            definition: Named("llvm.x86.sse41.ptestnzc")
-        },
-        "_mm_testz_si128" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U64x2, &::U64x2]; &INPUTS },
-            output: &::I32,
-            definition: Named("llvm.x86.sse41.ptestz")
-        },
-        "_mm_cmpestra" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 5] = [&::I8x16, &::I32, &::I8x16, &::I32, &::I32_8]; &INPUTS },
-            output: &::I32,
-            definition: Named("llvm.x86.sse42.pcmpestria128")
-        },
-        "_mm_cmpestrc" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 5] = [&::I8x16, &::I32, &::I8x16, &::I32, &::I32_8]; &INPUTS },
-            output: &::I32,
-            definition: Named("llvm.x86.sse42.pcmpestric128")
-        },
-        "_mm_cmpestri" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 5] = [&::I8x16, &::I32, &::I8x16, &::I32, &::I32_8]; &INPUTS },
-            output: &::I32,
-            definition: Named("llvm.x86.sse42.pcmpestri128")
-        },
-        "_mm_cmpestrm" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 5] = [&::I8x16, &::I32, &::I8x16, &::I32, &::I32_8]; &INPUTS },
-            output: &::I8x16,
-            definition: Named("llvm.x86.sse42.pcmpestrm128")
-        },
-        "_mm_cmpestro" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 5] = [&::I8x16, &::I32, &::I8x16, &::I32, &::I32_8]; &INPUTS },
-            output: &::I32,
-            definition: Named("llvm.x86.sse42.pcmpestrio128")
-        },
-        "_mm_cmpestrs" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 5] = [&::I8x16, &::I32, &::I8x16, &::I32, &::I32_8]; &INPUTS },
-            output: &::I32,
-            definition: Named("llvm.x86.sse42.pcmpestris128")
-        },
-        "_mm_cmpestrz" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 5] = [&::I8x16, &::I32, &::I8x16, &::I32, &::I32_8]; &INPUTS },
-            output: &::I32,
-            definition: Named("llvm.x86.sse42.pcmpestriz128")
-        },
-        "_mm_cmpistra" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 3] = [&::I8x16, &::I8x16, &::I32_8]; &INPUTS },
-            output: &::I32,
-            definition: Named("llvm.x86.sse42.pcmpistria128")
-        },
-        "_mm_cmpistrc" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 3] = [&::I8x16, &::I8x16, &::I32_8]; &INPUTS },
-            output: &::I32,
-            definition: Named("llvm.x86.sse42.pcmpistric128")
-        },
-        "_mm_cmpistri" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 3] = [&::I8x16, &::I8x16, &::I32_8]; &INPUTS },
-            output: &::I32,
-            definition: Named("llvm.x86.sse42.pcmpistri128")
-        },
-        "_mm_cmpistrm" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 3] = [&::I8x16, &::I8x16, &::I32_8]; &INPUTS },
-            output: &::I8x16,
-            definition: Named("llvm.x86.sse42.pcmpistrm128")
-        },
-        "_mm_cmpistro" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 3] = [&::I8x16, &::I8x16, &::I32_8]; &INPUTS },
-            output: &::I32,
-            definition: Named("llvm.x86.sse42.pcmpistrio128")
-        },
-        "_mm_cmpistrs" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 3] = [&::I8x16, &::I8x16, &::I32_8]; &INPUTS },
-            output: &::I32,
-            definition: Named("llvm.x86.sse42.pcmpistris128")
-        },
-        "_mm_cmpistrz" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 3] = [&::I8x16, &::I8x16, &::I32_8]; &INPUTS },
-            output: &::I32,
-            definition: Named("llvm.x86.sse42.pcmpistriz128")
-        },
-        "_mm_movemask_ps" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
-            output: &::I32,
-            definition: Named("llvm.x86.sse.movmsk.ps")
-        },
-        "_mm_max_ps" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4, &::F32x4]; &INPUTS },
-            output: &::F32x4,
-            definition: Named("llvm.x86.sse.max.ps")
-        },
-        "_mm_min_ps" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4, &::F32x4]; &INPUTS },
-            output: &::F32x4,
-            definition: Named("llvm.x86.sse.min.ps")
-        },
-        "_mm_rsqrt_ps" => Intrinsic {
+       "x86_mm_sqrt_ss" => Intrinsic {
             inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
             output: &::F32x4,
-            definition: Named("llvm.x86.sse.rsqrt.ps")
+            definition: Named("llvm.x86.sse.sqrt.ss")
         },
-        "_mm_rcp_ps" => Intrinsic {
+       "x86_mm_add_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.x86.sse.sqrt.ps")
+        },
+       "x86_mm_rcp_ss" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.x86.sse.rcp.ss")
+        },
+       "x86_mm_rcp_ps" => Intrinsic {
             inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
             output: &::F32x4,
             definition: Named("llvm.x86.sse.rcp.ps")
         },
-        "_mm_sqrt_ps" => Intrinsic {
+       "x86_mm_rsqrt_ss" => Intrinsic {
             inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
             output: &::F32x4,
-            definition: Named("llvm.sqrt.v4f32")
+            definition: Named("llvm.x86.sse.rsqrt.ss")
         },
-        "_mm_storeu_ps" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [{ static PTR: Type = Type::Pointer(&::F32, Some(&::I8), false); &PTR }, &::F32x4]; &INPUTS },
+       "x86_mm_rsqrt_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.x86.sse.rsqrt.ps")
+        },
+       "x86_mm_min_ss" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.x86.sse.min.ss")
+        },
+       "x86_mm_min_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.x86.sse.min.ps")
+        },
+       "x86_mm_max_ss" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.x86.sse.max.ss")
+        },
+       "x86_mm_max_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.x86.sse.max.ps")
+        },
+       "x86_mm_cmp_ss" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x4,&::F32x4,&::I8]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.x86.sse.cmp.ss")
+        },
+       "x86_mm_cmp_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x4,&::F32x4,&::I8]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.x86.sse.cmp.ps")
+        },
+       "x86_mm_comieq_ss" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.sse.comieq.ss")
+        },
+       "x86_mm_comilt_ss" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.sse.comilt.ss")
+        },
+       "x86_mm_comile_ss" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.sse.comile.ss")
+        },
+       "x86_mm_comigt_ss" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.sse.comigt.ss")
+        },
+       "x86_mm_comige_ss" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.sse.comige.ss")
+        },
+       "x86_mm_comineq_ss" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.sse.comineq.ss")
+        },
+       "x86_mm_ucomieq_ss" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.sse.ucomieq.ss")
+        },
+       "x86_mm_ucomilt_ss" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.sse.ucomilt.ss")
+        },
+       "x86_mm_ucomile_ss" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.sse.ucomile.ss")
+        },
+       "x86_mm_ucomigt_ss" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.sse.ucomigt.ss")
+        },
+       "x86_mm_ucomige_ss" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.sse.ucomige.ss")
+        },
+       "x86_mm_ucomineq_ss" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.sse.ucomineq.ss")
+        },
+       "x86_mm_cvtss_si32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.sse.cvtss2si")
+        },
+       "x86_mm_cvt_ss2si" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.x86.sse.cvtss2si64")
+        },
+       "x86_mm_cvt_ps2pi" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.sse.cvttss2si")
+        },
+       "x86_mm_cvtt_ss2si" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.x86.sse.cvttss2si64")
+        },
+       "x86_mm_cvtt_ps2pi" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::I32]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.x86.sse.cvtsi2ss")
+        },
+       "x86_mm_cvt_si2ss" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::I64]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.x86.sse.cvtsi642ss")
+        },
+       "x86_mm_cvtsi64x_ss" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::I64]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.x86.sse.cvtsi642ss")
+        },
+       "x86_mm_sfence" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 0] = []; &INPUTS },
             output: &::VOID,
-            definition: Named("llvm.x86.sse.storeu.ps")
+            definition: Named("llvm.x86.sse.sfence")
         },
-        "_mm_abs_epi8" => Intrinsic {
+       "x86_mm_movemask_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.sse.movmsk.ps")
+        },
+       "x86_mm_add_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.x86.sse2.add.sd")
+        },
+       "x86_mm_sub_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.x86.sse2.sub.sd")
+        },
+       "x86_mm_mul_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.x86.sse2.mul.sd")
+        },
+       "x86_mm_div_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.x86.sse2.div.sd")
+        },
+       "x86_mm_sqrt_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.x86.sse2.sqrt.pd")
+        },
+       "x86_mm_min_sd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.x86.sse2.min.sd")
+        },
+       "x86_mm_min_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.x86.sse2.min.pd")
+        },
+       "x86_mm_max_sd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.x86.sse2.max.sd")
+        },
+       "x86_mm_max_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.x86.sse2.max.pd")
+        },
+       "x86_mm_cmp_sd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F64x2,&::F64x2,&::I8]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.x86.sse2.cmp.sd")
+        },
+       "x86_mm_cmp_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F64x2,&::F64x2,&::I8]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.x86.sse2.cmp.pd")
+        },
+       "x86_mm_comieq_sd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.sse2.comieq.sd")
+        },
+       "x86_mm_comilt_sd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.sse2.comilt.sd")
+        },
+       "x86_mm_comile_sd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.sse2.comile.sd")
+        },
+       "x86_mm_comigt_sd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.sse2.comigt.sd")
+        },
+       "x86_mm_comige_sd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.sse2.comige.sd")
+        },
+       "x86_mm_comineq_sd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.sse2.comineq.sd")
+        },
+       "x86_mm_ucomieq_sd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.sse2.ucomieq.sd")
+        },
+       "x86_mm_ucomilt_sd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.sse2.ucomilt.sd")
+        },
+       "x86_mm_ucomile_sd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.sse2.ucomile.sd")
+        },
+       "x86_mm_ucomigt_sd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.sse2.ucomigt.sd")
+        },
+       "x86_mm_ucomige_sd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.sse2.ucomige.sd")
+        },
+       "x86_mm_ucomineq_sd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.sse2.ucomineq.sd")
+        },
+       "x86_mm_add_epi8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.x86.sse2.padds.b")
+        },
+       "x86_mm_adds_epi16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.x86.sse2.padds.w")
+        },
+       "x86_mm_adds_epu8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.x86.sse2.paddus.b")
+        },
+       "x86_mm_adds_epu16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.x86.sse2.paddus.w")
+        },
+       "x86_mm_sub_epi8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.x86.sse2.psubs.b")
+        },
+       "x86_mm_subs_epi16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.x86.sse2.psubs.w")
+        },
+       "x86_mm_subs_epu8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.x86.sse2.psubus.b")
+        },
+       "x86_mm_subs_epu16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.x86.sse2.psubus.w")
+        },
+       "x86_mm_mulhi_epu16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.x86.sse2.pmulhu.w")
+        },
+       "x86_mm_mulhi_epi16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.x86.sse2.pmulh.w")
+        },
+       "x86_mm_mul_epu32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32x4]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.x86.sse2.pmulu.dq")
+        },
+       "x86_mm_madd_epi16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I16x8]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.x86.sse2.pmadd.wd")
+        },
+       "x86_mm_avg_epu8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.x86.sse2.pavg.b")
+        },
+       "x86_mm_avg_epu16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.x86.sse2.pavg.w")
+        },
+       "x86_mm_max_epu8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.x86.sse2.pmaxu.b")
+        },
+       "x86_mm_max_epi16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.x86.sse2.pmaxs.w")
+        },
+       "x86_mm_min_epu8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.x86.sse2.pminu.b")
+        },
+       "x86_mm_min_epi16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.x86.sse2.pmins.w")
+        },
+       "x86_mm_sad_epu8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I8x16]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.x86.sse2.psad.bw")
+        },
+       "x86_mm_srl_epi16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.x86.sse2.psrl.w")
+        },
+       "x86_mm_srl_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.x86.sse2.psrl.d")
+        },
+       "x86_mm_srl_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.x86.sse2.psrl.q")
+        },
+       "x86_mm_sra_epi16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.x86.sse2.psra.w")
+        },
+       "x86_mm_sra_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.x86.sse2.psra.d")
+        },
+       "x86_mm_slli_epi16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I32]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.x86.sse2.pslli.w")
+        },
+       "x86_mm_slli_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.x86.sse2.pslli.d")
+        },
+       "x86_mm_slli_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I32]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.x86.sse2.pslli.q")
+        },
+       "x86_mm_srli_epi16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I32]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.x86.sse2.psrli.w")
+        },
+       "x86_mm_srli_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.x86.sse2.psrli.d")
+        },
+       "x86_mm_srli_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I32]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.x86.sse2.psrli.q")
+        },
+       "x86_mm_srai_epi16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I32]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.x86.sse2.psrai.w")
+        },
+       "x86_mm_srai_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.x86.sse2.psrai.d")
+        },
+       "x86_mm_bslli_si128" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I32]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.x86.sse2.psll.dq")
+        },
+       "x86_mm_slli_si128" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I32]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.x86.sse2.psll.dq")
+        },
+       "x86_mm_bsrli_si128" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I32]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.x86.sse2.psrl.dq")
+        },
+       "x86_mm_srli_si128" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I32]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.x86.sse2.psrl.dq")
+        },
+       "x86_mm_undefined_si128" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.x86.sse2.cvtdq2pd")
+        },
+       "x86_mm_cvtepi32_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.x86.sse2.cvtdq2ps")
+        },
+       "x86_mm_cvtpd_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.x86.sse2.cvtpd2dq")
+        },
+       "x86_mm_cvttpd_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.x86.sse2.cvttpd2dq")
+        },
+       "x86_mm_cvtpd_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.x86.sse2.cvtpd2ps")
+        },
+       "x86_mm_cvtps_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.x86.sse2.cvtps2dq")
+        },
+       "x86_mm_cvttps_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.x86.sse2.cvttps2dq")
+        },
+       "x86_mm_cvtps_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.x86.sse2.cvtps2pd")
+        },
+       "x86_mm_cvtsd_si32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.sse2.cvtsd2si")
+        },
+       "x86_mm_cvttsd_si32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.sse2.cvttsd2si")
+        },
+       "x86_mm_cvtsi32_sd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::I32]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.x86.sse2.cvtsi2sd")
+        },
+       "x86_mm_cvtsi64_sd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::I64]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.x86.sse2.cvtsi642sd")
+        },
+       "x86_mm_cvtsi64x_sd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::I64]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.x86.sse2.cvtsi642sd")
+        },
+       "x86_mm_cvtsd_ss" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F64x2]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.x86.sse2.cvtsd2ss")
+        },
+       "x86_mm_cvtss_sd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F32x4]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.x86.sse2.cvtss2sd")
+        },
+       "x86_mm_packs_epi16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I16x8]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.x86.sse2.packsswb.128")
+        },
+       "x86_mm_packs_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32x4]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.x86.sse2.packssdw.128")
+        },
+       "x86_mm_packus_epi16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I16x8]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.x86.sse2.packuswb.128")
+        },
+       "x86_mm_movemask_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.sse2.movmsk.pd")
+        },
+       "x86_mm_movemask_epi8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.sse2.pmovmskb.128")
+        },
+       "x86_mm_maskmoveu_si128" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I8x16,&::I8x16,{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.x86.sse2.maskmov.dqu")
+        },
+       "x86_mm_clflush" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.x86.sse2.clflush")
+        },
+       "x86_mm_lfence" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 0] = []; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.x86.sse2.lfence")
+        },
+       "x86_mm_mfence" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 0] = []; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.x86.sse2.mfence")
+        },
+       "x86__pause" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 0] = []; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.x86.sse2.pause")
+        },
+       "x86_mm_pause" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 0] = []; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.x86.sse2.pause")
+        },
+       "x86_mm_addsub_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.x86.sse3.addsub.ps")
+        },
+       "x86_mm_addsub_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.x86.sse3.addsub.pd")
+        },
+       "x86_mm_hadd_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.x86.sse3.hadd.ps")
+        },
+       "x86_mm_hadd_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.x86.sse3.hadd.pd")
+        },
+       "x86_mm_hsub_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.x86.sse3.hsub.ps")
+        },
+       "x86_mm_hsub_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.x86.sse3.hsub.pd")
+        },
+       "x86_mm_loaddup_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.x86.sse3.ldu.dq")
+        },
+       "x86_mm_monitor" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::I32,&::I32]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.x86.sse3.monitor")
+        },
+       "x86_mm_mwait" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32,&::I32]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.x86.sse3.mwait")
+        },
+       "x86_mm_hadd_epi16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.x86.ssse3.phadd.w.128")
+        },
+       "x86_mm_hadd_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.x86.ssse3.phadd.d.128")
+        },
+       "x86_mm_hadds_epi16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.x86.ssse3.phadd.sw.128")
+        },
+       "x86_mm_hsub_epi16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.x86.ssse3.phsub.w.128")
+        },
+       "x86_mm_hsub_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.x86.ssse3.phsub.d.128")
+        },
+       "x86_mm_hsubs_epi16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.x86.ssse3.phsub.sw.128")
+        },
+       "x86_mm_maddubs_epi16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I8x16]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.x86.ssse3.pmadd.ub.sw.128")
+        },
+       "x86_mm_mulhrs_epi16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.x86.ssse3.pmul.hr.sw.128")
+        },
+       "x86_mm_shuffle_epi8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.x86.ssse3.pshuf.b.128")
+        },
+       "x86_mm_shuffle_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I8]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.x86.sse2.pshuf.d")
+        },
+       "x86_mm_shufflelo_epi16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.x86.sse2.pshufl.w")
+        },
+       "x86_mm_shufflehi_epi16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.x86.sse2.pshufh.w")
+        },
+       "x86_mm_sign_epi8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.x86.ssse3.psign.b.128")
+        },
+       "x86_mm_sign_epi16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.x86.ssse3.psign.w.128")
+        },
+       "x86_mm_sign_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.x86.ssse3.psign.d.128")
+        },
+       "x86_mm_abs_epi8" => Intrinsic {
             inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
             output: &::I8x16,
             definition: Named("llvm.x86.ssse3.pabs.b.128")
         },
-        "_mm_abs_epi16" => Intrinsic {
+       "x86_mm_abs_epi16" => Intrinsic {
             inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
             output: &::I16x8,
             definition: Named("llvm.x86.ssse3.pabs.w.128")
         },
-        "_mm_abs_epi32" => Intrinsic {
+       "x86_mm_abs_epi32" => Intrinsic {
             inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
             output: &::I32x4,
             definition: Named("llvm.x86.ssse3.pabs.d.128")
         },
-        "_mm_hadd_epi16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8, &::I16x8]; &INPUTS },
-            output: &::I16x8,
-            definition: Named("llvm.x86.ssse3.phadd.w.128")
+       "x86_mm_round_ss" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x4,&::F32x4,&::I32]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.x86.sse41.round.ss")
         },
-        "_mm_hadd_epi32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4, &::I32x4]; &INPUTS },
+       "x86_mm_round_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::I32]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.x86.sse41.round.ps")
+        },
+       "x86_mm_round_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::I32]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.x86.sse41.round.pd")
+        },
+       "x86_mm_cvtepi8_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
             output: &::I32x4,
-            definition: Named("llvm.x86.ssse3.phadd.d.128")
+            definition: Named("llvm.x86.sse41.pmovsxbd")
         },
-        "_mm_hadds_epi16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8, &::I16x8]; &INPUTS },
+       "x86_mm_cvtepi8_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.x86.sse41.pmovsxbq")
+        },
+       "x86_mm_cvtepi8_epi16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
             output: &::I16x8,
-            definition: Named("llvm.x86.ssse3.phadd.sw.128")
+            definition: Named("llvm.x86.sse41.pmovsxbw")
         },
-        "_mm_hsub_epi16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8, &::I16x8]; &INPUTS },
-            output: &::I16x8,
-            definition: Named("llvm.x86.ssse3.phsub.w.128")
+       "x86_mm_cvtepi32_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.x86.sse41.pmovsxdq")
         },
-        "_mm_hsub_epi32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4, &::I32x4]; &INPUTS },
+       "x86_mm_cvtepi16_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
             output: &::I32x4,
-            definition: Named("llvm.x86.ssse3.phsub.d.128")
+            definition: Named("llvm.x86.sse41.pmovsxwd")
         },
-        "_mm_hsubs_epi16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8, &::I16x8]; &INPUTS },
+       "x86_mm_cvtepi16_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.x86.sse41.pmovsxwq")
+        },
+       "x86_mm_cvtepu8_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.x86.sse41.pmovzxbd")
+        },
+       "x86_mm_cvtepu8_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.x86.sse41.pmovzxbq")
+        },
+       "x86_mm_cvtepu8_epi16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
             output: &::I16x8,
-            definition: Named("llvm.x86.ssse3.phsub.sw.128")
+            definition: Named("llvm.x86.sse41.pmovzxbw")
         },
-        "_mm_maddubs_epi16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U8x16, &::I8x16]; &INPUTS },
+       "x86_mm_cvtepu32_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.x86.sse41.pmovzxdq")
+        },
+       "x86_mm_cvtepu16_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.x86.sse41.pmovzxwd")
+        },
+       "x86_mm_cvtepu16_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.x86.sse41.pmovzxwq")
+        },
+       "x86_mm_minpos_epu16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
             output: &::I16x8,
-            definition: Named("llvm.x86.ssse3.pmadd.ub.sw.128")
+            definition: Named("llvm.x86.sse41.phminposuw")
         },
-        "_mm_mulhrs_epi16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8, &::I16x8]; &INPUTS },
-            output: &::I16x8,
-            definition: Named("llvm.x86.ssse3.pmul.hr.sw.128")
-        },
-        "_mm_shuffle_epi8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16, &::I8x16]; &INPUTS },
+       "x86_mm_max_epi8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I8x16]; &INPUTS },
             output: &::I8x16,
-            definition: Named("llvm.x86.ssse3.pshuf.b.128")
+            definition: Named("llvm.x86.sse41.pmaxsb")
         },
-        "_mm_sign_epi8" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16, &::I8x16]; &INPUTS },
-            output: &::I8x16,
-            definition: Named("llvm.x86.ssse3.psign.b.128")
-        },
-        "_mm_sign_epi16" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8, &::I16x8]; &INPUTS },
-            output: &::I16x8,
-            definition: Named("llvm.x86.ssse3.psign.w.128")
-        },
-        "_mm_sign_epi32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4, &::I32x4]; &INPUTS },
+       "x86_mm_max_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32x4]; &INPUTS },
             output: &::I32x4,
-            definition: Named("llvm.x86.ssse3.psign.d.128")
+            definition: Named("llvm.x86.sse41.pmaxsd")
         },
-        "_tbm_bextri_u32" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U32, &::U32]; &INPUTS },
-            output: &::U32,
-            definition: Named("llvm.x86.tbm.bextri.u32")
+       "x86_mm_max_epu32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.x86.sse41.pmaxud")
         },
-        "_tbm_bextri_u64" => Intrinsic {
-            inputs: { static INPUTS: [&'static Type; 2] = [&::U64, &::U64]; &INPUTS },
-            output: &::U64,
-            definition: Named("llvm.x86.tbm.bextri.u64")
+       "x86_mm_max_epu16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.x86.sse41.pmaxuw")
+        },
+       "x86_mm_cmpeq_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x16,&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.x86.sse41.pminsb")
+        },
+       "x86_mm_min_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.x86.sse41.pminsd")
+        },
+       "x86_mm_min_epu32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.x86.sse41.pminud")
+        },
+       "x86_mm_min_epu16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x8,&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.x86.sse41.pminuw")
+        },
+       "x86_mm_aesimc_si128" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.x86.aesni.aesimc")
+        },
+       "x86_mm_aesenc_si128" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.x86.aesni.aesenc")
+        },
+       "x86_mm_aesenclast_si128" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.x86.aesni.aesenclast")
+        },
+       "x86_mm_aesdec_si128" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.x86.aesni.aesdec")
+        },
+       "x86_mm_aesdeclast_si128" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.x86.aesni.aesdeclast")
+        },
+       "x86_mm_aeskeygenassist_si128" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I8]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.x86.aesni.aeskeygenassist")
+        },
+       "x86_mm_packus_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32x4]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.x86.sse41.packusdw")
+        },
+       "x86_mm_mullo_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32x4]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.x86.sse41.pmuldq")
+        },
+       "x86_mm_insert_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x4,&::F32x4,&::I8]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.x86.sse41.insertps")
+        },
+       "x86_mm_blendv_epi8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I8x16,&::I8x16,&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.x86.sse41.pblendvb")
+        },
+       "x86_mm_blend_epi16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I16x8,&::I16x8,&::I8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.x86.sse41.pblendw")
+        },
+       "x86_mm_blend_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F64x2,&::F64x2,&::I8]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.x86.sse41.blendpd")
+        },
+       "x86_mm_blend_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x4,&::F32x4,&::I8]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.x86.sse41.blendps")
+        },
+       "x86_mm_blendv_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F64x2,&::F64x2,&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.x86.sse41.blendvpd")
+        },
+       "x86_mm_blendv_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x4,&::F32x4,&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.x86.sse41.blendvps")
+        },
+       "x86_mm_dp_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F64x2,&::F64x2,&::I8]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.x86.sse41.dppd")
+        },
+       "x86_mm_dp_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x4,&::F32x4,&::I8]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.x86.sse41.dpps")
+        },
+       "x86_mm_mpsadbw_epu8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I8x16,&::I8x16,&::I8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.x86.sse41.mpsadbw")
+        },
+       "x86_mm_stream_load_si128" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.x86.sse41.movntdqa")
+        },
+       "x86_mm_testz_si128" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I64x2]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.sse41.ptestz")
+        },
+       "x86_mm_testc_si128" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I64x2]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.sse41.ptestc")
+        },
+       "x86_mm_testnzc_si128" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I64x2]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.sse41.ptestnzc")
+        },
+       "x86__bswapd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32,&::I8]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.sse42.crc32.32.8")
+        },
+       "x86_mm_cmpgt_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32,&::I8]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.sse42.crc32.32.8")
+        },
+       "x86_mm_cmpistrm" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I8x16,&::I8x16,&::I8]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.x86.sse42.pcmpistrm128")
+        },
+       "x86_mm_cmpistri" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I8x16,&::I8x16,&::I8]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.sse42.pcmpistri128")
+        },
+       "x86_mm_cmpistra" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I8x16,&::I8x16,&::I8]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.sse42.pcmpistria128")
+        },
+       "x86_mm_cmpistrc" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I8x16,&::I8x16,&::I8]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.sse42.pcmpistric128")
+        },
+       "x86_mm_cmpistro" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I8x16,&::I8x16,&::I8]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.sse42.pcmpistrio128")
+        },
+       "x86_mm_cmpistrs" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I8x16,&::I8x16,&::I8]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.sse42.pcmpistris128")
+        },
+       "x86_mm_cmpistrz" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I8x16,&::I8x16,&::I8]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.sse42.pcmpistriz128")
+        },
+       "x86_mm_cmpestrm" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::I8x16,&::I32,&::I8x16,&::I32,&::I8]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.x86.sse42.pcmpestrm128")
+        },
+       "x86_mm_cmpestri" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::I8x16,&::I32,&::I8x16,&::I32,&::I8]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.sse42.pcmpestri128")
+        },
+       "x86_mm_cmpestra" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::I8x16,&::I32,&::I8x16,&::I32,&::I8]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.sse42.pcmpestria128")
+        },
+       "x86_mm_cmpestrc" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::I8x16,&::I32,&::I8x16,&::I32,&::I8]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.sse42.pcmpestric128")
+        },
+       "x86_mm_cmpestro" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::I8x16,&::I32,&::I8x16,&::I32,&::I8]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.sse42.pcmpestrio128")
+        },
+       "x86_mm_cmpestrs" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::I8x16,&::I32,&::I8x16,&::I32,&::I8]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.sse42.pcmpestris128")
+        },
+       "x86_mm_cmpestrz" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::I8x16,&::I32,&::I8x16,&::I32,&::I8]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.sse42.pcmpestriz128")
+        },
+       "x86_mm_extracti_si64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I64x2,&::I8,&::I8]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.x86.sse4a.extrqi")
+        },
+       "x86_mm_extract_si64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I8x16]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.x86.sse4a.extrq")
+        },
+       "x86_mm_insert_si64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.x86.sse4a.insertq")
+        },
+       "x86_mm_stream_ss" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::F32x4]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.x86.sse4a.movnt.ss")
+        },
+       "x86_mm_stream_sd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::F64x2]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.x86.sse4a.movnt.sd")
+        },
+       "x86_mm256_add_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x4,&::F64x4]; &INPUTS },
+            output: &::F64x4,
+            definition: Named("llvm.x86.avx.addsub.pd.256")
+        },
+       "x86_mm256_addsub_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x8,&::F32x8]; &INPUTS },
+            output: &::F32x8,
+            definition: Named("llvm.x86.avx.addsub.ps.256")
+        },
+       "x86_mm256_max_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x4,&::F64x4]; &INPUTS },
+            output: &::F64x4,
+            definition: Named("llvm.x86.avx.max.pd.256")
+        },
+       "x86_mm256_max_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x8,&::F32x8]; &INPUTS },
+            output: &::F32x8,
+            definition: Named("llvm.x86.avx.max.ps.256")
+        },
+       "x86_mm256_min_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x4,&::F64x4]; &INPUTS },
+            output: &::F64x4,
+            definition: Named("llvm.x86.avx.min.pd.256")
+        },
+       "x86_mm256_min_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x8,&::F32x8]; &INPUTS },
+            output: &::F32x8,
+            definition: Named("llvm.x86.avx.min.ps.256")
+        },
+       "x86_mm256_sqrt_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x4]; &INPUTS },
+            output: &::F64x4,
+            definition: Named("llvm.x86.avx.sqrt.pd.256")
+        },
+       "x86_mm256_sqrt_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x8]; &INPUTS },
+            output: &::F32x8,
+            definition: Named("llvm.x86.avx.sqrt.ps.256")
+        },
+       "x86_mm256_rsqrt_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x8]; &INPUTS },
+            output: &::F32x8,
+            definition: Named("llvm.x86.avx.rsqrt.ps.256")
+        },
+       "x86_mm256_rcp_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x8]; &INPUTS },
+            output: &::F32x8,
+            definition: Named("llvm.x86.avx.rcp.ps.256")
+        },
+       "x86_mm256_round_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x4,&::I32]; &INPUTS },
+            output: &::F64x4,
+            definition: Named("llvm.x86.avx.round.pd.256")
+        },
+       "x86_mm256_round_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x8,&::I32]; &INPUTS },
+            output: &::F32x8,
+            definition: Named("llvm.x86.avx.round.ps.256")
+        },
+       "x86_mm256_hadd_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x4,&::F64x4]; &INPUTS },
+            output: &::F64x4,
+            definition: Named("llvm.x86.avx.hadd.pd.256")
+        },
+       "x86_mm256_hsub_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x8,&::F32x8]; &INPUTS },
+            output: &::F32x8,
+            definition: Named("llvm.x86.avx.hsub.ps.256")
+        },
+       "x86_mm256_hsub_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x4,&::F64x4]; &INPUTS },
+            output: &::F64x4,
+            definition: Named("llvm.x86.avx.hsub.pd.256")
+        },
+       "x86_mm256_hadd_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x8,&::F32x8]; &INPUTS },
+            output: &::F32x8,
+            definition: Named("llvm.x86.avx.hadd.ps.256")
+        },
+       "x86_mm_permutevar_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::I64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.x86.avx.vpermilvar.pd")
+        },
+       "x86_mm_permutevar_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::I32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.x86.avx.vpermilvar.ps")
+        },
+       "x86_mm256_permutevar_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x4,&::I64x4]; &INPUTS },
+            output: &::F64x4,
+            definition: Named("llvm.x86.avx.vpermilvar.pd.256")
+        },
+       "x86_mm256_permutevar_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x8,&::I32x8]; &INPUTS },
+            output: &::F32x8,
+            definition: Named("llvm.x86.avx.vpermilvar.ps.256")
+        },
+       "x86_mm256_permute2f128_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F64x4,&::F64x4,&::I8]; &INPUTS },
+            output: &::F64x4,
+            definition: Named("llvm.x86.avx.vperm2f128.pd.256")
+        },
+       "x86_mm256_permute2f128_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x8,&::F32x8,&::I8]; &INPUTS },
+            output: &::F32x8,
+            definition: Named("llvm.x86.avx.vperm2f128.ps.256")
+        },
+       "x86_mm256_permute2f128_si256" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I32x8,&::I32x8,&::I8]; &INPUTS },
+            output: &::I32x8,
+            definition: Named("llvm.x86.avx.vperm2f128.si.256")
+        },
+       "x86_mm512_permutex2var_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I32x16,&::I32x16,&::I32x16,&::I16]; &INPUTS },
+            output: &::I32x16,
+            definition: Named("llvm.x86.avx512.mask.vpermt.d.512")
+        },
+       "x86_mm512_mask_permutex2var_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I32x16,&::I32x16,&::I32x16,&::I16]; &INPUTS },
+            output: &::I32x16,
+            definition: Named("llvm.x86.avx512.mask.vpermt.d.512")
+        },
+       "x86_mm512_permutex2var_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I64x8,&::I64x8,&::I64x8,&::I8]; &INPUTS },
+            output: &::I64x8,
+            definition: Named("llvm.x86.avx512.mask.vpermt.q.512")
+        },
+       "x86_mm512_mask_permutex2var_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I64x8,&::I64x8,&::I64x8,&::I8]; &INPUTS },
+            output: &::I64x8,
+            definition: Named("llvm.x86.avx512.mask.vpermt.q.512")
+        },
+       "x86_mm512_permutex2var_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I32x16,&::F32x16,&::F32x16,&::I16]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.avx512.mask.vpermt.ps.512")
+        },
+       "x86_mm512_mask_permutex2var_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I32x16,&::F32x16,&::F32x16,&::I16]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.avx512.mask.vpermt.ps.512")
+        },
+       "x86_mm512_permutex2var_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I64x8,&::F64x8,&::F64x8,&::I8]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.avx512.mask.vpermt.pd.512")
+        },
+       "x86_mm512_mask_permutex2var_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I64x8,&::F64x8,&::F64x8,&::I8]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.avx512.mask.vpermt.pd.512")
+        },
+       "x86_mm256_blend_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F64x4,&::F64x4,&::I8]; &INPUTS },
+            output: &::F64x4,
+            definition: Named("llvm.x86.avx.blend.pd.256")
+        },
+       "x86_mm256_blend_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x8,&::F32x8,&::I8]; &INPUTS },
+            output: &::F32x8,
+            definition: Named("llvm.x86.avx.blend.ps.256")
+        },
+       "x86_mm256_blendv_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F64x4,&::F64x4,&::F64x4]; &INPUTS },
+            output: &::F64x4,
+            definition: Named("llvm.x86.avx.blendv.pd.256")
+        },
+       "x86_mm256_blendv_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x8,&::F32x8,&::F32x8]; &INPUTS },
+            output: &::F32x8,
+            definition: Named("llvm.x86.avx.blendv.ps.256")
+        },
+       "x86_mm256_div_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x8,&::F32x8,&::I8]; &INPUTS },
+            output: &::F32x8,
+            definition: Named("llvm.x86.avx.dp.ps.256")
+        },
+       "x86_mm256_cmp_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F64x4,&::F64x4,&::I8]; &INPUTS },
+            output: &::F64x4,
+            definition: Named("llvm.x86.avx.cmp.pd.256")
+        },
+       "x86_mm256_cmp_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x8,&::F32x8,&::I8]; &INPUTS },
+            output: &::F32x8,
+            definition: Named("llvm.x86.avx.cmp.ps.256")
+        },
+       "x86_mm256_extractf128_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x4,&::I8]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.x86.avx.vextractf128.pd.256")
+        },
+       "x86_mm256_extract_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x4,&::I8]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.x86.avx.vextractf128.pd.256")
+        },
+       "x86_mm256_extractf128_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x8,&::I8]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.x86.avx.vextractf128.ps.256")
+        },
+       "x86_mm256_extractf128_si256" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x8,&::I8]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.x86.avx.vextractf128.si.256")
+        },
+       "x86_mm256_insertf128_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F64x4,&::F64x2,&::I8]; &INPUTS },
+            output: &::F64x4,
+            definition: Named("llvm.x86.avx.vinsertf128.pd.256")
+        },
+       "x86_mm256_insert_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F64x4,&::F64x2,&::I8]; &INPUTS },
+            output: &::F64x4,
+            definition: Named("llvm.x86.avx.vinsertf128.pd.256")
+        },
+       "x86_mm256_insertf128_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x8,&::F32x4,&::I8]; &INPUTS },
+            output: &::F32x8,
+            definition: Named("llvm.x86.avx.vinsertf128.ps.256")
+        },
+       "x86_mm256_insertf128_si256" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I32x8,&::I32x4,&::I8]; &INPUTS },
+            output: &::I32x8,
+            definition: Named("llvm.x86.avx.vinsertf128.si.256")
+        },
+       "x86_mm256_cvtepi32_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::F64x4,
+            definition: Named("llvm.x86.avx.cvtdq2.pd.256")
+        },
+       "x86_mm256_cvtepi32_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x8]; &INPUTS },
+            output: &::F32x8,
+            definition: Named("llvm.x86.avx.cvtdq2.ps.256")
+        },
+       "x86_mm256_cvtpd_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.x86.avx.cvt.pd2.ps.256")
+        },
+       "x86_mm256_cvtps_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x8]; &INPUTS },
+            output: &::I32x8,
+            definition: Named("llvm.x86.avx.cvt.ps2dq.256")
+        },
+       "x86_mm256_cvtps_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::F64x4,
+            definition: Named("llvm.x86.avx.cvt.ps2.pd.256")
+        },
+       "x86_mm256_cvttpd_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.x86.avx.cvtt.pd2dq.256")
+        },
+       "x86_mm256_cvtpd_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.x86.avx.cvt.pd2dq.256")
+        },
+       "x86_mm256_cvttps_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x8]; &INPUTS },
+            output: &::I32x8,
+            definition: Named("llvm.x86.avx.cvtt.ps2dq.256")
+        },
+       "x86_mm_testz_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.avx.vtestz.pd")
+        },
+       "x86_mm_testc_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.avx.vtestc.pd")
+        },
+       "x86_mm_testnzc_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x2,&::F64x2]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.avx.vtestnzc.pd")
+        },
+       "x86_mm_testz_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.avx.vtestz.ps")
+        },
+       "x86_mm_testc_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.avx.vtestc.ps")
+        },
+       "x86_mm_testnzc_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::F32x4]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.avx.vtestnzc.ps")
+        },
+       "x86_mm256_testz_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x4,&::F64x4]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.avx.vtestz.pd.256")
+        },
+       "x86_mm256_testc_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x4,&::F64x4]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.avx.vtestc.pd.256")
+        },
+       "x86_mm256_testnzc_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F64x4,&::F64x4]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.avx.vtestnzc.pd.256")
+        },
+       "x86_mm256_testz_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x8,&::F32x8]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.avx.vtestz.ps.256")
+        },
+       "x86_mm256_testc_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x8,&::F32x8]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.avx.vtestc.ps.256")
+        },
+       "x86_mm256_testnzc_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x8,&::F32x8]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.avx.vtestnzc.ps.256")
+        },
+       "x86_mm256_testz_si256" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x4,&::I64x4]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.avx.ptestz.256")
+        },
+       "x86_mm256_testc_si256" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x4,&::I64x4]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.avx.ptestc.256")
+        },
+       "x86_mm256_testnzc_si256" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x4,&::I64x4]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.avx.ptestnzc.256")
+        },
+       "x86_mm512_test_epi32_mask" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I32x16,&::I32x16,&::I16]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.x86.avx512.mask.ptestm.d.512")
+        },
+       "x86_mm512_mask_test_epi32_mask" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I32x16,&::I32x16,&::I16]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.x86.avx512.mask.ptestm.d.512")
+        },
+       "x86_mm512_test_epi64_mask" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I64x8,&::I64x8,&::I8]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.x86.avx512.mask.ptestm.q.512")
+        },
+       "x86_mm512_mask_test_epi64_mask" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I64x8,&::I64x8,&::I8]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.x86.avx512.mask.ptestm.q.512")
+        },
+       "x86_mm256_movemask_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x4]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.avx.movmsk.pd.256")
+        },
+       "x86_mm256_movemask_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x8]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.avx.movmsk.ps.256")
+        },
+       "x86_mm256_zeroall" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 0] = []; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.x86.avx.vzeroall")
+        },
+       "x86_mm256_zeroupper" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 0] = []; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.x86.avx.vzeroupper")
+        },
+       "x86_mm256_broadcast_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::F64x4,
+            definition: Named("llvm.x86.avx.vbroadcastf128.pd.256")
+        },
+       "x86_mm256_broadcast_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::F32x8,
+            definition: Named("llvm.x86.avx.vbroadcastf128.ps.256")
+        },
+       "x86_mm256_lddqu_si256" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::I8x32,
+            definition: Named("llvm.x86.avx.ldu.dq.256")
+        },
+       "x86_mm256_load_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.x86.avx.maskload.pd")
+        },
+       "x86_mm_maskload_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.x86.avx.maskload.ps")
+        },
+       "x86_mm256_maskload_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::F64x4]; &INPUTS },
+            output: &::F64x4,
+            definition: Named("llvm.x86.avx.maskload.pd.256")
+        },
+       "x86_mm256_maskload_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::F32x8]; &INPUTS },
+            output: &::F32x8,
+            definition: Named("llvm.x86.avx.maskload.ps.256")
+        },
+       "x86_mm512_loadu_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::F32x16,&::I16]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.avx512.mask.loadu.ps.512")
+        },
+       "x86_mm512_maskz_loadu_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::F32x16,&::I16]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.avx512.mask.loadu.ps.512")
+        },
+       "x86_mm512_loadu_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::F64x8,&::I8]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.avx512.mask.loadu.pd.512")
+        },
+       "x86_mm512_maskz_loadu_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::F64x8,&::I8]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.avx512.mask.loadu.pd.512")
+        },
+       "x86_mm_maskstore_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::F64x2,&::F64x2]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.x86.avx.maskstore.pd")
+        },
+       "x86_mm_maskstore_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::F32x4,&::F32x4]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.x86.avx.maskstore.ps")
+        },
+       "x86_mm256_maskstore_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::F64x4,&::F64x4]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.x86.avx.maskstore.pd.256")
+        },
+       "x86_mm256_maskstore_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::F32x8,&::F32x8]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.x86.avx.maskstore.ps.256")
+        },
+       "x86_mm512_storeu_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::F32x16,&::I16]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.x86.avx512.mask.storeu.ps.512")
+        },
+       "x86_mm512_storeu_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::F64x8,&::I8]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.x86.avx512.mask.storeu.pd.512")
+        },
+       "x86_mm256_add_epi8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x32,&::I8x32]; &INPUTS },
+            output: &::I8x32,
+            definition: Named("llvm.x86.avx2.padds.b")
+        },
+       "x86_mm256_adds_epi16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x16,&::I16x16]; &INPUTS },
+            output: &::I16x16,
+            definition: Named("llvm.x86.avx2.padds.w")
+        },
+       "x86_mm256_adds_epu8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x32,&::I8x32]; &INPUTS },
+            output: &::I8x32,
+            definition: Named("llvm.x86.avx2.paddus.b")
+        },
+       "x86_mm256_adds_epu16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x16,&::I16x16]; &INPUTS },
+            output: &::I16x16,
+            definition: Named("llvm.x86.avx2.paddus.w")
+        },
+       "x86_mm256_sub_epi8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x32,&::I8x32]; &INPUTS },
+            output: &::I8x32,
+            definition: Named("llvm.x86.avx2.psubs.b")
+        },
+       "x86_mm256_subs_epi16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x16,&::I16x16]; &INPUTS },
+            output: &::I16x16,
+            definition: Named("llvm.x86.avx2.psubs.w")
+        },
+       "x86_mm256_subs_epu8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x32,&::I8x32]; &INPUTS },
+            output: &::I8x32,
+            definition: Named("llvm.x86.avx2.psubus.b")
+        },
+       "x86_mm256_subs_epu16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x16,&::I16x16]; &INPUTS },
+            output: &::I16x16,
+            definition: Named("llvm.x86.avx2.psubus.w")
+        },
+       "x86_mm256_mulhi_epu16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x16,&::I16x16]; &INPUTS },
+            output: &::I16x16,
+            definition: Named("llvm.x86.avx2.pmulhu.w")
+        },
+       "x86_mm256_mulhi_epi16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x16,&::I16x16]; &INPUTS },
+            output: &::I16x16,
+            definition: Named("llvm.x86.avx2.pmulh.w")
+        },
+       "x86_mm256_mullo_epi16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x8,&::I32x8]; &INPUTS },
+            output: &::I64x4,
+            definition: Named("llvm.x86.avx2.pmulu.dq")
+        },
+       "x86_mm256_mul_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x8,&::I32x8]; &INPUTS },
+            output: &::I64x4,
+            definition: Named("llvm.x86.avx2.pmul.dq")
+        },
+       "x86_mm256_madd_epi16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x16,&::I16x16]; &INPUTS },
+            output: &::I32x8,
+            definition: Named("llvm.x86.avx2.pmadd.wd")
+        },
+       "x86_mm256_avg_epu8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x32,&::I8x32]; &INPUTS },
+            output: &::I8x32,
+            definition: Named("llvm.x86.avx2.pavg.b")
+        },
+       "x86_mm256_avg_epu16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x16,&::I16x16]; &INPUTS },
+            output: &::I16x16,
+            definition: Named("llvm.x86.avx2.pavg.w")
+        },
+       "x86_mm256_or_si256" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x32,&::I8x32]; &INPUTS },
+            output: &::I64x4,
+            definition: Named("llvm.x86.avx2.psad.bw")
+        },
+       "x86_mm512_mul_epu32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I32x16,&::I32x16,&::I64x8,&::I8]; &INPUTS },
+            output: &::I64x8,
+            definition: Named("llvm.x86.avx512.mask.pmulu.dq.512")
+        },
+       "x86_mm512_mask_mul_epu32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I32x16,&::I32x16,&::I64x8,&::I8]; &INPUTS },
+            output: &::I64x8,
+            definition: Named("llvm.x86.avx512.mask.pmulu.dq.512")
+        },
+       "x86_mm512_maskz_mul_epu32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I32x16,&::I32x16,&::I64x8,&::I8]; &INPUTS },
+            output: &::I64x8,
+            definition: Named("llvm.x86.avx512.mask.pmulu.dq.512")
+        },
+       "x86_mm512_mul_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I32x16,&::I32x16,&::I64x8,&::I8]; &INPUTS },
+            output: &::I64x8,
+            definition: Named("llvm.x86.avx512.mask.pmul.dq.512")
+        },
+       "x86_mm512_mask_mul_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I32x16,&::I32x16,&::I64x8,&::I8]; &INPUTS },
+            output: &::I64x8,
+            definition: Named("llvm.x86.avx512.mask.pmul.dq.512")
+        },
+       "x86_mm512_maskz_mul_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I32x16,&::I32x16,&::I64x8,&::I8]; &INPUTS },
+            output: &::I64x8,
+            definition: Named("llvm.x86.avx512.mask.pmul.dq.512")
+        },
+       "x86_mm256_max_epu8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x32,&::I8x32]; &INPUTS },
+            output: &::I8x32,
+            definition: Named("llvm.x86.avx2.pmaxu.b")
+        },
+       "x86_mm256_max_epu16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x16,&::I16x16]; &INPUTS },
+            output: &::I16x16,
+            definition: Named("llvm.x86.avx2.pmaxu.w")
+        },
+       "x86_mm256_max_epu32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x8,&::I32x8]; &INPUTS },
+            output: &::I32x8,
+            definition: Named("llvm.x86.avx2.pmaxu.d")
+        },
+       "x86_mm256_max_epi8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x32,&::I8x32]; &INPUTS },
+            output: &::I8x32,
+            definition: Named("llvm.x86.avx2.pmaxs.b")
+        },
+       "x86_mm256_max_epi16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x16,&::I16x16]; &INPUTS },
+            output: &::I16x16,
+            definition: Named("llvm.x86.avx2.pmaxs.w")
+        },
+       "x86_mm256_max_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x8,&::I32x8]; &INPUTS },
+            output: &::I32x8,
+            definition: Named("llvm.x86.avx2.pmaxs.d")
+        },
+       "x86_mm256_min_epu8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x32,&::I8x32]; &INPUTS },
+            output: &::I8x32,
+            definition: Named("llvm.x86.avx2.pminu.b")
+        },
+       "x86_mm256_min_epu16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x16,&::I16x16]; &INPUTS },
+            output: &::I16x16,
+            definition: Named("llvm.x86.avx2.pminu.w")
+        },
+       "x86_mm256_min_epu32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x8,&::I32x8]; &INPUTS },
+            output: &::I32x8,
+            definition: Named("llvm.x86.avx2.pminu.d")
+        },
+       "x86_mm256_min_epi8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x32,&::I8x32]; &INPUTS },
+            output: &::I8x32,
+            definition: Named("llvm.x86.avx2.pmins.b")
+        },
+       "x86_mm256_min_epi16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x16,&::I16x16]; &INPUTS },
+            output: &::I16x16,
+            definition: Named("llvm.x86.avx2.pmins.w")
+        },
+       "x86_mm256_min_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x8,&::I32x8]; &INPUTS },
+            output: &::I32x8,
+            definition: Named("llvm.x86.avx2.pmins.d")
+        },
+       "x86_mm512_max_epu32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I32x16,&::I32x16,&::I32x16,&::I16]; &INPUTS },
+            output: &::I32x16,
+            definition: Named("llvm.x86.avx512.mask.pmaxu.d.512")
+        },
+       "x86_mm512_maskz_max_epu32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I32x16,&::I32x16,&::I32x16,&::I16]; &INPUTS },
+            output: &::I32x16,
+            definition: Named("llvm.x86.avx512.mask.pmaxu.d.512")
+        },
+       "x86_mm512_mask_max_epu32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I32x16,&::I32x16,&::I32x16,&::I16]; &INPUTS },
+            output: &::I32x16,
+            definition: Named("llvm.x86.avx512.mask.pmaxu.d.512")
+        },
+       "x86_mm512_max_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I32x16,&::I32x16,&::I32x16,&::I16]; &INPUTS },
+            output: &::I32x16,
+            definition: Named("llvm.x86.avx512.mask.pmaxs.d.512")
+        },
+       "x86_mm512_maskz_max_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I32x16,&::I32x16,&::I32x16,&::I16]; &INPUTS },
+            output: &::I32x16,
+            definition: Named("llvm.x86.avx512.mask.pmaxs.d.512")
+        },
+       "x86_mm512_mask_max_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I32x16,&::I32x16,&::I32x16,&::I16]; &INPUTS },
+            output: &::I32x16,
+            definition: Named("llvm.x86.avx512.mask.pmaxs.d.512")
+        },
+       "x86_mm512_max_epu64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I64x8,&::I64x8,&::I64x8,&::I8]; &INPUTS },
+            output: &::I64x8,
+            definition: Named("llvm.x86.avx512.mask.pmaxu.q.512")
+        },
+       "x86_mm512_maskz_max_epu64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I64x8,&::I64x8,&::I64x8,&::I8]; &INPUTS },
+            output: &::I64x8,
+            definition: Named("llvm.x86.avx512.mask.pmaxu.q.512")
+        },
+       "x86_mm512_mask_max_epu64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I64x8,&::I64x8,&::I64x8,&::I8]; &INPUTS },
+            output: &::I64x8,
+            definition: Named("llvm.x86.avx512.mask.pmaxu.q.512")
+        },
+       "x86_mm512_max_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I64x8,&::I64x8,&::I64x8,&::I8]; &INPUTS },
+            output: &::I64x8,
+            definition: Named("llvm.x86.avx512.mask.pmaxs.q.512")
+        },
+       "x86_mm512_maskz_max_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I64x8,&::I64x8,&::I64x8,&::I8]; &INPUTS },
+            output: &::I64x8,
+            definition: Named("llvm.x86.avx512.mask.pmaxs.q.512")
+        },
+       "x86_mm512_mask_max_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I64x8,&::I64x8,&::I64x8,&::I8]; &INPUTS },
+            output: &::I64x8,
+            definition: Named("llvm.x86.avx512.mask.pmaxs.q.512")
+        },
+       "x86_mm512_min_epu32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I32x16,&::I32x16,&::I32x16,&::I16]; &INPUTS },
+            output: &::I32x16,
+            definition: Named("llvm.x86.avx512.mask.pminu.d.512")
+        },
+       "x86_mm512_maskz_min_epu32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I32x16,&::I32x16,&::I32x16,&::I16]; &INPUTS },
+            output: &::I32x16,
+            definition: Named("llvm.x86.avx512.mask.pminu.d.512")
+        },
+       "x86_mm512_mask_min_epu32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I32x16,&::I32x16,&::I32x16,&::I16]; &INPUTS },
+            output: &::I32x16,
+            definition: Named("llvm.x86.avx512.mask.pminu.d.512")
+        },
+       "x86_mm512_min_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I32x16,&::I32x16,&::I32x16,&::I16]; &INPUTS },
+            output: &::I32x16,
+            definition: Named("llvm.x86.avx512.mask.pmins.d.512")
+        },
+       "x86_mm512_maskz_min_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I32x16,&::I32x16,&::I32x16,&::I16]; &INPUTS },
+            output: &::I32x16,
+            definition: Named("llvm.x86.avx512.mask.pmins.d.512")
+        },
+       "x86_mm512_mask_min_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I32x16,&::I32x16,&::I32x16,&::I16]; &INPUTS },
+            output: &::I32x16,
+            definition: Named("llvm.x86.avx512.mask.pmins.d.512")
+        },
+       "x86_mm512_min_epu64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I64x8,&::I64x8,&::I64x8,&::I8]; &INPUTS },
+            output: &::I64x8,
+            definition: Named("llvm.x86.avx512.mask.pminu.q.512")
+        },
+       "x86_mm512_mask_min_epu64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I64x8,&::I64x8,&::I64x8,&::I8]; &INPUTS },
+            output: &::I64x8,
+            definition: Named("llvm.x86.avx512.mask.pminu.q.512")
+        },
+       "x86_mm512_maskz_min_epu64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I64x8,&::I64x8,&::I64x8,&::I8]; &INPUTS },
+            output: &::I64x8,
+            definition: Named("llvm.x86.avx512.mask.pminu.q.512")
+        },
+       "x86_mm512_min_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I64x8,&::I64x8,&::I64x8,&::I8]; &INPUTS },
+            output: &::I64x8,
+            definition: Named("llvm.x86.avx512.mask.pmins.q.512")
+        },
+       "x86_mm512_mask_min_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I64x8,&::I64x8,&::I64x8,&::I8]; &INPUTS },
+            output: &::I64x8,
+            definition: Named("llvm.x86.avx512.mask.pmins.q.512")
+        },
+       "x86_mm512_maskz_min_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I64x8,&::I64x8,&::I64x8,&::I8]; &INPUTS },
+            output: &::I64x8,
+            definition: Named("llvm.x86.avx512.mask.pmins.q.512")
+        },
+       "x86_mm256_sra_epi16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x16,&::I16x8]; &INPUTS },
+            output: &::I16x16,
+            definition: Named("llvm.x86.avx2.psra.w")
+        },
+       "x86_mm256_sra_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x8,&::I32x4]; &INPUTS },
+            output: &::I32x8,
+            definition: Named("llvm.x86.avx2.psra.d")
+        },
+       "x86_mm256_slli_epi16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x16,&::I32]; &INPUTS },
+            output: &::I16x16,
+            definition: Named("llvm.x86.avx2.pslli.w")
+        },
+       "x86_mm256_slli_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x8,&::I32]; &INPUTS },
+            output: &::I32x8,
+            definition: Named("llvm.x86.avx2.pslli.d")
+        },
+       "x86_mm256_slli_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x4,&::I32]; &INPUTS },
+            output: &::I64x4,
+            definition: Named("llvm.x86.avx2.pslli.q")
+        },
+       "x86_mm256_srli_epi16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x16,&::I32]; &INPUTS },
+            output: &::I16x16,
+            definition: Named("llvm.x86.avx2.psrli.w")
+        },
+       "x86_mm256_srli_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x8,&::I32]; &INPUTS },
+            output: &::I32x8,
+            definition: Named("llvm.x86.avx2.psrli.d")
+        },
+       "x86_mm256_srli_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x4,&::I32]; &INPUTS },
+            output: &::I64x4,
+            definition: Named("llvm.x86.avx2.psrli.q")
+        },
+       "x86_mm256_srai_epi16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x16,&::I32]; &INPUTS },
+            output: &::I16x16,
+            definition: Named("llvm.x86.avx2.psrai.w")
+        },
+       "x86_mm256_srai_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x8,&::I32]; &INPUTS },
+            output: &::I32x8,
+            definition: Named("llvm.x86.avx2.psrai.d")
+        },
+       "x86_mm256_bslli_epi128" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x4,&::I32]; &INPUTS },
+            output: &::I64x4,
+            definition: Named("llvm.x86.avx2.psll.dq")
+        },
+       "x86_mm256_slli_si256" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x4,&::I32]; &INPUTS },
+            output: &::I64x4,
+            definition: Named("llvm.x86.avx2.psll.dq")
+        },
+       "x86_mm256_bsrli_epi128" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x4,&::I32]; &INPUTS },
+            output: &::I64x4,
+            definition: Named("llvm.x86.avx2.psrl.dq")
+        },
+       "x86_mm256_srli_si256" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x4,&::I32]; &INPUTS },
+            output: &::I64x4,
+            definition: Named("llvm.x86.avx2.psrl.dq")
+        },
+       "x86_mm256_packs_epi16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x16,&::I16x16]; &INPUTS },
+            output: &::I8x32,
+            definition: Named("llvm.x86.avx2.packsswb")
+        },
+       "x86_mm256_packs_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x8,&::I32x8]; &INPUTS },
+            output: &::I16x16,
+            definition: Named("llvm.x86.avx2.packssdw")
+        },
+       "x86_mm256_packus_epi16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x16,&::I16x16]; &INPUTS },
+            output: &::I8x32,
+            definition: Named("llvm.x86.avx2.packuswb")
+        },
+       "x86_mm256_packus_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x8,&::I32x8]; &INPUTS },
+            output: &::I16x16,
+            definition: Named("llvm.x86.avx2.packusdw")
+        },
+       "x86_mm256_abs_epi8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x32]; &INPUTS },
+            output: &::I8x32,
+            definition: Named("llvm.x86.avx2.pabs.b")
+        },
+       "x86_mm256_abs_epi16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x16]; &INPUTS },
+            output: &::I16x16,
+            definition: Named("llvm.x86.avx2.pabs.w")
+        },
+       "x86_mm256_abs_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x8]; &INPUTS },
+            output: &::I32x8,
+            definition: Named("llvm.x86.avx2.pabs.d")
+        },
+       "x86_mm512_abs_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I32x16,&::I32x16,&::I16]; &INPUTS },
+            output: &::I32x16,
+            definition: Named("llvm.x86.avx512.mask.pabs.d.512")
+        },
+       "x86_mm512_mask_abs_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I32x16,&::I32x16,&::I16]; &INPUTS },
+            output: &::I32x16,
+            definition: Named("llvm.x86.avx512.mask.pabs.d.512")
+        },
+       "x86_mm512_maskz_abs_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I32x16,&::I32x16,&::I16]; &INPUTS },
+            output: &::I32x16,
+            definition: Named("llvm.x86.avx512.mask.pabs.d.512")
+        },
+       "x86_mm512_abs_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I64x8,&::I64x8,&::I8]; &INPUTS },
+            output: &::I64x8,
+            definition: Named("llvm.x86.avx512.mask.pabs.q.512")
+        },
+       "x86_mm512_mask_abs_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I64x8,&::I64x8,&::I8]; &INPUTS },
+            output: &::I64x8,
+            definition: Named("llvm.x86.avx512.mask.pabs.q.512")
+        },
+       "x86_mm512_maskz_abs_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I64x8,&::I64x8,&::I8]; &INPUTS },
+            output: &::I64x8,
+            definition: Named("llvm.x86.avx512.mask.pabs.q.512")
+        },
+       "x86_mm256_cmpeq_epi8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x16,&::I16x16]; &INPUTS },
+            output: &::I16x16,
+            definition: Named("llvm.x86.avx2.phadd.w")
+        },
+       "x86_mm256_hadd_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x8,&::I32x8]; &INPUTS },
+            output: &::I32x8,
+            definition: Named("llvm.x86.avx2.phadd.d")
+        },
+       "x86_mm256_hadds_epi16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x16,&::I16x16]; &INPUTS },
+            output: &::I16x16,
+            definition: Named("llvm.x86.avx2.phadd.sw")
+        },
+       "x86_mm256_hsub_epi16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x16,&::I16x16]; &INPUTS },
+            output: &::I16x16,
+            definition: Named("llvm.x86.avx2.phsub.w")
+        },
+       "x86_mm256_hsub_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x8,&::I32x8]; &INPUTS },
+            output: &::I32x8,
+            definition: Named("llvm.x86.avx2.phsub.d")
+        },
+       "x86_mm256_hsubs_epi16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x16,&::I16x16]; &INPUTS },
+            output: &::I16x16,
+            definition: Named("llvm.x86.avx2.phsub.sw")
+        },
+       "x86_mm256_maddubs_epi16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x32,&::I8x32]; &INPUTS },
+            output: &::I16x16,
+            definition: Named("llvm.x86.avx2.pmadd.ub.sw")
+        },
+       "x86_mm256_sign_epi8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x32,&::I8x32]; &INPUTS },
+            output: &::I8x32,
+            definition: Named("llvm.x86.avx2.psign.b")
+        },
+       "x86_mm256_sign_epi16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x16,&::I16x16]; &INPUTS },
+            output: &::I16x16,
+            definition: Named("llvm.x86.avx2.psign.w")
+        },
+       "x86_mm256_sign_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x8,&::I32x8]; &INPUTS },
+            output: &::I32x8,
+            definition: Named("llvm.x86.avx2.psign.d")
+        },
+       "x86_mm256_mulhrs_epi16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16x16,&::I16x16]; &INPUTS },
+            output: &::I16x16,
+            definition: Named("llvm.x86.avx2.pmul.hr.sw")
+        },
+       "x86_mm256_cvtepi8_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I32x8,
+            definition: Named("llvm.x86.avx2.pmovsxbd")
+        },
+       "x86_mm256_cvtepi8_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I64x4,
+            definition: Named("llvm.x86.avx2.pmovsxbq")
+        },
+       "x86_mm256_cvtepi8_epi16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I16x16,
+            definition: Named("llvm.x86.avx2.pmovsxbw")
+        },
+       "x86_mm256_cvtepi32_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I64x4,
+            definition: Named("llvm.x86.avx2.pmovsxdq")
+        },
+       "x86_mm256_cvtepi16_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I32x8,
+            definition: Named("llvm.x86.avx2.pmovsxwd")
+        },
+       "x86_mm256_cvtepi16_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I64x4,
+            definition: Named("llvm.x86.avx2.pmovsxwq")
+        },
+       "x86_mm256_cvtepu8_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I32x8,
+            definition: Named("llvm.x86.avx2.pmovzxbd")
+        },
+       "x86_mm256_cvtepu8_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I64x4,
+            definition: Named("llvm.x86.avx2.pmovzxbq")
+        },
+       "x86_mm256_cvtepu8_epi16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I16x16,
+            definition: Named("llvm.x86.avx2.pmovzxbw")
+        },
+       "x86_mm256_cvtepu32_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I64x4,
+            definition: Named("llvm.x86.avx2.pmovzxdq")
+        },
+       "x86_mm256_cvtepu16_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I32x8,
+            definition: Named("llvm.x86.avx2.pmovzxwd")
+        },
+       "x86_mm256_cvtepu16_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I64x4,
+            definition: Named("llvm.x86.avx2.pmovzxwq")
+        },
+       "x86_mm256_blendv_epi8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I8x32,&::I8x32,&::I8x32]; &INPUTS },
+            output: &::I8x32,
+            definition: Named("llvm.x86.avx2.pblendvb")
+        },
+       "x86_mm256_blend_epi16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I16x16,&::I16x16,&::I8]; &INPUTS },
+            output: &::I16x16,
+            definition: Named("llvm.x86.avx2.pblendw")
+        },
+       "x86_mm_blend_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I32x4,&::I32x4,&::I8]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.x86.avx2.pblendd.128")
+        },
+       "x86_mm256_blend_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I32x8,&::I32x8,&::I8]; &INPUTS },
+            output: &::I32x8,
+            definition: Named("llvm.x86.avx2.pblendd.256")
+        },
+       "x86_mm_broadcastss_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.x86.avx2.vbroadcast.ss.ps")
+        },
+       "x86_mm256_broadcastsd_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::F64x4,
+            definition: Named("llvm.x86.avx2.vbroadcast.sd.pd.256")
+        },
+       "x86_mm256_broadcastss_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::F32x8,
+            definition: Named("llvm.x86.avx2.vbroadcast.ss.ps.256")
+        },
+       "x86_mm_broadcastb_epi8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I8x16,
+            definition: Named("llvm.x86.avx2.pbroadcastb.128")
+        },
+       "x86_mm256_broadcastb_epi8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x16]; &INPUTS },
+            output: &::I8x32,
+            definition: Named("llvm.x86.avx2.pbroadcastb.256")
+        },
+       "x86_mm_broadcastw_epi16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.x86.avx2.pbroadcastw.128")
+        },
+       "x86_mm256_broadcastw_epi16" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::I16x16,
+            definition: Named("llvm.x86.avx2.pbroadcastw.256")
+        },
+       "x86_mm_broadcastd_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.x86.avx2.pbroadcastd.128")
+        },
+       "x86_mm256_broadcastd_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I32x8,
+            definition: Named("llvm.x86.avx2.pbroadcastd.256")
+        },
+       "x86_mm_broadcastq_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.x86.avx2.pbroadcastq.128")
+        },
+       "x86_mm256_broadcastq_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I64x4,
+            definition: Named("llvm.x86.avx2.pbroadcastq.256")
+        },
+       "x86_mm512_set1_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I32,&::I32x16,&::I16]; &INPUTS },
+            output: &::I32x16,
+            definition: Named("llvm.x86.avx512.mask.pbroadcast.d.gpr.512")
+        },
+       "x86_mm512_mask_set1_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I32,&::I32x16,&::I16]; &INPUTS },
+            output: &::I32x16,
+            definition: Named("llvm.x86.avx512.mask.pbroadcast.d.gpr.512")
+        },
+       "x86_mm512_maskz_set1_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I32,&::I32x16,&::I16]; &INPUTS },
+            output: &::I32x16,
+            definition: Named("llvm.x86.avx512.mask.pbroadcast.d.gpr.512")
+        },
+       "x86_mm512_set1_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I64,&::I64x8,&::I8]; &INPUTS },
+            output: &::I64x8,
+            definition: Named("llvm.x86.avx512.mask.pbroadcast.q.gpr.512")
+        },
+       "x86_mm512_mask_set1_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I64,&::I64x8,&::I8]; &INPUTS },
+            output: &::I64x8,
+            definition: Named("llvm.x86.avx512.mask.pbroadcast.q.gpr.512")
+        },
+       "x86_mm512_maskz_set1_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I64,&::I64x8,&::I8]; &INPUTS },
+            output: &::I64x8,
+            definition: Named("llvm.x86.avx512.mask.pbroadcast.q.gpr.512")
+        },
+       "x86_mm256_permutevar8x32_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x8,&::I32x8]; &INPUTS },
+            output: &::I32x8,
+            definition: Named("llvm.x86.avx2.permd")
+        },
+       "x86_mm256_permutevar8x32_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x8,&::F32x8]; &INPUTS },
+            output: &::F32x8,
+            definition: Named("llvm.x86.avx2.permps")
+        },
+       "x86_mm256_permute2x128_si256" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I64x4,&::I64x4,&::I8]; &INPUTS },
+            output: &::I64x4,
+            definition: Named("llvm.x86.avx2.vperm2i128")
+        },
+       "x86_mm256_extracti128_si256" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x4,&::I8]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.x86.avx2.vextracti128")
+        },
+       "x86_mm256_inserti128_si256" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I64x4,&::I64x2,&::I8]; &INPUTS },
+            output: &::I64x4,
+            definition: Named("llvm.x86.avx2.vinserti128")
+        },
+       "x86_mm_maskload_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.x86.avx2.maskload.d")
+        },
+       "x86_mm_maskload_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.x86.avx2.maskload.q")
+        },
+       "x86_mm256_maskload_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::I32x8]; &INPUTS },
+            output: &::I32x8,
+            definition: Named("llvm.x86.avx2.maskload.d.256")
+        },
+       "x86_mm256_maskload_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::I64x4]; &INPUTS },
+            output: &::I64x4,
+            definition: Named("llvm.x86.avx2.maskload.q.256")
+        },
+       "x86_mm512_loadu_si512" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::I32x16,&::I16]; &INPUTS },
+            output: &::I32x16,
+            definition: Named("llvm.x86.avx512.mask.loadu.d.512")
+        },
+       "x86_mm512_maskz_loadu_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::I32x16,&::I16]; &INPUTS },
+            output: &::I32x16,
+            definition: Named("llvm.x86.avx512.mask.loadu.d.512")
+        },
+       "x86_mm512_mask_loadu_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::I64x8,&::I8]; &INPUTS },
+            output: &::I64x8,
+            definition: Named("llvm.x86.avx512.mask.loadu.q.512")
+        },
+       "x86_mm512_maskz_loadu_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::I64x8,&::I8]; &INPUTS },
+            output: &::I64x8,
+            definition: Named("llvm.x86.avx512.mask.loadu.q.512")
+        },
+       "x86_mm_maskstore_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::I32x4,&::I32x4]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.x86.avx2.maskstore.d")
+        },
+       "x86_mm_maskstore_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::I64x2,&::I64x2]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.x86.avx2.maskstore.q")
+        },
+       "x86_mm256_maskstore_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::I32x8,&::I32x8]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.x86.avx2.maskstore.d.256")
+        },
+       "x86_mm256_maskstore_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::I64x4,&::I64x4]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.x86.avx2.maskstore.q.256")
+        },
+       "x86_mm512_storeu_si512" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::I32x16,&::I16]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.x86.avx512.mask.storeu.d.512")
+        },
+       "x86_mm512_mask_storeu_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::I64x8,&::I8]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.x86.avx512.mask.storeu.q.512")
+        },
+       "x86_mm_sllv_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.x86.avx2.psllv.d")
+        },
+       "x86_mm256_sllv_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x8,&::I32x8]; &INPUTS },
+            output: &::I32x8,
+            definition: Named("llvm.x86.avx2.psllv.d.256")
+        },
+       "x86_mm_sllv_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.x86.avx2.psllv.q")
+        },
+       "x86_mm256_sllv_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x4,&::I64x4]; &INPUTS },
+            output: &::I64x4,
+            definition: Named("llvm.x86.avx2.psllv.q.256")
+        },
+       "x86_mm_srlv_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.x86.avx2.psrlv.d")
+        },
+       "x86_mm256_srlv_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x8,&::I32x8]; &INPUTS },
+            output: &::I32x8,
+            definition: Named("llvm.x86.avx2.psrlv.d.256")
+        },
+       "x86_mm_srlv_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x2,&::I64x2]; &INPUTS },
+            output: &::I64x2,
+            definition: Named("llvm.x86.avx2.psrlv.q")
+        },
+       "x86_mm256_srlv_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I64x4,&::I64x4]; &INPUTS },
+            output: &::I64x4,
+            definition: Named("llvm.x86.avx2.psrlv.q.256")
+        },
+       "x86_mm_srav_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x4,&::I32x4]; &INPUTS },
+            output: &::I32x4,
+            definition: Named("llvm.x86.avx2.psrav.d")
+        },
+       "x86_mm256_srav_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I32x8,&::I32x8]; &INPUTS },
+            output: &::I32x8,
+            definition: Named("llvm.x86.avx2.psrav.d.256")
+        },
+       "x86_mm256_movemask_epi8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I8x32]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.avx2.pmovmskb")
+        },
+       "x86_mm256_shuffle_epi8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I8x32,&::I8x32]; &INPUTS },
+            output: &::I8x32,
+            definition: Named("llvm.x86.avx2.pshuf.b")
+        },
+       "x86_mm256_mpsadbw_epu8" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I8x32,&::I8x32,&::I8]; &INPUTS },
+            output: &::I16x16,
+            definition: Named("llvm.x86.avx2.mpsadbw")
+        },
+       "x86_mm256_xor_si256" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::I64x4,
+            definition: Named("llvm.x86.avx2.movntdqa")
+        },
+       "x86_mm_macc_ss" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x4,&::F32x4,&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.x86.fma.vfmadd.ss")
+        },
+       "x86_mm_msub_ss" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x4,&::F32x4,&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.x86.fma.vfmadd.ss")
+        },
+       "x86_mm_nmacc_ss" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x4,&::F32x4,&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.x86.fma.vfmadd.ss")
+        },
+       "x86_mm_nmsub_ss" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x4,&::F32x4,&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.x86.fma.vfmadd.ss")
+        },
+       "x86_mm_macc_sd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F64x2,&::F64x2,&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.x86.fma.vfmadd.sd")
+        },
+       "x86_mm_msub_sd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F64x2,&::F64x2,&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.x86.fma.vfmadd.sd")
+        },
+       "x86_mm_nmacc_sd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F64x2,&::F64x2,&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.x86.fma.vfmadd.sd")
+        },
+       "x86_mm_nmsub_sd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F64x2,&::F64x2,&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.x86.fma.vfmadd.sd")
+        },
+       "x86_mm_macc_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x4,&::F32x4,&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.x86.fma.vfmadd.ps")
+        },
+       "x86_mm_msub_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x4,&::F32x4,&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.x86.fma.vfmadd.ps")
+        },
+       "x86_mm_nmacc_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x4,&::F32x4,&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.x86.fma.vfmadd.ps")
+        },
+       "x86_mm_nmsub_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x4,&::F32x4,&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.x86.fma.vfmadd.ps")
+        },
+       "x86_mm_fmadd_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x4,&::F32x4,&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.x86.fma.vfmadd.ps")
+        },
+       "x86_mm_fmsub_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x4,&::F32x4,&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.x86.fma.vfmadd.ps")
+        },
+       "x86_mm_fnmadd_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x4,&::F32x4,&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.x86.fma.vfmadd.ps")
+        },
+       "x86_mm_fnmsub_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x4,&::F32x4,&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.x86.fma.vfmadd.ps")
+        },
+       "x86_mm_macc_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F64x2,&::F64x2,&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.x86.fma.vfmadd.pd")
+        },
+       "x86_mm_msub_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F64x2,&::F64x2,&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.x86.fma.vfmadd.pd")
+        },
+       "x86_mm_nmacc_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F64x2,&::F64x2,&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.x86.fma.vfmadd.pd")
+        },
+       "x86_mm_nmsub_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F64x2,&::F64x2,&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.x86.fma.vfmadd.pd")
+        },
+       "x86_mm_fmadd_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F64x2,&::F64x2,&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.x86.fma.vfmadd.pd")
+        },
+       "x86_mm_fmsub_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F64x2,&::F64x2,&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.x86.fma.vfmadd.pd")
+        },
+       "x86_mm_fnmadd_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F64x2,&::F64x2,&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.x86.fma.vfmadd.pd")
+        },
+       "x86_mm_fnmsub_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F64x2,&::F64x2,&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.x86.fma.vfmadd.pd")
+        },
+       "x86_mm256_macc_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x8,&::F32x8,&::F32x8]; &INPUTS },
+            output: &::F32x8,
+            definition: Named("llvm.x86.fma.vfmadd.ps.256")
+        },
+       "x86_mm256_msub_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x8,&::F32x8,&::F32x8]; &INPUTS },
+            output: &::F32x8,
+            definition: Named("llvm.x86.fma.vfmadd.ps.256")
+        },
+       "x86_mm256_nmacc_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x8,&::F32x8,&::F32x8]; &INPUTS },
+            output: &::F32x8,
+            definition: Named("llvm.x86.fma.vfmadd.ps.256")
+        },
+       "x86_mm256_nmsub_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x8,&::F32x8,&::F32x8]; &INPUTS },
+            output: &::F32x8,
+            definition: Named("llvm.x86.fma.vfmadd.ps.256")
+        },
+       "x86_mm256_fmadd_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x8,&::F32x8,&::F32x8]; &INPUTS },
+            output: &::F32x8,
+            definition: Named("llvm.x86.fma.vfmadd.ps.256")
+        },
+       "x86_mm256_fmsub_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x8,&::F32x8,&::F32x8]; &INPUTS },
+            output: &::F32x8,
+            definition: Named("llvm.x86.fma.vfmadd.ps.256")
+        },
+       "x86_mm256_fnmadd_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x8,&::F32x8,&::F32x8]; &INPUTS },
+            output: &::F32x8,
+            definition: Named("llvm.x86.fma.vfmadd.ps.256")
+        },
+       "x86_mm256_fnmsub_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x8,&::F32x8,&::F32x8]; &INPUTS },
+            output: &::F32x8,
+            definition: Named("llvm.x86.fma.vfmadd.ps.256")
+        },
+       "x86_mm256_macc_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F64x4,&::F64x4,&::F64x4]; &INPUTS },
+            output: &::F64x4,
+            definition: Named("llvm.x86.fma.vfmadd.pd.256")
+        },
+       "x86_mm256_msub_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F64x4,&::F64x4,&::F64x4]; &INPUTS },
+            output: &::F64x4,
+            definition: Named("llvm.x86.fma.vfmadd.pd.256")
+        },
+       "x86_mm256_nmacc_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F64x4,&::F64x4,&::F64x4]; &INPUTS },
+            output: &::F64x4,
+            definition: Named("llvm.x86.fma.vfmadd.pd.256")
+        },
+       "x86_mm256_nmsub_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F64x4,&::F64x4,&::F64x4]; &INPUTS },
+            output: &::F64x4,
+            definition: Named("llvm.x86.fma.vfmadd.pd.256")
+        },
+       "x86_mm256_fmadd_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F64x4,&::F64x4,&::F64x4]; &INPUTS },
+            output: &::F64x4,
+            definition: Named("llvm.x86.fma.vfmadd.pd.256")
+        },
+       "x86_mm256_fmsub_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F64x4,&::F64x4,&::F64x4]; &INPUTS },
+            output: &::F64x4,
+            definition: Named("llvm.x86.fma.vfmadd.pd.256")
+        },
+       "x86_mm256_fnmadd_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F64x4,&::F64x4,&::F64x4]; &INPUTS },
+            output: &::F64x4,
+            definition: Named("llvm.x86.fma.vfmadd.pd.256")
+        },
+       "x86_mm256_fnmsub_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F64x4,&::F64x4,&::F64x4]; &INPUTS },
+            output: &::F64x4,
+            definition: Named("llvm.x86.fma.vfmadd.pd.256")
+        },
+       "x86_mm512_fmadd_round_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F32x16,&::F32x16,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.fma.mask.vfmadd.ps.512")
+        },
+       "x86_mm512_mask_fmadd_round_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F32x16,&::F32x16,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.fma.mask.vfmadd.ps.512")
+        },
+       "x86_mm512_fmsub_round_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F32x16,&::F32x16,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.fma.mask.vfmadd.ps.512")
+        },
+       "x86_mm512_mask_fmsub_round_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F32x16,&::F32x16,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.fma.mask.vfmadd.ps.512")
+        },
+       "x86_mm512_fnmadd_round_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F32x16,&::F32x16,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.fma.mask.vfmadd.ps.512")
+        },
+       "x86_mm512_fnmsub_round_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F32x16,&::F32x16,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.fma.mask.vfmadd.ps.512")
+        },
+       "x86_mm512_fmadd_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F32x16,&::F32x16,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.fma.mask.vfmadd.ps.512")
+        },
+       "x86_mm512_mask_fmadd_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F32x16,&::F32x16,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.fma.mask.vfmadd.ps.512")
+        },
+       "x86_mm512_fmsub_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F32x16,&::F32x16,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.fma.mask.vfmadd.ps.512")
+        },
+       "x86_mm512_mask_fmsub_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F32x16,&::F32x16,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.fma.mask.vfmadd.ps.512")
+        },
+       "x86_mm512_fnmadd_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F32x16,&::F32x16,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.fma.mask.vfmadd.ps.512")
+        },
+       "x86_mm512_fnmsub_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F32x16,&::F32x16,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.fma.mask.vfmadd.ps.512")
+        },
+       "x86_mm512_fmadd_round_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F64x8,&::F64x8,&::F64x8,&::I8,&::I32]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.fma.mask.vfmadd.pd.512")
+        },
+       "x86_mm512_mask_fmadd_round_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F64x8,&::F64x8,&::F64x8,&::I8,&::I32]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.fma.mask.vfmadd.pd.512")
+        },
+       "x86_mm512_fmsub_round_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F64x8,&::F64x8,&::F64x8,&::I8,&::I32]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.fma.mask.vfmadd.pd.512")
+        },
+       "x86_mm512_mask_fmsub_round_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F64x8,&::F64x8,&::F64x8,&::I8,&::I32]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.fma.mask.vfmadd.pd.512")
+        },
+       "x86_mm512_fnmadd_round_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F64x8,&::F64x8,&::F64x8,&::I8,&::I32]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.fma.mask.vfmadd.pd.512")
+        },
+       "x86_mm512_fnmsub_round_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F64x8,&::F64x8,&::F64x8,&::I8,&::I32]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.fma.mask.vfmadd.pd.512")
+        },
+       "x86_mm512_fmadd_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F64x8,&::F64x8,&::F64x8,&::I8,&::I32]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.fma.mask.vfmadd.pd.512")
+        },
+       "x86_mm512_mask_fmadd_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F64x8,&::F64x8,&::F64x8,&::I8,&::I32]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.fma.mask.vfmadd.pd.512")
+        },
+       "x86_mm512_fmsub_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F64x8,&::F64x8,&::F64x8,&::I8,&::I32]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.fma.mask.vfmadd.pd.512")
+        },
+       "x86_mm512_mask_fmsub_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F64x8,&::F64x8,&::F64x8,&::I8,&::I32]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.fma.mask.vfmadd.pd.512")
+        },
+       "x86_mm512_fnmadd_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F64x8,&::F64x8,&::F64x8,&::I8,&::I32]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.fma.mask.vfmadd.pd.512")
+        },
+       "x86_mm512_fnmsub_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F64x8,&::F64x8,&::F64x8,&::I8,&::I32]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.fma.mask.vfmadd.pd.512")
+        },
+       "x86_mm512_mask_fnmadd_round_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F32x16,&::F32x16,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.fma.mask.vfnmadd.ps.512")
+        },
+       "x86_mm512_mask_fnmadd_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F32x16,&::F32x16,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.fma.mask.vfnmadd.ps.512")
+        },
+       "x86_mm512_mask_fnmadd_round_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F64x8,&::F64x8,&::F64x8,&::I8,&::I32]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.fma.mask.vfnmadd.pd.512")
+        },
+       "x86_mm512_mask_fnmadd_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F64x8,&::F64x8,&::F64x8,&::I8,&::I32]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.fma.mask.vfnmadd.pd.512")
+        },
+       "x86_mm512_mask_fnmsub_round_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F32x16,&::F32x16,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.fma.mask.vfnmsub.ps.512")
+        },
+       "x86_mm512_mask_fnmsub_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F32x16,&::F32x16,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.fma.mask.vfnmsub.ps.512")
+        },
+       "x86_mm512_mask_fnmsub_round_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F64x8,&::F64x8,&::F64x8,&::I8,&::I32]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.fma.mask.vfnmsub.pd.512")
+        },
+       "x86_mm512_mask_fnmsub_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F64x8,&::F64x8,&::F64x8,&::I8,&::I32]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.fma.mask.vfnmsub.pd.512")
+        },
+       "x86_mm_maddsub_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x4,&::F32x4,&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.x86.fma.vfmaddsub.ps")
+        },
+       "x86_mm_msubadd_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x4,&::F32x4,&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.x86.fma.vfmaddsub.ps")
+        },
+       "x86_mm_fmaddsub_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x4,&::F32x4,&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.x86.fma.vfmaddsub.ps")
+        },
+       "x86_mm_fmsubadd_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x4,&::F32x4,&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.x86.fma.vfmaddsub.ps")
+        },
+       "x86_mm_maddsub_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F64x2,&::F64x2,&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.x86.fma.vfmaddsub.pd")
+        },
+       "x86_mm_msubadd_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F64x2,&::F64x2,&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.x86.fma.vfmaddsub.pd")
+        },
+       "x86_mm_fmaddsub_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F64x2,&::F64x2,&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.x86.fma.vfmaddsub.pd")
+        },
+       "x86_mm_fmsubadd_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F64x2,&::F64x2,&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.x86.fma.vfmaddsub.pd")
+        },
+       "x86_mm256_maddsub_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x8,&::F32x8,&::F32x8]; &INPUTS },
+            output: &::F32x8,
+            definition: Named("llvm.x86.fma.vfmaddsub.ps.256")
+        },
+       "x86_mm256_msubadd_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x8,&::F32x8,&::F32x8]; &INPUTS },
+            output: &::F32x8,
+            definition: Named("llvm.x86.fma.vfmaddsub.ps.256")
+        },
+       "x86_mm256_fmaddsub_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x8,&::F32x8,&::F32x8]; &INPUTS },
+            output: &::F32x8,
+            definition: Named("llvm.x86.fma.vfmaddsub.ps.256")
+        },
+       "x86_mm256_fmsubadd_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x8,&::F32x8,&::F32x8]; &INPUTS },
+            output: &::F32x8,
+            definition: Named("llvm.x86.fma.vfmaddsub.ps.256")
+        },
+       "x86_mm256_maddsub_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F64x4,&::F64x4,&::F64x4]; &INPUTS },
+            output: &::F64x4,
+            definition: Named("llvm.x86.fma.vfmaddsub.pd.256")
+        },
+       "x86_mm256_msubadd_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F64x4,&::F64x4,&::F64x4]; &INPUTS },
+            output: &::F64x4,
+            definition: Named("llvm.x86.fma.vfmaddsub.pd.256")
+        },
+       "x86_mm256_fmaddsub_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F64x4,&::F64x4,&::F64x4]; &INPUTS },
+            output: &::F64x4,
+            definition: Named("llvm.x86.fma.vfmaddsub.pd.256")
+        },
+       "x86_mm256_fmsubadd_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F64x4,&::F64x4,&::F64x4]; &INPUTS },
+            output: &::F64x4,
+            definition: Named("llvm.x86.fma.vfmaddsub.pd.256")
+        },
+       "x86_mm512_fmaddsub_round_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F32x16,&::F32x16,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.fma.mask.vfmaddsub.ps.512")
+        },
+       "x86_mm512_mask_fmaddsub_round_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F32x16,&::F32x16,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.fma.mask.vfmaddsub.ps.512")
+        },
+       "x86_mm512_fmsubadd_round_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F32x16,&::F32x16,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.fma.mask.vfmaddsub.ps.512")
+        },
+       "x86_mm512_mask_fmsubadd_round_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F32x16,&::F32x16,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.fma.mask.vfmaddsub.ps.512")
+        },
+       "x86_mm512_fmaddsub_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F32x16,&::F32x16,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.fma.mask.vfmaddsub.ps.512")
+        },
+       "x86_mm512_mask_fmaddsub_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F32x16,&::F32x16,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.fma.mask.vfmaddsub.ps.512")
+        },
+       "x86_mm512_fmsubadd_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F32x16,&::F32x16,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.fma.mask.vfmaddsub.ps.512")
+        },
+       "x86_mm512_mask_fmsubadd_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F32x16,&::F32x16,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.fma.mask.vfmaddsub.ps.512")
+        },
+       "x86_mm512_fmaddsub_round_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F64x8,&::F64x8,&::F64x8,&::I8,&::I32]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.fma.mask.vfmaddsub.pd.512")
+        },
+       "x86_mm512_mask_fmaddsub_round_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F64x8,&::F64x8,&::F64x8,&::I8,&::I32]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.fma.mask.vfmaddsub.pd.512")
+        },
+       "x86_mm512_fmsubadd_round_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F64x8,&::F64x8,&::F64x8,&::I8,&::I32]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.fma.mask.vfmaddsub.pd.512")
+        },
+       "x86_mm512_mask_fmsubadd_round_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F64x8,&::F64x8,&::F64x8,&::I8,&::I32]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.fma.mask.vfmaddsub.pd.512")
+        },
+       "x86_mm512_fmaddsub_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F64x8,&::F64x8,&::F64x8,&::I8,&::I32]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.fma.mask.vfmaddsub.pd.512")
+        },
+       "x86_mm512_mask_fmaddsub_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F64x8,&::F64x8,&::F64x8,&::I8,&::I32]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.fma.mask.vfmaddsub.pd.512")
+        },
+       "x86_mm512_fmsubadd_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F64x8,&::F64x8,&::F64x8,&::I8,&::I32]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.fma.mask.vfmaddsub.pd.512")
+        },
+       "x86_mm512_mask_fmsubadd_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F64x8,&::F64x8,&::F64x8,&::I8,&::I32]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.fma.mask.vfmaddsub.pd.512")
+        },
+       "x86_mm_permute2_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F64x2,&::F64x2,&::F64x2,&::I8]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.x86.xop.vpermil2pd")
+        },
+       "x86_mm256_permute2_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F64x4,&::F64x4,&::F64x4,&::I8]; &INPUTS },
+            output: &::F64x4,
+            definition: Named("llvm.x86.xop.vpermil2pd.256")
+        },
+       "x86_mm_permute2_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F32x4,&::F32x4,&::F32x4,&::I8]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.x86.xop.vpermil2ps")
+        },
+       "x86_mm256_permute2_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F32x8,&::F32x8,&::F32x8,&::I8]; &INPUTS },
+            output: &::F32x8,
+            definition: Named("llvm.x86.xop.vpermil2ps.256")
+        },
+       "x86_mm_frcz_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x2]; &INPUTS },
+            output: &::F64x2,
+            definition: Named("llvm.x86.xop.vfrcz.pd")
+        },
+       "x86_mm_frcz_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x4]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.x86.xop.vfrcz.ps")
+        },
+       "x86_mm256_frcz_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F64x4]; &INPUTS },
+            output: &::F64x4,
+            definition: Named("llvm.x86.xop.vfrcz.pd.256")
+        },
+       "x86_mm256_frcz_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::F32x8]; &INPUTS },
+            output: &::F32x8,
+            definition: Named("llvm.x86.xop.vfrcz.ps.256")
+        },
+       "x86_mm_empty" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 0] = []; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.x86.mmx.emms")
+        },
+       "x86_writefsbase_u32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.x86.wrfsbase.32")
+        },
+       "x86_writegsbase_u32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.x86.wrgsbase.32")
+        },
+       "x86_writefsbase_u64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.x86.wrfsbase.64")
+        },
+       "x86_writegsbase_u64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.x86.wrgsbase.64")
+        },
+       "x86_cvtsh_ss" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.x86.vcvtph2ps.128")
+        },
+       "x86_mm_cvtph_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::F32x4,
+            definition: Named("llvm.x86.vcvtph2ps.128")
+        },
+       "x86_mm256_cvtph_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16x8]; &INPUTS },
+            output: &::F32x8,
+            definition: Named("llvm.x86.vcvtph2ps.256")
+        },
+       "x86_mm_cvtps_ph" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x4,&::I32]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.x86.vcvtps2ph.128")
+        },
+       "x86_mm256_cvtps_ph" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::F32x8,&::I32]; &INPUTS },
+            output: &::I16x8,
+            definition: Named("llvm.x86.vcvtps2ph.256")
+        },
+       "x86_mm512_cvt_roundph_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I16x16,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.avx512.mask.vcvtph2ps.512")
+        },
+       "x86_mm512_mask_cvt_roundph_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I16x16,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.avx512.mask.vcvtph2ps.512")
+        },
+       "x86_mm512_maskz_cvt_roundph_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I16x16,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.avx512.mask.vcvtph2ps.512")
+        },
+       "x86_mm512_cvtph_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I16x16,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.avx512.mask.vcvtph2ps.512")
+        },
+       "x86_mm512_mask_cvtph_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I16x16,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.avx512.mask.vcvtph2ps.512")
+        },
+       "x86_mm512_maskz_cvtph_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I16x16,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.avx512.mask.vcvtph2ps.512")
+        },
+       "x86_mm512_cvt_roundps_ph" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F32x16,&::I32,&::I16x16,&::I16]; &INPUTS },
+            output: &::I16x16,
+            definition: Named("llvm.x86.avx512.mask.vcvtps2ph.512")
+        },
+       "x86_mm512_cvtps_ph" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F32x16,&::I32,&::I16x16,&::I16]; &INPUTS },
+            output: &::I16x16,
+            definition: Named("llvm.x86.avx512.mask.vcvtps2ph.512")
+        },
+       "x86_mm512_mask_cvt_roundps_ph" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F32x16,&::I32,&::I16x16,&::I16]; &INPUTS },
+            output: &::I16x16,
+            definition: Named("llvm.x86.avx512.mask.vcvtps2ph.512")
+        },
+       "x86_mm512_mask_cvtps_ph" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F32x16,&::I32,&::I16x16,&::I16]; &INPUTS },
+            output: &::I16x16,
+            definition: Named("llvm.x86.avx512.mask.vcvtps2ph.512")
+        },
+       "x86_mm512_maskz_cvt_roundps_ph" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F32x16,&::I32,&::I16x16,&::I16]; &INPUTS },
+            output: &::I16x16,
+            definition: Named("llvm.x86.avx512.mask.vcvtps2ph.512")
+        },
+       "x86_mm512_maskz_cvtps_ph" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F32x16,&::I32,&::I16x16,&::I16]; &INPUTS },
+            output: &::I16x16,
+            definition: Named("llvm.x86.avx512.mask.vcvtps2ph.512")
+        },
+       "x86_mm512_kand" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16,&::I16]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.x86.avx512.kand.w")
+        },
+       "x86_mm512_kandn" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16,&::I16]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.x86.avx512.kandn.w")
+        },
+       "x86_mm512_knot" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I16]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.x86.avx512.knot.w")
+        },
+       "x86_mm512_kor" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16,&::I16]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.x86.avx512.kor.w")
+        },
+       "x86_mm512_kxor" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16,&::I16]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.x86.avx512.kxor.w")
+        },
+       "x86_mm512_kxnor" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16,&::I16]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.x86.avx512.kxnor.w")
+        },
+       "x86_mm512_kunpackb" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16,&::I16]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.x86.avx512.kunpck.bw")
+        },
+       "x86_mm512_kortestz" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16,&::I16]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.avx512.kortestz.w")
+        },
+       "x86_mm512_kortestc" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 2] = [&::I16,&::I16]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.avx512.kortestc.w")
+        },
+       "x86_mm512_cvtt_roundps_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F32x16,&::I32x16,&::I16,&::I32]; &INPUTS },
+            output: &::I32x16,
+            definition: Named("llvm.x86.avx512.mask.cvttps2dq.512")
+        },
+       "x86_mm512_mask_cvtt_roundps_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F32x16,&::I32x16,&::I16,&::I32]; &INPUTS },
+            output: &::I32x16,
+            definition: Named("llvm.x86.avx512.mask.cvttps2dq.512")
+        },
+       "x86_mm512_maskz_cvtt_roundps_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F32x16,&::I32x16,&::I16,&::I32]; &INPUTS },
+            output: &::I32x16,
+            definition: Named("llvm.x86.avx512.mask.cvttps2dq.512")
+        },
+       "x86_mm512_cvttps_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F32x16,&::I32x16,&::I16,&::I32]; &INPUTS },
+            output: &::I32x16,
+            definition: Named("llvm.x86.avx512.mask.cvttps2dq.512")
+        },
+       "x86_mm512_mask_cvttps_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F32x16,&::I32x16,&::I16,&::I32]; &INPUTS },
+            output: &::I32x16,
+            definition: Named("llvm.x86.avx512.mask.cvttps2dq.512")
+        },
+       "x86_mm512_maskz_cvttps_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F32x16,&::I32x16,&::I16,&::I32]; &INPUTS },
+            output: &::I32x16,
+            definition: Named("llvm.x86.avx512.mask.cvttps2dq.512")
+        },
+       "x86_mm512_cvtt_roundps_epu32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F32x16,&::I32x16,&::I16,&::I32]; &INPUTS },
+            output: &::I32x16,
+            definition: Named("llvm.x86.avx512.mask.cvttps2udq.512")
+        },
+       "x86_mm512_mask_cvtt_roundps_epu32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F32x16,&::I32x16,&::I16,&::I32]; &INPUTS },
+            output: &::I32x16,
+            definition: Named("llvm.x86.avx512.mask.cvttps2udq.512")
+        },
+       "x86_mm512_maskz_cvtt_roundps_epu32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F32x16,&::I32x16,&::I16,&::I32]; &INPUTS },
+            output: &::I32x16,
+            definition: Named("llvm.x86.avx512.mask.cvttps2udq.512")
+        },
+       "x86_mm512_cvttps_epu32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F32x16,&::I32x16,&::I16,&::I32]; &INPUTS },
+            output: &::I32x16,
+            definition: Named("llvm.x86.avx512.mask.cvttps2udq.512")
+        },
+       "x86_mm512_mask_cvttps_epu32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F32x16,&::I32x16,&::I16,&::I32]; &INPUTS },
+            output: &::I32x16,
+            definition: Named("llvm.x86.avx512.mask.cvttps2udq.512")
+        },
+       "x86_mm512_maskz_cvttps_epu32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F32x16,&::I32x16,&::I16,&::I32]; &INPUTS },
+            output: &::I32x16,
+            definition: Named("llvm.x86.avx512.mask.cvttps2udq.512")
+        },
+       "x86_mm512_cvtt_roundpd_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F64x8,&::I32x8,&::I8,&::I32]; &INPUTS },
+            output: &::I32x8,
+            definition: Named("llvm.x86.avx512.mask.cvttpd2dq.512")
+        },
+       "x86_mm512_mask_cvtt_roundpd_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F64x8,&::I32x8,&::I8,&::I32]; &INPUTS },
+            output: &::I32x8,
+            definition: Named("llvm.x86.avx512.mask.cvttpd2dq.512")
+        },
+       "x86_mm512_maskz_cvtt_roundpd_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F64x8,&::I32x8,&::I8,&::I32]; &INPUTS },
+            output: &::I32x8,
+            definition: Named("llvm.x86.avx512.mask.cvttpd2dq.512")
+        },
+       "x86_mm512_cvttpd_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F64x8,&::I32x8,&::I8,&::I32]; &INPUTS },
+            output: &::I32x8,
+            definition: Named("llvm.x86.avx512.mask.cvttpd2dq.512")
+        },
+       "x86_mm512_mask_cvttpd_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F64x8,&::I32x8,&::I8,&::I32]; &INPUTS },
+            output: &::I32x8,
+            definition: Named("llvm.x86.avx512.mask.cvttpd2dq.512")
+        },
+       "x86_mm512_maskz_cvttpd_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F64x8,&::I32x8,&::I8,&::I32]; &INPUTS },
+            output: &::I32x8,
+            definition: Named("llvm.x86.avx512.mask.cvttpd2dq.512")
+        },
+       "x86_mm512_cvtt_roundpd_epu32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F64x8,&::I32x8,&::I8,&::I32]; &INPUTS },
+            output: &::I32x8,
+            definition: Named("llvm.x86.avx512.mask.cvttpd2udq.512")
+        },
+       "x86_mm512_mask_cvtt_roundpd_epu32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F64x8,&::I32x8,&::I8,&::I32]; &INPUTS },
+            output: &::I32x8,
+            definition: Named("llvm.x86.avx512.mask.cvttpd2udq.512")
+        },
+       "x86_mm512_maskz_cvtt_roundpd_epu32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F64x8,&::I32x8,&::I8,&::I32]; &INPUTS },
+            output: &::I32x8,
+            definition: Named("llvm.x86.avx512.mask.cvttpd2udq.512")
+        },
+       "x86_mm512_cvttpd_epu32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F64x8,&::I32x8,&::I8,&::I32]; &INPUTS },
+            output: &::I32x8,
+            definition: Named("llvm.x86.avx512.mask.cvttpd2udq.512")
+        },
+       "x86_mm512_mask_cvttpd_epu32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F64x8,&::I32x8,&::I8,&::I32]; &INPUTS },
+            output: &::I32x8,
+            definition: Named("llvm.x86.avx512.mask.cvttpd2udq.512")
+        },
+       "x86_mm512_maskz_cvttpd_epu32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F64x8,&::I32x8,&::I8,&::I32]; &INPUTS },
+            output: &::I32x8,
+            definition: Named("llvm.x86.avx512.mask.cvttpd2udq.512")
+        },
+       "x86_mm512_roundscale_round_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F32x16,&::I32,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.avx512.mask.rndscale.ps.512")
+        },
+       "x86_mm512_mask_roundscale_round_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F32x16,&::I32,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.avx512.mask.rndscale.ps.512")
+        },
+       "x86_mm512_maskz_roundscale_round_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F32x16,&::I32,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.avx512.mask.rndscale.ps.512")
+        },
+       "x86_mm512_floor_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F32x16,&::I32,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.avx512.mask.rndscale.ps.512")
+        },
+       "x86_mm512_ceil_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F32x16,&::I32,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.avx512.mask.rndscale.ps.512")
+        },
+       "x86_mm512_mask_floor_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F32x16,&::I32,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.avx512.mask.rndscale.ps.512")
+        },
+       "x86_mm512_mask_ceil_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F32x16,&::I32,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.avx512.mask.rndscale.ps.512")
+        },
+       "x86_mm512_roundscale_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F32x16,&::I32,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.avx512.mask.rndscale.ps.512")
+        },
+       "x86_mm512_mask_roundscale_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F32x16,&::I32,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.avx512.mask.rndscale.ps.512")
+        },
+       "x86_mm512_maskz_roundscale_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F32x16,&::I32,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.avx512.mask.rndscale.ps.512")
+        },
+       "x86_mm512_roundscale_round_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F64x8,&::I32,&::F64x8,&::I8,&::I32]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.avx512.mask.rndscale.pd.512")
+        },
+       "x86_mm512_mask_roundscale_round_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F64x8,&::I32,&::F64x8,&::I8,&::I32]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.avx512.mask.rndscale.pd.512")
+        },
+       "x86_mm512_maskz_roundscale_round_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F64x8,&::I32,&::F64x8,&::I8,&::I32]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.avx512.mask.rndscale.pd.512")
+        },
+       "x86_mm512_floor_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F64x8,&::I32,&::F64x8,&::I8,&::I32]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.avx512.mask.rndscale.pd.512")
+        },
+       "x86_mm512_ceil_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F64x8,&::I32,&::F64x8,&::I8,&::I32]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.avx512.mask.rndscale.pd.512")
+        },
+       "x86_mm512_mask_floor_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F64x8,&::I32,&::F64x8,&::I8,&::I32]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.avx512.mask.rndscale.pd.512")
+        },
+       "x86_mm512_mask_ceil_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F64x8,&::I32,&::F64x8,&::I8,&::I32]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.avx512.mask.rndscale.pd.512")
+        },
+       "x86_mm512_roundscale_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F64x8,&::I32,&::F64x8,&::I8,&::I32]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.avx512.mask.rndscale.pd.512")
+        },
+       "x86_mm512_mask_roundscale_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F64x8,&::I32,&::F64x8,&::I8,&::I32]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.avx512.mask.rndscale.pd.512")
+        },
+       "x86_mm512_maskz_roundscale_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F64x8,&::I32,&::F64x8,&::I8,&::I32]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.avx512.mask.rndscale.pd.512")
+        },
+       "x86_mm512_cvt_roundps_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F32x16,&::I32x16,&::I16,&::I32]; &INPUTS },
+            output: &::I32x16,
+            definition: Named("llvm.x86.avx512.mask.cvtps2dq.512")
+        },
+       "x86_mm512_mask_cvt_roundps_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F32x16,&::I32x16,&::I16,&::I32]; &INPUTS },
+            output: &::I32x16,
+            definition: Named("llvm.x86.avx512.mask.cvtps2dq.512")
+        },
+       "x86_mm512_maskz_cvt_roundps_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F32x16,&::I32x16,&::I16,&::I32]; &INPUTS },
+            output: &::I32x16,
+            definition: Named("llvm.x86.avx512.mask.cvtps2dq.512")
+        },
+       "x86_mm512_cvtps_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F32x16,&::I32x16,&::I16,&::I32]; &INPUTS },
+            output: &::I32x16,
+            definition: Named("llvm.x86.avx512.mask.cvtps2dq.512")
+        },
+       "x86_mm512_mask_cvtps_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F32x16,&::I32x16,&::I16,&::I32]; &INPUTS },
+            output: &::I32x16,
+            definition: Named("llvm.x86.avx512.mask.cvtps2dq.512")
+        },
+       "x86_mm512_maskz_cvtps_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F32x16,&::I32x16,&::I16,&::I32]; &INPUTS },
+            output: &::I32x16,
+            definition: Named("llvm.x86.avx512.mask.cvtps2dq.512")
+        },
+       "x86_mm512_cvt_roundpd_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F64x8,&::I32x8,&::I8,&::I32]; &INPUTS },
+            output: &::I32x8,
+            definition: Named("llvm.x86.avx512.mask.cvtpd2dq.512")
+        },
+       "x86_mm512_mask_cvt_roundpd_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F64x8,&::I32x8,&::I8,&::I32]; &INPUTS },
+            output: &::I32x8,
+            definition: Named("llvm.x86.avx512.mask.cvtpd2dq.512")
+        },
+       "x86_mm512_maskz_cvt_roundpd_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F64x8,&::I32x8,&::I8,&::I32]; &INPUTS },
+            output: &::I32x8,
+            definition: Named("llvm.x86.avx512.mask.cvtpd2dq.512")
+        },
+       "x86_mm512_cvtpd_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F64x8,&::I32x8,&::I8,&::I32]; &INPUTS },
+            output: &::I32x8,
+            definition: Named("llvm.x86.avx512.mask.cvtpd2dq.512")
+        },
+       "x86_mm512_mask_cvtpd_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F64x8,&::I32x8,&::I8,&::I32]; &INPUTS },
+            output: &::I32x8,
+            definition: Named("llvm.x86.avx512.mask.cvtpd2dq.512")
+        },
+       "x86_mm512_maskz_cvtpd_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F64x8,&::I32x8,&::I8,&::I32]; &INPUTS },
+            output: &::I32x8,
+            definition: Named("llvm.x86.avx512.mask.cvtpd2dq.512")
+        },
+       "x86_mm512_cvt_roundps_epu32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F32x16,&::I32x16,&::I16,&::I32]; &INPUTS },
+            output: &::I32x16,
+            definition: Named("llvm.x86.avx512.mask.cvtps2udq.512")
+        },
+       "x86_mm512_mask_cvt_roundps_epu32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F32x16,&::I32x16,&::I16,&::I32]; &INPUTS },
+            output: &::I32x16,
+            definition: Named("llvm.x86.avx512.mask.cvtps2udq.512")
+        },
+       "x86_mm512_maskz_cvt_roundps_epu32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F32x16,&::I32x16,&::I16,&::I32]; &INPUTS },
+            output: &::I32x16,
+            definition: Named("llvm.x86.avx512.mask.cvtps2udq.512")
+        },
+       "x86_mm512_cvtps_epu32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F32x16,&::I32x16,&::I16,&::I32]; &INPUTS },
+            output: &::I32x16,
+            definition: Named("llvm.x86.avx512.mask.cvtps2udq.512")
+        },
+       "x86_mm512_mask_cvtps_epu32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F32x16,&::I32x16,&::I16,&::I32]; &INPUTS },
+            output: &::I32x16,
+            definition: Named("llvm.x86.avx512.mask.cvtps2udq.512")
+        },
+       "x86_mm512_maskz_cvtps_epu32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F32x16,&::I32x16,&::I16,&::I32]; &INPUTS },
+            output: &::I32x16,
+            definition: Named("llvm.x86.avx512.mask.cvtps2udq.512")
+        },
+       "x86_mm512_cvt_roundpd_epu32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F64x8,&::I32x8,&::I8,&::I32]; &INPUTS },
+            output: &::I32x8,
+            definition: Named("llvm.x86.avx512.mask.cvtpd2udq.512")
+        },
+       "x86_mm512_mask_cvt_roundpd_epu32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F64x8,&::I32x8,&::I8,&::I32]; &INPUTS },
+            output: &::I32x8,
+            definition: Named("llvm.x86.avx512.mask.cvtpd2udq.512")
+        },
+       "x86_mm512_maskz_cvt_roundpd_epu32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F64x8,&::I32x8,&::I8,&::I32]; &INPUTS },
+            output: &::I32x8,
+            definition: Named("llvm.x86.avx512.mask.cvtpd2udq.512")
+        },
+       "x86_mm512_cvtpd_epu32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F64x8,&::I32x8,&::I8,&::I32]; &INPUTS },
+            output: &::I32x8,
+            definition: Named("llvm.x86.avx512.mask.cvtpd2udq.512")
+        },
+       "x86_mm512_mask_cvtpd_epu32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F64x8,&::I32x8,&::I8,&::I32]; &INPUTS },
+            output: &::I32x8,
+            definition: Named("llvm.x86.avx512.mask.cvtpd2udq.512")
+        },
+       "x86_mm512_maskz_cvtpd_epu32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F64x8,&::I32x8,&::I8,&::I32]; &INPUTS },
+            output: &::I32x8,
+            definition: Named("llvm.x86.avx512.mask.cvtpd2udq.512")
+        },
+       "x86_mm512_cvt_roundepi32_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I32x16,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.avx512.mask.cvtdq2ps.512")
+        },
+       "x86_mm512_mask_cvt_roundepi32_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I32x16,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.avx512.mask.cvtdq2ps.512")
+        },
+       "x86_mm512_maskz_cvt_roundepi32_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I32x16,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.avx512.mask.cvtdq2ps.512")
+        },
+       "x86_mm512_cvtepi32_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I32x16,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.avx512.mask.cvtdq2ps.512")
+        },
+       "x86_mm512_mask_cvtepi32_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I32x16,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.avx512.mask.cvtdq2ps.512")
+        },
+       "x86_mm512_maskz_cvtepi32_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I32x16,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.avx512.mask.cvtdq2ps.512")
+        },
+       "x86_mm512_cvtepi32_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I32x8,&::F64x8,&::I8]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.avx512.mask.cvtdq2pd.512")
+        },
+       "x86_mm512_mask_cvtepi32_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I32x8,&::F64x8,&::I8]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.avx512.mask.cvtdq2pd.512")
+        },
+       "x86_mm512_maskz_cvtepi32_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I32x8,&::F64x8,&::I8]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.avx512.mask.cvtdq2pd.512")
+        },
+       "x86_mm512_cvt_roundepu32_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I32x16,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.avx512.mask.cvtudq2ps.512")
+        },
+       "x86_mm512_mask_cvt_roundepu32_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I32x16,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.avx512.mask.cvtudq2ps.512")
+        },
+       "x86_mm512_maskz_cvt_roundepu32_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I32x16,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.avx512.mask.cvtudq2ps.512")
+        },
+       "x86_mm512_cvtepu32_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I32x16,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.avx512.mask.cvtudq2ps.512")
+        },
+       "x86_mm512_mask_cvtepu32_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I32x16,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.avx512.mask.cvtudq2ps.512")
+        },
+       "x86_mm512_maskz_cvtepu32_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I32x16,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.avx512.mask.cvtudq2ps.512")
+        },
+       "x86_mm512_cvtepu32_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I32x8,&::F64x8,&::I8]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.avx512.mask.cvtudq2pd.512")
+        },
+       "x86_mm512_mask_cvtepu32_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I32x8,&::F64x8,&::I8]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.avx512.mask.cvtudq2pd.512")
+        },
+       "x86_mm512_maskz_cvtepu32_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I32x8,&::F64x8,&::I8]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.avx512.mask.cvtudq2pd.512")
+        },
+       "x86_mm512_cvt_roundpd_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F64x8,&::F32x8,&::I8,&::I32]; &INPUTS },
+            output: &::F32x8,
+            definition: Named("llvm.x86.avx512.mask.cvtpd2ps.512")
+        },
+       "x86_mm512_mask_cvt_roundpd_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F64x8,&::F32x8,&::I8,&::I32]; &INPUTS },
+            output: &::F32x8,
+            definition: Named("llvm.x86.avx512.mask.cvtpd2ps.512")
+        },
+       "x86_mm512_maskz_cvt_roundpd_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F64x8,&::F32x8,&::I8,&::I32]; &INPUTS },
+            output: &::F32x8,
+            definition: Named("llvm.x86.avx512.mask.cvtpd2ps.512")
+        },
+       "x86_mm512_cvtpd_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F64x8,&::F32x8,&::I8,&::I32]; &INPUTS },
+            output: &::F32x8,
+            definition: Named("llvm.x86.avx512.mask.cvtpd2ps.512")
+        },
+       "x86_mm512_mask_cvtpd_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F64x8,&::F32x8,&::I8,&::I32]; &INPUTS },
+            output: &::F32x8,
+            definition: Named("llvm.x86.avx512.mask.cvtpd2ps.512")
+        },
+       "x86_mm512_maskz_cvtpd_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F64x8,&::F32x8,&::I8,&::I32]; &INPUTS },
+            output: &::F32x8,
+            definition: Named("llvm.x86.avx512.mask.cvtpd2ps.512")
+        },
+       "x86_mm512_broadcastd_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I32x16,
+            definition: Named("llvm.x86.avx512.pbroadcastd.512")
+        },
+       "x86_mm512_mask_broadcastd_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I32x16,
+            definition: Named("llvm.x86.avx512.pbroadcastd.512")
+        },
+       "x86_mm512_maskz_broadcastd_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I32x4]; &INPUTS },
+            output: &::I32x16,
+            definition: Named("llvm.x86.avx512.pbroadcastd.512")
+        },
+       "x86_mm512_broadcastq_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I64x8,
+            definition: Named("llvm.x86.avx512.pbroadcastq.512")
+        },
+       "x86_mm512_mask_broadcastq_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I64x8,
+            definition: Named("llvm.x86.avx512.pbroadcastq.512")
+        },
+       "x86_mm512_maskz_broadcastq_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [&::I64x2]; &INPUTS },
+            output: &::I64x8,
+            definition: Named("llvm.x86.avx512.pbroadcastq.512")
+        },
+       "x86_mm512_max_round_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F32x16,&::F32x16,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.avx512.mask.max.ps.512")
+        },
+       "x86_mm512_mask_max_round_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F32x16,&::F32x16,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.avx512.mask.max.ps.512")
+        },
+       "x86_mm512_maskz_max_round_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F32x16,&::F32x16,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.avx512.mask.max.ps.512")
+        },
+       "x86_mm512_max_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F32x16,&::F32x16,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.avx512.mask.max.ps.512")
+        },
+       "x86_mm512_mask_max_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F32x16,&::F32x16,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.avx512.mask.max.ps.512")
+        },
+       "x86_mm512_maskz_max_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F32x16,&::F32x16,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.avx512.mask.max.ps.512")
+        },
+       "x86_mm512_max_round_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F64x8,&::F64x8,&::F64x8,&::I8,&::I32]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.avx512.mask.max.pd.512")
+        },
+       "x86_mm512_mask_max_round_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F64x8,&::F64x8,&::F64x8,&::I8,&::I32]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.avx512.mask.max.pd.512")
+        },
+       "x86_mm512_maskz_max_round_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F64x8,&::F64x8,&::F64x8,&::I8,&::I32]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.avx512.mask.max.pd.512")
+        },
+       "x86_mm512_max_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F64x8,&::F64x8,&::F64x8,&::I8,&::I32]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.avx512.mask.max.pd.512")
+        },
+       "x86_mm512_mask_max_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F64x8,&::F64x8,&::F64x8,&::I8,&::I32]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.avx512.mask.max.pd.512")
+        },
+       "x86_mm512_maskz_max_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F64x8,&::F64x8,&::F64x8,&::I8,&::I32]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.avx512.mask.max.pd.512")
+        },
+       "x86_mm512_min_round_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F32x16,&::F32x16,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.avx512.mask.min.ps.512")
+        },
+       "x86_mm512_mask_min_round_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F32x16,&::F32x16,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.avx512.mask.min.ps.512")
+        },
+       "x86_mm512_maskz_min_round_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F32x16,&::F32x16,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.avx512.mask.min.ps.512")
+        },
+       "x86_mm512_min_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F32x16,&::F32x16,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.avx512.mask.min.ps.512")
+        },
+       "x86_mm512_mask_min_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F32x16,&::F32x16,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.avx512.mask.min.ps.512")
+        },
+       "x86_mm512_maskz_min_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F32x16,&::F32x16,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.avx512.mask.min.ps.512")
+        },
+       "x86_mm512_min_round_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F64x8,&::F64x8,&::F64x8,&::I8,&::I32]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.avx512.mask.min.pd.512")
+        },
+       "x86_mm512_mask_min_round_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F64x8,&::F64x8,&::F64x8,&::I8,&::I32]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.avx512.mask.min.pd.512")
+        },
+       "x86_mm512_maskz_min_round_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F64x8,&::F64x8,&::F64x8,&::I8,&::I32]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.avx512.mask.min.pd.512")
+        },
+       "x86_mm512_min_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F64x8,&::F64x8,&::F64x8,&::I8,&::I32]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.avx512.mask.min.pd.512")
+        },
+       "x86_mm512_mask_min_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F64x8,&::F64x8,&::F64x8,&::I8,&::I32]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.avx512.mask.min.pd.512")
+        },
+       "x86_mm512_maskz_min_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F64x8,&::F64x8,&::F64x8,&::I8,&::I32]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.avx512.mask.min.pd.512")
+        },
+       "x86_mm512_sqrt_round_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F64x8,&::F64x8,&::I8,&::I32]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.avx512.sqrt.pd.512")
+        },
+       "x86_mm512_mask_sqrt_round_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F64x8,&::F64x8,&::I8,&::I32]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.avx512.sqrt.pd.512")
+        },
+       "x86_mm512_maskz_sqrt_round_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F64x8,&::F64x8,&::I8,&::I32]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.avx512.sqrt.pd.512")
+        },
+       "x86_mm512_sqrt_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F64x8,&::F64x8,&::I8,&::I32]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.avx512.sqrt.pd.512")
+        },
+       "x86_mm512_mask_sqrt_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F64x8,&::F64x8,&::I8,&::I32]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.avx512.sqrt.pd.512")
+        },
+       "x86_mm512_maskz_sqrt_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F64x8,&::F64x8,&::I8,&::I32]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.avx512.sqrt.pd.512")
+        },
+       "x86_mm512_sqrt_round_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F32x16,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.avx512.sqrt.ps.512")
+        },
+       "x86_mm512_mask_sqrt_round_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F32x16,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.avx512.sqrt.ps.512")
+        },
+       "x86_mm512_maskz_sqrt_round_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F32x16,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.avx512.sqrt.ps.512")
+        },
+       "x86_mm512_sqrt_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F32x16,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.avx512.sqrt.ps.512")
+        },
+       "x86_mm512_mask_sqrt_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F32x16,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.avx512.sqrt.ps.512")
+        },
+       "x86_mm512_maskz_sqrt_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F32x16,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.avx512.sqrt.ps.512")
+        },
+       "x86_mm512_rsqrt14_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F64x8,&::F64x8,&::I8]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.avx512.rsqrt14.pd.512")
+        },
+       "x86_mm512_mask_rsqrt14_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F64x8,&::F64x8,&::I8]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.avx512.rsqrt14.pd.512")
+        },
+       "x86_mm512_maskz_rsqrt14_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F64x8,&::F64x8,&::I8]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.avx512.rsqrt14.pd.512")
+        },
+       "x86_mm512_rsqrt14_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x16,&::F32x16,&::I16]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.avx512.rsqrt14.ps.512")
+        },
+       "x86_mm512_mask_rsqrt14_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x16,&::F32x16,&::I16]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.avx512.rsqrt14.ps.512")
+        },
+       "x86_mm512_maskz_rsqrt14_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x16,&::F32x16,&::I16]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.avx512.rsqrt14.ps.512")
+        },
+       "x86_mm512_rcp14_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F64x8,&::F64x8,&::I8]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.avx512.rcp14.pd.512")
+        },
+       "x86_mm512_mask_rcp14_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F64x8,&::F64x8,&::I8]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.avx512.rcp14.pd.512")
+        },
+       "x86_mm512_maskz_rcp14_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F64x8,&::F64x8,&::I8]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.avx512.rcp14.pd.512")
+        },
+       "x86_mm512_rcp14_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x16,&::F32x16,&::I16]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.avx512.rcp14.ps.512")
+        },
+       "x86_mm512_mask_rcp14_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x16,&::F32x16,&::I16]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.avx512.rcp14.ps.512")
+        },
+       "x86_mm512_maskz_rcp14_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x16,&::F32x16,&::I16]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.avx512.rcp14.ps.512")
+        },
+       "x86_mm512_rcp28_round_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F32x16,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.avx512.rcp28.ps")
+        },
+       "x86_mm512_mask_rcp28_round_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F32x16,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.avx512.rcp28.ps")
+        },
+       "x86_mm512_maskz_rcp28_round_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F32x16,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.avx512.rcp28.ps")
+        },
+       "x86_mm512_rcp28_round_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F64x8,&::F64x8,&::I8,&::I32]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.avx512.rcp28.pd")
+        },
+       "x86_mm512_mask_rcp28_round_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F64x8,&::F64x8,&::I8,&::I32]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.avx512.rcp28.pd")
+        },
+       "x86_mm512_maskz_rcp28_round_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F64x8,&::F64x8,&::I8,&::I32]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.avx512.rcp28.pd")
+        },
+       "x86_mm512_rsqrt28_round_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F32x16,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.avx512.rsqrt28.ps")
+        },
+       "x86_mm512_mask_rsqrt28_round_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F32x16,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.avx512.rsqrt28.ps")
+        },
+       "x86_mm512_maskz_rsqrt28_round_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F32x16,&::F32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.avx512.rsqrt28.ps")
+        },
+       "x86_mm512_rsqrt28_round_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F64x8,&::F64x8,&::I8,&::I32]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.avx512.rsqrt28.pd")
+        },
+       "x86_mm512_mask_rsqrt28_round_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F64x8,&::F64x8,&::I8,&::I32]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.avx512.rsqrt28.pd")
+        },
+       "x86_mm512_maskz_rsqrt28_round_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::F64x8,&::F64x8,&::I8,&::I32]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.avx512.rsqrt28.pd")
+        },
+       "x86_mm512_i32gather_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F64x8,{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::I32x8,&::I8,&::I32]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.avx512.gather.dpd.512")
+        },
+       "x86_mm512_mask_i32gather_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F64x8,{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::I32x8,&::I8,&::I32]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.avx512.gather.dpd.512")
+        },
+       "x86_mm512_i32gather_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F32x16,{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::I32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.avx512.gather.dps.512")
+        },
+       "x86_mm512_mask_i32gather_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F32x16,{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::I32x16,&::I16,&::I32]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.avx512.gather.dps.512")
+        },
+       "x86_mm512_i64gather_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F64x8,{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::I64x8,&::I8,&::I32]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.avx512.gather.qpd.512")
+        },
+       "x86_mm512_mask_i64gather_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F64x8,{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::I64x8,&::I8,&::I32]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.avx512.gather.qpd.512")
+        },
+       "x86_mm512_i64gather_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F32x8,{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::I64x8,&::I8,&::I32]; &INPUTS },
+            output: &::F32x8,
+            definition: Named("llvm.x86.avx512.gather.qps.512")
+        },
+       "x86_mm512_mask_i64gather_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F32x8,{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::I64x8,&::I8,&::I32]; &INPUTS },
+            output: &::F32x8,
+            definition: Named("llvm.x86.avx512.gather.qps.512")
+        },
+       "x86_mm512_i32gather_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::I64x8,{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::I32x8,&::I8,&::I32]; &INPUTS },
+            output: &::I64x8,
+            definition: Named("llvm.x86.avx512.gather.dpq.512")
+        },
+       "x86_mm512_mask_i32gather_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::I64x8,{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::I32x8,&::I8,&::I32]; &INPUTS },
+            output: &::I64x8,
+            definition: Named("llvm.x86.avx512.gather.dpq.512")
+        },
+       "x86_mm512_i32gather_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::I32x16,{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::I32x16,&::I16,&::I32]; &INPUTS },
+            output: &::I32x16,
+            definition: Named("llvm.x86.avx512.gather.dpi.512")
+        },
+       "x86_mm512_mask_i32gather_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::I32x16,{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::I32x16,&::I16,&::I32]; &INPUTS },
+            output: &::I32x16,
+            definition: Named("llvm.x86.avx512.gather.dpi.512")
+        },
+       "x86_mm512_i64gather_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::I64x8,{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::I64x8,&::I8,&::I32]; &INPUTS },
+            output: &::I64x8,
+            definition: Named("llvm.x86.avx512.gather.qpq.512")
+        },
+       "x86_mm512_mask_i64gather_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::I64x8,{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::I64x8,&::I8,&::I32]; &INPUTS },
+            output: &::I64x8,
+            definition: Named("llvm.x86.avx512.gather.qpq.512")
+        },
+       "x86_mm512_i64gather_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::I32x8,{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::I64x8,&::I8,&::I32]; &INPUTS },
+            output: &::I32x8,
+            definition: Named("llvm.x86.avx512.gather.qpi.512")
+        },
+       "x86_mm512_mask_i64gather_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::I32x8,{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::I64x8,&::I8,&::I32]; &INPUTS },
+            output: &::I32x8,
+            definition: Named("llvm.x86.avx512.gather.qpi.512")
+        },
+       "x86_mm512_i32scatter_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::I8,&::I32x8,&::F64x8,&::I32]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.x86.avx512.scatter.dpd.512")
+        },
+       "x86_mm512_mask_i32scatter_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::I8,&::I32x8,&::F64x8,&::I32]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.x86.avx512.scatter.dpd.512")
+        },
+       "x86_mm512_i32scatter_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::I16,&::I32x16,&::F32x16,&::I32]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.x86.avx512.scatter.dps.512")
+        },
+       "x86_mm512_mask_i32scatter_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::I16,&::I32x16,&::F32x16,&::I32]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.x86.avx512.scatter.dps.512")
+        },
+       "x86_mm512_i64scatter_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::I8,&::I64x8,&::F64x8,&::I32]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.x86.avx512.scatter.qpd.512")
+        },
+       "x86_mm512_mask_i64scatter_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::I8,&::I64x8,&::F64x8,&::I32]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.x86.avx512.scatter.qpd.512")
+        },
+       "x86_mm512_i64scatter_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::I8,&::I64x8,&::F32x8,&::I32]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.x86.avx512.scatter.qps.512")
+        },
+       "x86_mm512_mask_i64scatter_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::I8,&::I64x8,&::F32x8,&::I32]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.x86.avx512.scatter.qps.512")
+        },
+       "x86_mm512_i32scatter_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::I8,&::I32x8,&::I64x8,&::I32]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.x86.avx512.scatter.dpq.512")
+        },
+       "x86_mm512_mask_i32scatter_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::I8,&::I32x8,&::I64x8,&::I32]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.x86.avx512.scatter.dpq.512")
+        },
+       "x86_mm512_i32scatter_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::I16,&::I32x16,&::I32x16,&::I32]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.x86.avx512.scatter.dpi.512")
+        },
+       "x86_mm512_mask_i32scatter_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::I16,&::I32x16,&::I32x16,&::I32]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.x86.avx512.scatter.dpi.512")
+        },
+       "x86_mm512_i64scatter_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::I8,&::I64x8,&::I64x8,&::I32]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.x86.avx512.scatter.qpq.512")
+        },
+       "x86_mm512_mask_i64scatter_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::I8,&::I64x8,&::I64x8,&::I32]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.x86.avx512.scatter.qpq.512")
+        },
+       "x86_mm512_i64scatter_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::I8,&::I64x8,&::I32x8,&::I32]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.x86.avx512.scatter.qpi.512")
+        },
+       "x86_mm512_mask_i64scatter_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::I8,&::I64x8,&::I32x8,&::I32]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.x86.avx512.scatter.qpi.512")
+        },
+       "x86_mm512_mask_prefetch_i32gather_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::I8,&::I32x8,{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::I32,&::I32]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.x86.avx512.gatherpf.dpd.512")
+        },
+       "x86_mm512_mask_prefetch_i32gather_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::I16,&::I32x16,{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::I32,&::I32]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.x86.avx512.gatherpf.dps.512")
+        },
+       "x86_mm512_mask_prefetch_i64gather_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::I8,&::I64x8,{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::I32,&::I32]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.x86.avx512.gatherpf.qpd.512")
+        },
+       "x86_mm512_mask_prefetch_i64gather_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::I8,&::I64x8,{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::I32,&::I32]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.x86.avx512.gatherpf.qps.512")
+        },
+       "x86_mm512_prefetch_i32scatter_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::I8,&::I32x8,{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::I32,&::I32]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.x86.avx512.scatterpf.dpd.512")
+        },
+       "x86_mm512_mask_prefetch_i32scatter_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::I8,&::I32x8,{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::I32,&::I32]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.x86.avx512.scatterpf.dpd.512")
+        },
+       "x86_mm512_prefetch_i32scatter_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::I16,&::I32x16,{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::I32,&::I32]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.x86.avx512.scatterpf.dps.512")
+        },
+       "x86_mm512_mask_prefetch_i32scatter_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::I16,&::I32x16,{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::I32,&::I32]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.x86.avx512.scatterpf.dps.512")
+        },
+       "x86_mm512_prefetch_i64scatter_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::I8,&::I64x8,{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::I32,&::I32]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.x86.avx512.scatterpf.qpd.512")
+        },
+       "x86_mm512_mask_prefetch_i64scatter_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::I8,&::I64x8,{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::I32,&::I32]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.x86.avx512.scatterpf.qpd.512")
+        },
+       "x86_mm512_prefetch_i64scatter_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::I8,&::I64x8,{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::I32,&::I32]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.x86.avx512.scatterpf.qps.512")
+        },
+       "x86_mm512_mask_prefetch_i64scatter_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::I8,&::I64x8,{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR },&::I32,&::I32]; &INPUTS },
+            output: &::VOID,
+            definition: Named("llvm.x86.avx512.scatterpf.qps.512")
+        },
+       "x86_mm512_conflict_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I32x16,&::I32x16,&::I16]; &INPUTS },
+            output: &::I32x16,
+            definition: Named("llvm.x86.avx512.mask.conflict.d.512")
+        },
+       "x86_mm512_mask_conflict_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I32x16,&::I32x16,&::I16]; &INPUTS },
+            output: &::I32x16,
+            definition: Named("llvm.x86.avx512.mask.conflict.d.512")
+        },
+       "x86_mm512_maskz_conflict_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I32x16,&::I32x16,&::I16]; &INPUTS },
+            output: &::I32x16,
+            definition: Named("llvm.x86.avx512.mask.conflict.d.512")
+        },
+       "x86_mm512_conflict_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I64x8,&::I64x8,&::I8]; &INPUTS },
+            output: &::I64x8,
+            definition: Named("llvm.x86.avx512.mask.conflict.q.512")
+        },
+       "x86_mm512_mask_conflict_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I64x8,&::I64x8,&::I8]; &INPUTS },
+            output: &::I64x8,
+            definition: Named("llvm.x86.avx512.mask.conflict.q.512")
+        },
+       "x86_mm512_maskz_conflict_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I64x8,&::I64x8,&::I8]; &INPUTS },
+            output: &::I64x8,
+            definition: Named("llvm.x86.avx512.mask.conflict.q.512")
+        },
+       "x86_mm512_lzcnt_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I32x16,&::I32x16,&::I16]; &INPUTS },
+            output: &::I32x16,
+            definition: Named("llvm.x86.avx512.mask.lzcnt.d.512")
+        },
+       "x86_mm512_mask_lzcnt_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I32x16,&::I32x16,&::I16]; &INPUTS },
+            output: &::I32x16,
+            definition: Named("llvm.x86.avx512.mask.lzcnt.d.512")
+        },
+       "x86_mm512_maskz_lzcnt_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I32x16,&::I32x16,&::I16]; &INPUTS },
+            output: &::I32x16,
+            definition: Named("llvm.x86.avx512.mask.lzcnt.d.512")
+        },
+       "x86_mm512_lzcnt_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I64x8,&::I64x8,&::I8]; &INPUTS },
+            output: &::I64x8,
+            definition: Named("llvm.x86.avx512.mask.lzcnt.q.512")
+        },
+       "x86_mm512_mask_lzcnt_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I64x8,&::I64x8,&::I8]; &INPUTS },
+            output: &::I64x8,
+            definition: Named("llvm.x86.avx512.mask.lzcnt.q.512")
+        },
+       "x86_mm512_maskz_lzcnt_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I64x8,&::I64x8,&::I8]; &INPUTS },
+            output: &::I64x8,
+            definition: Named("llvm.x86.avx512.mask.lzcnt.q.512")
+        },
+       "x86_mm512_mask_blend_ps" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F32x16,&::F32x16,&::I16]; &INPUTS },
+            output: &::F32x16,
+            definition: Named("llvm.x86.avx512.mask.blend.ps.512")
+        },
+       "x86_mm512_mask_blend_pd" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::F64x8,&::F64x8,&::I8]; &INPUTS },
+            output: &::F64x8,
+            definition: Named("llvm.x86.avx512.mask.blend.pd.512")
+        },
+       "x86_mm512_mask_blend_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I32x16,&::I32x16,&::I16]; &INPUTS },
+            output: &::I32x16,
+            definition: Named("llvm.x86.avx512.mask.blend.d.512")
+        },
+       "x86_mm512_mask_blend_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I64x8,&::I64x8,&::I8]; &INPUTS },
+            output: &::I64x8,
+            definition: Named("llvm.x86.avx512.mask.blend.q.512")
+        },
+       "x86_mm512_alignr_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::I64x8,&::I64x8,&::I8,&::I64x8,&::I8]; &INPUTS },
+            output: &::I64x8,
+            definition: Named("llvm.x86.avx512.mask.valign.q.512")
+        },
+       "x86_mm512_mask_alignr_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::I64x8,&::I64x8,&::I8,&::I64x8,&::I8]; &INPUTS },
+            output: &::I64x8,
+            definition: Named("llvm.x86.avx512.mask.valign.q.512")
+        },
+       "x86_mm512_maskz_alignr_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::I64x8,&::I64x8,&::I8,&::I64x8,&::I8]; &INPUTS },
+            output: &::I64x8,
+            definition: Named("llvm.x86.avx512.mask.valign.q.512")
+        },
+       "x86_mm512_alignr_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::I32x16,&::I32x16,&::I8,&::I32x16,&::I16]; &INPUTS },
+            output: &::I32x16,
+            definition: Named("llvm.x86.avx512.mask.valign.d.512")
+        },
+       "x86_mm512_mask_alignr_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::I32x16,&::I32x16,&::I8,&::I32x16,&::I16]; &INPUTS },
+            output: &::I32x16,
+            definition: Named("llvm.x86.avx512.mask.valign.d.512")
+        },
+       "x86_mm512_maskz_alignr_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::I32x16,&::I32x16,&::I8,&::I32x16,&::I16]; &INPUTS },
+            output: &::I32x16,
+            definition: Named("llvm.x86.avx512.mask.valign.d.512")
+        },
+       "x86_mm512_cmpeq_epi8_mask" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I8x64,&::I8x64,&::I64]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.x86.avx512.mask.pcmpeq.b.512")
+        },
+       "x86_mm512_mask_cmpeq_epi8_mask" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I8x64,&::I8x64,&::I64]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.x86.avx512.mask.pcmpeq.b.512")
+        },
+       "x86_mm512_cmpeq_epi16_mask" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I16x32,&::I16x32,&::I32]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.avx512.mask.pcmpeq.w.512")
+        },
+       "x86_mm512_mask_cmpeq_epi16_mask" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I16x32,&::I16x32,&::I32]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.avx512.mask.pcmpeq.w.512")
+        },
+       "x86_mm512_cmpeq_epi32_mask" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I32x16,&::I32x16,&::I16]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.x86.avx512.mask.pcmpeq.d.512")
+        },
+       "x86_mm512_mask_cmpeq_epi32_mask" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I32x16,&::I32x16,&::I16]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.x86.avx512.mask.pcmpeq.d.512")
+        },
+       "x86_mm512_mask_cmpeq_epi64_mask" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I64x8,&::I64x8,&::I8]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.x86.avx512.mask.pcmpeq.q.512")
+        },
+       "x86_mm512_cmpeq_epi64_mask" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I64x8,&::I64x8,&::I8]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.x86.avx512.mask.pcmpeq.q.512")
+        },
+       "x86_mm512_cmpgt_epi8_mask" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I8x64,&::I8x64,&::I64]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.x86.avx512.mask.pcmpgt.b.512")
+        },
+       "x86_mm512_mask_cmpgt_epi8_mask" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I8x64,&::I8x64,&::I64]; &INPUTS },
+            output: &::I64,
+            definition: Named("llvm.x86.avx512.mask.pcmpgt.b.512")
+        },
+       "x86_mm512_cmpgt_epi16_mask" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I16x32,&::I16x32,&::I32]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.avx512.mask.pcmpgt.w.512")
+        },
+       "x86_mm512_mask_cmpgt_epi16_mask" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I16x32,&::I16x32,&::I32]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.avx512.mask.pcmpgt.w.512")
+        },
+       "x86_mm512_cmpgt_epi32_mask" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I32x16,&::I32x16,&::I16]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.x86.avx512.mask.pcmpgt.d.512")
+        },
+       "x86_mm512_mask_cmpgt_epi32_mask" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I32x16,&::I32x16,&::I16]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.x86.avx512.mask.pcmpgt.d.512")
+        },
+       "x86_mm512_mask_cmpgt_epi64_mask" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I64x8,&::I64x8,&::I8]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.x86.avx512.mask.pcmpgt.q.512")
+        },
+       "x86_mm512_cmpgt_epi64_mask" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I64x8,&::I64x8,&::I8]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.x86.avx512.mask.pcmpgt.q.512")
+        },
+       "x86_mm256_cmpeq_epi8_mask" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I8x32,&::I8x32,&::I32]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.avx512.mask.pcmpeq.b.256")
+        },
+       "x86_mm256_mask_cmpeq_epi8_mask" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I8x32,&::I8x32,&::I32]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.avx512.mask.pcmpeq.b.256")
+        },
+       "x86_mm256_cmpeq_epi16_mask" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I16x16,&::I16x16,&::I16]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.x86.avx512.mask.pcmpeq.w.256")
+        },
+       "x86_mm256_mask_cmpeq_epi16_mask" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I16x16,&::I16x16,&::I16]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.x86.avx512.mask.pcmpeq.w.256")
+        },
+       "x86_mm256_cmpeq_epi32_mask" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I32x8,&::I32x8,&::I8]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.x86.avx512.mask.pcmpeq.d.256")
+        },
+       "x86_mm256_mask_cmpeq_epi32_mask" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I32x8,&::I32x8,&::I8]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.x86.avx512.mask.pcmpeq.d.256")
+        },
+       "x86_mm256_cmpeq_epi64_mask" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I64x4,&::I64x4,&::I8]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.x86.avx512.mask.pcmpeq.q.256")
+        },
+       "x86_mm256_mask_cmpeq_epi64_mask" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I64x4,&::I64x4,&::I8]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.x86.avx512.mask.pcmpeq.q.256")
+        },
+       "x86_mm256_cmpgt_epi8_mask" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I8x32,&::I8x32,&::I32]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.avx512.mask.pcmpgt.b.256")
+        },
+       "x86_mm256_mask_cmpgt_epi8_mask" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I8x32,&::I8x32,&::I32]; &INPUTS },
+            output: &::I32,
+            definition: Named("llvm.x86.avx512.mask.pcmpgt.b.256")
+        },
+       "x86_mm256_cmpgt_epi16_mask" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I16x16,&::I16x16,&::I16]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.x86.avx512.mask.pcmpgt.w.256")
+        },
+       "x86_mm256_mask_cmpgt_epi16_mask" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I16x16,&::I16x16,&::I16]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.x86.avx512.mask.pcmpgt.w.256")
+        },
+       "x86_mm256_cmpgt_epi32_mask" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I32x8,&::I32x8,&::I8]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.x86.avx512.mask.pcmpgt.d.256")
+        },
+       "x86_mm256_mask_cmpgt_epi32_mask" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I32x8,&::I32x8,&::I8]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.x86.avx512.mask.pcmpgt.d.256")
+        },
+       "x86_mm256_cmpgt_epi64_mask" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I64x4,&::I64x4,&::I8]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.x86.avx512.mask.pcmpgt.q.256")
+        },
+       "x86_mm256_mask_cmpgt_epi64_mask" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I64x4,&::I64x4,&::I8]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.x86.avx512.mask.pcmpgt.q.256")
+        },
+       "x86_mm_cmpeq_epi8_mask" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I8x16,&::I8x16,&::I16]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.x86.avx512.mask.pcmpeq.b.128")
+        },
+       "x86_mm_mask_cmpeq_epi8_mask" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I8x16,&::I8x16,&::I16]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.x86.avx512.mask.pcmpeq.b.128")
+        },
+       "x86_mm_cmpeq_epi16_mask" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I16x8,&::I16x8,&::I8]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.x86.avx512.mask.pcmpeq.w.128")
+        },
+       "x86_mm_mask_cmpeq_epi16_mask" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I16x8,&::I16x8,&::I8]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.x86.avx512.mask.pcmpeq.w.128")
+        },
+       "x86_mm_cmpeq_epi32_mask" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I32x4,&::I32x4,&::I8]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.x86.avx512.mask.pcmpeq.d.128")
+        },
+       "x86_mm_mask_cmpeq_epi32_mask" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I32x4,&::I32x4,&::I8]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.x86.avx512.mask.pcmpeq.d.128")
+        },
+       "x86_mm_cmpeq_epi64_mask" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I64x2,&::I64x2,&::I8]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.x86.avx512.mask.pcmpeq.q.128")
+        },
+       "x86_mm_mask_cmpeq_epi64_mask" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I64x2,&::I64x2,&::I8]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.x86.avx512.mask.pcmpeq.q.128")
+        },
+       "x86_mm_cmpgt_epi8_mask" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I8x16,&::I8x16,&::I16]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.x86.avx512.mask.pcmpgt.b.128")
+        },
+       "x86_mm_mask_cmpgt_epi8_mask" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I8x16,&::I8x16,&::I16]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.x86.avx512.mask.pcmpgt.b.128")
+        },
+       "x86_mm_cmpgt_epi16_mask" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I16x8,&::I16x8,&::I8]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.x86.avx512.mask.pcmpgt.w.128")
+        },
+       "x86_mm_mask_cmpgt_epi16_mask" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I16x8,&::I16x8,&::I8]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.x86.avx512.mask.pcmpgt.w.128")
+        },
+       "x86_mm_cmpgt_epi32_mask" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I32x4,&::I32x4,&::I8]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.x86.avx512.mask.pcmpgt.d.128")
+        },
+       "x86_mm_mask_cmpgt_epi32_mask" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I32x4,&::I32x4,&::I8]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.x86.avx512.mask.pcmpgt.d.128")
+        },
+       "x86_mm_cmpgt_epi64_mask" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I64x2,&::I64x2,&::I8]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.x86.avx512.mask.pcmpgt.q.128")
+        },
+       "x86_mm_mask_cmpgt_epi64_mask" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 3] = [&::I64x2,&::I64x2,&::I8]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.x86.avx512.mask.pcmpgt.q.128")
+        },
+       "x86_mm512_cmp_round_ps_mask" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F32x16,&::F32x16,&::I32,&::I16,&::I32]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.x86.avx512.mask.cmp.ps.512")
+        },
+       "x86_mm512_mask_cmp_round_ps_mask" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F32x16,&::F32x16,&::I32,&::I16,&::I32]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.x86.avx512.mask.cmp.ps.512")
+        },
+       "x86_mm512_cmp_ps_mask" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F32x16,&::F32x16,&::I32,&::I16,&::I32]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.x86.avx512.mask.cmp.ps.512")
+        },
+       "x86_mm512_mask_cmp_ps_mask" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F32x16,&::F32x16,&::I32,&::I16,&::I32]; &INPUTS },
+            output: &::I16,
+            definition: Named("llvm.x86.avx512.mask.cmp.ps.512")
+        },
+       "x86_mm512_cmp_round_pd_mask" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F64x8,&::F64x8,&::I32,&::I8,&::I32]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.x86.avx512.mask.cmp.pd.512")
+        },
+       "x86_mm512_mask_cmp_round_pd_mask" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F64x8,&::F64x8,&::I32,&::I8,&::I32]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.x86.avx512.mask.cmp.pd.512")
+        },
+       "x86_mm512_cmp_pd_mask" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F64x8,&::F64x8,&::I32,&::I8,&::I32]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.x86.avx512.mask.cmp.pd.512")
+        },
+       "x86_mm512_mask_cmp_pd_mask" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 5] = [&::F64x8,&::F64x8,&::I32,&::I8,&::I32]; &INPUTS },
+            output: &::I8,
+            definition: Named("llvm.x86.avx512.mask.cmp.pd.512")
+        },
+       "x86_mm512_and_si512" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I32x16,&::I32x16,&::I32x16,&::I16]; &INPUTS },
+            output: &::I32x16,
+            definition: Named("llvm.x86.avx512.mask.pand.d.512")
+        },
+       "x86_mm512_maskz_and_epi32" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I32x16,&::I32x16,&::I32x16,&::I16]; &INPUTS },
+            output: &::I32x16,
+            definition: Named("llvm.x86.avx512.mask.pand.d.512")
+        },
+       "x86_mm512_and_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I64x8,&::I64x8,&::I64x8,&::I8]; &INPUTS },
+            output: &::I64x8,
+            definition: Named("llvm.x86.avx512.mask.pand.q.512")
+        },
+       "x86_mm512_maskz_and_epi64" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 4] = [&::I64x8,&::I64x8,&::I64x8,&::I8]; &INPUTS },
+            output: &::I64x8,
+            definition: Named("llvm.x86.avx512.mask.pand.q.512")
+        },
+       "x86_mm512_stream_load_si512" => Intrinsic {
+            inputs: { static INPUTS: [&'static Type; 1] = [{ static PTR: Type = Type::Pointer(&::I8, Some(&::I8), true); &PTR }]; &INPUTS },
+            output: &::I64x8,
+            definition: Named("llvm.x86.avx512.movntdqa")
         },
         _ => return None,
     })
