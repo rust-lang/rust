@@ -193,6 +193,8 @@ pub trait AsciiExt {
     /// # Examples
     ///
     /// ```
+    /// #![feature(ascii_ctype)]
+    /// # #![allow(non_snake_case)]
     /// use std::ascii::AsciiExt;
     /// let A = 'A';
     /// let G = 'G';
@@ -225,6 +227,8 @@ pub trait AsciiExt {
     /// # Examples
     ///
     /// ```
+    /// #![feature(ascii_ctype)]
+    /// # #![allow(non_snake_case)]
     /// use std::ascii::AsciiExt;
     /// let A = 'A';
     /// let G = 'G';
@@ -257,6 +261,8 @@ pub trait AsciiExt {
     /// # Examples
     ///
     /// ```
+    /// #![feature(ascii_ctype)]
+    /// # #![allow(non_snake_case)]
     /// use std::ascii::AsciiExt;
     /// let A = 'A';
     /// let G = 'G';
@@ -290,6 +296,8 @@ pub trait AsciiExt {
     /// # Examples
     ///
     /// ```
+    /// #![feature(ascii_ctype)]
+    /// # #![allow(non_snake_case)]
     /// use std::ascii::AsciiExt;
     /// let A = 'A';
     /// let G = 'G';
@@ -322,6 +330,8 @@ pub trait AsciiExt {
     /// # Examples
     ///
     /// ```
+    /// #![feature(ascii_ctype)]
+    /// # #![allow(non_snake_case)]
     /// use std::ascii::AsciiExt;
     /// let A = 'A';
     /// let G = 'G';
@@ -355,6 +365,8 @@ pub trait AsciiExt {
     /// # Examples
     ///
     /// ```
+    /// #![feature(ascii_ctype)]
+    /// # #![allow(non_snake_case)]
     /// use std::ascii::AsciiExt;
     /// let A = 'A';
     /// let G = 'G';
@@ -390,6 +402,8 @@ pub trait AsciiExt {
     /// # Examples
     ///
     /// ```
+    /// #![feature(ascii_ctype)]
+    /// # #![allow(non_snake_case)]
     /// use std::ascii::AsciiExt;
     /// let A = 'A';
     /// let G = 'G';
@@ -422,6 +436,8 @@ pub trait AsciiExt {
     /// # Examples
     ///
     /// ```
+    /// #![feature(ascii_ctype)]
+    /// # #![allow(non_snake_case)]
     /// use std::ascii::AsciiExt;
     /// let A = 'A';
     /// let G = 'G';
@@ -471,6 +487,8 @@ pub trait AsciiExt {
     /// # Examples
     ///
     /// ```
+    /// #![feature(ascii_ctype)]
+    /// # #![allow(non_snake_case)]
     /// use std::ascii::AsciiExt;
     /// let A = 'A';
     /// let G = 'G';
@@ -503,6 +521,8 @@ pub trait AsciiExt {
     /// # Examples
     ///
     /// ```
+    /// #![feature(ascii_ctype)]
+    /// # #![allow(non_snake_case)]
     /// use std::ascii::AsciiExt;
     /// let A = 'A';
     /// let G = 'G';
