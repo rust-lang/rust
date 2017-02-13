@@ -26,6 +26,8 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
 
+use regex::Regex;
+
 const COLS: usize = 100;
 const LICENSE: &'static str = "\
 Copyright <year> The Rust Project Developers. See the COPYRIGHT
@@ -37,6 +39,32 @@ http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
 <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 option. This file may not be copied, modified, or distributed
 except according to those terms.";
+
+/// True if LINE is allowed to be longer than the normal limit.
+///
+/// Currently there is only one exception: if the line is within a
+/// comment, and its entire text is one URL (possibly with a Markdown
+/// link label in front), then it's allowed to be overlength.  This is
+/// because Markdown offers no way to split a line in the middle of a
+/// URL, and the length of URLs for external references is beyond our
+/// control.
+fn long_line_is_ok(line: &str) -> bool {
+    lazy_static! {
+        static ref URL_RE: Regex = Regex::new(
+            // This regexp uses the CommonMark definition of link
+            // label.  It thinks any sequence of nonwhitespace
+            // characters beginning with "http://" or "https://" is a
+            // URL.  Add more schemas as necessary.
+            r"^\s*//[!/]?\s+(?:\[(?:[^\]\\]|\\.){1,999}\]:\s+)?https?://\S+$"
+        ).unwrap();
+    }
+
+    if URL_RE.is_match(line) {
+        return true;
+    }
+
+    false
+}
 
 pub fn check(path: &Path, bad: &mut bool) {
     let mut contents = String::new();
@@ -61,8 +89,9 @@ pub fn check(path: &Path, bad: &mut bool) {
                 println!("{}:{}: {}", file.display(), i + 1, msg);
                 *bad = true;
             };
-            if line.chars().count() > COLS && !skip_length {
-                err(&format!("line longer than {} chars", COLS));
+            if !skip_length && line.chars().count() > COLS
+                && !long_line_is_ok(line) {
+                    err(&format!("line longer than {} chars", COLS));
             }
             if line.contains("\t") && !skip_tab {
                 err("tab character");
