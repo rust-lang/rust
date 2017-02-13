@@ -358,45 +358,45 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     }
 
     pub fn assign_discr_and_fields<
-        I: IntoIterator<Item = u64>,
         V: IntoValTyPair<'tcx>,
         J: IntoIterator<Item = V>,
     >(
         &mut self,
         dest: Lvalue<'tcx>,
-        offsets: I,
+        dest_ty: Ty<'tcx>,
+        discr_offset: u64,
         operands: J,
         discr_val: u128,
+        variant_idx: usize,
         discr_size: u64,
     ) -> EvalResult<'tcx> {
         // FIXME(solson)
         let dest_ptr = self.force_allocation(dest)?.to_ptr();
 
-        let mut offsets = offsets.into_iter();
-        let discr_offset = offsets.next().unwrap();
         let discr_dest = dest_ptr.offset(discr_offset);
         self.memory.write_uint(discr_dest, discr_val, discr_size)?;
 
-        self.assign_fields(dest, offsets, operands)
+        let dest = Lvalue::Ptr {
+            ptr: dest_ptr,
+            extra: LvalueExtra::DowncastVariant(variant_idx),
+        };
+
+        self.assign_fields(dest, dest_ty, operands)
     }
 
     pub fn assign_fields<
-        I: IntoIterator<Item = u64>,
         V: IntoValTyPair<'tcx>,
         J: IntoIterator<Item = V>,
     >(
         &mut self,
         dest: Lvalue<'tcx>,
-        offsets: I,
+        dest_ty: Ty<'tcx>,
         operands: J,
     ) -> EvalResult<'tcx> {
-        // FIXME(solson)
-        let dest = self.force_allocation(dest)?.to_ptr();
-
-        for (offset, operand) in offsets.into_iter().zip(operands) {
+        for (field_index, operand) in operands.into_iter().enumerate() {
             let (value, value_ty) = operand.into_val_ty_pair(self)?;
-            let field_dest = dest.offset(offset);
-            self.write_value_to_ptr(value, field_dest, value_ty)?;
+            let field_dest = self.lvalue_field(dest, field_index, dest_ty, value_ty)?;
+            self.write_value(value, field_dest, value_ty)?;
         }
         Ok(())
     }
@@ -444,22 +444,15 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 use rustc::ty::layout::Layout::*;
                 match *dest_layout {
                     Univariant { ref variant, .. } => {
-                        let offsets = variant.offsets.iter().map(|s| s.bytes());
                         if variant.packed {
                             let ptr = self.force_allocation(dest)?.to_ptr_and_extra().0;
                             self.memory.mark_packed(ptr, variant.stride().bytes());
                         }
-                        self.assign_fields(dest, offsets, operands)?;
+                        self.assign_fields(dest, dest_ty, operands)?;
                     }
 
                     Array { .. } => {
-                        let elem_size = match dest_ty.sty {
-                            ty::TyArray(elem_ty, _) => self.type_size(elem_ty)?
-                                .expect("array elements are sized") as u64,
-                            _ => bug!("tried to assign {:?} to non-array type {:?}", kind, dest_ty),
-                        };
-                        let offsets = (0..).map(|i| i * elem_size);
-                        self.assign_fields(dest, offsets, operands)?;
+                        self.assign_fields(dest, dest_ty, operands)?;
                     }
 
                     General { discr, ref variants, .. } => {
@@ -473,9 +466,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                             self.assign_discr_and_fields(
                                 dest,
-                                variants[variant].offsets.iter().cloned().map(Size::bytes),
+                                dest_ty,
+                                variants[variant].offsets[0].bytes(),
                                 operands,
                                 discr_val,
+                                variant,
                                 discr_size,
                             )?;
                         } else {
@@ -511,8 +506,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                                 self.memory.mark_packed(ptr, nonnull.stride().bytes());
                             }
                             if nndiscr == variant as u64 {
-                                let offsets = nonnull.offsets.iter().map(|s| s.bytes());
-                                self.assign_fields(dest, offsets, operands)?;
+                                self.assign_fields(dest, dest_ty, operands)?;
                             } else {
                                 for operand in operands {
                                     let operand_ty = self.operand_ty(operand);
@@ -543,11 +537,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         }
                     }
 
-                    Vector { element, count } => {
-                        let elem_size = element.size(&self.tcx.data_layout).bytes();
+                    Vector { count, .. } => {
                         debug_assert_eq!(count, operands.len() as u64);
-                        let offsets = (0..).map(|i| i * elem_size);
-                        self.assign_fields(dest, offsets, operands)?;
+                        self.assign_fields(dest, dest_ty, operands)?;
                     }
 
                     UntaggedUnion { .. } => {
