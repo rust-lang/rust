@@ -67,6 +67,7 @@ const DW_TAG_arg_variable: c_uint = 0x101;
 /// A context object for maintaining all state needed by the debuginfo module.
 pub struct CrateDebugContext<'tcx> {
     llcontext: ContextRef,
+    llmod: ModuleRef,
     builder: DIBuilderRef,
     created_files: RefCell<FxHashMap<(Symbol, Symbol), DIFile>>,
     created_enum_disr_types: RefCell<FxHashMap<(DefId, layout::Integer), DIType>>,
@@ -87,6 +88,7 @@ impl<'tcx> CrateDebugContext<'tcx> {
         let llcontext = unsafe { llvm::LLVMGetModuleContext(llmod) };
         CrateDebugContext {
             llcontext: llcontext,
+            llmod: llmod,
             builder: builder,
             created_files: RefCell::new(FxHashMap()),
             created_enum_disr_types: RefCell::new(FxHashMap()),

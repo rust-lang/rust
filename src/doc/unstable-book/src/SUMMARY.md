@@ -2,6 +2,7 @@
 
 - [Compiler flags](compiler-flags.md)
     - [linker_flavor](compiler-flags/linker-flavor.md)
+    - [profile](compiler-flags/profile.md)
     - [remap_path_prefix](compiler-flags/remap-path-prefix.md)
 - [Language features](language-features.md)
     - [abi_msp430_interrupt](language-features/abi-msp430-interrupt.md)
@@ -71,6 +72,7 @@
     - [plugin_registrar](language-features/plugin-registrar.md)
     - [prelude_import](language-features/prelude-import.md)
     - [proc_macro](language-features/proc-macro.md)
+    - [profiler_runtime](language-features/profiler-runtime.md)
     - [quote](language-features/quote.md)
     - [relaxed_adts](language-features/relaxed-adts.md)
     - [repr_align](language-features/repr-align.md)
@@ -180,6 +182,7 @@
     - [print](library-features/print.md)
     - [proc_macro_internals](library-features/proc-macro-internals.md)
     - [process_try_wait](library-features/process-try-wait.md)
+    - [profiler_runtime_lib](library-features/sanitizer-runtime-lib.md)
     - [question_mark_carrier](library-features/question-mark-carrier.md)
     - [rand](library-features/rand.md)
     - [range_contains](library-features/range-contains.md)

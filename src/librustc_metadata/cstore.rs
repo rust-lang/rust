@@ -308,6 +308,11 @@ impl CrateMetadata {
         attr::contains_name(&attrs, "sanitizer_runtime")
     }
 
+    pub fn is_profiler_runtime(&self) -> bool {
+        let attrs = self.get_item_attrs(CRATE_DEF_INDEX);
+        attr::contains_name(&attrs, "profiler_runtime")
+    }
+
     pub fn is_no_builtins(&self) -> bool {
         let attrs = self.get_item_attrs(CRATE_DEF_INDEX);
         attr::contains_name(&attrs, "no_builtins")

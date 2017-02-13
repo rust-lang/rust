@@ -452,6 +452,7 @@ opt vendor 0 "enable usage of vendored Rust crates"
 opt sanitizers 0 "build the sanitizer runtimes (asan, lsan, msan, tsan)"
 opt dist-src 1 "when building tarballs enables building a source tarball"
 opt cargo-openssl-static 0 "static openssl in cargo"
+opt profiler 0 "build the profiler runtime"
 
 # Optimization and debugging options. These may be overridden by the release channel, etc.
 opt_nosave optimize 1 "build optimized rust code"

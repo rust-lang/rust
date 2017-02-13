@@ -356,6 +356,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "profiler_builtins"
+version = "0.0.0"
+dependencies = [
+ "core 0.0.0",
+ "gcc 0.3.45 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "pulldown-cmark"
 version = "0.0.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -833,6 +841,7 @@ dependencies = [
  "libc 0.0.0",
  "panic_abort 0.0.0",
  "panic_unwind 0.0.0",
+ "profiler_builtins 0.0.0",
  "rand 0.0.0",
  "rustc_asan 0.0.0",
  "rustc_lsan 0.0.0",

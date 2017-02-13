@@ -20,6 +20,7 @@ core = { path = "../libcore" }
 libc = { path = "../rustc/libc_shim" }
 rand = { path = "../librand" }
 compiler_builtins = { path = "../libcompiler_builtins" }
+profiler_builtins = { path = "../libprofiler_builtins", optional = true }
 std_unicode = { path = "../libstd_unicode" }
 unwind = { path = "../libunwind" }
 
@@ -43,3 +44,4 @@ debug-jemalloc = ["alloc_jemalloc/debug"]
 jemalloc = ["alloc_jemalloc"]
 force_alloc_system = []
 panic-unwind = ["panic_unwind"]
+profiler = ["profiler_builtins"]
