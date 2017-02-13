@@ -296,7 +296,7 @@ impl<'a> Arguments<'a> {
 
 /// This structure represents a safely precompiled version of a format string
 /// and its arguments. This cannot be generated at runtime because it cannot
-/// safely be done so, so no constructors are given and the fields are private
+/// safely be done, so no constructors are given and the fields are private
 /// to prevent modification.
 ///
 /// The [`format_args!`] macro will safely create an instance of this structure
@@ -997,7 +997,7 @@ impl<'a> Formatter<'a> {
     /// * precision - the maximum length to emit, the string is truncated if it
     ///               is longer than this length
     ///
-    /// Notably this function ignored the `flag` parameters
+    /// Notably this function ignores the `flag` parameters.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn pad(&mut self, s: &str) -> Result {
         // Make sure there's a fast path up front
