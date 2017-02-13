@@ -212,66 +212,6 @@ impl<T:Copy> Cell<T> {
     pub fn get(&self) -> T {
         unsafe{ *self.value.get() }
     }
-
-    /// Returns a reference to the underlying `UnsafeCell`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(as_unsafe_cell)]
-    ///
-    /// use std::cell::Cell;
-    ///
-    /// let c = Cell::new(5);
-    ///
-    /// let uc = c.as_unsafe_cell();
-    /// ```
-    #[inline]
-    #[unstable(feature = "as_unsafe_cell", issue = "27708")]
-    #[rustc_deprecated(since = "1.12.0", reason = "renamed to as_ptr")]
-    pub fn as_unsafe_cell(&self) -> &UnsafeCell<T> {
-        &self.value
-    }
-
-    /// Returns a raw pointer to the underlying data in this cell.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::cell::Cell;
-    ///
-    /// let c = Cell::new(5);
-    ///
-    /// let ptr = c.as_ptr();
-    /// ```
-    #[inline]
-    #[stable(feature = "cell_as_ptr", since = "1.12.0")]
-    pub fn as_ptr(&self) -> *mut T {
-        self.value.get()
-    }
-
-    /// Returns a mutable reference to the underlying data.
-    ///
-    /// This call borrows `Cell` mutably (at compile-time) which guarantees
-    /// that we possess the only reference.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::cell::Cell;
-    ///
-    /// let mut c = Cell::new(5);
-    /// *c.get_mut() += 1;
-    ///
-    /// assert_eq!(c.get(), 6);
-    /// ```
-    #[inline]
-    #[stable(feature = "cell_get_mut", since = "1.11.0")]
-    pub fn get_mut(&mut self) -> &mut T {
-        unsafe {
-            &mut *self.value.get()
-        }
-    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -366,6 +306,66 @@ impl<T> Cell<T> {
     pub const fn new(value: T) -> Cell<T> {
         Cell {
             value: UnsafeCell::new(value),
+        }
+    }
+
+    /// Returns a reference to the underlying `UnsafeCell`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(as_unsafe_cell)]
+    ///
+    /// use std::cell::Cell;
+    ///
+    /// let c = Cell::new(5);
+    ///
+    /// let uc = c.as_unsafe_cell();
+    /// ```
+    #[inline]
+    #[unstable(feature = "as_unsafe_cell", issue = "27708")]
+    #[rustc_deprecated(since = "1.12.0", reason = "renamed to as_ptr")]
+    pub fn as_unsafe_cell(&self) -> &UnsafeCell<T> {
+        &self.value
+    }
+
+    /// Returns a raw pointer to the underlying data in this cell.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::cell::Cell;
+    ///
+    /// let c = Cell::new(5);
+    ///
+    /// let ptr = c.as_ptr();
+    /// ```
+    #[inline]
+    #[stable(feature = "cell_as_ptr", since = "1.12.0")]
+    pub fn as_ptr(&self) -> *mut T {
+        self.value.get()
+    }
+
+    /// Returns a mutable reference to the underlying data.
+    ///
+    /// This call borrows `Cell` mutably (at compile-time) which guarantees
+    /// that we possess the only reference.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::cell::Cell;
+    ///
+    /// let mut c = Cell::new(5);
+    /// *c.get_mut() += 1;
+    ///
+    /// assert_eq!(c.get(), 6);
+    /// ```
+    #[inline]
+    #[stable(feature = "cell_get_mut", since = "1.11.0")]
+    pub fn get_mut(&mut self) -> &mut T {
+        unsafe {
+            &mut *self.value.get()
         }
     }
 
