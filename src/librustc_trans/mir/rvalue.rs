@@ -12,7 +12,7 @@ use llvm::{self, ValueRef};
 use rustc::ty::{self, Ty};
 use rustc::ty::cast::{CastTy, IntTy};
 use rustc::ty::layout::Layout;
-use rustc::ty::subst::Kind;
+use rustc::ty::subst::{Kind, Subst};
 use rustc::mir::tcx::LvalueTy;
 use rustc::mir;
 use middle::lang_items::ExchangeMallocFnLangItem;
@@ -201,7 +201,8 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                                     .find(|it| it.kind == ty::AssociatedKind::Method)
                                     .unwrap().def_id;
                                 // Now create its substs [Closure, Tuple]
-                                let input = bcx.tcx().closure_type(def_id, substs).input(0);
+                                let input = bcx.tcx().closure_type(def_id)
+                                    .subst(bcx.tcx(), substs.substs).input(0);
                                 let substs = bcx.tcx().mk_substs([operand.ty, input.skip_binder()]
                                     .iter().cloned().map(Kind::from));
                                 OperandValue::Immediate(

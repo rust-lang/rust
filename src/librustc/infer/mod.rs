@@ -1649,20 +1649,16 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         Some(self.tcx.closure_kind(def_id))
     }
 
-    pub fn closure_type(&self,
-                        def_id: DefId,
-                        substs: ty::ClosureSubsts<'tcx>)
-                        -> ty::PolyFnSig<'tcx>
-    {
+    pub fn closure_type(&self, def_id: DefId) -> ty::PolyFnSig<'tcx> {
         if let InferTables::InProgress(tables) = self.tables {
             if let Some(id) = self.tcx.hir.as_local_node_id(def_id) {
-                if let Some(ty) = tables.borrow().closure_tys.get(&id) {
-                    return ty.subst(self.tcx, substs.substs);
+                if let Some(&ty) = tables.borrow().closure_tys.get(&id) {
+                    return ty;
                 }
             }
         }
 
-        self.tcx.closure_type(def_id, substs)
+        self.tcx.closure_type(def_id)
     }
 }
 
