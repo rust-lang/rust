@@ -440,14 +440,14 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             TerminatorKind::Call { ref func, ref args, ref destination, .. } => {
                 let func_ty = func.ty(mir, tcx);
                 debug!("check_terminator: call, func_ty={:?}", func_ty);
-                let func_ty = match func_ty.sty {
-                    ty::TyFnDef(.., func_ty) | ty::TyFnPtr(func_ty) => func_ty,
+                let sig = match func_ty.sty {
+                    ty::TyFnDef(.., sig) | ty::TyFnPtr(sig) => sig,
                     _ => {
                         span_mirbug!(self, term, "call to non-function {:?}", func_ty);
                         return;
                     }
                 };
-                let sig = tcx.erase_late_bound_regions(&func_ty.sig);
+                let sig = tcx.erase_late_bound_regions(&sig);
                 let sig = self.normalize(&sig);
                 self.check_call_dest(mir, term, &sig, destination);
 

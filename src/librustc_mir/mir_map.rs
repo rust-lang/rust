@@ -104,10 +104,14 @@ fn build_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
             let fn_sig = cx.tables().liberated_fn_sigs[&id].clone();
 
             let ty = tcx.item_type(tcx.hir.local_def_id(id));
-            let (abi, implicit_argument) = if let ty::TyClosure(..) = ty.sty {
-                (Abi::Rust, Some((closure_self_ty(tcx, id, body_id), None)))
+            let mut abi = fn_sig.abi;
+            let implicit_argument = if let ty::TyClosure(..) = ty.sty {
+                // HACK(eddyb) Avoid having RustCall on closures,
+                // as it adds unnecessary (and wrong) auto-tupling.
+                abi = Abi::Rust;
+                Some((closure_self_ty(tcx, id, body_id), None))
             } else {
-                (ty.fn_abi(), None)
+                None
             };
 
             let body = tcx.hir.body(body_id);

@@ -182,11 +182,8 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
                     let method_ty = fcx.tcx.item_type(item.def_id);
                     let method_ty = fcx.instantiate_type_scheme(span, free_substs, &method_ty);
                     let predicates = fcx.instantiate_bounds(span, item.def_id, free_substs);
-                    let fty = match method_ty.sty {
-                        ty::TyFnDef(_, _, f) => f,
-                        _ => bug!()
-                    };
-                    this.check_fn_or_method(fcx, span, fty, &predicates,
+                    let sig = method_ty.fn_sig();
+                    this.check_fn_or_method(fcx, span, sig, &predicates,
                                             free_id_outlive, &mut implied_bounds);
                     let sig_if_method = sig_if_method.expect("bad signature for method");
                     this.check_method_receiver(fcx, sig_if_method, &item,
@@ -339,18 +336,13 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
             let def_id = fcx.tcx.hir.local_def_id(item.id);
             let ty = fcx.tcx.item_type(def_id);
             let item_ty = fcx.instantiate_type_scheme(item.span, free_substs, &ty);
-            let bare_fn_ty = match item_ty.sty {
-                ty::TyFnDef(.., ref bare_fn_ty) => bare_fn_ty,
-                _ => {
-                    span_bug!(item.span, "Fn item without fn type");
-                }
-            };
+            let sig = item_ty.fn_sig();
 
             let predicates = fcx.instantiate_bounds(item.span, def_id, free_substs);
 
             let mut implied_bounds = vec![];
             let free_id_outlive = fcx.tcx.region_maps.call_site_extent(item.id, body_id.node_id);
-            this.check_fn_or_method(fcx, item.span, bare_fn_ty, &predicates,
+            this.check_fn_or_method(fcx, item.span, sig, &predicates,
                                     free_id_outlive, &mut implied_bounds);
             implied_bounds
         })
@@ -435,14 +427,14 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
     fn check_fn_or_method<'fcx, 'tcx>(&mut self,
                                       fcx: &FnCtxt<'fcx, 'gcx, 'tcx>,
                                       span: Span,
-                                      fty: &'tcx ty::BareFnTy<'tcx>,
+                                      sig: ty::PolyFnSig<'tcx>,
                                       predicates: &ty::InstantiatedPredicates<'tcx>,
                                       free_id_outlive: CodeExtent,
                                       implied_bounds: &mut Vec<Ty<'tcx>>)
     {
         let free_substs = &fcx.parameter_environment.free_substs;
-        let fty = fcx.instantiate_type_scheme(span, free_substs, &fty);
-        let sig = fcx.tcx.liberate_late_bound_regions(free_id_outlive, &fty.sig);
+        let sig = fcx.instantiate_type_scheme(span, free_substs, &sig);
+        let sig = fcx.tcx.liberate_late_bound_regions(free_id_outlive, &sig);
 
         for input_ty in sig.inputs() {
             fcx.register_wf_obligation(&input_ty, span, self.code.clone());

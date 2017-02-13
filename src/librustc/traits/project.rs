@@ -1224,7 +1224,7 @@ fn confirm_closure_candidate<'cx, 'gcx, 'tcx>(
 
     confirm_callable_candidate(selcx,
                                obligation,
-                               &closure_type.sig,
+                               closure_type,
                                util::TupleArgumentsFlag::No)
         .with_addl_obligations(vtable.nested)
         .with_addl_obligations(obligations)
@@ -1233,7 +1233,7 @@ fn confirm_closure_candidate<'cx, 'gcx, 'tcx>(
 fn confirm_callable_candidate<'cx, 'gcx, 'tcx>(
     selcx: &mut SelectionContext<'cx, 'gcx, 'tcx>,
     obligation: &ProjectionTyObligation<'tcx>,
-    fn_sig: &ty::PolyFnSig<'tcx>,
+    fn_sig: ty::PolyFnSig<'tcx>,
     flag: util::TupleArgumentsFlag)
     -> Progress<'tcx>
 {

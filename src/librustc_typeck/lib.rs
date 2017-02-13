@@ -196,11 +196,14 @@ fn check_main_fn_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             }
             let substs = tcx.intern_substs(&[]);
             let se_ty = tcx.mk_fn_def(main_def_id, substs,
-                                      tcx.mk_bare_fn(ty::BareFnTy {
-                unsafety: hir::Unsafety::Normal,
-                abi: Abi::Rust,
-                sig: ty::Binder(tcx.mk_fn_sig(iter::empty(), tcx.mk_nil(), false))
-            }));
+                ty::Binder(tcx.mk_fn_sig(
+                    iter::empty(),
+                    tcx.mk_nil(),
+                    false,
+                    hir::Unsafety::Normal,
+                    Abi::Rust
+                ))
+            );
 
             require_same_types(
                 tcx,
@@ -243,18 +246,17 @@ fn check_start_fn_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
             let substs = tcx.intern_substs(&[]);
             let se_ty = tcx.mk_fn_def(start_def_id, substs,
-                                      tcx.mk_bare_fn(ty::BareFnTy {
-                unsafety: hir::Unsafety::Normal,
-                abi: Abi::Rust,
-                sig: ty::Binder(tcx.mk_fn_sig(
+                ty::Binder(tcx.mk_fn_sig(
                     [
                         tcx.types.isize,
                         tcx.mk_imm_ptr(tcx.mk_imm_ptr(tcx.types.u8))
                     ].iter().cloned(),
                     tcx.types.isize,
                     false,
-                )),
-            }));
+                    hir::Unsafety::Normal,
+                    Abi::Rust
+                ))
+            );
 
             require_same_types(
                 tcx,

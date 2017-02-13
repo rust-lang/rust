@@ -1116,10 +1116,10 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 // warning then. (Once we fix #32330, the regions we are
                 // checking for here would be considered early bound
                 // anyway.)
-                let inputs = bare_fn_ty.sig.inputs();
+                let inputs = bare_fn_ty.inputs();
                 let late_bound_in_args = tcx.collect_constrained_late_bound_regions(
                     &inputs.map_bound(|i| i.to_owned()));
-                let output = bare_fn_ty.sig.output();
+                let output = bare_fn_ty.output();
                 let late_bound_in_ret = tcx.collect_referenced_late_bound_regions(&output);
                 for br in late_bound_in_ret.difference(&late_bound_in_args) {
                     let br_name = match *br {
@@ -1272,7 +1272,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                     unsafety: hir::Unsafety,
                     abi: abi::Abi,
                     decl: &hir::FnDecl)
-                    -> &'tcx ty::BareFnTy<'tcx> {
+                    -> ty::PolyFnSig<'tcx> {
         debug!("ty_of_fn");
 
         let input_tys: Vec<Ty> =
@@ -1285,15 +1285,13 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
         debug!("ty_of_fn: output_ty={:?}", output_ty);
 
-        self.tcx().mk_bare_fn(ty::BareFnTy {
-            unsafety: unsafety,
-            abi: abi,
-            sig: ty::Binder(self.tcx().mk_fn_sig(
-                input_tys.into_iter(),
-                output_ty,
-                decl.variadic
-            )),
-        })
+        ty::Binder(self.tcx().mk_fn_sig(
+            input_tys.into_iter(),
+            output_ty,
+            decl.variadic,
+            unsafety,
+            abi
+        ))
     }
 
     pub fn ty_of_closure(&self,
@@ -1301,7 +1299,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         decl: &hir::FnDecl,
         abi: abi::Abi,
         expected_sig: Option<ty::FnSig<'tcx>>)
-        -> ty::ClosureTy<'tcx>
+        -> ty::PolyFnSig<'tcx>
     {
         debug!("ty_of_closure(expected_sig={:?})",
                expected_sig);
@@ -1338,11 +1336,13 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
         debug!("ty_of_closure: output_ty={:?}", output_ty);
 
-        ty::ClosureTy {
-            unsafety: unsafety,
-            abi: abi,
-            sig: ty::Binder(self.tcx().mk_fn_sig(input_tys, output_ty, decl.variadic)),
-        }
+        ty::Binder(self.tcx().mk_fn_sig(
+            input_tys,
+            output_ty,
+            decl.variadic,
+            unsafety,
+            abi
+        ))
     }
 
     /// Given the bounds on an object, determines what single region bound (if any) we can

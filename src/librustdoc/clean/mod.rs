@@ -1163,7 +1163,7 @@ impl<'a, A: Copy> Clean<FnDecl> for (&'a hir::FnDecl, A)
     }
 }
 
-impl<'a, 'tcx> Clean<FnDecl> for (DefId, &'a ty::PolyFnSig<'tcx>) {
+impl<'a, 'tcx> Clean<FnDecl> for (DefId, ty::PolyFnSig<'tcx>) {
     fn clean(&self, cx: &DocContext) -> FnDecl {
         let (did, sig) = *self;
         let mut names = if cx.tcx.hir.as_local_node_id(did).is_some() {
@@ -1352,11 +1352,8 @@ impl<'tcx> Clean<Item> for ty::AssociatedItem {
             ty::AssociatedKind::Method => {
                 let generics = (cx.tcx.item_generics(self.def_id),
                                 &cx.tcx.item_predicates(self.def_id)).clean(cx);
-                let fty = match cx.tcx.item_type(self.def_id).sty {
-                    ty::TyFnDef(_, _, f) => f,
-                    _ => unreachable!()
-                };
-                let mut decl = (self.def_id, &fty.sig).clean(cx);
+                let sig = cx.tcx.item_type(self.def_id).fn_sig();
+                let mut decl = (self.def_id, sig).clean(cx);
 
                 if self.method_has_self_argument {
                     let self_ty = match self.container {
@@ -1365,7 +1362,7 @@ impl<'tcx> Clean<Item> for ty::AssociatedItem {
                         }
                         ty::TraitContainer(_) => cx.tcx.mk_self_type()
                     };
-                    let self_arg_ty = *fty.sig.input(0).skip_binder();
+                    let self_arg_ty = *sig.input(0).skip_binder();
                     if self_arg_ty == self_ty {
                         decl.inputs.values[0].type_ = Generic(String::from("Self"));
                     } else if let ty::TyRef(_, mt) = self_arg_ty.sty {
@@ -1386,20 +1383,20 @@ impl<'tcx> Clean<Item> for ty::AssociatedItem {
                 };
                 if provided {
                     MethodItem(Method {
-                        unsafety: fty.unsafety,
+                        unsafety: sig.unsafety(),
                         generics: generics,
                         decl: decl,
-                        abi: fty.abi,
+                        abi: sig.abi(),
 
                         // trait methods canot (currently, at least) be const
                         constness: hir::Constness::NotConst,
                     })
                 } else {
                     TyMethodItem(TyMethod {
-                        unsafety: fty.unsafety,
+                        unsafety: sig.unsafety(),
                         generics: generics,
                         decl: decl,
-                        abi: fty.abi,
+                        abi: sig.abi(),
                     })
                 }
             }
@@ -1834,16 +1831,16 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
                 mutability: mt.mutbl.clean(cx),
                 type_: box mt.ty.clean(cx),
             },
-            ty::TyFnDef(.., ref fty) |
-            ty::TyFnPtr(ref fty) => BareFunction(box BareFunctionDecl {
-                unsafety: fty.unsafety,
+            ty::TyFnDef(.., sig) |
+            ty::TyFnPtr(sig) => BareFunction(box BareFunctionDecl {
+                unsafety: sig.unsafety(),
                 generics: Generics {
                     lifetimes: Vec::new(),
                     type_params: Vec::new(),
                     where_predicates: Vec::new()
                 },
-                decl: (cx.tcx.hir.local_def_id(ast::CRATE_NODE_ID), &fty.sig).clean(cx),
-                abi: fty.abi,
+                decl: (cx.tcx.hir.local_def_id(ast::CRATE_NODE_ID), sig).clean(cx),
+                abi: sig.abi(),
             }),
             ty::TyAdt(def, substs) => {
                 let did = def.did;

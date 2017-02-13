@@ -507,11 +507,11 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
 
     fn coerce_from_safe_fn(&self,
                            a: Ty<'tcx>,
-                           fn_ty_a: &'tcx ty::BareFnTy<'tcx>,
+                           fn_ty_a: ty::PolyFnSig<'tcx>,
                            b: Ty<'tcx>)
                            -> CoerceResult<'tcx> {
         if let ty::TyFnPtr(fn_ty_b) = b.sty {
-            match (fn_ty_a.unsafety, fn_ty_b.unsafety) {
+            match (fn_ty_a.unsafety(), fn_ty_b.unsafety()) {
                 (hir::Unsafety::Normal, hir::Unsafety::Unsafe) => {
                     let unsafe_a = self.tcx.safe_to_unsafe_fn_ty(fn_ty_a);
                     return self.unify_and_identity(unsafe_a, b)
@@ -525,7 +525,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
 
     fn coerce_from_fn_pointer(&self,
                               a: Ty<'tcx>,
-                              fn_ty_a: &'tcx ty::BareFnTy<'tcx>,
+                              fn_ty_a: ty::PolyFnSig<'tcx>,
                               b: Ty<'tcx>)
                               -> CoerceResult<'tcx> {
         //! Attempts to coerce from the type of a Rust function item
@@ -540,7 +540,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
 
     fn coerce_from_fn_item(&self,
                            a: Ty<'tcx>,
-                           fn_ty_a: &'tcx ty::BareFnTy<'tcx>,
+                           fn_ty_a: ty::PolyFnSig<'tcx>,
                            b: Ty<'tcx>)
                            -> CoerceResult<'tcx> {
         //! Attempts to coerce from the type of a Rust function item
@@ -587,7 +587,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
                 //     `extern "rust-call" fn((arg0,arg1,...)) -> _`
                 // to
                 //     `fn(arg0,arg1,...) -> _`
-                let sig = self.closure_type(def_id_a, substs_a).sig;
+                let sig = self.closure_type(def_id_a, substs_a);
                 let converted_sig = sig.map_bound(|s| {
                     let params_iter = match s.inputs()[0].sty {
                         ty::TyTuple(params, _) => {
@@ -595,16 +595,15 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
                         }
                         _ => bug!(),
                     };
-                    self.tcx.mk_fn_sig(params_iter,
-                                       s.output(),
-                                       s.variadic)
+                    self.tcx.mk_fn_sig(
+                        params_iter,
+                        s.output(),
+                        s.variadic,
+                        hir::Unsafety::Normal,
+                        abi::Abi::Rust
+                    )
                 });
-                let fn_ty = self.tcx.mk_bare_fn(ty::BareFnTy {
-                    unsafety: hir::Unsafety::Normal,
-                    abi: abi::Abi::Rust,
-                    sig: converted_sig,
-                });
-                let pointer_ty = self.tcx.mk_fn_ptr(&fn_ty);
+                let pointer_ty = self.tcx.mk_fn_ptr(converted_sig);
                 debug!("coerce_closure_to_fn(a={:?}, b={:?}, pty={:?})",
                        a, b, pointer_ty);
                 self.unify_and_identity(pointer_ty, b)

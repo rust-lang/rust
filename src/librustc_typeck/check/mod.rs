@@ -675,25 +675,21 @@ fn check_bare_fn<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                            span: Span) {
     let body = tcx.hir.body(body_id);
 
-    let raw_fty = tcx.item_type(tcx.hir.local_def_id(fn_id));
-    let fn_ty = match raw_fty.sty {
-        ty::TyFnDef(.., f) => f,
-        _ => span_bug!(body.value.span, "check_bare_fn: function type expected")
-    };
+    let fn_sig = tcx.item_type(tcx.hir.local_def_id(fn_id)).fn_sig();
 
-    check_abi(tcx, span, fn_ty.abi);
+    check_abi(tcx, span, fn_sig.abi());
 
     Inherited::build(tcx, fn_id).enter(|inh| {
         // Compute the fty from point of view of inside fn.
         let fn_scope = inh.tcx.region_maps.call_site_extent(fn_id, body_id.node_id);
         let fn_sig =
-            fn_ty.sig.subst(inh.tcx, &inh.parameter_environment.free_substs);
+            fn_sig.subst(inh.tcx, &inh.parameter_environment.free_substs);
         let fn_sig =
             inh.tcx.liberate_late_bound_regions(fn_scope, &fn_sig);
         let fn_sig =
             inh.normalize_associated_types_in(body.value.span, body_id.node_id, &fn_sig);
 
-        let fcx = check_fn(&inh, fn_ty.unsafety, fn_id, &fn_sig, decl, fn_id, body);
+        let fcx = check_fn(&inh, fn_sig, decl, fn_id, body);
 
         fcx.select_all_obligations_and_apply_defaults();
         fcx.closure_analyze(body);
@@ -783,9 +779,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for GatherLocalsVisitor<'a, 'gcx, 'tcx> {
 /// * ...
 /// * inherited: other fields inherited from the enclosing fn (if any)
 fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
-                            unsafety: hir::Unsafety,
-                            unsafety_id: ast::NodeId,
-                            fn_sig: &ty::FnSig<'tcx>,
+                            fn_sig: ty::FnSig<'tcx>,
                             decl: &'gcx hir::FnDecl,
                             fn_id: ast::NodeId,
                             body: &'gcx hir::Body)
@@ -799,12 +793,17 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
     // in the case of function expressions, based on the outer context.
     let mut fcx = FnCtxt::new(inherited, None, body.value.id);
     let ret_ty = fn_sig.output();
-    *fcx.ps.borrow_mut() = UnsafetyState::function(unsafety, unsafety_id);
+    *fcx.ps.borrow_mut() = UnsafetyState::function(fn_sig.unsafety, fn_id);
 
     fcx.require_type_is_sized(ret_ty, decl.output.span(), traits::ReturnType);
     fcx.ret_ty = fcx.instantiate_anon_types(&Some(ret_ty));
-    fn_sig = fcx.tcx.mk_fn_sig(fn_sig.inputs().iter().cloned(), &fcx.ret_ty.unwrap(),
-                               fn_sig.variadic);
+    fn_sig = fcx.tcx.mk_fn_sig(
+        fn_sig.inputs().iter().cloned(),
+        fcx.ret_ty.unwrap(),
+        fn_sig.variadic,
+        fn_sig.unsafety,
+        fn_sig.abi
+    );
 
     GatherLocalsVisitor { fcx: &fcx, }.visit_body(body);
 
@@ -2393,13 +2392,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     let expected_arg_tys = self.expected_types_for_fn_args(
                         sp,
                         expected,
-                        fty.sig.0.output(),
-                        &fty.sig.0.inputs()[1..]
+                        fty.0.output(),
+                        &fty.0.inputs()[1..]
                     );
-                    self.check_argument_types(sp, &fty.sig.0.inputs()[1..], &expected_arg_tys[..],
-                                              args_no_rcvr, fty.sig.0.variadic, tuple_arguments,
+                    self.check_argument_types(sp, &fty.0.inputs()[1..], &expected_arg_tys[..],
+                                              args_no_rcvr, fty.0.variadic, tuple_arguments,
                                               self.tcx.hir.span_if_local(def_id));
-                    fty.sig.0.output()
+                    fty.0.output()
                 }
                 _ => {
                     span_bug!(callee_expr.span, "method without bare fn type");

@@ -272,9 +272,9 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
       ty::TyStr | ty::TyDynamic(..) => Type::i8(cx),
 
       ty::TyFnDef(..) => Type::nil(cx),
-      ty::TyFnPtr(f) => {
-        let sig = cx.tcx().erase_late_bound_regions_and_normalize(&f.sig);
-        FnType::new(cx, f.abi, &sig, &[]).llvm_type(cx).ptr_to()
+      ty::TyFnPtr(sig) => {
+        let sig = cx.tcx().erase_late_bound_regions_and_normalize(&sig);
+        FnType::new(cx, sig, &[]).llvm_type(cx).ptr_to()
       }
       ty::TyTuple(ref tys, _) if tys.is_empty() => Type::nil(cx),
       ty::TyTuple(..) => {

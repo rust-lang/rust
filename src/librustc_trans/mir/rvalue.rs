@@ -201,7 +201,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                                     .find(|it| it.kind == ty::AssociatedKind::Method)
                                     .unwrap().def_id;
                                 // Now create its substs [Closure, Tuple]
-                                let input = bcx.tcx().closure_type(def_id, substs).sig.input(0);
+                                let input = bcx.tcx().closure_type(def_id, substs).input(0);
                                 let substs = bcx.tcx().mk_substs([operand.ty, input.skip_binder()]
                                     .iter().cloned().map(Kind::from));
                                 OperandValue::Immediate(

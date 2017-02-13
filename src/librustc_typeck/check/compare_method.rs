@@ -263,19 +263,17 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // Compute skolemized form of impl and trait method tys.
         let tcx = infcx.tcx;
 
-        let m_fty = |method: &ty::AssociatedItem| {
+        let m_sig = |method: &ty::AssociatedItem| {
             match tcx.item_type(method.def_id).sty {
                 ty::TyFnDef(_, _, f) => f,
                 _ => bug!()
             }
         };
-        let impl_m_fty = m_fty(impl_m);
-        let trait_m_fty = m_fty(trait_m);
 
         let (impl_sig, _) =
             infcx.replace_late_bound_regions_with_fresh_var(impl_m_span,
                                                             infer::HigherRankedType,
-                                                            &impl_m_fty.sig);
+                                                            &m_sig(impl_m));
         let impl_sig =
             impl_sig.subst(tcx, impl_to_skol_substs);
         let impl_sig =
@@ -284,16 +282,12 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                  impl_m_span,
                                                  impl_m_body_id,
                                                  &impl_sig);
-        let impl_fty = tcx.mk_fn_ptr(tcx.mk_bare_fn(ty::BareFnTy {
-            unsafety: impl_m_fty.unsafety,
-            abi: impl_m_fty.abi,
-            sig: ty::Binder(impl_sig.clone()),
-        }));
+        let impl_fty = tcx.mk_fn_ptr(ty::Binder(impl_sig));
         debug!("compare_impl_method: impl_fty={:?}", impl_fty);
 
         let trait_sig = tcx.liberate_late_bound_regions(
             infcx.parameter_environment.free_id_outlive,
-            &trait_m_fty.sig);
+            &m_sig(trait_m));
         let trait_sig =
             trait_sig.subst(tcx, trait_to_skol_substs);
         let trait_sig =
@@ -302,11 +296,7 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                  impl_m_span,
                                                  impl_m_body_id,
                                                  &trait_sig);
-        let trait_fty = tcx.mk_fn_ptr(tcx.mk_bare_fn(ty::BareFnTy {
-            unsafety: trait_m_fty.unsafety,
-            abi: trait_m_fty.abi,
-            sig: ty::Binder(trait_sig.clone()),
-        }));
+        let trait_fty = tcx.mk_fn_ptr(ty::Binder(trait_sig));
 
         debug!("compare_impl_method: trait_fty={:?}", trait_fty);
 
@@ -662,8 +652,8 @@ fn compare_number_of_method_arguments<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     };
     let impl_m_fty = m_fty(impl_m);
     let trait_m_fty = m_fty(trait_m);
-    let trait_number_args = trait_m_fty.sig.inputs().skip_binder().len();
-    let impl_number_args = impl_m_fty.sig.inputs().skip_binder().len();
+    let trait_number_args = trait_m_fty.inputs().skip_binder().len();
+    let impl_number_args = impl_m_fty.inputs().skip_binder().len();
     if trait_number_args != impl_number_args {
         let trait_m_node_id = tcx.hir.as_local_node_id(trait_m.def_id);
         let trait_span = if let Some(trait_id) = trait_m_node_id {

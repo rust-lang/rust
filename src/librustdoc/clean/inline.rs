@@ -164,11 +164,7 @@ pub fn build_external_trait(cx: &DocContext, did: DefId) -> clean::Trait {
 }
 
 fn build_external_function(cx: &DocContext, did: DefId) -> clean::Function {
-    let ty = cx.tcx.item_type(did);
-    let (decl, style, abi) = match ty.sty {
-        ty::TyFnDef(.., ref f) => ((did, &f.sig).clean(cx), f.unsafety, f.abi),
-        _ => panic!("bad function"),
-    };
+    let sig = cx.tcx.item_type(did).fn_sig();
 
     let constness = if cx.tcx.sess.cstore.is_const_fn(did) {
         hir::Constness::Const
@@ -178,11 +174,11 @@ fn build_external_function(cx: &DocContext, did: DefId) -> clean::Function {
 
     let predicates = cx.tcx.item_predicates(did);
     clean::Function {
-        decl: decl,
+        decl: (did, sig).clean(cx),
         generics: (cx.tcx.item_generics(did), &predicates).clean(cx),
-        unsafety: style,
+        unsafety: sig.unsafety(),
         constness: constness,
-        abi: abi,
+        abi: sig.abi(),
     }
 }
 

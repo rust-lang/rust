@@ -157,24 +157,6 @@ pub fn relate_substs<'a, 'gcx, 'tcx, R>(relation: &mut R,
     Ok(tcx.mk_substs(params)?)
 }
 
-impl<'tcx> Relate<'tcx> for &'tcx ty::BareFnTy<'tcx> {
-    fn relate<'a, 'gcx, R>(relation: &mut R,
-                           a: &&'tcx ty::BareFnTy<'tcx>,
-                           b: &&'tcx ty::BareFnTy<'tcx>)
-                           -> RelateResult<'tcx, &'tcx ty::BareFnTy<'tcx>>
-        where R: TypeRelation<'a, 'gcx, 'tcx>, 'gcx: 'a+'tcx, 'tcx: 'a
-    {
-        let unsafety = relation.relate(&a.unsafety, &b.unsafety)?;
-        let abi = relation.relate(&a.abi, &b.abi)?;
-        let sig = relation.relate(&a.sig, &b.sig)?;
-        Ok(relation.tcx().mk_bare_fn(ty::BareFnTy {
-            unsafety: unsafety,
-            abi: abi,
-            sig: sig
-        }))
-    }
-}
-
 impl<'tcx> Relate<'tcx> for ty::FnSig<'tcx> {
     fn relate<'a, 'gcx, R>(relation: &mut R,
                            a: &ty::FnSig<'tcx>,
@@ -186,6 +168,8 @@ impl<'tcx> Relate<'tcx> for ty::FnSig<'tcx> {
             return Err(TypeError::VariadicMismatch(
                 expected_found(relation, &a.variadic, &b.variadic)));
         }
+        let unsafety = relation.relate(&a.unsafety, &b.unsafety)?;
+        let abi = relation.relate(&a.abi, &b.abi)?;
 
         if a.inputs().len() != b.inputs().len() {
             return Err(TypeError::ArgCount);
@@ -204,7 +188,9 @@ impl<'tcx> Relate<'tcx> for ty::FnSig<'tcx> {
             }).collect::<Result<AccumulateVec<[_; 8]>, _>>()?;
         Ok(ty::FnSig {
             inputs_and_output: relation.tcx().intern_type_list(&inputs_and_output),
-            variadic: a.variadic
+            variadic: a.variadic,
+            unsafety: unsafety,
+            abi: abi
         })
     }
 }

@@ -159,19 +159,6 @@ pub trait TypeFolder<'gcx: 'tcx, 'tcx> : Sized {
         sig.super_fold_with(self)
     }
 
-    fn fold_bare_fn_ty(&mut self,
-                       fty: &'tcx ty::BareFnTy<'tcx>)
-                       -> &'tcx ty::BareFnTy<'tcx>
-    {
-        fty.super_fold_with(self)
-    }
-
-    fn fold_closure_ty(&mut self,
-                       fty: &ty::ClosureTy<'tcx>)
-                       -> ty::ClosureTy<'tcx> {
-        fty.super_fold_with(self)
-    }
-
     fn fold_region(&mut self, r: &'tcx ty::Region) -> &'tcx ty::Region {
         r.super_fold_with(self)
     }

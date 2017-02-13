@@ -32,7 +32,7 @@ use ty::{self, TraitRef, Ty, TypeAndMut};
 use ty::{TyS, TypeVariants, Slice};
 use ty::{AdtKind, AdtDef, ClosureSubsts, Region};
 use hir::FreevarMap;
-use ty::{BareFnTy, InferTy, ParamTy, ProjectionTy, ExistentialPredicate};
+use ty::{PolyFnSig, InferTy, ParamTy, ProjectionTy, ExistentialPredicate};
 use ty::{TyVar, TyVid, IntVar, IntVid, FloatVar, FloatVid};
 use ty::TypeVariants::*;
 use ty::layout::{Layout, TargetDataLayout};
@@ -53,6 +53,7 @@ use std::ops::Deref;
 use std::rc::Rc;
 use std::iter;
 use std::cmp::Ordering;
+use syntax::abi;
 use syntax::ast::{self, Name, NodeId};
 use syntax::attr;
 use syntax::symbol::{Symbol, keywords};
@@ -94,7 +95,6 @@ pub struct CtxtInterners<'tcx> {
     type_: RefCell<FxHashSet<Interned<'tcx, TyS<'tcx>>>>,
     type_list: RefCell<FxHashSet<Interned<'tcx, Slice<Ty<'tcx>>>>>,
     substs: RefCell<FxHashSet<Interned<'tcx, Substs<'tcx>>>>,
-    bare_fn: RefCell<FxHashSet<Interned<'tcx, BareFnTy<'tcx>>>>,
     region: RefCell<FxHashSet<Interned<'tcx, Region>>>,
     existential_predicates: RefCell<FxHashSet<Interned<'tcx, Slice<ExistentialPredicate<'tcx>>>>>,
 }
@@ -106,7 +106,6 @@ impl<'gcx: 'tcx, 'tcx> CtxtInterners<'tcx> {
             type_: RefCell::new(FxHashSet()),
             type_list: RefCell::new(FxHashSet()),
             substs: RefCell::new(FxHashSet()),
-            bare_fn: RefCell::new(FxHashSet()),
             region: RefCell::new(FxHashSet()),
             existential_predicates: RefCell::new(FxHashSet()),
         }
@@ -219,7 +218,7 @@ pub struct TypeckTables<'tcx> {
     pub upvar_capture_map: ty::UpvarCaptureMap<'tcx>,
 
     /// Records the type of each closure.
-    pub closure_tys: NodeMap<ty::ClosureTy<'tcx>>,
+    pub closure_tys: NodeMap<ty::PolyFnSig<'tcx>>,
 
     /// Records the kind of each closure.
     pub closure_kinds: NodeMap<ty::ClosureKind>,
@@ -859,23 +858,6 @@ impl<'a, 'tcx> Lift<'tcx> for &'a Slice<ExistentialPredicate<'a>> {
     }
 }
 
-impl<'a, 'tcx> Lift<'tcx> for &'a BareFnTy<'a> {
-    type Lifted = &'tcx BareFnTy<'tcx>;
-    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>)
-                             -> Option<&'tcx BareFnTy<'tcx>> {
-        if tcx.interners.arena.in_arena(*self as *const _) {
-            return Some(unsafe { mem::transmute(*self) });
-        }
-        // Also try in the global tcx if we're not that.
-        if !tcx.is_global() {
-            self.lift_to_tcx(tcx.global_tcx())
-        } else {
-            None
-        }
-    }
-}
-
-
 pub mod tls {
     use super::{CtxtInterners, GlobalCtxt, TyCtxt};
 
@@ -1028,7 +1010,6 @@ impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
             TyDynamic, TyClosure, TyTuple, TyParam, TyInfer, TyProjection, TyAnon);
 
         println!("Substs interner: #{}", self.interners.substs.borrow().len());
-        println!("BareFnTy interner: #{}", self.interners.bare_fn.borrow().len());
         println!("Region interner: #{}", self.interners.region.borrow().len());
         println!("Stability interner: #{}", self.stability_interner.borrow().len());
         println!("Layout interner: #{}", self.layout_interner.borrow().len());
@@ -1084,12 +1065,6 @@ impl<'tcx: 'lcx, 'lcx> Borrow<[Ty<'lcx>]> for Interned<'tcx, Slice<Ty<'tcx>>> {
 impl<'tcx: 'lcx, 'lcx> Borrow<[Kind<'lcx>]> for Interned<'tcx, Substs<'tcx>> {
     fn borrow<'a>(&'a self) -> &'a [Kind<'lcx>] {
         &self.0[..]
-    }
-}
-
-impl<'tcx: 'lcx, 'lcx> Borrow<BareFnTy<'lcx>> for Interned<'tcx, BareFnTy<'tcx>> {
-    fn borrow<'a>(&'a self) -> &'a BareFnTy<'lcx> {
-        self.0
     }
 }
 
@@ -1181,9 +1156,6 @@ fn keep_local<'tcx, T: ty::TypeFoldable<'tcx>>(x: &T) -> bool {
 }
 
 direct_interners!('tcx,
-    bare_fn: mk_bare_fn(|fty: &BareFnTy| {
-        keep_local(&fty.sig)
-    }) -> BareFnTy<'tcx>,
     region: mk_region(|r| {
         match r {
             &ty::ReVar(_) | &ty::ReSkolemized(..) => true,
@@ -1209,12 +1181,11 @@ slice_interners!(
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// Create an unsafe fn ty based on a safe fn ty.
-    pub fn safe_to_unsafe_fn_ty(self, bare_fn: &BareFnTy<'tcx>) -> Ty<'tcx> {
-        assert_eq!(bare_fn.unsafety, hir::Unsafety::Normal);
-        self.mk_fn_ptr(self.mk_bare_fn(ty::BareFnTy {
+    pub fn safe_to_unsafe_fn_ty(self, sig: PolyFnSig<'tcx>) -> Ty<'tcx> {
+        assert_eq!(sig.unsafety(), hir::Unsafety::Normal);
+        self.mk_fn_ptr(sig.map_bound(|sig| ty::FnSig {
             unsafety: hir::Unsafety::Unsafe,
-            abi: bare_fn.abi,
-            sig: bare_fn.sig.clone()
+            ..sig
         }))
     }
 
@@ -1341,11 +1312,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     pub fn mk_fn_def(self, def_id: DefId,
                      substs: &'tcx Substs<'tcx>,
-                     fty: &'tcx BareFnTy<'tcx>) -> Ty<'tcx> {
+                     fty: PolyFnSig<'tcx>) -> Ty<'tcx> {
         self.mk_ty(TyFnDef(def_id, substs, fty))
     }
 
-    pub fn mk_fn_ptr(self, fty: &'tcx BareFnTy<'tcx>) -> Ty<'tcx> {
+    pub fn mk_fn_ptr(self, fty: PolyFnSig<'tcx>) -> Ty<'tcx> {
         self.mk_ty(TyFnPtr(fty))
     }
 
@@ -1439,14 +1410,19 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn mk_fn_sig<I>(self, inputs: I, output: I::Item, variadic: bool)
+    pub fn mk_fn_sig<I>(self,
+                        inputs: I,
+                        output: I::Item,
+                        variadic: bool,
+                        unsafety: hir::Unsafety,
+                        abi: abi::Abi)
         -> <I::Item as InternIteratorElement<Ty<'tcx>, ty::FnSig<'tcx>>>::Output
         where I: Iterator,
               I::Item: InternIteratorElement<Ty<'tcx>, ty::FnSig<'tcx>>
     {
         inputs.chain(iter::once(output)).intern_with(|xs| ty::FnSig {
             inputs_and_output: self.intern_type_list(xs),
-            variadic: variadic
+            variadic, unsafety, abi
         })
     }
 

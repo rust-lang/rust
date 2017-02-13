@@ -739,11 +739,13 @@ fn convert_variant_ctor<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         CtorKind::Fn => {
             let inputs = variant.fields.iter().map(|field| tcx.item_type(field.did));
             let substs = mk_item_substs(tcx, def_id);
-            tcx.mk_fn_def(def_id, substs, tcx.mk_bare_fn(ty::BareFnTy {
-                unsafety: hir::Unsafety::Normal,
-                abi: abi::Abi::Rust,
-                sig: ty::Binder(tcx.mk_fn_sig(inputs, ty, false))
-            }))
+            tcx.mk_fn_def(def_id, substs, ty::Binder(tcx.mk_fn_sig(
+                inputs,
+                ty,
+                false,
+                hir::Unsafety::Normal,
+                abi::Abi::Rust
+            )))
         }
     };
     tcx.maps.ty.borrow_mut().insert(def_id, ctor_ty);
@@ -1682,11 +1684,11 @@ fn compute_type_of_foreign_fn_decl<'a, 'tcx>(
                     .emit();
             }
         };
-        for (input, ty) in decl.inputs.iter().zip(*fty.sig.inputs().skip_binder()) {
+        for (input, ty) in decl.inputs.iter().zip(*fty.inputs().skip_binder()) {
             check(&input, ty)
         }
         if let hir::Return(ref ty) = decl.output {
-            check(&ty, *fty.sig.output().skip_binder())
+            check(&ty, *fty.output().skip_binder())
         }
     }
 

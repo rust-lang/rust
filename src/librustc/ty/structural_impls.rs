@@ -235,20 +235,9 @@ impl<'a, 'tcx> Lift<'tcx> for ty::FnSig<'a> {
         tcx.lift(&self.inputs_and_output).map(|x| {
             ty::FnSig {
                 inputs_and_output: x,
-                variadic: self.variadic
-            }
-        })
-    }
-}
-
-impl<'a, 'tcx> Lift<'tcx> for ty::ClosureTy<'a> {
-    type Lifted = ty::ClosureTy<'tcx>;
-    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
-        tcx.lift(&self.sig).map(|sig| {
-            ty::ClosureTy {
-                sig: sig,
+                variadic: self.variadic,
                 unsafety: self.unsafety,
-                abi: self.abi
+                abi: self.abi,
             }
         })
     }
@@ -531,43 +520,6 @@ impl<'tcx> TypeFoldable<'tcx> for Ty<'tcx> {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for &'tcx ty::BareFnTy<'tcx> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        let fty = ty::BareFnTy {
-            sig: self.sig.fold_with(folder),
-            abi: self.abi,
-            unsafety: self.unsafety
-        };
-        folder.tcx().mk_bare_fn(fty)
-    }
-
-    fn fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        folder.fold_bare_fn_ty(self)
-    }
-
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.sig.visit_with(visitor)
-    }
-}
-
-impl<'tcx> TypeFoldable<'tcx> for ty::ClosureTy<'tcx> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-       ty::ClosureTy {
-            sig: self.sig.fold_with(folder),
-            unsafety: self.unsafety,
-            abi: self.abi,
-        }
-    }
-
-    fn fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        folder.fold_closure_ty(self)
-    }
-
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.sig.visit_with(visitor)
-    }
-}
-
 impl<'tcx> TypeFoldable<'tcx> for ty::TypeAndMut<'tcx> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
         ty::TypeAndMut { ty: self.ty.fold_with(folder), mutbl: self.mutbl }
@@ -588,6 +540,8 @@ impl<'tcx> TypeFoldable<'tcx> for ty::FnSig<'tcx> {
         ty::FnSig {
             inputs_and_output: folder.tcx().intern_type_list(&inputs_and_output),
             variadic: self.variadic,
+            unsafety: self.unsafety,
+            abi: self.abi,
         }
     }
 

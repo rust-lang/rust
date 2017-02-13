@@ -456,10 +456,10 @@ impl<'a, 'gcx, 'tcx, W> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx, W>
             TyFnDef(def_id, ..) => self.def_id(def_id),
             TyAdt(d, _) => self.def_id(d.did),
             TyFnPtr(f) => {
-                self.hash(f.unsafety);
-                self.hash(f.abi);
-                self.hash(f.sig.variadic());
-                self.hash(f.sig.skip_binder().inputs().len());
+                self.hash(f.unsafety());
+                self.hash(f.abi());
+                self.hash(f.variadic());
+                self.hash(f.inputs().skip_binder().len());
             }
             TyDynamic(ref data, ..) => {
                 if let Some(p) = data.principal() {
