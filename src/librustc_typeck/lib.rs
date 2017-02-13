@@ -110,6 +110,7 @@ use hir::map as hir_map;
 use rustc::infer::InferOk;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::maps::Providers;
 use rustc::traits::{ObligationCause, ObligationCauseCode, Reveal};
 use session::config;
 use util::common::time;
@@ -282,6 +283,10 @@ fn check_for_entry_fn<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
             None => bug!("entry function without a type")
         }
     }
+}
+
+pub fn provide(providers: &mut Providers) {
+    collect::provide(providers);
 }
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>)

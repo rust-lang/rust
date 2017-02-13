@@ -750,16 +750,7 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
             TyInfer(infer_ty) => write!(f, "{}", infer_ty),
             TyError => write!(f, "[type error]"),
             TyParam(ref param_ty) => write!(f, "{}", param_ty),
-            TyAdt(def, substs) => {
-                ty::tls::with(|tcx| {
-                    if def.did.is_local() &&
-                          !tcx.maps.ty.borrow().contains_key(&def.did) {
-                        write!(f, "{}<..>", tcx.item_path_str(def.did))
-                    } else {
-                        parameterized(f, substs, def.did, &[])
-                    }
-                })
-            }
+            TyAdt(def, substs) => parameterized(f, substs, def.did, &[]),
             TyDynamic(data, r) => {
                 write!(f, "{}", data)?;
                 let r = r.to_string();
