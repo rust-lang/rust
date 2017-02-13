@@ -494,13 +494,33 @@ declare_lint! {
 /// s.push_str(abc);
 /// s.push_str(&def));
 /// ```
-
 declare_lint! {
     pub STRING_EXTEND_CHARS,
     Warn,
     "using `x.extend(s.chars())` where s is a `&str` or `String`"
 }
 
+/// **What it does:** Checks for the use of `.cloned().collect()` on slice to create a `Vec`.
+///
+/// **Why is this bad?** `.to_vec()` is clearer
+///
+/// **Known problems:** None.
+///
+/// **Example:**
+/// ```rust
+/// let s = [1,2,3,4,5];
+/// let s2 : Vec<isize> = s[..].iter().cloned().collect();
+/// ```
+/// The better use would be:
+/// ```rust
+/// let s = [1,2,3,4,5];
+/// let s2 : Vec<isize> = s.to_vec();
+/// ```
+declare_lint! {
+    pub ITER_CLONED_COLLECT,
+    Warn,
+    "using `.cloned().collect()` on slice to create a `Vec`"
+}
 
 impl LintPass for Pass {
     fn get_lints(&self) -> LintArray {
@@ -525,7 +545,8 @@ impl LintPass for Pass {
                     ITER_NTH,
                     ITER_SKIP_NEXT,
                     GET_UNWRAP,
-                    STRING_EXTEND_CHARS)
+                    STRING_EXTEND_CHARS,
+                    ITER_CLONED_COLLECT)
     }
 }
 
@@ -580,6 +601,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     lint_iter_nth(cx, expr, arglists[0], true);
                 } else if method_chain_args(expr, &["skip", "next"]).is_some() {
                     lint_iter_skip_next(cx, expr);
+                } else if let Some(arglists) = method_chain_args(expr, &["cloned", "collect"]) {
+                    lint_iter_cloned_collect(cx, expr, arglists[0]);
                 }
 
                 lint_or_fun_call(cx, expr, &name.node.as_str(), args);
@@ -877,6 +900,17 @@ fn lint_cstring_as_ptr(cx: &LateContext, expr: &hir::Expr, new: &hir::Expr, unwr
                                db.span_help(unwrap.span, "assign the `CString` to a variable to extend its lifetime");
                            });
     }}
+}
+
+fn lint_iter_cloned_collect(cx: &LateContext, expr: &hir::Expr, iter_args: &[hir::Expr]) {
+    if match_type(cx, cx.tables.expr_ty(expr), &paths::VEC) &&
+       derefs_to_slice(cx, &iter_args[0], cx.tables.expr_ty(&iter_args[0])).is_some() {
+        span_lint(cx,
+                  ITER_CLONED_COLLECT,
+                  expr.span,
+                  "called `cloned().collect()` on a slice to create a `Vec`. Calling `to_vec()` is both faster and \
+                   more readable");
+    }
 }
 
 fn lint_iter_nth(cx: &LateContext, expr: &hir::Expr, iter_args: &[hir::Expr], is_mut: bool) {
