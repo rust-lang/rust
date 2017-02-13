@@ -283,5 +283,53 @@ fn overlapping() {
     }
 }
 
+fn match_wild_err_arm() {
+    let x: Result<i32, &str> = Ok(3);
+
+    match x {
+        Ok(3) => println!("ok"),
+        Ok(_) => println!("ok"),
+        Err(_) => panic!("err")
+    }
+
+    match x {
+        Ok(3) => println!("ok"),
+        Ok(_) => println!("ok"),
+        Err(_) => {panic!()}
+    }
+
+    match x {
+        Ok(3) => println!("ok"),
+        Ok(_) => println!("ok"),
+        Err(_) => {panic!();}
+    }
+
+    // allowed when not with `panic!` block
+    match x {
+        Ok(3) => println!("ok"),
+        Ok(_) => println!("ok"),
+        Err(_) => println!("err")
+    }
+
+    // allowed when used with `unreachable!`
+    match x {
+        Ok(3) => println!("ok"),
+        Ok(_) => println!("ok"),
+        Err(_) => {unreachable!()}
+    }
+
+    match x {
+        Ok(3) => println!("ok"),
+        Ok(_) => println!("ok"),
+        Err(_) => unreachable!()
+    }
+
+    match x {
+        Ok(3) => println!("ok"),
+        Ok(_) => println!("ok"),
+        Err(_) => {unreachable!();}
+    }
+}
+
 fn main() {
 }

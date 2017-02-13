@@ -1,6 +1,8 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+* New [`mut_from_ref`] lint
+
 ## 0.0.114 — 2017-02-08
 * Rustup to rustc 1.17.0-nightly (c49d10207 2017-02-07)
 * Tests are now ui tests (testing the exact output of rustc)
@@ -362,6 +364,7 @@ All notable changes to this project will be documented in this file.
 [`match_overlapping_arm`]: https://github.com/Manishearth/rust-clippy/wiki#match_overlapping_arm
 [`match_ref_pats`]: https://github.com/Manishearth/rust-clippy/wiki#match_ref_pats
 [`match_same_arms`]: https://github.com/Manishearth/rust-clippy/wiki#match_same_arms
+[`match_wild_err_arm`]: https://github.com/Manishearth/rust-clippy/wiki#match_wild_err_arm
 [`mem_forget`]: https://github.com/Manishearth/rust-clippy/wiki#mem_forget
 [`min_max`]: https://github.com/Manishearth/rust-clippy/wiki#min_max
 [`misrefactored_assign_op`]: https://github.com/Manishearth/rust-clippy/wiki#misrefactored_assign_op
@@ -369,6 +372,7 @@ All notable changes to this project will be documented in this file.
 [`mixed_case_hex_literals`]: https://github.com/Manishearth/rust-clippy/wiki#mixed_case_hex_literals
 [`module_inception`]: https://github.com/Manishearth/rust-clippy/wiki#module_inception
 [`modulo_one`]: https://github.com/Manishearth/rust-clippy/wiki#modulo_one
+[`mut_from_ref`]: https://github.com/Manishearth/rust-clippy/wiki#mut_from_ref
 [`mut_mut`]: https://github.com/Manishearth/rust-clippy/wiki#mut_mut
 [`mutex_atomic`]: https://github.com/Manishearth/rust-clippy/wiki#mutex_atomic
 [`mutex_integer`]: https://github.com/Manishearth/rust-clippy/wiki#mutex_integer

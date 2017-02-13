@@ -5,7 +5,9 @@ use rustc::hir::map::NodeItem;
 use rustc::lint::*;
 use rustc::ty;
 use syntax::ast::NodeId;
-use utils::{match_path, match_type, paths, span_lint};
+use syntax::codemap::Span;
+use syntax_pos::MultiSpan;
+use utils::{match_path, match_type, paths, span_lint, span_lint_and_then};
 
 /// **What it does:** This lint checks for function arguments of type `&String` or `&Vec` unless
 /// the references are mutable.
@@ -44,13 +46,32 @@ declare_lint! {
     "comparing a pointer to a null pointer, suggesting to use `.is_null()` instead."
 }
 
+/// **What it does:** This lint checks for functions that take immutable references and return
+/// mutable ones.
+///
+/// **Why is this bad?** This is trivially unsound, as one can create two mutable references
+/// from the same (immutable!) source. This [error](https://github.com/rust-lang/rust/issues/39465)
+/// actually lead to an interim Rust release 1.15.1.
+///
+/// **Known problems:** To be on the conservative side, if there's at least one mutable reference
+/// with the output lifetime, this lint will not trigger. In practice, this case is unlikely anyway.
+///
+/// **Example:**
+/// ```rust
+/// fn foo(&Foo) -> &mut Bar { .. }
+/// ```
+declare_lint! {
+    pub MUT_FROM_REF,
+    Warn,
+    "fns that create mutable refs from immutable ref args"
+}
 
 #[derive(Copy,Clone)]
 pub struct PointerPass;
 
 impl LintPass for PointerPass {
     fn get_lints(&self) -> LintArray {
-        lint_array!(PTR_ARG, CMP_NULL)
+        lint_array!(PTR_ARG, CMP_NULL, MUT_FROM_REF)
     }
 }
 
@@ -110,6 +131,37 @@ fn check_fn(cx: &LateContext, decl: &FnDecl, fn_id: NodeId) {
                            Consider changing the type to `&str`");
             }
         }
+    }
+
+    if let FunctionRetTy::Return(ref ty) = decl.output {
+        if let Some((out, MutMutable, _)) = get_rptr_lm(ty) {
+            let mut immutables = vec![];
+            for (_, ref mutbl, ref argspan) in
+                decl.inputs
+                    .iter()
+                    .filter_map(|ty| get_rptr_lm(ty))
+                    .filter(|&(lt, _, _)| lt.name == out.name) {
+                if *mutbl == MutMutable {
+                    return;
+                }
+                immutables.push(*argspan);
+            }
+            if immutables.is_empty() {
+                return;
+            }
+            span_lint_and_then(cx, MUT_FROM_REF, ty.span, "mutable borrow from immutable input(s)", |db| {
+                let ms = MultiSpan::from_spans(immutables);
+                db.span_note(ms, "immutable borrow here");
+            });
+        }
+    }
+}
+
+fn get_rptr_lm(ty: &Ty) -> Option<(&Lifetime, Mutability, Span)> {
+    if let Ty_::TyRptr(ref lt, ref m) = ty.node {
+        Some((lt, m.mutbl, ty.span))
+    } else {
+        None
     }
 }
 

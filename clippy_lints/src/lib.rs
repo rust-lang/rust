@@ -15,6 +15,7 @@
 #![allow(needless_lifetimes)]
 
 extern crate syntax;
+extern crate syntax_pos;
 #[macro_use]
 extern crate rustc;
 extern crate rustc_data_structures;
@@ -412,6 +413,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         matches::MATCH_BOOL,
         matches::MATCH_OVERLAPPING_ARM,
         matches::MATCH_REF_PATS,
+        matches::MATCH_WILD_ERR_ARM,
         matches::SINGLE_MATCH,
         methods::CHARS_NEXT_CMP,
         methods::CLONE_DOUBLE_REF,
@@ -464,6 +466,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         precedence::PRECEDENCE,
         print::PRINT_WITH_NEWLINE,
         ptr::CMP_NULL,
+        ptr::MUT_FROM_REF,
         ptr::PTR_ARG,
         ranges::RANGE_STEP_BY_ZERO,
         ranges::RANGE_ZIP_WITH_LEN,
