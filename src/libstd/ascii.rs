@@ -454,19 +454,19 @@ pub trait AsciiExt {
     ///
     /// Rust uses the WhatWG Infra Standard's [definition of ASCII
     /// whitespace][infra-aw].  There are several other definitions in
-    /// wide use.  For instance, [the POSIX locale][posix-ctype]
-    /// includes U+000B VERTICAL TAB as well as all the above
-    /// characters, but—from the very same specification—[the default
-    /// rule for "field splitting" in the Bourne shell][field-splitting]
-    /// considers *only* SPACE, HORIZONTAL TAB, and LINE FEED as whitespace.
+    /// wide use.  For instance, [the POSIX locale][pct] includes
+    /// U+000B VERTICAL TAB as well as all the above characters,
+    /// but—from the very same specification—[the default rule for
+    /// "field splitting" in the Bourne shell][bfs] considers *only*
+    /// SPACE, HORIZONTAL TAB, and LINE FEED as whitespace.
     ///
     /// If you are writing a program that will process an existing
     /// file format, check what that format's definition of whitespace is
     /// before using this function.
     ///
     /// [infra-aw]: https://infra.spec.whatwg.org/#ascii-whitespace
-    /// [posix-ctype]: http://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap07.html#tag_07_03_01
-    /// [field-splitting]: http://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#tag_18_06_05
+    /// [pct]: http://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap07.html#tag_07_03_01
+    /// [bfs]: http://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#tag_18_06_05
     ///
     /// # Examples
     ///
