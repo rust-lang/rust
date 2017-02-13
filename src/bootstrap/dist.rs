@@ -360,6 +360,8 @@ pub fn analysis(build: &Build, compiler: &Compiler, target: &str) {
     t!(fs::remove_dir_all(&image));
 }
 
+const CARGO_VENDOR_VERSION: &'static str = "0.1.4";
+
 /// Creates the `rust-src` installer component and the plain source tarball
 pub fn rust_src(build: &Build) {
     println!("Dist src");
@@ -404,13 +406,6 @@ pub fn rust_src(build: &Build) {
             }
         }
 
-        // If we're inside the vendor directory then we need to preserve
-        // everything as Cargo's vendoring support tracks all checksums and we
-        // want to be sure we don't accidentally leave out a file.
-        if spath.contains("vendor") {
-            return true
-        }
-
         let excludes = [
             "CVS", "RCS", "SCCS", ".git", ".gitignore", ".gitmodules",
             ".gitattributes", ".cvsignore", ".svn", ".arch-ids", "{arch}",
@@ -432,6 +427,29 @@ pub fn rust_src(build: &Build) {
     for item in &src_files {
         copy(&build.src.join(item), &dst_src.join(item));
     }
+
+    // Get cargo-vendor installed, if it isn't already.
+    let mut has_cargo_vendor = false;
+    let mut cmd = Command::new(&build.cargo);
+    for line in output(cmd.arg("install").arg("--list")).lines() {
+        has_cargo_vendor |= line.starts_with("cargo-vendor ");
+    }
+    if !has_cargo_vendor {
+        let mut cmd = Command::new(&build.cargo);
+        cmd.arg("install")
+           .arg("--force")
+           .arg("--debug")
+           .arg("--vers").arg(CARGO_VENDOR_VERSION)
+           .arg("cargo-vendor")
+           .env("RUSTC", &build.rustc);
+        build.run(&mut cmd);
+    }
+
+    // Vendor all Cargo dependencies
+    let mut cmd = Command::new(&build.cargo);
+    cmd.arg("vendor")
+       .current_dir(&dst_src.join("src"));
+    build.run(&mut cmd);
 
     // Create source tarball in rust-installer format
     let mut cmd = Command::new("sh");
