@@ -30,26 +30,30 @@ impl<'l, 'tcx> MirPass<'tcx> for SimplifyBranches<'l> {
         for block in mir.basic_blocks_mut() {
             let terminator = block.terminator_mut();
             terminator.kind = match terminator.kind {
-                TerminatorKind::If { ref targets, cond: Operand::Constant(Constant {
-                    literal: Literal::Value {
-                        value: ConstVal::Bool(cond)
-                    }, ..
-                }) } => {
-                    if cond {
-                        TerminatorKind::Goto { target: targets.0 }
+                TerminatorKind::SwitchInt { discr: Operand::Constant(Constant {
+                    literal: Literal::Value { ref value }, ..
+                }), ref values, ref targets, .. } => {
+                    if let Some(ref constint) = value.to_const_int() {
+                        let (otherwise, targets) = targets.split_last().unwrap();
+                        let mut ret = TerminatorKind::Goto { target: *otherwise };
+                        for (v, t) in values.iter().zip(targets.iter()) {
+                            if v == constint {
+                                ret = TerminatorKind::Goto { target: *t };
+                                break;
+                            }
+                        }
+                        ret
                     } else {
-                        TerminatorKind::Goto { target: targets.1 }
+                        continue
                     }
-                }
-
+                },
                 TerminatorKind::Assert { target, cond: Operand::Constant(Constant {
                     literal: Literal::Value {
                         value: ConstVal::Bool(cond)
                     }, ..
                 }), expected, .. } if cond == expected => {
                     TerminatorKind::Goto { target: target }
-                }
-
+                },
                 _ => continue
             };
         }

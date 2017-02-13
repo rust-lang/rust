@@ -20,7 +20,6 @@ use ty::{self, Ty, TyCtxt, TypeFoldable, ReprOptions};
 use syntax::ast::{FloatTy, IntTy, UintTy};
 use syntax::attr;
 use syntax_pos::DUMMY_SP;
-use rustc_const_math::ConstInt;
 
 use std::cmp;
 use std::fmt;
@@ -1183,11 +1182,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                                                             i64::min_value(),
                                                             true);
                     for v in &def.variants {
-                        let x = match v.disr_val.erase_type() {
-                            ConstInt::InferSigned(i) => i as i64,
-                            ConstInt::Infer(i) => i as u64 as i64,
-                            _ => bug!()
-                        };
+                        let x = v.disr_val as i128 as i64;
                         if x == 0 { non_zero = false; }
                         if x < min { min = x; }
                         if x > max { max = x; }
@@ -1195,9 +1190,7 @@ impl<'a, 'gcx, 'tcx> Layout {
 
                     // FIXME: should handle i128? signed-value based impl is weird and hard to
                     // grok.
-                    let (discr, signed) = Integer::repr_discr(tcx, ty, &def.repr,
-                                                              min,
-                                                              max);
+                    let (discr, signed) = Integer::repr_discr(tcx, ty, &def.repr, min, max);
                     return success(CEnum {
                         discr: discr,
                         signed: signed,
@@ -1247,7 +1240,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                 // non-empty body, explicit discriminants should have
                 // been rejected by a checker before this point.
                 for (i, v) in def.variants.iter().enumerate() {
-                    if i as u128 != v.disr_val.to_u128_unchecked() {
+                    if i as u128 != v.disr_val {
                         bug!("non-C-like enum {} with specified discriminants",
                             tcx.item_path_str(def.did));
                     }
@@ -1315,7 +1308,6 @@ impl<'a, 'gcx, 'tcx> Layout {
                 let discr_max = (variants.len() - 1) as i64;
                 assert!(discr_max >= 0);
                 let (min_ity, _) = Integer::repr_discr(tcx, ty, &def.repr, 0, discr_max);
-
                 let mut align = dl.aggregate_align;
                 let mut size = Size::from_bytes(0);
 
@@ -1354,6 +1346,23 @@ impl<'a, 'gcx, 'tcx> Layout {
 
                 if size.bytes() >= dl.obj_size_bound() {
                     return Err(LayoutError::SizeOverflow(ty));
+                }
+
+                let typeck_ity = Integer::from_attr(dl, def.discr_ty);
+                if typeck_ity < min_ity {
+                    // It is a bug if Layout decided on a greater discriminant size than typeck for
+                    // some reason at this point (based on values discriminant can take on). Mostly
+                    // because this discriminant will be loaded, and then stored into variable of
+                    // type calculated by typeck. Consider such case (a bug): typeck decided on
+                    // byte-sized discriminant, but layout thinks we need a 16-bit to store all
+                    // discriminant values. That would be a bug, because then, in trans, in order
+                    // to store this 16-bit discriminant into 8-bit sized temporary some of the
+                    // space necessary to represent would have to be discarded (or layout is wrong
+                    // on thinking it needs 16 bits)
+                    bug!("layout decided on a larger discriminant type ({:?}) than typeck ({:?})",
+                         min_ity, typeck_ity);
+                    // However, it is fine to make discr type however large (as an optimisation)
+                    // after this point – we’ll just truncate the value we load in trans.
                 }
 
                 // Check to see if we should use a different type for the

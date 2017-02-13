@@ -156,10 +156,10 @@ impl<'mir, 'a, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'tcx> {
 
                 LvalueContext::StorageLive |
                 LvalueContext::StorageDead |
+                LvalueContext::Inspect |
                 LvalueContext::Consume => {}
 
                 LvalueContext::Store |
-                LvalueContext::Inspect |
                 LvalueContext::Borrow { .. } |
                 LvalueContext::Projection(..) => {
                     self.mark_as_lvalue(index);
@@ -204,8 +204,6 @@ pub fn cleanup_kinds<'a, 'tcx>(mir: &mir::Mir<'tcx>) -> IndexVec<mir::BasicBlock
                 TerminatorKind::Resume |
                 TerminatorKind::Return |
                 TerminatorKind::Unreachable |
-                TerminatorKind::If { .. } |
-                TerminatorKind::Switch { .. } |
                 TerminatorKind::SwitchInt { .. } => {
                     /* nothing to do */
                 }

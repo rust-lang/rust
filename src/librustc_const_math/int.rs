@@ -77,6 +77,14 @@ mod ibounds {
 }
 
 impl ConstInt {
+    pub fn new_inttype(val: u128, ty: IntType, usize_ty: UintTy, isize_ty: IntTy)
+    -> Option<ConstInt> {
+        match ty {
+            IntType::SignedInt(i) => ConstInt::new_signed(val as i128, i, isize_ty),
+            IntType::UnsignedInt(i) => ConstInt::new_unsigned(val, i, usize_ty),
+        }
+    }
+
     /// Creates a new unsigned ConstInt with matching type while also checking that overflow does
     /// not happen.
     pub fn new_unsigned(val: u128, ty: UintTy, usize_ty: UintTy) -> Option<ConstInt> {

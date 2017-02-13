@@ -228,7 +228,7 @@ pub enum EntryKind<'tcx> {
     ForeignMutStatic,
     ForeignMod,
     Type,
-    Enum(ReprOptions),
+    Enum(Lazy<attr::IntType>, ReprOptions),
     Field,
     Variant(Lazy<VariantData>),
     Struct(Lazy<VariantData>, ReprOptions),

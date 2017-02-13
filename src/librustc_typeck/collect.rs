@@ -1004,9 +1004,8 @@ fn convert_struct_def<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     let did = ccx.tcx.hir.local_def_id(it.id);
     // Use separate constructor id for unit/tuple structs and reuse did for braced structs.
     let ctor_id = if !def.is_struct() { Some(ccx.tcx.hir.local_def_id(def.id())) } else { None };
-    let variants = vec![convert_struct_variant(ccx, ctor_id.unwrap_or(did), it.name,
-                                               ConstInt::Infer(0), def)];
-    let adt = ccx.tcx.alloc_adt_def(did, AdtKind::Struct, variants,
+    let variants = vec![convert_struct_variant(ccx, ctor_id.unwrap_or(did), it.name, 0, def)];
+    let adt = ccx.tcx.alloc_adt_def(did, AdtKind::Struct, None, variants,
         ReprOptions::new(&ccx.tcx, did));
     if let Some(ctor_id) = ctor_id {
         // Make adt definition available through constructor id as well.
@@ -1023,63 +1022,65 @@ fn convert_union_def<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                 -> &'tcx ty::AdtDef
 {
     let did = ccx.tcx.hir.local_def_id(it.id);
-    let variants = vec![convert_struct_variant(ccx, did, it.name, ConstInt::Infer(0), def)];
-
-    let adt = ccx.tcx.alloc_adt_def(did, AdtKind::Union, variants, ReprOptions::new(&ccx.tcx, did));
+    let variants = vec![convert_struct_variant(ccx, did, it.name, 0, def)];
+    let adt = ccx.tcx.alloc_adt_def(did, AdtKind::Union, None, variants,
+                                    ReprOptions::new(&ccx.tcx, did));
     ccx.tcx.adt_defs.borrow_mut().insert(did, adt);
     adt
 }
 
-    fn evaluate_disr_expr(ccx: &CrateCtxt, repr_ty: attr::IntType, body: hir::BodyId)
-                          -> Option<ty::Disr> {
-        let e = &ccx.tcx.hir.body(body).value;
-        debug!("disr expr, checking {}", ccx.tcx.hir.node_to_pretty_string(e.id));
+fn evaluate_disr_expr(ccx: &CrateCtxt, repr_ty: attr::IntType, body: hir::BodyId)
+                      -> Option<ConstInt> {
+    let e = &ccx.tcx.hir.body(body).value;
+    debug!("disr expr, checking {}", ccx.tcx.hir.node_to_pretty_string(e.id));
 
-        let ty_hint = repr_ty.to_ty(ccx.tcx);
-        let print_err = |cv: ConstVal| {
-            struct_span_err!(ccx.tcx.sess, e.span, E0079, "mismatched types")
-                .note_expected_found(&"type", &ty_hint, &format!("{}", cv.description()))
-                .span_label(e.span, &format!("expected '{}' type", ty_hint))
-                .emit();
-        };
+    let ty_hint = repr_ty.to_ty(ccx.tcx);
+    let print_err = |cv: ConstVal| {
+        struct_span_err!(ccx.tcx.sess, e.span, E0079, "mismatched types")
+            .note_expected_found(&"type", &ty_hint, &format!("{}", cv.description()))
+            .span_label(e.span, &format!("expected '{}' type", ty_hint))
+            .emit();
+    };
 
-        let hint = UncheckedExprHint(ty_hint);
-        match ConstContext::new(ccx.tcx, body).eval(e, hint) {
-            Ok(ConstVal::Integral(i)) => {
-                // FIXME: eval should return an error if the hint is wrong
-                match (repr_ty, i) {
-                    (attr::SignedInt(ast::IntTy::I8), ConstInt::I8(_)) |
-                    (attr::SignedInt(ast::IntTy::I16), ConstInt::I16(_)) |
-                    (attr::SignedInt(ast::IntTy::I32), ConstInt::I32(_)) |
-                    (attr::SignedInt(ast::IntTy::I64), ConstInt::I64(_)) |
-                    (attr::SignedInt(ast::IntTy::I128), ConstInt::I128(_)) |
-                    (attr::SignedInt(ast::IntTy::Is), ConstInt::Isize(_)) |
-                    (attr::UnsignedInt(ast::UintTy::U8), ConstInt::U8(_)) |
-                    (attr::UnsignedInt(ast::UintTy::U16), ConstInt::U16(_)) |
-                    (attr::UnsignedInt(ast::UintTy::U32), ConstInt::U32(_)) |
-                    (attr::UnsignedInt(ast::UintTy::U64), ConstInt::U64(_)) |
-                    (attr::UnsignedInt(ast::UintTy::U128), ConstInt::U128(_)) |
-                    (attr::UnsignedInt(ast::UintTy::Us), ConstInt::Usize(_)) => Some(i),
-                    (_, i) => {
-                        print_err(ConstVal::Integral(i));
-                        None
-                    },
-                }
-            },
-            Ok(cv) => {
-                print_err(cv);
-                None
-            },
-            // enum variant evaluation happens before the global constant check
-            // so we need to report the real error
-            Err(err) => {
-                let mut diag = report_const_eval_err(
-                    ccx.tcx, &err, e.span, "enum discriminant");
-                diag.emit();
-                None
+    let hint = UncheckedExprHint(ty_hint);
+    match ConstContext::new(ccx.tcx, body).eval(e, hint) {
+        Ok(ConstVal::Integral(i)) => {
+            // FIXME: eval should return an error if the hint does not match the type of the body.
+            // i.e. eventually the match below would not exist.
+            match (repr_ty, i) {
+                (attr::SignedInt(ast::IntTy::I8), ConstInt::I8(_)) |
+                (attr::SignedInt(ast::IntTy::I16), ConstInt::I16(_)) |
+                (attr::SignedInt(ast::IntTy::I32), ConstInt::I32(_)) |
+                (attr::SignedInt(ast::IntTy::I64), ConstInt::I64(_)) |
+                (attr::SignedInt(ast::IntTy::I128), ConstInt::I128(_)) |
+                (attr::SignedInt(ast::IntTy::Is), ConstInt::Isize(_)) |
+                (attr::UnsignedInt(ast::UintTy::U8), ConstInt::U8(_)) |
+                (attr::UnsignedInt(ast::UintTy::U16), ConstInt::U16(_)) |
+                (attr::UnsignedInt(ast::UintTy::U32), ConstInt::U32(_)) |
+                (attr::UnsignedInt(ast::UintTy::U64), ConstInt::U64(_)) |
+                (attr::UnsignedInt(ast::UintTy::U128), ConstInt::U128(_)) |
+                (attr::UnsignedInt(ast::UintTy::Us), ConstInt::Usize(_)) =>
+                    Some(i),
+                (_, i) => {
+                    print_err(ConstVal::Integral(i));
+                    None
+                },
             }
+        },
+        Ok(cv) => {
+            print_err(cv);
+            None
+        },
+        // enum variant evaluation happens before the global constant check
+        // so we need to report the real error
+        Err(err) => {
+            let mut diag = report_const_eval_err(
+                ccx.tcx, &err, e.span, "enum discriminant");
+            diag.emit();
+            None
         }
     }
+}
 
 fn convert_enum_def<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                               it: &hir::Item,
@@ -1090,13 +1091,17 @@ fn convert_enum_def<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     let did = tcx.hir.local_def_id(it.id);
     let repr_hints = tcx.lookup_repr_hints(did);
     let repr_type = tcx.enum_repr_type(repr_hints.get(0));
-    let initial = repr_type.initial_discriminant(tcx);
-    let mut prev_disr = None::<ty::Disr>;
+    let initial = ConstInt::new_inttype(repr_type.initial_discriminant(tcx), repr_type,
+                                        tcx.sess.target.uint_type, tcx.sess.target.int_type)
+        .unwrap();
+    let mut prev_disr = None::<ConstInt>;
     let variants = def.variants.iter().map(|v| {
         let wrapped_disr = prev_disr.map_or(initial, |d| d.wrap_incr());
         let disr = if let Some(e) = v.node.disr_expr {
+            // FIXME: i128 discriminants
             evaluate_disr_expr(ccx, repr_type, e)
-        } else if let Some(disr) = repr_type.disr_incr(tcx, prev_disr) {
+        } else if let Some(disr) = prev_disr.map_or(Some(initial),
+                                                    |v| (v + ConstInt::Infer(1)).ok()) {
             Some(disr)
         } else {
             struct_span_err!(tcx.sess, v.span, E0370,
@@ -1108,12 +1113,11 @@ fn convert_enum_def<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             None
         }.unwrap_or(wrapped_disr);
         prev_disr = Some(disr);
-
         let did = tcx.hir.local_def_id(v.node.data.id());
-        convert_struct_variant(ccx, did, v.node.name, disr, &v.node.data)
+        convert_struct_variant(ccx, did, v.node.name, disr.to_u128_unchecked(), &v.node.data)
     }).collect();
-
-    let adt = tcx.alloc_adt_def(did, AdtKind::Enum, variants, ReprOptions::new(&ccx.tcx, did));
+    let adt = tcx.alloc_adt_def(did, AdtKind::Enum, Some(repr_type), variants,
+                                ReprOptions::new(&ccx.tcx, did));
     tcx.adt_defs.borrow_mut().insert(did, adt);
     adt
 }

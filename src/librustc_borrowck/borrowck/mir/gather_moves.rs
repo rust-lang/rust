@@ -435,6 +435,7 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
                 }
             }
             Rvalue::Ref(..) |
+            Rvalue::Discriminant(..) |
             Rvalue::Len(..) |
             Rvalue::InlineAsm { .. } => {}
             Rvalue::Box(..) => {
@@ -463,10 +464,8 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
                 self.gather_move(loc, &Lvalue::Local(RETURN_POINTER));
             }
 
-            TerminatorKind::If { .. } |
             TerminatorKind::Assert { .. } |
-            TerminatorKind::SwitchInt { .. } |
-            TerminatorKind::Switch { .. } => {
+            TerminatorKind::SwitchInt { .. } => {
                 // branching terminators - these don't move anything
             }
 
