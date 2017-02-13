@@ -261,7 +261,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         let data = VariantData {
             ctor_kind: variant.ctor_kind,
-            disr: variant.disr_val.to_u128_unchecked(),
+            disr: variant.disr_val,
             struct_ctor: None,
         };
 
@@ -388,7 +388,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
         let data = VariantData {
             ctor_kind: variant.ctor_kind,
-            disr: variant.disr_val.to_u128_unchecked(),
+            disr: variant.disr_val,
             struct_ctor: Some(def_id.index),
         };
 
@@ -661,7 +661,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             }
             hir::ItemForeignMod(_) => EntryKind::ForeignMod,
             hir::ItemTy(..) => EntryKind::Type,
-            hir::ItemEnum(..) => EntryKind::Enum(get_repr_options(&tcx, def_id)),
+            hir::ItemEnum(..) => EntryKind::Enum(self.lazy(&tcx.lookup_adt_def(def_id).discr_ty),
+                                                 get_repr_options(&tcx, def_id)),
             hir::ItemStruct(ref struct_def, _) => {
                 let variant = tcx.lookup_adt_def(def_id).struct_variant();
 
@@ -678,7 +679,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
                 EntryKind::Struct(self.lazy(&VariantData {
                     ctor_kind: variant.ctor_kind,
-                    disr: variant.disr_val.to_u128_unchecked(),
+                    disr: variant.disr_val,
                     struct_ctor: struct_ctor,
                 }), repr_options)
             }
@@ -688,7 +689,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
                 EntryKind::Union(self.lazy(&VariantData {
                     ctor_kind: variant.ctor_kind,
-                    disr: variant.disr_val.to_u128_unchecked(),
+                    disr: variant.disr_val,
                     struct_ctor: None,
                 }), repr_options)
             }

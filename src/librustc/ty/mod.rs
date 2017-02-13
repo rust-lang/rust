@@ -45,7 +45,6 @@ use syntax::attr;
 use syntax::symbol::{Symbol, InternedString};
 use syntax_pos::{DUMMY_SP, Span};
 
-use rustc_const_math::ConstInt;
 use rustc_data_structures::accumulate_vec::IntoIter as AccIntoIter;
 
 use hir;
@@ -96,7 +95,7 @@ mod flags;
 mod structural_impls;
 mod sty;
 
-pub type Disr = ConstInt;
+pub type Disr = u128;
 
 // Data types
 
@@ -1325,6 +1324,12 @@ pub struct FieldDef {
 /// table.
 pub struct AdtDef {
     pub did: DefId,
+    /// Type of the discriminant
+    ///
+    /// Note, that this is the type specified in `repr()` or a default type of some sort, and might
+    /// not match the actual type that layout algorithm decides to use when translating this type
+    /// into LLVM. That being said, layout algorithm may not use a type larger than specified here.
+    pub discr_ty: attr::IntType,
     pub variants: Vec<VariantDef>,
     destructor: Cell<Option<DefId>>,
     flags: Cell<AdtFlags>,
@@ -1387,6 +1392,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
     fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>,
            did: DefId,
            kind: AdtKind,
+           discr_ty: attr::IntType,
            variants: Vec<VariantDef>,
            repr: ReprOptions) -> Self {
         let mut flags = AdtFlags::NO_ADT_FLAGS;
@@ -1410,6 +1416,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
         }
         AdtDef {
             did: did,
+            discr_ty: discr_ty,
             variants: variants,
             flags: Cell::new(flags),
             destructor: Cell::new(None),

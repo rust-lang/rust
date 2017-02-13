@@ -780,10 +780,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
-    pub fn intcast(&self, val: ValueRef, dest_ty: Type) -> ValueRef {
+    pub fn intcast(&self, val: ValueRef, dest_ty: Type, is_signed: bool) -> ValueRef {
         self.count_insn("intcast");
         unsafe {
-            llvm::LLVMBuildIntCast(self.llbuilder, val, dest_ty.to_ref(), noname())
+            llvm::LLVMRustBuildIntCast(self.llbuilder, val, dest_ty.to_ref(), is_signed)
         }
     }
 

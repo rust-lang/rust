@@ -536,7 +536,7 @@ pub fn call_memcpy<'a, 'tcx>(b: &Builder<'a, 'tcx>,
     let memcpy = ccx.get_intrinsic(&key);
     let src_ptr = b.pointercast(src, Type::i8p(ccx));
     let dst_ptr = b.pointercast(dst, Type::i8p(ccx));
-    let size = b.intcast(n_bytes, ccx.int_type());
+    let size = b.intcast(n_bytes, ccx.int_type(), false);
     let align = C_i32(ccx, align as i32);
     let volatile = C_bool(ccx, false);
     b.call(memcpy, &[dst_ptr, src_ptr, size, align, volatile], None);

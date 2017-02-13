@@ -673,10 +673,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn alloc_adt_def(self,
                          did: DefId,
                          kind: AdtKind,
+                         discr_ty: Option<attr::IntType>,
                          variants: Vec<ty::VariantDef>,
                          repr: ReprOptions)
                          -> &'gcx ty::AdtDef {
-        let def = ty::AdtDef::new(self, did, kind, variants, repr);
+        let discr_ty = discr_ty.unwrap_or(attr::UnsignedInt(ast::UintTy::U8));
+        let def = ty::AdtDef::new(self, did, kind, discr_ty, variants, repr);
         self.global_arenas.adt_def.alloc(def)
     }
 

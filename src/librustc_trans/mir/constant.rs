@@ -61,6 +61,33 @@ impl<'tcx> Const<'tcx> {
         }
     }
 
+    pub fn from_constint<'a>(ccx: &CrateContext<'a, 'tcx>, ci: &ConstInt)
+    -> Const<'tcx> {
+        let tcx = ccx.tcx();
+        let (llval, ty) = match *ci {
+            I8(v) => (C_integral(Type::i8(ccx), v as u64, true), tcx.types.i8),
+            I16(v) => (C_integral(Type::i16(ccx), v as u64, true), tcx.types.i16),
+            I32(v) => (C_integral(Type::i32(ccx), v as u64, true), tcx.types.i32),
+            I64(v) => (C_integral(Type::i64(ccx), v as u64, true), tcx.types.i64),
+            I128(v) => (C_big_integral(Type::i128(ccx), v as u128), tcx.types.i128),
+            Isize(v) => {
+                let i = v.as_i64(ccx.tcx().sess.target.int_type);
+                (C_integral(Type::int(ccx), i as u64, true), tcx.types.isize)
+            },
+            U8(v) => (C_integral(Type::i8(ccx), v as u64, false), tcx.types.u8),
+            U16(v) => (C_integral(Type::i16(ccx), v as u64, false), tcx.types.u16),
+            U32(v) => (C_integral(Type::i32(ccx), v as u64, false), tcx.types.u32),
+            U64(v) => (C_integral(Type::i64(ccx), v, false), tcx.types.u64),
+            U128(v) => (C_big_integral(Type::i128(ccx), v), tcx.types.u128),
+            Usize(v) => {
+                let u = v.as_u64(ccx.tcx().sess.target.uint_type);
+                (C_integral(Type::int(ccx), u, false), tcx.types.usize)
+            },
+            Infer(_) | InferSigned(_) => bug!("MIR must not use `{:?}`", ci),
+        };
+        Const { llval: llval, ty: ty }
+    }
+
     /// Translate ConstVal into a LLVM constant value.
     pub fn from_constval<'a>(ccx: &CrateContext<'a, 'tcx>,
                              cv: ConstVal,
@@ -72,26 +99,7 @@ impl<'tcx> Const<'tcx> {
             ConstVal::Float(F64(v)) => C_floating_f64(v, llty),
             ConstVal::Float(FInfer {..}) => bug!("MIR must not use `{:?}`", cv),
             ConstVal::Bool(v) => C_bool(ccx, v),
-            ConstVal::Integral(I8(v)) => C_integral(Type::i8(ccx), v as u64, true),
-            ConstVal::Integral(I16(v)) => C_integral(Type::i16(ccx), v as u64, true),
-            ConstVal::Integral(I32(v)) => C_integral(Type::i32(ccx), v as u64, true),
-            ConstVal::Integral(I64(v)) => C_integral(Type::i64(ccx), v as u64, true),
-            ConstVal::Integral(I128(v)) => C_big_integral(Type::i128(ccx), v as u128),
-            ConstVal::Integral(Isize(v)) => {
-                let i = v.as_i64(ccx.tcx().sess.target.int_type);
-                C_integral(Type::int(ccx), i as u64, true)
-            },
-            ConstVal::Integral(U8(v)) => C_integral(Type::i8(ccx), v as u64, false),
-            ConstVal::Integral(U16(v)) => C_integral(Type::i16(ccx), v as u64, false),
-            ConstVal::Integral(U32(v)) => C_integral(Type::i32(ccx), v as u64, false),
-            ConstVal::Integral(U64(v)) => C_integral(Type::i64(ccx), v, false),
-            ConstVal::Integral(U128(v)) => C_big_integral(Type::i128(ccx), v),
-            ConstVal::Integral(Usize(v)) => {
-                let u = v.as_u64(ccx.tcx().sess.target.uint_type);
-                C_integral(Type::int(ccx), u, false)
-            },
-            ConstVal::Integral(Infer(_)) |
-            ConstVal::Integral(InferSigned(_)) => bug!("MIR must not use `{:?}`", cv),
+            ConstVal::Integral(ref i) => return Const::from_constint(ccx, i),
             ConstVal::Str(ref v) => C_str_slice(ccx, v.clone()),
             ConstVal::ByteStr(ref v) => consts::addr_of(ccx, C_bytes(ccx, v), 1, "byte_str"),
             ConstVal::Struct(_) | ConstVal::Tuple(_) |

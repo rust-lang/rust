@@ -25,8 +25,6 @@ use rustc::session::Session;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::subst::Substs;
 
-use rustc_const_math::ConstInt;
-
 use rustc::mir::Mir;
 
 use std::borrow::Cow;
@@ -435,7 +433,7 @@ impl<'tcx> EntryKind<'tcx> {
             EntryKind::Mod(_) => Def::Mod(did),
             EntryKind::Variant(_) => Def::Variant(did),
             EntryKind::Trait(_) => Def::Trait(did),
-            EntryKind::Enum(_) => Def::Enum(did),
+            EntryKind::Enum(..) => Def::Enum(did),
             EntryKind::MacroDef(_) => Def::Macro(did),
 
             EntryKind::ForeignMod |
@@ -535,7 +533,7 @@ impl<'a, 'tcx> CrateMetadata {
                     vis: f.visibility.decode(self)
                 }
             }).collect(),
-            disr_val: ConstInt::Infer(data.disr),
+            disr_val: data.disr,
             ctor_kind: data.ctor_kind,
         }, data.struct_ctor)
     }
@@ -546,8 +544,14 @@ impl<'a, 'tcx> CrateMetadata {
                        -> &'tcx ty::AdtDef {
         let item = self.entry(item_id);
         let did = self.local_def_id(item_id);
+        let (kind, ty) = match item.kind {
+            EntryKind::Enum(dt, _) => (ty::AdtKind::Enum, Some(dt.decode(self))),
+            EntryKind::Struct(_, _) => (ty::AdtKind::Struct, None),
+            EntryKind::Union(_, _) => (ty::AdtKind::Union, None),
+            _ => bug!("get_adt_def called on a non-ADT {:?}", did),
+        };
         let mut ctor_index = None;
-        let variants = if let EntryKind::Enum(_) = item.kind {
+        let variants = if let ty::AdtKind::Enum = kind {
             item.children
                 .decode(self)
                 .map(|index| {
@@ -562,13 +566,13 @@ impl<'a, 'tcx> CrateMetadata {
             vec![variant]
         };
         let (kind, repr) = match item.kind {
-            EntryKind::Enum(repr) => (ty::AdtKind::Enum, repr),
+            EntryKind::Enum(_, repr) => (ty::AdtKind::Enum, repr),
             EntryKind::Struct(_, repr) => (ty::AdtKind::Struct, repr),
             EntryKind::Union(_, repr) => (ty::AdtKind::Union, repr),
             _ => bug!("get_adt_def called on a non-ADT {:?}", did),
         };
 
-        let adt = tcx.alloc_adt_def(did, kind, variants, repr);
+        let adt = tcx.alloc_adt_def(did, kind, ty, variants, repr);
         if let Some(ctor_index) = ctor_index {
             // Make adt definition available through constructor id as well.
             tcx.adt_defs.borrow_mut().insert(self.local_def_id(ctor_index), adt);

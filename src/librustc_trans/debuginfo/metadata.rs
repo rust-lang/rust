@@ -1476,7 +1476,7 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                     DIB(cx),
                     name.as_ptr(),
                     // FIXME: what if enumeration has i128 discriminant?
-                    v.disr_val.to_u128_unchecked() as u64)
+                    v.disr_val as u64)
             }
         })
         .collect();

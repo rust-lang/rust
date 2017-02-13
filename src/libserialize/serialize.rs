@@ -567,6 +567,34 @@ impl<T:Decodable> Decodable for Vec<T> {
     }
 }
 
+impl<'a, T:Encodable> Encodable for Cow<'a, [T]>
+where [T]: ToOwned<Owned = Vec<T>>
+{
+    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+        s.emit_seq(self.len(), |s| {
+            for (i, e) in self.iter().enumerate() {
+                s.emit_seq_elt(i, |s| e.encode(s))?
+            }
+            Ok(())
+        })
+    }
+}
+
+impl<T:Decodable+ToOwned> Decodable for Cow<'static, [T]>
+where [T]: ToOwned<Owned = Vec<T>>
+{
+    fn decode<D: Decoder>(d: &mut D) -> Result<Cow<'static, [T]>, D::Error> {
+        d.read_seq(|d, len| {
+            let mut v = Vec::with_capacity(len);
+            for i in 0..len {
+                v.push(d.read_seq_elt(i, |d| Decodable::decode(d))?);
+            }
+            Ok(Cow::Owned(v))
+        })
+    }
+}
+
+
 impl<T:Encodable> Encodable for Option<T> {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
         s.emit_option(|s| {

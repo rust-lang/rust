@@ -1316,6 +1316,12 @@ extern "C" LLVMRustVisibility LLVMRustGetVisibility(LLVMValueRef V) {
   return toRust(LLVMGetVisibility(V));
 }
 
+// Oh hey, a binding that makes sense for once? (because LLVM’s own do not)
+extern "C" LLVMValueRef LLVMRustBuildIntCast(LLVMBuilderRef B, LLVMValueRef Val,
+                                             LLVMTypeRef DestTy, bool isSigned) {
+  return wrap(unwrap(B)->CreateIntCast(unwrap(Val), unwrap(DestTy), isSigned, ""));
+}
+
 extern "C" void LLVMRustSetVisibility(LLVMValueRef V,
                                       LLVMRustVisibility RustVisibility) {
   LLVMSetVisibility(V, fromRust(RustVisibility));
