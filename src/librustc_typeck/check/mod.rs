@@ -4510,28 +4510,32 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
         };
 
-        let count = |n| {
-            format!("{} parameter{}", n, if n == 1 { "" } else { "s" })
+        let count_lifetime_params = |n| {
+            format!("{} lifetime parameter{}", n, if n == 1 { "" } else { "s" })
+        };
+        let count_type_params = |n| {
+            format!("{} type parameter{}", n, if n == 1 { "" } else { "s" })
         };
 
         // Check provided lifetime parameters.
         let lifetime_defs = segment.map_or(&[][..], |(_, generics)| &generics.regions);
         if lifetimes.len() > lifetime_defs.len() {
+            let expected_text = count_lifetime_params(lifetime_defs.len());
+            let actual_text = count_lifetime_params(lifetimes.len());
             struct_span_err!(self.tcx.sess, span, E0088,
                              "too many lifetime parameters provided: \
-                              expected {}, found {}",
-                              count(lifetime_defs.len()),
-                              count(lifetimes.len()))
-                .span_label(span, &format!("unexpected lifetime parameter{}",
-                                           match lifetimes.len() { 1 => "", _ => "s" }))
+                              expected at most {}, found {}",
+                             expected_text, actual_text)
+                .span_label(span, &format!("expected {}", expected_text))
                 .emit();
         } else if lifetimes.len() > 0 && lifetimes.len() < lifetime_defs.len() {
+            let expected_text = count_lifetime_params(lifetime_defs.len());
+            let actual_text = count_lifetime_params(lifetimes.len());
             struct_span_err!(self.tcx.sess, span, E0090,
                              "too few lifetime parameters provided: \
-                             expected {}, found {}",
-                             count(lifetime_defs.len()),
-                             count(lifetimes.len()))
-                .span_label(span, &format!("too few lifetime parameters"))
+                              expected {}, found {}",
+                             expected_text, actual_text)
+                .span_label(span, &format!("expected {}", expected_text))
                 .emit();
         }
 
@@ -4552,29 +4556,27 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                     .count();
         if types.len() > type_defs.len() {
             let span = types[type_defs.len()].span;
+            let expected_text = count_type_params(type_defs.len());
+            let actual_text = count_type_params(types.len());
             struct_span_err!(self.tcx.sess, span, E0087,
                              "too many type parameters provided: \
                               expected at most {}, found {}",
-                             count(type_defs.len()),
-                             count(types.len()))
-                .span_label(span, &format!("too many type parameters")).emit();
+                             expected_text, actual_text)
+                .span_label(span, &format!("expected {}", expected_text))
+                .emit();
 
             // To prevent derived errors to accumulate due to extra
             // type parameters, we force instantiate_value_path to
             // use inference variables instead of the provided types.
             *segment = None;
         } else if !infer_types && types.len() < required_len {
-            let adjust = |len| if len > 1 { "parameters" } else { "parameter" };
-            let required_param_str = adjust(required_len);
-            let actual_param_str = adjust(types.len());
+            let expected_text = count_type_params(required_len);
+            let actual_text = count_type_params(types.len());
             struct_span_err!(self.tcx.sess, span, E0089,
                              "too few type parameters provided: \
-                              expected {} {}, found {} {}",
-                             count(required_len),
-                             required_param_str,
-                             count(types.len()),
-                             actual_param_str)
-                .span_label(span, &format!("expected {} type {}", required_len, required_param_str))
+                              expected {}, found {}",
+                             expected_text, actual_text)
+                .span_label(span, &format!("expected {}", expected_text))
                 .emit();
         }
 
