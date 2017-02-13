@@ -278,7 +278,7 @@ impl Error for char::DecodeUtf16Error {
 }
 
 #[stable(feature = "box_error", since = "1.7.0")]
-impl<T: Error> Error for Box<T> {
+impl<T: Error + ?Sized> Error for Box<T> {
     fn description(&self) -> &str {
         Error::description(&**self)
     }
