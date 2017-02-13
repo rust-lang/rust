@@ -519,15 +519,23 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
       }
       hir::ExprUnary(hir::UnDeref, _) => signal!(e, UnimplementedConstVal("deref operation")),
       hir::ExprBinary(op, ref a, ref b) => {
-        let b_ty = match op.node {
-            hir::BiShl | hir::BiShr => ty_hint.erase_hint(),
-            _ => ty_hint
+        // Use the same type hint for the operands as for the whole
+        // expression, except when the operation is a shift, in which
+        // case we use no type hint for the RHS, and when the operation
+        // is a comparison, in which case we use no type hint for
+        // either operand.
+        let (a_ty, b_ty) = match op.node {
+          hir::BiShl | hir::BiShr => (ty_hint, ty_hint.erase_hint()),
+          hir::BiEq | hir::BiLe | hir::BiLt |
+          hir::BiNe | hir::BiGe | hir::BiGt =>
+            (ty_hint.erase_hint(), ty_hint.erase_hint()),
+          _ => (ty_hint, ty_hint)
         };
         // technically, if we don't have type hints, but integral eval
         // gives us a type through a type-suffix, cast or const def type
         // we need to re-eval the other value of the BinOp if it was
         // not inferred
-        match (cx.eval(a, ty_hint)?,
+        match (cx.eval(a, a_ty)?,
                cx.eval(b, b_ty)?) {
           (Float(a), Float(b)) => {
             use std::cmp::Ordering::*;
