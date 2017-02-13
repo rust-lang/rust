@@ -161,14 +161,14 @@ pub trait Error: Debug + Display {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, E: Error + 'a> From<E> for Box<Error + 'a> {
-    fn from(err: E) -> Box<Error + 'a> {
+    default fn from(err: E) -> Box<Error + 'a> {
         Box::new(err)
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, E: Error + Send + Sync + 'a> From<E> for Box<Error + Send + Sync + 'a> {
-    fn from(err: E) -> Box<Error + Send + Sync + 'a> {
+    default fn from(err: E) -> Box<Error + Send + Sync + 'a> {
         Box::new(err)
     }
 }
