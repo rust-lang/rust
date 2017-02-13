@@ -51,15 +51,8 @@ pub trait AstConv<'gcx, 'tcx> {
     /// A cache used for the result of `ast_ty_to_ty_cache`
     fn ast_ty_to_ty_cache(&self) -> &RefCell<NodeMap<Ty<'tcx>>>;
 
-    /// Returns the generic type and lifetime parameters for an item.
-    fn get_generics(&self, id: DefId) -> &'tcx ty::Generics;
-
     /// Identify the type for an item, like a type alias, fn, or struct.
     fn get_item_type(&self, span: Span, id: DefId) -> Ty<'tcx>;
-
-    /// Returns the `TraitDef` for a given trait. This allows you to
-    /// figure out the set of type parameters defined on the trait.
-    fn get_trait_def(&self, id: DefId) -> &'tcx ty::TraitDef;
 
     /// Ensure that the super-predicates for the trait with the given
     /// id are available and also for the transitive set of
@@ -248,7 +241,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         // If the type is parameterized by this region, then replace this
         // region with the current anon region binding (in other words,
         // whatever & would get replaced with).
-        let decl_generics = self.get_generics(def_id);
+        let decl_generics = tcx.item_generics(def_id);
         let expected_num_region_params = decl_generics.regions.len();
         let supplied_num_region_params = lifetimes.len();
         if expected_num_region_params != supplied_num_region_params {
@@ -485,7 +478,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         debug!("create_substs_for_ast_trait_ref(trait_segment={:?})",
                trait_segment);
 
-        let trait_def = self.get_trait_def(trait_def_id);
+        let trait_def = self.tcx().lookup_trait_def(trait_def_id);
 
         match trait_segment.parameters {
             hir::AngleBracketedParameters(_) => {
@@ -1019,7 +1012,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 let node_id = tcx.hir.as_local_node_id(did).unwrap();
                 let item_id = tcx.hir.get_parent_node(node_id);
                 let item_def_id = tcx.hir.local_def_id(item_id);
-                let generics = self.get_generics(item_def_id);
+                let generics = tcx.item_generics(item_def_id);
                 let index = generics.type_param_to_index[&tcx.hir.local_def_id(node_id).index];
                 tcx.mk_param(index, tcx.hir.name(node_id))
             }
@@ -1186,7 +1179,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 // Create the anonymized type.
                 if allow {
                     let def_id = tcx.hir.local_def_id(ast_ty.id);
-                    self.get_generics(def_id);
+                    tcx.item_generics(def_id);
                     let substs = Substs::identity_for_item(tcx, def_id);
                     let ty = tcx.mk_anon(tcx.hir.local_def_id(ast_ty.id), substs);
 
