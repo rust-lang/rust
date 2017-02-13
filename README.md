@@ -256,7 +256,7 @@ name                                                                            
 [iter_next_loop](https://github.com/Manishearth/rust-clippy/wiki#iter_next_loop)                                       | warn    | for-looping over `_.next()` which is probably not intended
 [iter_nth](https://github.com/Manishearth/rust-clippy/wiki#iter_nth)                                                   | warn    | using `.iter().nth()` on a standard library type with O(1) element access
 [iter_skip_next](https://github.com/Manishearth/rust-clippy/wiki#iter_skip_next)                                       | warn    | using `.skip(x).next()` on an iterator
-[large_enum_variant](https://github.com/Manishearth/rust-clippy/wiki#large_enum_variant)                               | warn    | large variants on an enum
+[large_enum_variant](https://github.com/Manishearth/rust-clippy/wiki#large_enum_variant)                               | warn    | large size difference between variants on an enum
 [len_without_is_empty](https://github.com/Manishearth/rust-clippy/wiki#len_without_is_empty)                           | warn    | traits or impls with a public `len` method but no corresponding `is_empty` method
 [len_zero](https://github.com/Manishearth/rust-clippy/wiki#len_zero)                                                   | warn    | checking `.len() == 0` or `.len() > 0` (or similar) when `.is_empty()` could be used instead
 [let_and_return](https://github.com/Manishearth/rust-clippy/wiki#let_and_return)                                       | warn    | creating a let-binding and then immediately returning it like `let x = expr; x` at the end of a block
@@ -279,6 +279,7 @@ name                                                                            
 [mixed_case_hex_literals](https://github.com/Manishearth/rust-clippy/wiki#mixed_case_hex_literals)                     | warn    | hex literals whose letter digits are not consistently upper- or lowercased
 [module_inception](https://github.com/Manishearth/rust-clippy/wiki#module_inception)                                   | warn    | modules that have the same name as their parent module
 [modulo_one](https://github.com/Manishearth/rust-clippy/wiki#modulo_one)                                               | warn    | taking a number modulo 1, which always returns 0
+[mut_from_ref](https://github.com/Manishearth/rust-clippy/wiki#mut_from_ref)                                           | warn    | fns that create mutable refs from immutable ref args
 [mut_mut](https://github.com/Manishearth/rust-clippy/wiki#mut_mut)                                                     | allow   | usage of double-mut refs, e.g. `&mut &mut ...`
 [mutex_atomic](https://github.com/Manishearth/rust-clippy/wiki#mutex_atomic)                                           | warn    | using a mutex where an atomic value could be used instead
 [mutex_integer](https://github.com/Manishearth/rust-clippy/wiki#mutex_integer)                                         | allow   | using a mutex for an integer type
