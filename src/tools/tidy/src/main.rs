@@ -14,9 +14,6 @@
 //! etc. This is run by default on `make check` and as part of the auto
 //! builders.
 
-extern crate regex;
-#[macro_use] extern crate lazy_static;
-
 use std::fs;
 use std::path::{PathBuf, Path};
 use std::env;
