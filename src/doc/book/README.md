@@ -25,13 +25,13 @@ is the first. After this:
 * [Glossary][gl] - A reference of terms used in the book.
 * [Bibliography][bi] - Background on Rust's influences, papers about Rust.
 
-[gs]: getting-started.html
-[gg]: guessing-game.html
-[er]: effective-rust.html
-[ss]: syntax-and-semantics.html
-[nr]: nightly-rust.html
-[gl]: glossary.html
-[bi]: bibliography.html
+[gs]: getting-started.md
+[gg]: guessing-game.md
+[er]: effective-rust.md
+[ss]: syntax-and-semantics.md
+[nr]: nightly-rust.md
+[gl]: glossary.md
+[bi]: bibliography.md
 
 ### Contributing
 
