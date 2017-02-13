@@ -908,7 +908,8 @@ fn lint_iter_cloned_collect(cx: &LateContext, expr: &hir::Expr, iter_args: &[hir
         span_lint(cx,
                   ITER_CLONED_COLLECT,
                   expr.span,
-                  "called `cloned().collect()` on a slice to create a `Vec`. Calling `to_vec()` is both faster and more readable");
+                  "called `cloned().collect()` on a slice to create a `Vec`. Calling `to_vec()` is both faster and \
+                   more readable");
     }
 }
 
