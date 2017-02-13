@@ -27,6 +27,8 @@ fn main() {
         println!("cargo:rustc-link-lib=gcc_s");
     } else if target.contains("openbsd") {
         println!("cargo:rustc-link-lib=gcc");
+    } else if target.contains("solaris") {
+        println!("cargo:rustc-link-lib=gcc_s");
     } else if target.contains("bitrig") {
         println!("cargo:rustc-link-lib=c++abi");
     } else if target.contains("dragonfly") {
