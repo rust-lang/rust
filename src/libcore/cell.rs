@@ -229,7 +229,7 @@ impl<T:Copy> Clone for Cell<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T:Default + Copy> Default for Cell<T> {
+impl<T:Default> Default for Cell<T> {
     /// Creates a `Cell<T>`, with the `Default` value for T.
     #[inline]
     fn default() -> Cell<T> {
@@ -285,7 +285,7 @@ impl<T:Ord + Copy> Ord for Cell<T> {
 }
 
 #[stable(feature = "cell_from", since = "1.12.0")]
-impl<T: Copy> From<T> for Cell<T> {
+impl<T> From<T> for Cell<T> {
     fn from(t: T) -> Cell<T> {
         Cell::new(t)
     }
