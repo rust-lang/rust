@@ -136,6 +136,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     parent: None,
                     docs: docs_for_attrs(&item.attrs),
                     sig: self.sig_base(item),
+                    attributes: remove_docs_from_attrs(&item.attrs),
                 }))
             }
             ast::ItemKind::Static(ref typ, mt, ref expr) => {
@@ -164,6 +165,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     visibility: From::from(&item.vis),
                     docs: docs_for_attrs(&item.attrs),
                     sig: Some(self.sig_base(item)),
+                    attributes: remove_docs_from_attrs(&item.attrs),
                 }))
             }
             ast::ItemKind::Const(ref typ, ref expr) => {
@@ -183,6 +185,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     visibility: From::from(&item.vis),
                     docs: docs_for_attrs(&item.attrs),
                     sig: Some(self.sig_base(item)),
+                    attributes: remove_docs_from_attrs(&item.attrs),
                 }))
             }
             ast::ItemKind::Mod(ref m) => {
@@ -205,6 +208,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     visibility: From::from(&item.vis),
                     docs: docs_for_attrs(&item.attrs),
                     sig: self.sig_base(item),
+                    attributes: remove_docs_from_attrs(&item.attrs),
                 }))
             }
             ast::ItemKind::Enum(ref def, _) => {
@@ -228,6 +232,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     visibility: From::from(&item.vis),
                     docs: docs_for_attrs(&item.attrs),
                     sig: self.sig_base(item),
+                    attributes: remove_docs_from_attrs(&item.attrs),
                 }))
             }
             ast::ItemKind::Impl(.., ref trait_ref, ref typ, _) => {
@@ -313,6 +318,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 visibility: From::from(&field.vis),
                 docs: docs_for_attrs(&field.attrs),
                 sig: Some(sig),
+                attributes: remove_docs_from_attrs(&field.attrs),
             })
         } else {
             None
@@ -325,7 +331,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                            name: ast::Name, span: Span) -> Option<FunctionData> {
         // The qualname for a method is the trait name or name of the struct in an impl in
         // which the method is declared in, followed by the method's name.
-        let (qualname, parent_scope, decl_id, vis, docs) =
+        let (qualname, parent_scope, decl_id, vis, docs, attributes) =
           match self.tcx.impl_of_method(self.tcx.hir.local_def_id(id)) {
             Some(impl_id) => match self.tcx.hir.get_if_local(impl_id) {
                 Some(Node::NodeItem(item)) => {
@@ -347,7 +353,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
 
                             (result, trait_id, decl_id,
                              From::from(&item.vis),
-                             docs_for_attrs(&item.attrs))
+                             docs_for_attrs(&item.attrs),
+                             remove_docs_from_attrs(&item.attrs))
                         }
                         _ => {
                             span_bug!(span,
@@ -372,7 +379,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                             (format!("::{}", self.tcx.item_path_str(def_id)),
                              Some(def_id), None,
                              From::from(&item.vis),
-                             docs_for_attrs(&item.attrs))
+                             docs_for_attrs(&item.attrs),
+                             remove_docs_from_attrs(&item.attrs))
                         }
                         r => {
                             span_bug!(span,
@@ -421,6 +429,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             parent: parent_scope,
             docs: docs,
             sig: sig,
+            attributes: attributes,
         })
     }
 
@@ -832,6 +841,12 @@ fn docs_for_attrs(attrs: &[Attribute]) -> String {
     }
 
     result
+}
+
+/// Remove all attributes which are docs
+fn remove_docs_from_attrs(attrs: &[Attribute]) -> Vec<Attribute> {
+    let doc = Symbol::intern("doc");
+    attrs.iter().cloned().filter(|attr| attr.name() != doc).collect()
 }
 
 #[derive(Clone, Copy, Debug, RustcEncodable)]
