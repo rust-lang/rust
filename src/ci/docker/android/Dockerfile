@@ -16,7 +16,9 @@ RUN dpkg --add-architecture i386 && \
   openjdk-9-jre \
   sudo \
   libstdc++6:i386 \
-  xz-utils
+  xz-utils \
+  libssl-dev \
+  pkg-config
 
 WORKDIR /android/
 ENV PATH=$PATH:/android/ndk-arm-9/bin:/android/sdk/tools:/android/sdk/platform-tools

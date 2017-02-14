@@ -42,6 +42,8 @@ fn main() {
     let path = env::args_os().skip(1).next().expect("need an argument");
     let path = PathBuf::from(path);
 
+    let args: Vec<String> = env::args().skip(1).collect();
+
     let mut bad = false;
     bins::check(&path, &mut bad);
     style::check(&path, &mut bad);
@@ -49,7 +51,9 @@ fn main() {
     cargo::check(&path, &mut bad);
     features::check(&path, &mut bad);
     pal::check(&path, &mut bad);
-    deps::check(&path, &mut bad);
+    if !args.iter().any(|s| *s == "--no-vendor") {
+        deps::check(&path, &mut bad);
+    }
 
     if bad {
         panic!("some tidy checks failed");

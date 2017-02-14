@@ -294,6 +294,8 @@ class RustBuild(object):
             raise Exception("no cargo executable found at `%s`" % self.cargo())
         args = [self.cargo(), "build", "--manifest-path",
                 os.path.join(self.rust_root, "src/bootstrap/Cargo.toml")]
+        if self.use_locked_deps:
+            args.append("--locked")
         if self.use_vendored_sources:
             args.append("--frozen")
         self.run(args, env)
@@ -454,6 +456,9 @@ def main():
 
     rb.use_vendored_sources = '\nvendor = true' in rb.config_toml or \
                               'CFG_ENABLE_VENDOR' in rb.config_mk
+
+    rb.use_locked_deps = '\nlocked-deps = true' in rb.config_toml or \
+                         'CFG_ENABLE_LOCKED_DEPS' in rb.config_mk
 
     if 'SUDO_USER' in os.environ and not rb.use_vendored_sources:
         if os.environ.get('USER') != os.environ['SUDO_USER']:

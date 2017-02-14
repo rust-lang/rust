@@ -23,6 +23,7 @@ fi
 RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-sccache"
 RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-quiet-tests"
 RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --disable-manage-submodules"
+RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-locked-deps"
 
 # If we're deploying artifacts then we set the release channel, otherwise if
 # we're not deploying then we want to be sure to enable all assertions becauase
@@ -45,13 +46,6 @@ else
   if [ "$NO_LLVM_ASSERTIONS" = "" ]; then
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-llvm-assertions"
   fi
-fi
-
-# We want to enable usage of the `src/vendor` dir as much as possible, but not
-# all test suites have all their deps in there (just the main bootstrap) so we
-# have the ability to disable this flag
-if [ "$NO_VENDOR" = "" ]; then
-  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-vendor"
 fi
 
 set -ex
