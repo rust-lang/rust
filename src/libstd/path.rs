@@ -127,7 +127,7 @@ use ops::{self, Deref};
 
 use ffi::{OsStr, OsString};
 
-use sys::path::{is_sep_byte, is_verbatim_sep, MAIN_SEP_STR, parse_prefix};
+use sys::path::{ABSOLUTE_NEEDS_PREFIX, is_sep_byte, is_verbatim_sep, MAIN_SEP_STR, parse_prefix};
 
 ////////////////////////////////////////////////////////////////////////////////
 // GENERAL NOTES
@@ -1194,6 +1194,28 @@ impl PathBuf {
     pub fn into_os_string(self) -> OsString {
         self.inner
     }
+
+    /// Converts this `PathBuf` into a boxed `Path`.
+    #[unstable(feature = "into_boxed_path", issue = "0")]
+    pub fn into_boxed_path(self) -> Box<Path> {
+        unsafe { mem::transmute(self.inner.into_boxed_os_str()) }
+    }
+}
+
+#[stable(feature = "box_from_path", since = "1.17.0")]
+impl<'a> From<&'a Path> for Box<Path> {
+    fn from(path: &'a Path) -> Box<Path> {
+        let boxed: Box<OsStr> = path.inner.into();
+        unsafe { mem::transmute(boxed) }
+    }
+}
+
+#[stable(feature = "box_default_extra", since = "1.17.0")]
+impl Default for Box<Path> {
+    fn default() -> Box<Path> {
+        let boxed: Box<OsStr> = Default::default();
+        unsafe { mem::transmute(boxed) }
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1516,7 +1538,7 @@ impl Path {
     #[allow(deprecated)]
     pub fn is_absolute(&self) -> bool {
         // FIXME: Remove target_os = "redox" and allow Redox prefixes
-        self.has_root() && (cfg!(unix) || cfg!(target_os = "redox") || self.prefix().is_some())
+        self.has_root() && (!ABSOLUTE_NEEDS_PREFIX || self.prefix().is_some())
     }
 
     /// A path is *relative* if it is not absolute.
@@ -3675,5 +3697,23 @@ mod tests {
         let expected = "Iter([])";
         let actual = format!("{:?}", iter);
         assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn into_boxed() {
+        let orig: &str = "some/sort/of/path";
+        let path = Path::new(orig);
+        let path_buf = path.to_owned();
+        let box1: Box<Path> = Box::from(path);
+        let box2 = path_buf.into_boxed_path();
+        assert_eq!(path, &*box1);
+        assert_eq!(box1, box2);
+        assert_eq!(&*box2, path);
+    }
+
+    #[test]
+    fn boxed_default() {
+        let boxed = <Box<Path>>::default();
+        assert!(boxed.as_os_str().is_empty());
     }
 }

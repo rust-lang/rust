@@ -85,7 +85,7 @@ pub struct RawTable<K, V> {
 unsafe impl<K: Send, V: Send> Send for RawTable<K, V> {}
 unsafe impl<K: Sync, V: Sync> Sync for RawTable<K, V> {}
 
-struct RawBucket<K, V> {
+pub struct RawBucket<K, V> {
     hash: *mut HashUint,
     // We use *const to ensure covariance with respect to K and V
     pair: *const (K, V),
@@ -216,6 +216,10 @@ impl<K, V, M> FullBucket<K, V, M> {
     pub fn index(&self) -> usize {
         self.idx
     }
+    /// Get the raw bucket.
+    pub fn raw(&self) -> RawBucket<K, V> {
+        self.raw
+    }
 }
 
 impl<K, V, M> EmptyBucket<K, V, M> {
@@ -229,6 +233,10 @@ impl<K, V, M> Bucket<K, V, M> {
     /// Get the raw index.
     pub fn index(&self) -> usize {
         self.idx
+    }
+    /// get the table.
+    pub fn into_table(self) -> M {
+        self.table
     }
 }
 
@@ -275,6 +283,16 @@ impl<K, V, M: Deref<Target = RawTable<K, V>>> Bucket<K, V, M> {
         Bucket::at_index(table, hash.inspect() as usize)
     }
 
+    pub fn new_from(r: RawBucket<K, V>, i: usize, t: M)
+        -> Bucket<K, V, M>
+    {
+        Bucket {
+            raw: r,
+            idx: i,
+            table: t,
+        }
+    }
+
     pub fn at_index(table: M, ib_index: usize) -> Bucket<K, V, M> {
         // if capacity is 0, then the RawBucket will be populated with bogus pointers.
         // This is an uncommon case though, so avoid it in release builds.
@@ -294,6 +312,40 @@ impl<K, V, M: Deref<Target = RawTable<K, V>>> Bucket<K, V, M> {
             idx: 0,
             table: table,
         }
+    }
+
+    // "So a few of the first shall be last: for many be called,
+    // but few chosen."
+    //
+    // We'll most likely encounter a few buckets at the beginning that
+    // have their initial buckets near the end of the table. They were
+    // placed at the beginning as the probe wrapped around the table
+    // during insertion. We must skip forward to a bucket that won't
+    // get reinserted too early and won't unfairly steal others spot.
+    // This eliminates the need for robin hood.
+    pub fn head_bucket(table: M) -> Bucket<K, V, M> {
+        let mut bucket = Bucket::first(table);
+
+        loop {
+            bucket = match bucket.peek() {
+                Full(full) => {
+                    if full.displacement() == 0 {
+                        // This bucket occupies its ideal spot.
+                        // It indicates the start of another "cluster".
+                        bucket = full.into_bucket();
+                        break;
+                    }
+                    // Leaving this bucket in the last cluster for later.
+                    full.into_bucket()
+                }
+                Empty(b) => {
+                    // Encountered a hole between clusters.
+                    b.into_bucket()
+                }
+            };
+            bucket.next();
+        }
+        bucket
     }
 
     /// Reads a bucket at a given index, returning an enum indicating whether
@@ -333,6 +385,17 @@ impl<K, V, M: Deref<Target = RawTable<K, V>>> Bucket<K, V, M> {
             self.raw = self.raw.offset(dist);
         }
     }
+
+    /// Modifies the bucket pointer in place to make it point to the previous slot.
+    pub fn prev(&mut self) {
+        let range = self.table.capacity();
+        let new_idx = self.idx.wrapping_sub(1) & (range - 1);
+        let dist = (new_idx as isize).wrapping_sub(self.idx as isize);
+        self.idx = new_idx;
+        unsafe {
+            self.raw = self.raw.offset(dist);
+        }
+    }
 }
 
 impl<K, V, M: Deref<Target = RawTable<K, V>>> EmptyBucket<K, V, M> {
@@ -352,7 +415,7 @@ impl<K, V, M: Deref<Target = RawTable<K, V>>> EmptyBucket<K, V, M> {
         }
     }
 
-    pub fn gap_peek(self) -> Option<GapThenFull<K, V, M>> {
+    pub fn gap_peek(self) -> Result<GapThenFull<K, V, M>, Bucket<K, V, M>> {
         let gap = EmptyBucket {
             raw: self.raw,
             idx: self.idx,
@@ -361,12 +424,12 @@ impl<K, V, M: Deref<Target = RawTable<K, V>>> EmptyBucket<K, V, M> {
 
         match self.next().peek() {
             Full(bucket) => {
-                Some(GapThenFull {
+                Ok(GapThenFull {
                     gap: gap,
                     full: bucket,
                 })
             }
-            Empty(..) => None,
+            Empty(e) => Err(e.into_bucket()),
         }
     }
 }
@@ -529,7 +592,11 @@ impl<K, V, M> GapThenFull<K, V, M>
         &self.full
     }
 
-    pub fn shift(mut self) -> Option<GapThenFull<K, V, M>> {
+    pub fn into_bucket(self) -> Bucket<K, V, M> {
+        self.full.into_bucket()
+    }
+
+    pub fn shift(mut self) -> Result<GapThenFull<K, V, M>, Bucket<K, V, M>> {
         unsafe {
             *self.gap.raw.hash = mem::replace(&mut *self.full.raw.hash, EMPTY_BUCKET);
             ptr::copy_nonoverlapping(self.full.raw.pair, self.gap.raw.pair as *mut (K, V), 1);
@@ -544,9 +611,9 @@ impl<K, V, M> GapThenFull<K, V, M>
 
                 self.full = bucket;
 
-                Some(self)
+                Ok(self)
             }
-            Empty(..) => None,
+            Empty(b) => Err(b.into_bucket()),
         }
     }
 }

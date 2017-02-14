@@ -37,3 +37,5 @@ pub fn parse_prefix(path: &OsStr) -> Option<Prefix> {
 
 pub const MAIN_SEP_STR: &'static str = "/";
 pub const MAIN_SEP: char = '/';
+// FIXME: Change to 'true' and allow Redox prefixes
+pub const ABSOLUTE_NEEDS_PREFIX: bool = false;
