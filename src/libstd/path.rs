@@ -1196,7 +1196,7 @@ impl PathBuf {
     }
 
     /// Converts this `PathBuf` into a boxed `Path`.
-    #[unstable(feature = "into_boxed_path", issue = "0")]
+    #[unstable(feature = "into_boxed_path", issue = "40380")]
     pub fn into_boxed_path(self) -> Box<Path> {
         unsafe { mem::transmute(self.inner.into_boxed_os_str()) }
     }
@@ -1207,6 +1207,20 @@ impl<'a> From<&'a Path> for Box<Path> {
     fn from(path: &'a Path) -> Box<Path> {
         let boxed: Box<OsStr> = path.inner.into();
         unsafe { mem::transmute(boxed) }
+    }
+}
+
+#[stable(feature = "path_buf_from_box", since = "1.17.0")]
+impl<'a> From<Box<Path>> for PathBuf {
+    fn from(boxed: Box<Path>) -> PathBuf {
+        boxed.into_path_buf()
+    }
+}
+
+#[stable(feature = "box_from_path_buf", since = "1.17.0")]
+impl Into<Box<Path>> for PathBuf {
+    fn into(self) -> Box<Path> {
+        self.into_boxed_path()
     }
 }
 
@@ -2088,6 +2102,13 @@ impl Path {
     #[stable(feature = "path_ext", since = "1.5.0")]
     pub fn is_dir(&self) -> bool {
         fs::metadata(self).map(|m| m.is_dir()).unwrap_or(false)
+    }
+
+    /// Converts a `Box<Path>` into a `PathBuf` without copying or allocating.
+    #[unstable(feature = "into_boxed_path", issue = "40380")]
+    pub fn into_path_buf(self: Box<Path>) -> PathBuf {
+        let inner: Box<OsStr> = unsafe { mem::transmute(self) };
+        PathBuf { inner: OsString::from(inner) }
     }
 }
 
@@ -3703,12 +3724,11 @@ mod tests {
     fn into_boxed() {
         let orig: &str = "some/sort/of/path";
         let path = Path::new(orig);
-        let path_buf = path.to_owned();
-        let box1: Box<Path> = Box::from(path);
-        let box2 = path_buf.into_boxed_path();
-        assert_eq!(path, &*box1);
-        assert_eq!(box1, box2);
-        assert_eq!(&*box2, path);
+        let boxed: Box<Path> = Box::from(path);
+        let path_buf = path.to_owned().into_boxed_path().into_path_buf();
+        assert_eq!(path, &*boxed);
+        assert_eq!(&*boxed, &*path_buf);
+        assert_eq!(&*path_buf, path);
     }
 
     #[test]

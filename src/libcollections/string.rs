@@ -1974,6 +1974,22 @@ impl<'a> From<&'a str> for String {
     }
 }
 
+// note: test pulls in libstd, which causes errors here
+#[cfg(not(test))]
+#[stable(feature = "string_from_box", since = "1.17.0")]
+impl From<Box<str>> for String {
+    fn from(s: Box<str>) -> String {
+        s.into_string()
+    }
+}
+
+#[stable(feature = "box_from_str", since = "1.17.0")]
+impl Into<Box<str>> for String {
+    fn into(self) -> Box<str> {
+        self.into_boxed_str()
+    }
+}
+
 #[stable(feature = "string_from_cow_str", since = "1.14.0")]
 impl<'a> From<Cow<'a, str>> for String {
     fn from(s: Cow<'a, str>) -> String {
