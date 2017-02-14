@@ -209,9 +209,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 }
                 debug!("num_enum_variants: {}, tested variants: {:?}, variants: {:?}",
                        num_enum_variants, values, variants);
-                let repr_hints = tcx.lookup_repr_hints(adt_def.did);
-                let repr_type = tcx.enum_repr_type(repr_hints.get(0));
-                let discr_ty = repr_type.to_ty(tcx);
+                let discr_ty = adt_def.repr.discr_type().to_ty(tcx);
                 let discr = self.temp(discr_ty);
                 self.cfg.push_assign(block, source_info, &discr,
                                      Rvalue::Discriminant(lvalue.clone()));

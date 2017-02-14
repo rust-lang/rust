@@ -780,14 +780,17 @@ impl<'a, 'tcx> CrateMetadata {
         if self.is_proc_macro(id) { return None; }
         self.entry(id).ast.map(|ast| {
             let def_id = self.local_def_id(id);
-            let ast = ast.decode(self);
-
-            let tables = ast.tables.decode((self, tcx));
-            tcx.maps.typeck_tables.borrow_mut().insert(def_id, tcx.alloc_tables(tables));
-
-            let body = ast.body.decode((self, tcx));
+            let body = ast.decode(self).body.decode(self);
             tcx.hir.intern_inlined_body(def_id, body)
         })
+    }
+
+    pub fn item_body_tables(&self,
+                            id: DefIndex,
+                            tcx: TyCtxt<'a, 'tcx, 'tcx>)
+                            -> &'tcx ty::TypeckTables<'tcx> {
+        let ast = self.entry(id).ast.unwrap().decode(self);
+        tcx.alloc_tables(ast.tables.decode((self, tcx)))
     }
 
     pub fn item_body_nested_bodies(&self, id: DefIndex) -> BTreeMap<hir::BodyId, hir::Body> {

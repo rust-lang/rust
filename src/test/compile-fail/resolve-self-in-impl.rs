@@ -26,6 +26,6 @@ impl Tr for Self {} //~ ERROR unsupported cyclic reference between types/traits 
 impl Tr for S<Self> {} //~ ERROR unsupported cyclic reference between types/traits detected
 impl Self {} //~ ERROR unsupported cyclic reference between types/traits detected
 impl S<Self> {} //~ ERROR unsupported cyclic reference between types/traits detected
-impl Tr<Self::A> for S {} //~ ERROR `Self` type is used before it's determined
+impl Tr<Self::A> for S {} //~ ERROR unsupported cyclic reference between types/traits detected
 
 fn main() {}

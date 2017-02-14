@@ -677,9 +677,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                 // Additionally, we do not want to switch on the
                 // discriminant after it is free-ed, because that
                 // way lies only trouble.
-                let repr_hints = self.tcx.lookup_repr_hints(adt.did);
-                let repr_type = self.tcx.enum_repr_type(repr_hints.get(0));
-                let discr_ty = repr_type.to_ty(self.tcx);
+                let discr_ty = adt.repr.discr_type().to_ty(self.tcx);
                 let discr = Lvalue::Local(self.patch.new_temp(discr_ty));
                 let switch_block = self.patch.new_block(BasicBlockData {
                     statements: vec![

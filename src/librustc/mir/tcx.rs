@@ -173,9 +173,7 @@ impl<'tcx> Rvalue<'tcx> {
             Rvalue::Discriminant(ref lval) => {
                 let ty = lval.ty(mir, tcx).to_ty(tcx);
                 if let ty::TyAdt(adt_def, _) = ty.sty {
-                    let repr_hints = tcx.lookup_repr_hints(adt_def.did);
-                    let repr_type = tcx.enum_repr_type(repr_hints.get(0));
-                    Some(repr_type.to_ty(tcx))
+                    Some(adt_def.repr.discr_type().to_ty(tcx))
                 } else {
                     // Undefined behaviour, bug for now; may want to return something for
                     // the `discriminant` intrinsic later.

@@ -1478,8 +1478,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                     // `assemble_candidates_from_object_ty`.
                 }
                 ty::TyParam(..) |
-                ty::TyProjection(..) |
-                ty::TyAnon(..) => {
+                ty::TyProjection(..) => {
                     // In these cases, we don't know what the actual
                     // type is.  Therefore, we cannot break it down
                     // into its constituent types. So we don't
@@ -1902,7 +1901,6 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             ty::TyDynamic(..) |
             ty::TyParam(..) |
             ty::TyProjection(..) |
-            ty::TyAnon(..) |
             ty::TyInfer(ty::TyVar(_)) |
             ty::TyInfer(ty::FreshTy(_)) |
             ty::TyInfer(ty::FreshIntTy(_)) |
@@ -1946,6 +1944,13 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 def.all_fields()
                     .map(|f| f.ty(self.tcx(), substs))
                     .collect()
+            }
+
+            ty::TyAnon(def_id, substs) => {
+                // We can resolve the `impl Trait` to its concrete type,
+                // which enforces a DAG between the functions requiring
+                // the auto trait bounds in question.
+                vec![self.tcx().item_type(def_id).subst(self.tcx(), substs)]
             }
         }
     }

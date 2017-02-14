@@ -257,6 +257,12 @@ pub struct DirtyCleanMetadataVisitor<'a, 'tcx:'a, 'm> {
 impl<'a, 'tcx, 'm> ItemLikeVisitor<'tcx> for DirtyCleanMetadataVisitor<'a, 'tcx, 'm> {
     fn visit_item(&mut self, item: &'tcx hir::Item) {
         self.check_item(item.id, item.span);
+
+        if let hir::ItemEnum(ref def, _) = item.node {
+            for v in &def.variants {
+                self.check_item(v.node.data.id(), v.span);
+            }
+        }
     }
 
     fn visit_trait_item(&mut self, item: &hir::TraitItem) {

@@ -49,17 +49,6 @@ impl Leak for i32 {
     fn leak(self) -> i32 { self }
 }
 
-trait CheckIfSend: Sized {
-    type T: Default;
-    fn check(self) -> Self::T { Default::default() }
-}
-impl<T> CheckIfSend for T {
-    default type T = ();
-}
-impl<T: Send> CheckIfSend for T {
-    type T = bool;
-}
-
 fn main() {
     let _: u32 = hide(0_u32);
     //~^ ERROR mismatched types
@@ -72,12 +61,6 @@ fn main() {
     //~| expected type `i32`
     //~| found type `<impl Foo as Leak>::T`
     //~| expected i32, found associated type
-
-    let _: bool = CheckIfSend::check(hide(0_i32));
-    //~^ ERROR mismatched types
-    //~| expected type `bool`
-    //~| found type `<impl Foo as CheckIfSend>::T`
-    //~| expected bool, found associated type
 
     let mut x = (hide(0_u32), hide(0_i32));
     x = (x.1,
