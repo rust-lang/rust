@@ -11,7 +11,7 @@
 use rustc::hir::def_id::{CrateNum, DefId, DefIndex};
 use rustc::hir::map::Map;
 use rustc::ty::TyCtxt;
-use syntax::ast::NodeId;
+use syntax::ast::{self, LitKind, NodeId, StrStyle};
 use syntax::codemap::CodeMap;
 use syntax_pos::Span;
 
@@ -64,6 +64,102 @@ impl SpanData {
     }
 }
 
+/// Represent an arbitrary attribute on a code element
+#[derive(Clone, Debug, RustcEncodable)]
+pub struct Attribute {
+    value: AttributeItem,
+    span: SpanData,
+}
+
+impl Lower for ast::Attribute {
+    type Target = Attribute;
+
+    fn lower(self, tcx: TyCtxt) -> Attribute {
+        Attribute {
+            value: self.value.lower(tcx),
+            span: SpanData::from_span(self.span, tcx.sess.codemap()),
+        }
+    }
+}
+
+impl Lower for Vec<ast::Attribute> {
+    type Target = Vec<Attribute>;
+
+    fn lower(self, tcx: TyCtxt) -> Vec<Attribute> {
+        self.into_iter().map(|x| x.lower(tcx)).collect()
+    }
+}
+
+/// A single item as part of an attribute
+#[derive(Clone, Debug, RustcEncodable)]
+pub struct AttributeItem {
+    name: LitKind,
+    kind: AttributeItemKind,
+    span: SpanData,
+}
+
+impl Lower for ast::MetaItem {
+    type Target = AttributeItem;
+
+    fn lower(self, tcx: TyCtxt) -> AttributeItem {
+        AttributeItem {
+            name: LitKind::Str(self.name, StrStyle::Cooked),
+            kind: self.node.lower(tcx),
+            span: SpanData::from_span(self.span, tcx.sess.codemap()),
+        }
+    }
+}
+
+impl Lower for ast::NestedMetaItem {
+    type Target = AttributeItem;
+
+    fn lower(self, tcx: TyCtxt) -> AttributeItem {
+        match self.node {
+            ast::NestedMetaItemKind::MetaItem(item) => item.lower(tcx),
+            ast::NestedMetaItemKind::Literal(lit) => {
+                AttributeItem {
+                    name: lit.node,
+                    kind: AttributeItemKind::Literal,
+                    span: SpanData::from_span(lit.span, tcx.sess.codemap()),
+                }
+            }
+        }
+    }
+}
+
+#[derive(Clone, Debug, RustcEncodable)]
+pub enum AttributeItemKind {
+    /// Word meta item.
+    ///
+    /// E.g. `test` as in `#[test]`
+    Literal,
+    /// Name value meta item.
+    ///
+    /// E.g. `feature = "foo"` as in `#[feature = "foo"]`
+    NameValue(LitKind, SpanData),
+    /// List meta item.
+    ///
+    /// E.g. the `derive(..)` as in `#[derive(..)]`
+    List(Vec<AttributeItem>),
+}
+
+impl Lower for ast::MetaItemKind {
+    type Target = AttributeItemKind;
+
+    fn lower(self, tcx: TyCtxt) -> AttributeItemKind {
+        match self {
+            ast::MetaItemKind::Word => AttributeItemKind::Literal,
+            ast::MetaItemKind::List(items) => {
+                AttributeItemKind::List(items.into_iter().map(|x| x.lower(tcx)).collect())
+            }
+            ast::MetaItemKind::NameValue(lit) => {
+                let span = SpanData::from_span(lit.span, tcx.sess.codemap());
+                AttributeItemKind::NameValue(lit.node, span)
+            }
+        }
+    }
+}
+
 #[derive(Debug, RustcEncodable)]
 pub struct CratePreludeData {
     pub crate_name: String,
@@ -98,6 +194,7 @@ pub struct EnumData {
     pub visibility: Visibility,
     pub docs: String,
     pub sig: Signature,
+    pub attributes: Vec<Attribute>,
 }
 
 impl Lower for data::EnumData {
@@ -115,6 +212,7 @@ impl Lower for data::EnumData {
             visibility: self.visibility,
             docs: self.docs,
             sig: self.sig.lower(tcx),
+            attributes: self.attributes.lower(tcx),
         }
     }
 }
@@ -179,6 +277,7 @@ pub struct FunctionData {
     pub parent: Option<DefId>,
     pub docs: String,
     pub sig: Signature,
+    pub attributes: Vec<Attribute>,
 }
 
 impl Lower for data::FunctionData {
@@ -197,6 +296,7 @@ impl Lower for data::FunctionData {
             parent: self.parent,
             docs: self.docs,
             sig: self.sig.lower(tcx),
+            attributes: self.attributes.lower(tcx),
         }
     }
 }
@@ -346,6 +446,7 @@ pub struct MethodData {
     pub parent: Option<DefId>,
     pub docs: String,
     pub sig: Signature,
+    pub attributes: Vec<Attribute>,
 }
 
 impl Lower for data::MethodData {
@@ -364,6 +465,7 @@ impl Lower for data::MethodData {
             parent: self.parent,
             docs: self.docs,
             sig: self.sig.lower(tcx),
+            attributes: self.attributes.lower(tcx),
         }
     }
 }
@@ -381,6 +483,7 @@ pub struct ModData {
     pub visibility: Visibility,
     pub docs: String,
     pub sig: Signature,
+    pub attributes: Vec<Attribute>,
 }
 
 impl Lower for data::ModData {
@@ -398,6 +501,7 @@ impl Lower for data::ModData {
             visibility: self.visibility,
             docs: self.docs,
             sig: self.sig.lower(tcx),
+            attributes: self.attributes.lower(tcx),
         }
     }
 }
@@ -437,6 +541,7 @@ pub struct StructData {
     pub visibility: Visibility,
     pub docs: String,
     pub sig: Signature,
+    pub attributes: Vec<Attribute>,
 }
 
 impl Lower for data::StructData {
@@ -455,6 +560,7 @@ impl Lower for data::StructData {
             visibility: self.visibility,
             docs: self.docs,
             sig: self.sig.lower(tcx),
+            attributes: self.attributes.lower(tcx),
         }
     }
 }
@@ -471,6 +577,7 @@ pub struct StructVariantData {
     pub parent: Option<DefId>,
     pub docs: String,
     pub sig: Signature,
+    pub attributes: Vec<Attribute>,
 }
 
 impl Lower for data::StructVariantData {
@@ -488,6 +595,7 @@ impl Lower for data::StructVariantData {
             parent: self.parent,
             docs: self.docs,
             sig: self.sig.lower(tcx),
+            attributes: self.attributes.lower(tcx),
         }
     }
 }
@@ -504,6 +612,7 @@ pub struct TraitData {
     pub visibility: Visibility,
     pub docs: String,
     pub sig: Signature,
+    pub attributes: Vec<Attribute>,
 }
 
 impl Lower for data::TraitData {
@@ -521,6 +630,7 @@ impl Lower for data::TraitData {
             visibility: self.visibility,
             docs: self.docs,
             sig: self.sig.lower(tcx),
+            attributes: self.attributes.lower(tcx),
         }
     }
 }
@@ -537,6 +647,7 @@ pub struct TupleVariantData {
     pub parent: Option<DefId>,
     pub docs: String,
     pub sig: Signature,
+    pub attributes: Vec<Attribute>,
 }
 
 impl Lower for data::TupleVariantData {
@@ -554,6 +665,7 @@ impl Lower for data::TupleVariantData {
             parent: self.parent,
             docs: self.docs,
             sig: self.sig.lower(tcx),
+            attributes: self.attributes.lower(tcx),
         }
     }
 }
@@ -570,6 +682,7 @@ pub struct TypeDefData {
     pub parent: Option<DefId>,
     pub docs: String,
     pub sig: Option<Signature>,
+    pub attributes: Vec<Attribute>,
 }
 
 impl Lower for data::TypeDefData {
@@ -586,6 +699,7 @@ impl Lower for data::TypeDefData {
             parent: self.parent,
             docs: self.docs,
             sig: self.sig.map(|s| s.lower(tcx)),
+            attributes: self.attributes.lower(tcx),
         }
     }
 }
@@ -675,6 +789,7 @@ pub struct VariableData {
     pub visibility: Visibility,
     pub docs: String,
     pub sig: Option<Signature>,
+    pub attributes: Vec<Attribute>,
 }
 
 impl Lower for data::VariableData {
@@ -694,6 +809,7 @@ impl Lower for data::VariableData {
             visibility: self.visibility,
             docs: self.docs,
             sig: self.sig.map(|s| s.lower(tcx)),
+            attributes: self.attributes.lower(tcx),
         }
     }
 }
