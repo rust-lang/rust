@@ -81,8 +81,8 @@ pub struct Frame<'tcx> {
     /// Temporary allocations introduced to save stackframes
     /// This is pure interpreter magic and has nothing to do with how rustc does it
     /// An example is calling an FnMut closure that has been converted to a FnOnce closure
-    /// The memory will be freed when the stackframe finishes
-    pub interpreter_temporaries: Vec<Pointer>,
+    /// The value's destructor will be called and the memory freed when the stackframe finishes
+    pub interpreter_temporaries: Vec<(Pointer, Ty<'tcx>)>,
 
     ////////////////////////////////////////////////////////////////////////////////
     // Current position within the function
@@ -273,7 +273,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         substs: &'tcx Substs<'tcx>,
         return_lvalue: Lvalue<'tcx>,
         return_to_block: StackPopCleanup,
-        temporaries: Vec<Pointer>,
+        temporaries: Vec<(Pointer, Ty<'tcx>)>,
     ) -> EvalResult<'tcx> {
         ::log_settings::settings().indentation += 1;
 
@@ -347,11 +347,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 }
             }
         }
-        // deallocate all temporary allocations
-        for ptr in frame.interpreter_temporaries {
-            trace!("deallocating temporary allocation");
-            self.memory.dump_alloc(ptr.alloc_id);
-            self.memory.deallocate(ptr)?;
+        // drop and deallocate all temporary allocations
+        for (ptr, ty) in frame.interpreter_temporaries {
+            trace!("dropping temporary allocation");
+            let mut drops = Vec::new();
+            self.drop(Lvalue::from_ptr(ptr), ty, &mut drops)?;
+            self.eval_drop_impls(drops, frame.span)?;
         }
         Ok(())
     }
