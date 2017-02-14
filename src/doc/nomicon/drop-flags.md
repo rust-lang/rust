@@ -79,15 +79,14 @@ if condition {
 }
 ```
 
-As of Rust 1.0, the drop flags are actually not-so-secretly stashed in a hidden
-field of any type that implements Drop. Rust sets the drop flag by overwriting
-the entire value with a particular bit pattern. This is pretty obviously Not
-The Fastest and causes a bunch of trouble with optimizing code. It's legacy from
-a time when you could do much more complex conditional initialization.
+In Rust 1.0, the drop flags were actually not-so-secretly stashed in a hidden
+field of any type that implements Drop. Rust set the drop flag by overwriting
+the entire value with a particular bit pattern. This was pretty obviously Not
+The Fastest and caused a bunch of trouble with optimizing code. It was legacy
+from a time when you could do much more complex conditional initialization.
 
-As such work is currently under way to move the flags out onto the stack frame
-where they more reasonably belong. Unfortunately, this work will take some time
-as it requires fairly substantial changes to the compiler.
+Since Rust 1.13, the flags has been moved to the stack frame where they more
+reasonably belong, and types implementing Drop no more take up any extra space.
 
 Regardless, Rust programs don't need to worry about uninitialized values on
 the stack for correctness. Although they might care for performance. Thankfully,
