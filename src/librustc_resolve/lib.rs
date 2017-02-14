@@ -1927,7 +1927,7 @@ impl<'a> Resolver<'a> {
                                 let binding_error = missing_vars
                                     .entry(key_j.name)
                                     .or_insert(BindingError {
-                                        name: key.name,
+                                        name: key_j.name,
                                         origin: FxHashSet(),
                                         target: FxHashSet(),
                                     });
