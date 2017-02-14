@@ -287,6 +287,7 @@ fn check_for_entry_fn<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
 
 pub fn provide(providers: &mut Providers) {
     collect::provide(providers);
+    check::provide(providers);
 }
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>)

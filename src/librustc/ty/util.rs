@@ -232,21 +232,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    /// Returns the IntType representation.
-    /// This used to ensure `int_ty` doesn't contain `usize` and `isize`
-    /// by converting them to their actual types. That doesn't happen anymore.
-    pub fn enum_repr_type(self, opt_hint: Option<&attr::ReprAttr>) -> attr::IntType {
-        match opt_hint {
-            // Feed in the given type
-            Some(&attr::ReprInt(int_t)) => int_t,
-            // ... but provide sensible default if none provided
-            //
-            // NB. Historically `fn enum_variants` generate i64 here, while
-            // rustc_typeck::check would generate isize.
-            _ => SignedInt(ast::IntTy::Is),
-        }
-    }
-
     /// Returns the deeply last field of nested structures, or the same type,
     /// if not a structure at all. Corresponds to the only possible unsized
     /// field, and its type can be used to determine unsizing strategy.

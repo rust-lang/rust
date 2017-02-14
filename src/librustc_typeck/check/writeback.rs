@@ -14,7 +14,6 @@
 use self::ResolveReason::*;
 
 use check::FnCtxt;
-use hir::def_id::DefId;
 use rustc::ty::{self, Ty, TyCtxt, MethodCall, MethodCallee};
 use rustc::ty::adjustment;
 use rustc::ty::fold::{TypeFolder,TypeFoldable};
@@ -34,7 +33,8 @@ use rustc::hir;
 // Entry point
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
-    pub fn resolve_type_vars_in_body(&self, body: &'gcx hir::Body) {
+    pub fn resolve_type_vars_in_body(&self, body: &'gcx hir::Body)
+                                     -> &'gcx ty::TypeckTables<'gcx> {
         assert_eq!(self.writeback_errors.get(), false);
 
         let item_id = self.tcx.hir.body_owner(body.id());
@@ -50,18 +50,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         wbcx.visit_liberated_fn_sigs();
         wbcx.visit_fru_field_types();
         wbcx.visit_anon_types();
-        wbcx.visit_deferred_obligations(item_id);
         wbcx.visit_type_nodes();
         wbcx.visit_cast_types();
         wbcx.visit_lints();
 
-        let tables = self.tcx.alloc_tables(wbcx.tables);
-        self.tcx.maps.typeck_tables.borrow_mut().insert(item_def_id, tables);
-
-        let used_trait_imports = mem::replace(&mut *self.used_trait_imports.borrow_mut(),
+        let used_trait_imports = mem::replace(&mut self.tables.borrow_mut().used_trait_imports,
                                               DefIdSet());
         debug!("used_trait_imports({:?}) = {:?}", item_def_id, used_trait_imports);
-        self.tcx.maps.used_trait_imports.borrow_mut().insert(item_def_id, used_trait_imports);
+        wbcx.tables.used_trait_imports = used_trait_imports;
+
+        self.tcx.alloc_tables(wbcx.tables)
     }
 }
 
@@ -282,20 +280,18 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
         }
     }
 
-    fn visit_closures(&self) {
+    fn visit_closures(&mut self) {
         if self.fcx.writeback_errors.get() {
             return
         }
 
         for (&id, closure_ty) in self.fcx.tables.borrow().closure_tys.iter() {
             let closure_ty = self.resolve(closure_ty, ResolvingClosure(id));
-            let def_id = self.tcx().hir.local_def_id(id);
-            self.tcx().maps.closure_type.borrow_mut().insert(def_id, closure_ty);
+            self.tables.closure_tys.insert(id, closure_ty);
         }
 
         for (&id, &closure_kind) in self.fcx.tables.borrow().closure_kinds.iter() {
-            let def_id = self.tcx().hir.local_def_id(id);
-            self.tcx().maps.closure_kind.borrow_mut().insert(def_id, closure_kind);
+            self.tables.closure_kinds.insert(id, closure_kind);
         }
     }
 
@@ -316,14 +312,14 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
         self.fcx.tables.borrow_mut().lints.transfer(&mut self.tables.lints);
     }
 
-    fn visit_anon_types(&self) {
+    fn visit_anon_types(&mut self) {
         if self.fcx.writeback_errors.get() {
             return
         }
 
         let gcx = self.tcx().global_tcx();
-        for (&def_id, &concrete_ty) in self.fcx.anon_types.borrow().iter() {
-            let reason = ResolvingAnonTy(def_id);
+        for (&node_id, &concrete_ty) in self.fcx.anon_types.borrow().iter() {
+            let reason = ResolvingAnonTy(node_id);
             let inside_ty = self.resolve(&concrete_ty, reason);
 
             // Convert the type from the function into a type valid outside
@@ -361,7 +357,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                 }
             });
 
-            gcx.maps.ty.borrow_mut().insert(def_id, outside_ty);
+            self.tables.node_types.insert(node_id, outside_ty);
         }
     }
 
@@ -483,19 +479,6 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
         }
     }
 
-    fn visit_deferred_obligations(&mut self, item_id: ast::NodeId) {
-        let deferred_obligations = self.fcx.deferred_obligations.borrow();
-        let obligations: Vec<_> = deferred_obligations.iter().map(|obligation| {
-            let reason = ResolvingDeferredObligation(obligation.cause.span);
-            self.resolve(obligation, reason)
-        }).collect();
-
-        if !obligations.is_empty() {
-            assert!(self.fcx.tcx.deferred_obligations.borrow_mut()
-                                .insert(item_id, obligations).is_none());
-        }
-    }
-
     fn visit_type_nodes(&self) {
         for (&id, ty) in self.fcx.ast_ty_to_ty_cache.borrow().iter() {
             let ty = self.resolve(ty, ResolvingTyNode(id));
@@ -528,8 +511,7 @@ enum ResolveReason {
     ResolvingClosure(ast::NodeId),
     ResolvingFnSig(ast::NodeId),
     ResolvingFieldTypes(ast::NodeId),
-    ResolvingAnonTy(DefId),
-    ResolvingDeferredObligation(Span),
+    ResolvingAnonTy(ast::NodeId),
     ResolvingTyNode(ast::NodeId),
 }
 
@@ -545,13 +527,10 @@ impl<'a, 'gcx, 'tcx> ResolveReason {
             ResolvingClosure(id) |
             ResolvingFnSig(id) |
             ResolvingFieldTypes(id) |
-            ResolvingTyNode(id) => {
+            ResolvingTyNode(id) |
+            ResolvingAnonTy(id) => {
                 tcx.hir.span(id)
             }
-            ResolvingAnonTy(did) => {
-                tcx.def_span(did)
-            }
-            ResolvingDeferredObligation(span) => span
         }
     }
 }
@@ -626,7 +605,6 @@ impl<'cx, 'gcx, 'tcx> Resolver<'cx, 'gcx, 'tcx> {
 
                 ResolvingFnSig(_) |
                 ResolvingFieldTypes(_) |
-                ResolvingDeferredObligation(_) |
                 ResolvingTyNode(_) => {
                     // any failures here should also fail when
                     // resolving the patterns, closure types, or

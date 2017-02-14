@@ -36,7 +36,7 @@ use syntax::ast::{self, CRATE_NODE_ID};
 use syntax::codemap::Spanned;
 use syntax::attr;
 use syntax::symbol::Symbol;
-use syntax_pos;
+use syntax_pos::{self, DUMMY_SP};
 
 use rustc::hir::{self, PatKind};
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
@@ -264,7 +264,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             discr: variant.discr,
             evaluated_discr: match variant.discr {
                 ty::VariantDiscr::Explicit(def_id) => {
-                    tcx.maps.monomorphic_const_eval.borrow()[&def_id].clone().ok()
+                    tcx.maps.monomorphic_const_eval(tcx, DUMMY_SP, def_id).ok()
                 }
                 ty::VariantDiscr::Relative(_) => None
             },

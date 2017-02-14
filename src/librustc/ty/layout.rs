@@ -1147,7 +1147,7 @@ impl<'a, 'gcx, 'tcx> Layout {
             }
 
             // SIMD vector types.
-            ty::TyAdt(def, ..) if def.is_simd() => {
+            ty::TyAdt(def, ..) if def.repr.simd => {
                 let element = ty.simd_type(tcx);
                 match *element.layout(infcx)? {
                     Scalar { value, .. } => {
@@ -1227,9 +1227,8 @@ impl<'a, 'gcx, 'tcx> Layout {
                     let fields = def.variants[0].fields.iter().map(|field| {
                         field.ty(tcx, substs).layout(infcx)
                     }).collect::<Result<Vec<_>, _>>()?;
-                    let packed = tcx.lookup_packed(def.did);
                     let layout = if def.is_union() {
-                        let mut un = Union::new(dl, packed);
+                        let mut un = Union::new(dl, def.repr.packed);
                         un.extend(dl, fields.iter().map(|&f| Ok(f)), ty)?;
                         UntaggedUnion { variants: un }
                     } else {
@@ -1353,9 +1352,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                     return Err(LayoutError::SizeOverflow(ty));
                 }
 
-                let repr_hints = tcx.lookup_repr_hints(def.did);
-                let repr_type = tcx.enum_repr_type(repr_hints.get(0));
-                let typeck_ity = Integer::from_attr(dl, repr_type);
+                let typeck_ity = Integer::from_attr(dl, def.repr.discr_type());
                 if typeck_ity < min_ity {
                     // It is a bug if Layout decided on a greater discriminant size than typeck for
                     // some reason at this point (based on values discriminant can take on). Mostly

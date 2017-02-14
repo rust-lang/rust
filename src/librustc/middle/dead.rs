@@ -159,10 +159,9 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
             hir_map::NodeItem(item) => {
                 match item.node {
                     hir::ItemStruct(..) | hir::ItemUnion(..) => {
-                        self.struct_has_extern_repr = item.attrs.iter().any(|attr| {
-                            attr::find_repr_attrs(self.tcx.sess.diagnostic(), attr)
-                                .contains(&attr::ReprExtern)
-                        });
+                        let def_id = self.tcx.hir.local_def_id(item.id);
+                        let def = self.tcx.lookup_adt_def(def_id);
+                        self.struct_has_extern_repr = def.repr.c;
 
                         intravisit::walk_item(self, &item);
                     }

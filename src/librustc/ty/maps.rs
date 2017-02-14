@@ -14,27 +14,32 @@ use middle::const_val::ConstVal;
 use mir;
 use ty::{self, Ty, TyCtxt};
 use util::common::MemoizationMap;
-use util::nodemap::DefIdSet;
 
 use rustc_data_structures::indexed_vec::IndexVec;
 use std::cell::RefCell;
 use std::rc::Rc;
-use syntax::attr;
-use syntax_pos::Span;
+use syntax_pos::{Span, DUMMY_SP};
 
 trait Key {
     fn map_crate(&self) -> CrateNum;
+    fn default_span(&self, tcx: TyCtxt) -> Span;
 }
 
 impl Key for DefId {
     fn map_crate(&self) -> CrateNum {
         self.krate
     }
+    fn default_span(&self, tcx: TyCtxt) -> Span {
+        tcx.def_span(*self)
+    }
 }
 
 impl Key for (DefId, DefId) {
     fn map_crate(&self) -> CrateNum {
         self.0.krate
+    }
+    fn default_span(&self, tcx: TyCtxt) -> Span {
+        self.1.default_span(tcx)
     }
 }
 
@@ -83,7 +88,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         err.emit();
     }
 
-    pub fn cycle_check<F, R>(self, span: Span, query: Query, compute: F) -> R
+    fn cycle_check<F, R>(self, span: Span, query: Query, compute: F) -> R
         where F: FnOnce() -> R
     {
         {
@@ -104,23 +109,28 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 }
 
-impl Query {
-    fn describe(&self, tcx: TyCtxt) -> String {
-        match *self {
-            Query::ty(def_id) => {
-                format!("processing `{}`", tcx.item_path_str(def_id))
-            }
-            Query::super_predicates(def_id) => {
-                format!("computing the supertraits of `{}`",
-                        tcx.item_path_str(def_id))
-            }
-            Query::type_param_predicates((_, def_id)) => {
-                let id = tcx.hir.as_local_node_id(def_id).unwrap();
-                format!("computing the bounds for type parameter `{}`",
-                        tcx.hir.ty_param_name(id))
-            }
-            _ => bug!("unexpected `{:?}`", self)
-        }
+trait QueryDescription: DepTrackingMapConfig {
+    fn describe(tcx: TyCtxt, key: Self::Key) -> String;
+}
+
+impl<M: DepTrackingMapConfig<Key=DefId>> QueryDescription for M {
+    default fn describe(tcx: TyCtxt, def_id: DefId) -> String {
+        format!("processing `{}`", tcx.item_path_str(def_id))
+    }
+}
+
+impl<'tcx> QueryDescription for queries::super_predicates<'tcx> {
+    fn describe(tcx: TyCtxt, def_id: DefId) -> String {
+        format!("computing the supertraits of `{}`",
+                tcx.item_path_str(def_id))
+    }
+}
+
+impl<'tcx> QueryDescription for queries::type_param_predicates<'tcx> {
+    fn describe(tcx: TyCtxt, (_, def_id): (DefId, DefId)) -> String {
+        let id = tcx.hir.as_local_node_id(def_id).unwrap();
+        format!("computing the bounds for type parameter `{}`",
+                tcx.hir.ty_param_name(id))
     }
 }
 
@@ -150,6 +160,14 @@ macro_rules! define_maps {
         #[derive(Copy, Clone, Debug, PartialEq, Eq)]
         pub enum Query {
             $($(#[$attr])* $name($K)),*
+        }
+
+        impl Query {
+            pub fn describe(&self, tcx: TyCtxt) -> String {
+                match *self {
+                    $(Query::$name(key) => queries::$name::describe(tcx, key)),*
+                }
+            }
         }
 
         pub mod queries {
@@ -186,11 +204,22 @@ macro_rules! define_maps {
             }
         }
 
-        impl<$tcx> Maps<$tcx> {
+        impl<'a, $tcx, 'lcx> Maps<$tcx> {
             $($(#[$attr])*
-              pub fn $name<'a, 'lcx>(&self, tcx: TyCtxt<'a, $tcx, 'lcx>, key: $K) -> $V {
+              pub fn $name(&self,
+                           tcx: TyCtxt<'a, $tcx, 'lcx>,
+                           mut span: Span,
+                           key: $K) -> $V {
                 self.$name.memoize(key, || {
-                    (self.providers[key.map_crate()].$name)(tcx.global_tcx(), key)
+                    // FIXME(eddyb) Get more valid Span's on queries.
+                    if span == DUMMY_SP {
+                        span = key.default_span(tcx);
+                    }
+
+                    tcx.cycle_check(span, Query::$name(key), || {
+                        let provider = self.providers[key.map_crate()].$name;
+                        provider(tcx.global_tcx(), key)
+                    })
                 })
             })*
         }
@@ -246,9 +275,6 @@ define_maps! { <'tcx>
     /// Methods in these implementations don't need to be exported.
     pub inherent_impls: InherentImpls(DefId) -> Vec<DefId>,
 
-    /// Caches the representation hints for struct definitions.
-    pub repr_hints: ReprHints(DefId) -> Rc<Vec<attr::ReprAttr>>,
-
     /// Maps from the def-id of a function/method or const/static
     /// to its MIR. Mutation is done at an item granularity to
     /// allow MIR optimization passes to function and still
@@ -271,10 +297,6 @@ define_maps! { <'tcx>
         -> ty::adjustment::CustomCoerceUnsized,
 
     pub typeck_tables: TypeckTables(DefId) -> &'tcx ty::TypeckTables<'tcx>,
-
-    /// Set of trait imports actually used in the method resolution.
-    /// This is used for warning unused imports.
-    pub used_trait_imports: UsedTraitImports(DefId) -> DefIdSet,
 
     /// Results of evaluating monomorphic constants embedded in
     /// other items, such as enum variant explicit discriminants.

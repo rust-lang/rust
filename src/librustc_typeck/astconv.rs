@@ -11,17 +11,6 @@
 //! Conversion from AST representation of types to the ty.rs
 //! representation.  The main routine here is `ast_ty_to_ty()`: each use
 //! is parameterized by an instance of `AstConv`.
-//!
-//! The parameterization of `ast_ty_to_ty()` is because it behaves
-//! somewhat differently during the collect and check phases,
-//! particularly with respect to looking up the types of top-level
-//! items.  In the collect phase, the crate context is used as the
-//! `AstConv` instance; in this phase, the `get_item_type()`
-//! function triggers a recursive call to `type_of_item()`
-//! (note that `ast_ty_to_ty()` will detect recursive types and report
-//! an error).  In the check phase, when the FnCtxt is used as the
-//! `AstConv`, `get_item_type()` just looks up the item type in
-//! `tcx.types` (using `TyCtxt::item_type`).
 
 use rustc_const_eval::eval_length;
 use rustc_data_structures::accumulate_vec::AccumulateVec;
@@ -51,18 +40,10 @@ pub trait AstConv<'gcx, 'tcx> {
     /// A cache used for the result of `ast_ty_to_ty_cache`
     fn ast_ty_to_ty_cache(&self) -> &RefCell<NodeMap<Ty<'tcx>>>;
 
-    /// Identify the type for an item, like a type alias, fn, or struct.
-    fn get_item_type(&self, span: Span, id: DefId) -> Ty<'tcx>;
-
-    /// Ensure that the super-predicates for the trait with the given
-    /// id are available and also for the transitive set of
-    /// super-predicates.
-    fn ensure_super_predicates(&self, span: Span, id: DefId);
-
     /// Returns the set of bounds in scope for the type parameter with
     /// the given id.
     fn get_type_parameter_bounds(&self, span: Span, def_id: DefId)
-                                 -> Vec<ty::Predicate<'tcx>>;
+                                 -> ty::GenericPredicates<'tcx>;
 
     /// Return an (optional) substitution to convert bound type parameters that
     /// are in scope into free ones. This function should only return Some
@@ -262,7 +243,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         let is_object = self_ty.map_or(false, |ty| ty.sty == TRAIT_OBJECT_DUMMY_SELF);
         let default_needs_object_self = |p: &ty::TypeParameterDef| {
             if is_object && p.has_default {
-                if self.get_item_type(span, p.def_id).has_self_ty() {
+                if tcx.maps.ty(tcx, span, p.def_id).has_self_ty() {
                     // There is no suitable inference default for a type parameter
                     // that references self, in an object type.
                     return true;
@@ -329,7 +310,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                     tcx.types.err
                 } else {
                     // This is a default type parameter.
-                    self.get_item_type(span, def.def_id).subst_spanned(tcx, substs, Some(span))
+                    tcx.maps.ty(tcx, span, def.def_id).subst_spanned(tcx, substs, Some(span))
                 }
             } else {
                 // We've already errored above about the mismatch.
@@ -591,8 +572,6 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
         // Otherwise, we have to walk through the supertraits to find
         // those that do.
-        self.ensure_super_predicates(binding.span, trait_ref.def_id());
-
         let candidates =
             traits::supertraits(tcx, trait_ref.clone())
             .filter(|r| self.trait_defines_associated_type_named(r.def_id(), binding.item_name));
@@ -620,7 +599,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         -> Ty<'tcx>
     {
         let substs = self.ast_path_substs_for_ty(span, did, item_segment);
-        self.get_item_type(span, did).subst(self.tcx(), substs)
+        self.tcx().maps.ty(self.tcx(), span, did).subst(self.tcx(), substs)
     }
 
     /// Transform a PolyTraitRef into a PolyExistentialTraitRef by
@@ -676,9 +655,6 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 }
             })
         });
-
-        // ensure the super predicates
-        self.ensure_super_predicates(span, principal.def_id());
 
         // check that there are no gross object safety violations,
         // most importantly, that the supertraits don't contain Self,
@@ -776,12 +752,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         let tcx = self.tcx();
 
         let bounds: Vec<_> = self.get_type_parameter_bounds(span, ty_param_def_id)
-            .into_iter().filter_map(|p| p.to_opt_poly_trait_ref()).collect();
-
-        // Ensure the super predicates.
-        for b in &bounds {
-            self.ensure_super_predicates(span, b.def_id());
-        }
+            .predicates.into_iter().filter_map(|p| p.to_opt_poly_trait_ref()).collect();
 
         // Check that there is exactly one way to find an associated type with the
         // correct name.
@@ -880,27 +851,19 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             (_, Def::SelfTy(Some(_), Some(impl_def_id))) => {
                 // `Self` in an impl of a trait - we have a concrete self type and a
                 // trait reference.
-                // FIXME: Self type is not always computed when we are here because type parameter
-                // bounds may affect Self type and have to be converted before it.
-                let trait_ref = if impl_def_id.is_local() {
-                    tcx.maps.impl_trait_ref.borrow().get(&impl_def_id)
-                       .cloned().and_then(|x| x)
-                } else {
-                    tcx.impl_trait_ref(impl_def_id)
+                let trait_ref = match tcx.impl_trait_ref(impl_def_id) {
+                    Some(trait_ref) => trait_ref,
+                    None => {
+                        // A cycle error occurred, most likely.
+                        return (tcx.types.err, Def::Err);
+                    }
                 };
-                let trait_ref = if let Some(trait_ref) = trait_ref {
-                    trait_ref
-                } else {
-                    tcx.sess.span_err(span, "`Self` type is used before it's determined");
-                    return (tcx.types.err, Def::Err);
-                };
+
                 let trait_ref = if let Some(free_substs) = self.get_free_substs() {
                     trait_ref.subst(tcx, free_substs)
                 } else {
                     trait_ref
                 };
-
-                self.ensure_super_predicates(span, trait_ref.def_id);
 
                 let candidates =
                     traits::supertraits(tcx, ty::Binder(trait_ref))
@@ -1022,7 +985,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 assert_eq!(opt_self_ty, None);
                 tcx.prohibit_type_params(&path.segments);
 
-                let ty = self.get_item_type(span, def_id);
+                let ty = tcx.maps.ty(tcx, span, def_id);
                 if let Some(free_substs) = self.get_free_substs() {
                     ty.subst(tcx, free_substs)
                 } else {
@@ -1137,9 +1100,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             hir::TyTraitObject(ref bounds, ref lifetime) => {
                 self.conv_object_ty_poly_trait_ref(ast_ty.span, bounds, lifetime)
             }
-            hir::TyImplTrait(ref bounds) => {
-                use collect::{compute_bounds, SizedByDefault};
-
+            hir::TyImplTrait(_) => {
                 // Figure out if we can allow an `impl Trait` here, by walking up
                 // to a `fn` or inherent `impl` method, going only through `Ty`
                 // or `TraitRef` nodes (as nothing else should be in types) and
@@ -1179,22 +1140,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 // Create the anonymized type.
                 if allow {
                     let def_id = tcx.hir.local_def_id(ast_ty.id);
-                    tcx.item_generics(def_id);
-                    let substs = Substs::identity_for_item(tcx, def_id);
-                    let ty = tcx.mk_anon(tcx.hir.local_def_id(ast_ty.id), substs);
-
-                    // Collect the bounds, i.e. the `A+B+'c` in `impl A+B+'c`.
-                    let bounds = compute_bounds(self, ty, bounds,
-                                                SizedByDefault::Yes,
-                                                ast_ty.span);
-                    let predicates = bounds.predicates(tcx, ty);
-                    let predicates = tcx.lift_to_global(&predicates).unwrap();
-                    tcx.maps.predicates.borrow_mut().insert(def_id, ty::GenericPredicates {
-                        parent: None,
-                        predicates: predicates
-                    });
-
-                    ty
+                    tcx.mk_anon(def_id, Substs::identity_for_item(tcx, def_id))
                 } else {
                     span_err!(tcx.sess, ast_ty.span, E0562,
                               "`impl Trait` not allowed outside of function \
@@ -1352,10 +1298,6 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
         debug!("compute_opt_region_bound(existential_predicates={:?})",
                existential_predicates);
-
-        if let Some(principal) = existential_predicates.principal() {
-            self.ensure_super_predicates(span, principal.def_id());
-        }
 
         // No explicit region bound specified. Therefore, examine trait
         // bounds and see if we can derive region bounds from those.

@@ -902,8 +902,7 @@ fn infer<'a, 'tcx>(i: ConstInt,
         (&ty::TyUint(ity), i) => Err(TypeMismatch(ity.to_string(), i)),
 
         (&ty::TyAdt(adt, _), i) if adt.is_enum() => {
-            let hints = tcx.lookup_repr_hints(adt.did);
-            let int_ty = tcx.enum_repr_type(hints.iter().next());
+            let int_ty = adt.repr.discr_type();
             infer(i, tcx, &int_ty.to_ty(tcx).sty)
         },
         (_, i) => Err(BadType(ConstVal::Integral(i))),
@@ -1093,8 +1092,7 @@ fn lit_to_const<'a, 'tcx>(lit: &ast::LitKind,
                 },
                 None => Ok(Integral(Infer(n as u128))),
                 Some(&ty::TyAdt(adt, _)) => {
-                    let hints = tcx.lookup_repr_hints(adt.did);
-                    let int_ty = tcx.enum_repr_type(hints.iter().next());
+                    let int_ty = adt.repr.discr_type();
                     infer(Infer(n as u128), tcx, &int_ty.to_ty(tcx).sty).map(Integral)
                 },
                 Some(ty_hint) => bug!("bad ty_hint: {:?}, {:?}", ty_hint, lit),

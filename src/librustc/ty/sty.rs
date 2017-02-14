@@ -1077,7 +1077,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
     #[inline]
     pub fn is_simd(&self) -> bool {
         match self.sty {
-            TyAdt(def, _) => def.is_simd(),
+            TyAdt(def, _) => def.repr.simd,
             _ => false
         }
     }

@@ -101,6 +101,7 @@ provide! { <'tcx> tcx, def_id, cdata
 
         mir
     }
+    typeck_tables => { cdata.item_body_tables(def_id.index, tcx) }
     closure_kind => { cdata.closure_kind(def_id.index) }
     closure_type => { cdata.closure_ty(def_id.index, tcx) }
 }

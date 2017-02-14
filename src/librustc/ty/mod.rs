@@ -1296,10 +1296,9 @@ bitflags! {
         const IS_DTORCK           = 1 << 1, // is this a dtorck type?
         const IS_DTORCK_VALID     = 1 << 2,
         const IS_PHANTOM_DATA     = 1 << 3,
-        const IS_SIMD             = 1 << 4,
-        const IS_FUNDAMENTAL      = 1 << 5,
-        const IS_UNION            = 1 << 6,
-        const IS_BOX              = 1 << 7,
+        const IS_FUNDAMENTAL      = 1 << 4,
+        const IS_UNION            = 1 << 5,
+        const IS_BOX              = 1 << 6,
     }
 }
 
@@ -1384,17 +1383,28 @@ pub struct ReprOptions {
 impl ReprOptions {
     pub fn new(tcx: TyCtxt, did: DefId) -> ReprOptions {
         let mut ret = ReprOptions::default();
-        let attrs = tcx.lookup_repr_hints(did);
-        for r in attrs.iter() {
-            match *r {
-                attr::ReprExtern => ret.c = true,
-                attr::ReprPacked => ret.packed = true,
-                attr::ReprSimd => ret.simd = true,
-                attr::ReprInt(i) => ret.int = Some(i),
-                attr::ReprAny => (),
+
+        for attr in tcx.get_attrs(did).iter() {
+            for r in attr::find_repr_attrs(tcx.sess.diagnostic(), attr) {
+                match r {
+                    attr::ReprExtern => ret.c = true,
+                    attr::ReprPacked => ret.packed = true,
+                    attr::ReprSimd => ret.simd = true,
+                    attr::ReprInt(i) => ret.int = Some(i),
+                }
             }
         }
+
+        // FIXME(eddyb) This is deprecated and should be removed.
+        if tcx.has_attr(did, "simd") {
+            ret.simd = true;
+        }
+
         ret
+    }
+
+    pub fn discr_type(&self) -> attr::IntType {
+        self.int.unwrap_or(attr::SignedInt(ast::IntTy::Is))
     }
 }
 
@@ -1408,9 +1418,6 @@ impl<'a, 'gcx, 'tcx> AdtDef {
         let attrs = tcx.get_attrs(did);
         if attr::contains_name(&attrs, "fundamental") {
             flags = flags | AdtFlags::IS_FUNDAMENTAL;
-        }
-        if tcx.lookup_simd(did) {
-            flags = flags | AdtFlags::IS_SIMD;
         }
         if Some(did) == tcx.lang_items.phantom_data() {
             flags = flags | AdtFlags::IS_PHANTOM_DATA;
@@ -1500,11 +1507,6 @@ impl<'a, 'gcx, 'tcx> AdtDef {
         self.flags.get().intersects(AdtFlags::IS_FUNDAMENTAL)
     }
 
-    #[inline]
-    pub fn is_simd(&self) -> bool {
-        self.flags.get().intersects(AdtFlags::IS_SIMD)
-    }
-
     /// Returns true if this is PhantomData<T>.
     #[inline]
     pub fn is_phantom_data(&self) -> bool {
@@ -1584,8 +1586,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
 
     pub fn discriminants(&'a self, tcx: TyCtxt<'a, 'gcx, 'tcx>)
                          -> impl Iterator<Item=ConstInt> + 'a {
-        let repr_hints = tcx.lookup_repr_hints(self.did);
-        let repr_type = tcx.enum_repr_type(repr_hints.get(0));
+        let repr_type = self.repr.discr_type();
         let initial = repr_type.initial_discriminant(tcx.global_tcx());
         let mut prev_discr = None::<ConstInt>;
         self.variants.iter().map(move |v| {
@@ -1946,25 +1947,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn item_tables(self, def_id: DefId) -> &'gcx TypeckTables<'gcx> {
-        self.maps.typeck_tables.memoize(def_id, || {
-            if def_id.is_local() {
-                // Closures' tables come from their outermost function,
-                // as they are part of the same "inference environment".
-                let outer_def_id = self.closure_base_def_id(def_id);
-                if outer_def_id != def_id {
-                    return self.item_tables(outer_def_id);
-                }
-
-                bug!("No def'n found for {:?} in tcx.tables", def_id);
-            }
-
-            // Cross-crate side-tables only exist alongside serialized HIR.
-            self.sess.cstore.maybe_get_item_body(self.global_tcx(), def_id).map(|_| {
-                self.maps.typeck_tables.borrow()[&def_id]
-            }).unwrap_or_else(|| {
-                bug!("tcx.item_tables({:?}): missing from metadata", def_id)
-            })
-        })
+        self.maps.typeck_tables(self, DUMMY_SP, def_id)
     }
 
     pub fn expr_span(self, id: NodeId) -> Span {
@@ -2072,12 +2055,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn custom_coerce_unsized_kind(self, did: DefId) -> adjustment::CustomCoerceUnsized {
-        self.maps.custom_coerce_unsized_kind(self, did)
+        self.maps.custom_coerce_unsized_kind(self, DUMMY_SP, did)
     }
 
     pub fn associated_item(self, def_id: DefId) -> AssociatedItem {
         if !def_id.is_local() {
-            return self.maps.associated_item(self, def_id);
+            return self.maps.associated_item(self, DUMMY_SP, def_id);
         }
 
         self.maps.associated_item.memoize(def_id, || {
@@ -2182,7 +2165,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     pub fn associated_item_def_ids(self, def_id: DefId) -> Rc<Vec<DefId>> {
         if !def_id.is_local() {
-            return self.maps.associated_item_def_ids(self, def_id);
+            return self.maps.associated_item_def_ids(self, DUMMY_SP, def_id);
         }
 
         self.maps.associated_item_def_ids.memoize(def_id, || {
@@ -2217,7 +2200,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// Returns the trait-ref corresponding to a given impl, or None if it is
     /// an inherent impl.
     pub fn impl_trait_ref(self, id: DefId) -> Option<TraitRef<'gcx>> {
-        self.maps.impl_trait_ref(self, id)
+        self.maps.impl_trait_ref(self, DUMMY_SP, id)
     }
 
     // Returns `ty::VariantDef` if `def` refers to a struct,
@@ -2296,37 +2279,37 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     // If the given item is in an external crate, looks up its type and adds it to
     // the type cache. Returns the type parameters and type.
     pub fn item_type(self, did: DefId) -> Ty<'gcx> {
-        self.maps.ty(self, did)
+        self.maps.ty(self, DUMMY_SP, did)
     }
 
     /// Given the did of a trait, returns its canonical trait ref.
     pub fn lookup_trait_def(self, did: DefId) -> &'gcx TraitDef {
-        self.maps.trait_def(self, did)
+        self.maps.trait_def(self, DUMMY_SP, did)
     }
 
     /// Given the did of an ADT, return a reference to its definition.
     pub fn lookup_adt_def(self, did: DefId) -> &'gcx AdtDef {
-        self.maps.adt_def(self, did)
+        self.maps.adt_def(self, DUMMY_SP, did)
     }
 
     /// Given the did of an item, returns its generics.
     pub fn item_generics(self, did: DefId) -> &'gcx Generics {
-        self.maps.generics(self, did)
+        self.maps.generics(self, DUMMY_SP, did)
     }
 
     /// Given the did of an item, returns its full set of predicates.
     pub fn item_predicates(self, did: DefId) -> GenericPredicates<'gcx> {
-        self.maps.predicates(self, did)
+        self.maps.predicates(self, DUMMY_SP, did)
     }
 
     /// Given the did of a trait, returns its superpredicates.
     pub fn item_super_predicates(self, did: DefId) -> GenericPredicates<'gcx> {
-        self.maps.super_predicates(self, did)
+        self.maps.super_predicates(self, DUMMY_SP, did)
     }
 
     /// Given the did of an item, returns its MIR, borrowed immutably.
     pub fn item_mir(self, did: DefId) -> Ref<'gcx, Mir<'gcx>> {
-        self.maps.mir(self, did).borrow()
+        self.maps.mir(self, DUMMY_SP, did).borrow()
     }
 
     /// If `type_needs_drop` returns true, then `ty` is definitely
@@ -2377,19 +2360,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.get_attrs(did).iter().any(|item| item.check_name(attr))
     }
 
-    /// Determine whether an item is annotated with `#[repr(packed)]`
-    pub fn lookup_packed(self, did: DefId) -> bool {
-        self.lookup_repr_hints(did).contains(&attr::ReprPacked)
-    }
-
-    /// Determine whether an item is annotated with `#[simd]`
-    pub fn lookup_simd(self, did: DefId) -> bool {
-        self.has_attr(did, "simd")
-            || self.lookup_repr_hints(did).contains(&attr::ReprSimd)
-    }
-
     pub fn item_variances(self, item_id: DefId) -> Rc<Vec<ty::Variance>> {
-        self.maps.variances(self, item_id)
+        self.maps.variances(self, DUMMY_SP, item_id)
     }
 
     pub fn trait_has_default_impl(self, trait_def_id: DefId) -> bool {
@@ -2464,11 +2436,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn closure_kind(self, def_id: DefId) -> ty::ClosureKind {
-        self.maps.closure_kind(self, def_id)
+        self.maps.closure_kind(self, DUMMY_SP, def_id)
     }
 
     pub fn closure_type(self, def_id: DefId) -> ty::PolyFnSig<'tcx> {
-        self.maps.closure_type(self, def_id)
+        self.maps.closure_type(self, DUMMY_SP, def_id)
     }
 
     /// Given the def_id of an impl, return the def_id of the trait it implements.

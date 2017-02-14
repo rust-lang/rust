@@ -29,16 +29,3 @@ fn after() -> impl FnMut(i32) {
     let mut p = Box::new(0);
     move |x| *p = x
 }
-
-// Cycles should work as the deferred obligations are
-// independently resolved and only require the concrete
-// return type, which can't depend on the obligation.
-fn cycle1() -> impl Clone {
-    send(cycle2().clone());
-    5
-}
-
-fn cycle2() -> impl Clone {
-    send(cycle1().clone());
-    String::from("foo")
-}
