@@ -21,15 +21,15 @@
 
 // gdb-command:print case1
 // gdbg-check:$1 = {{RUST$ENUM$DISR = Case1, __0 = 0, __1 = {x = 2088533116, y = 2088533116, z = 31868}}, {RUST$ENUM$DISR = Case1, [...]}}
-// gdbr-check:$1 = struct_in_enum::Regular::Case1(0, struct_in_enum::Struct {x: 2088533116, y: 2088533116, z: 31868})
+// gdbr-check:$1 = Case1 = {0, Struct = {x = 2088533116, y = 2088533116, z = 31868}}
 
 // gdb-command:print case2
 // gdbg-check:$2 = {{RUST$ENUM$DISR = Case2, [...]}, {RUST$ENUM$DISR = Case2, __0 = 0, __1 = 1229782938247303441, __2 = 4369}}
-// gdbr-check:$2 = struct_in_enum::Regular::Case2(0, 1229782938247303441, 4369)
+// gdbr-check:$2 = Case2 = {0, 1229782938247303441, 4369}
 
 // gdb-command:print univariant
 // gdbg-check:$3 = {{__0 = {x = 123, y = 456, z = 789}}}
-// gdbr-check:$3 = struct_in_enum::Univariant::TheOnlyCase(struct_in_enum::Struct {x: 123, y: 456, z: 789})
+// gdbr-check:$3 = TheOnlyCase = {Struct = {x = 123, y = 456, z = 789}}
 
 
 // === LLDB TESTS ==================================================================================

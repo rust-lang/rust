@@ -20,7 +20,7 @@
 // gdb-check:$1 = 1
 // gdb-command:print a_struct
 // gdbg-check:$2 = {a = -2, b = 3.5, c = 4}
-// gdbr-check:$2 = var_captured_in_sendable_closure::Struct {a: -2, b: 3.5, c: 4}
+// gdbr-check:$2 = Struct = {a = -2, b = 3.5, c = 4}
 // gdb-command:print *owned
 // gdb-check:$3 = 5
 // gdb-command:continue

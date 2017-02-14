@@ -17,11 +17,11 @@
 
 // gdb-command:print first
 // gdbg-check:$1 = {<No data fields>}
-// gdbr-check:$1 = <error reading variable>
+// gdbr-check:$1 = ANilEnum
 
 // gdb-command:print second
 // gdbg-check:$2 = {<No data fields>}
-// gdbr-check:$2 = <error reading variable>
+// gdbr-check:$2 = AnotherNilEnum
 
 #![allow(unused_variables)]
 #![feature(omit_gdb_pretty_printer_section)]

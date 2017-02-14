@@ -18,15 +18,15 @@
 
 // gdb-command:print *stack_val_ref
 // gdbg-check:$1 = {__0 = -14, __1 = -19}
-// gdbr-check:$1 = (-14, -19)
+// gdbr-check:$1 = {-14, -19}
 
 // gdb-command:print *ref_to_unnamed
 // gdbg-check:$2 = {__0 = -15, __1 = -20}
-// gdbr-check:$2 = (-15, -20)
+// gdbr-check:$2 = {-15, -20}
 
 // gdb-command:print *unique_val_ref
 // gdbg-check:$3 = {__0 = -17, __1 = -22}
-// gdbr-check:$3 = (-17, -22)
+// gdbr-check:$3 = {-17, -22}
 
 
 // === LLDB TESTS ==================================================================================
