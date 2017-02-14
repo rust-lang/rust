@@ -106,7 +106,7 @@ impl fmt::Display for TestName {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
-enum NamePadding {
+pub enum NamePadding {
     PadNone,
     PadOnRight,
 }
