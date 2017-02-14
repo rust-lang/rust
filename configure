@@ -647,6 +647,7 @@ opt llvm-version-check 1 "check if the LLVM version is supported, build anyway"
 opt codegen-tests 1 "run the src/test/codegen tests"
 opt option-checking 1 "complain about unrecognized options in this configure script"
 opt ninja 0 "build LLVM using the Ninja generator (for MSVC, requires building in the correct environment)"
+opt locked-deps 0 "force Cargo.lock to be up to date"
 opt vendor 0 "enable usage of vendored Rust crates"
 opt sanitizers 0 "build the sanitizer runtimes (asan, lsan, msan, tsan)"
 

@@ -108,8 +108,12 @@ pub fn cargotest(build: &Build, stage: u32, host: &str) {
 pub fn tidy(build: &Build, host: &str) {
     println!("tidy check ({})", host);
     let compiler = Compiler::new(0, host);
-    build.run(build.tool_cmd(&compiler, "tidy")
-                   .arg(build.src.join("src")));
+    let mut cmd = build.tool_cmd(&compiler, "tidy");
+    cmd.arg(build.src.join("src"));
+    if !build.config.vendor {
+        cmd.arg("--no-vendor");
+    }
+    build.run(&mut cmd);
 }
 
 fn testdir(build: &Build, host: &str) -> PathBuf {
@@ -643,6 +647,7 @@ pub fn distcheck(build: &Build) {
     build.run(&mut cmd);
     build.run(Command::new("./configure")
                      .args(&build.config.configure_args)
+                     .arg("--enable-vendor")
                      .current_dir(&dir));
     build.run(Command::new(build_helper::make(&build.config.build))
                      .arg("check")

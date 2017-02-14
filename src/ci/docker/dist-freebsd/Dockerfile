@@ -12,7 +12,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   sudo \
   bzip2 \
   xz-utils \
-  wget
+  wget \
+  libssl-dev \
+  pkg-config
 
 COPY build-toolchain.sh /tmp/
 RUN /tmp/build-toolchain.sh x86_64

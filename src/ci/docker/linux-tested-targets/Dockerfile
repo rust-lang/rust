@@ -12,7 +12,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   xz-utils \
   sudo \
   gdb \
-  patch
+  patch \
+  libssl-dev \
+  pkg-config
 
 WORKDIR /build/
 COPY musl-libunwind-patch.patch build-musl.sh /build/
