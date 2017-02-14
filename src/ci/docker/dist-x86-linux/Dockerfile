@@ -82,5 +82,9 @@ RUN curl -L https://api.pub.build.mozilla.org/tooltool/sha512/$SCCACHE_DIGEST | 
 ENV HOSTS=i686-unknown-linux-gnu
 ENV HOSTS=$HOSTS,x86_64-unknown-linux-gnu
 
-ENV RUST_CONFIGURE_ARGS --host=$HOSTS --enable-extended --enable-sanitizers
+ENV RUST_CONFIGURE_ARGS \
+      --host=$HOSTS \
+      --enable-extended \
+      --enable-sanitizers
 ENV SCRIPT python2.7 ../x.py dist --host $HOSTS --target $HOSTS
+ENV DIST_SRC 1
