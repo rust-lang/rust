@@ -1879,6 +1879,7 @@ impl<'a> Resolver<'a> {
         }
 
         let mut missing_vars = FxHashMap();
+        let mut inconsistent_vars = FxHashMap();
         for (i, p) in arm.pats.iter().enumerate() {
             let map_i = self.binding_mode_map(&p);
 
@@ -1889,22 +1890,27 @@ impl<'a> Resolver<'a> {
 
                 let map_j = self.binding_mode_map(&q);
                 for (&key, &binding_i) in &map_i {
+                    if map_j.len() == 0 {           // Account for missing bindings when
+                        let spans = missing_vars    // map_j has none.
+                            .entry((key.name, binding_i.span))
+                            .or_insert(FxHashSet());
+                        spans.insert((q.span, i + 1));
+                    }
                     for (&key_j, &binding_j) in &map_j {
                         match map_i.get(&key_j) {
                             None => {  // missing binding
                                 let spans = missing_vars
                                     .entry((key_j.name, binding_j.span))
-                                    .or_insert(FxHashMap());
-                                spans.entry((p.span, i + 1)).or_insert(Some(()));
+                                    .or_insert(FxHashSet());
+                                spans.insert((p.span, i + 1));
                             }
-                            Some(binding_j) => {  // check consistent binding
+                            Some(binding_i) => {  // check consistent binding
                                 if binding_i.binding_mode != binding_j.binding_mode {
-                                    resolve_error(self,
-                                                  binding_i.span,
-                                                  ResolutionError::VariableBoundWithDifferentMode(
-                                                      key.name,
-                                                      i + 1,
-                                                      binding_i.span));
+                                    inconsistent_vars
+                                        .entry(key.name)
+                                        .or_insert((binding_j.span,
+                                                    binding_i.span,
+                                                    i + 1));
                                 }
                             }
                         }
@@ -1914,8 +1920,11 @@ impl<'a> Resolver<'a> {
         }
         for (k, v) in missing_vars {
             let (name, sp) = k;
-            let v = v.iter().map(|x| *x.0).collect::<Vec<_>>();
+            let v = v.iter().map(|x| *x).collect::<Vec<_>>();
             resolve_error(self, sp, ResolutionError::VariableNotBoundInPattern(name, sp, v));
+        }
+        for (k, v) in inconsistent_vars {
+            resolve_error(self,v.0, ResolutionError::VariableBoundWithDifferentMode(k, v.2, v.1));
         }
     }
 
