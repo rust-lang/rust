@@ -96,6 +96,12 @@ enum AssocSuggestion {
     AssocItem,
 }
 
+struct BindingError {
+    name: Name,
+    origin: FxHashSet<(Span, usize)>,
+    target: FxHashSet<(Span, usize)>,
+}
+
 enum ResolutionError<'a> {
     /// error E0401: can't use type parameters from outer function
     TypeParametersFromOuterFunction,
@@ -110,7 +116,7 @@ enum ResolutionError<'a> {
     /// error E0438: const is not a member of trait
     ConstNotMemberOfTrait(Name, &'a str),
     /// error E0408: variable `{}` from pattern #{} is not bound in pattern #{}
-    VariableNotBoundInPattern(Name, Span, Vec<(Span, usize)>),
+    VariableNotBoundInPattern(BindingError),
     /// error E0409: variable is bound with different mode in pattern #{} than in pattern #1
     VariableBoundWithDifferentMode(Name, usize, Span),
     /// error E0415: identifier is bound more than once in this parameter list
@@ -204,26 +210,28 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver,
             err.span_label(span, &format!("not a member of trait `{}`", trait_));
             err
         }
-        ResolutionError::VariableNotBoundInPattern(variable_name, sp, missing_vars) => {
-            let spans: Vec<_> = missing_vars.iter().map(|x| x.0).collect();
-            let msp = MultiSpan::from_spans(spans.clone());
-            // "variable `a` from pattern #1 is not bound in patterns #2, #3"
-            let msg = format!("variable `{}` from pattern #1 isn't bound in pattern{} {}",
-                              variable_name,
-                              if spans.len() > 1 {
-                                  "s"
-                              } else {
-                                  ""
-                              },
-                              missing_vars.iter()
+        ResolutionError::VariableNotBoundInPattern(binding_error) => {
+            let msp = MultiSpan::from_spans(binding_error.target.iter().map(|x| x.0).collect());
+            // "variable `a` from patterns #1, #4 isn't bound in patterns #2, #3"
+            let msg = format!("variable `{}` from pattern{} {} isn't bound in pattern{} {}",
+                              binding_error.name,
+                              if binding_error.origin.len() > 1 { "s" } else { "" },
+                              binding_error.origin.iter()
+                                  .map(|x| format!("#{}", x.1))
+                                  .collect::<Vec<_>>()
+                                  .join(", "),
+                              if binding_error.target.len() > 1 { "s" } else { "" },
+                              binding_error.target.iter()
                                   .map(|x| format!("#{}", x.1))
                                   .collect::<Vec<_>>()
                                   .join(", "));
             let mut err = resolver.session.struct_span_err_with_code(msp, &msg, "E0408");
-            for sp in spans {
-                err.span_label(sp, &format!("pattern doesn't bind `{}`", variable_name));
+            for (sp, _) in binding_error.target {
+                err.span_label(sp, &format!("pattern doesn't bind `{}`", binding_error.name));
             }
-            err.span_label(sp, &"variable not in all patterns");
+            for (sp, _) in binding_error.origin {
+                err.span_label(sp, &"variable not in all patterns");
+            }
             err
         }
         ResolutionError::VariableBoundWithDifferentMode(variable_name,
@@ -1890,19 +1898,29 @@ impl<'a> Resolver<'a> {
 
                 let map_j = self.binding_mode_map(&q);
                 for (&key, &binding_i) in &map_i {
-                    if map_j.len() == 0 {           // Account for missing bindings when
-                        let spans = missing_vars    // map_j has none.
-                            .entry((key.name, binding_i.span))
-                            .or_insert(FxHashSet());
-                        spans.insert((q.span, i + 1));
+                    if map_j.len() == 0 {                   // Account for missing bindings when
+                        let binding_error = missing_vars    // map_j has none.
+                            .entry(key.name)
+                            .or_insert(BindingError {
+                                name: key.name,
+                                origin: FxHashSet(),
+                                target: FxHashSet(),
+                            });
+                        binding_error.origin.insert((binding_i.span, i + 1));
+                        binding_error.target.insert((q.span, j + 1));
                     }
                     for (&key_j, &binding_j) in &map_j {
                         match map_i.get(&key_j) {
                             None => {  // missing binding
-                                let spans = missing_vars
-                                    .entry((key_j.name, binding_j.span))
-                                    .or_insert(FxHashSet());
-                                spans.insert((p.span, i + 1));
+                                let binding_error = missing_vars
+                                    .entry(key_j.name)
+                                    .or_insert(BindingError {
+                                        name: key.name,
+                                        origin: FxHashSet(),
+                                        target: FxHashSet(),
+                                    });
+                                binding_error.origin.insert((binding_j.span, j + 1));
+                                binding_error.target.insert((p.span, i + 1));
                             }
                             Some(binding_i) => {  // check consistent binding
                                 if binding_i.binding_mode != binding_j.binding_mode {
@@ -1918,13 +1936,13 @@ impl<'a> Resolver<'a> {
                 }
             }
         }
-        for (k, v) in missing_vars {
-            let (name, sp) = k;
-            let v = v.iter().map(|x| *x).collect::<Vec<_>>();
-            resolve_error(self, sp, ResolutionError::VariableNotBoundInPattern(name, sp, v));
+        for (_, v) in missing_vars {
+            resolve_error(self,
+                          v.origin.iter().next().unwrap().0,
+                          ResolutionError::VariableNotBoundInPattern(v));
         }
         for (k, v) in inconsistent_vars {
-            resolve_error(self,v.0, ResolutionError::VariableBoundWithDifferentMode(k, v.2, v.1));
+            resolve_error(self, v.0, ResolutionError::VariableBoundWithDifferentMode(k, v.2, v.1));
         }
     }
 

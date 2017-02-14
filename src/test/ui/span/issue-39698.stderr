@@ -1,58 +1,42 @@
-error[E0408]: variable `a` from pattern #1 isn't bound in patterns #2, #3
-  --> $DIR/issue-39698.rs:20:23
-   |
-20 |         T::T1(a, d) | T::T2(d, b) | T::T3(c) | T::T4(a) => { println!("{:?}", a); }
-   |                       ^^^^^^^^^^^   ^^^^^^^^         - variable not in all patterns
-   |                       |             |
-   |                       |             pattern doesn't bind `a`
-   |                       pattern doesn't bind `a`
-
-error[E0408]: variable `a` from pattern #1 isn't bound in patterns #2, #3
-  --> $DIR/issue-39698.rs:20:23
-   |
-20 |         T::T1(a, d) | T::T2(d, b) | T::T3(c) | T::T4(a) => { println!("{:?}", a); }
-   |               -       ^^^^^^^^^^^   ^^^^^^^^ pattern doesn't bind `a`
-   |               |       |
-   |               |       pattern doesn't bind `a`
-   |               variable not in all patterns
-
-error[E0408]: variable `c` from pattern #1 isn't bound in patterns #2, #4, #1
-  --> $DIR/issue-39698.rs:20:23
-   |
-20 |         T::T1(a, d) | T::T2(d, b) | T::T3(c) | T::T4(a) => { println!("{:?}", a); }
-   |         ^^^^^^^^^^^   ^^^^^^^^^^^         -    ^^^^^^^^ pattern doesn't bind `c`
-   |         |             |                   |
-   |         |             |                   variable not in all patterns
-   |         |             pattern doesn't bind `c`
-   |         pattern doesn't bind `c`
-
-error[E0408]: variable `d` from pattern #1 isn't bound in patterns #4, #3
+error[E0408]: variable `c` from patterns #2, #1 isn't bound in patterns #4, #3
   --> $DIR/issue-39698.rs:20:48
    |
 20 |         T::T1(a, d) | T::T2(d, b) | T::T3(c) | T::T4(a) => { println!("{:?}", a); }
-   |                  -                  ^^^^^^^^   ^^^^^^^^ pattern doesn't bind `d`
-   |                  |                  |
-   |                  |                  pattern doesn't bind `d`
+   |                  -          -       ^^^^^^^^   ^^^^^^^^ pattern doesn't bind `c`
+   |                  |          |       |
+   |                  |          |       pattern doesn't bind `c`
+   |                  |          variable not in all patterns
    |                  variable not in all patterns
 
-error[E0408]: variable `b` from pattern #1 isn't bound in patterns #4, #3, #1
+error[E0408]: variable `d` from pattern #3 isn't bound in patterns #2, #4, #1
+  --> $DIR/issue-39698.rs:20:23
+   |
+20 |         T::T1(a, d) | T::T2(d, b) | T::T3(c) | T::T4(a) => { println!("{:?}", a); }
+   |         ^^^^^^^^^^^   ^^^^^^^^^^^         -    ^^^^^^^^ pattern doesn't bind `d`
+   |         |             |                   |
+   |         |             |                   variable not in all patterns
+   |         |             pattern doesn't bind `d`
+   |         pattern doesn't bind `d`
+
+error[E0408]: variable `b` from patterns #1, #4 isn't bound in patterns #2, #3
+  --> $DIR/issue-39698.rs:20:23
+   |
+20 |         T::T1(a, d) | T::T2(d, b) | T::T3(c) | T::T4(a) => { println!("{:?}", a); }
+   |               -       ^^^^^^^^^^^   ^^^^^^^^         - variable not in all patterns
+   |               |       |             |
+   |               |       |             pattern doesn't bind `b`
+   |               |       pattern doesn't bind `b`
+   |               variable not in all patterns
+
+error[E0408]: variable `d` from pattern #2 isn't bound in patterns #4, #3, #1
   --> $DIR/issue-39698.rs:20:48
    |
 20 |         T::T1(a, d) | T::T2(d, b) | T::T3(c) | T::T4(a) => { println!("{:?}", a); }
-   |         ^^^^^^^^^^^            -    ^^^^^^^^   ^^^^^^^^ pattern doesn't bind `b`
+   |         ^^^^^^^^^^^            -    ^^^^^^^^   ^^^^^^^^ pattern doesn't bind `d`
    |         |                      |    |
-   |         |                      |    pattern doesn't bind `b`
+   |         |                      |    pattern doesn't bind `d`
    |         |                      variable not in all patterns
-   |         pattern doesn't bind `b`
+   |         pattern doesn't bind `d`
 
-error[E0408]: variable `d` from pattern #1 isn't bound in patterns #4, #3
-  --> $DIR/issue-39698.rs:20:48
-   |
-20 |         T::T1(a, d) | T::T2(d, b) | T::T3(c) | T::T4(a) => { println!("{:?}", a); }
-   |                             -       ^^^^^^^^   ^^^^^^^^ pattern doesn't bind `d`
-   |                             |       |
-   |                             |       pattern doesn't bind `d`
-   |                             variable not in all patterns
-
-error: aborting due to 6 previous errors
+error: aborting due to 4 previous errors
 
