@@ -104,7 +104,8 @@ pub fn run(input: &str,
                                        false,
                                        opts,
                                        maybe_sysroot,
-                                       Some(codemap));
+                                       Some(codemap),
+                                       None);
 
     {
         let dep_graph = DepGraph::new(false);
@@ -391,12 +392,13 @@ pub struct Collector {
     maybe_sysroot: Option<PathBuf>,
     position: Span,
     codemap: Option<Rc<CodeMap>>,
+    filename: Option<String>,
 }
 
 impl Collector {
     pub fn new(cratename: String, cfgs: Vec<String>, libs: SearchPaths, externs: Externs,
                use_headers: bool, opts: TestOptions, maybe_sysroot: Option<PathBuf>,
-               codemap: Option<Rc<CodeMap>>) -> Collector {
+               codemap: Option<Rc<CodeMap>>, filename: Option<String>) -> Collector {
         Collector {
             tests: Vec::new(),
             names: Vec::new(),
@@ -411,6 +413,7 @@ impl Collector {
             maybe_sysroot: maybe_sysroot,
             position: DUMMY_SP,
             codemap: codemap,
+            filename: filename,
         }
     }
 
@@ -483,6 +486,8 @@ impl Collector {
     pub fn get_filename(&self) -> String {
         if let Some(ref codemap) = self.codemap {
             codemap.span_to_filename(self.position)
+        } else if let Some(ref filename) = self.filename {
+            filename.clone()
         } else {
             "<input>".to_owned()
         }
