@@ -74,6 +74,20 @@ matrix:
       osx_image: xcode8.2
       install: *osx_install_sccache
 
+    # "alternate" deployments, these are "nightlies" but don't have assertions
+    # turned on, they're deployed to a different location primarily for projects
+    # which are stuck on nightly and don't want llvm assertions in the artifacts
+    # that they use.
+    - env: IMAGE=dist-x86-linux DEPLOY_ALT=1
+    - env: >
+        RUST_CHECK_TARGET=dist
+        RUST_CONFIGURE_ARGS="--enable-extended"
+        SRC=.
+        DEPLOY_ALT=1
+      os: osx
+      osx_image: xcode8.2
+      install: *osx_install_sccache
+
 env:
   global:
     - SCCACHE_BUCKET=rust-lang-ci-sccache
@@ -134,3 +148,19 @@ deploy:
     on:
       branch: auto
       condition: $DEPLOY = 1
+
+  # this is the same as the above deployment provider except that it uploads to
+  # a slightly different directory and has a different trigger
+  - provider: s3
+    bucket: rust-lang-ci
+    skip_cleanup: true
+    local_dir: deploy
+    upload_dir: rustc-builds-alt
+    acl: public_read
+    region: us-east-1
+    access_key_id: AKIAIPQVNYF2T3DTYIWQ
+    secret_access_key:
+      secure: "FBqDqOTeIPMu6v/WYPf4CFSlh9rLRZGKVtpLa5KkyuOhXRTrnEzBduEtS8/FMIxdQImvurhSvxWvqRybMOi4qoVfjMqqpHAI7uBbidbrvAcJoHNsx6BgUNVCIoH6a0UsAjTUtm6/YPIpzbHoLZXPL0GrHPMk6Mu04qVSmcYNWn4="
+    on:
+      branch: auto
+      condition: $DEPLOY_ALT = 1

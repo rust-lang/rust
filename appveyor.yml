@@ -60,6 +60,12 @@ environment:
     MINGW_DIR: mingw64
     DEPLOY: 1
 
+  # "alternate" deployment, see .travis.yml for more info
+  - MSYS_BITS: 64
+    RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-extended
+    SCRIPT: python x.py dist
+    DEPLOY_ALT: 1
+
 matrix:
   fast_finish: true
 
@@ -144,6 +150,22 @@ deploy:
     on:
       branch: auto
       DEPLOY: 1
+
+  # This provider is the same as the one above except that it has a slightly
+  # different upload directory and a slightly different trigger
+  - provider: S3
+    skip_cleanup: true
+    access_key_id: AKIAIPQVNYF2T3DTYIWQ
+    secret_access_key:
+      secure: +11jsUNFTQ9dq5Ad1i2+PeUJaXluFJ0zIJAXESE1dFT3Kdjku4/eDdgyjgsB6GnV
+    bucket: rust-lang-ci
+    set_public: true
+    region: us-east-1
+    artifact: /.*/
+    folder: rustc-builds-alt
+    on:
+      branch: auto
+      DEPLOY_ALT: 1
 
 # init:
 #   - ps: iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
