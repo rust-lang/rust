@@ -38,6 +38,60 @@ http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
 option. This file may not be copied, modified, or distributed
 except according to those terms.";
 
+/// Parser states for line_is_url.
+#[derive(PartialEq)]
+#[allow(non_camel_case_types)]
+enum LIUState { EXP_COMMENT_START,
+                EXP_LINK_LABEL_OR_URL,
+                EXP_URL,
+                EXP_END }
+
+/// True if LINE appears to be a line comment containing an URL,
+/// possibly with a Markdown link label in front, and nothing else.
+/// The Markdown link label, if present, may not contain whitespace.
+/// Lines of this form are allowed to be overlength, because Markdown
+/// offers no way to split a line in the middle of a URL, and the lengths
+/// of URLs to external references are beyond our control.
+fn line_is_url(line: &str) -> bool {
+    use self::LIUState::*;
+    let mut state: LIUState = EXP_COMMENT_START;
+
+    for tok in line.split_whitespace() {
+        match (state, tok) {
+            (EXP_COMMENT_START, "//") => state = EXP_LINK_LABEL_OR_URL,
+            (EXP_COMMENT_START, "///") => state = EXP_LINK_LABEL_OR_URL,
+            (EXP_COMMENT_START, "//!") => state = EXP_LINK_LABEL_OR_URL,
+
+            (EXP_LINK_LABEL_OR_URL, w)
+                if w.len() >= 4 && w.starts_with("[") && w.ends_with("]:")
+                => state = EXP_URL,
+
+            (EXP_LINK_LABEL_OR_URL, w)
+                if w.starts_with("http://") || w.starts_with("https://")
+                => state = EXP_END,
+
+            (EXP_URL, w)
+                if w.starts_with("http://") || w.starts_with("https://")
+                => state = EXP_END,
+
+            (_, _) => return false,
+        }
+    }
+
+    state == EXP_END
+}
+
+/// True if LINE is allowed to be longer than the normal limit.
+/// Currently there is only one exception, for long URLs, but more
+/// may be added in the future.
+fn long_line_is_ok(line: &str) -> bool {
+    if line_is_url(line) {
+        return true;
+    }
+
+    false
+}
+
 pub fn check(path: &Path, bad: &mut bool) {
     let mut contents = String::new();
     super::walk(path, &mut super::filter_dirs, &mut |file| {
@@ -61,8 +115,9 @@ pub fn check(path: &Path, bad: &mut bool) {
                 println!("{}:{}: {}", file.display(), i + 1, msg);
                 *bad = true;
             };
-            if line.chars().count() > COLS && !skip_length {
-                err(&format!("line longer than {} chars", COLS));
+            if !skip_length && line.chars().count() > COLS
+                && !long_line_is_ok(line) {
+                    err(&format!("line longer than {} chars", COLS));
             }
             if line.contains("\t") && !skip_tab {
                 err("tab character");
