@@ -117,20 +117,16 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NonCamelCaseTypes {
 
         match it.node {
             hir::ItemTy(..) |
+            hir::ItemEnum(..) |
             hir::ItemStruct(..) |
             hir::ItemUnion(..) => self.check_case(cx, "type", it.name, it.span),
             hir::ItemTrait(..) => self.check_case(cx, "trait", it.name, it.span),
-            hir::ItemEnum(ref enum_definition, _) => {
-                if has_extern_repr {
-                    return;
-                }
-                self.check_case(cx, "type", it.name, it.span);
-                for variant in &enum_definition.variants {
-                    self.check_case(cx, "variant", variant.node.name, variant.span);
-                }
-            }
             _ => (),
         }
+    }
+
+    fn check_variant(&mut self, cx: &LateContext, v: &hir::Variant, _: &hir::Generics) {
+        self.check_case(cx, "variant", v.node.name, v.span);
     }
 
     fn check_generics(&mut self, cx: &LateContext, it: &hir::Generics) {
