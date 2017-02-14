@@ -312,14 +312,14 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 match global_value.value {
                     Value::ByRef(ptr) => self.memory.mark_static_initalized(ptr.alloc_id, mutable)?,
                     Value::ByVal(val) => if let PrimVal::Ptr(ptr) = val {
-                        self.memory.mark_static_initalized(ptr.alloc_id, mutable)?;
+                        self.memory.mark_inner_allocation(ptr.alloc_id, mutable)?;
                     },
                     Value::ByValPair(val1, val2) => {
                         if let PrimVal::Ptr(ptr) = val1 {
-                            self.memory.mark_static_initalized(ptr.alloc_id, mutable)?;
+                            self.memory.mark_inner_allocation(ptr.alloc_id, mutable)?;
                         }
                         if let PrimVal::Ptr(ptr) = val2 {
-                            self.memory.mark_static_initalized(ptr.alloc_id, mutable)?;
+                            self.memory.mark_inner_allocation(ptr.alloc_id, mutable)?;
                         }
                     },
                 }
@@ -369,7 +369,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         discr_val: u128,
         variant_idx: usize,
         discr_size: u64,
-    ) -> EvalResult<'tcx> {
+    ) -> EvalResult<'tcx>
+        where J::IntoIter: ExactSizeIterator,
+    {
         // FIXME(solson)
         let dest_ptr = self.force_allocation(dest)?.to_ptr();
 
@@ -392,7 +394,19 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         dest: Lvalue<'tcx>,
         dest_ty: Ty<'tcx>,
         operands: J,
-    ) -> EvalResult<'tcx> {
+    ) -> EvalResult<'tcx>
+        where J::IntoIter: ExactSizeIterator,
+    {
+        if self.type_size(dest_ty)? == Some(0) {
+            // zst assigning is a nop
+            return Ok(());
+        }
+        if self.ty_to_primval_kind(dest_ty).is_ok() {
+            let mut iter = operands.into_iter();
+            assert_eq!(iter.len(), 1);
+            let (value, value_ty) = iter.next().unwrap().into_val_ty_pair(self)?;
+            return self.write_value(value, dest, value_ty);
+        }
         for (field_index, operand) in operands.into_iter().enumerate() {
             let (value, value_ty) = operand.into_val_ty_pair(self)?;
             let field_dest = self.lvalue_field(dest, field_index, dest_ty, value_ty)?;
@@ -780,7 +794,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
     }
 
-    fn get_field_count(&self, ty: Ty<'tcx>) -> EvalResult<'tcx, usize> {
+    pub fn get_field_count(&self, ty: Ty<'tcx>) -> EvalResult<'tcx, usize> {
         let layout = self.type_layout(ty)?;
 
         use rustc::ty::layout::Layout::*;
@@ -1037,8 +1051,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         a: PrimVal,
         b: PrimVal,
         ptr: Pointer,
-        ty: Ty<'tcx>
+        mut ty: Ty<'tcx>
     ) -> EvalResult<'tcx> {
+        while self.get_field_count(ty)? == 1 {
+            ty = self.get_field_ty(ty, 0)?;
+        }
         assert_eq!(self.get_field_count(ty)?, 2);
         let field_0 = self.get_field_offset(ty, 0)?.bytes();
         let field_1 = self.get_field_offset(ty, 1)?.bytes();
@@ -1094,7 +1111,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             ty::TyAdt(ref def, _) if def.is_box() => PrimValKind::Ptr,
 
-            ty::TyAdt(..) => {
+            ty::TyAdt(ref def, substs) => {
                 use rustc::ty::layout::Layout::*;
                 match *self.type_layout(ty)? {
                     CEnum { discr, signed, .. } => {
@@ -1114,6 +1131,18 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                             F32 => PrimValKind::F32,
                             F64 => PrimValKind::F64,
                             Pointer => PrimValKind::Ptr,
+                        }
+                    }
+
+                    // represent single field structs as their single field
+                    Univariant { .. } => {
+                        // enums with just one variant are no different, but `.struct_variant()` doesn't work for enums
+                        let variant = &def.variants[0];
+                        // FIXME: also allow structs with only a single non zst field
+                        if variant.fields.len() == 1 {
+                            return self.ty_to_primval_kind(variant.fields[0].ty(self.tcx, substs));
+                        } else {
+                            return Err(EvalError::TypeNotPrimitive(ty));
                         }
                     }
 
@@ -1305,8 +1334,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     }
                     return self.unsize_into_ptr(src, src_ty, dest, dest_ty, src_ty.boxed_ty(), dest_ty.boxed_ty());
                 }
-                // FIXME(solson)
-                let dest = self.force_allocation(dest)?.to_ptr();
+                if self.ty_to_primval_kind(src_ty).is_ok() {
+                    let sty = self.get_field_ty(src_ty, 0)?;
+                    let dty = self.get_field_ty(dest_ty, 0)?;
+                    return self.unsize_into(src, sty, dest, dty);
+                }
                 // unsizing of generic struct with pointer fields
                 // Example: `Arc<T>` -> `Arc<Trait>`
                 // here we need to increase the size of every &T thin ptr field to a fat ptr
@@ -1323,6 +1355,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     _ => bug!("expected pointer, got {:?}", src),
                 };
 
+                // FIXME(solson)
+                let dest = self.force_allocation(dest)?.to_ptr();
                 let iter = src_fields.zip(dst_fields).enumerate();
                 for (i, (src_f, dst_f)) in iter {
                     let src_fty = monomorphize_field_ty(self.tcx, src_f, substs_a);

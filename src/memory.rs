@@ -673,13 +673,24 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 impl<'a, 'tcx> Memory<'a, 'tcx> {
     /// mark an allocation as being the entry point to a static (see `static_alloc` field)
     pub fn mark_static(&mut self, alloc_id: AllocId) {
+        trace!("mark_static: {:?}", alloc_id);
         if alloc_id != NEVER_ALLOC_ID && alloc_id != ZST_ALLOC_ID && !self.static_alloc.insert(alloc_id) {
             bug!("tried to mark an allocation ({:?}) as static twice", alloc_id);
         }
     }
 
+    /// mark an allocation pointed to by a static as static and initialized
+    pub fn mark_inner_allocation(&mut self, alloc: AllocId, mutable: bool) -> EvalResult<'tcx> {
+        // relocations into other statics are not "inner allocations"
+        if !self.static_alloc.contains(&alloc) {
+            self.mark_static_initalized(alloc, mutable)?;
+        }
+        Ok(())
+    }
+
     /// mark an allocation as static and initialized, either mutable or not
     pub fn mark_static_initalized(&mut self, alloc_id: AllocId, mutable: bool) -> EvalResult<'tcx> {
+        trace!("mark_static_initialized {:?}, mutable: {:?}", alloc_id, mutable);
         // do not use `self.get_mut(alloc_id)` here, because we might have already marked a
         // sub-element or have circular pointers (e.g. `Rc`-cycles)
         let relocations = match self.alloc_map.get_mut(&alloc_id) {
@@ -699,10 +710,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         };
         // recurse into inner allocations
         for &alloc in relocations.values() {
-            // relocations into other statics are not "inner allocations"
-            if !self.static_alloc.contains(&alloc) {
-                self.mark_static_initalized(alloc, mutable)?;
-            }
+            self.mark_inner_allocation(alloc, mutable)?;
         }
         // put back the relocations
         self.alloc_map.get_mut(&alloc_id).expect("checked above").relocations = relocations;

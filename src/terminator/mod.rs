@@ -490,7 +490,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                                 args.push((undef, field_ty));
                             }
                         },
-                        _ => bug!("rust-call ABI tuple argument was {:?}", last),
+                        _ => bug!("rust-call ABI tuple argument was {:?}, but {:?} were expected", last, fields),
                     }
                 }
                 ty => bug!("expected tuple as last argument in function with 'rust-call' ABI, got {:?}", ty),
