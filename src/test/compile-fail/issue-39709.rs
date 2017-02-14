@@ -8,14 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::thread;
-
-static mut ANSWER: i32 = 0;
-
 fn main() {
-    let t1 = thread::spawn(|| unsafe { ANSWER = 42 });
-    unsafe {
-        ANSWER = 24;
-    }
-    t1.join().ok();
+    println!("{}", { macro_rules! x { ($()*) => {} } 33 });
+    //~^ ERROR no syntax variables matched as repeating at this depth
 }
+
