@@ -929,26 +929,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         val: PrimVal,
         dest_ty: Ty<'tcx>,
     ) -> EvalResult<'tcx> {
-        match dest {
-            Lvalue::Ptr { ptr, extra } => {
-                assert_eq!(extra, LvalueExtra::None);
-                let size = self.type_size(dest_ty)?.expect("dest type must be sized");
-                self.memory.write_primval(ptr, val, size)
-            }
-            Lvalue::Local { frame, local, field } => {
-                self.stack[frame].set_local(local, field.map(|(i, _)| i), Value::ByVal(val));
-                Ok(())
-            }
-            Lvalue::Global(cid) => {
-                let global_val = self.globals.get_mut(&cid).expect("global not cached");
-                if global_val.mutable {
-                    global_val.value = Value::ByVal(val);
-                    Ok(())
-                } else {
-                    Err(EvalError::ModifiedConstantMemory)
-                }
-            }
-        }
+        self.write_value(Value::ByVal(val), dest, dest_ty)
     }
 
     pub(super) fn write_value(
