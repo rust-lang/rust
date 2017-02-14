@@ -1510,7 +1510,13 @@ pub fn eval_main<'a, 'tcx: 'a>(
     loop {
         match ecx.step() {
             Ok(true) => {}
-            Ok(false) => return,
+            Ok(false) => {
+                let leaks = ecx.memory.leak_report();
+                if leaks != 0 {
+                    tcx.sess.err("the evaluated program leaked memory");
+                }
+                return;
+            }
             Err(e) => {
                 report(tcx, &ecx, e);
                 return;
