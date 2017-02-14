@@ -212,19 +212,31 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver,
         }
         ResolutionError::VariableNotBoundInPattern(binding_error) => {
             let msp = MultiSpan::from_spans(binding_error.target.iter().map(|x| x.0).collect());
+
+            let mut origin_patterns = binding_error.origin.iter()
+                .map(|x| x.1)
+                .collect::<Vec<_>>();
+            origin_patterns.sort();
+            let origin_patterns = origin_patterns.iter()
+                .map(|x| format!("#{}", x))
+                .collect::<Vec<_>>()
+                .join(", ");
+            let mut target_patterns = binding_error.target.iter()
+                .map(|x| x.1)
+                .collect::<Vec<_>>();
+            target_patterns.sort();
+            let target_patterns = target_patterns.iter()
+                .map(|x| format!("#{}", x))
+                .collect::<Vec<_>>()
+                .join(", ");
+
             // "variable `a` from patterns #1, #4 isn't bound in patterns #2, #3"
             let msg = format!("variable `{}` from pattern{} {} isn't bound in pattern{} {}",
                               binding_error.name,
                               if binding_error.origin.len() > 1 { "s" } else { "" },
-                              binding_error.origin.iter()
-                                  .map(|x| format!("#{}", x.1))
-                                  .collect::<Vec<_>>()
-                                  .join(", "),
+                              origin_patterns,
                               if binding_error.target.len() > 1 { "s" } else { "" },
-                              binding_error.target.iter()
-                                  .map(|x| format!("#{}", x.1))
-                                  .collect::<Vec<_>>()
-                                  .join(", "));
+                              target_patterns);
             let mut err = resolver.session.struct_span_err_with_code(msp, &msg, "E0408");
             for (sp, _) in binding_error.target {
                 err.span_label(sp, &format!("pattern doesn't bind `{}`", binding_error.name));
