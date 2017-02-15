@@ -20,7 +20,7 @@ use std::fs::File;
 use std::path::Path;
 
 pub fn check(path: &Path, bad: &mut bool) {
-    if path.ends_with("vendor") {
+    if !super::filter_dirs(path) {
         return
     }
     for entry in t!(path.read_dir(), path).map(|e| t!(e)) {

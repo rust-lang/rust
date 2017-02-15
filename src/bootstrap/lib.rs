@@ -84,7 +84,7 @@ use std::fs::{self, File};
 use std::path::{Component, PathBuf, Path};
 use std::process::Command;
 
-use build_helper::{run_silent, output, mtime};
+use build_helper::{run_silent, run_suppressed, output, mtime};
 
 use util::{exe, libdir, add_lib_path};
 
@@ -148,16 +148,9 @@ pub struct Build {
     rustc: PathBuf,
     src: PathBuf,
     out: PathBuf,
-    release: String,
-    unstable_features: bool,
-    ver_hash: Option<String>,
-    short_ver_hash: Option<String>,
-    ver_date: Option<String>,
-    version: String,
-    package_vers: String,
+    rust_info: channel::GitInfo,
+    cargo_info: channel::GitInfo,
     local_rebuild: bool,
-    release_num: String,
-    prerelease_version: String,
 
     // Probed tools at runtime
     lldb_version: Option<String>,
@@ -173,6 +166,7 @@ pub struct Build {
 #[derive(Debug)]
 struct Crate {
     name: String,
+    version: String,
     deps: Vec<String>,
     path: PathBuf,
     doc_step: String,
@@ -236,6 +230,8 @@ impl Build {
             }
             None => false,
         };
+        let rust_info = channel::GitInfo::new(&src);
+        let cargo_info = channel::GitInfo::new(&src.join("src/tools/cargo"));
 
         Build {
             flags: flags,
@@ -245,22 +241,15 @@ impl Build {
             src: src,
             out: out,
 
-            release: String::new(),
-            unstable_features: false,
-            ver_hash: None,
-            short_ver_hash: None,
-            ver_date: None,
-            version: String::new(),
+            rust_info: rust_info,
+            cargo_info: cargo_info,
             local_rebuild: local_rebuild,
-            package_vers: String::new(),
             cc: HashMap::new(),
             cxx: HashMap::new(),
             crates: HashMap::new(),
             lldb_version: None,
             lldb_python_dir: None,
             is_sudo: is_sudo,
-            release_num: String::new(),
-            prerelease_version: String::new(),
         }
     }
 
@@ -278,15 +267,14 @@ impl Build {
         cc::find(self);
         self.verbose("running sanity check");
         sanity::check(self);
-        self.verbose("collecting channel variables");
-        channel::collect(self);
         // If local-rust is the same major.minor as the current version, then force a local-rebuild
         let local_version_verbose = output(
             Command::new(&self.rustc).arg("--version").arg("--verbose"));
         let local_release = local_version_verbose
             .lines().filter(|x| x.starts_with("release:"))
             .next().unwrap().trim_left_matches("release:").trim();
-        if local_release.split('.').take(2).eq(self.release.split('.').take(2)) {
+        let my_version = channel::CFG_RELEASE_NUM;
+        if local_release.split('.').take(2).eq(my_version.split('.').take(2)) {
             self.verbose(&format!("auto-detected local-rebuild {}", local_release));
             self.local_rebuild = true;
         }
@@ -478,10 +466,8 @@ impl Build {
                   self.config.rust_codegen_units.to_string())
              .env("RUSTC_DEBUG_ASSERTIONS",
                   self.config.rust_debug_assertions.to_string())
-             .env("RUSTC_SNAPSHOT", &self.rustc)
              .env("RUSTC_SYSROOT", self.sysroot(compiler))
              .env("RUSTC_LIBDIR", self.rustc_libdir(compiler))
-             .env("RUSTC_SNAPSHOT_LIBDIR", self.rustc_snapshot_libdir())
              .env("RUSTC_RPATH", self.config.rust_rpath.to_string())
              .env("RUSTDOC", self.out.join("bootstrap/debug/rustdoc"))
              .env("RUSTDOC_REAL", self.rustdoc(compiler))
@@ -490,6 +476,27 @@ impl Build {
         // Enable usage of unstable features
         cargo.env("RUSTC_BOOTSTRAP", "1");
         self.add_rust_test_threads(&mut cargo);
+
+        // Almost all of the crates that we compile as part of the bootstrap may
+        // have a build script, including the standard library. To compile a
+        // build script, however, it itself needs a standard library! This
+        // introduces a bit of a pickle when we're compiling the standard
+        // library itself.
+        //
+        // To work around this we actually end up using the snapshot compiler
+        // (stage0) for compiling build scripts of the standard library itself.
+        // The stage0 compiler is guaranteed to have a libstd available for use.
+        //
+        // For other crates, however, we know that we've already got a standard
+        // library up and running, so we can use the normal compiler to compile
+        // build scripts in that situation.
+        if let Mode::Libstd = mode {
+            cargo.env("RUSTC_SNAPSHOT", &self.rustc)
+                 .env("RUSTC_SNAPSHOT_LIBDIR", self.rustc_snapshot_libdir());
+        } else {
+            cargo.env("RUSTC_SNAPSHOT", self.compiler_path(compiler))
+                 .env("RUSTC_SNAPSHOT_LIBDIR", self.rustc_libdir(compiler));
+        }
 
         // Ignore incremental modes except for stage0, since we're
         // not guaranteeing correctness acros builds if the compiler
@@ -797,6 +804,12 @@ impl Build {
         run_silent(cmd)
     }
 
+    /// Runs a command, printing out nice contextual information if it fails.
+    fn run_quiet(&self, cmd: &mut Command) {
+        self.verbose(&format!("running: {:?}", cmd));
+        run_suppressed(cmd)
+    }
+
     /// Prints a message if this build is configured in verbose mode.
     fn verbose(&self, msg: &str) {
         if self.flags.verbose() || self.config.verbose() {
@@ -913,6 +926,82 @@ impl Build {
         !self.config.full_bootstrap &&
             compiler.stage >= 2 &&
             self.config.host.iter().any(|h| h == target)
+    }
+
+    /// Returns the directory that OpenSSL artifacts are compiled into if
+    /// configured to do so.
+    fn openssl_dir(&self, target: &str) -> Option<PathBuf> {
+        // OpenSSL not used on Windows
+        if target.contains("windows") {
+            None
+        } else if self.config.openssl_static {
+            Some(self.out.join(target).join("openssl"))
+        } else {
+            None
+        }
+    }
+
+    /// Returns the directory that OpenSSL artifacts are installed into if
+    /// configured as such.
+    fn openssl_install_dir(&self, target: &str) -> Option<PathBuf> {
+        self.openssl_dir(target).map(|p| p.join("install"))
+    }
+
+    /// Given `num` in the form "a.b.c" return a "release string" which
+    /// describes the release version number.
+    ///
+    /// For example on nightly this returns "a.b.c-nightly", on beta it returns
+    /// "a.b.c-beta.1" and on stable it just returns "a.b.c".
+    fn release(&self, num: &str) -> String {
+        match &self.config.channel[..] {
+            "stable" => num.to_string(),
+            "beta" => format!("{}-beta{}", num, channel::CFG_PRERELEASE_VERSION),
+            "nightly" => format!("{}-nightly", num),
+            _ => format!("{}-dev", num),
+        }
+    }
+
+    /// Returns the value of `release` above for Rust itself.
+    fn rust_release(&self) -> String {
+        self.release(channel::CFG_RELEASE_NUM)
+    }
+
+    /// Returns the "package version" for a component given the `num` release
+    /// number.
+    ///
+    /// The package version is typically what shows up in the names of tarballs.
+    /// For channels like beta/nightly it's just the channel name, otherwise
+    /// it's the `num` provided.
+    fn package_vers(&self, num: &str) -> String {
+        match &self.config.channel[..] {
+            "stable" => num.to_string(),
+            "beta" => "beta".to_string(),
+            "nightly" => "nightly".to_string(),
+            _ => format!("{}-dev", num),
+        }
+    }
+
+    /// Returns the value of `package_vers` above for Rust itself.
+    fn rust_package_vers(&self) -> String {
+        self.package_vers(channel::CFG_RELEASE_NUM)
+    }
+
+    /// Returns the `version` string associated with this compiler for Rust
+    /// itself.
+    ///
+    /// Note that this is a descriptive string which includes the commit date,
+    /// sha, version, etc.
+    fn rust_version(&self) -> String {
+        self.rust_info.version(self, channel::CFG_RELEASE_NUM)
+    }
+
+    /// Returns whether unstable features should be enabled for the compiler
+    /// we're building.
+    fn unstable_features(&self) -> bool {
+        match &self.config.channel[..] {
+            "stable" | "beta" => false,
+            "nightly" | _ => true,
+        }
     }
 }
 
