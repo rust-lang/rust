@@ -1,0 +1,1 @@
+# omit_gdb_pretty_printer_section
