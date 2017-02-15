@@ -47,6 +47,7 @@ pub fn rustbook(build: &Build, target: &str, name: &str) {
     build.run(build.tool_cmd(&compiler, "rustbook")
                    .arg("build")
                    .arg(&src)
+                   .arg("-d")
                    .arg(out));
 }
 
