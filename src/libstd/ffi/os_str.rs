@@ -204,6 +204,12 @@ impl OsString {
     pub fn reserve_exact(&mut self, additional: usize) {
         self.inner.reserve_exact(additional)
     }
+
+    /// Converts this `OsString` into a boxed `OsStr`.
+    #[unstable(feature = "into_boxed_os_str", issue = "0")]
+    pub fn into_boxed_os_str(self) -> Box<OsStr> {
+        unsafe { mem::transmute(self.inner.into_box()) }
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -442,6 +448,20 @@ impl OsStr {
     /// revealing the internal, platform-specific encodings.
     fn bytes(&self) -> &[u8] {
         unsafe { mem::transmute(&self.inner) }
+    }
+}
+
+#[stable(feature = "box_from_os_str", since = "1.17.0")]
+impl<'a> From<&'a OsStr> for Box<OsStr> {
+    fn from(s: &'a OsStr) -> Box<OsStr> {
+        unsafe { mem::transmute(s.inner.into_box()) }
+    }
+}
+
+#[stable(feature = "box_default_extra", since = "1.17.0")]
+impl Default for Box<OsStr> {
+    fn default() -> Box<OsStr> {
+        unsafe { mem::transmute(Slice::empty_box()) }
     }
 }
 
@@ -740,5 +760,23 @@ mod tests {
     fn test_os_str_default() {
         let os_str: &OsStr = Default::default();
         assert_eq!("", os_str);
+    }
+
+    #[test]
+    fn into_boxed() {
+        let orig = "Hello, world!";
+        let os_str = OsStr::new(orig);
+        let os_string = os_str.to_owned();
+        let box1: Box<OsStr> = Box::from(os_str);
+        let box2 = os_string.into_boxed_os_str();
+        assert_eq!(os_str, &*box1);
+        assert_eq!(box1, box2);
+        assert_eq!(&*box2, os_str);
+    }
+
+    #[test]
+    fn boxed_default() {
+        let boxed = <Box<OsStr>>::default();
+        assert!(boxed.is_empty());
     }
 }
