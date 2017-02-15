@@ -28,8 +28,8 @@ use mem;
 /// # Initialization and Destruction
 ///
 /// Initialization is dynamically performed on the first call to `with()`
-/// within a thread, and values support destructors which will be run when a
-/// thread exits.
+/// within a thread, and values that implement `Drop` get destructed when a
+/// thread exits. Some caveats apply, which are explained below.
 ///
 /// # Examples
 ///
