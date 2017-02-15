@@ -712,7 +712,9 @@ impl<T: Ord> BTreeSet<T> {
     /// assert_eq!(b[&41], "e");
     /// ```
     #[stable(feature = "btree_split_off", since = "1.11.0")]
-    pub fn split_off<Q: ?Sized + Ord>(&mut self, key: &Q) -> Self where T: Borrow<Q> {
+    pub fn split_off<Q: ?Sized + Ord>(&mut self, key: &Q) -> Self
+        where T: Borrow<Q>
+    {
         BTreeSet { map: self.map.split_off(key) }
     }
 }
@@ -907,7 +909,9 @@ impl<'a, T> DoubleEndedIterator for Iter<'a, T> {
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> ExactSizeIterator for Iter<'a, T> {
-    fn len(&self) -> usize { self.iter.len() }
+    fn len(&self) -> usize {
+        self.iter.len()
+    }
 }
 
 #[unstable(feature = "fused", issue = "35602")]
@@ -932,7 +936,9 @@ impl<T> DoubleEndedIterator for IntoIter<T> {
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ExactSizeIterator for IntoIter<T> {
-    fn len(&self) -> usize { self.iter.len() }
+    fn len(&self) -> usize {
+        self.iter.len()
+    }
 }
 
 #[unstable(feature = "fused", issue = "35602")]

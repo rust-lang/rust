@@ -235,12 +235,12 @@ impl<K, Q: ?Sized> super::Recover<Q> for BTreeMap<K, ()>
         match search::search_tree(self.root.as_mut(), key) {
             Found(handle) => {
                 Some(OccupiedEntry {
-                         handle: handle,
-                         length: &mut self.length,
-                         _marker: PhantomData,
-                     }
-                     .remove_kv()
-                     .0)
+                        handle: handle,
+                        length: &mut self.length,
+                        _marker: PhantomData,
+                    }
+                    .remove_kv()
+                    .0)
             }
             GoDown(_) => None,
         }
@@ -251,12 +251,12 @@ impl<K, Q: ?Sized> super::Recover<Q> for BTreeMap<K, ()>
             Found(handle) => Some(mem::replace(handle.into_kv_mut().0, key)),
             GoDown(handle) => {
                 VacantEntry {
-                    key: key,
-                    handle: handle,
-                    length: &mut self.length,
-                    _marker: PhantomData,
-                }
-                .insert(());
+                        key: key,
+                        handle: handle,
+                        length: &mut self.length,
+                        _marker: PhantomData,
+                    }
+                    .insert(());
                 None
             }
         }
@@ -392,12 +392,16 @@ pub enum Entry<'a, K: 'a, V: 'a> {
 impl<'a, K: 'a + Debug + Ord, V: 'a + Debug> Debug for Entry<'a, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            Vacant(ref v) => f.debug_tuple("Entry")
-                              .field(v)
-                              .finish(),
-            Occupied(ref o) => f.debug_tuple("Entry")
-                                .field(o)
-                                .finish(),
+            Vacant(ref v) => {
+                f.debug_tuple("Entry")
+                    .field(v)
+                    .finish()
+            }
+            Occupied(ref o) => {
+                f.debug_tuple("Entry")
+                    .field(o)
+                    .finish()
+            }
         }
     }
 }
@@ -419,8 +423,8 @@ pub struct VacantEntry<'a, K: 'a, V: 'a> {
 impl<'a, K: 'a + Debug + Ord, V: 'a> Debug for VacantEntry<'a, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("VacantEntry")
-         .field(self.key())
-         .finish()
+            .field(self.key())
+            .finish()
     }
 }
 
@@ -441,9 +445,9 @@ pub struct OccupiedEntry<'a, K: 'a, V: 'a> {
 impl<'a, K: 'a + Debug + Ord, V: 'a + Debug> Debug for OccupiedEntry<'a, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("OccupiedEntry")
-         .field("key", self.key())
-         .field("value", self.get())
-         .finish()
+            .field("key", self.key())
+            .field("value", self.get())
+            .finish()
     }
 }
 
@@ -643,11 +647,11 @@ impl<K: Ord, V> BTreeMap<K, V> {
         match search::search_tree(self.root.as_mut(), key) {
             Found(handle) => {
                 Some(OccupiedEntry {
-                         handle: handle,
-                         length: &mut self.length,
-                         _marker: PhantomData,
-                     }
-                     .remove())
+                        handle: handle,
+                        length: &mut self.length,
+                        _marker: PhantomData,
+                    }
+                    .remove())
             }
             GoDown(_) => None,
         }
