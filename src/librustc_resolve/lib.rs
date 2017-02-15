@@ -118,7 +118,7 @@ enum ResolutionError<'a> {
     /// error E0408: variable `{}` from pattern #{} is not bound in pattern #{}
     VariableNotBoundInPattern(BindingError),
     /// error E0409: variable is bound with different mode in pattern #{} than in pattern #1
-    VariableBoundWithDifferentMode(Name, usize, Span),
+    VariableBoundWithDifferentMode(Name, usize, Span, usize),
     /// error E0415: identifier is bound more than once in this parameter list
     IdentifierBoundMoreThanOnceInParameterList(&'a str),
     /// error E0416: identifier is bound more than once in the same pattern
@@ -248,14 +248,16 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver,
         }
         ResolutionError::VariableBoundWithDifferentMode(variable_name,
                                                         pattern_number,
-                                                        first_binding_span) => {
+                                                        first_binding_span,
+                                                        origin_pattern_number) => {
             let mut err = struct_span_err!(resolver.session,
                              span,
                              E0409,
                              "variable `{}` is bound with different mode in pattern #{} than in \
-                              pattern #1",
+                              pattern #{}",
                              variable_name,
-                             pattern_number);
+                             pattern_number,
+                             origin_pattern_number);
             err.span_label(span, &format!("bound in different ways"));
             err.span_label(first_binding_span, &format!("first binding"));
             err
@@ -1940,6 +1942,7 @@ impl<'a> Resolver<'a> {
                                         .entry(key.name)
                                         .or_insert((binding_j.span,
                                                     binding_i.span,
+                                                    j + 1,
                                                     i + 1));
                                 }
                             }
@@ -1953,8 +1956,10 @@ impl<'a> Resolver<'a> {
                           v.origin.iter().next().unwrap().0,
                           ResolutionError::VariableNotBoundInPattern(v));
         }
-        for (k, v) in inconsistent_vars {
-            resolve_error(self, v.0, ResolutionError::VariableBoundWithDifferentMode(k, v.2, v.1));
+        for (name, v) in inconsistent_vars {
+            resolve_error(self,
+                          v.0,
+                          ResolutionError::VariableBoundWithDifferentMode(name, v.2, v.1, v.3));
         }
     }
 
