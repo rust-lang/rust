@@ -747,21 +747,8 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                     trait_ref: &'l Option<ast::TraitRef>,
                     typ: &'l ast::Ty,
                     impl_items: &'l [ast::ImplItem]) {
-        let mut has_self_ref = false;
         if let Some(impl_data) = self.save_ctxt.get_item_data(item) {
             down_cast_data!(impl_data, ImplData, item.span);
-            if let Some(ref self_ref) = impl_data.self_ref {
-                has_self_ref = true;
-                if !self.span.filter_generated(Some(self_ref.span), item.span) {
-                    self.dumper.type_ref(self_ref.clone().lower(self.tcx));
-                }
-            }
-            if let Some(ref trait_ref_data) = impl_data.trait_ref {
-                if !self.span.filter_generated(Some(trait_ref_data.span), item.span) {
-                    self.dumper.type_ref(trait_ref_data.clone().lower(self.tcx));
-                }
-            }
-
             if !self.span.filter_generated(Some(impl_data.span), item.span) {
                 self.dumper.impl_data(ImplData {
                     id: impl_data.id,
@@ -772,9 +759,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                 }.lower(self.tcx));
             }
         }
-        if !has_self_ref {
-            self.visit_ty(&typ);
-        }
+        self.visit_ty(&typ);
         if let &Some(ref trait_ref) = trait_ref {
             self.process_path(trait_ref.ref_id, &trait_ref.path, Some(recorder::TypeRef));
         }
