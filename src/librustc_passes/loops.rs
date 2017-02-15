@@ -88,22 +88,15 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
             }
             hir::ExprBreak(label, ref opt_expr) => {
                 if opt_expr.is_some() {
-                    let loop_kind = if let Some(label) = label {
-                        if label.loop_id == ast::DUMMY_NODE_ID {
-                            None
-                        } else {
-                            Some(match self.hir_map.expect_expr(label.loop_id).node {
-                                hir::ExprWhile(..) => LoopKind::WhileLoop,
-                                hir::ExprLoop(_, _, source) => LoopKind::Loop(source),
-                                ref r => span_bug!(e.span,
-                                                   "break label resolved to a non-loop: {:?}", r),
-                            })
-                        }
-                    } else if let Loop(kind) = self.cx {
-                        Some(kind)
-                    } else {
-                        // `break` outside a loop - caught below
+                    let loop_kind = if label.loop_id == ast::DUMMY_NODE_ID {
                         None
+                    } else {
+                        Some(match self.hir_map.expect_expr(label.loop_id).node {
+                            hir::ExprWhile(..) => LoopKind::WhileLoop,
+                            hir::ExprLoop(_, _, source) => LoopKind::Loop(source),
+                            ref r => span_bug!(e.span,
+                                               "break label resolved to a non-loop: {:?}", r),
+                        })
                     };
                     match loop_kind {
                         None | Some(LoopKind::Loop(hir::LoopSource::Loop)) => (),

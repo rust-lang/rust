@@ -606,13 +606,13 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         hir::ExprRet(ref v) => ExprKind::Return { value: v.to_ref() },
         hir::ExprBreak(label, ref value) => {
             ExprKind::Break {
-                label: label.map(|label| cx.tcx.region_maps.node_extent(label.loop_id)),
+                label: cx.tcx.region_maps.node_extent(label.loop_id),
                 value: value.to_ref(),
             }
         }
         hir::ExprAgain(label) => {
             ExprKind::Continue {
-                label: label.map(|label| cx.tcx.region_maps.node_extent(label.loop_id)),
+                label: cx.tcx.region_maps.node_extent(label.loop_id),
             }
         }
         hir::ExprMatch(ref discr, ref arms, _) => {
