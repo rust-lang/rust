@@ -316,7 +316,7 @@ impl Once {
                         }
 
                         // Once we've enqueued ourselves, wait in a loop.
-                        // Aftewards reload the state and continue with what we
+                        // Afterwards reload the state and continue with what we
                         // were doing from before.
                         while !node.signaled.load(Ordering::SeqCst) {
                             thread::park();
