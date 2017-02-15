@@ -52,11 +52,11 @@ pub trait ToOwned {
     /// Basic usage:
     ///
     /// ```
-    /// let s = "a"; // &str
-    /// let ss = s.to_owned(); // String
+    /// let s: &str = "a";
+    /// let ss: String = s.to_owned();
     ///
-    /// let v = &[1, 2]; // slice
-    /// let vv = v.to_owned(); // Vec
+    /// let v: &[i32] = &[1, 2];
+    /// let vv: Vec<i32> = v.to_owned();
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn to_owned(&self) -> Self::Owned;
