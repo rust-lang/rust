@@ -198,13 +198,13 @@ pub fn compile_input(sess: &Session,
 
             result?;
 
-            if log_enabled!(::log::INFO) {
+            if log_enabled!(::log::LogLevel::Info) {
                 println!("Pre-trans");
                 tcx.print_debug_stats();
             }
             let trans = phase_4_translate_to_llvm(tcx, analysis, &incremental_hashes_map);
 
-            if log_enabled!(::log::INFO) {
+            if log_enabled!(::log::LogLevel::Info) {
                 println!("Post-trans");
                 tcx.print_debug_stats();
             }

@@ -1058,7 +1058,7 @@ impl<'a> middle::cstore::CrateLoader for CrateLoader<'a> {
         self.inject_allocator_crate();
         self.inject_panic_runtime(krate);
 
-        if log_enabled!(log::INFO) {
+        if log_enabled!(log::LogLevel::Info) {
             dump_crates(&self.cstore);
         }
 
