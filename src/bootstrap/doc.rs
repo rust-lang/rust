@@ -152,7 +152,7 @@ pub fn std(build: &Build, stage: u32, target: &str) {
 
     let mut cargo = build.cargo(&compiler, Mode::Libstd, target, "doc");
     cargo.arg("--manifest-path")
-         .arg(build.src.join("src/rustc/std_shim/Cargo.toml"))
+         .arg(build.src.join("src/libstd/Cargo.toml"))
          .arg("--features").arg(build.std_features());
 
     // We don't want to build docs for internal std dependencies unless
@@ -198,7 +198,7 @@ pub fn test(build: &Build, stage: u32, target: &str) {
 
     let mut cargo = build.cargo(&compiler, Mode::Libtest, target, "doc");
     cargo.arg("--manifest-path")
-         .arg(build.src.join("src/rustc/test_shim/Cargo.toml"));
+         .arg(build.src.join("src/libtest/Cargo.toml"));
     build.run(&mut cargo);
     cp_r(&out_dir, &out)
 }
