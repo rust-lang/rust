@@ -4,7 +4,7 @@
 - [concat_idents](concat-idents.md)
 - [link_args](link-args.md)
 - [log_syntax](log-syntax.md)
-- [non_ascii_idents](non_ascii-idents.md)
+- [non_ascii_idents](non-ascii-idents.md)
 - [plugin_registrar](plugin-registrar.md)
 - [thread_local](thread-local.md)
 - [trace_macros](trace-macros.md)
