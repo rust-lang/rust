@@ -232,6 +232,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             ExprKind::AssignOp { .. } |
             ExprKind::Continue { .. } |
             ExprKind::Break { .. } |
+            ExprKind::InlineAsm { .. } |
             ExprKind::Return {.. } => {
                 this.stmt_expr(block, expr)
             }
@@ -257,7 +258,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             ExprKind::Index { .. } |
             ExprKind::Deref { .. } |
             ExprKind::Literal { .. } |
-            ExprKind::InlineAsm { .. } |
             ExprKind::Field { .. } => {
                 debug_assert!(match Category::of(&expr.kind).unwrap() {
                     Category::Rvalue(RvalueFunc::Into) => false,

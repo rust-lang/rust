@@ -104,6 +104,7 @@ fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             }
             mir::StatementKind::StorageLive(_) |
             mir::StatementKind::StorageDead(_) |
+            mir::StatementKind::InlineAsm { .. } |
             mir::StatementKind::Nop => continue,
             mir::StatementKind::SetDiscriminant{ .. } =>
                 span_bug!(stmt.source_info.span,
