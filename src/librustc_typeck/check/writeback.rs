@@ -20,7 +20,6 @@ use rustc::ty::fold::{TypeFolder,TypeFoldable};
 use rustc::infer::{InferCtxt, FixupError};
 use rustc::util::nodemap::{DefIdMap, DefIdSet};
 
-use std::cell::Cell;
 use std::mem;
 
 use syntax::ast;
@@ -35,8 +34,6 @@ use rustc::hir;
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn resolve_type_vars_in_body(&self, body: &'gcx hir::Body)
                                      -> &'gcx ty::TypeckTables<'gcx> {
-        assert_eq!(self.writeback_errors.get(), false);
-
         let item_id = self.tcx.hir.body_owner(body.id());
         let item_def_id = self.tcx.hir.local_def_id(item_id);
 
@@ -58,6 +55,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                               DefIdSet());
         debug!("used_trait_imports({:?}) = {:?}", item_def_id, used_trait_imports);
         wbcx.tables.used_trait_imports = used_trait_imports;
+
+        wbcx.tables.tainted_by_errors = self.is_tainted_by_errors();
 
         self.tcx.alloc_tables(wbcx.tables)
     }
@@ -195,19 +194,11 @@ impl<'cx, 'gcx, 'tcx> Visitor<'gcx> for WritebackCx<'cx, 'gcx, 'tcx> {
     }
 
     fn visit_stmt(&mut self, s: &'gcx hir::Stmt) {
-        if self.fcx.writeback_errors.get() {
-            return;
-        }
-
         self.visit_node_id(ResolvingExpr(s.span), s.node.id());
         intravisit::walk_stmt(self, s);
     }
 
     fn visit_expr(&mut self, e: &'gcx hir::Expr) {
-        if self.fcx.writeback_errors.get() {
-            return;
-        }
-
         self.fix_scalar_builtin_expr(e);
 
         self.visit_node_id(ResolvingExpr(e.span), e.id);
@@ -227,29 +218,16 @@ impl<'cx, 'gcx, 'tcx> Visitor<'gcx> for WritebackCx<'cx, 'gcx, 'tcx> {
     }
 
     fn visit_block(&mut self, b: &'gcx hir::Block) {
-        if self.fcx.writeback_errors.get() {
-            return;
-        }
-
         self.visit_node_id(ResolvingExpr(b.span), b.id);
         intravisit::walk_block(self, b);
     }
 
     fn visit_pat(&mut self, p: &'gcx hir::Pat) {
-        if self.fcx.writeback_errors.get() {
-            return;
-        }
-
         self.visit_node_id(ResolvingPattern(p.span), p.id);
-
         intravisit::walk_pat(self, p);
     }
 
     fn visit_local(&mut self, l: &'gcx hir::Local) {
-        if self.fcx.writeback_errors.get() {
-            return;
-        }
-
         let var_ty = self.fcx.local_ty(l.span, l.id);
         let var_ty = self.resolve(&var_ty, ResolvingLocal(l.span));
         self.write_ty_to_tables(l.id, var_ty);
@@ -259,10 +237,6 @@ impl<'cx, 'gcx, 'tcx> Visitor<'gcx> for WritebackCx<'cx, 'gcx, 'tcx> {
 
 impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
     fn visit_upvar_borrow_map(&mut self) {
-        if self.fcx.writeback_errors.get() {
-            return;
-        }
-
         for (upvar_id, upvar_capture) in self.fcx.tables.borrow().upvar_capture_map.iter() {
             let new_upvar_capture = match *upvar_capture {
                 ty::UpvarCapture::ByValue => ty::UpvarCapture::ByValue,
@@ -281,10 +255,6 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
     }
 
     fn visit_closures(&mut self) {
-        if self.fcx.writeback_errors.get() {
-            return
-        }
-
         for (&id, closure_ty) in self.fcx.tables.borrow().closure_tys.iter() {
             let closure_ty = self.resolve(closure_ty, ResolvingClosure(id));
             self.tables.closure_tys.insert(id, closure_ty);
@@ -296,27 +266,15 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
     }
 
     fn visit_cast_types(&mut self) {
-        if self.fcx.writeback_errors.get() {
-            return
-        }
-
         self.tables.cast_kinds.extend(
             self.fcx.tables.borrow().cast_kinds.iter().map(|(&key, &value)| (key, value)));
     }
 
     fn visit_lints(&mut self) {
-        if self.fcx.writeback_errors.get() {
-            return
-        }
-
         self.fcx.tables.borrow_mut().lints.transfer(&mut self.tables.lints);
     }
 
     fn visit_anon_types(&mut self) {
-        if self.fcx.writeback_errors.get() {
-            return
-        }
-
         let gcx = self.tcx().global_tcx();
         for (&node_id, &concrete_ty) in self.fcx.anon_types.borrow().iter() {
             let reason = ResolvingAnonTy(node_id);
@@ -542,7 +500,6 @@ impl<'a, 'gcx, 'tcx> ResolveReason {
 struct Resolver<'cx, 'gcx: 'cx+'tcx, 'tcx: 'cx> {
     tcx: TyCtxt<'cx, 'gcx, 'tcx>,
     infcx: &'cx InferCtxt<'cx, 'gcx, 'tcx>,
-    writeback_errors: &'cx Cell<bool>,
     reason: ResolveReason,
 }
 
@@ -551,22 +508,19 @@ impl<'cx, 'gcx, 'tcx> Resolver<'cx, 'gcx, 'tcx> {
            reason: ResolveReason)
            -> Resolver<'cx, 'gcx, 'tcx>
     {
-        Resolver::from_infcx(fcx, &fcx.writeback_errors, reason)
+        Resolver::from_infcx(fcx, reason)
     }
 
     fn from_infcx(infcx: &'cx InferCtxt<'cx, 'gcx, 'tcx>,
-                  writeback_errors: &'cx Cell<bool>,
                   reason: ResolveReason)
                   -> Resolver<'cx, 'gcx, 'tcx>
     {
         Resolver { infcx: infcx,
                    tcx: infcx.tcx,
-                   writeback_errors: writeback_errors,
                    reason: reason }
     }
 
     fn report_error(&self, e: FixupError) {
-        self.writeback_errors.set(true);
         if !self.tcx.sess.has_errors() {
             match self.reason {
                 ResolvingExpr(span) => {

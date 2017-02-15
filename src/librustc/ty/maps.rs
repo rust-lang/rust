@@ -381,7 +381,7 @@ define_maps! { <'tcx>
 
     /// Results of evaluating monomorphic constants embedded in
     /// other items, such as enum variant explicit discriminants.
-    pub monomorphic_const_eval: MonomorphicConstEval(DefId) -> Result<ConstVal, ()>
+    pub monomorphic_const_eval: MonomorphicConstEval(DefId) -> Result<ConstVal<'tcx>, ()>
 }
 
 fn coherent_trait_dep_node((_, def_id): (CrateNum, DefId)) -> DepNode<DefId> {

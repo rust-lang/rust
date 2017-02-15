@@ -112,8 +112,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                      test_lvalue: &Lvalue<'tcx>,
                                      candidate: &Candidate<'pat, 'tcx>,
                                      switch_ty: Ty<'tcx>,
-                                     options: &mut Vec<ConstVal>,
-                                     indices: &mut FxHashMap<ConstVal, usize>)
+                                     options: &mut Vec<ConstVal<'tcx>>,
+                                     indices: &mut FxHashMap<ConstVal<'tcx>, usize>)
                                      -> bool
     {
         let match_pair = match candidate.match_pairs.iter().find(|mp| mp.lvalue == *test_lvalue) {

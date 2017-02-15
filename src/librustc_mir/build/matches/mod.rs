@@ -309,13 +309,13 @@ enum TestKind<'tcx> {
     // test the branches of enum
     SwitchInt {
         switch_ty: Ty<'tcx>,
-        options: Vec<ConstVal>,
-        indices: FxHashMap<ConstVal, usize>,
+        options: Vec<ConstVal<'tcx>>,
+        indices: FxHashMap<ConstVal<'tcx>, usize>,
     },
 
     // test for equality
     Eq {
-        value: ConstVal,
+        value: ConstVal<'tcx>,
         ty: Ty<'tcx>,
     },
 

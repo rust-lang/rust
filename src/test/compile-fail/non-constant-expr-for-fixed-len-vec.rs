@@ -14,6 +14,5 @@ fn main() {
     fn bar(n: isize) {
         let _x: [isize; n];
         //~^ ERROR attempt to use a non-constant value in a constant [E0435]
-        //~| ERROR constant evaluation error [E0080]
     }
 }

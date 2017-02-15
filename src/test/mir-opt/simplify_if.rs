@@ -17,7 +17,7 @@ fn main() {
 // END RUST SOURCE
 // START rustc.node4.SimplifyBranches.initial-before.mir
 // bb0: {
-//     switchInt(const false) -> [0: bb2, otherwise: bb1];
+//     switchInt(const false) -> [0u8: bb2, otherwise: bb1];
 // }
 // END rustc.node4.SimplifyBranches.initial-before.mir
 // START rustc.node4.SimplifyBranches.initial-after.mir

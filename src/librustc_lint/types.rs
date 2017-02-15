@@ -17,7 +17,6 @@ use rustc::ty::layout::{Layout, Primitive};
 use rustc::traits::Reveal;
 use middle::const_val::ConstVal;
 use rustc_const_eval::ConstContext;
-use rustc_const_eval::EvalHint::ExprTypeChecked;
 use util::nodemap::FxHashSet;
 use lint::{LateContext, LintContext, LintArray};
 use lint::{LintPass, LateLintPass};
@@ -109,7 +108,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                             }
                         } else {
                             let const_cx = ConstContext::with_tables(cx.tcx, cx.tables);
-                            match const_cx.eval(&r, ExprTypeChecked) {
+                            match const_cx.eval(&r) {
                                 Ok(ConstVal::Integral(i)) => {
                                     i.is_negative() ||
                                     i.to_u64()

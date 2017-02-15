@@ -1039,45 +1039,6 @@ struct Good(u32, u32, u32);
 ```
 "##,
 
-E0079: r##"
-Enum variants which contain no data can be given a custom integer
-representation. This error indicates that the value provided is not an integer
-literal and is therefore invalid.
-
-For example, in the following code:
-
-```compile_fail,E0079
-enum Foo {
-    Q = "32",
-}
-```
-
-We try to set the representation to a string.
-
-There's no general fix for this; if you can work with an integer then just set
-it to one:
-
-```
-enum Foo {
-    Q = 32,
-}
-```
-
-However if you actually wanted a mapping between variants and non-integer
-objects, it may be preferable to use a method with a match instead:
-
-```
-enum Foo { Q }
-impl Foo {
-    fn get_str(&self) -> &'static str {
-        match *self {
-            Foo::Q => "32",
-        }
-    }
-}
-```
-"##,
-
 E0081: r##"
 Enum discriminants are used to differentiate enum variants stored in memory.
 This error indicates that the same value was used for two or more variants,
@@ -1424,6 +1385,44 @@ struct Baz<'a> {
     foo: Foo<'a>, // error: expected 2, found 1
     bar: Bar<'a>, // error: expected 0, found 1
 }
+```
+"##,
+
+E0109: r##"
+You tried to give a type parameter to a type which doesn't need it. Erroneous
+code example:
+
+```compile_fail,E0109
+type X = u32<i32>; // error: type parameters are not allowed on this type
+```
+
+Please check that you used the correct type and recheck its definition. Perhaps
+it doesn't need the type parameter.
+
+Example:
+
+```
+type X = u32; // this compiles
+```
+
+Note that type parameters for enum-variant constructors go after the variant,
+not after the enum (Option::None::<u32>, not Option::<u32>::None).
+"##,
+
+E0110: r##"
+You tried to give a lifetime parameter to a type which doesn't need it.
+Erroneous code example:
+
+```compile_fail,E0110
+type X = u32<'static>; // error: lifetime parameters are not allowed on
+                       //        this type
+```
+
+Please check that the correct type was used and recheck its definition; perhaps
+it doesn't need the lifetime parameter. Example:
+
+```
+type X = u32; // ok!
 ```
 "##,
 
@@ -2646,6 +2645,41 @@ following compiles correctly:
 fn main() {
     let _: Box<std::io::Read + Send + Sync>;
 }
+```
+"##,
+
+E0229: r##"
+An associated type binding was done outside of the type parameter declaration
+and `where` clause. Erroneous code example:
+
+```compile_fail,E0229
+pub trait Foo {
+    type A;
+    fn boo(&self) -> <Self as Foo>::A;
+}
+
+struct Bar;
+
+impl Foo for isize {
+    type A = usize;
+    fn boo(&self) -> usize { 42 }
+}
+
+fn baz<I>(x: &<I as Foo<A=Bar>>::A) {}
+// error: associated type bindings are not allowed here
+```
+
+To solve this error, please move the type bindings in the type parameter
+declaration:
+
+```ignore
+fn baz<I: Foo<A=Bar>>(x: &<I as Foo>::A) {} // ok!
+```
+
+Or in the `where` clause:
+
+```ignore
+fn baz<I>(x: &<I as Foo>::A) where I: Foo<A=Bar> {}
 ```
 "##,
 

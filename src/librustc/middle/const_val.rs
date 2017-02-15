@@ -12,28 +12,30 @@ use syntax::symbol::InternedString;
 use syntax::ast;
 use std::rc::Rc;
 use hir::def_id::DefId;
+use ty::subst::Substs;
 use rustc_const_math::*;
+
 use self::ConstVal::*;
 pub use rustc_const_math::ConstInt;
 
 use std::collections::BTreeMap;
 
 #[derive(Clone, Debug, Hash, RustcEncodable, RustcDecodable, Eq, PartialEq)]
-pub enum ConstVal {
+pub enum ConstVal<'tcx> {
     Float(ConstFloat),
     Integral(ConstInt),
     Str(InternedString),
     ByteStr(Rc<Vec<u8>>),
     Bool(bool),
-    Function(DefId),
-    Struct(BTreeMap<ast::Name, ConstVal>),
-    Tuple(Vec<ConstVal>),
-    Array(Vec<ConstVal>),
-    Repeat(Box<ConstVal>, u64),
+    Function(DefId, &'tcx Substs<'tcx>),
+    Struct(BTreeMap<ast::Name, ConstVal<'tcx>>),
+    Tuple(Vec<ConstVal<'tcx>>),
+    Array(Vec<ConstVal<'tcx>>),
+    Repeat(Box<ConstVal<'tcx>>, u64),
     Char(char),
 }
 
-impl ConstVal {
+impl<'tcx> ConstVal<'tcx> {
     pub fn description(&self) -> &'static str {
         match *self {
             Float(f) => f.description(),
@@ -43,7 +45,7 @@ impl ConstVal {
             Bool(_) => "boolean",
             Struct(_) => "struct",
             Tuple(_) => "tuple",
-            Function(_) => "function definition",
+            Function(..) => "function definition",
             Array(..) => "array",
             Repeat(..) => "repeat",
             Char(..) => "char",
@@ -53,8 +55,7 @@ impl ConstVal {
     pub fn to_const_int(&self) -> Option<ConstInt> {
         match *self {
             ConstVal::Integral(i) => Some(i),
-            ConstVal::Bool(true) => Some(ConstInt::Infer(1)),
-            ConstVal::Bool(false) => Some(ConstInt::Infer(0)),
+            ConstVal::Bool(b) => Some(ConstInt::U8(b as u8)),
             ConstVal::Char(ch) => Some(ConstInt::U32(ch as u32)),
             _ => None
         }

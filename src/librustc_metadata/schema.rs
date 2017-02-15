@@ -230,9 +230,9 @@ pub enum EntryKind<'tcx> {
     Type,
     Enum(ReprOptions),
     Field,
-    Variant(Lazy<VariantData>),
-    Struct(Lazy<VariantData>, ReprOptions),
-    Union(Lazy<VariantData>, ReprOptions),
+    Variant(Lazy<VariantData<'tcx>>),
+    Struct(Lazy<VariantData<'tcx>>, ReprOptions),
+    Union(Lazy<VariantData<'tcx>>, ReprOptions),
     Fn(Lazy<FnData>),
     ForeignFn(Lazy<FnData>),
     Mod(Lazy<ModData>),
@@ -263,10 +263,10 @@ pub struct FnData {
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
-pub struct VariantData {
+pub struct VariantData<'tcx> {
     pub ctor_kind: CtorKind,
     pub discr: ty::VariantDiscr,
-    pub evaluated_discr: Option<ConstVal>,
+    pub evaluated_discr: Option<ConstVal<'tcx>>,
 
     /// If this is a struct's only variant, this
     /// is the index of the "struct ctor" item.

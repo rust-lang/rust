@@ -20,7 +20,6 @@ use ty::{self, Ty, TyCtxt, TypeFoldable, ReprOptions};
 use syntax::ast::{FloatTy, IntTy, UintTy};
 use syntax::attr;
 use syntax_pos::DUMMY_SP;
-use rustc_const_math::ConstInt;
 
 use std::cmp;
 use std::fmt;
@@ -1183,11 +1182,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                                                             i64::min_value(),
                                                             true);
                     for discr in def.discriminants(tcx) {
-                        let x = match discr.erase_type() {
-                            ConstInt::InferSigned(i) => i as i64,
-                            ConstInt::Infer(i) => i as u64 as i64,
-                            _ => bug!()
-                        };
+                        let x = discr.to_u128_unchecked() as i64;
                         if x == 0 { non_zero = false; }
                         if x < min { min = x; }
                         if x > max { max = x; }

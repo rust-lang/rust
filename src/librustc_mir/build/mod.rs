@@ -223,6 +223,17 @@ pub fn construct_const<'a, 'gcx, 'tcx>(hir: Cx<'a, 'gcx, 'tcx>,
     builder.finish(vec![], ty)
 }
 
+pub fn construct_error<'a, 'gcx, 'tcx>(hir: Cx<'a, 'gcx, 'tcx>,
+                                       body_id: hir::BodyId)
+                                       -> Mir<'tcx> {
+    let span = hir.tcx().hir.span(hir.tcx().hir.body_owner(body_id));
+    let ty = hir.tcx().types.err;
+    let mut builder = Builder::new(hir, span, 0, ty);
+    let source_info = builder.source_info(span);
+    builder.cfg.terminate(START_BLOCK, source_info, TerminatorKind::Unreachable);
+    builder.finish(vec![], ty)
+}
+
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     fn new(hir: Cx<'a, 'gcx, 'tcx>,
            span: Span,

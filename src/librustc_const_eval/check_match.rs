@@ -124,7 +124,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
                               "statics cannot be referenced in patterns");
                 }
                 PatternError::ConstEval(err) => {
-                    report_const_eval_err(self.tcx, &err, pat_span, "pattern").emit();
+                    report_const_eval_err(self.tcx, &err, pat_span, "pattern");
                 }
             }
         }

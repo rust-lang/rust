@@ -59,7 +59,6 @@ use constrained_type_params as ctp;
 use middle::lang_items::SizedTraitLangItem;
 use middle::const_val::ConstVal;
 use middle::resolve_lifetime as rl;
-use rustc_const_eval::EvalHint::UncheckedExprHint;
 use rustc_const_eval::{ConstContext, report_const_eval_err};
 use rustc::ty::subst::Substs;
 use rustc::ty::{ToPredicate, ReprOptions};
@@ -75,7 +74,7 @@ use rustc_const_math::ConstInt;
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 
-use syntax::{abi, ast, attr};
+use syntax::{abi, ast};
 use syntax::codemap::Spanned;
 use syntax::symbol::{Symbol, keywords};
 use syntax_pos::{Span, DUMMY_SP};
@@ -596,6 +595,17 @@ fn convert_variant_ctor<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     tcx.item_predicates(def_id);
 }
 
+fn evaluate_disr_expr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                body: hir::BodyId)
+                                -> Result<ConstVal<'tcx>, ()> {
+    let e = &tcx.hir.body(body).value;
+    ConstContext::new(tcx, body).eval(e).map_err(|err| {
+        // enum variant evaluation happens before the global constant check
+        // so we need to report the real error
+        report_const_eval_err(tcx, &err, e.span, "enum discriminant");
+    })
+}
+
 fn convert_enum_variant_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                         def_id: DefId,
                                         variants: &[hir::Variant]) {
@@ -610,7 +620,7 @@ fn convert_enum_variant_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         prev_discr = Some(if let Some(e) = variant.node.disr_expr {
             let expr_did = tcx.hir.local_def_id(e.node_id);
             let result = tcx.maps.monomorphic_const_eval.memoize(expr_did, || {
-                evaluate_disr_expr(tcx, repr_type, e).map(ConstVal::Integral)
+                evaluate_disr_expr(tcx, e)
             });
 
             match result {
@@ -736,60 +746,6 @@ fn adt_def<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         _ => bug!()
     };
     tcx.alloc_adt_def(def_id, kind, variants, repr)
-}
-
-fn evaluate_disr_expr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                repr_ty: attr::IntType,
-                                body: hir::BodyId)
-                      -> Result<ConstInt, ()> {
-    let e = &tcx.hir.body(body).value;
-    debug!("disr expr, checking {}", tcx.hir.node_to_pretty_string(e.id));
-
-    let ty_hint = repr_ty.to_ty(tcx);
-    let print_err = |cv: ConstVal| {
-        struct_span_err!(tcx.sess, e.span, E0079, "mismatched types")
-            .note_expected_found(&"type", &ty_hint, &format!("{}", cv.description()))
-            .span_label(e.span, &format!("expected '{}' type", ty_hint))
-            .emit();
-    };
-
-    let hint = UncheckedExprHint(ty_hint);
-    match ConstContext::new(tcx, body).eval(e, hint) {
-        Ok(ConstVal::Integral(i)) => {
-            // FIXME: eval should return an error if the hint does not match the type of the body.
-            // i.e. eventually the match below would not exist.
-            match (repr_ty, i) {
-                (attr::SignedInt(ast::IntTy::I8), ConstInt::I8(_)) |
-                (attr::SignedInt(ast::IntTy::I16), ConstInt::I16(_)) |
-                (attr::SignedInt(ast::IntTy::I32), ConstInt::I32(_)) |
-                (attr::SignedInt(ast::IntTy::I64), ConstInt::I64(_)) |
-                (attr::SignedInt(ast::IntTy::I128), ConstInt::I128(_)) |
-                (attr::SignedInt(ast::IntTy::Is), ConstInt::Isize(_)) |
-                (attr::UnsignedInt(ast::UintTy::U8), ConstInt::U8(_)) |
-                (attr::UnsignedInt(ast::UintTy::U16), ConstInt::U16(_)) |
-                (attr::UnsignedInt(ast::UintTy::U32), ConstInt::U32(_)) |
-                (attr::UnsignedInt(ast::UintTy::U64), ConstInt::U64(_)) |
-                (attr::UnsignedInt(ast::UintTy::U128), ConstInt::U128(_)) |
-                (attr::UnsignedInt(ast::UintTy::Us), ConstInt::Usize(_)) => Ok(i),
-                (_, i) => {
-                    print_err(ConstVal::Integral(i));
-                    Err(())
-                },
-            }
-        },
-        Ok(cv) => {
-            print_err(cv);
-            Err(())
-        },
-        // enum variant evaluation happens before the global constant check
-        // so we need to report the real error
-        Err(err) => {
-            let mut diag = report_const_eval_err(
-                tcx, &err, e.span, "enum discriminant");
-            diag.emit();
-            Err(())
-        }
-    }
 }
 
 /// Ensures that the super-predicates of the trait with def-id

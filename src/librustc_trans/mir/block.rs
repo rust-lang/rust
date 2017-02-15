@@ -139,7 +139,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 if switch_ty == bcx.tcx().types.bool {
                     let lltrue = llblock(self, targets[0]);
                     let llfalse = llblock(self, targets[1]);
-                    if let [ConstInt::Infer(0)] = values[..] {
+                    if let [ConstInt::U8(0)] = values[..] {
                         bcx.cond_br(discr.immediate(), llfalse, lltrue);
                     } else {
                         bcx.cond_br(discr.immediate(), lltrue, llfalse);
