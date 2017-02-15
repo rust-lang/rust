@@ -293,6 +293,7 @@ All notable changes to this project will be documented in this file.
 [`cast_possible_wrap`]: https://github.com/Manishearth/rust-clippy/wiki#cast_possible_wrap
 [`cast_precision_loss`]: https://github.com/Manishearth/rust-clippy/wiki#cast_precision_loss
 [`cast_sign_loss`]: https://github.com/Manishearth/rust-clippy/wiki#cast_sign_loss
+[`cast_unnecessary`]: https://github.com/Manishearth/rust-clippy/wiki#cast_unnecessary
 [`char_lit_as_u8`]: https://github.com/Manishearth/rust-clippy/wiki#char_lit_as_u8
 [`chars_next_cmp`]: https://github.com/Manishearth/rust-clippy/wiki#chars_next_cmp
 [`clone_double_ref`]: https://github.com/Manishearth/rust-clippy/wiki#clone_double_ref

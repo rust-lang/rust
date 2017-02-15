@@ -379,6 +379,22 @@ declare_lint! {
      and `x > i32::MAX`"
 }
 
+/// **What it does:** Checks for casts to the same type
+///
+/// **Why is this bad?** It's just unnecessary
+///
+/// **Known problems:** None.
+///
+/// **Example:**
+/// ```rust
+/// let _ = 2i32 as i32
+/// ```
+declare_lint! {
+    pub CAST_UNNECESSARY,
+    Warn,
+    "cast to the same type, e.g `x as i32` where `x: i32`"
+}
+
 /// Returns the size in bits of an integral type.
 /// Will return 0 if the type is not an int or uint variant
 fn int_ty_to_nbits(typ: &ty::TyS) -> usize {
@@ -503,7 +519,8 @@ impl LintPass for CastPass {
         lint_array!(CAST_PRECISION_LOSS,
                     CAST_SIGN_LOSS,
                     CAST_POSSIBLE_TRUNCATION,
-                    CAST_POSSIBLE_WRAP)
+                    CAST_POSSIBLE_WRAP,
+                    CAST_UNNECESSARY)
     }
 }
 
@@ -511,6 +528,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CastPass {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if let ExprCast(ref ex, _) = expr.node {
             let (cast_from, cast_to) = (cx.tables.expr_ty(ex), cx.tables.expr_ty(expr));
+            if cast_from.sty == cast_to.sty && !in_external_macro(cx, expr.span) {
+                span_lint(cx,
+                          CAST_UNNECESSARY,
+                          expr.span,
+                          &format!("casting to the same type is unnecessary ({} -> {})", cast_from, cast_to));
+            }
             if cast_from.is_numeric() && cast_to.is_numeric() && !in_external_macro(cx, expr.span) {
                 match (cast_from.is_integral(), cast_to.is_integral()) {
                     (true, false) => {

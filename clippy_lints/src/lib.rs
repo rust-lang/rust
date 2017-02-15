@@ -488,6 +488,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         transmute::WRONG_TRANSMUTE,
         types::ABSURD_EXTREME_COMPARISONS,
         types::BOX_VEC,
+        types::CAST_UNNECESSARY,
         types::CHAR_LIT_AS_U8,
         types::LET_UNIT_VALUE,
         types::LINKEDLIST,
