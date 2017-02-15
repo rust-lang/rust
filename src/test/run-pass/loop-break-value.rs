@@ -122,12 +122,4 @@ pub fn main() {
         panic!();
     };
     assert_eq!(nested_break_value, "hello");
-
-    let break_from_while_cond = loop {
-        while break {
-            panic!();
-        }
-        break 123;
-    };
-    assert_eq!(break_from_while_cond, 123);
 }

@@ -36,7 +36,7 @@ use util::nodemap::{NodeMap, FxHashMap, FxHashSet};
 use syntax_pos::{Span, ExpnId, DUMMY_SP};
 use syntax::codemap::{self, Spanned};
 use syntax::abi::Abi;
-use syntax::ast::{Name, NodeId, DUMMY_NODE_ID, AsmDialect};
+use syntax::ast::{Ident, Name, NodeId, DUMMY_NODE_ID, AsmDialect};
 use syntax::ast::{Attribute, Lit, StrStyle, FloatTy, IntTy, UintTy, MetaItem};
 use syntax::ptr::P;
 use syntax::symbol::{Symbol, keywords};
@@ -959,9 +959,9 @@ pub enum Expr_ {
     /// A referencing operation (`&a` or `&mut a`)
     ExprAddrOf(Mutability, P<Expr>),
     /// A `break`, with an optional label to break
-    ExprBreak(Option<Label>, Option<P<Expr>>),
+    ExprBreak(Label, Option<P<Expr>>),
     /// A `continue`, with an optional label
-    ExprAgain(Option<Label>),
+    ExprAgain(Label),
     /// A `return`, with an optional value to be returned
     ExprRet(Option<P<Expr>>),
 
@@ -1033,8 +1033,7 @@ pub enum LoopSource {
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
 pub struct Label {
-    pub span: Span,
-    pub name: Name,
+    pub ident: Option<Spanned<Ident>>,
     pub loop_id: NodeId
 }
 

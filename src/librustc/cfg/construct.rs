@@ -579,17 +579,12 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
 
     fn find_scope(&self,
                   expr: &hir::Expr,
-                  label: Option<hir::Label>) -> LoopScope {
-        match label {
-            None => *self.loop_scopes.last().unwrap(),
-            Some(label) => {
-                for l in &self.loop_scopes {
-                    if l.loop_id == label.loop_id {
-                        return *l;
-                    }
-                }
-                span_bug!(expr.span, "no loop scope for id {}", label.loop_id);
+                  label: hir::Label) -> LoopScope {
+        for l in &self.loop_scopes {
+            if l.loop_id == label.loop_id {
+                return *l;
             }
         }
+        span_bug!(expr.span, "no loop scope for id {}", label.loop_id);
     }
 }
