@@ -134,6 +134,11 @@
 # Build the sanitizer runtimes
 #sanitizers = false
 
+# Indicates whether the OpenSSL linked into Cargo will be statically linked or
+# not. If static linkage is specified then the build system will download a
+# known-good version of OpenSSL, compile it, and link it to Cargo.
+#openssl-static = false
+
 # =============================================================================
 # General install configuration options
 # =============================================================================
