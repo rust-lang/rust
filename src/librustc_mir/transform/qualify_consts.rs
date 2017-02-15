@@ -774,10 +774,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     }
                 }
             }
-
-            Rvalue::InlineAsm {..} => {
-                self.not_const();
-            }
         }
     }
 
@@ -933,6 +929,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                 StatementKind::SetDiscriminant { .. } |
                 StatementKind::StorageLive(_) |
                 StatementKind::StorageDead(_) |
+                StatementKind::InlineAsm {..} |
                 StatementKind::Nop => {}
             }
         });
