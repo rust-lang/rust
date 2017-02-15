@@ -20,6 +20,7 @@
 
 #![feature(box_patterns)]
 #![feature(box_syntax)]
+#![feature(conservative_impl_trait)]
 #![feature(libc)]
 #![feature(rustc_private)]
 #![feature(set_stdio)]

@@ -35,7 +35,7 @@ use rustc_metadata::cstore::CStore;
 use rustc_resolve::MakeGlobMap;
 use rustc_trans::back::link;
 use syntax::ast;
-use syntax::codemap::CodeMap;
+use syntax::codemap::{CodeMap, Spanned};
 use syntax::feature_gate::UnstableFeatures;
 use syntax_pos::{BytePos, DUMMY_SP, Pos, Span};
 use errors;
@@ -128,6 +128,21 @@ pub fn run(input: &str,
     0
 }
 
+// Returns the inner attributes of an attribute like
+//
+// #[doc(test(..))]
+fn doc_test_attr_list<'a, I>(attrs: I) -> impl Iterator<Item = &'a Spanned<ast::NestedMetaItemKind>>
+    where I: IntoIterator<Item = &'a ast::Attribute>,
+{
+    attrs.into_iter()
+        .filter(|a| a.check_name("doc"))
+        .filter_map(|a| a.meta_item_list())
+        .flat_map(|l| l)
+        .filter(|a| a.check_name("test"))
+        .filter_map(|a| a.meta_item_list())
+        .flat_map(|l| l)
+}
+
 // Look for #![doc(test(no_crate_inject))], used by crates in the std facade
 fn scrape_test_config(krate: &::rustc::hir::Crate) -> TestOptions {
     use syntax::print::pprust;
@@ -137,14 +152,7 @@ fn scrape_test_config(krate: &::rustc::hir::Crate) -> TestOptions {
         attrs: Vec::new(),
     };
 
-    let attrs = krate.attrs.iter()
-                     .filter(|a| a.check_name("doc"))
-                     .filter_map(|a| a.meta_item_list())
-                     .flat_map(|l| l)
-                     .filter(|a| a.check_name("test"))
-                     .filter_map(|a| a.meta_item_list())
-                     .flat_map(|l| l);
-    for attr in attrs {
+    for attr in doc_test_attr_list(&krate.attrs) {
         if attr.check_name("no_crate_inject") {
             opts.no_crate_inject = true;
         }
@@ -523,6 +531,15 @@ impl<'a, 'hir> HirCollector<'a, 'hir> {
                                             name: String,
                                             attrs: &[ast::Attribute],
                                             nested: F) {
+        // Find a #[doc(test(ignore))] attribute, and don't collect tests if
+        // present.
+        let ignore_tests =
+            doc_test_attr_list(attrs).any(|attr| attr.check_name("ignore"));
+
+        if ignore_tests {
+            return;
+        }
+
         let has_name = !name.is_empty();
         if has_name {
             self.collector.names.push(name);
