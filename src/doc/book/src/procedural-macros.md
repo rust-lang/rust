@@ -209,7 +209,9 @@ Ok so now, let's compile `hello-world`. Executing `cargo run` now yields:
 Hello, World! My name is FrenchToast
 Hello, World! My name is Waffles
 ```
+
 ## Custom Attributes
+
 In some cases it might make sense to allow users some kind of configuration.
 For our example the user might want to overwrite the name that is printed in the `hello_world()` method.
 
@@ -240,8 +242,8 @@ pub fn hello_world(input: TokenStream) -> TokenStream
 
 Multiple attributes can be specified that way.
 
-
 ## Raising Errors
+
 Let's assume that we do not want to accept `Enums` as input to our custom derive method.
 
 This condition can be easily checked with the help of `syn`. 
