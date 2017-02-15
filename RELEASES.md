@@ -1,3 +1,194 @@
+Version 1.16.0 (2017-03-16)
+===========================
+
+Language
+--------
+
+* Lifetimes in statics and consts default to `'static`. [RFC 1623]
+* [The compiler's `dead_code` lint now accounts for type aliases][38051].
+* [Uninhabitable enums (those without any variants) no longer permit wildcard
+  match patterns][38069]
+* [Clean up semantics of `self` in an import list][38313]
+* [`Self` may appear in `impl` headers][38920]
+* [`Self` may appear in struct expressions][39282]
+
+Compiler
+--------
+
+* [`rustc` now supports `--emit=metadata`, which causes rustc to emit
+  a `.rmeta` file containing only crate metadata][38571]. This can be
+  used by tools like the Rust Language Service to perform
+  metadata-only builds.
+* [Levenshtein based typo suggestions now work in most places, while
+  previously they worked only for fields and sometimes for local
+  variables][38927]. Together with the overhaul of "no
+  resolution"/"unexpected resolution" errors (#[38154]) they result in
+  large and systematic improvement in resolution diagnostics.
+* [Fix `transmute::<T, U>` where `T` requires a bigger alignment than
+  `U`][38670]
+* [rustc: use -Xlinker when specifying an rpath with ',' in it][38798]
+* [`rustc` no longer attempts to provide "consider using an explicit
+  lifetime" suggestions][37057]. They were inaccurate.
+
+Stabilized APIs
+---------------
+
+* [`VecDeque::truncate`]
+* [`VecDeque::resize`]
+* [`String::insert_str`]
+* [`Duration::checked_add`]
+* [`Duration::checked_sub`]
+* [`Duration::checked_div`]
+* [`Duration::checked_mul`]
+* [`str::replacen`]
+* [`str::repeat`]
+* [`SocketAddr::is_ipv4`]
+* [`SocketAddr::is_ipv6`]
+* [`IpAddr::is_ipv4`]
+* [`IpAddr::is_ipv6`]
+* [`Vec::dedup_by`]
+* [`Vec::dedup_by_key`]
+* [`Result::unwrap_or_default`]
+* [`<*const T>::wrapping_offset`]
+* [`<*mut T>::wrapping_offset`]
+* `CommandExt::creation_flags`
+* [`File::set_permissions`]
+* [`String::split_off`]
+
+Libraries
+---------
+
+* [`[T]::binary_search` and `[T]::binary_search_by_key` now take
+  their argument by `Borrow` parameter][37761]
+* [All public types in std implement `Debug`][38006]
+* [`IpAddr` implements `From<Ipv4Addr>` and `From<Ipv6Addr>`][38327]
+* [`Ipv6Addr` implements `From<[u16; 8]>`][38131]
+* [Ctrl-Z returns from `Stdin.read()` when reading from the console on
+  Windows][38274]
+* [std: Fix partial writes in `LineWriter`][38062]
+* [std: Clamp max read/write sizes on Unix][38062]
+* [Use more specific panic message for `&str` slicing errors][38066]
+* [`TcpListener::set_only_v6` is deprecated][38304]. This
+  functionality cannot be achieved in std currently.
+* [`writeln!`, like `println!`, now accepts a form with no string
+  or formatting arguments, to just print a newline][38469]
+* [Implement `iter::Sum` and `iter::Product` for `Result`][38580]
+* [Reduce the size of static data in `std_unicode::tables`][38781]
+* [`char::EscapeDebug`, `EscapeDefault`, `EscapeUnicode`,
+  `CaseMappingIter`, `ToLowercase`, `ToUppercase`, implement
+  `Display`][38909]
+* [`Duration` implements `Sum`][38712]
+* [`String` implements `ToSocketAddrs`][39048]
+
+Cargo
+-----
+
+* [The `cargo check` command does a type check of a project without
+  building it][cargo/3296]
+* [crates.io will display CI badges from Travis and AppVeyor, if
+  specified in Cargo.toml][cargo/3546]
+* [crates.io will display categories listed in Cargo.toml][cargo/3301]
+* [Compilation profiles accept integer values for `debug`, in addition
+  to `true` and `false`. These are passed to `rustc` as the value to
+  `-C debuginfo`][cargo/3534]
+* [Implement `cargo --version --verbose`][cargo/3604]
+* [All builds now output 'dep-info' build dependencies compatible with
+  make and ninja][cargo/3557]
+* [Build all workspace members with `build --all`][cargo/3511]
+* [Document all workspace members with `doc --all`][cargo/3515]
+* [Path deps outside workspace are not members][cargo/3443]
+
+Misc
+----
+
+* [`rustdoc` has a `--sysroot` argument that, like `rustc`, specifies
+  the path to the Rust implementation][38589]
+* [The `armv7-linux-androideabi` target no longer enables NEON
+  extensions, per Google's ABI guide][38413]
+* [The stock standard library can be compiled for Redox OS][38401]
+* [Rust has initial SPARC support][38726]. Tier 3. No builds
+  available.
+* [Rust has experimental support for Nvidia PTX][38559]. Tier 3. No
+  builds available.
+* [Fix backtraces on i686-pc-windows-gnu by disabling FPO][39379]
+
+Compatibility Notes
+-------------------
+
+* [Uninhabitable enums (those without any variants) no longer permit wildcard
+  match patterns][38069]
+* In this release, references to uninhabited types can not be
+  pattern-matched. This was accidentally allowed in 1.15.
+* [The compiler's `dead_code` lint now accounts for type aliases][38051].
+* [Ctrl-Z returns from `Stdin.read()` when reading from the console on
+  Windows][38274]
+* [Clean up semantics of `self` in an import list][38313]
+
+[37057]: https://github.com/rust-lang/rust/pull/37057
+[37761]: https://github.com/rust-lang/rust/pull/37761
+[38006]: https://github.com/rust-lang/rust/pull/38006
+[38051]: https://github.com/rust-lang/rust/pull/38051
+[38062]: https://github.com/rust-lang/rust/pull/38062
+[38062]: https://github.com/rust-lang/rust/pull/38622
+[38066]: https://github.com/rust-lang/rust/pull/38066
+[38069]: https://github.com/rust-lang/rust/pull/38069
+[38131]: https://github.com/rust-lang/rust/pull/38131
+[38154]: https://github.com/rust-lang/rust/pull/38154
+[38274]: https://github.com/rust-lang/rust/pull/38274
+[38304]: https://github.com/rust-lang/rust/pull/38304
+[38313]: https://github.com/rust-lang/rust/pull/38313
+[38314]: https://github.com/rust-lang/rust/pull/38314
+[38327]: https://github.com/rust-lang/rust/pull/38327
+[38401]: https://github.com/rust-lang/rust/pull/38401
+[38413]: https://github.com/rust-lang/rust/pull/38413
+[38469]: https://github.com/rust-lang/rust/pull/38469
+[38559]: https://github.com/rust-lang/rust/pull/38559
+[38571]: https://github.com/rust-lang/rust/pull/38571
+[38580]: https://github.com/rust-lang/rust/pull/38580
+[38589]: https://github.com/rust-lang/rust/pull/38589
+[38670]: https://github.com/rust-lang/rust/pull/38670
+[38712]: https://github.com/rust-lang/rust/pull/38712
+[38726]: https://github.com/rust-lang/rust/pull/38726
+[38781]: https://github.com/rust-lang/rust/pull/38781
+[38798]: https://github.com/rust-lang/rust/pull/38798
+[38909]: https://github.com/rust-lang/rust/pull/38909
+[38920]: https://github.com/rust-lang/rust/pull/38920
+[38927]: https://github.com/rust-lang/rust/pull/38927
+[39048]: https://github.com/rust-lang/rust/pull/39048
+[39282]: https://github.com/rust-lang/rust/pull/39282
+[39379]: https://github.com/rust-lang/rust/pull/39379
+[`<*const T>::wrapping_offset`]: https://doc.rust-lang.org/std/primitive.pointer.html#method.wrapping_offset
+[`<*mut T>::wrapping_offset`]: https://doc.rust-lang.org/std/primitive.pointer.html#method.wrapping_offset
+[`Duration::checked_add`]: https://doc.rust-lang.org/std/time/struct.Duration.html#method.checked_add
+[`Duration::checked_div`]: https://doc.rust-lang.org/std/time/struct.Duration.html#method.checked_div
+[`Duration::checked_mul`]: https://doc.rust-lang.org/std/time/struct.Duration.html#method.checked_mul
+[`Duration::checked_sub`]: https://doc.rust-lang.org/std/time/struct.Duration.html#method.checked_sub
+[`File::set_permissions`]: https://doc.rust-lang.org/std/fs/struct.File.html#method.set_permissions
+[`IpAddr::is_ipv4`]: https://doc.rust-lang.org/std/net/enum.IpAddr.html#method.is_ipv4
+[`IpAddr::is_ipv6`]: https://doc.rust-lang.org/std/net/enum.IpAddr.html#method.is_ipv6
+[`Result::unwrap_or_default`]: https://doc.rust-lang.org/std/result/enum.Result.html#method.unwrap_or_default
+[`SocketAddr::is_ipv4`]: https://doc.rust-lang.org/std/net/enum.SocketAddr.html#method.is_ipv4
+[`SocketAddr::is_ipv6`]: https://doc.rust-lang.org/std/net/enum.SocketAddr.html#method.is_ipv6
+[`String::insert_str`]: https://doc.rust-lang.org/std/string/struct.String.html#method.insert_str
+[`String::split_off`]: https://doc.rust-lang.org/std/string/struct.String.html#method.split_off
+[`Vec::dedup_by_key`]: https://doc.rust-lang.org/std/vec/struct.Vec.html#method.dedup_by_key
+[`Vec::dedup_by`]: https://doc.rust-lang.org/std/vec/struct.Vec.html#method.dedup_by
+[`VecDeque::resize`]:  https://doc.rust-lang.org/std/collections/vec_deque/struct.VecDeque.html#method.resize
+[`VecDeque::truncate`]: https://doc.rust-lang.org/std/collections/vec_deque/struct.VecDeque.html#method.truncate
+[`str::repeat`]: https://doc.rust-lang.org/std/primitive.str.html#method.repeat
+[`str::replacen`]: https://doc.rust-lang.org/std/primitive.str.html#method.replacen
+[cargo/3296]: https://github.com/rust-lang/cargo/pull/3296
+[cargo/3301]: https://github.com/rust-lang/cargo/pull/3301
+[cargo/3443]: https://github.com/rust-lang/cargo/pull/3443
+[cargo/3511]: https://github.com/rust-lang/cargo/pull/3511
+[cargo/3515]: https://github.com/rust-lang/cargo/pull/3515
+[cargo/3534]: https://github.com/rust-lang/cargo/pull/3534
+[cargo/3546]: https://github.com/rust-lang/cargo/pull/3546
+[cargo/3557]: https://github.com/rust-lang/cargo/pull/3557
+[cargo/3604]: https://github.com/rust-lang/cargo/pull/3604
+[RFC 1623]: https://github.com/rust-lang/rfcs/blob/master/text/1623-static.md
+
+
 Version 1.15.1 (2017-02-09)
 ===========================
 
