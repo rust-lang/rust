@@ -630,7 +630,7 @@ unsafe fn bump_levels_unsafe2() -> u32 {
 Mutable statics have the same restrictions as normal statics, except that the
 type of the value is not required to ascribe to `Sync`.
 
-### `'static` lifetime elision
+#### `'static` lifetime elision
 
 [Unstable] Both constant and static declarations of reference types have
 *implicit* `'static` lifetimes unless an explicit lifetime is specified. As
@@ -676,3 +676,372 @@ const RESOLVED_MULTIPLE: Fn(&Foo, &Bar, &Baz) -> usize = ..
 // `Fn(&'static Foo, &'static Bar) -> &'static Baz`.
 const RESOLVED_STATIC: Fn(&Foo, &Bar) -> &Baz = ..
 ```
+
+### Traits
+
+A _trait_ describes an abstract interface that types can
+implement. This interface consists of associated items, which come in
+three varieties:
+
+- functions
+- constants
+- types
+
+Associated functions whose first parameter is named `self` are called
+methods and may be invoked using `.` notation (e.g., `x.foo()`).
+
+All traits define an implicit type parameter `Self` that refers to
+"the type that is implementing this interface". Traits may also
+contain additional type parameters. These type parameters (including
+`Self`) may be constrained by other traits and so forth as usual.
+
+Trait bounds on `Self` are considered "supertraits". These are
+required to be acyclic.  Supertraits are somewhat different from other
+constraints in that they affect what methods are available in the
+vtable when the trait is used as a [trait object](#trait-objects).
+
+Traits are implemented for specific types through separate
+[implementations](#implementations).
+
+Consider the following trait:
+
+```
+# type Surface = i32;
+# type BoundingBox = i32;
+trait Shape {
+    fn draw(&self, Surface);
+    fn bounding_box(&self) -> BoundingBox;
+}
+```
+
+This defines a trait with two methods. All values that have
+[implementations](#implementations) of this trait in scope can have their
+`draw` and `bounding_box` methods called, using `value.bounding_box()`
+[syntax](#method-call-expressions).
+
+Traits can include default implementations of methods, as in:
+
+```
+trait Foo {
+    fn bar(&self);
+    fn baz(&self) { println!("We called baz."); }
+}
+```
+
+Here the `baz` method has a default implementation, so types that implement
+`Foo` need only implement `bar`. It is also possible for implementing types
+to override a method that has a default implementation.
+
+Type parameters can be specified for a trait to make it generic. These appear
+after the trait name, using the same syntax used in [generic
+functions](#generic-functions).
+
+```
+trait Seq<T> {
+    fn len(&self) -> u32;
+    fn elt_at(&self, n: u32) -> T;
+    fn iter<F>(&self, F) where F: Fn(T);
+}
+```
+
+It is also possible to define associated types for a trait. Consider the
+following example of a `Container` trait. Notice how the type is available
+for use in the method signatures:
+
+```
+trait Container {
+    type E;
+    fn empty() -> Self;
+    fn insert(&mut self, Self::E);
+}
+```
+
+In order for a type to implement this trait, it must not only provide
+implementations for every method, but it must specify the type `E`. Here's
+an implementation of `Container` for the standard library type `Vec`:
+
+```
+# trait Container {
+#     type E;
+#     fn empty() -> Self;
+#     fn insert(&mut self, Self::E);
+# }
+impl<T> Container for Vec<T> {
+    type E = T;
+    fn empty() -> Vec<T> { Vec::new() }
+    fn insert(&mut self, x: T) { self.push(x); }
+}
+```
+
+Generic functions may use traits as _bounds_ on their type parameters. This
+will have two effects:
+
+- Only types that have the trait may instantiate the parameter.
+- Within the generic function, the methods of the trait can be
+  called on values that have the parameter's type.
+
+For example:
+
+```
+# type Surface = i32;
+# trait Shape { fn draw(&self, Surface); }
+fn draw_twice<T: Shape>(surface: Surface, sh: T) {
+    sh.draw(surface);
+    sh.draw(surface);
+}
+```
+
+Traits also define a [trait object](#trait-objects) with the same
+name as the trait. Values of this type are created by coercing from a
+pointer of some specific type to a pointer of trait type. For example,
+`&T` could be coerced to `&Shape` if `T: Shape` holds (and similarly
+for `Box<T>`). This coercion can either be implicit or
+[explicit](#type-cast-expressions). Here is an example of an explicit
+coercion:
+
+```
+trait Shape { }
+impl Shape for i32 { }
+let mycircle = 0i32;
+let myshape: Box<Shape> = Box::new(mycircle) as Box<Shape>;
+```
+
+The resulting value is a box containing the value that was cast, along with
+information that identifies the methods of the implementation that was used.
+Values with a trait type can have [methods called](#method-call-expressions) on
+them, for any method in the trait, and can be used to instantiate type
+parameters that are bounded by the trait.
+
+Trait methods may be static, which means that they lack a `self` argument.
+This means that they can only be called with function call syntax (`f(x)`) and
+not method call syntax (`obj.f()`). The way to refer to the name of a static
+method is to qualify it with the trait name, treating the trait name like a
+module. For example:
+
+```
+trait Num {
+    fn from_i32(n: i32) -> Self;
+}
+impl Num for f64 {
+    fn from_i32(n: i32) -> f64 { n as f64 }
+}
+let x: f64 = Num::from_i32(42);
+```
+
+Traits may inherit from other traits. Consider the following example:
+
+```
+trait Shape { fn area(&self) -> f64; }
+trait Circle : Shape { fn radius(&self) -> f64; }
+```
+
+The syntax `Circle : Shape` means that types that implement `Circle` must also
+have an implementation for `Shape`. Multiple supertraits are separated by `+`,
+`trait Circle : Shape + PartialEq { }`. In an implementation of `Circle` for a
+given type `T`, methods can refer to `Shape` methods, since the typechecker
+checks that any type with an implementation of `Circle` also has an
+implementation of `Shape`:
+
+```rust
+struct Foo;
+
+trait Shape { fn area(&self) -> f64; }
+trait Circle : Shape { fn radius(&self) -> f64; }
+impl Shape for Foo {
+    fn area(&self) -> f64 {
+        0.0
+    }
+}
+impl Circle for Foo {
+    fn radius(&self) -> f64 {
+        println!("calling area: {}", self.area());
+
+        0.0
+    }
+}
+
+let c = Foo;
+c.radius();
+```
+
+In type-parameterized functions, methods of the supertrait may be called on
+values of subtrait-bound type parameters. Referring to the previous example of
+`trait Circle : Shape`:
+
+```
+# trait Shape { fn area(&self) -> f64; }
+# trait Circle : Shape { fn radius(&self) -> f64; }
+fn radius_times_area<T: Circle>(c: T) -> f64 {
+    // `c` is both a Circle and a Shape
+    c.radius() * c.area()
+}
+```
+
+Likewise, supertrait methods may also be called on trait objects.
+
+```{.ignore}
+# trait Shape { fn area(&self) -> f64; }
+# trait Circle : Shape { fn radius(&self) -> f64; }
+# impl Shape for i32 { fn area(&self) -> f64 { 0.0 } }
+# impl Circle for i32 { fn radius(&self) -> f64 { 0.0 } }
+# let mycircle = 0i32;
+let mycircle = Box::new(mycircle) as Box<Circle>;
+let nonsense = mycircle.radius() * mycircle.area();
+```
+
+### Implementations
+
+An _implementation_ is an item that implements a [trait](#traits) for a
+specific type.
+
+Implementations are defined with the keyword `impl`.
+
+```
+# #[derive(Copy, Clone)]
+# struct Point {x: f64, y: f64};
+# type Surface = i32;
+# struct BoundingBox {x: f64, y: f64, width: f64, height: f64};
+# trait Shape { fn draw(&self, Surface); fn bounding_box(&self) -> BoundingBox; }
+# fn do_draw_circle(s: Surface, c: Circle) { }
+struct Circle {
+    radius: f64,
+    center: Point,
+}
+
+impl Copy for Circle {}
+
+impl Clone for Circle {
+    fn clone(&self) -> Circle { *self }
+}
+
+impl Shape for Circle {
+    fn draw(&self, s: Surface) { do_draw_circle(s, *self); }
+    fn bounding_box(&self) -> BoundingBox {
+        let r = self.radius;
+        BoundingBox {
+            x: self.center.x - r,
+            y: self.center.y - r,
+            width: 2.0 * r,
+            height: 2.0 * r,
+        }
+    }
+}
+```
+
+It is possible to define an implementation without referring to a trait. The
+methods in such an implementation can only be used as direct calls on the values
+of the type that the implementation targets. In such an implementation, the
+trait type and `for` after `impl` are omitted. Such implementations are limited
+to nominal types (enums, structs, trait objects), and the implementation must
+appear in the same crate as the `self` type:
+
+```
+struct Point {x: i32, y: i32}
+
+impl Point {
+    fn log(&self) {
+        println!("Point is at ({}, {})", self.x, self.y);
+    }
+}
+
+let my_point = Point {x: 10, y:11};
+my_point.log();
+```
+
+When a trait _is_ specified in an `impl`, all methods declared as part of the
+trait must be implemented, with matching types and type parameter counts.
+
+An implementation can take type parameters, which can be different from the
+type parameters taken by the trait it implements. Implementation parameters
+are written after the `impl` keyword.
+
+```
+# trait Seq<T> { fn dummy(&self, _: T) { } }
+impl<T> Seq<T> for Vec<T> {
+    /* ... */
+}
+impl Seq<bool> for u32 {
+    /* Treat the integer as a sequence of bits */
+}
+```
+
+### External blocks
+
+External blocks form the basis for Rust's foreign function interface.
+Declarations in an external block describe symbols in external, non-Rust
+libraries.
+
+Functions within external blocks are declared in the same way as other Rust
+functions, with the exception that they may not have a body and are instead
+terminated by a semicolon.
+
+Functions within external blocks may be called by Rust code, just like
+functions defined in Rust. The Rust compiler automatically translates between
+the Rust ABI and the foreign ABI.
+
+Functions within external blocks may be variadic by specifying `...` after one
+or more named arguments in the argument list:
+
+```ignore
+extern {
+    fn foo(x: i32, ...);
+}
+```
+
+A number of [attributes](#ffi-attributes) control the behavior of external blocks.
+
+By default external blocks assume that the library they are calling uses the
+standard C ABI on the specific platform. Other ABIs may be specified using an
+`abi` string, as shown here:
+
+```ignore
+// Interface to the Windows API
+extern "stdcall" { }
+```
+
+There are three ABI strings which are cross-platform, and which all compilers
+are guaranteed to support:
+
+* `extern "Rust"` -- The default ABI when you write a normal `fn foo()` in any
+  Rust code.
+* `extern "C"` -- This is the same as `extern fn foo()`; whatever the default
+  your C compiler supports.
+* `extern "system"` -- Usually the same as `extern "C"`, except on Win32, in
+  which case it's `"stdcall"`, or what you should use to link to the Windows API
+  itself
+
+There are also some platform-specific ABI strings:
+
+* `extern "cdecl"` -- The default for x86\_32 C code.
+* `extern "stdcall"` -- The default for the Win32 API on x86\_32.
+* `extern "win64"` -- The default for C code on x86\_64 Windows.
+* `extern "sysv64"` -- The default for C code on non-Windows x86\_64.
+* `extern "aapcs"` -- The default for ARM.
+* `extern "fastcall"` -- The `fastcall` ABI -- corresponds to MSVC's
+  `__fastcall` and GCC and clang's `__attribute__((fastcall))`
+* `extern "vectorcall"` -- The `vectorcall` ABI -- corresponds to MSVC's
+  `__vectorcall` and clang's `__attribute__((vectorcall))`
+
+Finally, there are some rustc-specific ABI strings:
+
+* `extern "rust-intrinsic"` -- The ABI of rustc intrinsics.
+* `extern "rust-call"` -- The ABI of the Fn::call trait functions.
+* `extern "platform-intrinsic"` -- Specific platform intrinsics -- like, for
+  example, `sqrt` -- have this ABI. You should never have to deal with it.
+
+The `link` attribute allows the name of the library to be specified. When
+specified the compiler will attempt to link against the native library of the
+specified name.
+
+```{.ignore}
+#[link(name = "crypto")]
+extern { }
+```
+
+The type of a function declared in an extern block is `extern "abi" fn(A1, ...,
+An) -> R`, where `A1...An` are the declared types of its arguments and `R` is
+the declared return type.
+
+It is valid to add the `link` attribute on an empty extern block. You can use
+this to satisfy the linking requirements of extern blocks elsewhere in your code
+(including upstream crates) instead of adding the attribute to each extern block.
