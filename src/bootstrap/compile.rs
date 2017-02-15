@@ -64,7 +64,7 @@ pub fn std(build: &Build, target: &str, compiler: &Compiler) {
     }
     cargo.arg("--features").arg(features)
          .arg("--manifest-path")
-         .arg(build.src.join("src/rustc/std_shim/Cargo.toml"));
+         .arg(build.src.join("src/libstd/Cargo.toml"));
 
     if let Some(target) = build.config.target_config.get(target) {
         if let Some(ref jemalloc) = target.jemalloc {
@@ -162,7 +162,7 @@ pub fn test(build: &Build, target: &str, compiler: &Compiler) {
     build.clear_if_dirty(&out_dir, &libstd_stamp(build, compiler, target));
     let mut cargo = build.cargo(compiler, Mode::Libtest, target, "build");
     cargo.arg("--manifest-path")
-         .arg(build.src.join("src/rustc/test_shim/Cargo.toml"));
+         .arg(build.src.join("src/libtest/Cargo.toml"));
     build.run(&mut cargo);
     update_mtime(build, &libtest_stamp(build, compiler, target));
 }
