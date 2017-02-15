@@ -416,22 +416,26 @@ fn search_hashed<K, V, M, F>(table: M, hash: SafeHash, mut is_match: F) -> Inter
     }
 }
 
-fn pop_internal<K, V>(starting_bucket: FullBucketMut<K, V>) -> (K, V) {
+fn pop_internal<K, V>(starting_bucket: FullBucketMut<K, V>)
+    -> (K, V, &mut RawTable<K, V>)
+{
     let (empty, retkey, retval) = starting_bucket.take();
     let mut gap = match empty.gap_peek() {
-        Some(b) => b,
-        None => return (retkey, retval),
+        Ok(b) => b,
+        Err(b) => return (retkey, retval, b.into_table()),
     };
 
     while gap.full().displacement() != 0 {
         gap = match gap.shift() {
-            Some(b) => b,
-            None => break,
+            Ok(b) => b,
+            Err(b) => {
+                return (retkey, retval, b.into_table());
+            },
         };
     }
 
     // Now we've done all our shifting. Return the value we grabbed earlier.
-    (retkey, retval)
+    (retkey, retval, gap.into_bucket().into_table())
 }
 
 /// Perform robin hood bucket stealing at the given `bucket`. You must
@@ -721,38 +725,7 @@ impl<K, V, S> HashMap<K, V, S>
             return;
         }
 
-        // Grow the table.
-        // Specialization of the other branch.
-        let mut bucket = Bucket::first(&mut old_table);
-
-        // "So a few of the first shall be last: for many be called,
-        // but few chosen."
-        //
-        // We'll most likely encounter a few buckets at the beginning that
-        // have their initial buckets near the end of the table. They were
-        // placed at the beginning as the probe wrapped around the table
-        // during insertion. We must skip forward to a bucket that won't
-        // get reinserted too early and won't unfairly steal others spot.
-        // This eliminates the need for robin hood.
-        loop {
-            bucket = match bucket.peek() {
-                Full(full) => {
-                    if full.displacement() == 0 {
-                        // This bucket occupies its ideal spot.
-                        // It indicates the start of another "cluster".
-                        bucket = full.into_bucket();
-                        break;
-                    }
-                    // Leaving this bucket in the last cluster for later.
-                    full.into_bucket()
-                }
-                Empty(b) => {
-                    // Encountered a hole between clusters.
-                    b.into_bucket()
-                }
-            };
-            bucket.next();
-        }
+        let mut bucket = Bucket::head_bucket(&mut old_table);
 
         // This is how the buckets might be laid out in memory:
         // ($ marks an initialized bucket)
@@ -1207,6 +1180,57 @@ impl<K, V, S> HashMap<K, V, S>
         }
 
         self.search_mut(k).into_occupied_bucket().map(|bucket| pop_internal(bucket).1)
+    }
+
+    /// Retains only the elements specified by the predicate.
+    ///
+    /// In other words, remove all pairs `(k, v)` such that `f(&k,&mut v)` returns `false`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(retain_hash_collection)]
+    /// use std::collections::HashMap;
+    ///
+    /// let mut map: HashMap<isize, isize> = (0..8).map(|x|(x, x*10)).collect();
+    /// map.retain(|&k, _| k % 2 == 0);
+    /// assert_eq!(map.len(), 4);
+    /// ```
+    #[unstable(feature = "retain_hash_collection", issue = "36648")]
+    pub fn retain<F>(&mut self, mut f: F)
+        where F: FnMut(&K, &mut V) -> bool
+    {
+        if self.table.capacity() == 0 || self.table.size() == 0 {
+            return;
+        }
+        let mut bucket = Bucket::head_bucket(&mut self.table);
+        bucket.prev();
+        let tail = bucket.index();
+        loop {
+            bucket = match bucket.peek() {
+                Full(mut full) => {
+                    let should_remove = {
+                        let (k, v) = full.read_mut();
+                        !f(k, v)
+                    };
+                    if should_remove {
+                        let prev_idx = full.index();
+                        let prev_raw = full.raw();
+                        let (_, _, t) = pop_internal(full);
+                        Bucket::new_from(prev_raw, prev_idx, t)
+                    } else {
+                        full.into_bucket()
+                    }
+                },
+                Empty(b) => {
+                    b.into_bucket()
+                }
+            };
+            bucket.prev();  // reverse iteration
+            if bucket.index() == tail {
+                break;
+            }
+        }
     }
 }
 
@@ -1862,7 +1886,8 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
     /// ```
     #[stable(feature = "map_entry_recover_keys2", since = "1.12.0")]
     pub fn remove_entry(self) -> (K, V) {
-        pop_internal(self.elem)
+        let (k, v, _) = pop_internal(self.elem);
+        (k, v)
     }
 
     /// Gets a reference to the value in the entry.
@@ -3155,5 +3180,16 @@ mod test_map {
         }
         assert_eq!(a.len(), 1);
         assert_eq!(a[key], value);
+    }
+
+    #[test]
+    fn test_retain() {
+        let mut map: HashMap<isize, isize> = (0..100).map(|x|(x, x*10)).collect();
+
+        map.retain(|&k, _| k % 2 == 0);
+        assert_eq!(map.len(), 50);
+        assert_eq!(map[&2], 20);
+        assert_eq!(map[&4], 40);
+        assert_eq!(map[&6], 60);
     }
 }
