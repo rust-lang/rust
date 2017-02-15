@@ -100,3 +100,4 @@ version.md
 version.ml
 version.texi
 .cargo
+!src/vendor/**

@@ -490,7 +490,7 @@ mod prim_str { }
 /// assert_eq!(tuple.2, 'c');
 /// ```
 ///
-/// For more about tuples, see [the book](../book/primitive-types.html#tuples).
+/// For more about tuples, see [the book](../book/primitive-types.html#Tuples).
 ///
 /// # Trait implementations
 ///

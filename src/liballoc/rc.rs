@@ -215,7 +215,7 @@
 //! [downgrade]: struct.Rc.html#method.downgrade
 //! [upgrade]: struct.Weak.html#method.upgrade
 //! [`None`]: ../../std/option/enum.Option.html#variant.None
-//! [assoc]: ../../book/method-syntax.html#associated-functions
+//! [assoc]: ../../book/method-syntax.html#Associated%20functions
 //! [mutability]: ../../std/cell/index.html#introducing-mutability-inside-of-something-immutable
 
 #![stable(feature = "rust1", since = "1.0.0")]
