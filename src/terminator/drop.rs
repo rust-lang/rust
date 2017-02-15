@@ -178,14 +178,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     Lvalue::Ptr { ptr, extra: LvalueExtra::Vtable(vtable) } => (ptr, vtable),
                     _ => bug!("expected an lvalue with a vtable"),
                 };
-                let drop_fn = self.memory.read_ptr(vtable)?;
-                // some values don't need to call a drop impl, so the value is null
-                if drop_fn != Pointer::from_int(0) {
-                    let real_ty = self.memory.get_fn(drop_fn.alloc_id)?.expect_drop_glue_real_ty()?;
+                if let Some(real_ty) = self.read_drop_type_from_vtable(vtable)? {
                     self.drop(Lvalue::from_ptr(ptr), real_ty, drop)?;
-                } else {
-                    // just a sanity check
-                    assert_eq!(drop_fn.offset, 0);
                 }
             }
 
