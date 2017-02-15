@@ -489,7 +489,7 @@ little gain.
 6. Use [`AsRef`][AsRef]. For example: `impl<'a> From<&'a str> for Rc<str>` becomes `impl From<AsRef<str>> for Rc<str>`. It could potentially make the API a bit more ergonomic to use. However, it could run afoul of coherence issues, preventing other wanted impls. This RFC currently leans towards not using it.
 7. Add these trait implementations of [`From`][From] as functions on [`&str`][str] like `.into_rc_str()` and on [`&[T]`][slice] like `.into_rc_slice()`.
 This RFC currently leans towards using [`From`][From] implementations for the sake of uniformity and ergonomics. It also has the added benefit of letting you remember one method name instead of many. One could also consider [`String::into_boxed_str`][into_boxed_str] and [`Vec::into_boxed_slice`][into_boxed_slice], since these are similar with the difference being that this version uses the [`From`][From] trait, and is converted into a shared smart pointer instead.
-7. **Also** add these APIs as [`associated functions`][associated functions] on [`Rc`][Rc] and [`Arc`][Arc] as follows:
+8. **Also** add these APIs as [`associated functions`][associated functions] on [`Rc`][Rc] and [`Arc`][Arc] as follows:
 
 ```rust
 impl<T: Clone> Rc<[T]> {
