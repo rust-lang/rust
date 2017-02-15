@@ -47,6 +47,35 @@ type Disr = ConstInt;
  }
 
 
+macro_rules! typed_literal {
+    ($tcx:expr, $ty:expr, $lit:expr) => {
+        match $ty {
+            SignedInt(ast::IntTy::I8)    => ConstInt::I8($lit),
+            SignedInt(ast::IntTy::I16)   => ConstInt::I16($lit),
+            SignedInt(ast::IntTy::I32)   => ConstInt::I32($lit),
+            SignedInt(ast::IntTy::I64)   => ConstInt::I64($lit),
+            SignedInt(ast::IntTy::I128)   => ConstInt::I128($lit),
+            SignedInt(ast::IntTy::Is) => match $tcx.sess.target.int_type {
+                ast::IntTy::I16 => ConstInt::Isize(ConstIsize::Is16($lit)),
+                ast::IntTy::I32 => ConstInt::Isize(ConstIsize::Is32($lit)),
+                ast::IntTy::I64 => ConstInt::Isize(ConstIsize::Is64($lit)),
+                _ => bug!(),
+            },
+            UnsignedInt(ast::UintTy::U8)  => ConstInt::U8($lit),
+            UnsignedInt(ast::UintTy::U16) => ConstInt::U16($lit),
+            UnsignedInt(ast::UintTy::U32) => ConstInt::U32($lit),
+            UnsignedInt(ast::UintTy::U64) => ConstInt::U64($lit),
+            UnsignedInt(ast::UintTy::U128) => ConstInt::U128($lit),
+            UnsignedInt(ast::UintTy::Us) => match $tcx.sess.target.uint_type {
+                ast::UintTy::U16 => ConstInt::Usize(ConstUsize::Us16($lit)),
+                ast::UintTy::U32 => ConstInt::Usize(ConstUsize::Us32($lit)),
+                ast::UintTy::U64 => ConstInt::Usize(ConstUsize::Us64($lit)),
+                _ => bug!(),
+            },
+        }
+    }
+}
+
 impl IntTypeExt for attr::IntType {
     fn to_ty<'a, 'gcx, 'tcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx> {
         match *self {
@@ -66,30 +95,7 @@ impl IntTypeExt for attr::IntType {
     }
 
     fn initial_discriminant<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Disr {
-        match *self {
-            SignedInt(ast::IntTy::I8)    => ConstInt::I8(0),
-            SignedInt(ast::IntTy::I16)   => ConstInt::I16(0),
-            SignedInt(ast::IntTy::I32)   => ConstInt::I32(0),
-            SignedInt(ast::IntTy::I64)   => ConstInt::I64(0),
-            SignedInt(ast::IntTy::I128)   => ConstInt::I128(0),
-            SignedInt(ast::IntTy::Is) => match tcx.sess.target.int_type {
-                ast::IntTy::I16 => ConstInt::Isize(ConstIsize::Is16(0)),
-                ast::IntTy::I32 => ConstInt::Isize(ConstIsize::Is32(0)),
-                ast::IntTy::I64 => ConstInt::Isize(ConstIsize::Is64(0)),
-                _ => bug!(),
-            },
-            UnsignedInt(ast::UintTy::U8)  => ConstInt::U8(0),
-            UnsignedInt(ast::UintTy::U16) => ConstInt::U16(0),
-            UnsignedInt(ast::UintTy::U32) => ConstInt::U32(0),
-            UnsignedInt(ast::UintTy::U64) => ConstInt::U64(0),
-            UnsignedInt(ast::UintTy::U128) => ConstInt::U128(0),
-            UnsignedInt(ast::UintTy::Us) => match tcx.sess.target.uint_type {
-                ast::UintTy::U16 => ConstInt::Usize(ConstUsize::Us16(0)),
-                ast::UintTy::U32 => ConstInt::Usize(ConstUsize::Us32(0)),
-                ast::UintTy::U64 => ConstInt::Usize(ConstUsize::Us64(0)),
-                _ => bug!(),
-            },
-        }
+        typed_literal!(tcx, *self, 0)
     }
 
     fn assert_ty_matches(&self, val: Disr) {
@@ -114,7 +120,7 @@ impl IntTypeExt for attr::IntType {
                            -> Option<Disr> {
         if let Some(val) = val {
             self.assert_ty_matches(val);
-            (val + ConstInt::Infer(1)).ok()
+            (val + typed_literal!(tcx, *self, 1)).ok()
         } else {
             Some(self.initial_discriminant(tcx))
         }

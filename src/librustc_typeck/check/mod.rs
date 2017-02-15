@@ -432,10 +432,6 @@ pub struct FnCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 
     body_id: ast::NodeId,
 
-    // This flag is set to true if, during the writeback phase, we encounter
-    // a type error in this function.
-    writeback_errors: Cell<bool>,
-
     // Number of errors that had been reported when we started
     // checking this function. On exit, if we find that *more* errors
     // have been reported, we will skip regionck and other work that
@@ -1493,7 +1489,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         FnCtxt {
             ast_ty_to_ty_cache: RefCell::new(NodeMap()),
             body_id: body_id,
-            writeback_errors: Cell::new(false),
             err_count_on_creation: inh.tcx.sess.err_count(),
             ret_ty: rty,
             ps: RefCell::new(UnsafetyState::function(hir::Unsafety::Normal,
@@ -1609,6 +1604,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         if ty.references_error() {
             self.has_errors.set(true);
+            self.set_tainted_by_errors();
         }
 
         // FIXME(canndrew): This is_never should probably be an is_uninhabited
@@ -4326,7 +4322,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // errors if type parameters are provided in an inappropriate place.
         let poly_segments = type_segment.is_some() as usize +
                             fn_segment.is_some() as usize;
-        self.tcx.prohibit_type_params(&segments[..segments.len() - poly_segments]);
+        AstConv::prohibit_type_params(self, &segments[..segments.len() - poly_segments]);
 
         match def {
             Def::Local(def_id) | Def::Upvar(def_id, ..) => {

@@ -244,6 +244,10 @@ pub struct TypeckTables<'tcx> {
     /// Set of trait imports actually used in the method resolution.
     /// This is used for warning unused imports.
     pub used_trait_imports: DefIdSet,
+
+    /// If any errors occurred while type-checking this body,
+    /// this field will be set to `true`.
+    pub tainted_by_errors: bool,
 }
 
 impl<'tcx> TypeckTables<'tcx> {
@@ -262,6 +266,7 @@ impl<'tcx> TypeckTables<'tcx> {
             cast_kinds: NodeMap(),
             lints: lint::LintTable::new(),
             used_trait_imports: DefIdSet(),
+            tainted_by_errors: false,
         }
     }
 

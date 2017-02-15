@@ -46,11 +46,5 @@ error[E0425]: cannot find value `second` in module `m`
 32 |     let b: m::first = m::second; // Misspelled item in module.
    |                       ^^^^^^^^^ did you mean `m::Second`?
 
-error[E0080]: constant evaluation error
-  --> $DIR/levenshtein.rs:30:20
-   |
-30 |     let v = [0u32; MAXITEM]; // Misspelled constant name.
-   |                    ^^^^^^^ unresolved path in constant expression
-
-error: aborting due to previous error
+error: aborting due to 8 previous errors
 
