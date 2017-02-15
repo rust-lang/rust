@@ -179,6 +179,48 @@ fn test_range_small() {
 }
 
 #[test]
+fn test_range_equal_empty_cases() {
+    let map: BTreeMap<_, _> = (0..5).map(|i| (i, i)).collect();
+    assert_eq!(map.range((Included(2), Excluded(2))).next(), None);
+    assert_eq!(map.range((Excluded(2), Included(2))).next(), None);
+}
+
+#[test]
+#[should_panic]
+fn test_range_equal_excluded() {
+    let map: BTreeMap<_, _> = (0..5).map(|i| (i, i)).collect();
+    map.range((Excluded(2), Excluded(2)));
+}
+
+#[test]
+#[should_panic]
+fn test_range_backwards_1() {
+    let map: BTreeMap<_, _> = (0..5).map(|i| (i, i)).collect();
+    map.range((Included(3), Included(2)));
+}
+
+#[test]
+#[should_panic]
+fn test_range_backwards_2() {
+    let map: BTreeMap<_, _> = (0..5).map(|i| (i, i)).collect();
+    map.range((Included(3), Excluded(2)));
+}
+
+#[test]
+#[should_panic]
+fn test_range_backwards_3() {
+    let map: BTreeMap<_, _> = (0..5).map(|i| (i, i)).collect();
+    map.range((Excluded(3), Included(2)));
+}
+
+#[test]
+#[should_panic]
+fn test_range_backwards_4() {
+    let map: BTreeMap<_, _> = (0..5).map(|i| (i, i)).collect();
+    map.range((Excluded(3), Excluded(2)));
+}
+
+#[test]
 fn test_range_1000() {
     let size = 1000;
     let map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
