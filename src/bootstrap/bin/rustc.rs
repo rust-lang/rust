@@ -94,6 +94,10 @@ fn main() {
             cmd.arg("-Cprefer-dynamic");
         }
 
+        if env::var_os("RUSTC_PASS_RUSTBUILD_FLAG").is_some() {
+            cmd.arg("--cfg").arg("rustbuild");
+        }
+
         // Help the libc crate compile by assisting it in finding the MUSL
         // native libraries.
         if let Some(s) = env::var_os("MUSL_ROOT") {

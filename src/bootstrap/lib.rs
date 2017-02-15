@@ -499,6 +499,19 @@ impl Build {
                  .env("RUSTC_SNAPSHOT_LIBDIR", self.rustc_libdir(compiler));
         }
 
+        // Most of the time we want to pass `--cfg rustbuild` which will flag
+        // upstream crates.io crates to compile themselves as unstable as we're
+        // going to put them in the sysroot. If we're compiling tools, however,
+        // we don't want to do that as the upstream crates.io deps may be in the
+        // crate graph and we don't want to compile them with their unstable
+        // versions.
+        match mode {
+            Mode::Tool => {}
+            _ => {
+                cargo.env("RUSTC_PASS_RUSTBUILD_FLAG", "1");
+            }
+        }
+
         // Ignore incremental modes except for stage0, since we're
         // not guaranteeing correctness acros builds if the compiler
         // is changing under your feet.`
