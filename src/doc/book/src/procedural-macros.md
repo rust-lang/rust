@@ -99,7 +99,7 @@ created, we'll add it to our toml:
 hello-world-derive = { path = "hello-world-derive" }
 ```
 
-As for our the source of our `hello-world-derive` crate, here's an example:
+As for the source of our `hello-world-derive` crate, here's an example:
 
 ```rust,ignore
 extern crate proc_macro;
