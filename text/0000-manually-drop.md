@@ -71,24 +71,6 @@ impl<T> ManuallyDrop<T> {
         }
     }
 
-    /// Extracts the value from the ManuallyDrop container.
-    /// Could also be implemented as Deref.
-    #[unstable(feature = "manually_drop", reason = "recently added", issue = "0")]
-    pub fn as_ref(&self) -> &T {
-        unsafe {
-            &self.value
-        }
-    }
-
-    /// Extracts the value from the ManuallyDrop container.
-    /// Could also be implemented as a DerefMut.
-    #[unstable(feature = "manually_drop", reason = "recently added", issue = "0")]
-    pub fn as_mut(&mut self) -> &mut T {
-        unsafe {
-            &mut self.value
-        }
-    }
-
     /// Manually drops the contained value.
     ///
     /// # Unsafety
@@ -97,9 +79,18 @@ impl<T> ManuallyDrop<T> {
     /// with the value within invalid. The fact that this function does not consume the wrapper
     /// does not statically prevent further reuse.
     #[unstable(feature = "manually_drop", reason = "recently added", issue = "0")]
-    pub unsafe fn manually_drop(&mut self) {
-        ptr::drop_in_place(&mut self.value)
+    pub unsafe fn drop(slot: &mut ManuallyDrop<T>) {
+        ptr::drop_in_place(&mut slot.value)
     }
+}
+
+impl<T> Deref for ManuallyDrop<T> {
+    type Target = T;
+    // ...
+}
+
+impl<T> DerefMut for ManuallyDrop<T> {
+    // ...
 }
 
 // Other common impls such as `Debug for T: Debug`.
@@ -163,4 +154,4 @@ glance;
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
-* Best way to expose value inside the wrapper.
+None known.
