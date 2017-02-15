@@ -630,6 +630,28 @@ impl<T, S> HashSet<T, S>
     {
         Recover::take(&mut self.map, value)
     }
+
+    /// Retains only the elements specified by the predicate.
+    ///
+    /// In other words, remove all elements `e` such that `f(&e)` returns `false`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(retain_hash_collection)]
+    /// use std::collections::HashSet;
+    ///
+    /// let xs = [1,2,3,4,5,6];
+    /// let mut set: HashSet<isize> = xs.iter().cloned().collect();
+    /// set.retain(|&k| k % 2 == 0);
+    /// assert_eq!(set.len(), 3);
+    /// ```
+    #[unstable(feature = "retain_hash_collection", issue = "36648")]
+    pub fn retain<F>(&mut self, mut f: F)
+        where F: FnMut(&T) -> bool
+    {
+        self.map.retain(|k, _| f(k));
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1610,5 +1632,16 @@ mod test_set {
         assert!(a.contains(&4));
         assert!(a.contains(&5));
         assert!(a.contains(&6));
+    }
+
+    #[test]
+    fn test_retain() {
+        let xs = [1,2,3,4,5,6];
+        let mut set: HashSet<isize> = xs.iter().cloned().collect();
+        set.retain(|&k| k % 2 == 0);
+        assert_eq!(set.len(), 3);
+        assert!(set.contains(&2));
+        assert!(set.contains(&4));
+        assert!(set.contains(&6));
     }
 }
