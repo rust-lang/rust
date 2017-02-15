@@ -10,7 +10,7 @@ crate-type = ["dylib"]
 
 [dependencies]
 arena = { path = "../libarena" }
-log = { path = "../liblog" }
+log = "0.3"
 rustc = { path = "../librustc" }
 rustc_back = { path = "../librustc_back" }
 rustc_const_math = { path = "../librustc_const_math" }
