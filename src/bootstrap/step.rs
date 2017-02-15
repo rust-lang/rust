@@ -278,9 +278,19 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
         rules.build(&krate.build_step, path)
              .dep(|s| s.name("libtest-link"))
              .dep(move |s| s.name("llvm").host(&build.config.build).stage(0))
+             .dep(|s| s.name("may-run-build-script"))
              .run(move |s| compile::rustc(build, s.target, &s.compiler()));
     }
 
+    // Crates which have build scripts need to rely on this rule to ensure that
+    // the necessary prerequisites for a build script are linked and located in
+    // place.
+    rules.build("may-run-build-script", "path/to/nowhere")
+         .dep(move |s| {
+             s.name("libstd-link")
+              .host(&build.config.build)
+              .target(&build.config.build)
+         });
     rules.build("startup-objects", "src/rtstartup")
          .dep(|s| s.name("create-sysroot").target(s.host))
          .run(move |s| compile::build_startup_objects(build, &s.compiler(), s.target));
@@ -478,9 +488,10 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
          .dep(|s| s.name("dist-src"))
          .run(move |_| check::distcheck(build));
 
-
     rules.build("test-helpers", "src/rt/rust_test_helpers.c")
          .run(move |s| native::test_helpers(build, s.target));
+    rules.build("openssl", "path/to/nowhere")
+         .run(move |s| native::openssl(build, s.target));
 
     // Some test suites are run inside emulators, and most of our test binaries
     // are linked dynamically which means we need to ship the standard library
@@ -547,6 +558,17 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
     rules.build("tool-qemu-test-client", "src/tools/qemu-test-client")
          .dep(|s| s.name("libstd"))
          .run(move |s| compile::tool(build, s.stage, s.target, "qemu-test-client"));
+    rules.build("tool-cargo", "src/tools/cargo")
+         .dep(|s| s.name("libstd"))
+         .dep(|s| s.stage(0).host(s.target).name("openssl"))
+         .dep(move |s| {
+             // Cargo depends on procedural macros, which requires a full host
+             // compiler to be available, so we need to depend on that.
+             s.name("librustc-link")
+              .target(&build.config.build)
+              .host(&build.config.build)
+         })
+         .run(move |s| compile::tool(build, s.stage, s.target, "cargo"));
 
     // ========================================================================
     // Documentation targets
@@ -673,6 +695,7 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
     rules.dist("dist-cargo", "cargo")
          .host(true)
          .only_host_build(true)
+         .dep(|s| s.name("tool-cargo"))
          .run(move |s| dist::cargo(build, s.stage, s.target));
     rules.dist("dist-extended", "extended")
          .default(build.config.extended)
@@ -1180,6 +1203,7 @@ mod tests {
             build_step: "build-crate-std".to_string(),
             test_step: "test-std".to_string(),
             bench_step: "bench-std".to_string(),
+            version: String::new(),
         });
         build.crates.insert("test".to_string(), ::Crate {
             name: "test".to_string(),
@@ -1189,10 +1213,12 @@ mod tests {
             build_step: "build-crate-test".to_string(),
             test_step: "test-test".to_string(),
             bench_step: "bench-test".to_string(),
+            version: String::new(),
         });
         build.crates.insert("rustc-main".to_string(), ::Crate {
             name: "rustc-main".to_string(),
             deps: Vec::new(),
+            version: String::new(),
             path: cwd.join("src/rustc-main"),
             doc_step: "doc-rustc-main".to_string(),
             build_step: "build-crate-rustc-main".to_string(),
@@ -1378,7 +1404,7 @@ mod tests {
         let all = rules.expand(&plan);
         println!("all rules: {:#?}", all);
         assert!(!all.contains(&step.name("rustc")));
-        assert!(!all.contains(&step.name("build-crate-std").stage(1)));
+        assert!(!all.contains(&step.name("build-crate-test").stage(1)));
 
         // all stage0 compiles should be for the build target, A
         for step in all.iter().filter(|s| s.stage == 0) {
