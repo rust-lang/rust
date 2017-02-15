@@ -113,7 +113,7 @@ are disingenuous about the drawbacks or alternatives tend to be poorly-received.
 from the larger community, and the author should be prepared to revise it in
 response.
 * Each pull request will be labeled with the most relevant [sub-team].
-* Each sub-team triages its RFC PRs. The sub-team will will either close the PR
+* Each sub-team triages its RFC PRs. The sub-team will either close the PR
 (for RFCs that clearly will not be accepted) or assign it a *shepherd*. The
 shepherd is a trusted developer who is familiar with the RFC process, who will
 help to move the RFC forward, and ensure that the right people see and review
