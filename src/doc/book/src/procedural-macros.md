@@ -226,7 +226,7 @@ fn main() {
 
 If we try to compile this though, the compiler will respond with an error:
 
-```
+```bash
 error: The attribute `HelloWorldName` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
 ```
 
@@ -270,7 +270,7 @@ fn impl_hello_world(ast: &syn::MacroInput) -> quote::Tokens {
 
 If a user now tries to derive `HelloWorld` from an enum they will be greeted with following, hopefully helpful, error:
 
-```
+```bash
 error: custom derive attribute panicked
   --> src/main.rs
    |
