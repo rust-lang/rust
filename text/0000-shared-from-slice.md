@@ -121,7 +121,7 @@ impl Rc<str> {
 }
 ```
 
-The idea is to use the bulk of the implementation of that, generalize it to [`Vec`][Vec]s and [slices][slice], specialize it for [`&str`][str], provide documentation for both, and add `#[repr(C)]` to [`RcBox`][RcBox].
+The idea is to use the bulk of the implementation of that, generalize it to [`Vec`][Vec]s and [slices][slice], specialize it for [`&str`][str], provide documentation for both.
 
 ## [`Copy`][Copy] and [`Clone`][Clone]
 [copy-clone]: #copy-clone
@@ -533,7 +533,6 @@ impl Arc<str> {
 [into_boxed_str]: https://doc.rust-lang.org/std/string/struct.String.html#method.into_boxed_str
 [into_boxed_slice]: https://doc.rust-lang.org/std/vec/struct.Vec.html#method.into_boxed_slice
 [AsRef]: https://doc.rust-lang.org/std/convert/trait.AsRef.html
-[repr(C)]: https://doc.rust-lang.org/nomicon/other-reprs.html
 [string interning]: https://en.wikipedia.org/wiki/String_interning
 [tendril]: https://kmcallister.github.io/docs/html5ever/tendril/struct.Tendril.html
 [Abstract Syntax Tree]: https://en.wikipedia.org/wiki/Abstract_syntax_tree
