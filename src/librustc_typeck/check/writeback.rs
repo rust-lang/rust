@@ -100,7 +100,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
 
         let gcx = fcx.tcx.global_tcx();
         let free_substs = fcx.parameter_environment.free_substs;
-        for (i, k) in free_substs.params().iter().enumerate() {
+        for (i, k) in free_substs.iter().enumerate() {
             let r = if let Some(r) = k.as_region() {
                 r
             } else {

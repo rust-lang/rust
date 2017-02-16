@@ -1326,7 +1326,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
         } else {
             let substs = Substs::for_item(self.tcx, method, |def, _| {
                 let i = def.index as usize;
-                if i < substs.params().len() {
+                if i < substs.len() {
                     substs.region_at(i)
                 } else {
                     // In general, during probe we erase regions. See
@@ -1335,7 +1335,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                 }
             }, |def, cur_substs| {
                 let i = def.index as usize;
-                if i < substs.params().len() {
+                if i < substs.len() {
                     substs.type_at(i)
                 } else {
                     self.type_var_for_def(self.span, def, cur_substs)
