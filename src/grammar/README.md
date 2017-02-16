@@ -8,7 +8,7 @@ The build of the rust part is included with `make tidy` and can be run with `mak
 
 # Manual build
 
-To use manually, assuming antlr4 ist installed at `/usr/share/java/antlr-complete.jar`:
+To use manually, assuming antlr4 is installed at `/usr/share/java/antlr-complete.jar`:
 
 ```
 antlr4 RustLexer.g4
@@ -20,8 +20,8 @@ for file in ../*/**.rs; do
 done
 ```
 
-Note That the `../*/**.rs` glob will match every `*.rs` file in the above
-directory and all of its recursive children. This is a zsh extension.
+Note that the `../*/**.rs` glob will match every `*.rs` file in the above
+directory and all of its recursive children. This is a Zsh extension.
 
 
 ## Cleanup

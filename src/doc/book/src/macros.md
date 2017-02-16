@@ -261,36 +261,34 @@ The metavariable `$x` is parsed as a single expression node, and keeps its
 place in the syntax tree even after substitution.
 
 Another common problem in macro systems is ‘variable capture’. Here’s a C
-macro, using [a GNU C extension] to emulate Rust’s expression blocks.
-
-[a GNU C extension]: https://gcc.gnu.org/onlinedocs/gcc/Statement-Exprs.html
+macro using a block with multiple statements.
 
 ```text
-#define LOG(msg) ({ \
+#define LOG(msg) do { \
     int state = get_log_state(); \
     if (state > 0) { \
         printf("log(%d): %s\n", state, msg); \
     } \
-})
+} while (0)
 ```
 
 Here’s a simple use case that goes terribly wrong:
 
 ```text
 const char *state = "reticulating splines";
-LOG(state)
+LOG(state);
 ```
 
 This expands to
 
 ```text
 const char *state = "reticulating splines";
-{
+do {
     int state = get_log_state();
     if (state > 0) {
         printf("log(%d): %s\n", state, state);
     }
-}
+} while (0);
 ```
 
 The second variable named `state` shadows the first one.  This is a problem
