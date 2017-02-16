@@ -346,10 +346,10 @@ pub fn krate(build: &Build,
              krate: Option<&str>) {
     let (name, path, features, root) = match mode {
         Mode::Libstd => {
-            ("libstd", "src/rustc/std_shim", build.std_features(), "std_shim")
+            ("libstd", "src/libstd", build.std_features(), "std")
         }
         Mode::Libtest => {
-            ("libtest", "src/rustc/test_shim", String::new(), "test_shim")
+            ("libtest", "src/libtest", String::new(), "test")
         }
         Mode::Librustc => {
             ("librustc", "src/rustc", build.rustc_features(), "rustc-main")

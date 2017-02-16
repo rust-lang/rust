@@ -267,8 +267,8 @@ build/
 The current build is unfortunately not quite as simple as `cargo build` in a
 directory, but rather the compiler is split into three different Cargo projects:
 
-* `src/rustc/std_shim` - a project which builds and compiles libstd
-* `src/rustc/test_shim` - a project which builds and compiles libtest
+* `src/libstd` - the standard library
+* `src/libtest` - testing support, depends on libstd
 * `src/rustc` - the actual compiler itself
 
 Each "project" has a corresponding Cargo.lock file with all dependencies, and
