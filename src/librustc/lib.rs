@@ -29,7 +29,7 @@
 #![feature(conservative_impl_trait)]
 #![feature(const_fn)]
 #![feature(core_intrinsics)]
-#![feature(field_init_shorthand)]
+#![cfg_attr(stage0,feature(field_init_shorthand))]
 #![feature(i128_type)]
 #![feature(libc)]
 #![feature(loop_break_value)]
