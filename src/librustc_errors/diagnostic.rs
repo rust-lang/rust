@@ -155,11 +155,7 @@ impl Diagnostic {
     /// Prints out a message with a suggested edit of the code.
     ///
     /// See `diagnostic::RenderSpan::Suggestion` for more information.
-    pub fn span_suggestion<S: Into<MultiSpan>>(&mut self,
-                                               sp: S,
-                                               msg: &str,
-                                               suggestion: String)
-                                               -> &mut Self {
+    pub fn span_suggestion(&mut self, sp: Span, msg: &str, suggestion: String) -> &mut Self {
         self.sub(Level::Help,
                  msg,
                  MultiSpan::new(),
