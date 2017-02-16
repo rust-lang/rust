@@ -113,29 +113,31 @@ are disingenuous about the drawbacks or alternatives tend to be poorly-received.
 from the larger community, and the author should be prepared to revise it in
 response.
 * Each pull request will be labeled with the most relevant [sub-team].
-* Each sub-team triages its RFC PRs. The sub-team will either close the PR
-(for RFCs that clearly will not be accepted) or assign it a *shepherd*. The
-shepherd is a trusted developer who is familiar with the RFC process, who will
-help to move the RFC forward, and ensure that the right people see and review
-it.
+* Each sub-team triages its RFC pull requests. The sub-team will either close
+the pull request (for RFCs that clearly will not be accepted) or assign it a
+*shepherd*. The shepherd is a trusted developer who is familiar with the RFC
+process, who will help to move the RFC forward, and ensure that the right people
+see and review it.
 * Build consensus and integrate feedback. RFCs that have broad support are much
 more likely to make progress than those that don't receive any comments. The
 shepherd assigned to your RFC should help you get feedback from Rust developers
 as well.
 * The shepherd may schedule meetings with the author and/or relevant
 stakeholders to discuss the issues in greater detail.
-* The sub-team will discuss the RFC PR, as much as possible in the comment
-thread of the PR itself. Offline discussion will be summarized on the PR comment
-thread.
+* The sub-team will discuss the RFC pull request, as much as possible in the
+comment thread of the pull request itself. Offline discussion will be summarized
+on the pull request comment thread.
 * RFCs rarely go through this process unchanged, especially as alternatives and
 drawbacks are shown. You can make edits, big and small, to the RFC to
-clarify or change the design, but make changes as new commits to the PR, and
-leave a comment on the PR explaining your changes. Specifically, do not squash
-or rebase commits after they are visible on the PR.
+clarify or change the design, but make changes as new commits to the pull
+request, and leave a comment on the pull request explaining your changes.
+Specifically, do not squash or rebase commits after they are visible on the pull
+request.
 * Once both proponents and opponents have clarified and defended positions and
 the conversation has settled, the RFC will enter its *final comment period*
-(FCP). This is a final opportunity for the community to comment on the PR and is
-a reminder for all members of the sub-team to be aware of the RFC.
+(FCP). This is a final opportunity for the community to comment on the pull
+request and is a reminder for all members of the sub-team to be aware of the
+RFC.
 * The FCP lasts one week. It may be extended if consensus between sub-team
 members cannot be reached. At the end of the FCP,  the [sub-team] will either
 accept the RFC by merging the pull request, assigning the RFC a number
@@ -181,7 +183,7 @@ through to completion: authors should not expect that other project
 developers will take on responsibility for implementing their accepted
 feature.
 
-Modifications to active RFC's can be done in follow-up PR's. We strive
+Modifications to active RFC's can be done in follow-up pull requests. We strive
 to write each RFC in a manner that it will reflect the final design of
 the feature; but the nature of the process means that we cannot expect
 every merged RFC to actually reflect what the end result will be at
@@ -198,7 +200,7 @@ specific guidelines in the sub-team RFC guidelines for the [language](lang_chang
 ## Reviewing RFC's
 [Reviewing RFC's]: #reviewing-rfcs
 
-While the RFC PR is up, the shepherd may schedule meetings with the
+While the RFC pull request is up, the shepherd may schedule meetings with the
 author and/or relevant stakeholders to discuss the issues in greater
 detail, and in some cases the topic may be discussed at a sub-team
 meeting. In either case a summary from the meeting will be
@@ -206,10 +208,10 @@ posted back to the RFC pull request.
 
 A sub-team makes final decisions about RFCs after the benefits and drawbacks are
 well understood. These decisions can be made at any time, but the sub-team will
-regularly issue decisions. When a decision is made, the RFC PR will either be
-merged or closed. In either case, if the reasoning is not clear from the
-discussion in thread, the sub-team will add a comment describing the rationale
-for the decision.
+regularly issue decisions. When a decision is made, the RFC pull request will
+either be merged or closed. In either case, if the reasoning is not clear from
+the discussion in thread, the sub-team will add a comment describing the
+rationale for the decision.
 
 
 ## Implementing an RFC
@@ -240,9 +242,9 @@ closed (as part of the rejection process). An RFC closed with “postponed” is
 marked as such because we want neither to think about evaluating the proposal
 nor about implementing the described feature until some time in the future, and
 we believe that we can afford to wait until then to do so. Historically,
-"postponed" was used to postpone features until after 1.0. Postponed PRs may be
-re-opened when the time is right. We don't have any formal process for that, you
-should ask members of the relevant sub-team.
+"postponed" was used to postpone features until after 1.0. Postponed pull
+requests may be re-opened when the time is right. We don't have any formal
+process for that, you should ask members of the relevant sub-team.
 
 Usually an RFC pull request marked as “postponed” has already passed
 an informal first round of evaluation, namely the round of “do we
