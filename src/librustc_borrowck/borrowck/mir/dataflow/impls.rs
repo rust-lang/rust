@@ -473,6 +473,7 @@ impl<'a, 'tcx> BitDenotation for MovingOutStatements<'a, 'tcx> {
             }
             mir::StatementKind::StorageLive(_) |
             mir::StatementKind::StorageDead(_) |
+            mir::StatementKind::InlineAsm { .. } |
             mir::StatementKind::Nop => {}
         }
     }
