@@ -275,6 +275,9 @@ impl str {
     /// [`u8`]. This pointer will be pointing to the first byte of the string
     /// slice.
     ///
+    /// If the string slice is empty, the returned pointer address will be
+    /// meaningless.
+    ///
     /// [`u8`]: primitive.u8.html
     ///
     /// # Examples

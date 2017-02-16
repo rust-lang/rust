@@ -437,6 +437,9 @@ impl<T> [T] {
     /// The caller must ensure that the slice outlives the pointer this
     /// function returns, or else it will end up pointing to garbage.
     ///
+    /// If the slice is empty, the returned pointer address will be
+    /// meaningless.
+    ///
     /// Modifying the slice may cause its buffer to be reallocated, which
     /// would also make any pointers to it invalid.
     ///
@@ -462,6 +465,9 @@ impl<T> [T] {
     ///
     /// The caller must ensure that the slice outlives the pointer this
     /// function returns, or else it will end up pointing to garbage.
+    ///
+    /// If the slice is empty, the returned pointer address will be
+    /// meaningless.
     ///
     /// Modifying the slice may cause its buffer to be reallocated, which
     /// would also make any pointers to it invalid.

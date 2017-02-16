@@ -274,6 +274,9 @@ impl<T: ?Sized> Box<T> {
     /// proper way to do so is to convert the raw pointer back into a
     /// `Box` with the [`Box::from_raw`] function.
     ///
+    /// If `T` is zero-sized (e.g. `Box<()>`), the returned pointer address
+    /// will be meaningless.
+    ///
     /// Note: this is an associated function, which means that you have
     /// to call it as `Box::into_raw(b)` instead of `b.into_raw()`. This
     /// is so that there is no conflict with a method on the inner type.
