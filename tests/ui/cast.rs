@@ -68,8 +68,10 @@ fn main() {
     false as bool;
     &1i32 as &i32;
 
-    1i32 as i64;      // Should not trigger
-
+    // Should not trigger
+    1i32 as i64;
     let v = vec!(1);
-    &v as &[i32]; // Should not trigger
+    &v as &[i32];
+    1.0 as f64;
+    1 as u64;
 }

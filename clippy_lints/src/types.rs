@@ -379,9 +379,9 @@ declare_lint! {
      and `x > i32::MAX`"
 }
 
-/// **What it does:** Checks for casts to the same type
+/// **What it does:** Checks for casts to the same type.
 ///
-/// **Why is this bad?** It's just unnecessary
+/// **Why is this bad?** It's just unnecessary.
 ///
 /// **Known problems:** None.
 ///
@@ -390,7 +390,7 @@ declare_lint! {
 /// let _ = 2i32 as i32
 /// ```
 declare_lint! {
-    pub CAST_UNNECESSARY,
+    pub UNNECESSARY_CAST,
     Warn,
     "cast to the same type, e.g `x as i32` where `x: i32`"
 }
@@ -520,7 +520,7 @@ impl LintPass for CastPass {
                     CAST_SIGN_LOSS,
                     CAST_POSSIBLE_TRUNCATION,
                     CAST_POSSIBLE_WRAP,
-                    CAST_UNNECESSARY)
+                    UNNECESSARY_CAST)
     }
 }
 
@@ -528,11 +528,20 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CastPass {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         if let ExprCast(ref ex, _) = expr.node {
             let (cast_from, cast_to) = (cx.tables.expr_ty(ex), cx.tables.expr_ty(expr));
-            if cast_from.sty == cast_to.sty && !in_external_macro(cx, expr.span) {
-                span_lint(cx,
-                          CAST_UNNECESSARY,
-                          expr.span,
-                          &format!("casting to the same type is unnecessary ({} -> {})", cast_from, cast_to));
+            if let ExprLit(ref lit) = ex.node {
+                use syntax::ast::{LitKind, LitIntType};
+                match lit.node {
+                    LitKind::Int(_, LitIntType::Unsuffixed) => (),
+                    LitKind::FloatUnsuffixed(_) => (),
+                    _ => {
+                        if cast_from.sty == cast_to.sty && !in_external_macro(cx, expr.span) {
+                            span_lint(cx,
+                                      UNNECESSARY_CAST,
+                                      expr.span,
+                                      &format!("casting to the same type is unnecessary (`{}` -> `{}`)", cast_from, cast_to));
+                        }
+                    }
+                }
             }
             if cast_from.is_numeric() && cast_to.is_numeric() && !in_external_macro(cx, expr.span) {
                 match (cast_from.is_integral(), cast_to.is_integral()) {

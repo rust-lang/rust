@@ -201,7 +201,6 @@ name                                                                            
 [cast_possible_wrap](https://github.com/Manishearth/rust-clippy/wiki#cast_possible_wrap)                               | allow   | casts that may cause wrapping around the value, e.g `x as i32` where `x: u32` and `x > i32::MAX`
 [cast_precision_loss](https://github.com/Manishearth/rust-clippy/wiki#cast_precision_loss)                             | allow   | casts that cause loss of precision, e.g `x as f32` where `x: u64`
 [cast_sign_loss](https://github.com/Manishearth/rust-clippy/wiki#cast_sign_loss)                                       | allow   | casts from signed types to unsigned types, e.g `x as u32` where `x: i32`
-[cast_unnecessary](https://github.com/Manishearth/rust-clippy/wiki#cast_unnecessary)                                   | warn    | cast to the same type, e.g `x as i32` where `x: i32`
 [char_lit_as_u8](https://github.com/Manishearth/rust-clippy/wiki#char_lit_as_u8)                                       | warn    | casting a character literal to u8
 [chars_next_cmp](https://github.com/Manishearth/rust-clippy/wiki#chars_next_cmp)                                       | warn    | using `.chars().next()` to check if a string starts with a char
 [clone_double_ref](https://github.com/Manishearth/rust-clippy/wiki#clone_double_ref)                                   | warn    | using `clone` on `&&T`
@@ -350,6 +349,7 @@ name                                                                            
 [type_complexity](https://github.com/Manishearth/rust-clippy/wiki#type_complexity)                                     | warn    | usage of very complex types that might be better factored into `type` definitions
 [unicode_not_nfc](https://github.com/Manishearth/rust-clippy/wiki#unicode_not_nfc)                                     | allow   | using a unicode literal not in NFC normal form (see [unicode tr15](http://www.unicode.org/reports/tr15/) for further information)
 [unit_cmp](https://github.com/Manishearth/rust-clippy/wiki#unit_cmp)                                                   | warn    | comparing unit values
+[unnecessary_cast](https://github.com/Manishearth/rust-clippy/wiki#unnecessary_cast)                                   | warn    | cast to the same type, e.g `x as i32` where `x: i32`
 [unnecessary_mut_passed](https://github.com/Manishearth/rust-clippy/wiki#unnecessary_mut_passed)                       | warn    | an argument passed as a mutable reference although the callee only demands an immutable reference
 [unnecessary_operation](https://github.com/Manishearth/rust-clippy/wiki#unnecessary_operation)                         | warn    | outer expressions with no effect
 [unneeded_field_pattern](https://github.com/Manishearth/rust-clippy/wiki#unneeded_field_pattern)                       | warn    | struct fields bound to a wildcard instead of using `..`
