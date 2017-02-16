@@ -483,7 +483,6 @@ pub fn home_dir() -> Option<PathBuf> {
                   target_os = "nacl",
                   target_os = "emscripten")))]
     unsafe fn fallback() -> Option<OsString> {
-        #[cfg(not(target_os = "solaris"))]
         unsafe fn getpwduid_r(me: libc::uid_t, passwd: &mut libc::passwd,
                               buf: &mut Vec<c_char>) -> Option<()> {
             let mut result = ptr::null_mut();
@@ -493,16 +492,6 @@ pub fn home_dir() -> Option<PathBuf> {
                 0 if !result.is_null() => Some(()),
                 _ => None
             }
-        }
-
-        #[cfg(target_os = "solaris")]
-        unsafe fn getpwduid_r(me: libc::uid_t, passwd: &mut libc::passwd,
-                              buf: &mut Vec<c_char>) -> Option<()> {
-            // getpwuid_r semantics is different on Illumos/Solaris:
-            // http://illumos.org/man/3c/getpwuid_r
-            let result = libc::getpwuid_r(me, passwd, buf.as_mut_ptr(),
-                                          buf.capacity());
-            if result.is_null() { None } else { Some(()) }
         }
 
         let amt = match libc::sysconf(libc::_SC_GETPW_R_SIZE_MAX) {
