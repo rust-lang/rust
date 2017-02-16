@@ -19,7 +19,7 @@ use ty::{self, TyCtxt, FreeRegion, Region};
 use ty::wf::ImpliedBound;
 use rustc_data_structures::transitive_relation::TransitiveRelation;
 
-#[derive(Clone)]
+#[derive(Clone, RustcEncodable, RustcDecodable)]
 pub struct FreeRegionMap {
     // Stores the relation `a < b`, where `a` and `b` are regions.
     relation: TransitiveRelation<Region>
@@ -28,6 +28,10 @@ pub struct FreeRegionMap {
 impl FreeRegionMap {
     pub fn new() -> FreeRegionMap {
         FreeRegionMap { relation: TransitiveRelation::new() }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.relation.is_empty()
     }
 
     pub fn relate_free_regions_from_implied_bounds<'tcx>(&mut self,

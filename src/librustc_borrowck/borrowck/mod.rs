@@ -32,14 +32,12 @@ use rustc::middle::dataflow::DataFlowOperator;
 use rustc::middle::dataflow::KillFrom;
 use rustc::hir::def_id::DefId;
 use rustc::middle::expr_use_visitor as euv;
-use rustc::middle::free_region::FreeRegionMap;
 use rustc::middle::mem_categorization as mc;
 use rustc::middle::mem_categorization::Categorization;
 use rustc::middle::region;
 use rustc::ty::{self, TyCtxt};
 
 use std::fmt;
-use std::mem;
 use std::rc::Rc;
 use std::hash::{Hash, Hasher};
 use syntax::ast;
@@ -72,9 +70,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BorrowckCtxt<'a, 'tcx> {
         match fk {
             FnKind::ItemFn(..) |
             FnKind::Method(..) => {
-                self.with_temp_region_map(id, |this| {
-                    borrowck_fn(this, fk, fd, b, s, id, fk.attrs())
-                });
+                borrowck_fn(self, fk, fd, b, s, id, fk.attrs())
             }
 
             FnKind::Closure(..) => {
@@ -105,7 +101,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BorrowckCtxt<'a, 'tcx> {
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let mut bccx = BorrowckCtxt {
         tcx: tcx,
-        free_region_map: FreeRegionMap::new(),
+        tables: None,
         stats: BorrowStats {
             loaned_paths_same: 0,
             loaned_paths_imm: 0,
@@ -167,12 +163,15 @@ fn borrowck_fn<'a, 'tcx>(this: &mut BorrowckCtxt<'a, 'tcx>,
                          attributes: &[ast::Attribute]) {
     debug!("borrowck_fn(id={})", id);
 
+    assert!(this.tables.is_none());
+    let owner_def_id = this.tcx.hir.local_def_id(this.tcx.hir.body_owner(body_id));
+    let tables = this.tcx.item_tables(owner_def_id);
+    this.tables = Some(tables);
+
     let body = this.tcx.hir.body(body_id);
 
     if attributes.iter().any(|item| item.check_name("rustc_mir_borrowck")) {
-        this.with_temp_region_map(id, |this| {
-            mir::borrowck_mir(this, id, attributes)
-        });
+        mir::borrowck_mir(this, id, attributes);
     }
 
     let cfg = cfg::CFG::new(this.tcx, &body.value);
@@ -190,6 +189,8 @@ fn borrowck_fn<'a, 'tcx>(this: &mut BorrowckCtxt<'a, 'tcx>,
                                                  id);
 
     check_loans::check_loans(this, &loan_dfcx, &flowed_moves, &all_loans[..], body);
+
+    this.tables = None;
 
     intravisit::walk_fn(this, fk, decl, body_id, sp, id);
 }
@@ -248,7 +249,7 @@ pub fn build_borrowck_dataflow_data_for_fn<'a, 'tcx>(
 
     let mut bccx = BorrowckCtxt {
         tcx: tcx,
-        free_region_map: FreeRegionMap::new(),
+        tables: None,
         stats: BorrowStats {
             loaned_paths_same: 0,
             loaned_paths_imm: 0,
@@ -267,17 +268,9 @@ pub fn build_borrowck_dataflow_data_for_fn<'a, 'tcx>(
 pub struct BorrowckCtxt<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
-    // Hacky. As we visit various fns, we have to load up the
-    // free-region map for each one. This map is computed by during
-    // typeck for each fn item and stored -- closures just use the map
-    // from the fn item that encloses them. Since we walk the fns in
-    // order, we basically just overwrite this field as we enter a fn
-    // item and restore it afterwards in a stack-like fashion. Then
-    // the borrow checking code can assume that `free_region_map` is
-    // always the correct map for the current fn. Feels like it'd be
-    // better to just recompute this, rather than store it, but it's a
-    // bit of a pain to factor that code out at the moment.
-    free_region_map: FreeRegionMap,
+    // tables for the current thing we are checking; set to
+    // Some in `borrowck_fn` and cleared later
+    tables: Option<&'a ty::TypeckTables<'tcx>>,
 
     // Statistics:
     stats: BorrowStats
@@ -574,19 +567,13 @@ pub enum MovedValueUseKind {
 // Misc
 
 impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
-    fn with_temp_region_map<F>(&mut self, id: ast::NodeId, f: F)
-        where F: for <'b> FnOnce(&'b mut BorrowckCtxt<'a, 'tcx>)
-    {
-        let new_free_region_map = self.tcx.free_region_map(id);
-        let old_free_region_map = mem::replace(&mut self.free_region_map, new_free_region_map);
-        f(self);
-        self.free_region_map = old_free_region_map;
-    }
-
-    pub fn is_subregion_of(&self, r_sub: &'tcx ty::Region, r_sup: &'tcx ty::Region)
+    pub fn is_subregion_of(&self,
+                           r_sub: &'tcx ty::Region,
+                           r_sup: &'tcx ty::Region)
                            -> bool
     {
-        self.free_region_map.is_subregion_of(self.tcx, r_sub, r_sup)
+        self.tables.unwrap().free_region_map
+                            .is_subregion_of(self.tcx, r_sub, r_sup)
     }
 
     pub fn report(&self, err: BckError<'tcx>) {
