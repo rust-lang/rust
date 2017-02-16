@@ -527,6 +527,43 @@ mod tests {
     }
 
     #[test]
+    fn seek_past_i64() {
+        let buf = [0xff];
+        let mut r = Cursor::new(&buf[..]);
+        assert_eq!(r.seek(SeekFrom::Start(6)).unwrap(), 6);
+        assert_eq!(r.seek(SeekFrom::Current(0x7ffffffffffffff0)).unwrap(), 0x7ffffffffffffff6);
+        assert_eq!(r.seek(SeekFrom::Current(0x10)).unwrap(), 0x8000000000000006);
+        assert_eq!(r.seek(SeekFrom::Current(0)).unwrap(), 0x8000000000000006);
+        assert!(r.seek(SeekFrom::Current(0x7ffffffffffffffd)).is_err());
+        assert_eq!(r.seek(SeekFrom::Current(-0x8000000000000000)).unwrap(), 6);
+
+        let mut r = Cursor::new(vec![10]);
+        assert_eq!(r.seek(SeekFrom::Start(6)).unwrap(), 6);
+        assert_eq!(r.seek(SeekFrom::Current(0x7ffffffffffffff0)).unwrap(), 0x7ffffffffffffff6);
+        assert_eq!(r.seek(SeekFrom::Current(0x10)).unwrap(), 0x8000000000000006);
+        assert_eq!(r.seek(SeekFrom::Current(0)).unwrap(), 0x8000000000000006);
+        assert!(r.seek(SeekFrom::Current(0x7ffffffffffffffd)).is_err());
+        assert_eq!(r.seek(SeekFrom::Current(-0x8000000000000000)).unwrap(), 6);
+
+        let mut buf = [0];
+        let mut r = Cursor::new(&mut buf[..]);
+        assert_eq!(r.seek(SeekFrom::Start(6)).unwrap(), 6);
+        assert_eq!(r.seek(SeekFrom::Current(0x7ffffffffffffff0)).unwrap(), 0x7ffffffffffffff6);
+        assert_eq!(r.seek(SeekFrom::Current(0x10)).unwrap(), 0x8000000000000006);
+        assert_eq!(r.seek(SeekFrom::Current(0)).unwrap(), 0x8000000000000006);
+        assert!(r.seek(SeekFrom::Current(0x7ffffffffffffffd)).is_err());
+        assert_eq!(r.seek(SeekFrom::Current(-0x8000000000000000)).unwrap(), 6);
+
+        let mut r = Cursor::new(vec![10].into_boxed_slice());
+        assert_eq!(r.seek(SeekFrom::Start(6)).unwrap(), 6);
+        assert_eq!(r.seek(SeekFrom::Current(0x7ffffffffffffff0)).unwrap(), 0x7ffffffffffffff6);
+        assert_eq!(r.seek(SeekFrom::Current(0x10)).unwrap(), 0x8000000000000006);
+        assert_eq!(r.seek(SeekFrom::Current(0)).unwrap(), 0x8000000000000006);
+        assert!(r.seek(SeekFrom::Current(0x7ffffffffffffffd)).is_err());
+        assert_eq!(r.seek(SeekFrom::Current(-0x8000000000000000)).unwrap(), 6);
+    }
+
+    #[test]
     fn seek_before_0() {
         let buf = [0xff];
         let mut r = Cursor::new(&buf[..]);
