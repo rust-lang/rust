@@ -98,8 +98,8 @@ enum AssocSuggestion {
 
 struct BindingError {
     name: Name,
-    origin: FxHashSet<(Span, usize)>,
-    target: FxHashSet<(Span, usize)>,
+    origin: FxHashSet<Span>,
+    target: FxHashSet<Span>,
 }
 
 enum ResolutionError<'a> {
@@ -115,10 +115,10 @@ enum ResolutionError<'a> {
     TypeNotMemberOfTrait(Name, &'a str),
     /// error E0438: const is not a member of trait
     ConstNotMemberOfTrait(Name, &'a str),
-    /// error E0408: variable `{}` from pattern #{} is not bound in pattern #{}
+    /// error E0408: variable `{}` is not bound in all patterns
     VariableNotBoundInPattern(BindingError),
-    /// error E0409: variable is bound with different mode in pattern #{} than in pattern #1
-    VariableBoundWithDifferentMode(Name, usize, Span, usize),
+    /// error E0409: variable `{}` is bound in inconsistent ways within the same match arm
+    VariableBoundWithDifferentMode(Name, Span),
     /// error E0415: identifier is bound more than once in this parameter list
     IdentifierBoundMoreThanOnceInParameterList(&'a str),
     /// error E0416: identifier is bound more than once in the same pattern
@@ -211,53 +211,25 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver,
             err
         }
         ResolutionError::VariableNotBoundInPattern(binding_error) => {
-            let msp = MultiSpan::from_spans(binding_error.target.iter().map(|x| x.0).collect());
-
-            let mut origin_patterns = binding_error.origin.iter()
-                .map(|x| x.1)
-                .collect::<Vec<_>>();
-            origin_patterns.sort();
-            let origin_patterns = origin_patterns.iter()
-                .map(|x| format!("#{}", x))
-                .collect::<Vec<_>>()
-                .join(", ");
-            let mut target_patterns = binding_error.target.iter()
-                .map(|x| x.1)
-                .collect::<Vec<_>>();
-            target_patterns.sort();
-            let target_patterns = target_patterns.iter()
-                .map(|x| format!("#{}", x))
-                .collect::<Vec<_>>()
-                .join(", ");
-
-            // "variable `a` from patterns #1, #4 isn't bound in patterns #2, #3"
-            let msg = format!("variable `{}` from pattern{} {} isn't bound in pattern{} {}",
-                              binding_error.name,
-                              if binding_error.origin.len() > 1 { "s" } else { "" },
-                              origin_patterns,
-                              if binding_error.target.len() > 1 { "s" } else { "" },
-                              target_patterns);
+            let msp = MultiSpan::from_spans(binding_error.target.iter().map(|x| *x).collect());
+            let msg = format!("variable `{}` is not bound in all patterns", binding_error.name);
             let mut err = resolver.session.struct_span_err_with_code(msp, &msg, "E0408");
-            for (sp, _) in binding_error.target {
+            for sp in binding_error.target {
                 err.span_label(sp, &format!("pattern doesn't bind `{}`", binding_error.name));
             }
-            for (sp, _) in binding_error.origin {
+            for sp in binding_error.origin {
                 err.span_label(sp, &"variable not in all patterns");
             }
             err
         }
         ResolutionError::VariableBoundWithDifferentMode(variable_name,
-                                                        pattern_number,
-                                                        first_binding_span,
-                                                        origin_pattern_number) => {
+                                                        first_binding_span) => {
             let mut err = struct_span_err!(resolver.session,
                              span,
                              E0409,
-                             "variable `{}` is bound with different mode in pattern #{} than in \
-                              pattern #{}",
-                             variable_name,
-                             pattern_number,
-                             origin_pattern_number);
+                             "variable `{}` is bound in inconsistent \
+                             ways within the same match arm",
+                             variable_name);
             err.span_label(span, &format!("bound in different ways"));
             err.span_label(first_binding_span, &format!("first binding"));
             err
@@ -1920,8 +1892,8 @@ impl<'a> Resolver<'a> {
                                 origin: FxHashSet(),
                                 target: FxHashSet(),
                             });
-                        binding_error.origin.insert((binding_i.span, i + 1));
-                        binding_error.target.insert((q.span, j + 1));
+                        binding_error.origin.insert(binding_i.span);
+                        binding_error.target.insert(q.span);
                     }
                     for (&key_j, &binding_j) in &map_j {
                         match map_i.get(&key_j) {
@@ -1933,17 +1905,14 @@ impl<'a> Resolver<'a> {
                                         origin: FxHashSet(),
                                         target: FxHashSet(),
                                     });
-                                binding_error.origin.insert((binding_j.span, j + 1));
-                                binding_error.target.insert((p.span, i + 1));
+                                binding_error.origin.insert(binding_j.span);
+                                binding_error.target.insert(p.span);
                             }
                             Some(binding_i) => {  // check consistent binding
                                 if binding_i.binding_mode != binding_j.binding_mode {
                                     inconsistent_vars
                                         .entry(key.name)
-                                        .or_insert((binding_j.span,
-                                                    binding_i.span,
-                                                    j + 1,
-                                                    i + 1));
+                                        .or_insert((binding_j.span, binding_i.span));
                                 }
                             }
                         }
@@ -1953,13 +1922,11 @@ impl<'a> Resolver<'a> {
         }
         for (_, v) in missing_vars {
             resolve_error(self,
-                          v.origin.iter().next().unwrap().0,
+                          *v.origin.iter().next().unwrap(),
                           ResolutionError::VariableNotBoundInPattern(v));
         }
         for (name, v) in inconsistent_vars {
-            resolve_error(self,
-                          v.0,
-                          ResolutionError::VariableBoundWithDifferentMode(name, v.2, v.1, v.3));
+            resolve_error(self, v.0, ResolutionError::VariableBoundWithDifferentMode(name, v.1));
         }
     }
 
