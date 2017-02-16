@@ -912,7 +912,7 @@ extern "system" {
     pub fn Sleep(dwMilliseconds: DWORD);
     pub fn GetProcessId(handle: HANDLE) -> DWORD;
     pub fn GetUserProfileDirectoryW(hToken: HANDLE,
-                                    lpProfileDir: LPCWSTR,
+                                    lpProfileDir: LPWSTR,
                                     lpcchSize: *mut DWORD) -> BOOL;
     pub fn SetHandleInformation(hObject: HANDLE,
                                 dwMask: DWORD,
