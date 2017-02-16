@@ -54,6 +54,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         wbcx.visit_type_nodes();
         wbcx.visit_cast_types();
         wbcx.visit_lints();
+        wbcx.visit_free_region_map();
 
         let tables = self.tcx.alloc_tables(wbcx.tables);
         self.tcx.tables.borrow_mut().insert(item_def_id, tables);
@@ -314,6 +315,14 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
         }
 
         self.fcx.tables.borrow_mut().lints.transfer(&mut self.tables.lints);
+    }
+
+    fn visit_free_region_map(&mut self) {
+        if self.fcx.writeback_errors.get() {
+            return
+        }
+
+        self.tables.free_region_map = self.fcx.tables.borrow().free_region_map.clone();
     }
 
     fn visit_anon_types(&self) {
