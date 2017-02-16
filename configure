@@ -650,6 +650,7 @@ opt ninja 0 "build LLVM using the Ninja generator (for MSVC, requires building i
 opt locked-deps 0 "force Cargo.lock to be up to date"
 opt vendor 0 "enable usage of vendored Rust crates"
 opt sanitizers 0 "build the sanitizer runtimes (asan, lsan, msan, tsan)"
+opt dist-src 1 "when building tarballs enables building a source tarball"
 
 # Optimization and debugging options. These may be overridden by the release channel, etc.
 opt_nosave optimize 1 "build optimized rust code"

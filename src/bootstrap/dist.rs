@@ -371,6 +371,10 @@ const CARGO_VENDOR_VERSION: &'static str = "0.1.4";
 
 /// Creates the `rust-src` installer component and the plain source tarball
 pub fn rust_src(build: &Build) {
+    if !build.config.rust_dist_src {
+        return
+    }
+
     println!("Dist src");
 
     let name = pkgname(build, "rust-src");
