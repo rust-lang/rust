@@ -741,6 +741,7 @@ pub fn run_passes(sess: &Session,
                 modules_config.emit_obj = true;
                 metadata_config.emit_obj = true;
             },
+            OutputType::Mir => {}
             OutputType::DepInfo => {}
         }
     }
@@ -880,6 +881,7 @@ pub fn run_passes(sess: &Session,
                 user_wants_objects = true;
                 copy_if_one_unit(OutputType::Object, true);
             }
+            OutputType::Mir |
             OutputType::Metadata |
             OutputType::Exe |
             OutputType::DepInfo => {}
