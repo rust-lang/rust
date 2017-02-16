@@ -1,6 +1,9 @@
 [The Unstable Book](the-unstable-book.md)
 
 - [asm](asm.md)
+- [alloc_system](alloc-system.md)
+- [alloc_jemalloc](alloc-jemalloc.md)
+- [test](test.md)
 - [concat_idents](concat-idents.md)
 - [link_args](link-args.md)
 - [log_syntax](log-syntax.md)
