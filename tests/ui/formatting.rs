@@ -99,13 +99,13 @@ fn main() {
 
     // possible missing comma in an array
     let _ = &[
-        -1, -2, -3 // <= no coma here
+        -1, -2, -3 // <= no comma here
 
 
         -4, -5, -6
     ];
     let _ = &[
-        -1, -2, -3 // <= no coma here
+        -1, -2, -3 // <= no comma here
 
 
         *4, -5, -6
