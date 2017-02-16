@@ -36,7 +36,6 @@ use ty::fold::TypeFolder;
 use ty::subst::Subst;
 use util::nodemap::{FxHashMap, FxHashSet};
 
-use std::cmp;
 use std::fmt;
 use syntax::ast;
 use hir::{intravisit, Local, Pat};
@@ -392,12 +391,16 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             return;
         }
 
-        let end = cmp::min(4, impl_candidates.len());
+        let end = if impl_candidates.len() <= 5 {
+            impl_candidates.len()
+        } else {
+            4
+        };
         err.help(&format!("the following implementations were found:{}{}",
                           &impl_candidates[0..end].iter().map(|candidate| {
                               format!("\n  {:?}", candidate)
                           }).collect::<String>(),
-                          if impl_candidates.len() > 4 {
+                          if impl_candidates.len() > 5 {
                               format!("\nand {} others", impl_candidates.len() - 4)
                           } else {
                               "".to_owned()
