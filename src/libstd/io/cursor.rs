@@ -200,18 +200,20 @@ impl<T> Cursor<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> io::Seek for Cursor<T> where T: AsRef<[u8]> {
     fn seek(&mut self, style: SeekFrom) -> io::Result<u64> {
-        let pos = match style {
-            SeekFrom::Start(n) => { self.pos = n; return Ok(n) }
-            SeekFrom::End(n) => self.inner.as_ref().len() as i64 + n,
-            SeekFrom::Current(n) => self.pos as i64 + n,
+        let (base_pos, offset) = match style {
+            SeekFrom::Start(n) => { self.pos = n; return Ok(n); }
+            SeekFrom::End(n) => (self.inner.as_ref().len() as u64, n),
+            SeekFrom::Current(n) => (self.pos, n),
         };
-
-        if pos < 0 {
-            Err(Error::new(ErrorKind::InvalidInput,
-                           "invalid seek to a negative position"))
+        let new_pos = if offset >= 0 {
+            base_pos.checked_add(offset as u64)
         } else {
-            self.pos = pos as u64;
-            Ok(self.pos)
+            base_pos.checked_sub((offset.wrapping_neg()) as u64)
+        };
+        match new_pos {
+            Some(n) => {self.pos = n; Ok(self.pos)}
+            None => Err(Error::new(ErrorKind::InvalidInput,
+                           "invalid seek to a negative or overflowing position"))
         }
     }
 }
