@@ -26,6 +26,12 @@ use std::process::{Command, Stdio};
 
 use build_helper::output;
 
+#[cfg(not(target_os = "solaris"))]
+const SH_CMD: &'static str = "sh";
+// On Solaris, sh is the historical bourne shell, not a POSIX shell, or bash.
+#[cfg(target_os = "solaris")]
+const SH_CMD: &'static str = "bash";
+
 use {Build, Compiler, Mode};
 use util::{cp_r, libdir, is_dylib, cp_filtered, copy};
 
@@ -69,7 +75,7 @@ pub fn docs(build: &Build, stage: u32, host: &str) {
     let src = build.out.join(host).join("doc");
     cp_r(&src, &dst);
 
-    let mut cmd = Command::new("sh");
+    let mut cmd = Command::new(SH_CMD);
     cmd.arg(sanitize_sh(&build.src.join("src/rust-installer/gen-installer.sh")))
        .arg("--product-name=Rust-Documentation")
        .arg("--rel-manifest-dir=rustlib")
@@ -119,7 +125,7 @@ pub fn mingw(build: &Build, host: &str) {
        .arg(host);
     build.run(&mut cmd);
 
-    let mut cmd = Command::new("sh");
+    let mut cmd = Command::new(SH_CMD);
     cmd.arg(sanitize_sh(&build.src.join("src/rust-installer/gen-installer.sh")))
        .arg("--product-name=Rust-MinGW")
        .arg("--rel-manifest-dir=rustlib")
@@ -185,7 +191,7 @@ pub fn rustc(build: &Build, stage: u32, host: &str) {
     }
 
     // Finally, wrap everything up in a nice tarball!
-    let mut cmd = Command::new("sh");
+    let mut cmd = Command::new(SH_CMD);
     cmd.arg(sanitize_sh(&build.src.join("src/rust-installer/gen-installer.sh")))
        .arg("--product-name=Rust")
        .arg("--rel-manifest-dir=rustlib")
@@ -290,7 +296,7 @@ pub fn std(build: &Build, compiler: &Compiler, target: &str) {
     let src = build.sysroot(compiler).join("lib/rustlib");
     cp_r(&src.join(target), &dst);
 
-    let mut cmd = Command::new("sh");
+    let mut cmd = Command::new(SH_CMD);
     cmd.arg(sanitize_sh(&build.src.join("src/rust-installer/gen-installer.sh")))
        .arg("--product-name=Rust")
        .arg("--rel-manifest-dir=rustlib")
@@ -343,9 +349,10 @@ pub fn analysis(build: &Build, compiler: &Compiler, target: &str) {
     let image_src = src.join("save-analysis");
     let dst = image.join("lib/rustlib").join(target).join("analysis");
     t!(fs::create_dir_all(&dst));
+    println!("image_src: {:?}, dst: {:?}", image_src, dst);
     cp_r(&image_src, &dst);
 
-    let mut cmd = Command::new("sh");
+    let mut cmd = Command::new(SH_CMD);
     cmd.arg(sanitize_sh(&build.src.join("src/rust-installer/gen-installer.sh")))
        .arg("--product-name=Rust")
        .arg("--rel-manifest-dir=rustlib")
@@ -452,7 +459,7 @@ pub fn rust_src(build: &Build) {
     build.run(&mut cmd);
 
     // Create source tarball in rust-installer format
-    let mut cmd = Command::new("sh");
+    let mut cmd = Command::new(SH_CMD);
     cmd.arg(sanitize_sh(&build.src.join("src/rust-installer/gen-installer.sh")))
        .arg("--product-name=Rust")
        .arg("--rel-manifest-dir=rustlib")
@@ -610,7 +617,7 @@ pub fn extended(build: &Build, stage: u32, target: &str) {
         input_tarballs.push_str(&sanitize_sh(&mingw_installer));
     }
 
-    let mut cmd = Command::new("sh");
+    let mut cmd = Command::new(SH_CMD);
     cmd.arg(sanitize_sh(&build.src.join("src/rust-installer/combine-installers.sh")))
        .arg("--product-name=Rust")
        .arg("--rel-manifest-dir=rustlib")
