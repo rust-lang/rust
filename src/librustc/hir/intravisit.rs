@@ -1008,14 +1008,18 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
         }
         ExprBreak(label, ref opt_expr) => {
             label.ident.map(|ident| {
-                visitor.visit_def_mention(Def::Label(label.loop_id));
+                if let Ok(loop_id) = label.loop_id.into() {
+                    visitor.visit_def_mention(Def::Label(loop_id));
+                }
                 visitor.visit_name(ident.span, ident.node.name);
             });
             walk_list!(visitor, visit_expr, opt_expr);
         }
         ExprAgain(label) => {
             label.ident.map(|ident| {
-                visitor.visit_def_mention(Def::Label(label.loop_id));
+                if let Ok(loop_id) = label.loop_id.into() {
+                    visitor.visit_def_mention(Def::Label(loop_id));
+                }
                 visitor.visit_name(ident.span, ident.node.name);
             });
         }

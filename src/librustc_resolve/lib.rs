@@ -2770,16 +2770,22 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    fn resolve_labeled_block(&mut self, label: Option<SpannedIdent>, id: NodeId, block: &Block) {
+    fn with_resolved_label<F>(&mut self, label: Option<SpannedIdent>, id: NodeId, f: F)
+        where F: FnOnce(&mut Resolver)
+    {
         if let Some(label) = label {
             let def = Def::Label(id);
             self.with_label_rib(|this| {
                 this.label_ribs.last_mut().unwrap().bindings.insert(label.node, def);
-                this.visit_block(block);
+                f(this);
             });
         } else {
-            self.visit_block(block);
+            f(self);
         }
+    }
+
+    fn resolve_labeled_block(&mut self, label: Option<SpannedIdent>, id: NodeId, block: &Block) {
+        self.with_resolved_label(label, id, |this| this.visit_block(block));
     }
 
     fn resolve_expr(&mut self, expr: &Expr, parent: Option<&ExprKind>) {
@@ -2835,18 +2841,18 @@ impl<'a> Resolver<'a> {
             ExprKind::Loop(ref block, label) => self.resolve_labeled_block(label, expr.id, &block),
 
             ExprKind::While(ref subexpression, ref block, label) => {
-                self.visit_expr(subexpression);
-                self.resolve_labeled_block(label, expr.id, &block);
+                self.with_resolved_label(label, expr.id, |this| {
+                    this.visit_expr(subexpression);
+                    this.visit_block(block);
+                });
             }
 
             ExprKind::WhileLet(ref pattern, ref subexpression, ref block, label) => {
-                self.visit_expr(subexpression);
-                self.ribs[ValueNS].push(Rib::new(NormalRibKind));
-                self.resolve_pattern(pattern, PatternSource::WhileLet, &mut FxHashMap());
-
-                self.resolve_labeled_block(label, expr.id, block);
-
-                self.ribs[ValueNS].pop();
+                self.with_resolved_label(label, expr.id, |this| {
+                    this.visit_expr(subexpression);
+                    this.resolve_pattern(pattern, PatternSource::WhileLet, &mut FxHashMap());
+                    this.visit_block(block);
+                });
             }
 
             ExprKind::ForLoop(ref pattern, ref subexpression, ref block, label) => {
