@@ -288,9 +288,6 @@ declare_features! (
     // Allows attributes on lifetime/type formal parameters in generics (RFC 1327)
     (active, generic_param_attrs, "1.11.0", Some(34761)),
 
-    // Allows field shorthands (`x` meaning `x: x`) in struct literal expressions.
-    (active, field_init_shorthand, "1.14.0", Some(37340)),
-
     // The #![windows_subsystem] attribute
     (active, windows_subsystem, "1.14.0", Some(37499)),
 
@@ -385,6 +382,8 @@ declare_features! (
     (accepted, more_struct_aliases, "1.16.0", Some(37544)),
     // elide `'static` lifetimes in `static`s and `const`s
     (accepted, static_in_const, "1.17.0", Some(35897)),
+    // Allows field shorthands (`x` meaning `x: x`) in struct literal expressions.
+    (accepted, field_init_shorthand, "1.17.0", Some(37340)),
 );
 // (changing above list without updating src/doc/reference.md makes @cmr sad)
 
@@ -1233,10 +1232,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             }
             ast::ExprKind::Struct(_, ref fields, _) => {
                 for field in fields {
-                    if field.is_shorthand {
-                        gate_feature_post!(&self, field_init_shorthand, field.span,
-                                           "struct field shorthands are unstable");
-                    }
                     if starts_with_digit(&field.ident.node.name.as_str()) {
                         gate_feature_post!(&self, relaxed_adts,
                                           field.span,
