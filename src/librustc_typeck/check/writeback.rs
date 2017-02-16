@@ -50,6 +50,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         wbcx.visit_type_nodes();
         wbcx.visit_cast_types();
         wbcx.visit_lints();
+        wbcx.visit_free_region_map();
 
         let used_trait_imports = mem::replace(&mut self.tables.borrow_mut().used_trait_imports,
                                               DefIdSet());
@@ -272,6 +273,10 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
 
     fn visit_lints(&mut self) {
         self.fcx.tables.borrow_mut().lints.transfer(&mut self.tables.lints);
+    }
+
+    fn visit_free_region_map(&mut self) {
+        self.tables.free_region_map = self.fcx.tables.borrow().free_region_map.clone();
     }
 
     fn visit_anon_types(&mut self) {

@@ -120,6 +120,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             rcx.visit_region_obligations(id);
         }
         rcx.resolve_regions_and_report_errors();
+
+        assert!(self.tables.borrow().free_region_map.is_empty());
+        self.tables.borrow_mut().free_region_map = rcx.free_region_map;
     }
 
     /// Region checking during the WF phase for items. `wf_tys` are the
@@ -154,10 +157,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         rcx.resolve_regions_and_report_errors();
 
-        // For the top-level fn, store the free-region-map. We don't store
-        // any map for closures; they just share the same map as the
-        // function that created them.
-        self.tcx.store_free_region_map(fn_id, rcx.free_region_map);
+        // In this mode, we also copy the free-region-map into the
+        // tables of the enclosing fcx. In the other regionck modes
+        // (e.g., `regionck_item`), we don't have an enclosing tables.
+        assert!(self.tables.borrow().free_region_map.is_empty());
+        self.tables.borrow_mut().free_region_map = rcx.free_region_map;
     }
 }
 
