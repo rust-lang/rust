@@ -425,8 +425,9 @@ pub struct EnclosingLoops<'gcx, 'tcx> {
 }
 
 impl<'gcx, 'tcx> EnclosingLoops<'gcx, 'tcx> {
-    fn find_loop(&mut self, id: ast::NodeId) -> Option<&mut LoopCtxt<'gcx, 'tcx>> {
-        if let Some(ix) = self.by_id.get(&id).cloned() {
+    fn find_loop(&mut self, id: hir::LoopIdResult) -> Option<&mut LoopCtxt<'gcx, 'tcx>> {
+        let id_res: Result<_,_> = id.into();
+        if let Some(ix) = id_res.ok().and_then(|id| self.by_id.get(&id).cloned()) {
             Some(&mut self.stack[ix])
         } else {
             None
@@ -3592,10 +3593,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
               tcx.mk_nil()
           }
           hir::ExprBreak(label, ref expr_opt) => {
-            let loop_id = label.loop_id;
             let coerce_to = {
                 let mut enclosing_loops = self.enclosing_loops.borrow_mut();
-                enclosing_loops.find_loop(loop_id).map(|ctxt| ctxt.coerce_to)
+                enclosing_loops.find_loop(label.loop_id).map(|ctxt| ctxt.coerce_to)
             };
             if let Some(coerce_to) = coerce_to {
                 let e_ty;
@@ -3610,8 +3610,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     e_ty = tcx.mk_nil();
                     cause = self.misc(expr.span);
                 }
+
                 let mut enclosing_loops = self.enclosing_loops.borrow_mut();
-                let ctxt = enclosing_loops.find_loop(loop_id).unwrap();
+                let ctxt = enclosing_loops.find_loop(label.loop_id).unwrap();
 
                 let result = if let Some(ref e) = *expr_opt {
                     // Special-case the first element, as it has no "previous expressions".

@@ -1030,11 +1030,56 @@ pub enum LoopSource {
     ForLoop,
 }
 
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
+pub enum LoopIdError {
+    OutsideLoopScope,
+    UnlabeledCfInWhileCondition,
+    UnresolvedLabel,
+}
+
+impl fmt::Display for LoopIdError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Display::fmt(match *self {
+            LoopIdError::OutsideLoopScope => "not inside loop scope",
+            LoopIdError::UnlabeledCfInWhileCondition =>
+                "unlabeled control flow (break or continue) in while condition",
+            LoopIdError::UnresolvedLabel => "label not found",
+        }, f)
+    }
+}
+
+// FIXME(cramertj) this should use `Result` once master compiles w/ a vesion of Rust where
+// `Result` implements `Encodable`/`Decodable`
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
+pub enum LoopIdResult {
+    Ok(NodeId),
+    Err(LoopIdError),
+}
+impl Into<Result<NodeId, LoopIdError>> for LoopIdResult {
+    fn into(self) -> Result<NodeId, LoopIdError> {
+        match self {
+            LoopIdResult::Ok(ok) => Ok(ok),
+            LoopIdResult::Err(err) => Err(err),
+        }
+    }
+}
+impl From<Result<NodeId, LoopIdError>> for LoopIdResult {
+    fn from(res: Result<NodeId, LoopIdError>) -> Self {
+        match res {
+            Ok(ok) => LoopIdResult::Ok(ok),
+            Err(err) => LoopIdResult::Err(err),
+        }
+    }
+}
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
 pub struct Label {
+    // This is `Some(_)` iff there is an explicit user-specified `label
     pub ident: Option<Spanned<Ident>>,
-    pub loop_id: NodeId
+
+    // These errors are caught and then reported during the diagnostics pass in
+    // librustc_passes/loops.rs
+    pub loop_id: LoopIdResult,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]

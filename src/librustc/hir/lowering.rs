@@ -81,6 +81,7 @@ pub struct LoweringContext<'a> {
     bodies: FxHashMap<hir::BodyId, hir::Body>,
 
     loop_scopes: Vec<NodeId>,
+    is_in_loop_condition: bool,
 
     type_def_lifetime_params: DefIdMap<usize>,
 }
@@ -116,6 +117,7 @@ pub fn lower_crate(sess: &Session,
         impl_items: BTreeMap::new(),
         bodies: FxHashMap(),
         loop_scopes: Vec::new(),
+        is_in_loop_condition: false,
         type_def_lifetime_params: DefIdMap(),
     }.lower_crate(krate)
 }
@@ -251,21 +253,49 @@ impl<'a> LoweringContext<'a> {
     fn with_loop_scope<T, F>(&mut self, loop_id: NodeId, f: F) -> T
         where F: FnOnce(&mut LoweringContext) -> T
     {
+        // We're no longer in the base loop's condition; we're in another loop.
+        let was_in_loop_condition = self.is_in_loop_condition;
+        self.is_in_loop_condition = false;
+
         let len = self.loop_scopes.len();
         self.loop_scopes.push(loop_id);
+
         let result = f(self);
         assert_eq!(len + 1, self.loop_scopes.len(),
             "Loop scopes should be added and removed in stack order");
+
         self.loop_scopes.pop().unwrap();
+
+        self.is_in_loop_condition = was_in_loop_condition;
+
+        result
+    }
+
+    fn with_loop_condition_scope<T, F>(&mut self, f: F) -> T
+        where F: FnOnce(&mut LoweringContext) -> T
+    {
+        let was_in_loop_condition = self.is_in_loop_condition;
+        self.is_in_loop_condition = true;
+
+        let result = f(self);
+
+        self.is_in_loop_condition = was_in_loop_condition;
+
         result
     }
 
     fn with_new_loop_scopes<T, F>(&mut self, f: F) -> T
         where F: FnOnce(&mut LoweringContext) -> T
     {
+        let was_in_loop_condition = self.is_in_loop_condition;
+        self.is_in_loop_condition = false;
+
         let loop_scopes = mem::replace(&mut self.loop_scopes, Vec::new());
         let result = f(self);
         mem::replace(&mut self.loop_scopes, loop_scopes);
+
+        self.is_in_loop_condition = was_in_loop_condition;
+
         result
     }
 
@@ -300,17 +330,16 @@ impl<'a> LoweringContext<'a> {
         match label {
             Some((id, label_ident)) => hir::Label {
                 ident: Some(label_ident),
-                loop_id: match self.expect_full_def(id) {
-                    Def::Label(loop_id) => loop_id,
-                    _ => DUMMY_NODE_ID
+                loop_id: if let Def::Label(loop_id) = self.expect_full_def(id) {
+                    hir::LoopIdResult::Ok(loop_id)
+                } else {
+                    hir::LoopIdResult::Err(hir::LoopIdError::UnresolvedLabel)
                 }
             },
             None => hir::Label {
                 ident: None,
-                loop_id: match self.loop_scopes.last() {
-                    Some(innermost_loop_id) => *innermost_loop_id,
-                    _ => DUMMY_NODE_ID
-                }
+                loop_id: self.loop_scopes.last().map(|innermost_loop_id| Ok(*innermost_loop_id))
+                            .unwrap_or(Err(hir::LoopIdError::OutsideLoopScope)).into()
             }
         }
     }
@@ -1597,7 +1626,7 @@ impl<'a> LoweringContext<'a> {
                 ExprKind::While(ref cond, ref body, opt_ident) => {
                     self.with_loop_scope(e.id, |this|
                         hir::ExprWhile(
-                            P(this.lower_expr(cond)),
+                            this.with_loop_condition_scope(|this| P(this.lower_expr(cond))),
                             this.lower_block(body),
                             this.lower_opt_sp_ident(opt_ident)))
                 }
@@ -1699,13 +1728,29 @@ impl<'a> LoweringContext<'a> {
                     hir::ExprPath(self.lower_qpath(e.id, qself, path, ParamMode::Optional))
                 }
                 ExprKind::Break(opt_ident, ref opt_expr) => {
+                    let label_result = if self.is_in_loop_condition && opt_ident.is_none() {
+                        hir::Label {
+                            ident: opt_ident,
+                            loop_id: Err(hir::LoopIdError::UnlabeledCfInWhileCondition).into(),
+                        }
+                    } else {
+                        self.lower_label(opt_ident.map(|ident| (e.id, ident)))
+                    };
                     hir::ExprBreak(
-                        self.lower_label(opt_ident.map(|ident| (e.id, ident))),
-                                   opt_expr.as_ref().map(|x| P(self.lower_expr(x))))
+                            label_result,
+                            opt_expr.as_ref().map(|x| P(self.lower_expr(x))))
                 }
                 ExprKind::Continue(opt_ident) =>
                     hir::ExprAgain(
-                        self.lower_label(opt_ident.map(|ident| (e.id, ident)))),
+                        if self.is_in_loop_condition && opt_ident.is_none() {
+                            hir::Label {
+                                ident: opt_ident,
+                                loop_id: Err(
+                                    hir::LoopIdError::UnlabeledCfInWhileCondition).into(),
+                            }
+                        } else {
+                            self.lower_label(opt_ident.map( | ident| (e.id, ident)))
+                        }),
                 ExprKind::Ret(ref e) => hir::ExprRet(e.as_ref().map(|x| P(self.lower_expr(x)))),
                 ExprKind::InlineAsm(ref asm) => {
                     let hir_asm = hir::InlineAsm {
@@ -1846,10 +1891,12 @@ impl<'a> LoweringContext<'a> {
                     //     }
                     //   }
 
+                    // Note that the block AND the condition are evaluated in the loop scope.
+                    // This is done to allow `break` from inside the condition of the loop.
                     let (body, break_expr, sub_expr) = self.with_loop_scope(e.id, |this| (
                         this.lower_block(body),
                         this.expr_break(e.span, ThinVec::new()),
-                        P(this.lower_expr(sub_expr)),
+                        this.with_loop_condition_scope(|this| P(this.lower_expr(sub_expr))),
                     ));
 
                     // `<pat> => <body>`

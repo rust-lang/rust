@@ -389,9 +389,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                            -> &mut LoopScope<'tcx> {
         // find the loop-scope with the correct id
         self.loop_scopes.iter_mut()
-                   .rev()
-                   .filter(|loop_scope| loop_scope.extent == label)
-                   .next()
+            .rev()
+            .filter(|loop_scope| loop_scope.extent == label)
+            .next()
             .unwrap_or_else(|| span_bug!(span, "no enclosing loop scope found?"))
     }
 

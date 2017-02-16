@@ -220,15 +220,24 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 // Note that `break` and `continue` statements
                 // may cause additional edges.
 
-                // Is the condition considered part of the loop?
                 let loopback = self.add_dummy_node(&[pred]);              // 1
-                let cond_exit = self.expr(&cond, loopback);             // 2
-                let expr_exit = self.add_ast_node(expr.id, &[cond_exit]); // 3
+
+                // Create expr_exit without pred (cond_exit)
+                let expr_exit = self.add_ast_node(expr.id, &[]);         // 3
+
+                // The LoopScope needs to be on the loop_scopes stack while evaluating the
+                // condition and the body of the loop (both can break out of the loop)
                 self.loop_scopes.push(LoopScope {
                     loop_id: expr.id,
                     continue_index: loopback,
                     break_index: expr_exit
                 });
+
+                let cond_exit = self.expr(&cond, loopback);             // 2
+
+                // Add pred (cond_exit) to expr_exit
+                self.add_contained_edge(cond_exit, expr_exit);
+
                 let body_exit = self.block(&body, cond_exit);          // 4
                 self.add_contained_edge(body_exit, loopback);            // 5
                 self.loop_scopes.pop();
@@ -580,11 +589,17 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
     fn find_scope(&self,
                   expr: &hir::Expr,
                   label: hir::Label) -> LoopScope {
-        for l in &self.loop_scopes {
-            if l.loop_id == label.loop_id {
-                return *l;
+
+        match label.loop_id.into() {
+            Ok(loop_id) => {
+                for l in &self.loop_scopes {
+                    if l.loop_id == loop_id {
+                        return *l;
+                    }
+                }
+                span_bug!(expr.span, "no loop scope for id {}", loop_id);
             }
+            Err(err) => span_bug!(expr.span, "loop scope error: {}",  err)
         }
-        span_bug!(expr.span, "no loop scope for id {}", label.loop_id);
     }
 }
