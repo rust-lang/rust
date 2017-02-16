@@ -22,6 +22,7 @@ install:
 build: false
 
 test_script:
+    - set RUST_BACKTRACE=1
     - cargo build --features debugging
     - cargo test --features debugging
     - copy target\debug\cargo-clippy.exe C:\Users\appveyor\.cargo\bin\
