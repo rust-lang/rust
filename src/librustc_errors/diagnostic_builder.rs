@@ -146,11 +146,19 @@ impl<'a> DiagnosticBuilder<'a> {
                                     -> &mut Self);
     forward!(pub fn set_span<S: Into<MultiSpan>>(&mut self, sp: S) -> &mut Self);
     forward!(pub fn code(&mut self, s: String) -> &mut Self);
+    forward!(pub fn span_guess(&mut self, sp: Span, msg: &str, guess: String) -> &mut Self);
 
     /// Convenience function for internal use, clients should use one of the
     /// struct_* methods on Handler.
     pub fn new(handler: &'a Handler, level: Level, message: &str) -> DiagnosticBuilder<'a> {
         DiagnosticBuilder::new_with_code(handler, level, None, message)
+    }
+    
+    pub fn span_guesses<I>(&mut self, sp: Span, msg: &str, guesses: I) -> &mut Self
+        where I: IntoIterator<Item = String>
+    {
+        self.diagnostic.span_guesses(sp, msg, guesses);
+        self
     }
 
     /// Convenience function for internal use, clients should use one of the
