@@ -92,7 +92,7 @@ error: this looks like you are trying to use `.. != ..`, but you really are doin
 error: possibly missing a comma here
    --> $DIR/formatting.rs:102:19
     |
-102 |         -1, -2, -3 // <= no coma here
+102 |         -1, -2, -3 // <= no comma here
     |                   ^
     |
     = note: #[deny(possible_missing_comma)] implied by #[deny(clippy)]
@@ -106,7 +106,7 @@ note: lint level defined here
 error: possibly missing a comma here
    --> $DIR/formatting.rs:108:19
     |
-108 |         -1, -2, -3 // <= no coma here
+108 |         -1, -2, -3 // <= no comma here
     |                   ^
     |
     = note: #[deny(possible_missing_comma)] implied by #[deny(clippy)]

@@ -56,7 +56,7 @@ declare_lint! {
 /// **Example:**
 /// ```rust,ignore
 /// let a = &[
-///     -1, -2, -3 // <= no coma here
+///     -1, -2, -3 // <= no comma here
 ///     -4, -5, -6
 /// ];
 /// ```
