@@ -441,7 +441,7 @@ fn pop_internal<K, V>(starting_bucket: FullBucketMut<K, V>)
 /// Perform robin hood bucket stealing at the given `bucket`. You must
 /// also pass that bucket's displacement so we don't have to recalculate it.
 ///
-/// `hash`, `k`, and `v` are the elements to "robin hood" into the hashtable.
+/// `hash`, `key`, and `val` are the elements to "robin hood" into the hashtable.
 fn robin_hood<'a, K: 'a, V: 'a>(bucket: FullBucketMut<'a, K, V>,
                                 mut displacement: usize,
                                 mut hash: SafeHash,
