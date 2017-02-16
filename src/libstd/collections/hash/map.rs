@@ -177,6 +177,51 @@ impl DefaultResizePolicy {
 // element.
 //
 // FIXME(Gankro, pczarn): review the proof and put it all in a separate README.md
+//
+// Adaptive early resizing
+// ----------------------
+// To protect against degenerate performance scenarios (including DOS attacks),
+// the implementation includes an adaptive behavior that can resize the map
+// early (before it's capacity is exceeded) when suspiciously long probe or
+// foward shifts sequences are encounted.
+//
+// With this algorithm in place it would be possible to turn a CPU attack into
+// a memory attack due to the agressive resizing. To prevent that the
+// adaptive behavior only triggers when the map occupancy is half the maximum occupancy.
+// This reduces the effectivenes of the algorithm but also makes it completelly safe.
+//
+// The previous safety measure that also prevents degenerate iteractions with
+// really bad quality hash algorithms that can make normal inputs look like a
+// DOS attack.
+//
+const DISPLACEMENT_THRESHOLD: usize = 128;
+const FORWARD_SHIFT_THRESHOLD: usize = 512;
+//
+// The thresholds of 128 and 512 are chosen to minimize the chance of exceeding them.
+// In particular, we want that chance to be less than 10^-8 with a load of 90%.
+// For displacement, the smallest constant that fits our needs is 90,
+// so we round that up to 128. For the number of forward-shifted buckets,
+// we choose k=512. Keep in mind that the run length is a sum of the displacement and
+// the number of forward-shifted buckets, so its threshold is 128+512=640.
+// Even though the probability of having a run length of more than 640 buckets may be
+// higher than the probability we want, it should be low enough.
+//
+// At a load factor of α, the odds of finding the target bucket after exactly n
+// unsuccesful probes[1] are
+//
+// Pr_α{displacement = n} =
+// (1 - α) / α * ∑_{k≥1} e^(-kα) * (kα)^(k+n) / (k + n)! * (1 - kα / (k + n + 1))
+//
+// We use this formula to find the probability of loading half of triggering the adaptive behavior
+//
+// Pr_0.909{displacement > 128} = 1.601 * 10^-11
+//
+// FIXME: Extend with math for shift threshold in [2]
+//
+// 1. Alfredo Viola (2005). Distributional analysis of Robin Hood linear probing
+//    hashing with buckets.
+// 2. http://www.cs.tau.ac.il/~zwick/Adv-Alg-2015/Linear-Probing.pdf
+
 
 /// A hash map implementation which uses linear probing with Robin Hood bucket
 /// stealing.
@@ -360,6 +405,8 @@ pub struct HashMap<K, V, S = RandomState> {
     table: RawTable<K, V>,
 
     resize_policy: DefaultResizePolicy,
+
+    long_probes: bool,
 }
 
 /// Search for a pre-hashed key.
@@ -385,7 +432,7 @@ fn search_hashed<K, V, M, F>(table: M, hash: SafeHash, mut is_match: F) -> Inter
                 // Found a hole!
                 return InternalEntry::Vacant {
                     hash: hash,
-                    elem: NoElem(bucket),
+                    elem: NoElem(bucket, displacement),
                 };
             }
             Full(bucket) => bucket,
@@ -447,15 +494,15 @@ fn robin_hood<'a, K: 'a, V: 'a>(bucket: FullBucketMut<'a, K, V>,
                                 mut hash: SafeHash,
                                 mut key: K,
                                 mut val: V)
-                                -> &'a mut V {
-    let starting_index = bucket.index();
+                                -> (usize, &'a mut V) {
+    let start_index = bucket.index();
     let size = bucket.table().size();
     // Save the *starting point*.
     let mut bucket = bucket.stash();
     // There can be at most `size - dib` buckets to displace, because
     // in the worst case, there are `size` elements and we already are
     // `displacement` buckets away from the initial one.
-    let idx_end = starting_index + size - bucket.displacement();
+    let idx_end = start_index + size - bucket.displacement();
 
     loop {
         let (old_hash, old_key, old_val) = bucket.replace(hash, key, val);
@@ -472,6 +519,7 @@ fn robin_hood<'a, K: 'a, V: 'a>(bucket: FullBucketMut<'a, K, V>,
                 Empty(bucket) => {
                     // Found a hole!
                     let bucket = bucket.put(hash, key, val);
+                    let end_index = bucket.index();
                     // Now that it's stolen, just read the value's pointer
                     // right out of the table! Go back to the *starting point*.
                     //
@@ -479,7 +527,7 @@ fn robin_hood<'a, K: 'a, V: 'a>(bucket: FullBucketMut<'a, K, V>,
                     // bucket, which is a FullBucket on top of a
                     // FullBucketMut, into just one FullBucketMut. The "table"
                     // refers to the inner FullBucketMut in this context.
-                    return bucket.into_table().into_mut_refs().1;
+                    return (end_index - start_index, bucket.into_table().into_mut_refs().1);
                 }
                 Full(bucket) => bucket,
             };
@@ -617,6 +665,7 @@ impl<K, V, S> HashMap<K, V, S>
             hash_builder: hash_builder,
             resize_policy: DefaultResizePolicy::new(),
             table: RawTable::new(0),
+            long_probes: false,
         }
     }
 
@@ -649,6 +698,7 @@ impl<K, V, S> HashMap<K, V, S>
             hash_builder: hash_builder,
             resize_policy: resize_policy,
             table: RawTable::new(raw_cap),
+            long_probes: false,
         }
     }
 
@@ -706,6 +756,11 @@ impl<K, V, S> HashMap<K, V, S>
             let min_cap = self.len().checked_add(additional).expect("reserve overflow");
             let raw_cap = self.resize_policy.raw_capacity(min_cap);
             self.resize(raw_cap);
+        } else if self.long_probes && remaining <= self.len() {
+            // Probe sequence is too long and table is half full,
+            // resize early to reduce probing length.
+            let new_capacity = self.table.capacity() * 2;
+            self.resize(new_capacity);
         }
     }
 
@@ -718,10 +773,11 @@ impl<K, V, S> HashMap<K, V, S>
         assert!(self.table.size() <= new_raw_cap);
         assert!(new_raw_cap.is_power_of_two() || new_raw_cap == 0);
 
+        self.long_probes = false;
         let mut old_table = replace(&mut self.table, RawTable::new(new_raw_cap));
         let old_size = old_table.size();
 
-        if old_table.capacity() == 0 || old_table.size() == 0 {
+        if old_table.size() == 0 {
             return;
         }
 
@@ -798,7 +854,8 @@ impl<K, V, S> HashMap<K, V, S>
     /// If the key already exists, the hashtable will be returned untouched
     /// and a reference to the existing element will be returned.
     fn insert_hashed_nocheck(&mut self, hash: SafeHash, k: K, v: V) -> Option<V> {
-        let entry = search_hashed(&mut self.table, hash, |key| *key == k).into_entry(k);
+        let entry = search_hashed(&mut self.table, hash, |key| *key == k)
+            .into_entry(k, &mut self.long_probes);
         match entry {
             Some(Occupied(mut elem)) => Some(elem.insert(v)),
             Some(Vacant(elem)) => {
@@ -953,7 +1010,9 @@ impl<K, V, S> HashMap<K, V, S>
     pub fn entry(&mut self, key: K) -> Entry<K, V> {
         // Gotta resize now.
         self.reserve(1);
-        self.search_mut(&key).into_entry(key).expect("unreachable")
+        let hash = self.make_hash(&key);
+        search_hashed(&mut self.table, hash, |q| q.eq(&key))
+            .into_entry(key, &mut self.long_probes).expect("unreachable")
     }
 
     /// Returns the number of elements in the map.
@@ -1407,7 +1466,7 @@ impl<K, V, M> InternalEntry<K, V, M> {
 
 impl<'a, K, V> InternalEntry<K, V, &'a mut RawTable<K, V>> {
     #[inline]
-    fn into_entry(self, key: K) -> Option<Entry<'a, K, V>> {
+    fn into_entry(self, key: K, long_probes: &'a mut bool) -> Option<Entry<'a, K, V>> {
         match self {
             InternalEntry::Occupied { elem } => {
                 Some(Occupied(OccupiedEntry {
@@ -1420,6 +1479,7 @@ impl<'a, K, V> InternalEntry<K, V, &'a mut RawTable<K, V>> {
                     hash: hash,
                     key: key,
                     elem: elem,
+                    long_probes: long_probes,
                 }))
             }
             InternalEntry::TableIsEmpty => None,
@@ -1492,6 +1552,7 @@ pub struct VacantEntry<'a, K: 'a, V: 'a> {
     hash: SafeHash,
     key: K,
     elem: VacantEntryState<K, V, &'a mut RawTable<K, V>>,
+    long_probes: &'a mut bool,
 }
 
 #[stable(feature= "debug_hash_map", since = "1.12.0")]
@@ -1509,7 +1570,7 @@ enum VacantEntryState<K, V, M> {
     /// and will kick the current one out on insertion.
     NeqElem(FullBucket<K, V, M>, usize),
     /// The index is genuinely vacant.
-    NoElem(EmptyBucket<K, V, M>),
+    NoElem(EmptyBucket<K, V, M>, usize),
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -2066,8 +2127,20 @@ impl<'a, K: 'a, V: 'a> VacantEntry<'a, K, V> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn insert(self, value: V) -> &'a mut V {
         match self.elem {
-            NeqElem(bucket, disp) => robin_hood(bucket, disp, self.hash, self.key, value),
-            NoElem(bucket) => bucket.put(self.hash, self.key, value).into_mut_refs().1,
+            NeqElem(bucket, disp) => {
+                let (shift, v_ref) = robin_hood(bucket, disp, self.hash, self.key, value);
+                if disp >= DISPLACEMENT_THRESHOLD || shift >= FORWARD_SHIFT_THRESHOLD {
+                    *self.long_probes = true;
+                }
+                v_ref
+            },
+            NoElem(bucket, disp) => {
+                if disp >= DISPLACEMENT_THRESHOLD {
+                    *self.long_probes = true;
+                }
+                let bucket = bucket.put(self.hash, self.key, value);
+                bucket.into_mut_refs().1
+            },
         }
     }
 }
@@ -3191,5 +3264,25 @@ mod test_map {
         assert_eq!(map[&2], 20);
         assert_eq!(map[&4], 40);
         assert_eq!(map[&6], 60);
+    }
+
+    #[test]
+    fn test_adaptive() {
+        const TEST_LEN: usize = 5000;
+        // by cloning we get maps with the same hasher seed
+        let mut first = HashMap::new();
+        let mut second = first.clone();
+        first.extend((0..TEST_LEN).map(|i| (i, i)));
+        second.extend((TEST_LEN..TEST_LEN * 2).map(|i| (i, i)));
+
+        for (&k, &v) in &second {
+            let prev_cap = first.capacity();
+            let expect_grow = first.len() == prev_cap;
+            first.insert(k, v);
+            if !expect_grow && first.capacity() != prev_cap {
+                return;
+            }
+        }
+        panic!("Adaptive early resize failed");
     }
 }
