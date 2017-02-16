@@ -2547,7 +2547,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 // TyError and ensure they do not affect any other fields.
                 // This could be checked after type collection for any struct
                 // with a potentially unsized trailing field.
-                let params = substs_a.params().iter().enumerate().map(|(i, &k)| {
+                let params = substs_a.iter().enumerate().map(|(i, &k)| {
                     if ty_params.contains(i) {
                         Kind::from(tcx.types.err)
                     } else {
@@ -2567,7 +2567,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
 
                 // Check that the source structure with the target's
                 // type parameters is a subtype of the target.
-                let params = substs_a.params().iter().enumerate().map(|(i, &k)| {
+                let params = substs_a.iter().enumerate().map(|(i, &k)| {
                     if ty_params.contains(i) {
                         Kind::from(substs_b.type_at(i))
                     } else {
