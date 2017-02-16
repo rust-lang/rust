@@ -1629,6 +1629,43 @@ impl hash::Hash for String {
     }
 }
 
+/// Implements the `+` operator for concatenating two strings.
+///
+/// This consumes the `String` on the left-hand side and re-uses its buffer (growing it if
+/// necessary). This is done to avoid allocating a new `String` and copying the entire contents on
+/// every operation, which would lead to `O(n^2)` running time when building an `n`-byte string by
+/// repeated concatenation.
+///
+/// The string on the right-hand side is only borrowed; its contents are copied into the returned
+/// `String`.
+///
+/// # Examples
+///
+/// Concatenating two `String`s takes the first by value and borrows the second:
+///
+/// ```
+/// let a = String::from("hello");
+/// let b = String::from(" world");
+/// let c = a + &b;
+/// // `a` is moved and can no longer be used here.
+/// ```
+///
+/// If you want to keep using the first `String`, you can clone it and append to the clone instead:
+///
+/// ```
+/// let a = String::from("hello");
+/// let b = String::from(" world");
+/// let c = a.clone() + &b;
+/// // `a` is still valid here.
+/// ```
+///
+/// Concatenating `&str` slices can be done by converting the first to a `String`:
+///
+/// ```
+/// let a = "hello";
+/// let b = " world";
+/// let c = a.to_string() + b;
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Add<&'a str> for String {
     type Output = String;
@@ -1640,6 +1677,11 @@ impl<'a> Add<&'a str> for String {
     }
 }
 
+/// Implements the `+=` operator for appending to a `String`.
+///
+/// This has the same behavior as the [`push_str()`] method.
+///
+/// [`push_str()`]: struct.String.html#method.push_str
 #[stable(feature = "stringaddassign", since = "1.12.0")]
 impl<'a> AddAssign<&'a str> for String {
     #[inline]
