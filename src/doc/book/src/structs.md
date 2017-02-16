@@ -122,8 +122,6 @@ fields of the data structure are initialized with variables of the same
 names as the fields.
 
 ```
-#![feature(field_init_shorthand)]
-
 #[derive(Debug)]
 struct Person<'a> {
     name: &'a str,
