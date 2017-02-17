@@ -10,11 +10,15 @@
 
 // compile-flags: -Z continue-parse-after-error
 
-struct Self;
-//~^ ERROR expected identifier, found keyword `Self`
+mod foo {
+  struct Self;
+  //~^ ERROR expected identifier, found keyword `Self`
+}
 
 struct Bar<'Self>;
 //~^ ERROR lifetimes cannot use keyword names
+
+struct Foo;
 
 pub fn main() {
     match 15 {
@@ -25,7 +29,7 @@ pub fn main() {
         ref mut Self => (),
         //~^ ERROR expected identifier, found keyword `Self`
         Self!() => (),
-        //~^ ERROR macro undefined: `Self`
+        //~^ ERROR cannot find macro `Self!` in this scope
         Foo { Self } => (),
         //~^ ERROR expected identifier, found keyword `Self`
     }
