@@ -448,13 +448,13 @@ fn never_loop_expr(expr: &Expr) -> bool {
         ExprBreak(..) | ExprRet(..) => true,
         ExprBox(ref e) |
         ExprUnary(_, ref e) |
+        ExprBinary(_, ref e, _) | // because short-circuiting
         ExprCast(ref e, _) |
         ExprType(ref e, _) |
         ExprField(ref e, _) |
         ExprTupField(ref e, _) |
         ExprRepeat(ref e, _) |
         ExprAddrOf(_, ref e) => never_loop_expr(e),
-        ExprBinary(_, ref e1, ref e2) |
         ExprAssign(ref e1, ref e2) |
         ExprAssignOp(_, ref e1, ref e2) |
         ExprIndex(ref e1, ref e2) => never_loop_expr(e1) || never_loop_expr(e2),
