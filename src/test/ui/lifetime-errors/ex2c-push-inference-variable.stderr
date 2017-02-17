@@ -1,0 +1,8 @@
+error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'a` due to conflicting requirements
+  --> $DIR/ex2c-push-inference-variable.rs:16:13
+   |
+16 |     let z = Ref { data: y.data };
+   |             ^^^
+
+error: aborting due to previous error
+
