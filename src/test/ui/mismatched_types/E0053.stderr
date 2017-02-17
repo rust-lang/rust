@@ -6,6 +6,9 @@ error[E0053]: method `foo` has an incompatible type for trait
 ...
 19 |     fn foo(x: i16) { }
    |               ^^^ expected u16, found i16
+   |
+   = note: expected type `fn(u16)`
+              found type `fn(i16)`
 
 error[E0053]: method `bar` has an incompatible type for trait
   --> $DIR/E0053.rs:22:12
