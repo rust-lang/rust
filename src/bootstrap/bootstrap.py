@@ -416,6 +416,8 @@ class RustBuild(object):
             ostype += 'abi64'
         elif cputype in {'powerpc', 'ppc', 'ppc64'}:
             cputype = 'powerpc'
+        elif cputype == 'sparcv9':
+            pass
         elif cputype in {'amd64', 'x86_64', 'x86-64', 'x64'}:
             cputype = 'x86_64'
         else:
