@@ -89,6 +89,7 @@ def verify(path, sha_path, verbose):
                "    expected: {}".format(found, expected))
     return verified
 
+
 def unpack(tarball, dst, verbose=False, match=None):
     print("extracting " + tarball)
     fname = os.path.basename(tarball).replace(".tar.gz", "")
@@ -208,13 +209,13 @@ class RustBuild(object):
             return
 
         # At this point we're pretty sure the user is running NixOS
-        print("Info: you seem to be running NixOS. Attempting to patch " + fname)
+        print("info: you seem to be running NixOS. Attempting to patch " + fname)
 
         try:
             interpreter = subprocess.check_output(["patchelf", "--print-interpreter", fname])
             interpreter = interpreter.strip().decode(default_encoding)
         except subprocess.CalledProcessError as e:
-            print("Warning: failed to call patchelf: %s" % e)
+            print("warning: failed to call patchelf: %s" % e)
             return
 
         loader = interpreter.split("/")[-1]
@@ -223,7 +224,7 @@ class RustBuild(object):
             ldd_output = subprocess.check_output(['ldd', '/run/current-system/sw/bin/sh'])
             ldd_output = ldd_output.strip().decode(default_encoding)
         except subprocess.CalledProcessError as e:
-            print("Warning: unable to call ldd: %s" % e)
+            print("warning: unable to call ldd: %s" % e)
             return
 
         for line in ldd_output.splitlines():
@@ -232,7 +233,7 @@ class RustBuild(object):
                 loader_path = libname[:len(libname) - len(loader)]
                 break
         else:
-            print("Warning: unable to find the path to the dynamic linker")
+            print("warning: unable to find the path to the dynamic linker")
             return
 
         correct_interpreter = loader_path + loader
@@ -240,7 +241,7 @@ class RustBuild(object):
         try:
             subprocess.check_output(["patchelf", "--set-interpreter", correct_interpreter, fname])
         except subprocess.CalledProcessError as e:
-            print("Warning: failed to call patchelf: %s" % e)
+            print("warning: failed to call patchelf: %s" % e)
             return
 
     def stage0_cargo_rev(self):
