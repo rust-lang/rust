@@ -1268,6 +1268,7 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span, attrs}: Expr, folder: &mu
                 };
             }
             ExprKind::Try(ex) => ExprKind::Try(folder.fold_expr(ex)),
+            ExprKind::Catch(body) => ExprKind::Catch(folder.fold_block(body)),
         },
         id: folder.new_id(id),
         span: folder.new_span(span),

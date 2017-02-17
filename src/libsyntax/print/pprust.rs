@@ -2279,6 +2279,11 @@ impl<'a> State<'a> {
                 self.print_expr(e)?;
                 word(&mut self.s, "?")?
             }
+            ast::ExprKind::Catch(ref blk) => {
+                self.head("catch")?;
+                space(&mut self.s)?;
+                self.print_block_with_attrs(&blk, attrs)?
+            }
         }
         self.ann.post(self, NodeExpr(expr))?;
         self.end()

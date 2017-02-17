@@ -602,6 +602,12 @@ impl<'a> Parser<'a> {
         }
     }
 
+    pub fn error_if_typename_is_catch(&mut self, ident: ast::Ident) {
+        if ident.name == keywords::Catch.name() {
+            self.span_err(self.span, "cannot use `catch` as the name of a type");
+        }
+    }
+
     /// Check if the next token is `tok`, and return `true` if so.
     ///
     /// This method will automatically add `tok` to `expected_tokens` if `tok` is not
@@ -2273,6 +2279,11 @@ impl<'a> Parser<'a> {
                         BlockCheckMode::Unsafe(ast::UserProvided),
                         attrs);
                 }
+                if self.is_catch_expr() {
+                    assert!(self.eat_keyword(keywords::Catch));
+                    let lo = self.prev_span.lo;
+                    return self.parse_catch_expr(lo, attrs);
+                }
                 if self.eat_keyword(keywords::Return) {
                     if self.token.can_begin_expr() {
                         let e = self.parse_expr()?;
@@ -3092,6 +3103,16 @@ impl<'a> Parser<'a> {
         Ok(self.mk_expr(span_lo, hi, ExprKind::Loop(body, opt_ident), attrs))
     }
 
+    /// Parse a `catch {...}` expression (`catch` token already eaten)
+    pub fn parse_catch_expr(&mut self, span_lo: BytePos, mut attrs: ThinVec<Attribute>)
+        -> PResult<'a, P<Expr>>
+    {
+        let (iattrs, body) = self.parse_inner_attrs_and_block()?;
+        attrs.extend(iattrs);
+        let hi = body.span.hi;
+        Ok(self.mk_expr(span_lo, hi, ExprKind::Catch(body), attrs))
+    }
+
     // `match` token already eaten
     fn parse_match_expr(&mut self, mut attrs: ThinVec<Attribute>) -> PResult<'a, P<Expr>> {
         let match_span = self.prev_span;
@@ -3697,6 +3718,14 @@ impl<'a> Parser<'a> {
             self.recover_stmt_(SemiColonMode::Break);
             None
         })
+    }
+
+    fn is_catch_expr(&mut self) -> bool {
+        self.token.is_keyword(keywords::Catch) &&
+        self.look_ahead(1, |t| *t == token::OpenDelim(token::Brace)) &&
+
+        // prevent `while catch {} {}`, `if catch {} {} else {}`, etc.
+        !self.restrictions.contains(Restrictions::RESTRICTION_NO_STRUCT_LITERAL)
     }
 
     fn is_union_item(&self) -> bool {
@@ -4875,6 +4904,8 @@ impl<'a> Parser<'a> {
     /// Parse struct Foo { ... }
     fn parse_item_struct(&mut self) -> PResult<'a, ItemInfo> {
         let class_name = self.parse_ident()?;
+        self.error_if_typename_is_catch(class_name);
+
         let mut generics = self.parse_generics()?;
 
         // There is a special case worth noting here, as reported in issue #17904.
@@ -4924,6 +4955,8 @@ impl<'a> Parser<'a> {
     /// Parse union Foo { ... }
     fn parse_item_union(&mut self) -> PResult<'a, ItemInfo> {
         let class_name = self.parse_ident()?;
+        self.error_if_typename_is_catch(class_name);
+
         let mut generics = self.parse_generics()?;
 
         let vdata = if self.token.is_keyword(keywords::Where) {
@@ -5440,6 +5473,7 @@ impl<'a> Parser<'a> {
             let struct_def;
             let mut disr_expr = None;
             let ident = self.parse_ident()?;
+            self.error_if_typename_is_catch(ident);
             if self.check(&token::OpenDelim(token::Brace)) {
                 // Parse a struct variant.
                 all_nullary = false;
@@ -5481,6 +5515,7 @@ impl<'a> Parser<'a> {
     /// Parse an "enum" declaration
     fn parse_item_enum(&mut self) -> PResult<'a, ItemInfo> {
         let id = self.parse_ident()?;
+        self.error_if_typename_is_catch(id);
         let mut generics = self.parse_generics()?;
         generics.where_clause = self.parse_where_clause()?;
         self.expect(&token::OpenDelim(token::Brace))?;

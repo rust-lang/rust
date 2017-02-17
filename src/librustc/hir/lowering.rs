@@ -84,6 +84,7 @@ pub struct LoweringContext<'a> {
     trait_impls: BTreeMap<DefId, Vec<NodeId>>,
     trait_default_impl: BTreeMap<DefId, NodeId>,
 
+    catch_scopes: Vec<NodeId>,
     loop_scopes: Vec<NodeId>,
     is_in_loop_condition: bool,
 
@@ -123,6 +124,7 @@ pub fn lower_crate(sess: &Session,
         trait_impls: BTreeMap::new(),
         trait_default_impl: BTreeMap::new(),
         exported_macros: Vec::new(),
+        catch_scopes: Vec::new(),
         loop_scopes: Vec::new(),
         is_in_loop_condition: false,
         type_def_lifetime_params: DefIdMap(),
@@ -261,6 +263,21 @@ impl<'a> LoweringContext<'a> {
         span
     }
 
+    fn with_catch_scope<T, F>(&mut self, catch_id: NodeId, f: F) -> T
+        where F: FnOnce(&mut LoweringContext) -> T
+    {
+        let len = self.catch_scopes.len();
+        self.catch_scopes.push(catch_id);
+
+        let result = f(self);
+        assert_eq!(len + 1, self.catch_scopes.len(),
+            "catch scopes should be added and removed in stack order");
+
+        self.catch_scopes.pop().unwrap();
+
+        result
+    }
+
     fn with_loop_scope<T, F>(&mut self, loop_id: NodeId, f: F) -> T
         where F: FnOnce(&mut LoweringContext) -> T
     {
@@ -295,15 +312,17 @@ impl<'a> LoweringContext<'a> {
         result
     }
 
-    fn with_new_loop_scopes<T, F>(&mut self, f: F) -> T
+    fn with_new_scopes<T, F>(&mut self, f: F) -> T
         where F: FnOnce(&mut LoweringContext) -> T
     {
         let was_in_loop_condition = self.is_in_loop_condition;
         self.is_in_loop_condition = false;
 
+        let catch_scopes = mem::replace(&mut self.catch_scopes, Vec::new());
         let loop_scopes = mem::replace(&mut self.loop_scopes, Vec::new());
         let result = f(self);
-        mem::replace(&mut self.loop_scopes, loop_scopes);
+        self.catch_scopes = catch_scopes;
+        self.loop_scopes = loop_scopes;
 
         self.is_in_loop_condition = was_in_loop_condition;
 
@@ -1065,7 +1084,7 @@ impl<'a> LoweringContext<'a> {
                                self.record_body(value, None))
             }
             ItemKind::Fn(ref decl, unsafety, constness, abi, ref generics, ref body) => {
-                self.with_new_loop_scopes(|this| {
+                self.with_new_scopes(|this| {
                     let body = this.lower_block(body);
                     let body = this.expr_block(body, ThinVec::new());
                     let body_id = this.record_body(body, Some(decl));
@@ -1665,13 +1684,17 @@ impl<'a> LoweringContext<'a> {
                                       this.lower_opt_sp_ident(opt_ident),
                                       hir::LoopSource::Loop))
                 }
+                ExprKind::Catch(ref body) => {
+                    // FIXME(cramertj): Add catch to HIR
+                    self.with_catch_scope(e.id, |this| hir::ExprBlock(this.lower_block(body)))
+                }
                 ExprKind::Match(ref expr, ref arms) => {
                     hir::ExprMatch(P(self.lower_expr(expr)),
                                    arms.iter().map(|x| self.lower_arm(x)).collect(),
                                    hir::MatchSource::Normal)
                 }
                 ExprKind::Closure(capture_clause, ref decl, ref body, fn_decl_span) => {
-                    self.with_new_loop_scopes(|this| {
+                    self.with_new_scopes(|this| {
                         this.with_parent_def(e.id, |this| {
                             let expr = this.lower_expr(body);
                             hir::ExprClosure(this.lower_capture_clause(capture_clause),
@@ -2069,6 +2092,12 @@ impl<'a> LoweringContext<'a> {
                     //     Err(err) => #[allow(unreachable_code)]
                     //                 return Carrier::from_error(From::from(err)),
                     // }
+
+                    // FIXME(cramertj): implement breaking to catch
+                    if !self.catch_scopes.is_empty() {
+                        bug!("`?` in catch scopes is unimplemented")
+                    }
+
                     let unstable_span = self.allow_internal_unstable("?", e.span);
 
                     // Carrier::translate(<expr>)
