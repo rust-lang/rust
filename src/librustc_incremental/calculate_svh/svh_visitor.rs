@@ -63,8 +63,7 @@ impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
                hash_spans: bool,
                hash_bodies: bool)
                -> Self {
-        let check_overflow = tcx.sess.opts.debugging_opts.force_overflow_checks
-            .unwrap_or(tcx.sess.opts.debug_assertions);
+        let check_overflow = tcx.sess.overflow_checks();
 
         StrictVersionHashVisitor {
             st: st,
