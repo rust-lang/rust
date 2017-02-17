@@ -531,8 +531,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CastPass {
             if let ExprLit(ref lit) = ex.node {
                 use syntax::ast::{LitKind, LitIntType};
                 match lit.node {
-                    LitKind::Int(_, LitIntType::Unsuffixed) => (),
-                    LitKind::FloatUnsuffixed(_) => (),
+                    LitKind::Int(_, LitIntType::Unsuffixed) |
+                    LitKind::FloatUnsuffixed(_) => {},
                     _ => {
                         if cast_from.sty == cast_to.sty && !in_external_macro(cx, expr.span) {
                             span_lint(cx,
