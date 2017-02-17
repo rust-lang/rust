@@ -14,6 +14,7 @@
 //! Routines for manipulating the control-flow graph.
 
 use build::CFG;
+use rustc::middle::region::CodeExtent;
 use rustc::mir::*;
 
 impl<'tcx> CFG<'tcx> {
@@ -41,6 +42,16 @@ impl<'tcx> CFG<'tcx> {
     pub fn push(&mut self, block: BasicBlock, statement: Statement<'tcx>) {
         debug!("push({:?}, {:?})", block, statement);
         self.block_data_mut(block).statements.push(statement);
+    }
+
+    pub fn push_end_region(&mut self,
+                           block: BasicBlock,
+                           source_info: SourceInfo,
+                           extent: CodeExtent) {
+        self.push(block, Statement {
+            source_info: source_info,
+            kind: StatementKind::EndRegion(extent),
+        });
     }
 
     pub fn push_assign(&mut self,

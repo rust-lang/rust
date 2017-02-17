@@ -585,6 +585,11 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                             // drop elaboration should handle that by itself
                             continue
                         }
+                        TerminatorKind::Resume => {
+                            // We can replace resumes with gotos
+                            // jumping to a canonical resume.
+                            continue
+                        }
                         TerminatorKind::DropAndReplace { .. } => {
                             // this contains the move of the source and
                             // the initialization of the destination. We

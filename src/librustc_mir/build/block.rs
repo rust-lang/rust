@@ -71,7 +71,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         let outer_visibility_scope = this.visibility_scope;
         let source_info = this.source_info(span);
         for stmt in stmts {
-            let Stmt { span: _, kind, opt_destruction_extent } = this.hir.mirror(stmt);
+            let Stmt { span, kind, opt_destruction_extent } = this.hir.mirror(stmt);
             match kind {
                 StmtKind::Expr { scope, expr } => {
                     unpack!(block = this.in_opt_scope(
@@ -122,7 +122,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         if let Some(expr) = expr {
             unpack!(block = this.into(destination, block, expr));
         } else {
-            let source_info = this.source_info(span);
             this.cfg.push_assign_unit(block, source_info, destination);
         }
         // Finally, we pop all the let scopes before exiting out from the scope of block

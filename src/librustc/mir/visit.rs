@@ -325,6 +325,7 @@ macro_rules! make_mir_visitor {
                                           ref $($mutability)* rvalue) => {
                         self.visit_assign(block, lvalue, rvalue, location);
                     }
+                    StatementKind::EndRegion(_) => {}
                     StatementKind::SetDiscriminant{ ref $($mutability)* lvalue, .. } => {
                         self.visit_lvalue(lvalue, LvalueContext::Store, location);
                     }
