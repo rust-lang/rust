@@ -5,17 +5,15 @@ environment:
     secure: 1UkmbiDd15tWtYbMm5O2Uqm0b0Ur8v1MoSlydxl4ojcroPeerRMlUges0l57py8c
   SCCACHE_DIGEST: f808afabb4a4eb1d7112bcb3fa6be03b61e93412890c88e177c667eb37f46353d7ec294e559b16f9f4b5e894f2185fe7670a0df15fd064889ecbd80f0c34166c
   matrix:
-  # 32/64 bit MSVC
+  # 32/64 bit MSVC tests
   - MSYS_BITS: 64
-    RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-extended
-    SCRIPT: python x.py test && python x.py dist
-    DEPLOY: 1
+    RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc
+    SCRIPT: python x.py test
   - MSYS_BITS: 32
-    RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc --target=i586-pc-windows-msvc --enable-extended
-    SCRIPT: python x.py test --host i686-pc-windows-msvc --target i686-pc-windows-msvc && python x.py dist
-    DEPLOY: 1
+    RUST_CONFIGURE_ARGS: --build=i686-pc-windows-msvc --target=i586-pc-windows-msvc
+    SCRIPT: python x.py test --host i686-pc-windows-msvc --target i686-pc-windows-msvc
 
-  # MSVC cargotest
+  # MSVC aux tests
   - MSYS_BITS: 64
     RUST_CHECK_TARGET: check-aux
     RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc
@@ -45,15 +43,39 @@ environment:
   # *not* use debug assertions and llvm assertions. This is because they take
   # too long on appveyor and this is tested by rustbuild below.
   - MSYS_BITS: 32
+    RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu
+    SCRIPT: python x.py test
+    MINGW_URL: https://s3.amazonaws.com/rust-lang-ci
+    MINGW_ARCHIVE: i686-4.9.2-release-win32-dwarf-rt_v4-rev4.7z
+    MINGW_DIR: mingw32
+  - MSYS_BITS: 64
+    SCRIPT: python x.py test
+    RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu
+    MINGW_URL: https://s3.amazonaws.com/rust-lang-ci
+    MINGW_ARCHIVE: x86_64-4.9.2-release-win32-seh-rt_v4-rev4.7z
+    MINGW_DIR: mingw64
+
+  # 32/64 bit MSVC and GNU deployment
+  - RUST_CONFIGURE_ARGS: >
+      --build=x86_64-pc-windows-msvc
+      --enable-extended
+    SCRIPT: python x.py dist
+    DEPLOY: 1
+  - RUST_CONFIGURE_ARGS: >
+      --build=i686-pc-windows-msvc
+      --target=i586-pc-windows-msvc
+      --enable-extended
+    SCRIPT: python x.py dist
+    DEPLOY: 1
+  - MSYS_BITS: 32
     RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu --enable-extended
-    SCRIPT: python x.py test && python x.py dist
+    SCRIPT: python x.py dist
     MINGW_URL: https://s3.amazonaws.com/rust-lang-ci
     MINGW_ARCHIVE: i686-4.9.2-release-win32-dwarf-rt_v4-rev4.7z
     MINGW_DIR: mingw32
     DEPLOY: 1
-
   - MSYS_BITS: 64
-    SCRIPT: python x.py test && python x.py dist
+    SCRIPT: python x.py dist
     RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu --enable-extended
     MINGW_URL: https://s3.amazonaws.com/rust-lang-ci
     MINGW_ARCHIVE: x86_64-4.9.2-release-win32-seh-rt_v4-rev4.7z
@@ -83,11 +105,14 @@ install:
   # file exists in there (which it doesn't by default).
   - if defined MINGW_URL appveyor DownloadFile %MINGW_URL%/%MINGW_ARCHIVE%
   - if defined MINGW_URL 7z x -y %MINGW_ARCHIVE% > nul
-  - if defined MINGW_URL set PATH=C:\Python27;%CD%\%MINGW_DIR%\bin;C:\msys64\usr\bin;%PATH%
-  - if defined MINGW_URL copy C:\Python27\python.exe C:\Python27\python2.7.exe
+  - if defined MINGW_URL set PATH=%CD%\%MINGW_DIR%\bin;C:\msys64\usr\bin;%PATH%
 
   # Otherwise pull in the MinGW installed on appveyor
   - if NOT defined MINGW_URL set PATH=C:\msys64\mingw%MSYS_BITS%\bin;C:\msys64\usr\bin;%PATH%
+
+  # Prefer the "native" Python as LLVM has trouble building with MSYS sometimes
+  - copy C:\Python27\python.exe C:\Python27\python2.7.exe
+  - set PATH=C:\Python27;%PATH%
 
   # Download and install sccache
   - appveyor DownloadFile https://api.pub.build.mozilla.org/tooltool/sha512/%SCCACHE_DIGEST%
