@@ -71,23 +71,69 @@ A few assumptions we made:
   crates noticeably. If this does not turn out to be the case, we will have to
   adjust the formula.
 
-## Factors
+## Order by recent downloads
+
+Through the iterations of this RFC, there was no consensus around a way to order
+crates that would be useful, understandable, resistent to being gamed, and not
+require work of curators, reviewers, or moderators. Furthermore, different
+people in different situations may value different aspects of crates.
+
+Instead of attempting to order crates as a majority of people would rank them,
+we propose a coarser measure to expose the set of crates worthy of further
+consideration on the first page of a category or keyword. At that point, the
+person looking for a crate can use other indicators on the page to decide which
+crates best meet their needs.
+
+**The default ordering of crates within a keyword or category will be changed to
+be the number of downloads in the last 90 days.**
+
+While coarse, downloads show how many people or other crates have found this
+crate to be worthy of using. By limiting to the last 90 days, crates that have
+been around the longest won't have an advantage over new crates that might be
+better. Crates that are lower in the "stack", such as `libc`, will always have a
+higher number of downloads than those higher in the stack due to the number of
+crates using a lower-level crate as a dependency. Within a category or keyword,
+however, crates are likely to be from the same level of the stack and thus their
+download numbers will be comparable.
+
+Crates are currently ordered by all-time downloads and the sort option button
+says "Downloads". We will:
+
+- change the ordering to be downloads in the last 90 days
+- change the number of downloads displayed with each crate to be those made in
+  the last 90 days
+- change the sort option button to say "Recent Downloads".
+
+"All-time Downloads" could become another sort option in the menu, alongside
+"Alphabetical".
+
+## Add more badges, filters, and sorting options
+
+Crates.io now has badges for master branch CI status, and [will soon have a
+badge indicating the version(s) of Rust a particular version builds
+successfully on][build-info].
+
+[build-info]: https://github.com/rust-lang/crates.io/pull/540
+
+To enable a person to narrow down relevant crates to find the one that will best
+meet their needs, we will add more badges and indicators. **Badges will not
+influence crate ordering**.
+
+Some badges may require use of third-party services such as GitHub. We recognize
+that not everyone uses these services, but note a specific badge is only one
+factor that people can consider out of many.
 
 Through [the survey we conducted][user-research], we found that when people
-evaluate crates, they are looking primarily for approximate signals of:
+evaluate crates, they are primarily looking for signals of:
 
 - Ease of use
 - Maintenance
 - Quality
 
-Cited as secondary signals that were used to infer that the primary signals are
-good as well:
+Secondary signals that were used to infer the primary signals:
 
-- Popularity
+- Popularity (covered by the default ordering by recent downloads)
 - Credibility
-
-We detail how we propose to address each of these in turn, plus a rating of the
-five crates from the user research survey as examples.
 
 ### Ease of use
 
@@ -95,128 +141,202 @@ By far, the most common attribute people said they considered in the survey was
 whether a crate had good documentation. Frequently mentioned when discussing
 documentation was the desire to quickly find an example of how to use the crate.
 
-This would be addressed through human evaluation, rather than automatic
-evaluation, in two ways:
+This would be addressed in two ways.
 
-1. [Render README files on a crate's page on crates.io][render-readme] so that
-   people can quickly see for themselves the information that a crate author
-   chooses to make available in their README. We can nudge towards having an
-   example in the README by adding a template README that includes an Examples
-   section [in what `cargo new` generates][cargo-new].
-2. Add a mechanism for logged-in crates.io users to indicate that a crate has
-   particularly good documentation.
-   - This would be a very constrained form of voting/rating: one UI element
-     (ex: an up arrow, a thumbs up, a star, a checkbox, a link) that could be
-     toggled from "not indicated" to "this crate has good documentation" and
-     vice versa.
-   - The number of people who have indicated a crate has good documentation
-     would be displayed for each crate.
-   - That number would be limited to an amount of time (proposal: 6 mo). 6 mo
-     after you voted, your vote would disappear and you could choose to renew
-     your vote. This would prevent older crates from getting too much of an
-     advantage or a high rating being inaccurate if many new, undocumented
-     features get added to a crate.
-   - This would not influence ranking at all, and therefore is less likely to
-     be gamed. You'd need to make many github accounts to easily game this.
-   - Since there is no negative "this crate has bad documenation" indication,
-     nor is there free-form text, the moderation burden should be minimal.
+#### Render README on a crate's page
+
+[Render README files on a crate's page on crates.io][render-readme] so that
+people can quickly see for themselves the information that a crate author
+chooses to make available in their README. We can nudge towards having an
+example in the README by adding a template README that includes an Examples
+section [in what `cargo new` generates][cargo-new].
 
 [render-readme]: https://github.com/rust-lang/crates.io/issues/81
 [cargo-new]: https://github.com/rust-lang/cargo/issues/3506
 
-### Maintenance (and Popularity)
+#### "Well Documented" badge
 
-The number of releases in the last 6 months and the number of downloads in the
-last 90 days can be combined into an automatic indicator of the status of a
-crate. This would be more like a badge and would not influence ranking at all.
+For each crate published, in a background job, unpack the crate files and
+calculate the ratio of lines of documentation to lines of code as follows:
 
-- Many recent releases and few downloads indicates an *experimental* crate.
-- At least occasional releases in the last 6 months and many recent downloads
-  indicates a *mainstream* crate.
-- Few to no releases in the last 6 months and few recent downloads indicates an
-  *inactive* crate.
+- Find the number of lines of documentation in Rust files:
+  `grep -r "//[!/]" --binary-files=without-match --include=*.rs . | wc -l`
+- Find the number of lines in the README file, if specified in Cargo.toml
+- Find the number of lines in Rust files: `find . -name '*.rs' | xargs wc -l`
 
-In table form:
+We would then add the lines in the README to the lines of documentation,
+subtract the lines of documentation from the total lines of code, and divide
+the lines of documentation by the lines of non-documentation in order to get
+the ratio of documentation to code. Test code (and any documentation within
+test code) *is* part of this calculation.
 
-|                | Many releases | Few releases |
-|----------------|---------------|--------------|
-| Many downloads | Mainstream    | Mainstream   |
-| Few downloads  | Experimental  | Inactive     |
+Any crate getting in the top 20% of all crates would get a badge saying "well
+documented".
 
-TODO: Decide what the cutoff values these measures should have, which we will do
-if people are generally in favor of this idea.
+This measure is gameable if a crate adds many lines that match the
+documentation regex but don't provide meaningful content, such as `/// lol`.
+While this may be easy to implement, a person looking at the documentation for
+a crate using this technique would immediately be able to see that the author
+is trying to game the system and reject it. If this becomes a common problem,
+we can re-evaluate this situation, but we believe the community of crate
+authors genuinely want to provide great documentation to crate users. We want
+to encourage and reward well-documented crates, and this outweighs the risk of
+potential gaming of the system.
 
-By using the number of downloads, crates that are "finished" and stable should
-still be regarded as mainstream while many people continue to use it.
+* combine:
+  * 1,195 lines of documentation
+  * 99 lines in README.md
+  * 5,815 lines of Rust
+  * (1195 + 99) / (5815 - 1195) = 1294/4620 = .28
 
-These labels will have an indicator of their meaning and how they are calculated
-when you hover over them.
+* nom:
+  * 2,263 lines of documentation
+  * 372 lines in README.md
+  * 15,661 lines of Rust
+  * (2263 + 372) / (15661 - 2263) = 2635/13398 = .20
 
-A downside of this method is that it does not convey crate author *intent*,
-only what one might assume based only on these two measures. A crate might get
-popular while an author still considers it to be experimental, thus creating
-expectations of stability and support.
+* peresil:
+  * 159 lines of documentation
+  * 20 lines in README.md
+  * 1,341 lines of Rust
+  * (159 + 20) / (1341 - 159) = 179/1182 = .15
 
-We might need to experiment with the thresholds for the number of releases and
-the number of downloads considered to be "few" and "many".
+* lalrpop: ([in the /lalrpop directory in the repo][lalrpop-repo])
+  * 742 lines of documentation
+  * 110 lines in ../README.md
+  * 94,104 lines of Rust
+  * (742 + 110) / (94104 - 742) = 852/93362 = .01
 
-Alternatives:
+* peg:
+  * 3 lines of documentation
+  * no readme specified in Cargo.toml
+  * 1,531 lines of Rust
+  * (3 + 0) / (1531 - 3) = 3/1528 = .00
 
-- Also factor in the version number: keep the "Experimental" label unless a
-  crate version has many downloads *and* its version number is >= 1.0.0. This
-  might be better once more crates release a 1.0.0 version.
-- Don't show any label for the "Mainstream" category and only label
-  "Experimental" or "Inactive" crates.
-- Use different words for these concepts
-- Use more words for these concepts that more clearly states what is measured:
-  - "This crate has many recent releases and many downloads"
-  - "This crate has many recent downloads but has not been updated in the last 6
-    months"
-  - "This crate has many recent releases but few downloads"
-  - "This crate has not been updated in the last 6 months and has few downloads"
+[lalrpop-repo]: https://github.com/nikomatsakis/lalrpop/tree/master/lalrpop
 
-For the crates used in the survey, assuming that any release in the last 6 mo
-makes a crate "Experimental" rather than "Inactive", and that whatever the
-cutoff value for "many downloads" is exactly, the line lies somewhere between
-nom and combine since nom has an order of magnitude more downloads than combine:
+If we assume these are all the crates on crates.io for this example, then
+combine is the top 20% and would get a badge.
 
-| Crate   | Releases in last 6 mo | Downloads in last 90 days | Label        |
-|---------|-----------------------|---------------------------|--------------|
-| nom     | 3                     | 82,975                    | Mainstream   |
-| combine | 4                     | 4,252                     | Experimental |
-| lalrpop | 3                     | 1,928                     | Experimental |
-| peg     | 7                     | 2,190                     | Experimental |
-| peresil | 0                     | 1,859                     | Inactive     |
+### Maintenance
 
-### Overall ordering: Recent downloads
+We will add a way for maintainers to communicate their intended level of
+maintenance and support. We will add indicators of issues resolved from the
+various code hosting services.
 
-To remove some of the bias towards older crates that may have been replaced with
-newer alternatives, we propose that the default ranking of crates be changed
-from the all-time number of downloads to the number of downloads in the last 90
-days. This is easy to understand and explain, and is being used as a rough
-measure of evaluation today. This should be enough to get the most suitable
-crates on the first page of results.
+#### Self-reported maintenance intention
+
+We will add an optional attribute to Cargo.toml that crate authors could use to
+self-report their maintenance intentions. The valid values would be along the
+lines of the following, and would influence the ranking in the order they're
+presented:
+
+- **Actively developed**, meaning new features are being added and bugs are
+  being fixed
+- **Passively maintained**, meaning there are no plans for new features, but
+  the maintainer intends to respond to issues that get filed
+- **As-is**, meaning the crate is feature complete, the maintainer does not
+  intend to continue working on it or providing support, but it works for the
+  purposes it was designed for
+- None, we don't display anything, since the maintainer has not chosen to
+  specify their intentions, potential crate users will need to investigate on
+  their own
+- **Experimental**, meaning the author wants to share it with the community but
+  is not intending to meet anyone's particular use case
+- **Looking for maintainer**, meaning the current maintainer would like to give
+  up the crate to someone else
+
+These would be displayed as badges on lists of crates.
+
+These levels would not have any time commitments attached to them-- maintainers
+who would like to batch changes into releases every 6 months could report
+"actively developed" just as much as mantainers who like to release every 6
+weeks. This would need to be clearly communicated to set crate user
+expectations properly.
+
+This is also inherently a crate author's statement of current intentions, which
+may get out of sync with the reality of the crate's maintenance over time.
+
+If I had to guess for the maintainers of the parsing crates, I would assume:
+
+* nom: actively developed
+* combine: actively developed
+* lalrpop: actively developed
+* peg: actively developed
+* peresil: passively maintained
+
+#### GitHub issue badges
+
+[isitmaintained.com][] provides badges indicating the time to resolution of GitHub issues and percentage of GitHub issues that are open.
+
+[isitmaintained.com]: http://isitmaintained.com/
+
+We will enable maintainers to add these badges to their crate.
+
+| Crate | Issue Resolution | Open Issues |
+|-------|------------------|-------------|
+| combine | [![Average time to resolve an issue](http://isitmaintained.com/badge/resolution/Marwes/combine.svg)](http://isitmaintained.com/project/Marwes/combine "Average time to resolve an issue") | [![Percentage of issues still open](http://isitmaintained.com/badge/open/Marwes/combine.svg)](http://isitmaintained.com/project/Marwes/combine "Percentage of issues still open") |
+| nom | [![Average time to resolve an issue](http://isitmaintained.com/badge/resolution/Geal/nom.svg)](http://isitmaintained.com/project/Geal/nom "Average time to resolve an issue") | [![Percentage of issues still open](http://isitmaintained.com/badge/open/Geal/nom.svg)](http://isitmaintained.com/project/Geal/nom "Percentage of issues still open") |
+| lalrpop | [![Average time to resolve an issue](http://isitmaintained.com/badge/resolution/nikomatsakis/lalrpop.svg)](http://isitmaintained.com/project/nikomatsakis/lalrpop "Average time to resolve an issue") | [![Percentage of issues still open](http://isitmaintained.com/badge/open/nikomatsakis/lalrpop.svg)](http://isitmaintained.com/project/nikomatsakis/lalrpop "Percentage of issues still open") |
+| peg | [![Average time to resolve an issue](http://isitmaintained.com/badge/resolution/kevinmehall/rust-peg.svg)](http://isitmaintained.com/project/kevinmehall/rust-peg "Average time to resolve an issue") | [![Percentage of issues still open](http://isitmaintained.com/badge/open/kevinmehall/rust-peg.svg)](http://isitmaintained.com/project/kevinmehall/rust-peg "Percentage of issues still open") |
+| peresil | [![Average time to resolve an issue](http://isitmaintained.com/badge/resolution/shepmaster/peresil.svg)](http://isitmaintained.com/project/shepmaster/peresil "Average time to resolve an issue") | [![Percentage of issues still open](http://isitmaintained.com/badge/open/shepmaster/peresil.svg)](http://isitmaintained.com/project/shepmaster/peresil "Percentage of issues still open") |
+
+### Quality
+
+We will enable maintainers to add [Coveralls][] badges to indicate the
+crate's test coverage. If there are other services offering test coverage
+reporting and badges, we will add support for those as well, but this is the
+only service we know of at this time that offers code coverage reporting that
+works with Rust projects.
+
+[Coveralls]: https://coveralls.io
+
+This excludes projects that cannot use Coveralls, which only currently supports
+repositories hosted on GitHub or BitBucket that use CI on Travis, CircleCI,
+Jenkins, Semaphore, or Codeship.
+
+nom has coveralls.io configured: [![Coverage Status](https://coveralls.io/repos/Geal/nom/badge.svg?branch=master)](https://coveralls.io/r/Geal/nom?branch=master)
+
+### Credibility
+
+We have [an idea for a "favorite authors" list][favs] that we
+think would help indicate credibility. With this proposed feature, each person
+can define "credibility" for themselves, which makes this measure less gameable
+and less of a popularity contest.
+
+[favs]: https://github.com/rust-lang/crates.io/issues/494
 
 ## Out of scope
 
-This proposal is not advocating to change the order of **search results**; those
-should still be ordered by relevancy to the query based on the indexed content.
-We may want to have an option to sort search results by "recommended" or
-whatever we want to call this sorting, but probably not change the default.
+This proposal is not advocating to change the default order of **search
+results**; those should still be ordered by relevancy to the query based on the
+indexed content. We will add the ability to sort search results by recent
+downloads.
+
+# Evaluation
+
+If ordering by number of recent downloads and providing more indicators is not
+helpful, we expect to get bug reports from the community and feedback on the
+users forum, reddit, IRC, etc.
+
+In the community survey scheduled to be taken around May 2017, we will ask
+about people's satisfaction with the information that crates.io provides.
+
+If changes are needed that are significant, we will open a new RFC. If smaller
+tweaks need to be made, the process will be managed through crates.io's issues.
+We will consult with the tools team and core team to determine whether a change
+is significant enough to warrant a new RFC.
 
 # How do we teach this?
 
-A criticism we anticipate and that would be totally fair is that this formula
-is too complex. If we go with this formula, we think it's important to make
-available a clear explanation of why a crate has the score it does, for
-transparency to both crate users and crate authors. [Ruby toolbox][ruby] has a
-great example of what we'd like to provide.
+We will change the label on the default ordering button to read "Recent
+Downloads" rather than "Downloads".
 
-[ruby]: #ruby-toolbox
+Badges will have tooltips on hover that provide additional information.
 
-A possible benefit of having multiple measures influence the ranking is making
-it less likely that crate owners will go to the effort of gaming the formula in
-order to have a higher ranking.
+We will also add a page to doc.crates.io that details all possible indicators
+and their values, and explains to crate authors how to configure or earn the
+different badges.
 
 # Drawbacks
 [drawbacks]: #drawbacks
@@ -227,10 +347,9 @@ percentage could be gamed by having one line of uninformative documentation for
 all public items, thus giving a score of 100% without the value that would come
 with a fully documented library. We hope the community at large will agree
 these attributes are valuable to approach in good faith, and that trying to
-game the ranking will be easily discoverable. We could have a reporting
-mechanism for crates that are attempting to inflate their ranking artificially,
-and implement a way for administrators to impose a ranking penalty on these
-crates instead.
+game the badges will be easily discoverable. We could have a reporting
+mechanism for crates that are attempting to gain badges artificially, and
+implement a way for administrators to remove badges from those crates.
 
 # Alternatives
 [alternatives]: #alternatives
@@ -255,7 +374,10 @@ ratings. This could have the usual problems that come with online rating
 systems, such as spam, paid reviews, ratings influenced by personal
 disagreements, etc.
 
-## More options instead of a default
+## More sorting and filtering options
+
+There are even more options for interacting with the metadata that crates.io
+has than we are proposing in this RFC at this time. For example:
 
 1. We could add filtering options for metadata, so that each user could choose,
 for example, "show me only crates that work on stable" or "show me only crates
@@ -265,35 +387,14 @@ that have a version greater than 1.0".
 alphabetical and number of downloads, such as by number of owners or most
 recent version release date.
 
-These sorting and filtering options would let each user choose exactly what's
-important to them, which gives them more freedom, but this also pushes more
-work onto the user. Crates.io would avoid taking a position on what "best"
-means, which could prevent gaming of the system since crate authors wouldn't
-know how users are ultimately sorting and filtering. We would probably want to
-implement saved search configurations per user, so that people wouldn't have to
-re-enter their criteria every time they wanted to do a similar search.
+We would probably want to implement saved search configurations per user, so
+that people wouldn't have to re-enter their criteria every time they wanted to
+do a similar search.
 
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
-- There might be metadata about crates that we haven't thought of yet that would
-be useful.
-- How do we change the ranking if we try something for a while and decide it's
-not what we want? Would we need another RFC?
-- How will we know this algorithm is working?
-  - We could do another survey
-  - We could ask for reports on an issue on crates.io of crates not being
-    ordered as people would expect
-  - Crates.io does have Google Analytics. We could compare the "funnels" of
-    navigating to crate pages after searches that are similar to categories.
-    This could potentially tell us if people start using categories at all
-    instead of searching, if searches for terms that have categories go down
-    and use of the categories go up. It might also be possible to see what
-    crate pages people end up on from search and from categories, to see if
-    they end up on "better" crates as a result of the ordering in categories.
-    It might be difficult to get the right data in a significant quantity for
-    this to be useful, though.
-  - We could wait and see if there are complaints on the various Rust forums
+All questions have now been resolved.
 
 # Appendix: Comparative Research
 [comparative-research]: #appendix-comparative-research
