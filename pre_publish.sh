@@ -13,7 +13,7 @@ rm helper.txt
 
 # add all changed files
 git add .
-git commit -m "version bump"
+git commit -m "Bump the version"
 
 set +e
 
