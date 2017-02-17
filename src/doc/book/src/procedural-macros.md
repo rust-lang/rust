@@ -169,7 +169,7 @@ So this is where quotes comes in. The `ast` argument is a struct that gives us
 a representation of our type (which can be either a `struct` or an `enum`).
 Check out the [docs](https://docs.rs/syn/0.10.5/syn/struct.MacroInput.html),
 there is some useful information there. We are able to get the name of the
-type using `ast.ident`. The `quote!` macro let's us write up the Rust code
+type using `ast.ident`. The `quote!` macro lets us write up the Rust code
 that we wish to return and convert it into `Tokens`. `quote!` let's us use some
 really cool templating mechanics; we simply write `#name` and `quote!` will
 replace it with the variable named `name`. You can even do some repetition
