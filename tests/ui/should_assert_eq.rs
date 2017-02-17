@@ -13,4 +13,11 @@ fn main() {
     assert!(1 == 2);
     assert!(Debug(1) == Debug(2));
     assert!(NonDebug(1) == NonDebug(1)); // ok
+
+    test_generic(1, 2, 3, 4);
+}
+
+fn test_generic<T: std::fmt::Debug + Eq, U: Eq>(x: T, y: T, z: U, w: U) {
+    assert!(x == y);
+    assert!(z == w); // ok
 }

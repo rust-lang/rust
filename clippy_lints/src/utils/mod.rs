@@ -317,13 +317,19 @@ pub fn implements_trait<'a, 'tcx>(
     cx: &LateContext<'a, 'tcx>,
     ty: ty::Ty<'tcx>,
     trait_id: DefId,
-    ty_params: Vec<ty::Ty<'tcx>>
+    ty_params: &[ty::Ty<'tcx>],
+    parent_node_id: Option<NodeId>
 ) -> bool {
     cx.tcx.populate_implementations_for_trait_if_necessary(trait_id);
 
     let ty = cx.tcx.erase_regions(&ty);
-    cx.tcx.infer_ctxt((), Reveal::All).enter(|infcx| {
-        let obligation = cx.tcx.predicate_for_trait_def(traits::ObligationCause::dummy(), trait_id, 0, ty, &ty_params);
+    let mut b = if let Some(id) = parent_node_id {
+        cx.tcx.infer_ctxt(BodyId { node_id: id }, Reveal::All)
+    } else {
+        cx.tcx.infer_ctxt((), Reveal::All)
+    };
+    b.enter(|infcx| {
+        let obligation = cx.tcx.predicate_for_trait_def(traits::ObligationCause::dummy(), trait_id, 0, ty, ty_params);
 
         traits::SelectionContext::new(&infcx).evaluate_obligation_conservatively(&obligation)
     })

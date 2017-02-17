@@ -115,7 +115,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NewWithoutDefault {
                     self_ty.walk_shallow().next().is_none(), // implements_trait does not work with generics
                     same_tys(cx, self_ty, return_ty(cx, id), id),
                     let Some(default_trait_id) = get_trait_def_id(cx, &paths::DEFAULT_TRAIT),
-                    !implements_trait(cx, self_ty, default_trait_id, Vec::new())
+                    !implements_trait(cx, self_ty, default_trait_id, &[], None)
                 ], {
                     if let Some(sp) = can_derive_default(self_ty, cx, default_trait_id) {
                         span_lint_and_then(cx,
@@ -156,7 +156,7 @@ fn can_derive_default<'t, 'c>(ty: ty::Ty<'t>, cx: &LateContext<'c, 't>, default_
         ty::TyAdt(adt_def, substs) if adt_def.is_struct() => {
             for field in adt_def.all_fields() {
                 let f_ty = field.ty(cx.tcx, substs);
-                if !implements_trait(cx, f_ty, default_trait_id, Vec::new()) {
+                if !implements_trait(cx, f_ty, default_trait_id, &[], None) {
                     return None;
                 }
             }

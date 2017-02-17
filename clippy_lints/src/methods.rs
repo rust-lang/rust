@@ -724,7 +724,7 @@ fn lint_or_fun_call(cx: &LateContext, expr: &hir::Expr, name: &str, args: &[hir:
                         return false;
                     };
 
-                    if implements_trait(cx, arg_ty, default_trait_id, Vec::new()) {
+                    if implements_trait(cx, arg_ty, default_trait_id, &[], None) {
                         span_lint_and_then(cx,
                                            OR_FUN_CALL,
                                            span,
@@ -1268,7 +1268,7 @@ fn get_error_type<'a>(cx: &LateContext, ty: ty::Ty<'a>) -> Option<ty::Ty<'a>> {
 /// This checks whether a given type is known to implement Debug.
 fn has_debug_impl<'a, 'b>(ty: ty::Ty<'a>, cx: &LateContext<'b, 'a>) -> bool {
     match cx.tcx.lang_items.debug_trait() {
-        Some(debug) => implements_trait(cx, ty, debug, Vec::new()),
+        Some(debug) => implements_trait(cx, ty, debug, &[], None),
         None => false,
     }
 }

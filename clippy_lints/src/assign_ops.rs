@@ -152,7 +152,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AssignOps {
                                             let hir::Item_::ItemImpl(_, _, _, Some(ref trait_ref), _, _) = item.node,
                                             trait_ref.path.def.def_id() == trait_id
                                         ], { return; }}
-                                        implements_trait($cx, $ty, trait_id, vec![$rty])
+                                        implements_trait($cx, $ty, trait_id, &[$rty], None)
                                     },)*
                                     _ => false,
                                 }

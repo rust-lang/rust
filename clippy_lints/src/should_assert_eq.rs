@@ -1,13 +1,13 @@
 use rustc::lint::*;
 use rustc::hir::*;
-use utils::{paths, is_direct_expn_of, get_trait_def_id, implements_trait, span_lint};
+use utils::{is_direct_expn_of, implements_trait, span_lint};
 
 /// **What it does:** Checks for `assert!(x == y)` which can be written better
 /// as `assert_eq!(x, y)` if `x` and `y` implement `Debug` trait.
 ///
 /// **Why is this bad?** `assert_eq` provides better assertion failure reporting.
 ///
-/// **Known problems:** None.
+/// **Known problems:** Hopefully none.
 ///
 /// **Example:**
 /// ```rust
@@ -45,13 +45,19 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ShouldAssertEq {
                 return;
             }
 
-            let debug_trait = get_trait_def_id(cx, &paths::DEBUG_TRAIT)
-                .expect("cannot find Debug trait");
+            let debug_trait = if let Some(t) = cx.tcx.lang_items.debug_trait() {
+                t
+            } else {
+                return;
+            };
 
             let ty1 = cx.tables.expr_ty(expr1);
             let ty2 = cx.tables.expr_ty(expr2);
-            if implements_trait(cx, ty1, debug_trait, vec![]) &&
-                implements_trait(cx, ty2, debug_trait, vec![]) {
+
+            let parent = cx.tcx.hir.get_parent(e.id);
+
+            if implements_trait(cx, ty1, debug_trait, &[], Some(parent)) &&
+                implements_trait(cx, ty2, debug_trait, &[], Some(parent)) {
                 span_lint(cx, SHOULD_ASSERT_EQ, e.span, "use `assert_eq` for better reporting");
             }
         }}
