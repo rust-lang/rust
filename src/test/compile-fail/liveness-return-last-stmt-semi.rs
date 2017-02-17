@@ -11,19 +11,37 @@
 // regression test for #8005
 
 macro_rules! test { () => { fn foo() -> i32 { 1; } } }
-                                           //~^ ERROR mismatched types
-                                           //~| HELP consider removing this semicolon
+//~^ ERROR mismatched types
+//~| NOTE expected i32, found ()
+//~| NOTE expected type `i32`
+//~| NOTE found type `()`
+//~| NOTE consider removing this semicolon
 
-fn no_return() -> i32 {} //~ ERROR mismatched types
+fn no_return() -> i32 {}
+    //~^ ERROR mismatched types
+    //~| NOTE expected i32, found ()
+    //~| NOTE expected type `i32`
+    //~| NOTE found type `()`
 
-fn bar(x: u32) -> u32 { //~ ERROR mismatched types
-    x * 2; //~ HELP consider removing this semicolon
+fn bar(x: u32) -> u32 {
+    //~^ ERROR mismatched types
+    //~| NOTE expected u32, found ()
+    //~| NOTE expected type `u32`
+    //~| NOTE found type `()`
+    x * 2; //~ NOTE consider removing this semicolon
 }
 
-fn baz(x: u64) -> u32 { //~ ERROR mismatched types
+fn baz(x: u64) -> u32 {
+    //~^ ERROR mismatched types
+    //~| NOTE expected u32, found ()
+    //~| NOTE expected type `u32`
+    //~| NOTE found type `()`
     x * 2;
 }
 
 fn main() {
     test!();
+    //~^ NOTE in this expansion of test!
+    //~| NOTE in this expansion of test!
+    //~| NOTE in this expansion of test!
 }

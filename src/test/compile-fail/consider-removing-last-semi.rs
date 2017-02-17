@@ -8,14 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn f() -> String {  //~ ERROR mismatched types
+fn f() -> String {
+    //~^ ERROR mismatched types
+    //~| NOTE expected struct `std::string::String`, found ()
+    //~| NOTE expected type `std::string::String`
+    //~| NOTE found type `()`
     0u8;
-    "bla".to_string();  //~ HELP consider removing this semicolon
+    "bla".to_string();  //~ NOTE consider removing this semicolon
 }
 
-fn g() -> String {  //~ ERROR mismatched types
+fn g() -> String {
+    //~^ ERROR mismatched types
+    //~| NOTE expected struct `std::string::String`, found ()
+    //~| NOTE expected type `std::string::String`
+    //~| NOTE found type `()`
     "this won't work".to_string();
-    "removeme".to_string(); //~ HELP consider removing this semicolon
+    "removeme".to_string(); //~ NOTE consider removing this semicolon
 }
 
 fn main() {}

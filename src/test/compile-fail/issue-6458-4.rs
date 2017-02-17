@@ -8,8 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn foo(b: bool) -> Result<bool,String> { //~ ERROR mismatched types
-    Err("bar".to_string()); //~ HELP consider removing this semicolon
+fn foo(b: bool) -> Result<bool,String> {
+    //~^ ERROR mismatched types
+    //~| NOTE expected enum `std::result::Result`, found ()
+    //~| NOTE expected type `std::result::Result<bool, std::string::String>`
+    //~| NOTE found type `()`
+    Err("bar".to_string()); //~ NOTE consider removing this semicolon
 }
 
 fn main() {
