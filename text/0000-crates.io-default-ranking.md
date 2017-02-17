@@ -231,20 +231,42 @@ self-report their maintenance intentions. The valid values would be along the
 lines of the following, and would influence the ranking in the order they're
 presented:
 
-- **Actively developed**, meaning new features are being added and bugs are
-  being fixed
-- **Passively maintained**, meaning there are no plans for new features, but
-  the maintainer intends to respond to issues that get filed
-- **As-is**, meaning the crate is feature complete, the maintainer does not
-  intend to continue working on it or providing support, but it works for the
-  purposes it was designed for
-- None, we don't display anything, since the maintainer has not chosen to
-  specify their intentions, potential crate users will need to investigate on
-  their own
-- **Experimental**, meaning the author wants to share it with the community but
-  is not intending to meet anyone's particular use case
-- **Looking for maintainer**, meaning the current maintainer would like to give
-  up the crate to someone else
+<dl>
+  <dt>Actively developed</dt>
+  <dd>
+    New features are being added and bugs are being fixed.
+  </dd>
+
+  <dt>Passively maintained</dt>
+  <dd>
+    There are no plans for new features, but the maintainer intends to respond
+    to issues that get filed.
+  </dd>
+
+  <dt>As-is</dt>
+  <dd>
+    The crate is feature complete, the maintainer does not intend to continue
+    working on it or providing support, but it works for the purposes it was
+    designed for.
+  </dd>
+
+  <dt><i>none</i></dt>
+  <dd>
+    We display nothing. Since the maintainer has not chosen to specify their
+    intentions, potential crate users will need to investigate on their own.
+  </dd>
+
+  <dt>Experimental</dt>
+  <dd>
+    The author wants to share it with the community but is not intending to meet
+    anyone's particular use case.
+  </dd>
+
+  <dt>Looking for maintainer</dt>
+  <dd>
+    The current maintainer would like to transfer the crate to someone else.
+  </dd>
+</dl>
 
 These would be displayed as badges on lists of crates.
 
