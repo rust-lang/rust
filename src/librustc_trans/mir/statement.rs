@@ -11,6 +11,7 @@
 use rustc::mir;
 
 use base;
+use asm;
 use common;
 use builder::Builder;
 
@@ -72,6 +73,19 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             }
             mir::StatementKind::StorageDead(ref lvalue) => {
                 self.trans_storage_liveness(bcx, lvalue, base::Lifetime::End)
+            }
+            mir::StatementKind::InlineAsm { ref asm, ref outputs, ref inputs } => {
+                let outputs = outputs.iter().map(|output| {
+                    let lvalue = self.trans_lvalue(&bcx, output);
+                    (lvalue.llval, lvalue.ty.to_ty(bcx.tcx()))
+                }).collect();
+
+                let input_vals = inputs.iter().map(|input| {
+                    self.trans_operand(&bcx, input).immediate()
+                }).collect();
+
+                asm::trans_inline_asm(&bcx, asm, outputs, input_vals);
+                bcx
             }
             mir::StatementKind::Nop => bcx,
         }
