@@ -27,7 +27,7 @@ note: but, the lifetime must be valid for the lifetime 'b as defined on the body
 17 | |     x.push(z);
 18 | | }
    | |_^ ...ending here
-note: ...so that expression is assignable (expected Ref<'b, i32>, found Ref<'_, i32>)
+note: ...so that expression is assignable (expected Ref<'b, _>, found Ref<'_, _>)
   --> $DIR/ex2c-push-inference-variable.rs:17:12
    |
 17 |     x.push(z);

@@ -9,6 +9,8 @@
 // except according to those terms.
 
 use Diagnostic;
+use DiagnosticStyledString;
+
 use Level;
 use Handler;
 use std::fmt::{self, Debug};
@@ -115,14 +117,14 @@ impl<'a> DiagnosticBuilder<'a> {
 
     forward!(pub fn note_expected_found(&mut self,
                                         label: &fmt::Display,
-                                        expected: &fmt::Display,
-                                        found: &fmt::Display)
+                                        expected: DiagnosticStyledString,
+                                        found: DiagnosticStyledString)
                                         -> &mut Self);
 
     forward!(pub fn note_expected_found_extra(&mut self,
                                               label: &fmt::Display,
-                                              expected: &fmt::Display,
-                                              found: &fmt::Display,
+                                              expected: DiagnosticStyledString,
+                                              found: DiagnosticStyledString,
                                               expected_extra: &fmt::Display,
                                               found_extra: &fmt::Display)
                                               -> &mut Self);
