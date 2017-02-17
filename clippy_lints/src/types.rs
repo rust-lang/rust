@@ -538,9 +538,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CastPass {
                             span_lint(cx,
                                       UNNECESSARY_CAST,
                                       expr.span,
-                                      &format!("casting to the same type is unnecessary (`{}` -> `{}`)", cast_from, cast_to));
+                                      &format!("casting to the same type is unnecessary (`{}` -> `{}`)",
+                                               cast_from, cast_to));
                         }
-                    }
+                    },
                 }
             }
             if cast_from.is_numeric() && cast_to.is_numeric() && !in_external_macro(cx, expr.span) {
