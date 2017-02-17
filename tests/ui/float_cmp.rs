@@ -92,5 +92,5 @@ fn main() {
     let a: *const f32 = xs.as_ptr();
     let b: *const f32 = xs.as_ptr();
 
-    assert!(a == b); // no errors
+    assert_eq!(a, b); // no errors
 }

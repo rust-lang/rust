@@ -15,6 +15,7 @@ pub const CMP_MIN: [&'static str; 3] = ["core", "cmp", "min"];
 pub const COW: [&'static str; 3] = ["collections", "borrow", "Cow"];
 pub const CSTRING_NEW: [&'static str; 5] = ["std", "ffi", "c_str", "CString", "new"];
 pub const DEBUG_FMT_METHOD: [&'static str; 4] = ["core", "fmt", "Debug", "fmt"];
+pub const DEBUG_TRAIT: [&'static str; 3] = ["core", "fmt", "Debug"];
 pub const DEFAULT_TRAIT: [&'static str; 3] = ["core", "default", "Default"];
 pub const DISPLAY_FMT_METHOD: [&'static str; 4] = ["core", "fmt", "Display", "fmt"];
 pub const DROP: [&'static str; 3] = ["core", "mem", "drop"];
