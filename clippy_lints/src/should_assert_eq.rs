@@ -2,7 +2,7 @@ use rustc::lint::*;
 use rustc::hir::*;
 use utils::{is_direct_expn_of, implements_trait, span_lint};
 
-/// **What it does:** Checks for `assert!(x == y)` which can be written better
+/// **What it does:** Checks for `assert!(x == y)` which can be better written
 /// as `assert_eq!(x, y)` if `x` and `y` implement `Debug` trait.
 ///
 /// **Why is this bad?** `assert_eq` provides better assertion failure reporting.
@@ -36,21 +36,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ShouldAssertEq {
             let ExprIf(ref cond, ..) = e.node,
             let ExprUnary(UnOp::UnNot, ref cond) = cond.node,
             let ExprBinary(ref binop, ref expr1, ref expr2) = cond.node,
+            binop.node == BinOp_::BiEq,
+            is_direct_expn_of(cx, e.span, "assert").is_some(),
+            let Some(debug_trait) = cx.tcx.lang_items.debug_trait(),
         ], {
-            if is_direct_expn_of(cx, e.span, "assert").is_none() {
-                return;
-            }
-
-            if binop.node != BinOp_::BiEq {
-                return;
-            }
-
-            let debug_trait = if let Some(t) = cx.tcx.lang_items.debug_trait() {
-                t
-            } else {
-                return;
-            };
-
             let ty1 = cx.tables.expr_ty(expr1);
             let ty2 = cx.tables.expr_ty(expr2);
 
