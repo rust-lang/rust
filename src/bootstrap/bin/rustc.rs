@@ -205,6 +205,11 @@ fn main() {
                 }
             }
         }
+
+        if target.contains("pc-windows-msvc") {
+            cmd.arg("-Z").arg("unstable-options");
+            cmd.arg("-C").arg("target-feature=+crt-static");
+        }
     }
 
     if verbose > 1 {
