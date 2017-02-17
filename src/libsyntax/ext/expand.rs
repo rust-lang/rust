@@ -282,8 +282,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         let mark = Mark::fresh();
                         derives.push(mark);
                         let path = ast::Path::from_ident(span, Ident::with_empty_ctxt(name));
-                        let item = match self.cx.resolver
-                                             .resolve_macro(Mark::root(), &path, false) {
+                        let item = match self.cx.resolver.resolve_macro(
+                                Mark::root(), &path, MacroKind::Derive, false) {
                             Ok(ext) => match *ext {
                                 SyntaxExtension::BuiltinDerive(..) => item_with_markers.clone(),
                                 _ => item.clone(),
@@ -369,12 +369,14 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                      -> Result<Option<Rc<SyntaxExtension>>, Determinacy> {
         let (attr, traits, item) = match invoc.kind {
             InvocationKind::Bang { ref mac, .. } => {
-                return self.cx.resolver.resolve_macro(scope, &mac.node.path, force).map(Some);
+                return self.cx.resolver.resolve_macro(scope, &mac.node.path,
+                                                      MacroKind::Bang, force).map(Some);
             }
             InvocationKind::Attr { attr: None, .. } => return Ok(None),
             InvocationKind::Derive { name, span, .. } => {
                 let path = ast::Path::from_ident(span, Ident::with_empty_ctxt(name));
-                return self.cx.resolver.resolve_derive_macro(scope, &path, force).map(Some);
+                return self.cx.resolver.resolve_macro(scope, &path,
+                                                      MacroKind::Derive, force).map(Some)
             }
             InvocationKind::Attr { ref mut attr, ref traits, ref mut item } => (attr, traits, item),
         };
@@ -385,7 +387,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         };
 
         let mut determined = true;
-        match self.cx.resolver.resolve_macro(scope, &path, force) {
+        match self.cx.resolver.resolve_macro(scope, &path, MacroKind::Attr, force) {
             Ok(ext) => return Ok(Some(ext)),
             Err(Determinacy::Undetermined) => determined = false,
             Err(Determinacy::Determined) if force => return Err(Determinacy::Determined),
@@ -394,7 +396,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
         for &(name, span) in traits {
             let path = ast::Path::from_ident(span, Ident::with_empty_ctxt(name));
-            match self.cx.resolver.resolve_macro(scope, &path, force) {
+            match self.cx.resolver.resolve_macro(scope, &path, MacroKind::Derive, force) {
                 Ok(ext) => if let SyntaxExtension::ProcMacroDerive(_, ref inert_attrs) = *ext {
                     if inert_attrs.contains(&attr_name) {
                         // FIXME(jseyfried) Avoid `mem::replace` here.

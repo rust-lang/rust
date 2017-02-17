@@ -8,8 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[derive(FromPrimitive)] //~ ERROR cannot find derive macro `FromPrimitive` in this scope
-enum Foo {}
+// force-host
+// no-prefer-dynamic
 
-fn main() {}
+#![crate_type = "proc-macro"]
 
+extern crate proc_macro;
+
+use proc_macro::TokenStream;
+
+#[proc_macro_derive(Clona)]
+pub fn derive_clonea(input: TokenStream) -> TokenStream {
+    "".parse().unwrap()
+}

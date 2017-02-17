@@ -24,6 +24,7 @@ use syntax::attr;
 use syntax::errors::DiagnosticBuilder;
 use syntax::ext::base::{self, Determinacy, MultiModifier, MultiDecorator};
 use syntax::ext::base::{NormalTT, Resolver as SyntaxResolver, SyntaxExtension};
+use syntax::ext::base::MacroKind;
 use syntax::ext::expand::{Expansion, mark_tts};
 use syntax::ext::hygiene::Mark;
 use syntax::ext::tt::macro_rules;
@@ -236,8 +237,8 @@ impl<'a> base::Resolver for Resolver<'a> {
         None
     }
 
-    fn resolve_macro(&mut self, scope: Mark, path: &ast::Path, force: bool)
-                     -> Result<Rc<SyntaxExtension>, Determinacy> {
+    fn resolve_macro(&mut self, scope: Mark, path: &ast::Path, kind: MacroKind,
+                     force: bool) -> Result<Rc<SyntaxExtension>, Determinacy> {
         let ast::Path { ref segments, span } = *path;
         if segments.iter().any(|segment| segment.parameters.is_some()) {
             let kind =
@@ -256,6 +257,7 @@ impl<'a> base::Resolver for Resolver<'a> {
                 let msg = "non-ident macro paths are experimental";
                 let feature = "use_extern_macros";
                 emit_feature_err(&self.session.parse_sess, feature, span, GateIssue::Language, msg);
+                self.found_unresolved_macro = true;
                 return Err(Determinacy::Determined);
             }
 
@@ -266,7 +268,10 @@ impl<'a> base::Resolver for Resolver<'a> {
                 },
                 PathResult::Module(..) => unreachable!(),
                 PathResult::Indeterminate if !force => return Err(Determinacy::Undetermined),
-                _ => Err(Determinacy::Determined),
+                _ => {
+                    self.found_unresolved_macro = true;
+                    Err(Determinacy::Determined)
+                },
             };
             self.current_module.macro_resolutions.borrow_mut()
                 .push((path.into_boxed_slice(), span));
@@ -279,40 +284,19 @@ impl<'a> base::Resolver for Resolver<'a> {
             Some(MacroBinding::Modern(binding)) => Ok(binding.get_macro(self)),
             None => match self.resolve_lexical_macro_path_segment(path[0], MacroNS, None) {
                 Ok(binding) => Ok(binding.get_macro(self)),
-                Err(Determinacy::Undetermined) if !force => return Err(Determinacy::Undetermined),
-                _ => {
-                    let msg = format!("macro undefined: `{}`", name);
-                    let mut err = self.session.struct_span_err(span, &msg);
-                    self.suggest_macro_name(&name.as_str(), &mut err);
-                    err.emit();
-                    return Err(Determinacy::Determined);
-                },
+                Err(Determinacy::Undetermined) if !force =>
+                    return Err(Determinacy::Undetermined),
+                Err(_) => {
+                    self.found_unresolved_macro = true;
+                    Err(Determinacy::Determined)
+                }
             },
         };
 
-        if self.use_extern_macros {
-            self.current_module.legacy_macro_resolutions.borrow_mut().push((scope, path[0], span));
-        }
-        result
-    }
+        self.current_module.legacy_macro_resolutions.borrow_mut()
+            .push((scope, path[0], span, kind));
 
-    fn resolve_derive_macro(&mut self, scope: Mark, path: &ast::Path, force: bool)
-                            -> Result<Rc<SyntaxExtension>, Determinacy> {
-        let ast::Path { span, .. } = *path;
-        match self.resolve_macro(scope, path, false) {
-            Ok(ext) => match *ext {
-                SyntaxExtension::BuiltinDerive(..) |
-                SyntaxExtension::ProcMacroDerive(..) => Ok(ext),
-                _ => Err(Determinacy::Determined),
-            },
-            Err(Determinacy::Undetermined) if force => {
-                let msg = format!("cannot find derive macro `{}` in this scope", path);
-                let mut err = self.session.struct_span_err(span, &msg);
-                err.emit();
-                Err(Determinacy::Determined)
-            },
-            Err(err) => Err(err),
-        }
+        result
     }
 }
 
@@ -438,37 +422,74 @@ impl<'a> Resolver<'a> {
             }
         }
 
-        for &(mark, ident, span) in module.legacy_macro_resolutions.borrow().iter() {
+        for &(mark, ident, span, kind) in module.legacy_macro_resolutions.borrow().iter() {
             let legacy_scope = &self.invocations[&mark].legacy_scope;
             let legacy_resolution = self.resolve_legacy_scope(legacy_scope, ident.name, true);
             let resolution = self.resolve_lexical_macro_path_segment(ident, MacroNS, Some(span));
-            let (legacy_resolution, resolution) = match (legacy_resolution, resolution) {
-                (Some(legacy_resolution), Ok(resolution)) => (legacy_resolution, resolution),
+            match (legacy_resolution, resolution) {
+                (Some(legacy_resolution), Ok(resolution)) => {
+                    let (legacy_span, participle) = match legacy_resolution {
+                        MacroBinding::Modern(binding)
+                            if binding.def() == resolution.def() => continue,
+                        MacroBinding::Modern(binding) => (binding.span, "imported"),
+                        MacroBinding::Legacy(binding) => (binding.span, "defined"),
+                    };
+                    let msg1 = format!("`{}` could refer to the macro {} here", ident, participle);
+                    let msg2 = format!("`{}` could also refer to the macro imported here", ident);
+                    self.session.struct_span_err(span, &format!("`{}` is ambiguous", ident))
+                        .span_note(legacy_span, &msg1)
+                        .span_note(resolution.span, &msg2)
+                        .emit();
+                },
                 (Some(MacroBinding::Modern(binding)), Err(_)) => {
                     self.record_use(ident, MacroNS, binding, span);
                     self.err_if_macro_use_proc_macro(ident.name, span, binding);
-                    continue
                 },
-                _ => continue,
+                (None, Err(_)) => {
+                    let msg = match kind {
+                        MacroKind::Bang =>
+                            format!("cannot find macro `{}!` in this scope", ident),
+                        MacroKind::Attr =>
+                            format!("cannot find attribute macro `{}` in this scope", ident),
+                        MacroKind::Derive =>
+                            format!("cannot find derive macro `{}` in this scope", ident),
+                    };
+                    let mut err = self.session.struct_span_err(span, &msg);
+                    self.suggest_macro_name(&ident.name.as_str(), kind, &mut err);
+                    err.emit();
+                },
+                _ => {},
             };
-            let (legacy_span, participle) = match legacy_resolution {
-                MacroBinding::Modern(binding) if binding.def() == resolution.def() => continue,
-                MacroBinding::Modern(binding) => (binding.span, "imported"),
-                MacroBinding::Legacy(binding) => (binding.span, "defined"),
-            };
-            let msg1 = format!("`{}` could refer to the macro {} here", ident, participle);
-            let msg2 = format!("`{}` could also refer to the macro imported here", ident);
-            self.session.struct_span_err(span, &format!("`{}` is ambiguous", ident))
-                .span_note(legacy_span, &msg1)
-                .span_note(resolution.span, &msg2)
-                .emit();
         }
     }
 
-    fn suggest_macro_name(&mut self, name: &str, err: &mut DiagnosticBuilder<'a>) {
-        if let Some(suggestion) = find_best_match_for_name(self.macro_names.iter(), name, None) {
+    fn suggest_macro_name(&mut self, name: &str, kind: MacroKind,
+                          err: &mut DiagnosticBuilder<'a>) {
+        let suggestion = match kind {
+            MacroKind::Bang =>
+                find_best_match_for_name(self.macro_names.iter(), name, None),
+            MacroKind::Attr |
+            MacroKind::Derive => {
+                // Find a suggestion from the legacy namespace.
+                // FIXME: get_macro needs an &mut Resolver, can we do it without cloning?
+                let builtin_macros = self.builtin_macros.clone();
+                let names = builtin_macros.iter().filter_map(|(name, binding)| {
+                    if binding.get_macro(self).kind() == kind {
+                        Some(name)
+                    } else {
+                        None
+                    }
+                });
+                find_best_match_for_name(names, name, None)
+            }
+        };
+        if let Some(suggestion) = suggestion {
             if suggestion != name {
-                err.help(&format!("did you mean `{}!`?", suggestion));
+                if let MacroKind::Bang = kind {
+                    err.help(&format!("did you mean `{}!`?", suggestion));
+                } else {
+                    err.help(&format!("did you mean `{}`?", suggestion));
+                }
             } else {
                 err.help(&format!("have you added the `#[macro_use]` on the module/import?"));
             }

@@ -51,6 +51,7 @@ use syntax::ext::hygiene::{Mark, SyntaxContext};
 use syntax::ast::{self, Name, NodeId, Ident, SpannedIdent, FloatTy, IntTy, UintTy};
 use syntax::ext::base::SyntaxExtension;
 use syntax::ext::base::Determinacy::{Determined, Undetermined};
+use syntax::ext::base::MacroKind;
 use syntax::symbol::{Symbol, keywords};
 use syntax::util::lev_distance::find_best_match_for_name;
 
@@ -785,7 +786,7 @@ pub struct ModuleData<'a> {
     normal_ancestor_id: DefId,
 
     resolutions: RefCell<FxHashMap<(Ident, Namespace), &'a RefCell<NameResolution<'a>>>>,
-    legacy_macro_resolutions: RefCell<Vec<(Mark, Ident, Span)>>,
+    legacy_macro_resolutions: RefCell<Vec<(Mark, Ident, Span, MacroKind)>>,
     macro_resolutions: RefCell<Vec<(Box<[Ident]>, Span)>>,
 
     // Macro invocations that can expand into items in this module.
@@ -1117,6 +1118,7 @@ pub struct Resolver<'a> {
     macro_map: FxHashMap<DefId, Rc<SyntaxExtension>>,
     macro_exports: Vec<Export>,
     pub whitelisted_legacy_custom_derives: Vec<Name>,
+    pub found_unresolved_macro: bool,
 
     // Maps the `Mark` of an expansion to its containing module or block.
     invocations: FxHashMap<Mark, &'a InvocationData<'a>>,
@@ -1315,6 +1317,7 @@ impl<'a> Resolver<'a> {
             warned_proc_macros: FxHashSet(),
             potentially_unused_imports: Vec::new(),
             struct_constructors: DefIdMap(),
+            found_unresolved_macro: false,
         }
     }
 
