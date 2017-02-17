@@ -81,8 +81,8 @@ impl Diagnostic {
 
     pub fn note_expected_found(&mut self,
                                label: &fmt::Display,
-                               expected: &fmt::Display,
-                               found: &fmt::Display)
+                               expected: &[(String, bool)],
+                               found: &[(String, bool)])
                                -> &mut Self
     {
         self.note_expected_found_extra(label, expected, found, &"", &"")
@@ -90,21 +90,23 @@ impl Diagnostic {
 
     pub fn note_expected_found_extra(&mut self,
                                      label: &fmt::Display,
-                                     expected: &fmt::Display,
-                                     found: &fmt::Display,
+                                     expected: &[(String, bool)],
+                                     found: &[(String, bool)],
                                      expected_extra: &fmt::Display,
                                      found_extra: &fmt::Display)
                                      -> &mut Self
     {
+        let mut msg: Vec<_> = vec![(format!("expected {} `", label), Style::NoStyle)];
+        msg.extend(expected.iter()
+                   .map(|x| (x.0.to_owned(), if x.1 { Style::Highlight } else { Style::NoStyle })));
+        msg.push((format!("`{}\n", expected_extra), Style::NoStyle));
+        msg.push((format!("   found {} `", label), Style::NoStyle));
+        msg.extend(found.iter()
+                   .map(|x| (x.0.to_owned(), if x.1 { Style::Highlight } else { Style::NoStyle })));
+        msg.push((format!("`{}", found_extra), Style::NoStyle));
+
         // For now, just attach these as notes
-        self.highlighted_note(vec![
-            (format!("expected {} `", label), Style::NoStyle),
-            (format!("{}", expected), Style::Highlight),
-            (format!("`{}\n", expected_extra), Style::NoStyle),
-            (format!("   found {} `", label), Style::NoStyle),
-            (format!("{}", found), Style::Highlight),
-            (format!("`{}", found_extra), Style::NoStyle),
-        ]);
+        self.highlighted_note(msg);
         self
     }
 

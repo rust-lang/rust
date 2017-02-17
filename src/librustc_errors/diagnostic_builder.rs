@@ -115,14 +115,14 @@ impl<'a> DiagnosticBuilder<'a> {
 
     forward!(pub fn note_expected_found(&mut self,
                                         label: &fmt::Display,
-                                        expected: &fmt::Display,
-                                        found: &fmt::Display)
+                                        expected: &[(String, bool)],
+                                        found: &[(String, bool)])
                                         -> &mut Self);
 
     forward!(pub fn note_expected_found_extra(&mut self,
                                               label: &fmt::Display,
-                                              expected: &fmt::Display,
-                                              found: &fmt::Display,
+                                              expected: &[(String, bool)],
+                                              found: &[(String, bool)],
                                               expected_extra: &fmt::Display,
                                               found_extra: &fmt::Display)
                                               -> &mut Self);

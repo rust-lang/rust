@@ -555,6 +555,155 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
+    fn highlight_outer(&self,
+                       value: &mut Vec<(String, bool)>,
+                       other_value: &mut Vec<(String, bool)>,
+                       name: String,
+                       sub: &ty::subst::Substs<'tcx>,
+                       pos: usize,
+                       other_ty: &ty::Ty<'tcx>) {
+        value.push((name, true));
+        let len = sub.len();
+        if len > 0 {
+            value.push(("<".to_string(), true));
+        }
+
+        let sts = sub.regions();
+        for (i, st) in sts.enumerate() {
+            value.push((format!("{}", st), false));
+
+            if len > 0 && i != len - 1 {
+                value.push((format!(", "), false));
+            }
+        }
+
+        let sts = sub.types();
+        for (i, st) in sts.enumerate() {
+            if i == pos {
+                let (v, o_v) = self.cmp(st, other_ty);
+                value.extend(v);
+                other_value.extend(o_v);
+            } else {
+                value.push((format!("{}", st), true));
+            }
+
+            if len > 0 && i != len - 1 {
+                value.push((format!(", "), true));
+            }
+        }
+        if len > 0 {
+            value.push((">".to_string(), true));
+        }
+    }
+
+
+    fn cmp(&self, t1: ty::Ty<'tcx>, t2: ty::Ty<'tcx>)
+        -> (Vec<(String, bool)>, Vec<(String, bool)>)
+    {
+        match (&t1.sty, &t2.sty) {
+            (&ty::TyAdt(def1, sub1), &ty::TyAdt(def2, sub2)) => {
+                let mut values: (Vec<(String, bool)>, Vec<(String, bool)>) = (vec![], vec![]);
+                let name1 = self.tcx.item_path_str(def1.did.clone());
+                let name2 = self.tcx.item_path_str(def2.did.clone());
+                if name1 == name2 {
+                    // Easy case, replace same types with `_` to shorten the output
+                    // and highlight only the differing types.
+                    values.0.push((name1.to_string(), false));
+                    values.1.push((name2.to_string(), false));
+
+                    let len = sub1.len();
+                    if len > 0 {
+                        values.0.push(("<".to_string(), false));
+                        values.1.push(("<".to_string(), false));
+                    }
+
+                    let sts1 = sub1.regions();
+                    let sts2 = sub2.regions();
+                    let x = sts1.zip(sts2);
+                    for (i, (st1, st2)) in x.enumerate() {
+                        values.0.push((format!("{}", st1), st1 != st2));
+                        values.1.push((format!("{}", st2), st1 != st2));
+
+                        if len > 0 && i != len - 1 {
+                            values.0.push((format!(", "), false));
+                            values.1.push((format!(", "), false));
+                        }
+                    }
+
+                    let sts1 = sub1.types();
+                    let sts2 = sub2.types();
+                    let x = sts1.zip(sts2);
+                    for (i, (st1, st2)) in x.enumerate() {
+                        if st1 == st2 {
+                            values.0.push(("_".to_string(), false));
+                            values.1.push(("_".to_string(), false));
+                        } else {
+                            let (x1, x2) = self.cmp(st1, st2);
+                            values.0.extend(x1);
+                            values.1.extend(x2);
+                        }
+                        if len > 0 && i != len - 1 {
+                            values.0.push((format!(", "), false));
+                            values.1.push((format!(", "), false));
+                        }
+                    }
+                    if len > 0 {
+                        values.0.push((">".to_string(), false));
+                        values.1.push((">".to_string(), false));
+                    }
+                    values
+                } else {
+                    // Check for simple composition
+                    for (i, st) in sub1.types().enumerate() {
+                        if st == t2 {
+                            self.highlight_outer(&mut values.0, &mut values.1, name1, sub1, i, &t2);
+                            return values;
+                        }
+                        if let &ty::TyAdt(def, _) = &st.sty {
+                            let name = self.tcx.item_path_str(def.did.clone());
+                            if name == name2 {
+                                self.highlight_outer(&mut values.0,
+                                                     &mut values.1,
+                                                     name1,
+                                                     sub1,
+                                                     i,
+                                                     &t2);
+                                return values;
+                            }
+                        }
+                    }
+                    for (i, st) in sub2.types().enumerate() {
+                        if st == t1 {
+                            self.highlight_outer(&mut values.1, &mut values.0, name2, sub2, i, &t1);
+                            return values;
+                        }
+                        if let &ty::TyAdt(def, _) = &st.sty {
+                            let name = self.tcx.item_path_str(def.did.clone());
+                            if name == name1 {
+                                self.highlight_outer(&mut values.1,
+                                                     &mut values.0,
+                                                     name2,
+                                                     sub2,
+                                                     i,
+                                                     &t1);
+                                return values;
+                            }
+                        }
+                    }
+
+                    (vec![(format!("{}", t1), true)], vec![(format!("{}", t2), true)])
+                }
+            }
+            _ => {
+                if t1 == t2 {
+                    (vec![("_".to_string(), false)], vec![("_".to_string(), false)])
+                } else {
+                    (vec![(format!("{}", t1), true)], vec![(format!("{}", t2), true)])
+                }
+            }
+        }
+    }
+
     pub fn note_type_err(&self,
                          diag: &mut DiagnosticBuilder<'tcx>,
                          cause: &ObligationCause<'tcx>,
@@ -665,26 +814,64 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         diag
     }
 
-    /// Returns a string of the form "expected `{}`, found `{}`".
-    fn values_str(&self, values: &ValuePairs<'tcx>) -> Option<(String, String)> {
+    /// Returns two `Vec`s representing portions of a type with a flag on wether it should
+    /// be highlighted in the output.
+    ///
+    /// For given types `X<String, usize>` and `X<usize, usize>`, this method would return
+    ///
+    /// ```nocode
+    /// Some((vec![
+    ///     ("X", false),
+    ///     ("<", false),
+    ///     ("String", true),
+    ///     (",", false),
+    ///     ("_", false),
+    ///     (">", false)
+    /// ], vec![
+    ///     ("X", false),
+    ///     ("<", false),
+    ///     ("usize", true),
+    ///     (",", false),
+    ///     ("_", false),
+    ///     (">", false)
+    /// ]))
+    /// ```
+    fn values_str(&self, values: &ValuePairs<'tcx>)
+        -> Option<(Vec<(String, bool)>, Vec<(String, bool)>)>
+    {
         match *values {
-            infer::Types(ref exp_found) => self.expected_found_str(exp_found),
+            infer::Types(ref exp_found) => self.expected_found_str_ty(exp_found),
             infer::TraitRefs(ref exp_found) => self.expected_found_str(exp_found),
             infer::PolyTraitRefs(ref exp_found) => self.expected_found_str(exp_found),
         }
     }
 
-    fn expected_found_str<T: fmt::Display + TypeFoldable<'tcx>>(
+    fn expected_found_str_ty(
         &self,
-        exp_found: &ty::error::ExpectedFound<T>)
-        -> Option<(String, String)>
+        exp_found: &ty::error::ExpectedFound<ty::Ty<'tcx>>)
+        -> Option<(Vec<(String, bool)>, Vec<(String, bool)>)>
     {
         let exp_found = self.resolve_type_vars_if_possible(exp_found);
         if exp_found.references_error() {
             return None;
         }
 
-        Some((format!("{}", exp_found.expected), format!("{}", exp_found.found)))
+        Some(self.cmp(exp_found.expected, exp_found.found))
+    }
+
+
+    fn expected_found_str<T: fmt::Display + TypeFoldable<'tcx>>(
+        &self,
+        exp_found: &ty::error::ExpectedFound<T>)
+        -> Option<(Vec<(String, bool)>, Vec<(String, bool)>)>
+    {
+        let exp_found = self.resolve_type_vars_if_possible(exp_found);
+        if exp_found.references_error() {
+            return None;
+        }
+
+        Some((vec![(format!("{}", exp_found.expected), true)],
+              vec![(format!("{}", exp_found.found), true)]))
     }
 
     fn report_generic_bound_failure(&self,
@@ -1140,6 +1327,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         match *origin {
             infer::Subtype(ref trace) => {
                 if let Some((expected, found)) = self.values_str(&trace.values) {
+                    let expected = expected.iter().map(|x| x.0.to_owned()).collect::<String>();
+                    let found = found.iter().map(|x| x.0.to_owned()).collect::<String>();
                     // FIXME: do we want a "the" here?
                     err.span_note(
                         trace.cause.span,
