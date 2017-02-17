@@ -340,6 +340,9 @@ declare_features! (
 
     // `extern "x86-interrupt" fn()`
     (active, abi_x86_interrupt, "1.17.0", Some(40180)),
+
+    // Allows the `catch {...}` expression
+    (active, catch_expr, "1.17.0", Some(31436)),
 );
 
 declare_features! (
@@ -1287,6 +1290,9 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                         _ => {}
                     }
                 }
+            }
+            ast::ExprKind::Catch(_) => {
+                gate_feature_post!(&self, catch_expr, e.span, "`catch` expression is experimental");
             }
             _ => {}
         }
