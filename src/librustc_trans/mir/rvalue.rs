@@ -16,7 +16,6 @@ use rustc::mir::tcx::LvalueTy;
 use rustc::mir;
 use middle::lang_items::ExchangeMallocFnLangItem;
 
-use asm;
 use base;
 use builder::Builder;
 use callee::Callee;
@@ -153,20 +152,6 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         }
                     }
                 }
-                bcx
-            }
-
-            mir::Rvalue::InlineAsm { ref asm, ref outputs, ref inputs } => {
-                let outputs = outputs.iter().map(|output| {
-                    let lvalue = self.trans_lvalue(&bcx, output);
-                    (lvalue.llval, lvalue.ty.to_ty(bcx.tcx()))
-                }).collect();
-
-                let input_vals = inputs.iter().map(|input| {
-                    self.trans_operand(&bcx, input).immediate()
-                }).collect();
-
-                asm::trans_inline_asm(&bcx, asm, outputs, input_vals);
                 bcx
             }
 
@@ -468,8 +453,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 (bcx, operand)
             }
             mir::Rvalue::Repeat(..) |
-            mir::Rvalue::Aggregate(..) |
-            mir::Rvalue::InlineAsm { .. } => {
+            mir::Rvalue::Aggregate(..) => {
                 bug!("cannot generate operand from rvalue {:?}", rvalue);
 
             }
@@ -669,8 +653,7 @@ pub fn rvalue_creates_operand(rvalue: &mir::Rvalue) -> bool {
         mir::Rvalue::Use(..) =>
             true,
         mir::Rvalue::Repeat(..) |
-        mir::Rvalue::Aggregate(..) |
-        mir::Rvalue::InlineAsm { .. } =>
+        mir::Rvalue::Aggregate(..) =>
             false,
     }
 
