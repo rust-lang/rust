@@ -20,6 +20,7 @@ matrix:
     - env: IMAGE=dist-armv7-aarch64-linux DEPLOY=1
     - env: IMAGE=dist-freebsd DEPLOY=1
     - env: IMAGE=dist-i586-gnu-i686-musl DEPLOY=1
+    - env: IMAGE=dist-fuchsia DEPLOY=1
     - env: IMAGE=dist-mips-linux DEPLOY=1
     - env: IMAGE=dist-mips64-linux DEPLOY=1
     - env: IMAGE=dist-powerpc-linux DEPLOY=1
