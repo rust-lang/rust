@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,11 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-enum foo { alpha, beta(isize) }
+enum T {
+    T1(i32, i32),
+    T2(i32, i32),
+    T3(i32),
+    T4(i32),
+}
 
 fn main() {
-    match foo::alpha {
-      foo::alpha | foo::beta(i) => {}
-      //~^ ERROR variable `i` is not bound in all patterns
+    match T::T1(123, 456) {
+        T::T1(a, d) | T::T2(d, b) | T::T3(c) | T::T4(a) => { println!("{:?}", a); }
     }
 }
