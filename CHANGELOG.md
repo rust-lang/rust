@@ -423,6 +423,7 @@ All notable changes to this project will be documented in this file.
 [`shadow_same`]: https://github.com/Manishearth/rust-clippy/wiki#shadow_same
 [`shadow_unrelated`]: https://github.com/Manishearth/rust-clippy/wiki#shadow_unrelated
 [`short_circuit_statement`]: https://github.com/Manishearth/rust-clippy/wiki#short_circuit_statement
+[`should_assert_eq`]: https://github.com/Manishearth/rust-clippy/wiki#should_assert_eq
 [`should_implement_trait`]: https://github.com/Manishearth/rust-clippy/wiki#should_implement_trait
 [`similar_names`]: https://github.com/Manishearth/rust-clippy/wiki#similar_names
 [`single_char_pattern`]: https://github.com/Manishearth/rust-clippy/wiki#single_char_pattern

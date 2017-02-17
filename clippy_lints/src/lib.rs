@@ -481,6 +481,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         returns::LET_AND_RETURN,
         returns::NEEDLESS_RETURN,
         serde::SERDE_API_MISUSE,
+        should_assert_eq::SHOULD_ASSERT_EQ,
         strings::STRING_LIT_AS_BYTES,
         swap::ALMOST_SWAPPED,
         swap::MANUAL_SWAP,
