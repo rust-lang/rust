@@ -539,7 +539,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CastPass {
                                       UNNECESSARY_CAST,
                                       expr.span,
                                       &format!("casting to the same type is unnecessary (`{}` -> `{}`)",
-                                               cast_from, cast_to));
+                                               cast_from,
+                                               cast_to));
                         }
                     },
                 }
