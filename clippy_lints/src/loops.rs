@@ -286,6 +286,23 @@ declare_lint! {
     "looping on a map using `iter` when `keys` or `values` would do"
 }
 
+/// **What it does:** Checks for loops that contain an unconditional `break`.
+///
+/// **Why is this bad?** This loop never loops, all it does is obfuscating the
+/// code.
+///
+/// **Known problems:** None.
+///
+/// **Example:**
+/// ```rust
+/// loop { ..; break; }
+/// ```
+declare_lint! {
+    pub NEVER_LOOP,
+    Warn,
+    "any loop with an unconditional `break` statement"
+}
+
 #[derive(Copy, Clone)]
 pub struct Pass;
 
@@ -303,7 +320,8 @@ impl LintPass for Pass {
                     EXPLICIT_COUNTER_LOOP,
                     EMPTY_LOOP,
                     WHILE_LET_ON_ITERATOR,
-                    FOR_KV_MAP)
+                    FOR_KV_MAP,
+                    NEVER_LOOP)
     }
 }
 
@@ -323,6 +341,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                           expr.span,
                           "empty `loop {}` detected. You may want to either use `panic!()` or add \
                            `std::thread::sleep(..);` to the loop body.");
+            }
+            if never_loop_block(block) {
+                span_lint(cx, NEVER_LOOP, expr.span, "this loop never actually loops");
             }
 
             // extract the expression from the first statement (if any) in a block
@@ -399,6 +420,51 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                 }
             }
         }
+    }
+}
+
+fn never_loop_block(block: &Block) -> bool {
+    block.stmts.iter().any(never_loop_stmt) || block.expr.as_ref().map_or(false, |e| never_loop_expr(e))
+}
+
+fn never_loop_stmt(stmt: &Stmt) -> bool {
+    match stmt.node {
+        StmtSemi(ref e, _) |
+        StmtExpr(ref e, _) => never_loop_expr(e),
+        StmtDecl(ref d, _) => never_loop_decl(d),
+    }
+}
+
+fn never_loop_decl(decl: &Decl) -> bool {
+    if let DeclLocal(ref local) = decl.node {
+        local.init.as_ref().map_or(false, |e| never_loop_expr(e))
+    } else {
+        false
+    }
+}
+
+fn never_loop_expr(expr: &Expr) -> bool {
+    match expr.node {
+        ExprBreak(..) | ExprRet(..) => true,
+        ExprBox(ref e) |
+        ExprUnary(_, ref e) |
+        ExprCast(ref e, _) |
+        ExprType(ref e, _) |
+        ExprField(ref e, _) |
+        ExprTupField(ref e, _) |
+        ExprRepeat(ref e, _) |
+        ExprAddrOf(_, ref e) => never_loop_expr(e),
+        ExprBinary(_, ref e1, ref e2) |
+        ExprAssign(ref e1, ref e2) |
+        ExprAssignOp(_, ref e1, ref e2) |
+        ExprIndex(ref e1, ref e2) => never_loop_expr(e1) || never_loop_expr(e2),
+        ExprArray(ref es) |
+        ExprTup(ref es) |
+        ExprMethodCall(_, _, ref es) => es.iter().any(|e| never_loop_expr(e)),
+        ExprCall(ref e, ref es) => never_loop_expr(e) || es.iter().any(|e| never_loop_expr(e)),
+        ExprBlock(ref block) => never_loop_block(block),
+        ExprStruct(_, _, ref base) => base.as_ref().map_or(false, |e| never_loop_expr(e)),
+        _ => false,
     }
 }
 
