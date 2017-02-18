@@ -14,7 +14,7 @@
 
 //! Range syntax.
 
-use core::ops::{RangeFull, Range, RangeTo, RangeFrom, RangeInclusive};
+use core::ops::{RangeFull, Range, RangeTo, RangeFrom, RangeInclusive, RangeToInclusive};
 use Bound::{self, Excluded, Included, Unbounded};
 
 /// **RangeArgument** is implemented by Rust's built-in range types, produced
@@ -118,6 +118,16 @@ impl<T> RangeArgument<T> for RangeInclusive<T> {
             RangeInclusive::Empty{ ref at }            => Excluded(at),
             RangeInclusive::NonEmpty { ref end, .. }   => Included(end),
         }
+    }
+}
+
+#[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
+impl<T> RangeArgument<T> for RangeToInclusive<T> {
+    fn start(&self) -> Bound<&T> {
+        Unbounded
+    }
+    fn end(&self) -> Bound<&T> {
+        Included(&self.end)
     }
 }
 

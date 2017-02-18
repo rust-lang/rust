@@ -200,6 +200,8 @@ fn test_range_inclusive() {
     check(map.range(0...size - 1), map.range(..size));
     check(map.range(-1...-1), vec![]);
     check(map.range(-1...size), map.range(..));
+    check(map.range(...size), map.range(..));
+    check(map.range(...200), map.range(..201));
     check(map.range(5...8), vec![(&5, &5), (&6, &6), (&7, &7), (&8, &8)]);
     check(map.range(-1...0), vec![(&0, &0)]);
     check(map.range(-1...2), vec![(&0, &0), (&1, &1), (&2, &2)]);
