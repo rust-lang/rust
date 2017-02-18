@@ -777,6 +777,12 @@ pub enum StatementKind<'tcx> {
     /// End the current live range for the storage of the local.
     StorageDead(Lvalue<'tcx>),
 
+    InlineAsm {
+        asm: InlineAsm,
+        outputs: Vec<Lvalue<'tcx>>,
+        inputs: Vec<Operand<'tcx>>
+    },
+
     /// No-op. Useful for deleting instructions without affecting statement indices.
     Nop,
 }
@@ -790,7 +796,10 @@ impl<'tcx> Debug for Statement<'tcx> {
             StorageDead(ref lv) => write!(fmt, "StorageDead({:?})", lv),
             SetDiscriminant{lvalue: ref lv, variant_index: index} => {
                 write!(fmt, "discriminant({:?}) = {:?}", lv, index)
-            }
+            },
+            InlineAsm { ref asm, ref outputs, ref inputs } => {
+                write!(fmt, "asm!({:?} : {:?} : {:?})", asm, outputs, inputs)
+            },
             Nop => write!(fmt, "nop"),
         }
     }
@@ -1004,12 +1013,6 @@ pub enum Rvalue<'tcx> {
     /// that `Foo` has a destructor. These rvalues can be optimized
     /// away after type-checking and before lowering.
     Aggregate(AggregateKind<'tcx>, Vec<Operand<'tcx>>),
-
-    InlineAsm {
-        asm: InlineAsm,
-        outputs: Vec<Lvalue<'tcx>>,
-        inputs: Vec<Operand<'tcx>>
-    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
@@ -1111,10 +1114,6 @@ impl<'tcx> Debug for Rvalue<'tcx> {
             UnaryOp(ref op, ref a) => write!(fmt, "{:?}({:?})", op, a),
             Discriminant(ref lval) => write!(fmt, "discriminant({:?})", lval),
             Box(ref t) => write!(fmt, "Box({:?})", t),
-            InlineAsm { ref asm, ref outputs, ref inputs } => {
-                write!(fmt, "asm!({:?} : {:?} : {:?})", asm, outputs, inputs)
-            }
-
             Ref(_, borrow_kind, ref lv) => {
                 let kind_str = match borrow_kind {
                     BorrowKind::Shared => "",

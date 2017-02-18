@@ -117,6 +117,23 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 this.exit_scope(expr_span, extent, block, return_block);
                 this.cfg.start_new_block().unit()
             }
+            ExprKind::InlineAsm { asm, outputs, inputs } => {
+                let outputs = outputs.into_iter().map(|output| {
+                    unpack!(block = this.as_lvalue(block, output))
+                }).collect();
+                let inputs = inputs.into_iter().map(|input| {
+                    unpack!(block = this.as_operand(block, input))
+                }).collect();
+                this.cfg.push(block, Statement {
+                    source_info: source_info,
+                    kind: StatementKind::InlineAsm {
+                        asm: asm.clone(),
+                        outputs: outputs,
+                        inputs: inputs
+                    },
+                });
+                block.unit()
+            }
             _ => {
                 let expr_ty = expr.ty;
                 let temp = this.temp(expr.ty.clone());

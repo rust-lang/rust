@@ -128,6 +128,7 @@ impl<'a, 'tcx> mir_visit::Visitor<'tcx> for StatCollector<'a, 'tcx> {
             StatementKind::SetDiscriminant { .. } => "StatementKind::SetDiscriminant",
             StatementKind::StorageLive(..) => "StatementKind::StorageLive",
             StatementKind::StorageDead(..) => "StatementKind::StorageDead",
+            StatementKind::InlineAsm { .. } => "StatementKind::InlineAsm",
             StatementKind::Nop => "StatementKind::Nop",
         }, &statement.kind);
         self.super_statement(block, statement, location);
@@ -198,7 +199,6 @@ impl<'a, 'tcx> mir_visit::Visitor<'tcx> for StatCollector<'a, 'tcx> {
 
                 "Rvalue::Aggregate"
             }
-            Rvalue::InlineAsm { .. } => "Rvalue::InlineAsm",
         };
         self.record(rvalue_kind, rvalue);
         self.super_rvalue(rvalue, location);

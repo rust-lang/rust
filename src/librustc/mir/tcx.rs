@@ -207,7 +207,6 @@ impl<'tcx> Rvalue<'tcx> {
                     }
                 }
             }
-            Rvalue::InlineAsm { .. } => None
         }
     }
 }
