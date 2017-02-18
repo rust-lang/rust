@@ -51,7 +51,7 @@ macro_rules! quote_tree {
 fn delimit(delim: token::DelimToken, stream: TokenStream) -> TokenStream {
     TokenTree::Delimited(DUMMY_SP, Rc::new(Delimited {
         delim: delim,
-        tts: stream.trees().cloned().collect(),
+        tts: stream.into_trees().collect(),
     })).into()
 }
 
@@ -75,21 +75,21 @@ impl Quote for TokenStream {
             return quote!(::syntax::tokenstream::TokenStream::empty());
         }
 
-        struct Quote<'a>(tokenstream::Cursor<'a>);
+        struct Quote(tokenstream::Cursor);
 
-        impl<'a> Iterator for Quote<'a> {
+        impl Iterator for Quote {
             type Item = TokenStream;
 
             fn next(&mut self) -> Option<TokenStream> {
                 let is_unquote = match self.0.peek() {
-                    Some(&TokenTree::Token(_, Token::Ident(ident))) if ident.name == "unquote" => {
+                    Some(TokenTree::Token(_, Token::Ident(ident))) if ident.name == "unquote" => {
                         self.0.next();
                         true
                     }
                     _ => false,
                 };
 
-                self.0.next().cloned().map(|tree| {
+                self.0.next().map(|tree| {
                     let quoted_tree = if is_unquote { tree.into() } else { tree.quote() };
                     quote!(::syntax::tokenstream::TokenStream::from((unquote quoted_tree)),)
                 })
@@ -104,7 +104,7 @@ impl Quote for TokenStream {
 impl Quote for Vec<TokenTree> {
     fn quote(&self) -> TokenStream {
         let stream = self.iter().cloned().collect::<TokenStream>();
-        quote!((quote stream).trees().cloned().collect::<::std::vec::Vec<_> >())
+        quote!((quote stream).into_trees().collect::<::std::vec::Vec<_> >())
     }
 }
 
