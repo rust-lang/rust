@@ -90,6 +90,7 @@ pub enum DepNode<D: Clone + Debug> {
     // things read/modify that MIR.
     Mir(D),
 
+    BorrowCheckKrate,
     BorrowCheck(D),
     RvalueCheck(D),
     Reachability,
@@ -176,6 +177,7 @@ impl<D: Clone + Debug> DepNode<D> {
 
         match *self {
             Krate => Some(Krate),
+            BorrowCheckKrate => Some(BorrowCheckKrate),
             CollectLanguageItems => Some(CollectLanguageItems),
             CheckStaticRecursion => Some(CheckStaticRecursion),
             ResolveLifetimes => Some(ResolveLifetimes),

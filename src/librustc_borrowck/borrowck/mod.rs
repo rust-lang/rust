@@ -45,7 +45,7 @@ use syntax_pos::{MultiSpan, Span};
 use errors::DiagnosticBuilder;
 
 use rustc::hir;
-use rustc::hir::intravisit::{self, Visitor, FnKind, NestedVisitorMap};
+use rustc::hir::intravisit::{self, Visitor};
 
 pub mod check_loans;
 
@@ -60,65 +60,14 @@ pub struct LoanDataFlowOperator;
 
 pub type LoanDataFlow<'a, 'tcx> = DataFlowContext<'a, 'tcx, LoanDataFlowOperator>;
 
-impl<'a, 'tcx> Visitor<'tcx> for BorrowckCtxt<'a, 'tcx> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        NestedVisitorMap::OnlyBodies(&self.tcx.hir)
-    }
-
-    fn visit_fn(&mut self, fk: FnKind<'tcx>, fd: &'tcx hir::FnDecl,
-                b: hir::BodyId, s: Span, id: ast::NodeId) {
-        match fk {
-            FnKind::ItemFn(..) |
-            FnKind::Method(..) => {
-                borrowck_fn(self.tcx, b);
-                intravisit::walk_fn(self, fk, fd, b, s, id);
-            }
-
-            FnKind::Closure(..) => {
-                borrowck_fn(self.tcx, b);
-                intravisit::walk_fn(self, fk, fd, b, s, id);
-            }
-        }
-    }
-
-    fn visit_item(&mut self, item: &'tcx hir::Item) {
-        // Gather loans for items. Note that we don't need
-        // to check loans for single expressions. The check
-        // loan step is intended for things that have a data
-        // flow dependent conditions.
-        match item.node {
-            hir::ItemStatic(.., ex) |
-            hir::ItemConst(_, ex) => {
-                borrowck_fn(self.tcx, ex);
-            }
-            _ => { }
-        }
-
-        intravisit::walk_item(self, item);
-    }
-
-    fn visit_trait_item(&mut self, ti: &'tcx hir::TraitItem) {
-        if let hir::TraitItemKind::Const(_, Some(expr)) = ti.node {
-            borrowck_fn(self.tcx, expr);
-        }
-        intravisit::walk_trait_item(self, ti);
-    }
-
-    fn visit_impl_item(&mut self, ii: &'tcx hir::ImplItem) {
-        if let hir::ImplItemKind::Const(_, expr) = ii.node {
-            borrowck_fn(self.tcx, expr);
-        }
-        intravisit::walk_impl_item(self, ii);
-    }
-}
-
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    let mut bccx = BorrowckCtxt {
-        tcx: tcx,
-        tables: None,
-    };
-
-    tcx.visit_all_item_likes_in_krate(DepNode::BorrowCheck, &mut bccx.as_deep_visitor());
+    tcx.dep_graph.with_task(DepNode::BorrowCheckKrate, || {
+        tcx.visit_all_bodies_in_krate(|body_owner_def_id, body_id| {
+            tcx.dep_graph.with_task(DepNode::BorrowCheck(body_owner_def_id), || {
+                borrowck_fn(tcx, body_id);
+            });
+        });
+    });
 }
 
 /// Collection of conclusions determined via borrow checker analyses.
