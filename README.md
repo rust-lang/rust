@@ -180,7 +180,7 @@ transparently:
 
 ## Lints
 
-There are 190 lints included in this crate:
+There are 191 lints included in this crate:
 
 name                                                                                                                   | default | triggers on
 -----------------------------------------------------------------------------------------------------------------------|---------|----------------------------------------------------------------------------------------------------------------------------------
@@ -329,6 +329,7 @@ name                                                                            
 [shadow_same](https://github.com/Manishearth/rust-clippy/wiki#shadow_same)                                             | allow   | rebinding a name to itself, e.g. `let mut x = &mut x`
 [shadow_unrelated](https://github.com/Manishearth/rust-clippy/wiki#shadow_unrelated)                                   | allow   | rebinding a name without even using the original value
 [short_circuit_statement](https://github.com/Manishearth/rust-clippy/wiki#short_circuit_statement)                     | warn    | using a short circuit boolean condition as a statement
+[should_assert_eq](https://github.com/Manishearth/rust-clippy/wiki#should_assert_eq)                                   | warn    | using `assert` macro for asserting equality
 [should_implement_trait](https://github.com/Manishearth/rust-clippy/wiki#should_implement_trait)                       | warn    | defining a method that should be implementing a std trait
 [similar_names](https://github.com/Manishearth/rust-clippy/wiki#similar_names)                                         | allow   | similarly named items and bindings
 [single_char_pattern](https://github.com/Manishearth/rust-clippy/wiki#single_char_pattern)                             | warn    | using a single-character str where a char could be used, e.g. `_.split("x")`

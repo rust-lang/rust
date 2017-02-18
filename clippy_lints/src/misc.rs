@@ -420,7 +420,7 @@ fn check_to_owned(cx: &LateContext, expr: &Expr, other: &Expr, left: bool, op: S
         None => return,
     };
 
-    if !implements_trait(cx, arg_ty, partial_eq_trait_id, vec![other_ty]) {
+    if !implements_trait(cx, arg_ty, partial_eq_trait_id, &[other_ty], None) {
         return;
     }
 

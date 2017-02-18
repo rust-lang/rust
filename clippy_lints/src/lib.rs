@@ -126,6 +126,7 @@ pub mod regex;
 pub mod returns;
 pub mod serde;
 pub mod shadow;
+pub mod should_assert_eq;
 pub mod strings;
 pub mod swap;
 pub mod temporary_assignment;
@@ -297,6 +298,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_early_lint_pass(box double_parens::DoubleParens);
     reg.register_late_lint_pass(box unused_io_amount::UnusedIoAmount);
     reg.register_late_lint_pass(box large_enum_variant::LargeEnumVariant::new(conf.enum_variant_size_threshold));
+    reg.register_late_lint_pass(box should_assert_eq::ShouldAssertEq);
 
     reg.register_lint_group("clippy_restrictions", vec![
         arithmetic::FLOAT_ARITHMETIC,
@@ -479,6 +481,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         returns::LET_AND_RETURN,
         returns::NEEDLESS_RETURN,
         serde::SERDE_API_MISUSE,
+        should_assert_eq::SHOULD_ASSERT_EQ,
         strings::STRING_LIT_AS_BYTES,
         swap::ALMOST_SWAPPED,
         swap::MANUAL_SWAP,
