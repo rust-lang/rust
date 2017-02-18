@@ -918,7 +918,19 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             (_, Def::SelfTy(Some(_), Some(impl_def_id))) => {
                 // `Self` in an impl of a trait - we have a concrete self type and a
                 // trait reference.
-                let trait_ref = tcx.impl_trait_ref(impl_def_id).unwrap();
+                // FIXME: Self type is not always computed when we are here because type parameter
+                // bounds may affect Self type and have to be converted before it.
+                let trait_ref = if impl_def_id.is_local() {
+                    tcx.impl_trait_refs.borrow().get(&impl_def_id).cloned().and_then(|x| x)
+                } else {
+                    tcx.impl_trait_ref(impl_def_id)
+                };
+                let trait_ref = if let Some(trait_ref) = trait_ref {
+                    trait_ref
+                } else {
+                    tcx.sess.span_err(span, "`Self` type is used before it's determined");
+                    return (tcx.types.err, Def::Err);
+                };
                 let trait_ref = if let Some(free_substs) = self.get_free_substs() {
                     trait_ref.subst(tcx, free_substs)
                 } else {
