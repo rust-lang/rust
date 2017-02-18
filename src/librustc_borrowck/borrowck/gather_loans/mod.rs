@@ -547,8 +547,14 @@ impl<'a, 'tcx> Visitor<'tcx> for StaticInitializerCtxt<'a, 'tcx> {
     }
 }
 
-pub fn gather_loans_in_static_initializer(bccx: &mut BorrowckCtxt, body: hir::BodyId) {
+pub fn gather_loans_in_static_initializer<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                                    body: hir::BodyId) {
     debug!("gather_loans_in_static_initializer(expr={:?})", body);
+
+    let bccx = &BorrowckCtxt {
+        tcx: tcx,
+        tables: None
+    };
 
     let mut sicx = StaticInitializerCtxt {
         bccx: bccx,
