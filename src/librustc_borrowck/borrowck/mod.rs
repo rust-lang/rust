@@ -104,33 +104,9 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let mut bccx = BorrowckCtxt {
         tcx: tcx,
         tables: None,
-        stats: BorrowStats {
-            loaned_paths_same: 0,
-            loaned_paths_imm: 0,
-            stable_paths: 0,
-            guaranteed_paths: 0
-        }
     };
 
     tcx.visit_all_item_likes_in_krate(DepNode::BorrowCheck, &mut bccx.as_deep_visitor());
-
-    if tcx.sess.borrowck_stats() {
-        println!("--- borrowck stats ---");
-        println!("paths requiring guarantees: {}",
-                 bccx.stats.guaranteed_paths);
-        println!("paths requiring loans     : {}",
-                 make_stat(&bccx, bccx.stats.loaned_paths_same));
-        println!("paths requiring imm loans : {}",
-                 make_stat(&bccx, bccx.stats.loaned_paths_imm));
-        println!("stable paths              : {}",
-                 make_stat(&bccx, bccx.stats.stable_paths));
-    }
-
-    fn make_stat(bccx: &BorrowckCtxt, stat: usize) -> String {
-        let total = bccx.stats.guaranteed_paths as f64;
-        let perc = if total == 0.0 { 0.0 } else { stat as f64 * 100.0 / total };
-        format!("{} ({:.0}%)", stat, perc)
-    }
 }
 
 fn borrowck_item<'a, 'tcx>(this: &mut BorrowckCtxt<'a, 'tcx>, item: &'tcx hir::Item) {
@@ -245,12 +221,6 @@ pub fn build_borrowck_dataflow_data_for_fn<'a, 'tcx>(
     let mut bccx = BorrowckCtxt {
         tcx: tcx,
         tables: None,
-        stats: BorrowStats {
-            loaned_paths_same: 0,
-            loaned_paths_imm: 0,
-            stable_paths: 0,
-            guaranteed_paths: 0
-        }
     };
 
     let dataflow_data = build_borrowck_dataflow_data(&mut bccx, cfg, body);
@@ -266,17 +236,6 @@ pub struct BorrowckCtxt<'a, 'tcx: 'a> {
     // tables for the current thing we are checking; set to
     // Some in `borrowck_fn` and cleared later
     tables: Option<&'a ty::TypeckTables<'tcx>>,
-
-    // Statistics:
-    stats: BorrowStats
-}
-
-#[derive(Clone)]
-struct BorrowStats {
-    loaned_paths_same: usize,
-    loaned_paths_imm: usize,
-    stable_paths: usize,
-    guaranteed_paths: usize
 }
 
 ///////////////////////////////////////////////////////////////////////////
