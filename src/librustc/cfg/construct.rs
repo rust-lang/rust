@@ -303,17 +303,17 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 self.add_unreachable_node()
             }
 
-            hir::ExprBreak(label, ref opt_expr) => {
+            hir::ExprBreak(destination, ref opt_expr) => {
                 let v = self.opt_expr(opt_expr, pred);
-                let loop_scope = self.find_scope(expr, label);
+                let loop_scope = self.find_scope(expr, destination);
                 let b = self.add_ast_node(expr.id, &[v]);
                 self.add_exiting_edge(expr, b,
                                       loop_scope, loop_scope.break_index);
                 self.add_unreachable_node()
             }
 
-            hir::ExprAgain(label) => {
-                let loop_scope = self.find_scope(expr, label);
+            hir::ExprAgain(destination) => {
+                let loop_scope = self.find_scope(expr, destination);
                 let a = self.add_ast_node(expr.id, &[pred]);
                 self.add_exiting_edge(expr, a,
                                       loop_scope, loop_scope.continue_index);
@@ -588,9 +588,9 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
 
     fn find_scope(&self,
                   expr: &hir::Expr,
-                  label: hir::Label) -> LoopScope {
+                  destination: hir::Destination) -> LoopScope {
 
-        match label.loop_id.into() {
+        match destination.loop_id.into() {
             Ok(loop_id) => {
                 for l in &self.loop_scopes {
                     if l.loop_id == loop_id {
