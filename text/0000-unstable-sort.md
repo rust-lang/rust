@@ -14,6 +14,13 @@ Add an unstable sort to libcore.
 At the moment, the only sort function we have in libstd is `slice::sort`. It is stable,
 allocates additional memory, and is unavailable in `#![no_std]` environments.
 
+Stable sorting, although a good default, is very rarely useful. Users much more often
+value higher performance, lower memory overhead, and compatibility with `#![no_std]`.
+
+Having a really performant, non-allocating sort function in libcore would cover these
+needs. At the moment, Rust is compromising on these highly regarded qualities for a
+systems programming language by not offering a built-in alternative.
+
 **Q: What is stability?**<br>
 A: A sort function is stable if it doesn't reorder equal elements. For example:
 ```rust
@@ -63,12 +70,8 @@ A: Generally, no. There is no fundamental property in computer science saying so
 but this has always been true in practice. Zero-allocation and instability go
 hand in hand.
 
-Stable sorting, although a good default, is very rarely useful. Users much more often
-value higher performance, lower memory overhead, and compatibility with `#![no_std]`.
-
-Having a really performant, non-allocating sort function in libcore would cover these
-needs. At the moment, Rust is compromising on these highly regarded qualities for a
-systems programming language by not offering a built-in alternative.
+# Detailed design
+[design]: #detailed-design
 
 The API will consist of three functions that mirror the current sort in libstd:
 
@@ -79,10 +82,47 @@ The API will consist of three functions that mirror the current sort in libstd:
 By contrast, C++ has functions `std::sort` and `std::stable_sort`, where the
 defaults are set up the other way around.
 
-# Detailed design
-[design]: #detailed-design
+### Interface
 
-Let's see what kinds of unstable sort algorithms other languages most commonly use:
+```rust
+pub trait SliceExt {
+    type Item;
+
+    // ...
+
+    fn sort_unstable(&mut self)
+        where Self::Item: Ord;
+
+    fn sort_unstable_by<F>(&mut self, compare: F)
+        where F: FnMut(&Self::Item, &Self::Item) -> Ordering;
+  
+    fn sort_unstable_by_key<B, F>(&mut self, mut f: F)
+        where F: FnMut(&Self::Item) -> B,
+              B: Ord;
+}
+```
+
+### Examples
+
+```rust
+let mut v = [-5i32, 4, 1, -3, 2];
+
+v.sort_unstable();
+assert!(v == [-5, -3, 1, 2, 4]);
+
+v.sort_unstable_by(|a, b| b.cmp(a));
+assert!(v == [4, 2, 1, -3, -5]);
+
+v.sort_unstable_by_key(|k| k.abs());
+assert!(v == [1, 2, -3, 4, -5]);
+```
+
+### Implementation
+
+Proposed implementaton is available in the [pdqsort][stjepang-pdqsort] crate.
+
+**Q: Why choose this particular sort algorithm?**<br> 
+A: First, let's see what unstable sort algorithms other languages use:
 
 * C: quicksort
 * C++: introsort
@@ -103,53 +143,13 @@ quicksort. It is an improvement of quicksort that chooses two pivots for finer
 grained partitioning, offering better performance in practice.
 
 A very interesting improvement of introsort is [pattern-defeating quicksort][orlp-pdqsort],
-offering substantially better performance in common cases. One of the key
-tricks pdqsort uses is block partitioning described in paper [BlockQuicksort][blockquicksort].
+which is substantially faster in common cases. One of the key tricks pdqsort
+uses is block partitioning described in the [BlockQuicksort][blockquicksort] paper.
 This algorithm still hasn't been built into in any programming language's
 standard library, but there are plans to include it into some C++ implementations.
 
-Block partitioning is incompatible with dual-pivot method, but offers much
-larger gains in performance. For all these reasons, unstable sort in libcore
-will be based on pdqsort. Proposed implementaton is available in
-[pdqsort][stjepang-pdqsort] crate.
-
-**Interface**
-
-```rust
-pub trait SliceExt {
-    type Item;
-
-    // ...
-
-    fn sort_unstable(&mut self)
-        where Self::Item: Ord;
-
-    fn sort_unstable_by<F>(&mut self, compare: F)
-        where F: FnMut(&Self::Item, &Self::Item) -> Ordering;
-  
-    fn sort_unstable_by_key<B, F>(&mut self, mut f: F)
-        where F: FnMut(&Self::Item) -> B,
-              B: Ord;
-}
-```
-
-**Examples**
-
-```rust
-let mut v = [-5i32, 4, 1, -3, 2];
-
-v.sort_unstable();
-assert!(v == [-5, -3, 1, 2, 4]);
-
-v.sort_unstable_by(|a, b| b.cmp(a));
-assert!(v == [4, 2, 1, -3, -5]);
-
-v.sort_unstable_by_key(|k| k.abs());
-assert!(v == [1, 2, -3, 4, -5]);
-```
-
-In most cases it's sufficient to append `_unstable` to `sort` and
-instantly benefit from higher performance and lower memory use.
+Among all these, pdqsort is the clear winner. Some benchmarks are available
+[here](https://github.com/stjepang/pdqsort#a-simple-benchmark).
 
 **Q: Is `slice::sort` ever faster than pdqsort?**<br>
 A: Yes, there are a few cases where it is faster. For example, if the slice
