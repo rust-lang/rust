@@ -10,7 +10,7 @@
 
 #![allow(unused_variables)]
 #![deny(dead_code)]
-#![feature(main, start)]
+#![feature(start)]
 
 struct Foo;
 
@@ -31,9 +31,6 @@ fn live_fn() {}
 
 fn dead_fn() {} //~ ERROR: function is never used
 
-#[main]
-fn dead_fn2() {} //~ ERROR: function is never used
-
 fn used_fn() {}
 
 #[start]
@@ -47,5 +44,4 @@ fn start(_: isize, _: *const *const u8) -> isize {
 // this is not main
 fn main() { //~ ERROR: function is never used
     dead_fn();
-    dead_fn2();
 }
