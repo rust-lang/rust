@@ -2217,7 +2217,7 @@ fn assoc_const(w: &mut fmt::Formatter,
                ty: &clean::Type,
                default: Option<&String>,
                link: AssocItemLink) -> fmt::Result {
-    write!(w, "const <a href='{}' class='constant'>{}</a>",
+    write!(w, "const <a href='{}' class='constant'><b>{}</b></a>",
            naive_assoc_href(it, link),
            it.name.as_ref().unwrap())?;
 

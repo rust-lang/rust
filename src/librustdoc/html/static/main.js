@@ -979,7 +979,7 @@
             .html("[<span class='inner'></span>]");
         toggle.children(".inner").text(labelForToggleButton(false));
 
-        $(".method").each(function() {
+        $(".method, .impl-items > .associatedconstant").each(function() {
             if ($(this).next().is(".docblock") ||
                 ($(this).next().is(".stability") && $(this).next().next().is(".docblock"))) {
                     $(this).children().last().after(toggle.clone());
