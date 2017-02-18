@@ -70,11 +70,13 @@ impl<'a, 'tcx> Visitor<'tcx> for BorrowckCtxt<'a, 'tcx> {
         match fk {
             FnKind::ItemFn(..) |
             FnKind::Method(..) => {
-                borrowck_fn(self, fk, fd, b, s, id, fk.attrs())
+                borrowck_fn(self, b);
+                intravisit::walk_fn(self, fk, fd, b, s, id);
             }
 
             FnKind::Closure(..) => {
-                borrowck_fn(self, fk, fd, b, s, id, fk.attrs());
+                borrowck_fn(self, b);
+                intravisit::walk_fn(self, fk, fd, b, s, id);
             }
         }
     }
@@ -154,24 +156,20 @@ pub struct AnalysisData<'a, 'tcx: 'a> {
     pub move_data: move_data::FlowedMoveData<'a, 'tcx>,
 }
 
-fn borrowck_fn<'a, 'tcx>(this: &mut BorrowckCtxt<'a, 'tcx>,
-                         fk: FnKind<'tcx>,
-                         decl: &'tcx hir::FnDecl,
-                         body_id: hir::BodyId,
-                         sp: Span,
-                         id: ast::NodeId,
-                         attributes: &[ast::Attribute]) {
-    debug!("borrowck_fn(id={})", id);
+fn borrowck_fn<'a, 'tcx>(this: &mut BorrowckCtxt<'a, 'tcx>, body_id: hir::BodyId) {
+    debug!("borrowck_fn(body_id={:?})", body_id);
 
     assert!(this.tables.is_none());
-    let owner_def_id = this.tcx.hir.local_def_id(this.tcx.hir.body_owner(body_id));
+    let owner_id = this.tcx.hir.body_owner(body_id);
+    let owner_def_id = this.tcx.hir.local_def_id(owner_id);
+    let attributes = this.tcx.get_attrs(owner_def_id);
     let tables = this.tcx.item_tables(owner_def_id);
     this.tables = Some(tables);
 
     let body = this.tcx.hir.body(body_id);
 
-    if attributes.iter().any(|item| item.check_name("rustc_mir_borrowck")) {
-        mir::borrowck_mir(this, id, attributes);
+    if this.tcx.has_attr(owner_def_id, "rustc_mir_borrowck") {
+        mir::borrowck_mir(this, owner_id, &attributes);
     }
 
     let cfg = cfg::CFG::new(this.tcx, &body.value);
@@ -182,17 +180,14 @@ fn borrowck_fn<'a, 'tcx>(this: &mut BorrowckCtxt<'a, 'tcx>,
 
     move_data::fragments::instrument_move_fragments(&flowed_moves.move_data,
                                                     this.tcx,
-                                                    sp,
-                                                    id);
+                                                    owner_id);
     move_data::fragments::build_unfragmented_map(this,
                                                  &flowed_moves.move_data,
-                                                 id);
+                                                 owner_id);
 
     check_loans::check_loans(this, &loan_dfcx, &flowed_moves, &all_loans[..], body);
 
     this.tables = None;
-
-    intravisit::walk_fn(this, fk, decl, body_id, sp, id);
 }
 
 fn build_borrowck_dataflow_data<'a, 'tcx>(this: &mut BorrowckCtxt<'a, 'tcx>,
