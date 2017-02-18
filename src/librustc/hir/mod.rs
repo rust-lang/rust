@@ -959,9 +959,9 @@ pub enum Expr_ {
     /// A referencing operation (`&a` or `&mut a`)
     ExprAddrOf(Mutability, P<Expr>),
     /// A `break`, with an optional label to break
-    ExprBreak(Label, Option<P<Expr>>),
+    ExprBreak(Destination, Option<P<Expr>>),
     /// A `continue`, with an optional label
-    ExprAgain(Label),
+    ExprAgain(Destination),
     /// A `return`, with an optional value to be returned
     ExprRet(Option<P<Expr>>),
 
@@ -1073,7 +1073,7 @@ impl From<Result<NodeId, LoopIdError>> for LoopIdResult {
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
-pub struct Label {
+pub struct Destination {
     // This is `Some(_)` iff there is an explicit user-specified `label
     pub ident: Option<Spanned<Ident>>,
 

@@ -326,9 +326,11 @@ impl<'a> LoweringContext<'a> {
         o_id.map(|sp_ident| respan(sp_ident.span, sp_ident.node.name))
     }
 
-    fn lower_label(&mut self, label: Option<(NodeId, Spanned<Ident>)>) -> hir::Label {
-        match label {
-            Some((id, label_ident)) => hir::Label {
+    fn lower_destination(&mut self, destination: Option<(NodeId, Spanned<Ident>)>)
+        -> hir::Destination
+    {
+        match destination {
+            Some((id, label_ident)) => hir::Destination {
                 ident: Some(label_ident),
                 loop_id: if let Def::Label(loop_id) = self.expect_full_def(id) {
                     hir::LoopIdResult::Ok(loop_id)
@@ -336,7 +338,7 @@ impl<'a> LoweringContext<'a> {
                     hir::LoopIdResult::Err(hir::LoopIdError::UnresolvedLabel)
                 }
             },
-            None => hir::Label {
+            None => hir::Destination {
                 ident: None,
                 loop_id: self.loop_scopes.last().map(|innermost_loop_id| Ok(*innermost_loop_id))
                             .unwrap_or(Err(hir::LoopIdError::OutsideLoopScope)).into()
@@ -1729,12 +1731,12 @@ impl<'a> LoweringContext<'a> {
                 }
                 ExprKind::Break(opt_ident, ref opt_expr) => {
                     let label_result = if self.is_in_loop_condition && opt_ident.is_none() {
-                        hir::Label {
+                        hir::Destination {
                             ident: opt_ident,
                             loop_id: Err(hir::LoopIdError::UnlabeledCfInWhileCondition).into(),
                         }
                     } else {
-                        self.lower_label(opt_ident.map(|ident| (e.id, ident)))
+                        self.lower_destination(opt_ident.map(|ident| (e.id, ident)))
                     };
                     hir::ExprBreak(
                             label_result,
@@ -1743,13 +1745,13 @@ impl<'a> LoweringContext<'a> {
                 ExprKind::Continue(opt_ident) =>
                     hir::ExprAgain(
                         if self.is_in_loop_condition && opt_ident.is_none() {
-                            hir::Label {
+                            hir::Destination {
                                 ident: opt_ident,
                                 loop_id: Err(
                                     hir::LoopIdError::UnlabeledCfInWhileCondition).into(),
                             }
                         } else {
-                            self.lower_label(opt_ident.map( | ident| (e.id, ident)))
+                            self.lower_destination(opt_ident.map( |ident| (e.id, ident)))
                         }),
                 ExprKind::Ret(ref e) => hir::ExprRet(e.as_ref().map(|x| P(self.lower_expr(x)))),
                 ExprKind::InlineAsm(ref asm) => {
@@ -2244,7 +2246,7 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn expr_break(&mut self, span: Span, attrs: ThinVec<Attribute>) -> P<hir::Expr> {
-        let expr_break = hir::ExprBreak(self.lower_label(None), None);
+        let expr_break = hir::ExprBreak(self.lower_destination(None), None);
         P(self.expr(span, expr_break, attrs))
     }
 
