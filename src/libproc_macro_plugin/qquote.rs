@@ -17,6 +17,7 @@ use syntax::symbol::Symbol;
 use syntax::tokenstream::{self, Delimited, TokenTree, TokenStream};
 use syntax_pos::DUMMY_SP;
 
+use std::iter;
 use std::rc::Rc;
 
 pub fn qquote<'cx>(stream: TokenStream) -> TokenStream {
@@ -75,14 +76,14 @@ impl Quote for TokenStream {
             return quote!(::syntax::tokenstream::TokenStream::empty());
         }
 
-        struct Quote(tokenstream::Cursor);
+        struct Quote(iter::Peekable<tokenstream::Cursor>);
 
         impl Iterator for Quote {
             type Item = TokenStream;
 
             fn next(&mut self) -> Option<TokenStream> {
                 let is_unquote = match self.0.peek() {
-                    Some(TokenTree::Token(_, Token::Ident(ident))) if ident.name == "unquote" => {
+                    Some(&TokenTree::Token(_, Token::Ident(ident))) if ident.name == "unquote" => {
                         self.0.next();
                         true
                     }
@@ -96,7 +97,7 @@ impl Quote for TokenStream {
             }
         }
 
-        let quoted = Quote(self.trees()).collect::<TokenStream>();
+        let quoted = Quote(self.trees().peekable()).collect::<TokenStream>();
         quote!([(unquote quoted)].iter().cloned().collect::<::syntax::tokenstream::TokenStream>())
     }
 }

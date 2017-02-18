@@ -299,7 +299,7 @@ impl From<TokenTree> for TokenStream {
 
 impl<T: Into<TokenStream>> iter::FromIterator<T> for TokenStream {
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
-        TokenStream::concat(iter.into_iter().map(Into::into))
+        TokenStream::concat(iter.into_iter().map(Into::into).collect::<Vec<_>>())
     }
 }
 
@@ -323,19 +323,16 @@ impl TokenStream {
         }
     }
 
-    pub fn concat<I: IntoIterator<Item = TokenStream>>(streams: I) -> TokenStream {
-        let mut streams = streams.into_iter().filter(|stream| !stream.is_empty());
-        let first_stream = match streams.next() {
-            Some(stream) => stream,
-            None => return TokenStream::empty(),
-        };
-        let second_stream = match streams.next() {
-            Some(stream) => stream,
-            None => return first_stream,
-        };
-        let mut vec = vec![first_stream, second_stream];
-        vec.extend(streams);
-        TokenStream { kind: TokenStreamKind::Stream(RcSlice::new(vec)) }
+    pub fn concat(mut streams: Vec<TokenStream>) -> TokenStream {
+        match streams.len() {
+            0 => TokenStream::empty(),
+            1 => TokenStream::from(streams.pop().unwrap()),
+            _ => TokenStream::concat_rc_slice(RcSlice::new(streams)),
+        }
+    }
+
+    fn concat_rc_slice(streams: RcSlice<TokenStream>) -> TokenStream {
+        TokenStream { kind: TokenStreamKind::Stream(streams) }
     }
 
     pub fn trees(&self) -> Cursor {
@@ -357,62 +354,67 @@ impl TokenStream {
     }
 }
 
-pub struct Cursor {
-    current_frame: CursorFrame,
-    stack: Vec<CursorFrame>,
+pub struct Cursor(CursorKind);
+
+enum CursorKind {
+    Empty,
+    Tree(TokenTree, bool /* consumed? */),
+    Stream(StreamCursor),
+}
+
+struct StreamCursor {
+    stream: RcSlice<TokenStream>,
+    index: usize,
+    stack: Vec<(RcSlice<TokenStream>, usize)>,
 }
 
 impl Iterator for Cursor {
     type Item = TokenTree;
 
     fn next(&mut self) -> Option<TokenTree> {
-        let tree = self.peek();
-        self.current_frame = self.stack.pop().unwrap_or(CursorFrame::Empty);
-        tree
-    }
-}
+        let cursor = match self.0 {
+            CursorKind::Stream(ref mut cursor) => cursor,
+            CursorKind::Tree(ref tree, ref mut consumed @ false) => {
+                *consumed = true;
+                return Some(tree.clone());
+            }
+            _ => return None,
+        };
 
-enum CursorFrame {
-    Empty,
-    Tree(TokenTree),
-    Stream(RcSlice<TokenStream>, usize),
-}
-
-impl CursorFrame {
-    fn new(stream: TokenStream) -> Self {
-        match stream.kind {
-            TokenStreamKind::Empty => CursorFrame::Empty,
-            TokenStreamKind::Tree(tree) => CursorFrame::Tree(tree),
-            TokenStreamKind::Stream(stream) => CursorFrame::Stream(stream, 0),
+        loop {
+            if cursor.index < cursor.stream.len() {
+                match cursor.stream[cursor.index].kind.clone() {
+                    TokenStreamKind::Tree(tree) => {
+                        cursor.index += 1;
+                        return Some(tree);
+                    }
+                    TokenStreamKind::Stream(stream) => {
+                        cursor.stack.push((mem::replace(&mut cursor.stream, stream),
+                                           mem::replace(&mut cursor.index, 0) + 1));
+                    }
+                    TokenStreamKind::Empty => {
+                        cursor.index += 1;
+                    }
+                }
+            } else if let Some((stream, index)) = cursor.stack.pop() {
+                cursor.stream = stream;
+                cursor.index = index;
+            } else {
+                return None;
+            }
         }
     }
 }
 
 impl Cursor {
     fn new(stream: TokenStream) -> Self {
-        Cursor {
-            current_frame: CursorFrame::new(stream),
-            stack: Vec::new(),
-        }
-    }
-
-    pub fn peek(&mut self) -> Option<TokenTree> {
-        while let CursorFrame::Stream(stream, index) =
-                mem::replace(&mut self.current_frame, CursorFrame::Empty) {
-            self.current_frame = if index == stream.len() {
-                self.stack.pop().unwrap_or(CursorFrame::Empty)
-            } else {
-                let frame = CursorFrame::new(stream[index].clone());
-                self.stack.push(CursorFrame::Stream(stream, index + 1));
-                frame
-            };
-        }
-
-        match self.current_frame {
-            CursorFrame::Empty => None,
-            CursorFrame::Tree(ref tree) => Some(tree.clone()),
-            CursorFrame::Stream(..) => unreachable!(),
-        }
+        Cursor(match stream.kind {
+            TokenStreamKind::Empty => CursorKind::Empty,
+            TokenStreamKind::Tree(tree) => CursorKind::Tree(tree, false),
+            TokenStreamKind::Stream(stream) => {
+                CursorKind::Stream(StreamCursor { stream: stream, index: 0, stack: Vec::new() })
+            }
+        })
     }
 }
 
