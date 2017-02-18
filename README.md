@@ -180,7 +180,7 @@ transparently:
 
 ## Lints
 
-There are 191 lints included in this crate:
+There are 192 lints included in this crate:
 
 name                                                                                                                   | default | triggers on
 -----------------------------------------------------------------------------------------------------------------------|---------|----------------------------------------------------------------------------------------------------------------------------------
@@ -289,6 +289,7 @@ name                                                                            
 [needless_lifetimes](https://github.com/Manishearth/rust-clippy/wiki#needless_lifetimes)                               | warn    | using explicit lifetimes for references in function arguments when elision rules would allow omitting them
 [needless_range_loop](https://github.com/Manishearth/rust-clippy/wiki#needless_range_loop)                             | warn    | for-looping over a range of indices where an iterator over items would do
 [needless_return](https://github.com/Manishearth/rust-clippy/wiki#needless_return)                                     | warn    | using a return statement like `return expr;` where an expression would suffice
+[needless_take_by_value](https://github.com/Manishearth/rust-clippy/wiki#needless_take_by_value)                       | warn    | taking arguments by value, but only using them by reference
 [needless_update](https://github.com/Manishearth/rust-clippy/wiki#needless_update)                                     | warn    | using `Foo { ..base }` when there are no missing fields
 [neg_multiply](https://github.com/Manishearth/rust-clippy/wiki#neg_multiply)                                           | warn    | multiplying integers with -1
 [never_loop](https://github.com/Manishearth/rust-clippy/wiki#never_loop)                                               | warn    | any loop with an unconditional `break` statement

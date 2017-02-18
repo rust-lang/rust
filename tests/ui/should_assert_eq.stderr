@@ -1,28 +1,28 @@
 error: use `assert_eq` for better reporting
-  --> $DIR/should_assert_eq.rs:13:5
+  --> $DIR/should_assert_eq.rs:14:5
    |
-13 |     assert!(1 == 2);
+14 |     assert!(1 == 2);
    |     ^^^^^^^^^^^^^^^^
    |
 note: lint level defined here
-  --> $DIR/should_assert_eq.rs:4:9
+  --> $DIR/should_assert_eq.rs:5:9
    |
-4  | #![deny(should_assert_eq)]
+5  | #![deny(should_assert_eq)]
    |         ^^^^^^^^^^^^^^^^
    = note: this error originates in a macro outside of the current crate
 
 error: use `assert_eq` for better reporting
-  --> $DIR/should_assert_eq.rs:14:5
+  --> $DIR/should_assert_eq.rs:15:5
    |
-14 |     assert!(Debug(1) == Debug(2));
+15 |     assert!(Debug(1) == Debug(2));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: this error originates in a macro outside of the current crate
 
 error: use `assert_eq` for better reporting
-  --> $DIR/should_assert_eq.rs:21:5
+  --> $DIR/should_assert_eq.rs:22:5
    |
-21 |     assert!(x == y);
+22 |     assert!(x == y);
    |     ^^^^^^^^^^^^^^^^
    |
    = note: this error originates in a macro outside of the current crate

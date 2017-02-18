@@ -1,7 +1,7 @@
 #![feature(plugin)]
 #![plugin(clippy)]
 #![deny(clippy)]
-#![allow(unused)]
+#![allow(unused, needless_take_by_value)]
 #![feature(associated_consts, associated_type_defaults)]
 
 type Alias = Vec<Vec<Box<(u32, u32, u32, u32)>>>; // no warning here

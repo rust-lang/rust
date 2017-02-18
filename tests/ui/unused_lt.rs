@@ -1,6 +1,6 @@
 #![feature(plugin)]
 #![plugin(clippy)]
-#![allow(unused, dead_code, needless_lifetimes)]
+#![allow(unused, dead_code, needless_lifetimes, needless_take_by_value)]
 #![deny(unused_lifetimes)]
 
 fn empty() {

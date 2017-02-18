@@ -1,6 +1,6 @@
 #![feature(plugin)]
 #![plugin(clippy)]
-#![allow(unused)]
+#![allow(unused, needless_take_by_value)]
 
 #![deny(map_entry)]
 

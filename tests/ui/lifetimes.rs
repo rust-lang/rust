@@ -2,7 +2,7 @@
 #![plugin(clippy)]
 
 #![deny(needless_lifetimes, unused_lifetimes)]
-#![allow(dead_code)]
+#![allow(dead_code, needless_take_by_value)]
 
 fn distinct_lifetimes<'a, 'b>(_x: &'a u8, _y: &'b u8, _z: u8) { }
 

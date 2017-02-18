@@ -4,7 +4,7 @@
 
 #![plugin(clippy)]
 #![deny(clippy)]
-#![allow(dead_code)]
+#![allow(dead_code, needless_take_by_value)]
 
 extern crate collections;
 use collections::linked_list::LinkedList;

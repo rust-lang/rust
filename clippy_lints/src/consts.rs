@@ -216,12 +216,12 @@ fn constant_negate(o: Constant) -> Option<Constant> {
     use self::Constant::*;
     match o {
         Int(value) => (-value).ok().map(Int),
-        Float(is, ty) => Some(Float(neg_float_str(is), ty)),
+        Float(is, ty) => Some(Float(neg_float_str(&is), ty)),
         _ => None,
     }
 }
 
-fn neg_float_str(s: String) -> String {
+fn neg_float_str(s: &str) -> String {
     if s.starts_with('-') {
         s[1..].to_owned()
     } else {
