@@ -70,31 +70,43 @@ impl<'a, 'tcx> Visitor<'tcx> for BorrowckCtxt<'a, 'tcx> {
         match fk {
             FnKind::ItemFn(..) |
             FnKind::Method(..) => {
-                borrowck_fn(self, b);
+                borrowck_fn(self.tcx, b);
                 intravisit::walk_fn(self, fk, fd, b, s, id);
             }
 
             FnKind::Closure(..) => {
-                borrowck_fn(self, b);
+                borrowck_fn(self.tcx, b);
                 intravisit::walk_fn(self, fk, fd, b, s, id);
             }
         }
     }
 
     fn visit_item(&mut self, item: &'tcx hir::Item) {
-        borrowck_item(self, item);
+        // Gather loans for items. Note that we don't need
+        // to check loans for single expressions. The check
+        // loan step is intended for things that have a data
+        // flow dependent conditions.
+        match item.node {
+            hir::ItemStatic(.., ex) |
+            hir::ItemConst(_, ex) => {
+                gather_loans::gather_loans_in_static_initializer(self.tcx, ex);
+            }
+            _ => { }
+        }
+
+        intravisit::walk_item(self, item);
     }
 
     fn visit_trait_item(&mut self, ti: &'tcx hir::TraitItem) {
         if let hir::TraitItemKind::Const(_, Some(expr)) = ti.node {
-            gather_loans::gather_loans_in_static_initializer(self, expr);
+            gather_loans::gather_loans_in_static_initializer(self.tcx, expr);
         }
         intravisit::walk_trait_item(self, ti);
     }
 
     fn visit_impl_item(&mut self, ii: &'tcx hir::ImplItem) {
         if let hir::ImplItemKind::Const(_, expr) = ii.node {
-            gather_loans::gather_loans_in_static_initializer(self, expr);
+            gather_loans::gather_loans_in_static_initializer(self.tcx, expr);
         }
         intravisit::walk_impl_item(self, ii);
     }
@@ -109,22 +121,6 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     tcx.visit_all_item_likes_in_krate(DepNode::BorrowCheck, &mut bccx.as_deep_visitor());
 }
 
-fn borrowck_item<'a, 'tcx>(this: &mut BorrowckCtxt<'a, 'tcx>, item: &'tcx hir::Item) {
-    // Gather loans for items. Note that we don't need
-    // to check loans for single expressions. The check
-    // loan step is intended for things that have a data
-    // flow dependent conditions.
-    match item.node {
-        hir::ItemStatic(.., ex) |
-        hir::ItemConst(_, ex) => {
-            gather_loans::gather_loans_in_static_initializer(this, ex);
-        }
-        _ => { }
-    }
-
-    intravisit::walk_item(this, item);
-}
-
 /// Collection of conclusions determined via borrow checker analyses.
 pub struct AnalysisData<'a, 'tcx: 'a> {
     pub all_loans: Vec<Loan<'tcx>>,
@@ -132,38 +128,39 @@ pub struct AnalysisData<'a, 'tcx: 'a> {
     pub move_data: move_data::FlowedMoveData<'a, 'tcx>,
 }
 
-fn borrowck_fn<'a, 'tcx>(this: &mut BorrowckCtxt<'a, 'tcx>, body_id: hir::BodyId) {
+fn borrowck_fn<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, body_id: hir::BodyId) {
     debug!("borrowck_fn(body_id={:?})", body_id);
 
-    assert!(this.tables.is_none());
-    let owner_id = this.tcx.hir.body_owner(body_id);
-    let owner_def_id = this.tcx.hir.local_def_id(owner_id);
-    let attributes = this.tcx.get_attrs(owner_def_id);
-    let tables = this.tcx.item_tables(owner_def_id);
-    this.tables = Some(tables);
+    let owner_id = tcx.hir.body_owner(body_id);
+    let owner_def_id = tcx.hir.local_def_id(owner_id);
+    let attributes = tcx.get_attrs(owner_def_id);
+    let tables = tcx.item_tables(owner_def_id);
 
-    let body = this.tcx.hir.body(body_id);
+    let mut bccx = &mut BorrowckCtxt {
+        tcx: tcx,
+        tables: Some(tables),
+    };
 
-    if this.tcx.has_attr(owner_def_id, "rustc_mir_borrowck") {
-        mir::borrowck_mir(this, owner_id, &attributes);
+    let body = bccx.tcx.hir.body(body_id);
+
+    if bccx.tcx.has_attr(owner_def_id, "rustc_mir_borrowck") {
+        mir::borrowck_mir(bccx, owner_id, &attributes);
     }
 
-    let cfg = cfg::CFG::new(this.tcx, &body.value);
+    let cfg = cfg::CFG::new(bccx.tcx, &body.value);
     let AnalysisData { all_loans,
                        loans: loan_dfcx,
                        move_data: flowed_moves } =
-        build_borrowck_dataflow_data(this, &cfg, body_id);
+        build_borrowck_dataflow_data(bccx, &cfg, body_id);
 
     move_data::fragments::instrument_move_fragments(&flowed_moves.move_data,
-                                                    this.tcx,
+                                                    bccx.tcx,
                                                     owner_id);
-    move_data::fragments::build_unfragmented_map(this,
+    move_data::fragments::build_unfragmented_map(bccx,
                                                  &flowed_moves.move_data,
                                                  owner_id);
 
-    check_loans::check_loans(this, &loan_dfcx, &flowed_moves, &all_loans[..], body);
-
-    this.tables = None;
+    check_loans::check_loans(bccx, &loan_dfcx, &flowed_moves, &all_loans[..], body);
 }
 
 fn build_borrowck_dataflow_data<'a, 'tcx>(this: &mut BorrowckCtxt<'a, 'tcx>,
