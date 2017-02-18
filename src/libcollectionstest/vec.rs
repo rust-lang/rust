@@ -528,6 +528,11 @@ fn test_drain_inclusive_range() {
     for _ in v.drain(0...3) {
     }
     assert_eq!(v, &["4".to_string(), "5".to_string()]);
+
+    let mut v: Vec<_> = (0...1).map(|x| x.to_string()).collect();
+    for _ in v.drain(...0) {
+    }
+    assert_eq!(v, &["1".to_string()]);
 }
 
 #[test]
