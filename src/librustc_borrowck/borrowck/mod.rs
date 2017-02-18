@@ -89,7 +89,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BorrowckCtxt<'a, 'tcx> {
         match item.node {
             hir::ItemStatic(.., ex) |
             hir::ItemConst(_, ex) => {
-                gather_loans::gather_loans_in_static_initializer(self.tcx, ex);
+                borrowck_fn(self.tcx, ex);
             }
             _ => { }
         }
@@ -99,14 +99,14 @@ impl<'a, 'tcx> Visitor<'tcx> for BorrowckCtxt<'a, 'tcx> {
 
     fn visit_trait_item(&mut self, ti: &'tcx hir::TraitItem) {
         if let hir::TraitItemKind::Const(_, Some(expr)) = ti.node {
-            gather_loans::gather_loans_in_static_initializer(self.tcx, expr);
+            borrowck_fn(self.tcx, expr);
         }
         intravisit::walk_trait_item(self, ti);
     }
 
     fn visit_impl_item(&mut self, ii: &'tcx hir::ImplItem) {
         if let hir::ImplItemKind::Const(_, expr) = ii.node {
-            gather_loans::gather_loans_in_static_initializer(self.tcx, expr);
+            borrowck_fn(self.tcx, expr);
         }
         intravisit::walk_impl_item(self, ii);
     }
@@ -147,7 +147,7 @@ fn borrowck_fn<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, body_id: hir::BodyId) {
         mir::borrowck_mir(bccx, owner_id, &attributes);
     }
 
-    let cfg = cfg::CFG::new(bccx.tcx, &body.value);
+    let cfg = cfg::CFG::new(bccx.tcx, &body);
     let AnalysisData { all_loans,
                        loans: loan_dfcx,
                        move_data: flowed_moves } =
