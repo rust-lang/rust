@@ -206,6 +206,14 @@ fn test_range_inclusive() {
 }
 
 #[test]
+fn test_range_inclusive_max_value() {
+    let max = ::std::usize::MAX;
+    let map: BTreeMap<_, _> = vec![(max, 0)].into_iter().collect();
+
+    assert_eq!(map.range(max...max).collect::<Vec<_>>(), &[(&max, &0)]);
+}
+
+#[test]
 fn test_range_equal_empty_cases() {
     let map: BTreeMap<_, _> = (0..5).map(|i| (i, i)).collect();
     assert_eq!(map.range((Included(2), Excluded(2))).next(), None);
