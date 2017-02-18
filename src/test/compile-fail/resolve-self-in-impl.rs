@@ -18,9 +18,12 @@ impl<T: Tr<Self>> Tr<T> for S {} //~ ERROR `Self` type is used before it's deter
 impl<T = Self> Tr<T> for S {} //~ ERROR `Self` type is used before it's determined
 impl Tr for S where Self: Copy {} //~ ERROR `Self` type is used before it's determined
 impl Tr for S where S<Self>: Copy {} //~ ERROR `Self` type is used before it's determined
+impl Tr for S where Self::Assoc: Copy {} //~ ERROR `Self` type is used before it's determined
+                                         //~^ ERROR `Self` type is used before it's determined
 impl Tr for Self {} //~ ERROR `Self` type is used before it's determined
 impl Tr for S<Self> {} //~ ERROR `Self` type is used before it's determined
 impl Self {} //~ ERROR `Self` type is used before it's determined
 impl S<Self> {} //~ ERROR `Self` type is used before it's determined
+impl Tr<Self::Assoc> for S {} //~ ERROR `Self` type is used before it's determined
 
 fn main() {}
