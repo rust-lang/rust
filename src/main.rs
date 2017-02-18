@@ -182,7 +182,7 @@ pub fn main() {
             .map(AsRef::as_ref)) {
             metadata
         } else {
-            let _ = io::stderr().write_fmt(format_args!("error: Could not obtain cargo metadata."));
+            let _ = io::stderr().write_fmt(format_args!("error: Could not obtain cargo metadata.\n"));
             process::exit(101);
         };
 

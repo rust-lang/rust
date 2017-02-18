@@ -1,6 +1,7 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+* New [`never_loop`] lint
 * New [`mut_from_ref`] lint
 
 ## 0.0.114 — 2017-02-08
@@ -384,6 +385,7 @@ All notable changes to this project will be documented in this file.
 [`needless_return`]: https://github.com/Manishearth/rust-clippy/wiki#needless_return
 [`needless_update`]: https://github.com/Manishearth/rust-clippy/wiki#needless_update
 [`neg_multiply`]: https://github.com/Manishearth/rust-clippy/wiki#neg_multiply
+[`never_loop`]: https://github.com/Manishearth/rust-clippy/wiki#never_loop
 [`new_ret_no_self`]: https://github.com/Manishearth/rust-clippy/wiki#new_ret_no_self
 [`new_without_default`]: https://github.com/Manishearth/rust-clippy/wiki#new_without_default
 [`new_without_default_derive`]: https://github.com/Manishearth/rust-clippy/wiki#new_without_default_derive

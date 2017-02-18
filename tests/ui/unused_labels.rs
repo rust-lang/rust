@@ -1,7 +1,7 @@
 #![plugin(clippy)]
 #![feature(plugin)]
 
-#![allow(dead_code, items_after_statements)]
+#![allow(dead_code, items_after_statements, never_loop)]
 #![deny(unused_label)]
 
 fn unused_label() {
