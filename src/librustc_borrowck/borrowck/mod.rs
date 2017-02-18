@@ -87,7 +87,7 @@ fn borrowck_fn<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, body_id: hir::BodyId) {
 
     let mut bccx = &mut BorrowckCtxt {
         tcx: tcx,
-        tables: Some(tables),
+        tables: tables,
     };
 
     let body = bccx.tcx.hir.body(body_id);
@@ -159,17 +159,20 @@ fn build_borrowck_dataflow_data<'a, 'tcx>(this: &mut BorrowckCtxt<'a, 'tcx>,
 /// the `BorrowckCtxt` itself , e.g. the flowgraph visualizer.
 pub fn build_borrowck_dataflow_data_for_fn<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    body: hir::BodyId,
+    body_id: hir::BodyId,
     cfg: &cfg::CFG)
     -> (BorrowckCtxt<'a, 'tcx>, AnalysisData<'a, 'tcx>)
 {
+    let owner_id = tcx.hir.body_owner(body_id);
+    let owner_def_id = tcx.hir.local_def_id(owner_id);
+    let tables = tcx.item_tables(owner_def_id);
 
     let mut bccx = BorrowckCtxt {
         tcx: tcx,
-        tables: None,
+        tables: tables,
     };
 
-    let dataflow_data = build_borrowck_dataflow_data(&mut bccx, cfg, body);
+    let dataflow_data = build_borrowck_dataflow_data(&mut bccx, cfg, body_id);
     (bccx, dataflow_data)
 }
 
@@ -181,7 +184,7 @@ pub struct BorrowckCtxt<'a, 'tcx: 'a> {
 
     // tables for the current thing we are checking; set to
     // Some in `borrowck_fn` and cleared later
-    tables: Option<&'a ty::TypeckTables<'tcx>>,
+    tables: &'a ty::TypeckTables<'tcx>,
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -472,8 +475,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                            r_sup: &'tcx ty::Region)
                            -> bool
     {
-        self.tables.unwrap().free_region_map
-                            .is_subregion_of(self.tcx, r_sub, r_sup)
+        self.tables.free_region_map.is_subregion_of(self.tcx, r_sub, r_sup)
     }
 
     pub fn report(&self, err: BckError<'tcx>) {
