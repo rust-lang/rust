@@ -1603,12 +1603,12 @@ pub trait Iterator {
         let mut i = self.len();
 
         while let Some(v) = self.next_back() {
-            if predicate(v) {
-                return Some(i - 1);
-            }
             // No need for an overflow check here, because `ExactSizeIterator`
             // implies that the number of elements fits into a `usize`.
             i -= 1;
+            if predicate(v) {
+                return Some(i);
+            }
         }
         None
     }
