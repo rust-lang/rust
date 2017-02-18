@@ -35,7 +35,7 @@ use serialize::{Decoder, Decodable, Encoder, Encodable};
 use symbol::Symbol;
 use util::RcSlice;
 
-use std::{fmt, iter};
+use std::{fmt, iter, mem};
 use std::rc::Rc;
 
 /// A delimited sequence of token trees
@@ -338,14 +338,18 @@ impl TokenStream {
         TokenStream { kind: TokenStreamKind::Stream(RcSlice::new(vec)) }
     }
 
-    pub fn trees<'a>(&'a self) -> Cursor {
+    pub fn trees(&self) -> Cursor {
+        self.clone().into_trees()
+    }
+
+    pub fn into_trees(self) -> Cursor {
         Cursor::new(self)
     }
 
     /// Compares two TokenStreams, checking equality without regarding span information.
     pub fn eq_unspanned(&self, other: &TokenStream) -> bool {
         for (t1, t2) in self.trees().zip(other.trees()) {
-            if !t1.eq_unspanned(t2) {
+            if !t1.eq_unspanned(&t2) {
                 return false;
             }
         }
@@ -353,58 +357,60 @@ impl TokenStream {
     }
 }
 
-pub struct Cursor<'a> {
-    current_frame: CursorFrame<'a>,
-    stack: Vec<CursorFrame<'a>>,
+pub struct Cursor {
+    current_frame: CursorFrame,
+    stack: Vec<CursorFrame>,
 }
 
-impl<'a> Iterator for Cursor<'a> {
-    type Item = &'a TokenTree;
+impl Iterator for Cursor {
+    type Item = TokenTree;
 
-    fn next(&mut self) -> Option<&'a TokenTree> {
+    fn next(&mut self) -> Option<TokenTree> {
         let tree = self.peek();
         self.current_frame = self.stack.pop().unwrap_or(CursorFrame::Empty);
         tree
     }
 }
 
-enum CursorFrame<'a> {
+enum CursorFrame {
     Empty,
-    Tree(&'a TokenTree),
-    Stream(&'a RcSlice<TokenStream>, usize),
+    Tree(TokenTree),
+    Stream(RcSlice<TokenStream>, usize),
 }
 
-impl<'a> CursorFrame<'a> {
-    fn new(stream: &'a TokenStream) -> Self {
+impl CursorFrame {
+    fn new(stream: TokenStream) -> Self {
         match stream.kind {
             TokenStreamKind::Empty => CursorFrame::Empty,
-            TokenStreamKind::Tree(ref tree) => CursorFrame::Tree(tree),
-            TokenStreamKind::Stream(ref stream) => CursorFrame::Stream(stream, 0),
+            TokenStreamKind::Tree(tree) => CursorFrame::Tree(tree),
+            TokenStreamKind::Stream(stream) => CursorFrame::Stream(stream, 0),
         }
     }
 }
 
-impl<'a> Cursor<'a> {
-    fn new(stream: &'a TokenStream) -> Self {
+impl Cursor {
+    fn new(stream: TokenStream) -> Self {
         Cursor {
             current_frame: CursorFrame::new(stream),
             stack: Vec::new(),
         }
     }
 
-    pub fn peek(&mut self) -> Option<&'a TokenTree> {
-        while let CursorFrame::Stream(stream, index) = self.current_frame {
+    pub fn peek(&mut self) -> Option<TokenTree> {
+        while let CursorFrame::Stream(stream, index) =
+                mem::replace(&mut self.current_frame, CursorFrame::Empty) {
             self.current_frame = if index == stream.len() {
                 self.stack.pop().unwrap_or(CursorFrame::Empty)
             } else {
+                let frame = CursorFrame::new(stream[index].clone());
                 self.stack.push(CursorFrame::Stream(stream, index + 1));
-                CursorFrame::new(&stream[index])
+                frame
             };
         }
 
         match self.current_frame {
             CursorFrame::Empty => None,
-            CursorFrame::Tree(tree) => Some(tree),
+            CursorFrame::Tree(ref tree) => Some(tree.clone()),
             CursorFrame::Stream(..) => unreachable!(),
         }
     }
@@ -412,13 +418,13 @@ impl<'a> Cursor<'a> {
 
 impl fmt::Display for TokenStream {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str(&pprust::tts_to_string(&self.trees().cloned().collect::<Vec<_>>()))
+        f.write_str(&pprust::tts_to_string(&self.trees().collect::<Vec<_>>()))
     }
 }
 
 impl Encodable for TokenStream {
     fn encode<E: Encoder>(&self, encoder: &mut E) -> Result<(), E::Error> {
-        self.trees().cloned().collect::<Vec<_>>().encode(encoder)
+        self.trees().collect::<Vec<_>>().encode(encoder)
     }
 }
 
@@ -464,14 +470,14 @@ mod tests {
     fn test_from_to_bijection() {
         let test_start = string_to_tts("foo::bar(baz)".to_string());
         let ts = test_start.iter().cloned().collect::<TokenStream>();
-        let test_end: Vec<TokenTree> = ts.trees().cloned().collect();
+        let test_end: Vec<TokenTree> = ts.trees().collect();
         assert_eq!(test_start, test_end)
     }
 
     #[test]
     fn test_to_from_bijection() {
         let test_start = string_to_ts("foo::bar(baz)");
-        let test_end = test_start.trees().cloned().collect();
+        let test_end = test_start.trees().collect();
         assert_eq!(test_start, test_end)
     }
 

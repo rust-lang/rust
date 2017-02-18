@@ -647,7 +647,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
     fn parse_expansion(&mut self, toks: TokenStream, kind: ExpansionKind, name: Name, span: Span)
                        -> Expansion {
-        let mut parser = self.cx.new_parser_from_tts(&toks.trees().cloned().collect::<Vec<_>>());
+        let mut parser = self.cx.new_parser_from_tts(&toks.into_trees().collect::<Vec<_>>());
         let expansion = match parser.parse_expansion(kind, false) {
             Ok(expansion) => expansion,
             Err(mut err) => {
