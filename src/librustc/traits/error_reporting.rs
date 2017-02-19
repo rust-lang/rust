@@ -266,61 +266,63 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
         let span = obligation.cause.span;
         let mut report = None;
-        for item in self.tcx.get_attrs(def_id).iter() {
-            if item.check_name("rustc_on_unimplemented") {
-                let err_sp = item.meta().span.substitute_dummy(span);
-                let trait_str = self.tcx.item_path_str(trait_ref.def_id);
-                if let Some(istring) = item.value_str() {
-                    let istring = &*istring.as_str();
-                    let generics = self.tcx.item_generics(trait_ref.def_id);
-                    let generic_map = generics.types.iter().map(|param| {
-                        (param.name.as_str().to_string(),
-                         trait_ref.substs.type_for_def(param).to_string())
-                    }).collect::<FxHashMap<String, String>>();
-                    let parser = Parser::new(istring);
-                    let mut errored = false;
-                    let err: String = parser.filter_map(|p| {
-                        match p {
-                            Piece::String(s) => Some(s),
-                            Piece::NextArgument(a) => match a.position {
-                                Position::ArgumentNamed(s) => match generic_map.get(s) {
-                                    Some(val) => Some(val),
-                                    None => {
-                                        span_err!(self.tcx.sess, err_sp, E0272,
-                                                       "the #[rustc_on_unimplemented] \
-                                                                attribute on \
-                                                                trait definition for {} refers to \
-                                                                non-existent type parameter {}",
-                                                               trait_str, s);
-                                        errored = true;
-                                        None
-                                    }
-                                },
-                                _ => {
-                                    span_err!(self.tcx.sess, err_sp, E0273,
-                                              "the #[rustc_on_unimplemented] attribute \
-                                               on trait definition for {} must have \
-                                               named format arguments, eg \
-                                               `#[rustc_on_unimplemented = \
-                                                \"foo {{T}}\"]`", trait_str);
+        if let Some(item) = self.tcx
+            .get_attrs(def_id)
+            .into_iter()
+            .filter(|a| a.check_name("rustc_on_unimplemented"))
+            .next()
+        {
+            let err_sp = item.meta().span.substitute_dummy(span);
+            let trait_str = self.tcx.item_path_str(trait_ref.def_id);
+            if let Some(istring) = item.value_str() {
+                let istring = &*istring.as_str();
+                let generics = self.tcx.item_generics(trait_ref.def_id);
+                let generic_map = generics.types.iter().map(|param| {
+                    (param.name.as_str().to_string(),
+                        trait_ref.substs.type_for_def(param).to_string())
+                }).collect::<FxHashMap<String, String>>();
+                let parser = Parser::new(istring);
+                let mut errored = false;
+                let err: String = parser.filter_map(|p| {
+                    match p {
+                        Piece::String(s) => Some(s),
+                        Piece::NextArgument(a) => match a.position {
+                            Position::ArgumentNamed(s) => match generic_map.get(s) {
+                                Some(val) => Some(val),
+                                None => {
+                                    span_err!(self.tcx.sess, err_sp, E0272,
+                                                    "the #[rustc_on_unimplemented] \
+                                                            attribute on \
+                                                            trait definition for {} refers to \
+                                                            non-existent type parameter {}",
+                                                            trait_str, s);
                                     errored = true;
                                     None
                                 }
+                            },
+                            _ => {
+                                span_err!(self.tcx.sess, err_sp, E0273,
+                                            "the #[rustc_on_unimplemented] attribute \
+                                            on trait definition for {} must have \
+                                            named format arguments, eg \
+                                            `#[rustc_on_unimplemented = \
+                                            \"foo {{T}}\"]`", trait_str);
+                                errored = true;
+                                None
                             }
                         }
-                    }).collect();
-                    // Report only if the format string checks out
-                    if !errored {
-                        report = Some(err);
                     }
-                } else {
-                    span_err!(self.tcx.sess, err_sp, E0274,
-                                            "the #[rustc_on_unimplemented] attribute on \
-                                                     trait definition for {} must have a value, \
-                                                     eg `#[rustc_on_unimplemented = \"foo\"]`",
-                                                     trait_str);
+                }).collect();
+                // Report only if the format string checks out
+                if !errored {
+                    report = Some(err);
                 }
-                break;
+            } else {
+                span_err!(self.tcx.sess, err_sp, E0274,
+                                        "the #[rustc_on_unimplemented] attribute on \
+                                                    trait definition for {} must have a value, \
+                                                    eg `#[rustc_on_unimplemented = \"foo\"]`",
+                                                    trait_str);
             }
         }
         report
