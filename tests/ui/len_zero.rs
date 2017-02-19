@@ -28,7 +28,7 @@ impl PubAllowed {
     }
 }
 
-// No allow attribute on this impl block, but that doesn't matter - we only require on the
+// No allow attribute on this impl block, but that doesn't matter - we only require one on the
 // impl containing len.
 impl PubAllowed {
     pub fn irrelevant(self: &Self) -> bool {
