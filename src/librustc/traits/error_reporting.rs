@@ -359,34 +359,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn report_similar_impl_candidates(&self,
-                                      trait_ref: ty::PolyTraitRef<'tcx>,
+                                      impl_candidates: Vec<ty::TraitRef<'tcx>>,
                                       err: &mut DiagnosticBuilder)
     {
-        let simp = fast_reject::simplify_type(self.tcx,
-                                              trait_ref.skip_binder().self_ty(),
-                                              true);
-        let mut impl_candidates = Vec::new();
-        let trait_def = self.tcx.lookup_trait_def(trait_ref.def_id());
-
-        match simp {
-            Some(simp) => trait_def.for_each_impl(self.tcx, |def_id| {
-                let imp = self.tcx.impl_trait_ref(def_id).unwrap();
-                let imp_simp = fast_reject::simplify_type(self.tcx,
-                                                          imp.self_ty(),
-                                                          true);
-                if let Some(imp_simp) = imp_simp {
-                    if simp != imp_simp {
-                        return;
-                    }
-                }
-                impl_candidates.push(imp);
-            }),
-            None => trait_def.for_each_impl(self.tcx, |def_id| {
-                impl_candidates.push(
-                    self.tcx.impl_trait_ref(def_id).unwrap());
-            })
-        };
-
         if impl_candidates.is_empty() {
             return;
         }
@@ -574,11 +549,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         } else {
                             // If we can't show anything useful, try to find
                             // similar impls.
-                            let impl_candidates =
-                                self.find_similar_impl_candidates(trait_ref);
-                            if impl_candidates.len() > 0 {
-                                self.report_similar_impl_candidates(trait_ref, &mut err);
-                            }
+                            let impl_candidates = self.find_similar_impl_candidates(trait_ref);
+                            self.report_similar_impl_candidates(impl_candidates, &mut err);
                         }
                         err
                     }
