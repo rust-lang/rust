@@ -47,7 +47,7 @@ macro_rules! provide {
     (<$lt:tt> $tcx:ident, $def_id:ident, $cdata:ident $($name:ident => $compute:block)*) => {
         pub fn provide<$lt>(providers: &mut Providers<$lt>) {
             $(fn $name<'a, $lt:$lt>($tcx: TyCtxt<'a, $lt, $lt>, $def_id: DefId)
-                                    -> <ty::maps::queries::$name<$lt> as
+                                    -> <ty::queries::$name<$lt> as
                                         DepTrackingMapConfig>::Value {
                 assert!(!$def_id.is_local());
 

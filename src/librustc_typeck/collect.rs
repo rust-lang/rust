@@ -262,7 +262,7 @@ impl<'a, 'tcx> AstConv<'tcx, 'tcx> for ItemCtxt<'a, 'tcx> {
                                  def_id: DefId)
                                  -> ty::GenericPredicates<'tcx>
     {
-        self.tcx.maps.type_param_predicates(self.tcx, span, (self.item_def_id, def_id))
+        ty::queries::type_param_predicates::get(self.tcx, span, (self.item_def_id, def_id))
     }
 
     fn get_free_substs(&self) -> Option<&Substs<'tcx>> {
@@ -532,7 +532,7 @@ fn convert_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, it: &hir::Item) {
         hir::ItemTrait(..) => {
             tcx.item_generics(def_id);
             tcx.lookup_trait_def(def_id);
-            tcx.maps.super_predicates(tcx, it.span, def_id);
+            ty::queries::super_predicates::get(tcx, it.span, def_id);
             tcx.item_predicates(def_id);
         },
         hir::ItemStruct(ref struct_def, _) |
@@ -836,7 +836,7 @@ fn super_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // Now require that immediate supertraits are converted,
     // which will, in turn, reach indirect supertraits.
     for bound in superbounds.iter().filter_map(|p| p.to_opt_poly_trait_ref()) {
-        tcx.maps.super_predicates(tcx, item.span, bound.def_id());
+        ty::queries::super_predicates::get(tcx, item.span, bound.def_id());
     }
 
     ty::GenericPredicates {

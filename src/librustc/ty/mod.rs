@@ -75,6 +75,8 @@ pub use self::context::{Lift, TypeckTables};
 
 pub use self::trait_def::{TraitDef, TraitFlags};
 
+pub use self::maps::queries;
+
 pub mod adjustment;
 pub mod cast;
 pub mod error;
@@ -1947,7 +1949,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn item_tables(self, def_id: DefId) -> &'gcx TypeckTables<'gcx> {
-        self.maps.typeck_tables(self, DUMMY_SP, def_id)
+        queries::typeck_tables::get(self, DUMMY_SP, def_id)
     }
 
     pub fn expr_span(self, id: NodeId) -> Span {
@@ -2055,12 +2057,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn custom_coerce_unsized_kind(self, did: DefId) -> adjustment::CustomCoerceUnsized {
-        self.maps.custom_coerce_unsized_kind(self, DUMMY_SP, did)
+        queries::custom_coerce_unsized_kind::get(self, DUMMY_SP, did)
     }
 
     pub fn associated_item(self, def_id: DefId) -> AssociatedItem {
         if !def_id.is_local() {
-            return self.maps.associated_item(self, DUMMY_SP, def_id);
+            return queries::associated_item::get(self, DUMMY_SP, def_id);
         }
 
         self.maps.associated_item.memoize(def_id, || {
@@ -2165,7 +2167,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     pub fn associated_item_def_ids(self, def_id: DefId) -> Rc<Vec<DefId>> {
         if !def_id.is_local() {
-            return self.maps.associated_item_def_ids(self, DUMMY_SP, def_id);
+            return queries::associated_item_def_ids::get(self, DUMMY_SP, def_id);
         }
 
         self.maps.associated_item_def_ids.memoize(def_id, || {
@@ -2200,7 +2202,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// Returns the trait-ref corresponding to a given impl, or None if it is
     /// an inherent impl.
     pub fn impl_trait_ref(self, id: DefId) -> Option<TraitRef<'gcx>> {
-        self.maps.impl_trait_ref(self, DUMMY_SP, id)
+        queries::impl_trait_ref::get(self, DUMMY_SP, id)
     }
 
     // Returns `ty::VariantDef` if `def` refers to a struct,
@@ -2279,37 +2281,37 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     // If the given item is in an external crate, looks up its type and adds it to
     // the type cache. Returns the type parameters and type.
     pub fn item_type(self, did: DefId) -> Ty<'gcx> {
-        self.maps.ty(self, DUMMY_SP, did)
+        queries::ty::get(self, DUMMY_SP, did)
     }
 
     /// Given the did of a trait, returns its canonical trait ref.
     pub fn lookup_trait_def(self, did: DefId) -> &'gcx TraitDef {
-        self.maps.trait_def(self, DUMMY_SP, did)
+        queries::trait_def::get(self, DUMMY_SP, did)
     }
 
     /// Given the did of an ADT, return a reference to its definition.
     pub fn lookup_adt_def(self, did: DefId) -> &'gcx AdtDef {
-        self.maps.adt_def(self, DUMMY_SP, did)
+        queries::adt_def::get(self, DUMMY_SP, did)
     }
 
     /// Given the did of an item, returns its generics.
     pub fn item_generics(self, did: DefId) -> &'gcx Generics {
-        self.maps.generics(self, DUMMY_SP, did)
+        queries::generics::get(self, DUMMY_SP, did)
     }
 
     /// Given the did of an item, returns its full set of predicates.
     pub fn item_predicates(self, did: DefId) -> GenericPredicates<'gcx> {
-        self.maps.predicates(self, DUMMY_SP, did)
+        queries::predicates::get(self, DUMMY_SP, did)
     }
 
     /// Given the did of a trait, returns its superpredicates.
     pub fn item_super_predicates(self, did: DefId) -> GenericPredicates<'gcx> {
-        self.maps.super_predicates(self, DUMMY_SP, did)
+        queries::super_predicates::get(self, DUMMY_SP, did)
     }
 
     /// Given the did of an item, returns its MIR, borrowed immutably.
     pub fn item_mir(self, did: DefId) -> Ref<'gcx, Mir<'gcx>> {
-        self.maps.mir(self, DUMMY_SP, did).borrow()
+        queries::mir::get(self, DUMMY_SP, did).borrow()
     }
 
     /// If `type_needs_drop` returns true, then `ty` is definitely
@@ -2361,7 +2363,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn item_variances(self, item_id: DefId) -> Rc<Vec<ty::Variance>> {
-        self.maps.variances(self, DUMMY_SP, item_id)
+        queries::variances::get(self, DUMMY_SP, item_id)
     }
 
     pub fn trait_has_default_impl(self, trait_def_id: DefId) -> bool {
@@ -2436,11 +2438,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn closure_kind(self, def_id: DefId) -> ty::ClosureKind {
-        self.maps.closure_kind(self, DUMMY_SP, def_id)
+        queries::closure_kind::get(self, DUMMY_SP, def_id)
     }
 
     pub fn closure_type(self, def_id: DefId) -> ty::PolyFnSig<'tcx> {
-        self.maps.closure_type(self, DUMMY_SP, def_id)
+        queries::closure_type::get(self, DUMMY_SP, def_id)
     }
 
     /// Given the def_id of an impl, return the def_id of the trait it implements.

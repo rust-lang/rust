@@ -13,10 +13,9 @@ use hir::def_id::{CrateNum, DefId};
 use middle::const_val::ConstVal;
 use mir;
 use ty::{self, Ty, TyCtxt};
-use util::common::MemoizationMap;
 
 use rustc_data_structures::indexed_vec::IndexVec;
-use std::cell::RefCell;
+use std::cell::{RefCell, RefMut};
 use std::rc::Rc;
 use syntax_pos::{Span, DUMMY_SP};
 
@@ -66,8 +65,13 @@ impl<'tcx> Value<'tcx> for Ty<'tcx> {
     }
 }
 
+pub struct CycleError<'a> {
+    span: Span,
+    cycle: RefMut<'a, [(Span, Query)]>
+}
+
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
-    fn report_cycle(self, span: Span, cycle: &[(Span, Query)]) {
+    pub fn report_cycle(self, CycleError { span, cycle }: CycleError) {
         assert!(!cycle.is_empty());
 
         let mut err = struct_span_err!(self.sess, span, E0391,
@@ -88,16 +92,18 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         err.emit();
     }
 
-    fn cycle_check<F, R>(self, span: Span, query: Query, compute: F) -> R
+    fn cycle_check<F, R>(self, span: Span, query: Query, compute: F)
+                         -> Result<R, CycleError<'a>>
         where F: FnOnce() -> R
     {
         {
             let mut stack = self.maps.query_stack.borrow_mut();
             if let Some((i, _)) = stack.iter().enumerate().rev()
                                        .find(|&(_, &(_, ref q))| *q == query) {
-                let cycle = &stack[i..];
-                self.report_cycle(span, cycle);
-                return R::from_cycle_error(self.global_tcx());
+                return Err(CycleError {
+                    span: span,
+                    cycle: RefMut::map(stack, |stack| &mut stack[i..])
+                });
             }
             stack.push((span, query));
         }
@@ -105,7 +111,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         let result = compute();
 
         self.maps.query_stack.borrow_mut().pop();
-        result
+
+        Ok(result)
     }
 }
 
@@ -140,7 +147,7 @@ macro_rules! define_maps {
        pub $name:ident: $node:ident($K:ty) -> $V:ty),*) => {
         pub struct Maps<$tcx> {
             providers: IndexVec<CrateNum, Providers<$tcx>>,
-            pub query_stack: RefCell<Vec<(Span, Query)>>,
+            query_stack: RefCell<Vec<(Span, Query)>>,
             $($(#[$attr])* pub $name: RefCell<DepTrackingMap<queries::$name<$tcx>>>),*
         }
 
@@ -182,7 +189,60 @@ macro_rules! define_maps {
         $(impl<$tcx> DepTrackingMapConfig for queries::$name<$tcx> {
             type Key = $K;
             type Value = $V;
-            fn to_dep_node(key: &$K) -> DepNode<DefId> { DepNode::$node(*key) }
+
+            #[allow(unused)]
+            fn to_dep_node(key: &$K) -> DepNode<DefId> {
+                use dep_graph::DepNode::*;
+
+                $node(*key)
+            }
+        }
+        impl<'a, $tcx, 'lcx> queries::$name<$tcx> {
+            fn try_get_with<F, R>(tcx: TyCtxt<'a, $tcx, 'lcx>,
+                                  mut span: Span,
+                                  key: $K,
+                                  f: F)
+                                  -> Result<R, CycleError<'a>>
+                where F: FnOnce(&$V) -> R
+            {
+                if let Some(result) = tcx.maps.$name.borrow().get(&key) {
+                    return Ok(f(result));
+                }
+
+                // FIXME(eddyb) Get more valid Span's on queries.
+                if span == DUMMY_SP {
+                    span = key.default_span(tcx);
+                }
+
+                let _task = tcx.dep_graph.in_task(Self::to_dep_node(&key));
+
+                let result = tcx.cycle_check(span, Query::$name(key), || {
+                    let provider = tcx.maps.providers[key.map_crate()].$name;
+                    provider(tcx.global_tcx(), key)
+                })?;
+
+                Ok(f(&tcx.maps.$name.borrow_mut().entry(key).or_insert(result)))
+            }
+
+            pub fn try_get(tcx: TyCtxt<'a, $tcx, 'lcx>, span: Span, key: $K)
+                           -> Result<$V, CycleError<'a>> {
+                Self::try_get_with(tcx, span, key, Clone::clone)
+            }
+
+            $(#[$attr])*
+            pub fn get(tcx: TyCtxt<'a, $tcx, 'lcx>, span: Span, key: $K) -> $V {
+                Self::try_get(tcx, span, key).unwrap_or_else(|e| {
+                    tcx.report_cycle(e);
+                    Value::from_cycle_error(tcx.global_tcx())
+                })
+            }
+
+            pub fn force(tcx: TyCtxt<'a, $tcx, 'lcx>, span: Span, key: $K) {
+                match Self::try_get_with(tcx, span, key, |_| ()) {
+                    Ok(()) => {}
+                    Err(e) => tcx.report_cycle(e)
+                }
+            }
         })*
 
         pub struct Providers<$tcx> {
@@ -202,26 +262,6 @@ macro_rules! define_maps {
                 })*
                 Providers { $($name),* }
             }
-        }
-
-        impl<'a, $tcx, 'lcx> Maps<$tcx> {
-            $($(#[$attr])*
-              pub fn $name(&self,
-                           tcx: TyCtxt<'a, $tcx, 'lcx>,
-                           mut span: Span,
-                           key: $K) -> $V {
-                self.$name.memoize(key, || {
-                    // FIXME(eddyb) Get more valid Span's on queries.
-                    if span == DUMMY_SP {
-                        span = key.default_span(tcx);
-                    }
-
-                    tcx.cycle_check(span, Query::$name(key), || {
-                        let provider = self.providers[key.map_crate()].$name;
-                        provider(tcx.global_tcx(), key)
-                    })
-                })
-            })*
         }
     }
 }

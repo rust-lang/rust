@@ -11,6 +11,7 @@
 use hir::def_id::DefId;
 use rustc_data_structures::fx::FxHashMap;
 use std::cell::RefCell;
+use std::collections::hash_map::Entry;
 use std::ops::Index;
 use std::hash::Hash;
 use std::marker::PhantomData;
@@ -65,6 +66,11 @@ impl<M: DepTrackingMapConfig> DepTrackingMap<M> {
         self.write(&k);
         let old_value = self.map.insert(k, v);
         assert!(old_value.is_none());
+    }
+
+    pub fn entry(&mut self, k: M::Key) -> Entry<M::Key, M::Value> {
+        self.write(&k);
+        self.map.entry(k)
     }
 
     pub fn contains_key(&self, k: &M::Key) -> bool {
