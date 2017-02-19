@@ -18,7 +18,7 @@ fn test() {
          * amet, consectetur adipiscing elit. Aenean ut gravida lorem. Ut turpis
          * felis, pulvinar a semper sed, adipiscing id dolor. */
 
-    // Very looooooooooooooooooooooooooooooooooooooooooooooooooooooooong comment that should be split
+    // Very loooooooooooooooooooooooooooooooooooooooooooooooooooooooong comment that should be split
 
                     // println!("{:?}", rewrite_comment(subslice,
                     //                                       false,

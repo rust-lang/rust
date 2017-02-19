@@ -1,6 +1,7 @@
 // rustfmt-normalize_comments: true
 // rustfmt-wrap_comments: true
 // rustfmt-struct_lit_style: Visual
+// rustfmt-error_on_line_overflow: false
 
 // Struct literal expressions.
 
