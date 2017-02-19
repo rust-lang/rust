@@ -99,6 +99,12 @@ pub fn llvm(build: &Build, target: &str) {
        .define("LLVM_TARGET_ARCH", target.split('-').next().unwrap())
        .define("LLVM_DEFAULT_TARGET_TRIPLE", target);
 
+    if target.contains("msvc") {
+        cfg.define("LLVM_USE_CRT_DEBUG", "MT");
+        cfg.define("LLVM_USE_CRT_RELEASE", "MT");
+        cfg.define("LLVM_USE_CRT_RELWITHDEBINFO", "MT");
+    }
+
     if target.starts_with("i686") {
         cfg.define("LLVM_BUILD_32_BITS", "ON");
     }

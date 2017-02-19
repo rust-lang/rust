@@ -217,10 +217,10 @@ impl<'a> LoweringContext<'a> {
 
     fn expect_full_def(&mut self, id: NodeId) -> Def {
         self.resolver.get_resolution(id).map_or(Def::Err, |pr| {
-            if pr.depth != 0 {
+            if pr.unresolved_segments() != 0 {
                 bug!("path not fully resolved: {:?}", pr);
             }
-            pr.base_def
+            pr.base_def()
         })
     }
 
@@ -421,9 +421,9 @@ impl<'a> LoweringContext<'a> {
         let resolution = self.resolver.get_resolution(id)
                                       .unwrap_or(PathResolution::new(Def::Err));
 
-        let proj_start = p.segments.len() - resolution.depth;
+        let proj_start = p.segments.len() - resolution.unresolved_segments();
         let path = P(hir::Path {
-            def: resolution.base_def,
+            def: resolution.base_def(),
             segments: p.segments[..proj_start].iter().enumerate().map(|(i, segment)| {
                 let param_mode = match (qself_position, param_mode) {
                     (Some(j), ParamMode::Optional) if i < j => {
@@ -443,7 +443,7 @@ impl<'a> LoweringContext<'a> {
                         index: this.def_key(def_id).parent.expect("missing parent")
                     }
                 };
-                let type_def_id = match resolution.base_def {
+                let type_def_id = match resolution.base_def() {
                     Def::AssociatedTy(def_id) if i + 2 == proj_start => {
                         Some(parent_def_id(self, def_id))
                     }
@@ -474,7 +474,7 @@ impl<'a> LoweringContext<'a> {
 
         // Simple case, either no projections, or only fully-qualified.
         // E.g. `std::mem::size_of` or `<I as Iterator>::Item`.
-        if resolution.depth == 0 {
+        if resolution.unresolved_segments() == 0 {
             return hir::QPath::Resolved(qself, path);
         }
 
@@ -749,7 +749,7 @@ impl<'a> LoweringContext<'a> {
                                        bound_pred.bound_lifetimes.is_empty() => {
                                 if let Some(Def::TyParam(def_id)) =
                                         self.resolver.get_resolution(bound_pred.bounded_ty.id)
-                                                     .map(|d| d.base_def) {
+                                                     .map(|d| d.base_def()) {
                                     if let Some(node_id) =
                                             self.resolver.definitions().as_local_node_id(def_id) {
                                         for ty_param in &g.ty_params {
@@ -1295,7 +1295,7 @@ impl<'a> LoweringContext<'a> {
                 PatKind::Wild => hir::PatKind::Wild,
                 PatKind::Ident(ref binding_mode, pth1, ref sub) => {
                     self.with_parent_def(p.id, |this| {
-                        match this.resolver.get_resolution(p.id).map(|d| d.base_def) {
+                        match this.resolver.get_resolution(p.id).map(|d| d.base_def()) {
                             // `None` can occur in body-less function signatures
                             def @ None | def @ Some(Def::Local(_)) => {
                                 let def_id = def.map(|d| d.def_id()).unwrap_or_else(|| {

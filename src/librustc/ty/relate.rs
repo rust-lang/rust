@@ -143,7 +143,7 @@ pub fn relate_substs<'a, 'gcx, 'tcx, R>(relation: &mut R,
 {
     let tcx = relation.tcx();
 
-    let params = a_subst.params().iter().zip(b_subst.params()).enumerate().map(|(i, (a, b))| {
+    let params = a_subst.iter().zip(b_subst).enumerate().map(|(i, (a, b))| {
         let variance = variances.map_or(ty::Invariant, |v| v[i]);
         if let (Some(a_ty), Some(b_ty)) = (a.as_type(), b.as_type()) {
             Ok(Kind::from(relation.relate_with_variance(variance, &a_ty, &b_ty)?))

@@ -1250,17 +1250,17 @@ impl String {
         self.len() == 0
     }
 
-    /// Divide one string into two at an index.
+    /// Splits the string into two at the given index.
     ///
-    /// The argument, `mid`, should be a byte offset from the start of the string. It must also
-    /// be on the boundary of a UTF-8 code point.
+    /// Returns a newly allocated `String`. `self` contains bytes `[0, at)`, and
+    /// the returned `String` contains bytes `[at, len)`. `at` must be on the
+    /// boundary of a UTF-8 code point.
     ///
-    /// The two strings returned go from the start of the string to `mid`, and from `mid` to the end
-    /// of the string.
+    /// Note that the capacity of `self` does not change.
     ///
     /// # Panics
     ///
-    /// Panics if `mid` is not on a `UTF-8` code point boundary, or if it is beyond the last
+    /// Panics if `at` is not on a `UTF-8` code point boundary, or if it is beyond the last
     /// code point of the string.
     ///
     /// # Examples
@@ -1275,9 +1275,9 @@ impl String {
     /// ```
     #[inline]
     #[stable(feature = "string_split_off", since = "1.16.0")]
-    pub fn split_off(&mut self, mid: usize) -> String {
-        assert!(self.is_char_boundary(mid));
-        let other = self.vec.split_off(mid);
+    pub fn split_off(&mut self, at: usize) -> String {
+        assert!(self.is_char_boundary(at));
+        let other = self.vec.split_off(at);
         unsafe { String::from_utf8_unchecked(other) }
     }
 

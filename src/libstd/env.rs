@@ -96,7 +96,9 @@ pub struct VarsOs { inner: os_imp::Env }
 ///
 /// While iterating, the returned iterator will panic if any key or value in the
 /// environment is not valid unicode. If this is not desired, consider using the
-/// `env::vars_os` function.
+/// [`env::vars_os`] function.
+///
+/// [`env::vars_os`]: fn.vars_os.html
 ///
 /// # Examples
 ///
@@ -171,9 +173,12 @@ impl fmt::Debug for VarsOs {
 
 /// Fetches the environment variable `key` from the current process.
 ///
-/// The returned result is `Ok(s)` if the environment variable is present and is
+/// The returned result is [`Ok(s)`] if the environment variable is present and is
 /// valid unicode. If the environment variable is not present, or it is not
-/// valid unicode, then `Err` will be returned.
+/// valid unicode, then [`Err`] will be returned.
+///
+/// [`Ok(s)`]: ../result/enum.Result.html#variant.Ok
+/// [`Err`]: ../result/enum.Result.html#variant.Err
 ///
 /// # Examples
 ///
@@ -199,7 +204,9 @@ fn _var(key: &OsStr) -> Result<String, VarError> {
 }
 
 /// Fetches the environment variable `key` from the current process, returning
-/// `None` if the variable isn't set.
+/// [`None`] if the variable isn't set.
+///
+/// [`None`]: ../option/enum.Option.html#variant.None
 ///
 /// # Examples
 ///
