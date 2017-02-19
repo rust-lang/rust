@@ -535,14 +535,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                             return;
                         } else {
                             let trait_ref = trait_predicate.to_poly_trait_ref();
-                            let (post_message, pre_message) = match self.get_parent_trait_ref(
-                                &obligation.cause.code)
-                            {
-                                Some(t) => {
-                                    (format!(" in `{}`", t), format!("within `{}`, ", t))
-                                }
-                                None => (String::new(), String::new()),
-                            };
+                            let (post_message, pre_message) =
+                                self.get_parent_trait_ref(&obligation.cause.code)
+                                    .map(|t| (format!(" in `{}`", t), format!("within `{}`, ", t)))
+                                    .unwrap_or((String::new(), String::new()));
                             let mut err = struct_span_err!(
                                 self.tcx.sess,
                                 span,
