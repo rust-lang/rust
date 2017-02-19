@@ -13,7 +13,8 @@ use std::collections::HashSet;
 /// **What it does:** Checks for functions taking arguments by value, but only using them by
 /// reference.
 ///
-/// **Why is this bad?**
+/// **Why is this bad?** In such cases, taking arguments by reference is more flexible and
+/// can sometimes avoid unnecessary allocations.
 ///
 /// **Known problems:** Hopefully none.
 ///
