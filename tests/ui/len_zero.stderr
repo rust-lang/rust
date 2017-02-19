@@ -1,11 +1,13 @@
 error: item `PubOne` has a public `len` method but no corresponding `is_empty` method
-  --> $DIR/len_zero.rs:10:5
+  --> $DIR/len_zero.rs:9:1
    |
-10 |       pub fn len(self: &Self) -> isize {
-   |  _____^ starting here...
+9  |   impl PubOne {
+   |  _^ starting here...
+10 | |     pub fn len(self: &Self) -> isize {
 11 | |         1
 12 | |     }
-   | |_____^ ...ending here
+13 | | }
+   | |_^ ...ending here
    |
 note: lint level defined here
   --> $DIR/len_zero.rs:4:9
@@ -14,28 +16,43 @@ note: lint level defined here
    |         ^^^^^^^^^^^^^^^^^^^^
 
 error: trait `PubTraitsToo` has a `len` method but no `is_empty` method
-  --> $DIR/len_zero.rs:32:5
+  --> $DIR/len_zero.rs:31:1
    |
-32 |     fn len(self: &Self) -> isize;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+31 |   pub trait PubTraitsToo {
+   |  _^ starting here...
+32 | |     fn len(self: &Self) -> isize;
+33 | | }
+   | |_^ ...ending here
 
 error: item `HasIsEmpty` has a public `len` method but a private `is_empty` method
-  --> $DIR/len_zero.rs:66:5
+  --> $DIR/len_zero.rs:65:1
    |
-66 |       pub fn len(self: &Self) -> isize {
-   |  _____^ starting here...
+65 |   impl HasIsEmpty {
+   |  _^ starting here...
+66 | |     pub fn len(self: &Self) -> isize {
 67 | |         1
 68 | |     }
-   | |_____^ ...ending here
+69 | |
+70 | |     fn is_empty(self: &Self) -> bool {
+71 | |         false
+72 | |     }
+73 | | }
+   | |_^ ...ending here
 
 error: item `HasWrongIsEmpty` has a public `len` method but no corresponding `is_empty` method
-  --> $DIR/len_zero.rs:95:5
-   |
-95 |       pub fn len(self: &Self) -> isize {
-   |  _____^ starting here...
-96 | |         1
-97 | |     }
-   | |_____^ ...ending here
+   --> $DIR/len_zero.rs:94:1
+    |
+94  |   impl HasWrongIsEmpty {
+    |  _^ starting here...
+95  | |     pub fn len(self: &Self) -> isize {
+96  | |         1
+97  | |     }
+98  | |
+99  | |     pub fn is_empty(self: &Self, x : u32) -> bool {
+100 | |         false
+101 | |     }
+102 | | }
+    | |_^ ...ending here
 
 error: length comparison to zero
    --> $DIR/len_zero.rs:106:8

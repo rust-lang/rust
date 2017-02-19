@@ -107,7 +107,7 @@ fn check_trait_items(cx: &LateContext, item: &Item, trait_items: &[TraitItemRef]
             if cx.access_levels.is_exported(i.id.node_id) {
                 span_lint(cx,
                           LEN_WITHOUT_IS_EMPTY,
-                          i.span,
+                          item.span,
                           &format!("trait `{}` has a `len` method but no `is_empty` method", item.name));
             }
         }
@@ -146,7 +146,7 @@ fn check_impl_items(cx: &LateContext, item: &Item, impl_items: &[ImplItemRef]) {
 
             span_lint(cx,
                       LEN_WITHOUT_IS_EMPTY,
-                      i.span,
+                      item.span,
                       &format!("item `{}` has a public `len` method but {} `is_empty` method", ty, is_empty));
         }
     }
