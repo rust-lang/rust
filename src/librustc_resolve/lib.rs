@@ -1195,7 +1195,8 @@ impl<'a> hir::lowering::Resolver for Resolver<'a> {
         let path: Vec<_> = segments.iter().map(|seg| Ident::with_empty_ctxt(seg.name)).collect();
         match self.resolve_path(&path, Some(namespace), Some(span)) {
             PathResult::Module(module) => *def = module.def().unwrap(),
-            PathResult::NonModule(path_res) if path_res.depth == 0 => *def = path_res.base_def,
+            PathResult::NonModule(path_res) if path_res.unresolved_segments() == 0 =>
+                *def = path_res.base_def(),
             PathResult::NonModule(..) => match self.resolve_path(&path, None, Some(span)) {
                 PathResult::Failed(msg, _) => {
                     resolve_error(self, span, ResolutionError::FailedToResolve(&msg));
@@ -1718,7 +1719,7 @@ impl<'a> Resolver<'a> {
         let mut new_id = None;
         if let Some(trait_ref) = opt_trait_ref {
             let def = self.smart_resolve_path(trait_ref.ref_id, None,
-                                              &trait_ref.path, PathSource::Trait).base_def;
+                                              &trait_ref.path, PathSource::Trait).base_def();
             if def != Def::Err {
                 new_val = Some((def.def_id(), trait_ref.clone()));
                 new_id = Some(def.def_id());
@@ -1849,8 +1850,8 @@ impl<'a> Resolver<'a> {
 
         pat.walk(&mut |pat| {
             if let PatKind::Ident(binding_mode, ident, ref sub_pat) = pat.node {
-                if sub_pat.is_some() || match self.def_map.get(&pat.id) {
-                    Some(&PathResolution { base_def: Def::Local(..), .. }) => true,
+                if sub_pat.is_some() || match self.def_map.get(&pat.id).map(|res| res.base_def()) {
+                    Some(Def::Local(..)) => true,
                     _ => false,
                 } {
                     let binding_info = BindingInfo { span: ident.span, binding_mode: binding_mode };
@@ -2248,14 +2249,14 @@ impl<'a> Resolver<'a> {
         let resolution = match self.resolve_qpath_anywhere(id, qself, path, ns, span,
                                                            source.defer_to_typeck(),
                                                            source.global_by_default()) {
-            Some(resolution) if resolution.depth == 0 => {
-                if is_expected(resolution.base_def) || resolution.base_def == Def::Err {
+            Some(resolution) if resolution.unresolved_segments() == 0 => {
+                if is_expected(resolution.base_def()) || resolution.base_def() == Def::Err {
                     resolution
                 } else {
                     // Add a temporary hack to smooth the transition to new struct ctor
                     // visibility rules. See #38932 for more details.
                     let mut res = None;
-                    if let Def::Struct(def_id) = resolution.base_def {
+                    if let Def::Struct(def_id) = resolution.base_def() {
                         if let Some((ctor_def, ctor_vis))
                                 = self.struct_constructors.get(&def_id).cloned() {
                             if is_expected(ctor_def) && self.is_accessible(ctor_vis) {
@@ -2268,7 +2269,7 @@ impl<'a> Resolver<'a> {
                         }
                     }
 
-                    res.unwrap_or_else(|| report_errors(self, Some(resolution.base_def)))
+                    res.unwrap_or_else(|| report_errors(self, Some(resolution.base_def())))
                 }
             }
             Some(resolution) if source.defer_to_typeck() => {
@@ -2321,7 +2322,8 @@ impl<'a> Resolver<'a> {
                 match self.resolve_qpath(id, qself, path, ns, span, global_by_default) {
                     // If defer_to_typeck, then resolution > no resolution,
                     // otherwise full resolution > partial resolution > no resolution.
-                    Some(res) if res.depth == 0 || defer_to_typeck => return Some(res),
+                    Some(res) if res.unresolved_segments() == 0 || defer_to_typeck =>
+                        return Some(res),
                     res => if fin_res.is_none() { fin_res = res },
                 };
             }
@@ -2346,19 +2348,17 @@ impl<'a> Resolver<'a> {
         if let Some(qself) = qself {
             if qself.position == 0 {
                 // FIXME: Create some fake resolution that can't possibly be a type.
-                return Some(PathResolution {
-                    base_def: Def::Mod(DefId::local(CRATE_DEF_INDEX)),
-                    depth: path.len(),
-                });
+                return Some(PathResolution::with_unresolved_segments(
+                    Def::Mod(DefId::local(CRATE_DEF_INDEX)), path.len()
+                ));
             }
             // Make sure `A::B` in `<T as A>::B::C` is a trait item.
             let ns = if qself.position + 1 == path.len() { ns } else { TypeNS };
-            let mut res = self.smart_resolve_path_fragment(id, None, &path[..qself.position + 1],
-                                                           span, PathSource::TraitItem(ns));
-            if res.base_def != Def::Err {
-                res.depth += path.len() - qself.position - 1;
-            }
-            return Some(res);
+            let res = self.smart_resolve_path_fragment(id, None, &path[..qself.position + 1],
+                                                       span, PathSource::TraitItem(ns));
+            return Some(PathResolution::with_unresolved_segments(
+                res.base_def(), res.unresolved_segments() + path.len() - qself.position - 1
+            ));
         }
 
         let result = match self.resolve_path(&path, Some(ns), Some(span)) {
@@ -2393,10 +2393,7 @@ impl<'a> Resolver<'a> {
                     }
                     _ => {}
                 }
-                PathResolution {
-                    base_def: Def::PrimTy(prim),
-                    depth: path.len() - 1,
-                }
+                PathResolution::with_unresolved_segments(Def::PrimTy(prim), path.len() - 1)
             }
             PathResult::Module(module) => PathResolution::new(module.def().unwrap()),
             PathResult::Failed(msg, false) => {
@@ -2407,16 +2404,16 @@ impl<'a> Resolver<'a> {
             PathResult::Indeterminate => bug!("indetermined path result in resolve_qpath"),
         };
 
-        if path.len() > 1 && !global_by_default && result.base_def != Def::Err &&
+        if path.len() > 1 && !global_by_default && result.base_def() != Def::Err &&
            path[0].name != keywords::CrateRoot.name() && path[0].name != "$crate" {
             let unqualified_result = {
                 match self.resolve_path(&[*path.last().unwrap()], Some(ns), None) {
-                    PathResult::NonModule(path_res) => path_res.base_def,
+                    PathResult::NonModule(path_res) => path_res.base_def(),
                     PathResult::Module(module) => module.def().unwrap(),
                     _ => return Some(result),
                 }
             };
-            if result.base_def == unqualified_result {
+            if result.base_def() == unqualified_result {
                 let lint = lint::builtin::UNUSED_QUALIFICATIONS;
                 self.session.add_lint(lint, id, span, "unnecessary qualification".to_string());
             }
@@ -2470,10 +2467,9 @@ impl<'a> Resolver<'a> {
                     Some(LexicalScopeBinding::Item(binding)) => Ok(binding),
                     Some(LexicalScopeBinding::Def(def))
                             if opt_ns == Some(TypeNS) || opt_ns == Some(ValueNS) => {
-                        return PathResult::NonModule(PathResolution {
-                            base_def: def,
-                            depth: path.len() - 1,
-                        });
+                        return PathResult::NonModule(PathResolution::with_unresolved_segments(
+                            def, path.len() - 1
+                        ));
                     }
                     _ => Err(if record_used.is_some() { Determined } else { Undetermined }),
                 }
@@ -2488,10 +2484,9 @@ impl<'a> Resolver<'a> {
                     } else if def == Def::Err {
                         return PathResult::NonModule(err_path_resolution());
                     } else if opt_ns.is_some() && (is_last || maybe_assoc) {
-                        return PathResult::NonModule(PathResolution {
-                            base_def: def,
-                            depth: path.len() - i - 1,
-                        });
+                        return PathResult::NonModule(PathResolution::with_unresolved_segments(
+                            def, path.len() - i - 1
+                        ));
                     } else {
                         return PathResult::Failed(format!("Not a module `{}`", ident), is_last);
                     }
@@ -2500,10 +2495,9 @@ impl<'a> Resolver<'a> {
                 Err(Determined) => {
                     if let Some(module) = module {
                         if opt_ns.is_some() && !module.is_normal() {
-                            return PathResult::NonModule(PathResolution {
-                                base_def: module.def().unwrap(),
-                                depth: path.len() - i,
-                            });
+                            return PathResult::NonModule(PathResolution::with_unresolved_segments(
+                                module.def().unwrap(), path.len() - i
+                            ));
                         }
                     }
                     let msg = if module.and_then(ModuleData::def) == self.graph_root.def() {
@@ -2672,8 +2666,9 @@ impl<'a> Resolver<'a> {
             if let Some(node_id) = self.current_self_type.as_ref().and_then(extract_node_id) {
                 // Look for a field with the same name in the current self_type.
                 if let Some(resolution) = self.def_map.get(&node_id) {
-                    match resolution.base_def {
-                        Def::Struct(did) | Def::Union(did) if resolution.depth == 0 => {
+                    match resolution.base_def() {
+                        Def::Struct(did) | Def::Union(did)
+                                if resolution.unresolved_segments() == 0 => {
                             if let Some(field_names) = self.field_names.get(&did) {
                                 if field_names.iter().any(|&field_name| name == field_name) {
                                     return Some(AssocSuggestion::Field);
@@ -3057,7 +3052,6 @@ impl<'a> Resolver<'a> {
 
     fn record_def(&mut self, node_id: NodeId, resolution: PathResolution) {
         debug!("(recording def) recording {:?} for {}", resolution, node_id);
-        assert!(resolution.depth == 0 || resolution.base_def != Def::Err);
         if let Some(prev_res) = self.def_map.insert(node_id, resolution) {
             panic!("path resolved multiple times ({:?} before, {:?} now)", prev_res, resolution);
         }
@@ -3071,7 +3065,8 @@ impl<'a> Resolver<'a> {
                 ty::Visibility::Restricted(self.current_module.normal_ancestor_id)
             }
             ast::Visibility::Restricted { ref path, id } => {
-                let def = self.smart_resolve_path(id, None, path, PathSource::Visibility).base_def;
+                let def = self.smart_resolve_path(id, None, path,
+                                                  PathSource::Visibility).base_def();
                 if def == Def::Err {
                     ty::Visibility::Public
                 } else {
