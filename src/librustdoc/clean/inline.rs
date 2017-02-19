@@ -15,6 +15,7 @@ use std::io;
 use std::iter::once;
 
 use syntax::ast;
+use syntax_pos::DUMMY_SP;
 use rustc::hir;
 
 use rustc::hir::def::{Def, CtorKind};
@@ -231,7 +232,7 @@ fn build_type_alias(cx: &DocContext, did: DefId) -> clean::Typedef {
 
 pub fn build_impls(cx: &DocContext, did: DefId) -> Vec<clean::Item> {
     let tcx = cx.tcx;
-    tcx.populate_inherent_implementations_for_type_if_necessary(did);
+    tcx.populate_inherent_implementations_for_type_if_necessary(DUMMY_SP, did);
     let mut impls = Vec::new();
 
     if let Some(i) = tcx.maps.inherent_impls.borrow().get(&did) {

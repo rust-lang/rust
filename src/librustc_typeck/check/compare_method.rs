@@ -224,7 +224,7 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                                trait_param_env,
                                                                normalize_cause.clone());
 
-    tcx.infer_ctxt(trait_param_env, Reveal::NotSpecializable).enter(|infcx| {
+    tcx.infer_ctxt(trait_param_env, Reveal::UserFacing).enter(|infcx| {
         let inh = Inherited::new(infcx);
         let infcx = &inh.infcx;
         let fulfillment_cx = &inh.fulfillment_cx;
@@ -730,7 +730,7 @@ pub fn compare_const_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                     impl_trait_ref: ty::TraitRef<'tcx>) {
     debug!("compare_const_impl(impl_trait_ref={:?})", impl_trait_ref);
 
-    tcx.infer_ctxt((), Reveal::NotSpecializable).enter(|infcx| {
+    tcx.infer_ctxt((), Reveal::UserFacing).enter(|infcx| {
         let mut fulfillment_cx = traits::FulfillmentContext::new();
 
         // The below is for the most part highly similar to the procedure

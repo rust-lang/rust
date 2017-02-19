@@ -1301,6 +1301,7 @@ bitflags! {
         const IS_FUNDAMENTAL      = 1 << 4,
         const IS_UNION            = 1 << 5,
         const IS_BOX              = 1 << 6,
+        const IS_DTOR_VALID       = 1 << 7,
     }
 }
 
@@ -1522,8 +1523,8 @@ impl<'a, 'gcx, 'tcx> AdtDef {
     }
 
     /// Returns whether this type has a destructor.
-    pub fn has_dtor(&self) -> bool {
-        self.destructor.get().is_some()
+    pub fn has_dtor(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> bool {
+        self.destructor(tcx).is_some()
     }
 
     /// Asserts this is a struct and returns the struct's unique
@@ -1578,12 +1579,36 @@ impl<'a, 'gcx, 'tcx> AdtDef {
         }
     }
 
-    pub fn destructor(&self) -> Option<DefId> {
-        self.destructor.get()
+    pub fn destructor(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Option<DefId> {
+        if self.flags.get().intersects(AdtFlags::IS_DTOR_VALID) {
+            return self.destructor.get();
+        }
+
+        let dtor = self.destructor_uncached(tcx);
+        self.destructor.set(dtor);
+        self.flags.set(self.flags.get() | AdtFlags::IS_DTOR_VALID);
+
+        dtor
     }
 
-    pub fn set_destructor(&self, dtor: DefId) {
-        self.destructor.set(Some(dtor));
+    fn destructor_uncached(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Option<DefId> {
+        let drop_trait = if let Some(def_id) = tcx.lang_items.drop_trait() {
+            def_id
+        } else {
+            return None;
+        };
+
+        queries::coherent_trait::get(tcx, DUMMY_SP, (LOCAL_CRATE, drop_trait));
+
+        let mut dtor = None;
+        let ty = tcx.item_type(self.did);
+        tcx.lookup_trait_def(drop_trait).for_each_relevant_impl(tcx, ty, |def_id| {
+            if let Some(item) = tcx.associated_items(def_id).next() {
+                dtor = Some(item.def_id);
+            }
+        });
+
+        dtor
     }
 
     pub fn discriminants(&'a self, tcx: TyCtxt<'a, 'gcx, 'tcx>)
@@ -2367,23 +2392,18 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn trait_has_default_impl(self, trait_def_id: DefId) -> bool {
-        self.populate_implementations_for_trait_if_necessary(trait_def_id);
-
         let def = self.lookup_trait_def(trait_def_id);
         def.flags.get().intersects(TraitFlags::HAS_DEFAULT_IMPL)
-    }
-
-    /// Records a trait-to-implementation mapping.
-    pub fn record_trait_has_default_impl(self, trait_def_id: DefId) {
-        let def = self.lookup_trait_def(trait_def_id);
-        def.flags.set(def.flags.get() | TraitFlags::HAS_DEFAULT_IMPL)
     }
 
     /// Populates the type context with all the inherent implementations for
     /// the given type if necessary.
     pub fn populate_inherent_implementations_for_type_if_necessary(self,
+                                                                   span: Span,
                                                                    type_id: DefId) {
         if type_id.is_local() {
+            // Make sure coherence of inherent impls ran already.
+            ty::queries::coherent_inherent_impls::force(self, span, LOCAL_CRATE);
             return
         }
 
@@ -2416,15 +2436,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         let _ignore = self.dep_graph.in_ignore();
 
         let def = self.lookup_trait_def(trait_id);
-        if def.flags.get().intersects(TraitFlags::IMPLS_VALID) {
+        if def.flags.get().intersects(TraitFlags::HAS_REMOTE_IMPLS) {
             return;
         }
 
         debug!("populate_implementations_for_trait_if_necessary: searching for {:?}", def);
-
-        if self.sess.cstore.is_defaulted_trait(trait_id) {
-            self.record_trait_has_default_impl(trait_id);
-        }
 
         for impl_def_id in self.sess.cstore.implementations_of_trait(Some(trait_id)) {
             let trait_ref = self.impl_trait_ref(impl_def_id).unwrap();
@@ -2434,7 +2450,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             def.record_remote_impl(self, impl_def_id, trait_ref, parent);
         }
 
-        def.flags.set(def.flags.get() | TraitFlags::IMPLS_VALID);
+        def.flags.set(def.flags.get() | TraitFlags::HAS_REMOTE_IMPLS);
     }
 
     pub fn closure_kind(self, def_id: DefId) -> ty::ClosureKind {

@@ -519,9 +519,7 @@ fn convert_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, it: &hir::Item) {
             convert_enum_variant_types(tcx, def_id, &enum_definition.variants);
         },
         hir::ItemDefaultImpl(..) => {
-            if let Some(trait_ref) = tcx.impl_trait_ref(def_id) {
-                tcx.record_trait_has_default_impl(trait_ref.def_id);
-            }
+            tcx.impl_trait_ref(def_id);
         }
         hir::ItemImpl(..) => {
             tcx.item_generics(def_id);
@@ -869,7 +867,13 @@ fn trait_def<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 
     let def_path_hash = tcx.def_path(def_id).deterministic_hash(tcx);
-    tcx.alloc_trait_def(ty::TraitDef::new(def_id, unsafety, paren_sugar, def_path_hash))
+    let def = ty::TraitDef::new(def_id, unsafety, paren_sugar, def_path_hash);
+
+    if tcx.hir.trait_is_auto(def_id) {
+        def.record_has_default_impl();
+    }
+
+    tcx.alloc_trait_def(def)
 }
 
 fn generics<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,

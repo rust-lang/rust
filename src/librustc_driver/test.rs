@@ -151,7 +151,7 @@ fn test_env<F>(source_string: &str,
                              index,
                              "test_crate",
                              |tcx| {
-        tcx.infer_ctxt((), Reveal::NotSpecializable).enter(|infcx| {
+        tcx.infer_ctxt((), Reveal::UserFacing).enter(|infcx| {
 
             body(Env { infcx: &infcx });
             let free_regions = FreeRegionMap::new();

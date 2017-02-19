@@ -523,7 +523,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingCopyImplementations {
             }
             _ => return,
         };
-        if def.has_dtor() {
+        if def.has_dtor(cx.tcx) {
             return;
         }
         let parameter_environment = cx.tcx.empty_parameter_environment();
@@ -882,7 +882,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnconditionalRecursion {
                     let node_id = tcx.hir.as_local_node_id(method.def_id).unwrap();
 
                     let param_env = ty::ParameterEnvironment::for_item(tcx, node_id);
-                    tcx.infer_ctxt(param_env, Reveal::NotSpecializable).enter(|infcx| {
+                    tcx.infer_ctxt(param_env, Reveal::UserFacing).enter(|infcx| {
                         let mut selcx = traits::SelectionContext::new(&infcx);
                         match selcx.select(&obligation) {
                             // The method comes from a `T: Trait` bound.

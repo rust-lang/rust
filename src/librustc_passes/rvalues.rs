@@ -38,7 +38,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RvalueContext<'a, 'tcx> {
 
     fn visit_nested_body(&mut self, body_id: hir::BodyId) {
         let body = self.tcx.hir.body(body_id);
-        self.tcx.infer_ctxt(body_id, Reveal::NotSpecializable).enter(|infcx| {
+        self.tcx.infer_ctxt(body_id, Reveal::UserFacing).enter(|infcx| {
             let mut delegate = RvalueContextDelegate {
                 tcx: infcx.tcx,
                 param_env: &infcx.parameter_environment

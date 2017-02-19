@@ -477,7 +477,7 @@ impl<'a, 'gcx, 'tcx> Inherited<'a, 'gcx, 'tcx> {
         let tables = ty::TypeckTables::empty();
         let param_env = ParameterEnvironment::for_item(tcx, id);
         InheritedBuilder {
-            infcx: tcx.infer_ctxt((tables, param_env), Reveal::NotSpecializable)
+            infcx: tcx.infer_ctxt((tables, param_env), Reveal::UserFacing)
         }
     }
 }

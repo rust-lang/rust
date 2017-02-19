@@ -505,7 +505,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'gcx> {
             evaluation_cache: traits::EvaluationCache::new(),
             projection_cache: RefCell::new(traits::ProjectionCache::new()),
             reported_trait_errors: RefCell::new(FxHashSet()),
-            projection_mode: Reveal::NotSpecializable,
+            projection_mode: Reveal::UserFacing,
             tainted_by_errors_flag: Cell::new(false),
             err_count_on_creation: self.sess.err_count(),
             obligations_in_snapshot: Cell::new(false),

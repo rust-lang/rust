@@ -189,7 +189,7 @@ pub fn specializes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              .subst(tcx, &penv.free_substs);
 
     // Create a infcx, taking the predicates of impl1 as assumptions:
-    let result = tcx.infer_ctxt(penv, Reveal::ExactMatch).enter(|infcx| {
+    let result = tcx.infer_ctxt(penv, Reveal::UserFacing).enter(|infcx| {
         // Normalize the trait reference. The WF rules ought to ensure
         // that this always succeeds.
         let impl1_trait_ref =

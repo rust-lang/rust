@@ -96,7 +96,7 @@ fn build_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
     };
 
     let src = MirSource::from_node(tcx, id);
-    tcx.infer_ctxt(body_id, Reveal::NotSpecializable).enter(|infcx| {
+    tcx.infer_ctxt(body_id, Reveal::UserFacing).enter(|infcx| {
         let cx = Cx::new(&infcx, src);
         let mut mir = if let MirSource::Fn(id) = src {
             // fetch the fully liberated fn signature (that is, all bound

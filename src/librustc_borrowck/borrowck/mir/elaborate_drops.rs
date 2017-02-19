@@ -898,7 +898,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
 
         match ty.sty {
             ty::TyAdt(def, _) => {
-                if def.has_dtor() && !def.is_box() {
+                if def.has_dtor(self.tcx) && !def.is_box() {
                     self.tcx.sess.span_warn(
                         c.source_info.span,
                         &format!("dataflow bug??? moving out of type with dtor {:?}",

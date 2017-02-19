@@ -149,7 +149,7 @@ impl<'tcx> ParameterEnvironment<'tcx> {
                                        self_type: Ty<'tcx>, span: Span)
                                        -> Result<(), CopyImplementationError> {
         // FIXME: (@jroesch) float this code up
-        tcx.infer_ctxt(self.clone(), Reveal::NotSpecializable).enter(|infcx| {
+        tcx.infer_ctxt(self.clone(), Reveal::UserFacing).enter(|infcx| {
             let (adt, substs) = match self_type.sty {
                 ty::TyAdt(adt, substs) => (adt, substs),
                 _ => return Err(CopyImplementationError::NotAnAdt)
@@ -171,7 +171,7 @@ impl<'tcx> ParameterEnvironment<'tcx> {
                 }
             }
 
-            if adt.has_dtor() {
+            if adt.has_dtor(tcx) {
                 return Err(CopyImplementationError::HasDestructor);
             }
 
@@ -353,7 +353,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// (This allows programs to make cyclic structures without
     /// resorting to unasfe means; see RFCs 769 and 1238).
     pub fn is_adt_dtorck(self, adt: &ty::AdtDef) -> bool {
-        let dtor_method = match adt.destructor() {
+        let dtor_method = match adt.destructor(self) {
             Some(dtor) => dtor,
             None => return false
         };
@@ -524,7 +524,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
             }
         }
         let result =
-            tcx.infer_ctxt(param_env.clone(), Reveal::ExactMatch)
+            tcx.infer_ctxt(param_env.clone(), Reveal::UserFacing)
             .enter(|infcx| {
                 traits::type_known_to_meet_bound(&infcx, self, def_id, span)
             });

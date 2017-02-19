@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use dep_graph::DepNode;
-use hir::def_id::DefId;
+use hir::def_id::{DefId, LOCAL_CRATE};
 use traits::{self, specialization_graph};
 use ty;
 use ty::fast_reject;
@@ -17,6 +17,9 @@ use ty::{Ty, TyCtxt, TraitRef};
 use std::cell::{Cell, RefCell};
 use hir;
 use util::nodemap::FxHashMap;
+
+use syntax::ast;
+use syntax_pos::DUMMY_SP;
 
 /// A trait's definition with type information.
 pub struct TraitDef {
@@ -60,6 +63,11 @@ pub struct TraitDef {
     /// Various flags
     pub flags: Cell<TraitFlags>,
 
+    /// The number of impls we've added from the local crate.
+    /// When this number matches up the list in the HIR map,
+    /// we're done, and the specialization graph is correct.
+    local_impl_count: Cell<usize>,
+
     /// The ICH of this trait's DefPath, cached here so it doesn't have to be
     /// recomputed all the time.
     pub def_path_hash: u64,
@@ -78,6 +86,7 @@ impl<'a, 'gcx, 'tcx> TraitDef {
             nonblanket_impls: RefCell::new(FxHashMap()),
             blanket_impls: RefCell::new(vec![]),
             flags: Cell::new(ty::TraitFlags::NO_TRAIT_FLAGS),
+            local_impl_count: Cell::new(0),
             specialization_graph: RefCell::new(traits::specialization_graph::Graph::new()),
             def_path_hash: def_path_hash,
         }
@@ -155,6 +164,13 @@ impl<'a, 'gcx, 'tcx> TraitDef {
         assert!(impl_def_id.is_local());
         let was_new = self.record_impl(tcx, impl_def_id, impl_trait_ref);
         assert!(was_new);
+
+        self.local_impl_count.set(self.local_impl_count.get() + 1);
+    }
+
+    /// Records a trait-to-implementation mapping.
+    pub fn record_has_default_impl(&self) {
+        self.flags.set(self.flags.get() | TraitFlags::HAS_DEFAULT_IMPL);
     }
 
     /// Records a trait-to-implementation mapping for a non-local impl.
@@ -194,9 +210,50 @@ impl<'a, 'gcx, 'tcx> TraitDef {
         specialization_graph::ancestors(self, of_impl)
     }
 
+    /// Whether the impl set and specialization graphs are complete.
+    pub fn is_complete(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> bool {
+        tcx.populate_implementations_for_trait_if_necessary(self.def_id);
+        ty::queries::coherent_trait::try_get(tcx, DUMMY_SP, (LOCAL_CRATE, self.def_id)).is_ok()
+    }
+
+    /// If any local impls haven't been added yet, returns
+    /// Some(list of local impls for this trait).
+    fn missing_local_impls(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>)
+                           -> Option<&'gcx [ast::NodeId]> {
+        if self.flags.get().intersects(TraitFlags::HAS_LOCAL_IMPLS) {
+            return None;
+        }
+
+        if self.is_complete(tcx) {
+            self.flags.set(self.flags.get() | TraitFlags::HAS_LOCAL_IMPLS);
+            return None;
+        }
+
+        let impls = tcx.hir.trait_impls(self.def_id);
+        assert!(self.local_impl_count.get() <= impls.len());
+        if self.local_impl_count.get() == impls.len() {
+            self.flags.set(self.flags.get() | TraitFlags::HAS_LOCAL_IMPLS);
+            return None;
+        }
+
+        Some(impls)
+    }
+
     pub fn for_each_impl<F: FnMut(DefId)>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>, mut f: F) {
         self.read_trait_impls(tcx);
         tcx.populate_implementations_for_trait_if_necessary(self.def_id);
+
+        let local_impls = self.missing_local_impls(tcx);
+        if let Some(impls) = local_impls {
+            for &id in impls {
+                f(tcx.hir.local_def_id(id));
+            }
+        }
+        let mut f = |def_id: DefId| {
+            if !(local_impls.is_some() && def_id.is_local()) {
+                f(def_id);
+            }
+        };
 
         for &impl_def_id in self.blanket_impls.borrow().iter() {
             f(impl_def_id);
@@ -217,8 +274,19 @@ impl<'a, 'gcx, 'tcx> TraitDef {
                                                    mut f: F)
     {
         self.read_trait_impls(tcx);
-
         tcx.populate_implementations_for_trait_if_necessary(self.def_id);
+
+        let local_impls = self.missing_local_impls(tcx);
+        if let Some(impls) = local_impls {
+            for &id in impls {
+                f(tcx.hir.local_def_id(id));
+            }
+        }
+        let mut f = |def_id: DefId| {
+            if !(local_impls.is_some() && def_id.is_local()) {
+                f(def_id);
+            }
+        };
 
         for &impl_def_id in self.blanket_impls.borrow().iter() {
             f(impl_def_id);
@@ -258,6 +326,7 @@ bitflags! {
         const HAS_DEFAULT_IMPL      = 1 << 0,
         const IS_OBJECT_SAFE        = 1 << 1,
         const OBJECT_SAFETY_VALID   = 1 << 2,
-        const IMPLS_VALID           = 1 << 3,
+        const HAS_REMOTE_IMPLS      = 1 << 3,
+        const HAS_LOCAL_IMPLS       = 1 << 4,
     }
 }
