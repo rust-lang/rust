@@ -525,127 +525,126 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         lint_id)
                         .emit();
                     return;
-                } else {
-                    match obligation.predicate {
-                        ty::Predicate::Trait(ref trait_predicate) => {
-                            let trait_predicate =
-                                self.resolve_type_vars_if_possible(trait_predicate);
+                }
+                match obligation.predicate {
+                    ty::Predicate::Trait(ref trait_predicate) => {
+                        let trait_predicate =
+                            self.resolve_type_vars_if_possible(trait_predicate);
 
-                            if self.tcx.sess.has_errors() && trait_predicate.references_error() {
-                                return;
-                            } else {
-                                let trait_ref = trait_predicate.to_poly_trait_ref();
-                                let (post_message, pre_message) = match self.get_parent_trait_ref(
-                                    &obligation.cause.code)
-                                {
-                                    Some(t) => {
-                                        (format!(" in `{}`", t), format!("within `{}`, ", t))
-                                    }
-                                    None => (String::new(), String::new()),
-                                };
-                                let mut err = struct_span_err!(
-                                    self.tcx.sess,
-                                    span,
-                                    E0277,
-                                    "the trait bound `{}` is not satisfied{}",
-                                    trait_ref.to_predicate(),
-                                    post_message);
-                                err.span_label(span,
-                                               &format!("{}the trait `{}` is not \
-                                                         implemented for `{}`",
-                                                        pre_message,
-                                                        trait_ref,
-                                                        trait_ref.self_ty()));
-
-                                // Try to report a help message
-
-                                if !trait_ref.has_infer_types() &&
-                                    self.predicate_can_apply(trait_ref) {
-                                    // If a where-clause may be useful, remind the
-                                    // user that they can add it.
-                                    //
-                                    // don't display an on-unimplemented note, as
-                                    // these notes will often be of the form
-                                    //     "the type `T` can't be frobnicated"
-                                    // which is somewhat confusing.
-                                    err.help(&format!("consider adding a `where {}` bound",
-                                                      trait_ref.to_predicate()));
-                                } else if let Some(s) = self.on_unimplemented_note(trait_ref,
-                                                                                   obligation) {
-                                    // If it has a custom "#[rustc_on_unimplemented]"
-                                    // error message, let's display it!
-                                    err.note(&s);
-                                } else {
-                                    // If we can't show anything useful, try to find
-                                    // similar impls.
-                                    let impl_candidates =
-                                        self.find_similar_impl_candidates(trait_ref);
-                                    if impl_candidates.len() > 0 {
-                                        self.report_similar_impl_candidates(trait_ref, &mut err);
-                                    }
-                                }
-                                err
-                            }
-                        }
-
-                        ty::Predicate::Equate(ref predicate) => {
-                            let predicate = self.resolve_type_vars_if_possible(predicate);
-                            let err = self.equality_predicate(&obligation.cause,
-                                                              &predicate).err().unwrap();
-                            struct_span_err!(self.tcx.sess, span, E0278,
-                                "the requirement `{}` is not satisfied (`{}`)",
-                                predicate, err)
-                        }
-
-                        ty::Predicate::RegionOutlives(ref predicate) => {
-                            let predicate = self.resolve_type_vars_if_possible(predicate);
-                            let err = self.region_outlives_predicate(&obligation.cause,
-                                                                     &predicate).err().unwrap();
-                            struct_span_err!(self.tcx.sess, span, E0279,
-                                "the requirement `{}` is not satisfied (`{}`)",
-                                predicate, err)
-                        }
-
-                        ty::Predicate::Projection(..) | ty::Predicate::TypeOutlives(..) => {
-                            let predicate =
-                                self.resolve_type_vars_if_possible(&obligation.predicate);
-                            struct_span_err!(self.tcx.sess, span, E0280,
-                                "the requirement `{}` is not satisfied",
-                                predicate)
-                        }
-
-                        ty::Predicate::ObjectSafe(trait_def_id) => {
-                            let violations = self.tcx.object_safety_violations(trait_def_id);
-                            self.tcx.report_object_safety_error(span,
-                                                                trait_def_id,
-                                                                violations)
-                        }
-
-                        ty::Predicate::ClosureKind(closure_def_id, kind) => {
-                            let found_kind = self.closure_kind(closure_def_id).unwrap();
-                            let closure_span = self.tcx.hir.span_if_local(closure_def_id).unwrap();
-                            let mut err = struct_span_err!(
-                                self.tcx.sess, closure_span, E0525,
-                                "expected a closure that implements the `{}` trait, \
-                                 but this closure only implements `{}`",
-                                kind,
-                                found_kind);
-                            err.span_note(
-                                obligation.cause.span,
-                                &format!("the requirement to implement \
-                                          `{}` derives from here", kind));
-                            err.emit();
+                        if self.tcx.sess.has_errors() && trait_predicate.references_error() {
                             return;
-                        }
+                        } else {
+                            let trait_ref = trait_predicate.to_poly_trait_ref();
+                            let (post_message, pre_message) = match self.get_parent_trait_ref(
+                                &obligation.cause.code)
+                            {
+                                Some(t) => {
+                                    (format!(" in `{}`", t), format!("within `{}`, ", t))
+                                }
+                                None => (String::new(), String::new()),
+                            };
+                            let mut err = struct_span_err!(
+                                self.tcx.sess,
+                                span,
+                                E0277,
+                                "the trait bound `{}` is not satisfied{}",
+                                trait_ref.to_predicate(),
+                                post_message);
+                            err.span_label(span,
+                                            &format!("{}the trait `{}` is not \
+                                                        implemented for `{}`",
+                                                    pre_message,
+                                                    trait_ref,
+                                                    trait_ref.self_ty()));
 
-                        ty::Predicate::WellFormed(ty) => {
-                            // WF predicates cannot themselves make
-                            // errors. They can only block due to
-                            // ambiguity; otherwise, they always
-                            // degenerate into other obligations
-                            // (which may fail).
-                            span_bug!(span, "WF predicate not satisfied for {:?}", ty);
+                            // Try to report a help message
+
+                            if !trait_ref.has_infer_types() &&
+                                self.predicate_can_apply(trait_ref) {
+                                // If a where-clause may be useful, remind the
+                                // user that they can add it.
+                                //
+                                // don't display an on-unimplemented note, as
+                                // these notes will often be of the form
+                                //     "the type `T` can't be frobnicated"
+                                // which is somewhat confusing.
+                                err.help(&format!("consider adding a `where {}` bound",
+                                                    trait_ref.to_predicate()));
+                            } else if let Some(s) = self.on_unimplemented_note(trait_ref,
+                                                                                obligation) {
+                                // If it has a custom "#[rustc_on_unimplemented]"
+                                // error message, let's display it!
+                                err.note(&s);
+                            } else {
+                                // If we can't show anything useful, try to find
+                                // similar impls.
+                                let impl_candidates =
+                                    self.find_similar_impl_candidates(trait_ref);
+                                if impl_candidates.len() > 0 {
+                                    self.report_similar_impl_candidates(trait_ref, &mut err);
+                                }
+                            }
+                            err
                         }
+                    }
+
+                    ty::Predicate::Equate(ref predicate) => {
+                        let predicate = self.resolve_type_vars_if_possible(predicate);
+                        let err = self.equality_predicate(&obligation.cause,
+                                                            &predicate).err().unwrap();
+                        struct_span_err!(self.tcx.sess, span, E0278,
+                            "the requirement `{}` is not satisfied (`{}`)",
+                            predicate, err)
+                    }
+
+                    ty::Predicate::RegionOutlives(ref predicate) => {
+                        let predicate = self.resolve_type_vars_if_possible(predicate);
+                        let err = self.region_outlives_predicate(&obligation.cause,
+                                                                    &predicate).err().unwrap();
+                        struct_span_err!(self.tcx.sess, span, E0279,
+                            "the requirement `{}` is not satisfied (`{}`)",
+                            predicate, err)
+                    }
+
+                    ty::Predicate::Projection(..) | ty::Predicate::TypeOutlives(..) => {
+                        let predicate =
+                            self.resolve_type_vars_if_possible(&obligation.predicate);
+                        struct_span_err!(self.tcx.sess, span, E0280,
+                            "the requirement `{}` is not satisfied",
+                            predicate)
+                    }
+
+                    ty::Predicate::ObjectSafe(trait_def_id) => {
+                        let violations = self.tcx.object_safety_violations(trait_def_id);
+                        self.tcx.report_object_safety_error(span,
+                                                            trait_def_id,
+                                                            violations)
+                    }
+
+                    ty::Predicate::ClosureKind(closure_def_id, kind) => {
+                        let found_kind = self.closure_kind(closure_def_id).unwrap();
+                        let closure_span = self.tcx.hir.span_if_local(closure_def_id).unwrap();
+                        let mut err = struct_span_err!(
+                            self.tcx.sess, closure_span, E0525,
+                            "expected a closure that implements the `{}` trait, \
+                                but this closure only implements `{}`",
+                            kind,
+                            found_kind);
+                        err.span_note(
+                            obligation.cause.span,
+                            &format!("the requirement to implement \
+                                        `{}` derives from here", kind));
+                        err.emit();
+                        return;
+                    }
+
+                    ty::Predicate::WellFormed(ty) => {
+                        // WF predicates cannot themselves make
+                        // errors. They can only block due to
+                        // ambiguity; otherwise, they always
+                        // degenerate into other obligations
+                        // (which may fail).
+                        span_bug!(span, "WF predicate not satisfied for {:?}", ty);
                     }
                 }
             }
