@@ -533,55 +533,54 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
                         if self.tcx.sess.has_errors() && trait_predicate.references_error() {
                             return;
-                        } else {
-                            let trait_ref = trait_predicate.to_poly_trait_ref();
-                            let (post_message, pre_message) =
-                                self.get_parent_trait_ref(&obligation.cause.code)
-                                    .map(|t| (format!(" in `{}`", t), format!("within `{}`, ", t)))
-                                    .unwrap_or((String::new(), String::new()));
-                            let mut err = struct_span_err!(
-                                self.tcx.sess,
-                                span,
-                                E0277,
-                                "the trait bound `{}` is not satisfied{}",
-                                trait_ref.to_predicate(),
-                                post_message);
-                            err.span_label(span,
-                                            &format!("{}the trait `{}` is not \
-                                                        implemented for `{}`",
-                                                    pre_message,
-                                                    trait_ref,
-                                                    trait_ref.self_ty()));
-
-                            // Try to report a help message
-
-                            if !trait_ref.has_infer_types() &&
-                                self.predicate_can_apply(trait_ref) {
-                                // If a where-clause may be useful, remind the
-                                // user that they can add it.
-                                //
-                                // don't display an on-unimplemented note, as
-                                // these notes will often be of the form
-                                //     "the type `T` can't be frobnicated"
-                                // which is somewhat confusing.
-                                err.help(&format!("consider adding a `where {}` bound",
-                                                    trait_ref.to_predicate()));
-                            } else if let Some(s) = self.on_unimplemented_note(trait_ref,
-                                                                                obligation) {
-                                // If it has a custom "#[rustc_on_unimplemented]"
-                                // error message, let's display it!
-                                err.note(&s);
-                            } else {
-                                // If we can't show anything useful, try to find
-                                // similar impls.
-                                let impl_candidates =
-                                    self.find_similar_impl_candidates(trait_ref);
-                                if impl_candidates.len() > 0 {
-                                    self.report_similar_impl_candidates(trait_ref, &mut err);
-                                }
-                            }
-                            err
                         }
+                        let trait_ref = trait_predicate.to_poly_trait_ref();
+                        let (post_message, pre_message) =
+                            self.get_parent_trait_ref(&obligation.cause.code)
+                                .map(|t| (format!(" in `{}`", t), format!("within `{}`, ", t)))
+                                .unwrap_or((String::new(), String::new()));
+                        let mut err = struct_span_err!(
+                            self.tcx.sess,
+                            span,
+                            E0277,
+                            "the trait bound `{}` is not satisfied{}",
+                            trait_ref.to_predicate(),
+                            post_message);
+                        err.span_label(span,
+                                        &format!("{}the trait `{}` is not \
+                                                    implemented for `{}`",
+                                                pre_message,
+                                                trait_ref,
+                                                trait_ref.self_ty()));
+
+                        // Try to report a help message
+
+                        if !trait_ref.has_infer_types() &&
+                            self.predicate_can_apply(trait_ref) {
+                            // If a where-clause may be useful, remind the
+                            // user that they can add it.
+                            //
+                            // don't display an on-unimplemented note, as
+                            // these notes will often be of the form
+                            //     "the type `T` can't be frobnicated"
+                            // which is somewhat confusing.
+                            err.help(&format!("consider adding a `where {}` bound",
+                                                trait_ref.to_predicate()));
+                        } else if let Some(s) = self.on_unimplemented_note(trait_ref,
+                                                                            obligation) {
+                            // If it has a custom "#[rustc_on_unimplemented]"
+                            // error message, let's display it!
+                            err.note(&s);
+                        } else {
+                            // If we can't show anything useful, try to find
+                            // similar impls.
+                            let impl_candidates =
+                                self.find_similar_impl_candidates(trait_ref);
+                            if impl_candidates.len() > 0 {
+                                self.report_similar_impl_candidates(trait_ref, &mut err);
+                            }
+                        }
+                        err
                     }
 
                     ty::Predicate::Equate(ref predicate) => {
