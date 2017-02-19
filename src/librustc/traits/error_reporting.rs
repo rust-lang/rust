@@ -21,7 +21,6 @@ use super::{
     SelectionContext,
     SelectionError,
     ObjectSafetyViolation,
-    MethodViolationCode,
 };
 
 use fmt_macros::{Parser, Piece, Position};
@@ -679,38 +678,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             if !reported_violations.insert(violation.clone()) {
                 continue;
             }
-            let buf;
-            let note = match violation {
-                ObjectSafetyViolation::SizedSelf => {
-                    "the trait cannot require that `Self : Sized`"
-                }
-
-                ObjectSafetyViolation::SupertraitSelf => {
-                    "the trait cannot use `Self` as a type parameter \
-                         in the supertrait listing"
-                }
-
-                ObjectSafetyViolation::Method(name,
-                                              MethodViolationCode::StaticMethod) => {
-                    buf = format!("method `{}` has no receiver", name);
-                    &buf
-                }
-
-                ObjectSafetyViolation::Method(name,
-                                              MethodViolationCode::ReferencesSelf) => {
-                    buf = format!("method `{}` references the `Self` type \
-                                       in its arguments or return type",
-                                  name);
-                    &buf
-                }
-
-                ObjectSafetyViolation::Method(name,
-                                              MethodViolationCode::Generic) => {
-                    buf = format!("method `{}` has generic type parameters", name);
-                    &buf
-                }
-            };
-            err.note(note);
+            err.note(&violation.error_msg());
         }
         err
     }
