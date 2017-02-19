@@ -264,7 +264,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             discr: variant.discr,
             evaluated_discr: match variant.discr {
                 ty::VariantDiscr::Explicit(def_id) => {
-                    tcx.maps.monomorphic_const_eval(tcx, DUMMY_SP, def_id).ok()
+                    ty::queries::monomorphic_const_eval::get(tcx, DUMMY_SP, def_id).ok()
                 }
                 ty::VariantDiscr::Relative(_) => None
             },

@@ -243,7 +243,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         let is_object = self_ty.map_or(false, |ty| ty.sty == TRAIT_OBJECT_DUMMY_SELF);
         let default_needs_object_self = |p: &ty::TypeParameterDef| {
             if is_object && p.has_default {
-                if tcx.maps.ty(tcx, span, p.def_id).has_self_ty() {
+                if ty::queries::ty::get(tcx, span, p.def_id).has_self_ty() {
                     // There is no suitable inference default for a type parameter
                     // that references self, in an object type.
                     return true;
@@ -310,7 +310,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                     tcx.types.err
                 } else {
                     // This is a default type parameter.
-                    tcx.maps.ty(tcx, span, def.def_id).subst_spanned(tcx, substs, Some(span))
+                    ty::queries::ty::get(tcx, span, def.def_id)
+                        .subst_spanned(tcx, substs, Some(span))
                 }
             } else {
                 // We've already errored above about the mismatch.
@@ -599,7 +600,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         -> Ty<'tcx>
     {
         let substs = self.ast_path_substs_for_ty(span, did, item_segment);
-        self.tcx().maps.ty(self.tcx(), span, did).subst(self.tcx(), substs)
+        ty::queries::ty::get(self.tcx(), span, did).subst(self.tcx(), substs)
     }
 
     /// Transform a PolyTraitRef into a PolyExistentialTraitRef by
@@ -985,7 +986,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 assert_eq!(opt_self_ty, None);
                 tcx.prohibit_type_params(&path.segments);
 
-                let ty = tcx.maps.ty(tcx, span, def_id);
+                let ty = ty::queries::ty::get(tcx, span, def_id);
                 if let Some(free_substs) = self.get_free_substs() {
                     ty.subst(tcx, free_substs)
                 } else {
