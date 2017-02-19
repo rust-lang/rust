@@ -131,7 +131,37 @@ pub enum DepNode<D: Clone + Debug> {
     // which would yield an overly conservative dep-graph.
     TraitItems(D),
     ReprHints(D),
-    TraitSelect(Vec<D>),
+
+    // Trait selection cache is a little funny. Given a trait
+    // reference like `Foo: SomeTrait<Bar>`, there could be
+    // arbitrarily many def-ids to map on in there (e.g., `Foo`,
+    // `SomeTrait`, `Bar`). We could have a vector of them, but it
+    // requires heap-allocation, and trait sel in general can be a
+    // surprisingly hot path. So instead we pick two def-ids: the
+    // trait def-id, and the first def-id in the input types. If there
+    // is no def-id in the input types, then we use the trait def-id
+    // again. So for example:
+    //
+    // - `i32: Clone` -> `TraitSelect { trait_def_id: Clone, self_def_id: Clone }`
+    // - `u32: Clone` -> `TraitSelect { trait_def_id: Clone, self_def_id: Clone }`
+    // - `Clone: Clone` -> `TraitSelect { trait_def_id: Clone, self_def_id: Clone }`
+    // - `Vec<i32>: Clone` -> `TraitSelect { trait_def_id: Clone, self_def_id: Vec }`
+    // - `String: Clone` -> `TraitSelect { trait_def_id: Clone, self_def_id: String }`
+    // - `Foo: Trait<Bar>` -> `TraitSelect { trait_def_id: Trait, self_def_id: Foo }`
+    // - `Foo: Trait<i32>` -> `TraitSelect { trait_def_id: Trait, self_def_id: Foo }`
+    // - `(Foo, Bar): Trait` -> `TraitSelect { trait_def_id: Trait, self_def_id: Foo }`
+    // - `i32: Trait<Foo>` -> `TraitSelect { trait_def_id: Trait, self_def_id: Foo }`
+    //
+    // You can see that we map many trait refs to the same
+    // trait-select node.  This is not a problem, it just means
+    // imprecision in our dep-graph tracking.  The important thing is
+    // that for any given trait-ref, we always map to the **same**
+    // trait-select node.
+    TraitSelect { trait_def_id: D, input_def_id: D },
+
+    // For proj. cache, we just keep a list of all def-ids, since it is
+    // not a hotspot.
+    ProjectionCache { def_ids: Vec<D> },
 }
 
 impl<D: Clone + Debug> DepNode<D> {
@@ -236,9 +266,17 @@ impl<D: Clone + Debug> DepNode<D> {
             TraitImpls(ref d) => op(d).map(TraitImpls),
             TraitItems(ref d) => op(d).map(TraitItems),
             ReprHints(ref d) => op(d).map(ReprHints),
-            TraitSelect(ref type_ds) => {
-                let type_ds = try_opt!(type_ds.iter().map(|d| op(d)).collect());
-                Some(TraitSelect(type_ds))
+            TraitSelect { ref trait_def_id, ref input_def_id } => {
+                op(trait_def_id).and_then(|trait_def_id| {
+                    op(input_def_id).and_then(|input_def_id| {
+                        Some(TraitSelect { trait_def_id: trait_def_id,
+                                           input_def_id: input_def_id })
+                    })
+                })
+            }
+            ProjectionCache { ref def_ids } => {
+                let def_ids: Option<Vec<E>> = def_ids.iter().map(op).collect();
+                def_ids.map(|d| ProjectionCache { def_ids: d })
             }
         }
     }

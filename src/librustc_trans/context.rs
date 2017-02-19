@@ -208,7 +208,8 @@ impl<'gcx> DepTrackingMapConfig for ProjectionCache<'gcx> {
                    _ => None,
                })
                .collect();
-        DepNode::TraitSelect(def_ids)
+
+        DepNode::ProjectionCache { def_ids: def_ids }
     }
 }
 

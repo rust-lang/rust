@@ -412,6 +412,7 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
                 span_bug!(stmt.source_info.span,
                           "SetDiscriminant should not exist during borrowck");
             }
+            StatementKind::InlineAsm { .. } |
             StatementKind::Nop => {}
         }
     }
@@ -436,8 +437,7 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
             }
             Rvalue::Ref(..) |
             Rvalue::Discriminant(..) |
-            Rvalue::Len(..) |
-            Rvalue::InlineAsm { .. } => {}
+            Rvalue::Len(..) => {}
             Rvalue::Box(..) => {
                 // This returns an rvalue with uninitialized contents. We can't
                 // move out of it here because it is an rvalue - assignments always

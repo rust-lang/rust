@@ -287,8 +287,9 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                     mir::StatementKind::StorageLive(_) |
                     mir::StatementKind::StorageDead(_) |
                     mir::StatementKind::Nop => {}
+                    mir::StatementKind::InlineAsm { .. } |
                     mir::StatementKind::SetDiscriminant{ .. } => {
-                        span_bug!(span, "SetDiscriminant should not appear in constants?");
+                        span_bug!(span, "{:?} should not appear in constants?", statement.kind);
                     }
                 }
             }
