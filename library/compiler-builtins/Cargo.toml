@@ -6,7 +6,10 @@ version = "0.1.0"
 
 [build-dependencies]
 rustc-cfg = "0.3.0"
-gcc = "0.3.36"
+
+[build-dependencies.gcc]
+optional = true
+version = "0.3.36"
 
 [dev-dependencies]
 quickcheck = "0.3.1"
@@ -16,7 +19,7 @@ compiler-rt = { path = "compiler-rt" }
 
 [features]
 # Build the missing intrinsics from compiler-rt C source code
-c = []
+c = ["gcc"]
 # Mark this crate as the #![compiler_builtins] crate
 compiler-builtins = []
 default = ["compiler-builtins"]
