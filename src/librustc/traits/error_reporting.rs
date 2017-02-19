@@ -708,46 +708,46 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 let trait_ref = data.to_poly_trait_ref();
                 let self_ty = trait_ref.self_ty();
                 if predicate.references_error() {
-                } else {
-                    // Typically, this ambiguity should only happen if
-                    // there are unresolved type inference variables
-                    // (otherwise it would suggest a coherence
-                    // failure). But given #21974 that is not necessarily
-                    // the case -- we can have multiple where clauses that
-                    // are only distinguished by a region, which results
-                    // in an ambiguity even when all types are fully
-                    // known, since we don't dispatch based on region
-                    // relationships.
+                    return;
+                }
+                // Typically, this ambiguity should only happen if
+                // there are unresolved type inference variables
+                // (otherwise it would suggest a coherence
+                // failure). But given #21974 that is not necessarily
+                // the case -- we can have multiple where clauses that
+                // are only distinguished by a region, which results
+                // in an ambiguity even when all types are fully
+                // known, since we don't dispatch based on region
+                // relationships.
 
-                    // This is kind of a hack: it frequently happens that some earlier
-                    // error prevents types from being fully inferred, and then we get
-                    // a bunch of uninteresting errors saying something like "<generic
-                    // #0> doesn't implement Sized".  It may even be true that we
-                    // could just skip over all checks where the self-ty is an
-                    // inference variable, but I was afraid that there might be an
-                    // inference variable created, registered as an obligation, and
-                    // then never forced by writeback, and hence by skipping here we'd
-                    // be ignoring the fact that we don't KNOW the type works
-                    // out. Though even that would probably be harmless, given that
-                    // we're only talking about builtin traits, which are known to be
-                    // inhabited. But in any case I just threw in this check for
-                    // has_errors() to be sure that compilation isn't happening
-                    // anyway. In that case, why inundate the user.
-                    if !self.tcx.sess.has_errors() {
-                        if
-                            self.tcx.lang_items.sized_trait()
-                            .map_or(false, |sized_id| sized_id == trait_ref.def_id())
-                        {
-                            self.need_type_info(obligation, self_ty);
-                        } else {
-                            let mut err = struct_span_err!(self.tcx.sess,
-                                                           obligation.cause.span, E0283,
-                                                           "type annotations required: \
-                                                            cannot resolve `{}`",
-                                                           predicate);
-                            self.note_obligation_cause(&mut err, obligation);
-                            err.emit();
-                        }
+                // This is kind of a hack: it frequently happens that some earlier
+                // error prevents types from being fully inferred, and then we get
+                // a bunch of uninteresting errors saying something like "<generic
+                // #0> doesn't implement Sized".  It may even be true that we
+                // could just skip over all checks where the self-ty is an
+                // inference variable, but I was afraid that there might be an
+                // inference variable created, registered as an obligation, and
+                // then never forced by writeback, and hence by skipping here we'd
+                // be ignoring the fact that we don't KNOW the type works
+                // out. Though even that would probably be harmless, given that
+                // we're only talking about builtin traits, which are known to be
+                // inhabited. But in any case I just threw in this check for
+                // has_errors() to be sure that compilation isn't happening
+                // anyway. In that case, why inundate the user.
+                if !self.tcx.sess.has_errors() {
+                    if
+                        self.tcx.lang_items.sized_trait()
+                        .map_or(false, |sized_id| sized_id == trait_ref.def_id())
+                    {
+                        self.need_type_info(obligation, self_ty);
+                    } else {
+                        let mut err = struct_span_err!(self.tcx.sess,
+                                                        obligation.cause.span, E0283,
+                                                        "type annotations required: \
+                                                        cannot resolve `{}`",
+                                                        predicate);
+                        self.note_obligation_cause(&mut err, obligation);
+                        err.emit();
                     }
                 }
             }
