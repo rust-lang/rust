@@ -138,7 +138,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
             self.check_const_eval(&body.value);
         }
 
-        let outer_penv = self.tcx.infer_ctxt(body_id, Reveal::NotSpecializable).enter(|infcx| {
+        let outer_penv = self.tcx.infer_ctxt(body_id, Reveal::UserFacing).enter(|infcx| {
             let param_env = infcx.parameter_environment.clone();
             let outer_penv = mem::replace(&mut self.param_env, param_env);
             euv::ExprUseVisitor::new(self, &infcx).consume_body(body);
@@ -274,7 +274,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
 /// instead of producing errors.
 fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node_ty: Ty<'tcx>) {
     match node_ty.sty {
-        ty::TyAdt(def, _) if def.has_dtor() => {
+        ty::TyAdt(def, _) if def.has_dtor(v.tcx) => {
             v.promotable = false;
         }
         _ => {}

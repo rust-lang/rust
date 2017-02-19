@@ -31,20 +31,7 @@ impl<'cx, 'tcx, 'v> UnsafetyChecker<'cx, 'tcx> {
                                 unsafety: hir::Unsafety,
                                 polarity: hir::ImplPolarity) {
         match self.tcx.impl_trait_ref(self.tcx.hir.local_def_id(item.id)) {
-            None => {
-                // Inherent impl.
-                match unsafety {
-                    hir::Unsafety::Normal => {
-                        // OK
-                    }
-                    hir::Unsafety::Unsafe => {
-                        span_err!(self.tcx.sess,
-                                  item.span,
-                                  E0197,
-                                  "inherent impls cannot be declared as unsafe");
-                    }
-                }
-            }
+            None => {}
 
             Some(trait_ref) => {
                 let trait_def = self.tcx.lookup_trait_def(trait_ref.def_id);
@@ -100,7 +87,7 @@ impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for UnsafetyChecker<'cx, 'tcx> {
             hir::ItemDefaultImpl(unsafety, _) => {
                 self.check_unsafety_coherence(item, None, unsafety, hir::ImplPolarity::Positive);
             }
-            hir::ItemImpl(unsafety, polarity, ref generics, ..) => {
+            hir::ItemImpl(unsafety, polarity, ref generics, Some(_), _, _) => {
                 self.check_unsafety_coherence(item, Some(generics), unsafety, polarity);
             }
             _ => {}

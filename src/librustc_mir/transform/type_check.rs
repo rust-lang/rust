@@ -699,7 +699,7 @@ impl<'tcx> MirPass<'tcx> for TypeckMir {
             return;
         }
         let param_env = ty::ParameterEnvironment::for_item(tcx, src.item_id());
-        tcx.infer_ctxt(param_env, Reveal::NotSpecializable).enter(|infcx| {
+        tcx.infer_ctxt(param_env, Reveal::UserFacing).enter(|infcx| {
             let mut checker = TypeChecker::new(&infcx, src.item_id());
             {
                 let mut verifier = TypeVerifier::new(&mut checker, mir);

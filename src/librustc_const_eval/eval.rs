@@ -922,7 +922,7 @@ fn resolve_trait_associated_const<'a, 'tcx: 'a>(
            trait_ref);
 
     tcx.populate_implementations_for_trait_if_necessary(trait_id);
-    tcx.infer_ctxt((), Reveal::NotSpecializable).enter(|infcx| {
+    tcx.infer_ctxt((), Reveal::UserFacing).enter(|infcx| {
         let mut selcx = traits::SelectionContext::new(&infcx);
         let obligation = traits::Obligation::new(traits::ObligationCause::dummy(),
                                                  trait_ref.to_poly_trait_predicate());

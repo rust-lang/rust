@@ -237,7 +237,7 @@ pub fn implement_drop_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, g: DropGlueKi
             bcx.call(dtor, &[ptr.llval], None);
             bcx
         }
-        ty::TyAdt(def, ..) if def.has_dtor() && !skip_dtor => {
+        ty::TyAdt(def, ..) if def.has_dtor(bcx.tcx()) && !skip_dtor => {
             let shallow_drop = def.is_union();
             let tcx = bcx.tcx();
 
@@ -265,7 +265,7 @@ pub fn implement_drop_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, g: DropGlueKi
                 traits::VtableImpl(data) => data,
                 _ => bug!("dtor for {:?} is not an impl???", t)
             };
-            let dtor_did = def.destructor().unwrap();
+            let dtor_did = def.destructor(tcx).unwrap();
             let callee = Callee::def(bcx.ccx, dtor_did, vtbl.substs);
             let fn_ty = callee.direct_fn_type(bcx.ccx, &[]);
             let llret;

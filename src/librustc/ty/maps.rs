@@ -24,6 +24,15 @@ trait Key {
     fn default_span(&self, tcx: TyCtxt) -> Span;
 }
 
+impl Key for CrateNum {
+    fn map_crate(&self) -> CrateNum {
+        *self
+    }
+    fn default_span(&self, _: TyCtxt) -> Span {
+        DUMMY_SP
+    }
+}
+
 impl Key for DefId {
     fn map_crate(&self) -> CrateNum {
         self.krate
@@ -36,6 +45,15 @@ impl Key for DefId {
 impl Key for (DefId, DefId) {
     fn map_crate(&self) -> CrateNum {
         self.0.krate
+    }
+    fn default_span(&self, tcx: TyCtxt) -> Span {
+        self.1.default_span(tcx)
+    }
+}
+
+impl Key for (CrateNum, DefId) {
+    fn map_crate(&self) -> CrateNum {
+        self.0
     }
     fn default_span(&self, tcx: TyCtxt) -> Span {
         self.1.default_span(tcx)
@@ -141,6 +159,19 @@ impl<'tcx> QueryDescription for queries::type_param_predicates<'tcx> {
     }
 }
 
+impl<'tcx> QueryDescription for queries::coherent_trait<'tcx> {
+    fn describe(tcx: TyCtxt, (_, def_id): (CrateNum, DefId)) -> String {
+        format!("coherence checking all impls of trait `{}`",
+                tcx.item_path_str(def_id))
+    }
+}
+
+impl<'tcx> QueryDescription for queries::coherent_inherent_impls<'tcx> {
+    fn describe(_: TyCtxt, _: CrateNum) -> String {
+        format!("coherence checking all inherent impls")
+    }
+}
+
 macro_rules! define_maps {
     (<$tcx:tt>
      $($(#[$attr:meta])*
@@ -238,6 +269,12 @@ macro_rules! define_maps {
             }
 
             pub fn force(tcx: TyCtxt<'a, $tcx, 'lcx>, span: Span, key: $K) {
+                // FIXME(eddyb) Move away from using `DepTrackingMap`
+                // so we don't have to explicitly ignore a false edge:
+                // we can't observe a value dependency, only side-effects,
+                // through `force`, and once everything has been updated,
+                // perhaps only diagnostics, if those, will remain.
+                let _ignore = tcx.dep_graph.in_ignore();
                 match Self::try_get_with(tcx, span, key, |_| ()) {
                     Ok(()) => {}
                     Err(e) => tcx.report_cycle(e)
@@ -338,7 +375,19 @@ define_maps! { <'tcx>
 
     pub typeck_tables: TypeckTables(DefId) -> &'tcx ty::TypeckTables<'tcx>,
 
+    pub coherent_trait: coherent_trait_dep_node((CrateNum, DefId)) -> (),
+
+    pub coherent_inherent_impls: coherent_inherent_impls_dep_node(CrateNum) -> (),
+
     /// Results of evaluating monomorphic constants embedded in
     /// other items, such as enum variant explicit discriminants.
     pub monomorphic_const_eval: MonomorphicConstEval(DefId) -> Result<ConstVal, ()>
+}
+
+fn coherent_trait_dep_node((_, def_id): (CrateNum, DefId)) -> DepNode<DefId> {
+    DepNode::CoherenceCheckTrait(def_id)
+}
+
+fn coherent_inherent_impls_dep_node(_: CrateNum) -> DepNode<DefId> {
+    DepNode::Coherence
 }

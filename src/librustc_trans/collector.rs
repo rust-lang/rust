@@ -754,7 +754,7 @@ fn find_drop_glue_neighbors<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
     // If the type implements Drop, also add a translation item for the
     // monomorphized Drop::drop() implementation.
     let destructor_did = match ty.sty {
-        ty::TyAdt(def, _) => def.destructor(),
+        ty::TyAdt(def, _) => def.destructor(scx.tcx()),
         _ => None
     };
 

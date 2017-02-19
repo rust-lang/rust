@@ -501,10 +501,16 @@ impl<'a, 'tcx> CrateMetadata {
             _ => bug!(),
         };
 
-        ty::TraitDef::new(self.local_def_id(item_id),
-                          data.unsafety,
-                          data.paren_sugar,
-                          self.def_path(item_id).deterministic_hash(tcx))
+        let def = ty::TraitDef::new(self.local_def_id(item_id),
+                                    data.unsafety,
+                                    data.paren_sugar,
+                                    self.def_path(item_id).deterministic_hash(tcx));
+
+        if data.has_default_impl {
+            def.record_has_default_impl();
+        }
+
+        def
     }
 
     fn get_variant(&self,
@@ -1025,13 +1031,6 @@ impl<'a, 'tcx> CrateMetadata {
 
     pub fn is_dllimport_foreign_item(&self, id: DefIndex) -> bool {
         self.dllimport_foreign_items.contains(&id)
-    }
-
-    pub fn is_defaulted_trait(&self, trait_id: DefIndex) -> bool {
-        match self.entry(trait_id).kind {
-            EntryKind::Trait(data) => data.decode(self).has_default_impl,
-            _ => bug!(),
-        }
     }
 
     pub fn is_default_impl(&self, impl_id: DefIndex) -> bool {

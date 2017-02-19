@@ -203,12 +203,6 @@ impl CrateStore for cstore::CStore {
         self.get_crate_data(did.krate).is_const_fn(did.index)
     }
 
-    fn is_defaulted_trait(&self, trait_def_id: DefId) -> bool
-    {
-        self.dep_graph.read(DepNode::MetaData(trait_def_id));
-        self.get_crate_data(trait_def_id.krate).is_defaulted_trait(trait_def_id.index)
-    }
-
     fn is_default_impl(&self, impl_did: DefId) -> bool {
         self.dep_graph.read(DepNode::MetaData(impl_did));
         self.get_crate_data(impl_did.krate).is_default_impl(impl_did.index)
