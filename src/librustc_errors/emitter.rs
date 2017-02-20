@@ -997,19 +997,6 @@ impl EmitterWriter {
                         Err(e) => panic!("failed to emit error: {}", e)
                     }
                 }
-                match db.code_hints {
-                    Some(DiagnosticCodeHint::Suggestion { msg, sugg }) => {
-                        match self.emit_suggestion_default(&sugg,
-                                                           &Level::Help,
-                                                           &vec![(msg, Style::NoStyle)],
-                                                           max_line_num_len) {
-                            Err(e) => panic!("failed to emit error: {}", e),
-                            _ => ()
-                        }
-                    }
-                    Some(DiagnosticCodeHint::Guesses { .. }) => unimplemented!(),
-                    None => {}
-                }
                 for child in db.children {
                     match child.render_span {
                         Some(ref msp) => {
@@ -1035,6 +1022,19 @@ impl EmitterWriter {
                             }
                         }
                     }
+                }
+                match db.code_hints {
+                    Some(DiagnosticCodeHint::Suggestion { msg, sugg }) => {
+                        match self.emit_suggestion_default(&sugg,
+                                                           &Level::Help,
+                                                           &vec![(msg, Style::NoStyle)],
+                                                           max_line_num_len) {
+                            Err(e) => panic!("failed to emit error: {}", e),
+                            _ => ()
+                        }
+                    }
+                    Some(DiagnosticCodeHint::Guesses { .. }) => unimplemented!(),
+                    None => {}
                 }
             }
             Err(e) => panic!("failed to emit error: {}", e),
