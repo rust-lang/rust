@@ -13,6 +13,7 @@ use common::{CompileFail, ParseFail, Pretty, RunFail, RunPass, RunPassValgrind};
 use common::{Codegen, DebugInfoLldb, DebugInfoGdb, Rustdoc, CodegenUnits};
 use common::{Incremental, RunMake, Ui, MirOpt};
 use errors::{self, ErrorKind, Error};
+use filetime::FileTime;
 use json;
 use header::TestProps;
 use header;
@@ -2457,12 +2458,25 @@ actual:\n\
         }
     }
 
+    fn check_mir_test_timestamp(&self, test_name: &str, output_file: &Path) {
+        let t = |file| FileTime::from_last_modification_time(&fs::metadata(file).unwrap());
+        let source_file = &self.testpaths.file;
+        let output_time = t(output_file);
+        let source_time = t(source_file);
+        if source_time > output_time {
+            debug!("source file time: {:?} output file time: {:?}", source_time, output_time);
+            panic!("test source file `{}` is newer than potentially stale output file `{}`.",
+                   source_file.display(), test_name);
+        }
+    }
+
     fn compare_mir_test_output(&self, test_name: &str, expected_content: &Vec<&str>) {
         let mut output_file = PathBuf::new();
         output_file.push(self.get_mir_dump_dir());
         output_file.push(test_name);
         debug!("comparing the contests of: {:?}", output_file);
         debug!("with: {:?}", expected_content);
+        self.check_mir_test_timestamp(test_name, &output_file);
 
         let mut dumped_file = fs::File::open(output_file.clone()).unwrap();
         let mut dumped_string = String::new();
