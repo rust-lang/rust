@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use abi::{self, Abi};
-use ast::BareFnTy;
+use ast::{AttrStyle, BareFnTy};
 use ast::{RegionTyParamBound, TraitTyParamBound, TraitBoundModifier};
 use ast::Unsafety;
 use ast::{Mod, Arg, Arm, Attribute, BindingMode, TraitItemKind};
@@ -46,21 +46,21 @@ use errors::{self, DiagnosticBuilder};
 use parse::{self, classify, token};
 use parse::common::SeqSep;
 use parse::lexer::TokenAndSpan;
+use parse::lexer::comments::{doc_comment_style, strip_doc_comment_decoration};
 use parse::obsolete::ObsoleteSyntax;
 use parse::{new_sub_parser_from_file, ParseSess, Directory, DirectoryOwnership};
 use util::parser::{AssocOp, Fixity};
 use print::pprust;
 use ptr::P;
 use parse::PResult;
-use tokenstream::{Delimited, TokenTree};
+use tokenstream::{self, Delimited, TokenTree, TokenStream};
 use symbol::{Symbol, keywords};
 use util::ThinVec;
 
 use std::collections::HashSet;
-use std::mem;
+use std::{cmp, mem, slice};
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
-use std::slice;
 
 bitflags! {
     flags Restrictions: u8 {
@@ -175,10 +175,106 @@ pub struct Parser<'a> {
     /// into modules, and sub-parsers have new values for this name.
     pub root_module_name: Option<String>,
     pub expected_tokens: Vec<TokenType>,
-    pub tts: Vec<(TokenTree, usize)>,
+    token_cursor: TokenCursor,
     pub desugar_doc_comments: bool,
     /// Whether we should configure out of line modules as we parse.
     pub cfg_mods: bool,
+}
+
+struct TokenCursor {
+    frame: TokenCursorFrame,
+    stack: Vec<TokenCursorFrame>,
+}
+
+struct TokenCursorFrame {
+    delim: token::DelimToken,
+    span: Span,
+    open_delim: bool,
+    tree_cursor: tokenstream::Cursor,
+    close_delim: bool,
+}
+
+impl TokenCursorFrame {
+    fn new(sp: Span, delimited: &Delimited) -> Self {
+        TokenCursorFrame {
+            delim: delimited.delim,
+            span: sp,
+            open_delim: delimited.delim == token::NoDelim,
+            tree_cursor: delimited.tts.iter().cloned().collect::<TokenStream>().into_trees(),
+            close_delim: delimited.delim == token::NoDelim,
+        }
+    }
+}
+
+impl TokenCursor {
+    fn next(&mut self) -> TokenAndSpan {
+        loop {
+            let tree = if !self.frame.open_delim {
+                self.frame.open_delim = true;
+                Delimited { delim: self.frame.delim, tts: Vec::new() }.open_tt(self.frame.span)
+            } else if let Some(tree) = self.frame.tree_cursor.next() {
+                tree
+            } else if !self.frame.close_delim {
+                self.frame.close_delim = true;
+                Delimited { delim: self.frame.delim, tts: Vec::new() }.close_tt(self.frame.span)
+            } else if let Some(frame) = self.stack.pop() {
+                self.frame = frame;
+                continue
+            } else {
+                return TokenAndSpan { tok: token::Eof, sp: self.frame.span }
+            };
+
+            match tree {
+                TokenTree::Token(sp, tok) => return TokenAndSpan { tok: tok, sp: sp },
+                TokenTree::Delimited(sp, ref delimited) => {
+                    let frame = TokenCursorFrame::new(sp, delimited);
+                    self.stack.push(mem::replace(&mut self.frame, frame));
+                }
+            }
+        }
+    }
+
+    fn next_desugared(&mut self) -> TokenAndSpan {
+        let (sp, name) = match self.next() {
+            TokenAndSpan { sp, tok: token::DocComment(name) } => (sp, name),
+            tok @ _ => return tok,
+        };
+
+        let stripped = strip_doc_comment_decoration(&name.as_str());
+
+        // Searches for the occurrences of `"#*` and returns the minimum number of `#`s
+        // required to wrap the text.
+        let mut num_of_hashes = 0;
+        let mut count = 0;
+        for ch in stripped.chars() {
+            count = match ch {
+                '"' => 1,
+                '#' if count > 0 => count + 1,
+                _ => 0,
+            };
+            num_of_hashes = cmp::max(num_of_hashes, count);
+        }
+
+        let body = TokenTree::Delimited(sp, Rc::new(Delimited {
+            delim: token::Bracket,
+            tts: vec![TokenTree::Token(sp, token::Ident(ast::Ident::from_str("doc"))),
+                      TokenTree::Token(sp, token::Eq),
+                      TokenTree::Token(sp, token::Literal(
+                          token::StrRaw(Symbol::intern(&stripped), num_of_hashes), None))],
+        }));
+
+        self.stack.push(mem::replace(&mut self.frame, TokenCursorFrame::new(sp, &Delimited {
+            delim: token::NoDelim,
+            tts: if doc_comment_style(&name.as_str()) == AttrStyle::Inner {
+                [TokenTree::Token(sp, token::Pound), TokenTree::Token(sp, token::Not), body]
+                    .iter().cloned().collect()
+            } else {
+                [TokenTree::Token(sp, token::Pound), body].iter().cloned().collect()
+            },
+        })));
+
+        self.next()
+    }
 }
 
 #[derive(PartialEq, Eq, Clone)]
@@ -313,10 +409,6 @@ impl<'a> Parser<'a> {
                directory: Option<Directory>,
                desugar_doc_comments: bool)
                -> Self {
-        let tt = TokenTree::Delimited(syntax_pos::DUMMY_SP, Rc::new(Delimited {
-            delim: token::NoDelim,
-            tts: tokens,
-        }));
         let mut parser = Parser {
             sess: sess,
             token: token::Underscore,
@@ -328,7 +420,13 @@ impl<'a> Parser<'a> {
             directory: Directory { path: PathBuf::new(), ownership: DirectoryOwnership::Owned },
             root_module_name: None,
             expected_tokens: Vec::new(),
-            tts: if tt.len() > 0 { vec![(tt, 0)] } else { Vec::new() },
+            token_cursor: TokenCursor {
+                frame: TokenCursorFrame::new(syntax_pos::DUMMY_SP, &Delimited {
+                    delim: token::NoDelim,
+                    tts: tokens,
+                }),
+                stack: Vec::new(),
+            },
             desugar_doc_comments: desugar_doc_comments,
             cfg_mods: true,
         };
@@ -346,28 +444,9 @@ impl<'a> Parser<'a> {
     }
 
     fn next_tok(&mut self) -> TokenAndSpan {
-        loop {
-            let tok = if let Some((tts, i)) = self.tts.pop() {
-                let tt = tts.get_tt(i);
-                if i + 1 < tts.len() {
-                    self.tts.push((tts, i + 1));
-                }
-                if let TokenTree::Token(sp, tok) = tt {
-                    TokenAndSpan { tok: tok, sp: sp }
-                } else {
-                    self.tts.push((tt, 0));
-                    continue
-                }
-            } else {
-                TokenAndSpan { tok: token::Eof, sp: self.span }
-            };
-
-            match tok.tok {
-                token::DocComment(name) if self.desugar_doc_comments => {
-                    self.tts.push((TokenTree::Token(tok.sp, token::DocComment(name)), 0));
-                }
-                _ => return tok,
-            }
+        match self.desugar_doc_comments {
+            true => self.token_cursor.next_desugared(),
+            false => self.token_cursor.next(),
         }
     }
 
@@ -972,19 +1051,16 @@ impl<'a> Parser<'a> {
         F: FnOnce(&token::Token) -> R,
     {
         if dist == 0 {
-            return f(&self.token);
+            return f(&self.token)
         }
-        let mut tok = token::Eof;
-        if let Some(&(ref tts, mut i)) = self.tts.last() {
-            i += dist - 1;
-            if i < tts.len() {
-                tok = match tts.get_tt(i) {
-                    TokenTree::Token(_, tok) => tok,
-                    TokenTree::Delimited(_, delimited) => token::OpenDelim(delimited.delim),
-                };
-            }
-        }
-        f(&tok)
+
+        f(&match self.token_cursor.frame.tree_cursor.look_ahead(dist - 1) {
+            Some(tree) => match tree {
+                TokenTree::Token(_, tok) => tok,
+                TokenTree::Delimited(_, delimited) => token::OpenDelim(delimited.delim),
+            },
+            None => token::CloseDelim(self.token_cursor.frame.delim),
+        })
     }
     pub fn fatal(&self, m: &str) -> DiagnosticBuilder<'a> {
         self.sess.span_diagnostic.struct_span_fatal(self.span, m)
@@ -2569,10 +2645,14 @@ impl<'a> Parser<'a> {
     pub fn parse_token_tree(&mut self) -> PResult<'a, TokenTree> {
         match self.token {
             token::OpenDelim(..) => {
-                let tt = self.tts.pop().unwrap().0;
-                self.span = tt.span();
+                let frame = mem::replace(&mut self.token_cursor.frame,
+                                         self.token_cursor.stack.pop().unwrap());
+                self.span = frame.span;
                 self.bump();
-                return Ok(tt);
+                return Ok(TokenTree::Delimited(frame.span, Rc::new(Delimited {
+                    delim: frame.delim,
+                    tts: frame.tree_cursor.original_stream().trees().collect(),
+                })));
             },
             token::CloseDelim(_) | token::Eof => unreachable!(),
             _ => Ok(TokenTree::Token(self.span, self.bump_and_get())),
