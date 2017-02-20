@@ -177,6 +177,26 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
             // Fourth, check for unreachable arms.
             check_arms(cx, &inlined_arms, source);
 
+            // Then, if the match has no arms, check whether the scrutinee
+            // is uninhabited.
+            let pat_ty = self.tables.node_id_to_type(scrut.id);
+            let module = self.tcx.hir.local_def_id(self.tcx.hir.get_module_parent(scrut.id));
+            if inlined_arms.is_empty() {
+                if !pat_ty.is_uninhabited_from(module, self.tcx) {
+                    // We know the type is inhabited, so this must be wrong
+                    let mut err = create_e0004(self.tcx.sess, scrut.span,
+                                               format!("non-exhaustive patterns: type {} \
+                                                        is non-empty",
+                                                       pat_ty));
+                    span_help!(&mut err, scrut.span,
+                               "Please ensure that all possible cases are being handled; \
+                                possibly adding wildcards or more match arms.");
+                    err.emit();
+                }
+                // If the type *is* uninhabited, it's vacuously exhaustive
+                return;
+            }
+
             let matrix: Matrix = inlined_arms
                 .iter()
                 .filter(|&&(_, guard)| guard.is_none())
