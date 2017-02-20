@@ -199,7 +199,7 @@ Some common invocations of `x.py` are:
   This is the fastest way to recompile after you changed only rustc source code.
   Note however that the resulting rustc binary won't have a stdlib to link
   against by default. You can build libstd once with `x.py build src/libstd`,
-  but it is is only guaranteed to work if recompiled, so if there are any issues
+  but it is only guaranteed to work if recompiled, so if there are any issues
   recompile it.
 - `x.py test` - build the full compiler & run all tests (takes a while). This
   is what gets run by the continuous integration system against your pull
