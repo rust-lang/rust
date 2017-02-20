@@ -287,7 +287,7 @@ name                                                                            
 [needless_bool](https://github.com/Manishearth/rust-clippy/wiki#needless_bool)                                         | warn    | if-statements with plain booleans in the then- and else-clause, e.g. `if p { true } else { false }`
 [needless_borrow](https://github.com/Manishearth/rust-clippy/wiki#needless_borrow)                                     | warn    | taking a reference that is going to be automatically dereferenced
 [needless_lifetimes](https://github.com/Manishearth/rust-clippy/wiki#needless_lifetimes)                               | warn    | using explicit lifetimes for references in function arguments when elision rules would allow omitting them
-[needless_pass_by_value](https://github.com/Manishearth/rust-clippy/wiki#needless_pass_by_value)                       | warn    | functions taking arguments by value, but only using them by reference
+[needless_pass_by_value](https://github.com/Manishearth/rust-clippy/wiki#needless_pass_by_value)                       | warn    | functions taking arguments by value, but not consuming them in its body
 [needless_range_loop](https://github.com/Manishearth/rust-clippy/wiki#needless_range_loop)                             | warn    | for-looping over a range of indices where an iterator over items would do
 [needless_return](https://github.com/Manishearth/rust-clippy/wiki#needless_return)                                     | warn    | using a return statement like `return expr;` where an expression would suffice
 [needless_update](https://github.com/Manishearth/rust-clippy/wiki#needless_update)                                     | warn    | using `Foo { ..base }` when there are no missing fields
