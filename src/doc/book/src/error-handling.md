@@ -21,35 +21,35 @@ sum types and combinators, and try to motivate the way Rust does error handling
 incrementally. As such, programmers with experience in other expressive type
 systems may want to jump around.
 
-* [The Basics](#The%20Basics)
-    * [Unwrapping explained](#Unwrapping%20explained)
-    * [The `Option` type](#The%20Option%20type)
-        * [Composing `Option<T>` values](#Composing%20Option%3CT%3E%20values)
-    * [The `Result` type](#The%20Result%20type)
-        * [Parsing integers](#Parsing%20integers)
-        * [The `Result` type alias idiom](#The%20Result%20type%20alias%20idiom)
-    * [A brief interlude: unwrapping isn't evil](#A%20brief%20interlude:%20unwrapping%20isnt%20evil)
-* [Working with multiple error types](#Working%20with%20multiple%20error%20types)
-    * [Composing `Option` and `Result`](#Composing%20Option%20and%20Result)
-    * [The limits of combinators](#The%20limits%20of%20combinators)
-    * [Early returns](#Early%20returns)
-    * [The `try!` macro](#The%20try%20macro)
-    * [Defining your own error type](#Defining%20your%20own%20error%20type)
-* [Standard library traits used for error handling](#Standard%20library%20traits%20used%20for%20error%20handling)
-    * [The `Error` trait](#The%20Error%20trait)
-    * [The `From` trait](#The%20From%20trait)
-    * [The real `try!` macro](#The%20real%20try%20macro)
-    * [Composing custom error types](#Composing%20custom%20error%20types)
-    * [Advice for library writers](#Advice%20for%20library%20writers)
-* [Case study: A program to read population data](#Case%20study:%20A%20program%20to%20read%20population%20data)
-    * [Initial setup](#Initial%20setup)
-    * [Argument parsing](#Argument%20parsing)
-    * [Writing the logic](#Writing%20the%20logic)
-    * [Error handling with `Box<Error>`](#Error%20handling%20with%20Box%3CError%3E)
-    * [Reading from stdin](#Reading%20from%20stdin)
-    * [Error handling with a custom type](#Error%20handling%20with%20a%20custom%20type)
-    * [Adding functionality](#Adding%20functionality)
-* [The short story](#The%20short%20story)
+* [The Basics](#the-basics)
+    * [Unwrapping explained](#unwrapping-explained)
+    * [The `Option` type](#the-option-type)
+        * [Composing `Option<T>` values](#composing-optiont-values)
+    * [The `Result` type](#the-result-type)
+        * [Parsing integers](#parsing-integers)
+        * [The `Result` type alias idiom](#the-result-type-alias-idiom)
+    * [A brief interlude: unwrapping isn't evil](#a-brief-interlude-unwrapping-isnt-evil)
+* [Working with multiple error types](#working-with-multiple-error-types)
+    * [Composing `Option` and `Result`](#composing-option-and-result)
+    * [The limits of combinators](#the-limits-of-combinators)
+    * [Early returns](#early-returns)
+    * [The `try!` macro](#the-try-macro)
+    * [Defining your own error type](#defining-your-own-error-type)
+* [Standard library traits used for error handling](#standard-library-traits-used-for-error-handling)
+    * [The `Error` trait](#the-error-trait)
+    * [The `From` trait](#the-from-trait)
+    * [The real `try!` macro](#the-real-try-macro)
+    * [Composing custom error types](#composing-custom-error-types)
+    * [Advice for library writers](#advice-for-library-writers)
+* [Case study: A program to read population data](#case-study-a-program-to-read-population-data)
+    * [Initial setup](#initial-setup)
+    * [Argument parsing](#argument-parsing)
+    * [Writing the logic](#writing-the-logic)
+    * [Error handling with `Box<Error>`](#error-handling-with-boxerror)
+    * [Reading from stdin](#reading-from-stdin)
+    * [Error handling with a custom type](#error-handling-with-a-custom-type)
+    * [Adding functionality](#adding-functionality)
+* [The short story](#the-short-story)
 
 # The Basics
 
@@ -796,7 +796,7 @@ because of the return types of
 [`std::fs::File::open`](../std/fs/struct.File.html#method.open) and
 [`std::io::Read::read_to_string`](../std/io/trait.Read.html#method.read_to_string).
 (Note that they both use the [`Result` type alias
-idiom](#The%20Result%20type%20alias%20idiom) described previously. If you
+idiom](#the-result-type-alias-idiom) described previously. If you
 click on the `Result` type, you'll [see the type
 alias](../std/io/type.Result.html), and consequently, the underlying
 `io::Error` type.)  The third problem is described by the
@@ -1120,7 +1120,7 @@ returns an `&Error`, which is itself a trait object. We'll revisit the
 
 For now, it suffices to show an example implementing the `Error` trait. Let's
 use the error type we defined in the
-[previous section](#Defining%20your%20own%20error%20type):
+[previous section](#defining-your-own-error-type):
 
 ```rust
 use std::io;
@@ -1493,19 +1493,19 @@ representation. But certainly, this will vary depending on use cases.
 At a minimum, you should probably implement the
 [`Error`](../std/error/trait.Error.html)
 trait. This will give users of your library some minimum flexibility for
-[composing errors](#The%20real%20try%20macro). Implementing the `Error` trait also
+[composing errors](#the-real-try-macro). Implementing the `Error` trait also
 means that users are guaranteed the ability to obtain a string representation
 of an error (because it requires impls for both `fmt::Debug` and
 `fmt::Display`).
 
 Beyond that, it can also be useful to provide implementations of `From` on your
 error types. This allows you (the library author) and your users to
-[compose more detailed errors](#Composing%20custom%20error%20types). For example,
+[compose more detailed errors](#composing-custom-error-types). For example,
 [`csv::Error`](http://burntsushi.net/rustdoc/csv/enum.Error.html)
 provides `From` impls for both `io::Error` and `byteorder::Error`.
 
 Finally, depending on your tastes, you may also want to define a
-[`Result` type alias](#The%20Result%20type%20alias%20idiom), particularly if your
+[`Result` type alias](#the-result-type-alias-idiom), particularly if your
 library defines a single error type. This is used in the standard library
 for [`io::Result`](../std/io/type.Result.html)
 and [`fmt::Result`](../std/fmt/type.Result.html).
@@ -1538,7 +1538,7 @@ and [`rustc-serialize`](https://crates.io/crates/rustc-serialize) crates.
 
 We're not going to spend a lot of time on setting up a project with
 Cargo because it is already covered well in [the Cargo
-section](getting-started.html#Hello%20Cargo) and [Cargo's documentation][14].
+section](getting-started.html#hello-cargo) and [Cargo's documentation][14].
 
 To get started from scratch, run `cargo new --bin city-pop` and make sure your
 `Cargo.toml` looks something like this:
@@ -1729,7 +1729,7 @@ error types and you don't need any `From` implementations. The downside is that
 since `Box<Error>` is a trait object, it *erases the type*, which means the
 compiler can no longer reason about its underlying type.
 
-[Previously](#The%20limits%20of%20combinators) we started refactoring our code by
+[Previously](#the-limits-of-combinators) we started refactoring our code by
 changing the type of our function from `T` to `Result<T, OurErrorType>`. In
 this case, `OurErrorType` is only `Box<Error>`. But what's `T`? And can we add
 a return type to `main`?

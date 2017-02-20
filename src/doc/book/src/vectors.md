@@ -151,6 +151,6 @@ API documentation][vec].
 [vec]: ../std/vec/index.html
 [box]: ../std/boxed/index.html
 [generic]: generics.html
-[panic]: concurrency.html#Panics
+[panic]: concurrency.html#panics
 [get]: ../std/vec/struct.Vec.html#method.get
 [get_mut]: ../std/vec/struct.Vec.html#method.get_mut
