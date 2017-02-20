@@ -499,6 +499,10 @@ impl Build {
             cargo.env("RUSTC_INCREMENTAL", incr_dir);
         }
 
+        if let Some(ref on_fail) = self.flags.on_fail {
+            cargo.env("RUSTC_ON_FAIL", on_fail);
+        }
+
         let verbose = cmp::max(self.config.verbose, self.flags.verbose);
         cargo.env("RUSTC_VERBOSE", format!("{}", verbose));
 
@@ -602,7 +606,7 @@ impl Build {
     /// Get the space-separated set of activated features for the standard
     /// library.
     fn std_features(&self) -> String {
-        let mut features = "panic-unwind asan lsan msan tsan".to_string();
+        let mut features = "panic-unwind".to_string();
 
         if self.config.debug_jemalloc {
             features.push_str(" debug-jemalloc");

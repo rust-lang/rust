@@ -68,6 +68,7 @@ fn main() {
     };
     let stage = env::var("RUSTC_STAGE").expect("RUSTC_STAGE was not set");
     let sysroot = env::var_os("RUSTC_SYSROOT").expect("RUSTC_SYSROOT was not set");
+    let mut on_fail = env::var_os("RUSTC_ON_FAIL").map(|of| Command::new(of));
 
     let rustc = env::var_os(rustc).unwrap_or_else(|| panic!("{:?} was not set", rustc));
     let libdir = env::var_os(libdir).unwrap_or_else(|| panic!("{:?} was not set", libdir));
@@ -217,9 +218,20 @@ fn main() {
     }
 
     // Actually run the compiler!
-    std::process::exit(match exec_cmd(&mut cmd) {
-        Ok(s) => s.code().unwrap_or(0xfe),
-        Err(e) => panic!("\n\nfailed to run {:?}: {}\n\n", cmd, e),
+    std::process::exit(if let Some(ref mut on_fail) = on_fail {
+        match cmd.status() {
+            Ok(s) if s.success() => 0,
+            _ => {
+                println!("\nDid not run successfully:\n{:?}\n-------------", cmd);
+                exec_cmd(on_fail).expect("could not run the backup command");
+                1
+            }
+        }
+    } else {
+        std::process::exit(match exec_cmd(&mut cmd) {
+            Ok(s) => s.code().unwrap_or(0xfe),
+            Err(e) => panic!("\n\nfailed to run {:?}: {}\n\n", cmd, e),
+        })
     })
 }
 
