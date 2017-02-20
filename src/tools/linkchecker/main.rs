@@ -65,6 +65,7 @@ enum Redirect {
 struct FileEntry {
     source: String,
     ids: HashSet<String>,
+    names: HashSet<String>,
 }
 
 type Cache = HashMap<PathBuf, FileEntry>;
@@ -78,6 +79,15 @@ impl FileEntry {
                     *errors = true;
                     println!("{}:{}: id is not unique: `{}`", file.display(), i, fragment);
                 }
+            });
+        }
+    }
+
+    fn parse_names(&mut self, contents: &str) {
+        if self.names.is_empty() {
+            with_attrs_in_source(contents, " name", |fragment, _| {
+                let frag = fragment.trim_left_matches("#").to_owned();
+                self.names.insert(frag);
             });
         }
     }
@@ -139,6 +149,9 @@ fn check(cache: &mut Cache,
         cache.get_mut(&pretty_file)
              .unwrap()
              .parse_ids(&pretty_file, &contents, errors);
+        cache.get_mut(&pretty_file)
+             .unwrap()
+             .parse_names(&contents);
     }
 
     // Search for anything that's the regex 'href[ ]*=[ ]*".*?"'
@@ -209,13 +222,6 @@ fn check(cache: &mut Cache,
                 Err(LoadError::IsRedirect) => unreachable!(),
             };
 
-            // we don't check the book for fragments because they're added via JS
-            for book in ["book/", "nomicon/"].iter() {
-                if !pretty_path.to_str().unwrap().starts_with(book) {
-                    return;
-                }
-            }
-
             if let Some(ref fragment) = fragment {
                 // Fragments like `#1-6` are most likely line numbers to be
                 // interpreted by javascript, so we're ignoring these
@@ -226,8 +232,9 @@ fn check(cache: &mut Cache,
 
                 let entry = &mut cache.get_mut(&pretty_path).unwrap();
                 entry.parse_ids(&pretty_path, &contents, errors);
+                entry.parse_names(&contents);
 
-                if !entry.ids.contains(*fragment) {
+                if !(entry.ids.contains(*fragment) || entry.names.contains(*fragment)) {
                     *errors = true;
                     print!("{}:{}: broken link fragment  ",
                            pretty_file.display(),
@@ -277,6 +284,7 @@ fn load_file(cache: &mut Cache,
                 entry.insert(FileEntry {
                     source: contents.clone(),
                     ids: HashSet::new(),
+                    names: HashSet::new(),
                 });
             }
             maybe
