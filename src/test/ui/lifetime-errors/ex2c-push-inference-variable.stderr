@@ -1,0 +1,37 @@
+error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'a` due to conflicting requirements
+  --> $DIR/ex2c-push-inference-variable.rs:16:13
+   |
+16 |     let z = Ref { data: y.data };
+   |             ^^^
+   |
+note: first, the lifetime cannot outlive the lifetime 'c as defined on the body at 15:66...
+  --> $DIR/ex2c-push-inference-variable.rs:15:67
+   |
+15 |   fn foo<'a, 'b, 'c>(x: &'a mut Vec<Ref<'b, i32>>, y: Ref<'c, i32>) {
+   |  ___________________________________________________________________^ starting here...
+16 | |     let z = Ref { data: y.data };
+17 | |     x.push(z);
+18 | | }
+   | |_^ ...ending here
+note: ...so that reference does not outlive borrowed content
+  --> $DIR/ex2c-push-inference-variable.rs:16:25
+   |
+16 |     let z = Ref { data: y.data };
+   |                         ^^^^^^
+note: but, the lifetime must be valid for the lifetime 'b as defined on the body at 15:66...
+  --> $DIR/ex2c-push-inference-variable.rs:15:67
+   |
+15 |   fn foo<'a, 'b, 'c>(x: &'a mut Vec<Ref<'b, i32>>, y: Ref<'c, i32>) {
+   |  ___________________________________________________________________^ starting here...
+16 | |     let z = Ref { data: y.data };
+17 | |     x.push(z);
+18 | | }
+   | |_^ ...ending here
+note: ...so that expression is assignable (expected Ref<'b, i32>, found Ref<'_, i32>)
+  --> $DIR/ex2c-push-inference-variable.rs:17:12
+   |
+17 |     x.push(z);
+   |            ^
+
+error: aborting due to previous error
+

@@ -232,7 +232,7 @@ soon.
 You can assign one tuple into another, if they have the same contained types
 and [arity]. Tuples have the same arity when they have the same length.
 
-[arity]: glossary.html#Arity
+[arity]: glossary.html#arity
 
 ```rust
 let mut x = (1, 2); // x: (i32, i32)

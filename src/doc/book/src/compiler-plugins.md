@@ -127,7 +127,7 @@ enum.  For a more involved macro example, see
 
 ## Tips and tricks
 
-Some of the [macro debugging tips](macros.html#Debugging%20macro%20code) are applicable.
+Some of the [macro debugging tips](macros.html#debugging-macro-code) are applicable.
 
 You can use `syntax::parse` to turn token trees into
 higher-level syntax elements like expressions:

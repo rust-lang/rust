@@ -81,7 +81,7 @@ Traits are useful because they allow a type to make certain promises about its
 behavior. Generic functions can exploit this to constrain, or [bound][bounds], the types they
 accept. Consider this function, which does not compile:
 
-[bounds]: glossary.html#Bounds
+[bounds]: glossary.html#bounds
 
 ```rust,ignore
 fn print_area<T>(shape: T) {
