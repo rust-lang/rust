@@ -139,7 +139,7 @@ associated with it, but the compiler lets you elide (i.e. omit, see
 ["Lifetime Elision"][lifetime-elision] below) them in common cases. Before we
 get to that, though, let’s look at a short example with explicit lifetimes:
 
-[lifetime-elision]: #Lifetime%20Elision
+[lifetime-elision]: #lifetime-elision
 
 ```rust,ignore
 fn bar<'a>(...)

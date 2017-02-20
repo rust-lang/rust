@@ -236,7 +236,7 @@ language]*, which means that most things are expressions, rather than
 statements. The `;` indicates that this expression is over, and the next one is
 ready to begin. Most lines of Rust code end with a `;`.
 
-[expression-oriented language]: glossary.html#Expression-Oriented%20Language
+[expression-oriented language]: glossary.html#expression-oriented-language
 
 ## Compiling and Running Are Separate Steps
 

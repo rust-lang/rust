@@ -2108,7 +2108,7 @@ On `struct`s:
   list of names `#[macro_use(foo, bar)]` restricts the import to just those
   macros named.  The `extern crate` must appear at the crate root, not inside
   `mod`, which ensures proper function of the [`$crate` macro
-  variable](book/macros.html#The%20variable%20%24crate).
+  variable](book/macros.html#the-variable-crate).
 
 - `macro_reexport` on an `extern crate` — re-export the named macros.
 
@@ -2118,7 +2118,7 @@ On `struct`s:
   link it into the output.
 
 See the [macros section of the
-book](book/macros.html#Scoping%20and%20macro%20import%2Fexport) for more information on
+book](book/macros.html#scoping-and-macro-importexport) for more information on
 macro scope.
 
 
@@ -2277,7 +2277,7 @@ For any lint check `C`:
 
 The lint checks supported by the compiler can be found via `rustc -W help`,
 along with their default settings.  [Compiler
-plugins](book/compiler-plugins.html#Lint%20plugins) can provide additional lint checks.
+plugins](book/compiler-plugins.html#lint-plugins) can provide additional lint checks.
 
 ```{.ignore}
 pub mod m1 {

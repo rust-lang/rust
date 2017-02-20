@@ -89,7 +89,7 @@ philosophy, memory safety, and the mechanism by which Rust guarantees it, the
 > * exactly one mutable reference (`&mut T`).
 
 [ownership]: ownership.html
-[borrowing]: references-and-borrowing.html#Borrowing
+[borrowing]: references-and-borrowing.html#borrowing
 
 So, that’s the real definition of ‘immutability’: is this safe to have two
 pointers to? In `Arc<T>`’s case, yes: the mutation is entirely contained inside
