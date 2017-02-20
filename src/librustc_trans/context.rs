@@ -132,6 +132,8 @@ pub struct LocalCrateContext<'tcx> {
     /// to constants.)
     statics_to_rauw: RefCell<Vec<(ValueRef, ValueRef)>>,
 
+    used_statics: RefCell<Vec<ValueRef>>,
+
     lltypes: RefCell<FxHashMap<Ty<'tcx>, Type>>,
     llsizingtypes: RefCell<FxHashMap<Ty<'tcx>, Type>>,
     type_hashcodes: RefCell<FxHashMap<Ty<'tcx>, String>>,
@@ -587,6 +589,7 @@ impl<'tcx> LocalCrateContext<'tcx> {
                 impl_method_cache: RefCell::new(FxHashMap()),
                 closure_bare_wrapper_cache: RefCell::new(FxHashMap()),
                 statics_to_rauw: RefCell::new(Vec::new()),
+                used_statics: RefCell::new(Vec::new()),
                 lltypes: RefCell::new(FxHashMap()),
                 llsizingtypes: RefCell::new(FxHashMap()),
                 type_hashcodes: RefCell::new(FxHashMap()),
@@ -752,6 +755,10 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
 
     pub fn statics_to_rauw<'a>(&'a self) -> &'a RefCell<Vec<(ValueRef, ValueRef)>> {
         &self.local().statics_to_rauw
+    }
+
+    pub fn used_statics<'a>(&'a self) -> &'a RefCell<Vec<ValueRef>> {
+        &self.local().used_statics
     }
 
     pub fn lltypes<'a>(&'a self) -> &'a RefCell<FxHashMap<Ty<'tcx>, Type>> {

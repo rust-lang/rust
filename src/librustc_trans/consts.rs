@@ -276,6 +276,10 @@ pub fn trans_static<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
         base::set_link_section(ccx, g, attrs);
 
+        if attr::contains_name(attrs, "used") {
+            ccx.used_statics().borrow_mut().push(g);
+        }
+
         Ok(g)
     }
 }
