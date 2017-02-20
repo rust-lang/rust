@@ -22,7 +22,7 @@
 use codemap::CodeMap;
 use syntax_pos::{self, MacroBacktrace, Span, SpanLabel, MultiSpan};
 use errors::registry::Registry;
-use errors::{DiagnosticBuilder, SubDiagnostic, RenderSpan, CodeSuggestion, CodeMapper};
+use errors::{self, SubDiagnostic, DiagnosticCodeHint, CodeSuggestion, CodeMapper};
 use errors::emitter::Emitter;
 
 use std::rc::Rc;
@@ -63,8 +63,8 @@ impl JsonEmitter {
 }
 
 impl Emitter for JsonEmitter {
-    fn emit(&mut self, db: &DiagnosticBuilder) {
-        let data = Diagnostic::from_diagnostic_builder(db, self);
+    fn emit(&mut self, db: errors::Diagnostic) {
+        let data = Diagnostic::from_diagnostic(db, self);
         if let Err(e) = writeln!(&mut self.dst, "{}", as_json(&data)) {
             panic!("failed to print diagnostics: {:?}", e);
         }
@@ -149,12 +149,10 @@ struct DiagnosticCode {
 }
 
 impl Diagnostic {
-    fn from_diagnostic_builder(db: &DiagnosticBuilder,
-                               je: &JsonEmitter)
-                               -> Diagnostic {
+    fn from_diagnostic(db: errors::Diagnostic, je: &JsonEmitter) -> Diagnostic {
         Diagnostic {
             message: db.message(),
-            code: DiagnosticCode::map_opt_string(db.code.clone(), je),
+            code: DiagnosticCode::map_opt_string(db.code, je),
             level: db.level.to_str(),
             spans: DiagnosticSpan::from_multispan(&db.span, je),
             children: db.children.iter().map(|c| {

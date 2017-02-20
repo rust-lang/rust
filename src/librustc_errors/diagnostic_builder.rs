@@ -15,6 +15,7 @@ use std::fmt::{self, Debug};
 use std::ops::{Deref, DerefMut};
 use std::thread::panicking;
 use syntax_pos::{MultiSpan, Span};
+use std::mem;
 
 /// Used for emitting structured error messages and other diagnostic information.
 #[must_use]
@@ -95,8 +96,8 @@ impl<'a> DiagnosticBuilder<'a> {
             }
         }
 
-        self.handler.emitter.borrow_mut().emit(&self);
-        self.cancel();
+        let db = self.cancel();
+        self.handler.emitter.borrow_mut().emit(db);
         self.handler.panic_if_treat_err_as_bug();
 
         // if self.is_fatal() {
@@ -174,10 +175,22 @@ impl<'a> DiagnosticBuilder<'a> {
         }
     }
 
-    pub fn into_diagnostic(mut self) -> Diagnostic {
+    /// Cancel the diagnostic (a structured diagnostic must either be emitted or
+    /// cancelled or it will panic when dropped).
+    /// BEWARE: if this DiagnosticBuilder is an error, then creating it will
+    /// bump the error count on the Handler and cancelling it won't undo that.
+    /// If you want to decrement the error count you should use `Handler::cancel`.
+    /// The function yields the inner Diagnostic by value
+    pub fn cancel(&mut self) -> Diagnostic {
         // annoyingly, the Drop impl means we can't actually move
-        let result = self.diagnostic.clone();
-        self.cancel();
+        let result = mem::replace(&mut self.diagnostic, Diagnostic {
+            level: Level::Cancelled,
+            message: vec![],
+            code: None,
+            span: MultiSpan::new(),
+            children: vec![],
+            code_hints: None,
+        });
         result
     }
 }
