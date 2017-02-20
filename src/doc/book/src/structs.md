@@ -134,7 +134,7 @@ fn main() {
     let age = 27;
     let peter = Person { name, age };
 
-    // Print debug struct
+    // Debug-print struct
     println!("{:?}", peter);
 }
 ```
