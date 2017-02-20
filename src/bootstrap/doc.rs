@@ -25,6 +25,11 @@ use {Build, Compiler, Mode};
 use util::cp_r;
 use build_helper::up_to_date;
 
+/// Only these crates should have their rustdoc documentation built by default.
+const PUBLIC_CRATES: &'static [&'static str] = &[
+    "alloc", "collections", "core", "std", "std_unicode", "proc_macro"
+];
+
 /// Invoke `rustbook` as compiled in `stage` for `target` for the doc book
 /// `name` into the `out` path.
 ///
@@ -162,7 +167,7 @@ pub fn std(build: &Build, stage: u32, target: &str) {
         cargo.arg("-p").arg("std");
     } else {
         cargo.arg("--no-deps");
-        for krate in &["alloc", "collections", "core", "std", "std_unicode"] {
+        for krate in PUBLIC_CRATES {
             cargo.arg("-p").arg(krate);
             // Create all crate output directories first to make sure rustdoc uses
             // relative links.
