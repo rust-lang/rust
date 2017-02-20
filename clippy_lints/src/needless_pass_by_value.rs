@@ -10,7 +10,7 @@ use syntax::ast::NodeId;
 use syntax_pos::Span;
 use utils::{in_macro, is_self, is_copy, implements_trait, get_trait_def_id, match_type, snippet, span_lint_and_then,
             paths};
-use std::collections::HashSet;
+use std::collections::{HashSet, HashMap};
 
 /// **What it does:** Checks for functions taking arguments by value, but not consuming them in its
 /// body.
@@ -71,15 +71,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                 .collect()
         };
 
-        // Collect moved variables from the function body
-        let moved_vars = {
+        // Collect moved variables and non-moving usages at `match`es from the function body
+        let MovedVariablesCtxt { moved_vars, non_moving_matches, .. } = {
             let mut ctx = MovedVariablesCtxt::new(cx);
             let infcx = cx.tcx.borrowck_fake_infer_ctxt(body.id());
             {
                 let mut v = euv::ExprUseVisitor::new(&mut ctx, &infcx);
                 v.consume_body(body);
             }
-            ctx.moved_vars
+            ctx
         };
 
         let fn_def_id = cx.tcx.hir.local_def_id(node_id);
@@ -90,8 +90,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
         for ((input, ty), arg) in decl.inputs.iter().zip(fn_sig.inputs()).zip(&body.arguments) {
 
             // Determines whether `ty` implements `Borrow<U>` (U != ty) specifically.
-            // `implements_trait(.., borrow_trait, ..)` is useless
-            // due to the `Borrow<T> for T` blanket impl.
+            // This is needed due to the `Borrow<T> for T` blanket impl.
             let implements_borrow_trait = preds.iter()
                 .filter_map(|pred| if let ty::Predicate::Trait(ref poly_trait_ref) = *pred {
                     Some(poly_trait_ref.skip_binder())
@@ -99,7 +98,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                     None
                 })
                 .filter(|tpred| tpred.def_id() == borrow_trait && &tpred.self_ty() == ty)
-                .any(|tpred| &tpred.input_types().nth(1).expect("Borrow trait must have an input") != ty);
+                .any(|tpred| &tpred.input_types().nth(1).expect("Borrow trait must have an parameter") != ty);
 
             if_let_chain! {[
                 !is_self(arg),
@@ -148,6 +147,24 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                                            "consider taking a reference instead",
                                            format!("&{}", snippet(cx, input.span, "_")));
                     }
+
+                    // For non-moving consumption at `match`es,
+                    // suggests adding `*` to dereference the added reference.
+                    // e.g. `match x { Some(_) => 1, None => 2 }`
+                    //   -> `match *x { .. }`
+                    if let Some(matches) = non_moving_matches.get(&defid) {
+                        for (i, m) in matches.iter().enumerate() {
+                            if let ExprMatch(ref e, ..) = cx.tcx.hir.expect_expr(*m).node {
+                                db.span_suggestion(e.span,
+                                                   if i == 0 {
+                                                       "...and dereference it here"
+                                                   } else {
+                                                       "...and here"
+                                                   },
+                                                   format!("*{}", snippet(cx, e.span, "<expr>")));
+                            }
+                        }
+                    }
                 });
             }}
         }
@@ -157,6 +174,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
 struct MovedVariablesCtxt<'a, 'tcx: 'a> {
     cx: &'a LateContext<'a, 'tcx>,
     moved_vars: HashSet<DefId>,
+    non_moving_matches: HashMap<DefId, HashSet<NodeId>>,
 }
 
 impl<'a, 'tcx: 'a> MovedVariablesCtxt<'a, 'tcx> {
@@ -164,43 +182,61 @@ impl<'a, 'tcx: 'a> MovedVariablesCtxt<'a, 'tcx> {
         MovedVariablesCtxt {
             cx: cx,
             moved_vars: HashSet::new(),
+            non_moving_matches: HashMap::new(),
         }
     }
 
-    fn consume_common(&mut self, _span: Span, cmt: mc::cmt<'tcx>, mode: euv::ConsumeMode) {
-        /*::utils::span_lint(self.cx,
-                           NEEDLESS_PASS_BY_VALUE,
-                           span,
-                           &format!("consumed here, {:?} {:?}", mode, cmt.cat));*/
-        if_let_chain! {[
-            let euv::ConsumeMode::Move(_) = mode,
-            let mc::Categorization::Local(vid) = cmt.cat,
-        ], {
-            if let Some(def_id) = self.cx.tcx.hir.opt_local_def_id(vid) {
-                self.moved_vars.insert(def_id);
-            }
-        }}
+    fn move_common(&mut self, _consume_id: NodeId, _span: Span, cmt: mc::cmt<'tcx>) {
+        let cmt = unwrap_downcast_or_interior(cmt);
 
+        if_let_chain! {[
+            let mc::Categorization::Local(vid) = cmt.cat,
+            let Some(def_id) = self.cx.tcx.hir.opt_local_def_id(vid),
+        ], {
+                self.moved_vars.insert(def_id);
+        }}
     }
 }
 
 impl<'a, 'tcx: 'a> euv::Delegate<'tcx> for MovedVariablesCtxt<'a, 'tcx> {
-    fn consume(&mut self, _consume_id: NodeId, consume_span: Span, cmt: mc::cmt<'tcx>, mode: euv::ConsumeMode) {
-        self.consume_common(consume_span, cmt, mode);
+    fn consume(&mut self, consume_id: NodeId, consume_span: Span, cmt: mc::cmt<'tcx>, mode: euv::ConsumeMode) {
+        if let euv::ConsumeMode::Move(_) = mode {
+            self.move_common(consume_id, consume_span, cmt);
+        }
     }
 
-    fn matched_pat(&mut self, matched_pat: &Pat, mut cmt: mc::cmt<'tcx>, _mode: euv::MatchMode) {
-        if let mc::Categorization::Downcast(c, _) = cmt.cat.clone() {
-            cmt = c;
-        }
+    fn matched_pat(&mut self, matched_pat: &Pat, cmt: mc::cmt<'tcx>, mode: euv::MatchMode) {
+        if let euv::MatchMode::MovingMatch = mode {
+            self.move_common(matched_pat.id, matched_pat.span, cmt);
+        } else {
+            let cmt = unwrap_downcast_or_interior(cmt);
 
-        // if let euv::MatchMode::MovingMatch = mode {
-        self.consume_common(matched_pat.span, cmt, euv::ConsumeMode::Move(euv::MoveReason::PatBindingMove));
-        // }
+            if_let_chain! {[
+                let mc::Categorization::Local(vid) = cmt.cat,
+                let Some(def_id) = self.cx.tcx.hir.opt_local_def_id(vid),
+            ], {
+                // Find the `ExprMatch` which contains this pattern
+                let mut match_id = matched_pat.id;
+                loop {
+                    match_id = self.cx.tcx.hir.get_parent_node(match_id);
+                    if_let_chain! {[
+                        let Some(map::Node::NodeExpr(e)) = self.cx.tcx.hir.find(match_id),
+                        let ExprMatch(..) = e.node,
+                    ], {
+                        break;
+                    }}
+                }
+
+                self.non_moving_matches.entry(def_id).or_insert_with(HashSet::new)
+                    .insert(match_id);
+            }}
+        }
     }
 
     fn consume_pat(&mut self, consume_pat: &Pat, cmt: mc::cmt<'tcx>, mode: euv::ConsumeMode) {
-        self.consume_common(consume_pat.span, cmt, mode);
+        if let euv::ConsumeMode::Move(_) = mode {
+            self.move_common(consume_pat.id, consume_pat.span, cmt);
+        }
     }
 
     fn borrow(
@@ -224,4 +260,17 @@ impl<'a, 'tcx: 'a> euv::Delegate<'tcx> for MovedVariablesCtxt<'a, 'tcx> {
     }
 
     fn decl_without_init(&mut self, _id: NodeId, _span: Span) {}
+}
+
+
+fn unwrap_downcast_or_interior(mut cmt: mc::cmt) -> mc::cmt {
+    loop {
+        match cmt.cat.clone() {
+            mc::Categorization::Downcast(c, _) |
+            mc::Categorization::Interior(c, _) => {
+                cmt = c;
+            },
+            _ => return cmt,
+        }
+    }
 }

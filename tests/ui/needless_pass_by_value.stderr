@@ -31,13 +31,33 @@ help: consider taking a reference instead
    | fn bar(x: String, y: &Wrapper) {
 
 error: this argument is passed by value, but not consumed in the function body
-  --> $DIR/needless_pass_by_value.rs:28:63
+  --> $DIR/needless_pass_by_value.rs:29:63
    |
-28 | fn test_borrow_trait<T: std::borrow::Borrow<str>, U>(t: T, u: U) {
+29 | fn test_borrow_trait<T: std::borrow::Borrow<str>, U>(t: T, u: U) {
    |                                                               ^
    |
 help: consider taking a reference instead
    | fn test_borrow_trait<T: std::borrow::Borrow<str>, U>(t: T, u: &U) {
 
-error: aborting due to 4 previous errors
+error: this argument is passed by value, but not consumed in the function body
+  --> $DIR/needless_pass_by_value.rs:40:18
+   |
+40 | fn test_match(x: Option<Option<String>>, y: Option<Option<String>>) {
+   |                  ^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider taking a reference instead
+   | fn test_match(x: &Option<Option<String>>, y: Option<Option<String>>) {
+help: ...and dereference it here
+   |     match *x {
+
+error: this argument is passed by value, but not consumed in the function body
+  --> $DIR/needless_pass_by_value.rs:53:24
+   |
+53 | fn test_destructure(x: Wrapper, y: Wrapper) {
+   |                        ^^^^^^^
+   |
+help: consider taking a reference instead
+   | fn test_destructure(x: &Wrapper, y: Wrapper) {
+
+error: aborting due to 6 previous errors
 
