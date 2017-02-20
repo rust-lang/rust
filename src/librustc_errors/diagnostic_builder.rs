@@ -154,7 +154,7 @@ impl<'a> DiagnosticBuilder<'a> {
     pub fn new(handler: &'a Handler, level: Level, message: &str) -> DiagnosticBuilder<'a> {
         DiagnosticBuilder::new_with_code(handler, level, None, message)
     }
-    
+
     pub fn span_guesses<I>(&mut self, sp: Span, msg: &str, guesses: I) -> &mut Self
         where I: IntoIterator<Item = String>
     {
