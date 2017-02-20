@@ -457,7 +457,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         };
 
         let kind = match trait_item.kind {
-            ty::AssociatedKind::Const => EntryKind::AssociatedConst(container),
+            ty::AssociatedKind::Const => {
+                EntryKind::AssociatedConst(container, 0)
+            }
             ty::AssociatedKind::Method => {
                 let fn_data = if let hir::TraitItemKind::Method(_, ref m) = ast_item.node {
                     let arg_names = match *m {
@@ -533,7 +535,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         };
 
         let kind = match impl_item.kind {
-            ty::AssociatedKind::Const => EntryKind::AssociatedConst(container),
+            ty::AssociatedKind::Const => {
+                EntryKind::AssociatedConst(container,
+                    ty::queries::mir_const_qualif::get(self.tcx, ast_item.span, def_id))
+            }
             ty::AssociatedKind::Method => {
                 let fn_data = if let hir::ImplItemKind::Method(ref sig, body) = ast_item.node {
                     FnData {
@@ -637,7 +642,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let kind = match item.node {
             hir::ItemStatic(_, hir::MutMutable, _) => EntryKind::MutStatic,
             hir::ItemStatic(_, hir::MutImmutable, _) => EntryKind::ImmStatic,
-            hir::ItemConst(..) => EntryKind::Const,
+            hir::ItemConst(..) => {
+                EntryKind::Const(ty::queries::mir_const_qualif::get(tcx, item.span, def_id))
+            }
             hir::ItemFn(_, _, constness, .., body) => {
                 let data = FnData {
                     constness: constness,

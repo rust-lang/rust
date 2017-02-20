@@ -361,6 +361,11 @@ define_maps! { <'tcx>
     /// (in the `RefCell` sense) to prevent accidental mutation.
     pub mir: Mir(DefId) -> &'tcx RefCell<mir::Mir<'tcx>>,
 
+    /// Maps DefId's that have an associated Mir to the result
+    /// of the MIR qualify_consts pass. The actual meaning of
+    /// the value isn't known except to the pass itself.
+    pub mir_const_qualif: Mir(DefId) -> u8,
+
     /// Records the type of each closure. The def ID is the ID of the
     /// expression defining the closure.
     pub closure_kind: ItemSignature(DefId) -> ty::ClosureKind,

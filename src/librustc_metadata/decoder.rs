@@ -411,8 +411,8 @@ impl<'a, 'tcx> MetadataBlob {
 impl<'tcx> EntryKind<'tcx> {
     fn to_def(&self, did: DefId) -> Option<Def> {
         Some(match *self {
-            EntryKind::Const => Def::Const(did),
-            EntryKind::AssociatedConst(_) => Def::AssociatedConst(did),
+            EntryKind::Const(_) => Def::Const(did),
+            EntryKind::AssociatedConst(..) => Def::AssociatedConst(did),
             EntryKind::ImmStatic |
             EntryKind::ForeignImmStatic => Def::Static(did, false),
             EntryKind::MutStatic |
@@ -825,6 +825,17 @@ impl<'a, 'tcx> CrateMetadata {
         }
     }
 
+    pub fn mir_const_qualif(&self, id: DefIndex) -> u8 {
+        match self.entry(id).kind {
+            EntryKind::Const(qualif) |
+            EntryKind::AssociatedConst(AssociatedContainer::ImplDefault, qualif) |
+            EntryKind::AssociatedConst(AssociatedContainer::ImplFinal, qualif) => {
+                qualif
+            }
+            _ => bug!(),
+        }
+    }
+
     pub fn get_associated_item(&self, id: DefIndex) -> ty::AssociatedItem {
         let item = self.entry(id);
         let def_key = self.def_key(id);
@@ -832,7 +843,7 @@ impl<'a, 'tcx> CrateMetadata {
         let name = def_key.disambiguated_data.data.get_opt_name().unwrap();
 
         let (kind, container, has_self) = match item.kind {
-            EntryKind::AssociatedConst(container) => {
+            EntryKind::AssociatedConst(container, _) => {
                 (ty::AssociatedKind::Const, container, false)
             }
             EntryKind::Method(data) => {

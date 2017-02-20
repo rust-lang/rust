@@ -53,3 +53,9 @@ pub mod mir_map;
 pub mod pretty;
 pub mod transform;
 
+use rustc::ty::maps::Providers;
+
+pub fn provide(providers: &mut Providers) {
+    mir_map::provide(providers);
+    transform::qualify_consts::provide(providers);
+}

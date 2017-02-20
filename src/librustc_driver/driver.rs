@@ -872,7 +872,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
     let index = stability::Index::new(&hir_map);
 
     let mut local_providers = ty::maps::Providers::default();
-    mir::mir_map::provide(&mut local_providers);
+    mir::provide(&mut local_providers);
     typeck::provide(&mut local_providers);
 
     let mut extern_providers = ty::maps::Providers::default();
@@ -958,8 +958,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
             // in stage 4 below.
             passes.push_hook(box mir::transform::dump_mir::DumpMir);
             passes.push_pass(box mir::transform::simplify::SimplifyCfg::new("initial"));
-            passes.push_pass(
-                box mir::transform::qualify_consts::QualifyAndPromoteConstants::default());
+            passes.push_pass(box mir::transform::qualify_consts::QualifyAndPromoteConstants);
             passes.push_pass(box mir::transform::type_check::TypeckMir);
             passes.push_pass(
                 box mir::transform::simplify_branches::SimplifyBranches::new("initial"));
