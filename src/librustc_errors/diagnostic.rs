@@ -25,7 +25,7 @@ pub struct Diagnostic {
     pub code_hints: Option<DiagnosticCodeHint>,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub enum DiagnosticCodeHint {
     Suggestion {
         msg: String,

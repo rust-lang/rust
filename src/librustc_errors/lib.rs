@@ -51,20 +51,6 @@ use syntax_pos::{BytePos, Loc, FileLinesResult, FileName, MultiSpan, Span, NO_EX
 use syntax_pos::MacroBacktrace;
 
 #[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
-pub enum RenderSpan {
-    /// A FullSpan renders with both with an initial line for the
-    /// message, prefixed by file:linenum, followed by a summary of
-    /// the source code covered by the span.
-    FullSpan(MultiSpan),
-
-    /// A suggestion renders with both with an initial line for the
-    /// message, prefixed by file:linenum, followed by a summary
-    /// of hypothetical source code, where each `String` is spliced
-    /// into the lines in place of the code covered by each span.
-    Suggestion(CodeSuggestion),
-}
-
-#[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct CodeSuggestion {
     pub msp: MultiSpan,
     pub substitutes: Vec<String>,
@@ -204,7 +190,7 @@ impl error::Error for ExplicitBug {
     }
 }
 
-pub use diagnostic::{Diagnostic, SubDiagnostic};
+pub use diagnostic::{Diagnostic, SubDiagnostic, DiagnosticCodeHint};
 pub use diagnostic_builder::DiagnosticBuilder;
 
 /// A handler deals with errors; certain errors

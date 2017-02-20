@@ -12,8 +12,8 @@ use self::Destination::*;
 
 use syntax_pos::{COMMAND_LINE_SP, DUMMY_SP, FileMap, Span, MultiSpan, CharPos};
 
-use {Level, CodeSuggestion, DiagnosticBuilder, SubDiagnostic, CodeMapper};
-use RenderSpan::*;
+use {Level, CodeSuggestion, SubDiagnostic, CodeMapper};
+use {Diagnostic, DiagnosticCodeHint};
 use snippet::{Annotation, AnnotationType, Line, MultilineAnnotation, StyledString, Style};
 use styled_buffer::StyledBuffer;
 
@@ -989,7 +989,7 @@ impl EmitterWriter {
                                         max_line_num_len,
                                         false) {
             Ok(()) => {
-                if !children.is_empty() {
+                if !db.children.is_empty() || db.code_hints.is_some() {
                     let mut buffer = StyledBuffer::new();
                     draw_col_separator_no_space(&mut buffer, 0, max_line_num_len + 1);
                     match emit_to_destination(&buffer.render(), &db.level, &mut self.dst) {
@@ -997,24 +997,28 @@ impl EmitterWriter {
                         Err(e) => panic!("failed to emit error: {}", e)
                     }
                 }
-                for child in children {
+                match db.code_hints {
+                    Some(DiagnosticCodeHint::Suggestion { msg, sugg }) => {
+                        match self.emit_suggestion_default(&sugg,
+                                                           &Level::Help,
+                                                           &vec![(msg, Style::NoStyle)],
+                                                           max_line_num_len) {
+                            Err(e) => panic!("failed to emit error: {}", e),
+                            _ => ()
+                        }
+                    }
+                    Some(DiagnosticCodeHint::Guesses { .. }) => unimplemented!(),
+                    None => {}
+                }
+                for child in db.children {
                     match child.render_span {
-                        Some(FullSpan(ref msp)) => {
+                        Some(ref msp) => {
                             match self.emit_message_default(msp,
                                                             &child.styled_message(),
                                                             &None,
                                                             &child.level,
                                                             max_line_num_len,
                                                             true) {
-                                Err(e) => panic!("failed to emit error: {}", e),
-                                _ => ()
-                            }
-                        },
-                        Some(Suggestion(ref cs)) => {
-                            match self.emit_suggestion_default(cs,
-                                                               &child.level,
-                                                               &child.styled_message(),
-                                                               max_line_num_len) {
                                 Err(e) => panic!("failed to emit error: {}", e),
                                 _ => ()
                             }
