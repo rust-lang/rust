@@ -196,18 +196,18 @@
 [Associated Types]: associated-types.html
 [Attributes]: attributes.html
 [Casting Between Types (`as`)]: casting-between-types.html#as
-[Closures (`move` closures)]: closures.html#move%20closures
+[Closures (`move` closures)]: closures.html#move-closures
 [Closures]: closures.html
 [Comments]: comments.html
-[Crates and Modules (Defining Modules)]: crates-and-modules.html#Defining%20modules
-[Crates and Modules (Exporting a Public Interface)]: crates-and-modules.html#Exporting%20a%20public%20interface
-[Crates and Modules (Importing External Crates)]: crates-and-modules.html#Importing%20external%20crates
-[Crates and Modules (Importing Modules with `use`)]: crates-and-modules.html#Importing%20modules%20with%20use
-[Crates and Modules (Re-exporting with `pub use`)]: crates-and-modules.html#Re-exporting%20with%20pub%20use
-[Diverging Functions]: functions.html#Diverging%20functions
+[Crates and Modules (Defining Modules)]: crates-and-modules.html#defining-modules
+[Crates and Modules (Exporting a Public Interface)]: crates-and-modules.html#exporting-a-public-interface
+[Crates and Modules (Importing External Crates)]: crates-and-modules.html#importing-external-crates
+[Crates and Modules (Importing Modules with `use`)]: crates-and-modules.html#importing-modules-with-use
+[Crates and Modules (Re-exporting with `pub use`)]: crates-and-modules.html#re-exporting-with-pub-use
+[Diverging Functions]: functions.html#diverging-functions
 [Enums]: enums.html
 [Foreign Function Interface]: ffi.html
-[Functions (Early Returns)]: functions.html#Early%20returns
+[Functions (Early Returns)]: functions.html#early-returns
 [Functions]: functions.html
 [Generics]: generics.html
 [Iterators]: iterators.html
@@ -216,24 +216,24 @@
 [Loops (`for`)]: loops.html#for
 [Loops (`loop`)]: loops.html#loop
 [Loops (`while`)]: loops.html#while
-[Loops (Ending Iteration Early)]: loops.html#Ending%20iteration%20early
-[Loops (Loops Labels)]: loops.html#Loop%20labels
+[Loops (Ending Iteration Early)]: loops.html#ending-iteration-early
+[Loops (Loops Labels)]: loops.html#loop-labels
 [Macros]: macros.html
 [Match]: match.html
-[Method Syntax (Method Calls)]: method-syntax.html#Method%20calls
+[Method Syntax (Method Calls)]: method-syntax.html#method-calls
 [Method Syntax]: method-syntax.html
 [Mutability]: mutability.html
 [Operators and Overloading]: operators-and-overloading.html
-[Patterns (`ref` and `ref mut`)]: patterns.html#ref%20and%20ref%20mut
-[Patterns (Bindings)]: patterns.html#Bindings
-[Patterns (Ignoring bindings)]: patterns.html#Ignoring%20bindings
-[Patterns (Multiple patterns)]: patterns.html#Multiple%20patterns
-[Patterns (Ranges)]: patterns.html#Ranges
+[Patterns (`ref` and `ref mut`)]: patterns.html#ref-and-ref-mut
+[Patterns (Bindings)]: patterns.html#bindings
+[Patterns (Ignoring bindings)]: patterns.html#ignoring-bindings
+[Patterns (Multiple patterns)]: patterns.html#multiple-patterns
+[Patterns (Ranges)]: patterns.html#ranges
 [Primitive Types (`char`)]: primitive-types.html#char
-[Primitive Types (Arrays)]: primitive-types.html#Arrays
-[Primitive Types (Booleans)]: primitive-types.html#Booleans
-[Primitive Types (Tuple Indexing)]: primitive-types.html#Tuple%20indexing
-[Primitive Types (Tuples)]: primitive-types.html#Tuples
+[Primitive Types (Arrays)]: primitive-types.html#arrays
+[Primitive Types (Booleans)]: primitive-types.html#booleans
+[Primitive Types (Tuple Indexing)]: primitive-types.html#tuple-indexing
+[Primitive Types (Tuples)]: primitive-types.html#tuples
 [Raw Pointers]: raw-pointers.html
 [Reference (Byte String Literals)]: ../reference.html#byte-string-literals
 [Reference (Integer literals)]: ../reference.html#integer-literals
@@ -241,13 +241,13 @@
 [Reference (Raw String Literals)]: ../reference.html#raw-string-literals
 [References and Borrowing]: references-and-borrowing.html
 [Strings]: strings.html
-[Structs (Update syntax)]: structs.html#Update%20syntax
+[Structs (Update syntax)]: structs.html#update-syntax
 [Structs]: structs.html
-[Traits (`where` clause)]: traits.html#Where%20clause
-[Traits (Multiple Trait Bounds)]: traits.html#Multiple%20trait%20bounds
+[Traits (`where` clause)]: traits.html#where-clause
+[Traits (Multiple Trait Bounds)]: traits.html#multiple-trait-bounds
 [Traits]: traits.html
 [Universal Function Call Syntax]: ufcs.html
-[Universal Function Call Syntax (Angle-bracket Form)]: ufcs.html#Angle-bracket%20Form
+[Universal Function Call Syntax (Angle-bracket Form)]: ufcs.html#angle-bracket-form
 [Unsafe]: unsafe.html
-[Unsized Types (`?Sized`)]: unsized-types.html#Sized
+[Unsized Types (`?Sized`)]: unsized-types.html#sized
 [Variable Bindings]: variable-bindings.html

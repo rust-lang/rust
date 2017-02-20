@@ -680,7 +680,7 @@ pub extern fn hello_rust() -> *const u8 {
 
 The `extern` makes this function adhere to the C calling convention, as
 discussed above in "[Foreign Calling
-Conventions](ffi.html#Foreign%20calling%20conventions)". The `no_mangle`
+Conventions](ffi.html#foreign-calling-conventions)". The `no_mangle`
 attribute turns off Rust's name mangling, so that it is easier to link to.
 
 # FFI and panics

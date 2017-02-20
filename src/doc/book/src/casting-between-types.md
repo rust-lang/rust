@@ -8,7 +8,7 @@ most dangerous features of Rust!
 # Coercion
 
 Coercion between types is implicit and has no syntax of its own, but can
-be spelled out with [`as`](#Explicit%20coercions).
+be spelled out with [`as`](#explicit-coercions).
 
 Coercion occurs in `let`, `const`, and `static` statements; in
 function call arguments; in field values in struct initialization; and in a

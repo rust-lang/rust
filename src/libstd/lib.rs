@@ -189,8 +189,8 @@
 //! [`sync`]: sync/index.html
 //! [`thread`]: thread/index.html
 //! [`use std::env`]: env/index.html
-//! [`use`]: ../book/crates-and-modules.html#Importing%20Modules%20with%20use
-//! [crate root]: ../book/crates-and-modules.html#Basic%20terminology%3A%20Crates%20and%20Modules
+//! [`use`]: ../book/crates-and-modules.html#importing-modules-with-use
+//! [crate root]: ../book/crates-and-modules.html#basic-terminology-crates-and-modules
 //! [crates.io]: https://crates.io
 //! [deref coercions]: ../book/deref-coercions.html
 //! [files]: fs/struct.File.html

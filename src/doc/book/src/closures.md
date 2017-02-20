@@ -463,7 +463,7 @@ fn factory() -> &(Fn(i32) -> i32) {
 
 Right. Because we have a reference, we need to give it a lifetime. But
 our `factory()` function takes no arguments, so
-[elision](lifetimes.html#Lifetime%20Elision) doesn’t kick in here. Then what
+[elision](lifetimes.html#lifetime-elision) doesn’t kick in here. Then what
 choices do we have? Try `'static`:
 
 ```rust,ignore
