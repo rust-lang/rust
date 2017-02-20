@@ -17,17 +17,17 @@ Provide some optimization guarantees that unnecessary temporaries will not creat
 
 There are 2 motivations for this RFC:
 
-1) Passing unsized values, such as trait objects, to functions by value is often desired. Currently, this must be done through a `Box<T>` with an unnecessary allocation.
+1. Passing unsized values, such as trait objects, to functions by value is often desired. Currently, this must be done through a `Box<T>` with an unnecessary allocation.
 
-One particularly common example is passing closures that consume their environment without using monomorphization. One would like for this code to work:
+  One particularly common example is passing closures that consume their environment without using monomorphization. One would like for this code to work:
 
-```Rust
-fn takes_closure(f: FnOnce()) { f(); }
-```
+  ```Rust
+  fn takes_closure(f: FnOnce()) { f(); }
+  ```
 
-But today you have to use a hack, such as taking a `Box<FnBox<()>>`.
+  But today you have to use a hack, such as taking a `Box<FnBox<()>>`.
 
-2) Allocating a runtime-sized variable on the stack is important for good performance in some use-cases - see RFC #1808, which this is intended to supersede.
+2. Allocating a runtime-sized variable on the stack is important for good performance in some use-cases - see RFC #1808, which this is intended to supersede.
 
 # Detailed design
 [design]: #detailed-design
@@ -35,14 +35,15 @@ But today you have to use a hack, such as taking a `Box<FnBox<()>>`.
 ## Unsized Rvalues - language
 
 Remove the rule that requires all locals and rvalues to have a sized type. Instead, require the following:
-a) The following expressions must always return a Sized type:
-    a1) Function calls, method calls, operator expressions
+
+1. The following expressions must always return a Sized type:
+    1. Function calls, method calls, operator expressions
         - implementing unsized return values for function calls would require the *called function* to do the alloca in our stack frame.
-    a2) ADT expressions
+    2. ADT expressions
         - see alternatives
-    a3) cast expressions
+    3. cast expressions
         - this seems like an implementation simplicity thing. These can only be trivial casts.
-b) The RHS of assignment expressions must always have a Sized type.
+2. The RHS of assignment expressions must always have a Sized type.
     - Assigning an unsized type is impossible because we don't know how much memory is available at the destination. This applies to ExprAssign assignments and not to StmtLet let-statements.
 
 This also allows passing unsized values to functions, with the ABI being as if a `&move` pointer was passed (a `(by-move-data, extra)` pair). This also means that methods taking `self` by value are object-safe, though vtable shims are sometimes needed to translate the ABI (as the callee-side intentionally does not pass `extra` to the fn in the vtable, no vtable shim is needed if the vtable function already takes its argument indirectly).
@@ -59,9 +60,9 @@ fn foo(s1: Box<StringData>, s2: Box<StringData>, cond: bool) {
     // this creates a VLA copy of either `s1.1` or `s2.1` on
     // the stack.
     let mut s = if cond {
-        s1.1
+        s1.data
     } else {
-        s2.1
+        s2.data
     };
     drop(s1);
     drop(s2);
@@ -118,7 +119,7 @@ The "guaranteed temporary elimination" rules require more work to teach. It migh
 
 In Unsafe code, it is very easy to create unintended temporaries, such as in:
 ```Rust
-unsafe fnf poke(ptr: *mut [u8]) { /* .. */ }
+unsafe fn poke(ptr: *mut [u8]) { /* .. */ }
 unsafe fn foo(mut a: [u8]) {
     let ptr: *mut [u8] = &mut a;
     // here, `a` must be copied to a temporary, because
