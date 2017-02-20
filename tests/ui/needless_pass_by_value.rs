@@ -2,7 +2,7 @@
 #![plugin(clippy)]
 
 #![deny(needless_pass_by_value)]
-#![allow(dead_code, single_match)]
+#![allow(dead_code, single_match, if_let_redundant_pattern_matching, many_single_char_names)]
 
 // `v` should be warned
 // `w`, `x` and `y` are allowed (moved or mutated)
@@ -49,10 +49,12 @@ fn test_match(x: Option<Option<String>>, y: Option<Option<String>>) {
     };
 }
 
-// x should be warned, but y is ok
-fn test_destructure(x: Wrapper, y: Wrapper) {
-    let Wrapper(s) = y; // moved
+// x and y should be warned, but z is ok
+fn test_destructure(x: Wrapper, y: Wrapper, z: Wrapper) {
+    let Wrapper(s) = z; // moved
+    let Wrapper(ref t) = y; // not moved
     assert_eq!(x.0.len(), s.len());
+    println!("{}", t);
 }
 
 fn main() {}

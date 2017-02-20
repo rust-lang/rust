@@ -8,6 +8,7 @@ use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::mem_categorization as mc;
 use syntax::ast::NodeId;
 use syntax_pos::Span;
+use syntax::errors::DiagnosticBuilder;
 use utils::{in_macro, is_self, is_copy, implements_trait, get_trait_def_id, match_type, snippet, span_lint_and_then,
             paths};
 use std::collections::{HashSet, HashMap};
@@ -59,7 +60,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
             return;
         }
 
-        // These are usually passed by value and only used by reference
+        // Allows these to be passed by value.
         let fn_trait = cx.tcx.lang_items.fn_trait().expect("failed to find `Fn` trait");
         let asref_trait = get_trait_def_id(cx, &paths::ASREF_TRAIT).expect("failed to find `AsRef` trait");
         let borrow_trait = get_trait_def_id(cx, &paths::BORROW_TRAIT).expect("failed to find `Borrow` trait");
@@ -71,8 +72,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                 .collect()
         };
 
-        // Collect moved variables and non-moving usages at `match`es from the function body
-        let MovedVariablesCtxt { moved_vars, non_moving_matches, .. } = {
+        // Collect moved variables and spans which will need dereferencings from the function body.
+        let MovedVariablesCtxt { moved_vars, spans_need_deref, .. } = {
             let mut ctx = MovedVariablesCtxt::new(cx);
             let infcx = cx.tcx.borrowck_fake_infer_ctxt(body.id());
             {
@@ -119,11 +120,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                     continue;
                 }
 
-                span_lint_and_then(cx,
-                          NEEDLESS_PASS_BY_VALUE,
-                          input.span,
-                          "this argument is passed by value, but not consumed in the function body",
-                          |db| {
+                // Suggestion logic
+                let sugg = |db: &mut DiagnosticBuilder| {
                     if_let_chain! {[
                         match_type(cx, ty, &paths::VEC),
                         let TyPath(QPath::Resolved(_, ref path)) = input.node,
@@ -148,24 +146,27 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                                            format!("&{}", snippet(cx, input.span, "_")));
                     }
 
-                    // For non-moving consumption at `match`es,
-                    // suggests adding `*` to dereference the added reference.
-                    // e.g. `match x { Some(_) => 1, None => 2 }`
-                    //   -> `match *x { .. }`
-                    if let Some(matches) = non_moving_matches.get(&defid) {
-                        for (i, m) in matches.iter().enumerate() {
-                            if let ExprMatch(ref e, ..) = cx.tcx.hir.expect_expr(*m).node {
-                                db.span_suggestion(e.span,
-                                                   if i == 0 {
-                                                       "...and dereference it here"
-                                                   } else {
-                                                       "...and here"
-                                                   },
-                                                   format!("*{}", snippet(cx, e.span, "<expr>")));
-                            }
+                    // Suggests adding `*` to dereference the added reference.
+                    if let Some(spans) = spans_need_deref.get(&defid) {
+                        let mut spans: Vec<_> = spans.iter().cloned().collect();
+                        spans.sort();
+                        for (i, span) in spans.into_iter().enumerate() {
+                            db.span_suggestion(span,
+                                                if i == 0 {
+                                                    "...and dereference it here"
+                                                } else {
+                                                    "...and here"
+                                                },
+                                                format!("*{}", snippet(cx, span, "<expr>")));
                         }
                     }
-                });
+                };
+
+                span_lint_and_then(cx,
+                          NEEDLESS_PASS_BY_VALUE,
+                          input.span,
+                          "this argument is passed by value, but not consumed in the function body",
+                          sugg);
             }}
         }
     }
@@ -174,7 +175,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
 struct MovedVariablesCtxt<'a, 'tcx: 'a> {
     cx: &'a LateContext<'a, 'tcx>,
     moved_vars: HashSet<DefId>,
-    non_moving_matches: HashMap<DefId, HashSet<NodeId>>,
+    /// Spans which need to be prefixed with `*` for dereferencing the suggested additional
+    /// reference.
+    spans_need_deref: HashMap<DefId, HashSet<Span>>,
 }
 
 impl<'a, 'tcx: 'a> MovedVariablesCtxt<'a, 'tcx> {
@@ -182,7 +185,7 @@ impl<'a, 'tcx: 'a> MovedVariablesCtxt<'a, 'tcx> {
         MovedVariablesCtxt {
             cx: cx,
             moved_vars: HashSet::new(),
-            non_moving_matches: HashMap::new(),
+            spans_need_deref: HashMap::new(),
         }
     }
 
@@ -194,6 +197,57 @@ impl<'a, 'tcx: 'a> MovedVariablesCtxt<'a, 'tcx> {
             let Some(def_id) = self.cx.tcx.hir.opt_local_def_id(vid),
         ], {
                 self.moved_vars.insert(def_id);
+        }}
+    }
+
+    fn non_moving_pat(&mut self, matched_pat: &Pat, cmt: mc::cmt<'tcx>) {
+        let cmt = unwrap_downcast_or_interior(cmt);
+
+        if_let_chain! {[
+            let mc::Categorization::Local(vid) = cmt.cat,
+            let Some(def_id) = self.cx.tcx.hir.opt_local_def_id(vid),
+        ], {
+            let mut id = matched_pat.id;
+            loop {
+                let parent = self.cx.tcx.hir.get_parent_node(id);
+                if id == parent {
+                    // no parent
+                    return;
+                }
+                id = parent;
+
+                if let Some(node) = self.cx.tcx.hir.find(id) {
+                    match node {
+                        map::Node::NodeExpr(e) => {
+                            // `match` and `if let`
+                            if let ExprMatch(ref c, ..) = e.node {
+                                self.spans_need_deref
+                                    .entry(def_id)
+                                    .or_insert_with(HashSet::new)
+                                    .insert(c.span);
+                            }
+                        }
+
+                        map::Node::NodeStmt(s) => {
+                            // `let <pat> = x;`
+                            if_let_chain! {[
+                                let StmtDecl(ref decl, _) = s.node,
+                                let DeclLocal(ref local) = decl.node,
+                            ], {
+                                self.spans_need_deref
+                                    .entry(def_id)
+                                    .or_insert_with(HashSet::new)
+                                    .insert(local.init
+                                        .as_ref()
+                                        .map(|e| e.span)
+                                        .expect("`let` stmt without init aren't caught by match_pat"));
+                            }}
+                        }
+
+                        _ => {}
+                    }
+                }
+            }
         }}
     }
 }
@@ -209,27 +263,7 @@ impl<'a, 'tcx: 'a> euv::Delegate<'tcx> for MovedVariablesCtxt<'a, 'tcx> {
         if let euv::MatchMode::MovingMatch = mode {
             self.move_common(matched_pat.id, matched_pat.span, cmt);
         } else {
-            let cmt = unwrap_downcast_or_interior(cmt);
-
-            if_let_chain! {[
-                let mc::Categorization::Local(vid) = cmt.cat,
-                let Some(def_id) = self.cx.tcx.hir.opt_local_def_id(vid),
-            ], {
-                // Find the `ExprMatch` which contains this pattern
-                let mut match_id = matched_pat.id;
-                loop {
-                    match_id = self.cx.tcx.hir.get_parent_node(match_id);
-                    if_let_chain! {[
-                        let Some(map::Node::NodeExpr(e)) = self.cx.tcx.hir.find(match_id),
-                        let ExprMatch(..) = e.node,
-                    ], {
-                        break;
-                    }}
-                }
-
-                self.non_moving_matches.entry(def_id).or_insert_with(HashSet::new)
-                    .insert(match_id);
-            }}
+            self.non_moving_pat(matched_pat, cmt);
         }
     }
 
@@ -241,25 +275,18 @@ impl<'a, 'tcx: 'a> euv::Delegate<'tcx> for MovedVariablesCtxt<'a, 'tcx> {
 
     fn borrow(
         &mut self,
-        _borrow_id: NodeId,
-        _borrow_span: Span,
-        _cmt: mc::cmt<'tcx>,
-        _loan_region: &'tcx ty::Region,
-        _bk: ty::BorrowKind,
-        _loan_cause: euv::LoanCause
+        _: NodeId,
+        _: Span,
+        _: mc::cmt<'tcx>,
+        _: &'tcx ty::Region,
+        _: ty::BorrowKind,
+        _: euv::LoanCause
     ) {
     }
 
-    fn mutate(
-        &mut self,
-        _assignment_id: NodeId,
-        _assignment_span: Span,
-        _assignee_cmt: mc::cmt<'tcx>,
-        _mode: euv::MutateMode
-    ) {
-    }
+    fn mutate(&mut self, _: NodeId, _: Span, _: mc::cmt<'tcx>, _: euv::MutateMode) {}
 
-    fn decl_without_init(&mut self, _id: NodeId, _span: Span) {}
+    fn decl_without_init(&mut self, _: NodeId, _: Span) {}
 }
 
 

@@ -53,11 +53,22 @@ help: ...and dereference it here
 error: this argument is passed by value, but not consumed in the function body
   --> $DIR/needless_pass_by_value.rs:53:24
    |
-53 | fn test_destructure(x: Wrapper, y: Wrapper) {
+53 | fn test_destructure(x: Wrapper, y: Wrapper, z: Wrapper) {
    |                        ^^^^^^^
    |
 help: consider taking a reference instead
-   | fn test_destructure(x: &Wrapper, y: Wrapper) {
+   | fn test_destructure(x: &Wrapper, y: Wrapper, z: Wrapper) {
 
-error: aborting due to 6 previous errors
+error: this argument is passed by value, but not consumed in the function body
+  --> $DIR/needless_pass_by_value.rs:53:36
+   |
+53 | fn test_destructure(x: Wrapper, y: Wrapper, z: Wrapper) {
+   |                                    ^^^^^^^
+   |
+help: consider taking a reference instead
+   | fn test_destructure(x: Wrapper, y: &Wrapper, z: Wrapper) {
+help: ...and dereference it here
+   |     let Wrapper(ref t) = *y; // not moved
+
+error: aborting due to 7 previous errors
 
