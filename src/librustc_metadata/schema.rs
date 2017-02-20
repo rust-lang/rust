@@ -221,7 +221,7 @@ pub struct Entry<'tcx> {
 
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable)]
 pub enum EntryKind<'tcx> {
-    Const,
+    Const(u8),
     ImmStatic,
     MutStatic,
     ForeignImmStatic,
@@ -243,7 +243,7 @@ pub enum EntryKind<'tcx> {
     DefaultImpl(Lazy<ImplData<'tcx>>),
     Method(Lazy<MethodData>),
     AssociatedType(AssociatedContainer),
-    AssociatedConst(AssociatedContainer),
+    AssociatedConst(AssociatedContainer, u8),
 }
 
 #[derive(RustcEncodable, RustcDecodable)]

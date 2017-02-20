@@ -27,7 +27,7 @@ use rustc::util::nodemap::DefIdMap;
 use graphviz::IntoCow;
 use syntax::ast;
 use rustc::hir::{self, Expr};
-use syntax_pos::Span;
+use syntax_pos::{Span, DUMMY_SP};
 
 use std::borrow::Cow;
 use std::cmp::Ordering;
@@ -228,6 +228,7 @@ pub struct ConstContext<'a, 'tcx: 'a> {
 impl<'a, 'tcx> ConstContext<'a, 'tcx> {
     pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>, body: hir::BodyId) -> Self {
         let def_id = tcx.hir.body_owner_def_id(body);
+        ty::queries::mir_const_qualif::get(tcx, DUMMY_SP, def_id);
         ConstContext::with_tables(tcx, tcx.item_tables(def_id))
     }
 
