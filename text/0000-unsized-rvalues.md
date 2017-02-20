@@ -90,8 +90,9 @@ fn foo(n: usize) {
     let x = [0u8; random() % 100]; //~ ERROR constant evaluation error
 }
 ```
-
 "captures a variable" - as in RFC #1558 - is used as the condition for making the return be `[T]` because it is simple, easy to understand, and  introduces no type-checking complications.
+
+The last error message could have a user-helpful note, for example "extract the length to a local variable if you want a variable-length array".
 
 ## Unsized Rvalues - MIR
 
@@ -137,6 +138,34 @@ Unsized temporaries are dangerous - they can easily cause aborts through stack o
 # Alternatives
 [alternatives]: #alternatives
 
+## The bikeshed
+
+There are several alternative options for the VLA syntax.
+
+1. The RFC choice, `[t; φ]` has type `[T; φ]` if `φ` captures no variables and type `[T]` if φ captures a variable.
+    - pro: can be understood using "HIR"/resolution only.
+    - pro: requires no additional syntax.
+    - con: might be confusing at first glance.
+    - con: `[t; foo()]` requires the length to be extracted to a local.
+2. The "permissive" choice: `[t; φ]` has type `[T; φ]` if `φ` is a constexpr, otherwise `[T]`
+    - pro: allows the most code
+    - pro: requires no additional syntax.
+    - con: depends on what is exactly a const expression. This is a big issue because that is both non-local and might change between rustc versions.
+3. Use the expected type - `[t; φ]` has type `[T]` if it is evaluated in a context that expects that type (for example `[t; foo()]: [T]`) and `[T; _]` otherwise.
+    - pro: in most cases, very human-visible.
+    - pro: requires no additional syntax.
+    - con: relies on the notion of "expected type". While I think we *do* have to rely on that in the unsafe code semantics of `&foo` borrow expressions (as in, whether a borrow is treated as a "safe" or "unsafe" borrow - I'll write more details sometime), it might be better to not rely on expected types too much.
+4. use an explicit syntax, for example `[t; virtual φ]`.
+    - bikeshed: exact syntax.
+    - pro: very explicit and visible.
+    - con: more syntax.
+5. use an intrinsic, `std::intrinsics::repeat(t, n)` or something.
+    - pro: theoretically minimizes changes to the language.
+    - con: requires returning unsized values from intrinsics.
+    - con: unergonomic to use.
+
+## Unsized ADT Expressions
+
 Allowing unsized ADT expressions would make unsized structs constructible without using unsafe code, as in:
 ```Rust
 let len_ = s.len();
@@ -148,6 +177,8 @@ let p = Box::new(PascalString {
 
 However, without some way to guarantee that this can be done without allocas, that might be a large footgun.
 
+## Copy Slices
+
 One somewhat-orthogonal proposal that came up was to make `Clone` (and therefore `Copy`) not depend on `Sized`, and to make `[u8]` be `Copy`, by moving the `Self: Sized` bound from the trait to the methods, i.e. using the following declaration:
 ```Rust
 pub trait Clone {
@@ -158,11 +189,15 @@ pub trait Clone {
 }
 ```
 
+That would be a backwards-compatability-breaking change, because today `T: Clone + ?Sized` (or of course `Self: Clone` in a trait context, with no implied `Self: Sized`) implies that `T: Sized`, but it might be that its impact is small enough to allow (and even if not, it might be worth it for Rust 2.0).
+
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
 How can we mitigate the risk of unintended unsized or large allocas? Note that the problem already exists today with large structs/arrays. A MIR lint against large/variable stack sizes would probably help users avoid these stack overflows. Do we want it in Clippy? rustc?
 
 How do we handle truely-unsized DSTs when we get them? They can theoretically be passed to functions, but they can never be put in temporaries.
+
+Accumulative allocas (aka `'fn` borrows) are beyond the scope of this RFC.
 
 See alternatives.
