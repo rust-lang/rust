@@ -108,9 +108,6 @@ impl Debug for Player {
 
 fn str_to_direction(to_parse: &str) -> RoomDirection {
     match to_parse { //~ ERROR match arms have incompatible types
-    //~^ expected enum `RoomDirection`, found enum `std::option::Option`
-    //~| expected type `RoomDirection`
-    //~| found type `std::option::Option<_>`
         "w" | "west" => RoomDirection::West,
         "e" | "east" => RoomDirection::East,
         "n" | "north" => RoomDirection::North,
@@ -119,7 +116,7 @@ fn str_to_direction(to_parse: &str) -> RoomDirection {
         "out" => RoomDirection::Out,
         "up" => RoomDirection::Up,
         "down" => RoomDirection::Down,
-        _ => None //~ NOTE match arm with an incompatible type
+        _ => None
     }
 }
 
