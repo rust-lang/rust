@@ -151,12 +151,9 @@ elements of the array. These kinds of casts are very dangerous, because they
 make assumptions about the way that multiple underlying structures are
 implemented. For this, we need something more dangerous.
 
-The `transmute` function is provided by a [compiler intrinsic][intrinsics], and
-what it does is very simple, but very scary. It tells Rust to treat a value of
-one type as though it were another type. It does this regardless of the
-typechecking system, and completely trusts you.
-
-[intrinsics]: intrinsics.html
+The `transmute` function is very simple, but very scary. It tells Rust to treat
+a value of one type as though it were another type. It does this regardless of
+the typechecking system, and completely trusts you.
 
 In our previous example, we know that an array of four `u8`s represents a `u32`
 properly, and so we want to do the cast. Using `transmute` instead of `as`,

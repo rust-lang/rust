@@ -39,7 +39,7 @@ of a library.
 
 Plugins can extend Rust's syntax in various ways. One kind of syntax extension
 is the procedural macro. These are invoked the same way as [ordinary
-macros](macros.html), but the expansion is performed by arbitrary Rust
+macros](../book/macros.html), but the expansion is performed by arbitrary Rust
 code that manipulates syntax trees at
 compile time.
 
@@ -137,7 +137,7 @@ enum.  For a more involved macro example, see
 
 ## Tips and tricks
 
-Some of the [macro debugging tips](macros.html#Debugging%20macro%20code) are applicable.
+Some of the [macro debugging tips](../book/macros.html#debugging-macro-code) are applicable.
 
 You can use `syntax::parse` to turn token trees into
 higher-level syntax elements like expressions:
