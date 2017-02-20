@@ -525,7 +525,7 @@ pub fn replace<T>(dest: &mut T, mut src: T) -> T {
 /// it will not release any borrows, as borrows are based on lexical scope.
 ///
 /// This effectively does nothing for
-/// [types which implement `Copy`](../../book/ownership.html#Copy%20types),
+/// [types which implement `Copy`](../../book/ownership.html#copy-types),
 /// e.g. integers. Such values are copied and _then_ moved into the function,
 /// so the value persists after this function call.
 ///
