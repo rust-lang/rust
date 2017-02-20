@@ -395,7 +395,7 @@ fn check_match_ref_pats(cx: &LateContext, ex: &Expr, arms: &[Arm], source: Match
                                "you don't need to add `&` to both the expression and the patterns",
                                |db| {
                 let inner = Sugg::hir(cx, inner, "..");
-                let template = match_template(expr.span, source, inner);
+                let template = match_template(expr.span, source, &inner);
                 db.span_suggestion(expr.span, "try", template);
             });
         } else {
@@ -405,7 +405,7 @@ fn check_match_ref_pats(cx: &LateContext, ex: &Expr, arms: &[Arm], source: Match
                                "you don't need to add `&` to all patterns",
                                |db| {
                 let ex = Sugg::hir(cx, ex, "..");
-                let template = match_template(expr.span, source, ex.deref());
+                let template = match_template(expr.span, source, &ex.deref());
                 db.span_suggestion(expr.span,
                                    "instead of prefixing all patterns with `&`, you can dereference the expression",
                                    template);
@@ -509,7 +509,7 @@ fn has_only_ref_pats(arms: &[Arm]) -> bool {
     mapped.map_or(false, |v| v.iter().any(|el| *el))
 }
 
-fn match_template(span: Span, source: MatchSource, expr: Sugg) -> String {
+fn match_template(span: Span, source: MatchSource, expr: &Sugg) -> String {
     match source {
         MatchSource::Normal => format!("match {} {{ .. }}", expr),
         MatchSource::IfLetDesugar { .. } => format!("if let .. = {} {{ .. }}", expr),

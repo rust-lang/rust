@@ -107,7 +107,7 @@ pub mod mut_reference;
 pub mod mutex_atomic;
 pub mod needless_bool;
 pub mod needless_borrow;
-pub mod needless_take_by_value;
+pub mod needless_pass_by_value;
 pub mod needless_update;
 pub mod neg_multiply;
 pub mod new_without_default;
@@ -300,7 +300,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
     reg.register_late_lint_pass(box unused_io_amount::UnusedIoAmount);
     reg.register_late_lint_pass(box large_enum_variant::LargeEnumVariant::new(conf.enum_variant_size_threshold));
     reg.register_late_lint_pass(box should_assert_eq::ShouldAssertEq);
-    reg.register_late_lint_pass(box needless_take_by_value::NeedlessTakeByValue);
+    reg.register_late_lint_pass(box needless_pass_by_value::NeedlessPassByValue);
 
     reg.register_lint_group("clippy_restrictions", vec![
         arithmetic::FLOAT_ARITHMETIC,
@@ -457,7 +457,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         needless_bool::BOOL_COMPARISON,
         needless_bool::NEEDLESS_BOOL,
         needless_borrow::NEEDLESS_BORROW,
-        needless_take_by_value::NEEDLESS_TAKE_BY_VALUE,
+        needless_pass_by_value::NEEDLESS_PASS_BY_VALUE,
         needless_update::NEEDLESS_UPDATE,
         neg_multiply::NEG_MULTIPLY,
         new_without_default::NEW_WITHOUT_DEFAULT,

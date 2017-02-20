@@ -2,7 +2,7 @@
 #![plugin(clippy)]
 
 #![deny(drop_ref, forget_ref)]
-#![allow(toplevel_ref_arg, similar_names, needless_take_by_value)]
+#![allow(toplevel_ref_arg, similar_names, needless_pass_by_value)]
 
 use std::mem::{drop, forget};
 

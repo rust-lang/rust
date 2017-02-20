@@ -2,7 +2,7 @@
 #![plugin(clippy)]
 
 #![deny(clippy)]
-#![allow(boxed_local, needless_take_by_value)]
+#![allow(boxed_local, needless_pass_by_value)]
 #![allow(blacklisted_name)]
 
 macro_rules! boxit {
