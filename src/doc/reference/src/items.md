@@ -1,9 +1,12 @@
 # Items
 
 An _item_ is a component of a crate. Items are organized within a crate by a
-nested set of [modules](#modules). Every crate has a single "outermost"
-anonymous module; all further items within the crate have [paths](#paths)
+nested set of [modules]. Every crate has a single "outermost"
+anonymous module; all further items within the crate have [paths]
 within the module tree of the crate.
+
+[modules]: modules.html
+[paths]: paths.html
 
 Items are entirely determined at compile-time, generally remain fixed during
 execution, and may reside in read-only memory.
@@ -15,7 +18,7 @@ There are several kinds of item:
 * [modules](#modules)
 * [function definitions](#functions)
 * [`extern` blocks](#external-blocks)
-* [type definitions](grammar.html#type-definitions)
+* [type definitions](../grammar.html#type-definitions)
 * [struct definitions](#structs)
 * [enumeration definitions](#enumerations)
 * [constant items](#constant-items)
@@ -39,7 +42,7 @@ All items except modules, constants and statics may be *parameterized* by type.
 Type parameters are given as a comma-separated list of identifiers enclosed in
 angle brackets (`<...>`), after the name of the item and before its definition.
 The type parameters of an item are considered "part of the name", not part of
-the type of the item. A referencing [path](#paths) must (in principle) provide
+the type of the item. A referencing [path] must (in principle) provide
 type arguments as a list of comma-separated types enclosed within angle
 brackets, in order to refer to the type-parameterized item. In practice, the
 type-inference system can usually infer such argument types from context. There
@@ -47,9 +50,13 @@ are no general type-parametric types, only type-parametric items. That is, Rust
 has no notion of type abstraction: there are no higher-ranked (or "forall") types
 abstracted over other types, though higher-ranked types do exist for lifetimes.
 
+[path]: paths.html
+
 ## Modules
 
-A module is a container for zero or more [items](#items).
+A module is a container for zero or more [items].
+
+[items]: items.html
 
 A _module item_ is a module, surrounded in braces, named, and prefixed with the
 keyword `mod`. A module item introduces a new, named module into the tree of
@@ -57,7 +64,7 @@ modules making up a crate. Modules can nest arbitrarily.
 
 An example of a module:
 
-```
+```rust
 mod math {
     type Complex = (f64, f64);
     fn sin(f: f64) -> f64 {
@@ -85,7 +92,7 @@ same name as the module, plus the `.rs` extension. When a nested submodule is
 loaded from an external file, it is loaded from a subdirectory path that
 mirrors the module hierarchy.
 
-```{.ignore}
+```rust,ignore
 // Load the `vec` module from `vec.rs`
 mod vec;
 
@@ -99,7 +106,7 @@ mod thread {
 The directories and files used for loading external file modules can be
 influenced with the `path` attribute.
 
-```{.ignore}
+```rust,ignore
 #[path = "thread_files"]
 mod thread {
     // Load the `local_data` module from `thread_files/tls.rs`
@@ -124,7 +131,7 @@ equal to the `ident` given in the `extern_crate_decl`.
 
 Three examples of `extern crate` declarations:
 
-```{.ignore}
+```rust,ignore
 extern crate pcre;
 
 extern crate std; // equivalent to: extern crate std as std;
@@ -139,7 +146,7 @@ details).
 
 Here is an example:
 
-```{.ignore}
+```rust,ignore
 // Importing the Cargo package hello-world
 extern crate hello_world; // hyphen replaced with an underscore
 ```
@@ -149,9 +156,13 @@ extern crate hello_world; // hyphen replaced with an underscore
 ### Use declarations
 
 A _use declaration_ creates one or more local name bindings synonymous with
-some other [path](#paths). Usually a `use` declaration is used to shorten the
+some other [path]. Usually a `use` declaration is used to shorten the
 path required to refer to a module item. These declarations may appear in
-[modules](#modules) and [blocks](grammar.html#block-expressions), usually at the top.
+[modules] and [blocks], usually at the top.
+
+[path]: paths.html
+[modules]: #modules
+[blocks]: ../grammar.html#block-expressions
 
 > **Note**: Unlike in many languages,
 > `use` declarations in Rust do *not* declare linkage dependency with external crates.
@@ -199,7 +210,7 @@ cannot be resolved unambiguously, they represent a compile-time error.
 
 An example of re-exporting:
 
-```
+```rust
 # fn main() { }
 mod quux {
     pub use quux::foo::{bar, baz};
@@ -226,7 +237,7 @@ declarations.
 
 An example of what will and will not work for `use` items:
 
-```
+```rust
 # #![allow(unused_imports)]
 use foo::baz::foobaz;    // good: foo is at the root of the crate
 
@@ -256,18 +267,25 @@ fn main() {}
 
 ## Functions
 
-A _function item_ defines a sequence of [statements](#statements) and a
-final [expression](#expressions), along with a name and a set of
+A _function item_ defines a sequence of [statements] and a
+final [expression], along with a name and a set of
 parameters. Other than a name, all these are optional.
 Functions are declared with the keyword `fn`. Functions may declare a
-set of *input* [*variables*](#variables) as parameters, through which the caller
-passes arguments into the function, and the *output* [*type*](#types)
+set of *input* [*variables*][variables] as parameters, through which the caller
+passes arguments into the function, and the *output* [*type*][type]
 of the value the function will return to its caller on completion.
 
+[statements]: statements.html
+[expression]: expressions.html
+[variables]: variables.html
+[type]: types.html
+
 A function may also be copied into a first-class *value*, in which case the
-value has the corresponding [*function type*](#function-types), and can be used
+value has the corresponding [*function type*][function type], and can be used
 otherwise exactly as a function item (with a minor additional cost of calling
 the function indirectly).
+
+[function type]: types.html#function-types
 
 Every control path in a function logically ends with a `return` expression or a
 diverging expression. If the outermost block of a function has a
@@ -276,7 +294,7 @@ interpreted as an implicit `return` expression applied to the final-expression.
 
 An example of a function:
 
-```
+```rust
 fn add(x: i32, y: i32) -> i32 {
     x + y
 }
@@ -285,7 +303,7 @@ fn add(x: i32, y: i32) -> i32 {
 As with `let` bindings, function arguments are irrefutable patterns, so any
 pattern that is valid in a let binding is also valid as an argument.
 
-```
+```rust
 fn first((value, _): (i32, i32)) -> i32 { value }
 ```
 
@@ -314,7 +332,7 @@ fn foo<T>(x: T) where T: Debug {
 When a generic function is referenced, its type is instantiated based on the
 context of the reference. For example, calling the `foo` function here:
 
-```
+```rust
 use std::fmt::Debug;
 
 fn foo<T>(x: &[T]) where T: Debug {
@@ -328,16 +346,18 @@ foo(&[1, 2]);
 will instantiate type parameter `T` with `i32`.
 
 The type parameters can also be explicitly supplied in a trailing
-[path](#paths) component after the function name. This might be necessary if
+[path] component after the function name. This might be necessary if
 there is not sufficient context to determine the type parameters. For example,
 `mem::size_of::<u32>() == 4`.
+
+[path]: paths.html
 
 ### Diverging functions
 
 A special kind of function can be declared with a `!` character where the
 output type would normally be. For example:
 
-```
+```rust
 fn my_err(s: &str) -> ! {
     println!("{}", s);
     panic!();
@@ -351,11 +371,13 @@ does *not* denote a type.
 
 It might be necessary to declare a diverging function because as mentioned
 previously, the typechecker checks that every control path in a function ends
-with a [`return`](#return-expressions) or diverging expression. So, if `my_err`
+with a [`return`] or diverging expression. So, if `my_err`
 were declared without the `!` annotation, the following code would not
 typecheck:
 
-```
+[`return`]: expressions.html#return-expressions
+
+```rust
 # fn my_err(s: &str) -> ! { panic!() }
 
 fn f(i: i32) -> i32 {
@@ -385,7 +407,7 @@ bodies defined in Rust code _can be called by foreign code_. They are defined
 in the same way as any other Rust function, except that they have the `extern`
 modifier.
 
-```
+```rust
 // Declares an extern fn, the ABI defaults to "C"
 extern fn new_i32() -> i32 { 0 }
 
@@ -396,7 +418,7 @@ extern "stdcall" fn new_i32_stdcall() -> i32 { 0 }
 Unlike normal functions, extern fns have type `extern "ABI" fn()`. This is the
 same type as the functions declared in an extern block.
 
-```
+```rust
 # extern fn new_i32() -> i32 { 0 }
 let fptr: extern "C" fn() -> i32 = new_i32;
 ```
@@ -406,15 +428,17 @@ contiguous stack segments like C.
 
 ## Type aliases
 
-A _type alias_ defines a new name for an existing [type](#types). Type
+A _type alias_ defines a new name for an existing [type]. Type
 aliases are declared with the keyword `type`. Every value has a single,
 specific type, but may implement several different traits, or be compatible with
 several different type constraints.
 
+[type]: types.html
+
 For example, the following defines the type `Point` as a synonym for the type
 `(u8, u8)`, the type of pairs of unsigned 8 bit integers:
 
-```
+```rust
 type Point = (u8, u8);
 let p: Point = (41, 68);
 ```
@@ -422,7 +446,7 @@ let p: Point = (41, 68);
 Currently a type alias to an enum type cannot be used to qualify the
 constructors:
 
-```
+```rust
 enum E { A }
 type F = E;
 let _: F = E::A;  // OK
@@ -431,21 +455,24 @@ let _: F = E::A;  // OK
 
 ## Structs
 
-A _struct_ is a nominal [struct type](#struct-types) defined with the
+A _struct_ is a nominal [struct type] defined with the
 keyword `struct`.
 
 An example of a `struct` item and its use:
 
-```
+```rust
 struct Point {x: i32, y: i32}
 let p = Point {x: 10, y: 11};
 let px: i32 = p.x;
 ```
 
-A _tuple struct_ is a nominal [tuple type](#tuple-types), also defined with
+A _tuple struct_ is a nominal [tuple type], also defined with
 the keyword `struct`. For example:
 
-```
+[struct type]: types.html#struct-types
+[tuple type]: types.html#tuple-types
+
+```rust
 struct Point(i32, i32);
 let p = Point(10, 11);
 let px: i32 = match p { Point(x, _) => x };
@@ -455,33 +482,37 @@ A _unit-like struct_ is a struct without any fields, defined by leaving off
 the list of fields entirely. Such a struct implicitly defines a constant of
 its type with the same name. For example:
 
-```
+```rust
 struct Cookie;
 let c = [Cookie, Cookie {}, Cookie, Cookie {}];
 ```
 
 is equivalent to
 
-```
+```rust
 struct Cookie {}
 const Cookie: Cookie = Cookie {};
 let c = [Cookie, Cookie {}, Cookie, Cookie {}];
 ```
 
 The precise memory layout of a struct is not specified. One can specify a
-particular layout using the [`repr` attribute](#ffi-attributes).
+particular layout using the [`repr` attribute].
+
+[`repr` attribute]: attributes.html#ffi-attributes
 
 ## Enumerations
 
 An _enumeration_ is a simultaneous definition of a nominal [enumerated
-type](#enumerated-types) as well as a set of *constructors*, that can be used
+type] as well as a set of *constructors*, that can be used
 to create or pattern-match values of the corresponding enumerated type.
+
+[enumerated type]: types.html#enumerated-types
 
 Enumerations are declared with the keyword `enum`.
 
 An example of an `enum` item and its use:
 
-```
+```rust
 enum Animal {
     Dog,
     Cat,
@@ -509,7 +540,7 @@ whereas `Dog` is simply called an enum variant.
 Each enum value has a _discriminant_ which is an integer associated to it. You
 can specify it explicitly:
 
-```
+```rust
 enum Foo {
     Bar = 123,
 }
@@ -517,15 +548,17 @@ enum Foo {
 
 The right hand side of the specification is interpreted as an `isize` value,
 but the compiler is allowed to use a smaller type in the actual memory layout.
-The [`repr` attribute](#ffi-attributes) can be added in order to change
+The [`repr` attribute] can be added in order to change
 the type of the right hand side and specify the memory layout.
+
+[`repr` attribute]: attributes.html#ffi-attributes
 
 If a discriminant isn't specified, they start at zero, and add one for each
 variant, in order.
 
 You can cast an enum to get its discriminant:
 
-```
+```rust
 # enum Foo { Bar = 123 }
 let x = Foo::Bar as u32; // x is now 123u32
 ```
@@ -662,7 +695,7 @@ standard elision rules ([see discussion in the nomicon][elision-nomicon]). If it
 is unable to resolve the lifetimes by its usual rules, it will default to using
 the `'static` lifetime. By way of example:
 
-[elision-nomicon]: https://doc.rust-lang.org/nomicon/lifetime-elision.html
+[elision-nomicon]: ../nomicon/lifetime-elision.html
 
 ```rust,ignore
 // Resolved as `fn<'a>(&'a str) -> &'a str`.
@@ -698,14 +731,14 @@ contain additional type parameters. These type parameters (including
 Trait bounds on `Self` are considered "supertraits". These are
 required to be acyclic.  Supertraits are somewhat different from other
 constraints in that they affect what methods are available in the
-vtable when the trait is used as a [trait object](#trait-objects).
+vtable when the trait is used as a [trait object].
 
 Traits are implemented for specific types through separate
-[implementations](#implementations).
+[implementations].
 
 Consider the following trait:
 
-```
+```rust
 # type Surface = i32;
 # type BoundingBox = i32;
 trait Shape {
@@ -715,13 +748,17 @@ trait Shape {
 ```
 
 This defines a trait with two methods. All values that have
-[implementations](#implementations) of this trait in scope can have their
+[implementations] of this trait in scope can have their
 `draw` and `bounding_box` methods called, using `value.bounding_box()`
-[syntax](#method-call-expressions).
+[syntax].
+
+[trait object]: types.html#trait-objects
+[implementations]: #implementations
+[syntax]: expressions.html#method-call-expressions
 
 Traits can include default implementations of methods, as in:
 
-```
+```rust
 trait Foo {
     fn bar(&self);
     fn baz(&self) { println!("We called baz."); }
@@ -736,7 +773,7 @@ Type parameters can be specified for a trait to make it generic. These appear
 after the trait name, using the same syntax used in [generic
 functions](#generic-functions).
 
-```
+```rust
 trait Seq<T> {
     fn len(&self) -> u32;
     fn elt_at(&self, n: u32) -> T;
@@ -748,7 +785,7 @@ It is also possible to define associated types for a trait. Consider the
 following example of a `Container` trait. Notice how the type is available
 for use in the method signatures:
 
-```
+```rust
 trait Container {
     type E;
     fn empty() -> Self;
@@ -760,7 +797,7 @@ In order for a type to implement this trait, it must not only provide
 implementations for every method, but it must specify the type `E`. Here's
 an implementation of `Container` for the standard library type `Vec`:
 
-```
+```rust
 # trait Container {
 #     type E;
 #     fn empty() -> Self;
@@ -782,7 +819,7 @@ will have two effects:
 
 For example:
 
-```
+```rust
 # type Surface = i32;
 # trait Shape { fn draw(&self, Surface); }
 fn draw_twice<T: Shape>(surface: Surface, sh: T) {
@@ -791,15 +828,18 @@ fn draw_twice<T: Shape>(surface: Surface, sh: T) {
 }
 ```
 
-Traits also define a [trait object](#trait-objects) with the same
+Traits also define a [trait object] with the same
 name as the trait. Values of this type are created by coercing from a
 pointer of some specific type to a pointer of trait type. For example,
 `&T` could be coerced to `&Shape` if `T: Shape` holds (and similarly
 for `Box<T>`). This coercion can either be implicit or
-[explicit](#type-cast-expressions). Here is an example of an explicit
+[explicit]. Here is an example of an explicit
 coercion:
 
-```
+[trait object]: types.html#trait-objects
+[explicit]: expressions.html#type-cast-expressions
+
+```rust
 trait Shape { }
 impl Shape for i32 { }
 let mycircle = 0i32;
@@ -808,9 +848,11 @@ let myshape: Box<Shape> = Box::new(mycircle) as Box<Shape>;
 
 The resulting value is a box containing the value that was cast, along with
 information that identifies the methods of the implementation that was used.
-Values with a trait type can have [methods called](#method-call-expressions) on
+Values with a trait type can have [methods called] on
 them, for any method in the trait, and can be used to instantiate type
 parameters that are bounded by the trait.
+
+[methods called]: expressions.html#method-call-expressions
 
 Trait methods may be static, which means that they lack a `self` argument.
 This means that they can only be called with function call syntax (`f(x)`) and
@@ -818,7 +860,7 @@ not method call syntax (`obj.f()`). The way to refer to the name of a static
 method is to qualify it with the trait name, treating the trait name like a
 module. For example:
 
-```
+```rust
 trait Num {
     fn from_i32(n: i32) -> Self;
 }
@@ -830,7 +872,7 @@ let x: f64 = Num::from_i32(42);
 
 Traits may inherit from other traits. Consider the following example:
 
-```
+```rust
 trait Shape { fn area(&self) -> f64; }
 trait Circle : Shape { fn radius(&self) -> f64; }
 ```
@@ -868,7 +910,7 @@ In type-parameterized functions, methods of the supertrait may be called on
 values of subtrait-bound type parameters. Referring to the previous example of
 `trait Circle : Shape`:
 
-```
+```rust
 # trait Shape { fn area(&self) -> f64; }
 # trait Circle : Shape { fn radius(&self) -> f64; }
 fn radius_times_area<T: Circle>(c: T) -> f64 {
@@ -879,7 +921,7 @@ fn radius_times_area<T: Circle>(c: T) -> f64 {
 
 Likewise, supertrait methods may also be called on trait objects.
 
-```{.ignore}
+```rust,ignore
 # trait Shape { fn area(&self) -> f64; }
 # trait Circle : Shape { fn radius(&self) -> f64; }
 # impl Shape for i32 { fn area(&self) -> f64 { 0.0 } }
@@ -896,7 +938,7 @@ specific type.
 
 Implementations are defined with the keyword `impl`.
 
-```
+```rust
 # #[derive(Copy, Clone)]
 # struct Point {x: f64, y: f64};
 # type Surface = i32;
@@ -935,7 +977,7 @@ trait type and `for` after `impl` are omitted. Such implementations are limited
 to nominal types (enums, structs, trait objects), and the implementation must
 appear in the same crate as the `self` type:
 
-```
+```rust
 struct Point {x: i32, y: i32}
 
 impl Point {
@@ -955,7 +997,7 @@ An implementation can take type parameters, which can be different from the
 type parameters taken by the trait it implements. Implementation parameters
 are written after the `impl` keyword.
 
-```
+```rust
 # trait Seq<T> { fn dummy(&self, _: T) { } }
 impl<T> Seq<T> for Vec<T> {
     /* ... */
@@ -982,19 +1024,21 @@ the Rust ABI and the foreign ABI.
 Functions within external blocks may be variadic by specifying `...` after one
 or more named arguments in the argument list:
 
-```ignore
+```rust,ignore
 extern {
     fn foo(x: i32, ...);
 }
 ```
 
-A number of [attributes](#ffi-attributes) control the behavior of external blocks.
+A number of [attributes] control the behavior of external blocks.
+
+[attributes]: attributes.html#ffi-attributes
 
 By default external blocks assume that the library they are calling uses the
 standard C ABI on the specific platform. Other ABIs may be specified using an
 `abi` string, as shown here:
 
-```ignore
+```rust,ignore
 // Interface to the Windows API
 extern "stdcall" { }
 ```
@@ -1033,7 +1077,7 @@ The `link` attribute allows the name of the library to be specified. When
 specified the compiler will attempt to link against the native library of the
 specified name.
 
-```{.ignore}
+```rust,ignore
 #[link(name = "crypto")]
 extern { }
 ```
