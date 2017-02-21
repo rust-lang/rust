@@ -422,3 +422,4 @@ impl Drop for OperandBundleDef {
         }
     }
 }
+#[link(name = "ffi")] extern {}

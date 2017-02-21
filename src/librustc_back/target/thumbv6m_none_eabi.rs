@@ -10,6 +10,7 @@
 
 // Targets the Cortex-M0, Cortex-M0+ and Cortex-M1 processors (ARMv6-M architecture)
 
+use LinkerFlavor;
 use target::{Target, TargetOptions, TargetResult};
 
 pub fn target() -> TargetResult {
@@ -22,6 +23,7 @@ pub fn target() -> TargetResult {
         target_os: "none".to_string(),
         target_env: "".to_string(),
         target_vendor: "".to_string(),
+        linker_flavor: LinkerFlavor::Gcc,
 
         options: TargetOptions {
             // The ARMv6-M architecture doesn't support unaligned loads/stores so we disable them

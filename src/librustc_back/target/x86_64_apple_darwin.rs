@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use LinkerFlavor;
 use target::{Target, TargetResult};
 
 pub fn target() -> TargetResult {
@@ -15,7 +16,7 @@ pub fn target() -> TargetResult {
     base.cpu = "core2".to_string();
     base.max_atomic_width = Some(128); // core2 support cmpxchg16b
     base.eliminate_frame_pointer = false;
-    base.pre_link_args.push("-m64".to_string());
+    base.pre_link_args.insert(LinkerFlavor::Gcc, vec!["-m64".to_string()]);
 
     Ok(Target {
         llvm_target: "x86_64-apple-darwin".to_string(),
@@ -26,6 +27,7 @@ pub fn target() -> TargetResult {
         target_os: "macos".to_string(),
         target_env: "".to_string(),
         target_vendor: "apple".to_string(),
+        linker_flavor: LinkerFlavor::Gcc,
         options: base,
     })
 }
