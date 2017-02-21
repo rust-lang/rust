@@ -381,6 +381,7 @@ All notable changes to this project will be documented in this file.
 [`needless_bool`]: https://github.com/Manishearth/rust-clippy/wiki#needless_bool
 [`needless_borrow`]: https://github.com/Manishearth/rust-clippy/wiki#needless_borrow
 [`needless_lifetimes`]: https://github.com/Manishearth/rust-clippy/wiki#needless_lifetimes
+[`needless_pass_by_value`]: https://github.com/Manishearth/rust-clippy/wiki#needless_pass_by_value
 [`needless_range_loop`]: https://github.com/Manishearth/rust-clippy/wiki#needless_range_loop
 [`needless_return`]: https://github.com/Manishearth/rust-clippy/wiki#needless_return
 [`needless_update`]: https://github.com/Manishearth/rust-clippy/wiki#needless_update

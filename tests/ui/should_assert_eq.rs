@@ -1,6 +1,7 @@
 #![feature(plugin)]
 #![plugin(clippy)]
 
+#![allow(needless_pass_by_value)]
 #![deny(should_assert_eq)]
 
 #[derive(PartialEq, Eq)]

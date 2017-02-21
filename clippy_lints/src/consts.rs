@@ -203,9 +203,9 @@ pub fn lit_to_constant(lit: &LitKind) -> Constant {
     }
 }
 
-fn constant_not(o: Constant) -> Option<Constant> {
+fn constant_not(o: &Constant) -> Option<Constant> {
     use self::Constant::*;
-    match o {
+    match *o {
         Bool(b) => Some(Bool(!b)),
         Int(value) => (!value).ok().map(Int),
         _ => None,
@@ -216,12 +216,12 @@ fn constant_negate(o: Constant) -> Option<Constant> {
     use self::Constant::*;
     match o {
         Int(value) => (-value).ok().map(Int),
-        Float(is, ty) => Some(Float(neg_float_str(is), ty)),
+        Float(is, ty) => Some(Float(neg_float_str(&is), ty)),
         _ => None,
     }
 }
 
-fn neg_float_str(s: String) -> String {
+fn neg_float_str(s: &str) -> String {
     if s.starts_with('-') {
         s[1..].to_owned()
     } else {
@@ -271,7 +271,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
             },
             ExprUnary(op, ref operand) => {
                 self.expr(operand).and_then(|o| match op {
-                    UnNot => constant_not(o),
+                    UnNot => constant_not(&o),
                     UnNeg => constant_negate(o),
                     UnDeref => Some(o),
                 })

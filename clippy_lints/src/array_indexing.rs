@@ -83,7 +83,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ArrayIndexing {
                         .map(|end| constcx.eval(end, ExprTypeChecked))
                         .map(|v| v.ok());
 
-                    if let Some((start, end)) = to_const_range(start, end, range.limits, size) {
+                    if let Some((start, end)) = to_const_range(&start, &end, range.limits, size) {
                         if start > size || end > size {
                             utils::span_lint(cx, OUT_OF_BOUNDS_INDEXING, e.span, "range is out of bounds");
                         }
@@ -109,18 +109,18 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ArrayIndexing {
 
 /// Returns an option containing a tuple with the start and end (exclusive) of the range.
 fn to_const_range(
-    start: Option<Option<ConstVal>>,
-    end: Option<Option<ConstVal>>,
+    start: &Option<Option<ConstVal>>,
+    end: &Option<Option<ConstVal>>,
     limits: RangeLimits,
     array_size: ConstInt
 ) -> Option<(ConstInt, ConstInt)> {
-    let start = match start {
+    let start = match *start {
         Some(Some(ConstVal::Integral(x))) => x,
         Some(_) => return None,
         None => ConstInt::Infer(0),
     };
 
-    let end = match end {
+    let end = match *end {
         Some(Some(ConstVal::Integral(x))) => {
             if limits == RangeLimits::Closed {
                 (x + ConstInt::Infer(1)).expect("such a big array is not realistic")

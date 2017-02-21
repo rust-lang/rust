@@ -549,8 +549,8 @@ fn check_for_loop_range<'a, 'tcx>(
                                        |db| {
                         multispan_sugg(db,
                                        "consider using an iterator".to_string(),
-                                       &[(pat.span, &format!("({}, <item>)", ident.node)),
-                                         (arg.span, &format!("{}.iter().enumerate(){}{}", indexed, take, skip))]);
+                                       vec![(pat.span, format!("({}, <item>)", ident.node)),
+                                            (arg.span, format!("{}.iter().enumerate(){}{}", indexed, take, skip))]);
                     });
                 } else {
                     let repl = if starts_at_zero && take.is_empty() {
@@ -568,7 +568,7 @@ fn check_for_loop_range<'a, 'tcx>(
                                        |db| {
                         multispan_sugg(db,
                                        "consider using an iterator".to_string(),
-                                       &[(pat.span, "<item>"), (arg.span, &repl)]);
+                                       vec![(pat.span, "<item>".to_string()), (arg.span, repl)]);
                     });
                 }
             }
@@ -816,8 +816,8 @@ fn check_for_loop_over_map_kv<'a, 'tcx>(
                     let map = sugg::Sugg::hir(cx, arg, "map");
                     multispan_sugg(db,
                                    "use the corresponding method".into(),
-                                   &[(pat_span, &snippet(cx, new_pat_span, kind)),
-                                     (arg_span, &format!("{}.{}s{}()", map.maybe_par(), kind, mutbl))]);
+                                   vec![(pat_span, snippet(cx, new_pat_span, kind).into_owned()),
+                                        (arg_span, format!("{}.{}s{}()", map.maybe_par(), kind, mutbl))]);
                 });
             }
         }

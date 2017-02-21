@@ -1,7 +1,9 @@
 //! This module contains paths to types and functions Clippy needs to know about.
 
+pub const ASREF_TRAIT: [&'static str; 3] = ["core", "convert", "AsRef"];
 pub const BEGIN_PANIC: [&'static str; 3] = ["std", "panicking", "begin_panic"];
 pub const BINARY_HEAP: [&'static str; 3] = ["collections", "binary_heap", "BinaryHeap"];
+pub const BORROW_TRAIT: [&'static str; 3] = ["core", "borrow", "Borrow"];
 pub const BOX: [&'static str; 3] = ["std", "boxed", "Box"];
 pub const BOX_NEW: [&'static str; 4] = ["std", "boxed", "Box", "new"];
 pub const BTREEMAP: [&'static str; 4] = ["collections", "btree", "map", "BTreeMap"];

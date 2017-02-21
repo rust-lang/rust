@@ -301,7 +301,7 @@ pub fn make_binop(op: ast::BinOpKind, lhs: &Sugg, rhs: &Sugg) -> Sugg<'static> {
     make_assoc(AssocOp::from_ast_binop(op), lhs, rhs)
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Clone, Copy)]
 /// Operator associativity.
 enum Associativity {
     /// The operator is both left-associative and right-associative.
