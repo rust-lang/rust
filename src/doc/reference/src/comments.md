@@ -5,7 +5,7 @@ block (`/* ... */`) comment forms. Nested block comments are supported.
 
 Line comments beginning with exactly _three_ slashes (`///`), and block
 comments (`/** ... */`), are interpreted as a special syntax for `doc`
-[attributes](#attributes). That is, they are equivalent to writing
+[attributes]. That is, they are equivalent to writing
 `#[doc="..."]` around the body of the comment, i.e., `/// Foo` turns into
 `#[doc="Foo"]`.
 
@@ -16,3 +16,5 @@ the body of the comment. `//!` comments are usually used to document
 modules that occupy a source file.
 
 Non-doc comments are interpreted as a form of whitespace.
+
+[attributes]: attributes.html
