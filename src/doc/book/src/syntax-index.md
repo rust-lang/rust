@@ -235,10 +235,10 @@
 [Primitive Types (Tuple Indexing)]: primitive-types.html#tuple-indexing
 [Primitive Types (Tuples)]: primitive-types.html#tuples
 [Raw Pointers]: raw-pointers.html
-[Reference (Byte String Literals)]: ../reference.html#byte-string-literals
-[Reference (Integer literals)]: ../reference.html#integer-literals
-[Reference (Raw Byte String Literals)]: ../reference.html#raw-byte-string-literals
-[Reference (Raw String Literals)]: ../reference.html#raw-string-literals
+[Reference (Byte String Literals)]: ../reference/tokens.html/#byte-string-literals
+[Reference (Integer literals)]: ../reference/tokens.html#integer-literals
+[Reference (Raw Byte String Literals)]: ../reference/tokens.html#raw-byte-string-literals
+[Reference (Raw String Literals)]: ../reference/tokens.html#raw-string-literals
 [References and Borrowing]: references-and-borrowing.html
 [Strings]: strings.html
 [Structs (Update syntax)]: structs.html#update-syntax

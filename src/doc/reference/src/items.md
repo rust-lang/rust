@@ -5,7 +5,7 @@ nested set of [modules]. Every crate has a single "outermost"
 anonymous module; all further items within the crate have [paths]
 within the module tree of the crate.
 
-[modules]: modules.html
+[modules]: #modules
 [paths]: paths.html
 
 Items are entirely determined at compile-time, generally remain fixed during

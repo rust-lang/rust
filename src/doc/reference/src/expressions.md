@@ -85,7 +85,7 @@ be copied if its type implements `Copy`. All others are moved.
 
 ## Literal expressions
 
-A _literal expression_ consists of one of the [literal](tokens.md#literals) forms
+A _literal expression_ consists of one of the [literal](tokens.html#literals) forms
 described earlier. It directly describes a number, character, string, boolean
 value, or the unit value.
 
@@ -124,19 +124,19 @@ comma:
 ## Struct expressions
 
 There are several forms of struct expressions. A _struct expression_
-consists of the [path](#paths) of a [struct item](items.html#structs), followed
+consists of the [path](paths.html) of a [struct item](items.html#structs), followed
 by a brace-enclosed list of zero or more comma-separated name-value pairs,
 providing the field values of a new instance of the struct. A field name can be
 any identifier, and is separated from its value expression by a colon.  The
 location denoted by a struct field is mutable if and only if the enclosing
 struct is mutable.
 
-A _tuple struct expression_ consists of the [path](#paths) of a [struct
+A _tuple struct expression_ consists of the [path](paths.html) of a [struct
 item](items.html#structs), followed by a parenthesized list of one or more
 comma-separated expressions (in other words, the path of a struct item followed
 by a tuple expression). The struct item must be a tuple struct item.
 
-A _unit-like struct expression_ consists only of the [path](#paths) of a
+A _unit-like struct expression_ consists only of the [path](paths.html) of a
 [struct item](items.html#structs).
 
 The following are examples of struct expressions:
@@ -217,7 +217,8 @@ A _method call_ consists of an expression followed by a single dot, an
 identifier, and a parenthesized expression-list. Method calls are resolved to
 methods on specific traits, either statically dispatching to a method if the
 exact `self`-type of the left-hand-side is known, or dynamically dispatching if
-the left-hand-side expression is an indirect [trait object](trait-objects.html).
+the left-hand-side expression is an indirect [trait
+object](types.html#trait-objects).
 
 ## Field expressions
 
@@ -504,7 +505,7 @@ The `+`, `-`, `*`, `/`, `%`, `&`, `|`, `^`, `<<`, and `>>` operators may be
 composed with the `=` operator. The expression `lval OP= val` is equivalent to
 `lval = lval OP val`. For example, `x = x + 1` may be written as `x += 1`.
 
-Any such expression always has the [`unit`](#tuple-types) type.
+Any such expression always has the [`unit`](types.html#tuple-types) type.
 
 ### Operator precedence
 

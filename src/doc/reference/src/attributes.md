@@ -46,7 +46,7 @@ type int8_t = i8;
 ## Crate-only attributes
 
 - `crate_name` - specify the crate's crate name.
-- `crate_type` - see [linkage](#linkage).
+- `crate_type` - see [linkage](linkage.html).
 - `feature` - see [compiler features](#compiler-features).
 - `no_builtins` - disable optimizing certain code patterns to invocations of
                   library functions that are assumed to exist
@@ -106,7 +106,7 @@ On an `extern` block, the following attributes are interpreted:
 - `link` - indicate that a native library should be linked to for the
   declarations in this block to be linked correctly. `link` supports an optional
   `kind` key with three possible values: `dylib`, `static`, and `framework`. See
-  [external blocks](#external-blocks) for more about external blocks. Two
+  [external blocks](items.html#external-blocks) for more about external blocks. Two
   examples: `#[link(name = "readline")]` and
   `#[link(name = "CoreFoundation", kind = "framework")]`.
 - `linked_from` - indicates what native library this block of FFI items is
@@ -149,7 +149,7 @@ On `struct`s:
   list of names `#[macro_use(foo, bar)]` restricts the import to just those
   macros named.  The `extern crate` must appear at the crate root, not inside
   `mod`, which ensures proper function of the [`$crate` macro
-  variable](book/macros.html#The%20variable%20%24crate).
+  variable](../book/macros.html#the-variable-crate).
 
 - `macro_reexport` on an `extern crate` — re-export the named macros.
 
@@ -159,7 +159,7 @@ On `struct`s:
   link it into the output.
 
 See the [macros section of the
-book](book/macros.html#Scoping%20and%20macro%20import%2Fexport) for more information on
+book](../book/macros.html#scoping-and-macro-importexport) for more information on
 macro scope.
 
 ## Miscellaneous attributes
@@ -317,7 +317,8 @@ For any lint check `C`:
 
 The lint checks supported by the compiler can be found via `rustc -W help`,
 along with their default settings.  [Compiler
-plugins](book/compiler-plugins.html#lint-plugins) can provide additional lint checks.
+plugins](../book/compiler-plugins.html#lint-plugins) can provide additional
+lint checks.
 
 ```{.ignore}
 pub mod m1 {
@@ -442,7 +443,7 @@ impl<T: PartialEq> PartialEq for Foo<T> {
 ```
 
 You can implement `derive` for your own type through [procedural
-macros](#procedural-macros).
+macros](procedural-macros.html).
 
 ### Compiler Features
 
@@ -464,10 +465,10 @@ considered off, and using the features will result in a compiler error.
 
 The currently implemented features of the reference compiler are:
 
-* `advanced_slice_patterns` - See the [match expressions](#match-expressions)
-                              section for discussion; the exact semantics of
-                              slice patterns are subject to change, so some types
-                              are still unstable.
+* `advanced_slice_patterns` - See the [match
+                              expressions](expressions.html#match-expressions)
+			      section for discussion; the exact semantics of
+slice patterns are subject to change, so some types are still unstable.
 
 * `slice_patterns` - OK, actually, slice patterns are just scary and
                      completely unstable.
