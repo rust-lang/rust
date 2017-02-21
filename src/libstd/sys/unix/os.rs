@@ -64,7 +64,7 @@ pub fn errno() -> i32 {
 }
 
 /// Sets the platform-specific value of errno
-#[cfg(target_os = "solaris")] // only needed for readdir so far
+#[cfg(any(target_os = "solaris", target_os = "fuchsia"))] // only needed for readdir so far
 pub fn set_errno(e: i32) {
     unsafe {
         *errno_location() = e as c_int
