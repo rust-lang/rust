@@ -23,17 +23,11 @@ install:
   - nvm install stable
   - nvm use stable
   - npm install remark-cli remark-lint
-  # || true, because we cache rustfmt and don't want to crash on the next travis run
-  # due to rustfmt already being installed
-  - (cargo install rustfmt || true)
 
 script:
  - PATH=$PATH:./node_modules/.bin
  - remark -f README.md > /dev/null
- - python util/update_lints.py -c
  - set -e
- - PATH=$PATH:~/.cargo/bin cargo fmt -- --write-mode=diff
- - cd clippy_lints && PATH=$PATH:~/.cargo/bin cargo fmt -- --write-mode=diff && cd ..
  - cargo build --features debugging
  - cargo test --features debugging
  - mkdir -p ~/rust/cargo/bin

@@ -27,3 +27,5 @@ util/gh-pages/lints.json
 
 # rustfmt backups
 *.rs.bk
+
+helper.txt
