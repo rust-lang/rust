@@ -131,7 +131,7 @@ A `struct` *type* is a heterogeneous product of other types, called the
     or the *struct* types of the Lisp family.
 
 New instances of a `struct` can be constructed with a [struct
-expression](#struct-expressions).
+expression](expressions.html#struct-expressions).
 
 The memory layout of a `struct` is undefined by default to allow for compiler
 optimizations like field reordering, but it can be fixed with the
@@ -140,7 +140,7 @@ a corresponding struct *expression*; the resulting `struct` value will always
 have the same memory layout.
 
 The fields of a `struct` may be qualified by [visibility
-modifiers](#visibility-and-privacy), to allow access to data in a
+modifiers](visibility-and-privacy.html), to allow access to data in a
 struct outside a module.
 
 A _tuple struct_ type is just like a struct type, except that the fields are
@@ -148,29 +148,29 @@ anonymous.
 
 A _unit-like struct_ type is like a struct type, except that it has no
 fields. The one value constructed by the associated [struct
-expression](#struct-expressions) is the only value that inhabits such a
+expression](expressions.html#struct-expressions) is the only value that inhabits such a
 type.
 
 ## Enumerated types
 
 An *enumerated type* is a nominal, heterogeneous disjoint union type, denoted
-by the name of an [`enum` item](#enumerations). [^enumtype]
+by the name of an [`enum` item](items.html#enumerations). [^enumtype]
 
 [^enumtype]: The `enum` type is analogous to a `data` constructor declaration in
              ML, or a *pick ADT* in Limbo.
 
-An [`enum` item](#enumerations) declares both the type and a number of *variant
+An [`enum` item](items.html#enumerations) declares both the type and a number of *variant
 constructors*, each of which is independently named and takes an optional tuple
 of arguments.
 
 New instances of an `enum` can be constructed by calling one of the variant
-constructors, in a [call expression](#call-expressions).
+constructors, in a [call expression](expressions.html#call-expressions).
 
 Any `enum` value consumes as much memory as the largest variant constructor for
 its corresponding `enum` type.
 
 Enum types cannot be denoted *structurally* as types, but must be denoted by
-named reference to an [`enum` item](#enumerations).
+named reference to an [`enum` item](items.html#enumerations).
 
 ## Recursive types
 
@@ -180,7 +180,7 @@ constructor or `struct` field may refer, directly or indirectly, to the
 enclosing `enum` or `struct` type itself. Such recursion has restrictions:
 
 * Recursive types must include a nominal type in the recursion
-  (not mere [type definitions](grammar.html#type-definitions),
+  (not mere [type definitions](../grammar.html#type-definitions),
    or other structural types such as [arrays](#array-and-slice-types) or [tuples](#tuple-types)).
 * A recursive `enum` item must have at least one non-recursive constructor
   (in order to give the recursion a basis case).
@@ -222,7 +222,7 @@ varieties of pointer in Rust:
     for example `*const i32` means a raw pointer to a 32-bit integer.
     Copying or dropping a raw pointer has no effect on the lifecycle of any
     other value. Dereferencing a raw pointer or converting it to any other
-    pointer type is an [`unsafe` operation](#unsafe-functions).
+    pointer type is an [`unsafe` operation](unsafe-functions.html).
     Raw pointers are generally discouraged in Rust code;
     they exist to support interoperability with foreign code,
     and writing performance-critical or low-level functions.
@@ -268,8 +268,8 @@ messages to indicate "the unique fn type for the function `foo`".
 
 ## Closure types
 
-A [lambda expression](#lambda-expressions) produces a closure value with
-a unique, anonymous type that cannot be written out.
+A [lambda expression](expressions.html#lambda-expressions) produces a closure
+value with a unique, anonymous type that cannot be written out.
 
 Depending on the requirements of the closure, its type implements one or
 more of the closure traits:
