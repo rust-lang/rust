@@ -1,4 +1,4 @@
-error: error reading Clippy's configuration file: No such file or directory (os error 2)
+error: error reading Clippy's configuration file: `blacklisted-names` is expected to be a `Vec < String >` but is a `integer`
 
 error: aborting due to previous error
 
