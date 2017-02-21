@@ -67,4 +67,4 @@ Rust attributes are used for a number of different things. There is a full list
 of attributes [in the reference][reference]. Currently, you are not allowed to
 create your own attributes, the Rust compiler defines them.
 
-[reference]: ../reference.html#attributes
+[reference]: ../reference/attributes.html
