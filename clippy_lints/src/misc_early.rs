@@ -172,7 +172,7 @@ declare_lint! {
 /// **Example:**
 ///
 /// ```rust
-/// ß as *const u32
+/// 0 as *const u32
 /// ```
 declare_lint! {
     pub ZERO_PTR,
