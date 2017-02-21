@@ -1077,10 +1077,20 @@ impl<'a> middle::cstore::CrateLoader for CrateLoader<'a> {
             let mut found = false;
             for lib in self.cstore.get_used_libraries().borrow_mut().iter_mut() {
                 if lib.name == name as &str {
-                    lib.kind = kind;
+                    let mut changed = false;
+                    if let Some(k) = kind {
+                        lib.kind = k;
+                        changed = true;
+                    }
                     if let &Some(ref new_name) = new_name {
                         lib.name = Symbol::intern(new_name);
+                        changed = true;
                     }
+                    if !changed {
+                        self.sess.warn(&format!("redundant linker flag specified for library `{}`",
+                                                name));
+                    }
+
                     found = true;
                 }
             }
@@ -1089,7 +1099,7 @@ impl<'a> middle::cstore::CrateLoader for CrateLoader<'a> {
                 let new_name = new_name.as_ref().map(|s| &**s); // &Option<String> -> Option<&str>
                 let lib = NativeLibrary {
                     name: Symbol::intern(new_name.unwrap_or(name)),
-                    kind: kind,
+                    kind: if let Some(k) = kind { k } else { cstore::NativeUnknown },
                     cfg: None,
                     foreign_items: Vec::new(),
                 };
