@@ -47,7 +47,6 @@ error: this argument is passed by value, but not consumed in the function body
    |
 help: consider taking a reference instead
    | fn test_match(x: &Option<Option<String>>, y: Option<Option<String>>) {
-help: ...and dereference it here
    |     match *x {
 
 error: this argument is passed by value, but not consumed in the function body
@@ -67,7 +66,7 @@ error: this argument is passed by value, but not consumed in the function body
    |
 help: consider taking a reference instead
    | fn test_destructure(x: Wrapper, y: &Wrapper, z: Wrapper) {
-help: ...and dereference it here
+   |     let Wrapper(s) = z; // moved
    |     let Wrapper(ref t) = *y; // not moved
    |     let Wrapper(_) = *y; // still not moved
 

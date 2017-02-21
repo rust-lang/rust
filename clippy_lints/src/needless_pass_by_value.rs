@@ -132,27 +132,25 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                         db.span_suggestion(input.span,
                                         &format!("consider changing the type to `{}`", slice_ty),
                                         slice_ty);
-                        return;
+                        return; // `Vec` and `String` cannot be destructured - no need for `*` suggestion
                     }}
 
                     if match_type(cx, ty, &paths::STRING) {
                         db.span_suggestion(input.span,
                                            "consider changing the type to `&str`",
                                            "&str".to_string());
-                    } else {
-                        db.span_suggestion(input.span,
-                                           "consider taking a reference instead",
-                                           format!("&{}", snippet(cx, input.span, "_")));
+                        return;
                     }
 
-                    // Suggests adding `*` to dereference the added reference if needed.
-                    if let Some(spans) = spans_need_deref.get(&defid) {
-                        let mut spans: Vec<_> = spans.iter().cloned()
-                            .map(|span| (span, format!("*{}", snippet(cx, span, "<expr>"))))
-                            .collect();
+                    let mut spans = vec![(input.span, format!("&{}", snippet(cx, input.span, "_")))];
+
+                    // Suggests adding `*` to dereference the added reference.
+                    if let Some(deref_span) = spans_need_deref.get(&defid) {
+                        spans.extend(deref_span.iter().cloned()
+                                     .map(|span| (span, format!("*{}", snippet(cx, span, "<expr>")))));
                         spans.sort_by_key(|&(span, _)| span);
-                        multispan_sugg(db, "...and dereference it here".to_string(), spans);
                     }
+                    multispan_sugg(db, "consider taking a reference instead".to_string(), spans);
                 };
 
                 span_lint_and_then(cx,
