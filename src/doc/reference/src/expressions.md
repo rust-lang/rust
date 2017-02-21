@@ -79,17 +79,17 @@ Here are some examples:
 
 ### Moved and copied types
 
-When a [local variable](#variables) is used as an
-[rvalue](#lvalues-rvalues-and-temporaries), the variable will be copied
-if its type implements `Copy`. All others are moved.
+When a [local variable](variables.html) is used as an
+[rvalue](expressions.html#lvalues-rvalues-and-temporaries), the variable will
+be copied if its type implements `Copy`. All others are moved.
 
 ## Literal expressions
 
-A _literal expression_ consists of one of the [literal](#literals) forms
+A _literal expression_ consists of one of the [literal](tokens.md#literals) forms
 described earlier. It directly describes a number, character, string, boolean
 value, or the unit value.
 
-```{.literals}
+```text
 ();        // unit type
 "hello";   // string type
 '5';       // character type
@@ -98,13 +98,15 @@ value, or the unit value.
 
 ## Path expressions
 
-A [path](#paths) used as an expression context denotes either a local variable
-or an item. Path expressions are [lvalues](#lvalues-rvalues-and-temporaries).
+A [path](paths.html) used as an expression context denotes either a local
+variable or an item. Path expressions are
+[lvalues](expressions.html#lvalues-rvalues-and-temporaries).
 
 ## Tuple expressions
 
 Tuples are written by enclosing zero or more comma-separated expressions in
-parentheses. They are used to create [tuple-typed](#tuple-types) values.
+parentheses. They are used to create [tuple-typed](types.html#tuple-types)
+values.
 
 ```{.tuple}
 (0.0, 4.5);
@@ -122,21 +124,20 @@ comma:
 ## Struct expressions
 
 There are several forms of struct expressions. A _struct expression_
-consists of the [path](#paths) of a [struct item](#structs), followed by
-a brace-enclosed list of zero or more comma-separated name-value pairs,
-providing the field values of a new instance of the struct. A field name
-can be any identifier, and is separated from its value expression by a colon.
-The location denoted by a struct field is mutable if and only if the
-enclosing struct is mutable.
+consists of the [path](#paths) of a [struct item](items.html#structs), followed
+by a brace-enclosed list of zero or more comma-separated name-value pairs,
+providing the field values of a new instance of the struct. A field name can be
+any identifier, and is separated from its value expression by a colon.  The
+location denoted by a struct field is mutable if and only if the enclosing
+struct is mutable.
 
 A _tuple struct expression_ consists of the [path](#paths) of a [struct
-item](#structs), followed by a parenthesized list of one or more
-comma-separated expressions (in other words, the path of a struct item
-followed by a tuple expression). The struct item must be a tuple struct
-item.
+item](items.html#structs), followed by a parenthesized list of one or more
+comma-separated expressions (in other words, the path of a struct item followed
+by a tuple expression). The struct item must be a tuple struct item.
 
 A _unit-like struct expression_ consists only of the [path](#paths) of a
-[struct item](#structs).
+[struct item](items.html#structs).
 
 The following are examples of struct expressions:
 
@@ -216,14 +217,14 @@ A _method call_ consists of an expression followed by a single dot, an
 identifier, and a parenthesized expression-list. Method calls are resolved to
 methods on specific traits, either statically dispatching to a method if the
 exact `self`-type of the left-hand-side is known, or dynamically dispatching if
-the left-hand-side expression is an indirect [trait object](#trait-objects).
+the left-hand-side expression is an indirect [trait object](trait-objects.html).
 
 ## Field expressions
 
 A _field expression_ consists of an expression followed by a single dot and an
 identifier, when not immediately followed by a parenthesized expression-list
 (the latter is a [method call expression](#method-call-expressions)). A field
-expression denotes a field of a [struct](#struct-types).
+expression denotes a field of a [struct](types.html#struct-types).
 
 ```{.ignore .field}
 mystruct.myfield;
@@ -231,9 +232,9 @@ foo().x;
 (Struct {a: 10, b: 20}).a;
 ```
 
-A field access is an [lvalue](#lvalues-rvalues-and-temporaries) referring to
-the value of that field. When the type providing the field inherits mutability,
-it can be [assigned](#assignment-expressions) to.
+A field access is an [lvalue](expressions.html#lvalues-rvalues-and-temporaries)
+referring to the value of that field. When the type providing the field
+inherits mutability, it can be [assigned](#assignment-expressions) to.
 
 Also, if the type of the expression to the left of the dot is a
 pointer, it is automatically dereferenced as many times as necessary
@@ -242,12 +243,13 @@ fewer autoderefs to more.
 
 ## Array expressions
 
-An [array](#array-and-slice-types) _expression_ is written by enclosing zero
-or more comma-separated expressions of uniform type in square brackets.
+An [array](types.html#array-and-slice-types) _expression_ is written by
+enclosing zero or more comma-separated expressions of uniform type in square
+brackets.
 
 In the `[expr ';' expr]` form, the expression after the `';'` must be a
 constant expression that can be evaluated at compile time, such as a
-[literal](#literals) or a [static item](#static-items).
+[literal](tokens.html#literals) or a [static item](items.html#static-items).
 
 ```
 [1, 2, 3, 4];
@@ -258,14 +260,15 @@ constant expression that can be evaluated at compile time, such as a
 
 ## Index expressions
 
-[Array](#array-and-slice-types)-typed expressions can be indexed by
+[Array](types.html#array-and-slice-types)-typed expressions can be indexed by
 writing a square-bracket-enclosed expression (the index) after them. When the
-array is mutable, the resulting [lvalue](#lvalues-rvalues-and-temporaries) can
-be assigned to.
+array is mutable, the resulting
+[lvalue](expressions.html#lvalues-rvalues-and-temporaries) can be assigned to.
 
 Indices are zero-based, and may be of any integral type. Vector access is
-bounds-checked at compile-time for constant arrays being accessed with a constant index value.
-Otherwise a check will be performed at run-time that will put the thread in a _panicked state_ if it fails.
+bounds-checked at compile-time for constant arrays being accessed with a
+constant index value.  Otherwise a check will be performed at run-time that
+will put the thread in a _panicked state_ if it fails.
 
 ```{should-fail}
 ([1, 2, 3, 4])[0];
@@ -333,14 +336,15 @@ all written as prefix operators, before the expression they apply to.
     is an error to apply negation to unsigned types; for example, the compiler
     rejects `-1u32`.
 * `*`
-  : Dereference. When applied to a [pointer](#pointer-types) it denotes the
-    pointed-to location. For pointers to mutable locations, the resulting
-    [lvalue](#lvalues-rvalues-and-temporaries) can be assigned to.
-    On non-pointer types, it calls the `deref` method of the `std::ops::Deref`
-    trait, or the `deref_mut` method of the `std::ops::DerefMut` trait (if
-    implemented by the type and required for an outer expression that will or
-    could mutate the dereference), and produces the result of dereferencing the
-    `&` or `&mut` borrowed pointer returned from the overload method.
+  : Dereference. When applied to a [pointer](types.html#pointer-types) it
+    denotes the pointed-to location. For pointers to mutable locations, the
+    resulting [lvalue](expressions.html#lvalues-rvalues-and-temporaries) can be
+    assigned to.  On non-pointer types, it calls the `deref` method of the
+    `std::ops::Deref` trait, or the `deref_mut` method of the
+    `std::ops::DerefMut` trait (if implemented by the type and required for an
+    outer expression that will or could mutate the dereference), and produces
+    the result of dereferencing the `&` or `&mut` borrowed pointer returned
+    from the overload method.
 * `!`
   : Logical negation. On the boolean type, this flips between `true` and
     `false`. On integer types, this inverts the individual bits in the
@@ -480,8 +484,9 @@ surprising side-effects on the dynamic execution semantics.
 ### Assignment expressions
 
 An _assignment expression_ consists of an
-[lvalue](#lvalues-rvalues-and-temporaries) expression followed by an equals
-sign (`=`) and an [rvalue](#lvalues-rvalues-and-temporaries) expression.
+[lvalue](expressions.html#lvalues-rvalues-and-temporaries) expression followed
+by an equals sign (`=`) and an
+[rvalue](expressions.html#lvalues-rvalues-and-temporaries) expression.
 
 Evaluating an assignment expression [either copies or
 moves](#moved-and-copied-types) its right-hand operand to its left-hand
@@ -571,15 +576,16 @@ Lambda expressions are most useful when passing functions as arguments to other
 functions, as an abbreviation for defining and capturing a separate function.
 
 Significantly, lambda expressions _capture their environment_, which regular
-[function definitions](#functions) do not. The exact type of capture depends
-on the [function type](#function-types) inferred for the lambda expression. In
-the simplest and least-expensive form (analogous to a ```|| { }``` expression),
-the lambda expression captures its environment by reference, effectively
-borrowing pointers to all outer variables mentioned inside the function.
-Alternately, the compiler may infer that a lambda expression should copy or
-move values (depending on their type) from the environment into the lambda
-expression's captured environment. A lambda can be forced to capture its
-environment by moving values by prefixing it with the `move` keyword.
+[function definitions](items.html#functions) do not. The exact type of capture
+depends on the [function type](types.html#function-types) inferred for the
+lambda expression. In the simplest and least-expensive form (analogous to a
+```|| { }``` expression), the lambda expression captures its environment by
+reference, effectively borrowing pointers to all outer variables mentioned
+inside the function.  Alternately, the compiler may infer that a lambda
+expression should copy or move values (depending on their type) from the
+environment into the lambda expression's captured environment. A lambda can be
+forced to capture its environment by moving values by prefixing it with the
+`move` keyword.
 
 In this example, we define a function `ten_times` that takes a higher-order
 function argument, and we then call it with a lambda expression as an argument,
@@ -715,12 +721,13 @@ stands for a *single* data field, whereas a wildcard `..` stands for *all* the
 fields of a particular variant.
 
 A `match` behaves differently depending on whether or not the head expression
-is an [lvalue or an rvalue](#lvalues-rvalues-and-temporaries). If the head
-expression is an rvalue, it is first evaluated into a temporary location, and
-the resulting value is sequentially compared to the patterns in the arms until
-a match is found. The first arm with a matching pattern is chosen as the branch
-target of the `match`, any variables bound by the pattern are assigned to local
-variables in the arm's block, and control enters the block.
+is an [lvalue or an rvalue](expressions.html#lvalues-rvalues-and-temporaries).
+If the head expression is an rvalue, it is first evaluated into a temporary
+location, and the resulting value is sequentially compared to the patterns in
+the arms until a match is found. The first arm with a matching pattern is
+chosen as the branch target of the `match`, any variables bound by the pattern
+are assigned to local variables in the arm's block, and control enters the
+block.
 
 When the head expression is an lvalue, the match does not allocate a temporary
 location (however, a by-value binding may copy or move from the lvalue). When
