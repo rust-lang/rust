@@ -853,7 +853,8 @@ impl<'a> Rewrite for ControlFlow<'a> {
             // 2 = spaces after keyword and condition.
             label_string.len() + self.keyword.len() + pat_expr_string.len() + 2
         };
-        let block_width = try_opt!(shape.width.checked_sub(used_width));
+
+        let block_width = shape.width.checked_sub(used_width).unwrap_or(0);
         // This is used only for the empty block case: `{}`. So, we use 1 if we know
         // we should avoid the single line case.
         let block_width = if self.else_block.is_some() || self.nested_if {
@@ -1380,7 +1381,7 @@ fn rewrite_pat_expr(context: &RewriteContext,
                     connector: &str,
                     shape: Shape)
                     -> Option<String> {
-    debug!("rewrite_pat_expr {:?}", shape);
+    debug!("rewrite_pat_expr {:?} {:?}", shape, pat);
     let mut result = match pat {
         Some(pat) => {
             let matcher = if matcher.is_empty() {
@@ -1407,8 +1408,7 @@ fn rewrite_pat_expr(context: &RewriteContext,
 
         if let Some(expr_string) = expr_rewrite {
             let pat_simple = pat.and_then(|p| {
-                    p.rewrite(context,
-                              Shape::legacy(context.config.max_width, Indent::empty()))
+                    p.rewrite(context, Shape::legacy(context.config.max_width, Indent::empty()))
                 })
                 .map(|s| pat_is_simple(&s));
 
