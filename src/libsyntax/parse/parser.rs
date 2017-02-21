@@ -223,7 +223,7 @@ impl TokenCursor {
                 self.frame = frame;
                 continue
             } else {
-                return TokenAndSpan { tok: token::Eof, sp: self.frame.span }
+                return TokenAndSpan { tok: token::Eof, sp: syntax_pos::DUMMY_SP }
             };
 
             match tree {
@@ -448,10 +448,14 @@ impl<'a> Parser<'a> {
     }
 
     fn next_tok(&mut self) -> TokenAndSpan {
-        match self.desugar_doc_comments {
+        let mut next = match self.desugar_doc_comments {
             true => self.token_cursor.next_desugared(),
             false => self.token_cursor.next(),
+        };
+        if next.sp == syntax_pos::DUMMY_SP {
+            next.sp = self.prev_span;
         }
+        next
     }
 
     /// Convert a token to a string using self's reader
