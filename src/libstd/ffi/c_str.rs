@@ -455,14 +455,14 @@ impl From<NulError> for io::Error {
     }
 }
 
-#[unstable(feature = "frombyteswithnulerror_impls", reason = "recently added", issue = "39925")]
+#[stable(feature = "frombyteswithnulerror_impls", since = "1.17.0")]
 impl Error for FromBytesWithNulError {
     fn description(&self) -> &str {
         "data provided is not null terminated or contains an interior nul byte"
     }
 }
 
-#[unstable(feature = "frombyteswithnulerror_impls", reason = "recently added", issue = "39925")]
+#[stable(feature = "frombyteswithnulerror_impls", since = "1.17.0")]
 impl fmt::Display for FromBytesWithNulError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.description().fmt(f)
