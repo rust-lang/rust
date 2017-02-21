@@ -212,9 +212,9 @@ fn read_config(filename: &str) -> Config {
         get_config(sig_comments.get("config").map(|x| &(*x)[..]))
     } else {
         get_config(Path::new(filename)
-            .with_extension("toml")
-            .file_name()
-            .and_then(std::ffi::OsStr::to_str))
+                       .with_extension("toml")
+                       .file_name()
+                       .and_then(std::ffi::OsStr::to_str))
     };
 
     for (key, val) in &sig_comments {

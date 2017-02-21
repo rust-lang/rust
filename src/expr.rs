@@ -1235,7 +1235,7 @@ impl Rewrite for ast::Arm {
 
         let pats_str = format!("{}{}", pats_str, guard_str);
         // Where the next text can start.
-        let mut line_start = trimmed_last_line_width(&pats_str);
+        let line_start = trimmed_last_line_width(&pats_str);
 
         let body = match body.node {
             ast::ExprKind::Block(ref block) if !is_unsafe_block(block) &&

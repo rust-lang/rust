@@ -223,9 +223,9 @@ fn casts() {
 
 fn indices() {
     let x = (aaaaaaaaaaaaaaaaaaaaaaaaaaaa + bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb + cccccccccccccccc)
-                [x + y + z];
+        [x + y + z];
     let y = (aaaaaaaaaaaaaaaaaaaaaaaaaaaa + bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb + cccccccccccccccc)
-                [xxxxx + yyyyy + zzzzz];
+        [xxxxx + yyyyy + zzzzz];
 }
 
 fn repeats() {
@@ -292,6 +292,6 @@ fn issue1106() {
     }
 
     for entry in WalkDir::new(path)
-        .into_iter()
-        .filter_entry(|entry| exclusions.filter_entry(entry)) {}
+            .into_iter()
+            .filter_entry(|entry| exclusions.filter_entry(entry)) {}
 }

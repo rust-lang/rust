@@ -348,16 +348,16 @@ fn determine_operation(matches: &Matches) -> FmtResult<Operation> {
         try!(io::stdin().read_to_string(&mut buffer));
 
         return Ok(Operation::Stdin {
-            input: buffer,
-            config_path: config_path,
-        });
+                      input: buffer,
+                      config_path: config_path,
+                  });
     }
 
     // We append files from `--file-lines` later in `execute()`.
     let files: Vec<_> = matches.free.iter().map(PathBuf::from).collect();
 
     Ok(Operation::Format {
-        files: files,
-        config_path: config_path,
-    })
+           files: files,
+           config_path: config_path,
+       })
 }

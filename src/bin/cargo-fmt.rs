@@ -99,8 +99,8 @@ fn format_crate(verbosity: Verbosity) -> Result<ExitStatus, std::io::Error> {
     let files: Vec<_> = targets.into_iter()
         .filter(|t| t.kind.should_format())
         .inspect(|t| if verbosity == Verbosity::Verbose {
-            println!("[{:?}] {:?}", t.kind, t.path)
-        })
+                     println!("[{:?}] {:?}", t.kind, t.path)
+                 })
         .map(|t| t.path)
         .collect();
 

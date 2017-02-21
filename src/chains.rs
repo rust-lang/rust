@@ -76,7 +76,7 @@
 ///     .qux
 /// ```
 
-use {Indent, Shape};
+use Shape;
 use rewrite::{Rewrite, RewriteContext};
 use utils::{wrap_str, first_line_width};
 use expr::rewrite_call;
