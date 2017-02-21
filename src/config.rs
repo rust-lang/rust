@@ -379,9 +379,7 @@ create_config! {
         "Report all, none or unnumbered occurrences of TODO in source file comments";
     report_fixme: ReportTactic, ReportTactic::Never,
         "Report all, none or unnumbered occurrences of FIXME in source file comments";
-    chain_base_indent: BlockIndentStyle, BlockIndentStyle::Tabbed, "Indent on chain base";
     chain_indent: BlockIndentStyle, BlockIndentStyle::Tabbed, "Indentation of chain";
-    chains_overflow_last: bool, true, "Allow last call in method chain to break the line";
     reorder_imports: bool, false, "Reorder import statements alphabetically";
     reorder_imported_names: bool, false,
         "Reorder lists of names in import statements alphabetically";

@@ -19,10 +19,11 @@
 /// we put each subexpression on a separate, much like the (default) function
 /// argument function argument strategy.
 ///
-/// Depends on config options: `chain_base_indent` is the indent to use for
-/// blocks in the parent/root/base of the chain.
+/// Depends on config options: `chain_indent` is the indent to use for
+/// blocks in the parent/root/base of the chain (and the rest of the chain's
+/// alignment).
 /// E.g., `let foo = { aaaa; bbb; ccc }.bar.baz();`, we would layout for the
-/// following values of `chain_base_indent`:
+/// following values of `chain_indent`:
 /// Visual:
 /// ```
 /// let foo = {
@@ -54,7 +55,6 @@
 ///     .baz();
 /// ```
 ///
-/// `chain_indent` dictates how the rest of the chain is aligned.
 /// If the first item in the chain is a block expression, we align the dots with
 /// the braces.
 /// Visual:
@@ -75,11 +75,6 @@
 ///     .baz()
 ///     .qux
 /// ```
-/// `chains_overflow_last` applies only to chains where the last item is a
-/// method call. Usually, any line break in a chain sub-expression causes the
-/// whole chain to be split with newlines at each `.`. With `chains_overflow_last`
-/// true, then we allow the last method call to spill over multiple lines without
-/// forcing the rest of the chain to be split.
 
 use {Indent, Shape};
 use rewrite::{Rewrite, RewriteContext};
@@ -106,7 +101,7 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
     // Parent is the first item in the chain, e.g., `foo` in `foo.bar.baz()`.
     let mut parent_shape = shape;
     if is_block_expr(&parent, "\n") {
-        parent_shape = chain_base_indent(context, shape);
+        parent_shape = chain_indent(context, shape);
     }
     let parent_rewrite = try_opt!(parent.rewrite(context, parent_shape));
 
@@ -164,7 +159,7 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
 
         if fits_single_line {
             fits_single_line = match expr.node {
-                ref e @ ast::ExprKind::MethodCall(..) if context.config.chains_overflow_last => {
+                ref e @ ast::ExprKind::MethodCall(..) => {
                     rewrite_method_call_with_overflow(e,
                                                       &mut last[0],
                                                       almost_total,
@@ -270,14 +265,6 @@ fn make_subexpr_list(expr: &ast::Expr, context: &RewriteContext) -> (ast::Expr, 
 
     let parent = subexpr_list.pop().unwrap();
     (parent, subexpr_list)
-}
-
-fn chain_base_indent(context: &RewriteContext, shape: Shape) -> Shape {
-    match context.config.chain_base_indent {
-        BlockIndentStyle::Visual => shape,
-        BlockIndentStyle::Inherit => shape.block_indent(0),
-        BlockIndentStyle::Tabbed => shape.block_indent(context.config.tab_spaces),
-    }
 }
 
 fn chain_indent(context: &RewriteContext, shape: Shape) -> Shape {

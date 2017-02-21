@@ -1558,7 +1558,7 @@ fn rewrite_call_inner<R>(context: &RewriteContext,
         Some(&ast::ExprKind::Closure(..)) |
         Some(&ast::ExprKind::Block(..)) if arg_count > 1 => true,
         _ => false,
-    } && context.config.chains_overflow_last;
+    };
 
     let mut orig_last = None;
     let mut placeholder = None;
