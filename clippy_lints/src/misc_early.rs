@@ -162,6 +162,23 @@ declare_lint! {
     "shadowing a builtin type"
 }
 
+/// **What it does:** Catch casts from `0` to some pointer type
+///
+/// **Why is this bad?** This generally means `null` and is better expressed as
+/// {`std`, `core`}`::ptr::`{`null`, `null_mut`}.
+///
+/// **Known problems:** None.
+///
+/// **Example:**
+///
+/// ```rust
+/// ß as *const u32
+/// ```
+declare_lint! {
+    pub ZERO_PTR,
+    Warn,
+    "using 0 as *{const, mut} T"
+}
 
 #[derive(Copy, Clone)]
 pub struct MiscEarly;
@@ -175,7 +192,8 @@ impl LintPass for MiscEarly {
                     MIXED_CASE_HEX_LITERALS,
                     UNSEPARATED_LITERAL_SUFFIX,
                     ZERO_PREFIXED_LITERAL,
-                    BUILTIN_TYPE_SHADOW)
+                    BUILTIN_TYPE_SHADOW,
+                    ZERO_PTR)
     }
 }
 
@@ -363,6 +381,9 @@ impl EarlyLintPass for MiscEarly {
                     }
                 }}
             },
+            ExprKind::Cast(ref e, ref ty) => {
+                check_cast(cx, expr.span, e, ty);
+            },
             _ => (),
         }
     }
@@ -390,4 +411,19 @@ impl EarlyLintPass for MiscEarly {
             }}
         }
     }
+}
+
+fn check_cast(cx: &EarlyContext, span: Span, e: &Expr, ty: &Ty) {
+    if_let_chain! {[
+        let TyKind::Ptr(MutTy { mutbl, .. }) = ty.node,
+        let ExprKind::Lit(ref lit) = e.node,
+        let LitKind::Int(value, ..) = lit.node,
+        value == 0
+    ], {
+        let msg = match mutbl {
+            Mutability::Mutable => "`0 as *mut _` detected. Consider using `ptr::null_mut()`",
+            Mutability::Immutable => "`0 as *const _` detected. Consider using `ptr::null()`",
+        };
+        span_lint(cx, ZERO_PTR, span, msg);
+    }}
 }

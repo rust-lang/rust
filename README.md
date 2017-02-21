@@ -180,7 +180,7 @@ transparently:
 
 ## Lints
 
-There are 191 lints included in this crate:
+There are 192 lints included in this crate:
 
 name                                                                                                                   | default | triggers on
 -----------------------------------------------------------------------------------------------------------------------|---------|----------------------------------------------------------------------------------------------------------------------------------
@@ -374,6 +374,7 @@ name                                                                            
 [wrong_transmute](https://github.com/Manishearth/rust-clippy/wiki#wrong_transmute)                                     | warn    | transmutes that are confusing at best, undefined behaviour at worst and always useless
 [zero_divided_by_zero](https://github.com/Manishearth/rust-clippy/wiki#zero_divided_by_zero)                           | warn    | usage of `0.0 / 0.0` to obtain NaN instead of std::f32::NaN or std::f64::NaN
 [zero_prefixed_literal](https://github.com/Manishearth/rust-clippy/wiki#zero_prefixed_literal)                         | warn    | integer literals starting with `0`
+[zero_ptr](https://github.com/Manishearth/rust-clippy/wiki#zero_ptr)                                                   | warn    | using 0 as *{const, mut} T
 [zero_width_space](https://github.com/Manishearth/rust-clippy/wiki#zero_width_space)                                   | deny    | using a zero-width space in a string literal, which is confusing
 
 More to come, please [file an issue](https://github.com/Manishearth/rust-clippy/issues) if you have ideas!

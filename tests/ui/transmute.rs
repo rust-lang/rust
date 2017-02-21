@@ -91,7 +91,7 @@ fn issue1231() {
         bar: &'a T,
     }
 
-    let raw = 0 as *const i32;
+    let raw = 42 as *const i32;
     let _: &Foo<u8> = unsafe { std::mem::transmute::<_, &Foo<_>>(raw) };
 
 
@@ -103,7 +103,7 @@ fn issue1231() {
 
 
     type Bar<'a> = &'a u8;
-    let raw = 0 as *const i32;
+    let raw = 42 as *const i32;
     unsafe { std::mem::transmute::<_, Bar>(raw) };
 
 
