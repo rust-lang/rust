@@ -124,10 +124,10 @@ impl TokenTree {
     }
 }
 
-pub fn parse(input: &[tokenstream::TokenTree], expect_matchers: bool, sess: &ParseSess)
+pub fn parse(input: tokenstream::TokenStream, expect_matchers: bool, sess: &ParseSess)
              -> Vec<TokenTree> {
     let mut result = Vec::new();
-    let mut trees = input.iter().cloned();
+    let mut trees = input.trees();
     while let Some(tree) = trees.next() {
         let tree = parse_tree(tree, &mut trees, expect_matchers, sess);
         match tree {
@@ -161,13 +161,13 @@ fn parse_tree<I>(tree: tokenstream::TokenTree,
 {
     match tree {
         tokenstream::TokenTree::Token(span, token::Dollar) => match trees.next() {
-            Some(tokenstream::TokenTree::Delimited(span, ref delimited)) => {
+            Some(tokenstream::TokenTree::Delimited(span, delimited)) => {
                 if delimited.delim != token::Paren {
                     let tok = pprust::token_to_string(&token::OpenDelim(delimited.delim));
                     let msg = format!("expected `(`, found `{}`", tok);
                     sess.span_diagnostic.span_err(span, &msg);
                 }
-                let sequence = parse(&delimited.tts, expect_matchers, sess);
+                let sequence = parse(delimited.tts.into(), expect_matchers, sess);
                 let (separator, op) = parse_sep_and_kleene_op(trees, span, sess);
                 let name_captures = macro_parser::count_names(&sequence);
                 TokenTree::Sequence(span, Rc::new(SequenceRepetition {
@@ -197,7 +197,7 @@ fn parse_tree<I>(tree: tokenstream::TokenTree,
         tokenstream::TokenTree::Delimited(span, delimited) => {
             TokenTree::Delimited(span, Rc::new(Delimited {
                 delim: delimited.delim,
-                tts: parse(&delimited.tts, expect_matchers, sess),
+                tts: parse(delimited.tts.into(), expect_matchers, sess),
             }))
         }
     }

@@ -82,13 +82,13 @@ use ast::Ident;
 use syntax_pos::{self, BytePos, mk_sp, Span};
 use codemap::Spanned;
 use errors::FatalError;
-use ext::tt::quoted;
+use ext::tt::quoted::{self, TokenTree};
 use parse::{Directory, ParseSess};
 use parse::parser::{PathStyle, Parser};
 use parse::token::{self, DocComment, Token, Nonterminal};
 use print::pprust;
 use symbol::keywords;
-use tokenstream::TokenTree;
+use tokenstream::TokenStream;
 use util::small_vector::SmallVector;
 
 use std::mem;
@@ -101,8 +101,8 @@ use std::collections::hash_map::Entry::{Vacant, Occupied};
 
 #[derive(Clone)]
 enum TokenTreeOrTokenTreeVec {
-    Tt(quoted::TokenTree),
-    TtSeq(Vec<quoted::TokenTree>),
+    Tt(TokenTree),
+    TtSeq(Vec<TokenTree>),
 }
 
 impl TokenTreeOrTokenTreeVec {
@@ -113,7 +113,7 @@ impl TokenTreeOrTokenTreeVec {
         }
     }
 
-    fn get_tt(&self, index: usize) -> quoted::TokenTree {
+    fn get_tt(&self, index: usize) -> TokenTree {
         match *self {
             TtSeq(ref v) => v[index].clone(),
             Tt(ref tt) => tt.get_tt(index),
@@ -144,9 +144,7 @@ struct MatcherPos {
 
 pub type NamedParseResult = ParseResult<HashMap<Ident, Rc<NamedMatch>>>;
 
-pub fn count_names(ms: &[quoted::TokenTree]) -> usize {
-    use self::quoted::TokenTree;
-
+pub fn count_names(ms: &[TokenTree]) -> usize {
     ms.iter().fold(0, |count, elt| {
         count + match *elt {
             TokenTree::Sequence(_, ref seq) => {
@@ -163,7 +161,7 @@ pub fn count_names(ms: &[quoted::TokenTree]) -> usize {
     })
 }
 
-fn initial_matcher_pos(ms: Vec<quoted::TokenTree>, lo: BytePos) -> Box<MatcherPos> {
+fn initial_matcher_pos(ms: Vec<TokenTree>, lo: BytePos) -> Box<MatcherPos> {
     let match_idx_hi = count_names(&ms[..]);
     let matches = create_matches(match_idx_hi);
     Box::new(MatcherPos {
@@ -202,10 +200,8 @@ pub enum NamedMatch {
     MatchedNonterminal(Rc<Nonterminal>)
 }
 
-fn nameize<I: Iterator<Item=Rc<NamedMatch>>>(sess: &ParseSess, ms: &[quoted::TokenTree], mut res: I)
+fn nameize<I: Iterator<Item=Rc<NamedMatch>>>(sess: &ParseSess, ms: &[TokenTree], mut res: I)
                                              -> NamedParseResult {
-    use self::quoted::TokenTree;
-
     fn n_rec<I: Iterator<Item=Rc<NamedMatch>>>(sess: &ParseSess, m: &TokenTree, mut res: &mut I,
              ret_val: &mut HashMap<Ident, Rc<NamedMatch>>)
              -> Result<(), (syntax_pos::Span, String)> {
@@ -289,9 +285,8 @@ fn inner_parse_loop(sess: &ParseSess,
                     eof_eis: &mut SmallVector<Box<MatcherPos>>,
                     bb_eis: &mut SmallVector<Box<MatcherPos>>,
                     token: &Token,
-                    span: &syntax_pos::Span) -> ParseResult<()> {
-    use self::quoted::TokenTree;
-
+                    span: &syntax_pos::Span)
+                    -> ParseResult<()> {
     while let Some(mut ei) = cur_eis.pop() {
         // When unzipped trees end, remove them
         while ei.idx >= ei.top_elts.len() {
@@ -419,13 +414,8 @@ fn inner_parse_loop(sess: &ParseSess,
     Success(())
 }
 
-pub fn parse(sess: &ParseSess,
-             tts: Vec<TokenTree>,
-             ms: &[quoted::TokenTree],
-             directory: Option<Directory>)
+pub fn parse(sess: &ParseSess, tts: TokenStream, ms: &[TokenTree], directory: Option<Directory>)
              -> NamedParseResult {
-    use self::quoted::TokenTree;
-
     let mut parser = Parser::new(sess, tts, directory, true);
     let mut cur_eis = SmallVector::one(initial_matcher_pos(ms.to_owned(), parser.span.lo));
     let mut next_eis = Vec::new(); // or proceed normally

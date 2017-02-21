@@ -284,7 +284,7 @@ impl<'a> SpanUtils<'a> {
     pub fn signature_string_for_span(&self, span: Span) -> String {
         let mut toks = self.retokenise_span(span);
         toks.real_token();
-        let mut toks = toks.parse_all_token_trees().unwrap().into_iter();
+        let mut toks = toks.parse_all_token_trees().unwrap().trees();
         let mut prev = toks.next().unwrap();
 
         let first_span = prev.span();

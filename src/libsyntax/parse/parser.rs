@@ -53,7 +53,7 @@ use util::parser::{AssocOp, Fixity};
 use print::pprust;
 use ptr::P;
 use parse::PResult;
-use tokenstream::{self, Delimited, TokenTree, TokenStream};
+use tokenstream::{self, Delimited, ThinTokenStream, TokenTree, TokenStream};
 use symbol::{Symbol, keywords};
 use util::ThinVec;
 
@@ -200,7 +200,7 @@ impl TokenCursorFrame {
             delim: delimited.delim,
             span: sp,
             open_delim: delimited.delim == token::NoDelim,
-            tree_cursor: delimited.tts.iter().cloned().collect::<TokenStream>().into_trees(),
+            tree_cursor: delimited.stream().into_trees(),
             close_delim: delimited.delim == token::NoDelim,
         }
     }
@@ -211,12 +211,14 @@ impl TokenCursor {
         loop {
             let tree = if !self.frame.open_delim {
                 self.frame.open_delim = true;
-                Delimited { delim: self.frame.delim, tts: Vec::new() }.open_tt(self.frame.span)
+                Delimited { delim: self.frame.delim, tts: TokenStream::empty().into() }
+                    .open_tt(self.frame.span)
             } else if let Some(tree) = self.frame.tree_cursor.next() {
                 tree
             } else if !self.frame.close_delim {
                 self.frame.close_delim = true;
-                Delimited { delim: self.frame.delim, tts: Vec::new() }.close_tt(self.frame.span)
+                Delimited { delim: self.frame.delim, tts: TokenStream::empty().into() }
+                    .close_tt(self.frame.span)
             } else if let Some(frame) = self.stack.pop() {
                 self.frame = frame;
                 continue
@@ -255,21 +257,23 @@ impl TokenCursor {
             num_of_hashes = cmp::max(num_of_hashes, count);
         }
 
-        let body = TokenTree::Delimited(sp, Rc::new(Delimited {
+        let body = TokenTree::Delimited(sp, Delimited {
             delim: token::Bracket,
-            tts: vec![TokenTree::Token(sp, token::Ident(ast::Ident::from_str("doc"))),
-                      TokenTree::Token(sp, token::Eq),
-                      TokenTree::Token(sp, token::Literal(
-                          token::StrRaw(Symbol::intern(&stripped), num_of_hashes), None))],
-        }));
+            tts: [TokenTree::Token(sp, token::Ident(ast::Ident::from_str("doc"))),
+                  TokenTree::Token(sp, token::Eq),
+                  TokenTree::Token(sp, token::Literal(
+                      token::StrRaw(Symbol::intern(&stripped), num_of_hashes), None))]
+                .iter().cloned().collect::<TokenStream>().into(),
+        });
 
         self.stack.push(mem::replace(&mut self.frame, TokenCursorFrame::new(sp, &Delimited {
             delim: token::NoDelim,
             tts: if doc_comment_style(&name.as_str()) == AttrStyle::Inner {
                 [TokenTree::Token(sp, token::Pound), TokenTree::Token(sp, token::Not), body]
-                    .iter().cloned().collect()
+                    .iter().cloned().collect::<TokenStream>().into()
             } else {
-                [TokenTree::Token(sp, token::Pound), body].iter().cloned().collect()
+                [TokenTree::Token(sp, token::Pound), body]
+                    .iter().cloned().collect::<TokenStream>().into()
             },
         })));
 
@@ -405,7 +409,7 @@ impl From<P<Expr>> for LhsExpr {
 
 impl<'a> Parser<'a> {
     pub fn new(sess: &'a ParseSess,
-               tokens: Vec<TokenTree>,
+               tokens: TokenStream,
                directory: Option<Directory>,
                desugar_doc_comments: bool)
                -> Self {
@@ -423,7 +427,7 @@ impl<'a> Parser<'a> {
             token_cursor: TokenCursor {
                 frame: TokenCursorFrame::new(syntax_pos::DUMMY_SP, &Delimited {
                     delim: token::NoDelim,
-                    tts: tokens,
+                    tts: tokens.into(),
                 }),
                 stack: Vec::new(),
             },
@@ -2098,10 +2102,10 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn expect_delimited_token_tree(&mut self) -> PResult<'a, (token::DelimToken, Vec<TokenTree>)> {
+    fn expect_delimited_token_tree(&mut self) -> PResult<'a, (token::DelimToken, ThinTokenStream)> {
         match self.token {
             token::OpenDelim(delim) => self.parse_token_tree().map(|tree| match tree {
-                TokenTree::Delimited(_, delimited) => (delim, delimited.tts.clone()),
+                TokenTree::Delimited(_, delimited) => (delim, delimited.stream().into()),
                 _ => unreachable!(),
             }),
             _ => Err(self.fatal("expected open delimiter")),
@@ -2649,10 +2653,10 @@ impl<'a> Parser<'a> {
                                          self.token_cursor.stack.pop().unwrap());
                 self.span = frame.span;
                 self.bump();
-                return Ok(TokenTree::Delimited(frame.span, Rc::new(Delimited {
+                return Ok(TokenTree::Delimited(frame.span, Delimited {
                     delim: frame.delim,
-                    tts: frame.tree_cursor.original_stream().trees().collect(),
-                })));
+                    tts: frame.tree_cursor.original_stream().into(),
+                }));
             },
             token::CloseDelim(_) | token::Eof => unreachable!(),
             _ => Ok(TokenTree::Token(self.span, self.bump_and_get())),

@@ -233,11 +233,11 @@ pub trait Folder : Sized {
         noop_fold_ty_params(tps, self)
     }
 
-    fn fold_tt(&mut self, tt: &TokenTree) -> TokenTree {
+    fn fold_tt(&mut self, tt: TokenTree) -> TokenTree {
         noop_fold_tt(tt, self)
     }
 
-    fn fold_tts(&mut self, tts: &[TokenTree]) -> Vec<TokenTree> {
+    fn fold_tts(&mut self, tts: TokenStream) -> TokenStream {
         noop_fold_tts(tts, self)
     }
 
@@ -497,8 +497,8 @@ pub fn noop_fold_attribute<T: Folder>(attr: Attribute, fld: &mut T) -> Option<At
 pub fn noop_fold_mac<T: Folder>(Spanned {node, span}: Mac, fld: &mut T) -> Mac {
     Spanned {
         node: Mac_ {
+            tts: fld.fold_tts(node.stream()).into(),
             path: fld.fold_path(node.path),
-            tts: fld.fold_tts(&node.tts),
         },
         span: fld.new_span(span)
     }
@@ -539,23 +539,19 @@ pub fn noop_fold_arg<T: Folder>(Arg {id, pat, ty}: Arg, fld: &mut T) -> Arg {
     }
 }
 
-pub fn noop_fold_tt<T: Folder>(tt: &TokenTree, fld: &mut T) -> TokenTree {
-    match *tt {
-        TokenTree::Token(span, ref tok) =>
-            TokenTree::Token(fld.new_span(span), fld.fold_token(tok.clone())),
-        TokenTree::Delimited(span, ref delimed) => {
-            TokenTree::Delimited(fld.new_span(span), Rc::new(
-                            Delimited {
-                                delim: delimed.delim,
-                                tts: fld.fold_tts(&delimed.tts),
-                            }
-                        ))
-        },
+pub fn noop_fold_tt<T: Folder>(tt: TokenTree, fld: &mut T) -> TokenTree {
+    match tt {
+        TokenTree::Token(span, tok) =>
+            TokenTree::Token(fld.new_span(span), fld.fold_token(tok)),
+        TokenTree::Delimited(span, delimed) => TokenTree::Delimited(fld.new_span(span), Delimited {
+            tts: fld.fold_tts(delimed.stream()).into(),
+            delim: delimed.delim,
+        }),
     }
 }
 
-pub fn noop_fold_tts<T: Folder>(tts: &[TokenTree], fld: &mut T) -> Vec<TokenTree> {
-    tts.iter().map(|tt| fld.fold_tt(tt)).collect()
+pub fn noop_fold_tts<T: Folder>(tts: TokenStream, fld: &mut T) -> TokenStream {
+    tts.trees().map(|tt| fld.fold_tt(tt)).collect()
 }
 
 // apply ident folder if it's an ident, apply other folds to interpolated nodes
@@ -617,7 +613,7 @@ pub fn noop_fold_interpolated<T: Folder>(nt: token::Nonterminal, fld: &mut T)
         token::NtIdent(id) => token::NtIdent(Spanned::<Ident>{node: fld.fold_ident(id.node), ..id}),
         token::NtMeta(meta_item) => token::NtMeta(fld.fold_meta_item(meta_item)),
         token::NtPath(path) => token::NtPath(fld.fold_path(path)),
-        token::NtTT(tt) => token::NtTT(fld.fold_tt(&tt)),
+        token::NtTT(tt) => token::NtTT(fld.fold_tt(tt)),
         token::NtArm(arm) => token::NtArm(fld.fold_arm(arm)),
         token::NtImplItem(item) =>
             token::NtImplItem(fld.fold_impl_item(item)

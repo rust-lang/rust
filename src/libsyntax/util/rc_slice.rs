@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::hash::{self, Hash};
 use std::fmt;
 use std::ops::Deref;
 use std::rc::Rc;
@@ -34,12 +33,6 @@ impl<T> Deref for RcSlice<T> {
     type Target = [T];
     fn deref(&self) -> &[T] {
         &self.data[self.offset as usize .. (self.offset + self.len) as usize]
-    }
-}
-
-impl<T: Hash> Hash for RcSlice<T> {
-    fn hash<H: hash::Hasher>(&self, state: &mut H) {
-        self.deref().hash(state);
     }
 }
 

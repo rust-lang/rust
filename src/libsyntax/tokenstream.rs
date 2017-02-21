@@ -22,20 +22,17 @@
 //! and a borrowed TokenStream is sufficient to build an owned TokenStream without taking
 //! ownership of the original.
 
-use ast::{self, LitKind};
 use syntax_pos::{BytePos, Span, DUMMY_SP};
-use codemap::Spanned;
 use ext::base;
 use ext::tt::{macro_parser, quoted};
-use parse::{self, Directory};
-use parse::token::{self, Token, Lit};
+use parse::Directory;
+use parse::token::{self, Token};
 use print::pprust;
 use serialize::{Decoder, Decodable, Encoder, Encodable};
-use symbol::Symbol;
 use util::RcSlice;
 
 use std::{fmt, iter, mem};
-use std::rc::Rc;
+use std::hash::{self, Hash};
 
 /// A delimited sequence of token trees
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
@@ -43,7 +40,7 @@ pub struct Delimited {
     /// The type of delimiter
     pub delim: token::DelimToken,
     /// The delimited sequence of token trees
-    pub tts: Vec<TokenTree>,
+    pub tts: ThinTokenStream,
 }
 
 impl Delimited {
@@ -76,8 +73,8 @@ impl Delimited {
     }
 
     /// Returns the token trees inside the delimiters.
-    pub fn subtrees(&self) -> &[TokenTree] {
-        &self.tts
+    pub fn stream(&self) -> TokenStream {
+        self.tts.clone().into()
     }
 }
 
@@ -98,19 +95,19 @@ pub enum TokenTree {
     /// A single token
     Token(Span, token::Token),
     /// A delimited sequence of token trees
-    Delimited(Span, Rc<Delimited>),
+    Delimited(Span, Delimited),
 }
 
 impl TokenTree {
     /// Use this token tree as a matcher to parse given tts.
-    pub fn parse(cx: &base::ExtCtxt, mtch: &[quoted::TokenTree], tts: &[TokenTree])
+    pub fn parse(cx: &base::ExtCtxt, mtch: &[quoted::TokenTree], tts: TokenStream)
                  -> macro_parser::NamedParseResult {
         // `None` is because we're not interpolating
         let directory = Directory {
             path: cx.current_expansion.module.directory.clone(),
             ownership: cx.current_expansion.directory_ownership,
         };
-        macro_parser::parse(cx.parse_sess(), tts.iter().cloned().collect(), mtch, Some(directory))
+        macro_parser::parse(cx.parse_sess(), tts, mtch, Some(directory))
     }
 
     /// Check if this TokenTree is equal to the other, regardless of span information.
@@ -118,15 +115,8 @@ impl TokenTree {
         match (self, other) {
             (&TokenTree::Token(_, ref tk), &TokenTree::Token(_, ref tk2)) => tk == tk2,
             (&TokenTree::Delimited(_, ref dl), &TokenTree::Delimited(_, ref dl2)) => {
-                (*dl).delim == (*dl2).delim && dl.tts.len() == dl2.tts.len() &&
-                {
-                    for (tt1, tt2) in dl.tts.iter().zip(dl2.tts.iter()) {
-                        if !tt1.eq_unspanned(tt2) {
-                            return false;
-                        }
-                    }
-                    true
-                }
+                dl.delim == dl2.delim &&
+                dl.stream().trees().zip(dl2.stream().trees()).all(|(tt, tt2)| tt.eq_unspanned(&tt2))
             }
             (_, _) => false,
         }
@@ -144,64 +134,6 @@ impl TokenTree {
         match *self {
             TokenTree::Token(_, ref tk) => *tk == t,
             _ => false,
-        }
-    }
-
-    /// Indicates if the token is an identifier.
-    pub fn is_ident(&self) -> bool {
-        self.maybe_ident().is_some()
-    }
-
-    /// Returns an identifier.
-    pub fn maybe_ident(&self) -> Option<ast::Ident> {
-        match *self {
-            TokenTree::Token(_, Token::Ident(t)) => Some(t.clone()),
-            TokenTree::Delimited(_, ref dl) => {
-                let tts = dl.subtrees();
-                if tts.len() != 1 {
-                    return None;
-                }
-                tts[0].maybe_ident()
-            }
-            _ => None,
-        }
-    }
-
-    /// Returns a Token literal.
-    pub fn maybe_lit(&self) -> Option<token::Lit> {
-        match *self {
-            TokenTree::Token(_, Token::Literal(l, _)) => Some(l.clone()),
-            TokenTree::Delimited(_, ref dl) => {
-                let tts = dl.subtrees();
-                if tts.len() != 1 {
-                    return None;
-                }
-                tts[0].maybe_lit()
-            }
-            _ => None,
-        }
-    }
-
-    /// Returns an AST string literal.
-    pub fn maybe_str(&self) -> Option<ast::Lit> {
-        match *self {
-            TokenTree::Token(sp, Token::Literal(Lit::Str_(s), _)) => {
-                let l = LitKind::Str(Symbol::intern(&parse::str_lit(&s.as_str())),
-                                     ast::StrStyle::Cooked);
-                Some(Spanned {
-                    node: l,
-                    span: sp,
-                })
-            }
-            TokenTree::Token(sp, Token::Literal(Lit::StrRaw(s, n), _)) => {
-                let l = LitKind::Str(Symbol::intern(&parse::raw_str_lit(&s.as_str())),
-                                     ast::StrStyle::Raw(n));
-                Some(Spanned {
-                    node: l,
-                    span: sp,
-                })
-            }
-            _ => None,
         }
     }
 }
@@ -396,6 +328,36 @@ impl Cursor {
     }
 }
 
+/// The `TokenStream` type is large enough to represent a single `TokenTree` without allocation.
+/// `ThinTokenStream` is smaller, but needs to allocate to represent a single `TokenTree`.
+/// We must use `ThinTokenStream` in `TokenTree::Delimited` to avoid infinite size due to recursion.
+#[derive(Debug, Clone)]
+pub struct ThinTokenStream(Option<RcSlice<TokenStream>>);
+
+impl From<TokenStream> for ThinTokenStream {
+    fn from(stream: TokenStream) -> ThinTokenStream {
+        ThinTokenStream(match stream.kind {
+            TokenStreamKind::Empty => None,
+            TokenStreamKind::Tree(tree) => Some(RcSlice::new(vec![tree.into()])),
+            TokenStreamKind::Stream(stream) => Some(stream),
+        })
+    }
+}
+
+impl From<ThinTokenStream> for TokenStream {
+    fn from(stream: ThinTokenStream) -> TokenStream {
+        stream.0.map(TokenStream::concat_rc_slice).unwrap_or_else(TokenStream::empty)
+    }
+}
+
+impl Eq for ThinTokenStream {}
+
+impl PartialEq<ThinTokenStream> for ThinTokenStream {
+    fn eq(&self, other: &ThinTokenStream) -> bool {
+        TokenStream::from(self.clone()) == TokenStream::from(other.clone())
+    }
+}
+
 impl fmt::Display for TokenStream {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str(&pprust::tts_to_string(&self.trees().collect::<Vec<_>>()))
@@ -411,6 +373,32 @@ impl Encodable for TokenStream {
 impl Decodable for TokenStream {
     fn decode<D: Decoder>(decoder: &mut D) -> Result<TokenStream, D::Error> {
         Vec::<TokenTree>::decode(decoder).map(|vec| vec.into_iter().collect())
+    }
+}
+
+impl Hash for TokenStream {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) {
+        for tree in self.trees() {
+            tree.hash(state);
+        }
+    }
+}
+
+impl Encodable for ThinTokenStream {
+    fn encode<E: Encoder>(&self, encoder: &mut E) -> Result<(), E::Error> {
+        TokenStream::from(self.clone()).encode(encoder)
+    }
+}
+
+impl Decodable for ThinTokenStream {
+    fn decode<D: Decoder>(decoder: &mut D) -> Result<ThinTokenStream, D::Error> {
+        TokenStream::decode(decoder).map(Into::into)
+    }
+}
+
+impl Hash for ThinTokenStream {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) {
+        TokenStream::from(self.clone()).hash(state);
     }
 }
 

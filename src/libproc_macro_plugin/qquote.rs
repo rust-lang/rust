@@ -18,7 +18,6 @@ use syntax::tokenstream::{self, Delimited, TokenTree, TokenStream};
 use syntax_pos::DUMMY_SP;
 
 use std::iter;
-use std::rc::Rc;
 
 pub fn qquote<'cx>(stream: TokenStream) -> TokenStream {
     stream.quote()
@@ -50,10 +49,7 @@ macro_rules! quote_tree {
 }
 
 fn delimit(delim: token::DelimToken, stream: TokenStream) -> TokenStream {
-    TokenTree::Delimited(DUMMY_SP, Rc::new(Delimited {
-        delim: delim,
-        tts: stream.into_trees().collect(),
-    })).into()
+    TokenTree::Delimited(DUMMY_SP, Delimited { delim: delim, tts: stream.into() }).into()
 }
 
 macro_rules! quote {
@@ -102,13 +98,6 @@ impl Quote for TokenStream {
     }
 }
 
-impl Quote for Vec<TokenTree> {
-    fn quote(&self) -> TokenStream {
-        let stream = self.iter().cloned().collect::<TokenStream>();
-        quote!((quote stream).into_trees().collect::<::std::vec::Vec<_> >())
-    }
-}
-
 impl Quote for TokenTree {
     fn quote(&self) -> TokenStream {
         match *self {
@@ -124,12 +113,12 @@ impl Quote for TokenTree {
     }
 }
 
-impl Quote for Rc<Delimited> {
+impl Quote for Delimited {
     fn quote(&self) -> TokenStream {
-        quote!(::std::rc::Rc::new(::syntax::tokenstream::Delimited {
+        quote!(::syntax::tokenstream::Delimited {
             delim: (quote self.delim),
-            tts: (quote self.tts),
-        }))
+            tts: (quote self.stream()).into(),
+        })
     }
 }
 

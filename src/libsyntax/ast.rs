@@ -24,7 +24,7 @@ use ext::hygiene::SyntaxContext;
 use print::pprust;
 use ptr::P;
 use symbol::{Symbol, keywords};
-use tokenstream::{TokenTree};
+use tokenstream::{ThinTokenStream, TokenStream};
 
 use std::collections::HashSet;
 use std::fmt;
@@ -1033,7 +1033,13 @@ pub type Mac = Spanned<Mac_>;
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct Mac_ {
     pub path: Path,
-    pub tts: Vec<TokenTree>,
+    pub tts: ThinTokenStream,
+}
+
+impl Mac_ {
+    pub fn stream(&self) -> TokenStream {
+        self.tts.clone().into()
+    }
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
@@ -1915,7 +1921,13 @@ pub struct MacroDef {
     pub attrs: Vec<Attribute>,
     pub id: NodeId,
     pub span: Span,
-    pub body: Vec<TokenTree>,
+    pub body: ThinTokenStream,
+}
+
+impl MacroDef {
+    pub fn stream(&self) -> TokenStream {
+        self.body.clone().into()
+    }
 }
 
 #[cfg(test)]

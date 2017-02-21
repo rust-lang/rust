@@ -853,9 +853,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
     /// Serialize the text of exported macros
     fn encode_info_for_macro_def(&mut self, macro_def: &hir::MacroDef) -> Entry<'tcx> {
+        use syntax::print::pprust;
         Entry {
             kind: EntryKind::MacroDef(self.lazy(&MacroDef {
-                body: ::syntax::print::pprust::tts_to_string(&macro_def.body)
+                body: pprust::tts_to_string(&macro_def.body.trees().collect::<Vec<_>>()),
             })),
             visibility: self.lazy(&ty::Visibility::Public),
             span: self.lazy(&macro_def.span),
