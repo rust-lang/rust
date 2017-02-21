@@ -156,7 +156,7 @@ impl Diagnostic {
                 let sugg = Diagnostic {
                     message: msg.clone(),
                     code: None,
-                    level: "note",
+                    level: "help",
                     spans: DiagnosticSpan::from_suggestion(sugg, je),
                     children: Vec::new(),
                     rendered: Some(sugg.splice_lines(je.cm.borrow())),
