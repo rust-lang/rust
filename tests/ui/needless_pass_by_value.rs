@@ -53,6 +53,8 @@ fn test_match(x: Option<Option<String>>, y: Option<Option<String>>) {
 fn test_destructure(x: Wrapper, y: Wrapper, z: Wrapper) {
     let Wrapper(s) = z; // moved
     let Wrapper(ref t) = y; // not moved
+    let Wrapper(_) = y; // still not moved
+
     assert_eq!(x.0.len(), s.len());
     println!("{}", t);
 }

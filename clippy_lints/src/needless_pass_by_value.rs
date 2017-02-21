@@ -10,7 +10,7 @@ use syntax::ast::NodeId;
 use syntax_pos::Span;
 use syntax::errors::DiagnosticBuilder;
 use utils::{in_macro, is_self, is_copy, implements_trait, get_trait_def_id, match_type, snippet, span_lint_and_then,
-            paths};
+            multispan_sugg, paths};
 use std::collections::{HashSet, HashMap};
 
 /// **What it does:** Checks for functions taking arguments by value, but not consuming them in its
@@ -55,8 +55,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
             return;
         }
 
-        if let FnKind::ItemFn(..) = kind {
-        } else {
+        if !matches!(kind, FnKind::ItemFn(..)) {
             return;
         }
 
@@ -146,19 +145,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                                            format!("&{}", snippet(cx, input.span, "_")));
                     }
 
-                    // Suggests adding `*` to dereference the added reference.
+                    // Suggests adding `*` to dereference the added reference if needed.
                     if let Some(spans) = spans_need_deref.get(&defid) {
-                        let mut spans: Vec<_> = spans.iter().cloned().collect();
-                        spans.sort();
-                        for (i, span) in spans.into_iter().enumerate() {
-                            db.span_suggestion(span,
-                                                if i == 0 {
-                                                    "...and dereference it here"
-                                                } else {
-                                                    "...and here"
-                                                },
-                                                format!("*{}", snippet(cx, span, "<expr>")));
-                        }
+                        let mut spans: Vec<_> = spans.iter().cloned()
+                            .map(|span| (span, format!("*{}", snippet(cx, span, "<expr>"))))
+                            .collect();
+                        spans.sort_by_key(|&(span, _)| span);
+                        multispan_sugg(db, "...and dereference it here".to_string(), spans);
                     }
                 };
 

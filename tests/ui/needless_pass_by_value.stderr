@@ -69,6 +69,7 @@ help: consider taking a reference instead
    | fn test_destructure(x: Wrapper, y: &Wrapper, z: Wrapper) {
 help: ...and dereference it here
    |     let Wrapper(ref t) = *y; // not moved
+   |     let Wrapper(_) = *y; // still not moved
 
 error: aborting due to 7 previous errors
 
