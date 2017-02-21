@@ -121,6 +121,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
 
                 // Suggestion logic
                 let sugg = |db: &mut DiagnosticBuilder| {
+                    let deref_span = spans_need_deref.get(&defid);
                     if_let_chain! {[
                         match_type(cx, ty, &paths::VEC),
                         let TyPath(QPath::Resolved(_, ref path)) = input.node,
@@ -132,6 +133,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                         db.span_suggestion(input.span,
                                         &format!("consider changing the type to `{}`", slice_ty),
                                         slice_ty);
+                        assert!(deref_span.is_none());
                         return; // `Vec` and `String` cannot be destructured - no need for `*` suggestion
                     }}
 
@@ -139,13 +141,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                         db.span_suggestion(input.span,
                                            "consider changing the type to `&str`",
                                            "&str".to_string());
+                        assert!(deref_span.is_none());
                         return;
                     }
 
                     let mut spans = vec![(input.span, format!("&{}", snippet(cx, input.span, "_")))];
 
                     // Suggests adding `*` to dereference the added reference.
-                    if let Some(deref_span) = spans_need_deref.get(&defid) {
+                    if let Some(deref_span) = deref_span {
                         spans.extend(deref_span.iter().cloned()
                                      .map(|span| (span, format!("*{}", snippet(cx, span, "<expr>")))));
                         spans.sort_by_key(|&(span, _)| span);
