@@ -2,8 +2,11 @@
 
 A _path_ is a sequence of one or more path components _logically_ separated by
 a namespace qualifier (`::`). If a path consists of only one component, it may
-refer to either an [item](#items) or a [variable](#variables) in a local control
+refer to either an [item] or a [variable] in a local control
 scope. If a path has multiple components, it refers to an item.
+
+[item]: items.html
+[variable]: variables.html
 
 Every item has a _canonical path_ within its crate, but the path naming an item
 is only meaningful within a given crate. There is no global namespace across
@@ -16,16 +19,19 @@ x;
 x::y::z;
 ```
 
-Path components are usually [identifiers](#identifiers), but they may
+Path components are usually [identifiers], but they may
 also include angle-bracket-enclosed lists of type arguments. In
-[expression](#expressions) context, the type argument list is given
+[expression] context, the type argument list is given
 after a `::` namespace qualifier in order to disambiguate it from a
 relational expression involving the less-than symbol (`<`). In type
 expression context, the final namespace qualifier is omitted.
 
+[identifiers]: identifiers.html
+[expression]: expressions.html
+
 Two examples of paths with type arguments:
 
-```
+```rust
 # struct HashMap<K, V>(K,V);
 # fn f() {
 # fn id<T>(t: T) -> T { t }
