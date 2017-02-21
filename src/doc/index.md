@@ -16,14 +16,6 @@ builds documentation for individual Rust packages.
 Rust provides a standard library with a number of features; [we host its
 documentation here][api].
 
-## Reference Documentation
-
-Rust does not yet have a formal specification, but we have [a reference document
-][ref]. It is guaranteed to be accurate, but not complete. We now have a
-policy that all new features must be included in the reference before
-stabilization; however, we are still back-filling things that landed before
-then. That work is being tracked [here][38643].
-
 ## Extended Error Documentation
 
 Many of Rust's errors come with error codes, and you can request extended
@@ -37,11 +29,17 @@ nicknamed 'The Rust Bookshelf.'
 
 * [The Rust Programming Language][book] teaches you how to program in Rust.
 * [The Rustonomicon][nomicon] is your guidebook to the dark arts of unsafe Rust.
+* [The Reference][ref] is not a formal spec, but is more detailed and comprehensive than the book.
+
+Another few words about the reference: it is guaranteed to be accurate, but not
+complete. We now have a policy that all new features must be included in the
+reference before stabilization; however, we are still back-filling things that
+landed before then. That work is being tracked [here][38643].
 
 [Rust Learning]: https://github.com/ctjhoa/rust-learning
 [Docs.rs]: https://docs.rs/
 [api]: std/index.html
-[ref]: reference.html
+[ref]: reference/index.html
 [38643]: https://github.com/rust-lang/rust/issues/38643
 [err]: error-index.html
 [book]: book/index.html

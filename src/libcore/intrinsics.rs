@@ -687,7 +687,7 @@ extern "rust-intrinsic" {
     /// The [nomicon](../../nomicon/transmutes.html) has additional
     /// documentation.
     ///
-    /// [ub]: ../../reference.html#behavior-considered-undefined
+    /// [ub]: ../../reference/behavior-considered-undefined.html
     ///
     /// # Examples
     ///

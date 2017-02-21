@@ -115,10 +115,6 @@ pub fn standalone(build: &Build, target: &str) {
            .arg("-o").arg(&out)
            .arg(&path);
 
-        if filename == "reference.md" {
-           cmd.arg("--html-in-header").arg(&full_toc);
-        }
-
         if filename == "not_found.md" {
             cmd.arg("--markdown-no-toc")
                .arg("--markdown-css")
