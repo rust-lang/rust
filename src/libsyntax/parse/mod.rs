@@ -19,7 +19,7 @@ use parse::parser::Parser;
 use ptr::P;
 use str::char_at;
 use symbol::Symbol;
-use tokenstream;
+use tokenstream::{TokenStream, TokenTree};
 
 use std::cell::RefCell;
 use std::collections::HashSet;
@@ -141,9 +141,9 @@ pub fn parse_stmt_from_source_str<'a>(name: String, source: String, sess: &'a Pa
     new_parser_from_source_str(sess, name, source).parse_stmt()
 }
 
-pub fn parse_tts_from_source_str<'a>(name: String, source: String, sess: &'a ParseSess)
-                                     -> Vec<tokenstream::TokenTree> {
-    filemap_to_tts(sess, sess.codemap().new_filemap(name, None, source))
+pub fn parse_stream_from_source_str<'a>(name: String, source: String, sess: &'a ParseSess)
+                                        -> TokenStream {
+    filemap_to_stream(sess, sess.codemap().new_filemap(name, None, source))
 }
 
 // Create a new parser from a source string
@@ -175,7 +175,7 @@ pub fn new_sub_parser_from_file<'a>(sess: &'a ParseSess,
 /// Given a filemap and config, return a parser
 pub fn filemap_to_parser<'a>(sess: &'a ParseSess, filemap: Rc<FileMap>, ) -> Parser<'a> {
     let end_pos = filemap.end_pos;
-    let mut parser = tts_to_parser(sess, filemap_to_tts(sess, filemap));
+    let mut parser = stream_to_parser(sess, filemap_to_stream(sess, filemap));
 
     if parser.token == token::Eof && parser.span == syntax_pos::DUMMY_SP {
         parser.span = syntax_pos::mk_sp(end_pos, end_pos);
@@ -186,13 +186,8 @@ pub fn filemap_to_parser<'a>(sess: &'a ParseSess, filemap: Rc<FileMap>, ) -> Par
 
 // must preserve old name for now, because quote! from the *existing*
 // compiler expands into it
-pub fn new_parser_from_tts<'a>(sess: &'a ParseSess, tts: Vec<tokenstream::TokenTree>)
-                               -> Parser<'a> {
-    tts_to_parser(sess, tts)
-}
-
-pub fn new_parser_from_ts<'a>(sess: &'a ParseSess, ts: tokenstream::TokenStream) -> Parser<'a> {
-    tts_to_parser(sess, ts.into_trees().collect())
+pub fn new_parser_from_tts<'a>(sess: &'a ParseSess, tts: Vec<TokenTree>) -> Parser<'a> {
+    stream_to_parser(sess, tts.into_iter().collect())
 }
 
 
@@ -215,15 +210,15 @@ fn file_to_filemap(sess: &ParseSess, path: &Path, spanopt: Option<Span>)
 }
 
 /// Given a filemap, produce a sequence of token-trees
-pub fn filemap_to_tts(sess: &ParseSess, filemap: Rc<FileMap>) -> Vec<tokenstream::TokenTree> {
+pub fn filemap_to_stream(sess: &ParseSess, filemap: Rc<FileMap>) -> TokenStream {
     let mut srdr = lexer::StringReader::new(sess, filemap);
     srdr.real_token();
     panictry!(srdr.parse_all_token_trees())
 }
 
-/// Given tts and the ParseSess, produce a parser
-pub fn tts_to_parser<'a>(sess: &'a ParseSess, tts: Vec<tokenstream::TokenTree>) -> Parser<'a> {
-    let mut p = Parser::new(sess, tts, None, false);
+/// Given stream and the ParseSess, produce a parser
+pub fn stream_to_parser<'a>(sess: &'a ParseSess, stream: TokenStream) -> Parser<'a> {
+    let mut p = Parser::new(sess, stream, None, false);
     p.check_unknown_macro_variable();
     p
 }
@@ -660,7 +655,7 @@ mod tests {
     #[test]
     fn string_to_tts_macro () {
         let tts = string_to_tts("macro_rules! zip (($a)=>($a))".to_string());
-        let tts: &[tokenstream::TokenTree] = &tts[..];
+        let tts: &[TokenTree] = &tts[..];
 
         match (tts.len(), tts.get(0), tts.get(1), tts.get(2), tts.get(3)) {
             (

@@ -13,6 +13,7 @@ use codemap::{DUMMY_SP, dummy_spanned};
 use ext::base::ExtCtxt;
 use ext::expand::{Expansion, ExpansionKind};
 use ext::hygiene::Mark;
+use tokenstream::TokenStream;
 use fold::*;
 use ptr::P;
 use symbol::keywords;
@@ -26,7 +27,7 @@ pub fn placeholder(kind: ExpansionKind, id: ast::NodeId) -> Expansion {
     fn mac_placeholder() -> ast::Mac {
         dummy_spanned(ast::Mac_ {
             path: ast::Path { span: DUMMY_SP, segments: Vec::new() },
-            tts: Vec::new(),
+            tts: TokenStream::empty().into(),
         })
     }
 

@@ -40,7 +40,7 @@ use syntax::ast::{Ident, Name, NodeId, DUMMY_NODE_ID, AsmDialect};
 use syntax::ast::{Attribute, Lit, StrStyle, FloatTy, IntTy, UintTy, MetaItem};
 use syntax::ptr::P;
 use syntax::symbol::{Symbol, keywords};
-use syntax::tokenstream::TokenTree;
+use syntax::tokenstream::TokenStream;
 use syntax::util::ThinVec;
 
 use std::collections::BTreeMap;
@@ -466,7 +466,7 @@ pub struct MacroDef {
     pub attrs: HirVec<Attribute>,
     pub id: NodeId,
     pub span: Span,
-    pub body: HirVec<TokenTree>,
+    pub body: TokenStream,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
