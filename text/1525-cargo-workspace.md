@@ -256,13 +256,13 @@ configuration necessary, are:
   ```toml
   # crates/crate1/Cargo.toml
   [package]
-  workspace = "../root"
+  workspace = "../../root"
   ```
 
   ```toml
   # crates/crate2/Cargo.toml
   [package]
-  workspace = "../root"
+  workspace = "../../root"
   ```
 
 Projects like the compiler will likely need exhaustively explicit configuration.
