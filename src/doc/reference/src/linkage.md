@@ -5,6 +5,8 @@ statically and dynamically. This section will explore the various methods to
 link Rust crates together, and more information about native libraries can be
 found in the [FFI section of the book][ffi].
 
+[ffi]: ../book/ffi.html
+
 In one session of compilation, the compiler can generate multiple artifacts
 through the usage of either command line flags or the `crate_type` attribute.
 If one or more command line flags are specified, all `crate_type` attributes will
