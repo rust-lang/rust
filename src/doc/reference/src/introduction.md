@@ -26,6 +26,6 @@ is what we have for now.
 
 You may also be interested in the [grammar].
 
-[book]: book/index.html
-[standard]: std/index.html
-[grammar]: grammar.html
+[book]: ../book/index.html
+[standard]: ../std/index.html
+[grammar]: ../grammar.html
