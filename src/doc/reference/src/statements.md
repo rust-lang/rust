@@ -1,7 +1,7 @@
 # Statements
 
 A _statement_ is a component of a block, which is in turn a component of an
-outer [expression](#expressions) or [function](#functions).
+outer [expression](expressions.html) or [function](items.html#functions).
 
 Rust has two kinds of statement: [declaration
 statements](#declaration-statements) and [expression
@@ -16,7 +16,7 @@ items.
 ### Item declarations
 
 An _item declaration statement_ has a syntactic form identical to an
-[item](#items) declaration within a module. Declaring an item &mdash; a
+[item](items.html) declaration within a module. Declaring an item &mdash; a
 function, enumeration, struct, type, static, trait, implementation or module
 &mdash; locally within a statement block is simply a way of restricting its
 scope to a narrow region containing all of its uses; it is otherwise identical
@@ -36,7 +36,7 @@ declaration until the end of the enclosing block scope.
 
 ## Expression statements
 
-An _expression statement_ is one that evaluates an [expression](#expressions)
+An _expression statement_ is one that evaluates an [expression](expressions.html)
 and ignores its result. The type of an expression statement `e;` is always
 `()`, regardless of the type of `e`. As a rule, an expression statement's
 purpose is to trigger the effects of evaluating its expression.
