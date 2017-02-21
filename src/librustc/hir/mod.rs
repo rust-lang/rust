@@ -31,7 +31,7 @@ pub use self::PathParameters::*;
 
 use hir::def::Def;
 use hir::def_id::DefId;
-use util::nodemap::{NodeMap, FxHashMap, FxHashSet};
+use util::nodemap::{NodeMap, FxHashSet};
 
 use syntax_pos::{Span, ExpnId, DUMMY_SP};
 use syntax::codemap::{self, Spanned};
@@ -409,7 +409,7 @@ pub struct Crate {
 
     pub trait_items: BTreeMap<TraitItemId, TraitItem>,
     pub impl_items: BTreeMap<ImplItemId, ImplItem>,
-    pub bodies: FxHashMap<BodyId, Body>,
+    pub bodies: BTreeMap<BodyId, Body>,
 }
 
 impl Crate {
