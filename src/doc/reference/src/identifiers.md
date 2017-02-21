@@ -13,12 +13,12 @@ Or
    * The identifier is more than one character, `_` alone is not an identifier
    * The remaining characters have property `XID_continue`
 
-that does _not_ occur in the set of [keywords][keywords].
+that does _not_ occur in the set of [keywords].
 
 > **Note**: `XID_start` and `XID_continue` as character properties cover the
 > character ranges used to form the more familiar C and Java language-family
 > identifiers.
 
-keywords: ../grammar.html#keywords
+[keywords]: ../grammar.html#keywords
 [^non_ascii_idents]: Non-ASCII characters in identifiers are currently feature
   gated. This is expected to improve soon.

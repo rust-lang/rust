@@ -101,7 +101,7 @@ trees, at compile time. The semicolon is optional on the last (here, only)
 case. The "pattern" on the left-hand side of `=>` is known as a ‘matcher’.
 These have [their own little grammar] within the language.
 
-[their own little grammar]: ../reference.html#macros
+[their own little grammar]: ../reference/macros.html
 
 The matcher `$x:expr` will match any Rust expression, binding that syntax tree
 to the ‘metavariable’ `$x`. The identifier `expr` is a ‘fragment specifier’;
@@ -363,7 +363,7 @@ fn main() {
 }
 ```
 
-[items]: ../reference.html#items
+[items]: ../reference/items.html
 
 # Recursive macros
 
@@ -490,7 +490,7 @@ be forced to choose between parsing `$i` and parsing `$e`. Changing the
 invocation syntax to put a distinctive token in front can solve the problem. In
 this case, you can write `$(I $i:ident)* E $e:expr`.
 
-[item]: ../reference.html#items
+[item]: ../reference/items.html
 
 # Scoping and macro import/export
 
@@ -565,7 +565,7 @@ When this library is loaded with `#[macro_use] extern crate`, only `m2` will
 be imported.
 
 The Rust Reference has a [listing of macro-related
-attributes](../reference.html#macro-related-attributes).
+attributes](../reference/attributes.html#macro-related-attributes).
 
 # The variable `$crate`
 
