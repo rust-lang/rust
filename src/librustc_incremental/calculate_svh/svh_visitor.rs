@@ -1166,6 +1166,7 @@ impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
             trait_items: _,
             impl_items: _,
             bodies: _,
+            body_ids: _,
         } = *krate;
 
         visit::Visitor::visit_mod(self, module, span, ast::CRATE_NODE_ID);
