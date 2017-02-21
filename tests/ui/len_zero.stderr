@@ -1,11 +1,13 @@
 error: item `PubOne` has a public `len` method but no corresponding `is_empty` method
-  --> $DIR/len_zero.rs:10:5
+  --> $DIR/len_zero.rs:9:1
    |
-10 |       pub fn len(self: &Self) -> isize {
-   |  _____^ starting here...
+9  |   impl PubOne {
+   |  _^ starting here...
+10 | |     pub fn len(self: &Self) -> isize {
 11 | |         1
 12 | |     }
-   | |_____^ ...ending here
+13 | | }
+   | |_^ ...ending here
    |
 note: lint level defined here
   --> $DIR/len_zero.rs:4:9
@@ -14,33 +16,48 @@ note: lint level defined here
    |         ^^^^^^^^^^^^^^^^^^^^
 
 error: trait `PubTraitsToo` has a `len` method but no `is_empty` method
-  --> $DIR/len_zero.rs:32:5
+  --> $DIR/len_zero.rs:55:1
    |
-32 |     fn len(self: &Self) -> isize;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+55 |   pub trait PubTraitsToo {
+   |  _^ starting here...
+56 | |     fn len(self: &Self) -> isize;
+57 | | }
+   | |_^ ...ending here
 
 error: item `HasIsEmpty` has a public `len` method but a private `is_empty` method
-  --> $DIR/len_zero.rs:66:5
+  --> $DIR/len_zero.rs:89:1
    |
-66 |       pub fn len(self: &Self) -> isize {
-   |  _____^ starting here...
-67 | |         1
-68 | |     }
-   | |_____^ ...ending here
+89 |   impl HasIsEmpty {
+   |  _^ starting here...
+90 | |     pub fn len(self: &Self) -> isize {
+91 | |         1
+92 | |     }
+93 | |
+94 | |     fn is_empty(self: &Self) -> bool {
+95 | |         false
+96 | |     }
+97 | | }
+   | |_^ ...ending here
 
 error: item `HasWrongIsEmpty` has a public `len` method but no corresponding `is_empty` method
-  --> $DIR/len_zero.rs:95:5
-   |
-95 |       pub fn len(self: &Self) -> isize {
-   |  _____^ starting here...
-96 | |         1
-97 | |     }
-   | |_____^ ...ending here
+   --> $DIR/len_zero.rs:118:1
+    |
+118 |   impl HasWrongIsEmpty {
+    |  _^ starting here...
+119 | |     pub fn len(self: &Self) -> isize {
+120 | |         1
+121 | |     }
+122 | |
+123 | |     pub fn is_empty(self: &Self, x : u32) -> bool {
+124 | |         false
+125 | |     }
+126 | | }
+    | |_^ ...ending here
 
 error: length comparison to zero
-   --> $DIR/len_zero.rs:106:8
+   --> $DIR/len_zero.rs:130:8
     |
-106 |     if x.len() == 0 {
+130 |     if x.len() == 0 {
     |        ^^^^^^^^^^^^
     |
 note: lint level defined here
@@ -52,45 +69,45 @@ help: consider using `is_empty`
     |     if x.is_empty() {
 
 error: length comparison to zero
-   --> $DIR/len_zero.rs:113:8
+   --> $DIR/len_zero.rs:137:8
     |
-113 |     if "".len() == 0 {
+137 |     if "".len() == 0 {
     |        ^^^^^^^^^^^^^
     |
 help: consider using `is_empty`
     |     if "".is_empty() {
 
 error: length comparison to zero
-   --> $DIR/len_zero.rs:130:8
+   --> $DIR/len_zero.rs:154:8
     |
-130 |     if has_is_empty.len() == 0 {
+154 |     if has_is_empty.len() == 0 {
     |        ^^^^^^^^^^^^^^^^^^^^^^^
     |
 help: consider using `is_empty`
     |     if has_is_empty.is_empty() {
 
 error: length comparison to zero
-   --> $DIR/len_zero.rs:136:8
+   --> $DIR/len_zero.rs:160:8
     |
-136 |     if has_is_empty.len() != 0 {
+160 |     if has_is_empty.len() != 0 {
     |        ^^^^^^^^^^^^^^^^^^^^^^^
     |
 help: consider using `is_empty`
     |     if !has_is_empty.is_empty() {
 
 error: length comparison to zero
-   --> $DIR/len_zero.rs:142:8
+   --> $DIR/len_zero.rs:166:8
     |
-142 |     if has_is_empty.len() > 0 {
+166 |     if has_is_empty.len() > 0 {
     |        ^^^^^^^^^^^^^^^^^^^^^^
     |
 help: consider using `is_empty`
     |     if !has_is_empty.is_empty() {
 
 error: length comparison to zero
-   --> $DIR/len_zero.rs:151:8
+   --> $DIR/len_zero.rs:175:8
     |
-151 |     if with_is_empty.len() == 0 {
+175 |     if with_is_empty.len() == 0 {
     |        ^^^^^^^^^^^^^^^^^^^^^^^^
     |
 help: consider using `is_empty`

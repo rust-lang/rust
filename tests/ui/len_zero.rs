@@ -12,6 +12,30 @@ impl PubOne {
     }
 }
 
+impl PubOne { // A second impl for this struct - the error span shouldn't mention this
+    pub fn irrelevant(self: &Self) -> bool {
+        false
+    }
+}
+
+// Identical to PubOne, but with an allow attribute on the impl complaining len
+pub struct PubAllowed;
+
+#[allow(len_without_is_empty)]
+impl PubAllowed {
+    pub fn len(self: &Self) -> isize {
+        1
+    }
+}
+
+// No allow attribute on this impl block, but that doesn't matter - we only require one on the
+// impl containing len.
+impl PubAllowed {
+    pub fn irrelevant(self: &Self) -> bool {
+        false
+    }
+}
+
 struct NotPubOne;
 
 impl NotPubOne {
