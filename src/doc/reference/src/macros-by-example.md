@@ -20,17 +20,27 @@ balanced, but they are otherwise not special.
 In the matcher, `$` _name_ `:` _designator_ matches the nonterminal in the Rust
 syntax named by _designator_. Valid designators are:
 
-* `item`: an [item](#items)
-* `block`: a [block](#block-expressions)
-* `stmt`: a [statement](#statements)
-* `pat`: a [pattern](#match-expressions)
-* `expr`: an [expression](#expressions)
-* `ty`: a [type](#types)
-* `ident`: an [identifier](#identifiers)
-* `path`: a [path](#paths)
-* `tt`: a token tree (a single [token](#tokens) or a sequence of token trees surrounded
-  by matching `()`, `[]`, or `{}`)
-* `meta`: the contents of an [attribute](#attributes)
+* `item`: an [item]
+* `block`: a [block]
+* `stmt`: a [statement]
+* `pat`: a [pattern]
+* `expr`: an [expression]
+* `ty`: a [type]
+* `ident`: an [identifier]
+* `path`: a [path]
+* `tt`: a token tree (a single [token] by matching `()`, `[]`, or `{}`)
+* `meta`: the contents of an [attribute]
+
+[item]: items.html
+[block]: expressions.html#block-expressions
+[statement]: statements.html
+[pattern]: expressions.html#match-expressions
+[expression]: expressions.html
+[type]: types.html
+[identifier]: identifiers.html
+[path]: paths.html
+[token]: tokens.html
+[attribute]: attributes.html
 
 In the transcriber, the
 designator is already known, and so only the name of a matched nonterminal comes
