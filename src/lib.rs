@@ -133,6 +133,13 @@ impl Indent {
         Indent::new(0, 0)
     }
 
+    pub fn block_only(&self) -> Indent {
+        Indent {
+            block_indent: self.block_indent,
+            alignment: 0,
+        }
+    }
+
     pub fn block_indent(mut self, config: &Config) -> Indent {
         self.block_indent += config.tab_spaces;
         self
@@ -204,7 +211,11 @@ impl Sub<usize> for Indent {
 #[derive(Copy, Clone, Debug)]
 pub struct Shape {
     pub width: usize,
+    // The current indentation of code.
     pub indent: Indent,
+    // Indentation + any already emitted text on the first line of the current
+    // statement.
+    pub offset: usize,
 }
 
 impl Shape {
@@ -212,6 +223,7 @@ impl Shape {
         Shape {
             width: config.max_width,
             indent: indent,
+            offset: indent.width(),
         }
     }
 
@@ -234,14 +246,92 @@ impl Shape {
         Shape {
             width: width,
             indent: indent,
+            offset: indent.alignment,
         }
     }
 
-    pub fn sub_width(self, width: usize) -> Shape {
+    pub fn offset(width: usize, indent: Indent, offset: usize) -> Shape {
         Shape {
-            width: self.width - width,
-            indent: self.indent,
+            width: width,
+            indent: indent,
+            offset: offset,
         }
+    }    
+
+    pub fn visual_indent(&self, extra_width: usize) -> Shape {
+        let alignment = self.offset + extra_width;
+        Shape {
+            width: self.width,
+            indent: Indent {
+                block_indent: self.indent.block_indent,
+                alignment: alignment,
+            },
+            offset: alignment,
+        }
+    }
+
+    pub fn block_indent(&self, extra_width: usize) -> Shape {
+        if self.indent.alignment == 0 {
+            Shape {
+                width: self.width,
+                indent: Indent {
+                    block_indent: self.indent.block_indent + extra_width,
+                    alignment: 0,
+                },
+                offset: 0,
+            }
+        } else {
+            Shape {
+                width: self.width,
+                indent: Indent {
+                    block_indent: self.indent.block_indent,
+                    alignment: self.indent.alignment + extra_width,
+                },
+                offset: self.indent.alignment + extra_width,
+            }
+        }
+    }
+
+    pub fn add_offset(&self, extra_width: usize) -> Shape {
+        Shape {
+            width: self.width,
+            indent: Indent {
+                block_indent: self.indent.block_indent,
+                alignment: self.indent.alignment,
+            },
+            offset: self.offset + extra_width,
+        }
+    }
+
+    pub fn block(&self) -> Shape {
+        Shape {
+            width: self.width,
+            indent: Indent {
+                block_indent: self.indent.block_indent,
+                alignment: 0,
+            },
+            offset: self.offset,
+        }
+    }
+
+    pub fn sub_width(&self, width: usize) -> Option<Shape> {
+        Some(Shape {
+            width: try_opt!(self.width.checked_sub(width)),
+            indent: self.indent,
+            offset: self.offset,
+        })
+    }
+
+    pub fn shrink_left(&self, width: usize) -> Option<Shape> {
+        Some(Shape {
+            width: try_opt!(self.width.checked_sub(width)),
+            indent: self.indent + width,
+            offset: self.offset + width,
+        })        
+    }
+
+    pub fn used_width(&self) -> usize {
+        self.indent.block_indent + self.offset
     }
 }
 

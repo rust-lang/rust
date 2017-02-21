@@ -18,16 +18,16 @@ use syntax::ast::{self, Visibility, Attribute, MetaItem, MetaItemKind, NestedMet
 use syntax::codemap::BytePos;
 use syntax::abi;
 
-use {Indent, Shape};
+use Shape;
 use rewrite::{Rewrite, RewriteContext};
 
 use SKIP_ANNOTATION;
 
 // Computes the length of a string's last line, minus offset.
-pub fn extra_offset(text: &str, offset: Indent) -> usize {
+pub fn extra_offset(text: &str, shape: Shape) -> usize {
     match text.rfind('\n') {
         // 1 for newline character
-        Some(idx) => text.len().checked_sub(idx + 1 + offset.width()).unwrap_or(0),
+        Some(idx) => text.len().checked_sub(idx + 1 + shape.used_width()).unwrap_or(0),
         None => text.len(),
     }
 }

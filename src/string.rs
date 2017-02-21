@@ -36,7 +36,8 @@ pub fn rewrite_string<'a>(orig: &str, fmt: &StringFormat<'a>) -> Option<String> 
     let stripped_str = re.replace_all(orig, "$1");
 
     let graphemes = UnicodeSegmentation::graphemes(&*stripped_str, false).collect::<Vec<&str>>();
-    let indent = fmt.shape.indent.to_string(fmt.config);
+    let shape = fmt.shape.visual_indent(0);
+    let indent = shape.indent.to_string(fmt.config);
     let punctuation = ":,;.";
 
     // `cur_start` is the position in `orig` of the start of the current line.
@@ -49,7 +50,7 @@ pub fn rewrite_string<'a>(orig: &str, fmt: &StringFormat<'a>) -> Option<String> 
     let ender_length = fmt.line_end.len();
     // If we cannot put at least a single character per line, the rewrite won't
     // succeed.
-    let max_chars = try_opt!(fmt.shape.width.checked_sub(fmt.opener.len() + ender_length + 1)) + 1;
+    let max_chars = try_opt!(shape.width.checked_sub(fmt.opener.len() + ender_length + 1)) + 1;
 
     // Snip a line at a time from `orig` until it is used up. Push the snippet
     // onto result.

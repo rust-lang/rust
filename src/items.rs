@@ -70,12 +70,12 @@ impl Rewrite for ast::Local {
 
         if let Some(ref ex) = self.init {
             // 1 = trailing semicolon;
-            let budget = try_opt!(shape.width.checked_sub(context.block_indent.width() + 1));
+            let budget = try_opt!(shape.width.checked_sub(shape.indent.block_only().width() + 1));
 
             result = try_opt!(rewrite_assign_rhs(&context,
                                                  result,
                                                  ex,
-                                                 Shape::legacy(budget, context.block_indent)));
+                                                 Shape::legacy(budget, shape.indent.block_only())));
         }
 
         result.push(';');
@@ -520,7 +520,7 @@ pub fn format_impl(context: &RewriteContext, item: &ast::Item, offset: Indent) -
                                                              context.config,
                                                              context.config.item_brace_style,
                                                              Shape::legacy(where_budget,
-                                                                           context.block_indent),
+                                                                           offset.block_only()),
                                                              context.config.where_density,
                                                              "{",
                                                              true,
@@ -539,7 +539,7 @@ pub fn format_impl(context: &RewriteContext, item: &ast::Item, offset: Indent) -
 
         if !where_clause_str.is_empty() && !where_clause_str.contains('\n') {
             result.push('\n');
-            let width = context.block_indent.width() + context.config.tab_spaces - 1;
+            let width = offset.block_indent + context.config.tab_spaces - 1;
             let where_indent = Indent::new(0, width);
             result.push_str(&where_indent.to_string(context.config));
         }
@@ -568,7 +568,7 @@ pub fn format_impl(context: &RewriteContext, item: &ast::Item, offset: Indent) -
 
         if !items.is_empty() || contains_comment(&snippet[open_pos..]) {
             let mut visitor = FmtVisitor::from_codemap(context.parse_session, context.config);
-            visitor.block_indent = context.block_indent.block_indent(context.config);
+            visitor.block_indent = offset.block_only().block_indent(context.config);
             visitor.last_pos = item.span.lo + BytePos(open_pos as u32);
 
             for item in items {
@@ -578,7 +578,7 @@ pub fn format_impl(context: &RewriteContext, item: &ast::Item, offset: Indent) -
             visitor.format_missing(item.span.hi - BytePos(1));
 
             let inner_indent_str = visitor.block_indent.to_string(context.config);
-            let outer_indent_str = context.block_indent.to_string(context.config);
+            let outer_indent_str = offset.block_only().to_string(context.config);
 
             result.push('\n');
             result.push_str(&inner_indent_str);
@@ -654,7 +654,7 @@ fn format_impl_ref_and_type(context: &RewriteContext,
                 result.push('\n');
 
                 // Add indentation of one additional tab.
-                let width = context.block_indent.width() + context.config.tab_spaces;
+                let width = offset.block_indent + context.config.tab_spaces;
                 let for_indent = Indent::new(0, width);
                 result.push_str(&for_indent.to_string(context.config));
 
@@ -762,7 +762,7 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
         if offset.width() + last_line_width(&result) + trait_bound_str.len() >
            context.config.ideal_width {
             result.push('\n');
-            let trait_indent = context.block_indent.block_indent(context.config);
+            let trait_indent = offset.block_only().block_indent(context.config);
             result.push_str(&trait_indent.to_string(context.config));
         }
         result.push_str(&trait_bound_str);
@@ -789,7 +789,7 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
                                                              context.config,
                                                              context.config.item_brace_style,
                                                              Shape::legacy(where_budget,
-                                                                           context.block_indent),
+                                                                           offset.block_only()),
                                                              where_density,
                                                              "{",
                                                              has_body,
@@ -800,7 +800,7 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
            last_line_width(&result) + where_clause_str.len() + offset.width() >
            context.config.ideal_width {
             result.push('\n');
-            let width = context.block_indent.width() + context.config.tab_spaces - 1;
+            let width = offset.block_indent + context.config.tab_spaces - 1;
             let where_indent = Indent::new(0, width);
             result.push_str(&where_indent.to_string(context.config));
         }
@@ -829,7 +829,7 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
 
         if !trait_items.is_empty() || contains_comment(&snippet[open_pos..]) {
             let mut visitor = FmtVisitor::from_codemap(context.parse_session, context.config);
-            visitor.block_indent = context.block_indent.block_indent(context.config);
+            visitor.block_indent = offset.block_only().block_indent(context.config);
             visitor.last_pos = item.span.lo + BytePos(open_pos as u32);
 
             for item in trait_items {
@@ -839,7 +839,7 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
             visitor.format_missing(item.span.hi - BytePos(1));
 
             let inner_indent_str = visitor.block_indent.to_string(context.config);
-            let outer_indent_str = context.block_indent.to_string(context.config);
+            let outer_indent_str = offset.block_only().to_string(context.config);
 
             result.push('\n');
             result.push_str(&inner_indent_str);
@@ -892,7 +892,7 @@ fn format_struct_struct(context: &RewriteContext,
         }
         None => {
             if context.config.item_brace_style == BraceStyle::AlwaysNextLine && !fields.is_empty() {
-                format!("\n{}{{", context.block_indent.to_string(context.config))
+                format!("\n{}{{", offset.block_only().to_string(context.config))
             } else {
                 " {".to_owned()
             }
@@ -1004,7 +1004,7 @@ fn format_tuple_struct(context: &RewriteContext,
                                           &generics.where_clause,
                                           context.config,
                                           context.config.item_brace_style,
-                                          Shape::legacy(where_budget, context.block_indent),
+                                          Shape::legacy(where_budget, offset.block_only()),
                                           Density::Compressed,
                                           ";",
                                           false,
@@ -1014,7 +1014,7 @@ fn format_tuple_struct(context: &RewriteContext,
     };
     result.push('(');
 
-    let item_indent = context.block_indent + result.len();
+    let item_indent = offset.block_only() + result.len();
     // 2 = ");"
     let item_budget = try_opt!(context.config.max_width.checked_sub(item_indent.width() + 2));
 
@@ -1052,12 +1052,12 @@ fn format_tuple_struct(context: &RewriteContext,
 
     if !where_clause_str.is_empty() && !where_clause_str.contains('\n') &&
        (result.contains('\n') ||
-        context.block_indent.width() + result.len() + where_clause_str.len() + 1 >
+        offset.block_indent + result.len() + where_clause_str.len() + 1 >
         context.config.max_width) {
         // We need to put the where clause on a new line, but we didn'to_string
         // know that earlier, so the where clause will not be indented properly.
         result.push('\n');
-        result.push_str(&(context.block_indent + (context.config.tab_spaces - 1))
+        result.push_str(&(offset.block_only() + (context.config.tab_spaces - 1))
             .to_string(context.config));
     }
     result.push_str(&where_clause_str);
@@ -1192,6 +1192,7 @@ pub fn rewrite_static(prefix: &str,
                       ty: &ast::Ty,
                       mutability: ast::Mutability,
                       expr_opt: Option<&ptr::P<ast::Expr>>,
+                      offset: Indent,
                       context: &RewriteContext)
                       -> Option<String> {
     let type_annotation_spacing = type_annotation_spacing(context.config);
@@ -1205,19 +1206,19 @@ pub fn rewrite_static(prefix: &str,
     // 2 = " =".len()
     let ty_str = try_opt!(ty.rewrite(context,
                                      Shape::legacy(context.config.max_width -
-                                                   context.block_indent.width() -
+                                                   offset.block_indent -
                                                    prefix.len() -
                                                    2,
-                                                   context.block_indent)));
+                                                   offset.block_only())));
 
     if let Some(expr) = expr_opt {
         let lhs = format!("{}{} =", prefix, ty_str);
         // 1 = ;
-        let remaining_width = context.config.max_width - context.block_indent.width() - 1;
+        let remaining_width = context.config.max_width - offset.block_indent - 1;
         rewrite_assign_rhs(context,
                            lhs,
                            expr,
-                           Shape::legacy(remaining_width, context.block_indent))
+                           Shape::legacy(remaining_width, offset.block_only()))
             .map(|s| s + ";")
     } else {
         let lhs = format!("{}{};", prefix, ty_str);
@@ -1253,10 +1254,10 @@ pub fn rewrite_associated_type(ident: ast::Ident,
     if let Some(ty) = ty_opt {
         let ty_str = try_opt!(ty.rewrite(context,
                                          Shape::legacy(context.config.max_width -
-                                                       context.block_indent.width() -
+                                                       indent.block_indent -
                                                        prefix.len() -
                                                        2,
-                                                       context.block_indent)));
+                                                       indent.block_only())));
         Some(format!("{} = {};", prefix, ty_str))
     } else {
         Some(format!("{}{};", prefix, type_bounds_str))
@@ -1473,7 +1474,7 @@ fn rewrite_fn_base(context: &RewriteContext,
         multi_line_budget = context.config.max_width - arg_indent.width();
     }
 
-    debug!("rewrite_fn: one_line_budget: {}, multi_line_budget: {}, arg_indent: {:?}",
+    debug!("rewrite_fn_base: one_line_budget: {}, multi_line_budget: {}, arg_indent: {:?}",
            one_line_budget,
            multi_line_budget,
            arg_indent);
@@ -2020,7 +2021,7 @@ fn format_generics(context: &RewriteContext,
                                                              context.config,
                                                              brace_style,
                                                              Shape::legacy(budget,
-                                                                           context.block_indent),
+                                                                           offset.block_only()),
                                                              Density::Tall,
                                                              terminator,
                                                              true,
@@ -2029,7 +2030,7 @@ fn format_generics(context: &RewriteContext,
         if !force_same_line_brace &&
            (brace_style == BraceStyle::SameLineWhere || brace_style == BraceStyle::AlwaysNextLine) {
             result.push('\n');
-            result.push_str(&context.block_indent.to_string(context.config));
+            result.push_str(&offset.block_only().to_string(context.config));
         } else {
             result.push(' ');
         }
@@ -2037,7 +2038,7 @@ fn format_generics(context: &RewriteContext,
     } else {
         if !force_same_line_brace && brace_style == BraceStyle::AlwaysNextLine {
             result.push('\n');
-            result.push_str(&context.block_indent.to_string(context.config));
+            result.push_str(&offset.block_only().to_string(context.config));
         } else {
             result.push(' ');
         }

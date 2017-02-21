@@ -253,21 +253,20 @@ pub fn rewrite_pair<LHS, RHS>(lhs: &LHS,
     where LHS: Rewrite,
           RHS: Rewrite
 {
-    let lhs_budget = try_opt!(shape.width.checked_sub(prefix.len() + infix.len()));
-    let rhs_budget = try_opt!(shape.width.checked_sub(suffix.len()));
-
     // Get "full width" rhs and see if it fits on the current line. This
     // usually works fairly well since it tends to place operands of
     // operations with high precendence close together.
     // Note that this is non-conservative, but its just to see if it's even
     // worth trying to put everything on one line.
-    let rhs_result = rhs.rewrite(context, Shape::legacy(rhs_budget, shape.indent));
+    let rhs_shape = try_opt!(shape.sub_width(suffix.len()));
+    let rhs_result = rhs.rewrite(context, rhs_shape);
 
     if let Some(rhs_result) = rhs_result {
         // This is needed in case of line break not caused by a
         // shortage of space, but by end-of-line comments, for example.
         if !rhs_result.contains('\n') {
-            let lhs_result = lhs.rewrite(context, Shape::legacy(lhs_budget, shape.indent));
+            let lhs_shape = try_opt!(shape.sub_width(prefix.len() + infix.len()));
+            let lhs_result = lhs.rewrite(context, lhs_shape);
             if let Some(lhs_result) = lhs_result {
                 let mut result = format!("{}{}{}", prefix, lhs_result, infix);
 
@@ -281,14 +280,15 @@ pub fn rewrite_pair<LHS, RHS>(lhs: &LHS,
                 }
 
                 // Try rewriting the rhs into the remaining space.
-                let rhs_budget = try_opt!(remaining_width.checked_sub(suffix.len()));
-                if let Some(rhs_result) = rhs.rewrite(context,
-                                                      Shape::legacy(rhs_budget,
-                                                                    shape.indent + result.len())) {
-                    if rhs_result.len() <= remaining_width {
-                        result.push_str(&rhs_result);
-                        result.push_str(suffix);
-                        return Some(result);
+                let rhs_shape = shape.shrink_left(last_line_width(&result) + suffix.len());
+                if let Some(rhs_shape) = rhs_shape {
+                    if let Some(rhs_result) = rhs.rewrite(context, rhs_shape) {
+                        // FIXME this should always hold.
+                        if rhs_result.len() <= remaining_width {
+                            result.push_str(&rhs_result);
+                            result.push_str(suffix);
+                            return Some(result);
+                        }
                     }
                 }
             }
@@ -301,17 +301,16 @@ pub fn rewrite_pair<LHS, RHS>(lhs: &LHS,
     let infix = infix.trim_right();
     let lhs_budget = try_opt!(context.config
         .max_width
-        .checked_sub(shape.indent.width() + prefix.len() + infix.len()));
-    let rhs_budget = try_opt!(rhs_budget.checked_sub(prefix.len()));
-    let rhs_offset = shape.indent + prefix.len();
+        .checked_sub(shape.used_width() + prefix.len() + infix.len()));
+    let rhs_shape = try_opt!(shape.sub_width(suffix.len() + prefix.len())).visual_indent(prefix.len());
 
-    let rhs_result = try_opt!(rhs.rewrite(context, Shape::legacy(rhs_budget, rhs_offset)));
-    let lhs_result = try_opt!(lhs.rewrite(context, Shape::legacy(lhs_budget, shape.indent)));
+    let rhs_result = try_opt!(rhs.rewrite(context, rhs_shape));
+    let lhs_result = try_opt!(lhs.rewrite(context, Shape { width: lhs_budget, ..shape }));
     Some(format!("{}{}{}\n{}{}{}",
                  prefix,
                  lhs_result,
                  infix,
-                 rhs_offset.to_string(context.config),
+                 rhs_shape.indent.to_string(context.config),
                  rhs_result,
                  suffix))
 }
@@ -328,16 +327,14 @@ pub fn rewrite_array<'a, I>(expr_iter: I,
     } else {
         1 // "["
     };
-    let offset = shape.indent + bracket_size;
-    let inner_context = &RewriteContext { block_indent: offset, ..*context };
-    let max_item_width = try_opt!(shape.width.checked_sub(bracket_size * 2));
+    let nested_shape = try_opt!(shape.visual_indent(bracket_size).sub_width(bracket_size * 2));
     let items =
         itemize_list(context.codemap,
                      expr_iter,
                      "]",
                      |item| item.span.lo,
                      |item| item.span.hi,
-                     |item| item.rewrite(inner_context, Shape::legacy(max_item_width, offset)),
+                     |item| item.rewrite(context, nested_shape),
                      span.lo,
                      span.hi)
             .collect::<Vec<_>>();
@@ -347,7 +344,7 @@ pub fn rewrite_array<'a, I>(expr_iter: I,
         .fold(Some(false), |acc, x| acc.and_then(|y| x.map(|x| x || y))));
 
     let tactic = if has_long_item || items.iter().any(ListItem::is_multiline) {
-        definitive_tactic(&items, ListTactic::HorizontalVertical, max_item_width)
+        definitive_tactic(&items, ListTactic::HorizontalVertical, nested_shape.width)
     } else {
         DefinitiveListTactic::Mixed
     };
@@ -356,7 +353,7 @@ pub fn rewrite_array<'a, I>(expr_iter: I,
         tactic: tactic,
         separator: ",",
         trailing_separator: SeparatorTactic::Never,
-        shape: Shape::legacy(max_item_width, offset),
+        shape: nested_shape,
         ends_with_newline: false,
         config: context.config,
     };
@@ -390,17 +387,14 @@ fn rewrite_closure(capture: ast::CaptureBy,
     } else {
         ""
     };
-    let offset = shape.indent + mover.len();
-
     // 4 = "|| {".len(), which is overconservative when the closure consists of
     // a single expression.
-    let budget = try_opt!(shape.width.checked_sub(4 + mover.len()));
-    // 1 = |
-    let argument_offset = offset + 1;
-    let ret_str = try_opt!(fn_decl.output.rewrite(context, Shape::legacy(budget, argument_offset)));
+    let nested_shape = try_opt!(try_opt!(shape.shrink_left(mover.len())).sub_width(4));
 
-    // 1 = space between arguments and return type.
-    let horizontal_budget = budget.checked_sub(ret_str.len() + 1).unwrap_or(0);
+    // 1 = |
+    let argument_offset = nested_shape.indent + 1;
+    let arg_shape = try_opt!(nested_shape.shrink_left(1)).visual_indent(0);
+    let ret_str = try_opt!(fn_decl.output.rewrite(context, arg_shape));
 
     let arg_items =
         itemize_list(context.codemap,
@@ -408,21 +402,23 @@ fn rewrite_closure(capture: ast::CaptureBy,
                      "|",
                      |arg| span_lo_for_arg(arg),
                      |arg| span_hi_for_arg(arg),
-                     |arg| arg.rewrite(context, Shape::legacy(budget, argument_offset)),
+                     |arg| arg.rewrite(context, arg_shape),
                      context.codemap.span_after(span, "|"),
                      body.span.lo);
     let item_vec = arg_items.collect::<Vec<_>>();
+    // 1 = space between arguments and return type.
+    let horizontal_budget = nested_shape.width.checked_sub(ret_str.len() + 1).unwrap_or(0);
     let tactic = definitive_tactic(&item_vec, ListTactic::HorizontalVertical, horizontal_budget);
-    let budget = match tactic {
-        DefinitiveListTactic::Horizontal => horizontal_budget,
-        _ => budget,
+    let arg_shape = match tactic {
+        DefinitiveListTactic::Horizontal => try_opt!(arg_shape.sub_width(ret_str.len() + 1)),
+        _ => arg_shape,
     };
 
     let fmt = ListFormatting {
         tactic: tactic,
         separator: ",",
         trailing_separator: SeparatorTactic::Never,
-        shape: Shape::legacy(budget, argument_offset),
+        shape: arg_shape,
         ends_with_newline: false,
         config: context.config,
     };
@@ -440,12 +436,11 @@ fn rewrite_closure(capture: ast::CaptureBy,
     }
 
     // 1 = space between `|...|` and body.
-    let extra_offset = extra_offset(&prefix, offset) + 1;
-    let budget = try_opt!(shape.width.checked_sub(extra_offset));
-    let total_offset = offset + extra_offset;
+    let extra_offset = extra_offset(&prefix, shape) + 1;
+    let body_shape = try_opt!(shape.sub_width(extra_offset)).add_offset(extra_offset);
 
     if let ast::ExprKind::Block(ref block) = body.node {
-        // The body of the closure is a block.
+        // The body of the closure is an empty block.
         if block.stmts.is_empty() && !block_contains_comment(block, context.codemap) {
             return Some(format!("{} {{}}", prefix));
         }
@@ -461,7 +456,7 @@ fn rewrite_closure(capture: ast::CaptureBy,
                 if let Some(rw) = rewrite_closure_expr(expr,
                                                        &prefix,
                                                        context,
-                                                       Shape::legacy(budget, total_offset)) {
+                                                       body_shape) {
                     return Some(rw);
                 }
             }
@@ -472,8 +467,7 @@ fn rewrite_closure(capture: ast::CaptureBy,
             let stmt = &block.stmts[0];
             // 4 = braces and spaces.
             let mut rewrite = stmt.rewrite(context,
-                                           Shape::legacy(try_opt!(budget.checked_sub(4)),
-                                                         total_offset));
+                                           try_opt!(body_shape.sub_width(4)));
 
             // Checks if rewrite succeeded and fits on a single line.
             rewrite = and_one_line(rewrite);
@@ -484,13 +478,14 @@ fn rewrite_closure(capture: ast::CaptureBy,
         }
 
         // Either we require a block, or tried without and failed.
-        return rewrite_closure_block(&block, prefix, context, budget);
+        let body_shape = shape.block();
+        return rewrite_closure_block(&block, prefix, context, body_shape);
     }
 
     if let Some(rw) = rewrite_closure_expr(body,
                                            &prefix,
                                            context,
-                                           Shape::legacy(budget, total_offset)) {
+                                           body_shape) {
         return Some(rw);
     }
 
@@ -506,7 +501,7 @@ fn rewrite_closure(capture: ast::CaptureBy,
         rules: ast::BlockCheckMode::Default,
         span: body.span,
     };
-    return rewrite_closure_block(&block, prefix, context, budget);
+    return rewrite_closure_block(&block, prefix, context, body_shape.block());
 
     fn rewrite_closure_expr(expr: &ast::Expr,
                             prefix: &str,
@@ -523,11 +518,11 @@ fn rewrite_closure(capture: ast::CaptureBy,
     fn rewrite_closure_block(block: &ast::Block,
                              prefix: String,
                              context: &RewriteContext,
-                             budget: usize)
+                             shape: Shape)
                              -> Option<String> {
         // Start with visual indent, then fall back to block indent if the
         // closure is large.
-        let rewrite = try_opt!(block.rewrite(&context, Shape::legacy(budget, Indent::empty())));
+        let rewrite = try_opt!(block.rewrite(&context, shape));
 
         let block_threshold = context.config.closure_block_indent_threshold;
         if block_threshold < 0 || rewrite.matches('\n').count() <= block_threshold as usize {
@@ -536,9 +531,8 @@ fn rewrite_closure(capture: ast::CaptureBy,
 
         // The body of the closure is big enough to be block indented, that
         // means we must re-format.
-        let mut context = context.clone();
-        context.block_indent.alignment = 0;
-        let rewrite = try_opt!(block.rewrite(&context, Shape::legacy(budget, Indent::empty())));
+        let block_shape = shape.block();
+        let rewrite = try_opt!(block.rewrite(&context, block_shape));
         Some(format!("{} {}", prefix, rewrite))
     }
 }
@@ -581,7 +575,7 @@ impl Rewrite for ast::Block {
         }
 
         let mut visitor = FmtVisitor::from_codemap(context.parse_session, context.config);
-        visitor.block_indent = context.block_indent;
+        visitor.block_indent = shape.indent;
 
         let prefix = match self.rules {
             ast::BlockCheckMode::Unsafe(..) => {
@@ -648,9 +642,7 @@ impl Rewrite for ast::Stmt {
                                 _ => unreachable!(),
                             },
                             context,
-                            Shape::legacy(context.config.max_width - shape.indent.width() -
-                                          suffix.len(),
-                                          shape.indent))
+                            try_opt!(shape.sub_width(suffix.len())))
                     .map(|s| s + suffix)
             }
             ast::StmtKind::Mac(..) |
@@ -815,32 +807,32 @@ impl<'a> ControlFlow<'a> {
 impl<'a> Rewrite for ControlFlow<'a> {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         debug!("ControlFlow::rewrite {:?} {:?}", self, shape);
-        let (budget, indent) = if self.nested_if {
+        let constr_shape = if self.nested_if {
             // We are part of an if-elseif-else chain. Our constraints are tightened.
             // 7 = "} else " .len()
-            (try_opt!(shape.width.checked_sub(7)), shape.indent + 7)
+            try_opt!(shape.shrink_left(7))
         } else {
-            (shape.width, shape.indent)
+            shape
         };
 
         let label_string = rewrite_label(self.label);
         // 1 = space after keyword.
-        let inner_offset = indent + self.keyword.len() + label_string.len() + 1;
-        let mut inner_width =
-            try_opt!(budget.checked_sub(self.keyword.len() + label_string.len() + 1));
-        if context.config.control_brace_style != ControlBraceStyle::AlwaysNextLine {
-            // 2 = " {".len()
-            inner_width = try_opt!(inner_width.checked_sub(2));
-        }
+        let add_offset = self.keyword.len() + label_string.len() + 1;
 
         let pat_expr_string = match self.cond {
             Some(cond) => {
+                let mut cond_shape = try_opt!(constr_shape.shrink_left(add_offset));
+                if context.config.control_brace_style != ControlBraceStyle::AlwaysNextLine {
+                    // 2 = " {".len()
+                    cond_shape = try_opt!(cond_shape.sub_width(2));
+                }
+
                 try_opt!(rewrite_pat_expr(context,
                                           self.pat,
                                           cond,
                                           self.matcher,
                                           self.connector,
-                                          Shape::legacy(inner_width, inner_offset)))
+                                          cond_shape))
             }
             None => String::new(),
         };
@@ -855,21 +847,24 @@ impl<'a> Rewrite for ControlFlow<'a> {
             }
         }
 
+        let used_width = if pat_expr_string.contains('\n') {
+            last_line_width(&pat_expr_string)
+        } else {
+            // 2 = spaces after keyword and condition.
+            label_string.len() + self.keyword.len() + pat_expr_string.len() + 2
+        };
+        let block_width = try_opt!(shape.width.checked_sub(used_width));
         // This is used only for the empty block case: `{}`. So, we use 1 if we know
         // we should avoid the single line case.
-        // 2 = spaces after keyword and condition.
-        let block_width = try_opt!(shape.width
-            .checked_sub(label_string.len() + self.keyword.len() +
-                         extra_offset(&pat_expr_string, inner_offset) +
-                         2));
         let block_width = if self.else_block.is_some() || self.nested_if {
             min(1, block_width)
         } else {
             block_width
         };
 
-        let block_str = try_opt!(self.block
-            .rewrite(context, Shape::legacy(block_width, shape.indent)));
+        // TODO this .block() - not what we want if we are actually visually indented
+        let block_shape = Shape { width: block_width, ..shape };
+        let block_str = try_opt!(self.block.rewrite(context, block_shape));
 
         let cond_span = if let Some(cond) = self.cond {
             cond.span
@@ -891,7 +886,7 @@ impl<'a> Rewrite for ControlFlow<'a> {
         let after_cond_comment =
             extract_comment(mk_sp(cond_span.hi, self.block.span.lo), context, shape);
 
-        let alt_block_sep = String::from("\n") + &context.block_indent.to_string(context.config);
+        let alt_block_sep = String::from("\n") + &shape.indent.block_only().to_string(context.config);
         let block_sep = if self.cond.is_none() && between_kwd_cond_comment.is_some() {
             ""
         } else if context.config.control_brace_style ==
@@ -913,14 +908,8 @@ impl<'a> Rewrite for ControlFlow<'a> {
 
         if let Some(else_block) = self.else_block {
             // Since this is an else block, we should not indent for the assignment preceding
-            // the original if, so set shape.indent.alignment to 0.
-            let shape = Shape {
-                width: shape.width,
-                indent: Indent {
-                    block_indent: shape.indent.block_indent,
-                    alignment: 0,
-                },
-            };
+            // the original if, so set shape.offset to 0.
+            let shape = Shape { offset: 0, ..shape };
             let mut last_in_chain = false;
             let rewrite = match else_block.node {
                 // If the else expression is another if-else expression, prevent it
@@ -935,7 +924,7 @@ impl<'a> Rewrite for ControlFlow<'a> {
                                         false,
                                         true,
                                         mk_sp(else_block.span.lo, self.span.hi))
-                        .rewrite(context, shape)
+                        .rewrite(context, shape.visual_indent(0))
                 }
                 ast::ExprKind::If(ref cond, ref if_block, ref next_else_block) => {
                     ControlFlow::new_if(cond,
@@ -945,13 +934,14 @@ impl<'a> Rewrite for ControlFlow<'a> {
                                         false,
                                         true,
                                         mk_sp(else_block.span.lo, self.span.hi))
-                        .rewrite(context, shape)
+                        .rewrite(context, shape.visual_indent(0))
                 }
                 _ => {
                     last_in_chain = true;
                     // When rewriting a block, the width is only used for single line
                     // blocks, passing 1 lets us avoid that.
-                    else_block.rewrite(context, Shape::legacy(min(1, shape.width), shape.indent))
+                    let else_shape = Shape { width: min(1, shape.width), ..shape };
+                    else_block.rewrite(context, else_shape)
                 }
             };
 
@@ -1097,16 +1087,15 @@ fn rewrite_match(context: &RewriteContext,
     // `match `cond` {`
     let cond_budget = try_opt!(shape.width.checked_sub(8));
     let cond_str = try_opt!(cond.rewrite(context, Shape::legacy(cond_budget, shape.indent + 6)));
-    let alt_block_sep = String::from("\n") + &context.block_indent.to_string(context.config);
+    let alt_block_sep = String::from("\n") + &shape.indent.block_only().to_string(context.config);
     let block_sep = match context.config.control_brace_style {
         ControlBraceStyle::AlwaysSameLine => " ",
         _ => alt_block_sep.as_str(),
     };
     let mut result = format!("match {}{}{{", cond_str, block_sep);
 
-    let nested_context = context.nested_context();
-    let arm_indent = nested_context.block_indent;
-    let arm_indent_str = arm_indent.to_string(context.config);
+    let arm_shape = shape.block_indent(context.config.tab_spaces);
+    let arm_indent_str = arm_shape.indent.to_string(context.config);
 
     let open_brace_pos = context.codemap
         .span_after(mk_sp(cond.span.hi, arm_start_pos(&arms[0])), "{");
@@ -1120,15 +1109,14 @@ fn rewrite_match(context: &RewriteContext,
         };
         let comment = try_opt!(rewrite_match_arm_comment(context,
                                                          &missed_str,
-                                                         Shape::legacy(shape.width, arm_indent),
+                                                         arm_shape,
                                                          &arm_indent_str));
         result.push_str(&comment);
         result.push('\n');
         result.push_str(&arm_indent_str);
 
-        let arm_str = arm.rewrite(&nested_context,
-                                  Shape::legacy(context.config.max_width - arm_indent.width(),
-                                                arm_indent));
+        let arm_str = arm.rewrite(&context,
+                                  Shape { width: context.config.max_width - arm_shape.indent.width(), .. arm_shape });
         if let Some(ref arm_str) = arm_str {
             result.push_str(arm_str);
         } else {
@@ -1143,11 +1131,11 @@ fn rewrite_match(context: &RewriteContext,
     let last_comment = context.snippet(last_span);
     let comment = try_opt!(rewrite_match_arm_comment(context,
                                                      &last_comment,
-                                                     Shape::legacy(shape.width, arm_indent),
+                                                     arm_shape,
                                                      &arm_indent_str));
     result.push_str(&comment);
     result.push('\n');
-    result.push_str(&context.block_indent.to_string(context.config));
+    result.push_str(&shape.indent.to_string(context.config));
     result.push('}');
     Some(result)
 }
@@ -1197,7 +1185,7 @@ impl Rewrite for ast::Arm {
             // We only use this visitor for the attributes, should we use it for
             // more?
             let mut attr_visitor = FmtVisitor::from_codemap(context.parse_session, context.config);
-            attr_visitor.block_indent = context.block_indent;
+            attr_visitor.block_indent = shape.indent.block_only();
             attr_visitor.last_pos = attrs[0].span.lo;
             if attr_visitor.visit_attrs(attrs) {
                 // Attributes included a skip instruction.
@@ -1211,9 +1199,10 @@ impl Rewrite for ast::Arm {
 
         // Patterns
         // 5 = ` => {`
-        let pat_budget = try_opt!(shape.width.checked_sub(5));
+        let pat_shape = try_opt!(shape.sub_width(5));
+
         let pat_strs = try_opt!(pats.iter()
-            .map(|p| p.rewrite(context, Shape::legacy(pat_budget, shape.indent)))
+            .map(|p| p.rewrite(context, pat_shape))
             .collect::<Option<Vec<_>>>());
 
         let all_simple = pat_strs.iter().all(|p| pat_is_simple(p));
@@ -1226,29 +1215,26 @@ impl Rewrite for ast::Arm {
             },
             separator: " |",
             trailing_separator: SeparatorTactic::Never,
-            shape: Shape::legacy(pat_budget, shape.indent),
+            shape: pat_shape,
             ends_with_newline: false,
             config: context.config,
         };
         let pats_str = try_opt!(write_list(items, &fmt));
 
-        let budget = if pats_str.contains('\n') {
-            context.config.max_width - shape.indent.width()
+        let guard_shape = if pats_str.contains('\n') {
+            Shape { width: context.config.max_width - shape.indent.width(), ..shape }
         } else {
-            shape.width
+            shape
         };
 
         let guard_str = try_opt!(rewrite_guard(context,
                                                guard,
-                                               Shape::legacy(budget, shape.indent),
+                                               guard_shape,
                                                trimmed_last_line_width(&pats_str)));
 
         let pats_str = format!("{}{}", pats_str, guard_str);
         // Where the next text can start.
-        let mut line_start = last_line_width(&pats_str);
-        if !pats_str.contains('\n') {
-            line_start += shape.indent.width();
-        }
+        let mut line_start = trimmed_last_line_width(&pats_str);
 
         let body = match body.node {
             ast::ExprKind::Block(ref block) if !is_unsafe_block(block) &&
@@ -1264,16 +1250,17 @@ impl Rewrite for ast::Arm {
         };
 
         let comma = arm_comma(&context.config, self, body);
-        let alt_block_sep = String::from("\n") + &context.block_indent.to_string(context.config);
+        let alt_block_sep = String::from("\n") + &shape.indent.block_only().to_string(context.config);
 
         // Let's try and get the arm body on the same line as the condition.
         // 4 = ` => `.len()
-        if context.config.max_width > line_start + comma.len() + 4 {
-            let budget = context.config.max_width - line_start - comma.len() - 4;
-            let offset = Indent::new(shape.indent.block_indent,
-                                     line_start + 4 - shape.indent.block_indent);
-            let rewrite = nop_block_collapse(body.rewrite(context, Shape::legacy(budget, offset)),
-                                             budget);
+        if shape.width > line_start + comma.len() + 4 {
+            let arm_shape = shape.shrink_left(line_start + 4).unwrap().sub_width(comma.len()).unwrap().block();
+            // TODO
+            // let offset = Indent::new(shape.indent.block_indent,
+            //                          line_start + 4 - shape.indent.block_indent);
+            let rewrite = nop_block_collapse(body.rewrite(context, arm_shape),
+                                             arm_shape.width);
             let is_block = if let ast::ExprKind::Block(..) = body.node {
                 true
             } else {
@@ -1301,13 +1288,12 @@ impl Rewrite for ast::Arm {
 
         // FIXME: we're doing a second rewrite of the expr; This may not be
         // necessary.
-        let body_budget = try_opt!(shape.width.checked_sub(context.config.tab_spaces));
-        let indent = context.block_indent.block_indent(context.config);
-        let inner_context = &RewriteContext { block_indent: indent, ..*context };
-        let next_line_body = try_opt!(nop_block_collapse(body.rewrite(inner_context,
-                                                                      Shape::legacy(body_budget,
-                                                                                    indent)),
-                                                         body_budget));
+        // TODO
+        // let body_budget = try_opt!(shape.width.checked_sub(context.config.tab_spaces));
+        // let indent = shape.indent.block_only().block_indent(context.config);
+        let body_shape = try_opt!(shape.sub_width(context.config.tab_spaces)).block_indent(context.config.tab_spaces);
+        let next_line_body = try_opt!(nop_block_collapse(body.rewrite(context, body_shape),
+                                                         body_shape.width));
         let indent_str = shape.indent.block_indent(context.config).to_string(context.config);
         let (body_prefix, body_suffix) = if context.config.wrap_match_arms {
             if context.config.match_block_trailing_comma {
@@ -1394,6 +1380,7 @@ fn rewrite_pat_expr(context: &RewriteContext,
                     connector: &str,
                     shape: Shape)
                     -> Option<String> {
+    debug!("rewrite_pat_expr {:?}", shape);
     let mut result = match pat {
         Some(pat) => {
             let matcher = if matcher.is_empty() {
@@ -1401,26 +1388,22 @@ fn rewrite_pat_expr(context: &RewriteContext,
             } else {
                 format!("{} ", matcher)
             };
-            let pat_budget = try_opt!(shape.width.checked_sub(connector.len() + matcher.len()));
-            let pat_offset = shape.indent + matcher.len();
-            let pat_string = try_opt!(pat.rewrite(context, Shape::legacy(pat_budget, pat_offset)));
+            let pat_shape = try_opt!(try_opt!(shape.shrink_left(matcher.len())).sub_width(connector.len()));
+            let pat_string = try_opt!(pat.rewrite(context, pat_shape));
             format!("{}{}{}", matcher, pat_string, connector)
         }
         None => String::new(),
     };
 
     // Consider only the last line of the pat string.
-    let extra_offset = extra_offset(&result, shape.indent);
+    let extra_offset = extra_offset(&result, shape);
 
-    // The expression may (partionally) fit on the current line.
+    // The expression may (partially) fit on the current line.
     if shape.width > extra_offset + 1 {
         let spacer = if pat.is_some() { " " } else { "" };
 
-        let expr_rewrite = expr.rewrite(context,
-                                        Shape::legacy(try_opt!(shape.width
-                                                          .checked_sub(extra_offset +
-                                                                       spacer.len())),
-                                                      shape.indent + extra_offset + spacer.len()));
+        let expr_shape = try_opt!(shape.sub_width(extra_offset + spacer.len())).add_offset(extra_offset + spacer.len());
+        let expr_rewrite = expr.rewrite(context, expr_shape);
 
         if let Some(expr_string) = expr_rewrite {
             let pat_simple = pat.and_then(|p| {
@@ -1437,17 +1420,17 @@ fn rewrite_pat_expr(context: &RewriteContext,
         }
     }
 
-    let nested = context.nested_context();
+    let nested_indent = shape.indent.block_only().block_indent(context.config);
 
     // The expression won't fit on the current line, jump to next.
     result.push('\n');
-    result.push_str(&nested.block_indent.to_string(context.config));
+    result.push_str(&nested_indent.to_string(context.config));
 
-    let expr_rewrite = expr.rewrite(&nested,
+    let expr_rewrite = expr.rewrite(&context,
                                     Shape::legacy(try_opt!(context.config
                                                       .max_width
-                                                      .checked_sub(nested.block_indent.width())),
-                                                  nested.block_indent));
+                                                      .checked_sub(nested_indent.width())),
+                                                  nested_indent));
     result.push_str(&try_opt!(expr_rewrite));
 
     Some(result)
@@ -1533,7 +1516,7 @@ fn rewrite_call_inner<R>(context: &RewriteContext,
     let callee = callee.borrow();
     // FIXME using byte lens instead of char lens (and probably all over the
     // place too)
-    let callee_str = match callee.rewrite(context, Shape::legacy(max_callee_width, shape.indent)) {
+    let callee_str = match callee.rewrite(context, Shape { width: max_callee_width, ..shape }) {
         Some(string) => {
             if !string.contains('\n') && string.len() > max_callee_width {
                 panic!("{:?} {}", string, max_callee_width);
@@ -1547,20 +1530,15 @@ fn rewrite_call_inner<R>(context: &RewriteContext,
     let span_lo = context.codemap.span_after(span, "(");
     let span = mk_sp(span_lo, span.hi);
 
-    let extra_offset = extra_offset(&callee_str, shape.indent);
+    let used_width = extra_offset(&callee_str, shape);
     // 2 is for parens.
-    let remaining_width = match shape.width.checked_sub(extra_offset + 2) {
-        Some(str) => str,
+    let remaining_width = match shape.width.checked_sub(used_width + 2) {
+        Some(s) => s,
         None => return Err(Ordering::Greater),
     };
-    let offset = shape.indent + extra_offset + 1;
+    // 1 = (
+    let nested_shape = shape.visual_indent(used_width + 1);
     let arg_count = args.len();
-    let block_indent = if arg_count == 1 {
-        context.block_indent
-    } else {
-        offset
-    };
-    let inner_context = &RewriteContext { block_indent: block_indent, ..*context };
 
     let items =
         itemize_list(context.codemap,
@@ -1568,7 +1546,7 @@ fn rewrite_call_inner<R>(context: &RewriteContext,
                      ")",
                      |item| item.span.lo,
                      |item| item.span.hi,
-                     |item| item.rewrite(inner_context, Shape::legacy(remaining_width, offset)),
+                     |item| item.rewrite(context, Shape { width: remaining_width, ..nested_shape }),
                      span.lo,
                      span.hi);
     let mut item_vec: Vec<_> = items.collect();
@@ -1588,9 +1566,12 @@ fn rewrite_call_inner<R>(context: &RewriteContext,
     // Replace the last item with its first line to see if it fits with
     // first arguments.
     if overflow_last {
-        let inner_context = &RewriteContext { block_indent: context.block_indent, ..*context };
-        let rewrite =
-            args.last().unwrap().rewrite(inner_context, Shape::legacy(remaining_width, offset));
+        let nested_shape = Shape {
+            width: remaining_width,
+            indent: nested_shape.indent.block_only(),
+            ..nested_shape
+        };
+        let rewrite = args.last().unwrap().rewrite(context, nested_shape);
 
         if let Some(rewrite) = rewrite {
             let rewrite_first_line = Some(rewrite[..first_line_width(&rewrite)].to_owned());
@@ -1622,7 +1603,7 @@ fn rewrite_call_inner<R>(context: &RewriteContext,
         tactic: tactic,
         separator: ",",
         trailing_separator: SeparatorTactic::Never,
-        shape: Shape::legacy(shape.width, offset),
+        shape: nested_shape,
         ends_with_newline: false,
         config: context.config,
     };
@@ -1643,9 +1624,8 @@ fn rewrite_paren(context: &RewriteContext, subexpr: &ast::Expr, shape: Shape) ->
     debug!("rewrite_paren, shape: {:?}", shape);
     // 1 is for opening paren, 2 is for opening+closing, we want to keep the closing
     // paren on the same line as the subexpr.
-    let subexpr_str = subexpr.rewrite(context,
-                                      Shape::legacy(try_opt!(shape.width.checked_sub(2)),
-                                                    shape.indent + 1));
+    let sub_shape = try_opt!(shape.sub_width(2)).visual_indent(1);
+    let subexpr_str = subexpr.rewrite(context, sub_shape);
     debug!("rewrite_paren, subexpr_str: `{:?}`", subexpr_str);
 
     subexpr_str.map(|s| if context.config.spaces_within_parens && s.len() > 0 {
@@ -1699,32 +1679,26 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
     }
 
     // 2 = " {".len()
-    let path_budget = try_opt!(shape.width.checked_sub(2));
+    let path_shape = try_opt!(shape.sub_width(2));
     let path_str = try_opt!(rewrite_path(context,
                                          PathContext::Expr,
                                          None,
                                          path,
-                                         Shape::legacy(path_budget, shape.indent)));
+                                         path_shape));
 
     // Foo { a: Foo } - indent is +3, width is -5.
-    let h_budget = shape.width.checked_sub(path_str.len() + 5).unwrap_or(0);
-    // The 1 taken from the v_budget is for the comma.
-    let (indent, v_budget) = match context.config.struct_lit_style {
-        StructLitStyle::Visual => (shape.indent + path_str.len() + 3, h_budget),
+    let h_shape = shape.sub_width(path_str.len() + 5);
+    let v_shape = match context.config.struct_lit_style {
+        StructLitStyle::Visual => try_opt!(try_opt!(shape.shrink_left(path_str.len() + 3)).sub_width(2)),
         StructLitStyle::Block => {
-            // If we are all on one line, then we'll ignore the indent, and we
-            // have a smaller budget.
-            let indent = context.block_indent.block_indent(context.config);
-            let v_budget = context.config.max_width.checked_sub(indent.width()).unwrap_or(0);
-            (indent, v_budget)
+            let shape = shape.block_indent(context.config.tab_spaces);
+            Shape { width: try_opt!(context.config.max_width.checked_sub(shape.indent.width())), ..shape }
         }
     };
 
     let field_iter = fields.into_iter()
         .map(StructLitField::Regular)
         .chain(base.into_iter().map(StructLitField::Base));
-
-    let inner_context = &RewriteContext { block_indent: indent, ..*context };
 
     let items = itemize_list(context.codemap,
                              field_iter,
@@ -1747,14 +1721,15 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
                              |item| {
         match *item {
             StructLitField::Regular(field) => {
-                rewrite_field(inner_context,
+                // The 1 taken from the v_budget is for the comma.
+                rewrite_field(context,
                               field,
-                              Shape::legacy(v_budget.checked_sub(1).unwrap_or(0), indent))
+                              try_opt!(v_shape.sub_width(1)))
             }
             StructLitField::Base(expr) => {
                 // 2 = ..
-                expr.rewrite(inner_context,
-                             Shape::legacy(try_opt!(v_budget.checked_sub(2)), indent + 2))
+                expr.rewrite(context,
+                             try_opt!(v_shape.shrink_left(2)))
                     .map(|s| format!("..{}", s))
             }
         }
@@ -1763,7 +1738,7 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
                              span.hi);
     let item_vec = items.collect::<Vec<_>>();
 
-    let tactic = {
+    let tactic = if let Some(h_shape) = h_shape {
         let mut prelim_tactic = match (context.config.struct_lit_style, fields.len()) {
             (StructLitStyle::Visual, 1) => ListTactic::HorizontalVertical,
             _ => context.config.struct_lit_multiline_style.to_list_tactic(),
@@ -1773,12 +1748,14 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
             prelim_tactic = ListTactic::LimitedHorizontalVertical(context.config.struct_lit_width);
         }
 
-        definitive_tactic(&item_vec, prelim_tactic, h_budget)
+        definitive_tactic(&item_vec, prelim_tactic, h_shape.width)
+    } else {
+        DefinitiveListTactic::Vertical
     };
 
-    let budget = match tactic {
-        DefinitiveListTactic::Horizontal => h_budget,
-        _ => v_budget,
+    let nested_shape = match tactic {
+        DefinitiveListTactic::Horizontal => h_shape.unwrap(),
+        _ => v_shape,
     };
 
     let ends_with_newline = context.config.struct_lit_style != StructLitStyle::Visual &&
@@ -1792,36 +1769,33 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
         } else {
             context.config.struct_lit_trailing_comma
         },
-        shape: Shape::legacy(budget, indent),
+        shape: nested_shape,
         ends_with_newline: ends_with_newline,
         config: context.config,
     };
     let fields_str = try_opt!(write_list(&item_vec, &fmt));
 
+    // Empty struct.
     if fields_str.is_empty() {
         return Some(format!("{} {{}}", path_str));
     }
 
-    let format_on_newline = || {
-        let inner_indent = context.block_indent
-            .block_indent(context.config)
-            .to_string(context.config);
-        let outer_indent = context.block_indent.to_string(context.config);
-        Some(format!("{} {{\n{}{}\n{}}}",
-                     path_str,
-                     inner_indent,
-                     fields_str,
-                     outer_indent))
-    };
-
-    match (context.config.struct_lit_style, context.config.struct_lit_multiline_style) {
-        (StructLitStyle::Block, _) if fields_str.contains('\n') || fields_str.len() > h_budget => {
-            format_on_newline()
-        }
-        (StructLitStyle::Block, MultilineStyle::ForceMulti) => format_on_newline(),
-        _ => Some(format!("{} {{ {} }}", path_str, fields_str)),
+    // One liner or visual indent.
+    if context.config.struct_lit_style == StructLitStyle::Visual ||
+       (context.config.struct_lit_multiline_style != MultilineStyle::ForceMulti &&
+        !fields_str.contains('\n') &&
+        fields_str.len() <= h_shape.map(|s| s.width).unwrap_or(0)) {
+        return Some(format!("{} {{ {} }}", path_str, fields_str));
     }
 
+    // Multiple lines.
+    let inner_indent = v_shape.indent.to_string(context.config);
+    let outer_indent = shape.indent.to_string(context.config);
+    Some(format!("{} {{\n{}{}\n{}}}",
+                 path_str,
+                 inner_indent,
+                 fields_str,
+                 outer_indent))
     // FIXME if context.config.struct_lit_style == Visual, but we run out
     // of space, we should fall back to BlockIndent.
 }
@@ -1842,9 +1816,9 @@ fn rewrite_field(context: &RewriteContext, field: &ast::Field, shape: Shape) -> 
     } else {
         let separator = type_annotation_separator(context.config);
         let overhead = name.len() + separator.len();
-        let expr = field.expr.rewrite(context,
-                                      Shape::legacy(try_opt!(shape.width.checked_sub(overhead)),
-                                                    shape.indent + overhead));
+        let mut expr_shape = try_opt!(shape.sub_width(overhead));
+        expr_shape.offset += overhead;
+        let expr = field.expr.rewrite(context, expr_shape);
 
         match expr {
             Some(e) => Some(format!("{}{}{}", name, separator, e)),
@@ -1871,16 +1845,14 @@ pub fn rewrite_tuple<'a, I>(context: &RewriteContext,
           <I as Iterator>::Item: Deref,
           <I::Item as Deref>::Target: Rewrite + Spanned + 'a
 {
-    let indent = shape.indent + 1;
-    let aligned = RewriteContext { block_indent: indent, ..context.clone() };
-
+    debug!("rewrite_tuple {:?}", shape);
     // In case of length 1, need a trailing comma
     if items.len() == 1 {
         // 3 = "(" + ",)"
-        let budget = try_opt!(shape.width.checked_sub(3));
+        let nested_shape = try_opt!(shape.sub_width(3)).visual_indent(1);
         return items.next()
             .unwrap()
-            .rewrite(&aligned, Shape::legacy(budget, indent))
+            .rewrite(context, nested_shape)
             .map(|s| if context.config.spaces_within_parens {
                 format!("( {}, )", s)
             } else {
@@ -1889,16 +1861,16 @@ pub fn rewrite_tuple<'a, I>(context: &RewriteContext,
     }
 
     let list_lo = context.codemap.span_after(span, "(");
-    let budget = try_opt!(shape.width.checked_sub(2));
+    let nested_shape = try_opt!(shape.sub_width(2)).visual_indent(1);
     let items = itemize_list(context.codemap,
                              items,
                              ")",
                              |item| item.span().lo,
                              |item| item.span().hi,
-                             |item| item.rewrite(&aligned, Shape::legacy(budget, indent)),
+                             |item| item.rewrite(context, nested_shape),
                              list_lo,
                              span.hi - BytePos(1));
-    let list_str = try_opt!(format_item_list(items, Shape::legacy(budget, indent), context.config));
+    let list_str = try_opt!(format_item_list(items, nested_shape, context.config));
 
     if context.config.spaces_within_parens && list_str.len() > 0 {
         Some(format!("( {} )", list_str))
@@ -1912,10 +1884,8 @@ pub fn rewrite_unary_prefix<R: Rewrite>(context: &RewriteContext,
                                         rewrite: &R,
                                         shape: Shape)
                                         -> Option<String> {
-    rewrite.rewrite(context,
-                 Shape::legacy(try_opt!(shape.width.checked_sub(prefix.len())),
-                               shape.indent + prefix.len()))
-        .map(|r| format!("{}{}", prefix, r))
+    let shape = try_opt!(shape.shrink_left(prefix.len())).visual_indent(0);
+    rewrite.rewrite(context, shape).map(|r| format!("{}{}", prefix, r))
 }
 
 // FIXME: this is probably not correct for multi-line Rewrites. we should
@@ -1925,9 +1895,7 @@ pub fn rewrite_unary_suffix<R: Rewrite>(context: &RewriteContext,
                                         rewrite: &R,
                                         shape: Shape)
                                         -> Option<String> {
-    rewrite.rewrite(context,
-                 Shape::legacy(try_opt!(shape.width.checked_sub(suffix.len())),
-                               shape.indent))
+    rewrite.rewrite(context, try_opt!(shape.sub_width(suffix.len())))
         .map(|mut r| {
             r.push_str(suffix);
             r
@@ -1960,9 +1928,9 @@ fn rewrite_assignment(context: &RewriteContext,
     };
 
     // 1 = space between lhs and operator.
-    let max_width = try_opt!(shape.width.checked_sub(operator_str.len() + 1));
+    let lhs_shape = try_opt!(shape.sub_width(operator_str.len() + 1));
     let lhs_str = format!("{} {}",
-                          try_opt!(lhs.rewrite(context, Shape::legacy(max_width, shape.indent))),
+                          try_opt!(lhs.rewrite(context, lhs_shape)),
                           operator_str);
 
     rewrite_assign_rhs(context, lhs_str, rhs, shape)
@@ -1985,7 +1953,9 @@ pub fn rewrite_assign_rhs<S: Into<String>>(context: &RewriteContext,
     // 1 = space between operator and rhs.
     let max_width = try_opt!(shape.width.checked_sub(last_line_width + 1));
     let rhs = ex.rewrite(context,
-                         Shape::legacy(max_width, shape.indent + last_line_width + 1));
+                         Shape::offset(max_width,
+                                       shape.indent.block_only(),
+                                       shape.indent.alignment + last_line_width + 1));
 
     fn count_line_breaks(src: &str) -> usize {
         src.chars().filter(|&x| x == '\n').count()
@@ -2003,8 +1973,7 @@ pub fn rewrite_assign_rhs<S: Into<String>>(context: &RewriteContext,
             let new_offset = shape.indent.block_indent(context.config);
             let max_width = try_opt!((shape.width + shape.indent.width())
                 .checked_sub(new_offset.width()));
-            let inner_context = context.nested_context();
-            let new_rhs = ex.rewrite(&inner_context, Shape::legacy(max_width, new_offset));
+            let new_rhs = ex.rewrite(context, Shape::legacy(max_width, new_offset));
 
             // FIXME: DRY!
             match (rhs, new_rhs) {

@@ -220,16 +220,16 @@ fn rewrite_tuple_pat(pats: &[ptr::P<ast::Pat>],
 
         let path_len = path_str.as_ref().map(|p| p.len()).unwrap_or(0);
         // 2 = "()".len(), 3 = "(,)".len()
-        let width = try_opt!(shape.width.checked_sub(path_len + if add_comma { 3 } else { 2 }));
+        let nested_shape = try_opt!(shape.sub_width(path_len + if add_comma { 3 } else { 2 }));
         // 1 = "(".len()
-        let offset = shape.indent + path_len + 1;
+        let nested_shape = nested_shape.visual_indent(path_len + 1);
         let mut items: Vec<_> =
             itemize_list(context.codemap,
                          pat_vec.iter(),
                          if add_comma { ",)" } else { ")" },
                          |item| item.span().lo,
                          |item| item.span().hi,
-                         |item| item.rewrite(context, Shape::legacy(width, offset)),
+                         |item| item.rewrite(context, nested_shape),
                          context.codemap.span_after(span, "("),
                          span.hi - BytePos(1))
                 .collect();
@@ -242,10 +242,10 @@ fn rewrite_tuple_pat(pats: &[ptr::P<ast::Pat>],
             items[new_item_count - 1].item = Some("..".to_owned());
 
             let da_iter = items.into_iter().take(new_item_count);
-            try_opt!(format_item_list(da_iter, Shape::legacy(width, offset), context.config))
+            try_opt!(format_item_list(da_iter, nested_shape, context.config))
         } else {
             try_opt!(format_item_list(items.into_iter(),
-                                      Shape::legacy(width, offset),
+                                      nested_shape,
                                       context.config))
         };
 

@@ -93,6 +93,7 @@ use syntax::{ast, ptr};
 use syntax::codemap::{mk_sp, Span};
 
 pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -> Option<String> {
+    debug!("rewrite_chain {:?}", shape);
     let total_span = expr.span;
     let (parent, subexpr_list) = make_subexpr_list(expr, context);
 
@@ -103,42 +104,45 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
     }
 
     // Parent is the first item in the chain, e.g., `foo` in `foo.bar.baz()`.
-    let parent_block_indent = chain_base_indent(context, shape.indent);
-    let parent_context = &RewriteContext { block_indent: parent_block_indent, ..*context };
-    let parent_rewrite = try_opt!(parent.rewrite(parent_context, shape));
+    let mut parent_shape = shape;
+    if is_block_expr(&parent, "\n") {
+        parent_shape = chain_base_indent(context, shape);
+    }
+    let parent_rewrite = try_opt!(parent.rewrite(context, parent_shape));
 
     // Decide how to layout the rest of the chain. `extend` is true if we can
     // put the first non-parent item on the same line as the parent.
-    let (indent, extend) = if !parent_rewrite.contains('\n') && is_continuable(&parent) ||
-                              parent_rewrite.len() <= context.config.tab_spaces {
-
-        let indent = if let ast::ExprKind::Try(..) = subexpr_list.last().unwrap().node {
-            parent_block_indent.block_indent(context.config)
+    let (nested_shape, extend) = if !parent_rewrite.contains('\n') && is_continuable(&parent) {
+        let nested_shape = if let ast::ExprKind::Try(..) = subexpr_list.last().unwrap().node {
+            parent_shape.block_indent(context.config.tab_spaces)
         } else {
-            chain_indent(context, shape.indent + Indent::new(0, parent_rewrite.len()))
+            chain_indent(context, shape.add_offset(parent_rewrite.len()))
         };
-        (indent, true)
+        (nested_shape, true)
     } else if is_block_expr(&parent, &parent_rewrite) {
         // The parent is a block, so align the rest of the chain with the closing
         // brace.
-        (parent_block_indent, false)
+        (parent_shape, false)
     } else if parent_rewrite.contains('\n') {
-        (chain_indent(context, parent_block_indent.block_indent(context.config)), false)
+        (chain_indent(context, parent_shape.block_indent(context.config.tab_spaces)), false)
     } else {
-        (chain_indent_newline(context, shape.indent + Indent::new(0, parent_rewrite.len())), false)
+        (chain_indent_newline(context, shape.add_offset(parent_rewrite.len())), false)
     };
 
-    let max_width = try_opt!((shape.width + shape.indent.width()).checked_sub(indent.width()));
+    let max_width = try_opt!((shape.width + shape.indent.width() + shape.offset).checked_sub(nested_shape.indent.width() + nested_shape.offset));
+    // The alignement in the shape is only used if we start the item on a new
+    // line, so we don't need to preserve the offset.
+    let child_shape = Shape { width: max_width, ..nested_shape };
+    debug!("child_shape {:?}", child_shape);
     let mut rewrites = try_opt!(subexpr_list.iter()
         .rev()
-        .map(|e| rewrite_chain_subexpr(e, total_span, context, Shape::legacy(max_width, indent)))
+        .map(|e| rewrite_chain_subexpr(e, total_span, context, child_shape))
         .collect::<Option<Vec<_>>>());
 
     // Total of all items excluding the last.
     let almost_total = rewrites[..rewrites.len() - 1]
         .iter()
         .fold(0, |a, b| a + first_line_width(b)) + parent_rewrite.len();
-    let total_width = almost_total + first_line_width(rewrites.last().unwrap());
 
     let veto_single_line = if context.config.take_source_hints && subexpr_list.len() > 1 {
         // Look at the source code. Unless all chain elements start on the same
@@ -152,7 +156,7 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
         false
     };
 
-    let mut fits_single_line = !veto_single_line && total_width <= shape.width;
+    let mut fits_single_line = !veto_single_line && almost_total <= shape.width;
     if fits_single_line {
         let len = rewrites.len();
         let (init, last) = rewrites.split_at_mut(len - 1);
@@ -178,7 +182,7 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
         String::new()
     } else {
         // Use new lines.
-        format!("\n{}", indent.to_string(context.config))
+        format!("\n{}", nested_shape.indent.to_string(context.config))
     };
 
     let first_connector = if extend || subexpr_list.is_empty() {
@@ -211,7 +215,7 @@ pub fn rewrite_try(expr: &ast::Expr,
                    context: &RewriteContext,
                    shape: Shape)
                    -> Option<String> {
-    let sub_expr = try_opt!(expr.rewrite(context, shape.sub_width(try_count)));
+    let sub_expr = try_opt!(expr.rewrite(context, try_opt!(shape.sub_width(try_count))));
     Some(format!("{}{}",
                  sub_expr,
                  iter::repeat("?").take(try_count).collect::<String>()))
@@ -268,29 +272,29 @@ fn make_subexpr_list(expr: &ast::Expr, context: &RewriteContext) -> (ast::Expr, 
     (parent, subexpr_list)
 }
 
-fn chain_base_indent(context: &RewriteContext, offset: Indent) -> Indent {
+fn chain_base_indent(context: &RewriteContext, shape: Shape) -> Shape {
     match context.config.chain_base_indent {
-        BlockIndentStyle::Visual => offset,
-        BlockIndentStyle::Inherit => context.block_indent,
-        BlockIndentStyle::Tabbed => context.block_indent.block_indent(context.config),
+        BlockIndentStyle::Visual => shape,
+        BlockIndentStyle::Inherit => shape.block_indent(0),
+        BlockIndentStyle::Tabbed => shape.block_indent(context.config.tab_spaces),
     }
 }
 
-fn chain_indent(context: &RewriteContext, offset: Indent) -> Indent {
+fn chain_indent(context: &RewriteContext, shape: Shape) -> Shape {
     match context.config.chain_indent {
-        BlockIndentStyle::Visual => offset,
-        BlockIndentStyle::Inherit => context.block_indent,
-        BlockIndentStyle::Tabbed => context.block_indent.block_indent(context.config),
+        BlockIndentStyle::Visual => shape,
+        BlockIndentStyle::Inherit => shape.block_indent(0),
+        BlockIndentStyle::Tabbed => shape.block_indent(context.config.tab_spaces),
     }
 }
 
 // Ignores visual indenting because this function should be called where it is
 // not possible to use visual indentation because we are starting on a newline.
-fn chain_indent_newline(context: &RewriteContext, _offset: Indent) -> Indent {
+fn chain_indent_newline(context: &RewriteContext, shape: Shape) -> Shape {
     match context.config.chain_indent {
-        BlockIndentStyle::Inherit => context.block_indent,
+        BlockIndentStyle::Inherit => shape.block_indent(0),
         BlockIndentStyle::Visual | BlockIndentStyle::Tabbed => {
-            context.block_indent.block_indent(context.config)
+            shape.block_indent(context.config.tab_spaces)
         }
     }
 }
@@ -303,7 +307,7 @@ fn rewrite_method_call_with_overflow(expr_kind: &ast::ExprKind,
                                      shape: Shape)
                                      -> bool {
     if let &ast::ExprKind::MethodCall(ref method_name, ref types, ref expressions) = expr_kind {
-        let budget = match shape.width.checked_sub(almost_total) {
+        let shape = match shape.shrink_left(almost_total) {
             Some(b) => b,
             None => return false,
         };
@@ -312,8 +316,7 @@ fn rewrite_method_call_with_overflow(expr_kind: &ast::ExprKind,
                                                    expressions,
                                                    total_span,
                                                    context,
-                                                   Shape::legacy(budget,
-                                                                 shape.indent + almost_total));
+                                                   shape);
 
         if let Some(ref mut s) = last_rewrite {
             ::std::mem::swap(s, last);
@@ -362,8 +365,7 @@ fn rewrite_chain_subexpr(expr: &ast::Expr,
                          -> Option<String> {
     match expr.node {
         ast::ExprKind::MethodCall(ref method_name, ref types, ref expressions) => {
-            let inner = &RewriteContext { block_indent: shape.indent, ..*context };
-            rewrite_method_call(method_name.node, types, expressions, span, inner, shape)
+            rewrite_method_call(method_name.node, types, expressions, span, context, shape)
         }
         ast::ExprKind::Field(_, ref field) => {
             let s = format!(".{}", field.node);

@@ -66,9 +66,9 @@ pub fn rewrite_path(context: &RewriteContext,
                 result.push_str("::");
             }
 
-            let extra_offset = extra_offset(&result, shape.indent);
+            let extra_offset = extra_offset(&result, shape);
             // 3 = ">::".len()
-            let budget = try_opt!(shape.width.checked_sub(extra_offset + 3));
+            let shape = try_opt!(try_opt!(shape.shrink_left(extra_offset)).sub_width(3));
 
             result = try_opt!(rewrite_path_segments(PathContext::Type,
                                                     result,
@@ -76,8 +76,7 @@ pub fn rewrite_path(context: &RewriteContext,
                                                     span_lo,
                                                     path.span.hi,
                                                     context,
-                                                    Shape::legacy(budget,
-                                                                  shape.indent + extra_offset)));
+                                                    shape));
         }
 
         if context.config.spaces_within_angle_brackets {
@@ -88,15 +87,15 @@ pub fn rewrite_path(context: &RewriteContext,
         span_lo = qself.ty.span.hi + BytePos(1);
     }
 
-    let extra_offset = extra_offset(&result, shape.indent);
-    let budget = try_opt!(shape.width.checked_sub(extra_offset));
+    let extra_offset = extra_offset(&result, shape);
+    let shape = try_opt!(shape.shrink_left(extra_offset));
     rewrite_path_segments(path_context,
                           result,
                           path.segments.iter().skip(skip_count),
                           span_lo,
                           path.span.hi,
                           context,
-                          Shape::legacy(budget, shape.indent + extra_offset))
+                          shape)
 }
 
 fn rewrite_path_segments<'a, I>(path_context: PathContext,
@@ -110,6 +109,7 @@ fn rewrite_path_segments<'a, I>(path_context: PathContext,
     where I: Iterator<Item = &'a ast::PathSegment>
 {
     let mut first = true;
+    let shape = shape.visual_indent(0);
 
     for segment in iter {
         // Indicates a global path, shouldn't be rendered.
@@ -122,15 +122,14 @@ fn rewrite_path_segments<'a, I>(path_context: PathContext,
             buffer.push_str("::");
         }
 
-        let extra_offset = extra_offset(&buffer, shape.indent);
-        let remaining_width = try_opt!(shape.width.checked_sub(extra_offset));
-        let new_offset = shape.indent + extra_offset;
+        let extra_offset = extra_offset(&buffer, shape);
+        let new_shape = try_opt!(shape.shrink_left(extra_offset));
         let segment_string = try_opt!(rewrite_segment(path_context,
                                                       segment,
                                                       &mut span_lo,
                                                       span_hi,
                                                       context,
-                                                      Shape::legacy(remaining_width, new_offset)));
+                                                      new_shape));
 
         buffer.push_str(&segment_string);
     }
@@ -190,8 +189,7 @@ fn rewrite_segment(path_context: PathContext,
                    shape: Shape)
                    -> Option<String> {
     let ident_len = segment.identifier.to_string().len();
-    let width = try_opt!(shape.width.checked_sub(ident_len));
-    let offset = shape.indent + ident_len;
+    let shape = try_opt!(shape.shrink_left(ident_len));
 
     let params = if let Some(ref params) = segment.parameters {
         match **params {
@@ -216,24 +214,18 @@ fn rewrite_segment(path_context: PathContext,
                 // 1 for <
                 let extra_offset = 1 + separator.len();
                 // 1 for >
-                let list_width = try_opt!(width.checked_sub(extra_offset + 1));
+                // TODO bad visual indent
+                let list_shape = try_opt!(try_opt!(shape.shrink_left(extra_offset)).sub_width(1)).visual_indent(0);
 
                 let items = itemize_list(context.codemap,
                                          param_list.into_iter(),
                                          ">",
                                          |param| param.get_span().lo,
                                          |param| param.get_span().hi,
-                                         |seg| {
-                                             seg.rewrite(context,
-                                                         Shape::legacy(list_width,
-                                                                       offset + extra_offset))
-                                         },
+                                         |seg| seg.rewrite(context, list_shape),
                                          list_lo,
                                          span_hi);
-                let list_str = try_opt!(format_item_list(items,
-                                                         Shape::legacy(list_width,
-                                                                       offset + extra_offset),
-                                                         context.config));
+                let list_str = try_opt!(format_item_list(items, list_shape, context.config));
 
                 // Update position of last bracket.
                 *span_lo = next_span_lo;
@@ -254,7 +246,7 @@ fn rewrite_segment(path_context: PathContext,
                                               false,
                                               data.span,
                                               context,
-                                              Shape::legacy(width, offset)))
+                                              shape))
             }
             _ => String::new(),
         }
