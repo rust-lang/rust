@@ -274,5 +274,29 @@ error: casting i32 to usize may lose the sign of the value
 63 |     1i32 as usize;
    |     ^^^^^^^^^^^^^
 
+warning: casting to the same type is unnecessary (`i32` -> `i32`)
+  --> $DIR/cast.rs:66:5
+   |
+66 |     1i32 as i32;
+   |     ^^^^^^^^^^^
+   |
+   = note: #[warn(unnecessary_cast)] on by default
+
+warning: casting to the same type is unnecessary (`f32` -> `f32`)
+  --> $DIR/cast.rs:67:5
+   |
+67 |     1f32 as f32;
+   |     ^^^^^^^^^^^
+   |
+   = note: #[warn(unnecessary_cast)] on by default
+
+warning: casting to the same type is unnecessary (`bool` -> `bool`)
+  --> $DIR/cast.rs:68:5
+   |
+68 |     false as bool;
+   |     ^^^^^^^^^^^^^
+   |
+   = note: #[warn(unnecessary_cast)] on by default
+
 error: aborting due to 42 previous errors
 

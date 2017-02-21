@@ -497,6 +497,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         types::LINKEDLIST,
         types::TYPE_COMPLEXITY,
         types::UNIT_CMP,
+        types::UNNECESSARY_CAST,
         unicode::ZERO_WIDTH_SPACE,
         unsafe_removed_from_name::UNSAFE_REMOVED_FROM_NAME,
         unused_io_amount::UNUSED_IO_AMOUNT,

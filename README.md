@@ -351,6 +351,7 @@ name                                                                            
 [type_complexity](https://github.com/Manishearth/rust-clippy/wiki#type_complexity)                                     | warn    | usage of very complex types that might be better factored into `type` definitions
 [unicode_not_nfc](https://github.com/Manishearth/rust-clippy/wiki#unicode_not_nfc)                                     | allow   | using a unicode literal not in NFC normal form (see [unicode tr15](http://www.unicode.org/reports/tr15/) for further information)
 [unit_cmp](https://github.com/Manishearth/rust-clippy/wiki#unit_cmp)                                                   | warn    | comparing unit values
+[unnecessary_cast](https://github.com/Manishearth/rust-clippy/wiki#unnecessary_cast)                                   | warn    | cast to the same type, e.g `x as i32` where `x: i32`
 [unnecessary_mut_passed](https://github.com/Manishearth/rust-clippy/wiki#unnecessary_mut_passed)                       | warn    | an argument passed as a mutable reference although the callee only demands an immutable reference
 [unnecessary_operation](https://github.com/Manishearth/rust-clippy/wiki#unnecessary_operation)                         | warn    | outer expressions with no effect
 [unneeded_field_pattern](https://github.com/Manishearth/rust-clippy/wiki#unneeded_field_pattern)                       | warn    | struct fields bound to a wildcard instead of using `..`

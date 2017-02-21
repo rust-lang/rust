@@ -447,6 +447,7 @@ All notable changes to this project will be documented in this file.
 [`type_complexity`]: https://github.com/Manishearth/rust-clippy/wiki#type_complexity
 [`unicode_not_nfc`]: https://github.com/Manishearth/rust-clippy/wiki#unicode_not_nfc
 [`unit_cmp`]: https://github.com/Manishearth/rust-clippy/wiki#unit_cmp
+[`unnecessary_cast`]: https://github.com/Manishearth/rust-clippy/wiki#unnecessary_cast
 [`unnecessary_mut_passed`]: https://github.com/Manishearth/rust-clippy/wiki#unnecessary_mut_passed
 [`unnecessary_operation`]: https://github.com/Manishearth/rust-clippy/wiki#unnecessary_operation
 [`unneeded_field_pattern`]: https://github.com/Manishearth/rust-clippy/wiki#unneeded_field_pattern

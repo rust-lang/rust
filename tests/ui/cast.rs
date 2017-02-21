@@ -61,4 +61,17 @@ fn main() {
     1u32 as usize; // Should not trigger any lint
     1i32 as isize; // Neither should this
     1i32 as usize;
+
+    // Test cast_unnecessary
+    1i32 as i32;
+    1f32 as f32;
+    false as bool;
+    &1i32 as &i32;
+
+    // Should not trigger
+    1i32 as i64;
+    let v = vec!(1);
+    &v as &[i32];
+    1.0 as f64;
+    1 as u64;
 }
