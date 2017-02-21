@@ -46,7 +46,7 @@ use hir::map::definitions::DefPathData;
 use hir::def_id::{DefIndex, DefId};
 use hir::def::{Def, PathResolution};
 use session::Session;
-use util::nodemap::{DefIdMap, NodeMap, FxHashMap};
+use util::nodemap::{DefIdMap, NodeMap};
 
 use std::collections::BTreeMap;
 use std::iter;
@@ -78,7 +78,7 @@ pub struct LoweringContext<'a> {
 
     trait_items: BTreeMap<hir::TraitItemId, hir::TraitItem>,
     impl_items: BTreeMap<hir::ImplItemId, hir::ImplItem>,
-    bodies: FxHashMap<hir::BodyId, hir::Body>,
+    bodies: BTreeMap<hir::BodyId, hir::Body>,
 
     trait_impls: BTreeMap<DefId, Vec<NodeId>>,
     trait_default_impl: BTreeMap<DefId, NodeId>,
@@ -118,7 +118,7 @@ pub fn lower_crate(sess: &Session,
         items: BTreeMap::new(),
         trait_items: BTreeMap::new(),
         impl_items: BTreeMap::new(),
-        bodies: FxHashMap(),
+        bodies: BTreeMap::new(),
         trait_impls: BTreeMap::new(),
         trait_default_impl: BTreeMap::new(),
         loop_scopes: Vec::new(),
