@@ -994,9 +994,16 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
                 } else {
                     let mut path =
                         PathBuf::from(self.cx.parse_sess.codemap().span_to_filename(inner));
-                    let directory_ownership = match path.file_name().unwrap().to_str() {
-                        Some("mod.rs") => DirectoryOwnership::Owned,
-                        _ => DirectoryOwnership::UnownedViaMod(false),
+                    let directory_ownership = {
+                        let file_name = path.file_name().unwrap();
+                        match file_name.to_str() {
+                            Some("mod.rs") => DirectoryOwnership::Owned,
+                            Some(s) if s.ends_with(".rs") && s.len() > 3 => {
+                                let directory_name = s.rsplitn(2, '.').skip(1).next().unwrap();
+                                DirectoryOwnership::OwnedUnder(Ident::from_str(directory_name))
+                            }
+                            _ => DirectoryOwnership::UnownedViaMod(true),
+                        }
                     };
                     path.pop();
                     module.directory = path;

@@ -10,7 +10,7 @@
 
 //! The main parser interface
 
-use ast::{self, CrateConfig};
+use ast::{self, CrateConfig, Ident};
 use codemap::CodeMap;
 use syntax_pos::{self, Span, FileMap};
 use errors::{Handler, ColorConfig, DiagnosticBuilder};
@@ -87,6 +87,7 @@ pub enum DirectoryOwnership {
     Owned,
     UnownedViaBlock,
     UnownedViaMod(bool /* legacy warnings? */),
+    OwnedUnder(Ident),
 }
 
 // a bunch of utility functions of the form parse_<thing>_from_<source>
