@@ -51,7 +51,7 @@ pub struct Config {
     pub uint_type: UintTy,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Hash)]
 pub enum Sanitizer {
     Address,
     Leak,
@@ -970,7 +970,7 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "encode MIR of all functions into the crate metadata"),
     osx_rpath_install_name: bool = (false, parse_bool, [TRACKED],
           "pass `-install_name @rpath/...` to the OSX linker"),
-    sanitizer: Option<Sanitizer> = (None, parse_sanitizer, [UNTRACKED],
+    sanitizer: Option<Sanitizer> = (None, parse_sanitizer, [TRACKED],
                                    "Use a sanitizer"),
 }
 
@@ -1728,7 +1728,7 @@ mod dep_tracking {
     use std::path::PathBuf;
     use std::collections::hash_map::DefaultHasher;
     use super::{Passes, CrateType, OptLevel, DebugInfoLevel,
-                OutputTypes, Externs, ErrorOutputType};
+                OutputTypes, Externs, ErrorOutputType, Sanitizer};
     use syntax::feature_gate::UnstableFeatures;
     use rustc_back::PanicStrategy;
 
@@ -1781,6 +1781,8 @@ mod dep_tracking {
     impl_dep_tracking_hash_via_hash!(Externs);
     impl_dep_tracking_hash_via_hash!(OutputTypes);
     impl_dep_tracking_hash_via_hash!(cstore::NativeLibraryKind);
+    impl_dep_tracking_hash_via_hash!(Sanitizer);
+    impl_dep_tracking_hash_via_hash!(Option<Sanitizer>);
 
     impl_dep_tracking_hash_for_sortable_vec_of!(String);
     impl_dep_tracking_hash_for_sortable_vec_of!(CrateType);
