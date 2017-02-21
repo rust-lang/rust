@@ -412,6 +412,12 @@ pub struct Crate {
     pub bodies: BTreeMap<BodyId, Body>,
     pub trait_impls: BTreeMap<DefId, Vec<NodeId>>,
     pub trait_default_impl: BTreeMap<DefId, NodeId>,
+
+    /// A list of the body ids written out in the order in which they
+    /// appear in the crate. If you're going to process all the bodies
+    /// in the crate, you should iterate over this list rather than the keys
+    /// of bodies.
+    pub body_ids: Vec<BodyId>,
 }
 
 impl Crate {

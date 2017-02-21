@@ -11,7 +11,6 @@
 use hir;
 use hir::def_id::DefId;
 use hir::itemlikevisit::ItemLikeVisitor;
-use hir::intravisit::{self, NestedVisitorMap, Visitor};
 use ty::TyCtxt;
 
 use super::dep_node::DepNode;
@@ -79,30 +78,9 @@ pub fn visit_all_item_likes_in_krate<'a, 'tcx, V, F>(tcx: TyCtxt<'a, 'tcx, 'tcx>
 pub fn visit_all_bodies_in_krate<'a, 'tcx, C>(tcx: TyCtxt<'a, 'tcx, 'tcx>, callback: C)
     where C: Fn(/* body_owner */ DefId, /* body id */ hir::BodyId),
 {
-    // NB: we use a visitor here rather than walking the keys of the
-    // hashmap so as to ensure we visit the bodies "in order".
-
     let krate = tcx.hir.krate();
-    intravisit::walk_crate(&mut V { tcx, callback }, krate);
-
-    struct V<'a, 'tcx: 'a, C> {
-        tcx: TyCtxt<'a, 'tcx, 'tcx>,
-        callback: C
-    }
-
-    impl<'a, 'tcx, C> Visitor<'tcx> for V<'a, 'tcx, C>
-        where C: Fn(/* body_owner */ DefId, /* body id */ hir::BodyId),
-    {
-        fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-            NestedVisitorMap::All(&self.tcx.hir)
-        }
-
-        fn visit_body(&mut self, body: &'tcx hir::Body) {
-            let body_id = body.id();
-            let body_owner_def_id = self.tcx.hir.body_owner_def_id(body_id);
-            (self.callback)(body_owner_def_id, body_id);
-
-            intravisit::walk_body(self, body);
-        }
+    for &body_id in &krate.body_ids {
+        let body_owner_def_id = tcx.hir.body_owner_def_id(body_id);
+        callback(body_owner_def_id, body_id);
     }
 }
