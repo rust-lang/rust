@@ -16,7 +16,7 @@ use utils::sugg;
 
 use utils::{snippet, span_lint, get_parent_expr, match_trait_method, match_type, multispan_sugg, in_external_macro,
             is_refutable, span_help_and_lint, is_integer_literal, get_enclosing_block, span_lint_and_then, higher,
-            last_path_segment};
+            last_path_segment, span_lint_and_sugg};
 use utils::paths;
 
 /// **What it does:** Checks for looping over the range of `0..len` of some
@@ -644,48 +644,55 @@ fn check_for_loop_reverse_range(cx: &LateContext, arg: &Expr, expr: &Expr) {
     }
 }
 
+fn lint_iter_method(cx: &LateContext, args: &[Expr], arg: &Expr, method_name: &str) {
+    let object = snippet(cx, args[0].span, "_");
+    let muta = if method_name == "iter_mut" {
+        "mut "
+    } else {
+        ""
+    };
+    span_lint_and_sugg(cx,
+                       EXPLICIT_ITER_LOOP,
+                       arg.span,
+                       "it is more idiomatic to loop over references to containers instead of using explicit \
+                        iteration methods",
+                       "to write this more concisely, try",
+                       format!("&{}{}", muta, object))
+}
+
 fn check_for_loop_arg(cx: &LateContext, pat: &Pat, arg: &Expr, expr: &Expr) {
     let mut next_loop_linted = false; // whether or not ITER_NEXT_LOOP lint was used
     if let ExprMethodCall(ref method, _, ref args) = arg.node {
         // just the receiver, no arguments
         if args.len() == 1 {
-            let method_name = method.node;
+            let method_name = &*method.node.as_str();
             // check for looping over x.iter() or x.iter_mut(), could use &x or &mut x
-            if &*method_name.as_str() == "iter" || &*method_name.as_str() == "iter_mut" {
+            if method_name == "iter" || method_name == "iter_mut" {
                 if is_ref_iterable_type(cx, &args[0]) {
-                    let object = snippet(cx, args[0].span, "_");
-                    let suggestion = format!("&{}{}",
-                                             if &*method_name.as_str() == "iter_mut" {
-                                                 "mut "
-                                             } else {
-                                                 ""
-                                             },
-                                             object);
-                    span_lint_and_then(cx,
-                                       EXPLICIT_ITER_LOOP,
-                                       arg.span,
-                                       &format!("it is more idiomatic to loop over `{}` instead of `{}.{}()`",
-                                                suggestion,
-                                                object,
-                                                method_name),
-                                       |db| {
-                        db.span_suggestion(arg.span, "to write this more concisely, try looping over", suggestion);
-                    });
+                    lint_iter_method(cx, args, arg, method_name);
                 }
-            } else if &*method_name.as_str() == "into_iter" && match_trait_method(cx, arg, &paths::INTO_ITERATOR) {
-                let object = snippet(cx, args[0].span, "_");
-                span_lint_and_then(cx,
-                                   EXPLICIT_INTO_ITER_LOOP,
-                                   arg.span,
-                                   &format!("it is more idiomatic to loop over `{}` instead of `{}.{}()`",
-                                            object,
-                                            object,
-                                            method_name),
-                                   |db| {
-                    db.span_suggestion(arg.span, "to write this more concisely, try looping over", object.to_string());
-                });
-
-            } else if &*method_name.as_str() == "next" && match_trait_method(cx, arg, &paths::ITERATOR) {
+            } else if method_name == "into_iter" && match_trait_method(cx, arg, &paths::INTO_ITERATOR) {
+                let method_call = ty::MethodCall::expr(arg.id);
+                let fn_ty = cx.tables
+                    .method_map
+                    .get(&method_call)
+                    .map(|method_callee| method_callee.ty)
+                    .expect("method calls need an entry in the method map");
+                let fn_arg_tys = fn_ty.fn_args();
+                assert_eq!(fn_arg_tys.skip_binder().len(), 1);
+                if fn_arg_tys.skip_binder()[0].is_region_ptr() {
+                    lint_iter_method(cx, args, arg, method_name);
+                } else {
+                    let object = snippet(cx, args[0].span, "_");
+                    span_lint_and_sugg(cx,
+                                       EXPLICIT_INTO_ITER_LOOP,
+                                       arg.span,
+                                       "it is more idiomatic to loop over containers instead of using explicit \
+                                        iteration methods`",
+                                       "to write this more concisely, try",
+                                       object.to_string());
+                }
+            } else if method_name == "next" && match_trait_method(cx, arg, &paths::ITERATOR) {
                 span_lint(cx,
                           ITER_NEXT_LOOP,
                           expr.span,

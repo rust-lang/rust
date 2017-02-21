@@ -302,6 +302,9 @@ fn main() {
 
 
 
+    let array = [1, 2, 3];
+    for _v in array.into_iter() {}
+
     for _v in &vec { } // these are fine
     for _v in &mut vec { } // these are fine
 
