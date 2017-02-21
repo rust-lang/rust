@@ -472,8 +472,15 @@ pub fn load_fat_ptr<'a, 'tcx>(
         b.load(ptr, alignment.to_align())
     };
 
-    // FIXME: emit metadata on `meta`.
-    let meta = b.load(get_meta(b, src), alignment.to_align());
+    let meta = get_meta(b, src);
+    let meta_ty = val_ty(meta);
+    // If the 'meta' field is a pointer, it's a vtable, so use load_nonnull
+    // instead
+    let meta = if meta_ty.element_type().kind() == llvm::TypeKind::Pointer {
+        b.load_nonnull(meta, None)
+    } else {
+        b.load(meta, None)
+    };
 
     (ptr, meta)
 }
