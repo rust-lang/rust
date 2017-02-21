@@ -52,6 +52,48 @@ pub mod dynamic_lib;
 
 use serialize::json::{Json, ToJson};
 
+macro_rules! linker_flavor {
+    ($(($variant:ident, $string:expr),)+) => {
+        #[derive(Clone, Copy, Debug, Eq, Ord, PartialEq, PartialOrd, Hash,
+                 RustcEncodable, RustcDecodable)]
+        pub enum LinkerFlavor {
+            $($variant,)+
+        }
+
+        impl LinkerFlavor {
+            pub const fn one_of() -> &'static str {
+                concat!("one of: ", $($string, " ",)+)
+            }
+
+            pub fn from_str(s: &str) -> Option<Self> {
+                Some(match s {
+                    $($string => LinkerFlavor::$variant,)+
+                    _ => return None,
+                })
+            }
+
+            pub fn desc(&self) -> &str {
+                match *self {
+                    $(LinkerFlavor::$variant => $string,)+
+                }
+            }
+        }
+
+        impl ToJson for LinkerFlavor {
+            fn to_json(&self) -> Json {
+                self.desc().to_json()
+            }
+        }
+    }
+}
+
+linker_flavor! {
+    (Em, "em"),
+    (Gcc, "gcc"),
+    (Ld, "ld"),
+    (Msvc, "msvc"),
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Hash, RustcEncodable, RustcDecodable)]
 pub enum PanicStrategy {
     Unwind,

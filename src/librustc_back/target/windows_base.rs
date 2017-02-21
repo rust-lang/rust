@@ -8,26 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use target::TargetOptions;
+use LinkerFlavor;
+use target::{LinkArgs, TargetOptions};
 use std::default::Default;
 
 pub fn opts() -> TargetOptions {
-    TargetOptions {
-        // FIXME(#13846) this should be enabled for windows
-        function_sections: false,
-        linker: "gcc".to_string(),
-        dynamic_linking: true,
-        executables: true,
-        dll_prefix: "".to_string(),
-        dll_suffix: ".dll".to_string(),
-        exe_suffix: ".exe".to_string(),
-        staticlib_prefix: "".to_string(),
-        staticlib_suffix: ".lib".to_string(),
-        no_default_libraries: true,
-        target_family: Some("windows".to_string()),
-        is_like_windows: true,
-        allows_weak_linkage: false,
-        pre_link_args: vec![
+    let mut pre_link_args = LinkArgs::new();
+    pre_link_args.insert(LinkerFlavor::Gcc, vec![
             // And here, we see obscure linker flags #45. On windows, it has been
             // found to be necessary to have this flag to compile liblibc.
             //
@@ -64,7 +51,34 @@ pub fn opts() -> TargetOptions {
 
             // Do not use the standard system startup files or libraries when linking
             "-nostdlib".to_string(),
-        ],
+        ]);
+
+    let mut late_link_args = LinkArgs::new();
+    late_link_args.insert(LinkerFlavor::Gcc, vec![
+        "-lmingwex".to_string(),
+        "-lmingw32".to_string(),
+        "-lgcc".to_string(), // alas, mingw* libraries above depend on libgcc
+        "-lmsvcrt".to_string(),
+        "-luser32".to_string(),
+        "-lkernel32".to_string(),
+    ]);
+
+    TargetOptions {
+        // FIXME(#13846) this should be enabled for windows
+        function_sections: false,
+        linker: "gcc".to_string(),
+        dynamic_linking: true,
+        executables: true,
+        dll_prefix: "".to_string(),
+        dll_suffix: ".dll".to_string(),
+        exe_suffix: ".exe".to_string(),
+        staticlib_prefix: "".to_string(),
+        staticlib_suffix: ".lib".to_string(),
+        no_default_libraries: true,
+        target_family: Some("windows".to_string()),
+        is_like_windows: true,
+        allows_weak_linkage: false,
+        pre_link_args: pre_link_args,
         pre_link_objects_exe: vec![
             "crt2.o".to_string(),    // mingw C runtime initialization for executables
             "rsbegin.o".to_string(), // Rust compiler runtime initialization, see rsbegin.rs
@@ -73,14 +87,7 @@ pub fn opts() -> TargetOptions {
             "dllcrt2.o".to_string(), // mingw C runtime initialization for dlls
             "rsbegin.o".to_string(),
         ],
-        late_link_args: vec![
-            "-lmingwex".to_string(),
-            "-lmingw32".to_string(),
-            "-lgcc".to_string(), // alas, mingw* libraries above depend on libgcc
-            "-lmsvcrt".to_string(),
-            "-luser32".to_string(),
-            "-lkernel32".to_string(),
-        ],
+        late_link_args: late_link_args,
         post_link_objects: vec![
             "rsend.o".to_string()
         ],

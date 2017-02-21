@@ -36,7 +36,7 @@ use syntax::{ast, codemap};
 use syntax::feature_gate::AttributeType;
 use syntax_pos::{Span, MultiSpan};
 
-use rustc_back::PanicStrategy;
+use rustc_back::{LinkerFlavor, PanicStrategy};
 use rustc_back::target::Target;
 use rustc_data_structures::flock;
 use llvm;
@@ -362,6 +362,9 @@ impl Session {
     /// using '-C panic', use that, otherwise use the panic strategy defined by the target.
     pub fn panic_strategy(&self) -> PanicStrategy {
         self.opts.cg.panic.unwrap_or(self.target.target.options.panic_strategy)
+    }
+    pub fn linker_flavor(&self) -> LinkerFlavor {
+        self.opts.debugging_opts.linker_flavor.unwrap_or(self.target.target.linker_flavor)
     }
     pub fn no_landing_pads(&self) -> bool {
         self.opts.debugging_opts.no_landing_pads || self.panic_strategy() == PanicStrategy::Abort

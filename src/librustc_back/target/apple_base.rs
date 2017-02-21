@@ -10,7 +10,7 @@
 
 use std::env;
 
-use target::TargetOptions;
+use target::{LinkArgs, TargetOptions};
 
 pub fn opts() -> TargetOptions {
     // ELF TLS is only available in macOS 10.7+. If you try to compile for 10.6
@@ -43,7 +43,7 @@ pub fn opts() -> TargetOptions {
         dll_prefix: "lib".to_string(),
         dll_suffix: ".dylib".to_string(),
         archive_format: "bsd".to_string(),
-        pre_link_args: Vec::new(),
+        pre_link_args: LinkArgs::new(),
         exe_allocation_crate: super::maybe_jemalloc(),
         has_elf_tls: version >= (10, 7),
         .. Default::default()

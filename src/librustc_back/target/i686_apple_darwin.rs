@@ -8,13 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use LinkerFlavor;
 use target::{Target, TargetResult};
 
 pub fn target() -> TargetResult {
     let mut base = super::apple_base::opts();
     base.cpu = "yonah".to_string();
     base.max_atomic_width = Some(64);
-    base.pre_link_args.push("-m32".to_string());
+    base.pre_link_args.insert(LinkerFlavor::Gcc, vec!["-m32".to_string()]);
 
     Ok(Target {
         llvm_target: "i686-apple-darwin".to_string(),
@@ -25,6 +26,7 @@ pub fn target() -> TargetResult {
         target_os: "macos".to_string(),
         target_env: "".to_string(),
         target_vendor: "apple".to_string(),
+        linker_flavor: LinkerFlavor::Gcc,
         options: base,
     })
 }
