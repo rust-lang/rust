@@ -201,6 +201,74 @@ where appropriate is ongoing. Try using an unquoted name instead:
 pub fn something() {}
 ```
 "##,
+
+E0583: r##"
+A file wasn't found for an out-of-line module.
+
+Erroneous code example:
+
+```compile_fail,E0583
+mod file_that_doesnt_exist; // error: file not found for module
+
+fn main() {}
+```
+
+Please be sure that a file corresponding to the module exists. If you
+want to use a module named `file_that_doesnt_exist`, you need to have a file
+named `file_that_doesnt_exist.rs` or `file_that_doesnt_exist/mod.rs` in the
+same directory.
+"##,
+
+E0585: r##"
+A documentation comment that doesn't document anything was found.
+
+Erroneous code example:
+
+```compile_fail,E0585
+fn main() {
+    // The following doc comment will fail:
+    /// This is a useless doc comment!
+}
+```
+
+Documentation comments need to be followed by items, including functions,
+types, modules, etc. Examples:
+
+```
+/// I'm documenting the following struct:
+struct Foo;
+
+/// I'm documenting the following function:
+fn foo() {}
+```
+"##,
+
+E0586: r##"
+An inclusive range was used with no end.
+
+Erroneous code example:
+
+```compile_fail,E0586
+let tmp = vec![0, 1, 2, 3, 4, 4, 3, 3, 2, 1];
+let x = &tmp[1...]; // error: inclusive range was used with no end
+```
+
+An inclusive range needs an end in order to *include* it. If you just need a
+start and no end, use a non-inclusive range (with `..`):
+
+```
+let tmp = vec![0, 1, 2, 3, 4, 4, 3, 3, 2, 1];
+let x = &tmp[1..]; // ok!
+```
+
+Or put an end to your inclusive range:
+
+```
+let tmp = vec![0, 1, 2, 3, 4, 4, 3, 3, 2, 1];
+let x = &tmp[1...3]; // ok!
+```
+"##,
+
 }
 
 register_diagnostics! {
@@ -224,4 +292,5 @@ register_diagnostics! {
     E0555, // malformed feature attribute, expected #![feature(...)]
     E0556, // malformed feature, expected just one word
     E0557, // feature has been removed
+    E0584, // file for module `..` found at both .. and ..
 }
