@@ -2,8 +2,10 @@
 
 Tokens are primitive productions in the grammar defined by regular
 (non-recursive) languages. "Simple" tokens are given in [string table
-production](#string-table-productions) form, and occur in the rest of the
+production] form, and occur in the rest of the
 grammar as double-quoted strings. Other tokens have exact rules given.
+
+[string table production]: string-table-productions.html
 
 ## Literals
 
@@ -254,8 +256,10 @@ Examples of integer literals of various forms:
 ```
 
 Note that the Rust syntax considers `-1i8` as an application of the [unary minus
-operator](#unary-operator-expressions) to an integer literal `1i8`, rather than
+operator] to an integer literal `1i8`, rather than
 a single integer literal.
+
+[unary minus operator]: expressions.html#unary-operator-expressions
 
 #### Floating-point literals
 
@@ -298,7 +302,9 @@ syntax with a floating point literal ending in a period. `2.f64` would attempt
 to call a method named `f64` on `2`.
 
 The representation semantics of floating-point numbers are described in
-["Machine Types"](#machine-types).
+["Machine Types"].
+
+["Machine Types"]: types.html#machine-types
 
 ### Boolean literals
 
@@ -306,11 +312,15 @@ The two values of the boolean type are written `true` and `false`.
 
 ## Symbols
 
-Symbols are a general class of printable [tokens](#tokens) that play structural
+Symbols are a general class of printable [tokens] that play structural
 roles in a variety of grammar productions. They are a
 set of remaining miscellaneous printable tokens that do not
-otherwise appear as [unary operators](#unary-operator-expressions), [binary
-operators](#binary-operator-expressions), or [keywords][keywords].
+otherwise appear as [unary operators], [binary
+operators], or [keywords].
 They are catalogued in [the Symbols section][symbols] of the Grammar document.
 
-[symbols]: grammar.html#symbols
+[unary operators]: expressions.html#unary-operator-expressions
+[binary operators]: expressions.html#binary-operator-expressions
+[tokens]: #tokens
+[symbols]: ../grammar.html#symbols
+[keywords]: ../grammar.html#keywords
