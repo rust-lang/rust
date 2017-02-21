@@ -4,6 +4,8 @@
 thing they can be used for is to implement derive on your own types. See
 [the book][procedural macros] for a tutorial.
 
+[procedural macros]: ../book/procedural-macros.html
+
 Procedural macros involve a few different parts of the language and its
 standard libraries. First is the `proc_macro` crate, included with Rust,
 that defines an interface for building a procedural macro. The
