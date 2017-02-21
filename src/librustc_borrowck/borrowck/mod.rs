@@ -801,11 +801,13 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             }
             mc::AliasableStatic |
             mc::AliasableStaticMut => {
-                let mut err = struct_span_err!(
-                    self.tcx.sess, span, E0388,
-                    "{} in a static location", prefix);
-                err.span_label(span, &format!("cannot write data in a static definition"));
-                err
+                // This path cannot occur. It happens when we have an
+                // `&mut` or assignment to a static. But in the case
+                // of `static X`, we get a mutability violation first,
+                // and never get here. In the case of `static mut X`,
+                // that is unsafe and hence the aliasability error is
+                // ignored.
+                span_bug!(span, "aliasability violation for static `{}`", prefix)
             }
             mc::AliasableBorrowed => {
                 let mut e = struct_span_err!(
