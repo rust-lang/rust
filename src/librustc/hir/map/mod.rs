@@ -168,43 +168,48 @@ impl<'hir> MapEntry<'hir> {
         })
     }
 
-    fn is_body_owner(self, node_id: NodeId) -> bool {
+    fn associated_body(self) -> Option<BodyId> {
         match self {
             EntryItem(_, item) => {
                 match item.node {
                     ItemConst(_, body) |
                     ItemStatic(.., body) |
-                    ItemFn(_, _, _, _, _, body) => body.node_id == node_id,
-                    _ => false
+                    ItemFn(_, _, _, _, _, body) => Some(body),
+                    _ => None,
                 }
             }
 
             EntryTraitItem(_, item) => {
                 match item.node {
                     TraitItemKind::Const(_, Some(body)) |
-                    TraitItemKind::Method(_, TraitMethod::Provided(body)) => {
-                        body.node_id == node_id
-                    }
-                    _ => false
+                    TraitItemKind::Method(_, TraitMethod::Provided(body)) => Some(body),
+                    _ => None
                 }
             }
 
             EntryImplItem(_, item) => {
                 match item.node {
                     ImplItemKind::Const(_, body) |
-                    ImplItemKind::Method(_, body) => body.node_id == node_id,
-                    _ => false
+                    ImplItemKind::Method(_, body) => Some(body),
+                    _ => None,
                 }
             }
 
             EntryExpr(_, expr) => {
                 match expr.node {
-                    ExprClosure(.., body, _) => body.node_id == node_id,
-                    _ => false
+                    ExprClosure(.., body, _) => Some(body),
+                    _ => None,
                 }
             }
 
-            _ => false
+            _ => None
+        }
+    }
+
+    fn is_body_owner(self, node_id: NodeId) -> bool {
+        match self.associated_body() {
+            Some(b) => b.node_id == node_id,
+            None => false,
         }
     }
 }
