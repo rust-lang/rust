@@ -21,7 +21,6 @@ is the first. After this:
 * [Tutorial: Guessing Game][gg] - Learn some Rust with a small project.
 * [Syntax and Semantics][ss] - Each bit of Rust, broken down into small chunks.
 * [Effective Rust][er] - Higher-level concepts for writing excellent Rust code.
-* [Nightly Rust][nr] - Cutting-edge features that aren’t in stable builds yet.
 * [Glossary][gl] - A reference of terms used in the book.
 * [Bibliography][bi] - Background on Rust's influences, papers about Rust.
 
@@ -29,7 +28,6 @@ is the first. After this:
 [gg]: guessing-game.html
 [er]: effective-rust.html
 [ss]: syntax-and-semantics.html
-[nr]: nightly-rust.html
 [gl]: glossary.html
 [bi]: bibliography.html
 

@@ -317,7 +317,7 @@ For any lint check `C`:
 
 The lint checks supported by the compiler can be found via `rustc -W help`,
 along with their default settings.  [Compiler
-plugins](../book/compiler-plugins.html#lint-plugins) can provide additional
+plugins](../unstable-book/plugin.html#lint-plugins) can provide additional
 lint checks.
 
 ```{.ignore}
