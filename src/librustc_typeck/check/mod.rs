@@ -4156,17 +4156,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         };
 
         if self.diverges.get().always() {
-            if let ExpectHasType(ety) = expected {
-                // Avoid forcing a type (only `!` for now) in unreachable code.
-                // FIXME(aburka) do we need this special case? and should it be is_uninhabited?
-                if !ety.is_never() {
-                    if let Some(ref e) = blk.expr {
-                        // Coerce the tail expression to the right type.
-                        self.demand_coerce(e, ty, ety);
-                    }
-                }
-            }
-
             ty = self.next_diverging_ty_var(TypeVariableOrigin::DivergingBlockExpr(blk.span));
         } else if let ExpectHasType(ety) = expected {
             if let Some(ref e) = blk.expr {

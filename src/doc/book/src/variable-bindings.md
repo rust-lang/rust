@@ -181,7 +181,7 @@ print.
 # Scope and shadowing
 
 Let’s get back to bindings. Variable bindings have a scope - they are
-constrained to live in a block they were defined in. A block is a collection
+constrained to live in the block they were defined in. A block is a collection
 of statements enclosed by `{` and `}`. Function definitions are also blocks!
 In the following example we define two variable bindings, `x` and `y`, which
 live in different blocks. `x` can be accessed from inside the `fn main() {}`

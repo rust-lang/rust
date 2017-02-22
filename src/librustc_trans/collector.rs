@@ -1090,12 +1090,15 @@ fn create_trans_items_for_vtable_methods<'a, 'tcx>(scx: &SharedCrateContext<'a, 
                                                    trait_ty: ty::Ty<'tcx>,
                                                    impl_ty: ty::Ty<'tcx>,
                                                    output: &mut Vec<TransItem<'tcx>>) {
-    assert!(!trait_ty.needs_subst() && !impl_ty.needs_subst());
+    assert!(!trait_ty.needs_subst() && !trait_ty.has_escaping_regions() &&
+            !impl_ty.needs_subst() && !impl_ty.has_escaping_regions());
 
     if let ty::TyDynamic(ref trait_ty, ..) = trait_ty.sty {
         if let Some(principal) = trait_ty.principal() {
             let poly_trait_ref = principal.with_self_ty(scx.tcx(), impl_ty);
             let param_substs = scx.tcx().intern_substs(&[]);
+
+            assert!(!poly_trait_ref.has_escaping_regions());
 
             // Walk all methods of the trait, including those of its supertraits
             let methods = traits::get_vtable_methods(scx.tcx(), poly_trait_ref);

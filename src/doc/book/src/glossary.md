@@ -56,7 +56,7 @@ They can be used to manage control flow in a modular fashion.
 
 A type without a statically known size or alignment. ([more info][link])
 
-[link]: ../nomicon/exotic-sizes.html#Dynamically%20Sized%20Types%20(DSTs)
+[link]: ../nomicon/exotic-sizes.html#dynamically-sized-types-dsts
 
 ### Expression
 
@@ -76,8 +76,8 @@ In an expression-oriented language, (nearly) every statement is an expression
 and therefore returns a value. Consequently, these expression statements can
 themselves form part of larger expressions.
 
-[expression]: glossary.html#Expression
-[statement]: glossary.html#Statement
+[expression]: glossary.html#expression
+[statement]: glossary.html#statement
 
 ### Statement
 

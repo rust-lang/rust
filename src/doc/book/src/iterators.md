@@ -135,10 +135,10 @@ Here's the version that does compile:
 let one_to_one_hundred = (1..101).collect::<Vec<i32>>();
 ```
 
-If you remember, the `::<>` syntax allows us to give a type hint,
-and so we tell it that we want a vector of integers. You don't always
-need to use the whole type, though. Using a `_` will let you provide
-a partial hint:
+If you remember, the [`::<>` syntax](generics.html#resolving-ambiguities)
+allows us to give a type hint that tells the compiler we want a vector of
+integers. You don't always need to use the whole type, though. Using a `_`
+will let you provide a partial hint:
 
 ```rust
 let one_to_one_hundred = (1..101).collect::<Vec<_>>();

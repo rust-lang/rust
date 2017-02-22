@@ -55,7 +55,7 @@ For sharing references across threads, Rust provides a wrapper type called
 `Arc<T>`. `Arc<T>` implements `Send` and `Sync` if and only if `T` implements
 both `Send` and `Sync`. For example, an object of type `Arc<RefCell<U>>` cannot
 be transferred across threads because
-[`RefCell`](choosing-your-guarantees.html#RefCell%3CT%3E) does not implement
+[`RefCell`](choosing-your-guarantees.html#refcellt) does not implement
 `Sync`, consequently `Arc<RefCell<U>>` would not implement `Send`.
 
 These two traits allow you to use the type system to make strong guarantees
@@ -126,7 +126,7 @@ closure only captures a _reference to `x`_. This is a problem, because the
 thread may outlive the scope of `x`, leading to a dangling pointer.
 
 To fix this, we use a `move` closure as mentioned in the error message. `move`
-closures are explained in depth [here](closures.html#move%20closures); basically
+closures are explained in depth [here](closures.html#move-closures); basically
 they move variables from their environment into themselves.
 
 ```rust

@@ -474,6 +474,17 @@ impl MacResult for DummyResult {
 pub type BuiltinDeriveFn =
     for<'cx> fn(&'cx mut ExtCtxt, Span, &MetaItem, &Annotatable, &mut FnMut(Annotatable));
 
+/// Represents different kinds of macro invocations that can be resolved.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum MacroKind {
+    /// A bang macro - foo!()
+    Bang,
+    /// An attribute macro - #[foo]
+    Attr,
+    /// A derive attribute macro - #[derive(Foo)]
+    Derive,
+}
+
 /// An enum representing the different kinds of syntax extensions.
 pub enum SyntaxExtension {
     /// A syntax extension that is attached to an item and creates new items
@@ -520,6 +531,25 @@ pub enum SyntaxExtension {
     BuiltinDerive(BuiltinDeriveFn),
 }
 
+impl SyntaxExtension {
+    /// Return which kind of macro calls this syntax extension.
+    pub fn kind(&self) -> MacroKind {
+        match *self {
+            SyntaxExtension::NormalTT(..) |
+            SyntaxExtension::IdentTT(..) |
+            SyntaxExtension::ProcMacro(..) =>
+                MacroKind::Bang,
+            SyntaxExtension::MultiDecorator(..) |
+            SyntaxExtension::MultiModifier(..) |
+            SyntaxExtension::AttrProcMacro(..) =>
+                MacroKind::Attr,
+            SyntaxExtension::ProcMacroDerive(..) |
+            SyntaxExtension::BuiltinDerive(..) =>
+                MacroKind::Derive,
+        }
+    }
+}
+
 pub type NamedSyntaxExtension = (Name, SyntaxExtension);
 
 pub trait Resolver {
@@ -535,10 +565,8 @@ pub trait Resolver {
     fn resolve_imports(&mut self);
     // Resolves attribute and derive legacy macros from `#![plugin(..)]`.
     fn find_legacy_attr_invoc(&mut self, attrs: &mut Vec<Attribute>) -> Option<Attribute>;
-    fn resolve_macro(&mut self, scope: Mark, path: &ast::Path, force: bool)
-                     -> Result<Rc<SyntaxExtension>, Determinacy>;
-    fn resolve_derive_macro(&mut self, scope: Mark, path: &ast::Path, force: bool)
-                            -> Result<Rc<SyntaxExtension>, Determinacy>;
+    fn resolve_macro(&mut self, scope: Mark, path: &ast::Path, kind: MacroKind,
+                     force: bool) -> Result<Rc<SyntaxExtension>, Determinacy>;
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -561,12 +589,8 @@ impl Resolver for DummyResolver {
 
     fn resolve_imports(&mut self) {}
     fn find_legacy_attr_invoc(&mut self, _attrs: &mut Vec<Attribute>) -> Option<Attribute> { None }
-    fn resolve_macro(&mut self, _scope: Mark, _path: &ast::Path, _force: bool)
-                     -> Result<Rc<SyntaxExtension>, Determinacy> {
-        Err(Determinacy::Determined)
-    }
-    fn resolve_derive_macro(&mut self, _scope: Mark, _path: &ast::Path, _force: bool)
-                            -> Result<Rc<SyntaxExtension>, Determinacy> {
+    fn resolve_macro(&mut self, _scope: Mark, _path: &ast::Path, _kind: MacroKind,
+                     _force: bool) -> Result<Rc<SyntaxExtension>, Determinacy> {
         Err(Determinacy::Determined)
     }
 }

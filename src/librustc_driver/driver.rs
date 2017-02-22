@@ -726,6 +726,8 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
         });
     }
 
+    after_expand(&krate)?;
+
     if sess.opts.debugging_opts.input_stats {
         println!("Post-expansion node count: {}", count_nodes(&krate));
     }
@@ -751,13 +753,13 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
          || ast_validation::check_crate(sess, &krate));
 
     time(time_passes, "name resolution", || -> CompileResult {
-        // Since import resolution will eventually happen in expansion,
-        // don't perform `after_expand` until after import resolution.
-        after_expand(&krate)?;
-
         resolver.resolve_crate(&krate);
         Ok(())
     })?;
+
+    if resolver.found_unresolved_macro {
+        sess.parse_sess.span_diagnostic.abort_if_errors();
+    }
 
     // Needs to go *after* expansion to be able to check the results of macro expansion.
     time(time_passes, "complete gated feature checking", || {

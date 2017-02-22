@@ -628,6 +628,11 @@ pub fn get_vtable_methods<'a, 'tcx>(
                                           |_, _| tcx.mk_region(ty::ReErased),
                                           |def, _| trait_ref.substs().type_for_def(def));
 
+            // the trait type may have higher-ranked lifetimes in it;
+            // so erase them if they appear, so that we get the type
+            // at some particular call site
+            let substs = tcx.erase_late_bound_regions_and_normalize(&ty::Binder(substs));
+
             // It's possible that the method relies on where clauses that
             // do not hold for this particular set of type parameters.
             // Note that this method could then never be called, so we

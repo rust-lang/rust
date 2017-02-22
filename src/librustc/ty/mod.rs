@@ -34,7 +34,6 @@ use serialize::{self, Encodable, Encoder};
 use std::borrow::Cow;
 use std::cell::{Cell, RefCell, Ref};
 use std::hash::{Hash, Hasher};
-use std::iter;
 use std::ops::Deref;
 use std::rc::Rc;
 use std::slice;
@@ -843,27 +842,22 @@ impl<'tcx> TraitPredicate<'tcx> {
 
     /// Creates the dep-node for selecting/evaluating this trait reference.
     fn dep_node(&self) -> DepNode<DefId> {
-        // Ideally, the dep-node would just have all the input types
-        // in it.  But they are limited to including def-ids. So as an
-        // approximation we include the def-ids for all nominal types
-        // found somewhere. This means that we will e.g. conflate the
-        // dep-nodes for `u32: SomeTrait` and `u64: SomeTrait`, but we
-        // would have distinct dep-nodes for `Vec<u32>: SomeTrait`,
-        // `Rc<u32>: SomeTrait`, and `(Vec<u32>, Rc<u32>): SomeTrait`.
-        // Note that it's always sound to conflate dep-nodes, it just
-        // leads to more recompilation.
-        let def_ids: Vec<_> =
+        // Extact the trait-def and first def-id from inputs.  See the
+        // docs for `DepNode::TraitSelect` for more information.
+        let trait_def_id = self.def_id();
+        let input_def_id =
             self.input_types()
                 .flat_map(|t| t.walk())
                 .filter_map(|t| match t.sty {
-                    ty::TyAdt(adt_def, _) =>
-                        Some(adt_def.did),
-                    _ =>
-                        None
+                    ty::TyAdt(adt_def, _) => Some(adt_def.did),
+                    _ => None
                 })
-                .chain(iter::once(self.def_id()))
-                .collect();
-        DepNode::TraitSelect(def_ids)
+                .next()
+                .unwrap_or(trait_def_id);
+        DepNode::TraitSelect {
+            trait_def_id: trait_def_id,
+            input_def_id: input_def_id
+        }
     }
 
     pub fn input_types<'a>(&'a self) -> impl DoubleEndedIterator<Item=Ty<'tcx>> + 'a {

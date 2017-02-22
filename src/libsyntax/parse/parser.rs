@@ -219,7 +219,7 @@ fn is_ident_or_underscore(t: &token::Token) -> bool {
 pub struct ModulePath {
     pub name: String,
     pub path_exists: bool,
-    pub result: Result<ModulePathSuccess, ModulePathError>,
+    pub result: Result<ModulePathSuccess, Error>,
 }
 
 pub struct ModulePathSuccess {
@@ -231,6 +231,63 @@ pub struct ModulePathSuccess {
 pub struct ModulePathError {
     pub err_msg: String,
     pub help_msg: String,
+}
+
+pub enum Error {
+    FileNotFoundForModule {
+        mod_name: String,
+        default_path: String,
+        secondary_path: String,
+        dir_path: String,
+    },
+    DuplicatePaths {
+        mod_name: String,
+        default_path: String,
+        secondary_path: String,
+    },
+    UselessDocComment,
+    InclusiveRangeWithNoEnd,
+}
+
+impl Error {
+    pub fn span_err<'a>(self, sp: Span, handler: &'a errors::Handler) -> DiagnosticBuilder<'a> {
+        match self {
+            Error::FileNotFoundForModule { ref mod_name,
+                                           ref default_path,
+                                           ref secondary_path,
+                                           ref dir_path } => {
+                let mut err = struct_span_err!(handler, sp, E0583,
+                                               "file not found for module `{}`", mod_name);
+                err.help(&format!("name the file either {} or {} inside the directory {:?}",
+                                  default_path,
+                                  secondary_path,
+                                  dir_path));
+                err
+            }
+            Error::DuplicatePaths { ref mod_name, ref default_path, ref secondary_path } => {
+                let mut err = struct_span_err!(handler, sp, E0584,
+                                               "file for module `{}` found at both {} and {}",
+                                               mod_name,
+                                               default_path,
+                                               secondary_path);
+                err.help("delete or rename one of them to remove the ambiguity");
+                err
+            }
+            Error::UselessDocComment => {
+                let mut err = struct_span_err!(handler, sp, E0585,
+                                  "found a documentation comment that doesn't document anything");
+                err.help("doc comments must come before what they document, maybe a comment was \
+                          intended with `//`?");
+                err
+            }
+            Error::InclusiveRangeWithNoEnd => {
+                let mut err = struct_span_err!(handler, sp, E0586,
+                                               "inclusive range with no end");
+                err.help("inclusive ranges must be bounded at the end (`...b` or `a...b`)");
+                err
+            }
+        }
+    }
 }
 
 pub enum LhsExpr {
@@ -461,10 +518,7 @@ impl<'a> Parser<'a> {
             }
             _ => {
                 Err(if self.prev_token_kind == PrevTokenKind::DocComment {
-                    self.span_fatal_help(self.prev_span,
-                        "found a documentation comment that doesn't document anything",
-                        "doc comments must come before what they document, maybe a comment was \
-                        intended with `//`?")
+                        self.span_fatal_err(self.prev_span, Error::UselessDocComment)
                     } else {
                         let mut err = self.fatal(&format!("expected identifier, found `{}`",
                                                           self.this_token_to_string()));
@@ -954,6 +1008,9 @@ impl<'a> Parser<'a> {
     }
     pub fn span_fatal(&self, sp: Span, m: &str) -> DiagnosticBuilder<'a> {
         self.sess.span_diagnostic.struct_span_fatal(sp, m)
+    }
+    pub fn span_fatal_err(&self, sp: Span, err: Error) -> DiagnosticBuilder<'a> {
+        err.span_err(sp, self.diagnostic())
     }
     pub fn span_fatal_help(&self, sp: Span, m: &str, help: &str) -> DiagnosticBuilder<'a> {
         let mut err = self.sess.span_diagnostic.struct_span_fatal(sp, m);
@@ -1944,10 +2001,7 @@ impl<'a> Parser<'a> {
                     limits: RangeLimits)
                     -> PResult<'a, ast::ExprKind> {
         if end.is_none() && limits == RangeLimits::Closed {
-            Err(self.span_fatal_help(self.span,
-                                     "inclusive range with no end",
-                                     "inclusive ranges must be bounded at the end \
-                                      (`...b` or `a...b`)"))
+            Err(self.span_fatal_err(self.span, Error::InclusiveRangeWithNoEnd))
         } else {
             Ok(ExprKind::Range(start, end, limits))
         }
@@ -3862,10 +3916,7 @@ impl<'a> Parser<'a> {
                     let unused_attrs = |attrs: &[_], s: &mut Self| {
                         if attrs.len() > 0 {
                             if s.prev_token_kind == PrevTokenKind::DocComment {
-                                s.span_err_help(s.prev_span,
-                                    "found a documentation comment that doesn't document anything",
-                                    "doc comments must come before what they document, maybe a \
-                                    comment was intended with `//`?");
+                                s.span_fatal_err(s.prev_span, Error::UselessDocComment).emit();
                             } else {
                                 s.span_err(s.span, "expected statement after outer attribute");
                             }
@@ -4998,10 +5049,8 @@ impl<'a> Parser<'a> {
                 self.bump();
             }
             token::CloseDelim(token::Brace) => {}
-            token::DocComment(_) => return Err(self.span_fatal_help(self.span,
-                        "found a documentation comment that doesn't document anything",
-                        "doc comments must come before what they document, maybe a comment was \
-                        intended with `//`?")),
+            token::DocComment(_) => return Err(self.span_fatal_err(self.span,
+                                                                   Error::UselessDocComment)),
             _ => return Err(self.span_fatal_help(self.span,
                     &format!("expected `,`, or `}}`, found `{}`", self.this_token_to_string()),
                     "struct fields should be separated by commas")),
@@ -5162,8 +5211,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Returns either a path to a module, or .
-    pub fn default_submod_path(id: ast::Ident, dir_path: &Path, codemap: &CodeMap) -> ModulePath
-    {
+    pub fn default_submod_path(id: ast::Ident, dir_path: &Path, codemap: &CodeMap) -> ModulePath {
         let mod_name = id.to_string();
         let default_path_str = format!("{}.rs", mod_name);
         let secondary_path_str = format!("{}/mod.rs", mod_name);
@@ -5183,19 +5231,16 @@ impl<'a> Parser<'a> {
                 directory_ownership: DirectoryOwnership::Owned,
                 warn: false,
             }),
-            (false, false) => Err(ModulePathError {
-                err_msg: format!("file not found for module `{}`", mod_name),
-                help_msg: format!("name the file either {} or {} inside the directory {:?}",
-                                  default_path_str,
-                                  secondary_path_str,
-                                  dir_path.display()),
+            (false, false) => Err(Error::FileNotFoundForModule {
+                mod_name: mod_name.clone(),
+                default_path: default_path_str,
+                secondary_path: secondary_path_str,
+                dir_path: format!("{}", dir_path.display()),
             }),
-            (true, true) => Err(ModulePathError {
-                err_msg: format!("file for module `{}` found at both {} and {}",
-                                 mod_name,
-                                 default_path_str,
-                                 secondary_path_str),
-                help_msg: "delete or rename one of them to remove the ambiguity".to_owned(),
+            (true, true) => Err(Error::DuplicatePaths {
+                mod_name: mod_name.clone(),
+                default_path: default_path_str,
+                secondary_path: secondary_path_str,
             }),
         };
 
@@ -5232,7 +5277,7 @@ impl<'a> Parser<'a> {
                                   paths.name);
                 err.span_note(id_sp, &msg);
             }
-            return Err(err);
+            Err(err)
         } else if let DirectoryOwnership::UnownedViaMod(warn) = self.directory.ownership {
             if warn {
                 if let Ok(result) = paths.result {
@@ -5254,15 +5299,12 @@ impl<'a> Parser<'a> {
                               &format!("... or maybe `use` the module `{}` instead \
                                         of possibly redeclaring it",
                                        paths.name));
-                return Err(err);
+                Err(err)
             } else {
-                return Err(err);
-            };
-        }
-
-        match paths.result {
-            Ok(succ) => Ok(succ),
-            Err(err) => Err(self.span_fatal_help(id_sp, &err.err_msg, &err.help_msg)),
+                Err(err)
+            }
+        } else {
+            paths.result.map_err(|err| self.span_fatal_err(id_sp, err))
         }
     }
 

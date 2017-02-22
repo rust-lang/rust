@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -9,10 +9,6 @@
 // except according to those terms.
 
 fn main() {
-    print!(test!());
-    //~^ ERROR: macro undefined: `test`
-    //~^^ ERROR: format argument must be a string literal
-
-    concat!(test!());
-    //~^ ERROR: macro undefined: `test`
+    let tmp = vec![0, 1, 2, 3, 4, 4, 3, 3, 2, 1];
+    let x = &tmp[1...]; //~ ERROR E0586
 }
