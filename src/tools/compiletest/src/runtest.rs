@@ -1987,12 +1987,22 @@ actual:\n\
     fn check_rustdoc_test_option(&self, res: ProcRes) {
         let mut other_files = Vec::new();
         let mut files: HashMap<String, Vec<usize>> = HashMap::new();
-        files.insert(self.testpaths.file.to_str().unwrap().to_owned(),
+        let cwd = env::current_dir().unwrap();
+        files.insert(self.testpaths.file.strip_prefix(&cwd)
+                                        .unwrap_or(&self.testpaths.file)
+                                        .to_str()
+                                        .unwrap()
+                                        .replace('\\', "/"),
                      self.get_lines(&self.testpaths.file, Some(&mut other_files)));
         for other_file in other_files {
             let mut path = self.testpaths.file.clone();
             path.set_file_name(&format!("{}.rs", other_file));
-            files.insert(path.to_str().unwrap().to_owned(), self.get_lines(&path, None));
+            files.insert(path.strip_prefix(&cwd)
+                             .unwrap_or(&path)
+                             .to_str()
+                             .unwrap()
+                             .replace('\\', "/"),
+                         self.get_lines(&path, None));
         }
 
         let mut tested = 0;
@@ -2002,7 +2012,8 @@ actual:\n\
                                let tmp: Vec<&str> = s.split(" - ").collect();
                                if tmp.len() == 2 {
                                    let path = tmp[0].rsplit("test ").next().unwrap();
-                                   if let Some(ref mut v) = files.get_mut(path) {
+                                   if let Some(ref mut v) = files.get_mut(
+                                                                &path.replace('\\', "/")) {
                                        tested += 1;
                                        let mut iter = tmp[1].split("(line ");
                                        iter.next();
