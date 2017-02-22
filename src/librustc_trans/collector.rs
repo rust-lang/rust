@@ -489,6 +489,20 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                                                           self.output);
                 }
             }
+            mir::Rvalue::Cast(mir::CastKind::ClosureFnPointer, ref operand, _) => {
+                let source_ty = operand.ty(self.mir, self.scx.tcx());
+                match source_ty.sty {
+                    ty::TyClosure(def_id, substs) => {
+                        let closure_trans_item =
+                            create_fn_trans_item(self.scx,
+                                                 def_id,
+                                                 substs.substs,
+                                                 self.param_substs);
+                        self.output.push(closure_trans_item);
+                    }
+                    _ => bug!(),
+                }
+            }
             mir::Rvalue::Box(..) => {
                 let exchange_malloc_fn_def_id =
                     self.scx

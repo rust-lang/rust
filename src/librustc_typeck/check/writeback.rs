@@ -412,6 +412,10 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                         adjustment::Adjust::MutToConstPointer
                     }
 
+                    adjustment::Adjust::ClosureFnPointer => {
+                        adjustment::Adjust::ClosureFnPointer
+                    }
+
                     adjustment::Adjust::UnsafeFnPointer => {
                         adjustment::Adjust::UnsafeFnPointer
                     }

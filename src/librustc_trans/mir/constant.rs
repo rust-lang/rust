@@ -578,6 +578,35 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                             }
                         }
                     }
+                    mir::CastKind::ClosureFnPointer => {
+                        match operand.ty.sty {
+                            ty::TyClosure(def_id, substs) => {
+                                // Get the def_id for FnOnce::call_once
+                                let fn_once = tcx.lang_items.fn_once_trait().unwrap();
+                                let call_once = tcx
+                                    .global_tcx().associated_items(fn_once)
+                                    .find(|it| it.kind == ty::AssociatedKind::Method)
+                                    .unwrap().def_id;
+                                // Now create its substs [Closure, Tuple]
+                                let input = tcx.closure_type(def_id, substs).sig.input(0);
+                                let substs = Substs::for_item(tcx,
+                                    call_once,
+                                    |_, _| {bug!()},
+                                    |def, _| { match def.index {
+                                                0 => operand.ty.clone(),
+                                                1 => input.skip_binder(),
+                                                _ => bug!(),
+                                            } }
+                                );
+
+                                Callee::def(self.ccx, call_once, substs)
+                                    .reify(self.ccx)
+                            }
+                            _ => {
+                                bug!("{} cannot be cast to a fn ptr", operand.ty)
+                            }
+                        }
+                    }
                     mir::CastKind::UnsafeFnPointer => {
                         // this is a no-op at the LLVM level
                         operand.llval

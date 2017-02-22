@@ -619,6 +619,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
             Rvalue::CheckedBinaryOp(..) |
             Rvalue::Cast(CastKind::ReifyFnPointer, ..) |
             Rvalue::Cast(CastKind::UnsafeFnPointer, ..) |
+            Rvalue::Cast(CastKind::ClosureFnPointer, ..) |
             Rvalue::Cast(CastKind::Unsize, ..) => {}
 
             Rvalue::Len(_) => {
