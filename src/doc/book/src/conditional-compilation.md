@@ -79,16 +79,13 @@ Will be the same as `#[b]` if `a` is set by `cfg` attribute, and nothing otherwi
 
 # cfg!
 
-The `cfg!` [syntax extension][compilerplugins] lets you use these kinds of flags
-elsewhere in your code, too:
+The `cfg!` macro lets you use these kinds of flags elsewhere in your code, too:
 
 ```rust
 if cfg!(target_os = "macos") || cfg!(target_os = "ios") {
     println!("Think Different!");
 }
 ```
-
-[compilerplugins]: compiler-plugins.html
 
 These will be replaced by a `true` or `false` at compile-time, depending on the
 configuration settings.

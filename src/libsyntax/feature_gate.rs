@@ -91,11 +91,14 @@ macro_rules! declare_features {
     }
 }
 
-// If you change this list without updating src/doc/reference.md, @cmr will be sad
+// If you change this, please modify src/doc/unstable-book as well.
+//
 // Don't ever remove anything from this list; set them to 'Removed'.
+//
 // The version numbers here correspond to the version in which the current status
 // was set. This is most important for knowing when a particular feature became
 // stable (active).
+//
 // NB: The featureck.py script parses this information directly out of the source
 // so take care when modifying it.
 
@@ -385,7 +388,9 @@ declare_features! (
     // Allows field shorthands (`x` meaning `x: x`) in struct literal expressions.
     (accepted, field_init_shorthand, "1.17.0", Some(37340)),
 );
-// (changing above list without updating src/doc/reference.md makes @cmr sad)
+// If you change this, please modify src/doc/unstable-book as well. You must
+// move that documentation into the relevant place in the other docs, and
+// remove the chapter on the flag.
 
 #[derive(PartialEq, Copy, Clone, Debug)]
 pub enum AttributeType {

@@ -9,7 +9,7 @@ don’t want to use the standard library via an attribute: `#![no_std]`.
 > Note: This feature is technically stable, but there are some caveats. For
 > one, you can build a `#![no_std]` _library_ on stable, but not a _binary_.
 > For details on binaries without the standard library, see [the nightly
-> chapter on `#![no_std]`](no-stdlib.html)
+> chapter on 'lang items'](../unstable-book/lang-items.html#using-libc)
 
 To use `#![no_std]`, add it to your crate root:
 
