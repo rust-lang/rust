@@ -2000,7 +2000,7 @@ actual:\n\
                              .unwrap_or(&path)
                              .to_str()
                              .unwrap()
-                             .to_owned(),
+                             .replace('\\', "/"),
                          self.get_lines(&path, None));
         }
 
