@@ -197,9 +197,6 @@ declare_features! (
     // rustc internal
     (active, prelude_import, "1.2.0", None),
 
-    // Allows the definition recursive static items.
-    (active, static_recursion, "1.3.0", Some(29719)),
-
     // Allows default type parameters to influence type inference.
     (active, default_type_parameter_fallback, "1.3.0", Some(27336)),
 
@@ -384,6 +381,8 @@ declare_features! (
     (accepted, static_in_const, "1.17.0", Some(35897)),
     // Allows field shorthands (`x` meaning `x: x`) in struct literal expressions.
     (accepted, field_init_shorthand, "1.17.0", Some(37340)),
+    // Allows the definition recursive static items.
+    (accepted, static_recursion, "1.17.0", Some(29719)),
 );
 // (changing above list without updating src/doc/reference.md makes @cmr sad)
 
