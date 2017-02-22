@@ -142,9 +142,9 @@ impl Rewrite for ast::ViewPath {
                 let path_str = if path.segments.last().unwrap().identifier.to_string() == "self" &&
                                   path.segments.len() > 1 {
                     let path = &ast::Path {
-                        span: path.span.clone(),
-                        segments: path.segments[..path.segments.len() - 1].to_owned(),
-                    };
+                                    span: path.span.clone(),
+                                    segments: path.segments[..path.segments.len() - 1].to_owned(),
+                                };
                     try_opt!(rewrite_path(context,
                                           PathContext::Import,
                                           None,
@@ -159,10 +159,10 @@ impl Rewrite for ast::ViewPath {
                 };
 
                 Some(if path.segments.last().unwrap().identifier == ident {
-                    path_str
-                } else {
-                    format!("{} as {}", path_str, ident_str)
-                })
+                         path_str
+                     } else {
+                         format!("{} as {}", path_str, ident_str)
+                     })
             }
         }
     }
@@ -348,10 +348,10 @@ pub fn rewrite_use_list(shape: Shape,
     let list_str = try_opt!(write_list(&items[first_index..], &fmt));
 
     Some(if path_str.is_empty() {
-        format!("{{{}}}", list_str)
-    } else {
-        format!("{}::{{{}}}", path_str, list_str)
-    })
+             format!("{{{}}}", list_str)
+         } else {
+             format!("{}::{{{}}}", path_str, list_str)
+         })
 }
 
 // Returns true when self item was found.

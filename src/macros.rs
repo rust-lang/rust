@@ -92,13 +92,13 @@ pub fn rewrite_macro(mac: &ast::Mac,
 
     if mac.node.tts.is_empty() && !contains_comment(&context.snippet(mac.span)) {
         return match style {
-            MacroStyle::Parens if position == MacroPosition::Item => {
-                Some(format!("{}();", macro_name))
-            }
-            MacroStyle::Parens => Some(format!("{}()", macro_name)),
-            MacroStyle::Brackets => Some(format!("{}[]", macro_name)),
-            MacroStyle::Braces => Some(format!("{}{{}}", macro_name)),
-        };
+                   MacroStyle::Parens if position == MacroPosition::Item => {
+                       Some(format!("{}();", macro_name))
+                   }
+                   MacroStyle::Parens => Some(format!("{}()", macro_name)),
+                   MacroStyle::Brackets => Some(format!("{}[]", macro_name)),
+                   MacroStyle::Braces => Some(format!("{}{{}}", macro_name)),
+               };
     }
 
     let mut parser = tts_to_parser(context.parse_session, mac.node.tts.clone());
@@ -181,11 +181,11 @@ pub fn convert_try_mac(mac: &ast::Mac, context: &RewriteContext) -> Option<ast::
         let mut parser = tts_to_parser(context.parse_session, mac.node.tts.clone());
 
         Some(ast::Expr {
-            id: ast::NodeId::new(0), // dummy value
-            node: ast::ExprKind::Try(try_opt!(parser.parse_expr().ok())),
-            span: mac.span, // incorrect span, but shouldn't matter too much
-            attrs: ThinVec::new(),
-        })
+                 id: ast::NodeId::new(0), // dummy value
+                 node: ast::ExprKind::Try(try_opt!(parser.parse_expr().ok())),
+                 span: mac.span, // incorrect span, but shouldn't matter too much
+                 attrs: ThinVec::new(),
+             })
     } else {
         None
     }

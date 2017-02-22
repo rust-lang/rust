@@ -41,7 +41,8 @@ impl Rewrite for ast::Local {
         let pattern_width = try_opt!(shape.width.checked_sub(pattern_offset.width() + 1));
 
         let pat_str = try_opt!(self.pat
-            .rewrite(&context, Shape::legacy(pattern_width, pattern_offset)));
+                                   .rewrite(&context,
+                                            Shape::legacy(pattern_width, pattern_offset)));
         result.push_str(&pat_str);
 
         // String that is placed within the assignment pattern and expression.
@@ -376,7 +377,7 @@ impl<'a> FmtVisitor<'a> {
                                            self.block_indent,
                                            self.block_indent.block_indent(self.config),
                                            mk_sp(span.lo, body_start))
-            .unwrap();
+                .unwrap();
         self.buffer.push_str(&generics_str);
 
         self.last_pos = body_start;
@@ -455,9 +456,11 @@ impl<'a> FmtVisitor<'a> {
 
         let indent = self.block_indent;
         let mut result = try_opt!(field.node
-            .attrs
-            .rewrite(&self.get_context(),
-                     Shape::legacy(self.config.max_width - indent.width(), indent)));
+                                      .attrs
+                                      .rewrite(&self.get_context(),
+                                               Shape::legacy(self.config.max_width -
+                                                             indent.width(),
+                                                             indent)));
         if !result.is_empty() {
             result.push('\n');
             result.push_str(&indent.to_string(self.config));
@@ -782,8 +785,8 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
             };
 
         let where_budget = try_opt!(context.config
-            .max_width
-            .checked_sub(last_line_width(&result)));
+                                        .max_width
+                                        .checked_sub(last_line_width(&result)));
         let where_clause_str = try_opt!(rewrite_where_clause(context,
                                                              &generics.where_clause,
                                                              context.config,
@@ -937,7 +940,7 @@ fn format_struct_struct(context: &RewriteContext,
                      |field| field.rewrite(context, Shape::legacy(item_budget, item_indent)),
                      context.codemap.span_after(span, "{"),
                      span.hi)
-            .collect::<Vec<_>>();
+                .collect::<Vec<_>>();
     // 1 = ,
     let budget = context.config.max_width - offset.width() + context.config.tab_spaces - 1;
 
@@ -998,8 +1001,8 @@ fn format_tuple_struct(context: &RewriteContext,
             result.push_str(&generics_str);
 
             let where_budget = try_opt!(context.config
-                .max_width
-                .checked_sub(last_line_width(&result)));
+                                            .max_width
+                                            .checked_sub(last_line_width(&result)));
             try_opt!(rewrite_where_clause(context,
                                           &generics.where_clause,
                                           context.config,
@@ -1058,7 +1061,7 @@ fn format_tuple_struct(context: &RewriteContext,
         // know that earlier, so the where clause will not be indented properly.
         result.push('\n');
         result.push_str(&(offset.block_only() + (context.config.tab_spaces - 1))
-            .to_string(context.config));
+                             .to_string(context.config));
     }
     result.push_str(&where_clause_str);
 
@@ -1091,8 +1094,8 @@ pub fn rewrite_type_alias(context: &RewriteContext,
     result.push_str(&generics_str);
 
     let where_budget = try_opt!(context.config
-        .max_width
-        .checked_sub(last_line_width(&result)));
+                                    .max_width
+                                    .checked_sub(last_line_width(&result)));
     let where_clause_str = try_opt!(rewrite_where_clause(context,
                                                          &generics.where_clause,
                                                          context.config,
@@ -1115,19 +1118,19 @@ pub fn rewrite_type_alias(context: &RewriteContext,
     let type_indent = indent + line_width;
     // Try to fit the type on the same line
     let ty_str = try_opt!(ty.rewrite(context, Shape::legacy(budget, type_indent))
-        .or_else(|| {
-            // The line was too short, try to put the type on the next line
+                              .or_else(|| {
+        // The line was too short, try to put the type on the next line
 
-            // Remove the space after '='
-            result.pop();
-            let type_indent = indent.block_indent(context.config);
-            result.push('\n');
-            result.push_str(&type_indent.to_string(context.config));
-            let budget = try_opt!(context.config
-                .max_width
-                .checked_sub(type_indent.width() + ";".len()));
-            ty.rewrite(context, Shape::legacy(budget, type_indent))
-        }));
+        // Remove the space after '='
+        result.pop();
+        let type_indent = indent.block_indent(context.config);
+        result.push('\n');
+        result.push_str(&type_indent.to_string(context.config));
+        let budget = try_opt!(context.config
+                                  .max_width
+                                  .checked_sub(type_indent.width() + ";".len()));
+        ty.rewrite(context, Shape::legacy(budget, type_indent))
+    }));
     result.push_str(&ty_str);
     result.push_str(";");
     Some(result)
@@ -1156,9 +1159,10 @@ impl Rewrite for ast::StructField {
         let name = self.ident;
         let vis = format_visibility(&self.vis);
         let mut attr_str = try_opt!(self.attrs
-            .rewrite(context,
-                     Shape::legacy(context.config.max_width - shape.indent.width(),
-                                   shape.indent)));
+                                        .rewrite(context,
+                                                 Shape::legacy(context.config.max_width -
+                                                               shape.indent.width(),
+                                                               shape.indent)));
         if !attr_str.is_empty() {
             attr_str.push('\n');
             attr_str.push_str(&shape.indent.to_string(context.config));
@@ -1205,8 +1209,7 @@ pub fn rewrite_static(prefix: &str,
                          type_annotation_spacing.1);
     // 2 = " =".len()
     let ty_str = try_opt!(ty.rewrite(context,
-                                     Shape::legacy(context.config.max_width -
-                                                   offset.block_indent -
+                                     Shape::legacy(context.config.max_width - offset.block_indent -
                                                    prefix.len() -
                                                    2,
                                                    offset.block_only())));
@@ -1219,7 +1222,7 @@ pub fn rewrite_static(prefix: &str,
                            lhs,
                            expr,
                            Shape::legacy(remaining_width, offset.block_only()))
-            .map(|s| s + ";")
+                .map(|s| s + ";")
     } else {
         let lhs = format!("{}{};", prefix, ty_str);
         Some(lhs)
@@ -1237,11 +1240,11 @@ pub fn rewrite_associated_type(ident: ast::Ident,
     let type_bounds_str = if let Some(ty_param_bounds) = ty_param_bounds_opt {
         let bounds: &[_] = ty_param_bounds;
         let bound_str = try_opt!(bounds.iter()
-            .map(|ty_bound| {
-                ty_bound.rewrite(context, Shape::legacy(context.config.max_width, indent))
-            })
-            .intersperse(Some(" + ".to_string()))
-            .collect::<Option<String>>());
+                                     .map(|ty_bound| {
+            ty_bound.rewrite(context, Shape::legacy(context.config.max_width, indent))
+        })
+                                     .intersperse(Some(" + ".to_string()))
+                                     .collect::<Option<String>>());
         if bounds.len() > 0 {
             format!(": {}", bound_str)
         } else {
@@ -1281,7 +1284,8 @@ impl Rewrite for ast::Arg {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         if is_named_arg(self) {
             let mut result = try_opt!(self.pat
-                .rewrite(context, Shape::legacy(shape.width, shape.indent)));
+                                          .rewrite(context,
+                                                   Shape::legacy(shape.width, shape.indent)));
 
             if self.ty.node != ast::TyKind::Infer {
                 if context.config.space_before_type_annotation {
@@ -1314,7 +1318,8 @@ fn rewrite_explicit_self(explicit_self: &ast::ExplicitSelf,
             let mut_str = format_mutability(m);
             match lt {
                 Some(ref l) => {
-                    let lifetime_str = try_opt!(l.rewrite(context,
+                    let lifetime_str =
+                        try_opt!(l.rewrite(context,
                                            Shape::legacy(usize::max_value(), Indent::empty())));
                     Some(format!("&{} {}self", lifetime_str, mut_str))
                 }
@@ -1325,8 +1330,8 @@ fn rewrite_explicit_self(explicit_self: &ast::ExplicitSelf,
             assert!(!args.is_empty(), "&[ast::Arg] shouldn't be empty.");
 
             let mutability = explicit_self_mutability(&args[0]);
-            let type_str =
-                try_opt!(ty.rewrite(context, Shape::legacy(usize::max_value(), Indent::empty())));
+            let type_str = try_opt!(ty.rewrite(context,
+                                               Shape::legacy(usize::max_value(), Indent::empty())));
 
             Some(format!("{}self: {}", format_mutability(mutability), type_str))
         }
@@ -1458,8 +1463,10 @@ fn rewrite_fn_base(context: &RewriteContext,
     // Note that if the width and indent really matter, we'll re-layout the
     // return type later anyway.
     let ret_str = try_opt!(fd.output
-        .rewrite(&context,
-                 Shape::legacy(context.config.max_width - indent.width(), indent)));
+                               .rewrite(&context,
+                                        Shape::legacy(context.config.max_width -
+                                                      indent.width(),
+                                                      indent)));
 
     let multi_line_ret_str = ret_str.contains('\n');
     let ret_str_len = if multi_line_ret_str { 0 } else { ret_str.len() };
@@ -1662,18 +1669,21 @@ fn rewrite_args(context: &RewriteContext,
                 variadic: bool)
                 -> Option<String> {
     let mut arg_item_strs = try_opt!(args.iter()
-        .map(|arg| arg.rewrite(&context, Shape::legacy(multi_line_budget, arg_indent)))
-        .collect::<Option<Vec<_>>>());
+                                         .map(|arg| {
+        arg.rewrite(&context, Shape::legacy(multi_line_budget, arg_indent))
+    })
+                                         .collect::<Option<Vec<_>>>());
 
     // Account for sugary self.
     // FIXME: the comment for the self argument is dropped. This is blocked
     // on rust issue #27522.
-    let min_args =
-        explicit_self.and_then(|explicit_self| rewrite_explicit_self(explicit_self, args, context))
-            .map_or(1, |self_str| {
-                arg_item_strs[0] = self_str;
-                2
-            });
+    let min_args = explicit_self.and_then(|explicit_self| {
+            rewrite_explicit_self(explicit_self, args, context)
+        })
+        .map_or(1, |self_str| {
+            arg_item_strs[0] = self_str;
+            2
+        });
 
     // Comments between args.
     let mut arg_items = Vec::new();
@@ -1885,10 +1895,10 @@ fn rewrite_generics(context: &RewriteContext,
         try_opt!(format_item_list(items, Shape::legacy(h_budget, offset), context.config));
 
     Some(if context.config.spaces_within_angle_brackets {
-        format!("< {} >", list_str)
-    } else {
-        format!("<{}>", list_str)
-    })
+             format!("< {} >", list_str)
+         } else {
+             format!("<{}>", list_str)
+         })
 }
 
 fn rewrite_trait_bounds(context: &RewriteContext,
@@ -1902,9 +1912,9 @@ fn rewrite_trait_bounds(context: &RewriteContext,
     }
 
     let bound_str = try_opt!(bounds.iter()
-        .map(|ty_bound| ty_bound.rewrite(&context, shape))
-        .intersperse(Some(" + ".to_string()))
-        .collect::<Option<String>>());
+                                 .map(|ty_bound| ty_bound.rewrite(&context, shape))
+                                 .intersperse(Some(" + ".to_string()))
+                                 .collect::<Option<String>>());
 
     let mut result = String::new();
     result.push_str(": ");

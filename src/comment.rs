@@ -110,10 +110,10 @@ pub fn rewrite_comment(orig: &str,
         })
         .map(left_trim_comment_line)
         .map(|line| if orig.starts_with("/*") && line_breaks == 0 {
-            line.trim_left()
-        } else {
-            line
-        });
+                 line.trim_left()
+             } else {
+                 line
+             });
 
     let mut result = opener.to_owned();
     for line in lines {
@@ -771,9 +771,9 @@ mod test {
     fn uncommented(text: &str) -> String {
         CharClasses::new(text.chars())
             .filter_map(|(s, c)| match s {
-                FullCodeCharKind::Normal => Some(c),
-                _ => None,
-            })
+                            FullCodeCharKind::Normal => Some(c),
+                            _ => None,
+                        })
             .collect()
     }
 

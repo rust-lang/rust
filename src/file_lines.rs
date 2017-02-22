@@ -120,8 +120,9 @@ impl FileLines {
             Some(ref map) => map,
         };
 
-        match canonicalize_path_string(range.file_name())
-            .and_then(|canonical| map.get_vec(&canonical).ok_or(())) {
+        match canonicalize_path_string(range.file_name()).and_then(|canonical| {
+            map.get_vec(&canonical).ok_or(())
+        }) {
             Ok(ranges) => ranges.iter().any(|r| r.contains(Range::from(range))),
             Err(_) => false,
         }
@@ -182,8 +183,9 @@ impl JsonSpan {
     // To allow `collect()`ing into a `MultiMap`.
     fn into_tuple(self) -> Result<(String, Range), String> {
         let (lo, hi) = self.range;
-        let canonical = try!(canonicalize_path_string(&self.file)
-            .map_err(|_| format!("Can't canonicalize {}", &self.file)));
+        let canonical = try!(canonicalize_path_string(&self.file).map_err(|_| {
+            format!("Can't canonicalize {}", &self.file)
+        }));
         Ok((canonical, Range::new(lo, hi)))
     }
 }

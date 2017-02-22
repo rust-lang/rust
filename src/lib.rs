@@ -256,7 +256,7 @@ impl Shape {
             indent: indent,
             offset: offset,
         }
-    }    
+    }
 
     pub fn visual_indent(&self, extra_width: usize) -> Shape {
         let alignment = self.offset + extra_width;
@@ -316,18 +316,18 @@ impl Shape {
 
     pub fn sub_width(&self, width: usize) -> Option<Shape> {
         Some(Shape {
-            width: try_opt!(self.width.checked_sub(width)),
-            indent: self.indent,
-            offset: self.offset,
-        })
+                 width: try_opt!(self.width.checked_sub(width)),
+                 indent: self.indent,
+                 offset: self.offset,
+             })
     }
 
     pub fn shrink_left(&self, width: usize) -> Option<Shape> {
         Some(Shape {
-            width: try_opt!(self.width.checked_sub(width)),
-            indent: self.indent + width,
-            offset: self.offset + width,
-        })        
+                 width: try_opt!(self.width.checked_sub(width)),
+                 indent: self.indent + width,
+                 offset: self.offset + width,
+             })
     }
 
     pub fn used_width(&self) -> usize {
@@ -477,9 +477,9 @@ fn format_lines(text: &mut StringBuffer, name: &str, config: &Config, report: &m
         // Add warnings for bad todos/ fixmes
         if let Some(issue) = issue_seeker.inspect(c) {
             errors.push(FormattingError {
-                line: cur_line,
-                kind: ErrorKind::BadIssue(issue),
-            });
+                            line: cur_line,
+                            kind: ErrorKind::BadIssue(issue),
+                        });
         }
 
         if c == '\n' {
@@ -491,9 +491,9 @@ fn format_lines(text: &mut StringBuffer, name: &str, config: &Config, report: &m
             // Check for any line width errors we couldn't correct.
             if line_len > config.max_width {
                 errors.push(FormattingError {
-                    line: cur_line,
-                    kind: ErrorKind::LineOverflow(line_len, config.max_width),
-                });
+                                line: cur_line,
+                                kind: ErrorKind::LineOverflow(line_len, config.max_width),
+                            });
             }
             line_len = 0;
             cur_line += 1;
@@ -520,9 +520,9 @@ fn format_lines(text: &mut StringBuffer, name: &str, config: &Config, report: &m
 
     for &(l, _, _) in &trims {
         errors.push(FormattingError {
-            line: l,
-            kind: ErrorKind::TrailingWhitespace,
-        });
+                        line: l,
+                        kind: ErrorKind::TrailingWhitespace,
+                    });
     }
 
     report.file_error_map.insert(name.to_owned(), errors);

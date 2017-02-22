@@ -128,16 +128,16 @@ impl BadIssueSeeker {
             todo_idx += 1;
             if todo_idx == TO_DO_CHARS.len() {
                 return Seeking::Number {
-                    issue: Issue {
-                        issue_type: IssueType::Todo,
-                        missing_number: if let ReportTactic::Unnumbered = self.report_todo {
-                            true
-                        } else {
-                            false
-                        },
-                    },
-                    part: NumberPart::OpenParen,
-                };
+                           issue: Issue {
+                               issue_type: IssueType::Todo,
+                               missing_number: if let ReportTactic::Unnumbered = self.report_todo {
+                                   true
+                               } else {
+                                   false
+                               },
+                           },
+                           part: NumberPart::OpenParen,
+                       };
             }
             fixme_idx = 0;
         } else if self.report_fixme.is_enabled() && c == FIX_ME_CHARS[fixme_idx] {
@@ -146,16 +146,17 @@ impl BadIssueSeeker {
             fixme_idx += 1;
             if fixme_idx == FIX_ME_CHARS.len() {
                 return Seeking::Number {
-                    issue: Issue {
-                        issue_type: IssueType::Fixme,
-                        missing_number: if let ReportTactic::Unnumbered = self.report_fixme {
-                            true
-                        } else {
-                            false
-                        },
-                    },
-                    part: NumberPart::OpenParen,
-                };
+                           issue: Issue {
+                               issue_type: IssueType::Fixme,
+                               missing_number: if let ReportTactic::Unnumbered =
+                    self.report_fixme {
+                                   true
+                               } else {
+                                   false
+                               },
+                           },
+                           part: NumberPart::OpenParen,
+                       };
             }
             todo_idx = 0;
         } else {
@@ -178,10 +179,10 @@ impl BadIssueSeeker {
             return IssueClassification::Bad(issue);
         } else if c == ')' {
             return if let NumberPart::CloseParen = part {
-                IssueClassification::Good
-            } else {
-                IssueClassification::Bad(issue)
-            };
+                       IssueClassification::Good
+                   } else {
+                       IssueClassification::Bad(issue)
+                   };
         }
 
         match part {
@@ -268,9 +269,9 @@ fn find_issue() {
 fn issue_type() {
     let mut seeker = BadIssueSeeker::new(ReportTactic::Always, ReportTactic::Never);
     let expected = Some(Issue {
-        issue_type: IssueType::Todo,
-        missing_number: false,
-    });
+                            issue_type: IssueType::Todo,
+                            missing_number: false,
+                        });
 
     assert_eq!(expected,
                "TODO(#100): more awesomeness"
@@ -281,9 +282,9 @@ fn issue_type() {
 
     let mut seeker = BadIssueSeeker::new(ReportTactic::Never, ReportTactic::Unnumbered);
     let expected = Some(Issue {
-        issue_type: IssueType::Fixme,
-        missing_number: true,
-    });
+                            issue_type: IssueType::Fixme,
+                            missing_number: true,
+                        });
 
     assert_eq!(expected,
                "Test. FIXME: bad, bad, not good"

@@ -119,20 +119,25 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
         // brace.
         (parent_shape, false)
     } else if parent_rewrite.contains('\n') {
-        (chain_indent(context, parent_shape.block_indent(context.config.tab_spaces)), false)
+        (chain_indent(context,
+                      parent_shape.block_indent(context.config.tab_spaces)),
+         false)
     } else {
         (chain_indent_newline(context, shape.add_offset(parent_rewrite.len())), false)
     };
 
-    let max_width = try_opt!((shape.width + shape.indent.width() + shape.offset).checked_sub(nested_shape.indent.width() + nested_shape.offset));
+    let max_width = try_opt!((shape.width + shape.indent.width() + shape.offset)
+                                 .checked_sub(nested_shape.indent.width() +
+                                              nested_shape.offset));
     // The alignement in the shape is only used if we start the item on a new
     // line, so we don't need to preserve the offset.
     let child_shape = Shape { width: max_width, ..nested_shape };
     debug!("child_shape {:?}", child_shape);
-    let mut rewrites = try_opt!(subexpr_list.iter()
-        .rev()
-        .map(|e| rewrite_chain_subexpr(e, total_span, context, child_shape))
-        .collect::<Option<Vec<_>>>());
+    let mut rewrites =
+        try_opt!(subexpr_list.iter()
+                     .rev()
+                     .map(|e| rewrite_chain_subexpr(e, total_span, context, child_shape))
+                     .collect::<Option<Vec<_>>>());
 
     // Total of all items excluding the last.
     let almost_total = rewrites[..rewrites.len() - 1]
@@ -199,10 +204,10 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
 // True if the chain is only `?`s.
 fn chain_only_try(exprs: &[ast::Expr]) -> bool {
     exprs.iter().all(|e| if let ast::ExprKind::Try(_) = e.node {
-        true
-    } else {
-        false
-    })
+                         true
+                     } else {
+                         false
+                     })
 }
 
 pub fn rewrite_try(expr: &ast::Expr,
@@ -400,8 +405,8 @@ fn rewrite_method_call(method_name: ast::Ident,
         (args[0].span.hi, String::new())
     } else {
         let type_list: Vec<_> = try_opt!(types.iter()
-            .map(|ty| ty.rewrite(context, shape))
-            .collect());
+                                             .map(|ty| ty.rewrite(context, shape))
+                                             .collect());
 
         let type_str = if context.config.spaces_within_angle_brackets && type_list.len() > 0 {
             format!("::< {} >", type_list.join(", "))

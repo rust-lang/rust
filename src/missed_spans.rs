@@ -147,7 +147,7 @@ impl<'a> FmtVisitor<'a> {
                                                           Shape::legacy(comment_width,
                                                                         self.block_indent),
                                                           self.config)
-                        .unwrap());
+                                                  .unwrap());
 
                     last_wspace = None;
                     line_start = offset + subslice.len();
@@ -155,8 +155,8 @@ impl<'a> FmtVisitor<'a> {
                     if let Some('/') = subslice.chars().skip(1).next() {
                         // check that there are no contained block comments
                         if !subslice.split('\n')
-                            .map(|s| s.trim_left())
-                            .any(|s| s.len() > 2 && &s[0..2] == "/*") {
+                                .map(|s| s.trim_left())
+                                .any(|s| s.len() > 2 && &s[0..2] == "/*") {
                             // Add a newline after line comments
                             self.buffer.push_str("\n");
                         }
