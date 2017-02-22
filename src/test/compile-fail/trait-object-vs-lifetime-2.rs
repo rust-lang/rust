@@ -8,14 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// `ty` matcher accepts trait object types
+// A few contrived examples where lifetime should (or should not) be parsed as an object type.
+// Lifetimes parsed as types are still rejected later by semantic checks.
 
-macro_rules! m {
-    ($t: ty) => ( let _: $t; )
-}
+// compile-flags: -Z continue-parse-after-error
 
-fn main() {
-    m!(Copy + Send + 'static); //~ ERROR the trait `std::marker::Copy` cannot be made into an object
-    m!('static + Send);
-    m!('static +); //~ ERROR at least one non-builtin trait is required for an object type
-}
+// `'static` is a lifetime, `'static +` is a type, `'a` is a type
+fn g() where
+    'static: 'static,
+    'static +: 'static + Copy,
+    //~^ ERROR at least one non-builtin trait is required for an object type
+{}
+
+fn main() {}

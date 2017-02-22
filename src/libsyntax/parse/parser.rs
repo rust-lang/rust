@@ -1451,9 +1451,9 @@ impl<'a> Parser<'a> {
         } else if self.eat_keyword(keywords::Impl) {
             // FIXME: figure out priority of `+` in `impl Trait1 + Trait2` (#34511).
             TyKind::ImplTrait(self.parse_ty_param_bounds()?)
-        } else if self.check(&token::Question) {
+        } else if self.check(&token::Question) ||
+                  self.check_lifetime() && self.look_ahead(1, |t| t == &token::BinOp(token::Plus)){
             // Bound list (trait object type)
-            // Bound lists starting with `'lt` are not currently supported (#40043)
             TyKind::TraitObject(self.parse_ty_param_bounds_common(allow_plus)?)
         } else {
             let msg = format!("expected type, found {}", self.this_token_descr());
