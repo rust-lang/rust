@@ -121,8 +121,9 @@ impl FileLines {
         };
 
         match canonicalize_path_string(range.file_name()).and_then(|canonical| {
-            map.get_vec(&canonical).ok_or(())
-        }) {
+                                                                       map.get_vec(&canonical)
+                                                                           .ok_or(())
+                                                                   }) {
             Ok(ranges) => ranges.iter().any(|r| r.contains(Range::from(range))),
             Err(_) => false,
         }

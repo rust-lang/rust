@@ -476,7 +476,6 @@ fn rewrite_closure(capture: ast::CaptureBy,
         }
 
         // Either we require a block, or tried without and failed.
-        let body_shape = shape.block();
         return rewrite_closure_block(&block, prefix, context, body_shape);
     }
 
@@ -1409,9 +1408,10 @@ fn rewrite_pat_expr(context: &RewriteContext,
 
         if let Some(expr_string) = expr_rewrite {
             let pat_simple = pat.and_then(|p| {
-                    p.rewrite(context,
-                              Shape::legacy(context.config.max_width, Indent::empty()))
-                })
+                                              p.rewrite(context,
+                                                        Shape::legacy(context.config.max_width,
+                                                                      Indent::empty()))
+                                          })
                 .map(|s| pat_is_simple(&s));
 
             if pat.is_none() || pat_simple.unwrap_or(false) || !expr_string.contains('\n') {
@@ -1548,8 +1548,9 @@ fn rewrite_call_inner<R>(context: &RewriteContext,
                              |item| item.span.lo,
                              |item| item.span.hi,
                              |item| {
-        item.rewrite(context, Shape { width: remaining_width, ..nested_shape })
-    },
+                                 item.rewrite(context,
+                                              Shape { width: remaining_width, ..nested_shape })
+                             },
                              span.lo,
                              span.hi);
     let mut item_vec: Vec<_> = items.collect();
@@ -1897,9 +1898,9 @@ pub fn rewrite_unary_suffix<R: Rewrite>(context: &RewriteContext,
                                         -> Option<String> {
     rewrite.rewrite(context, try_opt!(shape.sub_width(suffix.len())))
         .map(|mut r| {
-            r.push_str(suffix);
-            r
-        })
+                 r.push_str(suffix);
+                 r
+             })
 }
 
 fn rewrite_unary_op(context: &RewriteContext,

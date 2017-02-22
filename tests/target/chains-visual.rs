@@ -1,7 +1,6 @@
 // rustfmt-normalize_comments: true
 // rustfmt-single_line_if_else_max_width: 0
 // rustfmt-chain_indent: Visual
-// rustfmt-chain_base_indent: Visual
 // Test chain formatting.
 
 fn main() {
@@ -21,15 +20,15 @@ fn main() {
     // Test case where first chain element isn't a path, but is shorter than
     // the size of a tab.
     x().y(|| match cond() {
-        true => (),
-        false => (),
-    });
+              true => (),
+              false => (),
+          });
 
     loong_func().quux(move || if true {
-        1
-    } else {
-        2
-    });
+                          1
+                      } else {
+                          2
+                      });
 
     some_fuuuuuuuuunction().method_call_a(aaaaa, bbbbb, |c| {
         let x = c;
@@ -50,15 +49,15 @@ fn main() {
         SCRIPT_TASK_ROOT.with(|root| { *root.borrow_mut() = Some(&script_task); });
     });
 
-    let suuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuum = xxxxxxx.map(|x| x + 5)
-                                                                          .map(|x| x / 2)
-                                                                          .fold(0,
-                                                                                |acc, x| acc + x);
+    let suuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuum =
+        xxxxxxx.map(|x| x + 5)
+               .map(|x| x / 2)
+               .fold(0, |acc, x| acc + x);
 
     aaaaaaaaaaaaaaaa.map(|x| {
-                        x += 1;
-                        x
-                    })
+                             x += 1;
+                             x
+                         })
                     .filter(some_mod::some_filter)
 }
 
@@ -105,9 +104,9 @@ fn floaters() {
 
     Foo { x: val }
         .baz(|| {
-            force();
-            multiline();
-        })
+                 force();
+                 multiline();
+             })
         .quux();
 
     Foo {
@@ -115,9 +114,9 @@ fn floaters() {
         z: ok,
     }
     .baz(|| {
-        force();
-        multiline();
-    })
+             force();
+             multiline();
+         })
     .quux();
 
     a +

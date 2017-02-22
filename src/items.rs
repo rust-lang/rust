@@ -1668,11 +1668,12 @@ fn rewrite_args(context: &RewriteContext,
                 span: Span,
                 variadic: bool)
                 -> Option<String> {
-    let mut arg_item_strs = try_opt!(args.iter()
-                                         .map(|arg| {
-        arg.rewrite(&context, Shape::legacy(multi_line_budget, arg_indent))
-    })
-                                         .collect::<Option<Vec<_>>>());
+    let mut arg_item_strs =
+        try_opt!(args.iter()
+                     .map(|arg| {
+                              arg.rewrite(&context, Shape::legacy(multi_line_budget, arg_indent))
+                          })
+                     .collect::<Option<Vec<_>>>());
 
     // Account for sugary self.
     // FIXME: the comment for the self argument is dropped. This is blocked

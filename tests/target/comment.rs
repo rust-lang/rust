@@ -41,10 +41,10 @@ fn doc_comment() {}
 
 fn chains() {
     foo.bar(|| {
-        let x = 10;
-        // comment
-        x
-    })
+                let x = 10;
+                // comment
+                x
+            })
 }
 
 fn issue_1086() {

@@ -133,9 +133,15 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
     let other_child_shape = Shape { width: max_width, ..nested_shape };
     let first_child_shape = if extend {
         let mut shape = try_opt!(parent_shape.shrink_left(last_line_width(&parent_rewrite)));
-        shape.offset = shape.offset.checked_sub(context.config.tab_spaces).unwrap_or(0);
-        shape.indent.block_indent += context.config.tab_spaces;
-        shape
+        match context.config.chain_indent {
+            BlockIndentStyle::Visual => other_child_shape,
+            BlockIndentStyle::Inherit => shape,
+            BlockIndentStyle::Tabbed => {
+                shape.offset = shape.offset.checked_sub(context.config.tab_spaces).unwrap_or(0);
+                shape.indent.block_indent += context.config.tab_spaces;
+                shape
+            }
+        }
     } else {
         other_child_shape
     };
@@ -286,7 +292,7 @@ fn make_subexpr_list(expr: &ast::Expr, context: &RewriteContext) -> (ast::Expr, 
 
 fn chain_indent(context: &RewriteContext, shape: Shape) -> Shape {
     match context.config.chain_indent {
-        BlockIndentStyle::Visual => shape,
+        BlockIndentStyle::Visual => shape.visual_indent(0),
         BlockIndentStyle::Inherit => shape.block_indent(0),
         BlockIndentStyle::Tabbed => shape.block_indent(context.config.tab_spaces),
     }

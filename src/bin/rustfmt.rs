@@ -335,11 +335,11 @@ fn determine_operation(matches: &Matches) -> FmtResult<Operation> {
     let config_path: Option<PathBuf> = matches.opt_str("config-path")
         .map(PathBuf::from)
         .and_then(|dir| {
-            if dir.is_file() {
-                return dir.parent().map(|v| v.into());
-            }
-            Some(dir)
-        });
+                      if dir.is_file() {
+                          return dir.parent().map(|v| v.into());
+                      }
+                      Some(dir)
+                  });
 
     // if no file argument is supplied and `--file-lines` is not specified, read from stdin
     if matches.free.is_empty() && !matches.opt_present("file-lines") {

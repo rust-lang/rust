@@ -183,10 +183,10 @@ impl<'a> FmtVisitor<'a> {
         let mut last_pos_of_prev_use_item = pos_before_first_use_item;
         let mut ordered_use_items = use_items.iter()
             .map(|p_i| {
-                let new_item = (&*p_i, last_pos_of_prev_use_item);
-                last_pos_of_prev_use_item = p_i.span.hi;
-                new_item
-            })
+                     let new_item = (&*p_i, last_pos_of_prev_use_item);
+                     last_pos_of_prev_use_item = p_i.span.hi;
+                     new_item
+                 })
             .collect::<Vec<_>>();
         let pos_after_last_use_item = last_pos_of_prev_use_item;
         // Order the imports by view-path & other import path properties

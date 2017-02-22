@@ -39,10 +39,10 @@ fn git_head_sha1() -> Option<String> {
         .ok()
         .and_then(|o| String::from_utf8(o.stdout).ok())
         .map(|mut s| {
-            let len = s.trim_right().len();
-            s.truncate(len);
-            s
-        })
+                 let len = s.trim_right().len();
+                 s.truncate(len);
+                 s
+             })
 }
 
 // Returns `None` if git is not available.

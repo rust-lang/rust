@@ -276,12 +276,14 @@ fn issue494() {
             hir::StmtExpr(ref expr, id) |
             hir::StmtSemi(ref expr, id) => {
                 result.push(StmtRef::Mirror(Box::new(Stmt {
-                    span: stmt.span,
-                    kind: StmtKind::Expr {
-                        scope: cx.tcx.region_maps.node_extent(id),
-                        expr: expr.to_ref(),
-                    },
-                })))
+                                                         span: stmt.span,
+                                                         kind: StmtKind::Expr {
+                                                             scope: cx.tcx
+                                                                 .region_maps
+                                                                 .node_extent(id),
+                                                             expr: expr.to_ref(),
+                                                         },
+                                                     })))
             }
         }
     }

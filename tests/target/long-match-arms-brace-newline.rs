@@ -7,10 +7,7 @@ fn main() {
     {
         aaaaaaaa::Bbbbb::Ccccccccccccc(_, Some(ref x)) if x ==
                                                           "aaaaaaaaaaa \
-                                                           aaaaaaa aaaaaa" =>
-        {
-            Ok(())
-        }
+                                                           aaaaaaa aaaaaa" => Ok(()),
         _ => Err(x),
     }
 }

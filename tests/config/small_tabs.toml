@@ -23,5 +23,4 @@ report_fixme = "Never"
 reorder_imports = false
 single_line_if_else_max_width = 0
 format_strings = true
-chains_overflow_last = true
 take_source_hints = true

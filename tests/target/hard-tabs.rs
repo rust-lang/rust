@@ -74,10 +74,10 @@ fn main() {
 	}
 
 	loong_func().quux(move || if true {
-		1
-	} else {
-		2
-	});
+		                  1
+		                 } else {
+		                  2
+		                 });
 
 	fffffffffffffffffffffffffffffffffff(a, {
 		SCRIPT_TASK_ROOT.with(|root| { *root.borrow_mut() = Some(&script_task); });
@@ -87,7 +87,7 @@ fn main() {
 		.d();
 
 	x().y(|| match cond() {
-		true => (),
-		false => (),
-	});
+	          true => (),
+	          false => (),
+	      });
 }
