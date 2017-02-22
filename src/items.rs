@@ -1318,9 +1318,9 @@ fn rewrite_explicit_self(explicit_self: &ast::ExplicitSelf,
             let mut_str = format_mutability(m);
             match lt {
                 Some(ref l) => {
-                    let lifetime_str =
-                        try_opt!(l.rewrite(context,
-                                           Shape::legacy(usize::max_value(), Indent::empty())));
+                    let lifetime_str = try_opt!(l.rewrite(context,
+                                                          Shape::legacy(usize::max_value(),
+                                                                        Indent::empty())));
                     Some(format!("&{} {}self", lifetime_str, mut_str))
                 }
                 None => Some(format!("&{}self", mut_str)),
@@ -1677,13 +1677,12 @@ fn rewrite_args(context: &RewriteContext,
     // Account for sugary self.
     // FIXME: the comment for the self argument is dropped. This is blocked
     // on rust issue #27522.
-    let min_args = explicit_self.and_then(|explicit_self| {
-            rewrite_explicit_self(explicit_self, args, context)
-        })
-        .map_or(1, |self_str| {
-            arg_item_strs[0] = self_str;
-            2
-        });
+    let min_args =
+        explicit_self.and_then(|explicit_self| rewrite_explicit_self(explicit_self, args, context))
+            .map_or(1, |self_str| {
+                arg_item_strs[0] = self_str;
+                2
+            });
 
     // Comments between args.
     let mut arg_items = Vec::new();

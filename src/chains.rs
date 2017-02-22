@@ -78,7 +78,7 @@
 
 use Shape;
 use rewrite::{Rewrite, RewriteContext};
-use utils::{wrap_str, first_line_width};
+use utils::{wrap_str, first_line_width, last_line_width};
 use expr::rewrite_call;
 use config::BlockIndentStyle;
 use macros::convert_try_mac;
@@ -129,14 +129,26 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
     let max_width = try_opt!((shape.width + shape.indent.width() + shape.offset)
                                  .checked_sub(nested_shape.indent.width() +
                                               nested_shape.offset));
-    // The alignement in the shape is only used if we start the item on a new
-    // line, so we don't need to preserve the offset.
-    let child_shape = Shape { width: max_width, ..nested_shape };
-    debug!("child_shape {:?}", child_shape);
+
+    let other_child_shape = Shape { width: max_width, ..nested_shape };
+    let first_child_shape = if extend {
+        let mut shape = try_opt!(parent_shape.shrink_left(last_line_width(&parent_rewrite)));
+        shape.offset = shape.offset.checked_sub(context.config.tab_spaces).unwrap_or(0);
+        shape.indent.block_indent += context.config.tab_spaces;
+        shape
+    } else {
+        other_child_shape
+    };
+    debug!("child_shapes {:?} {:?}",
+           first_child_shape,
+           other_child_shape);
+
+    let child_shape_iter =
+        Some(first_child_shape).into_iter().chain(::std::iter::repeat(other_child_shape)
+                                                      .take(subexpr_list.len() - 1));
+    let iter = subexpr_list.iter().rev().zip(child_shape_iter);
     let mut rewrites =
-        try_opt!(subexpr_list.iter()
-                     .rev()
-                     .map(|e| rewrite_chain_subexpr(e, total_span, context, child_shape))
+        try_opt!(iter.map(|(e, shape)| rewrite_chain_subexpr(e, total_span, context, shape))
                      .collect::<Option<Vec<_>>>());
 
     // Total of all items excluding the last.

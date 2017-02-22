@@ -486,8 +486,9 @@ impl<'a> FmtVisitor<'a> {
         self.format_missing_with_indent(source!(self, first.span).lo);
 
         let rewrite = outers.rewrite(&self.get_context(),
-                     Shape::legacy(self.config.max_width - self.block_indent.width(),
-                                   self.block_indent))
+                                     Shape::legacy(self.config.max_width -
+                                                   self.block_indent.width(),
+                                                   self.block_indent))
             .unwrap();
         self.buffer.push_str(&rewrite);
         let last = outers.last().unwrap();
