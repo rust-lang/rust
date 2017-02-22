@@ -345,14 +345,14 @@ impl DirEntry {
     #[cfg(any(target_os = "android",
               target_os = "linux",
               target_os = "emscripten",
-              target_os = "haiku",
-              target_os = "fuchsia"))]
+              target_os = "haiku"))]
     fn name_bytes(&self) -> &[u8] {
         unsafe {
             CStr::from_ptr(self.entry.d_name.as_ptr()).to_bytes()
         }
     }
-    #[cfg(target_os = "solaris")]
+    #[cfg(any(target_os = "solaris",
+              target_os = "fuchsia"))]
     fn name_bytes(&self) -> &[u8] {
         &*self.name
     }
