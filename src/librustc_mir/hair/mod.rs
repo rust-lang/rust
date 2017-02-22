@@ -152,6 +152,9 @@ pub enum ExprKind<'tcx> {
     ReifyFnPointer {
         source: ExprRef<'tcx>,
     },
+    ClosureFnPointer {
+        source: ExprRef<'tcx>,
+    },
     UnsafeFnPointer {
         source: ExprRef<'tcx>,
     },
