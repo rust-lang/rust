@@ -568,6 +568,15 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
          })
          .default(build.config.docs)
          .run(move |s| doc::rustbook(build, s.target, "nomicon"));
+    rules.doc("doc-reference", "src/doc/reference")
+         .dep(move |s| {
+             s.name("tool-rustbook")
+              .host(&build.config.build)
+              .target(&build.config.build)
+              .stage(0)
+         })
+         .default(build.config.docs)
+         .run(move |s| doc::rustbook(build, s.target, "reference"));
     rules.doc("doc-standalone", "src/doc")
          .dep(move |s| {
              s.name("rustc")

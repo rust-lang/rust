@@ -1,0 +1,39 @@
+error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'a` due to conflicting requirements
+  --> $DIR/ex2d-push-inference-variable-2.rs:17:13
+   |
+17 |     let b = Ref { data: y.data };
+   |             ^^^
+   |
+note: first, the lifetime cannot outlive the lifetime 'c as defined on the body at 15:66...
+  --> $DIR/ex2d-push-inference-variable-2.rs:15:67
+   |
+15 |   fn foo<'a, 'b, 'c>(x: &'a mut Vec<Ref<'b, i32>>, y: Ref<'c, i32>) {
+   |  ___________________________________________________________________^ starting here...
+16 | |     let a: &mut Vec<Ref<i32>> = x;
+17 | |     let b = Ref { data: y.data };
+18 | |     a.push(b);
+19 | | }
+   | |_^ ...ending here
+note: ...so that reference does not outlive borrowed content
+  --> $DIR/ex2d-push-inference-variable-2.rs:17:25
+   |
+17 |     let b = Ref { data: y.data };
+   |                         ^^^^^^
+note: but, the lifetime must be valid for the lifetime 'b as defined on the body at 15:66...
+  --> $DIR/ex2d-push-inference-variable-2.rs:15:67
+   |
+15 |   fn foo<'a, 'b, 'c>(x: &'a mut Vec<Ref<'b, i32>>, y: Ref<'c, i32>) {
+   |  ___________________________________________________________________^ starting here...
+16 | |     let a: &mut Vec<Ref<i32>> = x;
+17 | |     let b = Ref { data: y.data };
+18 | |     a.push(b);
+19 | | }
+   | |_^ ...ending here
+note: ...so that expression is assignable (expected &mut std::vec::Vec<Ref<'_, i32>>, found &mut std::vec::Vec<Ref<'b, i32>>)
+  --> $DIR/ex2d-push-inference-variable-2.rs:16:33
+   |
+16 |     let a: &mut Vec<Ref<i32>> = x;
+   |                                 ^
+
+error: aborting due to previous error
+

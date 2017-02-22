@@ -10,6 +10,9 @@
 
 fn main() {}
 
+struct Type;
+
 impl Type {
-    undef!(); //~ ERROR macro undefined: `undef`
+    undef!();
+    //~^ ERROR cannot find macro `undef!` in this scope
 }

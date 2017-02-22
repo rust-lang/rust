@@ -255,12 +255,6 @@ impl<'a, 'gcx, 'tcx> Substs<'tcx> {
     }
 
     #[inline]
-    pub fn params(&self) -> &[Kind<'tcx>] {
-        // FIXME (dikaiosune) this should be removed, and corresponding compilation errors fixed
-        self
-    }
-
-    #[inline]
     pub fn types(&'a self) -> impl DoubleEndedIterator<Item=Ty<'tcx>> + 'a {
         self.iter().filter_map(|k| k.as_type())
     }

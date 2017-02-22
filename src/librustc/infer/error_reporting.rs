@@ -65,9 +65,6 @@ use super::region_inference::ConcreteFailure;
 use super::region_inference::SubSupConflict;
 use super::region_inference::GenericBoundFailure;
 use super::region_inference::GenericKind;
-use super::region_inference::ProcessedErrors;
-use super::region_inference::ProcessedErrorOrigin;
-use super::region_inference::SameRegions;
 
 use hir::map as hir_map;
 use hir;
@@ -77,11 +74,10 @@ use infer;
 use middle::region;
 use traits::{ObligationCause, ObligationCauseCode};
 use ty::{self, TyCtxt, TypeFoldable};
-use ty::{Region, ReFree, Issue32330};
+use ty::{Region, Issue32330};
 use ty::error::TypeError;
 
 use std::fmt;
-use syntax::ast;
 use syntax_pos::{Pos, Span};
 use errors::DiagnosticBuilder;
 
@@ -255,8 +251,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
         // try to pre-process the errors, which will group some of them
         // together into a `ProcessedErrors` group:
-        let processed_errors = self.process_errors(errors);
-        let errors = processed_errors.as_ref().unwrap_or(errors);
+        let errors = self.process_errors(errors);
 
         debug!("report_region_errors: {} errors after preprocessing", errors.len());
 
@@ -278,13 +273,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                                  sub_origin, sub_r,
                                                  sup_origin, sup_r);
                 }
-
-                ProcessedErrors(ref origins,
-                                ref same_regions) => {
-                    if !same_regions.is_empty() {
-                        self.report_processed_errors(origins);
-                    }
-                }
             }
         }
     }
@@ -300,202 +288,31 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     // duplicates that will be unhelpful to the end-user. But
     // obviously it never weeds out ALL errors.
     fn process_errors(&self, errors: &Vec<RegionResolutionError<'tcx>>)
-                      -> Option<Vec<RegionResolutionError<'tcx>>> {
+                      -> Vec<RegionResolutionError<'tcx>> {
         debug!("process_errors()");
-        let mut origins = Vec::new();
 
-        // we collect up ConcreteFailures and SubSupConflicts that are
-        // relating free-regions bound on the fn-header and group them
-        // together into this vector
-        let mut same_regions = Vec::new();
+        // We want to avoid reporting generic-bound failures if we can
+        // avoid it: these have a very high rate of being unhelpful in
+        // practice. This is because they are basically secondary
+        // checks that test the state of the region graph after the
+        // rest of inference is done, and the other kinds of errors
+        // indicate that the region constraint graph is internally
+        // inconsistent, so these test results are likely to be
+        // meaningless.
+        //
+        // Therefore, we filter them out of the list unless they are
+        // the only thing in the list.
 
-        // here we put errors that we will not be able to process nicely
-        let mut other_errors = Vec::new();
+        let is_bound_failure = |e: &RegionResolutionError<'tcx>| match *e {
+            ConcreteFailure(..) => false,
+            SubSupConflict(..) => false,
+            GenericBoundFailure(..) => true,
+        };
 
-        // we collect up GenericBoundFailures in here.
-        let mut bound_failures = Vec::new();
-
-        for error in errors {
-            // Check whether we can process this error into some other
-            // form; if not, fall through.
-            match *error {
-                ConcreteFailure(ref origin, sub, sup) => {
-                    debug!("processing ConcreteFailure");
-                    if let SubregionOrigin::CompareImplMethodObligation { .. } = *origin {
-                        // When comparing an impl method against a
-                        // trait method, it is not helpful to suggest
-                        // changes to the impl method.  This is
-                        // because the impl method signature is being
-                        // checked using the trait's environment, so
-                        // usually the changes we suggest would
-                        // actually have to be applied to the *trait*
-                        // method (and it's not clear that the trait
-                        // method is even under the user's control).
-                    } else if let Some(same_frs) = free_regions_from_same_fn(self.tcx, sub, sup) {
-                        origins.push(
-                            ProcessedErrorOrigin::ConcreteFailure(
-                                origin.clone(),
-                                sub,
-                                sup));
-                        append_to_same_regions(&mut same_regions, &same_frs);
-                        continue;
-                    }
-                }
-                SubSupConflict(ref var_origin, ref sub_origin, sub, ref sup_origin, sup) => {
-                    debug!("processing SubSupConflict sub: {:?} sup: {:?}", sub, sup);
-                    match (sub_origin, sup_origin) {
-                        (&SubregionOrigin::CompareImplMethodObligation { .. }, _) => {
-                            // As above, when comparing an impl method
-                            // against a trait method, it is not helpful
-                            // to suggest changes to the impl method.
-                        }
-                        (_, &SubregionOrigin::CompareImplMethodObligation { .. }) => {
-                            // See above.
-                        }
-                        _ => {
-                            if let Some(same_frs) = free_regions_from_same_fn(self.tcx, sub, sup) {
-                                origins.push(
-                                    ProcessedErrorOrigin::VariableFailure(
-                                        var_origin.clone()));
-                                append_to_same_regions(&mut same_regions, &same_frs);
-                                continue;
-                            }
-                        }
-                    }
-                }
-                GenericBoundFailure(ref origin, ref kind, region) => {
-                    bound_failures.push((origin.clone(), kind.clone(), region));
-                    continue;
-                }
-                ProcessedErrors(..) => {
-                    bug!("should not encounter a `ProcessedErrors` yet: {:?}", error)
-                }
-            }
-
-            // No changes to this error.
-            other_errors.push(error.clone());
-        }
-
-        // ok, let's pull together the errors, sorted in an order that
-        // we think will help user the best
-        let mut processed_errors = vec![];
-
-        // first, put the processed errors, if any
-        if !same_regions.is_empty() {
-            let common_scope_id = same_regions[0].scope_id;
-            for sr in &same_regions {
-                // Since ProcessedErrors is used to reconstruct the function
-                // declaration, we want to make sure that they are, in fact,
-                // from the same scope
-                if sr.scope_id != common_scope_id {
-                    debug!("returning empty result from process_errors because
-                            {} != {}", sr.scope_id, common_scope_id);
-                    return None;
-                }
-            }
-            assert!(origins.len() > 0);
-            let pe = ProcessedErrors(origins, same_regions);
-            debug!("errors processed: {:?}", pe);
-            processed_errors.push(pe);
-        }
-
-        // next, put the other misc errors
-        processed_errors.extend(other_errors);
-
-        // finally, put the `T: 'a` errors, but only if there were no
-        // other errors. otherwise, these have a very high rate of
-        // being unhelpful in practice. This is because they are
-        // basically secondary checks that test the state of the
-        // region graph after the rest of inference is done, and the
-        // other kinds of errors indicate that the region constraint
-        // graph is internally inconsistent, so these test results are
-        // likely to be meaningless.
-        if processed_errors.is_empty() {
-            for (origin, kind, region) in bound_failures {
-                processed_errors.push(GenericBoundFailure(origin, kind, region));
-            }
-        }
-
-        // we should always wind up with SOME errors, unless there were no
-        // errors to start
-        assert!(if errors.len() > 0 {processed_errors.len() > 0} else {true});
-
-        return Some(processed_errors);
-
-        #[derive(Debug)]
-        struct FreeRegionsFromSameFn {
-            sub_fr: ty::FreeRegion,
-            sup_fr: ty::FreeRegion,
-            scope_id: ast::NodeId
-        }
-
-        impl FreeRegionsFromSameFn {
-            fn new(sub_fr: ty::FreeRegion,
-                   sup_fr: ty::FreeRegion,
-                   scope_id: ast::NodeId)
-                   -> FreeRegionsFromSameFn {
-                FreeRegionsFromSameFn {
-                    sub_fr: sub_fr,
-                    sup_fr: sup_fr,
-                    scope_id: scope_id
-                }
-            }
-        }
-
-        fn free_regions_from_same_fn<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
-                                                     sub: &'tcx Region,
-                                                     sup: &'tcx Region)
-                                                     -> Option<FreeRegionsFromSameFn> {
-            debug!("free_regions_from_same_fn(sub={:?}, sup={:?})", sub, sup);
-            let (scope_id, fr1, fr2) = match (sub, sup) {
-                (&ReFree(fr1), &ReFree(fr2)) => {
-                    if fr1.scope != fr2.scope {
-                        return None
-                    }
-                    assert!(fr1.scope == fr2.scope);
-                    (fr1.scope.node_id(&tcx.region_maps), fr1, fr2)
-                },
-                _ => return None
-            };
-            let parent = tcx.hir.get_parent(scope_id);
-            let parent_node = tcx.hir.find(parent);
-            match parent_node {
-                Some(node) => match node {
-                    hir_map::NodeItem(item) => match item.node {
-                        hir::ItemFn(..) => {
-                            Some(FreeRegionsFromSameFn::new(fr1, fr2, scope_id))
-                        },
-                        _ => None
-                    },
-                    hir_map::NodeImplItem(..) |
-                    hir_map::NodeTraitItem(..) => {
-                        Some(FreeRegionsFromSameFn::new(fr1, fr2, scope_id))
-                    },
-                    _ => None
-                },
-                None => {
-                    debug!("no parent node of scope_id {}", scope_id);
-                    None
-                }
-            }
-        }
-
-        fn append_to_same_regions(same_regions: &mut Vec<SameRegions>,
-                                  same_frs: &FreeRegionsFromSameFn) {
-            debug!("append_to_same_regions(same_regions={:?}, same_frs={:?})",
-                   same_regions, same_frs);
-            let scope_id = same_frs.scope_id;
-            let (sub_fr, sup_fr) = (same_frs.sub_fr, same_frs.sup_fr);
-            for sr in same_regions.iter_mut() {
-                if sr.contains(&sup_fr.bound_region) && scope_id == sr.scope_id {
-                    sr.push(sub_fr.bound_region);
-                    return
-                }
-            }
-            same_regions.push(SameRegions {
-                scope_id: scope_id,
-                regions: vec![sub_fr.bound_region, sup_fr.bound_region]
-            })
+        if errors.iter().all(|e| is_bound_failure(e)) {
+            errors.clone()
+        } else {
+            errors.iter().filter(|&e| !is_bound_failure(e)).cloned().collect()
         }
     }
 
@@ -1071,20 +888,6 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
         self.note_region_origin(&mut err, &sub_origin);
         err.emit();
-    }
-
-    fn report_processed_errors(&self,
-                               origins: &[ProcessedErrorOrigin<'tcx>]) {
-        for origin in origins.iter() {
-            let mut err = match *origin {
-                ProcessedErrorOrigin::VariableFailure(ref var_origin) =>
-                    self.report_inference_failure(var_origin.clone()),
-                ProcessedErrorOrigin::ConcreteFailure(ref sr_origin, sub, sup) =>
-                    self.report_concrete_failure(sr_origin.clone(), sub, sup),
-            };
-
-            err.emit();
-        }
     }
 }
 

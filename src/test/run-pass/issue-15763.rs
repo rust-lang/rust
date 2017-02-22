@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(unknown_features)]
+#![allow(unused_features)]
+#![allow(unreachable_code)]
 #![feature(box_syntax)]
 
 #[derive(PartialEq, Debug)]
@@ -28,14 +29,14 @@ struct Foo {
 }
 
 fn foo() -> Result<Foo, isize> {
-    return Ok(Foo {
+    return Ok::<Foo, isize>(Foo {
         x: Bar { x: 22 },
         a: return Err(32)
     });
 }
 
 fn baz() -> Result<Foo, isize> {
-    Ok(Foo {
+    Ok::<Foo, isize>(Foo {
         x: Bar { x: 22 },
         a: return Err(32)
     })

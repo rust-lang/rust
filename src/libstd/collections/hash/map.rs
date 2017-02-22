@@ -182,15 +182,15 @@ impl DefaultResizePolicy {
 // ----------------------
 // To protect against degenerate performance scenarios (including DOS attacks),
 // the implementation includes an adaptive behavior that can resize the map
-// early (before it's capacity is exceeded) when suspiciously long probe or
-// foward shifts sequences are encounted.
+// early (before its capacity is exceeded) when suspiciously long probe or
+// forward shifts sequences are encountered.
 //
 // With this algorithm in place it would be possible to turn a CPU attack into
-// a memory attack due to the agressive resizing. To prevent that the
+// a memory attack due to the aggressive resizing. To prevent that the
 // adaptive behavior only triggers when the map occupancy is half the maximum occupancy.
-// This reduces the effectivenes of the algorithm but also makes it completelly safe.
+// This reduces the effectiveness of the algorithm but also makes it completely safe.
 //
-// The previous safety measure that also prevents degenerate iteractions with
+// The previous safety measure also prevents degenerate interactions with
 // really bad quality hash algorithms that can make normal inputs look like a
 // DOS attack.
 //

@@ -167,7 +167,7 @@ pub use intrinsics::transmute;
 /// [FFI]: ../../book/ffi.html
 /// [box]: ../../std/boxed/struct.Box.html
 /// [into_raw]: ../../std/boxed/struct.Box.html#method.into_raw
-/// [ub]: ../../reference.html#behavior-considered-undefined
+/// [ub]: ../../reference/behavior-considered-undefined.html
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn forget<T>(t: T) {
@@ -318,7 +318,7 @@ pub fn align_of_val<T: ?Sized>(val: &T) -> usize {
 ///
 /// [uninit]: fn.uninitialized.html
 /// [FFI]: ../../book/ffi.html
-/// [ub]: ../../reference.html#behavior-considered-undefined
+/// [ub]: ../../reference/behavior-considered-undefined.html
 ///
 /// # Examples
 ///
@@ -417,7 +417,7 @@ pub unsafe fn zeroed<T>() -> T {
 /// [`Vec`]: ../../std/vec/struct.Vec.html
 /// [`vec!`]: ../../std/macro.vec.html
 /// [`Clone`]: ../../std/clone/trait.Clone.html
-/// [ub]: ../../reference.html#behavior-considered-undefined
+/// [ub]: ../../reference/behavior-considered-undefined.html
 /// [write]: ../ptr/fn.write.html
 /// [copy]: ../intrinsics/fn.copy.html
 /// [copy_no]: ../intrinsics/fn.copy_nonoverlapping.html
@@ -525,7 +525,7 @@ pub fn replace<T>(dest: &mut T, mut src: T) -> T {
 /// it will not release any borrows, as borrows are based on lexical scope.
 ///
 /// This effectively does nothing for
-/// [types which implement `Copy`](../../book/ownership.html#Copy%20types),
+/// [types which implement `Copy`](../../book/ownership.html#copy-types),
 /// e.g. integers. Such values are copied and _then_ moved into the function,
 /// so the value persists after this function call.
 ///
@@ -626,7 +626,7 @@ pub fn drop<T>(_x: T) { }
 /// same size. This function triggers [undefined behavior][ub] if `U` is larger than
 /// `T`.
 ///
-/// [ub]: ../../reference.html#behavior-considered-undefined
+/// [ub]: ../../reference/behavior-considered-undefined.html
 /// [size_of]: fn.size_of.html
 ///
 /// # Examples

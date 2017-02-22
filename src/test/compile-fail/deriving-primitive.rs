@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[derive(FromPrimitive)] //~ERROR cannot find derive macro `FromPrimitive` in this scope
+#[derive(FromPrimitive)] //~ ERROR cannot find derive macro `FromPrimitive` in this scope
 enum Foo {}
 
 fn main() {}

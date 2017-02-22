@@ -333,6 +333,16 @@ macro_rules! make_mir_visitor {
                     StatementKind::StorageDead(ref $($mutability)* lvalue) => {
                         self.visit_lvalue(lvalue, LvalueContext::StorageDead, location);
                     }
+                    StatementKind::InlineAsm { ref $($mutability)* outputs,
+                                               ref $($mutability)* inputs,
+                                               asm: _ } => {
+                        for output in & $($mutability)* outputs[..] {
+                            self.visit_lvalue(output, LvalueContext::Store, location);
+                        }
+                        for input in & $($mutability)* inputs[..] {
+                            self.visit_operand(input, location);
+                        }
+                    }
                     StatementKind::Nop => {}
                 }
             }
@@ -524,17 +534,6 @@ macro_rules! make_mir_visitor {
 
                         for operand in operands {
                             self.visit_operand(operand, location);
-                        }
-                    }
-
-                    Rvalue::InlineAsm { ref $($mutability)* outputs,
-                                        ref $($mutability)* inputs,
-                                        asm: _ } => {
-                        for output in & $($mutability)* outputs[..] {
-                            self.visit_lvalue(output, LvalueContext::Store, location);
-                        }
-                        for input in & $($mutability)* inputs[..] {
-                            self.visit_operand(input, location);
                         }
                     }
                 }

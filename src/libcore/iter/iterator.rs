@@ -1603,12 +1603,12 @@ pub trait Iterator {
         let mut i = self.len();
 
         while let Some(v) = self.next_back() {
-            if predicate(v) {
-                return Some(i - 1);
-            }
             // No need for an overflow check here, because `ExactSizeIterator`
             // implies that the number of elements fits into a `usize`.
             i -= 1;
+            if predicate(v) {
+                return Some(i);
+            }
         }
         None
     }
@@ -1616,7 +1616,9 @@ pub trait Iterator {
     /// Returns the maximum element of an iterator.
     ///
     /// If several elements are equally maximum, the last element is
-    /// returned.
+    /// returned. If the iterator is empty, [`None`] is returned.
+    ///
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
     ///
     /// # Examples
     ///
@@ -1624,8 +1626,10 @@ pub trait Iterator {
     ///
     /// ```
     /// let a = [1, 2, 3];
+    /// let b: Vec<u32> = Vec::new();
     ///
     /// assert_eq!(a.iter().max(), Some(&3));
+    /// assert_eq!(b.iter().max(), None);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -1642,7 +1646,9 @@ pub trait Iterator {
     /// Returns the minimum element of an iterator.
     ///
     /// If several elements are equally minimum, the first element is
-    /// returned.
+    /// returned. If the iterator is empty, [`None`] is returned.
+    ///
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
     ///
     /// # Examples
     ///
@@ -1650,8 +1656,10 @@ pub trait Iterator {
     ///
     /// ```
     /// let a = [1, 2, 3];
+    /// let b: Vec<u32> = Vec::new();
     ///
     /// assert_eq!(a.iter().min(), Some(&1));
+    /// assert_eq!(b.iter().min(), None);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -1669,7 +1677,9 @@ pub trait Iterator {
     /// specified function.
     ///
     /// If several elements are equally maximum, the last element is
-    /// returned.
+    /// returned. If the iterator is empty, [`None`] is returned.
+    ///
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
     ///
     /// # Examples
     ///
@@ -1694,7 +1704,9 @@ pub trait Iterator {
     /// specified comparison function.
     ///
     /// If several elements are equally maximum, the last element is
-    /// returned.
+    /// returned. If the iterator is empty, [`None`] is returned.
+    ///
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
     ///
     /// # Examples
     ///
@@ -1719,7 +1731,9 @@ pub trait Iterator {
     /// specified function.
     ///
     /// If several elements are equally minimum, the first element is
-    /// returned.
+    /// returned. If the iterator is empty, [`None`] is returned.
+    ///
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
     ///
     /// # Examples
     ///
@@ -1743,7 +1757,9 @@ pub trait Iterator {
     /// specified comparison function.
     ///
     /// If several elements are equally minimum, the first element is
-    /// returned.
+    /// returned. If the iterator is empty, [`None`] is returned.
+    ///
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
     ///
     /// # Examples
     ///
