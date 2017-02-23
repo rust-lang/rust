@@ -181,6 +181,11 @@ impl<'a> base::Resolver for Resolver<'a> {
     fn find_legacy_attr_invoc(&mut self, attrs: &mut Vec<ast::Attribute>)
                               -> Option<ast::Attribute> {
         for i in 0..attrs.len() {
+            if self.session.plugin_attributes.borrow().iter()
+                    .any(|&(ref attr_nm, _)| attrs[i].name() == &**attr_nm) {
+                attr::mark_known(&attrs[i]);
+            }
+
             match self.builtin_macros.get(&attrs[i].name()).cloned() {
                 Some(binding) => match *binding.get_macro(self) {
                     MultiModifier(..) | MultiDecorator(..) | SyntaxExtension::AttrProcMacro(..) => {
