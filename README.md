@@ -35,15 +35,15 @@ Read ["Installing Rust"] from [The Book].
 3. Build and install:
 
     ```sh
-    $ ./configure
-    $ make && sudo make install
+    $ ./x.py build && sudo ./x.py dist --install
     ```
 
-    > ***Note:*** Install locations can be adjusted by passing a `--prefix`
-    > argument to `configure`. Various other options are also supported – pass
-    > `--help` for more information on them.
+    > ***Note:*** Install locations can be adjusted by copying the config file
+    > from `./src/bootstrap/config.toml.example` to `./config.toml`, and
+    > adjusting the `prefix` option under `[install]`. Various other options are
+    > also supported, and are documented in the config file.
 
-    When complete, `sudo make install` will place several programs into
+    When complete, `sudo ./x.py dist --install` will place several programs into
     `/usr/local/bin`: `rustc`, the Rust compiler, and `rustdoc`, the
     API-documentation tool. This install does not include [Cargo],
     Rust's package manager, which you may also want to build.
@@ -58,7 +58,6 @@ you need depends largely on what C/C++ libraries you want to interoperate with:
 for interop with software produced by Visual Studio use the MSVC build of Rust;
 for interop with GNU software built using the MinGW/MSYS2 toolchain use the GNU
 build.
-
 
 #### MinGW
 
@@ -94,11 +93,10 @@ build.
                mingw-w64-x86_64-gcc
    ```
 
-4. Navigate to Rust's source code (or clone it), then configure and build it:
+4. Navigate to Rust's source code (or clone it), then build it:
 
    ```sh
-   $ ./configure
-   $ make && make install
+   $ ./x.py build && ./x.py dist --install
    ```
 
 #### MSVC
@@ -114,13 +112,6 @@ shell with:
 > python x.py build
 ```
 
-If you're running inside of an msys shell, however, you can run:
-
-```sh
-$ ./configure --build=x86_64-pc-windows-msvc
-$ make && make install
-```
-
 Currently building Rust only works with some known versions of Visual Studio. If
 you have a more recent version installed the build system doesn't understand
 then you may need to force rustbuild to use an older version. This can be done
@@ -131,13 +122,43 @@ CALL "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\bin\amd64\vcvars64.
 python x.py build
 ```
 
+#### Specifying an ABI
+
+Each specific ABI can also be used from either environment (for example, using
+the GNU ABI in powershell) by using an explicit build triple. The available
+Windows build triples are:
+- GNU ABI (using GCC)
+    - `i686-pc-windows-gnu`
+    - `x86_64-pc-windows-gnu`
+- The MSVC ABI
+    - `i686-pc-windows-msvc`
+    - `x86_64-pc-windows-msvc`
+
+The build triple can be specified by either specifying `--build=ABI` when
+invoking `x.py` commands, or by copying the `config.toml` file (as described
+in Building From Source), and modifying the `build` option under the `[build]`
+section.
+
+### Configure and Make
+
+While it's not the recommended build system, this project also provides a
+configure script and makefile (the latter of which just invokes `x.py`).
+
+```sh
+$ ./configure
+$ make && sudo make install
+```
+
+When using the configure script, the generated config.mk` file may override the
+`config.toml` file. To go back to the `config.toml` file, delete the generated
+`config.mk` file.
+
 ## Building Documentation
 
 If you’d like to build the documentation, it’s almost the same:
 
 ```sh
-$ ./configure
-$ make docs
+$ ./x.py doc
 ```
 
 The generated documentation will appear in a top-level `doc` directory,
