@@ -93,7 +93,7 @@ uselessly. We would rather have the following:
 ```text
 bubble_up(heap, index):
     let elem = heap[index]
-    while index != 0 && element < heap[parent(index)]:
+    while index != 0 && elem < heap[parent(index)]:
         heap[index] = heap[parent(index)]
         index = parent(index)
     heap[index] = elem
