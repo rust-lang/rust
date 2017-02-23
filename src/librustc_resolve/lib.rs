@@ -2329,7 +2329,9 @@ impl<'a> Resolver<'a> {
         if primary_ns != MacroNS && path.len() == 1 &&
                 self.macro_names.contains(&path[0].name) {
             // Return some dummy definition, it's enough for error reporting.
-            return Some(PathResolution::new(Def::Macro(DefId::local(CRATE_DEF_INDEX))));
+            return Some(
+                PathResolution::new(Def::Macro(DefId::local(CRATE_DEF_INDEX), MacroKind::Bang))
+            );
         }
         fin_res
     }

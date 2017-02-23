@@ -159,9 +159,10 @@ impl<'a> base::Resolver for Resolver<'a> {
             krate: BUILTIN_MACROS_CRATE,
             index: DefIndex::new(self.macro_map.len()),
         };
+        let kind = ext.kind();
         self.macro_map.insert(def_id, ext);
         let binding = self.arenas.alloc_name_binding(NameBinding {
-            kind: NameBindingKind::Def(Def::Macro(def_id)),
+            kind: NameBindingKind::Def(Def::Macro(def_id, kind)),
             span: DUMMY_SP,
             vis: ty::Visibility::Invisible,
             expansion: Mark::root(),
@@ -561,7 +562,7 @@ impl<'a> Resolver<'a> {
             });
             self.macro_exports.push(Export {
                 name: def.ident.name,
-                def: Def::Macro(self.definitions.local_def_id(def.id)),
+                def: Def::Macro(self.definitions.local_def_id(def.id), MacroKind::Bang),
             });
             self.exported_macros.push(def);
         }
