@@ -160,7 +160,10 @@ impl<'a> Rewrite for SegmentParam<'a> {
             SegmentParam::LifeTime(lt) => lt.rewrite(context, shape),
             SegmentParam::Type(ty) => ty.rewrite(context, shape),
             SegmentParam::Binding(binding) => {
-                let mut result = format!("{} = ", binding.ident);
+                let mut result = match context.config.type_punctuation_density {
+                    TypeDensity::Wide => format!("{} = ", binding.ident),
+                    TypeDensity::Compressed => format!("{}=", binding.ident),
+                };
                 let budget = try_opt!(shape.width.checked_sub(result.len()));
                 let rewrite =
                     try_opt!(binding.ty
