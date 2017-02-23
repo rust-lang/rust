@@ -3,12 +3,12 @@ FROM ubuntu:16.04
 RUN apt-get update && apt-get install -y --no-install-recommends \
   g++ \
   make \
+  ninja-build \
   file \
   curl \
   ca-certificates \
-  python2.7 \
+  python2.7-dev \
   git \
-  cmake \
   sudo \
   xz-utils \
   zlib1g-dev \
@@ -19,7 +19,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   bzip2 \
   patch \
   libssl-dev \
-  pkg-config
+  pkg-config \
+  swig \
+  libedit-dev \
+  libncurses5-dev
+
+# CMake 3.8.0 is the first version with official support for Fuchsia,
+# which is needed to build the Fuchsia toolchain.
+RUN curl -L https://cmake.org/files/v3.8/cmake-3.8.0-rc1-Linux-x86_64.tar.gz | \
+      tar xzf - -C /usr/local --strip-components=1
 
 ENV SCCACHE_DIGEST=7237e38e029342fa27b7ac25412cb9d52554008b12389727320bd533fd7f05b6a96d55485f305caf95e5c8f5f97c3313e10012ccad3e752aba2518f3522ba783
 RUN curl -L https://api.pub.build.mozilla.org/tooltool/sha512/$SCCACHE_DIGEST | \
@@ -31,6 +39,10 @@ RUN curl -OL https://github.com/Yelp/dumb-init/releases/download/v1.2.0/dumb-ini
 ENTRYPOINT ["/usr/bin/dumb-init", "--"]
 
 WORKDIR /tmp
+COPY shared.sh /tmp/
+
+COPY build-fuchsia.sh /tmp/
+RUN ./build-fuchsia.sh
 
 COPY build-rumprun.sh /tmp/
 RUN ./build-rumprun.sh
@@ -65,10 +77,18 @@ ENV TARGETS=$TARGETS,arm-unknown-linux-musleabi
 ENV TARGETS=$TARGETS,arm-unknown-linux-musleabihf
 ENV TARGETS=$TARGETS,armv7-unknown-linux-musleabihf
 ENV TARGETS=$TARGETS,sparc64-unknown-linux-gnu
+ENV TARGETS=$TARGETS,x86_64-unknown-fuchsia
+ENV TARGETS=$TARGETS,aarch64-unknown-fuchsia
 
 ENV CC_mipsel_unknown_linux_musl=mipsel-openwrt-linux-gcc \
     CC_mips_unknown_linux_musl=mips-openwrt-linux-gcc \
-    CC_sparc64_unknown_linux_gnu=sparc64-linux-gnu-gcc
+    CC_sparc64_unknown_linux_gnu=sparc64-linux-gnu-gcc \
+    AR_x86_64_unknown_fuchsia=x86_64-unknown-fuchsia-ar \
+    CC_x86_64_unknown_fuchsia=x86_64-unknown-fuchsia-clang \
+    CXX_x86_64_unknown_fuchsia=x86_64-unknown-fuchsia-clang++ \
+    AR_aarch64_unknown_fuchsia=aarch64-unknown-fuchsia-ar \
+    CC_aarch64_unknown_fuchsia=aarch64-unknown-fuchsia-clang \
+    CXX_aarch64_unknown_fuchsia=aarch64-unknown-fuchsia-clang++
 
 # Suppress some warnings in the openwrt toolchains we downloaded
 ENV STAGING_DIR=/tmp
