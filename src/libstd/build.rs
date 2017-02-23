@@ -21,8 +21,6 @@ use std::process::Command;
 use build_helper::{run, rerun_if_changed_anything_in_dir, up_to_date};
 
 fn main() {
-    println!("cargo:rerun-if-changed=build.rs");
-
     let target = env::var("TARGET").expect("TARGET was not set");
     let host = env::var("HOST").expect("HOST was not set");
     if cfg!(feature = "backtrace") && !target.contains("apple") && !target.contains("msvc") &&
