@@ -113,7 +113,7 @@ configuration used in the build process. Some options to note:
 - `compiler-docs = true` - Build compiler documentation
 
 #### `[rust]`:
-- `debuginfo = true` - Build a debug version of the compiler
+- `debuginfo = true` - Build a compiler with debuginfo
 - `optimize = false` - Disable optimizations to speed up compilation of stage1 rust
 
 For more options, the `config.toml` file contains commented out defaults, with
