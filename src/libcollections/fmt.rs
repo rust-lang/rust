@@ -62,7 +62,7 @@
 //!
 //! A format string is required to use all of its arguments, otherwise it is a
 //! compile-time error. You may refer to the same argument more than once in the
-//! format string, although it must always be referred to with the same type.
+//! format string.
 //!
 //! ## Named parameters
 //!
@@ -89,19 +89,8 @@
 //!
 //! ## Argument types
 //!
-//! Each argument's type is dictated by the format string. It is a requirement
-//! that every argument is only ever referred to by one type. For example, this
-//! is an invalid format string:
-//!
-//! ```text
-//! {0:x} {0:o}
-//! ```
-//!
-//! This is invalid because the first argument is both referred to as a
-//! hexadecimal as well as an
-//! octal.
-//!
-//! There are various parameters which do require a particular type, however.
+//! Each argument's type is dictated by the format string.
+//! There are various parameters which require a particular type, however.
 //! An example is the `{:.*}` syntax, which sets the number of decimal places
 //! in floating-point types:
 //!
@@ -113,13 +102,7 @@
 //!
 //! If this syntax is used, then the number of characters to print precedes the
 //! actual object being formatted, and the number of characters must have the
-//! type `usize`. Although a `usize` can be printed with `{}`, it is invalid to
-//! reference an argument as such. For example this is another invalid format
-//! string:
-//!
-//! ```text
-//! {:.*} {0}
-//! ```
+//! type `usize`.
 //!
 //! ## Formatting traits
 //!
