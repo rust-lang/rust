@@ -242,7 +242,7 @@ match 5u32 {
 ```
 "##,
 
-E0583: r##"
+E0590: r##"
 `break` or `continue` must include a label when used in the condition of a
 `while` loop.
 
