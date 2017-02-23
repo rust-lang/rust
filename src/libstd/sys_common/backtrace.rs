@@ -71,7 +71,7 @@ fn _print(w: &mut Write, format: PrintFormat) -> io::Result<()> {
     let (nb_frames, context) = unwind_backtrace(&mut frames)?;
     let (skipped_before, skipped_after) =
         filter_frames(&frames[..nb_frames], format, &context);
-    if format == PrintFormat::Short {
+    if skipped_before + skipped_after > 0 {
         writeln!(w, "note: Some details are omitted, \
                      run with `RUST_BACKTRACE=full` for a verbose backtrace.")?;
     }
@@ -101,50 +101,66 @@ fn filter_frames(frames: &[Frame],
         return (0, 0);
     }
 
-    let mut skipped_before = 0;
-    for (i, frame) in frames.iter().enumerate() {
-        skipped_before = i;
-        let mut skip = false;
+    // We want to filter out frames with some prefixes
+    // from both top and bottom of the call stack.
+    static BAD_PREFIXES_TOP: &'static [&'static str] = &[
+        "_ZN3std3sys3imp9backtrace",
+        "ZN3std3sys3imp9backtrace",
+        "_ZN3std10sys_common9backtrace",
+        "ZN3std10sys_common9backtrace",
+        "_ZN3std9panicking",
+        "ZN3std9panicking",
+        "std::panicking",
+        "_ZN4core9panicking",
+        "ZN4core9panicking",
+        "core::panicking",
+        "_ZN4core6result13unwrap_failed",
+        "ZN4core6result13unwrap_failed",
+        "rust_begin_unwind",
+        "_ZN4drop",
+        "mingw_set_invalid_parameter_handler",
+    ];
+    static BAD_PREFIXES_BOTTOM: &'static [&'static str] = &[
+        "_ZN3std9panicking",
+        "ZN3std9panicking",
+        "std::panicking",
+        "_ZN4core9panicking",
+        "ZN4core9panicking",
+        "core::panicking",
+        "_ZN3std2rt10lang_start",
+        "ZN3std2rt10lang_start",
+        "__rust_maybe_catch_panic",
+        "_rust_maybe_catch_panic",
+        "__libc_start_main",
+        "__rust_try",
+        "_start",
+        "BaseThreadInitThunk",
+        "__scrt_common_main_seh",
+        "_ZN4drop",
+        "mingw_set_invalid_parameter_handler",
+    ];
 
-        let _ = resolve_symname(*frame, |symname| {
+    let is_good_frame = |frame: Frame, bad_prefixes: &[&str]| {
+        resolve_symname(frame, |symname| {
             if let Some(mangled_symbol_name) = symname {
-                let magics_begin = [
-                    "_ZN3std3sys3imp9backtrace",
-                    "_ZN3std10sys_common9backtrace",
-                    "_ZN3std9panicking",
-                    "_ZN4core9panicking",
-                    "rust_begin_unwind",
-                    "_ZN4core6result13unwrap_failed",
-                ];
-                if !magics_begin.iter().any(|s| mangled_symbol_name.starts_with(s)) {
-                    skip = true;
+                if !bad_prefixes.iter().any(|s| mangled_symbol_name.starts_with(s)) {
+                    return Ok(())
                 }
             }
-            Ok(())
-        }, context);
+            Err(io::Error::from(io::ErrorKind::Other))
+        }, context).is_ok()
+    };
 
-        if skip {
-            break;
-        }
-    }
+    let skipped_before = frames.iter().position(|frame| {
+        is_good_frame(*frame, BAD_PREFIXES_TOP)
+    }).unwrap_or(frames.len());
+    let skipped_after = frames[skipped_before..].iter().rposition(|frame| {
+        is_good_frame(*frame, BAD_PREFIXES_BOTTOM)
+    }).unwrap_or(frames.len() - skipped_before);
 
-    let mut skipped_after = 0;
-    for (i, frame) in frames.iter().rev().enumerate() {
-        let _ = resolve_symname(*frame, |symname| {
-            if let Some(mangled_symbol_name) = symname {
-                let magics_end = [
-                    "_ZN3std9panicking3try7do_call",
-                    "__rust_maybe_catch_panic",
-                    "__libc_start_main",
-                    "__rust_try",
-                    "_start",
-                ];
-                if magics_end.iter().any(|s| mangled_symbol_name.starts_with(s)) {
-                    skipped_after = i + 1;
-                }
-            }
-            Ok(())
-        }, context);
+    if skipped_before + skipped_after == frames.len() {
+        // Avoid showing completely empty backtraces
+        return (0, 0);
     }
 
     (skipped_before, skipped_after)
