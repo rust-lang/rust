@@ -2,8 +2,8 @@
 members = [
   "bootstrap",
   "rustc",
-  "rustc/std_shim",
-  "rustc/test_shim",
+  "libstd",
+  "libtest",
   "tools/cargotest",
   "tools/compiletest",
   "tools/error_index_generator",

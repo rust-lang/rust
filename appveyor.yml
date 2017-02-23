@@ -82,6 +82,15 @@ environment:
     MINGW_DIR: mingw64
     DEPLOY: 1
 
+  # 32/64 bit MSVC deployment
+  - RUST_CONFIGURE_ARGS: >
+      --build=x86_64-pc-windows-msvc
+      --host=i686-pc-windows-msvc
+      --target=i586-pc-windows-msvc
+      --enable-extended
+    SCRIPT: python x.py dist
+    DEPLOY: 1
+
   # "alternate" deployment, see .travis.yml for more info
   - MSYS_BITS: 64
     RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-msvc --enable-extended
