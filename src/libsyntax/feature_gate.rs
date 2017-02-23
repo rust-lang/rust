@@ -325,6 +325,10 @@ declare_features! (
 
     // Used to identify crates that contain sanitizer runtimes
     // rustc internal
+    (active, closure_to_fn_coercion, "1.17.0", Some(39817)),
+
+    // Used to identify crates that contain sanitizer runtimes
+    // rustc internal
     (active, sanitizer_runtime, "1.17.0", None),
 );
 
@@ -976,6 +980,9 @@ pub const EXPLAIN_DERIVE_UNDERSCORE: &'static str =
 
 pub const EXPLAIN_PLACEMENT_IN: &'static str =
     "placement-in expression syntax is experimental and subject to change.";
+
+pub const CLOSURE_TO_FN_COERCION: &'static str =
+    "non-capturing closure to fn coercion is experimental";
 
 struct PostExpansionVisitor<'a> {
     context: &'a Context<'a>,
