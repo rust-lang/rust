@@ -10,7 +10,7 @@
 
 // ignore-stage0: new feature, remove this when SNAP
 
-// #![feature(closure_to_fn_coercion)]
+#![feature(closure_to_fn_coercion)]
 
 const FOO :fn(u8) -> u8 = |v: u8| { v };
 

@@ -74,6 +74,7 @@ use rustc::ty::error::TypeError;
 use rustc::ty::relate::RelateResult;
 use syntax::ast::NodeId;
 use syntax::abi;
+use syntax::feature_gate;
 use util::common::indent;
 
 use std::cell::RefCell;
@@ -575,6 +576,14 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
         let node_id_a :NodeId = self.tcx.hir.as_local_node_id(def_id_a).unwrap();
         match b.sty {
             ty::TyFnPtr(_) if self.tcx.with_freevars(node_id_a, |v| v.is_empty()) => {
+                if !self.tcx.sess.features.borrow().closure_to_fn_coercion {
+                    feature_gate::emit_feature_err(&self.tcx.sess.parse_sess,
+                                                   "closure_to_fn_coercion",
+                                                   self.cause.span,
+                                                   feature_gate::GateIssue::Language,
+                                                   feature_gate::CLOSURE_TO_FN_COERCION);
+                    return self.unify_and_identity(a, b);
+                }
                 // We coerce the closure, which has fn type
                 //     `extern "rust-call" fn((arg0,arg1,...)) -> _`
                 // to
