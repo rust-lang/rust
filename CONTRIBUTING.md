@@ -100,7 +100,8 @@ your system. In most cases, that will just mean using the defaults provided
 for Rust.
 
 To change configuration, you must copy the file `src/bootstrap/config.toml.example`
-to `config.toml` in the project root, and change the settings provided.
+to `config.toml` in the directory from which you will be running the build, and
+change the settings provided.
 
 There are large number of options provided in this config file that will alter the
 configuration used in the build process. Some options to note:
@@ -119,7 +120,7 @@ For more options, the `config.toml` file contains commented out defaults, with
 descriptions of what each option will do.
 
 Note: Previously the `./configure` script was used for configuration, but
-is now deprecated. If you still have a `config.mk` file in your project root,
+is now deprecated. If you still have a `config.mk` file in your directory,
 you may need to delete it for `config.toml` to work.
 
 ### Building
