@@ -16,14 +16,10 @@ enum Foo { }
 
 fn make_foo() -> Option<Foo> { None }
 
-fn use_foo(v: &Foo) -> ! {
-    match v { }
-}
-
 #[deny(warnings)]
 fn main() {
     match make_foo() {
         None => {},
-        Some(ref v) => use_foo(v),
+        Some(_) => {}
     }
 }
