@@ -1264,7 +1264,7 @@ impl<'a> Resolver<'a> {
             ribs: PerNS {
                 value_ns: vec![Rib::new(ModuleRibKind(graph_root))],
                 type_ns: vec![Rib::new(ModuleRibKind(graph_root))],
-                macro_ns: None,
+                macro_ns: Some(vec![Rib::new(ModuleRibKind(graph_root))]),
             },
             label_ribs: Vec::new(),
 
@@ -2326,8 +2326,9 @@ impl<'a> Resolver<'a> {
                 };
             }
         }
-        if primary_ns != MacroNS && path.len() == 1 &&
-                self.macro_names.contains(&path[0].name) {
+        let is_builtin = self.builtin_macros.get(&path[0].name).cloned()
+            .map(|binding| binding.get_macro(self).kind() == MacroKind::Bang).unwrap_or(false);
+        if primary_ns != MacroNS && (is_builtin || self.macro_names.contains(&path[0].name)) {
             // Return some dummy definition, it's enough for error reporting.
             return Some(
                 PathResolution::new(Def::Macro(DefId::local(CRATE_DEF_INDEX), MacroKind::Bang))
