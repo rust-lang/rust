@@ -489,7 +489,7 @@ fn format_lines(text: &mut StringBuffer, name: &str, config: &Config, report: &m
                 line_len -= b - lw;
             }
             // Check for any line width errors we couldn't correct.
-            if line_len > config.max_width {
+            if config.error_on_line_overflow && line_len > config.max_width {
                 errors.push(FormattingError {
                                 line: cur_line,
                                 kind: ErrorKind::LineOverflow(line_len, config.max_width),

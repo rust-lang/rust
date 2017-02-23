@@ -2,6 +2,7 @@
 // rustfmt-wrap_comments: true
 // rustfmt-struct_lit_style: Visual
 // rustfmt-struct_lit_multiline_style: ForceMulti
+// rustfmt-error_on_line_overflow: false
 
 // Struct literal expressions.
 

@@ -179,6 +179,10 @@ fn check_files<I>(files: I) -> (Vec<FormatReport>, u32, u32)
         println!("Testing '{}'...", file_name);
 
         match idempotent_check(file_name) {
+            Ok(ref report) if report.has_warnings() => {
+                print!("{}", report);
+                fails += 1;
+            }
             Ok(report) => reports.push(report),
             Err(msg) => {
                 print_mismatches(msg);
