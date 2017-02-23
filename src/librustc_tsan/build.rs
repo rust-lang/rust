@@ -34,6 +34,4 @@ fn main() {
                 .unwrap())
             .join("../compiler-rt"));
     }
-
-    println!("cargo:rerun-if-changed=build.rs");
 }

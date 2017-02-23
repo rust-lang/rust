@@ -21,8 +21,6 @@ use std::process::Command;
 use build_helper::{run, rerun_if_changed_anything_in_dir, up_to_date};
 
 fn main() {
-    println!("cargo:rerun-if-changed=build.rs");
-
     // FIXME: This is a hack to support building targets that don't
     // support jemalloc alongside hosts that do. The jemalloc build is
     // controlled by a feature of the std crate, and if that feature
