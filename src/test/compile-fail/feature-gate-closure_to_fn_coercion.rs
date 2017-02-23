@@ -13,7 +13,7 @@
 
 #[cfg(a)]
 mod a {
-    const FOO :fn(u8) -> u8 = |v: u8| { v };
+    const FOO: fn(u8) -> u8 = |v: u8| { v };
     //[a]~^ ERROR non-capturing closure to fn coercion is experimental
     //[a]~^^ ERROR mismatched types
 
@@ -34,7 +34,7 @@ mod b {
     fn foo() {
         // Items
         assert_eq!(func_specific()(), 42);
-        let foo :fn(u8) -> u8 = |v: u8| { v };
+        let foo: fn(u8) -> u8 = |v: u8| { v };
         //[b]~^ ERROR non-capturing closure to fn coercion is experimental
         //[b]~^^ ERROR mismatched types
     }

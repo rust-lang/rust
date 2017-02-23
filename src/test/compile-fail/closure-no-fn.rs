@@ -13,12 +13,12 @@
 
 fn main() {
     let mut a = 0u8;
-    let foo :fn(u8) -> u8 = |v: u8| { a += v; a };
+    let foo: fn(u8) -> u8 = |v: u8| { a += v; a };
     //~^ ERROR mismatched types
     let b = 0u8;
-    let bar :fn() -> u8 = || { b };
+    let bar: fn() -> u8 = || { b };
     //~^ ERROR mismatched types
-    let baz :fn() -> u8 = || { b } as fn() -> u8;
+    let baz: fn() -> u8 = || { b } as fn() -> u8;
     //~^ ERROR mismatched types
     //~^^ ERROR non-scalar cast
 }

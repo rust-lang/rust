@@ -67,12 +67,11 @@ use rustc::hir::def_id::DefId;
 use rustc::infer::{Coercion, InferOk, TypeTrace};
 use rustc::traits::{self, ObligationCause, ObligationCauseCode};
 use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow};
-use rustc::ty::{self, LvaluePreference, TypeVariants, TypeAndMut,
+use rustc::ty::{self, LvaluePreference, TypeAndMut,
                 Ty, ClosureSubsts};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::error::TypeError;
 use rustc::ty::relate::RelateResult;
-use syntax::ast::NodeId;
 use syntax::abi;
 use syntax::feature_gate;
 use util::common::indent;
@@ -573,7 +572,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
 
         let b = self.shallow_resolve(b);
 
-        let node_id_a :NodeId = self.tcx.hir.as_local_node_id(def_id_a).unwrap();
+        let node_id_a = self.tcx.hir.as_local_node_id(def_id_a).unwrap();
         match b.sty {
             ty::TyFnPtr(_) if self.tcx.with_freevars(node_id_a, |v| v.is_empty()) => {
                 if !self.tcx.sess.features.borrow().closure_to_fn_coercion {
@@ -589,16 +588,16 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
                 // to
                 //     `fn(arg0,arg1,...) -> _`
                 let sig = self.closure_type(def_id_a, substs_a).sig;
-                let converted_sig = sig.input(0).map_bound(|v| {
-                    let params_iter = match v.sty {
-                        TypeVariants::TyTuple(params, _) => {
+                let converted_sig = sig.map_bound(|s| {
+                    let params_iter = match s.inputs()[0].sty {
+                        ty::TyTuple(params, _) => {
                             params.into_iter().cloned()
                         }
                         _ => bug!(),
                     };
                     self.tcx.mk_fn_sig(params_iter,
-                                       sig.output().skip_binder(),
-                                       sig.variadic())
+                                       s.output(),
+                                       s.variadic)
                 });
                 let fn_ty = self.tcx.mk_bare_fn(ty::BareFnTy {
                     unsafety: hir::Unsafety::Normal,
