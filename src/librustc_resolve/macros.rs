@@ -23,7 +23,7 @@ use syntax::ast::{self, Name, Ident};
 use syntax::attr;
 use syntax::errors::DiagnosticBuilder;
 use syntax::ext::base::{self, Determinacy, MultiModifier, MultiDecorator};
-use syntax::ext::base::{NormalTT, Resolver as SyntaxResolver, SyntaxExtension};
+use syntax::ext::base::{Resolver as SyntaxResolver, SyntaxExtension};
 use syntax::ext::base::MacroKind;
 use syntax::ext::expand::{Expansion, mark_tts};
 use syntax::ext::hygiene::Mark;
@@ -152,9 +152,6 @@ impl<'a> base::Resolver for Resolver<'a> {
     }
 
     fn add_ext(&mut self, ident: ast::Ident, ext: Rc<SyntaxExtension>) {
-        if let NormalTT(..) = *ext {
-            self.macro_names.insert(ident.name);
-        }
         let def_id = DefId {
             krate: BUILTIN_MACROS_CRATE,
             index: DefIndex::new(self.macro_map.len()),
@@ -466,24 +463,40 @@ impl<'a> Resolver<'a> {
 
     fn suggest_macro_name(&mut self, name: &str, kind: MacroKind,
                           err: &mut DiagnosticBuilder<'a>) {
-        let suggestion = match kind {
-            MacroKind::Bang =>
-                find_best_match_for_name(self.macro_names.iter(), name, None),
-            MacroKind::Attr |
-            MacroKind::Derive => {
-                // Find a suggestion from the legacy namespace.
-                // FIXME: get_macro needs an &mut Resolver, can we do it without cloning?
-                let builtin_macros = self.builtin_macros.clone();
-                let names = builtin_macros.iter().filter_map(|(name, binding)| {
-                    if binding.get_macro(self).kind() == kind {
-                        Some(name)
-                    } else {
-                        None
-                    }
-                });
-                find_best_match_for_name(names, name, None)
+        // First check if this is a locally-defined bang macro.
+        let suggestion = if let MacroKind::Bang = kind {
+            find_best_match_for_name(self.macro_names.iter(), name, None)
+        } else {
+            None
+        // Then check builtin macros.
+        }.or_else(|| {
+            // FIXME: get_macro needs an &mut Resolver, can we do it without cloning?
+            let builtin_macros = self.builtin_macros.clone();
+            let names = builtin_macros.iter().filter_map(|(name, binding)| {
+                if binding.get_macro(self).kind() == kind {
+                    Some(name)
+                } else {
+                    None
+                }
+            });
+            find_best_match_for_name(names, name, None)
+        // Then check modules.
+        }).or_else(|| {
+            if !self.use_extern_macros {
+                return None;
             }
-        };
+            let is_macro = |def| {
+                if let Def::Macro(_, def_kind) = def {
+                    def_kind == kind
+                } else {
+                    false
+                }
+            };
+            let ident = Ident::from_str(name);
+            self.lookup_typo_candidate(&vec![ident], MacroNS, is_macro)
+                .as_ref().map(|s| Symbol::intern(s))
+        });
+
         if let Some(suggestion) = suggestion {
             if suggestion != name {
                 if let MacroKind::Bang = kind {
