@@ -144,9 +144,7 @@ fn main() {
         cfg.flag("-DLLVM_RUSTLLVM");
     }
 
-    println!("cargo:rerun-if-changed=../rustllvm/PassWrapper.cpp");
-    println!("cargo:rerun-if-changed=../rustllvm/RustWrapper.cpp");
-    println!("cargo:rerun-if-changed=../rustllvm/ArchiveWrapper.cpp");
+    build_helper::rerun_if_changed_anything_in_dir(Path::new("../rustllvm"));
     cfg.file("../rustllvm/PassWrapper.cpp")
        .file("../rustllvm/RustWrapper.cpp")
        .file("../rustllvm/ArchiveWrapper.cpp")

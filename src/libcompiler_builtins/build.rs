@@ -33,6 +33,7 @@
 //! error (if any) and then we just add it to the list. Overall, that cost is
 //! far far less than working with compiler-rt's build system over time.
 
+extern crate build_helper;
 extern crate gcc;
 
 use std::collections::BTreeMap;
@@ -403,6 +404,9 @@ fn main() {
     for src in sources.map.values() {
         cfg.file(Path::new("../compiler-rt/lib/builtins").join(src));
     }
+
+    // Can't reuse `sources` list becuse it doesn't contain header files.
+    build_helper::rerun_if_changed_anything_in_dir(Path::new("../compiler-rt"));
 
     cfg.compile("libcompiler-rt.a");
 }
