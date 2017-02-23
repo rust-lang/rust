@@ -1878,7 +1878,7 @@ fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Vec<S
                                             &cx.shared.issue_tracker_base_url,
                                             stab.issue) {
                     (true, &Some(ref tracker_url), Some(issue_no)) if issue_no > 0 =>
-                        format!(" (<code>{}</code> <a href=\"{}{}\">#{}</a>)",
+                        format!(" (<code>{} </code><a href=\"{}{}\">#{}</a>)",
                                 Escape(&stab.feature), tracker_url, issue_no, issue_no),
                     (false, &Some(ref tracker_url), Some(issue_no)) if issue_no > 0 =>
                         format!(" (<a href=\"{}{}\">#{}</a>)", Escape(&tracker_url), issue_no,
@@ -1890,12 +1890,12 @@ fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Vec<S
                 if stab.unstable_reason.is_empty() {
                     stability.push(format!("<div class='stab unstable'>\
                                             <span class=microscope>🔬</span> \
-                                            This is a nightly-only experimental API. &nbsp;{}\
+                                            This is a nightly-only experimental API. {}\
                                             </div>",
-                                   unstable_extra));
+                                           unstable_extra));
                 } else {
                     let text = format!("<summary><span class=microscope>🔬</span> \
-                                        This is a nightly-only experimental API. &nbsp;{}\
+                                        This is a nightly-only experimental API. {}\
                                         </summary>{}",
                                        unstable_extra, MarkdownHtml(&stab.unstable_reason));
                     stability.push(format!("<div class='stab unstable'><details>{}</details></div>",
