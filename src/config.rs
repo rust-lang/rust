@@ -104,6 +104,7 @@ configuration_option_enum! { TypeDensity:
     Wide,
 }
 
+
 impl Density {
     pub fn to_list_tactic(self) -> ListTactic {
         match self {
@@ -348,6 +349,8 @@ create_config! {
     control_brace_style: ControlBraceStyle, ControlBraceStyle::AlwaysSameLine,
         "Brace style for control flow constructs";
     impl_empty_single_line: bool, true, "Put empty-body implementations on a single line";
+    trailing_comma: SeparatorTactic, SeparatorTactic::Vertical,
+        "How to handle trailing commas for lists";
     fn_empty_single_line: bool, true, "Put empty-body functions on a single line";
     fn_single_line: bool, false, "Put single-expression functions on a single line";
     fn_return_indent: ReturnIndent, ReturnIndent::WithArgs,
@@ -366,16 +369,10 @@ create_config! {
     where_layout: ListTactic, ListTactic::Vertical, "Element layout inside a where clause";
     where_pred_indent: BlockIndentStyle, BlockIndentStyle::Visual,
         "Indentation style of a where predicate";
-    where_trailing_comma: bool, false, "Put a trailing comma on where clauses";
     generics_indent: BlockIndentStyle, BlockIndentStyle::Visual, "Indentation of generics";
-    struct_trailing_comma: SeparatorTactic, SeparatorTactic::Vertical,
-        "If there is a trailing comma on structs";
-    struct_lit_trailing_comma: SeparatorTactic, SeparatorTactic::Vertical,
-        "If there is a trailing comma on literal structs";
     struct_lit_style: StructLitStyle, StructLitStyle::Block, "Style of struct definition";
     struct_lit_multiline_style: MultilineStyle, MultilineStyle::PreferSingle,
         "Multiline style on literal structs";
-    enum_trailing_comma: bool, true, "Put a trailing comma on enum declarations";
     report_todo: ReportTactic, ReportTactic::Never,
         "Report all, none or unnumbered occurrences of TODO in source file comments";
     report_fixme: ReportTactic, ReportTactic::Never,
@@ -396,7 +393,6 @@ create_config! {
     wrap_match_arms: bool, true, "Wrap multiline match arms in blocks";
     match_block_trailing_comma: bool, false,
         "Put a trailing comma after a block based match arm (non-block arms are not affected)";
-    match_wildcard_trailing_comma: bool, true, "Put a trailing comma after a wildcard arm";
     closure_block_indent_threshold: isize, 5, "How many lines a closure must have before it is \
                                                block indented. -1 means never use block indent.";
     space_before_type_annotation: bool, false,

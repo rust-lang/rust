@@ -1150,12 +1150,6 @@ fn arm_end_pos(arm: &ast::Arm) -> BytePos {
 }
 
 fn arm_comma(config: &Config, arm: &ast::Arm, body: &ast::Expr) -> &'static str {
-    if !config.match_wildcard_trailing_comma {
-        if arm.pats.len() == 1 && arm.pats[0].node == ast::PatKind::Wild && arm.guard.is_none() {
-            return "";
-        }
-    }
-
     if config.match_block_trailing_comma {
         ","
     } else if let ast::ExprKind::Block(ref block) = body.node {
@@ -1759,7 +1753,7 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
         trailing_separator: if base.is_some() {
             SeparatorTactic::Never
         } else {
-            context.config.struct_lit_trailing_comma
+            context.config.trailing_comma
         },
         shape: nested_shape,
         ends_with_newline: ends_with_newline,

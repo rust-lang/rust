@@ -434,7 +434,7 @@ impl<'a> FmtVisitor<'a> {
         let fmt = ListFormatting {
             tactic: DefinitiveListTactic::Vertical,
             separator: ",",
-            trailing_separator: SeparatorTactic::from_bool(self.config.enum_trailing_comma),
+            trailing_separator: self.config.trailing_comma,
             shape: Shape::legacy(budget, self.block_indent),
             ends_with_newline: true,
             config: self.config,
@@ -526,7 +526,6 @@ pub fn format_impl(context: &RewriteContext, item: &ast::Item, offset: Indent) -
                                                                            offset.block_only()),
                                                              context.config.where_density,
                                                              "{",
-                                                             true,
                                                              None));
 
         if try_opt!(is_impl_single_line(context, &items, &result, &where_clause_str, &item)) {
@@ -795,7 +794,6 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
                                                                            offset.block_only()),
                                                              where_density,
                                                              "{",
-                                                             has_body,
                                                              None));
         // If the where clause cannot fit on the same line,
         // put the where clause on a new line
@@ -952,7 +950,7 @@ fn format_struct_struct(context: &RewriteContext,
     let fmt = ListFormatting {
         tactic: tactic,
         separator: ",",
-        trailing_separator: context.config.struct_trailing_comma,
+        trailing_separator: context.config.trailing_comma,
         shape: Shape::legacy(budget, item_indent),
         ends_with_newline: true,
         config: context.config,
@@ -1010,7 +1008,6 @@ fn format_tuple_struct(context: &RewriteContext,
                                           Shape::legacy(where_budget, offset.block_only()),
                                           Density::Compressed,
                                           ";",
-                                          false,
                                           None))
         }
         None => "".to_owned(),
@@ -1103,7 +1100,6 @@ pub fn rewrite_type_alias(context: &RewriteContext,
                                                          Shape::legacy(where_budget, indent),
                                                          context.config.where_density,
                                                          "=",
-                                                         false,
                                                          Some(span.hi)));
     result.push_str(&where_clause_str);
     result.push_str(" = ");
@@ -1645,7 +1641,6 @@ fn rewrite_fn_base(context: &RewriteContext,
                                                          Shape::legacy(where_budget, indent),
                                                          where_density,
                                                          "{",
-                                                         has_body,
                                                          Some(span.hi)));
 
     if last_line_width(&result) + where_clause_str.len() > context.config.max_width &&
@@ -1929,7 +1924,6 @@ fn rewrite_where_clause(context: &RewriteContext,
                         shape: Shape,
                         density: Density,
                         terminator: &str,
-                        allow_trailing_comma: bool,
                         span_end: Option<BytePos>)
                         -> Option<String> {
     if where_clause.predicates.is_empty() {
@@ -1969,12 +1963,17 @@ fn rewrite_where_clause(context: &RewriteContext,
     // FIXME: we don't need to collect here if the where_layout isn't
     // HorizontalVertical.
     let tactic = definitive_tactic(&item_vec, context.config.where_layout, budget);
-    let use_trailing_comma = allow_trailing_comma && context.config.where_trailing_comma;
+
+    let mut comma_tactic = context.config.trailing_comma;
+    // Kind of a hack because we don't usually have trailing commas in where clauses.
+    if comma_tactic == SeparatorTactic::Vertical {
+        comma_tactic = SeparatorTactic::Never;
+    }
 
     let fmt = ListFormatting {
         tactic: tactic,
         separator: ",",
-        trailing_separator: SeparatorTactic::from_bool(use_trailing_comma),
+        trailing_separator: comma_tactic,
         shape: Shape::legacy(budget, offset),
         ends_with_newline: true,
         config: context.config,
@@ -2034,7 +2033,6 @@ fn format_generics(context: &RewriteContext,
                                                                            offset.block_only()),
                                                              Density::Tall,
                                                              terminator,
-                                                             true,
                                                              Some(span.hi)));
         result.push_str(&where_clause_str);
         if !force_same_line_brace &&
