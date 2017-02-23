@@ -39,6 +39,7 @@ use rustc_serialize::{Decodable, Decoder, SpecializedDecoder, opaque};
 use syntax::attr;
 use syntax::ast;
 use syntax::codemap;
+use syntax::ext::base::MacroKind;
 use syntax_pos::{self, Span, BytePos, Pos, DUMMY_SP};
 
 pub struct DecodeContext<'a, 'tcx: 'a> {
@@ -434,7 +435,7 @@ impl<'tcx> EntryKind<'tcx> {
             EntryKind::Variant(_) => Def::Variant(did),
             EntryKind::Trait(_) => Def::Trait(did),
             EntryKind::Enum(..) => Def::Enum(did),
-            EntryKind::MacroDef(_) => Def::Macro(did),
+            EntryKind::MacroDef(_) => Def::Macro(did, MacroKind::Bang),
 
             EntryKind::ForeignMod |
             EntryKind::Impl(_) |
@@ -483,9 +484,11 @@ impl<'a, 'tcx> CrateMetadata {
     }
 
     pub fn get_def(&self, index: DefIndex) -> Option<Def> {
-        match self.is_proc_macro(index) {
-            true => Some(Def::Macro(self.local_def_id(index))),
-            false => self.entry(index).kind.to_def(self.local_def_id(index)),
+        if !self.is_proc_macro(index) {
+            self.entry(index).kind.to_def(self.local_def_id(index))
+        } else {
+            let kind = self.proc_macros.as_ref().unwrap()[index.as_usize() - 1].1.kind();
+            Some(Def::Macro(self.local_def_id(index), kind))
         }
     }
 
@@ -688,8 +691,14 @@ impl<'a, 'tcx> CrateMetadata {
     {
         if let Some(ref proc_macros) = self.proc_macros {
             if id == CRATE_DEF_INDEX {
-                for (id, &(name, _)) in proc_macros.iter().enumerate() {
-                    let def = Def::Macro(DefId { krate: self.cnum, index: DefIndex::new(id + 1) });
+                for (id, &(name, ref ext)) in proc_macros.iter().enumerate() {
+                    let def = Def::Macro(
+                        DefId {
+                            krate: self.cnum,
+                            index: DefIndex::new(id + 1)
+                        },
+                        ext.kind()
+                    );
                     callback(def::Export { name: name, def: def });
                 }
             }

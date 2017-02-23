@@ -199,7 +199,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         self.inside_public_path = orig_inside_public_path;
         if let Some(exports) = self.cx.export_map.get(&id) {
             for export in exports {
-                if let Def::Macro(def_id) = export.def {
+                if let Def::Macro(def_id, ..) = export.def {
                     if def_id.krate == LOCAL_CRATE {
                         continue // These are `krate.exported_macros`, handled in `self.visit()`.
                     }
