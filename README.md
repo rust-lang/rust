@@ -18,6 +18,7 @@ Read ["Installing Rust"] from [The Book].
 
    * `g++` 4.7 or later or `clang++` 3.x
    * `python` 2.7 (but not 3.x)
+   * GNU `make` 3.81 or later
    * `cmake` 3.4.3 or later
    * `curl`
    * `git`
@@ -110,6 +111,12 @@ With these dependencies installed, you can build the compiler with:
 
 ```sh
 > python x.py build
+```
+
+If you're running inside of an msys shell, however, you can run:
+
+```sh
+$ ./x.py build --build=x86_64-pc-windows-msvc && ./x.py dist
 ```
 
 Currently building Rust only works with some known versions of Visual Studio. If
