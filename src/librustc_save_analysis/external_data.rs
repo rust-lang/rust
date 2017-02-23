@@ -11,8 +11,9 @@
 use rustc::hir::def_id::{CrateNum, DefId, DefIndex};
 use rustc::hir::map::Map;
 use rustc::ty::TyCtxt;
-use syntax::ast::{self, LitKind, NodeId, StrStyle};
+use syntax::ast::{self, NodeId};
 use syntax::codemap::CodeMap;
+use syntax::print::pprust;
 use syntax_pos::Span;
 
 use data::{self, Visibility, SigElement};
@@ -67,16 +68,22 @@ impl SpanData {
 /// Represent an arbitrary attribute on a code element
 #[derive(Clone, Debug, RustcEncodable)]
 pub struct Attribute {
-    value: AttributeItem,
+    value: String,
     span: SpanData,
 }
 
 impl Lower for ast::Attribute {
     type Target = Attribute;
 
-    fn lower(self, tcx: TyCtxt) -> Attribute {
+    fn lower(mut self, tcx: TyCtxt) -> Attribute {
+        // strip #[] and #![] from the original attributes
+        self.style = ast::AttrStyle::Outer;
+        let value = pprust::attribute_to_string(&self);
+        // #[] are all ASCII which makes this slice save
+        let value = value[2..value.len()-1].to_string();
+
         Attribute {
-            value: self.value.lower(tcx),
+            value: value,
             span: SpanData::from_span(self.span, tcx.sess.codemap()),
         }
     }
@@ -87,76 +94,6 @@ impl Lower for Vec<ast::Attribute> {
 
     fn lower(self, tcx: TyCtxt) -> Vec<Attribute> {
         self.into_iter().map(|x| x.lower(tcx)).collect()
-    }
-}
-
-/// A single item as part of an attribute
-#[derive(Clone, Debug, RustcEncodable)]
-pub struct AttributeItem {
-    name: LitKind,
-    kind: AttributeItemKind,
-    span: SpanData,
-}
-
-impl Lower for ast::MetaItem {
-    type Target = AttributeItem;
-
-    fn lower(self, tcx: TyCtxt) -> AttributeItem {
-        AttributeItem {
-            name: LitKind::Str(self.name, StrStyle::Cooked),
-            kind: self.node.lower(tcx),
-            span: SpanData::from_span(self.span, tcx.sess.codemap()),
-        }
-    }
-}
-
-impl Lower for ast::NestedMetaItem {
-    type Target = AttributeItem;
-
-    fn lower(self, tcx: TyCtxt) -> AttributeItem {
-        match self.node {
-            ast::NestedMetaItemKind::MetaItem(item) => item.lower(tcx),
-            ast::NestedMetaItemKind::Literal(lit) => {
-                AttributeItem {
-                    name: lit.node,
-                    kind: AttributeItemKind::Literal,
-                    span: SpanData::from_span(lit.span, tcx.sess.codemap()),
-                }
-            }
-        }
-    }
-}
-
-#[derive(Clone, Debug, RustcEncodable)]
-pub enum AttributeItemKind {
-    /// Word meta item.
-    ///
-    /// E.g. `test` as in `#[test]`
-    Literal,
-    /// Name value meta item.
-    ///
-    /// E.g. `feature = "foo"` as in `#[feature = "foo"]`
-    NameValue(LitKind, SpanData),
-    /// List meta item.
-    ///
-    /// E.g. the `derive(..)` as in `#[derive(..)]`
-    List(Vec<AttributeItem>),
-}
-
-impl Lower for ast::MetaItemKind {
-    type Target = AttributeItemKind;
-
-    fn lower(self, tcx: TyCtxt) -> AttributeItemKind {
-        match self {
-            ast::MetaItemKind::Word => AttributeItemKind::Literal,
-            ast::MetaItemKind::List(items) => {
-                AttributeItemKind::List(items.into_iter().map(|x| x.lower(tcx)).collect())
-            }
-            ast::MetaItemKind::NameValue(lit) => {
-                let span = SpanData::from_span(lit.span, tcx.sess.codemap());
-                AttributeItemKind::NameValue(lit.node, span)
-            }
-        }
     }
 }
 
