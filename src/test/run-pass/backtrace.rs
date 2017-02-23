@@ -79,8 +79,8 @@ fn runtest(me: &str) {
     ];
     for symbol in removed_symbols {
         assert!(!s.contains(symbol),
-                "{} should be removed from the backtrace",
-                symbol);
+                "{} should be removed from the backtrace\n{}",
+                symbol, s);
     }
     assert!(s.contains(" 0:"), "the frame number should start at 0");
 
