@@ -19,13 +19,13 @@ fn main() {
     };
 
     let x: &Void = unsafe { std::mem::uninitialized() };
-    let _ = match x {}; // okay
+    let _ = match x {}; //~ ERROR non-exhaustive
 
     let x: (Void,) = unsafe { std::mem::uninitialized() };
-    let _ = match x {}; // okay
+    let _ = match x {}; //~ ERROR non-exhaustive
 
     let x: [Void; 1] = unsafe { std::mem::uninitialized() };
-    let _ = match x {}; // okay
+    let _ = match x {}; //~ ERROR non-exhaustive
 
     let x: &[Void] = unsafe { std::mem::uninitialized() };
     let _ = match x {   //~ ERROR non-exhaustive

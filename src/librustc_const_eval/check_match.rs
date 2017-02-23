@@ -182,7 +182,12 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
             let pat_ty = self.tables.node_id_to_type(scrut.id);
             let module = self.tcx.hir.local_def_id(self.tcx.hir.get_module_parent(scrut.id));
             if inlined_arms.is_empty() {
-                if !pat_ty.is_uninhabited_from(module, self.tcx) {
+                let scrutinee_is_uninhabited = if self.tcx.sess.features.borrow().never_type {
+                    pat_ty.is_uninhabited_from(module, self.tcx)
+                } else {
+                    self.conservative_is_uninhabited(pat_ty)
+                };
+                if !scrutinee_is_uninhabited {
                     // We know the type is inhabited, so this must be wrong
                     let mut err = create_e0004(self.tcx.sess, scrut.span,
                                                format!("non-exhaustive patterns: type {} \
@@ -206,6 +211,15 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
             let scrut_ty = self.tables.node_id_to_type(scrut.id);
             check_exhaustive(cx, scrut_ty, scrut.span, &matrix, source);
         })
+    }
+
+    fn conservative_is_uninhabited(&self, scrutinee_ty: Ty<'tcx>) -> bool {
+        // "rustc-1.0-style" uncontentious uninhabitableness check
+        match scrutinee_ty.sty {
+            ty::TyNever => true,
+            ty::TyAdt(def, _) => def.variants.is_empty(),
+            _ => false
+        }
     }
 
     fn check_irrefutable(&self, pat: &Pat, is_fn_arg: bool) {
