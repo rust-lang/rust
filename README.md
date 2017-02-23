@@ -36,7 +36,6 @@ Read ["Installing Rust"] from [The Book].
 
     ```sh
     $ ./x.py build && sudo ./x.py dist --install
-    $ make && sudo make install
     ```
 
     > ***Note:*** Install locations can be adjusted by copying the config file
@@ -116,8 +115,15 @@ With these dependencies installed, you can build the compiler with:
 If you're running inside of an msys shell, however, you can run:
 
 ```sh
-$ ./x.py build --build=x86_64-pc-windows-msvc && ./x.py dist --install
+$ ./x.py build --build=x86_64-pc-windows-msvc
+$ ./x.py dist --build=x86_64-pc-windows-msvc --install
 ```
+
+    > ***Note:*** The build option can also be configured by copying
+    > the config file and adjusting the `build` option under `[build]`.
+    > ```sh
+    > $ cp ./src/bootstrap/config.toml.example ./config.toml
+    > ```
 
 Currently building Rust only works with some known versions of Visual Studio. If
 you have a more recent version installed the build system doesn't understand
@@ -128,6 +134,20 @@ by manually calling the appropriate vcvars file before running the bootstrap.
 CALL "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\bin\amd64\vcvars64.bat"
 python x.py build
 ```
+
+### Configure and Make
+
+While it's not the recommended build system, this project also provides a
+configure script and makefile (the latter of which just invokes `x.py`).
+
+```sh
+$ ./configure
+$ make && sudo make install
+```
+
+When using the configure script, the generated config.mk` file may override the
+`config.toml` file. To go back to the `config.toml` file, delete the generated
+`config.mk` file.
 
 ## Building Documentation
 

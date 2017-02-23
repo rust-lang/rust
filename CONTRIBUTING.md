@@ -119,9 +119,10 @@ configuration used in the build process. Some options to note:
 For more options, the `config.toml` file contains commented out defaults, with
 descriptions of what each option will do.
 
-Note: Previously the `./configure` script was used for configuration, but
-is now deprecated. If you still have a `config.mk` file in your directory,
-you may need to delete it for `config.toml` to work.
+Note: Previously the `./configure` script was used to configure this
+project. It can still be used, but it's recommended to use a `config.toml`
+file. If you still have a `config.mk` file in your directory - from
+`./configure` - you may need to delete it for `config.toml` to work.
 
 ### Building
 
@@ -189,8 +190,8 @@ To learn about all possible rules you can execute, run:
 python x.py build --help --verbose
 ```
 
-Note: Previously `./configure` and `make` were used to build this project,
-but these are now deprecated.
+Note: Previously `./configure` and `make` were used to build this project.
+They are still available, but `x.py` is the recommended build system.
 
 ### Useful commands
 
