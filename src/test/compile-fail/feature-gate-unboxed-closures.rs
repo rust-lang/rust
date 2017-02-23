@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(fn_traits)]
-
 struct Test;
 
 impl FnOnce<(u32, u32)> for Test {
@@ -18,6 +16,7 @@ impl FnOnce<(u32, u32)> for Test {
     extern "rust-call" fn call_once(self, (a, b): (u32, u32)) -> u32 {
         a + b
     }
+    //~^^^ ERROR rust-call ABI is subject to change (see issue #29625)
 }
 
 fn main() {
