@@ -1229,8 +1229,6 @@ impl Rewrite for ast::Arm {
                                                trimmed_last_line_width(&pats_str)));
 
         let pats_str = format!("{}{}", pats_str, guard_str);
-        // Where the next text can start.
-        let line_start = trimmed_last_line_width(&pats_str);
 
         let body = match body.node {
             ast::ExprKind::Block(ref block) if !is_unsafe_block(block) &&
@@ -1249,14 +1247,12 @@ impl Rewrite for ast::Arm {
         let alt_block_sep = String::from("\n") +
                             &shape.indent.block_only().to_string(context.config);
 
+        let pat_width = extra_offset(&pats_str, shape);
         // Let's try and get the arm body on the same line as the condition.
         // 4 = ` => `.len()
-        if shape.width > line_start + comma.len() + 4 {
+        if shape.width > pat_width + comma.len() + 4 {
             let arm_shape =
-                shape.shrink_left(line_start + 4).unwrap().sub_width(comma.len()).unwrap().block();
-            // TODO
-            // let offset = Indent::new(shape.indent.block_indent,
-            //                          line_start + 4 - shape.indent.block_indent);
+                shape.shrink_left(pat_width + 4).unwrap().sub_width(comma.len()).unwrap().block();
             let rewrite = nop_block_collapse(body.rewrite(context, arm_shape), arm_shape.width);
             let is_block = if let ast::ExprKind::Block(..) = body.node {
                 true
@@ -1285,9 +1281,6 @@ impl Rewrite for ast::Arm {
 
         // FIXME: we're doing a second rewrite of the expr; This may not be
         // necessary.
-        // TODO
-        // let body_budget = try_opt!(shape.width.checked_sub(context.config.tab_spaces));
-        // let indent = shape.indent.block_only().block_indent(context.config);
         let body_shape = try_opt!(shape.sub_width(context.config.tab_spaces))
             .block_indent(context.config.tab_spaces);
         let next_line_body = try_opt!(nop_block_collapse(body.rewrite(context, body_shape),
@@ -1338,10 +1331,8 @@ fn rewrite_guard(context: &RewriteContext,
         // 4 = ` if `, 5 = ` => {`
         let overhead = pattern_width + 4 + 5;
         if overhead < shape.width {
-            let cond_str =
-                guard.rewrite(context,
-                              Shape::legacy(shape.width - overhead,
-                                            shape.indent + pattern_width + 4));
+            let cond_shape = shape.shrink_left(pattern_width + 4).unwrap().sub_width(5).unwrap();
+            let cond_str = guard.rewrite(context, cond_shape);
             if let Some(cond_str) = cond_str {
                 return Some(format!(" if {}", cond_str));
             }
