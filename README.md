@@ -18,7 +18,6 @@ Read ["Installing Rust"] from [The Book].
 
    * `g++` 4.7 or later or `clang++` 3.x
    * `python` 2.7 (but not 3.x)
-   * GNU `make` 3.81 or later
    * `cmake` 3.4.3 or later
    * `curl`
    * `git`
@@ -35,15 +34,16 @@ Read ["Installing Rust"] from [The Book].
 3. Build and install:
 
     ```sh
-    $ ./configure
+    $ ./x.py build && sudo ./x.py dist
     $ make && sudo make install
     ```
 
-    > ***Note:*** Install locations can be adjusted by passing a `--prefix`
-    > argument to `configure`. Various other options are also supported – pass
-    > `--help` for more information on them.
+    > ***Note:*** Install locations can be adjusted by copying the config file
+    > from `./src/bootstrap/config.toml.example` to `./config.toml`, and
+    > adjusting the `prefix` option under `[install]`. Various other options are
+    > also supported, and are documented in the config file.
 
-    When complete, `sudo make install` will place several programs into
+    When complete, `sudo ./x.py dist` will place several programs into
     `/usr/local/bin`: `rustc`, the Rust compiler, and `rustdoc`, the
     API-documentation tool. This install does not include [Cargo],
     Rust's package manager, which you may also want to build.
@@ -94,11 +94,10 @@ build.
                mingw-w64-x86_64-gcc
    ```
 
-4. Navigate to Rust's source code (or clone it), then configure and build it:
+4. Navigate to Rust's source code (or clone it), then build it:
 
    ```sh
-   $ ./configure
-   $ make && make install
+   $ ./x.py build && ./x.py dist
    ```
 
 #### MSVC
@@ -107,18 +106,10 @@ MSVC builds of Rust additionally require an installation of Visual Studio 2013
 (or later) so `rustc` can use its linker. Make sure to check the “C++ tools”
 option.
 
-With these dependencies installed, you can build the compiler in a `cmd.exe`
-shell with:
+With these dependencies installed, you can build the compiler with:
 
 ```sh
 > python x.py build
-```
-
-If you're running inside of an msys shell, however, you can run:
-
-```sh
-$ ./configure --build=x86_64-pc-windows-msvc
-$ make && make install
 ```
 
 Currently building Rust only works with some known versions of Visual Studio. If
@@ -136,8 +127,7 @@ python x.py build
 If you’d like to build the documentation, it’s almost the same:
 
 ```sh
-$ ./configure
-$ make docs
+$ ./x.py doc
 ```
 
 The generated documentation will appear in a top-level `doc` directory,
