@@ -35,7 +35,7 @@ Read ["Installing Rust"] from [The Book].
 3. Build and install:
 
     ```sh
-    $ ./x.py build && sudo ./x.py dist
+    $ ./x.py build && sudo ./x.py dist --install
     $ make && sudo make install
     ```
 
@@ -44,7 +44,7 @@ Read ["Installing Rust"] from [The Book].
     > adjusting the `prefix` option under `[install]`. Various other options are
     > also supported, and are documented in the config file.
 
-    When complete, `sudo ./x.py dist` will place several programs into
+    When complete, `sudo ./x.py dist --install` will place several programs into
     `/usr/local/bin`: `rustc`, the Rust compiler, and `rustdoc`, the
     API-documentation tool. This install does not include [Cargo],
     Rust's package manager, which you may also want to build.
@@ -98,7 +98,7 @@ build.
 4. Navigate to Rust's source code (or clone it), then build it:
 
    ```sh
-   $ ./x.py build && ./x.py dist
+   $ ./x.py build && ./x.py dist --install
    ```
 
 #### MSVC
@@ -116,7 +116,7 @@ With these dependencies installed, you can build the compiler with:
 If you're running inside of an msys shell, however, you can run:
 
 ```sh
-$ ./x.py build --build=x86_64-pc-windows-msvc && ./x.py dist
+$ ./x.py build --build=x86_64-pc-windows-msvc && ./x.py dist --install
 ```
 
 Currently building Rust only works with some known versions of Visual Studio. If
