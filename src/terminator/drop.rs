@@ -94,10 +94,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             ty::TyAdt(adt_def, substs) => {
                 // FIXME: some structs are represented as ByValPair
                 let mut lval = self.force_allocation(lval)?;
-                let adt_ptr = match lval {
-                    Lvalue::Ptr { ptr, .. } => ptr,
-                    _ => bug!("force allocation can only yield Lvalue::Ptr"),
-                };
+                let (adt_ptr, extra) = lval.to_ptr_and_extra();
 
                 // run drop impl before the fields' drop impls
                 if let Some(drop_def_id) = adt_def.destructor() {
@@ -109,7 +106,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         traits::VtableImpl(data) => data,
                         _ => bug!("dtor for {:?} is not an impl???", ty)
                     };
-                    drop.push((drop_def_id, Value::ByVal(PrimVal::Ptr(adt_ptr)), vtable.substs));
+                    let val = match extra {
+                        LvalueExtra::None => Value::ByVal(PrimVal::Ptr(adt_ptr)),
+                        LvalueExtra::DowncastVariant(_) => bug!("downcast variant in drop"),
+                        LvalueExtra::Length(n) => Value::ByValPair(PrimVal::Ptr(adt_ptr), PrimVal::from_u128(n as u128)),
+                        LvalueExtra::Vtable(vtable) => Value::ByValPair(PrimVal::Ptr(adt_ptr), PrimVal::Ptr(vtable)),
+                    };
+                    drop.push((drop_def_id, val, vtable.substs));
                 }
 
                 let layout = self.type_layout(ty)?;
