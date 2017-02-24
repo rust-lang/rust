@@ -210,6 +210,19 @@ fn main() {
             cmd.arg("-Z").arg("unstable-options");
             cmd.arg("-C").arg("target-feature=+crt-static");
         }
+
+        let channel = env::var("RUSTC_CHANNEL").unwrap_or(String::new());
+
+        // Generate MIR for all functions in the Rust libraries
+        // Since users will never build the stdlib themselves, they can't
+        // obtain an stdlib with full MIR. Thus we simply emit MIR always
+        // for the stdlib
+        // Don't do this for stage0 yet, since always_encode_mir isn't part of it yet
+        // Only do this for the nightly and dev channels, we don't want to increase
+        // the size of stable libraries, and noone is able to use MIR on stable anyway
+        if channel != "stable" && channel != "beta" && stage != "0" {
+            cmd.arg("-Zalways-encode-mir");
+        }
     }
 
     if verbose > 1 {
