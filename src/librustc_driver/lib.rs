@@ -24,6 +24,7 @@
 #![deny(warnings)]
 
 #![feature(box_syntax)]
+#![feature(loop_break_value)]
 #![feature(libc)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]

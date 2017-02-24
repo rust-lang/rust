@@ -287,27 +287,7 @@ https://doc.rust-lang.org/std/cell/
 "##,
 
 E0388: r##"
-A mutable borrow was attempted in a static location.
-
-Erroneous code example:
-
-```compile_fail,E0388
-static X: i32 = 1;
-
-static STATIC_REF: &'static mut i32 = &mut X;
-// error: cannot borrow data mutably in a static location
-
-const CONST_REF: &'static mut i32 = &mut X;
-// error: cannot borrow data mutably in a static location
-```
-
-To fix this error, you have to use constant borrow:
-
-```
-static X: i32 = 1;
-
-static STATIC_REF: &'static i32 = &X;
-```
+E0388 was removed and is no longer issued.
 "##,
 
 E0389: r##"
