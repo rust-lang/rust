@@ -270,6 +270,15 @@ impl Builder {
                 target: "*".to_string(),
             });
 
+            if self.channel == "nightly" {
+                for target in TARGETS {
+                    extensions.push(Component {
+                        pkg: "rust-analysis".to_string(),
+                        target: target.to_string(),
+                    });
+                }
+            }
+
             pkg.target.insert(host.to_string(), Target {
                 available: true,
                 url: Some(self.url("rust", host)),
