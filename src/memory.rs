@@ -585,6 +585,23 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             }
         }
     }
+
+    pub fn leak_report(&self) -> usize {
+        trace!("### LEAK REPORT ###");
+        let leaks: Vec<_> = self.alloc_map
+            .iter()
+            .filter_map(|(&key, val)| {
+                if val.static_kind == StaticKind::NotStatic {
+                    Some(key)
+                } else {
+                    None
+                }
+            })
+            .collect();
+        let n = leaks.len();
+        self.dump_allocs(leaks);
+        n
+    }
 }
 
 fn dump_fn_def<'tcx>(fn_def: FunctionDefinition<'tcx>) -> String {
