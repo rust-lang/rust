@@ -154,7 +154,7 @@ fn filter_frames(frames: &[Frame],
     let skipped_before = frames.iter().position(|frame| {
         is_good_frame(*frame, BAD_PREFIXES_TOP)
     }).unwrap_or(frames.len());
-    let skipped_after = frames[skipped_before..].iter().rposition(|frame| {
+    let skipped_after = frames[skipped_before..].iter().rev().position(|frame| {
         is_good_frame(*frame, BAD_PREFIXES_BOTTOM)
     }).unwrap_or(frames.len() - skipped_before);
 
