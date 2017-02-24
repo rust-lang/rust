@@ -121,7 +121,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     Layout::General { .. } => {
                         let discr_val = self.read_discriminant_value(adt_ptr, ty)? as u128;
                         let ptr = self.force_allocation(lval)?.to_ptr();
-                        match adt_def.variants.iter().position(|v| discr_val == v.disr_val.to_u128_unchecked()) {
+                        match adt_def.variants.iter().position(|v| discr_val == v.disr_val) {
                             Some(i) => {
                                 lval = Lvalue::Ptr {
                                     ptr,
