@@ -285,6 +285,27 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         Ok(vtable)
     }
 
+    pub fn read_drop_type_from_vtable(&self, vtable: Pointer) -> EvalResult<'tcx, Option<Ty<'tcx>>> {
+        let drop_fn = self.memory.read_ptr(vtable)?;
+
+        // just a sanity check
+        assert_eq!(drop_fn.offset, 0);
+
+        // some values don't need to call a drop impl, so the value is null
+        if drop_fn == Pointer::from_int(0) {
+            Ok(None)
+        } else {
+            self.memory.get_fn(drop_fn.alloc_id)?.expect_drop_glue_real_ty().map(Some)
+        }
+    }
+
+    pub fn read_size_and_align_from_vtable(&self, vtable: Pointer) -> EvalResult<'tcx, (u64, u64)> {
+        let pointer_size = self.memory.pointer_size();
+        let size = self.memory.read_usize(vtable.offset(pointer_size))?;
+        let align = self.memory.read_usize(vtable.offset(pointer_size * 2))?;
+        Ok((size, align))
+    }
+
     fn get_vtable_methods(&mut self, impl_id: DefId, substs: &'tcx Substs<'tcx>) -> Vec<Option<ImplMethod<'tcx>>> {
         debug!("get_vtable_methods(impl_id={:?}, substs={:?}", impl_id, substs);
 

@@ -418,7 +418,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         ty: ty::Ty<'tcx>,
         value: Value,
     ) -> EvalResult<'tcx, (u64, u64)> {
-        let pointer_size = self.memory.pointer_size();
         if let Some(size) = self.type_size(ty)? {
             Ok((size as u64, self.type_align(ty)? as u64))
         } else {
@@ -481,9 +480,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 ty::TyDynamic(..) => {
                     let (_, vtable) = value.expect_ptr_vtable_pair(&self.memory)?;
                     // the second entry in the vtable is the dynamic size of the object.
-                    let size = self.memory.read_usize(vtable.offset(pointer_size))?;
-                    let align = self.memory.read_usize(vtable.offset(pointer_size * 2))?;
-                    Ok((size, align))
+                    self.read_size_and_align_from_vtable(vtable)
                 }
 
                 ty::TySlice(_) | ty::TyStr => {
