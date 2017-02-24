@@ -499,6 +499,10 @@ impl Build {
             cargo.env("RUSTC_INCREMENTAL", incr_dir);
         }
 
+        if let Some(ref on_fail) = self.flags.on_fail {
+            cargo.env("RUSTC_ON_FAIL", on_fail);
+        }
+
         let verbose = cmp::max(self.config.verbose, self.flags.verbose);
         cargo.env("RUSTC_VERBOSE", format!("{}", verbose));
 

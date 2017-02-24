@@ -13,6 +13,6 @@ enum foo { alpha, beta(isize) }
 fn main() {
     match foo::alpha {
       foo::alpha | foo::beta(i) => {}
-      //~^ ERROR variable `i` from pattern #2 is not bound in pattern #1
+      //~^ ERROR variable `i` is not bound in all patterns
     }
 }

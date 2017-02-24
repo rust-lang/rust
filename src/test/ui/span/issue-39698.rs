@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,10 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// See comments in Cargo.toml for why this exists
+enum T {
+    T1(i32, i32),
+    T2(i32, i32),
+    T3(i32),
+    T4(i32),
+}
 
-// There's a bug right now where if we pass --extern std=... and we're cross
-// compiling then this doesn't work with `#[macro_use] extern crate std;`. Work
-// around this by not having `#[macro_use] extern crate std;`
-#![no_std]
-extern crate std;
+fn main() {
+    match T::T1(123, 456) {
+        T::T1(a, d) | T::T2(d, b) | T::T3(c) | T::T4(a) => { println!("{:?}", a); }
+    }
+}
