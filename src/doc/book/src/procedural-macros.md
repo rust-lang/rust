@@ -211,3 +211,76 @@ Hello, World! My name is Waffles
 ```
 
 We've done it!
+
+## Custom Attributes
+
+In some cases it might make sense to allow users some kind of configuration.
+For example, the user might want to overwrite the name that is printed in the `hello_world()` method.
+
+This can be achieved with custom attributes:
+
+```rust,ignore
+#[derive(HelloWorld)]
+#[HelloWorldName = "the best Pancakes"]
+struct Pancakes;
+
+fn main() {
+    Pancakes::hello_world();
+}
+```
+
+If we try to compile this though, the compiler will respond with an error:
+
+```bash
+error: The attribute `HelloWorldName` is currently unknown to the compiler and may have meaning added to it in the future (see issue #29642)
+```
+
+The compiler needs to know that we're handling this attribute and to not respond with an error.
+This is done in the `hello-world-derive` crate by adding `attributes` to the `proc_macro_derive` attribute:
+
+```rust,ignore
+#[proc_macro_derive(HelloWorld, attributes(HelloWorldName))]
+pub fn hello_world(input: TokenStream) -> TokenStream 
+```
+
+Multiple attributes can be specified that way.
+
+## Raising Errors
+
+Let's assume that we do not want to accept enums as input to our custom derive method.
+
+This condition can be easily checked with the help of `syn`. 
+But how do we tell the user, that we do not accept enums?
+The idiomatic way to report errors in procedural macros is to panic:
+
+```rust,ignore
+fn impl_hello_world(ast: &syn::MacroInput) -> quote::Tokens {
+    let name = &ast.ident;
+    // Check if derive(HelloWorld) was specified for a struct
+    if let syn::Body::Struct(_) = ast.body {
+        // Yes, this is a struct
+        quote! {
+            impl HelloWorld for #name {
+                fn hello_world() {
+                    println!("Hello, World! My name is {}", stringify!(#name));
+                }
+            }
+        }
+    } else {
+        //Nope. This is an Enum. We cannot handle these!
+       panic!("#[derive(HelloWorld)] is only defined for structs, not for enums!");
+    }
+}
+```
+
+If a user now tries to derive `HelloWorld` from an enum they will be greeted with following, hopefully helpful, error:
+
+```bash
+error: custom derive attribute panicked
+  --> src/main.rs
+   |
+   | #[derive(HelloWorld)]
+   |          ^^^^^^^^^^
+   |
+   = help: message: #[derive(HelloWorld)] is only defined for structs, not for enums!
+```
