@@ -200,6 +200,7 @@ supported_targets! {
     ("armv7s-apple-ios", armv7s_apple_ios),
 
     ("x86_64-sun-solaris", x86_64_sun_solaris),
+    ("sparcv9-sun-solaris", sparcv9_sun_solaris),
 
     ("x86_64-pc-windows-gnu", x86_64_pc_windows_gnu),
     ("i686-pc-windows-gnu", i686_pc_windows_gnu),
