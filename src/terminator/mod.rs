@@ -1,6 +1,6 @@
 use rustc::hir::def_id::DefId;
 use rustc::mir;
-use rustc::ty::layout::{Layout, Size};
+use rustc::ty::layout::Layout;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, BareFnTy};
 use syntax::codemap::Span;
@@ -215,29 +215,28 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         let dest_layout = self.type_layout(dest_ty)?;
                         trace!("layout({:?}) = {:#?}", dest_ty, dest_layout);
                         match *dest_layout {
-                            Layout::Univariant { ref variant, .. } => {
+                            Layout::Univariant { .. } => {
                                 let disr_val = v.disr_val.to_u128_unchecked();
                                 assert_eq!(disr_val, 0);
-                                let offsets = variant.offsets.iter().map(|s| s.bytes());
-
-                                self.assign_fields(lvalue, offsets, args)?;
+                                self.assign_fields(lvalue, dest_ty, args)?;
                             },
                             Layout::General { discr, ref variants, .. } => {
                                 let disr_val = v.disr_val.to_u128_unchecked();
                                 let discr_size = discr.size().bytes();
                                 self.assign_discr_and_fields(
                                     lvalue,
-                                    variants[disr_val as usize].offsets.iter().cloned().map(Size::bytes),
+                                    dest_ty,
+                                    variants[disr_val as usize].offsets[0].bytes(),
                                     args,
                                     disr_val,
+                                    disr_val as usize,
                                     discr_size,
                                 )?;
                             },
-                            Layout::StructWrappedNullablePointer { nndiscr, ref nonnull, ref discrfield, .. } => {
+                            Layout::StructWrappedNullablePointer { nndiscr, ref discrfield, .. } => {
                                 let disr_val = v.disr_val.to_u128_unchecked();
                                 if nndiscr as u128 == disr_val {
-                                    let offsets = nonnull.offsets.iter().map(|s| s.bytes());
-                                    self.assign_fields(lvalue, offsets, args)?;
+                                    self.assign_fields(lvalue, dest_ty, args)?;
                                 } else {
                                     for (_, ty) in args {
                                         assert_eq!(self.type_size(ty)?, Some(0));
@@ -501,13 +500,20 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 (&ty::TyTuple(fields, _),
                  &Layout::Univariant { ref variant, .. }) => {
                     let offsets = variant.offsets.iter().map(|s| s.bytes());
-                    let last_ptr = match last {
-                        Value::ByRef(ptr) => ptr,
-                        _ => bug!("rust-call ABI tuple argument wasn't Value::ByRef"),
-                    };
-                    for (offset, ty) in offsets.zip(fields) {
-                        let arg = Value::ByRef(last_ptr.offset(offset));
-                        args.push((arg, ty));
+                    match last {
+                        Value::ByRef(last_ptr) => {
+                            for (offset, ty) in offsets.zip(fields) {
+                                let arg = Value::ByRef(last_ptr.offset(offset));
+                                args.push((arg, ty));
+                            }
+                        },
+                        // propagate undefs
+                        undef @ Value::ByVal(PrimVal::Undef) => {
+                            for field_ty in fields {
+                                args.push((undef, field_ty));
+                            }
+                        },
+                        _ => bug!("rust-call ABI tuple argument was {:?}", last),
                     }
                 }
                 ty => bug!("expected tuple as last argument in function with 'rust-call' ABI, got {:?}", ty),
