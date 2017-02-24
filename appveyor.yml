@@ -115,11 +115,9 @@ install:
   - set PATH=C:\Python27;%PATH%
 
   # Download and install sccache
-  - appveyor DownloadFile https://api.pub.build.mozilla.org/tooltool/sha512/%SCCACHE_DIGEST%
-  - mv %SCCACHE_DIGEST% sccache.tar.bz2
-  - 7z x -y sccache.tar.bz2 > nul
-  - 7z x -y sccache.tar > nul
-  - set PATH=%PATH%;%CD%\sccache2
+  - appveyor DownloadFile https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-02-24-sccache-x86_64-pc-windows-msvc
+  - mv 2017-02-24-sccache-x86_64-pc-windows-msvc sccache
+  - set PATH=%PATH%;%CD%
 
   # Install InnoSetup to get `iscc` used to produce installers
   - choco install -y InnoSetup
