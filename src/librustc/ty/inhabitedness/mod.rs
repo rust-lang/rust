@@ -187,7 +187,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
                         //      which contains a Foo<((T, T), (T, T))>
                         //      which contains a Foo<(((T, T), (T, T)), ((T, T), (T, T)))>
                         //      etc.
-                        let error = format!("reached recursion limit while checking
+                        let error = format!("reached recursion limit while checking \
                                              inhabitedness of `{}`", self);
                         tcx.sess.fatal(&error);
                     }
