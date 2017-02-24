@@ -132,31 +132,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                             None => return Err(EvalError::InvalidDiscriminant),
                         }
                     },
-                    Layout::StructWrappedNullablePointer { nndiscr, .. } => {
+                    Layout::StructWrappedNullablePointer { .. } |
+                    Layout::RawNullablePointer { .. } => {
                         let discr = self.read_discriminant_value(adt_ptr, ty)?;
-                        if discr == nndiscr as u128 {
-                            assert_eq!(discr as usize as u128, discr);
-                            &adt_def.variants[discr as usize].fields
-                        } else {
-                            // FIXME: the zst variant might contain zst types that impl Drop
-                            return Ok(()); // nothing to do, this is zero sized (e.g. `None`)
-                        }
-                    },
-                    Layout::RawNullablePointer { nndiscr, .. } => {
-                        let discr = self.read_discriminant_value(adt_ptr, ty)?;
-                        if discr == nndiscr as u128 {
-                            assert_eq!(discr as usize as u128, discr);
-                            assert_eq!(adt_def.variants[discr as usize].fields.len(), 1);
-                            let field_ty = &adt_def.variants[discr as usize].fields[0];
-                            let field_ty = monomorphize_field_ty(self.tcx, field_ty, substs);
-                            // FIXME: once read_discriminant_value works with lvalue, don't force
-                            // alloc in the RawNullablePointer case
-                            self.drop(lval, field_ty, drop)?;
-                            return Ok(());
-                        } else {
-                            // FIXME: the zst variant might contain zst types that impl Drop
-                            return Ok(()); // nothing to do, this is zero sized (e.g. `None`)
-                        }
+                        assert_eq!(discr as usize as u128, discr);
+                        &adt_def.variants[discr as usize].fields
                     },
                     Layout::CEnum { .. } => return Ok(()),
                     _ => bug!("{:?} is not an adt layout", layout),
