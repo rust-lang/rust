@@ -35,22 +35,16 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             Goto { target } => self.goto_block(target),
 
-            If { ref cond, targets: (then_target, else_target) } => {
-                let cond_val = self.eval_operand_to_primval(cond)?.to_bool()?;
-                self.goto_block(if cond_val { then_target } else { else_target });
-            }
-
             SwitchInt { ref discr, ref values, ref targets, .. } => {
-                let discr_val = self.eval_and_read_lvalue(discr)?;
-                let discr_ty = self.lvalue_ty(discr);
+                let discr_val = self.eval_operand(discr)?;
+                let discr_ty = self.operand_ty(discr);
                 let discr_prim = self.value_to_primval(discr_val, discr_ty)?;
 
                 // Branch to the `otherwise` case by default, if no match is found.
                 let mut target_block = targets[targets.len() - 1];
 
-                for (index, const_val) in values.iter().enumerate() {
-                    let val = self.const_to_value(const_val)?;
-                    let prim = self.value_to_primval(val, discr_ty)?;
+                for (index, const_int) in values.iter().enumerate() {
+                    let prim = PrimVal::Bytes(const_int.to_u128_unchecked());
                     if discr_prim.to_bytes()? == prim.to_bytes()? {
                         target_block = targets[index];
                         break;
@@ -58,23 +52,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 }
 
                 self.goto_block(target_block);
-            }
-
-            Switch { ref discr, ref targets, adt_def } => {
-                // FIXME(solson)
-                let lvalue = self.eval_lvalue(discr)?;
-                let lvalue = self.force_allocation(lvalue)?;
-
-                let adt_ptr = lvalue.to_ptr();
-                let adt_ty = self.lvalue_ty(discr);
-                let discr_val = self.read_discriminant_value(adt_ptr, adt_ty)?;
-                let matching = adt_def.variants.iter()
-                    .position(|v| discr_val == v.disr_val.to_u128_unchecked());
-
-                match matching {
-                    Some(i) => self.goto_block(targets[i]),
-                    None => return Err(EvalError::InvalidDiscriminant),
-                }
             }
 
             Call { ref func, ref args, ref destination, .. } => {
@@ -216,12 +193,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         trace!("layout({:?}) = {:#?}", dest_ty, dest_layout);
                         match *dest_layout {
                             Layout::Univariant { .. } => {
-                                let disr_val = v.disr_val.to_u128_unchecked();
+                                let disr_val = v.disr_val;
                                 assert_eq!(disr_val, 0);
                                 self.assign_fields(lvalue, dest_ty, args)?;
                             },
                             Layout::General { discr, ref variants, .. } => {
-                                let disr_val = v.disr_val.to_u128_unchecked();
+                                let disr_val = v.disr_val;
                                 let discr_size = discr.size().bytes();
                                 self.assign_discr_and_fields(
                                     lvalue,
@@ -234,7 +211,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                                 )?;
                             },
                             Layout::StructWrappedNullablePointer { nndiscr, ref discrfield, .. } => {
-                                let disr_val = v.disr_val.to_u128_unchecked();
+                                let disr_val = v.disr_val;
                                 if nndiscr as u128 == disr_val {
                                     self.assign_fields(lvalue, dest_ty, args)?;
                                 } else {
@@ -325,7 +302,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
     }
 
-    fn read_discriminant_value(&self, adt_ptr: Pointer, adt_ty: Ty<'tcx>) -> EvalResult<'tcx, u128> {
+    pub fn read_discriminant_value(&self, adt_ptr: Pointer, adt_ty: Ty<'tcx>) -> EvalResult<'tcx, u128> {
         use rustc::ty::layout::Layout::*;
         let adt_layout = self.type_layout(adt_ty)?;
         trace!("read_discriminant_value {:#?}", adt_layout);

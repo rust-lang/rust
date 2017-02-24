@@ -456,7 +456,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                     General { discr, ref variants, .. } => {
                         if let mir::AggregateKind::Adt(adt_def, variant, _, _) = *kind {
-                            let discr_val = adt_def.variants[variant].disr_val.to_u128_unchecked();
+                            let discr_val = adt_def.variants[variant].disr_val;
                             let discr_size = discr.size().bytes();
                             if variants[variant].packed {
                                 let ptr = self.force_allocation(dest)?.to_ptr_and_extra().0;
@@ -529,7 +529,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     CEnum { .. } => {
                         assert_eq!(operands.len(), 0);
                         if let mir::AggregateKind::Adt(adt_def, variant, _, _) = *kind {
-                            let n = adt_def.variants[variant].disr_val.to_u128_unchecked();
+                            let n = adt_def.variants[variant].disr_val;
                             self.write_primval(dest, PrimVal::Bytes(n), dest_ty)?;
                         } else {
                             bug!("tried to assign {:?} to Layout::CEnum", kind);
@@ -661,7 +661,20 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 }
             }
 
-            InlineAsm { .. } => return Err(EvalError::InlineAsm),
+            Discriminant(ref lvalue) => {
+                let lval = self.eval_lvalue(lvalue)?;
+                let ty = self.lvalue_ty(lvalue);
+                let ptr = self.force_allocation(lval)?.to_ptr();
+                let discr_val = self.read_discriminant_value(ptr, ty)?;
+                if let ty::TyAdt(adt_def, _) = ty.sty {
+                    if adt_def.variants.iter().all(|v| discr_val != v.disr_val) {
+                        return Err(EvalError::InvalidDiscriminant);
+                    }
+                } else {
+                    bug!("rustc only generates Rvalue::Discriminant for enums");
+                }
+                self.write_primval(dest, PrimVal::Bytes(discr_val), dest_ty)?;
+            },
         }
 
         if log_enabled!(::log::LogLevel::Trace) {

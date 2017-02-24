@@ -119,6 +119,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             // Defined to do nothing. These are added by optimization passes, to avoid changing the
             // size of MIR constantly.
             Nop => {}
+
+            InlineAsm { .. } => return Err(EvalError::InlineAsm),
         }
 
         self.frame_mut().stmt += 1;
