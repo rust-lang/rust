@@ -29,6 +29,4 @@ fn main() {
     //~| NOTE: conflicting type parameter defaults `bool` and `char`
     //~| a second default is defined on `default_param_test::bleh`
     //~| NOTE:  ...that was applied to an unconstrained type variable here
-    //~| expected type `bool`
-    //~| found type `char`
 }
