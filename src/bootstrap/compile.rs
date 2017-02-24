@@ -21,7 +21,7 @@ use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use build_helper::{output, mtime};
+use build_helper::{output, mtime, up_to_date};
 use filetime::FileTime;
 
 use util::{exe, libdir, is_dylib, copy};
@@ -132,21 +132,29 @@ pub fn build_startup_objects(build: &Build, for_compiler: &Compiler, target: &st
 
     let compiler = Compiler::new(0, &build.config.build);
     let compiler_path = build.compiler_path(&compiler);
-    let into = build.sysroot_libdir(for_compiler, target);
-    t!(fs::create_dir_all(&into));
+    let src_dir = &build.src.join("src/rtstartup");
+    let dst_dir = &build.native_dir(target).join("rtstartup");
+    let sysroot_dir = &build.sysroot_libdir(for_compiler, target);
+    t!(fs::create_dir_all(dst_dir));
+    t!(fs::create_dir_all(sysroot_dir));
 
-    for file in t!(fs::read_dir(build.src.join("src/rtstartup"))) {
-        let file = t!(file);
-        let mut cmd = Command::new(&compiler_path);
-        build.run(cmd.env("RUSTC_BOOTSTRAP", "1")
-                     .arg("--target").arg(target)
-                     .arg("--emit=obj")
-                     .arg("--out-dir").arg(&into)
-                     .arg(file.path()));
+    for file in &["rsbegin", "rsend"] {
+        let src_file = &src_dir.join(file.to_string() + ".rs");
+        let dst_file = &dst_dir.join(file.to_string() + ".o");
+        if !up_to_date(src_file, dst_file) {
+            let mut cmd = Command::new(&compiler_path);
+            build.run(cmd.env("RUSTC_BOOTSTRAP", "1")
+                        .arg("--target").arg(target)
+                        .arg("--emit=obj")
+                        .arg("--out-dir").arg(dst_dir)
+                        .arg(src_file));
+        }
+
+        copy(dst_file, &sysroot_dir.join(file.to_string() + ".o"));
     }
 
     for obj in ["crt2.o", "dllcrt2.o"].iter() {
-        copy(&compiler_file(build.cc(target), obj), &into.join(obj));
+        copy(&compiler_file(build.cc(target), obj), &sysroot_dir.join(obj));
     }
 }
 
