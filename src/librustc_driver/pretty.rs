@@ -718,13 +718,24 @@ fn print_flowgraph<'a, 'tcx, W: Write>(variants: Vec<borrowck_dot::Variant>,
                                        mode: PpFlowGraphMode,
                                        mut out: W)
                                        -> io::Result<()> {
-    let cfg = match code {
-        blocks::Code::Expr(expr) => cfg::CFG::new(tcx, expr),
-        blocks::Code::FnLike(fn_like) => {
-            let body = tcx.hir.body(fn_like.body());
-            cfg::CFG::new(tcx, &body.value)
-        },
+    let body_id = match code {
+        blocks::Code::Expr(expr) => {
+            // Find the function this expression is from.
+            let mut node_id = expr.id;
+            loop {
+                let node = tcx.hir.get(node_id);
+                if let Some(n) = hir::map::blocks::FnLikeNode::from_node(node) {
+                    break n.body();
+                }
+                let parent = tcx.hir.get_parent_node(node_id);
+                assert!(node_id != parent);
+                node_id = parent;
+            }
+        }
+        blocks::Code::FnLike(fn_like) => fn_like.body(),
     };
+    let body = tcx.hir.body(body_id);
+    let cfg = cfg::CFG::new(tcx, &body);
     let labelled_edges = mode != PpFlowGraphMode::UnlabelledEdges;
     let lcfg = LabelledCFG {
         hir_map: &tcx.hir,

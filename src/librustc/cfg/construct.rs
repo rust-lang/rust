@@ -32,7 +32,7 @@ struct LoopScope {
 }
 
 pub fn construct<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                           body: &hir::Expr) -> CFG {
+                           body: &hir::Body) -> CFG {
     let mut graph = graph::Graph::new();
     let entry = graph.add_node(CFGNodeData::Entry);
 
@@ -43,26 +43,18 @@ pub fn construct<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let fn_exit = graph.add_node(CFGNodeData::Exit);
     let body_exit;
 
-    // Find the function this expression is from.
-    let mut node_id = body.id;
-    loop {
-        let node = tcx.hir.get(node_id);
-        if hir::map::blocks::FnLikeNode::from_node(node).is_some() {
-            break;
-        }
-        let parent = tcx.hir.get_parent_node(node_id);
-        assert!(node_id != parent);
-        node_id = parent;
-    }
+    // Find the tables for this body.
+    let owner_def_id = tcx.hir.local_def_id(tcx.hir.body_owner(body.id()));
+    let tables = tcx.item_tables(owner_def_id);
 
     let mut cfg_builder = CFGBuilder {
         tcx: tcx,
-        tables: tcx.item_tables(tcx.hir.local_def_id(node_id)),
+        tables: tables,
         graph: graph,
         fn_exit: fn_exit,
         loop_scopes: Vec::new()
     };
-    body_exit = cfg_builder.expr(body, entry);
+    body_exit = cfg_builder.expr(&body.value, entry);
     cfg_builder.add_contained_edge(body_exit, fn_exit);
     let CFGBuilder {graph, ..} = cfg_builder;
     CFG {graph: graph,

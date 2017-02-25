@@ -32,14 +32,12 @@ use rustc::middle::dataflow::DataFlowOperator;
 use rustc::middle::dataflow::KillFrom;
 use rustc::hir::def_id::DefId;
 use rustc::middle::expr_use_visitor as euv;
-use rustc::middle::free_region::FreeRegionMap;
 use rustc::middle::mem_categorization as mc;
 use rustc::middle::mem_categorization::Categorization;
 use rustc::middle::region;
 use rustc::ty::{self, TyCtxt};
 
 use std::fmt;
-use std::mem;
 use std::rc::Rc;
 use std::hash::{Hash, Hasher};
 use syntax::ast;
@@ -47,7 +45,7 @@ use syntax_pos::{MultiSpan, Span};
 use errors::DiagnosticBuilder;
 
 use rustc::hir;
-use rustc::hir::intravisit::{self, Visitor, FnKind, NestedVisitorMap};
+use rustc::hir::intravisit::{self, Visitor};
 
 pub mod check_loans;
 
@@ -62,93 +60,14 @@ pub struct LoanDataFlowOperator;
 
 pub type LoanDataFlow<'a, 'tcx> = DataFlowContext<'a, 'tcx, LoanDataFlowOperator>;
 
-impl<'a, 'tcx> Visitor<'tcx> for BorrowckCtxt<'a, 'tcx> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        NestedVisitorMap::OnlyBodies(&self.tcx.hir)
-    }
-
-    fn visit_fn(&mut self, fk: FnKind<'tcx>, fd: &'tcx hir::FnDecl,
-                b: hir::BodyId, s: Span, id: ast::NodeId) {
-        match fk {
-            FnKind::ItemFn(..) |
-            FnKind::Method(..) => {
-                self.with_temp_region_map(id, |this| {
-                    borrowck_fn(this, fk, fd, b, s, id, fk.attrs())
-                });
-            }
-
-            FnKind::Closure(..) => {
-                borrowck_fn(self, fk, fd, b, s, id, fk.attrs());
-            }
-        }
-    }
-
-    fn visit_item(&mut self, item: &'tcx hir::Item) {
-        borrowck_item(self, item);
-    }
-
-    fn visit_trait_item(&mut self, ti: &'tcx hir::TraitItem) {
-        if let hir::TraitItemKind::Const(_, Some(expr)) = ti.node {
-            gather_loans::gather_loans_in_static_initializer(self, expr);
-        }
-        intravisit::walk_trait_item(self, ti);
-    }
-
-    fn visit_impl_item(&mut self, ii: &'tcx hir::ImplItem) {
-        if let hir::ImplItemKind::Const(_, expr) = ii.node {
-            gather_loans::gather_loans_in_static_initializer(self, expr);
-        }
-        intravisit::walk_impl_item(self, ii);
-    }
-}
-
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    let mut bccx = BorrowckCtxt {
-        tcx: tcx,
-        free_region_map: FreeRegionMap::new(),
-        stats: BorrowStats {
-            loaned_paths_same: 0,
-            loaned_paths_imm: 0,
-            stable_paths: 0,
-            guaranteed_paths: 0
-        }
-    };
-
-    tcx.visit_all_item_likes_in_krate(DepNode::BorrowCheck, &mut bccx.as_deep_visitor());
-
-    if tcx.sess.borrowck_stats() {
-        println!("--- borrowck stats ---");
-        println!("paths requiring guarantees: {}",
-                 bccx.stats.guaranteed_paths);
-        println!("paths requiring loans     : {}",
-                 make_stat(&bccx, bccx.stats.loaned_paths_same));
-        println!("paths requiring imm loans : {}",
-                 make_stat(&bccx, bccx.stats.loaned_paths_imm));
-        println!("stable paths              : {}",
-                 make_stat(&bccx, bccx.stats.stable_paths));
-    }
-
-    fn make_stat(bccx: &BorrowckCtxt, stat: usize) -> String {
-        let total = bccx.stats.guaranteed_paths as f64;
-        let perc = if total == 0.0 { 0.0 } else { stat as f64 * 100.0 / total };
-        format!("{} ({:.0}%)", stat, perc)
-    }
-}
-
-fn borrowck_item<'a, 'tcx>(this: &mut BorrowckCtxt<'a, 'tcx>, item: &'tcx hir::Item) {
-    // Gather loans for items. Note that we don't need
-    // to check loans for single expressions. The check
-    // loan step is intended for things that have a data
-    // flow dependent conditions.
-    match item.node {
-        hir::ItemStatic(.., ex) |
-        hir::ItemConst(_, ex) => {
-            gather_loans::gather_loans_in_static_initializer(this, ex);
-        }
-        _ => { }
-    }
-
-    intravisit::walk_item(this, item);
+    tcx.dep_graph.with_task(DepNode::BorrowCheckKrate, || {
+        tcx.visit_all_bodies_in_krate(|body_owner_def_id, body_id| {
+            tcx.dep_graph.with_task(DepNode::BorrowCheck(body_owner_def_id), || {
+                borrowck_fn(tcx, body_id);
+            });
+        });
+    });
 }
 
 /// Collection of conclusions determined via borrow checker analyses.
@@ -158,40 +77,39 @@ pub struct AnalysisData<'a, 'tcx: 'a> {
     pub move_data: move_data::FlowedMoveData<'a, 'tcx>,
 }
 
-fn borrowck_fn<'a, 'tcx>(this: &mut BorrowckCtxt<'a, 'tcx>,
-                         fk: FnKind<'tcx>,
-                         decl: &'tcx hir::FnDecl,
-                         body_id: hir::BodyId,
-                         sp: Span,
-                         id: ast::NodeId,
-                         attributes: &[ast::Attribute]) {
-    debug!("borrowck_fn(id={})", id);
+fn borrowck_fn<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, body_id: hir::BodyId) {
+    debug!("borrowck_fn(body_id={:?})", body_id);
 
-    let body = this.tcx.hir.body(body_id);
+    let owner_id = tcx.hir.body_owner(body_id);
+    let owner_def_id = tcx.hir.local_def_id(owner_id);
+    let attributes = tcx.get_attrs(owner_def_id);
+    let tables = tcx.item_tables(owner_def_id);
 
-    if attributes.iter().any(|item| item.check_name("rustc_mir_borrowck")) {
-        this.with_temp_region_map(id, |this| {
-            mir::borrowck_mir(this, id, attributes)
-        });
+    let mut bccx = &mut BorrowckCtxt {
+        tcx: tcx,
+        tables: tables,
+    };
+
+    let body = bccx.tcx.hir.body(body_id);
+
+    if bccx.tcx.has_attr(owner_def_id, "rustc_mir_borrowck") {
+        mir::borrowck_mir(bccx, owner_id, &attributes);
     }
 
-    let cfg = cfg::CFG::new(this.tcx, &body.value);
+    let cfg = cfg::CFG::new(bccx.tcx, &body);
     let AnalysisData { all_loans,
                        loans: loan_dfcx,
                        move_data: flowed_moves } =
-        build_borrowck_dataflow_data(this, &cfg, body_id);
+        build_borrowck_dataflow_data(bccx, &cfg, body_id);
 
     move_data::fragments::instrument_move_fragments(&flowed_moves.move_data,
-                                                    this.tcx,
-                                                    sp,
-                                                    id);
-    move_data::fragments::build_unfragmented_map(this,
+                                                    bccx.tcx,
+                                                    owner_id);
+    move_data::fragments::build_unfragmented_map(bccx,
                                                  &flowed_moves.move_data,
-                                                 id);
+                                                 owner_id);
 
-    check_loans::check_loans(this, &loan_dfcx, &flowed_moves, &all_loans[..], body);
-
-    intravisit::walk_fn(this, fk, decl, body_id, sp, id);
+    check_loans::check_loans(bccx, &loan_dfcx, &flowed_moves, &all_loans[..], body);
 }
 
 fn build_borrowck_dataflow_data<'a, 'tcx>(this: &mut BorrowckCtxt<'a, 'tcx>,
@@ -241,23 +159,20 @@ fn build_borrowck_dataflow_data<'a, 'tcx>(this: &mut BorrowckCtxt<'a, 'tcx>,
 /// the `BorrowckCtxt` itself , e.g. the flowgraph visualizer.
 pub fn build_borrowck_dataflow_data_for_fn<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    body: hir::BodyId,
+    body_id: hir::BodyId,
     cfg: &cfg::CFG)
     -> (BorrowckCtxt<'a, 'tcx>, AnalysisData<'a, 'tcx>)
 {
+    let owner_id = tcx.hir.body_owner(body_id);
+    let owner_def_id = tcx.hir.local_def_id(owner_id);
+    let tables = tcx.item_tables(owner_def_id);
 
     let mut bccx = BorrowckCtxt {
         tcx: tcx,
-        free_region_map: FreeRegionMap::new(),
-        stats: BorrowStats {
-            loaned_paths_same: 0,
-            loaned_paths_imm: 0,
-            stable_paths: 0,
-            guaranteed_paths: 0
-        }
+        tables: tables,
     };
 
-    let dataflow_data = build_borrowck_dataflow_data(&mut bccx, cfg, body);
+    let dataflow_data = build_borrowck_dataflow_data(&mut bccx, cfg, body_id);
     (bccx, dataflow_data)
 }
 
@@ -267,28 +182,9 @@ pub fn build_borrowck_dataflow_data_for_fn<'a, 'tcx>(
 pub struct BorrowckCtxt<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
-    // Hacky. As we visit various fns, we have to load up the
-    // free-region map for each one. This map is computed by during
-    // typeck for each fn item and stored -- closures just use the map
-    // from the fn item that encloses them. Since we walk the fns in
-    // order, we basically just overwrite this field as we enter a fn
-    // item and restore it afterwards in a stack-like fashion. Then
-    // the borrow checking code can assume that `free_region_map` is
-    // always the correct map for the current fn. Feels like it'd be
-    // better to just recompute this, rather than store it, but it's a
-    // bit of a pain to factor that code out at the moment.
-    free_region_map: FreeRegionMap,
-
-    // Statistics:
-    stats: BorrowStats
-}
-
-#[derive(Clone)]
-struct BorrowStats {
-    loaned_paths_same: usize,
-    loaned_paths_imm: usize,
-    stable_paths: usize,
-    guaranteed_paths: usize
+    // tables for the current thing we are checking; set to
+    // Some in `borrowck_fn` and cleared later
+    tables: &'a ty::TypeckTables<'tcx>,
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -574,19 +470,12 @@ pub enum MovedValueUseKind {
 // Misc
 
 impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
-    fn with_temp_region_map<F>(&mut self, id: ast::NodeId, f: F)
-        where F: for <'b> FnOnce(&'b mut BorrowckCtxt<'a, 'tcx>)
-    {
-        let new_free_region_map = self.tcx.free_region_map(id);
-        let old_free_region_map = mem::replace(&mut self.free_region_map, new_free_region_map);
-        f(self);
-        self.free_region_map = old_free_region_map;
-    }
-
-    pub fn is_subregion_of(&self, r_sub: &'tcx ty::Region, r_sup: &'tcx ty::Region)
+    pub fn is_subregion_of(&self,
+                           r_sub: &'tcx ty::Region,
+                           r_sup: &'tcx ty::Region)
                            -> bool
     {
-        self.free_region_map.is_subregion_of(self.tcx, r_sub, r_sup)
+        self.tables.free_region_map.is_subregion_of(self.tcx, r_sub, r_sup)
     }
 
     pub fn report(&self, err: BckError<'tcx>) {
@@ -912,11 +801,13 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             }
             mc::AliasableStatic |
             mc::AliasableStaticMut => {
-                let mut err = struct_span_err!(
-                    self.tcx.sess, span, E0388,
-                    "{} in a static location", prefix);
-                err.span_label(span, &format!("cannot write data in a static definition"));
-                err
+                // This path cannot occur. It happens when we have an
+                // `&mut` or assignment to a static. But in the case
+                // of `static X`, we get a mutability violation first,
+                // and never get here. In the case of `static mut X`,
+                // that is unsafe and hence the aliasability error is
+                // ignored.
+                span_bug!(span, "aliasability violation for static `{}`", prefix)
             }
             mc::AliasableBorrowed => {
                 let mut e = struct_span_err!(

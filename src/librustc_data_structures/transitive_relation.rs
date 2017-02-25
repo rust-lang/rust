@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use bitvec::BitMatrix;
+use rustc_serialize::{Encodable, Encoder, Decodable, Decoder};
 use std::cell::RefCell;
 use std::fmt::Debug;
 use std::mem;
@@ -36,10 +37,10 @@ pub struct TransitiveRelation<T: Debug + PartialEq> {
     closure: RefCell<Option<BitMatrix>>,
 }
 
-#[derive(Clone, PartialEq, PartialOrd)]
+#[derive(Clone, PartialEq, PartialOrd, RustcEncodable, RustcDecodable)]
 struct Index(usize);
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable)]
 struct Edge {
     source: Index,
     target: Index,
@@ -52,6 +53,10 @@ impl<T: Debug + PartialEq> TransitiveRelation<T> {
             edges: vec![],
             closure: RefCell::new(None),
         }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.edges.is_empty()
     }
 
     fn index(&self, a: &T) -> Option<Index> {
@@ -302,6 +307,30 @@ fn pare_down(candidates: &mut Vec<usize>, closure: &BitMatrix) {
             j += 1;
         }
         candidates.truncate(j - dead);
+    }
+}
+
+impl<T> Encodable for TransitiveRelation<T>
+    where T: Encodable + Debug + PartialEq
+{
+    fn encode<E: Encoder>(&self, s: &mut E) -> Result<(), E::Error> {
+        s.emit_struct("TransitiveRelation", 2, |s| {
+            s.emit_struct_field("elements", 0, |s| self.elements.encode(s))?;
+            s.emit_struct_field("edges", 1, |s| self.edges.encode(s))?;
+            Ok(())
+        })
+    }
+}
+
+impl<T> Decodable for TransitiveRelation<T>
+    where T: Decodable + Debug + PartialEq
+{
+    fn decode<D: Decoder>(d: &mut D) -> Result<Self, D::Error> {
+        d.read_struct("TransitiveRelation", 2, |d| {
+            let elements = d.read_struct_field("elements", 0, |d| Decodable::decode(d))?;
+            let edges = d.read_struct_field("edges", 1, |d| Decodable::decode(d))?;
+            Ok(TransitiveRelation { elements, edges, closure: RefCell::new(None) })
+        })
     }
 }
 

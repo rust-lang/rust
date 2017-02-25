@@ -31,7 +31,7 @@ pub use self::PathParameters::*;
 
 use hir::def::Def;
 use hir::def_id::DefId;
-use util::nodemap::{NodeMap, FxHashMap, FxHashSet};
+use util::nodemap::{NodeMap, FxHashSet};
 
 use syntax_pos::{Span, ExpnId, DUMMY_SP};
 use syntax::codemap::{self, Spanned};
@@ -409,7 +409,13 @@ pub struct Crate {
 
     pub trait_items: BTreeMap<TraitItemId, TraitItem>,
     pub impl_items: BTreeMap<ImplItemId, ImplItem>,
-    pub bodies: FxHashMap<BodyId, Body>,
+    pub bodies: BTreeMap<BodyId, Body>,
+
+    /// A list of the body ids written out in the order in which they
+    /// appear in the crate. If you're going to process all the bodies
+    /// in the crate, you should iterate over this list rather than the keys
+    /// of bodies.
+    pub body_ids: Vec<BodyId>,
 }
 
 impl Crate {
