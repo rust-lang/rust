@@ -506,7 +506,11 @@ impl FnType {
                 if let Some(inner) = rust_ptr_attrs(ty, &mut data) {
                     data.attrs.set(ArgAttribute::NonNull);
                     if ccx.tcx().struct_tail(inner).is_trait() {
+                        // vtables can be safely marked non-null, readonly
+                        // and noalias.
                         info.attrs.set(ArgAttribute::NonNull);
+                        info.attrs.set(ArgAttribute::ReadOnly);
+                        info.attrs.set(ArgAttribute::NoAlias);
                     }
                 }
                 args.push(data);
