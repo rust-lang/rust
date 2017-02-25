@@ -1139,11 +1139,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let ty::CrateAnalysis { export_map, reachable, name, .. } = analysis;
     let exported_symbols = find_exported_symbols(tcx, reachable);
 
-    let check_overflow = if let Some(v) = tcx.sess.opts.debugging_opts.force_overflow_checks {
-        v
-    } else {
-        tcx.sess.opts.debug_assertions
-    };
+    let check_overflow = tcx.sess.overflow_checks();
 
     let link_meta = link::build_link_meta(incremental_hashes_map, &name);
 
