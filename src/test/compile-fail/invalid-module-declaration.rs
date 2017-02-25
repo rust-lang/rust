@@ -11,7 +11,7 @@
 // ignore-tidy-linelength
 
 // error-pattern: cannot declare a new module at this location
-// error-pattern: maybe move this module `src/test/compile-fail/auxiliary/foo/bar.rs` to its own directory via `src/test/compile-fail/auxiliary/foo/bar/mod.rs`
+// error-pattern: maybe move this module
 
 mod auxiliary {
     mod foo;
