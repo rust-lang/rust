@@ -92,7 +92,15 @@ fn main() {
         // compiler-rt's build system already
         cfg.flag("-fno-builtin");
         cfg.flag("-fvisibility=hidden");
-        cfg.flag("-fomit-frame-pointer");
+        // Accepted practice on Solaris is to never omit frame pointer so that
+        // system observability tools work as expected.  In addition, at least
+        // on Solaris, -fomit-frame-pointer on sparcv9 appears to generate
+        // references to data outside of the current stack frame.  A search of
+        // the gcc bug database provides a variety of issues surrounding
+        // -fomit-frame-pointer on non-x86 platforms.
+        if !target.contains("solaris") && !target.contains("sparc") {
+            cfg.flag("-fomit-frame-pointer");
+        }
         cfg.flag("-ffreestanding");
         cfg.define("VISIBILITY_HIDDEN", None);
     }
