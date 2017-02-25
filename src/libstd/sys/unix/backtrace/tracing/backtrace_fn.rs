@@ -31,7 +31,7 @@ pub fn unwind_backtrace(frames: &mut [Frame])
 {
     const FRAME_LEN: usize = 100;
     assert!(FRAME_LEN >= frames.len());
-    let mut raw_frames = [::std::ptr::null_mut(); FRAME_LEN];
+    let mut raw_frames = [::ptr::null_mut(); FRAME_LEN];
     let nb_frames = unsafe {
         backtrace(raw_frames.as_mut_ptr(), raw_frames.len() as libc::c_int)
     } as usize;
