@@ -22,14 +22,23 @@ extern crate attr_proc_macro;
 
 use attr_proc_macro::attr_proc_macro;
 
-#[derive(FooWithLongNam)]
-//~^ ERROR cannot find derive macro `FooWithLongNam` in this scope
+macro_rules! FooWithLongNam {
+    () => {}
+}
+
+#[derive(FooWithLongNan)]
+//~^ ERROR cannot find derive macro `FooWithLongNan` in this scope
 //~^^ HELP did you mean `FooWithLongName`?
 struct Foo;
 
 #[attr_proc_macra]
 //~^ ERROR cannot find attribute macro `attr_proc_macra` in this scope
+//~^^ HELP did you mean `attr_proc_macro`?
 struct Bar;
+
+#[FooWithLongNan]
+//~^ ERROR cannot find attribute macro `FooWithLongNan` in this scope
+struct Asdf;
 
 #[derive(Dlone)]
 //~^ ERROR cannot find derive macro `Dlone` in this scope
@@ -41,4 +50,18 @@ struct A;
 //~^^ HELP did you mean `Clona`?
 struct B;
 
-fn main() {}
+#[derive(attr_proc_macra)]
+//~^ ERROR cannot find derive macro `attr_proc_macra` in this scope
+struct C;
+
+fn main() {
+    FooWithLongNama!();
+    //~^ ERROR cannot find macro `FooWithLongNama!` in this scope
+    //~^^ HELP did you mean `FooWithLongNam!`?
+
+    attr_proc_macra!();
+    //~^ ERROR cannot find macro `attr_proc_macra!` in this scope
+
+    Dlona!();
+    //~^ ERROR cannot find macro `Dlona!` in this scope
+}

@@ -11,6 +11,7 @@
 use hir::def_id::DefId;
 use util::nodemap::NodeMap;
 use syntax::ast;
+use syntax::ext::base::MacroKind;
 use hir;
 
 #[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
@@ -53,7 +54,7 @@ pub enum Def {
     Label(ast::NodeId),
 
     // Macro namespace
-    Macro(DefId),
+    Macro(DefId, MacroKind),
 
     // Both namespaces
     Err,
@@ -141,7 +142,7 @@ impl Def {
             Def::Variant(id) | Def::VariantCtor(id, ..) | Def::Enum(id) | Def::TyAlias(id) |
             Def::AssociatedTy(id) | Def::TyParam(id) | Def::Struct(id) | Def::StructCtor(id, ..) |
             Def::Union(id) | Def::Trait(id) | Def::Method(id) | Def::Const(id) |
-            Def::AssociatedConst(id) | Def::Local(id) | Def::Upvar(id, ..) | Def::Macro(id) => {
+            Def::AssociatedConst(id) | Def::Local(id) | Def::Upvar(id, ..) | Def::Macro(id, ..) => {
                 id
             }
 
