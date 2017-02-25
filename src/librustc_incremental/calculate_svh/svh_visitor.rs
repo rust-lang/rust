@@ -338,8 +338,10 @@ fn saw_expr<'a>(node: &'a Expr_,
         ExprIndex(..)            => (SawExprIndex, true),
         ExprPath(_)              => (SawExprPath, false),
         ExprAddrOf(m, _)         => (SawExprAddrOf(m), false),
-        ExprBreak(label, _)      => (SawExprBreak(label.map(|l| l.name.as_str())), false),
-        ExprAgain(label)         => (SawExprAgain(label.map(|l| l.name.as_str())), false),
+        ExprBreak(label, _)      => (SawExprBreak(label.ident.map(|i|
+                                                    i.node.name.as_str())), false),
+        ExprAgain(label)         => (SawExprAgain(label.ident.map(|i|
+                                                    i.node.name.as_str())), false),
         ExprRet(..)              => (SawExprRet, false),
         ExprInlineAsm(ref a,..)  => (SawExprInlineAsm(StableInlineAsm(a)), false),
         ExprStruct(..)           => (SawExprStruct, false),

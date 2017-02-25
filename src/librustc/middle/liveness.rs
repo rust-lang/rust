@@ -675,23 +675,6 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         Ok(())
     }
 
-    fn find_loop_scope(&self,
-                       opt_label: Option<hir::Label>,
-                       sp: Span)
-                       -> NodeId {
-        match opt_label {
-            Some(label) => label.loop_id,
-            None => {
-                // Vanilla 'break' or 'continue', so use the enclosing
-                // loop scope
-                if self.loop_scope.is_empty() {
-                    span_bug!(sp, "break outside loop");
-                } else {
-                    *self.loop_scope.last().unwrap()
-                }
-            }
-        }
-    }
 
     #[allow(unused_must_use)]
     fn ln_str(&self, ln: LiveNode) -> String {
@@ -1018,9 +1001,12 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             self.propagate_through_opt_expr(o_e.as_ref().map(|e| &**e), exit_ln)
           }
 
-          hir::ExprBreak(opt_label, ref opt_expr) => {
+          hir::ExprBreak(label, ref opt_expr) => {
               // Find which label this break jumps to
-              let sc = self.find_loop_scope(opt_label, expr.span);
+              let sc = match label.loop_id.into() {
+                  Ok(loop_id) => loop_id,
+                  Err(err) => span_bug!(expr.span, "loop scope error: {}", err),
+              };
 
               // Now that we know the label we're going to,
               // look it up in the break loop nodes table
@@ -1031,9 +1017,13 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
               }
           }
 
-          hir::ExprAgain(opt_label) => {
+          hir::ExprAgain(label) => {
               // Find which label this expr continues to
-              let sc = self.find_loop_scope(opt_label, expr.span);
+              let sc = match label.loop_id.into() {
+                  Ok(loop_id) => loop_id,
+                  Err(err) => span_bug!(expr.span, "loop scope error: {}", err),
+              };
+
 
               // Now that we know the label we're going to,
               // look it up in the continue loop nodes table
@@ -1297,12 +1287,13 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         debug!("propagate_through_loop: using id for loop body {} {}",
                expr.id, self.ir.tcx.hir.node_to_pretty_string(body.id));
 
-        let cond_ln = match kind {
-            LoopLoop => ln,
-            WhileLoop(ref cond) => self.propagate_through_expr(&cond, ln),
-        };
-        let body_ln = self.with_loop_nodes(expr.id, succ, ln, |this| {
-            this.propagate_through_block(body, cond_ln)
+        let (cond_ln, body_ln) = self.with_loop_nodes(expr.id, succ, ln, |this| {
+            let cond_ln = match kind {
+                LoopLoop => ln,
+                WhileLoop(ref cond) => this.propagate_through_expr(&cond, ln),
+            };
+            let body_ln = this.propagate_through_block(body, cond_ln);
+            (cond_ln, body_ln)
         });
 
         // repeat until fixed point is reached:

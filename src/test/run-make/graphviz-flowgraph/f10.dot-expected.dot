@@ -5,10 +5,10 @@ digraph block {
     N3[label="local mut x"];
     N4[label="stmt let mut x = 10;"];
     N5[label="(dummy_node)"];
-    N6[label="expr x"];
-    N7[label="expr 0"];
-    N8[label="expr x > 0"];
-    N9[label="expr while x > 0 { x -= 1; }"];
+    N6[label="expr while x > 0 { x -= 1; }"];
+    N7[label="expr x"];
+    N8[label="expr 0"];
+    N9[label="expr x > 0"];
     N10[label="expr 1"];
     N11[label="expr x"];
     N12[label="expr x -= 1"];
@@ -20,17 +20,17 @@ digraph block {
     N2 -> N3;
     N3 -> N4;
     N4 -> N5;
-    N5 -> N6;
-    N6 -> N7;
+    N5 -> N7;
     N7 -> N8;
     N8 -> N9;
-    N8 -> N10;
+    N9 -> N6;
+    N9 -> N10;
     N10 -> N11;
     N11 -> N12;
     N12 -> N13;
     N13 -> N14;
     N14 -> N5;
-    N9 -> N15;
+    N6 -> N15;
     N15 -> N16;
     N16 -> N1;
 }

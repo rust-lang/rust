@@ -385,22 +385,14 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// resolving `break` and `continue`.
     pub fn find_loop_scope(&mut self,
                            span: Span,
-                           label: Option<CodeExtent>)
+                           label: CodeExtent)
                            -> &mut LoopScope<'tcx> {
-        let loop_scopes = &mut self.loop_scopes;
-        match label {
-            None => {
-                // no label? return the innermost loop scope
-                loop_scopes.iter_mut().rev().next()
-            }
-            Some(label) => {
-                // otherwise, find the loop-scope with the correct id
-                loop_scopes.iter_mut()
-                           .rev()
-                           .filter(|loop_scope| loop_scope.extent == label)
-                           .next()
-            }
-        }.unwrap_or_else(|| span_bug!(span, "no enclosing loop scope found?"))
+        // find the loop-scope with the correct id
+        self.loop_scopes.iter_mut()
+            .rev()
+            .filter(|loop_scope| loop_scope.extent == label)
+            .next()
+            .unwrap_or_else(|| span_bug!(span, "no enclosing loop scope found?"))
     }
 
     /// Given a span and the current visibility scope, make a SourceInfo.
