@@ -1366,6 +1366,13 @@ mod traits {
     use ops;
     use str::eq_slice;
 
+    /// Implements ordering of strings.
+    ///
+    /// Strings are ordered  lexicographically by their byte values.  This orders Unicode code
+    /// points based on their positions in the code charts.  This is not necessarily the same as
+    /// "alphabetical" order, which varies by language and locale.  Sorting strings according to
+    /// culturally-accepted standards requires locale-specific data that is outside the scope of
+    /// the `str` type.
     #[stable(feature = "rust1", since = "1.0.0")]
     impl Ord for str {
         #[inline]
@@ -1387,6 +1394,13 @@ mod traits {
     #[stable(feature = "rust1", since = "1.0.0")]
     impl Eq for str {}
 
+    /// Implements comparison operations on strings.
+    ///
+    /// Strings are compared lexicographically by their byte values.  This compares Unicode code
+    /// points based on their positions in the code charts.  This is not necessarily the same as
+    /// "alphabetical" order, which varies by language and locale.  Comparing strings according to
+    /// culturally-accepted standards requires locale-specific data that is outside the scope of
+    /// the `str` type.
     #[stable(feature = "rust1", since = "1.0.0")]
     impl PartialOrd for str {
         #[inline]
