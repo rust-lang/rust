@@ -804,6 +804,8 @@ options! {CodegenOptions, CodegenSetter, basic_codegen_options,
         "save all temporary output files during compilation"),
     rpath: bool = (false, parse_bool, [UNTRACKED],
         "set rpath values in libs/exes"),
+    overflow_checks: Option<bool> = (None, parse_opt_bool, [TRACKED],
+        "use overflow checks for integer arithmetic"),
     no_prepopulate_passes: bool = (false, parse_bool, [TRACKED],
         "don't pre-populate the pass manager with a list of passes"),
     no_vectorize_loops: bool = (false, parse_bool, [TRACKED],
@@ -2346,6 +2348,10 @@ mod tests {
 
         opts = reference.clone();
         opts.cg.llvm_args = vec![String::from("1"), String::from("2")];
+        assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
+
+        opts = reference.clone();
+        opts.cg.overflow_checks = Some(true);
         assert!(reference.dep_tracking_hash() != opts.dep_tracking_hash());
 
         opts = reference.clone();
