@@ -151,7 +151,7 @@ impl Process {
         let mut avail: mx_size_t = 0;
 
         unsafe {
-            mx_cvt(mx_handle_wait_one(self.handle.raw(), MX_TASK_TERMINATED,
+            mx_cvt(mx_object_wait_one(self.handle.raw(), MX_TASK_TERMINATED,
                                       MX_TIME_INFINITE, ptr::null_mut()))?;
             mx_cvt(mx_object_get_info(self.handle.raw(), MX_INFO_PROCESS,
                                       &mut proc_info as *mut _ as *mut libc::c_void,
@@ -174,7 +174,7 @@ impl Process {
         let mut avail: mx_size_t = 0;
 
         unsafe {
-            let status = mx_handle_wait_one(self.handle.raw(), MX_TASK_TERMINATED,
+            let status = mx_object_wait_one(self.handle.raw(), MX_TASK_TERMINATED,
                                             0, ptr::null_mut());
             match status {
                 0 => { }, // Success
