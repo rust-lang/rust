@@ -379,40 +379,41 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                          values: Option<ValuePairs<'tcx>>,
                          terr: &TypeError<'tcx>)
     {
-        let expected_found = match values {
-            None => None,
-            Some(values) => match self.values_str(&values) {
-                Some((expected, found)) => Some((expected, found)),
-                None => {
-                    // Derived error. Cancel the emitter.
-                    self.tcx.sess.diagnostic().cancel(diag);
-                    return
-                }
+        let (expected_found, is_simple_error) = match values {
+            None => (None, false),
+            Some(values) => {
+                let is_simple_error = match values {
+                    ValuePairs::Types(exp_found) => {
+                        exp_found.expected.is_primitive() && exp_found.found.is_primitive()
+                    }
+                    _ => false,
+                };
+                let vals = match self.values_str(&values) {
+                    Some((expected, found)) => Some((expected, found)),
+                    None => {
+                        // Derived error. Cancel the emitter.
+                        self.tcx.sess.diagnostic().cancel(diag);
+                        return
+                    }
+                };
+                (vals, is_simple_error)
             }
         };
 
         let span = cause.span;
 
         if let Some((expected, found)) = expected_found {
-            let is_simple_error = if let &TypeError::Sorts(ref values) = terr {
-                values.expected.is_primitive() && values.found.is_primitive()
-            } else {
-                false
-            };
-
-            if !is_simple_error {
-                if expected == found {
-                    if let &TypeError::Sorts(ref values) = terr {
-                        diag.note_expected_found_extra(
-                            &"type", &expected, &found,
-                            &format!(" ({})", values.expected.sort_string(self.tcx)),
-                            &format!(" ({})", values.found.sort_string(self.tcx)));
-                    } else {
-                        diag.note_expected_found(&"type", &expected, &found);
-                    }
-                } else {
+            match (terr, is_simple_error, expected == found) {
+                (&TypeError::Sorts(ref values), false,  true) => {
+                    diag.note_expected_found_extra(
+                        &"type", &expected, &found,
+                        &format!(" ({})", values.expected.sort_string(self.tcx)),
+                        &format!(" ({})", values.found.sort_string(self.tcx)));
+                }
+                (_, false,  _) => {
                     diag.note_expected_found(&"type", &expected, &found);
                 }
+                _ => (),
             }
         }
 
