@@ -23,6 +23,11 @@ use super::directory::DefPathIndex;
 pub struct SerializedDepGraph {
     pub edges: Vec<SerializedEdgeSet>,
 
+    /// These are output nodes that have no incoming edges. We track
+    /// these separately so that when we reload all edges, we don't
+    /// lose track of these nodes.
+    pub bootstrap_outputs: Vec<DepNode<DefPathIndex>>,
+
     /// These are hashes of two things:
     /// - the HIR nodes in this crate
     /// - the metadata nodes from dependent crates we use
