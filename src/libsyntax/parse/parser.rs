@@ -58,7 +58,6 @@ use symbol::{Symbol, keywords};
 use util::ThinVec;
 
 use std::collections::HashSet;
-use std::env;
 use std::mem;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
@@ -5367,24 +5366,11 @@ impl<'a> Parser<'a> {
             let mut err = self.diagnostic().struct_span_err(id_sp,
                 "cannot declare a new module at this location");
             if id_sp != syntax_pos::DUMMY_SP {
-                let mut src_path = PathBuf::from(self.sess.codemap().span_to_filename(id_sp));
+                let src_path = PathBuf::from(self.sess.codemap().span_to_filename(id_sp));
                 if let Some(stem) = src_path.clone().file_stem() {
                     let mut dest_path = src_path.clone();
                     dest_path.set_file_name(stem);
                     dest_path.push("mod.rs");
-                    if let Ok(cur_dir) = env::current_dir() {
-                        let tmp = if let (Ok(src_path), Ok(dest_path)) =
-                            (Path::new(&src_path).strip_prefix(&cur_dir),
-                             Path::new(&dest_path).strip_prefix(&cur_dir)) {
-                            Some((src_path.to_path_buf(), dest_path.to_path_buf()))
-                        } else {
-                            None
-                        };
-                        if let Some(tmp) = tmp {
-                            src_path = tmp.0;
-                            dest_path = tmp.1;
-                        }
-                    }
                     err.span_note(id_sp,
                                   &format!("maybe move this module `{}` to its own \
                                             directory via `{}`", src_path.to_string_lossy(),
@@ -5401,7 +5387,7 @@ impl<'a> Parser<'a> {
         } else {
             match paths.result {
                 Ok(succ) => Ok(succ),
-                Err(err) => Err(self.span_fatal_err(id_sp, &err.err_msg, &err.help_msg)),
+                Err(err) => Err(self.span_fatal_err(id_sp, err)),
             }
         }
     }
