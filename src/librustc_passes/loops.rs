@@ -87,23 +87,26 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                 self.with_context(Closure, |v| v.visit_nested_body(b));
             }
             hir::ExprBreak(label, ref opt_expr) => {
+                let loop_id = match label.loop_id.into() {
+                    Ok(loop_id) => loop_id,
+                    Err(hir::LoopIdError::OutsideLoopScope) => ast::DUMMY_NODE_ID,
+                    Err(hir::LoopIdError::UnlabeledCfInWhileCondition) => {
+                        self.emit_unlabled_cf_in_while_condition(e.span, "break");
+                        ast::DUMMY_NODE_ID
+                    },
+                    Err(hir::LoopIdError::UnresolvedLabel) => ast::DUMMY_NODE_ID,
+                };
+
                 if opt_expr.is_some() {
-                    let loop_kind = if let Some(label) = label {
-                        if label.loop_id == ast::DUMMY_NODE_ID {
-                            None
-                        } else {
-                            Some(match self.hir_map.expect_expr(label.loop_id).node {
-                                hir::ExprWhile(..) => LoopKind::WhileLoop,
-                                hir::ExprLoop(_, _, source) => LoopKind::Loop(source),
-                                ref r => span_bug!(e.span,
-                                                   "break label resolved to a non-loop: {:?}", r),
-                            })
-                        }
-                    } else if let Loop(kind) = self.cx {
-                        Some(kind)
-                    } else {
-                        // `break` outside a loop - caught below
+                    let loop_kind = if loop_id == ast::DUMMY_NODE_ID {
                         None
+                    } else {
+                        Some(match self.hir_map.expect_expr(loop_id).node {
+                            hir::ExprWhile(..) => LoopKind::WhileLoop,
+                            hir::ExprLoop(_, _, source) => LoopKind::Loop(source),
+                            ref r => span_bug!(e.span,
+                                               "break label resolved to a non-loop: {:?}", r),
+                        })
                     };
                     match loop_kind {
                         None | Some(LoopKind::Loop(hir::LoopSource::Loop)) => (),
@@ -117,9 +120,15 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                         }
                     }
                 }
+
                 self.require_loop("break", e.span);
             }
-            hir::ExprAgain(_) => self.require_loop("continue", e.span),
+            hir::ExprAgain(label) => {
+                if let Err(hir::LoopIdError::UnlabeledCfInWhileCondition) = label.loop_id.into() {
+                    self.emit_unlabled_cf_in_while_condition(e.span, "continue");
+                }
+                self.require_loop("continue", e.span)
+            },
             _ => intravisit::walk_expr(self, e),
         }
     }
@@ -149,5 +158,13 @@ impl<'a, 'hir> CheckLoopVisitor<'a, 'hir> {
                 .emit();
             }
         }
+    }
+
+    fn emit_unlabled_cf_in_while_condition(&mut self, span: Span, cf_type: &str) {
+        struct_span_err!(self.sess, span, E0590,
+                         "`break` or `continue` with no label in the condition of a `while` loop")
+            .span_label(span,
+                        &format!("unlabeled `{}` in the condition of a `while` loop", cf_type))
+            .emit();
     }
 }
