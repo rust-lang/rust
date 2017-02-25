@@ -24,6 +24,7 @@ use std::process::Command;
 use build_helper::{output, mtime, up_to_date};
 use filetime::FileTime;
 
+use channel::GitInfo;
 use util::{exe, libdir, is_dylib, copy};
 use {Build, Compiler, Mode};
 
@@ -210,9 +211,9 @@ pub fn rustc(build: &Build, target: &str, compiler: &Compiler) {
 
     // Set some configuration variables picked up by build scripts and
     // the compiler alike
-    cargo.env("CFG_RELEASE", &build.release)
+    cargo.env("CFG_RELEASE", build.rust_release())
          .env("CFG_RELEASE_CHANNEL", &build.config.channel)
-         .env("CFG_VERSION", &build.version)
+         .env("CFG_VERSION", build.rust_version())
          .env("CFG_PREFIX", build.config.prefix.clone().unwrap_or(PathBuf::new()));
 
     if compiler.stage == 0 {
@@ -229,13 +230,13 @@ pub fn rustc(build: &Build, target: &str, compiler: &Compiler) {
         cargo.env_remove("RUSTC_DEBUGINFO_LINES");
     }
 
-    if let Some(ref ver_date) = build.ver_date {
+    if let Some(ref ver_date) = build.rust_info.commit_date() {
         cargo.env("CFG_VER_DATE", ver_date);
     }
-    if let Some(ref ver_hash) = build.ver_hash {
+    if let Some(ref ver_hash) = build.rust_info.sha() {
         cargo.env("CFG_VER_HASH", ver_hash);
     }
-    if !build.unstable_features {
+    if !build.unstable_features() {
         cargo.env("CFG_DISABLE_UNSTABLE_FEATURES", "1");
     }
     // Flag that rust llvm is in use
@@ -416,12 +417,31 @@ pub fn tool(build: &Build, stage: u32, target: &str, tool: &str) {
     // build.clear_if_dirty(&out_dir, &libstd_stamp(build, stage, &host, target));
 
     let mut cargo = build.cargo(&compiler, Mode::Tool, target, "build");
-    cargo.arg("--manifest-path")
-         .arg(build.src.join(format!("src/tools/{}/Cargo.toml", tool)));
+    let dir = build.src.join("src/tools").join(tool);
+    cargo.arg("--manifest-path").arg(dir.join("Cargo.toml"));
 
     // We don't want to build tools dynamically as they'll be running across
     // stages and such and it's just easier if they're not dynamically linked.
     cargo.env("RUSTC_NO_PREFER_DYNAMIC", "1");
+
+    if let Some(dir) = build.openssl_install_dir(target) {
+        cargo.env("OPENSSL_STATIC", "1");
+        cargo.env("OPENSSL_DIR", dir);
+        cargo.env("LIBZ_SYS_STATIC", "1");
+    }
+
+    cargo.env("CFG_RELEASE_CHANNEL", &build.config.channel);
+
+    let info = GitInfo::new(&dir);
+    if let Some(sha) = info.sha() {
+        cargo.env("CFG_COMMIT_HASH", sha);
+    }
+    if let Some(sha_short) = info.sha_short() {
+        cargo.env("CFG_SHORT_COMMIT_HASH", sha_short);
+    }
+    if let Some(date) = info.commit_date() {
+        cargo.env("CFG_COMMIT_DATE", date);
+    }
 
     build.run(&mut cargo);
 }

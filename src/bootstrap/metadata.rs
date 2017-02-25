@@ -27,6 +27,7 @@ struct Output {
 struct Package {
     id: String,
     name: String,
+    version: String,
     source: Option<String>,
     manifest_path: String,
 }
@@ -72,6 +73,7 @@ fn build_krate(build: &mut Build, krate: &str) {
                 test_step: format!("test-crate-{}", package.name),
                 bench_step: format!("bench-crate-{}", package.name),
                 name: package.name,
+                version: package.version,
                 deps: Vec::new(),
                 path: path,
             });

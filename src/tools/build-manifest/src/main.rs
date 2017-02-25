@@ -131,7 +131,8 @@ macro_rules! t {
 }
 
 struct Builder {
-    channel: String,
+    rust_release: String,
+    cargo_release: String,
     input: PathBuf,
     output: PathBuf,
     gpg_passphrase: String,
@@ -147,13 +148,15 @@ fn main() {
     let input = PathBuf::from(args.next().unwrap());
     let output = PathBuf::from(args.next().unwrap());
     let date = args.next().unwrap();
-    let channel = args.next().unwrap();
+    let rust_release = args.next().unwrap();
+    let cargo_release = args.next().unwrap();
     let s3_address = args.next().unwrap();
     let mut passphrase = String::new();
     t!(io::stdin().read_to_string(&mut passphrase));
 
     Builder {
-        channel: channel,
+        rust_release: rust_release,
+        cargo_release: cargo_release,
         input: input,
         output: output,
         gpg_passphrase: passphrase,
@@ -184,10 +187,10 @@ impl Builder {
         manifest.insert("pkg".to_string(), toml::encode(&pkg));
         let manifest = toml::Value::Table(manifest).to_string();
 
-        let filename = format!("channel-rust-{}.toml", self.channel);
+        let filename = format!("channel-rust-{}.toml", self.rust_release);
         self.write_manifest(&manifest, &filename);
 
-        if self.channel != "beta" && self.channel != "nightly" {
+        if self.rust_release != "beta" && self.rust_release != "nightly" {
             self.write_manifest(&manifest, "channel-rust-stable.toml");
         }
     }
@@ -336,11 +339,11 @@ impl Builder {
 
     fn filename(&self, component: &str, target: &str) -> String {
         if component == "rust-src" {
-            format!("rust-src-{}.tar.gz", self.channel)
+            format!("rust-src-{}.tar.gz", self.rust_release)
         } else if component == "cargo" {
-            format!("cargo-nightly-{}.tar.gz", target)
+            format!("cargo-{}-{}.tar.gz", self.cargo_release, target)
         } else {
-            format!("{}-{}-{}.tar.gz", component, self.channel, target)
+            format!("{}-{}-{}.tar.gz", component, self.rust_release, target)
         }
     }
 
