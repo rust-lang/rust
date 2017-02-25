@@ -832,17 +832,6 @@ impl Build {
         if target.contains("apple-darwin") {
             base.push("-stdlib=libc++".into());
         }
-        // This is a hack, because newer binutils broke things on some vms/distros
-        // (i.e., linking against unknown relocs disabled by the following flag)
-        // See: https://github.com/rust-lang/rust/issues/34978
-        match target {
-            "i586-unknown-linux-gnu" |
-            "i686-unknown-linux-musl" |
-            "x86_64-unknown-linux-musl" => {
-                base.push("-Wa,-mrelax-relocations=no".into());
-            },
-            _ => {},
-        }
         return base
     }
 
