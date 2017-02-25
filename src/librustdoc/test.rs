@@ -12,7 +12,7 @@ use std::env;
 use std::ffi::OsString;
 use std::io::prelude::*;
 use std::io;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::panic::{self, AssertUnwindSafe};
 use std::process::Command;
 use std::rc::Rc;
@@ -485,7 +485,15 @@ impl Collector {
 
     pub fn get_filename(&self) -> String {
         if let Some(ref codemap) = self.codemap {
-            codemap.span_to_filename(self.position)
+            let filename = codemap.span_to_filename(self.position);
+            if let Ok(cur_dir) = env::current_dir() {
+                if let Ok(path) = Path::new(&filename).strip_prefix(&cur_dir) {
+                    if let Some(path) = path.to_str() {
+                        return path.to_owned();
+                    }
+                }
+            }
+            filename
         } else if let Some(ref filename) = self.filename {
             filename.clone()
         } else {
