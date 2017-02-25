@@ -472,8 +472,15 @@ pub fn load_fat_ptr<'a, 'tcx>(
         b.load(ptr, alignment.to_align())
     };
 
-    // FIXME: emit metadata on `meta`.
-    let meta = b.load(get_meta(b, src), alignment.to_align());
+    let meta = get_meta(b, src);
+    let meta_ty = val_ty(meta);
+    // If the 'meta' field is a pointer, it's a vtable, so use load_nonnull
+    // instead
+    let meta = if meta_ty.element_type().kind() == llvm::TypeKind::Pointer {
+        b.load_nonnull(meta, None)
+    } else {
+        b.load(meta, None)
+    };
 
     (ptr, meta)
 }
@@ -1132,11 +1139,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let ty::CrateAnalysis { export_map, reachable, name, .. } = analysis;
     let exported_symbols = find_exported_symbols(tcx, reachable);
 
-    let check_overflow = if let Some(v) = tcx.sess.opts.debugging_opts.force_overflow_checks {
-        v
-    } else {
-        tcx.sess.opts.debug_assertions
-    };
+    let check_overflow = tcx.sess.overflow_checks();
 
     let link_meta = link::build_link_meta(incremental_hashes_map, &name);
 

@@ -59,6 +59,16 @@ def delete_if_present(path, verbose):
 
 
 def download(path, url, probably_big, verbose):
+    for x in range(0, 4):
+        try:
+            _download(path, url, probably_big, verbose, True)
+            return
+        except RuntimeError:
+            print("\nspurious failure, trying again")
+    _download(path, url, probably_big, verbose, False)
+
+
+def _download(path, url, probably_big, verbose, exception):
     if probably_big or verbose:
         print("downloading {}".format(url))
     # see http://serverfault.com/questions/301128/how-to-download
@@ -66,13 +76,16 @@ def download(path, url, probably_big, verbose):
         run(["PowerShell.exe", "/nologo", "-Command",
              "(New-Object System.Net.WebClient)"
              ".DownloadFile('{}', '{}')".format(url, path)],
-            verbose=verbose)
+            verbose=verbose,
+            exception=exception)
     else:
         if probably_big or verbose:
             option = "-#"
         else:
             option = "-s"
-        run(["curl", option, "--retry", "3", "-Sf", "-o", path, url], verbose=verbose)
+        run(["curl", option, "--retry", "3", "-Sf", "-o", path, url],
+            verbose=verbose,
+            exception=exception)
 
 
 def verify(path, sha_path, verbose):
@@ -112,7 +125,7 @@ def unpack(tarball, dst, verbose=False, match=None):
             shutil.move(tp, fp)
     shutil.rmtree(os.path.join(dst, fname))
 
-def run(args, verbose=False):
+def run(args, verbose=False, exception=False):
     if verbose:
         print("running: " + ' '.join(args))
     sys.stdout.flush()
@@ -122,7 +135,7 @@ def run(args, verbose=False):
     code = ret.wait()
     if code != 0:
         err = "failed to run: " + ' '.join(args)
-        if verbose:
+        if verbose or exception:
             raise RuntimeError(err)
         sys.exit(err)
 
@@ -342,8 +355,12 @@ class RustBuild(object):
         env = os.environ.copy()
         env["CARGO_TARGET_DIR"] = build_dir
         env["RUSTC"] = self.rustc()
-        env["LD_LIBRARY_PATH"] = os.path.join(self.bin_root(), "lib")
-        env["DYLD_LIBRARY_PATH"] = os.path.join(self.bin_root(), "lib")
+        env["LD_LIBRARY_PATH"] = os.path.join(self.bin_root(), "lib") + \
+                                 (os.pathsep + env["LD_LIBRARY_PATH"]) \
+                                 if "LD_LIBRARY_PATH" in env else ""
+        env["DYLD_LIBRARY_PATH"] = os.path.join(self.bin_root(), "lib") + \
+                                   (os.pathsep + env["DYLD_LIBRARY_PATH"]) \
+                                   if "DYLD_LIBRARY_PATH" in env else ""
         env["PATH"] = os.path.join(self.bin_root(), "bin") + \
                       os.pathsep + env["PATH"]
         if not os.path.isfile(self.cargo()):
@@ -472,6 +489,8 @@ class RustBuild(object):
             ostype += 'abi64'
         elif cputype in {'powerpc', 'ppc', 'ppc64'}:
             cputype = 'powerpc'
+        elif cputype == 'sparcv9':
+            pass
         elif cputype in {'amd64', 'x86_64', 'x86-64', 'x64'}:
             cputype = 'x86_64'
         else:

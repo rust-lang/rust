@@ -241,6 +241,22 @@ match 5u32 {
 }
 ```
 "##,
+
+E0590: r##"
+`break` or `continue` must include a label when used in the condition of a
+`while` loop.
+
+Example of erroneous code:
+
+```compile_fail
+while break {}
+```
+
+To fix this, add a label specifying which loop is being broken out of:
+```
+`foo: while break `foo {}
+```
+"##
 }
 
 register_diagnostics! {

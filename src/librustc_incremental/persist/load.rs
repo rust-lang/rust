@@ -184,6 +184,18 @@ pub fn decode_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
     }
 
+    // Recreate bootstrap outputs, which are outputs that have no incoming edges (and hence cannot
+    // be dirty).
+    for bootstrap_output in &serialized_dep_graph.bootstrap_outputs {
+        if let Some(n) = retraced.map(bootstrap_output) {
+            if let DepNode::WorkProduct(ref wp) = n {
+                clean_work_products.insert(wp.clone());
+            }
+
+            tcx.dep_graph.with_task(n, || ()); // create the node with no inputs
+        }
+    }
+
     // Subtle. Sometimes we have intermediate nodes that we can't recreate in the new graph.
     // This is pretty unusual but it arises in a scenario like this:
     //

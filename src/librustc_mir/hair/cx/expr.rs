@@ -60,6 +60,15 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                     kind: ExprKind::UnsafeFnPointer { source: expr.to_ref() },
                 };
             }
+            Some((ty::adjustment::Adjust::ClosureFnPointer, adjusted_ty)) => {
+                expr = Expr {
+                    temp_lifetime: temp_lifetime,
+                    temp_lifetime_was_shrunk: was_shrunk,
+                    ty: adjusted_ty,
+                    span: self.span,
+                    kind: ExprKind::ClosureFnPointer { source: expr.to_ref() },
+                };
+            }
             Some((ty::adjustment::Adjust::NeverToAny, adjusted_ty)) => {
                 expr = Expr {
                     temp_lifetime: temp_lifetime,
@@ -605,14 +614,21 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         }
         hir::ExprRet(ref v) => ExprKind::Return { value: v.to_ref() },
         hir::ExprBreak(label, ref value) => {
-            ExprKind::Break {
-                label: label.map(|label| cx.tcx.region_maps.node_extent(label.loop_id)),
-                value: value.to_ref(),
+            match label.loop_id.into() {
+                Ok(loop_id) => ExprKind::Break {
+                    label: cx.tcx.region_maps.node_extent(loop_id),
+                    value: value.to_ref(),
+                },
+                Err(err) => bug!("invalid loop id for break: {}", err)
             }
+
         }
         hir::ExprAgain(label) => {
-            ExprKind::Continue {
-                label: label.map(|label| cx.tcx.region_maps.node_extent(label.loop_id)),
+            match label.loop_id.into() {
+                Ok(loop_id) => ExprKind::Continue {
+                    label: cx.tcx.region_maps.node_extent(loop_id),
+                },
+                Err(err) => bug!("invalid loop id for continue: {}", err)
             }
         }
         hir::ExprMatch(ref discr, ref arms, _) => {

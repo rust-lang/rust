@@ -1006,18 +1006,22 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
         ExprPath(ref qpath) => {
             visitor.visit_qpath(qpath, expression.id, expression.span);
         }
-        ExprBreak(None, ref opt_expr) => {
+        ExprBreak(label, ref opt_expr) => {
+            label.ident.map(|ident| {
+                if let Ok(loop_id) = label.loop_id.into() {
+                    visitor.visit_def_mention(Def::Label(loop_id));
+                }
+                visitor.visit_name(ident.span, ident.node.name);
+            });
             walk_list!(visitor, visit_expr, opt_expr);
         }
-        ExprBreak(Some(label), ref opt_expr) => {
-            visitor.visit_def_mention(Def::Label(label.loop_id));
-            visitor.visit_name(label.span, label.name);
-            walk_list!(visitor, visit_expr, opt_expr);
-        }
-        ExprAgain(None) => {}
-        ExprAgain(Some(label)) => {
-            visitor.visit_def_mention(Def::Label(label.loop_id));
-            visitor.visit_name(label.span, label.name);
+        ExprAgain(label) => {
+            label.ident.map(|ident| {
+                if let Ok(loop_id) = label.loop_id.into() {
+                    visitor.visit_def_mention(Def::Label(loop_id));
+                }
+                visitor.visit_name(ident.span, ident.node.name);
+            });
         }
         ExprRet(ref optional_expression) => {
             walk_list!(visitor, visit_expr, optional_expression);

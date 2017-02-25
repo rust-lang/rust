@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// See comments in Cargo.toml for why this exists
+// no-prefer-dynamic
+#![crate_type = "staticlib"]
 
-#![feature(test)]
-
-extern crate test;
+#[no_mangle]
+pub extern "C" fn foo(x:i32) -> i32 { x }

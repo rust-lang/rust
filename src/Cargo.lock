@@ -812,14 +812,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "std_shim"
-version = "0.0.0"
-dependencies = [
- "core 0.0.0",
- "std 0.0.0",
-]
-
-[[package]]
 name = "std_unicode"
 version = "0.0.0"
 dependencies = [
@@ -882,13 +874,6 @@ version = "0.0.0"
 dependencies = [
  "getopts 0.0.0",
  "term 0.0.0",
-]
-
-[[package]]
-name = "test_shim"
-version = "0.0.0"
-dependencies = [
- "test 0.0.0",
 ]
 
 [[package]]

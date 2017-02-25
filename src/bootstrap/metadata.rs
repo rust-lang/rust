@@ -43,8 +43,8 @@ struct ResolveNode {
 }
 
 pub fn build(build: &mut Build) {
-    build_krate(build, "src/rustc/std_shim");
-    build_krate(build, "src/rustc/test_shim");
+    build_krate(build, "src/libstd");
+    build_krate(build, "src/libtest");
     build_krate(build, "src/rustc");
 }
 
