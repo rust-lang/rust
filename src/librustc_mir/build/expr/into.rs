@@ -244,6 +244,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             ExprKind::Cast { .. } |
             ExprKind::Use { .. } |
             ExprKind::ReifyFnPointer { .. } |
+            ExprKind::ClosureFnPointer { .. } |
             ExprKind::UnsafeFnPointer { .. } |
             ExprKind::Unsize { .. } |
             ExprKind::Repeat { .. } |

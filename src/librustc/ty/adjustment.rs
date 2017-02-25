@@ -33,6 +33,9 @@ pub enum Adjust<'tcx> {
     /// Go from a safe fn pointer to an unsafe fn pointer.
     UnsafeFnPointer,
 
+    // Go from a non-capturing closure to an fn pointer.
+    ClosureFnPointer,
+
     /// Go from a mut raw pointer to a const raw pointer.
     MutToConstPointer,
 
@@ -120,6 +123,7 @@ impl<'tcx> Adjustment<'tcx> {
 
             Adjust::ReifyFnPointer |
             Adjust::UnsafeFnPointer |
+            Adjust::ClosureFnPointer |
             Adjust::MutToConstPointer |
             Adjust::DerefRef {..} => false,
         }
