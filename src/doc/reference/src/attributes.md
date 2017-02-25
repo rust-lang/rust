@@ -219,7 +219,7 @@ command line using `--cfg` (e.g. `rustc main.rs --cfg foo --cfg 'bar="baz"'`).
 Rust code then checks for their presence using the `#[cfg(...)]` attribute:
 
 ```
-// The function is only included in the build when compiling for OSX
+// The function is only included in the build when compiling for macOS
 #[cfg(target_os = "macos")]
 fn macos_only() {
   // ...
