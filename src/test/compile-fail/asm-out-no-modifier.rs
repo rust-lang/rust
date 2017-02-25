@@ -10,6 +10,7 @@
 
 // ignore-s390x
 // ignore-emscripten
+// ignore-powerpc
 
 #![feature(asm)]
 
