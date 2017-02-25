@@ -495,7 +495,7 @@ impl<'a> Resolver<'a> {
 
     pub fn get_macro(&mut self, def: Def) -> Rc<SyntaxExtension> {
         let def_id = match def {
-            Def::Macro(def_id) => def_id,
+            Def::Macro(def_id, ..) => def_id,
             _ => panic!("Expected Def::Macro(..)"),
         };
         if let Some(ext) = self.macro_map.get(&def_id) {
@@ -537,7 +537,6 @@ impl<'a> Resolver<'a> {
                            binding: &'a NameBinding<'a>,
                            span: Span,
                            allow_shadowing: bool) {
-        self.macro_names.insert(name);
         if self.builtin_macros.insert(name, binding).is_some() && !allow_shadowing {
             let msg = format!("`{}` is already in scope", name);
             let note =
