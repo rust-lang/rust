@@ -217,6 +217,10 @@ impl Builder {
         self.package("rust-docs", &mut manifest.pkg, TARGETS);
         self.package("rust-src", &mut manifest.pkg, &["*"]);
 
+        if self.channel == "rust-nightly" {
+            self.package("analysis", &mut manifest.pkg, TARGETS);
+        }
+
         let mut pkg = Package {
             version: self.cached_version("rust").to_string(),
             target: HashMap::new(),
@@ -263,6 +267,12 @@ impl Builder {
                 if target != host {
                     extensions.push(Component {
                         pkg: "rust-std".to_string(),
+                        target: target.to_string(),
+                    });
+                }
+                if self.channel == "nightly" {
+                    extensions.push(Component {
+                        pkg: "rust-analysis".to_string(),
                         target: target.to_string(),
                     });
                 }
