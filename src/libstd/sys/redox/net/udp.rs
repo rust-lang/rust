@@ -87,6 +87,14 @@ impl UdpSocket {
         Ok(path_to_local_addr(path.to_str().unwrap_or("")))
     }
 
+    pub fn peek(&self, _buf: &mut [u8]) -> Result<usize> {
+        Err(Error::new(ErrorKind::Other, "UdpSocket::peek not implemented"))
+    }
+
+    pub fn peek_from(&self, _buf: &mut [u8]) -> Result<(usize, SocketAddr)> {
+        Err(Error::new(ErrorKind::Other, "UdpSocket::peek_from not implemented"))
+    }
+
     pub fn broadcast(&self) -> Result<bool> {
         Err(Error::new(ErrorKind::Other, "UdpSocket::broadcast not implemented"))
     }

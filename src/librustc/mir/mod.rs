@@ -1022,6 +1022,9 @@ pub enum CastKind {
     /// Convert unique, zero-sized type for a fn to fn()
     ReifyFnPointer,
 
+    /// Convert non capturing closure to fn()
+    ClosureFnPointer,
+
     /// Convert safe fn() to unsafe fn()
     UnsafeFnPointer,
 

@@ -355,8 +355,12 @@ class RustBuild(object):
         env = os.environ.copy()
         env["CARGO_TARGET_DIR"] = build_dir
         env["RUSTC"] = self.rustc()
-        env["LD_LIBRARY_PATH"] = os.path.join(self.bin_root(), "lib")
-        env["DYLD_LIBRARY_PATH"] = os.path.join(self.bin_root(), "lib")
+        env["LD_LIBRARY_PATH"] = os.path.join(self.bin_root(), "lib") + \
+                                 (os.pathsep + env["LD_LIBRARY_PATH"]) \
+                                 if "LD_LIBRARY_PATH" in env else ""
+        env["DYLD_LIBRARY_PATH"] = os.path.join(self.bin_root(), "lib") + \
+                                   (os.pathsep + env["DYLD_LIBRARY_PATH"]) \
+                                   if "DYLD_LIBRARY_PATH" in env else ""
         env["PATH"] = os.path.join(self.bin_root(), "bin") + \
                       os.pathsep + env["PATH"]
         if not os.path.isfile(self.cargo()):
@@ -485,6 +489,8 @@ class RustBuild(object):
             ostype += 'abi64'
         elif cputype in {'powerpc', 'ppc', 'ppc64'}:
             cputype = 'powerpc'
+        elif cputype == 'sparcv9':
+            pass
         elif cputype in {'amd64', 'x86_64', 'x86-64', 'x64'}:
             cputype = 'x86_64'
         else:

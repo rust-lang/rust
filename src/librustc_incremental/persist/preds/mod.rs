@@ -11,7 +11,7 @@
 use rustc::dep_graph::{DepGraphQuery, DepNode};
 use rustc::hir::def_id::DefId;
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::graph::Graph;
+use rustc_data_structures::graph::{Graph, NodeIndex};
 
 use super::hash::*;
 use ich::Fingerprint;
@@ -27,6 +27,14 @@ pub struct Predecessors<'query> {
     // later. Other nodes may be retained if it keeps the overall size
     // of the graph down.
     pub reduced_graph: Graph<&'query DepNode<DefId>, ()>,
+
+    // These are output nodes that have no incoming edges. We have to
+    // track these specially because, when we load the data back up
+    // again, we want to make sure and recreate these nodes (we want
+    // to recreate the nodes where all incoming edges are clean; but
+    // since we ordinarily just serialize edges, we wind up just
+    // forgetting that bootstrap outputs even exist in that case.)
+    pub bootstrap_outputs: Vec<&'query DepNode<DefId>>,
 
     // For the inputs (hir/foreign-metadata), we include hashes.
     pub hashes: FxHashMap<&'query DepNode<DefId>, Fingerprint>,
@@ -57,7 +65,7 @@ impl<'q> Predecessors<'q> {
 
         // Reduce the graph to the most important nodes.
         let compress::Reduction { graph, input_nodes } =
-            compress::reduce_graph(&query.graph, HashContext::is_hashable, is_output);
+            compress::reduce_graph(&query.graph, HashContext::is_hashable, |n| is_output(n));
 
         let mut hashes = FxHashMap();
         for input_index in input_nodes {
@@ -67,8 +75,17 @@ impl<'q> Predecessors<'q> {
                   .or_insert_with(|| hcx.hash(input).unwrap());
         }
 
+        let bootstrap_outputs: Vec<&'q DepNode<DefId>> =
+            (0 .. graph.len_nodes())
+            .map(NodeIndex)
+            .filter(|&n| graph.incoming_edges(n).next().is_none())
+            .map(|n| *graph.node_data(n))
+            .filter(|n| is_output(n))
+            .collect();
+
         Predecessors {
             reduced_graph: graph,
+            bootstrap_outputs: bootstrap_outputs,
             hashes: hashes,
         }
     }

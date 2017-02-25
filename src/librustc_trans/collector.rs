@@ -489,6 +489,20 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                                                           self.output);
                 }
             }
+            mir::Rvalue::Cast(mir::CastKind::ClosureFnPointer, ref operand, _) => {
+                let source_ty = operand.ty(self.mir, self.scx.tcx());
+                match source_ty.sty {
+                    ty::TyClosure(def_id, substs) => {
+                        let closure_trans_item =
+                            create_fn_trans_item(self.scx,
+                                                 def_id,
+                                                 substs.substs,
+                                                 self.param_substs);
+                        self.output.push(closure_trans_item);
+                    }
+                    _ => bug!(),
+                }
+            }
             mir::Rvalue::Box(..) => {
                 let exchange_malloc_fn_def_id =
                     self.scx
@@ -615,18 +629,12 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                                               def_id: DefId)
                                               -> bool {
             match tcx.item_type(def_id).sty {
-                ty::TyFnDef(def_id, _, f) => {
+                ty::TyFnDef(def_id, _, _) => {
                     // Some constructors also have type TyFnDef but they are
                     // always instantiated inline and don't result in a
                     // translation item. Same for FFI functions.
                     if let Some(hir_map::NodeForeignItem(_)) = tcx.hir.get_if_local(def_id) {
                         return false;
-                    }
-
-                    if let Some(adt_def) = f.sig.output().skip_binder().ty_adt_def() {
-                        if adt_def.variants.iter().any(|v| def_id == v.did) {
-                            return false;
-                        }
                     }
                 }
                 ty::TyClosure(..) => {}
@@ -689,6 +697,16 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
 fn should_trans_locally<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                   def_id: DefId)
                                   -> bool {
+    if let ty::TyFnDef(_, _, f) = tcx.item_type(def_id).sty {
+        if let Some(adt_def) = f.sig.output().skip_binder().ty_adt_def() {
+            if adt_def.variants.iter().any(|v| def_id == v.did) {
+                // HACK: ADT constructors are translated in-place and
+                // do not have a trans-item.
+                return false;
+            }
+        }
+    }
+
     if def_id.is_local() {
         true
     } else {

@@ -12,6 +12,7 @@ use llvm::{self, ValueRef};
 use rustc::ty::{self, Ty};
 use rustc::ty::cast::{CastTy, IntTy};
 use rustc::ty::layout::Layout;
+use rustc::ty::subst::Kind;
 use rustc::mir::tcx::LvalueTy;
 use rustc::mir;
 use middle::lang_items::ExchangeMallocFnLangItem;
@@ -187,6 +188,28 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                             }
                             _ => {
                                 bug!("{} cannot be reified to a fn ptr", operand.ty)
+                            }
+                        }
+                    }
+                    mir::CastKind::ClosureFnPointer => {
+                        match operand.ty.sty {
+                            ty::TyClosure(def_id, substs) => {
+                                // Get the def_id for FnOnce::call_once
+                                let fn_once = bcx.tcx().lang_items.fn_once_trait().unwrap();
+                                let call_once = bcx.tcx()
+                                    .global_tcx().associated_items(fn_once)
+                                    .find(|it| it.kind == ty::AssociatedKind::Method)
+                                    .unwrap().def_id;
+                                // Now create its substs [Closure, Tuple]
+                                let input = bcx.tcx().closure_type(def_id, substs).sig.input(0);
+                                let substs = bcx.tcx().mk_substs([operand.ty, input.skip_binder()]
+                                    .iter().cloned().map(Kind::from));
+                                OperandValue::Immediate(
+                                    Callee::def(bcx.ccx, call_once, substs)
+                                        .reify(bcx.ccx))
+                            }
+                            _ => {
+                                bug!("{} cannot be cast to a fn ptr", operand.ty)
                             }
                         }
                     }

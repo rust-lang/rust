@@ -499,6 +499,10 @@ impl Build {
             cargo.env("RUSTC_INCREMENTAL", incr_dir);
         }
 
+        if let Some(ref on_fail) = self.flags.on_fail {
+            cargo.env("RUSTC_ON_FAIL", on_fail);
+        }
+
         let verbose = cmp::max(self.config.verbose, self.flags.verbose);
         cargo.env("RUSTC_VERBOSE", format!("{}", verbose));
 
@@ -827,17 +831,6 @@ impl Build {
         // LLVM/jemalloc/etc are all properly compiled.
         if target.contains("apple-darwin") {
             base.push("-stdlib=libc++".into());
-        }
-        // This is a hack, because newer binutils broke things on some vms/distros
-        // (i.e., linking against unknown relocs disabled by the following flag)
-        // See: https://github.com/rust-lang/rust/issues/34978
-        match target {
-            "i586-unknown-linux-gnu" |
-            "i686-unknown-linux-musl" |
-            "x86_64-unknown-linux-musl" => {
-                base.push("-Wa,-mrelax-relocations=no".into());
-            },
-            _ => {},
         }
         return base
     }

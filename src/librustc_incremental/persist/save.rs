@@ -204,11 +204,15 @@ pub fn encode_dep_graph(preds: &Predecessors,
     }
 
     // Create the serialized dep-graph.
+    let bootstrap_outputs = preds.bootstrap_outputs.iter()
+                                                   .map(|n| builder.map(n))
+                                                   .collect();
     let edges = edges.into_iter()
                      .map(|(k, v)| SerializedEdgeSet { source: k, targets: v })
                      .collect();
     let graph = SerializedDepGraph {
-        edges: edges,
+        bootstrap_outputs,
+        edges,
         hashes: preds.hashes
             .iter()
             .map(|(&dep_node, &hash)| {
@@ -221,6 +225,7 @@ pub fn encode_dep_graph(preds: &Predecessors,
     };
 
     if tcx.sess.opts.debugging_opts.incremental_info {
+        println!("incremental: {} nodes in reduced dep-graph", preds.reduced_graph.len_nodes());
         println!("incremental: {} edges in serialized dep-graph", graph.edges.len());
         println!("incremental: {} hashes in serialized dep-graph", graph.hashes.len());
     }

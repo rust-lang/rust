@@ -30,13 +30,15 @@ const VTABLE_OFFSET: usize = 3;
 /// Extracts a method from a trait object's vtable, at the specified index.
 pub fn get_virtual_method<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                                     llvtable: ValueRef,
-                                    vtable_index: usize)
-                                    -> ValueRef {
+                                    vtable_index: usize) -> ValueRef {
     // Load the data pointer from the object.
     debug!("get_virtual_method(vtable_index={}, llvtable={:?})",
            vtable_index, Value(llvtable));
 
-    bcx.load(bcx.gepi(llvtable, &[vtable_index + VTABLE_OFFSET]), None)
+    let ptr = bcx.load_nonnull(bcx.gepi(llvtable, &[vtable_index + VTABLE_OFFSET]), None);
+    // Vtable loads are invariant
+    bcx.set_invariant_load(ptr);
+    ptr
 }
 
 /// Generate a shim function that allows an object type like `SomeTrait` to
