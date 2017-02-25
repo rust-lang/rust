@@ -408,7 +408,7 @@ libraries:
 * Static - `#[link(name = "my_build_dependency", kind = "static")]`
 * Frameworks - `#[link(name = "CoreFoundation", kind = "framework")]`
 
-Note that frameworks are only available on OSX targets.
+Note that frameworks are only available on macOS targets.
 
 The different `kind` values are meant to differentiate how the native library
 participates in linkage. From a linkage perspective, the Rust compiler creates
@@ -437,7 +437,7 @@ A few examples of how this model can be used are:
   is included in a final target (like a binary), the native library will be
   linked in.
 
-On OSX, frameworks behave with the same semantics as a dynamic library.
+On macOS, frameworks behave with the same semantics as a dynamic library.
 
 # Unsafe blocks
 
