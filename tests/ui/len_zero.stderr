@@ -113,5 +113,14 @@ error: length comparison to zero
 help: consider using `is_empty`
     |     if with_is_empty.is_empty() {
 
-error: aborting due to 10 previous errors
+error: length comparison to zero
+   --> $DIR/len_zero.rs:190:8
+    |
+190 |     if b.len() != 0 {
+    |        ^^^^^^^^^^^^
+    |
+help: consider using `is_empty`
+    |     if !b.is_empty() {
+
+error: aborting due to 11 previous errors
 
