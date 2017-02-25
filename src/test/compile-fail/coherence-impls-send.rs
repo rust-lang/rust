@@ -34,7 +34,6 @@ unsafe impl Send for [MyType] {}
 
 unsafe impl Send for &'static [NotSync] {}
 //~^ ERROR E0117
-//~| ERROR E0119
 
 fn main() {
 }
