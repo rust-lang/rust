@@ -288,7 +288,7 @@ top_level_options!(
         //            much sense: The search path can stay the same while the
         //            things discovered there might have changed on disk.
         search_paths: SearchPaths [TRACKED],
-        libs: Vec<(String, Option<String>, cstore::NativeLibraryKind)> [TRACKED],
+        libs: Vec<(String, Option<String>, Option<cstore::NativeLibraryKind>)> [TRACKED],
         maybe_sysroot: Option<PathBuf> [TRACKED],
 
         target_triple: String [TRACKED],
@@ -1495,18 +1495,18 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
         let mut parts = s.splitn(2, '=');
         let kind = parts.next().unwrap();
         let (name, kind) = match (parts.next(), kind) {
-            (None, name) |
-            (Some(name), "dylib") => (name, cstore::NativeUnknown),
-            (Some(name), "framework") => (name, cstore::NativeFramework),
-            (Some(name), "static") => (name, cstore::NativeStatic),
-            (Some(name), "static-nobundle") => (name, cstore::NativeStaticNobundle),
+            (None, name) => (name, None),
+            (Some(name), "dylib") => (name, Some(cstore::NativeUnknown)),
+            (Some(name), "framework") => (name, Some(cstore::NativeFramework)),
+            (Some(name), "static") => (name, Some(cstore::NativeStatic)),
+            (Some(name), "static-nobundle") => (name, Some(cstore::NativeStaticNobundle)),
             (_, s) => {
                 early_error(error_format, &format!("unknown library kind `{}`, expected \
                                                   one of dylib, framework, or static",
                                                  s));
             }
         };
-        if kind == cstore::NativeStaticNobundle && !nightly_options::is_nightly_build() {
+        if kind == Some(cstore::NativeStaticNobundle) && !nightly_options::is_nightly_build() {
             early_error(error_format, &format!("the library kind 'static-nobundle' is only \
                                                 accepted on the nightly compiler"));
         }
@@ -1772,6 +1772,7 @@ mod dep_tracking {
     impl_dep_tracking_hash_via_hash!(Option<PanicStrategy>);
     impl_dep_tracking_hash_via_hash!(Option<lint::Level>);
     impl_dep_tracking_hash_via_hash!(Option<PathBuf>);
+    impl_dep_tracking_hash_via_hash!(Option<cstore::NativeLibraryKind>);
     impl_dep_tracking_hash_via_hash!(CrateType);
     impl_dep_tracking_hash_via_hash!(PanicStrategy);
     impl_dep_tracking_hash_via_hash!(Passes);
@@ -1788,7 +1789,7 @@ mod dep_tracking {
     impl_dep_tracking_hash_for_sortable_vec_of!(CrateType);
     impl_dep_tracking_hash_for_sortable_vec_of!((String, lint::Level));
     impl_dep_tracking_hash_for_sortable_vec_of!((String, Option<String>,
-                                                 cstore::NativeLibraryKind));
+                                                 Option<cstore::NativeLibraryKind>));
     impl DepTrackingHash for SearchPaths {
         fn hash(&self, hasher: &mut DefaultHasher, _: ErrorOutputType) {
             let mut elems: Vec<_> = self
@@ -2232,24 +2233,24 @@ mod tests {
         let mut v4 = super::basic_options();
 
         // Reference
-        v1.libs = vec![(String::from("a"), None, cstore::NativeStatic),
-                       (String::from("b"), None, cstore::NativeFramework),
-                       (String::from("c"), None, cstore::NativeUnknown)];
+        v1.libs = vec![(String::from("a"), None, Some(cstore::NativeStatic)),
+                       (String::from("b"), None, Some(cstore::NativeFramework)),
+                       (String::from("c"), None, Some(cstore::NativeUnknown))];
 
         // Change label
-        v2.libs = vec![(String::from("a"), None, cstore::NativeStatic),
-                       (String::from("X"), None, cstore::NativeFramework),
-                       (String::from("c"), None, cstore::NativeUnknown)];
+        v2.libs = vec![(String::from("a"), None, Some(cstore::NativeStatic)),
+                       (String::from("X"), None, Some(cstore::NativeFramework)),
+                       (String::from("c"), None, Some(cstore::NativeUnknown))];
 
         // Change kind
-        v3.libs = vec![(String::from("a"), None, cstore::NativeStatic),
-                       (String::from("b"), None, cstore::NativeStatic),
-                       (String::from("c"), None, cstore::NativeUnknown)];
+        v3.libs = vec![(String::from("a"), None, Some(cstore::NativeStatic)),
+                       (String::from("b"), None, Some(cstore::NativeStatic)),
+                       (String::from("c"), None, Some(cstore::NativeUnknown))];
 
         // Change new-name
-        v4.libs = vec![(String::from("a"), None, cstore::NativeStatic),
-                       (String::from("b"), Some(String::from("X")), cstore::NativeFramework),
-                       (String::from("c"), None, cstore::NativeUnknown)];
+        v4.libs = vec![(String::from("a"), None, Some(cstore::NativeStatic)),
+                       (String::from("b"), Some(String::from("X")), Some(cstore::NativeFramework)),
+                       (String::from("c"), None, Some(cstore::NativeUnknown))];
 
         assert!(v1.dep_tracking_hash() != v2.dep_tracking_hash());
         assert!(v1.dep_tracking_hash() != v3.dep_tracking_hash());
@@ -2269,17 +2270,17 @@ mod tests {
         let mut v3 = super::basic_options();
 
         // Reference
-        v1.libs = vec![(String::from("a"), None, cstore::NativeStatic),
-                       (String::from("b"), None, cstore::NativeFramework),
-                       (String::from("c"), None, cstore::NativeUnknown)];
+        v1.libs = vec![(String::from("a"), None, Some(cstore::NativeStatic)),
+                       (String::from("b"), None, Some(cstore::NativeFramework)),
+                       (String::from("c"), None, Some(cstore::NativeUnknown))];
 
-        v2.libs = vec![(String::from("b"), None, cstore::NativeFramework),
-                       (String::from("a"), None, cstore::NativeStatic),
-                       (String::from("c"), None, cstore::NativeUnknown)];
+        v2.libs = vec![(String::from("b"), None, Some(cstore::NativeFramework)),
+                       (String::from("a"), None, Some(cstore::NativeStatic)),
+                       (String::from("c"), None, Some(cstore::NativeUnknown))];
 
-        v3.libs = vec![(String::from("c"), None, cstore::NativeUnknown),
-                       (String::from("a"), None, cstore::NativeStatic),
-                       (String::from("b"), None, cstore::NativeFramework)];
+        v3.libs = vec![(String::from("c"), None, Some(cstore::NativeUnknown)),
+                       (String::from("a"), None, Some(cstore::NativeStatic)),
+                       (String::from("b"), None, Some(cstore::NativeFramework))];
 
         assert!(v1.dep_tracking_hash() == v2.dep_tracking_hash());
         assert!(v1.dep_tracking_hash() == v3.dep_tracking_hash());
