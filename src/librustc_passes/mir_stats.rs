@@ -191,7 +191,7 @@ impl<'a, 'tcx> mir_visit::Visitor<'tcx> for StatCollector<'a, 'tcx> {
                 // AggregateKind is not distinguished by visit API, so
                 // record it. (`super_rvalue` handles `_operands`.)
                 self.record(match *kind {
-                    AggregateKind::Array => "AggregateKind::Array",
+                    AggregateKind::Array(_) => "AggregateKind::Array",
                     AggregateKind::Tuple => "AggregateKind::Tuple",
                     AggregateKind::Adt(..) => "AggregateKind::Adt",
                     AggregateKind::Closure(..) => "AggregateKind::Closure",
