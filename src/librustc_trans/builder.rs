@@ -1188,7 +1188,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
 
         assert!(fn_ty.kind() == llvm::TypeKind::Function,
-                "builder::{} not passed a function", typ);
+                "builder::{} not passed a function, but {:?}", typ, fn_ty);
 
         let param_tys = fn_ty.func_params();
 

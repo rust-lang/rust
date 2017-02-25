@@ -20,7 +20,7 @@ use rustc::mir;
 use rustc::mir::tcx::LvalueTy;
 use rustc::ty::{self, layout, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::cast::{CastTy, IntTy};
-use rustc::ty::subst::Substs;
+use rustc::ty::subst::{Kind, Substs};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use {abi, adt, base, Disr, machine};
 use callee::Callee;
@@ -575,6 +575,27 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                             _ => {
                                 span_bug!(span, "{} cannot be reified to a fn ptr",
                                           operand.ty)
+                            }
+                        }
+                    }
+                    mir::CastKind::ClosureFnPointer => {
+                        match operand.ty.sty {
+                            ty::TyClosure(def_id, substs) => {
+                                // Get the def_id for FnOnce::call_once
+                                let fn_once = tcx.lang_items.fn_once_trait().unwrap();
+                                let call_once = tcx
+                                    .global_tcx().associated_items(fn_once)
+                                    .find(|it| it.kind == ty::AssociatedKind::Method)
+                                    .unwrap().def_id;
+                                // Now create its substs [Closure, Tuple]
+                                let input = tcx.closure_type(def_id, substs).sig.input(0);
+                                let substs = tcx.mk_substs([operand.ty, input.skip_binder()]
+                                    .iter().cloned().map(Kind::from));
+                                Callee::def(self.ccx, call_once, substs)
+                                    .reify(self.ccx)
+                            }
+                            _ => {
+                                bug!("{} cannot be cast to a fn ptr", operand.ty)
                             }
                         }
                     }
