@@ -60,6 +60,15 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                     kind: ExprKind::UnsafeFnPointer { source: expr.to_ref() },
                 };
             }
+            Some((ty::adjustment::Adjust::ClosureFnPointer, adjusted_ty)) => {
+                expr = Expr {
+                    temp_lifetime: temp_lifetime,
+                    temp_lifetime_was_shrunk: was_shrunk,
+                    ty: adjusted_ty,
+                    span: self.span,
+                    kind: ExprKind::ClosureFnPointer { source: expr.to_ref() },
+                };
+            }
             Some((ty::adjustment::Adjust::NeverToAny, adjusted_ty)) => {
                 expr = Expr {
                     temp_lifetime: temp_lifetime,

@@ -99,6 +99,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             ExprKind::Use { .. } |
             ExprKind::NeverToAny { .. } |
             ExprKind::ReifyFnPointer { .. } |
+            ExprKind::ClosureFnPointer { .. } |
             ExprKind::UnsafeFnPointer { .. } |
             ExprKind::Unsize { .. } |
             ExprKind::Repeat { .. } |
