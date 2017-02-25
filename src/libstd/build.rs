@@ -59,6 +59,10 @@ fn main() {
         println!("cargo:rustc-link-lib=userenv");
         println!("cargo:rustc-link-lib=shell32");
     } else if target.contains("fuchsia") {
+        // use system-provided libbacktrace
+        if cfg!(feature = "backtrace") {
+            println!("cargo:rustc-link-lib=backtrace");
+        }
         println!("cargo:rustc-link-lib=magenta");
         println!("cargo:rustc-link-lib=mxio");
         println!("cargo:rustc-link-lib=launchpad"); // for std::process
