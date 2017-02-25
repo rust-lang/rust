@@ -45,6 +45,7 @@ static HOSTS: &'static [&'static str] = &[
 
 static TARGETS: &'static [&'static str] = &[
     "aarch64-apple-ios",
+    "aarch64-unknown-fuchsia",
     "aarch64-linux-android",
     "aarch64-unknown-linux-gnu",
     "arm-linux-androideabi",
@@ -86,6 +87,7 @@ static TARGETS: &'static [&'static str] = &[
     "x86_64-pc-windows-msvc",
     "x86_64-rumprun-netbsd",
     "x86_64-unknown-freebsd",
+    "x86_64-unknown-fuchsia",
     "x86_64-unknown-linux-gnu",
     "x86_64-unknown-linux-musl",
     "x86_64-unknown-netbsd",
