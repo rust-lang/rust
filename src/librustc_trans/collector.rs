@@ -629,18 +629,12 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                                               def_id: DefId)
                                               -> bool {
             match tcx.item_type(def_id).sty {
-                ty::TyFnDef(def_id, _, f) => {
+                ty::TyFnDef(def_id, _, _) => {
                     // Some constructors also have type TyFnDef but they are
                     // always instantiated inline and don't result in a
                     // translation item. Same for FFI functions.
                     if let Some(hir_map::NodeForeignItem(_)) = tcx.hir.get_if_local(def_id) {
                         return false;
-                    }
-
-                    if let Some(adt_def) = f.sig.output().skip_binder().ty_adt_def() {
-                        if adt_def.variants.iter().any(|v| def_id == v.did) {
-                            return false;
-                        }
                     }
                 }
                 ty::TyClosure(..) => {}
@@ -703,6 +697,16 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
 fn should_trans_locally<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                   def_id: DefId)
                                   -> bool {
+    if let ty::TyFnDef(_, _, f) = tcx.item_type(def_id).sty {
+        if let Some(adt_def) = f.sig.output().skip_binder().ty_adt_def() {
+            if adt_def.variants.iter().any(|v| def_id == v.did) {
+                // HACK: ADT constructors are translated in-place and
+                // do not have a trans-item.
+                return false;
+            }
+        }
+    }
+
     if def_id.is_local() {
         true
     } else {
