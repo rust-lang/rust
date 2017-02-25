@@ -45,8 +45,8 @@ matrix:
       os: osx
       osx_image: xcode8.2
       install: &osx_install_sccache >
-        curl -L https://api.pub.build.mozilla.org/tooltool/sha512/d0025b286468cc5ada83b23d3fafbc936b9f190eaa7d4a981715b18e8e3bf720a7bcee7bfe758cfdeb8268857f6098fd52dcdd8818232692a30ce91039936596 |
-          tar xJf - -C /usr/local/bin --strip-components=1
+        curl -o /usr/local/bin/sccache https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-02-24-sccache-x86_64-apple-darwin &&
+          chmod +x /usr/local/bin/sccache
     - env: >
         RUST_CHECK_TARGET=check
         RUST_CONFIGURE_ARGS=--build=i686-apple-darwin
@@ -63,8 +63,10 @@ matrix:
       os: osx
       osx_image: xcode8.2
       install: >
-        curl -L https://api.pub.build.mozilla.org/tooltool/sha512/d0025b286468cc5ada83b23d3fafbc936b9f190eaa7d4a981715b18e8e3bf720a7bcee7bfe758cfdeb8268857f6098fd52dcdd8818232692a30ce91039936596 |
-          tar xJf - -C /usr/local/bin --strip-components=1 && brew uninstall --ignore-dependencies openssl && brew install openssl --universal --without-test
+        curl -o /usr/local/bin/sccache https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-02-24-sccache-x86_64-apple-darwin &&
+          chmod +x /usr/local/bin/sccache &&
+          brew uninstall --ignore-dependencies openssl &&
+          brew install openssl --universal --without-test
     - env: >
         RUST_CHECK_TARGET=dist
         RUST_CONFIGURE_ARGS="--target=aarch64-apple-ios,armv7-apple-ios,armv7s-apple-ios,i386-apple-ios,x86_64-apple-ios --enable-extended"
