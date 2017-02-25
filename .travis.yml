@@ -45,7 +45,7 @@ matrix:
       os: osx
       osx_image: xcode8.2
       install: &osx_install_sccache >
-        travis_retry curl -o /usr/local/bin/sccache https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-02-24-sccache-x86_64-apple-darwin &&
+        travis_retry curl -o /usr/local/bin/sccache https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-02-25-sccache-x86_64-apple-darwin &&
           chmod +x /usr/local/bin/sccache
     - env: >
         RUST_CHECK_TARGET=check
@@ -63,7 +63,7 @@ matrix:
       os: osx
       osx_image: xcode8.2
       install: >
-        travis_retry curl -o /usr/local/bin/sccache https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-02-24-sccache-x86_64-apple-darwin &&
+        travis_retry curl -o /usr/local/bin/sccache https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-02-25-sccache-x86_64-apple-darwin &&
           chmod +x /usr/local/bin/sccache &&
           brew uninstall --ignore-dependencies openssl &&
           brew install openssl --universal --without-test
