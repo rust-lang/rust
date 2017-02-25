@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 # file at the top-level directory of this distribution and at
 # http://rust-lang.org/COPYRIGHT.
@@ -19,7 +19,9 @@ ci_dir="`dirname $docker_dir`"
 src_dir="`dirname $ci_dir`"
 root_dir="`dirname $src_dir`"
 
-docker \
+source "$ci_dir/shared.sh"
+
+retry docker \
   build \
   --rm \
   -t rust-ci \
