@@ -9,7 +9,6 @@
 // except according to those terms.
 
 #![allow(dead_code)]
-#![feature(recover)]
 
 use std::panic::{UnwindSafe, AssertUnwindSafe};
 use std::cell::RefCell;
@@ -40,6 +39,10 @@ fn main() {
     assert::<&RwLock<i32>>();
     assert::<Rc<i32>>();
     assert::<Arc<i32>>();
+    assert::<Box<[u8]>>();
+
+    trait Trait: UnwindSafe {}
+    assert::<Box<Trait>>();
 
     fn bar<T>() {
         assert::<Mutex<T>>();

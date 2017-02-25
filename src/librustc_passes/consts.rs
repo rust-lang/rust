@@ -447,6 +447,7 @@ fn check_adjustments<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Exp
         Some(Adjust::NeverToAny) |
         Some(Adjust::ReifyFnPointer) |
         Some(Adjust::UnsafeFnPointer) |
+        Some(Adjust::ClosureFnPointer) |
         Some(Adjust::MutToConstPointer) => {}
 
         Some(Adjust::DerefRef { autoderefs, .. }) => {

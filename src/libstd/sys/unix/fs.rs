@@ -35,7 +35,8 @@ use libc::{stat as stat64, fstat as fstat64, lstat as lstat64, off_t as off64_t,
            ftruncate as ftruncate64, lseek as lseek64, dirent as dirent64, open as open64};
 #[cfg(not(any(target_os = "linux",
               target_os = "emscripten",
-              target_os = "solaris")))]
+              target_os = "solaris",
+              target_os = "fuchsia")))]
 use libc::{readdir_r as readdir64_r};
 
 pub struct File(FileDesc);
@@ -59,10 +60,10 @@ pub struct DirEntry {
     entry: dirent64,
     root: Arc<PathBuf>,
     // We need to store an owned copy of the directory name
-    // on Solaris because a) it uses a zero-length array to
-    // store the name, b) its lifetime between readdir calls
-    // is not guaranteed.
-    #[cfg(target_os = "solaris")]
+    // on Solaris and Fuchsia because a) it uses a zero-length
+    // array to store the name, b) its lifetime between readdir
+    // calls is not guaranteed.
+    #[cfg(any(target_os = "solaris", target_os = "fuchsia"))]
     name: Box<[u8]>
 }
 
@@ -205,14 +206,14 @@ impl fmt::Debug for ReadDir {
 impl Iterator for ReadDir {
     type Item = io::Result<DirEntry>;
 
-    #[cfg(target_os = "solaris")]
+    #[cfg(any(target_os = "solaris", target_os = "fuchsia"))]
     fn next(&mut self) -> Option<io::Result<DirEntry>> {
         unsafe {
             loop {
                 // Although readdir_r(3) would be a correct function to use here because
-                // of the thread safety, on Illumos the readdir(3C) function is safe to use
-                // in threaded applications and it is generally preferred over the
-                // readdir_r(3C) function.
+                // of the thread safety, on Illumos and Fuchsia the readdir(3C) function
+                // is safe to use in threaded applications and it is generally preferred
+                // over the readdir_r(3C) function.
                 super::os::set_errno(0);
                 let entry_ptr = libc::readdir(self.dirp.0);
                 if entry_ptr.is_null() {
@@ -240,7 +241,7 @@ impl Iterator for ReadDir {
         }
     }
 
-    #[cfg(not(target_os = "solaris"))]
+    #[cfg(not(any(target_os = "solaris", target_os = "fuchsia")))]
     fn next(&mut self) -> Option<io::Result<DirEntry>> {
         unsafe {
             let mut ret = DirEntry {
@@ -344,14 +345,14 @@ impl DirEntry {
     #[cfg(any(target_os = "android",
               target_os = "linux",
               target_os = "emscripten",
-              target_os = "haiku",
-              target_os = "fuchsia"))]
+              target_os = "haiku"))]
     fn name_bytes(&self) -> &[u8] {
         unsafe {
             CStr::from_ptr(self.entry.d_name.as_ptr()).to_bytes()
         }
     }
-    #[cfg(target_os = "solaris")]
+    #[cfg(any(target_os = "solaris",
+              target_os = "fuchsia"))]
     fn name_bytes(&self) -> &[u8] {
         &*self.name
     }

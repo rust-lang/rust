@@ -59,13 +59,8 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         let mut check_overflow = attrs.iter()
             .any(|item| item.check_name("rustc_inherit_overflow_checks"));
 
-        // Respect -Z force-overflow-checks=on and -C debug-assertions.
-        check_overflow |= infcx.tcx
-            .sess
-            .opts
-            .debugging_opts
-            .force_overflow_checks
-            .unwrap_or(infcx.tcx.sess.opts.debug_assertions);
+        // Respect -C overflow-checks.
+        check_overflow |= infcx.tcx.sess.overflow_checks();
 
         // Constants and const fn's always need overflow checks.
         check_overflow |= constness == hir::Constness::Const;

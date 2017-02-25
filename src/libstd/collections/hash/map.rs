@@ -182,12 +182,12 @@ impl DefaultResizePolicy {
 // ----------------------
 // To protect against degenerate performance scenarios (including DOS attacks),
 // the implementation includes an adaptive behavior that can resize the map
-// early (before its capacity is exceeded) when suspiciously long probe or
-// forward shifts sequences are encountered.
+// early (before its capacity is exceeded) when suspiciously long probe sequences
+// are encountered.
 //
 // With this algorithm in place it would be possible to turn a CPU attack into
 // a memory attack due to the aggressive resizing. To prevent that the
-// adaptive behavior only triggers when the map occupancy is half the maximum occupancy.
+// adaptive behavior only triggers when the map is at least half full.
 // This reduces the effectiveness of the algorithm but also makes it completely safe.
 //
 // The previous safety measure also prevents degenerate interactions with
@@ -195,16 +195,11 @@ impl DefaultResizePolicy {
 // DOS attack.
 //
 const DISPLACEMENT_THRESHOLD: usize = 128;
-const FORWARD_SHIFT_THRESHOLD: usize = 512;
 //
-// The thresholds of 128 and 512 are chosen to minimize the chance of exceeding them.
+// The threshold of 128 is chosen to minimize the chance of exceeding it.
 // In particular, we want that chance to be less than 10^-8 with a load of 90%.
 // For displacement, the smallest constant that fits our needs is 90,
-// so we round that up to 128. For the number of forward-shifted buckets,
-// we choose k=512. Keep in mind that the run length is a sum of the displacement and
-// the number of forward-shifted buckets, so its threshold is 128+512=640.
-// Even though the probability of having a run length of more than 640 buckets may be
-// higher than the probability we want, it should be low enough.
+// so we round that up to 128.
 //
 // At a load factor of α, the odds of finding the target bucket after exactly n
 // unsuccesful probes[1] are
@@ -212,16 +207,12 @@ const FORWARD_SHIFT_THRESHOLD: usize = 512;
 // Pr_α{displacement = n} =
 // (1 - α) / α * ∑_{k≥1} e^(-kα) * (kα)^(k+n) / (k + n)! * (1 - kα / (k + n + 1))
 //
-// We use this formula to find the probability of loading half of triggering the adaptive behavior
+// We use this formula to find the probability of triggering the adaptive behavior
 //
 // Pr_0.909{displacement > 128} = 1.601 * 10^-11
 //
-// FIXME: Extend with math for shift threshold in [2]
-//
 // 1. Alfredo Viola (2005). Distributional analysis of Robin Hood linear probing
 //    hashing with buckets.
-// 2. http://www.cs.tau.ac.il/~zwick/Adv-Alg-2015/Linear-Probing.pdf
-
 
 /// A hash map implementation which uses linear probing with Robin Hood bucket
 /// stealing.
@@ -494,7 +485,7 @@ fn robin_hood<'a, K: 'a, V: 'a>(bucket: FullBucketMut<'a, K, V>,
                                 mut hash: SafeHash,
                                 mut key: K,
                                 mut val: V)
-                                -> (usize, &'a mut V) {
+                                -> &'a mut V {
     let start_index = bucket.index();
     let size = bucket.table().size();
     // Save the *starting point*.
@@ -519,7 +510,6 @@ fn robin_hood<'a, K: 'a, V: 'a>(bucket: FullBucketMut<'a, K, V>,
                 Empty(bucket) => {
                     // Found a hole!
                     let bucket = bucket.put(hash, key, val);
-                    let end_index = bucket.index();
                     // Now that it's stolen, just read the value's pointer
                     // right out of the table! Go back to the *starting point*.
                     //
@@ -527,7 +517,7 @@ fn robin_hood<'a, K: 'a, V: 'a>(bucket: FullBucketMut<'a, K, V>,
                     // bucket, which is a FullBucket on top of a
                     // FullBucketMut, into just one FullBucketMut. The "table"
                     // refers to the inner FullBucketMut in this context.
-                    return (end_index - start_index, bucket.into_table().into_mut_refs().1);
+                    return bucket.into_table().into_mut_refs().1;
                 }
                 Full(bucket) => bucket,
             };
@@ -2128,18 +2118,16 @@ impl<'a, K: 'a, V: 'a> VacantEntry<'a, K, V> {
     pub fn insert(self, value: V) -> &'a mut V {
         match self.elem {
             NeqElem(bucket, disp) => {
-                let (shift, v_ref) = robin_hood(bucket, disp, self.hash, self.key, value);
-                if disp >= DISPLACEMENT_THRESHOLD || shift >= FORWARD_SHIFT_THRESHOLD {
+                if disp >= DISPLACEMENT_THRESHOLD {
                     *self.long_probes = true;
                 }
-                v_ref
+                robin_hood(bucket, disp, self.hash, self.key, value)
             },
             NoElem(bucket, disp) => {
                 if disp >= DISPLACEMENT_THRESHOLD {
                     *self.long_probes = true;
                 }
-                let bucket = bucket.put(self.hash, self.key, value);
-                bucket.into_mut_refs().1
+                bucket.put(self.hash, self.key, value).into_mut_refs().1
             },
         }
     }

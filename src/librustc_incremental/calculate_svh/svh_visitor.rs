@@ -63,8 +63,7 @@ impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
                hash_spans: bool,
                hash_bodies: bool)
                -> Self {
-        let check_overflow = tcx.sess.opts.debugging_opts.force_overflow_checks
-            .unwrap_or(tcx.sess.opts.debug_assertions);
+        let check_overflow = tcx.sess.overflow_checks();
 
         StrictVersionHashVisitor {
             st: st,
@@ -338,8 +337,10 @@ fn saw_expr<'a>(node: &'a Expr_,
         ExprIndex(..)            => (SawExprIndex, true),
         ExprPath(_)              => (SawExprPath, false),
         ExprAddrOf(m, _)         => (SawExprAddrOf(m), false),
-        ExprBreak(label, _)      => (SawExprBreak(label.map(|l| l.name.as_str())), false),
-        ExprAgain(label)         => (SawExprAgain(label.map(|l| l.name.as_str())), false),
+        ExprBreak(label, _)      => (SawExprBreak(label.ident.map(|i|
+                                                    i.node.name.as_str())), false),
+        ExprAgain(label)         => (SawExprAgain(label.ident.map(|i|
+                                                    i.node.name.as_str())), false),
         ExprRet(..)              => (SawExprRet, false),
         ExprInlineAsm(ref a,..)  => (SawExprInlineAsm(StableInlineAsm(a)), false),
         ExprStruct(..)           => (SawExprStruct, false),
