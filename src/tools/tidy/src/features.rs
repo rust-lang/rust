@@ -116,7 +116,8 @@ pub fn check(path: &Path, bad: &mut bool) {
     });
 
     super::walk_many(&[&path.join("test/compile-fail"),
-                       &path.join("test/compile-fail-fulldeps")],
+                       &path.join("test/compile-fail-fulldeps"),
+                       &path.join("test/parse-fail"),],
                      &mut |path| super::filter_dirs(path),
                      &mut |file| {
         let filename = file.file_name().unwrap().to_string_lossy();
@@ -169,8 +170,7 @@ pub fn check(path: &Path, bad: &mut bool) {
         "abi_ptx", "simd",
         "cfg_target_has_atomic",
         "unboxed_closures", "stmt_expr_attributes",
-        "cfg_target_thread_local", "unwind_attributes",
-        "inclusive_range_syntax"
+        "cfg_target_thread_local", "unwind_attributes"
     ];
 
     // Only check the number of lang features.
