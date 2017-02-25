@@ -2227,6 +2227,16 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         queries::impl_trait_ref::get(self, DUMMY_SP, id)
     }
 
+    /// Returns true if the impl is positive and is for a triat which contains
+    /// no items
+    pub fn impl_always_allowed_to_overlap(self, def_id: DefId) -> bool {
+        self.trait_impl_polarity(def_id) == hir::ImplPolarity::Positive
+            && self.impl_trait_ref(def_id)
+                .map_or(false, |trait_ref| {
+                    self.associated_item_def_ids(trait_ref.def_id).is_empty()
+                })
+    }
+
     // Returns `ty::VariantDef` if `def` refers to a struct,
     // or variant or their constructors, panics otherwise.
     pub fn expect_variant_def(self, def: Def) -> &'tcx VariantDef {
