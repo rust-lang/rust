@@ -113,6 +113,11 @@ impl<'a, 'gcx, 'tcx> Children {
                                                         possible_sibling,
                                                         impl_def_id);
                 if let Some(impl_header) = overlap {
+                    if tcx.impl_always_allowed_to_overlap(impl_def_id)
+                        && tcx.impl_always_allowed_to_overlap(possible_sibling) {
+                        return Ok((true, true));
+                    }
+
                     let le = specializes(tcx, impl_def_id, possible_sibling);
                     let ge = specializes(tcx, possible_sibling, impl_def_id);
 
