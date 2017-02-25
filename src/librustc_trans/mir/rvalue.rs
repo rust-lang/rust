@@ -435,7 +435,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             mir::Rvalue::Discriminant(ref lvalue) => {
                 let discr_lvalue = self.trans_lvalue(&bcx, lvalue);
                 let enum_ty = discr_lvalue.ty.to_ty(bcx.tcx());
-                let discr_ty = rvalue.ty(&*self.mir, bcx.tcx()).unwrap();
+                let discr_ty = rvalue.ty(&*self.mir, bcx.tcx());
                 let discr_type = type_of::immediate_type_of(bcx.ccx, discr_ty);
                 let discr = adt::trans_get_discr(&bcx, enum_ty, discr_lvalue.llval,
                                                   discr_lvalue.alignment, Some(discr_type), true);

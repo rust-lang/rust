@@ -1038,7 +1038,8 @@ pub enum CastKind {
 
 #[derive(Clone, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub enum AggregateKind<'tcx> {
-    Array,
+    /// The type is of the element
+    Array(Ty<'tcx>),
     Tuple,
     /// The second field is variant number (discriminant), it's equal to 0
     /// for struct and union expressions. The fourth field is active field
@@ -1135,7 +1136,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                 }
 
                 match *kind {
-                    AggregateKind::Array => write!(fmt, "{:?}", lvs),
+                    AggregateKind::Array(_) => write!(fmt, "{:?}", lvs),
 
                     AggregateKind::Tuple => {
                         match lvs.len() {
