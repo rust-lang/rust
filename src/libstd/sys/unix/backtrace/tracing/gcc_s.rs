@@ -53,7 +53,9 @@ pub fn unwind_backtrace(frames: &mut [Frame])
     // See libunwind:src/unwind/Backtrace.c for the return values.
     // No, there is no doc.
     match result_unwind {
-        uw::_URC_END_OF_STACK | uw::_URC_FATAL_PHASE1_ERROR => {
+        // These return codes seem to be benign and need to be ignored for backtraces
+        // to show up properly on all tested platforms.
+        uw::_URC_END_OF_STACK | uw::_URC_FATAL_PHASE1_ERROR | uw::_URC_FAILURE => {
             Ok((cx.idx, BacktraceContext))
         }
         _ => {
