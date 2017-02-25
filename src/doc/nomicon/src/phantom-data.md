@@ -82,5 +82,23 @@ standard library made a utility for itself called `Unique<T>` which:
 
 * wraps a `*const T` for variance
 * includes a `PhantomData<T>`
-* auto-derives Send/Sync as if T was contained
-* marks the pointer as NonZero for the null-pointer optimization
+* auto-derives `Send`/`Sync` as if T was contained
+* marks the pointer as `NonZero` for the null-pointer optimization
+
+## Table of `PhantomData` patterns
+
+Here’s a table of all the wonderful ways `PhantomData` could be used:
+
+| Phantom type                | `'a`      | `T`                       |
+|-----------------------------|-----------|---------------------------|
+| `PhantomData<T>`            | -         | variant (with drop check) |
+| `PhantomData<&'a T>`        | variant   | variant                   |
+| `PhantomData<&'a mut T>`    | variant   | invariant                 |
+| `PhantomData<*const T>`     | -         | variant                   |
+| `PhantomData<*mut T>`       | -         | invariant                 |
+| `PhantomData<fn(T)>`        | -         | contravariant (*)         |
+| `PhantomData<fn() -> T>`    | -         | variant                   |
+| `PhantomData<fn(T) -> T>`   | -         | invariant                 |
+| `PhantomData<Cell<&'a ()>>` | invariant | -                         |
+
+(*) If contravariance gets scrapped, this would be invariant.
