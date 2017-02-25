@@ -386,7 +386,15 @@ pub fn size_and_align_of_dst<'a, 'tcx>(bcx: &Builder<'a, 'tcx>, t: Ty<'tcx>, inf
             let info = bcx.pointercast(info, Type::int(bcx.ccx).ptr_to());
             let size_ptr = bcx.gepi(info, &[1]);
             let align_ptr = bcx.gepi(info, &[2]);
-            (bcx.load(size_ptr, None), bcx.load(align_ptr, None))
+
+            let size = bcx.load(size_ptr, None);
+            let align = bcx.load(align_ptr, None);
+
+            // Vtable loads are invariant
+            bcx.set_invariant_load(size);
+            bcx.set_invariant_load(align);
+
+            (size, align)
         }
         ty::TySlice(_) | ty::TyStr => {
             let unit_ty = t.sequence_element_type(bcx.tcx());
