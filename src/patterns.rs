@@ -18,7 +18,7 @@ use types::{rewrite_path, PathContext};
 use super::Spanned;
 use comment::FindUncommented;
 
-use syntax::ast::{self, BindingMode, Pat, PatKind, FieldPat};
+use syntax::ast::{self, BindingMode, Pat, PatKind, FieldPat, RangeEnd};
 use syntax::ptr;
 use syntax::codemap::{self, BytePos, Span};
 
@@ -56,8 +56,15 @@ impl Rewrite for Pat {
                     None
                 }
             }
-            PatKind::Range(ref lhs, ref rhs) => {
-                rewrite_pair(&**lhs, &**rhs, "", "...", "", context, shape)
+            PatKind::Range(ref lhs, ref rhs, ref end_kind) => {
+                match *end_kind {
+                    RangeEnd::Included => {
+                        rewrite_pair(&**lhs, &**rhs, "", "...", "", context, shape)
+                    }
+                    RangeEnd::Excluded => {
+                        rewrite_pair(&**lhs, &**rhs, "", "..", "", context, shape)
+                    }
+                }
             }
             PatKind::Ref(ref pat, mutability) => {
                 let prefix = format!("&{}", format_mutability(mutability));
