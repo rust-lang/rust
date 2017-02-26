@@ -247,6 +247,10 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
             id: LintId::of(LEGACY_CONSTRUCTOR_VISIBILITY),
             reference: "issue #39207 <https://github.com/rust-lang/rust/issues/39207>",
         },
+        FutureIncompatibleInfo {
+            id: LintId::of(MISSING_FRAGMENT_SPECIFIER),
+            reference: "issue #40107 <https://github.com/rust-lang/rust/issues/40107>",
+        },
         ]);
 
     // Register renamed and removed lints

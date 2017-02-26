@@ -87,6 +87,7 @@ use parse::{Directory, ParseSess};
 use parse::parser::{PathStyle, Parser};
 use parse::token::{self, DocComment, Token, Nonterminal};
 use print::pprust;
+use symbol::keywords;
 use tokenstream::TokenTree;
 use util::small_vector::SmallVector;
 
@@ -201,22 +202,27 @@ pub enum NamedMatch {
     MatchedNonterminal(Rc<Nonterminal>)
 }
 
-fn nameize<I: Iterator<Item=Rc<NamedMatch>>>(ms: &[quoted::TokenTree], mut res: I)
+fn nameize<I: Iterator<Item=Rc<NamedMatch>>>(sess: &ParseSess, ms: &[quoted::TokenTree], mut res: I)
                                              -> NamedParseResult {
     use self::quoted::TokenTree;
 
-    fn n_rec<I: Iterator<Item=Rc<NamedMatch>>>(m: &TokenTree, mut res: &mut I,
+    fn n_rec<I: Iterator<Item=Rc<NamedMatch>>>(sess: &ParseSess, m: &TokenTree, mut res: &mut I,
              ret_val: &mut HashMap<Ident, Rc<NamedMatch>>)
              -> Result<(), (syntax_pos::Span, String)> {
         match *m {
             TokenTree::Sequence(_, ref seq) => {
                 for next_m in &seq.tts {
-                    n_rec(next_m, res.by_ref(), ret_val)?
+                    n_rec(sess, next_m, res.by_ref(), ret_val)?
                 }
             }
             TokenTree::Delimited(_, ref delim) => {
                 for next_m in &delim.tts {
-                    n_rec(next_m, res.by_ref(), ret_val)?;
+                    n_rec(sess, next_m, res.by_ref(), ret_val)?;
+                }
+            }
+            TokenTree::MetaVarDecl(span, _, id) if id.name == keywords::Invalid.name() => {
+                if sess.missing_fragment_specifiers.borrow_mut().remove(&span) {
+                    return Err((span, "missing fragment specifier".to_string()));
                 }
             }
             TokenTree::MetaVarDecl(sp, bind_name, _) => {
@@ -237,7 +243,7 @@ fn nameize<I: Iterator<Item=Rc<NamedMatch>>>(ms: &[quoted::TokenTree], mut res: 
 
     let mut ret_val = HashMap::new();
     for m in ms {
-        match n_rec(m, res.by_ref(), &mut ret_val) {
+        match n_rec(sess, m, res.by_ref(), &mut ret_val) {
             Ok(_) => {},
             Err((sp, msg)) => return Error(sp, msg),
         }
@@ -277,11 +283,13 @@ fn create_matches(len: usize) -> Vec<Vec<Rc<NamedMatch>>> {
     (0..len).into_iter().map(|_| Vec::new()).collect()
 }
 
-fn inner_parse_loop(cur_eis: &mut SmallVector<Box<MatcherPos>>,
+fn inner_parse_loop(sess: &ParseSess,
+                    cur_eis: &mut SmallVector<Box<MatcherPos>>,
                     next_eis: &mut Vec<Box<MatcherPos>>,
                     eof_eis: &mut SmallVector<Box<MatcherPos>>,
                     bb_eis: &mut SmallVector<Box<MatcherPos>>,
-                    token: &Token, span: &syntax_pos::Span) -> ParseResult<()> {
+                    token: &Token,
+                    span: &syntax_pos::Span) -> ParseResult<()> {
     use self::quoted::TokenTree;
 
     while let Some(mut ei) = cur_eis.pop() {
@@ -375,6 +383,11 @@ fn inner_parse_loop(cur_eis: &mut SmallVector<Box<MatcherPos>>,
                         top_elts: Tt(TokenTree::Sequence(sp, seq)),
                     }));
                 }
+                TokenTree::MetaVarDecl(span, _, id) if id.name == keywords::Invalid.name() => {
+                    if sess.missing_fragment_specifiers.borrow_mut().remove(&span) {
+                        return Error(span, "missing fragment specifier".to_string());
+                    }
+                }
                 TokenTree::MetaVarDecl(..) => {
                     // Built-in nonterminals never start with these tokens,
                     // so we can eliminate them from consideration.
@@ -422,7 +435,7 @@ pub fn parse(sess: &ParseSess,
         let mut eof_eis = SmallVector::new();
         assert!(next_eis.is_empty());
 
-        match inner_parse_loop(&mut cur_eis, &mut next_eis, &mut eof_eis, &mut bb_eis,
+        match inner_parse_loop(sess, &mut cur_eis, &mut next_eis, &mut eof_eis, &mut bb_eis,
                                &parser.token, &parser.span) {
             Success(_) => {},
             Failure(sp, tok) => return Failure(sp, tok),
@@ -435,7 +448,8 @@ pub fn parse(sess: &ParseSess,
         /* error messages here could be improved with links to orig. rules */
         if token_name_eq(&parser.token, &token::Eof) {
             if eof_eis.len() == 1 {
-                return nameize(ms, eof_eis[0].matches.iter_mut().map(|mut dv| dv.pop().unwrap()));
+                let matches = eof_eis[0].matches.iter_mut().map(|mut dv| dv.pop().unwrap());
+                return nameize(sess, ms, matches);
             } else if eof_eis.len() > 1 {
                 return Error(parser.span, "ambiguity: multiple successful parses".to_string());
             } else {

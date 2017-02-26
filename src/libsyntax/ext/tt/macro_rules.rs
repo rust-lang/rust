@@ -788,6 +788,7 @@ fn is_in_follow(tok: &quoted::TokenTree, frag: &str) -> Result<bool, (String, &'
                 // harmless
                 Ok(true)
             },
+            "" => Ok(true), // keywords::Invalid
             _ => Err((format!("invalid fragment specifier `{}`", frag),
                      "valid fragment specifiers are `ident`, `block`, \
                       `stmt`, `expr`, `pat`, `ty`, `path`, `meta`, `tt` \
@@ -810,7 +811,7 @@ fn has_legal_fragment_specifier(tok: &quoted::TokenTree) -> Result<(), String> {
 fn is_legal_fragment_specifier(frag: &str) -> bool {
     match frag {
         "item" | "block" | "stmt" | "expr" | "pat" |
-        "path" | "ty" | "ident" | "meta" | "tt" => true,
+        "path" | "ty" | "ident" | "meta" | "tt" | "" => true,
         _ => false,
     }
 }

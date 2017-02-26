@@ -1693,6 +1693,7 @@ mod tests {
     use feature_gate::UnstableFeatures;
     use parse::token;
     use std::cell::RefCell;
+    use std::collections::HashSet;
     use std::io;
     use std::rc::Rc;
 
@@ -1704,6 +1705,7 @@ mod tests {
             config: CrateConfig::new(),
             included_mod_stack: RefCell::new(Vec::new()),
             code_map: cm,
+            missing_fragment_specifiers: RefCell::new(HashSet::new()),
         }
     }
 
