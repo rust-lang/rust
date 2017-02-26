@@ -140,7 +140,7 @@ impl<'tcx> Rvalue<'tcx> {
             Rvalue::Use(ref operand) => operand.ty(mir, tcx),
             Rvalue::Repeat(ref operand, ref count) => {
                 let op_ty = operand.ty(mir, tcx);
-                let count = count.value.as_u64(tcx.sess.target.uint_type);
+                let count = count.as_u64(tcx.sess.target.uint_type);
                 assert_eq!(count as usize as u64, count);
                 tcx.mk_array(op_ty, count as usize)
             }
