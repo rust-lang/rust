@@ -95,7 +95,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
             mir::Rvalue::Repeat(ref elem, ref count) => {
                 let tr_elem = self.trans_operand(&bcx, elem);
-                let size = count.value.as_u64(bcx.tcx().sess.target.uint_type);
+                let size = count.as_u64(bcx.tcx().sess.target.uint_type);
                 let size = C_uint(bcx.ccx, size);
                 let base = base::get_dataptr(&bcx, dest.llval);
                 tvec::slice_for_each(&bcx, base, tr_elem.ty, size, |bcx, llslot| {

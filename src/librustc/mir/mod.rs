@@ -983,7 +983,7 @@ pub enum Rvalue<'tcx> {
     Use(Operand<'tcx>),
 
     /// [x; 32]
-    Repeat(Operand<'tcx>, TypedConstVal<'tcx>),
+    Repeat(Operand<'tcx>, ConstUsize),
 
     /// &x or &mut x
     Ref(&'tcx Region, BorrowKind, Lvalue<'tcx>),
@@ -1201,19 +1201,6 @@ pub struct Constant<'tcx> {
     pub span: Span,
     pub ty: Ty<'tcx>,
     pub literal: Literal<'tcx>,
-}
-
-#[derive(Clone, RustcEncodable, RustcDecodable)]
-pub struct TypedConstVal<'tcx> {
-    pub ty: Ty<'tcx>,
-    pub span: Span,
-    pub value: ConstUsize,
-}
-
-impl<'tcx> Debug for TypedConstVal<'tcx> {
-    fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
-        write!(fmt, "const {}", ConstInt::Usize(self.value))
-    }
 }
 
 newtype_index!(Promoted, "promoted");
