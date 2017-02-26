@@ -1240,11 +1240,11 @@ pub fn rewrite_associated_type(ident: ast::Ident,
     let type_bounds_str = if let Some(ty_param_bounds) = ty_param_bounds_opt {
         let bounds: &[_] = ty_param_bounds;
         let bound_str = try_opt!(bounds.iter()
-                                     .map(|ty_bound| {
-            ty_bound.rewrite(context, Shape::legacy(context.config.max_width, indent))
-        })
-                                     .intersperse(Some(" + ".to_string()))
-                                     .collect::<Option<String>>());
+            .map(|ty_bound| {
+                ty_bound.rewrite(context, Shape::legacy(context.config.max_width, indent))
+            })
+            .intersperse(Some(" + ".to_string()))
+            .collect::<Option<String>>());
         if bounds.len() > 0 {
             format!(": {}", bound_str)
         } else {
