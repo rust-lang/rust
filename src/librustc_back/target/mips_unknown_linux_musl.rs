@@ -27,6 +27,7 @@ pub fn target() -> TargetResult {
             features: "+mips32r2,+soft-float".to_string(),
             max_atomic_width: Some(32),
 
+            crt_static_default: false,
             // see #36994
             exe_allocation_crate: "alloc_system".to_string(),
 
