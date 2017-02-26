@@ -72,6 +72,12 @@ macro_rules! vec {
 ///
 /// [fmt]: ../std/fmt/index.html
 ///
+/// # Panics
+///
+/// `format!` panics if a formatting trait implementation returns an error.
+/// This indicates an incorrect implementation
+/// since `fmt::Write for String` never returns an error itself.
+///
 /// # Examples
 ///
 /// ```
