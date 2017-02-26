@@ -161,6 +161,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
     fn create_drop_flag(&mut self, index: MovePathIndex) {
         let tcx = self.tcx;
         let patch = &mut self.patch;
+        debug!("create_drop_flag({:?})", self.mir.span);
         self.drop_flags.entry(index).or_insert_with(|| {
             patch.new_temp(tcx.types.bool)
         });
