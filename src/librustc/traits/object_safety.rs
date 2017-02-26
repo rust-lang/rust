@@ -23,6 +23,7 @@ use hir::def_id::DefId;
 use traits;
 use ty::{self, Ty, TyCtxt, TypeFoldable};
 use ty::subst::Substs;
+use std::borrow::Cow;
 use syntax::ast;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -36,6 +37,25 @@ pub enum ObjectSafetyViolation {
 
     /// Method has something illegal
     Method(ast::Name, MethodViolationCode),
+}
+
+impl ObjectSafetyViolation {
+    pub fn error_msg(&self) -> Cow<'static, str> {
+        match *self {
+            ObjectSafetyViolation::SizedSelf =>
+                "the trait cannot require that `Self : Sized`".into(),
+            ObjectSafetyViolation::SupertraitSelf =>
+                "the trait cannot use `Self` as a type parameter \
+                 in the supertrait listing".into(),
+            ObjectSafetyViolation::Method(name, MethodViolationCode::StaticMethod) =>
+                format!("method `{}` has no receiver", name).into(),
+            ObjectSafetyViolation::Method(name, MethodViolationCode::ReferencesSelf) =>
+                format!("method `{}` references the `Self` type \
+                         in its arguments or return type", name).into(),
+            ObjectSafetyViolation::Method(name, MethodViolationCode::Generic) =>
+                format!("method `{}` has generic type parameters", name).into(),
+        }
+    }
 }
 
 /// Reasons a method might not be object-safe.
