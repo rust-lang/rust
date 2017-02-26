@@ -16,7 +16,7 @@ fn main() {
 
     if target.contains("linux") {
         if target.contains("musl") && !target.contains("mips") {
-            println!("cargo:rustc-link-lib=static=unwind");
+            // musl is handled in lib.rs
         } else if !target.contains("android") {
             println!("cargo:rustc-link-lib=gcc_s");
         }
