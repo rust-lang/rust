@@ -59,7 +59,6 @@ for interop with software produced by Visual Studio use the MSVC build of Rust;
 for interop with GNU software built using the MinGW/MSYS2 toolchain use the GNU
 build.
 
-
 #### MinGW
 
 [MSYS2][msys2] can be used to easily build Rust on Windows:
@@ -106,24 +105,12 @@ MSVC builds of Rust additionally require an installation of Visual Studio 2013
 (or later) so `rustc` can use its linker. Make sure to check the “C++ tools”
 option.
 
-With these dependencies installed, you can build the compiler with:
+With these dependencies installed, you can build the compiler in a `cmd.exe`
+shell with:
 
 ```sh
 > python x.py build
 ```
-
-If you're running inside of an msys shell, however, you can run:
-
-```sh
-$ ./x.py build --build=x86_64-pc-windows-msvc
-$ ./x.py dist --build=x86_64-pc-windows-msvc --install
-```
-
-    > ***Note:*** The build option can also be configured by copying
-    > the config file and adjusting the `build` option under `[build]`.
-    > ```sh
-    > $ cp ./src/bootstrap/config.toml.example ./config.toml
-    > ```
 
 Currently building Rust only works with some known versions of Visual Studio. If
 you have a more recent version installed the build system doesn't understand
@@ -134,6 +121,19 @@ by manually calling the appropriate vcvars file before running the bootstrap.
 CALL "C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\bin\amd64\vcvars64.bat"
 python x.py build
 ```
+
+#### Specifying an ABI
+
+Each specific ABI can also be used from either environment (for example, using
+the GNU ABI in powershell) by using an explicit build triple. The available
+Windows build triples are:
+- `x86_64-pc-windows-gnu` - The GNU ABI (using GCC)
+- `x86_64-pc-windows-msvc` - The MSVC ABI
+
+The build triple can be specified by either specifying `--build=ABI` when
+invoking `x.py` commands, or by copying the `config.toml` file (as described
+in Building From Source), and modifying the `build` option under the `[build]`
+section.
 
 ### Configure and Make
 
