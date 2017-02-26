@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 # file at the top-level directory of this distribution and at
 # http://rust-lang.org/COPYRIGHT.
@@ -19,6 +19,9 @@ if [ "$NO_CHANGE_USER" = "" ]; then
     exec su --preserve-environment -c "env PATH=$PATH \"$0\"" user
   fi
 fi
+
+ci_dir=`cd $(dirname $0) && pwd`
+source "$ci_dir/shared.sh"
 
 RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-sccache"
 RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-quiet-tests"
@@ -54,15 +57,16 @@ else
   fi
 fi
 
-set -ex
-
 $SRC/configure $RUST_CONFIGURE_ARGS
+retry make prepare
 
 if [ "$TRAVIS_OS_NAME" = "osx" ]; then
     ncpus=$(sysctl -n hw.ncpu)
 else
     ncpus=$(grep processor /proc/cpuinfo | wc -l)
 fi
+
+set -x
 
 if [ ! -z "$SCRIPT" ]; then
   sh -x -c "$SCRIPT"
