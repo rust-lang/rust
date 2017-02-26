@@ -212,7 +212,7 @@ fn has_is_empty(cx: &LateContext, expr: &Expr) -> bool {
         },
         ty::TyProjection(_) => ty.ty_to_def_id().map_or(false, |id| has_is_empty_impl(cx, id)),
         ty::TyAdt(id, _) => has_is_empty_impl(cx, id.did),
-        ty::TyArray(..) | ty::TyStr => true,
+        ty::TyArray(..) | ty::TySlice(..) | ty::TyStr => true,
         _ => false,
     }
 }

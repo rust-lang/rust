@@ -238,7 +238,7 @@ pub fn match_path(path: &QPath, segments: &[&str]) -> bool {
         QPath::TypeRelative(ref ty, ref segment) => {
             match ty.node {
                 TyPath(ref inner_path) => {
-                    segments.len() > 0 && match_path(inner_path, &segments[..(segments.len() - 1)]) &&
+                    !segments.is_empty() && match_path(inner_path, &segments[..(segments.len() - 1)]) &&
                     segment.name == segments[segments.len() - 1]
                 },
                 _ => false,

@@ -185,3 +185,8 @@ fn main() {
         println!("Or this!");
     }
 }
+
+fn test_slice(b: &[u8]) {
+    if b.len() != 0 {
+    }
+}
