@@ -150,14 +150,12 @@ fn main() {
     use E::*;
     let value = A;
 
-
     match value {
     | A
     | B => {},
     | C => {}
 //  ^ Following the style above, a `|` could be placed before the first
 // element of every branch.
-
 
     match value {
     | A
