@@ -1,7 +1,9 @@
 use rustc::lint::*;
-use rustc::ty;
 use rustc::hir::*;
-use utils::{match_def_path, paths, span_note_and_lint};
+use utils::{match_def_path, paths, span_note_and_lint, is_copy};
+
+const DROP_COPY_SUMMARY:&'static str = "calls to `std::mem::drop` with a value that implements Copy";
+const FORGET_COPY_SUMMARY:&'static str = "calls to `std::mem::forget` with a value that implements Copy";
 
 /// **What it does:** Checks for calls to `std::mem::drop` with a value
 /// that derives the Copy trait
@@ -20,7 +22,7 @@ use utils::{match_def_path, paths, span_note_and_lint};
 declare_lint! {
     pub DROP_COPY,
     Warn,
-    "calls to `std::mem::drop` with a value that implements Copy"
+    DROP_COPY_SUMMARY
 }
 
 /// **What it does:** Checks for calls to `std::mem::forget` with a value that
@@ -44,7 +46,7 @@ declare_lint! {
 declare_lint! {
     pub FORGET_COPY,
     Warn,
-    "calls to `std::mem::forget` with a value that implements Copy"
+    FORGET_COPY_SUMMARY
 }
 
 #[allow(missing_copy_implementations)]
@@ -69,25 +71,21 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
 
             if match_def_path(cx.tcx, def_id, &paths::DROP) {
                 lint = DROP_COPY;
-                msg = "call to `std::mem::drop` with a value that implements Copy. \
-                       Dropping a copy leaves the original intact.";
+                msg = DROP_COPY_SUMMARY.to_string() + ". Dropping a copy leaves the original intact.";
             } else if match_def_path(cx.tcx, def_id, &paths::MEM_FORGET) {
                 lint = FORGET_COPY;
-                msg = "call to `std::mem::forget` with a value that implements Copy. \
-                       Forgetting a copy leaves the original intact.";
+                msg = FORGET_COPY_SUMMARY.to_string() + ". Forgetting a copy leaves the original intact.";
             } else {
                 return;
             }
 
             let arg = &args[0];
             let arg_ty = cx.tables.expr_ty(arg);
-
-            let parameter_environment = ty::ParameterEnvironment::for_item(cx.tcx, arg.id);
-            if !arg_ty.moves_by_default(cx.tcx.global_tcx(), &parameter_environment, arg.span) {
+            if is_copy(cx, arg_ty, cx.tcx.hir.get_parent(arg.id)) {
                 span_note_and_lint(cx,
                                    lint,
                                    expr.span,
-                                   msg,
+                                   &msg,
                                    arg.span,
                                    &format!("argument has type {}", arg_ty.sty));
             }
