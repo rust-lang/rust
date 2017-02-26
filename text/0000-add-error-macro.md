@@ -6,7 +6,7 @@
 # Summary
 [summary]: #summary
 
-This RFC proposes adding a new macro to `libstd`, `compile_error!` which will
+This RFC proposes adding a new macro to `libcore`, `compile_error!` which will
 unconditionally cause compilation to fail with the given error message when
 encountered.
 
