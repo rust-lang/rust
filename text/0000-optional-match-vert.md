@@ -150,12 +150,22 @@ fn main() {
     use E::*;
     let value = A;
 
+
+    match value {
+    | A
+    | B => {},
+    | C => {}
+//  ^ Following the style above, a `|` could be placed before the first
+// element of every branch.
+
+
     match value {
     | A
     | B => {},
     C => {}
-//  ^ Could be interpreted as slightly inconsistent. Nevertheless, it doesn't
-// seem like something to be concerned about.
+//  ^ Including a `|` for the `A` but not for the `C` seems inconsistent
+// but hardly invalid. Branches *always* follow the `=>`. Not something
+// to be greatly concerned about.
     }
 }
 ```
