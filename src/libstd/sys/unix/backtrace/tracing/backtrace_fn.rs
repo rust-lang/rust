@@ -20,7 +20,6 @@
 
 use io;
 use libc;
-use mem;
 use sys::backtrace::BacktraceContext;
 use sys_common::backtrace::Frame;
 
