@@ -77,8 +77,15 @@ macro_rules! declare_features {
     };
 
     ($((removed, $feature: ident, $ver: expr, $issue: expr),)+) => {
-        /// Represents features which has since been removed (it was once Active)
+        /// Represents unstable features which have since been removed (it was once Active)
         const REMOVED_FEATURES: &'static [(&'static str, &'static str, Option<u32>)] = &[
+            $((stringify!($feature), $ver, $issue)),+
+        ];
+    };
+
+    ($((stable_removed, $feature: ident, $ver: expr, $issue: expr),)+) => {
+        /// Represents stable features which have since been removed (it was once Accepted)
+        const STABLE_REMOVED_FEATURES: &'static [(&'static str, &'static str, Option<u32>)] = &[
             $((stringify!($feature), $ver, $issue)),+
         ];
     };
@@ -349,6 +356,11 @@ declare_features! (
     // rustc internal
     (removed, unmarked_api, "1.0.0", None),
     (removed, pushpop_unsafe, "1.2.0", None),
+    //(removed, no_stack_check, "1.0.0", None),
+);
+
+declare_features! (
+    (stable_removed, no_stack_check, "1.0.0", None),
 );
 
 declare_features! (
@@ -504,9 +516,6 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
                                             "the semantics of constant patterns is \
                                              not yet settled",
                                             cfg_fn!(structural_match))),
-
-    // Not used any more, but we can't feature gate it
-    ("no_stack_check", Normal, Ungated),
 
     ("plugin", CrateLevel, Gated(Stability::Unstable,
                                  "plugin",
@@ -909,8 +918,10 @@ fn find_lang_feature_issue(feature: &str) -> Option<u32> {
         // assert!(issue.is_some())
         issue
     } else {
-        // search in Accepted or Removed features
-        match ACCEPTED_FEATURES.iter().chain(REMOVED_FEATURES).find(|t| t.0 == feature) {
+        // search in Accepted, Removed, or Stable Removed features
+        let found = ACCEPTED_FEATURES.iter().chain(REMOVED_FEATURES).chain(STABLE_REMOVED_FEATURES)
+            .find(|t| t.0 == feature);
+        match found {
             Some(&(_, _, issue)) => issue,
             None => panic!("Feature `{}` is not declared anywhere", feature),
         }
@@ -1444,9 +1455,15 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute]) -> F
                         feature_checker.collect(&features, mi.span);
                     }
                     else if let Some(&(_, _, _)) = REMOVED_FEATURES.iter()
-                        .find(|& &(n, _, _)| name == n) {
+                            .find(|& &(n, _, _)| name == n)
+                        .or_else(|| STABLE_REMOVED_FEATURES.iter()
+                            .find(|& &(n, _, _)| name == n)) {
                         span_err!(span_handler, mi.span, E0557, "feature has been removed");
                     }
+                    //else if let Some(&(_, _, _)) = STABLE_REMOVED_FEATURES.iter()
+                    //    .find(|& &(n, _, _)| name == n) {
+                    //    span_err!(span_handler, mi.span, E0557, "feature has been removed");
+                    //}
                     else if let Some(&(_, _, _)) = ACCEPTED_FEATURES.iter()
                         .find(|& &(n, _, _)| name == n) {
                         features.declared_stable_lang_features.push((name, mi.span));
