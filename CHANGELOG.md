@@ -312,6 +312,7 @@ All notable changes to this project will be documented in this file.
 [`doc_markdown`]: https://github.com/Manishearth/rust-clippy/wiki#doc_markdown
 [`double_neg`]: https://github.com/Manishearth/rust-clippy/wiki#double_neg
 [`double_parens`]: https://github.com/Manishearth/rust-clippy/wiki#double_parens
+[`drop_copy`]: https://github.com/Manishearth/rust-clippy/wiki#drop_copy
 [`drop_ref`]: https://github.com/Manishearth/rust-clippy/wiki#drop_ref
 [`duplicate_underscore_argument`]: https://github.com/Manishearth/rust-clippy/wiki#duplicate_underscore_argument
 [`empty_enum`]: https://github.com/Manishearth/rust-clippy/wiki#empty_enum
@@ -333,6 +334,7 @@ All notable changes to this project will be documented in this file.
 [`for_kv_map`]: https://github.com/Manishearth/rust-clippy/wiki#for_kv_map
 [`for_loop_over_option`]: https://github.com/Manishearth/rust-clippy/wiki#for_loop_over_option
 [`for_loop_over_result`]: https://github.com/Manishearth/rust-clippy/wiki#for_loop_over_result
+[`forget_copy`]: https://github.com/Manishearth/rust-clippy/wiki#forget_copy
 [`forget_ref`]: https://github.com/Manishearth/rust-clippy/wiki#forget_ref
 [`get_unwrap`]: https://github.com/Manishearth/rust-clippy/wiki#get_unwrap
 [`identity_op`]: https://github.com/Manishearth/rust-clippy/wiki#identity_op
