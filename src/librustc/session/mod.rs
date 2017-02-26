@@ -33,6 +33,7 @@ use syntax::parse::ParseSess;
 use syntax::symbol::Symbol;
 use syntax::{ast, codemap};
 use syntax::feature_gate::AttributeType;
+use syntax::feature_gate::UnstableFeatures;
 use syntax_pos::{Span, MultiSpan};
 
 use rustc_back::{LinkerFlavor, PanicStrategy};
@@ -392,6 +393,32 @@ impl Session {
         self.opts.cg.overflow_checks
             .or(self.opts.debugging_opts.force_overflow_checks)
             .unwrap_or(self.opts.debug_assertions)
+    }
+
+    pub fn crt_static(&self) -> bool {
+        let requested_features = self.opts.cg.target_feature.split(',');
+        let unstable_options = self.opts.debugging_opts.unstable_options;
+        let is_nightly = UnstableFeatures::from_environment().is_nightly_build();
+        let found_negative = requested_features.clone().any(|r| r == "-crt-static");
+        let found_positive = requested_features.clone().any(|r| r == "+crt-static");
+
+        // If we switched from the default then that's only allowed on nightly, so
+        // gate that here.
+        if (found_positive || found_negative) && (!is_nightly || !unstable_options) {
+            self.fatal("specifying the `crt-static` target feature is only allowed \
+                on the nightly channel with `-Z unstable-options` passed \
+                as well");
+        }
+
+        // If the target we're compiling for requests a static crt by default,
+        // then see if the `-crt-static` feature was passed to disable that.
+        // Otherwise if we don't have a static crt by default then see if the
+        // `+crt-static` feature was passed.
+        if self.target.target.options.crt_static_default {
+            !found_negative
+        } else {
+            found_positive
+        }
     }
 
     pub fn must_not_eliminate_frame_pointers(&self) -> bool {
