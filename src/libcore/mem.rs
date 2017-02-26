@@ -519,6 +519,71 @@ pub fn replace<T>(dest: &mut T, mut src: T) -> T {
     src
 }
 
+/// A guarding type which will abort upon drop.
+///
+/// This is used for catching unwinding and transforming it into abort.
+///
+/// The destructor should never be called naturally (use `mem::forget()`), and only when unwinding.
+struct ExitGuard;
+
+impl Drop for ExitGuard {
+    fn drop(&mut self) {
+        // To avoid unwinding, we abort (we panic, which is equivalent to abort inside an unwinding
+        // destructor) the program, which ensures that the destructor of the invalidated value
+        // isn't run, since this destructor ought to be called only if unwinding happens.
+        panic!("`replace_with` closure unwinded. For safety reasons, this will \
+                abort your program. Check the documentation");
+    }
+}
+
+/// Temporarily takes ownership of a value at a mutable location, and replace it with a new value
+/// based on the old one.
+///
+/// We move out of reference temporarily, to apply a closure, returning a new value, which is then
+/// placed at the original value's location.
+///
+/// # An important note
+///
+/// The behavior on panic (or to be more precise, unwinding) is specified to match the behavior of
+/// panicking inside a destructor, which itself is simply specified to not unwind.
+///
+/// # Example
+///
+/// ```
+/// use std::mem;
+///
+/// // Dump some stuff into a box.
+/// let mut bx: Box<i32> = Box::new(200);
+///
+/// // Temporarily steal ownership.
+/// mem::replace_with(&mut bx, |mut owned| {
+///     owner = 5;
+///
+///     // The returned value is placed back in `&mut bx`.
+///     Box::new(owner)
+/// });
+/// ```
+#[inline]
+#[unstable(feature = "replace_with", issue = "...")]
+pub fn replace_with<T, F>(val: &mut T, closure: F)
+    where F: FnOnce(T) -> T {
+    // Guard against unwinding. Note that this is critical to safety, to avoid the value behind the
+    // reference `val` is not dropped twice during unwinding.
+    let guard = ExitGuard;
+
+    unsafe {
+        // Take out the value behind the pointer.
+        let old = ptr::read(val);
+        // Run the closure.
+        let new = closure(old);
+        // Put the result back.
+        ptr::write(val, new);
+    }
+
+    // Forget the guard, to avoid panicking.
+    mem::forget(guard);
+}
+
 /// Disposes of a value.
 ///
 /// While this does call the argument's implementation of [`Drop`][drop],
