@@ -157,8 +157,8 @@ pub fn check(build: &mut Build) {
             panic!("the iOS target is only supported on macOS");
         }
 
-        // Make sure musl-root is valid if specified
-        if target.contains("musl") && !target.contains("mips") {
+        // Make sure musl-root is valid
+        if target.contains("musl") {
             match build.musl_root(target) {
                 Some(root) => {
                     if fs::metadata(root.join("lib/libc.a")).is_err() {
