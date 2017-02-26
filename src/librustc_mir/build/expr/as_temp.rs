@@ -13,29 +13,38 @@
 use build::{BlockAnd, BlockAndExtension, Builder};
 use build::expr::category::Category;
 use hair::*;
+use rustc::middle::region::CodeExtent;
 use rustc::mir::*;
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// Compile `expr` into a fresh temporary. This is used when building
     /// up rvalues so as to freeze the value that will be consumed.
-    pub fn as_temp<M>(&mut self, block: BasicBlock, expr: M) -> BlockAnd<Lvalue<'tcx>>
+    pub fn as_temp<M>(&mut self,
+                      block: BasicBlock,
+                      temp_lifetime: Option<CodeExtent>,
+                      expr: M)
+                      -> BlockAnd<Lvalue<'tcx>>
         where M: Mirror<'tcx, Output = Expr<'tcx>>
     {
         let expr = self.hir.mirror(expr);
-        self.expr_as_temp(block, expr)
+        self.expr_as_temp(block, temp_lifetime, expr)
     }
 
-    fn expr_as_temp(&mut self, mut block: BasicBlock, expr: Expr<'tcx>) -> BlockAnd<Lvalue<'tcx>> {
+    fn expr_as_temp(&mut self,
+                    mut block: BasicBlock,
+                    temp_lifetime: Option<CodeExtent>,
+                    expr: Expr<'tcx>)
+                    -> BlockAnd<Lvalue<'tcx>> {
         debug!("expr_as_temp(block={:?}, expr={:?})", block, expr);
         let this = self;
 
-        if let ExprKind::Scope { extent, value } = expr.kind {
-            return this.in_scope(extent, block, |this| this.as_temp(block, value));
+        if let ExprKind::Scope { .. } = expr.kind {
+            span_bug!(expr.span, "unexpected scope expression in as_temp: {:?}",
+                      expr);
         }
 
         let expr_ty = expr.ty.clone();
         let temp = this.temp(expr_ty.clone());
-        let temp_lifetime = expr.temp_lifetime;
         let expr_span = expr.span;
         let source_info = this.source_info(expr_span);
 
