@@ -1267,6 +1267,22 @@ pub fn rewrite_associated_type(ident: ast::Ident,
     }
 }
 
+pub fn rewrite_associated_impl_type(ident: ast::Ident,
+                                    defaultness: ast::Defaultness,
+                                    ty_opt: Option<&ptr::P<ast::Ty>>,
+                                    ty_param_bounds_opt: Option<&ast::TyParamBounds>,
+                                    context: &RewriteContext,
+                                    indent: Indent)
+                                    -> Option<String> {
+    let result =
+        try_opt!(rewrite_associated_type(ident, ty_opt, ty_param_bounds_opt, context, indent));
+
+    match defaultness {
+        ast::Defaultness::Default => Some(format!("default {}", result)),
+        _ => Some(result),
+    }
+}
+
 impl Rewrite for ast::FunctionRetTy {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         match *self {
