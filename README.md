@@ -127,8 +127,12 @@ python x.py build
 Each specific ABI can also be used from either environment (for example, using
 the GNU ABI in powershell) by using an explicit build triple. The available
 Windows build triples are:
-- `x86_64-pc-windows-gnu` - The GNU ABI (using GCC)
-- `x86_64-pc-windows-msvc` - The MSVC ABI
+- GNU ABI (using GCC)
+    - `i686-pc-windows-gnu`
+    - `x86_64-pc-windows-gnu`
+- The MSVC ABI
+    - `i686-pc-windows-msvc`
+    - `x86_64-pc-windows-msvc`
 
 The build triple can be specified by either specifying `--build=ABI` when
 invoking `x.py` commands, or by copying the `config.toml` file (as described
