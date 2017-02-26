@@ -215,8 +215,8 @@ impl Builder {
         self.package("rust-docs", &mut manifest.pkg, TARGETS);
         self.package("rust-src", &mut manifest.pkg, &["*"]);
 
-        if self.channel == "rust-nightly" {
-            self.package("analysis", &mut manifest.pkg, TARGETS);
+        if self.channel == "nightly" {
+            self.package("rust-analysis", &mut manifest.pkg, TARGETS);
         }
 
         let mut pkg = Package {
