@@ -215,8 +215,8 @@ impl Builder {
         self.package("rust-docs", &mut manifest.pkg, TARGETS);
         self.package("rust-src", &mut manifest.pkg, &["*"]);
 
-        if self.channel == "rust-nightly" {
-            self.package("analysis", &mut manifest.pkg, TARGETS);
+        if self.channel == "nightly" {
+            self.package("rust-analysis", &mut manifest.pkg, TARGETS);
         }
 
         let mut pkg = Package {
@@ -283,7 +283,7 @@ impl Builder {
             pkg.target.insert(host.to_string(), Target {
                 available: true,
                 url: Some(self.url("rust", host)),
-                hash: Some(to_hex(digest.as_ref())),
+                hash: Some(digest),
                 components: Some(components),
                 extensions: Some(extensions),
             });
@@ -407,21 +407,5 @@ impl Builder {
         t!(t!(File::create(&dst)).write_all(manifest.as_bytes()));
         self.hash(&dst);
         self.sign(&dst);
-    }
-}
-
-fn to_hex(digest: &[u8]) -> String {
-    let mut ret = String::new();
-    for byte in digest {
-        ret.push(hex((byte & 0xf0) >> 4));
-        ret.push(hex(byte & 0xf));
-    }
-    return ret;
-
-    fn hex(b: u8) -> char {
-        match b {
-            0...9 => (b'0' + b) as char,
-            _ => (b'a' + b - 10) as char,
-        }
     }
 }
