@@ -46,6 +46,7 @@ pub struct ParseSess {
     pub span_diagnostic: Handler,
     pub unstable_features: UnstableFeatures,
     pub config: CrateConfig,
+    pub missing_fragment_specifiers: RefCell<HashSet<Span>>,
     /// Used to determine and report recursive mod inclusions
     included_mod_stack: RefCell<Vec<PathBuf>>,
     code_map: Rc<CodeMap>,
@@ -66,6 +67,7 @@ impl ParseSess {
             span_diagnostic: handler,
             unstable_features: UnstableFeatures::from_environment(),
             config: HashSet::new(),
+            missing_fragment_specifiers: RefCell::new(HashSet::new()),
             included_mod_stack: RefCell::new(vec![]),
             code_map: code_map
         }

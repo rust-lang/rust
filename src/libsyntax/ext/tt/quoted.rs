@@ -143,7 +143,8 @@ pub fn parse(input: &[tokenstream::TokenTree], expect_matchers: bool, sess: &Par
                     },
                     tree @ _ => tree.as_ref().map(tokenstream::TokenTree::span).unwrap_or(start_sp),
                 };
-                sess.span_diagnostic.span_err(span, "missing fragment specifier");
+                sess.missing_fragment_specifiers.borrow_mut().insert(span);
+                result.push(TokenTree::MetaVarDecl(span, ident, keywords::Invalid.ident()));
             }
             _ => result.push(tree),
         }

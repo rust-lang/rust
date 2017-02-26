@@ -688,6 +688,14 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
 
         let krate = ecx.monotonic_expander().expand_crate(krate);
 
+        let mut missing_fragment_specifiers: Vec<_> =
+            ecx.parse_sess.missing_fragment_specifiers.borrow().iter().cloned().collect();
+        missing_fragment_specifiers.sort();
+        for span in missing_fragment_specifiers {
+            let lint = lint::builtin::MISSING_FRAGMENT_SPECIFIER;
+            let msg = "missing fragment specifier".to_string();
+            sess.add_lint(lint, ast::CRATE_NODE_ID, span, msg);
+        }
         if ecx.parse_sess.span_diagnostic.err_count() - ecx.resolve_err_count > err_count {
             ecx.parse_sess.span_diagnostic.abort_if_errors();
         }
