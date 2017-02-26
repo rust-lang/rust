@@ -71,6 +71,8 @@ install:
 	$(Q)$(BOOTSTRAP) dist --install $(BOOTSTRAP_ARGS)
 tidy:
 	$(Q)$(BOOTSTRAP) test src/tools/tidy $(BOOTSTRAP_ARGS)
+prepare:
+	$(Q)$(BOOTSTRAP) build nonexistent/path/to/trigger/cargo/metadata
 
 check-stage2-T-arm-linux-androideabi-H-x86_64-unknown-linux-gnu:
 	$(Q)$(BOOTSTRAP) test --target arm-linux-androideabi
