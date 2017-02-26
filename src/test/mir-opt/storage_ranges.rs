@@ -31,8 +31,8 @@ fn main() {
 //         _3 = &_4;
 //         StorageDead(_5);
 //         _2 = ();
-//         StorageDead(_4);
 //         StorageDead(_3);
+//         StorageDead(_4);
 //         StorageLive(_6);
 //         _6 = const 1i32;
 //         _0 = ();
