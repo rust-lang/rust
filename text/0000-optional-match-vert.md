@@ -268,7 +268,16 @@ fn main() {
 # Detailed design
 [design]: #detailed-design
 
-Unknown
+I don't know about the implementation but the grammar could be updated so that
+an optional `|` is allowed at the beginning. Nothing else in the grammar should
+need updating.
+
+```text
+// Before
+match_pat : pat [ '|' pat ] * [ "if" expr ] ? ;
+// After
+match_pat : '|' ? pat [ '|' pat ] * [ "if" expr ] ? ;
+```
 
 # How We Teach This
 [how-we-teach-this]: #how-we-teach-this
