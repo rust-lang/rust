@@ -356,7 +356,6 @@ declare_features! (
     // rustc internal
     (removed, unmarked_api, "1.0.0", None),
     (removed, pushpop_unsafe, "1.2.0", None),
-    //(removed, no_stack_check, "1.0.0", None),
 );
 
 declare_features! (
@@ -1460,10 +1459,6 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute]) -> F
                             .find(|& &(n, _, _)| name == n)) {
                         span_err!(span_handler, mi.span, E0557, "feature has been removed");
                     }
-                    //else if let Some(&(_, _, _)) = STABLE_REMOVED_FEATURES.iter()
-                    //    .find(|& &(n, _, _)| name == n) {
-                    //    span_err!(span_handler, mi.span, E0557, "feature has been removed");
-                    //}
                     else if let Some(&(_, _, _)) = ACCEPTED_FEATURES.iter()
                         .find(|& &(n, _, _)| name == n) {
                         features.declared_stable_lang_features.push((name, mi.span));
