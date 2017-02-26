@@ -661,7 +661,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             // guard, this block is simply unreachable
             let guard = self.hir.mirror(guard);
             let source_info = self.source_info(guard.span);
-            let cond = unpack!(block = self.as_operand(block, guard));
+            let cond = unpack!(block = self.as_local_operand(block, guard));
             let otherwise = self.cfg.start_new_block();
             self.cfg.terminate(block, source_info,
                                TerminatorKind::if_(self.hir.tcx(), cond, arm_block, otherwise));
