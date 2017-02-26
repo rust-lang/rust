@@ -218,6 +218,17 @@ fn main() {
             cmd.arg("-Z").arg("unstable-options");
             cmd.arg("-C").arg("target-feature=+crt-static");
         }
+
+        if let Ok(s) = env::var("RUST_CRT_STATIC") {
+            if s == "true" {
+                cmd.arg("-Z").arg("unstable-options");
+                cmd.arg("-C").arg("target-feature=+crt-static");
+            }
+            if s == "false" {
+                cmd.arg("-Z").arg("unstable-options");
+                cmd.arg("-C").arg("target-feature=-crt-static");
+            }
+        }
     }
 
     if verbose > 1 {
