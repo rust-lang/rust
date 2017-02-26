@@ -1654,9 +1654,23 @@ fn document_short(w: &mut fmt::Formatter, item: &clean::Item, link: AssocItemLin
     Ok(())
 }
 
+fn md_render_assoc_item(item: &clean::Item) -> String {
+    match item.inner {
+        clean::AssociatedConstItem(ref ty, ref default) => {
+            if let Some(default) = default.as_ref() {
+                format!("```\n{}: {:?} = {}\n```\n\n", item.name.as_ref().unwrap(), ty, default)
+            } else {
+                format!("```\n{}: {:?}\n```\n\n", item.name.as_ref().unwrap(), ty)
+            }
+        }
+        _ => String::new(),
+    }
+}
+
 fn document_full(w: &mut fmt::Formatter, item: &clean::Item) -> fmt::Result {
     if let Some(s) = item.doc_value() {
-        write!(w, "<div class='docblock'>{}</div>", Markdown(s))?;
+        write!(w, "<div class='docblock'>{}</div>",
+               Markdown(&format!("{}{}", md_render_assoc_item(item), s)))?;
     }
     Ok(())
 }
@@ -2214,17 +2228,12 @@ fn naive_assoc_href(it: &clean::Item, link: AssocItemLink) -> String {
 
 fn assoc_const(w: &mut fmt::Formatter,
                it: &clean::Item,
-               ty: &clean::Type,
-               default: Option<&String>,
+               _ty: &clean::Type,
+               _default: Option<&String>,
                link: AssocItemLink) -> fmt::Result {
     write!(w, "const <a href='{}' class='constant'><b>{}</b></a>",
            naive_assoc_href(it, link),
            it.name.as_ref().unwrap())?;
-
-    write!(w, ": {}", ty)?;
-    if let Some(default) = default {
-        write!(w, " = {}", Escape(default))?;
-    }
     Ok(())
 }
 
