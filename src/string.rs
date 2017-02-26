@@ -32,7 +32,7 @@ pub struct StringFormat<'a> {
 // FIXME: simplify this!
 pub fn rewrite_string<'a>(orig: &str, fmt: &StringFormat<'a>) -> Option<String> {
     // Strip line breaks.
-    let re = Regex::new(r"([^\\](\\\\)*)\\[\n\r][:space:]*").unwrap();
+    let re = Regex::new(r"([^\\](\\\\)*)\\[\n\r][[:space:]]*").unwrap();
     let stripped_str = re.replace_all(orig, "$1");
 
     let graphemes = UnicodeSegmentation::graphemes(&*stripped_str, false).collect::<Vec<&str>>();
