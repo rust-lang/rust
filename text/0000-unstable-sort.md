@@ -1,4 +1,4 @@
-- Feature Name: unstable_sort
+- Feature Name: sort_unstable
 - Start Date: 2017-02-03
 - RFC PR: (leave this empty)
 - Rust Issue: (leave this empty)
