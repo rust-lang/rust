@@ -320,7 +320,11 @@ fn default_hook(info: &PanicInfo) {
     let log_backtrace = {
         let panics = update_panic_count(0);
 
-        panics >= 2 || backtrace::log_enabled()
+        if panics >= 2 {
+            Some(backtrace::PrintFormat::Full)
+        } else {
+            backtrace::log_enabled()
+        }
     };
 
     let file = info.location.file;
@@ -347,8 +351,8 @@ fn default_hook(info: &PanicInfo) {
 
             static FIRST_PANIC: AtomicBool = AtomicBool::new(true);
 
-            if log_backtrace {
-                let _ = backtrace::write(err);
+            if let Some(format) = log_backtrace {
+                let _ = backtrace::print(err, format);
             } else if FIRST_PANIC.compare_and_swap(true, false, Ordering::SeqCst) {
                 let _ = writeln!(err, "note: Run with `RUST_BACKTRACE=1` for a backtrace.");
             }

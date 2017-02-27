@@ -24,36 +24,86 @@
 
 #![allow(deprecated)] // dynamic_lib
 
-use io::prelude::*;
-
 use io;
 use libc::c_void;
 use mem;
 use ptr;
 use sys::c;
 use sys::dynamic_lib::DynamicLibrary;
-use sys::mutex::Mutex;
+use sys_common::backtrace::Frame;
 
 macro_rules! sym {
     ($lib:expr, $e:expr, $t:ident) => (
-        match $lib.symbol($e) {
-            Ok(f) => $crate::mem::transmute::<usize, $t>(f),
-            Err(..) => return Ok(())
-        }
+        $lib.symbol($e).map(|f| unsafe {
+            $crate::mem::transmute::<usize, $t>(f)
+        })
     )
 }
 
-#[cfg(target_env = "msvc")]
-#[path = "printing/msvc.rs"]
-mod printing;
-
-#[cfg(target_env = "gnu")]
-#[path = "printing/gnu.rs"]
 mod printing;
 
 #[cfg(target_env = "gnu")]
 #[path = "backtrace_gnu.rs"]
 pub mod gnu;
+
+pub use self::printing::{resolve_symname, foreach_symbol_fileline};
+
+pub fn unwind_backtrace(frames: &mut [Frame])
+    -> io::Result<(usize, BacktraceContext)>
+{
+    let dbghelp = DynamicLibrary::open("dbghelp.dll")?;
+
+    // Fetch the symbols necessary from dbghelp.dll
+    let SymInitialize = sym!(dbghelp, "SymInitialize", SymInitializeFn)?;
+    let SymCleanup = sym!(dbghelp, "SymCleanup", SymCleanupFn)?;
+    let StackWalk64 = sym!(dbghelp, "StackWalk64", StackWalk64Fn)?;
+
+    // Allocate necessary structures for doing the stack walk
+    let process = unsafe { c::GetCurrentProcess() };
+    let thread = unsafe { c::GetCurrentThread() };
+    let mut context: c::CONTEXT = unsafe { mem::zeroed() };
+    unsafe { c::RtlCaptureContext(&mut context) };
+    let mut frame: c::STACKFRAME64 = unsafe { mem::zeroed() };
+    let image = init_frame(&mut frame, &context);
+
+    let backtrace_context = BacktraceContext {
+        handle: process,
+        SymCleanup: SymCleanup,
+        dbghelp: dbghelp,
+    };
+
+    // Initialize this process's symbols
+    let ret = unsafe { SymInitialize(process, ptr::null_mut(), c::TRUE) };
+    if ret != c::TRUE {
+        return Ok((0, backtrace_context))
+    }
+
+    // And now that we're done with all the setup, do the stack walking!
+    // Start from -1 to avoid printing this stack frame, which will
+    // always be exactly the same.
+    let mut i = 0;
+    unsafe {
+        while i < frames.len() &&
+              StackWalk64(image, process, thread, &mut frame, &mut context,
+                          ptr::null_mut(),
+                          ptr::null_mut(),
+                          ptr::null_mut(),
+                          ptr::null_mut()) == c::TRUE
+        {
+            let addr = frame.AddrPC.Offset;
+            if addr == frame.AddrReturn.Offset || addr == 0 ||
+               frame.AddrReturn.Offset == 0 { break }
+
+            frames[i] = Frame {
+                symbol_addr: (addr - 1) as *const c_void,
+                exact_position: (addr - 1) as *const c_void,
+            };
+            i += 1;
+        }
+    }
+
+    Ok((i, backtrace_context))
+}
 
 type SymInitializeFn =
     unsafe extern "system" fn(c::HANDLE, *mut c_void,
@@ -68,8 +118,8 @@ type StackWalk64Fn =
                               *mut c_void, *mut c_void) -> c::BOOL;
 
 #[cfg(target_arch = "x86")]
-pub fn init_frame(frame: &mut c::STACKFRAME64,
-                  ctx: &c::CONTEXT) -> c::DWORD {
+fn init_frame(frame: &mut c::STACKFRAME64,
+              ctx: &c::CONTEXT) -> c::DWORD {
     frame.AddrPC.Offset = ctx.Eip as u64;
     frame.AddrPC.Mode = c::ADDRESS_MODE::AddrModeFlat;
     frame.AddrStack.Offset = ctx.Esp as u64;
@@ -80,8 +130,8 @@ pub fn init_frame(frame: &mut c::STACKFRAME64,
 }
 
 #[cfg(target_arch = "x86_64")]
-pub fn init_frame(frame: &mut c::STACKFRAME64,
-                  ctx: &c::CONTEXT) -> c::DWORD {
+fn init_frame(frame: &mut c::STACKFRAME64,
+              ctx: &c::CONTEXT) -> c::DWORD {
     frame.AddrPC.Offset = ctx.Rip as u64;
     frame.AddrPC.Mode = c::ADDRESS_MODE::AddrModeFlat;
     frame.AddrStack.Offset = ctx.Rsp as u64;
@@ -91,73 +141,16 @@ pub fn init_frame(frame: &mut c::STACKFRAME64,
     c::IMAGE_FILE_MACHINE_AMD64
 }
 
-struct Cleanup {
+pub struct BacktraceContext {
     handle: c::HANDLE,
     SymCleanup: SymCleanupFn,
+    // Only used in printing for msvc and not gnu
+    #[allow(dead_code)]
+    dbghelp: DynamicLibrary,
 }
 
-impl Drop for Cleanup {
+impl Drop for BacktraceContext {
     fn drop(&mut self) {
         unsafe { (self.SymCleanup)(self.handle); }
     }
-}
-
-pub fn write(w: &mut Write) -> io::Result<()> {
-    // According to windows documentation, all dbghelp functions are
-    // single-threaded.
-    static LOCK: Mutex = Mutex::new();
-    unsafe {
-        LOCK.lock();
-        let res = _write(w);
-        LOCK.unlock();
-        return res
-    }
-}
-
-unsafe fn _write(w: &mut Write) -> io::Result<()> {
-    let dbghelp = match DynamicLibrary::open("dbghelp.dll") {
-        Ok(lib) => lib,
-        Err(..) => return Ok(()),
-    };
-
-    // Fetch the symbols necessary from dbghelp.dll
-    let SymInitialize = sym!(dbghelp, "SymInitialize", SymInitializeFn);
-    let SymCleanup = sym!(dbghelp, "SymCleanup", SymCleanupFn);
-    let StackWalk64 = sym!(dbghelp, "StackWalk64", StackWalk64Fn);
-
-    // Allocate necessary structures for doing the stack walk
-    let process = c::GetCurrentProcess();
-    let thread = c::GetCurrentThread();
-    let mut context: c::CONTEXT = mem::zeroed();
-    c::RtlCaptureContext(&mut context);
-    let mut frame: c::STACKFRAME64 = mem::zeroed();
-    let image = init_frame(&mut frame, &context);
-
-    // Initialize this process's symbols
-    let ret = SymInitialize(process, ptr::null_mut(), c::TRUE);
-    if ret != c::TRUE { return Ok(()) }
-    let _c = Cleanup { handle: process, SymCleanup: SymCleanup };
-
-    // And now that we're done with all the setup, do the stack walking!
-    // Start from -1 to avoid printing this stack frame, which will
-    // always be exactly the same.
-    let mut i = -1;
-    write!(w, "stack backtrace:\n")?;
-    while StackWalk64(image, process, thread, &mut frame, &mut context,
-                      ptr::null_mut(),
-                      ptr::null_mut(),
-                      ptr::null_mut(),
-                      ptr::null_mut()) == c::TRUE {
-        let addr = frame.AddrPC.Offset;
-        if addr == frame.AddrReturn.Offset || addr == 0 ||
-           frame.AddrReturn.Offset == 0 { break }
-
-        i += 1;
-
-        if i >= 0 {
-            printing::print(w, i, addr - 1, process, &dbghelp)?;
-        }
-    }
-
-    Ok(())
 }
