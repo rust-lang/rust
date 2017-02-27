@@ -125,6 +125,10 @@ pub mod __internal {
         fn register_attr_proc_macro(&mut self,
                                     name: &str,
                                     expand: fn(TokenStream, TokenStream) -> TokenStream);
+
+        fn register_bang_proc_macro(&mut self,
+                                    name: &str,
+                                    expand: fn(TokenStream) -> TokenStream);
     }
 
     // Emulate scoped_thread_local!() here essentially
