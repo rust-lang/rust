@@ -1,12 +1,12 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
-* New [`zero_ptr`] lint
-* New [`never_loop`] lint
-* New [`mut_from_ref`] lint
+## 0.0.115 — 2017-02-27
+* Rustup to *rustc 1.17.0-nightly (60a0edc6c 2017-02-26)*
+* New lints: [`zero_ptr`], [`never_loop`], [`mut_from_ref`]
 
 ## 0.0.114 — 2017-02-08
-* Rustup to rustc 1.17.0-nightly (c49d10207 2017-02-07)
+* Rustup to *rustc 1.17.0-nightly (c49d10207 2017-02-07)*
 * Tests are now ui tests (testing the exact output of rustc)
 
 ## 0.0.113 — 2017-02-04

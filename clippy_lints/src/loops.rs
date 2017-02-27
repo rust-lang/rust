@@ -1028,7 +1028,7 @@ fn extract_first_expr(block: &Block) -> Option<&Expr> {
 /// Return true if expr contains a single break expr (maybe within a block).
 fn is_break_expr(expr: &Expr) -> bool {
     match expr.node {
-        ExprBreak(None, _) => true,
+        ExprBreak(dest, _) if dest.ident.is_none() => true,
         ExprBlock(ref b) => {
             match extract_first_expr(b) {
                 Some(subexpr) => is_break_expr(subexpr),
