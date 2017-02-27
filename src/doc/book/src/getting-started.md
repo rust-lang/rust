@@ -167,7 +167,7 @@ fn main() {
 }
 ```
 
-Save the file, and go back to your terminal window. On Linux or OSX, enter the
+Save the file, and go back to your terminal window. On Linux or macOS, enter the
 following commands:
 
 ```bash
@@ -253,7 +253,7 @@ $ rustc main.rs
 
 If you come from a C or C++ background, you'll notice that this is similar to
 `gcc` or `clang`. After compiling successfully, Rust should output a binary
-executable, which you can see on Linux or OSX by entering the `ls` command in
+executable, which you can see on Linux or macOS by entering the `ls` command in
 your shell as follows:
 
 ```bash
