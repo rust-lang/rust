@@ -105,6 +105,7 @@ fn main() {
 
     if major > 3 {
         optional_components.push("hexagon");
+        optional_components.push("riscv");
     }
 
     // FIXME: surely we don't need all these components, right? Stuff like mcjit

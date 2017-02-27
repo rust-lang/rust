@@ -161,6 +161,12 @@ bool LLVMRustPassManagerBuilderPopulateThinLTOPassManager(
 #define SUBTARGET_MSP430
 #endif
 
+#ifdef LLVM_COMPONENT_RISCV
+#define SUBTARGET_RISCV SUBTARGET(RISCV)
+#else
+#define SUBTARGET_RISCV
+#endif
+
 #ifdef LLVM_COMPONENT_SPARC
 #define SUBTARGET_SPARC SUBTARGET(Sparc)
 #else
@@ -182,7 +188,8 @@ bool LLVMRustPassManagerBuilderPopulateThinLTOPassManager(
   SUBTARGET_SYSTEMZ                                                            \
   SUBTARGET_MSP430                                                             \
   SUBTARGET_SPARC                                                              \
-  SUBTARGET_HEXAGON
+  SUBTARGET_HEXAGON                                                            \
+  SUBTARGET_RISCV                                                              \
 
 #define SUBTARGET(x)                                                           \
   namespace llvm {                                                             \
