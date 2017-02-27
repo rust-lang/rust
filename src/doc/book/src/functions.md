@@ -230,6 +230,19 @@ If you want more information, you can get a backtrace by setting the
 ```text
 $ RUST_BACKTRACE=1 ./diverges
 thread 'main' panicked at 'This function never returns!', hello.rs:2
+Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+stack backtrace:
+  hello::diverges
+        at ./hello.rs:2
+  hello::main
+        at ./hello.rs:6
+```
+
+If you want the complete backtrace and filenames:
+
+```text
+$ RUST_BACKTRACE=full ./diverges
+thread 'main' panicked at 'This function never returns!', hello.rs:2
 stack backtrace:
    1:     0x7f402773a829 - sys::backtrace::write::h0942de78b6c02817K8r
    2:     0x7f402773d7fc - panicking::on_panic::h3f23f9d0b5f4c91bu9w
@@ -262,7 +275,7 @@ note: Run with `RUST_BACKTRACE=1` for a backtrace.
 `RUST_BACKTRACE` also works with Cargo’s `run` command:
 
 ```text
-$ RUST_BACKTRACE=1 cargo run
+$ RUST_BACKTRACE=full cargo run
      Running `target/debug/diverges`
 thread 'main' panicked at 'This function never returns!', hello.rs:2
 stack backtrace:
