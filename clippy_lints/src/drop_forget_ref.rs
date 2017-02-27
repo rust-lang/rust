@@ -89,13 +89,13 @@ declare_lint! {
     "calls to `std::mem::forget` with a value that implements Copy"
 }
 
-const DROP_REF_SUMMARY:&str = "calls to `std::mem::drop` with a reference instead of an owned value. \
+const DROP_REF_SUMMARY: &str = "calls to `std::mem::drop` with a reference instead of an owned value.
                                Dropping a reference does nothing.";
-const FORGET_REF_SUMMARY:&str = "calls to `std::mem::forget` with a reference instead of an owned value. \
+const FORGET_REF_SUMMARY: &str = "calls to `std::mem::forget` with a reference instead of an owned value.
                                  Forgetting a reference does nothing.";
-const DROP_COPY_SUMMARY:&str = "calls to `std::mem::drop` with a value that implements Copy. \
+const DROP_COPY_SUMMARY: &str = "calls to `std::mem::drop` with a value that implements Copy.
                                 Dropping a copy leaves the original intact.";
-const FORGET_COPY_SUMMARY:&str = "calls to `std::mem::forget` with a value that implements Copy. \
+const FORGET_COPY_SUMMARY: &str = "calls to `std::mem::forget` with a value that implements Copy.
                                   Forgetting a copy leaves the original intact.";
 
 #[allow(missing_copy_implementations)]
