@@ -90,6 +90,16 @@ impl<'a, T: fmt::Display> fmt::Display for CommaSep<'a, T> {
     }
 }
 
+impl<'a, T: fmt::Debug> fmt::Debug for CommaSep<'a, T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        for (i, item) in self.0.iter().enumerate() {
+            if i != 0 { write!(f, ", ")?; }
+            fmt::Debug::fmt(item, f)?;
+        }
+        Ok(())
+    }
+}
+
 impl<'a> fmt::Display for TyParamBounds<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let &TyParamBounds(bounds) = self;
@@ -165,7 +175,7 @@ impl<'a> fmt::Display for WhereClause<'a> {
         if f.alternate() {
             clause.push_str(" where ");
         } else {
-            clause.push_str(" <span class='where fmt-newline'>where ");
+            clause.push_str(" <span class=\"where fmt-newline\">where ");
         }
         for (i, pred) in gens.where_predicates.iter().enumerate() {
             if i > 0 {
@@ -449,8 +459,8 @@ fn resolved_path(w: &mut fmt::Formatter, did: DefId, path: &clean::Path,
                     } else {
                         root.push_str(&seg.name);
                         root.push_str("/");
-                        write!(w, "<a class='mod'
-                                       href='{}index.html'>{}</a>::",
+                        write!(w, "<a class=\"mod\"
+                                       href=\"{}index.html\">{}</a>::",
                                  root,
                                  seg.name)?;
                     }
@@ -491,7 +501,7 @@ fn primitive_link(f: &mut fmt::Formatter,
             Some(&def_id) if def_id.is_local() => {
                 let len = CURRENT_LOCATION_KEY.with(|s| s.borrow().len());
                 let len = if len == 0 {0} else {len - 1};
-                write!(f, "<a class='primitive' href='{}primitive.{}.html'>",
+                write!(f, "<a class=\"primitive\" href=\"{}primitive.{}.html\">",
                        repeat("../").take(len).collect::<String>(),
                        prim.to_url_str())?;
                 needs_termination = true;
@@ -508,7 +518,7 @@ fn primitive_link(f: &mut fmt::Formatter,
                     (.., render::Unknown) => None,
                 };
                 if let Some((cname, root)) = loc {
-                    write!(f, "<a class='primitive' href='{}{}/primitive.{}.html'>",
+                    write!(f, "<a class=\"primitive\" href=\"{}{}/primitive.{}.html\">",
                            root,
                            cname,
                            prim.to_url_str())?;
@@ -550,7 +560,7 @@ impl<'a> fmt::Display for HRef<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match href(self.did) {
             Some((url, shortty, fqp)) => if !f.alternate() {
-                write!(f, "<a class='{}' href='{}' title='{} {}'>{}</a>",
+                write!(f, "<a class=\"{}\" href=\"{}\" title=\"{} {}\">{}</a>",
                        shortty, url, shortty, fqp.join("::"), self.text)
             } else {
                 write!(f, "{}", self.text)
@@ -599,13 +609,13 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter, use_absolute: bool,
                     fmt::Display::fmt(one, f)?;
                     primitive_link(f, PrimitiveType::Tuple, ",)")
                 }
-                &[ref one] => write!(f, "({},)", one),
+                &[ref one] => write!(f, "({:?},)", one),
                 many if is_not_debug => {
                     primitive_link(f, PrimitiveType::Tuple, "(")?;
                     fmt::Display::fmt(&CommaSep(&many), f)?;
                     primitive_link(f, PrimitiveType::Tuple, ")")
                 }
-                many => write!(f, "({})", &CommaSep(&many)),
+                many => write!(f, "({:?})", &CommaSep(&many)),
             }
         }
         clean::Vector(ref t) if is_not_debug => {
@@ -613,7 +623,7 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter, use_absolute: bool,
             fmt::Display::fmt(t, f)?;
             primitive_link(f, PrimitiveType::Slice, &format!("]"))
         }
-        clean::Vector(ref t) => write!(f, "[{}]", t),
+        clean::Vector(ref t) => write!(f, "[{:?}]", t),
         clean::FixedVector(ref t, ref s) if is_not_debug => {
             primitive_link(f, PrimitiveType::Array, "[")?;
             fmt::Display::fmt(t, f)?;
@@ -627,9 +637,9 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter, use_absolute: bool,
         }
         clean::FixedVector(ref t, ref s) => {
             if f.alternate() {
-                write!(f, "[{}; {}]", t, s)
+                write!(f, "[{:?}; {}]", t, s)
             } else {
-                write!(f, "[{}; {}]", t, Escape(s))
+                write!(f, "[{:?}; {}]", t, Escape(s))
             }
         }
         clean::Never => f.write_str("!"),
@@ -646,9 +656,9 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter, use_absolute: bool,
                 }
                 clean::Generic(_) | clean::ResolvedPath {is_generic: true, ..} => {
                     if f.alternate() {
-                        write!(f, "*{}{:#}", RawMutableSpace(m), t)
+                        write!(f, "*{}{:#?}", RawMutableSpace(m), t)
                     } else {
-                        write!(f, "*{}{}", RawMutableSpace(m), t)
+                        write!(f, "*{}{:?}", RawMutableSpace(m), t)
                     }
                 }
                 _ if is_not_debug => {
@@ -657,7 +667,7 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter, use_absolute: bool,
                     fmt::Display::fmt(t, f)
                 }
                 _ => {
-                    write!(f, "*{}{}", RawMutableSpace(m), t)
+                    write!(f, "*{}{:?}", RawMutableSpace(m), t)
                 }
             }
         }
@@ -681,9 +691,9 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter, use_absolute: bool,
                         }
                         clean::Generic(_) => {
                             if f.alternate() {
-                                write!(f, "&{}{}[{:#}]", lt, m, **bt)
+                                write!(f, "&{}{}[{:#?}]", lt, m, **bt)
                             } else {
-                                write!(f, "&{}{}[{}]", lt, m, **bt)
+                                write!(f, "&{}{}[{:?}]", lt, m, **bt)
                             }
                         }
                         _ if is_not_debug => {
@@ -700,9 +710,9 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter, use_absolute: bool,
                         }
                         _ => {
                             if f.alternate() {
-                                write!(f, "&{}{}[{:#}]", lt, m, **bt)
+                                write!(f, "&{}{}[{:#?}]", lt, m, **bt)
                             } else {
-                                write!(f, "&{}{}[{}]", lt, m, **bt)
+                                write!(f, "&{}{}[{:?}]", lt, m, **bt)
                             }
                         }
                     }
@@ -765,12 +775,16 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter, use_absolute: bool,
         }
         clean::QPath { ref name, ref self_type, ref trait_ } => {
             if f.alternate() {
-                write!(f, "<{:#} as {:#}>::{}", self_type, trait_, name)
+                if is_not_debug {
+                    write!(f, "<{:#} as {:#}>::{}", self_type, trait_, name)
+                } else {
+                    write!(f, "<{:#?} as {:#?}>::{}", self_type, trait_, name)
+                }
             } else {
                 if is_not_debug {
                     write!(f, "&lt;{} as {}&gt;::{}", self_type, trait_, name)
                 } else {
-                    write!(f, "<{} as {}>::{}", self_type, trait_, name)
+                    write!(f, "<{:?} as {:?}>::{}", self_type, trait_, name)
                 }
             }
         }
