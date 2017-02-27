@@ -900,7 +900,7 @@ pub fn opt_def_id(def: Def) -> Option<DefId> {
         Def::AssociatedConst(id) |
         Def::Local(id) |
         Def::Upvar(id, ..) |
-        Def::Macro(id) => Some(id),
+        Def::Macro(id, _) => Some(id),
 
         Def::Label(..) | Def::PrimTy(..) | Def::SelfTy(..) | Def::Err => None,
     }
