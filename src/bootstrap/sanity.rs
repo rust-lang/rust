@@ -198,10 +198,6 @@ $ pacman -R cmake && pacman -S mingw-w64-x86_64-cmake
 ");
             }
         }
-
-        if target.contains("arm-linux-android") {
-            need_cmd("adb".as_ref());
-        }
     }
 
     for host in build.flags.host.iter() {
