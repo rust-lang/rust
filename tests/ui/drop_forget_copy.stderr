@@ -1,4 +1,4 @@
-error: call to `std::mem::drop` with a value that implements Copy. Dropping a copy leaves the original intact.
+error: calls to `std::mem::drop` with a value that implements Copy. Dropping a copy leaves the original intact.
   --> $DIR/drop_forget_copy.rs:33:5
    |
 33 |     drop(s1);
@@ -15,7 +15,7 @@ note: argument has type SomeStruct
 33 |     drop(s1);
    |          ^^
 
-error: call to `std::mem::drop` with a value that implements Copy. Dropping a copy leaves the original intact.
+error: calls to `std::mem::drop` with a value that implements Copy. Dropping a copy leaves the original intact.
   --> $DIR/drop_forget_copy.rs:34:5
    |
 34 |     drop(s2);
@@ -27,19 +27,7 @@ note: argument has type SomeStruct
 34 |     drop(s2);
    |          ^^
 
-error: call to `std::mem::drop` with a value that implements Copy. Dropping a copy leaves the original intact.
-  --> $DIR/drop_forget_copy.rs:35:5
-   |
-35 |     drop(s3);
-   |     ^^^^^^^^
-   |
-note: argument has type &SomeStruct
-  --> $DIR/drop_forget_copy.rs:35:10
-   |
-35 |     drop(s3);
-   |          ^^
-
-error: call to `std::mem::drop` with a value that implements Copy. Dropping a copy leaves the original intact.
+error: calls to `std::mem::drop` with a value that implements Copy. Dropping a copy leaves the original intact.
   --> $DIR/drop_forget_copy.rs:36:5
    |
 36 |     drop(s4);
@@ -51,19 +39,7 @@ note: argument has type SomeStruct
 36 |     drop(s4);
    |          ^^
 
-error: call to `std::mem::drop` with a value that implements Copy. Dropping a copy leaves the original intact.
-  --> $DIR/drop_forget_copy.rs:37:5
-   |
-37 |     drop(s5);
-   |     ^^^^^^^^
-   |
-note: argument has type &SomeStruct
-  --> $DIR/drop_forget_copy.rs:37:10
-   |
-37 |     drop(s5);
-   |          ^^
-
-error: call to `std::mem::forget` with a value that implements Copy. Forgetting a copy leaves the original intact.
+error: calls to `std::mem::forget` with a value that implements Copy. Forgetting a copy leaves the original intact.
   --> $DIR/drop_forget_copy.rs:39:5
    |
 39 |     forget(s1);
@@ -80,7 +56,7 @@ note: argument has type SomeStruct
 39 |     forget(s1);
    |            ^^
 
-error: call to `std::mem::forget` with a value that implements Copy. Forgetting a copy leaves the original intact.
+error: calls to `std::mem::forget` with a value that implements Copy. Forgetting a copy leaves the original intact.
   --> $DIR/drop_forget_copy.rs:40:5
    |
 40 |     forget(s2);
@@ -92,19 +68,7 @@ note: argument has type SomeStruct
 40 |     forget(s2);
    |            ^^
 
-error: call to `std::mem::forget` with a value that implements Copy. Forgetting a copy leaves the original intact.
-  --> $DIR/drop_forget_copy.rs:41:5
-   |
-41 |     forget(s3);
-   |     ^^^^^^^^^^
-   |
-note: argument has type &SomeStruct
-  --> $DIR/drop_forget_copy.rs:41:12
-   |
-41 |     forget(s3);
-   |            ^^
-
-error: call to `std::mem::forget` with a value that implements Copy. Forgetting a copy leaves the original intact.
+error: calls to `std::mem::forget` with a value that implements Copy. Forgetting a copy leaves the original intact.
   --> $DIR/drop_forget_copy.rs:42:5
    |
 42 |     forget(s4);
@@ -116,77 +80,5 @@ note: argument has type SomeStruct
 42 |     forget(s4);
    |            ^^
 
-error: call to `std::mem::forget` with a value that implements Copy. Forgetting a copy leaves the original intact.
-  --> $DIR/drop_forget_copy.rs:43:5
-   |
-43 |     forget(s5);
-   |     ^^^^^^^^^^
-   |
-note: argument has type &SomeStruct
-  --> $DIR/drop_forget_copy.rs:43:12
-   |
-43 |     forget(s5);
-   |            ^^
-
-error: call to `std::mem::drop` with a value that implements Copy. Dropping a copy leaves the original intact.
-  --> $DIR/drop_forget_copy.rs:51:5
-   |
-51 |     drop(a2);
-   |     ^^^^^^^^
-   |
-note: argument has type &AnotherStruct
-  --> $DIR/drop_forget_copy.rs:51:10
-   |
-51 |     drop(a2);
-   |          ^^
-
-error: call to `std::mem::drop` with a value that implements Copy. Dropping a copy leaves the original intact.
-  --> $DIR/drop_forget_copy.rs:53:5
-   |
-53 |     drop(a4);
-   |     ^^^^^^^^
-   |
-note: argument has type &AnotherStruct
-  --> $DIR/drop_forget_copy.rs:53:10
-   |
-53 |     drop(a4);
-   |          ^^
-
-error: call to `std::mem::forget` with a value that implements Copy. Forgetting a copy leaves the original intact.
-  --> $DIR/drop_forget_copy.rs:56:5
-   |
-56 |     forget(a2);
-   |     ^^^^^^^^^^
-   |
-note: argument has type &AnotherStruct
-  --> $DIR/drop_forget_copy.rs:56:12
-   |
-56 |     forget(a2);
-   |            ^^
-
-error: call to `std::mem::forget` with a value that implements Copy. Forgetting a copy leaves the original intact.
-  --> $DIR/drop_forget_copy.rs:58:5
-   |
-58 |     forget(a3);
-   |     ^^^^^^^^^^
-   |
-note: argument has type &AnotherStruct
-  --> $DIR/drop_forget_copy.rs:58:12
-   |
-58 |     forget(a3);
-   |            ^^
-
-error: call to `std::mem::forget` with a value that implements Copy. Forgetting a copy leaves the original intact.
-  --> $DIR/drop_forget_copy.rs:59:5
-   |
-59 |     forget(a4);
-   |     ^^^^^^^^^^
-   |
-note: argument has type &AnotherStruct
-  --> $DIR/drop_forget_copy.rs:59:12
-   |
-59 |     forget(a4);
-   |            ^^
-
-error: aborting due to 15 previous errors
+error: aborting due to 6 previous errors
 
