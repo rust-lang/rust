@@ -3,7 +3,7 @@ All notable changes to this project will be documented in this file.
 
 ## 0.0.115 — 2017-02-27
 * Rustup to *rustc 1.17.0-nightly (60a0edc6c 2017-02-26)*
-* New lints: [`zero_ptr`, `never_loop`, `mut_from_ref`]
+* New lints: [`zero_ptr`], [`never_loop`], [`mut_from_ref`]
 
 ## 0.0.114 — 2017-02-08
 * Rustup to *rustc 1.17.0-nightly (c49d10207 2017-02-07)*
