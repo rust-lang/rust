@@ -80,7 +80,7 @@ name = "bootstrap"
 version = "0.0.0"
 dependencies = [
  "build_helper 0.1.0",
- "cmake 0.1.20 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cmake 0.1.21 (registry+https://github.com/rust-lang/crates.io-index)",
  "filetime 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "gcc 0.3.43 (registry+https://github.com/rust-lang/crates.io-index)",
  "getopts 0.2.14 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -202,7 +202,7 @@ dependencies = [
 
 [[package]]
 name = "cmake"
-version = "0.1.20"
+version = "0.1.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "gcc 0.3.43 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -894,7 +894,7 @@ version = "0.0.0"
 dependencies = [
  "alloc_system 0.0.0",
  "build_helper 0.1.0",
- "cmake 0.1.20 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cmake 0.1.21 (registry+https://github.com/rust-lang/crates.io-index)",
  "core 0.0.0",
 ]
 
@@ -1037,7 +1037,7 @@ version = "0.0.0"
 dependencies = [
  "alloc_system 0.0.0",
  "build_helper 0.1.0",
- "cmake 0.1.20 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cmake 0.1.21 (registry+https://github.com/rust-lang/crates.io-index)",
  "core 0.0.0",
 ]
 
@@ -1081,7 +1081,7 @@ version = "0.0.0"
 dependencies = [
  "alloc_system 0.0.0",
  "build_helper 0.1.0",
- "cmake 0.1.20 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cmake 0.1.21 (registry+https://github.com/rust-lang/crates.io-index)",
  "core 0.0.0",
 ]
 
@@ -1173,7 +1173,7 @@ version = "0.0.0"
 dependencies = [
  "alloc_system 0.0.0",
  "build_helper 0.1.0",
- "cmake 0.1.20 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cmake 0.1.21 (registry+https://github.com/rust-lang/crates.io-index)",
  "core 0.0.0",
 ]
 
@@ -1573,7 +1573,7 @@ dependencies = [
 "checksum bufstream 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "7b48dbe2ff0e98fa2f03377d204a9637d3c9816cd431bfe05a8abbd0ea11d074"
 "checksum cfg-if 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "de1e760d7b6535af4241fca8bd8adf68e2e7edacc6b29f5d399050c5e48cf88c"
 "checksum clap 2.20.5 (registry+https://github.com/rust-lang/crates.io-index)" = "7db281b0520e97fbd15cd615dcd8f8bcad0c26f5f7d5effe705f090f39e9a758"
-"checksum cmake 0.1.20 (registry+https://github.com/rust-lang/crates.io-index)" = "a3a6805df695087e7c1bcd9a82e03ad6fb864c8e67ac41b1348229ce5b7f0407"
+"checksum cmake 0.1.21 (registry+https://github.com/rust-lang/crates.io-index)" = "e1acc68a3f714627af38f9f5d09706a28584ba60dfe2cca68f40bf779f941b25"
 "checksum crossbeam 0.2.10 (registry+https://github.com/rust-lang/crates.io-index)" = "0c5ea215664ca264da8a9d9c3be80d2eaf30923c259d03e870388eb927508f97"
 "checksum curl 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)" = "c90e1240ef340dd4027ade439e5c7c2064dd9dc652682117bd50d1486a3add7b"
 "checksum curl-sys 0.3.10 (registry+https://github.com/rust-lang/crates.io-index)" = "c0d909dc402ae80b6f7b0118c039203436061b9d9a3ca5d2c2546d93e0a61aaa"

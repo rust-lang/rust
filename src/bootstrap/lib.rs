@@ -740,7 +740,7 @@ impl Build {
         } else {
             let base = self.llvm_out(&self.config.build).join("build");
             let exe = exe("FileCheck", target);
-            if self.config.build.contains("msvc") {
+            if !self.config.ninja && self.config.build.contains("msvc") {
                 base.join("Release/bin").join(exe)
             } else {
                 base.join("bin").join(exe)
