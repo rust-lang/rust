@@ -65,12 +65,15 @@ pub struct Error;
 /// A collection of methods that are required to format a message into a stream.
 ///
 /// This trait is the type which this modules requires when formatting
-/// information. This is similar to the standard library's `io::Write` trait,
+/// information. This is similar to the standard library's [`io::Write`] trait,
 /// but it is only intended for use in libcore.
 ///
 /// This trait should generally not be implemented by consumers of the standard
-/// library. The `write!` macro accepts an instance of `io::Write`, and the
-/// `io::Write` trait is favored over implementing this trait.
+/// library. The [`write!`] macro accepts an instance of [`io::Write`], and the
+/// [`io::Write`] trait is favored over implementing this trait.
+///
+/// [`write!`]: ../../std/macro.write.html
+/// [`io::Write`]: ../../std/io/trait.Write.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Write {
     /// Writes a slice of bytes into this writer, returning whether the write
@@ -82,29 +85,79 @@ pub trait Write {
     ///
     /// # Errors
     ///
-    /// This function will return an instance of `Error` on error.
+    /// This function will return an instance of [`Error`] on error.
+    ///
+    /// [`Error`]: struct.Error.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fmt::{Error, Write};
+    ///
+    /// fn writer<W: Write>(f: &mut W, s: &str) -> Result<(), Error> {
+    ///     f.write_str(s)
+    /// }
+    ///
+    /// let mut buf = String::new();
+    /// writer(&mut buf, "hola").unwrap();
+    /// assert_eq!(&buf, "hola");
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn write_str(&mut self, s: &str) -> Result;
 
-    /// Writes a `char` into this writer, returning whether the write succeeded.
+    /// Writes a [`char`] into this writer, returning whether the write succeeded.
     ///
-    /// A single `char` may be encoded as more than one byte.
+    /// A single [`char`] may be encoded as more than one byte.
     /// This method can only succeed if the entire byte sequence was successfully
     /// written, and this method will not return until all data has been
     /// written or an error occurs.
     ///
     /// # Errors
     ///
-    /// This function will return an instance of `Error` on error.
+    /// This function will return an instance of [`Error`] on error.
+    ///
+    /// [`char`]: ../../std/primitive.char.html
+    /// [`Error`]: struct.Error.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fmt::{Error, Write};
+    ///
+    /// fn writer<W: Write>(f: &mut W, c: char) -> Result<(), Error> {
+    ///     f.write_char(c)
+    /// }
+    ///
+    /// let mut buf = String::new();
+    /// writer(&mut buf, 'a').unwrap();
+    /// writer(&mut buf, 'b').unwrap();
+    /// assert_eq!(&buf, "ab");
+    /// ```
     #[stable(feature = "fmt_write_char", since = "1.1.0")]
     fn write_char(&mut self, c: char) -> Result {
         self.write_str(c.encode_utf8(&mut [0; 4]))
     }
 
-    /// Glue for usage of the `write!` macro with implementors of this trait.
+    /// Glue for usage of the [`write!`] macro with implementors of this trait.
     ///
     /// This method should generally not be invoked manually, but rather through
-    /// the `write!` macro itself.
+    /// the [`write!`] macro itself.
+    ///
+    /// [`write!`]: ../../std/macro.write.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::fmt::{Error, Write};
+    ///
+    /// fn writer<W: Write>(f: &mut W, s: &str) -> Result<(), Error> {
+    ///     f.write_fmt(format_args!("{}", s))
+    /// }
+    ///
+    /// let mut buf = String::new();
+    /// writer(&mut buf, "world").unwrap();
+    /// assert_eq!(&buf, "world");
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn write_fmt(&mut self, args: Arguments) -> Result {
         // This Adapter is needed to allow `self` (of type `&mut
