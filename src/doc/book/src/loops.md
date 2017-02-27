@@ -100,7 +100,8 @@ developers.
 
 ### Enumerate
 
-When you need to keep track of how many times you already looped, you can use the `.enumerate()` function.
+When you need to keep track of how many times you have already looped, you can
+use the `.enumerate()` function.
 
 #### On ranges:
 
