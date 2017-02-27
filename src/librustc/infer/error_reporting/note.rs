@@ -14,7 +14,7 @@ use ty::error::TypeError;
 use errors::DiagnosticBuilder;
 
 impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
-    pub fn note_region_origin(&self, err: &mut DiagnosticBuilder, origin: &SubregionOrigin<'tcx>) {
+    pub(super) fn note_region_origin(&self, err: &mut DiagnosticBuilder, origin: &SubregionOrigin<'tcx>) {
         match *origin {
             infer::Subtype(ref trace) => {
                 if let Some((expected, found)) = self.values_str(&trace.values) {
@@ -178,7 +178,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn report_concrete_failure(&self,
+    pub(super) fn report_concrete_failure(&self,
                                origin: SubregionOrigin<'tcx>,
                                sub: &'tcx Region,
                                sup: &'tcx Region)
