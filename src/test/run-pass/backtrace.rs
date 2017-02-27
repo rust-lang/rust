@@ -58,53 +58,7 @@ fn runtest(me: &str) {
     let s = str::from_utf8(&out.stderr).unwrap();
     assert!(s.contains("stack backtrace") && s.contains(&expected("foo")),
             "bad output: {}", s);
-
-    // Make sure than the short version cleans the backtrace.
-    let p = template(me).arg("fail").env("RUST_BACKTRACE", "1").spawn().unwrap();
-    let out = p.wait_with_output().unwrap();
-    assert!(!out.status.success());
-    let s = str::from_utf8(&out.stderr).unwrap();
-    let removed_symbols = &[
-        "std::sys::imp::backtrace",
-        "std::sys_common::backtrace",
-        "std::panicking",
-        "core::panicking",
-        "rust_begin_unwind",
-        "code::result::unwrap_failed",
-        "std::panicking::try::do_call",
-        "__rust_maybe_catch_panic",
-        "__libc_start_main",
-        "__rust_try",
-        "_start",
-    ];
-    for symbol in removed_symbols {
-        assert!(!s.contains(symbol),
-                "{} should be removed from the backtrace\n{}",
-                symbol, s);
-    }
     assert!(s.contains(" 0:"), "the frame number should start at 0");
-
-    // Only on linux for _start and __libc_start_main
-    #[cfg(target_os="linux")]
-    {
-        // Make sure than the short version cleans the backtrace.
-        let p = template(me).arg("fail").env("RUST_BACKTRACE", "full").spawn().unwrap();
-        let out = p.wait_with_output().unwrap();
-        assert!(!out.status.success());
-        let s = str::from_utf8(&out.stderr).unwrap();
-        let should_be_present = &[
-            "std::panicking",
-            "__rust_maybe_catch_panic",
-            "__libc_start_main",
-            "_start",
-        ];
-        for symbol in should_be_present {
-            // May give false positive due to inlining.
-            assert!(s.contains(symbol),
-            "the full version of the backtrace should contain {}",
-            symbol);
-        }
-    }
 
     // Make sure the stack trace is *not* printed
     // (Remove RUST_BACKTRACE from our own environment, in case developer
