@@ -1,8 +1,8 @@
 Steps to publish a new clippy version
 
 - Bump `package.version` in `./Cargo.toml` (no need to manually bump `dependencies.clippy_lints.version`).
-- Run `./pre_publish.sh`
 - Write a changelog entry.
+- Run `./pre_publish.sh`
 - Review and commit all changed files
 - `git push`
 - Wait for Travis's approval.
