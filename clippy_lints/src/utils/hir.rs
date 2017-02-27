@@ -68,7 +68,9 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
 
         match (&left.node, &right.node) {
             (&ExprAddrOf(l_mut, ref le), &ExprAddrOf(r_mut, ref re)) => l_mut == r_mut && self.eq_expr(le, re),
-            (&ExprAgain(li), &ExprAgain(ri)) => both(&li.ident, &ri.ident, |l, r| l.node.name.as_str() == r.node.name.as_str()),
+            (&ExprAgain(li), &ExprAgain(ri)) => {
+                both(&li.ident, &ri.ident, |l, r| l.node.name.as_str() == r.node.name.as_str())
+            },
             (&ExprAssign(ref ll, ref lr), &ExprAssign(ref rl, ref rr)) => self.eq_expr(ll, rl) && self.eq_expr(lr, rr),
             (&ExprAssignOp(ref lo, ref ll, ref lr), &ExprAssignOp(ref ro, ref rl, ref rr)) => {
                 lo.node == ro.node && self.eq_expr(ll, rl) && self.eq_expr(lr, rr)
@@ -81,7 +83,8 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
                 })
             },
             (&ExprBreak(li, ref le), &ExprBreak(ri, ref re)) => {
-                both(&li.ident, &ri.ident, |l, r| l.node.name.as_str() == r.node.name.as_str()) && both(le, re, |l, r| self.eq_expr(l, r))
+                both(&li.ident, &ri.ident, |l, r| l.node.name.as_str() == r.node.name.as_str()) &&
+                both(le, re, |l, r| self.eq_expr(l, r))
             },
             (&ExprBox(ref l), &ExprBox(ref r)) => self.eq_expr(l, r),
             (&ExprCall(ref l_fun, ref l_args), &ExprCall(ref r_fun, ref r_args)) => {
