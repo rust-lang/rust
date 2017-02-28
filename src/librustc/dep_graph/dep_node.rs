@@ -115,6 +115,7 @@ pub enum DepNode<D: Clone + Debug> {
     SizedConstraint(D),
     AssociatedItemDefIds(D),
     InherentImpls(D),
+    TypeckBodiesKrate,
     TypeckTables(D),
     UsedTraitImports(D),
     MonomorphicConstEval(D),
@@ -211,6 +212,7 @@ impl<D: Clone + Debug> DepNode<D> {
         match *self {
             Krate => Some(Krate),
             BorrowCheckKrate => Some(BorrowCheckKrate),
+            TypeckBodiesKrate => Some(TypeckBodiesKrate),
             CollectLanguageItems => Some(CollectLanguageItems),
             CheckStaticRecursion => Some(CheckStaticRecursion),
             ResolveLifetimes => Some(ResolveLifetimes),
