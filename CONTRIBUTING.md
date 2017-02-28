@@ -97,33 +97,38 @@ system internals, try asking in [`#rust-internals`][pound-rust-internals].
 
 Before you can start building the compiler you need to configure the build for
 your system. In most cases, that will just mean using the defaults provided
-for Rust. Configuring involves invoking the `configure` script in the project
-root.
+for Rust.
 
-```
-./configure
-```
+To change configuration, you must copy the file `src/bootstrap/config.toml.example`
+to `config.toml` in the directory from which you will be running the build, and
+change the settings provided.
 
-There are large number of options accepted by this script to alter the
-configuration used later in the build process. Some options to note:
+There are large number of options provided in this config file that will alter the
+configuration used in the build process. Some options to note:
 
-- `--enable-debug` - Build a debug version of the compiler (disables optimizations,
-    which speeds up compilation of stage1 rustc)
-- `--enable-optimize` - Enable optimizations (can be used with `--enable-debug`
-    to make a debug build with optimizations)
-- `--disable-valgrind-rpass` - Don't run tests with valgrind
-- `--enable-clang` - Prefer clang to gcc for building dependencies (e.g., LLVM)
-- `--enable-ccache` - Invoke clang/gcc with ccache to re-use object files between builds
-- `--enable-compiler-docs` - Build compiler documentation
+#### `[llvm]`:
+- `ccache = true` - Use ccache when building llvm
 
-To see a full list of options, run `./configure --help`.
+#### `[build]`:
+- `compiler-docs = true` - Build compiler documentation
+
+#### `[rust]`:
+- `debuginfo = true` - Build a compiler with debuginfo
+- `optimize = false` - Disable optimizations to speed up compilation of stage1 rust
+
+For more options, the `config.toml` file contains commented out defaults, with
+descriptions of what each option will do.
+
+Note: Previously the `./configure` script was used to configure this
+project. It can still be used, but it's recommended to use a `config.toml`
+file. If you still have a `config.mk` file in your directory - from
+`./configure` - you may need to delete it for `config.toml` to work.
 
 ### Building
 
-Although the `./configure` script will generate a `Makefile`, this is actually
-just a thin veneer over the actual build system driver, `x.py`. This file, at
-the root of the repository, is used to build, test, and document various parts
-of the compiler. You can execute it as:
+The build system uses the `x.py` script to control the build process. This script
+is used to build, test, and document various parts of the compiler. You can
+execute it as:
 
 ```sh
 python x.py build
@@ -185,6 +190,9 @@ To learn about all possible rules you can execute, run:
 python x.py build --help --verbose
 ```
 
+Note: Previously `./configure` and `make` were used to build this project.
+They are still available, but `x.py` is the recommended build system.
+
 ### Useful commands
 
 Some common invocations of `x.py` are:
@@ -235,8 +243,8 @@ feature. We use the 'fork and pull' model described there.
 
 Please make pull requests against the `master` branch.
 
-Compiling all of `make check` can take a while. When testing your pull request,
-consider using one of the more specialized `make` targets to cut down on the
+Compiling all of `./x.py test` can take a while. When testing your pull request,
+consider using one of the more specialized `./x.py` targets to cut down on the
 amount of time you have to wait. You need to have built the compiler at least
 once before running these will work, but that’s only one full build rather than
 one each time.
@@ -307,7 +315,7 @@ To find documentation-related issues, sort by the [A-docs label][adocs].
 
 [adocs]: https://github.com/rust-lang/rust/issues?q=is%3Aopen+is%3Aissue+label%3AA-docs
 
-In many cases, you don't need a full `make doc`. You can use `rustdoc` directly
+In many cases, you don't need a full `./x.py doc`. You can use `rustdoc` directly
 to check small fixes. For example, `rustdoc src/doc/reference.md` will render
 reference to `doc/reference.html`. The CSS might be messed up, but you can
 verify that the HTML is right.
