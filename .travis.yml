@@ -15,7 +15,7 @@ matrix:
     - env: IMAGE=android DEPLOY=1
     - env: IMAGE=armhf-gnu
     - env: IMAGE=cross DEPLOY=1
-    - env: IMAGE=linux-tested-targets DEPLOY=1
+    - env: IMAGE=linux-tested-targets ALLOW_PR=1 DEPLOY=1
     - env: IMAGE=dist-arm-linux DEPLOY=1
     - env: IMAGE=dist-armv7-aarch64-linux DEPLOY=1
     - env: IMAGE=dist-freebsd DEPLOY=1
@@ -33,7 +33,7 @@ matrix:
     - env: IMAGE=x86_64-gnu-aux
     - env: IMAGE=x86_64-gnu-debug
     - env: IMAGE=x86_64-gnu-nopt
-    - env: IMAGE=x86_64-gnu-llvm-3.7 ALLOW_PR=1 RUST_BACKTRACE=1
+    - env: IMAGE=x86_64-gnu-llvm-3.7 RUST_BACKTRACE=1
     - env: IMAGE=x86_64-gnu-distcheck
     - env: IMAGE=x86_64-gnu-incremental
 
