@@ -155,13 +155,13 @@ impl FlagComputation {
                 self.add_tys(&ts[..]);
             }
 
-            &ty::TyFnDef(_, substs, ref f) => {
+            &ty::TyFnDef(_, substs, f) => {
                 self.add_substs(substs);
-                self.add_fn_sig(&f.sig);
+                self.add_fn_sig(f);
             }
 
-            &ty::TyFnPtr(ref f) => {
-                self.add_fn_sig(&f.sig);
+            &ty::TyFnPtr(f) => {
+                self.add_fn_sig(f);
             }
         }
     }
@@ -177,7 +177,7 @@ impl FlagComputation {
         }
     }
 
-    fn add_fn_sig(&mut self, fn_sig: &ty::PolyFnSig) {
+    fn add_fn_sig(&mut self, fn_sig: ty::PolyFnSig) {
         let mut computation = FlagComputation::new();
 
         computation.add_tys(fn_sig.skip_binder().inputs());

@@ -17,7 +17,7 @@ impl S {
 }
 
 static STUFF: [u8; S::N] = [0; S::N];
-//~^ ERROR constant evaluation error
-//~| unresolved path in constant expression
 
-fn main() {}
+fn main() {
+    assert_eq!(STUFF, [0; 3]);
+}

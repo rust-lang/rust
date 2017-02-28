@@ -17,7 +17,6 @@ use rustc::ty::layout::{Layout, Primitive};
 use rustc::traits::Reveal;
 use middle::const_val::ConstVal;
 use rustc_const_eval::ConstContext;
-use rustc_const_eval::EvalHint::ExprTypeChecked;
 use util::nodemap::FxHashSet;
 use lint::{LateContext, LintContext, LintArray};
 use lint::{LintPass, LateLintPass};
@@ -109,7 +108,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for TypeLimits {
                             }
                         } else {
                             let const_cx = ConstContext::with_tables(cx.tcx, cx.tables);
-                            match const_cx.eval(&r, ExprTypeChecked) {
+                            match const_cx.eval(&r) {
                                 Ok(ConstVal::Integral(i)) => {
                                     i.is_negative() ||
                                     i.to_u64()
@@ -381,6 +380,17 @@ fn is_repr_nullable_ptr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     false
 }
 
+fn is_ffi_safe(ty: attr::IntType) -> bool {
+    match ty {
+        attr::SignedInt(ast::IntTy::I8) | attr::UnsignedInt(ast::UintTy::U8) |
+        attr::SignedInt(ast::IntTy::I16) | attr::UnsignedInt(ast::UintTy::U16) |
+        attr::SignedInt(ast::IntTy::I32) | attr::UnsignedInt(ast::UintTy::U32) |
+        attr::SignedInt(ast::IntTy::I64) | attr::UnsignedInt(ast::UintTy::U64) |
+        attr::SignedInt(ast::IntTy::I128) | attr::UnsignedInt(ast::UintTy::U128) => true,
+        attr::SignedInt(ast::IntTy::Is) | attr::UnsignedInt(ast::UintTy::Us) => false
+    }
+}
+
 impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
     /// Check if the given type is "ffi-safe" (has a stable, well-defined
     /// representation which can be exported to C code).
@@ -406,7 +416,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 }
                 match def.adt_kind() {
                     AdtKind::Struct => {
-                        if !cx.lookup_repr_hints(def.did).contains(&attr::ReprExtern) {
+                        if !def.repr.c {
                             return FfiUnsafe("found struct without foreign-function-safe \
                                               representation annotation in foreign module, \
                                               consider adding a #[repr(C)] attribute to the type");
@@ -440,7 +450,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                         if all_phantom { FfiPhantom } else { FfiSafe }
                     }
                     AdtKind::Union => {
-                        if !cx.lookup_repr_hints(def.did).contains(&attr::ReprExtern) {
+                        if !def.repr.c {
                             return FfiUnsafe("found union without foreign-function-safe \
                                               representation annotation in foreign module, \
                                               consider adding a #[repr(C)] attribute to the type");
@@ -479,35 +489,28 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
                         // Check for a repr() attribute to specify the size of the
                         // discriminant.
-                        let repr_hints = cx.lookup_repr_hints(def.did);
-                        match &repr_hints[..] {
-                            &[] => {
-                                // Special-case types like `Option<extern fn()>`.
-                                if !is_repr_nullable_ptr(cx, def, substs) {
-                                    return FfiUnsafe("found enum without foreign-function-safe \
-                                                      representation annotation in foreign \
-                                                      module, consider adding a #[repr(...)] \
-                                                      attribute to the type");
-                                }
+                        if !def.repr.c && def.repr.int.is_none() {
+                            // Special-case types like `Option<extern fn()>`.
+                            if !is_repr_nullable_ptr(cx, def, substs) {
+                                return FfiUnsafe("found enum without foreign-function-safe \
+                                                  representation annotation in foreign \
+                                                  module, consider adding a #[repr(...)] \
+                                                  attribute to the type");
                             }
-                            &[ref hint] => {
-                                if !hint.is_ffi_safe() {
-                                    // FIXME: This shouldn't be reachable: we should check
-                                    // this earlier.
-                                    return FfiUnsafe("enum has unexpected #[repr(...)] attribute");
-                                }
+                        }
 
-                                // Enum with an explicitly sized discriminant; either
-                                // a C-style enum or a discriminated union.
-
-                                // The layout of enum variants is implicitly repr(C).
-                                // FIXME: Is that correct?
-                            }
-                            _ => {
+                        if let Some(int_ty) = def.repr.int {
+                            if !is_ffi_safe(int_ty) {
                                 // FIXME: This shouldn't be reachable: we should check
                                 // this earlier.
-                                return FfiUnsafe("enum has too many #[repr(...)] attributes");
+                                return FfiUnsafe("enum has unexpected #[repr(...)] attribute");
                             }
+
+                            // Enum with an explicitly sized discriminant; either
+                            // a C-style enum or a discriminated union.
+
+                            // The layout of enum variants is implicitly repr(C).
+                            // FIXME: Is that correct?
                         }
 
                         // Check the contained variants.
@@ -568,8 +571,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
             ty::TyArray(ty, _) => self.check_type_for_ffi(cache, ty),
 
-            ty::TyFnPtr(bare_fn) => {
-                match bare_fn.abi {
+            ty::TyFnPtr(sig) => {
+                match sig.abi() {
                     Abi::Rust | Abi::RustIntrinsic | Abi::PlatformIntrinsic | Abi::RustCall => {
                         return FfiUnsafe("found function pointer with Rust calling convention in \
                                           foreign module; consider using an `extern` function \
@@ -578,7 +581,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                     _ => {}
                 }
 
-                let sig = cx.erase_late_bound_regions(&bare_fn.sig);
+                let sig = cx.erase_late_bound_regions(&sig);
                 if !sig.output().is_nil() {
                     let r = self.check_type_for_ffi(cache, sig.output());
                     match r {

@@ -13,9 +13,9 @@
 trait MyTrait {}
 
 impl MyTrait for .. {}
+//~^ ERROR redundant default implementations of trait `MyTrait`
 
 impl MyTrait for .. {}
-//~^ ERROR redundant default implementations of trait `MyTrait`
 
 trait MySafeTrait {}
 

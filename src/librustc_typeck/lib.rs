@@ -110,7 +110,8 @@ use hir::map as hir_map;
 use rustc::infer::InferOk;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::traits::{self, ObligationCause, ObligationCauseCode, Reveal};
+use rustc::ty::maps::Providers;
+use rustc::traits::{ObligationCause, ObligationCauseCode, Reveal};
 use session::config;
 use util::common::time;
 
@@ -119,9 +120,6 @@ use syntax::abi::Abi;
 use syntax_pos::Span;
 
 use std::iter;
-use std::cell::RefCell;
-use util::nodemap::NodeMap;
-
 // NB: This module needs to be declared first so diagnostics are
 // registered before they are used.
 pub mod diagnostics;
@@ -140,27 +138,6 @@ pub struct TypeAndSubsts<'tcx> {
     pub ty: Ty<'tcx>,
 }
 
-pub struct CrateCtxt<'a, 'tcx: 'a> {
-    ast_ty_to_ty_cache: RefCell<NodeMap<Ty<'tcx>>>,
-
-    /// A vector of every trait accessible in the whole crate
-    /// (i.e. including those from subcrates). This is used only for
-    /// error reporting, and so is lazily initialised and generally
-    /// shouldn't taint the common path (hence the RefCell).
-    pub all_traits: RefCell<Option<check::method::AllTraitsVec>>,
-
-    /// This stack is used to identify cycles in the user's source.
-    /// Note that these cycles can cross multiple items.
-    pub stack: RefCell<Vec<collect::AstConvRequest>>,
-
-    pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
-
-    /// Obligations which will have to be checked at the end of
-    /// type-checking, after all functions have been inferred.
-    /// The key is the NodeId of the item the obligations were from.
-    pub deferred_obligations: RefCell<NodeMap<Vec<traits::DeferredObligation<'tcx>>>>,
-}
-
 fn require_c_abi_if_variadic(tcx: TyCtxt,
                              decl: &hir::FnDecl,
                              abi: Abi,
@@ -173,12 +150,12 @@ fn require_c_abi_if_variadic(tcx: TyCtxt,
     }
 }
 
-fn require_same_types<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
+fn require_same_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                 cause: &ObligationCause<'tcx>,
                                 expected: Ty<'tcx>,
                                 actual: Ty<'tcx>)
                                 -> bool {
-    ccx.tcx.infer_ctxt((), Reveal::NotSpecializable).enter(|infcx| {
+    tcx.infer_ctxt((), Reveal::UserFacing).enter(|infcx| {
         match infcx.eq_types(false, &cause, expected, actual) {
             Ok(InferOk { obligations, .. }) => {
                 // FIXME(#32730) propagate obligations
@@ -193,10 +170,9 @@ fn require_same_types<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     })
 }
 
-fn check_main_fn_ty(ccx: &CrateCtxt,
-                    main_id: ast::NodeId,
-                    main_span: Span) {
-    let tcx = ccx.tcx;
+fn check_main_fn_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                              main_id: ast::NodeId,
+                              main_span: Span) {
     let main_def_id = tcx.hir.local_def_id(main_id);
     let main_t = tcx.item_type(main_def_id);
     match main_t.sty {
@@ -206,7 +182,7 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
                     match it.node {
                         hir::ItemFn(.., ref generics, _) => {
                             if generics.is_parameterized() {
-                                struct_span_err!(ccx.tcx.sess, generics.span, E0131,
+                                struct_span_err!(tcx.sess, generics.span, E0131,
                                          "main function is not allowed to have type parameters")
                                     .span_label(generics.span,
                                                 &format!("main cannot have type parameters"))
@@ -221,14 +197,17 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
             }
             let substs = tcx.intern_substs(&[]);
             let se_ty = tcx.mk_fn_def(main_def_id, substs,
-                                      tcx.mk_bare_fn(ty::BareFnTy {
-                unsafety: hir::Unsafety::Normal,
-                abi: Abi::Rust,
-                sig: ty::Binder(tcx.mk_fn_sig(iter::empty(), tcx.mk_nil(), false))
-            }));
+                ty::Binder(tcx.mk_fn_sig(
+                    iter::empty(),
+                    tcx.mk_nil(),
+                    false,
+                    hir::Unsafety::Normal,
+                    Abi::Rust
+                ))
+            );
 
             require_same_types(
-                ccx,
+                tcx,
                 &ObligationCause::new(main_span, main_id, ObligationCauseCode::MainFunctionType),
                 se_ty,
                 main_t);
@@ -241,11 +220,10 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
     }
 }
 
-fn check_start_fn_ty(ccx: &CrateCtxt,
-                     start_id: ast::NodeId,
-                     start_span: Span) {
-    let tcx = ccx.tcx;
-    let start_def_id = ccx.tcx.hir.local_def_id(start_id);
+fn check_start_fn_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                               start_id: ast::NodeId,
+                               start_span: Span) {
+    let start_def_id = tcx.hir.local_def_id(start_id);
     let start_t = tcx.item_type(start_def_id);
     match start_t.sty {
         ty::TyFnDef(..) => {
@@ -269,21 +247,20 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
 
             let substs = tcx.intern_substs(&[]);
             let se_ty = tcx.mk_fn_def(start_def_id, substs,
-                                      tcx.mk_bare_fn(ty::BareFnTy {
-                unsafety: hir::Unsafety::Normal,
-                abi: Abi::Rust,
-                sig: ty::Binder(tcx.mk_fn_sig(
+                ty::Binder(tcx.mk_fn_sig(
                     [
                         tcx.types.isize,
                         tcx.mk_imm_ptr(tcx.mk_imm_ptr(tcx.types.u8))
                     ].iter().cloned(),
                     tcx.types.isize,
                     false,
-                )),
-            }));
+                    hir::Unsafety::Normal,
+                    Abi::Rust
+                ))
+            );
 
             require_same_types(
-                ccx,
+                tcx,
                 &ObligationCause::new(start_span, start_id, ObligationCauseCode::StartFunctionType),
                 se_ty,
                 start_t);
@@ -296,35 +273,33 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
     }
 }
 
-fn check_for_entry_fn(ccx: &CrateCtxt) {
-    let tcx = ccx.tcx;
+fn check_for_entry_fn<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let _task = tcx.dep_graph.in_task(DepNode::CheckEntryFn);
     if let Some((id, sp)) = *tcx.sess.entry_fn.borrow() {
         match tcx.sess.entry_type.get() {
-            Some(config::EntryMain) => check_main_fn_ty(ccx, id, sp),
-            Some(config::EntryStart) => check_start_fn_ty(ccx, id, sp),
+            Some(config::EntryMain) => check_main_fn_ty(tcx, id, sp),
+            Some(config::EntryStart) => check_start_fn_ty(tcx, id, sp),
             Some(config::EntryNone) => {}
             None => bug!("entry function without a type")
         }
     }
 }
 
+pub fn provide(providers: &mut Providers) {
+    collect::provide(providers);
+    coherence::provide(providers);
+    check::provide(providers);
+}
+
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
-                             -> Result<NodeMap<Ty<'tcx>>, usize> {
+                             -> Result<(), usize> {
     let time_passes = tcx.sess.time_passes();
-    let ccx = CrateCtxt {
-        ast_ty_to_ty_cache: RefCell::new(NodeMap()),
-        all_traits: RefCell::new(None),
-        stack: RefCell::new(Vec::new()),
-        tcx: tcx,
-        deferred_obligations: RefCell::new(NodeMap()),
-    };
 
     // this ensures that later parts of type checking can assume that items
     // have valid types and not error
     tcx.sess.track_errors(|| {
         time(time_passes, "type collecting", ||
-             collect::collect_item_types(&ccx));
+             collect::collect_item_types(tcx));
 
     })?;
 
@@ -333,28 +308,28 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
 
     tcx.sess.track_errors(|| {
         time(time_passes, "impl wf inference", ||
-             impl_wf_check::impl_wf_check(&ccx));
+             impl_wf_check::impl_wf_check(tcx));
     })?;
 
     tcx.sess.track_errors(|| {
       time(time_passes, "coherence checking", ||
-          coherence::check_coherence(&ccx));
+          coherence::check_coherence(tcx));
     })?;
 
-    time(time_passes, "wf checking", || check::check_wf_new(&ccx))?;
+    time(time_passes, "wf checking", || check::check_wf_new(tcx))?;
 
-    time(time_passes, "item-types checking", || check::check_item_types(&ccx))?;
+    time(time_passes, "item-types checking", || check::check_item_types(tcx))?;
 
-    time(time_passes, "item-bodies checking", || check::check_item_bodies(&ccx))?;
+    time(time_passes, "item-bodies checking", || check::check_item_bodies(tcx))?;
 
-    time(time_passes, "drop-impl checking", || check::check_drop_impls(&ccx))?;
+    time(time_passes, "drop-impl checking", || check::check_drop_impls(tcx))?;
 
     check_unused::check_crate(tcx);
-    check_for_entry_fn(&ccx);
+    check_for_entry_fn(tcx);
 
     let err_count = tcx.sess.err_count();
     if err_count == 0 {
-        Ok(ccx.ast_ty_to_ty_cache.into_inner())
+        Ok(())
     } else {
         Err(err_count)
     }

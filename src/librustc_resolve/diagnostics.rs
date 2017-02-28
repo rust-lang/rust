@@ -15,6 +15,33 @@
 // use `gq` to wrap paragraphs. Use `:set tw=0` to disable.
 register_long_diagnostics! {
 
+E0128: r##"
+Type parameter defaults can only use parameters that occur before them.
+Erroneous code example:
+
+```compile_fail,E0128
+struct Foo<T=U, U=()> {
+    field1: T,
+    filed2: U,
+}
+// error: type parameters with a default cannot use forward declared
+// identifiers
+```
+
+Since type parameters are evaluated in-order, you may be able to fix this issue
+by doing:
+
+```
+struct Foo<U=(), T=U> {
+    field1: T,
+    filed2: U,
+}
+```
+
+Please also verify that this wasn't because of a name-clash and rename the type
+parameter if so.
+"##,
+
 E0154: r##"
 ## Note: this error code is no longer emitted by the compiler.
 

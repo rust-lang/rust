@@ -159,10 +159,9 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
             hir_map::NodeItem(item) => {
                 match item.node {
                     hir::ItemStruct(..) | hir::ItemUnion(..) => {
-                        self.struct_has_extern_repr = item.attrs.iter().any(|attr| {
-                            attr::find_repr_attrs(self.tcx.sess.diagnostic(), attr)
-                                .contains(&attr::ReprExtern)
-                        });
+                        let def_id = self.tcx.hir.local_def_id(item.id);
+                        let def = self.tcx.lookup_adt_def(def_id);
+                        self.struct_has_extern_repr = def.repr.c;
 
                         intravisit::walk_item(self, &item);
                     }
@@ -478,7 +477,7 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
         // method of a private type is used, but the type itself is never
         // called directly.
         if let Some(impl_list) =
-                self.tcx.inherent_impls.borrow().get(&self.tcx.hir.local_def_id(id)) {
+                self.tcx.maps.inherent_impls.borrow().get(&self.tcx.hir.local_def_id(id)) {
             for &impl_did in impl_list.iter() {
                 for &item_did in &self.tcx.associated_item_def_ids(impl_did)[..] {
                     if let Some(item_node_id) = self.tcx.hir.as_local_node_id(item_did) {

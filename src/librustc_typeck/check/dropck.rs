@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use CrateCtxt;
 use check::regionck::RegionCtxt;
 
 use hir::def_id::DefId;
@@ -40,17 +39,18 @@ use syntax_pos::Span;
 ///    struct/enum definition for the nominal type itself (i.e.
 ///    cannot do `struct S<T>; impl<T:Clone> Drop for S<T> { ... }`).
 ///
-pub fn check_drop_impl(ccx: &CrateCtxt, drop_impl_did: DefId) -> Result<(), ()> {
-    let dtor_self_type = ccx.tcx.item_type(drop_impl_did);
-    let dtor_predicates = ccx.tcx.item_predicates(drop_impl_did);
+pub fn check_drop_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                 drop_impl_did: DefId) -> Result<(), ()> {
+    let dtor_self_type = tcx.item_type(drop_impl_did);
+    let dtor_predicates = tcx.item_predicates(drop_impl_did);
     match dtor_self_type.sty {
         ty::TyAdt(adt_def, self_to_impl_substs) => {
-            ensure_drop_params_and_item_params_correspond(ccx,
+            ensure_drop_params_and_item_params_correspond(tcx,
                                                           drop_impl_did,
                                                           dtor_self_type,
                                                           adt_def.did)?;
 
-            ensure_drop_predicates_are_implied_by_item_defn(ccx,
+            ensure_drop_predicates_are_implied_by_item_defn(tcx,
                                                             drop_impl_did,
                                                             &dtor_predicates,
                                                             adt_def.did,
@@ -59,7 +59,7 @@ pub fn check_drop_impl(ccx: &CrateCtxt, drop_impl_did: DefId) -> Result<(), ()> 
         _ => {
             // Destructors only work on nominal types.  This was
             // already checked by coherence, so we can panic here.
-            let span = ccx.tcx.def_span(drop_impl_did);
+            let span = tcx.def_span(drop_impl_did);
             span_bug!(span,
                       "should have been rejected by coherence check: {}",
                       dtor_self_type);
@@ -68,20 +68,19 @@ pub fn check_drop_impl(ccx: &CrateCtxt, drop_impl_did: DefId) -> Result<(), ()> 
 }
 
 fn ensure_drop_params_and_item_params_correspond<'a, 'tcx>(
-    ccx: &CrateCtxt<'a, 'tcx>,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
     drop_impl_did: DefId,
     drop_impl_ty: Ty<'tcx>,
     self_type_did: DefId)
     -> Result<(), ()>
 {
-    let tcx = ccx.tcx;
     let drop_impl_node_id = tcx.hir.as_local_node_id(drop_impl_did).unwrap();
     let self_type_node_id = tcx.hir.as_local_node_id(self_type_did).unwrap();
 
     // check that the impl type can be made to match the trait type.
 
     let impl_param_env = ty::ParameterEnvironment::for_item(tcx, self_type_node_id);
-    tcx.infer_ctxt(impl_param_env, Reveal::NotSpecializable).enter(|infcx| {
+    tcx.infer_ctxt(impl_param_env, Reveal::UserFacing).enter(|infcx| {
         let tcx = infcx.tcx;
         let mut fulfillment_cx = traits::FulfillmentContext::new();
 
@@ -126,7 +125,7 @@ fn ensure_drop_params_and_item_params_correspond<'a, 'tcx>(
 /// Confirms that every predicate imposed by dtor_predicates is
 /// implied by assuming the predicates attached to self_type_did.
 fn ensure_drop_predicates_are_implied_by_item_defn<'a, 'tcx>(
-    ccx: &CrateCtxt<'a, 'tcx>,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
     drop_impl_did: DefId,
     dtor_predicates: &ty::GenericPredicates<'tcx>,
     self_type_did: DefId,
@@ -168,8 +167,6 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'a, 'tcx>(
     // assumptions. Here, `'y:'z` is present, but `'x:'y` is
     // absent. So we report an error that the Drop impl injected a
     // predicate that is not present on the struct definition.
-
-    let tcx = ccx.tcx;
 
     let self_type_node_id = tcx.hir.as_local_node_id(self_type_did).unwrap();
 
@@ -557,7 +554,7 @@ fn has_dtor_of_interest<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
 
             // Find the `impl<..> Drop for _` to inspect any
             // attributes attached to the impl's generics.
-            let dtor_method = adt_def.destructor()
+            let dtor_method = adt_def.destructor(tcx)
                 .expect("dtorck type without destructor impossible");
             let method = tcx.associated_item(dtor_method);
             let impl_def_id = method.container.id();

@@ -199,11 +199,17 @@ impl<'a, 'tcx> TransItem<'tcx> {
         assert_eq!(dg.ty(), glue::get_drop_glue_type(ccx.shared(), dg.ty()));
         let t = dg.ty();
 
-        let sig = tcx.mk_fn_sig(iter::once(tcx.mk_mut_ptr(t)), tcx.mk_nil(), false);
+        let sig = tcx.mk_fn_sig(
+            iter::once(tcx.mk_mut_ptr(t)),
+            tcx.mk_nil(),
+            false,
+            hir::Unsafety::Normal,
+            Abi::Rust
+        );
 
         debug!("predefine_drop_glue: sig={}", sig);
 
-        let fn_ty = FnType::new(ccx, Abi::Rust, &sig, &[]);
+        let fn_ty = FnType::new(ccx, sig, &[]);
         let llfnty = fn_ty.llvm_type(ccx);
 
         assert!(declare::get_defined_value(ccx, symbol_name).is_none());
@@ -457,12 +463,13 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
                         output);
                 }
             },
-            ty::TyFnDef(.., &ty::BareFnTy{ unsafety, abi, ref sig } ) |
-            ty::TyFnPtr(&ty::BareFnTy{ unsafety, abi, ref sig } ) => {
-                if unsafety == hir::Unsafety::Unsafe {
+            ty::TyFnDef(.., sig) |
+            ty::TyFnPtr(sig) => {
+                if sig.unsafety() == hir::Unsafety::Unsafe {
                     output.push_str("unsafe ");
                 }
 
+                let abi = sig.abi();
                 if abi != ::abi::Abi::Rust {
                     output.push_str("extern \"");
                     output.push_str(abi.name());
@@ -471,7 +478,7 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
 
                 output.push_str("fn(");
 
-                let sig = self.tcx.erase_late_bound_regions_and_normalize(sig);
+                let sig = self.tcx.erase_late_bound_regions_and_normalize(&sig);
 
                 if !sig.inputs().is_empty() {
                     for &parameter_type in sig.inputs() {

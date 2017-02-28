@@ -28,9 +28,8 @@ use rustc::dep_graph::DepNode;
 use rustc::ty::cast::CastKind;
 use rustc_const_eval::{ConstEvalErr, ConstContext};
 use rustc_const_eval::ErrKind::{IndexOpFeatureGated, UnimplementedConstVal, MiscCatchAll, Math};
-use rustc_const_eval::ErrKind::{ErroneousReferencedConstant, MiscBinaryOp, NonConstPath, BadType};
-use rustc_const_eval::ErrKind::UnresolvedPath;
-use rustc_const_eval::EvalHint::ExprTypeChecked;
+use rustc_const_eval::ErrKind::{ErroneousReferencedConstant, MiscBinaryOp, NonConstPath};
+use rustc_const_eval::ErrKind::{TypeckError};
 use rustc_const_math::{ConstMathErr, Op};
 use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::def_id::DefId;
@@ -66,12 +65,12 @@ struct CheckCrateVisitor<'a, 'tcx: 'a> {
 impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
     fn check_const_eval(&self, expr: &'gcx hir::Expr) {
         let const_cx = ConstContext::with_tables(self.tcx, self.tables);
-        if let Err(err) = const_cx.eval(expr, ExprTypeChecked) {
+        if let Err(err) = const_cx.eval(expr) {
             match err.kind {
                 UnimplementedConstVal(_) => {}
                 IndexOpFeatureGated => {}
                 ErroneousReferencedConstant(_) => {}
-                BadType(_) => {}
+                TypeckError => {}
                 _ => {
                     self.tcx.sess.add_lint(CONST_ERR,
                                            expr.id,
@@ -138,7 +137,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
             self.check_const_eval(&body.value);
         }
 
-        let outer_penv = self.tcx.infer_ctxt(body_id, Reveal::NotSpecializable).enter(|infcx| {
+        let outer_penv = self.tcx.infer_ctxt(body_id, Reveal::UserFacing).enter(|infcx| {
             let param_env = infcx.parameter_environment.clone();
             let outer_penv = mem::replace(&mut self.param_env, param_env);
             euv::ExprUseVisitor::new(self, &infcx).consume_body(body);
@@ -240,18 +239,17 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
 
         if self.in_fn && self.promotable {
             let const_cx = ConstContext::with_tables(self.tcx, self.tables);
-            match const_cx.eval(ex, ExprTypeChecked) {
+            match const_cx.eval(ex) {
                 Ok(_) => {}
                 Err(ConstEvalErr { kind: UnimplementedConstVal(_), .. }) |
                 Err(ConstEvalErr { kind: MiscCatchAll, .. }) |
                 Err(ConstEvalErr { kind: MiscBinaryOp, .. }) |
                 Err(ConstEvalErr { kind: NonConstPath, .. }) |
-                Err(ConstEvalErr { kind: UnresolvedPath, .. }) |
                 Err(ConstEvalErr { kind: ErroneousReferencedConstant(_), .. }) |
                 Err(ConstEvalErr { kind: Math(ConstMathErr::Overflow(Op::Shr)), .. }) |
                 Err(ConstEvalErr { kind: Math(ConstMathErr::Overflow(Op::Shl)), .. }) |
                 Err(ConstEvalErr { kind: IndexOpFeatureGated, .. }) => {}
-                Err(ConstEvalErr { kind: BadType(_), .. }) => {}
+                Err(ConstEvalErr { kind: TypeckError, .. }) => {}
                 Err(msg) => {
                     self.tcx.sess.add_lint(CONST_ERR,
                                            ex.id,
@@ -274,7 +272,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
 /// instead of producing errors.
 fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Expr, node_ty: Ty<'tcx>) {
     match node_ty.sty {
-        ty::TyAdt(def, _) if def.has_dtor() => {
+        ty::TyAdt(def, _) if def.has_dtor(v.tcx) => {
             v.promotable = false;
         }
         _ => {}

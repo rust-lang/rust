@@ -80,6 +80,9 @@ pub struct LoweringContext<'a> {
     impl_items: BTreeMap<hir::ImplItemId, hir::ImplItem>,
     bodies: FxHashMap<hir::BodyId, hir::Body>,
 
+    trait_impls: BTreeMap<DefId, Vec<NodeId>>,
+    trait_default_impl: BTreeMap<DefId, NodeId>,
+
     loop_scopes: Vec<NodeId>,
     is_in_loop_condition: bool,
 
@@ -116,6 +119,8 @@ pub fn lower_crate(sess: &Session,
         trait_items: BTreeMap::new(),
         impl_items: BTreeMap::new(),
         bodies: FxHashMap(),
+        trait_impls: BTreeMap::new(),
+        trait_default_impl: BTreeMap::new(),
         loop_scopes: Vec::new(),
         is_in_loop_condition: false,
         type_def_lifetime_params: DefIdMap(),
@@ -201,6 +206,8 @@ impl<'a> LoweringContext<'a> {
             trait_items: self.trait_items,
             impl_items: self.impl_items,
             bodies: self.bodies,
+            trait_impls: self.trait_impls,
+            trait_default_impl: self.trait_default_impl,
         }
     }
 
@@ -525,7 +532,7 @@ impl<'a> LoweringContext<'a> {
                         return n;
                     }
                     assert!(!def_id.is_local());
-                    let (n, _) = self.sess.cstore.item_generics_own_param_counts(def_id);
+                    let n = self.sess.cstore.item_generics_cloned(def_id).regions.len();
                     self.type_def_lifetime_params.insert(def_id, n);
                     n
                 });
@@ -1089,14 +1096,27 @@ impl<'a> LoweringContext<'a> {
                 hir::ItemUnion(vdata, self.lower_generics(generics))
             }
             ItemKind::DefaultImpl(unsafety, ref trait_ref) => {
+                let trait_ref = self.lower_trait_ref(trait_ref);
+
+                if let Def::Trait(def_id) = trait_ref.path.def {
+                    self.trait_default_impl.insert(def_id, id);
+                }
+
                 hir::ItemDefaultImpl(self.lower_unsafety(unsafety),
-                                     self.lower_trait_ref(trait_ref))
+                                     trait_ref)
             }
             ItemKind::Impl(unsafety, polarity, ref generics, ref ifce, ref ty, ref impl_items) => {
                 let new_impl_items = impl_items.iter()
                                                .map(|item| self.lower_impl_item_ref(item))
                                                .collect();
                 let ifce = ifce.as_ref().map(|trait_ref| self.lower_trait_ref(trait_ref));
+
+                if let Some(ref trait_ref) = ifce {
+                    if let Def::Trait(def_id) = trait_ref.path.def {
+                        self.trait_impls.entry(def_id).or_insert(vec![]).push(id);
+                    }
+                }
+
                 hir::ItemImpl(self.lower_unsafety(unsafety),
                               self.lower_impl_polarity(polarity),
                               self.lower_generics(generics),

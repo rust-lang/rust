@@ -68,6 +68,9 @@ pub trait Visitor<'ast>: Sized {
     fn visit_expr_post(&mut self, _ex: &'ast Expr) { }
     fn visit_ty(&mut self, t: &'ast Ty) { walk_ty(self, t) }
     fn visit_generics(&mut self, g: &'ast Generics) { walk_generics(self, g) }
+    fn visit_where_predicate(&mut self, p: &'ast WherePredicate) {
+        walk_where_predicate(self, p)
+    }
     fn visit_fn(&mut self, fk: FnKind<'ast>, fd: &'ast FnDecl, s: Span, _: NodeId) {
         walk_fn(self, fk, fd, s)
     }
@@ -488,28 +491,30 @@ pub fn walk_generics<'a, V: Visitor<'a>>(visitor: &mut V, generics: &'a Generics
         walk_list!(visitor, visit_attribute, &*param.attrs);
     }
     walk_list!(visitor, visit_lifetime_def, &generics.lifetimes);
-    for predicate in &generics.where_clause.predicates {
-        match *predicate {
-            WherePredicate::BoundPredicate(WhereBoundPredicate{ref bounded_ty,
-                                                               ref bounds,
-                                                               ref bound_lifetimes,
-                                                               ..}) => {
-                visitor.visit_ty(bounded_ty);
-                walk_list!(visitor, visit_ty_param_bound, bounds);
-                walk_list!(visitor, visit_lifetime_def, bound_lifetimes);
-            }
-            WherePredicate::RegionPredicate(WhereRegionPredicate{ref lifetime,
-                                                                 ref bounds,
-                                                                 ..}) => {
-                visitor.visit_lifetime(lifetime);
-                walk_list!(visitor, visit_lifetime, bounds);
-            }
-            WherePredicate::EqPredicate(WhereEqPredicate{ref lhs_ty,
-                                                         ref rhs_ty,
-                                                         ..}) => {
-                visitor.visit_ty(lhs_ty);
-                visitor.visit_ty(rhs_ty);
-            }
+    walk_list!(visitor, visit_where_predicate, &generics.where_clause.predicates);
+}
+
+pub fn walk_where_predicate<'a, V: Visitor<'a>>(visitor: &mut V, predicate: &'a WherePredicate) {
+    match *predicate {
+        WherePredicate::BoundPredicate(WhereBoundPredicate{ref bounded_ty,
+                                                           ref bounds,
+                                                           ref bound_lifetimes,
+                                                           ..}) => {
+            visitor.visit_ty(bounded_ty);
+            walk_list!(visitor, visit_ty_param_bound, bounds);
+            walk_list!(visitor, visit_lifetime_def, bound_lifetimes);
+        }
+        WherePredicate::RegionPredicate(WhereRegionPredicate{ref lifetime,
+                                                             ref bounds,
+                                                             ..}) => {
+            visitor.visit_lifetime(lifetime);
+            walk_list!(visitor, visit_lifetime, bounds);
+        }
+        WherePredicate::EqPredicate(WhereEqPredicate{ref lhs_ty,
+                                                     ref rhs_ty,
+                                                     ..}) => {
+            visitor.visit_ty(lhs_ty);
+            visitor.visit_ty(rhs_ty);
         }
     }
 }

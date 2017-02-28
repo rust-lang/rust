@@ -201,7 +201,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         } else {
             // for local crates, check whether type info is
             // available; typeck might not have completed yet
-            self.impl_trait_refs.borrow().contains_key(&impl_def_id)
+            self.maps.impl_trait_ref.borrow().contains_key(&impl_def_id)
         };
 
         if !use_types {

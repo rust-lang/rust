@@ -481,9 +481,9 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
     fn assemble_inherent_impl_candidates_for_type(&mut self, def_id: DefId) {
         // Read the inherent implementation candidates for this type from the
         // metadata if necessary.
-        self.tcx.populate_inherent_implementations_for_type_if_necessary(def_id);
+        self.tcx.populate_inherent_implementations_for_type_if_necessary(self.span, def_id);
 
-        if let Some(impl_infos) = self.tcx.inherent_impls.borrow().get(&def_id) {
+        if let Some(impl_infos) = self.tcx.maps.inherent_impls.borrow().get(&def_id) {
             for &impl_def_id in impl_infos.iter() {
                 self.assemble_inherent_impl_probe(impl_def_id);
             }
@@ -653,7 +653,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
 
     fn assemble_extension_candidates_for_all_traits(&mut self) -> Result<(), MethodError<'tcx>> {
         let mut duplicates = FxHashSet();
-        for trait_info in suggest::all_traits(self.ccx) {
+        for trait_info in suggest::all_traits(self.tcx) {
             if duplicates.insert(trait_info.def_id) {
                 self.assemble_extension_candidates_for_trait(None, trait_info.def_id)?;
             }

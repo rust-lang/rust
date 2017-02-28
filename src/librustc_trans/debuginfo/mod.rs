@@ -198,8 +198,7 @@ pub fn finalize(cx: &CrateContext) {
 /// for the function.
 pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                                instance: Instance<'tcx>,
-                                               sig: &ty::FnSig<'tcx>,
-                                               abi: Abi,
+                                               sig: ty::FnSig<'tcx>,
                                                llfn: ValueRef,
                                                mir: &mir::Mir) -> FunctionDebugContext {
     if cx.sess().opts.debuginfo == NoDebugInfo {
@@ -225,7 +224,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     let file_metadata = file_metadata(cx, &loc.file.name, &loc.file.abs_path);
 
     let function_type_metadata = unsafe {
-        let fn_signature = get_function_signature(cx, sig, abi);
+        let fn_signature = get_function_signature(cx, sig);
         llvm::LLVMRustDIBuilderCreateSubroutineType(DIB(cx), file_metadata, fn_signature)
     };
 
@@ -295,8 +294,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     return FunctionDebugContext::RegularContext(fn_debug_context);
 
     fn get_function_signature<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
-                                        sig: &ty::FnSig<'tcx>,
-                                        abi: Abi) -> DIArray {
+                                        sig: ty::FnSig<'tcx>) -> DIArray {
         if cx.sess().opts.debuginfo == LimitedDebugInfo {
             return create_DIArray(DIB(cx), &[]);
         }
@@ -309,7 +307,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             _ => type_metadata(cx, sig.output(), syntax_pos::DUMMY_SP)
         });
 
-        let inputs = if abi == Abi::RustCall {
+        let inputs = if sig.abi == Abi::RustCall {
             &sig.inputs()[..sig.inputs().len() - 1]
         } else {
             sig.inputs()
@@ -320,7 +318,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             signature.push(type_metadata(cx, argument_type, syntax_pos::DUMMY_SP));
         }
 
-        if abi == Abi::RustCall && !sig.inputs().is_empty() {
+        if sig.abi == Abi::RustCall && !sig.inputs().is_empty() {
             if let ty::TyTuple(args, _) = sig.inputs()[sig.inputs().len() - 1].sty {
                 for &argument_type in args {
                     signature.push(type_metadata(cx, argument_type, syntax_pos::DUMMY_SP));
@@ -332,7 +330,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     }
 
     fn get_template_parameters<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
-                                         generics: &ty::Generics<'tcx>,
+                                         generics: &ty::Generics,
                                          substs: &Substs<'tcx>,
                                          file_metadata: DIFile,
                                          name_to_append_suffix_to: &mut String)
@@ -382,9 +380,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         return create_DIArray(DIB(cx), &template_params[..]);
     }
 
-    fn get_type_parameter_names<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
-                                          generics: &ty::Generics<'tcx>)
-                                          -> Vec<ast::Name> {
+    fn get_type_parameter_names(cx: &CrateContext, generics: &ty::Generics) -> Vec<ast::Name> {
         let mut names = generics.parent.map_or(vec![], |def_id| {
             get_type_parameter_names(cx, cx.tcx().item_generics(def_id))
         });

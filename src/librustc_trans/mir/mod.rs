@@ -28,7 +28,6 @@ use type_of;
 
 use syntax_pos::{DUMMY_SP, NO_EXPANSION, COMMAND_LINE_EXPN, BytePos, Span};
 use syntax::symbol::keywords;
-use syntax::abi::Abi;
 
 use std::iter;
 
@@ -205,15 +204,14 @@ impl<'tcx> LocalRef<'tcx> {
 pub fn trans_mir<'a, 'tcx: 'a>(
     ccx: &'a CrateContext<'a, 'tcx>,
     llfn: ValueRef,
-    fn_ty: FnType,
     mir: &'a Mir<'tcx>,
     instance: Instance<'tcx>,
-    sig: &ty::FnSig<'tcx>,
-    abi: Abi,
+    sig: ty::FnSig<'tcx>,
 ) {
+    let fn_ty = FnType::new(ccx, sig, &[]);
     debug!("fn_ty: {:?}", fn_ty);
     let debug_context =
-        debuginfo::create_function_debug_context(ccx, instance, sig, abi, llfn, mir);
+        debuginfo::create_function_debug_context(ccx, instance, sig, llfn, mir);
     let bcx = Builder::new_block(ccx, llfn, "entry-block");
 
     let cleanup_kinds = analyze::cleanup_kinds(&mir);

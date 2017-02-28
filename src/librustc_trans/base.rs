@@ -47,7 +47,7 @@ use rustc::util::common::time;
 use session::config::{self, NoDebugInfo};
 use rustc_incremental::IncrementalHashesMap;
 use session::{self, DataTypeKind, Session};
-use abi::{self, Abi, FnType};
+use abi::{self, FnType};
 use mir::lvalue::LvalueRef;
 use adt;
 use attributes;
@@ -600,8 +600,8 @@ pub fn trans_instance<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, instance: Instance
     let fn_ty = ccx.tcx().erase_regions(&fn_ty);
     let fn_ty = monomorphize::apply_param_substs(ccx.shared(), instance.substs, &fn_ty);
 
-    let ty::BareFnTy { abi, ref sig, .. } = *common::ty_fn_ty(ccx, fn_ty);
-    let sig = ccx.tcx().erase_late_bound_regions_and_normalize(sig);
+    let sig = common::ty_fn_sig(ccx, fn_ty);
+    let sig = ccx.tcx().erase_late_bound_regions_and_normalize(&sig);
 
     let lldecl = match ccx.instances().borrow().get(&instance) {
         Some(&val) => val,
@@ -614,10 +614,8 @@ pub fn trans_instance<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, instance: Instance
         attributes::emit_uwtable(lldecl, true);
     }
 
-    let fn_ty = FnType::new(ccx, abi, &sig, &[]);
-
     let mir = ccx.tcx().item_mir(instance.def);
-    mir::trans_mir(ccx, lldecl, fn_ty, &mir, instance, &sig, abi);
+    mir::trans_mir(ccx, lldecl, &mir, instance, sig);
 }
 
 pub fn trans_ctor_shim<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
@@ -632,7 +630,7 @@ pub fn trans_ctor_shim<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let ctor_ty = monomorphize::apply_param_substs(ccx.shared(), substs, &ctor_ty);
 
     let sig = ccx.tcx().erase_late_bound_regions_and_normalize(&ctor_ty.fn_sig());
-    let fn_ty = FnType::new(ccx, Abi::Rust, &sig, &[]);
+    let fn_ty = FnType::new(ccx, sig, &[]);
 
     let bcx = Builder::new_block(ccx, llfn, "entry-block");
     if !fn_ty.ret.is_ignore() {

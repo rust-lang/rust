@@ -177,7 +177,7 @@ fn check_and_get_illegal_move_origin<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
         Categorization::Interior(ref b, mc::InteriorElement(Kind::Pattern, _)) => {
             match b.ty.sty {
                 ty::TyAdt(def, _) => {
-                    if def.has_dtor() {
+                    if def.has_dtor(bccx.tcx) {
                         Some(cmt.clone())
                     } else {
                         check_and_get_illegal_move_origin(bccx, b)

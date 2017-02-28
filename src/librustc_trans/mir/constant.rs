@@ -20,7 +20,7 @@ use rustc::mir;
 use rustc::mir::tcx::LvalueTy;
 use rustc::ty::{self, layout, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::cast::{CastTy, IntTy};
-use rustc::ty::subst::{Kind, Substs};
+use rustc::ty::subst::{Kind, Substs, Subst};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use {abi, adt, base, Disr, machine};
 use callee::Callee;
@@ -83,7 +83,6 @@ impl<'tcx> Const<'tcx> {
                 let u = v.as_u64(ccx.tcx().sess.target.uint_type);
                 (C_integral(Type::int(ccx), u, false), tcx.types.usize)
             },
-            Infer(_) | InferSigned(_) => bug!("MIR must not use `{:?}`", ci),
         };
         Const { llval: llval, ty: ty }
     }
@@ -97,14 +96,13 @@ impl<'tcx> Const<'tcx> {
         let val = match cv {
             ConstVal::Float(F32(v)) => C_floating_f64(v as f64, llty),
             ConstVal::Float(F64(v)) => C_floating_f64(v, llty),
-            ConstVal::Float(FInfer {..}) => bug!("MIR must not use `{:?}`", cv),
             ConstVal::Bool(v) => C_bool(ccx, v),
             ConstVal::Integral(ref i) => return Const::from_constint(ccx, i),
             ConstVal::Str(ref v) => C_str_slice(ccx, v.clone()),
             ConstVal::ByteStr(ref v) => consts::addr_of(ccx, C_bytes(ccx, v), 1, "byte_str"),
             ConstVal::Struct(_) | ConstVal::Tuple(_) |
             ConstVal::Array(..) | ConstVal::Repeat(..) |
-            ConstVal::Function(_) => {
+            ConstVal::Function(..) => {
                 bug!("MIR must not use `{:?}` (which refers to a local ID)", cv)
             }
             ConstVal::Char(c) => C_integral(Type::char(ccx), c as u64, false),
@@ -249,7 +247,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
     fn trans_def(ccx: &'a CrateContext<'a, 'tcx>,
                  instance: Instance<'tcx>,
                  args: IndexVec<mir::Local, Const<'tcx>>)
-                 -> Result<Const<'tcx>, ConstEvalErr> {
+                 -> Result<Const<'tcx>, ConstEvalErr<'tcx>> {
         let instance = instance.resolve_const(ccx.shared());
         let mir = ccx.tcx().item_mir(instance.def);
         MirConstContext::new(ccx, &mir, instance.substs, args).trans()
@@ -263,7 +261,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                                          value)
     }
 
-    fn trans(&mut self) -> Result<Const<'tcx>, ConstEvalErr> {
+    fn trans(&mut self) -> Result<Const<'tcx>, ConstEvalErr<'tcx>> {
         let tcx = self.ccx.tcx();
         let mut bb = mir::START_BLOCK;
 
@@ -325,7 +323,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                         };
 
                         let err = ConstEvalErr{ span: span, kind: err };
-                        report_const_eval_err(tcx, &err, span, "expression").emit();
+                        report_const_eval_err(tcx, &err, span, "expression");
                         failure = Err(err);
                     }
                     target
@@ -373,7 +371,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
     }
 
     fn const_lvalue(&self, lvalue: &mir::Lvalue<'tcx>, span: Span)
-                    -> Result<ConstLvalue<'tcx>, ConstEvalErr> {
+                    -> Result<ConstLvalue<'tcx>, ConstEvalErr<'tcx>> {
         let tcx = self.ccx.tcx();
 
         if let mir::Lvalue::Local(index) = *lvalue {
@@ -468,7 +466,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
     }
 
     fn const_operand(&self, operand: &mir::Operand<'tcx>, span: Span)
-                     -> Result<Const<'tcx>, ConstEvalErr> {
+                     -> Result<Const<'tcx>, ConstEvalErr<'tcx>> {
         debug!("const_operand({:?} @ {:?})", operand, span);
         let result = match *operand {
             mir::Operand::Consume(ref lvalue) => {
@@ -523,7 +521,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
 
     fn const_rvalue(&self, rvalue: &mir::Rvalue<'tcx>,
                     dest_ty: Ty<'tcx>, span: Span)
-                    -> Result<Const<'tcx>, ConstEvalErr> {
+                    -> Result<Const<'tcx>, ConstEvalErr<'tcx>> {
         let tcx = self.ccx.tcx();
         debug!("const_rvalue({:?}: {:?} @ {:?})", rvalue, dest_ty, span);
         let val = match *rvalue {
@@ -588,7 +586,8 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                                     .find(|it| it.kind == ty::AssociatedKind::Method)
                                     .unwrap().def_id;
                                 // Now create its substs [Closure, Tuple]
-                                let input = tcx.closure_type(def_id, substs).sig.input(0);
+                                let input = tcx.closure_type(def_id)
+                                    .subst(tcx, substs.substs).input(0);
                                 let substs = tcx.mk_substs([operand.ty, input.skip_binder()]
                                     .iter().cloned().map(Kind::from));
                                 Callee::def(self.ccx, call_once, substs)
@@ -960,8 +959,11 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 }
 
 
-pub fn trans_static_initializer(ccx: &CrateContext, def_id: DefId)
-                                -> Result<ValueRef, ConstEvalErr> {
+pub fn trans_static_initializer<'a, 'tcx>(
+    ccx: &CrateContext<'a, 'tcx>,
+    def_id: DefId)
+    -> Result<ValueRef, ConstEvalErr<'tcx>>
+{
     let instance = Instance::mono(ccx.shared(), def_id);
     MirConstContext::trans_def(ccx, instance, IndexVec::new()).map(|c| c.llval)
 }
@@ -1001,7 +1003,7 @@ fn trans_const<'a, 'tcx>(
         layout::CEnum { discr: d, min, max, .. } => {
             let discr = match *kind {
                 mir::AggregateKind::Adt(adt_def, _, _, _) => {
-                    Disr::from(adt_def.variants[variant_index].disr_val)
+                    Disr::for_variant(ccx.tcx(), adt_def, variant_index)
                 },
                 _ => Disr(0),
             };

@@ -11,11 +11,9 @@
 //! Give useful errors and suggestions to users when an item can't be
 //! found or is otherwise invalid.
 
-use CrateCtxt;
-
 use check::FnCtxt;
 use rustc::hir::map as hir_map;
-use rustc::ty::{self, Ty, ToPolyTraitRef, ToPredicate, TypeFoldable};
+use rustc::ty::{self, Ty, TyCtxt, ToPolyTraitRef, ToPredicate, TypeFoldable};
 use hir::def::Def;
 use hir::def_id::{CRATE_DEF_INDEX, DefId};
 use middle::lang_items::FnOnceTraitLangItem;
@@ -343,7 +341,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // there's no implemented traits, so lets suggest some traits to
         // implement, by finding ones that have the item name, and are
         // legal to implement.
-        let mut candidates = all_traits(self.ccx)
+        let mut candidates = all_traits(self.tcx)
             .filter(|info| {
                 // we approximate the coherence rules to only suggest
                 // traits that are legal to implement by requiring that
@@ -423,7 +421,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 }
 
-pub type AllTraitsVec = Vec<TraitInfo>;
+pub type AllTraitsVec = Vec<DefId>;
 
 #[derive(Copy, Clone)]
 pub struct TraitInfo {
@@ -458,8 +456,8 @@ impl Ord for TraitInfo {
 }
 
 /// Retrieve all traits in this crate and any dependent crates.
-pub fn all_traits<'a>(ccx: &'a CrateCtxt) -> AllTraits<'a> {
-    if ccx.all_traits.borrow().is_none() {
+pub fn all_traits<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>) -> AllTraits<'a> {
+    if tcx.all_traits.borrow().is_none() {
         use rustc::hir::itemlikevisit;
 
         let mut traits = vec![];
@@ -476,7 +474,7 @@ pub fn all_traits<'a>(ccx: &'a CrateCtxt) -> AllTraits<'a> {
                 match i.node {
                     hir::ItemTrait(..) => {
                         let def_id = self.map.local_def_id(i.id);
-                        self.traits.push(TraitInfo::new(def_id));
+                        self.traits.push(def_id);
                     }
                     _ => {}
                 }
@@ -488,45 +486,45 @@ pub fn all_traits<'a>(ccx: &'a CrateCtxt) -> AllTraits<'a> {
             fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {
             }
         }
-        ccx.tcx.hir.krate().visit_all_item_likes(&mut Visitor {
-            map: &ccx.tcx.hir,
+        tcx.hir.krate().visit_all_item_likes(&mut Visitor {
+            map: &tcx.hir,
             traits: &mut traits,
         });
 
         // Cross-crate:
         let mut external_mods = FxHashSet();
-        fn handle_external_def(ccx: &CrateCtxt,
+        fn handle_external_def(tcx: TyCtxt,
                                traits: &mut AllTraitsVec,
                                external_mods: &mut FxHashSet<DefId>,
                                def: Def) {
             let def_id = def.def_id();
             match def {
                 Def::Trait(..) => {
-                    traits.push(TraitInfo::new(def_id));
+                    traits.push(def_id);
                 }
                 Def::Mod(..) => {
                     if !external_mods.insert(def_id) {
                         return;
                     }
-                    for child in ccx.tcx.sess.cstore.item_children(def_id) {
-                        handle_external_def(ccx, traits, external_mods, child.def)
+                    for child in tcx.sess.cstore.item_children(def_id) {
+                        handle_external_def(tcx, traits, external_mods, child.def)
                     }
                 }
                 _ => {}
             }
         }
-        for cnum in ccx.tcx.sess.cstore.crates() {
+        for cnum in tcx.sess.cstore.crates() {
             let def_id = DefId {
                 krate: cnum,
                 index: CRATE_DEF_INDEX,
             };
-            handle_external_def(ccx, &mut traits, &mut external_mods, Def::Mod(def_id));
+            handle_external_def(tcx, &mut traits, &mut external_mods, Def::Mod(def_id));
         }
 
-        *ccx.all_traits.borrow_mut() = Some(traits);
+        *tcx.all_traits.borrow_mut() = Some(traits);
     }
 
-    let borrow = ccx.all_traits.borrow();
+    let borrow = tcx.all_traits.borrow();
     assert!(borrow.is_some());
     AllTraits {
         borrow: borrow,
@@ -547,7 +545,7 @@ impl<'a> Iterator for AllTraits<'a> {
         // ugh.
         borrow.as_ref().unwrap().get(*idx).map(|info| {
             *idx += 1;
-            *info
+            TraitInfo::new(*info)
         })
     }
 }

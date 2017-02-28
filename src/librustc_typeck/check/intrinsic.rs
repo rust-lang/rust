@@ -14,9 +14,9 @@
 use intrinsics;
 use rustc::traits::{ObligationCause, ObligationCauseCode};
 use rustc::ty::subst::Substs;
-use rustc::ty::{self, Ty};
+use rustc::ty::{self, TyCtxt, Ty};
 use rustc::util::nodemap::FxHashMap;
-use {CrateCtxt, require_same_types};
+use require_same_types;
 
 use syntax::abi::Abi;
 use syntax::ast;
@@ -27,24 +27,25 @@ use rustc::hir;
 
 use std::iter;
 
-fn equate_intrinsic_type<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
+fn equate_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                    it: &hir::ForeignItem,
                                    n_tps: usize,
                                    abi: Abi,
                                    inputs: Vec<Ty<'tcx>>,
                                    output: Ty<'tcx>) {
-    let tcx = ccx.tcx;
     let def_id = tcx.hir.local_def_id(it.id);
 
     let substs = Substs::for_item(tcx, def_id,
                                   |_, _| tcx.mk_region(ty::ReErased),
                                   |def, _| tcx.mk_param_from_def(def));
 
-    let fty = tcx.mk_fn_def(def_id, substs, tcx.mk_bare_fn(ty::BareFnTy {
-        unsafety: hir::Unsafety::Unsafe,
-        abi: abi,
-        sig: ty::Binder(tcx.mk_fn_sig(inputs.into_iter(), output, false)),
-    }));
+    let fty = tcx.mk_fn_def(def_id, substs, ty::Binder(tcx.mk_fn_sig(
+        inputs.into_iter(),
+        output,
+        false,
+        hir::Unsafety::Unsafe,
+        abi
+    )));
     let i_n_tps = tcx.item_generics(def_id).types.len();
     if i_n_tps != n_tps {
         let span = match it.node {
@@ -59,7 +60,7 @@ fn equate_intrinsic_type<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             .span_label(span, &format!("expected {} type parameter", n_tps))
             .emit();
     } else {
-        require_same_types(ccx,
+        require_same_types(tcx,
                            &ObligationCause::new(it.span,
                                                  it.id,
                                                  ObligationCauseCode::IntrinsicType),
@@ -70,13 +71,9 @@ fn equate_intrinsic_type<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
 /// Remember to add all intrinsics here, in librustc_trans/trans/intrinsic.rs,
 /// and in libcore/intrinsics.rs
-pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &hir::ForeignItem) {
-    fn param<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, n: u32) -> Ty<'tcx> {
-        let name = Symbol::intern(&format!("P{}", n));
-        ccx.tcx.mk_param(n, name)
-    }
-
-    let tcx = ccx.tcx;
+pub fn check_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                      it: &hir::ForeignItem) {
+    let param = |n| tcx.mk_param(n, Symbol::intern(&format!("P{}", n)));
     let name = it.name.as_str();
     let (n_tps, inputs, output) = if name.starts_with("atomic_") {
         let split : Vec<&str> = name.split('_').collect();
@@ -84,19 +81,19 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &hir::ForeignItem) {
 
         //We only care about the operation here
         let (n_tps, inputs, output) = match split[1] {
-            "cxchg" | "cxchgweak" => (1, vec![tcx.mk_mut_ptr(param(ccx, 0)),
-                                              param(ccx, 0),
-                                              param(ccx, 0)],
-                                      tcx.intern_tup(&[param(ccx, 0), tcx.types.bool], false)),
-            "load" => (1, vec![tcx.mk_imm_ptr(param(ccx, 0))],
-                       param(ccx, 0)),
-            "store" => (1, vec![tcx.mk_mut_ptr(param(ccx, 0)), param(ccx, 0)],
+            "cxchg" | "cxchgweak" => (1, vec![tcx.mk_mut_ptr(param(0)),
+                                              param(0),
+                                              param(0)],
+                                      tcx.intern_tup(&[param(0), tcx.types.bool], false)),
+            "load" => (1, vec![tcx.mk_imm_ptr(param(0))],
+                       param(0)),
+            "store" => (1, vec![tcx.mk_mut_ptr(param(0)), param(0)],
                         tcx.mk_nil()),
 
             "xchg" | "xadd" | "xsub" | "and"  | "nand" | "or" | "xor" | "max" |
             "min"  | "umax" | "umin" => {
-                (1, vec![tcx.mk_mut_ptr(param(ccx, 0)), param(ccx, 0)],
-                 param(ccx, 0))
+                (1, vec![tcx.mk_mut_ptr(param(0)), param(0)],
+                 param(0))
             }
             "fence" | "singlethreadfence" => {
                 (0, Vec::new(), tcx.mk_nil())
@@ -116,45 +113,45 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &hir::ForeignItem) {
         let (n_tps, inputs, output) = match &name[..] {
             "breakpoint" => (0, Vec::new(), tcx.mk_nil()),
             "size_of" |
-            "pref_align_of" | "min_align_of" => (1, Vec::new(), ccx.tcx.types.usize),
+            "pref_align_of" | "min_align_of" => (1, Vec::new(), tcx.types.usize),
             "size_of_val" |  "min_align_of_val" => {
                 (1, vec![
                     tcx.mk_imm_ref(tcx.mk_region(ty::ReLateBound(ty::DebruijnIndex::new(1),
                                                                   ty::BrAnon(0))),
-                                    param(ccx, 0))
-                 ], ccx.tcx.types.usize)
+                                    param(0))
+                 ], tcx.types.usize)
             }
-            "rustc_peek" => (1, vec![param(ccx, 0)], param(ccx, 0)),
-            "init" => (1, Vec::new(), param(ccx, 0)),
-            "uninit" => (1, Vec::new(), param(ccx, 0)),
-            "forget" => (1, vec![ param(ccx, 0) ], tcx.mk_nil()),
-            "transmute" => (2, vec![ param(ccx, 0) ], param(ccx, 1)),
+            "rustc_peek" => (1, vec![param(0)], param(0)),
+            "init" => (1, Vec::new(), param(0)),
+            "uninit" => (1, Vec::new(), param(0)),
+            "forget" => (1, vec![ param(0) ], tcx.mk_nil()),
+            "transmute" => (2, vec![ param(0) ], param(1)),
             "move_val_init" => {
                 (1,
                  vec![
-                    tcx.mk_mut_ptr(param(ccx, 0)),
-                    param(ccx, 0)
+                    tcx.mk_mut_ptr(param(0)),
+                    param(0)
                   ],
                tcx.mk_nil())
             }
             "drop_in_place" => {
-                (1, vec![tcx.mk_mut_ptr(param(ccx, 0))], tcx.mk_nil())
+                (1, vec![tcx.mk_mut_ptr(param(0))], tcx.mk_nil())
             }
-            "needs_drop" => (1, Vec::new(), ccx.tcx.types.bool),
+            "needs_drop" => (1, Vec::new(), tcx.types.bool),
 
             "type_name" => (1, Vec::new(), tcx.mk_static_str()),
-            "type_id" => (1, Vec::new(), ccx.tcx.types.u64),
+            "type_id" => (1, Vec::new(), tcx.types.u64),
             "offset" | "arith_offset" => {
               (1,
                vec![
                   tcx.mk_ptr(ty::TypeAndMut {
-                      ty: param(ccx, 0),
+                      ty: param(0),
                       mutbl: hir::MutImmutable
                   }),
-                  ccx.tcx.types.isize
+                  tcx.types.isize
                ],
                tcx.mk_ptr(ty::TypeAndMut {
-                   ty: param(ccx, 0),
+                   ty: param(0),
                    mutbl: hir::MutImmutable
                }))
             }
@@ -162,11 +159,11 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &hir::ForeignItem) {
               (1,
                vec![
                   tcx.mk_ptr(ty::TypeAndMut {
-                      ty: param(ccx, 0),
+                      ty: param(0),
                       mutbl: hir::MutImmutable
                   }),
                   tcx.mk_ptr(ty::TypeAndMut {
-                      ty: param(ccx, 0),
+                      ty: param(0),
                       mutbl: hir::MutMutable
                   }),
                   tcx.types.usize,
@@ -177,11 +174,11 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &hir::ForeignItem) {
               (1,
                vec![
                   tcx.mk_ptr(ty::TypeAndMut {
-                      ty: param(ccx, 0),
+                      ty: param(0),
                       mutbl: hir::MutMutable
                   }),
                   tcx.mk_ptr(ty::TypeAndMut {
-                      ty: param(ccx, 0),
+                      ty: param(0),
                       mutbl: hir::MutImmutable
                   }),
                   tcx.types.usize,
@@ -192,7 +189,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &hir::ForeignItem) {
               (1,
                vec![
                   tcx.mk_ptr(ty::TypeAndMut {
-                      ty: param(ccx, 0),
+                      ty: param(0),
                       mutbl: hir::MutMutable
                   }),
                   tcx.types.u8,
@@ -264,23 +261,23 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &hir::ForeignItem) {
             "roundf64"     => (0, vec![ tcx.types.f64 ], tcx.types.f64),
 
             "volatile_load" =>
-                (1, vec![ tcx.mk_imm_ptr(param(ccx, 0)) ], param(ccx, 0)),
+                (1, vec![ tcx.mk_imm_ptr(param(0)) ], param(0)),
             "volatile_store" =>
-                (1, vec![ tcx.mk_mut_ptr(param(ccx, 0)), param(ccx, 0) ], tcx.mk_nil()),
+                (1, vec![ tcx.mk_mut_ptr(param(0)), param(0) ], tcx.mk_nil()),
 
-            "ctpop" | "ctlz" | "cttz" | "bswap" => (1, vec![param(ccx, 0)], param(ccx, 0)),
+            "ctpop" | "ctlz" | "cttz" | "bswap" => (1, vec![param(0)], param(0)),
 
             "add_with_overflow" | "sub_with_overflow"  | "mul_with_overflow" =>
-                (1, vec![param(ccx, 0), param(ccx, 0)],
-                tcx.intern_tup(&[param(ccx, 0), tcx.types.bool], false)),
+                (1, vec![param(0), param(0)],
+                tcx.intern_tup(&[param(0), tcx.types.bool], false)),
 
             "unchecked_div" | "unchecked_rem" =>
-                (1, vec![param(ccx, 0), param(ccx, 0)], param(ccx, 0)),
+                (1, vec![param(0), param(0)], param(0)),
 
             "overflowing_add" | "overflowing_sub" | "overflowing_mul" =>
-                (1, vec![param(ccx, 0), param(ccx, 0)], param(ccx, 0)),
+                (1, vec![param(0), param(0)], param(0)),
             "fadd_fast" | "fsub_fast" | "fmul_fast" | "fdiv_fast" | "frem_fast" =>
-                (1, vec![param(ccx, 0), param(ccx, 0)], param(ccx, 0)),
+                (1, vec![param(0), param(0)], param(0)),
 
             "assume" => (0, vec![tcx.types.bool], tcx.mk_nil()),
             "likely" => (0, vec![tcx.types.bool], tcx.types.bool),
@@ -289,15 +286,17 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &hir::ForeignItem) {
             "discriminant_value" => (1, vec![
                     tcx.mk_imm_ref(tcx.mk_region(ty::ReLateBound(ty::DebruijnIndex::new(1),
                                                                   ty::BrAnon(0))),
-                                   param(ccx, 0))], tcx.types.u64),
+                                   param(0))], tcx.types.u64),
 
             "try" => {
                 let mut_u8 = tcx.mk_mut_ptr(tcx.types.u8);
-                let fn_ty = tcx.mk_bare_fn(ty::BareFnTy {
-                    unsafety: hir::Unsafety::Normal,
-                    abi: Abi::Rust,
-                    sig: ty::Binder(tcx.mk_fn_sig(iter::once(mut_u8), tcx.mk_nil(), false)),
-                });
+                let fn_ty = ty::Binder(tcx.mk_fn_sig(
+                    iter::once(mut_u8),
+                    tcx.mk_nil(),
+                    false,
+                    hir::Unsafety::Normal,
+                    Abi::Rust,
+                ));
                 (0, vec![tcx.mk_fn_ptr(fn_ty), mut_u8, mut_u8], tcx.types.i32)
             }
 
@@ -312,18 +311,17 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &hir::ForeignItem) {
         };
         (n_tps, inputs, output)
     };
-    equate_intrinsic_type(ccx, it, n_tps, Abi::RustIntrinsic, inputs, output)
+    equate_intrinsic_type(tcx, it, n_tps, Abi::RustIntrinsic, inputs, output)
 }
 
 /// Type-check `extern "platform-intrinsic" { ... }` functions.
-pub fn check_platform_intrinsic_type(ccx: &CrateCtxt,
-                                     it: &hir::ForeignItem) {
+pub fn check_platform_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                               it: &hir::ForeignItem) {
     let param = |n| {
         let name = Symbol::intern(&format!("P{}", n));
-        ccx.tcx.mk_param(n, name)
+        tcx.mk_param(n, name)
     };
 
-    let tcx = ccx.tcx;
     let def_id = tcx.hir.local_def_id(it.id);
     let i_n_tps = tcx.item_generics(def_id).types.len();
     let name = it.name.as_str();
@@ -369,7 +367,7 @@ pub fn check_platform_intrinsic_type(ccx: &CrateCtxt,
                     let mut structural_to_nomimal = FxHashMap();
 
                     let sig = tcx.item_type(def_id).fn_sig();
-                    let sig = tcx.no_late_bound_regions(sig).unwrap();
+                    let sig = tcx.no_late_bound_regions(&sig).unwrap();
                     if intr.inputs.len() != sig.inputs().len() {
                         span_err!(tcx.sess, it.span, E0444,
                                   "platform-specific intrinsic has invalid number of \
@@ -379,10 +377,10 @@ pub fn check_platform_intrinsic_type(ccx: &CrateCtxt,
                     }
                     let input_pairs = intr.inputs.iter().zip(sig.inputs());
                     for (i, (expected_arg, arg)) in input_pairs.enumerate() {
-                        match_intrinsic_type_to_type(ccx, &format!("argument {}", i + 1), it.span,
+                        match_intrinsic_type_to_type(tcx, &format!("argument {}", i + 1), it.span,
                                                      &mut structural_to_nomimal, expected_arg, arg);
                     }
-                    match_intrinsic_type_to_type(ccx, "return value", it.span,
+                    match_intrinsic_type_to_type(tcx, "return value", it.span,
                                                  &mut structural_to_nomimal,
                                                  &intr.output, sig.output());
                     return
@@ -396,15 +394,15 @@ pub fn check_platform_intrinsic_type(ccx: &CrateCtxt,
         }
     };
 
-    equate_intrinsic_type(ccx, it, n_tps, Abi::PlatformIntrinsic,
+    equate_intrinsic_type(tcx, it, n_tps, Abi::PlatformIntrinsic,
                           inputs, output)
 }
 
 // walk the expected type and the actual type in lock step, checking they're
 // the same, in a kinda-structural way, i.e. `Vector`s have to be simd structs with
 // exactly the right element type
-fn match_intrinsic_type_to_type<'tcx, 'a>(
-        ccx: &CrateCtxt<'a, 'tcx>,
+fn match_intrinsic_type_to_type<'a, 'tcx>(
+        tcx: TyCtxt<'a, 'tcx, 'tcx>,
         position: &str,
         span: Span,
         structural_to_nominal: &mut FxHashMap<&'a intrinsics::Type, ty::Ty<'tcx>>,
@@ -413,7 +411,7 @@ fn match_intrinsic_type_to_type<'tcx, 'a>(
     use intrinsics::Type::*;
 
     let simple_error = |real: &str, expected: &str| {
-        span_err!(ccx.tcx.sess, span, E0442,
+        span_err!(tcx.sess, span, E0442,
                   "intrinsic {} has wrong type: found {}, expected {}",
                   position, real, expected)
     };
@@ -453,7 +451,7 @@ fn match_intrinsic_type_to_type<'tcx, 'a>(
                         simple_error(&format!("`{}`", t),
                                      if const_ {"const pointer"} else {"mut pointer"})
                     }
-                    match_intrinsic_type_to_type(ccx, position, span, structural_to_nominal,
+                    match_intrinsic_type_to_type(tcx, position, span, structural_to_nominal,
                                                  inner_expected, ty)
                 }
                 _ => simple_error(&format!("`{}`", t), "raw pointer"),
@@ -464,19 +462,19 @@ fn match_intrinsic_type_to_type<'tcx, 'a>(
                 simple_error(&format!("non-simd type `{}`", t), "simd type");
                 return;
             }
-            let t_len = t.simd_size(ccx.tcx);
+            let t_len = t.simd_size(tcx);
             if len as usize != t_len {
                 simple_error(&format!("vector with length {}", t_len),
                              &format!("length {}", len));
                 return;
             }
-            let t_ty = t.simd_type(ccx.tcx);
+            let t_ty = t.simd_type(tcx);
             {
                 // check that a given structural type always has the same an intrinsic definition
                 let previous = structural_to_nominal.entry(expected).or_insert(t);
                 if *previous != t {
                     // this gets its own error code because it is non-trivial
-                    span_err!(ccx.tcx.sess, span, E0443,
+                    span_err!(tcx.sess, span, E0443,
                               "intrinsic {} has wrong type: found `{}`, expected `{}` which \
                                was used for this vector type previously in this signature",
                               position,
@@ -485,7 +483,7 @@ fn match_intrinsic_type_to_type<'tcx, 'a>(
                     return;
                 }
             }
-            match_intrinsic_type_to_type(ccx,
+            match_intrinsic_type_to_type(tcx,
                                          position,
                                          span,
                                          structural_to_nominal,
@@ -501,7 +499,7 @@ fn match_intrinsic_type_to_type<'tcx, 'a>(
                         return
                     }
                     for (e, c) in expected_contents.iter().zip(contents) {
-                        match_intrinsic_type_to_type(ccx, position, span, structural_to_nominal,
+                        match_intrinsic_type_to_type(tcx, position, span, structural_to_nominal,
                                                      e, c)
                     }
                 }

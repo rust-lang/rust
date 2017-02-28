@@ -433,23 +433,27 @@ struct Checker<'a, 'tcx: 'a> {
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     // (See issue #38412)
-    fn skip_stability_check_due_to_privacy(self, def_id: DefId) -> bool {
-        let visibility = {
-            // Check if `def_id` is a trait method.
-            match self.sess.cstore.associated_item(def_id) {
-                Some(ty::AssociatedItem { container: ty::TraitContainer(trait_def_id), .. }) => {
-                    // Trait methods do not declare visibility (even
-                    // for visibility info in cstore). Use containing
-                    // trait instead, so methods of pub traits are
-                    // themselves considered pub.
-                    self.sess.cstore.visibility(trait_def_id)
-                }
-                _ => {
-                    // Otherwise, cstore info works directly.
-                    self.sess.cstore.visibility(def_id)
+    fn skip_stability_check_due_to_privacy(self, mut def_id: DefId) -> bool {
+        // Check if `def_id` is a trait method.
+        match self.sess.cstore.describe_def(def_id) {
+            Some(Def::Method(_)) |
+            Some(Def::AssociatedTy(_)) |
+            Some(Def::AssociatedConst(_)) => {
+                match self.associated_item(def_id).container {
+                    ty::TraitContainer(trait_def_id) => {
+                        // Trait methods do not declare visibility (even
+                        // for visibility info in cstore). Use containing
+                        // trait instead, so methods of pub traits are
+                        // themselves considered pub.
+                        def_id = trait_def_id;
+                    }
+                    _ => {}
                 }
             }
-        };
+            _ => {}
+        }
+
+        let visibility = self.sess.cstore.visibility(def_id);
 
         match visibility {
             // must check stability for pub items.

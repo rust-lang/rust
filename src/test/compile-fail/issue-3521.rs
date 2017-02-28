@@ -15,9 +15,7 @@ fn main() {
     enum Stuff {
         Bar = foo
         //~^ ERROR attempt to use a non-constant value in a constant
-        //~^^ ERROR constant evaluation error
-        //~| unresolved path in constant expression
     }
 
-    println!("{}", Stuff::Bar);
+    println!("{:?}", Stuff::Bar);
 }

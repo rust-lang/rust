@@ -114,14 +114,14 @@ impl<'tcx, T: MirPass<'tcx>> MirMapPass<'tcx> for T {
                     tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     hooks: &mut [Box<for<'s> MirPassHook<'s>>])
     {
-        let def_ids = tcx.mir_map.borrow().keys();
+        let def_ids = tcx.maps.mir.borrow().keys();
         for def_id in def_ids {
             if !def_id.is_local() {
                 continue;
             }
 
             let _task = tcx.dep_graph.in_task(DepNode::Mir(def_id));
-            let mir = &mut tcx.mir_map.borrow()[&def_id].borrow_mut();
+            let mir = &mut tcx.maps.mir.borrow()[&def_id].borrow_mut();
             tcx.dep_graph.write(DepNode::Mir(def_id));
 
             let id = tcx.hir.as_local_node_id(def_id).unwrap();

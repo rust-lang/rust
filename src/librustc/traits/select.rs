@@ -1405,16 +1405,18 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             }
 
             // provide an impl, but only for suitable `fn` pointers
-            ty::TyFnDef(.., &ty::BareFnTy {
+            ty::TyFnDef(.., ty::Binder(ty::FnSig {
                 unsafety: hir::Unsafety::Normal,
                 abi: Abi::Rust,
-                ref sig,
-            }) |
-            ty::TyFnPtr(&ty::BareFnTy {
+                variadic: false,
+                ..
+            })) |
+            ty::TyFnPtr(ty::Binder(ty::FnSig {
                 unsafety: hir::Unsafety::Normal,
                 abi: Abi::Rust,
-                ref sig
-            }) if !sig.variadic() => {
+                variadic: false,
+                ..
+            })) => {
                 candidates.vec.push(FnPointerCandidate);
             }
 
@@ -1476,8 +1478,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                     // `assemble_candidates_from_object_ty`.
                 }
                 ty::TyParam(..) |
-                ty::TyProjection(..) |
-                ty::TyAnon(..) => {
+                ty::TyProjection(..) => {
                     // In these cases, we don't know what the actual
                     // type is.  Therefore, we cannot break it down
                     // into its constituent types. So we don't
@@ -1900,7 +1901,6 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             ty::TyDynamic(..) |
             ty::TyParam(..) |
             ty::TyProjection(..) |
-            ty::TyAnon(..) |
             ty::TyInfer(ty::TyVar(_)) |
             ty::TyInfer(ty::FreshTy(_)) |
             ty::TyInfer(ty::FreshIntTy(_)) |
@@ -1944,6 +1944,13 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 def.all_fields()
                     .map(|f| f.ty(self.tcx(), substs))
                     .collect()
+            }
+
+            ty::TyAnon(def_id, substs) => {
+                // We can resolve the `impl Trait` to its concrete type,
+                // which enforces a DAG between the functions requiring
+                // the auto trait bounds in question.
+                vec![self.tcx().item_type(def_id).subst(self.tcx(), substs)]
             }
         }
     }
@@ -2777,11 +2784,12 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                                       substs: ty::ClosureSubsts<'tcx>)
                                       -> ty::PolyTraitRef<'tcx>
     {
-        let closure_type = self.infcx.closure_type(closure_def_id, substs);
+        let closure_type = self.infcx.closure_type(closure_def_id)
+            .subst(self.tcx(), substs.substs);
         let ty::Binder((trait_ref, _)) =
             self.tcx().closure_trait_ref_and_return_type(obligation.predicate.def_id(),
                                                          obligation.predicate.0.self_ty(), // (1)
-                                                         &closure_type.sig,
+                                                         closure_type,
                                                          util::TupleArgumentsFlag::No);
         // (1) Feels icky to skip the binder here, but OTOH we know
         // that the self-type is an unboxed closure type and hence is

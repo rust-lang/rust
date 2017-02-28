@@ -20,7 +20,7 @@ use rustc::ty::subst::{Kind, Subst, Substs};
 use rustc::ty::util::IntTypeExt;
 use rustc::mir::*;
 use rustc::mir::transform::{Pass, MirPass, MirSource};
-use rustc::middle::const_val::{ConstVal, ConstInt};
+use rustc::middle::const_val::ConstVal;
 use rustc::middle::lang_items;
 use rustc::util::nodemap::FxHashMap;
 use rustc_data_structures::indexed_set::IdxSetBuf;
@@ -639,10 +639,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                 let mut values = Vec::with_capacity(adt.variants.len());
                 let mut blocks = Vec::with_capacity(adt.variants.len());
                 let mut otherwise = None;
-                for (variant_index, variant) in adt.variants.iter().enumerate() {
-                    let discr = ConstInt::new_inttype(variant.disr_val, adt.discr_ty,
-                                                      self.tcx.sess.target.uint_type,
-                                                      self.tcx.sess.target.int_type).unwrap();
+                for (variant_index, discr) in adt.discriminants(self.tcx).enumerate() {
                     let subpath = super::move_path_children_matching(
                         self.move_data(), c.path, |proj| match proj {
                             &Projection {
@@ -680,7 +677,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                 // Additionally, we do not want to switch on the
                 // discriminant after it is free-ed, because that
                 // way lies only trouble.
-                let discr_ty = adt.discr_ty.to_ty(self.tcx);
+                let discr_ty = adt.repr.discr_type().to_ty(self.tcx);
                 let discr = Lvalue::Local(self.patch.new_temp(discr_ty));
                 let switch_block = self.patch.new_block(BasicBlockData {
                     statements: vec![
@@ -901,7 +898,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
 
         match ty.sty {
             ty::TyAdt(def, _) => {
-                if def.has_dtor() && !def.is_box() {
+                if def.has_dtor(self.tcx) && !def.is_box() {
                     self.tcx.sess.span_warn(
                         c.source_info.span,
                         &format!("dataflow bug??? moving out of type with dtor {:?}",

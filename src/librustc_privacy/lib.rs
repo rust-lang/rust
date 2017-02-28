@@ -334,7 +334,11 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
 
 impl<'b, 'a, 'tcx> ReachEverythingInTheInterfaceVisitor<'b, 'a, 'tcx> {
     fn generics(&mut self) -> &mut Self {
-        self.ev.tcx.item_generics(self.item_def_id).visit_with(self);
+        for def in &self.ev.tcx.item_generics(self.item_def_id).types {
+            if def.has_default {
+                self.ev.tcx.item_type(def.def_id).visit_with(self);
+            }
+        }
         self
     }
 
@@ -892,7 +896,11 @@ struct SearchInterfaceForPrivateItemsVisitor<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx: 'a> SearchInterfaceForPrivateItemsVisitor<'a, 'tcx> {
     fn generics(&mut self) -> &mut Self {
-        self.tcx.item_generics(self.item_def_id).visit_with(self);
+        for def in &self.tcx.item_generics(self.item_def_id).types {
+            if def.has_default {
+                self.tcx.item_type(def.def_id).visit_with(self);
+            }
+        }
         self
     }
 

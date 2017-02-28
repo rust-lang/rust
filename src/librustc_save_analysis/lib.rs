@@ -85,7 +85,7 @@ pub mod recorder {
 pub struct SaveContext<'l, 'tcx: 'l> {
     tcx: TyCtxt<'l, 'tcx, 'tcx>,
     tables: &'l ty::TypeckTables<'tcx>,
-    analysis: &'l ty::CrateAnalysis<'tcx>,
+    analysis: &'l ty::CrateAnalysis,
     span_utils: SpanUtils<'tcx>,
 }
 
@@ -550,7 +550,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 match *qpath {
                     hir::QPath::Resolved(_, ref path) => path.def,
                     hir::QPath::TypeRelative(..) => {
-                        if let Some(ty) = self.analysis.hir_ty_to_ty.get(&id) {
+                        if let Some(ty) = self.tcx.ast_ty_to_ty_cache.borrow().get(&id) {
                             if let ty::TyProjection(proj) = ty.sty {
                                 for item in self.tcx.associated_items(proj.trait_ref.def_id) {
                                     if item.kind == ty::AssociatedKind::Type {
@@ -854,7 +854,7 @@ impl Format {
 
 pub fn process_crate<'l, 'tcx>(tcx: TyCtxt<'l, 'tcx, 'tcx>,
                                krate: &ast::Crate,
-                               analysis: &'l ty::CrateAnalysis<'tcx>,
+                               analysis: &'l ty::CrateAnalysis,
                                cratename: &str,
                                odir: Option<&Path>,
                                format: Format) {

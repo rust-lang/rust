@@ -16,13 +16,14 @@ use infer::InferCtxt;
 use hir::map as hir_map;
 use traits::{self, Reveal};
 use ty::{self, Ty, TyCtxt, TypeAndMut, TypeFlags, TypeFoldable};
-use ty::{Disr, ParameterEnvironment};
+use ty::{ParameterEnvironment};
 use ty::fold::TypeVisitor;
 use ty::layout::{Layout, LayoutError};
 use ty::TypeVariants::*;
 use util::nodemap::FxHashMap;
 use middle::lang_items;
 
+use rustc_const_math::{ConstInt, ConstIsize, ConstUsize};
 use rustc_data_structures::stable_hasher::{StableHasher, StableHasherResult};
 
 use std::cell::RefCell;
@@ -35,21 +36,94 @@ use syntax_pos::Span;
 
 use hir;
 
-pub trait IntTypeExt {
-    fn to_ty<'a, 'gcx: 'a+'tcx, 'tcx: 'a>(self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx>;
-    fn initial_discriminant<'a, 'tcx>(&self, _: TyCtxt<'a, 'tcx, 'tcx>) -> Disr;
+type Disr = ConstInt;
+
+ pub trait IntTypeExt {
+    fn to_ty<'a, 'gcx, 'tcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx>;
+    fn disr_incr<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, val: Option<Disr>)
+                           -> Option<Disr>;
+    fn assert_ty_matches(&self, val: Disr);
+    fn initial_discriminant<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Disr;
+ }
+
+
+macro_rules! typed_literal {
+    ($tcx:expr, $ty:expr, $lit:expr) => {
+        match $ty {
+            SignedInt(ast::IntTy::I8)    => ConstInt::I8($lit),
+            SignedInt(ast::IntTy::I16)   => ConstInt::I16($lit),
+            SignedInt(ast::IntTy::I32)   => ConstInt::I32($lit),
+            SignedInt(ast::IntTy::I64)   => ConstInt::I64($lit),
+            SignedInt(ast::IntTy::I128)   => ConstInt::I128($lit),
+            SignedInt(ast::IntTy::Is) => match $tcx.sess.target.int_type {
+                ast::IntTy::I16 => ConstInt::Isize(ConstIsize::Is16($lit)),
+                ast::IntTy::I32 => ConstInt::Isize(ConstIsize::Is32($lit)),
+                ast::IntTy::I64 => ConstInt::Isize(ConstIsize::Is64($lit)),
+                _ => bug!(),
+            },
+            UnsignedInt(ast::UintTy::U8)  => ConstInt::U8($lit),
+            UnsignedInt(ast::UintTy::U16) => ConstInt::U16($lit),
+            UnsignedInt(ast::UintTy::U32) => ConstInt::U32($lit),
+            UnsignedInt(ast::UintTy::U64) => ConstInt::U64($lit),
+            UnsignedInt(ast::UintTy::U128) => ConstInt::U128($lit),
+            UnsignedInt(ast::UintTy::Us) => match $tcx.sess.target.uint_type {
+                ast::UintTy::U16 => ConstInt::Usize(ConstUsize::Us16($lit)),
+                ast::UintTy::U32 => ConstInt::Usize(ConstUsize::Us32($lit)),
+                ast::UintTy::U64 => ConstInt::Usize(ConstUsize::Us64($lit)),
+                _ => bug!(),
+            },
+        }
+    }
 }
 
 impl IntTypeExt for attr::IntType {
-    fn to_ty<'a, 'gcx: 'a+'tcx, 'tcx: 'a>(self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx> {
-        match self {
-            SignedInt(i) => tcx.mk_mach_int(i),
-            UnsignedInt(i) => tcx.mk_mach_uint(i),
+    fn to_ty<'a, 'gcx, 'tcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx> {
+        match *self {
+            SignedInt(ast::IntTy::I8)      => tcx.types.i8,
+            SignedInt(ast::IntTy::I16)     => tcx.types.i16,
+            SignedInt(ast::IntTy::I32)     => tcx.types.i32,
+            SignedInt(ast::IntTy::I64)     => tcx.types.i64,
+            SignedInt(ast::IntTy::I128)     => tcx.types.i128,
+            SignedInt(ast::IntTy::Is)   => tcx.types.isize,
+            UnsignedInt(ast::UintTy::U8)    => tcx.types.u8,
+            UnsignedInt(ast::UintTy::U16)   => tcx.types.u16,
+            UnsignedInt(ast::UintTy::U32)   => tcx.types.u32,
+            UnsignedInt(ast::UintTy::U64)   => tcx.types.u64,
+            UnsignedInt(ast::UintTy::U128)   => tcx.types.u128,
+            UnsignedInt(ast::UintTy::Us) => tcx.types.usize,
         }
     }
 
-    fn initial_discriminant<'a, 'tcx>(&self, _: TyCtxt<'a, 'tcx, 'tcx>) -> Disr {
-        0
+    fn initial_discriminant<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Disr {
+        typed_literal!(tcx, *self, 0)
+    }
+
+    fn assert_ty_matches(&self, val: Disr) {
+        match (*self, val) {
+            (SignedInt(ast::IntTy::I8), ConstInt::I8(_)) => {},
+            (SignedInt(ast::IntTy::I16), ConstInt::I16(_)) => {},
+            (SignedInt(ast::IntTy::I32), ConstInt::I32(_)) => {},
+            (SignedInt(ast::IntTy::I64), ConstInt::I64(_)) => {},
+            (SignedInt(ast::IntTy::I128), ConstInt::I128(_)) => {},
+            (SignedInt(ast::IntTy::Is), ConstInt::Isize(_)) => {},
+            (UnsignedInt(ast::UintTy::U8), ConstInt::U8(_)) => {},
+            (UnsignedInt(ast::UintTy::U16), ConstInt::U16(_)) => {},
+            (UnsignedInt(ast::UintTy::U32), ConstInt::U32(_)) => {},
+            (UnsignedInt(ast::UintTy::U64), ConstInt::U64(_)) => {},
+            (UnsignedInt(ast::UintTy::U128), ConstInt::U128(_)) => {},
+            (UnsignedInt(ast::UintTy::Us), ConstInt::Usize(_)) => {},
+            _ => bug!("disr type mismatch: {:?} vs {:?}", self, val),
+        }
+    }
+
+    fn disr_incr<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, val: Option<Disr>)
+                           -> Option<Disr> {
+        if let Some(val) = val {
+            self.assert_ty_matches(val);
+            (val + typed_literal!(tcx, *self, 1)).ok()
+        } else {
+            Some(self.initial_discriminant(tcx))
+        }
     }
 }
 
@@ -81,7 +155,7 @@ impl<'tcx> ParameterEnvironment<'tcx> {
                                        self_type: Ty<'tcx>, span: Span)
                                        -> Result<(), CopyImplementationError> {
         // FIXME: (@jroesch) float this code up
-        tcx.infer_ctxt(self.clone(), Reveal::NotSpecializable).enter(|infcx| {
+        tcx.infer_ctxt(self.clone(), Reveal::UserFacing).enter(|infcx| {
             let (adt, substs) = match self_type.sty {
                 ty::TyAdt(adt, substs) => (adt, substs),
                 _ => return Err(CopyImplementationError::NotAnAdt)
@@ -103,7 +177,7 @@ impl<'tcx> ParameterEnvironment<'tcx> {
                 }
             }
 
-            if adt.has_dtor() {
+            if adt.has_dtor(tcx) {
                 return Err(CopyImplementationError::HasDestructor);
             }
 
@@ -161,21 +235,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 adt.struct_variant().find_field_named(n).map(|f| f.ty(self, substs))
             }
             _ => return None
-        }
-    }
-
-    /// Returns the IntType representation.
-    /// This used to ensure `int_ty` doesn't contain `usize` and `isize`
-    /// by converting them to their actual types. That doesn't happen anymore.
-    pub fn enum_repr_type(self, opt_hint: Option<&attr::ReprAttr>) -> attr::IntType {
-        match opt_hint {
-            // Feed in the given type
-            Some(&attr::ReprInt(int_t)) => int_t,
-            // ... but provide sensible default if none provided
-            //
-            // NB. Historically `fn enum_variants` generate i64 here, while
-            // rustc_typeck::check would generate isize.
-            _ => SignedInt(ast::IntTy::Is),
         }
     }
 
@@ -300,7 +359,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// (This allows programs to make cyclic structures without
     /// resorting to unasfe means; see RFCs 769 and 1238).
     pub fn is_adt_dtorck(self, adt: &ty::AdtDef) -> bool {
-        let dtor_method = match adt.destructor() {
+        let dtor_method = match adt.destructor(self) {
             Some(dtor) => dtor,
             None => return false
         };
@@ -388,10 +447,10 @@ impl<'a, 'gcx, 'tcx, W> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx, W>
             TyFnDef(def_id, ..) => self.def_id(def_id),
             TyAdt(d, _) => self.def_id(d.did),
             TyFnPtr(f) => {
-                self.hash(f.unsafety);
-                self.hash(f.abi);
-                self.hash(f.sig.variadic());
-                self.hash(f.sig.skip_binder().inputs().len());
+                self.hash(f.unsafety());
+                self.hash(f.abi());
+                self.hash(f.variadic());
+                self.hash(f.inputs().skip_binder().len());
             }
             TyDynamic(ref data, ..) => {
                 if let Some(p) = data.principal() {
@@ -471,7 +530,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
             }
         }
         let result =
-            tcx.infer_ctxt(param_env.clone(), Reveal::ExactMatch)
+            tcx.infer_ctxt(param_env.clone(), Reveal::UserFacing)
             .enter(|infcx| {
                 traits::type_known_to_meet_bound(&infcx, self, def_id, span)
             });

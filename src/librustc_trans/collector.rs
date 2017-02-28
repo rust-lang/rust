@@ -682,10 +682,10 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
 
         fn is_drop_in_place_intrinsic<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                 def_id: DefId,
-                                                bare_fn_ty: &ty::BareFnTy<'tcx>)
+                                                bare_fn_ty: ty::PolyFnSig<'tcx>)
                                                 -> bool {
-            (bare_fn_ty.abi == Abi::RustIntrinsic ||
-             bare_fn_ty.abi == Abi::PlatformIntrinsic) &&
+            (bare_fn_ty.abi() == Abi::RustIntrinsic ||
+             bare_fn_ty.abi() == Abi::PlatformIntrinsic) &&
             tcx.item_name(def_id) == "drop_in_place"
         }
     }
@@ -697,8 +697,8 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
 fn should_trans_locally<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                   def_id: DefId)
                                   -> bool {
-    if let ty::TyFnDef(_, _, f) = tcx.item_type(def_id).sty {
-        if let Some(adt_def) = f.sig.output().skip_binder().ty_adt_def() {
+    if let ty::TyFnDef(_, _, sig) = tcx.item_type(def_id).sty {
+        if let Some(adt_def) = sig.output().skip_binder().ty_adt_def() {
             if adt_def.variants.iter().any(|v| def_id == v.did) {
                 // HACK: ADT constructors are translated in-place and
                 // do not have a trans-item.
@@ -754,7 +754,7 @@ fn find_drop_glue_neighbors<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
     // If the type implements Drop, also add a translation item for the
     // monomorphized Drop::drop() implementation.
     let destructor_did = match ty.sty {
-        ty::TyAdt(def, _) => def.destructor(),
+        ty::TyAdt(def, _) => def.destructor(scx.tcx()),
         _ => None
     };
 

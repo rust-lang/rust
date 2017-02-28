@@ -40,7 +40,7 @@ struct ExprVisitor<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 impl<'a, 'gcx, 'tcx> ExprVisitor<'a, 'gcx, 'tcx> {
     fn def_id_is_transmute(&self, def_id: DefId) -> bool {
         let intrinsic = match self.infcx.tcx.item_type(def_id).sty {
-            ty::TyFnDef(.., ref bfty) => bfty.abi == RustIntrinsic,
+            ty::TyFnDef(.., bfty) => bfty.abi() == RustIntrinsic,
             _ => return false
         };
         intrinsic && self.infcx.tcx.item_name(def_id) == "transmute"
@@ -137,9 +137,9 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for ExprVisitor<'a, 'gcx, 'tcx> {
                 let typ = self.infcx.tables.borrow().node_id_to_type(expr.id);
                 let typ = self.infcx.tcx.lift_to_global(&typ).unwrap();
                 match typ.sty {
-                    ty::TyFnDef(.., ref bare_fn_ty) if bare_fn_ty.abi == RustIntrinsic => {
-                        let from = bare_fn_ty.sig.skip_binder().inputs()[0];
-                        let to = bare_fn_ty.sig.skip_binder().output();
+                    ty::TyFnDef(.., sig) if sig.abi() == RustIntrinsic => {
+                        let from = sig.inputs().skip_binder()[0];
+                        let to = *sig.output().skip_binder();
                         self.check_transmute(expr.span, from, to, expr.id);
                     }
                     _ => {

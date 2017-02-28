@@ -1039,45 +1039,6 @@ struct Good(u32, u32, u32);
 ```
 "##,
 
-E0079: r##"
-Enum variants which contain no data can be given a custom integer
-representation. This error indicates that the value provided is not an integer
-literal and is therefore invalid.
-
-For example, in the following code:
-
-```compile_fail,E0079
-enum Foo {
-    Q = "32",
-}
-```
-
-We try to set the representation to a string.
-
-There's no general fix for this; if you can work with an integer then just set
-it to one:
-
-```
-enum Foo {
-    Q = 32,
-}
-```
-
-However if you actually wanted a mapping between variants and non-integer
-objects, it may be preferable to use a method with a match instead:
-
-```
-enum Foo { Q }
-impl Foo {
-    fn get_str(&self) -> &'static str {
-        match *self {
-            Foo::Q => "32",
-        }
-    }
-}
-```
-"##,
-
 E0081: r##"
 Enum discriminants are used to differentiate enum variants stored in memory.
 This error indicates that the same value was used for two or more variants,
@@ -1427,6 +1388,44 @@ struct Baz<'a> {
 ```
 "##,
 
+E0109: r##"
+You tried to give a type parameter to a type which doesn't need it. Erroneous
+code example:
+
+```compile_fail,E0109
+type X = u32<i32>; // error: type parameters are not allowed on this type
+```
+
+Please check that you used the correct type and recheck its definition. Perhaps
+it doesn't need the type parameter.
+
+Example:
+
+```
+type X = u32; // this compiles
+```
+
+Note that type parameters for enum-variant constructors go after the variant,
+not after the enum (Option::None::<u32>, not Option::<u32>::None).
+"##,
+
+E0110: r##"
+You tried to give a lifetime parameter to a type which doesn't need it.
+Erroneous code example:
+
+```compile_fail,E0110
+type X = u32<'static>; // error: lifetime parameters are not allowed on
+                       //        this type
+```
+
+Please check that the correct type was used and recheck its definition; perhaps
+it doesn't need the lifetime parameter. Example:
+
+```
+type X = u32; // ok!
+```
+"##,
+
 E0116: r##"
 You can only define an inherent implementation for a type in the same crate
 where the type was defined. For example, an `impl` block as below is not allowed
@@ -1699,33 +1698,6 @@ struct Foo {
     field2: i32, // ok!
 }
 ```
-"##,
-
-E0128: r##"
-Type parameter defaults can only use parameters that occur before them.
-Erroneous code example:
-
-```compile_fail,E0128
-struct Foo<T=U, U=()> {
-    field1: T,
-    filed2: U,
-}
-// error: type parameters with a default cannot use forward declared
-// identifiers
-```
-
-Since type parameters are evaluated in-order, you may be able to fix this issue
-by doing:
-
-```
-struct Foo<U=(), T=U> {
-    field1: T,
-    filed2: U,
-}
-```
-
-Please also verify that this wasn't because of a name-clash and rename the type
-parameter if so.
 "##,
 
 E0131: r##"
@@ -2676,6 +2648,41 @@ fn main() {
 ```
 "##,
 
+E0229: r##"
+An associated type binding was done outside of the type parameter declaration
+and `where` clause. Erroneous code example:
+
+```compile_fail,E0229
+pub trait Foo {
+    type A;
+    fn boo(&self) -> <Self as Foo>::A;
+}
+
+struct Bar;
+
+impl Foo for isize {
+    type A = usize;
+    fn boo(&self) -> usize { 42 }
+}
+
+fn baz<I>(x: &<I as Foo<A=Bar>>::A) {}
+// error: associated type bindings are not allowed here
+```
+
+To solve this error, please move the type bindings in the type parameter
+declaration:
+
+```ignore
+fn baz<I: Foo<A=Bar>>(x: &<I as Foo>::A) {} // ok!
+```
+
+Or in the `where` clause:
+
+```ignore
+fn baz<I>(x: &<I as Foo>::A) where I: Foo<A=Bar> {}
+```
+"##,
+
 E0230: r##"
 The trait has more type parameters specified than appear in its definition.
 
@@ -3440,23 +3447,6 @@ trait Bar {
 
 impl Bar for *mut Foo {
     fn bar() {} // ok!
-}
-```
-"##,
-
-E0391: r##"
-This error indicates that some types or traits depend on each other
-and therefore cannot be constructed.
-
-The following example contains a circular dependency between two traits:
-
-```compile_fail,E0391
-trait FirstTrait : SecondTrait {
-
-}
-
-trait SecondTrait : FirstTrait {
-
 }
 ```
 "##,

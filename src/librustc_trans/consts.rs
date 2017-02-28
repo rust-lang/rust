@@ -213,11 +213,11 @@ pub fn get_static(ccx: &CrateContext, def_id: DefId) -> ValueRef {
     g
 }
 
-pub fn trans_static(ccx: &CrateContext,
-                    m: hir::Mutability,
-                    id: ast::NodeId,
-                    attrs: &[ast::Attribute])
-                    -> Result<ValueRef, ConstEvalErr> {
+pub fn trans_static<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                              m: hir::Mutability,
+                              id: ast::NodeId,
+                              attrs: &[ast::Attribute])
+                              -> Result<ValueRef, ConstEvalErr<'tcx>> {
     unsafe {
         let def_id = ccx.tcx().hir.local_def_id(id);
         let g = get_static(ccx, def_id);

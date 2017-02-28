@@ -124,7 +124,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
                               "statics cannot be referenced in patterns");
                 }
                 PatternError::ConstEval(err) => {
-                    report_const_eval_err(self.tcx, &err, pat_span, "pattern").emit();
+                    report_const_eval_err(self.tcx, &err, pat_span, "pattern");
                 }
             }
         }
@@ -516,7 +516,7 @@ fn check_legality_of_move_bindings(cx: &MatchVisitor,
 ///
 /// FIXME: this should be done by borrowck.
 fn check_for_mutation_in_guard(cx: &MatchVisitor, guard: &hir::Expr) {
-    cx.tcx.infer_ctxt((cx.tables, cx.param_env.clone()), Reveal::NotSpecializable).enter(|infcx| {
+    cx.tcx.infer_ctxt((cx.tables, cx.param_env.clone()), Reveal::UserFacing).enter(|infcx| {
         let mut checker = MutationChecker {
             cx: cx,
         };

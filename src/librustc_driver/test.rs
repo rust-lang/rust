@@ -139,6 +139,8 @@ fn test_env<F>(source_string: &str,
     let region_map = region::resolve_crate(&sess, &hir_map);
     let index = stability::Index::new(&hir_map);
     TyCtxt::create_and_enter(&sess,
+                             ty::maps::Providers::default(),
+                             ty::maps::Providers::default(),
                              &arenas,
                              &arena,
                              resolutions,
@@ -149,7 +151,7 @@ fn test_env<F>(source_string: &str,
                              index,
                              "test_crate",
                              |tcx| {
-        tcx.infer_ctxt((), Reveal::NotSpecializable).enter(|infcx| {
+        tcx.infer_ctxt((), Reveal::UserFacing).enter(|infcx| {
 
             body(Env { infcx: &infcx });
             let free_regions = FreeRegionMap::new();
@@ -268,11 +270,13 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
     }
 
     pub fn t_fn(&self, input_tys: &[Ty<'tcx>], output_ty: Ty<'tcx>) -> Ty<'tcx> {
-        self.infcx.tcx.mk_fn_ptr(self.infcx.tcx.mk_bare_fn(ty::BareFnTy {
-            unsafety: hir::Unsafety::Normal,
-            abi: Abi::Rust,
-            sig: ty::Binder(self.infcx.tcx.mk_fn_sig(input_tys.iter().cloned(), output_ty, false)),
-        }))
+        self.infcx.tcx.mk_fn_ptr(ty::Binder(self.infcx.tcx.mk_fn_sig(
+            input_tys.iter().cloned(),
+            output_ty,
+            false,
+            hir::Unsafety::Normal,
+            Abi::Rust
+        )))
     }
 
     pub fn t_nil(&self) -> Ty<'tcx> {

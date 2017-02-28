@@ -10,7 +10,7 @@
 
 use hir::def_id::DefId;
 use infer::type_variable;
-use ty::{self, BoundRegion, Region, Ty, TyCtxt};
+use ty::{self, BoundRegion, DefIdTree, Region, Ty, TyCtxt};
 
 use std::fmt;
 use syntax::abi;
@@ -287,8 +287,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                         db.span_note(span, "a default was defined here...");
                     }
                     None => {
+                        let item_def_id = self.parent(expected.def_id).unwrap();
                         db.note(&format!("a default is defined on `{}`",
-                                         self.item_path_str(expected.def_id)));
+                                         self.item_path_str(item_def_id)));
                     }
                 }
 
@@ -301,8 +302,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                         db.span_note(span, "a second default was defined here...");
                     }
                     None => {
+                        let item_def_id = self.parent(found.def_id).unwrap();
                         db.note(&format!("a second default is defined on `{}`",
-                                         self.item_path_str(found.def_id)));
+                                         self.item_path_str(item_def_id)));
                     }
                 }
 
