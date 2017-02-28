@@ -30,7 +30,6 @@ use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::maps::Providers;
 use rustc::ty::subst::Substs;
 use rustc::hir;
-use rustc::hir::intravisit::{Visitor, NestedVisitorMap};
 use syntax::abi::Abi;
 use syntax::ast;
 use syntax_pos::Span;
@@ -39,9 +38,11 @@ use std::cell::RefCell;
 use std::mem;
 
 pub fn build_mir_for_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    tcx.visit_all_item_likes_in_krate(DepNode::Mir, &mut BuildMir {
-        tcx: tcx
-    }.as_deep_visitor());
+    tcx.dep_graph.with_task(DepNode::MirKrate, || {
+        tcx.visit_all_bodies_in_krate(|body_owner_def_id, _body_id| {
+            tcx.item_mir(body_owner_def_id);
+        });
+    });
 }
 
 pub fn provide(providers: &mut Providers) {
@@ -179,23 +180,6 @@ impl<'a, 'gcx: 'tcx, 'tcx> MutVisitor<'tcx> for GlobalizeMir<'a, 'gcx> {
 
 ///////////////////////////////////////////////////////////////////////////
 // BuildMir -- walks a crate, looking for fn items and methods to build MIR from
-
-struct BuildMir<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>
-}
-
-impl<'a, 'tcx> Visitor<'tcx> for BuildMir<'a, 'tcx> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        NestedVisitorMap::None
-    }
-
-    fn visit_nested_body(&mut self, body_id: hir::BodyId) {
-        self.tcx.item_mir(self.tcx.hir.body_owner_def_id(body_id));
-
-        let body = self.tcx.hir.body(body_id);
-        self.visit_body(body);
-    }
-}
 
 fn closure_self_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              closure_expr_id: ast::NodeId,
