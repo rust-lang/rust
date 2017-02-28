@@ -244,30 +244,31 @@ pub fn main() {
                 .expect("need to specify SYSROOT env var during clippy compilation, or use rustup or multirust")
         };
 
-        // this conditional check for the --sysroot flag is there so users can call `cargo-clippy` directly
-        // without having to pass --sysroot or anything
-        let mut args: Vec<String> = if env::args().any(|s| s == "--sysroot") {
-            env::args().collect()
-        } else {
-            env::args().chain(Some("--sysroot".to_owned())).chain(Some(sys_root)).collect()
-        };
+        rustc_driver::in_rustc_thread(|| {
+            // this conditional check for the --sysroot flag is there so users can call `cargo-clippy` directly
+            // without having to pass --sysroot or anything
+            let mut args: Vec<String> = if env::args().any(|s| s == "--sysroot") {
+                env::args().collect()
+            } else {
+                env::args().chain(Some("--sysroot".to_owned())).chain(Some(sys_root)).collect()
+            };
 
-        // this check ensures that dependencies are built but not linted and the final crate is
-        // linted but not built
-        let clippy_enabled = env::args().any(|s| s == "-Zno-trans");
+            // this check ensures that dependencies are built but not linted and the final crate is
+            // linted but not built
+            let clippy_enabled = env::args().any(|s| s == "-Zno-trans");
 
-        if clippy_enabled {
-            args.extend_from_slice(&["--cfg".to_owned(), r#"feature="cargo-clippy""#.to_owned()]);
-        }
-
-        let mut ccc = ClippyCompilerCalls::new(clippy_enabled);
-        let (result, _) = rustc_driver::run_compiler(&args, &mut ccc, None, None);
-
-        if let Err(err_count) = result {
-            if err_count > 0 {
-                std::process::exit(1);
+            if clippy_enabled {
+                args.extend_from_slice(&["--cfg".to_owned(), r#"feature="cargo-clippy""#.to_owned()]);
             }
-        }
+
+            let mut ccc = ClippyCompilerCalls::new(clippy_enabled);
+            let (result, _) = rustc_driver::run_compiler(&args, &mut ccc, None, None);
+            if let Err(err_count) = result {
+                if err_count > 0 {
+                    std::process::exit(1);
+                }
+            }
+        }).expect("rustc_thread failed");
     }
 }
 

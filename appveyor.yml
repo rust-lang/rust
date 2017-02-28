@@ -4,10 +4,8 @@ environment:
     matrix:
         - TARGET: i686-pc-windows-gnu
           MSYS2_BITS: 32
-          RUN_CARGO_CLIPPY: true
         - TARGET: i686-pc-windows-msvc
           MSYS2_BITS: 32
-          RUN_CARGO_CLIPPY: true
         - TARGET: x86_64-pc-windows-gnu
           MSYS2_BITS: 64
         - TARGET: x86_64-pc-windows-msvc
@@ -29,7 +27,7 @@ test_script:
     - cargo test --features debugging
     - copy target\debug\cargo-clippy.exe C:\Users\appveyor\.cargo\bin\
     - cargo clippy -- -D clippy
-    - if defined RUN_CARGO_CLIPPY cd clippy_lints && cargo clippy -- -D clippy && cd ..
+    - cd clippy_lints && cargo clippy -- -D clippy && cd ..
 
 notifications:
     - provider: Email
