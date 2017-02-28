@@ -183,7 +183,7 @@ fn inc(p: &mut usize) -> usize {
     *p += 1; *p
 }
 fn weird() {
-    let mut x: Box<Foo> = box Foo { ... };
+    let mut x: Box<Foo> = box Foo { /* ... */ };
     'a: add(&mut (*x).f,
             'b: inc(&mut (*x).f)) // (..)
 }
