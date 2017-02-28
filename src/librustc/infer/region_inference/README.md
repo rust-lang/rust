@@ -122,14 +122,14 @@ every expression, block, and pattern (patterns are considered to
 relevant bindings).  So, for example:
 
     fn foo(x: isize, y: isize) { // -+
-    //  +------------+       //  |
-    //  |      +-----+       //  |
-    //  |  +-+ +-+ +-+       //  |
-    //  |  | | | | | |       //  |
-    //  v  v v v v v v       //  |
-        let z = x + y;       //  |
-        ...                  //  |
-    }                        // -+
+    //  +------------+           //  |
+    //  |      +-----+           //  |
+    //  |  +-+ +-+ +-+           //  |
+    //  |  | | | | | |           //  |
+    //  v  v v v v v v           //  |
+        let z = x + y;           //  |
+        ...                      //  |
+    }                            // -+
 
     fn bar() { ... }
 
