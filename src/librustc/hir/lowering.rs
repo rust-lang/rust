@@ -356,22 +356,26 @@ impl<'a> LoweringContext<'a> {
         o_id.map(|sp_ident| respan(sp_ident.span, sp_ident.node.name))
     }
 
-    fn lower_destination(&mut self, destination: Option<(NodeId, Spanned<Ident>)>)
+    fn lower_loop_destination(&mut self, destination: Option<(NodeId, Spanned<Ident>)>)
         -> hir::Destination
     {
         match destination {
-            Some((id, label_ident)) => hir::Destination {
-                ident: Some(label_ident),
-                loop_id: if let Def::Label(loop_id) = self.expect_full_def(id) {
+            Some((id, label_ident)) => {
+                let target = if let Def::Label(loop_id) = self.expect_full_def(id) {
                     hir::LoopIdResult::Ok(loop_id)
                 } else {
                     hir::LoopIdResult::Err(hir::LoopIdError::UnresolvedLabel)
+                };
+                hir::Destination {
+                    ident: Some(label_ident),
+                    target_id: hir::ScopeTarget::Loop(target),
                 }
             },
             None => hir::Destination {
                 ident: None,
-                loop_id: self.loop_scopes.last().map(|innermost_loop_id| Ok(*innermost_loop_id))
-                            .unwrap_or(Err(hir::LoopIdError::OutsideLoopScope)).into()
+                target_id: hir::ScopeTarget::Loop(
+                    self.loop_scopes.last().map(|innermost_loop_id| Ok(*innermost_loop_id))
+                            .unwrap_or(Err(hir::LoopIdError::OutsideLoopScope)).into())
             }
         }
     }
@@ -990,7 +994,7 @@ impl<'a> LoweringContext<'a> {
         bounds.iter().map(|bound| self.lower_ty_param_bound(bound)).collect()
     }
 
-    fn lower_block(&mut self, b: &Block) -> P<hir::Block> {
+    fn lower_block(&mut self, b: &Block, break_to: Option<NodeId>) -> P<hir::Block> {
         let mut expr = None;
 
         let mut stmts = b.stmts.iter().flat_map(|s| self.lower_stmt(s)).collect::<Vec<_>>();
@@ -1008,6 +1012,7 @@ impl<'a> LoweringContext<'a> {
             expr: expr,
             rules: self.lower_block_check_mode(&b.rules),
             span: b.span,
+            break_to_expr_id: break_to,
         })
     }
 
@@ -1085,7 +1090,7 @@ impl<'a> LoweringContext<'a> {
             }
             ItemKind::Fn(ref decl, unsafety, constness, abi, ref generics, ref body) => {
                 self.with_new_scopes(|this| {
-                    let body = this.lower_block(body);
+                    let body = this.lower_block(body, None);
                     let body = this.expr_block(body, ThinVec::new());
                     let body_id = this.record_body(body, Some(decl));
                     hir::ItemFn(this.lower_fn_decl(decl),
@@ -1179,7 +1184,7 @@ impl<'a> LoweringContext<'a> {
                                                    hir::TraitMethod::Required(names))
                     }
                     TraitItemKind::Method(ref sig, Some(ref body)) => {
-                        let body = this.lower_block(body);
+                        let body = this.lower_block(body, None);
                         let expr = this.expr_block(body, ThinVec::new());
                         let body_id = this.record_body(expr, Some(&sig.decl));
                         hir::TraitItemKind::Method(this.lower_method_sig(sig),
@@ -1235,7 +1240,7 @@ impl<'a> LoweringContext<'a> {
                         hir::ImplItemKind::Const(this.lower_ty(ty), body_id)
                     }
                     ImplItemKind::Method(ref sig, ref body) => {
-                        let body = this.lower_block(body);
+                        let body = this.lower_block(body, None);
                         let expr = this.expr_block(body, ThinVec::new());
                         let body_id = this.record_body(expr, Some(&sig.decl));
                         hir::ImplItemKind::Method(this.lower_method_sig(sig), body_id)
@@ -1662,6 +1667,7 @@ impl<'a> LoweringContext<'a> {
                                     id: id,
                                     rules: hir::DefaultBlock,
                                     span: span,
+                                    break_to_expr_id: None,
                                 });
                                 P(self.expr_block(blk, ThinVec::new()))
                             }
@@ -1669,24 +1675,24 @@ impl<'a> LoweringContext<'a> {
                         }
                     });
 
-                    hir::ExprIf(P(self.lower_expr(cond)), self.lower_block(blk), else_opt)
+                    hir::ExprIf(P(self.lower_expr(cond)), self.lower_block(blk, None), else_opt)
                 }
                 ExprKind::While(ref cond, ref body, opt_ident) => {
                     self.with_loop_scope(e.id, |this|
                         hir::ExprWhile(
                             this.with_loop_condition_scope(|this| P(this.lower_expr(cond))),
-                            this.lower_block(body),
+                            this.lower_block(body, None),
                             this.lower_opt_sp_ident(opt_ident)))
                 }
                 ExprKind::Loop(ref body, opt_ident) => {
                     self.with_loop_scope(e.id, |this|
-                        hir::ExprLoop(this.lower_block(body),
+                        hir::ExprLoop(this.lower_block(body, None),
                                       this.lower_opt_sp_ident(opt_ident),
                                       hir::LoopSource::Loop))
                 }
                 ExprKind::Catch(ref body) => {
-                    // FIXME(cramertj): Add catch to HIR
-                    self.with_catch_scope(e.id, |this| hir::ExprBlock(this.lower_block(body)))
+                    self.with_catch_scope(e.id, |this|
+                        hir::ExprBlock(this.lower_block(body, Some(e.id))))
                 }
                 ExprKind::Match(ref expr, ref arms) => {
                     hir::ExprMatch(P(self.lower_expr(expr)),
@@ -1704,7 +1710,7 @@ impl<'a> LoweringContext<'a> {
                         })
                     })
                 }
-                ExprKind::Block(ref blk) => hir::ExprBlock(self.lower_block(blk)),
+                ExprKind::Block(ref blk) => hir::ExprBlock(self.lower_block(blk, None)),
                 ExprKind::Assign(ref el, ref er) => {
                     hir::ExprAssign(P(self.lower_expr(el)), P(self.lower_expr(er)))
                 }
@@ -1783,10 +1789,11 @@ impl<'a> LoweringContext<'a> {
                     let label_result = if self.is_in_loop_condition && opt_ident.is_none() {
                         hir::Destination {
                             ident: opt_ident,
-                            loop_id: Err(hir::LoopIdError::UnlabeledCfInWhileCondition).into(),
+                            target_id: hir::ScopeTarget::Loop(
+                                Err(hir::LoopIdError::UnlabeledCfInWhileCondition).into()),
                         }
                     } else {
-                        self.lower_destination(opt_ident.map(|ident| (e.id, ident)))
+                        self.lower_loop_destination(opt_ident.map(|ident| (e.id, ident)))
                     };
                     hir::ExprBreak(
                             label_result,
@@ -1797,11 +1804,11 @@ impl<'a> LoweringContext<'a> {
                         if self.is_in_loop_condition && opt_ident.is_none() {
                             hir::Destination {
                                 ident: opt_ident,
-                                loop_id: Err(
-                                    hir::LoopIdError::UnlabeledCfInWhileCondition).into(),
+                                target_id: hir::ScopeTarget::Loop(Err(
+                                    hir::LoopIdError::UnlabeledCfInWhileCondition).into()),
                             }
                         } else {
-                            self.lower_destination(opt_ident.map( |ident| (e.id, ident)))
+                            self.lower_loop_destination(opt_ident.map( |ident| (e.id, ident)))
                         }),
                 ExprKind::Ret(ref e) => hir::ExprRet(e.as_ref().map(|x| P(self.lower_expr(x)))),
                 ExprKind::InlineAsm(ref asm) => {
@@ -1859,7 +1866,7 @@ impl<'a> LoweringContext<'a> {
 
                     // `<pat> => <body>`
                     let pat_arm = {
-                        let body = self.lower_block(body);
+                        let body = self.lower_block(body, None);
                         let body_expr = P(self.expr_block(body, ThinVec::new()));
                         let pat = self.lower_pat(pat);
                         self.arm(hir_vec![pat], body_expr)
@@ -1946,7 +1953,7 @@ impl<'a> LoweringContext<'a> {
                     // Note that the block AND the condition are evaluated in the loop scope.
                     // This is done to allow `break` from inside the condition of the loop.
                     let (body, break_expr, sub_expr) = self.with_loop_scope(e.id, |this| (
-                        this.lower_block(body),
+                        this.lower_block(body, None),
                         this.expr_break(e.span, ThinVec::new()),
                         this.with_loop_condition_scope(|this| P(this.lower_expr(sub_expr))),
                     ));
@@ -2007,7 +2014,8 @@ impl<'a> LoweringContext<'a> {
 
                     // `::std::option::Option::Some(<pat>) => <body>`
                     let pat_arm = {
-                        let body_block = self.with_loop_scope(e.id, |this| this.lower_block(body));
+                        let body_block = self.with_loop_scope(e.id,
+                                                              |this| this.lower_block(body, None));
                         let body_expr = P(self.expr_block(body_block, ThinVec::new()));
                         let pat = self.lower_pat(pat);
                         let some_pat = self.pat_some(e.span, pat);
@@ -2090,13 +2098,11 @@ impl<'a> LoweringContext<'a> {
                     // match Carrier::translate(<expr>) {
                     //     Ok(val) => #[allow(unreachable_code)] val,
                     //     Err(err) => #[allow(unreachable_code)]
+                    //                 // If there is an enclosing `catch {...}`
+                    //                 break 'catch_target Carrier::from_error(From::from(err)),
+                    //                 // Otherwise
                     //                 return Carrier::from_error(From::from(err)),
                     // }
-
-                    // FIXME(cramertj): implement breaking to catch
-                    if !self.catch_scopes.is_empty() {
-                        bug!("`?` in catch scopes is unimplemented")
-                    }
 
                     let unstable_span = self.allow_internal_unstable("?", e.span);
 
@@ -2157,9 +2163,24 @@ impl<'a> LoweringContext<'a> {
                             P(self.expr_call(e.span, from_err, hir_vec![from_expr]))
                         };
 
-                        let ret_expr = P(self.expr(e.span,
-                                                   hir::Expr_::ExprRet(Some(from_err_expr)),
-                                                                       ThinVec::from(attrs)));
+                        let thin_attrs = ThinVec::from(attrs);
+                        let catch_scope = self.catch_scopes.last().map(|x| *x);
+                        let ret_expr = if let Some(catch_node) = catch_scope {
+                            P(self.expr(
+                                e.span,
+                                hir::ExprBreak(
+                                    hir::Destination {
+                                        ident: None,
+                                        target_id: hir::ScopeTarget::Block(catch_node),
+                                    },
+                                    Some(from_err_expr)
+                                ),
+                                thin_attrs))
+                        } else {
+                            P(self.expr(e.span,
+                                        hir::Expr_::ExprRet(Some(from_err_expr)),
+                                        thin_attrs))
+                        };
 
                         let err_pat = self.pat_err(e.span, err_local);
                         self.arm(hir_vec![err_pat], ret_expr)
@@ -2302,7 +2323,7 @@ impl<'a> LoweringContext<'a> {
     }
 
     fn expr_break(&mut self, span: Span, attrs: ThinVec<Attribute>) -> P<hir::Expr> {
-        let expr_break = hir::ExprBreak(self.lower_destination(None), None);
+        let expr_break = hir::ExprBreak(self.lower_loop_destination(None), None);
         P(self.expr(span, expr_break, attrs))
     }
 
@@ -2415,6 +2436,7 @@ impl<'a> LoweringContext<'a> {
             id: self.next_id(),
             rules: hir::DefaultBlock,
             span: span,
+            break_to_expr_id: None,
         }
     }
 
@@ -2519,6 +2541,7 @@ impl<'a> LoweringContext<'a> {
             id: id,
             stmts: stmts,
             expr: Some(expr),
+            break_to_expr_id: None,
         });
         self.expr_block(block, attrs)
     }

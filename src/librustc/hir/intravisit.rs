@@ -1008,18 +1008,24 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
         }
         ExprBreak(label, ref opt_expr) => {
             label.ident.map(|ident| {
-                if let Ok(loop_id) = label.loop_id.into() {
-                    visitor.visit_def_mention(Def::Label(loop_id));
-                }
+                match label.target_id {
+                    ScopeTarget::Block(node_id) |
+                    ScopeTarget::Loop(LoopIdResult::Ok(node_id)) =>
+                        visitor.visit_def_mention(Def::Label(node_id)),
+                    ScopeTarget::Loop(LoopIdResult::Err(_)) => {},
+                };
                 visitor.visit_name(ident.span, ident.node.name);
             });
             walk_list!(visitor, visit_expr, opt_expr);
         }
         ExprAgain(label) => {
             label.ident.map(|ident| {
-                if let Ok(loop_id) = label.loop_id.into() {
-                    visitor.visit_def_mention(Def::Label(loop_id));
-                }
+                match label.target_id {
+                    ScopeTarget::Block(_) => bug!("can't `continue` to a non-loop block"),
+                    ScopeTarget::Loop(LoopIdResult::Ok(node_id)) =>
+                        visitor.visit_def_mention(Def::Label(node_id)),
+                    ScopeTarget::Loop(LoopIdResult::Err(_)) => {},
+                };
                 visitor.visit_name(ident.span, ident.node.name);
             });
         }
