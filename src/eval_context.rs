@@ -649,15 +649,20 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     },
 
                     UnsafeFnPointer => match dest_ty.sty {
-                        ty::TyFnPtr(unsafe_fn_ty) => {
+                        ty::TyFnPtr(_) => {
                             let src = self.eval_operand(operand)?;
-                            let ptr = src.read_ptr(&self.memory)?;
-                            let fn_def = self.memory.get_fn(ptr.alloc_id)?.expect_concrete()?;
-                            let unsafe_fn_ty = self.tcx.erase_regions(&unsafe_fn_ty);
-                            let fn_ptr = self.memory.create_fn_ptr(self.tcx, fn_def.def_id, fn_def.substs, unsafe_fn_ty);
-                            self.write_value(Value::ByVal(PrimVal::Ptr(fn_ptr)), dest, dest_ty)?;
+                            self.write_value(src, dest, dest_ty)?;
                         },
                         ref other => bug!("fn to unsafe fn cast on {:?}", other),
+                    },
+
+                    ClosureFnPointer => match self.operand_ty(operand).sty {
+                        ty::TyClosure(def_id, substs) => {
+                            let fn_ty = self.tcx.closure_type(def_id, substs);
+                            let fn_ptr = self.memory.create_fn_ptr_from_noncapture_closure(self.tcx, def_id, substs, fn_ty);
+                            self.write_value(Value::ByVal(PrimVal::Ptr(fn_ptr)), dest, dest_ty)?;
+                        },
+                        ref other => bug!("reify fn pointer on {:?}", other),
                     },
                 }
             }

@@ -130,6 +130,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         );
                         Ok((fn_def.def_id, fn_def.substs, Vec::new()))
                     },
+                    Function::NonCaptureClosureAsFnPtr(fn_def) => {
+                        args.insert(0, (
+                            Value::ByVal(PrimVal::Undef),
+                            fn_def.sig.inputs()[0],
+                        ));
+                        Ok((fn_def.def_id, fn_def.substs, Vec::new()))
+                    }
                     Function::Closure(fn_def) => {
                         self.unpack_fn_args(args)?;
                         Ok((fn_def.def_id, fn_def.substs, Vec::new()))
@@ -140,8 +147,20 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         args.remove(0);
                         self.unpack_fn_args(args)?;
                         let fn_ptr = self.memory.read_ptr(self_ptr)?;
-                        let fn_def = self.memory.get_fn(fn_ptr.alloc_id)?.expect_concrete()?;
-                        assert_eq!(sig, fn_def.sig);
+                        let fn_def = match self.memory.get_fn(fn_ptr.alloc_id)? {
+                            Function::Concrete(fn_def) => {
+                                assert_eq!(sig, fn_def.sig);
+                                fn_def
+                            },
+                            Function::NonCaptureClosureAsFnPtr(fn_def) => {
+                                args.insert(0, (
+                                    Value::ByVal(PrimVal::Undef),
+                                    fn_def.sig.inputs()[0],
+                                ));
+                                fn_def
+                            },
+                            other => bug!("FnPtrAsTraitObject for {:?}", other),
+                        };
                         Ok((fn_def.def_id, fn_def.substs, Vec::new()))
                     }
                 }

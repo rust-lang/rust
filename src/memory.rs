@@ -130,15 +130,11 @@ pub enum Function<'tcx> {
     FnPtrAsTraitObject(&'tcx ty::FnSig<'tcx>),
     /// Glue for Closures
     Closure(FunctionDefinition<'tcx>),
+    /// Glue for noncapturing closures casted to function pointers
+    NonCaptureClosureAsFnPtr(FunctionDefinition<'tcx>),
 }
 
 impl<'tcx> Function<'tcx> {
-    pub fn expect_concrete(self) -> EvalResult<'tcx, FunctionDefinition<'tcx>> {
-        match self {
-            Function::Concrete(fn_def) => Ok(fn_def),
-            other => Err(EvalError::ExpectedConcreteFunction(other)),
-        }
-    }
     pub fn expect_drop_glue_real_ty(self) -> EvalResult<'tcx, ty::Ty<'tcx>> {
         match self {
             Function::DropGlue(real_ty) => Ok(real_ty),
@@ -232,6 +228,23 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
             def_id,
             substs: substs.substs,
             abi: fn_ty.abi,
+            // FIXME: why doesn't this compile?
+            //sig: tcx.erase_late_bound_regions(&fn_ty.sig),
+            sig: fn_ty.sig.skip_binder(),
+        }))
+    }
+
+    pub fn create_fn_ptr_from_noncapture_closure(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId, substs: ClosureSubsts<'tcx>, fn_ty: ClosureTy<'tcx>) -> Pointer {
+        // FIXME: this is a hack
+        let fn_ty = tcx.mk_bare_fn(ty::BareFnTy {
+            unsafety: fn_ty.unsafety,
+            abi: fn_ty.abi,
+            sig: fn_ty.sig,
+        });
+        self.create_fn_alloc(Function::NonCaptureClosureAsFnPtr(FunctionDefinition {
+            def_id,
+            substs: substs.substs,
+            abi: Abi::Rust, // adjust abi
             // FIXME: why doesn't this compile?
             //sig: tcx.erase_late_bound_regions(&fn_ty.sig),
             sig: fn_ty.sig.skip_binder(),
@@ -533,6 +546,10 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
                 },
                 (None, Some(&Function::Closure(fn_def))) => {
                     trace!("{} closure glue for {}", msg, dump_fn_def(fn_def));
+                    continue;
+                },
+                (None, Some(&Function::NonCaptureClosureAsFnPtr(fn_def))) => {
+                    trace!("{} non-capture closure as fn ptr glue for {}", msg, dump_fn_def(fn_def));
                     continue;
                 },
                 (None, None) => {

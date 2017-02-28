@@ -2,14 +2,14 @@ use rustc::hir::def_id::DefId;
 use rustc::mir;
 use rustc::ty::layout::Layout;
 use rustc::ty::subst::Substs;
-use rustc::ty::{self, Ty, BareFnTy};
+use rustc::ty::{self, Ty};
 use syntax::codemap::Span;
 use syntax::attr;
 
 use error::{EvalError, EvalResult};
 use eval_context::{EvalContext, IntegerExt, StackPopCleanup, is_inhabited};
 use lvalue::Lvalue;
-use memory::{Pointer, FunctionDefinition};
+use memory::{Pointer, FunctionDefinition, Function};
 use value::PrimVal;
 use value::Value;
 
@@ -61,35 +61,54 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 };
 
                 let func_ty = self.operand_ty(func);
-                match func_ty.sty {
+                let fn_def = match func_ty.sty {
                     ty::TyFnPtr(bare_fn_ty) => {
                         let fn_ptr = self.eval_operand_to_primval(func)?.to_ptr()?;
-                        let FunctionDefinition {def_id, substs, abi, sig} = self.memory.get_fn(fn_ptr.alloc_id)?.expect_concrete()?;
+                        let fn_def = self.memory.get_fn(fn_ptr.alloc_id)?;
                         let bare_sig = self.tcx.erase_late_bound_regions_and_normalize(&bare_fn_ty.sig);
                         let bare_sig = self.tcx.erase_regions(&bare_sig);
-                        // transmuting function pointers in miri is fine as long as the number of
-                        // arguments and the abi don't change.
-                        // FIXME: also check the size of the arguments' type and the return type
-                        // Didn't get it to work, since that triggers an assertion in rustc which
-                        // checks whether the type has escaping regions
-                        if abi != bare_fn_ty.abi ||
-                           sig.variadic != bare_sig.variadic ||
-                           sig.inputs().len() != bare_sig.inputs().len() {
-                            return Err(EvalError::FunctionPointerTyMismatch(abi, sig, bare_fn_ty));
+                        match fn_def {
+                            Function::Concrete(fn_def) => {
+                                // transmuting function pointers in miri is fine as long as the number of
+                                // arguments and the abi don't change.
+                                // FIXME: also check the size of the arguments' type and the return type
+                                // Didn't get it to work, since that triggers an assertion in rustc which
+                                // checks whether the type has escaping regions
+                                if fn_def.abi != bare_fn_ty.abi ||
+                                    fn_def.sig.variadic != bare_sig.variadic ||
+                                    fn_def.sig.inputs().len() != bare_sig.inputs().len() {
+                                    return Err(EvalError::FunctionPointerTyMismatch(fn_def.abi, fn_def.sig, bare_fn_ty));
+                                }
+                            },
+                            Function::NonCaptureClosureAsFnPtr(fn_def) => {
+                                if fn_def.abi != bare_fn_ty.abi ||
+                                    fn_def.sig.variadic != bare_sig.variadic ||
+                                    fn_def.sig.inputs().len() != 1 {
+                                    return Err(EvalError::FunctionPointerTyMismatch(fn_def.abi, fn_def.sig, bare_fn_ty));
+                                }
+                                if let ty::TyTuple(fields, _) = fn_def.sig.inputs()[0].sty {
+                                    if fields.len() != bare_sig.inputs().len() {
+                                        return Err(EvalError::FunctionPointerTyMismatch(fn_def.abi, fn_def.sig, bare_fn_ty));
+                                    }
+                                }
+                            },
+                            other => return Err(EvalError::ExpectedConcreteFunction(other)),
                         }
-                        self.eval_fn_call(def_id, substs, bare_fn_ty, destination, args,
-                                          terminator.source_info.span)?
+                        self.memory.get_fn(fn_ptr.alloc_id)?
                     },
-                    ty::TyFnDef(def_id, substs, fn_ty) => {
-                        self.eval_fn_call(def_id, substs, fn_ty, destination, args,
-                                          terminator.source_info.span)?
-                    }
+                    ty::TyFnDef(def_id, substs, fn_ty) => Function::Concrete(FunctionDefinition {
+                        def_id,
+                        substs,
+                        abi: fn_ty.abi,
+                        sig: fn_ty.sig.skip_binder(),
+                    }),
 
                     _ => {
                         let msg = format!("can't handle callee of type {:?}", func_ty);
                         return Err(EvalError::Unimplemented(msg));
                     }
-                }
+                };
+                self.eval_fn_call(fn_def, destination, args, terminator.source_info.span)?;
             }
 
             Drop { ref location, target, .. } => {
@@ -138,17 +157,16 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
     fn eval_fn_call(
         &mut self,
-        def_id: DefId,
-        substs: &'tcx Substs<'tcx>,
-        fn_ty: &'tcx BareFnTy,
+        fn_def: Function<'tcx>,
         destination: Option<(Lvalue<'tcx>, mir::BasicBlock)>,
         arg_operands: &[mir::Operand<'tcx>],
         span: Span,
     ) -> EvalResult<'tcx> {
         use syntax::abi::Abi;
-        match fn_ty.abi {
-            Abi::RustIntrinsic => {
-                let ty = fn_ty.sig.0.output();
+        match fn_def {
+            // Intrinsics can only be addressed directly
+            Function::Concrete(FunctionDefinition { def_id, substs, abi: Abi::RustIntrinsic, sig }) => {
+                let ty = sig.output();
                 let layout = self.type_layout(ty)?;
                 let (ret, target) = match destination {
                     Some(dest) if is_inhabited(self.tcx, ty) => dest,
@@ -157,18 +175,19 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.call_intrinsic(def_id, substs, arg_operands, ret, ty, layout, target)?;
                 self.dump_local(ret);
                 Ok(())
-            }
-
-            Abi::C => {
-                let ty = fn_ty.sig.0.output();
+            },
+            // C functions can only be addressed directly
+            Function::Concrete(FunctionDefinition { def_id, abi: Abi::C, sig, ..}) => {
+                let ty = sig.output();
                 let (ret, target) = destination.unwrap();
                 self.call_c_abi(def_id, arg_operands, ret, ty)?;
                 self.dump_local(ret);
                 self.goto_block(target);
                 Ok(())
-            }
-
-            Abi::Rust | Abi::RustCall => {
+            },
+            Function::DropGlue(_) => Err(EvalError::ManuallyCalledDropGlue),
+            Function::Concrete(FunctionDefinition { def_id, abi: Abi::RustCall, sig, substs }) |
+            Function::Concrete(FunctionDefinition { def_id, abi: Abi::Rust, sig, substs }) => {
                 let mut args = Vec::new();
                 for arg in arg_operands {
                     let arg_val = self.eval_operand(arg)?;
@@ -185,7 +204,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     };
 
                 // FIXME(eddyb) Detect ADT constructors more efficiently.
-                if let Some(adt_def) = fn_ty.sig.skip_binder().output().ty_adt_def() {
+                if let Some(adt_def) = sig.output().ty_adt_def() {
                     if let Some(v) = adt_def.variants.iter().find(|v| resolved_def_id == v.did) {
                         let (lvalue, target) = destination.expect("tuple struct constructors can't diverge");
                         let dest_ty = self.tcx.item_type(adt_def.did);
@@ -240,66 +259,105 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         return Ok(());
                     }
                 }
-
-                let mir = match self.load_mir(resolved_def_id) {
-                    Ok(mir) => mir,
-                    Err(EvalError::NoMirFor(path)) => {
-                        match &path[..] {
-                            // let's just ignore all output for now
-                            "std::io::_print" => {
-                                self.goto_block(destination.unwrap().1);
-                                return Ok(());
-                            },
-                            "std::thread::Builder::new" => return Err(EvalError::Unimplemented("miri does not support threading".to_owned())),
-                            "std::env::args" => return Err(EvalError::Unimplemented("miri does not support program arguments".to_owned())),
-                            "std::panicking::rust_panic_with_hook" |
-                            "std::rt::begin_panic_fmt" => return Err(EvalError::Panic),
-                            "std::panicking::panicking" |
-                            "std::rt::panicking" => {
-                                let (lval, block) = destination.expect("std::rt::panicking does not diverge");
-                                // we abort on panic -> `std::rt::panicking` always returns false
-                                let bool = self.tcx.types.bool;
-                                self.write_primval(lval, PrimVal::from_bool(false), bool)?;
-                                self.goto_block(block);
-                                return Ok(());
-                            }
-                            _ => {},
-                        }
-                        return Err(EvalError::NoMirFor(path));
-                    },
-                    Err(other) => return Err(other),
-                };
-                let (return_lvalue, return_to_block) = match destination {
-                    Some((lvalue, block)) => (lvalue, StackPopCleanup::Goto(block)),
-                    None => {
-                        // FIXME(solson)
-                        let lvalue = Lvalue::from_ptr(Pointer::never_ptr());
-                        (lvalue, StackPopCleanup::None)
-                    }
-                };
-
-                self.push_stack_frame(
+                self.eval_fn_call_inner(
                     resolved_def_id,
-                    span,
-                    mir,
                     resolved_substs,
-                    return_lvalue,
-                    return_to_block,
+                    destination,
+                    args,
                     temporaries,
-                )?;
-
-                let arg_locals = self.frame().mir.args_iter();
-                assert_eq!(self.frame().mir.arg_count, args.len());
-                for (arg_local, (arg_val, arg_ty)) in arg_locals.zip(args) {
-                    let dest = self.eval_lvalue(&mir::Lvalue::Local(arg_local))?;
-                    self.write_value(arg_val, dest, arg_ty)?;
+                    span,
+                )
+            },
+            Function::NonCaptureClosureAsFnPtr(FunctionDefinition { def_id, abi: Abi::Rust, substs, sig }) => {
+                let mut args = Vec::new();
+                for arg in arg_operands {
+                    let arg_val = self.eval_operand(arg)?;
+                    let arg_ty = self.operand_ty(arg);
+                    args.push((arg_val, arg_ty));
                 }
-
-                Ok(())
+                args.insert(0, (
+                    Value::ByVal(PrimVal::Undef),
+                    sig.inputs()[0],
+                ));
+                self.eval_fn_call_inner(
+                    def_id,
+                    substs,
+                    destination,
+                    args,
+                    Vec::new(),
+                    span,
+                )
             }
-
-            abi => Err(EvalError::Unimplemented(format!("can't handle function with {:?} ABI", abi))),
+            other => Err(EvalError::Unimplemented(format!("can't call function kind {:?}", other))),
         }
+    }
+
+    fn eval_fn_call_inner(
+        &mut self,
+        resolved_def_id: DefId,
+        resolved_substs: &'tcx Substs,
+        destination: Option<(Lvalue<'tcx>, mir::BasicBlock)>,
+        args: Vec<(Value, Ty<'tcx>)>,
+        temporaries: Vec<(Pointer, Ty<'tcx>)>,
+        span: Span,
+    ) -> EvalResult<'tcx> {
+        trace!("eval_fn_call_inner: {:#?}, {:#?}, {:#?}", args, temporaries, destination);
+
+        let mir = match self.load_mir(resolved_def_id) {
+            Ok(mir) => mir,
+            Err(EvalError::NoMirFor(path)) => {
+                match &path[..] {
+                    // let's just ignore all output for now
+                    "std::io::_print" => {
+                        self.goto_block(destination.unwrap().1);
+                        return Ok(());
+                    },
+                    "std::thread::Builder::new" => return Err(EvalError::Unimplemented("miri does not support threading".to_owned())),
+                    "std::env::args" => return Err(EvalError::Unimplemented("miri does not support program arguments".to_owned())),
+                    "std::panicking::rust_panic_with_hook" |
+                    "std::rt::begin_panic_fmt" => return Err(EvalError::Panic),
+                    "std::panicking::panicking" |
+                    "std::rt::panicking" => {
+                        let (lval, block) = destination.expect("std::rt::panicking does not diverge");
+                        // we abort on panic -> `std::rt::panicking` always returns false
+                        let bool = self.tcx.types.bool;
+                        self.write_primval(lval, PrimVal::from_bool(false), bool)?;
+                        self.goto_block(block);
+                        return Ok(());
+                    }
+                    _ => {},
+                }
+                return Err(EvalError::NoMirFor(path));
+            },
+            Err(other) => return Err(other),
+        };
+        let (return_lvalue, return_to_block) = match destination {
+            Some((lvalue, block)) => (lvalue, StackPopCleanup::Goto(block)),
+            None => {
+                // FIXME(solson)
+                let lvalue = Lvalue::from_ptr(Pointer::never_ptr());
+                (lvalue, StackPopCleanup::None)
+            }
+        };
+
+        self.push_stack_frame(
+            resolved_def_id,
+            span,
+            mir,
+            resolved_substs,
+            return_lvalue,
+            return_to_block,
+            temporaries,
+        )?;
+
+        let arg_locals = self.frame().mir.args_iter();
+        assert_eq!(self.frame().mir.arg_count, args.len());
+        for (arg_local, (arg_val, arg_ty)) in arg_locals.zip(args) {
+            let dest = self.eval_lvalue(&mir::Lvalue::Local(arg_local))?;
+            self.write_value(arg_val, dest, arg_ty)?;
+        }
+
+        Ok(())
     }
 
     pub fn read_discriminant_value(&self, adt_ptr: Pointer, adt_ty: Ty<'tcx>) -> EvalResult<'tcx, u128> {
