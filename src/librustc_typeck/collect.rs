@@ -1037,7 +1037,9 @@ fn evaluate_disr_expr(ccx: &CrateCtxt, repr_ty: attr::IntType, body: hir::BodyId
     let ty_hint = repr_ty.to_ty(ccx.tcx);
     let print_err = |cv: ConstVal| {
         struct_span_err!(ccx.tcx.sess, e.span, E0079, "mismatched types")
-            .note_expected_found(&"type", &ty_hint, &format!("{}", cv.description()))
+            .note_expected_found(&"type",
+                                 &[(format!("{}", ty_hint), true)],
+                                 &[(format!("{}", cv.description()), true)])
             .span_label(e.span, &format!("expected '{}' type", ty_hint))
             .emit();
     };
