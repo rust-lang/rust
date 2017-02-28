@@ -21,7 +21,6 @@ use super::{
     SelectionContext,
     SelectionError,
     ObjectSafetyViolation,
-    MethodViolationCode,
 };
 
 use fmt_macros::{Parser, Piece, Position};
@@ -267,61 +266,63 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
         let span = obligation.cause.span;
         let mut report = None;
-        for item in self.tcx.get_attrs(def_id).iter() {
-            if item.check_name("rustc_on_unimplemented") {
-                let err_sp = item.meta().span.substitute_dummy(span);
-                let trait_str = self.tcx.item_path_str(trait_ref.def_id);
-                if let Some(istring) = item.value_str() {
-                    let istring = &*istring.as_str();
-                    let generics = self.tcx.item_generics(trait_ref.def_id);
-                    let generic_map = generics.types.iter().map(|param| {
-                        (param.name.as_str().to_string(),
-                         trait_ref.substs.type_for_def(param).to_string())
-                    }).collect::<FxHashMap<String, String>>();
-                    let parser = Parser::new(istring);
-                    let mut errored = false;
-                    let err: String = parser.filter_map(|p| {
-                        match p {
-                            Piece::String(s) => Some(s),
-                            Piece::NextArgument(a) => match a.position {
-                                Position::ArgumentNamed(s) => match generic_map.get(s) {
-                                    Some(val) => Some(val),
-                                    None => {
-                                        span_err!(self.tcx.sess, err_sp, E0272,
-                                                       "the #[rustc_on_unimplemented] \
-                                                                attribute on \
-                                                                trait definition for {} refers to \
-                                                                non-existent type parameter {}",
-                                                               trait_str, s);
-                                        errored = true;
-                                        None
-                                    }
-                                },
-                                _ => {
-                                    span_err!(self.tcx.sess, err_sp, E0273,
-                                              "the #[rustc_on_unimplemented] attribute \
-                                               on trait definition for {} must have \
-                                               named format arguments, eg \
-                                               `#[rustc_on_unimplemented = \
-                                                \"foo {{T}}\"]`", trait_str);
+        if let Some(item) = self.tcx
+            .get_attrs(def_id)
+            .into_iter()
+            .filter(|a| a.check_name("rustc_on_unimplemented"))
+            .next()
+        {
+            let err_sp = item.meta().span.substitute_dummy(span);
+            let trait_str = self.tcx.item_path_str(trait_ref.def_id);
+            if let Some(istring) = item.value_str() {
+                let istring = &*istring.as_str();
+                let generics = self.tcx.item_generics(trait_ref.def_id);
+                let generic_map = generics.types.iter().map(|param| {
+                    (param.name.as_str().to_string(),
+                        trait_ref.substs.type_for_def(param).to_string())
+                }).collect::<FxHashMap<String, String>>();
+                let parser = Parser::new(istring);
+                let mut errored = false;
+                let err: String = parser.filter_map(|p| {
+                    match p {
+                        Piece::String(s) => Some(s),
+                        Piece::NextArgument(a) => match a.position {
+                            Position::ArgumentNamed(s) => match generic_map.get(s) {
+                                Some(val) => Some(val),
+                                None => {
+                                    span_err!(self.tcx.sess, err_sp, E0272,
+                                                    "the #[rustc_on_unimplemented] \
+                                                            attribute on \
+                                                            trait definition for {} refers to \
+                                                            non-existent type parameter {}",
+                                                            trait_str, s);
                                     errored = true;
                                     None
                                 }
+                            },
+                            _ => {
+                                span_err!(self.tcx.sess, err_sp, E0273,
+                                            "the #[rustc_on_unimplemented] attribute \
+                                            on trait definition for {} must have \
+                                            named format arguments, eg \
+                                            `#[rustc_on_unimplemented = \
+                                            \"foo {{T}}\"]`", trait_str);
+                                errored = true;
+                                None
                             }
                         }
-                    }).collect();
-                    // Report only if the format string checks out
-                    if !errored {
-                        report = Some(err);
                     }
-                } else {
-                    span_err!(self.tcx.sess, err_sp, E0274,
-                                            "the #[rustc_on_unimplemented] attribute on \
-                                                     trait definition for {} must have a value, \
-                                                     eg `#[rustc_on_unimplemented = \"foo\"]`",
-                                                     trait_str);
+                }).collect();
+                // Report only if the format string checks out
+                if !errored {
+                    report = Some(err);
                 }
-                break;
+            } else {
+                span_err!(self.tcx.sess, err_sp, E0274,
+                                        "the #[rustc_on_unimplemented] attribute on \
+                                                    trait definition for {} must have a value, \
+                                                    eg `#[rustc_on_unimplemented = \"foo\"]`",
+                                                    trait_str);
             }
         }
         report
@@ -359,34 +360,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn report_similar_impl_candidates(&self,
-                                      trait_ref: ty::PolyTraitRef<'tcx>,
+                                      impl_candidates: Vec<ty::TraitRef<'tcx>>,
                                       err: &mut DiagnosticBuilder)
     {
-        let simp = fast_reject::simplify_type(self.tcx,
-                                              trait_ref.skip_binder().self_ty(),
-                                              true);
-        let mut impl_candidates = Vec::new();
-        let trait_def = self.tcx.lookup_trait_def(trait_ref.def_id());
-
-        match simp {
-            Some(simp) => trait_def.for_each_impl(self.tcx, |def_id| {
-                let imp = self.tcx.impl_trait_ref(def_id).unwrap();
-                let imp_simp = fast_reject::simplify_type(self.tcx,
-                                                          imp.self_ty(),
-                                                          true);
-                if let Some(imp_simp) = imp_simp {
-                    if simp != imp_simp {
-                        return;
-                    }
-                }
-                impl_candidates.push(imp);
-            }),
-            None => trait_def.for_each_impl(self.tcx, |def_id| {
-                impl_candidates.push(
-                    self.tcx.impl_trait_ref(def_id).unwrap());
-            })
-        };
-
         if impl_candidates.is_empty() {
             return;
         }
@@ -525,127 +501,118 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                         lint_id)
                         .emit();
                     return;
-                } else {
-                    match obligation.predicate {
-                        ty::Predicate::Trait(ref trait_predicate) => {
-                            let trait_predicate =
-                                self.resolve_type_vars_if_possible(trait_predicate);
+                }
+                match obligation.predicate {
+                    ty::Predicate::Trait(ref trait_predicate) => {
+                        let trait_predicate =
+                            self.resolve_type_vars_if_possible(trait_predicate);
 
-                            if self.tcx.sess.has_errors() && trait_predicate.references_error() {
-                                return;
-                            } else {
-                                let trait_ref = trait_predicate.to_poly_trait_ref();
-                                let (post_message, pre_message) = match self.get_parent_trait_ref(
-                                    &obligation.cause.code)
-                                {
-                                    Some(t) => {
-                                        (format!(" in `{}`", t), format!("within `{}`, ", t))
-                                    }
-                                    None => (String::new(), String::new()),
-                                };
-                                let mut err = struct_span_err!(
-                                    self.tcx.sess,
-                                    span,
-                                    E0277,
-                                    "the trait bound `{}` is not satisfied{}",
-                                    trait_ref.to_predicate(),
-                                    post_message);
-                                err.span_label(span,
-                                               &format!("{}the trait `{}` is not \
-                                                         implemented for `{}`",
-                                                        pre_message,
-                                                        trait_ref,
-                                                        trait_ref.self_ty()));
-
-                                // Try to report a help message
-
-                                if !trait_ref.has_infer_types() &&
-                                    self.predicate_can_apply(trait_ref) {
-                                    // If a where-clause may be useful, remind the
-                                    // user that they can add it.
-                                    //
-                                    // don't display an on-unimplemented note, as
-                                    // these notes will often be of the form
-                                    //     "the type `T` can't be frobnicated"
-                                    // which is somewhat confusing.
-                                    err.help(&format!("consider adding a `where {}` bound",
-                                                      trait_ref.to_predicate()));
-                                } else if let Some(s) = self.on_unimplemented_note(trait_ref,
-                                                                                   obligation) {
-                                    // If it has a custom "#[rustc_on_unimplemented]"
-                                    // error message, let's display it!
-                                    err.note(&s);
-                                } else {
-                                    // If we can't show anything useful, try to find
-                                    // similar impls.
-                                    let impl_candidates =
-                                        self.find_similar_impl_candidates(trait_ref);
-                                    if impl_candidates.len() > 0 {
-                                        self.report_similar_impl_candidates(trait_ref, &mut err);
-                                    }
-                                }
-                                err
-                            }
-                        }
-
-                        ty::Predicate::Equate(ref predicate) => {
-                            let predicate = self.resolve_type_vars_if_possible(predicate);
-                            let err = self.equality_predicate(&obligation.cause,
-                                                              &predicate).err().unwrap();
-                            struct_span_err!(self.tcx.sess, span, E0278,
-                                "the requirement `{}` is not satisfied (`{}`)",
-                                predicate, err)
-                        }
-
-                        ty::Predicate::RegionOutlives(ref predicate) => {
-                            let predicate = self.resolve_type_vars_if_possible(predicate);
-                            let err = self.region_outlives_predicate(&obligation.cause,
-                                                                     &predicate).err().unwrap();
-                            struct_span_err!(self.tcx.sess, span, E0279,
-                                "the requirement `{}` is not satisfied (`{}`)",
-                                predicate, err)
-                        }
-
-                        ty::Predicate::Projection(..) | ty::Predicate::TypeOutlives(..) => {
-                            let predicate =
-                                self.resolve_type_vars_if_possible(&obligation.predicate);
-                            struct_span_err!(self.tcx.sess, span, E0280,
-                                "the requirement `{}` is not satisfied",
-                                predicate)
-                        }
-
-                        ty::Predicate::ObjectSafe(trait_def_id) => {
-                            let violations = self.tcx.object_safety_violations(trait_def_id);
-                            self.tcx.report_object_safety_error(span,
-                                                                trait_def_id,
-                                                                violations)
-                        }
-
-                        ty::Predicate::ClosureKind(closure_def_id, kind) => {
-                            let found_kind = self.closure_kind(closure_def_id).unwrap();
-                            let closure_span = self.tcx.hir.span_if_local(closure_def_id).unwrap();
-                            let mut err = struct_span_err!(
-                                self.tcx.sess, closure_span, E0525,
-                                "expected a closure that implements the `{}` trait, \
-                                 but this closure only implements `{}`",
-                                kind,
-                                found_kind);
-                            err.span_note(
-                                obligation.cause.span,
-                                &format!("the requirement to implement \
-                                          `{}` derives from here", kind));
-                            err.emit();
+                        if self.tcx.sess.has_errors() && trait_predicate.references_error() {
                             return;
                         }
+                        let trait_ref = trait_predicate.to_poly_trait_ref();
+                        let (post_message, pre_message) =
+                            self.get_parent_trait_ref(&obligation.cause.code)
+                                .map(|t| (format!(" in `{}`", t), format!("within `{}`, ", t)))
+                                .unwrap_or((String::new(), String::new()));
+                        let mut err = struct_span_err!(
+                            self.tcx.sess,
+                            span,
+                            E0277,
+                            "the trait bound `{}` is not satisfied{}",
+                            trait_ref.to_predicate(),
+                            post_message);
+                        err.span_label(span,
+                                        &format!("{}the trait `{}` is not \
+                                                    implemented for `{}`",
+                                                pre_message,
+                                                trait_ref,
+                                                trait_ref.self_ty()));
 
-                        ty::Predicate::WellFormed(ty) => {
-                            // WF predicates cannot themselves make
-                            // errors. They can only block due to
-                            // ambiguity; otherwise, they always
-                            // degenerate into other obligations
-                            // (which may fail).
-                            span_bug!(span, "WF predicate not satisfied for {:?}", ty);
+                        // Try to report a help message
+
+                        if !trait_ref.has_infer_types() &&
+                            self.predicate_can_apply(trait_ref) {
+                            // If a where-clause may be useful, remind the
+                            // user that they can add it.
+                            //
+                            // don't display an on-unimplemented note, as
+                            // these notes will often be of the form
+                            //     "the type `T` can't be frobnicated"
+                            // which is somewhat confusing.
+                            err.help(&format!("consider adding a `where {}` bound",
+                                                trait_ref.to_predicate()));
+                        } else if let Some(s) = self.on_unimplemented_note(trait_ref,
+                                                                            obligation) {
+                            // If it has a custom "#[rustc_on_unimplemented]"
+                            // error message, let's display it!
+                            err.note(&s);
+                        } else {
+                            // If we can't show anything useful, try to find
+                            // similar impls.
+                            let impl_candidates = self.find_similar_impl_candidates(trait_ref);
+                            self.report_similar_impl_candidates(impl_candidates, &mut err);
                         }
+                        err
+                    }
+
+                    ty::Predicate::Equate(ref predicate) => {
+                        let predicate = self.resolve_type_vars_if_possible(predicate);
+                        let err = self.equality_predicate(&obligation.cause,
+                                                            &predicate).err().unwrap();
+                        struct_span_err!(self.tcx.sess, span, E0278,
+                            "the requirement `{}` is not satisfied (`{}`)",
+                            predicate, err)
+                    }
+
+                    ty::Predicate::RegionOutlives(ref predicate) => {
+                        let predicate = self.resolve_type_vars_if_possible(predicate);
+                        let err = self.region_outlives_predicate(&obligation.cause,
+                                                                    &predicate).err().unwrap();
+                        struct_span_err!(self.tcx.sess, span, E0279,
+                            "the requirement `{}` is not satisfied (`{}`)",
+                            predicate, err)
+                    }
+
+                    ty::Predicate::Projection(..) | ty::Predicate::TypeOutlives(..) => {
+                        let predicate =
+                            self.resolve_type_vars_if_possible(&obligation.predicate);
+                        struct_span_err!(self.tcx.sess, span, E0280,
+                            "the requirement `{}` is not satisfied",
+                            predicate)
+                    }
+
+                    ty::Predicate::ObjectSafe(trait_def_id) => {
+                        let violations = self.tcx.object_safety_violations(trait_def_id);
+                        self.tcx.report_object_safety_error(span,
+                                                            trait_def_id,
+                                                            violations)
+                    }
+
+                    ty::Predicate::ClosureKind(closure_def_id, kind) => {
+                        let found_kind = self.closure_kind(closure_def_id).unwrap();
+                        let closure_span = self.tcx.hir.span_if_local(closure_def_id).unwrap();
+                        let mut err = struct_span_err!(
+                            self.tcx.sess, closure_span, E0525,
+                            "expected a closure that implements the `{}` trait, \
+                                but this closure only implements `{}`",
+                            kind,
+                            found_kind);
+                        err.span_note(
+                            obligation.cause.span,
+                            &format!("the requirement to implement \
+                                        `{}` derives from here", kind));
+                        err.emit();
+                        return;
+                    }
+
+                    ty::Predicate::WellFormed(ty) => {
+                        // WF predicates cannot themselves make
+                        // errors. They can only block due to
+                        // ambiguity; otherwise, they always
+                        // degenerate into other obligations
+                        // (which may fail).
+                        span_bug!(span, "WF predicate not satisfied for {:?}", ty);
                     }
                 }
             }
@@ -713,38 +680,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             if !reported_violations.insert(violation.clone()) {
                 continue;
             }
-            let buf;
-            let note = match violation {
-                ObjectSafetyViolation::SizedSelf => {
-                    "the trait cannot require that `Self : Sized`"
-                }
-
-                ObjectSafetyViolation::SupertraitSelf => {
-                    "the trait cannot use `Self` as a type parameter \
-                         in the supertrait listing"
-                }
-
-                ObjectSafetyViolation::Method(name,
-                                              MethodViolationCode::StaticMethod) => {
-                    buf = format!("method `{}` has no receiver", name);
-                    &buf
-                }
-
-                ObjectSafetyViolation::Method(name,
-                                              MethodViolationCode::ReferencesSelf) => {
-                    buf = format!("method `{}` references the `Self` type \
-                                       in its arguments or return type",
-                                  name);
-                    &buf
-                }
-
-                ObjectSafetyViolation::Method(name,
-                                              MethodViolationCode::Generic) => {
-                    buf = format!("method `{}` has generic type parameters", name);
-                    &buf
-                }
-            };
-            err.note(note);
+            err.note(&violation.error_msg());
         }
         err
     }
@@ -774,46 +710,46 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 let trait_ref = data.to_poly_trait_ref();
                 let self_ty = trait_ref.self_ty();
                 if predicate.references_error() {
-                } else {
-                    // Typically, this ambiguity should only happen if
-                    // there are unresolved type inference variables
-                    // (otherwise it would suggest a coherence
-                    // failure). But given #21974 that is not necessarily
-                    // the case -- we can have multiple where clauses that
-                    // are only distinguished by a region, which results
-                    // in an ambiguity even when all types are fully
-                    // known, since we don't dispatch based on region
-                    // relationships.
+                    return;
+                }
+                // Typically, this ambiguity should only happen if
+                // there are unresolved type inference variables
+                // (otherwise it would suggest a coherence
+                // failure). But given #21974 that is not necessarily
+                // the case -- we can have multiple where clauses that
+                // are only distinguished by a region, which results
+                // in an ambiguity even when all types are fully
+                // known, since we don't dispatch based on region
+                // relationships.
 
-                    // This is kind of a hack: it frequently happens that some earlier
-                    // error prevents types from being fully inferred, and then we get
-                    // a bunch of uninteresting errors saying something like "<generic
-                    // #0> doesn't implement Sized".  It may even be true that we
-                    // could just skip over all checks where the self-ty is an
-                    // inference variable, but I was afraid that there might be an
-                    // inference variable created, registered as an obligation, and
-                    // then never forced by writeback, and hence by skipping here we'd
-                    // be ignoring the fact that we don't KNOW the type works
-                    // out. Though even that would probably be harmless, given that
-                    // we're only talking about builtin traits, which are known to be
-                    // inhabited. But in any case I just threw in this check for
-                    // has_errors() to be sure that compilation isn't happening
-                    // anyway. In that case, why inundate the user.
-                    if !self.tcx.sess.has_errors() {
-                        if
-                            self.tcx.lang_items.sized_trait()
-                            .map_or(false, |sized_id| sized_id == trait_ref.def_id())
-                        {
-                            self.need_type_info(obligation, self_ty);
-                        } else {
-                            let mut err = struct_span_err!(self.tcx.sess,
-                                                           obligation.cause.span, E0283,
-                                                           "type annotations required: \
-                                                            cannot resolve `{}`",
-                                                           predicate);
-                            self.note_obligation_cause(&mut err, obligation);
-                            err.emit();
-                        }
+                // This is kind of a hack: it frequently happens that some earlier
+                // error prevents types from being fully inferred, and then we get
+                // a bunch of uninteresting errors saying something like "<generic
+                // #0> doesn't implement Sized".  It may even be true that we
+                // could just skip over all checks where the self-ty is an
+                // inference variable, but I was afraid that there might be an
+                // inference variable created, registered as an obligation, and
+                // then never forced by writeback, and hence by skipping here we'd
+                // be ignoring the fact that we don't KNOW the type works
+                // out. Though even that would probably be harmless, given that
+                // we're only talking about builtin traits, which are known to be
+                // inhabited. But in any case I just threw in this check for
+                // has_errors() to be sure that compilation isn't happening
+                // anyway. In that case, why inundate the user.
+                if !self.tcx.sess.has_errors() {
+                    if
+                        self.tcx.lang_items.sized_trait()
+                        .map_or(false, |sized_id| sized_id == trait_ref.def_id())
+                    {
+                        self.need_type_info(obligation, self_ty);
+                    } else {
+                        let mut err = struct_span_err!(self.tcx.sess,
+                                                        obligation.cause.span, E0283,
+                                                        "type annotations required: \
+                                                        cannot resolve `{}`",
+                                                        predicate);
+                        self.note_obligation_cause(&mut err, obligation);
+                        err.emit();
                     }
                 }
             }
