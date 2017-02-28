@@ -88,7 +88,7 @@ fn main() {
 }
 ```
 
-Your structure can still contain `&mut` pointers, which will let
+Your structure can still contain `&mut` references, which will let
 you do some kinds of mutation:
 
 ```rust
@@ -259,9 +259,10 @@ You can define a `struct` with no members at all:
 struct Electron {} // Use empty braces...
 struct Proton;     // ...or just a semicolon.
 
-// Whether you declared the struct with braces or not, do the same when creating one.
+// Use the same notation when creating an instance.
 let x = Electron {};
 let y = Proton;
+let z = Electron; // Error
 ```
 
 Such a `struct` is called ‘unit-like’ because it resembles the empty
