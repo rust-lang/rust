@@ -828,9 +828,9 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         TypeOfDepthLock(self.local())
     }
 
-    pub fn layout_of(&self, ty: Ty<'tcx>) -> &'tcx ty::layout::Layout {
+    pub fn layout_of(&self, ty: Ty<'tcx>) -> ty::layout::TyLayout<'tcx> {
         self.tcx().infer_ctxt((), traits::Reveal::All).enter(|infcx| {
-            ty.layout(&infcx).unwrap_or_else(|e| {
+            ty::layout::TyLayout::of(&infcx, ty).unwrap_or_else(|e| {
                 match e {
                     ty::layout::LayoutError::SizeOverflow(_) =>
                         self.sess().fatal(&e.to_string()),
