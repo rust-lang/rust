@@ -8,10 +8,42 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use rustc::middle::const_val::ConstVal;
+use rustc::ty::{self, TyCtxt};
+use rustc_const_math::ConstInt;
+
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 pub struct Disr(pub u64);
 
 impl Disr {
+    pub fn for_variant(tcx: TyCtxt,
+                       def: &ty::AdtDef,
+                       variant_index: usize) -> Self {
+        let mut explicit_index = variant_index;
+        let mut explicit_value = Disr(0);
+        loop {
+            match def.variants[explicit_index].discr {
+                ty::VariantDiscr::Relative(0) => break,
+                ty::VariantDiscr::Relative(distance) => {
+                    explicit_index -= distance;
+                }
+                ty::VariantDiscr::Explicit(expr_did) => {
+                    match tcx.maps.monomorphic_const_eval.borrow()[&expr_did] {
+                        Ok(ConstVal::Integral(v)) => {
+                            explicit_value = Disr::from(v);
+                            break;
+                        }
+                        _ => {
+                            explicit_index -= 1;
+                        }
+                    }
+                }
+            }
+        }
+        let distance = variant_index - explicit_index;
+        explicit_value.wrapping_add(Disr::from(distance))
+    }
+
     pub fn wrapping_add(self, other: Self) -> Self {
         Disr(self.0.wrapping_add(other.0))
     }
@@ -24,10 +56,10 @@ impl ::std::ops::BitAnd for Disr {
     }
 }
 
-impl From<::rustc::ty::Disr> for Disr {
-    fn from(i: ::rustc::ty::Disr) -> Disr {
+impl From<ConstInt> for Disr {
+    fn from(i: ConstInt) -> Disr {
         // FIXME: what if discr has 128 bit discr?
-        Disr(i as u64)
+        Disr(i.to_u128_unchecked() as u64)
     }
 }
 

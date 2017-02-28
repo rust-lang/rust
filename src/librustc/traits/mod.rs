@@ -31,7 +31,6 @@ pub use self::coherence::orphan_check;
 pub use self::coherence::overlapping_impls;
 pub use self::coherence::OrphanCheckErr;
 pub use self::fulfill::{FulfillmentContext, GlobalFulfilledPredicates, RegionObligation};
-pub use self::fulfill::DeferredObligation;
 pub use self::project::MismatchedProjectionTypes;
 pub use self::project::{normalize, normalize_projection_type, Normalized};
 pub use self::project::{ProjectionCache, ProjectionCacheSnapshot, Reveal};
@@ -474,7 +473,7 @@ pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let elaborated_env = unnormalized_env.with_caller_bounds(predicates);
 
-    tcx.infer_ctxt(elaborated_env, Reveal::NotSpecializable).enter(|infcx| {
+    tcx.infer_ctxt(elaborated_env, Reveal::UserFacing).enter(|infcx| {
         let predicates = match fully_normalize(&infcx, cause,
                                                &infcx.parameter_environment.caller_bounds) {
             Ok(predicates) => predicates,

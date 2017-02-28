@@ -542,7 +542,7 @@ impl<'tcx> Terminator<'tcx> {
 impl<'tcx> TerminatorKind<'tcx> {
     pub fn if_<'a, 'gcx>(tcx: ty::TyCtxt<'a, 'gcx, 'tcx>, cond: Operand<'tcx>,
                          t: BasicBlock, f: BasicBlock) -> TerminatorKind<'tcx> {
-        static BOOL_SWITCH_FALSE: &'static [ConstInt] = &[ConstInt::Infer(0)];
+        static BOOL_SWITCH_FALSE: &'static [ConstInt] = &[ConstInt::U8(0)];
         TerminatorKind::SwitchInt {
             discr: cond,
             switch_ty: tcx.types.bool,
@@ -1224,7 +1224,7 @@ pub enum Literal<'tcx> {
         substs: &'tcx Substs<'tcx>,
     },
     Value {
-        value: ConstVal,
+        value: ConstVal<'tcx>,
     },
     Promoted {
         // Index into the `promoted` vector of `Mir`.
@@ -1271,7 +1271,7 @@ fn fmt_const_val<W: Write>(fmt: &mut W, const_val: &ConstVal) -> fmt::Result {
             write!(fmt, "b\"{}\"", escaped)
         }
         Bool(b) => write!(fmt, "{:?}", b),
-        Function(def_id) => write!(fmt, "{}", item_path_str(def_id)),
+        Function(def_id, _) => write!(fmt, "{}", item_path_str(def_id)),
         Struct(_) | Tuple(_) | Array(_) | Repeat(..) =>
             bug!("ConstVal `{:?}` should not be in MIR", const_val),
         Char(c) => write!(fmt, "{:?}", c),

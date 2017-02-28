@@ -70,7 +70,8 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
         let item_def_id = tcx.hir.local_def_id(item_id);
 
         // this will have been written by the main typeck pass
-        if let Some(imports) = tcx.used_trait_imports.borrow().get(&item_def_id) {
+        if let Some(tables) = tcx.maps.typeck_tables.borrow().get(&item_def_id) {
+            let imports = &tables.used_trait_imports;
             debug!("GatherVisitor: item_def_id={:?} with imports {:#?}", item_def_id, imports);
             used_trait_imports.extend(imports);
         } else {

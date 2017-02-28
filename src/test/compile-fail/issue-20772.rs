@@ -10,6 +10,7 @@
 
 trait T : Iterator<Item=Self::Item>
 //~^ ERROR unsupported cyclic reference between types/traits detected
+//~| ERROR associated type `Item` not found for `Self`
 {}
 
 fn main() {}

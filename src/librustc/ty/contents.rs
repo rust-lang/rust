@@ -219,7 +219,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
                         res = res - TC::OwnsDtor;
                     }
 
-                    if def.has_dtor() {
+                    if def.has_dtor(tcx) {
                         res = res | TC::OwnsDtor;
                     }
 

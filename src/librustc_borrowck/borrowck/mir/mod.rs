@@ -248,7 +248,7 @@ fn lvalue_contents_drop_state_cannot_differ<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx
                    lv, ty);
             true
         }
-        ty::TyAdt(def, _) if (def.has_dtor() && !def.is_box()) || def.is_union() => {
+        ty::TyAdt(def, _) if (def.has_dtor(tcx) && !def.is_box()) || def.is_union() => {
             debug!("lvalue_contents_drop_state_cannot_differ lv: {:?} ty: {:?} Drop => true",
                    lv, ty);
             true

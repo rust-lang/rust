@@ -70,6 +70,7 @@ pub enum DepNode<D: Clone + Debug> {
     Resolve,
     EntryPoint,
     CheckEntryFn,
+    CoherenceCheckTrait(D),
     CoherenceCheckImpl(D),
     CoherenceOverlapCheck(D),
     CoherenceOverlapCheckSpecial(D),
@@ -109,11 +110,13 @@ pub enum DepNode<D: Clone + Debug> {
     // predicates for an item wind up in `ItemSignature`).
     AssociatedItems(D),
     ItemSignature(D),
+    TypeParamPredicates((D, D)),
     SizedConstraint(D),
     AssociatedItemDefIds(D),
     InherentImpls(D),
     TypeckTables(D),
     UsedTraitImports(D),
+    MonomorphicConstEval(D),
 
     // The set of impls for a given trait. Ultimately, it would be
     // nice to get more fine-grained here (e.g., to include a
@@ -239,6 +242,7 @@ impl<D: Clone + Debug> DepNode<D> {
             MetaData(ref d) => op(d).map(MetaData),
             CollectItem(ref d) => op(d).map(CollectItem),
             CollectItemSig(ref d) => op(d).map(CollectItemSig),
+            CoherenceCheckTrait(ref d) => op(d).map(CoherenceCheckTrait),
             CoherenceCheckImpl(ref d) => op(d).map(CoherenceCheckImpl),
             CoherenceOverlapCheck(ref d) => op(d).map(CoherenceOverlapCheck),
             CoherenceOverlapCheckSpecial(ref d) => op(d).map(CoherenceOverlapCheckSpecial),
@@ -258,11 +262,15 @@ impl<D: Clone + Debug> DepNode<D> {
             TransInlinedItem(ref d) => op(d).map(TransInlinedItem),
             AssociatedItems(ref d) => op(d).map(AssociatedItems),
             ItemSignature(ref d) => op(d).map(ItemSignature),
+            TypeParamPredicates((ref item, ref param)) => {
+                Some(TypeParamPredicates((try_opt!(op(item)), try_opt!(op(param)))))
+            }
             SizedConstraint(ref d) => op(d).map(SizedConstraint),
             AssociatedItemDefIds(ref d) => op(d).map(AssociatedItemDefIds),
             InherentImpls(ref d) => op(d).map(InherentImpls),
             TypeckTables(ref d) => op(d).map(TypeckTables),
             UsedTraitImports(ref d) => op(d).map(UsedTraitImports),
+            MonomorphicConstEval(ref d) => op(d).map(MonomorphicConstEval),
             TraitImpls(ref d) => op(d).map(TraitImpls),
             TraitItems(ref d) => op(d).map(TraitItems),
             ReprHints(ref d) => op(d).map(ReprHints),

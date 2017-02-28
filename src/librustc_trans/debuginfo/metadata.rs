@@ -373,11 +373,11 @@ fn vec_slice_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
 fn subroutine_type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                       unique_type_id: UniqueTypeId,
-                                      signature: &ty::PolyFnSig<'tcx>,
+                                      signature: ty::PolyFnSig<'tcx>,
                                       span: Span)
                                       -> MetadataCreationResult
 {
-    let signature = cx.tcx().erase_late_bound_regions(signature);
+    let signature = cx.tcx().erase_late_bound_regions(&signature);
 
     let mut signature_metadata: Vec<DIType> = Vec::with_capacity(signature.inputs().len() + 1);
 
@@ -558,10 +558,10 @@ pub fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 Err(metadata) => return metadata,
             }
         }
-        ty::TyFnDef(.., ref barefnty) | ty::TyFnPtr(ref barefnty) => {
+        ty::TyFnDef(.., sig) | ty::TyFnPtr(sig) => {
             let fn_metadata = subroutine_type_metadata(cx,
                                                        unique_type_id,
-                                                       &barefnty.sig,
+                                                       sig,
                                                        usage_site_span).metadata;
             match debug_context(cx).type_map
                                    .borrow()
@@ -1465,10 +1465,10 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     // <unknown>
     let file_metadata = unknown_file_metadata(cx);
 
-    let variants = &enum_type.ty_adt_def().unwrap().variants;
-    let enumerators_metadata: Vec<DIDescriptor> = variants
-        .iter()
-        .map(|v| {
+    let def = enum_type.ty_adt_def().unwrap();
+    let enumerators_metadata: Vec<DIDescriptor> = def.discriminants(cx.tcx())
+        .zip(&def.variants)
+        .map(|(discr, v)| {
             let token = v.name.as_str();
             let name = CString::new(token.as_bytes()).unwrap();
             unsafe {
@@ -1476,7 +1476,7 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                     DIB(cx),
                     name.as_ptr(),
                     // FIXME: what if enumeration has i128 discriminant?
-                    v.disr_val as u64)
+                    discr.to_u128_unchecked() as u64)
             }
         })
         .collect();

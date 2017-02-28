@@ -18,7 +18,7 @@ pub use self::CalleeData::*;
 
 use llvm::{self, ValueRef, get_params};
 use rustc::hir::def_id::DefId;
-use rustc::ty::subst::Substs;
+use rustc::ty::subst::{Substs, Subst};
 use rustc::traits;
 use abi::{Abi, FnType};
 use attributes;
@@ -83,7 +83,7 @@ impl<'tcx> Callee<'tcx> {
 
         let fn_ty = def_ty(ccx.shared(), def_id, substs);
         if let ty::TyFnDef(.., f) = fn_ty.sty {
-            if f.abi == Abi::RustIntrinsic || f.abi == Abi::PlatformIntrinsic {
+            if f.abi() == Abi::RustIntrinsic || f.abi() == Abi::PlatformIntrinsic {
                 return Callee {
                     data: Intrinsic,
                     ty: fn_ty
@@ -93,9 +93,9 @@ impl<'tcx> Callee<'tcx> {
 
         // FIXME(eddyb) Detect ADT constructors more efficiently.
         if let Some(adt_def) = fn_ty.fn_ret().skip_binder().ty_adt_def() {
-            if let Some(v) = adt_def.variants.iter().find(|v| def_id == v.did) {
+            if let Some(i) = adt_def.variants.iter().position(|v| def_id == v.did) {
                 return Callee {
-                    data: NamedTupleConstructor(Disr::from(v.disr_val)),
+                    data: NamedTupleConstructor(Disr::for_variant(tcx, adt_def, i)),
                     ty: fn_ty
                 };
             }
@@ -169,14 +169,13 @@ impl<'tcx> Callee<'tcx> {
     /// The extra argument types are for variadic (extern "C") functions.
     pub fn direct_fn_type<'a>(&self, ccx: &CrateContext<'a, 'tcx>,
                               extra_args: &[Ty<'tcx>]) -> FnType {
-        let abi = self.ty.fn_abi();
-        let sig = ccx.tcx().erase_late_bound_regions_and_normalize(self.ty.fn_sig());
-        let mut fn_ty = FnType::unadjusted(ccx, abi, &sig, extra_args);
+        let sig = ccx.tcx().erase_late_bound_regions_and_normalize(&self.ty.fn_sig());
+        let mut fn_ty = FnType::unadjusted(ccx, sig, extra_args);
         if let Virtual(_) = self.data {
             // Don't pass the vtable, it's not an argument of the virtual fn.
             fn_ty.args[1].ignore();
         }
-        fn_ty.adjust_for_abi(ccx, abi, &sig);
+        fn_ty.adjust_for_abi(ccx, sig);
         fn_ty
     }
 
@@ -307,38 +306,32 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     let ref_closure_ty = tcx.mk_imm_ref(tcx.mk_region(ty::ReErased), closure_ty);
 
     // Make a version with the type of by-ref closure.
-    let ty::ClosureTy { unsafety, abi, mut sig } = tcx.closure_type(def_id, substs);
-    sig.0 = tcx.mk_fn_sig(
-        iter::once(ref_closure_ty).chain(sig.0.inputs().iter().cloned()),
-        sig.0.output(),
-        sig.0.variadic
-    );
-    let llref_fn_ty = tcx.mk_fn_ptr(tcx.mk_bare_fn(ty::BareFnTy {
-        unsafety: unsafety,
-        abi: abi,
-        sig: sig.clone()
-    }));
+    let sig = tcx.closure_type(def_id).subst(tcx, substs.substs);
+    let sig = tcx.erase_late_bound_regions_and_normalize(&sig);
+    assert_eq!(sig.abi, Abi::RustCall);
+    let llref_fn_ty = tcx.mk_fn_ptr(ty::Binder(tcx.mk_fn_sig(
+        iter::once(ref_closure_ty).chain(sig.inputs().iter().cloned()),
+        sig.output(),
+        sig.variadic,
+        sig.unsafety,
+        Abi::RustCall
+    )));
     debug!("trans_fn_once_adapter_shim: llref_fn_ty={:?}",
            llref_fn_ty);
 
 
     // Make a version of the closure type with the same arguments, but
     // with argument #0 being by value.
-    assert_eq!(abi, Abi::RustCall);
-    sig.0 = tcx.mk_fn_sig(
-        iter::once(closure_ty).chain(sig.0.inputs().iter().skip(1).cloned()),
-        sig.0.output(),
-        sig.0.variadic
+    let sig = tcx.mk_fn_sig(
+        iter::once(closure_ty).chain(sig.inputs().iter().cloned()),
+        sig.output(),
+        sig.variadic,
+        sig.unsafety,
+        Abi::RustCall
     );
 
-    let sig = tcx.erase_late_bound_regions_and_normalize(&sig);
-    let fn_ty = FnType::new(ccx, abi, &sig, &[]);
-
-    let llonce_fn_ty = tcx.mk_fn_ptr(tcx.mk_bare_fn(ty::BareFnTy {
-        unsafety: unsafety,
-        abi: abi,
-        sig: ty::Binder(sig)
-    }));
+    let fn_ty = FnType::new(ccx, sig, &[]);
+    let llonce_fn_ty = tcx.mk_fn_ptr(ty::Binder(sig));
 
     // Create the by-value helper.
     let function_name = method_instance.symbol_name(ccx.shared());
@@ -470,33 +463,20 @@ fn trans_fn_pointer_shim<'a, 'tcx>(
 
     // Construct the "tuply" version of `bare_fn_ty`. It takes two arguments: `self`,
     // which is the fn pointer, and `args`, which is the arguments tuple.
-    let sig = match bare_fn_ty.sty {
-        ty::TyFnDef(..,
-                    &ty::BareFnTy { unsafety: hir::Unsafety::Normal,
-                                    abi: Abi::Rust,
-                                    ref sig }) |
-        ty::TyFnPtr(&ty::BareFnTy { unsafety: hir::Unsafety::Normal,
-                                    abi: Abi::Rust,
-                                    ref sig }) => sig,
-
-        _ => {
-            bug!("trans_fn_pointer_shim invoked on invalid type: {}",
-                 bare_fn_ty);
-        }
-    };
-    let sig = tcx.erase_late_bound_regions_and_normalize(sig);
+    let sig = bare_fn_ty.fn_sig();
+    let sig = tcx.erase_late_bound_regions_and_normalize(&sig);
+    assert_eq!(sig.unsafety, hir::Unsafety::Normal);
+    assert_eq!(sig.abi, Abi::Rust);
     let tuple_input_ty = tcx.intern_tup(sig.inputs(), false);
     let sig = tcx.mk_fn_sig(
         [bare_fn_ty_maybe_ref, tuple_input_ty].iter().cloned(),
         sig.output(),
-        false
+        false,
+        hir::Unsafety::Normal,
+        Abi::RustCall
     );
-    let fn_ty = FnType::new(ccx, Abi::RustCall, &sig, &[]);
-    let tuple_fn_ty = tcx.mk_fn_ptr(tcx.mk_bare_fn(ty::BareFnTy {
-        unsafety: hir::Unsafety::Normal,
-        abi: Abi::RustCall,
-        sig: ty::Binder(sig)
-    }));
+    let fn_ty = FnType::new(ccx, sig, &[]);
+    let tuple_fn_ty = tcx.mk_fn_ptr(ty::Binder(sig));
     debug!("tuple_fn_ty: {:?}", tuple_fn_ty);
 
     //
@@ -600,7 +580,7 @@ fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     // other weird situations. Annoying.
 
     // Create a fn pointer with the substituted signature.
-    let fn_ptr_ty = tcx.mk_fn_ptr(tcx.mk_bare_fn(common::ty_fn_ty(ccx, fn_ty).into_owned()));
+    let fn_ptr_ty = tcx.mk_fn_ptr(common::ty_fn_sig(ccx, fn_ty));
     let llptrty = type_of::type_of(ccx, fn_ptr_ty);
 
     let llfn = if let Some(llfn) = declare::get_declared_value(ccx, &sym) {

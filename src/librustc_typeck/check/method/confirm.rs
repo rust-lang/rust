@@ -365,10 +365,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
 
         debug!("method_predicates after subst = {:?}", method_predicates);
 
-        let fty = match self.tcx.item_type(def_id).sty {
-            ty::TyFnDef(_, _, f) => f,
-            _ => bug!()
-        };
+        let sig = self.tcx.item_type(def_id).fn_sig();
 
         // Instantiate late-bound regions and substitute the trait
         // parameters into the method type to get the actual method type.
@@ -376,21 +373,15 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         // NB: Instantiate late-bound regions first so that
         // `instantiate_type_scheme` can normalize associated types that
         // may reference those regions.
-        let method_sig = self.replace_late_bound_regions_with_fresh_var(&fty.sig);
+        let method_sig = self.replace_late_bound_regions_with_fresh_var(&sig);
         debug!("late-bound lifetimes from method instantiated, method_sig={:?}",
                method_sig);
 
         let method_sig = self.instantiate_type_scheme(self.span, all_substs, &method_sig);
         debug!("type scheme substituted, method_sig={:?}", method_sig);
 
-        let method_ty = self.tcx.mk_fn_def(def_id, all_substs,
-                                           self.tcx.mk_bare_fn(ty::BareFnTy {
-            sig: ty::Binder(method_sig),
-            unsafety: fty.unsafety,
-            abi: fty.abi,
-        }));
-
-        (method_ty, method_predicates)
+        (self.tcx.mk_fn_def(def_id, all_substs, ty::Binder(method_sig)),
+         method_predicates)
     }
 
     fn add_obligations(&mut self,
@@ -566,7 +557,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         // Disallow calls to the method `drop` defined in the `Drop` trait.
         match pick.item.container {
             ty::TraitContainer(trait_def_id) => {
-                callee::check_legal_trait_for_method_call(self.ccx, self.span, trait_def_id)
+                callee::check_legal_trait_for_method_call(self.tcx, self.span, trait_def_id)
             }
             ty::ImplContainer(..) => {}
         }

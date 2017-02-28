@@ -30,8 +30,6 @@ pub enum ConstInt {
     U64(u64),
     U128(u128),
     Usize(ConstUsize),
-    Infer(u128),
-    InferSigned(i128),
 }
 pub use self::ConstInt::*;
 
@@ -77,14 +75,6 @@ mod ibounds {
 }
 
 impl ConstInt {
-    pub fn new_inttype(val: u128, ty: IntType, usize_ty: UintTy, isize_ty: IntTy)
-    -> Option<ConstInt> {
-        match ty {
-            IntType::SignedInt(i) => ConstInt::new_signed(val as i128, i, isize_ty),
-            IntType::UnsignedInt(i) => ConstInt::new_unsigned(val, i, usize_ty),
-        }
-    }
-
     /// Creates a new unsigned ConstInt with matching type while also checking that overflow does
     /// not happen.
     pub fn new_unsigned(val: u128, ty: UintTy, usize_ty: UintTy) -> Option<ConstInt> {
@@ -100,7 +90,7 @@ impl ConstInt {
         }
     }
 
-    /// Creates a new unsigned ConstInt with matching type while also checking that overflow does
+    /// Creates a new signed ConstInt with matching type while also checking that overflow does
     /// not happen.
     pub fn new_signed(val: i128, ty: IntTy, isize_ty: IntTy) -> Option<ConstInt> {
         match ty {
@@ -115,103 +105,33 @@ impl ConstInt {
         }
     }
 
-    /// If either value is `Infer` or `InferSigned`, try to turn the value into the type of
-    /// the other value. If both values have no type, don't do anything
-    pub fn infer(self, other: Self) -> Result<(Self, Self), ConstMathErr> {
-        let inferred = match (self, other) {
-            (InferSigned(_), InferSigned(_))
-            | (Infer(_), Infer(_)) => self, // no inference possible
-            // kindof wrong, you could have had values > I64MAX during computation of a
-            (Infer(a @ 0...ubounds::I64MAX), InferSigned(_)) => InferSigned(a as i128),
-            (Infer(_), InferSigned(_)) => return Err(ConstMathErr::NotInRange),
-            (_, InferSigned(_))
-            | (_, Infer(_)) => return other.infer(self).map(|(b, a)| (a, b)),
-
-            (Infer(a @ 0...ubounds::I8MAX), I8(_)) => I8(a as i64 as i8),
-            (Infer(a @ 0...ubounds::I16MAX), I16(_)) => I16(a as i64 as i16),
-            (Infer(a @ 0...ubounds::I32MAX), I32(_)) => I32(a as i64 as i32),
-            (Infer(a @ 0...ubounds::I64MAX), I64(_)) => I64(a as i64),
-            (Infer(a @ 0...ubounds::I128MAX), I128(_)) => I128(a as i128),
-            (Infer(a @ 0...ubounds::I16MAX), Isize(Is16(_))) => Isize(Is16(a as i64 as i16)),
-            (Infer(a @ 0...ubounds::I32MAX), Isize(Is32(_))) => Isize(Is32(a as i64 as i32)),
-            (Infer(a @ 0...ubounds::I64MAX), Isize(Is64(_))) => Isize(Is64(a as i64)),
-            (Infer(a @ 0...ubounds::U8MAX), U8(_)) => U8(a as u8),
-            (Infer(a @ 0...ubounds::U16MAX), U16(_)) => U16(a as u16),
-            (Infer(a @ 0...ubounds::U32MAX), U32(_)) => U32(a as u32),
-            (Infer(a @ 0...ubounds::U64MAX), U64(_)) => U64(a as u64),
-            (Infer(a @ 0...ubounds::U128MAX), U128(_)) => U128(a as u128),
-            (Infer(a @ 0...ubounds::U16MAX), Usize(Us16(_))) => Usize(Us16(a as u16)),
-            (Infer(a @ 0...ubounds::U32MAX), Usize(Us32(_))) => Usize(Us32(a as u32)),
-            (Infer(a @ 0...ubounds::U64MAX), Usize(Us64(_))) => Usize(Us64(a as u64)),
-
-            (Infer(_), _) => return Err(ConstMathErr::NotInRange),
-
-            (InferSigned(a @ ibounds::I8MIN...ibounds::I8MAX), I8(_)) => I8(a as i8),
-            (InferSigned(a @ ibounds::I16MIN...ibounds::I16MAX), I16(_)) => I16(a as i16),
-            (InferSigned(a @ ibounds::I32MIN...ibounds::I32MAX), I32(_)) => I32(a as i32),
-            (InferSigned(a @ ibounds::I64MIN...ibounds::I64MAX), I64(_)) => I64(a as i64),
-            (InferSigned(a @ ibounds::I128MIN...ibounds::I128MAX), I128(_)) => I128(a as i128),
-            (InferSigned(a @ ibounds::I16MIN...ibounds::I16MAX), Isize(Is16(_))) => {
-                Isize(Is16(a as i16))
-            },
-            (InferSigned(a @ ibounds::I32MIN...ibounds::I32MAX), Isize(Is32(_))) => {
-                Isize(Is32(a as i32))
-            },
-            (InferSigned(a @ ibounds::I64MIN...ibounds::I64MAX), Isize(Is64(_))) => {
-                Isize(Is64(a as i64))
-            },
-            (InferSigned(a @ 0...ibounds::U8MAX), U8(_)) => U8(a as u8),
-            (InferSigned(a @ 0...ibounds::U16MAX), U16(_)) => U16(a as u16),
-            (InferSigned(a @ 0...ibounds::U32MAX), U32(_)) => U32(a as u32),
-            (InferSigned(a @ 0...ibounds::U64MAX), U64(_)) => U64(a as u64),
-            (InferSigned(a @ 0...ibounds::I128MAX), U128(_)) => U128(a as u128),
-            (InferSigned(a @ 0...ibounds::U16MAX), Usize(Us16(_))) => Usize(Us16(a as u16)),
-            (InferSigned(a @ 0...ibounds::U32MAX), Usize(Us32(_))) => Usize(Us32(a as u32)),
-            (InferSigned(a @ 0...ibounds::U64MAX), Usize(Us64(_))) => Usize(Us64(a as u64)),
-            (InferSigned(_), _) => return Err(ConstMathErr::NotInRange),
-            _ => self, // already known types
-        };
-        Ok((inferred, other))
+    /// Creates a new unsigned ConstInt with matching type.
+    pub fn new_unsigned_truncating(val: u128, ty: UintTy, usize_ty: UintTy) -> ConstInt {
+        match ty {
+            UintTy::U8 => U8(val as u8),
+            UintTy::U16 => U16(val as u16),
+            UintTy::U32 => U32(val as u32),
+            UintTy::U64 => U64(val as u64),
+            UintTy::Us => Usize(ConstUsize::new_truncating(val, usize_ty)),
+            UintTy::U128 => U128(val)
+        }
     }
 
-    /// Turn this value into an `Infer` or an `InferSigned`
-    pub fn erase_type(self) -> Self {
-        match self {
-            Infer(i) => Infer(i),
-            InferSigned(i) if i < 0 => InferSigned(i),
-            I8(i) if i < 0 => InferSigned(i as i128),
-            I16(i) if i < 0 => InferSigned(i as i128),
-            I32(i) if i < 0 => InferSigned(i as i128),
-            I64(i) if i < 0 => InferSigned(i as i128),
-            I128(i) if i < 0 => InferSigned(i as i128),
-            Isize(Is16(i)) if i < 0 => InferSigned(i as i128),
-            Isize(Is32(i)) if i < 0 => InferSigned(i as i128),
-            Isize(Is64(i)) if i < 0 => InferSigned(i as i128),
-            InferSigned(i) => Infer(i as u128),
-            I8(i) => Infer(i as u128),
-            I16(i) => Infer(i as u128),
-            I32(i) => Infer(i as u128),
-            I64(i) => Infer(i as u128),
-            I128(i) => Infer(i as u128),
-            Isize(Is16(i)) => Infer(i as u128),
-            Isize(Is32(i)) => Infer(i as u128),
-            Isize(Is64(i)) => Infer(i as u128),
-            U8(i) => Infer(i as u128),
-            U16(i) => Infer(i as u128),
-            U32(i) => Infer(i as u128),
-            U64(i) => Infer(i as u128),
-            U128(i) => Infer(i as u128),
-            Usize(Us16(i)) => Infer(i as u128),
-            Usize(Us32(i)) => Infer(i as u128),
-            Usize(Us64(i)) => Infer(i as u128),
+    /// Creates a new signed ConstInt with matching type.
+    pub fn new_signed_truncating(val: i128, ty: IntTy, isize_ty: IntTy) -> ConstInt {
+        match ty {
+            IntTy::I8 => I8(val as i8),
+            IntTy::I16 => I16(val as i16),
+            IntTy::I32 => I32(val as i32),
+            IntTy::I64 => I64(val as i64),
+            IntTy::Is => Isize(ConstIsize::new_truncating(val, isize_ty)),
+            IntTy::I128 => I128(val)
         }
     }
 
     /// Description of the type, not the value
     pub fn description(&self) -> &'static str {
         match *self {
-            Infer(_) => "not yet inferred integral",
-            InferSigned(_) => "not yet inferred signed integral",
             I8(_) => "i8",
             I16(_) => "i16",
             I32(_) => "i32",
@@ -230,10 +150,23 @@ impl ConstInt {
     /// Erases the type and returns a u128.
     /// This is not the same as `-5i8 as u128` but as `-5i8 as i128 as u128`
     pub fn to_u128_unchecked(self) -> u128 {
-        match self.erase_type() {
-            ConstInt::Infer(i) => i,
-            ConstInt::InferSigned(i) => i as u128,
-            _ => unreachable!(),
+        match self {
+            I8(i) => i as i128 as u128,
+            I16(i) => i as i128 as u128,
+            I32(i) => i as i128 as u128,
+            I64(i) => i as i128 as u128,
+            I128(i) => i as i128 as u128,
+            Isize(Is16(i)) => i as i128 as u128,
+            Isize(Is32(i)) => i as i128 as u128,
+            Isize(Is64(i)) => i as i128 as u128,
+            U8(i) => i as u128,
+            U16(i) => i as u128,
+            U32(i) => i as u128,
+            U64(i) => i as u128,
+            U128(i) => i as u128,
+            Usize(Us16(i)) => i as u128,
+            Usize(Us32(i)) => i as u128,
+            Usize(Us64(i)) => i as u128,
         }
     }
 
@@ -258,8 +191,6 @@ impl ConstInt {
     /// Converts the value to a `u128` if it's in the range 0...std::u128::MAX
     pub fn to_u128(&self) -> Option<u128> {
         match *self {
-            Infer(v) => Some(v),
-            InferSigned(v) if v >= 0 => Some(v as u128),
             I8(v) if v >= 0 => Some(v as u128),
             I16(v) if v >= 0 => Some(v as u128),
             I32(v) if v >= 0 => Some(v as u128),
@@ -280,6 +211,48 @@ impl ConstInt {
         }
     }
 
+    pub fn to_f32(self) -> f32 {
+        match self {
+            I8(i) => i as f32,
+            I16(i) => i as f32,
+            I32(i) => i as f32,
+            I64(i) => i as f32,
+            I128(i) => i as f32,
+            Isize(Is16(i)) => i as f32,
+            Isize(Is32(i)) => i as f32,
+            Isize(Is64(i)) => i as f32,
+            U8(i) => i as f32,
+            U16(i) => i as f32,
+            U32(i) => i as f32,
+            U64(i) => i as f32,
+            U128(i) => i as f32,
+            Usize(Us16(i)) => i as f32,
+            Usize(Us32(i)) => i as f32,
+            Usize(Us64(i)) => i as f32,
+        }
+    }
+
+    pub fn to_f64(self) -> f64 {
+        match self {
+            I8(i) => i as f64,
+            I16(i) => i as f64,
+            I32(i) => i as f64,
+            I64(i) => i as f64,
+            I128(i) => i as f64,
+            Isize(Is16(i)) => i as f64,
+            Isize(Is32(i)) => i as f64,
+            Isize(Is64(i)) => i as f64,
+            U8(i) => i as f64,
+            U16(i) => i as f64,
+            U32(i) => i as f64,
+            U64(i) => i as f64,
+            U128(i) => i as f64,
+            Usize(Us16(i)) => i as f64,
+            Usize(Us32(i)) => i as f64,
+            Usize(Us64(i)) => i as f64,
+        }
+    }
+
     pub fn is_negative(&self) -> bool {
         match *self {
             I8(v) => v < 0,
@@ -290,14 +263,13 @@ impl ConstInt {
             Isize(Is16(v)) => v < 0,
             Isize(Is32(v)) => v < 0,
             Isize(Is64(v)) => v < 0,
-            InferSigned(v) => v < 0,
             _ => false,
         }
     }
 
     /// Compares the values if they are of the same type
     pub fn try_cmp(self, rhs: Self) -> Result<::std::cmp::Ordering, ConstMathErr> {
-        match self.infer(rhs)? {
+        match (self, rhs) {
             (I8(a), I8(b)) => Ok(a.cmp(&b)),
             (I16(a), I16(b)) => Ok(a.cmp(&b)),
             (I32(a), I32(b)) => Ok(a.cmp(&b)),
@@ -314,8 +286,6 @@ impl ConstInt {
             (Usize(Us16(a)), Usize(Us16(b))) => Ok(a.cmp(&b)),
             (Usize(Us32(a)), Usize(Us32(b))) => Ok(a.cmp(&b)),
             (Usize(Us64(a)), Usize(Us64(b))) => Ok(a.cmp(&b)),
-            (Infer(a), Infer(b)) => Ok(a.cmp(&b)),
-            (InferSigned(a), InferSigned(b)) => Ok(a.cmp(&b)),
             _ => Err(CmpBetweenUnequalTypes),
         }
     }
@@ -342,25 +312,23 @@ impl ConstInt {
             ConstInt::Usize(ConstUsize::Us16(i)) => ConstInt::Usize(ConstUsize::Us16(add1!(i))),
             ConstInt::Usize(ConstUsize::Us32(i)) => ConstInt::Usize(ConstUsize::Us32(add1!(i))),
             ConstInt::Usize(ConstUsize::Us64(i)) => ConstInt::Usize(ConstUsize::Us64(add1!(i))),
-            ConstInt::Infer(_) | ConstInt::InferSigned(_) => panic!("no type info for const int"),
         }
     }
 
-    pub fn int_type(self) -> Option<IntType> {
+    pub fn int_type(self) -> IntType {
         match self {
-            ConstInt::I8(_) => Some(IntType::SignedInt(IntTy::I8)),
-            ConstInt::I16(_) => Some(IntType::SignedInt(IntTy::I16)),
-            ConstInt::I32(_) => Some(IntType::SignedInt(IntTy::I32)),
-            ConstInt::I64(_) => Some(IntType::SignedInt(IntTy::I64)),
-            ConstInt::I128(_) => Some(IntType::SignedInt(IntTy::I128)),
-            ConstInt::Isize(_) => Some(IntType::SignedInt(IntTy::Is)),
-            ConstInt::U8(_) => Some(IntType::UnsignedInt(UintTy::U8)),
-            ConstInt::U16(_) => Some(IntType::UnsignedInt(UintTy::U16)),
-            ConstInt::U32(_) => Some(IntType::UnsignedInt(UintTy::U32)),
-            ConstInt::U64(_) => Some(IntType::UnsignedInt(UintTy::U64)),
-            ConstInt::U128(_) => Some(IntType::UnsignedInt(UintTy::U128)),
-            ConstInt::Usize(_) => Some(IntType::UnsignedInt(UintTy::Us)),
-            _ => None,
+            ConstInt::I8(_) => IntType::SignedInt(IntTy::I8),
+            ConstInt::I16(_) => IntType::SignedInt(IntTy::I16),
+            ConstInt::I32(_) => IntType::SignedInt(IntTy::I32),
+            ConstInt::I64(_) => IntType::SignedInt(IntTy::I64),
+            ConstInt::I128(_) => IntType::SignedInt(IntTy::I128),
+            ConstInt::Isize(_) => IntType::SignedInt(IntTy::Is),
+            ConstInt::U8(_) => IntType::UnsignedInt(UintTy::U8),
+            ConstInt::U16(_) => IntType::UnsignedInt(UintTy::U16),
+            ConstInt::U32(_) => IntType::UnsignedInt(UintTy::U32),
+            ConstInt::U64(_) => IntType::UnsignedInt(UintTy::U64),
+            ConstInt::U128(_) => IntType::UnsignedInt(UintTy::U128),
+            ConstInt::Usize(_) => IntType::UnsignedInt(UintTy::Us),
         }
     }
 }
@@ -380,8 +348,6 @@ impl ::std::cmp::Ord for ConstInt {
 impl ::std::fmt::Display for ConstInt {
     fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> Result<(), ::std::fmt::Error> {
         match *self {
-            Infer(i) => write!(fmt, "{}", i),
-            InferSigned(i) => write!(fmt, "{}", i),
             I8(i) => write!(fmt, "{}i8", i),
             I16(i) => write!(fmt, "{}i16", i),
             I32(i) => write!(fmt, "{}i32", i),
@@ -417,7 +383,7 @@ macro_rules! impl_binop {
         impl ::std::ops::$op for ConstInt {
             type Output = Result<Self, ConstMathErr>;
             fn $func(self, rhs: Self) -> Result<Self, ConstMathErr> {
-                match self.infer(rhs)? {
+                match (self, rhs) {
                     (I8(a), I8(b)) => a.$checked_func(b).map(I8),
                     (I16(a), I16(b)) => a.$checked_func(b).map(I16),
                     (I32(a), I32(b)) => a.$checked_func(b).map(I32),
@@ -434,8 +400,6 @@ macro_rules! impl_binop {
                     (Usize(Us16(a)), Usize(Us16(b))) => a.$checked_func(b).map(Us16).map(Usize),
                     (Usize(Us32(a)), Usize(Us32(b))) => a.$checked_func(b).map(Us32).map(Usize),
                     (Usize(Us64(a)), Usize(Us64(b))) => a.$checked_func(b).map(Us64).map(Usize),
-                    (Infer(a), Infer(b)) => a.$checked_func(b).map(Infer),
-                    (InferSigned(a), InferSigned(b)) => a.$checked_func(b).map(InferSigned),
                     _ => return Err(UnequalTypes(Op::$op)),
                 }.ok_or(Overflow(Op::$op))
             }
@@ -448,7 +412,7 @@ macro_rules! derive_binop {
         impl ::std::ops::$op for ConstInt {
             type Output = Result<Self, ConstMathErr>;
             fn $func(self, rhs: Self) -> Result<Self, ConstMathErr> {
-                match self.infer(rhs)? {
+                match (self, rhs) {
                     (I8(a), I8(b)) => Ok(I8(a.$func(b))),
                     (I16(a), I16(b)) => Ok(I16(a.$func(b))),
                     (I32(a), I32(b)) => Ok(I32(a.$func(b))),
@@ -465,8 +429,6 @@ macro_rules! derive_binop {
                     (Usize(Us16(a)), Usize(Us16(b))) => Ok(Usize(Us16(a.$func(b)))),
                     (Usize(Us32(a)), Usize(Us32(b))) => Ok(Usize(Us32(a.$func(b)))),
                     (Usize(Us64(a)), Usize(Us64(b))) => Ok(Usize(Us64(a.$func(b)))),
-                    (Infer(a), Infer(b)) => Ok(Infer(a.$func(b))),
-                    (InferSigned(a), InferSigned(b)) => Ok(InferSigned(a.$func(b))),
                     _ => Err(UnequalTypes(Op::$op)),
                 }
             }
@@ -498,7 +460,6 @@ fn check_division(
         (Isize(_), Isize(Is16(0))) => Err(zerr),
         (Isize(_), Isize(Is32(0))) => Err(zerr),
         (Isize(_), Isize(Is64(0))) => Err(zerr),
-        (InferSigned(_), InferSigned(0)) => Err(zerr),
 
         (U8(_), U8(0)) => Err(zerr),
         (U16(_), U16(0)) => Err(zerr),
@@ -508,7 +469,6 @@ fn check_division(
         (Usize(_), Usize(Us16(0))) => Err(zerr),
         (Usize(_), Usize(Us32(0))) => Err(zerr),
         (Usize(_), Usize(Us64(0))) => Err(zerr),
-        (Infer(_), Infer(0)) => Err(zerr),
 
         (I8(::std::i8::MIN), I8(-1)) => Err(Overflow(op)),
         (I16(::std::i16::MIN), I16(-1)) => Err(Overflow(op)),
@@ -518,7 +478,6 @@ fn check_division(
         (Isize(Is16(::std::i16::MIN)), Isize(Is16(-1))) => Err(Overflow(op)),
         (Isize(Is32(::std::i32::MIN)), Isize(Is32(-1))) => Err(Overflow(op)),
         (Isize(Is64(::std::i64::MIN)), Isize(Is64(-1))) => Err(Overflow(op)),
-        (InferSigned(I128_MIN), InferSigned(-1)) => Err(Overflow(op)),
 
         _ => Ok(()),
     }
@@ -527,7 +486,7 @@ fn check_division(
 impl ::std::ops::Div for ConstInt {
     type Output = Result<Self, ConstMathErr>;
     fn div(self, rhs: Self) -> Result<Self, ConstMathErr> {
-        let (lhs, rhs) = self.infer(rhs)?;
+        let (lhs, rhs) = (self, rhs);
         check_division(lhs, rhs, Op::Div, DivisionByZero)?;
         match (lhs, rhs) {
             (I8(a), I8(b)) => Ok(I8(a/b)),
@@ -538,7 +497,6 @@ impl ::std::ops::Div for ConstInt {
             (Isize(Is16(a)), Isize(Is16(b))) => Ok(Isize(Is16(a/b))),
             (Isize(Is32(a)), Isize(Is32(b))) => Ok(Isize(Is32(a/b))),
             (Isize(Is64(a)), Isize(Is64(b))) => Ok(Isize(Is64(a/b))),
-            (InferSigned(a), InferSigned(b)) => Ok(InferSigned(a/b)),
 
             (U8(a), U8(b)) => Ok(U8(a/b)),
             (U16(a), U16(b)) => Ok(U16(a/b)),
@@ -548,7 +506,6 @@ impl ::std::ops::Div for ConstInt {
             (Usize(Us16(a)), Usize(Us16(b))) => Ok(Usize(Us16(a/b))),
             (Usize(Us32(a)), Usize(Us32(b))) => Ok(Usize(Us32(a/b))),
             (Usize(Us64(a)), Usize(Us64(b))) => Ok(Usize(Us64(a/b))),
-            (Infer(a), Infer(b)) => Ok(Infer(a/b)),
 
             _ => Err(UnequalTypes(Op::Div)),
         }
@@ -558,7 +515,7 @@ impl ::std::ops::Div for ConstInt {
 impl ::std::ops::Rem for ConstInt {
     type Output = Result<Self, ConstMathErr>;
     fn rem(self, rhs: Self) -> Result<Self, ConstMathErr> {
-        let (lhs, rhs) = self.infer(rhs)?;
+        let (lhs, rhs) = (self, rhs);
         // should INT_MIN%-1 be zero or an error?
         check_division(lhs, rhs, Op::Rem, RemainderByZero)?;
         match (lhs, rhs) {
@@ -570,7 +527,6 @@ impl ::std::ops::Rem for ConstInt {
             (Isize(Is16(a)), Isize(Is16(b))) => Ok(Isize(Is16(a%b))),
             (Isize(Is32(a)), Isize(Is32(b))) => Ok(Isize(Is32(a%b))),
             (Isize(Is64(a)), Isize(Is64(b))) => Ok(Isize(Is64(a%b))),
-            (InferSigned(a), InferSigned(b)) => Ok(InferSigned(a%b)),
 
             (U8(a), U8(b)) => Ok(U8(a%b)),
             (U16(a), U16(b)) => Ok(U16(a%b)),
@@ -580,7 +536,6 @@ impl ::std::ops::Rem for ConstInt {
             (Usize(Us16(a)), Usize(Us16(b))) => Ok(Usize(Us16(a%b))),
             (Usize(Us32(a)), Usize(Us32(b))) => Ok(Usize(Us32(a%b))),
             (Usize(Us64(a)), Usize(Us64(b))) => Ok(Usize(Us64(a%b))),
-            (Infer(a), Infer(b)) => Ok(Infer(a%b)),
 
             _ => Err(UnequalTypes(Op::Rem)),
         }
@@ -608,8 +563,6 @@ impl ::std::ops::Shl<ConstInt> for ConstInt {
             Usize(Us16(a)) => Ok(Usize(Us16(overflowing!(a.overflowing_shl(b), Op::Shl)))),
             Usize(Us32(a)) => Ok(Usize(Us32(overflowing!(a.overflowing_shl(b), Op::Shl)))),
             Usize(Us64(a)) => Ok(Usize(Us64(overflowing!(a.overflowing_shl(b), Op::Shl)))),
-            Infer(a) => Ok(Infer(overflowing!(a.overflowing_shl(b), Op::Shl))),
-            InferSigned(a) => Ok(InferSigned(overflowing!(a.overflowing_shl(b), Op::Shl))),
         }
     }
 }
@@ -635,8 +588,6 @@ impl ::std::ops::Shr<ConstInt> for ConstInt {
             Usize(Us16(a)) => Ok(Usize(Us16(overflowing!(a.overflowing_shr(b), Op::Shr)))),
             Usize(Us32(a)) => Ok(Usize(Us32(overflowing!(a.overflowing_shr(b), Op::Shr)))),
             Usize(Us64(a)) => Ok(Usize(Us64(overflowing!(a.overflowing_shr(b), Op::Shr)))),
-            Infer(a) => Ok(Infer(overflowing!(a.overflowing_shr(b), Op::Shr))),
-            InferSigned(a) => Ok(InferSigned(overflowing!(a.overflowing_shr(b), Op::Shr))),
         }
     }
 }
@@ -656,9 +607,6 @@ impl ::std::ops::Neg for ConstInt {
             a@U8(0) | a@U16(0) | a@U32(0) | a@U64(0) | a@U128(0) |
             a@Usize(Us16(0)) | a@Usize(Us32(0)) | a@Usize(Us64(0)) => Ok(a),
             U8(_) | U16(_) | U32(_) | U64(_) | U128(_) | Usize(_) => Err(UnsignedNegation),
-            Infer(a @ 0...ubounds::I128MAX) => Ok(InferSigned(-(a as i128))),
-            Infer(_) => Err(Overflow(Op::Neg)),
-            InferSigned(a) => Ok(InferSigned(overflowing!(a.overflowing_neg(), Op::Neg))),
         }
     }
 }
@@ -683,8 +631,6 @@ impl ::std::ops::Not for ConstInt {
             Usize(Us16(a)) => Ok(Usize(Us16(!a))),
             Usize(Us32(a)) => Ok(Usize(Us32(!a))),
             Usize(Us64(a)) => Ok(Usize(Us64(!a))),
-            Infer(a) => Ok(Infer(!a)),
-            InferSigned(a) => Ok(InferSigned(!a)),
         }
     }
 }

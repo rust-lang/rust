@@ -8,22 +8,24 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(associated_type_defaults)]
+
 struct S<T = u8>(T);
-trait Tr<T = u8> {}
+trait Tr<T = u8> {
+    type A = ();
+}
 
 impl Tr<Self> for S {} // OK
+impl<T: Tr<Self>> Tr<T> for S {} // OK
+impl<T = Self> Tr<T> for S {} // OK
+impl Tr for S where Self: Copy {} // OK
+impl Tr for S where S<Self>: Copy {} // OK
+impl Tr for S where Self::A: Copy {} // OK
 
-// FIXME: `Self` cannot be used in bounds because it depends on bounds itself.
-impl<T: Tr<Self>> Tr<T> for S {} //~ ERROR `Self` type is used before it's determined
-impl<T = Self> Tr<T> for S {} //~ ERROR `Self` type is used before it's determined
-impl Tr for S where Self: Copy {} //~ ERROR `Self` type is used before it's determined
-impl Tr for S where S<Self>: Copy {} //~ ERROR `Self` type is used before it's determined
-impl Tr for S where Self::Assoc: Copy {} //~ ERROR `Self` type is used before it's determined
-                                         //~^ ERROR `Self` type is used before it's determined
-impl Tr for Self {} //~ ERROR `Self` type is used before it's determined
-impl Tr for S<Self> {} //~ ERROR `Self` type is used before it's determined
-impl Self {} //~ ERROR `Self` type is used before it's determined
-impl S<Self> {} //~ ERROR `Self` type is used before it's determined
-impl Tr<Self::Assoc> for S {} //~ ERROR `Self` type is used before it's determined
+impl Tr for Self {} //~ ERROR unsupported cyclic reference between types/traits detected
+impl Tr for S<Self> {} //~ ERROR unsupported cyclic reference between types/traits detected
+impl Self {} //~ ERROR unsupported cyclic reference between types/traits detected
+impl S<Self> {} //~ ERROR unsupported cyclic reference between types/traits detected
+impl Tr<Self::A> for S {} //~ ERROR unsupported cyclic reference between types/traits detected
 
 fn main() {}

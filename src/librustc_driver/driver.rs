@@ -21,14 +21,14 @@ use rustc::middle::{self, dependency_format, stability, reachable};
 use rustc::middle::privacy::AccessLevels;
 use rustc::ty::{self, TyCtxt, Resolutions, GlobalArenas};
 use rustc::util::common::time;
-use rustc::util::nodemap::{NodeSet, NodeMap};
+use rustc::util::nodemap::NodeSet;
 use rustc::util::fs::rename_or_copy_remove;
 use rustc_borrowck as borrowck;
 use rustc_incremental::{self, IncrementalHashesMap};
 use rustc_incremental::ich::Fingerprint;
 use rustc_resolve::{MakeGlobMap, Resolver};
 use rustc_metadata::creader::CrateLoader;
-use rustc_metadata::cstore::CStore;
+use rustc_metadata::cstore::{self, CStore};
 use rustc_trans::back::{link, write};
 use rustc_trans as trans;
 use rustc_typeck as typeck;
@@ -343,7 +343,7 @@ pub struct CompileState<'a, 'tcx: 'a> {
     pub hir_crate: Option<&'a hir::Crate>,
     pub hir_map: Option<&'a hir_map::Map<'tcx>>,
     pub resolutions: Option<&'a Resolutions>,
-    pub analysis: Option<&'a ty::CrateAnalysis<'tcx>>,
+    pub analysis: Option<&'a ty::CrateAnalysis>,
     pub tcx: Option<TyCtxt<'a, 'tcx, 'tcx>>,
     pub trans: Option<&'a trans::CrateTranslation>,
 }
@@ -417,7 +417,7 @@ impl<'a, 'tcx> CompileState<'a, 'tcx> {
                                 arenas: &'tcx GlobalArenas<'tcx>,
                                 cstore: &'a CStore,
                                 hir_map: &'a hir_map::Map<'tcx>,
-                                analysis: &'a ty::CrateAnalysis<'static>,
+                                analysis: &'a ty::CrateAnalysis,
                                 resolutions: &'a Resolutions,
                                 krate: &'a ast::Crate,
                                 hir_crate: &'a hir::Crate,
@@ -444,7 +444,7 @@ impl<'a, 'tcx> CompileState<'a, 'tcx> {
                             out_file: &'a Option<PathBuf>,
                             krate: Option<&'a ast::Crate>,
                             hir_crate: &'a hir::Crate,
-                            analysis: &'a ty::CrateAnalysis<'tcx>,
+                            analysis: &'a ty::CrateAnalysis,
                             tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             crate_name: &'a str)
                             -> Self {
@@ -534,7 +534,7 @@ fn count_nodes(krate: &ast::Crate) -> usize {
 pub struct ExpansionResult {
     pub expanded_crate: ast::Crate,
     pub defs: hir_map::Definitions,
-    pub analysis: ty::CrateAnalysis<'static>,
+    pub analysis: ty::CrateAnalysis,
     pub resolutions: Resolutions,
     pub hir_forest: hir_map::Forest,
 }
@@ -797,7 +797,6 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
             reachable: NodeSet(),
             name: crate_name.to_string(),
             glob_map: if resolver.make_glob_map { Some(resolver.glob_map) } else { None },
-            hir_ty_to_ty: NodeMap(),
         },
         resolutions: Resolutions {
             freevars: resolver.freevars,
@@ -813,7 +812,7 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
 /// structures carrying the results of the analysis.
 pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
                                                hir_map: hir_map::Map<'tcx>,
-                                               mut analysis: ty::CrateAnalysis<'tcx>,
+                                               mut analysis: ty::CrateAnalysis,
                                                resolutions: Resolutions,
                                                arena: &'tcx DroplessArena,
                                                arenas: &'tcx GlobalArenas<'tcx>,
@@ -821,7 +820,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
                                                f: F)
                                                -> Result<R, usize>
     where F: for<'a> FnOnce(TyCtxt<'a, 'tcx, 'tcx>,
-                            ty::CrateAnalysis<'tcx>,
+                            ty::CrateAnalysis,
                             IncrementalHashesMap,
                             CompileResult) -> R
 {
@@ -872,7 +871,16 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
     let index = stability::Index::new(&hir_map);
 
+    let mut local_providers = ty::maps::Providers::default();
+    mir::provide(&mut local_providers);
+    typeck::provide(&mut local_providers);
+
+    let mut extern_providers = ty::maps::Providers::default();
+    cstore::provide(&mut extern_providers);
+
     TyCtxt::create_and_enter(sess,
+                             local_providers,
+                             extern_providers,
                              arenas,
                              arena,
                              resolutions,
@@ -900,8 +908,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
              || stability::check_unstable_api_usage(tcx));
 
         // passes are timed inside typeck
-        analysis.hir_ty_to_ty =
-            try_with_f!(typeck::check_crate(tcx), (tcx, analysis, incremental_hashes_map));
+        try_with_f!(typeck::check_crate(tcx), (tcx, analysis, incremental_hashes_map));
 
         time(time_passes,
              "const checking",
@@ -951,8 +958,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
             // in stage 4 below.
             passes.push_hook(box mir::transform::dump_mir::DumpMir);
             passes.push_pass(box mir::transform::simplify::SimplifyCfg::new("initial"));
-            passes.push_pass(
-                box mir::transform::qualify_consts::QualifyAndPromoteConstants::default());
+            passes.push_pass(box mir::transform::qualify_consts::QualifyAndPromoteConstants);
             passes.push_pass(box mir::transform::type_check::TypeckMir);
             passes.push_pass(
                 box mir::transform::simplify_branches::SimplifyBranches::new("initial"));

@@ -482,7 +482,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn closure_trait_ref_and_return_type(self,
         fn_trait_def_id: DefId,
         self_ty: Ty<'tcx>,
-        sig: &ty::PolyFnSig<'tcx>,
+        sig: ty::PolyFnSig<'tcx>,
         tuple_arguments: TupleArgumentsFlag)
         -> ty::Binder<(ty::TraitRef<'tcx>, Ty<'tcx>)>
     {

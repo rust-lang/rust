@@ -909,23 +909,10 @@ fn int_type_of_word(s: &str) -> Option<IntType> {
 
 #[derive(PartialEq, Debug, RustcEncodable, RustcDecodable, Copy, Clone)]
 pub enum ReprAttr {
-    ReprAny,
     ReprInt(IntType),
     ReprExtern,
     ReprPacked,
     ReprSimd,
-}
-
-impl ReprAttr {
-    pub fn is_ffi_safe(&self) -> bool {
-        match *self {
-            ReprAny => false,
-            ReprInt(ity) => ity.is_ffi_safe(),
-            ReprExtern => true,
-            ReprPacked => false,
-            ReprSimd => true,
-        }
-    }
 }
 
 #[derive(Eq, Hash, PartialEq, Debug, RustcEncodable, RustcDecodable, Copy, Clone)]
@@ -940,16 +927,6 @@ impl IntType {
         match self {
             SignedInt(..) => true,
             UnsignedInt(..) => false
-        }
-    }
-    fn is_ffi_safe(self) -> bool {
-        match self {
-            SignedInt(ast::IntTy::I8) | UnsignedInt(ast::UintTy::U8) |
-            SignedInt(ast::IntTy::I16) | UnsignedInt(ast::UintTy::U16) |
-            SignedInt(ast::IntTy::I32) | UnsignedInt(ast::UintTy::U32) |
-            SignedInt(ast::IntTy::I64) | UnsignedInt(ast::UintTy::U64) |
-            SignedInt(ast::IntTy::I128) | UnsignedInt(ast::UintTy::U128) => true,
-            SignedInt(ast::IntTy::Is) | UnsignedInt(ast::UintTy::Us) => false
         }
     }
 }

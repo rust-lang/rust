@@ -139,7 +139,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         if let Some(import_id) = pick.import_id {
             let import_def_id = self.tcx.hir.local_def_id(import_id);
             debug!("used_trait_import: {:?}", import_def_id);
-            self.used_trait_imports.borrow_mut().insert(import_def_id);
+            self.tables.borrow_mut().used_trait_imports.insert(import_def_id);
         }
 
         self.tcx.check_stability(pick.item.def_id, call_expr.id, span);
@@ -244,21 +244,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // `instantiate_type_scheme` can normalize associated types that
         // may reference those regions.
         let original_method_ty = tcx.item_type(def_id);
-        let fty = match original_method_ty.sty {
-            ty::TyFnDef(_, _, f) => f,
-            _ => bug!()
-        };
+        let fn_sig = original_method_ty.fn_sig();
         let fn_sig = self.replace_late_bound_regions_with_fresh_var(span,
                                                                     infer::FnCall,
-                                                                    &fty.sig).0;
+                                                                    &fn_sig).0;
         let fn_sig = self.instantiate_type_scheme(span, trait_ref.substs, &fn_sig);
         let transformed_self_ty = fn_sig.inputs()[0];
         let method_ty = tcx.mk_fn_def(def_id, trait_ref.substs,
-                                      tcx.mk_bare_fn(ty::BareFnTy {
-            sig: ty::Binder(fn_sig),
-            unsafety: fty.unsafety,
-            abi: fty.abi
-        }));
+                                     ty::Binder(fn_sig));
 
         debug!("lookup_in_trait_adjusted: matched method method_ty={:?} obligation={:?}",
                method_ty,
@@ -340,7 +333,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         if let Some(import_id) = pick.import_id {
             let import_def_id = self.tcx.hir.local_def_id(import_id);
             debug!("used_trait_import: {:?}", import_def_id);
-            self.used_trait_imports.borrow_mut().insert(import_def_id);
+            self.tables.borrow_mut().used_trait_imports.insert(import_def_id);
         }
 
         let def = pick.item.def();

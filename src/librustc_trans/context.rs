@@ -959,15 +959,13 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
             return llfn;
         }
 
-        let ty = tcx.mk_fn_ptr(tcx.mk_bare_fn(ty::BareFnTy {
-            unsafety: hir::Unsafety::Unsafe,
-            abi: Abi::C,
-            sig: ty::Binder(tcx.mk_fn_sig(
-                iter::once(tcx.mk_mut_ptr(tcx.types.u8)),
-                tcx.types.never,
-                false
-            )),
-        }));
+        let ty = tcx.mk_fn_ptr(ty::Binder(tcx.mk_fn_sig(
+            iter::once(tcx.mk_mut_ptr(tcx.types.u8)),
+            tcx.types.never,
+            false,
+            hir::Unsafety::Unsafe,
+            Abi::C
+        )));
 
         let llfn = declare::declare_fn(self, "rust_eh_unwind_resume", ty);
         attributes::unwind(llfn, true);

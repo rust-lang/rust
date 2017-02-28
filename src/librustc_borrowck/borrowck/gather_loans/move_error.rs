@@ -150,7 +150,7 @@ fn report_cannot_move_out_of<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
         Categorization::Downcast(ref b, _) |
         Categorization::Interior(ref b, mc::InteriorField(_)) => {
             match b.ty.sty {
-                ty::TyAdt(def, _) if def.has_dtor() => {
+                ty::TyAdt(def, _) if def.has_dtor(bccx.tcx) => {
                     let mut err = struct_span_err!(bccx, move_from.span, E0509,
                                                    "cannot move out of type `{}`, \
                                                    which implements the `Drop` trait",

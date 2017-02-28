@@ -17,7 +17,6 @@ use std::env;
 use std::path::Path;
 
 use syntax::ast;
-use syntax::parse::filemap_to_tts;
 use syntax::parse::lexer::{self, StringReader};
 use syntax::parse::token::{self, Token};
 use syntax::symbol::keywords;
@@ -49,23 +48,6 @@ impl<'a> SpanUtils<'a> {
         }
     }
 
-    // sub_span starts at span.lo, so we need to adjust the positions etc.
-    // If sub_span is None, we don't need to adjust.
-    pub fn make_sub_span(&self, span: Span, sub_span: Option<Span>) -> Option<Span> {
-        match sub_span {
-            None => None,
-            Some(sub) => {
-                let FileMapAndBytePos {fm, pos} = self.sess.codemap().lookup_byte_offset(span.lo);
-                let base = pos + fm.start_pos;
-                Some(Span {
-                    lo: base + self.sess.codemap().lookup_byte_offset(sub.lo).pos,
-                    hi: base + self.sess.codemap().lookup_byte_offset(sub.hi).pos,
-                    expn_id: span.expn_id,
-                })
-            }
-        }
-    }
-
     pub fn snippet(&self, span: Span) -> String {
         match self.sess.codemap().span_to_snippet(span) {
             Ok(s) => s,
@@ -74,24 +56,7 @@ impl<'a> SpanUtils<'a> {
     }
 
     pub fn retokenise_span(&self, span: Span) -> StringReader<'a> {
-        // sadness - we don't have spans for sub-expressions nor access to the tokens
-        // so in order to get extents for the function name itself (which dxr expects)
-        // we need to re-tokenise the fn definition
-
-        // Note: this is a bit awful - it adds the contents of span to the end of
-        // the codemap as a new filemap. This is mostly OK, but means we should
-        // not iterate over the codemap. Also, any spans over the new filemap
-        // are incompatible with spans over other filemaps.
-        let filemap = self.sess
-                          .codemap()
-                          .new_filemap(String::from("<anon-dxr>"), None, self.snippet(span));
-        lexer::StringReader::new(&self.sess.parse_sess, filemap)
-    }
-
-    fn span_to_tts(&self, span: Span) -> Vec<TokenTree> {
-        let filename = String::from("<anon-dxr>");
-        let filemap = self.sess.codemap().new_filemap(filename, None, self.snippet(span));
-        filemap_to_tts(&self.sess.parse_sess, filemap)
+        lexer::StringReader::retokenize(&self.sess.parse_sess, span)
     }
 
     // Re-parses a path and returns the span for the last identifier in the path
@@ -103,7 +68,7 @@ impl<'a> SpanUtils<'a> {
         loop {
             let ts = toks.real_token();
             if ts.tok == token::Eof {
-                return self.make_sub_span(span, result)
+                return result
             }
             if bracket_count == 0 && (ts.tok.is_ident() || ts.tok.is_keyword(keywords::SelfValue)) {
                 result = Some(ts.sp);
@@ -128,7 +93,7 @@ impl<'a> SpanUtils<'a> {
                 return None;
             }
             if bracket_count == 0 && (ts.tok.is_ident() || ts.tok.is_keyword(keywords::SelfValue)) {
-                return self.make_sub_span(span, Some(ts.sp));
+                return Some(ts.sp);
             }
 
             bracket_count += match ts.tok {
@@ -178,10 +143,7 @@ impl<'a> SpanUtils<'a> {
             }
             prev = next;
         }
-        if result.is_none() && prev_span.is_some() {
-            return self.make_sub_span(span, prev_span);
-        }
-        return self.make_sub_span(span, result);
+        result.or(prev_span)
     }
 
     // Return the span for the last ident before a `<` and outside any
@@ -241,9 +203,9 @@ impl<'a> SpanUtils<'a> {
                       loc.line);
         }
         if result.is_none() && prev.tok.is_ident() && angle_count == 0 {
-            return self.make_sub_span(span, Some(prev.sp));
+            return Some(prev.sp);
         }
-        self.make_sub_span(span, result)
+        result
     }
 
     // Reparse span and return an owned vector of sub spans of the first limit
@@ -310,7 +272,7 @@ impl<'a> SpanUtils<'a> {
                 angle_count += 1;
             }
             if ts.tok.is_ident() && angle_count == nesting {
-                result.push(self.make_sub_span(span, Some(ts.sp)).unwrap());
+                result.push(ts.sp);
             }
         }
     }
@@ -320,8 +282,11 @@ impl<'a> SpanUtils<'a> {
     /// end of the 'signature' part, that is up to, but not including an opening
     /// brace or semicolon.
     pub fn signature_string_for_span(&self, span: Span) -> String {
-        let mut toks = self.span_to_tts(span).into_iter();
+        let mut toks = self.retokenise_span(span);
+        toks.real_token();
+        let mut toks = toks.parse_all_token_trees().unwrap().into_iter();
         let mut prev = toks.next().unwrap();
+
         let first_span = prev.get_span();
         let mut angle_count = 0;
         for tok in toks {
@@ -360,7 +325,7 @@ impl<'a> SpanUtils<'a> {
             }
             let next = toks.real_token();
             if next.tok == tok {
-                return self.make_sub_span(span, Some(prev.sp));
+                return Some(prev.sp);
             }
             prev = next;
         }
@@ -374,7 +339,7 @@ impl<'a> SpanUtils<'a> {
                 return None;
             }
             if next.tok == tok {
-                return self.make_sub_span(span, Some(next.sp));
+                return Some(next.sp);
             }
         }
     }
@@ -399,7 +364,7 @@ impl<'a> SpanUtils<'a> {
                 if ts.tok == token::Eof {
                     return None
                 } else {
-                    return self.make_sub_span(span, Some(ts.sp));
+                    return Some(ts.sp);
                 }
             }
         }
@@ -444,7 +409,7 @@ impl<'a> SpanUtils<'a> {
             if ts.tok == token::Not {
                 let ts = toks.real_token();
                 if ts.tok.is_ident() {
-                    return self.make_sub_span(span, Some(ts.sp));
+                    return Some(ts.sp);
                 } else {
                     return None;
                 }
@@ -463,7 +428,7 @@ impl<'a> SpanUtils<'a> {
             let ts = toks.real_token();
             if ts.tok == token::Not {
                 if prev.tok.is_ident() {
-                    return self.make_sub_span(span, Some(prev.sp));
+                    return Some(prev.sp);
                 } else {
                     return None;
                 }

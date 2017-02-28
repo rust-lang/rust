@@ -505,7 +505,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'gcx> {
             evaluation_cache: traits::EvaluationCache::new(),
             projection_cache: RefCell::new(traits::ProjectionCache::new()),
             reported_trait_errors: RefCell::new(FxHashSet()),
-            projection_mode: Reveal::NotSpecializable,
+            projection_mode: Reveal::UserFacing,
             tainted_by_errors_flag: Cell::new(false),
             err_count_on_creation: self.sess.err_count(),
             obligations_in_snapshot: Cell::new(false),
@@ -600,7 +600,7 @@ impl_trans_normalize!('gcx,
     Ty<'gcx>,
     &'gcx Substs<'gcx>,
     ty::FnSig<'gcx>,
-    &'gcx ty::BareFnTy<'gcx>,
+    ty::PolyFnSig<'gcx>,
     ty::ClosureSubsts<'gcx>,
     ty::PolyTraitRef<'gcx>,
     ty::ExistentialTraitRef<'gcx>
@@ -1197,16 +1197,19 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     /// as the substitutions for the default, `(T, U)`.
     pub fn type_var_for_def(&self,
                             span: Span,
-                            def: &ty::TypeParameterDef<'tcx>,
+                            def: &ty::TypeParameterDef,
                             substs: &[Kind<'tcx>])
                             -> Ty<'tcx> {
-        let default = def.default.map(|default| {
-            type_variable::Default {
+        let default = if def.has_default {
+            let default = self.tcx.item_type(def.def_id);
+            Some(type_variable::Default {
                 ty: default.subst_spanned(self.tcx, substs, Some(span)),
                 origin_span: span,
-                def_id: def.default_def_id
-            }
-        });
+                def_id: def.def_id
+            })
+        } else {
+            None
+        };
 
 
         let ty_var_id = self.type_variables
@@ -1646,20 +1649,16 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         Some(self.tcx.closure_kind(def_id))
     }
 
-    pub fn closure_type(&self,
-                        def_id: DefId,
-                        substs: ty::ClosureSubsts<'tcx>)
-                        -> ty::ClosureTy<'tcx>
-    {
+    pub fn closure_type(&self, def_id: DefId) -> ty::PolyFnSig<'tcx> {
         if let InferTables::InProgress(tables) = self.tables {
             if let Some(id) = self.tcx.hir.as_local_node_id(def_id) {
-                if let Some(ty) = tables.borrow().closure_tys.get(&id) {
-                    return ty.subst(self.tcx, substs.substs);
+                if let Some(&ty) = tables.borrow().closure_tys.get(&id) {
+                    return ty;
                 }
             }
         }
 
-        self.tcx.closure_type(def_id, substs)
+        self.tcx.closure_type(def_id)
     }
 }
 

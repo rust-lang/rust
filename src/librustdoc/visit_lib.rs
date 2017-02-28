@@ -24,7 +24,7 @@ use clean::{AttributesExt, NestedAttributesExt};
 /// specific rustdoc annotations into account (i.e. `doc(hidden)`)
 pub struct LibEmbargoVisitor<'a, 'b: 'a, 'tcx: 'b> {
     cx: &'a ::core::DocContext<'b, 'tcx>,
-    cstore: &'a CrateStore<'tcx>,
+    cstore: &'a CrateStore,
     // Accessibility levels for reachable nodes
     access_levels: RefMut<'a, AccessLevels<DefId>>,
     // Previous accessibility level, None means unreachable

@@ -115,17 +115,17 @@ fn push_subtypes<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent_ty: Ty<'tcx>) {
         ty::TyTuple(ts, _) => {
             stack.extend(ts.iter().cloned().rev());
         }
-        ty::TyFnDef(_, substs, ref ft) => {
+        ty::TyFnDef(_, substs, ft) => {
             stack.extend(substs.types().rev());
-            push_sig_subtypes(stack, &ft.sig);
+            push_sig_subtypes(stack, ft);
         }
-        ty::TyFnPtr(ref ft) => {
-            push_sig_subtypes(stack, &ft.sig);
+        ty::TyFnPtr(ft) => {
+            push_sig_subtypes(stack, ft);
         }
     }
 }
 
-fn push_sig_subtypes<'tcx>(stack: &mut TypeWalkerStack<'tcx>, sig: &ty::PolyFnSig<'tcx>) {
+fn push_sig_subtypes<'tcx>(stack: &mut TypeWalkerStack<'tcx>, sig: ty::PolyFnSig<'tcx>) {
     stack.push(sig.skip_binder().output());
     stack.extend(sig.skip_binder().inputs().iter().cloned().rev());
 }

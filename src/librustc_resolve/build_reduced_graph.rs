@@ -462,8 +462,8 @@ impl<'a> Resolver<'a> {
                     self.define(module, ident, ns, (child.def, ty::Visibility::Public,
                                                     DUMMY_SP, Mark::root()));
 
-                    let has_self = self.session.cstore.associated_item(child.def.def_id())
-                                       .map_or(false, |item| item.method_has_self_argument);
+                    let has_self = self.session.cstore.associated_item_cloned(child.def.def_id())
+                                       .method_has_self_argument;
                     self.trait_item_map.insert((def_id, child.name, ns), (child.def, has_self));
                 }
                 module.populated.set(true);

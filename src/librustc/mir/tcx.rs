@@ -173,7 +173,7 @@ impl<'tcx> Rvalue<'tcx> {
             Rvalue::Discriminant(ref lval) => {
                 let ty = lval.ty(mir, tcx).to_ty(tcx);
                 if let ty::TyAdt(adt_def, _) = ty.sty {
-                    Some(adt_def.discr_ty.to_ty(tcx))
+                    Some(adt_def.repr.discr_type().to_ty(tcx))
                 } else {
                     // Undefined behaviour, bug for now; may want to return something for
                     // the `discriminant` intrinsic later.

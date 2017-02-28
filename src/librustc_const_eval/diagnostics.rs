@@ -576,22 +576,6 @@ integer type:
 https://doc.rust-lang.org/reference.html#ffi-attributes
 "##,
 
-
-E0306: r##"
-In an array type `[T; N]`, `N` is the number of elements in the array. This
-must be an unsigned integer. Erroneous code example:
-
-```compile_fail,E0306
-const X: [i32; true] = [0]; // error: expected `usize` for array length,
-                            //        found boolean
-```
-
-Working example:
-
-```
-const X: [i32; 1] = [0];
-```
-"##,
 }
 
 

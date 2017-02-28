@@ -26,47 +26,38 @@ use rustc::hir::def_id::DefId;
 use rustc::hir::map as hir_map;
 use rustc::hir::{self, ItemImpl};
 
-pub fn check<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    check_trait(tcx, tcx.lang_items.drop_trait(), visit_implementation_of_drop);
-    check_trait(tcx, tcx.lang_items.copy_trait(), visit_implementation_of_copy);
-    check_trait(
-        tcx,
-        tcx.lang_items.coerce_unsized_trait(),
-        visit_implementation_of_coerce_unsized);
+pub fn check_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, trait_def_id: DefId) {
+    Checker { tcx, trait_def_id }
+        .check(tcx.lang_items.drop_trait(), visit_implementation_of_drop)
+        .check(tcx.lang_items.copy_trait(), visit_implementation_of_copy)
+        .check(tcx.lang_items.coerce_unsized_trait(),
+               visit_implementation_of_coerce_unsized);
 }
 
-fn check_trait<'a, 'tcx, F>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                            trait_def_id: Option<DefId>,
-                            mut f: F)
-    where F: FnMut(TyCtxt<'a, 'tcx, 'tcx>, DefId, DefId)
-{
-    if let Some(trait_def_id) = trait_def_id {
-        let mut impls = vec![];
-        tcx.lookup_trait_def(trait_def_id).for_each_impl(tcx, |did| {
-            impls.push(did);
-        });
-        impls.sort();
-        for impl_def_id in impls {
-            f(tcx, trait_def_id, impl_def_id);
+struct Checker<'a, 'tcx: 'a> {
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    trait_def_id: DefId
+}
+
+impl<'a, 'tcx> Checker<'a, 'tcx> {
+    fn check<F>(&self, trait_def_id: Option<DefId>, mut f: F) -> &Self
+        where F: FnMut(TyCtxt<'a, 'tcx, 'tcx>, DefId, DefId)
+    {
+        if Some(self.trait_def_id) == trait_def_id {
+            for &impl_id in self.tcx.hir.trait_impls(self.trait_def_id) {
+                let impl_def_id = self.tcx.hir.local_def_id(impl_id);
+                f(self.tcx, self.trait_def_id, impl_def_id);
+            }
         }
+        self
     }
 }
 
 fn visit_implementation_of_drop<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                           _drop_did: DefId,
                                           impl_did: DefId) {
-    let items = tcx.associated_item_def_ids(impl_did);
-    if items.is_empty() {
-        // We'll error out later. For now, just don't ICE.
-        return;
-    }
-    let method_def_id = items[0];
-
-    let self_type = tcx.item_type(impl_did);
-    match self_type.sty {
-        ty::TyAdt(type_def, _) => {
-            type_def.set_destructor(method_def_id);
-        }
+    match tcx.item_type(impl_did).sty {
+        ty::TyAdt(..) => {}
         _ => {
             // Destructors only work on nominal types.
             if let Some(impl_node_id) = tcx.hir.as_local_node_id(impl_did) {
@@ -205,7 +196,7 @@ fn visit_implementation_of_coerce_unsized<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
            source,
            target);
 
-    tcx.infer_ctxt(param_env, Reveal::ExactMatch).enter(|infcx| {
+    tcx.infer_ctxt(param_env, Reveal::UserFacing).enter(|infcx| {
         let cause = ObligationCause::misc(span, impl_node_id);
         let check_mutbl = |mt_a: ty::TypeAndMut<'tcx>,
                            mt_b: ty::TypeAndMut<'tcx>,
@@ -341,7 +332,7 @@ fn visit_implementation_of_coerce_unsized<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         infcx.resolve_regions_and_report_errors(&free_regions, impl_node_id);
 
         if let Some(kind) = kind {
-            tcx.custom_coerce_unsized_kinds.borrow_mut().insert(impl_did, kind);
+            tcx.maps.custom_coerce_unsized_kind.borrow_mut().insert(impl_did, kind);
         }
     });
 }

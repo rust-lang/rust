@@ -11,11 +11,8 @@
 //! Orphan checker: every impl either implements a trait defined in this
 //! crate or pertains to a type defined in this crate.
 
-use hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::traits;
 use rustc::ty::{self, TyCtxt};
-use syntax::ast;
-use syntax_pos::Span;
 use rustc::dep_graph::DepNode;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir;
@@ -29,46 +26,6 @@ struct OrphanChecker<'cx, 'tcx: 'cx> {
     tcx: TyCtxt<'cx, 'tcx, 'tcx>,
 }
 
-impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
-    fn check_def_id(&self, item: &hir::Item, def_id: DefId) {
-        if def_id.krate != LOCAL_CRATE {
-            struct_span_err!(self.tcx.sess,
-                             item.span,
-                             E0116,
-                             "cannot define inherent `impl` for a type outside of the crate \
-                              where the type is defined")
-                .span_label(item.span,
-                            &format!("impl for type defined outside of crate."))
-                .note("define and implement a trait or new type instead")
-                .emit();
-        }
-    }
-
-    fn check_primitive_impl(&self,
-                            impl_def_id: DefId,
-                            lang_def_id: Option<DefId>,
-                            lang: &str,
-                            ty: &str,
-                            span: Span) {
-        match lang_def_id {
-            Some(lang_def_id) if lang_def_id == impl_def_id => {
-                // OK
-            }
-            _ => {
-                struct_span_err!(self.tcx.sess,
-                                 span,
-                                 E0390,
-                                 "only a single inherent implementation marked with `#[lang = \
-                                  \"{}\"]` is allowed for the `{}` primitive",
-                                 lang,
-                                 ty)
-                    .span_help(span, "consider using a trait to implement these methods")
-                    .emit();
-            }
-        }
-    }
-}
-
 impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for OrphanChecker<'cx, 'tcx> {
     /// Checks exactly one impl for orphan rules and other such
     /// restrictions.  In this fn, it can happen that multiple errors
@@ -78,168 +35,6 @@ impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for OrphanChecker<'cx, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
         let def_id = self.tcx.hir.local_def_id(item.id);
         match item.node {
-            hir::ItemImpl(.., None, ref ty, _) => {
-                // For inherent impls, self type must be a nominal type
-                // defined in this crate.
-                debug!("coherence2::orphan check: inherent impl {}",
-                       self.tcx.hir.node_to_string(item.id));
-                let self_ty = self.tcx.item_type(def_id);
-                match self_ty.sty {
-                    ty::TyAdt(def, _) => {
-                        self.check_def_id(item, def.did);
-                    }
-                    ty::TyDynamic(ref data, ..) if data.principal().is_some() => {
-                        self.check_def_id(item, data.principal().unwrap().def_id());
-                    }
-                    ty::TyChar => {
-                        self.check_primitive_impl(def_id,
-                                                  self.tcx.lang_items.char_impl(),
-                                                  "char",
-                                                  "char",
-                                                  item.span);
-                    }
-                    ty::TyStr => {
-                        self.check_primitive_impl(def_id,
-                                                  self.tcx.lang_items.str_impl(),
-                                                  "str",
-                                                  "str",
-                                                  item.span);
-                    }
-                    ty::TySlice(_) => {
-                        self.check_primitive_impl(def_id,
-                                                  self.tcx.lang_items.slice_impl(),
-                                                  "slice",
-                                                  "[T]",
-                                                  item.span);
-                    }
-                    ty::TyRawPtr(ty::TypeAndMut { ty: _, mutbl: hir::MutImmutable }) => {
-                        self.check_primitive_impl(def_id,
-                                                  self.tcx.lang_items.const_ptr_impl(),
-                                                  "const_ptr",
-                                                  "*const T",
-                                                  item.span);
-                    }
-                    ty::TyRawPtr(ty::TypeAndMut { ty: _, mutbl: hir::MutMutable }) => {
-                        self.check_primitive_impl(def_id,
-                                                  self.tcx.lang_items.mut_ptr_impl(),
-                                                  "mut_ptr",
-                                                  "*mut T",
-                                                  item.span);
-                    }
-                    ty::TyInt(ast::IntTy::I8) => {
-                        self.check_primitive_impl(def_id,
-                                                  self.tcx.lang_items.i8_impl(),
-                                                  "i8",
-                                                  "i8",
-                                                  item.span);
-                    }
-                    ty::TyInt(ast::IntTy::I16) => {
-                        self.check_primitive_impl(def_id,
-                                                  self.tcx.lang_items.i16_impl(),
-                                                  "i16",
-                                                  "i16",
-                                                  item.span);
-                    }
-                    ty::TyInt(ast::IntTy::I32) => {
-                        self.check_primitive_impl(def_id,
-                                                  self.tcx.lang_items.i32_impl(),
-                                                  "i32",
-                                                  "i32",
-                                                  item.span);
-                    }
-                    ty::TyInt(ast::IntTy::I64) => {
-                        self.check_primitive_impl(def_id,
-                                                  self.tcx.lang_items.i64_impl(),
-                                                  "i64",
-                                                  "i64",
-                                                  item.span);
-                    }
-                    ty::TyInt(ast::IntTy::I128) => {
-                        self.check_primitive_impl(def_id,
-                                                  self.tcx.lang_items.i128_impl(),
-                                                  "i128",
-                                                  "i128",
-                                                  item.span);
-                    }
-                    ty::TyInt(ast::IntTy::Is) => {
-                        self.check_primitive_impl(def_id,
-                                                  self.tcx.lang_items.isize_impl(),
-                                                  "isize",
-                                                  "isize",
-                                                  item.span);
-                    }
-                    ty::TyUint(ast::UintTy::U8) => {
-                        self.check_primitive_impl(def_id,
-                                                  self.tcx.lang_items.u8_impl(),
-                                                  "u8",
-                                                  "u8",
-                                                  item.span);
-                    }
-                    ty::TyUint(ast::UintTy::U16) => {
-                        self.check_primitive_impl(def_id,
-                                                  self.tcx.lang_items.u16_impl(),
-                                                  "u16",
-                                                  "u16",
-                                                  item.span);
-                    }
-                    ty::TyUint(ast::UintTy::U32) => {
-                        self.check_primitive_impl(def_id,
-                                                  self.tcx.lang_items.u32_impl(),
-                                                  "u32",
-                                                  "u32",
-                                                  item.span);
-                    }
-                    ty::TyUint(ast::UintTy::U64) => {
-                        self.check_primitive_impl(def_id,
-                                                  self.tcx.lang_items.u64_impl(),
-                                                  "u64",
-                                                  "u64",
-                                                  item.span);
-                    }
-                    ty::TyUint(ast::UintTy::U128) => {
-                        self.check_primitive_impl(def_id,
-                                                  self.tcx.lang_items.u128_impl(),
-                                                  "u128",
-                                                  "u128",
-                                                  item.span);
-                    }
-                    ty::TyUint(ast::UintTy::Us) => {
-                        self.check_primitive_impl(def_id,
-                                                  self.tcx.lang_items.usize_impl(),
-                                                  "usize",
-                                                  "usize",
-                                                  item.span);
-                    }
-                    ty::TyFloat(ast::FloatTy::F32) => {
-                        self.check_primitive_impl(def_id,
-                                                  self.tcx.lang_items.f32_impl(),
-                                                  "f32",
-                                                  "f32",
-                                                  item.span);
-                    }
-                    ty::TyFloat(ast::FloatTy::F64) => {
-                        self.check_primitive_impl(def_id,
-                                                  self.tcx.lang_items.f64_impl(),
-                                                  "f64",
-                                                  "f64",
-                                                  item.span);
-                    }
-                    ty::TyError => {
-                        return;
-                    }
-                    _ => {
-                        struct_span_err!(self.tcx.sess,
-                                         ty.span,
-                                         E0118,
-                                         "no base type found for inherent implementation")
-                            .span_label(ty.span, &format!("impl requires a base type"))
-                            .note(&format!("either implement a trait on it or create a newtype \
-                                            to wrap it instead"))
-                            .emit();
-                        return;
-                    }
-                }
-            }
             hir::ItemImpl(.., Some(_), _, _) => {
                 // "Trait" impl
                 debug!("coherence2::orphan check: trait impl {}",
@@ -311,7 +106,7 @@ impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for OrphanChecker<'cx, 'tcx> {
                        trait_def_id,
                        self.tcx.trait_has_default_impl(trait_def_id));
                 if self.tcx.trait_has_default_impl(trait_def_id) &&
-                   trait_def_id.krate != LOCAL_CRATE {
+                   !trait_def_id.is_local() {
                     let self_ty = trait_ref.self_ty();
                     let opt_self_def_id = match self_ty.sty {
                         ty::TyAdt(self_def, _) => Some(self_def.did),
@@ -346,31 +141,13 @@ impl<'cx, 'tcx, 'v> ItemLikeVisitor<'v> for OrphanChecker<'cx, 'tcx> {
                         return;
                     }
                 }
-
-                // Disallow *all* explicit impls of `Sized` and `Unsize` for now.
-                if Some(trait_def_id) == self.tcx.lang_items.sized_trait() {
-                    struct_span_err!(self.tcx.sess,
-                                     item.span,
-                                     E0322,
-                                     "explicit impls for the `Sized` trait are not permitted")
-                        .span_label(item.span, &format!("impl of 'Sized' not allowed"))
-                        .emit();
-                    return;
-                }
-                if Some(trait_def_id) == self.tcx.lang_items.unsize_trait() {
-                    span_err!(self.tcx.sess,
-                              item.span,
-                              E0328,
-                              "explicit impls for the `Unsize` trait are not permitted");
-                    return;
-                }
             }
             hir::ItemDefaultImpl(_, ref item_trait_ref) => {
                 // "Trait" impl
                 debug!("coherence2::orphan check: default trait impl {}",
                        self.tcx.hir.node_to_string(item.id));
                 let trait_ref = self.tcx.impl_trait_ref(def_id).unwrap();
-                if trait_ref.def_id.krate != LOCAL_CRATE {
+                if !trait_ref.def_id.is_local() {
                     struct_span_err!(self.tcx.sess,
                                      item_trait_ref.path.span,
                                      E0318,

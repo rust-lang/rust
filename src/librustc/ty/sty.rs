@@ -128,12 +128,12 @@ pub enum TypeVariants<'tcx> {
 
     /// The anonymous type of a function declaration/definition. Each
     /// function has a unique type.
-    TyFnDef(DefId, &'tcx Substs<'tcx>, &'tcx BareFnTy<'tcx>),
+    TyFnDef(DefId, &'tcx Substs<'tcx>, PolyFnSig<'tcx>),
 
     /// A pointer to a function.  Written as `fn() -> i32`.
     /// FIXME: This is currently also used to represent the callee of a method;
     /// see ty::MethodCallee etc.
-    TyFnPtr(&'tcx BareFnTy<'tcx>),
+    TyFnPtr(PolyFnSig<'tcx>),
 
     /// A trait, defined with `trait`.
     TyDynamic(Binder<&'tcx Slice<ExistentialPredicate<'tcx>>>, &'tcx ty::Region),
@@ -531,38 +531,22 @@ pub struct ProjectionTy<'tcx> {
     /// The name `N` of the associated type.
     pub item_name: Name,
 }
-
-#[derive(Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
-pub struct BareFnTy<'tcx> {
-    pub unsafety: hir::Unsafety,
-    pub abi: abi::Abi,
-    /// Signature (inputs and output) of this function type.
-    pub sig: PolyFnSig<'tcx>,
-}
-
-impl<'tcx> serialize::UseSpecializedDecodable for &'tcx BareFnTy<'tcx> {}
-
-#[derive(Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
-pub struct ClosureTy<'tcx> {
-    pub unsafety: hir::Unsafety,
-    pub abi: abi::Abi,
-    pub sig: PolyFnSig<'tcx>,
-}
-
 /// Signature of a function type, which I have arbitrarily
 /// decided to use to refer to the input/output types.
 ///
 /// - `inputs` is the list of arguments and their modes.
 /// - `output` is the return type.
 /// - `variadic` indicates whether this is a variadic function. (only true for foreign fns)
-#[derive(Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub struct FnSig<'tcx> {
     pub inputs_and_output: &'tcx Slice<Ty<'tcx>>,
-    pub variadic: bool
+    pub variadic: bool,
+    pub unsafety: hir::Unsafety,
+    pub abi: abi::Abi,
 }
 
 impl<'tcx> FnSig<'tcx> {
-    pub fn inputs(&self) -> &[Ty<'tcx>] {
+    pub fn inputs(&self) -> &'tcx [Ty<'tcx>] {
         &self.inputs_and_output[..self.inputs_and_output.len() - 1]
     }
 
@@ -574,7 +558,7 @@ impl<'tcx> FnSig<'tcx> {
 pub type PolyFnSig<'tcx> = Binder<FnSig<'tcx>>;
 
 impl<'tcx> PolyFnSig<'tcx> {
-    pub fn inputs(&self) -> Binder<&[Ty<'tcx>]> {
+    pub fn inputs(&self) -> Binder<&'tcx [Ty<'tcx>]> {
         Binder(self.skip_binder().inputs())
     }
     pub fn input(&self, index: usize) -> ty::Binder<Ty<'tcx>> {
@@ -585,6 +569,12 @@ impl<'tcx> PolyFnSig<'tcx> {
     }
     pub fn variadic(&self) -> bool {
         self.skip_binder().variadic
+    }
+    pub fn unsafety(&self) -> hir::Unsafety {
+        self.skip_binder().unsafety
+    }
+    pub fn abi(&self) -> abi::Abi {
+        self.skip_binder().abi
     }
 }
 
@@ -1087,7 +1077,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
     #[inline]
     pub fn is_simd(&self) -> bool {
         match self.sty {
-            TyAdt(def, _) => def.is_simd(),
+            TyAdt(def, _) => def.repr.simd,
             _ => false
         }
     }
@@ -1280,23 +1270,15 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         }
     }
 
-    pub fn fn_sig(&self) -> &'tcx PolyFnSig<'tcx> {
+    pub fn fn_sig(&self) -> PolyFnSig<'tcx> {
         match self.sty {
-            TyFnDef(.., ref f) | TyFnPtr(ref f) => &f.sig,
+            TyFnDef(.., f) | TyFnPtr(f) => f,
             _ => bug!("Ty::fn_sig() called on non-fn type: {:?}", self)
         }
     }
 
-    /// Returns the ABI of the given function.
-    pub fn fn_abi(&self) -> abi::Abi {
-        match self.sty {
-            TyFnDef(.., ref f) | TyFnPtr(ref f) => f.abi,
-            _ => bug!("Ty::fn_abi() called on non-fn type"),
-        }
-    }
-
     // Type accessors for substructures of types
-    pub fn fn_args(&self) -> ty::Binder<&[Ty<'tcx>]> {
+    pub fn fn_args(&self) -> ty::Binder<&'tcx [Ty<'tcx>]> {
         self.fn_sig().inputs()
     }
 

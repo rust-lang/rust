@@ -390,44 +390,6 @@ RFC. It is, however, [currently unimplemented][iss15872].
 [iss15872]: https://github.com/rust-lang/rust/issues/15872
 "##,
 
-E0109: r##"
-You tried to give a type parameter to a type which doesn't need it. Erroneous
-code example:
-
-```compile_fail,E0109
-type X = u32<i32>; // error: type parameters are not allowed on this type
-```
-
-Please check that you used the correct type and recheck its definition. Perhaps
-it doesn't need the type parameter.
-
-Example:
-
-```
-type X = u32; // this compiles
-```
-
-Note that type parameters for enum-variant constructors go after the variant,
-not after the enum (Option::None::<u32>, not Option::<u32>::None).
-"##,
-
-E0110: r##"
-You tried to give a lifetime parameter to a type which doesn't need it.
-Erroneous code example:
-
-```compile_fail,E0110
-type X = u32<'static>; // error: lifetime parameters are not allowed on
-                       //        this type
-```
-
-Please check that the correct type was used and recheck its definition; perhaps
-it doesn't need the lifetime parameter. Example:
-
-```
-type X = u32; // ok!
-```
-"##,
-
 E0133: r##"
 Unsafe code was used outside of an unsafe function or block.
 
@@ -625,41 +587,6 @@ attributes:
 ```
 
 See also https://doc.rust-lang.org/book/no-stdlib.html
-"##,
-
-E0229: r##"
-An associated type binding was done outside of the type parameter declaration
-and `where` clause. Erroneous code example:
-
-```compile_fail,E0229
-pub trait Foo {
-    type A;
-    fn boo(&self) -> <Self as Foo>::A;
-}
-
-struct Bar;
-
-impl Foo for isize {
-    type A = usize;
-    fn boo(&self) -> usize { 42 }
-}
-
-fn baz<I>(x: &<I as Foo<A=Bar>>::A) {}
-// error: associated type bindings are not allowed here
-```
-
-To solve this error, please move the type bindings in the type parameter
-declaration:
-
-```ignore
-fn baz<I: Foo<A=Bar>>(x: &<I as Foo>::A) {} // ok!
-```
-
-Or in the `where` clause:
-
-```ignore
-fn baz<I>(x: &<I as Foo>::A) where I: Foo<A=Bar> {}
-```
 "##,
 
 E0261: r##"
@@ -1388,6 +1315,23 @@ fn main() {
 An `if` expression without an `else` block has the type `()`, so this is a type
 error. To resolve it, add an `else` block having the same type as the `if`
 block.
+"##,
+
+E0391: r##"
+This error indicates that some types or traits depend on each other
+and therefore cannot be constructed.
+
+The following example contains a circular dependency between two traits:
+
+```compile_fail,E0391
+trait FirstTrait : SecondTrait {
+
+}
+
+trait SecondTrait : FirstTrait {
+
+}
+```
 "##,
 
 E0398: r##"

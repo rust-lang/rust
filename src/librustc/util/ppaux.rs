@@ -137,11 +137,14 @@ pub fn parameterized(f: &mut fmt::Formatter,
         }
 
         if !verbose {
-            if generics.types.last().map_or(false, |def| def.default.is_some()) {
+            if generics.types.last().map_or(false, |def| def.has_default) {
                 if let Some(substs) = tcx.lift(&substs) {
                     let tps = substs.types().rev().skip(child_types);
                     for (def, actual) in generics.types.iter().rev().zip(tps) {
-                        if def.default.subst(tcx, substs) != Some(actual) {
+                        if !def.has_default {
+                            break;
+                        }
+                        if tcx.item_type(def.def_id).subst(tcx, substs) != actual {
                             break;
                         }
                         num_supplied_defaults += 1;
@@ -326,7 +329,7 @@ impl<'tcx> fmt::Display for &'tcx ty::Slice<ty::ExistentialPredicate<'tcx>> {
     }
 }
 
-impl<'tcx> fmt::Debug for ty::TypeParameterDef<'tcx> {
+impl fmt::Debug for ty::TypeParameterDef {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "TypeParameterDef({}, {:?}, {})",
                self.name,
@@ -492,15 +495,6 @@ impl fmt::Debug for ty::Region {
     }
 }
 
-impl<'tcx> fmt::Debug for ty::ClosureTy<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "ClosureTy({},{:?},{})",
-               self.unsafety,
-               self.sig,
-               self.abi)
-    }
-}
-
 impl<'tcx> fmt::Debug for ty::ClosureUpvar<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "ClosureUpvar({:?},{:?})",
@@ -582,6 +576,14 @@ impl<'tcx> fmt::Debug for ty::InstantiatedPredicates<'tcx> {
 
 impl<'tcx> fmt::Display for ty::FnSig<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if self.unsafety == hir::Unsafety::Unsafe {
+            write!(f, "unsafe ")?;
+        }
+
+        if self.abi != Abi::Rust {
+            write!(f, "extern {} ", self.abi)?;
+        }
+
         write!(f, "fn")?;
         fn_sig(f, self.inputs(), self.variadic, self.output())
     }
@@ -738,42 +740,17 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
                 write!(f, ")")
             }
             TyFnDef(def_id, substs, ref bare_fn) => {
-                if bare_fn.unsafety == hir::Unsafety::Unsafe {
-                    write!(f, "unsafe ")?;
-                }
-
-                if bare_fn.abi != Abi::Rust {
-                    write!(f, "extern {} ", bare_fn.abi)?;
-                }
-
-                write!(f, "{} {{", bare_fn.sig.0)?;
+                write!(f, "{} {{", bare_fn.0)?;
                 parameterized(f, substs, def_id, &[])?;
                 write!(f, "}}")
             }
             TyFnPtr(ref bare_fn) => {
-                if bare_fn.unsafety == hir::Unsafety::Unsafe {
-                    write!(f, "unsafe ")?;
-                }
-
-                if bare_fn.abi != Abi::Rust {
-                    write!(f, "extern {} ", bare_fn.abi)?;
-                }
-
-                write!(f, "{}", bare_fn.sig.0)
+                write!(f, "{}", bare_fn.0)
             }
             TyInfer(infer_ty) => write!(f, "{}", infer_ty),
             TyError => write!(f, "[type error]"),
             TyParam(ref param_ty) => write!(f, "{}", param_ty),
-            TyAdt(def, substs) => {
-                ty::tls::with(|tcx| {
-                    if def.did.is_local() &&
-                          !tcx.item_types.borrow().contains_key(&def.did) {
-                        write!(f, "{}<..>", tcx.item_path_str(def.did))
-                    } else {
-                        parameterized(f, substs, def.did, &[])
-                    }
-                })
-            }
+            TyAdt(def, substs) => parameterized(f, substs, def.did, &[]),
             TyDynamic(data, r) => {
                 write!(f, "{}", data)?;
                 let r = r.to_string();

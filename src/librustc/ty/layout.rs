@@ -1146,7 +1146,7 @@ impl<'a, 'gcx, 'tcx> Layout {
             }
 
             // SIMD vector types.
-            ty::TyAdt(def, ..) if def.is_simd() => {
+            ty::TyAdt(def, ..) if def.repr.simd => {
                 let element = ty.simd_type(tcx);
                 match *element.layout(infcx)? {
                     Scalar { value, .. } => {
@@ -1181,8 +1181,8 @@ impl<'a, 'gcx, 'tcx> Layout {
                     let (mut min, mut max, mut non_zero) = (i64::max_value(),
                                                             i64::min_value(),
                                                             true);
-                    for v in &def.variants {
-                        let x = v.disr_val as i128 as i64;
+                    for discr in def.discriminants(tcx) {
+                        let x = discr.to_u128_unchecked() as i64;
                         if x == 0 { non_zero = false; }
                         if x < min { min = x; }
                         if x > max { max = x; }
@@ -1222,9 +1222,8 @@ impl<'a, 'gcx, 'tcx> Layout {
                     let fields = def.variants[0].fields.iter().map(|field| {
                         field.ty(tcx, substs).layout(infcx)
                     }).collect::<Result<Vec<_>, _>>()?;
-                    let packed = tcx.lookup_packed(def.did);
                     let layout = if def.is_union() {
-                        let mut un = Union::new(dl, packed);
+                        let mut un = Union::new(dl, def.repr.packed);
                         un.extend(dl, fields.iter().map(|&f| Ok(f)), ty)?;
                         UntaggedUnion { variants: un }
                     } else {
@@ -1240,7 +1239,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                 // non-empty body, explicit discriminants should have
                 // been rejected by a checker before this point.
                 for (i, v) in def.variants.iter().enumerate() {
-                    if i as u128 != v.disr_val {
+                    if v.discr != ty::VariantDiscr::Relative(i) {
                         bug!("non-C-like enum {} with specified discriminants",
                             tcx.item_path_str(def.did));
                     }
@@ -1348,7 +1347,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                     return Err(LayoutError::SizeOverflow(ty));
                 }
 
-                let typeck_ity = Integer::from_attr(dl, def.discr_ty);
+                let typeck_ity = Integer::from_attr(dl, def.repr.discr_type());
                 if typeck_ity < min_ity {
                     // It is a bug if Layout decided on a greater discriminant size than typeck for
                     // some reason at this point (based on values discriminant can take on). Mostly

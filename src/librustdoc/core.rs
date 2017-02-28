@@ -15,10 +15,10 @@ use rustc::session::{self, config};
 use rustc::hir::def_id::DefId;
 use rustc::hir::def::{Def, ExportMap};
 use rustc::middle::privacy::AccessLevels;
-use rustc::ty::{self, TyCtxt, GlobalArenas, Ty};
+use rustc::ty::{self, TyCtxt, GlobalArenas};
 use rustc::hir::map as hir_map;
 use rustc::lint;
-use rustc::util::nodemap::{FxHashMap, NodeMap};
+use rustc::util::nodemap::FxHashMap;
 use rustc_trans::back::link;
 use rustc_resolve as resolve;
 use rustc_metadata::cstore::CStore;
@@ -65,9 +65,6 @@ pub struct DocContext<'a, 'tcx: 'a> {
     /// Table node id of lifetime parameter definition -> substituted lifetime
     pub lt_substs: RefCell<FxHashMap<ast::NodeId, clean::Lifetime>>,
     pub export_map: ExportMap,
-
-    /// Table from HIR Ty nodes to their resolved Ty.
-    pub hir_ty_to_ty: NodeMap<Ty<'tcx>>,
 }
 
 impl<'a, 'tcx> DocContext<'a, 'tcx> {
@@ -183,7 +180,7 @@ pub fn run_core(search_paths: SearchPaths,
             sess.fatal("Compilation failed, aborting rustdoc");
         }
 
-        let ty::CrateAnalysis { access_levels, export_map, hir_ty_to_ty, .. } = analysis;
+        let ty::CrateAnalysis { access_levels, export_map, .. } = analysis;
 
         // Convert from a NodeId set to a DefId set since we don't always have easy access
         // to the map from defid -> nodeid
@@ -202,7 +199,6 @@ pub fn run_core(search_paths: SearchPaths,
             ty_substs: Default::default(),
             lt_substs: Default::default(),
             export_map: export_map,
-            hir_ty_to_ty: hir_ty_to_ty,
         };
         debug!("crate: {:?}", tcx.hir.krate());
 

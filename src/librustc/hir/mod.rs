@@ -410,6 +410,9 @@ pub struct Crate {
     pub trait_items: BTreeMap<TraitItemId, TraitItem>,
     pub impl_items: BTreeMap<ImplItemId, ImplItem>,
     pub bodies: FxHashMap<BodyId, Body>,
+
+    pub trait_impls: BTreeMap<DefId, Vec<NodeId>>,
+    pub trait_default_impl: BTreeMap<DefId, NodeId>,
 }
 
 impl Crate {

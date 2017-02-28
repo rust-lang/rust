@@ -201,7 +201,7 @@ impl PpSourceMode {
     fn call_with_pp_support_hir<'tcx, A, B, F>(&self,
                                                sess: &'tcx Session,
                                                hir_map: &hir_map::Map<'tcx>,
-                                               analysis: &ty::CrateAnalysis<'tcx>,
+                                               analysis: &ty::CrateAnalysis,
                                                resolutions: &Resolutions,
                                                arena: &'tcx DroplessArena,
                                                arenas: &'tcx GlobalArenas<'tcx>,
@@ -838,7 +838,7 @@ pub fn print_after_parsing(sess: &Session,
 
 pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                                                 hir_map: &hir_map::Map<'tcx>,
-                                                analysis: &ty::CrateAnalysis<'tcx>,
+                                                analysis: &ty::CrateAnalysis,
                                                 resolutions: &Resolutions,
                                                 input: &Input,
                                                 krate: &ast::Crate,
@@ -958,7 +958,7 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
 // Instead, we call that function ourselves.
 fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
                                        hir_map: &hir_map::Map<'tcx>,
-                                       analysis: &ty::CrateAnalysis<'tcx>,
+                                       analysis: &ty::CrateAnalysis,
                                        resolutions: &Resolutions,
                                        crate_name: &str,
                                        arena: &'tcx DroplessArena,
@@ -996,11 +996,13 @@ fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
                 } else {
                     match ppm {
                         PpmMir => {
-                            write_mir_pretty(tcx, tcx.mir_map.borrow().keys().into_iter(), &mut out)
+                            write_mir_pretty(tcx,
+                                             tcx.maps.mir.borrow().keys().into_iter(),
+                                             &mut out)
                         }
                         PpmMirCFG => {
                             write_mir_graphviz(tcx,
-                                               tcx.mir_map.borrow().keys().into_iter(),
+                                               tcx.maps.mir.borrow().keys().into_iter(),
                                                &mut out)
                         }
                         _ => unreachable!(),

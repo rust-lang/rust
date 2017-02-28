@@ -202,7 +202,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 let diverges = match ty.sty {
                     ty::TyFnDef(_, _, ref f) | ty::TyFnPtr(ref f) => {
                         // FIXME(canndrew): This is_never should probably be an is_uninhabited
-                        f.sig.skip_binder().output().is_never()
+                        f.output().skip_binder().is_never()
                     }
                     _ => false
                 };

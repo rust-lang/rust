@@ -208,9 +208,9 @@ impl<'a, 'gcx, 'tcx> AdjustBorrowKind<'a, 'gcx, 'tcx> {
 
         // If we are also inferred the closure kind here, update the
         // main table and process any deferred resolutions.
-        let closure_def_id = self.fcx.tcx.hir.local_def_id(id);
         if let Some(&kind) = self.temp_closure_kinds.get(&id) {
             self.fcx.tables.borrow_mut().closure_kinds.insert(id, kind);
+            let closure_def_id = self.fcx.tcx.hir.local_def_id(id);
             debug!("closure_kind({:?}) = {:?}", closure_def_id, kind);
 
             let mut deferred_call_resolutions =

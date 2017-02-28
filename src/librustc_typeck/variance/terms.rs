@@ -20,9 +20,7 @@
 // a variable.
 
 use arena::TypedArena;
-use dep_graph::DepTrackingMapConfig;
 use rustc::ty::{self, TyCtxt};
-use rustc::ty::maps::ItemVariances;
 use std::fmt;
 use std::rc::Rc;
 use syntax::ast;
@@ -33,6 +31,8 @@ use util::nodemap::NodeMap;
 use self::VarianceTerm::*;
 
 pub type VarianceTermPtr<'a> = &'a VarianceTerm<'a>;
+
+use dep_graph::DepNode::ItemSignature as VarianceDepNode;
 
 #[derive(Copy, Clone, Debug)]
 pub struct InferredIndex(pub usize);
@@ -109,7 +109,7 @@ pub fn determine_parameters_to_be_inferred<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>
     };
 
     // See README.md for a discussion on dep-graph management.
-    tcx.visit_all_item_likes_in_krate(|def_id| ItemVariances::to_dep_node(&def_id), &mut terms_cx);
+    tcx.visit_all_item_likes_in_krate(|def_id| VarianceDepNode(def_id), &mut terms_cx);
 
     terms_cx
 }
@@ -178,8 +178,7 @@ impl<'a, 'tcx> TermsContext<'a, 'tcx> {
         // parameters".
         if self.num_inferred() == inferreds_on_entry {
             let item_def_id = self.tcx.hir.local_def_id(item_id);
-            self.tcx
-                .item_variance_map
+            self.tcx.maps.variances
                 .borrow_mut()
                 .insert(item_def_id, self.empty_variances.clone());
         }

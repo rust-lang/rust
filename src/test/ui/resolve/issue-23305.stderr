@@ -1,8 +1,15 @@
-error: `Self` type is used before it's determined
+error[E0391]: unsupported cyclic reference between types/traits detected
   --> $DIR/issue-23305.rs:15:12
    |
 15 | impl ToNbt<Self> {}
-   |            ^^^^
+   |            ^^^^ cyclic reference
+   |
+note: the cycle begins when processing `<impl at $DIR/issue-23305.rs:15:1: 15:20>`...
+  --> $DIR/issue-23305.rs:15:1
+   |
+15 | impl ToNbt<Self> {}
+   | ^^^^^^^^^^^^^^^^^^^
+   = note: ...which then again requires processing `<impl at $DIR/issue-23305.rs:15:1: 15:20>`, completing the cycle.
 
 error: aborting due to previous error
 

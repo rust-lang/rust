@@ -14,6 +14,7 @@ use super::{CrateDebugContext};
 use super::namespace::item_namespace;
 
 use rustc::hir::def_id::DefId;
+use rustc::ty::DefIdTree;
 
 use llvm;
 use llvm::debuginfo::{DIScope, DIBuilderRef, DIDescriptor, DIArray};
@@ -74,11 +75,8 @@ pub fn DIB(cx: &CrateContext) -> DIBuilderRef {
 
 pub fn get_namespace_and_span_for_item(cx: &CrateContext, def_id: DefId)
                                    -> (DIScope, Span) {
-    let containing_scope = item_namespace(cx, DefId {
-        krate: def_id.krate,
-        index: cx.tcx().def_key(def_id).parent
-                 .expect("get_namespace_and_span_for_item: missing parent?")
-    });
+    let containing_scope = item_namespace(cx, cx.tcx().parent(def_id)
+        .expect("get_namespace_and_span_for_item: missing parent?"));
 
     // Try to get some span information, if we have an inlined item.
     let definition_span = cx.tcx().def_span(def_id);
