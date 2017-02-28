@@ -26,7 +26,7 @@
 //! along with the actual implementation elsewhere. You can find more comments
 //! about how to define rules themselves below.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashSet};
 use std::mem;
 
 use check::{self, TestKind};
@@ -866,7 +866,7 @@ impl<'a, 'b> Drop for RuleBuilder<'a, 'b> {
 pub struct Rules<'a> {
     build: &'a Build,
     sbuild: Step<'a>,
-    rules: HashMap<&'a str, Rule<'a>>,
+    rules: BTreeMap<&'a str, Rule<'a>>,
 }
 
 impl<'a> Rules<'a> {
@@ -879,7 +879,7 @@ impl<'a> Rules<'a> {
                 host: &build.config.build,
                 name: "",
             },
-            rules: HashMap::new(),
+            rules: BTreeMap::new(),
         }
     }
 
