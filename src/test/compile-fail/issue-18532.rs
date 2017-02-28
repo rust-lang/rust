@@ -13,6 +13,6 @@
 // into it.
 
 fn main() {
-    (return)((),());
-    //~^ ERROR the type of this value must be known
+    (return) //~ ERROR cannot determine the type of this callee
+    ((), ());
 }

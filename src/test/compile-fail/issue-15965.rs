@@ -9,9 +9,6 @@
 // except according to those terms.
 
 fn main() {
-    return
-        { return () }
-//~^ ERROR the type of this value must be known in this context
-    ()
-    ;
+    (return) //~ ERROR cannot determine the type of this callee
+    ();
 }
