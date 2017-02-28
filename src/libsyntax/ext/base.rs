@@ -678,7 +678,7 @@ impl<'a> ExtCtxt<'a> {
             let mut err = self.struct_span_fatal(ei.call_site,
                 &format!("recursion limit reached while expanding the macro `{}`",
                          ei.callee.name()));
-            err.note(&format!(
+            err.help(&format!(
                 "consider adding a `#![recursion_limit=\"{}\"]` attribute to your crate",
                 suggested_limit));
             err.emit();
