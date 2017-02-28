@@ -207,7 +207,7 @@ use syntax_pos::DUMMY_SP;
 use base::custom_coerce_unsize_info;
 use callee::needs_fn_once_adapter_shim;
 use context::SharedCrateContext;
-use common::fulfill_obligation;
+use common::{def_ty, fulfill_obligation};
 use glue::{self, DropGlueKind};
 use monomorphize::{self, Instance};
 use util::nodemap::{FxHashSet, FxHashMap, DefIdMap};
@@ -341,7 +341,7 @@ fn collect_items_rec<'a, 'tcx: 'a>(scx: &SharedCrateContext<'a, 'tcx>,
             // Sanity check whether this ended up being collected accidentally
             debug_assert!(should_trans_locally(scx.tcx(), def_id));
 
-            let ty = scx.tcx().item_type(def_id);
+            let ty = def_ty(scx, def_id, Substs::empty());
             let ty = glue::get_drop_glue_type(scx, ty);
             neighbors.push(TransItem::DropGlue(DropGlueKind::Ty(ty)));
 
@@ -815,10 +815,7 @@ fn find_drop_glue_neighbors<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
         }
         ty::TyAdt(def, substs) => {
             for field in def.all_fields() {
-                let field_type = scx.tcx().item_type(field.did);
-                let field_type = monomorphize::apply_param_substs(scx,
-                                                                  substs,
-                                                                  &field_type);
+                let field_type = def_ty(scx, field.did, substs);
                 let field_type = glue::get_drop_glue_type(scx, field_type);
 
                 if scx.type_needs_drop(field_type) {
@@ -1184,7 +1181,7 @@ impl<'b, 'a, 'v> ItemLikeVisitor<'v> for RootCollector<'b, 'a, 'v> {
                         debug!("RootCollector: ADT drop-glue for {}",
                                def_id_to_string(self.scx.tcx(), def_id));
 
-                        let ty = self.scx.tcx().item_type(def_id);
+                        let ty = def_ty(self.scx, def_id, Substs::empty());
                         let ty = glue::get_drop_glue_type(self.scx, ty);
                         self.output.push(TransItem::DropGlue(DropGlueKind::Ty(ty)));
                     }
