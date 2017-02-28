@@ -77,12 +77,9 @@ pub fn standalone(build: &Build, target: &str) {
     if !up_to_date(&version_input, &version_info) {
         let mut info = String::new();
         t!(t!(File::open(&version_input)).read_to_string(&mut info));
-        let blank = String::new();
-        let short = build.short_ver_hash.as_ref().unwrap_or(&blank);
-        let hash = build.ver_hash.as_ref().unwrap_or(&blank);
-        let info = info.replace("VERSION", &build.release)
-                       .replace("SHORT_HASH", short)
-                       .replace("STAMP", hash);
+        let info = info.replace("VERSION", &build.rust_release())
+                       .replace("SHORT_HASH", build.rust_info.sha_short().unwrap_or(""))
+                       .replace("STAMP", build.rust_info.sha().unwrap_or(""));
         t!(t!(File::create(&version_info)).write_all(info.as_bytes()));
     }
 
