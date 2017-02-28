@@ -169,8 +169,8 @@ pub fn check(path: &Path, bad: &mut bool) {
     let whitelist = vec![
         "abi_ptx", "simd",
         "cfg_target_has_atomic",
-        "unboxed_closures", "stmt_expr_attributes",
-        "cfg_target_thread_local", "unwind_attributes"
+        "stmt_expr_attributes",
+        "cfg_target_thread_local", "unwind_attributes",
     ];
 
     // Only check the number of lang features.
