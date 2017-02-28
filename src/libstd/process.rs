@@ -27,6 +27,31 @@
 //!
 //! assert!(ecode.success());
 //! ```
+//!
+//! Calling a command with input and reading its output:
+//!
+//! ```no_run
+//! use std::process::{Command, Stdio};
+//! use std::io::Write;
+//!
+//! let mut child = Command::new("/bin/cat")
+//!     .stdin(Stdio::piped())
+//!     .stdout(Stdio::piped())
+//!     .spawn()
+//!     .expect("failed to execute child");
+//!
+//! {
+//!     // limited borrow of stdin
+//!     let stdin = child.stdin.as_mut().expect("failed to get stdin");
+//!     stdin.write_all(b"test").expect("failed to write to stdin");
+//! }
+//!
+//! let output = child
+//!     .wait_with_output()
+//!     .expect("failed to wait on child");
+//!
+//! assert_eq!(b"test", output.stdout.as_slice());
+//! ```
 
 #![stable(feature = "process", since = "1.0.0")]
 
