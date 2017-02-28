@@ -103,9 +103,9 @@
 //! inlining, even when they are not marked #[inline].
 
 use collector::InliningMap;
+use common;
 use context::SharedCrateContext;
 use llvm;
-use monomorphize;
 use rustc::dep_graph::{DepNode, WorkProductId};
 use rustc::hir::def_id::DefId;
 use rustc::hir::map::DefPathData;
@@ -468,12 +468,7 @@ fn characteristic_def_id_of_trans_item<'a, 'tcx>(scx: &SharedCrateContext<'a, 't
             if let Some(impl_def_id) = tcx.impl_of_method(instance.def) {
                 // This is a method within an inherent impl, find out what the
                 // self-type is:
-                let impl_self_ty = tcx.item_type(impl_def_id);
-                let impl_self_ty = tcx.erase_regions(&impl_self_ty);
-                let impl_self_ty = monomorphize::apply_param_substs(scx,
-                                                                    instance.substs,
-                                                                    &impl_self_ty);
-
+                let impl_self_ty = common::def_ty(scx, impl_def_id, instance.substs);
                 if let Some(def_id) = characteristic_def_id_of_type(impl_self_ty) {
                     return Some(def_id);
                 }

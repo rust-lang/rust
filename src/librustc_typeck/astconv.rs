@@ -79,13 +79,8 @@ pub trait AstConv<'gcx, 'tcx> {
                                         item_name: ast::Name)
                                         -> Ty<'tcx>;
 
-    /// Project an associated type from a non-higher-ranked trait reference.
-    /// This is fairly straightforward and can be accommodated in any context.
-    fn projected_ty(&self,
-                    span: Span,
-                    _trait_ref: ty::TraitRef<'tcx>,
-                    _item_name: ast::Name)
-                    -> Ty<'tcx>;
+    /// Normalize an associated type coming from the user.
+    fn normalize_ty(&self, span: Span, ty: Ty<'tcx>) -> Ty<'tcx>;
 
     /// Invoked when we encounter an error from some prior pass
     /// (e.g. resolve) that is translated into a ty-error. This is
@@ -310,8 +305,11 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                     tcx.types.err
                 } else {
                     // This is a default type parameter.
-                    ty::queries::ty::get(tcx, span, def.def_id)
-                        .subst_spanned(tcx, substs, Some(span))
+                    self.normalize_ty(
+                        span,
+                        ty::queries::ty::get(tcx, span, def.def_id)
+                            .subst_spanned(tcx, substs, Some(span))
+                    )
                 }
             } else {
                 // We've already errored above about the mismatch.
@@ -600,7 +598,10 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         -> Ty<'tcx>
     {
         let substs = self.ast_path_substs_for_ty(span, did, item_segment);
-        ty::queries::ty::get(self.tcx(), span, did).subst(self.tcx(), substs)
+        self.normalize_ty(
+            span,
+            ty::queries::ty::get(self.tcx(), span, did).subst(self.tcx(), substs)
+        )
     }
 
     /// Transform a PolyTraitRef into a PolyExistentialTraitRef by
@@ -900,6 +901,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
         let trait_did = bound.0.def_id;
         let ty = self.projected_ty_from_poly_trait_ref(span, bound, assoc_name);
+        let ty = self.normalize_ty(span, ty);
 
         let item = tcx.associated_items(trait_did).find(|i| i.name == assoc_name);
         let def_id = item.expect("missing associated type").def_id;
@@ -939,7 +941,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
 
         debug!("qpath_to_ty: trait_ref={:?}", trait_ref);
 
-        self.projected_ty(span, trait_ref, item_segment.name)
+        self.normalize_ty(span, tcx.mk_projection(trait_ref, item_segment.name))
     }
 
     pub fn prohibit_type_params(&self, segments: &[hir::PathSegment]) {

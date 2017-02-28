@@ -27,9 +27,9 @@ use rustc::hir::def_id::DefId;
 use rustc::ty::subst::Substs;
 
 use abi::Abi;
-use common::CrateContext;
+use common::{self, CrateContext};
 use builder::Builder;
-use monomorphize::{self, Instance};
+use monomorphize::Instance;
 use rustc::ty::{self, Ty};
 use rustc::mir;
 use session::config::{self, FullDebugInfo, LimitedDebugInfo, NoDebugInfo};
@@ -397,11 +397,8 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         let self_type = cx.tcx().impl_of_method(instance.def).and_then(|impl_def_id| {
             // If the method does *not* belong to a trait, proceed
             if cx.tcx().trait_id_of_impl(impl_def_id).is_none() {
-                let impl_self_ty = cx.tcx().item_type(impl_def_id);
-                let impl_self_ty = cx.tcx().erase_regions(&impl_self_ty);
-                let impl_self_ty = monomorphize::apply_param_substs(cx.shared(),
-                                                                    instance.substs,
-                                                                    &impl_self_ty);
+                let impl_self_ty =
+                    common::def_ty(cx.shared(), impl_def_id, instance.substs);
 
                 // Only "class" methods are generally understood by LLVM,
                 // so avoid methods on other types (e.g. `<*mut T>::null`).

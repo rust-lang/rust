@@ -18,12 +18,13 @@ use rustc::hir::map as hir_map;
 use {debuginfo, machine};
 use base;
 use trans_item::TransItem;
-use common::{CrateContext, val_ty};
+use common::{self, CrateContext, val_ty};
 use declare;
-use monomorphize::{Instance};
+use monomorphize::Instance;
 use type_::Type;
 use type_of;
 use rustc::ty;
+use rustc::ty::subst::Substs;
 
 use rustc::hir;
 
@@ -84,7 +85,7 @@ pub fn get_static(ccx: &CrateContext, def_id: DefId) -> ValueRef {
         return g;
     }
 
-    let ty = ccx.tcx().item_type(def_id);
+    let ty = common::def_ty(ccx.shared(), def_id, Substs::empty());
     let g = if let Some(id) = ccx.tcx().hir.as_local_node_id(def_id) {
 
         let llty = type_of::type_of(ccx, ty);
@@ -234,7 +235,7 @@ pub fn trans_static<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             v
         };
 
-        let ty = ccx.tcx().item_type(def_id);
+        let ty = common::def_ty(ccx.shared(), def_id, Substs::empty());
         let llty = type_of::type_of(ccx, ty);
         let g = if val_llty == llty {
             g

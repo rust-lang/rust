@@ -24,14 +24,15 @@ use abi::{Abi, FnType};
 use attributes;
 use base;
 use builder::Builder;
-use common::{self, CrateContext, SharedCrateContext};
+use common::{self, CrateContext};
 use cleanup::CleanupScope;
 use mir::lvalue::LvalueRef;
 use consts;
+use common::def_ty;
 use declare;
 use value::Value;
 use meth;
-use monomorphize::{self, Instance};
+use monomorphize::Instance;
 use trans_item::TransItem;
 use type_of;
 use Disr;
@@ -206,16 +207,6 @@ impl<'tcx> Callee<'tcx> {
         }
     }
 }
-
-/// Given a DefId and some Substs, produces the monomorphic item type.
-fn def_ty<'a, 'tcx>(shared: &SharedCrateContext<'a, 'tcx>,
-                    def_id: DefId,
-                    substs: &'tcx Substs<'tcx>)
-                    -> Ty<'tcx> {
-    let ty = shared.tcx().item_type(def_id);
-    monomorphize::apply_param_substs(shared, substs, &ty)
-}
-
 
 fn trans_closure_method<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
                                   def_id: DefId,
@@ -544,8 +535,7 @@ fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     let substs = tcx.normalize_associated_type(&substs);
     let instance = Instance::new(def_id, substs);
-    let item_ty = ccx.tcx().item_type(def_id);
-    let fn_ty = monomorphize::apply_param_substs(ccx.shared(), substs, &item_ty);
+    let fn_ty = common::def_ty(ccx.shared(), def_id, substs);
 
     if let Some(&llfn) = ccx.instances().borrow().get(&instance) {
         return (llfn, fn_ty);
