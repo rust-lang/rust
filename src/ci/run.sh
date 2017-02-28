@@ -71,7 +71,7 @@ set -x
 if [ ! -z "$SCRIPT" ]; then
   sh -x -c "$SCRIPT"
 else
-  make -j $ncpus tidy
-  make -j $ncpus
-  make $RUST_CHECK_TARGET -j $ncpus
+  time make -j $ncpus tidy
+  time make -j $ncpus
+  time make $RUST_CHECK_TARGET -j $ncpus
 fi

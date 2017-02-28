@@ -28,6 +28,7 @@
 
 use std::collections::{HashMap, HashSet};
 use std::mem;
+use std::cmp::min;
 
 use check::{self, TestKind};
 use compile;
@@ -1000,10 +1001,14 @@ invalid rule dependency graph detected, was a rule added and maybe typo'd?
         // product of the two and then create a step based off them. Note that
         // the stage each step is associated was specified with the `--step`
         // flag on the command line.
+        let mut split = None;
         let (kind, paths) = match self.build.flags.cmd {
             Subcommand::Build { ref paths } => (Kind::Build, &paths[..]),
             Subcommand::Doc { ref paths } => (Kind::Doc, &paths[..]),
-            Subcommand::Test { ref paths, test_args: _ } => (Kind::Test, &paths[..]),
+            Subcommand::Test { ref paths, test_args: _, split: new_split } => {
+                split = new_split;
+                (Kind::Test, &paths[..])
+            }
             Subcommand::Bench { ref paths, test_args: _ } => (Kind::Bench, &paths[..]),
             Subcommand::Dist { ref paths, install } => {
                 if install {
@@ -1014,8 +1019,7 @@ invalid rule dependency graph detected, was a rule added and maybe typo'd?
             }
             Subcommand::Clean => panic!(),
         };
-
-        self.rules.values().filter(|rule| rule.kind == kind).filter(|rule| {
+        let steps = self.rules.values().filter(|rule| rule.kind == kind).filter(|rule| {
             (paths.len() == 0 && rule.default) || paths.iter().any(|path| {
                 path.ends_with(rule.path)
             })
@@ -1059,7 +1063,23 @@ invalid rule dependency graph detected, was a rule added and maybe typo'd?
                     self.sbuild.name(rule.name).target(target).host(host)
                 })
             })
-        }).collect()
+        }).collect::<Vec<_>>();
+
+        if let Some((offset, nb_split)) = split {
+            assert!(nb_split <= steps.len(),
+                    "you asked for {} slices but there are only {} tasks",
+                    nb_split,
+                    steps.len());
+            let index = |i| {
+                i * (steps.len() / nb_split) + min(steps.len() % nb_split, i)
+            };
+            let from = index(offset);
+            let to = index(offset + 1);
+            steps[from..to].into()
+        } else {
+            steps
+        }
+
     }
 
     /// Execute all top-level targets indicated by `steps`.

@@ -61,6 +61,7 @@ pub enum Subcommand {
     Test {
         paths: Vec<PathBuf>,
         test_args: Vec<String>,
+        split: Option<(usize, usize)>,
     },
     Bench {
         paths: Vec<PathBuf>,
@@ -226,10 +227,27 @@ To learn more about a subcommand, run `./x.py <command> -h`
             }
             "test" => {
                 opts.optmulti("", "test-args", "extra arguments", "ARGS");
+                opts.optopt("",
+                            "number-slices",
+                            "divide the test run in N segments",
+                            "N");
+                opts.optopt("",
+                            "slice",
+                            "run ith segment",
+                            "i");
                 m = parse(&opts);
+                let split = match (m.opt_str("slice"), m.opt_str("number-slices")) {
+                    (Some(raw_slice), Some(raw_nb_slices)) => {
+                        Some((raw_slice.parse().unwrap(),
+                              raw_nb_slices.parse().unwrap()))
+                    }
+                    (None, None) => None,
+                    _ => panic!("You must provide --slice and --number-slices"),
+                };
                 Subcommand::Test {
                     paths: remaining_as_path(&m),
                     test_args: m.opt_strs("test-args"),
+                    split: split,
                 }
             }
             "bench" => {
