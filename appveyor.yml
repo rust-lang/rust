@@ -115,8 +115,8 @@ install:
   - set PATH=C:\Python27;%PATH%
 
   # Download and install sccache
-  - appveyor-retry appveyor DownloadFile https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-02-24-sccache-x86_64-pc-windows-msvc
-  - mv 2017-02-24-sccache-x86_64-pc-windows-msvc sccache
+  - appveyor-retry appveyor DownloadFile https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-02-25-sccache-x86_64-pc-windows-msvc
+  - mv 2017-02-25-sccache-x86_64-pc-windows-msvc sccache
   - set PATH=%PATH%;%CD%
 
   # Install InnoSetup to get `iscc` used to produce installers
@@ -137,12 +137,8 @@ test_script:
   - sh src/ci/run.sh
 
 cache:
-  - "build/i686-pc-windows-gnu/llvm -> src/rustllvm/llvm-auto-clean-trigger"
-  - "build/x86_64-pc-windows-gnu/llvm -> src/rustllvm/llvm-auto-clean-trigger"
   - "build/i686-pc-windows-msvc/llvm -> src/rustllvm/llvm-auto-clean-trigger"
   - "build/x86_64-pc-windows-msvc/llvm -> src/rustllvm/llvm-auto-clean-trigger"
-  - "i686-pc-windows-gnu/llvm -> src/rustllvm/llvm-auto-clean-trigger"
-  - "x86_64-pc-windows-gnu/llvm -> src/rustllvm/llvm-auto-clean-trigger"
   - "i686-pc-windows-msvc/llvm -> src/rustllvm/llvm-auto-clean-trigger"
   - "x86_64-pc-windows-msvc/llvm -> src/rustllvm/llvm-auto-clean-trigger"
 
