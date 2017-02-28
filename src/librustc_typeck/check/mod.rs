@@ -118,6 +118,7 @@ use syntax::util::lev_distance::find_best_match_for_name;
 use syntax_pos::{self, BytePos, Span, DUMMY_SP};
 
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
+use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir::{self, PatKind};
 use rustc::middle::lang_items;
 use rustc_back::slice;
@@ -515,37 +516,12 @@ impl<'a, 'gcx, 'tcx> Inherited<'a, 'gcx, 'tcx> {
 
 struct CheckItemTypesVisitor<'a, 'tcx: 'a> { tcx: TyCtxt<'a, 'tcx, 'tcx> }
 
-impl<'a, 'tcx> Visitor<'tcx> for CheckItemTypesVisitor<'a, 'tcx> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        NestedVisitorMap::OnlyBodies(&self.tcx.hir)
-    }
-
+impl<'a, 'tcx> ItemLikeVisitor<'tcx> for CheckItemTypesVisitor<'a, 'tcx> {
     fn visit_item(&mut self, i: &'tcx hir::Item) {
         check_item_type(self.tcx, i);
-        intravisit::walk_item(self, i);
     }
-
-    fn visit_ty(&mut self, t: &'tcx hir::Ty) {
-        match t.node {
-            hir::TyArray(_, length) => {
-                self.tcx.item_tables(self.tcx.hir.local_def_id(length.node_id));
-            }
-            _ => {}
-        }
-
-        intravisit::walk_ty(self, t);
-    }
-
-    fn visit_expr(&mut self, e: &'tcx hir::Expr) {
-        match e.node {
-            hir::ExprRepeat(_, count) => {
-                self.tcx.item_tables(self.tcx.hir.local_def_id(count.node_id));
-            }
-            _ => {}
-        }
-
-        intravisit::walk_expr(self, e);
-    }
+    fn visit_trait_item(&mut self, _: &'tcx hir::TraitItem) { }
+    fn visit_impl_item(&mut self, _: &'tcx hir::ImplItem) { }
 }
 
 pub fn check_wf_new<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> CompileResult {
@@ -557,9 +533,8 @@ pub fn check_wf_new<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> CompileResult {
 
 pub fn check_item_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> CompileResult {
     tcx.sess.track_errors(|| {
-        let mut visit = CheckItemTypesVisitor { tcx: tcx };
         tcx.visit_all_item_likes_in_krate(DepNode::TypeckItemType,
-                                              &mut visit.as_deep_visitor());
+                                          &mut CheckItemTypesVisitor { tcx });
     })
 }
 
