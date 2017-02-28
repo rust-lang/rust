@@ -156,18 +156,18 @@ extern {
     pub fn launchpad_create(job: mx_handle_t, name: *const c_char,
                             lp: *mut *mut launchpad_t) -> mx_status_t;
 
-    pub fn launchpad_start(lp: *mut launchpad_t) -> mx_status_t;
+    pub fn launchpad_go(lp: *mut launchpad_t,
+                        proc_handle: *mut mx_handle_t,
+                        err_msg: *mut *const c_char) -> mx_status_t;
 
     pub fn launchpad_destroy(lp: *mut launchpad_t);
 
-    pub fn launchpad_arguments(lp: *mut launchpad_t, argc: c_int,
+    pub fn launchpad_set_args(lp: *mut launchpad_t, argc: c_int,
                                argv: *const *const c_char) -> mx_status_t;
 
-    pub fn launchpad_environ(lp: *mut launchpad_t, envp: *const *const c_char) -> mx_status_t;
+    pub fn launchpad_set_environ(lp: *mut launchpad_t, envp: *const *const c_char) -> mx_status_t;
 
-    pub fn launchpad_clone_mxio_root(lp: *mut launchpad_t) -> mx_status_t;
-
-    pub fn launchpad_clone_mxio_cwd(lp: *mut launchpad_t) -> mx_status_t;
+    pub fn launchpad_clone(lp: *mut launchpad_t, what: u32) -> mx_status_t;
 
     pub fn launchpad_clone_fd(lp: *mut launchpad_t, fd: c_int, target_fd: c_int) -> mx_status_t;
 
@@ -181,6 +181,16 @@ extern {
 
     pub fn launchpad_vmo_from_file(filename: *const c_char) -> mx_handle_t;
 }
+
+// Launchpad clone constants
+
+pub const LP_CLONE_MXIO_ROOT: u32 = 0x0001;
+pub const LP_CLONE_MXIO_CWD: u32 = 0x0002;
+// LP_CLONE_MXIO_STDIO = 0x0004
+// LP_CLONE_MXIO_ALL = 0x00FF
+// LP_CLONE_ENVIRON = 0x0100
+// LP_CLONE_DEFAULT_JOB = 0x0200
+// LP_CLONE_ALL = 0xFFFF
 
 // Errors
 
