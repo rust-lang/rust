@@ -128,7 +128,7 @@ pub fn hello_world(input: TokenStream) -> TokenStream {
 So there is a lot going on here. We have introduced two new crates: [`syn`] and
 [`quote`]. As you may have noticed, `input: TokenSteam` is immediately converted
 to a `String`. This `String` is a string representation of the Rust code for which
-we are deriving `HelloWorld` for. At the moment, the only thing you can do with a
+we are deriving `HelloWorld`. At the moment, the only thing you can do with a
 `TokenStream` is convert it to a string. A richer API will exist in the future.
 
 So what we really need is to be able to _parse_ Rust code into something
