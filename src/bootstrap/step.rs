@@ -478,9 +478,10 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
          .dep(|s| s.name("dist-src"))
          .run(move |_| check::distcheck(build));
 
-
     rules.build("test-helpers", "src/rt/rust_test_helpers.c")
          .run(move |s| native::test_helpers(build, s.target));
+    rules.build("openssl", "path/to/nowhere")
+         .run(move |s| native::openssl(build, s.target));
 
     // Some test suites are run inside emulators, and most of our test binaries
     // are linked dynamically which means we need to ship the standard library
@@ -547,6 +548,10 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
     rules.build("tool-qemu-test-client", "src/tools/qemu-test-client")
          .dep(|s| s.name("libstd"))
          .run(move |s| compile::tool(build, s.stage, s.target, "qemu-test-client"));
+    rules.build("tool-cargo", "src/tools/cargo")
+         .dep(|s| s.name("libstd"))
+         .dep(|s| s.stage(0).host(s.target).name("openssl"))
+         .run(move |s| compile::tool(build, s.stage, s.target, "cargo"));
 
     // ========================================================================
     // Documentation targets
@@ -673,6 +678,7 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
     rules.dist("dist-cargo", "cargo")
          .host(true)
          .only_host_build(true)
+         .dep(|s| s.name("tool-cargo"))
          .run(move |s| dist::cargo(build, s.stage, s.target));
     rules.dist("dist-extended", "extended")
          .default(build.config.extended)
@@ -1180,6 +1186,7 @@ mod tests {
             build_step: "build-crate-std".to_string(),
             test_step: "test-std".to_string(),
             bench_step: "bench-std".to_string(),
+            version: String::new(),
         });
         build.crates.insert("test".to_string(), ::Crate {
             name: "test".to_string(),
@@ -1189,10 +1196,12 @@ mod tests {
             build_step: "build-crate-test".to_string(),
             test_step: "test-test".to_string(),
             bench_step: "bench-test".to_string(),
+            version: String::new(),
         });
         build.crates.insert("rustc-main".to_string(), ::Crate {
             name: "rustc-main".to_string(),
             deps: Vec::new(),
+            version: String::new(),
             path: cwd.join("src/rustc-main"),
             doc_step: "doc-rustc-main".to_string(),
             build_step: "build-crate-rustc-main".to_string(),
