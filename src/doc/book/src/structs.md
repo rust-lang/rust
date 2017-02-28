@@ -88,7 +88,7 @@ fn main() {
 }
 ```
 
-Your structure can still contain `&mut` pointers, which will let
+Your structure can still contain `&mut` references, which will let
 you do some kinds of mutation:
 
 ```rust
