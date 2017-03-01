@@ -508,6 +508,56 @@ fn test_drain_range() {
 }
 
 #[test]
+fn test_drain_inclusive_range() {
+    let mut v = vec!['a', 'b', 'c', 'd', 'e'];
+    for _ in v.drain(1...3) {
+    }
+    assert_eq!(v, &['a', 'e']);
+
+    let mut v: Vec<_> = (0...5).map(|x| x.to_string()).collect();
+    for _ in v.drain(1...5) {
+    }
+    assert_eq!(v, &["0".to_string()]);
+
+    let mut v: Vec<String> = (0...5).map(|x| x.to_string()).collect();
+    for _ in v.drain(0...5) {
+    }
+    assert_eq!(v, Vec::<String>::new());
+
+    let mut v: Vec<_> = (0...5).map(|x| x.to_string()).collect();
+    for _ in v.drain(0...3) {
+    }
+    assert_eq!(v, &["4".to_string(), "5".to_string()]);
+
+    let mut v: Vec<_> = (0...1).map(|x| x.to_string()).collect();
+    for _ in v.drain(...0) {
+    }
+    assert_eq!(v, &["1".to_string()]);
+}
+
+#[test]
+fn test_drain_max_vec_size() {
+    let mut v = Vec::<()>::with_capacity(usize::max_value());
+    unsafe { v.set_len(usize::max_value()); }
+    for _ in v.drain(usize::max_value() - 1..) {
+    }
+    assert_eq!(v.len(), usize::max_value() - 1);
+
+    let mut v = Vec::<()>::with_capacity(usize::max_value());
+    unsafe { v.set_len(usize::max_value()); }
+    for _ in v.drain(usize::max_value() - 1...usize::max_value() - 1) {
+    }
+    assert_eq!(v.len(), usize::max_value() - 1);
+}
+
+#[test]
+#[should_panic]
+fn test_drain_inclusive_out_of_bounds() {
+    let mut v = vec![1, 2, 3, 4, 5];
+    v.drain(5...5);
+}
+
+#[test]
 fn test_into_boxed_slice() {
     let xs = vec![1, 2, 3];
     let ys = xs.into_boxed_slice();

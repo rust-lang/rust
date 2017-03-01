@@ -210,7 +210,7 @@ pub struct InferCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 /// region that each late-bound region was replaced with.
 pub type SkolemizationMap<'tcx> = FxHashMap<ty::BoundRegion, &'tcx ty::Region>;
 
-/// See `error_reporting.rs` for more details
+/// See `error_reporting` module for more details
 #[derive(Clone, Debug)]
 pub enum ValuePairs<'tcx> {
     Types(ExpectedFound<Ty<'tcx>>),
@@ -221,7 +221,7 @@ pub enum ValuePairs<'tcx> {
 /// The trace designates the path through inference that we took to
 /// encounter an error or subtyping constraint.
 ///
-/// See `error_reporting.rs` for more details.
+/// See `error_reporting` module for more details.
 #[derive(Clone)]
 pub struct TypeTrace<'tcx> {
     cause: ObligationCause<'tcx>,
@@ -230,7 +230,7 @@ pub struct TypeTrace<'tcx> {
 
 /// The origin of a `r1 <= r2` constraint.
 ///
-/// See `error_reporting.rs` for more details
+/// See `error_reporting` module for more details
 #[derive(Clone, Debug)]
 pub enum SubregionOrigin<'tcx> {
     // Arose from a subtyping relation
@@ -348,7 +348,7 @@ pub enum LateBoundRegionConversionTime {
 
 /// Reasons to create a region inference variable
 ///
-/// See `error_reporting.rs` for more details
+/// See `error_reporting` module for more details
 #[derive(Clone, Debug)]
 pub enum RegionVariableOrigin {
     // Region variables created for ill-categorized reasons,
@@ -1295,7 +1295,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             // this infcx was in use.  This is totally hokey but
             // otherwise we have a hard time separating legit region
             // errors from silly ones.
-            self.report_region_errors(&errors); // see error_reporting.rs
+            self.report_region_errors(&errors); // see error_reporting module
         }
     }
 

@@ -179,6 +179,43 @@ fn test_range_small() {
 }
 
 #[test]
+fn test_range_inclusive() {
+    let size = 500;
+
+    let map: BTreeMap<_, _> = (0...size).map(|i| (i, i)).collect();
+
+    fn check<'a, L, R>(lhs: L, rhs: R)
+        where L: IntoIterator<Item=(&'a i32, &'a i32)>,
+              R: IntoIterator<Item=(&'a i32, &'a i32)>,
+    {
+        let lhs: Vec<_> = lhs.into_iter().collect();
+        let rhs: Vec<_> = rhs.into_iter().collect();
+        assert_eq!(lhs, rhs);
+    }
+
+    check(map.range(size + 1...size + 1), vec![]);
+    check(map.range(size...size), vec![(&size, &size)]);
+    check(map.range(size...size + 1), vec![(&size, &size)]);
+    check(map.range(0...0), vec![(&0, &0)]);
+    check(map.range(0...size - 1), map.range(..size));
+    check(map.range(-1...-1), vec![]);
+    check(map.range(-1...size), map.range(..));
+    check(map.range(...size), map.range(..));
+    check(map.range(...200), map.range(..201));
+    check(map.range(5...8), vec![(&5, &5), (&6, &6), (&7, &7), (&8, &8)]);
+    check(map.range(-1...0), vec![(&0, &0)]);
+    check(map.range(-1...2), vec![(&0, &0), (&1, &1), (&2, &2)]);
+}
+
+#[test]
+fn test_range_inclusive_max_value() {
+    let max = ::std::usize::MAX;
+    let map: BTreeMap<_, _> = vec![(max, 0)].into_iter().collect();
+
+    assert_eq!(map.range(max...max).collect::<Vec<_>>(), &[(&max, &0)]);
+}
+
+#[test]
 fn test_range_equal_empty_cases() {
     let map: BTreeMap<_, _> = (0..5).map(|i| (i, i)).collect();
     assert_eq!(map.range((Included(2), Excluded(2))).next(), None);
