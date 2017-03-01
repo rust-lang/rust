@@ -92,8 +92,4 @@ fn test_ops() {
     assert_eq!(half_any, half64);
     // for transitivity
     assert_eq!(half32, half64);
-
-    assert_eq!(Constant::Int(ConstInt::U8(0)), Constant::Int(ConstInt::U8(0)));
-    assert_eq!(Constant::Int(ConstInt::U8(0)), Constant::Int(ConstInt::I8(0)));
-    assert_eq!(Constant::Int(ConstInt::I8(-1)), Constant::Int(ConstInt::I8(-1)));
 }
