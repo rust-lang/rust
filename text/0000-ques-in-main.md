@@ -187,15 +187,17 @@ then exit, but they may or may not have notions of "exit status" or
 unchanged, and the shim should simply ignore whichever aspects of
 `Termination` don't make sense in context.
 
-There are also environments where returning from `main` constitutes a
-_bug_.  If you are implementing an operating system kernel, for
-instance, there may be nothing to return to.  Then you want it to be a
-compile-time error for `main` to return anything other than `!`.  If
-everything is implemented correctly, such environments should be able
-to get that effect by omitting all stock impls of `Termination` other
-than for `!`.  Perhaps there should also be a compiler hook that
-allows such environments to refuse to let you impl Termination
-yourself.
+There are also environments where
+[returning from `main` constitutes a _bug_.][divergent-main] If you
+are implementing an operating system kernel, for instance, there may
+be nothing to return to.  Then you want it to be a compile-time error
+for `main` to return anything other than `!`.  If everything is
+implemented correctly, such environments should be able to get that
+effect by omitting all stock impls of `Termination` other than for
+`!`.  Perhaps there should also be a compiler hook that allows such
+environments to refuse to let you impl Termination yourself.
+
+[divergent-main]: https://internals.rust-lang.org/t/allowing-for-main-to-be-divergent-in-embedded-environments/4717
 
 ## Test functions and doctests
 [test-functions-and-doctests]: #test-functions-and-doctests
