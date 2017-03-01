@@ -17,16 +17,14 @@ use rustc::hir::def_id::{DefId, BUILTIN_MACROS_CRATE, CRATE_DEF_INDEX, DefIndex}
 use rustc::hir::def::{Def, Export};
 use rustc::hir::map::{self, DefCollector};
 use rustc::ty;
-use std::cell::Cell;
-use std::rc::Rc;
 use syntax::ast::{self, Name, Ident};
-use syntax::attr;
+use syntax::attr::{self, HasAttrs};
 use syntax::errors::DiagnosticBuilder;
-use syntax::ext::base::{self, Determinacy, MultiModifier, MultiDecorator};
-use syntax::ext::base::{Resolver as SyntaxResolver, SyntaxExtension};
-use syntax::ext::base::MacroKind;
-use syntax::ext::expand::Expansion;
+use syntax::ext::base::{self, Annotatable, Determinacy, MultiModifier, MultiDecorator};
+use syntax::ext::base::{MacroKind, SyntaxExtension, Resolver as SyntaxResolver};
+use syntax::ext::expand::{Expansion, ExpansionKind, Invocation, InvocationKind, find_attr_invoc};
 use syntax::ext::hygiene::Mark;
+use syntax::ext::placeholders::placeholder;
 use syntax::ext::tt::macro_rules;
 use syntax::feature_gate::{self, emit_feature_err, GateIssue};
 use syntax::fold::{self, Folder};
@@ -34,6 +32,10 @@ use syntax::ptr::P;
 use syntax::symbol::{Symbol, keywords};
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax_pos::{Span, DUMMY_SP};
+
+use std::cell::Cell;
+use std::mem;
+use std::rc::Rc;
 
 #[derive(Clone)]
 pub struct InvocationData<'a> {
@@ -235,8 +237,64 @@ impl<'a> base::Resolver for Resolver<'a> {
         None
     }
 
-    fn resolve_macro(&mut self, scope: Mark, path: &ast::Path, kind: MacroKind,
-                     force: bool) -> Result<Rc<SyntaxExtension>, Determinacy> {
+    fn resolve_invoc(&mut self, invoc: &mut Invocation, scope: Mark, force: bool)
+                     -> Result<Option<Rc<SyntaxExtension>>, Determinacy> {
+        let (attr, traits, item) = match invoc.kind {
+            InvocationKind::Attr { attr: None, .. } => return Ok(None),
+            InvocationKind::Attr { ref mut attr, ref traits, ref mut item } => (attr, traits, item),
+            InvocationKind::Bang { ref mac, .. } => {
+                return self.resolve_macro(scope, &mac.node.path, MacroKind::Bang, force).map(Some);
+            }
+            InvocationKind::Derive { name, span, .. } => {
+                let path = ast::Path::from_ident(span, Ident::with_empty_ctxt(name));
+                return self.resolve_macro(scope, &path, MacroKind::Derive, force).map(Some);
+            }
+        };
+
+        let (attr_name, path) = {
+            let attr = attr.as_ref().unwrap();
+            (attr.name(), ast::Path::from_ident(attr.span, Ident::with_empty_ctxt(attr.name())))
+        };
+
+        let mut determined = true;
+        match self.resolve_macro(scope, &path, MacroKind::Attr, force) {
+            Ok(ext) => return Ok(Some(ext)),
+            Err(Determinacy::Undetermined) => determined = false,
+            Err(Determinacy::Determined) if force => return Err(Determinacy::Determined),
+            Err(Determinacy::Determined) => {}
+        }
+
+        for &(name, span) in traits {
+            let path = ast::Path::from_ident(span, Ident::with_empty_ctxt(name));
+            match self.resolve_macro(scope, &path, MacroKind::Derive, force) {
+                Ok(ext) => if let SyntaxExtension::ProcMacroDerive(_, ref inert_attrs) = *ext {
+                    if inert_attrs.contains(&attr_name) {
+                        // FIXME(jseyfried) Avoid `mem::replace` here.
+                        let dummy_item = placeholder(ExpansionKind::Items, ast::DUMMY_NODE_ID)
+                            .make_items().pop().unwrap();
+                        let dummy_item = Annotatable::Item(dummy_item);
+                        *item = mem::replace(item, dummy_item).map_attrs(|mut attrs| {
+                            let inert_attr = attr.take().unwrap();
+                            attr::mark_known(&inert_attr);
+                            if self.proc_macro_enabled {
+                                *attr = find_attr_invoc(&mut attrs);
+                            }
+                            attrs.push(inert_attr);
+                            attrs
+                        });
+                    }
+                    return Err(Determinacy::Undetermined);
+                },
+                Err(Determinacy::Undetermined) => determined = false,
+                Err(Determinacy::Determined) => {}
+            }
+        }
+
+        Err(if determined { Determinacy::Determined } else { Determinacy::Undetermined })
+    }
+
+    fn resolve_macro(&mut self, scope: Mark, path: &ast::Path, kind: MacroKind, force: bool)
+                     -> Result<Rc<SyntaxExtension>, Determinacy> {
         let ast::Path { ref segments, span } = *path;
         if segments.iter().any(|segment| segment.parameters.is_some()) {
             let kind =
