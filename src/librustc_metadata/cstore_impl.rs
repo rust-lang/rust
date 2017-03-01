@@ -76,6 +76,10 @@ provide! { <'tcx> tcx, def_id, cdata
         tcx.alloc_trait_def(cdata.get_trait_def(def_id.index, tcx))
     }
     adt_def => { cdata.get_adt_def(def_id.index, tcx) }
+    adt_destructor => {
+        let _ = cdata;
+        tcx.calculate_dtor(def_id, &mut |_,_| Ok(()))
+    }
     variances => { Rc::new(cdata.get_item_variances(def_id.index)) }
     associated_item_def_ids => {
         let mut result = vec![];
