@@ -25,22 +25,21 @@ use syntax_pos::{Span, DUMMY_SP};
 
 use rustc_data_structures::indexed_vec::Idx;
 
+fn mirbug(tcx: TyCtxt, span: Span, msg: &str) {
+    tcx.sess.diagnostic().span_bug(span, msg);
+}
+
 macro_rules! span_mirbug {
     ($context:expr, $elem:expr, $($message:tt)*) => ({
-        $context.tcx().sess.span_warn(
-            $context.last_span,
-            &format!("broken MIR ({:?}): {}", $elem, format!($($message)*))
-        )
+        mirbug($context.tcx(), $context.last_span,
+               &format!("broken MIR ({:?}): {}", $elem, format!($($message)*)))
     })
 }
 
 macro_rules! span_mirbug_and_err {
     ($context:expr, $elem:expr, $($message:tt)*) => ({
         {
-            $context.tcx().sess.span_warn(
-                $context.last_span,
-                &format!("broken MIR ({:?}): {:?}", $elem, format!($($message)*))
-            );
+            span_mirbug!($context, $elem, $($message)*);
             $context.error()
         }
     })
