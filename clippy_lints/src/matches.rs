@@ -2,7 +2,6 @@ use rustc::hir::*;
 use rustc::lint::*;
 use rustc::middle::const_val::ConstVal;
 use rustc::ty;
-use rustc_const_eval::EvalHint::ExprTypeChecked;
 use rustc_const_eval::ConstContext;
 use rustc_const_math::ConstInt;
 use std::cmp::Ordering;
@@ -415,7 +414,7 @@ fn check_match_ref_pats(cx: &LateContext, ex: &Expr, arms: &[Arm], source: Match
 }
 
 /// Get all arms that are unbounded `PatRange`s.
-fn all_ranges(cx: &LateContext, arms: &[Arm]) -> Vec<SpannedRange<ConstVal>> {
+fn all_ranges<'a>(cx: &'a LateContext, arms: &'a [Arm]) -> Vec<SpannedRange<ConstVal<'a>>> {
     let constcx = ConstContext::with_tables(cx.tcx, cx.tables);
     arms.iter()
         .flat_map(|arm| {
@@ -427,8 +426,8 @@ fn all_ranges(cx: &LateContext, arms: &[Arm]) -> Vec<SpannedRange<ConstVal>> {
                 .filter_map(|pat| {
                     if_let_chain! {[
                     let PatKind::Range(ref lhs, ref rhs, ref range_end) = pat.node,
-                    let Ok(lhs) = constcx.eval(lhs, ExprTypeChecked),
-                    let Ok(rhs) = constcx.eval(rhs, ExprTypeChecked)
+                    let Ok(lhs) = constcx.eval(lhs),
+                    let Ok(rhs) = constcx.eval(rhs)
                 ], {
                     let rhs = match *range_end {
                         RangeEnd::Included => Bound::Included(rhs),
@@ -439,7 +438,7 @@ fn all_ranges(cx: &LateContext, arms: &[Arm]) -> Vec<SpannedRange<ConstVal>> {
 
                     if_let_chain! {[
                     let PatKind::Lit(ref value) = pat.node,
-                    let Ok(value) = constcx.eval(value, ExprTypeChecked)
+                    let Ok(value) = constcx.eval(value)
                 ], {
                     return Some(SpannedRange { span: pat.span, node: (value.clone(), Bound::Included(value)) });
                 }}

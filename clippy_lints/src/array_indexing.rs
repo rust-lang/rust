@@ -1,7 +1,6 @@
 use rustc::lint::*;
 use rustc::middle::const_val::ConstVal;
 use rustc::ty;
-use rustc_const_eval::EvalHint::ExprTypeChecked;
 use rustc_const_eval::ConstContext;
 use rustc_const_math::ConstInt;
 use rustc::hir;
@@ -61,11 +60,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ArrayIndexing {
             // Array with known size can be checked statically
             let ty = cx.tables.expr_ty(array);
             if let ty::TyArray(_, size) = ty.sty {
-                let size = ConstInt::Infer(size as u128);
+                let size = ConstInt::U128(size as u128);
                 let constcx = ConstContext::with_tables(cx.tcx, cx.tables);
 
                 // Index is a constant uint
-                let const_index = constcx.eval(index, ExprTypeChecked);
+                let const_index = constcx.eval(index);
                 if let Ok(ConstVal::Integral(const_index)) = const_index {
                     if size <= const_index {
                         utils::span_lint(cx, OUT_OF_BOUNDS_INDEXING, e.span, "const index is out of bounds");
@@ -77,10 +76,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ArrayIndexing {
                 // Index is a constant range
                 if let Some(range) = higher::range(index) {
                     let start = range.start
-                        .map(|start| constcx.eval(start, ExprTypeChecked))
+                        .map(|start| constcx.eval(start))
                         .map(|v| v.ok());
                     let end = range.end
-                        .map(|end| constcx.eval(end, ExprTypeChecked))
+                        .map(|end| constcx.eval(end))
                         .map(|v| v.ok());
 
                     if let Some((start, end)) = to_const_range(&start, &end, range.limits, size) {
@@ -117,13 +116,13 @@ fn to_const_range(
     let start = match *start {
         Some(Some(ConstVal::Integral(x))) => x,
         Some(_) => return None,
-        None => ConstInt::Infer(0),
+        None => ConstInt::U8(0),
     };
 
     let end = match *end {
         Some(Some(ConstVal::Integral(x))) => {
             if limits == RangeLimits::Closed {
-                (x + ConstInt::Infer(1)).expect("such a big array is not realistic")
+                (x + ConstInt::U8(1)).expect("such a big array is not realistic")
             } else {
                 x
             }

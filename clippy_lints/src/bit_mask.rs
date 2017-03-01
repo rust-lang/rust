@@ -237,6 +237,7 @@ fn check_ineffective_gt(cx: &LateContext, span: Span, m: u128, c: u128, op: &str
 }
 
 fn fetch_int_literal(cx: &LateContext, lit: &Expr) -> Option<u128> {
+    use rustc::ty::subst::Substs;
     match lit.node {
         ExprLit(ref lit_ptr) => {
             if let LitKind::Int(value, _) = lit_ptr.node {
@@ -248,7 +249,7 @@ fn fetch_int_literal(cx: &LateContext, lit: &Expr) -> Option<u128> {
         ExprPath(ref qpath) => {
             let def = cx.tables.qpath_def(qpath, lit.id);
             if let Def::Const(def_id) = def {
-                lookup_const_by_id(cx.tcx, def_id, None).and_then(|(l, _tab, _ty)| fetch_int_literal(cx, l))
+                lookup_const_by_id(cx.tcx, def_id, Substs::empty()).and_then(|(l, _ty)| fetch_int_literal(cx, l))
             } else {
                 None
             }

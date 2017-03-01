@@ -180,7 +180,7 @@ pub fn lit_to_constant(lit: &LitKind) -> Constant {
         LitKind::Byte(b) => Constant::Int(ConstInt::U8(b)),
         LitKind::ByteStr(ref s) => Constant::Binary(s.clone()),
         LitKind::Char(c) => Constant::Char(c),
-        LitKind::Int(value, LitIntType::Unsuffixed) => Constant::Int(ConstInt::Infer(value)),
+        LitKind::Int(value, LitIntType::Unsuffixed) => Constant::Int(ConstInt::U128(value as u128)),
         LitKind::Int(value, LitIntType::Unsigned(UintTy::U8)) => Constant::Int(ConstInt::U8(value as u8)),
         LitKind::Int(value, LitIntType::Unsigned(UintTy::U16)) => Constant::Int(ConstInt::U16(value as u16)),
         LitKind::Int(value, LitIntType::Unsigned(UintTy::U32)) => Constant::Int(ConstInt::U32(value as u32)),
@@ -297,10 +297,10 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
             match def {
                 Def::Const(def_id) |
                 Def::AssociatedConst(def_id) => {
-                    let substs = Some(lcx.tables
+                    let substs = lcx.tables
                         .node_id_item_substs(id)
-                        .unwrap_or_else(|| lcx.tcx.intern_substs(&[])));
-                    if let Some((const_expr, _tab, _ty)) = lookup_const_by_id(lcx.tcx, def_id, substs) {
+                        .unwrap_or_else(|| lcx.tcx.intern_substs(&[]));
+                    if let Some((const_expr, _ty)) = lookup_const_by_id(lcx.tcx, def_id, substs) {
                         let ret = self.expr(const_expr);
                         if ret.is_some() {
                             self.needed_resolution = true;

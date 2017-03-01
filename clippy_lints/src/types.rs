@@ -907,7 +907,6 @@ fn detect_absurd_comparison<'a>(
 fn detect_extreme_expr<'a>(cx: &LateContext, expr: &'a Expr) -> Option<ExtremeExpr<'a>> {
     use rustc::middle::const_val::ConstVal::*;
     use rustc_const_math::*;
-    use rustc_const_eval::EvalHint::ExprTypeChecked;
     use rustc_const_eval::*;
     use types::ExtremeType::*;
 
@@ -918,7 +917,7 @@ fn detect_extreme_expr<'a>(cx: &LateContext, expr: &'a Expr) -> Option<ExtremeEx
         _ => return None,
     };
 
-    let cv = match ConstContext::with_tables(cx.tcx, cx.tables).eval(expr, ExprTypeChecked) {
+    let cv = match ConstContext::with_tables(cx.tcx, cx.tables).eval(expr) {
         Ok(val) => val,
         Err(_) => return None,
     };
@@ -1107,18 +1106,13 @@ fn numeric_cast_precast_bounds<'a>(cx: &LateContext, expr: &'a Expr) -> Option<(
 
 fn node_as_const_fullint(cx: &LateContext, expr: &Expr) -> Option<FullInt> {
     use rustc::middle::const_val::ConstVal::*;
-    use rustc_const_eval::EvalHint::ExprTypeChecked;
     use rustc_const_eval::ConstContext;
     use rustc_const_math::ConstInt;
 
-    match ConstContext::with_tables(cx.tcx, cx.tables).eval(expr, ExprTypeChecked) {
+    match ConstContext::with_tables(cx.tcx, cx.tables).eval(expr) {
         Ok(val) => {
             if let Integral(const_int) = val {
-                Some(match const_int.erase_type() {
-                    ConstInt::InferSigned(x) => FullInt::S(x as i128),
-                    ConstInt::Infer(x) => FullInt::U(x as u128),
-                    _ => unreachable!(),
-                })
+                Some(FullInt::U(const_int.to_u128_unchecked()))
             } else {
                 None
             }

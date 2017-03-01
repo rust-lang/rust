@@ -4,7 +4,6 @@ use rustc::hir::intravisit::FnKind;
 use rustc::lint::*;
 use rustc::middle::const_val::ConstVal;
 use rustc::ty;
-use rustc_const_eval::EvalHint::ExprTypeChecked;
 use rustc_const_eval::ConstContext;
 use rustc_const_math::ConstFloat;
 use syntax::codemap::{Span, Spanned, ExpnFormat};
@@ -360,24 +359,16 @@ fn check_nan(cx: &LateContext, path: &Path, span: Span) {
 }
 
 fn is_allowed(cx: &LateContext, expr: &Expr) -> bool {
-    let res = ConstContext::with_tables(cx.tcx, cx.tables).eval(expr, ExprTypeChecked);
+    let res = ConstContext::with_tables(cx.tcx, cx.tables).eval(expr);
     if let Ok(ConstVal::Float(val)) = res {
         use std::cmp::Ordering;
 
-        let zero = ConstFloat::FInfer {
-            f32: 0.0,
-            f64: 0.0,
-        };
+        let zero = ConstFloat::F64(0.0);
 
-        let infinity = ConstFloat::FInfer {
-            f32: ::std::f32::INFINITY,
-            f64: ::std::f64::INFINITY,
-        };
+        let infinity = ConstFloat::F64(::std::f64::INFINITY);
 
-        let neg_infinity = ConstFloat::FInfer {
-            f32: ::std::f32::NEG_INFINITY,
-            f64: ::std::f64::NEG_INFINITY,
-        };
+
+        let neg_infinity = ConstFloat::F64(::std::f64::NEG_INFINITY);
 
         val.try_cmp(zero) == Ok(Ordering::Equal) || val.try_cmp(infinity) == Ok(Ordering::Equal) ||
         val.try_cmp(neg_infinity) == Ok(Ordering::Equal)
