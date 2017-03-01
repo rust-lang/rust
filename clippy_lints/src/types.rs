@@ -5,6 +5,7 @@ use rustc::lint::*;
 use rustc::ty;
 use std::cmp::Ordering;
 use syntax::ast::{IntTy, UintTy, FloatTy};
+use syntax::attr::IntType;
 use syntax::codemap::Span;
 use utils::{comparisons, higher, in_external_macro, in_macro, match_def_path, snippet, span_help_and_lint, span_lint,
             opt_def_id, last_path_segment};
@@ -1111,7 +1112,10 @@ fn node_as_const_fullint(cx: &LateContext, expr: &Expr) -> Option<FullInt> {
     match ConstContext::with_tables(cx.tcx, cx.tables).eval(expr) {
         Ok(val) => {
             if let Integral(const_int) = val {
-                Some(FullInt::U(const_int.to_u128_unchecked()))
+                match const_int.int_type() {
+                    IntType::SignedInt(_) => Some(FullInt::S(const_int.to_u128_unchecked() as i128)),
+                    IntType::UnsignedInt(_) => Some(FullInt::U(const_int.to_u128_unchecked())),
+                }
             } else {
                 None
             }
