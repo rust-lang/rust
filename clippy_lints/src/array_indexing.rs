@@ -2,7 +2,7 @@ use rustc::lint::*;
 use rustc::middle::const_val::ConstVal;
 use rustc::ty;
 use rustc_const_eval::ConstContext;
-use rustc_const_math::ConstInt;
+use rustc_const_math::{ConstUsize,ConstInt};
 use rustc::hir;
 use syntax::ast::RangeLimits;
 use utils::{self, higher};
@@ -60,7 +60,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ArrayIndexing {
             // Array with known size can be checked statically
             let ty = cx.tables.expr_ty(array);
             if let ty::TyArray(_, size) = ty.sty {
-                let size = ConstInt::U128(size as u128);
+                let size = ConstInt::Usize(ConstUsize::new(size as u64, cx.sess().target.uint_type).unwrap());
                 let constcx = ConstContext::with_tables(cx.tcx, cx.tables);
 
                 // Index is a constant uint
