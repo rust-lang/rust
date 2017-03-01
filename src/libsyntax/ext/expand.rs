@@ -251,7 +251,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
             let scope =
                 if self.monotonic { invoc.expansion_data.mark } else { orig_expansion_data.mark };
-            let ext = match self.resolve_invoc(&mut invoc, scope, force) {
+            let ext = match self.cx.resolver.resolve_invoc(&mut invoc, scope, force) {
                 Ok(ext) => Some(ext),
                 Err(Determinacy::Determined) => None,
                 Err(Determinacy::Undetermined) => {
@@ -362,64 +362,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         }
 
         result
-    }
-
-    fn resolve_invoc(&mut self, invoc: &mut Invocation, scope: Mark, force: bool)
-                     -> Result<Option<Rc<SyntaxExtension>>, Determinacy> {
-        let (attr, traits, item) = match invoc.kind {
-            InvocationKind::Bang { ref mac, .. } => {
-                return self.cx.resolver.resolve_macro(scope, &mac.node.path,
-                                                      MacroKind::Bang, force).map(Some);
-            }
-            InvocationKind::Attr { attr: None, .. } => return Ok(None),
-            InvocationKind::Derive { name, span, .. } => {
-                let path = ast::Path::from_ident(span, Ident::with_empty_ctxt(name));
-                return self.cx.resolver.resolve_macro(scope, &path,
-                                                      MacroKind::Derive, force).map(Some)
-            }
-            InvocationKind::Attr { ref mut attr, ref traits, ref mut item } => (attr, traits, item),
-        };
-
-        let (attr_name, path) = {
-            let attr = attr.as_ref().unwrap();
-            (attr.name(), ast::Path::from_ident(attr.span, Ident::with_empty_ctxt(attr.name())))
-        };
-
-        let mut determined = true;
-        match self.cx.resolver.resolve_macro(scope, &path, MacroKind::Attr, force) {
-            Ok(ext) => return Ok(Some(ext)),
-            Err(Determinacy::Undetermined) => determined = false,
-            Err(Determinacy::Determined) if force => return Err(Determinacy::Determined),
-            _ => {}
-        }
-
-        for &(name, span) in traits {
-            let path = ast::Path::from_ident(span, Ident::with_empty_ctxt(name));
-            match self.cx.resolver.resolve_macro(scope, &path, MacroKind::Derive, force) {
-                Ok(ext) => if let SyntaxExtension::ProcMacroDerive(_, ref inert_attrs) = *ext {
-                    if inert_attrs.contains(&attr_name) {
-                        // FIXME(jseyfried) Avoid `mem::replace` here.
-                        let dummy_item = placeholder(ExpansionKind::Items, ast::DUMMY_NODE_ID)
-                            .make_items().pop().unwrap();
-                        *item = mem::replace(item, Annotatable::Item(dummy_item))
-                            .map_attrs(|mut attrs| {
-                                let inert_attr = attr.take().unwrap();
-                                attr::mark_known(&inert_attr);
-                                if self.cx.ecfg.proc_macro_enabled() {
-                                    *attr = find_attr_invoc(&mut attrs);
-                                }
-                                attrs.push(inert_attr);
-                                attrs
-                            });
-                    }
-                    return Err(Determinacy::Undetermined);
-                },
-                Err(Determinacy::Undetermined) => determined = false,
-                Err(Determinacy::Determined) => {}
-            }
-        }
-
-        Err(if determined { Determinacy::Determined } else { Determinacy::Undetermined })
     }
 
     fn expand_invoc(&mut self, invoc: Invocation, ext: Rc<SyntaxExtension>) -> Expansion {
@@ -802,7 +744,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
     }
 }
 
-fn find_attr_invoc(attrs: &mut Vec<ast::Attribute>) -> Option<ast::Attribute> {
+pub fn find_attr_invoc(attrs: &mut Vec<ast::Attribute>) -> Option<ast::Attribute> {
     for i in 0 .. attrs.len() {
         if !attr::is_known(&attrs[i]) && !is_builtin_attr(&attrs[i]) {
              return Some(attrs.remove(i));

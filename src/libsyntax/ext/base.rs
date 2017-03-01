@@ -15,7 +15,7 @@ use attr::HasAttrs;
 use codemap::{self, CodeMap, ExpnInfo, Spanned, respan};
 use syntax_pos::{Span, ExpnId, NO_EXPANSION};
 use errors::{DiagnosticBuilder, FatalError};
-use ext::expand::{self, Expansion};
+use ext::expand::{self, Expansion, Invocation};
 use ext::hygiene::Mark;
 use fold::{self, Folder};
 use parse::{self, parser, DirectoryOwnership};
@@ -557,8 +557,10 @@ pub trait Resolver {
     fn resolve_imports(&mut self);
     // Resolves attribute and derive legacy macros from `#![plugin(..)]`.
     fn find_legacy_attr_invoc(&mut self, attrs: &mut Vec<Attribute>) -> Option<Attribute>;
-    fn resolve_macro(&mut self, scope: Mark, path: &ast::Path, kind: MacroKind,
-                     force: bool) -> Result<Rc<SyntaxExtension>, Determinacy>;
+    fn resolve_invoc(&mut self, invoc: &mut Invocation, scope: Mark, force: bool)
+                     -> Result<Option<Rc<SyntaxExtension>>, Determinacy>;
+    fn resolve_macro(&mut self, scope: Mark, path: &ast::Path, kind: MacroKind, force: bool)
+                     -> Result<Rc<SyntaxExtension>, Determinacy>;
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -580,6 +582,10 @@ impl Resolver for DummyResolver {
 
     fn resolve_imports(&mut self) {}
     fn find_legacy_attr_invoc(&mut self, _attrs: &mut Vec<Attribute>) -> Option<Attribute> { None }
+    fn resolve_invoc(&mut self, _invoc: &mut Invocation, _scope: Mark, _force: bool)
+                     -> Result<Option<Rc<SyntaxExtension>>, Determinacy> {
+        Err(Determinacy::Determined)
+    }
     fn resolve_macro(&mut self, _scope: Mark, _path: &ast::Path, _kind: MacroKind,
                      _force: bool) -> Result<Rc<SyntaxExtension>, Determinacy> {
         Err(Determinacy::Determined)
