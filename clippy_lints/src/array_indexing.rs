@@ -60,7 +60,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ArrayIndexing {
             // Array with known size can be checked statically
             let ty = cx.tables.expr_ty(array);
             if let ty::TyArray(_, size) = ty.sty {
-                let size = ConstInt::Usize(ConstUsize::new(size as u64, cx.sess().target.uint_type).unwrap());
+                let size = ConstInt::Usize(ConstUsize::new(size as u64, cx.sess().target.uint_type).expect("array size is invalid"));
                 let constcx = ConstContext::with_tables(cx.tcx, cx.tables);
 
                 // Index is a constant uint
