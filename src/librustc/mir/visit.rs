@@ -154,6 +154,13 @@ macro_rules! make_mir_visitor {
                 self.super_lvalue(lvalue, context, location);
             }
 
+            fn visit_static(&mut self,
+                            static_: & $($mutability)* Static<'tcx>,
+                            context: LvalueContext<'tcx>,
+                            location: Location) {
+                self.super_static(static_, context, location);
+            }
+
             fn visit_projection(&mut self,
                                 lvalue: & $($mutability)* LvalueProjection<'tcx>,
                                 context: LvalueContext<'tcx>,
@@ -559,13 +566,25 @@ macro_rules! make_mir_visitor {
                 match *lvalue {
                     Lvalue::Local(_) => {
                     }
-                    Lvalue::Static(ref $($mutability)* def_id) => {
-                        self.visit_def_id(def_id, location);
+                    Lvalue::Static(ref $($mutability)* static_) => {
+                        self.visit_static(static_, context, location);
                     }
                     Lvalue::Projection(ref $($mutability)* proj) => {
                         self.visit_projection(proj, context, location);
                     }
                 }
+            }
+
+            fn super_static(&mut self,
+                            static_: & $($mutability)* Static<'tcx>,
+                            _context: LvalueContext<'tcx>,
+                            location: Location) {
+                let Static {
+                    ref $($mutability)* def_id,
+                    ref $($mutability)* ty,
+                } = *static_;
+                self.visit_def_id(def_id, location);
+                self.visit_ty(ty);
             }
 
             fn super_projection(&mut self,
@@ -837,4 +856,3 @@ impl<'tcx> LvalueContext<'tcx> {
         self.is_mutating_use() || self.is_nonmutating_use()
     }
 }
-

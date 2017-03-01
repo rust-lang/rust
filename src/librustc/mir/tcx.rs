@@ -125,8 +125,8 @@ impl<'tcx> Lvalue<'tcx> {
         match *self {
             Lvalue::Local(index) =>
                 LvalueTy::Ty { ty: mir.local_decls[index].ty },
-            Lvalue::Static(def_id) =>
-                LvalueTy::Ty { ty: tcx.item_type(def_id) },
+            Lvalue::Static(ref data) =>
+                LvalueTy::Ty { ty: data.ty },
             Lvalue::Projection(ref proj) =>
                 proj.base.ty(mir, tcx).projection_ty(tcx, &proj.elem),
         }
