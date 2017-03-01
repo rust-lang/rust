@@ -45,9 +45,9 @@ fn check(expect: Constant, expr: &Expr) {
 
 const TRUE: Constant = Constant::Bool(true);
 const FALSE: Constant = Constant::Bool(false);
-const ZERO: Constant = Constant::Int(ConstInt::Infer(0));
-const ONE: Constant = Constant::Int(ConstInt::Infer(1));
-const TWO: Constant = Constant::Int(ConstInt::Infer(2));
+const ZERO: Constant = Constant::Int(ConstInt::U8(0));
+const ONE: Constant = Constant::Int(ConstInt::U8(1));
+const TWO: Constant = Constant::Int(ConstInt::U8(2));
 
 #[test]
 fn test_lit() {
@@ -93,7 +93,7 @@ fn test_ops() {
     // for transitivity
     assert_eq!(half32, half64);
 
-    assert_eq!(Constant::Int(ConstInt::Infer(0)), Constant::Int(ConstInt::U8(0)));
-    assert_eq!(Constant::Int(ConstInt::Infer(0)), Constant::Int(ConstInt::I8(0)));
-    assert_eq!(Constant::Int(ConstInt::InferSigned(-1)), Constant::Int(ConstInt::I8(-1)));
+    assert_eq!(Constant::Int(ConstInt::U8(0)), Constant::Int(ConstInt::U8(0)));
+    assert_eq!(Constant::Int(ConstInt::U8(0)), Constant::Int(ConstInt::I8(0)));
+    assert_eq!(Constant::Int(ConstInt::I8(-1)), Constant::Int(ConstInt::I8(-1)));
 }
