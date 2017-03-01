@@ -455,6 +455,20 @@ impl From<NulError> for io::Error {
     }
 }
 
+#[stable(feature = "frombyteswithnulerror_impls", since = "1.17.0")]
+impl Error for FromBytesWithNulError {
+    fn description(&self) -> &str {
+        "data provided is not null terminated or contains an interior nul byte"
+    }
+}
+
+#[stable(feature = "frombyteswithnulerror_impls", since = "1.17.0")]
+impl fmt::Display for FromBytesWithNulError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.description().fmt(f)
+    }
+}
+
 impl IntoStringError {
     /// Consumes this error, returning original `CString` which generated the
     /// error.
