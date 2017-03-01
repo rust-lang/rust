@@ -54,6 +54,7 @@
 #![feature(slice_patterns)]
 #![feature(specialization)]
 #![feature(staged_api)]
+#![feature(str_internals)]
 #![feature(trusted_len)]
 #![feature(unicode)]
 #![feature(unique)]
