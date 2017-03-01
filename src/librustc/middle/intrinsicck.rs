@@ -17,7 +17,6 @@ use ty::{self, Ty, TyCtxt};
 use ty::layout::{LayoutError, Pointer, SizeSkeleton};
 
 use syntax::abi::Abi::RustIntrinsic;
-use syntax::ast;
 use syntax_pos::Span;
 use hir::intravisit::{self, Visitor, NestedVisitorMap};
 use hir;
@@ -37,6 +36,35 @@ struct ExprVisitor<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     infcx: &'a InferCtxt<'a, 'gcx, 'tcx>
 }
 
+/// If the type is `Option<T>`, it will return `T`, otherwise
+/// the type itself. Works on most `Option`-like types.
+fn unpack_option_like<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                ty: Ty<'tcx>)
+                                -> Ty<'tcx> {
+    let (def, substs) = match ty.sty {
+        ty::TyAdt(def, substs) => (def, substs),
+        _ => return ty
+    };
+
+    if def.variants.len() == 2 && !def.repr.c && def.repr.int.is_none() {
+        let data_idx;
+
+        if def.variants[0].fields.is_empty() {
+            data_idx = 1;
+        } else if def.variants[1].fields.is_empty() {
+            data_idx = 0;
+        } else {
+            return ty;
+        }
+
+        if def.variants[data_idx].fields.len() == 1 {
+            return def.variants[data_idx].fields[0].ty(tcx, substs);
+        }
+    }
+
+    ty
+}
+
 impl<'a, 'gcx, 'tcx> ExprVisitor<'a, 'gcx, 'tcx> {
     fn def_id_is_transmute(&self, def_id: DefId) -> bool {
         let intrinsic = match self.infcx.tcx.item_type(def_id).sty {
@@ -46,7 +74,7 @@ impl<'a, 'gcx, 'tcx> ExprVisitor<'a, 'gcx, 'tcx> {
         intrinsic && self.infcx.tcx.item_name(def_id) == "transmute"
     }
 
-    fn check_transmute(&self, span: Span, from: Ty<'gcx>, to: Ty<'gcx>, id: ast::NodeId) {
+    fn check_transmute(&self, span: Span, from: Ty<'gcx>, to: Ty<'gcx>) {
         let sk_from = SizeSkeleton::compute(from, self.infcx);
         let sk_to = SizeSkeleton::compute(to, self.infcx);
 
@@ -56,15 +84,17 @@ impl<'a, 'gcx, 'tcx> ExprVisitor<'a, 'gcx, 'tcx> {
                 return;
             }
 
+            // Special-case transmutting from `typeof(function)` and
+            // `Option<typeof(function)>` to present a clearer error.
+            let from = unpack_option_like(self.infcx.tcx.global_tcx(), from);
             match (&from.sty, sk_to) {
                 (&ty::TyFnDef(..), SizeSkeleton::Known(size_to))
                         if size_to == Pointer.size(&self.infcx.tcx.data_layout) => {
-                    // FIXME #19925 Remove this warning after a release cycle.
-                    let msg = format!("`{}` is now zero-sized and has to be cast \
-                                       to a pointer before transmuting to `{}`",
-                                      from, to);
-                    self.infcx.tcx.sess.add_lint(
-                        ::lint::builtin::TRANSMUTE_FROM_FN_ITEM_TYPES, id, span, msg);
+                    struct_span_err!(self.infcx.tcx.sess, span, E0591,
+                                     "`{}` is zero-sized and can't be transmuted to `{}`",
+                                     from, to)
+                        .span_note(span, &format!("cast with `as` to a pointer instead"))
+                        .emit();
                     return;
                 }
                 _ => {}
@@ -140,7 +170,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'gcx> for ExprVisitor<'a, 'gcx, 'tcx> {
                     ty::TyFnDef(.., sig) if sig.abi() == RustIntrinsic => {
                         let from = sig.inputs().skip_binder()[0];
                         let to = *sig.output().skip_binder();
-                        self.check_transmute(expr.span, from, to, expr.id);
+                        self.check_transmute(expr.span, from, to);
                     }
                     _ => {
                         span_bug!(expr.span, "transmute wasn't a bare fn?!");
