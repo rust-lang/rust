@@ -144,12 +144,12 @@ impl<U: Write> Writer for U {
                           -> io::Result<()> {
         match klass {
             Class::None => write!(self, "{}", text),
-            klass => write!(self, "<span class='{}'>{}</span>", klass.rustdoc_class(), text),
+            klass => write!(self, "<span class=\"{}\">{}</span>", klass.rustdoc_class(), text),
         }
     }
 
     fn enter_span(&mut self, klass: Class) -> io::Result<()> {
-        write!(self, "<span class='{}'>", klass.rustdoc_class())
+        write!(self, "<span class=\"{}\">", klass.rustdoc_class())
     }
 
     fn exit_span(&mut self) -> io::Result<()> {
@@ -363,7 +363,7 @@ fn write_header(class: Option<&str>,
     if let Some(id) = id {
         write!(out, "id='{}' ", id)?;
     }
-    write!(out, "class='rust {}'>\n", class.unwrap_or(""))
+    write!(out, "class=\"rust {}\">\n", class.unwrap_or(""))
 }
 
 fn write_footer(out: &mut Write) -> io::Result<()> {

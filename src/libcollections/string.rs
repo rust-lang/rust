@@ -1483,6 +1483,15 @@ impl FromIterator<char> for String {
     }
 }
 
+#[stable(feature = "string_from_iter_by_ref", since = "1.17.0")]
+impl<'a> FromIterator<&'a char> for String {
+    fn from_iter<I: IntoIterator<Item = &'a char>>(iter: I) -> String {
+        let mut buf = String::new();
+        buf.extend(iter);
+        buf
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> FromIterator<&'a str> for String {
     fn from_iter<I: IntoIterator<Item = &'a str>>(iter: I) -> String {
