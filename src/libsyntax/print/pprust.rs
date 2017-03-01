@@ -1328,7 +1328,7 @@ impl<'a> State<'a> {
                 word(&mut self.s, ";")?;
                 self.end()?;
             }
-            ast::ItemKind::MacroDef(ref tts, _) => {
+            ast::ItemKind::MacroDef(ref tts) => {
                 word(&mut self.s, "macro_rules! ")?;
                 self.print_ident(item.ident)?;
                 self.cbox(INDENT_UNIT)?;

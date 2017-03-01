@@ -34,7 +34,6 @@ use std::rc::Rc;
 
 use syntax::ast;
 use syntax::attr;
-use syntax::ext::hygiene::Mark;
 use syntax::parse::filemap_to_stream;
 use syntax::symbol::Symbol;
 use syntax_pos::{mk_sp, Span};
@@ -420,7 +419,7 @@ impl CrateStore for cstore::CStore {
             id: ast::DUMMY_NODE_ID,
             span: local_span,
             attrs: attrs,
-            node: ast::ItemKind::MacroDef(body.into(), Mark::fresh()),
+            node: ast::ItemKind::MacroDef(body.into()),
             vis: ast::Visibility::Inherited,
         })
     }
