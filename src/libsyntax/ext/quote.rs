@@ -14,10 +14,9 @@ use ext::base::ExtCtxt;
 use ext::base;
 use ext::build::AstBuilder;
 use parse::parser::{Parser, PathStyle};
-use parse::token::*;
 use parse::token;
 use ptr::P;
-use tokenstream::{self, TokenTree};
+use tokenstream::TokenTree;
 
 
 /// Quasiquoting works via token trees.
@@ -356,12 +355,33 @@ pub mod rt {
         }
 
         fn parse_tts(&self, s: String) -> Vec<TokenTree> {
-            panictry!(parse::parse_tts_from_source_str(
-                "<quote expansion>".to_string(),
-                s,
-                self.parse_sess()))
+            parse::parse_tts_from_source_str("<quote expansion>".to_string(), s, self.parse_sess())
         }
     }
+}
+
+// Replaces `Token::OpenDelim .. Token::CloseDelim` with `TokenTree::Delimited(..)`.
+pub fn unflatten(tts: Vec<TokenTree>) -> Vec<TokenTree> {
+    use std::rc::Rc;
+    use tokenstream::Delimited;
+
+    let mut results = Vec::new();
+    let mut result = Vec::new();
+    for tree in tts {
+        match tree {
+            TokenTree::Token(_, token::OpenDelim(..)) => {
+                results.push(::std::mem::replace(&mut result, Vec::new()));
+            }
+            TokenTree::Token(span, token::CloseDelim(delim)) => {
+                let tree =
+                    TokenTree::Delimited(span, Rc::new(Delimited { delim: delim, tts: result }));
+                result = results.pop().unwrap();
+                result.push(tree);
+            }
+            tree @ _ => result.push(tree),
+        }
+    }
+    result
 }
 
 // These panicking parsing functions are used by the quote_*!() syntax extensions,
@@ -510,20 +530,6 @@ pub fn expand_quote_path(cx: &mut ExtCtxt,
     base::MacEager::expr(expanded)
 }
 
-pub fn expand_quote_matcher(cx: &mut ExtCtxt,
-                            sp: Span,
-                            tts: &[TokenTree])
-                            -> Box<base::MacResult+'static> {
-    let (cx_expr, tts) = parse_arguments_to_quote(cx, tts);
-    let mut vector = mk_stmts_let(cx, sp);
-    vector.extend(statements_mk_tts(cx, &tts[..], true));
-    vector.push(cx.stmt_expr(cx.expr_ident(sp, id_ext("tt"))));
-    let block = cx.expr_block(cx.block(sp, vector));
-
-    let expanded = expand_wrapper(cx, sp, cx_expr, block, &[&["syntax", "ext", "quote", "rt"]]);
-    base::MacEager::expr(expanded)
-}
-
 fn ids_ext(strs: Vec<String>) -> Vec<ast::Ident> {
     strs.iter().map(|s| ast::Ident::from_str(s)).collect()
 }
@@ -669,12 +675,6 @@ fn expr_mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> P<ast::Expr> {
                                 vec![mk_name(cx, sp, ast::Ident::with_empty_ctxt(ident))]);
         }
 
-        token::MatchNt(name, kind) => {
-            return cx.expr_call(sp,
-                                mk_token_path(cx, sp, "MatchNt"),
-                                vec![mk_ident(cx, sp, name), mk_ident(cx, sp, kind)]);
-        }
-
         token::Interpolated(_) => panic!("quote! with interpolated token"),
 
         _ => ()
@@ -712,9 +712,9 @@ fn expr_mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> P<ast::Expr> {
     mk_token_path(cx, sp, name)
 }
 
-fn statements_mk_tt(cx: &ExtCtxt, tt: &TokenTree, matcher: bool) -> Vec<ast::Stmt> {
+fn statements_mk_tt(cx: &ExtCtxt, tt: &TokenTree, quoted: bool) -> Vec<ast::Stmt> {
     match *tt {
-        TokenTree::Token(sp, SubstNt(ident)) => {
+        TokenTree::Token(sp, token::Ident(ident)) if quoted => {
             // tt.extend($ident.to_tokens(ext_cx))
 
             let e_to_toks =
@@ -733,13 +733,6 @@ fn statements_mk_tt(cx: &ExtCtxt, tt: &TokenTree, matcher: bool) -> Vec<ast::Stm
 
             vec![cx.stmt_expr(e_push)]
         }
-        ref tt @ TokenTree::Token(_, MatchNt(..)) if !matcher => {
-            let mut seq = vec![];
-            for i in 0..tt.len() {
-                seq.push(tt.get_tt(i));
-            }
-            statements_mk_tts(cx, &seq[..], matcher)
-        }
         TokenTree::Token(sp, ref tok) => {
             let e_sp = cx.expr_ident(sp, id_ext("_sp"));
             let e_tok = cx.expr_call(sp,
@@ -753,77 +746,17 @@ fn statements_mk_tt(cx: &ExtCtxt, tt: &TokenTree, matcher: bool) -> Vec<ast::Stm
             vec![cx.stmt_expr(e_push)]
         },
         TokenTree::Delimited(span, ref delimed) => {
-            statements_mk_tt(cx, &delimed.open_tt(span), matcher).into_iter()
-                .chain(delimed.tts.iter()
-                                  .flat_map(|tt| statements_mk_tt(cx, tt, matcher)))
-                .chain(statements_mk_tt(cx, &delimed.close_tt(span), matcher))
-                .collect()
-        },
-        TokenTree::Sequence(sp, ref seq) => {
-            if !matcher {
-                panic!("TokenTree::Sequence in quote!");
-            }
-
-            let e_sp = cx.expr_ident(sp, id_ext("_sp"));
-
-            let stmt_let_tt = cx.stmt_let(sp, true, id_ext("tt"), cx.expr_vec_ng(sp));
-            let mut tts_stmts = vec![stmt_let_tt];
-            tts_stmts.extend(statements_mk_tts(cx, &seq.tts[..], matcher));
-            tts_stmts.push(cx.stmt_expr(cx.expr_ident(sp, id_ext("tt"))));
-            let e_tts = cx.expr_block(cx.block(sp, tts_stmts));
-
-            let e_separator = match seq.separator {
-                Some(ref sep) => cx.expr_some(sp, expr_mk_token(cx, sp, sep)),
-                None => cx.expr_none(sp),
-            };
-            let e_op = match seq.op {
-                tokenstream::KleeneOp::ZeroOrMore => "ZeroOrMore",
-                tokenstream::KleeneOp::OneOrMore => "OneOrMore",
-            };
-            let e_op_idents = vec![
-                id_ext("syntax"),
-                id_ext("tokenstream"),
-                id_ext("KleeneOp"),
-                id_ext(e_op),
-            ];
-            let e_op = cx.expr_path(cx.path_global(sp, e_op_idents));
-            let fields = vec![cx.field_imm(sp, id_ext("tts"), e_tts),
-                              cx.field_imm(sp, id_ext("separator"), e_separator),
-                              cx.field_imm(sp, id_ext("op"), e_op),
-                              cx.field_imm(sp, id_ext("num_captures"),
-                                               cx.expr_usize(sp, seq.num_captures))];
-            let seq_path = vec![id_ext("syntax"),
-                                id_ext("tokenstream"),
-                                id_ext("SequenceRepetition")];
-            let e_seq_struct = cx.expr_struct(sp, cx.path_global(sp, seq_path), fields);
-            let e_rc_new = cx.expr_call_global(sp, vec![id_ext("std"),
-                                                        id_ext("rc"),
-                                                        id_ext("Rc"),
-                                                        id_ext("new")],
-                                                   vec![e_seq_struct]);
-            let e_tok = cx.expr_call(sp,
-                                     mk_tt_path(cx, sp, "Sequence"),
-                                     vec![e_sp, e_rc_new]);
-            let e_push =
-                cx.expr_method_call(sp,
-                                    cx.expr_ident(sp, id_ext("tt")),
-                                    id_ext("push"),
-                                    vec![e_tok]);
-            vec![cx.stmt_expr(e_push)]
+            let mut stmts = statements_mk_tt(cx, &delimed.open_tt(span), false);
+            stmts.extend(statements_mk_tts(cx, &delimed.tts));
+            stmts.extend(statements_mk_tt(cx, &delimed.close_tt(span), false));
+            stmts
         }
     }
 }
 
 fn parse_arguments_to_quote(cx: &ExtCtxt, tts: &[TokenTree])
                             -> (P<ast::Expr>, Vec<TokenTree>) {
-    // NB: It appears that the main parser loses its mind if we consider
-    // $foo as a SubstNt during the main parse, so we have to re-parse
-    // under quote_depth > 0. This is silly and should go away; the _guess_ is
-    // it has to do with transition away from supporting old-style macros, so
-    // try removing it when enough of them are gone.
-
     let mut p = cx.new_parser_from_tts(tts);
-    p.quote_depth += 1;
 
     let cx_expr = panictry!(p.parse_expr());
     if !p.eat(&token::Comma) {
@@ -877,24 +810,31 @@ fn mk_stmts_let(cx: &ExtCtxt, sp: Span) -> Vec<ast::Stmt> {
     vec![stmt_let_sp, stmt_let_tt]
 }
 
-fn statements_mk_tts(cx: &ExtCtxt, tts: &[TokenTree], matcher: bool) -> Vec<ast::Stmt> {
+fn statements_mk_tts(cx: &ExtCtxt, tts: &[TokenTree]) -> Vec<ast::Stmt> {
     let mut ss = Vec::new();
+    let mut quoted = false;
     for tt in tts {
-        ss.extend(statements_mk_tt(cx, tt, matcher));
+        quoted = match *tt {
+            TokenTree::Token(_, token::Dollar) if !quoted => true,
+            _ => {
+                ss.extend(statements_mk_tt(cx, tt, quoted));
+                false
+            }
+        }
     }
     ss
 }
 
-fn expand_tts(cx: &ExtCtxt, sp: Span, tts: &[TokenTree])
-              -> (P<ast::Expr>, P<ast::Expr>) {
+fn expand_tts(cx: &ExtCtxt, sp: Span, tts: &[TokenTree]) -> (P<ast::Expr>, P<ast::Expr>) {
     let (cx_expr, tts) = parse_arguments_to_quote(cx, tts);
 
     let mut vector = mk_stmts_let(cx, sp);
-    vector.extend(statements_mk_tts(cx, &tts[..], false));
+    vector.extend(statements_mk_tts(cx, &tts[..]));
     vector.push(cx.stmt_expr(cx.expr_ident(sp, id_ext("tt"))));
     let block = cx.expr_block(cx.block(sp, vector));
+    let unflatten = vec![id_ext("syntax"), id_ext("ext"), id_ext("quote"), id_ext("unflatten")];
 
-    (cx_expr, block)
+    (cx_expr, cx.expr_call_global(sp, unflatten, vec![block]))
 }
 
 fn expand_wrapper(cx: &ExtCtxt,

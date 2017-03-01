@@ -9,7 +9,7 @@
 // except according to those terms.
 
 macro_rules! foo {
-    ($a:expr) => $a; //~ ERROR macro rhs must be delimited
+    ($a:expr) => a; //~ ERROR macro rhs must be delimited
 }
 
 fn main() {

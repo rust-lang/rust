@@ -237,6 +237,12 @@ declare_lint! {
 }
 
 declare_lint! {
+    pub MISSING_FRAGMENT_SPECIFIER,
+    Warn,
+    "detects missing fragment specifiers in unused `macro_rules!` patterns"
+}
+
+declare_lint! {
     pub DEPRECATED,
     Warn,
     "detects use of deprecated items"
@@ -286,6 +292,7 @@ impl LintPass for HardwiredLints {
             LEGACY_DIRECTORY_OWNERSHIP,
             LEGACY_IMPORTS,
             LEGACY_CONSTRUCTOR_VISIBILITY,
+            MISSING_FRAGMENT_SPECIFIER,
             DEPRECATED
         )
     }

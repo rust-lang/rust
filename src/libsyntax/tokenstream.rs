@@ -12,9 +12,7 @@
 //!
 //! TokenStreams represent syntactic objects before they are converted into ASTs.
 //! A `TokenStream` is, roughly speaking, a sequence (eg stream) of `TokenTree`s,
-//! which are themselves either a single Token, a Delimited subsequence of tokens,
-//! or a SequenceRepetition specifier (for the purpose of sequence generation during macro
-//! expansion).
+//! which are themselves a single `Token` or a `Delimited` subsequence of tokens.
 //!
 //! ## Ownership
 //! TokenStreams are persistent data structures constructed as ropes with reference
@@ -28,10 +26,10 @@ use ast::{self, AttrStyle, LitKind};
 use syntax_pos::{BytePos, Span, DUMMY_SP};
 use codemap::Spanned;
 use ext::base;
-use ext::tt::macro_parser;
+use ext::tt::{macro_parser, quoted};
 use parse::lexer::comments::{doc_comment_style, strip_doc_comment_decoration};
 use parse::{self, Directory};
-use parse::token::{self, Token, Lit, Nonterminal};
+use parse::token::{self, Token, Lit};
 use print::pprust;
 use serialize::{Decoder, Decodable, Encoder, Encodable};
 use symbol::Symbol;
@@ -64,7 +62,7 @@ impl Delimited {
     pub fn open_tt(&self, span: Span) -> TokenTree {
         let open_span = match span {
             DUMMY_SP => DUMMY_SP,
-            _ => Span { hi: span.lo + BytePos(self.delim.len()), ..span },
+            _ => Span { hi: span.lo + BytePos(self.delim.len() as u32), ..span },
         };
         TokenTree::Token(open_span, self.open_token())
     }
@@ -73,7 +71,7 @@ impl Delimited {
     pub fn close_tt(&self, span: Span) -> TokenTree {
         let close_span = match span {
             DUMMY_SP => DUMMY_SP,
-            _ => Span { lo: span.hi - BytePos(self.delim.len()), ..span },
+            _ => Span { lo: span.hi - BytePos(self.delim.len() as u32), ..span },
         };
         TokenTree::Token(close_span, self.close_token())
     }
@@ -82,27 +80,6 @@ impl Delimited {
     pub fn subtrees(&self) -> &[TokenTree] {
         &self.tts
     }
-}
-
-/// A sequence of token trees
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub struct SequenceRepetition {
-    /// The sequence of token trees
-    pub tts: Vec<TokenTree>,
-    /// The optional separator
-    pub separator: Option<token::Token>,
-    /// Whether the sequence can be repeated zero (*), or one or more times (+)
-    pub op: KleeneOp,
-    /// The number of `MatchNt`s that appear in the sequence (and subsequences)
-    pub num_captures: usize,
-}
-
-/// A Kleene-style [repetition operator](http://en.wikipedia.org/wiki/Kleene_star)
-/// for token sequences.
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
-pub enum KleeneOp {
-    ZeroOrMore,
-    OneOrMore,
 }
 
 /// When the main rust parser encounters a syntax-extension invocation, it
@@ -123,10 +100,6 @@ pub enum TokenTree {
     Token(Span, token::Token),
     /// A delimited sequence of token trees
     Delimited(Span, Rc<Delimited>),
-
-    // This only makes sense in MBE macros.
-    /// A kleene-style repetition sequence with a span
-    Sequence(Span, Rc<SequenceRepetition>),
 }
 
 impl TokenTree {
@@ -138,15 +111,10 @@ impl TokenTree {
                     AttrStyle::Inner => 3,
                 }
             }
-            TokenTree::Token(_, token::Interpolated(ref nt)) => {
-                if let Nonterminal::NtTT(..) = **nt { 1 } else { 0 }
-            },
-            TokenTree::Token(_, token::MatchNt(..)) => 3,
             TokenTree::Delimited(_, ref delimed) => match delimed.delim {
                 token::NoDelim => delimed.tts.len(),
                 _ => delimed.tts.len() + 2,
             },
-            TokenTree::Sequence(_, ref seq) => seq.tts.len(),
             TokenTree::Token(..) => 0,
         }
     }
@@ -197,30 +165,12 @@ impl TokenTree {
                 }
                 delimed.tts[index - 1].clone()
             }
-            (&TokenTree::Token(sp, token::MatchNt(name, kind)), _) => {
-                let v = [TokenTree::Token(sp, token::SubstNt(name)),
-                         TokenTree::Token(sp, token::Colon),
-                         TokenTree::Token(sp, token::Ident(kind))];
-                v[index].clone()
-            }
-            (&TokenTree::Sequence(_, ref seq), _) => seq.tts[index].clone(),
             _ => panic!("Cannot expand a token tree"),
         }
     }
 
-    /// Returns the `Span` corresponding to this token tree.
-    pub fn get_span(&self) -> Span {
-        match *self {
-            TokenTree::Token(span, _) => span,
-            TokenTree::Delimited(span, _) => span,
-            TokenTree::Sequence(span, _) => span,
-        }
-    }
-
     /// Use this token tree as a matcher to parse given tts.
-    pub fn parse(cx: &base::ExtCtxt,
-                 mtch: &[TokenTree],
-                 tts: &[TokenTree])
+    pub fn parse(cx: &base::ExtCtxt, mtch: &[quoted::TokenTree], tts: &[TokenTree])
                  -> macro_parser::NamedParseResult {
         // `None` is because we're not interpolating
         let directory = Directory {
@@ -252,9 +202,7 @@ impl TokenTree {
     /// Retrieve the TokenTree's span.
     pub fn span(&self) -> Span {
         match *self {
-            TokenTree::Token(sp, _) |
-            TokenTree::Delimited(sp, _) |
-            TokenTree::Sequence(sp, _) => sp,
+            TokenTree::Token(sp, _) | TokenTree::Delimited(sp, _) => sp,
         }
     }
 
