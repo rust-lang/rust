@@ -1450,57 +1450,126 @@ impl<'a> State<'a> {
         }
     }
 
-    /// This doesn't deserve to be called "pretty" printing, but it should be
-    /// meaning-preserving. A quick hack that might help would be to look at the
-    /// spans embedded in the TTs to decide where to put spaces and newlines.
-    /// But it'd be better to parse these according to the grammar of the
-    /// appropriate macro, transcribe back into the grammar we just parsed from,
-    /// and then pretty-print the resulting AST nodes (so, e.g., we print
-    /// expression arguments as expressions). It can be done! I think.
+    /// Forwards to print_tts
     pub fn print_tt(&mut self, tt: &tokenstream::TokenTree) -> io::Result<()> {
-        match *tt {
-            TokenTree::Token(_, ref tk) => {
-                word(&mut self.s, &token_to_string(tk))?;
-                match *tk {
-                    parse::token::DocComment(..) => {
-                        hardbreak(&mut self.s)
-                    }
-                    _ => Ok(())
-                }
-            }
-            TokenTree::Delimited(_, ref delimed) => {
-                word(&mut self.s, &token_to_string(&delimed.open_token()))?;
-                space(&mut self.s)?;
-                self.print_tts(&delimed.tts)?;
-                space(&mut self.s)?;
-                word(&mut self.s, &token_to_string(&delimed.close_token()))
-            },
-            TokenTree::Sequence(_, ref seq) => {
-                word(&mut self.s, "$(")?;
-                for tt_elt in &seq.tts {
-                    self.print_tt(tt_elt)?;
-                }
-                word(&mut self.s, ")")?;
-                if let Some(ref tk) = seq.separator {
-                    word(&mut self.s, &token_to_string(tk))?;
-                }
-                match seq.op {
-                    tokenstream::KleeneOp::ZeroOrMore => word(&mut self.s, "*"),
-                    tokenstream::KleeneOp::OneOrMore => word(&mut self.s, "+"),
-                }
-            }
-        }
+        self.print_tts(&[tt.clone()])
     }
 
+    /// This uses heuristics to be meaning-preserving while making
+    /// it look nicer than just printing the seperate tokens
     pub fn print_tts(&mut self, tts: &[tokenstream::TokenTree]) -> io::Result<()> {
-        self.ibox(0)?;
-        for (i, tt) in tts.iter().enumerate() {
-            if i != 0 {
-                space(&mut self.s)?;
+        let mut tts_iter = tts.into_iter().peekable();
+        while let Some(tt) = tts_iter.next() {
+            fn is_dot(token: &Token) -> bool {
+                *token == Token::Dot || *token == Token::DotDot || *token == Token::DotDotDot
             }
-            self.print_tt(tt)?;
+
+            match *tt {
+                TokenTree::Token(_, ref token) => {
+                    if *token == Token::Semi {
+                        word(&mut self.s, ";")?;
+                        hardbreak(&mut self.s)?;
+                    } else {
+                        word(&mut self.s, &token_to_string(token))?;
+                        match (token, tts_iter.peek()) {
+                            (_, None) => {} // {abc}
+                                            //  ^^^
+                            (&parse::token::DocComment(..), _) => hardbreak(&mut self.s)?, // ///abc
+                                                                                           // ^^^---
+                            (&Token::Comma, _) => {} // abc(a, b);
+                                                     //     ^-
+                            (_, Some(&&TokenTree::Token(_, Token::Comma))) => { // abc(a, b);
+                                space(&mut self.s, 1)?                          //      ^ -
+                            },
+                            (_, Some(&&TokenTree::Token(_, Token::Semi))) => {} // let a = 0;
+                                                                                //         ^-
+                            (ref a, Some(&&TokenTree::Token(_, ref b))) if is_dot(a) &&
+                                                                           !is_dot(b) => {} // ..a
+                                                                                            // ^^-
+                            (ref a, Some(&&TokenTree::Token(_, ref b))) if is_dot(a) &&
+                                                                           is_dot(b) => { // ... ..
+                                self.nbsp()?                                              // ^^^ --
+                            }
+                            (&Token::Ident(_), Some(&&TokenTree::Token(_, Token::Not))) => {
+                                // abc!
+                                // ^^^-
+                            }
+                            (&Token::Literal(_, _), Some(&&TokenTree::Token(_, ref a)))
+                                // self.0 .0
+                                //      ^ -
+                                if is_dot(a) => {
+                                    self.nbsp()?
+                            }
+                            (_, Some(&&TokenTree::Delimited(_, ref delimed)))
+                                if delimed.delim ==
+                                   parse::token::DelimToken::Paren => {}  // abc()
+                                                                          // ^^^--
+                            (_, Some(&&TokenTree::Token(_, Token::Dot))) => {} // a.
+                                                                               // ^-
+                            _ => self.nbsp()?,
+                        }
+                    }
+                }
+                TokenTree::Delimited(_, ref delimed) => {
+                    if delimed.delim == parse::token::DelimToken::Brace {
+                        if delimed.tts.is_empty() { // {}
+                                                    // ++
+                            word(&mut self.s, "{}")?;
+                            zerobreak(&mut self.s)?;
+                        } else {
+                            word(&mut self.s, "{")?;
+                            hardbreak(&mut self.s)?;
+                            self.cbox(4)?;
+                            space(&mut self.s)?;
+
+                            self.print_tts(&delimed.tts)?;
+
+                            self.end()?;
+                            hardbreak(&mut self.s)?;
+                            word(&mut self.s, "}")?;
+
+                            match tts_iter.peek(){
+                                None => {},
+                                Some(&&TokenTree::Token(_, Token::Semi)) => { // {abc};
+                                                                              // ^^^^^-
+                                },
+                                _ => {
+                                    space(&mut self.s)?;
+                                    hardbreak(&mut self.s)?;
+                                }
+                            }
+                        }
+                    } else {
+                        self.ibox(0)?;
+
+                        word(&mut self.s, &token_to_string(&delimed.open_token()))?;
+                        self.print_tts(&delimed.tts)?;
+                        word(&mut self.s, &token_to_string(&delimed.close_token()))?;
+                        if let Some(&&TokenTree::Token(_, Token::Semi)) = tts_iter.peek() {
+                        } else {
+                            space(&mut self.s)?;
+                        }
+
+                        self.end()?;
+                    }
+                }
+                TokenTree::Sequence(_, ref seq) => {
+                    word(&mut self.s, "$(")?;
+                    space(&mut self.s)?;
+                    self.print_tts(&seq.tts)?;
+                    space(&mut self.s)?;
+                    word(&mut self.s, ")")?;
+                    if let Some(ref tk) = seq.separator {
+                        word(&mut self.s, &token_to_string(tk))?;
+                    }
+                    match seq.op {
+                        tokenstream::KleeneOp::ZeroOrMore => self.word_nbsp("*")?,
+                        tokenstream::KleeneOp::OneOrMore => self.word_nbsp("+")?,
+                    }
+                }
+            }
         }
-        self.end()
+        Ok(())
     }
 
     pub fn print_variant(&mut self, v: &ast::Variant) -> io::Result<()> {
@@ -3115,5 +3184,39 @@ mod tests {
 
         let varstr = variant_to_string(&var);
         assert_eq!(varstr, "principal_skinner");
+    }
+
+    #[test]
+    fn test_pretty_print_tokentrees() {
+        use parse::parse_tts_from_source_str as parse_tts;
+        let original = r#"fn main() {
+
+    let program = "+ + * - /";
+    let mut accumulator = 0;
+    . .. ...;
+    a.b;
+    .. .a;
+    a. ..;
+    for token in program.chars() {
+
+        match token {
+
+            '+' => accumulator += 1
+            , '-' => accumulator -= 1
+            , '*' => accumulator *= 2
+            , '/' => accumulator /= 2
+            , _ => {}
+
+        }
+    }
+
+    println!("The program \"{}\" calculates the value {}", program
+            , accumulator);
+
+}"#;
+        let sess = ParseSess::new();
+        let tts = parse_tts("<test>".to_string(), original.to_string(), &sess).unwrap();
+        let pretty = tts_to_string(&*tts);
+        assert_eq!(original, &*pretty);
     }
 }

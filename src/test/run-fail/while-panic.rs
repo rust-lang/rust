@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-pretty
+// pretty printer wants to add a newline after line 21 which tidy dislikes
+
 #![allow(while_true)]
 
 // error-pattern:giraffe
