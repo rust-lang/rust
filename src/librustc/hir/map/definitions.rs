@@ -260,7 +260,9 @@ pub enum DefPathData {
     /// Pattern binding
     Binding(InternedString),
     /// An `impl Trait` type node.
-    ImplTrait
+    ImplTrait,
+    /// A `typeof` type node.
+    Typeof,
 }
 
 impl Definitions {
@@ -387,7 +389,8 @@ impl DefPathData {
             ClosureExpr |
             StructCtor |
             Initializer |
-            ImplTrait => None
+            ImplTrait |
+            Typeof => None
         }
     }
 
@@ -415,6 +418,7 @@ impl DefPathData {
             StructCtor => "{{constructor}}",
             Initializer => "{{initializer}}",
             ImplTrait => "{{impl-Trait}}",
+            Typeof => "{{typeof}}",
         };
 
         Symbol::intern(s).as_str()
