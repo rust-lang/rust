@@ -304,10 +304,9 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
         let result = match *lvalue {
             mir::Lvalue::Local(_) => bug!(), // handled above
-            mir::Lvalue::Static(def_id) => {
-                let const_ty = self.monomorphized_lvalue_ty(lvalue);
+            mir::Lvalue::Static(box mir::Static { def_id, ty }) => {
                 LvalueRef::new_sized(consts::get_static(ccx, def_id),
-                                     LvalueTy::from_ty(const_ty),
+                                     LvalueTy::from_ty(self.monomorphize(&ty)),
                                      Alignment::AbiAligned)
             },
             mir::Lvalue::Projection(box mir::Projection {
