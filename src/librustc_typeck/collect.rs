@@ -1147,6 +1147,7 @@ fn ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         NodeExpr(_) => match tcx.hir.get(tcx.hir.get_parent_node(node_id)) {
             NodeTy(&hir::Ty { node: TyArray(_, body), .. }) |
+            NodeTy(&hir::Ty { node: TyTypeof(body), .. }) |
             NodeExpr(&hir::Expr { node: ExprRepeat(_, body), .. })
                 if body.node_id == node_id => tcx.types.usize,
 

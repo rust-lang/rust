@@ -259,6 +259,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
             TyKind::ImplTrait(..) => {
                 self.create_def(ty.id, DefPathData::ImplTrait);
             }
+            TyKind::Typeof(ref expr) => self.visit_ast_const_integer(expr),
             _ => {}
         }
         visit::walk_ty(self, ty);
