@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,10 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-macro_rules! my_precioooous {
-    t => (1); //~ ERROR invalid macro matcher
-}
+// force-host
+// no-prefer-dynamic
 
-fn main() {
-    my_precioooous!();
+#![crate_type = "proc-macro"]
+
+extern crate proc_macro;
+use proc_macro::TokenStream;
+
+#[proc_macro_derive(Issue39889)]
+pub fn f(_input: TokenStream) -> TokenStream {
+    let rules = r#"
+        macro_rules! id {
+            ($($tt:tt)*) => { $($tt)* };
+        }
+    "#;
+    rules.parse().unwrap()
 }

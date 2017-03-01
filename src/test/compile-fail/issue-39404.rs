@@ -8,8 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
-    println!("{}", { macro_rules! x { ($()*) => {} } 33 });
-    //~^ ERROR no syntax variables matched as repeating at this depth
-}
+#![deny(missing_fragment_specifier)] //~ NOTE lint level defined here
 
+macro_rules! m { ($i) => {} }
+//~^ ERROR missing fragment specifier
+//~| WARN previously accepted
+//~| NOTE issue #40107
+
+fn main() {}

@@ -8,9 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-macro_rules! m { ($t:tt) => { $t } }
+macro_rules! m { ($($t:tt)*) => { $($t)* } }
 
 fn main() {
-    m!($t); //~ ERROR unknown macro variable
-            //~| ERROR expected expression
+    m!($t); //~ ERROR expected expression
 }

@@ -14,11 +14,7 @@
 #![feature(plugin)]
 #![plugin(procedural_mbe_matching)]
 
-#[no_link]
-extern crate procedural_mbe_matching;
-
 pub fn main() {
-    let abc = 123u32;
     assert_eq!(matches!(Some(123), None | Some(0)), false);
     assert_eq!(matches!(Some(123), None | Some(123)), true);
     assert_eq!(matches!(true, true), true);
