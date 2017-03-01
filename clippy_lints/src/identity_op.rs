@@ -60,7 +60,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IdentityOp {
 
 
 fn check(cx: &LateContext, e: &Expr, m: i8, span: Span, arg: Span) {
-    if let Some(Constant::Int(v)) = constant_simple(e) {
+    if let Some(Constant::Int(v)) = constant_simple(cx, e) {
         if match m {
             0 => v.to_u128_unchecked() == 0,
             -1 => match v.int_type() {

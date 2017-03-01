@@ -36,8 +36,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             // TODO - constant_simple does not fold many operations involving floats.
             // That's probably fine for this lint - it's pretty unlikely that someone would
             // do something like 0.0/(2.0 - 2.0), but it would be nice to warn on that case too.
-            let Some(Constant::Float(ref lhs_value, lhs_width)) = constant_simple(left),
-            let Some(Constant::Float(ref rhs_value, rhs_width)) = constant_simple(right),
+            let Some(Constant::Float(ref lhs_value, lhs_width)) = constant_simple(cx, left),
+            let Some(Constant::Float(ref rhs_value, rhs_width)) = constant_simple(cx, right),
             let Ok(0.0) = lhs_value.parse(),
             let Ok(0.0) = rhs_value.parse()
         ], {
