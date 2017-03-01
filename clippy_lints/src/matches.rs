@@ -414,7 +414,7 @@ fn check_match_ref_pats(cx: &LateContext, ex: &Expr, arms: &[Arm], source: Match
 }
 
 /// Get all arms that are unbounded `PatRange`s.
-fn all_ranges<'a>(cx: &'a LateContext, arms: &'a [Arm]) -> Vec<SpannedRange<ConstVal<'a>>> {
+fn all_ranges<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, arms: &[Arm]) -> Vec<SpannedRange<ConstVal<'tcx>>> {
     let constcx = ConstContext::with_tables(cx.tcx, cx.tables);
     arms.iter()
         .flat_map(|arm| {
