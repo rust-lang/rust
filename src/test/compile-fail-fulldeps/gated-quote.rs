@@ -54,8 +54,6 @@ pub fn main() {
     //~^ ERROR cannot find macro `quote_arm!` in this scope
     let x = quote_stmt!(ecx, 3);
     //~^ ERROR cannot find macro `quote_stmt!` in this scope
-    let x = quote_matcher!(ecx, 3);
-    //~^ ERROR cannot find macro `quote_matcher!` in this scope
     let x = quote_attr!(ecx, 3);
     //~^ ERROR cannot find macro `quote_attr!` in this scope
     let x = quote_arg!(ecx, 3);

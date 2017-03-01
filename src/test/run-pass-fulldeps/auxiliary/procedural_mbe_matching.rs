@@ -23,6 +23,7 @@ use syntax::ast::{Ident, Pat};
 use syntax::tokenstream::{TokenTree};
 use syntax::ext::base::{ExtCtxt, MacResult, MacEager};
 use syntax::ext::build::AstBuilder;
+use syntax::ext::tt::quoted;
 use syntax::ext::tt::macro_parser::{MatchedSeq, MatchedNonterminal};
 use syntax::ext::tt::macro_parser::{Success, Failure, Error};
 use syntax::ext::tt::macro_parser::parse_failure_msg;
@@ -33,7 +34,8 @@ use rustc_plugin::Registry;
 fn expand_mbe_matches(cx: &mut ExtCtxt, _: Span, args: &[TokenTree])
         -> Box<MacResult + 'static> {
 
-    let mbe_matcher = quote_matcher!(cx, $matched:expr, $($pat:pat)|+);
+    let mbe_matcher = quote_tokens!(cx, $$matched:expr, $$($$pat:pat)|+);
+    let mbe_matcher = quoted::parse(&mbe_matcher, true, cx.parse_sess);
     let map = match TokenTree::parse(cx, &mbe_matcher, args) {
         Success(map) => map,
         Failure(_, tok) => {

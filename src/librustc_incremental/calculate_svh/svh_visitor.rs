@@ -1044,26 +1044,6 @@ impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
                     self.hash_token_tree(sub_tt);
                 }
             }
-            tokenstream::TokenTree::Sequence(span, ref sequence_repetition) => {
-                hash_span!(self, span);
-                let tokenstream::SequenceRepetition {
-                    ref tts,
-                    ref separator,
-                    op,
-                    num_captures,
-                } = **sequence_repetition;
-
-                tts.len().hash(self.st);
-                for sub_tt in tts {
-                    self.hash_token_tree(sub_tt);
-                }
-                self.hash_discriminant(separator);
-                if let Some(ref separator) = *separator {
-                    self.hash_token(separator, span);
-                }
-                op.hash(self.st);
-                num_captures.hash(self.st);
-            }
         }
     }
 
@@ -1129,10 +1109,6 @@ impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
             token::Token::Ident(ident) |
             token::Token::Lifetime(ident) |
             token::Token::SubstNt(ident) => ident.name.as_str().hash(self.st),
-            token::Token::MatchNt(ident1, ident2) => {
-                ident1.name.as_str().hash(self.st);
-                ident2.name.as_str().hash(self.st);
-            }
 
             token::Token::Interpolated(ref non_terminal) => {
                 // FIXME(mw): This could be implemented properly. It's just a
