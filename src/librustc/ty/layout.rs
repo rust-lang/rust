@@ -1201,7 +1201,8 @@ impl<'a, 'gcx, 'tcx> Layout {
                     });
                 }
 
-                if !def.is_enum() || def.variants.len() == 1 {
+                if !def.is_enum() || (def.variants.len() == 1 &&
+                                      !def.repr.inhibit_enum_layout_opt()) {
                     // Struct, or union, or univariant enum equivalent to a struct.
                     // (Typechecking will reject discriminant-sizing attrs.)
 
@@ -1250,7 +1251,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                     v.fields.iter().map(|field| field.ty(tcx, substs)).collect::<Vec<_>>()
                 }).collect::<Vec<_>>();
 
-                if variants.len() == 2 && !def.repr.c {
+                if variants.len() == 2 && !def.repr.inhibit_enum_layout_opt() {
                     // Nullable pointer optimization
                     for discr in 0..2 {
                         let other_fields = variants[1 - discr].iter().map(|ty| {

@@ -1391,6 +1391,13 @@ impl ReprOptions {
     pub fn discr_type(&self) -> attr::IntType {
         self.int.unwrap_or(attr::SignedInt(ast::IntTy::Is))
     }
+
+    /// Returns true if this `#[repr()]` should inhabit "smart enum
+    /// layout" optimizations, such as representing `Foo<&T>` as a
+    /// single pointer.
+    pub fn inhibit_enum_layout_opt(&self) -> bool {
+        self.c || self.int.is_some()
+    }
 }
 
 impl<'a, 'gcx, 'tcx> AdtDef {
