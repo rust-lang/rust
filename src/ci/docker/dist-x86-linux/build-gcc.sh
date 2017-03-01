@@ -13,12 +13,14 @@ set -ex
 
 source shared.sh
 
-curl https://ftp.gnu.org/gnu/gcc/gcc-4.7.4/gcc-4.7.4.tar.bz2 | tar xjf -
-cd gcc-4.7.4
+GCC=4.8.5
+
+curl https://ftp.gnu.org/gnu/gcc/gcc-$GCC/gcc-$GCC.tar.bz2 | tar xjf -
+cd gcc-$GCC
 ./contrib/download_prerequisites
 mkdir ../gcc-build
 cd ../gcc-build
-hide_output ../gcc-4.7.4/configure \
+hide_output ../gcc-$GCC/configure \
     --prefix=/rustroot \
     --enable-languages=c,c++
 hide_output make -j10
@@ -27,5 +29,5 @@ ln -nsf gcc /rustroot/bin/cc
 
 cd ..
 rm -rf gcc-build
-rm -rf gcc-4.7.4
-yum erase -y gcc binutils
+rm -rf gcc-$GCC
+yum erase -y gcc gcc-c++ binutils
