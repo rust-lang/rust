@@ -6,6 +6,7 @@ RUN yum upgrade -y && yum install -y \
       curl \
       bzip2 \
       gcc \
+      gcc-c++ \
       make \
       glibc-devel \
       perl \
