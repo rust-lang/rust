@@ -1476,7 +1476,7 @@ pub struct PolyTrait {
 /// A representation of a Type suitable for hyperlinking purposes. Ideally one can get the original
 /// type out of the AST/TyCtxt given one of these, if more information is needed. Most importantly
 /// it does not preserve mutability or boxes.
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Debug)]
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq)]
 pub enum Type {
     /// structs/enums/traits (most that'd be an hir::TyPath)
     ResolvedPath {
