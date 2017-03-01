@@ -2092,10 +2092,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             Neither => {
                                 if let Some(default) = default_map.get(ty) {
                                     let default = default.clone();
+                                    let default_ty = self.normalize_associated_types_in(
+                                        default.origin_span, &default.ty);
                                     match self.eq_types(false,
                                                         &self.misc(default.origin_span),
                                                         ty,
-                                                        default.ty) {
+                                                        default_ty) {
                                         Ok(ok) => self.register_infer_ok_obligations(ok),
                                         Err(_) => conflicts.push((*ty, default)),
                                     }
@@ -4396,7 +4398,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             } else if !infer_types && def.has_default {
                 // No type parameter provided, but a default exists.
                 let default = self.tcx.item_type(def.def_id);
-                default.subst_spanned(self.tcx, substs, Some(span))
+                self.normalize_ty(
+                    span,
+                    default.subst_spanned(self.tcx, substs, Some(span))
+                )
             } else {
                 // No type parameters were provided, we can infer all.
                 // This can also be reached in some error cases:
