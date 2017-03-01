@@ -1547,7 +1547,7 @@ impl<'a> fmt::Display for Item<'a> {
                        component)?;
             }
         }
-        write!(fmt, "<a class='{}' href=''>{}</a>",
+        write!(fmt, "<a class=\"{}\" href=''>{}</a>",
                self.item.type_(), self.item.name.as_ref().unwrap())?;
 
         write!(fmt, "</span>")?; // in-band
@@ -1654,9 +1654,35 @@ fn document_short(w: &mut fmt::Formatter, item: &clean::Item, link: AssocItemLin
     Ok(())
 }
 
+fn md_render_assoc_item(item: &clean::Item) -> String {
+    match item.inner {
+        clean::AssociatedConstItem(ref ty, ref default) => {
+            if let Some(default) = default.as_ref() {
+                format!("```\n{}: {:?} = {}\n```\n\n", item.name.as_ref().unwrap(), ty, default)
+            } else {
+                format!("```\n{}: {:?}\n```\n\n", item.name.as_ref().unwrap(), ty)
+            }
+        }
+        _ => String::new(),
+    }
+}
+
+fn get_doc_value(item: &clean::Item) -> Option<&str> {
+    let x = item.doc_value();
+    if x.is_none() {
+        match item.inner {
+            clean::AssociatedConstItem(_, _) => Some(""),
+            _ => None,
+        }
+    } else {
+        x
+    }
+}
+
 fn document_full(w: &mut fmt::Formatter, item: &clean::Item) -> fmt::Result {
-    if let Some(s) = item.doc_value() {
-        write!(w, "<div class='docblock'>{}</div>", Markdown(s))?;
+    if let Some(s) = get_doc_value(item) {
+        write!(w, "<div class='docblock'>{}</div>",
+               Markdown(&format!("{}{}", md_render_assoc_item(item), s)))?;
     }
     Ok(())
 }
@@ -1817,7 +1843,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
                 let doc_value = myitem.doc_value().unwrap_or("");
                 write!(w, "
                        <tr class='{stab} module-item'>
-                           <td><a class='{class}' href='{href}'
+                           <td><a class=\"{class}\" href=\"{href}\"
                                   title='{title_type} {title}'>{name}</a>{unsafety_flag}</td>
                            <td class='docblock-short'>
                                {stab_docs} {docs}
@@ -2215,16 +2241,12 @@ fn naive_assoc_href(it: &clean::Item, link: AssocItemLink) -> String {
 fn assoc_const(w: &mut fmt::Formatter,
                it: &clean::Item,
                ty: &clean::Type,
-               default: Option<&String>,
+               _default: Option<&String>,
                link: AssocItemLink) -> fmt::Result {
-    write!(w, "const <a href='{}' class='constant'>{}</a>",
+    write!(w, "const <a href='{}' class=\"constant\"><b>{}</b></a>: {}",
            naive_assoc_href(it, link),
-           it.name.as_ref().unwrap())?;
-
-    write!(w, ": {}", ty)?;
-    if let Some(default) = default {
-        write!(w, " = {}", Escape(default))?;
-    }
+           it.name.as_ref().unwrap(),
+           ty)?;
     Ok(())
 }
 
@@ -2232,7 +2254,7 @@ fn assoc_type(w: &mut fmt::Formatter, it: &clean::Item,
               bounds: &Vec<clean::TyParamBound>,
               default: Option<&clean::Type>,
               link: AssocItemLink) -> fmt::Result {
-    write!(w, "type <a href='{}' class='type'>{}</a>",
+    write!(w, "type <a href='{}' class=\"type\">{}</a>",
            naive_assoc_href(it, link),
            it.name.as_ref().unwrap())?;
     if !bounds.is_empty() {
@@ -2375,7 +2397,7 @@ fn item_struct(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
                 let ns_id = derive_id(format!("{}.{}",
                                               field.name.as_ref().unwrap(),
                                               ItemType::StructField.name_space()));
-                write!(w, "<span id='{id}' class='{item_type}'>
+                write!(w, "<span id='{id}' class=\"{item_type}\">
                            <span id='{ns_id}' class='invisible'>
                            <code>{name}: {ty}</code>
                            </span></span>",
@@ -2417,7 +2439,7 @@ fn item_union(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     if fields.peek().is_some() {
         write!(w, "<h2 class='fields'>Fields</h2>")?;
         for (field, ty) in fields {
-            write!(w, "<span id='{shortty}.{name}' class='{shortty}'><code>{name}: {ty}</code>
+            write!(w, "<span id='{shortty}.{name}' class=\"{shortty}\"><code>{name}: {ty}</code>
                        </span>",
                    shortty = ItemType::StructField,
                    name = field.name.as_ref().unwrap(),
@@ -2902,7 +2924,7 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
                 if render_method_item {
                     let id = derive_id(format!("{}.{}", item_type, name));
                     let ns_id = derive_id(format!("{}.{}", name, item_type.name_space()));
-                    write!(w, "<h4 id='{}' class='{}'>", id, item_type)?;
+                    write!(w, "<h4 id='{}' class=\"{}\">", id, item_type)?;
                     write!(w, "<span id='{}' class='invisible'>", ns_id)?;
                     write!(w, "<code>")?;
                     render_assoc_item(w, item, link.anchor(&id), ItemType::Impl)?;
@@ -2914,7 +2936,7 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
             clean::TypedefItem(ref tydef, _) => {
                 let id = derive_id(format!("{}.{}", ItemType::AssociatedType, name));
                 let ns_id = derive_id(format!("{}.{}", name, item_type.name_space()));
-                write!(w, "<h4 id='{}' class='{}'>", id, item_type)?;
+                write!(w, "<h4 id='{}' class=\"{}\">", id, item_type)?;
                 write!(w, "<span id='{}' class='invisible'><code>", ns_id)?;
                 assoc_type(w, item, &Vec::new(), Some(&tydef.type_), link.anchor(&id))?;
                 write!(w, "</code></span></h4>\n")?;
@@ -2922,7 +2944,7 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
             clean::AssociatedConstItem(ref ty, ref default) => {
                 let id = derive_id(format!("{}.{}", item_type, name));
                 let ns_id = derive_id(format!("{}.{}", name, item_type.name_space()));
-                write!(w, "<h4 id='{}' class='{}'>", id, item_type)?;
+                write!(w, "<h4 id='{}' class=\"{}\">", id, item_type)?;
                 write!(w, "<span id='{}' class='invisible'><code>", ns_id)?;
                 assoc_const(w, item, ty, default.as_ref(), link.anchor(&id))?;
                 write!(w, "</code></span></h4>\n")?;
@@ -2930,7 +2952,7 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
             clean::ConstantItem(ref c) => {
                 let id = derive_id(format!("{}.{}", item_type, name));
                 let ns_id = derive_id(format!("{}.{}", name, item_type.name_space()));
-                write!(w, "<h4 id='{}' class='{}'>", id, item_type)?;
+                write!(w, "<h4 id='{}' class=\"{}\">", id, item_type)?;
                 write!(w, "<span id='{}' class='invisible'><code>", ns_id)?;
                 assoc_const(w, item, &c.type_, Some(&c.expr), link.anchor(&id))?;
                 write!(w, "</code></span></h4>\n")?;
@@ -2938,7 +2960,7 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
             clean::AssociatedTypeItem(ref bounds, ref default) => {
                 let id = derive_id(format!("{}.{}", item_type, name));
                 let ns_id = derive_id(format!("{}.{}", name, item_type.name_space()));
-                write!(w, "<h4 id='{}' class='{}'>", id, item_type)?;
+                write!(w, "<h4 id='{}' class=\"{}\">", id, item_type)?;
                 write!(w, "<span id='{}' class='invisible'><code>", ns_id)?;
                 assoc_type(w, item, bounds, default.as_ref(), link.anchor(&id))?;
                 write!(w, "</code></span></h4>\n")?;
@@ -2956,7 +2978,7 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
                         // We need the stability of the item from the trait
                         // because impls can't have a stability.
                         document_stability(w, cx, it)?;
-                        if item.doc_value().is_some() {
+                        if get_doc_value(item).is_some() {
                             document_full(w, item)?;
                         } else {
                             // In case the item isn't documented,
