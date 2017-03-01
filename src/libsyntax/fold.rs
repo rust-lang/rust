@@ -899,8 +899,7 @@ pub fn noop_fold_item_kind<T: Folder>(i: ItemKind, folder: &mut T) -> ItemKind {
             items.move_flat_map(|item| folder.fold_trait_item(item)),
         ),
         ItemKind::Mac(m) => ItemKind::Mac(folder.fold_mac(m)),
-        ItemKind::MacroDef(tts, mark) => ItemKind::MacroDef(folder.fold_tts(tts.into()).into(),
-                                                            mark),
+        ItemKind::MacroDef(tts) => ItemKind::MacroDef(folder.fold_tts(tts.into()).into()),
     }
 }
 

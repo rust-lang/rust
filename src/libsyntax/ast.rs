@@ -20,7 +20,7 @@ pub use util::ThinVec;
 use syntax_pos::{mk_sp, Span, DUMMY_SP, ExpnId};
 use codemap::{respan, Spanned};
 use abi::Abi;
-use ext::hygiene::{Mark, SyntaxContext};
+use ext::hygiene::SyntaxContext;
 use print::pprust;
 use ptr::P;
 use symbol::{Symbol, keywords};
@@ -1860,7 +1860,7 @@ pub enum ItemKind {
     Mac(Mac),
 
     /// A macro definition.
-    MacroDef(ThinTokenStream, Mark /* FIXME(jseyfried) remove this */),
+    MacroDef(ThinTokenStream),
 }
 
 impl ItemKind {

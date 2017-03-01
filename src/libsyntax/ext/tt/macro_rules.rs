@@ -12,7 +12,7 @@ use {ast, attr};
 use syntax_pos::{Span, DUMMY_SP};
 use ext::base::{DummyResult, ExtCtxt, MacResult, SyntaxExtension};
 use ext::base::{NormalTT, TTMacroExpander};
-use ext::expand::{Expansion, ExpansionKind, mark_tts};
+use ext::expand::{Expansion, ExpansionKind};
 use ext::tt::macro_parser::{Success, Error, Failure};
 use ext::tt::macro_parser::{MatchedSeq, MatchedNonterminal};
 use ext::tt::macro_parser::{parse, parse_failure_msg};
@@ -184,7 +184,7 @@ pub fn compile(sess: &ParseSess, def: &ast::Item) -> SyntaxExtension {
 
     // Parse the macro_rules! invocation
     let body = match def.node {
-        ast::ItemKind::MacroDef(ref body, mark) => mark_tts(body.clone().into(), mark),
+        ast::ItemKind::MacroDef(ref body) => body.clone().into(),
         _ => unreachable!(),
     };
     let argument_map = match parse(sess, body, &argument_gram, None) {

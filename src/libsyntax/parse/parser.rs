@@ -43,7 +43,6 @@ use {ast, attr};
 use codemap::{self, CodeMap, Spanned, spanned, respan};
 use syntax_pos::{self, Span, Pos, BytePos, mk_sp};
 use errors::{self, DiagnosticBuilder};
-use ext::hygiene::Mark;
 use parse::{self, classify, token};
 use parse::common::SeqSep;
 use parse::lexer::TokenAndSpan;
@@ -3731,7 +3730,7 @@ impl<'a> Parser<'a> {
         }
 
         let hi = self.prev_span.hi;
-        let kind = ItemKind::MacroDef(tts, Mark::fresh());
+        let kind = ItemKind::MacroDef(tts);
         Ok(Some(self.mk_item(lo, hi, id, kind, Visibility::Inherited, attrs.to_owned())))
     }
 
