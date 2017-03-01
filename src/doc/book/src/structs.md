@@ -255,7 +255,7 @@ rather than positions.
 
 You can define a `struct` with no members at all:
 
-```rust
+```rust,compile_fail,E0423
 struct Electron {} // Use empty braces...
 struct Proton;     // ...or just a semicolon.
 
