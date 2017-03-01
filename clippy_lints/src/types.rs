@@ -1107,7 +1107,6 @@ fn numeric_cast_precast_bounds<'a>(cx: &LateContext, expr: &'a Expr) -> Option<(
 fn node_as_const_fullint(cx: &LateContext, expr: &Expr) -> Option<FullInt> {
     use rustc::middle::const_val::ConstVal::*;
     use rustc_const_eval::ConstContext;
-    use rustc_const_math::ConstInt;
 
     match ConstContext::with_tables(cx.tcx, cx.tables).eval(expr) {
         Ok(val) => {
