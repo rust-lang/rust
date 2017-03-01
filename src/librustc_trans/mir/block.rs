@@ -21,7 +21,7 @@ use builder::Builder;
 use common::{self, Funclet};
 use common::{C_bool, C_str_slice, C_struct, C_u32, C_undef};
 use consts;
-use machine::{llalign_of_min, llbitsize_of_real};
+use machine::llalign_of_min;
 use meth;
 use type_of::{self, align_of};
 use glue;
@@ -869,24 +869,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
     fn trans_transmute_into(&mut self, bcx: &Builder<'a, 'tcx>,
                             src: &mir::Operand<'tcx>,
                             dst: &LvalueRef<'tcx>) {
-        let mut val = self.trans_operand(bcx, src);
-        if let ty::TyFnDef(def_id, substs, _) = val.ty.sty {
-            let llouttype = type_of::type_of(bcx.ccx, dst.ty.to_ty(bcx.tcx()));
-            let out_type_size = llbitsize_of_real(bcx.ccx, llouttype);
-            if out_type_size != 0 {
-                // FIXME #19925 Remove this hack after a release cycle.
-                let f = Callee::def(bcx.ccx, def_id, substs);
-                let ty = match f.ty.sty {
-                    ty::TyFnDef(.., f) => bcx.tcx().mk_fn_ptr(f),
-                    _ => f.ty
-                };
-                val = OperandRef {
-                    val: Immediate(f.reify(bcx.ccx)),
-                    ty: ty
-                };
-            }
-        }
-
+        let val = self.trans_operand(bcx, src);
         let llty = type_of::type_of(bcx.ccx, val.ty);
         let cast_ptr = bcx.pointercast(dst.llval, llty.ptr_to());
         let in_type = val.ty;
