@@ -154,7 +154,7 @@ impl ExpansionKind {
 pub struct Invocation {
     pub kind: InvocationKind,
     expansion_kind: ExpansionKind,
-    expansion_data: ExpansionData,
+    pub expansion_data: ExpansionData,
 }
 
 pub enum InvocationKind {
@@ -432,7 +432,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
         let extname = path.segments.last().unwrap().identifier.name;
         let ident = ident.unwrap_or(keywords::Invalid.ident());
-        let marked_tts = mark_tts(mac.node.stream(), mark);
+        let marked_tts =
+            noop_fold_tts(mac.node.stream(), &mut Marker { mark: mark, expn_id: None });
         let opt_expanded = match *ext {
             NormalTT(ref expandfun, exp_span, allow_internal_unstable) => {
                 if ident.name != keywords::Invalid.name() {
@@ -1093,9 +1094,4 @@ impl Folder for Marker {
         }
         span
     }
-}
-
-// apply a given mark to the given token trees. Used prior to expansion of a macro.
-pub fn mark_tts(tts: TokenStream, m: Mark) -> TokenStream {
-    noop_fold_tts(tts, &mut Marker{mark:m, expn_id: None})
 }

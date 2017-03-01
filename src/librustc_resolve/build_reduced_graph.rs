@@ -492,6 +492,16 @@ impl<'a> Resolver<'a> {
         })
     }
 
+    pub fn macro_def_scope(&mut self, expansion: Mark) -> Module<'a> {
+        let def_id = self.macro_defs[&expansion];
+        if let Some(id) = self.definitions.as_local_node_id(def_id) {
+            self.local_macro_def_scopes[&id]
+        } else {
+            let module_def_id = ty::DefIdTree::parent(&*self, def_id).unwrap();
+            self.get_extern_crate_root(module_def_id.krate)
+        }
+    }
+
     pub fn get_macro(&mut self, def: Def) -> Rc<SyntaxExtension> {
         let def_id = match def {
             Def::Macro(def_id, ..) => def_id,
@@ -506,15 +516,6 @@ impl<'a> Resolver<'a> {
             LoadedMacro::ProcMacro(ext) => return ext,
         };
 
-        let invocation = self.arenas.alloc_invocation_data(InvocationData {
-            module: Cell::new(self.get_extern_crate_root(def_id.krate)),
-            // FIXME(jseyfried) the following are irrelevant
-            def_index: CRATE_DEF_INDEX, const_expr: false,
-            legacy_scope: Cell::new(LegacyScope::Empty), expansion: Cell::new(LegacyScope::Empty),
-        });
-        if let ast::ItemKind::MacroDef(_, mark) = macro_def.node {
-            self.invocations.insert(mark, invocation);
-        }
         let ext = Rc::new(macro_rules::compile(&self.session.parse_sess, &macro_def));
         self.macro_map.insert(def_id, ext.clone());
         ext

@@ -211,7 +211,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                         LoadedMacro::ProcMacro(..) => continue,
                     };
 
-                    let matchers = if let ast::ItemKind::MacroDef(ref tokens, _) = def.node {
+                    let matchers = if let ast::ItemKind::MacroDef(ref tokens) = def.node {
                         let tts: Vec<_> = TokenStream::from(tokens.clone()).into_trees().collect();
                         tts.chunks(4).map(|arm| arm[0].span()).collect()
                     } else {
