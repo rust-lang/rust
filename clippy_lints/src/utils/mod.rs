@@ -806,7 +806,7 @@ pub fn same_tys<'a, 'tcx>(
 pub fn type_is_unsafe_function(ty: ty::Ty) -> bool {
     match ty.sty {
         ty::TyFnDef(_, _, f) |
-        ty::TyFnPtr(f) => f.skip_binder().unsafety == Unsafety::Unsafe,
+        ty::TyFnPtr(f) => f.unsafety() == Unsafety::Unsafe,
         _ => false,
     }
 }
