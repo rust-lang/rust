@@ -47,7 +47,6 @@ pub mod char;
 #[allow(deprecated)]
 pub mod str {
     pub use u_str::{SplitWhitespace, UnicodeStr};
-    pub use u_str::is_utf16;
     pub use u_str::Utf16Encoder;
 }
 
