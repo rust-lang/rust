@@ -78,6 +78,13 @@ explicitly opt-in to also having important results, e.g. `#[must_use]
 fn ok(self) -> Option<T>`. This is a natural generalisation of
 `#[must_use]` to allow fine-grained control of context sensitive info.
 
+One of the most important use-cases for this would be annotating `PartialEq::{eq, ne}` with `#[must_use]`.
+
+There's a bug in Android where instead of `modem_reset_flag = 0;` the file affected has `modem_reset_flag == 0;`.
+Rust does not do better in this case. If you wrote `modem_reset_flag == false;` the compiler would be perfectly happy and wouldn't warn you.
+
+See further discussion in [#1812.](https://github.com/rust-lang/rfcs/pull/1812)
+
 # Detailed design
 
 If a semicolon discards the result of a function or method tagged with
