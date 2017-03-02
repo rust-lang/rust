@@ -145,7 +145,7 @@ This emphasizes that we have to walk from the beginning of the list of `chars`.
 
 ## Slicing
 
-You can get a slice of a string with slicing syntax:
+You can get a slice of a string with the slicing syntax:
 
 ```rust
 let dog = "hachiko";
