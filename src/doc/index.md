@@ -43,7 +43,7 @@ landed before then. That work is being tracked [here][38643].
 [ref]: reference/index.html
 [38643]: https://github.com/rust-lang/rust/issues/38643
 [err]: error-index.html
-[unstable-book]: book/index.html
+[book]: book/index.html
 [nomicon]: nomicon/index.html
 [unstable-book]: unstable-book/index.html
 
