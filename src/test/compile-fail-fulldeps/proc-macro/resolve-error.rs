@@ -11,6 +11,7 @@
 // aux-build:derive-foo.rs
 // aux-build:derive-clona.rs
 // aux-build:attr_proc_macro.rs
+// aux-build:bang_proc_macro.rs
 
 #![feature(proc_macro)]
 
@@ -19,10 +20,16 @@ extern crate derive_foo;
 #[macro_use]
 extern crate derive_clona;
 extern crate attr_proc_macro;
+extern crate bang_proc_macro;
 
 use attr_proc_macro::attr_proc_macro;
+use bang_proc_macro::bang_proc_macro;
 
 macro_rules! FooWithLongNam {
+    () => {}
+}
+
+macro_rules! attr_proc_mac {
     () => {}
 }
 
@@ -61,7 +68,12 @@ fn main() {
 
     attr_proc_macra!();
     //~^ ERROR cannot find macro `attr_proc_macra!` in this scope
+    //~^^ HELP did you mean `attr_proc_mac!`?
 
     Dlona!();
     //~^ ERROR cannot find macro `Dlona!` in this scope
+
+    bang_proc_macrp!();
+    //~^ ERROR cannot find macro `bang_proc_macrp!` in this scope
+    //~^^ HELP did you mean `bang_proc_macro!`?
 }

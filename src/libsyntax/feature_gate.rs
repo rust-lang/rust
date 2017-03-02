@@ -763,6 +763,11 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
                                            "attribute proc macros are currently unstable",
                                            cfg_fn!(proc_macro))),
 
+    ("proc_macro", Normal, Gated(Stability::Unstable,
+                                 "proc_macro",
+                                 "function-like proc macros are currently unstable",
+                                 cfg_fn!(proc_macro))),
+
     ("rustc_derive_registrar", Normal, Gated(Stability::Unstable,
                                              "rustc_derive_registrar",
                                              "used internally by rustc",
