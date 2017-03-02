@@ -1293,7 +1293,8 @@ impl Rewrite for ast::Arm {
 
         let block_sep = match context.config.control_brace_style {
             ControlBraceStyle::AlwaysNextLine => alt_block_sep + body_prefix + "\n",
-            _ => String::from(" ") + body_prefix + "\n",
+            _ if body_prefix.is_empty() => "\n".to_owned(),
+            _ => " ".to_owned() + body_prefix + "\n",
         };
 
         if context.config.wrap_match_arms {

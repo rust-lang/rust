@@ -15,11 +15,11 @@ enum TestEnum {
 fn main() {
     let var = TestEnum::AVeryVeryLongEnumName;
     let num = match var {
-        TestEnum::AVeryVeryLongEnumName => 
+        TestEnum::AVeryVeryLongEnumName =>
             a_very_very_very_very_very_very_very_very_very_very_very_long_function_name(),
-        TestEnum::AnotherVeryLongEnumName => 
+        TestEnum::AnotherVeryLongEnumName =>
             a_very_very_very_very_very_very_very_very_very_very_very_long_function_name(),
-        TestEnum::TheLastVeryLongEnumName => 
+        TestEnum::TheLastVeryLongEnumName =>
             a_very_very_very_very_very_very_very_very_very_very_very_long_function_name(),
     };
 }
