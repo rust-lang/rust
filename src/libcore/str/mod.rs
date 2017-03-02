@@ -125,13 +125,14 @@ Section: Creating a string
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Utf8Error {
     valid_up_to: usize,
+    invalid_length: Option<u8>,
 }
 
 impl Utf8Error {
     /// Returns the index in the given string up to which valid UTF-8 was
     /// verified.
     ///
-    /// It is the maximum index such that `from_utf8(input[..index])`
+    /// It is the maximum index such that `from_utf8(&input[..index])`
     /// would return `Ok(_)`.
     ///
     /// # Examples
@@ -152,6 +153,21 @@ impl Utf8Error {
     /// ```
     #[stable(feature = "utf8_error", since = "1.5.0")]
     pub fn valid_up_to(&self) -> usize { self.valid_up_to }
+
+    /// Provide more information about the failure:
+    ///
+    /// * `None`: the end of the input was reached unexpectedly.
+    ///   `self.valid_up_to()` is 1 to 3 bytes from the end of the input.
+    ///   If a byte stream (such as a file or a network socket) is being decoded incrementally,
+    ///   this could be a valid `char` whose UTF-8 byte sequence is spanning multiple chunks.
+    ///
+    /// * `Some(index)`: an unexpected byte was encountered.
+    ///   The index provided is where decoding should resume
+    ///   (after inserting a U+FFFD REPLACEMENT CHARACTER) in case of lossy decoding.
+    #[unstable(feature = "utf8_error_resume_from", reason ="new", issue = "0")]
+    pub fn resume_from(&self) -> Option<usize> {
+        self.invalid_length.map(|l| self.valid_up_to + l as usize)
+    }
 }
 
 /// Converts a slice of bytes to a string slice.
@@ -300,7 +316,12 @@ pub unsafe fn from_utf8_unchecked(v: &[u8]) -> &str {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for Utf8Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "invalid utf-8: invalid byte near index {}", self.valid_up_to)
+        if let Some(invalid_length) = self.invalid_length {
+            write!(f, "invalid utf-8 sequence of {} bytes from index {}",
+                   invalid_length, self.valid_up_to)
+        } else {
+            write!(f, "incomplete utf-8 byte sequence from index {}", self.valid_up_to)
+        }
     }
 }
 
@@ -1241,17 +1262,20 @@ fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
 
     while index < len {
         let old_offset = index;
-        macro_rules! err { () => {{
-            return Err(Utf8Error {
-                valid_up_to: old_offset
-            })
-        }}}
+        macro_rules! err {
+            ($invalid_length: expr) => {
+                return Err(Utf8Error {
+                    valid_up_to: old_offset,
+                    invalid_length: $invalid_length,
+                })
+            }
+        }
 
         macro_rules! next { () => {{
             index += 1;
             // we needed data, but there was none: error!
             if index >= len {
-                err!()
+                err!(None)
             }
             v[index]
         }}}
@@ -1259,7 +1283,6 @@ fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
         let first = v[index];
         if first >= 128 {
             let w = UTF8_CHAR_WIDTH[first as usize];
-            let second = next!();
             // 2-byte encoding is for codepoints  \u{0080} to  \u{07ff}
             //        first  C2 80        last DF BF
             // 3-byte encoding is for codepoints  \u{0800} to  \u{ffff}
@@ -1279,25 +1302,36 @@ fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
             // UTF8-4      = %xF0 %x90-BF 2( UTF8-tail ) / %xF1-F3 3( UTF8-tail ) /
             //               %xF4 %x80-8F 2( UTF8-tail )
             match w {
-                2 => if second & !CONT_MASK != TAG_CONT_U8 {err!()},
+                2 => if next!() & !CONT_MASK != TAG_CONT_U8 {
+                    err!(Some(1))
+                },
                 3 => {
-                    match (first, second, next!() & !CONT_MASK) {
-                        (0xE0         , 0xA0 ... 0xBF, TAG_CONT_U8) |
-                        (0xE1 ... 0xEC, 0x80 ... 0xBF, TAG_CONT_U8) |
-                        (0xED         , 0x80 ... 0x9F, TAG_CONT_U8) |
-                        (0xEE ... 0xEF, 0x80 ... 0xBF, TAG_CONT_U8) => {}
-                        _ => err!()
+                    match (first, next!()) {
+                        (0xE0         , 0xA0 ... 0xBF) |
+                        (0xE1 ... 0xEC, 0x80 ... 0xBF) |
+                        (0xED         , 0x80 ... 0x9F) |
+                        (0xEE ... 0xEF, 0x80 ... 0xBF) => {}
+                        _ => err!(Some(1))
+                    }
+                    if next!() & !CONT_MASK != TAG_CONT_U8 {
+                        err!(Some(2))
                     }
                 }
                 4 => {
-                    match (first, second, next!() & !CONT_MASK, next!() & !CONT_MASK) {
-                        (0xF0         , 0x90 ... 0xBF, TAG_CONT_U8, TAG_CONT_U8) |
-                        (0xF1 ... 0xF3, 0x80 ... 0xBF, TAG_CONT_U8, TAG_CONT_U8) |
-                        (0xF4         , 0x80 ... 0x8F, TAG_CONT_U8, TAG_CONT_U8) => {}
-                        _ => err!()
+                    match (first, next!()) {
+                        (0xF0         , 0x90 ... 0xBF) |
+                        (0xF1 ... 0xF3, 0x80 ... 0xBF) |
+                        (0xF4         , 0x80 ... 0x8F) => {}
+                        _ => err!(Some(1))
+                    }
+                    if next!() & !CONT_MASK != TAG_CONT_U8 {
+                        err!(Some(2))
+                    }
+                    if next!() & !CONT_MASK != TAG_CONT_U8 {
+                        err!(Some(3))
                     }
                 }
-                _ => err!()
+                _ => err!(Some(1))
             }
             index += 1;
         } else {
