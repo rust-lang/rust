@@ -304,11 +304,20 @@ impl<'a> Parser<'a> {
                 if i + 1 < tts.len() {
                     self.tts.push((tts, i + 1));
                 }
-                if let TokenTree::Token(sp, tok) = tt {
-                    TokenAndSpan { tok: tok, sp: sp }
-                } else {
-                    self.tts.push((tt, 0));
-                    continue
+                // FIXME(jseyfried): remove after fixing #39390 in #39419.
+                if self.quote_depth > 0 {
+                    if let TokenTree::Sequence(sp, _) = tt {
+                        self.span_err(sp, "attempted to repeat an expression containing no \
+                                           syntax variables matched as repeating at this depth");
+                    }
+                }
+                match tt {
+                    TokenTree::Token(sp, tok) => TokenAndSpan { tok: tok, sp: sp },
+                    _ if tt.len() > 0 => {
+                        self.tts.push((tt, 0));
+                        continue
+                    }
+                    _ => continue,
                 }
             } else {
                 TokenAndSpan { tok: token::Eof, sp: self.span }
@@ -804,6 +813,10 @@ impl<'a> Parser<'a> {
         let mut first: bool = true;
         let mut v = vec![];
         while !kets.contains(&&self.token) {
+            match self.token {
+                token::CloseDelim(..) | token::Eof => break,
+                _ => {}
+            };
             match sep.sep {
                 Some(ref t) => {
                     if first {
@@ -2597,9 +2610,12 @@ impl<'a> Parser<'a> {
             return Ok((None, kleene_op));
         }
 
-        let separator = self.bump_and_get();
+        let separator = match self.token {
+            token::CloseDelim(..) => None,
+            _ => Some(self.bump_and_get()),
+        };
         match parse_kleene_op(self)? {
-            Some(zerok) => Ok((Some(separator), zerok)),
+            Some(zerok) => Ok((separator, zerok)),
             None => return Err(self.fatal("expected `*` or `+`"))
         }
     }
@@ -2636,7 +2652,7 @@ impl<'a> Parser<'a> {
                     tts: tts,
                 })))
             },
-            token::CloseDelim(_) | token::Eof => unreachable!(),
+            token::CloseDelim(..) | token::Eof => Ok(TokenTree::Token(self.span, token::Eof)),
             token::Dollar | token::SubstNt(..) if self.quote_depth > 0 => self.parse_unquoted(),
             _ => Ok(TokenTree::Token(self.span, self.bump_and_get())),
         }

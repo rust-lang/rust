@@ -11,7 +11,7 @@
 use llvm::{self, ValueRef, BasicBlockRef};
 use rustc_const_eval::{ErrKind, ConstEvalErr, note_const_eval_err};
 use rustc::middle::lang_items;
-use rustc::ty::{self, layout};
+use rustc::ty::{self, layout, TypeFoldable};
 use rustc::mir;
 use abi::{Abi, FnType, ArgType};
 use adt;
@@ -37,7 +37,7 @@ use std::cmp;
 use super::{MirContext, LocalRef};
 use super::analyze::CleanupKind;
 use super::constant::Const;
-use super::lvalue::LvalueRef;
+use super::lvalue::{Alignment, LvalueRef};
 use super::operand::OperandRef;
 use super::operand::OperandValue::{Pair, Ref, Immediate};
 
@@ -120,7 +120,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     bcx.cleanup_ret(cleanup_pad, None);
                 } else {
                     let ps = self.get_personality_slot(&bcx);
-                    let lp = bcx.load(ps);
+                    let lp = bcx.load(ps, None);
                     Lifetime::End.call(&bcx, ps);
                     if !bcx.sess().target.target.options.custom_unwind_resume {
                         bcx.resume(lp);
@@ -147,7 +147,9 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             mir::TerminatorKind::Switch { ref discr, ref adt_def, ref targets } => {
                 let discr_lvalue = self.trans_lvalue(&bcx, discr);
                 let ty = discr_lvalue.ty.to_ty(bcx.tcx());
-                let discr = adt::trans_get_discr(&bcx, ty, discr_lvalue.llval, None, true);
+                let discr = adt::trans_get_discr(
+                    &bcx, ty, discr_lvalue.llval, discr_lvalue.alignment,
+                    None, true);
 
                 let mut bb_hist = FxHashMap();
                 for target in targets {
@@ -179,7 +181,8 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
             mir::TerminatorKind::SwitchInt { ref discr, switch_ty, ref values, ref targets } => {
                 let (otherwise, targets) = targets.split_last().unwrap();
-                let discr = bcx.load(self.trans_lvalue(&bcx, discr).llval);
+                let lv = self.trans_lvalue(&bcx, discr);
+                let discr = bcx.load(lv.llval, lv.alignment.to_align());
                 let discr = base::to_immediate(&bcx, discr, switch_ty);
                 let switch = bcx.switch(discr, llblock(self, *otherwise), values.len());
                 for (value, target) in values.iter().zip(targets) {
@@ -202,7 +205,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         LocalRef::Operand(None) => bug!("use of return before def"),
                         LocalRef::Lvalue(tr_lvalue) => {
                             OperandRef {
-                                val: Ref(tr_lvalue.llval),
+                                val: Ref(tr_lvalue.llval, tr_lvalue.alignment),
                                 ty: tr_lvalue.ty.to_ty(bcx.tcx())
                             }
                         }
@@ -210,21 +213,23 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     let llslot = match op.val {
                         Immediate(_) | Pair(..) => {
                             let llscratch = bcx.alloca(ret.original_ty, "ret");
-                            self.store_operand(&bcx, llscratch, op, None);
+                            self.store_operand(&bcx, llscratch, None, op);
                             llscratch
                         }
-                        Ref(llval) => llval
+                        Ref(llval, align) => {
+                            assert_eq!(align, Alignment::AbiAligned,
+                                       "return pointer is unaligned!");
+                            llval
+                        }
                     };
-                    let load = bcx.load(bcx.pointercast(llslot, cast_ty.ptr_to()));
-                    let llalign = llalign_of_min(bcx.ccx, ret.ty);
-                    unsafe {
-                        llvm::LLVMSetAlignment(load, llalign);
-                    }
+                    let load = bcx.load(
+                        bcx.pointercast(llslot, cast_ty.ptr_to()),
+                        Some(llalign_of_min(bcx.ccx, ret.ty)));
                     load
                 } else {
                     let op = self.trans_consume(&bcx, &mir::Lvalue::Local(mir::RETURN_POINTER));
-                    if let Ref(llval) = op.val {
-                        base::load_ty(&bcx, llval, op.ty)
+                    if let Ref(llval, align) = op.val {
+                        base::load_ty(&bcx, llval, align, op.ty)
                     } else {
                         op.pack_if_pair(&bcx).immediate()
                     }
@@ -425,17 +430,14 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     // The first argument is a thin destination pointer.
                     let llptr = self.trans_operand(&bcx, &args[0]).immediate();
                     let val = self.trans_operand(&bcx, &args[1]);
-                    self.store_operand(&bcx, llptr, val, None);
+                    self.store_operand(&bcx, llptr, None, val);
                     funclet_br(self, bcx, target);
                     return;
                 }
 
                 if intrinsic == Some("transmute") {
                     let &(ref dest, target) = destination.as_ref().unwrap();
-                    self.with_lvalue_ref(&bcx, dest, |this, dest| {
-                        this.trans_transmute(&bcx, &args[0], dest);
-                    });
-
+                    self.trans_transmute(&bcx, &args[0], dest);
                     funclet_br(self, bcx, target);
                     return;
                 }
@@ -550,7 +552,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         if let ReturnDest::IndirectOperand(dst, _) = ret_dest {
                             // Make a fake operand for store_return
                             let op = OperandRef {
-                                val: Ref(dst),
+                                val: Ref(dst, Alignment::AbiAligned),
                                 ty: sig.output(),
                             };
                             self.store_return(&bcx, ret_dest, fn_ty.ret, op);
@@ -652,33 +654,39 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         }
 
         // Force by-ref if we have to load through a cast pointer.
-        let (mut llval, by_ref) = match op.val {
+        let (mut llval, align, by_ref) = match op.val {
             Immediate(_) | Pair(..) => {
                 if arg.is_indirect() || arg.cast.is_some() {
                     let llscratch = bcx.alloca(arg.original_ty, "arg");
-                    self.store_operand(bcx, llscratch, op, None);
-                    (llscratch, true)
+                    self.store_operand(bcx, llscratch, None, op);
+                    (llscratch, Alignment::AbiAligned, true)
                 } else {
-                    (op.pack_if_pair(bcx).immediate(), false)
+                    (op.pack_if_pair(bcx).immediate(), Alignment::AbiAligned, false)
                 }
             }
-            Ref(llval) => (llval, true)
+            Ref(llval, Alignment::Packed) if arg.is_indirect() => {
+                // `foo(packed.large_field)`. We can't pass the (unaligned) field directly. I
+                // think that ATM (Rust 1.16) we only pass temporaries, but we shouldn't
+                // have scary latent bugs around.
+
+                let llscratch = bcx.alloca(arg.original_ty, "arg");
+                base::memcpy_ty(bcx, llscratch, llval, op.ty, Some(1));
+                (llscratch, Alignment::AbiAligned, true)
+            }
+            Ref(llval, align) => (llval, align, true)
         };
 
         if by_ref && !arg.is_indirect() {
             // Have to load the argument, maybe while casting it.
             if arg.original_ty == Type::i1(bcx.ccx) {
                 // We store bools as i8 so we need to truncate to i1.
-                llval = bcx.load_range_assert(llval, 0, 2, llvm::False);
+                llval = bcx.load_range_assert(llval, 0, 2, llvm::False, None);
                 llval = bcx.trunc(llval, arg.original_ty);
             } else if let Some(ty) = arg.cast {
-                llval = bcx.load(bcx.pointercast(llval, ty.ptr_to()));
-                let llalign = llalign_of_min(bcx.ccx, arg.ty);
-                unsafe {
-                    llvm::LLVMSetAlignment(llval, llalign);
-                }
+                llval = bcx.load(bcx.pointercast(llval, ty.ptr_to()),
+                                 align.min_with(llalign_of_min(bcx.ccx, arg.ty)));
             } else {
-                llval = bcx.load(llval);
+                llval = bcx.load(llval, align.to_align());
             }
         }
 
@@ -702,16 +710,16 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
         // Handle both by-ref and immediate tuples.
         match tuple.val {
-            Ref(llval) => {
+            Ref(llval, align) => {
                 for (n, &ty) in arg_types.iter().enumerate() {
-                    let ptr = LvalueRef::new_sized_ty(llval, tuple.ty);
-                    let ptr = ptr.trans_field_ptr(bcx, n);
+                    let ptr = LvalueRef::new_sized_ty(llval, tuple.ty, align);
+                    let (ptr, align) = ptr.trans_field_ptr(bcx, n);
                     let val = if common::type_is_fat_ptr(bcx.ccx, ty) {
-                        let (lldata, llextra) = base::load_fat_ptr(bcx, ptr, ty);
+                        let (lldata, llextra) = base::load_fat_ptr(bcx, ptr, align, ty);
                         Pair(lldata, llextra)
                     } else {
                         // trans_argument will load this if it needs to
-                        Ref(ptr)
+                        Ref(ptr, align)
                     };
                     let op = OperandRef {
                         val: val,
@@ -839,15 +847,15 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     return if fn_ret_ty.is_indirect() {
                         // Odd, but possible, case, we have an operand temporary,
                         // but the calling convention has an indirect return.
-                        let tmp = bcx.alloca_ty(ret_ty, "tmp_ret");
-                        llargs.push(tmp);
-                        ReturnDest::IndirectOperand(tmp, index)
+                        let tmp = LvalueRef::alloca(bcx, ret_ty, "tmp_ret");
+                        llargs.push(tmp.llval);
+                        ReturnDest::IndirectOperand(tmp.llval, index)
                     } else if is_intrinsic {
                         // Currently, intrinsics always need a location to store
                         // the result. so we create a temporary alloca for the
                         // result
-                        let tmp = bcx.alloca_ty(ret_ty, "tmp_ret");
-                        ReturnDest::IndirectOperand(tmp, index)
+                        let tmp = LvalueRef::alloca(bcx, ret_ty, "tmp_ret");
+                        ReturnDest::IndirectOperand(tmp.llval, index)
                     } else {
                         ReturnDest::DirectOperand(index)
                     };
@@ -868,7 +876,34 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
     }
 
     fn trans_transmute(&mut self, bcx: &Builder<'a, 'tcx>,
-                       src: &mir::Operand<'tcx>, dst: LvalueRef<'tcx>) {
+                       src: &mir::Operand<'tcx>,
+                       dst: &mir::Lvalue<'tcx>) {
+        if let mir::Lvalue::Local(index) = *dst {
+            match self.locals[index] {
+                LocalRef::Lvalue(lvalue) => self.trans_transmute_into(bcx, src, &lvalue),
+                LocalRef::Operand(None) => {
+                    let lvalue_ty = self.monomorphized_lvalue_ty(dst);
+                    assert!(!lvalue_ty.has_erasable_regions());
+                    let lvalue = LvalueRef::alloca(bcx, lvalue_ty, "transmute_temp");
+                    self.trans_transmute_into(bcx, src, &lvalue);
+                    let op = self.trans_load(bcx, lvalue.llval, lvalue.alignment, lvalue_ty);
+                    self.locals[index] = LocalRef::Operand(Some(op));
+                }
+                LocalRef::Operand(Some(_)) => {
+                    let ty = self.monomorphized_lvalue_ty(dst);
+                    assert!(common::type_is_zero_size(bcx.ccx, ty),
+                            "assigning to initialized SSAtemp");
+                }
+            }
+        } else {
+            let dst = self.trans_lvalue(bcx, dst);
+            self.trans_transmute_into(bcx, src, &dst);
+        }
+    }
+
+    fn trans_transmute_into(&mut self, bcx: &Builder<'a, 'tcx>,
+                            src: &mir::Operand<'tcx>,
+                            dst: &LvalueRef<'tcx>) {
         let mut val = self.trans_operand(bcx, src);
         if let ty::TyFnDef(def_id, substs, _) = val.ty.sty {
             let llouttype = type_of::type_of(bcx.ccx, dst.ty.to_ty(bcx.tcx()));
@@ -892,7 +927,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         let in_type = val.ty;
         let out_type = dst.ty.to_ty(bcx.tcx());;
         let llalign = cmp::min(align_of(bcx.ccx, in_type), align_of(bcx.ccx, out_type));
-        self.store_operand(bcx, cast_ptr, val, Some(llalign));
+        self.store_operand(bcx, cast_ptr, Some(llalign), val);
     }
 
 
@@ -908,15 +943,15 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             Nothing => (),
             Store(dst) => ret_ty.store(bcx, op.immediate(), dst),
             IndirectOperand(tmp, index) => {
-                let op = self.trans_load(bcx, tmp, op.ty);
+                let op = self.trans_load(bcx, tmp, Alignment::AbiAligned, op.ty);
                 self.locals[index] = LocalRef::Operand(Some(op));
             }
             DirectOperand(index) => {
                 // If there is a cast, we have to store and reload.
                 let op = if ret_ty.cast.is_some() {
-                    let tmp = bcx.alloca_ty(op.ty, "tmp_ret");
-                    ret_ty.store(bcx, op.immediate(), tmp);
-                    self.trans_load(bcx, tmp, op.ty)
+                    let tmp = LvalueRef::alloca(bcx, op.ty, "tmp_ret");
+                    ret_ty.store(bcx, op.immediate(), tmp.llval);
+                    self.trans_load(bcx, tmp.llval, tmp.alignment, op.ty)
                 } else {
                     op.unpack_if_pair(bcx)
                 };
