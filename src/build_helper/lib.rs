@@ -12,7 +12,7 @@
 
 extern crate filetime;
 
-use std::fs;
+use std::{fs, env};
 use std::process::{Command, Stdio};
 use std::path::{Path, PathBuf};
 
@@ -163,6 +163,41 @@ pub fn up_to_date(src: &Path, dst: &Path) -> bool {
         dir_up_to_date(src, &threshold)
     } else {
         FileTime::from_last_modification_time(&meta) <= threshold
+    }
+}
+
+pub struct NativeLibBoilerplate {
+    pub skip_build: bool,
+    pub src_dir: PathBuf,
+    pub out_dir: PathBuf,
+    pub timestamp: PathBuf,
+}
+
+pub fn native_lib_boilerplate(src_name: &str,
+                              out_name: &str,
+                              link_name: &str,
+                              timestamp_name: &str,
+                              search_subdir: &str)
+                              -> NativeLibBoilerplate {
+    let current_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
+    let src_dir = current_dir.join("..").join(src_name);
+    rerun_if_changed_anything_in_dir(&src_dir);
+
+    let out_dir = env::var_os("RUSTBUILD_NATIVE_DIR").unwrap_or(env::var_os("OUT_DIR").unwrap());
+    let out_dir = PathBuf::from(out_dir).join(out_name);
+    let _ = fs::create_dir_all(&out_dir);
+    println!("cargo:rustc-link-lib=static={}", link_name);
+    println!("cargo:rustc-link-search=native={}", out_dir.join(search_subdir).display());
+
+    let timestamp = out_dir.join(timestamp_name);
+    let skip_build = up_to_date(Path::new("build.rs"), &timestamp) &&
+                     up_to_date(&src_dir, &timestamp);
+
+    NativeLibBoilerplate {
+        skip_build: skip_build,
+        src_dir: src_dir,
+        out_dir: out_dir,
+        timestamp: timestamp,
     }
 }
 
