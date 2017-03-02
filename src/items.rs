@@ -526,6 +526,7 @@ pub fn format_impl(context: &RewriteContext, item: &ast::Item, offset: Indent) -
                                                                            offset.block_only()),
                                                              context.config.where_density,
                                                              "{",
+                                                             false,
                                                              None));
 
         if try_opt!(is_impl_single_line(context, &items, &result, &where_clause_str, &item)) {
@@ -794,6 +795,7 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
                                                                            offset.block_only()),
                                                              where_density,
                                                              "{",
+                                                             !has_body,
                                                              None));
         // If the where clause cannot fit on the same line,
         // put the where clause on a new line
@@ -1008,6 +1010,7 @@ fn format_tuple_struct(context: &RewriteContext,
                                           Shape::legacy(where_budget, offset.block_only()),
                                           Density::Compressed,
                                           ";",
+                                          true,
                                           None))
         }
         None => "".to_owned(),
@@ -1100,6 +1103,7 @@ pub fn rewrite_type_alias(context: &RewriteContext,
                                                          Shape::legacy(where_budget, indent),
                                                          context.config.where_density,
                                                          "=",
+                                                         true,
                                                          Some(span.hi)));
     result.push_str(&where_clause_str);
     result.push_str(" = ");
@@ -1657,6 +1661,7 @@ fn rewrite_fn_base(context: &RewriteContext,
                                                          Shape::legacy(where_budget, indent),
                                                          where_density,
                                                          "{",
+                                                         !has_body,
                                                          Some(span.hi)));
 
     if last_line_width(&result) + where_clause_str.len() > context.config.max_width &&
@@ -1940,6 +1945,7 @@ fn rewrite_where_clause(context: &RewriteContext,
                         shape: Shape,
                         density: Density,
                         terminator: &str,
+                        suppress_comma: bool,
                         span_end: Option<BytePos>)
                         -> Option<String> {
     if where_clause.predicates.is_empty() {
@@ -1982,7 +1988,7 @@ fn rewrite_where_clause(context: &RewriteContext,
 
     let mut comma_tactic = context.config.trailing_comma;
     // Kind of a hack because we don't usually have trailing commas in where clauses.
-    if comma_tactic == SeparatorTactic::Vertical {
+    if comma_tactic == SeparatorTactic::Vertical || suppress_comma {
         comma_tactic = SeparatorTactic::Never;
     }
 
@@ -2049,6 +2055,7 @@ fn format_generics(context: &RewriteContext,
                                                                            offset.block_only()),
                                                              Density::Tall,
                                                              terminator,
+                                                             false,
                                                              Some(span.hi)));
         result.push_str(&where_clause_str);
         if !force_same_line_brace &&
