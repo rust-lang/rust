@@ -56,8 +56,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 let (usize_ty, bool_ty) = (this.hir.usize_ty(), this.hir.bool_ty());
 
                 let slice = unpack!(block = this.as_lvalue(block, lhs));
-
-                let idx = unpack!(block = this.as_operand(block, index));
+                // extent=None so lvalue indexes live forever. They are scalars so they
+                // do not need storage annotations, and they are often copied between
+                // places.
+                let idx = unpack!(block = this.as_operand(block, None, index));
 
                 // bounds check:
                 let (len, lt) = (this.temp(usize_ty.clone()), this.temp(bool_ty));
@@ -121,7 +123,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     Some(Category::Lvalue) => false,
                     _ => true,
                 });
-                this.as_temp(block, expr)
+                this.as_temp(block, expr.temp_lifetime, expr)
             }
         }
     }

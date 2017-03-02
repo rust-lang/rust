@@ -28,16 +28,15 @@ fn main() {
 //         StorageLive(_5);
 //         _5 = _1;
 //         _4 = std::option::Option<i32>::Some(_5,);
-//         _3 = &_4;
 //         StorageDead(_5);
+//         _3 = &_4;
 //         _2 = ();
-//         StorageDead(_4);
 //         StorageDead(_3);
+//         StorageDead(_4);
 //         StorageLive(_6);
 //         _6 = const 1i32;
 //         _0 = ();
 //         StorageDead(_6);
 //         StorageDead(_1);
-//         return;
-//     }
+//      }
 // END rustc.node4.TypeckMir.before.mir
