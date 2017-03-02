@@ -1900,13 +1900,20 @@ pub trait ToString {
     fn to_string(&self) -> String;
 }
 
+/// # Panics
+///
+/// In this implementation, the `to_string` method panics
+/// if the `Display` implementation returns an error.
+/// This indicates an incorrect `Display` implementation
+/// since `fmt::Write for String` never returns an error itself.
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: fmt::Display + ?Sized> ToString for T {
     #[inline]
     default fn to_string(&self) -> String {
         use core::fmt::Write;
         let mut buf = String::new();
-        let _ = buf.write_fmt(format_args!("{}", self));
+        buf.write_fmt(format_args!("{}", self))
+           .expect("a Display implementation return an error unexpectedly");
         buf.shrink_to_fit();
         buf
     }
