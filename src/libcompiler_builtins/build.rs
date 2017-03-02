@@ -39,6 +39,7 @@ extern crate gcc;
 use std::collections::BTreeMap;
 use std::env;
 use std::path::Path;
+use build_helper::native_lib_boilerplate;
 
 struct Sources {
     // SYMBOL -> PATH TO SOURCE
@@ -80,7 +81,17 @@ fn main() {
         return;
     }
 
+    // Can't reuse `sources` list for the freshness check becuse it doesn't contain header files.
+    // Use the produced library itself as a timestamp.
+    let out_name = "libcompiler-rt.a";
+    let native = native_lib_boilerplate("compiler-rt", "compiler-rt", "compiler-rt",
+                                        out_name, ".");
+    if native.skip_build {
+        return
+    }
+
     let cfg = &mut gcc::Config::new();
+    cfg.out_dir(native.out_dir);
 
     if target.contains("msvc") {
         // Don't pull in extra libraries on MSVC
@@ -405,8 +416,5 @@ fn main() {
         cfg.file(Path::new("../compiler-rt/lib/builtins").join(src));
     }
 
-    // Can't reuse `sources` list becuse it doesn't contain header files.
-    build_helper::rerun_if_changed_anything_in_dir(Path::new("../compiler-rt"));
-
-    cfg.compile("libcompiler-rt.a");
+    cfg.compile(out_name);
 }

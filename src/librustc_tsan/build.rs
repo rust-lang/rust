@@ -8,30 +8,33 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[macro_use]
 extern crate build_helper;
 extern crate cmake;
 
-use std::path::PathBuf;
 use std::env;
+use std::fs::File;
+use build_helper::native_lib_boilerplate;
 
 use cmake::Config;
 
 fn main() {
     if let Some(llvm_config) = env::var_os("LLVM_CONFIG") {
-        let dst = Config::new("../compiler-rt")
+        let native = native_lib_boilerplate("compiler-rt", "tsan", "clang_rt.tsan-x86_64",
+                                            "rustbuild.timestamp", "build/lib/linux");
+        if native.skip_build {
+            return
+        }
+
+        Config::new(&native.src_dir)
             .define("COMPILER_RT_BUILD_SANITIZERS", "ON")
             .define("COMPILER_RT_BUILD_BUILTINS", "OFF")
             .define("COMPILER_RT_BUILD_XRAY", "OFF")
             .define("LLVM_CONFIG_PATH", llvm_config)
+            .out_dir(&native.out_dir)
             .build_target("tsan")
             .build();
 
-        println!("cargo:rustc-link-search=native={}",
-                 dst.join("build/lib/linux").display());
-        println!("cargo:rustc-link-lib=static=clang_rt.tsan-x86_64");
-
-        build_helper::rerun_if_changed_anything_in_dir(&PathBuf::from(env::var("CARGO_MANIFEST_DIR")
-                .unwrap())
-            .join("../compiler-rt"));
+        t!(File::create(&native.timestamp));
     }
 }
