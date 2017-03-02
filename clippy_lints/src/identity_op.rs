@@ -64,7 +64,7 @@ fn check(cx: &LateContext, e: &Expr, m: i8, span: Span, arg: Span) {
         if match m {
             0 => v.to_u128_unchecked() == 0,
             -1 => match v.int_type() {
-                SignedInt(_) => (v.to_u128_unchecked() as i128  == -1),
+                SignedInt(_) => #[allow(cast_possible_wrap)] (v.to_u128_unchecked() as i128  == -1),
                 UnsignedInt(_) =>  false
             },
             1 => v.to_u128_unchecked() == 1,

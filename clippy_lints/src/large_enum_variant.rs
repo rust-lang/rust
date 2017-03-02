@@ -2,10 +2,8 @@
 
 use rustc::lint::*;
 use rustc::hir::*;
-use utils::{span_lint_and_then, snippet_opt};
-use rustc::ty::layout::TargetDataLayout;
+use utils::{span_lint_and_then, snippet_opt, type_size};
 use rustc::ty::TypeFoldable;
-use rustc::traits::Reveal;
 
 /// **What it does:** Checks for large size differences between variants on `enum`s.
 ///
@@ -55,28 +53,22 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LargeEnumVariant {
             let mut largest_variant: Option<(_, _)> = None;
 
             for (i, variant) in adt.variants.iter().enumerate() {
-                let data_layout = TargetDataLayout::parse(cx.sess());
-                cx.tcx.infer_ctxt((), Reveal::All).enter(|infcx| {
-                    let size: u64 = variant.fields
-                        .iter()
-                        .map(|f| {
-                            let ty = cx.tcx.item_type(f.did);
-                            if ty.needs_subst() {
-                                0 // we can't reason about generics, so we treat them as zero sized
-                            } else {
-                                ty.layout(&infcx)
-                                    .expect("layout should be computable for concrete type")
-                                    .size(&data_layout)
-                                    .bytes()
-                            }
-                        })
-                        .sum();
+                let size: u64 = variant.fields
+                    .iter()
+                    .map(|f| {
+                        let ty = cx.tcx.item_type(f.did);
+                        if ty.needs_subst() {
+                            0 // we can't reason about generics, so we treat them as zero sized
+                        } else {
+                            type_size(cx, ty).expect("size should be computable for concrete type")
+                        }
+                    })
+                    .sum();
 
-                    let grouped = (size, (i, variant));
+                let grouped = (size, (i, variant));
 
-                    update_if(&mut smallest_variant, grouped, |a, b| b.0 <= a.0);
-                    update_if(&mut largest_variant, grouped, |a, b| b.0 >= a.0);
-                });
+                update_if(&mut smallest_variant, grouped, |a, b| b.0 <= a.0);
+                update_if(&mut largest_variant, grouped, |a, b| b.0 >= a.0);
             }
 
             if let (Some(smallest), Some(largest)) = (smallest_variant, largest_variant) {

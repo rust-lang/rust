@@ -3,33 +3,79 @@
 
 #![deny(invalid_upcast_comparisons)]
 #![allow(unused, eq_op, no_effect, unnecessary_operation)]
+
+fn mk_value<T>() -> T { unimplemented!() }
+
 fn main() {
-    let zero: u32 = 0;
-    let u8_max: u8 = 255;
+    let u32: u32 = mk_value();
+    let u8: u8 = mk_value();
+    let i32: i32 = mk_value();
+    let i8: i8 = mk_value();
 
-    (u8_max as u32) > 300;
-    (u8_max as u32) > 20;
+    // always false, since no u8 can be > 300
+    (u8 as u32) > 300;
+    (u8 as i32) > 300;
+    (u8 as u32) == 300;
+    (u8 as i32) == 300;
+    300 < (u8 as u32);
+    300 < (u8 as i32);
+    300 == (u8 as u32);
+    300 == (u8 as i32);
+    // inverted of the above
+    (u8 as u32) <= 300;
+    (u8 as i32) <= 300;
+    (u8 as u32) != 300;
+    (u8 as i32) != 300;
+    300 >= (u8 as u32);
+    300 >= (u8 as i32);
+    300 != (u8 as u32);
+    300 != (u8 as i32);
 
-    (zero as i32) < -5;
-    (zero as i32) < 10;
+    // always false, since u8 -> i32 doesn't wrap
+    (u8 as i32) < 0;
+    -5 != (u8 as i32);
+    // inverted of the above
+    (u8 as i32) >= 0;
+    -5 == (u8 as i32);
 
-    -5 < (zero as i32);
-    0 <= (zero as i32);
-    0 < (zero as i32);
+    // always false, since no u8 can be 1337
+    1337 == (u8 as i32);
+    1337 == (u8 as u32);
+    // inverted of the above
+    1337 != (u8 as i32);
+    1337 != (u8 as u32);
 
-    -5 > (zero as i32);
-    -5 >= (u8_max as i32);
-    1337 == (u8_max as i32);
-
-    -5 == (zero as i32);
-    -5 != (u8_max as i32);
 
     // Those are Ok:
-    42 == (u8_max as i32);
-    42 != (u8_max as i32);
-    42 > (u8_max as i32);
-    (u8_max as i32) == 42;
-    (u8_max as i32) != 42;
-    (u8_max as i32) > 42;
-    (u8_max as i32) < 42;
+    (u8 as u32) > 20;
+    42 == (u8 as i32);
+    42 != (u8 as i32);
+    42 > (u8 as i32);
+    (u8 as i32) == 42;
+    (u8 as i32) != 42;
+    (u8 as i32) > 42;
+    (u8 as i32) < 42;
+
+    (u8 as i8) == -1;
+    (u8 as i8) != -1;
+    (u8 as i32) > -1;
+    (u8 as i32) < -1;
+    (u32 as i32) < -5;
+    (u32 as i32) < 10;
+
+    (i8 as u8) == 1;
+    (i8 as u8) != 1;
+    (i8 as u8) < 1;
+    (i8 as u8) > 1;
+    (i32 as u32) < 5;
+    (i32 as u32) < 10;
+
+    -5 < (u32 as i32);
+    0 <= (u32 as i32);
+    0 < (u32 as i32);
+
+    -5 > (u32 as i32);
+    -5 >= (u8 as i32);
+
+    -5 == (u32 as i32);
 }

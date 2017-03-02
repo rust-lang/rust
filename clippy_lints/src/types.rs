@@ -8,7 +8,7 @@ use syntax::ast::{IntTy, UintTy, FloatTy};
 use syntax::attr::IntType;
 use syntax::codemap::Span;
 use utils::{comparisons, higher, in_external_macro, in_macro, match_def_path, snippet, span_help_and_lint, span_lint,
-            opt_def_id, last_path_segment};
+            opt_def_id, last_path_segment, type_size};
 use utils::paths;
 
 /// Handles all the linting of funky types
@@ -1077,7 +1077,13 @@ fn numeric_cast_precast_bounds<'a>(cx: &LateContext, expr: &'a Expr) -> Option<(
     use std::*;
 
     if let ExprCast(ref cast_exp, _) = expr.node {
-        match cx.tables.expr_ty(cast_exp).sty {
+        let pre_cast_ty = cx.tables.expr_ty(cast_exp);
+        let cast_ty = cx.tables.expr_ty(expr);
+        // if it's a cast from i32 to u32 wrapping will invalidate all these checks
+        if type_size(cx, pre_cast_ty) == type_size(cx, cast_ty) {
+            return None;
+        }
+        match pre_cast_ty.sty {
             TyInt(int_ty) => {
                 Some(match int_ty {
                     IntTy::I8 => (FullInt::S(i8::min_value() as i128), FullInt::S(i8::max_value() as i128)),
@@ -1113,7 +1119,7 @@ fn node_as_const_fullint(cx: &LateContext, expr: &Expr) -> Option<FullInt> {
         Ok(val) => {
             if let Integral(const_int) = val {
                 match const_int.int_type() {
-                    IntType::SignedInt(_) => Some(FullInt::S(const_int.to_u128_unchecked() as i128)),
+                    IntType::SignedInt(_) => #[allow(cast_possible_wrap)] Some(FullInt::S(const_int.to_u128_unchecked() as i128)),
                     IntType::UnsignedInt(_) => Some(FullInt::U(const_int.to_u128_unchecked())),
                 }
             } else {
