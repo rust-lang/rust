@@ -541,6 +541,36 @@ fn from_utf8_mostly_ascii() {
 }
 
 #[test]
+fn from_utf8_error() {
+    macro_rules! test {
+        ($input: expr, $expected_valid_up_to: expr, $expected_resume_from: expr) => {
+            let error = from_utf8($input).unwrap_err();
+            assert_eq!(error.valid_up_to(), $expected_valid_up_to);
+            assert_eq!(error.resume_from(), $expected_resume_from);
+        }
+    }
+    test!(b"A\xC3\xA9 \xFF ", 4, Some(5));
+    test!(b"A\xC3\xA9 \x80 ", 4, Some(5));
+    test!(b"A\xC3\xA9 \xC1 ", 4, Some(5));
+    test!(b"A\xC3\xA9 \xC1", 4, Some(5));
+    test!(b"A\xC3\xA9 \xC2", 4, None);
+    test!(b"A\xC3\xA9 \xC2 ", 4, Some(5));
+    test!(b"A\xC3\xA9 \xC2\xC0", 4, Some(5));
+    test!(b"A\xC3\xA9 \xE0", 4, None);
+    test!(b"A\xC3\xA9 \xE0\x9F", 4, Some(5));
+    test!(b"A\xC3\xA9 \xE0\xA0", 4, None);
+    test!(b"A\xC3\xA9 \xE0\xA0\xC0", 4, Some(6));
+    test!(b"A\xC3\xA9 \xE0\xA0 ", 4, Some(6));
+    test!(b"A\xC3\xA9 \xED\xA0\x80 ", 4, Some(5));
+    test!(b"A\xC3\xA9 \xF1", 4, None);
+    test!(b"A\xC3\xA9 \xF1\x80", 4, None);
+    test!(b"A\xC3\xA9 \xF1\x80\x80", 4, None);
+    test!(b"A\xC3\xA9 \xF1 ", 4, Some(5));
+    test!(b"A\xC3\xA9 \xF1\x80 ", 4, Some(6));
+    test!(b"A\xC3\xA9 \xF1\x80\x80 ", 4, Some(7));
+}
+
+#[test]
 fn test_as_bytes() {
     // no null
     let v = [

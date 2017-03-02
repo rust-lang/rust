@@ -28,6 +28,7 @@
 #![feature(test)]
 #![feature(unboxed_closures)]
 #![feature(unicode)]
+#![feature(utf8_error_resume_from)]
 
 extern crate collections;
 extern crate test;
