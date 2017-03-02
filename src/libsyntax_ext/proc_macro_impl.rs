@@ -56,3 +56,38 @@ impl base::AttrProcMacro for AttrProcMacro {
         }
     }
 }
+
+pub struct BangProcMacro {
+    pub inner: fn(TsShim) -> TsShim,
+}
+
+impl base::ProcMacro for BangProcMacro {
+    fn expand<'cx>(&self,
+                   ecx: &'cx mut ExtCtxt,
+                   span: Span,
+                   input: TokenStream)
+                   -> TokenStream {
+        let input = __internal::token_stream_wrap(input);
+
+        let res = __internal::set_parse_sess(&ecx.parse_sess, || {
+            panic::catch_unwind(panic::AssertUnwindSafe(|| (self.inner)(input)))
+        });
+
+        match res {
+            Ok(stream) => __internal::token_stream_inner(stream),
+            Err(e) => {
+                let msg = "proc macro panicked";
+                let mut err = ecx.struct_span_fatal(span, msg);
+                if let Some(s) = e.downcast_ref::<String>() {
+                    err.help(&format!("message: {}", s));
+                }
+                if let Some(s) = e.downcast_ref::<&'static str>() {
+                    err.help(&format!("message: {}", s));
+                }
+
+                err.emit();
+                panic!(FatalError);
+            }
+        }
+    }
+}

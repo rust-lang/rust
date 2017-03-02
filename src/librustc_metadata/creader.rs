@@ -586,7 +586,7 @@ impl<'a> CrateLoader<'a> {
         use proc_macro::__internal::Registry;
         use rustc_back::dynamic_lib::DynamicLibrary;
         use syntax_ext::deriving::custom::ProcMacroDerive;
-        use syntax_ext::proc_macro_impl::AttrProcMacro;
+        use syntax_ext::proc_macro_impl::{AttrProcMacro, BangProcMacro};
 
         let path = match dylib {
             Some(dylib) => dylib,
@@ -627,6 +627,15 @@ impl<'a> CrateLoader<'a> {
                                         expand: fn(TokenStream, TokenStream) -> TokenStream) {
                 let expand = SyntaxExtension::AttrProcMacro(
                     Box::new(AttrProcMacro { inner: expand })
+                );
+                self.0.push((Symbol::intern(name), Rc::new(expand)));
+            }
+
+            fn register_bang_proc_macro(&mut self,
+                                        name: &str,
+                                        expand: fn(TokenStream) -> TokenStream) {
+                let expand = SyntaxExtension::ProcMacro(
+                    Box::new(BangProcMacro { inner: expand })
                 );
                 self.0.push((Symbol::intern(name), Rc::new(expand)));
             }
