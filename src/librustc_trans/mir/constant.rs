@@ -529,7 +529,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
 
             mir::Rvalue::Repeat(ref elem, ref count) => {
                 let elem = self.const_operand(elem, span)?;
-                let size = count.value.as_u64(tcx.sess.target.uint_type);
+                let size = count.as_u64(tcx.sess.target.uint_type);
                 let fields = vec![elem.llval; size as usize];
                 self.const_array(dest_ty, &fields)
             }
@@ -548,7 +548,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                 failure?;
 
                 match *kind {
-                    mir::AggregateKind::Array => {
+                    mir::AggregateKind::Array(_) => {
                         self.const_array(dest_ty, &fields)
                     }
                     mir::AggregateKind::Adt(..) |
