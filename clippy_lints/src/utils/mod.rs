@@ -9,6 +9,7 @@ use rustc::traits::Reveal;
 use rustc::traits;
 use rustc::ty::subst::Subst;
 use rustc::ty;
+use rustc::ty::layout::TargetDataLayout;
 use rustc_errors;
 use std::borrow::Cow;
 use std::env;
@@ -781,7 +782,7 @@ pub fn return_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, fn_item: NodeId) -> ty::T
     let parameter_env = ty::ParameterEnvironment::for_item(cx.tcx, fn_item);
     let fn_def_id = cx.tcx.hir.local_def_id(fn_item);
     let fn_sig = cx.tcx.item_type(fn_def_id).fn_sig();
-    let fn_sig = cx.tcx.liberate_late_bound_regions(parameter_env.free_id_outlive, fn_sig);
+    let fn_sig = cx.tcx.liberate_late_bound_regions(parameter_env.free_id_outlive, &fn_sig);
     fn_sig.output()
 }
 
@@ -806,7 +807,7 @@ pub fn same_tys<'a, 'tcx>(
 pub fn type_is_unsafe_function(ty: ty::Ty) -> bool {
     match ty.sty {
         ty::TyFnDef(_, _, f) |
-        ty::TyFnPtr(f) => f.unsafety == Unsafety::Unsafe,
+        ty::TyFnPtr(f) => f.unsafety() == Unsafety::Unsafe,
         _ => false,
     }
 }
@@ -971,4 +972,10 @@ pub fn is_try(expr: &Expr) -> Option<&Expr> {
     }
 
     None
+}
+
+pub fn type_size<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: ty::Ty<'tcx>) -> Option<u64> {
+    cx.tcx.infer_ctxt((), Reveal::All).enter(|infcx|
+        ty.layout(&infcx).ok().map(|lay| lay.size(&TargetDataLayout::parse(cx.sess())).bytes())
+    )
 }

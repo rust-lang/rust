@@ -3,7 +3,7 @@ use rustc::lint::*;
 use rustc::hir::*;
 use syntax::codemap::Span;
 use utils::{span_lint, snippet, in_macro};
-use rustc_const_math::ConstInt;
+use syntax::attr::IntType::{SignedInt, UnsignedInt};
 
 /// **What it does:** Checks for identity operations, e.g. `x + 0`.
 ///
@@ -60,11 +60,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IdentityOp {
 
 
 fn check(cx: &LateContext, e: &Expr, m: i8, span: Span, arg: Span) {
-    if let Some(v @ Constant::Int(_)) = constant_simple(e) {
+    if let Some(Constant::Int(v)) = constant_simple(cx, e) {
         if match m {
-            0 => v == Constant::Int(ConstInt::Infer(0)),
-            -1 => v == Constant::Int(ConstInt::InferSigned(-1)),
-            1 => v == Constant::Int(ConstInt::Infer(1)),
+            0 => v.to_u128_unchecked() == 0,
+            -1 => match v.int_type() {
+                SignedInt(_) => #[allow(cast_possible_wrap)] (v.to_u128_unchecked() as i128  == -1),
+                UnsignedInt(_) =>  false
+            },
+            1 => v.to_u128_unchecked() == 1,
             _ => unreachable!(),
         } {
             span_lint(cx,

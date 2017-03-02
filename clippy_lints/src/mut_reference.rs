@@ -62,7 +62,7 @@ fn check_arguments(cx: &LateContext, arguments: &[Expr], type_definition: &TyS, 
     match type_definition.sty {
         TypeVariants::TyFnDef(_, _, fn_type) |
         TypeVariants::TyFnPtr(fn_type) => {
-            let parameters = fn_type.sig.skip_binder().inputs();
+            let parameters = fn_type.skip_binder().inputs();
             for (argument, parameter) in arguments.iter().zip(parameters.iter()) {
                 match parameter.sty {
                     TypeVariants::TyRef(_, TypeAndMut { mutbl: MutImmutable, .. }) |
