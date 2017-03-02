@@ -21,7 +21,8 @@ use config::Config;
 use rewrite::{Rewrite, RewriteContext};
 use comment::rewrite_comment;
 use macros::{rewrite_macro, MacroPosition};
-use items::{rewrite_static, rewrite_associated_type, rewrite_type_alias, format_impl, format_trait};
+use items::{rewrite_static, rewrite_associated_type, rewrite_associated_impl_type,
+            rewrite_type_alias, format_impl, format_trait};
 
 fn is_use_item(item: &ast::Item) -> bool {
     match item.node {
@@ -411,11 +412,12 @@ impl<'a> FmtVisitor<'a> {
                 self.push_rewrite(ii.span, rewrite);
             }
             ast::ImplItemKind::Type(ref ty) => {
-                let rewrite = rewrite_associated_type(ii.ident,
-                                                      Some(ty),
-                                                      None,
-                                                      &self.get_context(),
-                                                      self.block_indent);
+                let rewrite = rewrite_associated_impl_type(ii.ident,
+                                                           ii.defaultness,
+                                                           Some(ty),
+                                                           None,
+                                                           &self.get_context(),
+                                                           self.block_indent);
                 self.push_rewrite(ii.span, rewrite);
             }
             ast::ImplItemKind::Macro(ref mac) => {

@@ -124,13 +124,13 @@ A minimal Travis setup could look like this:
 ```yaml
 language: rust
 cache: cargo
-before_script: (cargo install rustfmt || true)
+before_script:
+- export PATH="$PATH:$HOME/.cargo/bin"
+- which rustfmt || cargo install rustfmt
 script:
-- |
-  export PATH=$PATH:~/.cargo/bin &&
-  cargo fmt -- --write-mode=diff &&
-  cargo build &&
-  cargo test
+- cargo fmt -- --write-mode=diff
+- cargo build
+- cargo test
 ```
 
 Note that using `cache: cargo` is optional but highly recommended to speed up the installation.
