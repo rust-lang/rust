@@ -524,6 +524,7 @@ use string;
 pub fn format(args: Arguments) -> string::String {
     let capacity = args.estimated_capacity();
     let mut output = string::String::with_capacity(capacity);
-    let _ = output.write_fmt(args);
+    output.write_fmt(args)
+          .expect("a formatting trait implementation returned an error");
     output
 }
