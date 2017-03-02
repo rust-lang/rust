@@ -1,0 +1,21 @@
+error[E0275]: overflow evaluating the requirement `K: std::marker::Send`
+  --> $DIR/recursion_limit.rs:44:5
+   |
+44 |     is_send::<A>();
+   |     ^^^^^^^^^^^^
+   |
+   = help: consider adding a `#![recursion_limit="20"]` attribute to your crate
+   = note: required because it appears within the type `J`
+   = note: required because it appears within the type `I`
+   = note: required because it appears within the type `H`
+   = note: required because it appears within the type `G`
+   = note: required because it appears within the type `F`
+   = note: required because it appears within the type `E`
+   = note: required because it appears within the type `D`
+   = note: required because it appears within the type `C`
+   = note: required because it appears within the type `B`
+   = note: required because it appears within the type `A`
+   = note: required by `is_send`
+
+error: aborting due to previous error
+
