@@ -24,8 +24,8 @@ use consts;
 use machine::llalign_of_min;
 use meth;
 use monomorphize;
+use type_of;
 use tvec;
-use type_of::{self, align_of};
 use type_::Type;
 
 use rustc_data_structures::indexed_vec::IndexVec;
@@ -910,7 +910,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         let cast_ptr = bcx.pointercast(dst.llval, llty.ptr_to());
         let in_type = val.ty;
         let out_type = dst.ty.to_ty(bcx.tcx());;
-        let llalign = cmp::min(align_of(bcx.ccx, in_type), align_of(bcx.ccx, out_type));
+        let llalign = cmp::min(bcx.ccx.align_of(in_type), bcx.ccx.align_of(out_type));
         self.store_operand(bcx, cast_ptr, Some(llalign), val);
     }
 
