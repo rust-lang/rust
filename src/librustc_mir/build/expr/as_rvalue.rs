@@ -148,12 +148,13 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 //     to the same MIR as `let x = ();`.
 
                 // first process the set of fields
+                let el_ty = expr.ty.sequence_element_type(this.hir.tcx());
                 let fields: Vec<_> =
                     fields.into_iter()
                           .map(|f| unpack!(block = this.as_operand(block, f)))
                           .collect();
 
-                block.and(Rvalue::Aggregate(AggregateKind::Array, fields))
+                block.and(Rvalue::Aggregate(AggregateKind::Array(el_ty), fields))
             }
             ExprKind::Tuple { fields } => { // see (*) above
                 // first process the set of fields
