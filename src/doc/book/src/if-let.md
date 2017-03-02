@@ -1,6 +1,6 @@
 # if let
 
-`if let` permits [patterns][pattern] matching within the condition of an [if][if] statement.
+`if let` permits [patterns][patterns] matching within the condition of an [if][if] statement.
 This allows us to reduce the overhead of certain kinds of [pattern][patterns] matches
 and express them in a more convenient way.  
 
