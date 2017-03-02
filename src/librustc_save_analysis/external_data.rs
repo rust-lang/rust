@@ -14,6 +14,7 @@ use rustc::ty::TyCtxt;
 use syntax::ast::{self, NodeId};
 use syntax::codemap::CodeMap;
 use syntax::print::pprust;
+use syntax::symbol::Symbol;
 use syntax_pos::Span;
 
 use data::{self, Visibility, SigElement};
@@ -72,28 +73,29 @@ pub struct Attribute {
     span: SpanData,
 }
 
-impl Lower for ast::Attribute {
-    type Target = Attribute;
-
-    fn lower(mut self, tcx: TyCtxt) -> Attribute {
-        // strip #[] and #![] from the original attributes
-        self.style = ast::AttrStyle::Outer;
-        let value = pprust::attribute_to_string(&self);
-        // #[] are all ASCII which makes this slice save
-        let value = value[2..value.len()-1].to_string();
-
-        Attribute {
-            value: value,
-            span: SpanData::from_span(self.span, tcx.sess.codemap()),
-        }
-    }
-}
-
 impl Lower for Vec<ast::Attribute> {
     type Target = Vec<Attribute>;
 
     fn lower(self, tcx: TyCtxt) -> Vec<Attribute> {
-        self.into_iter().map(|x| x.lower(tcx)).collect()
+        let doc = Symbol::intern("doc");
+        self.into_iter()
+        // Only retain real attributes. Doc comments are lowered separately.
+        .filter(|attr| attr.name() != doc)
+        .map(|mut attr| {
+            // Remove the surrounding '#[..]' or '#![..]' of the pretty printed
+            // attribute. First normalize all inner attribute (#![..]) to outer
+            // ones (#[..]), then remove the two leading and the one trailing character.
+            attr.style = ast::AttrStyle::Outer;
+            let value = pprust::attribute_to_string(&attr);
+            // This str slicing works correctly, because the leading and trailing characters
+            // are in the ASCII range and thus exactly one byte each.
+            let value = value[2..value.len()-1].to_string();
+
+            Attribute {
+                value: value,
+                span: SpanData::from_span(attr.span, tcx.sess.codemap()),
+            }
+        }).collect()
     }
 }
 
