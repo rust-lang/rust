@@ -60,10 +60,13 @@ pub struct Guard {
 
 /// A type of error which can be returned whenever a lock is acquired.
 ///
-/// Both Mutexes and RwLocks are poisoned whenever a thread fails while the lock
+/// Both [`Mutex`]es and [`RwLock`]s are poisoned whenever a thread fails while the lock
 /// is held. The precise semantics for when a lock is poisoned is documented on
 /// each lock, but once a lock is poisoned then all future acquisitions will
 /// return this error.
+///
+/// [`Mutex`]: ../../std/sync/struct.Mutex.html
+/// [`RwLock`]: ../../std/sync/struct.RwLock.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct PoisonError<T> {
     guard: T,
@@ -85,19 +88,26 @@ pub enum TryLockError<T> {
 
 /// A type alias for the result of a lock method which can be poisoned.
 ///
-/// The `Ok` variant of this result indicates that the primitive was not
-/// poisoned, and the `Guard` is contained within. The `Err` variant indicates
-/// that the primitive was poisoned. Note that the `Err` variant *also* carries
-/// the associated guard, and it can be acquired through the `into_inner`
+/// The [`Ok`] variant of this result indicates that the primitive was not
+/// poisoned, and the `Guard` is contained within. The [`Err`] variant indicates
+/// that the primitive was poisoned. Note that the [`Err`] variant *also* carries
+/// the associated guard, and it can be acquired through the [`into_inner`]
 /// method.
+///
+/// [`Ok`]: ../../std/result/enum.Result.html#variant.Ok
+/// [`Err`]: ../../std/result/enum.Result.html#variant.Err
+/// [`into_inner`]: ../../std/sync/struct.Mutex.html#method.into_inner
 #[stable(feature = "rust1", since = "1.0.0")]
 pub type LockResult<Guard> = Result<Guard, PoisonError<Guard>>;
 
 /// A type alias for the result of a nonblocking locking method.
 ///
-/// For more information, see `LockResult`. A `TryLockResult` doesn't
-/// necessarily hold the associated guard in the `Err` type as the lock may not
+/// For more information, see [`LockResult`]. A `TryLockResult` doesn't
+/// necessarily hold the associated guard in the [`Err`] type as the lock may not
 /// have been acquired for other reasons.
+///
+/// [`LockResult`]: ../../std/sync/type.LockResult.html
+/// [`Err`]: ../../std/result/enum.Result.html#variant.Err
 #[stable(feature = "rust1", since = "1.0.0")]
 pub type TryLockResult<Guard> = Result<Guard, TryLockError<Guard>>;
 
@@ -124,6 +134,11 @@ impl<T> Error for PoisonError<T> {
 
 impl<T> PoisonError<T> {
     /// Creates a `PoisonError`.
+    ///
+    /// This is generally created by methods like [`Mutex::lock`] or [`RwLock::read`].
+    ///
+    /// [`Mutex::lock`]: ../../std/sync/struct.Mutex.html#method.lock
+    /// [`RwLock::read`]: ../../std/sync/struct.RwLock.html#method.read
     #[stable(feature = "sync_poison", since = "1.2.0")]
     pub fn new(guard: T) -> PoisonError<T> {
         PoisonError { guard: guard }

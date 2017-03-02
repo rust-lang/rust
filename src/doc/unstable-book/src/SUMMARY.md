@@ -5,6 +5,7 @@
 - [abi_sysv64](abi-sysv64.md)
 - [abi_unadjusted](abi-unadjusted.md)
 - [abi_vectorcall](abi-vectorcall.md)
+- [abi_x86_interrupt](abi-x86-interrupt.md)
 - [advanced_slice_patterns](advanced-slice-patterns.md)
 - [alloc_jemalloc](alloc-jemalloc.md)
 - [alloc_system](alloc-system.md)
