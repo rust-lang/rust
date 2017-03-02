@@ -9,17 +9,17 @@
 // except according to those terms.
 
 use ast::{self, Ident};
-use parse::{ParseSess,PResult,filemap_to_tts};
+use parse::{ParseSess, PResult, filemap_to_stream};
 use parse::{lexer, new_parser_from_source_str};
 use parse::parser::Parser;
 use ptr::P;
-use tokenstream;
+use tokenstream::TokenStream;
 use std::iter::Peekable;
 
 /// Map a string to tts, using a made-up filename:
-pub fn string_to_tts(source_str: String) -> Vec<tokenstream::TokenTree> {
+pub fn string_to_stream(source_str: String) -> TokenStream {
     let ps = ParseSess::new();
-    filemap_to_tts(&ps, ps.codemap().new_filemap("bogofile".to_string(), None, source_str))
+    filemap_to_stream(&ps, ps.codemap().new_filemap("bogofile".to_string(), None, source_str))
 }
 
 /// Map string to parser (via tts)

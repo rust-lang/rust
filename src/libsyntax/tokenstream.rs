@@ -409,10 +409,10 @@ mod tests {
     use syntax::ast::Ident;
     use syntax_pos::{Span, BytePos, NO_EXPANSION};
     use parse::token::Token;
-    use util::parser_testing::string_to_tts;
+    use util::parser_testing::string_to_stream;
 
     fn string_to_ts(string: &str) -> TokenStream {
-        string_to_tts(string.to_owned()).into_iter().collect()
+        string_to_stream(string.to_owned())
     }
 
     fn sp(a: u32, b: u32) -> Span {
@@ -428,18 +428,10 @@ mod tests {
         let test_res = string_to_ts("foo::bar::baz");
         let test_fst = string_to_ts("foo::bar");
         let test_snd = string_to_ts("::baz");
-        let eq_res = TokenStream::concat([test_fst, test_snd].iter().cloned());
+        let eq_res = TokenStream::concat(vec![test_fst, test_snd]);
         assert_eq!(test_res.trees().count(), 5);
         assert_eq!(eq_res.trees().count(), 5);
         assert_eq!(test_res.eq_unspanned(&eq_res), true);
-    }
-
-    #[test]
-    fn test_from_to_bijection() {
-        let test_start = string_to_tts("foo::bar(baz)".to_string());
-        let ts = test_start.iter().cloned().collect::<TokenStream>();
-        let test_end: Vec<TokenTree> = ts.trees().collect();
-        assert_eq!(test_start, test_end)
     }
 
     #[test]
