@@ -235,12 +235,6 @@ macro_rules! make_mir_visitor {
                 self.super_const_usize(const_usize);
             }
 
-            fn visit_typed_const_val(&mut self,
-                                     val: & $($mutability)* TypedConstVal<'tcx>,
-                                     location: Location) {
-                self.super_typed_const_val(val, location);
-            }
-
             fn visit_local_decl(&mut self,
                                 local_decl: & $($mutability)* LocalDecl<'tcx>) {
                 self.super_local_decl(local_decl);
@@ -467,9 +461,9 @@ macro_rules! make_mir_visitor {
                     }
 
                     Rvalue::Repeat(ref $($mutability)* value,
-                                   ref $($mutability)* typed_const_val) => {
+                                   ref $($mutability)* length) => {
                         self.visit_operand(value, location);
-                        self.visit_typed_const_val(typed_const_val, location);
+                        self.visit_const_usize(length, location);
                     }
 
                     Rvalue::Ref(r, bk, ref $($mutability)* path) => {
@@ -515,7 +509,8 @@ macro_rules! make_mir_visitor {
                     Rvalue::Aggregate(ref $($mutability)* kind,
                                       ref $($mutability)* operands) => {
                         match *kind {
-                            AggregateKind::Array => {
+                            AggregateKind::Array(ref $($mutability)* ty) => {
+                                self.visit_ty(ty);
                             }
                             AggregateKind::Tuple => {
                             }
@@ -645,20 +640,6 @@ macro_rules! make_mir_visitor {
                 self.visit_span(span);
                 self.visit_ty(ty);
                 self.visit_literal(literal, location);
-            }
-
-            fn super_typed_const_val(&mut self,
-                                     constant: & $($mutability)* TypedConstVal<'tcx>,
-                                     location: Location) {
-                let TypedConstVal {
-                    ref $($mutability)* span,
-                    ref $($mutability)* ty,
-                    ref $($mutability)* value,
-                } = *constant;
-
-                self.visit_span(span);
-                self.visit_ty(ty);
-                self.visit_const_usize(value, location);
             }
 
             fn super_literal(&mut self,
