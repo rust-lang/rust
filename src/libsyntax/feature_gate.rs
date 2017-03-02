@@ -330,6 +330,9 @@ declare_features! (
     // Used to identify crates that contain sanitizer runtimes
     // rustc internal
     (active, sanitizer_runtime, "1.17.0", None),
+
+    // `extern "x86-interrupt" fn()`
+    (active, abi_x86_interrupt, "1.17.0", Some(40180)),
 );
 
 declare_features! (
@@ -1035,6 +1038,10 @@ impl<'a> PostExpansionVisitor<'a> {
             Abi::Msp430Interrupt => {
                 gate_feature_post!(&self, abi_msp430_interrupt, span,
                                    "msp430-interrupt ABI is experimental and subject to change");
+            },
+            Abi::X86Interrupt => {
+                gate_feature_post!(&self, abi_x86_interrupt, span,
+                                   "x86-interrupt ABI is experimental and subject to change");
             },
             // Stable
             Abi::Cdecl |
