@@ -449,7 +449,7 @@ pub fn declare_local<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
         LocalVariable    |
         CapturedVariable => (0, DW_TAG_auto_variable)
     };
-    let align = ::type_of::align_of(cx, variable_type);
+    let align = cx.align_of(variable_type);
 
     let name = CString::new(variable_name.as_str().as_bytes()).unwrap();
     match (variable_access, &[][..]) {

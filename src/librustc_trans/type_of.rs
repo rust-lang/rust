@@ -322,10 +322,16 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
     llty
 }
 
-pub fn align_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>)
-                          -> machine::llalign {
-    let layout = cx.layout_of(t);
-    layout.align(&cx.tcx().data_layout).abi() as machine::llalign
+impl<'a, 'tcx> CrateContext<'a, 'tcx> {
+    pub fn align_of(&self, ty: Ty<'tcx>) -> machine::llalign {
+        let layout = self.layout_of(ty);
+        layout.align(&self.tcx().data_layout).abi() as machine::llalign
+    }
+
+    pub fn size_of(&self, ty: Ty<'tcx>) -> machine::llsize {
+        let layout = self.layout_of(ty);
+        layout.size(&self.tcx().data_layout).bytes() as machine::llsize
+    }
 }
 
 fn llvm_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> String {

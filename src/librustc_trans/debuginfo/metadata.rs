@@ -1772,7 +1772,7 @@ pub fn create_global_var_metadata(cx: &CrateContext,
     let var_name = CString::new(var_name).unwrap();
     let linkage_name = CString::new(linkage_name).unwrap();
 
-    let global_align = type_of::align_of(cx, variable_type);
+    let global_align = cx.align_of(variable_type);
 
     unsafe {
         llvm::LLVMRustDIBuilderCreateStaticVariable(DIB(cx),
