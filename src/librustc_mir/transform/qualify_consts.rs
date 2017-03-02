@@ -752,7 +752,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     }
 
                     if Some(def.did) == self.tcx.lang_items.unsafe_cell_type() {
-                        let ty = rvalue.ty(self.mir, self.tcx).unwrap();
+                        let ty = rvalue.ty(self.mir, self.tcx);
                         self.add_type(ty);
                         assert!(self.qualif.intersects(Qualif::MUTABLE_INTERIOR));
                         // Even if the value inside may not need dropping,
