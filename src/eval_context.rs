@@ -181,8 +181,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             Float(ConstFloat::F32(f)) => PrimVal::from_f32(f),
             Float(ConstFloat::F64(f)) => PrimVal::from_f64(f),
-            Float(ConstFloat::FInfer { .. }) =>
-                bug!("uninferred constants only exist before typeck"),
 
             Bool(b) => PrimVal::from_bool(b),
             Char(c) => PrimVal::from_char(c),
@@ -196,7 +194,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             Struct(_)    => unimplemented!(),
             Tuple(_)     => unimplemented!(),
-            Function(_)  => unimplemented!(),
+            Function(_, _)  => unimplemented!(),
             Array(_)     => unimplemented!(),
             Repeat(_, _) => unimplemented!(),
         };
@@ -457,7 +455,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                     General { discr, ref variants, .. } => {
                         if let mir::AggregateKind::Adt(adt_def, variant, _, _) = *kind {
-                            let discr_val = adt_def.variants[variant].disr_val;
+                            let discr_val = adt_def.discriminants(self.tcx)
+                                .nth(variant)
+                                .expect("broken mir: Adt variant id invalid")
+                                .to_u128_unchecked();
                             let discr_size = discr.size().bytes();
                             if variants[variant].packed {
                                 let ptr = self.force_allocation(dest)?.to_ptr_and_extra().0;
@@ -530,7 +531,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     CEnum { .. } => {
                         assert_eq!(operands.len(), 0);
                         if let mir::AggregateKind::Adt(adt_def, variant, _, _) = *kind {
-                            let n = adt_def.variants[variant].disr_val;
+                            let n = adt_def.discriminants(self.tcx)
+                                .nth(variant)
+                                .expect("broken mir: Adt variant index invalid")
+                                .to_u128_unchecked();
                             self.write_primval(dest, PrimVal::Bytes(n), dest_ty)?;
                         } else {
                             bug!("tried to assign {:?} to Layout::CEnum", kind);
@@ -640,9 +644,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     }
 
                     ReifyFnPointer => match self.operand_ty(operand).sty {
-                        ty::TyFnDef(def_id, substs, fn_ty) => {
-                            let fn_ty = self.tcx.erase_regions(&fn_ty);
-                            let fn_ptr = self.memory.create_fn_ptr(self.tcx,def_id, substs, fn_ty);
+                        ty::TyFnDef(def_id, substs, sig) => {
+                            let fn_ptr = self.memory.create_fn_ptr(def_id, substs, sig);
                             self.write_value(Value::ByVal(PrimVal::Ptr(fn_ptr)), dest, dest_ty)?;
                         },
                         ref other => bug!("reify fn pointer on {:?}", other),
@@ -658,8 +661,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                     ClosureFnPointer => match self.operand_ty(operand).sty {
                         ty::TyClosure(def_id, substs) => {
-                            let fn_ty = self.tcx.closure_type(def_id, substs);
-                            let fn_ptr = self.memory.create_fn_ptr_from_noncapture_closure(self.tcx, def_id, substs, fn_ty);
+                            let fn_ty = self.tcx.closure_type(def_id);
+                            let fn_ptr = self.memory.create_fn_ptr_from_noncapture_closure(def_id, substs, fn_ty);
                             self.write_value(Value::ByVal(PrimVal::Ptr(fn_ptr)), dest, dest_ty)?;
                         },
                         ref other => bug!("reify fn pointer on {:?}", other),
@@ -673,7 +676,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let ptr = self.force_allocation(lval)?.to_ptr();
                 let discr_val = self.read_discriminant_value(ptr, ty)?;
                 if let ty::TyAdt(adt_def, _) = ty.sty {
-                    if adt_def.variants.iter().all(|v| discr_val != v.disr_val) {
+                    if adt_def.discriminants(self.tcx).all(|v| discr_val != v.to_u128_unchecked()) {
                         return Err(EvalError::InvalidDiscriminant);
                     }
                 } else {

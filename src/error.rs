@@ -1,15 +1,14 @@
 use std::error::Error;
 use std::fmt;
 use rustc::mir;
-use rustc::ty::{BareFnTy, Ty, FnSig, layout};
-use syntax::abi::Abi;
+use rustc::ty::{PolyFnSig, Ty, layout};
 use memory::{Pointer, Function};
 use rustc_const_math::ConstMathErr;
 use syntax::codemap::Span;
 
 #[derive(Clone, Debug)]
 pub enum EvalError<'tcx> {
-    FunctionPointerTyMismatch(Abi, &'tcx FnSig<'tcx>, &'tcx BareFnTy<'tcx>),
+    FunctionPointerTyMismatch(PolyFnSig<'tcx>, PolyFnSig<'tcx>),
     NoMirFor(String),
     UnterminatedCString(Pointer),
     DanglingPointerDeref,
@@ -151,8 +150,8 @@ impl<'tcx> fmt::Display for EvalError<'tcx> {
                        ptr.offset, ptr.offset + size, ptr.alloc_id, allocation_size)
             },
             EvalError::NoMirFor(ref func) => write!(f, "no mir for `{}`", func),
-            EvalError::FunctionPointerTyMismatch(abi, sig, got) =>
-                write!(f, "tried to call a function with abi {:?} and sig {:?} through a function pointer of type {:?}", abi, sig, got),
+            EvalError::FunctionPointerTyMismatch(sig, got) =>
+                write!(f, "tried to call a function with sig {} through a function pointer of type {}", sig.skip_binder(), got.skip_binder()),
             EvalError::ArrayIndexOutOfBounds(span, len, index) =>
                 write!(f, "index out of bounds: the len is {} but the index is {} at {:?}", len, index, span),
             EvalError::Math(span, ref err) =>

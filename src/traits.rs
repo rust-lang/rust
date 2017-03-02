@@ -113,7 +113,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 match self.memory.get_fn(fn_ptr.alloc_id)? {
                     Function::FnDefAsTraitObject(fn_def) => {
                         trace!("sig: {:#?}", fn_def.sig);
-                        assert!(fn_def.abi != abi::Abi::RustCall);
+                        assert!(fn_def.sig.abi() != abi::Abi::RustCall);
                         assert_eq!(args.len(), 2);
                         // a function item turned into a closure trait object
                         // the first arg is just there to give use the vtable
@@ -126,14 +126,14 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         trace!("sig: {:#?}", fn_def.sig);
                         args[0] = (
                             Value::ByVal(PrimVal::Ptr(self_ptr)),
-                            fn_def.sig.inputs()[0],
+                            fn_def.sig.inputs().skip_binder()[0],
                         );
                         Ok((fn_def.def_id, fn_def.substs, Vec::new()))
                     },
                     Function::NonCaptureClosureAsFnPtr(fn_def) => {
                         args.insert(0, (
                             Value::ByVal(PrimVal::Undef),
-                            fn_def.sig.inputs()[0],
+                            fn_def.sig.inputs().skip_binder()[0],
                         ));
                         Ok((fn_def.def_id, fn_def.substs, Vec::new()))
                     }
@@ -155,7 +155,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                             Function::NonCaptureClosureAsFnPtr(fn_def) => {
                                 args.insert(0, (
                                     Value::ByVal(PrimVal::Undef),
-                                    fn_def.sig.inputs()[0],
+                                    fn_def.sig.inputs().skip_binder()[0],
                                 ));
                                 fn_def
                             },
@@ -220,7 +220,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                                 _ => bug!("bad function type: {}", fn_ty),
                             };
                             let fn_ty = self.tcx.erase_regions(&fn_ty);
-                            self.memory.create_fn_ptr(self.tcx, mth.method.def_id, mth.substs, fn_ty)
+                            self.memory.create_fn_ptr(mth.method.def_id, mth.substs, fn_ty)
                         }))
                         .collect::<Vec<_>>()
                         .into_iter()
@@ -233,15 +233,15 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         ..
                     }
                 ) => {
-                    let closure_type = self.tcx.closure_type(closure_def_id, substs);
-                    vec![Some(self.memory.create_closure_ptr(self.tcx, closure_def_id, substs, closure_type))].into_iter()
+                    let closure_type = self.tcx.closure_type(closure_def_id);
+                    vec![Some(self.memory.create_closure_ptr(closure_def_id, substs, closure_type))].into_iter()
                 }
 
                 // turn a function definition into a Fn trait object
                 traits::VtableFnPointer(traits::VtableFnPointerData { fn_ty, .. }) => {
                     match fn_ty.sty {
                         ty::TyFnDef(did, substs, bare_fn_ty) => {
-                            vec![Some(self.memory.create_fn_as_trait_glue(self.tcx, did, substs, bare_fn_ty))].into_iter()
+                            vec![Some(self.memory.create_fn_as_trait_glue(did, substs, bare_fn_ty))].into_iter()
                         },
                         ty::TyFnPtr(bare_fn_ty) => {
                             vec![Some(self.memory.create_fn_ptr_as_trait_glue(bare_fn_ty))].into_iter()
@@ -275,13 +275,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         // in case there is no drop function to be called, this still needs to be initialized
         self.memory.write_usize(vtable, 0)?;
         if let ty::TyAdt(adt_def, substs) = trait_ref.self_ty().sty {
-            if let Some(drop_def_id) = adt_def.destructor() {
+            if let Some(drop_def_id) = adt_def.destructor(self.tcx) {
                 let fn_ty = match self.tcx.item_type(drop_def_id).sty {
                     ty::TyFnDef(_, _, fn_ty) => self.tcx.erase_regions(&fn_ty),
                     _ => bug!("drop method is not a TyFnDef"),
                 };
                 // The real type is taken from the self argument in `fn drop(&mut self)`
-                let real_ty = match fn_ty.sig.skip_binder().inputs()[0].sty {
+                let real_ty = match fn_ty.inputs().skip_binder()[0].sty {
                     ty::TyRef(_, mt) => self.monomorphize(mt.ty, substs),
                     _ => bug!("first argument of Drop::drop must be &mut T"),
                 };

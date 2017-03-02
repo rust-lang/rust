@@ -3,8 +3,10 @@ use rustc::mir;
 use rustc::ty::layout::Layout;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty};
+use rustc_const_math::ConstInt;
 use syntax::codemap::Span;
 use syntax::attr;
+use syntax::abi::Abi;
 
 use error::{EvalError, EvalResult};
 use eval_context::{EvalContext, IntegerExt, StackPopCleanup, is_inhabited};
@@ -62,11 +64,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                 let func_ty = self.operand_ty(func);
                 let fn_def = match func_ty.sty {
-                    ty::TyFnPtr(bare_fn_ty) => {
+                    ty::TyFnPtr(bare_sig) => {
                         let fn_ptr = self.eval_operand_to_primval(func)?.to_ptr()?;
                         let fn_def = self.memory.get_fn(fn_ptr.alloc_id)?;
-                        let bare_sig = self.tcx.erase_late_bound_regions_and_normalize(&bare_fn_ty.sig);
-                        let bare_sig = self.tcx.erase_regions(&bare_sig);
                         match fn_def {
                             Function::Concrete(fn_def) => {
                                 // transmuting function pointers in miri is fine as long as the number of
@@ -74,21 +74,21 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                                 // FIXME: also check the size of the arguments' type and the return type
                                 // Didn't get it to work, since that triggers an assertion in rustc which
                                 // checks whether the type has escaping regions
-                                if fn_def.abi != bare_fn_ty.abi ||
-                                    fn_def.sig.variadic != bare_sig.variadic ||
-                                    fn_def.sig.inputs().len() != bare_sig.inputs().len() {
-                                    return Err(EvalError::FunctionPointerTyMismatch(fn_def.abi, fn_def.sig, bare_fn_ty));
+                                if fn_def.sig.abi() != bare_sig.abi() ||
+                                    fn_def.sig.variadic() != bare_sig.variadic() ||
+                                    fn_def.sig.inputs().skip_binder().len() != bare_sig.inputs().skip_binder().len() {
+                                    return Err(EvalError::FunctionPointerTyMismatch(fn_def.sig, bare_sig));
                                 }
                             },
                             Function::NonCaptureClosureAsFnPtr(fn_def) => {
-                                if fn_def.abi != bare_fn_ty.abi ||
-                                    fn_def.sig.variadic != bare_sig.variadic ||
-                                    fn_def.sig.inputs().len() != 1 {
-                                    return Err(EvalError::FunctionPointerTyMismatch(fn_def.abi, fn_def.sig, bare_fn_ty));
+                                assert_eq!(fn_def.sig.abi(), Abi::RustCall);
+                                if fn_def.sig.variadic() != bare_sig.variadic() ||
+                                    fn_def.sig.inputs().skip_binder().len() != 1 {
+                                    return Err(EvalError::FunctionPointerTyMismatch(fn_def.sig, bare_sig));
                                 }
-                                if let ty::TyTuple(fields, _) = fn_def.sig.inputs()[0].sty {
-                                    if fields.len() != bare_sig.inputs().len() {
-                                        return Err(EvalError::FunctionPointerTyMismatch(fn_def.abi, fn_def.sig, bare_fn_ty));
+                                if let ty::TyTuple(fields, _) = fn_def.sig.inputs().skip_binder()[0].sty {
+                                    if fields.len() != bare_sig.inputs().skip_binder().len() {
+                                        return Err(EvalError::FunctionPointerTyMismatch(fn_def.sig, bare_sig));
                                     }
                                 }
                             },
@@ -99,8 +99,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     ty::TyFnDef(def_id, substs, fn_ty) => Function::Concrete(FunctionDefinition {
                         def_id,
                         substs,
-                        abi: fn_ty.abi,
-                        sig: fn_ty.sig.skip_binder(),
+                        sig: fn_ty,
                     }),
 
                     _ => {
@@ -165,8 +164,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         use syntax::abi::Abi;
         match fn_def {
             // Intrinsics can only be addressed directly
-            Function::Concrete(FunctionDefinition { def_id, substs, abi: Abi::RustIntrinsic, sig }) => {
-                let ty = sig.output();
+            Function::Concrete(FunctionDefinition { def_id, substs, sig }) if sig.abi() == Abi::RustIntrinsic => {
+                let ty = *sig.output().skip_binder();
                 let layout = self.type_layout(ty)?;
                 let (ret, target) = match destination {
                     Some(dest) if is_inhabited(self.tcx, ty) => dest,
@@ -177,8 +176,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 Ok(())
             },
             // C functions can only be addressed directly
-            Function::Concrete(FunctionDefinition { def_id, abi: Abi::C, sig, ..}) => {
-                let ty = sig.output();
+            Function::Concrete(FunctionDefinition { def_id, sig, ..}) if sig.abi() == Abi::C => {
+                let ty = *sig.output().skip_binder();
                 let (ret, target) = destination.unwrap();
                 self.call_c_abi(def_id, arg_operands, ret, ty)?;
                 self.dump_local(ret);
@@ -186,8 +185,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 Ok(())
             },
             Function::DropGlue(_) => Err(EvalError::ManuallyCalledDropGlue),
-            Function::Concrete(FunctionDefinition { def_id, abi: Abi::RustCall, sig, substs }) |
-            Function::Concrete(FunctionDefinition { def_id, abi: Abi::Rust, sig, substs }) => {
+            Function::Concrete(FunctionDefinition { def_id, sig, substs }) if sig.abi() == Abi::Rust || sig.abi() == Abi::RustCall => {
                 let mut args = Vec::new();
                 for arg in arg_operands {
                     let arg_val = self.eval_operand(arg)?;
@@ -204,20 +202,20 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     };
 
                 // FIXME(eddyb) Detect ADT constructors more efficiently.
-                if let Some(adt_def) = sig.output().ty_adt_def() {
-                    if let Some(v) = adt_def.variants.iter().find(|v| resolved_def_id == v.did) {
+                if let Some(adt_def) = sig.output().skip_binder().ty_adt_def() {
+                    let dids = adt_def.variants.iter().map(|v| v.did);
+                    let discrs = adt_def.discriminants(self.tcx).map(ConstInt::to_u128_unchecked);
+                    if let Some((_, disr_val)) = dids.zip(discrs).find(|&(did, _)| resolved_def_id == did) {
                         let (lvalue, target) = destination.expect("tuple struct constructors can't diverge");
                         let dest_ty = self.tcx.item_type(adt_def.did);
                         let dest_layout = self.type_layout(dest_ty)?;
                         trace!("layout({:?}) = {:#?}", dest_ty, dest_layout);
                         match *dest_layout {
                             Layout::Univariant { .. } => {
-                                let disr_val = v.disr_val;
                                 assert_eq!(disr_val, 0);
                                 self.assign_fields(lvalue, dest_ty, args)?;
                             },
                             Layout::General { discr, ref variants, .. } => {
-                                let disr_val = v.disr_val;
                                 let discr_size = discr.size().bytes();
                                 self.assign_discr_and_fields(
                                     lvalue,
@@ -230,7 +228,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                                 )?;
                             },
                             Layout::StructWrappedNullablePointer { nndiscr, ref discrfield, .. } => {
-                                let disr_val = v.disr_val;
                                 if nndiscr as u128 == disr_val {
                                     self.assign_fields(lvalue, dest_ty, args)?;
                                 } else {
@@ -268,7 +265,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     span,
                 )
             },
-            Function::NonCaptureClosureAsFnPtr(FunctionDefinition { def_id, abi: Abi::Rust, substs, sig }) => {
+            Function::NonCaptureClosureAsFnPtr(FunctionDefinition { def_id, substs, sig }) if sig.abi() == Abi::RustCall => {
                 let mut args = Vec::new();
                 for arg in arg_operands {
                     let arg_val = self.eval_operand(arg)?;
@@ -277,7 +274,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 }
                 args.insert(0, (
                     Value::ByVal(PrimVal::Undef),
-                    sig.inputs()[0],
+                    sig.inputs().skip_binder()[0],
                 ));
                 self.eval_fn_call_inner(
                     def_id,

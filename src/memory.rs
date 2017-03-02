@@ -3,11 +3,9 @@ use std::collections::{btree_map, BTreeMap, HashMap, HashSet, VecDeque, BTreeSet
 use std::{fmt, iter, ptr, mem, io};
 
 use rustc::hir::def_id::DefId;
-use rustc::ty::{self, BareFnTy, ClosureTy, ClosureSubsts, TyCtxt};
+use rustc::ty::{self, PolyFnSig, ClosureSubsts};
 use rustc::ty::subst::Substs;
 use rustc::ty::layout::{self, TargetDataLayout};
-
-use syntax::abi::Abi;
 
 use error::{EvalError, EvalResult};
 use value::PrimVal;
@@ -109,8 +107,7 @@ impl Pointer {
 pub struct FunctionDefinition<'tcx> {
     pub def_id: DefId,
     pub substs: &'tcx Substs<'tcx>,
-    pub abi: Abi,
-    pub sig: &'tcx ty::FnSig<'tcx>,
+    pub sig: PolyFnSig<'tcx>,
 }
 
 /// Either a concrete function, or a glue function
@@ -127,7 +124,7 @@ pub enum Function<'tcx> {
     DropGlue(ty::Ty<'tcx>),
     /// Glue required to treat the ptr part of a fat pointer
     /// as a function pointer
-    FnPtrAsTraitObject(&'tcx ty::FnSig<'tcx>),
+    FnPtrAsTraitObject(PolyFnSig<'tcx>),
     /// Glue for Closures
     Closure(FunctionDefinition<'tcx>),
     /// Glue for noncapturing closures casted to function pointers
@@ -217,67 +214,43 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         self.alloc_map.iter()
     }
 
-    pub fn create_closure_ptr(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId, substs: ClosureSubsts<'tcx>, fn_ty: ClosureTy<'tcx>) -> Pointer {
-        // FIXME: this is a hack
-        let fn_ty = tcx.mk_bare_fn(ty::BareFnTy {
-            unsafety: fn_ty.unsafety,
-            abi: fn_ty.abi,
-            sig: fn_ty.sig,
-        });
+    pub fn create_closure_ptr(&mut self, def_id: DefId, substs: ClosureSubsts<'tcx>, sig: PolyFnSig<'tcx>) -> Pointer {
         self.create_fn_alloc(Function::Closure(FunctionDefinition {
             def_id,
             substs: substs.substs,
-            abi: fn_ty.abi,
-            // FIXME: why doesn't this compile?
-            //sig: tcx.erase_late_bound_regions(&fn_ty.sig),
-            sig: fn_ty.sig.skip_binder(),
+            sig,
         }))
     }
 
-    pub fn create_fn_ptr_from_noncapture_closure(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId, substs: ClosureSubsts<'tcx>, fn_ty: ClosureTy<'tcx>) -> Pointer {
-        // FIXME: this is a hack
-        let fn_ty = tcx.mk_bare_fn(ty::BareFnTy {
-            unsafety: fn_ty.unsafety,
-            abi: fn_ty.abi,
-            sig: fn_ty.sig,
-        });
+    pub fn create_fn_ptr_from_noncapture_closure(&mut self, def_id: DefId, substs: ClosureSubsts<'tcx>, sig: PolyFnSig<'tcx>) -> Pointer {
         self.create_fn_alloc(Function::NonCaptureClosureAsFnPtr(FunctionDefinition {
             def_id,
             substs: substs.substs,
-            abi: Abi::Rust, // adjust abi
-            // FIXME: why doesn't this compile?
-            //sig: tcx.erase_late_bound_regions(&fn_ty.sig),
-            sig: fn_ty.sig.skip_binder(),
+            sig,
         }))
     }
 
-    pub fn create_fn_as_trait_glue(&mut self, _tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId, substs: &'tcx Substs<'tcx>, fn_ty: &'tcx BareFnTy<'tcx>) -> Pointer {
+    pub fn create_fn_as_trait_glue(&mut self, def_id: DefId, substs: &'tcx Substs, sig: PolyFnSig<'tcx>) -> Pointer {
         self.create_fn_alloc(Function::FnDefAsTraitObject(FunctionDefinition {
             def_id,
             substs,
-            abi: fn_ty.abi,
-            // FIXME: why doesn't this compile?
-            //sig: tcx.erase_late_bound_regions(&fn_ty.sig),
-            sig: fn_ty.sig.skip_binder(),
+            sig,
         }))
     }
 
-    pub fn create_fn_ptr_as_trait_glue(&mut self, fn_ty: &'tcx BareFnTy<'tcx>) -> Pointer {
-        self.create_fn_alloc(Function::FnPtrAsTraitObject(fn_ty.sig.skip_binder()))
+    pub fn create_fn_ptr_as_trait_glue(&mut self, sig: PolyFnSig<'tcx>) -> Pointer {
+        self.create_fn_alloc(Function::FnPtrAsTraitObject(sig))
     }
 
     pub fn create_drop_glue(&mut self, ty: ty::Ty<'tcx>) -> Pointer {
         self.create_fn_alloc(Function::DropGlue(ty))
     }
 
-    pub fn create_fn_ptr(&mut self, _tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId, substs: &'tcx Substs<'tcx>, fn_ty: &'tcx BareFnTy<'tcx>) -> Pointer {
+    pub fn create_fn_ptr(&mut self, def_id: DefId, substs: &'tcx Substs, sig: PolyFnSig<'tcx>) -> Pointer {
         self.create_fn_alloc(Function::Concrete(FunctionDefinition {
             def_id,
             substs,
-            abi: fn_ty.abi,
-            // FIXME: why doesn't this compile?
-            //sig: tcx.erase_late_bound_regions(&fn_ty.sig),
-            sig: fn_ty.sig.skip_binder(),
+            sig,
         }))
     }
 
@@ -623,12 +596,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 
 fn dump_fn_def<'tcx>(fn_def: FunctionDefinition<'tcx>) -> String {
     let name = ty::tls::with(|tcx| tcx.item_path_str(fn_def.def_id));
-    let abi = if fn_def.abi == Abi::Rust {
-        format!("")
-    } else {
-        format!("extern {} ", fn_def.abi)
-    };
-    format!("function pointer: {}: {}{}", name, abi, fn_def.sig)
+    format!("function pointer: {}: {}", name, fn_def.sig.skip_binder())
 }
 
 /// Byte accessors

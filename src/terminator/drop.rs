@@ -97,7 +97,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let (adt_ptr, extra) = lval.to_ptr_and_extra();
 
                 // run drop impl before the fields' drop impls
-                if let Some(drop_def_id) = adt_def.destructor() {
+                if let Some(drop_def_id) = adt_def.destructor(self.tcx) {
                     let trait_ref = ty::Binder(ty::TraitRef {
                         def_id: self.tcx.lang_items.drop_trait().unwrap(),
                         substs: self.tcx.mk_substs_trait(ty, &[]),
@@ -121,7 +121,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     Layout::General { .. } => {
                         let discr_val = self.read_discriminant_value(adt_ptr, ty)? as u128;
                         let ptr = self.force_allocation(lval)?.to_ptr();
-                        match adt_def.variants.iter().position(|v| discr_val == v.disr_val) {
+                        match adt_def.discriminants(self.tcx).position(|v| discr_val == v.to_u128_unchecked()) {
                             Some(i) => {
                                 lval = Lvalue::Ptr {
                                     ptr,
