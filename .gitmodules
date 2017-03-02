@@ -21,3 +21,6 @@
 [submodule "src/tools/cargo"]
 	path = src/tools/cargo
 	url = https://github.com/rust-lang/cargo
+[submodule "reference"]
+	path = src/doc/reference
+	url = https://github.com/rust-lang-nursery/reference.git
