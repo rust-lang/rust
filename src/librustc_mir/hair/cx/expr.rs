@@ -602,11 +602,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
 
             ExprKind::Repeat {
                 value: v.to_ref(),
-                count: TypedConstVal {
-                    ty: cx.tcx.types.usize,
-                    span: c.span,
-                    value: count
-                }
+                count: count,
             }
         }
         hir::ExprRet(ref v) => ExprKind::Return { value: v.to_ref() },

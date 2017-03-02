@@ -3895,7 +3895,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                   let base_t = self.structurally_resolved_type(expr.span, base_t);
                   match self.lookup_indexing(expr, base, base_t, idx_t, lvalue_pref) {
                       Some((index_ty, element_ty)) => {
-                          self.demand_eqtype(expr.span, index_ty, idx_t);
+                          self.demand_coerce(idx, idx_t, index_ty);
                           element_ty
                       }
                       None => {

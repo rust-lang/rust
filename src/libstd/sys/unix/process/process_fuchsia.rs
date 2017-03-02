@@ -13,7 +13,7 @@ use libc;
 use mem;
 use ptr;
 
-use sys::process::magenta::{Handle, launchpad_t, mx_handle_t};
+use sys::process::magenta::{Handle, mx_handle_t};
 use sys::process::process_common::*;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -30,9 +30,9 @@ impl Command {
 
         let (ours, theirs) = self.setup_io(default, needs_stdin)?;
 
-        let (launchpad, process_handle) = unsafe { self.do_exec(theirs)? };
+        let process_handle = unsafe { self.do_exec(theirs)? };
 
-        Ok((Process { launchpad: launchpad, handle: Handle::new(process_handle) }, ours))
+        Ok((Process { handle: Handle::new(process_handle) }, ours))
     }
 
     pub fn exec(&mut self, default: Stdio) -> io::Error {
@@ -51,7 +51,7 @@ impl Command {
     }
 
     unsafe fn do_exec(&mut self, stdio: ChildPipes)
-                      -> io::Result<(*mut launchpad_t, mx_handle_t)> {
+                      -> io::Result<mx_handle_t> {
         use sys::process::magenta::*;
 
         let job_handle = mx_job_default();
@@ -75,16 +75,15 @@ impl Command {
         let launchpad_destructor = LaunchpadDestructor(launchpad);
 
         // Set the process argv
-        mx_cvt(launchpad_arguments(launchpad, self.get_argv().len() as i32 - 1,
-                                   self.get_argv().as_ptr()))?;
+        mx_cvt(launchpad_set_args(launchpad, self.get_argv().len() as i32 - 1,
+                                  self.get_argv().as_ptr()))?;
         // Setup the environment vars
-        mx_cvt(launchpad_environ(launchpad, envp))?;
+        mx_cvt(launchpad_set_environ(launchpad, envp))?;
         mx_cvt(launchpad_add_vdso_vmo(launchpad))?;
-        mx_cvt(launchpad_clone_mxio_root(launchpad))?;
         // Load the executable
         mx_cvt(launchpad_elf_load(launchpad, launchpad_vmo_from_file(self.get_argv()[0])))?;
         mx_cvt(launchpad_load_vdso(launchpad, MX_HANDLE_INVALID))?;
-        mx_cvt(launchpad_clone_mxio_cwd(launchpad))?;
+        mx_cvt(launchpad_clone(launchpad, LP_CLONE_MXIO_ROOT | LP_CLONE_MXIO_CWD))?;
 
         // Clone stdin, stdout, and stderr
         if let Some(fd) = stdio.stdin.fd() {
@@ -111,12 +110,15 @@ impl Command {
             callback()?;
         }
 
-        let process_handle = mx_cvt(launchpad_start(launchpad))?;
-
-        // Successfully started the launchpad
+        // `launchpad_go` destroys the launchpad, so we must not
         mem::forget(launchpad_destructor);
 
-        Ok((launchpad, process_handle))
+        let mut process_handle: mx_handle_t = 0;
+        let mut err_msg: *const libc::c_char = ptr::null();
+        mx_cvt(launchpad_go(launchpad, &mut process_handle, &mut err_msg))?;
+        // FIXME: See if we want to do something with that err_msg
+
+        Ok(process_handle)
     }
 }
 
@@ -125,7 +127,6 @@ impl Command {
 ////////////////////////////////////////////////////////////////////////////////
 
 pub struct Process {
-    launchpad: *mut launchpad_t,
     handle: Handle,
 }
 
@@ -193,12 +194,5 @@ impl Process {
                                       "Failed to get exit status of process"));
         }
         Ok(Some(ExitStatus::new(proc_info.rec.return_code)))
-    }
-}
-
-impl Drop for Process {
-    fn drop(&mut self) {
-        use sys::process::magenta::launchpad_destroy;
-        unsafe { launchpad_destroy(self.launchpad); }
     }
 }
