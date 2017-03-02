@@ -14,7 +14,7 @@ use ast::{self, Attribute, Name, PatKind, MetaItem};
 use attr::HasAttrs;
 use codemap::{self, CodeMap, ExpnInfo, Spanned, respan};
 use syntax_pos::{Span, ExpnId, NO_EXPANSION};
-use errors::DiagnosticBuilder;
+use errors::{DiagnosticBuilder, FatalError};
 use ext::expand::{self, Expansion};
 use ext::hygiene::Mark;
 use fold::{self, Folder};
@@ -695,9 +695,15 @@ impl<'a> ExtCtxt<'a> {
 
     pub fn bt_push(&mut self, ei: ExpnInfo) {
         if self.current_expansion.depth > self.ecfg.recursion_limit {
-            self.span_fatal(ei.call_site,
-                            &format!("recursion limit reached while expanding the macro `{}`",
-                                    ei.callee.name()));
+            let suggested_limit = self.ecfg.recursion_limit * 2;
+            let mut err = self.struct_span_fatal(ei.call_site,
+                &format!("recursion limit reached while expanding the macro `{}`",
+                         ei.callee.name()));
+            err.help(&format!(
+                "consider adding a `#![recursion_limit=\"{}\"]` attribute to your crate",
+                suggested_limit));
+            err.emit();
+            panic!(FatalError);
         }
 
         let mut call_site = ei.call_site;
