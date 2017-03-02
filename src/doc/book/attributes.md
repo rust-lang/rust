@@ -63,8 +63,7 @@ mod macos_only {
 # }
 ```
 
-Rust attributes are used for a number of different things. There is a full list
-of attributes [in the reference][reference]. The Rust compiler defines many standardized
-attributes but allows for customized attributes from a custom derive.
+Rust attributes are used for a number of different things. There is a full list of attributes [in the reference][reference]. The Rust compiler defines many standardized attributes but allows for customized attributes from within a custom [derive][derive].
+[derive]: procedural-macros.html
 
 [reference]: ../reference.html#attributes
