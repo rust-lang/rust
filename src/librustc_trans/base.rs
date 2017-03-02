@@ -59,7 +59,6 @@ use context::{SharedCrateContext, CrateContextList};
 use debuginfo;
 use declare;
 use machine;
-use machine::llsize_of;
 use meth;
 use mir;
 use monomorphize::{self, Instance};
@@ -534,14 +533,13 @@ pub fn memcpy_ty<'a, 'tcx>(
 ) {
     let ccx = bcx.ccx;
 
-    if type_is_zero_size(ccx, t) {
+    let size = ccx.size_of(t);
+    if size == 0 {
         return;
     }
 
-    let llty = type_of::type_of(ccx, t);
-    let llsz = llsize_of(ccx, llty);
-    let llalign = align.unwrap_or_else(|| type_of::align_of(ccx, t));
-    call_memcpy(bcx, dst, src, llsz, llalign as u32);
+    let align = align.unwrap_or_else(|| ccx.align_of(t));
+    call_memcpy(bcx, dst, src, C_uint(ccx, size), align);
 }
 
 pub fn call_memset<'a, 'tcx>(b: &Builder<'a, 'tcx>,

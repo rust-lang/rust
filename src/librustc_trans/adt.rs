@@ -47,7 +47,7 @@ use std;
 
 use llvm::{ValueRef, True, IntEQ, IntNE};
 use rustc::ty::layout;
-use rustc::ty::{self, Ty, AdtKind};
+use rustc::ty::{self, Ty};
 use common::*;
 use builder::Builder;
 use base;
@@ -285,11 +285,6 @@ pub fn trans_get_discr<'a, 'tcx>(
     cast_to: Option<Type>,
     range_assert: bool
 ) -> ValueRef {
-    let (def, substs) = match t.sty {
-        ty::TyAdt(ref def, substs) if def.adt_kind() == AdtKind::Enum => (def, substs),
-        _ => bug!("{} is not an enum", t)
-    };
-
     debug!("trans_get_discr t: {:?}", t);
     let l = bcx.ccx.layout_of(t);
 
@@ -297,19 +292,17 @@ pub fn trans_get_discr<'a, 'tcx>(
         layout::CEnum { discr, min, max, .. } => {
             load_discr(bcx, discr, scrutinee, alignment, min, max, range_assert)
         }
-        layout::General { discr, .. } => {
+        layout::General { discr, ref variants, .. } => {
             let ptr = bcx.struct_gep(scrutinee, 0);
             load_discr(bcx, discr, ptr, alignment,
-                       0, def.variants.len() as u64 - 1,
+                       0, variants.len() as u64 - 1,
                        range_assert)
         }
         layout::Univariant { .. } | layout::UntaggedUnion { .. } => C_u8(bcx.ccx, 0),
         layout::RawNullablePointer { nndiscr, .. } => {
             let cmp = if nndiscr == 0 { IntEQ } else { IntNE };
-            let llptrty = type_of::sizing_type_of(bcx.ccx,
-                monomorphize::field_ty(bcx.tcx(), substs,
-                &def.variants[nndiscr as usize].fields[0]));
-            bcx.icmp(cmp, bcx.load(scrutinee, alignment.to_align()), C_null(llptrty))
+            let discr = bcx.load(scrutinee, alignment.to_align());
+            bcx.icmp(cmp, discr, C_null(val_ty(discr)))
         }
         layout::StructWrappedNullablePointer { nndiscr, ref discrfield, .. } => {
             struct_wrapped_nullable_bitdiscr(bcx, nndiscr, discrfield, scrutinee, alignment)
@@ -383,9 +376,8 @@ pub fn trans_set_discr<'a, 'tcx>(bcx: &Builder<'a, 'tcx>, t: Ty<'tcx>, val: Valu
             assert_eq!(to, Disr(0));
         }
         layout::RawNullablePointer { nndiscr, .. } => {
-            let nnty = compute_fields(bcx.ccx, t, nndiscr as usize, false)[0];
             if to.0 != nndiscr {
-                let llptrty = type_of::sizing_type_of(bcx.ccx, nnty);
+                let llptrty = val_ty(val).element_type();
                 bcx.store(C_null(llptrty), val, None);
             }
         }

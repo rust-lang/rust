@@ -439,14 +439,10 @@ impl FnType {
             match ret_ty.sty {
                 // These are not really pointers but pairs, (pointer, len)
                 ty::TyRef(_, ty::TypeAndMut { ty, .. }) => {
-                    let llty = type_of::sizing_type_of(ccx, ty);
-                    let llsz = llsize_of_alloc(ccx, llty);
-                    ret.attrs.set_dereferenceable(llsz);
+                    ret.attrs.set_dereferenceable(ccx.size_of(ty));
                 }
                 ty::TyAdt(def, _) if def.is_box() => {
-                    let llty = type_of::sizing_type_of(ccx, ret_ty.boxed_ty());
-                    let llsz = llsize_of_alloc(ccx, llty);
-                    ret.attrs.set_dereferenceable(llsz);
+                    ret.attrs.set_dereferenceable(ccx.size_of(ret_ty.boxed_ty()));
                 }
                 _ => {}
             }
@@ -517,9 +513,7 @@ impl FnType {
                 args.push(info);
             } else {
                 if let Some(inner) = rust_ptr_attrs(ty, &mut arg) {
-                    let llty = type_of::sizing_type_of(ccx, inner);
-                    let llsz = llsize_of_alloc(ccx, llty);
-                    arg.attrs.set_dereferenceable(llsz);
+                    arg.attrs.set_dereferenceable(ccx.size_of(inner));
                 }
                 args.push(arg);
             }
