@@ -136,7 +136,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     parent: None,
                     docs: docs_for_attrs(&item.attrs),
                     sig: self.sig_base(item),
-                    attributes: remove_docs_from_attrs(&item.attrs),
+                    attributes: item.attrs.clone(),
                 }))
             }
             ast::ItemKind::Static(ref typ, mt, ref expr) => {
@@ -165,7 +165,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     visibility: From::from(&item.vis),
                     docs: docs_for_attrs(&item.attrs),
                     sig: Some(self.sig_base(item)),
-                    attributes: remove_docs_from_attrs(&item.attrs),
+                    attributes: item.attrs.clone(),
                 }))
             }
             ast::ItemKind::Const(ref typ, ref expr) => {
@@ -185,7 +185,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     visibility: From::from(&item.vis),
                     docs: docs_for_attrs(&item.attrs),
                     sig: Some(self.sig_base(item)),
-                    attributes: remove_docs_from_attrs(&item.attrs),
+                    attributes: item.attrs.clone(),
                 }))
             }
             ast::ItemKind::Mod(ref m) => {
@@ -208,7 +208,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     visibility: From::from(&item.vis),
                     docs: docs_for_attrs(&item.attrs),
                     sig: self.sig_base(item),
-                    attributes: remove_docs_from_attrs(&item.attrs),
+                    attributes: item.attrs.clone(),
                 }))
             }
             ast::ItemKind::Enum(ref def, _) => {
@@ -232,7 +232,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     visibility: From::from(&item.vis),
                     docs: docs_for_attrs(&item.attrs),
                     sig: self.sig_base(item),
-                    attributes: remove_docs_from_attrs(&item.attrs),
+                    attributes: item.attrs.clone(),
                 }))
             }
             ast::ItemKind::Impl(.., ref trait_ref, ref typ, _) => {
@@ -320,7 +320,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                 visibility: From::from(&field.vis),
                 docs: docs_for_attrs(&field.attrs),
                 sig: Some(sig),
-                attributes: remove_docs_from_attrs(&field.attrs),
+                attributes: field.attrs.clone(),
             })
         } else {
             None
@@ -356,7 +356,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                             (result, trait_id, decl_id,
                              From::from(&item.vis),
                              docs_for_attrs(&item.attrs),
-                             remove_docs_from_attrs(&item.attrs))
+                             item.attrs.to_vec())
                         }
                         _ => {
                             span_bug!(span,
@@ -382,7 +382,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                              Some(def_id), None,
                              From::from(&item.vis),
                              docs_for_attrs(&item.attrs),
-                             remove_docs_from_attrs(&item.attrs))
+                             item.attrs.to_vec())
                         }
                         r => {
                             span_bug!(span,
@@ -843,12 +843,6 @@ fn docs_for_attrs(attrs: &[Attribute]) -> String {
     }
 
     result
-}
-
-/// Remove all attributes which are docs
-fn remove_docs_from_attrs(attrs: &[Attribute]) -> Vec<Attribute> {
-    let doc = Symbol::intern("doc");
-    attrs.iter().cloned().filter(|attr| attr.name() != doc).collect()
 }
 
 #[derive(Clone, Copy, Debug, RustcEncodable)]

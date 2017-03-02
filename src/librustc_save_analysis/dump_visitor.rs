@@ -47,8 +47,7 @@ use syntax::ptr::P;
 use syntax::codemap::Spanned;
 use syntax_pos::*;
 
-use super::{escape, generated_code, SaveContext, PathCollector, docs_for_attrs,
-            remove_docs_from_attrs};
+use super::{escape, generated_code, SaveContext, PathCollector, docs_for_attrs};
 use super::data::*;
 use super::dump::Dump;
 use super::external_data::{Lower, make_def_id};
@@ -450,7 +449,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                     visibility: vis,
                     docs: docs_for_attrs(attrs),
                     sig: method_data.sig,
-                    attributes: remove_docs_from_attrs(attrs),
+                    attributes: attrs.to_vec(),
                 }.lower(self.tcx));
             }
 
@@ -596,7 +595,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                 visibility: vis,
                 docs: docs_for_attrs(attrs),
                 sig: None,
-                attributes: remove_docs_from_attrs(attrs),
+                attributes: attrs.to_vec(),
             }.lower(self.tcx));
         }
 
@@ -641,7 +640,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                 visibility: From::from(&item.vis),
                 docs: docs_for_attrs(&item.attrs),
                 sig: self.save_ctxt.sig_base(item),
-                attributes: remove_docs_from_attrs(&item.attrs),
+                attributes: item.attrs.clone(),
             }.lower(self.tcx));
         }
 
@@ -707,7 +706,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                             parent: Some(make_def_id(item.id, &self.tcx.hir)),
                             docs: docs_for_attrs(&variant.node.attrs),
                             sig: sig,
-                            attributes: remove_docs_from_attrs(&variant.node.attrs),
+                            attributes: variant.node.attrs.clone(),
                         }.lower(self.tcx));
                     }
                 }
@@ -734,7 +733,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                             parent: Some(make_def_id(item.id, &self.tcx.hir)),
                             docs: docs_for_attrs(&variant.node.attrs),
                             sig: sig,
-                            attributes: remove_docs_from_attrs(&variant.node.attrs),
+                            attributes: variant.node.attrs.clone(),
                         }.lower(self.tcx));
                     }
                 }
@@ -806,7 +805,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                 visibility: From::from(&item.vis),
                 docs: docs_for_attrs(&item.attrs),
                 sig: self.save_ctxt.sig_base(item),
-                attributes: remove_docs_from_attrs(&item.attrs),
+                attributes: item.attrs.clone(),
             }.lower(self.tcx));
         }
 
@@ -1315,7 +1314,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'l> for DumpVisitor<'l, 'tcx, 'll,
                         parent: None,
                         docs: docs_for_attrs(&item.attrs),
                         sig: Some(self.save_ctxt.sig_base(item)),
-                        attributes: remove_docs_from_attrs(&item.attrs),
+                        attributes: item.attrs.clone(),
                     }.lower(self.tcx));
                 }
 
