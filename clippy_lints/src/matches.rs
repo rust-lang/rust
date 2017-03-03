@@ -198,27 +198,31 @@ fn check_single_match(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr) {
 
 fn check_single_match_single_pattern(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr, els: Option<&Expr>) {
     if arms[1].pats[0].node == PatKind::Wild {
-        let lint = if els.is_some() {
-            SINGLE_MATCH_ELSE
-        } else {
-            SINGLE_MATCH
-        };
-        let els_str = els.map_or(String::new(), |els| format!(" else {}", expr_block(cx, els, None, "..")));
-        span_lint_and_then(cx,
-                           lint,
-                           expr.span,
-                           "you seem to be trying to use match for destructuring a single pattern. \
-                           Consider using `if let`",
-                           |db| {
-            db.span_suggestion(expr.span,
-                               "try this",
-                               format!("if let {} = {} {}{}",
-                                       snippet(cx, arms[0].pats[0].span, ".."),
-                                       snippet(cx, ex.span, ".."),
-                                       expr_block(cx, &arms[0].body, None, ".."),
-                                       els_str));
-        });
+        report_single_match_single_pattern(cx, ex, arms, expr, els);
     }
+}
+
+fn report_single_match_single_pattern(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr, els: Option<&Expr>) {
+    let lint = if els.is_some() {
+        SINGLE_MATCH_ELSE
+    } else {
+        SINGLE_MATCH
+    };
+    let els_str = els.map_or(String::new(), |els| format!(" else {}", expr_block(cx, els, None, "..")));
+    span_lint_and_then(cx,
+                        lint,
+                        expr.span,
+                        "you seem to be trying to use match for destructuring a single pattern. \
+                        Consider using `if let`",
+                        |db| {
+        db.span_suggestion(expr.span,
+                            "try this",
+                            format!("if let {} = {} {}{}",
+                                    snippet(cx, arms[0].pats[0].span, ".."),
+                                    snippet(cx, ex.span, ".."),
+                                    expr_block(cx, &arms[0].body, None, ".."),
+                                    els_str));
+    });
 }
 
 fn check_single_match_opt_like(
@@ -253,26 +257,7 @@ fn check_single_match_opt_like(
 
     for &(ty_path, pat_path) in candidates {
         if &path == pat_path && match_type(cx, ty, ty_path) {
-            let lint = if els.is_some() {
-                SINGLE_MATCH_ELSE
-            } else {
-                SINGLE_MATCH
-            };
-            let els_str = els.map_or(String::new(), |els| format!(" else {}", expr_block(cx, els, None, "..")));
-            span_lint_and_then(cx,
-                               lint,
-                               expr.span,
-                               "you seem to be trying to use match for destructuring a single pattern. Consider \
-                                using `if let`",
-                               |db| {
-                db.span_suggestion(expr.span,
-                                   "try this",
-                                   format!("if let {} = {} {}{}",
-                                           snippet(cx, arms[0].pats[0].span, ".."),
-                                           snippet(cx, ex.span, ".."),
-                                           expr_block(cx, &arms[0].body, None, ".."),
-                                           els_str));
-            });
+            report_single_match_single_pattern(cx, ex, arms, expr, els);
         }
     }
 }
