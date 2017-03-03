@@ -2280,7 +2280,7 @@ impl<'a> State<'a> {
                 word(&mut self.s, "?")?
             }
             ast::ExprKind::Catch(ref blk) => {
-                self.head("catch")?;
+                self.head("do catch")?;
                 space(&mut self.s)?;
                 self.print_block_with_attrs(&blk, attrs)?
             }
