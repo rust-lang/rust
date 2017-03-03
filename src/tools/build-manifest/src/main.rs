@@ -183,15 +183,19 @@ impl Builder {
         let mut manifest = BTreeMap::new();
         manifest.insert("manifest-version".to_string(),
                         toml::Value::String(manifest_version));
-        manifest.insert("date".to_string(), toml::Value::String(date));
+        manifest.insert("date".to_string(), toml::Value::String(date.clone()));
         manifest.insert("pkg".to_string(), toml::encode(&pkg));
         let manifest = toml::Value::Table(manifest).to_string();
 
         let filename = format!("channel-rust-{}.toml", self.rust_release);
         self.write_manifest(&manifest, &filename);
 
+        let filename = format!("channel-rust-{}-date.txt", self.rust_release);
+        self.write_date_stamp(&date, &filename);
+
         if self.rust_release != "beta" && self.rust_release != "nightly" {
             self.write_manifest(&manifest, "channel-rust-stable.toml");
+            self.write_date_stamp(&date, "channel-rust-stable-date.txt");
         }
     }
 
@@ -408,6 +412,13 @@ impl Builder {
     fn write_manifest(&self, manifest: &str, name: &str) {
         let dst = self.output.join(name);
         t!(t!(File::create(&dst)).write_all(manifest.as_bytes()));
+        self.hash(&dst);
+        self.sign(&dst);
+    }
+
+    fn write_date_stamp(&self, date: &str, name: &str) {
+        let dst = self.output.join(name);
+        t!(t!(File::create(&dst)).write_all(date.as_bytes()));
         self.hash(&dst);
         self.sign(&dst);
     }
