@@ -10,12 +10,10 @@
 
 #![deny(warnings)]
 
-#[macro_use]
 extern crate build_helper;
 extern crate gcc;
 
 use std::env;
-use std::fs::File;
 use std::process::Command;
 use build_helper::{run, native_lib_boilerplate};
 
@@ -24,7 +22,7 @@ fn main() {
     let host = env::var("HOST").expect("HOST was not set");
     if cfg!(feature = "backtrace") && !target.contains("apple") && !target.contains("msvc") &&
         !target.contains("emscripten") && !target.contains("fuchsia") && !target.contains("redox") {
-        build_libbacktrace(&host, &target);
+        let _ = build_libbacktrace(&host, &target);
     }
 
     if target.contains("linux") {
@@ -66,12 +64,8 @@ fn main() {
     }
 }
 
-fn build_libbacktrace(host: &str, target: &str) {
-    let native = native_lib_boilerplate("libbacktrace", "libbacktrace", "backtrace",
-                                        "rustbuild.timestamp", ".libs");
-    if native.skip_build {
-        return
-    }
+fn build_libbacktrace(host: &str, target: &str) -> Result<(), ()> {
+    let native = native_lib_boilerplate("libbacktrace", "libbacktrace", "backtrace", ".libs")?;
 
     let compiler = gcc::Config::new().get_compiler();
     // only msvc returns None for ar so unwrap is okay
@@ -99,6 +93,5 @@ fn build_libbacktrace(host: &str, target: &str) {
                 .current_dir(&native.out_dir)
                 .arg(format!("INCDIR={}", native.src_dir.display()))
                 .arg("-j").arg(env::var("NUM_JOBS").expect("NUM_JOBS was not set")));
-
-    t!(File::create(&native.timestamp));
+    Ok(())
 }

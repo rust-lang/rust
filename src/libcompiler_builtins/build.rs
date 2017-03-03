@@ -82,16 +82,13 @@ fn main() {
     }
 
     // Can't reuse `sources` list for the freshness check becuse it doesn't contain header files.
-    // Use the produced library itself as a timestamp.
-    let out_name = "libcompiler-rt.a";
-    let native = native_lib_boilerplate("compiler-rt", "compiler-rt", "compiler-rt",
-                                        out_name, ".");
-    if native.skip_build {
-        return
-    }
+    let native = match native_lib_boilerplate("compiler-rt", "compiler-rt", "compiler-rt", ".") {
+        Ok(native) => native,
+        _ => return,
+    };
 
     let cfg = &mut gcc::Config::new();
-    cfg.out_dir(native.out_dir);
+    cfg.out_dir(&native.out_dir);
 
     if target.contains("msvc") {
         // Don't pull in extra libraries on MSVC
@@ -416,5 +413,5 @@ fn main() {
         cfg.file(Path::new("../compiler-rt/lib/builtins").join(src));
     }
 
-    cfg.compile(out_name);
+    cfg.compile("libcompiler-rt.a");
 }
