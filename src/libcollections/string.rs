@@ -62,9 +62,9 @@ use core::iter::{FromIterator, FusedIterator};
 use core::mem;
 use core::ops::{self, Add, AddAssign, Index, IndexMut};
 use core::ptr;
+use core::str as core_str;
 use core::str::pattern::Pattern;
 use std_unicode::char::{decode_utf16, REPLACEMENT_CHARACTER};
-use std_unicode::str as unicode_str;
 
 use borrow::{Cow, ToOwned};
 use range::RangeArgument;
@@ -575,7 +575,7 @@ impl String {
             if byte < 128 {
                 // subseqidx handles this
             } else {
-                let w = unicode_str::utf8_char_width(byte);
+                let w = core_str::utf8_char_width(byte);
 
                 match w {
                     2 => {
