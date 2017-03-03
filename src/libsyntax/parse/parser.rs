@@ -602,12 +602,6 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn error_if_typename_is_catch(&mut self, ident: ast::Ident) {
-        if ident.name == keywords::Catch.name() {
-            self.span_err(self.span, "cannot use `catch` as the name of a type");
-        }
-    }
-
     /// Check if the next token is `tok`, and return `true` if so.
     ///
     /// This method will automatically add `tok` to `expected_tokens` if `tok` is not
@@ -2280,6 +2274,7 @@ impl<'a> Parser<'a> {
                         attrs);
                 }
                 if self.is_catch_expr() {
+                    assert!(self.eat_keyword(keywords::Do));
                     assert!(self.eat_keyword(keywords::Catch));
                     let lo = self.prev_span.lo;
                     return self.parse_catch_expr(lo, attrs);
@@ -3103,7 +3098,7 @@ impl<'a> Parser<'a> {
         Ok(self.mk_expr(span_lo, hi, ExprKind::Loop(body, opt_ident), attrs))
     }
 
-    /// Parse a `catch {...}` expression (`catch` token already eaten)
+    /// Parse a `do catch {...}` expression (`do catch` token already eaten)
     pub fn parse_catch_expr(&mut self, span_lo: BytePos, mut attrs: ThinVec<Attribute>)
         -> PResult<'a, P<Expr>>
     {
@@ -3721,8 +3716,9 @@ impl<'a> Parser<'a> {
     }
 
     fn is_catch_expr(&mut self) -> bool {
-        self.token.is_keyword(keywords::Catch) &&
-        self.look_ahead(1, |t| *t == token::OpenDelim(token::Brace)) &&
+        self.token.is_keyword(keywords::Do) &&
+        self.look_ahead(1, |t| t.is_keyword(keywords::Catch)) &&
+        self.look_ahead(2, |t| *t == token::OpenDelim(token::Brace)) &&
 
         // prevent `while catch {} {}`, `if catch {} {} else {}`, etc.
         !self.restrictions.contains(Restrictions::RESTRICTION_NO_STRUCT_LITERAL)
@@ -4904,7 +4900,6 @@ impl<'a> Parser<'a> {
     /// Parse struct Foo { ... }
     fn parse_item_struct(&mut self) -> PResult<'a, ItemInfo> {
         let class_name = self.parse_ident()?;
-        self.error_if_typename_is_catch(class_name);
 
         let mut generics = self.parse_generics()?;
 
@@ -4955,7 +4950,6 @@ impl<'a> Parser<'a> {
     /// Parse union Foo { ... }
     fn parse_item_union(&mut self) -> PResult<'a, ItemInfo> {
         let class_name = self.parse_ident()?;
-        self.error_if_typename_is_catch(class_name);
 
         let mut generics = self.parse_generics()?;
 
@@ -5473,7 +5467,6 @@ impl<'a> Parser<'a> {
             let struct_def;
             let mut disr_expr = None;
             let ident = self.parse_ident()?;
-            self.error_if_typename_is_catch(ident);
             if self.check(&token::OpenDelim(token::Brace)) {
                 // Parse a struct variant.
                 all_nullary = false;
@@ -5515,7 +5508,6 @@ impl<'a> Parser<'a> {
     /// Parse an "enum" declaration
     fn parse_item_enum(&mut self) -> PResult<'a, ItemInfo> {
         let id = self.parse_ident()?;
-        self.error_if_typename_is_catch(id);
         let mut generics = self.parse_generics()?;
         generics.where_clause = self.parse_where_clause()?;
         self.expect(&token::OpenDelim(token::Brace))?;
