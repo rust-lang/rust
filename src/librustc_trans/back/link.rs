@@ -31,6 +31,8 @@ use rustc::hir::svh::Svh;
 use rustc_back::tempdir::TempDir;
 use rustc_back::PanicStrategy;
 use rustc_incremental::IncrementalHashesMap;
+use context::get_reloc_model;
+use llvm;
 
 use std::ascii;
 use std::char;
@@ -859,13 +861,11 @@ fn link_args(cmd: &mut Linker,
     if crate_type == config::CrateTypeExecutable &&
        t.options.position_independent_executables {
         let empty_vec = Vec::new();
-        let empty_str = String::new();
         let args = sess.opts.cg.link_args.as_ref().unwrap_or(&empty_vec);
         let more_args = &sess.opts.cg.link_arg;
         let mut args = args.iter().chain(more_args.iter()).chain(used_link_args.iter());
-        let relocation_model = sess.opts.cg.relocation_model.as_ref()
-                                   .unwrap_or(&empty_str);
-        if (t.options.relocation_model == "pic" || *relocation_model == "pic")
+
+        if get_reloc_model(sess) == llvm::RelocMode::PIC
             && !args.any(|x| *x == "-static") {
             cmd.position_independent_executable();
         }
