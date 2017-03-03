@@ -10,12 +10,10 @@
 
 #![deny(warnings)]
 
-#[macro_use]
 extern crate build_helper;
 extern crate gcc;
 
 use std::env;
-use std::fs::File;
 use std::path::PathBuf;
 use std::process::Command;
 use build_helper::{run, native_lib_boilerplate};
@@ -60,11 +58,10 @@ fn main() {
     }
 
     let link_name = if target.contains("windows") { "jemalloc" } else { "jemalloc_pic" };
-    let native = native_lib_boilerplate("jemalloc", "jemalloc", link_name,
-                                        "rustbuild.timestamp", "lib");
-    if native.skip_build {
-        return
-    }
+    let native = match native_lib_boilerplate("jemalloc", "jemalloc", link_name, "lib") {
+        Ok(native) => native,
+        _ => return,
+    };
 
     let compiler = gcc::Config::new().get_compiler();
     // only msvc returns None for ar so unwrap is okay
@@ -175,6 +172,4 @@ fn main() {
             .file("pthread_atfork_dummy.c")
             .compile("libpthread_atfork_dummy.a");
     }
-
-    t!(File::create(&native.timestamp));
 }

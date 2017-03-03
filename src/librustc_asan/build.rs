@@ -8,23 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[macro_use]
 extern crate build_helper;
 extern crate cmake;
 
 use std::env;
-use std::fs::File;
 use build_helper::native_lib_boilerplate;
 
 use cmake::Config;
 
 fn main() {
     if let Some(llvm_config) = env::var_os("LLVM_CONFIG") {
-        let native = native_lib_boilerplate("compiler-rt", "asan", "clang_rt.asan-x86_64",
-                                            "rustbuild.timestamp", "build/lib/linux");
-        if native.skip_build {
-            return
-        }
+        let native = match native_lib_boilerplate("compiler-rt", "asan", "clang_rt.asan-x86_64",
+                                                  "build/lib/linux") {
+            Ok(native) => native,
+            _ => return,
+        };
 
         Config::new(&native.src_dir)
             .define("COMPILER_RT_BUILD_SANITIZERS", "ON")
@@ -34,7 +32,5 @@ fn main() {
             .out_dir(&native.out_dir)
             .build_target("asan")
             .build();
-
-        t!(File::create(&native.timestamp));
     }
 }
