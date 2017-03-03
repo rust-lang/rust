@@ -1045,6 +1045,7 @@ impl<'a> Formatter<'a> {
             // is zero
             Some(min) if self.sign_aware_zero_pad() => {
                 self.fill = '0';
+                self.align = rt::v1::Alignment::Right;
                 write_prefix(self)?;
                 self.with_padding(min - width, rt::v1::Alignment::Right, |f| {
                     f.buf.write_str(buf)
