@@ -106,6 +106,7 @@ pub struct Config {
     pub gdb: Option<PathBuf>,
     pub python: Option<PathBuf>,
     pub configure_args: Vec<String>,
+    pub openssl_static: bool,
 }
 
 /// Per-target configuration stored in the global configuration structure.
@@ -155,6 +156,7 @@ struct Build {
     extended: Option<bool>,
     verbose: Option<usize>,
     sanitizers: Option<bool>,
+    openssl_static: Option<bool>,
 }
 
 /// TOML representation of various global install decisions.
@@ -305,6 +307,7 @@ impl Config {
         set(&mut config.extended, build.extended);
         set(&mut config.verbose, build.verbose);
         set(&mut config.sanitizers, build.sanitizers);
+        set(&mut config.openssl_static, build.openssl_static);
 
         if let Some(ref install) = toml.install {
             config.prefix = install.prefix.clone().map(PathBuf::from);
@@ -453,6 +456,7 @@ impl Config {
                 ("EXTENDED", self.extended),
                 ("SANITIZERS", self.sanitizers),
                 ("DIST_SRC", self.rust_dist_src),
+                ("CARGO_OPENSSL_STATIC", self.openssl_static),
             }
 
             match key {

@@ -53,6 +53,24 @@ pub fn run_silent(cmd: &mut Command) {
     }
 }
 
+pub fn run_suppressed(cmd: &mut Command) {
+    let output = match cmd.output() {
+        Ok(status) => status,
+        Err(e) => fail(&format!("failed to execute command: {:?}\nerror: {}",
+                                cmd, e)),
+    };
+    if !output.status.success() {
+        fail(&format!("command did not execute successfully: {:?}\n\
+                       expected success, got: {}\n\n\
+                       stdout ----\n{}\n\
+                       stderr ----\n{}\n",
+                      cmd,
+                      output.status,
+                      String::from_utf8_lossy(&output.stdout),
+                      String::from_utf8_lossy(&output.stderr)));
+    }
+}
+
 pub fn gnu_target(target: &str) -> String {
     match target {
         "i686-pc-windows-msvc" => "i686-pc-win32".to_string(),
