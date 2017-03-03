@@ -53,21 +53,6 @@ pub enum Constant {
     Tuple(Vec<Constant>),
 }
 
-impl Constant {
-    /// Convert to `u64` if possible.
-    ///
-    /// # panics
-    ///
-    /// If the constant could not be converted to `u64` losslessly.
-    fn as_u64(&self) -> u64 {
-        if let Constant::Int(val) = *self {
-            val.to_u64().expect("negative constant can't be casted to `u64`")
-        } else {
-            panic!("Could not convert a `{:?}` to `u64`", self);
-        }
-    }
-}
-
 impl PartialEq for Constant {
     fn eq(&self, other: &Constant) -> bool {
         match (self, other) {
@@ -266,11 +251,12 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
             ExprLit(ref lit) => Some(lit_to_constant(&lit.node, self.tcx, self.tables.expr_ty(e))),
             ExprArray(ref vec) => self.multi(vec).map(Constant::Vec),
             ExprTup(ref tup) => self.multi(tup).map(Constant::Tuple),
-            ExprRepeat(ref value, number_id) => {
-                let val = &self.tcx.hir.body(number_id).value;
-                self.binop_apply(value,
-                                 val,
-                                 |v, n| Some(Constant::Repeat(Box::new(v), n.as_u64() as usize)))
+            ExprRepeat(ref value, _) => {
+                let n = match self.tables.expr_ty(e).sty {
+                    ty::TyArray(_, n) => n,
+                    _ => span_bug!(e.span, "typeck error"),
+                };
+                self.expr(value).map(|v| Constant::Repeat(Box::new(v), n))
             },
             ExprUnary(op, ref operand) => {
                 self.expr(operand).and_then(|o| match op {
@@ -373,17 +359,6 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
             (BiGe, Constant::Int(l), Some(Constant::Int(r))) => Some(Constant::Bool(l >= r)),
             (BiGt, Constant::Int(l), Some(Constant::Int(r))) => Some(Constant::Bool(l > r)),
             _ => None,
-        }
-    }
-
-
-    fn binop_apply<F>(&mut self, left: &Expr, right: &Expr, op: F) -> Option<Constant>
-        where F: Fn(Constant, Constant) -> Option<Constant>
-    {
-        if let (Some(lc), Some(rc)) = (self.expr(left), self.expr(right)) {
-            op(lc, rc)
-        } else {
-            None
         }
     }
 }
