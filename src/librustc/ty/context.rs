@@ -248,6 +248,11 @@ pub struct TypeckTables<'tcx> {
     /// If any errors occurred while type-checking this body,
     /// this field will be set to `true`.
     pub tainted_by_errors: bool,
+
+    /// Stores the free-region relationships that were deduced from
+    /// its where clauses and parameter types. These are then
+    /// read-again by borrowck.
+    pub free_region_map: FreeRegionMap,
 }
 
 impl<'tcx> TypeckTables<'tcx> {
@@ -267,6 +272,7 @@ impl<'tcx> TypeckTables<'tcx> {
             lints: lint::LintTable::new(),
             used_trait_imports: DefIdSet(),
             tainted_by_errors: false,
+            free_region_map: FreeRegionMap::new(),
         }
     }
 
@@ -413,13 +419,6 @@ pub struct GlobalCtxt<'tcx> {
     pub named_region_map: resolve_lifetime::NamedRegionMap,
 
     pub region_maps: RegionMaps,
-
-    // For each fn declared in the local crate, type check stores the
-    // free-region relationships that were deduced from its where
-    // clauses and parameter types. These are then read-again by
-    // borrowck. (They are not used during trans, and hence are not
-    // serialized or needed for cross-crate fns.)
-    free_region_maps: RefCell<NodeMap<FreeRegionMap>>,
 
     pub hir: hir_map::Map<'tcx>,
     pub maps: maps::Maps<'tcx>,
@@ -645,16 +644,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         interned
     }
 
-    pub fn store_free_region_map(self, id: NodeId, map: FreeRegionMap) {
-        if self.free_region_maps.borrow_mut().insert(id, map).is_some() {
-            bug!("Tried to overwrite interned FreeRegionMap for NodeId {:?}", id)
-        }
-    }
-
-    pub fn free_region_map(self, id: NodeId) -> FreeRegionMap {
-        self.free_region_maps.borrow()[&id].clone()
-    }
-
     pub fn lift<T: ?Sized + Lift<'tcx>>(self, value: &T) -> Option<T::Lifted> {
         value.lift_to_tcx(self)
     }
@@ -707,7 +696,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             types: common_types,
             named_region_map: named_region_map,
             region_maps: region_maps,
-            free_region_maps: RefCell::new(FxHashMap()),
             variance_computed: Cell::new(false),
             trait_map: resolutions.trait_map,
             fulfilled_predicates: RefCell::new(fulfilled_predicates),

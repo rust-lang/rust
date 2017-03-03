@@ -46,7 +46,7 @@ use hir::map::definitions::DefPathData;
 use hir::def_id::{DefIndex, DefId};
 use hir::def::{Def, PathResolution};
 use session::Session;
-use util::nodemap::{DefIdMap, NodeMap, FxHashMap};
+use util::nodemap::{DefIdMap, NodeMap};
 
 use std::collections::BTreeMap;
 use std::iter;
@@ -78,7 +78,7 @@ pub struct LoweringContext<'a> {
 
     trait_items: BTreeMap<hir::TraitItemId, hir::TraitItem>,
     impl_items: BTreeMap<hir::ImplItemId, hir::ImplItem>,
-    bodies: FxHashMap<hir::BodyId, hir::Body>,
+    bodies: BTreeMap<hir::BodyId, hir::Body>,
 
     trait_impls: BTreeMap<DefId, Vec<NodeId>>,
     trait_default_impl: BTreeMap<DefId, NodeId>,
@@ -118,7 +118,7 @@ pub fn lower_crate(sess: &Session,
         items: BTreeMap::new(),
         trait_items: BTreeMap::new(),
         impl_items: BTreeMap::new(),
-        bodies: FxHashMap(),
+        bodies: BTreeMap::new(),
         trait_impls: BTreeMap::new(),
         trait_default_impl: BTreeMap::new(),
         loop_scopes: Vec::new(),
@@ -196,6 +196,7 @@ impl<'a> LoweringContext<'a> {
         let module = self.lower_mod(&c.module);
         let attrs = self.lower_attrs(&c.attrs);
         let exported_macros = c.exported_macros.iter().map(|m| self.lower_macro_def(m)).collect();
+        let body_ids = body_ids(&self.bodies);
 
         hir::Crate {
             module: module,
@@ -206,6 +207,7 @@ impl<'a> LoweringContext<'a> {
             trait_items: self.trait_items,
             impl_items: self.impl_items,
             bodies: self.bodies,
+            body_ids: body_ids,
             trait_impls: self.trait_impls,
             trait_default_impl: self.trait_default_impl,
         }
@@ -2523,4 +2525,12 @@ impl<'a> LoweringContext<'a> {
             name: keywords::Invalid.name()
         }
     }
+}
+
+fn body_ids(bodies: &BTreeMap<hir::BodyId, hir::Body>) -> Vec<hir::BodyId> {
+    // Sorting by span ensures that we get things in order within a
+    // file, and also puts the files in a sensible order.
+    let mut body_ids: Vec<_> = bodies.keys().cloned().collect();
+    body_ids.sort_by_key(|b| bodies[b].value.span);
+    body_ids
 }

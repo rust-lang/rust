@@ -89,8 +89,10 @@ pub enum DepNode<D: Clone + Debug> {
 
     // Represents the MIR for a fn; also used as the task node for
     // things read/modify that MIR.
+    MirKrate,
     Mir(D),
 
+    BorrowCheckKrate,
     BorrowCheck(D),
     RvalueCheck(D),
     Reachability,
@@ -114,6 +116,7 @@ pub enum DepNode<D: Clone + Debug> {
     SizedConstraint(D),
     AssociatedItemDefIds(D),
     InherentImpls(D),
+    TypeckBodiesKrate,
     TypeckTables(D),
     UsedTraitImports(D),
     MonomorphicConstEval(D),
@@ -209,6 +212,9 @@ impl<D: Clone + Debug> DepNode<D> {
 
         match *self {
             Krate => Some(Krate),
+            BorrowCheckKrate => Some(BorrowCheckKrate),
+            MirKrate => Some(MirKrate),
+            TypeckBodiesKrate => Some(TypeckBodiesKrate),
             CollectLanguageItems => Some(CollectLanguageItems),
             CheckStaticRecursion => Some(CheckStaticRecursion),
             ResolveLifetimes => Some(ResolveLifetimes),
