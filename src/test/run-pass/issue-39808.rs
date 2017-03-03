@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that we can't use another type in place of !
-
-#![feature(never_type)]
-#![deny(warnings)]
+// Regression test: even though `Ok` is dead-code, its type needs to
+// be influenced by the result of `Err` or else we get a "type
+// variable unconstrained" error.
 
 fn main() {
-    let x: ! = "hello"; //~ ERROR mismatched types
+    let _ = if false {
+        Ok(return)
+    } else {
+        Err("")
+    };
 }
-
-
