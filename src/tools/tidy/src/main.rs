@@ -70,6 +70,7 @@ fn filter_dirs(path: &Path) -> bool {
         "src/rustllvm",
         "src/rust-installer",
         "src/liblibc",
+        "src/tools/cargo",
         "src/vendor",
     ];
     skip.iter().any(|p| path.ends_with(p))

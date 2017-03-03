@@ -191,3 +191,96 @@ pub fn test_helpers(build: &Build, target: &str) {
        .file(build.src.join("src/rt/rust_test_helpers.c"))
        .compile("librust_test_helpers.a");
 }
+const OPENSSL_VERS: &'static str = "1.0.2k";
+const OPENSSL_SHA256: &'static str =
+    "6b3977c61f2aedf0f96367dcfb5c6e578cf37e7b8d913b4ecb6643c3cb88d8c0";
+
+pub fn openssl(build: &Build, target: &str) {
+    let out = match build.openssl_dir(target) {
+        Some(dir) => dir,
+        None => return,
+    };
+
+    let stamp = out.join(".stamp");
+    let mut contents = String::new();
+    drop(File::open(&stamp).and_then(|mut f| f.read_to_string(&mut contents)));
+    if contents == OPENSSL_VERS {
+        return
+    }
+    t!(fs::create_dir_all(&out));
+
+    let name = format!("openssl-{}.tar.gz", OPENSSL_VERS);
+    let tarball = out.join(&name);
+    if !tarball.exists() {
+        let tmp = tarball.with_extension("tmp");
+        build.run(Command::new("curl")
+                        .arg("-o").arg(&tmp)
+                        .arg(format!("https://www.openssl.org/source/{}", name)));
+        let mut shasum = if target.contains("apple") {
+            let mut cmd = Command::new("shasum");
+            cmd.arg("-a").arg("256");
+            cmd
+        } else {
+            Command::new("sha256sum")
+        };
+        let output = output(&mut shasum.arg(&tmp));
+        let found = output.split_whitespace().next().unwrap();
+        if found != OPENSSL_SHA256 {
+            panic!("downloaded openssl sha256 different\n\
+                    expected: {}\n\
+                    found:    {}\n", OPENSSL_SHA256, found);
+        }
+        t!(fs::rename(&tmp, &tarball));
+    }
+    let obj = out.join(format!("openssl-{}", OPENSSL_VERS));
+    let dst = build.openssl_install_dir(target).unwrap();
+    drop(fs::remove_dir_all(&obj));
+    drop(fs::remove_dir_all(&dst));
+    build.run(Command::new("tar").arg("xf").arg(&tarball).current_dir(&out));
+
+    let mut configure = Command::new(obj.join("Configure"));
+    configure.arg(format!("--prefix={}", dst.display()));
+    configure.arg("no-dso");
+    configure.arg("no-ssl2");
+    configure.arg("no-ssl3");
+
+    let os = match target {
+        "aarch64-unknown-linux-gnu" => "linux-aarch64",
+        "arm-unknown-linux-gnueabi" => "linux-armv4",
+        "arm-unknown-linux-gnueabihf" => "linux-armv4",
+        "armv7-unknown-linux-gnueabihf" => "linux-armv4",
+        "i686-apple-darwin" => "darwin-i386-cc",
+        "i686-unknown-freebsd" => "BSD-x86-elf",
+        "i686-unknown-linux-gnu" => "linux-elf",
+        "i686-unknown-linux-musl" => "linux-elf",
+        "mips-unknown-linux-gnu" => "linux-mips32",
+        "mips64-unknown-linux-gnuabi64" => "linux64-mips64",
+        "mips64el-unknown-linux-gnuabi64" => "linux64-mips64",
+        "mipsel-unknown-linux-gnu" => "linux-mips32",
+        "powerpc-unknown-linux-gnu" => "linux-ppc",
+        "powerpc64-unknown-linux-gnu" => "linux-ppc64",
+        "powerpc64le-unknown-linux-gnu" => "linux-ppc64le",
+        "s390x-unknown-linux-gnu" => "linux64-s390x",
+        "x86_64-apple-darwin" => "darwin64-x86_64-cc",
+        "x86_64-unknown-freebsd" => "BSD-x86_64",
+        "x86_64-unknown-linux-gnu" => "linux-x86_64",
+        "x86_64-unknown-linux-musl" => "linux-x86_64",
+        "x86_64-unknown-netbsd" => "BSD-x86_64",
+        _ => panic!("don't know how to configure OpenSSL for {}", target),
+    };
+    configure.arg(os);
+    configure.env("CC", build.cc(target));
+    for flag in build.cflags(target) {
+        configure.arg(flag);
+    }
+    configure.current_dir(&obj);
+    println!("Configuring openssl for {}", target);
+    build.run_quiet(&mut configure);
+    println!("Building openssl for {}", target);
+    build.run_quiet(Command::new("make").current_dir(&obj));
+    println!("Installing openssl for {}", target);
+    build.run_quiet(Command::new("make").arg("install").current_dir(&obj));
+
+    let mut f = t!(File::create(&stamp));
+    t!(f.write_all(OPENSSL_VERS.as_bytes()));
+}

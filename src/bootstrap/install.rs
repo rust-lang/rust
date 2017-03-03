@@ -19,7 +19,7 @@ use std::path::{Path, PathBuf, Component};
 use std::process::Command;
 
 use Build;
-use dist::{package_vers, sanitize_sh, tmpdir};
+use dist::{sanitize_sh, tmpdir};
 
 /// Installs everything.
 pub fn install(build: &Build, stage: u32, host: &str) {
@@ -59,7 +59,7 @@ pub fn install(build: &Build, stage: u32, host: &str) {
 fn install_sh(build: &Build, package: &str, name: &str, stage: u32, host: &str,
               prefix: &Path, docdir: &Path, libdir: &Path, mandir: &Path, empty_dir: &Path) {
     println!("Install {} stage{} ({})", package, stage, host);
-    let package_name = format!("{}-{}-{}", name, package_vers(build), host);
+    let package_name = format!("{}-{}-{}", name, build.rust_package_vers(), host);
 
     let mut cmd = Command::new("sh");
     cmd.current_dir(empty_dir)
