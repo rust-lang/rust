@@ -2227,7 +2227,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         queries::impl_trait_ref::get(self, DUMMY_SP, id)
     }
 
-    /// Returns true if the impl is positive and is for a triat which contains
+    /// Returns true if the impl is positive and is for a trait which contains
     /// no items
     pub fn impl_always_allowed_to_overlap(self, def_id: DefId) -> bool {
         self.trait_impl_polarity(def_id) == hir::ImplPolarity::Positive
