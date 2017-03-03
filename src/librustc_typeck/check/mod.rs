@@ -1533,17 +1533,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     #[inline]
     pub fn write_ty(&self, node_id: ast::NodeId, ty: Ty<'tcx>) {
         debug!("write_ty({}, {:?}) in fcx {}",
-               node_id, ty, self.tag());
+               node_id, self.resolve_type_vars_if_possible(&ty), self.tag());
         self.tables.borrow_mut().node_types.insert(node_id, ty);
 
         if ty.references_error() {
             self.has_errors.set(true);
             self.set_tainted_by_errors();
-        }
-
-        // FIXME(canndrew): This is_never should probably be an is_uninhabited
-        if ty.is_never() || self.type_var_diverges(ty) {
-            self.diverges.set(self.diverges.get() | Diverges::Always);
         }
     }
 
@@ -3282,6 +3277,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             _ => self.warn_if_unreachable(expr.id, expr.span, "expression")
         }
 
+        // Any expression that produces a value of type `!` must have diverged
+        if ty.is_never() {
+            self.diverges.set(self.diverges.get() | Diverges::Always);
+        }
+
         // Record the type, which applies it effects.
         // We need to do this after the warning above, so that
         // we don't warn for the diverging expression itself.
@@ -3967,7 +3967,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         self.diverges.set(Diverges::Maybe);
         self.has_errors.set(false);
 
-        let (node_id, span) = match stmt.node {
+        let (node_id, _span) = match stmt.node {
             hir::StmtDecl(ref decl, id) => {
                 let span = match decl.node {
                     hir::DeclLocal(ref l) => {
@@ -3993,9 +3993,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         if self.has_errors.get() {
             self.write_error(node_id);
-        } else if self.diverges.get().always() {
-            self.write_ty(node_id, self.next_diverging_ty_var(
-                TypeVariableOrigin::DivergingStmt(span)));
         } else {
             self.write_nil(node_id);
         }
@@ -4046,7 +4043,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         cause = self.misc(e.span);
                     },
                     None => {
-                        e_ty = self.tcx.mk_nil();
+                        e_ty = if self.diverges.get().always() {
+                            self.next_diverging_ty_var(TypeVariableOrigin::DivergingBlockExpr(blk.span))
+                        } else {
+                            self.tcx.mk_nil()
+                        };
                         cause = self.misc(blk.span);
                     }
                 };
@@ -4054,6 +4055,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 (e_ty, cause)
             });
 
+        if let ExpectHasType(ety) = expected {
             if let Some(ref e) = blk.expr {
                 let result = if !ctxt.may_break {
                     self.try_coerce(e, e_ty, ctxt.coerce_to)
