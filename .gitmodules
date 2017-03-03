@@ -18,6 +18,9 @@
 [submodule "src/liblibc"]
 	path = src/liblibc
 	url = https://github.com/rust-lang/libc.git
+[submodule "src/doc/nomicon"]
+	path = src/doc/nomicon
+	url = https://github.com/rust-lang-nursery/nomicon
 [submodule "src/tools/cargo"]
 	path = src/tools/cargo
 	url = https://github.com/rust-lang/cargo
