@@ -241,12 +241,10 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
             ItemKind::Mod(_) => {
                 // Ensure that `path` attributes on modules are recorded as used (c.f. #35584).
                 attr::first_attr_value_str_by_name(&item.attrs, "path");
-                if let Some(attr) =
-                        item.attrs.iter().find(|attr| attr.name() == "warn_directory_ownership") {
+                if item.attrs.iter().any(|attr| attr.check_name("warn_directory_ownership")) {
                     let lint = lint::builtin::LEGACY_DIRECTORY_OWNERSHIP;
                     let msg = "cannot declare a new module at this location";
                     self.session.add_lint(lint, item.id, item.span, msg.to_string());
-                    attr::mark_used(attr);
                 }
             }
             ItemKind::Union(ref vdata, _) => {

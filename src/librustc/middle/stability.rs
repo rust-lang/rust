@@ -197,7 +197,7 @@ impl<'a, 'tcx: 'a> Annotator<'a, 'tcx> {
         } else {
             // Emit errors for non-staged-api crates.
             for attr in attrs {
-                let tag = attr.name();
+                let tag = unwrap_or!(attr.name(), continue);
                 if tag == "unstable" || tag == "stable" || tag == "rustc_deprecated" {
                     attr::mark_used(attr);
                     self.tcx.sess.span_err(attr.span(), "stability attributes may not be used \
@@ -402,7 +402,7 @@ impl<'a, 'tcx> Index<'tcx> {
 
         let mut is_staged_api = false;
         for attr in &krate.attrs {
-            if attr.name() == "stable" || attr.name() == "unstable" {
+            if attr.path == "stable" || attr.path == "unstable" {
                 is_staged_api = true;
                 break
             }

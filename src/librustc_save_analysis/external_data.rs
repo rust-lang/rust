@@ -14,7 +14,6 @@ use rustc::ty::TyCtxt;
 use syntax::ast::{self, NodeId};
 use syntax::codemap::CodeMap;
 use syntax::print::pprust;
-use syntax::symbol::Symbol;
 use syntax_pos::Span;
 
 use data::{self, Visibility, SigElement};
@@ -77,10 +76,9 @@ impl Lower for Vec<ast::Attribute> {
     type Target = Vec<Attribute>;
 
     fn lower(self, tcx: TyCtxt) -> Vec<Attribute> {
-        let doc = Symbol::intern("doc");
         self.into_iter()
         // Only retain real attributes. Doc comments are lowered separately.
-        .filter(|attr| attr.name() != doc)
+        .filter(|attr| attr.path != "doc")
         .map(|mut attr| {
             // Remove the surrounding '#[..]' or '#![..]' of the pretty printed
             // attribute. First normalize all inner attribute (#![..]) to outer

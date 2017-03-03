@@ -18,7 +18,7 @@ use syntax_pos::Span;
 pub fn collect_derives(cx: &mut ExtCtxt, attrs: &mut Vec<ast::Attribute>) -> Vec<(Symbol, Span)> {
     let mut result = Vec::new();
     attrs.retain(|attr| {
-        if attr.name() != "derive" {
+        if attr.path != "derive" {
             return true;
         }
 
@@ -27,7 +27,7 @@ pub fn collect_derives(cx: &mut ExtCtxt, attrs: &mut Vec<ast::Attribute>) -> Vec
             return false;
         }
 
-        let traits = attr.meta_item_list().unwrap_or(&[]).to_owned();
+        let traits = attr.meta_item_list().unwrap_or_else(Vec::new);
         if traits.is_empty() {
             cx.span_warn(attr.span, "empty trait list in `derive`");
             return false;

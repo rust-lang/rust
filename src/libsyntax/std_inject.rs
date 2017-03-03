@@ -15,6 +15,7 @@ use syntax_pos::{DUMMY_SP, Span};
 use codemap::{self, ExpnInfo, NameAndSpan, MacroAttribute};
 use parse::ParseSess;
 use ptr::P;
+use tokenstream::TokenStream;
 
 /// Craft a span that will be ignored by the stability lint's
 /// call to codemap's is_internal check.
@@ -70,11 +71,8 @@ pub fn maybe_inject_crates_ref(sess: &ParseSess,
     krate.module.items.insert(0, P(ast::Item {
         attrs: vec![ast::Attribute {
             style: ast::AttrStyle::Outer,
-            value: ast::MetaItem {
-                name: Symbol::intern("prelude_import"),
-                node: ast::MetaItemKind::Word,
-                span: span,
-            },
+            path: ast::Path::from_ident(span, ast::Ident::from_str("prelude_import")),
+            tokens: TokenStream::empty(),
             id: attr::mk_attr_id(),
             is_sugared_doc: false,
             span: span,

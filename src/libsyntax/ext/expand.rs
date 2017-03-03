@@ -272,7 +272,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     self.collect_invocations(expansion, &[])
                 } else if let InvocationKind::Attr { attr: None, traits, item } = invoc.kind {
                     let item = item
-                        .map_attrs(|mut attrs| { attrs.retain(|a| a.name() != "derive"); attrs });
+                        .map_attrs(|mut attrs| { attrs.retain(|a| a.path != "derive"); attrs });
                     let item_with_markers =
                         add_derived_markers(&mut self.cx, &traits, item.clone());
                     let derives = derives.entry(invoc.expansion_data.mark).or_insert_with(Vec::new);
@@ -380,7 +380,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         };
 
         attr::mark_used(&attr);
-        let name = attr.name();
+        let name = attr.path.segments[0].identifier.name;
         self.cx.bt_push(ExpnInfo {
             call_site: attr.span,
             callee: NameAndSpan {
@@ -392,25 +392,25 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
         match *ext {
             MultiModifier(ref mac) => {
-                let item = mac.expand(self.cx, attr.span, &attr.value, item);
+                let meta = panictry!(attr.parse_meta(&self.cx.parse_sess));
+                let item = mac.expand(self.cx, attr.span, &meta, item);
                 kind.expect_from_annotatables(item)
             }
             MultiDecorator(ref mac) => {
                 let mut items = Vec::new();
-                mac.expand(self.cx, attr.span, &attr.value, &item,
-                           &mut |item| items.push(item));
+                let meta = panictry!(attr.parse_meta(&self.cx.parse_sess));
+                mac.expand(self.cx, attr.span, &meta, &item, &mut |item| items.push(item));
                 items.push(item);
                 kind.expect_from_annotatables(items)
             }
             SyntaxExtension::AttrProcMacro(ref mac) => {
-                let attr_toks = stream_for_attr_args(&attr, &self.cx.parse_sess);
                 let item_toks = stream_for_item(&item, &self.cx.parse_sess);
 
                 let span = Span {
                     expn_id: self.cx.codemap().record_expansion(ExpnInfo {
                         call_site: attr.span,
                         callee: NameAndSpan {
-                            format: MacroAttribute(name),
+                            format: MacroAttribute(Symbol::intern(&format!("{}", attr.path))),
                             span: None,
                             allow_internal_unstable: false,
                         },
@@ -418,7 +418,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     ..attr.span
                 };
 
-                let tok_result = mac.expand(self.cx, attr.span, attr_toks, item_toks);
+                let tok_result = mac.expand(self.cx, attr.span, attr.tokens.clone(), item_toks);
                 self.parse_expansion(tok_result, kind, name, span)
             }
             SyntaxExtension::ProcMacroDerive(..) | SyntaxExtension::BuiltinDerive(..) => {
@@ -782,32 +782,6 @@ fn stream_for_item(item: &Annotatable, parse_sess: &ParseSess) -> TokenStream {
         Annotatable::ImplItem(ref ii) => pprust::impl_item_to_string(ii),
     };
     string_to_stream(text, parse_sess)
-}
-
-fn stream_for_attr_args(attr: &ast::Attribute, parse_sess: &ParseSess) -> TokenStream {
-    use ast::MetaItemKind::*;
-    use print::pp::Breaks;
-    use print::pprust::PrintState;
-
-    let token_string = match attr.value.node {
-        // For `#[foo]`, an empty token
-        Word => return TokenStream::empty(),
-        // For `#[foo(bar, baz)]`, returns `(bar, baz)`
-        List(ref items) => pprust::to_string(|s| {
-            s.popen()?;
-            s.commasep(Breaks::Consistent,
-                       &items[..],
-                       |s, i| s.print_meta_list_item(&i))?;
-            s.pclose()
-        }),
-        // For `#[foo = "bar"]`, returns `= "bar"`
-        NameValue(ref lit) => pprust::to_string(|s| {
-            s.word_space("=")?;
-            s.print_literal(lit)
-        }),
-    };
-
-    string_to_stream(token_string, parse_sess)
 }
 
 fn string_to_stream(text: String, parse_sess: &ParseSess) -> TokenStream {
