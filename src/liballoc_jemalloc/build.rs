@@ -10,19 +10,15 @@
 
 #![deny(warnings)]
 
-#[macro_use]
 extern crate build_helper;
 extern crate gcc;
 
 use std::env;
-use std::fs::{self, File};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::Command;
-use build_helper::{run, rerun_if_changed_anything_in_dir, up_to_date};
+use build_helper::{run, native_lib_boilerplate};
 
 fn main() {
-    println!("cargo:rerun-if-changed=build.rs");
-
     // FIXME: This is a hack to support building targets that don't
     // support jemalloc alongside hosts that do. The jemalloc build is
     // controlled by a feature of the std crate, and if that feature
@@ -61,22 +57,11 @@ fn main() {
         return;
     }
 
-    let build_dir = env::var_os("RUSTBUILD_NATIVE_DIR").unwrap_or(env::var_os("OUT_DIR").unwrap());
-    let build_dir = PathBuf::from(build_dir).join("jemalloc");
-    let _ = fs::create_dir_all(&build_dir);
-
-    if target.contains("windows") {
-        println!("cargo:rustc-link-lib=static=jemalloc");
-    } else {
-        println!("cargo:rustc-link-lib=static=jemalloc_pic");
-    }
-    println!("cargo:rustc-link-search=native={}/lib", build_dir.display());
-    let src_dir = env::current_dir().unwrap().join("../jemalloc");
-    rerun_if_changed_anything_in_dir(&src_dir);
-    let timestamp = build_dir.join("rustbuild.timestamp");
-    if up_to_date(&Path::new("build.rs"), &timestamp) && up_to_date(&src_dir, &timestamp) {
-        return
-    }
+    let link_name = if target.contains("windows") { "jemalloc" } else { "jemalloc_pic" };
+    let native = match native_lib_boilerplate("jemalloc", "jemalloc", link_name, "lib") {
+        Ok(native) => native,
+        _ => return,
+    };
 
     let compiler = gcc::Config::new().get_compiler();
     // only msvc returns None for ar so unwrap is okay
@@ -88,12 +73,12 @@ fn main() {
         .join(" ");
 
     let mut cmd = Command::new("sh");
-    cmd.arg(src_dir.join("configure")
-                   .to_str()
-                   .unwrap()
-                   .replace("C:\\", "/c/")
-                   .replace("\\", "/"))
-       .current_dir(&build_dir)
+    cmd.arg(native.src_dir.join("configure")
+                          .to_str()
+                          .unwrap()
+                          .replace("C:\\", "/c/")
+                          .replace("\\", "/"))
+       .current_dir(&native.out_dir)
        .env("CC", compiler.path())
        .env("EXTRA_CFLAGS", cflags.clone())
        // jemalloc generates Makefile deps using GCC's "-MM" flag. This means
@@ -166,7 +151,7 @@ fn main() {
     run(&mut cmd);
 
     let mut make = Command::new(build_helper::make(&host));
-    make.current_dir(&build_dir)
+    make.current_dir(&native.out_dir)
         .arg("build_lib_static");
 
     // mingw make seems... buggy? unclear...
@@ -187,6 +172,4 @@ fn main() {
             .file("pthread_atfork_dummy.c")
             .compile("libpthread_atfork_dummy.a");
     }
-
-    t!(File::create(&timestamp));
 }

@@ -41,28 +41,32 @@ pub fn llvm(build: &Build, target: &str) {
         }
     }
 
-    // If the cleaning trigger is newer than our built artifacts (or if the
-    // artifacts are missing) then we keep going, otherwise we bail out.
-    let dst = build.llvm_out(target);
-    let stamp = build.src.join("src/rustllvm/llvm-auto-clean-trigger");
-    let mut stamp_contents = String::new();
-    t!(t!(File::open(&stamp)).read_to_string(&mut stamp_contents));
-    let done_stamp = dst.join("llvm-finished-building");
+    let clean_trigger = build.src.join("src/rustllvm/llvm-auto-clean-trigger");
+    let mut clean_trigger_contents = String::new();
+    t!(t!(File::open(&clean_trigger)).read_to_string(&mut clean_trigger_contents));
+
+    let out_dir = build.llvm_out(target);
+    let done_stamp = out_dir.join("llvm-finished-building");
     if done_stamp.exists() {
         let mut done_contents = String::new();
         t!(t!(File::open(&done_stamp)).read_to_string(&mut done_contents));
-        if done_contents == stamp_contents {
+
+        // LLVM was already built previously.
+        // We don't track changes in LLVM sources, so we need to choose between reusing
+        // what was built previously, or cleaning the directory and doing a fresh build.
+        // The choice depends on contents of the clean-trigger file.
+        // If the contents are the same as during the previous build, then no action is required.
+        // If the contents differ from the previous build, then cleaning is triggered.
+        if done_contents == clean_trigger_contents {
             return
+        } else {
+            t!(fs::remove_dir_all(&out_dir));
         }
     }
-    drop(fs::remove_dir_all(&dst));
 
     println!("Building LLVM for {}", target);
-
     let _time = util::timeit();
-    let _ = fs::remove_dir_all(&dst.join("build"));
-    t!(fs::create_dir_all(&dst.join("build")));
-    let assertions = if build.config.llvm_assertions {"ON"} else {"OFF"};
+    t!(fs::create_dir_all(&out_dir));
 
     // http://llvm.org/docs/CMake.html
     let mut cfg = cmake::Config::new(build.src.join("src/llvm"));
@@ -82,9 +86,11 @@ pub fn llvm(build: &Build, target: &str) {
         None => "X86;ARM;AArch64;Mips;PowerPC;SystemZ;JSBackend;MSP430;Sparc;NVPTX",
     };
 
+    let assertions = if build.config.llvm_assertions {"ON"} else {"OFF"};
+
     cfg.target(target)
        .host(&build.config.build)
-       .out_dir(&dst)
+       .out_dir(&out_dir)
        .profile(profile)
        .define("LLVM_ENABLE_ASSERTIONS", assertions)
        .define("LLVM_TARGETS_TO_BUILD", llvm_targets)
@@ -142,7 +148,7 @@ pub fn llvm(build: &Build, target: &str) {
     //        tools and libs on all platforms.
     cfg.build();
 
-    t!(t!(File::create(&done_stamp)).write_all(stamp_contents.as_bytes()));
+    t!(t!(File::create(&done_stamp)).write_all(clean_trigger_contents.as_bytes()));
 }
 
 fn check_llvm_version(build: &Build, llvm_config: &Path) {
