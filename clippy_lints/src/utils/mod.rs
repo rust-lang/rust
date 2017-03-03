@@ -385,7 +385,7 @@ pub fn get_item_name(cx: &LateContext, expr: &Expr) -> Option<Name> {
 /// snippet(cx, expr.span, "..")
 /// ```
 pub fn snippet<'a, 'b, T: LintContext<'b>>(cx: &T, span: Span, default: &'a str) -> Cow<'a, str> {
-    cx.sess().codemap().span_to_snippet(span).map(From::from).unwrap_or_else(|_| Cow::Borrowed(default))
+    snippet_opt(cx, span).map_or_else(|| Cow::Borrowed(default), From::from)
 }
 
 /// Convert a span to a code snippet. Returns `None` if not available.
