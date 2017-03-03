@@ -14,7 +14,8 @@
 
 #![allow(unused)]
 
-// compile-flags:-g
+// compile-flags:-g -O -C no-prepopulate-passes
+// -O -C no-prepopulate-passes added to work around https://bugs.llvm.org/show_bug.cgi?id=32123
 
 // This test checks that drop glue code gets attributed to scope's closing brace,
 // and function epilogues - to function's closing brace.
