@@ -10,8 +10,10 @@
 
 #![feature(catch_expr)]
 
+struct catch {}
+
 pub fn main() {
-    let catch_result = catch {
+    let catch_result = do catch {
         let x = 5;
         x
     };

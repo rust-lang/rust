@@ -9,7 +9,7 @@
 // except according to those terms.
 
 pub fn main() {
-    let catch_result = catch { //~ ERROR `catch` expression is experimental
+    let catch_result = do catch { //~ ERROR `catch` expression is experimental
         let x = 5;
         x
     };
