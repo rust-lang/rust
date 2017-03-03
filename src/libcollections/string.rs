@@ -433,6 +433,8 @@ impl String {
     ///
     /// [`str::from_utf8()`]: ../../std/str/fn.from_utf8.html
     ///
+    /// The inverse of this method is [`as_bytes`](#method.as_bytes).
+    ///
     /// # Errors
     ///
     /// Returns `Err` if the slice is not UTF-8 with a description as to why the
@@ -978,6 +980,8 @@ impl String {
     }
 
     /// Returns a byte slice of this `String`'s contents.
+    ///
+    /// The inverse of this method is [`from_utf8`](#method.from_utf8).
     ///
     /// # Examples
     ///
