@@ -26,7 +26,7 @@
 //! along with the actual implementation elsewhere. You can find more comments
 //! about how to define rules themselves below.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashSet};
 use std::mem;
 
 use check::{self, TestKind};
@@ -866,7 +866,7 @@ impl<'a, 'b> Drop for RuleBuilder<'a, 'b> {
 pub struct Rules<'a> {
     build: &'a Build,
     sbuild: Step<'a>,
-    rules: HashMap<&'a str, Rule<'a>>,
+    rules: BTreeMap<&'a str, Rule<'a>>,
 }
 
 impl<'a> Rules<'a> {
@@ -879,7 +879,7 @@ impl<'a> Rules<'a> {
                 host: &build.config.build,
                 name: "",
             },
-            rules: HashMap::new(),
+            rules: BTreeMap::new(),
         }
     }
 
@@ -985,6 +985,8 @@ invalid rule dependency graph detected, was a rule added and maybe typo'd?
         // 2. Next, we determine which rules we're actually executing. If a
         //    number of path filters were specified on the command line we look
         //    for those, otherwise we look for anything tagged `default`.
+        //    Here we also compute the priority of each rule based on how early
+        //    in the command line the matching path filter showed up.
         //
         // 3. Finally, we generate some steps with host and target information.
         //
@@ -1015,11 +1017,22 @@ invalid rule dependency graph detected, was a rule added and maybe typo'd?
             Subcommand::Clean => panic!(),
         };
 
-        self.rules.values().filter(|rule| rule.kind == kind).filter(|rule| {
-            (paths.len() == 0 && rule.default) || paths.iter().any(|path| {
-                path.ends_with(rule.path)
-            })
-        }).flat_map(|rule| {
+        let mut rules: Vec<_> = self.rules.values().filter_map(|rule| {
+            if rule.kind != kind {
+                return None;
+            }
+
+            if paths.len() == 0 && rule.default {
+                Some((rule, 0))
+            } else {
+                paths.iter().position(|path| path.ends_with(rule.path))
+                     .map(|priority| (rule, priority))
+            }
+        }).collect();
+
+        rules.sort_by_key(|&(_, priority)| priority);
+
+        rules.into_iter().flat_map(|(rule, _)| {
             let hosts = if rule.only_host_build || rule.only_build {
                 &self.build.config.host[..1]
             } else if self.build.flags.host.len() > 0 {
