@@ -753,12 +753,12 @@ fn find_drop_glue_neighbors<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
 
     // If the type implements Drop, also add a translation item for the
     // monomorphized Drop::drop() implementation.
-    let destructor_did = match ty.sty {
+    let destructor = match ty.sty {
         ty::TyAdt(def, _) => def.destructor(scx.tcx()),
         _ => None
     };
 
-    if let (Some(destructor_did), false) = (destructor_did, ty.is_box()) {
+    if let (Some(destructor), false) = (destructor, ty.is_box()) {
         use rustc::ty::ToPolyTraitRef;
 
         let drop_trait_def_id = scx.tcx()
@@ -778,9 +778,9 @@ fn find_drop_glue_neighbors<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
             _ => bug!()
         };
 
-        if should_trans_locally(scx.tcx(), destructor_did) {
+        if should_trans_locally(scx.tcx(), destructor.did) {
             let trans_item = create_fn_trans_item(scx,
-                                                  destructor_did,
+                                                  destructor.did,
                                                   substs,
                                                   scx.tcx().intern_substs(&[]));
             output.push(trans_item);

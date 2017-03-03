@@ -548,31 +548,12 @@ pub fn check_item_bodies<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> CompileResult
     })
 }
 
-pub fn check_drop_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> CompileResult {
-    tcx.sess.track_errors(|| {
-        let _task = tcx.dep_graph.in_task(DepNode::Dropck);
-        let drop_trait = match tcx.lang_items.drop_trait() {
-            Some(id) => tcx.lookup_trait_def(id), None => { return }
-        };
-        drop_trait.for_each_impl(tcx, |drop_impl_did| {
-            let _task = tcx.dep_graph.in_task(DepNode::DropckImpl(drop_impl_did));
-            if drop_impl_did.is_local() {
-                match dropck::check_drop_impl(tcx, drop_impl_did) {
-                    Ok(()) => {}
-                    Err(()) => {
-                        assert!(tcx.sess.has_errors());
-                    }
-                }
-            }
-        });
-    })
-}
-
 pub fn provide(providers: &mut Providers) {
     *providers = Providers {
         typeck_tables,
         closure_type,
         closure_kind,
+        adt_destructor,
         ..*providers
     };
 }
@@ -589,6 +570,12 @@ fn closure_kind<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           -> ty::ClosureKind {
     let node_id = tcx.hir.as_local_node_id(def_id).unwrap();
     tcx.item_tables(def_id).closure_kinds[&node_id]
+}
+
+fn adt_destructor<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                            def_id: DefId)
+                            -> Option<ty::Destructor> {
+    tcx.calculate_dtor(def_id, &mut dropck::check_drop_impl)
 }
 
 fn typeck_tables<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -840,9 +827,11 @@ fn check_struct<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           id: ast::NodeId,
                           span: Span) {
     let def_id = tcx.hir.local_def_id(id);
+    let def = tcx.lookup_adt_def(def_id);
+    def.destructor(tcx); // force the destructor to be evaluated
     check_representable(tcx, span, def_id);
 
-    if tcx.lookup_adt_def(def_id).repr.simd {
+    if def.repr.simd {
         check_simd(tcx, span, def_id);
     }
 }
@@ -850,7 +839,10 @@ fn check_struct<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 fn check_union<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                          id: ast::NodeId,
                          span: Span) {
-    check_representable(tcx, span, tcx.hir.local_def_id(id));
+    let def_id = tcx.hir.local_def_id(id);
+    let def = tcx.lookup_adt_def(def_id);
+    def.destructor(tcx); // force the destructor to be evaluated
+    check_representable(tcx, span, def_id);
 }
 
 pub fn check_item_type<'a,'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, it: &'tcx hir::Item) {
@@ -865,10 +857,10 @@ pub fn check_item_type<'a,'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, it: &'tcx hir::Item
         tcx.item_tables(tcx.hir.local_def_id(it.id));
       }
       hir::ItemEnum(ref enum_definition, _) => {
-        check_enum_variants(tcx,
-                            it.span,
-                            &enum_definition.variants,
-                            it.id);
+        check_enum(tcx,
+                   it.span,
+                   &enum_definition.variants,
+                   it.id);
       }
       hir::ItemFn(..) => {} // entirely within check_item_body
       hir::ItemImpl(.., ref impl_item_refs) => {
@@ -1261,12 +1253,13 @@ pub fn check_simd<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, sp: Span, def_id: DefId
 }
 
 #[allow(trivial_numeric_casts)]
-pub fn check_enum_variants<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                     sp: Span,
-                                     vs: &'tcx [hir::Variant],
-                                     id: ast::NodeId) {
+pub fn check_enum<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                            sp: Span,
+                            vs: &'tcx [hir::Variant],
+                            id: ast::NodeId) {
     let def_id = tcx.hir.local_def_id(id);
     let def = tcx.lookup_adt_def(def_id);
+    def.destructor(tcx); // force the destructor to be evaluated
 
     if vs.is_empty() && tcx.has_attr(def_id, "repr") {
         struct_span_err!(

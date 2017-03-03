@@ -10,7 +10,7 @@
 
 //! misc. type-system utilities too small to deserve their own file
 
-use hir::def_id::DefId;
+use hir::def_id::{DefId, LOCAL_CRATE};
 use hir::map::DefPathData;
 use infer::InferCtxt;
 use hir::map as hir_map;
@@ -20,6 +20,7 @@ use ty::{ParameterEnvironment};
 use ty::fold::TypeVisitor;
 use ty::layout::{Layout, LayoutError};
 use ty::TypeVariants::*;
+use util::common::ErrorReported;
 use util::nodemap::FxHashMap;
 use middle::lang_items;
 
@@ -32,7 +33,7 @@ use std::hash::Hash;
 use std::intrinsics;
 use syntax::ast::{self, Name};
 use syntax::attr::{self, SignedInt, UnsignedInt};
-use syntax_pos::Span;
+use syntax_pos::{Span, DUMMY_SP};
 
 use hir;
 
@@ -346,22 +347,33 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         hasher.finish()
     }
 
-    /// Returns true if this ADT is a dtorck type.
-    ///
-    /// Invoking the destructor of a dtorck type during usual cleanup
-    /// (e.g. the glue emitted for stack unwinding) requires all
-    /// lifetimes in the type-structure of `adt` to strictly outlive
-    /// the adt value itself.
-    ///
-    /// If `adt` is not dtorck, then the adt's destructor can be
-    /// invoked even when there are lifetimes in the type-structure of
-    /// `adt` that do not strictly outlive the adt value itself.
-    /// (This allows programs to make cyclic structures without
-    /// resorting to unasfe means; see RFCs 769 and 1238).
-    pub fn is_adt_dtorck(self, adt: &ty::AdtDef) -> bool {
-        let dtor_method = match adt.destructor(self) {
+    /// Calculate the destructor of a given type.
+    pub fn calculate_dtor(
+        self,
+        adt_did: DefId,
+        validate: &mut FnMut(Self, DefId) -> Result<(), ErrorReported>
+    ) -> Option<ty::Destructor> {
+        let drop_trait = if let Some(def_id) = self.lang_items.drop_trait() {
+            def_id
+        } else {
+            return None;
+        };
+
+        ty::queries::coherent_trait::get(self, DUMMY_SP, (LOCAL_CRATE, drop_trait));
+
+        let mut dtor_did = None;
+        let ty = self.item_type(adt_did);
+        self.lookup_trait_def(drop_trait).for_each_relevant_impl(self, ty, |impl_did| {
+            if let Some(item) = self.associated_items(impl_did).next() {
+                if let Ok(()) = validate(self, impl_did) {
+                    dtor_did = Some(item.def_id);
+                }
+            }
+        });
+
+        let dtor_did = match dtor_did {
             Some(dtor) => dtor,
-            None => return false
+            None => return None
         };
 
         // RFC 1238: if the destructor method is tagged with the
@@ -373,7 +385,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         // Such access can be in plain sight (e.g. dereferencing
         // `*foo.0` of `Foo<'a>(&'a u32)`) or indirectly hidden
         // (e.g. calling `foo.0.clone()` of `Foo<T:Clone>`).
-        return !self.has_attr(dtor_method, "unsafe_destructor_blind_to_params");
+        let is_dtorck = !self.has_attr(dtor_did, "unsafe_destructor_blind_to_params");
+        Some(ty::Destructor { did: dtor_did, is_dtorck: is_dtorck })
     }
 
     pub fn closure_base_def_id(&self, def_id: DefId) -> DefId {

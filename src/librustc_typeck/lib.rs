@@ -322,8 +322,6 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
 
     time(time_passes, "item-bodies checking", || check::check_item_bodies(tcx))?;
 
-    time(time_passes, "drop-impl checking", || check::check_drop_impls(tcx))?;
-
     check_unused::check_crate(tcx);
     check_for_entry_fn(tcx);
 

@@ -1273,17 +1273,31 @@ impl<'a, 'tcx> ParameterEnvironment<'tcx> {
     }
 }
 
+#[derive(Copy, Clone, Debug)]
+pub struct Destructor {
+    /// The def-id of the destructor method
+    pub did: DefId,
+    /// Invoking the destructor of a dtorck type during usual cleanup
+    /// (e.g. the glue emitted for stack unwinding) requires all
+    /// lifetimes in the type-structure of `adt` to strictly outlive
+    /// the adt value itself.
+    ///
+    /// If `adt` is not dtorck, then the adt's destructor can be
+    /// invoked even when there are lifetimes in the type-structure of
+    /// `adt` that do not strictly outlive the adt value itself.
+    /// (This allows programs to make cyclic structures without
+    /// resorting to unasfe means; see RFCs 769 and 1238).
+    pub is_dtorck: bool,
+}
+
 bitflags! {
     flags AdtFlags: u32 {
         const NO_ADT_FLAGS        = 0,
         const IS_ENUM             = 1 << 0,
-        const IS_DTORCK           = 1 << 1, // is this a dtorck type?
-        const IS_DTORCK_VALID     = 1 << 2,
-        const IS_PHANTOM_DATA     = 1 << 3,
-        const IS_FUNDAMENTAL      = 1 << 4,
-        const IS_UNION            = 1 << 5,
-        const IS_BOX              = 1 << 6,
-        const IS_DTOR_VALID       = 1 << 7,
+        const IS_PHANTOM_DATA     = 1 << 1,
+        const IS_FUNDAMENTAL      = 1 << 2,
+        const IS_UNION            = 1 << 3,
+        const IS_BOX              = 1 << 4,
     }
 }
 
@@ -1325,8 +1339,7 @@ pub struct FieldDef {
 pub struct AdtDef {
     pub did: DefId,
     pub variants: Vec<VariantDef>,
-    destructor: Cell<Option<DefId>>,
-    flags: Cell<AdtFlags>,
+    flags: AdtFlags,
     pub repr: ReprOptions,
 }
 
@@ -1425,17 +1438,9 @@ impl<'a, 'gcx, 'tcx> AdtDef {
         AdtDef {
             did: did,
             variants: variants,
-            flags: Cell::new(flags),
-            destructor: Cell::new(None),
+            flags: flags,
             repr: repr,
         }
-    }
-
-    fn calculate_dtorck(&'gcx self, tcx: TyCtxt) {
-        if tcx.is_adt_dtorck(self) {
-            self.flags.set(self.flags.get() | AdtFlags::IS_DTORCK);
-        }
-        self.flags.set(self.flags.get() | AdtFlags::IS_DTORCK_VALID)
     }
 
     #[inline]
@@ -1445,12 +1450,12 @@ impl<'a, 'gcx, 'tcx> AdtDef {
 
     #[inline]
     pub fn is_union(&self) -> bool {
-        self.flags.get().intersects(AdtFlags::IS_UNION)
+        self.flags.intersects(AdtFlags::IS_UNION)
     }
 
     #[inline]
     pub fn is_enum(&self) -> bool {
-        self.flags.get().intersects(AdtFlags::IS_ENUM)
+        self.flags.intersects(AdtFlags::IS_ENUM)
     }
 
     /// Returns the kind of the ADT - Struct or Enum.
@@ -1486,29 +1491,26 @@ impl<'a, 'gcx, 'tcx> AdtDef {
     /// alive; Otherwise, only the contents are required to be.
     #[inline]
     pub fn is_dtorck(&'gcx self, tcx: TyCtxt) -> bool {
-        if !self.flags.get().intersects(AdtFlags::IS_DTORCK_VALID) {
-            self.calculate_dtorck(tcx)
-        }
-        self.flags.get().intersects(AdtFlags::IS_DTORCK)
+        self.destructor(tcx).map_or(false, |d| d.is_dtorck)
     }
 
     /// Returns whether this type is #[fundamental] for the purposes
     /// of coherence checking.
     #[inline]
     pub fn is_fundamental(&self) -> bool {
-        self.flags.get().intersects(AdtFlags::IS_FUNDAMENTAL)
+        self.flags.intersects(AdtFlags::IS_FUNDAMENTAL)
     }
 
     /// Returns true if this is PhantomData<T>.
     #[inline]
     pub fn is_phantom_data(&self) -> bool {
-        self.flags.get().intersects(AdtFlags::IS_PHANTOM_DATA)
+        self.flags.intersects(AdtFlags::IS_PHANTOM_DATA)
     }
 
     /// Returns true if this is Box<T>.
     #[inline]
     pub fn is_box(&self) -> bool {
-        self.flags.get().intersects(AdtFlags::IS_BOX)
+        self.flags.intersects(AdtFlags::IS_BOX)
     }
 
     /// Returns whether this type has a destructor.
@@ -1568,38 +1570,6 @@ impl<'a, 'gcx, 'tcx> AdtDef {
         }
     }
 
-    pub fn destructor(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Option<DefId> {
-        if self.flags.get().intersects(AdtFlags::IS_DTOR_VALID) {
-            return self.destructor.get();
-        }
-
-        let dtor = self.destructor_uncached(tcx);
-        self.destructor.set(dtor);
-        self.flags.set(self.flags.get() | AdtFlags::IS_DTOR_VALID);
-
-        dtor
-    }
-
-    fn destructor_uncached(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Option<DefId> {
-        let drop_trait = if let Some(def_id) = tcx.lang_items.drop_trait() {
-            def_id
-        } else {
-            return None;
-        };
-
-        queries::coherent_trait::get(tcx, DUMMY_SP, (LOCAL_CRATE, drop_trait));
-
-        let mut dtor = None;
-        let ty = tcx.item_type(self.did);
-        tcx.lookup_trait_def(drop_trait).for_each_relevant_impl(tcx, ty, |def_id| {
-            if let Some(item) = tcx.associated_items(def_id).next() {
-                dtor = Some(item.def_id);
-            }
-        });
-
-        dtor
-    }
-
     pub fn discriminants(&'a self, tcx: TyCtxt<'a, 'gcx, 'tcx>)
                          -> impl Iterator<Item=ConstInt> + 'a {
         let repr_type = self.repr.discr_type();
@@ -1619,6 +1589,10 @@ impl<'a, 'gcx, 'tcx> AdtDef {
 
             discr
         })
+    }
+
+    pub fn destructor(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Option<Destructor> {
+        queries::adt_destructor::get(tcx, DUMMY_SP, self.did)
     }
 
     /// Returns a simpler type such that `Self: Sized` if and only
