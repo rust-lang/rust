@@ -67,7 +67,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                 this.expr_into_pattern(block, pattern, init)
                             }));
                         } else {
-                            this.storage_live_for_bindings(block, &pattern);
+                            this.visit_bindings(&pattern, &mut |this, _, _, node, span, _| {
+                                this.storage_live_binding(block, node, span);
+                                this.schedule_drop_for_binding(node, span);
+                            })
                         }
 
                         // Enter the visibility scope, after evaluating the initializer.
