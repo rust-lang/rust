@@ -74,3 +74,13 @@ pub fn visit_all_item_likes_in_krate<'a, 'tcx, V, F>(tcx: TyCtxt<'a, 'tcx, 'tcx>
     };
     krate.visit_all_item_likes(&mut tracking_visitor)
 }
+
+pub fn visit_all_bodies_in_krate<'a, 'tcx, C>(tcx: TyCtxt<'a, 'tcx, 'tcx>, callback: C)
+    where C: Fn(/* body_owner */ DefId, /* body id */ hir::BodyId),
+{
+    let krate = tcx.hir.krate();
+    for &body_id in &krate.body_ids {
+        let body_owner_def_id = tcx.hir.body_owner_def_id(body_id);
+        callback(body_owner_def_id, body_id);
+    }
+}

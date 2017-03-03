@@ -515,76 +515,13 @@ impl<'a, 'gcx, 'tcx> Inherited<'a, 'gcx, 'tcx> {
 }
 
 struct CheckItemTypesVisitor<'a, 'tcx: 'a> { tcx: TyCtxt<'a, 'tcx, 'tcx> }
-struct CheckItemBodiesVisitor<'a, 'tcx: 'a> { tcx: TyCtxt<'a, 'tcx, 'tcx> }
 
-impl<'a, 'tcx> Visitor<'tcx> for CheckItemTypesVisitor<'a, 'tcx> {
-    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
-        NestedVisitorMap::OnlyBodies(&self.tcx.hir)
-    }
-
+impl<'a, 'tcx> ItemLikeVisitor<'tcx> for CheckItemTypesVisitor<'a, 'tcx> {
     fn visit_item(&mut self, i: &'tcx hir::Item) {
         check_item_type(self.tcx, i);
-        intravisit::walk_item(self, i);
     }
-
-    fn visit_ty(&mut self, t: &'tcx hir::Ty) {
-        match t.node {
-            hir::TyArray(_, length) => {
-                self.tcx.item_tables(self.tcx.hir.local_def_id(length.node_id));
-            }
-            _ => {}
-        }
-
-        intravisit::walk_ty(self, t);
-    }
-
-    fn visit_expr(&mut self, e: &'tcx hir::Expr) {
-        match e.node {
-            hir::ExprRepeat(_, count) => {
-                self.tcx.item_tables(self.tcx.hir.local_def_id(count.node_id));
-            }
-            _ => {}
-        }
-
-        intravisit::walk_expr(self, e);
-    }
-}
-
-impl<'a, 'tcx> ItemLikeVisitor<'tcx> for CheckItemBodiesVisitor<'a, 'tcx> {
-    fn visit_item(&mut self, item: &'tcx hir::Item) {
-        match item.node {
-            hir::ItemFn(..) => {
-                self.tcx.item_tables(self.tcx.hir.local_def_id(item.id));
-            }
-            _ => { }
-        }
-    }
-
-    fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem) {
-        match trait_item.node {
-            hir::TraitItemKind::Const(_, Some(_)) |
-            hir::TraitItemKind::Method(_, hir::TraitMethod::Provided(_)) => {
-                self.tcx.item_tables(self.tcx.hir.local_def_id(trait_item.id));
-            }
-            hir::TraitItemKind::Method(_, hir::TraitMethod::Required(_)) |
-            hir::TraitItemKind::Const(_, None) |
-            hir::TraitItemKind::Type(..) => {
-                // Nothing to do.
-            }
-        }
-    }
-
-    fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem) {
-        match impl_item.node {
-            hir::ImplItemKind::Const(..) |
-            hir::ImplItemKind::Method(..) => {
-                self.tcx.item_tables(self.tcx.hir.local_def_id(impl_item.id));
-            }
-            hir::ImplItemKind::Type(_) => {
-                // Nothing to do here.
-            }
-        }
-    }
+    fn visit_trait_item(&mut self, _: &'tcx hir::TraitItem) { }
+    fn visit_impl_item(&mut self, _: &'tcx hir::ImplItem) { }
 }
 
 pub fn check_wf_new<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> CompileResult {
@@ -596,16 +533,18 @@ pub fn check_wf_new<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> CompileResult {
 
 pub fn check_item_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> CompileResult {
     tcx.sess.track_errors(|| {
-        let mut visit = CheckItemTypesVisitor { tcx: tcx };
         tcx.visit_all_item_likes_in_krate(DepNode::TypeckItemType,
-                                              &mut visit.as_deep_visitor());
+                                          &mut CheckItemTypesVisitor { tcx });
     })
 }
 
 pub fn check_item_bodies<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> CompileResult {
     tcx.sess.track_errors(|| {
-        let mut visit = CheckItemBodiesVisitor { tcx: tcx };
-        tcx.visit_all_item_likes_in_krate(DepNode::TypeckTables, &mut visit);
+        tcx.dep_graph.with_task(DepNode::TypeckBodiesKrate, || {
+            tcx.visit_all_bodies_in_krate(|body_owner_def_id, _body_id| {
+                tcx.item_tables(body_owner_def_id);
+            });
+        });
     })
 }
 

@@ -2602,6 +2602,17 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         dep_graph::visit_all_item_likes_in_krate(self.global_tcx(), dep_node_fn, visitor);
     }
 
+    /// Invokes `callback` for each body in the krate. This will
+    /// create a read edge from `DepNode::Krate` to the current task;
+    /// it is meant to be run in the context of some global task like
+    /// `BorrowckCrate`. The callback would then create a task like
+    /// `BorrowckBody(DefId)` to process each individual item.
+    pub fn visit_all_bodies_in_krate<C>(self, callback: C)
+        where C: Fn(/* body_owner */ DefId, /* body id */ hir::BodyId),
+    {
+        dep_graph::visit_all_bodies_in_krate(self.global_tcx(), callback)
+    }
+
     /// Looks up the span of `impl_did` if the impl is local; otherwise returns `Err`
     /// with the name of the crate containing the impl.
     pub fn span_of_impl(self, impl_did: DefId) -> Result<Span, Symbol> {
