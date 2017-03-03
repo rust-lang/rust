@@ -79,8 +79,6 @@ pub enum DepNode<D: Clone + Debug> {
     Variance,
     WfCheck(D),
     TypeckItemType(D),
-    Dropck,
-    DropckImpl(D),
     UnusedTraitCheck,
     CheckConst(D),
     Privacy,
@@ -114,6 +112,7 @@ pub enum DepNode<D: Clone + Debug> {
     ItemSignature(D),
     TypeParamPredicates((D, D)),
     SizedConstraint(D),
+    AdtDestructor(D),
     AssociatedItemDefIds(D),
     InherentImpls(D),
     TypeckBodiesKrate,
@@ -229,7 +228,6 @@ impl<D: Clone + Debug> DepNode<D> {
             EntryPoint => Some(EntryPoint),
             CheckEntryFn => Some(CheckEntryFn),
             Variance => Some(Variance),
-            Dropck => Some(Dropck),
             UnusedTraitCheck => Some(UnusedTraitCheck),
             Privacy => Some(Privacy),
             Reachability => Some(Reachability),
@@ -256,7 +254,6 @@ impl<D: Clone + Debug> DepNode<D> {
             CoherenceOrphanCheck(ref d) => op(d).map(CoherenceOrphanCheck),
             WfCheck(ref d) => op(d).map(WfCheck),
             TypeckItemType(ref d) => op(d).map(TypeckItemType),
-            DropckImpl(ref d) => op(d).map(DropckImpl),
             CheckConst(ref d) => op(d).map(CheckConst),
             IntrinsicCheck(ref d) => op(d).map(IntrinsicCheck),
             MatchCheck(ref d) => op(d).map(MatchCheck),
@@ -272,6 +269,7 @@ impl<D: Clone + Debug> DepNode<D> {
                 Some(TypeParamPredicates((try_opt!(op(item)), try_opt!(op(param)))))
             }
             SizedConstraint(ref d) => op(d).map(SizedConstraint),
+            AdtDestructor(ref d) => op(d).map(AdtDestructor),
             AssociatedItemDefIds(ref d) => op(d).map(AssociatedItemDefIds),
             InherentImpls(ref d) => op(d).map(InherentImpls),
             TypeckTables(ref d) => op(d).map(TypeckTables),
@@ -303,4 +301,3 @@ impl<D: Clone + Debug> DepNode<D> {
 /// them even in the absence of a tcx.)
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
 pub struct WorkProductId(pub String);
-

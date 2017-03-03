@@ -17,6 +17,7 @@ use middle::region;
 use rustc::ty::subst::{Subst, Substs};
 use rustc::ty::{self, AdtKind, Ty, TyCtxt};
 use rustc::traits::{self, ObligationCause, Reveal};
+use util::common::ErrorReported;
 use util::nodemap::FxHashSet;
 
 use syntax::ast;
@@ -40,7 +41,8 @@ use syntax_pos::Span;
 ///    cannot do `struct S<T>; impl<T:Clone> Drop for S<T> { ... }`).
 ///
 pub fn check_drop_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                 drop_impl_did: DefId) -> Result<(), ()> {
+                                 drop_impl_did: DefId)
+                                 -> Result<(), ErrorReported> {
     let dtor_self_type = tcx.item_type(drop_impl_did);
     let dtor_predicates = tcx.item_predicates(drop_impl_did);
     match dtor_self_type.sty {
@@ -72,7 +74,7 @@ fn ensure_drop_params_and_item_params_correspond<'a, 'tcx>(
     drop_impl_did: DefId,
     drop_impl_ty: Ty<'tcx>,
     self_type_did: DefId)
-    -> Result<(), ()>
+    -> Result<(), ErrorReported>
 {
     let drop_impl_node_id = tcx.hir.as_local_node_id(drop_impl_did).unwrap();
     let self_type_node_id = tcx.hir.as_local_node_id(self_type_did).unwrap();
@@ -106,14 +108,14 @@ fn ensure_drop_params_and_item_params_correspond<'a, 'tcx>(
                                "Use same sequence of generic type and region \
                                 parameters that is on the struct/enum definition")
                     .emit();
-                return Err(());
+                return Err(ErrorReported);
             }
         }
 
         if let Err(ref errors) = fulfillment_cx.select_all_or_error(&infcx) {
             // this could be reached when we get lazy normalization
             infcx.report_fulfillment_errors(errors);
-            return Err(());
+            return Err(ErrorReported);
         }
 
         let free_regions = FreeRegionMap::new();
@@ -130,8 +132,9 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'a, 'tcx>(
     dtor_predicates: &ty::GenericPredicates<'tcx>,
     self_type_did: DefId,
     self_to_impl_substs: &Substs<'tcx>)
-    -> Result<(), ()>
+    -> Result<(), ErrorReported>
 {
+    let mut result = Ok(());
 
     // Here is an example, analogous to that from
     // `compare_impl_method`.
@@ -207,13 +210,11 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'a, 'tcx>(
                            "The same requirement must be part of \
                             the struct/enum definition")
                 .emit();
+            result = Err(ErrorReported);
         }
     }
 
-    if tcx.sess.has_errors() {
-        return Err(());
-    }
-    Ok(())
+    result
 }
 
 /// check_safety_of_destructor_if_necessary confirms that the type
@@ -556,7 +557,7 @@ fn has_dtor_of_interest<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
             // attributes attached to the impl's generics.
             let dtor_method = adt_def.destructor(tcx)
                 .expect("dtorck type without destructor impossible");
-            let method = tcx.associated_item(dtor_method);
+            let method = tcx.associated_item(dtor_method.did);
             let impl_def_id = method.container.id();
             let revised_ty = revise_self_ty(tcx, adt_def, impl_def_id, substs);
             return DropckKind::RevisedSelf(revised_ty);

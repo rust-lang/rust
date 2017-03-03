@@ -265,7 +265,7 @@ pub fn implement_drop_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, g: DropGlueKi
                 traits::VtableImpl(data) => data,
                 _ => bug!("dtor for {:?} is not an impl???", t)
             };
-            let dtor_did = def.destructor(tcx).unwrap();
+            let dtor_did = def.destructor(tcx).unwrap().did;
             let callee = Callee::def(bcx.ccx, dtor_did, vtbl.substs);
             let fn_ty = callee.direct_fn_type(bcx.ccx, &[]);
             let llret;
