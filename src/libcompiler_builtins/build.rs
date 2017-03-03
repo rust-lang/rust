@@ -33,11 +33,13 @@
 //! error (if any) and then we just add it to the list. Overall, that cost is
 //! far far less than working with compiler-rt's build system over time.
 
+extern crate build_helper;
 extern crate gcc;
 
 use std::collections::BTreeMap;
 use std::env;
 use std::path::Path;
+use build_helper::native_lib_boilerplate;
 
 struct Sources {
     // SYMBOL -> PATH TO SOURCE
@@ -79,7 +81,14 @@ fn main() {
         return;
     }
 
+    // Can't reuse `sources` list for the freshness check becuse it doesn't contain header files.
+    let native = match native_lib_boilerplate("compiler-rt", "compiler-rt", "compiler-rt", ".") {
+        Ok(native) => native,
+        _ => return,
+    };
+
     let cfg = &mut gcc::Config::new();
+    cfg.out_dir(&native.out_dir);
 
     if target.contains("msvc") {
         // Don't pull in extra libraries on MSVC

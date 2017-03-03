@@ -302,6 +302,7 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
                  });
         };
 
+        suite("check-ui", "src/test/ui", "ui", "ui");
         suite("check-rpass", "src/test/run-pass", "run-pass", "run-pass");
         suite("check-cfail", "src/test/compile-fail", "compile-fail", "compile-fail");
         suite("check-pfail", "src/test/parse-fail", "parse-fail", "parse-fail");
@@ -362,7 +363,7 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
                  });
         };
 
-        suite("check-ui", "src/test/ui", "ui", "ui");
+        suite("check-ui-full", "src/test/ui-fulldeps", "ui", "ui-fulldeps");
         suite("check-rpass-full", "src/test/run-pass-fulldeps",
               "run-pass", "run-pass-fulldeps");
         suite("check-rfail-full", "src/test/run-fail-fulldeps",
@@ -1504,7 +1505,8 @@ mod tests {
         assert!(plan.iter().all(|s| s.host == "A"));
         assert!(plan.iter().all(|s| s.target == "C"));
 
-        assert!(!plan.iter().any(|s| s.name.contains("-ui")));
+        assert!(plan.iter().any(|s| s.name.contains("-ui")));
+        assert!(!plan.iter().any(|s| s.name.contains("ui-full")));
         assert!(plan.iter().any(|s| s.name.contains("cfail")));
         assert!(!plan.iter().any(|s| s.name.contains("cfail-full")));
         assert!(plan.iter().any(|s| s.name.contains("codegen-units")));
