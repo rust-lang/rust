@@ -13,6 +13,7 @@
 extern crate filetime;
 
 use std::{fs, env};
+use std::fs::File;
 use std::process::{Command, Stdio};
 use std::path::{Path, PathBuf};
 
@@ -166,19 +167,29 @@ pub fn up_to_date(src: &Path, dst: &Path) -> bool {
     }
 }
 
+#[must_use]
 pub struct NativeLibBoilerplate {
-    pub skip_build: bool,
     pub src_dir: PathBuf,
     pub out_dir: PathBuf,
-    pub timestamp: PathBuf,
 }
 
+impl Drop for NativeLibBoilerplate {
+    fn drop(&mut self) {
+        t!(File::create(self.out_dir.join("rustbuild.timestamp")));
+    }
+}
+
+// Perform standard preparations for native libraries that are build only once for all stages.
+// Emit rerun-if-changed and linking attributes for Cargo, check if any source files are
+// updated, calculate paths used later in actual build with CMake/make or C/C++ compiler.
+// If Err is returned, then everything is up-to-date and further build actions can be skipped.
+// Timestamps are created automatically when the result of `native_lib_boilerplate` goes out
+// of scope, so all the build actions should be completed until then.
 pub fn native_lib_boilerplate(src_name: &str,
                               out_name: &str,
                               link_name: &str,
-                              timestamp_name: &str,
                               search_subdir: &str)
-                              -> NativeLibBoilerplate {
+                              -> Result<NativeLibBoilerplate, ()> {
     let current_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
     let src_dir = current_dir.join("..").join(src_name);
     rerun_if_changed_anything_in_dir(&src_dir);
@@ -189,15 +200,11 @@ pub fn native_lib_boilerplate(src_name: &str,
     println!("cargo:rustc-link-lib=static={}", link_name);
     println!("cargo:rustc-link-search=native={}", out_dir.join(search_subdir).display());
 
-    let timestamp = out_dir.join(timestamp_name);
-    let skip_build = up_to_date(Path::new("build.rs"), &timestamp) &&
-                     up_to_date(&src_dir, &timestamp);
-
-    NativeLibBoilerplate {
-        skip_build: skip_build,
-        src_dir: src_dir,
-        out_dir: out_dir,
-        timestamp: timestamp,
+    let timestamp = out_dir.join("rustbuild.timestamp");
+    if !up_to_date(Path::new("build.rs"), &timestamp) || !up_to_date(&src_dir, &timestamp) {
+        Ok(NativeLibBoilerplate { src_dir: src_dir, out_dir: out_dir })
+    } else {
+        Err(())
     }
 }
 
