@@ -38,14 +38,14 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 // Generate better code for things that don't need to be
                 // dropped.
                 if this.hir.needs_drop(lhs.ty) {
-                    let rhs = unpack!(block = this.as_operand(block, rhs));
+                    let rhs = unpack!(block = this.as_local_operand(block, rhs));
                     let lhs = unpack!(block = this.as_lvalue(block, lhs));
                     unpack!(block = this.build_drop_and_replace(
                         block, lhs_span, lhs, rhs
                     ));
                     block.unit()
                 } else {
-                    let rhs = unpack!(block = this.as_rvalue(block, rhs));
+                    let rhs = unpack!(block = this.as_local_rvalue(block, rhs));
                     let lhs = unpack!(block = this.as_lvalue(block, lhs));
                     this.cfg.push_assign(block, source_info, &lhs, rhs);
                     block.unit()
@@ -64,7 +64,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 let lhs_ty = lhs.ty;
 
                 // As above, RTL.
-                let rhs = unpack!(block = this.as_operand(block, rhs));
+                let rhs = unpack!(block = this.as_local_operand(block, rhs));
                 let lhs = unpack!(block = this.as_lvalue(block, lhs));
 
                 // we don't have to drop prior contents or anything
@@ -122,7 +122,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     unpack!(block = this.as_lvalue(block, output))
                 }).collect();
                 let inputs = inputs.into_iter().map(|input| {
-                    unpack!(block = this.as_operand(block, input))
+                    unpack!(block = this.as_local_operand(block, input))
                 }).collect();
                 this.cfg.push(block, Statement {
                     source_info: source_info,
