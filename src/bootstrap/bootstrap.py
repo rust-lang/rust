@@ -8,6 +8,7 @@
 # option. This file may not be copied, modified, or distributed
 # except according to those terms.
 
+from __future__ import print_function
 import argparse
 import contextlib
 import datetime
@@ -501,7 +502,7 @@ class RustBuild(object):
 
         return "{}-{}".format(cputype, ostype)
 
-def main():
+def bootstrap():
     parser = argparse.ArgumentParser(description='Build rust')
     parser.add_argument('--config')
     parser.add_argument('--clean', action='store_true')
@@ -564,8 +565,6 @@ def main():
     rb._rustc_channel, rb._rustc_date = data['rustc'].split('-', 1)
     rb._cargo_rev = data['cargo']
 
-    start_time = time()
-
     # Fetch/build the bootstrap
     rb.build = rb.build_triple()
     rb.download_stage0()
@@ -582,9 +581,19 @@ def main():
     env["BOOTSTRAP_PARENT_ID"] = str(os.getpid())
     rb.run(args, env)
 
-    end_time = time()
-
-    print("Build completed in %s" % format_build_time(end_time - start_time))
+def main():
+    start_time = time()
+    try:
+        bootstrap()
+        print("Build completed successfully in %s" % format_build_time(time() - start_time))
+    except (SystemExit, KeyboardInterrupt) as e:
+        if hasattr(e, 'code') and isinstance(e.code, int):
+            exit_code = e.code
+        else:
+            exit_code = 1
+            print(e)
+        print("Build completed unsuccessfully in %s" % format_build_time(time() - start_time))
+        sys.exit(exit_code)
 
 if __name__ == '__main__':
     main()
