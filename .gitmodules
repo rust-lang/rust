@@ -18,3 +18,6 @@
 [submodule "src/liblibc"]
 	path = src/liblibc
 	url = https://github.com/rust-lang/libc.git
+[submodule "src/tools/cargo"]
+	path = src/tools/cargo
+	url = https://github.com/rust-lang/cargo

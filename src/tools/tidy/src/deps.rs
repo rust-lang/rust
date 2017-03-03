@@ -16,6 +16,7 @@ use std::path::Path;
 
 static LICENSES: &'static [&'static str] = &[
     "MIT/Apache-2.0",
+    "MIT / Apache-2.0",
     "Apache-2.0/MIT",
     "MIT OR Apache-2.0",
     "MIT",
@@ -25,6 +26,7 @@ static LICENSES: &'static [&'static str] = &[
 /// These MPL licensed projects are acceptable, but only these.
 static EXCEPTIONS: &'static [&'static str] = &[
     "mdbook",
+    "openssl",
     "pest",
     "thread-id",
 ];
