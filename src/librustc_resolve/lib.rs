@@ -3360,8 +3360,9 @@ impl<'a> Resolver<'a> {
         if self.proc_macro_enabled { return; }
 
         for attr in attrs {
-            let maybe_binding = self.builtin_macros.get(&attr.name()).cloned().or_else(|| {
-                let ident = Ident::with_empty_ctxt(attr.name());
+            let name = unwrap_or!(attr.name(), continue);
+            let maybe_binding = self.builtin_macros.get(&name).cloned().or_else(|| {
+                let ident = Ident::with_empty_ctxt(name);
                 self.resolve_lexical_macro_path_segment(ident, MacroNS, None).ok()
             });
 

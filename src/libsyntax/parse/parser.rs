@@ -60,7 +60,6 @@ use util::ThinVec;
 use std::collections::HashSet;
 use std::{cmp, mem, slice};
 use std::path::{Path, PathBuf};
-use std::rc::Rc;
 
 bitflags! {
     flags Restrictions: u8 {
@@ -1643,44 +1642,15 @@ impl<'a> Parser<'a> {
                 _ => { return self.unexpected_last(&self.token); }
             },
             token::Literal(lit, suf) => {
-                let (suffix_illegal, out) = match lit {
-                    token::Byte(i) => (true, LitKind::Byte(parse::byte_lit(&i.as_str()).0)),
-                    token::Char(i) => (true, LitKind::Char(parse::char_lit(&i.as_str()).0)),
-
-                    // there are some valid suffixes for integer and
-                    // float literals, so all the handling is done
-                    // internally.
-                    token::Integer(s) => {
-                        let diag = &self.sess.span_diagnostic;
-                        (false, parse::integer_lit(&s.as_str(), suf, diag, self.span))
-                    }
-                    token::Float(s) => {
-                        let diag = &self.sess.span_diagnostic;
-                        (false, parse::float_lit(&s.as_str(), suf, diag, self.span))
-                    }
-
-                    token::Str_(s) => {
-                        let s = Symbol::intern(&parse::str_lit(&s.as_str()));
-                        (true, LitKind::Str(s, ast::StrStyle::Cooked))
-                    }
-                    token::StrRaw(s, n) => {
-                        let s = Symbol::intern(&parse::raw_str_lit(&s.as_str()));
-                        (true, LitKind::Str(s, ast::StrStyle::Raw(n)))
-                    }
-                    token::ByteStr(i) => {
-                        (true, LitKind::ByteStr(parse::byte_str_lit(&i.as_str())))
-                    }
-                    token::ByteStrRaw(i, _) => {
-                        (true, LitKind::ByteStr(Rc::new(i.to_string().into_bytes())))
-                    }
-                };
+                let diag = Some((self.span, &self.sess.span_diagnostic));
+                let (suffix_illegal, result) = parse::lit_token(lit, suf, diag);
 
                 if suffix_illegal {
                     let sp = self.span;
                     self.expect_no_suffix(sp, &format!("{} literal", lit.short_name()), suf)
                 }
 
-                out
+                result.unwrap()
             }
             _ => { return self.unexpected_last(&self.token); }
         };
@@ -5135,11 +5105,9 @@ impl<'a> Parser<'a> {
                     let attr = ast::Attribute {
                         id: attr::mk_attr_id(),
                         style: ast::AttrStyle::Outer,
-                        value: ast::MetaItem {
-                            name: Symbol::intern("warn_directory_ownership"),
-                            node: ast::MetaItemKind::Word,
-                            span: syntax_pos::DUMMY_SP,
-                        },
+                        path: ast::Path::from_ident(syntax_pos::DUMMY_SP,
+                                                    Ident::from_str("warn_directory_ownership")),
+                        tokens: TokenStream::empty(),
                         is_sugared_doc: false,
                         span: syntax_pos::DUMMY_SP,
                     };

@@ -360,7 +360,7 @@ impl PartialEq<ThinTokenStream> for ThinTokenStream {
 
 impl fmt::Display for TokenStream {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str(&pprust::tts_to_string(&self.trees().collect::<Vec<_>>()))
+        f.write_str(&pprust::tokens_to_string(self.clone()))
     }
 }
 

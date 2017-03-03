@@ -109,7 +109,8 @@ impl<'a> StripUnconfigured<'a> {
                     self.process_cfg_attr(ast::Attribute {
                         id: attr::mk_attr_id(),
                         style: attr.style,
-                        value: mi.clone(),
+                        path: ast::Path::from_ident(mi.span, ast::Ident::with_empty_ctxt(mi.name)),
+                        tokens: mi.node.tokens(mi.span),
                         is_sugared_doc: false,
                         span: mi.span,
                     })
@@ -132,8 +133,9 @@ impl<'a> StripUnconfigured<'a> {
                 return false;
             }
 
-            let mis = match attr.value.node {
-                ast::MetaItemKind::List(ref mis) if is_cfg(&attr) => mis,
+            let mis = attr.meta_item_list();
+            let mis = match mis {
+                Some(ref mis) if is_cfg(&attr) => mis,
                 _ => return true
             };
 

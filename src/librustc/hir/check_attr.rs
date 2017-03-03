@@ -120,11 +120,12 @@ impl<'a> CheckAttrVisitor<'a> {
     }
 
     fn check_attribute(&self, attr: &ast::Attribute, target: Target) {
-        let name: &str = &attr.name().as_str();
-        match name {
-            "inline" => self.check_inline(attr, target),
-            "repr" => self.check_repr(attr, target),
-            _ => (),
+        if let Some(name) = attr.name() {
+            match &*name.as_str() {
+                "inline" => self.check_inline(attr, target),
+                "repr" => self.check_repr(attr, target),
+                _ => (),
+            }
         }
     }
 }
