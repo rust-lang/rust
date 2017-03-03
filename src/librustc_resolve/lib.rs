@@ -2897,8 +2897,10 @@ impl<'a> Resolver<'a> {
             ExprKind::WhileLet(ref pattern, ref subexpression, ref block, label) => {
                 self.with_resolved_label(label, expr.id, |this| {
                     this.visit_expr(subexpression);
+                    this.ribs[ValueNS].push(Rib::new(NormalRibKind));
                     this.resolve_pattern(pattern, PatternSource::WhileLet, &mut FxHashMap());
                     this.visit_block(block);
+                    this.ribs[ValueNS].pop();
                 });
             }
 
