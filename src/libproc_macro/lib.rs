@@ -101,7 +101,7 @@ pub mod __internal {
 
     pub fn token_stream_parse_items(stream: TokenStream) -> Result<Vec<P<ast::Item>>, LexError> {
         with_parse_sess(move |sess| {
-            let mut parser = parse::new_parser_from_ts(sess, stream.inner);
+            let mut parser = parse::stream_to_parser(sess, stream.inner);
             let mut items = Vec::new();
 
             while let Some(item) = try!(parser.parse_item().map_err(super::parse_to_lex_err)) {
@@ -177,9 +177,8 @@ impl FromStr for TokenStream {
         __internal::with_parse_sess(|sess| {
             let src = src.to_string();
             let name = "<proc-macro source code>".to_string();
-            let tts = parse::parse_tts_from_source_str(name, src, sess);
-
-            Ok(__internal::token_stream_wrap(tts.into_iter().collect()))
+            let stream = parse::parse_stream_from_source_str(name, src, sess);
+            Ok(__internal::token_stream_wrap(stream))
         })
     }
 }

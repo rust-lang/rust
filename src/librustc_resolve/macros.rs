@@ -545,7 +545,7 @@ impl<'a> Resolver<'a> {
 
     pub fn define_macro(&mut self, item: &ast::Item, legacy_scope: &mut LegacyScope<'a>) {
         let tts = match item.node {
-            ast::ItemKind::Mac(ref mac) => &mac.node.tts,
+            ast::ItemKind::Mac(ref mac) => mac.node.stream(),
             _ => unreachable!(),
         };
 
@@ -562,7 +562,7 @@ impl<'a> Resolver<'a> {
             attrs: item.attrs.clone(),
             id: ast::DUMMY_NODE_ID,
             span: item.span,
-            body: mark_tts(tts, mark),
+            body: mark_tts(tts, mark).into(),
         };
 
         *legacy_scope = LegacyScope::Binding(self.arenas.alloc_legacy_binding(LegacyBinding {

@@ -18,7 +18,7 @@ use syntax::ast::*;
 use syntax::attr::*;
 use syntax::ast;
 use syntax::parse;
-use syntax::parse::{ParseSess,filemap_to_tts, PResult};
+use syntax::parse::{ParseSess, PResult};
 use syntax::parse::new_parser_from_source_str;
 use syntax::parse::parser::Parser;
 use syntax::parse::token;

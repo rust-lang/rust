@@ -188,10 +188,7 @@ impl<F> AttrProcMacro for F
 
 /// Represents a thing that maps token trees to Macro Results
 pub trait TTMacroExpander {
-    fn expand<'cx>(&self,
-                   ecx: &'cx mut ExtCtxt,
-                   span: Span,
-                   token_tree: &[tokenstream::TokenTree])
+    fn expand<'cx>(&self, ecx: &'cx mut ExtCtxt, span: Span, input: TokenStream)
                    -> Box<MacResult+'cx>;
 }
 
@@ -200,15 +197,11 @@ pub type MacroExpanderFn =
                 -> Box<MacResult+'cx>;
 
 impl<F> TTMacroExpander for F
-    where F : for<'cx> Fn(&'cx mut ExtCtxt, Span, &[tokenstream::TokenTree])
-                          -> Box<MacResult+'cx>
+    where F: for<'cx> Fn(&'cx mut ExtCtxt, Span, &[tokenstream::TokenTree]) -> Box<MacResult+'cx>
 {
-    fn expand<'cx>(&self,
-                   ecx: &'cx mut ExtCtxt,
-                   span: Span,
-                   token_tree: &[tokenstream::TokenTree])
+    fn expand<'cx>(&self, ecx: &'cx mut ExtCtxt, span: Span, input: TokenStream)
                    -> Box<MacResult+'cx> {
-        (*self)(ecx, span, token_tree)
+        (*self)(ecx, span, &input.trees().collect::<Vec<_>>())
     }
 }
 
@@ -654,9 +647,8 @@ impl<'a> ExtCtxt<'a> {
         expand::MacroExpander::new(self, true)
     }
 
-    pub fn new_parser_from_tts(&self, tts: &[tokenstream::TokenTree])
-        -> parser::Parser<'a> {
-        parse::tts_to_parser(self.parse_sess, tts.to_vec())
+    pub fn new_parser_from_tts(&self, tts: &[tokenstream::TokenTree]) -> parser::Parser<'a> {
+        parse::stream_to_parser(self.parse_sess, tts.iter().cloned().collect())
     }
     pub fn codemap(&self) -> &'a CodeMap { self.parse_sess.codemap() }
     pub fn parse_sess(&self) -> &'a parse::ParseSess { self.parse_sess }

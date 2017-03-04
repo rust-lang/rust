@@ -35,8 +35,8 @@ fn expand_mbe_matches(cx: &mut ExtCtxt, _: Span, args: &[TokenTree])
         -> Box<MacResult + 'static> {
 
     let mbe_matcher = quote_tokens!(cx, $$matched:expr, $$($$pat:pat)|+);
-    let mbe_matcher = quoted::parse(&mbe_matcher, true, cx.parse_sess);
-    let map = match TokenTree::parse(cx, &mbe_matcher, args) {
+    let mbe_matcher = quoted::parse(mbe_matcher.into_iter().collect(), true, cx.parse_sess);
+    let map = match TokenTree::parse(cx, &mbe_matcher, args.iter().cloned().collect()) {
         Success(map) => map,
         Failure(_, tok) => {
             panic!("expected Success, but got Failure: {}", parse_failure_msg(tok));

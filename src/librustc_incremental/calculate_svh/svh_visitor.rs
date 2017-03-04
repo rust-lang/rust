@@ -866,8 +866,8 @@ impl<'a, 'hash, 'tcx> visit::Visitor<'tcx> for StrictVersionHashVisitor<'a, 'has
         debug!("visit_macro_def: st={:?}", self.st);
         SawMacroDef.hash(self.st);
         hash_attrs!(self, &macro_def.attrs);
-        for tt in &macro_def.body {
-            self.hash_token_tree(tt);
+        for tt in macro_def.body.trees() {
+            self.hash_token_tree(&tt);
         }
         visit::walk_macro_def(self, macro_def)
     }
@@ -1033,15 +1033,9 @@ impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
             }
             tokenstream::TokenTree::Delimited(span, ref delimited) => {
                 hash_span!(self, span);
-                let tokenstream::Delimited {
-                    ref delim,
-                    ref tts,
-                } = **delimited;
-
-                delim.hash(self.st);
-                tts.len().hash(self.st);
-                for sub_tt in tts {
-                    self.hash_token_tree(sub_tt);
+                delimited.delim.hash(self.st);
+                for sub_tt in delimited.stream().trees() {
+                    self.hash_token_tree(&sub_tt);
                 }
             }
         }

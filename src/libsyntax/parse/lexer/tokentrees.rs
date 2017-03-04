@@ -12,32 +12,30 @@ use print::pprust::token_to_string;
 use parse::lexer::StringReader;
 use parse::{token, PResult};
 use syntax_pos::Span;
-use tokenstream::{Delimited, TokenTree};
-
-use std::rc::Rc;
+use tokenstream::{Delimited, TokenStream, TokenTree};
 
 impl<'a> StringReader<'a> {
     // Parse a stream of tokens into a list of `TokenTree`s, up to an `Eof`.
-    pub fn parse_all_token_trees(&mut self) -> PResult<'a, Vec<TokenTree>> {
+    pub fn parse_all_token_trees(&mut self) -> PResult<'a, TokenStream> {
         let mut tts = Vec::new();
         while self.token != token::Eof {
-            tts.push(self.parse_token_tree()?);
+            tts.push(self.parse_token_tree()?.into());
         }
-        Ok(tts)
+        Ok(TokenStream::concat(tts))
     }
 
     // Parse a stream of tokens into a list of `TokenTree`s, up to a `CloseDelim`.
-    fn parse_token_trees_until_close_delim(&mut self) -> Vec<TokenTree> {
+    fn parse_token_trees_until_close_delim(&mut self) -> TokenStream {
         let mut tts = vec![];
         loop {
             if let token::CloseDelim(..) = self.token {
-                return tts;
+                return TokenStream::concat(tts);
             }
             match self.parse_token_tree() {
-                Ok(tt) => tts.push(tt),
+                Ok(tt) => tts.push(tt.into()),
                 Err(mut e) => {
                     e.emit();
-                    return tts;
+                    return TokenStream::concat(tts);
                 }
             }
         }
@@ -111,10 +109,10 @@ impl<'a> StringReader<'a> {
                     _ => {}
                 }
 
-                Ok(TokenTree::Delimited(span, Rc::new(Delimited {
+                Ok(TokenTree::Delimited(span, Delimited {
                     delim: delim,
-                    tts: tts,
-                })))
+                    tts: tts.into(),
+                }))
             },
             token::CloseDelim(_) => {
                 // An unexpected closing delimiter (i.e., there is no

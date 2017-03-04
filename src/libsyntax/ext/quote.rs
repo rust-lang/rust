@@ -16,7 +16,7 @@ use ext::build::AstBuilder;
 use parse::parser::{Parser, PathStyle};
 use parse::token;
 use ptr::P;
-use tokenstream::TokenTree;
+use tokenstream::{TokenStream, TokenTree};
 
 
 /// Quasiquoting works via token trees.
@@ -35,7 +35,7 @@ pub mod rt {
     use std::rc::Rc;
     use symbol::Symbol;
 
-    use tokenstream::{self, TokenTree};
+    use tokenstream::{self, TokenTree, TokenStream};
 
     pub use parse::new_parser_from_tts;
     pub use syntax_pos::{BytePos, Span, DUMMY_SP};
@@ -227,10 +227,10 @@ pub mod rt {
             if self.style == ast::AttrStyle::Inner {
                 r.push(TokenTree::Token(self.span, token::Not));
             }
-            r.push(TokenTree::Delimited(self.span, Rc::new(tokenstream::Delimited {
+            r.push(TokenTree::Delimited(self.span, tokenstream::Delimited {
                 delim: token::Bracket,
-                tts: self.value.to_tokens(cx),
-            })));
+                tts: self.value.to_tokens(cx).into_iter().collect::<TokenStream>().into(),
+            }));
             r
         }
     }
@@ -244,10 +244,10 @@ pub mod rt {
 
     impl ToTokens for () {
         fn to_tokens(&self, _cx: &ExtCtxt) -> Vec<TokenTree> {
-            vec![TokenTree::Delimited(DUMMY_SP, Rc::new(tokenstream::Delimited {
+            vec![TokenTree::Delimited(DUMMY_SP, tokenstream::Delimited {
                 delim: token::Paren,
-                tts: vec![],
-            }))]
+                tts: TokenStream::empty().into(),
+            })]
         }
     }
 
@@ -355,14 +355,15 @@ pub mod rt {
         }
 
         fn parse_tts(&self, s: String) -> Vec<TokenTree> {
-            parse::parse_tts_from_source_str("<quote expansion>".to_string(), s, self.parse_sess())
+            let source_name = "<quote expansion>".to_owned();
+            parse::parse_stream_from_source_str(source_name, s, self.parse_sess())
+                .into_trees().collect()
         }
     }
 }
 
 // Replaces `Token::OpenDelim .. Token::CloseDelim` with `TokenTree::Delimited(..)`.
 pub fn unflatten(tts: Vec<TokenTree>) -> Vec<TokenTree> {
-    use std::rc::Rc;
     use tokenstream::Delimited;
 
     let mut results = Vec::new();
@@ -373,8 +374,10 @@ pub fn unflatten(tts: Vec<TokenTree>) -> Vec<TokenTree> {
                 results.push(::std::mem::replace(&mut result, Vec::new()));
             }
             TokenTree::Token(span, token::CloseDelim(delim)) => {
-                let tree =
-                    TokenTree::Delimited(span, Rc::new(Delimited { delim: delim, tts: result }));
+                let tree = TokenTree::Delimited(span, Delimited {
+                    delim: delim,
+                    tts: result.into_iter().map(TokenStream::from).collect::<TokenStream>().into(),
+                });
                 result = results.pop().unwrap();
                 result.push(tree);
             }
@@ -747,7 +750,7 @@ fn statements_mk_tt(cx: &ExtCtxt, tt: &TokenTree, quoted: bool) -> Vec<ast::Stmt
         },
         TokenTree::Delimited(span, ref delimed) => {
             let mut stmts = statements_mk_tt(cx, &delimed.open_tt(span), false);
-            stmts.extend(statements_mk_tts(cx, &delimed.tts));
+            stmts.extend(statements_mk_tts(cx, delimed.stream()));
             stmts.extend(statements_mk_tt(cx, &delimed.close_tt(span), false));
             stmts
         }
@@ -810,14 +813,14 @@ fn mk_stmts_let(cx: &ExtCtxt, sp: Span) -> Vec<ast::Stmt> {
     vec![stmt_let_sp, stmt_let_tt]
 }
 
-fn statements_mk_tts(cx: &ExtCtxt, tts: &[TokenTree]) -> Vec<ast::Stmt> {
+fn statements_mk_tts(cx: &ExtCtxt, tts: TokenStream) -> Vec<ast::Stmt> {
     let mut ss = Vec::new();
     let mut quoted = false;
-    for tt in tts {
-        quoted = match *tt {
+    for tt in tts.into_trees() {
+        quoted = match tt {
             TokenTree::Token(_, token::Dollar) if !quoted => true,
             _ => {
-                ss.extend(statements_mk_tt(cx, tt, quoted));
+                ss.extend(statements_mk_tt(cx, &tt, quoted));
                 false
             }
         }
@@ -829,7 +832,7 @@ fn expand_tts(cx: &ExtCtxt, sp: Span, tts: &[TokenTree]) -> (P<ast::Expr>, P<ast
     let (cx_expr, tts) = parse_arguments_to_quote(cx, tts);
 
     let mut vector = mk_stmts_let(cx, sp);
-    vector.extend(statements_mk_tts(cx, &tts[..]));
+    vector.extend(statements_mk_tts(cx, tts.iter().cloned().collect()));
     vector.push(cx.stmt_expr(cx.expr_ident(sp, id_ext("tt"))));
     let block = cx.expr_block(cx.block(sp, vector));
     let unflatten = vec![id_ext("syntax"), id_ext("ext"), id_ext("quote"), id_ext("unflatten")];
