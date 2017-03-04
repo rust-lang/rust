@@ -183,7 +183,7 @@ fn filter_frames(frames: &[Frame],
     let skipped_before = frames.iter().position(|frame| {
         is_good_frame(*frame, BAD_PREFIXES_TOP)
     }).unwrap_or(frames.len());
-    let idx_catch_panic = skipped_before + frames[skipped_before..].iter().rposition(|frame| {
+    let idx_catch_panic = frames.iter().rposition(|frame| {
         let mut is_rmcp = false;
         let _ = resolve_symname(*frame, |symname| {
             if let Some(mangled_symbol_name) = symname {
@@ -194,7 +194,7 @@ fn filter_frames(frames: &[Frame],
             Ok(())
         }, context);
         is_rmcp
-    }).unwrap_or(0);
+    }).unwrap_or(frames.len());
     let skipped_after =
         frames.len() - idx_catch_panic
                      + frames[skipped_before..idx_catch_panic].iter()
