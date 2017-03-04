@@ -167,7 +167,6 @@ pub fn check(path: &Path, bad: &mut bool) {
 
     // FIXME get this whitelist empty.
     let whitelist = vec![
-        "stmt_expr_attributes",
         "cfg_target_thread_local", "unwind_attributes",
     ];
 
