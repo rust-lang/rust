@@ -153,8 +153,10 @@ fn filter_frames(frames: &[Frame],
         "core::ops::FnOnce::call_once",
 
         // tests
-        "_ZN91_$LT$std..panic..AssertUnwindSafe$LT$F$GT$$u20$as$u20$core..ops..FnOnce$LT$$LP$$RP$$GT$$GT$9call_once",
-        "ZN91_$LT$std..panic..AssertUnwindSafe$LT$F$GT$$u20$as$u20$core..ops..FnOnce$LT$$LP$$RP$$GT$$GT$9call_once",
+        "_ZN91_$LT$std..panic..AssertUnwindSafe$LT$F$GT$$u20$as$u20$core..ops..FnOnce\
+         $LT$$LP$$RP$$GT$$GT$9call_once",
+        "ZN91_$LT$std..panic..AssertUnwindSafe$LT$F$GT$$u20$as$u20$core..ops..FnOnce\
+         $LT$$LP$$RP$$GT$$GT$9call_once",
         "<std::panic::AssertUnwindSafe<F> as core::ops::FnOnce<()>>::call_once",
 
         "_ZN4test8run_test",
@@ -193,7 +195,11 @@ fn filter_frames(frames: &[Frame],
         }, context);
         is_rmcp
     }).unwrap_or(0);
-    let skipped_after = frames.len() - idx_catch_panic + frames[skipped_before..idx_catch_panic].iter().rev().position(|frame| {
+    let skipped_after =
+        frames.len() - idx_catch_panic
+                     + frames[skipped_before..idx_catch_panic].iter()
+                                                              .rev()
+                                                              .position(|frame| {
         is_good_frame(*frame, BAD_PREFIXES_BOTTOM)
     }).unwrap_or(0);
 
