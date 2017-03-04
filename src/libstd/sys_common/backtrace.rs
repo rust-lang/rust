@@ -148,6 +148,21 @@ fn filter_frames(frames: &[Frame],
         "__scrt_common_main_seh",
         "_ZN4drop",
         "mingw_set_invalid_parameter_handler",
+        "_ZN4core3ops6FnOnce9call_once",
+        "ZN4core3ops6FnOnce9call_once",
+        "core::ops::FnOnce::call_once",
+
+        // tests
+        "_ZN91_$LT$std..panic..AssertUnwindSafe$LT$F$GT$$u20$as$u20$core..ops..FnOnce$LT$$LP$$RP$$GT$$GT$9call_once",
+        "ZN91_$LT$std..panic..AssertUnwindSafe$LT$F$GT$$u20$as$u20$core..ops..FnOnce$LT$$LP$$RP$$GT$$GT$9call_once",
+        "<std::panic::AssertUnwindSafe<F> as core::ops::FnOnce<()>>::call_once",
+        "_ZN4test8run_test",
+        "ZN4test8run_test",
+        "test::run_test",
+        "_ZN42_$LT$F$u20$as$u20$test..FnBox$LT$T$GT$$GT$8call_box",
+        "ZN42_$LT$F$u20$as$u20$test..FnBox$LT$T$GT$$GT$8call_box",
+        "<F as test::FnBox<T>>::call_box",
+
     ];
 
     let is_good_frame = |frame: Frame, bad_prefixes: &[&str]| {
@@ -164,11 +179,23 @@ fn filter_frames(frames: &[Frame],
     let skipped_before = frames.iter().position(|frame| {
         is_good_frame(*frame, BAD_PREFIXES_TOP)
     }).unwrap_or(frames.len());
-    let skipped_after = frames[skipped_before..].iter().rev().position(|frame| {
+    let idx_catch_panic = skipped_before + frames[skipped_before..].iter().position(|frame| {
+        let mut is_rmcp = false;
+        let _ = resolve_symname(*frame, |symname| {
+            if let Some(mangled_symbol_name) = symname {
+                if mangled_symbol_name == "__rust_maybe_catch_panic" {
+                    is_rmcp = true;
+                }
+            }
+            Ok(())
+        }, context);
+        is_rmcp
+    }).unwrap_or(0);
+    let skipped_after = frames.len() - idx_catch_panic + frames[skipped_before..idx_catch_panic].iter().rev().position(|frame| {
         is_good_frame(*frame, BAD_PREFIXES_BOTTOM)
-    }).unwrap_or(frames.len() - skipped_before);
+    }).unwrap_or(0);
 
-    if skipped_before + skipped_after == frames.len() {
+    if skipped_before + skipped_after >= frames.len() {
         // Avoid showing completely empty backtraces
         return (0, 0);
     }
