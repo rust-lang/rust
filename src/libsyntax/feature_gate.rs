@@ -330,8 +330,7 @@ declare_features! (
     // `extern "msp430-interrupt" fn()`
     (active, abi_msp430_interrupt, "1.16.0", Some(38487)),
 
-    // Used to identify crates that contain sanitizer runtimes
-    // rustc internal
+    // Coerces non capturing closures to function pointers
     (active, closure_to_fn_coercion, "1.17.0", Some(39817)),
 
     // Used to identify crates that contain sanitizer runtimes
