@@ -10,24 +10,19 @@
 
 #![deny(warnings)]
 
-#[macro_use]
 extern crate build_helper;
 extern crate gcc;
 
 use std::env;
-use std::fs::{self, File};
-use std::path::{Path, PathBuf};
 use std::process::Command;
-use build_helper::{run, rerun_if_changed_anything_in_dir, up_to_date};
+use build_helper::{run, native_lib_boilerplate};
 
 fn main() {
-    println!("cargo:rerun-if-changed=build.rs");
-
     let target = env::var("TARGET").expect("TARGET was not set");
     let host = env::var("HOST").expect("HOST was not set");
     if cfg!(feature = "backtrace") && !target.contains("apple") && !target.contains("msvc") &&
         !target.contains("emscripten") && !target.contains("fuchsia") && !target.contains("redox") {
-        build_libbacktrace(&host, &target);
+        let _ = build_libbacktrace(&host, &target);
     }
 
     if target.contains("linux") {
@@ -69,19 +64,8 @@ fn main() {
     }
 }
 
-fn build_libbacktrace(host: &str, target: &str) {
-    let build_dir = env::var_os("RUSTBUILD_NATIVE_DIR").unwrap_or(env::var_os("OUT_DIR").unwrap());
-    let build_dir = PathBuf::from(build_dir).join("libbacktrace");
-    let _ = fs::create_dir_all(&build_dir);
-
-    println!("cargo:rustc-link-lib=static=backtrace");
-    println!("cargo:rustc-link-search=native={}/.libs", build_dir.display());
-    let src_dir = env::current_dir().unwrap().join("../libbacktrace");
-    rerun_if_changed_anything_in_dir(&src_dir);
-    let timestamp = build_dir.join("rustbuild.timestamp");
-    if up_to_date(&Path::new("build.rs"), &timestamp) && up_to_date(&src_dir, &timestamp) {
-        return
-    }
+fn build_libbacktrace(host: &str, target: &str) -> Result<(), ()> {
+    let native = native_lib_boilerplate("libbacktrace", "libbacktrace", "backtrace", ".libs")?;
 
     let compiler = gcc::Config::new().get_compiler();
     // only msvc returns None for ar so unwrap is okay
@@ -90,10 +74,10 @@ fn build_libbacktrace(host: &str, target: &str) {
                              .collect::<Vec<_>>().join(" ");
     cflags.push_str(" -fvisibility=hidden");
     run(Command::new("sh")
-                .current_dir(&build_dir)
-                .arg(src_dir.join("configure").to_str().unwrap()
-                            .replace("C:\\", "/c/")
-                            .replace("\\", "/"))
+                .current_dir(&native.out_dir)
+                .arg(native.src_dir.join("configure").to_str().unwrap()
+                                   .replace("C:\\", "/c/")
+                                   .replace("\\", "/"))
                 .arg("--with-pic")
                 .arg("--disable-multilib")
                 .arg("--disable-shared")
@@ -106,9 +90,8 @@ fn build_libbacktrace(host: &str, target: &str) {
                 .env("CFLAGS", cflags));
 
     run(Command::new(build_helper::make(host))
-                .current_dir(&build_dir)
-                .arg(format!("INCDIR={}", src_dir.display()))
+                .current_dir(&native.out_dir)
+                .arg(format!("INCDIR={}", native.src_dir.display()))
                 .arg("-j").arg(env::var("NUM_JOBS").expect("NUM_JOBS was not set")));
-
-    t!(File::create(&timestamp));
+    Ok(())
 }

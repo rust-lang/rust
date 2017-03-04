@@ -11,6 +11,7 @@
 extern crate gcc;
 
 fn main() {
+    println!("cargo:rerun-if-changed=../rt/miniz.c");
     gcc::Config::new()
         .file("../rt/miniz.c")
         .compile("libminiz.a");
