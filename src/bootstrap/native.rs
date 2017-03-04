@@ -18,9 +18,11 @@
 //! LLVM and compiler-rt are essentially just wired up to everything else to
 //! ensure that they're always in place if needed.
 
+use std::ffi::{OsStr, OsString};
+use std::fmt;
 use std::fs::{self, File};
 use std::io::{Read, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use build_helper::output;
@@ -31,41 +33,144 @@ use Build;
 use util;
 use build_helper::up_to_date;
 
-/// Compile LLVM for `target`.
-pub fn llvm(build: &Build, target: &str) {
-    // If we're using a custom LLVM bail out here, but we can only use a
-    // custom LLVM for the build triple.
-    if let Some(config) = build.config.target_config.get(target) {
-        if let Some(ref s) = config.llvm_config {
-            return check_llvm_version(build, s);
+/// Build config for LLVM; mirrors the CMake configuration and can be converted
+/// into one.
+///
+/// The config, after LLVM is successfully built, is serialized and written
+/// along with the clean trigger to serve as the stamp. This way LLVM is
+/// correctly rebuilt whenever build configuration changes, not only when the
+/// clean trigger is touched.
+struct LlvmBuildConfig {
+    clean_trigger: String,
+    path: PathBuf,
+    generator: Option<OsString>,
+    target: String,
+    host: String,
+    out_dir: PathBuf,
+    profile: String,
+    defines: Vec<(OsString, OsString)>,
+    build_args: Vec<OsString>,
+}
+
+impl From<LlvmBuildConfig> for cmake::Config {
+    fn from(mirror: LlvmBuildConfig) -> Self {
+        let mut cfg = cmake::Config::new(&mirror.path);
+
+        if let Some(generator) = mirror.generator {
+            cfg.generator(&generator);
+        }
+
+        cfg.target(&mirror.target)
+           .host(&mirror.host)
+           .out_dir(&mirror.out_dir)
+           .profile(&mirror.profile);
+
+        for (k, v) in mirror.defines {
+            cfg.define(k, v);
+        }
+
+        for v in mirror.build_args {
+            cfg.build_arg(v);
+        }
+
+        cfg
+    }
+}
+
+impl LlvmBuildConfig {
+    fn new<S, P>(clean_trigger: S, path: P) -> LlvmBuildConfig
+        where S: AsRef<str>, P: AsRef<Path>
+    {
+        LlvmBuildConfig {
+            clean_trigger: clean_trigger.as_ref().to_string(),
+            path: path.as_ref().to_path_buf(),
+            generator: None,
+            target: "".to_string(),
+            host: "".to_string(),
+            out_dir: PathBuf::new(),
+            profile: "".to_string(),
+            defines: vec![],
+            build_args: vec![],
         }
     }
 
-    // If the cleaning trigger is newer than our built artifacts (or if the
-    // artifacts are missing) then we keep going, otherwise we bail out.
-    let dst = build.llvm_out(target);
-    let stamp = build.src.join("src/rustllvm/llvm-auto-clean-trigger");
-    let mut stamp_contents = String::new();
-    t!(t!(File::open(&stamp)).read_to_string(&mut stamp_contents));
-    let done_stamp = dst.join("llvm-finished-building");
-    if done_stamp.exists() {
-        let mut done_contents = String::new();
-        t!(t!(File::open(&done_stamp)).read_to_string(&mut done_contents));
-        if done_contents == stamp_contents {
-            return
-        }
+    fn into_cmake(self) -> cmake::Config {
+        self.into()
     }
-    drop(fs::remove_dir_all(&dst));
 
-    println!("Building LLVM for {}", target);
+    fn generator<S: AsRef<OsStr>>(&mut self, v: S) -> &mut LlvmBuildConfig {
+        self.generator = Some(v.as_ref().to_owned());
+        self
+    }
 
-    let _time = util::timeit();
-    let _ = fs::remove_dir_all(&dst.join("build"));
-    t!(fs::create_dir_all(&dst.join("build")));
+    fn target<S: AsRef<str>>(&mut self, v: S) -> &mut LlvmBuildConfig {
+        self.target = v.as_ref().to_string();
+        self
+    }
+
+    fn host<S: AsRef<str>>(&mut self, v: S) -> &mut LlvmBuildConfig {
+        self.host = v.as_ref().to_string();
+        self
+    }
+
+    fn out_dir<P: AsRef<Path>>(&mut self, v: P) -> &mut LlvmBuildConfig {
+        self.out_dir = v.as_ref().to_path_buf();
+        self
+    }
+
+    fn profile<S: AsRef<str>>(&mut self, v: S) -> &mut LlvmBuildConfig {
+        self.profile = v.as_ref().to_string();
+        self
+    }
+
+    fn define<K, V>(&mut self, k: K, v: V) -> &mut LlvmBuildConfig
+        where K: AsRef<OsStr>, V: AsRef<OsStr>
+    {
+        self.defines.push((k.as_ref().to_owned(), v.as_ref().to_owned()));
+        self
+    }
+
+    fn build_arg<S: AsRef<OsStr>>(&mut self, v: S) -> &mut LlvmBuildConfig {
+        self.build_args.push(v.as_ref().to_owned());
+        self
+    }
+}
+
+impl fmt::Display for LlvmBuildConfig {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // Write the force clean trigger first.
+        write!(f, "{}", self.clean_trigger)?;
+        write!(f, "\n")?;
+
+        // Write out every configuration that should trigger rebuilding if
+        // changed.
+        writeln!(f, "target: {}", self.target)?;
+        writeln!(f, "host: {}", self.host)?;
+        writeln!(f, "profile: {}", self.profile)?;
+
+        // Be stable and sort the defines before outputting.
+        // Also pay attention to the formatting of OsStr; in order to prevent
+        // lossy encoding from happening, the `Debug` trait is used.
+        let mut defines = self.defines.clone();
+        defines.sort();
+        for (k, v) in defines {
+            writeln!(f, "define: {:?} = {:?}", k, v)?;
+        }
+
+        for v in &self.build_args {
+            writeln!(f, "build_arg: {:?}", v)?;
+        }
+
+        Ok(())
+    }
+}
+
+/// Configure LLVM for `target`.
+fn configure_llvm(build: &Build, target: &str, dst: &Path, clean_trigger: &str) -> LlvmBuildConfig {
     let assertions = if build.config.llvm_assertions {"ON"} else {"OFF"};
 
     // http://llvm.org/docs/CMake.html
-    let mut cfg = cmake::Config::new(build.src.join("src/llvm"));
+    let mut cfg = LlvmBuildConfig::new(clean_trigger, build.src.join("src/llvm"));
     if build.config.ninja {
         cfg.generator("Ninja");
     }
@@ -84,7 +189,7 @@ pub fn llvm(build: &Build, target: &str) {
 
     cfg.target(target)
        .host(&build.config.build)
-       .out_dir(&dst)
+       .out_dir(dst)
        .profile(profile)
        .define("LLVM_ENABLE_ASSERTIONS", assertions)
        .define("LLVM_TARGETS_TO_BUILD", llvm_targets)
@@ -136,11 +241,60 @@ pub fn llvm(build: &Build, target: &str) {
         cfg.define("CMAKE_CXX_FLAGS", build.cflags(target).join(" "));
     }
 
+    cfg
+}
+
+/// Compile LLVM for `target`.
+pub fn llvm(build: &Build, target: &str) {
+    // If we're using a custom LLVM bail out here, but we can only use a
+    // custom LLVM for the build triple.
+    if let Some(config) = build.config.target_config.get(target) {
+        if let Some(ref s) = config.llvm_config {
+            return check_llvm_version(build, s);
+        }
+    }
+
+    // Read the clean trigger for generation and comparison of build stamps
+    // below.
+    let dst = build.llvm_out(target);
+    let trigger = build.src.join("src/rustllvm/llvm-auto-clean-trigger");
+    let mut trigger_contents = String::new();
+    t!(t!(File::open(&trigger)).read_to_string(&mut trigger_contents));
+
+    // Configure LLVM and generate the expected stamp for this build.
+    let cfg = configure_llvm(build, target, &dst, &trigger_contents);
+    let stamp_contents = format!("{}", cfg);
+
+    // If any of the following is true, then clean and rebuild LLVM, otherwise
+    // do nothing:
+    //
+    // * the cleaning trigger is newer than our built artifacts,
+    // * the artifacts are missing, or
+    // * the built LLVM is configured differently.
+    let done_stamp = dst.join("llvm-finished-building");
+    if done_stamp.exists() {
+        let mut done_contents = String::new();
+        t!(t!(File::open(&done_stamp)).read_to_string(&mut done_contents));
+        if done_contents == stamp_contents {
+            return
+        }
+    }
+    drop(fs::remove_dir_all(&dst));
+
+    println!("Building LLVM for {}", target);
+
+    let _time = util::timeit();
+    let _ = fs::remove_dir_all(&dst.join("build"));
+    t!(fs::create_dir_all(&dst.join("build")));
+
+    // Prepare the CMake config for build.
+    let mut cmake_cfg = cfg.into_cmake();
+
     // FIXME: we don't actually need to build all LLVM tools and all LLVM
     //        libraries here, e.g. we just want a few components and a few
     //        tools. Figure out how to filter them down and only build the right
     //        tools and libs on all platforms.
-    cfg.build();
+    cmake_cfg.build();
 
     t!(t!(File::create(&done_stamp)).write_all(stamp_contents.as_bytes()));
 }
