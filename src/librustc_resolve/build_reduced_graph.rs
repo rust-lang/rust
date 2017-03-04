@@ -516,7 +516,7 @@ impl<'a> Resolver<'a> {
             expansion: Cell::new(LegacyScope::Empty),
         });
         self.invocations.insert(mark, invocation);
-        macro_rules.body = mark_tts(&macro_rules.body, mark);
+        macro_rules.body = mark_tts(macro_rules.stream(), mark).into();
         let ext = Rc::new(macro_rules::compile(&self.session.parse_sess, &macro_rules));
         self.macro_map.insert(def_id, ext.clone());
         ext

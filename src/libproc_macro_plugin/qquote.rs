@@ -17,7 +17,7 @@ use syntax::symbol::Symbol;
 use syntax::tokenstream::{self, Delimited, TokenTree, TokenStream};
 use syntax_pos::DUMMY_SP;
 
-use std::rc::Rc;
+use std::iter;
 
 pub fn qquote<'cx>(stream: TokenStream) -> TokenStream {
     stream.quote()
@@ -49,10 +49,7 @@ macro_rules! quote_tree {
 }
 
 fn delimit(delim: token::DelimToken, stream: TokenStream) -> TokenStream {
-    TokenTree::Delimited(DUMMY_SP, Rc::new(Delimited {
-        delim: delim,
-        tts: stream.trees().cloned().collect(),
-    })).into()
+    TokenTree::Delimited(DUMMY_SP, Delimited { delim: delim, tts: stream.into() }).into()
 }
 
 macro_rules! quote {
@@ -75,9 +72,9 @@ impl Quote for TokenStream {
             return quote!(::syntax::tokenstream::TokenStream::empty());
         }
 
-        struct Quote<'a>(tokenstream::Cursor<'a>);
+        struct Quote(iter::Peekable<tokenstream::Cursor>);
 
-        impl<'a> Iterator for Quote<'a> {
+        impl Iterator for Quote {
             type Item = TokenStream;
 
             fn next(&mut self) -> Option<TokenStream> {
@@ -89,22 +86,15 @@ impl Quote for TokenStream {
                     _ => false,
                 };
 
-                self.0.next().cloned().map(|tree| {
+                self.0.next().map(|tree| {
                     let quoted_tree = if is_unquote { tree.into() } else { tree.quote() };
                     quote!(::syntax::tokenstream::TokenStream::from((unquote quoted_tree)),)
                 })
             }
         }
 
-        let quoted = Quote(self.trees()).collect::<TokenStream>();
+        let quoted = Quote(self.trees().peekable()).collect::<TokenStream>();
         quote!([(unquote quoted)].iter().cloned().collect::<::syntax::tokenstream::TokenStream>())
-    }
-}
-
-impl Quote for Vec<TokenTree> {
-    fn quote(&self) -> TokenStream {
-        let stream = self.iter().cloned().collect::<TokenStream>();
-        quote!((quote stream).trees().cloned().collect::<::std::vec::Vec<_> >())
     }
 }
 
@@ -123,12 +113,12 @@ impl Quote for TokenTree {
     }
 }
 
-impl Quote for Rc<Delimited> {
+impl Quote for Delimited {
     fn quote(&self) -> TokenStream {
-        quote!(::std::rc::Rc::new(::syntax::tokenstream::Delimited {
+        quote!(::syntax::tokenstream::Delimited {
             delim: (quote self.delim),
-            tts: (quote self.tts),
-        }))
+            tts: (quote self.stream()).into(),
+        })
     }
 }
 

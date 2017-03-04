@@ -14,7 +14,7 @@ use ext::tt::macro_parser::{NamedMatch, MatchedSeq, MatchedNonterminal};
 use ext::tt::quoted;
 use parse::token::{self, SubstNt, Token, NtIdent, NtTT};
 use syntax_pos::{Span, DUMMY_SP};
-use tokenstream::{TokenTree, Delimited};
+use tokenstream::{TokenStream, TokenTree, Delimited};
 use util::small_vector::SmallVector;
 
 use std::rc::Rc;
@@ -66,11 +66,11 @@ impl Iterator for Frame {
 pub fn transcribe(sp_diag: &Handler,
                   interp: Option<HashMap<Ident, Rc<NamedMatch>>>,
                   src: Vec<quoted::TokenTree>)
-                  -> Vec<TokenTree> {
+                  -> TokenStream {
     let mut stack = SmallVector::one(Frame::new(src));
     let interpolations = interp.unwrap_or_else(HashMap::new); /* just a convenience */
     let mut repeats = Vec::new();
-    let mut result = Vec::new();
+    let mut result: Vec<TokenStream> = Vec::new();
     let mut result_stack = Vec::new();
 
     loop {
@@ -84,8 +84,11 @@ pub fn transcribe(sp_diag: &Handler,
                     *idx = 0;
                     if let Some(sep) = sep.clone() {
                         // repeat same span, I guess
-                        let prev_span = result.last().map(TokenTree::span).unwrap_or(DUMMY_SP);
-                        result.push(TokenTree::Token(prev_span, sep));
+                        let prev_span = match result.last() {
+                            Some(stream) => stream.trees().next().unwrap().span(),
+                            None => DUMMY_SP,
+                        };
+                        result.push(TokenTree::Token(prev_span, sep).into());
                     }
                     continue
                 }
@@ -97,14 +100,14 @@ pub fn transcribe(sp_diag: &Handler,
                 }
                 Frame::Delimited { forest, span, .. } => {
                     if result_stack.is_empty() {
-                        return result;
+                        return TokenStream::concat(result);
                     }
-                    let tree = TokenTree::Delimited(span, Rc::new(Delimited {
+                    let tree = TokenTree::Delimited(span, Delimited {
                         delim: forest.delim,
-                        tts: result,
-                    }));
+                        tts: TokenStream::concat(result).into(),
+                    });
                     result = result_stack.pop().unwrap();
-                    result.push(tree);
+                    result.push(tree.into());
                 }
             }
             continue
@@ -148,19 +151,20 @@ pub fn transcribe(sp_diag: &Handler,
             // FIXME #2887: think about span stuff here
             quoted::TokenTree::Token(sp, SubstNt(ident)) => {
                 match lookup_cur_matched(ident, &interpolations, &repeats) {
-                    None => result.push(TokenTree::Token(sp, SubstNt(ident))),
+                    None => result.push(TokenTree::Token(sp, SubstNt(ident)).into()),
                     Some(cur_matched) => if let MatchedNonterminal(ref nt) = *cur_matched {
                         match **nt {
                             // sidestep the interpolation tricks for ident because
                             // (a) idents can be in lots of places, so it'd be a pain
                             // (b) we actually can, since it's a token.
                             NtIdent(ref sn) => {
-                                result.push(TokenTree::Token(sn.span, token::Ident(sn.node)));
+                                let token = TokenTree::Token(sn.span, token::Ident(sn.node));
+                                result.push(token.into());
                             }
-                            NtTT(ref tt) => result.push(tt.clone()),
+                            NtTT(ref tt) => result.push(tt.clone().into()),
                             _ => {
-                                // FIXME(pcwalton): Bad copy
-                                result.push(TokenTree::Token(sp, token::Interpolated(nt.clone())));
+                                let token = TokenTree::Token(sp, token::Interpolated(nt.clone()));
+                                result.push(token.into());
                             }
                         }
                     } else {
@@ -174,7 +178,7 @@ pub fn transcribe(sp_diag: &Handler,
                 stack.push(Frame::Delimited { forest: delimited, idx: 0, span: span });
                 result_stack.push(mem::replace(&mut result, Vec::new()));
             }
-            quoted::TokenTree::Token(span, tok) => result.push(TokenTree::Token(span, tok)),
+            quoted::TokenTree::Token(span, tok) => result.push(TokenTree::Token(span, tok).into()),
             quoted::TokenTree::MetaVarDecl(..) => panic!("unexpected `TokenTree::MetaVarDecl"),
         }
     }

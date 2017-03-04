@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast::{self, Block, Ident, Mac_, PatKind};
+use ast::{self, Block, Ident, PatKind};
 use ast::{Name, MacStmtStyle, StmtKind, ItemKind};
 use attr::{self, HasAttrs};
 use codemap::{ExpnInfo, NameAndSpan, MacroBang, MacroAttribute};
@@ -20,16 +20,15 @@ use ext::placeholders::{placeholder, PlaceholderExpander};
 use feature_gate::{self, Features, is_builtin_attr};
 use fold;
 use fold::*;
+use parse::{filemap_to_stream, ParseSess, DirectoryOwnership, PResult, token};
 use parse::parser::Parser;
-use parse::token;
-use parse::{ParseSess, DirectoryOwnership, PResult, filemap_to_tts};
 use print::pprust;
 use ptr::P;
 use std_inject;
 use symbol::Symbol;
 use symbol::keywords;
 use syntax_pos::{self, Span, ExpnId};
-use tokenstream::{TokenTree, TokenStream};
+use tokenstream::TokenStream;
 use util::small_vector::SmallVector;
 use visit::Visitor;
 
@@ -462,8 +461,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 kind.expect_from_annotatables(items)
             }
             SyntaxExtension::AttrProcMacro(ref mac) => {
-                let attr_toks = tts_for_attr_args(&attr, &self.cx.parse_sess).into_iter().collect();
-                let item_toks = tts_for_item(&item, &self.cx.parse_sess).into_iter().collect();
+                let attr_toks = stream_for_attr_args(&attr, &self.cx.parse_sess);
+                let item_toks = stream_for_item(&item, &self.cx.parse_sess);
 
                 let tok_result = mac.expand(self.cx, attr.span, attr_toks, item_toks);
                 self.parse_expansion(tok_result, kind, name, attr.span)
@@ -487,11 +486,11 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             InvocationKind::Bang { mac, ident, span } => (mac, ident, span),
             _ => unreachable!(),
         };
-        let Mac_ { path, tts, .. } = mac.node;
+        let path = &mac.node.path;
 
         let extname = path.segments.last().unwrap().identifier.name;
         let ident = ident.unwrap_or(keywords::Invalid.ident());
-        let marked_tts = mark_tts(&tts, mark);
+        let marked_tts = mark_tts(mac.node.stream(), mark);
         let opt_expanded = match *ext {
             NormalTT(ref expandfun, exp_span, allow_internal_unstable) => {
                 if ident.name != keywords::Invalid.name() {
@@ -510,7 +509,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     },
                 });
 
-                kind.make_from(expandfun.expand(self.cx, span, &marked_tts))
+                kind.make_from(expandfun.expand(self.cx, span, marked_tts))
             }
 
             IdentTT(ref expander, tt_span, allow_internal_unstable) => {
@@ -529,7 +528,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     }
                 });
 
-                kind.make_from(expander.expand(self.cx, span, ident, marked_tts))
+                let input: Vec<_> = marked_tts.into_trees().collect();
+                kind.make_from(expander.expand(self.cx, span, ident, input))
             }
 
             MultiDecorator(..) | MultiModifier(..) | SyntaxExtension::AttrProcMacro(..) => {
@@ -563,8 +563,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     },
                 });
 
-                let toks = marked_tts.into_iter().collect();
-                let tok_result = expandfun.expand(self.cx, span, toks);
+                let tok_result = expandfun.expand(self.cx, span, marked_tts);
                 Some(self.parse_expansion(tok_result, kind, extname, span))
             }
         };
@@ -647,7 +646,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
     fn parse_expansion(&mut self, toks: TokenStream, kind: ExpansionKind, name: Name, span: Span)
                        -> Expansion {
-        let mut parser = self.cx.new_parser_from_tts(&toks.trees().cloned().collect::<Vec<_>>());
+        let mut parser = self.cx.new_parser_from_tts(&toks.into_trees().collect::<Vec<_>>());
         let expansion = match parser.parse_expansion(kind, false) {
             Ok(expansion) => expansion,
             Err(mut err) => {
@@ -821,23 +820,23 @@ fn find_attr_invoc(attrs: &mut Vec<ast::Attribute>) -> Option<ast::Attribute> {
 // Therefore, we must use the pretty printer (yuck) to turn the AST node into a
 // string, which we then re-tokenise (double yuck), but first we have to patch
 // the pretty-printed string on to the end of the existing codemap (infinity-yuck).
-fn tts_for_item(item: &Annotatable, parse_sess: &ParseSess) -> Vec<TokenTree> {
+fn stream_for_item(item: &Annotatable, parse_sess: &ParseSess) -> TokenStream {
     let text = match *item {
         Annotatable::Item(ref i) => pprust::item_to_string(i),
         Annotatable::TraitItem(ref ti) => pprust::trait_item_to_string(ti),
         Annotatable::ImplItem(ref ii) => pprust::impl_item_to_string(ii),
     };
-    string_to_tts(text, parse_sess)
+    string_to_stream(text, parse_sess)
 }
 
-fn tts_for_attr_args(attr: &ast::Attribute, parse_sess: &ParseSess) -> Vec<TokenTree> {
+fn stream_for_attr_args(attr: &ast::Attribute, parse_sess: &ParseSess) -> TokenStream {
     use ast::MetaItemKind::*;
     use print::pp::Breaks;
     use print::pprust::PrintState;
 
     let token_string = match attr.value.node {
         // For `#[foo]`, an empty token
-        Word => return vec![],
+        Word => return TokenStream::empty(),
         // For `#[foo(bar, baz)]`, returns `(bar, baz)`
         List(ref items) => pprust::to_string(|s| {
             s.popen()?;
@@ -853,12 +852,12 @@ fn tts_for_attr_args(attr: &ast::Attribute, parse_sess: &ParseSess) -> Vec<Token
         }),
     };
 
-    string_to_tts(token_string, parse_sess)
+    string_to_stream(token_string, parse_sess)
 }
 
-fn string_to_tts(text: String, parse_sess: &ParseSess) -> Vec<TokenTree> {
+fn string_to_stream(text: String, parse_sess: &ParseSess) -> TokenStream {
     let filename = String::from("<macro expansion>");
-    filemap_to_tts(parse_sess, parse_sess.codemap().new_filemap(filename, None, text))
+    filemap_to_stream(parse_sess, parse_sess.codemap().new_filemap(filename, None, text))
 }
 
 impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
@@ -1162,6 +1161,6 @@ impl Folder for Marker {
 }
 
 // apply a given mark to the given token trees. Used prior to expansion of a macro.
-pub fn mark_tts(tts: &[TokenTree], m: Mark) -> Vec<TokenTree> {
+pub fn mark_tts(tts: TokenStream, m: Mark) -> TokenStream {
     noop_fold_tts(tts, &mut Marker{mark:m, expn_id: None})
 }

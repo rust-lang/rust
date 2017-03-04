@@ -22,9 +22,8 @@ use parse::{Directory, ParseSess};
 use parse::parser::Parser;
 use parse::token::{self, NtTT};
 use parse::token::Token::*;
-use print;
 use symbol::Symbol;
-use tokenstream::TokenTree;
+use tokenstream::{TokenStream, TokenTree};
 
 use std::collections::{HashMap};
 use std::collections::hash_map::{Entry};
@@ -68,7 +67,7 @@ impl TTMacroExpander for MacroRulesMacroExpander {
     fn expand<'cx>(&self,
                    cx: &'cx mut ExtCtxt,
                    sp: Span,
-                   arg: &[TokenTree])
+                   input: TokenStream)
                    -> Box<MacResult+'cx> {
         if !self.valid {
             return DummyResult::any(sp);
@@ -76,7 +75,7 @@ impl TTMacroExpander for MacroRulesMacroExpander {
         generic_extension(cx,
                           sp,
                           self.name,
-                          arg,
+                          input,
                           &self.lhses,
                           &self.rhses)
     }
@@ -86,14 +85,12 @@ impl TTMacroExpander for MacroRulesMacroExpander {
 fn generic_extension<'cx>(cx: &'cx ExtCtxt,
                           sp: Span,
                           name: ast::Ident,
-                          arg: &[TokenTree],
+                          arg: TokenStream,
                           lhses: &[quoted::TokenTree],
                           rhses: &[quoted::TokenTree])
                           -> Box<MacResult+'cx> {
     if cx.trace_macros() {
-        println!("{}! {{ {} }}",
-                 name,
-                 print::pprust::tts_to_string(arg));
+        println!("{}! {{ {} }}", name, arg);
     }
 
     // Which arm's failure should we report? (the one furthest along)
@@ -106,7 +103,7 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
             _ => cx.span_bug(sp, "malformed macro lhs")
         };
 
-        match TokenTree::parse(cx, lhs_tt, arg) {
+        match TokenTree::parse(cx, lhs_tt, arg.clone()) {
             Success(named_matches) => {
                 let rhs = match rhses[i] {
                     // ignore delimiters
@@ -186,7 +183,7 @@ pub fn compile(sess: &ParseSess, def: &ast::MacroDef) -> SyntaxExtension {
     ];
 
     // Parse the macro_rules! invocation
-    let argument_map = match parse(sess, def.body.clone(), &argument_gram, None) {
+    let argument_map = match parse(sess, def.body.clone().into(), &argument_gram, None) {
         Success(m) => m,
         Failure(sp, tok) => {
             let s = parse_failure_msg(tok);
@@ -205,7 +202,7 @@ pub fn compile(sess: &ParseSess, def: &ast::MacroDef) -> SyntaxExtension {
             s.iter().map(|m| {
                 if let MatchedNonterminal(ref nt) = **m {
                     if let NtTT(ref tt) = **nt {
-                        let tt = quoted::parse(&[tt.clone()], true, sess).pop().unwrap();
+                        let tt = quoted::parse(tt.clone().into(), true, sess).pop().unwrap();
                         valid &= check_lhs_nt_follows(sess, &tt);
                         return tt;
                     }
@@ -221,7 +218,7 @@ pub fn compile(sess: &ParseSess, def: &ast::MacroDef) -> SyntaxExtension {
             s.iter().map(|m| {
                 if let MatchedNonterminal(ref nt) = **m {
                     if let NtTT(ref tt) = **nt {
-                        return quoted::parse(&[tt.clone()], false, sess).pop().unwrap();
+                        return quoted::parse(tt.clone().into(), false, sess).pop().unwrap();
                     }
                 }
                 sess.span_diagnostic.span_bug(def.span, "wrong-structured lhs")
