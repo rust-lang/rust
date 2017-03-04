@@ -33,7 +33,7 @@ use rustc::ty::util::TypeIdHasher;
 use rustc::hir;
 use rustc_data_structures::ToHex;
 use {type_of, machine, monomorphize};
-use common::CrateContext;
+use common::{self, CrateContext};
 use type_::Type;
 use rustc::ty::{self, AdtKind, Ty, layout};
 use session::config;
@@ -377,7 +377,7 @@ fn subroutine_type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                       span: Span)
                                       -> MetadataCreationResult
 {
-    let signature = cx.tcx().erase_late_bound_regions(&signature);
+    let signature = cx.tcx().erase_late_bound_regions_and_normalize(&signature);
 
     let mut signature_metadata: Vec<DIType> = Vec::with_capacity(signature.inputs().len() + 1);
 
@@ -1764,7 +1764,7 @@ pub fn create_global_var_metadata(cx: &CrateContext,
     };
 
     let is_local_to_unit = is_node_local_to_unit(cx, node_id);
-    let variable_type = tcx.erase_regions(&tcx.item_type(node_def_id));
+    let variable_type = common::def_ty(cx.shared(), node_def_id, Substs::empty());
     let type_metadata = type_metadata(cx, variable_type, span);
     let var_name = tcx.item_name(node_def_id).to_string();
     let linkage_name = mangled_name_of_item(cx, node_def_id, "");
@@ -1772,8 +1772,7 @@ pub fn create_global_var_metadata(cx: &CrateContext,
     let var_name = CString::new(var_name).unwrap();
     let linkage_name = CString::new(linkage_name).unwrap();
 
-    let ty = cx.tcx().item_type(node_def_id);
-    let global_align = type_of::align_of(cx, ty);
+    let global_align = type_of::align_of(cx, variable_type);
 
     unsafe {
         llvm::LLVMRustDIBuilderCreateStaticVariable(DIB(cx),

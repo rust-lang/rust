@@ -29,7 +29,7 @@ use type_::Type;
 use value::Value;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::layout::Layout;
-use rustc::ty::subst::Subst;
+use rustc::ty::subst::{Subst, Substs};
 use rustc::traits::{self, SelectionContext, Reveal};
 use rustc::hir;
 
@@ -603,4 +603,14 @@ pub fn ty_fn_sig<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
 pub fn is_closure(tcx: TyCtxt, def_id: DefId) -> bool {
     tcx.def_key(def_id).disambiguated_data.data == DefPathData::ClosureExpr
+}
+
+/// Given a DefId and some Substs, produces the monomorphic item type.
+pub fn def_ty<'a, 'tcx>(shared: &SharedCrateContext<'a, 'tcx>,
+                        def_id: DefId,
+                        substs: &'tcx Substs<'tcx>)
+                        -> Ty<'tcx>
+{
+    let ty = shared.tcx().item_type(def_id);
+    monomorphize::apply_param_substs(shared, substs, &ty)
 }

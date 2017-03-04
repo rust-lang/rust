@@ -25,22 +25,21 @@ use syntax_pos::{Span, DUMMY_SP};
 
 use rustc_data_structures::indexed_vec::Idx;
 
+fn mirbug(tcx: TyCtxt, span: Span, msg: &str) {
+    tcx.sess.diagnostic().span_bug(span, msg);
+}
+
 macro_rules! span_mirbug {
     ($context:expr, $elem:expr, $($message:tt)*) => ({
-        $context.tcx().sess.span_warn(
-            $context.last_span,
-            &format!("broken MIR ({:?}): {}", $elem, format!($($message)*))
-        )
+        mirbug($context.tcx(), $context.last_span,
+               &format!("broken MIR ({:?}): {}", $elem, format!($($message)*)))
     })
 }
 
 macro_rules! span_mirbug_and_err {
     ($context:expr, $elem:expr, $($message:tt)*) => ({
         {
-            $context.tcx().sess.span_warn(
-                $context.last_span,
-                &format!("broken MIR ({:?}): {:?}", $elem, format!($($message)*))
-            );
+            span_mirbug!($context, $elem, $($message)*);
             $context.error()
         }
     })
@@ -125,8 +124,18 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
         debug!("sanitize_lvalue: {:?}", lvalue);
         match *lvalue {
             Lvalue::Local(index) => LvalueTy::Ty { ty: self.mir.local_decls[index].ty },
-            Lvalue::Static(def_id) =>
-                LvalueTy::Ty { ty: self.tcx().item_type(def_id) },
+            Lvalue::Static(box Static { def_id, ty: sty }) => {
+                let sty = self.sanitize_type(lvalue, sty);
+                let ty = self.tcx().item_type(def_id);
+                let ty = self.cx.normalize(&ty);
+                if let Err(terr) = self.cx.eq_types(self.last_span, ty, sty) {
+                    span_mirbug!(
+                        self, lvalue, "bad static type ({:?}: {:?}): {:?}",
+                        ty, sty, terr);
+                }
+                LvalueTy::Ty { ty: sty }
+
+            },
             Lvalue::Projection(ref proj) => {
                 let base_ty = self.sanitize_lvalue(&proj.base, location);
                 if let LvalueTy::Ty { ty } = base_ty {

@@ -816,10 +816,18 @@ pub enum Lvalue<'tcx> {
     Local(Local),
 
     /// static or static mut variable
-    Static(DefId),
+    Static(Box<Static<'tcx>>),
 
     /// projection out of an lvalue (access a field, deref a pointer, etc)
     Projection(Box<LvalueProjection<'tcx>>),
+}
+
+/// The def-id of a static, along with its normalized type (which is
+/// stored to avoid requiring normalization when reading MIR).
+#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable)]
+pub struct Static<'tcx> {
+    pub def_id: DefId,
+    pub ty: Ty<'tcx>,
 }
 
 /// The `Projection` data structure defines things of the form `B.x`
@@ -911,8 +919,8 @@ impl<'tcx> Debug for Lvalue<'tcx> {
 
         match *self {
             Local(id) => write!(fmt, "{:?}", id),
-            Static(def_id) =>
-                write!(fmt, "{}", ty::tls::with(|tcx| tcx.item_path_str(def_id))),
+            Static(box self::Static { def_id, ty }) =>
+                write!(fmt, "({}: {:?})", ty::tls::with(|tcx| tcx.item_path_str(def_id)), ty),
             Projection(ref data) =>
                 match data.elem {
                     ProjectionElem::Downcast(ref adt_def, index) =>

@@ -22,7 +22,7 @@ use common;
 use declare;
 use glue::DropGlueKind;
 use llvm;
-use monomorphize::{self, Instance};
+use monomorphize::Instance;
 use rustc::dep_graph::DepNode;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
@@ -146,7 +146,7 @@ impl<'a, 'tcx> TransItem<'tcx> {
                         linkage: llvm::Linkage,
                         symbol_name: &str) {
         let def_id = ccx.tcx().hir.local_def_id(node_id);
-        let ty = ccx.tcx().item_type(def_id);
+        let ty = common::def_ty(ccx.shared(), def_id, Substs::empty());
         let llty = type_of::type_of(ccx, ty);
 
         let g = declare::define_global(ccx, symbol_name, llty).unwrap_or_else(|| {
@@ -168,10 +168,7 @@ impl<'a, 'tcx> TransItem<'tcx> {
         assert!(!instance.substs.needs_infer() &&
                 !instance.substs.has_param_types());
 
-        let item_ty = ccx.tcx().item_type(instance.def);
-        let item_ty = ccx.tcx().erase_regions(&item_ty);
-        let mono_ty = monomorphize::apply_param_substs(ccx.shared(), instance.substs, &item_ty);
-
+        let mono_ty = common::def_ty(ccx.shared(), instance.def, instance.substs);
         let attrs = ccx.tcx().get_attrs(instance.def);
         let lldecl = declare::declare_fn(ccx, symbol_name, mono_ty);
         unsafe { llvm::LLVMRustSetLinkage(lldecl, linkage) };

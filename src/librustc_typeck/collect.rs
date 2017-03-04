@@ -291,7 +291,7 @@ impl<'a, 'tcx> AstConv<'tcx, 'tcx> for ItemCtxt<'a, 'tcx> {
                                         -> Ty<'tcx>
     {
         if let Some(trait_ref) = self.tcx().no_late_bound_regions(&poly_trait_ref) {
-            self.projected_ty(span, trait_ref, item_name)
+            self.tcx().mk_projection(trait_ref, item_name)
         } else {
             // no late-bound regions, we can just ignore the binder
             span_err!(self.tcx().sess, span, E0212,
@@ -301,13 +301,10 @@ impl<'a, 'tcx> AstConv<'tcx, 'tcx> for ItemCtxt<'a, 'tcx> {
         }
     }
 
-    fn projected_ty(&self,
-                    _span: Span,
-                    trait_ref: ty::TraitRef<'tcx>,
-                    item_name: ast::Name)
-                    -> Ty<'tcx>
-    {
-        self.tcx().mk_projection(trait_ref, item_name)
+    fn normalize_ty(&self, _span: Span, ty: Ty<'tcx>) -> Ty<'tcx> {
+        // types in item signatures are not normalized, to avoid undue
+        // dependencies.
+        ty
     }
 
     fn set_tainted_by_errors(&self) {
