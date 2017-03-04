@@ -187,7 +187,7 @@ fn filter_frames(frames: &[Frame],
         let mut is_rmcp = false;
         let _ = resolve_symname(*frame, |symname| {
             if let Some(mangled_symbol_name) = symname {
-                if mangled_symbol_name == "__rust_maybe_catch_panic" {
+                if mangled_symbol_name.contains("rust_maybe_catch_panic") {
                     is_rmcp = true;
                 }
             }
