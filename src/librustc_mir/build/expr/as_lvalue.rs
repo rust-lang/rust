@@ -86,7 +86,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 block.and(Lvalue::Local(index))
             }
             ExprKind::StaticRef { id } => {
-                block.and(Lvalue::Static(id))
+                block.and(Lvalue::Static(Box::new(Static { def_id: id, ty: expr.ty })))
             }
 
             ExprKind::Array { .. } |

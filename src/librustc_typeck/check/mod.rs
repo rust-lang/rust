@@ -665,8 +665,9 @@ fn typeck_tables<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
             check_fn(&inh, fn_sig, decl, id, body)
         } else {
-            let expected_type = tcx.item_type(def_id);
             let fcx = FnCtxt::new(&inh, None, body.value.id);
+            let expected_type = tcx.item_type(def_id);
+            let expected_type = fcx.normalize_associated_types_in(body.value.span, &expected_type);
             fcx.require_type_is_sized(expected_type, body.value.span, traits::ConstSized);
 
             // Gather locals in statics (because of block expressions).
@@ -1374,16 +1375,15 @@ impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
                 infer::LateBoundRegionConversionTime::AssocTypeProjection(item_name),
                 &poly_trait_ref);
 
-        self.normalize_associated_type(span, trait_ref, item_name)
+        self.tcx().mk_projection(trait_ref, item_name)
     }
 
-    fn projected_ty(&self,
-                    span: Span,
-                    trait_ref: ty::TraitRef<'tcx>,
-                    item_name: ast::Name)
-                    -> Ty<'tcx>
-    {
-        self.normalize_associated_type(span, trait_ref, item_name)
+    fn normalize_ty(&self, span: Span, ty: Ty<'tcx>) -> Ty<'tcx> {
+        if ty.has_escaping_regions() {
+            ty // FIXME: normalization and escaping regions
+        } else {
+            self.normalize_associated_types_in(span, &ty)
+        }
     }
 
     fn set_tainted_by_errors(&self) {
@@ -1660,25 +1660,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         self.inh.normalize_associated_types_in(span, self.body_id, value)
     }
 
-    fn normalize_associated_type(&self,
-                                 span: Span,
-                                 trait_ref: ty::TraitRef<'tcx>,
-                                 item_name: ast::Name)
-                                 -> Ty<'tcx>
-    {
-        let cause = traits::ObligationCause::new(span,
-                                                 self.body_id,
-                                                 traits::ObligationCauseCode::MiscObligation);
-        self.fulfillment_cx
-            .borrow_mut()
-            .normalize_projection_type(self,
-                                       ty::ProjectionTy {
-                                           trait_ref: trait_ref,
-                                           item_name: item_name,
-                                       },
-                                       cause)
-    }
-
     pub fn write_nil(&self, node_id: ast::NodeId) {
         self.write_ty(node_id, self.tcx.mk_nil());
     }
@@ -1709,9 +1690,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn register_bound(&self,
-                                  ty: Ty<'tcx>,
-                                  def_id: DefId,
-                                  cause: traits::ObligationCause<'tcx>)
+                          ty: Ty<'tcx>,
+                          def_id: DefId,
+                          cause: traits::ObligationCause<'tcx>)
     {
         self.fulfillment_cx.borrow_mut()
             .register_bound(self, ty, def_id, cause);
@@ -1720,8 +1701,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn register_predicate(&self,
                               obligation: traits::PredicateObligation<'tcx>)
     {
-        debug!("register_predicate({:?})",
-               obligation);
+        debug!("register_predicate({:?})", obligation);
+        if obligation.has_escaping_regions() {
+            span_bug!(obligation.cause.span, "escaping regions in predicate {:?}",
+                      obligation);
+        }
         self.fulfillment_cx
             .borrow_mut()
             .register_predicate_obligation(self, obligation);
@@ -2040,10 +2024,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                             Neither => {
                                 if let Some(default) = default_map.get(ty) {
                                     let default = default.clone();
+                                    let default_ty = self.normalize_associated_types_in(
+                                        default.origin_span, &default.ty);
                                     match self.eq_types(false,
                                                         &self.misc(default.origin_span),
                                                         ty,
-                                                        default.ty) {
+                                                        default_ty) {
                                         Ok(ok) => self.register_infer_ok_obligations(ok),
                                         Err(_) => conflicts.push((*ty, default)),
                                     }
@@ -4344,7 +4330,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             } else if !infer_types && def.has_default {
                 // No type parameter provided, but a default exists.
                 let default = self.tcx.item_type(def.def_id);
-                default.subst_spanned(self.tcx, substs, Some(span))
+                self.normalize_ty(
+                    span,
+                    default.subst_spanned(self.tcx, substs, Some(span))
+                )
             } else {
                 // No type parameters were provided, we can infer all.
                 // This can also be reached in some error cases:
