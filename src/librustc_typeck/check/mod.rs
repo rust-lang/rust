@@ -2122,10 +2122,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     Neither => {
                         if let Some(default) = default_map.get(ty) {
                             let default = default.clone();
+                            let default_ty = self.normalize_associated_types_in(
+                                default.origin_span, &default.ty);
                             match self.eq_types(false,
                                                 &self.misc(default.origin_span),
                                                 ty,
-                                                default.ty) {
+                                                default_ty) {
                                 Ok(ok) => self.register_infer_ok_obligations(ok),
                                 Err(_) => {
                                     result = Some(default);
