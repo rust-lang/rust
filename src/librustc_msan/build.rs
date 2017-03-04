@@ -11,29 +11,26 @@
 extern crate build_helper;
 extern crate cmake;
 
-use std::path::PathBuf;
 use std::env;
+use build_helper::native_lib_boilerplate;
 
 use cmake::Config;
 
 fn main() {
     if let Some(llvm_config) = env::var_os("LLVM_CONFIG") {
-        let dst = Config::new("../compiler-rt")
+        let native = match native_lib_boilerplate("compiler-rt", "msan", "clang_rt.msan-x86_64",
+                                                  "build/lib/linux") {
+            Ok(native) => native,
+            _ => return,
+        };
+
+        Config::new(&native.src_dir)
             .define("COMPILER_RT_BUILD_SANITIZERS", "ON")
             .define("COMPILER_RT_BUILD_BUILTINS", "OFF")
             .define("COMPILER_RT_BUILD_XRAY", "OFF")
             .define("LLVM_CONFIG_PATH", llvm_config)
+            .out_dir(&native.out_dir)
             .build_target("msan")
             .build();
-
-        println!("cargo:rustc-link-search=native={}",
-                 dst.join("build/lib/linux").display());
-        println!("cargo:rustc-link-lib=static=clang_rt.msan-x86_64");
-
-        build_helper::rerun_if_changed_anything_in_dir(&PathBuf::from(env::var("CARGO_MANIFEST_DIR")
-                .unwrap())
-            .join("../compiler-rt"));
     }
-
-    println!("cargo:rerun-if-changed=build.rs");
 }
