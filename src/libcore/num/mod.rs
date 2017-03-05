@@ -2591,7 +2591,7 @@ macro_rules! same_sign_try_from_int_impl {
     ($storage:ty, $target:ty, $($source:ty),*) => {$(
         #[unstable(feature = "try_from", issue = "33417")]
         impl TryFrom<$source> for $target {
-            type Err = TryFromIntError;
+            type Error = TryFromIntError;
 
             fn try_from(u: $source) -> Result<$target, TryFromIntError> {
                 let min = <$target as FromStrRadixHelper>::min_value() as $storage;
@@ -2623,7 +2623,7 @@ macro_rules! cross_sign_from_int_impl {
     ($unsigned:ty, $($signed:ty),*) => {$(
         #[unstable(feature = "try_from", issue = "33417")]
         impl TryFrom<$unsigned> for $signed {
-            type Err = TryFromIntError;
+            type Error = TryFromIntError;
 
             fn try_from(u: $unsigned) -> Result<$signed, TryFromIntError> {
                 let max = <$signed as FromStrRadixHelper>::max_value() as u128;
@@ -2637,7 +2637,7 @@ macro_rules! cross_sign_from_int_impl {
 
         #[unstable(feature = "try_from", issue = "33417")]
         impl TryFrom<$signed> for $unsigned {
-            type Err = TryFromIntError;
+            type Error = TryFromIntError;
 
             fn try_from(u: $signed) -> Result<$unsigned, TryFromIntError> {
                 let max = <$unsigned as FromStrRadixHelper>::max_value() as u128;

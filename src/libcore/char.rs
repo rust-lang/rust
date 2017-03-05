@@ -209,10 +209,10 @@ impl From<u8> for char {
 
 #[unstable(feature = "try_from", issue = "33417")]
 impl TryFrom<u32> for char {
-    type Err = CharTryFromError;
+    type Error = CharTryFromError;
 
     #[inline]
-    fn try_from(i: u32) -> Result<Self, Self::Err> {
+    fn try_from(i: u32) -> Result<Self, Self::Error> {
         if (i > MAX as u32) || (i >= 0xD800 && i <= 0xDFFF) {
             Err(CharTryFromError(()))
         } else {
