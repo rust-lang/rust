@@ -167,7 +167,6 @@ pub fn check(path: &Path, bad: &mut bool) {
 
     // FIXME get this whitelist empty.
     let whitelist = vec![
-        "cfg_target_thread_local",
     ];
 
     // Only check the number of lang features.
