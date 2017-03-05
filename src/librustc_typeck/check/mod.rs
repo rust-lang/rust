@@ -1935,10 +1935,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // We must collect the defaults *before* we do any unification. Because we have
             // directly attached defaults to the type variables any unification that occurs
             // will erase defaults causing conflicting defaults to be completely ignored.
-            let default_map: FxHashMap<_, _> =
+            let default_map: FxHashMap<Ty<'tcx>, _> =
                 unsolved_variables
                     .iter()
-                    .filter_map(|t| self.default(t).map(|d| (t, d)))
+                    .filter_map(|t| self.default(t).map(|d| (*t, d)))
                     .collect();
 
             let mut unbound_tyvars = FxHashSet();
@@ -2068,7 +2068,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn apply_defaults_and_return_conflicts<'b>(
         &'b self,
         unbound_vars: &'b FxHashSet<Ty<'tcx>>,
-        default_map: &'b FxHashMap<&'b Ty<'tcx>, type_variable::Default<'tcx>>,
+        default_map: &'b FxHashMap<Ty<'tcx>, type_variable::Default<'tcx>>,
         conflict: Option<Ty<'tcx>>,
     ) -> impl Iterator<Item=(Ty<'tcx>, type_variable::Default<'tcx>)> + 'b {
         use rustc::ty::error::UnconstrainedNumeric::Neither;
@@ -2087,7 +2087,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         self.demand_eqtype(syntax_pos::DUMMY_SP, ty, self.tcx.types.f64)
                     },
                     Neither => {
-                        if let Some(default) = default_map.get(&ty) {
+                        if let Some(default) = default_map.get(ty) {
                             let default = default.clone();
                             let default_ty = self.normalize_associated_types_in(
                                 default.origin_span, &default.ty);
