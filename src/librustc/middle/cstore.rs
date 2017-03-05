@@ -136,7 +136,7 @@ pub struct NativeLibrary {
 }
 
 pub enum LoadedMacro {
-    MacroRules(ast::MacroDef),
+    MacroDef(ast::Item),
     ProcMacro(Rc<SyntaxExtension>),
 }
 

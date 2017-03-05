@@ -90,12 +90,7 @@ pub fn modify(sess: &ParseSess,
 
     krate.module.items.push(mk_registrar(&mut cx, &derives, &attr_macros, &bang_macros));
 
-    if krate.exported_macros.len() > 0 {
-        handler.err("cannot export macro_rules! macros from a `proc-macro` \
-                     crate type currently");
-    }
-
-    return krate
+    krate
 }
 
 fn is_proc_macro_attr(attr: &ast::Attribute) -> bool {
@@ -251,6 +246,15 @@ impl<'a> CollectProcMacros<'a> {
 
 impl<'a> Visitor<'a> for CollectProcMacros<'a> {
     fn visit_item(&mut self, item: &'a ast::Item) {
+        if let ast::ItemKind::MacroDef(..) = item.node {
+            if self.is_proc_macro_crate &&
+               item.attrs.iter().any(|attr| attr.name() == "macro_export") {
+                let msg =
+                    "cannot export macro_rules! macros from a `proc-macro` crate type currently";
+                self.handler.span_err(item.span, msg);
+            }
+        }
+
         // First up, make sure we're checking a bare function. If we're not then
         // we're just not interested in this item.
         //

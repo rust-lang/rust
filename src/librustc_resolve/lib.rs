@@ -1065,10 +1065,6 @@ pub struct Resolver<'a> {
 
     pub definitions: Definitions,
 
-    // Maps the node id of a statement to the expansions of the `macro_rules!`s
-    // immediately above the statement (if appropriate).
-    macros_at_scope: FxHashMap<NodeId, Vec<Mark>>,
-
     graph_root: Module<'a>,
 
     prelude: Option<Module<'a>>,
@@ -1144,7 +1140,6 @@ pub struct Resolver<'a> {
     dummy_binding: &'a NameBinding<'a>,
     use_extern_macros: bool, // true if `#![feature(use_extern_macros)]`
 
-    pub exported_macros: Vec<ast::MacroDef>,
     crate_loader: &'a mut CrateLoader,
     macro_names: FxHashSet<Name>,
     builtin_macros: FxHashMap<Name, &'a NameBinding<'a>>,
@@ -1282,7 +1277,6 @@ impl<'a> Resolver<'a> {
             session: session,
 
             definitions: definitions,
-            macros_at_scope: FxHashMap(),
 
             // The outermost module has def ID 0; this is not reflected in the
             // AST.
@@ -1338,7 +1332,6 @@ impl<'a> Resolver<'a> {
             // `#![feature(proc_macro)]` implies `#[feature(extern_macros)]`
             use_extern_macros: features.use_extern_macros || features.proc_macro,
 
-            exported_macros: Vec::new(),
             crate_loader: crate_loader,
             macro_names: FxHashSet(),
             builtin_macros: FxHashMap(),
@@ -1669,7 +1662,7 @@ impl<'a> Resolver<'a> {
                 }
             }
 
-            ItemKind::ExternCrate(_) => {
+            ItemKind::ExternCrate(_) | ItemKind::MacroDef(..) => {
                 // do nothing, these are just around to be encoded
             }
 
@@ -1974,9 +1967,9 @@ impl<'a> Resolver<'a> {
 
         // Descend into the block.
         for stmt in &block.stmts {
-            if let Some(marks) = self.macros_at_scope.remove(&stmt.id) {
-                num_macro_definition_ribs += marks.len() as u32;
-                for mark in marks {
+            if let ast::StmtKind::Item(ref item) = stmt.node {
+                if let ast::ItemKind::MacroDef(_, mark) = item.node {
+                    num_macro_definition_ribs += 1;
                     self.ribs[ValueNS].push(Rib::new(MacroDefinition(mark)));
                     self.label_ribs.push(Rib::new(MacroDefinition(mark)));
                 }

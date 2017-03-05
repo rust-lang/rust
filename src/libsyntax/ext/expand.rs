@@ -948,17 +948,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
         match item.node {
             ast::ItemKind::Mac(..) => {
                 self.check_attributes(&item.attrs);
-                let is_macro_def = if let ItemKind::Mac(ref mac) = item.node {
-                    mac.node.path.segments[0].identifier.name == "macro_rules"
-                } else {
-                    unreachable!()
-                };
-
-                item.and_then(|mut item| match item.node {
-                    ItemKind::Mac(_) if is_macro_def => {
-                        item.id = Mark::fresh().as_placeholder_id();
-                        SmallVector::one(P(item))
-                    }
+                item.and_then(|item| match item.node {
                     ItemKind::Mac(mac) => {
                         self.collect(ExpansionKind::Items, InvocationKind::Bang {
                             mac: mac,
@@ -1078,7 +1068,10 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
     }
 
     fn fold_item_kind(&mut self, item: ast::ItemKind) -> ast::ItemKind {
-        noop_fold_item_kind(self.cfg.configure_item_kind(item), self)
+        match item {
+            ast::ItemKind::MacroDef(..) => item,
+            _ => noop_fold_item_kind(self.cfg.configure_item_kind(item), self),
+        }
     }
 
     fn new_id(&mut self, id: ast::NodeId) -> ast::NodeId {
