@@ -69,6 +69,7 @@ use errors::DiagnosticBuilder;
 
 use std::cell::{Cell, RefCell};
 use std::cmp;
+use std::collections::BTreeSet;
 use std::fmt;
 use std::mem::replace;
 use std::rc::Rc;
@@ -100,8 +101,8 @@ enum AssocSuggestion {
 #[derive(Eq)]
 struct BindingError {
     name: Name,
-    origin: FxHashSet<Span>,
-    target: FxHashSet<Span>,
+    origin: BTreeSet<Span>,
+    target: BTreeSet<Span>,
 }
 
 impl PartialOrd for BindingError {
@@ -233,16 +234,14 @@ fn resolve_struct_error<'sess, 'a>(resolver: &'sess Resolver,
             err
         }
         ResolutionError::VariableNotBoundInPattern(binding_error) => {
-            let mut target_sp = binding_error.target.iter().map(|x| *x).collect::<Vec<_>>();
-            target_sp.sort();
+            let target_sp = binding_error.target.iter().map(|x| *x).collect::<Vec<_>>();
             let msp = MultiSpan::from_spans(target_sp.clone());
             let msg = format!("variable `{}` is not bound in all patterns", binding_error.name);
             let mut err = resolver.session.struct_span_err_with_code(msp, &msg, "E0408");
             for sp in target_sp {
                 err.span_label(sp, &format!("pattern doesn't bind `{}`", binding_error.name));
             }
-            let mut origin_sp = binding_error.origin.iter().map(|x| *x).collect::<Vec<_>>();
-            origin_sp.sort();
+            let origin_sp = binding_error.origin.iter().map(|x| *x).collect::<Vec<_>>();
             for sp in origin_sp {
                 err.span_label(sp, &"variable not in all patterns");
             }
@@ -1950,8 +1949,8 @@ impl<'a> Resolver<'a> {
                             .entry(key.name)
                             .or_insert(BindingError {
                                 name: key.name,
-                                origin: FxHashSet(),
-                                target: FxHashSet(),
+                                origin: BTreeSet::new(),
+                                target: BTreeSet::new(),
                             });
                         binding_error.origin.insert(binding_i.span);
                         binding_error.target.insert(q.span);
@@ -1963,8 +1962,8 @@ impl<'a> Resolver<'a> {
                                     .entry(key_j.name)
                                     .or_insert(BindingError {
                                         name: key_j.name,
-                                        origin: FxHashSet(),
-                                        target: FxHashSet(),
+                                        origin: BTreeSet::new(),
+                                        target: BTreeSet::new(),
                                     });
                                 binding_error.origin.insert(binding_j.span);
                                 binding_error.target.insert(p.span);
