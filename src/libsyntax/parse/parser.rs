@@ -1032,13 +1032,6 @@ impl<'a> Parser<'a> {
         self.check_unknown_macro_variable();
     }
 
-    /// Advance the parser by one token and return the bumped token.
-    pub fn bump_and_get(&mut self) -> token::Token {
-        let old_token = mem::replace(&mut self.token, token::Underscore);
-        self.bump();
-        old_token
-    }
-
     /// Advance the parser using provided token as a next one. Use this when
     /// consuming a part of a token. For example a single `<` from `<<`.
     pub fn bump_with(&mut self,
@@ -2663,7 +2656,12 @@ impl<'a> Parser<'a> {
                 }));
             },
             token::CloseDelim(_) | token::Eof => unreachable!(),
-            _ => Ok(TokenTree::Token(self.span, self.bump_and_get())),
+            _ => {
+                let token = mem::replace(&mut self.token, token::Underscore);
+                let res = Ok(TokenTree::Token(self.span, token));
+                self.bump();
+                res
+            }
         }
     }
 
