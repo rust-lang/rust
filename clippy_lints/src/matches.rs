@@ -211,14 +211,14 @@ fn report_single_match_single_pattern(cx: &LateContext, ex: &Expr, arms: &[Arm],
     };
     let els_str = els.map_or(String::new(), |els| format!(" else {}", expr_block(cx, els, None, "..")));
     span_lint_and_then(cx,
-                        lint,
-                        expr.span,
-                        "you seem to be trying to use match for destructuring a single pattern. \
-                        Consider using `if let`",
-                        |db| {
+                       lint,
+                       expr.span,
+                       "you seem to be trying to use match for destructuring a single pattern. Consider using `if \
+                        let`",
+                       |db| {
         db.span_suggestion(expr.span,
-                            "try this",
-                            format!("if let {} = {} {}{}",
+                           "try this",
+                           format!("if let {} = {} {}{}",
                                     snippet(cx, arms[0].pats[0].span, ".."),
                                     snippet(cx, ex.span, ".."),
                                     expr_block(cx, &arms[0].body, None, ".."),

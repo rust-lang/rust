@@ -382,7 +382,7 @@ fn is_allowed(cx: &LateContext, expr: &Expr) -> bool {
 
                 val.try_cmp(zero) == Ok(Ordering::Equal) || val.try_cmp(infinity) == Ok(Ordering::Equal) ||
                 val.try_cmp(neg_infinity) == Ok(Ordering::Equal)
-            }
+            },
         }
     } else {
         false

@@ -975,7 +975,7 @@ pub fn is_try(expr: &Expr) -> Option<&Expr> {
 }
 
 pub fn type_size<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: ty::Ty<'tcx>) -> Option<u64> {
-    cx.tcx.infer_ctxt((), Reveal::All).enter(|infcx|
-        ty.layout(&infcx).ok().map(|lay| lay.size(&TargetDataLayout::parse(cx.sess())).bytes())
-    )
+    cx.tcx
+        .infer_ctxt((), Reveal::All)
+        .enter(|infcx| ty.layout(&infcx).ok().map(|lay| lay.size(&TargetDataLayout::parse(cx.sess())).bytes()))
 }

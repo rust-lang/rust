@@ -66,7 +66,8 @@ fn check_closure(cx: &LateContext, expr: &Expr) {
                 // Is it an unsafe function? They don't implement the closure traits
                 ty::TyFnDef(_, _, fn_ty) |
                 ty::TyFnPtr(fn_ty) => {
-                    if fn_ty.skip_binder().unsafety == Unsafety::Unsafe || fn_ty.skip_binder().output().sty == ty::TyNever {
+                    if fn_ty.skip_binder().unsafety == Unsafety::Unsafe ||
+                       fn_ty.skip_binder().output().sty == ty::TyNever {
                         return;
                     }
                 },
