@@ -18,6 +18,7 @@ use self::pattern::Pattern;
 use self::pattern::{Searcher, ReverseSearcher, DoubleEndedSearcher};
 
 use char;
+use convert::TryFrom;
 use fmt;
 use iter::{Map, Cloned, FusedIterator};
 use mem;
@@ -1746,7 +1747,7 @@ pub trait StrExt {
     #[stable(feature = "core", since = "1.6.0")]
     fn is_empty(&self) -> bool;
     #[stable(feature = "core", since = "1.6.0")]
-    fn parse<T: FromStr>(&self) -> Result<T, T::Err>;
+    fn parse<'a, T: TryFrom<&'a str>>(&'a self) -> Result<T, T::Error>;
 }
 
 // truncate `&str` to length at most equal to `max`
@@ -2045,7 +2046,9 @@ impl StrExt for str {
     fn is_empty(&self) -> bool { self.len() == 0 }
 
     #[inline]
-    fn parse<T: FromStr>(&self) -> Result<T, T::Err> { FromStr::from_str(self) }
+    fn parse<'a, T>(&'a self) -> Result<T, T::Error> where T: TryFrom<&'a str> {
+        T::try_from(self)
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
