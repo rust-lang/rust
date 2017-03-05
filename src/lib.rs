@@ -655,3 +655,88 @@ pub fn run(input: Input, config: &Config) -> Summary {
         }
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn indent_add_sub() {
+        let indent = Indent::new(4, 8) + Indent::new(8, 12);
+        assert_eq!(12, indent.block_indent);
+        assert_eq!(20, indent.alignment);
+
+        let indent = indent - Indent::new(4, 4);
+        assert_eq!(8, indent.block_indent);
+        assert_eq!(16, indent.alignment);
+    }
+
+    #[test]
+    fn indent_add_sub_alignment() {
+        let indent = Indent::new(4, 8) + 4;
+        assert_eq!(4, indent.block_indent);
+        assert_eq!(12, indent.alignment);
+
+        let indent = indent - 4;
+        assert_eq!(4, indent.block_indent);
+        assert_eq!(8, indent.alignment);
+    }
+
+    #[test]
+    fn indent_to_string_spaces() {
+        let config = Config::default();
+        let indent = Indent::new(4, 8);
+
+        // 12 spaces
+        assert_eq!("            ", indent.to_string(&config));
+    }
+
+    #[test]
+    fn indent_to_string_hard_tabs() {
+        let mut config = Config::default();
+        config.hard_tabs = true;
+        let indent = Indent::new(8, 4);
+
+        // 2 tabs + 4 spaces
+        assert_eq!("\t\t    ", indent.to_string(&config));
+    }
+
+    #[test]
+    fn shape_visual_indent() {
+        let config = Config::default();
+        let indent = Indent::new(4, 8);
+        let shape = Shape::indented(indent, &config);
+        let shape = shape.visual_indent(20);
+
+        assert_eq!(config.max_width, shape.width);
+        assert_eq!(4, shape.indent.block_indent);
+        assert_eq!(32, shape.indent.alignment);
+        assert_eq!(32, shape.offset);
+    }
+
+    #[test]
+    fn shape_block_indent_without_alignment() {
+        let config = Config::default();
+        let indent = Indent::new(4, 0);
+        let shape = Shape::indented(indent, &config);
+        let shape = shape.block_indent(20);
+
+        assert_eq!(config.max_width, shape.width);
+        assert_eq!(24, shape.indent.block_indent);
+        assert_eq!(0, shape.indent.alignment);
+        assert_eq!(0, shape.offset);
+    }
+
+    #[test]
+    fn shape_block_indent_with_alignment() {
+        let config = Config::default();
+        let indent = Indent::new(4, 8);
+        let shape = Shape::indented(indent, &config);
+        let shape = shape.block_indent(20);
+
+        assert_eq!(config.max_width, shape.width);
+        assert_eq!(4, shape.indent.block_indent);
+        assert_eq!(28, shape.indent.alignment);
+        assert_eq!(28, shape.offset);
+    }
+}
