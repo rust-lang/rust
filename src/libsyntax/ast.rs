@@ -20,7 +20,7 @@ pub use util::ThinVec;
 use syntax_pos::{mk_sp, Span, DUMMY_SP, ExpnId};
 use codemap::{respan, Spanned};
 use abi::Abi;
-use ext::hygiene::SyntaxContext;
+use ext::hygiene::{Mark, SyntaxContext};
 use print::pprust;
 use ptr::P;
 use symbol::{Symbol, keywords};
@@ -414,7 +414,6 @@ pub struct Crate {
     pub module: Mod,
     pub attrs: Vec<Attribute>,
     pub span: Span,
-    pub exported_macros: Vec<MacroDef>,
 }
 
 /// A spanned compile-time attribute list item.
@@ -1855,10 +1854,13 @@ pub enum ItemKind {
              Option<TraitRef>, // (optional) trait this impl implements
              P<Ty>, // self
              Vec<ImplItem>),
-    /// A macro invocation (which includes macro definition).
+    /// A macro invocation.
     ///
     /// E.g. `macro_rules! foo { .. }` or `foo!(..)`
     Mac(Mac),
+
+    /// A macro definition.
+    MacroDef(ThinTokenStream, Mark /* FIXME(jseyfried) remove this */),
 }
 
 impl ItemKind {
@@ -1877,6 +1879,7 @@ impl ItemKind {
             ItemKind::Union(..) => "union",
             ItemKind::Trait(..) => "trait",
             ItemKind::Mac(..) |
+            ItemKind::MacroDef(..) |
             ItemKind::Impl(..) |
             ItemKind::DefaultImpl(..) => "item"
         }
@@ -1909,24 +1912,6 @@ impl ForeignItemKind {
             ForeignItemKind::Fn(..) => "foreign function",
             ForeignItemKind::Static(..) => "foreign static item"
         }
-    }
-}
-
-/// A macro definition, in this crate or imported from another.
-///
-/// Not parsed directly, but created on macro import or `macro_rules!` expansion.
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub struct MacroDef {
-    pub ident: Ident,
-    pub attrs: Vec<Attribute>,
-    pub id: NodeId,
-    pub span: Span,
-    pub body: ThinTokenStream,
-}
-
-impl MacroDef {
-    pub fn stream(&self) -> TokenStream {
-        self.body.clone().into()
     }
 }
 

@@ -31,7 +31,7 @@ pub struct SyntaxContextData {
 }
 
 /// A mark is a unique id associated with a macro expansion.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Default)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Default, RustcEncodable, RustcDecodable)]
 pub struct Mark(u32);
 
 impl Mark {

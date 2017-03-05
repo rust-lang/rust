@@ -25,7 +25,7 @@ use syntax::errors::DiagnosticBuilder;
 use syntax::ext::base::{self, Determinacy, MultiModifier, MultiDecorator};
 use syntax::ext::base::{Resolver as SyntaxResolver, SyntaxExtension};
 use syntax::ext::base::MacroKind;
-use syntax::ext::expand::{Expansion, mark_tts};
+use syntax::ext::expand::Expansion;
 use syntax::ext::hygiene::Mark;
 use syntax::ext::tt::macro_rules;
 use syntax::feature_gate::{self, emit_feature_err, GateIssue};
@@ -33,7 +33,6 @@ use syntax::fold::{self, Folder};
 use syntax::ptr::P;
 use syntax::symbol::{Symbol, keywords};
 use syntax::util::lev_distance::find_best_match_for_name;
-use syntax::visit::Visitor;
 use syntax_pos::{Span, DUMMY_SP};
 
 #[derive(Clone)]
@@ -151,7 +150,7 @@ impl<'a> base::Resolver for Resolver<'a> {
         invocation.expansion.set(visitor.legacy_scope);
     }
 
-    fn add_ext(&mut self, ident: ast::Ident, ext: Rc<SyntaxExtension>) {
+    fn add_builtin(&mut self, ident: ast::Ident, ext: Rc<SyntaxExtension>) {
         let def_id = DefId {
             krate: BUILTIN_MACROS_CRATE,
             index: DefIndex::new(self.macro_map.len()),
@@ -165,10 +164,6 @@ impl<'a> base::Resolver for Resolver<'a> {
             expansion: Mark::root(),
         });
         self.builtin_macros.insert(ident.name, binding);
-    }
-
-    fn add_expansions_at_stmt(&mut self, id: ast::NodeId, macros: Vec<Mark>) {
-        self.macros_at_scope.insert(id, macros);
     }
 
     fn resolve_imports(&mut self) {
@@ -544,45 +539,33 @@ impl<'a> Resolver<'a> {
     }
 
     pub fn define_macro(&mut self, item: &ast::Item, legacy_scope: &mut LegacyScope<'a>) {
-        let tts = match item.node {
-            ast::ItemKind::Mac(ref mac) => mac.node.stream(),
-            _ => unreachable!(),
-        };
-
         if item.ident.name == "macro_rules" {
             self.session.span_err(item.span, "user-defined macros may not be named `macro_rules`");
         }
 
-        let mark = Mark::from_placeholder_id(item.id);
-        let invocation = self.invocations[&mark];
-        invocation.module.set(self.current_module);
-
-        let mut def = ast::MacroDef {
-            ident: item.ident,
-            attrs: item.attrs.clone(),
-            id: ast::DUMMY_NODE_ID,
-            span: item.span,
-            body: mark_tts(tts, mark).into(),
-        };
+        let invocation = self.arenas.alloc_invocation_data(InvocationData {
+            module: Cell::new(self.current_module),
+            // FIXME(jseyfried) the following are irrelevant
+            def_index: CRATE_DEF_INDEX, const_integer: false,
+            legacy_scope: Cell::new(LegacyScope::Empty), expansion: Cell::new(LegacyScope::Empty),
+        });
+        if let ast::ItemKind::MacroDef(_, mark) = item.node {
+            self.invocations.insert(mark, invocation);
+        }
 
         *legacy_scope = LegacyScope::Binding(self.arenas.alloc_legacy_binding(LegacyBinding {
             parent: Cell::new(*legacy_scope),
-            name: def.ident.name,
-            ext: Rc::new(macro_rules::compile(&self.session.parse_sess, &def)),
-            span: def.span,
+            name: item.ident.name,
+            ext: Rc::new(macro_rules::compile(&self.session.parse_sess, item)),
+            span: item.span,
         }));
-        self.macro_names.insert(def.ident.name);
+        self.macro_names.insert(item.ident.name);
 
-        if attr::contains_name(&def.attrs, "macro_export") {
-            def.id = self.next_node_id();
-            DefCollector::new(&mut self.definitions).with_parent(CRATE_DEF_INDEX, |collector| {
-                collector.visit_macro_def(&def)
-            });
+        if attr::contains_name(&item.attrs, "macro_export") {
             self.macro_exports.push(Export {
-                name: def.ident.name,
-                def: Def::Macro(self.definitions.local_def_id(def.id), MacroKind::Bang),
+                name: item.ident.name,
+                def: Def::Macro(self.definitions.local_def_id(item.id), MacroKind::Bang),
             });
-            self.exported_macros.push(def);
         }
     }
 

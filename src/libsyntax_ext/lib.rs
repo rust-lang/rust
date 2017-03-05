@@ -59,7 +59,7 @@ pub fn register_builtins(resolver: &mut syntax::ext::base::Resolver,
     deriving::register_builtin_derives(resolver);
 
     let mut register = |name, ext| {
-        resolver.add_ext(ast::Ident::with_empty_ctxt(name), Rc::new(ext));
+        resolver.add_builtin(ast::Ident::with_empty_ctxt(name), Rc::new(ext));
     };
 
     macro_rules! register {
