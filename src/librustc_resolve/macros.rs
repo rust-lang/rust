@@ -40,9 +40,9 @@ use syntax_pos::{Span, DUMMY_SP};
 pub struct InvocationData<'a> {
     pub module: Cell<Module<'a>>,
     pub def_index: DefIndex,
-    // True if this expansion is in a `const_integer` position, for example `[u32; m!()]`.
-    // c.f. `DefCollector::visit_ast_const_integer`.
-    pub const_integer: bool,
+    // True if this expansion is in a `const_expr` position, for example `[u32; m!()]`.
+    // c.f. `DefCollector::visit_const_expr`.
+    pub const_expr: bool,
     // The scope in which the invocation path is resolved.
     pub legacy_scope: Cell<LegacyScope<'a>>,
     // The smallest scope that includes this invocation's expansion,
@@ -55,7 +55,7 @@ impl<'a> InvocationData<'a> {
         InvocationData {
             module: Cell::new(graph_root),
             def_index: CRATE_DEF_INDEX,
-            const_integer: false,
+            const_expr: false,
             legacy_scope: Cell::new(LegacyScope::Empty),
             expansion: Cell::new(LegacyScope::Empty),
         }
@@ -93,7 +93,7 @@ impl<'a> base::Resolver for Resolver<'a> {
         self.invocations.insert(mark, self.arenas.alloc_invocation_data(InvocationData {
             module: Cell::new(module),
             def_index: module.def_id().unwrap().index,
-            const_integer: false,
+            const_expr: false,
             legacy_scope: Cell::new(LegacyScope::Empty),
             expansion: Cell::new(LegacyScope::Empty),
         }));
@@ -517,13 +517,13 @@ impl<'a> Resolver<'a> {
 
     fn collect_def_ids(&mut self, invocation: &'a InvocationData<'a>, expansion: &Expansion) {
         let Resolver { ref mut invocations, arenas, graph_root, .. } = *self;
-        let InvocationData { def_index, const_integer, .. } = *invocation;
+        let InvocationData { def_index, const_expr, .. } = *invocation;
 
         let visit_macro_invoc = &mut |invoc: map::MacroInvocationData| {
             invocations.entry(invoc.mark).or_insert_with(|| {
                 arenas.alloc_invocation_data(InvocationData {
                     def_index: invoc.def_index,
-                    const_integer: invoc.const_integer,
+                    const_expr: invoc.const_expr,
                     module: Cell::new(graph_root),
                     expansion: Cell::new(LegacyScope::Empty),
                     legacy_scope: Cell::new(LegacyScope::Empty),
@@ -534,9 +534,9 @@ impl<'a> Resolver<'a> {
         let mut def_collector = DefCollector::new(&mut self.definitions);
         def_collector.visit_macro_invoc = Some(visit_macro_invoc);
         def_collector.with_parent(def_index, |def_collector| {
-            if const_integer {
+            if const_expr {
                 if let Expansion::Expr(ref expr) = *expansion {
-                    def_collector.visit_ast_const_integer(expr);
+                    def_collector.visit_const_expr(expr);
                 }
             }
             expansion.visit_with(def_collector)
