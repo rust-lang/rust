@@ -43,7 +43,6 @@ use super::Compilation;
 use serialize::json;
 
 use std::env;
-use std::mem;
 use std::ffi::{OsString, OsStr};
 use std::fs;
 use std::io::{self, Write};
@@ -704,8 +703,6 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
         }
         krate
     });
-
-    krate.exported_macros = mem::replace(&mut resolver.exported_macros, Vec::new());
 
     krate = time(time_passes, "maybe building test harness", || {
         syntax::test::modify_for_testing(&sess.parse_sess,

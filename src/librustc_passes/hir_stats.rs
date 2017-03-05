@@ -375,9 +375,4 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
     fn visit_attribute(&mut self, attr: &'v ast::Attribute) {
         self.record("Attribute", Id::None, attr);
     }
-
-    fn visit_macro_def(&mut self, macro_def: &'v ast::MacroDef) {
-        self.record("MacroDef", Id::None, macro_def);
-        ast_visit::walk_macro_def(self, macro_def)
-    }
 }

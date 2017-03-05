@@ -125,9 +125,6 @@ pub trait Visitor<'ast>: Sized {
         walk_assoc_type_binding(self, type_binding)
     }
     fn visit_attribute(&mut self, _attr: &'ast Attribute) {}
-    fn visit_macro_def(&mut self, macro_def: &'ast MacroDef) {
-        walk_macro_def(self, macro_def)
-    }
     fn visit_vis(&mut self, vis: &'ast Visibility) {
         walk_vis(self, vis)
     }
@@ -176,12 +173,6 @@ pub fn walk_ident<'a, V: Visitor<'a>>(visitor: &mut V, span: Span, ident: Ident)
 pub fn walk_crate<'a, V: Visitor<'a>>(visitor: &mut V, krate: &'a Crate) {
     visitor.visit_mod(&krate.module, krate.span, CRATE_NODE_ID);
     walk_list!(visitor, visit_attribute, &krate.attrs);
-    walk_list!(visitor, visit_macro_def, &krate.exported_macros);
-}
-
-pub fn walk_macro_def<'a, V: Visitor<'a>>(visitor: &mut V, macro_def: &'a MacroDef) {
-    visitor.visit_ident(macro_def.span, macro_def.ident);
-    walk_list!(visitor, visit_attribute, &macro_def.attrs);
 }
 
 pub fn walk_mod<'a, V: Visitor<'a>>(visitor: &mut V, module: &'a Mod) {
@@ -295,6 +286,7 @@ pub fn walk_item<'a, V: Visitor<'a>>(visitor: &mut V, item: &'a Item) {
             walk_list!(visitor, visit_trait_item, methods);
         }
         ItemKind::Mac(ref mac) => visitor.visit_mac(mac),
+        ItemKind::MacroDef(..) => {},
     }
     walk_list!(visitor, visit_attribute, &item.attrs);
 }

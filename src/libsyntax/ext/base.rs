@@ -552,8 +552,7 @@ pub trait Resolver {
     fn is_whitelisted_legacy_custom_derive(&self, name: Name) -> bool;
 
     fn visit_expansion(&mut self, mark: Mark, expansion: &Expansion, derives: &[Mark]);
-    fn add_ext(&mut self, ident: ast::Ident, ext: Rc<SyntaxExtension>);
-    fn add_expansions_at_stmt(&mut self, id: ast::NodeId, macros: Vec<Mark>);
+    fn add_builtin(&mut self, ident: ast::Ident, ext: Rc<SyntaxExtension>);
 
     fn resolve_imports(&mut self);
     // Resolves attribute and derive legacy macros from `#![plugin(..)]`.
@@ -577,8 +576,7 @@ impl Resolver for DummyResolver {
     fn is_whitelisted_legacy_custom_derive(&self, _name: Name) -> bool { false }
 
     fn visit_expansion(&mut self, _invoc: Mark, _expansion: &Expansion, _derives: &[Mark]) {}
-    fn add_ext(&mut self, _ident: ast::Ident, _ext: Rc<SyntaxExtension>) {}
-    fn add_expansions_at_stmt(&mut self, _id: ast::NodeId, _macros: Vec<Mark>) {}
+    fn add_builtin(&mut self, _ident: ast::Ident, _ext: Rc<SyntaxExtension>) {}
 
     fn resolve_imports(&mut self) {}
     fn find_legacy_attr_invoc(&mut self, _attrs: &mut Vec<Attribute>) -> Option<Attribute> { None }

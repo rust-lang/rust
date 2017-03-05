@@ -1318,13 +1318,22 @@ impl<'a> State<'a> {
                 self.bclose(item.span)?;
             }
             ast::ItemKind::Mac(codemap::Spanned { ref node, .. }) => {
-                self.print_visibility(&item.vis)?;
                 self.print_path(&node.path, false, 0, false)?;
                 word(&mut self.s, "! ")?;
                 self.print_ident(item.ident)?;
                 self.cbox(INDENT_UNIT)?;
                 self.popen()?;
                 self.print_tts(node.stream())?;
+                self.pclose()?;
+                word(&mut self.s, ";")?;
+                self.end()?;
+            }
+            ast::ItemKind::MacroDef(ref tts, _) => {
+                word(&mut self.s, "macro_rules! ")?;
+                self.print_ident(item.ident)?;
+                self.cbox(INDENT_UNIT)?;
+                self.popen()?;
+                self.print_tts(tts.clone().into())?;
                 self.pclose()?;
                 word(&mut self.s, ";")?;
                 self.end()?;

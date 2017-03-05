@@ -899,6 +899,8 @@ pub fn noop_fold_item_kind<T: Folder>(i: ItemKind, folder: &mut T) -> ItemKind {
             items.move_flat_map(|item| folder.fold_trait_item(item)),
         ),
         ItemKind::Mac(m) => ItemKind::Mac(folder.fold_mac(m)),
+        ItemKind::MacroDef(tts, mark) => ItemKind::MacroDef(folder.fold_tts(tts.into()).into(),
+                                                            mark),
     }
 }
 
@@ -959,7 +961,7 @@ pub fn noop_fold_mod<T: Folder>(Mod {inner, items}: Mod, folder: &mut T) -> Mod 
     }
 }
 
-pub fn noop_fold_crate<T: Folder>(Crate {module, attrs, mut exported_macros, span}: Crate,
+pub fn noop_fold_crate<T: Folder>(Crate {module, attrs, span}: Crate,
                                   folder: &mut T) -> Crate {
     let mut items = folder.fold_item(P(ast::Item {
         ident: keywords::Invalid.ident(),
@@ -987,14 +989,9 @@ pub fn noop_fold_crate<T: Folder>(Crate {module, attrs, mut exported_macros, spa
         }, vec![], span)
     };
 
-    for def in &mut exported_macros {
-        def.id = folder.new_id(def.id);
-    }
-
     Crate {
         module: module,
         attrs: attrs,
-        exported_macros: exported_macros,
         span: span,
     }
 }
@@ -1387,6 +1384,6 @@ mod tests {
             matches_codepattern,
             "matches_codepattern",
             pprust::to_string(|s| fake_print_crate(s, &folded_crate)),
-            "zz!zz((zz$zz:zz$(zz $zz:zz)zz+=>(zz$(zz$zz$zz)+)));".to_string());
+            "macro_rules! zz((zz$zz:zz$(zz $zz:zz)zz+=>(zz$(zz$zz$zz)+)));".to_string());
     }
 }
