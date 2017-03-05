@@ -5,7 +5,7 @@ use rustc::hir::def::Def;
 use rustc_const_eval::lookup_const_by_id;
 use rustc_const_math::ConstInt;
 use rustc::hir::*;
-use rustc::ty::{TyCtxt, self};
+use rustc::ty::{self, TyCtxt};
 use std::cmp::Ordering::{self, Equal};
 use std::cmp::PartialOrd;
 use std::hash::{Hash, Hasher};
@@ -179,17 +179,15 @@ pub fn lit_to_constant<'a, 'tcx>(lit: &LitKind, tcx: TyCtxt<'a, 'tcx, 'tcx>, mut
             match (&ty.sty, hint) {
                 (&ty::TyInt(ity), _) |
                 (_, Signed(ity)) => {
-                    Constant::Int(ConstInt::new_signed_truncating(n as i128,
-                        ity, tcx.sess.target.int_type))
-                }
+                    Constant::Int(ConstInt::new_signed_truncating(n as i128, ity, tcx.sess.target.int_type))
+                },
                 (&ty::TyUint(uty), _) |
                 (_, Unsigned(uty)) => {
-                    Constant::Int(ConstInt::new_unsigned_truncating(n as u128,
-                        uty, tcx.sess.target.uint_type))
-                }
-                _ => bug!()
+                    Constant::Int(ConstInt::new_unsigned_truncating(n as u128, uty, tcx.sess.target.uint_type))
+                },
+                _ => bug!(),
             }
-        }
+        },
         LitKind::Float(ref is, ty) => Constant::Float(is.to_string(), ty.into()),
         LitKind::FloatUnsuffixed(ref is) => Constant::Float(is.to_string(), FloatWidth::Any),
         LitKind::Bool(b) => Constant::Bool(b),
@@ -291,7 +289,7 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
                 if let Some((const_expr, tables)) = lookup_const_by_id(self.tcx, def_id, substs) {
                     let mut cx = ConstEvalLateContext {
                         tcx: self.tcx,
-                        tables,
+                        tables: tables,
                         needed_resolution: false,
                     };
                     let ret = cx.expr(const_expr);
