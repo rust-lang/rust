@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,11 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-enum foo { alpha, beta(isize) }
+enum P {
+    C(PC),
+}
 
-fn main() {
-    match foo::alpha {
-      foo::alpha | foo::beta(i) => {}
-      //~^ ERROR variable `i` is not bound in all patterns
+enum PC {
+    Q,
+    QA,
+}
+
+fn test(proto: P) {
+    match proto {
+        P::C(PC::Q) => (),
     }
 }
+
+fn main() {}
