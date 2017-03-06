@@ -639,6 +639,29 @@ impl<'a> Context<'a> {
                                                          lib.display()));
                 continue;
             }
+
+            // Ok so at this point we've determined that `(lib, kind)` above is
+            // a candidate crate to load, and that `slot` is either none (this
+            // is the first crate of its kind) or if some the previous path has
+            // the exact same hash (e.g. it's the exact same crate).
+            //
+            // In principle these two candidate crates are exactly the same so
+            // we can choose either of them to link. As a stupidly gross hack,
+            // however, we favor crate in the sysroot.
+            //
+            // You can find more info in rust-lang/rust#39518 and various linked
+            // issues, but the general gist is that during testing libstd the
+            // compilers has two candidates to choose from: one in the sysroot
+            // and one in the deps folder. These two crates are the exact same
+            // crate but if the compiler chooses the one in the deps folder
+            // it'll cause spurious errors on Windows.
+            //
+            // As a result, we favor the sysroot crate here.
+            if let Some((ref prev, _)) = ret {
+                if prev.starts_with(self.sess.sysroot()) {
+                    continue
+                }
+            }
             *slot = Some((hash, metadata));
             ret = Some((lib, kind));
         }
