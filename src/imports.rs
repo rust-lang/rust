@@ -29,7 +29,10 @@ fn path_of(a: &ast::ViewPath_) -> &ast::Path {
 }
 
 fn compare_path_segments(a: &ast::PathSegment, b: &ast::PathSegment) -> Ordering {
-    a.identifier.name.as_str().cmp(&b.identifier.name.as_str())
+    a.identifier
+        .name
+        .as_str()
+        .cmp(&b.identifier.name.as_str())
 }
 
 fn compare_paths(a: &ast::Path, b: &ast::Path) -> Ordering {
@@ -43,8 +46,14 @@ fn compare_paths(a: &ast::Path, b: &ast::Path) -> Ordering {
 }
 
 fn compare_path_list_items(a: &ast::PathListItem, b: &ast::PathListItem) -> Ordering {
-    let a_name_str = &*a.node.name.name.as_str();
-    let b_name_str = &*b.node.name.name.as_str();
+    let a_name_str = &*a.node
+                           .name
+                           .name
+                           .as_str();
+    let b_name_str = &*b.node
+                           .name
+                           .name
+                           .as_str();
     let name_ordering = if a_name_str == "self" {
         if b_name_str == "self" {
             Ordering::Equal
@@ -139,7 +148,11 @@ impl Rewrite for ast::ViewPath {
                 // 4 = " as ".len()
                 let budget = try_opt!(shape.width.checked_sub(ident_str.len() + 4));
 
-                let path_str = if path.segments.last().unwrap().identifier.to_string() == "self" &&
+                let path_str = if path.segments
+                       .last()
+                       .unwrap()
+                       .identifier
+                       .to_string() == "self" &&
                                   path.segments.len() > 1 {
                     let path = &ast::Path {
                                     span: path.span.clone(),
@@ -158,7 +171,10 @@ impl Rewrite for ast::ViewPath {
                                           Shape::legacy(budget, shape.indent)))
                 };
 
-                Some(if path.segments.last().unwrap().identifier == ident {
+                Some(if path.segments
+                            .last()
+                            .unwrap()
+                            .identifier == ident {
                          path_str
                      } else {
                          format!("{} as {}", path_str, ident_str)
@@ -175,7 +191,11 @@ impl<'a> FmtVisitor<'a> {
         let pos_before_first_use_item = use_items.first()
             .map(|p_i| {
                 cmp::max(self.last_pos,
-                         p_i.attrs.iter().map(|attr| attr.span.lo).min().unwrap_or(p_i.span.lo))
+                         p_i.attrs
+                             .iter()
+                             .map(|attr| attr.span.lo)
+                             .min()
+                             .unwrap_or(p_i.span.lo))
             })
             .unwrap_or(self.last_pos);
         // Construct a list of pairs, each containing a `use` item and the start of span before

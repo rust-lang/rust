@@ -223,7 +223,10 @@ fn execute(opts: &Options) -> FmtResult<Summary> {
             let options = try!(CliOptions::from_matches(&matches));
 
             // Add any additional files that were specified via `--file-lines`.
-            files.extend(options.file_lines.files().cloned().map(PathBuf::from));
+            files.extend(options.file_lines
+                             .files()
+                             .cloned()
+                             .map(PathBuf::from));
 
             let mut config = Config::default();
             let mut path = None;
@@ -354,7 +357,10 @@ fn determine_operation(matches: &Matches) -> FmtResult<Operation> {
     }
 
     // We append files from `--file-lines` later in `execute()`.
-    let files: Vec<_> = matches.free.iter().map(PathBuf::from).collect();
+    let files: Vec<_> = matches.free
+        .iter()
+        .map(PathBuf::from)
+        .collect();
 
     Ok(Operation::Format {
            files: files,

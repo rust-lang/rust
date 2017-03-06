@@ -75,12 +75,19 @@ impl<'a> FmtVisitor<'a> {
         // Get a snippet from the file start to the span's hi without allocating.
         // We need it to determine what precedes the current comment. If the comment
         // follows code on the same line, we won't touch it.
-        let big_span_lo = self.codemap.lookup_char_pos(span.lo).file.start_pos;
+        let big_span_lo = self.codemap
+            .lookup_char_pos(span.lo)
+            .file
+            .start_pos;
         let local_begin = self.codemap.lookup_byte_offset(big_span_lo);
         let local_end = self.codemap.lookup_byte_offset(span.hi);
         let start_index = local_begin.pos.to_usize();
         let end_index = local_end.pos.to_usize();
-        let big_snippet = &local_begin.fm.src.as_ref().unwrap()[start_index..end_index];
+        let big_snippet = &local_begin.fm
+                               .src
+                               .as_ref()
+                               .unwrap()
+                               [start_index..end_index];
 
         let big_diff = (span.lo - big_span_lo).to_usize();
         let snippet = self.snippet(span);
@@ -105,9 +112,7 @@ impl<'a> FmtVisitor<'a> {
         let mut rewrite_next_comment = true;
 
         fn replace_chars(string: &str) -> String {
-            string.chars()
-                .map(|ch| if ch.is_whitespace() { ch } else { 'X' })
-                .collect()
+            string.chars().map(|ch| if ch.is_whitespace() { ch } else { 'X' }).collect()
         }
 
         let replaced = match self.config.write_mode {
@@ -154,9 +159,10 @@ impl<'a> FmtVisitor<'a> {
 
                     if let Some('/') = subslice.chars().skip(1).next() {
                         // check that there are no contained block comments
-                        if !subslice.split('\n')
-                                .map(|s| s.trim_left())
-                                .any(|s| s.len() > 2 && &s[0..2] == "/*") {
+                        if !subslice.split('\n').map(|s| s.trim_left()).any(|s| {
+                                                                                s.len() > 2 &&
+                                                                                &s[0..2] == "/*"
+                                                                            }) {
                             // Add a newline after line comments
                             self.buffer.push_str("\n");
                         }

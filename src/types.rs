@@ -165,10 +165,10 @@ impl<'a> Rewrite for SegmentParam<'a> {
                     TypeDensity::Compressed => format!("{}=", binding.ident),
                 };
                 let budget = try_opt!(shape.width.checked_sub(result.len()));
-                let rewrite =
-                    try_opt!(binding.ty
-                                 .rewrite(context,
-                                          Shape::legacy(budget, shape.indent + result.len())));
+                let rewrite = try_opt!(binding.ty.rewrite(context,
+                                                          Shape::legacy(budget,
+                                                                        shape.indent +
+                                                                        result.len())));
                 result.push_str(&rewrite);
                 Some(result)
             }
@@ -208,7 +208,10 @@ fn rewrite_segment(path_context: PathContext,
                     .chain(data.bindings.iter().map(|x| SegmentParam::Binding(&*x)))
                     .collect::<Vec<_>>();
 
-                let next_span_lo = param_list.last().unwrap().get_span().hi + BytePos(1);
+                let next_span_lo = param_list.last()
+                    .unwrap()
+                    .get_span()
+                    .hi + BytePos(1);
                 let list_lo = context.codemap.span_after(codemap::mk_sp(*span_lo, span_hi), "<");
                 let separator = if path_context == PathContext::Expr {
                     "::"
@@ -445,9 +448,8 @@ fn rewrite_bounded_lifetime<'b, I>(lt: &ast::Lifetime,
     if bounds.len() == 0 {
         Some(result)
     } else {
-        let appendix: Vec<_> = try_opt!(bounds.into_iter()
-                                            .map(|b| b.rewrite(context, shape))
-                                            .collect());
+        let appendix: Vec<_> =
+            try_opt!(bounds.into_iter().map(|b| b.rewrite(context, shape)).collect());
         let colon = type_bound_colon(context);
         let result = format!("{}{}{}", result, colon, appendix.join(" + "));
         wrap_str(result, context.config.max_width, shape)
@@ -485,9 +487,7 @@ impl Rewrite for ast::TyParamBounds {
             TypeDensity::Compressed => "+",
             TypeDensity::Wide => " + ",
         };
-        let strs: Vec<_> = try_opt!(self.iter()
-                                        .map(|b| b.rewrite(context, shape))
-                                        .collect());
+        let strs: Vec<_> = try_opt!(self.iter().map(|b| b.rewrite(context, shape)).collect());
         wrap_str(strs.join(joiner), context.config.max_width, shape)
     }
 }
@@ -543,10 +543,10 @@ impl Rewrite for ast::PolyTraitRef {
             // 6 is "for<> ".len()
             let extra_offset = lifetime_str.len() + 6;
             let max_path_width = try_opt!(shape.width.checked_sub(extra_offset));
-            let path_str = try_opt!(self.trait_ref
-                                        .rewrite(context,
-                                                 Shape::legacy(max_path_width,
-                                                               shape.indent + extra_offset)));
+            let path_str = try_opt!(self.trait_ref.rewrite(context,
+                                                           Shape::legacy(max_path_width,
+                                                                         shape.indent +
+                                                                         extra_offset)));
 
             Some(if context.config.spaces_within_angle_brackets && lifetime_str.len() > 0 {
                      format!("for< {} > {}", lifetime_str, path_str)
@@ -592,11 +592,10 @@ impl Rewrite for ast::Ty {
                     format!("&{} {}{}",
                             lt_str,
                             mut_str,
-                            try_opt!(mt.ty
-                                         .rewrite(context,
-                                                  Shape::legacy(budget,
-                                                                shape.indent + 2 + mut_len +
-                                                                lt_len))))
+                            try_opt!(mt.ty.rewrite(context,
+                                                   Shape::legacy(budget,
+                                                                 shape.indent + 2 + mut_len +
+                                                                 lt_len))))
                 }
                          None => {
                     let budget = try_opt!(shape.width.checked_sub(1 + mut_len));

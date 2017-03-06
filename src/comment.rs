@@ -96,7 +96,10 @@ pub fn rewrite_comment(orig: &str,
         config: config,
     };
 
-    let line_breaks = orig.trim_right().chars().filter(|&c| c == '\n').count();
+    let line_breaks = orig.trim_right()
+        .chars()
+        .filter(|&c| c == '\n')
+        .count();
     let lines = orig.lines()
         .enumerate()
         .map(|(i, mut line)| {
@@ -594,8 +597,9 @@ fn changed_comment_content(orig: &str, new: &str) -> bool {
     // Cannot write this as a fn since we cannot return types containing closures
     let code_comment_content = |code| {
         let slices = UngroupedCommentCodeSlices::new(code);
-        slices.filter(|&(ref kind, _, _)| *kind == CodeCharKind::Comment)
-            .flat_map(|(_, _, s)| CommentReducer::new(s))
+        slices.filter(|&(ref kind, _, _)| *kind == CodeCharKind::Comment).flat_map(|(_, _, s)| {
+            CommentReducer::new(s)
+        })
     };
     let res = code_comment_content(orig).ne(code_comment_content(new));
     debug!("comment::changed_comment_content: {}\norig: '{}'\nnew: '{}'\nraw_old: {}\nraw_new: {}",

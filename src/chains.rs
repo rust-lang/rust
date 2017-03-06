@@ -158,9 +158,9 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
                      .collect::<Option<Vec<_>>>());
 
     // Total of all items excluding the last.
-    let almost_total = rewrites[..rewrites.len() - 1]
-        .iter()
-        .fold(0, |a, b| a + first_line_width(b)) + parent_rewrite.len();
+    let almost_total = rewrites[..rewrites.len() - 1].iter().fold(0, |a, b| {
+        a + first_line_width(b)
+    }) + parent_rewrite.len();
 
     let veto_single_line = if subexpr_list.len() > context.config.chain_one_line_max - 1 {
         // -1 above because subexpr_list does not include the parent.
@@ -425,9 +425,8 @@ fn rewrite_method_call(method_name: ast::Ident,
     let (lo, type_str) = if types.is_empty() {
         (args[0].span.hi, String::new())
     } else {
-        let type_list: Vec<_> = try_opt!(types.iter()
-                                             .map(|ty| ty.rewrite(context, shape))
-                                             .collect());
+        let type_list: Vec<_> =
+            try_opt!(types.iter().map(|ty| ty.rewrite(context, shape)).collect());
 
         let type_str = if context.config.spaces_within_angle_brackets && type_list.len() > 0 {
             format!("::< {} >", type_list.join(", "))
@@ -435,7 +434,11 @@ fn rewrite_method_call(method_name: ast::Ident,
             format!("::<{}>", type_list.join(", "))
         };
 
-        (types.last().unwrap().span.hi, type_str)
+        (types.last()
+             .unwrap()
+             .span
+             .hi,
+         type_str)
     };
 
     let callee_str = format!(".{}{}", method_name, type_str);

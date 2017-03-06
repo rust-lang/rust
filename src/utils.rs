@@ -278,7 +278,11 @@ pub fn wrap_str<S: AsRef<str>>(s: S, max_width: usize, shape: Shape) -> Option<S
             // indentation.
             // A special check for the last line, since the caller may
             // place trailing characters on this line.
-            if snippet.lines().rev().next().unwrap().len() > shape.indent.width() + shape.width {
+            if snippet.lines()
+                   .rev()
+                   .next()
+                   .unwrap()
+                   .len() > shape.indent.width() + shape.width {
                 return None;
             }
         }

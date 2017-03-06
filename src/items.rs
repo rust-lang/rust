@@ -40,9 +40,8 @@ impl Rewrite for ast::Local {
         // 1 = ;
         let pattern_width = try_opt!(shape.width.checked_sub(pattern_offset.width() + 1));
 
-        let pat_str = try_opt!(self.pat
-                                   .rewrite(&context,
-                                            Shape::legacy(pattern_width, pattern_offset)));
+        let pat_str = try_opt!(self.pat.rewrite(&context,
+                                                Shape::legacy(pattern_width, pattern_offset)));
         result.push_str(&pat_str);
 
         // String that is placed within the assignment pattern and expression.
@@ -106,7 +105,10 @@ impl<'a> Item<'a> {
             keyword: "",
             abi: abi,
             vis: None,
-            body: fm.items.iter().map(|i| BodyElement::ForeignItem(i)).collect(),
+            body: fm.items
+                .iter()
+                .map(|i| BodyElement::ForeignItem(i))
+                .collect(),
             span: span,
         }
     }
@@ -455,12 +457,10 @@ impl<'a> FmtVisitor<'a> {
         }
 
         let indent = self.block_indent;
-        let mut result = try_opt!(field.node
-                                      .attrs
-                                      .rewrite(&self.get_context(),
-                                               Shape::legacy(self.config.max_width -
-                                                             indent.width(),
-                                                             indent)));
+        let mut result = try_opt!(field.node.attrs.rewrite(&self.get_context(),
+                                                           Shape::legacy(self.config.max_width -
+                                                                         indent.width(),
+                                                                         indent)));
         if !result.is_empty() {
             result.push('\n');
             result.push_str(&indent.to_string(self.config));
@@ -784,9 +784,7 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
                 Density::Tall
             };
 
-        let where_budget = try_opt!(context.config
-                                        .max_width
-                                        .checked_sub(last_line_width(&result)));
+        let where_budget = try_opt!(context.config.max_width.checked_sub(last_line_width(&result)));
         let where_clause_str = try_opt!(rewrite_where_clause(context,
                                                              &generics.where_clause,
                                                              context.config,
@@ -1000,9 +998,8 @@ fn format_tuple_struct(context: &RewriteContext,
                                                          mk_sp(span.lo, body_lo)));
             result.push_str(&generics_str);
 
-            let where_budget = try_opt!(context.config
-                                            .max_width
-                                            .checked_sub(last_line_width(&result)));
+            let where_budget =
+                try_opt!(context.config.max_width.checked_sub(last_line_width(&result)));
             try_opt!(rewrite_where_clause(context,
                                           &generics.where_clause,
                                           context.config,
@@ -1093,9 +1090,7 @@ pub fn rewrite_type_alias(context: &RewriteContext,
 
     result.push_str(&generics_str);
 
-    let where_budget = try_opt!(context.config
-                                    .max_width
-                                    .checked_sub(last_line_width(&result)));
+    let where_budget = try_opt!(context.config.max_width.checked_sub(last_line_width(&result)));
     let where_clause_str = try_opt!(rewrite_where_clause(context,
                                                          &generics.where_clause,
                                                          context.config,
@@ -1117,8 +1112,7 @@ pub fn rewrite_type_alias(context: &RewriteContext,
         .unwrap_or(0);
     let type_indent = indent + line_width;
     // Try to fit the type on the same line
-    let ty_str = try_opt!(ty.rewrite(context, Shape::legacy(budget, type_indent))
-                              .or_else(|| {
+    let ty_str = try_opt!(ty.rewrite(context, Shape::legacy(budget, type_indent)).or_else(|| {
         // The line was too short, try to put the type on the next line
 
         // Remove the space after '='
@@ -1126,9 +1120,8 @@ pub fn rewrite_type_alias(context: &RewriteContext,
         let type_indent = indent.block_indent(context.config);
         result.push('\n');
         result.push_str(&type_indent.to_string(context.config));
-        let budget = try_opt!(context.config
-                                  .max_width
-                                  .checked_sub(type_indent.width() + ";".len()));
+        let budget = try_opt!(context.config.max_width.checked_sub(type_indent.width() +
+                                                                   ";".len()));
         ty.rewrite(context, Shape::legacy(budget, type_indent))
     }));
     result.push_str(&ty_str);
@@ -1158,11 +1151,10 @@ impl Rewrite for ast::StructField {
 
         let name = self.ident;
         let vis = format_visibility(&self.vis);
-        let mut attr_str = try_opt!(self.attrs
-                                        .rewrite(context,
-                                                 Shape::legacy(context.config.max_width -
-                                                               shape.indent.width(),
-                                                               shape.indent)));
+        let mut attr_str = try_opt!(self.attrs.rewrite(context,
+                                                       Shape::legacy(context.config.max_width -
+                                                                     shape.indent.width(),
+                                                                     shape.indent)));
         if !attr_str.is_empty() {
             attr_str.push('\n');
             attr_str.push_str(&shape.indent.to_string(context.config));
@@ -1289,8 +1281,9 @@ impl Rewrite for ast::FunctionRetTy {
             ast::FunctionRetTy::Default(_) => Some(String::new()),
             ast::FunctionRetTy::Ty(ref ty) => {
                 let inner_width = try_opt!(shape.width.checked_sub(3));
-                ty.rewrite(context, Shape::legacy(inner_width, shape.indent + 3))
-                    .map(|r| format!("-> {}", r))
+                ty.rewrite(context, Shape::legacy(inner_width, shape.indent + 3)).map(|r| {
+                    format!("-> {}", r)
+                })
             }
         }
     }
@@ -1299,9 +1292,8 @@ impl Rewrite for ast::FunctionRetTy {
 impl Rewrite for ast::Arg {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         if is_named_arg(self) {
-            let mut result = try_opt!(self.pat
-                                          .rewrite(context,
-                                                   Shape::legacy(shape.width, shape.indent)));
+            let mut result = try_opt!(self.pat.rewrite(context,
+                                                       Shape::legacy(shape.width, shape.indent)));
 
             if self.ty.node != ast::TyKind::Infer {
                 if context.config.space_before_type_annotation {
@@ -1478,11 +1470,10 @@ fn rewrite_fn_base(context: &RewriteContext,
 
     // Note that if the width and indent really matter, we'll re-layout the
     // return type later anyway.
-    let ret_str = try_opt!(fd.output
-                               .rewrite(&context,
-                                        Shape::legacy(context.config.max_width -
-                                                      indent.width(),
-                                                      indent)));
+    let ret_str = try_opt!(fd.output.rewrite(&context,
+                                             Shape::legacy(context.config.max_width -
+                                                           indent.width(),
+                                                           indent)));
 
     let multi_line_ret_str = ret_str.contains('\n');
     let ret_str_len = if multi_line_ret_str { 0 } else { ret_str.len() };
@@ -1528,9 +1519,7 @@ fn rewrite_fn_base(context: &RewriteContext,
     }
 
     // A conservative estimation, to goal is to be over all parens in generics
-    let args_start = generics.ty_params
-        .last()
-        .map_or(span.lo, |tp| end_typaram(tp));
+    let args_start = generics.ty_params.last().map_or(span.lo, |tp| end_typaram(tp));
     let args_span = mk_sp(context.codemap.span_after(mk_sp(args_start, span.hi), "("),
                           span_for_return(&fd.output).lo);
     let arg_str = try_opt!(rewrite_args(context,
@@ -1731,7 +1720,12 @@ fn rewrite_args(context: &RewriteContext,
         }
 
         let variadic_arg = if variadic {
-            let variadic_span = mk_sp(args.last().unwrap().ty.span.hi, span.hi);
+            let variadic_span = mk_sp(args.last()
+                                          .unwrap()
+                                          .ty
+                                          .span
+                                          .hi,
+                                      span.hi);
             let variadic_start = context.codemap.span_after(variadic_span, "...") - BytePos(3);
             Some(ArgumentKind::Variadic(variadic_start))
         } else {
@@ -1826,7 +1820,10 @@ fn compute_budgets_for_args(context: &RewriteContext,
         if !newline_brace {
             used_space += 2;
         }
-        let one_line_budget = context.config.max_width.checked_sub(used_space).unwrap_or(0);
+        let one_line_budget = context.config
+            .max_width
+            .checked_sub(used_space)
+            .unwrap_or(0);
 
         if one_line_budget > 0 {
             // 4 = "() {".len()
@@ -1884,8 +1881,8 @@ fn rewrite_generics(context: &RewriteContext,
 
     // Strings for the generics.
     let lt_strs = lifetimes.iter().map(|lt| lt.rewrite(context, Shape::legacy(h_budget, offset)));
-    let ty_strs = tys.iter()
-        .map(|ty_param| ty_param.rewrite(context, Shape::legacy(h_budget, offset)));
+    let ty_strs =
+        tys.iter().map(|ty_param| ty_param.rewrite(context, Shape::legacy(h_budget, offset)));
 
     // Extract comments between generics.
     let lt_spans = lifetimes.iter().map(|l| {

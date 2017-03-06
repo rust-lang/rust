@@ -147,9 +147,8 @@ pub fn definitive_tactic<I, T>(items: I, tactic: ListTactic, width: usize) -> De
     where I: IntoIterator<Item = T> + Clone,
           T: AsRef<ListItem>
 {
-    let pre_line_comments = items.clone()
-        .into_iter()
-        .any(|item| item.as_ref().has_line_pre_comment());
+    let pre_line_comments =
+        items.clone().into_iter().any(|item| item.as_ref().has_line_pre_comment());
 
     let limit = match tactic {
         _ if pre_line_comments => return DefinitiveListTactic::Vertical,
@@ -275,7 +274,10 @@ pub fn write_list<I, T>(items: I, formatting: &ListFormatting) -> Option<String>
 
         if tactic == DefinitiveListTactic::Vertical && item.post_comment.is_some() {
             // 1 = space between item and comment.
-            let width = formatting.shape.width.checked_sub(item_last_line_width + 1).unwrap_or(1);
+            let width = formatting.shape
+                .width
+                .checked_sub(item_last_line_width + 1)
+                .unwrap_or(1);
             let mut offset = formatting.shape.indent;
             offset.alignment += item_last_line_width + 1;
             let comment = item.post_comment.as_ref().unwrap();
@@ -475,9 +477,9 @@ fn calculate_width<I, T>(items: I) -> (usize, usize)
     where I: IntoIterator<Item = T>,
           T: AsRef<ListItem>
 {
-    items.into_iter()
-        .map(|item| total_item_width(item.as_ref()))
-        .fold((0, 0), |acc, l| (acc.0 + 1, acc.1 + l))
+    items.into_iter().map(|item| total_item_width(item.as_ref())).fold((0, 0), |acc, l| {
+        (acc.0 + 1, acc.1 + l)
+    })
 }
 
 fn total_item_width(item: &ListItem) -> usize {

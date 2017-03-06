@@ -394,7 +394,10 @@ impl FormatReport {
     }
 
     pub fn warning_count(&self) -> usize {
-        self.file_error_map.iter().map(|(_, errors)| errors.len()).fold(0, |acc, x| acc + x)
+        self.file_error_map
+            .iter()
+            .map(|(_, errors)| errors.len())
+            .fold(0, |acc, x| acc + x)
     }
 
     pub fn has_warnings(&self) -> bool {

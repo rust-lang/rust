@@ -36,10 +36,10 @@ impl Rewrite for Pat {
                 let sub_pat = match *sub_pat {
                     Some(ref p) => {
                         // 3 - ` @ `.
-                        let width = try_opt!(shape.width
-                                                 .checked_sub(prefix.len() + mut_infix.len() +
-                                                              id_str.len() +
-                                                              3));
+                        let width = try_opt!(shape.width.checked_sub(prefix.len() +
+                                                                     mut_infix.len() +
+                                                                     id_str.len() +
+                                                                     3));
                         format!(" @ {}",
                                 try_opt!(p.rewrite(context, Shape::legacy(width, shape.indent))))
                     }
@@ -90,15 +90,15 @@ impl Rewrite for Pat {
             PatKind::Slice(ref prefix, ref slice_pat, ref suffix) => {
                 // Rewrite all the sub-patterns.
                 let prefix = prefix.iter().map(|p| p.rewrite(context, shape));
-                let slice_pat =
-                    slice_pat.as_ref()
-                        .map(|p| Some(format!("{}..", try_opt!(p.rewrite(context, shape)))));
+                let slice_pat = slice_pat.as_ref().map(|p| {
+                                                           Some(format!("{}..",
+                                                            try_opt!(p.rewrite(context, shape))))
+                                                       });
                 let suffix = suffix.iter().map(|p| p.rewrite(context, shape));
 
                 // Munge them together.
-                let pats: Option<Vec<String>> = prefix.chain(slice_pat.into_iter())
-                    .chain(suffix)
-                    .collect();
+                let pats: Option<Vec<String>> =
+                    prefix.chain(slice_pat.into_iter()).chain(suffix).collect();
 
                 // Check that all the rewrites succeeded, and if not return None.
                 let pats = try_opt!(pats);

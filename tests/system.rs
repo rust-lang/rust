@@ -84,8 +84,7 @@ fn assert_output(source: &str, expected_filename: &str) {
 
     let mut expected_file = fs::File::open(&expected_filename).expect("Couldn't open target");
     let mut expected_text = String::new();
-    expected_file.read_to_string(&mut expected_text)
-        .expect("Failed reading target");
+    expected_file.read_to_string(&mut expected_text).expect("Failed reading target");
 
     let compare = make_diff(&expected_text, &output, DIFF_CONTEXT_SIZE);
     if compare.len() > 0 {
@@ -101,9 +100,8 @@ fn assert_output(source: &str, expected_filename: &str) {
 #[test]
 fn idempotence_tests() {
     // Get all files in the tests/target directory.
-    let files = fs::read_dir("tests/target")
-        .expect("Couldn't read target dir")
-        .map(get_path_string);
+    let files =
+        fs::read_dir("tests/target").expect("Couldn't read target dir").map(get_path_string);
     let (_reports, count, fails) = check_files(files);
 
     // Display results.
