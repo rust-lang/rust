@@ -559,7 +559,7 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
     rules.build("tool-qemu-test-client", "src/tools/qemu-test-client")
          .dep(|s| s.name("libstd"))
          .run(move |s| compile::tool(build, s.stage, s.target, "qemu-test-client"));
-    rules.build("tool-cargo", "src/tools/cargo")
+    rules.build("tool-cargo", "cargo")
          .dep(|s| s.name("libstd"))
          .dep(|s| s.stage(0).host(s.target).name("openssl"))
          .dep(move |s| {
