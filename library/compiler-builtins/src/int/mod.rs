@@ -38,66 +38,43 @@ pub trait Int {
     fn extract_sign(self) -> (bool, Self::UnsignedInt);
 }
 
-// TODO: Once i128/u128 support lands, we'll want to add impls for those as well
-impl Int for u32 {
-    type OtherSign = i32;
-    type UnsignedInt = u32;
+macro_rules! int_impl {
+    ($ity:ty, $uty:ty, $bits:expr) => {
+        impl Int for $uty {
+            type OtherSign = $ity;
+            type UnsignedInt = $uty;
 
-    fn bits() -> u32 {
-        32
-    }
+            fn bits() -> u32 {
+                $bits
+            }
 
-    fn extract_sign(self) -> (bool, u32) {
-        (false, self)
-    }
-}
+            fn extract_sign(self) -> (bool, $uty) {
+                (false, self)
+            }
+        }
 
-impl Int for i32 {
-    type OtherSign = u32;
-    type UnsignedInt = u32;
+        impl Int for $ity {
+            type OtherSign = $uty;
+            type UnsignedInt = $uty;
 
-    fn bits() -> u32 {
-        32
-    }
+            fn bits() -> u32 {
+                $bits
+            }
 
-    fn extract_sign(self) -> (bool, u32) {
-        if self < 0 {
-            (true, !(self as u32) + 1)
-        } else {
-            (false, self as u32)
+            fn extract_sign(self) -> (bool, $uty) {
+                if self < 0 {
+                    (true, !(self as $uty) + 1)
+                } else {
+                    (false, self as $uty)
+                }
+            }
         }
     }
 }
 
-impl Int for u64 {
-    type OtherSign = i64;
-    type UnsignedInt = u64;
-
-    fn bits() -> u32 {
-        64
-    }
-
-    fn extract_sign(self) -> (bool, u64) {
-        (false, self)
-    }
-}
-
-impl Int for i64 {
-    type OtherSign = u64;
-    type UnsignedInt = u64;
-
-    fn bits() -> u32 {
-        64
-    }
-
-    fn extract_sign(self) -> (bool, u64) {
-        if self < 0 {
-            (true, !(self as u64) + 1)
-        } else {
-            (false, self as u64)
-        }
-    }
-}
+int_impl!(i32, u32, 32);
+int_impl!(i64, u64, 64);
+int_impl!(i128, u128, 128);
 
 /// Trait to convert an integer to/from smaller parts
 pub trait LargeInt {
