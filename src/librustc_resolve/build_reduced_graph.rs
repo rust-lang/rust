@@ -511,7 +511,7 @@ impl<'a> Resolver<'a> {
         let invocation = self.arenas.alloc_invocation_data(InvocationData {
             module: Cell::new(self.get_extern_crate_root(def_id.krate)),
             def_index: CRATE_DEF_INDEX,
-            const_integer: false,
+            const_expr: false,
             legacy_scope: Cell::new(LegacyScope::Empty),
             expansion: Cell::new(LegacyScope::Empty),
         });
