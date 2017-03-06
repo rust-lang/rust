@@ -55,7 +55,9 @@ macro_rules! divmod {
                 #[cfg(all(feature = "c", any(target_arch = "x86")))]
                 () => unsafe { $div(a, b) },
             };
-            *rem = a - (r * b);
+            // NOTE won't overflow because it's using the result from the
+            // previous division
+            *rem = a - r.wrapping_mul(b);
             r
         }
     }
