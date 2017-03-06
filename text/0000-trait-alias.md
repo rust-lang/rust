@@ -133,23 +133,27 @@ parameter declarations*.
 
 When using a trait alias as an object type, it is subject to object safety restrictions _after_ substituting the aliased traits. This means:
 
-1. It contains an object safe trait and zero or more of these other bounds: `Send`, `Sync`, `'static` (that is, `trait Show = Display + Debug;` would not be object safe).
+1. It contains an object safe trait, zero or more lifetimes, and zero or more of these other bounds: `Send`, `Sync` (that is, `trait Show = Display + Debug;` would not be object safe).
 2. All the associated types of the trait need to be specified.
+3. The `where` clause, if present, only contains bounds on `Self`.
 
 Some examples:
 
 ```rust
 trait Sink = Sync;
-trait PrintableIterator = Display + Iterator;
+trait ShareableIterator = Iterator + Sync;
+trait PrintableIterator = Iterator<Item=i32> + Display;
 trait IntIterator = Iterator<Item=i32>;
 
-fn foo<T: PrintableIterator>(...) { ... } // ok
-fn baz1(x: Box<PrintableIterator>) { ... } // ERROR: associated type not specified
-fn baz2(x: Box<PrintableIterator<Item=i32>>) { ... } // ok
-fn baz3(x: Box<IntIterator + Sink + 'static>) { ... } // ok (*)
+fn foo1<T: ShareableIterator>(...) { ... } // ok
+fn foo2<T: ShareableIterator<Item=i32>>(...) { ... } // ok
+fn bar1(x: Box<ShareableIterator>) { ... } // ERROR: associated type not specified
+fn bar2(x: Box<ShareableIterator<Item=i32>>) { ... } // ok
+fn bar3(x: Box<PrintableIterator>) { ... } // ERROR: too many traits (*)
+fn bar4(x: Box<IntIterator + Sink + 'static>) { ... } // ok (*)
 ```
 
-The lines marked with `(*)` require [#24010](https://github.com/rust-lang/rust/issues/24010) to be fixed.
+The lines marked with `(*)` assume that [#24010](https://github.com/rust-lang/rust/issues/24010) is fixed.
 
 # Drawbacks
 [drawbacks]: #drawbacks
