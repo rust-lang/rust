@@ -166,38 +166,38 @@ mod tests {
     use qc::{I32, U32, I64, U64, F32, F64};
 
     check! {
-        fn __floatsisf(f: extern fn(i32) -> f32,
+        fn __floatsisf(f: extern "C" fn(i32) -> f32,
                     a: I32)
                     -> Option<F32> {
             Some(F32(f(a.0)))
         }
-        fn __floatsidf(f: extern fn(i32) -> f64,
+        fn __floatsidf(f: extern "C" fn(i32) -> f64,
                     a: I32)
                     -> Option<F64> {
             Some(F64(f(a.0)))
         }
-        fn __floatdidf(f: extern fn(i64) -> f64,
+        fn __floatdidf(f: extern "C" fn(i64) -> f64,
                     a: I64)
                     -> Option<F64> {
             Some(F64(f(a.0)))
         }
-        fn __floatunsisf(f: extern fn(u32) -> f32,
+        fn __floatunsisf(f: extern "C" fn(u32) -> f32,
                     a: U32)
                     -> Option<F32> {
             Some(F32(f(a.0)))
         }
-        fn __floatunsidf(f: extern fn(u32) -> f64,
+        fn __floatunsidf(f: extern "C" fn(u32) -> f64,
                     a: U32)
                     -> Option<F64> {
             Some(F64(f(a.0)))
         }
-        fn __floatundidf(f: extern fn(u64) -> f64,
+        fn __floatundidf(f: extern "C" fn(u64) -> f64,
                     a: U64)
                     -> Option<F64> {
             Some(F64(f(a.0)))
         }
 
-        fn __fixsfsi(f: extern fn(f32) -> i32,
+        fn __fixsfsi(f: extern "C" fn(f32) -> i32,
                     a: F32)
                     -> Option<I32> {
             if a.0 > (i32::max_value() as f32) ||
@@ -205,7 +205,7 @@ mod tests {
                    None
            } else { Some(I32(f(a.0))) }
         }
-        fn __fixsfdi(f: extern fn(f32) -> i64,
+        fn __fixsfdi(f: extern "C" fn(f32) -> i64,
                     a: F32)
                     -> Option<I64> {
             if a.0 > (i64::max_value() as f32) ||
@@ -213,7 +213,7 @@ mod tests {
                    None
            } else { Some(I64(f(a.0))) }
         }
-        fn __fixdfsi(f: extern fn(f64) -> i32,
+        fn __fixdfsi(f: extern "C" fn(f64) -> i32,
                     a: F64)
                     -> Option<I32> {
             if a.0 > (i32::max_value() as f64) ||
@@ -221,7 +221,7 @@ mod tests {
                    None
            } else { Some(I32(f(a.0))) }
         }
-        fn __fixdfdi(f: extern fn(f64) -> i64,
+        fn __fixdfdi(f: extern "C" fn(f64) -> i64,
                     a: F64)
                     -> Option<I64> {
             if a.0 > (i64::max_value() as f64) ||
@@ -230,7 +230,7 @@ mod tests {
            } else { Some(I64(f(a.0))) }
         }
 
-        fn __fixunssfsi(f: extern fn(f32) -> u32,
+        fn __fixunssfsi(f: extern "C" fn(f32) -> u32,
                     a: F32)
                     -> Option<U32> {
             if a.0 > (u32::max_value() as f32) ||
@@ -238,7 +238,7 @@ mod tests {
                    None
            } else { Some(U32(f(a.0))) }
         }
-        fn __fixunssfdi(f: extern fn(f32) -> u64,
+        fn __fixunssfdi(f: extern "C" fn(f32) -> u64,
                     a: F32)
                     -> Option<U64> {
             if a.0 > (u64::max_value() as f32) ||
@@ -246,7 +246,7 @@ mod tests {
                    None
            } else { Some(U64(f(a.0))) }
         }
-        fn __fixunsdfsi(f: extern fn(f64) -> u32,
+        fn __fixunsdfsi(f: extern "C" fn(f64) -> u32,
                     a: F64)
                     -> Option<U32> {
             if a.0 > (u32::max_value() as f64) ||
@@ -254,7 +254,7 @@ mod tests {
                    None
            } else { Some(U32(f(a.0))) }
         }
-        fn __fixunsdfdi(f: extern fn(f64) -> u64,
+        fn __fixunsdfdi(f: extern "C" fn(f64) -> u64,
                     a: F64)
                     -> Option<U64> {
             if a.0 <= (u64::max_value() as f64) ||
