@@ -1830,8 +1830,29 @@ impl<T> Borrow<[T]> for Vec<T> {
     }
 }
 
+#[unstable(feature = "borrow_ref_vec", issue = "45808")]
+impl<'a, T> Borrow<[T]> for &'a Vec<T> {
+    fn borrow(&self) -> &[T] {
+        &self[..]
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> BorrowMut<[T]> for Vec<T> {
+    fn borrow_mut(&mut self) -> &mut [T] {
+        &mut self[..]
+    }
+}
+
+#[unstable(feature = "borrow_ref_vec", issue = "45808")]
+impl<'a, T> Borrow<[T]> for &'a mut Vec<T> {
+    fn borrow(&self) -> &[T] {
+        &self[..]
+    }
+}
+
+#[unstable(feature = "borrow_ref_vec", issue = "45808")]
+impl<'a, T> BorrowMut<[T]> for &'a mut Vec<T> {
     fn borrow_mut(&mut self) -> &mut [T] {
         &mut self[..]
     }
