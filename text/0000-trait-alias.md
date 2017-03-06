@@ -133,7 +133,7 @@ parameter declarations*.
 
 When using a trait alias as an object type, it is subject to object safety restrictions _after_ substituting the aliased traits. This means:
 
-1. It contains an object safe trait, zero or more lifetimes, and zero or more of these other bounds: `Send`, `Sync` (that is, `trait Show = Display + Debug;` would not be object safe).
+1. It contains an object safe trait, optionally a lifetime, and zero or more of these other bounds: `Send`, `Sync` (that is, `trait Show = Display + Debug;` would not be object safe).
 2. All the associated types of the trait need to be specified.
 3. The `where` clause, if present, only contains bounds on `Self`.
 
