@@ -38,11 +38,13 @@ use std::cell::RefCell;
 use std::mem;
 
 pub fn build_mir_for_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    tcx.dep_graph.with_task(DepNode::MirKrate, || {
+    tcx.dep_graph.with_task(DepNode::MirKrate, tcx, (), build_mir_for_crate_task);
+
+    fn build_mir_for_crate_task<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, (): ()) {
         tcx.visit_all_bodies_in_krate(|body_owner_def_id, _body_id| {
             tcx.item_mir(body_owner_def_id);
         });
-    });
+    }
 }
 
 pub fn provide(providers: &mut Providers) {

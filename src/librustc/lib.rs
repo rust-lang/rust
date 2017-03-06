@@ -70,6 +70,7 @@ mod macros;
 pub mod diagnostics;
 
 pub mod cfg;
+#[macro_use]
 pub mod dep_graph;
 pub mod hir;
 pub mod infer;

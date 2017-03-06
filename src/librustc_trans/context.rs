@@ -10,7 +10,8 @@
 
 use llvm;
 use llvm::{ContextRef, ModuleRef, ValueRef};
-use rustc::dep_graph::{DepGraph, DepNode, DepTrackingMap, DepTrackingMapConfig, WorkProduct};
+use rustc::dep_graph::{DepGraph, DepGraphSafe, DepNode, DepTrackingMap,
+                       DepTrackingMapConfig, WorkProduct};
 use middle::cstore::LinkMeta;
 use rustc::hir;
 use rustc::hir::def::ExportMap;
@@ -272,6 +273,11 @@ pub struct CrateContext<'a, 'tcx: 'a> {
     /// The index of `local` in `local_ccxs`.  This is used in
     /// `maybe_iter(true)` to identify the original `LocalCrateContext`.
     index: usize,
+}
+
+impl<'a, 'tcx> DepGraphSafe for CrateContext<'a, 'tcx> {
+    fn read(&self, _graph: &DepGraph) {
+    }
 }
 
 pub struct CrateContextIterator<'a, 'tcx: 'a> {
