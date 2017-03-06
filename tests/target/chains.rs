@@ -9,8 +9,7 @@ fn main() {
         .1
         .foo(|x| x + 1);
 
-    bbbbbbbbbbbbbbbbbbb.ccccccccccccccccccccccccccccccccccccc
-        .ddddddddddddddddddddddddddd();
+    bbbbbbbbbbbbbbbbbbb.ccccccccccccccccccccccccccccccccccccc.ddddddddddddddddddddddddddd();
 
     bbbbbbbbbbbbbbbbbbb.ccccccccccccccccccccccccccccccccccccc
         .ddddddddddddddddddddddddddd
@@ -48,9 +47,8 @@ fn main() {
         SCRIPT_TASK_ROOT.with(|root| { *root.borrow_mut() = Some(&script_task); });
     });
 
-    let suuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuum = xxxxxxx.map(|x| x + 5)
-        .map(|x| x / 2)
-        .fold(0, |acc, x| acc + x);
+    let suuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuum =
+        xxxxxxx.map(|x| x + 5).map(|x| x / 2).fold(0, |acc, x| acc + x);
 
     aaaaaaaaaaaaaaaa.map(|x| {
                              x += 1;
@@ -126,8 +124,7 @@ fn floaters() {
 }
 
 fn is_replaced_content() -> bool {
-    constellat.send(ConstellationMsg::ViewportConstrained(self.id, constraints))
-        .unwrap();
+    constellat.send(ConstellationMsg::ViewportConstrained(self.id, constraints)).unwrap();
 }
 
 fn issue587() {
@@ -139,10 +136,26 @@ fn issue587() {
 fn try_shorthand() {
     let x = expr?;
     let y = expr.kaas()?.test();
-    let loooooooooooooooooooooooooooooooooooooooooong =
-        does_this?.look?.good?.should_we_break?.after_the_first_question_mark?;
-    let yyyy = expr?.another?.another?.another?.another?.another?.another?.another?.another?.test();
-    let zzzz = expr?.another?.another?.another?.another?;
+    let loooooooooooooooooooooooooooooooooooooooooong = does_this?
+        .look?
+        .good?
+        .should_we_break?
+        .after_the_first_question_mark?;
+    let yyyy = expr?
+        .another?
+        .another?
+        .another?
+        .another?
+        .another?
+        .another?
+        .another?
+        .another?
+        .test();
+    let zzzz = expr?
+        .another?
+        .another?
+        .another?
+        .another?;
     let aaa = x??????????????????????????????????????????????????????????????????????????;
 
     let y = a.very

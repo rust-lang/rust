@@ -83,9 +83,7 @@ fn main() {
 	fffffffffffffffffffffffffffffffffff(a, {
 		SCRIPT_TASK_ROOT.with(|root| { *root.borrow_mut() = Some(&script_task); });
 	});
-	a.b
-		.c
-		.d();
+	a.b.c.d();
 
 	x().y(|| match cond() {
 	          true => (),

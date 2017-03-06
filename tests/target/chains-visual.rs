@@ -10,8 +10,7 @@ fn main() {
              .1
              .foo(|x| x + 1);
 
-    bbbbbbbbbbbbbbbbbbb.ccccccccccccccccccccccccccccccccccccc
-                       .ddddddddddddddddddddddddddd();
+    bbbbbbbbbbbbbbbbbbb.ccccccccccccccccccccccccccccccccccccc.ddddddddddddddddddddddddddd();
 
     bbbbbbbbbbbbbbbbbbb.ccccccccccccccccccccccccccccccccccccc
                        .ddddddddddddddddddddddddddd
@@ -50,9 +49,7 @@ fn main() {
     });
 
     let suuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuum =
-        xxxxxxx.map(|x| x + 5)
-               .map(|x| x / 2)
-               .fold(0, |acc, x| acc + x);
+        xxxxxxx.map(|x| x + 5).map(|x| x / 2).fold(0, |acc, x| acc + x);
 
     aaaaaaaaaaaaaaaa.map(|x| {
                              x += 1;
@@ -128,8 +125,7 @@ fn floaters() {
 }
 
 fn is_replaced_content() -> bool {
-    constellat.send(ConstellationMsg::ViewportConstrained(self.id, constraints))
-              .unwrap();
+    constellat.send(ConstellationMsg::ViewportConstrained(self.id, constraints)).unwrap();
 }
 
 fn issue587() {
