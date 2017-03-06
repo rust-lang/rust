@@ -7,6 +7,6 @@ all:
 else
 all:
 	$(RUSTC) -C opt-level=3 --emit=obj used.rs
-	nm -C used.o | grep FOO
-	nm -C used.o | grep -v BAR
+	nm -C $(TMPDIR)/used.o | grep FOO
+	nm -C $(TMPDIR)/used.o | grep -v BAR
 endif
