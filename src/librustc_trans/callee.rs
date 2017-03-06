@@ -36,7 +36,6 @@ use back::symbol_names::symbol_name;
 use trans_item::TransItem;
 use type_of;
 use rustc::ty::{self, Ty, TypeFoldable};
-use rustc::hir;
 use std::iter;
 
 use syntax_pos::DUMMY_SP;
@@ -130,15 +129,14 @@ impl<'tcx> Callee<'tcx> {
                 let method_ty = instance_ty(ccx.shared(), &instance);
                 Callee::ptr(llfn, method_ty)
             }
-            traits::VtableFnPointer(vtable_fn_pointer) => {
-                let trait_closure_kind = tcx.lang_items.fn_trait_kind(trait_id).unwrap();
-                let instance = Instance::new(def_id, substs);
-                let llfn = trans_fn_pointer_shim(ccx, instance,
-                                                 trait_closure_kind,
-                                                 vtable_fn_pointer.fn_ty);
+            traits::VtableFnPointer(data) => {
+                let instance = ty::Instance {
+                    def: ty::InstanceDef::FnPtrShim(def_id, data.fn_ty),
+                    substs: substs,
+                };
 
-                let method_ty = instance_ty(ccx.shared(), &instance);
-                Callee::ptr(llfn, method_ty)
+                let (llfn, ty) = get_fn(ccx, instance);
+                Callee::ptr(llfn, ty)
             }
             traits::VtableObject(ref data) => {
                 Callee {
@@ -363,124 +361,6 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     lloncefn
 }
 
-/// Translates an adapter that implements the `Fn` trait for a fn
-/// pointer. This is basically the equivalent of something like:
-///
-/// ```
-/// impl<'a> Fn(&'a int) -> &'a int for fn(&int) -> &int {
-///     extern "rust-abi" fn call(&self, args: (&'a int,)) -> &'a int {
-///         (*self)(args.0)
-///     }
-/// }
-/// ```
-///
-/// but for the bare function type given.
-fn trans_fn_pointer_shim<'a, 'tcx>(
-    ccx: &'a CrateContext<'a, 'tcx>,
-    method_instance: Instance<'tcx>,
-    closure_kind: ty::ClosureKind,
-    bare_fn_ty: Ty<'tcx>)
-    -> ValueRef
-{
-    let tcx = ccx.tcx();
-
-    // Normalize the type for better caching.
-    let bare_fn_ty = tcx.normalize_associated_type(&bare_fn_ty);
-
-    // If this is an impl of `Fn` or `FnMut` trait, the receiver is `&self`.
-    let is_by_ref = match closure_kind {
-        ty::ClosureKind::Fn | ty::ClosureKind::FnMut => true,
-        ty::ClosureKind::FnOnce => false,
-    };
-
-    let llfnpointer = match bare_fn_ty.sty {
-        ty::TyFnDef(def_id, substs, _) => {
-            // Function definitions have to be turned into a pointer.
-            let llfn = Callee::def(ccx, def_id, substs).reify(ccx);
-            if !is_by_ref {
-                // A by-value fn item is ignored, so the shim has
-                // the same signature as the original function.
-                return llfn;
-            }
-            Some(llfn)
-        }
-        _ => None
-    };
-
-    let bare_fn_ty_maybe_ref = if is_by_ref {
-        tcx.mk_imm_ref(tcx.mk_region(ty::ReErased), bare_fn_ty)
-    } else {
-        bare_fn_ty
-    };
-
-    // Check if we already trans'd this shim.
-    if let Some(&llval) = ccx.fn_pointer_shims().borrow().get(&bare_fn_ty_maybe_ref) {
-        return llval;
-    }
-
-    debug!("trans_fn_pointer_shim(bare_fn_ty={:?})",
-           bare_fn_ty);
-
-    // Construct the "tuply" version of `bare_fn_ty`. It takes two arguments: `self`,
-    // which is the fn pointer, and `args`, which is the arguments tuple.
-    let sig = bare_fn_ty.fn_sig();
-    let sig = tcx.erase_late_bound_regions_and_normalize(&sig);
-    assert_eq!(sig.unsafety, hir::Unsafety::Normal);
-    assert_eq!(sig.abi, Abi::Rust);
-    let tuple_input_ty = tcx.intern_tup(sig.inputs(), false);
-    let sig = tcx.mk_fn_sig(
-        [bare_fn_ty_maybe_ref, tuple_input_ty].iter().cloned(),
-        sig.output(),
-        false,
-        hir::Unsafety::Normal,
-        Abi::RustCall
-    );
-    let fn_ty = FnType::new(ccx, sig, &[]);
-    let tuple_fn_ty = tcx.mk_fn_ptr(ty::Binder(sig));
-    debug!("tuple_fn_ty: {:?}", tuple_fn_ty);
-
-    //
-    let function_name = symbol_name(method_instance, ccx.shared());
-    let llfn = declare::define_internal_fn(ccx, &function_name, tuple_fn_ty);
-    attributes::set_frame_pointer_elimination(ccx, llfn);
-    //
-    let bcx = Builder::new_block(ccx, llfn, "entry-block");
-
-    let mut llargs = get_params(llfn);
-
-    let self_arg = llargs.remove(fn_ty.ret.is_indirect() as usize);
-    let llfnpointer = llfnpointer.unwrap_or_else(|| {
-        // the first argument (`self`) will be ptr to the fn pointer
-        if is_by_ref {
-            bcx.load(self_arg, None)
-        } else {
-            self_arg
-        }
-    });
-
-    let callee = Callee {
-        data: Fn(llfnpointer),
-        ty: bare_fn_ty
-    };
-    let fn_ret = callee.ty.fn_ret();
-    let fn_ty = callee.direct_fn_type(ccx, &[]);
-    let llret = bcx.call(llfnpointer, &llargs, None);
-    fn_ty.apply_attrs_callsite(llret);
-
-    if fn_ret.0.is_never() {
-        bcx.unreachable();
-    } else {
-        if fn_ty.ret.is_indirect() || fn_ty.ret.is_ignore() {
-            bcx.ret_void();
-        } else {
-            bcx.ret(llret);
-        }
-    }
-
-    ccx.fn_pointer_shims().borrow_mut().insert(bare_fn_ty_maybe_ref, llfn);
-
-    llfn
-}
 
 /// Translates a reference to a fn/method item, monomorphizing and
 /// inlining as it goes.

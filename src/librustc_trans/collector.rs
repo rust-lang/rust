@@ -907,14 +907,12 @@ fn do_static_trait_method_dispatch<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
             }
         }
         traits::VtableFnPointer(ref data) => {
-            // If we know the destination of this fn-pointer, we'll have to make
-            // sure that this destination actually gets instantiated.
-            if let ty::TyFnDef(def_id, substs, _) = data.fn_ty.sty {
-                // The destination of the pointer might be something that needs
-                // further dispatching, such as a trait method, so we do that.
-                do_static_dispatch(scx, def_id, substs)
-            } else {
-                StaticDispatchResult::Unknown
+            StaticDispatchResult::Dispatched {
+                instance: Instance {
+                    def: ty::InstanceDef::FnPtrShim(trait_method.def_id, data.fn_ty),
+                    substs: trait_ref.substs
+                },
+                fn_once_adjustment: None,
             }
         }
         // Trait object shims are always instantiated in-place, and as they are
