@@ -18,6 +18,7 @@ use std::sync::Arc;
 use super::dep_node::{DepNode, WorkProductId};
 use super::query::DepGraphQuery;
 use super::raii;
+use super::safe::DepGraphSafe;
 use super::thread::{DepGraphThreadData, DepMessage};
 
 #[derive(Clone)]
@@ -76,11 +77,13 @@ impl DepGraph {
         op()
     }
 
-    pub fn with_task<OP,R>(&self, key: DepNode<DefId>, op: OP) -> R
-        where OP: FnOnce() -> R
+    pub fn with_task<C, A, R>(&self, key: DepNode<DefId>, cx: C, arg: A, task: fn(C, A) -> R) -> R
+        where C: DepGraphSafe, A: DepGraphSafe
     {
         let _task = self.in_task(key);
-        op()
+        cx.read(self);
+        arg.read(self);
+        task(cx, arg)
     }
 
     pub fn read(&self, v: DepNode<DefId>) {

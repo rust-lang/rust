@@ -61,13 +61,16 @@ pub struct LoanDataFlowOperator;
 pub type LoanDataFlow<'a, 'tcx> = DataFlowContext<'a, 'tcx, LoanDataFlowOperator>;
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    tcx.dep_graph.with_task(DepNode::BorrowCheckKrate, || {
+    tcx.dep_graph.with_task(DepNode::BorrowCheckKrate, tcx, (), check_crate_task);
+
+    fn check_crate_task<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, (): ()) {
         tcx.visit_all_bodies_in_krate(|body_owner_def_id, body_id| {
-            tcx.dep_graph.with_task(DepNode::BorrowCheck(body_owner_def_id), || {
-                borrowck_fn(tcx, body_id);
-            });
+            tcx.dep_graph.with_task(DepNode::BorrowCheck(body_owner_def_id),
+                                    tcx,
+                                    body_id,
+                                    borrowck_fn);
         });
-    });
+    }
 }
 
 /// Collection of conclusions determined via borrow checker analyses.

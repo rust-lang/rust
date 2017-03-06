@@ -165,15 +165,10 @@ impl<'a, 'tcx> CollectItemTypesVisitor<'a, 'tcx> {
     /// 4. This is added by the code in `visit_expr` when we write to `item_types`.
     /// 5. This is added by the code in `convert_item` when we write to `item_types`;
     ///    note that this write occurs inside the `CollectItemSig` task.
-    /// 6. Added by explicit `read` below
-    fn with_collect_item_sig<OP>(&self, id: ast::NodeId, op: OP)
-        where OP: FnOnce()
-    {
+    /// 6. Added by reads from within `op`.
+    fn with_collect_item_sig(&self, id: ast::NodeId, op: fn(TyCtxt<'a, 'tcx, 'tcx>, ast::NodeId)) {
         let def_id = self.tcx.hir.local_def_id(id);
-        self.tcx.dep_graph.with_task(DepNode::CollectItemSig(def_id), || {
-            self.tcx.hir.read(id);
-            op();
-        });
+        self.tcx.dep_graph.with_task(DepNode::CollectItemSig(def_id), self.tcx, id, op);
     }
 }
 
@@ -183,7 +178,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CollectItemTypesVisitor<'a, 'tcx> {
     }
 
     fn visit_item(&mut self, item: &'tcx hir::Item) {
-        self.with_collect_item_sig(item.id, || convert_item(self.tcx, item));
+        self.with_collect_item_sig(item.id, convert_item);
         intravisit::walk_item(self, item);
     }
 
@@ -216,16 +211,12 @@ impl<'a, 'tcx> Visitor<'tcx> for CollectItemTypesVisitor<'a, 'tcx> {
     }
 
     fn visit_trait_item(&mut self, trait_item: &'tcx hir::TraitItem) {
-        self.with_collect_item_sig(trait_item.id, || {
-            convert_trait_item(self.tcx, trait_item)
-        });
+        self.with_collect_item_sig(trait_item.id, convert_trait_item);
         intravisit::walk_trait_item(self, trait_item);
     }
 
     fn visit_impl_item(&mut self, impl_item: &'tcx hir::ImplItem) {
-        self.with_collect_item_sig(impl_item.id, || {
-            convert_impl_item(self.tcx, impl_item)
-        });
+        self.with_collect_item_sig(impl_item.id, convert_impl_item);
         intravisit::walk_impl_item(self, impl_item);
     }
 }
@@ -493,9 +484,10 @@ fn ensure_no_ty_param_bounds(tcx: TyCtxt,
     }
 }
 
-fn convert_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, it: &hir::Item) {
+fn convert_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item_id: ast::NodeId) {
+    let it = tcx.hir.expect_item(item_id);
     debug!("convert: item {} with id {}", it.name, it.id);
-    let def_id = tcx.hir.local_def_id(it.id);
+    let def_id = tcx.hir.local_def_id(item_id);
     match it.node {
         // These don't define types.
         hir::ItemExternCrate(_) | hir::ItemUse(..) | hir::ItemMod(_) => {
@@ -560,7 +552,8 @@ fn convert_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, it: &hir::Item) {
     }
 }
 
-fn convert_trait_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, trait_item: &hir::TraitItem) {
+fn convert_trait_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, trait_item_id: ast::NodeId) {
+    let trait_item = tcx.hir.expect_trait_item(trait_item_id);
     let def_id = tcx.hir.local_def_id(trait_item.id);
     tcx.item_generics(def_id);
 
@@ -577,8 +570,8 @@ fn convert_trait_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, trait_item: &hir::T
     tcx.item_predicates(def_id);
 }
 
-fn convert_impl_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, impl_item: &hir::ImplItem) {
-    let def_id = tcx.hir.local_def_id(impl_item.id);
+fn convert_impl_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, impl_item_id: ast::NodeId) {
+    let def_id = tcx.hir.local_def_id(impl_item_id);
     tcx.item_generics(def_id);
     tcx.item_type(def_id);
     tcx.item_predicates(def_id);
