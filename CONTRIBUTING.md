@@ -1,8 +1,8 @@
 # Contributing to Rust
 
 Thank you for your interest in contributing to Rust! There are many ways to
-contribute, and we appreciate all of them. This document is a bit long, so here's
-links to the major sections:
+contribute, and we appreciate all of them. This document is a bit long, so here
+are links to the major sections:
 
 * [Feature Requests](#feature-requests)
 * [Bug Reports](#bug-reports)
@@ -13,10 +13,11 @@ links to the major sections:
 * [Out-of-tree Contributions](#out-of-tree-contributions)
 * [Helpful Links and Information](#helpful-links-and-information)
 
-If you have questions, please make a post on [internals.rust-lang.org][internals] or
-hop on [#rust-internals][pound-rust-internals].
+If you have questions, please make a post on [internals.rust-lang.org][internals]
+or hop on [#rust-internals][pound-rust-internals].
 
-As a reminder, all contributors are expected to follow our [Code of Conduct][coc].
+As a reminder, all contributors are expected to follow our
+[Code of Conduct][coc].
 
 [pound-rust-internals]: http://chat.mibbit.com/?server=irc.mozilla.org&channel=%23rust-internals
 [internals]: https://internals.rust-lang.org
@@ -35,14 +36,15 @@ While bugs are unfortunate, they're a reality in software. We can't fix what we
 don't know about, so please report liberally. If you're not sure if something
 is a bug or not, feel free to file a bug anyway.
 
-**If you believe reporting your bug publicly represents a security risk to Rust users,
-please follow our [instructions for reporting security vulnerabilities](https://www.rust-lang.org/security.html)**.
+**If you believe reporting your bug publicly represents a security risk to Rust
+users, please follow our [instructions for reporting security vulnerabilities]
+(https://www.rust-lang.org/security.html)**.
 
 If you have the chance, before reporting a bug, please [search existing
 issues](https://github.com/rust-lang/rust/search?q=&type=Issues&utf8=%E2%9C%93),
 as it's possible that someone else has already reported your error. This doesn't
-always work, and sometimes it's hard to know what to search for, so consider this
-extra credit. We won't mind if you accidentally file a duplicate report.
+always work, and sometimes it's hard to know what to search for, so consider
+this extra credit. We won't mind if you accidentally file a duplicate report.
 
 Opening an issue is as easy as following [this
 link](https://github.com/rust-lang/rust/issues/new) and filling out the fields.
@@ -126,9 +128,9 @@ file. If you still have a `config.mk` file in your directory - from
 
 ### Building
 
-The build system uses the `x.py` script to control the build process. This script
-is used to build, test, and document various parts of the compiler. You can
-execute it as:
+The build system uses the `x.py` script to control the build process. This
+script is used to build, test, and document various parts of the compiler. You
+can execute it as:
 
 ```sh
 python x.py build
@@ -315,10 +317,10 @@ To find documentation-related issues, sort by the [A-docs label][adocs].
 
 [adocs]: https://github.com/rust-lang/rust/issues?q=is%3Aopen+is%3Aissue+label%3AA-docs
 
-In many cases, you don't need a full `./x.py doc`. You can use `rustdoc` directly
-to check small fixes. For example, `rustdoc src/doc/reference.md` will render
-reference to `doc/reference.html`. The CSS might be messed up, but you can
-verify that the HTML is right.
+In many cases, you don't need a full `./x.py doc`. You can use `rustdoc`
+directly to check small fixes. For example, `rustdoc src/doc/reference.md` will
+render reference to `doc/reference.html`. The CSS might be messed up, but you
+can verify that the HTML is right.
 
 ## Issue Triage
 

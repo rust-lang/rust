@@ -23,7 +23,8 @@ impl Circle {
 [methodsyntax]: method-syntax.html
 
 Traits are similar, except that we first define a trait with a method
-signature, then implement the trait for a type. In this example, we implement the trait `HasArea` for `Circle`:
+signature, then implement the trait for a type. In this example, we implement
+the trait `HasArea` for `Circle`:
 
 ```rust
 struct Circle {
@@ -78,8 +79,8 @@ impl HasArea for Circle {
 ## Trait bounds on generic functions
 
 Traits are useful because they allow a type to make certain promises about its
-behavior. Generic functions can exploit this to constrain, or [bound][bounds], the types they
-accept. Consider this function, which does not compile:
+behavior. Generic functions can exploit this to constrain, or [bound][bounds],
+the types they accept. Consider this function, which does not compile:
 
 [bounds]: glossary.html#bounds
 
@@ -427,13 +428,16 @@ fn inverse<T>(x: i32) -> T
 ```
 
 This shows off the additional feature of `where` clauses: they allow bounds
-on the left-hand side not only of type parameters `T`, but also of types (`i32` in this case). In this example, `i32` must implement
+on the left-hand side not only of type parameters `T`, but also of types
+(`i32` in this case). In this example, `i32` must implement
 `ConvertTo<T>`. Rather than defining what `i32` is (since that's obvious), the
 `where` clause here constrains `T`.
 
 # Default methods
 
-A default method can be added to a trait definition if it is already known how a typical implementor will define a method. For example, `is_invalid()` is defined as the opposite of `is_valid()`:
+A default method can be added to a trait definition if it is already known how
+a typical implementor will define a method. For example, `is_invalid()` is
+defined as the opposite of `is_valid()`:
 
 ```rust
 trait Foo {
@@ -443,7 +447,9 @@ trait Foo {
 }
 ```
 
-Implementors of the `Foo` trait need to implement `is_valid()` but not `is_invalid()` due to the added default behavior. This default behavior can still be overridden as in:
+Implementors of the `Foo` trait need to implement `is_valid()` but not
+`is_invalid()` due to the added default behavior. This default behavior can
+still be overridden as in:
 
 ```rust
 # trait Foo {

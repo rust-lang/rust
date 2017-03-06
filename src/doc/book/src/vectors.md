@@ -115,9 +115,10 @@ for i in v {
 }
 ```
 
-Note: You cannot use the vector again once you have iterated by taking ownership of the vector.
-You can iterate the vector multiple times by taking a reference to the vector whilst iterating.
-For example, the following code does not compile.
+Note: You cannot use the vector again once you have iterated by taking
+ownership of the vector. You can iterate the vector multiple times by taking a
+reference to the vector whilst iterating. For example, the following code does
+not compile.
 
 ```rust,ignore
 let v = vec![1, 2, 3, 4, 5];
