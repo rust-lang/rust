@@ -342,7 +342,7 @@ declare_features! (
     (active, abi_x86_interrupt, "1.17.0", Some(40180)),
 
     // Used to preserve symbols
-    (active, used, "1.17.0", None),
+    (active, used, "1.17.0", Some(40289)),
 );
 
 declare_features! (
