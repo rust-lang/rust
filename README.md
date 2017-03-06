@@ -149,7 +149,7 @@ $ ./configure
 $ make && sudo make install
 ```
 
-When using the configure script, the generated config.mk` file may override the
+When using the configure script, the generated `config.mk` file may override the
 `config.toml` file. To go back to the `config.toml` file, delete the generated
 `config.mk` file.
 
