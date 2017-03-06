@@ -152,7 +152,11 @@ impl<'tcx> fmt::Display for Pattern<'tcx> {
                         Some(&adt_def.variants[variant_index])
                     }
                     _ => if let ty::TyAdt(adt, _) = self.ty.sty {
-                        Some(adt.struct_variant())
+                        if adt.is_univariant() {
+                            Some(&adt.variants[0])
+                        } else {
+                            None
+                        }
                     } else {
                         None
                     }
