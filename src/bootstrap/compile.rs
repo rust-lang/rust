@@ -417,7 +417,10 @@ pub fn tool(build: &Build, stage: u32, target: &str, tool: &str) {
     // build.clear_if_dirty(&out_dir, &libstd_stamp(build, stage, &host, target));
 
     let mut cargo = build.cargo(&compiler, Mode::Tool, target, "build");
-    let dir = build.src.join("src/tools").join(tool);
+    let mut dir = build.src.join(tool);
+    if !dir.exists() {
+        dir = build.src.join("src/tools").join(tool);
+    }
     cargo.arg("--manifest-path").arg(dir.join("Cargo.toml"));
 
     // We don't want to build tools dynamically as they'll be running across

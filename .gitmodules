@@ -19,7 +19,7 @@
 	path = src/liblibc
 	url = https://github.com/rust-lang/libc.git
 [submodule "src/tools/cargo"]
-	path = src/tools/cargo
+	path = cargo
 	url = https://github.com/rust-lang/cargo
 [submodule "reference"]
 	path = src/doc/reference
