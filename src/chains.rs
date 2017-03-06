@@ -162,7 +162,10 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
         .iter()
         .fold(0, |a, b| a + first_line_width(b)) + parent_rewrite.len();
 
-    let veto_single_line = if context.config.take_source_hints && subexpr_list.len() > 1 {
+    let veto_single_line = if subexpr_list.len() > context.config.chain_one_line_max - 1 {
+        // -1 above because subexpr_list does not include the parent.
+        true
+    } else if context.config.take_source_hints && subexpr_list.len() > 1 {
         // Look at the source code. Unless all chain elements start on the same
         // line, we won't consider putting them on a single line either.
         let last_span = context.snippet(mk_sp(subexpr_list[1].span.hi, total_span.hi));

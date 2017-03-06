@@ -378,6 +378,7 @@ create_config! {
     report_fixme: ReportTactic, ReportTactic::Never,
         "Report all, none or unnumbered occurrences of FIXME in source file comments";
     chain_indent: BlockIndentStyle, BlockIndentStyle::Tabbed, "Indentation of chain";
+    chain_one_line_max: usize, 4, "Maximum number of elements in a chain to fit on a single line";
     reorder_imports: bool, false, "Reorder import statements alphabetically";
     reorder_imported_names: bool, false,
         "Reorder lists of names in import statements alphabetically";
@@ -386,7 +387,7 @@ create_config! {
                                                 if-else expressions.";
     format_strings: bool, false, "Format string literals where necessary";
     force_format_strings: bool, false, "Always format string literals";
-    take_source_hints: bool, true, "Retain some formatting characteristics from the source code";
+    take_source_hints: bool, false, "Retain some formatting characteristics from the source code";
     hard_tabs: bool, false, "Use tab characters for indentation, spaces for alignment";
     wrap_comments: bool, false, "Break comments to fit on the line";
     normalize_comments: bool, false, "Convert /* */ comments to // comments where possible";
