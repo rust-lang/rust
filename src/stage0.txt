@@ -1,4 +1,4 @@
-# This file describes the stage0 compiler that's used to then bootstrap the Rust
+# This file describes the stage0 compiler that's used to bootstrap the Rust
 # compiler itself. For the rustbuild build system, this also describes the
 # relevant Cargo revision that we're using.
 #

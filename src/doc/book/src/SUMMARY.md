@@ -53,7 +53,8 @@
     * [FFI](ffi.md)
     * [Borrow and AsRef](borrow-and-asref.md)
     * [Release Channels](release-channels.md)
-    * [Using Rust without the standard library](using-rust-without-the-standard-library.md)
+    * [Using Rust without the standard
+      library](using-rust-without-the-standard-library.md)
     * [Procedural Macros (and custom derive)](procedural-macros.md)
 * [Glossary](glossary.md)
 * [Syntax Index](syntax-index.md)

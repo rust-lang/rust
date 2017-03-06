@@ -30,7 +30,8 @@ nicknamed 'The Rust Bookshelf.'
 * [The Rust Programming Language][book] teaches you how to program in Rust.
 * [The Unstable Book][unstable-book] has documentation for unstable features.
 * [The Rustonomicon][nomicon] is your guidebook to the dark arts of unsafe Rust.
-* [The Reference][ref] is not a formal spec, but is more detailed and comprehensive than the book.
+* [The Reference][ref] is not a formal spec, but is more detailed and
+  comprehensive than the book.
 
 Another few words about the reference: it is guaranteed to be accurate, but not
 complete. We now have a policy that all new features must be included in the
