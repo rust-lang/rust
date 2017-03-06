@@ -90,15 +90,12 @@ boilerplate is a definitive plus to the language and might be one of the most in
 # Detailed design
 [design]: #detailed-design
 
+## Syntax
+
 The syntax chosen to make a *trait alias* is:
 
 ```rust
 trait TraitAlias = Trait;
-```
-It creates a new trait alias `TraitAlias` that will resolve to `Trait`.
-
-```rust
-trait DebugAlias = Debug;
 ```
 
 Trait aliasing to combinations of traits is also provided with the standard `+` construct:
@@ -113,54 +110,103 @@ Optionally, if needed, one can provide a `where` clause to express *bounds*:
 trait DebugDefault = Debug where Self: Default; // same as the example above
 ```
 
-Furthermore, it’s possible to use only the `where` clause by using the special syntax `= _`:
+Furthermore, it’s possible to use only the `where` clause by leaving the list of traits empty:
 
 ```rust
-trait DebugDefault = _ where Self: Debug + Default;
+trait DebugDefault = where Self: Debug + Default;
 ```
 
-Trait aliases can be used in any place arbitrary bounds would be syntactically legal. However, you
-cannot use them in `impl` place but can have them as *trait objects*, in *where-clauses* and *type
-parameters declarations* of course.
+Specifically, the grammar being added is, in informal notation:
+
+```
+ATTRIBUTE* VISIBILITY? trait IDENTIFIER(<GENERIC_PARAMS>)? = GENERIC_BOUNDS (where PREDICATES)?;
+```
+
+`GENERIC_BOUNDS` is a list of zero or more traits and lifetimes separated by `+`, the same as the current syntax for bounds on a type parameter, and `PREDICATES` is a comma-separated list of zero or more predicates, just like any other `where` clause. A trait alias containing only lifetimes (`trait Static = 'static;`) is not allowed.
+
+## Semantics
+
+Trait aliases can be used in any place arbitrary bounds would be syntactically legal.
+
+You cannot directly `impl` a trait alias, but can have them as *trait objects*, in *where-clauses* and *type
+parameter declarations*.
+
+When using a trait alias as an object type, it is subject to object safety restrictions _after_ substituting the aliased traits. This means:
+
+1. It contains an object safe trait and zero or more of these other bounds: `Send`, `Sync`, `'static` (that is, `trait Show = Display + Debug;` would not be object safe).
+2. All the associated types of the trait need to be specified.
+
+Some examples:
+
+```rust
+trait Sink = Sync;
+trait PrintableIterator = Display + Iterator;
+trait IntIterator = Iterator<Item=i32>;
+
+fn foo<T: PrintableIterator>(...) { ... } // ok
+fn baz1(x: Box<PrintableIterator>) { ... } // ERROR: associated type not specified
+fn baz2(x: Box<PrintableIterator<Item=i32>>) { ... } // ok
+fn baz3(x: Box<IntIterator + Sink + 'static>) { ... } // ok (*)
+```
+
+The lines marked with `(*)` require [#24010](https://github.com/rust-lang/rust/issues/24010) to be fixed.
 
 # Drawbacks
 [drawbacks]: #drawbacks
 
-The syntax `trait TraitAlias = Trait` makes parsers need a lookhead.
+- Adds another construct to the language.
+
+- The syntax `trait TraitAlias = Trait` requires lookahead in the parser to disambiguate a trait from a trait alias.
 
 # Alternatives
 [alternatives]: #alternatives
 
-It’s possible to create a new trait that derives the trait to alias, and provide a universal `impl`:
+- It’s possible to create a new trait that derives the trait to alias, and provide a universal `impl`:
+    
+    ```rust
+    trait Foo {}
+    
+    trait FooFakeAlias: Foo {}
+    
+    impl<T> Foo for T where T: FooFakeAlias {}
+    ```
+    
+    This works for trait objects and trait bounds only. You cannot implement `FooFakeAlias` directly
+    because you need to implement `Foo` first – hence, you don’t really need `FooFakeAlias` if you can
+    implement `Foo`.
+    
+    There’s currently no alternative to the impl problem described here.
 
-```rust
-trait Foo {}
-
-trait FooFakeAlias: Foo {}
-
-impl<T> Foo for T where T: FooFakeAlias {}
-```
-
-This works for trait objects and trait bounds only. You cannot implement `FooFakeAlias` directly
-because you need to implement `Foo` first – hence, you don’t really need `FooFakeAlias` if you can
-implement `Foo`.
-
-There’s currently no alternative to the impl problem described here.
+- Similar to Haskell's ContraintKinds, we could declare an entire predicate as a reified list of constraints, instead of creating an alias for a set of supertraits and predicates. Syntax would be something like `constraint Foo<T> = T: Bar, Vec<T>: Baz;`, used as `fn quux<T>(...) where Foo<T> { ... }` (i.e. direct substitution). Trait object usage is unclear.
 
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
-What about bounds on type variable declaration in the trait alias? Consider the following:
+- Should we use `type` as the keyword instead of `trait`?
 
-```rust
-trait Foo<T: Bar> = PartialEq<T>
-```
+    `type Foo = Bar;` already creates an alias `Foo` that can be used as a trait object.
+    
+    If we used `type` for the keyword, this would imply that `Foo` could also be used as a bound as well. If we use `trait` as proposed in the body of the RFC, then `type Foo = Bar;` and `trait Foo = Bar;` _both_ create an alias for the object type, but only the latter creates an alias that can be used as a bound, which is a confusing bit of redundancy.
+    
+    However, this mixes the concepts of types and traits, which are different, and allows nonsense like `type Foo = Rc<i32> + f32;` to parse.
+    
+- Which bounds need to be repeated when using a trait alias?
 
-`PartialEq` has no super-trait `Bar`, but we’re adding one via our trait alias. What is the behavior
-of such a feature? We can desugar it to:
+    [RFC 1927](https://github.com/rust-lang/rfcs/pull/1927) intends to change the rules here for traits, and we likely want to have the rules for trait aliases be the same to avoid confusion.
+    
+    The `contraint` alternative sidesteps this issue.
 
-```rust
-trait Foo<T> = _ where Self: PartialEq<T>, T: Bar
-```
+- What about bounds on type variable declaration in the trait alias? Consider the following:
 
-This semantic has to be discussed a bit more.
+    ```rust
+    trait Foo<T: Bar> = PartialEq<T>;
+    ```
+    
+    `PartialEq` has no super-trait `Bar`, but we’re adding one via our trait alias. What is the behavior
+    of such a feature? One possible desugaring is:
+    
+    ```rust
+    trait Foo<T> = where Self: PartialEq<T>, T: Bar;
+    ```
+    
+
