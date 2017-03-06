@@ -891,7 +891,7 @@ impl<'a> Parser<'a> {
 
         self.parse_seq_to_before_tokens(kets,
                                         SeqSep::none(),
-                                        |p| p.parse_token_tree(),
+                                        |p| Ok(p.parse_token_tree()),
                                         |mut e| handler.cancel(&mut e));
     }
 
@@ -1267,7 +1267,7 @@ impl<'a> Parser<'a> {
                                 break;
                             }
                             token::OpenDelim(token::Brace) => {
-                                self.parse_token_tree()?;
+                                self.parse_token_tree();
                                 break;
                             }
                             _ => self.bump(),
@@ -2101,10 +2101,10 @@ impl<'a> Parser<'a> {
 
     fn expect_delimited_token_tree(&mut self) -> PResult<'a, (token::DelimToken, ThinTokenStream)> {
         match self.token {
-            token::OpenDelim(delim) => self.parse_token_tree().map(|tree| match tree {
-                TokenTree::Delimited(_, delimited) => (delim, delimited.stream().into()),
+            token::OpenDelim(delim) => match self.parse_token_tree() {
+                TokenTree::Delimited(_, delimited) => Ok((delim, delimited.stream().into())),
                 _ => unreachable!(),
-            }),
+            },
             _ => Err(self.fatal("expected open delimiter")),
         }
     }
@@ -2643,24 +2643,23 @@ impl<'a> Parser<'a> {
     }
 
     /// parse a single token tree from the input.
-    pub fn parse_token_tree(&mut self) -> PResult<'a, TokenTree> {
+    pub fn parse_token_tree(&mut self) -> TokenTree {
         match self.token {
             token::OpenDelim(..) => {
                 let frame = mem::replace(&mut self.token_cursor.frame,
                                          self.token_cursor.stack.pop().unwrap());
                 self.span = frame.span;
                 self.bump();
-                return Ok(TokenTree::Delimited(frame.span, Delimited {
+                TokenTree::Delimited(frame.span, Delimited {
                     delim: frame.delim,
                     tts: frame.tree_cursor.original_stream().into(),
-                }));
+                })
             },
             token::CloseDelim(_) | token::Eof => unreachable!(),
             _ => {
                 let token = mem::replace(&mut self.token, token::Underscore);
-                let res = Ok(TokenTree::Token(self.span, token));
                 self.bump();
-                res
+                TokenTree::Token(self.prev_span, token)
             }
         }
     }
@@ -2670,7 +2669,7 @@ impl<'a> Parser<'a> {
     pub fn parse_all_token_trees(&mut self) -> PResult<'a, Vec<TokenTree>> {
         let mut tts = Vec::new();
         while self.token != token::Eof {
-            tts.push(self.parse_token_tree()?);
+            tts.push(self.parse_token_tree());
         }
         Ok(tts)
     }
