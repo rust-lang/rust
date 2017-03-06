@@ -125,7 +125,7 @@ Section: Creating a string
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Utf8Error {
     valid_up_to: usize,
-    invalid_length: Option<u8>,
+    error_len: Option<u8>,
 }
 
 impl Utf8Error {
@@ -161,12 +161,14 @@ impl Utf8Error {
     ///   If a byte stream (such as a file or a network socket) is being decoded incrementally,
     ///   this could be a valid `char` whose UTF-8 byte sequence is spanning multiple chunks.
     ///
-    /// * `Some(index)`: an unexpected byte was encountered.
-    ///   The index provided is where decoding should resume
+    /// * `Some(len)`: an unexpected byte was encountered.
+    ///   The length provided is that of the invalid byte sequence
+    ///   that starts at the index given by `valid_up_to()`.
+    ///   Decoding should resume after that sequence
     ///   (after inserting a U+FFFD REPLACEMENT CHARACTER) in case of lossy decoding.
-    #[unstable(feature = "utf8_error_resume_from", reason ="new", issue = "0")]
-    pub fn resume_from(&self) -> Option<usize> {
-        self.invalid_length.map(|l| self.valid_up_to + l as usize)
+    #[unstable(feature = "utf8_error_error_len", reason ="new", issue = "0")]
+    pub fn error_len(&self) -> Option<usize> {
+        self.error_len.map(|len| len as usize)
     }
 }
 
@@ -316,9 +318,9 @@ pub unsafe fn from_utf8_unchecked(v: &[u8]) -> &str {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for Utf8Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if let Some(invalid_length) = self.invalid_length {
+        if let Some(error_len) = self.error_len {
             write!(f, "invalid utf-8 sequence of {} bytes from index {}",
-                   invalid_length, self.valid_up_to)
+                   error_len, self.valid_up_to)
         } else {
             write!(f, "incomplete utf-8 byte sequence from index {}", self.valid_up_to)
         }
@@ -1263,10 +1265,10 @@ fn run_utf8_validation(v: &[u8]) -> Result<(), Utf8Error> {
     while index < len {
         let old_offset = index;
         macro_rules! err {
-            ($invalid_length: expr) => {
+            ($error_len: expr) => {
                 return Err(Utf8Error {
                     valid_up_to: old_offset,
-                    invalid_length: $invalid_length,
+                    error_len: $error_len,
                 })
             }
         }
