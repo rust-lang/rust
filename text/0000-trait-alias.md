@@ -193,7 +193,7 @@ fn string_iterator_debug() -> impl Debug + StringIterator {} // used in an impl 
 
 As shown above, a *trait alias* can substitute associated types. It doesn’t have to substitute them all. In that case, the *trait alias*
 is left incomplete and you have to pass it the associated types that are left. Example with the
-[tokio case]([tokio example](#second-example-ergonomic-collections-and-scrapping-boilerplate):
+[tokio case](#second-example-ergonomic-collections-and-scrapping-boilerplate):
 
 ```rust
 pub trait Service {
