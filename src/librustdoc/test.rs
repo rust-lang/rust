@@ -422,8 +422,11 @@ impl Collector {
                     as_test_harness: bool, compile_fail: bool, error_codes: Vec<String>,
                     line: usize, filename: String) {
         let name = if self.use_headers {
-            let s = self.current_header.as_ref().map(|s| &**s).unwrap_or("");
-            format!("{} - {} (line {})", filename, s, line)
+            if let Some(ref header) = self.current_header {
+                format!("{} - {} (line {})", filename, header, line)
+            } else {
+                format!("{} - (line {})", filename, line)
+            }
         } else {
             format!("{} - {} (line {})", filename, self.names.join("::"), line)
         };
