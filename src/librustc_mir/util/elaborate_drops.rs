@@ -525,8 +525,8 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
             }],
             terminator: Some(Terminator {
                 kind: TerminatorKind::Call {
-                    func: Operand::item(tcx, drop_fn.def_id, substs,
-                                        self.source_info.span),
+                    func: Operand::function_handle(tcx, drop_fn.def_id, substs,
+                                                   self.source_info.span),
                     args: vec![Operand::Consume(Lvalue::Local(ref_lvalue))],
                     destination: Some((unit_temp, succ)),
                     cleanup: unwind,
@@ -629,7 +629,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         let substs = tcx.mk_substs(iter::once(Kind::from(ty)));
 
         let call = TerminatorKind::Call {
-            func: Operand::item(tcx, free_func, substs, self.source_info.span),
+            func: Operand::function_handle(tcx, free_func, substs, self.source_info.span),
             args: vec![Operand::Consume(self.lvalue.clone())],
             destination: Some((unit_temp, target)),
             cleanup: None
