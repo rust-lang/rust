@@ -1646,6 +1646,10 @@ impl str {
     /// 'Lowercase' is defined according to the terms of the Unicode Derived Core Property
     /// `Lowercase`.
     ///
+    /// Since some characters can expand into multiple characters when changing
+    /// the case, this function returns a [`String`] instead of modifying the
+    /// parameter in-place.
+    ///
     /// [`String`]: string/struct.String.html
     ///
     /// # Examples
@@ -1717,6 +1721,10 @@ impl str {
     ///
     /// 'Uppercase' is defined according to the terms of the Unicode Derived Core Property
     /// `Uppercase`.
+    ///
+    /// Since some characters can expand into multiple characters when changing
+    /// the case, this function returns a [`String`] instead of modifying the
+    /// parameter in-place.
     ///
     /// [`String`]: string/struct.String.html
     ///
