@@ -219,6 +219,14 @@ trait MyHttpService = HttpService<Future = MyFuture>; // assume MyFuture exists 
 # Alternatives
 [alternatives]: #alternatives
 
+- Should we use `type` as the keyword instead of `trait`?
+
+    `type Foo = Bar;` already creates an alias `Foo` that can be used as a trait object.
+    
+    If we used `type` for the keyword, this would imply that `Foo` could also be used as a bound as well. If we use `trait` as proposed in the body of the RFC, then `type Foo = Bar;` and `trait Foo = Bar;` _both_ create an alias for the object type, but only the latter creates an alias that can be used as a bound, which is a confusing bit of redundancy.
+    
+    However, this mixes the concepts of types and traits, which are different, and allows nonsense like `type Foo = Rc<i32> + f32;` to parse.
+
 - It’s possible to create a new trait that derives the trait to alias, and provide a universal `impl`:
     
     ```rust
@@ -239,15 +247,7 @@ trait MyHttpService = HttpService<Future = MyFuture>; // assume MyFuture exists 
 
 # Unresolved questions
 [unresolved]: #unresolved-questions
-
-- Should we use `type` as the keyword instead of `trait`?
-
-    `type Foo = Bar;` already creates an alias `Foo` that can be used as a trait object.
-    
-    If we used `type` for the keyword, this would imply that `Foo` could also be used as a bound as well. If we use `trait` as proposed in the body of the RFC, then `type Foo = Bar;` and `trait Foo = Bar;` _both_ create an alias for the object type, but only the latter creates an alias that can be used as a bound, which is a confusing bit of redundancy.
-    
-    However, this mixes the concepts of types and traits, which are different, and allows nonsense like `type Foo = Rc<i32> + f32;` to parse.
-    
+ 
 - Which bounds need to be repeated when using a trait alias?
 
     [RFC 1927](https://github.com/rust-lang/rfcs/pull/1927) intends to change the rules here for traits, and we likely want to have the rules for trait aliases be the same to avoid confusion.
