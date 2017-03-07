@@ -1,8 +1,8 @@
 [package]
 
 name = "rustfmt"
-version = "0.7.1"
-authors = ["Nicholas Cameron <ncameron@mozilla.com>", "Marcus Klaas <mail@marcusklaas.nl>", "The Rustfmt contributors"]
+version = "0.8.0"
+authors = ["Nicholas Cameron <ncameron@mozilla.com>", "The Rustfmt developers"]
 description = "Tool to find and fix Rust formatting issues"
 repository = "https://github.com/rust-lang-nursery/rustfmt"
 readme = "README.md"
