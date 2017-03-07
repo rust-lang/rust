@@ -1286,7 +1286,7 @@ pub struct Destructor {
     /// invoked even when there are lifetimes in the type-structure of
     /// `adt` that do not strictly outlive the adt value itself.
     /// (This allows programs to make cyclic structures without
-    /// resorting to unasfe means; see RFCs 769 and 1238).
+    /// resorting to unsafe means; see RFCs 769 and 1238).
     pub is_dtorck: bool,
 }
 
