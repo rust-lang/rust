@@ -275,8 +275,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         // in case there is no drop function to be called, this still needs to be initialized
         self.memory.write_usize(vtable, 0)?;
         if let ty::TyAdt(adt_def, substs) = trait_ref.self_ty().sty {
-            if let Some(drop_def_id) = adt_def.destructor(self.tcx) {
-                let fn_ty = match self.tcx.item_type(drop_def_id).sty {
+            if let Some(destructor) = adt_def.destructor(self.tcx) {
+                let fn_ty = match self.tcx.item_type(destructor.did).sty {
                     ty::TyFnDef(_, _, fn_ty) => self.tcx.erase_regions(&fn_ty),
                     _ => bug!("drop method is not a TyFnDef"),
                 };

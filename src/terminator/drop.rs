@@ -97,7 +97,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let (adt_ptr, extra) = lval.to_ptr_and_extra();
 
                 // run drop impl before the fields' drop impls
-                if let Some(drop_def_id) = adt_def.destructor(self.tcx) {
+                if let Some(destructor) = adt_def.destructor(self.tcx) {
                     let trait_ref = ty::Binder(ty::TraitRef {
                         def_id: self.tcx.lang_items.drop_trait().unwrap(),
                         substs: self.tcx.mk_substs_trait(ty, &[]),
@@ -112,7 +112,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         LvalueExtra::Length(n) => Value::ByValPair(PrimVal::Ptr(adt_ptr), PrimVal::from_u128(n as u128)),
                         LvalueExtra::Vtable(vtable) => Value::ByValPair(PrimVal::Ptr(adt_ptr), PrimVal::Ptr(vtable)),
                     };
-                    drop.push((drop_def_id, val, vtable.substs));
+                    drop.push((destructor.did, val, vtable.substs));
                 }
 
                 let layout = self.type_layout(ty)?;
