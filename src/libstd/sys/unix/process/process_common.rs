@@ -146,6 +146,9 @@ impl Command {
 
     pub fn env(&mut self, key: &OsStr, val: &OsStr) {
         let new_key = pair_to_key(key, val, &mut self.saw_nul, &mut self.saw_malformed_env_key);
+        if self.saw_malformed_env_key {
+            println!("{:?} {:?}", key, val);
+        }
 
         let (map, envp) = self.init_env_map();
 
@@ -170,6 +173,9 @@ impl Command {
 
     pub fn env_remove(&mut self, key: &OsStr) {
         pair_to_key(key, OsStr::new(""), &mut self.saw_nul, &mut self.saw_malformed_env_key);
+        if self.saw_malformed_env_key {
+            println!("{:?}", key);
+        }
 
         let (map, envp) = self.init_env_map();
 
