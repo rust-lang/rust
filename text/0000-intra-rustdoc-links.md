@@ -120,12 +120,79 @@ will be rendered as
 You can use <a href="../bars/struct.Bar.html"><code>bars::Bar</code></a> for that.
 ```
 
+## Resolving paths
+
+The Rust paths used in links are resolved
+relative to the item in whose documentation they appear.
+
+For example:
+
+```rust
+/// Container for a [Dolor](ipsum::Dolor).
+struct Lorem(ipsum::Dolor);
+
+/// Contains various things, mostly [Dolor](ipsum::Dolor) and a helper function,
+/// [sit](ipsum::sit).
+mod ipsum {
+    struct Dolor;
+
+    /// Takes a <Dolor> and does things.
+    fn sit(d: Dolor) {}
+}
+
+mod amet {
+  //! Helper types, can be used with the [ipsum](super::ipsum) module.
+}
+```
+
+## Path ambiguities
+
+Rust allows items to have the same name. A short evaluation revealed that
+
+- unit and tuple struct names
+  can conflict with
+  function names,
+- unit and tuple struct names
+  can conflict with
+  enum names,
+- and regular struct, enum, and trait names
+  can conflict with
+  each other
+  (but not function names).
+
+It appears the ambiguity can resolved
+by being able to restrict the path to function names.
+We propose that in case of ambiguity,
+you can add `()` as a suffix to path
+to only search for functions.
+(Additionally, to link to macros, you must add `!` to the path.)
+
+This was originally proposed by
+[@kennytm](https://github.com/kennytm)
+[here](https://github.com/rust-lang/rfcs/pull/1946#issuecomment-284719684),
+going into more details:
+
+> `<syntax::ptr::P>` — First search for type-like items. If not found, search for value-like items
+> `<syntax::ptr::P()>` — Only search for functions.
+> `<std::stringify!>` — Only search for macros.
+
 ## Linking to methods
 
 To link to methods, it may be necessary to use fully-qualified paths,
 like `<Foo as Bar>::bar`.
 We have yet to analyse in which cases this is necessary,
 and this syntax is currently not described in [the reference's section on paths][ref-paths].
+
+## Linking to external crates
+
+Rustdoc is already able to link to external crates,
+and renders documentation for all dependencies by default.
+Referencing the standard library (or `core`)
+should generate links with a well-known base path,
+e.g. `https://doc.rust-lang.org/nightly/`.
+Referencing other external crates
+links to the pages Rustdoc has already rendered (or will render) for them.
+Special flags (e.g. `cargo doc --no-deps`) will not change this behavior.
 
 ## Errors
 
@@ -199,6 +266,7 @@ Maybe present an example use case of a module whose documentation links to sever
 - These links won't work when the doc comments are rendered with a default Markdown renderer.
 - The Rust paths might conflict with other valid links,
   though we could not think of any.
+
 
 # Alternatives
 [alternatives]: #alternatives
