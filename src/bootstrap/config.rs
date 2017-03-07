@@ -59,6 +59,7 @@ pub struct Config {
     pub llvm_static_stdcpp: bool,
     pub llvm_link_shared: bool,
     pub llvm_targets: Option<String>,
+    pub llvm_clean_rebuild: bool,
 
     // rust codegen options
     pub rust_optimize: bool,
@@ -179,6 +180,7 @@ struct Llvm {
     version_check: Option<bool>,
     static_libstdcpp: Option<bool>,
     targets: Option<String>,
+    clean_rebuild: Option<bool>,
 }
 
 #[derive(RustcDecodable, Default, Clone)]
@@ -239,6 +241,7 @@ impl Config {
     pub fn parse(build: &str, file: Option<PathBuf>) -> Config {
         let mut config = Config::default();
         config.llvm_optimize = true;
+        config.llvm_clean_rebuild = true;
         config.use_jemalloc = true;
         config.backtrace = true;
         config.rust_optimize = true;
@@ -332,6 +335,7 @@ impl Config {
             set(&mut config.llvm_release_debuginfo, llvm.release_debuginfo);
             set(&mut config.llvm_version_check, llvm.version_check);
             set(&mut config.llvm_static_stdcpp, llvm.static_libstdcpp);
+            set(&mut config.llvm_clean_rebuild, llvm.clean_rebuild);
             config.llvm_targets = llvm.targets.clone();
         }
 

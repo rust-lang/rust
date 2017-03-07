@@ -53,6 +53,13 @@
 # Rust team and file an issue if you need assistance in porting!
 #targets = "X86;ARM;AArch64;Mips;PowerPC;SystemZ;JSBackend;MSP430;Sparc;NVPTX"
 
+# Delete LLVM build directory on LLVM rebuild.
+# This option's default (`true`) is optimized for CI needs, and CI wants to
+# perform clean full builds only (possibly accelerated by (s)ccache).
+# You may want to override this option for local builds to enable partial LLVM
+# rebuilds.
+#clean-rebuild = true
+
 # =============================================================================
 # General build configuration options
 # =============================================================================
