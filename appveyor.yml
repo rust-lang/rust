@@ -144,10 +144,10 @@ on_failure:
   - cat %CD%/sccache.log
 
 cache:
-  - "build/i686-pc-windows-msvc/llvm -> src/rustllvm/llvm-auto-clean-trigger"
-  - "build/x86_64-pc-windows-msvc/llvm -> src/rustllvm/llvm-auto-clean-trigger"
-  - "i686-pc-windows-msvc/llvm -> src/rustllvm/llvm-auto-clean-trigger"
-  - "x86_64-pc-windows-msvc/llvm -> src/rustllvm/llvm-auto-clean-trigger"
+  - "build/i686-pc-windows-msvc/llvm -> src/rustllvm/llvm-rebuild-trigger"
+  - "build/x86_64-pc-windows-msvc/llvm -> src/rustllvm/llvm-rebuild-trigger"
+  - "i686-pc-windows-msvc/llvm -> src/rustllvm/llvm-rebuild-trigger"
+  - "x86_64-pc-windows-msvc/llvm -> src/rustllvm/llvm-rebuild-trigger"
 
 branches:
   only:
