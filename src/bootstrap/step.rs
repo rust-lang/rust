@@ -581,7 +581,7 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
               .stage(0)
          })
          .default(build.config.docs)
-         .run(move |s| doc::rustbook(build, s.target, "book"));
+         .run(move |s| doc::book(build, s.target, "book"));
     rules.doc("doc-nomicon", "src/doc/nomicon")
          .dep(move |s| {
              s.name("tool-rustbook")
