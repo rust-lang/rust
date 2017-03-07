@@ -266,3 +266,5 @@ trait MyHttpService = HttpService<Future = MyFuture>; // assume MyFuture exists 
     ```rust
     trait Foo<T> = where Self: PartialEq<T>, T: Bar;
     ```
+
+    [Issue 21903](https://github.com/rust-lang/rust/issues/21903) explains the same problem for type aliasing.
