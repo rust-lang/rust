@@ -53,6 +53,11 @@ pub fn rustbook(build: &Build, target: &str, name: &str) {
                    .arg(out));
 }
 
+pub fn book(build: &Build, target: &str, name: &str) {
+    rustbook(build, target, &format!("{}/first-edition", name));
+    rustbook(build, target, &format!("{}/second-edition", name));
+}
+
 /// Generates all standalone documentation as compiled by the rustdoc in `stage`
 /// for the `target` into `out`.
 ///
