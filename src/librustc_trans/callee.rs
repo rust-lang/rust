@@ -19,13 +19,13 @@ pub use self::CalleeData::*;
 use llvm::{self, ValueRef, get_params};
 use rustc::hir::def_id::DefId;
 use rustc::ty::subst::{Substs, Subst};
-use rustc::traits;
 use abi::{Abi, FnType};
 use attributes;
 use builder::Builder;
 use common::{self, CrateContext};
 use cleanup::CleanupScope;
 use mir::lvalue::LvalueRef;
+use monomorphize;
 use consts;
 use common::instance_ty;
 use declare;
@@ -37,8 +37,6 @@ use trans_item::TransItem;
 use type_of;
 use rustc::ty::{self, Ty, TypeFoldable};
 use std::iter;
-
-use syntax_pos::DUMMY_SP;
 
 use mir::lvalue::Alignment;
 
@@ -60,94 +58,39 @@ pub struct Callee<'tcx> {
 }
 
 impl<'tcx> Callee<'tcx> {
-    /// Function pointer.
-    pub fn ptr(llfn: ValueRef, ty: Ty<'tcx>) -> Callee<'tcx> {
-        Callee {
-            data: Fn(llfn),
-            ty: ty
-        }
-    }
-
     /// Function or method definition.
     pub fn def<'a>(ccx: &CrateContext<'a, 'tcx>, def_id: DefId, substs: &'tcx Substs<'tcx>)
                    -> Callee<'tcx> {
-        let tcx = ccx.tcx();
-
-        if let Some(trait_id) = tcx.trait_of_item(def_id) {
-            return Callee::trait_method(ccx, trait_id, def_id, substs);
-        }
-
-        let instance = ty::Instance::new(def_id, substs);
-        let fn_ty = instance_ty(ccx.shared(), &instance);
-        if let ty::TyFnDef(.., f) = fn_ty.sty {
-            if f.abi() == Abi::RustIntrinsic || f.abi() == Abi::PlatformIntrinsic {
-                return Callee {
-                    data: Intrinsic,
-                    ty: fn_ty
+        let instance = monomorphize::resolve(ccx.shared(), def_id, substs);
+        let ty = instance_ty(ccx.shared(), &instance);
+        let data = match instance.def {
+            ty::InstanceDef::Intrinsic(_) => Intrinsic,
+            ty::InstanceDef::ClosureOnceShim { .. } => {
+                let closure_ty = instance.substs.type_at(0);
+                let (closure_def_id, closure_substs) = match closure_ty.sty {
+                    ty::TyClosure(def_id, substs) => (def_id, substs),
+                    _ => bug!("bad closure instance {:?}", instance)
                 };
-            }
-        }
 
-        let (llfn, ty) = get_fn(ccx, instance);
-        Callee::ptr(llfn, ty)
-    }
-
-    /// Trait method, which has to be resolved to an impl method.
-    pub fn trait_method<'a>(ccx: &CrateContext<'a, 'tcx>,
-                            trait_id: DefId,
-                            def_id: DefId,
-                            substs: &'tcx Substs<'tcx>)
-                            -> Callee<'tcx> {
-        let tcx = ccx.tcx();
-
-        let trait_ref = ty::TraitRef::from_method(tcx, trait_id, substs);
-        let trait_ref = tcx.normalize_associated_type(&ty::Binder(trait_ref));
-        match common::fulfill_obligation(ccx.shared(), DUMMY_SP, trait_ref) {
-            traits::VtableImpl(vtable_impl) => {
-                let name = tcx.item_name(def_id);
-                let instance = common::find_method(tcx, name, substs, &vtable_impl);
-
-                // Translate the function, bypassing Callee::def.
-                // That is because default methods have the same ID as the
-                // trait method used to look up the impl method that ended
-                // up here, so calling Callee::def would infinitely recurse.
-                let (llfn, ty) = get_fn(ccx, instance);
-                Callee::ptr(llfn, ty)
-            }
-            traits::VtableClosure(vtable_closure) => {
-                // The substitutions should have no type parameters remaining
-                // after passing through fulfill_obligation
-                let trait_closure_kind = tcx.lang_items.fn_trait_kind(trait_id).unwrap();
-                let instance = Instance::new(def_id, substs);
-                let llfn = trans_closure_method(
+                Fn(trans_fn_once_adapter_shim(
                     ccx,
-                    vtable_closure.closure_def_id,
-                    vtable_closure.substs,
+                    closure_def_id,
+                    closure_substs,
                     instance,
-                    trait_closure_kind);
+                    get_fn(
+                        ccx,
+                        Instance::new(closure_def_id, closure_substs.substs)
+                    )
+                ))
+            }
+            ty::InstanceDef::Virtual(_, n) => Virtual(n),
+            ty::InstanceDef::FnPtrShim(..) |
+            ty::InstanceDef::Item(..) => {
+                Fn(get_fn(ccx, instance))
+            }
+        };
 
-                let method_ty = instance_ty(ccx.shared(), &instance);
-                Callee::ptr(llfn, method_ty)
-            }
-            traits::VtableFnPointer(data) => {
-                let instance = ty::Instance {
-                    def: ty::InstanceDef::FnPtrShim(def_id, data.fn_ty),
-                    substs: substs,
-                };
-
-                let (llfn, ty) = get_fn(ccx, instance);
-                Callee::ptr(llfn, ty)
-            }
-            traits::VtableObject(ref data) => {
-                Callee {
-                    data: Virtual(tcx.get_vtable_index_of_object_method(data, def_id)),
-                    ty: instance_ty(ccx.shared(), &Instance::new(def_id, substs))
-                }
-            }
-            vtable => {
-                bug!("resolved vtable bad vtable {:?} in trans", vtable);
-            }
-        }
+        Callee { data, ty }
     }
 
     /// Get the abi::FnType for a direct call. Mainly deals with the fact
@@ -155,7 +98,8 @@ impl<'tcx> Callee<'tcx> {
     /// The extra argument types are for variadic (extern "C") functions.
     pub fn direct_fn_type<'a>(&self, ccx: &CrateContext<'a, 'tcx>,
                               extra_args: &[Ty<'tcx>]) -> FnType {
-        let sig = ccx.tcx().erase_late_bound_regions_and_normalize(&self.ty.fn_sig());
+        let sig = common::ty_fn_sig(ccx, self.ty);
+        let sig = ccx.tcx().erase_late_bound_regions_and_normalize(&sig);
         let mut fn_ty = FnType::unadjusted(ccx, sig, extra_args);
         if let Virtual(_) = self.data {
             // Don't pass the vtable, it's not an argument of the virtual fn.
@@ -172,72 +116,6 @@ impl<'tcx> Callee<'tcx> {
             Virtual(_) => meth::trans_object_shim(ccx, self),
             Intrinsic => bug!("intrinsic {} getting reified", self.ty)
         }
-    }
-}
-
-fn trans_closure_method<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
-                                  def_id: DefId,
-                                  substs: ty::ClosureSubsts<'tcx>,
-                                  method_instance: Instance<'tcx>,
-                                  trait_closure_kind: ty::ClosureKind)
-                                  -> ValueRef
-{
-    // If this is a closure, redirect to it.
-    let (llfn, _) = get_fn(ccx, Instance::new(def_id, substs.substs));
-
-    // If the closure is a Fn closure, but a FnOnce is needed (etc),
-    // then adapt the self type
-    let llfn_closure_kind = ccx.tcx().closure_kind(def_id);
-
-    debug!("trans_closure_adapter_shim(llfn_closure_kind={:?}, \
-           trait_closure_kind={:?}, llfn={:?})",
-           llfn_closure_kind, trait_closure_kind, Value(llfn));
-
-    match needs_fn_once_adapter_shim(llfn_closure_kind, trait_closure_kind) {
-        Ok(true) => trans_fn_once_adapter_shim(ccx,
-                                               def_id,
-                                               substs,
-                                               method_instance,
-                                               llfn),
-        Ok(false) => llfn,
-        Err(()) => {
-            bug!("trans_closure_adapter_shim: cannot convert {:?} to {:?}",
-                 llfn_closure_kind,
-                 trait_closure_kind);
-        }
-    }
-}
-
-pub fn needs_fn_once_adapter_shim(actual_closure_kind: ty::ClosureKind,
-                                  trait_closure_kind: ty::ClosureKind)
-                                  -> Result<bool, ()>
-{
-    match (actual_closure_kind, trait_closure_kind) {
-        (ty::ClosureKind::Fn, ty::ClosureKind::Fn) |
-        (ty::ClosureKind::FnMut, ty::ClosureKind::FnMut) |
-        (ty::ClosureKind::FnOnce, ty::ClosureKind::FnOnce) => {
-            // No adapter needed.
-           Ok(false)
-        }
-        (ty::ClosureKind::Fn, ty::ClosureKind::FnMut) => {
-            // The closure fn `llfn` is a `fn(&self, ...)`.  We want a
-            // `fn(&mut self, ...)`. In fact, at trans time, these are
-            // basically the same thing, so we can just return llfn.
-            Ok(false)
-        }
-        (ty::ClosureKind::Fn, ty::ClosureKind::FnOnce) |
-        (ty::ClosureKind::FnMut, ty::ClosureKind::FnOnce) => {
-            // The closure fn `llfn` is a `fn(&self, ...)` or `fn(&mut
-            // self, ...)`.  We want a `fn(self, ...)`. We can produce
-            // this by doing something like:
-            //
-            //     fn call_once(self, ...) { call_mut(&self, ...) }
-            //     fn call_once(mut self, ...) { call_mut(&mut self, ...) }
-            //
-            // These are both the same at trans time.
-            Ok(true)
-        }
-        _ => Err(()),
     }
 }
 
@@ -307,7 +185,6 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     // the first argument (`self`) will be the (by value) closure env.
 
     let mut llargs = get_params(lloncefn);
-    let fn_ret = callee.ty.fn_ret();
     let fn_ty = callee.direct_fn_type(bcx.ccx, &[]);
     let self_idx = fn_ty.ret.is_indirect() as usize;
     let env_arg = &orig_fn_ty.args[0];
@@ -344,7 +221,7 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     }
     fn_ty.apply_attrs_callsite(llret);
 
-    if fn_ret.0.is_never() {
+    if sig.output().is_never() {
         bcx.unreachable();
     } else {
         self_scope.trans(&bcx);
@@ -372,7 +249,8 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
 /// - `substs`: values for each of the fn/method's parameters
 fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                     instance: Instance<'tcx>)
-                    -> (ValueRef, Ty<'tcx>) {
+                    -> ValueRef
+{
     let tcx = ccx.tcx();
 
     debug!("get_fn(instance={:?})", instance);
@@ -383,7 +261,7 @@ fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     let fn_ty = common::instance_ty(ccx.shared(), &instance);
     if let Some(&llfn) = ccx.instances().borrow().get(&instance) {
-        return (llfn, fn_ty);
+        return llfn;
     }
 
     let sym = ccx.symbol_map().get_or_compute(ccx.shared(),
@@ -455,5 +333,5 @@ fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     ccx.instances().borrow_mut().insert(instance, llfn);
 
-    (llfn, fn_ty)
+    llfn
 }

@@ -408,8 +408,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             bug!("empty_substs_for_def_id: {:?} has type parameters", item_def_id)
         })
     }
-
-
 }
 
 pub struct TypeIdHasher<'a, 'gcx: 'a+'tcx, 'tcx: 'a, W> {
