@@ -10,6 +10,7 @@ use rustc::traits;
 use rustc::ty::subst::Subst;
 use rustc::ty;
 use rustc::ty::layout::TargetDataLayout;
+use rustc::mir::transform::MirSource;
 use rustc_errors;
 use std::borrow::Cow;
 use std::env;
@@ -98,6 +99,17 @@ pub mod higher;
 pub fn differing_macro_contexts(lhs: Span, rhs: Span) -> bool {
     rhs.expn_id != lhs.expn_id
 }
+
+pub fn in_constant(cx: &LateContext, id: NodeId) -> bool {
+    let parent_id = cx.tcx.hir.get_parent(id);
+    match MirSource::from_node(cx.tcx, parent_id) {
+        MirSource::Fn(_) => false,
+        MirSource::Const(_) |
+        MirSource::Static(..) |
+        MirSource::Promoted(..) => true,
+    }
+}
+
 /// Returns true if this `expn_info` was expanded by any macro.
 pub fn in_macro<'a, T: LintContext<'a>>(cx: &T, span: Span) -> bool {
     cx.sess().codemap().with_expn_info(span.expn_id, |info| {
