@@ -186,7 +186,7 @@ fn iterate_object(si: &StringIterator) {} // used as trait object
 #### In an `impl Trait`
 
 ```rust
-fn string_iterator_debug() -> impl Debug + Iterator<Item=String> {} // used in an impl Trait
+fn string_iterator_debug() -> impl Debug + StringIterator {} // used in an impl Trait
 ```
 
 As shown above, a *trait alias* can substitute associated types. It doesn’t have to substitute them all. In that case, the *trait alias*
