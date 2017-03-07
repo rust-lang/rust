@@ -494,7 +494,7 @@ fn rewrite_closure(capture: ast::CaptureBy,
         rules: ast::BlockCheckMode::Default,
         span: body.span,
     };
-    return rewrite_closure_block(&block, prefix, context, body_shape.block());
+    return rewrite_closure_block(&block, prefix, context, body_shape);
 
     fn rewrite_closure_expr(expr: &ast::Expr,
                             prefix: &str,
