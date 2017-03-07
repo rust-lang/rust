@@ -6,7 +6,9 @@
 # Summary
 [summary]: #summary
 
-Traits can be aliased the same way types can be aliased with the `type` keyword.
+Traits can be aliased with the `trait TraitAlias = …;` construct. Currently, the right hand side is
+a bound – a single trait, a combination with `+` traits and lifetimes. Type parameters and
+lifetimes can be added to the *trait alias* if needed.
 
 # Motivation
 [motivation]: #motivation
