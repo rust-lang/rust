@@ -191,6 +191,10 @@ pub unsafe fn read_unaligned<T>(src: *const T) -> T {
 /// allocations or resources, so care must be taken not to overwrite an object
 /// that should be dropped.
 ///
+/// It does not immediately drop the contents of `src` either; it is rather
+/// *moved* into the memory location `dst` and will be dropped whenever that
+/// location goes out of scope.
+///
 /// This is appropriate for initializing uninitialized memory, or overwriting
 /// memory that has previously been `read` from.
 ///
