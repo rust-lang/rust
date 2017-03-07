@@ -132,9 +132,8 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
                 let method_ty = self.tcx.item_type(item.def_id);
                 let method_ty = method_ty.subst(self.tcx, substs);
                 return (method_ty,
-                        Literal::Item {
-                            def_id: item.def_id,
-                            substs: substs,
+                        Literal::Value {
+                            value: ConstVal::Function(item.def_id, substs),
                         });
             }
         }
