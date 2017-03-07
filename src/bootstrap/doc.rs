@@ -71,6 +71,15 @@ pub fn book(build: &Build, target: &str, name: &str) {
     // build the index page
     let index = format!("{}/index.md", name);
     invoke_rustdoc(build, target, &index);
+    
+    // build the redirect pages
+    for file in t!(fs::read_dir(build.src.join("src/doc/book/redirects"))) {
+        let file = t!(file);
+        let path = file.path();
+        let path = path.to_str().unwrap();
+
+        invoke_rustdoc(build, target, path);
+    }
 }
 
 fn invoke_rustdoc(build: &Build, target: &str, markdown: &str) {
