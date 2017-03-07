@@ -8,10 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait Tr: ?Sized {} //~ ERROR `?Trait` is not permitted in supertraits
-                    //~^ NOTE traits are `?Sized` by default
+trait Tr: ?Sized {} //~ WARN default bound relaxed
 
-type A1 = Tr + ?Sized; //~ ERROR `?Trait` is not permitted in trait object types
-type A2 = for<'a> Tr + ?Sized; //~ ERROR `?Trait` is not permitted in trait object types
+type A1 = Tr + ?Sized; //~ WARN default bound relaxed
+type A2 = for<'a> Tr + ?Sized; //~ WARN default bound relaxed
 
-fn main() {}
+fn main() { dummy_error } //~ ERROR cannot find value

@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[cfg(not(stage0))]
+use marker::Move;
+
 /// Used for immutable dereferencing operations, like `*v`.
 ///
 /// In addition to being used for explicit dereferencing operations with the
@@ -72,7 +75,12 @@
 pub trait Deref {
     /// The resulting type after dereferencing.
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg(stage0)]
     type Target: ?Sized;
+    /// The resulting type after dereferencing
+    #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg(not(stage0))]
+    type Target: ?Sized+?Move;
 
     /// Dereferences the value.
     #[stable(feature = "rust1", since = "1.0.0")]

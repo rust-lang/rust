@@ -560,9 +560,21 @@ define_print! {
                     cx.parameterized(f, principal.substs, principal.def_id, &projections)?;
                 }
 
+                let move_id = tcx.lang_items().move_trait().unwrap();
+
+                let mut is_move = false;
+
                 // Builtin bounds.
                 for did in self.auto_traits() {
-                    write!(f, " + {}", tcx.item_path_str(did))?;
+                    if move_id == did {
+                        is_move = true;
+                    } else {
+                        write!(f, " + {}", tcx.item_path_str(did))?;
+                    }
+                }
+
+                if !is_move {
+                    write!(f, " + ?Move")?;
                 }
 
                 Ok(())

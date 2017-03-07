@@ -22,9 +22,11 @@ impl !Type for Trait
 Example:
 
 ```rust
-#![feature(optin_builtin_traits)]
+#![feature(optin_builtin_traits, immovable_types)]
 
-auto trait Valid {}
+use std::marker::Move;
+
+auto trait Valid: ?Move {}
 
 struct True;
 struct False;

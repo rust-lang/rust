@@ -23,8 +23,7 @@ struct S4<T>(T) where for<'a> T: ?Trait<'a>;
 //~^ ERROR `?Trait` bounds are only permitted at the point where a type parameter is declared
 
 struct S5<T>(*const T) where T: ?Trait<'static> + ?Sized;
-//~^ ERROR type parameter has more than one relaxed default bound
-//~| WARN default bound relaxed for a type parameter
+//~^ WARN default bound relaxed for a type parameter
 
 impl<T> S1<T> {
     fn f() where T: ?Sized {}

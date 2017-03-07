@@ -12,6 +12,9 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+#[cfg(not(stage0))]
+use marker::Move;
+
 /// A trait for giving a type a useful default value.
 ///
 /// Sometimes, you want to fall back to some kind of default value, and
@@ -90,8 +93,9 @@
 ///     bar: f32,
 /// }
 /// ```
+#[cfg(not(stage0))]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub trait Default: Sized {
+pub trait Default: Sized + ?Move {
     /// Returns the "default value" for a type.
     ///
     /// Default values are often some kind of initial value, identity value, or anything else that
@@ -121,6 +125,15 @@ pub trait Default: Sized {
     ///     fn default() -> Kind { Kind::A }
     /// }
     /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    fn default() -> Self;
+}
+
+/// docs
+#[cfg(stage0)]
+#[stable(feature = "rust1", since = "1.0.0")]
+pub trait Default: Sized {
+    /// docs
     #[stable(feature = "rust1", since = "1.0.0")]
     fn default() -> Self;
 }

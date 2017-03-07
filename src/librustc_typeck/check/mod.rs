@@ -1932,7 +1932,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
                     // Require that the predicate holds for the concrete type.
                     let cause = traits::ObligationCause::new(span, self.body_id,
-                                                             traits::SizedReturnType);
+                                                             traits::MiscObligation);
                     self.register_predicate(traits::Obligation::new(cause,
                                                                     self.param_env,
                                                                     predicate));

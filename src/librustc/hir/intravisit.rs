@@ -586,9 +586,7 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty) {
             visitor.visit_nested_body(length)
         }
         TyTraitObject(ref bounds, ref lifetime) => {
-            for bound in bounds {
-                visitor.visit_poly_trait_ref(bound, TraitBoundModifier::None);
-            }
+            walk_list!(visitor, visit_ty_param_bound, bounds);
             visitor.visit_lifetime(lifetime);
         }
         TyImplTraitExistential(ref bounds) => {

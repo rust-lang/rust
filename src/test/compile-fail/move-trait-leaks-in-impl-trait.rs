@@ -8,11 +8,26 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(optin_builtin_traits, immovable_types)]
+#![feature(conservative_impl_trait, immovable_types)]
 
-use std::marker::Move;
+use std::marker::{Move, Immovable};
 
 trait Foo: ?Move {}
-impl Foo for .. {}
-//~^ ERROR The form `impl Foo for .. {}` will be removed, please use `auto trait Foo {}`
-//~^^ WARN this was previously accepted by the compiler
+
+impl<T: ?Move> Foo for T {}
+
+fn immovable() -> impl Foo {
+    Immovable
+}
+
+fn movable() -> impl Foo {
+    true
+}
+
+fn test<T>(_: T) {}
+
+fn main() {
+    test(immovable());
+    //~^ ERROR the trait bound `std::marker::Immovable: std::marker::Move` is not satisfied
+    test(movable());
+}

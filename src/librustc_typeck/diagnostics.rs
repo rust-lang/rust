@@ -1855,11 +1855,11 @@ unsafe impl !Clone for Foo { }
 This will compile:
 
 ```ignore (ignore auto_trait future compatibility warning)
-#![feature(optin_builtin_traits)]
+#![feature(optin_builtin_traits, immovable_types)]
 
 struct Foo;
 
-trait Enterprise {}
+trait Enterprise: ?std::marker::Move {}
 
 impl Enterprise for .. { }
 
@@ -4721,4 +4721,5 @@ register_diagnostics! {
     E0632, // cannot provide explicit type parameters when `impl Trait` is used in
            // argument position.
     E0641, // cannot cast to/from a pointer with an unknown kind
+    E0800, // explicit impls for the `Move` trait are not permitted
 }

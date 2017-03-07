@@ -104,6 +104,7 @@ define_maps! { <'tcx>
     [] fn adt_def: AdtDefOfItem(DefId) -> &'tcx ty::AdtDef,
     [] fn adt_destructor: AdtDestructor(DefId) -> Option<ty::Destructor>,
     [] fn adt_sized_constraint: SizedConstraint(DefId) -> &'tcx [Ty<'tcx>],
+    [] fn adt_move_constraint: MoveConstraint(DefId) -> &'tcx [Ty<'tcx>],
     [] fn adt_dtorck_constraint: DtorckConstraint(DefId) -> ty::DtorckConstraint<'tcx>,
 
     /// True if this is a const fn
@@ -198,6 +199,8 @@ define_maps! { <'tcx>
     // FIXME: shouldn't this return a `Result<(), BorrowckErrors>` instead?
     [] fn mir_borrowck: MirBorrowCheck(DefId) -> (),
 
+    [] fn moveck: MoveCheck(DefId) -> (),
+
     /// Gets a complete map from all types to their inherent impls.
     /// Not meant to be used directly outside of coherence.
     /// (Defined only for LOCAL_CRATE)
@@ -262,6 +265,7 @@ define_maps! { <'tcx>
     [] fn is_copy_raw: is_copy_dep_node(ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool,
     [] fn is_sized_raw: is_sized_dep_node(ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool,
     [] fn is_freeze_raw: is_freeze_dep_node(ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool,
+    [] fn is_move_raw: is_move_dep_node(ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool,
     [] fn needs_drop_raw: needs_drop_dep_node(ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> bool,
     [] fn layout_raw: layout_dep_node(ty::ParamEnvAnd<'tcx, Ty<'tcx>>)
                                   -> Result<&'tcx ty::layout::LayoutDetails,
@@ -436,6 +440,10 @@ fn is_sized_dep_node<'tcx>(param_env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepCon
 
 fn is_freeze_dep_node<'tcx>(param_env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepConstructor<'tcx> {
     DepConstructor::IsFreeze { param_env }
+}
+
+fn is_move_dep_node<'tcx>(param_env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepConstructor<'tcx> {
+    DepConstructor::IsMove { param_env }
 }
 
 fn needs_drop_dep_node<'tcx>(param_env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> DepConstructor<'tcx> {

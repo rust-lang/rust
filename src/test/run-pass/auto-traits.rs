@@ -8,14 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(optin_builtin_traits)]
+#![feature(optin_builtin_traits, immovable_types)]
 
-auto trait Auto {}
+use std::marker::Move;
+
+auto trait Auto: ?Move {}
 // Redundant but accepted until we remove it.
 #[allow(auto_impl)]
 impl Auto for .. {}
 
-unsafe auto trait AutoUnsafe {}
+unsafe auto trait AutoUnsafe: ?Move {}
 
 impl !Auto for bool {}
 impl !AutoUnsafe for bool {}

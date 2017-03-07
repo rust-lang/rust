@@ -67,6 +67,12 @@ impl<'tcx> QueryDescription<'tcx> for queries::is_freeze_raw<'tcx> {
     }
 }
 
+impl<'tcx> QueryDescription<'tcx> for queries::is_move_raw<'tcx> {
+    fn describe(_tcx: TyCtxt, env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> String {
+        format!("computing whether `{}` is `Move`", env.value)
+    }
+}
+
 impl<'tcx> QueryDescription<'tcx> for queries::needs_drop_raw<'tcx> {
     fn describe(_tcx: TyCtxt, env: ty::ParamEnvAnd<'tcx, Ty<'tcx>>) -> String {
         format!("computing whether `{}` needs drop", env.value)

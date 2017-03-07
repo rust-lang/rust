@@ -1064,6 +1064,10 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(control: &CompileController,
              || for def_id in tcx.body_owners() { tcx.mir_borrowck(def_id) });
 
         time(time_passes,
+             "MIR move checking",
+             || for def_id in tcx.body_owners() { tcx.moveck(def_id) });
+
+        time(time_passes,
              "MIR effect checking",
              || for def_id in tcx.body_owners() {
                  mir::transform::check_unsafety::check_unsafety(tcx, def_id)

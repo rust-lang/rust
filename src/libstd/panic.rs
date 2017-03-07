@@ -98,6 +98,14 @@ pub use panicking::{take_hook, set_hook, PanicInfo, Location};
 /// wrapper struct in this module can be used to force this trait to be
 /// implemented for any closed over variables passed to the `catch_unwind` function
 /// (more on this below).
+#[cfg(not(stage0))]
+#[stable(feature = "catch_unwind", since = "1.9.0")]
+#[rustc_on_unimplemented = "the type {Self} may not be safely transferred \
+                            across an unwind boundary"]
+pub trait UnwindSafe: ?::marker::Move {}
+
+/// docs
+#[cfg(stage0)]
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 #[rustc_on_unimplemented = "the type {Self} may not be safely transferred \
                             across an unwind boundary"]
@@ -111,10 +119,16 @@ pub trait UnwindSafe {}
 ///
 /// This is a "helper marker trait" used to provide impl blocks for the
 /// `UnwindSafe` trait, for more information see that documentation.
+#[cfg(not(stage0))]
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 #[rustc_on_unimplemented = "the type {Self} may contain interior mutability \
                             and a reference may not be safely transferrable \
                             across a catch_unwind boundary"]
+pub trait RefUnwindSafe: ?::marker::Move {}
+
+/// docs
+#[cfg(stage0)]
+#[stable(feature = "catch_unwind", since = "1.9.0")]
 pub trait RefUnwindSafe {}
 
 /// A simple wrapper around a type to assert that it is unwind safe.
@@ -191,8 +205,12 @@ pub struct AssertUnwindSafe<T>(
 #[allow(unknown_lints)]
 #[allow(auto_impl)]
 impl UnwindSafe for .. {}
+#[cfg(stage0)]
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 impl<'a, T: ?Sized> !UnwindSafe for &'a mut T {}
+#[cfg(not(stage0))]
+#[stable(feature = "catch_unwind", since = "1.9.0")]
+impl<'a, T: ?Sized+?::marker::Move> !UnwindSafe for &'a mut T {}
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 impl<'a, T: RefUnwindSafe + ?Sized> UnwindSafe for &'a T {}
 #[stable(feature = "catch_unwind", since = "1.9.0")]
@@ -226,8 +244,12 @@ impl<T: RefUnwindSafe + ?Sized> UnwindSafe for Arc<T> {}
 #[allow(unknown_lints)]
 #[allow(auto_impl)]
 impl RefUnwindSafe for .. {}
+#[cfg(stage0)]
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 impl<T: ?Sized> !RefUnwindSafe for UnsafeCell<T> {}
+#[cfg(not(stage0))]
+#[stable(feature = "catch_unwind", since = "1.9.0")]
+impl<T: ?Sized+?::marker::Move> !RefUnwindSafe for UnsafeCell<T> {}
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 impl<T> RefUnwindSafe for AssertUnwindSafe<T> {}
 

@@ -10,8 +10,11 @@
 
 #![feature(optin_builtin_traits, core)]
 #![crate_type = "rlib"]
+#![feature(immovable_types)]
 
-pub trait DefaultedTrait { }
+use std::marker::Move;
+
+pub trait DefaultedTrait: ?Move { }
 #[allow(auto_impl)]
 impl DefaultedTrait for .. { }
 

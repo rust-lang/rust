@@ -406,16 +406,7 @@ impl<'a> State<'a> {
                 self.print_qpath(qpath, false)?
             }
             hir::TyTraitObject(ref bounds, ref lifetime) => {
-                let mut first = true;
-                for bound in bounds {
-                    self.nbsp()?;
-                    if first {
-                        first = false;
-                    } else {
-                        self.word_space("+")?;
-                    }
-                    self.print_poly_trait_ref(bound)?;
-                }
+                self.print_bounds("", &bounds[..])?;
                 if !lifetime.is_elided() {
                     self.word_space("+")?;
                     self.print_lifetime(lifetime)?;

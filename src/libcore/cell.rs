@@ -185,6 +185,8 @@ use marker::Unsize;
 use mem;
 use ops::{Deref, DerefMut, CoerceUnsized};
 use ptr;
+#[cfg(not(stage0))]
+use marker::Move;
 
 /// A mutable memory location.
 ///
@@ -1291,4 +1293,36 @@ fn assert_coerce_unsized(a: UnsafeCell<&i32>, b: Cell<&i32>, c: RefCell<&i32>) {
     let _: UnsafeCell<&Send> = a;
     let _: Cell<&Send> = b;
     let _: RefCell<&Send> = c;
+}
+
+/// A cell that is always movable, even if the interior type is immovable.
+/// This prevents pointers to the inner type which means it can never be observed.
+#[cfg(not(stage0))]
+#[unstable(feature = "immovable_types", issue = "0")]
+#[lang = "movable_cell"]
+#[allow(missing_debug_implementations)]
+#[derive(Default)]
+pub struct MovableCell<T: ?Move> {
+    value: T,
+}
+
+#[unstable(feature = "immovable_types", issue = "0")]
+#[cfg(not(stage0))]
+impl<T: ?Move> MovableCell<T> {
+    /// Creates a new MovableCell.
+    pub const fn new(value: T) -> Self {
+        MovableCell {
+            value: value,
+        }
+    }
+
+    /// Extracts the inner value.
+    pub fn into_inner(self) -> T {
+        self.value
+    }
+
+    /// Replaces the inner value.
+    pub fn replace(&mut self, new_value: T) -> T {
+        mem::replace(self, MovableCell::new(new_value)).into_inner()
+    }
 }

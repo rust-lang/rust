@@ -725,10 +725,37 @@ impl TyParamBound {
         }, hir::TraitBoundModifier::Maybe)
     }
 
+    fn maybe_move(cx: &DocContext) -> TyParamBound {
+        let did = cx.tcx.require_lang_item(lang_items::MoveTraitLangItem);
+        let empty = cx.tcx.intern_substs(&[]);
+        let path = external_path(cx, &cx.tcx.item_name(did),
+            Some(did), false, vec![], empty);
+        inline::record_extern_fqn(cx, did, TypeKind::Trait);
+        TraitBound(PolyTrait {
+            trait_: ResolvedPath {
+                path,
+                typarams: None,
+                did,
+                is_generic: false,
+            },
+            lifetimes: vec![]
+        }, hir::TraitBoundModifier::Maybe)
+    }
+
     fn is_sized_bound(&self, cx: &DocContext) -> bool {
         use rustc::hir::TraitBoundModifier as TBM;
         if let TyParamBound::TraitBound(PolyTrait { ref trait_, .. }, TBM::None) = *self {
             if trait_.def_id() == cx.tcx.lang_items().sized_trait() {
+                return true;
+            }
+        }
+        false
+    }
+
+    fn is_move_bound(&self, cx: &DocContext) -> bool {
+        use rustc::hir::TraitBoundModifier as TBM;
+        if let TyParamBound::TraitBound(PolyTrait { ref trait_, .. }, TBM::None) = *self {
+            if trait_.def_id() == cx.tcx.lang_items().move_trait() {
                 return true;
             }
         }
@@ -1089,19 +1116,25 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics,
 
         let mut where_predicates = preds.predicates.to_vec().clean(cx);
 
-        // Type parameters and have a Sized bound by default unless removed with
-        // ?Sized.  Scan through the predicates and mark any type parameter with
-        // a Sized bound, removing the bounds as we find them.
+        // Type parameters have a Sized and Move bound by default unless removed with
+        // ?Sized or ?Move. Scan through the predicates and mark any type parameter with
+        // a Sized or Move bound, removing the bounds as we find them.
         //
-        // Note that associated types also have a sized bound by default, but we
+        // Note that associated types also have a sized and move bound by default, but we
         // don't actually know the set of associated types right here so that's
         // handled in cleaning associated types
         let mut sized_params = FxHashSet();
+        let mut move_params = FxHashSet();
         where_predicates.retain(|pred| {
             match *pred {
                 WP::BoundPredicate { ty: Generic(ref g), ref bounds } => {
                     if bounds.iter().any(|b| b.is_sized_bound(cx)) {
                         sized_params.insert(g.clone());
+                        false
+                    } else if bounds.iter().any(|b| b.is_move_bound(cx)) {
+                        move_params.insert(g.clone());
+                        // FIXME: Why is this stripping away bounds?
+                        // Can there only be 1 bound in the bounds because of cleaning?
                         false
                     } else {
                         true
@@ -1111,13 +1144,19 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics,
             }
         });
 
-        // Run through the type parameters again and insert a ?Sized
-        // unbound for any we didn't find to be Sized.
+        // Run through the type parameters again and insert a ?Sized or a ?Move
+        // unbound for any we didn't find to be Sized or Move.
         for tp in &stripped_typarams {
             if !sized_params.contains(&tp.name) {
                 where_predicates.push(WP::BoundPredicate {
                     ty: Type::Generic(tp.name.clone()),
                     bounds: vec![TyParamBound::maybe_sized(cx)],
+                })
+            }
+            if !move_params.contains(&tp.name) {
+                where_predicates.push(WP::BoundPredicate {
+                    ty: Type::Generic(tp.name.clone()),
+                    bounds: vec![TyParamBound::maybe_move(cx)],
                 })
             }
         }
@@ -1541,6 +1580,11 @@ impl<'tcx> Clean<Item> for ty::AssociatedItem {
                     Some(i) => { bounds.remove(i); }
                     None => bounds.push(TyParamBound::maybe_sized(cx)),
                 }
+                // Do the same thing for Move/?Move bounds
+                match bounds.iter().position(|b| b.is_move_bound(cx)) {
+                    Some(i) => { bounds.remove(i); }
+                    None => bounds.push(TyParamBound::maybe_move(cx)),
+                }
 
                 let ty = if self.defaultness.has_value() {
                     Some(cx.tcx.type_of(self.def_id))
@@ -1941,11 +1985,14 @@ impl Clean<Type> for hir::Ty {
                 }
             }
             TyTraitObject(ref bounds, ref lifetime) => {
-                match bounds[0].clean(cx).trait_ {
+                let bound = match bounds[0] {
+                    hir::TraitTyParamBound(ref trait_ref,
+                        hir::TraitBoundModifier::None) => trait_ref,
+                    _ => panic!(),
+                };
+                match bound.clean(cx).trait_ {
                     ResolvedPath { path, typarams: None, did, is_generic } => {
-                        let mut bounds: Vec<_> = bounds[1..].iter().map(|bound| {
-                            TraitBound(bound.clean(cx), hir::TraitBoundModifier::None)
-                        }).collect();
+                        let mut bounds: Vec<_> = bounds[1..].clean(cx);
                         if !lifetime.is_elided() {
                             bounds.push(RegionBound(lifetime.clean(cx)));
                         }

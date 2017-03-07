@@ -1485,7 +1485,7 @@ pub enum Ty_ {
     TyPath(QPath),
     /// A trait object type `Bound1 + Bound2 + Bound3`
     /// where `Bound` is a trait or a lifetime.
-    TyTraitObject(HirVec<PolyTraitRef>, Lifetime),
+    TyTraitObject(TyParamBounds, Lifetime),
     /// An exsitentially quantified (there exists a type satisfying) `impl
     /// Bound1 + Bound2 + Bound3` type where `Bound` is a trait or a lifetime.
     TyImplTraitExistential(TyParamBounds),

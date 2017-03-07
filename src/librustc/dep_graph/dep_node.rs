@@ -479,6 +479,7 @@ define_dep_nodes!( <'tcx>
     [] BorrowCheck(DefId),
     [] MirBorrowCheck(DefId),
     [] UnsafetyCheckResult(DefId),
+    [] MoveCheck(DefId),
 
     [] Reachability,
     [] MirKeys,
@@ -509,6 +510,7 @@ define_dep_nodes!( <'tcx>
     [] IsForeignItem(DefId),
     [] TypeParamPredicates { item_id: DefId, param_id: DefId },
     [] SizedConstraint(DefId),
+    [] MoveConstraint(DefId),
     [] DtorckConstraint(DefId),
     [] AdtDestructor(DefId),
     [] AssociatedItemDefIds(DefId),
@@ -528,6 +530,7 @@ define_dep_nodes!( <'tcx>
     [] IsCopy { param_env: ParamEnvAnd<'tcx, Ty<'tcx>> },
     [] IsSized { param_env: ParamEnvAnd<'tcx, Ty<'tcx>> },
     [] IsFreeze { param_env: ParamEnvAnd<'tcx, Ty<'tcx>> },
+    [] IsMove { param_env: ParamEnvAnd<'tcx, Ty<'tcx>> },
     [] NeedsDrop { param_env: ParamEnvAnd<'tcx, Ty<'tcx>> },
     [] Layout { param_env: ParamEnvAnd<'tcx, Ty<'tcx>> },
 

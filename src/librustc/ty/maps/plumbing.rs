@@ -725,6 +725,7 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::IsCopy |
         DepKind::IsSized |
         DepKind::IsFreeze |
+        DepKind::IsMove |
         DepKind::NeedsDrop |
         DepKind::Layout |
         DepKind::ConstEval |
@@ -768,6 +769,7 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::BorrowCheck => { force!(borrowck, def_id!()); }
         DepKind::MirBorrowCheck => { force!(mir_borrowck, def_id!()); }
         DepKind::UnsafetyCheckResult => { force!(unsafety_check_result, def_id!()); }
+        DepKind::MoveCheck => { force!(moveck, def_id!()); }
         DepKind::Reachability => { force!(reachable_set, LOCAL_CRATE); }
         DepKind::MirKeys => { force!(mir_keys, LOCAL_CRATE); }
         DepKind::CrateVariances => { force!(crate_variances, LOCAL_CRATE); }
@@ -790,6 +792,7 @@ pub fn force_from_dep_node<'a, 'gcx, 'lcx>(tcx: TyCtxt<'a, 'gcx, 'lcx>,
         DepKind::IsConstFn => { force!(is_const_fn, def_id!()); }
         DepKind::IsForeignItem => { force!(is_foreign_item, def_id!()); }
         DepKind::SizedConstraint => { force!(adt_sized_constraint, def_id!()); }
+        DepKind::MoveConstraint => { force!(adt_move_constraint, def_id!()); }
         DepKind::DtorckConstraint => { force!(adt_dtorck_constraint, def_id!()); }
         DepKind::AdtDestructor => { force!(adt_destructor, def_id!()); }
         DepKind::AssociatedItemDefIds => { force!(associated_item_def_ids, def_id!()); }

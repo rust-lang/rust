@@ -116,6 +116,7 @@
 #![feature(slice_rsplit)]
 #![feature(specialization)]
 #![feature(staged_api)]
+#![cfg_attr(not(stage0), feature(immovable_types))]
 #![feature(str_internals)]
 #![feature(trusted_len)]
 #![feature(unboxed_closures)]

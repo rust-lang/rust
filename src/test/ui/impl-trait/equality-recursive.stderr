@@ -1,0 +1,32 @@
+error[E0391]: unsupported cyclic reference between types/traits detected
+  --> $DIR/equality-recursive.rs:17:1
+   |
+17 | / fn sum_to(n: u32) -> impl Foo {
+18 | |     if n == 0 {
+19 | |         0
+20 | |     } else {
+...  |
+23 | |     }
+24 | | }
+   | |_^ cyclic reference
+   |
+note: the cycle begins when processing `sum_to`...
+  --> $DIR/equality-recursive.rs:17:1
+   |
+17 | / fn sum_to(n: u32) -> impl Foo {
+18 | |     if n == 0 {
+19 | |         0
+20 | |     } else {
+...  |
+23 | |     }
+24 | | }
+   | |_^
+note: ...which then requires processing `sum_to::{{impl-Trait}}`...
+  --> $DIR/equality-recursive.rs:17:22
+   |
+17 | fn sum_to(n: u32) -> impl Foo {
+   |                      ^^^^^^^^
+   = note: ...which then again requires processing `sum_to`, completing the cycle.
+
+error: aborting due to previous error
+

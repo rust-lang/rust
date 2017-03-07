@@ -389,7 +389,12 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
             }
             hir::TyTraitObject(ref bounds, ref lifetime) => {
                 for bound in bounds {
-                    self.visit_poly_trait_ref(bound, hir::TraitBoundModifier::None);
+                    match *bound {
+                        hir::TraitTyParamBound(ref trait_ref, modifier) => {
+                            self.visit_poly_trait_ref(trait_ref, modifier);
+                        }
+                        _ => panic!(),
+                    }
                 }
                 if lifetime.is_elided() {
                     self.resolve_object_lifetime_default(lifetime)
@@ -1230,7 +1235,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                 }
                 if let hir::TyTraitObject(ref bounds, ref lifetime) = ty.node {
                     for bound in bounds {
-                        self.visit_poly_trait_ref(bound, hir::TraitBoundModifier::None);
+                        self.visit_ty_param_bound(bound);
                     }
 
                     // Stay on the safe side and don't include the object

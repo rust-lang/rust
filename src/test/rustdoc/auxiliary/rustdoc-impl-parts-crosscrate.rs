@@ -9,8 +9,11 @@
 // except according to those terms.
 
 #![feature(optin_builtin_traits)]
+#![feature(immovable_types)]
 
-pub trait AnOibit {}
+use std::marker::Move;
+
+pub trait AnOibit: ?Move {}
 
 #[allow(auto_impl)]
 impl AnOibit for .. {}

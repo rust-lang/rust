@@ -375,12 +375,15 @@ fn to_pretty_impl_header(tcx: TyCtxt, impl_def_id: DefId) -> Option<String> {
     let substs = Substs::identity_for_item(tcx, impl_def_id);
 
     // FIXME: Currently only handles ?Sized.
-    //        Needs to support ?Move and ?DynSized when they are implemented.
-    let mut types_without_default_bounds = FxHashSet::default();
+    //        Needs to support ?DynSized when they are implemented.
+    let mut types_without_sized = FxHashSet::default();
+    let mut types_without_move = FxHashSet::default();
     let sized_trait = tcx.lang_items().sized_trait();
+    let move_trait = tcx.lang_items().move_trait();
 
     if !substs.is_noop() {
-        types_without_default_bounds.extend(substs.types());
+        types_without_sized.extend(substs.types());
+        types_without_move.extend(substs.types());
         w.push('<');
         w.push_str(&substs.iter().map(|k| k.to_string()).collect::<Vec<_>>().join(", "));
         w.push('>');
@@ -395,14 +398,21 @@ fn to_pretty_impl_header(tcx: TyCtxt, impl_def_id: DefId) -> Option<String> {
     for p in predicates {
         if let Some(poly_trait_ref) = p.to_opt_poly_trait_ref() {
             if Some(poly_trait_ref.def_id()) == sized_trait {
-                types_without_default_bounds.remove(poly_trait_ref.self_ty());
+                types_without_sized.remove(poly_trait_ref.self_ty());
+                continue;
+            }
+            if Some(poly_trait_ref.def_id()) == move_trait {
+                types_without_move.remove(poly_trait_ref.self_ty());
                 continue;
             }
         }
         pretty_predicates.push(p.to_string());
     }
-    for ty in types_without_default_bounds {
+    for ty in types_without_sized {
         pretty_predicates.push(format!("{}: ?Sized", ty));
+    }
+    for ty in types_without_move {
+        pretty_predicates.push(format!("{}: ?Move", ty));
     }
     if !pretty_predicates.is_empty() {
         write!(w, "\n  where {}", pretty_predicates.join(", ")).unwrap();

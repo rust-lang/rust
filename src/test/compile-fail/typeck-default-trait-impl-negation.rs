@@ -9,13 +9,16 @@
 // except according to those terms.
 
 #![feature(optin_builtin_traits)]
+#![feature(immovable_types)]
 
-trait MyTrait {}
+use std::marker::Move;
+
+trait MyTrait: ?Move {}
 
 #[allow(auto_impl)]
 impl MyTrait for .. {}
 
-unsafe trait MyUnsafeTrait {}
+unsafe trait MyUnsafeTrait: ?Move {}
 
 #[allow(auto_impl)]
 unsafe impl MyUnsafeTrait for .. {}

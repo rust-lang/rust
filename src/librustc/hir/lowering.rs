@@ -750,10 +750,7 @@ impl<'a> LoweringContext<'a> {
                 let mut lifetime_bound = None;
                 let bounds = bounds.iter().filter_map(|bound| {
                     match *bound {
-                        TraitTyParamBound(ref ty, TraitBoundModifier::None) => {
-                            Some(self.lower_poly_trait_ref(ty, itctx))
-                        }
-                        TraitTyParamBound(_, TraitBoundModifier::Maybe) => None,
+                        TraitTyParamBound(..) => Some(self.lower_ty_param_bound(bound, itctx)),
                         RegionTyParamBound(ref lifetime) => {
                             if lifetime_bound.is_none() {
                                 lifetime_bound = Some(self.lower_lifetime(lifetime));
@@ -3139,11 +3136,13 @@ impl<'a> LoweringContext<'a> {
                         span,
                     };
 
+                    let bound = hir::TraitTyParamBound(principal, hir::TraitBoundModifier::None);
+
                     // The original ID is taken by the `PolyTraitRef`,
                     // so the `Ty` itself needs a different one.
                     id = self.next_id();
 
-                    hir::TyTraitObject(hir_vec![principal], self.elided_lifetime(span))
+                    hir::TyTraitObject(hir_vec![bound], self.elided_lifetime(span))
                 } else {
                     hir::TyPath(hir::QPath::Resolved(None, path))
                 }
