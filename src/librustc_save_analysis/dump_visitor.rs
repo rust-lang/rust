@@ -327,6 +327,9 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                     scope: scope
                 }.lower(self.tcx));
             }
+            // With macros 2.0, we can legitimately get a ref to a macro, but
+            // we don't handle it properly for now (FIXME).
+            Def::Macro(..) => {}
             Def::Local(..) |
             Def::Upvar(..) |
             Def::SelfTy(..) |
@@ -336,7 +339,6 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
             Def::AssociatedTy(..) |
             Def::AssociatedConst(..) |
             Def::PrimTy(_) |
-            Def::Macro(..) |
             Def::Err => {
                span_bug!(span,
                          "process_def_kind for unexpected item: {:?}",
