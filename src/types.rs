@@ -87,8 +87,6 @@ pub fn rewrite_path(context: &RewriteContext,
         span_lo = qself.ty.span.hi + BytePos(1);
     }
 
-    let extra_offset = extra_offset(&result, shape);
-    let shape = try_opt!(shape.shrink_left(extra_offset));
     rewrite_path_segments(path_context,
                           result,
                           path.segments.iter().skip(skip_count),

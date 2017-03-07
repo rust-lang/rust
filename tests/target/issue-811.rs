@@ -7,8 +7,7 @@ trait BarTrait<T>: Sized {
     fn foo();
 }
 
-type Foo<T: FooTrait> =
-    <<T as FooTrait<U>>::Bar as BarTrait<U>>::Baz;
+type Foo<T: FooTrait> = <<T as FooTrait<U>>::Bar as BarTrait<U>>::Baz;
 type Bar<T: BarTrait> = <T as BarTrait<U>>::Baz;
 
 fn some_func<T: FooTrait<U>, U>() {
