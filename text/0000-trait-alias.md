@@ -128,8 +128,7 @@ ATTRIBUTE* VISIBILITY? trait IDENTIFIER(<GENERIC_PARAMS>)? = GENERIC_BOUNDS (whe
 
 Trait aliases can be used in any place arbitrary bounds would be syntactically legal.
 
-You cannot directly `impl` a trait alias, but can have them as *trait objects*, in *where-clauses* and *type
-parameter declarations*.
+You cannot directly `impl` a trait alias, but can have them as *bounds*, *trait objects* and *impl Trait*.
 
 When using a trait alias as an object type, it is subject to object safety restrictions _after_ substituting the aliased traits. This means:
 
@@ -154,6 +153,59 @@ fn bar4(x: Box<IntIterator + Sink + 'static>) { ... } // ok (*)
 ```
 
 The lines marked with `(*)` assume that [#24010](https://github.com/rust-lang/rust/issues/24010) is fixed.
+
+# Teaching
+[teaching]: #teaching
+
+[Traits](https://doc.rust-lang.org/book/traits.html) are obviously a huge prerequisite. Traits aliases could be introduced at the end of
+that chapter.
+
+Conceptually, a *trait alias* is a syntax shortcut used to reason about one or more trait(s). Inherently, the *trait alias* is usable
+in a limited set of places:
+
+- as a *bound*: exactly like a *trait*, a *trait alias* can be used to constraint a type (type parameters list, where-clause)
+- as a *trait object*: same thing as with a *trait*, a *trait alias* can be used as a *trait object* if it fits object safety restrictions (see above in the [semantics](#semantics) section)
+- in an [`impl Trait`](https://github.com/rust-lang/rfcs/blob/master/text/1522-conservative-impl-trait.md)
+
+Examples should be showed for all of the three cases above:
+
+#### As a bound
+
+```rust
+trait StringIterator = Iterator<Item=String>;
+
+fn iterate<SI>(si: SI) where SI: StringIterator {} // used as bound
+```
+
+#### As a trait object
+
+```rust
+fn iterate_object(si: &StringIterator) {} // used as trait object
+```
+
+#### In an `impl Trait`
+
+```rust
+fn string_iterator_debug() -> impl Debug + Iterator<Item=String> {} // used in an impl Trait
+```
+
+As shown above, a *trait alias* can substitute associated types. It doesn’t have to substitute them all. In that case, the *trait alias*
+is left incomplete and you have to pass it the associated types that are left. Example with the
+[tokio case]([tokio example](#second-example-ergonomic-collections-and-scrapping-boilerplate):
+
+```rust
+pub trait Service {
+  type Request;
+  type Response;
+  type Error;
+  type Future: Future<Item=Self::Response, Error=Self::Error>;
+  fn call(&self, req: Self::Request) -> Self::Future;
+}
+
+trait HttpService = Service<Request = http::Request, Response = http::Response, Error = http::Error>;
+
+trait MyHttpService = HttpService<Future = MyFuture>; // assume MyFuture exists and fulfills the rules to be used in here
+```
 
 # Drawbacks
 [drawbacks]: #drawbacks
@@ -212,5 +264,21 @@ The lines marked with `(*)` assume that [#24010](https://github.com/rust-lang/ru
     ```rust
     trait Foo<T> = where Self: PartialEq<T>, T: Bar;
     ```
-    
 
+- Do we really want hidden free type variables?
+
+    Consider the following:
+    
+    ```rust
+    trait HttpService = Service<Request = http::Request, Response = http::Response, Error = http::Error>;
+    ```
+    
+    This trait has a hidden `Future` associated type that is left as free type variable. In order to use that `HttpService` trait, we need
+    to provide the `Future` type. Even though it’s always a good feature to have free associated types at the use site, I think it’s not
+    at the declaration site, and I’d be more willing to have the following syntax – which seems sounder and is more explicit of the interface of the trait alias because it requires to implement all associated types:
+
+    ```rust
+    trait HttpService<F> = Service<Request = http::Request, Response = http::Response, Error = http::Error, Future = F>;
+    ```
+
+    Having to implement all associated types – with concrete types or type variables – is less confusing when we look at the definition of trait alias in my opinion.
