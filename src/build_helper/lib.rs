@@ -12,10 +12,11 @@
 
 extern crate filetime;
 
-use std::{fs, env};
 use std::fs::File;
-use std::process::{Command, Stdio};
+use std::io;
 use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
+use std::{fs, env};
 
 use filetime::FileTime;
 
@@ -196,7 +197,7 @@ pub fn native_lib_boilerplate(src_name: &str,
 
     let out_dir = env::var_os("RUSTBUILD_NATIVE_DIR").unwrap_or(env::var_os("OUT_DIR").unwrap());
     let out_dir = PathBuf::from(out_dir).join(out_name);
-    let _ = fs::create_dir_all(&out_dir);
+    t!(create_dir_racy(&out_dir));
     println!("cargo:rustc-link-lib=static={}", link_name);
     println!("cargo:rustc-link-search=native={}", out_dir.join(search_subdir).display());
 
@@ -222,4 +223,22 @@ fn dir_up_to_date(src: &Path, threshold: &FileTime) -> bool {
 fn fail(s: &str) -> ! {
     println!("\n\n{}\n\n", s);
     std::process::exit(1);
+}
+
+fn create_dir_racy(path: &Path) -> io::Result<()> {
+    match fs::create_dir(path) {
+        Ok(()) => return Ok(()),
+        Err(ref e) if e.kind() == io::ErrorKind::AlreadyExists => return Ok(()),
+        Err(ref e) if e.kind() == io::ErrorKind::NotFound => {}
+        Err(e) => return Err(e),
+    }
+    match path.parent() {
+        Some(p) => try!(create_dir_racy(p)),
+        None => return Err(io::Error::new(io::ErrorKind::Other, "failed to create whole tree")),
+    }
+    match fs::create_dir(path) {
+        Ok(()) => Ok(()),
+        Err(ref e) if e.kind() == io::ErrorKind::AlreadyExists => Ok(()),
+        Err(e) => Err(e),
+    }
 }
