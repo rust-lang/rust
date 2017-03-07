@@ -66,6 +66,7 @@ pub fn std(build: &Build, target: &str, compiler: &Compiler) {
     cargo.arg("--features").arg(features)
          .arg("--manifest-path")
          .arg(build.src.join("src/libstd/Cargo.toml"));
+    cargo.arg("-v");
 
     if let Some(target) = build.config.target_config.get(target) {
         if let Some(ref jemalloc) = target.jemalloc {

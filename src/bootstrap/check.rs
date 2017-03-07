@@ -378,6 +378,8 @@ pub fn krate(build: &Build,
     cargo.arg("--manifest-path")
          .arg(build.src.join(path).join("Cargo.toml"))
          .arg("--features").arg(features);
+    cargo.arg("-v");
+    cargo.env("RUST_LOG", "rustc_metadata::locator");
 
     match krate {
         Some(krate) => {
