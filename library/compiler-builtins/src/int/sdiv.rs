@@ -10,8 +10,12 @@ macro_rules! div {
         pub extern "C" fn $intrinsic(a: $ty, b: $ty) -> $tyret {
             let s_a = a >> (<$ty>::bits() - 1);
             let s_b = b >> (<$ty>::bits() - 1);
-            let a = (a ^ s_a) - s_a;
-            let b = (b ^ s_b) - s_b;
+            // NOTE it's OK to overflow here because of the `as $uty` cast below
+            // This whole operation is computing the absolute value of the inputs
+            // So some overflow will happen when dealing with e.g. `i64::MIN`
+            // where the absolute value is `(-i64::MIN) as u64`
+            let a = (a ^ s_a).wrapping_sub(s_a);
+            let b = (b ^ s_b).wrapping_sub(s_b);
             let s = s_a ^ s_b;
 
             let r = udiv!(a as $uty, b as $uty);
