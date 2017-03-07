@@ -41,9 +41,9 @@ pub fn llvm(build: &Build, target: &str) {
         }
     }
 
-    let clean_trigger = build.src.join("src/rustllvm/llvm-auto-clean-trigger");
-    let mut clean_trigger_contents = String::new();
-    t!(t!(File::open(&clean_trigger)).read_to_string(&mut clean_trigger_contents));
+    let rebuild_trigger = build.src.join("src/rustllvm/llvm-rebuild-trigger");
+    let mut rebuild_trigger_contents = String::new();
+    t!(t!(File::open(&rebuild_trigger)).read_to_string(&mut rebuild_trigger_contents));
 
     let out_dir = build.llvm_out(target);
     let done_stamp = out_dir.join("llvm-finished-building");
@@ -51,17 +51,14 @@ pub fn llvm(build: &Build, target: &str) {
         let mut done_contents = String::new();
         t!(t!(File::open(&done_stamp)).read_to_string(&mut done_contents));
 
-        // LLVM was already built previously.
-        // We don't track changes in LLVM sources, so we need to choose between reusing
-        // what was built previously, or cleaning the directory and doing a fresh build.
-        // The choice depends on contents of the clean-trigger file.
-        // If the contents are the same as during the previous build, then no action is required.
-        // If the contents differ from the previous build, then cleaning is triggered.
-        if done_contents == clean_trigger_contents {
+        // If LLVM was already built previously and contents of the rebuild-trigger file
+        // didn't change from the previous build, then no action is required.
+        if done_contents == rebuild_trigger_contents {
             return
-        } else {
-            t!(fs::remove_dir_all(&out_dir));
         }
+    }
+    if build.config.llvm_clean_rebuild {
+        t!(fs::remove_dir_all(&out_dir));
     }
 
     println!("Building LLVM for {}", target);
@@ -154,7 +151,7 @@ pub fn llvm(build: &Build, target: &str) {
     //        tools and libs on all platforms.
     cfg.build();
 
-    t!(t!(File::create(&done_stamp)).write_all(clean_trigger_contents.as_bytes()));
+    t!(t!(File::create(&done_stamp)).write_all(rebuild_trigger_contents.as_bytes()));
 }
 
 fn check_llvm_version(build: &Build, llvm_config: &Path) {

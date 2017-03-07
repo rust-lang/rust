@@ -61,6 +61,13 @@
 # controlled by rustbuild's -j parameter.
 #link-jobs = 0
 
+# Delete LLVM build directory on LLVM rebuild.
+# This option's default (`true`) is optimized for CI needs, and CI wants to
+# perform clean full builds only (possibly accelerated by (s)ccache).
+# You may want to override this option for local builds to enable partial LLVM
+# rebuilds.
+#clean-rebuild = true
+
 # =============================================================================
 # General build configuration options
 # =============================================================================
