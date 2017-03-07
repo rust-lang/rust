@@ -132,6 +132,26 @@ fn compare_use_items(a: &ast::Item, b: &ast::Item) -> Option<Ordering> {
 // TODO (some day) remove unused imports, expand globs, compress many single
 // imports into a list import.
 
+fn rewrite_view_path_prefix(path: &ast::Path,
+                            context: &RewriteContext,
+                            shape: Shape)
+                            -> Option<String> {
+    let path_str = if path.segments
+           .last()
+           .unwrap()
+           .identifier
+           .to_string() == "self" && path.segments.len() > 1 {
+        let path = &ast::Path {
+                        span: path.span.clone(),
+                        segments: path.segments[..path.segments.len() - 1].to_owned(),
+                    };
+        try_opt!(rewrite_path(context, PathContext::Import, None, path, shape))
+    } else {
+        try_opt!(rewrite_path(context, PathContext::Import, None, path, shape))
+    };
+    Some(path_str)
+}
+
 impl Rewrite for ast::ViewPath {
     // Returns an empty string when the ViewPath is empty (like foo::bar::{})
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
@@ -142,34 +162,17 @@ impl Rewrite for ast::ViewPath {
             ast::ViewPath_::ViewPathList(ref path, ref path_list) => {
                 rewrite_use_list(shape, path, path_list, self.span, context)
             }
-            ast::ViewPath_::ViewPathGlob(_) => None,
+            ast::ViewPath_::ViewPathGlob(ref path) => {
+                // 4 = "::*".len()
+                let prefix_shape = try_opt!(shape.sub_width(3));
+                let path_str = try_opt!(rewrite_view_path_prefix(path, context, prefix_shape));
+                Some(format!("{}::*", path_str))
+            }
             ast::ViewPath_::ViewPathSimple(ident, ref path) => {
                 let ident_str = ident.to_string();
                 // 4 = " as ".len()
-                let budget = try_opt!(shape.width.checked_sub(ident_str.len() + 4));
-
-                let path_str = if path.segments
-                       .last()
-                       .unwrap()
-                       .identifier
-                       .to_string() == "self" &&
-                                  path.segments.len() > 1 {
-                    let path = &ast::Path {
-                                    span: path.span.clone(),
-                                    segments: path.segments[..path.segments.len() - 1].to_owned(),
-                                };
-                    try_opt!(rewrite_path(context,
-                                          PathContext::Import,
-                                          None,
-                                          &path,
-                                          Shape::legacy(budget, shape.indent)))
-                } else {
-                    try_opt!(rewrite_path(context,
-                                          PathContext::Import,
-                                          None,
-                                          path,
-                                          Shape::legacy(budget, shape.indent)))
-                };
+                let prefix_shape = try_opt!(shape.sub_width(ident_str.len() + 4));
+                let path_str = try_opt!(rewrite_view_path_prefix(path, context, prefix_shape));
 
                 Some(if path.segments
                             .last()
