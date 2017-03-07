@@ -264,21 +264,3 @@ trait MyHttpService = HttpService<Future = MyFuture>; // assume MyFuture exists 
     ```rust
     trait Foo<T> = where Self: PartialEq<T>, T: Bar;
     ```
-
-- Do we really want hidden free type variables?
-
-    Consider the following:
-    
-    ```rust
-    trait HttpService = Service<Request = http::Request, Response = http::Response, Error = http::Error>;
-    ```
-    
-    This trait has a hidden `Future` associated type that is left as free type variable. In order to use that `HttpService` trait, we need
-    to provide the `Future` type. Even though it’s always a good feature to have free associated types at the use site, I think it’s not
-    at the declaration site, and I’d be more willing to have the following syntax – which seems sounder and is more explicit of the interface of the trait alias because it requires to implement all associated types:
-
-    ```rust
-    trait HttpService<F> = Service<Request = http::Request, Response = http::Response, Error = http::Error, Future = F>;
-    ```
-
-    Having to implement all associated types – with concrete types or type variables – is less confusing when we look at the definition of trait alias in my opinion.
