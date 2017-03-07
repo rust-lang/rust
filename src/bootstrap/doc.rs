@@ -72,7 +72,7 @@ pub fn book(build: &Build, target: &str, name: &str) {
     let index = format!("{}/index.md", name);
     println!("Documenting book index ({})", target);
     invoke_rustdoc(build, target, &index);
-    
+
     // build the redirect pages
     println!("Documenting book redirect pages ({})", target);
     for file in t!(fs::read_dir(build.src.join("src/doc/book/redirects"))) {
