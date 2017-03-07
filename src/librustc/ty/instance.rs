@@ -27,8 +27,17 @@ pub struct Instance<'tcx> {
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub enum InstanceDef<'tcx> {
     Item(DefId),
+    Intrinsic(DefId),
     // <fn() as FnTrait>::call_*
+    // def-id is FnTrait::call_*
     FnPtrShim(DefId, Ty<'tcx>),
+    // <Trait as Trait>::fn
+    Virtual(DefId, usize),
+    // <[mut closure] as FnOnce>::call_once
+    ClosureOnceShim {
+        call_once: DefId,
+        closure_did: DefId
+    },
 }
 
 impl<'tcx> InstanceDef<'tcx> {
@@ -36,8 +45,12 @@ impl<'tcx> InstanceDef<'tcx> {
     pub fn def_id(&self) -> DefId {
         match *self {
             InstanceDef::Item(def_id) |
-            InstanceDef::FnPtrShim(def_id, _)
-                => def_id
+            InstanceDef::FnPtrShim(def_id, _) |
+            InstanceDef::Virtual(def_id, _) |
+            InstanceDef::Intrinsic(def_id, ) |
+            InstanceDef::ClosureOnceShim {
+                call_once: def_id, closure_did: _
+            } => def_id
         }
     }
 
@@ -73,13 +86,22 @@ impl<'tcx> InstanceDef<'tcx> {
 
 impl<'tcx> fmt::Display for Instance<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        ppaux::parameterized(f, self.substs, self.def_id(), &[])?;
         match self.def {
-            InstanceDef::Item(def) => {
-                ppaux::parameterized(f, self.substs, def, &[])
+            InstanceDef::Item(_) => Ok(()),
+            InstanceDef::Intrinsic(_) => {
+                write!(f, " - intrinsic")
             }
-            InstanceDef::FnPtrShim(def, ty) => {
-                ppaux::parameterized(f, self.substs, def, &[])?;
+            InstanceDef::Virtual(_, num) => {
+                write!(f, " - shim(#{})", num)
+            }
+            InstanceDef::FnPtrShim(_, ty) => {
                 write!(f, " - shim({:?})", ty)
+            }
+            InstanceDef::ClosureOnceShim {
+                call_once: _, closure_did
+            } => {
+                write!(f, " - shim({:?})", closure_did)
             }
         }
     }

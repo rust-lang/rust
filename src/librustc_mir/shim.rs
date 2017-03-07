@@ -41,6 +41,7 @@ fn make_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
         ty::InstanceDef::FnPtrShim(_, ty) => {
             build_fn_ptr_shim(tcx, ty, instance.def_ty(tcx))
         }
+        _ => bug!("unknown shim kind")
     };
     debug!("make_shim({:?}) = {:?}", instance, result);
 

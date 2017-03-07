@@ -203,11 +203,8 @@ use rustc::mir::visit as mir_visit;
 use rustc::mir::visit::Visitor as MirVisitor;
 
 use syntax::abi::Abi;
-use syntax_pos::DUMMY_SP;
-use base::custom_coerce_unsize_info;
-use callee::needs_fn_once_adapter_shim;
 use context::SharedCrateContext;
-use common::{def_ty, find_method, instance_ty, fulfill_obligation};
+use common::{def_ty, instance_ty};
 use glue::{self, DropGlueKind};
 use monomorphize::{self, Instance};
 use util::nodemap::{FxHashSet, FxHashMap, DefIdMap};
@@ -555,7 +552,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                         let substs = monomorphize::apply_param_substs(self.scx,
                                                                       self.param_substs,
                                                                       &substs);
-                        let instance = monomorphize::resolve_const(self.scx, def_id, substs);
+                        let instance = monomorphize::resolve(self.scx, def_id, substs);
                         collect_neighbours(self.scx, instance, self.output);
                     }
 
@@ -580,32 +577,23 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
             let callee_substs = monomorphize::apply_param_substs(self.scx,
                                                                  self.param_substs,
                                                                  &callee_substs);
-            let dispatched = do_static_dispatch(self.scx,
-                                                callee_def_id,
-                                                callee_substs);
+            let instance =
+                monomorphize::resolve(self.scx, callee_def_id, callee_substs);
+            if should_trans_locally(self.scx.tcx(), &instance) {
+                if let ty::InstanceDef::ClosureOnceShim { .. } = instance.def {
+                    // This call will instantiate an FnOnce adapter, which
+                    // drops the closure environment. Therefore we need to
+                    // make sure that we collect the drop-glue for the
+                    // environment type.
 
-            if let StaticDispatchResult::Dispatched {
-                instance, fn_once_adjustment
-            } = dispatched {
-                // if we have a concrete impl (which we might not have
-                // in the case of something compiler generated like an
-                // object shim or a closure that is handled differently),
-                // we check if the callee is something that will actually
-                // result in a translation item ...
-                if should_trans_locally(self.scx.tcx(), &instance) {
-                    self.output.push(create_fn_trans_item(instance));
-
-                    // This call will instantiate an FnOnce adapter, which drops
-                    // the closure environment. Therefore we need to make sure
-                    // that we collect the drop-glue for the environment type.
-                    if let Some(env_ty) = fn_once_adjustment {
-                        let env_ty = glue::get_drop_glue_type(self.scx, env_ty);
-                        if self.scx.type_needs_drop(env_ty) {
-                            let dg = DropGlueKind::Ty(env_ty);
-                            self.output.push(TransItem::DropGlue(dg));
-                        }
+                    let env_ty = instance.substs.type_at(0);
+                    let env_ty = glue::get_drop_glue_type(self.scx, env_ty);
+                    if self.scx.type_needs_drop(env_ty) {
+                        let dg = DropGlueKind::Ty(env_ty);
+                        self.output.push(TransItem::DropGlue(dg));
                     }
                 }
+                self.output.push(create_fn_trans_item(instance));
             }
         }
 
@@ -664,8 +652,13 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
 fn should_trans_locally<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: &Instance<'tcx>)
                                   -> bool {
     let def_id = match instance.def {
-        ty::InstanceDef::Item(def_id) => def_id,
-        ty::InstanceDef::FnPtrShim(..) => return true
+        ty::InstanceDef::Item(def_id) |
+        ty::InstanceDef::ClosureOnceShim {
+            call_once: _, closure_did: def_id
+        } => def_id,
+        ty::InstanceDef::FnPtrShim(..) => return true,
+        ty::InstanceDef::Virtual(..) |
+        ty::InstanceDef::Intrinsic(_) => return false
     };
     match tcx.hir.get_if_local(def_id) {
         Some(hir_map::NodeForeignItem(..)) => {
@@ -718,31 +711,21 @@ fn find_drop_glue_neighbors<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
 
     // If the type implements Drop, also add a translation item for the
     // monomorphized Drop::drop() implementation.
-    let destructor = match ty.sty {
-        ty::TyAdt(def, _) => def.destructor(scx.tcx()),
-        _ => None
+    let has_dtor = match ty.sty {
+        ty::TyAdt(def, _) => def.has_dtor(scx.tcx()),
+        _ => false
     };
 
-    if let (Some(destructor), false) = (destructor, ty.is_box()) {
-        use rustc::ty::ToPolyTraitRef;
-
+    if has_dtor && !ty.is_box() {
         let drop_trait_def_id = scx.tcx()
                                    .lang_items
                                    .drop_trait()
                                    .unwrap();
-
-        let self_type_substs = scx.tcx().mk_substs_trait(ty, &[]);
-
-        let trait_ref = ty::TraitRef {
-            def_id: drop_trait_def_id,
-            substs: self_type_substs,
-        }.to_poly_trait_ref();
-
-        let substs = match fulfill_obligation(scx, DUMMY_SP, trait_ref) {
-            traits::VtableImpl(data) => data.substs,
-            _ => bug!()
-        };
-        let instance = Instance::new(destructor.did, substs);
+        let drop_method = scx.tcx().associated_items(drop_trait_def_id)
+            .find(|it| it.kind == ty::AssociatedKind::Method)
+            .unwrap().def_id;
+        let substs = scx.tcx().mk_substs_trait(ty, &[]);
+        let instance = monomorphize::resolve(scx, drop_method, substs);
         if should_trans_locally(scx.tcx(), &instance) {
             output.push(create_fn_trans_item(instance));
         }
@@ -817,115 +800,6 @@ fn find_drop_glue_neighbors<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
     }
 }
 
-enum StaticDispatchResult<'tcx> {
-    // The call could be resolved statically as going to the method with
-    // `instance`.
-    Dispatched {
-        instance: Instance<'tcx>,
-        // If this is a call to a closure that needs an FnOnce adjustment,
-        // this contains the new self type of the call (= type of the closure
-        // environment)
-        fn_once_adjustment: Option<ty::Ty<'tcx>>,
-    },
-    // This goes to somewhere that we don't know at compile-time
-    Unknown
-}
-
-fn do_static_dispatch<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
-                                fn_def_id: DefId,
-                                fn_substs: &'tcx Substs<'tcx>)
-                                -> StaticDispatchResult<'tcx> {
-    debug!("do_static_dispatch(fn_def_id={}, fn_substs={:?})",
-           def_id_to_string(scx.tcx(), fn_def_id),
-           fn_substs);
-    if let Some(trait_def_id) = scx.tcx().trait_of_item(fn_def_id) {
-        debug!(" => trait method, attempting to find impl");
-        do_static_trait_method_dispatch(scx,
-                                        &scx.tcx().associated_item(fn_def_id),
-                                        trait_def_id,
-                                        fn_substs)
-    } else {
-        debug!(" => regular function");
-        // The function is not part of an impl or trait, no dispatching
-        // to be done
-        StaticDispatchResult::Dispatched {
-            instance: Instance::new(fn_def_id, fn_substs),
-            fn_once_adjustment: None,
-        }
-    }
-}
-
-// Given a trait-method and substitution information, find out the actual
-// implementation of the trait method.
-fn do_static_trait_method_dispatch<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
-                                             trait_method: &ty::AssociatedItem,
-                                             trait_id: DefId,
-                                             rcvr_substs: &'tcx Substs<'tcx>)
-                                             -> StaticDispatchResult<'tcx> {
-    let tcx = scx.tcx();
-    debug!("do_static_trait_method_dispatch(trait_method={}, \
-                                            trait_id={}, \
-                                            rcvr_substs={:?})",
-           def_id_to_string(scx.tcx(), trait_method.def_id),
-           def_id_to_string(scx.tcx(), trait_id),
-           rcvr_substs);
-
-    let trait_ref = ty::TraitRef::from_method(tcx, trait_id, rcvr_substs);
-    let vtbl = fulfill_obligation(scx, DUMMY_SP, ty::Binder(trait_ref));
-
-    // Now that we know which impl is being used, we can dispatch to
-    // the actual function:
-    match vtbl {
-        traits::VtableImpl(impl_data) => {
-            StaticDispatchResult::Dispatched {
-                instance: find_method(tcx, trait_method.name, rcvr_substs, &impl_data),
-                fn_once_adjustment: None,
-            }
-        }
-        traits::VtableClosure(closure_data) => {
-            let closure_def_id = closure_data.closure_def_id;
-            let trait_closure_kind = tcx.lang_items.fn_trait_kind(trait_id).unwrap();
-            let actual_closure_kind = tcx.closure_kind(closure_def_id);
-
-            let needs_fn_once_adapter_shim =
-                match needs_fn_once_adapter_shim(actual_closure_kind,
-                                                 trait_closure_kind) {
-                Ok(true) => true,
-                _ => false,
-            };
-
-            let fn_once_adjustment = if needs_fn_once_adapter_shim {
-                Some(tcx.mk_closure_from_closure_substs(closure_def_id,
-                                                        closure_data.substs))
-            } else {
-                None
-            };
-
-            StaticDispatchResult::Dispatched {
-                instance: Instance::new(closure_def_id, closure_data.substs.substs),
-                fn_once_adjustment: fn_once_adjustment,
-            }
-        }
-        traits::VtableFnPointer(ref data) => {
-            StaticDispatchResult::Dispatched {
-                instance: Instance {
-                    def: ty::InstanceDef::FnPtrShim(trait_method.def_id, data.fn_ty),
-                    substs: trait_ref.substs
-                },
-                fn_once_adjustment: None,
-            }
-        }
-        // Trait object shims are always instantiated in-place, and as they are
-        // just an ABI-adjusting indirect call they do not have any dependencies.
-        traits::VtableObject(..) => {
-            StaticDispatchResult::Unknown
-        }
-        _ => {
-            bug!("static call to invalid vtable: {:?}", vtbl)
-        }
-    }
-}
-
 /// For given pair of source and target type that occur in an unsizing coercion,
 /// this function finds the pair of types that determines the vtable linking
 /// them.
@@ -991,7 +865,8 @@ fn find_vtable_types_for_unsizing<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
          &ty::TyAdt(target_adt_def, target_substs)) => {
             assert_eq!(source_adt_def, target_adt_def);
 
-            let kind = custom_coerce_unsize_info(scx, source_ty, target_ty);
+            let kind =
+                monomorphize::custom_coerce_unsize_info(scx, source_ty, target_ty);
 
             let coerce_index = match kind {
                 CustomCoerceUnsized::Struct(i) => i
@@ -1017,6 +892,20 @@ fn find_vtable_types_for_unsizing<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
 
 fn create_fn_trans_item<'a, 'tcx>(instance: Instance<'tcx>) -> TransItem<'tcx> {
     debug!("create_fn_trans_item(instance={})", instance);
+    let instance = match instance.def {
+        ty::InstanceDef::ClosureOnceShim { .. } => {
+            // HACK: don't create ClosureOnce trans items for now
+            // have someone else generate the drop glue
+            let closure_ty = instance.substs.type_at(0);
+            match closure_ty.sty {
+                ty::TyClosure(def_id, substs) => {
+                    Instance::new(def_id, substs.substs)
+                }
+                _ => bug!("bad closure instance {:?}", instance)
+            }
+        }
+        _ => instance
+    };
     TransItem::Fn(instance)
 }
 
@@ -1037,18 +926,7 @@ fn create_trans_items_for_vtable_methods<'a, 'tcx>(scx: &SharedCrateContext<'a, 
             // Walk all methods of the trait, including those of its supertraits
             let methods = traits::get_vtable_methods(scx.tcx(), poly_trait_ref);
             let methods = methods.filter_map(|method| method)
-                .filter_map(|(def_id, substs)| {
-                    if let StaticDispatchResult::Dispatched {
-                        instance,
-                        // We already add the drop-glue for the closure env
-                        // unconditionally below.
-                        fn_once_adjustment: _ ,
-                    } = do_static_dispatch(scx, def_id, substs) {
-                        Some(instance)
-                    } else {
-                        None
-                    }
-                })
+                .map(|(def_id, substs)| monomorphize::resolve(scx, def_id, substs))
                 .filter(|&instance| should_trans_locally(scx.tcx(), &instance))
                 .map(|instance| create_fn_trans_item(instance));
             output.extend(methods);
@@ -1203,18 +1081,11 @@ fn create_trans_items_for_default_impls<'a, 'tcx>(scx: &SharedCrateContext<'a, '
                         continue;
                     }
 
-                    // The substitutions we have are on the impl, so we grab
-                    // the method type from the impl to substitute into.
-                    let impl_substs = tcx.empty_substs_for_def_id(impl_def_id);
-                    let impl_data = traits::VtableImplData {
-                        impl_def_id: impl_def_id,
-                        substs: impl_substs,
-                        nested: vec![]
-                    };
-                    let instance = find_method(tcx, method.name, callee_substs, &impl_data);
+                    let instance =
+                        monomorphize::resolve(scx, method.def_id, callee_substs);
 
                     let predicates = tcx.item_predicates(instance.def_id()).predicates
-                        .subst(tcx, impl_substs);
+                        .subst(tcx, instance.substs);
                     if !traits::normalize_and_test_predicates(tcx, predicates) {
                         continue;
                     }

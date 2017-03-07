@@ -36,9 +36,7 @@ use llvm::{Linkage, ValueRef, Vector, get_param};
 use llvm;
 use rustc::hir::def_id::LOCAL_CRATE;
 use middle::lang_items::StartFnLangItem;
-use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::adjustment::CustomCoerceUnsized;
 use rustc::dep_graph::{AssertDepGraphSafe, DepNode, WorkProduct};
 use rustc::hir::map as hir_map;
 use rustc::util::common::time;
@@ -54,7 +52,6 @@ use common::{C_bool, C_bytes_in_context, C_i32, C_uint};
 use collector::{self, TransItemCollectionMode};
 use common::{C_struct_in_context, C_u64, C_undef};
 use common::CrateContext;
-use common::{fulfill_obligation};
 use common::{type_is_zero_size, val_ty};
 use common;
 use consts;
@@ -80,7 +77,7 @@ use std::ffi::{CStr, CString};
 use std::rc::Rc;
 use std::str;
 use std::i32;
-use syntax_pos::{Span, DUMMY_SP};
+use syntax_pos::Span;
 use syntax::attr;
 use rustc::hir;
 use rustc::ty::layout::{self, Layout};
@@ -310,25 +307,6 @@ pub fn coerce_unsized_into<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
         _ => bug!("coerce_unsized_into: invalid coercion {:?} -> {:?}",
                   src_ty,
                   dst_ty),
-    }
-}
-
-pub fn custom_coerce_unsize_info<'scx, 'tcx>(scx: &SharedCrateContext<'scx, 'tcx>,
-                                             source_ty: Ty<'tcx>,
-                                             target_ty: Ty<'tcx>)
-                                             -> CustomCoerceUnsized {
-    let trait_ref = ty::Binder(ty::TraitRef {
-        def_id: scx.tcx().lang_items.coerce_unsized_trait().unwrap(),
-        substs: scx.tcx().mk_substs_trait(source_ty, &[target_ty])
-    });
-
-    match fulfill_obligation(scx, DUMMY_SP, trait_ref) {
-        traits::VtableImpl(traits::VtableImplData { impl_def_id, .. }) => {
-            scx.tcx().custom_coerce_unsized_kind(impl_def_id)
-        }
-        vtable => {
-            bug!("invalid CoerceUnsized vtable: {:?}", vtable);
-        }
     }
 }
 

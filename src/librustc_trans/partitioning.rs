@@ -458,7 +458,10 @@ fn characteristic_def_id_of_trans_item<'a, 'tcx>(scx: &SharedCrateContext<'a, 't
         TransItem::Fn(instance) => {
             let def_id = match instance.def {
                 ty::InstanceDef::Item(def_id) => def_id,
-                ty::InstanceDef::FnPtrShim(..) => return None
+                ty::InstanceDef::FnPtrShim(..) |
+                ty::InstanceDef::ClosureOnceShim { .. } |
+                ty::InstanceDef::Intrinsic(..) |
+                ty::InstanceDef::Virtual(..) => return None
             };
 
             // If this is a method, we want to put it into the same module as

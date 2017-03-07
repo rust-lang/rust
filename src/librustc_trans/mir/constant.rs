@@ -249,7 +249,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                  substs: &'tcx Substs<'tcx>,
                  args: IndexVec<mir::Local, Const<'tcx>>)
                  -> Result<Const<'tcx>, ConstEvalErr<'tcx>> {
-        let instance = monomorphize::resolve_const(ccx.shared(), def_id, substs);
+        let instance = monomorphize::resolve(ccx.shared(), def_id, substs);
         let mir = ccx.tcx().instance_mir(instance.def);
         MirConstContext::new(ccx, &mir, instance.substs, args).trans()
     }

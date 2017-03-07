@@ -39,7 +39,6 @@ use value::Value;
 use Disr;
 use builder::Builder;
 
-use syntax_pos::DUMMY_SP;
 use mir::lvalue::Alignment;
 
 pub fn trans_exchange_free_ty<'a, 'tcx>(bcx: &Builder<'a, 'tcx>, ptr: LvalueRef<'tcx>) {
@@ -241,8 +240,6 @@ pub fn implement_drop_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, g: DropGlueKi
             let shallow_drop = def.is_union();
             let tcx = bcx.tcx();
 
-            let def = t.ty_adt_def().unwrap();
-
             // Be sure to put the contents into a scope so we can use an invoke
             // instruction to call the user destructor but still call the field
             // destructors if the user destructor panics.
@@ -256,17 +253,12 @@ pub fn implement_drop_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, g: DropGlueKi
             } else {
                 CleanupScope::noop()
             };
-
-            let trait_ref = ty::Binder(ty::TraitRef {
-                def_id: tcx.lang_items.drop_trait().unwrap(),
-                substs: tcx.mk_substs_trait(t, &[])
-            });
-            let vtbl = match fulfill_obligation(bcx.ccx.shared(), DUMMY_SP, trait_ref) {
-                traits::VtableImpl(data) => data,
-                _ => bug!("dtor for {:?} is not an impl???", t)
-            };
-            let dtor_did = def.destructor(tcx).unwrap().did;
-            let callee = Callee::def(bcx.ccx, dtor_did, vtbl.substs);
+            let drop_trait_def_id = tcx.lang_items.drop_trait().unwrap();
+            let drop_method = tcx.associated_items(drop_trait_def_id)
+                .find(|it| it.kind == ty::AssociatedKind::Method)
+                .unwrap().def_id;
+            let self_type_substs = tcx.mk_substs_trait(t, &[]);
+            let callee = Callee::def(bcx.ccx, drop_method, self_type_substs);
             let fn_ty = callee.direct_fn_type(bcx.ccx, &[]);
             let llret;
             let args = &[ptr.llval, ptr.llextra][..1 + ptr.has_extra() as usize];
