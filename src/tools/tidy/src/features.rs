@@ -165,17 +165,11 @@ pub fn check(path: &Path, bad: &mut bool) {
         }
     });
 
-    // FIXME get this whitelist empty.
-    let whitelist = vec![
-        "cfg_target_thread_local", "unwind_attributes",
-    ];
-
     // Only check the number of lang features.
     // Obligatory testing for library features is dumb.
     let gate_untested = features.iter()
                                 .filter(|&(_, f)| f.level == Status::Unstable)
                                 .filter(|&(_, f)| !f.has_gate_test)
-                                .filter(|&(n, _)| !whitelist.contains(&n.as_str()))
                                 .collect::<Vec<_>>();
 
     for &(name, _) in gate_untested.iter() {
