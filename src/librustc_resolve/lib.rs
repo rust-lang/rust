@@ -3124,11 +3124,10 @@ impl<'a> Resolver<'a> {
                 if ident.name == lookup_name && ns == namespace {
                     if filter_fn(name_binding.def()) {
                         // create the path
-                        let span = name_binding.span;
                         let mut segms = path_segments.clone();
-                        segms.push(ident.into());
+                        segms.push(ast::PathSegment::from_ident(ident, name_binding.span));
                         let path = Path {
-                            span: span,
+                            span: name_binding.span,
                             segments: segms,
                         };
                         // the entity is accessible in the following cases:
@@ -3148,7 +3147,7 @@ impl<'a> Resolver<'a> {
                 if let Some(module) = name_binding.module() {
                     // form the path
                     let mut path_segments = path_segments.clone();
-                    path_segments.push(ident.into());
+                    path_segments.push(ast::PathSegment::from_ident(ident, name_binding.span));
 
                     if !in_module_is_extern || name_binding.vis == ty::Visibility::Public {
                         // add the module to the lookup
