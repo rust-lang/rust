@@ -11,17 +11,16 @@
 use libc::c_uint;
 use llvm::{self, ValueRef, BasicBlockRef};
 use llvm::debuginfo::DIScope;
-use rustc::ty;
+use rustc::ty::{self, Ty, TypeFoldable};
 use rustc::ty::layout::{self, LayoutTyper};
 use rustc::mir::{self, Mir};
 use rustc::mir::tcx::LvalueTy;
 use rustc::ty::subst::Substs;
 use rustc::infer::TransNormalize;
-use rustc::ty::TypeFoldable;
 use session::config::FullDebugInfo;
 use base;
 use builder::Builder;
-use common::{self, CrateContext, C_null, Funclet};
+use common::{self, CrateContext, Funclet};
 use debuginfo::{self, declare_local, VariableAccess, VariableKind, FunctionDebugContext};
 use monomorphize::{self, Instance};
 use abi::FnType;
@@ -171,23 +170,12 @@ enum LocalRef<'tcx> {
 
 impl<'tcx> LocalRef<'tcx> {
     fn new_operand<'a>(ccx: &CrateContext<'a, 'tcx>,
-                         ty: ty::Ty<'tcx>) -> LocalRef<'tcx> {
+                       ty: Ty<'tcx>) -> LocalRef<'tcx> {
         if common::type_is_zero_size(ccx, ty) {
             // Zero-size temporaries aren't always initialized, which
             // doesn't matter because they don't contain data, but
             // we need something in the operand.
-            let llty = type_of::type_of(ccx, ty);
-            let val = if common::type_is_imm_pair(ccx, ty) {
-                let fields = llty.field_types();
-                OperandValue::Pair(C_null(fields[0]), C_null(fields[1]))
-            } else {
-                OperandValue::Immediate(C_null(llty))
-            };
-            let op = OperandRef {
-                val: val,
-                ty: ty
-            };
-            LocalRef::Operand(Some(op))
+            LocalRef::Operand(Some(OperandRef::new_zst(ccx, ty)))
         } else {
             LocalRef::Operand(None)
         }
