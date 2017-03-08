@@ -14,12 +14,14 @@ Add an unstable sort to libcore.
 At the moment, the only sort function we have in libstd is `slice::sort`. It is stable,
 allocates additional memory, and is unavailable in `#![no_std]` environments.
 
-Stable sorting, although a good default, is very rarely useful. Users much more often
-value higher performance, lower memory overhead, and compatibility with `#![no_std]`.
+The sort function is stable, which is a good but conservative default. However,
+stability is rarely a required property in practice, and some other characteristics
+of sort algorithms like higher performance or lower memory overhead are often more
+desirable.
 
-Having a really performant, non-allocating sort function in libcore would cover these
-needs. At the moment, Rust is compromising on these highly regarded qualities for a
-systems programming language by not offering a built-in alternative.
+Having a performant, non-allocating unstable sort function in libcore would cover those
+needs. At the moment Rust is not offering a built-in alternative (only crates), which
+is unusual for a systems programming language.
 
 **Q: What is stability?**<br>
 A: A sort function is stable if it doesn't reorder equal elements. For example:
@@ -39,8 +41,8 @@ assert!(orig == v); // MAY FAIL!
 **Q: When is stability useful?**<br>
 A: Not very often. A typical example is sorting columns in interactive GUI tables.
 E.g. you want to have rows sorted by column X while breaking ties by column Y, so you
-first click on column Y and then click on column X. This is a rare case where stable
-sorting is important.
+first click on column Y and then click on column X. This is a use case where stability
+is important.
 
 **Q: Can stable sort be performed using unstable sort?**<br>
 A: Yes. If we transform `[T]` into `[(T, usize)]` by pairing every element with it's
@@ -122,7 +124,7 @@ assert!(v == [1, 2, -3, 4, -5]);
 Proposed implementaton is available in the [pdqsort][stjepang-pdqsort] crate.
 
 **Q: Why choose this particular sort algorithm?**<br> 
-A: First, let's see what unstable sort algorithms other languages use:
+A: First, let's analyse what unstable sort algorithms other languages use:
 
 * C: quicksort
 * C++: introsort
@@ -142,7 +144,7 @@ Java (talking about `Arrays.sort`, not `Collections.sort`) uses dual-pivot
 quicksort. It is an improvement of quicksort that chooses two pivots for finer
 grained partitioning, offering better performance in practice.
 
-A very interesting improvement of introsort is [pattern-defeating quicksort][orlp-pdqsort],
+A recent improvement of introsort is [pattern-defeating quicksort][orlp-pdqsort],
 which is substantially faster in common cases. One of the key tricks pdqsort
 uses is block partitioning described in the [BlockQuicksort][blockquicksort] paper.
 This algorithm still hasn't been built into in any programming language's
@@ -163,7 +165,7 @@ that, `slice::sort` should be generally slower than pdqsort.
 **Q: What about radix sort?**<br>
 A: Radix sort is usually blind to patterns in slices. It treats totally random
 and partially sorted the same way. It is probably possible to improve it
-by combining it with other techniques until it becomes a hybrid sort. Moreover,
+by combining it with some other techniques, but it's not trivial. Moreover,
 radix sort is incompatible with comparison-based sorting, which makes it
 an awkward choice for a general-purpose API. On top of all this, it's
 not even that much faster than pdqsort anyway.
@@ -183,8 +185,8 @@ as a faster non-allocating alternative. The documentation for
 # Drawbacks
 [drawbacks]: #drawbacks
 
-The implementation of sort algorithms will grow bigger, and there will be more
-code to review.
+The amount of code for sort algorithms will grow, and there will be more code
+to review.
 
 It might be surprising to discover cases where `slice::sort` is faster than
 `slice::sort_unstable`. However, these peculiarities can be explained in
