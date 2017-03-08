@@ -1599,4 +1599,39 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'l> for DumpVisitor<'l, 'tcx, 'll,
         walk_list!(self, visit_ty, &l.ty);
         walk_list!(self, visit_expr, &l.init);
     }
+
+    fn visit_foreign_item(&mut self, item: &'l ast::ForeignItem) {
+        match item.node {
+            ast::ForeignItemKind::Fn(ref decl, ref generics) => {
+                if let Some(fn_data) = self.save_ctxt.get_extern_item_data(item) {
+                    down_cast_data!(fn_data, FunctionData, item.span);
+                    if !self.span.filter_generated(Some(fn_data.span), item.span) {
+                        self.dumper.function(fn_data.clone().lower(self.tcx));
+                    }
+
+                    self.nest_tables(item.id, |v| v.process_formals(&decl.inputs,
+                                                                    &fn_data.qualname));
+                    self.process_generic_params(generics, item.span, &fn_data.qualname, item.id);
+                }
+
+                for arg in &decl.inputs {
+                    self.visit_ty(&arg.ty);
+                }
+
+                if let ast::FunctionRetTy::Ty(ref ret_ty) = decl.output {
+                    self.visit_ty(&ret_ty);
+                }
+            }
+            ast::ForeignItemKind::Static(ref ty, _) => {
+                if let Some(var_data) = self.save_ctxt.get_extern_item_data(item) {
+                    down_cast_data!(var_data, VariableData, item.span);
+                    if !self.span.filter_generated(Some(var_data.span), item.span) {
+                        self.dumper.variable(var_data.lower(self.tcx));
+                    }
+                }
+
+                self.visit_ty(ty);
+            }
+        }
+    }
 }
