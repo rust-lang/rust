@@ -1935,10 +1935,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // We must collect the defaults *before* we do any unification. Because we have
             // directly attached defaults to the type variables any unification that occurs
             // will erase defaults causing conflicting defaults to be completely ignored.
-            let default_map: FxHashMap<_, _> =
+            let default_map: FxHashMap<Ty<'tcx>, _> =
                 unsolved_variables
                     .iter()
-                    .filter_map(|t| self.default(t).map(|d| (t, d)))
+                    .filter_map(|t| self.default(t).map(|d| (*t, d)))
                     .collect();
 
             let mut unbound_tyvars = FxHashSet();
@@ -2007,37 +2007,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // we will rollback the inference context to its prior state so we can probe
             // for conflicts and correctly report them.
 
-
             let _ = self.commit_if_ok(|_: &infer::CombinedSnapshot| {
-                for ty in &unbound_tyvars {
-                    if self.type_var_diverges(ty) {
-                        self.demand_eqtype(syntax_pos::DUMMY_SP, *ty,
-                                           self.tcx.mk_diverging_default());
-                    } else {
-                        match self.type_is_unconstrained_numeric(ty) {
-                            UnconstrainedInt => {
-                                self.demand_eqtype(syntax_pos::DUMMY_SP, *ty, self.tcx.types.i32)
-                            },
-                            UnconstrainedFloat => {
-                                self.demand_eqtype(syntax_pos::DUMMY_SP, *ty, self.tcx.types.f64)
-                            }
-                            Neither => {
-                                if let Some(default) = default_map.get(ty) {
-                                    let default = default.clone();
-                                    let default_ty = self.normalize_associated_types_in(
-                                        default.origin_span, &default.ty);
-                                    match self.eq_types(false,
-                                                        &self.misc(default.origin_span),
-                                                        ty,
-                                                        default_ty) {
-                                        Ok(ok) => self.register_infer_ok_obligations(ok),
-                                        Err(_) => conflicts.push((*ty, default)),
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+                conflicts.extend(
+                    self.apply_defaults_and_return_conflicts(&unbound_tyvars, &default_map, None)
+                );
 
                 // If there are conflicts we rollback, otherwise commit
                 if conflicts.len() > 0 {
@@ -2047,37 +2020,41 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
             });
 
-            if conflicts.len() > 0 {
-                // Loop through each conflicting default, figuring out the default that caused
-                // a unification failure and then report an error for each.
-                for (conflict, default) in conflicts {
-                    let conflicting_default =
-                        self.find_conflicting_default(&unbound_tyvars, &default_map, conflict)
-                            .unwrap_or(type_variable::Default {
-                                ty: self.next_ty_var(
-                                    TypeVariableOrigin::MiscVariable(syntax_pos::DUMMY_SP)),
-                                origin_span: syntax_pos::DUMMY_SP,
-                                // what do I put here?
-                                def_id: self.tcx.hir.local_def_id(ast::CRATE_NODE_ID)
-                            });
+            // Loop through each conflicting default, figuring out the default that caused
+            // a unification failure and then report an error for each.
+            for (conflict, default) in conflicts {
+                let conflicting_default =
+                    self.apply_defaults_and_return_conflicts(
+                            &unbound_tyvars,
+                            &default_map,
+                            Some(conflict)
+                        )
+                        .last()
+                        .map(|(_, tv)| tv)
+                        .unwrap_or(type_variable::Default {
+                            ty: self.next_ty_var(
+                                TypeVariableOrigin::MiscVariable(syntax_pos::DUMMY_SP)),
+                            origin_span: syntax_pos::DUMMY_SP,
+                            // what do I put here?
+                            def_id: self.tcx.hir.local_def_id(ast::CRATE_NODE_ID)
+                        });
 
-                    // This is to ensure that we elimnate any non-determinism from the error
-                    // reporting by fixing an order, it doesn't matter what order we choose
-                    // just that it is consistent.
-                    let (first_default, second_default) =
-                        if default.def_id < conflicting_default.def_id {
-                            (default, conflicting_default)
-                        } else {
-                            (conflicting_default, default)
-                        };
+                // This is to ensure that we elimnate any non-determinism from the error
+                // reporting by fixing an order, it doesn't matter what order we choose
+                // just that it is consistent.
+                let (first_default, second_default) =
+                    if default.def_id < conflicting_default.def_id {
+                        (default, conflicting_default)
+                    } else {
+                        (conflicting_default, default)
+                    };
 
 
-                    self.report_conflicting_default_types(
-                        first_default.origin_span,
-                        self.body_id,
-                        first_default,
-                        second_default)
-                }
+                self.report_conflicting_default_types(
+                    first_default.origin_span,
+                    self.body_id,
+                    first_default,
+                    second_default)
             }
         }
 
@@ -2088,56 +2065,48 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     // apply the default that caused conflict first to a local version of the type variable
     // table then apply defaults until we find a conflict. That default must be the one
     // that caused conflict earlier.
-    fn find_conflicting_default(&self,
-                                unbound_vars: &FxHashSet<Ty<'tcx>>,
-                                default_map: &FxHashMap<&Ty<'tcx>, type_variable::Default<'tcx>>,
-                                conflict: Ty<'tcx>)
-                                -> Option<type_variable::Default<'tcx>> {
+    fn apply_defaults_and_return_conflicts<'b>(
+        &'b self,
+        unbound_vars: &'b FxHashSet<Ty<'tcx>>,
+        default_map: &'b FxHashMap<Ty<'tcx>, type_variable::Default<'tcx>>,
+        conflict: Option<Ty<'tcx>>,
+    ) -> impl Iterator<Item=(Ty<'tcx>, type_variable::Default<'tcx>)> + 'b {
         use rustc::ty::error::UnconstrainedNumeric::Neither;
         use rustc::ty::error::UnconstrainedNumeric::{UnconstrainedInt, UnconstrainedFloat};
 
-        // Ensure that we apply the conflicting default first
-        let mut unbound_tyvars = Vec::with_capacity(unbound_vars.len() + 1);
-        unbound_tyvars.push(conflict);
-        unbound_tyvars.extend(unbound_vars.iter());
-
-        let mut result = None;
-        // We run the same code as above applying defaults in order, this time when
-        // we find the conflict we just return it for error reporting above.
-
-        // We also run this inside snapshot that never commits so we can do error
-        // reporting for more then one conflict.
-        for ty in &unbound_tyvars {
+        conflict.into_iter().chain(unbound_vars.iter().cloned()).flat_map(move |ty| {
             if self.type_var_diverges(ty) {
-                self.demand_eqtype(syntax_pos::DUMMY_SP, *ty,
+                self.demand_eqtype(syntax_pos::DUMMY_SP, ty,
                                    self.tcx.mk_diverging_default());
             } else {
                 match self.type_is_unconstrained_numeric(ty) {
                     UnconstrainedInt => {
-                        self.demand_eqtype(syntax_pos::DUMMY_SP, *ty, self.tcx.types.i32)
+                        self.demand_eqtype(syntax_pos::DUMMY_SP, ty, self.tcx.types.i32)
                     },
                     UnconstrainedFloat => {
-                        self.demand_eqtype(syntax_pos::DUMMY_SP, *ty, self.tcx.types.f64)
+                        self.demand_eqtype(syntax_pos::DUMMY_SP, ty, self.tcx.types.f64)
                     },
                     Neither => {
                         if let Some(default) = default_map.get(ty) {
                             let default = default.clone();
+                            let default_ty = self.normalize_associated_types_in(
+                                default.origin_span, &default.ty);
                             match self.eq_types(false,
                                                 &self.misc(default.origin_span),
                                                 ty,
-                                                default.ty) {
+                                                default_ty) {
                                 Ok(ok) => self.register_infer_ok_obligations(ok),
                                 Err(_) => {
-                                    result = Some(default);
+                                    return Some((ty, default));
                                 }
                             }
                         }
                     }
                 }
             }
-        }
 
-        return result;
+            None
+        })
     }
 
     fn select_all_obligations_or_error(&self) {
