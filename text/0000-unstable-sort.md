@@ -20,7 +20,7 @@ of sort algorithms like higher performance or lower memory overhead are often mo
 desirable.
 
 Having a performant, non-allocating unstable sort function in libcore would cover those
-needs. At the moment Rust is not offering a built-in alternative (only crates), which
+needs. At the moment Rust is not offering this solution as a built-in (only crates), which
 is unusual for a systems programming language.
 
 **Q: What is stability?**<br>
@@ -54,6 +54,8 @@ A: Because stability is a good default. A programmer might call a sort function
 without checking in the documentation whether it is stable or unstable. It is very
 intuitive to assume stability, so having `slice::sort` perform unstable sorting might
 cause unpleasant surprises.
+See this [story](https://medium.com/@cocotutch/a-swift-sorting-problem-e0ebfc4e46d4#.yfvsgjozx)
+for an example.
 
 **Q: Why does `slice::sort` allocate?**<br>
 A: It is possible to implement a non-allocating stable sort, but it would be
