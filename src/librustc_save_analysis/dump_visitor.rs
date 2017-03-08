@@ -1401,15 +1401,6 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'l> for DumpVisitor<'l, 'tcx, 'll,
         debug!("visit_expr {:?}", ex.node);
         self.process_macro_use(ex.span, ex.id);
         match ex.node {
-            ast::ExprKind::Call(ref _f, ref _args) => {
-                // Don't need to do anything for function calls,
-                // because just walking the callee path does what we want.
-                visit::walk_expr(self, ex);
-            }
-            ast::ExprKind::Path(_, ref path) => {
-                self.process_path(ex.id, path, None);
-                visit::walk_expr(self, ex);
-            }
             ast::ExprKind::Struct(ref path, ref fields, ref base) => {
                 let hir_expr = self.save_ctxt.tcx.hir.expect_expr(ex.id);
                 let adt = match self.save_ctxt.tables.expr_ty_opt(&hir_expr) {
@@ -1507,6 +1498,8 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'l> for DumpVisitor<'l, 'tcx, 'll,
                 self.visit_expr(element);
                 self.nest_tables(count.id, |v| v.visit_expr(count));
             }
+            // In particular, we take this branch for call and path expressions,
+            // where we'll index the idents involved just by continuing to walk.
             _ => {
                 visit::walk_expr(self, ex)
             }
