@@ -387,7 +387,10 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     }
                 }
                 None => {
-                    span_bug!(span, "Could not find container for method {}", id);
+                    debug!("Could not find container for method {} at {:?}", id, span);
+                    // This is not necessarily a bug, if there was a compilation error, the tables
+                    // we need might not exist.
+                    return None;
                 }
             },
         };
