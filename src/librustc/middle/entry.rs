@@ -57,34 +57,36 @@ impl<'a, 'tcx> ItemLikeVisitor<'tcx> for EntryContext<'a, 'tcx> {
 }
 
 pub fn find_entry_point(session: &Session, hir_map: &hir_map::Map) {
-    let _task = hir_map.dep_graph.in_task(DepNode::EntryPoint);
+    hir_map.dep_graph.with_task(DepNode::EntryPoint, session, hir_map, find_entry_point_task);
 
-    let any_exe = session.crate_types.borrow().iter().any(|ty| {
-        *ty == config::CrateTypeExecutable
-    });
-    if !any_exe {
-        // No need to find a main function
-        return
+    fn find_entry_point_task(session: &Session, hir_map: &hir_map::Map) {
+        let any_exe = session.crate_types.borrow().iter().any(|ty| {
+            *ty == config::CrateTypeExecutable
+        });
+        if !any_exe {
+            // No need to find a main function
+            return
+        }
+
+        // If the user wants no main function at all, then stop here.
+        if attr::contains_name(&hir_map.krate().attrs, "no_main") {
+            session.entry_type.set(Some(config::EntryNone));
+            return
+        }
+
+        let mut ctxt = EntryContext {
+            session: session,
+            map: hir_map,
+            main_fn: None,
+            attr_main_fn: None,
+            start_fn: None,
+            non_main_fns: Vec::new(),
+        };
+
+        hir_map.krate().visit_all_item_likes(&mut ctxt);
+
+        configure_main(&mut ctxt);
     }
-
-    // If the user wants no main function at all, then stop here.
-    if attr::contains_name(&hir_map.krate().attrs, "no_main") {
-        session.entry_type.set(Some(config::EntryNone));
-        return
-    }
-
-    let mut ctxt = EntryContext {
-        session: session,
-        map: hir_map,
-        main_fn: None,
-        attr_main_fn: None,
-        start_fn: None,
-        non_main_fns: Vec::new(),
-    };
-
-    hir_map.krate().visit_all_item_likes(&mut ctxt);
-
-    configure_main(&mut ctxt);
 }
 
 // Beware, this is duplicated in libsyntax/entry.rs, make sure to keep

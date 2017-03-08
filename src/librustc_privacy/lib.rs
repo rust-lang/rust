@@ -25,7 +25,7 @@ extern crate rustc;
 #[macro_use] extern crate syntax;
 extern crate syntax_pos;
 
-use rustc::dep_graph::DepNode;
+use rustc::dep_graph::{DepNode, AssertDepGraphSafe};
 use rustc::hir::{self, PatKind};
 use rustc::hir::def::{self, Def};
 use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
@@ -1184,59 +1184,65 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              export_map: &def::ExportMap)
                              -> AccessLevels {
-    let _task = tcx.dep_graph.in_task(DepNode::Privacy);
+    return tcx.dep_graph.with_task(DepNode::Privacy, tcx,
+                                   AssertDepGraphSafe(export_map), check_crate_task);
 
-    let krate = tcx.hir.krate();
+    fn check_crate_task<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                  AssertDepGraphSafe(export_map):
+                                    AssertDepGraphSafe<&def::ExportMap>
+                                 ) -> AccessLevels {
+        let krate = tcx.hir.krate();
 
-    // Use the parent map to check the privacy of everything
-    let mut visitor = PrivacyVisitor {
-        curitem: DefId::local(CRATE_DEF_INDEX),
-        in_foreign: false,
-        tcx: tcx,
-        tables: &ty::TypeckTables::empty(),
-    };
-    intravisit::walk_crate(&mut visitor, krate);
-
-    tcx.sess.abort_if_errors();
-
-    // Build up a set of all exported items in the AST. This is a set of all
-    // items which are reachable from external crates based on visibility.
-    let mut visitor = EmbargoVisitor {
-        tcx: tcx,
-        export_map: export_map,
-        access_levels: Default::default(),
-        prev_level: Some(AccessLevel::Public),
-        changed: false,
-    };
-    loop {
+        // Use the parent map to check the privacy of everything
+        let mut visitor = PrivacyVisitor {
+            curitem: DefId::local(CRATE_DEF_INDEX),
+            in_foreign: false,
+            tcx: tcx,
+            tables: &ty::TypeckTables::empty(),
+        };
         intravisit::walk_crate(&mut visitor, krate);
-        if visitor.changed {
-            visitor.changed = false;
-        } else {
-            break
+
+        tcx.sess.abort_if_errors();
+
+        // Build up a set of all exported items in the AST. This is a set of all
+        // items which are reachable from external crates based on visibility.
+        let mut visitor = EmbargoVisitor {
+            tcx: tcx,
+            export_map: export_map,
+            access_levels: Default::default(),
+            prev_level: Some(AccessLevel::Public),
+            changed: false,
+        };
+        loop {
+            intravisit::walk_crate(&mut visitor, krate);
+            if visitor.changed {
+                visitor.changed = false;
+            } else {
+                break
+            }
         }
+        visitor.update(ast::CRATE_NODE_ID, Some(AccessLevel::Public));
+
+        {
+            let mut visitor = ObsoleteVisiblePrivateTypesVisitor {
+                tcx: tcx,
+                access_levels: &visitor.access_levels,
+                in_variant: false,
+                old_error_set: NodeSet(),
+            };
+            intravisit::walk_crate(&mut visitor, krate);
+
+            // Check for private types and traits in public interfaces
+            let mut visitor = PrivateItemsInPublicInterfacesVisitor {
+                tcx: tcx,
+                old_error_set: &visitor.old_error_set,
+                inner_visibility: ty::Visibility::Public,
+            };
+            krate.visit_all_item_likes(&mut DeepVisitor::new(&mut visitor));
+        }
+
+        visitor.access_levels
     }
-    visitor.update(ast::CRATE_NODE_ID, Some(AccessLevel::Public));
-
-    {
-        let mut visitor = ObsoleteVisiblePrivateTypesVisitor {
-            tcx: tcx,
-            access_levels: &visitor.access_levels,
-            in_variant: false,
-            old_error_set: NodeSet(),
-        };
-        intravisit::walk_crate(&mut visitor, krate);
-
-        // Check for private types and traits in public interfaces
-        let mut visitor = PrivateItemsInPublicInterfacesVisitor {
-            tcx: tcx,
-            old_error_set: &visitor.old_error_set,
-            inner_visibility: ty::Visibility::Public,
-        };
-        krate.visit_all_item_likes(&mut DeepVisitor::new(&mut visitor));
-    }
-
-    visitor.access_levels
 }
 
 __build_diagnostic_array! { librustc_privacy, DIAGNOSTICS }

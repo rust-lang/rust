@@ -259,29 +259,32 @@ const ROOT_SCOPE: ScopeRef<'static> = &Scope::Root;
 pub fn krate(sess: &Session,
              hir_map: &Map)
              -> Result<NamedRegionMap, usize> {
-    let _task = hir_map.dep_graph.in_task(DepNode::ResolveLifetimes);
-    let krate = hir_map.krate();
-    let mut map = NamedRegionMap {
-        defs: NodeMap(),
-        late_bound: NodeSet(),
-        issue_32330: NodeMap(),
-        object_lifetime_defaults: compute_object_lifetime_defaults(sess, hir_map),
-    };
-    sess.track_errors(|| {
-        let mut visitor = LifetimeContext {
-            sess: sess,
-            hir_map: hir_map,
-            map: &mut map,
-            scope: ROOT_SCOPE,
-            trait_ref_hack: false,
-            labels_in_fn: vec![],
-            xcrate_object_lifetime_defaults: DefIdMap(),
+    return hir_map.dep_graph.with_task(DepNode::ResolveLifetimes, sess, hir_map, krate_task);
+
+    fn krate_task(sess: &Session, hir_map: &Map) -> Result<NamedRegionMap, usize> {
+        let krate = hir_map.krate();
+        let mut map = NamedRegionMap {
+            defs: NodeMap(),
+            late_bound: NodeSet(),
+            issue_32330: NodeMap(),
+            object_lifetime_defaults: compute_object_lifetime_defaults(sess, hir_map),
         };
-        for (_, item) in &krate.items {
-            visitor.visit_item(item);
-        }
-    })?;
-    Ok(map)
+        sess.track_errors(|| {
+            let mut visitor = LifetimeContext {
+                sess: sess,
+                hir_map: hir_map,
+                map: &mut map,
+                scope: ROOT_SCOPE,
+                trait_ref_hack: false,
+                labels_in_fn: vec![],
+                xcrate_object_lifetime_defaults: DefIdMap(),
+            };
+            for (_, item) in &krate.items {
+                visitor.visit_item(item);
+            }
+        })?;
+        Ok(map)
+    }
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {

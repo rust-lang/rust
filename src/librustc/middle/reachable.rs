@@ -15,7 +15,7 @@
 // makes all other generics or inline functions that it references
 // reachable as well.
 
-use dep_graph::DepNode;
+use dep_graph::{DepNode, AssertDepGraphSafe};
 use hir::map as hir_map;
 use hir::def::Def;
 use hir::def_id::DefId;
@@ -362,47 +362,53 @@ impl<'a, 'tcx: 'a> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 
 pub fn find_reachable<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                 access_levels: &privacy::AccessLevels)
                                 -> NodeSet {
-    let _task = tcx.dep_graph.in_task(DepNode::Reachability);
+    return tcx.dep_graph.with_task(DepNode::Reachability, tcx,
+                                   AssertDepGraphSafe(access_levels), find_reachable_task);
 
-    let any_library = tcx.sess.crate_types.borrow().iter().any(|ty| {
-        *ty == config::CrateTypeRlib || *ty == config::CrateTypeDylib ||
-        *ty == config::CrateTypeProcMacro
-    });
-    let mut reachable_context = ReachableContext {
-        tcx: tcx,
-        tables: &ty::TypeckTables::empty(),
-        reachable_symbols: NodeSet(),
-        worklist: Vec::new(),
-        any_library: any_library,
-    };
+    fn find_reachable_task<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                     AssertDepGraphSafe(access_levels):
+                                        AssertDepGraphSafe<&privacy::AccessLevels>)
+                                     -> NodeSet {
+        let any_library = tcx.sess.crate_types.borrow().iter().any(|ty| {
+            *ty == config::CrateTypeRlib || *ty == config::CrateTypeDylib ||
+                *ty == config::CrateTypeProcMacro
+        });
+        let mut reachable_context = ReachableContext {
+            tcx: tcx,
+            tables: &ty::TypeckTables::empty(),
+            reachable_symbols: NodeSet(),
+            worklist: Vec::new(),
+            any_library: any_library,
+        };
 
-    // Step 1: Seed the worklist with all nodes which were found to be public as
-    //         a result of the privacy pass along with all local lang items and impl items.
-    //         If other crates link to us, they're going to expect to be able to
-    //         use the lang items, so we need to be sure to mark them as
-    //         exported.
-    for (id, _) in &access_levels.map {
-        reachable_context.worklist.push(*id);
-    }
-    for item in tcx.lang_items.items().iter() {
-        if let Some(did) = *item {
-            if let Some(node_id) = tcx.hir.as_local_node_id(did) {
-                reachable_context.worklist.push(node_id);
+        // Step 1: Seed the worklist with all nodes which were found to be public as
+        //         a result of the privacy pass along with all local lang items and impl items.
+        //         If other crates link to us, they're going to expect to be able to
+        //         use the lang items, so we need to be sure to mark them as
+        //         exported.
+        for (id, _) in &access_levels.map {
+            reachable_context.worklist.push(*id);
+        }
+        for item in tcx.lang_items.items().iter() {
+            if let Some(did) = *item {
+                if let Some(node_id) = tcx.hir.as_local_node_id(did) {
+                    reachable_context.worklist.push(node_id);
+                }
             }
         }
-    }
-    {
-        let mut collect_private_impl_items = CollectPrivateImplItemsVisitor {
-            tcx: tcx,
-            access_levels: access_levels,
-            worklist: &mut reachable_context.worklist,
-        };
-        tcx.hir.krate().visit_all_item_likes(&mut collect_private_impl_items);
-    }
+        {
+            let mut collect_private_impl_items = CollectPrivateImplItemsVisitor {
+                tcx: tcx,
+                access_levels: access_levels,
+                worklist: &mut reachable_context.worklist,
+            };
+            tcx.hir.krate().visit_all_item_likes(&mut collect_private_impl_items);
+        }
 
-    // Step 2: Mark all symbols that the symbols on the worklist touch.
-    reachable_context.propagate();
+        // Step 2: Mark all symbols that the symbols on the worklist touch.
+        reachable_context.propagate();
 
-    // Return the set of reachable symbols.
-    reachable_context.reachable_symbols
+        // Return the set of reachable symbols.
+        reachable_context.reachable_symbols
+    }
 }

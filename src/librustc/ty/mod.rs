@@ -15,7 +15,7 @@ pub use self::IntVarValue::*;
 pub use self::LvaluePreference::*;
 pub use self::fold::TypeFoldable;
 
-use dep_graph::{self, DepNode};
+use dep_graph::{self, DepNode, AssertDepGraphSafe};
 use hir::{map as hir_map, FreevarMap, TraitMap};
 use middle;
 use hir::def::{Def, CtorKind, ExportMap};
@@ -1642,49 +1642,56 @@ impl<'a, 'gcx, 'tcx> AdtDef {
 
         // Follow the memoization pattern: push the computation of
         // DepNode::SizedConstraint as our current task.
-        let _task = tcx.dep_graph.in_task(DepNode::SizedConstraint(self.did));
+        let args = AssertDepGraphSafe((self, stack));
+        return tcx.dep_graph.with_task(DepNode::SizedConstraint(self.did), tcx, args, calc_task);
 
-        if stack.contains(&self.did) {
-            debug!("calculate_sized_constraint: {:?} is recursive", self);
-            // This should be reported as an error by `check_representable`.
-            //
-            // Consider the type as Sized in the meanwhile to avoid
-            // further errors.
-            tcx.maps.adt_sized_constraint.borrow_mut().insert(self.did, tcx.types.err);
-            return tcx.types.err;
-        }
+        fn calc_task<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                               AssertDepGraphSafe((this, stack)):
+                                   AssertDepGraphSafe<(&AdtDef, &mut Vec<DefId>)>
+                              )-> Ty<'tcx> {
 
-        stack.push(self.did);
+            if stack.contains(&this.did) {
+                debug!("calculate_sized_constraint: {:?} is recursive", this);
+                // This should be reported as an error by `check_representable`.
+                //
+                // Consider the type as Sized in the meanwhile to avoid
+                // further errors.
+                tcx.maps.adt_sized_constraint.borrow_mut().insert(this.did, tcx.types.err);
+                return tcx.types.err;
+            }
 
-        let tys : Vec<_> =
-            self.variants.iter().flat_map(|v| {
+            stack.push(this.did);
+
+            let tys: Vec<_> =
+            this.variants.iter().flat_map(|v| {
                 v.fields.last()
             }).flat_map(|f| {
                 let ty = tcx.item_type(f.did);
-                self.sized_constraint_for_ty(tcx, stack, ty)
+                this.sized_constraint_for_ty(tcx, stack, ty)
             }).collect();
 
-        let self_ = stack.pop().unwrap();
-        assert_eq!(self_, self.did);
+            let self_ = stack.pop().unwrap();
+            assert_eq!(self_, this.did);
 
-        let ty = match tys.len() {
-            _ if tys.references_error() => tcx.types.err,
-            0 => tcx.types.bool,
-            1 => tys[0],
-            _ => tcx.intern_tup(&tys[..], false)
-        };
+            let ty = match tys.len() {
+                _ if tys.references_error() => tcx.types.err,
+                0 => tcx.types.bool,
+                1 => tys[0],
+                _ => tcx.intern_tup(&tys[..], false)
+            };
 
-        let old = tcx.maps.adt_sized_constraint.borrow().get(&self.did).cloned();
-        match old {
-            Some(old_ty) => {
-                debug!("calculate_sized_constraint: {:?} recurred", self);
-                assert_eq!(old_ty, tcx.types.err);
-                old_ty
-            }
-            None => {
-                debug!("calculate_sized_constraint: {:?} => {:?}", self, ty);
-                tcx.maps.adt_sized_constraint.borrow_mut().insert(self.did, ty);
-                ty
+            let old = tcx.maps.adt_sized_constraint.borrow().get(&this.did).cloned();
+            match old {
+                Some(old_ty) => {
+                    debug!("calculate_sized_constraint: {:?} recurred", this);
+                    assert_eq!(old_ty, tcx.types.err);
+                    old_ty
+                }
+                None => {
+                    debug!("calculate_sized_constraint: {:?} => {:?}", this, ty);
+                    tcx.maps.adt_sized_constraint.borrow_mut().insert(this.did, ty);
+                    ty
+                }
             }
         }
     }

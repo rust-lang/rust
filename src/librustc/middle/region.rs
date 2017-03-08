@@ -1257,37 +1257,41 @@ impl<'hir, 'a> Visitor<'hir> for RegionResolutionVisitor<'hir, 'a> {
 }
 
 pub fn resolve_crate(sess: &Session, map: &hir_map::Map) -> RegionMaps {
-    let _task = map.dep_graph.in_task(DepNode::RegionResolveCrate);
-    let krate = map.krate();
+    return map.dep_graph.with_task(DepNode::RegionResolveCrate, sess, map, resolve_crate_task);
 
-    let maps = RegionMaps {
-        code_extents: RefCell::new(vec![]),
-        code_extent_interner: RefCell::new(FxHashMap()),
-        scope_map: RefCell::new(vec![]),
-        var_map: RefCell::new(NodeMap()),
-        rvalue_scopes: RefCell::new(NodeMap()),
-        shrunk_rvalue_scopes: RefCell::new(NodeMap()),
-        fn_tree: RefCell::new(NodeMap()),
-    };
-    let root_extent = maps.bogus_code_extent(
-        CodeExtentData::DestructionScope(ast::DUMMY_NODE_ID));
-    assert_eq!(root_extent, ROOT_CODE_EXTENT);
-    let bogus_extent = maps.bogus_code_extent(
-        CodeExtentData::Misc(ast::DUMMY_NODE_ID));
-    assert_eq!(bogus_extent, DUMMY_CODE_EXTENT);
-    {
-        let mut visitor = RegionResolutionVisitor {
-            sess: sess,
-            region_maps: &maps,
-            map: map,
-            cx: Context {
-                root_id: None,
-                parent: ROOT_CODE_EXTENT,
-                var_parent: ROOT_CODE_EXTENT
-            },
-            terminating_scopes: NodeSet()
+    fn resolve_crate_task(sess: &Session, map: &hir_map::Map) -> RegionMaps {
+        let krate = map.krate();
+
+        let maps = RegionMaps {
+            code_extents: RefCell::new(vec![]),
+            code_extent_interner: RefCell::new(FxHashMap()),
+            scope_map: RefCell::new(vec![]),
+            var_map: RefCell::new(NodeMap()),
+            rvalue_scopes: RefCell::new(NodeMap()),
+            shrunk_rvalue_scopes: RefCell::new(NodeMap()),
+            fn_tree: RefCell::new(NodeMap()),
         };
-        krate.visit_all_item_likes(&mut visitor.as_deep_visitor());
+        let root_extent = maps.bogus_code_extent(
+            CodeExtentData::DestructionScope(ast::DUMMY_NODE_ID));
+        assert_eq!(root_extent, ROOT_CODE_EXTENT);
+        let bogus_extent = maps.bogus_code_extent(
+            CodeExtentData::Misc(ast::DUMMY_NODE_ID));
+        assert_eq!(bogus_extent, DUMMY_CODE_EXTENT);
+        {
+            let mut visitor = RegionResolutionVisitor {
+                sess: sess,
+                region_maps: &maps,
+                map: map,
+                cx: Context {
+                    root_id: None,
+                    parent: ROOT_CODE_EXTENT,
+                    var_parent: ROOT_CODE_EXTENT
+                },
+                terminating_scopes: NodeSet()
+            };
+            krate.visit_all_item_likes(&mut visitor.as_deep_visitor());
+        }
+
+        maps
     }
-    return maps;
 }

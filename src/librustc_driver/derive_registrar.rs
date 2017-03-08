@@ -16,12 +16,15 @@ use syntax::ast;
 use syntax::attr;
 
 pub fn find(hir_map: &Map) -> Option<ast::NodeId> {
-    let _task = hir_map.dep_graph.in_task(DepNode::PluginRegistrar);
-    let krate = hir_map.krate();
+    return hir_map.dep_graph.with_task(DepNode::PluginRegistrar, hir_map, (), find_task);
 
-    let mut finder = Finder { registrar: None };
-    krate.visit_all_item_likes(&mut finder);
-    finder.registrar
+    fn find_task(hir_map: &Map, (): ()) -> Option<ast::NodeId> {
+        let krate = hir_map.krate();
+
+        let mut finder = Finder { registrar: None };
+        krate.visit_all_item_likes(&mut finder);
+        finder.registrar
+    }
 }
 
 struct Finder {
