@@ -195,15 +195,17 @@ pub fn trans_mir<'a, 'tcx: 'a>(
     debug!("fn_ty: {:?}", fn_ty);
     let debug_context =
         debuginfo::create_function_debug_context(ccx, instance, sig, llfn, mir);
-    let bcx = Builder::new_block(ccx, llfn, "entry-block");
+    let bcx = Builder::new_block(ccx, llfn, "start");
 
     let cleanup_kinds = analyze::cleanup_kinds(&mir);
 
-    // Allocate a `Block` for every basic block
+    // Allocate a `Block` for every basic block, except
+    // the start block, if nothing loops back to it.
+    let reentrant_start_block = !mir.predecessors_for(mir::START_BLOCK).is_empty();
     let block_bcxs: IndexVec<mir::BasicBlock, BasicBlockRef> =
         mir.basic_blocks().indices().map(|bb| {
-            if bb == mir::START_BLOCK {
-                bcx.build_sibling_block("start").llbb()
+            if bb == mir::START_BLOCK && !reentrant_start_block {
+                bcx.llbb()
             } else {
                 bcx.build_sibling_block(&format!("{:?}", bb)).llbb()
             }
@@ -289,9 +291,10 @@ pub fn trans_mir<'a, 'tcx: 'a>(
             .collect()
     };
 
-    // Branch to the START block
-    let start_bcx = mircx.blocks[mir::START_BLOCK];
-    bcx.br(start_bcx);
+    // Branch to the START block, if it's not the entry block.
+    if reentrant_start_block {
+        bcx.br(mircx.blocks[mir::START_BLOCK]);
+    }
 
     // Up until here, IR instructions for this function have explicitly not been annotated with
     // source code location, so we don't step into call setup code. From here on, source location
