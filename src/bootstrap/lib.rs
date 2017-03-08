@@ -613,7 +613,7 @@ impl Build {
     /// Get the space-separated set of activated features for the standard
     /// library.
     fn std_features(&self) -> String {
-        let mut features = "panic-unwind asan lsan msan tsan".to_string();
+        let mut features = "panic-unwind".to_string();
 
         if self.config.debug_jemalloc {
             features.push_str(" debug-jemalloc");
