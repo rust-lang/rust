@@ -62,11 +62,9 @@
 #link-jobs = 0
 
 # Delete LLVM build directory on LLVM rebuild.
-# This option's default (`true`) is optimized for CI needs, and CI wants to
-# perform clean full builds only (possibly accelerated by (s)ccache).
-# You may want to override this option for local builds to enable partial LLVM
-# rebuilds.
-#clean-rebuild = true
+# This option defaults to `false` for local development, but CI may want to
+# always perform clean full builds (possibly accelerated by (s)ccache).
+#clean-rebuild = false
 
 # =============================================================================
 # General build configuration options
