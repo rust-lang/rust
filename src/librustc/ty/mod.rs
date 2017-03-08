@@ -1633,30 +1633,24 @@ impl<'a, 'gcx, 'tcx> AdtDef {
     ///       check should catch this case.
     fn calculate_sized_constraint_inner(&self,
                                         tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                        stack: &mut Vec<DefId>)
+                                        stack: &mut Vec<(DefId, bool)>)
                                         -> Ty<'tcx>
     {
-        if let Some(ty) = tcx.maps.adt_sized_constraint.borrow().get(&self.did) {
-            return ty;
-        }
+        if let Some(index) = stack.iter().position(|pair| pair.0 == self.did) {
+            stack[index].1 = true;
 
-        // Follow the memoization pattern: push the computation of
-        // DepNode::SizedConstraint as our current task.
-        let _task = tcx.dep_graph.in_task(DepNode::SizedConstraint(self.did));
-
-        if stack.contains(&self.did) {
             debug!("calculate_sized_constraint: {:?} is recursive", self);
             // This should be reported as an error by `check_representable`.
             //
             // Consider the type as Sized in the meanwhile to avoid
             // further errors.
-            tcx.maps.adt_sized_constraint.borrow_mut().insert(self.did, tcx.types.err);
             return tcx.types.err;
         }
 
-        stack.push(self.did);
+        tcx.maps.adt_sized_constraint.memoize(self.did, || {
+            stack.push((self.did, false));
 
-        let tys : Vec<_> =
+            let tys: Vec<_> =
             self.variants.iter().flat_map(|v| {
                 v.fields.last()
             }).flat_map(|f| {
@@ -1664,34 +1658,26 @@ impl<'a, 'gcx, 'tcx> AdtDef {
                 self.sized_constraint_for_ty(tcx, stack, ty)
             }).collect();
 
-        let self_ = stack.pop().unwrap();
-        assert_eq!(self_, self.did);
+            let (self_, cycle) = stack.pop().unwrap();
+            assert_eq!(self_, self.did);
 
-        let ty = match tys.len() {
-            _ if tys.references_error() => tcx.types.err,
-            0 => tcx.types.bool,
-            1 => tys[0],
-            _ => tcx.intern_tup(&tys[..], false)
-        };
+            let ty = if cycle || tys.references_error() {
+                tcx.types.err
+            } else {
+                match tys.len() {
+                    0 => tcx.types.bool,
+                    1 => tys[0],
+                    _ => tcx.intern_tup(&tys[..], false)
+                }
+            };
 
-        let old = tcx.maps.adt_sized_constraint.borrow().get(&self.did).cloned();
-        match old {
-            Some(old_ty) => {
-                debug!("calculate_sized_constraint: {:?} recurred", self);
-                assert_eq!(old_ty, tcx.types.err);
-                old_ty
-            }
-            None => {
-                debug!("calculate_sized_constraint: {:?} => {:?}", self, ty);
-                tcx.maps.adt_sized_constraint.borrow_mut().insert(self.did, ty);
-                ty
-            }
-        }
+            Some(ty)
+        })
     }
 
     fn sized_constraint_for_ty(&self,
                                tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                               stack: &mut Vec<DefId>,
+                               stack: &mut Vec<(DefId, bool)>,
                                ty: Ty<'tcx>)
                                -> Vec<Ty<'tcx>> {
         let result = match ty.sty {
@@ -2094,9 +2080,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 }
             }
 
-            // memoize wants us to return something, so return
-            // the one we generated for this def-id
-            *self.maps.associated_item.borrow().get(&def_id).unwrap()
+            None
         })
     }
 
@@ -2176,7 +2160,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 }
                 _ => span_bug!(item.span, "associated_item_def_ids: not impl or trait")
             };
-            Rc::new(vec)
+            Some(Rc::new(vec))
         })
     }
 

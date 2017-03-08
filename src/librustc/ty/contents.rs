@@ -125,7 +125,7 @@ impl fmt::Debug for TypeContents {
 
 impl<'a, 'tcx> ty::TyS<'tcx> {
     pub fn type_contents(&'tcx self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> TypeContents {
-        return tcx.tc_cache.memoize(self, || tc_ty(tcx, self, &mut FxHashMap()));
+        return tcx.tc_cache.memoize(self, || Some(tc_ty(tcx, self, &mut FxHashMap())));
 
         fn tc_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                            ty: Ty<'tcx>,

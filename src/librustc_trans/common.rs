@@ -488,7 +488,7 @@ pub fn fulfill_obligation<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
             let vtable = infcx.drain_fulfillment_cx_or_panic(span, &mut fulfill_cx, &vtable);
 
             info!("Cache miss: {:?} => {:?}", trait_ref, vtable);
-            vtable
+            Some(vtable)
         })
     })
 }
