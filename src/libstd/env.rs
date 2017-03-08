@@ -590,6 +590,10 @@ pub fn current_exe() -> io::Result<PathBuf> {
 ///
 /// This structure is created through the [`std::env::args`] function.
 ///
+/// The first element is traditionally the path of the executable, but it can be
+/// set to arbitrary text, and may not even exist. This means this property should
+/// not be relied upon for security purposes.
+///
 /// [`String`]: ../string/struct.String.html
 /// [`std::env::args`]: ./fn.args.html
 #[stable(feature = "env", since = "1.0.0")]
@@ -599,6 +603,10 @@ pub struct Args { inner: ArgsOs }
 /// for each argument.
 ///
 /// This structure is created through the [`std::env::args_os`] function.
+///
+/// The first element is traditionally the path of the executable, but it can be
+/// set to arbitrary text, and may not even exist. This means this property should
+/// not be relied upon for security purposes.
 ///
 /// [`OsString`]: ../ffi/struct.OsString.html
 /// [`std::env::args_os`]: ./fn.args_os.html
