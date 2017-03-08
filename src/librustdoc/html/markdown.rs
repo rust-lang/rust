@@ -30,9 +30,9 @@ use libc;
 use std::ascii::AsciiExt;
 use std::cell::RefCell;
 use std::default::Default;
-use std::ffi::CString;
+//use std::ffi::CString;
 use std::fmt::{self, Write};
-use std::slice;
+//use std::slice;
 use std::str;
 use syntax::feature_gate::UnstableFeatures;
 use syntax::codemap::Span;
@@ -42,6 +42,8 @@ use html::toc::TocBuilder;
 use html::highlight;
 use html::escape::Escape;
 use test;
+
+use pulldown_cmark::{self, Parser};
 
 /// A unit struct which has the `fmt::Display` trait implemented. When
 /// formatted, this struct will emit the HTML corresponding to the rendered
@@ -53,7 +55,7 @@ pub struct MarkdownWithToc<'a>(pub &'a str);
 /// A unit struct like `Markdown`, that renders the markdown escaping HTML tags.
 pub struct MarkdownHtml<'a>(pub &'a str);
 
-const DEF_OUNIT: libc::size_t = 64;
+/*const DEF_OUNIT: libc::size_t = 64;
 const HOEDOWN_EXT_NO_INTRA_EMPHASIS: libc::c_uint = 1 << 11;
 const HOEDOWN_EXT_TABLES: libc::c_uint = 1 << 0;
 const HOEDOWN_EXT_FENCED_CODE: libc::c_uint = 1 << 1;
@@ -179,8 +181,8 @@ extern {
     fn hoedown_document_free(md: *mut hoedown_document);
 
     fn hoedown_buffer_new(unit: libc::size_t) -> *mut hoedown_buffer;
-    fn hoedown_buffer_put(b: *mut hoedown_buffer, c: *const libc::c_char,
-                          n: libc::size_t);
+    /*fn hoedown_buffer_put(b: *mut hoedown_buffer, c: *const libc::c_char,
+                          n: libc::size_t);*/
     fn hoedown_buffer_puts(b: *mut hoedown_buffer, c: *const libc::c_char);
     fn hoedown_buffer_free(b: *mut hoedown_buffer);
 
@@ -191,7 +193,7 @@ impl hoedown_buffer {
     fn as_bytes(&self) -> &[u8] {
         unsafe { slice::from_raw_parts(self.data, self.size as usize) }
     }
-}
+}*/
 
 /// Returns Some(code) if `s` is a line that should be stripped from
 /// documentation but used in example code. `code` is the portion of
@@ -226,8 +228,8 @@ thread_local!(pub static PLAYGROUND: RefCell<Option<(Option<String>, String)>> =
 pub fn render(w: &mut fmt::Formatter,
               s: &str,
               print_toc: bool,
-              html_flags: libc::c_uint) -> fmt::Result {
-    extern fn block(ob: *mut hoedown_buffer, orig_text: *const hoedown_buffer,
+              _html_flags: libc::c_uint) -> fmt::Result {
+    /*extern fn block(ob: *mut hoedown_buffer, orig_text: *const hoedown_buffer,
                     lang: *const hoedown_buffer, data: *const hoedown_renderer_data,
                     line: libc::size_t) {
         unsafe {
@@ -422,76 +424,274 @@ pub fn render(w: &mut fmt::Formatter,
         }
         hoedown_buffer_free(ob);
         ret
+    }*/
+
+    fn block(parser: &mut Parser, lang: &str, buffer: &mut String) {
+        let mut origtext = String::new();
+        loop {
+            let event = parser.next();
+            if let Some(event) = event {
+                match event {
+                    pulldown_cmark::Event::End(
+                        pulldown_cmark::Tag::CodeBlock(_)) => break,
+                    pulldown_cmark::Event::Text(ref s) => {
+                        origtext.push_str(s);
+                    }
+                    _ => {}
+                }
+            } else {
+                break
+            }
+        }
+        let origtext = origtext.trim_left();
+        debug!("docblock: ==============\n{:?}\n=======", origtext);
+        let rendered = if lang.is_empty() || origtext.is_empty() {
+            false
+        } else {
+            if !LangString::parse(lang).rust {
+                /*(my_opaque.dfltblk)(ob, orig_text, lang,
+                                    opaque as *const hoedown_renderer_data,
+                                    line);*/
+                // true
+                false
+            } else {
+                false
+            }
+        };
+
+        let lines = origtext.lines().filter(|l| {
+            stripped_filtered_line(*l).is_none()
+        });
+        let text = lines.collect::<Vec<&str>>().join("\n");
+        if rendered { return }
+        PLAYGROUND.with(|play| {
+            // insert newline to clearly separate it from the
+            // previous block so we can shorten the html output
+            let mut s = String::from("\n");
+            let playground_button = play.borrow().as_ref().and_then(|&(ref krate, ref url)| {
+                if url.is_empty() {
+                    return None;
+                }
+                let test = origtext.lines().map(|l| {
+                    stripped_filtered_line(l).unwrap_or(l)
+                }).collect::<Vec<&str>>().join("\n");
+                let krate = krate.as_ref().map(|s| &**s);
+                let test = test::maketest(&test, krate, false,
+                                          &Default::default());
+                let channel = if test.contains("#![feature(") {
+                    "&amp;version=nightly"
+                } else {
+                    ""
+                };
+                // These characters don't need to be escaped in a URI.
+                // FIXME: use a library function for percent encoding.
+                fn dont_escape(c: u8) -> bool {
+                    (b'a' <= c && c <= b'z') ||
+                    (b'A' <= c && c <= b'Z') ||
+                    (b'0' <= c && c <= b'9') ||
+                    c == b'-' || c == b'_' || c == b'.' ||
+                    c == b'~' || c == b'!' || c == b'\'' ||
+                    c == b'(' || c == b')' || c == b'*'
+                }
+                let mut test_escaped = String::new();
+                for b in test.bytes() {
+                    if dont_escape(b) {
+                        test_escaped.push(char::from(b));
+                    } else {
+                        write!(test_escaped, "%{:02X}", b).unwrap();
+                    }
+                }
+                Some(format!(
+                    r#"<a class="test-arrow" target="_blank" href="{}?code={}{}">Run</a>"#,
+                    url, test_escaped, channel
+                ))
+            });
+            s.push_str(&highlight::render_with_highlighting(
+                           &text,
+                           Some("rust-example-rendered"),
+                           None,
+                           playground_button.as_ref().map(String::as_str)));
+            buffer.push_str(&s);
+        });
     }
+
+    fn header(parser: &mut Parser, level: i32, toc_builder: &mut Option<TocBuilder>,
+              buffer: &mut String) {
+        let mut ret = String::new();
+        loop {
+            let event = parser.next();
+            if let Some(event) = event {
+                match event {
+                    pulldown_cmark::Event::End(
+                        pulldown_cmark::Tag::Header(_)) => break,
+                    pulldown_cmark::Event::Text(ref s) => {
+                        ret.push_str(s);
+                    }
+                    _ => {}
+                }
+            } else {
+                break
+            }
+        }
+
+        let id = ret.clone();
+        // Discard '<em>', '<code>' tags and some escaped characters,
+        // transform the contents of the header into a hyphenated string
+        // without non-alphanumeric characters other than '-' and '_'.
+        //
+        // This is a terrible hack working around how hoedown gives us rendered
+        // html for text rather than the raw text.
+        let id = id.chars().filter_map(|c| {
+            if c.is_alphanumeric() || c == '-' || c == '_' {
+                if c.is_ascii() {
+                    Some(c.to_ascii_lowercase())
+                } else {
+                    Some(c)
+                }
+            } else if c.is_whitespace() && c.is_ascii() {
+                Some('-')
+            } else {
+                None
+            }
+        }).collect::<String>();
+
+        let id = derive_id(id);
+
+        let sec = toc_builder.as_mut().map_or("".to_owned(), |builder| {
+            format!("{} ", builder.push(level as u32, ret.clone(), id.clone()))
+        });
+
+        // Render the HTML
+        buffer.push_str(&format!("<h{lvl} id='{id}' class='section-header'>\
+                                  <a href='#{id}'>{sec}{}</a></h{lvl}>",
+                                 ret, lvl = level, id = id, sec = sec));
+    }
+
+    fn codespan(parser: &mut Parser, buffer: &mut String) {
+        let mut content = String::new();
+        loop {
+            let event = parser.next();
+            if let Some(event) = event {
+                match event {
+                    pulldown_cmark::Event::End(
+                        pulldown_cmark::Tag::Code) => break,
+                    pulldown_cmark::Event::Text(ref s) => {
+                        content.push_str(s);
+                    }
+                    _ => {}
+                }
+            } else {
+                break
+            }
+        }
+        buffer.push_str(&format!("<code>{}</code>", Escape(&collapse_whitespace(&content))));
+    }
+
+    let mut toc_builder = if print_toc {
+        Some(TocBuilder::new())
+    } else {
+        None
+    };
+    let mut buffer = String::new();
+    let mut parser = Parser::new(s);
+    loop {
+        let next_event = parser.next();
+        if let Some(event) = next_event {
+            match event {
+                pulldown_cmark::Event::Start(pulldown_cmark::Tag::CodeBlock(s)) => {
+                    block(&mut parser, &*s, &mut buffer);
+                }
+                pulldown_cmark::Event::Start(pulldown_cmark::Tag::Header(level)) => {
+                    header(&mut parser, level, &mut toc_builder, &mut buffer);
+                }
+                pulldown_cmark::Event::Start(pulldown_cmark::Tag::Code) => {
+                    codespan(&mut parser, &mut buffer);
+                }
+                _ => {}
+            }
+        } else {
+            break
+        }
+    }
+    let mut ret = toc_builder.map_or(Ok(()), |builder| {
+        write!(w, "<nav id=\"TOC\">{}</nav>", builder.into_toc())
+    });
+
+    if ret.is_ok() {
+        ret = w.write_str(&buffer);
+    }
+    ret
 }
 
 pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector, position: Span) {
-    extern fn block(_ob: *mut hoedown_buffer,
-                    text: *const hoedown_buffer,
-                    lang: *const hoedown_buffer,
-                    data: *const hoedown_renderer_data,
-                    line: libc::size_t) {
-        unsafe {
-            if text.is_null() { return }
-            let block_info = if lang.is_null() {
-                LangString::all_false()
-            } else {
-                let lang = (*lang).as_bytes();
-                let s = str::from_utf8(lang).unwrap();
-                LangString::parse(s)
-            };
-            if !block_info.rust { return }
-            let text = (*text).as_bytes();
-            let opaque = (*data).opaque as *mut hoedown_html_renderer_state;
-            let tests = &mut *((*opaque).opaque as *mut ::test::Collector);
-            let text = str::from_utf8(text).unwrap();
-            let lines = text.lines().map(|l| {
-                stripped_filtered_line(l).unwrap_or(l)
-            });
-            let text = lines.collect::<Vec<&str>>().join("\n");
-            let line = tests.get_line() + line;
-            let filename = tests.get_filename();
-            tests.add_test(text.to_owned(),
-                           block_info.should_panic, block_info.no_run,
-                           block_info.ignore, block_info.test_harness,
-                           block_info.compile_fail, block_info.error_codes,
-                           line, filename);
-        }
-    }
-
-    extern fn header(_ob: *mut hoedown_buffer,
-                     text: *const hoedown_buffer,
-                     level: libc::c_int, data: *const hoedown_renderer_data,
-                     _: libc::size_t) {
-        unsafe {
-            let opaque = (*data).opaque as *mut hoedown_html_renderer_state;
-            let tests = &mut *((*opaque).opaque as *mut ::test::Collector);
-            if text.is_null() {
-                tests.register_header("", level as u32);
-            } else {
-                let text = (*text).as_bytes();
-                let text = str::from_utf8(text).unwrap();
-                tests.register_header(text, level as u32);
-            }
-        }
-    }
-
     tests.set_position(position);
-    unsafe {
-        let ob = hoedown_buffer_new(DEF_OUNIT);
-        let renderer = hoedown_html_renderer_new(0, 0);
-        (*renderer).blockcode = Some(block);
-        (*renderer).header = Some(header);
-        (*((*renderer).opaque as *mut hoedown_html_renderer_state)).opaque
-                = tests as *mut _ as *mut libc::c_void;
 
-        let document = hoedown_document_new(renderer, HOEDOWN_EXTENSIONS, 16);
-        hoedown_document_render(document, ob, doc.as_ptr(),
-                                doc.len() as libc::size_t);
-        hoedown_document_free(document);
-
-        hoedown_html_renderer_free(renderer);
-        hoedown_buffer_free(ob);
+    let mut parser = Parser::new(doc);
+    let mut prev_offset = 0;
+    let mut nb_lines = 0;
+    let mut register_header = None;
+    'main: loop {
+        let next_event = parser.next();
+        if let Some(event) = next_event {
+            match event {
+                pulldown_cmark::Event::Start(pulldown_cmark::Tag::CodeBlock(s)) => {
+                    let block_info = if s.is_empty() {
+                        LangString::all_false()
+                    } else {
+                        LangString::parse(&*s)
+                    };
+                    let mut test_s = String::new();
+                    let mut offset = None;
+                    loop {
+                        let event = parser.next();
+                        if let Some(event) = event {
+                            match event {
+                                pulldown_cmark::Event::End(
+                                    pulldown_cmark::Tag::CodeBlock(_)) => break,
+                                pulldown_cmark::Event::Text(ref s) => {
+                                    test_s.push_str(s);
+                                    if offset.is_none() {
+                                        offset = Some(parser.get_offset());
+                                    }
+                                }
+                                _ => {}
+                            }
+                        } else {
+                            break 'main;
+                        }
+                    }
+                    let offset = offset.unwrap_or(0);
+                    let lines = test_s.lines().map(|l| {
+                        stripped_filtered_line(l).unwrap_or(l)
+                    });
+                    let text = lines.collect::<Vec<&str>>().join("\n");
+                    nb_lines += doc[prev_offset..offset].lines().count();
+                    let line = tests.get_line() + (nb_lines - 1);
+                    let filename = tests.get_filename();
+                    tests.add_test(text.to_owned(),
+                                   block_info.should_panic, block_info.no_run,
+                                   block_info.ignore, block_info.test_harness,
+                                   block_info.compile_fail, block_info.error_codes,
+                                   line, filename);
+                    prev_offset = offset;
+                }
+                pulldown_cmark::Event::Start(pulldown_cmark::Tag::Header(level)) => {
+                    register_header = Some(level as u32);
+                }
+                pulldown_cmark::Event::Text(ref s) if register_header.is_some() => {
+                    let level = register_header.unwrap();
+                    if s.is_empty() {
+                        tests.register_header("", level);
+                    } else {
+                        tests.register_header(s, level);
+                    }
+                    register_header = None;
+                }
+                _ => {}
+            }
+        } else {
+            break
+        }
     }
 }
 
@@ -589,57 +789,58 @@ impl<'a> fmt::Display for MarkdownHtml<'a> {
         let MarkdownHtml(md) = *self;
         // This is actually common enough to special-case
         if md.is_empty() { return Ok(()) }
-        render(fmt, md, false, HOEDOWN_HTML_ESCAPE)
+        render(fmt, md, false, /*HOEDOWN_HTML_ESCAPE*/0)
     }
 }
 
 pub fn plain_summary_line(md: &str) -> String {
-    extern fn link(_ob: *mut hoedown_buffer,
-                       _link: *const hoedown_buffer,
-                       _title: *const hoedown_buffer,
-                       content: *const hoedown_buffer,
-                       data: *const hoedown_renderer_data,
-                       _: libc::size_t) -> libc::c_int
-    {
-        unsafe {
-            if !content.is_null() && (*content).size > 0 {
-                let ob = (*data).opaque as *mut hoedown_buffer;
-                hoedown_buffer_put(ob, (*content).data as *const libc::c_char,
-                                   (*content).size);
+    struct ParserWrapper<'a> {
+        inner: Parser<'a>,
+        is_in: isize,
+        is_first: bool,
+    }
+
+    impl<'a> Iterator for ParserWrapper<'a> {
+        type Item = String;
+
+        fn next(&mut self) -> Option<String> {
+            let next_event = self.inner.next();
+            if next_event.is_none() {
+                return None
+            }
+            let next_event = next_event.unwrap();
+            let (ret, is_in) = match next_event {
+                pulldown_cmark::Event::Start(pulldown_cmark::Tag::Paragraph) => (None, 1),
+                pulldown_cmark::Event::Start(
+                    pulldown_cmark::Tag::Link(_, ref t)) if !self.is_first => (Some(t.as_ref().to_owned()), 1),
+                pulldown_cmark::Event::Text(ref s) if self.is_in > 0 => (Some(s.as_ref().to_owned()), 0),
+                pulldown_cmark::Event::End(pulldown_cmark::Tag::Link(_, ref t)) => (Some(t.as_ref().to_owned()), -1),
+                pulldown_cmark::Event::End(pulldown_cmark::Tag::Paragraph) => (None, -1),
+                _ => (None, 0),
+            };
+            if is_in > 0 || (is_in < 0 && self.is_in > 0) {
+                self.is_in += is_in;
+            }
+            if ret.is_some() {
+                self.is_first = false;
+                ret
+            } else {
+                Some(String::new())
             }
         }
-        1
     }
-
-    extern fn normal_text(_ob: *mut hoedown_buffer,
-                          text: *const hoedown_buffer,
-                          data: *const hoedown_renderer_data,
-                          _: libc::size_t)
-    {
-        unsafe {
-            let ob = (*data).opaque as *mut hoedown_buffer;
-            hoedown_buffer_put(ob, (*text).data as *const libc::c_char,
-                               (*text).size);
+    let mut s = String::with_capacity(md.len() * 3 / 2);
+    let mut p = ParserWrapper {
+        inner: Parser::new(md),
+        is_in: 0,
+        is_first: true,
+    };
+    while let Some(t) = p.next() {
+        if !t.is_empty() {
+            s.push_str(&t);
         }
     }
-
-    unsafe {
-        let ob = hoedown_buffer_new(DEF_OUNIT);
-        let mut plain_renderer: hoedown_renderer = ::std::mem::zeroed();
-        let renderer: *mut hoedown_renderer = &mut plain_renderer;
-        (*renderer).opaque = ob as *mut libc::c_void;
-        (*renderer).link = Some(link);
-        (*renderer).normal_text = Some(normal_text);
-
-        let document = hoedown_document_new(renderer, HOEDOWN_EXTENSIONS, 16);
-        hoedown_document_render(document, ob, md.as_ptr(),
-                                md.len() as libc::size_t);
-        hoedown_document_free(document);
-        let plain_slice = (*ob).as_bytes();
-        let plain = str::from_utf8(plain_slice).unwrap_or("").to_owned();
-        hoedown_buffer_free(ob);
-        plain
-    }
+    s
 }
 
 #[cfg(test)]
