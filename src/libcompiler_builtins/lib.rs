@@ -402,15 +402,16 @@ pub mod reimpls {
     }
 
     trait AbsExt: Sized {
-        fn uabs(self) -> u128 {
-            self.iabs() as u128
-        }
+        fn uabs(self) -> u128;
         fn iabs(self) -> i128;
     }
 
     impl AbsExt for i128 {
+        fn uabs(self) -> u128 {
+            self.iabs() as u128
+        }
         fn iabs(self) -> i128 {
-            let s = self >> 127;
+            let s = self.wrapping_shr(127);
             ((self ^ s).wrapping_sub(s))
         }
     }
