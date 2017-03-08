@@ -110,8 +110,11 @@ impl<'a> base::Resolver for Resolver<'a> {
                     path.segments[0].identifier.name = keywords::CrateRoot.name();
                     let module = self.0.resolve_crate_var(ident.ctxt);
                     if !module.is_local() {
+                        let span = path.segments[0].span;
                         path.segments.insert(1, match module.kind {
-                            ModuleKind::Def(_, name) => ast::Ident::with_empty_ctxt(name).into(),
+                            ModuleKind::Def(_, name) => ast::PathSegment::from_ident(
+                                ast::Ident::with_empty_ctxt(name), span
+                            ),
                             _ => unreachable!(),
                         })
                     }
