@@ -43,7 +43,7 @@ use html::highlight;
 use html::escape::Escape;
 use test;
 
-use pulldown_cmark::{self, Parser};
+use pulldown_cmark::{self, Event, Parser};
 
 /// A unit struct which has the `fmt::Display` trait implemented. When
 /// formatted, this struct will emit the HTML corresponding to the rendered
@@ -467,7 +467,7 @@ pub fn render(w: &mut fmt::Formatter,
         PLAYGROUND.with(|play| {
             // insert newline to clearly separate it from the
             // previous block so we can shorten the html output
-            let mut s = String::from("\n");
+            buffer.push('\n');
             let playground_button = play.borrow().as_ref().and_then(|&(ref krate, ref url)| {
                 if url.is_empty() {
                     return None;
@@ -506,12 +506,11 @@ pub fn render(w: &mut fmt::Formatter,
                     url, test_escaped, channel
                 ))
             });
-            s.push_str(&highlight::render_with_highlighting(
-                           &text,
-                           Some("rust-example-rendered"),
-                           None,
-                           playground_button.as_ref().map(String::as_str)));
-            buffer.push_str(&s);
+            buffer.push_str(&highlight::render_with_highlighting(
+                            &text,
+                            Some("rust-example-rendered"),
+                            None,
+                            playground_button.as_ref().map(String::as_str)));
         });
     }
 
@@ -587,6 +586,74 @@ pub fn render(w: &mut fmt::Formatter,
         buffer.push_str(&format!("<code>{}</code>", Escape(&collapse_whitespace(&content))));
     }
 
+    fn link(parser: &mut Parser, buffer: &mut String, url: &str, mut title: String) {
+        loop {
+            let event = parser.next();
+            if let Some(event) = event {
+                match event {
+                    pulldown_cmark::Event::End(
+                        pulldown_cmark::Tag::Link(_, _)) => break,
+                    pulldown_cmark::Event::Text(ref s) => {
+                        title.push_str(s);
+                    }
+                    _ => {}
+                }
+            } else {
+                break
+            }
+        }
+        buffer.push_str(&format!("<a href=\"{}\">{}</a>", url, title));
+    }
+
+    fn paragraph(parser: &mut Parser, buffer: &mut String, toc_builder: &mut Option<TocBuilder>) {
+        let mut content = String::new();
+        loop {
+            let event = parser.next();
+            if let Some(event) = event {
+                match event {
+                    pulldown_cmark::Event::End(
+                        pulldown_cmark::Tag::Paragraph) => break,
+                    pulldown_cmark::Event::Text(ref s) => {
+                        content.push_str(s);
+                    }
+                    x => {
+                        looper(parser, &mut content, Some(x), toc_builder);
+                    }
+                }
+            } else {
+                break
+            }
+        }
+        buffer.push_str(&format!("<p>{}</p>", content));
+    }
+
+    fn looper<'a>(parser: &'a mut Parser, buffer: &mut String, next_event: Option<Event<'a>>,
+                  toc_builder: &mut Option<TocBuilder>) -> bool {
+        if let Some(event) = next_event {
+            match event {
+                pulldown_cmark::Event::Start(pulldown_cmark::Tag::CodeBlock(s)) => {
+                    block(parser, &*s, buffer);
+                }
+                pulldown_cmark::Event::Start(pulldown_cmark::Tag::Header(level)) => {
+                    header(parser, level, toc_builder, buffer);
+                }
+                pulldown_cmark::Event::Start(pulldown_cmark::Tag::Code) => {
+                    codespan(parser, buffer);
+                }
+                pulldown_cmark::Event::Start(pulldown_cmark::Tag::Paragraph) => {
+                    paragraph(parser, buffer, toc_builder);
+                }
+                pulldown_cmark::Event::Start(pulldown_cmark::Tag::Link(ref url, ref t)) => {
+                    link(parser, buffer, url, t.as_ref().to_owned());
+                }
+                _ => {}
+            }
+            true
+        } else {
+            false
+        }
+    }
+
     let mut toc_builder = if print_toc {
         Some(TocBuilder::new())
     } else {
@@ -596,20 +663,7 @@ pub fn render(w: &mut fmt::Formatter,
     let mut parser = Parser::new(s);
     loop {
         let next_event = parser.next();
-        if let Some(event) = next_event {
-            match event {
-                pulldown_cmark::Event::Start(pulldown_cmark::Tag::CodeBlock(s)) => {
-                    block(&mut parser, &*s, &mut buffer);
-                }
-                pulldown_cmark::Event::Start(pulldown_cmark::Tag::Header(level)) => {
-                    header(&mut parser, level, &mut toc_builder, &mut buffer);
-                }
-                pulldown_cmark::Event::Start(pulldown_cmark::Tag::Code) => {
-                    codespan(&mut parser, &mut buffer);
-                }
-                _ => {}
-            }
-        } else {
+        if !looper(&mut parser, &mut buffer, next_event, &mut toc_builder) {
             break
         }
     }
