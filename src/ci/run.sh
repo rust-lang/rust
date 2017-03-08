@@ -58,8 +58,12 @@ else
   fi
 fi
 
+df -h
+
 $SRC/configure $RUST_CONFIGURE_ARGS
 retry make prepare
+
+df -h
 
 if [ "$TRAVIS_OS_NAME" = "osx" ]; then
     ncpus=$(sysctl -n hw.ncpu)
@@ -76,3 +80,5 @@ else
   make -j $ncpus
   make $RUST_CHECK_TARGET -j $ncpus
 fi
+
+df -h
