@@ -656,8 +656,8 @@ fn should_trans_locally<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: &Instan
         ty::InstanceDef::ClosureOnceShim {
             call_once: _, closure_did: def_id
         } => def_id,
-        ty::InstanceDef::FnPtrShim(..) => return true,
         ty::InstanceDef::Virtual(..) |
+        ty::InstanceDef::FnPtrShim(..) => return true,
         ty::InstanceDef::Intrinsic(_) => return false
     };
     match tcx.hir.get_if_local(def_id) {

@@ -19,7 +19,7 @@ use middle::lang_items::ExchangeMallocFnLangItem;
 
 use base;
 use builder::Builder;
-use callee::Callee;
+use callee;
 use common::{self, val_ty, C_bool, C_null, C_uint};
 use common::{C_integral};
 use adt;
@@ -183,8 +183,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         match operand.ty.sty {
                             ty::TyFnDef(def_id, substs, _) => {
                                 OperandValue::Immediate(
-                                    Callee::def(bcx.ccx, def_id, substs)
-                                        .reify(bcx.ccx))
+                                    callee::resolve_and_get_fn(bcx.ccx, def_id, substs))
                             }
                             _ => {
                                 bug!("{} cannot be reified to a fn ptr", operand.ty)
@@ -208,8 +207,8 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                                 let substs = bcx.tcx().mk_substs([operand.ty, input]
                                     .iter().cloned().map(Kind::from));
                                 OperandValue::Immediate(
-                                    Callee::def(bcx.ccx, call_once, substs)
-                                        .reify(bcx.ccx))
+                                    callee::resolve_and_get_fn(bcx.ccx, call_once, substs)
+                                )
                             }
                             _ => {
                                 bug!("{} cannot be cast to a fn ptr", operand.ty)
@@ -463,8 +462,8 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         bcx.sess().fatal(&format!("allocation of `{}` {}", box_ty, s));
                     }
                 };
-                let r = Callee::def(bcx.ccx, def_id, bcx.tcx().intern_substs(&[]))
-                    .reify(bcx.ccx);
+                let instance = ty::Instance::mono(bcx.tcx(), def_id);
+                let r = callee::get_fn(bcx.ccx, instance);
                 let val = bcx.pointercast(bcx.call(r, &[llsize, llalign], None), llty_ptr);
 
                 let operand = OperandRef {

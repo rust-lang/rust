@@ -9,17 +9,19 @@
 // except according to those terms.
 
 use rustc::hir;
+use rustc::hir::def_id::DefId;
 use rustc::infer;
+use rustc::middle::region::ROOT_CODE_EXTENT;
 use rustc::mir::*;
 use rustc::mir::transform::MirSource;
 use rustc::ty::{self, Ty};
+use rustc::ty::subst::Subst;
 use rustc::ty::maps::Providers;
 
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 
 use syntax::abi::Abi;
 use syntax::ast;
-use syntax::codemap::DUMMY_SP;
 use syntax_pos::Span;
 
 use std::cell::RefCell;
@@ -35,11 +37,51 @@ fn make_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
                        -> &'tcx RefCell<Mir<'tcx>>
 {
     debug!("make_shim({:?})", instance);
+    let did = instance.def_id();
+    let span = tcx.def_span(did);
+    let param_env =
+        tcx.construct_parameter_environment(span, did, ROOT_CODE_EXTENT);
+
     let result = match instance {
         ty::InstanceDef::Item(..) =>
             bug!("item {:?} passed to make_shim", instance),
-        ty::InstanceDef::FnPtrShim(_, ty) => {
-            build_fn_ptr_shim(tcx, ty, instance.def_ty(tcx))
+        ty::InstanceDef::FnPtrShim(def_id, ty) => {
+            let trait_ = tcx.trait_of_item(def_id).unwrap();
+            let adjustment = match tcx.lang_items.fn_trait_kind(trait_) {
+                Some(ty::ClosureKind::FnOnce) => Adjustment::Identity,
+                Some(ty::ClosureKind::FnMut) |
+                Some(ty::ClosureKind::Fn) => Adjustment::Deref,
+                None => bug!("fn pointer {:?} is not an fn", ty)
+            };
+            // HACK: we need the "real" argument types for the MIR,
+            // but because our substs are (Self, Args), where Args
+            // is a tuple, we must include the *concrete* argument
+            // types in the MIR. They will be substituted again with
+            // the param-substs, but because they are concrete, this
+            // will not do any harm.
+            let sig = tcx.erase_late_bound_regions(&ty.fn_sig());
+            let arg_tys = sig.inputs();
+
+            build_call_shim(
+                tcx,
+                &param_env,
+                def_id,
+                adjustment,
+                CallKind::Indirect,
+                Some(arg_tys)
+            )
+        }
+        ty::InstanceDef::Virtual(def_id, _) => {
+            // We are translating a call back to our def-id, which
+            // trans::mir knows to turn to an actual virtual call.
+            build_call_shim(
+                tcx,
+                &param_env,
+                def_id,
+                Adjustment::Identity,
+                CallKind::Direct(def_id),
+                None
+            )
         }
         _ => bug!("unknown shim kind")
     };
@@ -51,124 +93,135 @@ fn make_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
     result
 }
 
+#[derive(Copy, Clone, Debug, PartialEq)]
+enum Adjustment {
+    Identity,
+    Deref,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq)]
+enum CallKind {
+    Indirect,
+    Direct(DefId),
+}
+
+fn temp_decl(mutability: Mutability, ty: Ty) -> LocalDecl {
+    LocalDecl { mutability, ty, name: None, source_info: None }
+}
+
 fn local_decls_for_sig<'tcx>(sig: &ty::FnSig<'tcx>)
     -> IndexVec<Local, LocalDecl<'tcx>>
 {
-    iter::once(LocalDecl {
-        mutability: Mutability::Mut,
-        ty: sig.output(),
-        name: None,
-        source_info: None
-    }).chain(sig.inputs().iter().map(|ity| LocalDecl {
-        mutability: Mutability::Not,
-        ty: *ity,
-        name: None,
-        source_info: None,
-    })).collect()
+    iter::once(temp_decl(Mutability::Mut, sig.output()))
+        .chain(sig.inputs().iter().map(
+            |ity| temp_decl(Mutability::Not, ity)))
+        .collect()
 }
 
-
-fn build_fn_ptr_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
-                               fn_ty: Ty<'tcx>,
-                               sig_ty: Ty<'tcx>)
-                               -> Mir<'tcx>
+/// Build a "call" shim for `def_id`. The shim calls the
+/// function specified by `call_kind`, first adjusting its first
+/// argument according to `rcvr_adjustment`.
+///
+/// If `untuple_args` is a vec of types, the second argument of the
+/// function will be untupled as these types.
+fn build_call_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
+                             param_env: &ty::ParameterEnvironment<'tcx>,
+                             def_id: DefId,
+                             rcvr_adjustment: Adjustment,
+                             call_kind: CallKind,
+                             untuple_args: Option<&[Ty<'tcx>]>)
+                             -> Mir<'tcx>
 {
-    debug!("build_fn_ptr_shim(fn_ty={:?}, sig_ty={:?})", fn_ty, sig_ty);
-    let trait_sig = match sig_ty.sty {
-        ty::TyFnDef(_, _, fty) => tcx.erase_late_bound_regions(&fty),
-        _ => bug!("unexpected type for shim {:?}", sig_ty)
-    };
+    debug!("build_call_shim(def_id={:?}, rcvr_adjustment={:?}, \
+            call_kind={:?}, untuple_args={:?})",
+           def_id, rcvr_adjustment, call_kind, untuple_args);
 
-    let self_ty = match trait_sig.inputs()[0].sty {
-        ty::TyParam(..) => fn_ty,
-        ty::TyRef(r, mt) => tcx.mk_ref(r, ty::TypeAndMut {
-            ty: fn_ty,
-            mutbl: mt.mutbl
-        }),
-        _ => bug!("unexpected self_ty {:?}", trait_sig),
-    };
+    let fn_ty = tcx.item_type(def_id).subst(tcx, param_env.free_substs);
+    // Not normalizing here without a param env.
+    let sig = tcx.erase_late_bound_regions(&fn_ty.fn_sig());
+    let span = tcx.def_span(def_id);
 
-    let fn_ptr_sig = match fn_ty.sty {
-        ty::TyFnPtr(fty) |
-        ty::TyFnDef(_, _, fty) =>
-            tcx.erase_late_bound_regions_and_normalize(&fty),
-        _ => bug!("non-fn-ptr {:?} in build_fn_ptr_shim", fn_ty)
-    };
-
-    let sig = tcx.mk_fn_sig(
-        [
-            self_ty,
-            tcx.intern_tup(fn_ptr_sig.inputs(), false)
-        ].iter().cloned(),
-        fn_ptr_sig.output(),
-        false,
-        hir::Unsafety::Normal,
-        Abi::RustCall,
-    );
+    debug!("build_call_shim: sig={:?}", sig);
 
     let local_decls = local_decls_for_sig(&sig);
-    let source_info = SourceInfo {
-        span: DUMMY_SP,
-        scope: ARGUMENT_VISIBILITY_SCOPE
-    };
+    let source_info = SourceInfo { span, scope: ARGUMENT_VISIBILITY_SCOPE };
 
-    let fn_ptr = Lvalue::Local(Local::new(1+0));
-    let fn_ptr = match trait_sig.inputs()[0].sty {
-        ty::TyParam(..) => fn_ptr,
-        ty::TyRef(..) => Lvalue::Projection(box Projection {
-            base: fn_ptr, elem: ProjectionElem::Deref
-        }),
-        _ => bug!("unexpected self_ty {:?}", trait_sig),
-    };
-    let fn_args = Local::new(1+1);
+    let rcvr_l = Lvalue::Local(Local::new(1+0));
 
     let return_block_id = BasicBlock::new(1);
 
-    // return = ADT(arg0, arg1, ...); return
-    let start_block = BasicBlockData {
+    let rcvr = match rcvr_adjustment {
+        Adjustment::Identity => Operand::Consume(rcvr_l),
+        Adjustment::Deref => Operand::Consume(Lvalue::Projection(
+            box Projection { base: rcvr_l, elem: ProjectionElem::Deref }
+        ))
+    };
+
+    let (callee, mut args) = match call_kind {
+        CallKind::Indirect => (rcvr, vec![]),
+        CallKind::Direct(def_id) => (
+            Operand::Constant(Constant {
+                span: span,
+                ty: tcx.item_type(def_id).subst(tcx, param_env.free_substs),
+                literal: Literal::Item { def_id, substs: param_env.free_substs },
+            }),
+            vec![rcvr]
+        )
+    };
+
+    if let Some(untuple_args) = untuple_args {
+        args.extend(untuple_args.iter().enumerate().map(|(i, ity)| {
+            let arg_lv = Lvalue::Local(Local::new(1+1));
+            Operand::Consume(Lvalue::Projection(box Projection {
+                base: arg_lv,
+                elem: ProjectionElem::Field(Field::new(i), *ity)
+            }))
+        }));
+    } else {
+        args.extend((1..sig.inputs().len()).map(|i| {
+            Operand::Consume(Lvalue::Local(Local::new(1+i)))
+        }));
+    }
+
+    let mut blocks = IndexVec::new();
+    blocks.push(BasicBlockData {
         statements: vec![],
         terminator: Some(Terminator {
             source_info: source_info,
             kind: TerminatorKind::Call {
-                func: Operand::Consume(fn_ptr),
-                args: fn_ptr_sig.inputs().iter().enumerate().map(|(i, ity)| {
-                    Operand::Consume(Lvalue::Projection(box Projection {
-                        base: Lvalue::Local(fn_args),
-                        elem: ProjectionElem::Field(
-                            Field::new(i), *ity
-                        )
-                    }))
-                }).collect(),
-                // FIXME: can we pass a Some destination for an uninhabited ty?
+                func: callee,
+                args: args,
                 destination: Some((Lvalue::Local(RETURN_POINTER),
                                    return_block_id)),
                 cleanup: None
             }
         }),
         is_cleanup: false
-    };
-    let return_block = BasicBlockData {
+    });
+    blocks.push(BasicBlockData {
         statements: vec![],
         terminator: Some(Terminator {
             source_info: source_info,
             kind: TerminatorKind::Return
         }),
         is_cleanup: false
-    };
+    });
 
     let mut mir = Mir::new(
-        vec![start_block, return_block].into_iter().collect(),
+        blocks,
         IndexVec::from_elem_n(
-            VisibilityScopeData { span: DUMMY_SP, parent_scope: None }, 1
+            VisibilityScopeData { span: span, parent_scope: None }, 1
         ),
         IndexVec::new(),
         sig.output(),
         local_decls,
         sig.inputs().len(),
         vec![],
-        DUMMY_SP
+        span
     );
-    mir.spread_arg = Some(fn_args);
+    if let Abi::RustCall = sig.abi {
+        mir.spread_arg = Some(Local::new(sig.inputs().len()));
+    }
     mir
 }
 

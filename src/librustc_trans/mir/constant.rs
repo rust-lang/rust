@@ -23,7 +23,7 @@ use rustc::ty::cast::{CastTy, IntTy};
 use rustc::ty::subst::{Kind, Substs, Subst};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use {abi, adt, base, Disr, machine};
-use callee::Callee;
+use callee;
 use builder::Builder;
 use common::{self, CrateContext, const_get_elt, val_ty};
 use common::{C_array, C_bool, C_bytes, C_floating_f64, C_integral, C_big_integral};
@@ -565,8 +565,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                     mir::CastKind::ReifyFnPointer => {
                         match operand.ty.sty {
                             ty::TyFnDef(def_id, substs, _) => {
-                                Callee::def(self.ccx, def_id, substs)
-                                    .reify(self.ccx)
+                                callee::resolve_and_get_fn(self.ccx, def_id, substs)
                             }
                             _ => {
                                 span_bug!(span, "{} cannot be reified to a fn ptr",
@@ -589,8 +588,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                                 let input = tcx.erase_late_bound_regions_and_normalize(&input);
                                 let substs = tcx.mk_substs([operand.ty, input]
                                     .iter().cloned().map(Kind::from));
-                                Callee::def(self.ccx, call_once, substs)
-                                    .reify(self.ccx)
+                                callee::resolve_and_get_fn(self.ccx, call_once, substs)
                             }
                             _ => {
                                 bug!("{} cannot be cast to a fn ptr", operand.ty)

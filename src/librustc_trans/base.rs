@@ -47,7 +47,7 @@ use abi;
 use mir::lvalue::LvalueRef;
 use attributes;
 use builder::Builder;
-use callee::{Callee};
+use callee;
 use common::{C_bool, C_bytes_in_context, C_i32, C_uint};
 use collector::{self, TransItemCollectionMode};
 use common::{C_struct_in_context, C_u64, C_undef};
@@ -654,7 +654,7 @@ pub fn maybe_create_entry_wrapper(ccx: &CrateContext) {
         return;
     }
 
-    let main_llfn = Callee::def(ccx, main_def_id, instance.substs).reify(ccx);
+    let main_llfn = callee::get_fn(ccx, instance);
 
     let et = ccx.sess().entry_type.get().unwrap();
     match et {
@@ -688,8 +688,8 @@ pub fn maybe_create_entry_wrapper(ccx: &CrateContext) {
 
         let (start_fn, args) = if use_start_lang_item {
             let start_def_id = ccx.tcx().require_lang_item(StartFnLangItem);
-            let empty_substs = ccx.tcx().intern_substs(&[]);
-            let start_fn = Callee::def(ccx, start_def_id, empty_substs).reify(ccx);
+            let start_instance = Instance::mono(ccx.tcx(), start_def_id);
+            let start_fn = callee::get_fn(ccx, start_instance);
             (start_fn, vec![bld.pointercast(rust_main, Type::i8p(ccx).ptr_to()), get_param(llfn, 0),
                 get_param(llfn, 1)])
         } else {
