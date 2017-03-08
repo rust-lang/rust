@@ -88,18 +88,19 @@ impl<'a, 'hir: 'a> Visitor<'hir> for CheckCrateVisitor<'a, 'hir> {
 }
 
 pub fn check_crate<'hir>(sess: &Session, hir_map: &hir_map::Map<'hir>) -> CompileResult {
-    let _task = hir_map.dep_graph.in_task(DepNode::CheckStaticRecursion);
-
-    let mut visitor = CheckCrateVisitor {
-        sess: sess,
-        hir_map: hir_map,
-        discriminant_map: NodeMap(),
-        detected_recursive_ids: NodeSet(),
-    };
-    sess.track_errors(|| {
-        // FIXME(#37712) could use ItemLikeVisitor if trait items were item-like
-        hir_map.krate().visit_all_item_likes(&mut visitor.as_deep_visitor());
-    })
+    return hir_map.dep_graph.with_task(DepNode::CheckStaticRecursion, sess, hir_map, task);
+    fn task<'hir>(sess: &Session, hir_map: &hir_map::Map<'hir>) -> CompileResult {
+        let mut visitor = CheckCrateVisitor {
+            sess: sess,
+            hir_map: hir_map,
+            discriminant_map: NodeMap(),
+            detected_recursive_ids: NodeSet(),
+        };
+        sess.track_errors(|| {
+            // FIXME(#37712) could use ItemLikeVisitor if trait items were item-like
+            hir_map.krate().visit_all_item_likes(&mut visitor.as_deep_visitor());
+        })
+    }
 }
 
 struct CheckItemRecursionVisitor<'a, 'b: 'a, 'hir: 'b> {
