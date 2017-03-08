@@ -1335,6 +1335,27 @@ impl<T: PartialEq> Vec<T> {
     pub fn dedup(&mut self) {
         self.dedup_by(|a, b| a == b)
     }
+
+    /// Removes the first instance of `item` from the vector if the item exists.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    ///# #![feature(vec_remove_item)]
+    /// let mut vec = vec![1, 2, 3, 1];
+    ///
+    /// vec.remove_item(&1);
+    ///
+    /// assert_eq!(vec, vec![2, 3, 1]);
+    /// ```
+    #[unstable(feature = "vec_remove_item", reason = "recently added", issue = "40062")]
+    pub fn remove_item(&mut self, item: &T) -> Option<T> {
+        let pos = match self.iter().position(|x| *x == *item) {
+            Some(x) => x,
+            None => return None,
+        };
+        Some(self.remove(pos))
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
