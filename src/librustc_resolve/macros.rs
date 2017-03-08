@@ -502,7 +502,6 @@ impl<'a> Resolver<'a> {
             };
             let ident = Ident::from_str(name);
             self.lookup_typo_candidate(&vec![ident], MacroNS, is_macro)
-                .as_ref().map(|s| Symbol::intern(s))
         });
 
         if let Some(suggestion) = suggestion {
