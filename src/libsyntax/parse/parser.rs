@@ -2644,6 +2644,17 @@ impl<'a> Parser<'a> {
         Ok(tts)
     }
 
+    pub fn parse_tokens(&mut self) -> TokenStream {
+        let mut result = Vec::new();
+        loop {
+            match self.token {
+                token::Eof | token::CloseDelim(..) => break,
+                _ => result.push(self.parse_token_tree().into()),
+            }
+        }
+        TokenStream::concat(result)
+    }
+
     /// Parse a prefix-unary-operator expr
     pub fn parse_prefix_expr(&mut self,
                              already_parsed_attrs: Option<ThinVec<Attribute>>)
