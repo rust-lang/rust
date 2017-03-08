@@ -34,6 +34,42 @@ type HashUint = usize;
 
 const EMPTY_BUCKET: HashUint = 0;
 
+/// Special `Unique<HashUint>` that uses the lower bit of the pointer
+/// to expose a boolean tag.
+/// Note: when the pointer is initialized to EMPTY `.ptr()` will return
+/// null and the tag functions shouldn't be used.
+struct TaggedHashUintPtr(Unique<HashUint>);
+
+impl TaggedHashUintPtr {
+    #[inline]
+    unsafe fn new(ptr: *mut HashUint) -> Self {
+        debug_assert!(ptr as usize & 1 == 0 || ptr as usize == EMPTY as usize);
+        TaggedHashUintPtr(Unique::new(ptr))
+    }
+
+    #[inline]
+    fn set_tag(&mut self, value: bool) {
+        let usize_ptr = &*self.0 as *const *mut HashUint as *mut usize;
+        unsafe {
+            if value {
+                *usize_ptr |= 1;
+            } else {
+                *usize_ptr &= !1;
+            }
+        }
+    }
+
+    #[inline]
+    fn tag(&self) -> bool {
+        (*self.0 as usize) & 1 == 1
+    }
+
+    #[inline]
+    fn ptr(&self) -> *mut HashUint {
+        (*self.0 as usize & !1) as *mut HashUint
+    }
+}
+
 /// The raw hashtable, providing safe-ish access to the unzipped and highly
 /// optimized arrays of hashes, and key-value pairs.
 ///
@@ -72,10 +108,14 @@ const EMPTY_BUCKET: HashUint = 0;
 /// around just the "table" part of the hashtable. It enforces some
 /// invariants at the type level and employs some performance trickery,
 /// but in general is just a tricked out `Vec<Option<(u64, K, V)>>`.
+///
+/// The hashtable also exposes a special boolean tag. The tag defaults to false
+/// when the RawTable is created and is accessible with the `tag` and `set_tag`
+/// functions.
 pub struct RawTable<K, V> {
     capacity: usize,
     size: usize,
-    hashes: Unique<HashUint>,
+    hashes: TaggedHashUintPtr,
 
     // Because K/V do not appear directly in any of the types in the struct,
     // inform rustc that in fact instances of K and V are reachable from here.
@@ -208,6 +248,10 @@ impl<K, V, M> FullBucket<K, V, M> {
     pub fn table(&self) -> &M {
         &self.table
     }
+    /// Borrow a mutable reference to the table.
+    pub fn table_mut(&mut self) -> &mut M {
+        &mut self.table
+    }
     /// Move out the reference to the table.
     pub fn into_table(self) -> M {
         self.table
@@ -226,6 +270,10 @@ impl<K, V, M> EmptyBucket<K, V, M> {
     /// Borrow a reference to the table.
     pub fn table(&self) -> &M {
         &self.table
+    }
+    /// Borrow a mutable reference to the table.
+    pub fn table_mut(&mut self) -> &mut M {
+        &mut self.table
     }
 }
 
@@ -687,7 +735,7 @@ impl<K, V> RawTable<K, V> {
             return RawTable {
                 size: 0,
                 capacity: 0,
-                hashes: Unique::new(EMPTY as *mut HashUint),
+                hashes: TaggedHashUintPtr::new(EMPTY as *mut HashUint),
                 marker: marker::PhantomData,
             };
         }
@@ -728,7 +776,7 @@ impl<K, V> RawTable<K, V> {
         RawTable {
             capacity: capacity,
             size: 0,
-            hashes: Unique::new(hashes),
+            hashes: TaggedHashUintPtr::new(hashes),
             marker: marker::PhantomData,
         }
     }
@@ -737,13 +785,13 @@ impl<K, V> RawTable<K, V> {
         let hashes_size = self.capacity * size_of::<HashUint>();
         let pairs_size = self.capacity * size_of::<(K, V)>();
 
-        let buffer = *self.hashes as *mut u8;
+        let buffer = self.hashes.ptr() as *mut u8;
         let (pairs_offset, _, oflo) =
             calculate_offsets(hashes_size, pairs_size, align_of::<(K, V)>());
         debug_assert!(!oflo, "capacity overflow");
         unsafe {
             RawBucket {
-                hash: *self.hashes,
+                hash: self.hashes.ptr(),
                 pair: buffer.offset(pairs_offset as isize) as *const _,
                 _marker: marker::PhantomData,
             }
@@ -755,7 +803,7 @@ impl<K, V> RawTable<K, V> {
     pub fn new(capacity: usize) -> RawTable<K, V> {
         unsafe {
             let ret = RawTable::new_uninitialized(capacity);
-            ptr::write_bytes(*ret.hashes, 0, capacity);
+            ptr::write_bytes(ret.hashes.ptr(), 0, capacity);
             ret
         }
     }
@@ -774,7 +822,7 @@ impl<K, V> RawTable<K, V> {
     fn raw_buckets(&self) -> RawBuckets<K, V> {
         RawBuckets {
             raw: self.first_bucket_raw(),
-            hashes_end: unsafe { self.hashes.offset(self.capacity as isize) },
+            hashes_end: unsafe { self.hashes.ptr().offset(self.capacity as isize) },
             marker: marker::PhantomData,
         }
     }
@@ -831,6 +879,16 @@ impl<K, V> RawTable<K, V> {
             elems_left: self.size,
             marker: marker::PhantomData,
         }
+    }
+
+    /// Set the table tag
+    pub fn set_tag(&mut self, value: bool) {
+        self.hashes.set_tag(value)
+    }
+
+    /// Get the table tag
+    pub fn tag(&self) -> bool {
+        self.hashes.tag()
     }
 }
 
@@ -1156,7 +1214,7 @@ unsafe impl<#[may_dangle] K, #[may_dangle] V> Drop for RawTable<K, V> {
         debug_assert!(!oflo, "should be impossible");
 
         unsafe {
-            deallocate(*self.hashes as *mut u8, size, align);
+            deallocate(self.hashes.ptr() as *mut u8, size, align);
             // Remember how everything was allocated out of one buffer
             // during initialization? We only need one call to free here.
         }
