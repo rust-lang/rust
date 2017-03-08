@@ -11,7 +11,7 @@
 use llvm::{self, ValueRef, Integer, Pointer, Float, Double, Struct, Array, Vector, AttributePlace};
 use base;
 use builder::Builder;
-use common::{type_is_fat_ptr, C_uint};
+use common::{self, type_is_fat_ptr, C_uint};
 use context::CrateContext;
 use cabi_x86;
 use cabi_x86_64;
@@ -334,9 +334,30 @@ impl FnType {
         fn_ty
     }
 
-    pub fn unadjusted<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+    pub fn new_vtable<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                 sig: ty::FnSig<'tcx>,
                                 extra_args: &[Ty<'tcx>]) -> FnType {
+        let mut fn_ty = FnType::unadjusted(ccx, sig, extra_args);
+        // Don't pass the vtable, it's not an argument of the virtual fn.
+        fn_ty.args[1].ignore();
+        fn_ty.adjust_for_abi(ccx, sig);
+        fn_ty
+    }
+
+    pub fn from_instance<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                                   instance: &ty::Instance<'tcx>,
+                                   extra_args: &[Ty<'tcx>]) -> FnType
+    {
+        let ity = common::instance_ty(ccx.shared(), instance);
+        let sig = common::ty_fn_sig(ccx, ity);
+        let sig = ccx.tcx().erase_late_bound_regions_and_normalize(&sig);
+
+        Self::new(ccx, sig, extra_args)
+    }
+
+    fn unadjusted<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                            sig: ty::FnSig<'tcx>,
+                            extra_args: &[Ty<'tcx>]) -> FnType {
         use self::Abi::*;
         let cconv = match ccx.sess().target.target.adjust_abi(sig.abi) {
             RustIntrinsic | PlatformIntrinsic |
@@ -532,9 +553,9 @@ impl FnType {
         }
     }
 
-    pub fn adjust_for_abi<'a, 'tcx>(&mut self,
-                                    ccx: &CrateContext<'a, 'tcx>,
-                                    sig: ty::FnSig<'tcx>) {
+    fn adjust_for_abi<'a, 'tcx>(&mut self,
+                                ccx: &CrateContext<'a, 'tcx>,
+                                sig: ty::FnSig<'tcx>) {
         let abi = sig.abi;
         if abi == Abi::Unadjusted { return }
 

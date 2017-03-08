@@ -252,12 +252,9 @@ fn closure_self_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              -> Ty<'tcx> {
     let closure_ty = tcx.body_tables(body_id).node_id_to_type(closure_expr_id);
 
-    // We're just hard-coding the idea that the signature will be
-    // &self or &mut self and hence will have a bound region with
-    // number 0, hokey.
     let region = ty::Region::ReFree(ty::FreeRegion {
         scope: tcx.region_maps.item_extent(body_id.node_id),
-        bound_region: ty::BoundRegion::BrAnon(0),
+        bound_region: ty::BoundRegion::BrEnv,
     });
     let region = tcx.mk_region(region);
 

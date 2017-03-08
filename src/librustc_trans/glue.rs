@@ -24,9 +24,10 @@ use rustc::ty::{self, layout, AdtDef, AdtKind, Ty, TypeFoldable};
 use rustc::ty::subst::Kind;
 use rustc::mir::tcx::LvalueTy;
 use mir::lvalue::LvalueRef;
+use abi::FnType;
 use adt;
 use base::*;
-use callee::Callee;
+use callee::get_fn;
 use cleanup::CleanupScope;
 use common::*;
 use machine::*;
@@ -45,11 +46,10 @@ pub fn trans_exchange_free_ty<'a, 'tcx>(bcx: &Builder<'a, 'tcx>, ptr: LvalueRef<
     let content_ty = ptr.ty.to_ty(bcx.tcx());
     let def_id = langcall(bcx.tcx(), None, "", BoxFreeFnLangItem);
     let substs = bcx.tcx().mk_substs(iter::once(Kind::from(content_ty)));
-    let callee = Callee::def(bcx.ccx, def_id, substs);
+    let instance = monomorphize::resolve(bcx.ccx.shared(), def_id, substs);
 
-    let fn_ty = callee.direct_fn_type(bcx.ccx, &[]);
-
-    let llret = bcx.call(callee.reify(bcx.ccx),
+    let fn_ty = FnType::from_instance(bcx.ccx, &instance, &[]);
+    let llret = bcx.call(get_fn(bcx.ccx, instance),
         &[ptr.llval, ptr.llextra][..1 + ptr.has_extra() as usize], None);
     fn_ty.apply_attrs_callsite(llret);
 }
@@ -258,16 +258,18 @@ pub fn implement_drop_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, g: DropGlueKi
                 .find(|it| it.kind == ty::AssociatedKind::Method)
                 .unwrap().def_id;
             let self_type_substs = tcx.mk_substs_trait(t, &[]);
-            let callee = Callee::def(bcx.ccx, drop_method, self_type_substs);
-            let fn_ty = callee.direct_fn_type(bcx.ccx, &[]);
+            let drop_instance = monomorphize::resolve(
+                bcx.ccx.shared(), drop_method, self_type_substs);
+            let fn_ty = FnType::from_instance(bcx.ccx, &drop_instance, &[]);
+            let llfn = get_fn(bcx.ccx, drop_instance);
             let llret;
             let args = &[ptr.llval, ptr.llextra][..1 + ptr.has_extra() as usize];
             if let Some(landing_pad) = contents_scope.landing_pad {
                 let normal_bcx = bcx.build_sibling_block("normal-return");
-                llret = bcx.invoke(callee.reify(ccx), args, normal_bcx.llbb(), landing_pad, None);
+                llret = bcx.invoke(llfn, args, normal_bcx.llbb(), landing_pad, None);
                 bcx = normal_bcx;
             } else {
-                llret = bcx.call(callee.reify(bcx.ccx), args, None);
+                llret = bcx.call(llfn, args, None);
             }
             fn_ty.apply_attrs_callsite(llret);
             contents_scope.trans(&bcx);

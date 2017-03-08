@@ -18,7 +18,7 @@ use rustc::hir::def::ExportMap;
 use rustc::hir::def_id::DefId;
 use rustc::traits;
 use debuginfo;
-use callee::Callee;
+use callee;
 use base;
 use declare;
 use glue::DropGlueKind;
@@ -920,7 +920,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         let tcx = self.tcx();
         let llfn = match tcx.lang_items.eh_personality() {
             Some(def_id) if !base::wants_msvc_seh(self.sess()) => {
-                Callee::def(self, def_id, tcx.intern_substs(&[])).reify(self)
+                callee::resolve_and_get_fn(self, def_id, tcx.intern_substs(&[]))
             }
             _ => {
                 let name = if base::wants_msvc_seh(self.sess()) {
@@ -948,7 +948,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         let tcx = self.tcx();
         assert!(self.sess().target.target.options.custom_unwind_resume);
         if let Some(def_id) = tcx.lang_items.eh_unwind_resume() {
-            let llfn = Callee::def(self, def_id, tcx.intern_substs(&[])).reify(self);
+            let llfn = callee::resolve_and_get_fn(self, def_id, tcx.intern_substs(&[]));
             unwresume.set(Some(llfn));
             return llfn;
         }
