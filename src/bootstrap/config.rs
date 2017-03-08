@@ -243,7 +243,6 @@ impl Config {
     pub fn parse(build: &str, file: Option<PathBuf>) -> Config {
         let mut config = Config::default();
         config.llvm_optimize = true;
-        config.llvm_clean_rebuild = true;
         config.use_jemalloc = true;
         config.backtrace = true;
         config.rust_optimize = true;
@@ -443,6 +442,7 @@ impl Config {
                 ("LLVM_VERSION_CHECK", self.llvm_version_check),
                 ("LLVM_STATIC_STDCPP", self.llvm_static_stdcpp),
                 ("LLVM_LINK_SHARED", self.llvm_link_shared),
+                ("LLVM_CLEAN_REBUILD", self.llvm_clean_rebuild),
                 ("OPTIMIZE", self.rust_optimize),
                 ("DEBUG_ASSERTIONS", self.rust_debug_assertions),
                 ("DEBUGINFO", self.rust_debuginfo),
