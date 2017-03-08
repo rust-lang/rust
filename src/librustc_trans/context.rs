@@ -276,8 +276,6 @@ pub struct CrateContext<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> DepGraphSafe for CrateContext<'a, 'tcx> {
-    fn read(&self, _graph: &DepGraph) {
-    }
 }
 
 pub struct CrateContextIterator<'a, 'tcx: 'a> {

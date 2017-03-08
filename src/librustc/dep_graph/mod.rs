@@ -15,7 +15,6 @@ mod edges;
 mod graph;
 mod query;
 mod raii;
-#[macro_use]
 mod safe;
 mod shadow;
 mod thread;
