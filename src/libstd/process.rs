@@ -343,6 +343,23 @@ impl Command {
 
     /// Add an argument to pass to the program.
     ///
+    /// Only one argument can be passed per use. So instead of:
+    ///
+    /// ```ignore
+    /// .arg("-C /path/to/repo")
+    /// ```
+    ///
+    /// usage would be:
+    ///
+    /// ```ignore
+    /// .arg("-C")
+    /// .arg("/path/to/repo")
+    /// ```
+    ///
+    /// To pass multiple arguments see [`args`].
+    ///
+    /// [`args`]: #method.args
+    ///
     /// # Examples
     ///
     /// Basic usage:
@@ -363,6 +380,10 @@ impl Command {
     }
 
     /// Add multiple arguments to pass to the program.
+    ///
+    /// To pass a single argument see [`arg`].
+    ///
+    /// [`arg`]: #method.arg
     ///
     /// # Examples
     ///
