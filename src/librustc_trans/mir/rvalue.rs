@@ -158,7 +158,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             }
 
             _ => {
-                assert!(rvalue_creates_operand(rvalue));
+                assert!(self.rvalue_creates_operand(rvalue));
                 let (bcx, temp) = self.trans_rvalue_operand(bcx, rvalue);
                 self.store_operand(&bcx, dest.llval, dest.alignment.to_align(), temp);
                 bcx
@@ -171,7 +171,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                                 rvalue: &mir::Rvalue<'tcx>)
                                 -> (Builder<'a, 'tcx>, OperandRef<'tcx>)
     {
-        assert!(rvalue_creates_operand(rvalue), "cannot trans {:?} to operand", rvalue);
+        assert!(self.rvalue_creates_operand(rvalue), "cannot trans {:?} to operand", rvalue);
 
         match *rvalue {
             mir::Rvalue::Cast(ref kind, ref source, cast_ty) => {
@@ -466,8 +466,10 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             }
             mir::Rvalue::Repeat(..) |
             mir::Rvalue::Aggregate(..) => {
-                bug!("cannot generate operand from rvalue {:?}", rvalue);
-
+                // According to `rvalue_creates_operand`, only ZST
+                // aggregate rvalues are allowed to be operands.
+                let ty = rvalue.ty(self.mir, self.ccx.tcx());
+                (bcx, OperandRef::new_zst(self.ccx, self.monomorphize(&ty)))
             }
         }
     }
@@ -650,26 +652,29 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
         OperandValue::Pair(val, of)
     }
-}
 
-pub fn rvalue_creates_operand(rvalue: &mir::Rvalue) -> bool {
-    match *rvalue {
-        mir::Rvalue::Ref(..) |
-        mir::Rvalue::Len(..) |
-        mir::Rvalue::Cast(..) | // (*)
-        mir::Rvalue::BinaryOp(..) |
-        mir::Rvalue::CheckedBinaryOp(..) |
-        mir::Rvalue::UnaryOp(..) |
-        mir::Rvalue::Discriminant(..) |
-        mir::Rvalue::Box(..) |
-        mir::Rvalue::Use(..) => // (*)
-            true,
-        mir::Rvalue::Repeat(..) |
-        mir::Rvalue::Aggregate(..) =>
-            false,
+    pub fn rvalue_creates_operand(&self, rvalue: &mir::Rvalue<'tcx>) -> bool {
+        match *rvalue {
+            mir::Rvalue::Ref(..) |
+            mir::Rvalue::Len(..) |
+            mir::Rvalue::Cast(..) | // (*)
+            mir::Rvalue::BinaryOp(..) |
+            mir::Rvalue::CheckedBinaryOp(..) |
+            mir::Rvalue::UnaryOp(..) |
+            mir::Rvalue::Discriminant(..) |
+            mir::Rvalue::Box(..) |
+            mir::Rvalue::Use(..) => // (*)
+                true,
+            mir::Rvalue::Repeat(..) |
+            mir::Rvalue::Aggregate(..) => {
+                let ty = rvalue.ty(self.mir, self.ccx.tcx());
+                let ty = self.monomorphize(&ty);
+                common::type_is_zero_size(self.ccx, ty)
+            }
+        }
+
+        // (*) this is only true if the type is suitable
     }
-
-    // (*) this is only true if the type is suitable
 }
 
 #[derive(Copy, Clone)]

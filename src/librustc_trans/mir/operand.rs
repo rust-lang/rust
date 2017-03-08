@@ -16,7 +16,7 @@ use rustc::mir::tcx::LvalueTy;
 use rustc_data_structures::indexed_vec::Idx;
 
 use base;
-use common;
+use common::{self, CrateContext, C_null};
 use builder::Builder;
 use value::Value;
 use type_of;
@@ -79,6 +79,22 @@ impl<'tcx> fmt::Debug for OperandRef<'tcx> {
 }
 
 impl<'a, 'tcx> OperandRef<'tcx> {
+    pub fn new_zst(ccx: &CrateContext<'a, 'tcx>,
+                   ty: Ty<'tcx>) -> OperandRef<'tcx> {
+        assert!(common::type_is_zero_size(ccx, ty));
+        let llty = type_of::type_of(ccx, ty);
+        let val = if common::type_is_imm_pair(ccx, ty) {
+            let fields = llty.field_types();
+            OperandValue::Pair(C_null(fields[0]), C_null(fields[1]))
+        } else {
+            OperandValue::Immediate(C_null(llty))
+        };
+        OperandRef {
+            val: val,
+            ty: ty
+        }
+    }
+
     /// Asserts that this operand refers to a scalar and returns
     /// a reference to its value.
     pub fn immediate(self) -> ValueRef {
