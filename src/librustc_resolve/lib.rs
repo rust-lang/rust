@@ -1165,6 +1165,7 @@ pub struct Resolver<'a> {
 
     privacy_errors: Vec<PrivacyError<'a>>,
     ambiguity_errors: Vec<AmbiguityError<'a>>,
+    gated_errors: FxHashSet<Span>,
     disallowed_shadowing: Vec<&'a LegacyBinding<'a>>,
 
     arenas: &'a ResolverArenas<'a>,
@@ -1355,6 +1356,7 @@ impl<'a> Resolver<'a> {
 
             privacy_errors: Vec::new(),
             ambiguity_errors: Vec::new(),
+            gated_errors: FxHashSet(),
             disallowed_shadowing: Vec::new(),
 
             arenas: arenas,

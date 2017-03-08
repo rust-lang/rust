@@ -1096,6 +1096,10 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             self.context.check_attribute(attr, false);
         }
 
+        if self.context.features.proc_macro && attr::is_known(attr) {
+            return
+        }
+
         let meta = panictry!(attr.parse_meta(&self.context.parse_sess));
         if contains_novel_literal(&meta) {
             gate_feature_post!(&self, attr_literals, attr.span,

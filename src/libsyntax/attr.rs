@@ -17,7 +17,7 @@ pub use self::IntType::*;
 use ast;
 use ast::{AttrId, Attribute, Name, Ident};
 use ast::{MetaItem, MetaItemKind, NestedMetaItem, NestedMetaItemKind};
-use ast::{Lit, LitKind, Expr, Item, Local, Stmt, StmtKind};
+use ast::{Lit, LitKind, Expr, ExprKind, Item, Local, Stmt, StmtKind};
 use codemap::{Spanned, spanned, dummy_spanned, mk_sp};
 use syntax_pos::{Span, BytePos, DUMMY_SP};
 use errors::Handler;
@@ -299,6 +299,37 @@ impl Attribute {
         })
     }
 
+    pub fn parse<'a, T, F>(&self, sess: &'a ParseSess, mut f: F) -> PResult<'a, T>
+        where F: FnMut(&mut Parser<'a>) -> PResult<'a, T>,
+    {
+        let mut parser = Parser::new(sess, self.tokens.clone(), None, false);
+        let result = f(&mut parser)?;
+        if parser.token != token::Eof {
+            parser.unexpected()?;
+        }
+        Ok(result)
+    }
+
+    pub fn parse_list<'a, T, F>(&self, sess: &'a ParseSess, mut f: F) -> PResult<'a, Vec<T>>
+        where F: FnMut(&mut Parser<'a>) -> PResult<'a, T>,
+    {
+        if self.tokens.is_empty() {
+            return Ok(Vec::new());
+        }
+        self.parse(sess, |parser| {
+            parser.expect(&token::OpenDelim(token::Paren))?;
+            let mut list = Vec::new();
+            while !parser.eat(&token::CloseDelim(token::Paren)) {
+                list.push(f(parser)?);
+                if !parser.eat(&token::Comma) {
+                   parser.expect(&token::CloseDelim(token::Paren))?;
+                    break
+                }
+            }
+            Ok(list)
+        })
+    }
+
     pub fn parse_meta<'a>(&self, sess: &'a ParseSess) -> PResult<'a, MetaItem> {
         if self.path.segments.len() > 1 {
             sess.span_diagnostic.span_err(self.path.span, "expected ident, found path");
@@ -306,7 +337,7 @@ impl Attribute {
 
         Ok(MetaItem {
             name: self.path.segments.last().unwrap().identifier.name,
-            node: Parser::new(sess, self.tokens.clone(), None, false).parse_meta_item_kind()?,
+            node: self.parse(sess, |parser| parser.parse_meta_item_kind())?,
             span: self.span,
         })
     }
@@ -985,6 +1016,10 @@ impl MetaItem {
     {
         let (mut span, name) = match tokens.next() {
             Some(TokenTree::Token(span, Token::Ident(ident))) => (span, ident.name),
+            Some(TokenTree::Token(_, Token::Interpolated(ref nt))) => return match **nt {
+                token::Nonterminal::NtMeta(ref meta) => Some(meta.clone()),
+                _ => None,
+            },
             _ => return None,
         };
         let node = match MetaItemKind::from_tokens(tokens) {
@@ -1151,6 +1186,13 @@ impl LitKind {
         match token {
             Token::Ident(ident) if ident.name == "true" => Some(LitKind::Bool(true)),
             Token::Ident(ident) if ident.name == "false" => Some(LitKind::Bool(false)),
+            Token::Interpolated(ref nt) => match **nt {
+                token::NtExpr(ref v) => match v.node {
+                    ExprKind::Lit(ref lit) => Some(lit.node.clone()),
+                    _ => None,
+                },
+                _ => None,
+            },
             Token::Literal(lit, suf) => {
                 let (suffix_illegal, result) = parse::lit_token(lit, suf, None);
                 if suffix_illegal && suf.is_some() {
