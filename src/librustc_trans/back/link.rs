@@ -715,13 +715,15 @@ fn link_natively(sess: &Session,
     let root = sess.target_filesearch(PathKind::Native).get_lib_path();
     cmd.args(&sess.target.target.options.pre_link_args);
 
-    let pre_link_objects = if crate_type == config::CrateTypeExecutable {
-        &sess.target.target.options.pre_link_objects_exe
-    } else {
-        &sess.target.target.options.pre_link_objects_dll
-    };
-    for obj in pre_link_objects {
-        cmd.arg(root.join(obj));
+    if sess.crt_static() {
+        let pre_link_objects = if crate_type == config::CrateTypeExecutable {
+            &sess.target.target.options.pre_link_objects_exe
+        } else {
+            &sess.target.target.options.pre_link_objects_dll
+        };
+        for obj in pre_link_objects {
+            cmd.arg(root.join(obj));
+        }
     }
 
     if sess.target.target.options.is_like_emscripten {
@@ -739,8 +741,10 @@ fn link_natively(sess: &Session,
                   objects, out_filename, outputs, trans);
     }
     cmd.args(&sess.target.target.options.late_link_args);
-    for obj in &sess.target.target.options.post_link_objects {
-        cmd.arg(root.join(obj));
+    if sess.crt_static() {
+        for obj in &sess.target.target.options.post_link_objects {
+            cmd.arg(root.join(obj));
+        }
     }
     cmd.args(&sess.target.target.options.post_link_args);
 
