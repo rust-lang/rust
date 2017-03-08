@@ -497,11 +497,9 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                 let source_ty = operand.ty(self.mir, self.scx.tcx());
                 match source_ty.sty {
                     ty::TyClosure(def_id, substs) => {
-                        let substs = monomorphize::apply_param_substs(
-                            self.scx, self.param_substs, &substs.substs);
-                        self.output.push(create_fn_trans_item(
-                            Instance::new(def_id, substs)
-                        ));
+                        let instance = monomorphize::resolve_closure(
+                            self.scx, def_id, substs, ty::ClosureKind::FnOnce);
+                        self.output.push(create_fn_trans_item(instance));
                     }
                     _ => bug!(),
                 }
@@ -601,20 +599,6 @@ fn visit_fn_use<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
     }
 
     match instance.def {
-        ty::InstanceDef::ClosureOnceShim { .. } => {
-            // This call will instantiate an FnOnce adapter, which
-            // drops the closure environment. Therefore we need to
-            // make sure that we collect the drop-glue for the
-            // environment type along with the instance.
-
-            let env_ty = instance.substs.type_at(0);
-            let env_ty = glue::get_drop_glue_type(scx, env_ty);
-            if scx.type_needs_drop(env_ty) {
-                let dg = DropGlueKind::Ty(env_ty);
-                output.push(TransItem::DropGlue(dg));
-            }
-            output.push(create_fn_trans_item(instance));
-        }
         ty::InstanceDef::Intrinsic(..) => {
             if !is_direct_call {
                 bug!("intrinsic {:?} being reified", ty);
@@ -632,6 +616,7 @@ fn visit_fn_use<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
                 output.push(create_fn_trans_item(instance));
             }
         }
+        ty::InstanceDef::ClosureOnceShim { .. } |
         ty::InstanceDef::Item(..) |
         ty::InstanceDef::FnPtrShim(..) => {
             output.push(create_fn_trans_item(instance));
@@ -645,10 +630,8 @@ fn visit_fn_use<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
 fn should_trans_locally<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: &Instance<'tcx>)
                                   -> bool {
     let def_id = match instance.def {
-        ty::InstanceDef::Item(def_id) |
-        ty::InstanceDef::ClosureOnceShim {
-            call_once: _, closure_did: def_id
-        } => def_id,
+        ty::InstanceDef::Item(def_id) => def_id,
+        ty::InstanceDef::ClosureOnceShim { .. } |
         ty::InstanceDef::Virtual(..) |
         ty::InstanceDef::FnPtrShim(..) |
         ty::InstanceDef::Intrinsic(_) => return true
@@ -885,20 +868,6 @@ fn find_vtable_types_for_unsizing<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
 
 fn create_fn_trans_item<'a, 'tcx>(instance: Instance<'tcx>) -> TransItem<'tcx> {
     debug!("create_fn_trans_item(instance={})", instance);
-    let instance = match instance.def {
-        ty::InstanceDef::ClosureOnceShim { .. } => {
-            // HACK: don't create ClosureOnce trans items for now
-            // have someone else generate the drop glue
-            let closure_ty = instance.substs.type_at(0);
-            match closure_ty.sty {
-                ty::TyClosure(def_id, substs) => {
-                    Instance::new(def_id, substs.substs)
-                }
-                _ => bug!("bad closure instance {:?}", instance)
-            }
-        }
-        _ => instance
-    };
     TransItem::Fn(instance)
 }
 

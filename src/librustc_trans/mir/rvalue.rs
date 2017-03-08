@@ -12,7 +12,6 @@ use llvm::{self, ValueRef};
 use rustc::ty::{self, Ty};
 use rustc::ty::cast::{CastTy, IntTy};
 use rustc::ty::layout::Layout;
-use rustc::ty::subst::{Kind, Subst};
 use rustc::mir::tcx::LvalueTy;
 use rustc::mir;
 use middle::lang_items::ExchangeMallocFnLangItem;
@@ -24,6 +23,7 @@ use common::{self, val_ty, C_bool, C_null, C_uint};
 use common::{C_integral};
 use adt;
 use machine;
+use monomorphize;
 use type_::Type;
 use type_of;
 use tvec;
@@ -193,22 +193,9 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     mir::CastKind::ClosureFnPointer => {
                         match operand.ty.sty {
                             ty::TyClosure(def_id, substs) => {
-                                // Get the def_id for FnOnce::call_once
-                                let fn_once = bcx.tcx().lang_items.fn_once_trait().unwrap();
-                                let call_once = bcx.tcx()
-                                    .global_tcx().associated_items(fn_once)
-                                    .find(|it| it.kind == ty::AssociatedKind::Method)
-                                    .unwrap().def_id;
-                                // Now create its substs [Closure, Tuple]
-                                let input = bcx.tcx().closure_type(def_id)
-                                    .subst(bcx.tcx(), substs.substs).input(0);
-                                let input =
-                                    bcx.tcx().erase_late_bound_regions_and_normalize(&input);
-                                let substs = bcx.tcx().mk_substs([operand.ty, input]
-                                    .iter().cloned().map(Kind::from));
-                                OperandValue::Immediate(
-                                    callee::resolve_and_get_fn(bcx.ccx, call_once, substs)
-                                )
+                                let instance = monomorphize::resolve_closure(
+                                    bcx.ccx.shared(), def_id, substs, ty::ClosureKind::FnOnce);
+                                OperandValue::Immediate(callee::get_fn(bcx.ccx, instance))
                             }
                             _ => {
                                 bug!("{} cannot be cast to a fn ptr", operand.ty)
