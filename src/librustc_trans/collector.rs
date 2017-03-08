@@ -202,7 +202,6 @@ use rustc::mir::{self, Location};
 use rustc::mir::visit as mir_visit;
 use rustc::mir::visit::Visitor as MirVisitor;
 
-use syntax::abi::Abi;
 use context::SharedCrateContext;
 use common::{def_ty, instance_ty};
 use glue::{self, DropGlueKind};
@@ -486,6 +485,14 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
                                                           self.output);
                 }
             }
+            mir::Rvalue::Cast(mir::CastKind::ReifyFnPointer, ref operand, _) => {
+                let fn_ty = operand.ty(self.mir, self.scx.tcx());
+                let fn_ty = monomorphize::apply_param_substs(
+                    self.scx,
+                    self.param_substs,
+                    &fn_ty);
+                visit_fn_use(self.scx, fn_ty, false, &mut self.output);
+            }
             mir::Rvalue::Cast(mir::CastKind::ClosureFnPointer, ref operand, _) => {
                 let source_ty = operand.ty(self.mir, self.scx.tcx());
                 match source_ty.sty {
@@ -537,111 +544,97 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
         self.super_lvalue(lvalue, context, location);
     }
 
-    fn visit_operand(&mut self, operand: &mir::Operand<'tcx>, location: Location) {
-        debug!("visiting operand {:?}", *operand);
+    fn visit_constant(&mut self, constant: &mir::Constant<'tcx>, location: Location) {
+        debug!("visiting constant {:?} @ {:?}", *constant, location);
 
-        let callee = match *operand {
-            mir::Operand::Constant(ref constant) => {
-                if let ty::TyFnDef(def_id, substs, _) = constant.ty.sty {
-                    // This is something that can act as a callee, proceed
-                    Some((def_id, substs))
-                } else {
-                    // This is not a callee, but we still have to look for
-                    // references to `const` items
-                    if let mir::Literal::Item { def_id, substs } = constant.literal {
-                        let substs = monomorphize::apply_param_substs(self.scx,
-                                                                      self.param_substs,
-                                                                      &substs);
-                        let instance = monomorphize::resolve(self.scx, def_id, substs);
-                        collect_neighbours(self.scx, instance, self.output);
-                    }
-
-                    None
-                }
-            }
-            _ => None
-        };
-
-        if let Some((callee_def_id, callee_substs)) = callee {
-            debug!(" => operand is callable");
-
-            // `callee_def_id` might refer to a trait method instead of a
-            // concrete implementation, so we have to find the actual
-            // implementation. For example, the call might look like
-            //
-            // std::cmp::partial_cmp(0i32, 1i32)
-            //
-            // Calling do_static_dispatch() here will map the def_id of
-            // `std::cmp::partial_cmp` to the def_id of `i32::partial_cmp<i32>`
-
-            let callee_substs = monomorphize::apply_param_substs(self.scx,
-                                                                 self.param_substs,
-                                                                 &callee_substs);
-            let instance =
-                monomorphize::resolve(self.scx, callee_def_id, callee_substs);
-            if should_trans_locally(self.scx.tcx(), &instance) {
-                if let ty::InstanceDef::ClosureOnceShim { .. } = instance.def {
-                    // This call will instantiate an FnOnce adapter, which
-                    // drops the closure environment. Therefore we need to
-                    // make sure that we collect the drop-glue for the
-                    // environment type.
-
-                    let env_ty = instance.substs.type_at(0);
-                    let env_ty = glue::get_drop_glue_type(self.scx, env_ty);
-                    if self.scx.type_needs_drop(env_ty) {
-                        let dg = DropGlueKind::Ty(env_ty);
-                        self.output.push(TransItem::DropGlue(dg));
-                    }
-                }
-                self.output.push(create_fn_trans_item(instance));
-            }
+        if let ty::TyFnDef(..) = constant.ty.sty {
+            // function definitions are zero-sized, and only generate
+            // IR when they are called/reified.
+            self.super_constant(constant, location);
+            return
         }
 
-        self.super_operand(operand, location);
+        if let mir::Literal::Item { def_id, substs } = constant.literal {
+            let substs = monomorphize::apply_param_substs(self.scx,
+                                                          self.param_substs,
+                                                          &substs);
+            let instance = monomorphize::resolve(self.scx, def_id, substs);
+            collect_neighbours(self.scx, instance, self.output);
+        }
+
+        self.super_constant(constant, location);
     }
 
-    // This takes care of the "drop_in_place" intrinsic for which we otherwise
-    // we would not register drop-glues.
     fn visit_terminator_kind(&mut self,
                              block: mir::BasicBlock,
                              kind: &mir::TerminatorKind<'tcx>,
                              location: Location) {
         let tcx = self.scx.tcx();
-        match *kind {
-            mir::TerminatorKind::Call {
-                func: mir::Operand::Constant(ref constant),
-                ref args,
-                ..
-            } => {
-                match constant.ty.sty {
-                    ty::TyFnDef(def_id, _, bare_fn_ty)
-                        if is_drop_in_place_intrinsic(tcx, def_id, bare_fn_ty) => {
-                        let operand_ty = args[0].ty(self.mir, tcx);
-                        if let ty::TyRawPtr(mt) = operand_ty.sty {
-                            let operand_ty = monomorphize::apply_param_substs(self.scx,
-                                                                              self.param_substs,
-                                                                              &mt.ty);
-                            let ty = glue::get_drop_glue_type(self.scx, operand_ty);
-                            self.output.push(TransItem::DropGlue(DropGlueKind::Ty(ty)));
-                        } else {
-                            bug!("Has the drop_in_place() intrinsic's signature changed?")
-                        }
-                    }
-                    _ => { /* Nothing to do. */ }
-                }
-            }
-            _ => { /* Nothing to do. */ }
+        if let mir::TerminatorKind::Call {
+            ref func,
+            ..
+        } = *kind {
+            let callee_ty = func.ty(self.mir, tcx);
+            let callee_ty = monomorphize::apply_param_substs(
+                self.scx, self.param_substs, &callee_ty);
+            visit_fn_use(self.scx, callee_ty, true, &mut self.output);
         }
 
         self.super_terminator_kind(block, kind, location);
+    }
+}
 
-        fn is_drop_in_place_intrinsic<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                                def_id: DefId,
-                                                bare_fn_ty: ty::PolyFnSig<'tcx>)
-                                                -> bool {
-            (bare_fn_ty.abi() == Abi::RustIntrinsic ||
-             bare_fn_ty.abi() == Abi::PlatformIntrinsic) &&
-            tcx.item_name(def_id) == "drop_in_place"
+fn visit_fn_use<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
+                          ty: ty::Ty<'tcx>,
+                          is_direct_call: bool,
+                          output: &mut Vec<TransItem<'tcx>>)
+{
+    debug!("visit_fn_use({:?}, is_direct_call={:?})", ty, is_direct_call);
+    let (def_id, substs) = match ty.sty {
+        ty::TyFnDef(def_id, substs, _) => (def_id, substs),
+        _ => return
+    };
+
+    let instance = monomorphize::resolve(scx, def_id, substs);
+    if !should_trans_locally(scx.tcx(), &instance) {
+        return
+    }
+
+    match instance.def {
+        ty::InstanceDef::ClosureOnceShim { .. } => {
+            // This call will instantiate an FnOnce adapter, which
+            // drops the closure environment. Therefore we need to
+            // make sure that we collect the drop-glue for the
+            // environment type along with the instance.
+
+            let env_ty = instance.substs.type_at(0);
+            let env_ty = glue::get_drop_glue_type(scx, env_ty);
+            if scx.type_needs_drop(env_ty) {
+                let dg = DropGlueKind::Ty(env_ty);
+                output.push(TransItem::DropGlue(dg));
+            }
+            output.push(create_fn_trans_item(instance));
+        }
+        ty::InstanceDef::Intrinsic(..) => {
+            if !is_direct_call {
+                bug!("intrinsic {:?} being reified", ty);
+            }
+            if scx.tcx().item_name(def_id) == "drop_in_place" {
+                // drop_in_place is a call to drop glue, need to instantiate
+                // that.
+                let ty = glue::get_drop_glue_type(scx, substs.type_at(0));
+                output.push(TransItem::DropGlue(DropGlueKind::Ty(ty)));
+            }
+        }
+        ty::InstanceDef::Virtual(..) => {
+            // don't need to emit shim if we are calling directly.
+            if !is_direct_call {
+                output.push(create_fn_trans_item(instance));
+            }
+        }
+        ty::InstanceDef::Item(..) |
+        ty::InstanceDef::FnPtrShim(..) => {
+            output.push(create_fn_trans_item(instance));
         }
     }
 }
@@ -657,8 +650,8 @@ fn should_trans_locally<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: &Instan
             call_once: _, closure_did: def_id
         } => def_id,
         ty::InstanceDef::Virtual(..) |
-        ty::InstanceDef::FnPtrShim(..) => return true,
-        ty::InstanceDef::Intrinsic(_) => return false
+        ty::InstanceDef::FnPtrShim(..) |
+        ty::InstanceDef::Intrinsic(_) => return true
     };
     match tcx.hir.get_if_local(def_id) {
         Some(hir_map::NodeForeignItem(..)) => {
