@@ -13,58 +13,51 @@ use hir::def_id::DefId;
 use syntax::ast::NodeId;
 use ty::TyCtxt;
 
-use super::graph::DepGraph;
-
-/// The `DepGraphSafe` auto trait is used to specify what kinds of
-/// values are safe to "leak" into a task.  The idea is that this
-/// should be only be implemented for things like the tcx, which will
-/// create reads in the dep-graph whenever the trait loads anything
-/// that might depend on the input program.
+/// The `DepGraphSafe` trait is used to specify what kinds of values
+/// are safe to "leak" into a task. The idea is that this should be
+/// only be implemented for things like the tcx as well as various id
+/// types, which will create reads in the dep-graph whenever the trait
+/// loads anything that might depend on the input program.
 pub trait DepGraphSafe {
-    fn read(&self, graph: &DepGraph);
 }
 
+/// A `BodyId` on its own doesn't give access to any particular state.
+/// You must fetch the state from the various maps or generate
+/// on-demand queries, all of which create reads.
 impl DepGraphSafe for BodyId {
-    fn read(&self, _graph: &DepGraph) {
-        // a BodyId on its own doesn't give access to any particular state
-    }
 }
 
+/// A `NodeId` on its own doesn't give access to any particular state.
+/// You must fetch the state from the various maps or generate
+/// on-demand queries, all of which create reads.
 impl DepGraphSafe for NodeId {
-    fn read(&self, _graph: &DepGraph) {
-        // a DefId doesn't give any particular state
-    }
 }
 
+/// A `DefId` on its own doesn't give access to any particular state.
+/// You must fetch the state from the various maps or generate
+/// on-demand queries, all of which create reads.
 impl DepGraphSafe for DefId {
-    fn read(&self, _graph: &DepGraph) {
-        // a DefId doesn't give any particular state
-    }
 }
 
+/// The type context itself can be used to access all kinds of tracked
+/// state, but those accesses should always generate read events.
 impl<'a, 'gcx, 'tcx> DepGraphSafe for TyCtxt<'a, 'gcx, 'tcx> {
-    fn read(&self, _graph: &DepGraph) {
-    }
 }
 
+/// Tuples make it easy to build up state.
 impl<A, B> DepGraphSafe for (A, B)
     where A: DepGraphSafe, B: DepGraphSafe
 {
-    fn read(&self, graph: &DepGraph) {
-        self.0.read(graph);
-        self.1.read(graph);
-    }
 }
 
+/// No data here! :)
 impl DepGraphSafe for () {
-    fn read(&self, _graph: &DepGraph) {
-    }
 }
 
-/// A convenient override. We should phase out usage of this over
-/// time.
+/// A convenient override that lets you pass arbitrary state into a
+/// task. Every use should be accompanied by a comment explaining why
+/// it makes sense (or how it could be refactored away in the future).
 pub struct AssertDepGraphSafe<T>(pub T);
+
 impl<T> DepGraphSafe for AssertDepGraphSafe<T> {
-    fn read(&self, _graph: &DepGraph) {
-    }
 }
