@@ -728,6 +728,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             ast_ty_to_ty_cache: RefCell::new(NodeMap()),
        }, f)
     }
+
+    pub fn consider_optimizing<T: Fn() -> String>(&self, msg: T) -> bool {
+        let cname = self.crate_name(LOCAL_CRATE).as_str();
+        self.sess.consider_optimizing(&cname, msg)
+    }
 }
 
 impl<'gcx: 'tcx, 'tcx> GlobalCtxt<'gcx> {
