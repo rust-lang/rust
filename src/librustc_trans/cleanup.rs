@@ -93,24 +93,6 @@ impl<'tcx> DropValue<'tcx> {
 }
 
 impl<'a, 'tcx> CleanupScope<'tcx> {
-    /// Schedules a (deep) drop of `val`, which is a pointer to an instance of `ty`
-    pub fn schedule_drop_mem(
-        bcx: &Builder<'a, 'tcx>, val: LvalueRef<'tcx>
-    ) -> CleanupScope<'tcx> {
-        if let LvalueTy::Downcast { .. } = val.ty {
-            bug!("Cannot drop downcast ty yet");
-        }
-        if !bcx.ccx.shared().type_needs_drop(val.ty.to_ty(bcx.tcx())) {
-            return CleanupScope::noop();
-        }
-        let drop = DropValue {
-            val: val,
-            skip_dtor: false,
-        };
-
-        CleanupScope::new(bcx, drop)
-    }
-
     /// Issue #23611: Schedules a (deep) drop of the contents of
     /// `val`, which is a pointer to an instance of struct/enum type
     /// `ty`. The scheduled code handles extracting the discriminant

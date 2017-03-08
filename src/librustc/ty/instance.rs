@@ -34,10 +34,7 @@ pub enum InstanceDef<'tcx> {
     // <Trait as Trait>::fn
     Virtual(DefId, usize),
     // <[mut closure] as FnOnce>::call_once
-    ClosureOnceShim {
-        call_once: DefId,
-        closure_did: DefId
-    },
+    ClosureOnceShim { call_once: DefId },
 }
 
 impl<'tcx> InstanceDef<'tcx> {
@@ -48,9 +45,8 @@ impl<'tcx> InstanceDef<'tcx> {
             InstanceDef::FnPtrShim(def_id, _) |
             InstanceDef::Virtual(def_id, _) |
             InstanceDef::Intrinsic(def_id, ) |
-            InstanceDef::ClosureOnceShim {
-                call_once: def_id, closure_did: _
-            } => def_id
+            InstanceDef::ClosureOnceShim { call_once: def_id }
+                => def_id
         }
     }
 
@@ -98,10 +94,8 @@ impl<'tcx> fmt::Display for Instance<'tcx> {
             InstanceDef::FnPtrShim(_, ty) => {
                 write!(f, " - shim({:?})", ty)
             }
-            InstanceDef::ClosureOnceShim {
-                call_once: _, closure_did
-            } => {
-                write!(f, " - shim({:?})", closure_did)
+            InstanceDef::ClosureOnceShim { .. } => {
+                write!(f, " - shim")
             }
         }
     }

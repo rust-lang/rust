@@ -37,7 +37,7 @@ fn fn_once_adapter_instance<'a, 'tcx>(
     let call_once = tcx.associated_items(fn_once)
         .find(|it| it.kind == ty::AssociatedKind::Method)
         .unwrap().def_id;
-    let def = ty::InstanceDef::ClosureOnceShim { call_once, closure_did };
+    let def = ty::InstanceDef::ClosureOnceShim { call_once };
 
     let self_ty = tcx.mk_closure_from_closure_substs(
         closure_did, substs);
@@ -52,6 +52,54 @@ fn fn_once_adapter_instance<'a, 'tcx>(
 
     debug!("fn_once_adapter_shim: self_ty={:?} sig={:?}", self_ty, sig);
     Instance { def, substs }
+}
+
+fn needs_fn_once_adapter_shim(actual_closure_kind: ty::ClosureKind,
+                              trait_closure_kind: ty::ClosureKind)
+                              -> Result<bool, ()>
+{
+    match (actual_closure_kind, trait_closure_kind) {
+        (ty::ClosureKind::Fn, ty::ClosureKind::Fn) |
+        (ty::ClosureKind::FnMut, ty::ClosureKind::FnMut) |
+        (ty::ClosureKind::FnOnce, ty::ClosureKind::FnOnce) => {
+            // No adapter needed.
+           Ok(false)
+        }
+        (ty::ClosureKind::Fn, ty::ClosureKind::FnMut) => {
+            // The closure fn `llfn` is a `fn(&self, ...)`.  We want a
+            // `fn(&mut self, ...)`. In fact, at trans time, these are
+            // basically the same thing, so we can just return llfn.
+            Ok(false)
+        }
+        (ty::ClosureKind::Fn, ty::ClosureKind::FnOnce) |
+        (ty::ClosureKind::FnMut, ty::ClosureKind::FnOnce) => {
+            // The closure fn `llfn` is a `fn(&self, ...)` or `fn(&mut
+            // self, ...)`.  We want a `fn(self, ...)`. We can produce
+            // this by doing something like:
+            //
+            //     fn call_once(self, ...) { call_mut(&self, ...) }
+            //     fn call_once(mut self, ...) { call_mut(&mut self, ...) }
+            //
+            // These are both the same at trans time.
+            Ok(true)
+        }
+        _ => Err(()),
+    }
+}
+
+pub fn resolve_closure<'a, 'tcx> (
+    scx: &SharedCrateContext<'a, 'tcx>,
+    def_id: DefId,
+    substs: ty::ClosureSubsts<'tcx>,
+    requested_kind: ty::ClosureKind)
+    -> Instance<'tcx>
+{
+    let actual_kind = scx.tcx().closure_kind(def_id);
+
+    match needs_fn_once_adapter_shim(actual_kind, requested_kind) {
+        Ok(true) => fn_once_adapter_instance(scx.tcx(), def_id, substs),
+        _ => Instance::new(def_id, substs.substs)
+    }
 }
 
 /// Attempts to resolve an obligation. The result is a shallow vtable resolution -- meaning that we
@@ -121,39 +169,6 @@ fn fulfill_obligation<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
     })
 }
 
-fn needs_fn_once_adapter_shim(actual_closure_kind: ty::ClosureKind,
-                              trait_closure_kind: ty::ClosureKind)
-                              -> Result<bool, ()>
-{
-    match (actual_closure_kind, trait_closure_kind) {
-        (ty::ClosureKind::Fn, ty::ClosureKind::Fn) |
-        (ty::ClosureKind::FnMut, ty::ClosureKind::FnMut) |
-        (ty::ClosureKind::FnOnce, ty::ClosureKind::FnOnce) => {
-            // No adapter needed.
-           Ok(false)
-        }
-        (ty::ClosureKind::Fn, ty::ClosureKind::FnMut) => {
-            // The closure fn `llfn` is a `fn(&self, ...)`.  We want a
-            // `fn(&mut self, ...)`. In fact, at trans time, these are
-            // basically the same thing, so we can just return llfn.
-            Ok(false)
-        }
-        (ty::ClosureKind::Fn, ty::ClosureKind::FnOnce) |
-        (ty::ClosureKind::FnMut, ty::ClosureKind::FnOnce) => {
-            // The closure fn `llfn` is a `fn(&self, ...)` or `fn(&mut
-            // self, ...)`.  We want a `fn(self, ...)`. We can produce
-            // this by doing something like:
-            //
-            //     fn call_once(self, ...) { call_mut(&self, ...) }
-            //     fn call_once(mut self, ...) { call_mut(&mut self, ...) }
-            //
-            // These are both the same at trans time.
-            Ok(true)
-        }
-        _ => Err(()),
-    }
-}
-
 fn resolve_associated_item<'a, 'tcx>(
     scx: &SharedCrateContext<'a, 'tcx>,
     trait_item: &ty::AssociatedItem,
@@ -180,16 +195,9 @@ fn resolve_associated_item<'a, 'tcx>(
             ty::Instance::new(def_id, substs)
         }
         traits::VtableClosure(closure_data) => {
-            let closure_def_id = closure_data.closure_def_id;
             let trait_closure_kind = tcx.lang_items.fn_trait_kind(trait_id).unwrap();
-            let actual_closure_kind = tcx.closure_kind(closure_def_id);
-
-            match needs_fn_once_adapter_shim(actual_closure_kind,
-                                             trait_closure_kind) {
-                Ok(true) => fn_once_adapter_instance(
-                    tcx, closure_def_id, closure_data.substs),
-                _ => Instance::new(closure_def_id, closure_data.substs.substs),
-            }
+            resolve_closure(scx, closure_data.closure_def_id, closure_data.substs,
+                            trait_closure_kind)
         }
         traits::VtableFnPointer(ref data) => {
             Instance {
@@ -278,7 +286,6 @@ pub fn apply_param_substs<'a, 'tcx, T>(scx: &SharedCrateContext<'a, 'tcx>,
     let substituted = scx.tcx().erase_regions(&substituted);
     AssociatedTypeNormalizer::new(scx).fold(&substituted)
 }
-
 
 /// Returns the normalized type of a struct field
 pub fn field_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,

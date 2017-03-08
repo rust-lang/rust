@@ -83,7 +83,25 @@ fn make_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
                 None
             )
         }
-        _ => bug!("unknown shim kind")
+        ty::InstanceDef::ClosureOnceShim { call_once } => {
+            let fn_mut = tcx.lang_items.fn_mut_trait().unwrap();
+            let call_mut = tcx.global_tcx()
+                .associated_items(fn_mut)
+                .find(|it| it.kind == ty::AssociatedKind::Method)
+                .unwrap().def_id;
+
+            build_call_shim(
+                tcx,
+                &param_env,
+                call_once,
+                Adjustment::RefMut,
+                CallKind::Direct(call_mut),
+                None
+            )
+        }
+        ty::InstanceDef::Intrinsic(_) => {
+            bug!("creating shims from intrinsics ({:?}) is unsupported", instance)
+        }
     };
     debug!("make_shim({:?}) = {:?}", instance, result);
 
@@ -97,6 +115,7 @@ fn make_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
 enum Adjustment {
     Identity,
     Deref,
+    RefMut,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -143,18 +162,37 @@ fn build_call_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
 
     debug!("build_call_shim: sig={:?}", sig);
 
-    let local_decls = local_decls_for_sig(&sig);
+    let mut local_decls = local_decls_for_sig(&sig);
     let source_info = SourceInfo { span, scope: ARGUMENT_VISIBILITY_SCOPE };
 
-    let rcvr_l = Lvalue::Local(Local::new(1+0));
-
-    let return_block_id = BasicBlock::new(1);
+    let rcvr_arg = Local::new(1+0);
+    let rcvr_l = Lvalue::Local(rcvr_arg);
+    let mut statements = vec![];
 
     let rcvr = match rcvr_adjustment {
         Adjustment::Identity => Operand::Consume(rcvr_l),
         Adjustment::Deref => Operand::Consume(Lvalue::Projection(
             box Projection { base: rcvr_l, elem: ProjectionElem::Deref }
-        ))
+        )),
+        Adjustment::RefMut => {
+            // let rcvr = &mut rcvr;
+            let re_erased = tcx.mk_region(ty::ReErased);
+            let ref_rcvr = local_decls.push(temp_decl(
+                Mutability::Not,
+                tcx.mk_ref(re_erased, ty::TypeAndMut {
+                    ty: sig.inputs()[0],
+                    mutbl: hir::Mutability::MutMutable
+                })
+            ));
+            statements.push(Statement {
+                source_info: source_info,
+                kind: StatementKind::Assign(
+                    Lvalue::Local(ref_rcvr),
+                    Rvalue::Ref(re_erased, BorrowKind::Mut, rcvr_l)
+                )
+            });
+            Operand::Consume(Lvalue::Local(ref_rcvr))
+        }
     };
 
     let (callee, mut args) = match call_kind {
@@ -184,28 +222,57 @@ fn build_call_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
     }
 
     let mut blocks = IndexVec::new();
-    blocks.push(BasicBlockData {
-        statements: vec![],
-        terminator: Some(Terminator {
-            source_info: source_info,
-            kind: TerminatorKind::Call {
-                func: callee,
-                args: args,
-                destination: Some((Lvalue::Local(RETURN_POINTER),
-                                   return_block_id)),
-                cleanup: None
+    let block = |blocks: &mut IndexVec<_, _>, statements, kind, is_cleanup| {
+        blocks.push(BasicBlockData {
+            statements,
+            terminator: Some(Terminator { source_info, kind }),
+            is_cleanup
+        })
+    };
+
+    let have_unwind = match (rcvr_adjustment, tcx.sess.no_landing_pads()) {
+        (Adjustment::RefMut, false) => true,
+        _ => false
+    };
+
+    // BB #0
+    block(&mut blocks, statements, TerminatorKind::Call {
+        func: callee,
+        args: args,
+        destination: Some((Lvalue::Local(RETURN_POINTER),
+                           BasicBlock::new(1))),
+        cleanup: if have_unwind {
+            Some(BasicBlock::new(3))
+        } else {
+            None
+        }
+    }, false);
+
+    if let Adjustment::RefMut = rcvr_adjustment {
+        // BB #1 - drop for Self
+        block(&mut blocks, vec![], TerminatorKind::Drop {
+            location: Lvalue::Local(rcvr_arg),
+            target: BasicBlock::new(2),
+            unwind: if have_unwind {
+                Some(BasicBlock::new(4))
+            } else {
+                None
             }
-        }),
-        is_cleanup: false
-    });
-    blocks.push(BasicBlockData {
-        statements: vec![],
-        terminator: Some(Terminator {
-            source_info: source_info,
-            kind: TerminatorKind::Return
-        }),
-        is_cleanup: false
-    });
+        }, false);
+    }
+    // BB #1/#2 - return
+    block(&mut blocks, vec![], TerminatorKind::Return, false);
+    if have_unwind {
+        // BB #3 - drop if closure panics
+        block(&mut blocks, vec![], TerminatorKind::Drop {
+            location: Lvalue::Local(rcvr_arg),
+            target: BasicBlock::new(4),
+            unwind: None
+        }, true);
+
+        // BB #4 - resume
+        block(&mut blocks, vec![], TerminatorKind::Resume, true);
+    }
 
     let mut mir = Mir::new(
         blocks,
