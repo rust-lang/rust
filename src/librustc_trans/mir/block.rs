@@ -833,8 +833,21 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             self.trans_lvalue(bcx, dest)
         };
         if fn_ret_ty.is_indirect() {
-            llargs.push(dest.llval);
-            ReturnDest::Nothing
+            match dest.alignment {
+                Alignment::AbiAligned => {
+                    llargs.push(dest.llval);
+                    ReturnDest::Nothing
+                },
+                Alignment::Packed => {
+                    // Currently, MIR code generation does not create calls
+                    // that store directly to fields of packed structs (in
+                    // fact, the calls it creates write only to temps),
+                    //
+                    // If someone changes that, please update this code path
+                    // to create a temporary.
+                    span_bug!(self.mir.span, "can't directly store to unaligned value");
+                }
+            }
         } else {
             ReturnDest::Store(dest.llval)
         }
