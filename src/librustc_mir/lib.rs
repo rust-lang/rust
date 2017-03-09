@@ -49,13 +49,11 @@ pub mod diagnostics;
 
 pub mod build;
 pub mod callgraph;
-pub mod def_use;
-pub mod graphviz;
 mod hair;
 mod shim;
 pub mod mir_map;
-pub mod pretty;
 pub mod transform;
+pub mod util;
 
 use rustc::ty::maps::Providers;
 

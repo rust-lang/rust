@@ -16,12 +16,12 @@ use syntax_pos::DUMMY_SP;
 use rustc::mir::{self, BasicBlock, BasicBlockData, Mir, Statement, Terminator, Location};
 use rustc::session::Session;
 use rustc::ty::{self, TyCtxt};
+use rustc_mir::util::elaborate_drops::DropFlagState;
 
 mod abs_domain;
 pub mod elaborate_drops;
 mod dataflow;
 mod gather_moves;
-mod patch;
 // mod graphviz;
 
 use self::dataflow::{BitDenotation};
@@ -180,21 +180,6 @@ impl<'b, 'a: 'b, 'tcx: 'a> MirBorrowckCtxt<'b, 'a, 'tcx> {
 
     fn process_terminator(&mut self, bb: BasicBlock, term: &Option<Terminator<'tcx>>) {
         debug!("MirBorrowckCtxt::process_terminator({:?}, {:?})", bb, term);
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, Copy, Clone)]
-enum DropFlagState {
-    Present, // i.e. initialized
-    Absent, // i.e. deinitialized or "moved"
-}
-
-impl DropFlagState {
-    fn value(self) -> bool {
-        match self {
-            DropFlagState::Present => true,
-            DropFlagState::Absent => false
-        }
     }
 }
 
