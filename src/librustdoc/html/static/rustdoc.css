@@ -377,13 +377,13 @@ h4 > code, h3 > code, .invisible > code {
 .content .method .where,
 .content .fn .where,
 .content .where.fmt-newline {
-    display: block;
+	display: block;
 }
 /* Bit of whitespace to indent it */
 .content .method .where::before,
 .content .fn .where::before,
 .content .where.fmt-newline::before {
-    content: '  ';
+	content: '  ';
 }
 
 .content .methods > div { margin-left: 40px; }
@@ -506,17 +506,15 @@ body.blur > :not(#help) {
 }
 #help > div {
 	flex: 0 0 auto;
-	background: #e9e9e9;
 	box-shadow: 0 0 6px rgba(0,0,0,.2);
 	width: 550px;
 	height: 330px;
-	border: 1px solid #bfbfbf;
+	border: 1px solid;
 }
 #help dt {
 	float: left;
 	border-radius: 4px;
-	border: 1px solid #bfbfbf;
-	background: #fff;
+	border: 1px solid;
 	width: 23px;
 	text-align: center;
 	clear: left;
@@ -567,7 +565,6 @@ body.blur > :not(#help) {
 .since {
 	font-weight: normal;
 	font-size: initial;
-	color: grey;
 	position: absolute;
 	right: 0;
 	top: 0;
@@ -589,24 +586,12 @@ td.summary-column {
 	padding-right: 0px;
 }
 
-.line-numbers :target { background-color: transparent; }
-
-/* Code highlighting */
-pre.rust .kw { color: #8959A8; }
-pre.rust .kw-2, pre.rust .prelude-ty { color: #4271AE; }
-pre.rust .number, pre.rust .string { color: #718C00; }
-pre.rust .self, pre.rust .bool-val, pre.rust .prelude-val,
-pre.rust .attribute, pre.rust .attribute .ident { color: #C82829; }
-pre.rust .macro, pre.rust .macro-nonterminal { color: #3E999F; }
-pre.rust .lifetime { color: #B76514; }
 pre.rust .question-mark {
-	color: #ff9011;
 	font-weight: bold;
 }
 
 pre.rust { position: relative; }
 a.test-arrow {
-	background-color: rgba(78, 139, 202, 0.2);
 	display: inline-block;
 	position: absolute;
 	padding: 5px 10px 5px 10px;
@@ -616,7 +601,6 @@ a.test-arrow {
 	right: 5px;
 }
 a.test-arrow:hover{
-	background-color: #4e8bca;
 	text-decoration: none;
 }
 
@@ -658,10 +642,6 @@ a.test-arrow:hover{
 	display: inline-block;
 	width: 1.2ch;
 	text-align: center;
-}
-
-.toggle-label {
-	color: #999;
 }
 
 .ghost {
@@ -719,8 +699,7 @@ span.since {
 }
 
 :target > code {
-   background: #FDFFD3;
-   opacity: 1;
+	opacity: 1;
 }
 
 /* Media Queries */
