@@ -30,8 +30,7 @@ RUN curl -o /usr/local/bin/sccache \
       chmod +x /usr/local/bin/sccache
 
 ENV RUST_CONFIGURE_ARGS \
-      --target=x86_64-unknown-linux-musl,i686-unknown-linux-musl,i586-unknown-linux-gnu \
-      --musl-root-x86_64=/musl-x86_64 \
+      --target=i686-unknown-linux-musl,i586-unknown-linux-gnu \
       --musl-root-i686=/musl-i686
 
 # Newer binutils broke things on some vms/distros (i.e., linking against
@@ -39,16 +38,13 @@ ENV RUST_CONFIGURE_ARGS \
 # way to produce "super compatible" binaries.
 #
 # See: https://github.com/rust-lang/rust/issues/34978
-ENV CFLAGS_i686_unknown_linux_musl=-Wa,-mrelax-relocations=no \
-    CFLAGS_x86_64_unknown_linux_musl=-Wa,-mrelax-relocations=no
+ENV CFLAGS_i686_unknown_linux_musl=-Wa,-mrelax-relocations=no
 
 ENV SCRIPT \
       python2.7 ../x.py test \
-          --target x86_64-unknown-linux-musl \
           --target i686-unknown-linux-musl \
           --target i586-unknown-linux-gnu \
           && \
       python2.7 ../x.py dist \
-          --target x86_64-unknown-linux-musl \
           --target i686-unknown-linux-musl \
           --target i586-unknown-linux-gnu
