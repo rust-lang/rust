@@ -28,6 +28,8 @@ use std::cell::RefCell;
 use std::iter;
 use std::mem;
 
+use transform::{add_call_guards, no_landing_pads, simplify};
+
 pub fn provide(providers: &mut Providers) {
     providers.mir_shims = make_shim;
 }
@@ -42,7 +44,7 @@ fn make_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
     let param_env =
         tcx.construct_parameter_environment(span, did, ROOT_CODE_EXTENT);
 
-    let result = match instance {
+    let mut result = match instance {
         ty::InstanceDef::Item(..) =>
             bug!("item {:?} passed to make_shim", instance),
         ty::InstanceDef::FnPtrShim(def_id, ty) => {
@@ -103,6 +105,10 @@ fn make_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
             bug!("creating shims from intrinsics ({:?}) is unsupported", instance)
         }
     };
+        debug!("make_shim({:?}) = untransformed {:?}", instance, result);
+        no_landing_pads::no_landing_pads(tcx, &mut result);
+        simplify::simplify_cfg(&mut result);
+        add_call_guards::add_call_guards(&mut result);
     debug!("make_shim({:?}) = {:?}", instance, result);
 
     let result = tcx.alloc_mir(result);
@@ -230,18 +236,13 @@ fn build_call_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
         })
     };
 
-    let have_unwind = match (rcvr_adjustment, tcx.sess.no_landing_pads()) {
-        (Adjustment::RefMut, false) => true,
-        _ => false
-    };
-
     // BB #0
     block(&mut blocks, statements, TerminatorKind::Call {
         func: callee,
         args: args,
         destination: Some((Lvalue::Local(RETURN_POINTER),
                            BasicBlock::new(1))),
-        cleanup: if have_unwind {
+        cleanup: if let Adjustment::RefMut = rcvr_adjustment {
             Some(BasicBlock::new(3))
         } else {
             None
@@ -253,16 +254,12 @@ fn build_call_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
         block(&mut blocks, vec![], TerminatorKind::Drop {
             location: Lvalue::Local(rcvr_arg),
             target: BasicBlock::new(2),
-            unwind: if have_unwind {
-                Some(BasicBlock::new(4))
-            } else {
-                None
-            }
+            unwind: None
         }, false);
     }
     // BB #1/#2 - return
     block(&mut blocks, vec![], TerminatorKind::Return, false);
-    if have_unwind {
+    if let Adjustment::RefMut = rcvr_adjustment {
         // BB #3 - drop if closure panics
         block(&mut blocks, vec![], TerminatorKind::Drop {
             location: Lvalue::Local(rcvr_arg),
