@@ -396,8 +396,6 @@ pub struct HashMap<K, V, S = RandomState> {
     table: RawTable<K, V>,
 
     resize_policy: DefaultResizePolicy,
-
-    long_probes: bool,
 }
 
 /// Search for a pre-hashed key.
@@ -655,7 +653,6 @@ impl<K, V, S> HashMap<K, V, S>
             hash_builder: hash_builder,
             resize_policy: DefaultResizePolicy::new(),
             table: RawTable::new(0),
-            long_probes: false,
         }
     }
 
@@ -688,7 +685,6 @@ impl<K, V, S> HashMap<K, V, S>
             hash_builder: hash_builder,
             resize_policy: resize_policy,
             table: RawTable::new(raw_cap),
-            long_probes: false,
         }
     }
 
@@ -746,7 +742,7 @@ impl<K, V, S> HashMap<K, V, S>
             let min_cap = self.len().checked_add(additional).expect("reserve overflow");
             let raw_cap = self.resize_policy.raw_capacity(min_cap);
             self.resize(raw_cap);
-        } else if self.long_probes && remaining <= self.len() {
+        } else if self.table.tag() && remaining <= self.len() {
             // Probe sequence is too long and table is half full,
             // resize early to reduce probing length.
             let new_capacity = self.table.capacity() * 2;
@@ -763,7 +759,6 @@ impl<K, V, S> HashMap<K, V, S>
         assert!(self.table.size() <= new_raw_cap);
         assert!(new_raw_cap.is_power_of_two() || new_raw_cap == 0);
 
-        self.long_probes = false;
         let mut old_table = replace(&mut self.table, RawTable::new(new_raw_cap));
         let old_size = old_table.size();
 
@@ -844,8 +839,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// If the key already exists, the hashtable will be returned untouched
     /// and a reference to the existing element will be returned.
     fn insert_hashed_nocheck(&mut self, hash: SafeHash, k: K, v: V) -> Option<V> {
-        let entry = search_hashed(&mut self.table, hash, |key| *key == k)
-            .into_entry(k, &mut self.long_probes);
+        let entry = search_hashed(&mut self.table, hash, |key| *key == k).into_entry(k);
         match entry {
             Some(Occupied(mut elem)) => Some(elem.insert(v)),
             Some(Vacant(elem)) => {
@@ -1002,7 +996,7 @@ impl<K, V, S> HashMap<K, V, S>
         self.reserve(1);
         let hash = self.make_hash(&key);
         search_hashed(&mut self.table, hash, |q| q.eq(&key))
-            .into_entry(key, &mut self.long_probes).expect("unreachable")
+            .into_entry(key).expect("unreachable")
     }
 
     /// Returns the number of elements in the map.
@@ -1456,7 +1450,7 @@ impl<K, V, M> InternalEntry<K, V, M> {
 
 impl<'a, K, V> InternalEntry<K, V, &'a mut RawTable<K, V>> {
     #[inline]
-    fn into_entry(self, key: K, long_probes: &'a mut bool) -> Option<Entry<'a, K, V>> {
+    fn into_entry(self, key: K) -> Option<Entry<'a, K, V>> {
         match self {
             InternalEntry::Occupied { elem } => {
                 Some(Occupied(OccupiedEntry {
@@ -1469,7 +1463,6 @@ impl<'a, K, V> InternalEntry<K, V, &'a mut RawTable<K, V>> {
                     hash: hash,
                     key: key,
                     elem: elem,
-                    long_probes: long_probes,
                 }))
             }
             InternalEntry::TableIsEmpty => None,
@@ -1542,7 +1535,6 @@ pub struct VacantEntry<'a, K: 'a, V: 'a> {
     hash: SafeHash,
     key: K,
     elem: VacantEntryState<K, V, &'a mut RawTable<K, V>>,
-    long_probes: &'a mut bool,
 }
 
 #[stable(feature= "debug_hash_map", since = "1.12.0")]
@@ -2117,15 +2109,15 @@ impl<'a, K: 'a, V: 'a> VacantEntry<'a, K, V> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn insert(self, value: V) -> &'a mut V {
         match self.elem {
-            NeqElem(bucket, disp) => {
+            NeqElem(mut bucket, disp) => {
                 if disp >= DISPLACEMENT_THRESHOLD {
-                    *self.long_probes = true;
+                    bucket.table_mut().set_tag(true);
                 }
                 robin_hood(bucket, disp, self.hash, self.key, value)
             },
-            NoElem(bucket, disp) => {
+            NoElem(mut bucket, disp) => {
                 if disp >= DISPLACEMENT_THRESHOLD {
-                    *self.long_probes = true;
+                    bucket.table_mut().set_tag(true);
                 }
                 bucket.put(self.hash, self.key, value).into_mut_refs().1
             },

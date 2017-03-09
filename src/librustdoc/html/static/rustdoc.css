@@ -167,7 +167,11 @@ nav.sub {
 	position: absolute;
 	left: 0;
 	top: 0;
-	min-height: 100%;
+	min-height: 100vh;
+}
+
+.sidebar .current {
+	margin-right: -20px;
 }
 
 .content, nav { max-width: 960px; }
@@ -185,9 +189,14 @@ nav.sub {
 }
 
 .sidebar .location {
+	border: 1px solid;
 	font-size: 17px;
 	margin: 30px 0 20px 0;
 	text-align: center;
+}
+
+.location:empty {
+	border: none;
 }
 
 .location a:first-child { font-weight: 500; }
