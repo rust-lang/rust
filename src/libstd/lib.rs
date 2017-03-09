@@ -281,6 +281,7 @@
 #![feature(panic_unwind)]
 #![feature(peek)]
 #![feature(placement_in_syntax)]
+#![feature(placement_new_protocol)]
 #![feature(prelude_import)]
 #![feature(pub_restricted)]
 #![feature(rand)]
