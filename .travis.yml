@@ -98,6 +98,12 @@ env:
     # AWS_SECRET_ACCESS_KEY=...
     - secure: "Pixhh0hXDqGCdOyLtGFjli3J2AtDWIpyb2btIrLe956nCBDRutRoMm6rv5DI9sFZN07Mms7VzNNvhc9wCW1y63JAm414d2Co7Ob8kWMZlz9l9t7ACHuktUiis8yr+S4Quq1Vqd6pqi7pf2J++UxC8R/uLeqVrubzr6+X7AbmEFE="
 
+before_script:
+  - >
+      echo "#### Disk usage before running script:";
+      df -h;
+      du . | sort -nr | head -n100
+
 script:
   - >
       if [ "$ALLOW_PR" = "" ] && [ "$TRAVIS_BRANCH" != "auto" ]; then
@@ -109,6 +115,18 @@ script:
           travis_retry sh -c 'git submodule deinit -f . && git submodule update --init' &&
           src/ci/docker/run.sh $IMAGE;
       fi
+
+after_success:
+  - >
+      echo "#### Build successful; Disk usage after running script:";
+      df -h;
+      du . | sort -nr | head -n100
+
+after_failure:
+  - >
+      echo "#### Build failed; Disk usage after running script:";
+      df -h;
+      du . | sort -nr | head -n100
 
 # Save tagged docker images we created and load them if they're available
 before_cache:
