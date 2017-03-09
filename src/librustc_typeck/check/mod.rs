@@ -2739,7 +2739,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     // or if-else.
     fn check_then_else(&self,
                        cond_expr: &'gcx hir::Expr,
-                       then_blk: &'gcx hir::Block,
+                       then_expr: &'gcx hir::Expr,
                        opt_else_expr: Option<&'gcx hir::Expr>,
                        sp: Span,
                        expected: Expectation<'tcx>) -> Ty<'tcx> {
@@ -2748,7 +2748,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         self.diverges.set(Diverges::Maybe);
 
         let expected = expected.adjust_for_branches(self);
-        let then_ty = self.check_block_with_expected(then_blk, expected);
+        let then_ty = self.check_expr_with_expectation(then_expr, expected);
         let then_diverges = self.diverges.get();
         self.diverges.set(Diverges::Maybe);
 
@@ -2763,26 +2763,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // to assign coercions to, otherwise it's () or diverging.
             expected_ty = then_ty;
             found_ty = else_ty;
-            result = if let Some(ref then) = then_blk.expr {
-                let res = self.try_find_coercion_lub(&cause, || Some(&**then),
-                                                     then_ty, else_expr, else_ty);
 
-                // In case we did perform an adjustment, we have to update
-                // the type of the block, because old trans still uses it.
-                if res.is_ok() {
-                    let adj = self.tables.borrow().adjustments.get(&then.id).cloned();
-                    if let Some(adj) = adj {
-                        self.write_ty(then_blk.id, adj.target);
-                    }
-                }
-
-                res
-            } else {
-                self.commit_if_ok(|_| {
-                    let trace = TypeTrace::types(&cause, true, then_ty, else_ty);
-                    self.lub(true, trace, &then_ty, &else_ty)
-                        .map(|ok| self.register_infer_ok_obligations(ok))
-                })
+            let coerce_to = expected.only_has_type(self).unwrap_or(then_ty);
+            result = {
+                self.try_coerce(then_expr, then_ty, coerce_to)
+                    .and_then(|t| {
+                        self.try_find_coercion_lub(&cause, || Some(then_expr), t, else_expr, else_ty)
+                    })
             };
 
             // We won't diverge unless both branches do (or the condition does).
@@ -3587,9 +3574,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 tcx.mk_nil()
             }
           }
-          hir::ExprIf(ref cond, ref then_blk, ref opt_else_expr) => {
-            self.check_then_else(&cond, &then_blk, opt_else_expr.as_ref().map(|e| &**e),
-                                 expr.span, expected)
+          hir::ExprIf(ref cond, ref then_expr, ref opt_else_expr) => {
+              self.check_then_else(&cond, then_expr, opt_else_expr.as_ref().map(|e| &**e),
+                                   expr.span, expected)
           }
           hir::ExprWhile(ref cond, ref body, _) => {
             let unified = self.tcx.mk_nil();

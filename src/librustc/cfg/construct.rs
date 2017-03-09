@@ -195,7 +195,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 //   [..expr..]
                 //
                 let cond_exit = self.expr(&cond, pred);                // 1
-                let then_exit = self.block(&then, cond_exit);          // 2
+                let then_exit = self.expr(&then, cond_exit);          // 2
                 self.add_ast_node(expr.id, &[cond_exit, then_exit])      // 3,4
             }
 
@@ -215,7 +215,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 //   [..expr..]
                 //
                 let cond_exit = self.expr(&cond, pred);                // 1
-                let then_exit = self.block(&then, cond_exit);          // 2
+                let then_exit = self.expr(&then, cond_exit);          // 2
                 let else_exit = self.expr(&otherwise, cond_exit);      // 3
                 self.add_ast_node(expr.id, &[then_exit, else_exit])      // 4, 5
             }

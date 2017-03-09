@@ -951,7 +951,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             //   (  succ  )
             //
             let else_ln = self.propagate_through_opt_expr(els.as_ref().map(|e| &**e), succ);
-            let then_ln = self.propagate_through_block(&then, succ);
+            let then_ln = self.propagate_through_expr(&then, succ);
             let ln = self.live_node(expr.id, expr.span);
             self.init_from_succ(ln, else_ln);
             self.merge_from_succ(ln, then_ln, false);

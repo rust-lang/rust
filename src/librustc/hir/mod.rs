@@ -994,7 +994,7 @@ pub enum Expr_ {
     /// An `if` block, with an optional else block
     ///
     /// `if expr { block } else { expr }`
-    ExprIf(P<Expr>, P<Block>, Option<P<Expr>>),
+    ExprIf(P<Expr>, P<Expr>, Option<P<Expr>>),
     /// A while loop, with an optional label
     ///
     /// `'label: while expr { block }`
