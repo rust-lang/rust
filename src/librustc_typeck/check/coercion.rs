@@ -453,18 +453,32 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
             }
             _ => (source, None),
         };
-        let source = source.adjust_for_autoref(self.tcx, reborrow);
+        let coerce_source = source.adjust_for_autoref(self.tcx, reborrow);
+
+        let adjust = Adjust::DerefRef {
+            autoderefs: if reborrow.is_some() { 1 } else { 0 },
+            autoref: reborrow,
+            unsize: true,
+        };
+
+        // Setup either a subtyping or a LUB relationship between
+        // the `CoerceUnsized` target type and the expected type.
+        // We only have the latter, so we use an inference variable
+        // for the former and let type inference do the rest.
+        let origin = TypeVariableOrigin::MiscVariable(self.cause.span);
+        let coerce_target = self.next_ty_var(origin);
+        let mut coercion = self.unify_and(coerce_target, target, adjust)?;
 
         let mut selcx = traits::SelectionContext::new(self);
 
         // Use a FIFO queue for this custom fulfillment procedure.
         let mut queue = VecDeque::new();
-        let mut obligations = vec![];
 
         // Create an obligation for `Source: CoerceUnsized<Target>`.
         let cause = ObligationCause::misc(self.cause.span, self.body_id);
         queue.push_back(self.tcx
-            .predicate_for_trait_def(cause, coerce_unsized_did, 0, source, &[target]));
+            .predicate_for_trait_def(cause, coerce_unsized_did, 0,
+                                     coerce_source, &[coerce_target]));
 
         // Keep resolving `CoerceUnsized` and `Unsize` predicates to avoid
         // emitting a coercion in cases like `Foo<$1>` -> `Foo<$2>`, where
@@ -475,7 +489,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
             let trait_ref = match obligation.predicate {
                 ty::Predicate::Trait(ref tr) if traits.contains(&tr.def_id()) => tr.clone(),
                 _ => {
-                    obligations.push(obligation);
+                    coercion.obligations.push(obligation);
                     continue;
                 }
             };
@@ -503,11 +517,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
             }
         }
 
-        success(Adjust::DerefRef {
-            autoderefs: if reborrow.is_some() { 1 } else { 0 },
-            autoref: reborrow,
-            unsize: true,
-        }, target, obligations)
+        Ok(coercion)
     }
 
     fn coerce_from_safe_fn(&self,
