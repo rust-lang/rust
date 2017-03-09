@@ -339,6 +339,9 @@ declare_features! (
 
     // `extern "x86-interrupt" fn()`
     (active, abi_x86_interrupt, "1.17.0", Some(40180)),
+
+    // Used to preserve symbols
+    (active, used, "1.17.0", Some(40289)),
 );
 
 declare_features! (
@@ -742,6 +745,10 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
                                   "unwind_attributes",
                                   "#[unwind] is experimental",
                                   cfg_fn!(unwind_attributes))),
+    ("used", Whitelisted, Gated(
+        Stability::Unstable, "used",
+        "the `#[used]` attribute is an experimental feature",
+        cfg_fn!(used))),
 
     // used in resolve
     ("prelude_import", Whitelisted, Gated(Stability::Unstable,
