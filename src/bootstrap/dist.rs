@@ -313,16 +313,8 @@ pub fn rust_src_location(build: &Build) -> PathBuf {
 pub fn analysis(build: &Build, compiler: &Compiler, target: &str) {
     println!("Dist analysis");
 
-    if build.config.channel != "nightly" {
-        println!("\tskipping - not on nightly channel");
-        return;
-    }
     if compiler.host != build.config.build {
-        println!("\tskipping - not a build host");
-        return
-    }
-    if compiler.stage != 2 {
-        println!("\tskipping - not stage2");
+        println!("\tskipping, not a build host");
         return
     }
 
