@@ -201,7 +201,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
                         |ty| tc_ty(tcx, &ty, cache))
                 }
 
-                ty::TyTuple(ref tys) => {
+                ty::TyTuple(ref tys, _) => {
                     TypeContents::union(&tys[..],
                                         |ty| tc_ty(tcx, *ty, cache))
                 }
@@ -219,7 +219,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
                         res = res - TC::OwnsDtor;
                     }
 
-                    if def.has_dtor() {
+                    if def.has_dtor(tcx) {
                         res = res | TC::OwnsDtor;
                     }
 

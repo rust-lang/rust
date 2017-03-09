@@ -22,7 +22,7 @@ use common;
 use declare;
 use glue::DropGlueKind;
 use llvm;
-use monomorphize::{self, Instance};
+use monomorphize::Instance;
 use rustc::dep_graph::DepNode;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
@@ -146,7 +146,7 @@ impl<'a, 'tcx> TransItem<'tcx> {
                         linkage: llvm::Linkage,
                         symbol_name: &str) {
         let def_id = ccx.tcx().hir.local_def_id(node_id);
-        let ty = ccx.tcx().item_type(def_id);
+        let ty = common::def_ty(ccx.shared(), def_id, Substs::empty());
         let llty = type_of::type_of(ccx, ty);
 
         let g = declare::define_global(ccx, symbol_name, llty).unwrap_or_else(|| {
@@ -168,10 +168,7 @@ impl<'a, 'tcx> TransItem<'tcx> {
         assert!(!instance.substs.needs_infer() &&
                 !instance.substs.has_param_types());
 
-        let item_ty = ccx.tcx().item_type(instance.def);
-        let item_ty = ccx.tcx().erase_regions(&item_ty);
-        let mono_ty = monomorphize::apply_param_substs(ccx.shared(), instance.substs, &item_ty);
-
+        let mono_ty = common::def_ty(ccx.shared(), instance.def, instance.substs);
         let attrs = ccx.tcx().get_attrs(instance.def);
         let lldecl = declare::declare_fn(ccx, symbol_name, mono_ty);
         unsafe { llvm::LLVMRustSetLinkage(lldecl, linkage) };
@@ -199,11 +196,17 @@ impl<'a, 'tcx> TransItem<'tcx> {
         assert_eq!(dg.ty(), glue::get_drop_glue_type(ccx.shared(), dg.ty()));
         let t = dg.ty();
 
-        let sig = tcx.mk_fn_sig(iter::once(tcx.mk_mut_ptr(t)), tcx.mk_nil(), false);
+        let sig = tcx.mk_fn_sig(
+            iter::once(tcx.mk_mut_ptr(t)),
+            tcx.mk_nil(),
+            false,
+            hir::Unsafety::Normal,
+            Abi::Rust
+        );
 
         debug!("predefine_drop_glue: sig={}", sig);
 
-        let fn_ty = FnType::new(ccx, Abi::Rust, &sig, &[]);
+        let fn_ty = FnType::new(ccx, sig, &[]);
         let llfnty = fn_ty.llvm_type(ccx);
 
         assert!(declare::get_defined_value(ccx, symbol_name).is_none());
@@ -409,7 +412,7 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
                 self.push_def_path(adt_def.did, output);
                 self.push_type_params(substs, iter::empty(), output);
             },
-            ty::TyTuple(component_types) => {
+            ty::TyTuple(component_types, _) => {
                 output.push('(');
                 for &component_type in component_types {
                     self.push_type_name(component_type, output);
@@ -457,12 +460,13 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
                         output);
                 }
             },
-            ty::TyFnDef(.., &ty::BareFnTy{ unsafety, abi, ref sig } ) |
-            ty::TyFnPtr(&ty::BareFnTy{ unsafety, abi, ref sig } ) => {
-                if unsafety == hir::Unsafety::Unsafe {
+            ty::TyFnDef(.., sig) |
+            ty::TyFnPtr(sig) => {
+                if sig.unsafety() == hir::Unsafety::Unsafe {
                     output.push_str("unsafe ");
                 }
 
+                let abi = sig.abi();
                 if abi != ::abi::Abi::Rust {
                     output.push_str("extern \"");
                     output.push_str(abi.name());
@@ -471,7 +475,7 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
 
                 output.push_str("fn(");
 
-                let sig = self.tcx.erase_late_bound_regions_and_normalize(sig);
+                let sig = self.tcx.erase_late_bound_regions_and_normalize(&sig);
 
                 if !sig.inputs().is_empty() {
                     for &parameter_type in sig.inputs() {

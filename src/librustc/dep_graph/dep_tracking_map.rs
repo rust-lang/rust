@@ -11,6 +11,7 @@
 use hir::def_id::DefId;
 use rustc_data_structures::fx::FxHashMap;
 use std::cell::RefCell;
+use std::collections::hash_map::Entry;
 use std::ops::Index;
 use std::hash::Hash;
 use std::marker::PhantomData;
@@ -61,15 +62,15 @@ impl<M: DepTrackingMapConfig> DepTrackingMap<M> {
         self.map.get(k)
     }
 
-    pub fn get_mut(&mut self, k: &M::Key) -> Option<&mut M::Value> {
-        self.read(k);
-        self.write(k);
-        self.map.get_mut(k)
+    pub fn insert(&mut self, k: M::Key, v: M::Value) {
+        self.write(&k);
+        let old_value = self.map.insert(k, v);
+        assert!(old_value.is_none());
     }
 
-    pub fn insert(&mut self, k: M::Key, v: M::Value) -> Option<M::Value> {
+    pub fn entry(&mut self, k: M::Key) -> Entry<M::Key, M::Value> {
         self.write(&k);
-        self.map.insert(k, v)
+        self.map.entry(k)
     }
 
     pub fn contains_key(&self, k: &M::Key) -> bool {
@@ -83,6 +84,10 @@ impl<M: DepTrackingMapConfig> DepTrackingMap<M> {
 
     /// Append `elem` to the vector stored for `k`, creating a new vector if needed.
     /// This is considered a write to `k`.
+    ///
+    /// NOTE: Caution is required when using this method. You should
+    /// be sure that nobody is **reading from the vector** while you
+    /// are writing to it. Eventually, it'd be nice to remove this.
     pub fn push<E: Clone>(&mut self, k: M::Key, elem: E)
         where M: DepTrackingMapConfig<Value=Vec<E>>
     {

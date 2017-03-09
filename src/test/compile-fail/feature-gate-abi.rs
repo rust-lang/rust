@@ -11,6 +11,8 @@
 // gate-test-intrinsics
 // gate-test-platform_intrinsics
 // gate-test-abi_vectorcall
+// gate-test-abi_ptx
+// gate-test-abi_x86_interrupt
 
 // Functions
 extern "rust-intrinsic" fn f1() {} //~ ERROR intrinsics are subject to change
@@ -18,6 +20,8 @@ extern "platform-intrinsic" fn f2() {} //~ ERROR platform intrinsics are experim
 extern "vectorcall" fn f3() {} //~ ERROR vectorcall is experimental and subject to change
 extern "rust-call" fn f4() {} //~ ERROR rust-call ABI is subject to change
 extern "msp430-interrupt" fn f5() {} //~ ERROR msp430-interrupt ABI is experimental
+extern "ptx-kernel" fn f6() {} //~ ERROR PTX ABIs are experimental and subject to change
+extern "x86-interrupt" fn f7() {} //~ ERROR x86-interrupt ABI is experimental
 
 // Methods in trait definition
 trait Tr {
@@ -26,12 +30,16 @@ trait Tr {
     extern "vectorcall" fn m3(); //~ ERROR vectorcall is experimental and subject to change
     extern "rust-call" fn m4(); //~ ERROR rust-call ABI is subject to change
     extern "msp430-interrupt" fn m5(); //~ ERROR msp430-interrupt ABI is experimental
+    extern "ptx-kernel" fn m6(); //~ ERROR PTX ABIs are experimental and subject to change
+    extern "x86-interrupt" fn m7(); //~ ERROR x86-interrupt ABI is experimental
 
     extern "rust-intrinsic" fn dm1() {} //~ ERROR intrinsics are subject to change
     extern "platform-intrinsic" fn dm2() {} //~ ERROR platform intrinsics are experimental
     extern "vectorcall" fn dm3() {} //~ ERROR vectorcall is experimental and subject to change
     extern "rust-call" fn dm4() {} //~ ERROR rust-call ABI is subject to change
     extern "msp430-interrupt" fn dm5() {} //~ ERROR msp430-interrupt ABI is experimental
+    extern "ptx-kernel" fn dm6() {} //~ ERROR PTX ABIs are experimental and subject to change
+    extern "x86-interrupt" fn dm7() {} //~ ERROR x86-interrupt ABI is experimental
 }
 
 struct S;
@@ -43,6 +51,8 @@ impl Tr for S {
     extern "vectorcall" fn m3() {} //~ ERROR vectorcall is experimental and subject to change
     extern "rust-call" fn m4() {} //~ ERROR rust-call ABI is subject to change
     extern "msp430-interrupt" fn m5() {} //~ ERROR msp430-interrupt ABI is experimental
+    extern "ptx-kernel" fn m6() {} //~ ERROR PTX ABIs are experimental and subject to change
+    extern "x86-interrupt" fn m7() {} //~ ERROR x86-interrupt ABI is experimental
 }
 
 // Methods in inherent impl
@@ -52,6 +62,8 @@ impl S {
     extern "vectorcall" fn im3() {} //~ ERROR vectorcall is experimental and subject to change
     extern "rust-call" fn im4() {} //~ ERROR rust-call ABI is subject to change
     extern "msp430-interrupt" fn im5() {} //~ ERROR msp430-interrupt ABI is experimental
+    extern "ptx-kernel" fn im6() {} //~ ERROR PTX ABIs are experimental and subject to change
+    extern "x86-interrupt" fn im7() {} //~ ERROR x86-interrupt ABI is experimental
 }
 
 // Function pointer types
@@ -60,6 +72,8 @@ type A2 = extern "platform-intrinsic" fn(); //~ ERROR platform intrinsics are ex
 type A3 = extern "vectorcall" fn(); //~ ERROR vectorcall is experimental and subject to change
 type A4 = extern "rust-call" fn(); //~ ERROR rust-call ABI is subject to change
 type A5 = extern "msp430-interrupt" fn(); //~ ERROR msp430-interrupt ABI is experimental
+type A6 = extern "ptx-kernel" fn (); //~ ERROR PTX ABIs are experimental and subject to change
+type A7 = extern "x86-interrupt" fn(); //~ ERROR x86-interrupt ABI is experimental
 
 // Foreign modules
 extern "rust-intrinsic" {} //~ ERROR intrinsics are subject to change
@@ -67,5 +81,7 @@ extern "platform-intrinsic" {} //~ ERROR platform intrinsics are experimental
 extern "vectorcall" {} //~ ERROR vectorcall is experimental and subject to change
 extern "rust-call" {} //~ ERROR rust-call ABI is subject to change
 extern "msp430-interrupt" {} //~ ERROR msp430-interrupt ABI is experimental
+extern "ptx-kernel" {} //~ ERROR PTX ABIs are experimental and subject to change
+extern "x86-interrupt" {} //~ ERROR x86-interrupt ABI is experimental
 
 fn main() {}

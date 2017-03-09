@@ -11,7 +11,7 @@
 extern crate toml;
 extern crate rustc_serialize;
 
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::env;
 use std::fs::File;
 use std::io::{self, Read, Write};
@@ -78,6 +78,7 @@ static TARGETS: &'static [&'static str] = &[
     "powerpc64-unknown-linux-gnu",
     "powerpc64le-unknown-linux-gnu",
     "s390x-unknown-linux-gnu",
+    "sparc64-unknown-linux-gnu",
     "wasm32-unknown-emscripten",
     "x86_64-apple-darwin",
     "x86_64-apple-ios",
@@ -95,7 +96,6 @@ static MINGW: &'static [&'static str] = &[
     "x86_64-pc-windows-gnu",
 ];
 
-#[derive(RustcEncodable)]
 struct Manifest {
     manifest_version: String,
     date: String,
@@ -131,7 +131,8 @@ macro_rules! t {
 }
 
 struct Builder {
-    channel: String,
+    rust_release: String,
+    cargo_release: String,
     input: PathBuf,
     output: PathBuf,
     gpg_passphrase: String,
@@ -147,13 +148,15 @@ fn main() {
     let input = PathBuf::from(args.next().unwrap());
     let output = PathBuf::from(args.next().unwrap());
     let date = args.next().unwrap();
-    let channel = args.next().unwrap();
+    let rust_release = args.next().unwrap();
+    let cargo_release = args.next().unwrap();
     let s3_address = args.next().unwrap();
     let mut passphrase = String::new();
     t!(io::stdin().read_to_string(&mut passphrase));
 
     Builder {
-        channel: channel,
+        rust_release: rust_release,
+        cargo_release: cargo_release,
         input: input,
         output: output,
         gpg_passphrase: passphrase,
@@ -171,13 +174,23 @@ impl Builder {
         self.cargo_version = self.version("cargo", "x86_64-unknown-linux-gnu");
 
         self.digest_and_sign();
-        let manifest = self.build_manifest();
-        let manifest = toml::encode(&manifest).to_string();
+        let Manifest { manifest_version, date, pkg } = self.build_manifest();
 
-        let filename = format!("channel-rust-{}.toml", self.channel);
+        // Unfortunately we can't use derive(RustcEncodable) here because the
+        // version field is called `manifest-version`, not `manifest_version`.
+        // In lieu of that just create the table directly here with a `BTreeMap`
+        // and wrap it up in a `Value::Table`.
+        let mut manifest = BTreeMap::new();
+        manifest.insert("manifest-version".to_string(),
+                        toml::Value::String(manifest_version));
+        manifest.insert("date".to_string(), toml::Value::String(date));
+        manifest.insert("pkg".to_string(), toml::encode(&pkg));
+        let manifest = toml::Value::Table(manifest).to_string();
+
+        let filename = format!("channel-rust-{}.toml", self.rust_release);
         self.write_manifest(&manifest, &filename);
 
-        if self.channel != "beta" && self.channel != "nightly" {
+        if self.rust_release != "beta" && self.rust_release != "nightly" {
             self.write_manifest(&manifest, "channel-rust-stable.toml");
         }
     }
@@ -204,6 +217,10 @@ impl Builder {
         self.package("rust-std", &mut manifest.pkg, TARGETS);
         self.package("rust-docs", &mut manifest.pkg, TARGETS);
         self.package("rust-src", &mut manifest.pkg, &["*"]);
+
+        if self.channel == "nightly" {
+            self.package("rust-analysis", &mut manifest.pkg, TARGETS);
+        }
 
         let mut pkg = Package {
             version: self.cached_version("rust").to_string(),
@@ -254,6 +271,12 @@ impl Builder {
                         target: target.to_string(),
                     });
                 }
+                if self.channel == "nightly" {
+                    extensions.push(Component {
+                        pkg: "rust-analysis".to_string(),
+                        target: target.to_string(),
+                    });
+                }
             }
             extensions.push(Component {
                 pkg: "rust-src".to_string(),
@@ -263,7 +286,7 @@ impl Builder {
             pkg.target.insert(host.to_string(), Target {
                 available: true,
                 url: Some(self.url("rust", host)),
-                hash: Some(to_hex(digest.as_ref())),
+                hash: Some(digest),
                 components: Some(components),
                 extensions: Some(extensions),
             });
@@ -316,9 +339,11 @@ impl Builder {
 
     fn filename(&self, component: &str, target: &str) -> String {
         if component == "rust-src" {
-            format!("rust-src-{}.tar.gz", self.channel)
+            format!("rust-src-{}.tar.gz", self.rust_release)
+        } else if component == "cargo" {
+            format!("cargo-{}-{}.tar.gz", self.cargo_release, target)
         } else {
-            format!("{}-{}-{}.tar.gz", component, self.channel, target)
+            format!("{}-{}-{}.tar.gz", component, self.rust_release, target)
         }
     }
 
@@ -350,7 +375,8 @@ impl Builder {
     fn hash(&self, path: &Path) -> String {
         let sha = t!(Command::new("shasum")
                         .arg("-a").arg("256")
-                        .arg(path)
+                        .arg(path.file_name().unwrap())
+                        .current_dir(path.parent().unwrap())
                         .output());
         assert!(sha.status.success());
 
@@ -384,21 +410,5 @@ impl Builder {
         t!(t!(File::create(&dst)).write_all(manifest.as_bytes()));
         self.hash(&dst);
         self.sign(&dst);
-    }
-}
-
-fn to_hex(digest: &[u8]) -> String {
-    let mut ret = String::new();
-    for byte in digest {
-        ret.push(hex((byte & 0xf0) >> 4));
-        ret.push(hex(byte & 0xf));
-    }
-    return ret;
-
-    fn hex(b: u8) -> char {
-        match b {
-            0...9 => (b'0' + b) as char,
-            _ => (b'a' + b - 10) as char,
-        }
     }
 }

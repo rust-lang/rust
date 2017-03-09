@@ -390,44 +390,6 @@ RFC. It is, however, [currently unimplemented][iss15872].
 [iss15872]: https://github.com/rust-lang/rust/issues/15872
 "##,
 
-E0109: r##"
-You tried to give a type parameter to a type which doesn't need it. Erroneous
-code example:
-
-```compile_fail,E0109
-type X = u32<i32>; // error: type parameters are not allowed on this type
-```
-
-Please check that you used the correct type and recheck its definition. Perhaps
-it doesn't need the type parameter.
-
-Example:
-
-```
-type X = u32; // this compiles
-```
-
-Note that type parameters for enum-variant constructors go after the variant,
-not after the enum (Option::None::<u32>, not Option::<u32>::None).
-"##,
-
-E0110: r##"
-You tried to give a lifetime parameter to a type which doesn't need it.
-Erroneous code example:
-
-```compile_fail,E0110
-type X = u32<'static>; // error: lifetime parameters are not allowed on
-                       //        this type
-```
-
-Please check that the correct type was used and recheck its definition; perhaps
-it doesn't need the lifetime parameter. Example:
-
-```
-type X = u32; // ok!
-```
-"##,
-
 E0133: r##"
 Unsafe code was used outside of an unsafe function or block.
 
@@ -620,46 +582,11 @@ them yourself.
 You can build a free-standing crate by adding `#![no_std]` to the crate
 attributes:
 
-```
+```ignore
 #![no_std]
 ```
 
 See also https://doc.rust-lang.org/book/no-stdlib.html
-"##,
-
-E0229: r##"
-An associated type binding was done outside of the type parameter declaration
-and `where` clause. Erroneous code example:
-
-```compile_fail,E0229
-pub trait Foo {
-    type A;
-    fn boo(&self) -> <Self as Foo>::A;
-}
-
-struct Bar;
-
-impl Foo for isize {
-    type A = usize;
-    fn boo(&self) -> usize { 42 }
-}
-
-fn baz<I>(x: &<I as Foo<A=Bar>>::A) {}
-// error: associated type bindings are not allowed here
-```
-
-To solve this error, please move the type bindings in the type parameter
-declaration:
-
-```ignore
-fn baz<I: Foo<A=Bar>>(x: &<I as Foo>::A) {} // ok!
-```
-
-Or in the `where` clause:
-
-```ignore
-fn baz<I>(x: &<I as Foo>::A) where I: Foo<A=Bar> {}
-```
 "##,
 
 E0261: r##"
@@ -1390,6 +1317,23 @@ error. To resolve it, add an `else` block having the same type as the `if`
 block.
 "##,
 
+E0391: r##"
+This error indicates that some types or traits depend on each other
+and therefore cannot be constructed.
+
+The following example contains a circular dependency between two traits:
+
+```compile_fail,E0391
+trait FirstTrait : SecondTrait {
+
+}
+
+trait SecondTrait : FirstTrait {
+
+}
+```
+"##,
+
 E0398: r##"
 In Rust 1.3, the default object lifetime bounds are expected to change, as
 described in RFC #1156 [1]. You are getting a warning because the compiler
@@ -1779,6 +1723,68 @@ fn main() {
 
 If you want to get command-line arguments, use `std::env::args`. To exit with a
 specified exit code, use `std::process::exit`.
+"##,
+
+E0591: r##"
+Per [RFC 401][rfc401], if you have a function declaration `foo`:
+
+```rust,ignore
+// For the purposes of this explanation, all of these
+// different kinds of `fn` declarations are equivalent:
+fn foo(x: i32) { ... }
+extern "C" fn foo(x: i32);
+impl i32 { fn foo(x: self) { ... } }
+```
+
+the type of `foo` is **not** `fn(i32)`, as one might expect.
+Rather, it is a unique, zero-sized marker type written here as `typeof(foo)`.
+However, `typeof(foo)` can be _coerced_ to a function pointer `fn(i32)`,
+so you rarely notice this:
+
+```rust,ignore
+let x: fn(i32) = foo; // OK, coerces
+```
+
+The reason that this matter is that the type `fn(i32)` is not specific to
+any particular function: it's a function _pointer_. So calling `x()` results
+in a virtual call, whereas `foo()` is statically dispatched, because the type
+of `foo` tells us precisely what function is being called.
+
+As noted above, coercions mean that most code doesn't have to be
+concerned with this distinction. However, you can tell the difference
+when using **transmute** to convert a fn item into a fn pointer.
+
+This is sometimes done as part of an FFI:
+
+```rust,ignore
+extern "C" fn foo(userdata: Box<i32>) {
+   ...
+}
+
+let f: extern "C" fn(*mut i32) = transmute(foo);
+callback(f);
+
+```
+
+Here, transmute is being used to convert the types of the fn arguments.
+This pattern is incorrect because, because the type of `foo` is a function
+**item** (`typeof(foo)`), which is zero-sized, and the target type (`fn()`)
+is a function pointer, which is not zero-sized.
+This pattern should be rewritten. There are a few possible ways to do this:
+- change the original fn declaration to match the expected signature,
+  and do the cast in the fn body (the prefered option)
+- cast the fn item fo a fn pointer before calling transmute, as shown here:
+  - `let f: extern "C" fn(*mut i32) = transmute(foo as extern "C" fn(_))`
+  - `let f: extern "C" fn(*mut i32) = transmute(foo as usize) /* works too */`
+
+The same applies to transmutes to `*mut fn()`, which were observedin practice.
+Note though that use of this type is generally incorrect.
+The intention is typically to describe a function pointer, but just `fn()`
+alone suffices for that. `*mut fn()` is a pointer to a fn pointer.
+(Since these values are typically just passed to C code, however, this rarely
+makes a difference in practice.)
+
+[rfc401]: https://github.com/rust-lang/rfcs/blob/master/text/0401-coercions.md
 "##,
 
 }

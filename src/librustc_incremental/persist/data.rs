@@ -21,7 +21,12 @@ use super::directory::DefPathIndex;
 /// Data for use when recompiling the **current crate**.
 #[derive(Debug, RustcEncodable, RustcDecodable)]
 pub struct SerializedDepGraph {
-    pub edges: Vec<SerializedEdge>,
+    pub edges: Vec<SerializedEdgeSet>,
+
+    /// These are output nodes that have no incoming edges. We track
+    /// these separately so that when we reload all edges, we don't
+    /// lose track of these nodes.
+    pub bootstrap_outputs: Vec<DepNode<DefPathIndex>>,
 
     /// These are hashes of two things:
     /// - the HIR nodes in this crate
@@ -45,14 +50,13 @@ pub struct SerializedDepGraph {
     pub hashes: Vec<SerializedHash>,
 }
 
-/// Represents a "reduced" dependency edge. Unlike the full dep-graph,
-/// the dep-graph we serialize contains only edges `S -> T` where the
-/// source `S` is something hashable (a HIR node or foreign metadata)
-/// and the target `T` is something significant, like a work-product.
-/// Normally, significant nodes are only those that have saved data on
-/// disk, but in unit-testing the set of significant nodes can be
-/// increased.
-pub type SerializedEdge = (DepNode<DefPathIndex>, DepNode<DefPathIndex>);
+/// Represents a set of "reduced" dependency edge. We group the
+/// outgoing edges from a single source together.
+#[derive(Debug, RustcEncodable, RustcDecodable)]
+pub struct SerializedEdgeSet {
+    pub source: DepNode<DefPathIndex>,
+    pub targets: Vec<DepNode<DefPathIndex>>
+}
 
 #[derive(Debug, RustcEncodable, RustcDecodable)]
 pub struct SerializedHash {

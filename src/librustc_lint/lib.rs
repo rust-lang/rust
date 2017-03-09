@@ -31,6 +31,7 @@
 #![cfg_attr(test, feature(test))]
 #![feature(box_patterns)]
 #![feature(box_syntax)]
+#![feature(i128_type)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
@@ -45,8 +46,6 @@ extern crate log;
 extern crate rustc_back;
 extern crate rustc_const_eval;
 extern crate syntax_pos;
-
-extern crate rustc_i128;
 
 pub use rustc::lint;
 pub use rustc::middle;
@@ -197,10 +196,6 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
             reference: "issue #36888 <https://github.com/rust-lang/rust/issues/36888>",
         },
         FutureIncompatibleInfo {
-            id: LintId::of(TRANSMUTE_FROM_FN_ITEM_TYPES),
-            reference: "issue #19925 <https://github.com/rust-lang/rust/issues/19925>",
-        },
-        FutureIncompatibleInfo {
             id: LintId::of(OVERLAPPING_INHERENT_IMPLS),
             reference: "issue #36889 <https://github.com/rust-lang/rust/issues/36889>",
         },
@@ -219,6 +214,10 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
         FutureIncompatibleInfo {
             id: LintId::of(LIFETIME_UNDERSCORE),
             reference: "issue #36892 <https://github.com/rust-lang/rust/issues/36892>",
+        },
+        FutureIncompatibleInfo {
+            id: LintId::of(RESOLVE_TRAIT_ON_DEFAULTED_UNIT),
+            reference: "issue #39216 <https://github.com/rust-lang/rust/issues/39216>",
         },
         FutureIncompatibleInfo {
             id: LintId::of(SAFE_EXTERN_STATICS),
@@ -244,6 +243,10 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
             id: LintId::of(LEGACY_CONSTRUCTOR_VISIBILITY),
             reference: "issue #39207 <https://github.com/rust-lang/rust/issues/39207>",
         },
+        FutureIncompatibleInfo {
+            id: LintId::of(MISSING_FRAGMENT_SPECIFIER),
+            reference: "issue #40107 <https://github.com/rust-lang/rust/issues/40107>",
+        },
         ]);
 
     // Register renamed and removed lints
@@ -257,4 +260,6 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
     store.register_removed("raw_pointer_deriving",
                            "using derive with raw pointers is ok");
     store.register_removed("drop_with_repr_extern", "drop flags have been removed");
+    store.register_removed("transmute_from_fn_item_types",
+        "always cast functions before transmuting them");
 }

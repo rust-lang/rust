@@ -77,8 +77,15 @@ macro_rules! declare_features {
     };
 
     ($((removed, $feature: ident, $ver: expr, $issue: expr),)+) => {
-        /// Represents features which has since been removed (it was once Active)
+        /// Represents unstable features which have since been removed (it was once Active)
         const REMOVED_FEATURES: &'static [(&'static str, &'static str, Option<u32>)] = &[
+            $((stringify!($feature), $ver, $issue)),+
+        ];
+    };
+
+    ($((stable_removed, $feature: ident, $ver: expr, $issue: expr),)+) => {
+        /// Represents stable features which have since been removed (it was once Accepted)
+        const STABLE_REMOVED_FEATURES: &'static [(&'static str, &'static str, Option<u32>)] = &[
             $((stringify!($feature), $ver, $issue)),+
         ];
     };
@@ -91,11 +98,14 @@ macro_rules! declare_features {
     }
 }
 
-// If you change this list without updating src/doc/reference.md, @cmr will be sad
+// If you change this, please modify src/doc/unstable-book as well.
+//
 // Don't ever remove anything from this list; set them to 'Removed'.
+//
 // The version numbers here correspond to the version in which the current status
 // was set. This is most important for knowing when a particular feature became
 // stable (active).
+//
 // NB: The featureck.py script parses this information directly out of the source
 // so take care when modifying it.
 
@@ -197,9 +207,6 @@ declare_features! (
     // rustc internal
     (active, prelude_import, "1.2.0", None),
 
-    // Allows the definition recursive static items.
-    (active, static_recursion, "1.3.0", Some(29719)),
-
     // Allows default type parameters to influence type inference.
     (active, default_type_parameter_fallback, "1.3.0", Some(27336)),
 
@@ -281,18 +288,12 @@ declare_features! (
     // Allows untagged unions `union U { ... }`
     (active, untagged_unions, "1.13.0", Some(32836)),
 
-    // elide `'static` lifetimes in `static`s and `const`s
-    (active, static_in_const, "1.13.0", Some(35897)),
-
     // Used to identify the `compiler_builtins` crate
     // rustc internal
     (active, compiler_builtins, "1.13.0", None),
 
     // Allows attributes on lifetime/type formal parameters in generics (RFC 1327)
     (active, generic_param_attrs, "1.11.0", Some(34761)),
-
-    // Allows field shorthands (`x` meaning `x: x`) in struct literal expressions.
-    (active, field_init_shorthand, "1.14.0", Some(37340)),
 
     // The #![windows_subsystem] attribute
     (active, windows_subsystem, "1.14.0", Some(37499)),
@@ -318,13 +319,27 @@ declare_features! (
     (active, abi_unadjusted, "1.16.0", None),
 
     // Macros 1.1
-    (active, proc_macro, "1.16.0", Some(35900)),
+    (active, proc_macro, "1.16.0", Some(38356)),
 
     // Allows attributes on struct literal fields.
     (active, struct_field_attributes, "1.16.0", Some(38814)),
 
+    // Allows #[link(kind="static-nobundle"...]
+    (active, static_nobundle, "1.16.0", Some(37403)),
+
     // `extern "msp430-interrupt" fn()`
     (active, abi_msp430_interrupt, "1.16.0", Some(38487)),
+
+    // Used to identify crates that contain sanitizer runtimes
+    // rustc internal
+    (active, closure_to_fn_coercion, "1.17.0", Some(39817)),
+
+    // Used to identify crates that contain sanitizer runtimes
+    // rustc internal
+    (active, sanitizer_runtime, "1.17.0", None),
+
+    // `extern "x86-interrupt" fn()`
+    (active, abi_x86_interrupt, "1.17.0", Some(40180)),
 );
 
 declare_features! (
@@ -344,6 +359,10 @@ declare_features! (
     // rustc internal
     (removed, unmarked_api, "1.0.0", None),
     (removed, pushpop_unsafe, "1.2.0", None),
+);
+
+declare_features! (
+    (stable_removed, no_stack_check, "1.0.0", None),
 );
 
 declare_features! (
@@ -378,9 +397,17 @@ declare_features! (
     (accepted, dotdot_in_tuple_patterns, "1.14.0", Some(33627)),
     (accepted, item_like_imports, "1.14.0", Some(35120)),
     // Allows using `Self` and associated types in struct expressions and patterns.
-    (accepted, more_struct_aliases, "1.14.0", Some(37544)),
+    (accepted, more_struct_aliases, "1.16.0", Some(37544)),
+    // elide `'static` lifetimes in `static`s and `const`s
+    (accepted, static_in_const, "1.17.0", Some(35897)),
+    // Allows field shorthands (`x` meaning `x: x`) in struct literal expressions.
+    (accepted, field_init_shorthand, "1.17.0", Some(37340)),
+    // Allows the definition recursive static items.
+    (accepted, static_recursion, "1.17.0", Some(29719)),
 );
-// (changing above list without updating src/doc/reference.md makes @cmr sad)
+// If you change this, please modify src/doc/unstable-book as well. You must
+// move that documentation into the relevant place in the other docs, and
+// remove the chapter on the flag.
 
 #[derive(PartialEq, Copy, Clone, Debug)]
 pub enum AttributeType {
@@ -491,9 +518,6 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
                                             "the semantics of constant patterns is \
                                              not yet settled",
                                             cfg_fn!(structural_match))),
-
-    // Not used any more, but we can't feature gate it
-    ("no_stack_check", Normal, Ungated),
 
     ("plugin", CrateLevel, Gated(Stability::Unstable,
                                  "plugin",
@@ -644,6 +668,12 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
                                               contains compiler-rt intrinsics and will never be \
                                               stable",
                                           cfg_fn!(compiler_builtins))),
+    ("sanitizer_runtime", Whitelisted, Gated(Stability::Unstable,
+                                             "sanitizer_runtime",
+                                             "the `#[sanitizer_runtime]` attribute is used to \
+                                              identify crates that contain the runtime of a \
+                                              sanitizer and will never be stable",
+                                             cfg_fn!(sanitizer_runtime))),
 
     ("allow_internal_unstable", Normal, Gated(Stability::Unstable,
                                               "allow_internal_unstable",
@@ -743,6 +773,11 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
                                            "proc_macro",
                                            "attribute proc macros are currently unstable",
                                            cfg_fn!(proc_macro))),
+
+    ("proc_macro", Normal, Gated(Stability::Unstable,
+                                 "proc_macro",
+                                 "function-like proc macros are currently unstable",
+                                 cfg_fn!(proc_macro))),
 
     ("rustc_derive_registrar", Normal, Gated(Stability::Unstable,
                                              "rustc_derive_registrar",
@@ -890,8 +925,10 @@ fn find_lang_feature_issue(feature: &str) -> Option<u32> {
         // assert!(issue.is_some())
         issue
     } else {
-        // search in Accepted or Removed features
-        match ACCEPTED_FEATURES.iter().chain(REMOVED_FEATURES).find(|t| t.0 == feature) {
+        // search in Accepted, Removed, or Stable Removed features
+        let found = ACCEPTED_FEATURES.iter().chain(REMOVED_FEATURES).chain(STABLE_REMOVED_FEATURES)
+            .find(|t| t.0 == feature);
+        match found {
             Some(&(_, _, issue)) => issue,
             None => panic!("Feature `{}` is not declared anywhere", feature),
         }
@@ -954,18 +991,20 @@ pub const EXPLAIN_ALLOW_INTERNAL_UNSTABLE: &'static str =
     "allow_internal_unstable side-steps feature gating and stability checks";
 
 pub const EXPLAIN_CUSTOM_DERIVE: &'static str =
-    "`#[derive]` for custom traits is not stable enough for use. It is deprecated and will \
-     be removed in v1.15";
+    "`#[derive]` for custom traits is deprecated and will be removed in the future.";
 
 pub const EXPLAIN_DEPR_CUSTOM_DERIVE: &'static str =
-    "`#[derive]` for custom traits is deprecated and will be removed in v1.15. Prefer using \
-     procedural macro custom derive";
+    "`#[derive]` for custom traits is deprecated and will be removed in the future. \
+    Prefer using procedural macro custom derive.";
 
 pub const EXPLAIN_DERIVE_UNDERSCORE: &'static str =
     "attributes of the form `#[derive_*]` are reserved for the compiler";
 
 pub const EXPLAIN_PLACEMENT_IN: &'static str =
     "placement-in expression syntax is experimental and subject to change.";
+
+pub const CLOSURE_TO_FN_COERCION: &'static str =
+    "non-capturing closure to fn coercion is experimental";
 
 struct PostExpansionVisitor<'a> {
     context: &'a Context<'a>,
@@ -1014,6 +1053,10 @@ impl<'a> PostExpansionVisitor<'a> {
             Abi::Msp430Interrupt => {
                 gate_feature_post!(&self, abi_msp430_interrupt, span,
                                    "msp430-interrupt ABI is experimental and subject to change");
+            },
+            Abi::X86Interrupt => {
+                gate_feature_post!(&self, abi_x86_interrupt, span,
+                                   "x86-interrupt ABI is experimental and subject to change");
             },
             // Stable
             Abi::Cdecl |
@@ -1222,10 +1265,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             }
             ast::ExprKind::Struct(_, ref fields, _) => {
                 for field in fields {
-                    if field.is_shorthand {
-                        gate_feature_post!(&self, field_init_shorthand, field.span,
-                                           "struct field shorthands are unstable");
-                    }
                     if starts_with_digit(&field.ident.node.name.as_str()) {
                         gate_feature_post!(&self, relaxed_adts,
                                           field.span,
@@ -1427,7 +1466,9 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute]) -> F
                         feature_checker.collect(&features, mi.span);
                     }
                     else if let Some(&(_, _, _)) = REMOVED_FEATURES.iter()
-                        .find(|& &(n, _, _)| name == n) {
+                            .find(|& &(n, _, _)| name == n)
+                        .or_else(|| STABLE_REMOVED_FEATURES.iter()
+                            .find(|& &(n, _, _)| name == n)) {
                         span_err!(span_handler, mi.span, E0557, "feature has been removed");
                     }
                     else if let Some(&(_, _, _)) = ACCEPTED_FEATURES.iter()

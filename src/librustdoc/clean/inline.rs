@@ -15,6 +15,7 @@ use std::io;
 use std::iter::once;
 
 use syntax::ast;
+use syntax_pos::DUMMY_SP;
 use rustc::hir;
 
 use rustc::hir::def::{Def, CtorKind};
@@ -164,11 +165,7 @@ pub fn build_external_trait(cx: &DocContext, did: DefId) -> clean::Trait {
 }
 
 fn build_external_function(cx: &DocContext, did: DefId) -> clean::Function {
-    let ty = cx.tcx.item_type(did);
-    let (decl, style, abi) = match ty.sty {
-        ty::TyFnDef(.., ref f) => ((did, &f.sig).clean(cx), f.unsafety, f.abi),
-        _ => panic!("bad function"),
-    };
+    let sig = cx.tcx.item_type(did).fn_sig();
 
     let constness = if cx.tcx.sess.cstore.is_const_fn(did) {
         hir::Constness::Const
@@ -178,11 +175,11 @@ fn build_external_function(cx: &DocContext, did: DefId) -> clean::Function {
 
     let predicates = cx.tcx.item_predicates(did);
     clean::Function {
-        decl: decl,
+        decl: (did, sig).clean(cx),
         generics: (cx.tcx.item_generics(did), &predicates).clean(cx),
-        unsafety: style,
+        unsafety: sig.unsafety(),
         constness: constness,
-        abi: abi,
+        abi: sig.abi(),
     }
 }
 
@@ -235,10 +232,10 @@ fn build_type_alias(cx: &DocContext, did: DefId) -> clean::Typedef {
 
 pub fn build_impls(cx: &DocContext, did: DefId) -> Vec<clean::Item> {
     let tcx = cx.tcx;
-    tcx.populate_inherent_implementations_for_type_if_necessary(did);
+    tcx.populate_inherent_implementations_for_type_if_necessary(DUMMY_SP, did);
     let mut impls = Vec::new();
 
-    if let Some(i) = tcx.inherent_impls.borrow().get(&did) {
+    if let Some(i) = tcx.maps.inherent_impls.borrow().get(&did) {
         for &did in i.iter() {
             build_impl(cx, did, &mut impls);
         }

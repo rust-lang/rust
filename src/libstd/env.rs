@@ -24,15 +24,18 @@ use path::{Path, PathBuf};
 use sys;
 use sys::os as os_imp;
 
-/// Returns the current working directory as a `PathBuf`.
+/// Returns the current working directory as a [`PathBuf`].
 ///
 /// # Errors
 ///
-/// Returns an `Err` if the current working directory value is invalid.
+/// Returns an [`Err`] if the current working directory value is invalid.
 /// Possible cases:
 ///
 /// * Current directory does not exist.
 /// * There are insufficient permissions to access the current directory.
+///
+/// [`PathBuf`]: ../../std/path/struct.PathBuf.html
+/// [`Err`]: ../../std/result/enum.Result.html#method.err
 ///
 /// # Examples
 ///
@@ -93,7 +96,9 @@ pub struct VarsOs { inner: os_imp::Env }
 ///
 /// While iterating, the returned iterator will panic if any key or value in the
 /// environment is not valid unicode. If this is not desired, consider using the
-/// `env::vars_os` function.
+/// [`env::vars_os`] function.
+///
+/// [`env::vars_os`]: fn.vars_os.html
 ///
 /// # Examples
 ///
@@ -145,7 +150,7 @@ impl Iterator for Vars {
     fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
 }
 
-#[stable(feature = "std_debug", since = "1.15.0")]
+#[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for Vars {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("Vars { .. }")
@@ -159,7 +164,7 @@ impl Iterator for VarsOs {
     fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
 }
 
-#[stable(feature = "std_debug", since = "1.15.0")]
+#[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for VarsOs {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("VarsOs { .. }")
@@ -168,9 +173,12 @@ impl fmt::Debug for VarsOs {
 
 /// Fetches the environment variable `key` from the current process.
 ///
-/// The returned result is `Ok(s)` if the environment variable is present and is
+/// The returned result is [`Ok(s)`] if the environment variable is present and is
 /// valid unicode. If the environment variable is not present, or it is not
-/// valid unicode, then `Err` will be returned.
+/// valid unicode, then [`Err`] will be returned.
+///
+/// [`Ok(s)`]: ../result/enum.Result.html#variant.Ok
+/// [`Err`]: ../result/enum.Result.html#variant.Err
 ///
 /// # Examples
 ///
@@ -196,7 +204,9 @@ fn _var(key: &OsStr) -> Result<String, VarError> {
 }
 
 /// Fetches the environment variable `key` from the current process, returning
-/// `None` if the variable isn't set.
+/// [`None`] if the variable isn't set.
+///
+/// [`None`]: ../option/enum.Option.html#variant.None
 ///
 /// # Examples
 ///
@@ -382,7 +392,7 @@ impl<'a> Iterator for SplitPaths<'a> {
     fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
 }
 
-#[stable(feature = "std_debug", since = "1.15.0")]
+#[stable(feature = "std_debug", since = "1.16.0")]
 impl<'a> fmt::Debug for SplitPaths<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("SplitPaths { .. }")
@@ -397,14 +407,18 @@ pub struct JoinPathsError {
     inner: os_imp::JoinPathsError
 }
 
-/// Joins a collection of `Path`s appropriately for the `PATH`
+/// Joins a collection of [`Path`]s appropriately for the `PATH`
 /// environment variable.
 ///
-/// Returns an `OsString` on success.
+/// Returns an [`OsString`] on success.
 ///
-/// Returns an `Err` (containing an error message) if one of the input
-/// `Path`s contains an invalid character for constructing the `PATH`
+/// Returns an [`Err`][err] (containing an error message) if one of the input
+/// [`Path`]s contains an invalid character for constructing the `PATH`
 /// variable (a double quote on Windows or a colon on Unix).
+///
+/// [`Path`]: ../../std/path/struct.Path.html
+/// [`OsString`]: ../../std/ffi/struct.OsString.html
+/// [err]: ../../std/result/enum.Result.html#variant.Err
 ///
 /// # Examples
 ///
@@ -665,7 +679,7 @@ impl DoubleEndedIterator for Args {
     }
 }
 
-#[stable(feature = "std_debug", since = "1.15.0")]
+#[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for Args {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("Args { .. }")
@@ -690,7 +704,7 @@ impl DoubleEndedIterator for ArgsOs {
     fn next_back(&mut self) -> Option<OsString> { self.inner.next_back() }
 }
 
-#[stable(feature = "std_debug", since = "1.15.0")]
+#[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for ArgsOs {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("ArgsOs { .. }")

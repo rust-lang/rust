@@ -291,7 +291,8 @@ impl<T, S> HashSet<T, S>
         Iter { iter: self.map.keys() }
     }
 
-    /// Visit the values representing the difference.
+    /// Visit the values representing the difference,
+    /// i.e. the values that are in `self` but not in `other`.
     ///
     /// # Examples
     ///
@@ -321,7 +322,8 @@ impl<T, S> HashSet<T, S>
         }
     }
 
-    /// Visit the values representing the symmetric difference.
+    /// Visit the values representing the symmetric difference,
+    /// i.e. the values that are in `self` or in `other` but not in both.
     ///
     /// # Examples
     ///
@@ -348,7 +350,8 @@ impl<T, S> HashSet<T, S>
         SymmetricDifference { iter: self.difference(other).chain(other.difference(self)) }
     }
 
-    /// Visit the values representing the intersection.
+    /// Visit the values representing the intersection,
+    /// i.e. the values that are both in `self` and `other`.
     ///
     /// # Examples
     ///
@@ -373,7 +376,8 @@ impl<T, S> HashSet<T, S>
         }
     }
 
-    /// Visit the values representing the union.
+    /// Visit the values representing the union,
+    /// i.e. all the values in `self` or `other`, without duplicates.
     ///
     /// # Examples
     ///
@@ -489,7 +493,7 @@ impl<T, S> HashSet<T, S>
         Recover::get(&self.map, value)
     }
 
-    /// Returns `true` if the set has no elements in common with `other`.
+    /// Returns `true` if `self` has no elements in common with `other`.
     /// This is equivalent to checking for an empty intersection.
     ///
     /// # Examples
@@ -511,7 +515,8 @@ impl<T, S> HashSet<T, S>
         self.iter().all(|v| !other.contains(v))
     }
 
-    /// Returns `true` if the set is a subset of another.
+    /// Returns `true` if the set is a subset of another,
+    /// i.e. `other` contains at least all the values in `self`.
     ///
     /// # Examples
     ///
@@ -532,7 +537,8 @@ impl<T, S> HashSet<T, S>
         self.iter().all(|v| other.contains(v))
     }
 
-    /// Returns `true` if the set is a superset of another.
+    /// Returns `true` if the set is a superset of another,
+    /// i.e. `self` contains at least all the values in `other`.
     ///
     /// # Examples
     ///
@@ -623,6 +629,28 @@ impl<T, S> HashSet<T, S>
               Q: Hash + Eq
     {
         Recover::take(&mut self.map, value)
+    }
+
+    /// Retains only the elements specified by the predicate.
+    ///
+    /// In other words, remove all elements `e` such that `f(&e)` returns `false`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(retain_hash_collection)]
+    /// use std::collections::HashSet;
+    ///
+    /// let xs = [1,2,3,4,5,6];
+    /// let mut set: HashSet<isize> = xs.iter().cloned().collect();
+    /// set.retain(|&k| k % 2 == 0);
+    /// assert_eq!(set.len(), 3);
+    /// ```
+    #[unstable(feature = "retain_hash_collection", issue = "36648")]
+    pub fn retain<F>(&mut self, mut f: F)
+        where F: FnMut(&T) -> bool
+    {
+        self.map.retain(|k, _| f(k));
     }
 }
 
@@ -948,7 +976,7 @@ impl<'a, K> ExactSizeIterator for Iter<'a, K> {
 #[unstable(feature = "fused", issue = "35602")]
 impl<'a, K> FusedIterator for Iter<'a, K> {}
 
-#[stable(feature = "std_debug", since = "1.15.0")]
+#[stable(feature = "std_debug", since = "1.16.0")]
 impl<'a, K: fmt::Debug> fmt::Debug for Iter<'a, K> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_list()
@@ -977,7 +1005,7 @@ impl<K> ExactSizeIterator for IntoIter<K> {
 #[unstable(feature = "fused", issue = "35602")]
 impl<K> FusedIterator for IntoIter<K> {}
 
-#[stable(feature = "std_debug", since = "1.15.0")]
+#[stable(feature = "std_debug", since = "1.16.0")]
 impl<K: fmt::Debug> fmt::Debug for IntoIter<K> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let entries_iter = self.iter.inner.iter().map(|(k, _)| k);
@@ -1007,7 +1035,7 @@ impl<'a, K> ExactSizeIterator for Drain<'a, K> {
 #[unstable(feature = "fused", issue = "35602")]
 impl<'a, K> FusedIterator for Drain<'a, K> {}
 
-#[stable(feature = "std_debug", since = "1.15.0")]
+#[stable(feature = "std_debug", since = "1.16.0")]
 impl<'a, K: fmt::Debug> fmt::Debug for Drain<'a, K> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let entries_iter = self.iter.inner.iter().map(|(k, _)| k);
@@ -1050,7 +1078,7 @@ impl<'a, T, S> Iterator for Intersection<'a, T, S>
     }
 }
 
-#[stable(feature = "std_debug", since = "1.15.0")]
+#[stable(feature = "std_debug", since = "1.16.0")]
 impl<'a, T, S> fmt::Debug for Intersection<'a, T, S>
     where T: fmt::Debug + Eq + Hash,
           S: BuildHasher,
@@ -1109,7 +1137,7 @@ impl<'a, T, S> FusedIterator for Difference<'a, T, S>
 {
 }
 
-#[stable(feature = "std_debug", since = "1.15.0")]
+#[stable(feature = "std_debug", since = "1.16.0")]
 impl<'a, T, S> fmt::Debug for Difference<'a, T, S>
     where T: fmt::Debug + Eq + Hash,
           S: BuildHasher,
@@ -1150,7 +1178,7 @@ impl<'a, T, S> FusedIterator for SymmetricDifference<'a, T, S>
 {
 }
 
-#[stable(feature = "std_debug", since = "1.15.0")]
+#[stable(feature = "std_debug", since = "1.16.0")]
 impl<'a, T, S> fmt::Debug for SymmetricDifference<'a, T, S>
     where T: fmt::Debug + Eq + Hash,
           S: BuildHasher,
@@ -1176,7 +1204,7 @@ impl<'a, T, S> FusedIterator for Union<'a, T, S>
 {
 }
 
-#[stable(feature = "std_debug", since = "1.15.0")]
+#[stable(feature = "std_debug", since = "1.16.0")]
 impl<'a, T, S> fmt::Debug for Union<'a, T, S>
     where T: fmt::Debug + Eq + Hash,
           S: BuildHasher,
@@ -1604,5 +1632,16 @@ mod test_set {
         assert!(a.contains(&4));
         assert!(a.contains(&5));
         assert!(a.contains(&6));
+    }
+
+    #[test]
+    fn test_retain() {
+        let xs = [1,2,3,4,5,6];
+        let mut set: HashSet<isize> = xs.iter().cloned().collect();
+        set.retain(|&k| k % 2 == 0);
+        assert_eq!(set.len(), 3);
+        assert!(set.contains(&2));
+        assert!(set.contains(&4));
+        assert!(set.contains(&6));
     }
 }

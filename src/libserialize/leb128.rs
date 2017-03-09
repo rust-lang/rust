@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc_i128::{i128, u128};
-
 #[inline]
 fn write_to_vec(vec: &mut Vec<u8>, position: usize, byte: u8) {
     if position == vec.len() {

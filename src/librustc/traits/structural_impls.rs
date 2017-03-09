@@ -269,20 +269,6 @@ impl<'a, 'tcx> Lift<'tcx> for traits::ObligationCause<'a> {
     }
 }
 
-impl<'a, 'tcx> Lift<'tcx> for traits::DeferredObligation<'a> {
-    type Lifted = traits::DeferredObligation<'tcx>;
-    fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
-        tcx.lift(&self.predicate).and_then(|predicate| {
-            tcx.lift(&self.cause).map(|cause| {
-                traits::DeferredObligation {
-                    predicate: predicate,
-                    cause: cause
-                }
-            })
-        })
-    }
-}
-
 // For trans only.
 impl<'a, 'tcx> Lift<'tcx> for traits::Vtable<'a, ()> {
     type Lifted = traits::Vtable<'tcx, ()>;
@@ -587,18 +573,5 @@ impl<'tcx> TypeFoldable<'tcx> for traits::ObligationCause<'tcx> {
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
         self.code.visit_with(visitor)
-    }
-}
-
-impl<'tcx> TypeFoldable<'tcx> for traits::DeferredObligation<'tcx> {
-    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        traits::DeferredObligation {
-            predicate: self.predicate.fold_with(folder),
-            cause: self.cause.fold_with(folder)
-        }
-    }
-
-    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
-        self.predicate.visit_with(visitor) || self.cause.visit_with(visitor)
     }
 }

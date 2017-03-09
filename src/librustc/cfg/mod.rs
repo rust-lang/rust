@@ -59,7 +59,7 @@ pub type CFGEdge = graph::Edge<CFGEdgeData>;
 
 impl CFG {
     pub fn new<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                         body: &hir::Expr) -> CFG {
+                         body: &hir::Body) -> CFG {
         construct::construct(tcx, body)
     }
 

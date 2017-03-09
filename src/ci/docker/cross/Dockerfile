@@ -14,12 +14,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   zlib1g-dev \
   g++-arm-linux-gnueabi \
   g++-arm-linux-gnueabihf \
+  gcc-sparc64-linux-gnu \
+  libc6-dev-sparc64-cross \
   bzip2 \
-  patch
+  patch \
+  libssl-dev \
+  pkg-config
 
-ENV SCCACHE_DIGEST=7237e38e029342fa27b7ac25412cb9d52554008b12389727320bd533fd7f05b6a96d55485f305caf95e5c8f5f97c3313e10012ccad3e752aba2518f3522ba783
-RUN curl -L https://api.pub.build.mozilla.org/tooltool/sha512/$SCCACHE_DIGEST | \
-      tar xJf - -C /usr/local/bin --strip-components=1
+RUN curl -o /usr/local/bin/sccache \
+      https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-02-25-sccache-x86_64-unknown-linux-musl && \
+      chmod +x /usr/local/bin/sccache
 
 RUN curl -OL https://github.com/Yelp/dumb-init/releases/download/v1.2.0/dumb-init_1.2.0_amd64.deb && \
     dpkg -i dumb-init_*.deb && \
@@ -60,9 +64,11 @@ ENV TARGETS=$TARGETS,mipsel-unknown-linux-musl
 ENV TARGETS=$TARGETS,arm-unknown-linux-musleabi
 ENV TARGETS=$TARGETS,arm-unknown-linux-musleabihf
 ENV TARGETS=$TARGETS,armv7-unknown-linux-musleabihf
+ENV TARGETS=$TARGETS,sparc64-unknown-linux-gnu
 
 ENV CC_mipsel_unknown_linux_musl=mipsel-openwrt-linux-gcc \
-    CC_mips_unknown_linux_musl=mips-openwrt-linux-gcc
+    CC_mips_unknown_linux_musl=mips-openwrt-linux-gcc \
+    CC_sparc64_unknown_linux_gnu=sparc64-linux-gnu-gcc
 
 # Suppress some warnings in the openwrt toolchains we downloaded
 ENV STAGING_DIR=/tmp

@@ -32,7 +32,7 @@ struct LoopScope {
 }
 
 pub fn construct<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                           body: &hir::Expr) -> CFG {
+                           body: &hir::Body) -> CFG {
     let mut graph = graph::Graph::new();
     let entry = graph.add_node(CFGNodeData::Entry);
 
@@ -43,26 +43,18 @@ pub fn construct<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let fn_exit = graph.add_node(CFGNodeData::Exit);
     let body_exit;
 
-    // Find the function this expression is from.
-    let mut node_id = body.id;
-    loop {
-        let node = tcx.hir.get(node_id);
-        if hir::map::blocks::FnLikeNode::from_node(node).is_some() {
-            break;
-        }
-        let parent = tcx.hir.get_parent_node(node_id);
-        assert!(node_id != parent);
-        node_id = parent;
-    }
+    // Find the tables for this body.
+    let owner_def_id = tcx.hir.local_def_id(tcx.hir.body_owner(body.id()));
+    let tables = tcx.item_tables(owner_def_id);
 
     let mut cfg_builder = CFGBuilder {
         tcx: tcx,
-        tables: tcx.item_tables(tcx.hir.local_def_id(node_id)),
+        tables: tables,
         graph: graph,
         fn_exit: fn_exit,
         loop_scopes: Vec::new()
     };
-    body_exit = cfg_builder.expr(body, entry);
+    body_exit = cfg_builder.expr(&body.value, entry);
     cfg_builder.add_contained_edge(body_exit, fn_exit);
     let CFGBuilder {graph, ..} = cfg_builder;
     CFG {graph: graph,
@@ -220,15 +212,24 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 // Note that `break` and `continue` statements
                 // may cause additional edges.
 
-                // Is the condition considered part of the loop?
                 let loopback = self.add_dummy_node(&[pred]);              // 1
-                let cond_exit = self.expr(&cond, loopback);             // 2
-                let expr_exit = self.add_ast_node(expr.id, &[cond_exit]); // 3
+
+                // Create expr_exit without pred (cond_exit)
+                let expr_exit = self.add_ast_node(expr.id, &[]);         // 3
+
+                // The LoopScope needs to be on the loop_scopes stack while evaluating the
+                // condition and the body of the loop (both can break out of the loop)
                 self.loop_scopes.push(LoopScope {
                     loop_id: expr.id,
                     continue_index: loopback,
                     break_index: expr_exit
                 });
+
+                let cond_exit = self.expr(&cond, loopback);             // 2
+
+                // Add pred (cond_exit) to expr_exit
+                self.add_contained_edge(cond_exit, expr_exit);
+
                 let body_exit = self.block(&body, cond_exit);          // 4
                 self.add_contained_edge(body_exit, loopback);            // 5
                 self.loop_scopes.pop();
@@ -294,17 +295,17 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 self.add_unreachable_node()
             }
 
-            hir::ExprBreak(label, ref opt_expr) => {
+            hir::ExprBreak(destination, ref opt_expr) => {
                 let v = self.opt_expr(opt_expr, pred);
-                let loop_scope = self.find_scope(expr, label);
+                let loop_scope = self.find_scope(expr, destination);
                 let b = self.add_ast_node(expr.id, &[v]);
                 self.add_exiting_edge(expr, b,
                                       loop_scope, loop_scope.break_index);
                 self.add_unreachable_node()
             }
 
-            hir::ExprAgain(label) => {
-                let loop_scope = self.find_scope(expr, label);
+            hir::ExprAgain(destination) => {
+                let loop_scope = self.find_scope(expr, destination);
                 let a = self.add_ast_node(expr.id, &[pred]);
                 self.add_exiting_edge(expr, a,
                                       loop_scope, loop_scope.continue_index);
@@ -579,17 +580,18 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
 
     fn find_scope(&self,
                   expr: &hir::Expr,
-                  label: Option<hir::Label>) -> LoopScope {
-        match label {
-            None => *self.loop_scopes.last().unwrap(),
-            Some(label) => {
+                  destination: hir::Destination) -> LoopScope {
+
+        match destination.loop_id.into() {
+            Ok(loop_id) => {
                 for l in &self.loop_scopes {
-                    if l.loop_id == label.loop_id {
+                    if l.loop_id == loop_id {
                         return *l;
                     }
                 }
-                span_bug!(expr.span, "no loop scope for id {}", label.loop_id);
+                span_bug!(expr.span, "no loop scope for id {}", loop_id);
             }
+            Err(err) => span_bug!(expr.span, "loop scope error: {}",  err)
         }
     }
 }

@@ -63,7 +63,7 @@ macro_rules! newtype_index {
 }
 
 /// Lowered representation of a single function.
-// Do not implement clone for Mir, its easy to do so accidently and its kind of expensive.
+// Do not implement clone for Mir, which can be accidently done and kind of expensive.
 #[derive(RustcEncodable, RustcDecodable, Debug)]
 pub struct Mir<'tcx> {
     /// List of basic blocks. References to basic block use a newtyped index type `BasicBlock`
@@ -453,36 +453,30 @@ pub enum TerminatorKind<'tcx> {
         target: BasicBlock,
     },
 
-    /// jump to branch 0 if this lvalue evaluates to true
-    If {
-        cond: Operand<'tcx>,
-        targets: (BasicBlock, BasicBlock),
-    },
-
-    /// lvalue evaluates to some enum; jump depending on the branch
-    Switch {
-        discr: Lvalue<'tcx>,
-        adt_def: &'tcx AdtDef,
-        targets: Vec<BasicBlock>,
-    },
-
     /// operand evaluates to an integer; jump depending on its value
     /// to one of the targets, and otherwise fallback to `otherwise`
     SwitchInt {
         /// discriminant value being tested
-        discr: Lvalue<'tcx>,
+        discr: Operand<'tcx>,
 
         /// type of value being tested
         switch_ty: Ty<'tcx>,
 
         /// Possible values. The locations to branch to in each case
         /// are found in the corresponding indices from the `targets` vector.
-        values: Vec<ConstVal>,
+        values: Cow<'tcx, [ConstInt]>,
 
-        /// Possible branch sites. The length of this vector should be
-        /// equal to the length of the `values` vector plus 1 -- the
-        /// extra item is the block to branch to if none of the values
-        /// fit.
+        /// Possible branch sites. The last element of this vector is used
+        /// for the otherwise branch, so values.len() == targets.len() + 1
+        /// should hold.
+        // This invariant is quite non-obvious and also could be improved.
+        // One way to make this invariant is to have something like this instead:
+        //
+        // branches: Vec<(ConstInt, BasicBlock)>,
+        // otherwise: Option<BasicBlock> // exhaustive if None
+        //
+        // However we’ve decided to keep this as-is until we figure a case
+        // where some other approach seems to be strictly better than other.
         targets: Vec<BasicBlock>,
     },
 
@@ -546,12 +540,21 @@ impl<'tcx> Terminator<'tcx> {
 }
 
 impl<'tcx> TerminatorKind<'tcx> {
+    pub fn if_<'a, 'gcx>(tcx: ty::TyCtxt<'a, 'gcx, 'tcx>, cond: Operand<'tcx>,
+                         t: BasicBlock, f: BasicBlock) -> TerminatorKind<'tcx> {
+        static BOOL_SWITCH_FALSE: &'static [ConstInt] = &[ConstInt::U8(0)];
+        TerminatorKind::SwitchInt {
+            discr: cond,
+            switch_ty: tcx.types.bool,
+            values: From::from(BOOL_SWITCH_FALSE),
+            targets: vec![f, t],
+        }
+    }
+
     pub fn successors(&self) -> Cow<[BasicBlock]> {
         use self::TerminatorKind::*;
         match *self {
             Goto { target: ref b } => slice::ref_slice(b).into_cow(),
-            If { targets: (b1, b2), .. } => vec![b1, b2].into_cow(),
-            Switch { targets: ref b, .. } => b[..].into_cow(),
             SwitchInt { targets: ref b, .. } => b[..].into_cow(),
             Resume => (&[]).into_cow(),
             Return => (&[]).into_cow(),
@@ -580,8 +583,6 @@ impl<'tcx> TerminatorKind<'tcx> {
         use self::TerminatorKind::*;
         match *self {
             Goto { target: ref mut b } => vec![b],
-            If { targets: (ref mut b1, ref mut b2), .. } => vec![b1, b2],
-            Switch { targets: ref mut b, .. } => b.iter_mut().collect(),
             SwitchInt { targets: ref mut b, .. } => b.iter_mut().collect(),
             Resume => Vec::new(),
             Return => Vec::new(),
@@ -659,8 +660,6 @@ impl<'tcx> TerminatorKind<'tcx> {
         use self::TerminatorKind::*;
         match *self {
             Goto { .. } => write!(fmt, "goto"),
-            If { cond: ref lv, .. } => write!(fmt, "if({:?})", lv),
-            Switch { discr: ref lv, .. } => write!(fmt, "switch({:?})", lv),
             SwitchInt { discr: ref lv, .. } => write!(fmt, "switchInt({:?})", lv),
             Return => write!(fmt, "return"),
             Resume => write!(fmt, "resume"),
@@ -710,18 +709,11 @@ impl<'tcx> TerminatorKind<'tcx> {
         match *self {
             Return | Resume | Unreachable => vec![],
             Goto { .. } => vec!["".into()],
-            If { .. } => vec!["true".into(), "false".into()],
-            Switch { ref adt_def, .. } => {
-                adt_def.variants
-                       .iter()
-                       .map(|variant| variant.name.to_string().into())
-                       .collect()
-            }
             SwitchInt { ref values, .. } => {
                 values.iter()
                       .map(|const_val| {
                           let mut buf = String::new();
-                          fmt_const_val(&mut buf, const_val).unwrap();
+                          fmt_const_val(&mut buf, &ConstVal::Integral(*const_val)).unwrap();
                           buf.into()
                       })
                       .chain(iter::once(String::from("otherwise").into()))
@@ -785,6 +777,12 @@ pub enum StatementKind<'tcx> {
     /// End the current live range for the storage of the local.
     StorageDead(Lvalue<'tcx>),
 
+    InlineAsm {
+        asm: InlineAsm,
+        outputs: Vec<Lvalue<'tcx>>,
+        inputs: Vec<Operand<'tcx>>
+    },
+
     /// No-op. Useful for deleting instructions without affecting statement indices.
     Nop,
 }
@@ -798,7 +796,10 @@ impl<'tcx> Debug for Statement<'tcx> {
             StorageDead(ref lv) => write!(fmt, "StorageDead({:?})", lv),
             SetDiscriminant{lvalue: ref lv, variant_index: index} => {
                 write!(fmt, "discriminant({:?}) = {:?}", lv, index)
-            }
+            },
+            InlineAsm { ref asm, ref outputs, ref inputs } => {
+                write!(fmt, "asm!({:?} : {:?} : {:?})", asm, outputs, inputs)
+            },
             Nop => write!(fmt, "nop"),
         }
     }
@@ -815,10 +816,18 @@ pub enum Lvalue<'tcx> {
     Local(Local),
 
     /// static or static mut variable
-    Static(DefId),
+    Static(Box<Static<'tcx>>),
 
     /// projection out of an lvalue (access a field, deref a pointer, etc)
     Projection(Box<LvalueProjection<'tcx>>),
+}
+
+/// The def-id of a static, along with its normalized type (which is
+/// stored to avoid requiring normalization when reading MIR).
+#[derive(Clone, PartialEq, RustcEncodable, RustcDecodable)]
+pub struct Static<'tcx> {
+    pub def_id: DefId,
+    pub ty: Ty<'tcx>,
 }
 
 /// The `Projection` data structure defines things of the form `B.x`
@@ -910,8 +919,8 @@ impl<'tcx> Debug for Lvalue<'tcx> {
 
         match *self {
             Local(id) => write!(fmt, "{:?}", id),
-            Static(def_id) =>
-                write!(fmt, "{}", ty::tls::with(|tcx| tcx.item_path_str(def_id))),
+            Static(box self::Static { def_id, ty }) =>
+                write!(fmt, "({}: {:?})", ty::tls::with(|tcx| tcx.item_path_str(def_id)), ty),
             Projection(ref data) =>
                 match data.elem {
                     ProjectionElem::Downcast(ref adt_def, index) =>
@@ -982,7 +991,7 @@ pub enum Rvalue<'tcx> {
     Use(Operand<'tcx>),
 
     /// [x; 32]
-    Repeat(Operand<'tcx>, TypedConstVal<'tcx>),
+    Repeat(Operand<'tcx>, ConstUsize),
 
     /// &x or &mut x
     Ref(&'tcx Region, BorrowKind, Lvalue<'tcx>),
@@ -997,6 +1006,12 @@ pub enum Rvalue<'tcx> {
 
     UnaryOp(UnOp, Operand<'tcx>),
 
+    /// Read the discriminant of an ADT.
+    ///
+    /// Undefined (i.e. no effort is made to make it defined, but there’s no reason why it cannot
+    /// be defined to return, say, a 0) if ADT is not an enum.
+    Discriminant(Lvalue<'tcx>),
+
     /// Creates an *uninitialized* Box
     Box(Ty<'tcx>),
 
@@ -1006,12 +1021,6 @@ pub enum Rvalue<'tcx> {
     /// that `Foo` has a destructor. These rvalues can be optimized
     /// away after type-checking and before lowering.
     Aggregate(AggregateKind<'tcx>, Vec<Operand<'tcx>>),
-
-    InlineAsm {
-        asm: InlineAsm,
-        outputs: Vec<Lvalue<'tcx>>,
-        inputs: Vec<Operand<'tcx>>
-    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
@@ -1020,6 +1029,9 @@ pub enum CastKind {
 
     /// Convert unique, zero-sized type for a fn to fn()
     ReifyFnPointer,
+
+    /// Convert non capturing closure to fn()
+    ClosureFnPointer,
 
     /// Convert safe fn() to unsafe fn()
     UnsafeFnPointer,
@@ -1034,7 +1046,8 @@ pub enum CastKind {
 
 #[derive(Clone, Debug, PartialEq, Eq, RustcEncodable, RustcDecodable)]
 pub enum AggregateKind<'tcx> {
-    Array,
+    /// The type is of the element
+    Array(Ty<'tcx>),
     Tuple,
     /// The second field is variant number (discriminant), it's equal to 0
     /// for struct and union expressions. The fourth field is active field
@@ -1111,11 +1124,8 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                 write!(fmt, "Checked{:?}({:?}, {:?})", op, a, b)
             }
             UnaryOp(ref op, ref a) => write!(fmt, "{:?}({:?})", op, a),
+            Discriminant(ref lval) => write!(fmt, "discriminant({:?})", lval),
             Box(ref t) => write!(fmt, "Box({:?})", t),
-            InlineAsm { ref asm, ref outputs, ref inputs } => {
-                write!(fmt, "asm!({:?} : {:?} : {:?})", asm, outputs, inputs)
-            }
-
             Ref(_, borrow_kind, ref lv) => {
                 let kind_str = match borrow_kind {
                     BorrowKind::Shared => "",
@@ -1134,7 +1144,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                 }
 
                 match *kind {
-                    AggregateKind::Array => write!(fmt, "{:?}", lvs),
+                    AggregateKind::Array(_) => write!(fmt, "{:?}", lvs),
 
                     AggregateKind::Tuple => {
                         match lvs.len() {
@@ -1201,19 +1211,6 @@ pub struct Constant<'tcx> {
     pub literal: Literal<'tcx>,
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable)]
-pub struct TypedConstVal<'tcx> {
-    pub ty: Ty<'tcx>,
-    pub span: Span,
-    pub value: ConstUsize,
-}
-
-impl<'tcx> Debug for TypedConstVal<'tcx> {
-    fn fmt(&self, fmt: &mut Formatter) -> fmt::Result {
-        write!(fmt, "const {}", ConstInt::Usize(self.value))
-    }
-}
-
 newtype_index!(Promoted, "promoted");
 
 #[derive(Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
@@ -1223,7 +1220,7 @@ pub enum Literal<'tcx> {
         substs: &'tcx Substs<'tcx>,
     },
     Value {
-        value: ConstVal,
+        value: ConstVal<'tcx>,
     },
     Promoted {
         // Index into the `promoted` vector of `Mir`.
@@ -1270,7 +1267,7 @@ fn fmt_const_val<W: Write>(fmt: &mut W, const_val: &ConstVal) -> fmt::Result {
             write!(fmt, "b\"{}\"", escaped)
         }
         Bool(b) => write!(fmt, "{:?}", b),
-        Function(def_id) => write!(fmt, "{}", item_path_str(def_id)),
+        Function(def_id, _) => write!(fmt, "{}", item_path_str(def_id)),
         Struct(_) | Tuple(_) | Array(_) | Repeat(..) =>
             bug!("ConstVal `{:?}` should not be in MIR", const_val),
         Char(c) => write!(fmt, "{:?}", c),

@@ -32,13 +32,13 @@ pub fn plugin_registrar(reg: &mut Registry) {
 
 fn cond(input: TokenStream) -> TokenStream {
     let mut conds = Vec::new();
-    let mut input = input.trees();
+    let mut input = input.trees().peekable();
     while let Some(tree) = input.next() {
-        let cond: TokenStream = match *tree {
-            TokenTree::Delimited(_, ref delimited) => delimited.tts.iter().cloned().collect(),
+        let mut cond = match tree {
+            TokenTree::Delimited(_, ref delimited) => delimited.stream(),
             _ => panic!("Invalid input"),
         };
-        let mut trees = cond.trees().cloned();
+        let mut trees = cond.trees();
         let test = trees.next();
         let rhs = trees.collect::<TokenStream>();
         if rhs.is_empty() {

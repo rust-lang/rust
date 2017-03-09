@@ -12,5 +12,6 @@
 
 fn main () {
     (1, (2, 3)).1.1; //~ ERROR unexpected token
-                     //~^ HELP try parenthesizing the first index; e.g., `(foo.1).1`
+                     //~^ HELP try parenthesizing the first index
+                     //~| SUGGESTION ((1, (2, 3)).1).1
 }

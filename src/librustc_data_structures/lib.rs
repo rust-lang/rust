@@ -28,6 +28,7 @@
 #![feature(shared)]
 #![feature(collections_range)]
 #![feature(collections_bound)]
+#![cfg_attr(stage0,feature(field_init_shorthand))]
 #![feature(nonzero)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
@@ -36,6 +37,7 @@
 #![feature(untagged_unions)]
 #![feature(associated_consts)]
 #![feature(unsize)]
+#![feature(i128_type)]
 
 #![cfg_attr(unix, feature(libc))]
 #![cfg_attr(test, feature(test))]
@@ -46,8 +48,6 @@ extern crate log;
 extern crate serialize as rustc_serialize; // used by deriving
 #[cfg(unix)]
 extern crate libc;
-
-extern crate rustc_i128;
 
 pub use rustc_serialize::hex::ToHex;
 

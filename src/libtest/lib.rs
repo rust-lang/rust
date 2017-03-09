@@ -106,7 +106,7 @@ impl fmt::Display for TestName {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
-enum NamePadding {
+pub enum NamePadding {
     PadNone,
     PadOnRight,
 }
@@ -445,6 +445,8 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
     let test_threads = match matches.opt_str("test-threads") {
         Some(n_str) =>
             match n_str.parse::<usize>() {
+                Ok(0) =>
+                    return Some(Err(format!("argument for --test-threads must not be 0"))),
                 Ok(n) => Some(n),
                 Err(e) =>
                     return Some(Err(format!("argument for --test-threads must be a number > 0 \
@@ -948,7 +950,7 @@ fn stdout_isatty() -> bool {
 }
 
 #[derive(Clone)]
-enum TestEvent {
+pub enum TestEvent {
     TeFiltered(Vec<TestDesc>),
     TeWait(TestDesc, NamePadding),
     TeResult(TestDesc, TestResult, Vec<u8>),
@@ -958,7 +960,7 @@ enum TestEvent {
 pub type MonitorMsg = (TestDesc, TestResult, Vec<u8>);
 
 
-fn run_tests<F>(opts: &TestOpts, tests: Vec<TestDescAndFn>, mut callback: F) -> io::Result<()>
+pub fn run_tests<F>(opts: &TestOpts, tests: Vec<TestDescAndFn>, mut callback: F) -> io::Result<()>
     where F: FnMut(TestEvent) -> io::Result<()>
 {
     use std::collections::HashMap;

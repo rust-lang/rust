@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 # file at the top-level directory of this distribution and at
 # http://rust-lang.org/COPYRIGHT.
@@ -11,16 +11,27 @@
 
 set -e
 
-if [ "$LOCAL_USER_ID" != "" ]; then
-  useradd --shell /bin/bash -u $LOCAL_USER_ID -o -c "" -m user
-  export HOME=/home/user
-  unset LOCAL_USER_ID
-  exec su --preserve-environment -c "env PATH=$PATH \"$0\"" user
+if [ "$NO_CHANGE_USER" = "" ]; then
+  if [ "$LOCAL_USER_ID" != "" ]; then
+    useradd --shell /bin/bash -u $LOCAL_USER_ID -o -c "" -m user
+    export HOME=/home/user
+    unset LOCAL_USER_ID
+    exec su --preserve-environment -c "env PATH=$PATH \"$0\"" user
+  fi
 fi
+
+ci_dir=`cd $(dirname $0) && pwd`
+source "$ci_dir/shared.sh"
 
 RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-sccache"
 RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-quiet-tests"
 RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --disable-manage-submodules"
+RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-locked-deps"
+RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-cargo-openssl-static"
+
+if [ "$DIST_SRC" = "" ]; then
+  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --disable-dist-src"
+fi
 
 # If we're deploying artifacts then we set the release channel, otherwise if
 # we're not deploying then we want to be sure to enable all assertions becauase
@@ -28,11 +39,13 @@ RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --disable-manage-submodules"
 #
 # FIXME: need a scheme for changing this `nightly` value to `beta` and `stable`
 #        either automatically or manually.
-if [ "$DEPLOY" != "" ]; then
+if [ "$DEPLOY$DEPLOY_ALT" != "" ]; then
   RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --release-channel=nightly"
   RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-llvm-static-stdcpp"
 
   if [ "$NO_LLVM_ASSERTIONS" = "1" ]; then
+    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --disable-llvm-assertions"
+  elif [ "$DEPLOY_ALT" != "" ]; then
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --disable-llvm-assertions"
   fi
 else
@@ -45,22 +58,16 @@ else
   fi
 fi
 
-# We want to enable usage of the `src/vendor` dir as much as possible, but not
-# all test suites have all their deps in there (just the main bootstrap) so we
-# have the ability to disable this flag
-if [ "$NO_VENDOR" = "" ]; then
-  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-vendor"
-fi
-
-set -ex
-
 $SRC/configure $RUST_CONFIGURE_ARGS
+retry make prepare
 
 if [ "$TRAVIS_OS_NAME" = "osx" ]; then
     ncpus=$(sysctl -n hw.ncpu)
 else
     ncpus=$(grep processor /proc/cpuinfo | wc -l)
 fi
+
+set -x
 
 if [ ! -z "$SCRIPT" ]; then
   sh -x -c "$SCRIPT"

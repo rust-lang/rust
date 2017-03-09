@@ -137,11 +137,14 @@ pub fn parameterized(f: &mut fmt::Formatter,
         }
 
         if !verbose {
-            if generics.types.last().map_or(false, |def| def.default.is_some()) {
+            if generics.types.last().map_or(false, |def| def.has_default) {
                 if let Some(substs) = tcx.lift(&substs) {
                     let tps = substs.types().rev().skip(child_types);
                     for (def, actual) in generics.types.iter().rev().zip(tps) {
-                        if def.default.subst(tcx, substs) != Some(actual) {
+                        if !def.has_default {
+                            break;
+                        }
+                        if tcx.item_type(def.def_id).subst(tcx, substs) != actual {
                             break;
                         }
                         num_supplied_defaults += 1;
@@ -156,7 +159,7 @@ pub fn parameterized(f: &mut fmt::Formatter,
 
     if !verbose && fn_trait_kind.is_some() && projections.len() == 1 {
         let projection_ty = projections[0].ty;
-        if let TyTuple(ref args) = substs.type_at(1).sty {
+        if let TyTuple(ref args, _) = substs.type_at(1).sty {
             return fn_sig(f, args, false, projection_ty);
         }
     }
@@ -276,7 +279,7 @@ fn in_binder<'a, 'gcx, 'tcx, T, U>(f: &mut fmt::Formatter,
     let new_value = tcx.replace_late_bound_regions(&value, |br| {
         let _ = start_or_continue(f, "for<", ", ");
         let br = match br {
-            ty::BrNamed(_, name, _) => {
+            ty::BrNamed(_, name) => {
                 let _ = write!(f, "{}", name);
                 br
             }
@@ -286,8 +289,7 @@ fn in_binder<'a, 'gcx, 'tcx, T, U>(f: &mut fmt::Formatter,
                 let name = Symbol::intern("'r");
                 let _ = write!(f, "{}", name);
                 ty::BrNamed(tcx.hir.local_def_id(CRATE_NODE_ID),
-                            name,
-                            ty::Issue32330::WontChange)
+                            name)
             }
         };
         tcx.mk_region(ty::ReLateBound(ty::DebruijnIndex::new(1), br))
@@ -327,7 +329,7 @@ impl<'tcx> fmt::Display for &'tcx ty::Slice<ty::ExistentialPredicate<'tcx>> {
     }
 }
 
-impl<'tcx> fmt::Debug for ty::TypeParameterDef<'tcx> {
+impl fmt::Debug for ty::TypeParameterDef {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "TypeParameterDef({}, {:?}, {})",
                self.name,
@@ -435,7 +437,7 @@ impl fmt::Display for ty::BoundRegion {
         }
 
         match *self {
-            BrNamed(_, name, _) => write!(f, "{}", name),
+            BrNamed(_, name) => write!(f, "{}", name),
             BrAnon(_) | BrFresh(_) | BrEnv => Ok(())
         }
     }
@@ -446,9 +448,9 @@ impl fmt::Debug for ty::BoundRegion {
         match *self {
             BrAnon(n) => write!(f, "BrAnon({:?})", n),
             BrFresh(n) => write!(f, "BrFresh({:?})", n),
-            BrNamed(did, name, issue32330) => {
-                write!(f, "BrNamed({:?}:{:?}, {:?}, {:?})",
-                       did.krate, did.index, name, issue32330)
+            BrNamed(did, name) => {
+                write!(f, "BrNamed({:?}:{:?}, {:?})",
+                       did.krate, did.index, name)
             }
             BrEnv => "BrEnv".fmt(f),
         }
@@ -490,15 +492,6 @@ impl fmt::Debug for ty::Region {
 
             ty::ReErased => write!(f, "ReErased")
         }
-    }
-}
-
-impl<'tcx> fmt::Debug for ty::ClosureTy<'tcx> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "ClosureTy({},{:?},{})",
-               self.unsafety,
-               self.sig,
-               self.abi)
     }
 }
 
@@ -583,6 +576,14 @@ impl<'tcx> fmt::Debug for ty::InstantiatedPredicates<'tcx> {
 
 impl<'tcx> fmt::Display for ty::FnSig<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if self.unsafety == hir::Unsafety::Unsafe {
+            write!(f, "unsafe ")?;
+        }
+
+        if self.abi != Abi::Rust {
+            write!(f, "extern {} ", self.abi)?;
+        }
+
         write!(f, "fn")?;
         fn_sig(f, self.inputs(), self.variadic, self.output())
     }
@@ -724,7 +725,7 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
                 write!(f, "{}", tm)
             }
             TyNever => write!(f, "!"),
-            TyTuple(ref tys) => {
+            TyTuple(ref tys, _) => {
                 write!(f, "(")?;
                 let mut tys = tys.iter();
                 if let Some(&ty) = tys.next() {
@@ -739,42 +740,17 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
                 write!(f, ")")
             }
             TyFnDef(def_id, substs, ref bare_fn) => {
-                if bare_fn.unsafety == hir::Unsafety::Unsafe {
-                    write!(f, "unsafe ")?;
-                }
-
-                if bare_fn.abi != Abi::Rust {
-                    write!(f, "extern {} ", bare_fn.abi)?;
-                }
-
-                write!(f, "{} {{", bare_fn.sig.0)?;
+                write!(f, "{} {{", bare_fn.0)?;
                 parameterized(f, substs, def_id, &[])?;
                 write!(f, "}}")
             }
             TyFnPtr(ref bare_fn) => {
-                if bare_fn.unsafety == hir::Unsafety::Unsafe {
-                    write!(f, "unsafe ")?;
-                }
-
-                if bare_fn.abi != Abi::Rust {
-                    write!(f, "extern {} ", bare_fn.abi)?;
-                }
-
-                write!(f, "{}", bare_fn.sig.0)
+                write!(f, "{}", bare_fn.0)
             }
             TyInfer(infer_ty) => write!(f, "{}", infer_ty),
             TyError => write!(f, "[type error]"),
             TyParam(ref param_ty) => write!(f, "{}", param_ty),
-            TyAdt(def, substs) => {
-                ty::tls::with(|tcx| {
-                    if def.did.is_local() &&
-                          !tcx.item_types.borrow().contains_key(&def.did) {
-                        write!(f, "{}<..>", tcx.item_path_str(def.did))
-                    } else {
-                        parameterized(f, substs, def.did, &[])
-                    }
-                })
-            }
+            TyAdt(def, substs) => parameterized(f, substs, def.did, &[]),
             TyDynamic(data, r) => {
                 write!(f, "{}", data)?;
                 let r = r.to_string();

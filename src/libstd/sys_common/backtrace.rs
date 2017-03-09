@@ -10,14 +10,25 @@
 
 #![cfg_attr(target_os = "nacl", allow(dead_code))]
 
+/// Common code for printing the backtrace in the same way across the different
+/// supported platforms.
+
 use env;
 use io::prelude::*;
 use io;
 use libc;
 use str;
 use sync::atomic::{self, Ordering};
+use path::Path;
+use sys::mutex::Mutex;
+use ptr;
 
-pub use sys::backtrace::write;
+pub use sys::backtrace::{
+    unwind_backtrace,
+    resolve_symname,
+    foreach_symbol_fileline,
+    BacktraceContext
+};
 
 #[cfg(target_pointer_width = "64")]
 pub const HEX_WIDTH: usize = 18;
@@ -25,45 +36,243 @@ pub const HEX_WIDTH: usize = 18;
 #[cfg(target_pointer_width = "32")]
 pub const HEX_WIDTH: usize = 10;
 
+/// Represents an item in the backtrace list. See `unwind_backtrace` for how
+/// it is created.
+#[derive(Debug, Copy, Clone)]
+pub struct Frame {
+    /// Exact address of the call that failed.
+    pub exact_position: *const libc::c_void,
+    /// Address of the enclosing function.
+    pub symbol_addr: *const libc::c_void,
+}
+
+/// Max number of frames to print.
+const MAX_NB_FRAMES: usize = 100;
+
+/// Prints the current backtrace.
+pub fn print(w: &mut Write, format: PrintFormat) -> io::Result<()> {
+    static LOCK: Mutex = Mutex::new();
+
+    // Use a lock to prevent mixed output in multithreading context.
+    // Some platforms also requires it, like `SymFromAddr` on Windows.
+    unsafe {
+        LOCK.lock();
+        let res = _print(w, format);
+        LOCK.unlock();
+        res
+    }
+}
+
+fn _print(w: &mut Write, format: PrintFormat) -> io::Result<()> {
+    let mut frames = [Frame {
+        exact_position: ptr::null(),
+        symbol_addr: ptr::null(),
+    }; MAX_NB_FRAMES];
+    let (nb_frames, context) = unwind_backtrace(&mut frames)?;
+    let (skipped_before, skipped_after) =
+        filter_frames(&frames[..nb_frames], format, &context);
+    if skipped_before + skipped_after > 0 {
+        writeln!(w, "note: Some details are omitted, \
+                     run with `RUST_BACKTRACE=full` for a verbose backtrace.")?;
+    }
+    writeln!(w, "stack backtrace:")?;
+
+    let filtered_frames = &frames[..nb_frames - skipped_after];
+    for (index, frame) in filtered_frames.iter().skip(skipped_before).enumerate() {
+        resolve_symname(*frame, |symname| {
+            output(w, index, *frame, symname, format)
+        }, &context)?;
+        let has_more_filenames = foreach_symbol_fileline(*frame, |file, line| {
+            output_fileline(w, file, line, format)
+        }, &context)?;
+        if has_more_filenames {
+            w.write_all(b" <... and possibly more>")?;
+        }
+    }
+
+    Ok(())
+}
+
+fn filter_frames(frames: &[Frame],
+                 format: PrintFormat,
+                 context: &BacktraceContext) -> (usize, usize)
+{
+    if format == PrintFormat::Full {
+        return (0, 0);
+    }
+
+    // We want to filter out frames with some prefixes
+    // from both top and bottom of the call stack.
+    static BAD_PREFIXES_TOP: &'static [&'static str] = &[
+        "_ZN3std3sys3imp9backtrace",
+        "ZN3std3sys3imp9backtrace",
+        "std::sys::imp::backtrace",
+        "_ZN3std10sys_common9backtrace",
+        "ZN3std10sys_common9backtrace",
+        "std::sys_common::backtrace",
+        "_ZN3std9panicking",
+        "ZN3std9panicking",
+        "std::panicking",
+        "_ZN4core9panicking",
+        "ZN4core9panicking",
+        "core::panicking",
+        "_ZN4core6result13unwrap_failed",
+        "ZN4core6result13unwrap_failed",
+        "core::result::unwrap_failed",
+        "rust_begin_unwind",
+        "_ZN4drop",
+        "mingw_set_invalid_parameter_handler",
+    ];
+    static BAD_PREFIXES_BOTTOM: &'static [&'static str] = &[
+        "_ZN3std9panicking",
+        "ZN3std9panicking",
+        "std::panicking",
+        "_ZN3std5panic",
+        "ZN3std5panic",
+        "std::panic",
+        "_ZN4core9panicking",
+        "ZN4core9panicking",
+        "core::panicking",
+        "_ZN3std2rt10lang_start",
+        "ZN3std2rt10lang_start",
+        "std::rt::lang_start",
+        "panic_unwind::__rust_maybe_catch_panic",
+        "__rust_maybe_catch_panic",
+        "_rust_maybe_catch_panic",
+        "__libc_start_main",
+        "__rust_try",
+        "_start",
+        "main",
+        "BaseThreadInitThunk",
+        "RtlInitializeExceptionChain",
+        "__scrt_common_main_seh",
+        "_ZN4drop",
+        "mingw_set_invalid_parameter_handler",
+    ];
+
+    let is_good_frame = |frame: Frame, bad_prefixes: &[&str]| {
+        resolve_symname(frame, |symname| {
+            if let Some(mangled_symbol_name) = symname {
+                if !bad_prefixes.iter().any(|s| mangled_symbol_name.starts_with(s)) {
+                    return Ok(())
+                }
+            }
+            Err(io::Error::from(io::ErrorKind::Other))
+        }, context).is_ok()
+    };
+
+    let skipped_before = frames.iter().position(|frame| {
+        is_good_frame(*frame, BAD_PREFIXES_TOP)
+    }).unwrap_or(frames.len());
+    let skipped_after = frames[skipped_before..].iter().rev().position(|frame| {
+        is_good_frame(*frame, BAD_PREFIXES_BOTTOM)
+    }).unwrap_or(frames.len() - skipped_before);
+
+    if skipped_before + skipped_after == frames.len() {
+        // Avoid showing completely empty backtraces
+        return (0, 0);
+    }
+
+    (skipped_before, skipped_after)
+}
+
+/// Controls how the backtrace should be formated.
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub enum PrintFormat {
+    /// Show all the frames with absolute path for files.
+    Full = 2,
+    /// Show only relevant data from the backtrace.
+    Short = 3,
+}
+
 // For now logging is turned off by default, and this function checks to see
 // whether the magical environment variable is present to see if it's turned on.
-pub fn log_enabled() -> bool {
+pub fn log_enabled() -> Option<PrintFormat> {
     static ENABLED: atomic::AtomicIsize = atomic::AtomicIsize::new(0);
     match ENABLED.load(Ordering::SeqCst) {
-        1 => return false,
-        2 => return true,
-        _ => {}
+        0 => {},
+        1 => return None,
+        2 => return Some(PrintFormat::Full),
+        3 => return Some(PrintFormat::Short),
+        _ => unreachable!(),
     }
 
     let val = match env::var_os("RUST_BACKTRACE") {
-        Some(x) => if &x == "0" { 1 } else { 2 },
-        None => 1,
+        Some(x) => if &x == "0" {
+            None
+        } else if &x == "full" {
+            Some(PrintFormat::Full)
+        } else {
+            Some(PrintFormat::Short)
+        },
+        None => None,
     };
-    ENABLED.store(val, Ordering::SeqCst);
-    val == 2
+    ENABLED.store(match val {
+        Some(v) => v as isize,
+        None => 1,
+    }, Ordering::SeqCst);
+    val
 }
 
-// These output functions should now be used everywhere to ensure consistency.
-pub fn output(w: &mut Write, idx: isize, addr: *mut libc::c_void,
-              s: Option<&[u8]>) -> io::Result<()> {
-    write!(w, "  {:2}: {:2$?} - ", idx, addr, HEX_WIDTH)?;
-    match s.and_then(|s| str::from_utf8(s).ok()) {
-        Some(string) => demangle(w, string)?,
-        None => write!(w, "<unknown>")?,
+/// Print the symbol of the backtrace frame.
+///
+/// These output functions should now be used everywhere to ensure consistency.
+/// You may want to also use `output_fileline`.
+fn output(w: &mut Write, idx: usize, frame: Frame,
+              s: Option<&str>, format: PrintFormat) -> io::Result<()> {
+    // Remove the `17: 0x0 - <unknown>` line.
+    if format == PrintFormat::Short && frame.exact_position == ptr::null() {
+        return Ok(());
     }
-    w.write_all(&['\n' as u8])
+    match format {
+        PrintFormat::Full => write!(w,
+                                    "  {:2}: {:2$?} - ",
+                                    idx,
+                                    frame.exact_position,
+                                    HEX_WIDTH)?,
+        PrintFormat::Short => write!(w, "  {:2}: ", idx)?,
+    }
+    match s {
+        Some(string) => demangle(w, string, format)?,
+        None => w.write_all(b"<unknown>")?,
+    }
+    w.write_all(b"\n")
 }
 
+/// Print the filename and line number of the backtrace frame.
+///
+/// See also `output`.
 #[allow(dead_code)]
-pub fn output_fileline(w: &mut Write, file: &[u8], line: libc::c_int,
-                       more: bool) -> io::Result<()> {
-    let file = str::from_utf8(file).unwrap_or("<unknown>");
+fn output_fileline(w: &mut Write, file: &[u8], line: libc::c_int,
+                       format: PrintFormat) -> io::Result<()> {
     // prior line: "  ##: {:2$} - func"
-    write!(w, "      {:3$}at {}:{}", "", file, line, HEX_WIDTH)?;
-    if more {
-        write!(w, " <... and possibly more>")?;
+    w.write_all(b"")?;
+    match format {
+        PrintFormat::Full => write!(w,
+                                    "           {:1$}",
+                                    "",
+                                    HEX_WIDTH)?,
+        PrintFormat::Short => write!(w, "           ")?,
     }
-    w.write_all(&['\n' as u8])
+
+    let file = str::from_utf8(file).unwrap_or("<unknown>");
+    let file_path = Path::new(file);
+    let mut already_printed = false;
+    if format == PrintFormat::Short && file_path.is_absolute() {
+        if let Ok(cwd) = env::current_dir() {
+            if let Ok(stripped) = file_path.strip_prefix(&cwd) {
+                if let Some(s) = stripped.to_str() {
+                    write!(w, "  at ./{}:{}", s, line)?;
+                    already_printed = true;
+                }
+            }
+        }
+    }
+    if !already_printed {
+        write!(w, "  at {}:{}", file, line)?;
+    }
+
+    w.write_all(b"\n")
 }
 
 
@@ -84,7 +293,7 @@ pub fn output_fileline(w: &mut Write, file: &[u8], line: libc::c_int,
 // Note that this demangler isn't quite as fancy as it could be. We have lots
 // of other information in our symbols like hashes, version, type information,
 // etc. Additionally, this doesn't handle glue symbols at all.
-pub fn demangle(writer: &mut Write, s: &str) -> io::Result<()> {
+pub fn demangle(writer: &mut Write, s: &str, format: PrintFormat) -> io::Result<()> {
     // First validate the symbol. If it doesn't look like anything we're
     // expecting, we just print it literally. Note that we must handle non-rust
     // symbols because we could have any function in the backtrace.
@@ -123,6 +332,22 @@ pub fn demangle(writer: &mut Write, s: &str) -> io::Result<()> {
     if !valid {
         writer.write_all(s.as_bytes())?;
     } else {
+        // remove the `::hfc2edb670e5eda97` part at the end of the symbol.
+        if format == PrintFormat::Short {
+            // The symbol in still mangled.
+            let mut split = inner.rsplitn(2, "17h");
+            match (split.next(), split.next()) {
+                (Some(addr), rest) => {
+                    if addr.len() == 16 &&
+                       addr.chars().all(|c| c.is_digit(16))
+                    {
+                        inner = rest.unwrap_or("");
+                    }
+                }
+                _ => (),
+            }
+        }
+
         let mut first = true;
         while !inner.is_empty() {
             if !first {
@@ -208,7 +433,9 @@ mod tests {
     use sys_common;
     macro_rules! t { ($a:expr, $b:expr) => ({
         let mut m = Vec::new();
-        sys_common::backtrace::demangle(&mut m, $a).unwrap();
+        sys_common::backtrace::demangle(&mut m,
+                                        $a,
+                                        super::PrintFormat::Full).unwrap();
         assert_eq!(String::from_utf8(m).unwrap(), $b);
     }) }
 

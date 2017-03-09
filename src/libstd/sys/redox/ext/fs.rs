@@ -161,6 +161,10 @@ impl OpenOptionsExt for OpenOptions {
 #[stable(feature = "metadata_ext", since = "1.1.0")]
 pub trait MetadataExt {
     #[stable(feature = "metadata_ext", since = "1.1.0")]
+    fn dev(&self) -> u64;
+    #[stable(feature = "metadata_ext", since = "1.1.0")]
+    fn ino(&self) -> u64;
+    #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn mode(&self) -> u32;
     #[stable(feature = "metadata_ext", since = "1.1.0")]
     fn uid(&self) -> u32;
@@ -184,6 +188,12 @@ pub trait MetadataExt {
 
 #[stable(feature = "metadata_ext", since = "1.1.0")]
 impl MetadataExt for fs::Metadata {
+    fn dev(&self) -> u64 {
+        self.as_inner().as_inner().st_dev as u64
+    }
+    fn ino(&self) -> u64 {
+        self.as_inner().as_inner().st_ino as u64
+    }
     fn mode(&self) -> u32 {
         self.as_inner().as_inner().st_mode as u32
     }

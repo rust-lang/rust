@@ -28,7 +28,6 @@ use type_of;
 
 use syntax_pos::{DUMMY_SP, NO_EXPANSION, COMMAND_LINE_EXPN, BytePos, Span};
 use syntax::symbol::keywords;
-use syntax::abi::Abi;
 
 use std::iter;
 
@@ -38,7 +37,7 @@ use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 pub use self::constant::trans_static_initializer;
 
 use self::analyze::CleanupKind;
-use self::lvalue::LvalueRef;
+use self::lvalue::{Alignment, LvalueRef};
 use rustc::mir::traversal;
 
 use self::operand::{OperandRef, OperandValue};
@@ -134,8 +133,12 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         } else {
             let cm = self.ccx.sess().codemap();
             // Walk up the macro expansion chain until we reach a non-expanded span.
+            // We also stop at the function body level because no line stepping can occurr
+            // at the level above that.
             let mut span = source_info.span;
-            while span.expn_id != NO_EXPANSION && span.expn_id != COMMAND_LINE_EXPN {
+            while span.expn_id != NO_EXPANSION &&
+                  span.expn_id != COMMAND_LINE_EXPN &&
+                  span.expn_id != self.mir.span.expn_id {
                 if let Some(callsite_span) = cm.with_expn_info(span.expn_id,
                                                     |ei| ei.map(|ei| ei.call_site.clone())) {
                     span = callsite_span;
@@ -144,7 +147,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 }
             }
             let scope = self.scope_metadata_for_loc(source_info.scope, span.lo);
-            // Use span of the outermost call site, while keeping the original lexical scope
+            // Use span of the outermost expansion site, while keeping the original lexical scope.
             (scope, span)
         }
     }
@@ -201,15 +204,14 @@ impl<'tcx> LocalRef<'tcx> {
 pub fn trans_mir<'a, 'tcx: 'a>(
     ccx: &'a CrateContext<'a, 'tcx>,
     llfn: ValueRef,
-    fn_ty: FnType,
     mir: &'a Mir<'tcx>,
     instance: Instance<'tcx>,
-    sig: &ty::FnSig<'tcx>,
-    abi: Abi,
+    sig: ty::FnSig<'tcx>,
 ) {
+    let fn_ty = FnType::new(ccx, sig, &[]);
     debug!("fn_ty: {:?}", fn_ty);
     let debug_context =
-        debuginfo::create_function_debug_context(ccx, instance, sig, abi, llfn, mir);
+        debuginfo::create_function_debug_context(ccx, instance, sig, llfn, mir);
     let bcx = Builder::new_block(ccx, llfn, "entry-block");
 
     let cleanup_kinds = analyze::cleanup_kinds(&mir);
@@ -269,8 +271,7 @@ pub fn trans_mir<'a, 'tcx: 'a>(
 
                 debug!("alloc: {:?} ({}) -> lvalue", local, name);
                 assert!(!ty.has_erasable_regions());
-                let lltemp = bcx.alloca_ty(ty, &name.as_str());
-                let lvalue = LvalueRef::new_sized(lltemp, LvalueTy::from_ty(ty));
+                let lvalue = LvalueRef::alloca(&bcx, ty, &name.as_str());
                 if dbg {
                     let (scope, span) = mircx.debug_loc(source_info);
                     declare_local(&bcx, &mircx.debug_context, name, ty, scope,
@@ -283,12 +284,12 @@ pub fn trans_mir<'a, 'tcx: 'a>(
                 if local == mir::RETURN_POINTER && mircx.fn_ty.ret.is_indirect() {
                     debug!("alloc: {:?} (return pointer) -> lvalue", local);
                     let llretptr = llvm::get_param(llfn, 0);
-                    LocalRef::Lvalue(LvalueRef::new_sized(llretptr, LvalueTy::from_ty(ty)))
+                    LocalRef::Lvalue(LvalueRef::new_sized(llretptr, LvalueTy::from_ty(ty),
+                                                          Alignment::AbiAligned))
                 } else if lvalue_locals.contains(local.index()) {
                     debug!("alloc: {:?} -> lvalue", local);
                     assert!(!ty.has_erasable_regions());
-                    let lltemp = bcx.alloca_ty(ty, &format!("{:?}", local));
-                    LocalRef::Lvalue(LvalueRef::new_sized(lltemp, LvalueTy::from_ty(ty)))
+                    LocalRef::Lvalue(LvalueRef::alloca(&bcx, ty,  &format!("{:?}", local)))
                 } else {
                     // If this is an immediate local, we do not create an
                     // alloca in advance. Instead we wait until we see the
@@ -319,7 +320,9 @@ pub fn trans_mir<'a, 'tcx: 'a>(
     mircx.cleanup_kinds.iter_enumerated().map(|(bb, cleanup_kind)| {
         if let CleanupKind::Funclet = *cleanup_kind {
             let bcx = mircx.get_builder(bb);
-            bcx.set_personality_fn(mircx.ccx.eh_personality());
+            unsafe {
+                llvm::LLVMSetPersonalityFn(mircx.llfn, mircx.ccx.eh_personality());
+            }
             if base::wants_msvc_seh(ccx.sess()) {
                 return Some(Funclet::new(bcx.cleanup_pad(None, &[])));
             }
@@ -382,13 +385,13 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
             // individual LLVM function arguments.
 
             let tupled_arg_tys = match arg_ty.sty {
-                ty::TyTuple(ref tys) => tys,
+                ty::TyTuple(ref tys, _) => tys,
                 _ => bug!("spread argument isn't a tuple?!")
             };
 
-            let lltemp = bcx.alloca_ty(arg_ty, &format!("arg{}", arg_index));
+            let lvalue = LvalueRef::alloca(bcx, arg_ty, &format!("arg{}", arg_index));
             for (i, &tupled_arg_ty) in tupled_arg_tys.iter().enumerate() {
-                let dst = bcx.struct_gep(lltemp, i);
+                let dst = bcx.struct_gep(lvalue.llval, i);
                 let arg = &mircx.fn_ty.args[idx];
                 idx += 1;
                 if common::type_is_fat_ptr(bcx.ccx, tupled_arg_ty) {
@@ -407,7 +410,7 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
             // we can create one debuginfo entry for the argument.
             arg_scope.map(|scope| {
                 let variable_access = VariableAccess::DirectVariable {
-                    alloca: lltemp
+                    alloca: lvalue.llval
                 };
                 declare_local(
                     bcx,
@@ -420,7 +423,7 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                 );
             });
 
-            return LocalRef::Lvalue(LvalueRef::new_sized(lltemp, LvalueTy::from_ty(arg_ty)));
+            return LocalRef::Lvalue(lvalue);
         }
 
         let arg = &mircx.fn_ty.args[idx];
@@ -467,21 +470,21 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
             };
             return LocalRef::Operand(Some(operand.unpack_if_pair(bcx)));
         } else {
-            let lltemp = bcx.alloca_ty(arg_ty, &format!("arg{}", arg_index));
+            let lltemp = LvalueRef::alloca(bcx, arg_ty, &format!("arg{}", arg_index));
             if common::type_is_fat_ptr(bcx.ccx, arg_ty) {
                 // we pass fat pointers as two words, but we want to
                 // represent them internally as a pointer to two words,
                 // so make an alloca to store them in.
                 let meta = &mircx.fn_ty.args[idx];
                 idx += 1;
-                arg.store_fn_arg(bcx, &mut llarg_idx, base::get_dataptr(bcx, lltemp));
-                meta.store_fn_arg(bcx, &mut llarg_idx, base::get_meta(bcx, lltemp));
+                arg.store_fn_arg(bcx, &mut llarg_idx, base::get_dataptr(bcx, lltemp.llval));
+                meta.store_fn_arg(bcx, &mut llarg_idx, base::get_meta(bcx, lltemp.llval));
             } else  {
                 // otherwise, arg is passed by value, so make a
                 // temporary and store it there
-                arg.store_fn_arg(bcx, &mut llarg_idx, lltemp);
+                arg.store_fn_arg(bcx, &mut llarg_idx, lltemp.llval);
             }
-            lltemp
+            lltemp.llval
         };
         arg_scope.map(|scope| {
             // Is this a regular argument?
@@ -571,7 +574,8 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                 );
             }
         });
-        LocalRef::Lvalue(LvalueRef::new_sized(llval, LvalueTy::from_ty(arg_ty)))
+        LocalRef::Lvalue(LvalueRef::new_sized(llval, LvalueTy::from_ty(arg_ty),
+                                              Alignment::AbiAligned))
     }).collect()
 }
 

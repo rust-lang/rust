@@ -256,7 +256,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use cmp;
-use std_unicode::str as core_str;
+use core::str as core_str;
 use error as std_error;
 use fmt;
 use result;
@@ -1450,7 +1450,7 @@ pub struct Chain<T, U> {
     done_first: bool,
 }
 
-#[stable(feature = "std_debug", since = "1.15.0")]
+#[stable(feature = "std_debug", since = "1.16.0")]
 impl<T: fmt::Debug, U: fmt::Debug> fmt::Debug for Chain<T, U> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Chain")

@@ -17,7 +17,7 @@ use eval::{compare_const_vals};
 
 use rustc_const_math::ConstInt;
 
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
 
 use pattern::{FieldPattern, Pattern, PatternKind};
@@ -196,24 +196,46 @@ impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
             }
         }).clone()
     }
+
+    fn is_uninhabited(&self, ty: Ty<'tcx>) -> bool {
+        if self.tcx.sess.features.borrow().never_type {
+            ty.is_uninhabited_from(self.module, self.tcx)
+        } else {
+            false
+        }
+    }
+
+    fn is_variant_uninhabited(&self,
+                              variant: &'tcx ty::VariantDef,
+                              substs: &'tcx ty::subst::Substs<'tcx>) -> bool
+    {
+        if self.tcx.sess.features.borrow().never_type {
+            let forest = variant.uninhabited_from(
+                &mut FxHashMap::default(), self.tcx, substs, AdtKind::Enum
+            );
+            forest.contains(self.tcx, self.module)
+        } else {
+            false
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum Constructor {
+pub enum Constructor<'tcx> {
     /// The constructor of all patterns that don't vary by constructor,
     /// e.g. struct patterns and fixed-length arrays.
     Single,
     /// Enum variants.
     Variant(DefId),
     /// Literal values.
-    ConstantValue(ConstVal),
+    ConstantValue(ConstVal<'tcx>),
     /// Ranges of literal values (`2...5` and `2..5`).
-    ConstantRange(ConstVal, ConstVal, RangeEnd),
+    ConstantRange(ConstVal<'tcx>, ConstVal<'tcx>, RangeEnd),
     /// Array patterns of length n.
     Slice(usize),
 }
 
-impl<'tcx> Constructor {
+impl<'tcx> Constructor<'tcx> {
     fn variant_index_for_adt(&self, adt: &'tcx ty::AdtDef) -> usize {
         match self {
             &Variant(vid) => adt.variant_index_with_id(vid),
@@ -267,7 +289,7 @@ impl<'tcx> Witness<'tcx> {
     fn push_wild_constructor<'a>(
         mut self,
         cx: &MatchCheckCtxt<'a, 'tcx>,
-        ctor: &Constructor,
+        ctor: &Constructor<'tcx>,
         ty: Ty<'tcx>)
         -> Self
     {
@@ -299,7 +321,7 @@ impl<'tcx> Witness<'tcx> {
     fn apply_constructor<'a>(
         mut self,
         cx: &MatchCheckCtxt<'a,'tcx>,
-        ctor: &Constructor,
+        ctor: &Constructor<'tcx>,
         ty: Ty<'tcx>)
         -> Self
     {
@@ -377,50 +399,35 @@ impl<'tcx> Witness<'tcx> {
 /// We make sure to omit constructors that are statically impossible. eg for
 /// Option<!> we do not include Some(_) in the returned list of constructors.
 fn all_constructors<'a, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
-                                  pcx: PatternContext<'tcx>) -> Vec<Constructor>
+                                  pcx: PatternContext<'tcx>)
+                                  -> Vec<Constructor<'tcx>>
 {
-    let check_inhabited = cx.tcx.sess.features.borrow().never_type;
     debug!("all_constructors({:?})", pcx.ty);
     match pcx.ty.sty {
         ty::TyBool =>
             [true, false].iter().map(|b| ConstantValue(ConstVal::Bool(*b))).collect(),
         ty::TySlice(ref sub_ty) => {
-            if sub_ty.is_uninhabited_from(cx.module, cx.tcx)
-                && check_inhabited
-            {
+            if cx.is_uninhabited(sub_ty) {
                 vec![Slice(0)]
             } else {
                 (0..pcx.max_slice_length+1).map(|length| Slice(length)).collect()
             }
         }
         ty::TyArray(ref sub_ty, length) => {
-            if length == 0 || !(sub_ty.is_uninhabited_from(cx.module, cx.tcx)
-                                && check_inhabited)
-            {
-                vec![Slice(length)]
-            } else {
+            if length > 0 && cx.is_uninhabited(sub_ty) {
                 vec![]
+            } else {
+                vec![Slice(length)]
             }
         }
         ty::TyAdt(def, substs) if def.is_enum() && def.variants.len() != 1 => {
-            def.variants.iter().filter_map(|v| {
-                let mut visited = FxHashSet::default();
-                let forest = v.uninhabited_from(&mut visited,
-                                                cx.tcx, substs,
-                                                AdtKind::Enum);
-                if forest.contains(cx.tcx, cx.module)
-                    && check_inhabited
-                {
-                    None
-                } else {
-                    Some(Variant(v.did))
-                }
-            }).collect()
+            def.variants.iter()
+                .filter(|v| !cx.is_variant_uninhabited(v, substs))
+                .map(|v| Variant(v.did))
+                .collect()
         }
         _ => {
-            if pcx.ty.is_uninhabited_from(cx.module, cx.tcx)
-                    && check_inhabited
-            {
+            if cx.is_uninhabited(pcx.ty) {
                 vec![]
             } else {
                 vec![Single]
@@ -564,7 +571,6 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
 
     assert!(rows.iter().all(|r| r.len() == v.len()));
 
-
     let pcx = PatternContext {
         ty: rows.iter().map(|r| r[0].ty).find(|ty| !ty.references_error())
             .unwrap_or(v[0].ty),
@@ -590,7 +596,6 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
         let missing_ctors: Vec<Constructor> = all_ctors.iter().filter(|c| {
             !used_ctors.contains(*c)
         }).cloned().collect();
-        debug!("missing_ctors = {:?}", missing_ctors);
 
         // `missing_ctors` is the set of constructors from the same type as the
         // first column of `matrix` that are matched only by wildcard patterns
@@ -599,8 +604,23 @@ pub fn is_useful<'p, 'a: 'p, 'tcx: 'a>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
         // Therefore, if there is some pattern that is unmatched by `matrix`,
         // it will still be unmatched if the first constructor is replaced by
         // any of the constructors in `missing_ctors`
+        //
+        // However, if our scrutinee is *privately* an empty enum, we
+        // must treat it as though it had an "unknown" constructor (in
+        // that case, all other patterns obviously can't be variants)
+        // to avoid exposing its emptyness. See the `match_privately_empty`
+        // test for details.
+        //
+        // FIXME: currently the only way I know of something can
+        // be a privately-empty enum is when the never_type
+        // feature flag is not present, so this is only
+        // needed for that case.
 
-        if missing_ctors.is_empty() {
+        let is_privately_empty =
+            all_ctors.is_empty() && !cx.is_uninhabited(pcx.ty);
+        debug!("missing_ctors={:?} is_privately_empty={:?}", missing_ctors,
+               is_privately_empty);
+        if missing_ctors.is_empty() && !is_privately_empty {
             all_ctors.into_iter().map(|c| {
                 is_useful_specialized(cx, matrix, v, c.clone(), pcx.ty, witness)
             }).find(|result| result.is_useful()).unwrap_or(NotUseful)
@@ -645,10 +665,11 @@ fn is_useful_specialized<'p, 'a:'p, 'tcx: 'a>(
     cx: &mut MatchCheckCtxt<'a, 'tcx>,
     &Matrix(ref m): &Matrix<'p, 'tcx>,
     v: &[&'p Pattern<'tcx>],
-    ctor: Constructor,
+    ctor: Constructor<'tcx>,
     lty: Ty<'tcx>,
     witness: WitnessPreference) -> Usefulness<'tcx>
 {
+    debug!("is_useful_specialized({:?}, {:?}, {:?})", v, ctor, lty);
     let sub_pat_tys = constructor_sub_pattern_tys(cx, &ctor, lty);
     let wild_patterns_owned: Vec<_> = sub_pat_tys.iter().map(|ty| {
         Pattern {
@@ -682,10 +703,10 @@ fn is_useful_specialized<'p, 'a:'p, 'tcx: 'a>(
 /// `[a, b, ..tail]` can match a slice of length 2, 3, 4 and so on.
 ///
 /// Returns None in case of a catch-all, which can't be specialized.
-fn pat_constructors(_cx: &mut MatchCheckCtxt,
-                    pat: &Pattern,
-                    pcx: PatternContext)
-                    -> Option<Vec<Constructor>>
+fn pat_constructors<'tcx>(_cx: &mut MatchCheckCtxt,
+                          pat: &Pattern<'tcx>,
+                          pcx: PatternContext)
+                          -> Option<Vec<Constructor<'tcx>>>
 {
     match *pat.kind {
         PatternKind::Binding { .. } | PatternKind::Wild =>
@@ -721,7 +742,7 @@ fn pat_constructors(_cx: &mut MatchCheckCtxt,
 fn constructor_arity(_cx: &MatchCheckCtxt, ctor: &Constructor, ty: Ty) -> usize {
     debug!("constructor_arity({:?}, {:?})", ctor, ty);
     match ty.sty {
-        ty::TyTuple(ref fs) => fs.len(),
+        ty::TyTuple(ref fs, _) => fs.len(),
         ty::TySlice(..) | ty::TyArray(..) => match *ctor {
             Slice(length) => length,
             ConstantValue(_) => 0,
@@ -745,7 +766,7 @@ fn constructor_sub_pattern_tys<'a, 'tcx: 'a>(cx: &MatchCheckCtxt<'a, 'tcx>,
 {
     debug!("constructor_sub_pattern_tys({:?}, {:?})", ctor, ty);
     match ty.sty {
-        ty::TyTuple(ref fs) => fs.into_iter().map(|t| *t).collect(),
+        ty::TyTuple(ref fs, _) => fs.into_iter().map(|t| *t).collect(),
         ty::TySlice(ty) | ty::TyArray(ty, _) => match *ctor {
             Slice(length) => repeat(ty).take(length).collect(),
             ConstantValue(_) => vec![],
@@ -754,7 +775,19 @@ fn constructor_sub_pattern_tys<'a, 'tcx: 'a>(cx: &MatchCheckCtxt<'a, 'tcx>,
         ty::TyRef(_, ref ty_and_mut) => vec![ty_and_mut.ty],
         ty::TyAdt(adt, substs) => {
             adt.variants[ctor.variant_index_for_adt(adt)].fields.iter().map(|field| {
-                field.ty(cx.tcx, substs)
+                let is_visible = adt.is_enum()
+                    || field.vis.is_accessible_from(cx.module, cx.tcx);
+                if is_visible {
+                    field.ty(cx.tcx, substs)
+                } else {
+                    // Treat all non-visible fields as nil. They
+                    // can't appear in any other pattern from
+                    // this match (because they are private),
+                    // so their type does not matter - but
+                    // we don't want to know they are
+                    // uninhabited.
+                    cx.tcx.mk_nil()
+                }
             }).collect()
         }
         _ => vec![],

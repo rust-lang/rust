@@ -98,7 +98,7 @@ impl BufRead for Empty {
     fn consume(&mut self, _n: usize) {}
 }
 
-#[stable(feature = "std_debug", since = "1.15.0")]
+#[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for Empty {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("Empty { .. }")
@@ -141,7 +141,7 @@ impl Read for Repeat {
     }
 }
 
-#[stable(feature = "std_debug", since = "1.15.0")]
+#[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for Repeat {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("Repeat { .. }")
@@ -180,7 +180,7 @@ impl Write for Sink {
     fn flush(&mut self) -> io::Result<()> { Ok(()) }
 }
 
-#[stable(feature = "std_debug", since = "1.15.0")]
+#[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for Sink {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("Sink { .. }")

@@ -25,22 +25,21 @@ use syntax_pos::{Span, DUMMY_SP};
 
 use rustc_data_structures::indexed_vec::Idx;
 
+fn mirbug(tcx: TyCtxt, span: Span, msg: &str) {
+    tcx.sess.diagnostic().span_bug(span, msg);
+}
+
 macro_rules! span_mirbug {
     ($context:expr, $elem:expr, $($message:tt)*) => ({
-        $context.tcx().sess.span_warn(
-            $context.last_span,
-            &format!("broken MIR ({:?}): {}", $elem, format!($($message)*))
-        )
+        mirbug($context.tcx(), $context.last_span,
+               &format!("broken MIR ({:?}): {}", $elem, format!($($message)*)))
     })
 }
 
 macro_rules! span_mirbug_and_err {
     ($context:expr, $elem:expr, $($message:tt)*) => ({
         {
-            $context.tcx().sess.span_warn(
-                $context.last_span,
-                &format!("broken MIR ({:?}): {:?}", $elem, format!($($message)*))
-            );
+            span_mirbug!($context, $elem, $($message)*);
             $context.error()
         }
     })
@@ -83,9 +82,8 @@ impl<'a, 'b, 'gcx, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'gcx, 'tcx> {
 
     fn visit_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
         self.super_rvalue(rvalue, location);
-        if let Some(ty) = rvalue.ty(self.mir, self.tcx()) {
-            self.sanitize_type(rvalue, ty);
-        }
+        let rval_ty = rvalue.ty(self.mir, self.tcx());
+        self.sanitize_type(rvalue, rval_ty);
     }
 
     fn visit_mir(&mut self, mir: &Mir<'tcx>) {
@@ -126,8 +124,18 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
         debug!("sanitize_lvalue: {:?}", lvalue);
         match *lvalue {
             Lvalue::Local(index) => LvalueTy::Ty { ty: self.mir.local_decls[index].ty },
-            Lvalue::Static(def_id) =>
-                LvalueTy::Ty { ty: self.tcx().item_type(def_id) },
+            Lvalue::Static(box Static { def_id, ty: sty }) => {
+                let sty = self.sanitize_type(lvalue, sty);
+                let ty = self.tcx().item_type(def_id);
+                let ty = self.cx.normalize(&ty);
+                if let Err(terr) = self.cx.eq_types(self.last_span, ty, sty) {
+                    span_mirbug!(
+                        self, lvalue, "bad static type ({:?}: {:?}): {:?}",
+                        ty, sty, terr);
+                }
+                LvalueTy::Ty { ty: sty }
+
+            },
             Lvalue::Projection(ref proj) => {
                 let base_ty = self.sanitize_lvalue(&proj.base, location);
                 if let LvalueTy::Ty { ty } = base_ty {
@@ -282,7 +290,7 @@ impl<'a, 'b, 'gcx, 'tcx> TypeVerifier<'a, 'b, 'gcx, 'tcx> {
                         })
                     }
                 }
-                ty::TyTuple(tys) => {
+                ty::TyTuple(tys, _) => {
                     return match tys.get(field.index()) {
                         Some(&ty) => Ok(ty),
                         None => Err(FieldAccessError::OutOfRange {
@@ -356,13 +364,9 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             StatementKind::Assign(ref lv, ref rv) => {
                 let lv_ty = lv.ty(mir, tcx).to_ty(tcx);
                 let rv_ty = rv.ty(mir, tcx);
-                if let Some(rv_ty) = rv_ty {
-                    if let Err(terr) = self.sub_types(rv_ty, lv_ty) {
-                        span_mirbug!(self, stmt, "bad assignment ({:?} = {:?}): {:?}",
-                                     lv_ty, rv_ty, terr);
-                    }
-                // FIXME: rvalue with undeterminable type - e.g. inline
-                // asm.
+                if let Err(terr) = self.sub_types(rv_ty, lv_ty) {
+                    span_mirbug!(self, stmt, "bad assignment ({:?} = {:?}): {:?}",
+                                 lv_ty, rv_ty, terr);
                 }
             }
             StatementKind::SetDiscriminant{ ref lvalue, variant_index } => {
@@ -392,6 +396,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     }
                 }
             }
+            StatementKind::InlineAsm { .. } |
             StatementKind::Nop => {}
         }
     }
@@ -423,18 +428,8 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                                  lv_ty, rv_ty, terr);
                 }
             }
-
-            TerminatorKind::If { ref cond, .. } => {
-                let cond_ty = cond.ty(mir, tcx);
-                match cond_ty.sty {
-                    ty::TyBool => {}
-                    _ => {
-                        span_mirbug!(self, term, "bad If ({:?}, not bool", cond_ty);
-                    }
-                }
-            }
             TerminatorKind::SwitchInt { ref discr, switch_ty, .. } => {
-                let discr_ty = discr.ty(mir, tcx).to_ty(tcx);
+                let discr_ty = discr.ty(mir, tcx);
                 if let Err(terr) = self.sub_types(discr_ty, switch_ty) {
                     span_mirbug!(self, term, "bad SwitchInt ({:?} on {:?}): {:?}",
                                  switch_ty, discr_ty, terr);
@@ -446,30 +441,17 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 }
                 // FIXME: check the values
             }
-            TerminatorKind::Switch { ref discr, adt_def, ref targets } => {
-                let discr_ty = discr.ty(mir, tcx).to_ty(tcx);
-                match discr_ty.sty {
-                    ty::TyAdt(def, _) if def.is_enum() &&
-                                         def == adt_def &&
-                                         adt_def.variants.len() == targets.len()
-                      => {},
-                    _ => {
-                        span_mirbug!(self, term, "bad Switch ({:?} on {:?})",
-                                     adt_def, discr_ty);
-                    }
-                }
-            }
             TerminatorKind::Call { ref func, ref args, ref destination, .. } => {
                 let func_ty = func.ty(mir, tcx);
                 debug!("check_terminator: call, func_ty={:?}", func_ty);
-                let func_ty = match func_ty.sty {
-                    ty::TyFnDef(.., func_ty) | ty::TyFnPtr(func_ty) => func_ty,
+                let sig = match func_ty.sty {
+                    ty::TyFnDef(.., sig) | ty::TyFnPtr(sig) => sig,
                     _ => {
                         span_mirbug!(self, term, "call to non-function {:?}", func_ty);
                         return;
                     }
                 };
-                let sig = tcx.erase_late_bound_regions(&func_ty.sig);
+                let sig = tcx.erase_late_bound_regions(&sig);
                 let sig = self.normalize(&sig);
                 self.check_call_dest(mir, term, &sig, destination);
 
@@ -603,11 +585,6 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         match block.terminator().kind {
             TerminatorKind::Goto { target } =>
                 self.assert_iscleanup(mir, block, target, is_cleanup),
-            TerminatorKind::If { targets: (on_true, on_false), .. } => {
-                self.assert_iscleanup(mir, block, on_true, is_cleanup);
-                self.assert_iscleanup(mir, block, on_false, is_cleanup);
-            }
-            TerminatorKind::Switch { ref targets, .. } |
             TerminatorKind::SwitchInt { ref targets, .. } => {
                 for target in targets {
                     self.assert_iscleanup(mir, block, *target, is_cleanup);
@@ -726,7 +703,7 @@ impl<'tcx> MirPass<'tcx> for TypeckMir {
             return;
         }
         let param_env = ty::ParameterEnvironment::for_item(tcx, src.item_id());
-        tcx.infer_ctxt(param_env, Reveal::NotSpecializable).enter(|infcx| {
+        tcx.infer_ctxt(param_env, Reveal::UserFacing).enter(|infcx| {
             let mut checker = TypeChecker::new(&infcx, src.item_id());
             {
                 let mut verifier = TypeVerifier::new(&mut checker, mir);

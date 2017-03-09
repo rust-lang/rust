@@ -143,7 +143,7 @@ pub fn relate_substs<'a, 'gcx, 'tcx, R>(relation: &mut R,
 {
     let tcx = relation.tcx();
 
-    let params = a_subst.params().iter().zip(b_subst.params()).enumerate().map(|(i, (a, b))| {
+    let params = a_subst.iter().zip(b_subst).enumerate().map(|(i, (a, b))| {
         let variance = variances.map_or(ty::Invariant, |v| v[i]);
         if let (Some(a_ty), Some(b_ty)) = (a.as_type(), b.as_type()) {
             Ok(Kind::from(relation.relate_with_variance(variance, &a_ty, &b_ty)?))
@@ -157,24 +157,6 @@ pub fn relate_substs<'a, 'gcx, 'tcx, R>(relation: &mut R,
     Ok(tcx.mk_substs(params)?)
 }
 
-impl<'tcx> Relate<'tcx> for &'tcx ty::BareFnTy<'tcx> {
-    fn relate<'a, 'gcx, R>(relation: &mut R,
-                           a: &&'tcx ty::BareFnTy<'tcx>,
-                           b: &&'tcx ty::BareFnTy<'tcx>)
-                           -> RelateResult<'tcx, &'tcx ty::BareFnTy<'tcx>>
-        where R: TypeRelation<'a, 'gcx, 'tcx>, 'gcx: 'a+'tcx, 'tcx: 'a
-    {
-        let unsafety = relation.relate(&a.unsafety, &b.unsafety)?;
-        let abi = relation.relate(&a.abi, &b.abi)?;
-        let sig = relation.relate(&a.sig, &b.sig)?;
-        Ok(relation.tcx().mk_bare_fn(ty::BareFnTy {
-            unsafety: unsafety,
-            abi: abi,
-            sig: sig
-        }))
-    }
-}
-
 impl<'tcx> Relate<'tcx> for ty::FnSig<'tcx> {
     fn relate<'a, 'gcx, R>(relation: &mut R,
                            a: &ty::FnSig<'tcx>,
@@ -186,6 +168,8 @@ impl<'tcx> Relate<'tcx> for ty::FnSig<'tcx> {
             return Err(TypeError::VariadicMismatch(
                 expected_found(relation, &a.variadic, &b.variadic)));
         }
+        let unsafety = relation.relate(&a.unsafety, &b.unsafety)?;
+        let abi = relation.relate(&a.abi, &b.abi)?;
 
         if a.inputs().len() != b.inputs().len() {
             return Err(TypeError::ArgCount);
@@ -204,7 +188,9 @@ impl<'tcx> Relate<'tcx> for ty::FnSig<'tcx> {
             }).collect::<Result<AccumulateVec<[_; 8]>, _>>()?;
         Ok(ty::FnSig {
             inputs_and_output: relation.tcx().intern_type_list(&inputs_and_output),
-            variadic: a.variadic
+            variadic: a.variadic,
+            unsafety: unsafety,
+            abi: abi
         })
     }
 }
@@ -447,10 +433,11 @@ pub fn super_relate_tys<'a, 'gcx, 'tcx, R>(relation: &mut R,
             Ok(tcx.mk_slice(t))
         }
 
-        (&ty::TyTuple(as_), &ty::TyTuple(bs)) =>
+        (&ty::TyTuple(as_, a_defaulted), &ty::TyTuple(bs, b_defaulted)) =>
         {
             if as_.len() == bs.len() {
-                Ok(tcx.mk_tup(as_.iter().zip(bs).map(|(a, b)| relation.relate(a, b)))?)
+                let defaulted = a_defaulted || b_defaulted;
+                Ok(tcx.mk_tup(as_.iter().zip(bs).map(|(a, b)| relation.relate(a, b)), defaulted)?)
             } else if !(as_.is_empty() || bs.is_empty()) {
                 Err(TypeError::TupleSize(
                     expected_found(relation, &as_.len(), &bs.len())))

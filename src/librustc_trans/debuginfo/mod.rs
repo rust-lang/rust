@@ -27,9 +27,9 @@ use rustc::hir::def_id::DefId;
 use rustc::ty::subst::Substs;
 
 use abi::Abi;
-use common::CrateContext;
+use common::{self, CrateContext};
 use builder::Builder;
-use monomorphize::{self, Instance};
+use monomorphize::Instance;
 use rustc::ty::{self, Ty};
 use rustc::mir;
 use session::config::{self, FullDebugInfo, LimitedDebugInfo, NoDebugInfo};
@@ -198,8 +198,7 @@ pub fn finalize(cx: &CrateContext) {
 /// for the function.
 pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                                instance: Instance<'tcx>,
-                                               sig: &ty::FnSig<'tcx>,
-                                               abi: Abi,
+                                               sig: ty::FnSig<'tcx>,
                                                llfn: ValueRef,
                                                mir: &mir::Mir) -> FunctionDebugContext {
     if cx.sess().opts.debuginfo == NoDebugInfo {
@@ -225,7 +224,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     let file_metadata = file_metadata(cx, &loc.file.name, &loc.file.abs_path);
 
     let function_type_metadata = unsafe {
-        let fn_signature = get_function_signature(cx, sig, abi);
+        let fn_signature = get_function_signature(cx, sig);
         llvm::LLVMRustDIBuilderCreateSubroutineType(DIB(cx), file_metadata, fn_signature)
     };
 
@@ -257,6 +256,16 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     let function_name = CString::new(name).unwrap();
     let linkage_name = CString::new(linkage_name).unwrap();
 
+    let mut flags = DIFlags::FlagPrototyped;
+    match *cx.sess().entry_fn.borrow() {
+        Some((id, _)) => {
+            if local_id == Some(id) {
+                flags = flags | DIFlags::FlagMainSubprogram;
+            }
+        }
+        None => {}
+    };
+
     let fn_metadata = unsafe {
         llvm::LLVMRustDIBuilderCreateFunction(
             DIB(cx),
@@ -269,7 +278,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             is_local_to_unit,
             true,
             scope_line as c_uint,
-            DIFlags::FlagPrototyped,
+            flags,
             cx.sess().opts.optimize != config::OptLevel::No,
             llfn,
             template_parameters,
@@ -285,8 +294,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     return FunctionDebugContext::RegularContext(fn_debug_context);
 
     fn get_function_signature<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
-                                        sig: &ty::FnSig<'tcx>,
-                                        abi: Abi) -> DIArray {
+                                        sig: ty::FnSig<'tcx>) -> DIArray {
         if cx.sess().opts.debuginfo == LimitedDebugInfo {
             return create_DIArray(DIB(cx), &[]);
         }
@@ -295,11 +303,11 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
         // Return type -- llvm::DIBuilder wants this at index 0
         signature.push(match sig.output().sty {
-            ty::TyTuple(ref tys) if tys.is_empty() => ptr::null_mut(),
+            ty::TyTuple(ref tys, _) if tys.is_empty() => ptr::null_mut(),
             _ => type_metadata(cx, sig.output(), syntax_pos::DUMMY_SP)
         });
 
-        let inputs = if abi == Abi::RustCall {
+        let inputs = if sig.abi == Abi::RustCall {
             &sig.inputs()[..sig.inputs().len() - 1]
         } else {
             sig.inputs()
@@ -310,8 +318,8 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             signature.push(type_metadata(cx, argument_type, syntax_pos::DUMMY_SP));
         }
 
-        if abi == Abi::RustCall && !sig.inputs().is_empty() {
-            if let ty::TyTuple(args) = sig.inputs()[sig.inputs().len() - 1].sty {
+        if sig.abi == Abi::RustCall && !sig.inputs().is_empty() {
+            if let ty::TyTuple(args, _) = sig.inputs()[sig.inputs().len() - 1].sty {
                 for &argument_type in args {
                     signature.push(type_metadata(cx, argument_type, syntax_pos::DUMMY_SP));
                 }
@@ -322,7 +330,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     }
 
     fn get_template_parameters<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
-                                         generics: &ty::Generics<'tcx>,
+                                         generics: &ty::Generics,
                                          substs: &Substs<'tcx>,
                                          file_metadata: DIFile,
                                          name_to_append_suffix_to: &mut String)
@@ -372,9 +380,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         return create_DIArray(DIB(cx), &template_params[..]);
     }
 
-    fn get_type_parameter_names<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
-                                          generics: &ty::Generics<'tcx>)
-                                          -> Vec<ast::Name> {
+    fn get_type_parameter_names(cx: &CrateContext, generics: &ty::Generics) -> Vec<ast::Name> {
         let mut names = generics.parent.map_or(vec![], |def_id| {
             get_type_parameter_names(cx, cx.tcx().item_generics(def_id))
         });
@@ -391,11 +397,8 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         let self_type = cx.tcx().impl_of_method(instance.def).and_then(|impl_def_id| {
             // If the method does *not* belong to a trait, proceed
             if cx.tcx().trait_id_of_impl(impl_def_id).is_none() {
-                let impl_self_ty = cx.tcx().item_type(impl_def_id);
-                let impl_self_ty = cx.tcx().erase_regions(&impl_self_ty);
-                let impl_self_ty = monomorphize::apply_param_substs(cx.shared(),
-                                                                    instance.substs,
-                                                                    &impl_self_ty);
+                let impl_self_ty =
+                    common::def_ty(cx.shared(), impl_def_id, instance.substs);
 
                 // Only "class" methods are generally understood by LLVM,
                 // so avoid methods on other types (e.g. `<*mut T>::null`).
@@ -464,7 +467,7 @@ pub fn declare_local<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                     cx.sess().opts.optimize != config::OptLevel::No,
                     DIFlags::FlagZero,
                     argument_index,
-                    align as u64,
+                    align,
                 )
             };
             source_loc::set_debug_location(bcx,

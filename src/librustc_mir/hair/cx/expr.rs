@@ -17,7 +17,7 @@ use hair::cx::to_ref::ToRef;
 use rustc::hir::map;
 use rustc::hir::def::{Def, CtorKind};
 use rustc::middle::const_val::ConstVal;
-use rustc_const_eval::{ConstContext, EvalHint, fatal_const_eval_err};
+use rustc_const_eval::{ConstContext, fatal_const_eval_err};
 use rustc::ty::{self, AdtKind, VariantDef, Ty};
 use rustc::ty::cast::CastKind as TyCastKind;
 use rustc::hir;
@@ -58,6 +58,15 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Expr {
                     ty: adjusted_ty,
                     span: self.span,
                     kind: ExprKind::UnsafeFnPointer { source: expr.to_ref() },
+                };
+            }
+            Some((ty::adjustment::Adjust::ClosureFnPointer, adjusted_ty)) => {
+                expr = Expr {
+                    temp_lifetime: temp_lifetime,
+                    temp_lifetime_was_shrunk: was_shrunk,
+                    ty: adjusted_ty,
+                    span: self.span,
+                    kind: ExprKind::ClosureFnPointer { source: expr.to_ref() },
                 };
             }
             Some((ty::adjustment::Adjust::NeverToAny, adjusted_ty)) => {
@@ -258,13 +267,10 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
 
                 let method = method_callee(cx, expr, ty::MethodCall::expr(expr.id));
 
-                let sig = match method.ty.sty {
-                    ty::TyFnDef(.., fn_ty) => &fn_ty.sig,
-                    _ => span_bug!(expr.span, "type of method is not an fn"),
-                };
+                let sig = method.ty.fn_sig();
 
                 let sig = cx.tcx
-                    .no_late_bound_regions(sig)
+                    .no_late_bound_regions(&sig)
                     .unwrap_or_else(|| span_bug!(expr.span, "method call has late-bound regions"));
 
                 assert_eq!(sig.inputs().len(), 2);
@@ -588,7 +594,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         hir::ExprRepeat(ref v, count) => {
             let tcx = cx.tcx.global_tcx();
             let c = &cx.tcx.hir.body(count).value;
-            let count = match ConstContext::new(tcx, count).eval(c, EvalHint::ExprTypeChecked) {
+            let count = match ConstContext::new(tcx, count).eval(c) {
                 Ok(ConstVal::Integral(ConstInt::Usize(u))) => u,
                 Ok(other) => bug!("constant evaluation of repeat count yielded {:?}", other),
                 Err(s) => fatal_const_eval_err(tcx, &s, c.span, "expression")
@@ -596,23 +602,26 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
 
             ExprKind::Repeat {
                 value: v.to_ref(),
-                count: TypedConstVal {
-                    ty: cx.tcx.types.usize,
-                    span: c.span,
-                    value: count
-                }
+                count: count,
             }
         }
         hir::ExprRet(ref v) => ExprKind::Return { value: v.to_ref() },
         hir::ExprBreak(label, ref value) => {
-            ExprKind::Break {
-                label: label.map(|label| cx.tcx.region_maps.node_extent(label.loop_id)),
-                value: value.to_ref(),
+            match label.loop_id.into() {
+                Ok(loop_id) => ExprKind::Break {
+                    label: cx.tcx.region_maps.node_extent(loop_id),
+                    value: value.to_ref(),
+                },
+                Err(err) => bug!("invalid loop id for break: {}", err)
             }
+
         }
         hir::ExprAgain(label) => {
-            ExprKind::Continue {
-                label: label.map(|label| cx.tcx.region_maps.node_extent(label.loop_id)),
+            match label.loop_id.into() {
+                Ok(loop_id) => ExprKind::Continue {
+                    label: cx.tcx.region_maps.node_extent(loop_id),
+                },
+                Err(err) => bug!("invalid loop id for continue: {}", err)
             }
         }
         hir::ExprMatch(ref discr, ref arms, _) => {

@@ -89,7 +89,7 @@ h2 {
 h3 {
 	font-size: 1.3em;
 }
-h1, h2, h3:not(.impl):not(.method):not(.type):not(.tymethod), h4:not(.method):not(.type):not(.tymethod) {
+h1, h2, h3:not(.impl):not(.method):not(.type):not(.tymethod), h4:not(.method):not(.type):not(.tymethod):not(.associatedconstant) {
 	font-weight: 500;
 	margin: 20px 0 15px 0;
 	padding-bottom: 6px;
@@ -99,10 +99,10 @@ h1.fqn {
 	margin-top: 0;
 	position: relative;
 }
-h2, h3:not(.impl):not(.method):not(.type):not(.tymethod), h4:not(.method):not(.type):not(.tymethod) {
+h2, h3:not(.impl):not(.method):not(.type):not(.tymethod), h4:not(.method):not(.type):not(.tymethod):not(.associatedconstant) {
 	border-bottom: 1px solid;
 }
-h3.impl, h3.method, h4.method, h3.type, h4.type {
+h3.impl, h3.method, h4.method, h3.type, h4.type, h4.associatedconstant {
 	font-weight: 600;
 	margin-top: 10px;
 	margin-bottom: 10px;
@@ -382,7 +382,7 @@ h4 > code, h3 > code, .invisible > code {
 .content .impl-items .docblock, .content .impl-items .stability {
 	margin-left: 40px;
 }
-.content .impl-items .method, .content .impl-items > .type {
+.content .impl-items .method, .content .impl-items > .type, .impl-items > .associatedconstant {
 	margin-left: 20px;
 }
 

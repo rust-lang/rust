@@ -15,6 +15,8 @@ fn f(x: usize) -> usize {
 }
 
 fn main() {
-    let _ = [0; f(2)]; //~ ERROR constant evaluation error [E0080]
-                       //~| non-constant path in constant expression
+    let _ = [0; f(2)];
+    //~^ ERROR calls in constants are limited to constant functions
+    //~| ERROR constant evaluation error [E0080]
+    //~| non-constant path in constant expression
 }

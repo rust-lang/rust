@@ -177,6 +177,42 @@ impl DefaultResizePolicy {
 // element.
 //
 // FIXME(Gankro, pczarn): review the proof and put it all in a separate README.md
+//
+// Adaptive early resizing
+// ----------------------
+// To protect against degenerate performance scenarios (including DOS attacks),
+// the implementation includes an adaptive behavior that can resize the map
+// early (before its capacity is exceeded) when suspiciously long probe sequences
+// are encountered.
+//
+// With this algorithm in place it would be possible to turn a CPU attack into
+// a memory attack due to the aggressive resizing. To prevent that the
+// adaptive behavior only triggers when the map is at least half full.
+// This reduces the effectiveness of the algorithm but also makes it completely safe.
+//
+// The previous safety measure also prevents degenerate interactions with
+// really bad quality hash algorithms that can make normal inputs look like a
+// DOS attack.
+//
+const DISPLACEMENT_THRESHOLD: usize = 128;
+//
+// The threshold of 128 is chosen to minimize the chance of exceeding it.
+// In particular, we want that chance to be less than 10^-8 with a load of 90%.
+// For displacement, the smallest constant that fits our needs is 90,
+// so we round that up to 128.
+//
+// At a load factor of α, the odds of finding the target bucket after exactly n
+// unsuccesful probes[1] are
+//
+// Pr_α{displacement = n} =
+// (1 - α) / α * ∑_{k≥1} e^(-kα) * (kα)^(k+n) / (k + n)! * (1 - kα / (k + n + 1))
+//
+// We use this formula to find the probability of triggering the adaptive behavior
+//
+// Pr_0.909{displacement > 128} = 1.601 * 10^-11
+//
+// 1. Alfredo Viola (2005). Distributional analysis of Robin Hood linear probing
+//    hashing with buckets.
 
 /// A hash map implementation which uses linear probing with Robin Hood bucket
 /// stealing.
@@ -198,9 +234,9 @@ impl DefaultResizePolicy {
 /// attacks such as HashDoS.
 ///
 /// The hashing algorithm can be replaced on a per-`HashMap` basis using the
-/// `HashMap::default`, `HashMap::with_hasher`, and
-/// `HashMap::with_capacity_and_hasher` methods. Many alternative algorithms
-/// are available on crates.io, such as the `fnv` crate.
+/// [`HashMap::default`], [`HashMap::with_hasher`], and
+/// [`HashMap::with_capacity_and_hasher`] methods. Many alternative algorithms
+/// are available on crates.io, such as the [`fnv`] crate.
 ///
 /// It is required that the keys implement the [`Eq`] and [`Hash`] traits, although
 /// this can frequently be achieved by using `#[derive(PartialEq, Eq, Hash)]`.
@@ -302,6 +338,10 @@ impl DefaultResizePolicy {
 /// [`PartialEq`]: ../../std/cmp/trait.PartialEq.html
 /// [`RefCell`]: ../../std/cell/struct.RefCell.html
 /// [`Cell`]: ../../std/cell/struct.Cell.html
+/// [`HashMap::default`]: #method.default
+/// [`HashMap::with_hasher`]: #method.with_hasher
+/// [`HashMap::with_capacity_and_hasher`]: #method.with_capacity_and_hasher
+/// [`fnv`]: https://crates.io/crates/fnv
 ///
 /// ```
 /// use std::collections::HashMap;
@@ -356,6 +396,8 @@ pub struct HashMap<K, V, S = RandomState> {
     table: RawTable<K, V>,
 
     resize_policy: DefaultResizePolicy,
+
+    long_probes: bool,
 }
 
 /// Search for a pre-hashed key.
@@ -381,7 +423,7 @@ fn search_hashed<K, V, M, F>(table: M, hash: SafeHash, mut is_match: F) -> Inter
                 // Found a hole!
                 return InternalEntry::Vacant {
                     hash: hash,
-                    elem: NoElem(bucket),
+                    elem: NoElem(bucket, displacement),
                 };
             }
             Full(bucket) => bucket,
@@ -412,42 +454,46 @@ fn search_hashed<K, V, M, F>(table: M, hash: SafeHash, mut is_match: F) -> Inter
     }
 }
 
-fn pop_internal<K, V>(starting_bucket: FullBucketMut<K, V>) -> (K, V) {
+fn pop_internal<K, V>(starting_bucket: FullBucketMut<K, V>)
+    -> (K, V, &mut RawTable<K, V>)
+{
     let (empty, retkey, retval) = starting_bucket.take();
     let mut gap = match empty.gap_peek() {
-        Some(b) => b,
-        None => return (retkey, retval),
+        Ok(b) => b,
+        Err(b) => return (retkey, retval, b.into_table()),
     };
 
     while gap.full().displacement() != 0 {
         gap = match gap.shift() {
-            Some(b) => b,
-            None => break,
+            Ok(b) => b,
+            Err(b) => {
+                return (retkey, retval, b.into_table());
+            },
         };
     }
 
     // Now we've done all our shifting. Return the value we grabbed earlier.
-    (retkey, retval)
+    (retkey, retval, gap.into_bucket().into_table())
 }
 
 /// Perform robin hood bucket stealing at the given `bucket`. You must
 /// also pass that bucket's displacement so we don't have to recalculate it.
 ///
-/// `hash`, `k`, and `v` are the elements to "robin hood" into the hashtable.
+/// `hash`, `key`, and `val` are the elements to "robin hood" into the hashtable.
 fn robin_hood<'a, K: 'a, V: 'a>(bucket: FullBucketMut<'a, K, V>,
                                 mut displacement: usize,
                                 mut hash: SafeHash,
                                 mut key: K,
                                 mut val: V)
                                 -> &'a mut V {
-    let starting_index = bucket.index();
+    let start_index = bucket.index();
     let size = bucket.table().size();
     // Save the *starting point*.
     let mut bucket = bucket.stash();
     // There can be at most `size - dib` buckets to displace, because
     // in the worst case, there are `size` elements and we already are
     // `displacement` buckets away from the initial one.
-    let idx_end = starting_index + size - bucket.displacement();
+    let idx_end = start_index + size - bucket.displacement();
 
     loop {
         let (old_hash, old_key, old_val) = bucket.replace(hash, key, val);
@@ -609,6 +655,7 @@ impl<K, V, S> HashMap<K, V, S>
             hash_builder: hash_builder,
             resize_policy: DefaultResizePolicy::new(),
             table: RawTable::new(0),
+            long_probes: false,
         }
     }
 
@@ -641,6 +688,7 @@ impl<K, V, S> HashMap<K, V, S>
             hash_builder: hash_builder,
             resize_policy: resize_policy,
             table: RawTable::new(raw_cap),
+            long_probes: false,
         }
     }
 
@@ -680,7 +728,9 @@ impl<K, V, S> HashMap<K, V, S>
     ///
     /// # Panics
     ///
-    /// Panics if the new allocation size overflows `usize`.
+    /// Panics if the new allocation size overflows [`usize`].
+    ///
+    /// [`usize`]: ../../std/primitive.usize.html
     ///
     /// # Examples
     ///
@@ -696,6 +746,11 @@ impl<K, V, S> HashMap<K, V, S>
             let min_cap = self.len().checked_add(additional).expect("reserve overflow");
             let raw_cap = self.resize_policy.raw_capacity(min_cap);
             self.resize(raw_cap);
+        } else if self.long_probes && remaining <= self.len() {
+            // Probe sequence is too long and table is half full,
+            // resize early to reduce probing length.
+            let new_capacity = self.table.capacity() * 2;
+            self.resize(new_capacity);
         }
     }
 
@@ -708,45 +763,15 @@ impl<K, V, S> HashMap<K, V, S>
         assert!(self.table.size() <= new_raw_cap);
         assert!(new_raw_cap.is_power_of_two() || new_raw_cap == 0);
 
+        self.long_probes = false;
         let mut old_table = replace(&mut self.table, RawTable::new(new_raw_cap));
         let old_size = old_table.size();
 
-        if old_table.capacity() == 0 || old_table.size() == 0 {
+        if old_table.size() == 0 {
             return;
         }
 
-        // Grow the table.
-        // Specialization of the other branch.
-        let mut bucket = Bucket::first(&mut old_table);
-
-        // "So a few of the first shall be last: for many be called,
-        // but few chosen."
-        //
-        // We'll most likely encounter a few buckets at the beginning that
-        // have their initial buckets near the end of the table. They were
-        // placed at the beginning as the probe wrapped around the table
-        // during insertion. We must skip forward to a bucket that won't
-        // get reinserted too early and won't unfairly steal others spot.
-        // This eliminates the need for robin hood.
-        loop {
-            bucket = match bucket.peek() {
-                Full(full) => {
-                    if full.displacement() == 0 {
-                        // This bucket occupies its ideal spot.
-                        // It indicates the start of another "cluster".
-                        bucket = full.into_bucket();
-                        break;
-                    }
-                    // Leaving this bucket in the last cluster for later.
-                    full.into_bucket()
-                }
-                Empty(b) => {
-                    // Encountered a hole between clusters.
-                    b.into_bucket()
-                }
-            };
-            bucket.next();
-        }
+        let mut bucket = Bucket::head_bucket(&mut old_table);
 
         // This is how the buckets might be laid out in memory:
         // ($ marks an initialized bucket)
@@ -819,7 +844,8 @@ impl<K, V, S> HashMap<K, V, S>
     /// If the key already exists, the hashtable will be returned untouched
     /// and a reference to the existing element will be returned.
     fn insert_hashed_nocheck(&mut self, hash: SafeHash, k: K, v: V) -> Option<V> {
-        let entry = search_hashed(&mut self.table, hash, |key| *key == k).into_entry(k);
+        let entry = search_hashed(&mut self.table, hash, |key| *key == k)
+            .into_entry(k, &mut self.long_probes);
         match entry {
             Some(Occupied(mut elem)) => Some(elem.insert(v)),
             Some(Vacant(elem)) => {
@@ -974,7 +1000,9 @@ impl<K, V, S> HashMap<K, V, S>
     pub fn entry(&mut self, key: K) -> Entry<K, V> {
         // Gotta resize now.
         self.reserve(1);
-        self.search_mut(&key).into_entry(key).expect("unreachable")
+        let hash = self.make_hash(&key);
+        search_hashed(&mut self.table, hash, |q| q.eq(&key))
+            .into_entry(key, &mut self.long_probes).expect("unreachable")
     }
 
     /// Returns the number of elements in the map.
@@ -1141,13 +1169,14 @@ impl<K, V, S> HashMap<K, V, S>
 
     /// Inserts a key-value pair into the map.
     ///
-    /// If the map did not have this key present, `None` is returned.
+    /// If the map did not have this key present, [`None`] is returned.
     ///
     /// If the map did have this key present, the value is updated, and the old
     /// value is returned. The key is not updated, though; this matters for
     /// types that can be `==` without being identical. See the [module-level
     /// documentation] for more.
     ///
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
     /// [module-level documentation]: index.html#insert-and-complex-keys
     ///
     /// # Examples
@@ -1200,6 +1229,57 @@ impl<K, V, S> HashMap<K, V, S>
         }
 
         self.search_mut(k).into_occupied_bucket().map(|bucket| pop_internal(bucket).1)
+    }
+
+    /// Retains only the elements specified by the predicate.
+    ///
+    /// In other words, remove all pairs `(k, v)` such that `f(&k,&mut v)` returns `false`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(retain_hash_collection)]
+    /// use std::collections::HashMap;
+    ///
+    /// let mut map: HashMap<isize, isize> = (0..8).map(|x|(x, x*10)).collect();
+    /// map.retain(|&k, _| k % 2 == 0);
+    /// assert_eq!(map.len(), 4);
+    /// ```
+    #[unstable(feature = "retain_hash_collection", issue = "36648")]
+    pub fn retain<F>(&mut self, mut f: F)
+        where F: FnMut(&K, &mut V) -> bool
+    {
+        if self.table.capacity() == 0 || self.table.size() == 0 {
+            return;
+        }
+        let mut bucket = Bucket::head_bucket(&mut self.table);
+        bucket.prev();
+        let tail = bucket.index();
+        loop {
+            bucket = match bucket.peek() {
+                Full(mut full) => {
+                    let should_remove = {
+                        let (k, v) = full.read_mut();
+                        !f(k, v)
+                    };
+                    if should_remove {
+                        let prev_idx = full.index();
+                        let prev_raw = full.raw();
+                        let (_, _, t) = pop_internal(full);
+                        Bucket::new_from(prev_raw, prev_idx, t)
+                    } else {
+                        full.into_bucket()
+                    }
+                },
+                Empty(b) => {
+                    b.into_bucket()
+                }
+            };
+            bucket.prev();  // reverse iteration
+            if bucket.index() == tail {
+                break;
+            }
+        }
     }
 }
 
@@ -1276,7 +1356,7 @@ impl<'a, K, V> Clone for Iter<'a, K, V> {
     }
 }
 
-#[stable(feature = "std_debug", since = "1.15.0")]
+#[stable(feature = "std_debug", since = "1.16.0")]
 impl<'a, K: Debug, V: Debug> fmt::Debug for Iter<'a, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_list()
@@ -1311,7 +1391,7 @@ impl<'a, K, V> Clone for Keys<'a, K, V> {
     }
 }
 
-#[stable(feature = "std_debug", since = "1.15.0")]
+#[stable(feature = "std_debug", since = "1.16.0")]
 impl<'a, K: Debug, V: Debug> fmt::Debug for Keys<'a, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_list()
@@ -1334,7 +1414,7 @@ impl<'a, K, V> Clone for Values<'a, K, V> {
     }
 }
 
-#[stable(feature = "std_debug", since = "1.15.0")]
+#[stable(feature = "std_debug", since = "1.16.0")]
 impl<'a, K: Debug, V: Debug> fmt::Debug for Values<'a, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_list()
@@ -1376,7 +1456,7 @@ impl<K, V, M> InternalEntry<K, V, M> {
 
 impl<'a, K, V> InternalEntry<K, V, &'a mut RawTable<K, V>> {
     #[inline]
-    fn into_entry(self, key: K) -> Option<Entry<'a, K, V>> {
+    fn into_entry(self, key: K, long_probes: &'a mut bool) -> Option<Entry<'a, K, V>> {
         match self {
             InternalEntry::Occupied { elem } => {
                 Some(Occupied(OccupiedEntry {
@@ -1389,6 +1469,7 @@ impl<'a, K, V> InternalEntry<K, V, &'a mut RawTable<K, V>> {
                     hash: hash,
                     key: key,
                     elem: elem,
+                    long_probes: long_probes,
                 }))
             }
             InternalEntry::TableIsEmpty => None,
@@ -1461,6 +1542,7 @@ pub struct VacantEntry<'a, K: 'a, V: 'a> {
     hash: SafeHash,
     key: K,
     elem: VacantEntryState<K, V, &'a mut RawTable<K, V>>,
+    long_probes: &'a mut bool,
 }
 
 #[stable(feature= "debug_hash_map", since = "1.12.0")]
@@ -1478,7 +1560,7 @@ enum VacantEntryState<K, V, M> {
     /// and will kick the current one out on insertion.
     NeqElem(FullBucket<K, V, M>, usize),
     /// The index is genuinely vacant.
-    NoElem(EmptyBucket<K, V, M>),
+    NoElem(EmptyBucket<K, V, M>, usize),
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1584,7 +1666,7 @@ impl<'a, K, V> ExactSizeIterator for IterMut<'a, K, V> {
 #[unstable(feature = "fused", issue = "35602")]
 impl<'a, K, V> FusedIterator for IterMut<'a, K, V> {}
 
-#[stable(feature = "std_debug", since = "1.15.0")]
+#[stable(feature = "std_debug", since = "1.16.0")]
 impl<'a, K, V> fmt::Debug for IterMut<'a, K, V>
     where K: fmt::Debug,
           V: fmt::Debug,
@@ -1619,7 +1701,7 @@ impl<K, V> ExactSizeIterator for IntoIter<K, V> {
 #[unstable(feature = "fused", issue = "35602")]
 impl<K, V> FusedIterator for IntoIter<K, V> {}
 
-#[stable(feature = "std_debug", since = "1.15.0")]
+#[stable(feature = "std_debug", since = "1.16.0")]
 impl<K: Debug, V: Debug> fmt::Debug for IntoIter<K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_list()
@@ -1697,7 +1779,7 @@ impl<'a, K, V> ExactSizeIterator for ValuesMut<'a, K, V> {
 #[unstable(feature = "fused", issue = "35602")]
 impl<'a, K, V> FusedIterator for ValuesMut<'a, K, V> {}
 
-#[stable(feature = "std_debug", since = "1.15.0")]
+#[stable(feature = "std_debug", since = "1.16.0")]
 impl<'a, K, V> fmt::Debug for ValuesMut<'a, K, V>
     where K: fmt::Debug,
           V: fmt::Debug,
@@ -1732,7 +1814,7 @@ impl<'a, K, V> ExactSizeIterator for Drain<'a, K, V> {
 #[unstable(feature = "fused", issue = "35602")]
 impl<'a, K, V> FusedIterator for Drain<'a, K, V> {}
 
-#[stable(feature = "std_debug", since = "1.15.0")]
+#[stable(feature = "std_debug", since = "1.16.0")]
 impl<'a, K, V> fmt::Debug for Drain<'a, K, V>
     where K: fmt::Debug,
           V: fmt::Debug,
@@ -1855,7 +1937,8 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
     /// ```
     #[stable(feature = "map_entry_recover_keys2", since = "1.12.0")]
     pub fn remove_entry(self) -> (K, V) {
-        pop_internal(self.elem)
+        let (k, v, _) = pop_internal(self.elem);
+        (k, v)
     }
 
     /// Gets a reference to the value in the entry.
@@ -2034,8 +2117,18 @@ impl<'a, K: 'a, V: 'a> VacantEntry<'a, K, V> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn insert(self, value: V) -> &'a mut V {
         match self.elem {
-            NeqElem(bucket, disp) => robin_hood(bucket, disp, self.hash, self.key, value),
-            NoElem(bucket) => bucket.put(self.hash, self.key, value).into_mut_refs().1,
+            NeqElem(bucket, disp) => {
+                if disp >= DISPLACEMENT_THRESHOLD {
+                    *self.long_probes = true;
+                }
+                robin_hood(bucket, disp, self.hash, self.key, value)
+            },
+            NoElem(bucket, disp) => {
+                if disp >= DISPLACEMENT_THRESHOLD {
+                    *self.long_probes = true;
+                }
+                bucket.put(self.hash, self.key, value).into_mut_refs().1
+            },
         }
     }
 }
@@ -2220,7 +2313,7 @@ impl Default for RandomState {
     }
 }
 
-#[stable(feature = "std_debug", since = "1.15.0")]
+#[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for RandomState {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("RandomState { .. }")
@@ -3148,5 +3241,36 @@ mod test_map {
         }
         assert_eq!(a.len(), 1);
         assert_eq!(a[key], value);
+    }
+
+    #[test]
+    fn test_retain() {
+        let mut map: HashMap<isize, isize> = (0..100).map(|x|(x, x*10)).collect();
+
+        map.retain(|&k, _| k % 2 == 0);
+        assert_eq!(map.len(), 50);
+        assert_eq!(map[&2], 20);
+        assert_eq!(map[&4], 40);
+        assert_eq!(map[&6], 60);
+    }
+
+    #[test]
+    fn test_adaptive() {
+        const TEST_LEN: usize = 5000;
+        // by cloning we get maps with the same hasher seed
+        let mut first = HashMap::new();
+        let mut second = first.clone();
+        first.extend((0..TEST_LEN).map(|i| (i, i)));
+        second.extend((TEST_LEN..TEST_LEN * 2).map(|i| (i, i)));
+
+        for (&k, &v) in &second {
+            let prev_cap = first.capacity();
+            let expect_grow = first.len() == prev_cap;
+            first.insert(k, v);
+            if !expect_grow && first.capacity() != prev_cap {
+                return;
+            }
+        }
+        panic!("Adaptive early resize failed");
     }
 }

@@ -14,6 +14,7 @@
 #![feature(binary_heap_peek_mut_pop)]
 #![feature(box_syntax)]
 #![feature(btree_range)]
+#![feature(inclusive_range_syntax)]
 #![feature(collection_placement)]
 #![feature(collections)]
 #![feature(collections_bound)]
@@ -34,10 +35,6 @@ extern crate std_unicode;
 
 use std::hash::{Hash, Hasher};
 use std::collections::hash_map::DefaultHasher;
-
-#[cfg(test)]
-#[macro_use]
-mod bench;
 
 mod binary_heap;
 mod btree;

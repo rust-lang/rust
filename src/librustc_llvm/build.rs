@@ -47,8 +47,6 @@ fn detect_llvm_link(llvm_config: &Path) -> (&'static str, Option<&'static str>) 
 }
 
 fn main() {
-    println!("cargo:rustc-cfg=cargobuild");
-
     let target = env::var("TARGET").expect("TARGET was not set");
     let llvm_config = env::var_os("LLVM_CONFIG")
         .map(PathBuf::from)
@@ -146,9 +144,7 @@ fn main() {
         cfg.flag("-DLLVM_RUSTLLVM");
     }
 
-    println!("cargo:rerun-if-changed=../rustllvm/PassWrapper.cpp");
-    println!("cargo:rerun-if-changed=../rustllvm/RustWrapper.cpp");
-    println!("cargo:rerun-if-changed=../rustllvm/ArchiveWrapper.cpp");
+    build_helper::rerun_if_changed_anything_in_dir(Path::new("../rustllvm"));
     cfg.file("../rustllvm/PassWrapper.cpp")
        .file("../rustllvm/RustWrapper.cpp")
        .file("../rustllvm/ArchiveWrapper.cpp")

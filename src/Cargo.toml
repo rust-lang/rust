@@ -2,8 +2,8 @@
 members = [
   "bootstrap",
   "rustc",
-  "rustc/std_shim",
-  "rustc/test_shim",
+  "libstd",
+  "libtest",
   "tools/cargotest",
   "tools/compiletest",
   "tools/error_index_generator",
@@ -11,6 +11,9 @@ members = [
   "tools/rustbook",
   "tools/tidy",
   "tools/build-manifest",
+  "tools/qemu-test-client",
+  "tools/qemu-test-server",
+  "tools/cargo",
 ]
 
 # Curiously, compiletest will segfault if compiled with opt-level=3 on 64-bit

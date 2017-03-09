@@ -327,20 +327,18 @@ pub struct FnType {
 
 impl FnType {
     pub fn new<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                         abi: Abi,
-                         sig: &ty::FnSig<'tcx>,
+                         sig: ty::FnSig<'tcx>,
                          extra_args: &[Ty<'tcx>]) -> FnType {
-        let mut fn_ty = FnType::unadjusted(ccx, abi, sig, extra_args);
-        fn_ty.adjust_for_abi(ccx, abi, sig);
+        let mut fn_ty = FnType::unadjusted(ccx, sig, extra_args);
+        fn_ty.adjust_for_abi(ccx, sig);
         fn_ty
     }
 
     pub fn unadjusted<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                abi: Abi,
-                                sig: &ty::FnSig<'tcx>,
+                                sig: ty::FnSig<'tcx>,
                                 extra_args: &[Ty<'tcx>]) -> FnType {
         use self::Abi::*;
-        let cconv = match ccx.sess().target.target.adjust_abi(abi) {
+        let cconv = match ccx.sess().target.target.adjust_abi(sig.abi) {
             RustIntrinsic | PlatformIntrinsic |
             Rust | RustCall => llvm::CCallConv,
 
@@ -357,17 +355,18 @@ impl FnType {
             Aapcs => llvm::ArmAapcsCallConv,
             PtxKernel => llvm::PtxKernel,
             Msp430Interrupt => llvm::Msp430Intr,
+            X86Interrupt => llvm::X86_Intr,
 
             // These API constants ought to be more specific...
             Cdecl => llvm::CCallConv,
         };
 
         let mut inputs = sig.inputs();
-        let extra_args = if abi == RustCall {
+        let extra_args = if sig.abi == RustCall {
             assert!(!sig.variadic && extra_args.is_empty());
 
             match sig.inputs().last().unwrap().sty {
-                ty::TyTuple(ref tupled_arguments) => {
+                ty::TyTuple(ref tupled_arguments, _) => {
                     inputs = &sig.inputs()[0..sig.inputs().len() - 1];
                     &tupled_arguments[..]
                 }
@@ -388,7 +387,7 @@ impl FnType {
         let linux_s390x = target.target_os == "linux"
                        && target.arch == "s390x"
                        && target.target_env == "gnu";
-        let rust_abi = match abi {
+        let rust_abi = match sig.abi {
             RustIntrinsic | PlatformIntrinsic | Rust | RustCall => true,
             _ => false
         };
@@ -506,7 +505,11 @@ impl FnType {
                 if let Some(inner) = rust_ptr_attrs(ty, &mut data) {
                     data.attrs.set(ArgAttribute::NonNull);
                     if ccx.tcx().struct_tail(inner).is_trait() {
+                        // vtables can be safely marked non-null, readonly
+                        // and noalias.
                         info.attrs.set(ArgAttribute::NonNull);
+                        info.attrs.set(ArgAttribute::ReadOnly);
+                        info.attrs.set(ArgAttribute::NoAlias);
                     }
                 }
                 args.push(data);
@@ -531,8 +534,8 @@ impl FnType {
 
     pub fn adjust_for_abi<'a, 'tcx>(&mut self,
                                     ccx: &CrateContext<'a, 'tcx>,
-                                    abi: Abi,
-                                    sig: &ty::FnSig<'tcx>) {
+                                    sig: ty::FnSig<'tcx>) {
+        let abi = sig.abi;
         if abi == Abi::Unadjusted { return }
 
         if abi == Abi::Rust || abi == Abi::RustCall ||

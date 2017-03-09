@@ -30,22 +30,6 @@ pub use imp::*;
 mod imp {
     use libc::{c_int, c_void, size_t};
 
-    // Linkage directives to pull in jemalloc and its dependencies.
-    //
-    // On some platforms we need to be sure to link in `pthread` which jemalloc
-    // depends on, and specifically on android we need to also link to libgcc.
-    // Currently jemalloc is compiled with gcc which will generate calls to
-    // intrinsics that are libgcc specific (e.g. those intrinsics aren't present in
-    // libcompiler-rt), so link that in to get that support.
-    #[link(name = "jemalloc", kind = "static")]
-    #[cfg_attr(target_os = "android", link(name = "gcc"))]
-    #[cfg_attr(all(not(windows),
-                   not(target_os = "android"),
-                   not(target_env = "musl")),
-               link(name = "pthread"))]
-    #[cfg(not(cargobuild))]
-    extern "C" {}
-
     // Note that the symbols here are prefixed by default on OSX and Windows (we
     // don't explicitly request it), and on Android and DragonFly we explicitly
     // request it as unprefixing cause segfaults (mismatches in allocators).
@@ -137,18 +121,6 @@ mod imp {
     pub extern "C" fn __rust_usable_size(size: usize, align: usize) -> usize {
         let flags = align_to_flags(align);
         unsafe { nallocx(size as size_t, flags) as usize }
-    }
-
-    // These symbols are used by jemalloc on android but the really old android
-    // we're building on doesn't have them defined, so just make sure the symbols
-    // are available.
-    #[no_mangle]
-    #[cfg(all(target_os = "android", not(cargobuild)))]
-    pub extern "C" fn pthread_atfork(_prefork: *mut u8,
-                                     _postfork_parent: *mut u8,
-                                     _postfork_child: *mut u8)
-                                     -> i32 {
-        0
     }
 }
 

@@ -22,6 +22,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::bitvec::BitVector;
 use rustc::middle::const_val::ConstVal;
 use rustc::ty::{self, Ty};
+use rustc::ty::util::IntTypeExt;
 use rustc::mir::*;
 use rustc::hir::RangeEnd;
 use syntax_pos::Span;
@@ -111,8 +112,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                      test_lvalue: &Lvalue<'tcx>,
                                      candidate: &Candidate<'pat, 'tcx>,
                                      switch_ty: Ty<'tcx>,
-                                     options: &mut Vec<ConstVal>,
-                                     indices: &mut FxHashMap<ConstVal, usize>)
+                                     options: &mut Vec<ConstVal<'tcx>>,
+                                     indices: &mut FxHashMap<ConstVal<'tcx>, usize>)
                                      -> bool
     {
         let match_pair = match candidate.match_pairs.iter().find(|mp| mp.lvalue == *test_lvalue) {
@@ -182,74 +183,79 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         let source_info = self.source_info(test.span);
         match test.kind {
             TestKind::Switch { adt_def, ref variants } => {
+                // Variants is a BitVec of indexes into adt_def.variants.
                 let num_enum_variants = self.hir.num_variants(adt_def);
+                let used_variants = variants.count();
                 let mut otherwise_block = None;
-                let target_blocks: Vec<_> = (0..num_enum_variants).map(|i| {
-                    if variants.contains(i) {
-                        self.cfg.start_new_block()
+                let mut target_blocks = Vec::with_capacity(num_enum_variants);
+                let mut targets = Vec::with_capacity(used_variants + 1);
+                let mut values = Vec::with_capacity(used_variants);
+                let tcx = self.hir.tcx();
+                for (idx, discr) in adt_def.discriminants(tcx).enumerate() {
+                    target_blocks.place_back() <- if variants.contains(idx) {
+                        values.push(discr);
+                        *(targets.place_back() <- self.cfg.start_new_block())
                     } else {
                         if otherwise_block.is_none() {
                             otherwise_block = Some(self.cfg.start_new_block());
                         }
                         otherwise_block.unwrap()
-                    }
-                }).collect();
-                debug!("num_enum_variants: {}, num tested variants: {}, variants: {:?}",
-                       num_enum_variants, variants.iter().count(), variants);
-                self.cfg.terminate(block, source_info, TerminatorKind::Switch {
-                    discr: lvalue.clone(),
-                    adt_def: adt_def,
-                    targets: target_blocks.clone()
+                    };
+                }
+                if let Some(otherwise_block) = otherwise_block {
+                    targets.push(otherwise_block);
+                } else {
+                    values.pop();
+                }
+                debug!("num_enum_variants: {}, tested variants: {:?}, variants: {:?}",
+                       num_enum_variants, values, variants);
+                let discr_ty = adt_def.repr.discr_type().to_ty(tcx);
+                let discr = self.temp(discr_ty);
+                self.cfg.push_assign(block, source_info, &discr,
+                                     Rvalue::Discriminant(lvalue.clone()));
+                assert_eq!(values.len() + 1, targets.len());
+                self.cfg.terminate(block, source_info, TerminatorKind::SwitchInt {
+                    discr: Operand::Consume(discr),
+                    switch_ty: discr_ty,
+                    values: From::from(values),
+                    targets: targets
                 });
                 target_blocks
             }
 
             TestKind::SwitchInt { switch_ty, ref options, indices: _ } => {
-                let (targets, term) = match switch_ty.sty {
-                    // If we're matching on boolean we can
-                    // use the If TerminatorKind instead
-                    ty::TyBool => {
-                        assert!(options.len() > 0 && options.len() <= 2);
-
-                        let (true_bb, else_bb) =
-                            (self.cfg.start_new_block(),
-                             self.cfg.start_new_block());
-
-                        let targets = match &options[0] {
-                            &ConstVal::Bool(true) => vec![true_bb, else_bb],
-                            &ConstVal::Bool(false) => vec![else_bb, true_bb],
-                            v => span_bug!(test.span, "expected boolean value but got {:?}", v)
-                        };
-
-                        (targets,
-                         TerminatorKind::If {
-                             cond: Operand::Consume(lvalue.clone()),
-                             targets: (true_bb, else_bb)
-                         })
-
-                    }
-                    _ => {
-                        // The switch may be inexhaustive so we
-                        // add a catch all block
-                        let otherwise = self.cfg.start_new_block();
-                        let targets: Vec<_> =
-                            options.iter()
-                                   .map(|_| self.cfg.start_new_block())
-                                   .chain(Some(otherwise))
-                                   .collect();
-
-                        (targets.clone(),
-                         TerminatorKind::SwitchInt {
-                             discr: lvalue.clone(),
-                             switch_ty: switch_ty,
-                             values: options.clone(),
-                             targets: targets
-                         })
-                    }
+                let (ret, terminator) = if switch_ty.sty == ty::TyBool {
+                    assert!(options.len() > 0 && options.len() <= 2);
+                    let (true_bb, false_bb) = (self.cfg.start_new_block(),
+                                               self.cfg.start_new_block());
+                    let ret = match &options[0] {
+                        &ConstVal::Bool(true) => vec![true_bb, false_bb],
+                        &ConstVal::Bool(false) => vec![false_bb, true_bb],
+                        v => span_bug!(test.span, "expected boolean value but got {:?}", v)
+                    };
+                    (ret, TerminatorKind::if_(self.hir.tcx(), Operand::Consume(lvalue.clone()),
+                                              true_bb, false_bb))
+                } else {
+                    // The switch may be inexhaustive so we
+                    // add a catch all block
+                    let otherwise = self.cfg.start_new_block();
+                    let targets: Vec<_> =
+                        options.iter()
+                               .map(|_| self.cfg.start_new_block())
+                               .chain(Some(otherwise))
+                               .collect();
+                    let values: Vec<_> = options.iter().map(|v|
+                        v.to_const_int().expect("switching on integral")
+                    ).collect();
+                    (targets.clone(), TerminatorKind::SwitchInt {
+                        discr: Operand::Consume(lvalue.clone()),
+                        switch_ty: switch_ty,
+                        values: From::from(values),
+                        targets: targets,
+                    })
                 };
-
-                self.cfg.terminate(block, source_info, term);
-                targets
+                self.cfg.terminate(block, source_info, terminator);
+                ret
             }
 
             TestKind::Eq { ref value, mut ty } => {
@@ -314,11 +320,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
                     // check the result
                     let block = self.cfg.start_new_block();
-                    self.cfg.terminate(eq_block, source_info, TerminatorKind::If {
-                        cond: Operand::Consume(eq_result),
-                        targets: (block, fail),
-                    });
-
+                    self.cfg.terminate(eq_block, source_info,
+                                       TerminatorKind::if_(self.hir.tcx(),
+                                                           Operand::Consume(eq_result),
+                                                           block, fail));
                     vec![block, fail]
                 } else {
                     let block = self.compare(block, fail, test.span, BinOp::Eq, expect, val);
@@ -360,14 +365,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                                       Operand::Consume(expected)));
 
                 // branch based on result
-                let target_blocks: Vec<_> = vec![self.cfg.start_new_block(),
-                                                 self.cfg.start_new_block()];
-                self.cfg.terminate(block, source_info, TerminatorKind::If {
-                    cond: Operand::Consume(result),
-                    targets: (target_blocks[0], target_blocks[1])
-                });
-
-                target_blocks
+                let (false_bb, true_bb) = (self.cfg.start_new_block(),
+                                           self.cfg.start_new_block());
+                self.cfg.terminate(block, source_info,
+                                   TerminatorKind::if_(self.hir.tcx(), Operand::Consume(result),
+                                                       true_bb, false_bb));
+                vec![true_bb, false_bb]
             }
         }
     }
@@ -389,11 +392,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
         // branch based on result
         let target_block = self.cfg.start_new_block();
-        self.cfg.terminate(block, source_info, TerminatorKind::If {
-            cond: Operand::Consume(result),
-            targets: (target_block, fail_block)
-        });
-
+        self.cfg.terminate(block, source_info,
+                           TerminatorKind::if_(self.hir.tcx(), Operand::Consume(result),
+                                               target_block, fail_block));
         target_block
     }
 

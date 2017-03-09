@@ -91,7 +91,7 @@ fn sockname<F>(f: F) -> io::Result<SocketAddr>
     }
 }
 
-fn sockaddr_to_addr(storage: &c::sockaddr_storage,
+pub fn sockaddr_to_addr(storage: &c::sockaddr_storage,
                     len: usize) -> io::Result<SocketAddr> {
     match storage.ss_family as c_int {
         c::AF_INET => {
@@ -220,6 +220,10 @@ impl TcpStream {
 
     pub fn write_timeout(&self) -> io::Result<Option<Duration>> {
         self.inner.timeout(c::SO_SNDTIMEO)
+    }
+
+    pub fn peek(&self, buf: &mut [u8]) -> io::Result<usize> {
+        self.inner.peek(buf)
     }
 
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
@@ -441,17 +445,11 @@ impl UdpSocket {
     }
 
     pub fn recv_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
-        let mut storage: c::sockaddr_storage = unsafe { mem::zeroed() };
-        let mut addrlen = mem::size_of_val(&storage) as c::socklen_t;
-        let len = cmp::min(buf.len(), <wrlen_t>::max_value() as usize) as wrlen_t;
+        self.inner.recv_from(buf)
+    }
 
-        let n = cvt(unsafe {
-            c::recvfrom(*self.inner.as_inner(),
-                        buf.as_mut_ptr() as *mut c_void,
-                        len, 0,
-                        &mut storage as *mut _ as *mut _, &mut addrlen)
-        })?;
-        Ok((n as usize, sockaddr_to_addr(&storage, addrlen as usize)?))
+    pub fn peek_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)> {
+        self.inner.peek_from(buf)
     }
 
     pub fn send_to(&self, buf: &[u8], dst: &SocketAddr) -> io::Result<usize> {
@@ -576,6 +574,10 @@ impl UdpSocket {
 
     pub fn recv(&self, buf: &mut [u8]) -> io::Result<usize> {
         self.inner.read(buf)
+    }
+
+    pub fn peek(&self, buf: &mut [u8]) -> io::Result<usize> {
+        self.inner.peek(buf)
     }
 
     pub fn send(&self, buf: &[u8]) -> io::Result<usize> {

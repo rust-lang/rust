@@ -17,7 +17,7 @@ use syntax_pos::{MultiSpan, Span};
 use snippet::Style;
 
 #[must_use]
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct Diagnostic {
     pub level: Level,
     pub message: Vec<(String, Style)>,
@@ -27,7 +27,7 @@ pub struct Diagnostic {
 }
 
 /// For example a note attached to an error.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct SubDiagnostic {
     pub level: Level,
     pub message: Vec<(String, Style)>,

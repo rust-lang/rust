@@ -70,6 +70,7 @@ impl Category {
             ExprKind::Cast { .. } |
             ExprKind::Use { .. } |
             ExprKind::ReifyFnPointer { .. } |
+            ExprKind::ClosureFnPointer { .. } |
             ExprKind::UnsafeFnPointer { .. } |
             ExprKind::Unsize { .. } |
             ExprKind::Repeat { .. } |

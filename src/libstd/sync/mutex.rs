@@ -133,11 +133,13 @@ unsafe impl<T: ?Sized + Send> Sync for Mutex<T> { }
 /// dropped (falls out of scope), the lock will be unlocked.
 ///
 /// The data protected by the mutex can be access through this guard via its
-/// `Deref` and `DerefMut` implementations.
+/// [`Deref`] and [`DerefMut`] implementations.
 ///
 /// This structure is created by the [`lock()`] and [`try_lock()`] methods on
 /// [`Mutex`].
 ///
+/// [`Deref`]: ../../std/ops/trait.Deref.html
+/// [`DerefMut`]: ../../std/ops/trait.DerefMut.html
 /// [`lock()`]: struct.Mutex.html#method.lock
 /// [`try_lock()`]: struct.Mutex.html#method.try_lock
 /// [`Mutex`]: struct.Mutex.html
@@ -428,7 +430,7 @@ impl<'a, T: ?Sized> Drop for MutexGuard<'a, T> {
     }
 }
 
-#[stable(feature = "std_debug", since = "1.15.0")]
+#[stable(feature = "std_debug", since = "1.16.0")]
 impl<'a, T: ?Sized + fmt::Debug> fmt::Debug for MutexGuard<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("MutexGuard")

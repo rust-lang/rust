@@ -253,9 +253,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                             f: F)
         where F: FnOnce(&mut Builder<'a, 'gcx, 'tcx>)
     {
-        let extent = self.scopes.last().map(|scope| scope.extent).unwrap();
+        let extent = self.topmost_scope();
         let loop_scope = LoopScope {
-            extent: extent.clone(),
+            extent: extent,
             continue_block: loop_block,
             break_block: break_block,
             break_destination: break_destination,
@@ -385,22 +385,14 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// resolving `break` and `continue`.
     pub fn find_loop_scope(&mut self,
                            span: Span,
-                           label: Option<CodeExtent>)
+                           label: CodeExtent)
                            -> &mut LoopScope<'tcx> {
-        let loop_scopes = &mut self.loop_scopes;
-        match label {
-            None => {
-                // no label? return the innermost loop scope
-                loop_scopes.iter_mut().rev().next()
-            }
-            Some(label) => {
-                // otherwise, find the loop-scope with the correct id
-                loop_scopes.iter_mut()
-                           .rev()
-                           .filter(|loop_scope| loop_scope.extent == label)
-                           .next()
-            }
-        }.unwrap_or_else(|| span_bug!(span, "no enclosing loop scope found?"))
+        // find the loop-scope with the correct id
+        self.loop_scopes.iter_mut()
+            .rev()
+            .filter(|loop_scope| loop_scope.extent == label)
+            .next()
+            .unwrap_or_else(|| span_bug!(span, "no enclosing loop scope found?"))
     }
 
     /// Given a span and the current visibility scope, make a SourceInfo.
@@ -422,6 +414,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             _ => false,
         });
         self.scopes[1].extent
+    }
+
+    /// Returns the topmost active scope, which is known to be alive until
+    /// the next scope expression.
+    pub fn topmost_scope(&self) -> CodeExtent {
+        self.scopes.last().expect("topmost_scope: no scopes present").extent
     }
 
     // Scheduling drops

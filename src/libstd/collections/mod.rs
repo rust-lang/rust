@@ -68,7 +68,7 @@
 //! * You want to find the largest or smallest key that is smaller or larger
 //!   than something.
 //! * You want to be able to get all of the entries in order on-demand.
-//! * You want a sorted map.
+//! * You want a map sorted by its keys.
 //!
 //! ### Use the `Set` variant of any of these `Map`s when:
 //! * You just want to remember which keys you've seen.

@@ -19,7 +19,7 @@ use parse::parser::Parser;
 use ptr::P;
 use str::char_at;
 use symbol::Symbol;
-use tokenstream;
+use tokenstream::{TokenStream, TokenTree};
 
 use std::cell::RefCell;
 use std::collections::HashSet;
@@ -27,8 +27,6 @@ use std::iter;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::str;
-
-use rustc_i128::u128;
 
 pub type PResult<'a, T> = Result<T, DiagnosticBuilder<'a>>;
 
@@ -48,6 +46,7 @@ pub struct ParseSess {
     pub span_diagnostic: Handler,
     pub unstable_features: UnstableFeatures,
     pub config: CrateConfig,
+    pub missing_fragment_specifiers: RefCell<HashSet<Span>>,
     /// Used to determine and report recursive mod inclusions
     included_mod_stack: RefCell<Vec<PathBuf>>,
     code_map: Rc<CodeMap>,
@@ -68,6 +67,7 @@ impl ParseSess {
             span_diagnostic: handler,
             unstable_features: UnstableFeatures::from_environment(),
             config: HashSet::new(),
+            missing_fragment_specifiers: RefCell::new(HashSet::new()),
             included_mod_stack: RefCell::new(vec![]),
             code_map: code_map
         }
@@ -141,13 +141,9 @@ pub fn parse_stmt_from_source_str<'a>(name: String, source: String, sess: &'a Pa
     new_parser_from_source_str(sess, name, source).parse_stmt()
 }
 
-// Warning: This parses with quote_depth > 0, which is not the default.
-pub fn parse_tts_from_source_str<'a>(name: String, source: String, sess: &'a ParseSess)
-                                     -> PResult<'a, Vec<tokenstream::TokenTree>> {
-    let mut p = new_parser_from_source_str(sess, name, source);
-    p.quote_depth += 1;
-    // right now this is re-creating the token trees from ... token trees.
-    p.parse_all_token_trees()
+pub fn parse_stream_from_source_str<'a>(name: String, source: String, sess: &'a ParseSess)
+                                        -> TokenStream {
+    filemap_to_stream(sess, sess.codemap().new_filemap(name, None, source))
 }
 
 // Create a new parser from a source string
@@ -179,7 +175,7 @@ pub fn new_sub_parser_from_file<'a>(sess: &'a ParseSess,
 /// Given a filemap and config, return a parser
 pub fn filemap_to_parser<'a>(sess: &'a ParseSess, filemap: Rc<FileMap>, ) -> Parser<'a> {
     let end_pos = filemap.end_pos;
-    let mut parser = tts_to_parser(sess, filemap_to_tts(sess, filemap));
+    let mut parser = stream_to_parser(sess, filemap_to_stream(sess, filemap));
 
     if parser.token == token::Eof && parser.span == syntax_pos::DUMMY_SP {
         parser.span = syntax_pos::mk_sp(end_pos, end_pos);
@@ -190,13 +186,8 @@ pub fn filemap_to_parser<'a>(sess: &'a ParseSess, filemap: Rc<FileMap>, ) -> Par
 
 // must preserve old name for now, because quote! from the *existing*
 // compiler expands into it
-pub fn new_parser_from_tts<'a>(sess: &'a ParseSess, tts: Vec<tokenstream::TokenTree>)
-                               -> Parser<'a> {
-    tts_to_parser(sess, tts)
-}
-
-pub fn new_parser_from_ts<'a>(sess: &'a ParseSess, ts: tokenstream::TokenStream) -> Parser<'a> {
-    tts_to_parser(sess, ts.trees().cloned().collect())
+pub fn new_parser_from_tts<'a>(sess: &'a ParseSess, tts: Vec<TokenTree>) -> Parser<'a> {
+    stream_to_parser(sess, tts.into_iter().collect())
 }
 
 
@@ -219,15 +210,15 @@ fn file_to_filemap(sess: &ParseSess, path: &Path, spanopt: Option<Span>)
 }
 
 /// Given a filemap, produce a sequence of token-trees
-pub fn filemap_to_tts(sess: &ParseSess, filemap: Rc<FileMap>) -> Vec<tokenstream::TokenTree> {
+pub fn filemap_to_stream(sess: &ParseSess, filemap: Rc<FileMap>) -> TokenStream {
     let mut srdr = lexer::StringReader::new(sess, filemap);
     srdr.real_token();
     panictry!(srdr.parse_all_token_trees())
 }
 
-/// Given tts and the ParseSess, produce a parser
-pub fn tts_to_parser<'a>(sess: &'a ParseSess, tts: Vec<tokenstream::TokenTree>) -> Parser<'a> {
-    let mut p = Parser::new(sess, tts, None, false);
+/// Given stream and the ParseSess, produce a parser
+pub fn stream_to_parser<'a>(sess: &'a ParseSess, stream: TokenStream) -> Parser<'a> {
+    let mut p = Parser::new(sess, stream, None, false);
     p.check_unknown_macro_variable();
     p
 }
@@ -607,7 +598,6 @@ pub fn integer_lit(s: &str, suffix: Option<Symbol>, sd: &Handler, sp: Span) -> a
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::rc::Rc;
     use syntax_pos::{self, Span, BytePos, Pos, NO_EXPANSION};
     use codemap::Spanned;
     use ast::{self, Ident, PatKind};
@@ -618,7 +608,7 @@ mod tests {
     use print::pprust::item_to_string;
     use ptr::P;
     use tokenstream::{self, TokenTree};
-    use util::parser_testing::{string_to_tts, string_to_parser};
+    use util::parser_testing::{string_to_stream, string_to_parser};
     use util::parser_testing::{string_to_expr, string_to_item, string_to_stmt};
     use util::ThinVec;
 
@@ -663,8 +653,9 @@ mod tests {
     // check the token-tree-ization of macros
     #[test]
     fn string_to_tts_macro () {
-        let tts = string_to_tts("macro_rules! zip (($a)=>($a))".to_string());
-        let tts: &[tokenstream::TokenTree] = &tts[..];
+        let tts: Vec<_> =
+            string_to_stream("macro_rules! zip (($a)=>($a))".to_string()).trees().collect();
+        let tts: &[TokenTree] = &tts[..];
 
         match (tts.len(), tts.get(0), tts.get(1), tts.get(2), tts.get(3)) {
             (
@@ -676,7 +667,7 @@ mod tests {
             )
             if name_macro_rules.name == "macro_rules"
             && name_zip.name == "zip" => {
-                let tts = &macro_delimed.tts[..];
+                let tts = &macro_delimed.stream().trees().collect::<Vec<_>>();
                 match (tts.len(), tts.get(0), tts.get(1), tts.get(2)) {
                     (
                         3,
@@ -685,7 +676,7 @@ mod tests {
                         Some(&TokenTree::Delimited(_, ref second_delimed)),
                     )
                     if macro_delimed.delim == token::Paren => {
-                        let tts = &first_delimed.tts[..];
+                        let tts = &first_delimed.stream().trees().collect::<Vec<_>>();
                         match (tts.len(), tts.get(0), tts.get(1)) {
                             (
                                 2,
@@ -693,9 +684,9 @@ mod tests {
                                 Some(&TokenTree::Token(_, token::Ident(ident))),
                             )
                             if first_delimed.delim == token::Paren && ident.name == "a" => {},
-                            _ => panic!("value 3: {:?}", **first_delimed),
+                            _ => panic!("value 3: {:?}", *first_delimed),
                         }
-                        let tts = &second_delimed.tts[..];
+                        let tts = &second_delimed.stream().trees().collect::<Vec<_>>();
                         match (tts.len(), tts.get(0), tts.get(1)) {
                             (
                                 2,
@@ -704,10 +695,10 @@ mod tests {
                             )
                             if second_delimed.delim == token::Paren
                             && ident.name == "a" => {},
-                            _ => panic!("value 4: {:?}", **second_delimed),
+                            _ => panic!("value 4: {:?}", *second_delimed),
                         }
                     },
-                    _ => panic!("value 2: {:?}", **macro_delimed),
+                    _ => panic!("value 2: {:?}", *macro_delimed),
                 }
             },
             _ => panic!("value: {:?}",tts),
@@ -716,31 +707,31 @@ mod tests {
 
     #[test]
     fn string_to_tts_1() {
-        let tts = string_to_tts("fn a (b : i32) { b; }".to_string());
+        let tts = string_to_stream("fn a (b : i32) { b; }".to_string());
 
-        let expected = vec![
-            TokenTree::Token(sp(0, 2), token::Ident(Ident::from_str("fn"))),
-            TokenTree::Token(sp(3, 4), token::Ident(Ident::from_str("a"))),
+        let expected = TokenStream::concat(vec![
+            TokenTree::Token(sp(0, 2), token::Ident(Ident::from_str("fn"))).into(),
+            TokenTree::Token(sp(3, 4), token::Ident(Ident::from_str("a"))).into(),
             TokenTree::Delimited(
                 sp(5, 14),
-                Rc::new(tokenstream::Delimited {
+                tokenstream::Delimited {
                     delim: token::DelimToken::Paren,
-                    tts: vec![
-                        TokenTree::Token(sp(6, 7), token::Ident(Ident::from_str("b"))),
-                        TokenTree::Token(sp(8, 9), token::Colon),
-                        TokenTree::Token(sp(10, 13), token::Ident(Ident::from_str("i32"))),
-                    ],
-                })),
+                    tts: TokenStream::concat(vec![
+                        TokenTree::Token(sp(6, 7), token::Ident(Ident::from_str("b"))).into(),
+                        TokenTree::Token(sp(8, 9), token::Colon).into(),
+                        TokenTree::Token(sp(10, 13), token::Ident(Ident::from_str("i32"))).into(),
+                    ]).into(),
+                }).into(),
             TokenTree::Delimited(
                 sp(15, 21),
-                Rc::new(tokenstream::Delimited {
+                tokenstream::Delimited {
                     delim: token::DelimToken::Brace,
-                    tts: vec![
-                        TokenTree::Token(sp(17, 18), token::Ident(Ident::from_str("b"))),
-                        TokenTree::Token(sp(18, 19), token::Semi),
-                    ],
-                }))
-        ];
+                    tts: TokenStream::concat(vec![
+                        TokenTree::Token(sp(17, 18), token::Ident(Ident::from_str("b"))).into(),
+                        TokenTree::Token(sp(18, 19), token::Semi).into(),
+                    ]).into(),
+                }).into()
+        ]);
 
         assert_eq!(tts, expected);
     }
@@ -983,12 +974,12 @@ mod tests {
         let expr = parse::parse_expr_from_source_str("foo".to_string(),
             "foo!( fn main() { body } )".to_string(), &sess).unwrap();
 
-        let tts = match expr.node {
-            ast::ExprKind::Mac(ref mac) => mac.node.tts.clone(),
+        let tts: Vec<_> = match expr.node {
+            ast::ExprKind::Mac(ref mac) => mac.node.stream().trees().collect(),
             _ => panic!("not a macro"),
         };
 
-        let span = tts.iter().rev().next().unwrap().get_span();
+        let span = tts.iter().rev().next().unwrap().span();
 
         match sess.codemap().span_to_snippet(span) {
             Ok(s) => assert_eq!(&s[..], "{ body }"),

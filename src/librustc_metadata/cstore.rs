@@ -32,8 +32,10 @@ use syntax::symbol::Symbol;
 use syntax_pos;
 
 pub use rustc::middle::cstore::{NativeLibrary, NativeLibraryKind, LinkagePreference};
-pub use rustc::middle::cstore::{NativeStatic, NativeFramework, NativeUnknown};
+pub use rustc::middle::cstore::NativeLibraryKind::*;
 pub use rustc::middle::cstore::{CrateSource, LinkMeta, LibSource};
+
+pub use cstore_impl::provide;
 
 // A map from external crate numbers (as decoded from some crate file) to
 // local crate numbers (as generated during this session). Each external
@@ -295,6 +297,11 @@ impl CrateMetadata {
     pub fn is_compiler_builtins(&self) -> bool {
         let attrs = self.get_item_attrs(CRATE_DEF_INDEX);
         attr::contains_name(&attrs, "compiler_builtins")
+    }
+
+    pub fn is_sanitizer_runtime(&self) -> bool {
+        let attrs = self.get_item_attrs(CRATE_DEF_INDEX);
+        attr::contains_name(&attrs, "sanitizer_runtime")
     }
 
     pub fn is_no_builtins(&self) -> bool {

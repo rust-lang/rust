@@ -13,6 +13,7 @@ use codemap::{DUMMY_SP, dummy_spanned};
 use ext::base::ExtCtxt;
 use ext::expand::{Expansion, ExpansionKind};
 use ext::hygiene::Mark;
+use tokenstream::TokenStream;
 use fold::*;
 use ptr::P;
 use symbol::keywords;
@@ -26,7 +27,7 @@ pub fn placeholder(kind: ExpansionKind, id: ast::NodeId) -> Expansion {
     fn mac_placeholder() -> ast::Mac {
         dummy_spanned(ast::Mac_ {
             path: ast::Path { span: DUMMY_SP, segments: Vec::new() },
-            tts: Vec::new(),
+            tts: TokenStream::empty().into(),
         })
     }
 
@@ -84,8 +85,17 @@ impl<'a, 'b> PlaceholderExpander<'a, 'b> {
         }
     }
 
-    pub fn add(&mut self, id: ast::NodeId, expansion: Expansion) {
-        let expansion = expansion.fold_with(self);
+    pub fn add(&mut self, id: ast::NodeId, expansion: Expansion, derives: Vec<Mark>) {
+        let mut expansion = expansion.fold_with(self);
+        if let Expansion::Items(mut items) = expansion {
+            for derive in derives {
+                match self.remove(derive.as_placeholder_id()) {
+                    Expansion::Items(derived_items) => items.extend(derived_items),
+                    _ => unreachable!(),
+                }
+            }
+            expansion = Expansion::Items(items);
+        }
         self.expansions.insert(id, expansion);
     }
 

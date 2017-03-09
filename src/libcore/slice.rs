@@ -616,7 +616,7 @@ pub trait SliceIndex<T> {
     fn index_mut(self, slice: &mut [T]) -> &mut Self::Output;
 }
 
-#[stable(feature = "slice-get-slice-impls", since = "1.13.0")]
+#[stable(feature = "slice-get-slice-impls", since = "1.15.0")]
 impl<T> SliceIndex<T> for usize {
     type Output = T;
 
@@ -665,7 +665,7 @@ impl<T> SliceIndex<T> for usize {
     }
 }
 
-#[stable(feature = "slice-get-slice-impls", since = "1.13.0")]
+#[stable(feature = "slice-get-slice-impls", since = "1.15.0")]
 impl<T> SliceIndex<T> for  ops::Range<usize> {
     type Output = [T];
 
@@ -726,7 +726,7 @@ impl<T> SliceIndex<T> for  ops::Range<usize> {
     }
 }
 
-#[stable(feature = "slice-get-slice-impls", since = "1.13.0")]
+#[stable(feature = "slice-get-slice-impls", since = "1.15.0")]
 impl<T> SliceIndex<T> for ops::RangeTo<usize> {
     type Output = [T];
 
@@ -761,7 +761,7 @@ impl<T> SliceIndex<T> for ops::RangeTo<usize> {
     }
 }
 
-#[stable(feature = "slice-get-slice-impls", since = "1.13.0")]
+#[stable(feature = "slice-get-slice-impls", since = "1.15.0")]
 impl<T> SliceIndex<T> for ops::RangeFrom<usize> {
     type Output = [T];
 
@@ -796,7 +796,7 @@ impl<T> SliceIndex<T> for ops::RangeFrom<usize> {
     }
 }
 
-#[stable(feature = "slice-get-slice-impls", since = "1.13.0")]
+#[stable(feature = "slice-get-slice-impls", since = "1.15.0")]
 impl<T> SliceIndex<T> for ops::RangeFull {
     type Output = [T];
 
@@ -832,7 +832,7 @@ impl<T> SliceIndex<T> for ops::RangeFull {
 }
 
 
-#[stable(feature = "slice-get-slice-impls", since = "1.13.0")]
+#[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
 impl<T> SliceIndex<T> for ops::RangeInclusive<usize> {
     type Output = [T];
 
@@ -895,7 +895,7 @@ impl<T> SliceIndex<T> for ops::RangeInclusive<usize> {
     }
 }
 
-#[stable(feature = "slice-get-slice-impls", since = "1.13.0")]
+#[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
 impl<T> SliceIndex<T> for ops::RangeToInclusive<usize> {
     type Output = [T];
 
@@ -2202,6 +2202,7 @@ impl<A, B> PartialEq<[B]> for [A] where A: PartialEq<B> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Eq> Eq for [T] {}
 
+/// Implements comparison of vectors lexicographically.
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Ord> Ord for [T] {
     fn cmp(&self, other: &[T]) -> Ordering {
@@ -2209,6 +2210,7 @@ impl<T: Ord> Ord for [T] {
     }
 }
 
+/// Implements comparison of vectors lexicographically.
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: PartialOrd> PartialOrd for [T] {
     fn partial_cmp(&self, other: &[T]) -> Option<Ordering> {
@@ -2290,9 +2292,10 @@ impl<A> SlicePartialOrd<A> for [A]
     }
 }
 
-impl SlicePartialOrd<u8> for [u8] {
-    #[inline]
-    fn partial_compare(&self, other: &[u8]) -> Option<Ordering> {
+impl<A> SlicePartialOrd<A> for [A]
+    where A: Ord
+{
+    default fn partial_compare(&self, other: &[A]) -> Option<Ordering> {
         Some(SliceOrd::compare(self, other))
     }
 }

@@ -202,7 +202,9 @@ impl<'tcx> cmt_<'tcx> {
             Categorization::Downcast(ref cmt, _) => {
                 if let Categorization::Local(_) = cmt.cat {
                     if let ty::TyAdt(def, _) = self.ty.sty {
-                        return def.struct_variant().find_field_named(name).map(|x| x.did);
+                        if def.is_struct() {
+                            return def.struct_variant().find_field_named(name).map(|x| x.did);
+                        }
                     }
                     None
                 } else {
@@ -462,6 +464,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                     adjustment::Adjust::NeverToAny |
                     adjustment::Adjust::ReifyFnPointer |
                     adjustment::Adjust::UnsafeFnPointer |
+                    adjustment::Adjust::ClosureFnPointer |
                     adjustment::Adjust::MutToConstPointer |
                     adjustment::Adjust::DerefRef {..} => {
                         debug!("cat_expr({:?}): {:?}",
@@ -1199,7 +1202,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
           PatKind::Tuple(ref subpats, ddpos) => {
             // (p1, ..., pN)
             let expected_len = match self.pat_ty(&pat)?.sty {
-                ty::TyTuple(ref tys) => tys.len(),
+                ty::TyTuple(ref tys, _) => tys.len(),
                 ref ty => span_bug!(pat.span, "tuple pattern unexpected type {:?}", ty),
             };
             for (i, subpat) in subpats.iter().enumerate_and_adjust(expected_len, ddpos) {

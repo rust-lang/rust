@@ -316,7 +316,7 @@ impl Once {
                         }
 
                         // Once we've enqueued ourselves, wait in a loop.
-                        // Aftewards reload the state and continue with what we
+                        // Afterwards reload the state and continue with what we
                         // were doing from before.
                         while !node.signaled.load(Ordering::SeqCst) {
                             thread::park();
@@ -330,7 +330,7 @@ impl Once {
     }
 }
 
-#[stable(feature = "std_debug", since = "1.15.0")]
+#[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for Once {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("Once { .. }")

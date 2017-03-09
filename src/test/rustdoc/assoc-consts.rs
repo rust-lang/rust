@@ -13,14 +13,16 @@
 pub trait Foo {
     // @has assoc_consts/trait.Foo.html '//*[@class="rust trait"]' \
     //      'const FOO: usize;'
-    // @has - '//*[@id="associatedconstant.FOO"]' 'const FOO'
-    const FOO: usize;
+    // @has - '//*[@id="associatedconstant.FOO"]' 'const FOO: usize'
+    // @has - '//*[@class="docblock"]' 'FOO: usize = 12'
+    const FOO: usize = 12;
 }
 
 pub struct Bar;
 
 impl Bar {
     // @has assoc_consts/struct.Bar.html '//*[@id="associatedconstant.BAR"]' \
-    //      'const BAR: usize = 3'
+    //      'const BAR: usize'
+    // @has - '//*[@class="docblock"]' 'BAR: usize = 3'
     pub const BAR: usize = 3;
 }

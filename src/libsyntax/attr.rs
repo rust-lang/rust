@@ -280,9 +280,9 @@ impl Attribute {
                 Symbol::intern("doc"),
                 Symbol::intern(&strip_doc_comment_decoration(&comment.as_str())));
             if self.style == ast::AttrStyle::Outer {
-                f(&mk_attr_outer(self.id, meta))
+                f(&mk_attr_outer(self.span, self.id, meta))
             } else {
-                f(&mk_attr_inner(self.id, meta))
+                f(&mk_attr_inner(self.span, self.id, meta))
             }
         } else {
             f(self)
@@ -339,8 +339,8 @@ pub fn mk_attr_id() -> AttrId {
 }
 
 /// Returns an inner attribute with the given value.
-pub fn mk_attr_inner(id: AttrId, item: MetaItem) -> Attribute {
-    mk_spanned_attr_inner(DUMMY_SP, id, item)
+pub fn mk_attr_inner(span: Span, id: AttrId, item: MetaItem) -> Attribute {
+    mk_spanned_attr_inner(span, id, item)
 }
 
 /// Returns an innter attribute with the given value and span.
@@ -356,8 +356,8 @@ pub fn mk_spanned_attr_inner(sp: Span, id: AttrId, item: MetaItem) -> Attribute 
 
 
 /// Returns an outer attribute with the given value.
-pub fn mk_attr_outer(id: AttrId, item: MetaItem) -> Attribute {
-    mk_spanned_attr_outer(DUMMY_SP, id, item)
+pub fn mk_attr_outer(span: Span, id: AttrId, item: MetaItem) -> Attribute {
+    mk_spanned_attr_outer(span, id, item)
 }
 
 /// Returns an outer attribute with the given value and span.
@@ -909,23 +909,10 @@ fn int_type_of_word(s: &str) -> Option<IntType> {
 
 #[derive(PartialEq, Debug, RustcEncodable, RustcDecodable, Copy, Clone)]
 pub enum ReprAttr {
-    ReprAny,
     ReprInt(IntType),
     ReprExtern,
     ReprPacked,
     ReprSimd,
-}
-
-impl ReprAttr {
-    pub fn is_ffi_safe(&self) -> bool {
-        match *self {
-            ReprAny => false,
-            ReprInt(ity) => ity.is_ffi_safe(),
-            ReprExtern => true,
-            ReprPacked => false,
-            ReprSimd => true,
-        }
-    }
 }
 
 #[derive(Eq, Hash, PartialEq, Debug, RustcEncodable, RustcDecodable, Copy, Clone)]
@@ -940,16 +927,6 @@ impl IntType {
         match self {
             SignedInt(..) => true,
             UnsignedInt(..) => false
-        }
-    }
-    fn is_ffi_safe(self) -> bool {
-        match self {
-            SignedInt(ast::IntTy::I8) | UnsignedInt(ast::UintTy::U8) |
-            SignedInt(ast::IntTy::I16) | UnsignedInt(ast::UintTy::U16) |
-            SignedInt(ast::IntTy::I32) | UnsignedInt(ast::UintTy::U32) |
-            SignedInt(ast::IntTy::I64) | UnsignedInt(ast::UintTy::U64) |
-            SignedInt(ast::IntTy::I128) | UnsignedInt(ast::UintTy::U128) => true,
-            SignedInt(ast::IntTy::Is) | UnsignedInt(ast::UintTy::Us) => false
         }
     }
 }

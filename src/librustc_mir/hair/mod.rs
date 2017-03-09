@@ -14,7 +14,8 @@
 //! unit-tested and separated from the Rust source and compiler data
 //! structures.
 
-use rustc::mir::{BinOp, BorrowKind, Field, Literal, UnOp, TypedConstVal};
+use rustc_const_math::ConstUsize;
+use rustc::mir::{BinOp, BorrowKind, Field, Literal, UnOp};
 use rustc::hir::def_id::DefId;
 use rustc::middle::region::CodeExtent;
 use rustc::ty::subst::Substs;
@@ -134,7 +135,8 @@ pub enum ExprKind<'tcx> {
         op: LogicalOp,
         lhs: ExprRef<'tcx>,
         rhs: ExprRef<'tcx>,
-    },
+    }, // NOT overloaded!
+       // LogicalOp is distinct from BinaryOp because of lazy evaluation of the operands.
     Unary {
         op: UnOp,
         arg: ExprRef<'tcx>,
@@ -149,6 +151,9 @@ pub enum ExprKind<'tcx> {
         source: ExprRef<'tcx>,
     },
     ReifyFnPointer {
+        source: ExprRef<'tcx>,
+    },
+    ClosureFnPointer {
         source: ExprRef<'tcx>,
     },
     UnsafeFnPointer {
@@ -204,18 +209,18 @@ pub enum ExprKind<'tcx> {
         arg: ExprRef<'tcx>,
     },
     Break {
-        label: Option<CodeExtent>,
+        label: CodeExtent,
         value: Option<ExprRef<'tcx>>,
     },
     Continue {
-        label: Option<CodeExtent>,
+        label: CodeExtent,
     },
     Return {
         value: Option<ExprRef<'tcx>>,
     },
     Repeat {
         value: ExprRef<'tcx>,
-        count: TypedConstVal<'tcx>,
+        count: ConstUsize,
     },
     Array {
         fields: Vec<ExprRef<'tcx>>,

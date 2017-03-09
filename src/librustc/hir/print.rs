@@ -1354,11 +1354,11 @@ impl<'a> State<'a> {
             hir::ExprPath(ref qpath) => {
                 self.print_qpath(qpath, true)?
             }
-            hir::ExprBreak(opt_label, ref opt_expr) => {
+            hir::ExprBreak(label, ref opt_expr) => {
                 word(&mut self.s, "break")?;
                 space(&mut self.s)?;
-                if let Some(label) = opt_label {
-                    self.print_name(label.name)?;
+                if let Some(label_ident) = label.ident {
+                    self.print_name(label_ident.node.name)?;
                     space(&mut self.s)?;
                 }
                 if let Some(ref expr) = *opt_expr {
@@ -1366,11 +1366,11 @@ impl<'a> State<'a> {
                     space(&mut self.s)?;
                 }
             }
-            hir::ExprAgain(opt_label) => {
+            hir::ExprAgain(label) => {
                 word(&mut self.s, "continue")?;
                 space(&mut self.s)?;
-                if let Some(label) = opt_label {
-                    self.print_name(label.name)?;
+                if let Some(label_ident) = label.ident {
+                    self.print_name(label_ident.node.name)?;
                     space(&mut self.s)?
                 }
             }

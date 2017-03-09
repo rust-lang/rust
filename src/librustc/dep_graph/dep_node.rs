@@ -70,6 +70,7 @@ pub enum DepNode<D: Clone + Debug> {
     Resolve,
     EntryPoint,
     CheckEntryFn,
+    CoherenceCheckTrait(D),
     CoherenceCheckImpl(D),
     CoherenceOverlapCheck(D),
     CoherenceOverlapCheckSpecial(D),
@@ -78,8 +79,6 @@ pub enum DepNode<D: Clone + Debug> {
     Variance,
     WfCheck(D),
     TypeckItemType(D),
-    Dropck,
-    DropckImpl(D),
     UnusedTraitCheck,
     CheckConst(D),
     Privacy,
@@ -88,8 +87,10 @@ pub enum DepNode<D: Clone + Debug> {
 
     // Represents the MIR for a fn; also used as the task node for
     // things read/modify that MIR.
+    MirKrate,
     Mir(D),
 
+    BorrowCheckKrate,
     BorrowCheck(D),
     RvalueCheck(D),
     Reachability,
@@ -109,10 +110,15 @@ pub enum DepNode<D: Clone + Debug> {
     // predicates for an item wind up in `ItemSignature`).
     AssociatedItems(D),
     ItemSignature(D),
+    TypeParamPredicates((D, D)),
     SizedConstraint(D),
+    AdtDestructor(D),
     AssociatedItemDefIds(D),
     InherentImpls(D),
+    TypeckBodiesKrate,
     TypeckTables(D),
+    UsedTraitImports(D),
+    MonomorphicConstEval(D),
 
     // The set of impls for a given trait. Ultimately, it would be
     // nice to get more fine-grained here (e.g., to include a
@@ -130,7 +136,37 @@ pub enum DepNode<D: Clone + Debug> {
     // which would yield an overly conservative dep-graph.
     TraitItems(D),
     ReprHints(D),
-    TraitSelect(Vec<D>),
+
+    // Trait selection cache is a little funny. Given a trait
+    // reference like `Foo: SomeTrait<Bar>`, there could be
+    // arbitrarily many def-ids to map on in there (e.g., `Foo`,
+    // `SomeTrait`, `Bar`). We could have a vector of them, but it
+    // requires heap-allocation, and trait sel in general can be a
+    // surprisingly hot path. So instead we pick two def-ids: the
+    // trait def-id, and the first def-id in the input types. If there
+    // is no def-id in the input types, then we use the trait def-id
+    // again. So for example:
+    //
+    // - `i32: Clone` -> `TraitSelect { trait_def_id: Clone, self_def_id: Clone }`
+    // - `u32: Clone` -> `TraitSelect { trait_def_id: Clone, self_def_id: Clone }`
+    // - `Clone: Clone` -> `TraitSelect { trait_def_id: Clone, self_def_id: Clone }`
+    // - `Vec<i32>: Clone` -> `TraitSelect { trait_def_id: Clone, self_def_id: Vec }`
+    // - `String: Clone` -> `TraitSelect { trait_def_id: Clone, self_def_id: String }`
+    // - `Foo: Trait<Bar>` -> `TraitSelect { trait_def_id: Trait, self_def_id: Foo }`
+    // - `Foo: Trait<i32>` -> `TraitSelect { trait_def_id: Trait, self_def_id: Foo }`
+    // - `(Foo, Bar): Trait` -> `TraitSelect { trait_def_id: Trait, self_def_id: Foo }`
+    // - `i32: Trait<Foo>` -> `TraitSelect { trait_def_id: Trait, self_def_id: Foo }`
+    //
+    // You can see that we map many trait refs to the same
+    // trait-select node.  This is not a problem, it just means
+    // imprecision in our dep-graph tracking.  The important thing is
+    // that for any given trait-ref, we always map to the **same**
+    // trait-select node.
+    TraitSelect { trait_def_id: D, input_def_id: D },
+
+    // For proj. cache, we just keep a list of all def-ids, since it is
+    // not a hotspot.
+    ProjectionCache { def_ids: Vec<D> },
 }
 
 impl<D: Clone + Debug> DepNode<D> {
@@ -162,6 +198,7 @@ impl<D: Clone + Debug> DepNode<D> {
             AssociatedItemDefIds,
             InherentImpls,
             TypeckTables,
+            UsedTraitImports,
             TraitImpls,
             ReprHints,
         }
@@ -174,6 +211,9 @@ impl<D: Clone + Debug> DepNode<D> {
 
         match *self {
             Krate => Some(Krate),
+            BorrowCheckKrate => Some(BorrowCheckKrate),
+            MirKrate => Some(MirKrate),
+            TypeckBodiesKrate => Some(TypeckBodiesKrate),
             CollectLanguageItems => Some(CollectLanguageItems),
             CheckStaticRecursion => Some(CheckStaticRecursion),
             ResolveLifetimes => Some(ResolveLifetimes),
@@ -188,7 +228,6 @@ impl<D: Clone + Debug> DepNode<D> {
             EntryPoint => Some(EntryPoint),
             CheckEntryFn => Some(CheckEntryFn),
             Variance => Some(Variance),
-            Dropck => Some(Dropck),
             UnusedTraitCheck => Some(UnusedTraitCheck),
             Privacy => Some(Privacy),
             Reachability => Some(Reachability),
@@ -207,6 +246,7 @@ impl<D: Clone + Debug> DepNode<D> {
             MetaData(ref d) => op(d).map(MetaData),
             CollectItem(ref d) => op(d).map(CollectItem),
             CollectItemSig(ref d) => op(d).map(CollectItemSig),
+            CoherenceCheckTrait(ref d) => op(d).map(CoherenceCheckTrait),
             CoherenceCheckImpl(ref d) => op(d).map(CoherenceCheckImpl),
             CoherenceOverlapCheck(ref d) => op(d).map(CoherenceOverlapCheck),
             CoherenceOverlapCheckSpecial(ref d) => op(d).map(CoherenceOverlapCheckSpecial),
@@ -214,7 +254,6 @@ impl<D: Clone + Debug> DepNode<D> {
             CoherenceOrphanCheck(ref d) => op(d).map(CoherenceOrphanCheck),
             WfCheck(ref d) => op(d).map(WfCheck),
             TypeckItemType(ref d) => op(d).map(TypeckItemType),
-            DropckImpl(ref d) => op(d).map(DropckImpl),
             CheckConst(ref d) => op(d).map(CheckConst),
             IntrinsicCheck(ref d) => op(d).map(IntrinsicCheck),
             MatchCheck(ref d) => op(d).map(MatchCheck),
@@ -226,16 +265,30 @@ impl<D: Clone + Debug> DepNode<D> {
             TransInlinedItem(ref d) => op(d).map(TransInlinedItem),
             AssociatedItems(ref d) => op(d).map(AssociatedItems),
             ItemSignature(ref d) => op(d).map(ItemSignature),
+            TypeParamPredicates((ref item, ref param)) => {
+                Some(TypeParamPredicates((try_opt!(op(item)), try_opt!(op(param)))))
+            }
             SizedConstraint(ref d) => op(d).map(SizedConstraint),
+            AdtDestructor(ref d) => op(d).map(AdtDestructor),
             AssociatedItemDefIds(ref d) => op(d).map(AssociatedItemDefIds),
             InherentImpls(ref d) => op(d).map(InherentImpls),
             TypeckTables(ref d) => op(d).map(TypeckTables),
+            UsedTraitImports(ref d) => op(d).map(UsedTraitImports),
+            MonomorphicConstEval(ref d) => op(d).map(MonomorphicConstEval),
             TraitImpls(ref d) => op(d).map(TraitImpls),
             TraitItems(ref d) => op(d).map(TraitItems),
             ReprHints(ref d) => op(d).map(ReprHints),
-            TraitSelect(ref type_ds) => {
-                let type_ds = try_opt!(type_ds.iter().map(|d| op(d)).collect());
-                Some(TraitSelect(type_ds))
+            TraitSelect { ref trait_def_id, ref input_def_id } => {
+                op(trait_def_id).and_then(|trait_def_id| {
+                    op(input_def_id).and_then(|input_def_id| {
+                        Some(TraitSelect { trait_def_id: trait_def_id,
+                                           input_def_id: input_def_id })
+                    })
+                })
+            }
+            ProjectionCache { ref def_ids } => {
+                let def_ids: Option<Vec<E>> = def_ids.iter().map(op).collect();
+                def_ids.map(|d| ProjectionCache { def_ids: d })
             }
         }
     }
@@ -248,4 +301,3 @@ impl<D: Clone + Debug> DepNode<D> {
 /// them even in the absence of a tcx.)
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable)]
 pub struct WorkProductId(pub String);
-

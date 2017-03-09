@@ -36,7 +36,7 @@ use hash::Hasher;
 ///
 /// [`Rc`]: ../../std/rc/struct.Rc.html
 /// [arc]: ../../std/sync/struct.Arc.html
-/// [ub]: ../../reference.html#behavior-considered-undefined
+/// [ub]: ../../reference/behavior-considered-undefined.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "send"]
 #[rustc_on_unimplemented = "`{Self}` cannot be sent between threads safely"]
@@ -338,7 +338,7 @@ pub trait Copy : Clone {
 /// [mutex]: ../../std/sync/struct.Mutex.html
 /// [rwlock]: ../../std/sync/struct.RwLock.html
 /// [unsafecell]: ../cell/struct.UnsafeCell.html
-/// [ub]: ../../reference.html#behavior-considered-undefined
+/// [ub]: ../../reference/behavior-considered-undefined.html
 /// [transmute]: ../../std/mem/fn.transmute.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "sync"]

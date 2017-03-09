@@ -33,11 +33,13 @@
 //! error (if any) and then we just add it to the list. Overall, that cost is
 //! far far less than working with compiler-rt's build system over time.
 
+extern crate build_helper;
 extern crate gcc;
 
 use std::collections::BTreeMap;
 use std::env;
 use std::path::Path;
+use build_helper::native_lib_boilerplate;
 
 struct Sources {
     // SYMBOL -> PATH TO SOURCE
@@ -79,7 +81,14 @@ fn main() {
         return;
     }
 
+    // Can't reuse `sources` list for the freshness check becuse it doesn't contain header files.
+    let native = match native_lib_boilerplate("compiler-rt", "compiler-rt", "compiler-rt", ".") {
+        Ok(native) => native,
+        _ => return,
+    };
+
     let cfg = &mut gcc::Config::new();
+    cfg.out_dir(&native.out_dir);
 
     if target.contains("msvc") {
         // Don't pull in extra libraries on MSVC
@@ -92,7 +101,15 @@ fn main() {
         // compiler-rt's build system already
         cfg.flag("-fno-builtin");
         cfg.flag("-fvisibility=hidden");
-        cfg.flag("-fomit-frame-pointer");
+        // Accepted practice on Solaris is to never omit frame pointer so that
+        // system observability tools work as expected.  In addition, at least
+        // on Solaris, -fomit-frame-pointer on sparcv9 appears to generate
+        // references to data outside of the current stack frame.  A search of
+        // the gcc bug database provides a variety of issues surrounding
+        // -fomit-frame-pointer on non-x86 platforms.
+        if !target.contains("solaris") && !target.contains("sparc") {
+            cfg.flag("-fomit-frame-pointer");
+        }
         cfg.flag("-ffreestanding");
         cfg.define("VISIBILITY_HIDDEN", None);
     }
@@ -240,7 +257,7 @@ fn main() {
             sources.extend(&["x86_64/floatdidf.c", "x86_64/floatdisf.c", "x86_64/floatdixf.c"]);
         }
     } else {
-        if !target.contains("freebsd") {
+        if !target.contains("freebsd") && !target.contains("netbsd") {
             sources.extend(&["gcc_personality_v0.c"]);
         }
 

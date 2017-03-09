@@ -27,7 +27,7 @@ use rustc::middle::mem_categorization as mc;
 use std::mem;
 use std::rc::Rc;
 use syntax::ast;
-use syntax_pos::{Span, DUMMY_SP};
+use syntax_pos::DUMMY_SP;
 
 #[derive(PartialEq, Eq, PartialOrd, Ord)]
 enum Fragment {
@@ -200,13 +200,14 @@ impl FragmentSets {
 
 pub fn instrument_move_fragments<'a, 'tcx>(this: &MoveData<'tcx>,
                                            tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                           sp: Span,
                                            id: ast::NodeId) {
     let span_err = tcx.hir.attrs(id).iter()
                           .any(|a| a.check_name("rustc_move_fragments"));
     let print = tcx.sess.opts.debugging_opts.print_move_fragments;
 
     if !span_err && !print { return; }
+
+    let sp = tcx.hir.span(id);
 
     let instrument_all_paths = |kind, vec_rc: &Vec<MovePathIndex>| {
         for (i, mpi) in vec_rc.iter().enumerate() {
@@ -423,7 +424,7 @@ fn add_fragment_siblings_for_extension<'a, 'tcx>(this: &MoveData<'tcx>,
     };
 
     match parent_ty.sty {
-        ty::TyTuple(ref v) => {
+        ty::TyTuple(ref v, _) => {
             let tuple_idx = match *origin_field_name {
                 mc::PositionalField(tuple_idx) => tuple_idx,
                 mc::NamedField(_) =>

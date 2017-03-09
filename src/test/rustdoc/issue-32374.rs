@@ -18,10 +18,10 @@
 
 // @has issue_32374/struct.T.html '//*[@class="stab deprecated"]' \
 //      'Deprecated since 1.0.0: text'
-// @has - '<code>test</code>'
+// @has - '<code>test </code>'
 // @has - '<a href="http://issue_url/32374">#32374</a>'
 // @matches issue_32374/struct.T.html '//*[@class="stab unstable"]' \
-//      '🔬 This is a nightly-only experimental API.   \(test #32374\)$'
+//      '🔬 This is a nightly-only experimental API.  \(test #32374\)$'
 #[rustc_deprecated(since = "1.0.0", reason = "text")]
 #[unstable(feature = "test", issue = "32374")]
 pub struct T;
@@ -29,11 +29,11 @@ pub struct T;
 // @has issue_32374/struct.U.html '//*[@class="stab deprecated"]' \
 //      'Deprecated since 1.0.0: deprecated'
 // @has issue_32374/struct.U.html '//*[@class="stab unstable"]' \
-//      '🔬 This is a nightly-only experimental API.  (test #32374)'
+//      '🔬 This is a nightly-only experimental API. (test #32374)'
 // @has issue_32374/struct.U.html '//details' \
-//      '🔬 This is a nightly-only experimental API.  (test #32374)'
+//      '🔬 This is a nightly-only experimental API. (test #32374)'
 // @has issue_32374/struct.U.html '//summary' \
-//      '🔬 This is a nightly-only experimental API.  (test #32374)'
+//      '🔬 This is a nightly-only experimental API. (test #32374)'
 // @has issue_32374/struct.U.html '//details/p' \
 //      'unstable'
 #[rustc_deprecated(since = "1.0.0", reason = "deprecated")]

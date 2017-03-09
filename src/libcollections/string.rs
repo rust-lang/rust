@@ -62,9 +62,9 @@ use core::iter::{FromIterator, FusedIterator};
 use core::mem;
 use core::ops::{self, Add, AddAssign, Index, IndexMut};
 use core::ptr;
+use core::str as core_str;
 use core::str::pattern::Pattern;
 use std_unicode::char::{decode_utf16, REPLACEMENT_CHARACTER};
-use std_unicode::str as unicode_str;
 
 use borrow::{Cow, ToOwned};
 use range::RangeArgument;
@@ -575,7 +575,7 @@ impl String {
             if byte < 128 {
                 // subseqidx handles this
             } else {
-                let w = unicode_str::utf8_char_width(byte);
+                let w = core_str::utf8_char_width(byte);
 
                 match w {
                     2 => {
@@ -999,6 +999,9 @@ impl String {
     /// If `new_len` is greater than the string's current length, this has no
     /// effect.
     ///
+    /// Note that this method has no effect on the allocated capacity
+    /// of the string
+    ///
     /// # Panics
     ///
     /// Panics if `new_len` does not lie on a [`char`] boundary.
@@ -1250,17 +1253,17 @@ impl String {
         self.len() == 0
     }
 
-    /// Divide one string into two at an index.
+    /// Splits the string into two at the given index.
     ///
-    /// The argument, `mid`, should be a byte offset from the start of the string. It must also
-    /// be on the boundary of a UTF-8 code point.
+    /// Returns a newly allocated `String`. `self` contains bytes `[0, at)`, and
+    /// the returned `String` contains bytes `[at, len)`. `at` must be on the
+    /// boundary of a UTF-8 code point.
     ///
-    /// The two strings returned go from the start of the string to `mid`, and from `mid` to the end
-    /// of the string.
+    /// Note that the capacity of `self` does not change.
     ///
     /// # Panics
     ///
-    /// Panics if `mid` is not on a `UTF-8` code point boundary, or if it is beyond the last
+    /// Panics if `at` is not on a `UTF-8` code point boundary, or if it is beyond the last
     /// code point of the string.
     ///
     /// # Examples
@@ -1275,9 +1278,9 @@ impl String {
     /// ```
     #[inline]
     #[stable(feature = "string_split_off", since = "1.16.0")]
-    pub fn split_off(&mut self, mid: usize) -> String {
-        assert!(self.is_char_boundary(mid));
-        let other = self.vec.split_off(mid);
+    pub fn split_off(&mut self, at: usize) -> String {
+        assert!(self.is_char_boundary(at));
+        let other = self.vec.split_off(at);
         unsafe { String::from_utf8_unchecked(other) }
     }
 
@@ -1480,6 +1483,15 @@ impl FromIterator<char> for String {
     }
 }
 
+#[stable(feature = "string_from_iter_by_ref", since = "1.17.0")]
+impl<'a> FromIterator<&'a char> for String {
+    fn from_iter<I: IntoIterator<Item = &'a char>>(iter: I) -> String {
+        let mut buf = String::new();
+        buf.extend(iter);
+        buf
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> FromIterator<&'a str> for String {
     fn from_iter<I: IntoIterator<Item = &'a str>>(iter: I) -> String {
@@ -1629,6 +1641,43 @@ impl hash::Hash for String {
     }
 }
 
+/// Implements the `+` operator for concatenating two strings.
+///
+/// This consumes the `String` on the left-hand side and re-uses its buffer (growing it if
+/// necessary). This is done to avoid allocating a new `String` and copying the entire contents on
+/// every operation, which would lead to `O(n^2)` running time when building an `n`-byte string by
+/// repeated concatenation.
+///
+/// The string on the right-hand side is only borrowed; its contents are copied into the returned
+/// `String`.
+///
+/// # Examples
+///
+/// Concatenating two `String`s takes the first by value and borrows the second:
+///
+/// ```
+/// let a = String::from("hello");
+/// let b = String::from(" world");
+/// let c = a + &b;
+/// // `a` is moved and can no longer be used here.
+/// ```
+///
+/// If you want to keep using the first `String`, you can clone it and append to the clone instead:
+///
+/// ```
+/// let a = String::from("hello");
+/// let b = String::from(" world");
+/// let c = a.clone() + &b;
+/// // `a` is still valid here.
+/// ```
+///
+/// Concatenating `&str` slices can be done by converting the first to a `String`:
+///
+/// ```
+/// let a = "hello";
+/// let b = " world";
+/// let c = a.to_string() + b;
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Add<&'a str> for String {
     type Output = String;
@@ -1640,6 +1689,11 @@ impl<'a> Add<&'a str> for String {
     }
 }
 
+/// Implements the `+=` operator for appending to a `String`.
+///
+/// This has the same behavior as the [`push_str()`] method.
+///
+/// [`push_str()`]: struct.String.html#method.push_str
 #[stable(feature = "stringaddassign", since = "1.12.0")]
 impl<'a> AddAssign<&'a str> for String {
     #[inline]
@@ -1846,13 +1900,20 @@ pub trait ToString {
     fn to_string(&self) -> String;
 }
 
+/// # Panics
+///
+/// In this implementation, the `to_string` method panics
+/// if the `Display` implementation returns an error.
+/// This indicates an incorrect `Display` implementation
+/// since `fmt::Write for String` never returns an error itself.
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: fmt::Display + ?Sized> ToString for T {
     #[inline]
     default fn to_string(&self) -> String {
         use core::fmt::Write;
         let mut buf = String::new();
-        let _ = buf.write_fmt(format_args!("{}", self));
+        buf.write_fmt(format_args!("{}", self))
+           .expect("a Display implementation return an error unexpectedly");
         buf.shrink_to_fit();
         buf
     }
@@ -1863,6 +1924,22 @@ impl ToString for str {
     #[inline]
     fn to_string(&self) -> String {
         String::from(self)
+    }
+}
+
+#[stable(feature = "cow_str_to_string_specialization", since = "1.17.0")]
+impl<'a> ToString for Cow<'a, str> {
+    #[inline]
+    fn to_string(&self) -> String {
+        self[..].to_owned()
+    }
+}
+
+#[stable(feature = "string_to_string_specialization", since = "1.17.0")]
+impl ToString for String {
+    #[inline]
+    fn to_string(&self) -> String {
+        self.to_owned()
     }
 }
 
@@ -1972,6 +2049,13 @@ pub struct Drain<'a> {
     end: usize,
     /// Current remaining range to remove
     iter: Chars<'a>,
+}
+
+#[stable(feature = "collection_debug", since = "1.17.0")]
+impl<'a> fmt::Debug for Drain<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.pad("Drain { .. }")
+    }
 }
 
 #[stable(feature = "drain", since = "1.6.0")]

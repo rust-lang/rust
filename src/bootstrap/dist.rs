@@ -26,20 +26,19 @@ use std::process::{Command, Stdio};
 
 use build_helper::output;
 
-use {Build, Compiler, Mode};
-use util::{cp_r, libdir, is_dylib, cp_filtered, copy};
+#[cfg(not(target_os = "solaris"))]
+const SH_CMD: &'static str = "sh";
+// On Solaris, sh is the historical bourne shell, not a POSIX shell, or bash.
+#[cfg(target_os = "solaris")]
+const SH_CMD: &'static str = "bash";
 
-pub fn package_vers(build: &Build) -> &str {
-    match &build.config.channel[..] {
-        "stable" => &build.release,
-        "beta" => "beta",
-        "nightly" => "nightly",
-        _ => &build.release,
-    }
-}
+use {Build, Compiler, Mode};
+use channel;
+use util::{cp_r, libdir, is_dylib, cp_filtered, copy, exe};
 
 fn pkgname(build: &Build, component: &str) -> String {
-    format!("{}-{}", component, package_vers(build))
+    assert!(component.starts_with("rust")); // does not work with cargo
+    format!("{}-{}", component, build.rust_package_vers())
 }
 
 fn distdir(build: &Build) -> PathBuf {
@@ -69,7 +68,7 @@ pub fn docs(build: &Build, stage: u32, host: &str) {
     let src = build.out.join(host).join("doc");
     cp_r(&src, &dst);
 
-    let mut cmd = Command::new("sh");
+    let mut cmd = Command::new(SH_CMD);
     cmd.arg(sanitize_sh(&build.src.join("src/rust-installer/gen-installer.sh")))
        .arg("--product-name=Rust-Documentation")
        .arg("--rel-manifest-dir=rustlib")
@@ -87,7 +86,7 @@ pub fn docs(build: &Build, stage: u32, host: &str) {
     // As part of this step, *also* copy the docs directory to a directory which
     // buildbot typically uploads.
     if host == build.config.build {
-        let dst = distdir(build).join("doc").join(&build.package_vers);
+        let dst = distdir(build).join("doc").join(build.rust_package_vers());
         t!(fs::create_dir_all(&dst));
         cp_r(&src, &dst);
     }
@@ -119,7 +118,7 @@ pub fn mingw(build: &Build, host: &str) {
        .arg(host);
     build.run(&mut cmd);
 
-    let mut cmd = Command::new("sh");
+    let mut cmd = Command::new(SH_CMD);
     cmd.arg(sanitize_sh(&build.src.join("src/rust-installer/gen-installer.sh")))
        .arg("--product-name=Rust-MinGW")
        .arg("--rel-manifest-dir=rustlib")
@@ -156,7 +155,7 @@ pub fn rustc(build: &Build, stage: u32, host: &str) {
     cp("LICENSE-MIT");
     cp("README.md");
     // tiny morsel of metadata is used by rust-packaging
-    let version = &build.version;
+    let version = build.rust_version();
     t!(t!(File::create(overlay.join("version"))).write_all(version.as_bytes()));
 
     // On MinGW we've got a few runtime DLL dependencies that we need to
@@ -185,7 +184,7 @@ pub fn rustc(build: &Build, stage: u32, host: &str) {
     }
 
     // Finally, wrap everything up in a nice tarball!
-    let mut cmd = Command::new("sh");
+    let mut cmd = Command::new(SH_CMD);
     cmd.arg(sanitize_sh(&build.src.join("src/rust-installer/gen-installer.sh")))
        .arg("--product-name=Rust")
        .arg("--rel-manifest-dir=rustlib")
@@ -290,7 +289,7 @@ pub fn std(build: &Build, compiler: &Compiler, target: &str) {
     let src = build.sysroot(compiler).join("lib/rustlib");
     cp_r(&src.join(target), &dst);
 
-    let mut cmd = Command::new("sh");
+    let mut cmd = Command::new(SH_CMD);
     cmd.arg(sanitize_sh(&build.src.join("src/rust-installer/gen-installer.sh")))
        .arg("--product-name=Rust")
        .arg("--rel-manifest-dir=rustlib")
@@ -306,7 +305,7 @@ pub fn std(build: &Build, compiler: &Compiler, target: &str) {
 }
 
 pub fn rust_src_location(build: &Build) -> PathBuf {
-    let plain_name = format!("rustc-{}-src", package_vers(build));
+    let plain_name = format!("rustc-{}-src", build.rust_package_vers());
     distdir(build).join(&format!("{}.tar.gz", plain_name))
 }
 
@@ -343,9 +342,10 @@ pub fn analysis(build: &Build, compiler: &Compiler, target: &str) {
     let image_src = src.join("save-analysis");
     let dst = image.join("lib/rustlib").join(target).join("analysis");
     t!(fs::create_dir_all(&dst));
+    println!("image_src: {:?}, dst: {:?}", image_src, dst);
     cp_r(&image_src, &dst);
 
-    let mut cmd = Command::new("sh");
+    let mut cmd = Command::new(SH_CMD);
     cmd.arg(sanitize_sh(&build.src.join("src/rust-installer/gen-installer.sh")))
        .arg("--product-name=Rust")
        .arg("--rel-manifest-dir=rustlib")
@@ -360,8 +360,14 @@ pub fn analysis(build: &Build, compiler: &Compiler, target: &str) {
     t!(fs::remove_dir_all(&image));
 }
 
+const CARGO_VENDOR_VERSION: &'static str = "0.1.4";
+
 /// Creates the `rust-src` installer component and the plain source tarball
 pub fn rust_src(build: &Build) {
+    if !build.config.rust_dist_src {
+        return
+    }
+
     println!("Dist src");
 
     let name = pkgname(build, "rust-src");
@@ -381,12 +387,11 @@ pub fn rust_src(build: &Build) {
         "README.md",
         "RELEASES.md",
         "configure",
-        "Makefile.in"
+        "x.py",
     ];
     let src_dirs = [
         "man",
         "src",
-        "mk"
     ];
 
     let filter_fn = move |path: &Path| {
@@ -403,13 +408,6 @@ pub fn rust_src(build: &Build) {
                spath.ends_with(".s") {
                 return false
             }
-        }
-
-        // If we're inside the vendor directory then we need to preserve
-        // everything as Cargo's vendoring support tracks all checksums and we
-        // want to be sure we don't accidentally leave out a file.
-        if spath.contains("vendor") {
-            return true
         }
 
         let excludes = [
@@ -434,8 +432,31 @@ pub fn rust_src(build: &Build) {
         copy(&build.src.join(item), &dst_src.join(item));
     }
 
+    // Get cargo-vendor installed, if it isn't already.
+    let mut has_cargo_vendor = false;
+    let mut cmd = Command::new(&build.cargo);
+    for line in output(cmd.arg("install").arg("--list")).lines() {
+        has_cargo_vendor |= line.starts_with("cargo-vendor ");
+    }
+    if !has_cargo_vendor {
+        let mut cmd = Command::new(&build.cargo);
+        cmd.arg("install")
+           .arg("--force")
+           .arg("--debug")
+           .arg("--vers").arg(CARGO_VENDOR_VERSION)
+           .arg("cargo-vendor")
+           .env("RUSTC", &build.rustc);
+        build.run(&mut cmd);
+    }
+
+    // Vendor all Cargo dependencies
+    let mut cmd = Command::new(&build.cargo);
+    cmd.arg("vendor")
+       .current_dir(&dst_src.join("src"));
+    build.run(&mut cmd);
+
     // Create source tarball in rust-installer format
-    let mut cmd = Command::new("sh");
+    let mut cmd = Command::new(SH_CMD);
     cmd.arg(sanitize_sh(&build.src.join("src/rust-installer/gen-installer.sh")))
        .arg("--product-name=Rust")
        .arg("--rel-manifest-dir=rustlib")
@@ -449,14 +470,14 @@ pub fn rust_src(build: &Build) {
     build.run(&mut cmd);
 
     // Rename directory, so that root folder of tarball has the correct name
-    let plain_name = format!("rustc-{}-src", package_vers(build));
+    let plain_name = format!("rustc-{}-src", build.rust_package_vers());
     let plain_dst_src = tmpdir(build).join(&plain_name);
     let _ = fs::remove_dir_all(&plain_dst_src);
     t!(fs::create_dir_all(&plain_dst_src));
     cp_r(&dst_src, &plain_dst_src);
 
     // Create the version file
-    write_file(&plain_dst_src.join("version"), build.version.as_bytes());
+    write_file(&plain_dst_src.join("version"), build.rust_version().as_bytes());
 
     // Create plain source tarball
     let mut cmd = Command::new("tar");
@@ -508,45 +529,64 @@ fn write_file(path: &Path, data: &[u8]) {
     t!(vf.write_all(data));
 }
 
-// FIXME(#38531) eventually this should package up a Cargo that we just compiled
-//               and tested locally, but for now we're downloading cargo
-//               artifacts from their compiled location.
 pub fn cargo(build: &Build, stage: u32, target: &str) {
     println!("Dist cargo stage{} ({})", stage, target);
+    let compiler = Compiler::new(stage, &build.config.build);
 
-    let branch = match &build.config.channel[..] {
-        "stable" |
-        "beta" => {
-            build.release.split(".").take(2).collect::<Vec<_>>().join(".")
-        }
-        _ => "master".to_string(),
-    };
+    let src = build.src.join("src/tools/cargo");
+    let etc = src.join("src/etc");
+    let release_num = &build.crates["cargo"].version;
+    let name = format!("cargo-{}", build.package_vers(release_num));
+    let version = build.cargo_info.version(build, release_num);
 
-    let dst = tmpdir(build).join("cargo");
-    let _ = fs::remove_dir_all(&dst);
-    build.run(Command::new("git")
-                .arg("clone")
-                .arg("--depth").arg("1")
-                .arg("--branch").arg(&branch)
-                .arg("https://github.com/rust-lang/cargo")
-                .current_dir(dst.parent().unwrap()));
-    let sha = output(Command::new("git")
-                .arg("rev-parse")
-                .arg("HEAD")
-                .current_dir(&dst));
-    let sha = sha.trim();
-    println!("\tgot cargo sha: {}", sha);
+    let tmp = tmpdir(build);
+    let image = tmp.join("cargo-image");
+    drop(fs::remove_dir_all(&image));
+    t!(fs::create_dir_all(&image));
 
-    let input = format!("https://s3.amazonaws.com/rust-lang-ci/cargo-builds\
-                         /{}/cargo-nightly-{}.tar.gz", sha, target);
-    let output = distdir(build).join(format!("cargo-nightly-{}.tar.gz", target));
-    println!("\tdownloading {}", input);
-    let mut curl = Command::new("curl");
-    curl.arg("-f")
-        .arg("-o").arg(&output)
-        .arg(&input)
-        .arg("--retry").arg("3");
-    build.run(&mut curl);
+    // Prepare the image directory
+    t!(fs::create_dir_all(image.join("share/zsh/site-functions")));
+    t!(fs::create_dir_all(image.join("etc/bash_completions.d")));
+    let cargo = build.cargo_out(&compiler, Mode::Tool, target)
+                     .join(exe("cargo", target));
+    install(&cargo, &image.join("bin"), 0o755);
+    for man in t!(etc.join("man").read_dir()) {
+        let man = t!(man);
+        install(&man.path(), &image.join("share/man/man1"), 0o644);
+    }
+    install(&etc.join("_cargo"), &image.join("share/zsh/site-functions"), 0o644);
+    copy(&etc.join("cargo.bashcomp.sh"),
+         &image.join("etc/bash_completions.d/cargo"));
+    let doc = image.join("share/doc/cargo");
+    install(&src.join("README.md"), &doc, 0o644);
+    install(&src.join("LICENSE-MIT"), &doc, 0o644);
+    install(&src.join("LICENSE-APACHE"), &doc, 0o644);
+    install(&src.join("LICENSE-THIRD-PARTY"), &doc, 0o644);
+
+    // Prepare the overlay
+    let overlay = tmp.join("cargo-overlay");
+    drop(fs::remove_dir_all(&overlay));
+    t!(fs::create_dir_all(&overlay));
+    install(&src.join("README.md"), &overlay, 0o644);
+    install(&src.join("LICENSE-MIT"), &overlay, 0o644);
+    install(&src.join("LICENSE-APACHE"), &overlay, 0o644);
+    install(&src.join("LICENSE-THIRD-PARTY"), &overlay, 0o644);
+    t!(t!(File::create(overlay.join("version"))).write_all(version.as_bytes()));
+
+    // Generate the installer tarball
+    let mut cmd = Command::new("sh");
+    cmd.arg(sanitize_sh(&build.src.join("src/rust-installer/gen-installer.sh")))
+       .arg("--product-name=Rust")
+       .arg("--rel-manifest-dir=rustlib")
+       .arg("--success-message=Rust-is-ready-to-roll.")
+       .arg(format!("--image-dir={}", sanitize_sh(&image)))
+       .arg(format!("--work-dir={}", sanitize_sh(&tmpdir(build))))
+       .arg(format!("--output-dir={}", sanitize_sh(&distdir(build))))
+       .arg(format!("--non-installed-overlay={}", sanitize_sh(&overlay)))
+       .arg(format!("--package-name={}-{}", name, target))
+       .arg("--component-name=cargo")
+       .arg("--legacy-manifest-dirs=rustlib,cargo");
+    build.run(&mut cmd);
 }
 
 /// Creates a combined installer for the specified target in the provided stage.
@@ -554,10 +594,13 @@ pub fn extended(build: &Build, stage: u32, target: &str) {
     println!("Dist extended stage{} ({})", stage, target);
 
     let dist = distdir(build);
+    let cargo_vers = &build.crates["cargo"].version;
     let rustc_installer = dist.join(format!("{}-{}.tar.gz",
                                             pkgname(build, "rustc"),
                                             target));
-    let cargo_installer = dist.join(format!("cargo-nightly-{}.tar.gz", target));
+    let cargo_installer = dist.join(format!("cargo-{}-{}.tar.gz",
+                                            build.package_vers(&cargo_vers),
+                                            target));
     let docs_installer = dist.join(format!("{}-{}.tar.gz",
                                            pkgname(build, "rust-docs"),
                                            target));
@@ -577,7 +620,7 @@ pub fn extended(build: &Build, stage: u32, target: &str) {
     install(&build.src.join("COPYRIGHT"), &overlay, 0o644);
     install(&build.src.join("LICENSE-APACHE"), &overlay, 0o644);
     install(&build.src.join("LICENSE-MIT"), &overlay, 0o644);
-    let version = &build.version;
+    let version = build.rust_version();
     t!(t!(File::create(overlay.join("version"))).write_all(version.as_bytes()));
     install(&etc.join("README.md"), &overlay, 0o644);
 
@@ -595,7 +638,7 @@ pub fn extended(build: &Build, stage: u32, target: &str) {
         input_tarballs.push_str(&sanitize_sh(&mingw_installer));
     }
 
-    let mut cmd = Command::new("sh");
+    let mut cmd = Command::new(SH_CMD);
     cmd.arg(sanitize_sh(&build.src.join("src/rust-installer/combine-installers.sh")))
        .arg("--product-name=Rust")
        .arg("--rel-manifest-dir=rustlib")
@@ -850,16 +893,16 @@ pub fn extended(build: &Build, stage: u32, target: &str) {
 }
 
 fn add_env(build: &Build, cmd: &mut Command, target: &str) {
-    let mut parts = build.release_num.split('.');
-    cmd.env("CFG_RELEASE_INFO", &build.version)
-       .env("CFG_RELEASE_NUM", &build.release_num)
-       .env("CFG_RELEASE", &build.release)
-       .env("CFG_PRERELEASE_VERSION", &build.prerelease_version)
+    let mut parts = channel::CFG_RELEASE_NUM.split('.');
+    cmd.env("CFG_RELEASE_INFO", build.rust_version())
+       .env("CFG_RELEASE_NUM", channel::CFG_RELEASE_NUM)
+       .env("CFG_RELEASE", build.rust_release())
+       .env("CFG_PRERELEASE_VERSION", channel::CFG_PRERELEASE_VERSION)
        .env("CFG_VER_MAJOR", parts.next().unwrap())
        .env("CFG_VER_MINOR", parts.next().unwrap())
        .env("CFG_VER_PATCH", parts.next().unwrap())
        .env("CFG_VER_BUILD", "0") // just needed to build
-       .env("CFG_PACKAGE_VERS", package_vers(build))
+       .env("CFG_PACKAGE_VERS", build.rust_package_vers())
        .env("CFG_PACKAGE_NAME", pkgname(build, "rust"))
        .env("CFG_BUILD", target)
        .env("CFG_CHANNEL", &build.config.channel);
@@ -899,7 +942,8 @@ pub fn hash_and_sign(build: &Build) {
     cmd.arg(sign);
     cmd.arg(distdir(build));
     cmd.arg(today.trim());
-    cmd.arg(package_vers(build));
+    cmd.arg(build.rust_package_vers());
+    cmd.arg(build.cargo_info.version(build, &build.crates["cargo"].version));
     cmd.arg(addr);
 
     t!(fs::create_dir_all(distdir(build)));

@@ -15,29 +15,40 @@ use std;
 use rustc_const_math::{ConstMathErr, Op};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::indexed_vec::Idx;
-use rustc_i128::i128;
 
 use build::{BlockAnd, BlockAndExtension, Builder};
 use build::expr::category::{Category, RvalueFunc};
 use hair::*;
 use rustc_const_math::{ConstInt, ConstIsize};
 use rustc::middle::const_val::ConstVal;
+use rustc::middle::region::CodeExtent;
 use rustc::ty;
 use rustc::mir::*;
 use syntax::ast;
 use syntax_pos::Span;
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
+    /// See comment on `as_local_operand`
+    pub fn as_local_rvalue<M>(&mut self, block: BasicBlock, expr: M)
+                             -> BlockAnd<Rvalue<'tcx>>
+        where M: Mirror<'tcx, Output = Expr<'tcx>>
+    {
+        let topmost_scope = self.topmost_scope(); // FIXME(#6393)
+        self.as_rvalue(block, Some(topmost_scope), expr)
+    }
+
     /// Compile `expr`, yielding an rvalue.
-    pub fn as_rvalue<M>(&mut self, block: BasicBlock, expr: M) -> BlockAnd<Rvalue<'tcx>>
+    pub fn as_rvalue<M>(&mut self, block: BasicBlock, scope: Option<CodeExtent>, expr: M)
+                        -> BlockAnd<Rvalue<'tcx>>
         where M: Mirror<'tcx, Output = Expr<'tcx>>
     {
         let expr = self.hir.mirror(expr);
-        self.expr_as_rvalue(block, expr)
+        self.expr_as_rvalue(block, scope, expr)
     }
 
     fn expr_as_rvalue(&mut self,
                       mut block: BasicBlock,
+                      scope: Option<CodeExtent>,
                       expr: Expr<'tcx>)
                       -> BlockAnd<Rvalue<'tcx>> {
         debug!("expr_as_rvalue(block={:?}, expr={:?})", block, expr);
@@ -48,25 +59,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
         match expr.kind {
             ExprKind::Scope { extent, value } => {
-                this.in_scope(extent, block, |this| this.as_rvalue(block, value))
-            }
-            ExprKind::InlineAsm { asm, outputs, inputs } => {
-                let outputs = outputs.into_iter().map(|output| {
-                    unpack!(block = this.as_lvalue(block, output))
-                }).collect();
-
-                let inputs = inputs.into_iter().map(|input| {
-                    unpack!(block = this.as_operand(block, input))
-                }).collect();
-
-                block.and(Rvalue::InlineAsm {
-                    asm: asm.clone(),
-                    outputs: outputs,
-                    inputs: inputs
-                })
+                this.in_scope(extent, block, |this| this.as_rvalue(block, scope, value))
             }
             ExprKind::Repeat { value, count } => {
-                let value_operand = unpack!(block = this.as_operand(block, value));
+                let value_operand = unpack!(block = this.as_operand(block, scope, value));
                 block.and(Rvalue::Repeat(value_operand, count))
             }
             ExprKind::Borrow { region, borrow_kind, arg } => {
@@ -74,13 +70,13 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 block.and(Rvalue::Ref(region, borrow_kind, arg_lvalue))
             }
             ExprKind::Binary { op, lhs, rhs } => {
-                let lhs = unpack!(block = this.as_operand(block, lhs));
-                let rhs = unpack!(block = this.as_operand(block, rhs));
+                let lhs = unpack!(block = this.as_operand(block, scope, lhs));
+                let rhs = unpack!(block = this.as_operand(block, scope, rhs));
                 this.build_binary_op(block, op, expr_span, expr.ty,
                                      lhs, rhs)
             }
             ExprKind::Unary { op, arg } => {
-                let arg = unpack!(block = this.as_operand(block, arg));
+                let arg = unpack!(block = this.as_operand(block, scope, arg));
                 // Check for -MIN on signed integers
                 if this.hir.check_overflow() && op == UnOp::Neg && expr.ty.is_signed() {
                     let bool_ty = this.hir.bool_ty();
@@ -113,23 +109,27 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             ExprKind::Cast { source } => {
                 let source = this.hir.mirror(source);
 
-                let source = unpack!(block = this.as_operand(block, source));
+                let source = unpack!(block = this.as_operand(block, scope, source));
                 block.and(Rvalue::Cast(CastKind::Misc, source, expr.ty))
             }
             ExprKind::Use { source } => {
-                let source = unpack!(block = this.as_operand(block, source));
+                let source = unpack!(block = this.as_operand(block, scope, source));
                 block.and(Rvalue::Use(source))
             }
             ExprKind::ReifyFnPointer { source } => {
-                let source = unpack!(block = this.as_operand(block, source));
+                let source = unpack!(block = this.as_operand(block, scope, source));
                 block.and(Rvalue::Cast(CastKind::ReifyFnPointer, source, expr.ty))
             }
             ExprKind::UnsafeFnPointer { source } => {
-                let source = unpack!(block = this.as_operand(block, source));
+                let source = unpack!(block = this.as_operand(block, scope, source));
                 block.and(Rvalue::Cast(CastKind::UnsafeFnPointer, source, expr.ty))
             }
+            ExprKind::ClosureFnPointer { source } => {
+                let source = unpack!(block = this.as_operand(block, scope, source));
+                block.and(Rvalue::Cast(CastKind::ClosureFnPointer, source, expr.ty))
+            }
             ExprKind::Unsize { source } => {
-                let source = unpack!(block = this.as_operand(block, source));
+                let source = unpack!(block = this.as_operand(block, scope, source));
                 block.and(Rvalue::Cast(CastKind::Unsize, source, expr.ty))
             }
             ExprKind::Array { fields } => {
@@ -160,18 +160,19 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 //     to the same MIR as `let x = ();`.
 
                 // first process the set of fields
+                let el_ty = expr.ty.sequence_element_type(this.hir.tcx());
                 let fields: Vec<_> =
                     fields.into_iter()
-                          .map(|f| unpack!(block = this.as_operand(block, f)))
+                          .map(|f| unpack!(block = this.as_operand(block, scope, f)))
                           .collect();
 
-                block.and(Rvalue::Aggregate(AggregateKind::Array, fields))
+                block.and(Rvalue::Aggregate(AggregateKind::Array(el_ty), fields))
             }
             ExprKind::Tuple { fields } => { // see (*) above
                 // first process the set of fields
                 let fields: Vec<_> =
                     fields.into_iter()
-                          .map(|f| unpack!(block = this.as_operand(block, f)))
+                          .map(|f| unpack!(block = this.as_operand(block, scope, f)))
                           .collect();
 
                 block.and(Rvalue::Aggregate(AggregateKind::Tuple, fields))
@@ -179,7 +180,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             ExprKind::Closure { closure_id, substs, upvars } => { // see (*) above
                 let upvars =
                     upvars.into_iter()
-                          .map(|upvar| unpack!(block = this.as_operand(block, upvar)))
+                          .map(|upvar| unpack!(block = this.as_operand(block, scope, upvar)))
                           .collect();
                 block.and(Rvalue::Aggregate(AggregateKind::Closure(closure_id, substs), upvars))
             }
@@ -191,10 +192,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
                 // first process the set of fields that were provided
                 // (evaluating them in order given by user)
-                let fields_map: FxHashMap<_, _> =
-                    fields.into_iter()
-                          .map(|f| (f.name, unpack!(block = this.as_operand(block, f.expr))))
-                          .collect();
+                let fields_map: FxHashMap<_, _> = fields.into_iter()
+                    .map(|f| (f.name, unpack!(block = this.as_operand(block, scope, f.expr))))
+                    .collect();
 
                 let field_names = this.hir.all_fields(adt_def, variant_index);
 
@@ -239,6 +239,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             ExprKind::Break { .. } |
             ExprKind::Continue { .. } |
             ExprKind::Return { .. } |
+            ExprKind::InlineAsm { .. } |
             ExprKind::StaticRef { .. } => {
                 // these do not have corresponding `Rvalue` variants,
                 // so make an operand and then return that
@@ -246,7 +247,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     Some(Category::Rvalue(RvalueFunc::AsRvalue)) => false,
                     _ => true,
                 });
-                let operand = unpack!(block = this.as_operand(block, expr));
+                let operand = unpack!(block = this.as_operand(block, scope, expr));
                 block.and(Rvalue::Use(operand))
             }
         }
@@ -258,7 +259,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         let source_info = self.source_info(span);
         let bool_ty = self.hir.bool_ty();
         if self.hir.check_overflow() && op.is_checkable() && ty.is_integral() {
-            let result_tup = self.hir.tcx().intern_tup(&[ty, bool_ty]);
+            let result_tup = self.hir.tcx().intern_tup(&[ty, bool_ty], false);
             let result_value = self.temp(result_tup);
 
             self.cfg.push_assign(block, source_info,

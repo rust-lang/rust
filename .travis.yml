@@ -12,9 +12,11 @@ matrix:
   fast_finish: true
   include:
     # Linux builders, all docker images
-    - env: IMAGE=android DEPLOY=1
+    - env: IMAGE=arm-android
+    - env: IMAGE=armhf-gnu
     - env: IMAGE=cross DEPLOY=1
     - env: IMAGE=linux-tested-targets DEPLOY=1
+    - env: IMAGE=dist-android DEPLOY=1
     - env: IMAGE=dist-arm-linux DEPLOY=1
     - env: IMAGE=dist-armv7-aarch64-linux DEPLOY=1
     - env: IMAGE=dist-freebsd DEPLOY=1
@@ -32,7 +34,6 @@ matrix:
     - env: IMAGE=x86_64-gnu-aux
     - env: IMAGE=x86_64-gnu-debug
     - env: IMAGE=x86_64-gnu-nopt
-    - env: IMAGE=x86_64-gnu-make
     - env: IMAGE=x86_64-gnu-llvm-3.7 ALLOW_PR=1 RUST_BACKTRACE=1
     - env: IMAGE=x86_64-gnu-distcheck
     - env: IMAGE=x86_64-gnu-incremental
@@ -45,29 +46,47 @@ matrix:
       os: osx
       osx_image: xcode8.2
       install: &osx_install_sccache >
-        curl -L https://api.pub.build.mozilla.org/tooltool/sha512/d0025b286468cc5ada83b23d3fafbc936b9f190eaa7d4a981715b18e8e3bf720a7bcee7bfe758cfdeb8268857f6098fd52dcdd8818232692a30ce91039936596 |
-          tar xJf - -C /usr/local/bin --strip-components=1
+        travis_retry curl -o /usr/local/bin/sccache https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-02-25-sccache-x86_64-apple-darwin &&
+          chmod +x /usr/local/bin/sccache
+    - env: >
+        RUST_CHECK_TARGET=check
+        RUST_CONFIGURE_ARGS=--build=i686-apple-darwin
+        SRC=.
+      os: osx
+      osx_image: xcode8.2
+      install: *osx_install_sccache
 
     - env: >
-        SCRIPT="./x.py test && ./x.py dist"
+        RUST_CHECK_TARGET=dist
         RUST_CONFIGURE_ARGS="--build=i686-apple-darwin --enable-extended"
         SRC=.
         DEPLOY=1
       os: osx
       osx_image: xcode8.2
-      install: *osx_install_sccache
-    - env: >
-        RUST_CHECK_TARGET=check
-        RUST_CONFIGURE_ARGS=--build=x86_64-apple-darwin --disable-rustbuild
-        SRC=.
-      os: osx
-      osx_image: xcode8.2
-      install: *osx_install_sccache
+      install: >
+        travis_retry curl -o /usr/local/bin/sccache https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-02-25-sccache-x86_64-apple-darwin &&
+          chmod +x /usr/local/bin/sccache &&
+          brew uninstall --ignore-dependencies openssl &&
+          brew install openssl --universal --without-test
     - env: >
         RUST_CHECK_TARGET=dist
         RUST_CONFIGURE_ARGS="--target=aarch64-apple-ios,armv7-apple-ios,armv7s-apple-ios,i386-apple-ios,x86_64-apple-ios --enable-extended"
         SRC=.
         DEPLOY=1
+      os: osx
+      osx_image: xcode8.2
+      install: *osx_install_sccache
+
+    # "alternate" deployments, these are "nightlies" but don't have assertions
+    # turned on, they're deployed to a different location primarily for projects
+    # which are stuck on nightly and don't want llvm assertions in the artifacts
+    # that they use.
+    - env: IMAGE=dist-x86-linux DEPLOY_ALT=1
+    - env: >
+        RUST_CHECK_TARGET=dist
+        RUST_CONFIGURE_ARGS="--enable-extended"
+        SRC=.
+        DEPLOY_ALT=1
       os: osx
       osx_image: xcode8.2
       install: *osx_install_sccache
@@ -78,6 +97,12 @@ env:
     - AWS_ACCESS_KEY_ID=AKIAIMX7VLAS3PZAVLUQ
     # AWS_SECRET_ACCESS_KEY=...
     - secure: "Pixhh0hXDqGCdOyLtGFjli3J2AtDWIpyb2btIrLe956nCBDRutRoMm6rv5DI9sFZN07Mms7VzNNvhc9wCW1y63JAm414d2Co7Ob8kWMZlz9l9t7ACHuktUiis8yr+S4Quq1Vqd6pqi7pf2J++UxC8R/uLeqVrubzr6+X7AbmEFE="
+
+before_script:
+  - >
+      echo "#### Disk usage before running script:";
+      df -h;
+      du . | sort -nr | head -n100
 
 script:
   - >
@@ -90,6 +115,18 @@ script:
           travis_retry sh -c 'git submodule deinit -f . && git submodule update --init' &&
           src/ci/docker/run.sh $IMAGE;
       fi
+
+after_success:
+  - >
+      echo "#### Build successful; Disk usage after running script:";
+      df -h;
+      du . | sort -nr | head -n100
+
+after_failure:
+  - >
+      echo "#### Build failed; Disk usage after running script:";
+      df -h;
+      du . | sort -nr | head -n100
 
 # Save tagged docker images we created and load them if they're available
 before_cache:
@@ -109,11 +146,12 @@ cache:
 
 before_deploy:
   - mkdir -p deploy/$TRAVIS_COMMIT
-  - rm -rf build/dist/doc
   - >
       if [ "$TRAVIS_OS_NAME" == "osx" ]; then
+          rm -rf build/dist/doc &&
           cp -r build/dist/* deploy/$TRAVIS_COMMIT;
       else
+          rm -rf obj/build/dist/doc &&
           cp -r obj/build/dist/* deploy/$TRAVIS_COMMIT;
       fi
 
@@ -131,3 +169,19 @@ deploy:
     on:
       branch: auto
       condition: $DEPLOY = 1
+
+  # this is the same as the above deployment provider except that it uploads to
+  # a slightly different directory and has a different trigger
+  - provider: s3
+    bucket: rust-lang-ci
+    skip_cleanup: true
+    local_dir: deploy
+    upload_dir: rustc-builds-alt
+    acl: public_read
+    region: us-east-1
+    access_key_id: AKIAIPQVNYF2T3DTYIWQ
+    secret_access_key:
+      secure: "FBqDqOTeIPMu6v/WYPf4CFSlh9rLRZGKVtpLa5KkyuOhXRTrnEzBduEtS8/FMIxdQImvurhSvxWvqRybMOi4qoVfjMqqpHAI7uBbidbrvAcJoHNsx6BgUNVCIoH6a0UsAjTUtm6/YPIpzbHoLZXPL0GrHPMk6Mu04qVSmcYNWn4="
+    on:
+      branch: auto
+      condition: $DEPLOY_ALT = 1

@@ -18,7 +18,7 @@ use hair::*;
 use rustc::mir::transform::MirSource;
 
 use rustc::middle::const_val::ConstVal;
-use rustc_const_eval::{ConstContext, EvalHint, fatal_const_eval_err};
+use rustc_const_eval::{ConstContext, fatal_const_eval_err};
 use rustc_data_structures::indexed_vec::Idx;
 use rustc::hir::def_id::DefId;
 use rustc::hir::map::blocks::FnLikeNode;
@@ -59,13 +59,8 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         let mut check_overflow = attrs.iter()
             .any(|item| item.check_name("rustc_inherit_overflow_checks"));
 
-        // Respect -Z force-overflow-checks=on and -C debug-assertions.
-        check_overflow |= infcx.tcx
-            .sess
-            .opts
-            .debugging_opts
-            .force_overflow_checks
-            .unwrap_or(infcx.tcx.sess.opts.debug_assertions);
+        // Respect -C overflow-checks.
+        check_overflow |= infcx.tcx.sess.overflow_checks();
 
         // Constants and const fn's always need overflow checks.
         check_overflow |= constness == hir::Constness::Const;
@@ -118,7 +113,7 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
 
     pub fn const_eval_literal(&mut self, e: &hir::Expr) -> Literal<'tcx> {
         let tcx = self.tcx.global_tcx();
-        match ConstContext::with_tables(tcx, self.tables()).eval(e, EvalHint::ExprTypeChecked) {
+        match ConstContext::with_tables(tcx, self.tables()).eval(e) {
             Ok(value) => Literal::Value { value: value },
             Err(s) => fatal_const_eval_err(tcx, &s, e.span, "expression")
         }

@@ -12,7 +12,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   xz-utils \
   sudo \
   gdb \
-  patch
+  patch \
+  libssl-dev \
+  pkg-config
 
 WORKDIR /build/
 COPY musl-libunwind-patch.patch build-musl.sh /build/
@@ -23,14 +25,22 @@ RUN curl -OL https://github.com/Yelp/dumb-init/releases/download/v1.2.0/dumb-ini
     rm dumb-init_*.deb
 ENTRYPOINT ["/usr/bin/dumb-init", "--"]
 
-ENV SCCACHE_DIGEST=7237e38e029342fa27b7ac25412cb9d52554008b12389727320bd533fd7f05b6a96d55485f305caf95e5c8f5f97c3313e10012ccad3e752aba2518f3522ba783
-RUN curl -L https://api.pub.build.mozilla.org/tooltool/sha512/$SCCACHE_DIGEST | \
-      tar xJf - -C /usr/local/bin --strip-components=1
+RUN curl -o /usr/local/bin/sccache \
+      https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-02-25-sccache-x86_64-unknown-linux-musl && \
+      chmod +x /usr/local/bin/sccache
 
 ENV RUST_CONFIGURE_ARGS \
       --target=x86_64-unknown-linux-musl,i686-unknown-linux-musl,i586-unknown-linux-gnu \
       --musl-root-x86_64=/musl-x86_64 \
       --musl-root-i686=/musl-i686
+
+# Newer binutils broke things on some vms/distros (i.e., linking against
+# unknown relocs disabled by the following flag), so we need to go out of our
+# way to produce "super compatible" binaries.
+#
+# See: https://github.com/rust-lang/rust/issues/34978
+ENV CFLAGS_i686_unknown_linux_musl=-Wa,-mrelax-relocations=no \
+    CFLAGS_x86_64_unknown_linux_musl=-Wa,-mrelax-relocations=no
 
 ENV SCRIPT \
       python2.7 ../x.py test \

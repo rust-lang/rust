@@ -112,7 +112,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
         where F: FnOnce(&mut DumpVisitor<'l, 'tcx, 'll, D>)
     {
         let item_def_id = self.tcx.hir.local_def_id(item_id);
-        match self.tcx.tables.borrow().get(&item_def_id) {
+        match self.tcx.maps.typeck_tables.borrow().get(&item_def_id) {
             Some(tables) => {
                 let old_tables = self.save_ctxt.tables;
                 self.save_ctxt.tables = tables;
@@ -336,7 +336,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
             Def::AssociatedTy(..) |
             Def::AssociatedConst(..) |
             Def::PrimTy(_) |
-            Def::Macro(_) |
+            Def::Macro(..) |
             Def::Err => {
                span_bug!(span,
                          "process_def_kind for unexpected item: {:?}",
@@ -747,21 +747,8 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                     trait_ref: &'l Option<ast::TraitRef>,
                     typ: &'l ast::Ty,
                     impl_items: &'l [ast::ImplItem]) {
-        let mut has_self_ref = false;
         if let Some(impl_data) = self.save_ctxt.get_item_data(item) {
             down_cast_data!(impl_data, ImplData, item.span);
-            if let Some(ref self_ref) = impl_data.self_ref {
-                has_self_ref = true;
-                if !self.span.filter_generated(Some(self_ref.span), item.span) {
-                    self.dumper.type_ref(self_ref.clone().lower(self.tcx));
-                }
-            }
-            if let Some(ref trait_ref_data) = impl_data.trait_ref {
-                if !self.span.filter_generated(Some(trait_ref_data.span), item.span) {
-                    self.dumper.type_ref(trait_ref_data.clone().lower(self.tcx));
-                }
-            }
-
             if !self.span.filter_generated(Some(impl_data.span), item.span) {
                 self.dumper.impl_data(ImplData {
                     id: impl_data.id,
@@ -772,9 +759,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                 }.lower(self.tcx));
             }
         }
-        if !has_self_ref {
-            self.visit_ty(&typ);
-        }
+        self.visit_ty(&typ);
         if let &Some(ref trait_ref) = trait_ref {
             self.process_path(trait_ref.ref_id, &trait_ref.path, Some(recorder::TypeRef));
         }
@@ -1440,7 +1425,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'l> for DumpVisitor<'l, 'tcx, 'll,
                             }.lower(self.tcx));
                         }
                     }
-                    ty::TyTuple(_) => {}
+                    ty::TyTuple(..) => {}
                     _ => span_bug!(ex.span,
                                    "Expected struct or tuple type, found {:?}",
                                    ty),

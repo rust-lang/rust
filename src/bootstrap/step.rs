@@ -26,7 +26,7 @@
 //! along with the actual implementation elsewhere. You can find more comments
 //! about how to define rules themselves below.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashSet};
 use std::mem;
 
 use check::{self, TestKind};
@@ -246,14 +246,14 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
     crate_rule(build,
                &mut rules,
                "libstd-link",
-               "build-crate-std_shim",
+               "build-crate-std",
                compile::std_link)
         .dep(|s| s.name("startup-objects"))
         .dep(|s| s.name("create-sysroot").target(s.host));
     crate_rule(build,
                &mut rules,
                "libtest-link",
-               "build-crate-test_shim",
+               "build-crate-test",
                compile::test_link)
         .dep(|s| s.name("libstd-link"));
     crate_rule(build,
@@ -263,13 +263,13 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
                compile::rustc_link)
         .dep(|s| s.name("libtest-link"));
 
-    for (krate, path, _default) in krates("std_shim") {
+    for (krate, path, _default) in krates("std") {
         rules.build(&krate.build_step, path)
              .dep(|s| s.name("startup-objects"))
              .dep(move |s| s.name("rustc").host(&build.config.build).target(s.host))
              .run(move |s| compile::std(build, s.target, &s.compiler()));
     }
-    for (krate, path, _default) in krates("test_shim") {
+    for (krate, path, _default) in krates("test") {
         rules.build(&krate.build_step, path)
              .dep(|s| s.name("libstd-link"))
              .run(move |s| compile::test(build, s.target, &s.compiler()));
@@ -278,9 +278,19 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
         rules.build(&krate.build_step, path)
              .dep(|s| s.name("libtest-link"))
              .dep(move |s| s.name("llvm").host(&build.config.build).stage(0))
+             .dep(|s| s.name("may-run-build-script"))
              .run(move |s| compile::rustc(build, s.target, &s.compiler()));
     }
 
+    // Crates which have build scripts need to rely on this rule to ensure that
+    // the necessary prerequisites for a build script are linked and located in
+    // place.
+    rules.build("may-run-build-script", "path/to/nowhere")
+         .dep(move |s| {
+             s.name("libstd-link")
+              .host(&build.config.build)
+              .target(&build.config.build)
+         });
     rules.build("startup-objects", "src/rtstartup")
          .dep(|s| s.name("create-sysroot").target(s.host))
          .run(move |s| compile::build_startup_objects(build, &s.compiler(), s.target));
@@ -295,13 +305,14 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
                  .dep(|s| s.name("libtest"))
                  .dep(|s| s.name("tool-compiletest").target(s.host).stage(0))
                  .dep(|s| s.name("test-helpers"))
-                 .dep(|s| s.name("android-copy-libs"))
+                 .dep(|s| s.name("emulator-copy-libs"))
                  .default(mode != "pretty") // pretty tests don't run everywhere
                  .run(move |s| {
                      check::compiletest(build, &s.compiler(), s.target, mode, dir)
                  });
         };
 
+        suite("check-ui", "src/test/ui", "ui", "ui");
         suite("check-rpass", "src/test/run-pass", "run-pass", "run-pass");
         suite("check-cfail", "src/test/compile-fail", "compile-fail", "compile-fail");
         suite("check-pfail", "src/test/parse-fail", "parse-fail", "parse-fail");
@@ -333,7 +344,7 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
              .dep(|s| s.name("tool-compiletest").target(s.host).stage(0))
              .dep(|s| s.name("test-helpers"))
              .dep(|s| s.name("debugger-scripts"))
-             .dep(|s| s.name("android-copy-libs"))
+             .dep(|s| s.name("emulator-copy-libs"))
              .run(move |s| check::compiletest(build, &s.compiler(), s.target,
                                          "debuginfo-gdb", "debuginfo"));
         let mut rule = rules.test("check-debuginfo", "src/test/debuginfo");
@@ -362,7 +373,7 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
                  });
         };
 
-        suite("check-ui", "src/test/ui", "ui", "ui");
+        suite("check-ui-full", "src/test/ui-fulldeps", "ui", "ui-fulldeps");
         suite("check-rpass-full", "src/test/run-pass-fulldeps",
               "run-pass", "run-pass-fulldeps");
         suite("check-rfail-full", "src/test/run-fail-fulldeps",
@@ -384,55 +395,55 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
               "pretty", "run-fail-fulldeps");
     }
 
-    for (krate, path, _default) in krates("std_shim") {
+    for (krate, path, _default) in krates("std") {
         rules.test(&krate.test_step, path)
              .dep(|s| s.name("libtest"))
-             .dep(|s| s.name("android-copy-libs"))
+             .dep(|s| s.name("emulator-copy-libs"))
              .run(move |s| check::krate(build, &s.compiler(), s.target,
                                         Mode::Libstd, TestKind::Test,
                                         Some(&krate.name)));
     }
     rules.test("check-std-all", "path/to/nowhere")
          .dep(|s| s.name("libtest"))
-         .dep(|s| s.name("android-copy-libs"))
+         .dep(|s| s.name("emulator-copy-libs"))
          .default(true)
          .run(move |s| check::krate(build, &s.compiler(), s.target,
                                     Mode::Libstd, TestKind::Test, None));
 
     // std benchmarks
-    for (krate, path, _default) in krates("std_shim") {
+    for (krate, path, _default) in krates("std") {
         rules.bench(&krate.bench_step, path)
              .dep(|s| s.name("libtest"))
-             .dep(|s| s.name("android-copy-libs"))
+             .dep(|s| s.name("emulator-copy-libs"))
              .run(move |s| check::krate(build, &s.compiler(), s.target,
                                         Mode::Libstd, TestKind::Bench,
                                         Some(&krate.name)));
     }
     rules.bench("bench-std-all", "path/to/nowhere")
          .dep(|s| s.name("libtest"))
-         .dep(|s| s.name("android-copy-libs"))
+         .dep(|s| s.name("emulator-copy-libs"))
          .default(true)
          .run(move |s| check::krate(build, &s.compiler(), s.target,
                                     Mode::Libstd, TestKind::Bench, None));
 
-    for (krate, path, _default) in krates("test_shim") {
+    for (krate, path, _default) in krates("test") {
         rules.test(&krate.test_step, path)
              .dep(|s| s.name("libtest"))
-             .dep(|s| s.name("android-copy-libs"))
+             .dep(|s| s.name("emulator-copy-libs"))
              .run(move |s| check::krate(build, &s.compiler(), s.target,
                                         Mode::Libtest, TestKind::Test,
                                         Some(&krate.name)));
     }
     rules.test("check-test-all", "path/to/nowhere")
          .dep(|s| s.name("libtest"))
-         .dep(|s| s.name("android-copy-libs"))
+         .dep(|s| s.name("emulator-copy-libs"))
          .default(true)
          .run(move |s| check::krate(build, &s.compiler(), s.target,
                                     Mode::Libtest, TestKind::Test, None));
     for (krate, path, _default) in krates("rustc-main") {
         rules.test(&krate.test_step, path)
              .dep(|s| s.name("librustc"))
-             .dep(|s| s.name("android-copy-libs"))
+             .dep(|s| s.name("emulator-copy-libs"))
              .host(true)
              .run(move |s| check::krate(build, &s.compiler(), s.target,
                                         Mode::Librustc, TestKind::Test,
@@ -440,7 +451,7 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
     }
     rules.test("check-rustc-all", "path/to/nowhere")
          .dep(|s| s.name("librustc"))
-         .dep(|s| s.name("android-copy-libs"))
+         .dep(|s| s.name("emulator-copy-libs"))
          .default(true)
          .host(true)
          .run(move |s| check::krate(build, &s.compiler(), s.target,
@@ -478,12 +489,38 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
          .dep(|s| s.name("dist-src"))
          .run(move |_| check::distcheck(build));
 
-
     rules.build("test-helpers", "src/rt/rust_test_helpers.c")
          .run(move |s| native::test_helpers(build, s.target));
-    rules.test("android-copy-libs", "path/to/nowhere")
+    rules.build("openssl", "path/to/nowhere")
+         .run(move |s| native::openssl(build, s.target));
+
+    // Some test suites are run inside emulators, and most of our test binaries
+    // are linked dynamically which means we need to ship the standard library
+    // and such to the emulator ahead of time. This step represents this and is
+    // a dependency of all test suites.
+    //
+    // Most of the time this step is a noop (the `check::emulator_copy_libs`
+    // only does work if necessary). For some steps such as shipping data to
+    // QEMU we have to build our own tools so we've got conditional dependencies
+    // on those programs as well. Note that the QEMU client is built for the
+    // build target (us) and the server is built for the target.
+    rules.test("emulator-copy-libs", "path/to/nowhere")
          .dep(|s| s.name("libtest"))
-         .run(move |s| check::android_copy_libs(build, &s.compiler(), s.target));
+         .dep(move |s| {
+             if build.qemu_rootfs(s.target).is_some() {
+                s.name("tool-qemu-test-client").target(s.host).stage(0)
+             } else {
+                 Step::noop()
+             }
+         })
+         .dep(move |s| {
+             if build.qemu_rootfs(s.target).is_some() {
+                s.name("tool-qemu-test-server")
+             } else {
+                 Step::noop()
+             }
+         })
+         .run(move |s| check::emulator_copy_libs(build, &s.compiler(), s.target));
 
     rules.test("check-bootstrap", "src/bootstrap")
          .default(true)
@@ -516,6 +553,23 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
     rules.build("tool-build-manifest", "src/tools/build-manifest")
          .dep(|s| s.name("libstd"))
          .run(move |s| compile::tool(build, s.stage, s.target, "build-manifest"));
+    rules.build("tool-qemu-test-server", "src/tools/qemu-test-server")
+         .dep(|s| s.name("libstd"))
+         .run(move |s| compile::tool(build, s.stage, s.target, "qemu-test-server"));
+    rules.build("tool-qemu-test-client", "src/tools/qemu-test-client")
+         .dep(|s| s.name("libstd"))
+         .run(move |s| compile::tool(build, s.stage, s.target, "qemu-test-client"));
+    rules.build("tool-cargo", "src/tools/cargo")
+         .dep(|s| s.name("libstd"))
+         .dep(|s| s.stage(0).host(s.target).name("openssl"))
+         .dep(move |s| {
+             // Cargo depends on procedural macros, which requires a full host
+             // compiler to be available, so we need to depend on that.
+             s.name("librustc-link")
+              .target(&build.config.build)
+              .host(&build.config.build)
+         })
+         .run(move |s| compile::tool(build, s.stage, s.target, "cargo"));
 
     // ========================================================================
     // Documentation targets
@@ -537,6 +591,24 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
          })
          .default(build.config.docs)
          .run(move |s| doc::rustbook(build, s.target, "nomicon"));
+    rules.doc("doc-reference", "src/doc/reference")
+         .dep(move |s| {
+             s.name("tool-rustbook")
+              .host(&build.config.build)
+              .target(&build.config.build)
+              .stage(0)
+         })
+         .default(build.config.docs)
+         .run(move |s| doc::rustbook(build, s.target, "reference"));
+    rules.doc("doc-unstable-book", "src/doc/unstable-book")
+         .dep(move |s| {
+             s.name("tool-rustbook")
+              .host(&build.config.build)
+              .target(&build.config.build)
+              .stage(0)
+         })
+         .default(build.config.docs)
+         .run(move |s| doc::rustbook(build, s.target, "unstable-book"));
     rules.doc("doc-standalone", "src/doc")
          .dep(move |s| {
              s.name("rustc")
@@ -552,13 +624,13 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
          .default(build.config.docs)
          .host(true)
          .run(move |s| doc::error_index(build, s.target));
-    for (krate, path, default) in krates("std_shim") {
+    for (krate, path, default) in krates("std") {
         rules.doc(&krate.doc_step, path)
              .dep(|s| s.name("libstd-link"))
              .default(default && build.config.docs)
              .run(move |s| doc::std(build, s.stage, s.target));
     }
-    for (krate, path, default) in krates("test_shim") {
+    for (krate, path, default) in krates("test") {
         rules.doc(&krate.doc_step, path)
              .dep(|s| s.name("libtest-link"))
              .default(default && build.config.compiler_docs)
@@ -624,6 +696,7 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
     rules.dist("dist-cargo", "cargo")
          .host(true)
          .only_host_build(true)
+         .dep(|s| s.name("tool-cargo"))
          .run(move |s| dist::cargo(build, s.stage, s.target));
     rules.dist("dist-extended", "extended")
          .default(build.config.extended)
@@ -817,7 +890,7 @@ impl<'a, 'b> Drop for RuleBuilder<'a, 'b> {
 pub struct Rules<'a> {
     build: &'a Build,
     sbuild: Step<'a>,
-    rules: HashMap<&'a str, Rule<'a>>,
+    rules: BTreeMap<&'a str, Rule<'a>>,
 }
 
 impl<'a> Rules<'a> {
@@ -830,7 +903,7 @@ impl<'a> Rules<'a> {
                 host: &build.config.build,
                 name: "",
             },
-            rules: HashMap::new(),
+            rules: BTreeMap::new(),
         }
     }
 
@@ -936,6 +1009,8 @@ invalid rule dependency graph detected, was a rule added and maybe typo'd?
         // 2. Next, we determine which rules we're actually executing. If a
         //    number of path filters were specified on the command line we look
         //    for those, otherwise we look for anything tagged `default`.
+        //    Here we also compute the priority of each rule based on how early
+        //    in the command line the matching path filter showed up.
         //
         // 3. Finally, we generate some steps with host and target information.
         //
@@ -966,11 +1041,22 @@ invalid rule dependency graph detected, was a rule added and maybe typo'd?
             Subcommand::Clean => panic!(),
         };
 
-        self.rules.values().filter(|rule| rule.kind == kind).filter(|rule| {
-            (paths.len() == 0 && rule.default) || paths.iter().any(|path| {
-                path.ends_with(rule.path)
-            })
-        }).flat_map(|rule| {
+        let mut rules: Vec<_> = self.rules.values().filter_map(|rule| {
+            if rule.kind != kind {
+                return None;
+            }
+
+            if paths.len() == 0 && rule.default {
+                Some((rule, 0))
+            } else {
+                paths.iter().position(|path| path.ends_with(rule.path))
+                     .map(|priority| (rule, priority))
+            }
+        }).collect();
+
+        rules.sort_by_key(|&(_, priority)| priority);
+
+        rules.into_iter().flat_map(|(rule, _)| {
             let hosts = if rule.only_host_build || rule.only_build {
                 &self.build.config.host[..1]
             } else if self.build.flags.host.len() > 0 {
@@ -1123,27 +1209,30 @@ mod tests {
 
         let mut build = Build::new(flags, config);
         let cwd = env::current_dir().unwrap();
-        build.crates.insert("std_shim".to_string(), ::Crate {
-            name: "std_shim".to_string(),
+        build.crates.insert("std".to_string(), ::Crate {
+            name: "std".to_string(),
             deps: Vec::new(),
-            path: cwd.join("src/std_shim"),
-            doc_step: "doc-std_shim".to_string(),
-            build_step: "build-crate-std_shim".to_string(),
-            test_step: "test-std_shim".to_string(),
-            bench_step: "bench-std_shim".to_string(),
+            path: cwd.join("src/std"),
+            doc_step: "doc-std".to_string(),
+            build_step: "build-crate-std".to_string(),
+            test_step: "test-std".to_string(),
+            bench_step: "bench-std".to_string(),
+            version: String::new(),
         });
-        build.crates.insert("test_shim".to_string(), ::Crate {
-            name: "test_shim".to_string(),
+        build.crates.insert("test".to_string(), ::Crate {
+            name: "test".to_string(),
             deps: Vec::new(),
-            path: cwd.join("src/test_shim"),
-            doc_step: "doc-test_shim".to_string(),
-            build_step: "build-crate-test_shim".to_string(),
-            test_step: "test-test_shim".to_string(),
-            bench_step: "bench-test_shim".to_string(),
+            path: cwd.join("src/test"),
+            doc_step: "doc-test".to_string(),
+            build_step: "build-crate-test".to_string(),
+            test_step: "test-test".to_string(),
+            bench_step: "bench-test".to_string(),
+            version: String::new(),
         });
         build.crates.insert("rustc-main".to_string(), ::Crate {
             name: "rustc-main".to_string(),
             deps: Vec::new(),
+            version: String::new(),
             path: cwd.join("src/rustc-main"),
             doc_step: "doc-rustc-main".to_string(),
             build_step: "build-crate-rustc-main".to_string(),
@@ -1329,7 +1418,7 @@ mod tests {
         let all = rules.expand(&plan);
         println!("all rules: {:#?}", all);
         assert!(!all.contains(&step.name("rustc")));
-        assert!(!all.contains(&step.name("build-crate-std_shim").stage(1)));
+        assert!(!all.contains(&step.name("build-crate-test").stage(1)));
 
         // all stage0 compiles should be for the build target, A
         for step in all.iter().filter(|s| s.stage == 0) {
@@ -1394,7 +1483,7 @@ mod tests {
 
         assert!(!plan.iter().any(|s| s.name.contains("rustc")));
         assert!(plan.iter().all(|s| {
-            !s.name.contains("test_shim") || s.target == "C"
+            !s.name.contains("test") || s.target == "C"
         }));
     }
 
@@ -1442,7 +1531,8 @@ mod tests {
         assert!(plan.iter().all(|s| s.host == "A"));
         assert!(plan.iter().all(|s| s.target == "C"));
 
-        assert!(!plan.iter().any(|s| s.name.contains("-ui")));
+        assert!(plan.iter().any(|s| s.name.contains("-ui")));
+        assert!(!plan.iter().any(|s| s.name.contains("ui-full")));
         assert!(plan.iter().any(|s| s.name.contains("cfail")));
         assert!(!plan.iter().any(|s| s.name.contains("cfail-full")));
         assert!(plan.iter().any(|s| s.name.contains("codegen-units")));

@@ -201,7 +201,7 @@ impl PpSourceMode {
     fn call_with_pp_support_hir<'tcx, A, B, F>(&self,
                                                sess: &'tcx Session,
                                                hir_map: &hir_map::Map<'tcx>,
-                                               analysis: &ty::CrateAnalysis<'tcx>,
+                                               analysis: &ty::CrateAnalysis,
                                                resolutions: &Resolutions,
                                                arena: &'tcx DroplessArena,
                                                arenas: &'tcx GlobalArenas<'tcx>,
@@ -718,13 +718,24 @@ fn print_flowgraph<'a, 'tcx, W: Write>(variants: Vec<borrowck_dot::Variant>,
                                        mode: PpFlowGraphMode,
                                        mut out: W)
                                        -> io::Result<()> {
-    let cfg = match code {
-        blocks::Code::Expr(expr) => cfg::CFG::new(tcx, expr),
-        blocks::Code::FnLike(fn_like) => {
-            let body = tcx.hir.body(fn_like.body());
-            cfg::CFG::new(tcx, &body.value)
-        },
+    let body_id = match code {
+        blocks::Code::Expr(expr) => {
+            // Find the function this expression is from.
+            let mut node_id = expr.id;
+            loop {
+                let node = tcx.hir.get(node_id);
+                if let Some(n) = hir::map::blocks::FnLikeNode::from_node(node) {
+                    break n.body();
+                }
+                let parent = tcx.hir.get_parent_node(node_id);
+                assert!(node_id != parent);
+                node_id = parent;
+            }
+        }
+        blocks::Code::FnLike(fn_like) => fn_like.body(),
     };
+    let body = tcx.hir.body(body_id);
+    let cfg = cfg::CFG::new(tcx, &body);
     let labelled_edges = mode != PpFlowGraphMode::UnlabelledEdges;
     let lcfg = LabelledCFG {
         hir_map: &tcx.hir,
@@ -838,7 +849,7 @@ pub fn print_after_parsing(sess: &Session,
 
 pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
                                                 hir_map: &hir_map::Map<'tcx>,
-                                                analysis: &ty::CrateAnalysis<'tcx>,
+                                                analysis: &ty::CrateAnalysis,
                                                 resolutions: &Resolutions,
                                                 input: &Input,
                                                 krate: &ast::Crate,
@@ -958,7 +969,7 @@ pub fn print_after_hir_lowering<'tcx, 'a: 'tcx>(sess: &'a Session,
 // Instead, we call that function ourselves.
 fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
                                        hir_map: &hir_map::Map<'tcx>,
-                                       analysis: &ty::CrateAnalysis<'tcx>,
+                                       analysis: &ty::CrateAnalysis,
                                        resolutions: &Resolutions,
                                        crate_name: &str,
                                        arena: &'tcx DroplessArena,
@@ -996,11 +1007,13 @@ fn print_with_analysis<'tcx, 'a: 'tcx>(sess: &'a Session,
                 } else {
                     match ppm {
                         PpmMir => {
-                            write_mir_pretty(tcx, tcx.mir_map.borrow().keys().into_iter(), &mut out)
+                            write_mir_pretty(tcx,
+                                             tcx.maps.mir.borrow().keys().into_iter(),
+                                             &mut out)
                         }
                         PpmMirCFG => {
                             write_mir_graphviz(tcx,
-                                               tcx.mir_map.borrow().keys().into_iter(),
+                                               tcx.maps.mir.borrow().keys().into_iter(),
                                                &mut out)
                         }
                         _ => unreachable!(),

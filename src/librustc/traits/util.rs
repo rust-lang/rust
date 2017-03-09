@@ -482,14 +482,14 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn closure_trait_ref_and_return_type(self,
         fn_trait_def_id: DefId,
         self_ty: Ty<'tcx>,
-        sig: &ty::PolyFnSig<'tcx>,
+        sig: ty::PolyFnSig<'tcx>,
         tuple_arguments: TupleArgumentsFlag)
         -> ty::Binder<(ty::TraitRef<'tcx>, Ty<'tcx>)>
     {
         let arguments_tuple = match tuple_arguments {
             TupleArgumentsFlag::No => sig.skip_binder().inputs()[0],
             TupleArgumentsFlag::Yes =>
-                self.intern_tup(sig.skip_binder().inputs()),
+                self.intern_tup(sig.skip_binder().inputs(), false),
         };
         let trait_ref = ty::TraitRef {
             def_id: fn_trait_def_id,

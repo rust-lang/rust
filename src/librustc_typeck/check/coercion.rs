@@ -63,13 +63,18 @@
 use check::FnCtxt;
 
 use rustc::hir;
+use rustc::hir::def_id::DefId;
 use rustc::infer::{Coercion, InferOk, TypeTrace};
 use rustc::traits::{self, ObligationCause, ObligationCauseCode};
 use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow};
-use rustc::ty::{self, LvaluePreference, TypeAndMut, Ty};
+use rustc::ty::{self, LvaluePreference, TypeAndMut,
+                Ty, ClosureSubsts};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::error::TypeError;
 use rustc::ty::relate::RelateResult;
+use rustc::ty::subst::Subst;
+use syntax::abi;
+use syntax::feature_gate;
 use util::common::indent;
 
 use std::cell::RefCell;
@@ -195,6 +200,11 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
                 // We permit coercion of fn pointers to drop the
                 // unsafe qualifier.
                 self.coerce_from_fn_pointer(a, a_f, b)
+            }
+            ty::TyClosure(def_id_a, substs_a) => {
+                // Non-capturing closures are coercible to
+                // function pointers
+                self.coerce_closure_to_fn(a, def_id_a, substs_a, b)
             }
             _ => {
                 // Otherwise, just use unification rules.
@@ -498,11 +508,11 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
 
     fn coerce_from_safe_fn(&self,
                            a: Ty<'tcx>,
-                           fn_ty_a: &'tcx ty::BareFnTy<'tcx>,
+                           fn_ty_a: ty::PolyFnSig<'tcx>,
                            b: Ty<'tcx>)
                            -> CoerceResult<'tcx> {
         if let ty::TyFnPtr(fn_ty_b) = b.sty {
-            match (fn_ty_a.unsafety, fn_ty_b.unsafety) {
+            match (fn_ty_a.unsafety(), fn_ty_b.unsafety()) {
                 (hir::Unsafety::Normal, hir::Unsafety::Unsafe) => {
                     let unsafe_a = self.tcx.safe_to_unsafe_fn_ty(fn_ty_a);
                     return self.unify_and_identity(unsafe_a, b)
@@ -516,7 +526,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
 
     fn coerce_from_fn_pointer(&self,
                               a: Ty<'tcx>,
-                              fn_ty_a: &'tcx ty::BareFnTy<'tcx>,
+                              fn_ty_a: ty::PolyFnSig<'tcx>,
                               b: Ty<'tcx>)
                               -> CoerceResult<'tcx> {
         //! Attempts to coerce from the type of a Rust function item
@@ -531,7 +541,7 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
 
     fn coerce_from_fn_item(&self,
                            a: Ty<'tcx>,
-                           fn_ty_a: &'tcx ty::BareFnTy<'tcx>,
+                           fn_ty_a: ty::PolyFnSig<'tcx>,
                            b: Ty<'tcx>)
                            -> CoerceResult<'tcx> {
         //! Attempts to coerce from the type of a Rust function item
@@ -546,6 +556,59 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
                 let a_fn_pointer = self.tcx.mk_fn_ptr(fn_ty_a);
                 self.coerce_from_safe_fn(a_fn_pointer, fn_ty_a, b)
                     .map(|(ty, _)| (ty, Adjust::ReifyFnPointer))
+            }
+            _ => self.unify_and_identity(a, b),
+        }
+    }
+
+    fn coerce_closure_to_fn(&self,
+                           a: Ty<'tcx>,
+                           def_id_a: DefId,
+                           substs_a: ClosureSubsts<'tcx>,
+                           b: Ty<'tcx>)
+                           -> CoerceResult<'tcx> {
+        //! Attempts to coerce from the type of a non-capturing closure
+        //! into a function pointer.
+        //!
+
+        let b = self.shallow_resolve(b);
+
+        let node_id_a = self.tcx.hir.as_local_node_id(def_id_a).unwrap();
+        match b.sty {
+            ty::TyFnPtr(_) if self.tcx.with_freevars(node_id_a, |v| v.is_empty()) => {
+                if !self.tcx.sess.features.borrow().closure_to_fn_coercion {
+                    feature_gate::emit_feature_err(&self.tcx.sess.parse_sess,
+                                                   "closure_to_fn_coercion",
+                                                   self.cause.span,
+                                                   feature_gate::GateIssue::Language,
+                                                   feature_gate::CLOSURE_TO_FN_COERCION);
+                    return self.unify_and_identity(a, b);
+                }
+                // We coerce the closure, which has fn type
+                //     `extern "rust-call" fn((arg0,arg1,...)) -> _`
+                // to
+                //     `fn(arg0,arg1,...) -> _`
+                let sig = self.closure_type(def_id_a).subst(self.tcx, substs_a.substs);
+                let converted_sig = sig.map_bound(|s| {
+                    let params_iter = match s.inputs()[0].sty {
+                        ty::TyTuple(params, _) => {
+                            params.into_iter().cloned()
+                        }
+                        _ => bug!(),
+                    };
+                    self.tcx.mk_fn_sig(
+                        params_iter,
+                        s.output(),
+                        s.variadic,
+                        hir::Unsafety::Normal,
+                        abi::Abi::Rust
+                    )
+                });
+                let pointer_ty = self.tcx.mk_fn_ptr(converted_sig);
+                debug!("coerce_closure_to_fn(a={:?}, b={:?}, pty={:?})",
+                       a, b, pointer_ty);
+                self.unify_and_identity(pointer_ty, b)
+                    .map(|(ty, _)| (ty, Adjust::ClosureFnPointer))
             }
             _ => self.unify_and_identity(a, b),
         }

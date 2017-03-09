@@ -107,7 +107,7 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt,
                 if p2.token != token::Eof {
                     let mut extra_tts = panictry!(p2.parse_all_token_trees());
                     extra_tts.extend(tts[first_colon..].iter().cloned());
-                    p = parse::tts_to_parser(cx.parse_sess, extra_tts);
+                    p = parse::stream_to_parser(cx.parse_sess, extra_tts.into_iter().collect());
                 }
 
                 asm = s;

@@ -112,10 +112,13 @@ enum EnumChangeValueCStyleVariant0 {
 #[rustc_clean(label="Hir", cfg="cfail3")]
 #[rustc_dirty(label="HirBody", cfg="cfail2")]
 #[rustc_clean(label="HirBody", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 enum EnumChangeValueCStyleVariant0 {
     Variant1,
+
+    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
     Variant2 = 22,
 }
 

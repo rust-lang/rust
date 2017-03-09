@@ -462,8 +462,8 @@ impl<'a> Resolver<'a> {
                     self.define(module, ident, ns, (child.def, ty::Visibility::Public,
                                                     DUMMY_SP, Mark::root()));
 
-                    let has_self = self.session.cstore.associated_item(child.def.def_id())
-                                       .map_or(false, |item| item.method_has_self_argument);
+                    let has_self = self.session.cstore.associated_item_cloned(child.def.def_id())
+                                       .method_has_self_argument;
                     self.trait_item_map.insert((def_id, child.name, ns), (child.def, has_self));
                 }
                 module.populated.set(true);
@@ -495,7 +495,7 @@ impl<'a> Resolver<'a> {
 
     pub fn get_macro(&mut self, def: Def) -> Rc<SyntaxExtension> {
         let def_id = match def {
-            Def::Macro(def_id) => def_id,
+            Def::Macro(def_id, ..) => def_id,
             _ => panic!("Expected Def::Macro(..)"),
         };
         if let Some(ext) = self.macro_map.get(&def_id) {
@@ -511,12 +511,12 @@ impl<'a> Resolver<'a> {
         let invocation = self.arenas.alloc_invocation_data(InvocationData {
             module: Cell::new(self.get_extern_crate_root(def_id.krate)),
             def_index: CRATE_DEF_INDEX,
-            const_integer: false,
+            const_expr: false,
             legacy_scope: Cell::new(LegacyScope::Empty),
             expansion: Cell::new(LegacyScope::Empty),
         });
         self.invocations.insert(mark, invocation);
-        macro_rules.body = mark_tts(&macro_rules.body, mark);
+        macro_rules.body = mark_tts(macro_rules.stream(), mark).into();
         let ext = Rc::new(macro_rules::compile(&self.session.parse_sess, &macro_rules));
         self.macro_map.insert(def_id, ext.clone());
         ext
@@ -537,7 +537,6 @@ impl<'a> Resolver<'a> {
                            binding: &'a NameBinding<'a>,
                            span: Span,
                            allow_shadowing: bool) {
-        self.macro_names.insert(name);
         if self.builtin_macros.insert(name, binding).is_some() && !allow_shadowing {
             let msg = format!("`{}` is already in scope", name);
             let note =
@@ -559,7 +558,7 @@ impl<'a> Resolver<'a> {
                       "an `extern crate` loading macros must be at the crate root");
         } else if !self.use_extern_macros && !used &&
                   self.session.cstore.dep_kind(module.def_id().unwrap().krate).macros_only() {
-            let msg = "custom derive crates and `#[no_link]` crates have no effect without \
+            let msg = "proc macro crates and `#[no_link]` crates have no effect without \
                        `#[macro_use]`";
             self.session.span_warn(item.span, msg);
             used = true; // Avoid the normal unused extern crate warning

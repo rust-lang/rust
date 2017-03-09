@@ -22,7 +22,8 @@ use std::io::prelude::*;
 use std::process::Command;
 
 use {Build, Compiler, Mode};
-use util::{up_to_date, cp_r};
+use util::cp_r;
+use build_helper::up_to_date;
 
 /// Invoke `rustbook` as compiled in `stage` for `target` for the doc book
 /// `name` into the `out` path.
@@ -46,6 +47,7 @@ pub fn rustbook(build: &Build, target: &str, name: &str) {
     build.run(build.tool_cmd(&compiler, "rustbook")
                    .arg("build")
                    .arg(&src)
+                   .arg("-d")
                    .arg(out));
 }
 
@@ -75,12 +77,9 @@ pub fn standalone(build: &Build, target: &str) {
     if !up_to_date(&version_input, &version_info) {
         let mut info = String::new();
         t!(t!(File::open(&version_input)).read_to_string(&mut info));
-        let blank = String::new();
-        let short = build.short_ver_hash.as_ref().unwrap_or(&blank);
-        let hash = build.ver_hash.as_ref().unwrap_or(&blank);
-        let info = info.replace("VERSION", &build.release)
-                       .replace("SHORT_HASH", short)
-                       .replace("STAMP", hash);
+        let info = info.replace("VERSION", &build.rust_release())
+                       .replace("SHORT_HASH", build.rust_info.sha_short().unwrap_or(""))
+                       .replace("STAMP", build.rust_info.sha().unwrap_or(""));
         t!(t!(File::create(&version_info)).write_all(info.as_bytes()));
     }
 
@@ -112,10 +111,6 @@ pub fn standalone(build: &Build, target: &str) {
            .arg("https://play.rust-lang.org/")
            .arg("-o").arg(&out)
            .arg(&path);
-
-        if filename == "reference.md" {
-           cmd.arg("--html-in-header").arg(&full_toc);
-        }
 
         if filename == "not_found.md" {
             cmd.arg("--markdown-no-toc")
@@ -150,7 +145,7 @@ pub fn std(build: &Build, stage: u32, target: &str) {
 
     let mut cargo = build.cargo(&compiler, Mode::Libstd, target, "doc");
     cargo.arg("--manifest-path")
-         .arg(build.src.join("src/rustc/std_shim/Cargo.toml"))
+         .arg(build.src.join("src/libstd/Cargo.toml"))
          .arg("--features").arg(build.std_features());
 
     // We don't want to build docs for internal std dependencies unless
@@ -196,7 +191,7 @@ pub fn test(build: &Build, stage: u32, target: &str) {
 
     let mut cargo = build.cargo(&compiler, Mode::Libtest, target, "doc");
     cargo.arg("--manifest-path")
-         .arg(build.src.join("src/rustc/test_shim/Cargo.toml"));
+         .arg(build.src.join("src/libtest/Cargo.toml"));
     build.run(&mut cargo);
     cp_r(&out_dir, &out)
 }

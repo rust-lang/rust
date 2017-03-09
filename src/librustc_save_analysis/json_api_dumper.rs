@@ -74,6 +74,15 @@ impl<'b, W: Write + 'b> Dump for JsonApiDumper<'b, W> {
     impl_fn!(mod_data, ModData, defs);
     impl_fn!(typedef, TypeDefData, defs);
     impl_fn!(variable, VariableData, defs);
+
+    fn impl_data(&mut self, data: ImplData) {
+        if data.self_ref.is_some() {
+            self.result.relations.push(From::from(data));
+        }
+    }
+    fn inheritance(&mut self, data: InheritanceData) {
+        self.result.relations.push(From::from(data));
+    }
 }
 
 // FIXME methods. The defs have information about possible overriding and the
@@ -87,6 +96,7 @@ struct Analysis {
     prelude: Option<CratePreludeData>,
     imports: Vec<Import>,
     defs: Vec<Def>,
+    relations: Vec<Relation>,
     // These two fields are dummies so that clients can parse the two kinds of
     // JSON data in the same way.
     refs: Vec<()>,
@@ -100,6 +110,7 @@ impl Analysis {
             prelude: None,
             imports: vec![],
             defs: vec![],
+            relations: vec![],
             refs: vec![],
             macro_refs: vec![],
         }
@@ -423,6 +434,42 @@ impl From<VariableData> for Option<Def> {
                 sig: data.sig.map(|s| From::from(s)),
             }),
             _ => None,
+        }
+    }
+}
+
+#[derive(Debug, RustcEncodable)]
+struct Relation {
+    span: SpanData,
+    kind: RelationKind,
+    from: Id,
+    to: Id,
+}
+
+#[derive(Debug, RustcEncodable)]
+enum RelationKind {
+    Impl,
+    SuperTrait,
+}
+
+impl From<ImplData> for Relation {
+    fn from(data: ImplData) -> Relation {
+        Relation {
+            span: data.span,
+            kind: RelationKind::Impl,
+            from: From::from(data.self_ref.unwrap_or(null_def_id())),
+            to: From::from(data.trait_ref.unwrap_or(null_def_id())),
+        }
+    }
+}
+
+impl From<InheritanceData> for Relation {
+    fn from(data: InheritanceData) -> Relation {
+        Relation {
+            span: data.span,
+            kind: RelationKind::SuperTrait,
+            from: From::from(data.base_id),
+            to: From::from(data.deriv_id),
         }
     }
 }

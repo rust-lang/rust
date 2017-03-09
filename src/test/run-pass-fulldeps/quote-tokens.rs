@@ -37,7 +37,6 @@ fn syntax_extension(cx: &ExtCtxt) {
 
     let _l: P<syntax::ast::Ty> = quote_ty!(cx, &isize);
 
-    let _m: Vec<syntax::tokenstream::TokenTree> = quote_matcher!(cx, $($foo:tt,)* bar);
     let _n: syntax::ast::Attribute = quote_attr!(cx, #![cfg(foo, bar = "baz")]);
 
     let _o: Option<P<syntax::ast::Item>> = quote_item!(cx, fn foo<T: ?Sized>() {});

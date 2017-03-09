@@ -148,6 +148,12 @@ static Attribute::AttrKind fromRust(LLVMRustAttribute Kind) {
     return Attribute::ZExt;
   case InReg:
     return Attribute::InReg;
+  case SanitizeThread:
+    return Attribute::SanitizeThread;
+  case SanitizeAddress:
+    return Attribute::SanitizeAddress;
+  case SanitizeMemory:
+    return Attribute::SanitizeMemory;
   }
   llvm_unreachable("bad AttributeKind");
 }
@@ -346,6 +352,7 @@ enum class LLVMRustDIFlags : uint32_t {
   FlagStaticMember = (1 << 12),
   FlagLValueReference = (1 << 13),
   FlagRValueReference = (1 << 14),
+  FlagMainSubprogram      = (1 << 21),
   // Do not add values that are not supported by the minimum LLVM
   // version we support!
 };
@@ -432,6 +439,11 @@ static unsigned fromRust(LLVMRustDIFlags Flags) {
   if (isSet(Flags & LLVMRustDIFlags::FlagRValueReference)) {
     Result |= DINode::DIFlags::FlagRValueReference;
   }
+#if LLVM_RUSTLLVM || LLVM_VERSION_GE(4, 0)
+  if (isSet(Flags & LLVMRustDIFlags::FlagMainSubprogram)) {
+    Result |= DINode::DIFlags::FlagMainSubprogram;
+  }
+#endif
 
   return Result;
 }
@@ -462,11 +474,19 @@ extern "C" void LLVMRustDIBuilderFinalize(LLVMRustDIBuilderRef Builder) {
 }
 
 extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateCompileUnit(
-    LLVMRustDIBuilderRef Builder, unsigned Lang, const char *File,
-    const char *Dir, const char *Producer, bool isOptimized, const char *Flags,
+    LLVMRustDIBuilderRef Builder, unsigned Lang, LLVMRustMetadataRef FileRef,
+    const char *Producer, bool isOptimized, const char *Flags,
     unsigned RuntimeVer, const char *SplitName) {
-  return wrap(Builder->createCompileUnit(Lang, File, Dir, Producer, isOptimized,
+  auto *File = unwrapDI<DIFile>(FileRef);
+
+#if LLVM_VERSION_GE(4, 0)
+  return wrap(Builder->createCompileUnit(Lang, File, Producer, isOptimized,
                                          Flags, RuntimeVer, SplitName));
+#else
+  return wrap(Builder->createCompileUnit(Lang, File->getFilename(),
+      File->getDirectory(), Producer, isOptimized,
+      Flags, RuntimeVer, SplitName));
+#endif
 }
 
 extern "C" LLVMRustMetadataRef
@@ -513,7 +533,7 @@ extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateFunction(
 
 extern "C" LLVMRustMetadataRef
 LLVMRustDIBuilderCreateBasicType(LLVMRustDIBuilderRef Builder, const char *Name,
-                                 uint64_t SizeInBits, uint64_t AlignInBits,
+                                 uint64_t SizeInBits, uint32_t AlignInBits,
                                  unsigned Encoding) {
   return wrap(Builder->createBasicType(Name, SizeInBits,
 #if LLVM_VERSION_LE(3, 9)
@@ -524,7 +544,7 @@ LLVMRustDIBuilderCreateBasicType(LLVMRustDIBuilderRef Builder, const char *Name,
 
 extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreatePointerType(
     LLVMRustDIBuilderRef Builder, LLVMRustMetadataRef PointeeTy,
-    uint64_t SizeInBits, uint64_t AlignInBits, const char *Name) {
+    uint64_t SizeInBits, uint32_t AlignInBits, const char *Name) {
   return wrap(Builder->createPointerType(unwrapDI<DIType>(PointeeTy),
                                          SizeInBits, AlignInBits, Name));
 }
@@ -532,7 +552,7 @@ extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreatePointerType(
 extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateStructType(
     LLVMRustDIBuilderRef Builder, LLVMRustMetadataRef Scope, const char *Name,
     LLVMRustMetadataRef File, unsigned LineNumber, uint64_t SizeInBits,
-    uint64_t AlignInBits, LLVMRustDIFlags Flags,
+    uint32_t AlignInBits, LLVMRustDIFlags Flags,
     LLVMRustMetadataRef DerivedFrom, LLVMRustMetadataRef Elements,
     unsigned RunTimeLang, LLVMRustMetadataRef VTableHolder,
     const char *UniqueId) {
@@ -546,7 +566,7 @@ extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateStructType(
 extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateMemberType(
     LLVMRustDIBuilderRef Builder, LLVMRustMetadataRef Scope, const char *Name,
     LLVMRustMetadataRef File, unsigned LineNo, uint64_t SizeInBits,
-    uint64_t AlignInBits, uint64_t OffsetInBits, LLVMRustDIFlags Flags,
+    uint32_t AlignInBits, uint64_t OffsetInBits, LLVMRustDIFlags Flags,
     LLVMRustMetadataRef Ty) {
   return wrap(Builder->createMemberType(unwrapDI<DIDescriptor>(Scope), Name,
                                         unwrapDI<DIFile>(File), LineNo,
@@ -573,7 +593,7 @@ extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateStaticVariable(
     LLVMRustDIBuilderRef Builder, LLVMRustMetadataRef Context, const char *Name,
     const char *LinkageName, LLVMRustMetadataRef File, unsigned LineNo,
     LLVMRustMetadataRef Ty, bool IsLocalToUnit, LLVMValueRef V,
-    LLVMRustMetadataRef Decl = nullptr, uint64_t AlignInBits = 0) {
+    LLVMRustMetadataRef Decl = nullptr, uint32_t AlignInBits = 0) {
   Constant *InitVal = cast<Constant>(unwrap(V));
 
 #if LLVM_VERSION_GE(4, 0)
@@ -588,7 +608,11 @@ extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateStaticVariable(
   }
 #endif
 
+#if LLVM_VERSION_GE(4, 0)
+  return wrap(Builder->createGlobalVariableExpression(
+#else
   return wrap(Builder->createGlobalVariable(
+#endif
       unwrapDI<DIDescriptor>(Context), Name, LinkageName,
       unwrapDI<DIFile>(File), LineNo, unwrapDI<DIType>(Ty), IsLocalToUnit,
 #if LLVM_VERSION_GE(4, 0)
@@ -608,7 +632,7 @@ extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateVariable(
     LLVMRustDIBuilderRef Builder, unsigned Tag, LLVMRustMetadataRef Scope,
     const char *Name, LLVMRustMetadataRef File, unsigned LineNo,
     LLVMRustMetadataRef Ty, bool AlwaysPreserve, LLVMRustDIFlags Flags,
-    unsigned ArgNo, uint64_t AlignInBits) {
+    unsigned ArgNo, uint32_t AlignInBits) {
 #if LLVM_VERSION_GE(3, 8)
   if (Tag == 0x100) { // DW_TAG_auto_variable
     return wrap(Builder->createAutoVariable(
@@ -633,7 +657,7 @@ extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateVariable(
 
 extern "C" LLVMRustMetadataRef
 LLVMRustDIBuilderCreateArrayType(LLVMRustDIBuilderRef Builder, uint64_t Size,
-                                 uint64_t AlignInBits, LLVMRustMetadataRef Ty,
+                                 uint32_t AlignInBits, LLVMRustMetadataRef Ty,
                                  LLVMRustMetadataRef Subscripts) {
   return wrap(
       Builder->createArrayType(Size, AlignInBits, unwrapDI<DIType>(Ty),
@@ -642,7 +666,7 @@ LLVMRustDIBuilderCreateArrayType(LLVMRustDIBuilderRef Builder, uint64_t Size,
 
 extern "C" LLVMRustMetadataRef
 LLVMRustDIBuilderCreateVectorType(LLVMRustDIBuilderRef Builder, uint64_t Size,
-                                  uint64_t AlignInBits, LLVMRustMetadataRef Ty,
+                                  uint32_t AlignInBits, LLVMRustMetadataRef Ty,
                                   LLVMRustMetadataRef Subscripts) {
   return wrap(
       Builder->createVectorType(Size, AlignInBits, unwrapDI<DIType>(Ty),
@@ -683,7 +707,7 @@ LLVMRustDIBuilderCreateEnumerator(LLVMRustDIBuilderRef Builder,
 extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateEnumerationType(
     LLVMRustDIBuilderRef Builder, LLVMRustMetadataRef Scope, const char *Name,
     LLVMRustMetadataRef File, unsigned LineNumber, uint64_t SizeInBits,
-    uint64_t AlignInBits, LLVMRustMetadataRef Elements,
+    uint32_t AlignInBits, LLVMRustMetadataRef Elements,
     LLVMRustMetadataRef ClassTy) {
   return wrap(Builder->createEnumerationType(
       unwrapDI<DIDescriptor>(Scope), Name, unwrapDI<DIFile>(File), LineNumber,
@@ -694,7 +718,7 @@ extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateEnumerationType(
 extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateUnionType(
     LLVMRustDIBuilderRef Builder, LLVMRustMetadataRef Scope, const char *Name,
     LLVMRustMetadataRef File, unsigned LineNumber, uint64_t SizeInBits,
-    uint64_t AlignInBits, LLVMRustDIFlags Flags, LLVMRustMetadataRef Elements,
+    uint32_t AlignInBits, LLVMRustDIFlags Flags, LLVMRustMetadataRef Elements,
     unsigned RunTimeLang, const char *UniqueId) {
   return wrap(Builder->createUnionType(
       unwrapDI<DIDescriptor>(Scope), Name, unwrapDI<DIFile>(File), LineNumber,
@@ -1082,14 +1106,6 @@ extern "C" void LLVMRustAddHandler(LLVMValueRef CatchSwitchRef,
 #endif
 }
 
-extern "C" void LLVMRustSetPersonalityFn(LLVMBuilderRef B,
-                                         LLVMValueRef Personality) {
-#if LLVM_VERSION_GE(3, 8)
-  unwrap(B)->GetInsertBlock()->getParent()->setPersonalityFn(
-      cast<Function>(unwrap(Personality)));
-#endif
-}
-
 #if LLVM_VERSION_GE(3, 8)
 extern "C" OperandBundleDef *LLVMRustBuildOperandBundleDef(const char *Name,
                                                            LLVMValueRef *Inputs,
@@ -1298,6 +1314,12 @@ static LLVMVisibility fromRust(LLVMRustVisibility Vis) {
 
 extern "C" LLVMRustVisibility LLVMRustGetVisibility(LLVMValueRef V) {
   return toRust(LLVMGetVisibility(V));
+}
+
+// Oh hey, a binding that makes sense for once? (because LLVM’s own do not)
+extern "C" LLVMValueRef LLVMRustBuildIntCast(LLVMBuilderRef B, LLVMValueRef Val,
+                                             LLVMTypeRef DestTy, bool isSigned) {
+  return wrap(unwrap(B)->CreateIntCast(unwrap(Val), unwrap(DestTy), isSigned, ""));
 }
 
 extern "C" void LLVMRustSetVisibility(LLVMValueRef V,

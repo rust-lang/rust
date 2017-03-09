@@ -7,9 +7,8 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+
 use core::any::*;
-use test::Bencher;
-use test;
 
 #[derive(PartialEq, Debug)]
 struct Test;
@@ -123,14 +122,4 @@ fn any_fixed_vec() {
 fn any_unsized() {
     fn is_any<T: Any + ?Sized>() {}
     is_any::<[i32]>();
-}
-
-#[bench]
-fn bench_downcast_ref(b: &mut Bencher) {
-    b.iter(|| {
-        let mut x = 0;
-        let mut y = &mut x as &mut Any;
-        test::black_box(&mut y);
-        test::black_box(y.downcast_ref::<isize>() == Some(&0));
-    });
 }

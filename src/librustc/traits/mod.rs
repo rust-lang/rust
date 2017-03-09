@@ -31,7 +31,6 @@ pub use self::coherence::orphan_check;
 pub use self::coherence::overlapping_impls;
 pub use self::coherence::OrphanCheckErr;
 pub use self::fulfill::{FulfillmentContext, GlobalFulfilledPredicates, RegionObligation};
-pub use self::fulfill::DeferredObligation;
 pub use self::project::MismatchedProjectionTypes;
 pub use self::project::{normalize, normalize_projection_type, Normalized};
 pub use self::project::{ProjectionCache, ProjectionCacheSnapshot, Reveal};
@@ -474,7 +473,7 @@ pub fn normalize_param_env_or_error<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let elaborated_env = unnormalized_env.with_caller_bounds(predicates);
 
-    tcx.infer_ctxt(elaborated_env, Reveal::NotSpecializable).enter(|infcx| {
+    tcx.infer_ctxt(elaborated_env, Reveal::UserFacing).enter(|infcx| {
         let predicates = match fully_normalize(&infcx, cause,
                                                &infcx.parameter_environment.caller_bounds) {
             Ok(predicates) => predicates,
@@ -627,6 +626,11 @@ pub fn get_vtable_methods<'a, 'tcx>(
             let substs = Substs::for_item(tcx, def_id,
                                           |_, _| tcx.mk_region(ty::ReErased),
                                           |def, _| trait_ref.substs().type_for_def(def));
+
+            // the trait type may have higher-ranked lifetimes in it;
+            // so erase them if they appear, so that we get the type
+            // at some particular call site
+            let substs = tcx.erase_late_bound_regions_and_normalize(&ty::Binder(substs));
 
             // It's possible that the method relies on where clauses that
             // do not hold for this particular set of type parameters.

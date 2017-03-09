@@ -13,6 +13,7 @@
 use deriving;
 use deriving::generic::*;
 use deriving::generic::ty::*;
+use deriving::warn_if_deprecated;
 
 use syntax::ast;
 use syntax::ast::{Expr, MetaItem, Mutability};
@@ -35,6 +36,7 @@ pub fn expand_deriving_decodable(cx: &mut ExtCtxt,
                                  mitem: &MetaItem,
                                  item: &Annotatable,
                                  push: &mut FnMut(Annotatable)) {
+    warn_if_deprecated(cx, span, "Decodable");
     expand_deriving_decodable_imp(cx, span, mitem, item, push, "serialize")
 }
 

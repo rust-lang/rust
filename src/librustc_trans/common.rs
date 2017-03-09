@@ -29,18 +29,16 @@ use type_::Type;
 use value::Value;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::layout::Layout;
+use rustc::ty::subst::{Subst, Substs};
 use rustc::traits::{self, SelectionContext, Reveal};
 use rustc::hir;
 
 use libc::{c_uint, c_char};
-use std::borrow::Cow;
 use std::iter;
 
 use syntax::ast;
 use syntax::symbol::InternedString;
 use syntax_pos::Span;
-
-use rustc_i128::u128;
 
 pub use context::{CrateContext, SharedCrateContext};
 
@@ -95,7 +93,7 @@ pub fn type_pair_fields<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>)
                 }
             }))
         }
-        ty::TyTuple(tys) => {
+        ty::TyTuple(tys, _) => {
             if tys.len() != 2 {
                 return None;
             }
@@ -231,15 +229,10 @@ pub fn C_integral(t: Type, u: u64, sign_extend: bool) -> ValueRef {
     }
 }
 
-pub fn C_big_integral(t: Type, u: u128, sign_extend: bool) -> ValueRef {
-    if ::std::mem::size_of::<u128>() == 16 {
-        unsafe {
-            let words = [u as u64, u.wrapping_shr(64) as u64];
-            llvm::LLVMConstIntOfArbitraryPrecision(t.to_ref(), 2, words.as_ptr())
-        }
-    } else {
-        // SNAP: remove after snapshot
-        C_integral(t, u as u64, sign_extend)
+pub fn C_big_integral(t: Type, u: u128) -> ValueRef {
+    unsafe {
+        let words = [u as u64, u.wrapping_shr(64) as u64];
+        llvm::LLVMConstIntOfArbitraryPrecision(t.to_ref(), 2, words.as_ptr())
     }
 }
 
@@ -399,13 +392,6 @@ fn is_const_integral(v: ValueRef) -> bool {
 }
 
 #[inline]
-#[cfg(stage0)]
-fn hi_lo_to_u128(lo: u64, _: u64) -> u128 {
-    lo as u128
-}
-
-#[inline]
-#[cfg(not(stage0))]
 fn hi_lo_to_u128(lo: u64, hi: u64) -> u128 {
     ((hi as u128) << 64) | (lo as u128)
 }
@@ -584,17 +570,17 @@ pub fn shift_mask_val<'a, 'tcx>(
     }
 }
 
-pub fn ty_fn_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                          ty: Ty<'tcx>)
-                          -> Cow<'tcx, ty::BareFnTy<'tcx>>
+pub fn ty_fn_sig<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                           ty: Ty<'tcx>)
+                           -> ty::PolyFnSig<'tcx>
 {
     match ty.sty {
-        ty::TyFnDef(_, _, fty) => Cow::Borrowed(fty),
+        ty::TyFnDef(_, _, sig) => sig,
         // Shims currently have type TyFnPtr. Not sure this should remain.
-        ty::TyFnPtr(fty) => Cow::Borrowed(fty),
+        ty::TyFnPtr(sig) => sig,
         ty::TyClosure(def_id, substs) => {
             let tcx = ccx.tcx();
-            let ty::ClosureTy { unsafety, abi, sig } = tcx.closure_type(def_id, substs);
+            let sig = tcx.closure_type(def_id).subst(tcx, substs.substs);
 
             let env_region = ty::ReLateBound(ty::DebruijnIndex::new(1), ty::BrEnv);
             let env_ty = match tcx.closure_kind(def_id) {
@@ -603,12 +589,13 @@ pub fn ty_fn_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                 ty::ClosureKind::FnOnce => ty,
             };
 
-            let sig = sig.map_bound(|sig| tcx.mk_fn_sig(
+            sig.map_bound(|sig| tcx.mk_fn_sig(
                 iter::once(env_ty).chain(sig.inputs().iter().cloned()),
                 sig.output(),
-                sig.variadic
-            ));
-            Cow::Owned(ty::BareFnTy { unsafety: unsafety, abi: abi, sig: sig })
+                sig.variadic,
+                sig.unsafety,
+                sig.abi
+            ))
         }
         _ => bug!("unexpected type {:?} to ty_fn_sig", ty)
     }
@@ -616,4 +603,14 @@ pub fn ty_fn_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
 pub fn is_closure(tcx: TyCtxt, def_id: DefId) -> bool {
     tcx.def_key(def_id).disambiguated_data.data == DefPathData::ClosureExpr
+}
+
+/// Given a DefId and some Substs, produces the monomorphic item type.
+pub fn def_ty<'a, 'tcx>(shared: &SharedCrateContext<'a, 'tcx>,
+                        def_id: DefId,
+                        substs: &'tcx Substs<'tcx>)
+                        -> Ty<'tcx>
+{
+    let ty = shared.tcx().item_type(def_id);
+    monomorphize::apply_param_substs(shared, substs, &ty)
 }

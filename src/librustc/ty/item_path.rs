@@ -180,7 +180,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             data @ DefPathData::MacroDef(..) |
             data @ DefPathData::ClosureExpr |
             data @ DefPathData::Binding(..) |
-            data @ DefPathData::ImplTrait => {
+            data @ DefPathData::ImplTrait |
+            data @ DefPathData::Typeof => {
                 let parent_def_id = self.parent_def_id(def_id).unwrap();
                 self.push_item_path(buffer, parent_def_id);
                 buffer.push(&data.as_interned_str());
@@ -201,7 +202,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         } else {
             // for local crates, check whether type info is
             // available; typeck might not have completed yet
-            self.impl_trait_refs.borrow().contains_key(&impl_def_id)
+            self.maps.impl_trait_ref.borrow().contains_key(&impl_def_id)
         };
 
         if !use_types {
@@ -319,9 +320,9 @@ pub fn characteristic_def_id_of_type(ty: Ty) -> Option<DefId> {
         ty::TyRawPtr(mt) |
         ty::TyRef(_, mt) => characteristic_def_id_of_type(mt.ty),
 
-        ty::TyTuple(ref tys) => tys.iter()
-                                   .filter_map(|ty| characteristic_def_id_of_type(ty))
-                                   .next(),
+        ty::TyTuple(ref tys, _) => tys.iter()
+                                      .filter_map(|ty| characteristic_def_id_of_type(ty))
+                                      .next(),
 
         ty::TyFnDef(def_id, ..) |
         ty::TyClosure(def_id, _) => Some(def_id),

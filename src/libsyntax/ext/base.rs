@@ -10,11 +10,11 @@
 
 pub use self::SyntaxExtension::{MultiDecorator, MultiModifier, NormalTT, IdentTT};
 
-use ast::{self, Attribute, Name, PatKind};
+use ast::{self, Attribute, Name, PatKind, MetaItem};
 use attr::HasAttrs;
 use codemap::{self, CodeMap, ExpnInfo, Spanned, respan};
 use syntax_pos::{Span, ExpnId, NO_EXPANSION};
-use errors::DiagnosticBuilder;
+use errors::{DiagnosticBuilder, FatalError};
 use ext::expand::{self, Expansion};
 use ext::hygiene::Mark;
 use fold::{self, Folder};
@@ -188,10 +188,7 @@ impl<F> AttrProcMacro for F
 
 /// Represents a thing that maps token trees to Macro Results
 pub trait TTMacroExpander {
-    fn expand<'cx>(&self,
-                   ecx: &'cx mut ExtCtxt,
-                   span: Span,
-                   token_tree: &[tokenstream::TokenTree])
+    fn expand<'cx>(&self, ecx: &'cx mut ExtCtxt, span: Span, input: TokenStream)
                    -> Box<MacResult+'cx>;
 }
 
@@ -200,15 +197,11 @@ pub type MacroExpanderFn =
                 -> Box<MacResult+'cx>;
 
 impl<F> TTMacroExpander for F
-    where F : for<'cx> Fn(&'cx mut ExtCtxt, Span, &[tokenstream::TokenTree])
-                          -> Box<MacResult+'cx>
+    where F: for<'cx> Fn(&'cx mut ExtCtxt, Span, &[tokenstream::TokenTree]) -> Box<MacResult+'cx>
 {
-    fn expand<'cx>(&self,
-                   ecx: &'cx mut ExtCtxt,
-                   span: Span,
-                   token_tree: &[tokenstream::TokenTree])
+    fn expand<'cx>(&self, ecx: &'cx mut ExtCtxt, span: Span, input: TokenStream)
                    -> Box<MacResult+'cx> {
-        (*self)(ecx, span, token_tree)
+        (*self)(ecx, span, &input.trees().collect::<Vec<_>>())
     }
 }
 
@@ -471,6 +464,20 @@ impl MacResult for DummyResult {
     }
 }
 
+pub type BuiltinDeriveFn =
+    for<'cx> fn(&'cx mut ExtCtxt, Span, &MetaItem, &Annotatable, &mut FnMut(Annotatable));
+
+/// Represents different kinds of macro invocations that can be resolved.
+#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub enum MacroKind {
+    /// A bang macro - foo!()
+    Bang,
+    /// An attribute macro - #[foo]
+    Attr,
+    /// A derive attribute macro - #[derive(Foo)]
+    Derive,
+}
+
 /// An enum representing the different kinds of syntax extensions.
 pub enum SyntaxExtension {
     /// A syntax extension that is attached to an item and creates new items
@@ -507,7 +514,33 @@ pub enum SyntaxExtension {
     ///
     IdentTT(Box<IdentMacroExpander>, Option<Span>, bool),
 
-    CustomDerive(Box<MultiItemModifier>),
+    /// An attribute-like procedural macro. TokenStream -> TokenStream.
+    /// The input is the annotated item.
+    /// Allows generating code to implement a Trait for a given struct
+    /// or enum item.
+    ProcMacroDerive(Box<MultiItemModifier>, Vec<Symbol> /* inert attribute names */),
+
+    /// An attribute-like procedural macro that derives a builtin trait.
+    BuiltinDerive(BuiltinDeriveFn),
+}
+
+impl SyntaxExtension {
+    /// Return which kind of macro calls this syntax extension.
+    pub fn kind(&self) -> MacroKind {
+        match *self {
+            SyntaxExtension::NormalTT(..) |
+            SyntaxExtension::IdentTT(..) |
+            SyntaxExtension::ProcMacro(..) =>
+                MacroKind::Bang,
+            SyntaxExtension::MultiDecorator(..) |
+            SyntaxExtension::MultiModifier(..) |
+            SyntaxExtension::AttrProcMacro(..) =>
+                MacroKind::Attr,
+            SyntaxExtension::ProcMacroDerive(..) |
+            SyntaxExtension::BuiltinDerive(..) =>
+                MacroKind::Derive,
+        }
+    }
 }
 
 pub type NamedSyntaxExtension = (Name, SyntaxExtension);
@@ -518,14 +551,15 @@ pub trait Resolver {
     fn eliminate_crate_var(&mut self, item: P<ast::Item>) -> P<ast::Item>;
     fn is_whitelisted_legacy_custom_derive(&self, name: Name) -> bool;
 
-    fn visit_expansion(&mut self, mark: Mark, expansion: &Expansion);
+    fn visit_expansion(&mut self, mark: Mark, expansion: &Expansion, derives: &[Mark]);
     fn add_ext(&mut self, ident: ast::Ident, ext: Rc<SyntaxExtension>);
     fn add_expansions_at_stmt(&mut self, id: ast::NodeId, macros: Vec<Mark>);
 
     fn resolve_imports(&mut self);
-    fn find_attr_invoc(&mut self, attrs: &mut Vec<Attribute>) -> Option<Attribute>;
-    fn resolve_macro(&mut self, scope: Mark, path: &ast::Path, force: bool)
-                     -> Result<Rc<SyntaxExtension>, Determinacy>;
+    // Resolves attribute and derive legacy macros from `#![plugin(..)]`.
+    fn find_legacy_attr_invoc(&mut self, attrs: &mut Vec<Attribute>) -> Option<Attribute>;
+    fn resolve_macro(&mut self, scope: Mark, path: &ast::Path, kind: MacroKind,
+                     force: bool) -> Result<Rc<SyntaxExtension>, Determinacy>;
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -542,14 +576,14 @@ impl Resolver for DummyResolver {
     fn eliminate_crate_var(&mut self, item: P<ast::Item>) -> P<ast::Item> { item }
     fn is_whitelisted_legacy_custom_derive(&self, _name: Name) -> bool { false }
 
-    fn visit_expansion(&mut self, _invoc: Mark, _expansion: &Expansion) {}
+    fn visit_expansion(&mut self, _invoc: Mark, _expansion: &Expansion, _derives: &[Mark]) {}
     fn add_ext(&mut self, _ident: ast::Ident, _ext: Rc<SyntaxExtension>) {}
     fn add_expansions_at_stmt(&mut self, _id: ast::NodeId, _macros: Vec<Mark>) {}
 
     fn resolve_imports(&mut self) {}
-    fn find_attr_invoc(&mut self, _attrs: &mut Vec<Attribute>) -> Option<Attribute> { None }
-    fn resolve_macro(&mut self, _scope: Mark, _path: &ast::Path, _force: bool)
-                     -> Result<Rc<SyntaxExtension>, Determinacy> {
+    fn find_legacy_attr_invoc(&mut self, _attrs: &mut Vec<Attribute>) -> Option<Attribute> { None }
+    fn resolve_macro(&mut self, _scope: Mark, _path: &ast::Path, _kind: MacroKind,
+                     _force: bool) -> Result<Rc<SyntaxExtension>, Determinacy> {
         Err(Determinacy::Determined)
     }
 }
@@ -613,9 +647,8 @@ impl<'a> ExtCtxt<'a> {
         expand::MacroExpander::new(self, true)
     }
 
-    pub fn new_parser_from_tts(&self, tts: &[tokenstream::TokenTree])
-        -> parser::Parser<'a> {
-        parse::tts_to_parser(self.parse_sess, tts.to_vec())
+    pub fn new_parser_from_tts(&self, tts: &[tokenstream::TokenTree]) -> parser::Parser<'a> {
+        parse::stream_to_parser(self.parse_sess, tts.iter().cloned().collect())
     }
     pub fn codemap(&self) -> &'a CodeMap { self.parse_sess.codemap() }
     pub fn parse_sess(&self) -> &'a parse::ParseSess { self.parse_sess }
@@ -654,9 +687,15 @@ impl<'a> ExtCtxt<'a> {
 
     pub fn bt_push(&mut self, ei: ExpnInfo) {
         if self.current_expansion.depth > self.ecfg.recursion_limit {
-            self.span_fatal(ei.call_site,
-                            &format!("recursion limit reached while expanding the macro `{}`",
-                                    ei.callee.name()));
+            let suggested_limit = self.ecfg.recursion_limit * 2;
+            let mut err = self.struct_span_fatal(ei.call_site,
+                &format!("recursion limit reached while expanding the macro `{}`",
+                         ei.callee.name()));
+            err.help(&format!(
+                "consider adding a `#![recursion_limit=\"{}\"]` attribute to your crate",
+                suggested_limit));
+            err.emit();
+            panic!(FatalError);
         }
 
         let mut call_site = ei.call_site;

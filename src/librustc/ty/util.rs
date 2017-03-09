@@ -10,16 +10,17 @@
 
 //! misc. type-system utilities too small to deserve their own file
 
-use hir::def_id::DefId;
+use hir::def_id::{DefId, LOCAL_CRATE};
 use hir::map::DefPathData;
 use infer::InferCtxt;
 use hir::map as hir_map;
 use traits::{self, Reveal};
 use ty::{self, Ty, TyCtxt, TypeAndMut, TypeFlags, TypeFoldable};
-use ty::{Disr, ParameterEnvironment};
+use ty::{ParameterEnvironment};
 use ty::fold::TypeVisitor;
 use ty::layout::{Layout, LayoutError};
 use ty::TypeVariants::*;
+use util::common::ErrorReported;
 use util::nodemap::FxHashMap;
 use middle::lang_items;
 
@@ -32,20 +33,52 @@ use std::hash::Hash;
 use std::intrinsics;
 use syntax::ast::{self, Name};
 use syntax::attr::{self, SignedInt, UnsignedInt};
-use syntax_pos::Span;
+use syntax_pos::{Span, DUMMY_SP};
 
 use hir;
 
-pub trait IntTypeExt {
-    fn to_ty<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Ty<'tcx>;
+type Disr = ConstInt;
+
+ pub trait IntTypeExt {
+    fn to_ty<'a, 'gcx, 'tcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx>;
     fn disr_incr<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, val: Option<Disr>)
                            -> Option<Disr>;
     fn assert_ty_matches(&self, val: Disr);
     fn initial_discriminant<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Disr;
+ }
+
+
+macro_rules! typed_literal {
+    ($tcx:expr, $ty:expr, $lit:expr) => {
+        match $ty {
+            SignedInt(ast::IntTy::I8)    => ConstInt::I8($lit),
+            SignedInt(ast::IntTy::I16)   => ConstInt::I16($lit),
+            SignedInt(ast::IntTy::I32)   => ConstInt::I32($lit),
+            SignedInt(ast::IntTy::I64)   => ConstInt::I64($lit),
+            SignedInt(ast::IntTy::I128)   => ConstInt::I128($lit),
+            SignedInt(ast::IntTy::Is) => match $tcx.sess.target.int_type {
+                ast::IntTy::I16 => ConstInt::Isize(ConstIsize::Is16($lit)),
+                ast::IntTy::I32 => ConstInt::Isize(ConstIsize::Is32($lit)),
+                ast::IntTy::I64 => ConstInt::Isize(ConstIsize::Is64($lit)),
+                _ => bug!(),
+            },
+            UnsignedInt(ast::UintTy::U8)  => ConstInt::U8($lit),
+            UnsignedInt(ast::UintTy::U16) => ConstInt::U16($lit),
+            UnsignedInt(ast::UintTy::U32) => ConstInt::U32($lit),
+            UnsignedInt(ast::UintTy::U64) => ConstInt::U64($lit),
+            UnsignedInt(ast::UintTy::U128) => ConstInt::U128($lit),
+            UnsignedInt(ast::UintTy::Us) => match $tcx.sess.target.uint_type {
+                ast::UintTy::U16 => ConstInt::Usize(ConstUsize::Us16($lit)),
+                ast::UintTy::U32 => ConstInt::Usize(ConstUsize::Us32($lit)),
+                ast::UintTy::U64 => ConstInt::Usize(ConstUsize::Us64($lit)),
+                _ => bug!(),
+            },
+        }
+    }
 }
 
 impl IntTypeExt for attr::IntType {
-    fn to_ty<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Ty<'tcx> {
+    fn to_ty<'a, 'gcx, 'tcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx> {
         match *self {
             SignedInt(ast::IntTy::I8)      => tcx.types.i8,
             SignedInt(ast::IntTy::I16)     => tcx.types.i16,
@@ -63,30 +96,7 @@ impl IntTypeExt for attr::IntType {
     }
 
     fn initial_discriminant<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Disr {
-        match *self {
-            SignedInt(ast::IntTy::I8)    => ConstInt::I8(0),
-            SignedInt(ast::IntTy::I16)   => ConstInt::I16(0),
-            SignedInt(ast::IntTy::I32)   => ConstInt::I32(0),
-            SignedInt(ast::IntTy::I64)   => ConstInt::I64(0),
-            SignedInt(ast::IntTy::I128)   => ConstInt::I128(0),
-            SignedInt(ast::IntTy::Is) => match tcx.sess.target.int_type {
-                ast::IntTy::I16 => ConstInt::Isize(ConstIsize::Is16(0)),
-                ast::IntTy::I32 => ConstInt::Isize(ConstIsize::Is32(0)),
-                ast::IntTy::I64 => ConstInt::Isize(ConstIsize::Is64(0)),
-                _ => bug!(),
-            },
-            UnsignedInt(ast::UintTy::U8)  => ConstInt::U8(0),
-            UnsignedInt(ast::UintTy::U16) => ConstInt::U16(0),
-            UnsignedInt(ast::UintTy::U32) => ConstInt::U32(0),
-            UnsignedInt(ast::UintTy::U64) => ConstInt::U64(0),
-            UnsignedInt(ast::UintTy::U128) => ConstInt::U128(0),
-            UnsignedInt(ast::UintTy::Us) => match tcx.sess.target.uint_type {
-                ast::UintTy::U16 => ConstInt::Usize(ConstUsize::Us16(0)),
-                ast::UintTy::U32 => ConstInt::Usize(ConstUsize::Us32(0)),
-                ast::UintTy::U64 => ConstInt::Usize(ConstUsize::Us64(0)),
-                _ => bug!(),
-            },
-        }
+        typed_literal!(tcx, *self, 0)
     }
 
     fn assert_ty_matches(&self, val: Disr) {
@@ -111,7 +121,7 @@ impl IntTypeExt for attr::IntType {
                            -> Option<Disr> {
         if let Some(val) = val {
             self.assert_ty_matches(val);
-            (val + ConstInt::Infer(1)).ok()
+            (val + typed_literal!(tcx, *self, 1)).ok()
         } else {
             Some(self.initial_discriminant(tcx))
         }
@@ -146,7 +156,7 @@ impl<'tcx> ParameterEnvironment<'tcx> {
                                        self_type: Ty<'tcx>, span: Span)
                                        -> Result<(), CopyImplementationError> {
         // FIXME: (@jroesch) float this code up
-        tcx.infer_ctxt(self.clone(), Reveal::NotSpecializable).enter(|infcx| {
+        tcx.infer_ctxt(self.clone(), Reveal::UserFacing).enter(|infcx| {
             let (adt, substs) = match self_type.sty {
                 ty::TyAdt(adt, substs) => (adt, substs),
                 _ => return Err(CopyImplementationError::NotAnAdt)
@@ -168,7 +178,7 @@ impl<'tcx> ParameterEnvironment<'tcx> {
                 }
             }
 
-            if adt.has_dtor() {
+            if adt.has_dtor(tcx) {
                 return Err(CopyImplementationError::HasDestructor);
             }
 
@@ -207,7 +217,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 // Don't use `struct_variant`, this may be a univariant enum.
                 adt.variants[0].fields.get(i).map(|f| f.ty(self, substs))
             }
-            (&TyTuple(ref v), None) => v.get(i).cloned(),
+            (&TyTuple(ref v, _), None) => v.get(i).cloned(),
             _ => None
         }
     }
@@ -226,21 +236,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 adt.struct_variant().find_field_named(n).map(|f| f.ty(self, substs))
             }
             _ => return None
-        }
-    }
-
-    /// Returns the IntType representation.
-    /// This used to ensure `int_ty` doesn't contain `usize` and `isize`
-    /// by converting them to their actual types. That doesn't happen anymore.
-    pub fn enum_repr_type(self, opt_hint: Option<&attr::ReprAttr>) -> attr::IntType {
-        match opt_hint {
-            // Feed in the given type
-            Some(&attr::ReprInt(int_t)) => int_t,
-            // ... but provide sensible default if none provided
-            //
-            // NB. Historically `fn enum_variants` generate i64 here, while
-            // rustc_typeck::check would generate isize.
-            _ => SignedInt(ast::IntTy::Is),
         }
     }
 
@@ -352,22 +347,33 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         hasher.finish()
     }
 
-    /// Returns true if this ADT is a dtorck type.
-    ///
-    /// Invoking the destructor of a dtorck type during usual cleanup
-    /// (e.g. the glue emitted for stack unwinding) requires all
-    /// lifetimes in the type-structure of `adt` to strictly outlive
-    /// the adt value itself.
-    ///
-    /// If `adt` is not dtorck, then the adt's destructor can be
-    /// invoked even when there are lifetimes in the type-structure of
-    /// `adt` that do not strictly outlive the adt value itself.
-    /// (This allows programs to make cyclic structures without
-    /// resorting to unasfe means; see RFCs 769 and 1238).
-    pub fn is_adt_dtorck(self, adt: &ty::AdtDef) -> bool {
-        let dtor_method = match adt.destructor() {
+    /// Calculate the destructor of a given type.
+    pub fn calculate_dtor(
+        self,
+        adt_did: DefId,
+        validate: &mut FnMut(Self, DefId) -> Result<(), ErrorReported>
+    ) -> Option<ty::Destructor> {
+        let drop_trait = if let Some(def_id) = self.lang_items.drop_trait() {
+            def_id
+        } else {
+            return None;
+        };
+
+        ty::queries::coherent_trait::get(self, DUMMY_SP, (LOCAL_CRATE, drop_trait));
+
+        let mut dtor_did = None;
+        let ty = self.item_type(adt_did);
+        self.lookup_trait_def(drop_trait).for_each_relevant_impl(self, ty, |impl_did| {
+            if let Some(item) = self.associated_items(impl_did).next() {
+                if let Ok(()) = validate(self, impl_did) {
+                    dtor_did = Some(item.def_id);
+                }
+            }
+        });
+
+        let dtor_did = match dtor_did {
             Some(dtor) => dtor,
-            None => return false
+            None => return None
         };
 
         // RFC 1238: if the destructor method is tagged with the
@@ -379,7 +385,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         // Such access can be in plain sight (e.g. dereferencing
         // `*foo.0` of `Foo<'a>(&'a u32)`) or indirectly hidden
         // (e.g. calling `foo.0.clone()` of `Foo<T:Clone>`).
-        return !self.has_attr(dtor_method, "unsafe_destructor_blind_to_params");
+        let is_dtorck = !self.has_attr(dtor_did, "unsafe_destructor_blind_to_params");
+        Some(ty::Destructor { did: dtor_did, is_dtorck: is_dtorck })
     }
 
     pub fn closure_base_def_id(&self, def_id: DefId) -> DefId {
@@ -453,10 +460,10 @@ impl<'a, 'gcx, 'tcx, W> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx, W>
             TyFnDef(def_id, ..) => self.def_id(def_id),
             TyAdt(d, _) => self.def_id(d.did),
             TyFnPtr(f) => {
-                self.hash(f.unsafety);
-                self.hash(f.abi);
-                self.hash(f.sig.variadic());
-                self.hash(f.sig.skip_binder().inputs().len());
+                self.hash(f.unsafety());
+                self.hash(f.abi());
+                self.hash(f.variadic());
+                self.hash(f.inputs().skip_binder().len());
             }
             TyDynamic(ref data, ..) => {
                 if let Some(p) = data.principal() {
@@ -466,8 +473,9 @@ impl<'a, 'gcx, 'tcx, W> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx, W>
                     self.def_id(d);
                 }
             }
-            TyTuple(tys) => {
+            TyTuple(tys, defaulted) => {
                 self.hash(tys.len());
+                self.hash(defaulted);
             }
             TyParam(p) => {
                 self.hash(p.idx);
@@ -535,7 +543,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
             }
         }
         let result =
-            tcx.infer_ctxt(param_env.clone(), Reveal::ExactMatch)
+            tcx.infer_ctxt(param_env.clone(), Reveal::UserFacing)
             .enter(|infcx| {
                 traits::type_known_to_meet_bound(&infcx, self, def_id, span)
             });
@@ -675,7 +683,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
                                                seen: &mut Vec<Ty<'tcx>>, ty: Ty<'tcx>)
                                                -> Representability {
             match ty.sty {
-                TyTuple(ref ts) => {
+                TyTuple(ref ts, _) => {
                     find_nonrepresentable(tcx, sp, seen, ts.iter().cloned())
                 }
                 // Fixed-length vectors.

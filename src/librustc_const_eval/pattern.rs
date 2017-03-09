@@ -27,9 +27,9 @@ use syntax::ptr::P;
 use syntax_pos::Span;
 
 #[derive(Clone, Debug)]
-pub enum PatternError {
+pub enum PatternError<'tcx> {
     StaticInPattern(Span),
-    ConstEval(eval::ConstEvalErr),
+    ConstEval(eval::ConstEvalErr<'tcx>),
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -84,12 +84,12 @@ pub enum PatternKind<'tcx> {
     },
 
     Constant {
-        value: ConstVal,
+        value: ConstVal<'tcx>,
     },
 
     Range {
-        lo: ConstVal,
-        hi: ConstVal,
+        lo: ConstVal<'tcx>,
+        hi: ConstVal<'tcx>,
         end: RangeEnd,
     },
 
@@ -118,7 +118,7 @@ fn print_const_val(value: &ConstVal, f: &mut fmt::Formatter) -> fmt::Result {
         ConstVal::Char(c) => write!(f, "{:?}", c),
         ConstVal::Struct(_) |
         ConstVal::Tuple(_) |
-        ConstVal::Function(_) |
+        ConstVal::Function(..) |
         ConstVal::Array(..) |
         ConstVal::Repeat(..) => bug!("{:?} not printable in a pattern", value)
     }
@@ -152,7 +152,11 @@ impl<'tcx> fmt::Display for Pattern<'tcx> {
                         Some(&adt_def.variants[variant_index])
                     }
                     _ => if let ty::TyAdt(adt, _) = self.ty.sty {
-                        Some(adt.struct_variant())
+                        if adt.is_univariant() {
+                            Some(&adt.variants[0])
+                        } else {
+                            None
+                        }
                     } else {
                         None
                     }
@@ -265,7 +269,7 @@ impl<'tcx> fmt::Display for Pattern<'tcx> {
 pub struct PatternContext<'a, 'gcx: 'tcx, 'tcx: 'a> {
     pub tcx: TyCtxt<'a, 'gcx, 'tcx>,
     pub tables: &'a ty::TypeckTables<'gcx>,
-    pub errors: Vec<PatternError>,
+    pub errors: Vec<PatternError<'tcx>>,
 }
 
 impl<'a, 'gcx, 'tcx> Pattern<'tcx> {
@@ -342,7 +346,7 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
             PatKind::Tuple(ref subpatterns, ddpos) => {
                 let ty = self.tables.node_id_to_type(pat.id);
                 match ty.sty {
-                    ty::TyTuple(ref tys) => {
+                    ty::TyTuple(ref tys, _) => {
                         let subpatterns =
                             subpatterns.iter()
                                        .enumerate_and_adjust(tys.len(), ddpos)
@@ -582,11 +586,11 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
                 let tcx = self.tcx.global_tcx();
                 let substs = self.tables.node_id_item_substs(id)
                     .unwrap_or_else(|| tcx.intern_substs(&[]));
-                match eval::lookup_const_by_id(tcx, def_id, Some(substs)) {
-                    Some((const_expr, const_tables, _const_ty)) => {
+                match eval::lookup_const_by_id(tcx, def_id, substs) {
+                    Some((const_expr, const_tables)) => {
                         // Enter the inlined constant's tables temporarily.
                         let old_tables = self.tables;
-                        self.tables = const_tables.expect("missing tables after typeck");
+                        self.tables = const_tables;
                         let pat = self.lower_const_expr(const_expr, pat_id, span);
                         self.tables = old_tables;
                         return pat;
@@ -609,7 +613,7 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
 
     fn lower_lit(&mut self, expr: &hir::Expr) -> PatternKind<'tcx> {
         let const_cx = eval::ConstContext::with_tables(self.tcx.global_tcx(), self.tables);
-        match const_cx.eval(expr, eval::EvalHint::ExprTypeChecked) {
+        match const_cx.eval(expr) {
             Ok(value) => {
                 PatternKind::Constant { value: value }
             }
@@ -796,7 +800,7 @@ macro_rules! CloneImpls {
 }
 
 CloneImpls!{ <'tcx>
-    Span, Field, Mutability, ast::Name, ast::NodeId, usize, ConstVal, Region,
+    Span, Field, Mutability, ast::Name, ast::NodeId, usize, ConstVal<'tcx>, Region,
     Ty<'tcx>, BindingMode<'tcx>, &'tcx AdtDef,
     &'tcx Substs<'tcx>, &'tcx Kind<'tcx>
 }

@@ -414,6 +414,64 @@ pub trait DoubleEndedIterator: Iterator {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn next_back(&mut self) -> Option<Self::Item>;
+
+    /// Searches for an element of an iterator from the right that satisfies a predicate.
+    ///
+    /// `rfind()` takes a closure that returns `true` or `false`. It applies
+    /// this closure to each element of the iterator, starting at the end, and if any
+    /// of them return `true`, then `rfind()` returns [`Some(element)`]. If they all return
+    /// `false`, it returns [`None`].
+    ///
+    /// `rfind()` is short-circuiting; in other words, it will stop processing
+    /// as soon as the closure returns `true`.
+    ///
+    /// Because `rfind()` takes a reference, and many iterators iterate over
+    /// references, this leads to a possibly confusing situation where the
+    /// argument is a double reference. You can see this effect in the
+    /// examples below, with `&&x`.
+    ///
+    /// [`Some(element)`]: ../../std/option/enum.Option.html#variant.Some
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(iter_rfind)]
+    ///
+    /// let a = [1, 2, 3];
+    ///
+    /// assert_eq!(a.iter().rfind(|&&x| x == 2), Some(&2));
+    ///
+    /// assert_eq!(a.iter().rfind(|&&x| x == 5), None);
+    /// ```
+    ///
+    /// Stopping at the first `true`:
+    ///
+    /// ```
+    /// #![feature(iter_rfind)]
+    ///
+    /// let a = [1, 2, 3];
+    ///
+    /// let mut iter = a.iter();
+    ///
+    /// assert_eq!(iter.rfind(|&&x| x == 2), Some(&2));
+    ///
+    /// // we can still use `iter`, as there are more elements.
+    /// assert_eq!(iter.next_back(), Some(&1));
+    /// ```
+    #[inline]
+    #[unstable(feature = "iter_rfind", issue = "39480")]
+    fn rfind<P>(&mut self, mut predicate: P) -> Option<Self::Item> where
+        Self: Sized,
+        P: FnMut(&Self::Item) -> bool
+    {
+        for x in self.by_ref().rev() {
+            if predicate(&x) { return Some(x) }
+        }
+        None
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -603,29 +661,29 @@ pub trait Product<A = Self>: Sized {
 
 // NB: explicitly use Add and Mul here to inherit overflow checks
 macro_rules! integer_sum_product {
-    (@impls $zero:expr, $one:expr, $($a:ty)*) => ($(
-        #[stable(feature = "iter_arith_traits", since = "1.12.0")]
+    (@impls $zero:expr, $one:expr, #[$attr:meta], $($a:ty)*) => ($(
+        #[$attr]
         impl Sum for $a {
             fn sum<I: Iterator<Item=$a>>(iter: I) -> $a {
                 iter.fold($zero, Add::add)
             }
         }
 
-        #[stable(feature = "iter_arith_traits", since = "1.12.0")]
+        #[$attr]
         impl Product for $a {
             fn product<I: Iterator<Item=$a>>(iter: I) -> $a {
                 iter.fold($one, Mul::mul)
             }
         }
 
-        #[stable(feature = "iter_arith_traits", since = "1.12.0")]
+        #[$attr]
         impl<'a> Sum<&'a $a> for $a {
             fn sum<I: Iterator<Item=&'a $a>>(iter: I) -> $a {
                 iter.fold($zero, Add::add)
             }
         }
 
-        #[stable(feature = "iter_arith_traits", since = "1.12.0")]
+        #[$attr]
         impl<'a> Product<&'a $a> for $a {
             fn product<I: Iterator<Item=&'a $a>>(iter: I) -> $a {
                 iter.fold($one, Mul::mul)
@@ -633,8 +691,12 @@ macro_rules! integer_sum_product {
         }
     )*);
     ($($a:ty)*) => (
-        integer_sum_product!(@impls 0, 1, $($a)+);
-        integer_sum_product!(@impls Wrapping(0), Wrapping(1), $(Wrapping<$a>)+);
+        integer_sum_product!(@impls 0, 1,
+                #[stable(feature = "iter_arith_traits", since = "1.12.0")],
+                $($a)+);
+        integer_sum_product!(@impls Wrapping(0), Wrapping(1),
+                #[stable(feature = "wrapping_iter_arith", since = "1.14.0")],
+                $(Wrapping<$a>)+);
     );
 }
 

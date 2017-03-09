@@ -47,7 +47,7 @@ use rustc::util::common::time;
 use session::config::{self, NoDebugInfo};
 use rustc_incremental::IncrementalHashesMap;
 use session::{self, DataTypeKind, Session};
-use abi::{self, Abi, FnType};
+use abi::{self, FnType};
 use mir::lvalue::LvalueRef;
 use adt;
 use attributes;
@@ -89,6 +89,8 @@ use syntax::attr;
 use rustc::hir;
 use rustc::ty::layout::{self, Layout};
 use syntax::ast;
+
+use mir::lvalue::Alignment;
 
 pub struct StatRecorder<'a, 'tcx: 'a> {
     ccx: &'a CrateContext<'a, 'tcx>,
@@ -250,25 +252,25 @@ pub fn unsize_thin_ptr<'a, 'tcx>(
 /// Coerce `src`, which is a reference to a value of type `src_ty`,
 /// to a value of type `dst_ty` and store the result in `dst`
 pub fn coerce_unsized_into<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
-                                     src: ValueRef,
-                                     src_ty: Ty<'tcx>,
-                                     dst: ValueRef,
-                                     dst_ty: Ty<'tcx>) {
+                                     src: &LvalueRef<'tcx>,
+                                     dst: &LvalueRef<'tcx>) {
+    let src_ty = src.ty.to_ty(bcx.tcx());
+    let dst_ty = dst.ty.to_ty(bcx.tcx());
     let coerce_ptr = || {
         let (base, info) = if common::type_is_fat_ptr(bcx.ccx, src_ty) {
             // fat-ptr to fat-ptr unsize preserves the vtable
             // i.e. &'a fmt::Debug+Send => &'a fmt::Debug
             // So we need to pointercast the base to ensure
             // the types match up.
-            let (base, info) = load_fat_ptr(bcx, src, src_ty);
+            let (base, info) = load_fat_ptr(bcx, src.llval, src.alignment, src_ty);
             let llcast_ty = type_of::fat_ptr_base_ty(bcx.ccx, dst_ty);
             let base = bcx.pointercast(base, llcast_ty);
             (base, info)
         } else {
-            let base = load_ty(bcx, src, src_ty);
+            let base = load_ty(bcx, src.llval, src.alignment, src_ty);
             unsize_thin_ptr(bcx, base, src_ty, dst_ty)
         };
-        store_fat_ptr(bcx, base, info, dst, dst_ty);
+        store_fat_ptr(bcx, base, info, dst.llval, dst.alignment, dst_ty);
     };
     match (&src_ty.sty, &dst_ty.sty) {
         (&ty::TyRef(..), &ty::TyRef(..)) |
@@ -290,21 +292,22 @@ pub fn coerce_unsized_into<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                 monomorphize::field_ty(bcx.tcx(), substs_b, f)
             });
 
-            let src = LvalueRef::new_sized_ty(src, src_ty);
-            let dst = LvalueRef::new_sized_ty(dst, dst_ty);
-
             let iter = src_fields.zip(dst_fields).enumerate();
             for (i, (src_fty, dst_fty)) in iter {
                 if type_is_zero_size(bcx.ccx, dst_fty) {
                     continue;
                 }
 
-                let src_f = src.trans_field_ptr(bcx, i);
-                let dst_f = dst.trans_field_ptr(bcx, i);
+                let (src_f, src_f_align) = src.trans_field_ptr(bcx, i);
+                let (dst_f, dst_f_align) = dst.trans_field_ptr(bcx, i);
                 if src_fty == dst_fty {
                     memcpy_ty(bcx, dst_f, src_f, src_fty, None);
                 } else {
-                    coerce_unsized_into(bcx, src_f, src_fty, dst_f, dst_fty);
+                    coerce_unsized_into(
+                        bcx,
+                        &LvalueRef::new_sized_ty(src_f, src_fty, src_f_align),
+                        &LvalueRef::new_sized_ty(dst_f, dst_fty, dst_f_align)
+                    );
                 }
             }
         }
@@ -399,7 +402,8 @@ pub fn call_assume<'a, 'tcx>(b: &Builder<'a, 'tcx>, val: ValueRef) {
 /// Helper for loading values from memory. Does the necessary conversion if the in-memory type
 /// differs from the type used for SSA values. Also handles various special cases where the type
 /// gives us better information about what we are loading.
-pub fn load_ty<'a, 'tcx>(b: &Builder<'a, 'tcx>, ptr: ValueRef, t: Ty<'tcx>) -> ValueRef {
+pub fn load_ty<'a, 'tcx>(b: &Builder<'a, 'tcx>, ptr: ValueRef,
+                         alignment: Alignment, t: Ty<'tcx>) -> ValueRef {
     let ccx = b.ccx;
     if type_is_zero_size(ccx, t) {
         return C_undef(type_of::type_of(ccx, t));
@@ -419,29 +423,31 @@ pub fn load_ty<'a, 'tcx>(b: &Builder<'a, 'tcx>, ptr: ValueRef, t: Ty<'tcx>) -> V
     }
 
     if t.is_bool() {
-        b.trunc(b.load_range_assert(ptr, 0, 2, llvm::False), Type::i1(ccx))
+        b.trunc(b.load_range_assert(ptr, 0, 2, llvm::False, alignment.to_align()),
+                Type::i1(ccx))
     } else if t.is_char() {
         // a char is a Unicode codepoint, and so takes values from 0
         // to 0x10FFFF inclusive only.
-        b.load_range_assert(ptr, 0, 0x10FFFF + 1, llvm::False)
+        b.load_range_assert(ptr, 0, 0x10FFFF + 1, llvm::False, alignment.to_align())
     } else if (t.is_region_ptr() || t.is_box()) && !common::type_is_fat_ptr(ccx, t) {
-        b.load_nonnull(ptr)
+        b.load_nonnull(ptr, alignment.to_align())
     } else {
-        b.load(ptr)
+        b.load(ptr, alignment.to_align())
     }
 }
 
 /// Helper for storing values in memory. Does the necessary conversion if the in-memory type
 /// differs from the type used for SSA values.
-pub fn store_ty<'a, 'tcx>(cx: &Builder<'a, 'tcx>, v: ValueRef, dst: ValueRef, t: Ty<'tcx>) {
+pub fn store_ty<'a, 'tcx>(cx: &Builder<'a, 'tcx>, v: ValueRef, dst: ValueRef,
+                          dst_align: Alignment, t: Ty<'tcx>) {
     debug!("store_ty: {:?} : {:?} <- {:?}", Value(dst), t, Value(v));
 
     if common::type_is_fat_ptr(cx.ccx, t) {
         let lladdr = cx.extract_value(v, abi::FAT_PTR_ADDR);
         let llextra = cx.extract_value(v, abi::FAT_PTR_EXTRA);
-        store_fat_ptr(cx, lladdr, llextra, dst, t);
+        store_fat_ptr(cx, lladdr, llextra, dst, dst_align, t);
     } else {
-        cx.store(from_immediate(cx, v), dst, None);
+        cx.store(from_immediate(cx, v), dst, dst_align.to_align());
     }
 }
 
@@ -449,24 +455,32 @@ pub fn store_fat_ptr<'a, 'tcx>(cx: &Builder<'a, 'tcx>,
                                data: ValueRef,
                                extra: ValueRef,
                                dst: ValueRef,
+                               dst_align: Alignment,
                                _ty: Ty<'tcx>) {
     // FIXME: emit metadata
-    cx.store(data, get_dataptr(cx, dst), None);
-    cx.store(extra, get_meta(cx, dst), None);
+    cx.store(data, get_dataptr(cx, dst), dst_align.to_align());
+    cx.store(extra, get_meta(cx, dst), dst_align.to_align());
 }
 
 pub fn load_fat_ptr<'a, 'tcx>(
-    b: &Builder<'a, 'tcx>, src: ValueRef, t: Ty<'tcx>
+    b: &Builder<'a, 'tcx>, src: ValueRef, alignment: Alignment, t: Ty<'tcx>
 ) -> (ValueRef, ValueRef) {
     let ptr = get_dataptr(b, src);
     let ptr = if t.is_region_ptr() || t.is_box() {
-        b.load_nonnull(ptr)
+        b.load_nonnull(ptr, alignment.to_align())
     } else {
-        b.load(ptr)
+        b.load(ptr, alignment.to_align())
     };
 
-    // FIXME: emit metadata on `meta`.
-    let meta = b.load(get_meta(b, src));
+    let meta = get_meta(b, src);
+    let meta_ty = val_ty(meta);
+    // If the 'meta' field is a pointer, it's a vtable, so use load_nonnull
+    // instead
+    let meta = if meta_ty.element_type().kind() == llvm::TypeKind::Pointer {
+        b.load_nonnull(meta, None)
+    } else {
+        b.load(meta, None)
+    };
 
     (ptr, meta)
 }
@@ -529,7 +543,7 @@ pub fn call_memcpy<'a, 'tcx>(b: &Builder<'a, 'tcx>,
     let memcpy = ccx.get_intrinsic(&key);
     let src_ptr = b.pointercast(src, Type::i8p(ccx));
     let dst_ptr = b.pointercast(dst, Type::i8p(ccx));
-    let size = b.intcast(n_bytes, ccx.int_type());
+    let size = b.intcast(n_bytes, ccx.int_type(), false);
     let align = C_i32(ccx, align as i32);
     let volatile = C_bool(ccx, false);
     b.call(memcpy, &[dst_ptr, src_ptr, size, align, volatile], None);
@@ -582,12 +596,9 @@ pub fn trans_instance<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, instance: Instance
     // release builds.
     info!("trans_instance({})", instance);
 
-    let fn_ty = ccx.tcx().item_type(instance.def);
-    let fn_ty = ccx.tcx().erase_regions(&fn_ty);
-    let fn_ty = monomorphize::apply_param_substs(ccx.shared(), instance.substs, &fn_ty);
-
-    let ty::BareFnTy { abi, ref sig, .. } = *common::ty_fn_ty(ccx, fn_ty);
-    let sig = ccx.tcx().erase_late_bound_regions_and_normalize(sig);
+    let fn_ty = common::def_ty(ccx.shared(), instance.def, instance.substs);
+    let sig = common::ty_fn_sig(ccx, fn_ty);
+    let sig = ccx.tcx().erase_late_bound_regions_and_normalize(&sig);
 
     let lldecl = match ccx.instances().borrow().get(&instance) {
         Some(&val) => val,
@@ -600,10 +611,8 @@ pub fn trans_instance<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, instance: Instance
         attributes::emit_uwtable(lldecl, true);
     }
 
-    let fn_ty = FnType::new(ccx, abi, &sig, &[]);
-
     let mir = ccx.tcx().item_mir(instance.def);
-    mir::trans_mir(ccx, lldecl, fn_ty, &mir, instance, &sig, abi);
+    mir::trans_mir(ccx, lldecl, &mir, instance, sig);
 }
 
 pub fn trans_ctor_shim<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
@@ -614,11 +623,9 @@ pub fn trans_ctor_shim<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     attributes::inline(llfn, attributes::InlineAttr::Hint);
     attributes::set_frame_pointer_elimination(ccx, llfn);
 
-    let ctor_ty = ccx.tcx().item_type(def_id);
-    let ctor_ty = monomorphize::apply_param_substs(ccx.shared(), substs, &ctor_ty);
-
+    let ctor_ty = common::def_ty(ccx.shared(), def_id, substs);
     let sig = ccx.tcx().erase_late_bound_regions_and_normalize(&ctor_ty.fn_sig());
-    let fn_ty = FnType::new(ccx, Abi::Rust, &sig, &[]);
+    let fn_ty = FnType::new(ccx, sig, &[]);
 
     let bcx = Builder::new_block(ccx, llfn, "entry-block");
     if !fn_ty.ret.is_ignore() {
@@ -633,7 +640,7 @@ pub fn trans_ctor_shim<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             bcx.alloca(fn_ty.ret.memory_ty(ccx), "sret_slot")
         };
         // Can return unsized value
-        let mut dest_val = LvalueRef::new_sized_ty(dest, sig.output());
+        let mut dest_val = LvalueRef::new_sized_ty(dest, sig.output(), Alignment::AbiAligned);
         dest_val.ty = LvalueTy::Downcast {
             adt_def: sig.output().ty_adt_def().unwrap(),
             substs: substs,
@@ -642,7 +649,7 @@ pub fn trans_ctor_shim<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         let mut llarg_idx = fn_ty.ret.is_indirect() as usize;
         let mut arg_idx = 0;
         for (i, arg_ty) in sig.inputs().iter().enumerate() {
-            let lldestptr = dest_val.trans_field_ptr(&bcx, i);
+            let (lldestptr, _) = dest_val.trans_field_ptr(&bcx, i);
             let arg = &fn_ty.args[arg_idx];
             arg_idx += 1;
             if common::type_is_fat_ptr(bcx.ccx, arg_ty) {
@@ -662,14 +669,12 @@ pub fn trans_ctor_shim<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         }
 
         if let Some(cast_ty) = fn_ty.ret.cast {
-            let load = bcx.load(bcx.pointercast(dest, cast_ty.ptr_to()));
-            let llalign = llalign_of_min(ccx, fn_ty.ret.ty);
-            unsafe {
-                llvm::LLVMSetAlignment(load, llalign);
-            }
-            bcx.ret(load)
+            bcx.ret(bcx.load(
+                bcx.pointercast(dest, cast_ty.ptr_to()),
+                Some(llalign_of_min(ccx, fn_ty.ret.ty))
+            ));
         } else {
-            bcx.ret(bcx.load(dest))
+            bcx.ret(bcx.load(dest, None))
         }
     } else {
         bcx.ret_void();
@@ -1127,11 +1132,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let ty::CrateAnalysis { export_map, reachable, name, .. } = analysis;
     let exported_symbols = find_exported_symbols(tcx, reachable);
 
-    let check_overflow = if let Some(v) = tcx.sess.opts.debugging_opts.force_overflow_checks {
-        v
-    } else {
-        tcx.sess.opts.debug_assertions
-    };
+    let check_overflow = tcx.sess.overflow_checks();
 
     let link_meta = link::build_link_meta(incremental_hashes_map, &name);
 
@@ -1146,7 +1147,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     });
 
     let metadata_module = ModuleTranslation {
-        name: "metadata".to_string(),
+        name: link::METADATA_MODULE_NAME.to_string(),
         symbol_name_hash: 0, // we always rebuild metadata, at least for now
         source: ModuleSource::Translated(ModuleLlvm {
             llcx: shared_ccx.metadata_llcx(),

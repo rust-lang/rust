@@ -264,8 +264,8 @@ impl Stats for [f64] {
         local_sort(&mut tmp);
         let first = 25f64;
         let a = percentile_of_sorted(&tmp, first);
-        let secound = 50f64;
-        let b = percentile_of_sorted(&tmp, secound);
+        let second = 50f64;
+        let b = percentile_of_sorted(&tmp, second);
         let third = 75f64;
         let c = percentile_of_sorted(&tmp, third);
         (a, b, c)

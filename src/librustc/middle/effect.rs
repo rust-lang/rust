@@ -44,8 +44,8 @@ enum RootUnsafeContext {
 
 fn type_is_unsafe_function(ty: Ty) -> bool {
     match ty.sty {
-        ty::TyFnDef(.., ref f) |
-        ty::TyFnPtr(ref f) => f.unsafety == hir::Unsafety::Unsafe,
+        ty::TyFnDef(.., f) |
+        ty::TyFnPtr(f) => f.unsafety() == hir::Unsafety::Unsafe,
         _ => false,
     }
 }

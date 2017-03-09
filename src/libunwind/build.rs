@@ -11,8 +11,7 @@
 use std::env;
 
 fn main() {
-    println!("cargo:rustc-cfg=cargobuild");
-
+    println!("cargo:rerun-if-changed=build.rs");
     let target = env::var("TARGET").expect("TARGET was not set");
 
     if target.contains("linux") {
@@ -29,6 +28,8 @@ fn main() {
         println!("cargo:rustc-link-lib=gcc_s");
     } else if target.contains("openbsd") {
         println!("cargo:rustc-link-lib=gcc");
+    } else if target.contains("solaris") {
+        println!("cargo:rustc-link-lib=gcc_s");
     } else if target.contains("bitrig") {
         println!("cargo:rustc-link-lib=c++abi");
     } else if target.contains("dragonfly") {

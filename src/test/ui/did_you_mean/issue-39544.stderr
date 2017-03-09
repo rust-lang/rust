@@ -1,0 +1,8 @@
+error: cannot borrow immutable field `z.x` as mutable
+  --> $DIR/issue-39544.rs:21:18
+   |
+21 |     let _ = &mut z.x;
+   |                  ^^^
+
+error: aborting due to previous error
+

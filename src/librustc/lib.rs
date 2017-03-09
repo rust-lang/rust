@@ -29,7 +29,8 @@
 #![feature(conservative_impl_trait)]
 #![feature(const_fn)]
 #![feature(core_intrinsics)]
-#![feature(field_init_shorthand)]
+#![cfg_attr(stage0,feature(field_init_shorthand))]
+#![feature(i128_type)]
 #![feature(libc)]
 #![feature(loop_break_value)]
 #![feature(nonzero)]
@@ -38,6 +39,7 @@
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
 #![feature(slice_patterns)]
+#![feature(specialization)]
 #![feature(staged_api)]
 #![feature(unboxed_closures)]
 
@@ -60,9 +62,6 @@ extern crate syntax_pos;
 
 extern crate serialize as rustc_serialize; // used by deriving
 
-// SNAP:
-extern crate rustc_i128;
-
 #[macro_use]
 mod macros;
 
@@ -77,7 +76,6 @@ pub mod infer;
 pub mod lint;
 
 pub mod middle {
-    pub mod astconv_util;
     pub mod expr_use_visitor;
     pub mod const_val;
     pub mod cstore;
@@ -109,7 +107,6 @@ pub mod util {
     pub mod common;
     pub mod ppaux;
     pub mod nodemap;
-    pub mod num;
     pub mod fs;
 }
 

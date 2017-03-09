@@ -29,7 +29,10 @@ use rustc::dep_graph::DepNode;
 use rustc::hir::def_id::CrateNum;
 use rustc::hir::svh::Svh;
 use rustc_back::tempdir::TempDir;
+use rustc_back::PanicStrategy;
 use rustc_incremental::IncrementalHashesMap;
+use context::get_reloc_model;
+use llvm;
 
 use std::ascii;
 use std::char;
@@ -46,6 +49,13 @@ use syntax::ast;
 use syntax::attr;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
+
+/// The LLVM module name containing crate-metadata. This includes a `.` on
+/// purpose, so it cannot clash with the name of a user-defined module.
+pub const METADATA_MODULE_NAME: &'static str = "crate.metadata";
+/// The name of the crate-metadata object file the compiler generates. Must
+/// match up with `METADATA_MODULE_NAME`.
+pub const METADATA_OBJ_NAME: &'static str = "crate.metadata.o";
 
 // RLIB LLVM-BYTECODE OBJECT LAYOUT
 // Version 1
@@ -212,7 +222,7 @@ pub fn link_binary(sess: &Session,
                 remove(sess, &obj);
             }
         }
-        remove(sess, &outputs.with_extension("metadata.o"));
+        remove(sess, &outputs.with_extension(METADATA_OBJ_NAME));
     }
 
     out_filenames
@@ -476,6 +486,7 @@ fn link_rlib<'a>(sess: &'a Session,
     for lib in sess.cstore.used_libraries() {
         match lib.kind {
             NativeLibraryKind::NativeStatic => {}
+            NativeLibraryKind::NativeStaticNobundle |
             NativeLibraryKind::NativeFramework |
             NativeLibraryKind::NativeUnknown => continue,
         }
@@ -674,6 +685,7 @@ fn link_staticlib(sess: &Session, objects: &[PathBuf], out_filename: &Path,
 
     for lib in all_native_libs.iter().filter(|l| relevant_lib(sess, l)) {
         let name = match lib.kind {
+            NativeLibraryKind::NativeStaticNobundle |
             NativeLibraryKind::NativeUnknown => "library",
             NativeLibraryKind::NativeFramework => "framework",
             // These are included, no need to print them
@@ -710,6 +722,15 @@ fn link_natively(sess: &Session,
     };
     for obj in pre_link_objects {
         cmd.arg(root.join(obj));
+    }
+
+    if sess.target.target.options.is_like_emscripten {
+        cmd.arg("-s");
+        cmd.arg(if sess.panic_strategy() == PanicStrategy::Abort {
+            "DISABLE_EXCEPTION_CATCHING=1"
+        } else {
+            "DISABLE_EXCEPTION_CATCHING=0"
+        });
     }
 
     {
@@ -815,7 +836,8 @@ fn link_args(cmd: &mut Linker,
 
     // If we're building a dynamic library then some platforms need to make sure
     // that all symbols are exported correctly from the dynamic library.
-    if crate_type != config::CrateTypeExecutable {
+    if crate_type != config::CrateTypeExecutable ||
+       sess.target.target.options.is_like_emscripten {
         cmd.export_symbols(tmpdir, crate_type);
     }
 
@@ -824,7 +846,7 @@ fn link_args(cmd: &mut Linker,
     // object file, so we link that in here.
     if crate_type == config::CrateTypeDylib ||
        crate_type == config::CrateTypeProcMacro {
-        cmd.add_object(&outputs.with_extension("metadata.o"));
+        cmd.add_object(&outputs.with_extension(METADATA_OBJ_NAME));
     }
 
     // Try to strip as much out of the generated object by removing unused
@@ -839,13 +861,11 @@ fn link_args(cmd: &mut Linker,
     if crate_type == config::CrateTypeExecutable &&
        t.options.position_independent_executables {
         let empty_vec = Vec::new();
-        let empty_str = String::new();
         let args = sess.opts.cg.link_args.as_ref().unwrap_or(&empty_vec);
         let more_args = &sess.opts.cg.link_arg;
         let mut args = args.iter().chain(more_args.iter()).chain(used_link_args.iter());
-        let relocation_model = sess.opts.cg.relocation_model.as_ref()
-                                   .unwrap_or(&empty_str);
-        if (t.options.relocation_model == "pic" || *relocation_model == "pic")
+
+        if get_reloc_model(sess) == llvm::RelocMode::PIC
             && !args.any(|x| *x == "-static") {
             cmd.position_independent_executable();
         }
@@ -894,7 +914,7 @@ fn link_args(cmd: &mut Linker,
     // on other dylibs (e.g. other native deps).
     add_local_native_libraries(cmd, sess);
     add_upstream_rust_crates(cmd, sess, crate_type, tmpdir);
-    add_upstream_native_libraries(cmd, sess);
+    add_upstream_native_libraries(cmd, sess, crate_type);
 
     // # Telling the linker what we're doing
 
@@ -985,6 +1005,7 @@ fn add_local_native_libraries(cmd: &mut Linker, sess: &Session) {
         match lib.kind {
             NativeLibraryKind::NativeUnknown => cmd.link_dylib(&lib.name.as_str()),
             NativeLibraryKind::NativeFramework => cmd.link_framework(&lib.name.as_str()),
+            NativeLibraryKind::NativeStaticNobundle => cmd.link_staticlib(&lib.name.as_str()),
             NativeLibraryKind::NativeStatic => bug!(),
         }
     }
@@ -1022,6 +1043,9 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
         // symbols from the dylib.
         let src = sess.cstore.used_crate_source(cnum);
         match data[cnum.as_usize() - 1] {
+            _ if sess.cstore.is_sanitizer_runtime(cnum) => {
+                link_sanitizer_runtime(cmd, sess, tmpdir, cnum);
+            }
             // compiler-builtins are always placed last to ensure that they're
             // linked correctly.
             _ if sess.cstore.is_compiler_builtins(cnum) => {
@@ -1039,6 +1063,8 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
         }
     }
 
+    // compiler-builtins are always placed last to ensure that they're
+    // linked correctly.
     // We must always link the `compiler_builtins` crate statically. Even if it
     // was already "included" in a dylib (e.g. `libstd` when `-C prefer-dynamic`
     // is used)
@@ -1053,6 +1079,34 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
         } else {
             stem
         }
+    }
+
+    // We must link the sanitizer runtime using -Wl,--whole-archive but since
+    // it's packed in a .rlib, it contains stuff that are not objects that will
+    // make the linker error. So we must remove those bits from the .rlib before
+    // linking it.
+    fn link_sanitizer_runtime(cmd: &mut Linker,
+                              sess: &Session,
+                              tmpdir: &Path,
+                              cnum: CrateNum) {
+        let src = sess.cstore.used_crate_source(cnum);
+        let cratepath = &src.rlib.unwrap().0;
+        let dst = tmpdir.join(cratepath.file_name().unwrap());
+        let cfg = archive_config(sess, &dst, Some(cratepath));
+        let mut archive = ArchiveBuilder::new(cfg);
+        archive.update_symbols();
+
+        for f in archive.src_files() {
+            if f.ends_with("bytecode.deflate") ||
+                f == sess.cstore.metadata_filename() {
+                    archive.remove_file(&f);
+                    continue
+                }
+        }
+
+        archive.build();
+
+        cmd.link_whole_rlib(&dst);
     }
 
     // Adds the static "rlib" versions of all crates to the command line.
@@ -1210,7 +1264,7 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
 // generic function calls a native function, then the generic function must
 // be instantiated in the target crate, meaning that the native symbol must
 // also be resolved in the target crate.
-fn add_upstream_native_libraries(cmd: &mut Linker, sess: &Session) {
+fn add_upstream_native_libraries(cmd: &mut Linker, sess: &Session, crate_type: config::CrateType) {
     // Be sure to use a topological sorting of crates because there may be
     // interdependencies between native libraries. When passing -nodefaultlibs,
     // for example, almost all native libraries depend on libc, so we have to
@@ -1220,6 +1274,9 @@ fn add_upstream_native_libraries(cmd: &mut Linker, sess: &Session) {
     // This passes RequireStatic, but the actual requirement doesn't matter,
     // we're just getting an ordering of crate numbers, we're not worried about
     // the paths.
+    let formats = sess.dependency_formats.borrow();
+    let data = formats.get(&crate_type).unwrap();
+
     let crates = sess.cstore.used_crates(LinkagePreference::RequireStatic);
     for (cnum, _) in crates {
         for lib in sess.cstore.native_libraries(cnum) {
@@ -1229,7 +1286,15 @@ fn add_upstream_native_libraries(cmd: &mut Linker, sess: &Session) {
             match lib.kind {
                 NativeLibraryKind::NativeUnknown => cmd.link_dylib(&lib.name.as_str()),
                 NativeLibraryKind::NativeFramework => cmd.link_framework(&lib.name.as_str()),
-
+                NativeLibraryKind::NativeStaticNobundle => {
+                    // Link "static-nobundle" native libs only if the crate they originate from
+                    // is being linked statically to the current crate.  If it's linked dynamically
+                    // or is an rlib already included via some other dylib crate, the symbols from
+                    // native libs will have already been included in that dylib.
+                    if data[cnum.as_usize() - 1] == Linkage::Static {
+                        cmd.link_staticlib(&lib.name.as_str())
+                    }
+                },
                 // ignore statically included native libraries here as we've
                 // already included them when we included the rust library
                 // previously

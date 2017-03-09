@@ -18,20 +18,21 @@ pub use self::CalleeData::*;
 
 use llvm::{self, ValueRef, get_params};
 use rustc::hir::def_id::DefId;
-use rustc::ty::subst::Substs;
+use rustc::ty::subst::{Substs, Subst};
 use rustc::traits;
 use abi::{Abi, FnType};
 use attributes;
 use base;
 use builder::Builder;
-use common::{self, CrateContext, SharedCrateContext};
+use common::{self, CrateContext};
 use cleanup::CleanupScope;
 use mir::lvalue::LvalueRef;
 use consts;
+use common::def_ty;
 use declare;
 use value::Value;
 use meth;
-use monomorphize::{self, Instance};
+use monomorphize::Instance;
 use trans_item::TransItem;
 use type_of;
 use Disr;
@@ -40,6 +41,8 @@ use rustc::hir;
 use std::iter;
 
 use syntax_pos::DUMMY_SP;
+
+use mir::lvalue::Alignment;
 
 #[derive(Debug)]
 pub enum CalleeData {
@@ -81,7 +84,7 @@ impl<'tcx> Callee<'tcx> {
 
         let fn_ty = def_ty(ccx.shared(), def_id, substs);
         if let ty::TyFnDef(.., f) = fn_ty.sty {
-            if f.abi == Abi::RustIntrinsic || f.abi == Abi::PlatformIntrinsic {
+            if f.abi() == Abi::RustIntrinsic || f.abi() == Abi::PlatformIntrinsic {
                 return Callee {
                     data: Intrinsic,
                     ty: fn_ty
@@ -91,9 +94,9 @@ impl<'tcx> Callee<'tcx> {
 
         // FIXME(eddyb) Detect ADT constructors more efficiently.
         if let Some(adt_def) = fn_ty.fn_ret().skip_binder().ty_adt_def() {
-            if let Some(v) = adt_def.variants.iter().find(|v| def_id == v.did) {
+            if let Some(i) = adt_def.variants.iter().position(|v| def_id == v.did) {
                 return Callee {
-                    data: NamedTupleConstructor(Disr::from(v.disr_val)),
+                    data: NamedTupleConstructor(Disr::for_variant(tcx, adt_def, i)),
                     ty: fn_ty
                 };
             }
@@ -167,14 +170,13 @@ impl<'tcx> Callee<'tcx> {
     /// The extra argument types are for variadic (extern "C") functions.
     pub fn direct_fn_type<'a>(&self, ccx: &CrateContext<'a, 'tcx>,
                               extra_args: &[Ty<'tcx>]) -> FnType {
-        let abi = self.ty.fn_abi();
-        let sig = ccx.tcx().erase_late_bound_regions_and_normalize(self.ty.fn_sig());
-        let mut fn_ty = FnType::unadjusted(ccx, abi, &sig, extra_args);
+        let sig = ccx.tcx().erase_late_bound_regions_and_normalize(&self.ty.fn_sig());
+        let mut fn_ty = FnType::unadjusted(ccx, sig, extra_args);
         if let Virtual(_) = self.data {
             // Don't pass the vtable, it's not an argument of the virtual fn.
             fn_ty.args[1].ignore();
         }
-        fn_ty.adjust_for_abi(ccx, abi, &sig);
+        fn_ty.adjust_for_abi(ccx, sig);
         fn_ty
     }
 
@@ -205,16 +207,6 @@ impl<'tcx> Callee<'tcx> {
         }
     }
 }
-
-/// Given a DefId and some Substs, produces the monomorphic item type.
-fn def_ty<'a, 'tcx>(shared: &SharedCrateContext<'a, 'tcx>,
-                    def_id: DefId,
-                    substs: &'tcx Substs<'tcx>)
-                    -> Ty<'tcx> {
-    let ty = shared.tcx().item_type(def_id);
-    monomorphize::apply_param_substs(shared, substs, &ty)
-}
-
 
 fn trans_closure_method<'a, 'tcx>(ccx: &'a CrateContext<'a, 'tcx>,
                                   def_id: DefId,
@@ -305,38 +297,32 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     let ref_closure_ty = tcx.mk_imm_ref(tcx.mk_region(ty::ReErased), closure_ty);
 
     // Make a version with the type of by-ref closure.
-    let ty::ClosureTy { unsafety, abi, mut sig } = tcx.closure_type(def_id, substs);
-    sig.0 = tcx.mk_fn_sig(
-        iter::once(ref_closure_ty).chain(sig.0.inputs().iter().cloned()),
-        sig.0.output(),
-        sig.0.variadic
-    );
-    let llref_fn_ty = tcx.mk_fn_ptr(tcx.mk_bare_fn(ty::BareFnTy {
-        unsafety: unsafety,
-        abi: abi,
-        sig: sig.clone()
-    }));
+    let sig = tcx.closure_type(def_id).subst(tcx, substs.substs);
+    let sig = tcx.erase_late_bound_regions_and_normalize(&sig);
+    assert_eq!(sig.abi, Abi::RustCall);
+    let llref_fn_ty = tcx.mk_fn_ptr(ty::Binder(tcx.mk_fn_sig(
+        iter::once(ref_closure_ty).chain(sig.inputs().iter().cloned()),
+        sig.output(),
+        sig.variadic,
+        sig.unsafety,
+        Abi::RustCall
+    )));
     debug!("trans_fn_once_adapter_shim: llref_fn_ty={:?}",
            llref_fn_ty);
 
 
     // Make a version of the closure type with the same arguments, but
     // with argument #0 being by value.
-    assert_eq!(abi, Abi::RustCall);
-    sig.0 = tcx.mk_fn_sig(
-        iter::once(closure_ty).chain(sig.0.inputs().iter().skip(1).cloned()),
-        sig.0.output(),
-        sig.0.variadic
+    let sig = tcx.mk_fn_sig(
+        iter::once(closure_ty).chain(sig.inputs().iter().cloned()),
+        sig.output(),
+        sig.variadic,
+        sig.unsafety,
+        Abi::RustCall
     );
 
-    let sig = tcx.erase_late_bound_regions_and_normalize(&sig);
-    let fn_ty = FnType::new(ccx, abi, &sig, &[]);
-
-    let llonce_fn_ty = tcx.mk_fn_ptr(tcx.mk_bare_fn(ty::BareFnTy {
-        unsafety: unsafety,
-        abi: abi,
-        sig: ty::Binder(sig)
-    }));
+    let fn_ty = FnType::new(ccx, sig, &[]);
+    let llonce_fn_ty = tcx.mk_fn_ptr(ty::Binder(sig));
 
     // Create the by-value helper.
     let function_name = method_instance.symbol_name(ccx.shared());
@@ -358,29 +344,27 @@ fn trans_fn_once_adapter_shim<'a, 'tcx>(
     let fn_ty = callee.direct_fn_type(bcx.ccx, &[]);
     let self_idx = fn_ty.ret.is_indirect() as usize;
     let env_arg = &orig_fn_ty.args[0];
-    let llenv = if env_arg.is_indirect() {
-        llargs[self_idx]
+    let env = if env_arg.is_indirect() {
+        LvalueRef::new_sized_ty(llargs[self_idx], closure_ty, Alignment::AbiAligned)
     } else {
-        let scratch = bcx.alloca_ty(closure_ty, "self");
+        let scratch = LvalueRef::alloca(&bcx, closure_ty, "self");
         let mut llarg_idx = self_idx;
-        env_arg.store_fn_arg(&bcx, &mut llarg_idx, scratch);
+        env_arg.store_fn_arg(&bcx, &mut llarg_idx, scratch.llval);
         scratch
     };
 
-    debug!("trans_fn_once_adapter_shim: env={:?}", Value(llenv));
+    debug!("trans_fn_once_adapter_shim: env={:?}", env);
     // Adjust llargs such that llargs[self_idx..] has the call arguments.
     // For zero-sized closures that means sneaking in a new argument.
     if env_arg.is_ignore() {
-        llargs.insert(self_idx, llenv);
+        llargs.insert(self_idx, env.llval);
     } else {
-        llargs[self_idx] = llenv;
+        llargs[self_idx] = env.llval;
     }
 
     // Call the by-ref closure body with `self` in a cleanup scope,
     // to drop `self` when the body returns, or in case it unwinds.
-    let self_scope = CleanupScope::schedule_drop_mem(
-        &bcx, LvalueRef::new_sized_ty(llenv, closure_ty)
-    );
+    let self_scope = CleanupScope::schedule_drop_mem(&bcx, env);
 
     let llfn = callee.reify(bcx.ccx);
     let llret;
@@ -470,33 +454,20 @@ fn trans_fn_pointer_shim<'a, 'tcx>(
 
     // Construct the "tuply" version of `bare_fn_ty`. It takes two arguments: `self`,
     // which is the fn pointer, and `args`, which is the arguments tuple.
-    let sig = match bare_fn_ty.sty {
-        ty::TyFnDef(..,
-                    &ty::BareFnTy { unsafety: hir::Unsafety::Normal,
-                                    abi: Abi::Rust,
-                                    ref sig }) |
-        ty::TyFnPtr(&ty::BareFnTy { unsafety: hir::Unsafety::Normal,
-                                    abi: Abi::Rust,
-                                    ref sig }) => sig,
-
-        _ => {
-            bug!("trans_fn_pointer_shim invoked on invalid type: {}",
-                 bare_fn_ty);
-        }
-    };
-    let sig = tcx.erase_late_bound_regions_and_normalize(sig);
-    let tuple_input_ty = tcx.intern_tup(sig.inputs());
+    let sig = bare_fn_ty.fn_sig();
+    let sig = tcx.erase_late_bound_regions_and_normalize(&sig);
+    assert_eq!(sig.unsafety, hir::Unsafety::Normal);
+    assert_eq!(sig.abi, Abi::Rust);
+    let tuple_input_ty = tcx.intern_tup(sig.inputs(), false);
     let sig = tcx.mk_fn_sig(
         [bare_fn_ty_maybe_ref, tuple_input_ty].iter().cloned(),
         sig.output(),
-        false
+        false,
+        hir::Unsafety::Normal,
+        Abi::RustCall
     );
-    let fn_ty = FnType::new(ccx, Abi::RustCall, &sig, &[]);
-    let tuple_fn_ty = tcx.mk_fn_ptr(tcx.mk_bare_fn(ty::BareFnTy {
-        unsafety: hir::Unsafety::Normal,
-        abi: Abi::RustCall,
-        sig: ty::Binder(sig)
-    }));
+    let fn_ty = FnType::new(ccx, sig, &[]);
+    let tuple_fn_ty = tcx.mk_fn_ptr(ty::Binder(sig));
     debug!("tuple_fn_ty: {:?}", tuple_fn_ty);
 
     //
@@ -512,7 +483,7 @@ fn trans_fn_pointer_shim<'a, 'tcx>(
     let llfnpointer = llfnpointer.unwrap_or_else(|| {
         // the first argument (`self`) will be ptr to the fn pointer
         if is_by_ref {
-            bcx.load(self_arg)
+            bcx.load(self_arg, None)
         } else {
             self_arg
         }
@@ -564,8 +535,7 @@ fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     let substs = tcx.normalize_associated_type(&substs);
     let instance = Instance::new(def_id, substs);
-    let item_ty = ccx.tcx().item_type(def_id);
-    let fn_ty = monomorphize::apply_param_substs(ccx.shared(), substs, &item_ty);
+    let fn_ty = common::def_ty(ccx.shared(), def_id, substs);
 
     if let Some(&llfn) = ccx.instances().borrow().get(&instance) {
         return (llfn, fn_ty);
@@ -600,7 +570,7 @@ fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     // other weird situations. Annoying.
 
     // Create a fn pointer with the substituted signature.
-    let fn_ptr_ty = tcx.mk_fn_ptr(tcx.mk_bare_fn(common::ty_fn_ty(ccx, fn_ty).into_owned()));
+    let fn_ptr_ty = tcx.mk_fn_ptr(common::ty_fn_sig(ccx, fn_ty));
     let llptrty = type_of::type_of(ccx, fn_ptr_ty);
 
     let llfn = if let Some(llfn) = declare::get_declared_value(ccx, &sym) {

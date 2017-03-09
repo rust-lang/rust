@@ -124,7 +124,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
                               "statics cannot be referenced in patterns");
                 }
                 PatternError::ConstEval(err) => {
-                    report_const_eval_err(self.tcx, &err, pat_span, "pattern").emit();
+                    report_const_eval_err(self.tcx, &err, pat_span, "pattern");
                 }
             }
         }
@@ -177,6 +177,31 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
             // Fourth, check for unreachable arms.
             check_arms(cx, &inlined_arms, source);
 
+            // Then, if the match has no arms, check whether the scrutinee
+            // is uninhabited.
+            let pat_ty = self.tables.node_id_to_type(scrut.id);
+            let module = self.tcx.hir.local_def_id(self.tcx.hir.get_module_parent(scrut.id));
+            if inlined_arms.is_empty() {
+                let scrutinee_is_uninhabited = if self.tcx.sess.features.borrow().never_type {
+                    pat_ty.is_uninhabited_from(module, self.tcx)
+                } else {
+                    self.conservative_is_uninhabited(pat_ty)
+                };
+                if !scrutinee_is_uninhabited {
+                    // We know the type is inhabited, so this must be wrong
+                    let mut err = create_e0004(self.tcx.sess, scrut.span,
+                                               format!("non-exhaustive patterns: type {} \
+                                                        is non-empty",
+                                                       pat_ty));
+                    span_help!(&mut err, scrut.span,
+                               "Please ensure that all possible cases are being handled; \
+                                possibly adding wildcards or more match arms.");
+                    err.emit();
+                }
+                // If the type *is* uninhabited, it's vacuously exhaustive
+                return;
+            }
+
             let matrix: Matrix = inlined_arms
                 .iter()
                 .filter(|&&(_, guard)| guard.is_none())
@@ -186,6 +211,15 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
             let scrut_ty = self.tables.node_id_to_type(scrut.id);
             check_exhaustive(cx, scrut_ty, scrut.span, &matrix, source);
         })
+    }
+
+    fn conservative_is_uninhabited(&self, scrutinee_ty: Ty<'tcx>) -> bool {
+        // "rustc-1.0-style" uncontentious uninhabitableness check
+        match scrutinee_ty.sty {
+            ty::TyNever => true,
+            ty::TyAdt(def, _) => def.variants.is_empty(),
+            _ => false
+        }
     }
 
     fn check_irrefutable(&self, pat: &Pat, is_fn_arg: bool) {
@@ -273,7 +307,7 @@ fn check_arms<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
     let mut seen = Matrix::empty();
     let mut catchall = None;
     let mut printed_if_let_err = false;
-    for &(ref pats, guard) in arms {
+    for (arm_index, &(ref pats, guard)) in arms.iter().enumerate() {
         for &(pat, hir_pat) in pats {
             let v = vec![pat];
 
@@ -302,10 +336,27 @@ fn check_arms<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
                             let &(ref first_arm_pats, _) = &arms[0];
                             let first_pat = &first_arm_pats[0];
                             let span = first_pat.0.span;
-                            struct_span_err!(cx.tcx.sess, span, E0165,
-                                             "irrefutable while-let pattern")
-                                .span_label(span, &format!("irrefutable pattern"))
-                                .emit();
+
+                            // check which arm we're on.
+                            match arm_index {
+                                // The arm with the user-specified pattern.
+                                0 => {
+                                    let mut diagnostic = Diagnostic::new(Level::Warning,
+                                                                         "unreachable pattern");
+                                    diagnostic.set_span(pat.span);
+                                    cx.tcx.sess.add_lint_diagnostic(
+                                            lint::builtin::UNREACHABLE_PATTERNS,
+                                            hir_pat.id, diagnostic);
+                                },
+                                // The arm with the wildcard pattern.
+                                1 => {
+                                    struct_span_err!(cx.tcx.sess, span, E0165,
+                                                     "irrefutable while-let pattern")
+                                        .span_label(span, &format!("irrefutable pattern"))
+                                        .emit();
+                                },
+                                _ => bug!(),
+                            }
                         },
 
                         hir::MatchSource::ForLoopDesugar |
@@ -465,7 +516,7 @@ fn check_legality_of_move_bindings(cx: &MatchVisitor,
 ///
 /// FIXME: this should be done by borrowck.
 fn check_for_mutation_in_guard(cx: &MatchVisitor, guard: &hir::Expr) {
-    cx.tcx.infer_ctxt((cx.tables, cx.param_env.clone()), Reveal::NotSpecializable).enter(|infcx| {
+    cx.tcx.infer_ctxt((cx.tables, cx.param_env.clone()), Reveal::UserFacing).enter(|infcx| {
         let mut checker = MutationChecker {
             cx: cx,
         };

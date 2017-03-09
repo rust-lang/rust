@@ -235,7 +235,7 @@ pub use self::local::{LocalKey, LocalKeyState};
 pub struct Builder {
     // A name for the thread-to-be, for identification in panic messages
     name: Option<String>,
-    // The size of the stack for the spawned thread
+    // The size of the stack for the spawned thread in bytes
     stack_size: Option<usize>,
 }
 
@@ -289,14 +289,17 @@ impl Builder {
         self
     }
 
-    /// Sets the size of the stack for the new thread.
+    /// Sets the size of the stack (in bytes) for the new thread.
+    ///
+    /// The actual stack size may be greater than this value if
+    /// the platform specifies minimal stack size.
     ///
     /// # Examples
     ///
     /// ```
     /// use std::thread;
     ///
-    /// let builder = thread::Builder::new().stack_size(10);
+    /// let builder = thread::Builder::new().stack_size(32 * 1024);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn stack_size(mut self, size: usize) -> Builder {
@@ -698,7 +701,7 @@ impl ThreadId {
     }
 }
 
-#[stable(feature = "std_debug", since = "1.15.0")]
+#[unstable(feature = "thread_id", issue = "21507")]
 impl fmt::Debug for ThreadId {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("ThreadId { .. }")
@@ -1002,7 +1005,7 @@ impl<T> IntoInner<imp::Thread> for JoinHandle<T> {
     fn into_inner(self) -> imp::Thread { self.0.native.unwrap() }
 }
 
-#[stable(feature = "std_debug", since = "1.15.0")]
+#[stable(feature = "std_debug", since = "1.16.0")]
 impl<T> fmt::Debug for JoinHandle<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("JoinHandle { .. }")

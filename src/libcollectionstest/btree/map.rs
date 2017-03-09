@@ -179,6 +179,85 @@ fn test_range_small() {
 }
 
 #[test]
+fn test_range_inclusive() {
+    let size = 500;
+
+    let map: BTreeMap<_, _> = (0...size).map(|i| (i, i)).collect();
+
+    fn check<'a, L, R>(lhs: L, rhs: R)
+        where L: IntoIterator<Item=(&'a i32, &'a i32)>,
+              R: IntoIterator<Item=(&'a i32, &'a i32)>,
+    {
+        let lhs: Vec<_> = lhs.into_iter().collect();
+        let rhs: Vec<_> = rhs.into_iter().collect();
+        assert_eq!(lhs, rhs);
+    }
+
+    check(map.range(size + 1...size + 1), vec![]);
+    check(map.range(size...size), vec![(&size, &size)]);
+    check(map.range(size...size + 1), vec![(&size, &size)]);
+    check(map.range(0...0), vec![(&0, &0)]);
+    check(map.range(0...size - 1), map.range(..size));
+    check(map.range(-1...-1), vec![]);
+    check(map.range(-1...size), map.range(..));
+    check(map.range(...size), map.range(..));
+    check(map.range(...200), map.range(..201));
+    check(map.range(5...8), vec![(&5, &5), (&6, &6), (&7, &7), (&8, &8)]);
+    check(map.range(-1...0), vec![(&0, &0)]);
+    check(map.range(-1...2), vec![(&0, &0), (&1, &1), (&2, &2)]);
+}
+
+#[test]
+fn test_range_inclusive_max_value() {
+    let max = ::std::usize::MAX;
+    let map: BTreeMap<_, _> = vec![(max, 0)].into_iter().collect();
+
+    assert_eq!(map.range(max...max).collect::<Vec<_>>(), &[(&max, &0)]);
+}
+
+#[test]
+fn test_range_equal_empty_cases() {
+    let map: BTreeMap<_, _> = (0..5).map(|i| (i, i)).collect();
+    assert_eq!(map.range((Included(2), Excluded(2))).next(), None);
+    assert_eq!(map.range((Excluded(2), Included(2))).next(), None);
+}
+
+#[test]
+#[should_panic]
+fn test_range_equal_excluded() {
+    let map: BTreeMap<_, _> = (0..5).map(|i| (i, i)).collect();
+    map.range((Excluded(2), Excluded(2)));
+}
+
+#[test]
+#[should_panic]
+fn test_range_backwards_1() {
+    let map: BTreeMap<_, _> = (0..5).map(|i| (i, i)).collect();
+    map.range((Included(3), Included(2)));
+}
+
+#[test]
+#[should_panic]
+fn test_range_backwards_2() {
+    let map: BTreeMap<_, _> = (0..5).map(|i| (i, i)).collect();
+    map.range((Included(3), Excluded(2)));
+}
+
+#[test]
+#[should_panic]
+fn test_range_backwards_3() {
+    let map: BTreeMap<_, _> = (0..5).map(|i| (i, i)).collect();
+    map.range((Excluded(3), Included(2)));
+}
+
+#[test]
+#[should_panic]
+fn test_range_backwards_4() {
+    let map: BTreeMap<_, _> = (0..5).map(|i| (i, i)).collect();
+    map.range((Excluded(3), Excluded(2)));
+}
+
+#[test]
 fn test_range_1000() {
     let size = 1000;
     let map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
@@ -605,53 +684,4 @@ fn test_split_off_large_random_sorted() {
 
     assert!(map.into_iter().eq(data.clone().into_iter().filter(|x| x.0 < key)));
     assert!(right.into_iter().eq(data.into_iter().filter(|x| x.0 >= key)));
-}
-
-mod bench {
-    use std::collections::BTreeMap;
-    use std::__rand::{Rng, thread_rng};
-
-    use test::{Bencher, black_box};
-
-    map_insert_rand_bench!{insert_rand_100,    100,    BTreeMap}
-    map_insert_rand_bench!{insert_rand_10_000, 10_000, BTreeMap}
-
-    map_insert_seq_bench!{insert_seq_100,    100,    BTreeMap}
-    map_insert_seq_bench!{insert_seq_10_000, 10_000, BTreeMap}
-
-    map_find_rand_bench!{find_rand_100,    100,    BTreeMap}
-    map_find_rand_bench!{find_rand_10_000, 10_000, BTreeMap}
-
-    map_find_seq_bench!{find_seq_100,    100,    BTreeMap}
-    map_find_seq_bench!{find_seq_10_000, 10_000, BTreeMap}
-
-    fn bench_iter(b: &mut Bencher, size: i32) {
-        let mut map = BTreeMap::<i32, i32>::new();
-        let mut rng = thread_rng();
-
-        for _ in 0..size {
-            map.insert(rng.gen(), rng.gen());
-        }
-
-        b.iter(|| {
-            for entry in &map {
-                black_box(entry);
-            }
-        });
-    }
-
-    #[bench]
-    pub fn iter_20(b: &mut Bencher) {
-        bench_iter(b, 20);
-    }
-
-    #[bench]
-    pub fn iter_1000(b: &mut Bencher) {
-        bench_iter(b, 1000);
-    }
-
-    #[bench]
-    pub fn iter_100000(b: &mut Bencher) {
-        bench_iter(b, 100000);
-    }
 }

@@ -12,7 +12,7 @@ use back::lto;
 use back::link::{get_linker, remove};
 use back::symbol_export::ExportedSymbols;
 use rustc_incremental::{save_trans_partition, in_incr_comp_dir};
-use session::config::{OutputFilenames, OutputTypes, Passes, SomePasses, AllPasses};
+use session::config::{OutputFilenames, OutputTypes, Passes, SomePasses, AllPasses, Sanitizer};
 use session::Session;
 use session::config::{self, OutputType};
 use llvm;
@@ -27,6 +27,7 @@ use errors::emitter::Emitter;
 use syntax_pos::MultiSpan;
 use context::{is_pie_binary, get_reloc_model};
 
+use std::cmp;
 use std::ffi::CString;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -314,11 +315,15 @@ impl ModuleConfig {
         // Copy what clang does by turning on loop vectorization at O2 and
         // slp vectorization at O3. Otherwise configure other optimization aspects
         // of this pass manager builder.
+        // Turn off vectorization for emscripten, as it's not very well supported.
         self.vectorize_loop = !sess.opts.cg.no_vectorize_loops &&
                              (sess.opts.optimize == config::OptLevel::Default ||
-                              sess.opts.optimize == config::OptLevel::Aggressive);
+                              sess.opts.optimize == config::OptLevel::Aggressive) &&
+                             !sess.target.target.options.is_like_emscripten;
+
         self.vectorize_slp = !sess.opts.cg.no_vectorize_slp &&
-                            sess.opts.optimize == config::OptLevel::Aggressive;
+                            sess.opts.optimize == config::OptLevel::Aggressive &&
+                            !sess.target.target.options.is_like_emscripten;
 
         self.merge_functions = sess.opts.optimize == config::OptLevel::Default ||
                                sess.opts.optimize == config::OptLevel::Aggressive;
@@ -678,6 +683,22 @@ pub fn run_passes(sess: &Session,
     let mut modules_config = ModuleConfig::new(tm, sess.opts.cg.passes.clone());
     let mut metadata_config = ModuleConfig::new(tm, vec![]);
 
+    if let Some(ref sanitizer) = sess.opts.debugging_opts.sanitizer {
+        match *sanitizer {
+            Sanitizer::Address => {
+                modules_config.passes.push("asan".to_owned());
+                modules_config.passes.push("asan-module".to_owned());
+            }
+            Sanitizer::Memory => {
+                modules_config.passes.push("msan".to_owned())
+            }
+            Sanitizer::Thread => {
+                modules_config.passes.push("tsan".to_owned())
+            }
+            _ => {}
+        }
+    }
+
     modules_config.opt_level = Some(get_llvm_opt_level(sess.opts.optimize));
     modules_config.opt_size = Some(get_llvm_opt_size(sess.opts.optimize));
 
@@ -754,10 +775,13 @@ pub fn run_passes(sess: &Session,
     }
 
     // Process the work items, optionally using worker threads.
-    // NOTE: This code is not really adapted to incremental compilation where
-    //       the compiler decides the number of codegen units (and will
-    //       potentially create hundreds of them).
-    let num_workers = work_items.len() - 1;
+    // NOTE: We are hardcoding a limit of worker threads for now. With
+    //       incremental compilation we can run into situations where we would
+    //       open hundreds of threads otherwise -- which can make things slower
+    //       if things don't fit into memory anymore, or can cause the compiler
+    //       to crash because of too many open file handles. See #39280 for
+    //       some discussion on how to improve this in the future.
+    let num_workers = cmp::min(work_items.len() - 1, 32);
     if num_workers <= 1 {
         run_work_singlethreaded(sess, &trans.exported_symbols, work_items);
     } else {
@@ -866,12 +890,12 @@ pub fn run_passes(sess: &Session,
     // Clean up unwanted temporary files.
 
     // We create the following files by default:
-    //  - crate.#module-name#.bc
-    //  - crate.#module-name#.o
-    //  - crate.metadata.bc
-    //  - crate.metadata.o
-    //  - crate.o (linked from crate.##.o)
-    //  - crate.bc (copied from crate.##.bc)
+    //  - #crate#.#module-name#.bc
+    //  - #crate#.#module-name#.o
+    //  - #crate#.crate.metadata.bc
+    //  - #crate#.crate.metadata.o
+    //  - #crate#.o (linked from crate.##.o)
+    //  - #crate#.bc (copied from crate.##.bc)
     // We may create additional files if requested by the user (through
     // `-C save-temps` or `--emit=` flags).
 
@@ -919,9 +943,9 @@ pub fn run_passes(sess: &Session,
     }
 
     // We leave the following files around by default:
-    //  - crate.o
-    //  - crate.metadata.o
-    //  - crate.bc
+    //  - #crate#.o
+    //  - #crate#.crate.metadata.o
+    //  - #crate#.bc
     // These are used in linking steps and will be cleaned up afterward.
 
     // FIXME: time_llvm_passes support - does this use a global context or

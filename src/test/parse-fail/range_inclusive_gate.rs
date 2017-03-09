@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// gate-test-inclusive_range_syntax
+
 // Make sure that #![feature(inclusive_range_syntax)] is required.
 
 // #![feature(inclusive_range_syntax, inclusive_range)]

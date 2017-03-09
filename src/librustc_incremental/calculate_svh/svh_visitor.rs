@@ -63,8 +63,7 @@ impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
                hash_spans: bool,
                hash_bodies: bool)
                -> Self {
-        let check_overflow = tcx.sess.opts.debugging_opts.force_overflow_checks
-            .unwrap_or(tcx.sess.opts.debug_assertions);
+        let check_overflow = tcx.sess.overflow_checks();
 
         StrictVersionHashVisitor {
             st: st,
@@ -338,8 +337,10 @@ fn saw_expr<'a>(node: &'a Expr_,
         ExprIndex(..)            => (SawExprIndex, true),
         ExprPath(_)              => (SawExprPath, false),
         ExprAddrOf(m, _)         => (SawExprAddrOf(m), false),
-        ExprBreak(label, _)      => (SawExprBreak(label.map(|l| l.name.as_str())), false),
-        ExprAgain(label)         => (SawExprAgain(label.map(|l| l.name.as_str())), false),
+        ExprBreak(label, _)      => (SawExprBreak(label.ident.map(|i|
+                                                    i.node.name.as_str())), false),
+        ExprAgain(label)         => (SawExprAgain(label.ident.map(|i|
+                                                    i.node.name.as_str())), false),
         ExprRet(..)              => (SawExprRet, false),
         ExprInlineAsm(ref a,..)  => (SawExprInlineAsm(StableInlineAsm(a)), false),
         ExprStruct(..)           => (SawExprStruct, false),
@@ -865,8 +866,8 @@ impl<'a, 'hash, 'tcx> visit::Visitor<'tcx> for StrictVersionHashVisitor<'a, 'has
         debug!("visit_macro_def: st={:?}", self.st);
         SawMacroDef.hash(self.st);
         hash_attrs!(self, &macro_def.attrs);
-        for tt in &macro_def.body {
-            self.hash_token_tree(tt);
+        for tt in macro_def.body.trees() {
+            self.hash_token_tree(&tt);
         }
         visit::walk_macro_def(self, macro_def)
     }
@@ -1032,36 +1033,10 @@ impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
             }
             tokenstream::TokenTree::Delimited(span, ref delimited) => {
                 hash_span!(self, span);
-                let tokenstream::Delimited {
-                    ref delim,
-                    ref tts,
-                } = **delimited;
-
-                delim.hash(self.st);
-                tts.len().hash(self.st);
-                for sub_tt in tts {
-                    self.hash_token_tree(sub_tt);
+                delimited.delim.hash(self.st);
+                for sub_tt in delimited.stream().trees() {
+                    self.hash_token_tree(&sub_tt);
                 }
-            }
-            tokenstream::TokenTree::Sequence(span, ref sequence_repetition) => {
-                hash_span!(self, span);
-                let tokenstream::SequenceRepetition {
-                    ref tts,
-                    ref separator,
-                    op,
-                    num_captures,
-                } = **sequence_repetition;
-
-                tts.len().hash(self.st);
-                for sub_tt in tts {
-                    self.hash_token_tree(sub_tt);
-                }
-                self.hash_discriminant(separator);
-                if let Some(ref separator) = *separator {
-                    self.hash_token(separator, span);
-                }
-                op.hash(self.st);
-                num_captures.hash(self.st);
             }
         }
     }
@@ -1128,10 +1103,6 @@ impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
             token::Token::Ident(ident) |
             token::Token::Lifetime(ident) |
             token::Token::SubstNt(ident) => ident.name.as_str().hash(self.st),
-            token::Token::MatchNt(ident1, ident2) => {
-                ident1.name.as_str().hash(self.st);
-                ident2.name.as_str().hash(self.st);
-            }
 
             token::Token::Interpolated(ref non_terminal) => {
                 // FIXME(mw): This could be implemented properly. It's just a
@@ -1166,6 +1137,9 @@ impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
             trait_items: _,
             impl_items: _,
             bodies: _,
+            trait_impls: _,
+            trait_default_impl: _,
+            body_ids: _,
         } = *krate;
 
         visit::Visitor::visit_mod(self, module, span, ast::CRATE_NODE_ID);

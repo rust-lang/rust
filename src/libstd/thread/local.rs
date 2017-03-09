@@ -28,8 +28,8 @@ use mem;
 /// # Initialization and Destruction
 ///
 /// Initialization is dynamically performed on the first call to `with()`
-/// within a thread, and values support destructors which will be run when a
-/// thread exits.
+/// within a thread, and values that implement `Drop` get destructed when a
+/// thread exits. Some caveats apply, which are explained below.
 ///
 /// # Examples
 ///
@@ -99,7 +99,7 @@ pub struct LocalKey<T: 'static> {
     init: fn() -> T,
 }
 
-#[stable(feature = "std_debug", since = "1.15.0")]
+#[stable(feature = "std_debug", since = "1.16.0")]
 impl<T: 'static> fmt::Debug for LocalKey<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("LocalKey { .. }")
@@ -332,7 +332,6 @@ pub mod os {
         marker: marker::PhantomData<Cell<T>>,
     }
 
-    #[stable(feature = "std_debug", since = "1.15.0")]
     impl<T> fmt::Debug for Key<T> {
         fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
             f.pad("Key { .. }")

@@ -44,10 +44,12 @@ pub struct Config {
     pub submodules: bool,
     pub compiler_docs: bool,
     pub docs: bool,
+    pub locked_deps: bool,
     pub vendor: bool,
     pub target_config: HashMap<String, Target>,
     pub full_bootstrap: bool,
     pub extended: bool,
+    pub sanitizers: bool,
 
     // llvm codegen options
     pub llvm_assertions: bool,
@@ -70,6 +72,7 @@ pub struct Config {
     pub rustc_default_ar: Option<String>,
     pub rust_optimize_tests: bool,
     pub rust_debuginfo_tests: bool,
+    pub rust_dist_src: bool,
 
     pub build: String,
     pub host: Vec<String>,
@@ -103,6 +106,7 @@ pub struct Config {
     pub gdb: Option<PathBuf>,
     pub python: Option<PathBuf>,
     pub configure_args: Vec<String>,
+    pub openssl_static: bool,
 }
 
 /// Per-target configuration stored in the global configuration structure.
@@ -114,6 +118,7 @@ pub struct Target {
     pub cxx: Option<PathBuf>,
     pub ndk: Option<PathBuf>,
     pub musl_root: Option<PathBuf>,
+    pub qemu_rootfs: Option<PathBuf>,
 }
 
 /// Structure of the `config.toml` file that configuration is read from.
@@ -143,11 +148,15 @@ struct Build {
     docs: Option<bool>,
     submodules: Option<bool>,
     gdb: Option<String>,
+    locked_deps: Option<bool>,
     vendor: Option<bool>,
     nodejs: Option<String>,
     python: Option<String>,
     full_bootstrap: Option<bool>,
     extended: Option<bool>,
+    verbose: Option<usize>,
+    sanitizers: Option<bool>,
+    openssl_static: Option<bool>,
 }
 
 /// TOML representation of various global install decisions.
@@ -177,6 +186,7 @@ struct Dist {
     sign_folder: Option<String>,
     gpg_password_file: Option<String>,
     upload_addr: Option<String>,
+    src_tarball: Option<bool>,
 }
 
 #[derive(RustcDecodable)]
@@ -222,6 +232,7 @@ struct TomlTarget {
     cxx: Option<String>,
     android_ndk: Option<String>,
     musl_root: Option<String>,
+    qemu_rootfs: Option<String>,
 }
 
 impl Config {
@@ -239,6 +250,7 @@ impl Config {
         config.build = build.to_string();
         config.channel = "dev".to_string();
         config.codegen_tests = true;
+        config.rust_dist_src = true;
 
         let toml = file.map(|file| {
             let mut f = t!(File::open(&file));
@@ -289,9 +301,13 @@ impl Config {
         set(&mut config.compiler_docs, build.compiler_docs);
         set(&mut config.docs, build.docs);
         set(&mut config.submodules, build.submodules);
+        set(&mut config.locked_deps, build.locked_deps);
         set(&mut config.vendor, build.vendor);
         set(&mut config.full_bootstrap, build.full_bootstrap);
         set(&mut config.extended, build.extended);
+        set(&mut config.verbose, build.verbose);
+        set(&mut config.sanitizers, build.sanitizers);
+        set(&mut config.openssl_static, build.openssl_static);
 
         if let Some(ref install) = toml.install {
             config.prefix = install.prefix.clone().map(PathBuf::from);
@@ -360,6 +376,7 @@ impl Config {
                 target.cxx = cfg.cxx.clone().map(PathBuf::from);
                 target.cc = cfg.cc.clone().map(PathBuf::from);
                 target.musl_root = cfg.musl_root.clone().map(PathBuf::from);
+                target.qemu_rootfs = cfg.qemu_rootfs.clone().map(PathBuf::from);
 
                 config.target_config.insert(triple.clone(), target);
             }
@@ -369,6 +386,7 @@ impl Config {
             config.dist_sign_folder = t.sign_folder.clone().map(PathBuf::from);
             config.dist_gpg_password_file = t.gpg_password_file.clone().map(PathBuf::from);
             config.dist_upload_addr = t.upload_addr.clone();
+            set(&mut config.rust_dist_src, t.src_tarball);
         }
 
         return config
@@ -432,9 +450,13 @@ impl Config {
                 ("LOCAL_REBUILD", self.local_rebuild),
                 ("NINJA", self.ninja),
                 ("CODEGEN_TESTS", self.codegen_tests),
+                ("LOCKED_DEPS", self.locked_deps),
                 ("VENDOR", self.vendor),
                 ("FULL_BOOTSTRAP", self.full_bootstrap),
                 ("EXTENDED", self.extended),
+                ("SANITIZERS", self.sanitizers),
+                ("DIST_SRC", self.rust_dist_src),
+                ("CARGO_OPENSSL_STATIC", self.openssl_static),
             }
 
             match key {
@@ -561,6 +583,12 @@ impl Config {
                     self.configure_args = value.split_whitespace()
                                                .map(|s| s.to_string())
                                                .collect();
+                }
+                "CFG_QEMU_ARMHF_ROOTFS" if value.len() > 0 => {
+                    let target = "arm-unknown-linux-gnueabihf".to_string();
+                    let target = self.target_config.entry(target)
+                                     .or_insert(Target::default());
+                    target.qemu_rootfs = Some(parse_configure_path(value));
                 }
                 _ => {}
             }

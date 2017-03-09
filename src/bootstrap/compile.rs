@@ -21,10 +21,11 @@ use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use build_helper::output;
+use build_helper::{output, mtime, up_to_date};
 use filetime::FileTime;
 
-use util::{exe, libdir, mtime, is_dylib, copy};
+use channel::GitInfo;
+use util::{exe, libdir, is_dylib, copy};
 use {Build, Compiler, Mode};
 
 /// Build the standard library.
@@ -51,9 +52,20 @@ pub fn std(build: &Build, target: &str, compiler: &Compiler) {
     if compiler.stage == 0 && build.local_rebuild && !build.config.use_jemalloc {
         features.push_str(" force_alloc_system");
     }
+
+    if compiler.stage != 0 && build.config.sanitizers {
+        // This variable is used by the sanitizer runtime crates, e.g.
+        // rustc_lsan, to build the sanitizer runtime from C code
+        // When this variable is missing, those crates won't compile the C code,
+        // so we don't set this variable during stage0 where llvm-config is
+        // missing
+        // We also only build the runtimes when --enable-sanitizers (or its
+        // config.toml equivalent) is used
+        cargo.env("LLVM_CONFIG", build.llvm_config(target));
+    }
     cargo.arg("--features").arg(features)
          .arg("--manifest-path")
-         .arg(build.src.join("src/rustc/std_shim/Cargo.toml"));
+         .arg(build.src.join("src/libstd/Cargo.toml"));
 
     if let Some(target) = build.config.target_config.get(target) {
         if let Some(ref jemalloc) = target.jemalloc {
@@ -121,21 +133,29 @@ pub fn build_startup_objects(build: &Build, for_compiler: &Compiler, target: &st
 
     let compiler = Compiler::new(0, &build.config.build);
     let compiler_path = build.compiler_path(&compiler);
-    let into = build.sysroot_libdir(for_compiler, target);
-    t!(fs::create_dir_all(&into));
+    let src_dir = &build.src.join("src/rtstartup");
+    let dst_dir = &build.native_dir(target).join("rtstartup");
+    let sysroot_dir = &build.sysroot_libdir(for_compiler, target);
+    t!(fs::create_dir_all(dst_dir));
+    t!(fs::create_dir_all(sysroot_dir));
 
-    for file in t!(fs::read_dir(build.src.join("src/rtstartup"))) {
-        let file = t!(file);
-        let mut cmd = Command::new(&compiler_path);
-        build.run(cmd.env("RUSTC_BOOTSTRAP", "1")
-                     .arg("--target").arg(target)
-                     .arg("--emit=obj")
-                     .arg("--out-dir").arg(&into)
-                     .arg(file.path()));
+    for file in &["rsbegin", "rsend"] {
+        let src_file = &src_dir.join(file.to_string() + ".rs");
+        let dst_file = &dst_dir.join(file.to_string() + ".o");
+        if !up_to_date(src_file, dst_file) {
+            let mut cmd = Command::new(&compiler_path);
+            build.run(cmd.env("RUSTC_BOOTSTRAP", "1")
+                        .arg("--target").arg(target)
+                        .arg("--emit=obj")
+                        .arg("--out-dir").arg(dst_dir)
+                        .arg(src_file));
+        }
+
+        copy(dst_file, &sysroot_dir.join(file.to_string() + ".o"));
     }
 
     for obj in ["crt2.o", "dllcrt2.o"].iter() {
-        copy(&compiler_file(build.cc(target), obj), &into.join(obj));
+        copy(&compiler_file(build.cc(target), obj), &sysroot_dir.join(obj));
     }
 }
 
@@ -151,7 +171,7 @@ pub fn test(build: &Build, target: &str, compiler: &Compiler) {
     build.clear_if_dirty(&out_dir, &libstd_stamp(build, compiler, target));
     let mut cargo = build.cargo(compiler, Mode::Libtest, target, "build");
     cargo.arg("--manifest-path")
-         .arg(build.src.join("src/rustc/test_shim/Cargo.toml"));
+         .arg(build.src.join("src/libtest/Cargo.toml"));
     build.run(&mut cargo);
     update_mtime(build, &libtest_stamp(build, compiler, target));
 }
@@ -191,9 +211,9 @@ pub fn rustc(build: &Build, target: &str, compiler: &Compiler) {
 
     // Set some configuration variables picked up by build scripts and
     // the compiler alike
-    cargo.env("CFG_RELEASE", &build.release)
+    cargo.env("CFG_RELEASE", build.rust_release())
          .env("CFG_RELEASE_CHANNEL", &build.config.channel)
-         .env("CFG_VERSION", &build.version)
+         .env("CFG_VERSION", build.rust_version())
          .env("CFG_PREFIX", build.config.prefix.clone().unwrap_or(PathBuf::new()));
 
     if compiler.stage == 0 {
@@ -210,13 +230,13 @@ pub fn rustc(build: &Build, target: &str, compiler: &Compiler) {
         cargo.env_remove("RUSTC_DEBUGINFO_LINES");
     }
 
-    if let Some(ref ver_date) = build.ver_date {
+    if let Some(ref ver_date) = build.rust_info.commit_date() {
         cargo.env("CFG_VER_DATE", ver_date);
     }
-    if let Some(ref ver_hash) = build.ver_hash {
+    if let Some(ref ver_hash) = build.rust_info.sha() {
         cargo.env("CFG_VER_HASH", ver_hash);
     }
-    if !build.unstable_features {
+    if !build.unstable_features() {
         cargo.env("CFG_DISABLE_UNSTABLE_FEATURES", "1");
     }
     // Flag that rust llvm is in use
@@ -382,10 +402,10 @@ fn add_to_sysroot(out_dir: &Path, sysroot_dst: &Path) {
 ///
 /// This will build the specified tool with the specified `host` compiler in
 /// `stage` into the normal cargo output directory.
-pub fn tool(build: &Build, stage: u32, host: &str, tool: &str) {
-    println!("Building stage{} tool {} ({})", stage, tool, host);
+pub fn tool(build: &Build, stage: u32, target: &str, tool: &str) {
+    println!("Building stage{} tool {} ({})", stage, tool, target);
 
-    let compiler = Compiler::new(stage, host);
+    let compiler = Compiler::new(stage, &build.config.build);
 
     // FIXME: need to clear out previous tool and ideally deps, may require
     //        isolating output directories or require a pseudo shim step to
@@ -396,13 +416,32 @@ pub fn tool(build: &Build, stage: u32, host: &str, tool: &str) {
     // let out_dir = build.cargo_out(stage, &host, Mode::Librustc, target);
     // build.clear_if_dirty(&out_dir, &libstd_stamp(build, stage, &host, target));
 
-    let mut cargo = build.cargo(&compiler, Mode::Tool, host, "build");
-    cargo.arg("--manifest-path")
-         .arg(build.src.join(format!("src/tools/{}/Cargo.toml", tool)));
+    let mut cargo = build.cargo(&compiler, Mode::Tool, target, "build");
+    let dir = build.src.join("src/tools").join(tool);
+    cargo.arg("--manifest-path").arg(dir.join("Cargo.toml"));
 
     // We don't want to build tools dynamically as they'll be running across
     // stages and such and it's just easier if they're not dynamically linked.
     cargo.env("RUSTC_NO_PREFER_DYNAMIC", "1");
+
+    if let Some(dir) = build.openssl_install_dir(target) {
+        cargo.env("OPENSSL_STATIC", "1");
+        cargo.env("OPENSSL_DIR", dir);
+        cargo.env("LIBZ_SYS_STATIC", "1");
+    }
+
+    cargo.env("CFG_RELEASE_CHANNEL", &build.config.channel);
+
+    let info = GitInfo::new(&dir);
+    if let Some(sha) = info.sha() {
+        cargo.env("CFG_COMMIT_HASH", sha);
+    }
+    if let Some(sha_short) = info.sha_short() {
+        cargo.env("CFG_SHORT_COMMIT_HASH", sha_short);
+    }
+    if let Some(date) = info.commit_date() {
+        cargo.env("CFG_COMMIT_DATE", date);
+    }
 
     build.run(&mut cargo);
 }

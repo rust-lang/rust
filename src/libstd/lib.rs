@@ -261,6 +261,8 @@
 #![feature(generic_param_attrs)]
 #![feature(hashmap_hasher)]
 #![feature(heap_api)]
+#![feature(i128)]
+#![feature(i128_type)]
 #![feature(inclusive_range)]
 #![feature(int_error_internals)]
 #![feature(integer_atomics)]
@@ -277,6 +279,7 @@
 #![feature(oom)]
 #![feature(optin_builtin_traits)]
 #![feature(panic_unwind)]
+#![feature(peek)]
 #![feature(placement_in_syntax)]
 #![feature(prelude_import)]
 #![feature(pub_restricted)]
@@ -300,10 +303,10 @@
 #![feature(unboxed_closures)]
 #![feature(unicode)]
 #![feature(unique)]
+#![feature(untagged_unions)]
 #![feature(unwind_attributes)]
 #![feature(vec_push_all)]
 #![feature(zero_one)]
-#![feature(i128)]
 #![cfg_attr(test, feature(update_panic_count))]
 
 // Explicitly import the prelude. The compiler uses this same unstable attribute
@@ -399,7 +402,6 @@ pub use core::i32;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::i64;
 #[unstable(feature = "i128", issue = "35118")]
-#[cfg(not(stage0))]
 pub use core::i128;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::usize;
@@ -430,7 +432,6 @@ pub use core_collections::vec;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use std_unicode::char;
 #[unstable(feature = "i128", issue = "35118")]
-#[cfg(not(stage0))]
 pub use core::u128;
 
 pub mod f32;
@@ -463,9 +464,6 @@ mod sys;
 mod panicking;
 mod rand;
 mod memchr;
-
-// This module just defines per-platform native library dependencies
-mod rtdeps;
 
 // The runtime entry point and a few unstable public functions used by the
 // compiler

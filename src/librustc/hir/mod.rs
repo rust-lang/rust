@@ -31,16 +31,16 @@ pub use self::PathParameters::*;
 
 use hir::def::Def;
 use hir::def_id::DefId;
-use util::nodemap::{NodeMap, FxHashMap, FxHashSet};
+use util::nodemap::{NodeMap, FxHashSet};
 
 use syntax_pos::{Span, ExpnId, DUMMY_SP};
 use syntax::codemap::{self, Spanned};
 use syntax::abi::Abi;
-use syntax::ast::{Name, NodeId, DUMMY_NODE_ID, AsmDialect};
+use syntax::ast::{Ident, Name, NodeId, DUMMY_NODE_ID, AsmDialect};
 use syntax::ast::{Attribute, Lit, StrStyle, FloatTy, IntTy, UintTy, MetaItem};
 use syntax::ptr::P;
 use syntax::symbol::{Symbol, keywords};
-use syntax::tokenstream::TokenTree;
+use syntax::tokenstream::TokenStream;
 use syntax::util::ThinVec;
 
 use std::collections::BTreeMap;
@@ -409,7 +409,15 @@ pub struct Crate {
 
     pub trait_items: BTreeMap<TraitItemId, TraitItem>,
     pub impl_items: BTreeMap<ImplItemId, ImplItem>,
-    pub bodies: FxHashMap<BodyId, Body>,
+    pub bodies: BTreeMap<BodyId, Body>,
+    pub trait_impls: BTreeMap<DefId, Vec<NodeId>>,
+    pub trait_default_impl: BTreeMap<DefId, NodeId>,
+
+    /// A list of the body ids written out in the order in which they
+    /// appear in the crate. If you're going to process all the bodies
+    /// in the crate, you should iterate over this list rather than the keys
+    /// of bodies.
+    pub body_ids: Vec<BodyId>,
 }
 
 impl Crate {
@@ -463,7 +471,7 @@ pub struct MacroDef {
     pub attrs: HirVec<Attribute>,
     pub id: NodeId,
     pub span: Span,
-    pub body: HirVec<TokenTree>,
+    pub body: TokenStream,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
@@ -959,9 +967,9 @@ pub enum Expr_ {
     /// A referencing operation (`&a` or `&mut a`)
     ExprAddrOf(Mutability, P<Expr>),
     /// A `break`, with an optional label to break
-    ExprBreak(Option<Label>, Option<P<Expr>>),
+    ExprBreak(Destination, Option<P<Expr>>),
     /// A `continue`, with an optional label
-    ExprAgain(Option<Label>),
+    ExprAgain(Destination),
     /// A `return`, with an optional value to be returned
     ExprRet(Option<P<Expr>>),
 
@@ -1030,12 +1038,56 @@ pub enum LoopSource {
     ForLoop,
 }
 
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
+pub enum LoopIdError {
+    OutsideLoopScope,
+    UnlabeledCfInWhileCondition,
+    UnresolvedLabel,
+}
+
+impl fmt::Display for LoopIdError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Display::fmt(match *self {
+            LoopIdError::OutsideLoopScope => "not inside loop scope",
+            LoopIdError::UnlabeledCfInWhileCondition =>
+                "unlabeled control flow (break or continue) in while condition",
+            LoopIdError::UnresolvedLabel => "label not found",
+        }, f)
+    }
+}
+
+// FIXME(cramertj) this should use `Result` once master compiles w/ a vesion of Rust where
+// `Result` implements `Encodable`/`Decodable`
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
+pub enum LoopIdResult {
+    Ok(NodeId),
+    Err(LoopIdError),
+}
+impl Into<Result<NodeId, LoopIdError>> for LoopIdResult {
+    fn into(self) -> Result<NodeId, LoopIdError> {
+        match self {
+            LoopIdResult::Ok(ok) => Ok(ok),
+            LoopIdResult::Err(err) => Err(err),
+        }
+    }
+}
+impl From<Result<NodeId, LoopIdError>> for LoopIdResult {
+    fn from(res: Result<NodeId, LoopIdError>) -> Self {
+        match res {
+            Ok(ok) => LoopIdResult::Ok(ok),
+            Err(err) => LoopIdResult::Err(err),
+        }
+    }
+}
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
-pub struct Label {
-    pub span: Span,
-    pub name: Name,
-    pub loop_id: NodeId
+pub struct Destination {
+    // This is `Some(_)` iff there is an explicit user-specified `label
+    pub ident: Option<Spanned<Ident>>,
+
+    // These errors are caught and then reported during the diagnostics pass in
+    // librustc_passes/loops.rs
+    pub loop_id: LoopIdResult,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]

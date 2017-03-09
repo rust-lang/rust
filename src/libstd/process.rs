@@ -27,6 +27,31 @@
 //!
 //! assert!(ecode.success());
 //! ```
+//!
+//! Calling a command with input and reading its output:
+//!
+//! ```no_run
+//! use std::process::{Command, Stdio};
+//! use std::io::Write;
+//!
+//! let mut child = Command::new("/bin/cat")
+//!     .stdin(Stdio::piped())
+//!     .stdout(Stdio::piped())
+//!     .spawn()
+//!     .expect("failed to execute child");
+//!
+//! {
+//!     // limited borrow of stdin
+//!     let stdin = child.stdin.as_mut().expect("failed to get stdin");
+//!     stdin.write_all(b"test").expect("failed to write to stdin");
+//! }
+//!
+//! let output = child
+//!     .wait_with_output()
+//!     .expect("failed to wait on child");
+//!
+//! assert_eq!(b"test", output.stdout.as_slice());
+//! ```
 
 #![stable(feature = "process", since = "1.0.0")]
 
@@ -114,7 +139,7 @@ impl IntoInner<imp::Process> for Child {
     fn into_inner(self) -> imp::Process { self.handle }
 }
 
-#[stable(feature = "std_debug", since = "1.15.0")]
+#[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for Child {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Child")
@@ -160,7 +185,7 @@ impl FromInner<AnonPipe> for ChildStdin {
     }
 }
 
-#[stable(feature = "std_debug", since = "1.15.0")]
+#[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for ChildStdin {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("ChildStdin { .. }")
@@ -201,7 +226,7 @@ impl FromInner<AnonPipe> for ChildStdout {
     }
 }
 
-#[stable(feature = "std_debug", since = "1.15.0")]
+#[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for ChildStdout {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("ChildStdout { .. }")
@@ -242,7 +267,7 @@ impl FromInner<AnonPipe> for ChildStderr {
     }
 }
 
-#[stable(feature = "std_debug", since = "1.15.0")]
+#[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for ChildStderr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("ChildStderr { .. }")
@@ -696,7 +721,7 @@ impl FromInner<imp::Stdio> for Stdio {
     }
 }
 
-#[stable(feature = "std_debug", since = "1.15.0")]
+#[stable(feature = "std_debug", since = "1.16.0")]
 impl fmt::Debug for Stdio {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("Stdio { .. }")
@@ -844,9 +869,9 @@ impl Child {
     /// guaranteed to repeatedly return a successful exit status so long as the
     /// child has already exited.
     ///
-    /// If the child has exited, then `Ok(status)` is returned. If the exit
-    /// status is not available at this time then an error is returned with the
-    /// error kind `WouldBlock`. If an error occurs, then that error is returned.
+    /// If the child has exited, then `Ok(Some(status))` is returned. If the
+    /// exit status is not available at this time then `Ok(None)` is returned.
+    /// If an error occurs, then that error is returned.
     ///
     /// Note that unlike `wait`, this function will not attempt to drop stdin.
     ///
@@ -857,14 +882,13 @@ impl Child {
     /// ```no_run
     /// #![feature(process_try_wait)]
     ///
-    /// use std::io;
     /// use std::process::Command;
     ///
     /// let mut child = Command::new("ls").spawn().unwrap();
     ///
     /// match child.try_wait() {
-    ///     Ok(status) => println!("exited with: {}", status),
-    ///     Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
+    ///     Ok(Some(status)) => println!("exited with: {}", status),
+    ///     Ok(None) => {
     ///         println!("status not ready yet, let's really wait");
     ///         let res = child.wait();
     ///         println!("result: {:?}", res);
@@ -873,8 +897,8 @@ impl Child {
     /// }
     /// ```
     #[unstable(feature = "process_try_wait", issue = "38903")]
-    pub fn try_wait(&mut self) -> io::Result<ExitStatus> {
-        self.handle.try_wait().map(ExitStatus)
+    pub fn try_wait(&mut self) -> io::Result<Option<ExitStatus>> {
+        Ok(self.handle.try_wait()?.map(ExitStatus))
     }
 
     /// Simultaneously waits for the child to exit and collect all remaining
@@ -959,10 +983,27 @@ impl Child {
 ///
 /// # Examples
 ///
-/// ```
-/// use std::process;
+/// Due to this function’s behavior regarding destructors, a conventional way
+/// to use the function is to extract the actual computation to another
+/// function and compute the exit code from its return value:
 ///
-/// process::exit(0);
+/// ```
+/// use std::io::{self, Write};
+///
+/// fn run_app() -> Result<(), ()> {
+///     // Application logic here
+///     Ok(())
+/// }
+///
+/// fn main() {
+///     ::std::process::exit(match run_app() {
+///        Ok(_) => 0,
+///        Err(err) => {
+///            writeln!(io::stderr(), "error: {:?}", err).unwrap();
+///            1
+///        }
+///     });
+/// }
 /// ```
 ///
 /// Due to [platform-specific behavior], the exit code for this example will be

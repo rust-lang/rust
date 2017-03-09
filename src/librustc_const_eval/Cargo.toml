@@ -19,4 +19,3 @@ rustc_errors = { path = "../librustc_errors" }
 syntax = { path = "../libsyntax" }
 graphviz = { path = "../libgraphviz" }
 syntax_pos = { path = "../libsyntax_pos" }
-rustc_i128 = { path = "../librustc_i128" }
