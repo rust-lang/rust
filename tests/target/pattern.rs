@@ -41,3 +41,7 @@ impl<'a, 'b> ResolveGeneratedContentFragmentMutator<'a, 'b> {
         }
     }
 }
+
+fn issue_1319() {
+    if let (Event { .. }, ..) = ev_state {}
+}

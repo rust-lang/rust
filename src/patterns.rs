@@ -210,8 +210,19 @@ fn rewrite_tuple_pat(pats: &[ptr::P<ast::Pat>],
     let mut pat_vec: Vec<_> = pats.into_iter().map(|x| TuplePatField::Pat(x)).collect();
 
     if let Some(pos) = dotdot_pos {
-        let snippet = context.snippet(span);
-        let lo = span.lo + BytePos(snippet.find_uncommented("..").unwrap() as u32);
+        let prev = if pos == 0 {
+            span.lo
+        } else {
+            pats[pos - 1].span().hi
+        };
+        let next = if pos + 1 >= pats.len() {
+            span.hi
+        } else {
+            pats[pos + 1].span().lo
+        };
+        let dot_span = codemap::mk_sp(prev, next);
+        let snippet = context.snippet(dot_span);
+        let lo = dot_span.lo + BytePos(snippet.find_uncommented("..").unwrap() as u32);
         let span = Span {
             lo: lo,
             // 2 == "..".len()
