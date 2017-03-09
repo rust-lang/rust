@@ -6,7 +6,7 @@
 
 // Case with only one variable.
 fn foo(
-    a: u8
+    a: u8,
 ) -> u8
 {
     bar()
@@ -15,7 +15,7 @@ fn foo(
 // Case with 2 variables and some pre-comments.
 fn foo(
     a: u8, // Comment 1
-    b: u8 // Comment 2
+    b: u8, // Comment 2
 ) -> u8
 {
     bar()
@@ -26,7 +26,7 @@ fn foo(
     // Comment 1
     a: u8,
     // Comment 2
-    b: u8
+    b: u8,
 ) -> u8
 {
     bar()
@@ -34,13 +34,13 @@ fn foo(
 
 trait Test {
     fn foo(
-        a: u8
+        a: u8,
     )
     {
     }
 
     fn bar(
-        a: u8
+        a: u8,
     ) -> String
     {
     }

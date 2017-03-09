@@ -12,7 +12,7 @@ fn bar(
     b: Bbbbbbbbbbbbbb,
     c: Cccccccccccccccccc,
     d: Dddddddddddddddd,
-    e: Eeeeeeeeeeeeeee
+    e: Eeeeeeeeeeeeeee,
 ) {
     bar();
 }
@@ -26,7 +26,7 @@ fn bar(
     b: Bbbbbbbbbbbbbb,
     c: Cccccccccccccccccc,
     d: Dddddddddddddddd,
-    e: Eeeeeeeeeeeeeee
+    e: Eeeeeeeeeeeeeee,
 ) -> String {
     bar();
 }
@@ -41,7 +41,7 @@ fn bar(
     b: Bbbbbbbbbbbbbb,
     c: Cccccccccccccccccc,
     d: Dddddddddddddddd,
-    e: Eeeeeeeeeeeeeee
+    e: Eeeeeeeeeeeeeee,
 ) where T: UUUUUUUUUUU {
     bar();
 }
@@ -56,7 +56,7 @@ fn bar(
     b: Bbbbbbbbbbbbbb,
     c: Cccccccccccccccccc,
     d: Dddddddddddddddd,
-    e: Eeeeeeeeeeeeeee
+    e: Eeeeeeeeeeeeeee,
 ) -> String
 where T: UUUUUUUUUUU {
     bar();

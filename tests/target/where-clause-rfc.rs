@@ -21,7 +21,7 @@ fn reflow_list_node_with_rule(
     rule: &Rule,
     args: &[Arg],
     shape: &Shape,
-    shape: &Shape
+    shape: &Shape,
 ) where
     T: FOo,
     U: Bar,
@@ -34,7 +34,7 @@ fn reflow_list_node_with_rule(
     rule: &Rule,
     args: &[Arg],
     shape: &Shape,
-    shape: &Shape
+    shape: &Shape,
 ) where
     T: FOo,
 {
@@ -45,7 +45,7 @@ fn reflow_list_node_with_rule(
     node: &CompoundNode,
     rule: &Rule,
     args: &[Arg],
-    shape: &Shape
+    shape: &Shape,
 ) -> Option<String>
 where
     T: FOo,
@@ -58,7 +58,7 @@ fn reflow_list_node_with_rule(
     node: &CompoundNode,
     rule: &Rule,
     args: &[Arg],
-    shape: &Shape
+    shape: &Shape,
 ) -> Option<String>
 where
     T: FOo,

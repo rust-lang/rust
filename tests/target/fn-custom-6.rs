@@ -4,7 +4,7 @@
 // Test different indents.
 
 fn foo(
-    a: Aaaaaaaaaaaaaa, b: Bbbbbbbbbbbbbb
+    a: Aaaaaaaaaaaaaa, b: Bbbbbbbbbbbbbb,
 ) {
     foo();
 }
@@ -14,13 +14,13 @@ fn bar(
     b: Bbbbbbbbbbbbbb,
     c: Cccccccccccccccccc,
     d: Dddddddddddddddd,
-    e: Eeeeeeeeeeeeeee
+    e: Eeeeeeeeeeeeeee,
 ) {
     bar();
 }
 
 fn foo(
-    a: Aaaaaaaaaaaaaa, b: Bbbbbbbbbbbbbb
+    a: Aaaaaaaaaaaaaa, b: Bbbbbbbbbbbbbb,
 ) -> String {
     foo();
 }
@@ -30,13 +30,13 @@ fn bar(
     b: Bbbbbbbbbbbbbb,
     c: Cccccccccccccccccc,
     d: Dddddddddddddddd,
-    e: Eeeeeeeeeeeeeee
+    e: Eeeeeeeeeeeeeee,
 ) -> String {
     bar();
 }
 
 fn foo(
-    a: Aaaaaaaaaaaaaa, b: Bbbbbbbbbbbbbb
+    a: Aaaaaaaaaaaaaa, b: Bbbbbbbbbbbbbb,
 ) where T: UUUUUUUUUUU {
     foo();
 }
@@ -46,13 +46,13 @@ fn bar(
     b: Bbbbbbbbbbbbbb,
     c: Cccccccccccccccccc,
     d: Dddddddddddddddd,
-    e: Eeeeeeeeeeeeeee
+    e: Eeeeeeeeeeeeeee,
 ) where T: UUUUUUUUUUU {
     bar();
 }
 
 fn foo(
-    a: Aaaaaaaaaaaaaa, b: Bbbbbbbbbbbbbb
+    a: Aaaaaaaaaaaaaa, b: Bbbbbbbbbbbbbb,
 ) -> String
 where T: UUUUUUUUUUU {
     foo();
@@ -63,7 +63,7 @@ fn bar(
     b: Bbbbbbbbbbbbbb,
     c: Cccccccccccccccccc,
     d: Dddddddddddddddd,
-    e: Eeeeeeeeeeeeeee
+    e: Eeeeeeeeeeeeeee,
 ) -> String
 where T: UUUUUUUUUUU {
     bar();
@@ -71,12 +71,12 @@ where T: UUUUUUUUUUU {
 
 trait Test {
     fn foo(
-        a: u8
+        a: u8,
     ) {
     }
 
     fn bar(
-        a: u8
+        a: u8,
     ) -> String {
     }
 }

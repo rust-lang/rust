@@ -5,7 +5,7 @@ fn foo() {
 }
 
 fn foo(
-    a: Aaaaaaaaaaaaaa, b: Bbbbbbbbbbbbbb
+    a: Aaaaaaaaaaaaaa, b: Bbbbbbbbbbbbbb,
 ) {
     foo();
 }
@@ -15,13 +15,13 @@ fn bar(
     b: Bbbbbbbbbbbbbb,
     c: Cccccccccccccccccc,
     d: Dddddddddddddddd,
-    e: Eeeeeeeeeeeeeee
+    e: Eeeeeeeeeeeeeee,
 ) {
     bar();
 }
 
 fn foo(
-    a: Aaaaaaaaaaaaaa, b: Bbbbbbbbbbbbbb
+    a: Aaaaaaaaaaaaaa, b: Bbbbbbbbbbbbbb,
 ) -> String {
     foo();
 }
@@ -31,19 +31,19 @@ fn bar(
     b: Bbbbbbbbbbbbbb,
     c: Cccccccccccccccccc,
     d: Dddddddddddddddd,
-    e: Eeeeeeeeeeeeeee
+    e: Eeeeeeeeeeeeeee,
 ) -> String {
     bar();
 }
 
 trait Test {
     fn foo(
-        a: u8
+        a: u8,
     ) {
     }
 
     fn bar(
-        a: u8
+        a: u8,
     ) -> String {
     }
 }

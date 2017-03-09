@@ -1776,16 +1776,16 @@ fn rewrite_args(context: &RewriteContext,
 
     debug!("rewrite_args: budget: {}, tactic: {:?}", budget, tactic);
 
-    let end_with_newline = match context.config.fn_args_layout {
-        FnArgLayoutStyle::Block |
-        FnArgLayoutStyle::BlockAlways => true,
-        _ => false,
+    let (trailing_comma, end_with_newline) = match context.config.fn_args_layout {
+        FnArgLayoutStyle::Block => (SeparatorTactic::Vertical, true),
+        FnArgLayoutStyle::BlockAlways => (SeparatorTactic::Always, true),
+        _ => (SeparatorTactic::Never, false),
     };
 
     let fmt = ListFormatting {
         tactic: tactic,
         separator: ",",
-        trailing_separator: SeparatorTactic::Never,
+        trailing_separator: trailing_comma,
         shape: Shape::legacy(budget, indent),
         ends_with_newline: end_with_newline,
         config: context.config,

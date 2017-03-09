@@ -14,7 +14,7 @@ fn bar(
     b: Bbbbbbbbbbbbbb,
     c: Cccccccccccccccccc,
     d: Dddddddddddddddd,
-    e: Eeeeeeeeeeeeeee
+    e: Eeeeeeeeeeeeeee,
 ) {
     bar();
 }
@@ -28,7 +28,7 @@ fn bar(
     b: Bbbbbbbbbbbbbb,
     c: Cccccccccccccccccc,
     d: Dddddddddddddddd,
-    e: Eeeeeeeeeeeeeee
+    e: Eeeeeeeeeeeeeee,
 ) -> String {
     bar();
 }
@@ -42,7 +42,7 @@ fn foo(
     b: Bbbbbbbbbbbbbb,
     c: Cccccccccccccccccc,
     d: Dddddddddddddddd,
-    e: Eeeeeeeeeeeeeee // Comment 2
+    e: Eeeeeeeeeeeeeee, // Comment 2
 ) -> u8 {
     bar()
 }
@@ -52,7 +52,7 @@ fn bar(
     b: Bbbbbbbbbbbbbb,
     c: Cccccccccccccccccc,
     d: Dddddddddddddddd,
-    e: Eeeeeeeeeeeeeee
+    e: Eeeeeeeeeeeeeee,
 ) -> String
     where X: Fooooo,
           Y: Baaar
@@ -107,7 +107,7 @@ trait Test {
         b: Bbbbbbbbbbbbbb,
         c: Cccccccccccccccccc,
         d: Dddddddddddddddd,
-        e: Eeeeeeeeeeeeeee
+        e: Eeeeeeeeeeeeeee,
     ) -> String {
     }
 }
@@ -116,7 +116,7 @@ fn foo<L: Loooooooooooooooooooong, G: Geeeeeeeeeeneric, I: iiiiiiiiis, L: Looooo
     a: Aaaaaaaaaaaaaaaaaaaa,
     b: Bbbbbbbbbbbbbbbbb,
     c: Cccccccccccccccccc,
-    d: Dddddddddddddddd
+    d: Dddddddddddddddd,
 ) {
     foo();
 }
