@@ -3061,14 +3061,22 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     fn check_expr_struct_fields(&self,
                                 adt_ty: Ty<'tcx>,
+                                expected: Expectation<'tcx>,
                                 expr_id: ast::NodeId,
                                 span: Span,
                                 variant: &'tcx ty::VariantDef,
                                 ast_fields: &'gcx [hir::Field],
                                 check_completeness: bool) {
         let tcx = self.tcx;
-        let (substs, adt_kind, kind_name) = match adt_ty.sty {
-            ty::TyAdt(adt, substs) => (substs, adt.adt_kind(), adt.variant_descr()),
+
+        let adt_ty_hint =
+            self.expected_inputs_for_expected_output(span, expected, adt_ty, &[adt_ty])
+                .get(0).cloned().unwrap_or(adt_ty);
+
+        let (substs, hint_substs, adt_kind, kind_name) = match (&adt_ty.sty, &adt_ty_hint.sty) {
+            (&ty::TyAdt(adt, substs), &ty::TyAdt(_, hint_substs)) => {
+                (substs, hint_substs, adt.adt_kind(), adt.variant_descr())
+            }
             _ => span_bug!(span, "non-ADT passed to check_expr_struct_fields")
         };
 
@@ -3083,10 +3091,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         // Typecheck each field.
         for field in ast_fields {
-            let expected_field_type;
+            let final_field_type;
+            let field_type_hint;
 
             if let Some(v_field) = remaining_fields.remove(&field.name.node) {
-                expected_field_type = self.field_ty(field.span, v_field, substs);
+                final_field_type = self.field_ty(field.span, v_field, substs);
+                field_type_hint = self.field_ty(field.span, v_field, hint_substs);
 
                 seen_fields.insert(field.name.node, field.span);
 
@@ -3098,7 +3108,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
             } else {
                 error_happened = true;
-                expected_field_type = tcx.types.err;
+                final_field_type = tcx.types.err;
+                field_type_hint = tcx.types.err;
                 if let Some(_) = variant.find_field_named(field.name.node) {
                     let mut err = struct_span_err!(self.tcx.sess,
                                                 field.name.span,
@@ -3120,7 +3131,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
             // Make sure to give a type to the field even if there's
             // an error, so we can continue typechecking
-            self.check_expr_coercable_to_type(&field.expr, expected_field_type);
+            let ty = self.check_expr_with_hint(&field.expr, field_type_hint);
+            self.demand_coerce(&field.expr, ty, final_field_type);
         }
 
         // Make sure the programmer specified correct number of fields.
@@ -3230,6 +3242,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     fn check_expr_struct(&self,
                          expr: &hir::Expr,
+                         expected: Expectation<'tcx>,
                          qpath: &hir::QPath,
                          fields: &'gcx [hir::Field],
                          base_expr: &'gcx Option<P<hir::Expr>>) -> Ty<'tcx>
@@ -3248,7 +3261,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             hir::QPath::TypeRelative(ref qself, _) => qself.span
         };
 
-        self.check_expr_struct_fields(struct_ty, expr.id, path_span, variant, fields,
+        self.check_expr_struct_fields(struct_ty, expected, expr.id, path_span, variant, fields,
                                       base_expr.is_none());
         if let &Some(ref base_expr) = base_expr {
             self.check_expr_has_type(base_expr, struct_ty);
@@ -3793,7 +3806,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
           }
           hir::ExprStruct(ref qpath, ref fields, ref base_expr) => {
-            self.check_expr_struct(expr, qpath, fields, base_expr)
+            self.check_expr_struct(expr, expected, qpath, fields, base_expr)
           }
           hir::ExprField(ref base, ref field) => {
             self.check_field(expr, lvalue_pref, &base, field)
