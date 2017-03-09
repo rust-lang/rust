@@ -23,8 +23,8 @@ use rustc::mir::Mir;
 use rustc::mir::transform::MirSource;
 use rustc::mir::visit::MutVisitor;
 use shim;
-use pretty;
 use hair::cx::Cx;
+use util as mir_util;
 
 use rustc::traits::Reveal;
 use rustc::ty::{self, Ty, TyCtxt};
@@ -175,7 +175,7 @@ fn build_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
             mem::transmute::<Mir, Mir<'tcx>>(mir)
         };
 
-        pretty::dump_mir(tcx, "mir_map", &0, src, &mir);
+        mir_util::dump_mir(tcx, "mir_map", &0, src, &mir);
 
         tcx.alloc_mir(mir)
     })
@@ -234,7 +234,7 @@ fn create_constructor_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 mem::transmute::<Mir, Mir<'tcx>>(mir)
             };
 
-            pretty::dump_mir(tcx, "mir_map", &0, src, &mir);
+            mir_util::dump_mir(tcx, "mir_map", &0, src, &mir);
 
             tcx.alloc_mir(mir)
         })
