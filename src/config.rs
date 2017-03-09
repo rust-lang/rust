@@ -25,6 +25,11 @@ macro_rules! configuration_option_enum{
     }
 }
 
+configuration_option_enum! { Style:
+    Rfc, // Follow the style RFCs style.
+    Default, // Follow the traditional Rustfmt style.
+}
+
 configuration_option_enum! { NewlineStyle:
     Windows, // \r\n
     Unix, // \n
@@ -361,6 +366,7 @@ create_config! {
     fn_arg_indent: BlockIndentStyle, BlockIndentStyle::Visual, "Indent on function arguments";
     type_punctuation_density: TypeDensity, TypeDensity::Wide,
         "Determines if '+' or '=' are wrapped in spaces in the punctuation of types";
+    where_style: Style, Style::Default, "Overall strategy for where clauses";
     // Should we at least try to put the where clause on the same line as the rest of the
     // function decl?
     where_density: Density, Density::CompressedIfEmpty, "Density of a where clause";
