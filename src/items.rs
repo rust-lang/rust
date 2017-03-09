@@ -20,7 +20,7 @@ use expr::{is_empty_block, is_simple_block_stmt, rewrite_assign_rhs, type_annota
 use comment::{FindUncommented, contains_comment};
 use visitor::FmtVisitor;
 use rewrite::{Rewrite, RewriteContext};
-use config::{Config, BlockIndentStyle, Density, ReturnIndent, BraceStyle, FnArgLayoutStyle};
+use config::{Config, BlockIndentStyle, Density, ReturnIndent, BraceStyle, FnArgLayoutStyle, Style};
 use itertools::Itertools;
 
 use syntax::{ast, abi, codemap, ptr, symbol};
@@ -520,12 +520,12 @@ pub fn format_impl(context: &RewriteContext, item: &ast::Item, offset: Indent) -
         let where_budget = try_opt!(context.config.max_width.checked_sub(last_line_width(&result)));
         let where_clause_str = try_opt!(rewrite_where_clause(context,
                                                              &generics.where_clause,
-                                                             context.config,
                                                              context.config.item_brace_style,
                                                              Shape::legacy(where_budget,
                                                                            offset.block_only()),
                                                              context.config.where_density,
                                                              "{",
+                                                             false,
                                                              false,
                                                              None));
 
@@ -787,13 +787,13 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
         let where_budget = try_opt!(context.config.max_width.checked_sub(last_line_width(&result)));
         let where_clause_str = try_opt!(rewrite_where_clause(context,
                                                              &generics.where_clause,
-                                                             context.config,
                                                              context.config.item_brace_style,
                                                              Shape::legacy(where_budget,
                                                                            offset.block_only()),
                                                              where_density,
                                                              "{",
                                                              !has_body,
+                                                             false,
                                                              None));
         // If the where clause cannot fit on the same line,
         // put the where clause on a new line
@@ -1002,12 +1002,12 @@ fn format_tuple_struct(context: &RewriteContext,
                 try_opt!(context.config.max_width.checked_sub(last_line_width(&result)));
             try_opt!(rewrite_where_clause(context,
                                           &generics.where_clause,
-                                          context.config,
                                           context.config.item_brace_style,
                                           Shape::legacy(where_budget, offset.block_only()),
                                           Density::Compressed,
                                           ";",
                                           true,
+                                          false,
                                           None))
         }
         None => "".to_owned(),
@@ -1093,12 +1093,12 @@ pub fn rewrite_type_alias(context: &RewriteContext,
     let where_budget = try_opt!(context.config.max_width.checked_sub(last_line_width(&result)));
     let where_clause_str = try_opt!(rewrite_where_clause(context,
                                                          &generics.where_clause,
-                                                         context.config,
                                                          context.config.item_brace_style,
                                                          Shape::legacy(where_budget, indent),
                                                          context.config.where_density,
                                                          "=",
                                                          true,
+                                                         false,
                                                          Some(span.hi)));
     result.push_str(&where_clause_str);
     result.push_str(" = ");
@@ -1645,12 +1645,12 @@ fn rewrite_fn_base(context: &RewriteContext,
     let where_budget = try_opt!(context.config.max_width.checked_sub(last_line_width(&result)));
     let where_clause_str = try_opt!(rewrite_where_clause(context,
                                                          where_clause,
-                                                         context.config,
                                                          context.config.fn_brace_style,
                                                          Shape::legacy(where_budget, indent),
                                                          where_density,
                                                          "{",
                                                          !has_body,
+                                                         put_args_in_block && ret_str.is_empty(),
                                                          Some(span.hi)));
 
     if last_line_width(&result) + where_clause_str.len() > context.config.max_width &&
@@ -1935,28 +1935,107 @@ fn rewrite_trait_bounds(context: &RewriteContext,
     Some(result)
 }
 
+//   fn reflow_list_node_with_rule(
+//        &self,
+//        node: &CompoundNode,
+//        rule: &Rule,
+//        args: &[Arg],
+//        shape: &Shape
+//    ) -> Result<String, ()>
+//    where
+//        T: Foo,
+//    {
+
+
+fn rewrite_where_clause_rfc_style(context: &RewriteContext,
+                                  where_clause: &ast::WhereClause,
+                                  shape: Shape,
+                                  terminator: &str,
+                                  suppress_comma: bool,
+                                  // where clause can be kept on the current line.
+                                  snuggle: bool,
+                                  span_end: Option<BytePos>)
+                                  -> Option<String> {
+    let block_shape = shape.block();
+
+    let starting_newline = if snuggle {
+        " ".to_owned()
+    } else {
+        "\n".to_owned() + &block_shape.indent.to_string(context.config)
+    };
+
+    let clause_shape = block_shape.block_indent(context.config.tab_spaces);
+    // each clause on one line, trailing comma (except if suppress_comma)
+    let span_start = span_for_where_pred(&where_clause.predicates[0]).lo;
+    // If we don't have the start of the next span, then use the end of the
+    // predicates, but that means we miss comments.
+    let len = where_clause.predicates.len();
+    let end_of_preds = span_for_where_pred(&where_clause.predicates[len - 1]).hi;
+    let span_end = span_end.unwrap_or(end_of_preds);
+    let items = itemize_list(context.codemap,
+                             where_clause.predicates.iter(),
+                             terminator,
+                             |pred| span_for_where_pred(pred).lo,
+                             |pred| span_for_where_pred(pred).hi,
+                             |pred| pred.rewrite(context, clause_shape),
+                             span_start,
+                             span_end);
+    let comma_tactic = if suppress_comma {
+        SeparatorTactic::Never
+    } else {
+        SeparatorTactic::Always
+    };
+
+    let fmt = ListFormatting {
+        tactic: DefinitiveListTactic::Vertical,
+        separator: ",",
+        trailing_separator: comma_tactic,
+        shape: clause_shape,
+        ends_with_newline: true,
+        config: context.config,
+    };
+    let preds_str = try_opt!(write_list(items, &fmt));
+
+    Some(format!("{}where\n{}{}",
+                 starting_newline,
+                 clause_shape.indent.to_string(context.config),
+                 preds_str))
+}
+
 fn rewrite_where_clause(context: &RewriteContext,
                         where_clause: &ast::WhereClause,
-                        config: &Config,
                         brace_style: BraceStyle,
                         shape: Shape,
                         density: Density,
                         terminator: &str,
                         suppress_comma: bool,
+                        snuggle: bool,
                         span_end: Option<BytePos>)
                         -> Option<String> {
     if where_clause.predicates.is_empty() {
         return Some(String::new());
     }
 
+    if context.config.where_style == Style::Rfc {
+        return rewrite_where_clause_rfc_style(context,
+                                              where_clause,
+                                              shape,
+                                              terminator,
+                                              suppress_comma,
+                                              snuggle,
+                                              span_end);
+    }
+
     let extra_indent = match context.config.where_indent {
         BlockIndentStyle::Inherit => Indent::empty(),
-        BlockIndentStyle::Tabbed | BlockIndentStyle::Visual => Indent::new(config.tab_spaces, 0),
+        BlockIndentStyle::Tabbed | BlockIndentStyle::Visual => {
+            Indent::new(context.config.tab_spaces, 0)
+        }
     };
 
     let offset = match context.config.where_pred_indent {
         BlockIndentStyle::Inherit => shape.indent + extra_indent,
-        BlockIndentStyle::Tabbed => shape.indent + extra_indent.block_indent(config),
+        BlockIndentStyle::Tabbed => shape.indent + extra_indent.block_indent(context.config),
         // 6 = "where ".len()
         BlockIndentStyle::Visual => shape.indent + extra_indent + 6,
     };
@@ -2046,12 +2125,12 @@ fn format_generics(context: &RewriteContext,
         let budget = try_opt!(context.config.max_width.checked_sub(last_line_width(&result)));
         let where_clause_str = try_opt!(rewrite_where_clause(context,
                                                              &generics.where_clause,
-                                                             context.config,
                                                              brace_style,
                                                              Shape::legacy(budget,
                                                                            offset.block_only()),
                                                              Density::Tall,
                                                              terminator,
+                                                             false,
                                                              false,
                                                              Some(span.hi)));
         result.push_str(&where_clause_str);
