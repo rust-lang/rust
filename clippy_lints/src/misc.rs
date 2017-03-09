@@ -335,7 +335,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                 let binding = last_path_segment(qpath).name.as_str();
                 if binding.starts_with('_') &&
                     !binding.starts_with("__") &&
-                    &*binding != "_result" && // FIXME: #944
+                    binding != "_result" && // FIXME: #944
                     is_used(cx, expr) &&
                     // don't lint if the declaration is in a macro
                     non_macro_local(cx, &cx.tables.qpath_def(qpath, expr.id)) {
@@ -378,7 +378,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
 
 fn check_nan(cx: &LateContext, path: &Path, expr: &Expr) {
     if !in_constant(cx, expr.id) {
-        path.segments.last().map(|seg| if &*seg.name.as_str() == "NAN" {
+        path.segments.last().map(|seg| if seg.name.as_str() == "NAN" {
             span_lint(cx,
                       CMP_NAN,
                       expr.span,

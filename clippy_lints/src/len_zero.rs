@@ -89,7 +89,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LenZero {
 
 fn check_trait_items(cx: &LateContext, item: &Item, trait_items: &[TraitItemRef]) {
     fn is_named_self(cx: &LateContext, item: &TraitItemRef, name: &str) -> bool {
-        &*item.name.as_str() == name &&
+        *item.name.as_str() == *name &&
         if let AssociatedItemKind::Method { has_self } = item.kind {
             has_self &&
             {
@@ -116,7 +116,7 @@ fn check_trait_items(cx: &LateContext, item: &Item, trait_items: &[TraitItemRef]
 
 fn check_impl_items(cx: &LateContext, item: &Item, impl_items: &[ImplItemRef]) {
     fn is_named_self(cx: &LateContext, item: &ImplItemRef, name: &str) -> bool {
-        &*item.name.as_str() == name &&
+        *item.name.as_str() == *name &&
         if let AssociatedItemKind::Method { has_self } = item.kind {
             has_self &&
             {
@@ -155,7 +155,7 @@ fn check_impl_items(cx: &LateContext, item: &Item, impl_items: &[ImplItemRef]) {
 fn check_cmp(cx: &LateContext, span: Span, left: &Expr, right: &Expr, op: &str) {
     // check if we are in an is_empty() method
     if let Some(name) = get_item_name(cx, left) {
-        if &*name.as_str() == "is_empty" {
+        if name.as_str() == "is_empty" {
             return;
         }
     }
@@ -170,7 +170,7 @@ fn check_cmp(cx: &LateContext, span: Span, left: &Expr, right: &Expr, op: &str) 
 
 fn check_len_zero(cx: &LateContext, span: Span, name: &Name, args: &[Expr], lit: &Lit, op: &str) {
     if let Spanned { node: LitKind::Int(0, _), .. } = *lit {
-        if &*name.as_str() == "len" && args.len() == 1 && has_is_empty(cx, &args[0]) {
+        if name.as_str() == "len" && args.len() == 1 && has_is_empty(cx, &args[0]) {
             span_lint_and_then(cx, LEN_ZERO, span, "length comparison to zero", |db| {
                 db.span_suggestion(span,
                                    "consider using `is_empty`",
@@ -185,7 +185,7 @@ fn has_is_empty(cx: &LateContext, expr: &Expr) -> bool {
     /// Get an `AssociatedItem` and return true if it matches `is_empty(self)`.
     fn is_is_empty(cx: &LateContext, item: &ty::AssociatedItem) -> bool {
         if let ty::AssociatedKind::Method = item.kind {
-            if &*item.name.as_str() == "is_empty" {
+            if item.name.as_str() == "is_empty" {
                 let sig = cx.tcx.item_type(item.def_id).fn_sig();
                 let ty = sig.skip_binder();
                 ty.inputs().len() == 1

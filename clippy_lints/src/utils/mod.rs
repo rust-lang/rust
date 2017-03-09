@@ -179,7 +179,7 @@ pub fn match_def_path(tcx: ty::TyCtxt, def_id: DefId, path: &[&str]) -> bool {
 
     tcx.push_item_path(&mut apb, def_id);
 
-    apb.names.len() == path.len() && apb.names.iter().zip(path.iter()).all(|(a, &b)| &**a == b)
+    apb.names.len() == path.len() && apb.names.into_iter().zip(path.iter()).all(|(a, &b)| *a == *b)
 }
 
 /// Check if type is struct, enum or union type with given def path.

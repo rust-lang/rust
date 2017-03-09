@@ -65,7 +65,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                     if_let_chain!{[
                         a.meta_item_list().is_some(),
                         let Some(name) = a.name(),
-                        &*name.as_str() == "proc_macro_derive",
+                        name.as_str() == "proc_macro_derive",
                     ], {
                         return;
                     }}
@@ -102,7 +102,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
         let fn_sig = cx.tcx.item_type(fn_def_id).fn_sig();
         let fn_sig = cx.tcx.liberate_late_bound_regions(param_env.free_id_outlive, &fn_sig);
 
-        for ((input, ty), arg) in decl.inputs.iter().zip(fn_sig.inputs()).zip(&body.arguments) {
+        for ((input, &ty), arg) in decl.inputs.iter().zip(fn_sig.inputs()).zip(&body.arguments) {
 
             // Determines whether `ty` implements `Borrow<U>` (U != ty) specifically.
             // This is needed due to the `Borrow<T> for T` blanket impl.
@@ -112,8 +112,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                 } else {
                     None
                 })
-                .filter(|tpred| tpred.def_id() == borrow_trait && &tpred.self_ty() == ty)
-                .any(|tpred| &tpred.input_types().nth(1).expect("Borrow trait must have an parameter") != ty);
+                .filter(|tpred| tpred.def_id() == borrow_trait && tpred.self_ty() == ty)
+                .any(|tpred| tpred.input_types().nth(1).expect("Borrow trait must have an parameter") != ty);
 
             if_let_chain! {[
                 !is_self(arg),
@@ -141,7 +141,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                         match_type(cx, ty, &paths::VEC),
                         let TyPath(QPath::Resolved(_, ref path)) = input.node,
                         let Some(elem_ty) = path.segments.iter()
-                            .find(|seg| &*seg.name.as_str() == "Vec")
+                            .find(|seg| seg.name.as_str() == "Vec")
                             .map(|ps| ps.parameters.types()[0]),
                     ], {
                         let slice_ty = format!("&[{}]", snippet(cx, elem_ty.span, "_"));

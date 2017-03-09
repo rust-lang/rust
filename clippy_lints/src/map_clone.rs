@@ -28,7 +28,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
         // call to .map()
         if let ExprMethodCall(name, _, ref args) = expr.node {
-            if &*name.node.as_str() == "map" && args.len() == 2 {
+            if name.node.as_str() == "map" && args.len() == 2 {
                 match args[1].node {
                     ExprClosure(_, ref decl, closure_eid, _) => {
                         let body = cx.tcx.hir.body(closure_eid);
@@ -53,7 +53,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                             }
                             // explicit clone() calls ( .map(|x| x.clone()) )
                             else if let ExprMethodCall(clone_call, _, ref clone_args) = closure_expr.node {
-                                if &*clone_call.node.as_str() == "clone" &&
+                                if clone_call.node.as_str() == "clone" &&
                                     clone_args.len() == 1 &&
                                     match_trait_method(cx, closure_expr, &paths::CLONE_TRAIT) &&
                                     expr_eq_name(&clone_args[0], arg_ident)

@@ -108,7 +108,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NewWithoutDefault {
                 // can't be implemented by default
                 return;
             }
-            if decl.inputs.is_empty() && &*name.as_str() == "new" && cx.access_levels.is_reachable(id) {
+            if decl.inputs.is_empty() && name.as_str() == "new" && cx.access_levels.is_reachable(id) {
                 let self_ty = cx.tcx
                     .item_type(cx.tcx.hir.local_def_id(cx.tcx.hir.get_parent(id)));
                 if_let_chain!{[

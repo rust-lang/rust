@@ -257,7 +257,7 @@ fn check_single_match_opt_like(
     };
 
     for &(ty_path, pat_path) in candidates {
-        if &path == pat_path && match_type(cx, ty, ty_path) {
+        if path == *pat_path && match_type(cx, ty, ty_path) {
             report_single_match_single_pattern(cx, ex, arms, expr, els);
         }
     }

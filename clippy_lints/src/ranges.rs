@@ -64,13 +64,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for StepByZero {
                 if_let_chain! {[
                     // .iter() call
                     let ExprMethodCall( Spanned { node: ref iter_name, .. }, _, ref iter_args ) = *iter,
-                    &*iter_name.as_str() == "iter",
+                    iter_name.as_str() == "iter",
                     // range expression in .zip() call: 0..x.len()
                     let Some(higher::Range { start: Some(ref start), end: Some(ref end), .. }) = higher::range(zip_arg),
                     is_integer_literal(start, 0),
                     // .len() call
                     let ExprMethodCall(Spanned { node: ref len_name, .. }, _, ref len_args) = end.node,
-                    &*len_name.as_str() == "len" && len_args.len() == 1,
+                    len_name.as_str() == "len" && len_args.len() == 1,
                     // .iter() and .len() called on same Path
                     let ExprPath(QPath::Resolved(_, ref iter_path)) = iter_args[0].node,
                     let ExprPath(QPath::Resolved(_, ref len_path)) = len_args[0].node,

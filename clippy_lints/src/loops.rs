@@ -389,8 +389,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     &ExprMethodCall(method_name, _, ref method_args)) = (pat, &match_expr.node) {
                 let iter_expr = &method_args[0];
                 let lhs_constructor = last_path_segment(qpath);
-                if &*method_name.node.as_str() == "next" && match_trait_method(cx, match_expr, &paths::ITERATOR) &&
-                   &*lhs_constructor.name.as_str() == "Some" && !is_refutable(cx, &pat_args[0]) &&
+                if method_name.node.as_str() == "next" && match_trait_method(cx, match_expr, &paths::ITERATOR) &&
+                   lhs_constructor.name.as_str() == "Some" && !is_refutable(cx, &pat_args[0]) &&
                    !is_iterator_used_after_while_let(cx, iter_expr) {
                     let iterator = snippet(cx, method_args[0].span, "_");
                     let loop_var = snippet(cx, pat_args[0].span, "_");
@@ -409,7 +409,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     fn check_stmt(&mut self, cx: &LateContext<'a, 'tcx>, stmt: &'tcx Stmt) {
         if let StmtSemi(ref expr, _) = stmt.node {
             if let ExprMethodCall(ref method, _, ref args) = expr.node {
-                if args.len() == 1 && &*method.node.as_str() == "collect" &&
+                if args.len() == 1 && method.node.as_str() == "collect" &&
                    match_trait_method(cx, expr, &paths::ITERATOR) {
                     span_lint(cx,
                               UNUSED_COLLECT,
@@ -579,10 +579,10 @@ fn is_len_call(expr: &Expr, var: &Name) -> bool {
     if_let_chain! {[
         let ExprMethodCall(method, _, ref len_args) = expr.node,
         len_args.len() == 1,
-        &*method.node.as_str() == "len",
+        method.node.as_str() == "len",
         let ExprPath(QPath::Resolved(_, ref path)) = len_args[0].node,
         path.segments.len() == 1,
-        &path.segments[0].name == var
+        path.segments[0].name == *var
     ], {
         return true;
     }}
