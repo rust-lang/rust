@@ -522,7 +522,7 @@ impl Session {
                  duration_to_secs_str(self.perf_stats.decode_def_path_tables_time.get()));
     }
 
-    /// We want to know if we're allowed to do an optimization for crate crate.
+    /// We want to know if we're allowed to do an optimization for crate foo from -z fuel=foo=n.
     /// This expends fuel if applicable, and records fuel if applicable.
     pub fn consider_optimizing<T: Fn() -> String>(&self, crate_name: &str, msg: T) -> bool {
         let mut ret = true;
