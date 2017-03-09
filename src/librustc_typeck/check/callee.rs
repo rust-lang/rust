@@ -258,7 +258,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         // Call the generic checker.
         let expected_arg_tys =
-            self.expected_types_for_fn_args(call_expr.span,
+            self.expected_inputs_for_expected_output(call_expr.span,
                                             expected,
                                             fn_sig.output(),
                                             fn_sig.inputs());
@@ -284,7 +284,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // do know the types expected for each argument and the return
         // type.
 
-        let expected_arg_tys = self.expected_types_for_fn_args(call_expr.span,
+        let expected_arg_tys = self.expected_inputs_for_expected_output(call_expr.span,
                                                                expected,
                                                                fn_sig.output().clone(),
                                                                fn_sig.inputs());
