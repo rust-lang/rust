@@ -960,7 +960,7 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
         }
         ExprIf(ref head_expression, ref if_block, ref optional_else) => {
             visitor.visit_expr(head_expression);
-            visitor.visit_block(if_block);
+            visitor.visit_expr(if_block);
             walk_list!(visitor, visit_expr, optional_else);
         }
         ExprWhile(ref subexpression, ref block, ref opt_sp_name) => {
