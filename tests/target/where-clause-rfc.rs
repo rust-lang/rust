@@ -78,8 +78,7 @@ pub trait Test {
 
 fn very_long_function_name<F>(very_long_argument: F) -> MyVeryLongReturnType
 where
-    F: FnMut(Self::Item)
-             -> bool
+    F: FnMut(Self::Item) -> bool
 {
 }
 

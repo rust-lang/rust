@@ -1636,6 +1636,7 @@ fn rewrite_fn_base(context: &RewriteContext,
     } || (put_args_in_block && ret_str.is_empty());
 
     if where_clause.predicates.len() == 1 && should_compress_where {
+        // TODO hitting this path, but using a newline
         let budget = try_opt!(context.config.max_width.checked_sub(last_line_width(&result)));
         if let Some(where_clause_str) =
             rewrite_where_clause(context,
@@ -1647,14 +1648,15 @@ fn rewrite_fn_base(context: &RewriteContext,
                                  !has_body,
                                  put_args_in_block && ret_str.is_empty(),
                                  Some(span.hi)) {
-            if last_line_width(&result) + where_clause_str.len() > context.config.max_width &&
-               !where_clause_str.contains('\n') {
-                result.push('\n');
+            if !where_clause_str.contains('\n') {
+                if last_line_width(&result) + where_clause_str.len() > context.config.max_width {
+                    result.push('\n');
+                }
+
+                result.push_str(&where_clause_str);
+
+                return Some((result, force_new_line_for_brace));
             }
-
-            result.push_str(&where_clause_str);
-
-            return Some((result, force_new_line_for_brace));
         }
     }
 
