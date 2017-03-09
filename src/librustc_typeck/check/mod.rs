@@ -2321,7 +2321,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             match method_fn_ty.sty {
                 ty::TyFnDef(def_id, .., ref fty) => {
                     // HACK(eddyb) ignore self in the definition (see above).
-                    let expected_arg_tys = self.expected_types_for_fn_args(
+                    let expected_arg_tys = self.expected_inputs_for_expected_output(
                         sp,
                         expected,
                         fty.0.output(),
@@ -2674,14 +2674,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         TypeAndSubsts { substs: substs, ty: substd_ty }
     }
 
-    /// Unifies the return type with the expected type early, for more coercions
-    /// and forward type information on the argument expressions.
-    fn expected_types_for_fn_args(&self,
-                                  call_span: Span,
-                                  expected_ret: Expectation<'tcx>,
-                                  formal_ret: Ty<'tcx>,
-                                  formal_args: &[Ty<'tcx>])
-                                  -> Vec<Ty<'tcx>> {
+    /// Unifies the output type with the expected type early, for more coercions
+    /// and forward type information on the input expressions.
+    fn expected_inputs_for_expected_output(&self,
+                                           call_span: Span,
+                                           expected_ret: Expectation<'tcx>,
+                                           formal_ret: Ty<'tcx>,
+                                           formal_args: &[Ty<'tcx>])
+                                           -> Vec<Ty<'tcx>> {
         let expected_args = expected_ret.only_has_type(self).and_then(|ret_ty| {
             self.fudge_regions_if_ok(&RegionVariableOrigin::Coercion(call_span), || {
                 // Attempt to apply a subtyping relationship between the formal
@@ -2704,7 +2704,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }).collect())
             }).ok()
         }).unwrap_or(vec![]);
-        debug!("expected_types_for_fn_args(formal={:?} -> {:?}, expected={:?} -> {:?})",
+        debug!("expected_inputs_for_expected_output(formal={:?} -> {:?}, expected={:?} -> {:?})",
                formal_args, formal_ret,
                expected_args, expected_ret);
         expected_args
