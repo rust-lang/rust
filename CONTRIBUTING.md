@@ -406,5 +406,5 @@ are:
 [rr]: https://doc.rust-lang.org/book/README.html
 [tlgba]: http://tomlee.co/2014/04/a-more-detailed-tour-of-the-rust-compiler/
 [ro]: http://www.rustaceans.org/
-[rctd]: ./COMPILER_TESTS.md
+[rctd]: ./src/test/COMPILER_TESTS.md
 [cheatsheet]: https://buildbot.rust-lang.org/homu/

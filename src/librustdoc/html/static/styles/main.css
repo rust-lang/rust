@@ -37,8 +37,17 @@ pre {
     background-color: #F5F5F5;
 }
 
+.sidebar {
+    background-color: #F1F1F1;
+}
+
+.sidebar .current {
+    background-color: #fff;
+}
+
 .sidebar .location {
-    background: #e1e1e1;
+    border-color: #000;
+    background-color: #fff;
     color: #333;
 }
 
