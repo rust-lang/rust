@@ -1468,7 +1468,7 @@ fn rewrite_fn_base(context: &RewriteContext,
                                                  generics_span));
     result.push_str(&generics_str);
 
-    // Note that if the width and indent really matter, we'll re-layout the
+    // Note that the width and indent don't really matter, we'll re-layout the
     // return type later anyway.
     let ret_str = try_opt!(fd.output.rewrite(&context,
                                              Shape::legacy(context.config.max_width -
@@ -1602,7 +1602,7 @@ fn rewrite_fn_base(context: &RewriteContext,
             Indent::new(indent.width(), result.len())
         };
 
-        if multi_line_ret_str {
+        if multi_line_ret_str || ret_should_indent {
             // Now that we know the proper indent and width, we need to
             // re-layout the return type.
             let budget = try_opt!(context.config.max_width.checked_sub(ret_indent.width()));
@@ -1635,28 +1635,39 @@ fn rewrite_fn_base(context: &RewriteContext,
         _ => false,
     } || (put_args_in_block && ret_str.is_empty());
 
-    let where_density = if should_compress_where {
-        Density::Compressed
-    } else {
-        Density::Tall
-    };
+    if where_clause.predicates.len() == 1 && should_compress_where {
+        let budget = try_opt!(context.config.max_width.checked_sub(last_line_width(&result)));
+        if let Some(where_clause_str) =
+            rewrite_where_clause(context,
+                                 where_clause,
+                                 context.config.fn_brace_style,
+                                 Shape::legacy(budget, indent),
+                                 Density::Compressed,
+                                 "{",
+                                 !has_body,
+                                 put_args_in_block && ret_str.is_empty(),
+                                 Some(span.hi)) {
+            if last_line_width(&result) + where_clause_str.len() > context.config.max_width &&
+               !where_clause_str.contains('\n') {
+                result.push('\n');
+            }
 
-    // Where clause.
-    let where_budget = try_opt!(context.config.max_width.checked_sub(last_line_width(&result)));
+            result.push_str(&where_clause_str);
+
+            return Some((result, force_new_line_for_brace));
+        }
+    }
+
+    let budget = try_opt!(context.config.max_width.checked_sub(indent.block_indent));
     let where_clause_str = try_opt!(rewrite_where_clause(context,
                                                          where_clause,
                                                          context.config.fn_brace_style,
-                                                         Shape::legacy(where_budget, indent),
-                                                         where_density,
+                                                         Shape::legacy(budget, indent),
+                                                         Density::Tall,
                                                          "{",
                                                          !has_body,
                                                          put_args_in_block && ret_str.is_empty(),
                                                          Some(span.hi)));
-
-    if last_line_width(&result) + where_clause_str.len() > context.config.max_width &&
-       !where_clause_str.contains('\n') {
-        result.push('\n');
-    }
 
     result.push_str(&where_clause_str);
 
