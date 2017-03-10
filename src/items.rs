@@ -15,7 +15,7 @@ use codemap::SpanUtils;
 use utils::{format_mutability, format_visibility, contains_skip, end_typaram, wrap_str,
             last_line_width, format_unsafety, trim_newlines, stmt_expr, semicolon_for_expr,
             trimmed_last_line_width};
-use lists::{write_list, itemize_list, ListItem, ListFormatting, SeparatorTactic,
+use lists::{write_list, itemize_list, ListItem, ListFormatting, SeparatorTactic, list_helper,
             DefinitiveListTactic, ListTactic, definitive_tactic, format_item_list};
 use expr::{is_empty_block, is_simple_block_stmt, rewrite_assign_rhs, type_annotation_separator};
 use comment::{FindUncommented, contains_comment};
@@ -1013,9 +1013,19 @@ fn format_tuple_struct(context: &RewriteContext,
         }
         None => "".to_owned(),
     };
-    result.push('(');
 
-    let item_indent = offset.block_only() + result.len();
+    let (tactic, item_indent) = match context.config.fn_args_layout {
+        FnArgLayoutStyle::Visual => {
+            result.push('(');
+            (ListTactic::HorizontalVertical, offset.block_only() + result.len())
+        }
+        FnArgLayoutStyle::Block | FnArgLayoutStyle::BlockAlways => {
+            let indent = offset.block_only().block_indent(&context.config);
+            result.push_str("(\n");
+            result.push_str(&indent.to_string(&context.config));
+            (ListTactic::Vertical, indent)
+        }
+    };
     // 2 = ");"
     let item_budget = try_opt!(context.config.max_width.checked_sub(item_indent.width() + 2));
 
@@ -1035,9 +1045,10 @@ fn format_tuple_struct(context: &RewriteContext,
                      |field| field.rewrite(context, Shape::legacy(item_budget, item_indent)),
                      context.codemap.span_after(span, "("),
                      span.hi);
-    let body = try_opt!(format_item_list(items,
-                                         Shape::legacy(item_budget, item_indent),
-                                         context.config));
+    let body = try_opt!(list_helper(items,
+                                    Shape::legacy(item_budget, item_indent),
+                                    context.config,
+                                    tactic));
 
     if context.config.spaces_within_parens && body.len() > 0 {
         result.push(' ');
@@ -1049,13 +1060,22 @@ fn format_tuple_struct(context: &RewriteContext,
         result.push(' ');
     }
 
-    result.push(')');
+    match context.config.fn_args_layout {
+        FnArgLayoutStyle::Visual => {
+            result.push(')');
+        }
+        FnArgLayoutStyle::Block | FnArgLayoutStyle::BlockAlways => {
+            result.push('\n');
+            result.push_str(&offset.block_only().to_string(&context.config));
+            result.push(')');
+        }
+    }
 
     if !where_clause_str.is_empty() && !where_clause_str.contains('\n') &&
        (result.contains('\n') ||
         offset.block_indent + result.len() + where_clause_str.len() + 1 >
         context.config.max_width) {
-        // We need to put the where clause on a new line, but we didn'to_string
+        // We need to put the where clause on a new line, but we didn't
         // know that earlier, so the where clause will not be indented properly.
         result.push('\n');
         result.push_str(&(offset.block_only() + (context.config.tab_spaces - 1))
