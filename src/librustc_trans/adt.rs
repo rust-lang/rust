@@ -95,15 +95,6 @@ pub fn type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
     generic_type_of(cx, t, None, false, false)
 }
 
-
-// Pass dst=true if the type you are passing is a DST. Yes, we could figure
-// this out, but if you call this on an unsized type without realising it, you
-// are going to get the wrong type (it will not include the unsized parts of it).
-pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
-                                t: Ty<'tcx>, dst: bool) -> Type {
-    generic_type_of(cx, t, None, true, dst)
-}
-
 pub fn incomplete_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                     t: Ty<'tcx>, name: &str) -> Type {
     generic_type_of(cx, t, Some(name), false, false)
@@ -149,7 +140,11 @@ fn generic_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             };
             let nnty = monomorphize::field_ty(cx.tcx(), substs,
                 &def.variants[nndiscr as usize].fields[0]);
-            type_of::sizing_type_of(cx, nnty)
+            if let layout::Scalar { value: layout::Pointer, .. } = *cx.layout_of(nnty) {
+                Type::i8p(cx)
+            } else {
+                type_of::type_of(cx, nnty)
+            }
         }
         layout::StructWrappedNullablePointer { nndiscr, ref nonnull, .. } => {
             let fields = compute_fields(cx, t, nndiscr as usize, false);
@@ -180,10 +175,6 @@ fn generic_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                     Type::named_struct(cx, name)
                 }
             }
-        }
-        layout::Vector { element, count } => {
-            let elem_ty = Type::from_primitive(cx, element);
-            Type::vector(&elem_ty, count)
         }
         layout::UntaggedUnion { ref variants, .. }=> {
             // Use alignment-sized ints to fill all the union storage.
@@ -258,11 +249,10 @@ fn union_fill(cx: &CrateContext, size: u64, align: u64) -> Type {
 
 fn struct_llfields<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, fields: &Vec<Ty<'tcx>>,
                              variant: &layout::Struct,
-                             sizing: bool, dst: bool) -> Vec<Type> {
+                             sizing: bool, _dst: bool) -> Vec<Type> {
     let fields = variant.field_index_by_increasing_offset().map(|i| fields[i as usize]);
     if sizing {
-        fields.filter(|ty| !dst || cx.shared().type_is_sized(*ty))
-            .map(|ty| type_of::sizing_type_of(cx, ty)).collect()
+        bug!()
     } else {
         fields.map(|ty| type_of::in_memory_type_of(cx, ty)).collect()
     }
