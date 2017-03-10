@@ -1808,7 +1808,7 @@ impl<T> VecDeque<T> {
 
 impl<T: Clone> VecDeque<T> {
     /// Modifies the `VecDeque` in-place so that `len()` is equal to new_len,
-    /// either by removing excess elements or by appending copies of a value to the back.
+    /// either by removing excess elements or by appending clones of `value` to the back.
     ///
     /// # Examples
     ///
