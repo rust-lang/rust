@@ -20,7 +20,8 @@ use hir::def_id::DefId;
 use middle::free_region::FreeRegionMap;
 use ty::subst::Substs;
 use ty::{self, Ty, TyCtxt, TypeFoldable, ToPredicate};
-use infer::InferCtxt;
+use ty::error::{ExpectedFound, TypeError};
+use infer::{InferCtxt};
 
 use std::rc::Rc;
 use syntax::ast;
@@ -214,6 +215,8 @@ pub struct FulfillmentError<'tcx> {
 pub enum FulfillmentErrorCode<'tcx> {
     CodeSelectionError(SelectionError<'tcx>),
     CodeProjectionError(MismatchedProjectionTypes<'tcx>),
+    CodeSubtypeError(ExpectedFound<Ty<'tcx>>,
+                     TypeError<'tcx>), // always comes from a SubtypePredicate
     CodeAmbiguity,
 }
 
