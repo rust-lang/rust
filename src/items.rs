@@ -13,7 +13,8 @@
 use {Indent, Shape};
 use codemap::SpanUtils;
 use utils::{format_mutability, format_visibility, contains_skip, end_typaram, wrap_str,
-            last_line_width, format_unsafety, trim_newlines, stmt_expr, semicolon_for_expr};
+            last_line_width, format_unsafety, trim_newlines, stmt_expr, semicolon_for_expr,
+            trimmed_last_line_width};
 use lists::{write_list, itemize_list, ListItem, ListFormatting, SeparatorTactic,
             DefinitiveListTactic, ListTactic, definitive_tactic, format_item_list};
 use expr::{is_empty_block, is_simple_block_stmt, rewrite_assign_rhs, type_annotation_separator};
@@ -1468,6 +1469,8 @@ fn rewrite_fn_base(context: &RewriteContext,
                                                  generics_span));
     result.push_str(&generics_str);
 
+    let snuggle_angle_bracket = last_line_width(&generics_str) == 1;
+
     // Note that the width and indent don't really matter, we'll re-layout the
     // return type later anyway.
     let ret_str = try_opt!(fd.output.rewrite(&context,
@@ -1495,7 +1498,9 @@ fn rewrite_fn_base(context: &RewriteContext,
 
     // Check if vertical layout was forced.
     if one_line_budget == 0 {
-        if context.config.fn_args_paren_newline {
+        if snuggle_angle_bracket {
+            result.push_str("(");
+        } else if context.config.fn_args_paren_newline {
             result.push('\n');
             result.push_str(&arg_indent.to_string(context.config));
             arg_indent = arg_indent + 1; // extra space for `(`
@@ -1534,11 +1539,11 @@ fn rewrite_fn_base(context: &RewriteContext,
 
     let multi_line_arg_str = arg_str.contains('\n');
 
-    let put_args_in_block = match context.config.fn_args_layout {
+    let put_args_in_block = (match context.config.fn_args_layout {
         FnArgLayoutStyle::Block => multi_line_arg_str,
         FnArgLayoutStyle::BlockAlways => true,
         _ => false,
-    } && !fd.inputs.is_empty();
+    } || generics_str.contains('\n') )&& !fd.inputs.is_empty();
 
     if put_args_in_block {
         arg_indent = indent.block_indent(context.config);
@@ -1920,11 +1925,14 @@ fn rewrite_generics(context: &RewriteContext,
     let list_str =
         try_opt!(format_item_list(items, Shape::legacy(h_budget, offset), context.config));
 
-    Some(if context.config.spaces_within_angle_brackets {
-             format!("< {} >", list_str)
-         } else {
-             format!("<{}>", list_str)
-         })
+    let result = if context.config.generics_indent != BlockIndentStyle::Visual && list_str.contains('\n') {
+        format!("<\n{}{}\n{}>", offset.to_string(context.config), list_str, shape.indent.to_string(context.config))
+    } else if context.config.spaces_within_angle_brackets {
+        format!("< {} >", list_str)
+    } else {
+        format!("<{}>", list_str)
+    };
+    Some(result)
 }
 
 fn rewrite_trait_bounds(context: &RewriteContext,
@@ -2144,10 +2152,11 @@ fn format_generics(context: &RewriteContext,
                                                              Density::Tall,
                                                              terminator,
                                                              false,
-                                                             false,
+                                                             trimmed_last_line_width(&result) == 1,
                                                              Some(span.hi)));
         result.push_str(&where_clause_str);
-        if !force_same_line_brace &&
+        let same_line_brace = force_same_line_brace || (generics.where_clause.predicates.is_empty() && trimmed_last_line_width(&result) == 1);
+        if !same_line_brace &&
            (brace_style == BraceStyle::SameLineWhere || brace_style == BraceStyle::AlwaysNextLine) {
             result.push('\n');
             result.push_str(&offset.block_only().to_string(context.config));
@@ -2156,11 +2165,11 @@ fn format_generics(context: &RewriteContext,
         }
         result.push_str(opener);
     } else {
-        if !force_same_line_brace && brace_style == BraceStyle::AlwaysNextLine {
+        if force_same_line_brace || trimmed_last_line_width(&result) == 1 || brace_style != BraceStyle::AlwaysNextLine {
+            result.push(' ');
+        } else {
             result.push('\n');
             result.push_str(&offset.block_only().to_string(context.config));
-        } else {
-            result.push(' ');
         }
         result.push_str(opener);
     }

@@ -1,2 +1,3 @@
 fn_args_layout = "Block"
 where_style = "Rfc"
+generics_indent = "Tabbed"
