@@ -527,7 +527,7 @@ pub fn format_impl(context: &RewriteContext, item: &ast::Item, offset: Indent) -
                                                              context.config.where_density,
                                                              "{",
                                                              false,
-                                                             false,
+                                                             last_line_width(&ref_and_type) == 1,
                                                              None));
 
         if try_opt!(is_impl_single_line(context, &items, &result, &where_clause_str, &item)) {
@@ -626,7 +626,7 @@ fn format_impl_ref_and_type(context: &RewriteContext,
         item.node {
         let mut result = String::new();
 
-        result.push_str(&*format_visibility(&item.vis));
+        result.push_str(&format_visibility(&item.vis));
         result.push_str(format_unsafety(unsafety));
         result.push_str("impl");
 
@@ -650,8 +650,9 @@ fn format_impl_ref_and_type(context: &RewriteContext,
             if polarity != ast::ImplPolarity::Negative {
                 result.push_str(" ");
             }
-            let budget = try_opt!(context.config.max_width.checked_sub(result.len()));
-            let indent = offset + result.len();
+            let used_space = last_line_width(&result);
+            let budget = try_opt!(context.config.max_width.checked_sub(used_space));
+            let indent = offset + used_space;
             result.push_str(&*try_opt!(trait_ref.rewrite(context, Shape::legacy(budget, indent))));
 
             if split_at_for {
@@ -1119,7 +1120,7 @@ pub fn rewrite_type_alias(context: &RewriteContext,
                                                          context.config.where_density,
                                                          "=",
                                                          true,
-                                                         false,
+                                                         true,
                                                          Some(span.hi)));
     result.push_str(&where_clause_str);
     result.push_str(" = ");
