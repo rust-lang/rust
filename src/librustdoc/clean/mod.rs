@@ -875,6 +875,7 @@ impl<'a> Clean<WherePredicate> for ty::Predicate<'a> {
         match *self {
             Predicate::Trait(ref pred) => pred.clean(cx),
             Predicate::Equate(ref pred) => pred.clean(cx),
+            Predicate::Subtype(ref pred) => pred.clean(cx),
             Predicate::RegionOutlives(ref pred) => pred.clean(cx),
             Predicate::TypeOutlives(ref pred) => pred.clean(cx),
             Predicate::Projection(ref pred) => pred.clean(cx),
@@ -900,6 +901,16 @@ impl<'tcx> Clean<WherePredicate> for ty::EquatePredicate<'tcx> {
         WherePredicate::EqPredicate {
             lhs: lhs.clean(cx),
             rhs: rhs.clean(cx)
+        }
+    }
+}
+
+impl<'tcx> Clean<WherePredicate> for ty::SubtypePredicate<'tcx> {
+    fn clean(&self, cx: &DocContext) -> WherePredicate {
+        let ty::SubtypePredicate { a_is_expected: _, a, b } = *self;
+        WherePredicate::EqPredicate { // TODO This is obviously wrong :P
+            lhs: a.clean(cx),
+            rhs: b.clean(cx)
         }
     }
 }

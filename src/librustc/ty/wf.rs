@@ -94,6 +94,10 @@ pub fn predicate_obligations<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
         }
         ty::Predicate::ClosureKind(..) => {
         }
+        ty::Predicate::Subtype(ref data) => {
+            wf.compute(data.skip_binder().a); // (*)
+            wf.compute(data.skip_binder().b); // (*)
+        }
     }
 
     wf.normalize()
@@ -156,6 +160,7 @@ pub fn implied_bounds<'a, 'gcx, 'tcx>(
                 match obligation.predicate {
                     ty::Predicate::Trait(..) |
                     ty::Predicate::Equate(..) |
+                    ty::Predicate::Subtype(..) |
                     ty::Predicate::Projection(..) |
                     ty::Predicate::ClosureKind(..) |
                     ty::Predicate::ObjectSafe(..) =>

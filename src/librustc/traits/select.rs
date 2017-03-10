@@ -568,6 +568,18 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 }
             }
 
+            ty::Predicate::Subtype(ref p) => {
+                // does this code ever run?
+                match self.infcx.subtype_predicate(&obligation.cause, p) {
+                    Some(Ok(InferOk { obligations, .. })) => {
+                        self.inferred_obligations.extend(obligations);
+                        EvaluatedToOk
+                    },
+                    Some(Err(_)) => EvaluatedToErr,
+                    None => EvaluatedToAmbig,
+                }
+            }
+
             ty::Predicate::WellFormed(ty) => {
                 match ty::wf::obligations(self.infcx, obligation.cause.body_id,
                                           ty, obligation.cause.span) {
