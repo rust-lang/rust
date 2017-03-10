@@ -795,7 +795,7 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
                                                              where_density,
                                                              "{",
                                                              !has_body,
-                                                             false,
+                                                             trait_bound_str.is_empty() && last_line_width(&generics_str) == 1,
                                                              None));
         // If the where clause cannot fit on the same line,
         // put the where clause on a new line
