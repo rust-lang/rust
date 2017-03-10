@@ -296,7 +296,7 @@ class RustBuild(object):
 
     def get_mk(self, key):
         for line in iter(self.config_mk.splitlines()):
-            if line.startswith(key + ' :='):
+            if line.startswith(key + ' '):
                 var = line[line.find(':=') + 2:].strip()
                 if var != '':
                     return var

@@ -3731,7 +3731,7 @@ impl<'a> Parser<'a> {
         !self.restrictions.contains(Restrictions::RESTRICTION_NO_STRUCT_LITERAL)
     }
 
-    fn is_union_item(&mut self) -> bool {
+    fn is_union_item(&self) -> bool {
         self.token.is_keyword(keywords::Union) &&
         self.look_ahead(1, |t| t.is_ident() && !t.is_any_keyword())
     }

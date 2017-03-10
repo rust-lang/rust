@@ -58,7 +58,7 @@ pub fn llvm(build: &Build, target: &str) {
         }
     }
     if build.config.llvm_clean_rebuild {
-        t!(fs::remove_dir_all(&out_dir));
+        drop(fs::remove_dir_all(&out_dir));
     }
 
     println!("Building LLVM for {}", target);
