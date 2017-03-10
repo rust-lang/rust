@@ -42,6 +42,7 @@
 #![feature(fused)]
 #![feature(generic_param_attrs)]
 #![feature(heap_api)]
+#![feature(i128_type)]
 #![feature(inclusive_range)]
 #![feature(lang_items)]
 #![feature(nonzero)]
