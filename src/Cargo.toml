@@ -13,7 +13,6 @@ members = [
   "tools/build-manifest",
   "tools/qemu-test-client",
   "tools/qemu-test-server",
-  "tools/cargo",
 ]
 
 # Curiously, compiletest will segfault if compiled with opt-level=3 on 64-bit
