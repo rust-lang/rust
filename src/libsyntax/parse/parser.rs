@@ -300,16 +300,27 @@ impl<'a> Parser<'a> {
     fn next_tok(&mut self) -> TokenAndSpan {
         loop {
             let tok = if let Some((tts, i)) = self.tts.pop() {
-                let tt = tts.get_tt(i);
-                if i + 1 < tts.len() {
-                    self.tts.push((tts, i + 1));
-                }
-                // FIXME(jseyfried): remove after fixing #39390 in #39419.
-                if self.quote_depth > 0 {
-                    if let TokenTree::Sequence(sp, _) = tt {
-                        self.span_err(sp, "attempted to repeat an expression containing no \
-                                           syntax variables matched as repeating at this depth");
+                let (tt, is_last) = if let &TokenTree::Sequence(span, ref seq) = &tts {
+                    if i == 0 {
+                        (TokenTree::Token(span, token::Dollar), false)
+                    } else if i == 1 {
+                        (TokenTree::Token(span, token::OpenDelim(token::Paren)), false)
+                    } else if i < tts.len() + 2 {
+                        (tts.get_tt(i - 2), false)
+                    } else if i == tts.len() + 2 {
+                        (TokenTree::Token(span, token::CloseDelim(token::Paren)), false)
+                    } else if i == tts.len() + 3 && seq.separator.is_some() {
+                        (TokenTree::Token(span, seq.separator.clone().unwrap()), false)
+                    } else if seq.op == tokenstream::KleeneOp::ZeroOrMore {
+                        (TokenTree::Token(span, token::BinOp(token::Star)), true)
+                    } else {
+                        (TokenTree::Token(span, token::BinOp(token::Plus)), true)
                     }
+                } else {
+                    (tts.get_tt(i), i + 1 == tts.len())
+                };
+                if !is_last {
+                    self.tts.push((tts, i + 1));
                 }
                 match tt {
                     TokenTree::Token(sp, tok) => TokenAndSpan { tok: tok, sp: sp },
