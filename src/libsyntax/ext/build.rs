@@ -38,11 +38,11 @@ pub trait AstBuilder {
 
     fn qpath(&self, self_type: P<ast::Ty>,
              trait_path: ast::Path,
-             ident: ast::Ident)
+             ident: ast::SpannedIdent)
              -> (ast::QSelf, ast::Path);
     fn qpath_all(&self, self_type: P<ast::Ty>,
                 trait_path: ast::Path,
-                ident: ast::Ident,
+                ident: ast::SpannedIdent,
                 lifetimes: Vec<ast::Lifetime>,
                 types: Vec<P<ast::Ty>>,
                 bindings: Vec<ast::TypeBinding>)
@@ -323,7 +323,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             segments.push(ast::PathSegment::crate_root());
         }
 
-        segments.extend(idents.into_iter().map(Into::into));
+        segments.extend(idents.into_iter().map(|i| ast::PathSegment::from_ident(i, sp)));
         let parameters = if lifetimes.is_empty() && types.is_empty() && bindings.is_empty() {
             None
         } else {
@@ -333,7 +333,11 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                 bindings: bindings,
             })))
         };
-        segments.push(ast::PathSegment { identifier: last_identifier, parameters: parameters });
+        segments.push(ast::PathSegment {
+            identifier: last_identifier,
+            span: sp,
+            parameters: parameters
+        });
         ast::Path {
             span: sp,
             segments: segments,
@@ -346,7 +350,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     fn qpath(&self,
              self_type: P<ast::Ty>,
              trait_path: ast::Path,
-             ident: ast::Ident)
+             ident: ast::SpannedIdent)
              -> (ast::QSelf, ast::Path) {
         self.qpath_all(self_type, trait_path, ident, vec![], vec![], vec![])
     }
@@ -357,7 +361,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     fn qpath_all(&self,
                  self_type: P<ast::Ty>,
                  trait_path: ast::Path,
-                 ident: ast::Ident,
+                 ident: ast::SpannedIdent,
                  lifetimes: Vec<ast::Lifetime>,
                  types: Vec<P<ast::Ty>>,
                  bindings: Vec<ast::TypeBinding>)
@@ -369,7 +373,8 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             bindings: bindings,
         };
         path.segments.push(ast::PathSegment {
-            identifier: ident,
+            identifier: ident.node,
+            span: ident.span,
             parameters: Some(P(ast::PathParameters::AngleBracketed(parameters))),
         });
 
