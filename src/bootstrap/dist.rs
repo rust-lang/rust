@@ -311,6 +311,10 @@ pub fn rust_src_location(build: &Build) -> PathBuf {
 
 /// Creates a tarball of save-analysis metadata, if available.
 pub fn analysis(build: &Build, compiler: &Compiler, target: &str) {
+    if !build.config.rust_save_analysis {
+        return
+    }
+
     println!("Dist analysis");
 
     if compiler.host != build.config.build {
