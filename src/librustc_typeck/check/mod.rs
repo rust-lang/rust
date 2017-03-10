@@ -90,7 +90,7 @@ use rustc_back::slice::ref_slice;
 use rustc::infer::{self, InferCtxt, InferOk, RegionVariableOrigin};
 use rustc::infer::type_variable::{TypeVariableOrigin};
 use rustc::ty::subst::{Kind, Subst, Substs};
-use rustc::traits::{self, ObligationCause, ObligationCauseCode, Reveal};
+use rustc::traits::{self, FulfillmentContext, ObligationCause, ObligationCauseCode, Reveal};
 use rustc::ty::{ParamTy, ParameterEnvironment};
 use rustc::ty::{LvaluePreference, NoPreference, PreferMutLvalue};
 use rustc::ty::{self, Ty, TyCtxt, Visibility};
@@ -2552,11 +2552,30 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // No argument expectations are produced if unification fails.
                 let origin = self.misc(call_span);
                 let ures = self.sub_types(false, &origin, formal_ret, ret_ty);
+
                 // FIXME(#15760) can't use try! here, FromError doesn't default
                 // to identity so the resulting type is not constrained.
                 match ures {
-                    Ok(ok) => self.register_infer_ok_obligations(ok),
-                    Err(e) => return Err(e),
+                    Ok(ok) => {
+                        // Process any obligations locally as much as
+                        // we can.  We don't care if some things turn
+                        // out unconstrained or ambiguous, as we're
+                        // just trying to get hints here.
+                        let result = self.save_and_restore_obligations_in_snapshot_flag(|_| {
+                            let mut fulfill = FulfillmentContext::new();
+                            let ok = ok; // FIXME(#30046)
+                            for obligation in ok.obligations {
+                                fulfill.register_predicate_obligation(self, obligation);
+                            }
+                            fulfill.select_where_possible(self)
+                        });
+
+                        match result {
+                            Ok(()) => { }
+                            Err(_) => return Err(()),
+                        }
+                    }
+                    Err(_) => return Err(()),
                 }
 
                 // Record all the argument types, with the substitutions
