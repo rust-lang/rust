@@ -94,7 +94,7 @@ pub fn render(input: &str, mut output: PathBuf, matches: &getopts::Matches,
     let rendered = if include_toc {
         format!("{}", MarkdownWithToc(text))
     } else {
-        format!("{}", Markdown(text))
+        format!("{}", Markdown(text, false))
     };
 
     let err = write!(
