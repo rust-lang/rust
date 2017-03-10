@@ -83,6 +83,11 @@ impl Buf {
         self.inner.reserve_exact(additional)
     }
 
+    #[inline]
+    pub fn shrink_to_fit(&mut self) {
+        self.inner.shrink_to_fit()
+    }
+
     pub fn as_slice(&self) -> &Slice {
         unsafe { mem::transmute(&*self.inner) }
     }
