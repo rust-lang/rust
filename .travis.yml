@@ -129,6 +129,7 @@ after_failure:
       echo "#### Build failed; Disk usage after running script:";
       df -h;
       du . | sort -nr | head -n100
+  - cat obj/tmp/sccache.log
 
 # Save tagged docker images we created and load them if they're available
 before_cache:
