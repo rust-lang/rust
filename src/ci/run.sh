@@ -25,9 +25,6 @@ RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --disable-manage-submodules"
 # If we're deploying artifacts then we set the release channel, otherwise if
 # we're not deploying then we want to be sure to enable all assertions becauase
 # we'll be running tests
-#
-# FIXME: need a scheme for changing this `nightly` value to `beta` and `stable`
-#        either automatically or manually.
 if [ "$DEPLOY" != "" ]; then
   RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --release-channel=beta"
   RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-llvm-static-stdcpp"
