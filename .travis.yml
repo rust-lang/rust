@@ -44,6 +44,7 @@ matrix:
         RUST_CHECK_TARGET=check
         RUST_CONFIGURE_ARGS=--build=x86_64-apple-darwin
         SRC=.
+        RUSTC_RETRY_LINKER_ON_SEGFAULT=1
       os: osx
       osx_image: xcode8.2
       install: &osx_install_sccache >
@@ -53,6 +54,7 @@ matrix:
         RUST_CHECK_TARGET=check
         RUST_CONFIGURE_ARGS=--build=i686-apple-darwin
         SRC=.
+        RUSTC_RETRY_LINKER_ON_SEGFAULT=1
       os: osx
       osx_image: xcode8.2
       install: *osx_install_sccache
@@ -62,6 +64,7 @@ matrix:
         RUST_CONFIGURE_ARGS="--build=i686-apple-darwin --enable-extended"
         SRC=.
         DEPLOY=1
+        RUSTC_RETRY_LINKER_ON_SEGFAULT=1
       os: osx
       osx_image: xcode8.2
       install: >
@@ -74,6 +77,7 @@ matrix:
         RUST_CONFIGURE_ARGS="--target=aarch64-apple-ios,armv7-apple-ios,armv7s-apple-ios,i386-apple-ios,x86_64-apple-ios --enable-extended"
         SRC=.
         DEPLOY=1
+        RUSTC_RETRY_LINKER_ON_SEGFAULT=1
       os: osx
       osx_image: xcode8.2
       install: *osx_install_sccache
@@ -88,6 +92,7 @@ matrix:
         RUST_CONFIGURE_ARGS="--enable-extended"
         SRC=.
         DEPLOY_ALT=1
+        RUSTC_RETRY_LINKER_ON_SEGFAULT=1
       os: osx
       osx_image: xcode8.2
       install: *osx_install_sccache
