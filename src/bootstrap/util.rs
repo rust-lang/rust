@@ -20,6 +20,8 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::Instant;
 
+use filetime::{self, FileTime};
+
 /// Returns the `name` as the filename of a static library for `target`.
 pub fn staticlib(name: &str, target: &str) -> String {
     if target.contains("windows") {
@@ -38,12 +40,18 @@ pub fn copy(src: &Path, dst: &Path) {
 
     // Attempt to "easy copy" by creating a hard link (symlinks don't work on
     // windows), but if that fails just fall back to a slow `copy` operation.
-    let res = fs::hard_link(src, dst);
-    let res = res.or_else(|_| fs::copy(src, dst).map(|_| ()));
+    // let res = fs::hard_link(src, dst);
+    let res = fs::copy(src, dst);
     if let Err(e) = res {
         panic!("failed to copy `{}` to `{}`: {}", src.display(),
                dst.display(), e)
     }
+    let metadata = t!(src.metadata());
+    t!(fs::set_permissions(dst, metadata.permissions()));
+    let atime = FileTime::from_last_access_time(&metadata);
+    let mtime = FileTime::from_last_modification_time(&metadata);
+    t!(filetime::set_file_times(dst, atime, mtime));
+
 }
 
 /// Copies the `src` directory recursively to `dst`. Both are assumed to exist
