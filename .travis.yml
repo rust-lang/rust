@@ -82,7 +82,9 @@ env:
 
 script:
   - >
-      if [ "$TRAVIS_OS_NAME" = "osx" ]; then
+      if [ "$ALLOW_PR" = "" ] && [ "$TRAVIS_BRANCH" != "auto" ]; then
+          echo skipping, not a full build;
+      elif [ "$TRAVIS_OS_NAME" = "osx" ]; then
           travis_retry sh -c 'git submodule deinit -f . && git submodule update --init' &&
           src/ci/run.sh;
       else

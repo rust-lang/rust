@@ -130,6 +130,10 @@ cache:
   - "i686-pc-windows-msvc/llvm -> src/rustllvm/llvm-auto-clean-trigger"
   - "x86_64-pc-windows-msvc/llvm -> src/rustllvm/llvm-auto-clean-trigger"
 
+branches:
+  only:
+    - auto
+
 before_deploy:
   - ps: |
         New-Item -Path deploy -ItemType directory
