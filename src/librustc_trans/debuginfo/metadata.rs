@@ -35,7 +35,8 @@ use rustc_data_structures::ToHex;
 use {type_of, machine, monomorphize};
 use common::{self, CrateContext};
 use type_::Type;
-use rustc::ty::{self, AdtKind, Ty, layout};
+use rustc::ty::{self, AdtKind, Ty};
+use rustc::ty::layout::{self, LayoutTyper};
 use session::config;
 use util::nodemap::FxHashMap;
 use util::common::path2cstr;
@@ -900,7 +901,7 @@ impl<'tcx> StructMemberDescriptionFactory<'tcx> {
         let offsets = match *layout {
             layout::Univariant { ref variant, .. } => &variant.offsets,
             layout::Vector { element, count } => {
-                let element_size = element.size(&cx.tcx().data_layout).bytes();
+                let element_size = element.size(cx).bytes();
                 tmp = (0..count).
                   map(|i| layout::Size::from_bytes(i*element_size))
                   .collect::<Vec<layout::Size>>();

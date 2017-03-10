@@ -18,7 +18,8 @@ use rustc::hir::def_id::DefId;
 use rustc::infer::TransNormalize;
 use rustc::mir;
 use rustc::mir::tcx::LvalueTy;
-use rustc::ty::{self, layout, Ty, TyCtxt, TypeFoldable};
+use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
+use rustc::ty::layout::{self, LayoutTyper};
 use rustc::ty::cast::{CastTy, IntTy};
 use rustc::ty::subst::{Kind, Substs, Subst};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
@@ -979,7 +980,6 @@ fn trans_const<'a, 'tcx>(
     vals: &[ValueRef]
 ) -> ValueRef {
     let l = ccx.layout_of(t);
-    let dl = &ccx.tcx().data_layout;
     let variant_index = match *kind {
         mir::AggregateKind::Adt(_, index, _, _) => index,
         _ => 0,
@@ -1002,7 +1002,7 @@ fn trans_const<'a, 'tcx>(
             let mut vals_with_discr = vec![lldiscr];
             vals_with_discr.extend_from_slice(vals);
             let mut contents = build_const_struct(ccx, &variant, &vals_with_discr[..]);
-            let needed_padding = l.size(dl).bytes() - variant.stride().bytes();
+            let needed_padding = l.size(ccx).bytes() - variant.stride().bytes();
             if needed_padding > 0 {
                 contents.push(padding(ccx, needed_padding));
             }
