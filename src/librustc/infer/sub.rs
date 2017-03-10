@@ -12,8 +12,10 @@ use super::SubregionOrigin;
 use super::combine::CombineFields;
 use super::type_variable::{SubtypeOf, SupertypeOf};
 
+use traits::Obligation;
 use ty::{self, Ty, TyCtxt};
 use ty::TyVar;
+use ty::fold::TypeFoldable;
 use ty::relate::{Cause, Relate, RelateResult, TypeRelation};
 use std::mem;
 
@@ -79,10 +81,25 @@ impl<'combine, 'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx>
         let a = infcx.type_variables.borrow_mut().replace_if_possible(a);
         let b = infcx.type_variables.borrow_mut().replace_if_possible(b);
         match (&a.sty, &b.sty) {
-            (&ty::TyInfer(TyVar(a_id)), &ty::TyInfer(TyVar(b_id))) => {
-                infcx.type_variables
-                    .borrow_mut()
-                    .relate_vars(a_id, SubtypeOf, b_id);
+            (&ty::TyInfer(TyVar(_)), &ty::TyInfer(TyVar(_))) => {
+                // Shouldn't have any LBR here, so we can safely put
+                // this under a binder below without fear of accidental
+                // capture.
+                assert!(!a.has_escaping_regions());
+                assert!(!b.has_escaping_regions());
+
+                // can't make progress on `A <: B` if both A and B are
+                // type variables, so record an obligation.
+                self.fields.obligations.push(
+                    Obligation::new(
+                        self.fields.trace.cause.clone(),
+                        ty::Predicate::Subtype(
+                            ty::Binder(ty::SubtypePredicate {
+                                a_is_expected: self.a_is_expected,
+                                a,
+                                b,
+                            }))));
+
                 Ok(a)
             }
             (&ty::TyInfer(TyVar(a_id)), _) => {
