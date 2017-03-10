@@ -531,7 +531,7 @@ impl Session {
                     println!("optimization-fuel-exhausted: {}", msg());
                     self.out_of_fuel.set(true);
                 }
-                else {
+                else if fuel > 0{
                     self.optimization_fuel_limit.set(fuel-1);
                 }
             }
