@@ -13,6 +13,7 @@ use borrow::{Cow, Borrow};
 use cmp::Ordering;
 use error::Error;
 use fmt::{self, Write};
+use hash::{Hash, Hasher};
 use io;
 use libc;
 use mem;
@@ -66,14 +67,16 @@ use str::{self, Utf8Error};
 /// of `CString` instances can lead to invalid memory accesses, memory leaks,
 /// and other memory errors.
 
-#[derive(PartialEq, PartialOrd, Eq, Ord, Hash, Clone)]
+#[derive(Clone, Default)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct CString {
-    // Invariant 1: the slice ends with a zero byte and has a length of at least one.
+    // Invariant 1: the slice ends with a zero byte and has a length of at least one OR is empty.
     // Invariant 2: the slice contains only one zero byte.
-    // Improper usage of unsafe function can break Invariant 2, but not Invariant 1.
+    // Improper usage of unsafe methods can break Invariant 2, but not Invariant 1.
     inner: Box<[u8]>,
 }
+
+static NUL_TERMINATED_EMPTY: &[u8] = &[0];
 
 /// Representation of a borrowed C string.
 ///
@@ -242,9 +245,13 @@ impl CString {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub unsafe fn from_vec_unchecked(mut v: Vec<u8>) -> CString {
-        v.reserve_exact(1);
-        v.push(0);
-        CString { inner: v.into_boxed_slice() }
+        if v.is_empty() {
+            CString { inner: Default::default() }
+        } else {
+            v.reserve_exact(1);
+            v.push(0);
+            CString { inner: Some(v.into_boxed_slice()) }
+        }
     }
 
     /// Retakes ownership of a `CString` that was transferred to C.
@@ -259,9 +266,14 @@ impl CString {
     /// to undefined behavior or allocator corruption.
     #[stable(feature = "cstr_memory", since = "1.4.0")]
     pub unsafe fn from_raw(ptr: *mut c_char) -> CString {
-        let len = libc::strlen(ptr) + 1; // Including the NUL byte
-        let slice = slice::from_raw_parts(ptr, len as usize);
-        CString { inner: mem::transmute(slice) }
+        if ptr == NUL_TERMINATED_EMPTY.as_ptr() {
+            CString { inner: Default::default() }
+        } else {
+            let len = libc::strlen(ptr) + 1; // Including the NUL byte
+            let slice = slice::from_raw_parts(ptr, len as usize);
+            let boxed: Box<[u8]> = mem::transmute(slice);
+            CString { inner: boxed }
+        }
     }
 
     /// Transfers ownership of the string to a C caller.
@@ -274,7 +286,12 @@ impl CString {
     /// Failure to call `from_raw` will lead to a memory leak.
     #[stable(feature = "cstr_memory", since = "1.4.0")]
     pub fn into_raw(self) -> *mut c_char {
-        Box::into_raw(self.into_inner()) as *mut c_char
+        let bytes = self.into_inner();
+        if bytes.is_empty() {
+            NUL_TERMINATED_EMPTY.as_ptr() as *mut c_char
+        } else {
+            Box::into_raw(bytes) as *mut c_char
+        }
     }
 
     /// Converts the `CString` into a `String` if it contains valid Unicode data.
@@ -295,17 +312,22 @@ impl CString {
     /// it is guaranteed to not have any interior nul bytes.
     #[stable(feature = "cstring_into", since = "1.7.0")]
     pub fn into_bytes(self) -> Vec<u8> {
-        let mut vec = self.into_inner().into_vec();
-        let _nul = vec.pop();
-        debug_assert_eq!(_nul, Some(0u8));
-        vec
+        let bytes = self.into_inner();
+        if bytes.is_empty() {
+            bytes.into_vec()
+        } else {
+            let mut vec = bytes.into_vec();
+            let _nul = vec.pop();
+            debug_assert_eq!(_nul, Some(0u8));
+            vec
+        }
     }
 
     /// Equivalent to the `into_bytes` function except that the returned vector
     /// includes the trailing nul byte.
     #[stable(feature = "cstring_into", since = "1.7.0")]
     pub fn into_bytes_with_nul(self) -> Vec<u8> {
-        self.into_inner().into_vec()
+        self.into_inner_alloc().into_vec()
     }
 
     /// Returns the contents of this `CString` as a slice of bytes.
@@ -314,20 +336,27 @@ impl CString {
     /// it is guaranteed to not have any interior nul bytes.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn as_bytes(&self) -> &[u8] {
-        &self.inner[..self.inner.len() - 1]
+        let bytes = self.as_bytes_with_nul();
+        unsafe {
+            bytes.get_unchecked(..bytes.len() - 1)
+        }
     }
 
     /// Equivalent to the `as_bytes` function except that the returned slice
     /// includes the trailing nul byte.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn as_bytes_with_nul(&self) -> &[u8] {
-        &self.inner
+        if self.inner.is_empty() {
+            NUL_TERMINATED_EMPTY
+        } else {
+            &*self.inner
+        }
     }
 
     /// Converts this `CString` into a boxed `CStr`.
     #[unstable(feature = "into_boxed_c_str", issue = "40380")]
     pub fn into_boxed_c_str(self) -> Box<CStr> {
-        unsafe { mem::transmute(self.into_inner()) }
+        unsafe { mem::transmute(self.into_inner_alloc()) }
     }
 
     // Bypass "move out of struct which implements `Drop` trait" restriction.
@@ -338,6 +367,46 @@ impl CString {
             result
         }
     }
+
+    fn into_inner_alloc(self) {
+        let mut bytes = self.into_inner();
+        if bytes.is_empty() {
+            bytes.reserve_exact(1);
+            bytes.push(0);
+        }
+        bytes
+    }
+}
+
+#[stable(feature = "cstring_impl", since = "1.18.0")]
+impl PartialEq for CString {
+    fn eq(&self, rhs: &CString) -> bool {
+        self.to_bytes() == rhs.to_bytes()
+    }
+}
+
+#[stable(feature = "cstring_impl", since = "1.18.0")]
+impl Eq for CString {}
+
+#[stable(feature = "cstring_impl", since = "1.18.0")]
+impl PartialOrd for CString {
+    fn partial_cmp(&self, rhs: &CString) -> Option<Ordering> {
+        self.to_bytes().partial_cmp(rhs.to_bytes())
+    }
+}
+
+#[stable(feature = "cstring_impl", since = "1.18.0")]
+impl Ord for CString {
+    fn cmp(&self, rhs: &CString) -> Ordering {
+        self.to_bytes().cmp(rhs.to_bytes())
+    }
+}
+
+#[stable(feature = "cstring_impl", since = "1.18.0")]
+impl Hash for CString {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.to_bytes().hash(state)
+    }
 }
 
 // Turns this `CString` into an empty string to prevent
@@ -347,7 +416,7 @@ impl CString {
 impl Drop for CString {
     #[inline]
     fn drop(&mut self) {
-        unsafe { *self.inner.get_unchecked_mut(0) = 0; }
+        self.inner.first_mut().map(|b| b = 0)
     }
 }
 
@@ -390,15 +459,6 @@ impl<'a> Default for &'a CStr {
     fn default() -> &'a CStr {
         static SLICE: &'static [c_char] = &[0];
         unsafe { CStr::from_ptr(SLICE.as_ptr()) }
-    }
-}
-
-#[stable(feature = "cstr_default", since = "1.10.0")]
-impl Default for CString {
-    /// Creates an empty `CString`.
-    fn default() -> CString {
-        let a: &CStr = Default::default();
-        a.to_owned()
     }
 }
 
@@ -776,7 +836,11 @@ impl ToOwned for CStr {
     type Owned = CString;
 
     fn to_owned(&self) -> CString {
-        CString { inner: self.to_bytes_with_nul().into() }
+        if self.to_bytes().is_empty() {
+            CString { inner: None }
+        } else {
+            CString { inner: Some(self.to_bytes_with_nul().into()) }
+        }
     }
 }
 
