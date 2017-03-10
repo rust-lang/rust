@@ -1790,7 +1790,7 @@ impl ops::IndexMut<ops::RangeFrom<usize>> for String {
 impl ops::IndexMut<ops::RangeFull> for String {
     #[inline]
     fn index_mut(&mut self, _index: ops::RangeFull) -> &mut str {
-        unsafe { mem::transmute(&mut *self.vec) }
+        unsafe { str::from_utf8_unchecked_mut(&mut *self.vec) }
     }
 }
 #[unstable(feature = "inclusive_range", reason = "recently added, follows RFC", issue = "28237")]
@@ -1822,7 +1822,7 @@ impl ops::Deref for String {
 impl ops::DerefMut for String {
     #[inline]
     fn deref_mut(&mut self) -> &mut str {
-        unsafe { mem::transmute(&mut *self.vec) }
+        unsafe { str::from_utf8_unchecked_mut(&mut *self.vec) }
     }
 }
 

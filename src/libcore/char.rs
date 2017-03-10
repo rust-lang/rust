@@ -19,6 +19,7 @@ use char_private::is_printable;
 use convert::TryFrom;
 use fmt::{self, Write};
 use slice;
+use str::from_utf8_unchecked_mut;
 use iter::FusedIterator;
 use mem::transmute;
 
@@ -448,7 +449,7 @@ impl CharExt for char {
                     code,
                     dst.len())
             };
-            transmute(slice::from_raw_parts_mut(dst.as_mut_ptr(), len))
+            from_utf8_unchecked_mut(dst.get_unchecked_mut(..len))
         }
     }
 
