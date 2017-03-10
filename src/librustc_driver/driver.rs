@@ -1048,6 +1048,7 @@ pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         passes.push_pass(box mir::transform::simplify::SimplifyCfg::new("elaborate-drops"));
 
         // No lifetime analysis based on borrowing can be done from here on out.
+        passes.push_pass(box mir::transform::inline::Inline);
         passes.push_pass(box mir::transform::instcombine::InstCombine::new());
         passes.push_pass(box mir::transform::deaggregator::Deaggregator);
         passes.push_pass(box mir::transform::copy_prop::CopyPropagation);
