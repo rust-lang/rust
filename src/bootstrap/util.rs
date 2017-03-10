@@ -16,6 +16,7 @@
 use std::env;
 use std::ffi::OsString;
 use std::fs;
+use std::io;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::Instant;
@@ -181,5 +182,143 @@ impl Drop for TimeIt {
         println!("\tfinished in {}.{:03}",
                  time.as_secs(),
                  time.subsec_nanos() / 1_000_000);
+    }
+}
+
+/// Symlinks two directories, using junctions on Windows and normal symlinks on
+/// Unix.
+pub fn symlink_dir(src: &Path, dest: &Path) -> io::Result<()> {
+    let _ = fs::remove_dir(dest);
+    return symlink_dir_inner(src, dest);
+
+    #[cfg(not(windows))]
+    fn symlink_dir_inner(src: &Path, dest: &Path) -> io::Result<()> {
+        use std::os::unix::fs;
+        fs::symlink(src, dest)
+    }
+
+    // Creating a directory junction on windows involves dealing with reparse
+    // points and the DeviceIoControl function, and this code is a skeleton of
+    // what can be found here:
+    //
+    // http://www.flexhex.com/docs/articles/hard-links.phtml
+    //
+    // Copied from std
+    #[cfg(windows)]
+    #[allow(bad_style)]
+    fn symlink_dir_inner(target: &Path, junction: &Path) -> io::Result<()> {
+        use std::ptr;
+        use std::ffi::OsStr;
+        use std::os::windows::ffi::OsStrExt;
+
+        const MAXIMUM_REPARSE_DATA_BUFFER_SIZE: usize = 16 * 1024;
+        const GENERIC_WRITE: DWORD = 0x40000000;
+        const OPEN_EXISTING: DWORD = 3;
+        const FILE_FLAG_OPEN_REPARSE_POINT: DWORD = 0x00200000;
+        const FILE_FLAG_BACKUP_SEMANTICS: DWORD = 0x02000000;
+        const FSCTL_SET_REPARSE_POINT: DWORD = 0x900a4;
+        const IO_REPARSE_TAG_MOUNT_POINT: DWORD = 0xa0000003;
+        const FILE_SHARE_DELETE: DWORD = 0x4;
+        const FILE_SHARE_READ: DWORD = 0x1;
+        const FILE_SHARE_WRITE: DWORD = 0x2;
+
+        type BOOL = i32;
+        type DWORD = u32;
+        type HANDLE = *mut u8;
+        type LPCWSTR = *const u16;
+        type LPDWORD = *mut DWORD;
+        type LPOVERLAPPED = *mut u8;
+        type LPSECURITY_ATTRIBUTES = *mut u8;
+        type LPVOID = *mut u8;
+        type WCHAR = u16;
+        type WORD = u16;
+
+        #[repr(C)]
+        struct REPARSE_MOUNTPOINT_DATA_BUFFER {
+            ReparseTag: DWORD,
+            ReparseDataLength: DWORD,
+            Reserved: WORD,
+            ReparseTargetLength: WORD,
+            ReparseTargetMaximumLength: WORD,
+            Reserved1: WORD,
+            ReparseTarget: WCHAR,
+        }
+
+        extern "system" {
+            fn CreateFileW(lpFileName: LPCWSTR,
+                           dwDesiredAccess: DWORD,
+                           dwShareMode: DWORD,
+                           lpSecurityAttributes: LPSECURITY_ATTRIBUTES,
+                           dwCreationDisposition: DWORD,
+                           dwFlagsAndAttributes: DWORD,
+                           hTemplateFile: HANDLE)
+                           -> HANDLE;
+            fn DeviceIoControl(hDevice: HANDLE,
+                               dwIoControlCode: DWORD,
+                               lpInBuffer: LPVOID,
+                               nInBufferSize: DWORD,
+                               lpOutBuffer: LPVOID,
+                               nOutBufferSize: DWORD,
+                               lpBytesReturned: LPDWORD,
+                               lpOverlapped: LPOVERLAPPED) -> BOOL;
+        }
+
+        fn to_u16s<S: AsRef<OsStr>>(s: S) -> io::Result<Vec<u16>> {
+            Ok(s.as_ref().encode_wide().chain(Some(0)).collect())
+        }
+
+        // We're using low-level APIs to create the junction, and these are more
+        // picky about paths. For example, forward slashes cannot be used as a
+        // path separator, so we should try to canonicalize the path first.
+        let target = try!(fs::canonicalize(target));
+
+        try!(fs::create_dir(junction));
+
+        let path = try!(to_u16s(junction));
+
+        unsafe {
+            let h = CreateFileW(path.as_ptr(),
+                                GENERIC_WRITE,
+                                FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                                0 as *mut _,
+                                OPEN_EXISTING,
+                                FILE_FLAG_OPEN_REPARSE_POINT | FILE_FLAG_BACKUP_SEMANTICS,
+                                ptr::null_mut());
+
+            let mut data = [0u8; MAXIMUM_REPARSE_DATA_BUFFER_SIZE];
+            let mut db = data.as_mut_ptr()
+                            as *mut REPARSE_MOUNTPOINT_DATA_BUFFER;
+            let buf = &mut (*db).ReparseTarget as *mut _;
+            let mut i = 0;
+            // FIXME: this conversion is very hacky
+            let v = br"\??\";
+            let v = v.iter().map(|x| *x as u16);
+            for c in v.chain(target.as_os_str().encode_wide().skip(4)) {
+                *buf.offset(i) = c;
+                i += 1;
+            }
+            *buf.offset(i) = 0;
+            i += 1;
+            (*db).ReparseTag = IO_REPARSE_TAG_MOUNT_POINT;
+            (*db).ReparseTargetMaximumLength = (i * 2) as WORD;
+            (*db).ReparseTargetLength = ((i - 1) * 2) as WORD;
+            (*db).ReparseDataLength =
+                    (*db).ReparseTargetLength as DWORD + 12;
+
+            let mut ret = 0;
+            let res = DeviceIoControl(h as *mut _,
+                                      FSCTL_SET_REPARSE_POINT,
+                                      data.as_ptr() as *mut _,
+                                      (*db).ReparseDataLength + 8,
+                                      ptr::null_mut(), 0,
+                                      &mut ret,
+                                      ptr::null_mut());
+
+            if res == 0 {
+                Err(io::Error::last_os_error())
+            } else {
+                Ok(())
+            }
+        }
     }
 }
