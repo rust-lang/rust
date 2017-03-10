@@ -66,9 +66,7 @@ matrix:
       osx_image: xcode8.2
       install: >
         travis_retry curl -o /usr/local/bin/sccache https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-02-25-sccache-x86_64-apple-darwin &&
-          chmod +x /usr/local/bin/sccache &&
-          brew uninstall --ignore-dependencies openssl &&
-          brew install openssl --universal --without-test
+          chmod +x /usr/local/bin/sccache
     - env: >
         RUST_CHECK_TARGET=dist
         RUST_CONFIGURE_ARGS="--target=aarch64-apple-ios,armv7-apple-ios,armv7s-apple-ios,i386-apple-ios,x86_64-apple-ios --enable-extended"
