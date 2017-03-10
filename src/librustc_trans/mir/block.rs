@@ -178,7 +178,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     };
                     let llslot = match op.val {
                         Immediate(_) | Pair(..) => {
-                            let llscratch = bcx.alloca(ret.original_ty, "ret");
+                            let llscratch = bcx.alloca(ret.memory_ty(bcx.ccx), "ret");
                             self.store_operand(&bcx, llscratch, None, op);
                             llscratch
                         }
@@ -190,7 +190,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     };
                     let load = bcx.load(
                         bcx.pointercast(llslot, cast_ty.ptr_to()),
-                        Some(llalign_of_min(bcx.ccx, ret.ty)));
+                        Some(ret.layout.align(bcx.ccx).abi() as u32));
                     load
                 } else {
                     let op = self.trans_consume(&bcx, &mir::Lvalue::Local(mir::RETURN_POINTER));
@@ -516,7 +516,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                             (llargs[0], &llargs[1..])
                         }
                         ReturnDest::Nothing => {
-                            (C_undef(fn_ty.ret.original_ty.ptr_to()), &llargs[..])
+                            (C_undef(fn_ty.ret.memory_ty(bcx.ccx).ptr_to()), &llargs[..])
                         }
                         ReturnDest::IndirectOperand(dst, _) |
                         ReturnDest::Store(dst) => (dst, &llargs[..]),
@@ -535,7 +535,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                             val: Ref(dst, Alignment::AbiAligned),
                             ty: sig.output(),
                         };
-                        self.store_return(&bcx, ret_dest, fn_ty.ret, op);
+                        self.store_return(&bcx, ret_dest, &fn_ty.ret, op);
                     }
 
                     if let Some((_, target)) = *destination {
@@ -574,7 +574,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                             val: Immediate(invokeret),
                             ty: sig.output(),
                         };
-                        self.store_return(&ret_bcx, ret_dest, fn_ty.ret, op);
+                        self.store_return(&ret_bcx, ret_dest, &fn_ty.ret, op);
                     }
                 } else {
                     let llret = bcx.call(fn_ptr, &llargs, cleanup_bundle);
@@ -584,7 +584,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                             val: Immediate(llret),
                             ty: sig.output(),
                         };
-                        self.store_return(&bcx, ret_dest, fn_ty.ret, op);
+                        self.store_return(&bcx, ret_dest, &fn_ty.ret, op);
                         funclet_br(self, bcx, target);
                     } else {
                         bcx.unreachable();
@@ -598,7 +598,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                       bcx: &Builder<'a, 'tcx>,
                       op: OperandRef<'tcx>,
                       llargs: &mut Vec<ValueRef>,
-                      fn_ty: &FnType,
+                      fn_ty: &FnType<'tcx>,
                       next_idx: &mut usize,
                       llfn: &mut Option<ValueRef>,
                       def: &Option<ty::InstanceDef<'tcx>>) {
@@ -641,7 +641,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         let (mut llval, align, by_ref) = match op.val {
             Immediate(_) | Pair(..) => {
                 if arg.is_indirect() || arg.cast.is_some() {
-                    let llscratch = bcx.alloca(arg.original_ty, "arg");
+                    let llscratch = bcx.alloca(arg.memory_ty(bcx.ccx), "arg");
                     self.store_operand(bcx, llscratch, None, op);
                     (llscratch, Alignment::AbiAligned, true)
                 } else {
@@ -653,7 +653,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 // think that ATM (Rust 1.16) we only pass temporaries, but we shouldn't
                 // have scary latent bugs around.
 
-                let llscratch = bcx.alloca(arg.original_ty, "arg");
+                let llscratch = bcx.alloca(arg.memory_ty(bcx.ccx), "arg");
                 base::memcpy_ty(bcx, llscratch, llval, op.ty, Some(1));
                 (llscratch, Alignment::AbiAligned, true)
             }
@@ -662,13 +662,13 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
         if by_ref && !arg.is_indirect() {
             // Have to load the argument, maybe while casting it.
-            if arg.original_ty == Type::i1(bcx.ccx) {
+            if arg.layout.ty == bcx.tcx().types.bool {
                 // We store bools as i8 so we need to truncate to i1.
                 llval = bcx.load_range_assert(llval, 0, 2, llvm::False, None);
-                llval = bcx.trunc(llval, arg.original_ty);
+                llval = bcx.trunc(llval, Type::i1(bcx.ccx));
             } else if let Some(ty) = arg.cast {
                 llval = bcx.load(bcx.pointercast(llval, ty.ptr_to()),
-                                 align.min_with(llalign_of_min(bcx.ccx, arg.ty)));
+                                 align.min_with(arg.layout.align(bcx.ccx).abi() as u32));
             } else {
                 llval = bcx.load(llval, align.to_align());
             }
@@ -681,7 +681,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                                 bcx: &Builder<'a, 'tcx>,
                                 operand: &mir::Operand<'tcx>,
                                 llargs: &mut Vec<ValueRef>,
-                                fn_ty: &FnType,
+                                fn_ty: &FnType<'tcx>,
                                 next_idx: &mut usize,
                                 llfn: &mut Option<ValueRef>,
                                 def: &Option<ty::InstanceDef<'tcx>>) {
@@ -920,7 +920,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
     fn store_return(&mut self,
                     bcx: &Builder<'a, 'tcx>,
                     dest: ReturnDest,
-                    ret_ty: ArgType,
+                    ret_ty: &ArgType<'tcx>,
                     op: OperandRef<'tcx>) {
         use self::ReturnDest::*;
 

@@ -1853,12 +1853,14 @@ impl<'a, 'tcx> TyLayout<'tcx> {
             ty::TyInt(_) |
             ty::TyUint(_) |
             ty::TyFloat(_) |
-            ty::TyFnPtr(_) |
-            ty::TyNever |
-            ty::TyFnDef(..) |
-            ty::TyDynamic(..) => {
+            ty::TyFnPtr(_) => {
                 bug!("TyLayout::field_type({:?}): not applicable", self)
             }
+
+            // ZSTs.
+            ty::TyNever |
+            ty::TyFnDef(..) |
+            ty::TyDynamic(..) => 0,
 
             // Potentially-fat pointers.
             ty::TyRef(..) |
@@ -1883,14 +1885,13 @@ impl<'a, 'tcx> TyLayout<'tcx> {
 
             // ADTs.
             ty::TyAdt(def, _) => {
-                let v = if def.is_enum() {
-                    self.variant_index.expect("variant index required")
-                } else {
-                    assert_eq!(self.variant_index, None);
+                let v = self.variant_index.unwrap_or(0);
+                if def.variants.is_empty() {
+                    assert_eq!(v, 0);
                     0
-                };
-
-                def.variants[v].fields.len()
+                } else {
+                    def.variants[v].fields.len()
+                }
             }
 
             ty::TyProjection(_) | ty::TyAnon(..) | ty::TyParam(_) |
@@ -1961,14 +1962,7 @@ impl<'a, 'tcx> TyLayout<'tcx> {
 
             // ADTs.
             ty::TyAdt(def, substs) => {
-                let v = if def.is_enum() {
-                    self.variant_index.expect("variant index required")
-                } else {
-                    assert_eq!(self.variant_index, None);
-                    0
-                };
-
-                def.variants[v].fields[i].ty(tcx, substs)
+                def.variants[self.variant_index.unwrap_or(0)].fields[i].ty(tcx, substs)
             }
 
             ty::TyProjection(_) | ty::TyAnon(..) | ty::TyParam(_) |
