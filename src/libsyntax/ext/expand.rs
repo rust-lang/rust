@@ -464,8 +464,20 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 let attr_toks = stream_for_attr_args(&attr, &self.cx.parse_sess);
                 let item_toks = stream_for_item(&item, &self.cx.parse_sess);
 
+                let span = Span {
+                    expn_id: self.cx.codemap().record_expansion(ExpnInfo {
+                        call_site: attr.span,
+                        callee: NameAndSpan {
+                            format: MacroAttribute(name),
+                            span: None,
+                            allow_internal_unstable: false,
+                        },
+                    }),
+                    ..attr.span
+                };
+
                 let tok_result = mac.expand(self.cx, attr.span, attr_toks, item_toks);
-                self.parse_expansion(tok_result, kind, name, attr.span)
+                self.parse_expansion(tok_result, kind, name, span)
             }
             SyntaxExtension::ProcMacroDerive(..) | SyntaxExtension::BuiltinDerive(..) => {
                 self.cx.span_err(attr.span, &format!("`{}` is a derive mode", name));
