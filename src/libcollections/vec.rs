@@ -1403,6 +1403,38 @@ impl SpecFromElem for u8 {
     }
 }
 
+macro_rules! impl_spec_from_elem_int {
+    ($t: ty) => {
+        impl SpecFromElem for $t {
+            #[inline]
+            fn from_elem(elem: $t, n: usize) -> Vec<$t> {
+                if elem == 0 {
+                    return Vec {
+                        buf: RawVec::with_capacity_zeroed(n),
+                        len: n,
+                    }
+                }
+                let mut v = Vec::with_capacity(n);
+                v.extend_with_element(n, elem);
+                v
+            }
+        }
+    }
+}
+
+impl_spec_from_elem_int!(i8);
+impl_spec_from_elem_int!(i16);
+impl_spec_from_elem_int!(i32);
+impl_spec_from_elem_int!(i64);
+impl_spec_from_elem_int!(i128);
+impl_spec_from_elem_int!(isize);
+
+impl_spec_from_elem_int!(u16);
+impl_spec_from_elem_int!(u32);
+impl_spec_from_elem_int!(u64);
+impl_spec_from_elem_int!(u128);
+impl_spec_from_elem_int!(usize);
+
 ////////////////////////////////////////////////////////////////////////////////
 // Common trait implementations for Vec
 ////////////////////////////////////////////////////////////////////////////////
