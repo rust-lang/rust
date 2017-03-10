@@ -268,10 +268,17 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 bcx.store(base::from_immediate(bcx, s), lldest, align);
             }
             OperandValue::Pair(a, b) => {
+                let f_align = match *bcx.ccx.layout_of(operand.ty) {
+                    Layout::Univariant { ref variant, .. } if variant.packed => {
+                        Some(1)
+                    }
+                    _ => align
+                };
+
                 let a = base::from_immediate(bcx, a);
                 let b = base::from_immediate(bcx, b);
-                bcx.store(a, bcx.struct_gep(lldest, 0), align);
-                bcx.store(b, bcx.struct_gep(lldest, 1), align);
+                bcx.store(a, bcx.struct_gep(lldest, 0), f_align);
+                bcx.store(b, bcx.struct_gep(lldest, 1), f_align);
             }
         }
     }
