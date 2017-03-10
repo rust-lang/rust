@@ -59,6 +59,7 @@ pub struct Config {
     pub llvm_static_stdcpp: bool,
     pub llvm_link_shared: bool,
     pub llvm_targets: Option<String>,
+    pub llvm_link_jobs: Option<u32>,
 
     // rust codegen options
     pub rust_optimize: bool,
@@ -179,6 +180,7 @@ struct Llvm {
     version_check: Option<bool>,
     static_libstdcpp: Option<bool>,
     targets: Option<String>,
+    link_jobs: Option<u32>,
 }
 
 #[derive(RustcDecodable, Default, Clone)]
@@ -333,6 +335,7 @@ impl Config {
             set(&mut config.llvm_version_check, llvm.version_check);
             set(&mut config.llvm_static_stdcpp, llvm.static_libstdcpp);
             config.llvm_targets = llvm.targets.clone();
+            config.llvm_link_jobs = llvm.link_jobs;
         }
 
         if let Some(ref rust) = toml.rust {
