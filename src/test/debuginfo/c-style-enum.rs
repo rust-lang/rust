@@ -15,31 +15,38 @@
 
 // === GDB TESTS ===================================================================================
 
-// gdb-command:print 'c_style_enum::SINGLE_VARIANT'
+// gdbg-command:print 'c_style_enum::SINGLE_VARIANT'
+// gdbr-command:print c_style_enum::SINGLE_VARIANT
 // gdbg-check:$1 = TheOnlyVariant
 // gdbr-check:$1 = c_style_enum::SingleVariant::TheOnlyVariant
 
-// gdb-command:print 'c_style_enum::AUTO_ONE'
+// gdbg-command:print 'c_style_enum::AUTO_ONE'
+// gdbr-command:print c_style_enum::AUTO_ONE
 // gdbg-check:$2 = One
 // gdbr-check:$2 = c_style_enum::AutoDiscriminant::One
 
-// gdb-command:print 'c_style_enum::AUTO_TWO'
+// gdbg-command:print 'c_style_enum::AUTO_TWO'
+// gdbr-command:print c_style_enum::AUTO_TWO
 // gdbg-check:$3 = One
 // gdbr-check:$3 = c_style_enum::AutoDiscriminant::One
 
-// gdb-command:print 'c_style_enum::AUTO_THREE'
+// gdbg-command:print 'c_style_enum::AUTO_THREE'
+// gdbr-command:print c_style_enum::AUTO_THREE
 // gdbg-check:$4 = One
 // gdbr-check:$4 = c_style_enum::AutoDiscriminant::One
 
-// gdb-command:print 'c_style_enum::MANUAL_ONE'
+// gdbg-command:print 'c_style_enum::MANUAL_ONE'
+// gdbr-command:print c_style_enum::MANUAL_ONE
 // gdbg-check:$5 = OneHundred
 // gdbr-check:$5 = c_style_enum::ManualDiscriminant::OneHundred
 
-// gdb-command:print 'c_style_enum::MANUAL_TWO'
+// gdbg-command:print 'c_style_enum::MANUAL_TWO'
+// gdbr-command:print c_style_enum::MANUAL_TWO
 // gdbg-check:$6 = OneHundred
 // gdbr-check:$6 = c_style_enum::ManualDiscriminant::OneHundred
 
-// gdb-command:print 'c_style_enum::MANUAL_THREE'
+// gdbg-command:print 'c_style_enum::MANUAL_THREE'
+// gdbr-command:print c_style_enum::MANUAL_THREE
 // gdbg-check:$7 = OneHundred
 // gdbr-check:$7 = c_style_enum::ManualDiscriminant::OneHundred
 
