@@ -53,7 +53,7 @@ pub struct MirContext<'a, 'tcx:'a> {
 
     ccx: &'a CrateContext<'a, 'tcx>,
 
-    fn_ty: FnType,
+    fn_ty: FnType<'tcx>,
 
     /// When unwinding is initiated, we have to store this personality
     /// value somewhere so that we can load it and re-use it in the
@@ -455,6 +455,23 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                 assert_eq!((meta.cast, meta.pad), (None, None));
                 let llmeta = llvm::get_param(bcx.llfn(), llarg_idx as c_uint);
                 llarg_idx += 1;
+
+                // FIXME(eddyb) As we can't perfectly represent the data and/or
+                // vtable pointer in a fat pointers in Rust's typesystem, and
+                // because we split fat pointers into two ArgType's, they're
+                // not the right type so we have to cast them for now.
+                let pointee = match arg_ty.sty {
+                    ty::TyRef(_, ty::TypeAndMut{ty, ..}) |
+                    ty::TyRawPtr(ty::TypeAndMut{ty, ..}) => ty,
+                    ty::TyAdt(def, _) if def.is_box() => arg_ty.boxed_ty(),
+                    _ => bug!()
+                };
+                let data_llty = type_of::in_memory_type_of(bcx.ccx, pointee);
+                let meta_llty = type_of::unsized_info_ty(bcx.ccx, pointee);
+
+                let llarg = bcx.pointercast(llarg, data_llty.ptr_to());
+                let llmeta = bcx.pointercast(llmeta, meta_llty);
+
                 OperandValue::Pair(llarg, llmeta)
             } else {
                 OperandValue::Immediate(llarg)
