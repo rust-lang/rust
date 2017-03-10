@@ -28,7 +28,7 @@ The constraints are always of one of three possible forms:
   a subregion of Rj
 - `ConstrainRegSubVar(R, Ri)` states that the concrete region R (which
   must not be a variable) must be a subregion of the variable Ri
-- `ConstrainVarSubReg(Ri, R)` states the variable Ri shoudl be less
+- `ConstrainVarSubReg(Ri, R)` states the variable Ri should be less
   than the concrete region R. This is kind of deprecated and ought to
   be replaced with a verify (they essentially play the same role).
 
@@ -37,7 +37,7 @@ In addition to constraints, we also gather up a set of "verifys"
 friend!). These represent relations that must hold but which don't
 influence inference proper. These take the form of:
 
-- `VerifyRegSubReg(Ri, Rj)` indicates that Ri <= Rj must hold,
+- `VerifyRegSubReg(Ri, Rj)` indicates that `Ri <= Rj` must hold,
   where Rj is not an inference variable (and Ri may or may not contain
   one). This doesn't influence inference because we will already have
   inferred Ri to be as small as possible, so then we just test whether
