@@ -795,7 +795,8 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
                                                              where_density,
                                                              "{",
                                                              !has_body,
-                                                             trait_bound_str.is_empty() && last_line_width(&generics_str) == 1,
+                                                             trait_bound_str.is_empty() &&
+                                                             last_line_width(&generics_str) == 1,
                                                              None));
         // If the where clause cannot fit on the same line,
         // put the where clause on a new line
@@ -1020,7 +1021,8 @@ fn format_tuple_struct(context: &RewriteContext,
             result.push('(');
             (ListTactic::HorizontalVertical, offset.block_only() + result.len())
         }
-        FnArgLayoutStyle::Block | FnArgLayoutStyle::BlockAlways => {
+        FnArgLayoutStyle::Block |
+        FnArgLayoutStyle::BlockAlways => {
             let indent = offset.block_only().block_indent(&context.config);
             result.push_str("(\n");
             result.push_str(&indent.to_string(&context.config));
@@ -1065,7 +1067,8 @@ fn format_tuple_struct(context: &RewriteContext,
         FnArgLayoutStyle::Visual => {
             result.push(')');
         }
-        FnArgLayoutStyle::Block | FnArgLayoutStyle::BlockAlways => {
+        FnArgLayoutStyle::Block |
+        FnArgLayoutStyle::BlockAlways => {
             result.push('\n');
             result.push_str(&offset.block_only().to_string(&context.config));
             result.push(')');
@@ -1561,10 +1564,11 @@ fn rewrite_fn_base(context: &RewriteContext,
     let multi_line_arg_str = arg_str.contains('\n');
 
     let put_args_in_block = (match context.config.fn_args_layout {
-        FnArgLayoutStyle::Block => multi_line_arg_str,
-        FnArgLayoutStyle::BlockAlways => true,
-        _ => false,
-    } || generics_str.contains('\n') )&& !fd.inputs.is_empty();
+                                 FnArgLayoutStyle::Block => multi_line_arg_str,
+                                 FnArgLayoutStyle::BlockAlways => true,
+                                 _ => false,
+                             } || generics_str.contains('\n')) &&
+                            !fd.inputs.is_empty();
 
     if put_args_in_block {
         arg_indent = indent.block_indent(context.config);
@@ -1946,8 +1950,12 @@ fn rewrite_generics(context: &RewriteContext,
     let list_str =
         try_opt!(format_item_list(items, Shape::legacy(h_budget, offset), context.config));
 
-    let result = if context.config.generics_indent != BlockIndentStyle::Visual && list_str.contains('\n') {
-        format!("<\n{}{}\n{}>", offset.to_string(context.config), list_str, shape.indent.to_string(context.config))
+    let result = if context.config.generics_indent != BlockIndentStyle::Visual &&
+                    list_str.contains('\n') {
+        format!("<\n{}{}\n{}>",
+                offset.to_string(context.config),
+                list_str,
+                shape.indent.to_string(context.config))
     } else if context.config.spaces_within_angle_brackets {
         format!("< {} >", list_str)
     } else {
@@ -2165,18 +2173,20 @@ fn format_generics(context: &RewriteContext,
 
     if !generics.where_clause.predicates.is_empty() || result.contains('\n') {
         let budget = try_opt!(context.config.max_width.checked_sub(last_line_width(&result)));
-        let where_clause_str = try_opt!(rewrite_where_clause(context,
-                                                             &generics.where_clause,
-                                                             brace_style,
-                                                             Shape::legacy(budget,
-                                                                           offset.block_only()),
-                                                             Density::Tall,
-                                                             terminator,
-                                                             false,
-                                                             trimmed_last_line_width(&result) == 1,
-                                                             Some(span.hi)));
+        let where_clause_str =
+            try_opt!(rewrite_where_clause(context,
+                                          &generics.where_clause,
+                                          brace_style,
+                                          Shape::legacy(budget, offset.block_only()),
+                                          Density::Tall,
+                                          terminator,
+                                          false,
+                                          trimmed_last_line_width(&result) == 1,
+                                          Some(span.hi)));
         result.push_str(&where_clause_str);
-        let same_line_brace = force_same_line_brace || (generics.where_clause.predicates.is_empty() && trimmed_last_line_width(&result) == 1);
+        let same_line_brace = force_same_line_brace ||
+                              (generics.where_clause.predicates.is_empty() &&
+                               trimmed_last_line_width(&result) == 1);
         if !same_line_brace &&
            (brace_style == BraceStyle::SameLineWhere || brace_style == BraceStyle::AlwaysNextLine) {
             result.push('\n');
@@ -2186,7 +2196,8 @@ fn format_generics(context: &RewriteContext,
         }
         result.push_str(opener);
     } else {
-        if force_same_line_brace || trimmed_last_line_width(&result) == 1 || brace_style != BraceStyle::AlwaysNextLine {
+        if force_same_line_brace || trimmed_last_line_width(&result) == 1 ||
+           brace_style != BraceStyle::AlwaysNextLine {
             result.push(' ');
         } else {
             result.push('\n');
