@@ -617,13 +617,17 @@ mod tests {
         Span {lo: BytePos(a), hi: BytePos(b), expn_id: NO_EXPANSION}
     }
 
+    fn str2seg(s: &str, lo: u32, hi: u32) -> ast::PathSegment {
+        ast::PathSegment::from_ident(Ident::from_str(s), sp(lo, hi))
+    }
+
     #[test] fn path_exprs_1() {
         assert!(string_to_expr("a".to_string()) ==
                    P(ast::Expr{
                     id: ast::DUMMY_NODE_ID,
                     node: ast::ExprKind::Path(None, ast::Path {
                         span: sp(0, 1),
-                        segments: vec![Ident::from_str("a").into()],
+                        segments: vec![str2seg("a", 0, 1)],
                     }),
                     span: sp(0, 1),
                     attrs: ThinVec::new(),
@@ -637,8 +641,8 @@ mod tests {
                     node: ast::ExprKind::Path(None, ast::Path {
                         span: sp(0, 6),
                         segments: vec![ast::PathSegment::crate_root(),
-                                       Ident::from_str("a").into(),
-                                       Ident::from_str("b").into()]
+                                       str2seg("a", 2, 3),
+                                       str2seg("b", 5, 6)]
                     }),
                     span: sp(0, 6),
                     attrs: ThinVec::new(),
@@ -744,7 +748,7 @@ mod tests {
                         id: ast::DUMMY_NODE_ID,
                         node:ast::ExprKind::Path(None, ast::Path{
                             span: sp(7, 8),
-                            segments: vec![Ident::from_str("d").into()],
+                            segments: vec![str2seg("d", 7, 8)],
                         }),
                         span:sp(7,8),
                         attrs: ThinVec::new(),
@@ -761,7 +765,7 @@ mod tests {
                            id: ast::DUMMY_NODE_ID,
                            node: ast::ExprKind::Path(None, ast::Path {
                                span:sp(0,1),
-                               segments: vec![Ident::from_str("b").into()],
+                               segments: vec![str2seg("b", 0, 1)],
                             }),
                            span: sp(0,1),
                            attrs: ThinVec::new()})),
@@ -802,7 +806,7 @@ mod tests {
                                     ty: P(ast::Ty{id: ast::DUMMY_NODE_ID,
                                                   node: ast::TyKind::Path(None, ast::Path{
                                         span:sp(10,13),
-                                        segments: vec![Ident::from_str("i32").into()],
+                                        segments: vec![str2seg("i32", 10, 13)],
                                         }),
                                         span:sp(10,13)
                                     }),
@@ -844,7 +848,7 @@ mod tests {
                                                 node: ast::ExprKind::Path(None,
                                                       ast::Path{
                                                         span:sp(17,18),
-                                                        segments: vec![Ident::from_str("b").into()],
+                                                        segments: vec![str2seg("b", 17, 18)],
                                                       }),
                                                 span: sp(17,18),
                                                 attrs: ThinVec::new()})),
