@@ -512,7 +512,12 @@ impl Arc<str> {
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
-None
++ Should a special version of [`make_mut`][make_mut] be added for `Rc<[T]>`? This could look like:
+```rust
+impl<T> Rc<[T]> where T: Clone {
+    fn make_mut_slice(this: &mut Rc<[T]>) -> &mut [T]
+}
+```
 
 <!-- references -->
 [Box]: https://doc.rust-lang.org/alloc/boxed/struct.Box.html
@@ -538,4 +543,6 @@ None
 [XML]: https://en.wikipedia.org/wiki/XML
 [namespace]: https://www.w3.org/TR/xml-names11/
 [associated functions]: https://doc.rust-lang.org/book/method-syntax.html#associated-functions
+[make_mut]: https://doc.rust-lang.org/stable/std/rc/struct.Rc.html#method.make_mut
+
 <!-- references -->
