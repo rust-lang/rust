@@ -37,7 +37,6 @@ use syntax::ast::{Mutability, StmtKind, TraitItem, TraitItemKind};
 use syntax::ast::{Variant, ViewPathGlob, ViewPathList, ViewPathSimple};
 use syntax::ext::base::SyntaxExtension;
 use syntax::ext::base::Determinacy::Undetermined;
-use syntax::ext::expand::mark_tts;
 use syntax::ext::hygiene::Mark;
 use syntax::ext::tt::macro_rules;
 use syntax::parse::token;
@@ -373,7 +372,7 @@ impl<'a> Resolver<'a> {
                 self.define(parent, ident, TypeNS, (module, vis, sp, expansion));
                 self.current_module = module;
             }
-            ItemKind::Mac(_) => panic!("unexpanded macro in resolve!"),
+            ItemKind::MacroDef(..) | ItemKind::Mac(_) => unreachable!(),
         }
     }
 
@@ -493,6 +492,16 @@ impl<'a> Resolver<'a> {
         })
     }
 
+    pub fn macro_def_scope(&mut self, expansion: Mark) -> Module<'a> {
+        let def_id = self.macro_defs[&expansion];
+        if let Some(id) = self.definitions.as_local_node_id(def_id) {
+            self.local_macro_def_scopes[&id]
+        } else {
+            let module_def_id = ty::DefIdTree::parent(&*self, def_id).unwrap();
+            self.get_extern_crate_root(module_def_id.krate)
+        }
+    }
+
     pub fn get_macro(&mut self, def: Def) -> Rc<SyntaxExtension> {
         let def_id = match def {
             Def::Macro(def_id, ..) => def_id,
@@ -502,22 +511,12 @@ impl<'a> Resolver<'a> {
             return ext.clone();
         }
 
-        let mut macro_rules = match self.session.cstore.load_macro(def_id, &self.session) {
-            LoadedMacro::MacroRules(macro_rules) => macro_rules,
+        let macro_def = match self.session.cstore.load_macro(def_id, &self.session) {
+            LoadedMacro::MacroDef(macro_def) => macro_def,
             LoadedMacro::ProcMacro(ext) => return ext,
         };
 
-        let mark = Mark::fresh();
-        let invocation = self.arenas.alloc_invocation_data(InvocationData {
-            module: Cell::new(self.get_extern_crate_root(def_id.krate)),
-            def_index: CRATE_DEF_INDEX,
-            const_expr: false,
-            legacy_scope: Cell::new(LegacyScope::Empty),
-            expansion: Cell::new(LegacyScope::Empty),
-        });
-        self.invocations.insert(mark, invocation);
-        macro_rules.body = mark_tts(macro_rules.stream(), mark).into();
-        let ext = Rc::new(macro_rules::compile(&self.session.parse_sess, &macro_rules));
+        let ext = Rc::new(macro_rules::compile(&self.session.parse_sess, &macro_def));
         self.macro_map.insert(def_id, ext.clone());
         ext
     }
@@ -707,12 +706,12 @@ impl<'a, 'b> Visitor<'a> for BuildReducedGraphVisitor<'a, 'b> {
 
     fn visit_item(&mut self, item: &'a Item) {
         let macro_use = match item.node {
-            ItemKind::Mac(ref mac) => {
-                if mac.node.path.segments.is_empty() {
-                    self.legacy_scope = LegacyScope::Expansion(self.visit_invoc(item.id));
-                } else {
-                    self.resolver.define_macro(item, &mut self.legacy_scope);
-                }
+            ItemKind::MacroDef(..) => {
+                self.resolver.define_macro(item, &mut self.legacy_scope);
+                return
+            }
+            ItemKind::Mac(..) => {
+                self.legacy_scope = LegacyScope::Expansion(self.visit_invoc(item.id));
                 return
             }
             ItemKind::Mod(..) => self.resolver.contains_macro_use(&item.attrs),

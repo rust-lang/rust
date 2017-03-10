@@ -779,8 +779,8 @@ enum RibKind<'a> {
     // We passed through a module.
     ModuleRibKind(Module<'a>),
 
-    // We passed through a `macro_rules!` statement with the given expansion
-    MacroDefinition(Mark),
+    // We passed through a `macro_rules!` statement
+    MacroDefinition(DefId),
 
     // All bindings in this rib are type parameters that can't be used
     // from the default of a type parameter because they're not declared
@@ -997,12 +997,16 @@ impl<'a> NameBinding<'a> {
         }
     }
 
-    fn get_macro(&self, resolver: &mut Resolver<'a>) -> Rc<SyntaxExtension> {
+    fn def_ignoring_ambiguity(&self) -> Def {
         match self.kind {
-            NameBindingKind::Import { binding, .. } => binding.get_macro(resolver),
-            NameBindingKind::Ambiguity { b1, .. } => b1.get_macro(resolver),
-            _ => resolver.get_macro(self.def()),
+            NameBindingKind::Import { binding, .. } => binding.def_ignoring_ambiguity(),
+            NameBindingKind::Ambiguity { b1, .. } => b1.def_ignoring_ambiguity(),
+            _ => self.def(),
         }
+    }
+
+    fn get_macro(&self, resolver: &mut Resolver<'a>) -> Rc<SyntaxExtension> {
+        resolver.get_macro(self.def_ignoring_ambiguity())
     }
 
     // We sometimes need to treat variants as `pub` for backwards compatibility
@@ -1092,10 +1096,6 @@ pub struct Resolver<'a> {
 
     pub definitions: Definitions,
 
-    // Maps the node id of a statement to the expansions of the `macro_rules!`s
-    // immediately above the statement (if appropriate).
-    macros_at_scope: FxHashMap<NodeId, Vec<Mark>>,
-
     graph_root: Module<'a>,
 
     prelude: Option<Module<'a>>,
@@ -1171,12 +1171,13 @@ pub struct Resolver<'a> {
     dummy_binding: &'a NameBinding<'a>,
     use_extern_macros: bool, // true if `#![feature(use_extern_macros)]`
 
-    pub exported_macros: Vec<ast::MacroDef>,
     crate_loader: &'a mut CrateLoader,
     macro_names: FxHashSet<Name>,
     builtin_macros: FxHashMap<Name, &'a NameBinding<'a>>,
     lexical_macro_resolutions: Vec<(Name, &'a Cell<LegacyScope<'a>>)>,
     macro_map: FxHashMap<DefId, Rc<SyntaxExtension>>,
+    macro_defs: FxHashMap<Mark, DefId>,
+    local_macro_def_scopes: FxHashMap<NodeId, Module<'a>>,
     macro_exports: Vec<Export>,
     pub whitelisted_legacy_custom_derives: Vec<Name>,
     pub found_unresolved_macro: bool,
@@ -1305,11 +1306,13 @@ impl<'a> Resolver<'a> {
 
         let features = session.features.borrow();
 
+        let mut macro_defs = FxHashMap();
+        macro_defs.insert(Mark::root(), root_def_id);
+
         Resolver {
             session: session,
 
             definitions: definitions,
-            macros_at_scope: FxHashMap(),
 
             // The outermost module has def ID 0; this is not reflected in the
             // AST.
@@ -1365,7 +1368,6 @@ impl<'a> Resolver<'a> {
             // `#![feature(proc_macro)]` implies `#[feature(extern_macros)]`
             use_extern_macros: features.use_extern_macros || features.proc_macro,
 
-            exported_macros: Vec::new(),
             crate_loader: crate_loader,
             macro_names: FxHashSet(),
             builtin_macros: FxHashMap(),
@@ -1373,6 +1375,8 @@ impl<'a> Resolver<'a> {
             macro_map: FxHashMap(),
             macro_exports: Vec::new(),
             invocations: invocations,
+            macro_defs: macro_defs,
+            local_macro_def_scopes: FxHashMap(),
             name_already_seen: FxHashMap(),
             whitelisted_legacy_custom_derives: Vec::new(),
             proc_macro_enabled: features.proc_macro,
@@ -1510,12 +1514,12 @@ impl<'a> Resolver<'a> {
                 }
             }
 
-            if let MacroDefinition(mac) = self.ribs[ns][i].kind {
+            if let MacroDefinition(def) = self.ribs[ns][i].kind {
                 // If an invocation of this macro created `ident`, give up on `ident`
                 // and switch to `ident`'s source from the macro definition.
-                let (source_ctxt, source_macro) = ident.ctxt.source();
-                if source_macro == mac {
-                    ident.ctxt = source_ctxt;
+                let ctxt_data = ident.ctxt.data();
+                if def == self.macro_defs[&ctxt_data.outer_mark] {
+                    ident.ctxt = ctxt_data.prev_ctxt;
                 }
             }
         }
@@ -1523,11 +1527,12 @@ impl<'a> Resolver<'a> {
         None
     }
 
-    fn resolve_crate_var(&mut self, mut crate_var_ctxt: SyntaxContext) -> Module<'a> {
-        while crate_var_ctxt.source().0 != SyntaxContext::empty() {
-            crate_var_ctxt = crate_var_ctxt.source().0;
+    fn resolve_crate_var(&mut self, crate_var_ctxt: SyntaxContext) -> Module<'a> {
+        let mut ctxt_data = crate_var_ctxt.data();
+        while ctxt_data.prev_ctxt != SyntaxContext::empty() {
+            ctxt_data = ctxt_data.prev_ctxt.data();
         }
-        let module = self.invocations[&crate_var_ctxt.source().1].module.get();
+        let module = self.macro_def_scope(ctxt_data.outer_mark);
         if module.is_local() { self.graph_root } else { module }
     }
 
@@ -1579,12 +1584,12 @@ impl<'a> Resolver<'a> {
                 NormalRibKind => {
                     // Continue
                 }
-                MacroDefinition(mac) => {
+                MacroDefinition(def) => {
                     // If an invocation of this macro created `ident`, give up on `ident`
                     // and switch to `ident`'s source from the macro definition.
-                    let (source_ctxt, source_macro) = ident.ctxt.source();
-                    if source_macro == mac {
-                        ident.ctxt = source_ctxt;
+                    let ctxt_data = ident.ctxt.data();
+                    if def == self.macro_defs[&ctxt_data.outer_mark] {
+                        ident.ctxt = ctxt_data.prev_ctxt;
                     }
                 }
                 _ => {
@@ -1696,7 +1701,7 @@ impl<'a> Resolver<'a> {
                 }
             }
 
-            ItemKind::ExternCrate(_) => {
+            ItemKind::ExternCrate(_) | ItemKind::MacroDef(..) => {
                 // do nothing, these are just around to be encoded
             }
 
@@ -2031,11 +2036,12 @@ impl<'a> Resolver<'a> {
 
         // Descend into the block.
         for stmt in &block.stmts {
-            if let Some(marks) = self.macros_at_scope.remove(&stmt.id) {
-                num_macro_definition_ribs += marks.len() as u32;
-                for mark in marks {
-                    self.ribs[ValueNS].push(Rib::new(MacroDefinition(mark)));
-                    self.label_ribs.push(Rib::new(MacroDefinition(mark)));
+            if let ast::StmtKind::Item(ref item) = stmt.node {
+                if let ast::ItemKind::MacroDef(..) = item.node {
+                    num_macro_definition_ribs += 1;
+                    let def = self.definitions.local_def_id(item.id);
+                    self.ribs[ValueNS].push(Rib::new(MacroDefinition(def)));
+                    self.label_ribs.push(Rib::new(MacroDefinition(def)));
                 }
             }
 

@@ -154,7 +154,7 @@ impl ExpansionKind {
 pub struct Invocation {
     pub kind: InvocationKind,
     expansion_kind: ExpansionKind,
-    expansion_data: ExpansionData,
+    pub expansion_data: ExpansionData,
 }
 
 pub enum InvocationKind {
@@ -251,7 +251,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
             let scope =
                 if self.monotonic { invoc.expansion_data.mark } else { orig_expansion_data.mark };
-            let ext = match self.resolve_invoc(&mut invoc, scope, force) {
+            let ext = match self.cx.resolver.resolve_invoc(&mut invoc, scope, force) {
                 Ok(ext) => Some(ext),
                 Err(Determinacy::Determined) => None,
                 Err(Determinacy::Undetermined) => {
@@ -364,64 +364,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         result
     }
 
-    fn resolve_invoc(&mut self, invoc: &mut Invocation, scope: Mark, force: bool)
-                     -> Result<Option<Rc<SyntaxExtension>>, Determinacy> {
-        let (attr, traits, item) = match invoc.kind {
-            InvocationKind::Bang { ref mac, .. } => {
-                return self.cx.resolver.resolve_macro(scope, &mac.node.path,
-                                                      MacroKind::Bang, force).map(Some);
-            }
-            InvocationKind::Attr { attr: None, .. } => return Ok(None),
-            InvocationKind::Derive { name, span, .. } => {
-                let path = ast::Path::from_ident(span, Ident::with_empty_ctxt(name));
-                return self.cx.resolver.resolve_macro(scope, &path,
-                                                      MacroKind::Derive, force).map(Some)
-            }
-            InvocationKind::Attr { ref mut attr, ref traits, ref mut item } => (attr, traits, item),
-        };
-
-        let (attr_name, path) = {
-            let attr = attr.as_ref().unwrap();
-            (attr.name(), ast::Path::from_ident(attr.span, Ident::with_empty_ctxt(attr.name())))
-        };
-
-        let mut determined = true;
-        match self.cx.resolver.resolve_macro(scope, &path, MacroKind::Attr, force) {
-            Ok(ext) => return Ok(Some(ext)),
-            Err(Determinacy::Undetermined) => determined = false,
-            Err(Determinacy::Determined) if force => return Err(Determinacy::Determined),
-            _ => {}
-        }
-
-        for &(name, span) in traits {
-            let path = ast::Path::from_ident(span, Ident::with_empty_ctxt(name));
-            match self.cx.resolver.resolve_macro(scope, &path, MacroKind::Derive, force) {
-                Ok(ext) => if let SyntaxExtension::ProcMacroDerive(_, ref inert_attrs) = *ext {
-                    if inert_attrs.contains(&attr_name) {
-                        // FIXME(jseyfried) Avoid `mem::replace` here.
-                        let dummy_item = placeholder(ExpansionKind::Items, ast::DUMMY_NODE_ID)
-                            .make_items().pop().unwrap();
-                        *item = mem::replace(item, Annotatable::Item(dummy_item))
-                            .map_attrs(|mut attrs| {
-                                let inert_attr = attr.take().unwrap();
-                                attr::mark_known(&inert_attr);
-                                if self.cx.ecfg.proc_macro_enabled() {
-                                    *attr = find_attr_invoc(&mut attrs);
-                                }
-                                attrs.push(inert_attr);
-                                attrs
-                            });
-                    }
-                    return Err(Determinacy::Undetermined);
-                },
-                Err(Determinacy::Undetermined) => determined = false,
-                Err(Determinacy::Determined) => {}
-            }
-        }
-
-        Err(if determined { Determinacy::Determined } else { Determinacy::Undetermined })
-    }
-
     fn expand_invoc(&mut self, invoc: Invocation, ext: Rc<SyntaxExtension>) -> Expansion {
         match invoc.kind {
             InvocationKind::Bang { .. } => self.expand_bang_invoc(invoc, ext),
@@ -502,7 +444,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
         let extname = path.segments.last().unwrap().identifier.name;
         let ident = ident.unwrap_or(keywords::Invalid.ident());
-        let marked_tts = mark_tts(mac.node.stream(), mark);
+        let marked_tts =
+            noop_fold_tts(mac.node.stream(), &mut Marker { mark: mark, expn_id: None });
         let opt_expanded = match *ext {
             NormalTT(ref expandfun, exp_span, allow_internal_unstable) => {
                 if ident.name != keywords::Invalid.name() {
@@ -814,7 +757,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
     }
 }
 
-fn find_attr_invoc(attrs: &mut Vec<ast::Attribute>) -> Option<ast::Attribute> {
+pub fn find_attr_invoc(attrs: &mut Vec<ast::Attribute>) -> Option<ast::Attribute> {
     for i in 0 .. attrs.len() {
         if !attr::is_known(&attrs[i]) && !is_builtin_attr(&attrs[i]) {
              return Some(attrs.remove(i));
@@ -960,17 +903,7 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
         match item.node {
             ast::ItemKind::Mac(..) => {
                 self.check_attributes(&item.attrs);
-                let is_macro_def = if let ItemKind::Mac(ref mac) = item.node {
-                    mac.node.path.segments[0].identifier.name == "macro_rules"
-                } else {
-                    unreachable!()
-                };
-
-                item.and_then(|mut item| match item.node {
-                    ItemKind::Mac(_) if is_macro_def => {
-                        item.id = Mark::fresh().as_placeholder_id();
-                        SmallVector::one(P(item))
-                    }
+                item.and_then(|item| match item.node {
                     ItemKind::Mac(mac) => {
                         self.collect(ExpansionKind::Items, InvocationKind::Bang {
                             mac: mac,
@@ -1090,7 +1023,10 @@ impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
     }
 
     fn fold_item_kind(&mut self, item: ast::ItemKind) -> ast::ItemKind {
-        noop_fold_item_kind(self.cfg.configure_item_kind(item), self)
+        match item {
+            ast::ItemKind::MacroDef(..) => item,
+            _ => noop_fold_item_kind(self.cfg.configure_item_kind(item), self),
+        }
     }
 
     fn new_id(&mut self, id: ast::NodeId) -> ast::NodeId {
@@ -1170,9 +1106,4 @@ impl Folder for Marker {
         }
         span
     }
-}
-
-// apply a given mark to the given token trees. Used prior to expansion of a macro.
-pub fn mark_tts(tts: TokenStream, m: Mark) -> TokenStream {
-    noop_fold_tts(tts, &mut Marker{mark:m, expn_id: None})
 }
