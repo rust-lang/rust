@@ -192,7 +192,11 @@ pub fn decode_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 clean_work_products.insert(wp.clone());
             }
 
-            tcx.dep_graph.with_task(n, || ()); // create the node with no inputs
+            tcx.dep_graph.with_task(n, (), (), create_node);
+
+            fn create_node((): (), (): ()) {
+                // just create the node with no inputs
+            }
         }
     }
 
