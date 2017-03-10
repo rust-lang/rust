@@ -342,6 +342,9 @@ declare_features! (
 
     // Allows the `catch {...}` expression
     (active, catch_expr, "1.17.0", Some(31436)),
+
+    // Used to preserve symbols
+    (active, used, "1.17.0", Some(40289)),
 );
 
 declare_features! (
@@ -745,6 +748,10 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
                                   "unwind_attributes",
                                   "#[unwind] is experimental",
                                   cfg_fn!(unwind_attributes))),
+    ("used", Whitelisted, Gated(
+        Stability::Unstable, "used",
+        "the `#[used]` attribute is an experimental feature",
+        cfg_fn!(used))),
 
     // used in resolve
     ("prelude_import", Whitelisted, Gated(Stability::Unstable,
