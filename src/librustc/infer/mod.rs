@@ -48,7 +48,6 @@ use self::region_inference::{RegionVarBindings, RegionSnapshot};
 use self::type_variable::TypeVariableOrigin;
 use self::unify_key::ToType;
 
-mod bivariate;
 mod combine;
 mod equate;
 pub mod error_reporting;
