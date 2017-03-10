@@ -86,6 +86,7 @@ fn ident_can_begin_expr(ident: ast::Ident) -> bool {
     !ident_token.is_any_keyword() ||
     ident_token.is_path_segment_keyword() ||
     [
+        keywords::Do.name(),
         keywords::Box.name(),
         keywords::Break.name(),
         keywords::Continue.name(),
