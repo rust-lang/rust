@@ -469,7 +469,7 @@ class RustBuild(object):
             cputype = 'i686'
         elif cputype in {'xscale', 'arm'}:
             cputype = 'arm'
-        elif cputype == 'armv6l':
+        elif cputype in {'armv6l', 'armv7l', 'armv8l'}:
             cputype = 'arm'
             ostype += 'eabihf'
         elif cputype == 'armv7l':
