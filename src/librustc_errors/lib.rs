@@ -90,7 +90,8 @@ impl CodeSuggestion {
                          hi_opt: Option<&Loc>) {
             let (lo, hi_opt) = (lo.col.to_usize(), hi_opt.map(|hi| hi.col.to_usize()));
             if let Some(line) = line_opt {
-                if line.len() > lo {
+                if let Some(lo) = line.char_indices().map(|(i, _)| i).nth(lo) {
+                    let hi_opt = hi_opt.and_then(|hi| line.char_indices().map(|(i, _)| i).nth(hi));
                     buf.push_str(match hi_opt {
                         Some(hi) => &line[lo..hi],
                         None => &line[lo..],
