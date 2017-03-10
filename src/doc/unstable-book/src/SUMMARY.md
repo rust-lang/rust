@@ -187,6 +187,7 @@
 - [str_checked_slicing](str-checked-slicing.md)
 - [str_escape](str-escape.md)
 - [str_internals](str-internals.md)
+- [str_mut_extras](str-mut-extras.md)
 - [struct_field_attributes](struct-field-attributes.md)
 - [structural_match](structural-match.md)
 - [target_feature](target-feature.md)

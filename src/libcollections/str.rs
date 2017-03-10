@@ -72,7 +72,7 @@ pub use core::str::{MatchIndices, RMatchIndices};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::{from_utf8, Chars, CharIndices, Bytes};
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core::str::{from_utf8_unchecked, ParseBoolError};
+pub use core::str::{from_utf8_unchecked, from_utf8_unchecked_mut, ParseBoolError};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use std_unicode::str::SplitWhitespace;
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -292,6 +292,13 @@ impl str {
     #[inline(always)]
     pub fn as_bytes(&self) -> &[u8] {
         core_str::StrExt::as_bytes(self)
+    }
+
+    /// Converts a mutable string slice to a mutable byte slice.
+    #[unstable(feature = "str_mut_extras", issue = "41119")]
+    #[inline(always)]
+    pub unsafe fn as_bytes_mut(&mut self) -> &mut [u8] {
+        core_str::StrExt::as_bytes_mut(self)
     }
 
     /// Converts a string slice to a raw pointer.

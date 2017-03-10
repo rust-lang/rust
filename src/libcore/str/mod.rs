@@ -21,8 +21,8 @@ use char;
 use convert::TryFrom;
 use fmt;
 use iter::{Map, Cloned, FusedIterator};
-use mem;
 use slice::{self, SliceIndex};
+use mem;
 
 pub mod pattern;
 
@@ -300,6 +300,13 @@ pub fn from_utf8(v: &[u8]) -> Result<&str, Utf8Error> {
     Ok(unsafe { from_utf8_unchecked(v) })
 }
 
+/// Converts a mutable slice of bytes to a mutable string slice.
+#[unstable(feature = "str_mut_extras", issue = "41119")]
+pub fn from_utf8_mut(v: &mut [u8]) -> Result<&mut str, Utf8Error> {
+    run_utf8_validation(v)?;
+    Ok(unsafe { from_utf8_unchecked_mut(v) })
+}
+
 /// Forms a str from a pointer and a length.
 ///
 /// The `len` argument is the number of bytes in the string.
@@ -325,7 +332,7 @@ pub fn from_utf8(v: &[u8]) -> Result<&str, Utf8Error> {
 /// str is returned.
 ///
 unsafe fn from_raw_parts_mut<'a>(p: *mut u8, len: usize) -> &'a mut str {
-    mem::transmute::<&mut [u8], &mut str>(slice::from_raw_parts_mut(p, len))
+    from_utf8_unchecked_mut(slice::from_raw_parts_mut(p, len))
 }
 
 /// Converts a slice of bytes to a string slice without checking
@@ -362,6 +369,18 @@ unsafe fn from_raw_parts_mut<'a>(p: *mut u8, len: usize) -> &'a mut str {
 #[inline(always)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn from_utf8_unchecked(v: &[u8]) -> &str {
+    mem::transmute(v)
+}
+
+/// Converts a slice of bytes to a string slice without checking
+/// that the string contains valid UTF-8; mutable version.
+///
+/// See the immutable version, [`from_utf8_unchecked()`][fromutf8], for more information.
+///
+/// [fromutf8]: fn.from_utf8_unchecked.html
+#[inline(always)]
+#[unstable(feature = "str_mut_extras", issue = "41119")]
+pub unsafe fn from_utf8_unchecked_mut(v: &mut [u8]) -> &mut str {
     mem::transmute(v)
 }
 
@@ -1474,7 +1493,6 @@ Section: Trait implementations
 mod traits {
     use cmp::Ordering;
     use ops;
-    use mem;
     use slice::{self, SliceIndex};
     use str::eq_slice;
 
@@ -1811,7 +1829,7 @@ mod traits {
         unsafe fn get_unchecked_mut(self, slice: &mut str) -> &mut Self::Output {
             let ptr = slice.as_ptr().offset(self.start as isize);
             let len = self.end - self.start;
-            mem::transmute(slice::from_raw_parts_mut(ptr as *mut u8, len))
+            super::from_utf8_unchecked_mut(slice::from_raw_parts_mut(ptr as *mut u8, len))
         }
         #[inline]
         fn index(self, slice: &str) -> &Self::Output {
@@ -1859,7 +1877,7 @@ mod traits {
         #[inline]
         unsafe fn get_unchecked_mut(self, slice: &mut str) -> &mut Self::Output {
             let ptr = slice.as_ptr();
-            mem::transmute(slice::from_raw_parts_mut(ptr as *mut u8, self.end))
+            super::from_utf8_unchecked_mut(slice::from_raw_parts_mut(ptr as *mut u8, self.end))
         }
         #[inline]
         fn index(self, slice: &str) -> &Self::Output {
@@ -1905,7 +1923,7 @@ mod traits {
         unsafe fn get_unchecked_mut(self, slice: &mut str) -> &mut Self::Output {
             let ptr = slice.as_ptr().offset(self.start as isize);
             let len = slice.len() - self.start;
-            mem::transmute(slice::from_raw_parts_mut(ptr as *mut u8, len))
+            super::from_utf8_unchecked_mut(slice::from_raw_parts_mut(ptr as *mut u8, len))
         }
         #[inline]
         fn index(self, slice: &str) -> &Self::Output {
@@ -1998,7 +2016,7 @@ mod traits {
         #[inline]
         unsafe fn get_unchecked_mut(self, slice: &mut str) -> &mut Self::Output {
             let ptr = slice.as_ptr();
-            mem::transmute(slice::from_raw_parts_mut(ptr as *mut u8, self.end + 1))
+            super::from_utf8_unchecked_mut(slice::from_raw_parts_mut(ptr as *mut u8, self.end + 1))
         }
         #[inline]
         fn index(self, slice: &str) -> &Self::Output {
@@ -2096,6 +2114,8 @@ pub trait StrExt {
     fn is_char_boundary(&self, index: usize) -> bool;
     #[stable(feature = "core", since = "1.6.0")]
     fn as_bytes(&self) -> &[u8];
+    #[unstable(feature = "str_mut_extras", issue = "0")]
+    unsafe fn as_bytes_mut(&mut self) -> &mut [u8];
     #[stable(feature = "core", since = "1.6.0")]
     fn find<'a, P: Pattern<'a>>(&'a self, pat: P) -> Option<usize>;
     #[stable(feature = "core", since = "1.6.0")]
@@ -2371,6 +2391,11 @@ impl StrExt for str {
     #[inline]
     fn as_bytes(&self) -> &[u8] {
         unsafe { mem::transmute(self) }
+    }
+
+    #[inline]
+    unsafe fn as_bytes_mut(&mut self) -> &mut [u8] {
+        mem::transmute(self)
     }
 
     fn find<'a, P: Pattern<'a>>(&'a self, pat: P) -> Option<usize> {
