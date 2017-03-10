@@ -46,8 +46,8 @@ use super::Disr;
 use std;
 
 use llvm::{ValueRef, True, IntEQ, IntNE};
-use rustc::ty::layout;
 use rustc::ty::{self, Ty};
+use rustc::ty::layout::{self, LayoutTyper};
 use common::*;
 use builder::Builder;
 use base;
@@ -246,9 +246,8 @@ fn union_fill(cx: &CrateContext, size: u64, align: u64) -> Type {
     assert_eq!(size%align, 0);
     assert_eq!(align.count_ones(), 1, "Alignment must be a power fof 2. Got {}", align);
     let align_units = size/align;
-    let dl = &cx.tcx().data_layout;
     let layout_align = layout::Align::from_bytes(align, align).unwrap();
-    if let Some(ity) = layout::Integer::for_abi_align(dl, layout_align) {
+    if let Some(ity) = layout::Integer::for_abi_align(cx, layout_align) {
         Type::array(&Type::from_integer(cx, ity), align_units)
     } else {
         Type::array(&Type::vector(&Type::i32(cx), align/4),

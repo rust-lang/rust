@@ -35,13 +35,13 @@ use type_of;
 
 use rustc::hir;
 use rustc::ty::{self, Ty};
+use rustc::ty::layout::{Layout, LayoutTyper};
 
 use libc::c_uint;
 use std::cmp;
 
 pub use syntax::abi::Abi;
 pub use rustc::ty::layout::{FAT_PTR_ADDR, FAT_PTR_EXTRA};
-use rustc::ty::layout::Layout;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 enum ArgKind {

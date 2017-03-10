@@ -18,6 +18,7 @@ use llvm;
 use llvm::{ValueRef};
 use rustc::traits;
 use rustc::ty::{self, Ty, TypeFoldable};
+use rustc::ty::layout::LayoutTyper;
 use common::*;
 use meth;
 use monomorphize;
@@ -47,7 +48,7 @@ pub fn needs_drop_glue<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>, t: Ty<'tcx>
             if !scx.type_needs_drop(typ) && scx.type_is_sized(typ) {
                 scx.tcx().infer_ctxt((), traits::Reveal::All).enter(|infcx| {
                     let layout = t.layout(&infcx).unwrap();
-                    if layout.size(&scx.tcx().data_layout).bytes() == 0 {
+                    if layout.size(scx).bytes() == 0 {
                         // `Box<ZeroSizeType>` does not allocate.
                         false
                     } else {
