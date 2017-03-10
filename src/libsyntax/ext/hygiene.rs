@@ -31,7 +31,7 @@ pub struct SyntaxContextData {
 }
 
 /// A mark is a unique id associated with a macro expansion.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Default)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Default, RustcEncodable, RustcDecodable)]
 pub struct Mark(u32);
 
 impl Mark {
@@ -117,13 +117,6 @@ impl SyntaxContext {
                 SyntaxContext(syntax_contexts.len() as u32 - 1)
             })
         })
-    }
-
-    /// If `ident` is macro expanded, return the source ident from the macro definition
-    /// and the mark of the expansion that created the macro definition.
-    pub fn source(self) -> (Self /* source context */, Mark /* source macro */) {
-         let macro_def_ctxt = self.data().prev_ctxt.data();
-         (macro_def_ctxt.prev_ctxt, macro_def_ctxt.outer_mark)
     }
 }
 

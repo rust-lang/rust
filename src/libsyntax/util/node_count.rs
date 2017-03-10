@@ -148,9 +148,4 @@ impl<'ast> Visitor<'ast> for NodeCounter {
     fn visit_attribute(&mut self, _attr: &Attribute) {
         self.count += 1;
     }
-    fn visit_macro_def(&mut self, macro_def: &MacroDef) {
-        self.count += 1;
-        walk_macro_def(self, macro_def)
-    }
-
 }
