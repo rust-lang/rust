@@ -174,6 +174,10 @@ The core problem we want to solve is:
 
 - We want to do this *without* requiring testing on platforms that lack the API.
 
+The core idea is that having to write `cfg` is a sufficient speedbump, as it
+makes explicit what platform assumptions a piece of code is making. But today,
+you don't have to be *within* a `cfg` to call something labeled with `cfg`.
+
 Let's take a concrete example: the `as_raw_fd` method. We'd like to provide this
 API as an inherent method on things like files. But it's not a "mainstream" API;
 it only works on Unix. If you tried to use it and compiled your code on Windows,
@@ -267,6 +271,29 @@ fn cross_platform() {
 As with many lints, the portability lint is *best effort*: it is not required to
 provide airtight guarantees about portability. However, the RFC sketches a
 plausible implementation route that should cover the vast majority of cases.
+
+Note that this lint will only check code that is actually compiled on the
+current platform, so the following code would not produce a warning when compiled on `unix`:
+
+```rust
+pub fn mycrate_function() {
+    // ...
+}
+
+#[cfg(windows)]
+pub fn windows_specific_mycrate_function() {
+    // this call should warn since it makes an additional assumption
+    windows_more_specific_mycrate_function();
+}
+
+#[cfg(all(windows, target_pointer_width = "64"))]
+pub fn windows_more_specific_mycrate_function() {
+    // ...
+}
+```
+
+However, any such "missed portability issues" are only possible when already
+using `cfg`, which means a "speedbump" has already been passed.
 
 With that overview in mind, let's dig into the details.
 
