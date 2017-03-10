@@ -358,39 +358,45 @@ impl EmitterWriter {
         let mut annotations_position = vec![];
         let mut line_len = 0;
         let mut p = 0;
-        let mut ann_iter = annotations.iter().peekable();
-        while let Some(annotation) = ann_iter.next() {
-            let peek = ann_iter.peek();
-            if let Some(next) = peek {
-                if overlaps(next, annotation) && !annotation.is_line() && !next.is_line()
+        for (i, annotation) in annotations.iter().enumerate() {
+            for (j, next) in annotations.iter().enumerate() {
+                if overlaps(next, annotation, 0)  // This label overlaps with another one and both
+                    && !annotation.is_line()      // take space (they have text and are not
+                    && !next.is_line()            // multiline lines).
                     && annotation.has_label()
+                    && j > i
+                    && p == 0  // We're currently on the first line, move the label one line down
                 {
                     // This annotation needs a new line in the output.
                     p += 1;
+                    break;
                 }
             }
             annotations_position.push((p, annotation));
-            if let Some(next) = peek {
-                let l = if let Some(ref label) = next.label {
-                    label.len() + 2
-                } else {
-                    0
-                };
-                if (overlaps(next, annotation)  // Do not allow two labels to be in the same line
-                    || next.end_col + l > annotation.start_col)  // if they overlap including
-                                                // padding, to avoid situations like:
-                                                //
-                                                //      fn foo(x: u32) {
-                                                //      -------^------
-                                                //      |      |
-                                                //      fn_spanx_span
-                                                //
-                    && !annotation.is_line()    // Do not add a new line if this annotation or the
-                    && !next.is_line()          // next are vertical line placeholders.
-                    && annotation.has_label()   // Both labels must have some text, otherwise
-                    && next.has_label()         // they are not overlapping.
-                {
-                    p += 1;
+            for (j, next) in annotations.iter().enumerate() {
+                if j > i  {
+                    let l = if let Some(ref label) = next.label {
+                        label.len() + 2
+                    } else {
+                        0
+                    };
+                    if overlaps(next, annotation, l) // Do not allow two labels to be in the same
+                                                     // line if they overlap including padding, to
+                                                     // avoid situations like:
+                                                     //
+                                                     //      fn foo(x: u32) {
+                                                     //      -------^------
+                                                     //      |      |
+                                                     //      fn_spanx_span
+                                                     //
+                        && !annotation.is_line()     // Do not add a new line if this annotation
+                        && !next.is_line()           // or the next are vertical line placeholders.
+                        && annotation.has_label()    // Both labels must have some text, otherwise
+                        && next.has_label()          // they are not overlapping.
+                    {
+                        p += 1;
+                        break;
+                    }
                 }
             }
             if line_len < p {
@@ -1088,8 +1094,8 @@ fn num_overlap(a_start: usize, a_end: usize, b_start: usize, b_end:usize, inclus
     (b_start..b_end + extra).contains(a_start) ||
     (a_start..a_end + extra).contains(b_start)
 }
-fn overlaps(a1: &Annotation, a2: &Annotation) -> bool {
-    num_overlap(a1.start_col, a1.end_col, a2.start_col, a2.end_col, false)
+fn overlaps(a1: &Annotation, a2: &Annotation, padding: usize) -> bool {
+    num_overlap(a1.start_col, a1.end_col + padding, a2.start_col, a2.end_col, false)
 }
 
 fn emit_to_destination(rendered_buffer: &Vec<Vec<StyledString>>,
