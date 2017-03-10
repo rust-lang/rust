@@ -279,7 +279,10 @@ fn symlink_dir_force(src: &Path, dst: &Path) -> io::Result<()> {
         if m.file_type().is_dir() {
             try!(fs::remove_dir_all(dst));
         } else {
-            try!(fs::remove_file(dst));
+            // handle directory junctions on windows
+            try!(fs::remove_file(dst).or_else(|_| {
+                fs::remove_dir(dst)
+            }));
         }
     }
 
