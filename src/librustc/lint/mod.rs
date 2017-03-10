@@ -133,6 +133,8 @@ pub trait LintPass {
 // FIXME: eliminate the duplication with `Visitor`. But this also
 // contains a few lint-specific methods with no equivalent in `Visitor`.
 pub trait LateLintPass<'a, 'tcx>: LintPass {
+    fn check_body(&mut self, _: &LateContext, _: &'tcx hir::Body) { }
+    fn check_body_post(&mut self, _: &LateContext, _: &'tcx hir::Body) { }
     fn check_name(&mut self, _: &LateContext, _: Span, _: ast::Name) { }
     fn check_crate(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx hir::Crate) { }
     fn check_crate_post(&mut self, _: &LateContext<'a, 'tcx>, _: &'tcx hir::Crate) { }
