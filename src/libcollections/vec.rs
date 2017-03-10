@@ -1370,9 +1370,38 @@ impl<T: PartialEq> Vec<T> {
 #[doc(hidden)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn from_elem<T: Clone>(elem: T, n: usize) -> Vec<T> {
-    let mut v = Vec::with_capacity(n);
-    v.extend_with_element(n, elem);
-    v
+    <T as SpecFromElem>::from_elem(elem, n)
+}
+
+// Specialization trait used for Vec::from_elem
+trait SpecFromElem: Sized {
+    fn from_elem(elem: Self, n: usize) -> Vec<Self>;
+}
+
+impl<T: Clone> SpecFromElem for T {
+    default fn from_elem(elem: Self, n: usize) -> Vec<Self> {
+        let mut v = Vec::with_capacity(n);
+        v.extend_with_element(n, elem);
+        v
+    }
+}
+
+impl SpecFromElem for u8 {
+    #[inline]
+    fn from_elem(elem: u8, n: usize) -> Vec<u8> {
+        if elem == 0 {
+            return Vec {
+                buf: RawVec::with_capacity_zeroed(n),
+                len: n,
+            }
+        }
+        unsafe {
+            let mut v = Vec::with_capacity(n);
+            ptr::write_bytes(v.as_mut_ptr(), elem, n);
+            v.set_len(n);
+            v
+        }
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
