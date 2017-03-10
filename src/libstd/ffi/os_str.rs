@@ -205,6 +205,12 @@ impl OsString {
         self.inner.reserve_exact(additional)
     }
 
+    /// Shrinks the capacity of the `OsString` to match its length.
+    #[unstable(feature = "osstring_shrink_to_fit", issue = "40421")]
+    pub fn shrink_to_fit(&mut self) {
+        self.inner.shrink_to_fit()
+    }
+
     /// Converts this `OsString` into a boxed `OsStr`.
     #[unstable(feature = "into_boxed_os_str", issue = "0")]
     pub fn into_boxed_os_str(self) -> Box<OsStr> {
