@@ -87,6 +87,7 @@ impl<'b, W: Write + 'b> Dump for JsonDumper<'b, W> {
             decl_id: None,
             docs: data.docs,
             sig: Some(From::from(data.sig)),
+            attributes: data.attributes,
         };
         if def.span.file_name != def.value {
             // If the module is an out-of-line defintion, then we'll make the
@@ -232,6 +233,7 @@ struct Def {
     decl_id: Option<Id>,
     docs: String,
     sig: Option<JsonSignature>,
+    attributes: Vec<Attribute>,
 }
 
 #[derive(Debug, RustcEncodable)]
@@ -274,6 +276,7 @@ impl From<EnumData> for Def {
             decl_id: None,
             docs: data.docs,
             sig: Some(From::from(data.sig)),
+            attributes: data.attributes,
         }
     }
 }
@@ -291,6 +294,7 @@ impl From<TupleVariantData> for Def {
             decl_id: None,
             docs: data.docs,
             sig: Some(From::from(data.sig)),
+            attributes: data.attributes,
         }
     }
 }
@@ -307,6 +311,7 @@ impl From<StructVariantData> for Def {
             decl_id: None,
             docs: data.docs,
             sig: Some(From::from(data.sig)),
+            attributes: data.attributes,
         }
     }
 }
@@ -323,6 +328,7 @@ impl From<StructData> for Def {
             decl_id: None,
             docs: data.docs,
             sig: Some(From::from(data.sig)),
+            attributes: data.attributes,
         }
     }
 }
@@ -339,6 +345,7 @@ impl From<TraitData> for Def {
             decl_id: None,
             docs: data.docs,
             sig: Some(From::from(data.sig)),
+            attributes: data.attributes,
         }
     }
 }
@@ -355,6 +362,7 @@ impl From<FunctionData> for Def {
             decl_id: None,
             docs: data.docs,
             sig: Some(From::from(data.sig)),
+            attributes: data.attributes,
         }
     }
 }
@@ -371,6 +379,7 @@ impl From<MethodData> for Def {
             decl_id: data.decl_id.map(|id| From::from(id)),
             docs: data.docs,
             sig: Some(From::from(data.sig)),
+            attributes: data.attributes,
         }
     }
 }
@@ -387,6 +396,7 @@ impl From<MacroData> for Def {
             decl_id: None,
             docs: data.docs,
             sig: None,
+            attributes: vec![],
         }
     }
 }
@@ -403,6 +413,7 @@ impl From<TypeDefData> for Def {
             decl_id: None,
             docs: String::new(),
             sig: data.sig.map(|s| From::from(s)),
+            attributes: data.attributes,
         }
     }
 }
@@ -424,6 +435,7 @@ impl From<VariableData> for Def {
             decl_id: None,
             docs: data.docs,
             sig: None,
+            attributes: data.attributes,
         }
     }
 }
