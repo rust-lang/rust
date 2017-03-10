@@ -13,6 +13,7 @@ use adt;
 use common::*;
 use machine;
 use rustc::ty::{self, Ty, TypeFoldable};
+use rustc::ty::layout::LayoutTyper;
 use trans_item::DefPathBasedNames;
 use type_::Type;
 
@@ -117,14 +118,14 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
         return llsizingty;
     }
 
-    let r = layout.size(&cx.tcx().data_layout).bytes();
+    let r = layout.size(cx).bytes();
     let l = machine::llsize_of_alloc(cx, llsizingty);
     if r != l {
         bug!("size differs (rustc: {}, llvm: {}) for type `{}` / {:#?}",
              r, l, t, layout);
     }
 
-    let r = layout.align(&cx.tcx().data_layout).abi();
+    let r = layout.align(cx).abi();
     let l = machine::llalign_of_min(cx, llsizingty) as u64;
     if r != l {
         bug!("align differs (rustc: {}, llvm: {}) for type `{}` / {:#?}",
@@ -324,13 +325,11 @@ pub fn in_memory_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> 
 
 impl<'a, 'tcx> CrateContext<'a, 'tcx> {
     pub fn align_of(&self, ty: Ty<'tcx>) -> machine::llalign {
-        let layout = self.layout_of(ty);
-        layout.align(&self.tcx().data_layout).abi() as machine::llalign
+        self.layout_of(ty).align(self).abi() as machine::llalign
     }
 
     pub fn size_of(&self, ty: Ty<'tcx>) -> machine::llsize {
-        let layout = self.layout_of(ty);
-        layout.size(&self.tcx().data_layout).bytes() as machine::llsize
+        self.layout_of(ty).size(self).bytes() as machine::llsize
     }
 }
 

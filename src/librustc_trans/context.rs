@@ -28,6 +28,7 @@ use type_::Type;
 use rustc_data_structures::base_n;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::layout::{LayoutTyper, TyLayout};
 use session::config::NoDebugInfo;
 use session::Session;
 use session::config;
@@ -828,18 +829,6 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         TypeOfDepthLock(self.local())
     }
 
-    pub fn layout_of(&self, ty: Ty<'tcx>) -> ty::layout::TyLayout<'tcx> {
-        self.tcx().infer_ctxt((), traits::Reveal::All).enter(|infcx| {
-            ty::layout::TyLayout::of(&infcx, ty).unwrap_or_else(|e| {
-                match e {
-                    ty::layout::LayoutError::SizeOverflow(_) =>
-                        self.sess().fatal(&e.to_string()),
-                    _ => bug!("failed to get layout for `{}`: {}", ty, e)
-                }
-            })
-        })
-    }
-
     pub fn check_overflow(&self) -> bool {
         self.shared.check_overflow
     }
@@ -948,6 +937,54 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         attributes::unwind(llfn, true);
         unwresume.set(Some(llfn));
         llfn
+    }
+}
+
+impl<'a, 'tcx> ty::layout::HasDataLayout for &'a SharedCrateContext<'a, 'tcx> {
+    fn data_layout(&self) -> &ty::layout::TargetDataLayout {
+        &self.tcx.data_layout
+    }
+}
+
+impl<'a, 'tcx> ty::layout::HasTyCtxt<'tcx> for &'a SharedCrateContext<'a, 'tcx> {
+    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'tcx, 'tcx> {
+        self.tcx
+    }
+}
+
+impl<'a, 'tcx> ty::layout::HasDataLayout for &'a CrateContext<'a, 'tcx> {
+    fn data_layout(&self) -> &ty::layout::TargetDataLayout {
+        &self.shared.tcx.data_layout
+    }
+}
+
+impl<'a, 'tcx> ty::layout::HasTyCtxt<'tcx> for &'a CrateContext<'a, 'tcx> {
+    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'tcx, 'tcx> {
+        self.shared.tcx
+    }
+}
+
+impl<'a, 'tcx> LayoutTyper<'tcx> for &'a SharedCrateContext<'a, 'tcx> {
+    type TyLayout = TyLayout<'tcx>;
+
+    fn layout_of(self, ty: Ty<'tcx>) -> Self::TyLayout {
+        self.tcx().infer_ctxt((), traits::Reveal::All).enter(|infcx| {
+            infcx.layout_of(ty).unwrap_or_else(|e| {
+                match e {
+                    ty::layout::LayoutError::SizeOverflow(_) =>
+                        self.sess().fatal(&e.to_string()),
+                    _ => bug!("failed to get layout for `{}`: {}", ty, e)
+                }
+            })
+        })
+    }
+}
+
+impl<'a, 'tcx> LayoutTyper<'tcx> for &'a CrateContext<'a, 'tcx> {
+    type TyLayout = TyLayout<'tcx>;
+
+    fn layout_of(self, ty: Ty<'tcx>) -> Self::TyLayout {
+        self.shared.layout_of(ty)
     }
 }
 

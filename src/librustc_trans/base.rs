@@ -1295,8 +1295,8 @@ fn gather_type_sizes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
         // (delay format until we actually need it)
         let record = |kind, opt_discr_size, variants| {
             let type_desc = format!("{:?}", ty);
-            let overall_size = layout.size(&tcx.data_layout);
-            let align = layout.align(&tcx.data_layout);
+            let overall_size = layout.size(tcx);
+            let align = layout.align(tcx);
             tcx.sess.code_stats.borrow_mut().record_type_size(kind,
                                                               type_desc,
                                                               align,
@@ -1332,8 +1332,8 @@ fn gather_type_sizes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
                     session::FieldInfo {
                         name: field_name.to_string(),
                         offset: offset.bytes(),
-                        size: field_layout.size(&tcx.data_layout).bytes(),
-                        align: field_layout.align(&tcx.data_layout).abi(),
+                        size: field_layout.size(tcx).bytes(),
+                        align: field_layout.align(tcx).abi(),
                     }
                 }
             }
@@ -1343,8 +1343,8 @@ fn gather_type_sizes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
             session::VariantInfo {
                 name: Some(name.to_string()),
                 kind: session::SizeKind::Exact,
-                align: value.align(&tcx.data_layout).abi(),
-                size: value.size(&tcx.data_layout).bytes(),
+                align: value.align(tcx).abi(),
+                size: value.size(tcx).bytes(),
                 fields: vec![],
             }
         };
