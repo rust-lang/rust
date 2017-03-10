@@ -125,6 +125,10 @@ pub fn compile_input(sess: &Session,
         };
 
         write_out_deps(sess, &outputs, &crate_name);
+        if sess.opts.output_types.contains_key(&OutputType::DepInfo) &&
+            sess.opts.output_types.keys().count() == 1 {
+            return Ok(())
+        }
 
         let arena = DroplessArena::new();
         let arenas = GlobalArenas::new();
