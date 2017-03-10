@@ -169,6 +169,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     ty::Predicate::Projection(ref data) => Some(data.to_poly_trait_ref()),
                     ty::Predicate::Trait(ref data) => Some(data.to_poly_trait_ref()),
                     ty::Predicate::Equate(..) => None,
+                    ty::Predicate::Subtype(..) => None,
                     ty::Predicate::RegionOutlives(..) => None,
                     ty::Predicate::TypeOutlives(..) => None,
                     ty::Predicate::WellFormed(..) => None,
