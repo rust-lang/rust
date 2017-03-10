@@ -32,7 +32,6 @@
 // is also useful to track which value is the "expected" value in
 // terms of error reporting.
 
-use super::bivariate::Bivariate;
 use super::equate::Equate;
 use super::glb::Glb;
 use super::lub::Lub;
@@ -159,10 +158,6 @@ impl<'infcx, 'gcx, 'tcx> CombineFields<'infcx, 'gcx, 'tcx> {
         Equate::new(self, a_is_expected)
     }
 
-    pub fn bivariate<'a>(&'a mut self, a_is_expected: bool) -> Bivariate<'a, 'infcx, 'gcx, 'tcx> {
-        Bivariate::new(self, a_is_expected)
-    }
-
     pub fn sub<'a>(&'a mut self, a_is_expected: bool) -> Sub<'a, 'infcx, 'gcx, 'tcx> {
         Sub::new(self, a_is_expected)
     }
@@ -251,7 +246,7 @@ impl<'infcx, 'gcx, 'tcx> CombineFields<'infcx, 'gcx, 'tcx> {
             // to associate causes/spans with each of the relations in
             // the stack to get this right.
             match dir {
-                BiTo => self.bivariate(a_is_expected).relate(&a_ty, &b_ty),
+                BiTo => Ok(a_ty),
                 EqTo => self.equate(a_is_expected).relate(&a_ty, &b_ty),
                 SubtypeOf => self.sub(a_is_expected).relate(&a_ty, &b_ty),
                 SupertypeOf => self.sub(a_is_expected).relate_with_variance(
