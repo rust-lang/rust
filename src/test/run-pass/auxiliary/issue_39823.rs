@@ -8,8 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn main() {
-    println!("{}", { macro_rules! x { ($()*) => {} } 33 });
-    //~^ ERROR no syntax variables matched as repeating at this depth
-}
+#![crate_type="rlib"]
 
+#[derive(Debug, PartialEq)]
+pub struct RemoteC(pub u32);
+
+#[derive(Debug, PartialEq)]
+pub struct RemoteG<T>(pub T);
