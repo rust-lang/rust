@@ -66,6 +66,7 @@ pub fn std(build: &Build, target: &str, compiler: &Compiler) {
     cargo.arg("--features").arg(features)
          .arg("--manifest-path")
          .arg(build.src.join("src/libstd/Cargo.toml"));
+    cargo.arg("-v");
 
     if let Some(target) = build.config.target_config.get(target) {
         if let Some(ref jemalloc) = target.jemalloc {
@@ -79,6 +80,7 @@ pub fn std(build: &Build, target: &str, compiler: &Compiler) {
     }
 
     build.run(&mut cargo);
+    unhardlink_everything(&build.stage_out(compiler, Mode::Libstd));
     update_mtime(build, &libstd_stamp(build, &compiler, target));
 }
 
@@ -173,6 +175,7 @@ pub fn test(build: &Build, target: &str, compiler: &Compiler) {
     cargo.arg("--manifest-path")
          .arg(build.src.join("src/libtest/Cargo.toml"));
     build.run(&mut cargo);
+    unhardlink_everything(&build.stage_out(compiler, Mode::Libtest));
     update_mtime(build, &libtest_stamp(build, compiler, target));
 }
 
@@ -266,6 +269,7 @@ pub fn rustc(build: &Build, target: &str, compiler: &Compiler) {
         cargo.env("CFG_DEFAULT_AR", s);
     }
     build.run(&mut cargo);
+    unhardlink_everything(&build.stage_out(compiler, Mode::Librustc));
 }
 
 /// Same as `std_link`, only for librustc
@@ -444,6 +448,7 @@ pub fn tool(build: &Build, stage: u32, target: &str, tool: &str) {
     }
 
     build.run(&mut cargo);
+    unhardlink_everything(&build.stage_out(&compiler, Mode::Tool));
 }
 
 /// Updates the mtime of a stamp file if necessary, only changing it if it's
@@ -482,4 +487,30 @@ fn update_mtime(build: &Build, path: &Path) {
         build.verbose(&format!("updating {:?} as {:?} changed", path, max.path()));
         t!(File::create(path));
     }
+}
+
+fn unhardlink_everything(path: &Path) {
+    println!("UNHARDLINKING");
+    let dir = t!(fs::read_dir(path));
+    for entry in dir {
+        let entry = t!(entry);
+        let type_ = t!(entry.file_type());
+        if type_.is_file() {
+            unhardlink_file(&entry.path());
+        } else if type_.is_dir() {
+            unhardlink_everything(&entry.path());
+        }
+    }
+}
+
+fn unhardlink_file(path: &Path) {
+    println!("unhardlinking {}", path.display());
+    use std::io::{Read, Write};
+    let mut buf = Vec::new();
+    let mut old_file = t!(File::open(path));
+    t!(old_file.read_to_end(&mut buf));
+    drop(old_file);
+    t!(fs::remove_file(path));
+    let mut new_file = t!(File::create(path));
+    t!(new_file.write_all(&buf));
 }
