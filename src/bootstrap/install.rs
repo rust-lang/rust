@@ -49,6 +49,10 @@ pub fn install(build: &Build, stage: u32, host: &str) {
         install_sh(&build, "docs", "rust-docs", stage, host, &prefix,
                    &docdir, &libdir, &mandir, &empty_dir);
     }
+    if build.config.rust_save_analysis {
+        install_sh(&build, "analysis", "rust-analysis", stage, host, &prefix,
+                   &docdir, &libdir, &mandir, &empty_dir);
+    }
     install_sh(&build, "std", "rust-std", stage, host, &prefix,
                &docdir, &libdir, &mandir, &empty_dir);
     install_sh(&build, "rustc", "rustc", stage, host, &prefix,
