@@ -136,7 +136,7 @@ pub fn write_mir_fn<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 /// Write out a human-readable textual representation for the given basic block.
 fn write_basic_block(tcx: TyCtxt,
-                     block: BasicBlock,
+                     block: Block,
                      mir: &Mir,
                      w: &mut Write)
                      -> io::Result<()> {

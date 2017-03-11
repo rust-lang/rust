@@ -63,15 +63,15 @@ pub struct MirContext<'a, 'tcx:'a> {
     /// then later loaded when generating the DIVERGE_BLOCK.
     llpersonalityslot: Option<ValueRef>,
 
-    /// A `Block` for each MIR `BasicBlock`
-    blocks: IndexVec<mir::BasicBlock, BasicBlockRef>,
+    /// A `BasicBlock` for each MIR `Block`
+    blocks: IndexVec<mir::Block, BasicBlockRef>,
 
     /// The funclet status of each basic block
-    cleanup_kinds: IndexVec<mir::BasicBlock, analyze::CleanupKind>,
+    cleanup_kinds: IndexVec<mir::Block, analyze::CleanupKind>,
 
     /// This stores the landing-pad block for a given BB, computed lazily on GNU
     /// and eagerly on MSVC.
-    landing_pads: IndexVec<mir::BasicBlock, Option<BasicBlockRef>>,
+    landing_pads: IndexVec<mir::Block, Option<BasicBlockRef>>,
 
     /// Cached unreachable block
     unreachable_block: Option<BasicBlockRef>,
@@ -217,7 +217,7 @@ pub fn trans_mir<'a, 'tcx: 'a>(
     let cleanup_kinds = analyze::cleanup_kinds(&mir);
 
     // Allocate a `Block` for every basic block
-    let block_bcxs: IndexVec<mir::BasicBlock, BasicBlockRef> =
+    let block_bcxs: IndexVec<mir::Block, BasicBlockRef> =
         mir.basic_blocks().indices().map(|bb| {
             if bb == mir::START_BLOCK {
                 bcx.build_sibling_block("start").llbb()
@@ -316,7 +316,7 @@ pub fn trans_mir<'a, 'tcx: 'a>(
     // emitting should be enabled.
     debuginfo::start_emitting_source_locations(&mircx.debug_context);
 
-    let funclets: IndexVec<mir::BasicBlock, Option<Funclet>> =
+    let funclets: IndexVec<mir::Block, Option<Funclet>> =
     mircx.cleanup_kinds.iter_enumerated().map(|(bb, cleanup_kind)| {
         if let CleanupKind::Funclet = *cleanup_kind {
             let bcx = mircx.get_builder(bb);

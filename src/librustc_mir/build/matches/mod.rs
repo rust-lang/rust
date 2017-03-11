@@ -19,6 +19,7 @@ use rustc_data_structures::bitvec::BitVector;
 use rustc::middle::const_val::ConstVal;
 use rustc::ty::{AdtDef, Ty};
 use rustc::mir::*;
+use rustc::mir::Block;
 use rustc::hir;
 use hair::*;
 use syntax::ast::{Name, NodeId};
@@ -33,7 +34,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     pub fn match_expr(&mut self,
                       destination: &Lvalue<'tcx>,
                       span: Span,
-                      mut block: BasicBlock,
+                      mut block: Block,
                       discriminant: ExprRef<'tcx>,
                       arms: Vec<Arm<'tcx>>)
                       -> BlockAnd<()> {
@@ -114,7 +115,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     }
 
     pub fn expr_into_pattern(&mut self,
-                             mut block: BasicBlock,
+                             mut block: Block,
                              irrefutable_pat: Pattern<'tcx>,
                              initializer: ExprRef<'tcx>)
                              -> BlockAnd<()> {
@@ -136,7 +137,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     }
 
     pub fn lvalue_into_pattern(&mut self,
-                               mut block: BasicBlock,
+                               mut block: Block,
                                irrefutable_pat: Pattern<'tcx>,
                                initializer: &Lvalue<'tcx>)
                                -> BlockAnd<()> {
@@ -187,7 +188,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         var_scope
     }
 
-    pub fn storage_live_binding(&mut self, block: BasicBlock, var: NodeId, span: Span)
+    pub fn storage_live_binding(&mut self, block: Block, var: NodeId, span: Span)
                             -> Lvalue<'tcx>
     {
         let local_id = self.var_indices[&var];
@@ -241,7 +242,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 /// List of blocks for each arm (and potentially other metadata in the
 /// future).
 struct ArmBlocks {
-    blocks: Vec<BasicBlock>,
+    blocks: Vec<Block>,
 }
 
 #[derive(Clone, Debug)]
@@ -359,8 +360,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                               span: Span,
                               arm_blocks: &mut ArmBlocks,
                               mut candidates: Vec<Candidate<'pat, 'tcx>>,
-                              mut block: BasicBlock)
-                              -> Vec<BasicBlock>
+                              mut block: Block)
+                              -> Vec<Block>
     {
         debug!("matched_candidate(span={:?}, block={:?}, candidates={:?})",
                span, block, candidates);
@@ -421,8 +422,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     fn join_otherwise_blocks(&mut self,
                              span: Span,
-                             mut otherwise: Vec<BasicBlock>)
-                             -> BasicBlock
+                             mut otherwise: Vec<Block>)
+                             -> Block
     {
         let source_info = self.source_info(span);
         otherwise.sort();
@@ -554,8 +555,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                              span: Span,
                              arm_blocks: &mut ArmBlocks,
                              candidates: &[Candidate<'pat, 'tcx>],
-                             block: BasicBlock)
-                             -> (Vec<BasicBlock>, usize)
+                             block: Block)
+                             -> (Vec<Block>, usize)
     {
         // extract the match-pair from the highest priority candidate
         let match_pair = &candidates.first().unwrap().match_pairs[0];
@@ -643,10 +644,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// in turn be detected by the borrowck code that runs on the
     /// MIR).
     fn bind_and_guard_matched_candidate<'pat>(&mut self,
-                                              mut block: BasicBlock,
+                                              mut block: Block,
                                               arm_blocks: &mut ArmBlocks,
                                               candidate: Candidate<'pat, 'tcx>)
-                                              -> Option<BasicBlock> {
+                                              -> Option<Block> {
         debug!("bind_and_guard_matched_candidate(block={:?}, candidate={:?})",
                block, candidate);
 
@@ -675,7 +676,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     }
 
     fn bind_matched_candidate(&mut self,
-                              block: BasicBlock,
+                              block: Block,
                               bindings: Vec<Binding<'tcx>>) {
         debug!("bind_matched_candidate(block={:?}, bindings={:?})",
                block, bindings);

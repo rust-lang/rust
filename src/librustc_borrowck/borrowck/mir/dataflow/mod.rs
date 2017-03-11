@@ -82,7 +82,7 @@ impl<'a, 'tcx: 'a, BD> DataflowAnalysis<'a, 'tcx, BD>
         }
 
         for (bb, data) in self.mir.basic_blocks().iter_enumerated() {
-            let &mir::BasicBlockData { ref statements, ref terminator, is_cleanup: _ } = data;
+            let &mir::BlockData { ref statements, ref terminator, is_cleanup: _ } = data;
 
             let sets = &mut self.flow_state.sets.for_block(bb.index());
             for j_stmt in 0..statements.len() {
@@ -119,7 +119,7 @@ impl<'b, 'a: 'b, 'tcx: 'a, BD> PropagationContext<'b, 'a, 'tcx, BD>
                 in_out.subtract(sets.kill_set);
             }
             builder.propagate_bits_into_graph_successors_of(
-                in_out, &mut self.changed, (mir::BasicBlock::new(bb_idx), bb_data));
+                in_out, &mut self.changed, (mir::Block::new(bb_idx), bb_data));
         }
     }
 }
@@ -328,7 +328,7 @@ pub trait BitDenotation {
     /// the MIR.
     fn statement_effect(&self,
                         sets: &mut BlockSets<Self::Idx>,
-                        bb: mir::BasicBlock,
+                        bb: mir::Block,
                         idx_stmt: usize);
 
     /// Mutates the block-sets (the flow sets for the given
@@ -343,7 +343,7 @@ pub trait BitDenotation {
     /// terminator took.
     fn terminator_effect(&self,
                          sets: &mut BlockSets<Self::Idx>,
-                         bb: mir::BasicBlock,
+                         bb: mir::Block,
                          idx_term: usize);
 
     /// Mutates the block-sets according to the (flow-dependent)
@@ -367,8 +367,8 @@ pub trait BitDenotation {
     /// block.
     fn propagate_call_return(&self,
                              in_out: &mut IdxSet<Self::Idx>,
-                             call_bb: mir::BasicBlock,
-                             dest_bb: mir::BasicBlock,
+                             call_bb: mir::Block,
+                             dest_bb: mir::Block,
                              dest_lval: &mir::Lvalue);
 }
 
@@ -432,7 +432,7 @@ impl<'a, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D>
         &mut self,
         in_out: &mut IdxSet<D::Idx>,
         changed: &mut bool,
-        (bb, bb_data): (mir::BasicBlock, &mir::BasicBlockData))
+        (bb, bb_data): (mir::Block, &mir::BlockData))
     {
         match bb_data.terminator().kind {
             mir::TerminatorKind::Return |
@@ -477,7 +477,7 @@ impl<'a, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D>
     fn propagate_bits_into_entry_set_for(&mut self,
                                          in_out: &IdxSet<D::Idx>,
                                          changed: &mut bool,
-                                         bb: &mir::BasicBlock) {
+                                         bb: &mir::Block) {
         let entry_set = self.flow_state.sets.for_block(bb.index()).on_entry;
         let set_changed = bitwise(entry_set.words_mut(),
                                   in_out.words(),

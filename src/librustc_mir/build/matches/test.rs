@@ -24,6 +24,7 @@ use rustc::middle::const_val::ConstVal;
 use rustc::ty::{self, Ty};
 use rustc::ty::util::IntTypeExt;
 use rustc::mir::*;
+use rustc::mir::Block;
 use rustc::hir::RangeEnd;
 use syntax_pos::Span;
 use std::cmp::Ordering;
@@ -176,10 +177,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     /// Generates the code to perform a test.
     pub fn perform_test(&mut self,
-                        block: BasicBlock,
+                        block: Block,
                         lvalue: &Lvalue<'tcx>,
                         test: &Test<'tcx>)
-                        -> Vec<BasicBlock> {
+                        -> Vec<Block> {
         let source_info = self.source_info(test.span);
         match test.kind {
             TestKind::Switch { adt_def, ref variants } => {
@@ -376,12 +377,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     }
 
     fn compare(&mut self,
-               block: BasicBlock,
-               fail_block: BasicBlock,
+               block: Block,
+               fail_block: Block,
                span: Span,
                op: BinOp,
                left: Operand<'tcx>,
-               right: Operand<'tcx>) -> BasicBlock {
+               right: Operand<'tcx>) -> Block {
         let bool_ty = self.hir.bool_ty();
         let result = self.temp(bool_ty);
 

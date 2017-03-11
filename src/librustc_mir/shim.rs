@@ -169,10 +169,10 @@ fn build_drop_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
 
     let source_info = SourceInfo { span, scope: ARGUMENT_VISIBILITY_SCOPE };
 
-    let return_block = BasicBlock::new(1);
+    let return_block = Block::new(1);
     let mut blocks = IndexVec::new();
     let block = |blocks: &mut IndexVec<_, _>, kind| {
-        blocks.push(BasicBlockData {
+        blocks.push(BlockData {
             statements: vec![],
             terminator: Some(Terminator { source_info, kind }),
             is_cleanup: false
@@ -360,7 +360,7 @@ fn build_call_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
 
     let mut blocks = IndexVec::new();
     let block = |blocks: &mut IndexVec<_, _>, statements, kind, is_cleanup| {
-        blocks.push(BasicBlockData {
+        blocks.push(BlockData {
             statements,
             terminator: Some(Terminator { source_info, kind }),
             is_cleanup
@@ -372,9 +372,9 @@ fn build_call_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
         func: callee,
         args: args,
         destination: Some((Lvalue::Local(RETURN_POINTER),
-                           BasicBlock::new(1))),
+                           Block::new(1))),
         cleanup: if let Adjustment::RefMut = rcvr_adjustment {
-            Some(BasicBlock::new(3))
+            Some(Block::new(3))
         } else {
             None
         }
@@ -384,7 +384,7 @@ fn build_call_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
         // BB #1 - drop for Self
         block(&mut blocks, vec![], TerminatorKind::Drop {
             location: Lvalue::Local(rcvr_arg),
-            target: BasicBlock::new(2),
+            target: Block::new(2),
             unwind: None
         }, false);
     }
@@ -394,7 +394,7 @@ fn build_call_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
         // BB #3 - drop if closure panics
         block(&mut blocks, vec![], TerminatorKind::Drop {
             location: Lvalue::Local(rcvr_arg),
-            target: BasicBlock::new(4),
+            target: Block::new(4),
             unwind: None
         }, true);
 
@@ -456,7 +456,7 @@ pub fn build_adt_ctor<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a, 'gcx, 'tcx>,
     };
 
     // return = ADT(arg0, arg1, ...); return
-    let start_block = BasicBlockData {
+    let start_block = BlockData {
         statements: vec![Statement {
             source_info: source_info,
             kind: StatementKind::Assign(

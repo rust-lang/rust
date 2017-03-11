@@ -79,8 +79,8 @@ struct DropCtxt<'l, 'b: 'l, 'tcx: 'b, D>
 
     lvalue: &'l Lvalue<'tcx>,
     path: D::Path,
-    succ: BasicBlock,
-    unwind: Option<BasicBlock>,
+    succ: Block,
+    unwind: Option<Block>,
 }
 
 pub fn elaborate_drop<'b, 'tcx, D>(
@@ -89,9 +89,9 @@ pub fn elaborate_drop<'b, 'tcx, D>(
     is_cleanup: bool,
     lvalue: &Lvalue<'tcx>,
     path: D::Path,
-    succ: BasicBlock,
-    unwind: Option<BasicBlock>,
-    bb: BasicBlock)
+    succ: Block,
+    unwind: Option<Block>,
+    bb: Block)
     where D: DropElaborator<'b, 'tcx>
 {
     assert_eq!(unwind.is_none(), is_cleanup);
@@ -129,7 +129,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
     ///
     /// FIXME: I think we should just control the flags externally
     /// and then we do not need this machinery.
-    pub fn elaborate_drop<'a>(&mut self, bb: BasicBlock) {
+    pub fn elaborate_drop<'a>(&mut self, bb: Block) {
         debug!("elaborate_drop({:?})", self);
         let style = self.elaborator.drop_style(self.path, DropFlagMode::Deep);
         debug!("elaborate_drop({:?}): live - {:?}", self, style);
@@ -192,9 +192,9 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
                     is_cleanup: bool,
                     lvalue: &Lvalue<'tcx>,
                     path: Option<D::Path>,
-                    succ: BasicBlock,
-                    unwind: Option<BasicBlock>)
-                    -> BasicBlock
+                    succ: Block,
+                    unwind: Option<Block>)
+                    -> Block
     {
         if let Some(path) = path {
             debug!("drop_subpath: for std field {:?}", lvalue);
@@ -226,11 +226,11 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
     /// (the first field is never reached). If it is `None`, all
     /// unwind targets are left blank.
     fn drop_halfladder<'a>(&mut self,
-                           unwind_ladder: Option<&[BasicBlock]>,
-                           succ: BasicBlock,
+                           unwind_ladder: Option<&[Block]>,
+                           succ: Block,
                            fields: &[(Lvalue<'tcx>, Option<D::Path>)],
                            is_cleanup: bool)
-                           -> Vec<BasicBlock>
+                           -> Vec<Block>
     {
         let mut unwind_succ = if is_cleanup {
             None
@@ -271,7 +271,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
     ///     ELAB(drop location.2 [target=`self.unwind`])
     fn drop_ladder<'a>(&mut self,
                        fields: Vec<(Lvalue<'tcx>, Option<D::Path>)>)
-                       -> (BasicBlock, Option<BasicBlock>)
+                       -> (Block, Option<Block>)
     {
         debug!("drop_ladder({:?}, {:?})", self, fields);
 
@@ -301,7 +301,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
     }
 
     fn open_drop_for_tuple<'a>(&mut self, tys: &[Ty<'tcx>])
-                               -> BasicBlock
+                               -> Block
     {
         debug!("open_drop_for_tuple({:?}, {:?})", self, tys);
 
@@ -313,7 +313,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         self.drop_ladder(fields).0
     }
 
-    fn open_drop_for_box<'a>(&mut self, ty: Ty<'tcx>) -> BasicBlock
+    fn open_drop_for_box<'a>(&mut self, ty: Ty<'tcx>) -> Block
     {
         debug!("open_drop_for_box({:?}, {:?})", self, ty);
 
@@ -331,10 +331,10 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
     }
 
     fn open_drop_for_adt<'a>(&mut self, adt: &'tcx ty::AdtDef, substs: &'tcx Substs<'tcx>)
-                             -> BasicBlock {
+                             -> Block {
         debug!("open_drop_for_adt({:?}, {:?}, {:?})", self, adt, substs);
         if adt.variants.len() == 0 {
-            return self.elaborator.patch().new_block(BasicBlockData {
+            return self.elaborator.patch().new_block(BlockData {
                 statements: vec![],
                 terminator: Some(Terminator {
                     source_info: self.source_info,
@@ -359,7 +359,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
 
     fn open_drop_for_adt_contents<'a>(&mut self, adt: &'tcx ty::AdtDef,
                                       substs: &'tcx Substs<'tcx>)
-                                      -> (BasicBlock, Option<BasicBlock>) {
+                                      -> (Block, Option<Block>) {
         match adt.variants.len() {
             1 => {
                 let fields = self.move_paths_for_fields(
@@ -462,10 +462,10 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
     fn adt_switch_block(&mut self,
                         is_cleanup: bool,
                         adt: &'tcx ty::AdtDef,
-                        blocks: Vec<BasicBlock>,
+                        blocks: Vec<Block>,
                         values: &[ConstInt],
-                        succ: BasicBlock)
-                        -> BasicBlock {
+                        succ: Block)
+                        -> Block {
         // If there are multiple variants, then if something
         // is present within the enum the discriminant, tracked
         // by the rest path, must be initialized.
@@ -476,7 +476,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         let discr_ty = adt.repr.discr_type().to_ty(self.tcx());
         let discr = Lvalue::Local(self.new_temp(discr_ty));
         let discr_rv = Rvalue::Discriminant(self.lvalue.clone());
-        let switch_block = self.elaborator.patch().new_block(BasicBlockData {
+        let switch_block = self.elaborator.patch().new_block(BlockData {
             statements: vec![
                 Statement {
                     source_info: self.source_info,
@@ -497,8 +497,8 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         self.drop_flag_test_block(is_cleanup, switch_block, succ)
     }
 
-    fn destructor_call_block<'a>(&mut self, (succ, unwind): (BasicBlock, Option<BasicBlock>))
-                                 -> BasicBlock
+    fn destructor_call_block<'a>(&mut self, (succ, unwind): (Block, Option<Block>))
+                                 -> Block
     {
         debug!("destructor_call_block({:?}, {:?})", self, succ);
         let tcx = self.tcx();
@@ -515,7 +515,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         let ref_lvalue = self.new_temp(ref_ty);
         let unit_temp = Lvalue::Local(self.new_temp(tcx.mk_nil()));
 
-        self.elaborator.patch().new_block(BasicBlockData {
+        self.elaborator.patch().new_block(BlockData {
             statements: vec![Statement {
                 source_info: self.source_info,
                 kind: StatementKind::Assign(
@@ -545,7 +545,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
     ///
     /// This creates a "drop ladder" that drops the needed fields of the
     /// ADT, both in the success case or if one of the destructors fail.
-    fn open_drop<'a>(&mut self) -> BasicBlock {
+    fn open_drop<'a>(&mut self) -> Block {
         let ty = self.lvalue_ty(self.lvalue);
         let is_cleanup = self.is_cleanup; // FIXME(#6393)
         let succ = self.succ;
@@ -585,7 +585,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
     fn complete_drop<'a>(&mut self,
                          is_cleanup: bool,
                          drop_mode: Option<DropFlagMode>,
-                         succ: BasicBlock) -> BasicBlock
+                         succ: Block) -> Block
     {
         debug!("complete_drop({:?},{:?})", self, drop_mode);
 
@@ -598,7 +598,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         self.drop_flag_test_block(is_cleanup, drop_block, succ)
     }
 
-    fn elaborated_drop_block<'a>(&mut self) -> BasicBlock {
+    fn elaborated_drop_block<'a>(&mut self) -> Block {
         debug!("elaborated_drop_block({:?})", self);
         let is_cleanup = self.is_cleanup; // FIXME(#6393)
         let succ = self.succ;
@@ -610,9 +610,9 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
     fn box_free_block<'a>(
         &mut self,
         ty: Ty<'tcx>,
-        target: BasicBlock,
+        target: Block,
         is_cleanup: bool
-    ) -> BasicBlock {
+    ) -> Block {
         let block = self.unelaborated_free_block(ty, target, is_cleanup);
         self.drop_flag_test_block(is_cleanup, block, target)
     }
@@ -620,9 +620,9 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
     fn unelaborated_free_block<'a>(
         &mut self,
         ty: Ty<'tcx>,
-        target: BasicBlock,
+        target: Block,
         is_cleanup: bool
-    ) -> BasicBlock {
+    ) -> Block {
         let tcx = self.tcx();
         let unit_temp = Lvalue::Local(self.new_temp(tcx.mk_nil()));
         let free_func = tcx.require_lang_item(lang_items::BoxFreeFnLangItem);
@@ -641,7 +641,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         free_block
     }
 
-    fn drop_block<'a>(&mut self, is_cleanup: bool, succ: BasicBlock) -> BasicBlock {
+    fn drop_block<'a>(&mut self, is_cleanup: bool, succ: Block) -> Block {
         let block = TerminatorKind::Drop {
             location: self.lvalue.clone(),
             target: succ,
@@ -652,9 +652,9 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
 
     fn drop_flag_test_block(&mut self,
                             is_cleanup: bool,
-                            on_set: BasicBlock,
-                            on_unset: BasicBlock)
-                            -> BasicBlock
+                            on_set: Block,
+                            on_unset: Block)
+                            -> Block
     {
         let style = self.elaborator.drop_style(self.path, DropFlagMode::Shallow);
         debug!("drop_flag_test_block({:?},{:?},{:?}) - {:?}",
@@ -674,9 +674,9 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
     fn new_block<'a>(&mut self,
                      is_cleanup: bool,
                      k: TerminatorKind<'tcx>)
-                     -> BasicBlock
+                     -> Block
     {
-        self.elaborator.patch().new_block(BasicBlockData {
+        self.elaborator.patch().new_block(BlockData {
             statements: vec![],
             terminator: Some(Terminator {
                 source_info: self.source_info, kind: k
@@ -689,7 +689,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         self.elaborator.patch().new_temp(ty)
     }
 
-    fn terminator_loc(&mut self, bb: BasicBlock) -> Location {
+    fn terminator_loc(&mut self, bb: Block) -> Location {
         let mir = self.elaborator.mir();
         self.elaborator.patch().terminator_loc(mir, bb)
     }

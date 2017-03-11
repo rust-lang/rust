@@ -399,8 +399,8 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         loc: Location,
         location: &Lvalue<'tcx>,
         value: &Operand<'tcx>,
-        target: BasicBlock,
-        unwind: Option<BasicBlock>)
+        target: Block,
+        unwind: Option<Block>)
     {
         let bb = loc.block;
         let data = &self.mir[bb];
@@ -412,7 +412,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         };
 
         let unwind = unwind.unwrap_or(self.patch.resume_block());
-        let unwind = self.patch.new_block(BasicBlockData {
+        let unwind = self.patch.new_block(BlockData {
             statements: vec![assign.clone()],
             terminator: Some(Terminator {
                 kind: TerminatorKind::Goto { target: unwind },
@@ -421,7 +421,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
             is_cleanup: true
         });
 
-        let target = self.patch.new_block(BasicBlockData {
+        let target = self.patch.new_block(BlockData {
             statements: vec![assign],
             terminator: Some(Terminator {
                 kind: TerminatorKind::Goto { target: target },

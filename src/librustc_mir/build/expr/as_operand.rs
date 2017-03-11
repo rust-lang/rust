@@ -15,6 +15,7 @@ use build::expr::category::Category;
 use hair::*;
 use rustc::middle::region::CodeExtent;
 use rustc::mir::*;
+use rustc::mir::Block;
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// Returns an operand suitable for use until the end of the current
@@ -23,7 +24,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// The operand returned from this function will *not be valid* after
     /// an ExprKind::Scope is passed, so please do *not* return it from
     /// functions to avoid bad miscompiles.
-    pub fn as_local_operand<M>(&mut self, block: BasicBlock, expr: M)
+    pub fn as_local_operand<M>(&mut self, block: Block, expr: M)
                              -> BlockAnd<Operand<'tcx>>
         where M: Mirror<'tcx, Output = Expr<'tcx>>
     {
@@ -38,7 +39,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     ///
     /// The operand is known to be live until the end of `scope`.
     pub fn as_operand<M>(&mut self,
-                         block: BasicBlock,
+                         block: Block,
                          scope: Option<CodeExtent>,
                          expr: M) -> BlockAnd<Operand<'tcx>>
         where M: Mirror<'tcx, Output = Expr<'tcx>>
@@ -48,7 +49,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     }
 
     fn expr_as_operand(&mut self,
-                       mut block: BasicBlock,
+                       mut block: Block,
                        scope: Option<CodeExtent>,
                        expr: Expr<'tcx>)
                        -> BlockAnd<Operand<'tcx>> {

@@ -85,7 +85,7 @@ impl<'mir, 'a, 'tcx> LocalAnalyzer<'mir, 'a, 'tcx> {
 
 impl<'mir, 'a, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'tcx> {
     fn visit_assign(&mut self,
-                    block: mir::BasicBlock,
+                    block: mir::Block,
                     lvalue: &mir::Lvalue<'tcx>,
                     rvalue: &mir::Rvalue<'tcx>,
                     location: Location) {
@@ -104,7 +104,7 @@ impl<'mir, 'a, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'tcx> {
     }
 
     fn visit_terminator_kind(&mut self,
-                             block: mir::BasicBlock,
+                             block: mir::Block,
                              kind: &mir::TerminatorKind<'tcx>,
                              location: Location) {
         match *kind {
@@ -195,11 +195,11 @@ impl<'mir, 'a, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'tcx> {
 pub enum CleanupKind {
     NotCleanup,
     Funclet,
-    Internal { funclet: mir::BasicBlock }
+    Internal { funclet: mir::Block }
 }
 
-pub fn cleanup_kinds<'a, 'tcx>(mir: &mir::Mir<'tcx>) -> IndexVec<mir::BasicBlock, CleanupKind> {
-    fn discover_masters<'tcx>(result: &mut IndexVec<mir::BasicBlock, CleanupKind>,
+pub fn cleanup_kinds<'a, 'tcx>(mir: &mir::Mir<'tcx>) -> IndexVec<mir::Block, CleanupKind> {
+    fn discover_masters<'tcx>(result: &mut IndexVec<mir::Block, CleanupKind>,
                               mir: &mir::Mir<'tcx>) {
         for (bb, data) in mir.basic_blocks().iter_enumerated() {
             match data.terminator().kind {
@@ -224,11 +224,11 @@ pub fn cleanup_kinds<'a, 'tcx>(mir: &mir::Mir<'tcx>) -> IndexVec<mir::BasicBlock
         }
     }
 
-    fn propagate<'tcx>(result: &mut IndexVec<mir::BasicBlock, CleanupKind>,
+    fn propagate<'tcx>(result: &mut IndexVec<mir::Block, CleanupKind>,
                        mir: &mir::Mir<'tcx>) {
         let mut funclet_succs = IndexVec::from_elem(None, mir.basic_blocks());
 
-        let mut set_successor = |funclet: mir::BasicBlock, succ| {
+        let mut set_successor = |funclet: mir::Block, succ| {
             match funclet_succs[funclet] {
                 ref mut s @ None => {
                     debug!("set_successor: updating successor of {:?} to {:?}",

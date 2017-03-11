@@ -542,7 +542,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
     }
 
     fn visit_terminator_kind(&mut self,
-                             block: mir::BasicBlock,
+                             block: mir::Block,
                              kind: &mir::TerminatorKind<'tcx>,
                              location: Location) {
         let tcx = self.scx.tcx();

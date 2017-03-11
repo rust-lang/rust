@@ -484,7 +484,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                        mir: &Mir<'tcx>,
                        term: &Terminator<'tcx>,
                        sig: &ty::FnSig<'tcx>,
-                       destination: &Option<(Lvalue<'tcx>, BasicBlock)>) {
+                       destination: &Option<(Lvalue<'tcx>, Block)>) {
         let tcx = self.tcx();
         match *destination {
             Some((ref dest, _)) => {
@@ -581,7 +581,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn check_iscleanup(&mut self, mir: &Mir<'tcx>, block: &BasicBlockData<'tcx>)
+    fn check_iscleanup(&mut self, mir: &Mir<'tcx>, block: &BlockData<'tcx>)
     {
         let is_cleanup = block.is_cleanup;
         self.last_span = block.terminator().source_info.span;
@@ -632,7 +632,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     fn assert_iscleanup(&mut self,
                         mir: &Mir<'tcx>,
                         ctxt: &fmt::Debug,
-                        bb: BasicBlock,
+                        bb: Block,
                         iscleanuppad: bool)
     {
         if mir[bb].is_cleanup != iscleanuppad {

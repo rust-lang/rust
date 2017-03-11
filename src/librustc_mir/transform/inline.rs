@@ -111,7 +111,7 @@ struct CallSite<'tcx> {
     caller: DefId,
     callee: DefId,
     substs: &'tcx Substs<'tcx>,
-    bb: BasicBlock,
+    bb: Block,
     location: SourceInfo,
 }
 
@@ -565,7 +565,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
 
                 let terminator = Terminator {
                     source_info: callsite.location,
-                    kind: TerminatorKind::Goto { target: BasicBlock::new(bb_len) }
+                    kind: TerminatorKind::Goto { target: Block::new(bb_len) }
                 };
 
                 caller_mir[callsite.bb].terminator = Some(terminator);
@@ -683,14 +683,14 @@ struct Integrator<'a, 'tcx: 'a> {
     promoted_map: IndexVec<Promoted, Promoted>,
     _callsite: CallSite<'tcx>,
     destination: Lvalue<'tcx>,
-    return_block: BasicBlock,
-    cleanup_block: Option<BasicBlock>,
+    return_block: Block,
+    cleanup_block: Option<Block>,
     in_cleanup_block: bool,
 }
 
 impl<'a, 'tcx> Integrator<'a, 'tcx> {
-    fn update_target(&self, tgt: BasicBlock) -> BasicBlock {
-        let new = BasicBlock::new(tgt.index() + self.block_idx);
+    fn update_target(&self, tgt: Block) -> Block {
+        let new = Block::new(tgt.index() + self.block_idx);
         debug!("Updating target `{:?}`, new: `{:?}`", tgt, new);
         new
     }
@@ -756,13 +756,13 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
         self.super_operand(operand, location);
     }
 
-    fn visit_basic_block_data(&mut self, block: BasicBlock, data: &mut BasicBlockData<'tcx>) {
+    fn visit_basic_block_data(&mut self, block: Block, data: &mut BlockData<'tcx>) {
         self.in_cleanup_block = data.is_cleanup;
         self.super_basic_block_data(block, data);
         self.in_cleanup_block = false;
     }
 
-    fn visit_terminator_kind(&mut self, block: BasicBlock,
+    fn visit_terminator_kind(&mut self, block: Block,
                              kind: &mut TerminatorKind<'tcx>, loc: Location) {
         self.super_terminator_kind(block, kind, loc);
 

@@ -66,9 +66,9 @@ macro_rules! newtype_index {
 /// Lowered representation of a single function.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Mir<'tcx> {
-    /// List of basic blocks. References to basic block use a newtyped index type `BasicBlock`
+    /// List of basic blocks. References to basic block use a newtyped index type `Block`
     /// that indexes into this vector.
-    basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
+    basic_blocks: IndexVec<Block, BlockData<'tcx>>,
 
     /// List of visibility (lexical) scopes; these are referenced by statements
     /// and used (eventually) for debuginfo. Indexed by a `VisibilityScope`.
@@ -115,10 +115,10 @@ pub struct Mir<'tcx> {
 }
 
 /// where execution begins
-pub const START_BLOCK: BasicBlock = BasicBlock(0);
+pub const START_BLOCK: Block = Block(0);
 
 impl<'tcx> Mir<'tcx> {
-    pub fn new(basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
+    pub fn new(basic_blocks: IndexVec<Block, BlockData<'tcx>>,
                visibility_scopes: IndexVec<VisibilityScope, VisibilityScopeData>,
                promoted: IndexVec<Promoted, Mir<'tcx>>,
                return_ty: Ty<'tcx>,
@@ -147,28 +147,28 @@ impl<'tcx> Mir<'tcx> {
     }
 
     #[inline]
-    pub fn basic_blocks(&self) -> &IndexVec<BasicBlock, BasicBlockData<'tcx>> {
+    pub fn basic_blocks(&self) -> &IndexVec<Block, BlockData<'tcx>> {
         &self.basic_blocks
     }
 
     #[inline]
-    pub fn basic_blocks_mut(&mut self) -> &mut IndexVec<BasicBlock, BasicBlockData<'tcx>> {
+    pub fn basic_blocks_mut(&mut self) -> &mut IndexVec<Block, BlockData<'tcx>> {
         self.cache.invalidate();
         &mut self.basic_blocks
     }
 
     #[inline]
-    pub fn predecessors(&self) -> Ref<IndexVec<BasicBlock, Vec<BasicBlock>>> {
+    pub fn predecessors(&self) -> Ref<IndexVec<Block, Vec<Block>>> {
         self.cache.predecessors(self)
     }
 
     #[inline]
-    pub fn predecessors_for(&self, bb: BasicBlock) -> Ref<Vec<BasicBlock>> {
+    pub fn predecessors_for(&self, bb: Block) -> Ref<Vec<Block>> {
         Ref::map(self.predecessors(), |p| &p[bb])
     }
 
     #[inline]
-    pub fn dominators(&self) -> Dominators<BasicBlock> {
+    pub fn dominators(&self) -> Dominators<Block> {
         dominators(self)
     }
 
@@ -243,18 +243,18 @@ impl<'tcx> Mir<'tcx> {
     }
 }
 
-impl<'tcx> Index<BasicBlock> for Mir<'tcx> {
-    type Output = BasicBlockData<'tcx>;
+impl<'tcx> Index<Block> for Mir<'tcx> {
+    type Output = BlockData<'tcx>;
 
     #[inline]
-    fn index(&self, index: BasicBlock) -> &BasicBlockData<'tcx> {
+    fn index(&self, index: Block) -> &BlockData<'tcx> {
         &self.basic_blocks()[index]
     }
 }
 
-impl<'tcx> IndexMut<BasicBlock> for Mir<'tcx> {
+impl<'tcx> IndexMut<Block> for Mir<'tcx> {
     #[inline]
-    fn index_mut(&mut self, index: BasicBlock) -> &mut BasicBlockData<'tcx> {
+    fn index_mut(&mut self, index: Block) -> &mut BlockData<'tcx> {
         &mut self.basic_blocks_mut()[index]
     }
 }
@@ -411,15 +411,15 @@ pub struct UpvarDecl {
 }
 
 ///////////////////////////////////////////////////////////////////////////
-// BasicBlock
+// Block
 
-newtype_index!(BasicBlock, "bb");
+newtype_index!(Block, "bb");
 
 ///////////////////////////////////////////////////////////////////////////
-// BasicBlockData and Terminator
+// BlockData and Terminator
 
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
-pub struct BasicBlockData<'tcx> {
+pub struct BlockData<'tcx> {
     /// List of statements in this block.
     pub statements: Vec<Statement<'tcx>>,
 
@@ -450,7 +450,7 @@ pub struct Terminator<'tcx> {
 pub enum TerminatorKind<'tcx> {
     /// block should have one successor in the graph; we jump there
     Goto {
-        target: BasicBlock,
+        target: Block,
     },
 
     /// operand evaluates to an integer; jump depending on its value
@@ -472,12 +472,12 @@ pub enum TerminatorKind<'tcx> {
         // This invariant is quite non-obvious and also could be improved.
         // One way to make this invariant is to have something like this instead:
         //
-        // branches: Vec<(ConstInt, BasicBlock)>,
-        // otherwise: Option<BasicBlock> // exhaustive if None
+        // branches: Vec<(ConstInt, Block)>,
+        // otherwise: Option<Block> // exhaustive if None
         //
         // However we’ve decided to keep this as-is until we figure a case
         // where some other approach seems to be strictly better than other.
-        targets: Vec<BasicBlock>,
+        targets: Vec<Block>,
     },
 
     /// Indicates that the landing pad is finished and unwinding should
@@ -494,16 +494,16 @@ pub enum TerminatorKind<'tcx> {
     /// Drop the Lvalue
     Drop {
         location: Lvalue<'tcx>,
-        target: BasicBlock,
-        unwind: Option<BasicBlock>
+        target: Block,
+        unwind: Option<Block>
     },
 
     /// Drop the Lvalue and assign the new value over it
     DropAndReplace {
         location: Lvalue<'tcx>,
         value: Operand<'tcx>,
-        target: BasicBlock,
-        unwind: Option<BasicBlock>,
+        target: Block,
+        unwind: Option<Block>,
     },
 
     /// Block ends with a call of a converging function
@@ -513,9 +513,9 @@ pub enum TerminatorKind<'tcx> {
         /// Arguments the function is called with
         args: Vec<Operand<'tcx>>,
         /// Destination for the return value. If some, the call is converging.
-        destination: Option<(Lvalue<'tcx>, BasicBlock)>,
+        destination: Option<(Lvalue<'tcx>, Block)>,
         /// Cleanups to be done if the call unwinds.
-        cleanup: Option<BasicBlock>
+        cleanup: Option<Block>
     },
 
     /// Jump to the target if the condition has the expected value,
@@ -524,24 +524,24 @@ pub enum TerminatorKind<'tcx> {
         cond: Operand<'tcx>,
         expected: bool,
         msg: AssertMessage<'tcx>,
-        target: BasicBlock,
-        cleanup: Option<BasicBlock>
+        target: Block,
+        cleanup: Option<Block>
     }
 }
 
 impl<'tcx> Terminator<'tcx> {
-    pub fn successors(&self) -> Cow<[BasicBlock]> {
+    pub fn successors(&self) -> Cow<[Block]> {
         self.kind.successors()
     }
 
-    pub fn successors_mut(&mut self) -> Vec<&mut BasicBlock> {
+    pub fn successors_mut(&mut self) -> Vec<&mut Block> {
         self.kind.successors_mut()
     }
 }
 
 impl<'tcx> TerminatorKind<'tcx> {
     pub fn if_<'a, 'gcx>(tcx: ty::TyCtxt<'a, 'gcx, 'tcx>, cond: Operand<'tcx>,
-                         t: BasicBlock, f: BasicBlock) -> TerminatorKind<'tcx> {
+                         t: Block, f: Block) -> TerminatorKind<'tcx> {
         static BOOL_SWITCH_FALSE: &'static [ConstInt] = &[ConstInt::U8(0)];
         TerminatorKind::SwitchInt {
             discr: cond,
@@ -551,7 +551,7 @@ impl<'tcx> TerminatorKind<'tcx> {
         }
     }
 
-    pub fn successors(&self) -> Cow<[BasicBlock]> {
+    pub fn successors(&self) -> Cow<[Block]> {
         use self::TerminatorKind::*;
         match *self {
             Goto { target: ref b } => slice::ref_slice(b).into_cow(),
@@ -577,9 +577,9 @@ impl<'tcx> TerminatorKind<'tcx> {
         }
     }
 
-    // FIXME: no mootable cow. I’m honestly not sure what a “cow” between `&mut [BasicBlock]` and
-    // `Vec<&mut BasicBlock>` would look like in the first place.
-    pub fn successors_mut(&mut self) -> Vec<&mut BasicBlock> {
+    // FIXME: no mootable cow. I’m honestly not sure what a “cow” between `&mut [Block]` and
+    // `Vec<&mut Block>` would look like in the first place.
+    pub fn successors_mut(&mut self) -> Vec<&mut Block> {
         use self::TerminatorKind::*;
         match *self {
             Goto { target: ref mut b } => vec![b],
@@ -603,9 +603,9 @@ impl<'tcx> TerminatorKind<'tcx> {
     }
 }
 
-impl<'tcx> BasicBlockData<'tcx> {
-    pub fn new(terminator: Option<Terminator<'tcx>>) -> BasicBlockData<'tcx> {
-        BasicBlockData {
+impl<'tcx> BlockData<'tcx> {
+    pub fn new(terminator: Option<Terminator<'tcx>>) -> BlockData<'tcx> {
+        BlockData {
             statements: vec![],
             terminator: terminator,
             is_cleanup: false,
@@ -1296,7 +1296,7 @@ fn item_path_str(def_id: DefId) -> String {
 
 impl<'tcx> ControlFlowGraph for Mir<'tcx> {
 
-    type Node = BasicBlock;
+    type Node = Block;
 
     fn num_nodes(&self) -> usize { self.basic_blocks.len() }
 
@@ -1315,19 +1315,19 @@ impl<'tcx> ControlFlowGraph for Mir<'tcx> {
 }
 
 impl<'a, 'b> GraphPredecessors<'b> for Mir<'a> {
-    type Item = BasicBlock;
-    type Iter = IntoIter<BasicBlock>;
+    type Item = Block;
+    type Iter = IntoIter<Block>;
 }
 
 impl<'a, 'b>  GraphSuccessors<'b> for Mir<'a> {
-    type Item = BasicBlock;
-    type Iter = IntoIter<BasicBlock>;
+    type Item = Block;
+    type Iter = IntoIter<Block>;
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub struct Location {
     /// the location is within this block
-    pub block: BasicBlock,
+    pub block: Block,
 
     /// the location is the start of the this statement; or, if `statement_index`
     /// == num-statements, then the start of the terminator.
@@ -1341,7 +1341,7 @@ impl fmt::Debug for Location {
 }
 
 impl Location {
-    pub fn dominates(&self, other: &Location, dominators: &Dominators<BasicBlock>) -> bool {
+    pub fn dominates(&self, other: &Location, dominators: &Dominators<Block>) -> bool {
         if self.block == other.block {
             self.statement_index <= other.statement_index
         } else {
@@ -1392,9 +1392,9 @@ impl<'tcx> TypeFoldable<'tcx> for LocalDecl<'tcx> {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for BasicBlockData<'tcx> {
+impl<'tcx> TypeFoldable<'tcx> for BlockData<'tcx> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        BasicBlockData {
+        BlockData {
             statements: self.statements.fold_with(folder),
             terminator: self.terminator.fold_with(folder),
             is_cleanup: self.is_cleanup

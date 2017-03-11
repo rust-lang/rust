@@ -24,12 +24,13 @@ use rustc::middle::const_val::ConstVal;
 use rustc::middle::region::CodeExtent;
 use rustc::ty;
 use rustc::mir::*;
+use rustc::mir::Block;
 use syntax::ast;
 use syntax_pos::Span;
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// See comment on `as_local_operand`
-    pub fn as_local_rvalue<M>(&mut self, block: BasicBlock, expr: M)
+    pub fn as_local_rvalue<M>(&mut self, block: Block, expr: M)
                              -> BlockAnd<Rvalue<'tcx>>
         where M: Mirror<'tcx, Output = Expr<'tcx>>
     {
@@ -38,7 +39,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     }
 
     /// Compile `expr`, yielding an rvalue.
-    pub fn as_rvalue<M>(&mut self, block: BasicBlock, scope: Option<CodeExtent>, expr: M)
+    pub fn as_rvalue<M>(&mut self, block: Block, scope: Option<CodeExtent>, expr: M)
                         -> BlockAnd<Rvalue<'tcx>>
         where M: Mirror<'tcx, Output = Expr<'tcx>>
     {
@@ -47,7 +48,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     }
 
     fn expr_as_rvalue(&mut self,
-                      mut block: BasicBlock,
+                      mut block: Block,
                       scope: Option<CodeExtent>,
                       expr: Expr<'tcx>)
                       -> BlockAnd<Rvalue<'tcx>> {
@@ -253,7 +254,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn build_binary_op(&mut self, mut block: BasicBlock,
+    pub fn build_binary_op(&mut self, mut block: Block,
                            op: BinOp, span: Span, ty: ty::Ty<'tcx>,
                            lhs: Operand<'tcx>, rhs: Operand<'tcx>) -> BlockAnd<Rvalue<'tcx>> {
         let source_info = self.source_info(span);

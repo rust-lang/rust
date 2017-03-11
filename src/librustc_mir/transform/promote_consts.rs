@@ -73,7 +73,7 @@ pub enum Candidate {
 
     /// Array of indices found in the third argument of
     /// a call to one of the simd_shuffleN intrinsics.
-    ShuffleIndices(BasicBlock)
+    ShuffleIndices(Block)
 }
 
 struct TempCollector<'tcx> {
@@ -159,9 +159,9 @@ struct Promoter<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> Promoter<'a, 'tcx> {
-    fn new_block(&mut self) -> BasicBlock {
+    fn new_block(&mut self) -> Block {
         let span = self.promoted.span;
-        self.promoted.basic_blocks_mut().push(BasicBlockData {
+        self.promoted.basic_blocks_mut().push(BlockData {
             statements: vec![],
             terminator: Some(Terminator {
                 source_info: SourceInfo {
@@ -314,7 +314,7 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
             }
         };
         self.visit_rvalue(&mut rvalue, Location {
-            block: BasicBlock::new(0),
+            block: Block::new(0),
             statement_index: usize::MAX
         });
 

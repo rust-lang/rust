@@ -57,11 +57,11 @@ pub fn sanity_check_via_rustc_peek<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                            mir: &Mir<'tcx>,
                            results: &DataflowResults<O>,
-                           bb: mir::BasicBlock) where
+                           bb: mir::Block) where
     O: BitDenotation<Idx=MovePathIndex> + HasMoveData<'tcx>
 {
     let move_data = results.0.operator.move_data();
-    let mir::BasicBlockData { ref statements, ref terminator, is_cleanup: _ } = mir[bb];
+    let mir::BlockData { ref statements, ref terminator, is_cleanup: _ } = mir[bb];
 
     let (args, span) = match is_rustc_peek(tcx, terminator) {
         Some(args_and_span) => args_and_span,

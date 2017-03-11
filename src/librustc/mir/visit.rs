@@ -50,9 +50,9 @@ use syntax_pos::Span;
 //
 // ```rust
 // fn super_basic_block_data(&mut self,
-//                           block: BasicBlock,
-//                           data: & $($mutability)* BasicBlockData<'tcx>) {
-//     let BasicBlockData {
+//                           block: Block,
+//                           data: & $($mutability)* BlockData<'tcx>) {
+//     let BlockData {
 //         ref $($mutability)* statements,
 //         ref $($mutability)* terminator,
 //         is_cleanup: _
@@ -66,9 +66,9 @@ use syntax_pos::Span;
 // }
 // ```
 //
-// Here we used `let BasicBlockData { <fields> } = *data` deliberately,
+// Here we used `let BlockData { <fields> } = *data` deliberately,
 // rather than writing `data.statements` in the body. This is because if one
-// adds a new field to `BasicBlockData`, one will be forced to revise this code,
+// adds a new field to `BlockData`, one will be forced to revise this code,
 // and hence one will (hopefully) invoke the correct visit methods (if any).
 //
 // For this to work, ALL MATCHES MUST BE EXHAUSTIVE IN FIELDS AND VARIANTS.
@@ -90,8 +90,8 @@ macro_rules! make_mir_visitor {
             }
 
             fn visit_basic_block_data(&mut self,
-                                      block: BasicBlock,
-                                      data: & $($mutability)* BasicBlockData<'tcx>) {
+                                      block: Block,
+                                      data: & $($mutability)* BlockData<'tcx>) {
                 self.super_basic_block_data(block, data);
             }
 
@@ -101,14 +101,14 @@ macro_rules! make_mir_visitor {
             }
 
             fn visit_statement(&mut self,
-                               block: BasicBlock,
+                               block: Block,
                                statement: & $($mutability)* Statement<'tcx>,
                                location: Location) {
                 self.super_statement(block, statement, location);
             }
 
             fn visit_assign(&mut self,
-                            block: BasicBlock,
+                            block: Block,
                             lvalue: & $($mutability)* Lvalue<'tcx>,
                             rvalue: & $($mutability)* Rvalue<'tcx>,
                             location: Location) {
@@ -116,14 +116,14 @@ macro_rules! make_mir_visitor {
             }
 
             fn visit_terminator(&mut self,
-                                block: BasicBlock,
+                                block: Block,
                                 terminator: & $($mutability)* Terminator<'tcx>,
                                 location: Location) {
                 self.super_terminator(block, terminator, location);
             }
 
             fn visit_terminator_kind(&mut self,
-                                     block: BasicBlock,
+                                     block: Block,
                                      kind: & $($mutability)* TerminatorKind<'tcx>,
                                      location: Location) {
                 self.super_terminator_kind(block, kind, location);
@@ -176,8 +176,8 @@ macro_rules! make_mir_visitor {
             }
 
             fn visit_branch(&mut self,
-                            source: BasicBlock,
-                            target: BasicBlock) {
+                            source: Block,
+                            target: Block) {
                 self.super_branch(source, target);
             }
 
@@ -258,7 +258,7 @@ macro_rules! make_mir_visitor {
             fn super_mir(&mut self,
                          mir: & $($mutability)* Mir<'tcx>) {
                 for index in 0..mir.basic_blocks().len() {
-                    let block = BasicBlock::new(index);
+                    let block = Block::new(index);
                     self.visit_basic_block_data(block, &$($mutability)* mir[block]);
                 }
 
@@ -276,9 +276,9 @@ macro_rules! make_mir_visitor {
             }
 
             fn super_basic_block_data(&mut self,
-                                      block: BasicBlock,
-                                      data: & $($mutability)* BasicBlockData<'tcx>) {
-                let BasicBlockData {
+                                      block: Block,
+                                      data: & $($mutability)* BlockData<'tcx>) {
+                let BlockData {
                     ref $($mutability)* statements,
                     ref $($mutability)* terminator,
                     is_cleanup: _
@@ -311,7 +311,7 @@ macro_rules! make_mir_visitor {
             }
 
             fn super_statement(&mut self,
-                               block: BasicBlock,
+                               block: Block,
                                statement: & $($mutability)* Statement<'tcx>,
                                location: Location) {
                 let Statement {
@@ -349,7 +349,7 @@ macro_rules! make_mir_visitor {
             }
 
             fn super_assign(&mut self,
-                            _block: BasicBlock,
+                            _block: Block,
                             lvalue: &$($mutability)* Lvalue<'tcx>,
                             rvalue: &$($mutability)* Rvalue<'tcx>,
                             location: Location) {
@@ -358,7 +358,7 @@ macro_rules! make_mir_visitor {
             }
 
             fn super_terminator(&mut self,
-                                block: BasicBlock,
+                                block: Block,
                                 terminator: &$($mutability)* Terminator<'tcx>,
                                 location: Location) {
                 let Terminator {
@@ -371,7 +371,7 @@ macro_rules! make_mir_visitor {
             }
 
             fn super_terminator_kind(&mut self,
-                                     block: BasicBlock,
+                                     block: Block,
                                      kind: & $($mutability)* TerminatorKind<'tcx>,
                                      source_location: Location) {
                 match *kind {
@@ -643,8 +643,8 @@ macro_rules! make_mir_visitor {
             }
 
             fn super_branch(&mut self,
-                            _source: BasicBlock,
-                            _target: BasicBlock) {
+                            _source: Block,
+                            _target: Block) {
             }
 
             fn super_constant(&mut self,

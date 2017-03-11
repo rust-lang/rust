@@ -15,13 +15,14 @@ use build::expr::category::{Category, RvalueFunc};
 use hair::*;
 use rustc::ty;
 use rustc::mir::*;
+use rustc::mir::Block;
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// Compile `expr`, storing the result into `destination`, which
     /// is assumed to be uninitialized.
     pub fn into_expr(&mut self,
                      destination: &Lvalue<'tcx>,
-                     mut block: BasicBlock,
+                     mut block: Block,
                      expr: Expr<'tcx>)
                      -> BlockAnd<()>
     {

@@ -11,13 +11,13 @@
 use std::cell::{Ref, RefCell};
 use rustc_data_structures::indexed_vec::IndexVec;
 
-use mir::{Mir, BasicBlock};
+use mir::{Mir, Block};
 
 use rustc_serialize as serialize;
 
 #[derive(Clone, Debug)]
 pub struct Cache {
-    predecessors: RefCell<Option<IndexVec<BasicBlock, Vec<BasicBlock>>>>
+    predecessors: RefCell<Option<IndexVec<Block, Vec<Block>>>>
 }
 
 
@@ -46,7 +46,7 @@ impl Cache {
         *self.predecessors.borrow_mut() = None;
     }
 
-    pub fn predecessors(&self, mir: &Mir) -> Ref<IndexVec<BasicBlock, Vec<BasicBlock>>> {
+    pub fn predecessors(&self, mir: &Mir) -> Ref<IndexVec<Block, Vec<Block>>> {
         if self.predecessors.borrow().is_none() {
             *self.predecessors.borrow_mut() = Some(calculate_predecessors(mir));
         }
@@ -55,7 +55,7 @@ impl Cache {
     }
 }
 
-fn calculate_predecessors(mir: &Mir) -> IndexVec<BasicBlock, Vec<BasicBlock>> {
+fn calculate_predecessors(mir: &Mir) -> IndexVec<Block, Vec<Block>> {
     let mut result = IndexVec::from_elem(vec![], mir.basic_blocks());
     for (bb, data) in mir.basic_blocks().iter_enumerated() {
         if let Some(ref term) = data.terminator {

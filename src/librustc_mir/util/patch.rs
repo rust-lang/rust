@@ -16,11 +16,11 @@ use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 /// new statements and basic blocks and patch over block
 /// terminators.
 pub struct MirPatch<'tcx> {
-    patch_map: IndexVec<BasicBlock, Option<TerminatorKind<'tcx>>>,
-    new_blocks: Vec<BasicBlockData<'tcx>>,
+    patch_map: IndexVec<Block, Option<TerminatorKind<'tcx>>>,
+    new_blocks: Vec<BlockData<'tcx>>,
     new_statements: Vec<(Location, StatementKind<'tcx>)>,
     new_locals: Vec<LocalDecl<'tcx>>,
-    resume_block: BasicBlock,
+    resume_block: Block,
     next_local: usize,
 }
 
@@ -53,7 +53,7 @@ impl<'tcx> MirPatch<'tcx> {
             }
         }
         let resume_block = resume_block.unwrap_or_else(|| {
-            result.new_block(BasicBlockData {
+            result.new_block(BlockData {
                 statements: vec![],
                 terminator: Some(Terminator {
                     source_info: SourceInfo {
@@ -73,15 +73,15 @@ impl<'tcx> MirPatch<'tcx> {
         result
     }
 
-    pub fn resume_block(&self) -> BasicBlock {
+    pub fn resume_block(&self) -> Block {
         self.resume_block
     }
 
-    pub fn is_patched(&self, bb: BasicBlock) -> bool {
+    pub fn is_patched(&self, bb: Block) -> bool {
         self.patch_map[bb].is_some()
     }
 
-    pub fn terminator_loc(&self, mir: &Mir<'tcx>, bb: BasicBlock) -> Location {
+    pub fn terminator_loc(&self, mir: &Mir<'tcx>, bb: Block) -> Location {
         let offset = match bb.index().checked_sub(mir.basic_blocks().len()) {
             Some(index) => self.new_blocks[index].statements.len(),
             None => mir[bb].statements.len()
@@ -99,15 +99,15 @@ impl<'tcx> MirPatch<'tcx> {
         Local::new(index as usize)
     }
 
-    pub fn new_block(&mut self, data: BasicBlockData<'tcx>) -> BasicBlock {
-        let block = BasicBlock::new(self.patch_map.len());
+    pub fn new_block(&mut self, data: BlockData<'tcx>) -> Block {
+        let block = Block::new(self.patch_map.len());
         debug!("MirPatch: new_block: {:?}: {:?}", block, data);
         self.new_blocks.push(data);
         self.patch_map.push(None);
         block
     }
 
-    pub fn patch_terminator(&mut self, block: BasicBlock, new: TerminatorKind<'tcx>) {
+    pub fn patch_terminator(&mut self, block: Block, new: TerminatorKind<'tcx>) {
         assert!(self.patch_map[block].is_none());
         debug!("MirPatch: patch_terminator({:?}, {:?})", block, new);
         self.patch_map[block] = Some(new);
@@ -161,7 +161,7 @@ impl<'tcx> MirPatch<'tcx> {
         }
     }
 
-    pub fn source_info_for_index(data: &BasicBlockData, loc: Location) -> SourceInfo {
+    pub fn source_info_for_index(data: &BlockData, loc: Location) -> SourceInfo {
         match data.statements.get(loc.statement_index) {
             Some(stmt) => stmt.source_info,
             None => data.terminator().source_info

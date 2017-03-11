@@ -60,7 +60,7 @@ pub fn add_call_guards(mir: &mut Mir) {
                 }, source_info
             }) if pred_count[*destination] > 1 => {
                 // It's a critical edge, break it
-                let call_guard = BasicBlockData {
+                let call_guard = BlockData {
                     statements: vec![],
                     is_cleanup: block.is_cleanup,
                     terminator: Some(Terminator {
@@ -72,7 +72,7 @@ pub fn add_call_guards(mir: &mut Mir) {
                 // Get the index it will be when inserted into the MIR
                 let idx = cur_len + new_blocks.len();
                 new_blocks.push(call_guard);
-                *destination = BasicBlock::new(idx);
+                *destination = Block::new(idx);
             }
             _ => {}
         }

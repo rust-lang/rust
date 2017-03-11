@@ -11,7 +11,7 @@
 //! Hook into libgraphviz for rendering dataflow graphs for MIR.
 
 use syntax::ast::NodeId;
-use rustc::mir::{BasicBlock, Mir};
+use rustc::mir::{Block, Mir};
 use rustc_data_structures::bitslice::bits_to_string;
 use rustc_data_structures::indexed_set::{IdxSet};
 use rustc_data_structures::indexed_vec::Idx;
@@ -119,12 +119,12 @@ pub fn print_borrowck_graph_to<'a, 'tcx, BD, P>(
     File::create(path).and_then(|mut f| f.write_all(&v))
 }
 
-pub type Node = BasicBlock;
+pub type Node = Block;
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub struct Edge { source: BasicBlock, index: usize }
+pub struct Edge { source: Block, index: usize }
 
-fn outgoing(mir: &Mir, bb: BasicBlock) -> Vec<Edge> {
+fn outgoing(mir: &Mir, bb: Block) -> Vec<Edge> {
     let succ_len = mir[bb].terminator().successors().len();
     (0..succ_len).map(|index| Edge { source: bb, index: index}).collect()
 }

@@ -20,7 +20,7 @@ pub struct NoLandingPads;
 
 impl<'tcx> MutVisitor<'tcx> for NoLandingPads {
     fn visit_terminator(&mut self,
-                        bb: BasicBlock,
+                        bb: Block,
                         terminator: &mut Terminator<'tcx>,
                         location: Location) {
         match terminator.kind {

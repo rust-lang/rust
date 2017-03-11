@@ -79,7 +79,7 @@ struct CallVisitor<'a> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for CallVisitor<'a> {
-    fn visit_terminator_kind(&mut self, _block: BasicBlock,
+    fn visit_terminator_kind(&mut self, _block: Block,
                              kind: &TerminatorKind<'tcx>, _loc: Location) {
         if let TerminatorKind::Call {
             func: Operand::Constant(ref f)

@@ -36,11 +36,11 @@ use super::*;
 pub struct Preorder<'a, 'tcx: 'a> {
     mir: &'a Mir<'tcx>,
     visited: BitVector,
-    worklist: Vec<BasicBlock>,
+    worklist: Vec<Block>,
 }
 
 impl<'a, 'tcx> Preorder<'a, 'tcx> {
-    pub fn new(mir: &'a Mir<'tcx>, root: BasicBlock) -> Preorder<'a, 'tcx> {
+    pub fn new(mir: &'a Mir<'tcx>, root: Block) -> Preorder<'a, 'tcx> {
         let worklist = vec![root];
 
         Preorder {
@@ -56,9 +56,9 @@ pub fn preorder<'a, 'tcx>(mir: &'a Mir<'tcx>) -> Preorder<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Iterator for Preorder<'a, 'tcx> {
-    type Item = (BasicBlock, &'a BasicBlockData<'tcx>);
+    type Item = (Block, &'a BlockData<'tcx>);
 
-    fn next(&mut self) -> Option<(BasicBlock, &'a BasicBlockData<'tcx>)> {
+    fn next(&mut self) -> Option<(Block, &'a BlockData<'tcx>)> {
         while let Some(idx) = self.worklist.pop() {
             if !self.visited.insert(idx.index()) {
                 continue;
@@ -100,11 +100,11 @@ impl<'a, 'tcx> Iterator for Preorder<'a, 'tcx> {
 pub struct Postorder<'a, 'tcx: 'a> {
     mir: &'a Mir<'tcx>,
     visited: BitVector,
-    visit_stack: Vec<(BasicBlock, vec::IntoIter<BasicBlock>)>
+    visit_stack: Vec<(Block, vec::IntoIter<Block>)>
 }
 
 impl<'a, 'tcx> Postorder<'a, 'tcx> {
-    pub fn new(mir: &'a Mir<'tcx>, root: BasicBlock) -> Postorder<'a, 'tcx> {
+    pub fn new(mir: &'a Mir<'tcx>, root: Block) -> Postorder<'a, 'tcx> {
         let mut po = Postorder {
             mir: mir,
             visited: BitVector::new(mir.basic_blocks().len()),
@@ -200,9 +200,9 @@ pub fn postorder<'a, 'tcx>(mir: &'a Mir<'tcx>) -> Postorder<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Iterator for Postorder<'a, 'tcx> {
-    type Item = (BasicBlock, &'a BasicBlockData<'tcx>);
+    type Item = (Block, &'a BlockData<'tcx>);
 
-    fn next(&mut self) -> Option<(BasicBlock, &'a BasicBlockData<'tcx>)> {
+    fn next(&mut self) -> Option<(Block, &'a BlockData<'tcx>)> {
         let next = self.visit_stack.pop();
         if next.is_some() {
             self.traverse_successor();
@@ -240,12 +240,12 @@ impl<'a, 'tcx> Iterator for Postorder<'a, 'tcx> {
 #[derive(Clone)]
 pub struct ReversePostorder<'a, 'tcx: 'a> {
     mir: &'a Mir<'tcx>,
-    blocks: Vec<BasicBlock>,
+    blocks: Vec<Block>,
     idx: usize
 }
 
 impl<'a, 'tcx> ReversePostorder<'a, 'tcx> {
-    pub fn new(mir: &'a Mir<'tcx>, root: BasicBlock) -> ReversePostorder<'a, 'tcx> {
+    pub fn new(mir: &'a Mir<'tcx>, root: Block) -> ReversePostorder<'a, 'tcx> {
         let blocks : Vec<_> = Postorder::new(mir, root).map(|(bb, _)| bb).collect();
 
         let len = blocks.len();
@@ -268,9 +268,9 @@ pub fn reverse_postorder<'a, 'tcx>(mir: &'a Mir<'tcx>) -> ReversePostorder<'a, '
 }
 
 impl<'a, 'tcx> Iterator for ReversePostorder<'a, 'tcx> {
-    type Item = (BasicBlock, &'a BasicBlockData<'tcx>);
+    type Item = (Block, &'a BlockData<'tcx>);
 
-    fn next(&mut self) -> Option<(BasicBlock, &'a BasicBlockData<'tcx>)> {
+    fn next(&mut self) -> Option<(Block, &'a BlockData<'tcx>)> {
         if self.idx == 0 { return None; }
         self.idx -= 1;
 

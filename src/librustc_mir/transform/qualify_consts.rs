@@ -762,7 +762,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
     }
 
     fn visit_terminator_kind(&mut self,
-                             bb: BasicBlock,
+                             bb: Block,
                              kind: &TerminatorKind<'tcx>,
                              location: Location) {
         if let TerminatorKind::Call { ref func, ref args, ref destination, .. } = *kind {
@@ -867,7 +867,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
     }
 
     fn visit_assign(&mut self,
-                    _: BasicBlock,
+                    _: Block,
                     dest: &Lvalue<'tcx>,
                     rvalue: &Rvalue<'tcx>,
                     location: Location) {
@@ -903,7 +903,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
         self.span = source_info.span;
     }
 
-    fn visit_statement(&mut self, bb: BasicBlock, statement: &Statement<'tcx>, location: Location) {
+    fn visit_statement(&mut self, bb: Block, statement: &Statement<'tcx>, location: Location) {
         self.nest(|this| {
             this.visit_source_info(&statement.source_info);
             match statement.kind {
@@ -920,7 +920,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
     }
 
     fn visit_terminator(&mut self,
-                        bb: BasicBlock,
+                        bb: Block,
                         terminator: &Terminator<'tcx>,
                         location: Location) {
         self.nest(|this| this.super_terminator(bb, terminator, location));

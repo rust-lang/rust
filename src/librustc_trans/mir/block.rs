@@ -41,8 +41,8 @@ use super::operand::OperandRef;
 use super::operand::OperandValue::{Pair, Ref, Immediate};
 
 impl<'a, 'tcx> MirContext<'a, 'tcx> {
-    pub fn trans_block(&mut self, bb: mir::BasicBlock,
-        funclets: &IndexVec<mir::BasicBlock, Option<Funclet>>) {
+    pub fn trans_block(&mut self, bb: mir::Block,
+        funclets: &IndexVec<mir::Block, Option<Funclet>>) {
         let mut bcx = self.get_builder(bb);
         let data = &self.mir[bb];
 
@@ -57,7 +57,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         let cleanup_pad = funclet.map(|lp| lp.cleanuppad());
         let cleanup_bundle = funclet.map(|l| l.bundle());
 
-        let funclet_br = |this: &Self, bcx: Builder, bb: mir::BasicBlock| {
+        let funclet_br = |this: &Self, bcx: Builder, bb: mir::Block| {
             let lltarget = this.blocks[bb];
             if let Some(cp) = cleanup_pad {
                 match this.cleanup_kinds[bb] {
@@ -74,7 +74,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             }
         };
 
-        let llblock = |this: &mut Self, target: mir::BasicBlock| {
+        let llblock = |this: &mut Self, target: mir::Block| {
             let lltarget = this.blocks[target];
 
             if let Some(cp) = cleanup_pad {
@@ -770,7 +770,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
     /// Return the landingpad wrapper around the given basic block
     ///
     /// No-op in MSVC SEH scheme.
-    fn landing_pad_to(&mut self, target_bb: mir::BasicBlock) -> BasicBlockRef {
+    fn landing_pad_to(&mut self, target_bb: mir::Block) -> BasicBlockRef {
         if let Some(block) = self.landing_pads[target_bb] {
             return block;
         }
@@ -812,7 +812,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         Builder::new_block(self.ccx, self.llfn, name)
     }
 
-    pub fn get_builder(&self, bb: mir::BasicBlock) -> Builder<'a, 'tcx> {
+    pub fn get_builder(&self, bb: mir::Block) -> Builder<'a, 'tcx> {
         let builder = Builder::with_ccx(self.ccx);
         builder.position_at_end(self.blocks[bb]);
         builder
