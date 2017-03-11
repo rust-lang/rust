@@ -104,6 +104,25 @@ thread_local!(pub static PLAYGROUND: RefCell<Option<(Option<String>, String)>> =
     RefCell::new(None)
 });
 
+macro_rules! event_loop_break {
+    ($parser:expr, $toc_builder:expr, $shorter:expr, $buf:expr, $($end_event:pat)|*) => {{
+        while let Some(event) = $parser.next() {
+            match event {
+                $($end_event)|* => break,
+                Event::Text(ref s) => {
+                    $buf.push_str(s);
+                }
+                Event::SoftBreak | Event::HardBreak if !$buf.is_empty() => {
+                    $buf.push(' ');
+                }
+                x => {
+                    looper($parser, &mut $buf, Some(x), $toc_builder, $shorter);
+                }
+            }
+        }
+    }}
+}
+
 pub fn render(w: &mut fmt::Formatter,
               s: &str,
               print_toc: bool,
@@ -186,21 +205,10 @@ pub fn render(w: &mut fmt::Formatter,
         });
     }
 
-    fn header(parser: &mut Parser, level: i32, toc_builder: &mut Option<TocBuilder>,
-              buffer: &mut String) {
+    fn header(parser: &mut Parser, buffer: &mut String, toc_builder: &mut Option<TocBuilder>,
+              shorter: MarkdownOutputStyle, level: i32) {
         let mut ret = String::new();
-        while let Some(event) = parser.next() {
-            match event {
-                Event::End(Tag::Header(_)) => break,
-                Event::Text(ref s) => {
-                    ret.push_str(s);
-                }
-                Event::SoftBreak | Event::HardBreak if !ret.is_empty() => {
-                    ret.push(' ');
-                }
-                _ => {}
-            }
-        }
+        event_loop_break!(parser, toc_builder, shorter, ret, Event::End(Tag::Header(_)));
         ret = ret.trim_right().to_owned();
 
         let id = ret.clone();
@@ -236,82 +244,35 @@ pub fn render(w: &mut fmt::Formatter,
                                  ret, lvl = level, id = id, sec = sec));
     }
 
-    fn codespan(parser: &mut Parser, buffer: &mut String) {
+    fn codespan(parser: &mut Parser, buffer: &mut String, toc_builder: &mut Option<TocBuilder>,
+                shorter: MarkdownOutputStyle) {
         let mut content = String::new();
-        while let Some(event) = parser.next() {
-            match event {
-                Event::End(Tag::Code) => break,
-                Event::Text(ref s) => {
-                    content.push_str(s);
-                }
-                Event::SoftBreak | Event::HardBreak if !content.is_empty() => {
-                    content.push(' ');
-                }
-                _ => {}
-            }
-        }
-        buffer.push_str(&format!("<code>{}</code>", Escape(&collapse_whitespace(content.trim_right()))));
+        event_loop_break!(parser, toc_builder, shorter, content, Event::End(Tag::Code));
+        buffer.push_str(&format!("<code>{}</code>",
+                                 Escape(&collapse_whitespace(content.trim_right()))));
     }
 
     fn link(parser: &mut Parser, buffer: &mut String, toc_builder: &mut Option<TocBuilder>,
             shorter: MarkdownOutputStyle, url: &str, mut title: String) {
-        while let Some(event) = parser.next() {
-            match event {
-                Event::End(Tag::Link(_, _)) => break,
-                Event::Text(ref s) => {
-                    title.push_str(s);
-                }
-                Event::SoftBreak | Event::HardBreak if !title.is_empty() => {
-                    title.push(' ');
-                }
-                x => {
-                    looper(parser, &mut title, Some(x), toc_builder, shorter);
-                }
-            }
-        }
+        event_loop_break!(parser, toc_builder, shorter, title, Event::End(Tag::Link(_, _)));
         buffer.push_str(&format!("<a href=\"{}\">{}</a>", url, title));
     }
 
     fn paragraph(parser: &mut Parser, buffer: &mut String, toc_builder: &mut Option<TocBuilder>,
                  shorter: MarkdownOutputStyle) {
         let mut content = String::new();
-        while let Some(event) = parser.next() {
-            match event {
-                Event::End(Tag::Paragraph) => break,
-                Event::Text(ref s) => {
-                    content.push_str(s);
-                }
-                Event::SoftBreak | Event::HardBreak if !content.is_empty() => {
-                    content.push(' ');
-                }
-                x => {
-                    looper(parser, &mut content, Some(x), toc_builder, shorter);
-                }
-            }
-        }
+        event_loop_break!(parser, toc_builder, shorter, content, Event::End(Tag::Paragraph));
         buffer.push_str(&format!("<p>{}</p>", content.trim_right()));
     }
 
     fn cell(parser: &mut Parser, buffer: &mut String, toc_builder: &mut Option<TocBuilder>,
             shorter: MarkdownOutputStyle) {
         let mut content = String::new();
-        while let Some(event) = parser.next() {
-            match event {
-                Event::End(Tag::TableHead) |
-                    Event::End(Tag::Table(_)) |
-                    Event::End(Tag::TableRow) |
-                    Event::End(Tag::TableCell) => break,
-                Event::Text(ref s) => {
-                    content.push_str(s);
-                }
-                Event::SoftBreak | Event::HardBreak => {
-                    content.push(' ');
-                }
-                x => {
-                    looper(parser, &mut content, Some(x), toc_builder, shorter);
-                }
-            }
-        }
+        event_loop_break!(parser, toc_builder, shorter, content,
+                          Event::End(Tag::TableHead) |
+                              Event::End(Tag::Table(_)) |
+                              Event::End(Tag::TableRow) |
+                              Event::End(Tag::TableCell));
         buffer.push_str(&format!("<td>{}</td>", content.trim()));
     }
 
@@ -381,20 +342,7 @@ pub fn render(w: &mut fmt::Formatter,
     fn blockquote(parser: &mut Parser, buffer: &mut String, toc_builder: &mut Option<TocBuilder>,
                   shorter: MarkdownOutputStyle) {
         let mut content = String::new();
-        while let Some(event) = parser.next() {
-            match event {
-                Event::End(Tag::BlockQuote) => break,
-                Event::Text(ref s) => {
-                    content.push_str(s);
-                }
-                Event::SoftBreak | Event::HardBreak if !content.is_empty() => {
-                    content.push(' ');
-                }
-                x => {
-                    looper(parser, &mut content, Some(x), toc_builder, shorter);
-                }
-            }
-        }
+        event_loop_break!(parser, toc_builder, shorter, content, Event::End(Tag::BlockQuote));
         buffer.push_str(&format!("<blockquote>{}</blockquote>", content.trim_right()));
     }
 
@@ -435,40 +383,14 @@ pub fn render(w: &mut fmt::Formatter,
     fn emphasis(parser: &mut Parser, buffer: &mut String, toc_builder: &mut Option<TocBuilder>,
                 shorter: MarkdownOutputStyle) {
         let mut content = String::new();
-        while let Some(event) = parser.next() {
-            match event {
-                Event::End(Tag::Emphasis) => break,
-                Event::Text(ref s) => {
-                    content.push_str(s);
-                }
-                Event::SoftBreak | Event::HardBreak if !content.is_empty() => {
-                    content.push(' ');
-                }
-                x => {
-                    looper(parser, &mut content, Some(x), toc_builder, shorter);
-                }
-            }
-        }
+        event_loop_break!(parser, toc_builder, shorter, content, Event::End(Tag::Emphasis));
         buffer.push_str(&format!("<em>{}</em>", content));
     }
 
     fn strong(parser: &mut Parser, buffer: &mut String, toc_builder: &mut Option<TocBuilder>,
               shorter: MarkdownOutputStyle) {
         let mut content = String::new();
-        while let Some(event) = parser.next() {
-            match event {
-                Event::End(Tag::Strong) => break,
-                Event::Text(ref s) => {
-                    content.push_str(s);
-                }
-                Event::SoftBreak | Event::HardBreak if !content.is_empty() => {
-                    content.push(' ');
-                }
-                x => {
-                    looper(parser, &mut content, Some(x), toc_builder, shorter);
-                }
-            }
-        }
+        event_loop_break!(parser, toc_builder, shorter, content, Event::End(Tag::Strong));
         buffer.push_str(&format!("<strong>{}</strong>", content));
     }
 
@@ -480,10 +402,10 @@ pub fn render(w: &mut fmt::Formatter,
                     block(parser, buffer, &*lang);
                 }
                 Event::Start(Tag::Header(level)) => {
-                    header(parser, level, toc_builder, buffer);
+                    header(parser, buffer, toc_builder, shorter, level);
                 }
                 Event::Start(Tag::Code) => {
-                    codespan(parser, buffer);
+                    codespan(parser, buffer, toc_builder, shorter);
                 }
                 Event::Start(Tag::Paragraph) => {
                     paragraph(parser, buffer, toc_builder, shorter);
