@@ -442,7 +442,7 @@ pub fn href(did: DefId) -> Option<(String, ItemType, Vec<String>)> {
 /// Used when rendering a `ResolvedPath` structure. This invokes the `path`
 /// rendering function with the necessary arguments for linking to a local path.
 fn resolved_path(w: &mut fmt::Formatter, did: DefId, path: &clean::Path,
-                 print_all: bool, use_absolute: bool) -> fmt::Result {
+                 print_all: bool, use_absolute: bool, is_not_debug: bool) -> fmt::Result {
     let last = path.segments.last().unwrap();
     let rel_root = match &*path.segments[0].name {
         "self" => Some("./".to_string()),
@@ -459,10 +459,14 @@ fn resolved_path(w: &mut fmt::Formatter, did: DefId, path: &clean::Path,
                     } else {
                         root.push_str(&seg.name);
                         root.push_str("/");
-                        write!(w, "<a class=\"mod\"
-                                       href=\"{}index.html\">{}</a>::",
-                                 root,
-                                 seg.name)?;
+                        if is_not_debug {
+                            write!(w, "<a class=\"mod\"
+                                           href=\"{}index.html\">{}</a>::",
+                                     root,
+                                     seg.name)?;
+                        } else {
+                            write!(w, "{}::", seg.name)?;
+                        }
                     }
                 }
             }
@@ -474,19 +478,37 @@ fn resolved_path(w: &mut fmt::Formatter, did: DefId, path: &clean::Path,
         }
     }
     if w.alternate() {
-        write!(w, "{:#}{:#}", HRef::new(did, &last.name), last.params)?;
-    } else {
-        let path = if use_absolute {
-            match href(did) {
-                Some((_, _, fqp)) => format!("{}::{}",
-                                             fqp[..fqp.len()-1].join("::"),
-                                             HRef::new(did, fqp.last().unwrap())),
-                None => format!("{}", HRef::new(did, &last.name)),
-            }
+        if is_not_debug {
+            write!(w, "{:#}{:#}", HRef::new(did, &last.name), last.params)?;
         } else {
-            format!("{}", HRef::new(did, &last.name))
-        };
-        write!(w, "{}{}", path, last.params)?;
+            write!(w, "{:?}{:?}", HRef::new(did, &last.name), last.params)?;
+        }
+    } else {
+        if is_not_debug {
+            let path = if use_absolute {
+                match href(did) {
+                    Some((_, _, fqp)) => format!("{}::{}",
+                                                 fqp[..fqp.len()-1].join("::"),
+                                                 HRef::new(did, fqp.last().unwrap())),
+                    None => format!("{}", HRef::new(did, &last.name)),
+                }
+            } else {
+                format!("{}", HRef::new(did, &last.name))
+            };
+            write!(w, "{}{}", path, last.params)?;
+        } else {
+            let path = if use_absolute {
+                match href(did) {
+                    Some((_, _, fqp)) => format!("{:?}::{:?}",
+                                                 fqp[..fqp.len()-1].join("::"),
+                                                 HRef::new(did, fqp.last().unwrap())),
+                    None => format!("{:?}", HRef::new(did, &last.name)),
+                }
+            } else {
+                format!("{:?}", HRef::new(did, &last.name))
+            };
+            write!(w, "{}{:?}", path, last.params)?;
+        }
     }
     Ok(())
 }
@@ -570,6 +592,12 @@ impl<'a> fmt::Display for HRef<'a> {
     }
 }
 
+impl<'a> fmt::Debug for HRef<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.text)
+    }
+}
+
 fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter, use_absolute: bool,
             is_not_debug: bool) -> fmt::Result {
     match *t {
@@ -578,7 +606,7 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter, use_absolute: bool,
         }
         clean::ResolvedPath{ did, ref typarams, ref path, is_generic } => {
             // Paths like T::Output and Self::Output should be rendered with all segments
-            resolved_path(f, did, path, is_generic, use_absolute)?;
+            resolved_path(f, did, path, is_generic, use_absolute, is_not_debug)?;
             tybounds(f, typarams)
         }
         clean::Infer => write!(f, "_"),
@@ -767,7 +795,7 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter, use_absolute: bool,
                 write!(f, "{}::", self_type)?;
             }
             let path = clean::Path::singleton(name.clone());
-            resolved_path(f, did, &path, true, use_absolute)?;
+            resolved_path(f, did, &path, true, use_absolute, is_not_debug)?;
 
             // FIXME: `typarams` are not rendered, and this seems bad?
             drop(typarams);
@@ -1051,7 +1079,7 @@ impl fmt::Display for clean::Import {
 impl fmt::Display for clean::ImportSource {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.did {
-            Some(did) => resolved_path(f, did, &self.path, true, false),
+            Some(did) => resolved_path(f, did, &self.path, true, false, true),
             _ => {
                 for (i, seg) in self.path.segments.iter().enumerate() {
                     if i > 0 {
