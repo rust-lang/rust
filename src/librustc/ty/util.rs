@@ -654,11 +654,12 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
         }
 
         tcx.layout_depth.set(depth+1);
-        let layout = Layout::compute_uncached(self, infcx)?;
+        let layout = Layout::compute_uncached(self, infcx);
+        tcx.layout_depth.set(depth);
+        let layout = layout?;
         if can_cache {
             tcx.layout_cache.borrow_mut().insert(self, layout);
         }
-        tcx.layout_depth.set(depth);
         Ok(layout)
     }
 

@@ -2302,6 +2302,20 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         queries::mir::get(self, DUMMY_SP, did).borrow()
     }
 
+    /// Given the DefId of an item, returns its MIR, borrowed immutably.
+    /// Returns None if there is no MIR for the DefId
+    pub fn maybe_item_mir(self, did: DefId) -> Option<Ref<'gcx, Mir<'gcx>>> {
+        if did.is_local() && !self.maps.mir.borrow().contains_key(&did) {
+            return None;
+        }
+
+        if !did.is_local() && !self.sess.cstore.is_item_mir_available(did) {
+            return None;
+        }
+
+        Some(self.item_mir(did))
+    }
+
     /// If `type_needs_drop` returns true, then `ty` is definitely
     /// non-copy and *might* have a destructor attached; if it returns
     /// false, then `ty` definitely has no destructor (i.e. no drop glue).
