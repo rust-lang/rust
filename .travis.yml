@@ -46,6 +46,8 @@ matrix:
         RUST_CONFIGURE_ARGS=--build=x86_64-apple-darwin
         SRC=.
         RUSTC_RETRY_LINKER_ON_SEGFAULT=1
+        SCCACHE_ERROR_LOG=/tmp/sccache.log
+        RUST_LOG=sccache
       os: osx
       osx_image: xcode8.2
       install: &osx_install_sccache >
@@ -56,6 +58,8 @@ matrix:
         RUST_CONFIGURE_ARGS=--build=i686-apple-darwin
         SRC=.
         RUSTC_RETRY_LINKER_ON_SEGFAULT=1
+        SCCACHE_ERROR_LOG=/tmp/sccache.log
+        RUST_LOG=sccache
       os: osx
       osx_image: xcode8.2
       install: *osx_install_sccache
@@ -66,6 +70,8 @@ matrix:
         SRC=.
         DEPLOY=1
         RUSTC_RETRY_LINKER_ON_SEGFAULT=1
+        SCCACHE_ERROR_LOG=/tmp/sccache.log
+        RUST_LOG=sccache
       os: osx
       osx_image: xcode8.2
       install: >
@@ -77,6 +83,8 @@ matrix:
         SRC=.
         DEPLOY=1
         RUSTC_RETRY_LINKER_ON_SEGFAULT=1
+        SCCACHE_ERROR_LOG=/tmp/sccache.log
+        RUST_LOG=sccache
       os: osx
       osx_image: xcode8.2
       install: *osx_install_sccache
@@ -92,6 +100,8 @@ matrix:
         SRC=.
         DEPLOY_ALT=1
         RUSTC_RETRY_LINKER_ON_SEGFAULT=1
+        SCCACHE_ERROR_LOG=/tmp/sccache.log
+        RUST_LOG=sccache
       os: osx
       osx_image: xcode8.2
       install: *osx_install_sccache
@@ -133,6 +143,7 @@ after_failure:
       df -h;
       du . | sort -nr | head -n100
   - cat obj/tmp/sccache.log
+  - cat /tmp/sccache.log
 
 # Save tagged docker images we created and load them if they're available
 before_cache:
