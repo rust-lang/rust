@@ -75,7 +75,7 @@ use std::mem::replace;
 use std::rc::Rc;
 
 use resolve_imports::{ImportDirective, ImportDirectiveSubclass, NameResolution, ImportResolver};
-use macros::{InvocationData, LegacyBinding, LegacyScope};
+use macros::{InvocationData, LegacyBinding, LegacyScope, MacroBinding};
 
 // NB: This module needs to be declared first so diagnostics are
 // registered before they are used.
@@ -2566,6 +2566,7 @@ impl<'a> Resolver<'a> {
                 self.resolve_ident_in_module(module, ident, ns, false, record_used)
             } else if opt_ns == Some(MacroNS) {
                 self.resolve_lexical_macro_path_segment(ident, ns, record_used)
+                    .map(MacroBinding::binding)
             } else {
                 match self.resolve_ident_in_lexical_scope(ident, ns, record_used) {
                     Some(LexicalScopeBinding::Item(binding)) => Ok(binding),
@@ -3223,7 +3224,7 @@ impl<'a> Resolver<'a> {
             };
             let msg1 = format!("`{}` could refer to the name {} here", name, participle(b1));
             let msg2 = format!("`{}` could also refer to the name {} here", name, participle(b2));
-            let note = if !lexical && b1.is_glob_import() {
+            let note = if b1.expansion == Mark::root() || !lexical && b1.is_glob_import() {
                 format!("consider adding an explicit import of `{}` to disambiguate", name)
             } else if let Def::Macro(..) = b1.def() {
                 format!("macro-expanded {} do not shadow",
@@ -3243,11 +3244,15 @@ impl<'a> Resolver<'a> {
                 let msg = format!("`{}` is ambiguous", name);
                 self.session.add_lint(lint::builtin::LEGACY_IMPORTS, id, span, msg);
             } else {
-                self.session.struct_span_err(span, &format!("`{}` is ambiguous", name))
-                    .span_note(b1.span, &msg1)
-                    .span_note(b2.span, &msg2)
-                    .note(&note)
-                    .emit();
+                let mut err =
+                    self.session.struct_span_err(span, &format!("`{}` is ambiguous", name));
+                err.span_note(b1.span, &msg1);
+                match b2.def() {
+                    Def::Macro(..) if b2.span == DUMMY_SP =>
+                        err.note(&format!("`{}` is also a builtin macro", name)),
+                    _ => err.span_note(b2.span, &msg2),
+                };
+                err.note(&note).emit();
             }
         }
 
@@ -3361,14 +3366,13 @@ impl<'a> Resolver<'a> {
         if self.proc_macro_enabled { return; }
 
         for attr in attrs {
-            let name = unwrap_or!(attr.name(), continue);
-            let maybe_binding = self.builtin_macros.get(&name).cloned().or_else(|| {
-                let ident = Ident::with_empty_ctxt(name);
-                self.resolve_lexical_macro_path_segment(ident, MacroNS, None).ok()
-            });
-
-            if let Some(binding) = maybe_binding {
-                if let SyntaxExtension::AttrProcMacro(..) = *binding.get_macro(self) {
+            if attr.path.segments.len() > 1 {
+                continue
+            }
+            let ident = attr.path.segments[0].identifier;
+            let result = self.resolve_lexical_macro_path_segment(ident, MacroNS, None);
+            if let Ok(binding) = result {
+                if let SyntaxExtension::AttrProcMacro(..) = *binding.binding().get_macro(self) {
                     attr::mark_known(attr);
 
                     let msg = "attribute procedural macros are experimental";
@@ -3376,7 +3380,7 @@ impl<'a> Resolver<'a> {
 
                     feature_err(&self.session.parse_sess, feature,
                                 attr.span, GateIssue::Language, msg)
-                        .span_note(binding.span, "procedural macro imported here")
+                        .span_note(binding.span(), "procedural macro imported here")
                         .emit();
                 }
             }

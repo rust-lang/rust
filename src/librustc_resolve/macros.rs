@@ -81,9 +81,27 @@ pub struct LegacyBinding<'a> {
     pub span: Span,
 }
 
+#[derive(Copy, Clone)]
 pub enum MacroBinding<'a> {
     Legacy(&'a LegacyBinding<'a>),
+    Builtin(&'a NameBinding<'a>),
     Modern(&'a NameBinding<'a>),
+}
+
+impl<'a> MacroBinding<'a> {
+    pub fn span(self) -> Span {
+        match self {
+            MacroBinding::Legacy(binding) => binding.span,
+            MacroBinding::Builtin(binding) | MacroBinding::Modern(binding) => binding.span,
+        }
+    }
+
+    pub fn binding(self) -> &'a NameBinding<'a> {
+        match self {
+            MacroBinding::Builtin(binding) | MacroBinding::Modern(binding) => binding,
+            MacroBinding::Legacy(_) => panic!("unexpected MacroBinding::Legacy"),
+        }
+    }
 }
 
 impl<'a> base::Resolver for Resolver<'a> {
@@ -378,18 +396,18 @@ impl<'a> Resolver<'a> {
         }
 
         let name = path[0].name;
-        let result = match self.resolve_legacy_scope(&invocation.legacy_scope, name, false) {
-            Some(MacroBinding::Legacy(binding)) => Ok(Def::Macro(binding.def_id, MacroKind::Bang)),
-            Some(MacroBinding::Modern(binding)) => Ok(binding.def_ignoring_ambiguity()),
-            None => match self.resolve_lexical_macro_path_segment(path[0], MacroNS, None) {
-                Ok(binding) => Ok(binding.def_ignoring_ambiguity()),
-                Err(Determinacy::Undetermined) if !force =>
-                    return Err(Determinacy::Undetermined),
+        let legacy_resolution = self.resolve_legacy_scope(&invocation.legacy_scope, name, false);
+        let result = if let Some(MacroBinding::Legacy(binding)) = legacy_resolution {
+            Ok(Def::Macro(binding.def_id, MacroKind::Bang))
+        } else {
+            match self.resolve_lexical_macro_path_segment(path[0], MacroNS, None) {
+                Ok(binding) => Ok(binding.binding().def_ignoring_ambiguity()),
+                Err(Determinacy::Undetermined) if !force => return Err(Determinacy::Undetermined),
                 Err(_) => {
                     self.found_unresolved_macro = true;
                     Err(Determinacy::Determined)
                 }
-            },
+            }
         };
 
         self.current_module.legacy_macro_resolutions.borrow_mut()
@@ -403,42 +421,56 @@ impl<'a> Resolver<'a> {
                                               ident: Ident,
                                               ns: Namespace,
                                               record_used: Option<Span>)
-                                              -> Result<&'a NameBinding<'a>, Determinacy> {
-        let mut module = self.current_module;
-        let mut potential_expanded_shadower: Option<&NameBinding> = None;
+                                              -> Result<MacroBinding<'a>, Determinacy> {
+        let mut module = Some(self.current_module);
+        let mut potential_illegal_shadower = Err(Determinacy::Determined);
+        let determinacy =
+            if record_used.is_some() { Determinacy::Determined } else { Determinacy::Undetermined };
         loop {
-            // Since expanded macros may not shadow the lexical scope (enforced below),
-            // we can ignore unresolved invocations (indicated by the penultimate argument).
-            match self.resolve_ident_in_module(module, ident, ns, true, record_used) {
+            let result = if let Some(module) = module {
+                // Since expanded macros may not shadow the lexical scope and
+                // globs may not shadow builtin macros (both enforced below),
+                // we resolve with restricted shadowing (indicated by the penultimate argument).
+                self.resolve_ident_in_module(module, ident, ns, true, record_used)
+                    .map(MacroBinding::Modern)
+            } else {
+                self.builtin_macros.get(&ident.name).cloned().ok_or(determinacy)
+                    .map(MacroBinding::Builtin)
+            };
+
+            match result.map(MacroBinding::binding) {
                 Ok(binding) => {
                     let span = match record_used {
                         Some(span) => span,
-                        None => return Ok(binding),
+                        None => return result,
                     };
-                    match potential_expanded_shadower {
-                        Some(shadower) if shadower.def() != binding.def() => {
+                    if let Ok(MacroBinding::Modern(shadower)) = potential_illegal_shadower {
+                        if shadower.def() != binding.def() {
                             let name = ident.name;
                             self.ambiguity_errors.push(AmbiguityError {
                                 span: span, name: name, b1: shadower, b2: binding, lexical: true,
                                 legacy: false,
                             });
-                            return Ok(shadower);
+                            return potential_illegal_shadower;
                         }
-                        _ if binding.expansion == Mark::root() => return Ok(binding),
-                        _ => potential_expanded_shadower = Some(binding),
+                    }
+                    if binding.expansion != Mark::root() ||
+                       (binding.is_glob_import() && module.unwrap().def().is_some()) {
+                        potential_illegal_shadower = result;
+                    } else {
+                        return result;
                     }
                 },
                 Err(Determinacy::Undetermined) => return Err(Determinacy::Undetermined),
                 Err(Determinacy::Determined) => {}
             }
 
-            match module.kind {
-                ModuleKind::Block(..) => module = module.parent.unwrap(),
-                ModuleKind::Def(..) => return match potential_expanded_shadower {
-                    Some(binding) => Ok(binding),
-                    None if record_used.is_some() => Err(Determinacy::Determined),
-                    None => Err(Determinacy::Undetermined),
+            module = match module {
+                Some(module) => match module.kind {
+                    ModuleKind::Block(..) => module.parent,
+                    ModuleKind::Def(..) => None,
                 },
+                None => return potential_illegal_shadower,
             }
         }
     }
@@ -492,7 +524,7 @@ impl<'a> Resolver<'a> {
             if !self.use_extern_macros {
                 self.record_use(Ident::with_empty_ctxt(name), MacroNS, binding, DUMMY_SP);
             }
-            MacroBinding::Modern(binding)
+            MacroBinding::Builtin(binding)
         } else {
             return None;
         };
@@ -524,21 +556,15 @@ impl<'a> Resolver<'a> {
             let legacy_resolution = self.resolve_legacy_scope(legacy_scope, ident.name, true);
             let resolution = self.resolve_lexical_macro_path_segment(ident, MacroNS, Some(span));
             match (legacy_resolution, resolution) {
-                (Some(legacy_resolution), Ok(resolution)) => {
-                    let (legacy_span, participle) = match legacy_resolution {
-                        MacroBinding::Modern(binding)
-                            if binding.def() == resolution.def() => continue,
-                        MacroBinding::Modern(binding) => (binding.span, "imported"),
-                        MacroBinding::Legacy(binding) => (binding.span, "defined"),
-                    };
-                    let msg1 = format!("`{}` could refer to the macro {} here", ident, participle);
+                (Some(MacroBinding::Legacy(legacy_binding)), Ok(MacroBinding::Modern(binding))) => {
+                    let msg1 = format!("`{}` could refer to the macro defined here", ident);
                     let msg2 = format!("`{}` could also refer to the macro imported here", ident);
                     self.session.struct_span_err(span, &format!("`{}` is ambiguous", ident))
-                        .span_note(legacy_span, &msg1)
-                        .span_note(resolution.span, &msg2)
+                        .span_note(legacy_binding.span, &msg1)
+                        .span_note(binding.span, &msg2)
                         .emit();
                 },
-                (Some(MacroBinding::Modern(binding)), Err(_)) => {
+                (Some(MacroBinding::Builtin(binding)), Ok(MacroBinding::Builtin(_))) => {
                     self.record_use(ident, MacroNS, binding, span);
                     self.err_if_macro_use_proc_macro(ident.name, span, binding);
                 },
