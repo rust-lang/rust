@@ -422,6 +422,9 @@ pub fn render(w: &mut fmt::Formatter,
                 Event::Start(Tag::Strong) => {
                     strong(parser, buffer, toc_builder, shorter);
                 }
+                Event::Html(h) | Event::InlineHtml(h) => {
+                    buffer.push_str(&*h);
+                }
                 _ => {}
             }
             shorter.is_fancy()
