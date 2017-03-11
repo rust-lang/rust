@@ -534,7 +534,7 @@ pub fn cargo(build: &Build, stage: u32, target: &str) {
     println!("Dist cargo stage{} ({})", stage, target);
     let compiler = Compiler::new(stage, &build.config.build);
 
-    let src = build.src.join("src/tools/cargo");
+    let src = build.src.join("cargo");
     let etc = src.join("src/etc");
     let release_num = build.cargo_release_num();
     let name = format!("cargo-{}", build.package_vers(&release_num));
