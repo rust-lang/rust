@@ -12,6 +12,7 @@ use astconv::AstConv;
 
 use super::FnCtxt;
 
+use rustc::infer::InferOk;
 use rustc::traits;
 use rustc::ty::{self, Ty, TraitRef};
 use rustc::ty::{ToPredicate, TypeFoldable};
@@ -150,6 +151,14 @@ impl<'a, 'gcx, 'tcx> Autoderef<'a, 'gcx, 'tcx> {
     pub fn finalize<'b, I>(self, pref: LvaluePreference, exprs: I)
         where I: IntoIterator<Item = &'b hir::Expr>
     {
+        let fcx = self.fcx;
+        fcx.register_infer_ok_obligations(self.finalize_as_infer_ok(pref, exprs));
+    }
+
+    pub fn finalize_as_infer_ok<'b, I>(self, pref: LvaluePreference, exprs: I)
+                                       -> InferOk<'tcx, ()>
+        where I: IntoIterator<Item = &'b hir::Expr>
+    {
         let methods: Vec<_> = self.steps
             .iter()
             .map(|&(ty, kind)| {
@@ -176,8 +185,9 @@ impl<'a, 'gcx, 'tcx> Autoderef<'a, 'gcx, 'tcx> {
             }
         }
 
-        for obligation in self.obligations {
-            self.fcx.register_predicate(obligation);
+        InferOk {
+            value: (),
+            obligations: self.obligations
         }
     }
 }
