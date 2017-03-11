@@ -25,7 +25,7 @@ use middle::dependency_format::Linkage;
 use CrateTranslation;
 use util::common::time;
 use util::fs::fix_windows_verbatim_for_gcc;
-use rustc::dep_graph::DepNode;
+use rustc::dep_graph::{DepNode, AssertDepGraphSafe};
 use rustc::hir::def_id::CrateNum;
 use rustc::hir::svh::Svh;
 use rustc_back::tempdir::TempDir;
@@ -196,36 +196,42 @@ pub fn link_binary(sess: &Session,
                    trans: &CrateTranslation,
                    outputs: &OutputFilenames,
                    crate_name: &str) -> Vec<PathBuf> {
-    let _task = sess.dep_graph.in_task(DepNode::LinkBinary);
+    let args = AssertDepGraphSafe((trans, (outputs, crate_name)));
+    return sess.dep_graph.with_task(DepNode::LinkBinary, sess, args, link_task);
 
-    let mut out_filenames = Vec::new();
-    for &crate_type in sess.crate_types.borrow().iter() {
-        // Ignore executable crates if we have -Z no-trans, as they will error.
-        if (sess.opts.debugging_opts.no_trans ||
-            !sess.opts.output_types.should_trans()) &&
-           crate_type == config::CrateTypeExecutable {
-            continue;
-        }
-
-        if invalid_output_for_target(sess, crate_type) {
-           bug!("invalid output type `{:?}` for target os `{}`",
-                crate_type, sess.opts.target_triple);
-        }
-        let mut out_files = link_binary_output(sess, trans, crate_type, outputs, crate_name);
-        out_filenames.append(&mut out_files);
-    }
-
-    // Remove the temporary object file and metadata if we aren't saving temps
-    if !sess.opts.cg.save_temps {
-        if sess.opts.output_types.should_trans() {
-            for obj in object_filenames(trans, outputs) {
-                remove(sess, &obj);
+    fn link_task(sess: &Session,
+                 AssertDepGraphSafe((trans, (outputs, crate_name))):
+                     AssertDepGraphSafe<(&CrateTranslation, (&OutputFilenames, &str))>
+                ) -> Vec<PathBuf> {
+        let mut out_filenames = Vec::new();
+        for &crate_type in sess.crate_types.borrow().iter() {
+            // Ignore executable crates if we have -Z no-trans, as they will error.
+            if (sess.opts.debugging_opts.no_trans ||
+                !sess.opts.output_types.should_trans()) &&
+                crate_type == config::CrateTypeExecutable {
+                continue;
             }
-        }
-        remove(sess, &outputs.with_extension(METADATA_OBJ_NAME));
-    }
 
-    out_filenames
+            if invalid_output_for_target(sess, crate_type) {
+                bug!("invalid output type `{:?}` for target os `{}`",
+                crate_type, sess.opts.target_triple);
+            }
+            let mut out_files = link_binary_output(sess, trans, crate_type, outputs, crate_name);
+            out_filenames.append(&mut out_files);
+        }
+
+        // Remove the temporary object file and metadata if we aren't saving temps
+        if !sess.opts.cg.save_temps {
+            if sess.opts.output_types.should_trans() {
+                for obj in object_filenames(trans, outputs) {
+                    remove(sess, &obj);
+                }
+            }
+            remove(sess, &outputs.with_extension(METADATA_OBJ_NAME));
+        }
+
+        out_filenames
+    }
 }
 
 

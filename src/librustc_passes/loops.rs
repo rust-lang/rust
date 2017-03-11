@@ -50,13 +50,15 @@ struct CheckLoopVisitor<'a, 'hir: 'a> {
 }
 
 pub fn check_crate(sess: &Session, map: &Map) {
-    let _task = map.dep_graph.in_task(DepNode::CheckLoops);
-    let krate = map.krate();
-    krate.visit_all_item_likes(&mut CheckLoopVisitor {
-        sess: sess,
-        hir_map: map,
-        cx: Normal,
-    }.as_deep_visitor());
+    return map.dep_graph.with_task(DepNode::CheckLoops, sess, map, task);
+    fn task(sess: &Session, map: &Map) {
+        let krate = map.krate();
+        krate.visit_all_item_likes(&mut CheckLoopVisitor {
+            sess: sess,
+            hir_map: map,
+            cx: Normal,
+        }.as_deep_visitor());
+    }
 }
 
 impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {

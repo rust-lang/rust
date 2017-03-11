@@ -241,13 +241,15 @@ impl<'a, 'tcx> Visitor<'tcx> for EffectCheckVisitor<'a, 'tcx> {
 }
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    let _task = tcx.dep_graph.in_task(DepNode::EffectCheck);
+    tcx.dep_graph.with_task(DepNode::EffectCheck, tcx, (), check_crate_task);
 
-    let mut visitor = EffectCheckVisitor {
-        tcx: tcx,
-        tables: &ty::TypeckTables::empty(),
-        unsafe_context: UnsafeContext::new(SafeContext),
-    };
+    fn check_crate_task<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, (): ()) {
+        let mut visitor = EffectCheckVisitor {
+            tcx: tcx,
+            tables: &ty::TypeckTables::empty(),
+            unsafe_context: UnsafeContext::new(SafeContext),
+        };
 
-    tcx.hir.krate().visit_all_item_likes(&mut visitor.as_deep_visitor());
+        tcx.hir.krate().visit_all_item_likes(&mut visitor.as_deep_visitor());
+    }
 }

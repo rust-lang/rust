@@ -12,7 +12,7 @@
 // closely. The idea is that all reachable symbols are live, codes called
 // from live codes are live, and everything else is dead.
 
-use dep_graph::DepNode;
+use dep_graph::{DepNode, AssertDepGraphSafe};
 use hir::map as hir_map;
 use hir::{self, PatKind};
 use hir::intravisit::{self, Visitor, NestedVisitorMap};
@@ -594,9 +594,15 @@ impl<'a, 'tcx> Visitor<'tcx> for DeadVisitor<'a, 'tcx> {
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              access_levels: &privacy::AccessLevels) {
-    let _task = tcx.dep_graph.in_task(DepNode::DeadCheck);
-    let krate = tcx.hir.krate();
-    let live_symbols = find_live(tcx, access_levels, krate);
-    let mut visitor = DeadVisitor { tcx: tcx, live_symbols: live_symbols };
-    intravisit::walk_crate(&mut visitor, krate);
+    tcx.dep_graph.with_task(DepNode::DeadCheck, tcx,
+                            AssertDepGraphSafe(access_levels), check_crate_task);
+
+    fn check_crate_task<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                  AssertDepGraphSafe(access_levels):
+                                      AssertDepGraphSafe<&privacy::AccessLevels>) {
+        let krate = tcx.hir.krate();
+        let live_symbols = find_live(tcx, access_levels, krate);
+        let mut visitor = DeadVisitor { tcx: tcx, live_symbols: live_symbols };
+        intravisit::walk_crate(&mut visitor, krate);
+    }
 }

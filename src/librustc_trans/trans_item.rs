@@ -23,7 +23,7 @@ use declare;
 use glue::DropGlueKind;
 use llvm;
 use monomorphize::Instance;
-use rustc::dep_graph::DepNode;
+use rustc::dep_graph::{DepNode, AssertDepGraphSafe};
 use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
@@ -78,26 +78,35 @@ impl<'a, 'tcx> TransItem<'tcx> {
         match *self {
             TransItem::Static(node_id) => {
                 let def_id = ccx.tcx().hir.local_def_id(node_id);
-                let _task = ccx.tcx().dep_graph.in_task(DepNode::TransCrateItem(def_id)); // (*)
-                let item = ccx.tcx().hir.expect_item(node_id);
-                if let hir::ItemStatic(_, m, _) = item.node {
-                    match consts::trans_static(&ccx, m, item.id, &item.attrs) {
-                        Ok(_) => { /* Cool, everything's alright. */ },
-                        Err(err) => {
-                            // FIXME: shouldn't this be a `span_err`?
-                            fatal_const_eval_err(
-                                ccx.tcx(), &err, item.span, "static");
-                        }
-                    };
-                } else {
-                    span_bug!(item.span, "Mismatch between hir::Item type and TransItem type")
+                ccx.tcx().dep_graph.with_task(
+                    DepNode::TransCrateItem(def_id), ccx, node_id, define_static_task); // (*)
+
+                fn define_static_task<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, node_id: NodeId) {
+                    let item = ccx.tcx().hir.expect_item(node_id);
+                    if let hir::ItemStatic(_, m, _) = item.node {
+                        match consts::trans_static(&ccx, m, item.id, &item.attrs) {
+                            Ok(_) => { /* Cool, everything's alright. */ },
+                            Err(err) => {
+                                // FIXME: shouldn't this be a `span_err`?
+                                fatal_const_eval_err(
+                                    ccx.tcx(), &err, item.span, "static");
+                            }
+                        };
+                    } else {
+                        span_bug!(item.span, "Mismatch between hir::Item type and TransItem type")
+                    }
                 }
             }
             TransItem::Fn(instance) => {
-                let _task = ccx.tcx().dep_graph.in_task(
-                    DepNode::TransCrateItem(instance.def)); // (*)
+                ccx.tcx().dep_graph.with_task(
+                    DepNode::TransCrateItem(instance.def), ccx,
+                        AssertDepGraphSafe(instance), define_fn_task); // (*)
 
-                base::trans_instance(&ccx, instance);
+                fn define_fn_task<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                                            AssertDepGraphSafe(instance):
+                                                AssertDepGraphSafe<Instance<'tcx>>) {
+                    base::trans_instance(&ccx, instance);
+                }
             }
             TransItem::DropGlue(dg) => {
                 glue::implement_drop_glue(&ccx, dg);

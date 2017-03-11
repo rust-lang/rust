@@ -236,13 +236,16 @@ pub fn extract(attrs: &[ast::Attribute]) -> Option<Symbol> {
 pub fn collect_language_items(session: &Session,
                               map: &hir_map::Map)
                               -> LanguageItems {
-    let _task = map.dep_graph.in_task(DepNode::CollectLanguageItems);
-    let krate: &hir::Crate = map.krate();
-    let mut collector = LanguageItemCollector::new(session, map);
-    collector.collect(krate);
-    let LanguageItemCollector { mut items, .. } = collector;
-    weak_lang_items::check_crate(krate, session, &mut items);
-    items
+    return map.dep_graph.with_task(DepNode::CollectLanguageItems, session, map, collect_task);
+
+    fn collect_task(session: &Session, map: &hir_map::Map) -> LanguageItems {
+        let krate: &hir::Crate = map.krate();
+        let mut collector = LanguageItemCollector::new(session, map);
+        collector.collect(krate);
+        let LanguageItemCollector { mut items, .. } = collector;
+        weak_lang_items::check_crate(krate, session, &mut items);
+        items
+    }
 }
 
 // End of the macro

@@ -128,14 +128,17 @@ fn coherent_inherent_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, _: CrateNum) {
 }
 
 pub fn check_coherence<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    let _task = tcx.dep_graph.in_task(DepNode::Coherence);
-    for &trait_def_id in tcx.hir.krate().trait_impls.keys() {
-        ty::queries::coherent_trait::get(tcx, DUMMY_SP, (LOCAL_CRATE, trait_def_id));
+    tcx.dep_graph.with_task(DepNode::Coherence, tcx, (), check_task);
+
+    fn check_task<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, (): ()) {
+        for &trait_def_id in tcx.hir.krate().trait_impls.keys() {
+            ty::queries::coherent_trait::get(tcx, DUMMY_SP, (LOCAL_CRATE, trait_def_id));
+        }
+
+        unsafety::check(tcx);
+        orphan::check(tcx);
+        overlap::check_default_impls(tcx);
+
+        ty::queries::coherent_inherent_impls::get(tcx, DUMMY_SP, LOCAL_CRATE);
     }
-
-    unsafety::check(tcx);
-    orphan::check(tcx);
-    overlap::check_default_impls(tcx);
-
-    ty::queries::coherent_inherent_impls::get(tcx, DUMMY_SP, LOCAL_CRATE);
 }

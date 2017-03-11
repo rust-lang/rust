@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc::dep_graph::DepNode;
+use rustc::dep_graph::{AssertDepGraphSafe, DepNode};
 use rustc::hir::def_id::DefId;
 use rustc::hir;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
@@ -307,21 +307,30 @@ impl<'a, 'tcx> InherentOverlapChecker<'a, 'tcx> {
     }
 
     fn check_for_overlapping_inherent_impls(&self, ty_def_id: DefId) {
-        let _task = self.tcx.dep_graph.in_task(DepNode::CoherenceOverlapInherentCheck(ty_def_id));
+        return self.tcx.dep_graph.with_task(
+            DepNode::CoherenceOverlapInherentCheck(ty_def_id),
+            AssertDepGraphSafe(self),
+            ty_def_id,
+            check_task
+        );
 
-        let inherent_impls = self.tcx.maps.inherent_impls.borrow();
-        let impls = match inherent_impls.get(&ty_def_id) {
-            Some(impls) => impls,
-            None => return,
-        };
+        fn check_task<'a, 'tcx>(AssertDepGraphSafe(this):
+                                    AssertDepGraphSafe<&InherentOverlapChecker<'a, 'tcx>>,
+                                ty_def_id: DefId) {
+            let inherent_impls = this.tcx.maps.inherent_impls.borrow();
+            let impls = match inherent_impls.get(&ty_def_id) {
+                Some(impls) => impls,
+                None => return,
+            };
 
-        for (i, &impl1_def_id) in impls.iter().enumerate() {
-            for &impl2_def_id in &impls[(i + 1)..] {
-                self.tcx.infer_ctxt((), Reveal::UserFacing).enter(|infcx| {
-                    if traits::overlapping_impls(&infcx, impl1_def_id, impl2_def_id).is_some() {
-                        self.check_for_common_items_in_impls(impl1_def_id, impl2_def_id)
-                    }
-                });
+            for (i, &impl1_def_id) in impls.iter().enumerate() {
+                for &impl2_def_id in &impls[(i + 1)..] {
+                    this.tcx.infer_ctxt((), Reveal::UserFacing).enter(|infcx| {
+                        if traits::overlapping_impls(&infcx, impl1_def_id, impl2_def_id).is_some() {
+                            this.check_for_common_items_in_impls(impl1_def_id, impl2_def_id)
+                        }
+                    });
+                }
             }
         }
     }

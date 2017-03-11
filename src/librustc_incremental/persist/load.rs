@@ -10,7 +10,7 @@
 
 //! Code to save/load the dep-graph from files.
 
-use rustc::dep_graph::{DepNode, WorkProductId};
+use rustc::dep_graph::{DepGraph, DepNode, WorkProductId};
 use rustc::hir::def_id::DefId;
 use rustc::hir::svh::Svh;
 use rustc::session::Session;
@@ -192,7 +192,11 @@ pub fn decode_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 clean_work_products.insert(wp.clone());
             }
 
-            tcx.dep_graph.with_task(n, || ()); // create the node with no inputs
+            tcx.dep_graph.with_task(n, (), (), create_node);
+
+            fn create_node((): (), (): ()) {
+                // just create the node with no inputs
+            }
         }
     }
 
@@ -432,8 +436,9 @@ fn process_edges<'a, 'tcx, 'edges>(
     // data happens to have been removed.
     if let Some(source_node) = retraced.map(source) {
         if let Some(target_node) = retraced.map(target) {
-            let _task = tcx.dep_graph.in_task(target_node);
-            tcx.dep_graph.read(source_node);
+            // create an edge from `source_node -> target_node` by
+            // creating a very short-lived task =)
+            tcx.dep_graph.with_task(target_node, &tcx.dep_graph, source_node, DepGraph::read);
             if let DepNode::WorkProduct(ref wp) = *target {
                 clean_work_products.insert(wp.clone());
             }
