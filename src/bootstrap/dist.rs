@@ -392,6 +392,7 @@ pub fn rust_src(build: &Build) {
     let src_dirs = [
         "man",
         "src",
+        "cargo",
     ];
 
     let filter_fn = move |path: &Path| {
@@ -533,11 +534,11 @@ pub fn cargo(build: &Build, stage: u32, target: &str) {
     println!("Dist cargo stage{} ({})", stage, target);
     let compiler = Compiler::new(stage, &build.config.build);
 
-    let src = build.src.join("src/tools/cargo");
+    let src = build.src.join("cargo");
     let etc = src.join("src/etc");
-    let release_num = &build.crates["cargo"].version;
-    let name = format!("cargo-{}", build.package_vers(release_num));
-    let version = build.cargo_info.version(build, release_num);
+    let release_num = build.cargo_release_num();
+    let name = format!("cargo-{}", build.package_vers(&release_num));
+    let version = build.cargo_info.version(build, &release_num);
 
     let tmp = tmpdir(build);
     let image = tmp.join("cargo-image");
@@ -594,7 +595,7 @@ pub fn extended(build: &Build, stage: u32, target: &str) {
     println!("Dist extended stage{} ({})", stage, target);
 
     let dist = distdir(build);
-    let cargo_vers = &build.crates["cargo"].version;
+    let cargo_vers = build.cargo_release_num();
     let rustc_installer = dist.join(format!("{}-{}.tar.gz",
                                             pkgname(build, "rustc"),
                                             target));
@@ -943,7 +944,7 @@ pub fn hash_and_sign(build: &Build) {
     cmd.arg(distdir(build));
     cmd.arg(today.trim());
     cmd.arg(build.rust_package_vers());
-    cmd.arg(build.cargo_info.version(build, &build.crates["cargo"].version));
+    cmd.arg(build.cargo_info.version(build, &build.cargo_release_num()));
     cmd.arg(addr);
 
     t!(fs::create_dir_all(distdir(build)));

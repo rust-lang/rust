@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,16 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:dummy_mir_pass.rs
-// ignore-stage1
-
-#![feature(plugin)]
-#![plugin(dummy_mir_pass)]
-
-fn math() -> i32 {
-    11
-}
-
-pub fn main() {
-    assert_eq!(math(), 42);
+// We're only emitting dep info, so we shouldn't be running static analysis to
+// figure out that this program is erroneous.
+fn main() {
+    let a: u8 = "a";
 }

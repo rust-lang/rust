@@ -76,11 +76,12 @@ extern crate num_cpus;
 extern crate rustc_serialize;
 extern crate toml;
 
-use std::collections::HashMap;
 use std::cmp;
+use std::collections::HashMap;
 use std::env;
 use std::ffi::OsString;
 use std::fs::{self, File};
+use std::io::Read;
 use std::path::{Component, PathBuf, Path};
 use std::process::Command;
 
@@ -993,6 +994,21 @@ impl Build {
     /// sha, version, etc.
     fn rust_version(&self) -> String {
         self.rust_info.version(self, channel::CFG_RELEASE_NUM)
+    }
+
+    /// Returns the `a.b.c` version that Cargo is at.
+    fn cargo_release_num(&self) -> String {
+        let mut toml = String::new();
+        t!(t!(File::open(self.src.join("cargo/Cargo.toml"))).read_to_string(&mut toml));
+        for line in toml.lines() {
+            let prefix = "version = \"";
+            let suffix = "\"";
+            if line.starts_with(prefix) && line.ends_with(suffix) {
+                return line[prefix.len()..line.len() - suffix.len()].to_string()
+            }
+        }
+
+        panic!("failed to find version in cargo's Cargo.toml")
     }
 
     /// Returns whether unstable features should be enabled for the compiler
