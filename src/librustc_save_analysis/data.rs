@@ -15,7 +15,7 @@
 
 use rustc::hir;
 use rustc::hir::def_id::{CrateNum, DefId};
-use syntax::ast::{self, NodeId};
+use syntax::ast::{self, Attribute, NodeId};
 use syntax_pos::Span;
 
 pub struct CrateData {
@@ -136,6 +136,7 @@ pub struct EnumData {
     pub visibility: Visibility,
     pub docs: String,
     pub sig: Signature,
+    pub attributes: Vec<Attribute>,
 }
 
 /// Data for extern crates.
@@ -171,6 +172,7 @@ pub struct FunctionData {
     pub parent: Option<DefId>,
     pub docs: String,
     pub sig: Signature,
+    pub attributes: Vec<Attribute>,
 }
 
 /// Data about a function call.
@@ -256,6 +258,7 @@ pub struct MethodData {
     pub visibility: Visibility,
     pub docs: String,
     pub sig: Signature,
+    pub attributes: Vec<Attribute>,
 }
 
 /// Data for modules.
@@ -271,6 +274,7 @@ pub struct ModData {
     pub visibility: Visibility,
     pub docs: String,
     pub sig: Signature,
+    pub attributes: Vec<Attribute>,
 }
 
 /// Data for a reference to a module.
@@ -295,6 +299,7 @@ pub struct StructData {
     pub visibility: Visibility,
     pub docs: String,
     pub sig: Signature,
+    pub attributes: Vec<Attribute>,
 }
 
 #[derive(Debug, RustcEncodable)]
@@ -309,6 +314,7 @@ pub struct StructVariantData {
     pub parent: Option<DefId>,
     pub docs: String,
     pub sig: Signature,
+    pub attributes: Vec<Attribute>,
 }
 
 #[derive(Debug, RustcEncodable)]
@@ -323,6 +329,7 @@ pub struct TraitData {
     pub visibility: Visibility,
     pub docs: String,
     pub sig: Signature,
+    pub attributes: Vec<Attribute>,
 }
 
 #[derive(Debug, RustcEncodable)]
@@ -337,6 +344,7 @@ pub struct TupleVariantData {
     pub parent: Option<DefId>,
     pub docs: String,
     pub sig: Signature,
+    pub attributes: Vec<Attribute>,
 }
 
 /// Data for a typedef.
@@ -351,6 +359,7 @@ pub struct TypeDefData {
     pub parent: Option<DefId>,
     pub docs: String,
     pub sig: Option<Signature>,
+    pub attributes: Vec<Attribute>,
 }
 
 /// Data for a reference to a type or trait.
@@ -396,6 +405,7 @@ pub struct VariableData {
     pub visibility: Visibility,
     pub docs: String,
     pub sig: Option<Signature>,
+    pub attributes: Vec<Attribute>,
 }
 
 #[derive(Debug, RustcEncodable)]

@@ -11,8 +11,10 @@
 use rustc::hir::def_id::{CrateNum, DefId, DefIndex};
 use rustc::hir::map::Map;
 use rustc::ty::TyCtxt;
-use syntax::ast::NodeId;
+use syntax::ast::{self, NodeId};
 use syntax::codemap::CodeMap;
+use syntax::print::pprust;
+use syntax::symbol::Symbol;
 use syntax_pos::Span;
 
 use data::{self, Visibility, SigElement};
@@ -64,6 +66,39 @@ impl SpanData {
     }
 }
 
+/// Represent an arbitrary attribute on a code element
+#[derive(Clone, Debug, RustcEncodable)]
+pub struct Attribute {
+    value: String,
+    span: SpanData,
+}
+
+impl Lower for Vec<ast::Attribute> {
+    type Target = Vec<Attribute>;
+
+    fn lower(self, tcx: TyCtxt) -> Vec<Attribute> {
+        let doc = Symbol::intern("doc");
+        self.into_iter()
+        // Only retain real attributes. Doc comments are lowered separately.
+        .filter(|attr| attr.name() != doc)
+        .map(|mut attr| {
+            // Remove the surrounding '#[..]' or '#![..]' of the pretty printed
+            // attribute. First normalize all inner attribute (#![..]) to outer
+            // ones (#[..]), then remove the two leading and the one trailing character.
+            attr.style = ast::AttrStyle::Outer;
+            let value = pprust::attribute_to_string(&attr);
+            // This str slicing works correctly, because the leading and trailing characters
+            // are in the ASCII range and thus exactly one byte each.
+            let value = value[2..value.len()-1].to_string();
+
+            Attribute {
+                value: value,
+                span: SpanData::from_span(attr.span, tcx.sess.codemap()),
+            }
+        }).collect()
+    }
+}
+
 #[derive(Debug, RustcEncodable)]
 pub struct CratePreludeData {
     pub crate_name: String,
@@ -98,6 +133,7 @@ pub struct EnumData {
     pub visibility: Visibility,
     pub docs: String,
     pub sig: Signature,
+    pub attributes: Vec<Attribute>,
 }
 
 impl Lower for data::EnumData {
@@ -115,6 +151,7 @@ impl Lower for data::EnumData {
             visibility: self.visibility,
             docs: self.docs,
             sig: self.sig.lower(tcx),
+            attributes: self.attributes.lower(tcx),
         }
     }
 }
@@ -179,6 +216,7 @@ pub struct FunctionData {
     pub parent: Option<DefId>,
     pub docs: String,
     pub sig: Signature,
+    pub attributes: Vec<Attribute>,
 }
 
 impl Lower for data::FunctionData {
@@ -197,6 +235,7 @@ impl Lower for data::FunctionData {
             parent: self.parent,
             docs: self.docs,
             sig: self.sig.lower(tcx),
+            attributes: self.attributes.lower(tcx),
         }
     }
 }
@@ -346,6 +385,7 @@ pub struct MethodData {
     pub parent: Option<DefId>,
     pub docs: String,
     pub sig: Signature,
+    pub attributes: Vec<Attribute>,
 }
 
 impl Lower for data::MethodData {
@@ -364,6 +404,7 @@ impl Lower for data::MethodData {
             parent: self.parent,
             docs: self.docs,
             sig: self.sig.lower(tcx),
+            attributes: self.attributes.lower(tcx),
         }
     }
 }
@@ -381,6 +422,7 @@ pub struct ModData {
     pub visibility: Visibility,
     pub docs: String,
     pub sig: Signature,
+    pub attributes: Vec<Attribute>,
 }
 
 impl Lower for data::ModData {
@@ -398,6 +440,7 @@ impl Lower for data::ModData {
             visibility: self.visibility,
             docs: self.docs,
             sig: self.sig.lower(tcx),
+            attributes: self.attributes.lower(tcx),
         }
     }
 }
@@ -437,6 +480,7 @@ pub struct StructData {
     pub visibility: Visibility,
     pub docs: String,
     pub sig: Signature,
+    pub attributes: Vec<Attribute>,
 }
 
 impl Lower for data::StructData {
@@ -455,6 +499,7 @@ impl Lower for data::StructData {
             visibility: self.visibility,
             docs: self.docs,
             sig: self.sig.lower(tcx),
+            attributes: self.attributes.lower(tcx),
         }
     }
 }
@@ -471,6 +516,7 @@ pub struct StructVariantData {
     pub parent: Option<DefId>,
     pub docs: String,
     pub sig: Signature,
+    pub attributes: Vec<Attribute>,
 }
 
 impl Lower for data::StructVariantData {
@@ -488,6 +534,7 @@ impl Lower for data::StructVariantData {
             parent: self.parent,
             docs: self.docs,
             sig: self.sig.lower(tcx),
+            attributes: self.attributes.lower(tcx),
         }
     }
 }
@@ -504,6 +551,7 @@ pub struct TraitData {
     pub visibility: Visibility,
     pub docs: String,
     pub sig: Signature,
+    pub attributes: Vec<Attribute>,
 }
 
 impl Lower for data::TraitData {
@@ -521,6 +569,7 @@ impl Lower for data::TraitData {
             visibility: self.visibility,
             docs: self.docs,
             sig: self.sig.lower(tcx),
+            attributes: self.attributes.lower(tcx),
         }
     }
 }
@@ -537,6 +586,7 @@ pub struct TupleVariantData {
     pub parent: Option<DefId>,
     pub docs: String,
     pub sig: Signature,
+    pub attributes: Vec<Attribute>,
 }
 
 impl Lower for data::TupleVariantData {
@@ -554,6 +604,7 @@ impl Lower for data::TupleVariantData {
             parent: self.parent,
             docs: self.docs,
             sig: self.sig.lower(tcx),
+            attributes: self.attributes.lower(tcx),
         }
     }
 }
@@ -570,6 +621,7 @@ pub struct TypeDefData {
     pub parent: Option<DefId>,
     pub docs: String,
     pub sig: Option<Signature>,
+    pub attributes: Vec<Attribute>,
 }
 
 impl Lower for data::TypeDefData {
@@ -586,6 +638,7 @@ impl Lower for data::TypeDefData {
             parent: self.parent,
             docs: self.docs,
             sig: self.sig.map(|s| s.lower(tcx)),
+            attributes: self.attributes.lower(tcx),
         }
     }
 }
@@ -675,6 +728,7 @@ pub struct VariableData {
     pub visibility: Visibility,
     pub docs: String,
     pub sig: Option<Signature>,
+    pub attributes: Vec<Attribute>,
 }
 
 impl Lower for data::VariableData {
@@ -694,6 +748,7 @@ impl Lower for data::VariableData {
             visibility: self.visibility,
             docs: self.docs,
             sig: self.sig.map(|s| s.lower(tcx)),
+            attributes: self.attributes.lower(tcx),
         }
     }
 }

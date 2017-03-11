@@ -115,6 +115,12 @@ pub fn llvm(build: &Build, target: &str) {
         cfg.define("LLVM_BUILD_32_BITS", "ON");
     }
 
+    if let Some(num_linkers) = build.config.llvm_link_jobs {
+        if num_linkers > 0 {
+            cfg.define("LLVM_PARALLEL_LINK_JOBS", num_linkers.to_string());
+        }
+    }
+
     // http://llvm.org/docs/HowToCrossCompileLLVM.html
     if target != build.config.build {
         // FIXME: if the llvm root for the build triple is overridden then we

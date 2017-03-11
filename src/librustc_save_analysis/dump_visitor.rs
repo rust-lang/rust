@@ -327,6 +327,9 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                     scope: scope
                 }.lower(self.tcx));
             }
+            // With macros 2.0, we can legitimately get a ref to a macro, but
+            // we don't handle it properly for now (FIXME).
+            Def::Macro(..) => {}
             Def::Local(..) |
             Def::Upvar(..) |
             Def::SelfTy(..) |
@@ -336,7 +339,6 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
             Def::AssociatedTy(..) |
             Def::AssociatedConst(..) |
             Def::PrimTy(_) |
-            Def::Macro(..) |
             Def::Err => {
                span_bug!(span,
                          "process_def_kind for unexpected item: {:?}",
@@ -373,6 +375,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                         visibility: Visibility::Inherited,
                         docs: String::new(),
                         sig: None,
+                        attributes: vec![],
                     }.lower(self.tcx));
                 }
             }
@@ -448,6 +451,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                     visibility: vis,
                     docs: docs_for_attrs(attrs),
                     sig: method_data.sig,
+                    attributes: attrs.to_vec(),
                 }.lower(self.tcx));
             }
 
@@ -519,6 +523,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                     parent: None,
                     docs: String::new(),
                     sig: None,
+                    attributes: vec![],
                 }.lower(self.tcx));
             }
         }
@@ -592,6 +597,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                 visibility: vis,
                 docs: docs_for_attrs(attrs),
                 sig: None,
+                attributes: attrs.to_vec(),
             }.lower(self.tcx));
         }
 
@@ -636,6 +642,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                 visibility: From::from(&item.vis),
                 docs: docs_for_attrs(&item.attrs),
                 sig: self.save_ctxt.sig_base(item),
+                attributes: item.attrs.clone(),
             }.lower(self.tcx));
         }
 
@@ -701,6 +708,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                             parent: Some(make_def_id(item.id, &self.tcx.hir)),
                             docs: docs_for_attrs(&variant.node.attrs),
                             sig: sig,
+                            attributes: variant.node.attrs.clone(),
                         }.lower(self.tcx));
                     }
                 }
@@ -727,6 +735,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                             parent: Some(make_def_id(item.id, &self.tcx.hir)),
                             docs: docs_for_attrs(&variant.node.attrs),
                             sig: sig,
+                            attributes: variant.node.attrs.clone(),
                         }.lower(self.tcx));
                     }
                 }
@@ -798,6 +807,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                 visibility: From::from(&item.vis),
                 docs: docs_for_attrs(&item.attrs),
                 sig: self.save_ctxt.sig_base(item),
+                attributes: item.attrs.clone(),
             }.lower(self.tcx));
         }
 
@@ -1064,6 +1074,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                     visibility: Visibility::Inherited,
                     docs: String::new(),
                     sig: None,
+                    attributes: vec![],
                 }.lower(self.tcx));
             }
         }
@@ -1305,6 +1316,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'l> for DumpVisitor<'l, 'tcx, 'll,
                         parent: None,
                         docs: docs_for_attrs(&item.attrs),
                         sig: Some(self.save_ctxt.sig_base(item)),
+                        attributes: item.attrs.clone(),
                     }.lower(self.tcx));
                 }
 
@@ -1527,6 +1539,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump +'ll> Visitor<'l> for DumpVisitor<'l, 'tcx, 'll,
                             visibility: Visibility::Inherited,
                             docs: String::new(),
                             sig: None,
+                            attributes: vec![],
                         }.lower(self.tcx));
                     }
                 }

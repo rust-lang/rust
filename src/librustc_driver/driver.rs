@@ -125,6 +125,10 @@ pub fn compile_input(sess: &Session,
         };
 
         write_out_deps(sess, &outputs, &crate_name);
+        if sess.opts.output_types.contains_key(&OutputType::DepInfo) &&
+            sess.opts.output_types.keys().count() == 1 {
+            return Ok(())
+        }
 
         let arena = DroplessArena::new();
         let arenas = GlobalArenas::new();
@@ -604,7 +608,7 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
 
     let whitelisted_legacy_custom_derives = registry.take_whitelisted_custom_derives();
     let Registry { syntax_exts, early_lint_passes, late_lint_passes, lint_groups,
-                   llvm_passes, attributes, mir_passes, .. } = registry;
+                   llvm_passes, attributes, .. } = registry;
 
     sess.track_errors(|| {
         let mut ls = sess.lint_store.borrow_mut();
@@ -620,7 +624,6 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
         }
 
         *sess.plugin_llvm_passes.borrow_mut() = llvm_passes;
-        sess.mir_passes.borrow_mut().extend(mir_passes);
         *sess.plugin_attributes.borrow_mut() = attributes.clone();
     })?;
 
