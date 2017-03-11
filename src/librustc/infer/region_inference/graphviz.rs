@@ -91,7 +91,7 @@ pub fn maybe_print_constraints_for<'a, 'gcx, 'tcx>(
         };
 
         if output_template.is_empty() {
-            bug!("empty string provided as RUST_REGION_GRAPH");
+            panic!("empty string provided as RUST_REGION_GRAPH");
         }
 
         if output_template.contains('%') {
