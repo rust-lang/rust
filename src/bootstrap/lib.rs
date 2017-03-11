@@ -708,6 +708,13 @@ impl Build {
         self.out.join(target).join("doc")
     }
 
+    /// Output directory for all crate documentation for a target (temporary)
+    ///
+    /// The artifacts here are then copied into `doc_out` above.
+    fn crate_doc_out(&self, target: &str) -> PathBuf {
+        self.out.join(target).join("crate-docs")
+    }
+
     /// Returns true if no custom `llvm-config` is set for the specified target.
     ///
     /// If no custom `llvm-config` was specified then Rust's llvm will be used.
