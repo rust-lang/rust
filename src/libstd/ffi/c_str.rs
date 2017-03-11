@@ -154,7 +154,28 @@ pub struct NulError(usize, Vec<u8>);
 /// byte was found too early in the slice provided or one wasn't found at all.
 #[derive(Clone, PartialEq, Eq, Debug)]
 #[stable(feature = "cstr_from_bytes", since = "1.10.0")]
-pub struct FromBytesWithNulError { _a: () }
+pub struct FromBytesWithNulError {
+    kind: FromBytesWithNulErrorKind,
+}
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+enum FromBytesWithNulErrorKind {
+    InteriorNul(usize),
+    NotNulTerminated,
+}
+
+impl FromBytesWithNulError {
+    fn interior_nul(pos: usize) -> FromBytesWithNulError {
+        FromBytesWithNulError {
+            kind: FromBytesWithNulErrorKind::InteriorNul(pos),
+        }
+    }
+    fn not_nul_terminated() -> FromBytesWithNulError {
+        FromBytesWithNulError {
+            kind: FromBytesWithNulErrorKind::NotNulTerminated,
+        }
+    }
+}
 
 /// An error returned from `CString::into_string` to indicate that a UTF-8 error
 /// was encountered during the conversion.
@@ -458,14 +479,23 @@ impl From<NulError> for io::Error {
 #[stable(feature = "frombyteswithnulerror_impls", since = "1.17.0")]
 impl Error for FromBytesWithNulError {
     fn description(&self) -> &str {
-        "data provided is not null terminated or contains an interior nul byte"
+        match self.kind {
+            FromBytesWithNulErrorKind::InteriorNul(..) =>
+                "data provided contains an interior nul byte",
+            FromBytesWithNulErrorKind::NotNulTerminated =>
+                "data provided is not nul terminated",
+        }
     }
 }
 
 #[stable(feature = "frombyteswithnulerror_impls", since = "1.17.0")]
 impl fmt::Display for FromBytesWithNulError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.description().fmt(f)
+        f.write_str(self.description())?;
+        if let FromBytesWithNulErrorKind::InteriorNul(pos) = self.kind {
+            write!(f, " at byte pos {}", pos)?;
+        }
+        Ok(())
     }
 }
 
@@ -559,10 +589,14 @@ impl CStr {
     #[stable(feature = "cstr_from_bytes", since = "1.10.0")]
     pub fn from_bytes_with_nul(bytes: &[u8])
                                -> Result<&CStr, FromBytesWithNulError> {
-        if bytes.is_empty() || memchr::memchr(0, &bytes) != Some(bytes.len() - 1) {
-            Err(FromBytesWithNulError { _a: () })
+        let nul_pos = memchr::memchr(0, bytes);
+        if let Some(nul_pos) = nul_pos {
+            if nul_pos + 1 != bytes.len() {
+                return Err(FromBytesWithNulError::interior_nul(nul_pos));
+            }
+            Ok(unsafe { CStr::from_bytes_with_nul_unchecked(bytes) })
         } else {
-            Ok(unsafe { Self::from_bytes_with_nul_unchecked(bytes) })
+            Err(FromBytesWithNulError::not_nul_terminated())
         }
     }
 

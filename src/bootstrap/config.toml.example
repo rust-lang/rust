@@ -53,6 +53,19 @@
 # Rust team and file an issue if you need assistance in porting!
 #targets = "X86;ARM;AArch64;Mips;PowerPC;SystemZ;JSBackend;MSP430;Sparc;NVPTX"
 
+# Cap the number of parallel linker invocations when compiling LLVM.
+# This can be useful when building LLVM with debug info, which significantly
+# increases the size of binaries and consequently the memory required by
+# each linker process.
+# If absent or 0, linker invocations are treated like any other job and
+# controlled by rustbuild's -j parameter.
+#link-jobs = 0
+
+# Delete LLVM build directory on LLVM rebuild.
+# This option defaults to `false` for local development, but CI may want to
+# always perform clean full builds (possibly accelerated by (s)ccache).
+#clean-rebuild = false
+
 # =============================================================================
 # General build configuration options
 # =============================================================================

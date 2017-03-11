@@ -43,7 +43,6 @@ use super::Compilation;
 use serialize::json;
 
 use std::env;
-use std::mem;
 use std::ffi::{OsString, OsStr};
 use std::fs;
 use std::io::{self, Write};
@@ -125,6 +124,10 @@ pub fn compile_input(sess: &Session,
         };
 
         write_out_deps(sess, &outputs, &crate_name);
+        if sess.opts.output_types.contains_key(&OutputType::DepInfo) &&
+            sess.opts.output_types.keys().count() == 1 {
+            return Ok(())
+        }
 
         let arena = DroplessArena::new();
         let arenas = GlobalArenas::new();
@@ -604,7 +607,7 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
 
     let whitelisted_legacy_custom_derives = registry.take_whitelisted_custom_derives();
     let Registry { syntax_exts, early_lint_passes, late_lint_passes, lint_groups,
-                   llvm_passes, attributes, mir_passes, .. } = registry;
+                   llvm_passes, attributes, .. } = registry;
 
     sess.track_errors(|| {
         let mut ls = sess.lint_store.borrow_mut();
@@ -620,7 +623,6 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
         }
 
         *sess.plugin_llvm_passes.borrow_mut() = llvm_passes;
-        sess.mir_passes.borrow_mut().extend(mir_passes);
         *sess.plugin_attributes.borrow_mut() = attributes.clone();
     })?;
 
@@ -704,8 +706,6 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
         }
         krate
     });
-
-    krate.exported_macros = mem::replace(&mut resolver.exported_macros, Vec::new());
 
     krate = time(time_passes, "maybe building test harness", || {
         syntax::test::modify_for_testing(&sess.parse_sess,
@@ -1048,6 +1048,7 @@ pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         passes.push_pass(box mir::transform::simplify::SimplifyCfg::new("elaborate-drops"));
 
         // No lifetime analysis based on borrowing can be done from here on out.
+        passes.push_pass(box mir::transform::inline::Inline);
         passes.push_pass(box mir::transform::instcombine::InstCombine::new());
         passes.push_pass(box mir::transform::deaggregator::Deaggregator);
         passes.push_pass(box mir::transform::copy_prop::CopyPropagation);

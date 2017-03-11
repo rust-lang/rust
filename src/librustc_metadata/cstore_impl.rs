@@ -414,12 +414,13 @@ impl CrateStore for cstore::CStore {
         sess.imported_macro_spans.borrow_mut()
             .insert(local_span, (name.to_string(), data.get_span(id.index, sess)));
 
-        LoadedMacro::MacroRules(ast::MacroDef {
+        LoadedMacro::MacroDef(ast::Item {
             ident: ast::Ident::with_empty_ctxt(name),
             id: ast::DUMMY_NODE_ID,
             span: local_span,
             attrs: attrs,
-            body: body.into(),
+            node: ast::ItemKind::MacroDef(body.into()),
+            vis: ast::Visibility::Inherited,
         })
     }
 

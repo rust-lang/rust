@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::collections::range::RangeArgument;
 use std::fmt::Debug;
 use std::iter::{self, FromIterator};
 use std::slice;
@@ -146,6 +147,18 @@ impl<I: Idx, T> IndexVec<I, T> {
     }
 
     #[inline]
+    pub fn drain<'a, R: RangeArgument<usize>>(
+        &'a mut self, range: R) -> impl Iterator<Item=T> + 'a {
+        self.raw.drain(range)
+    }
+
+    #[inline]
+    pub fn drain_enumerated<'a, R: RangeArgument<usize>>(
+        &'a mut self, range: R) -> impl Iterator<Item=(I, T)> + 'a {
+        self.raw.drain(range).enumerate().map(IntoIdx { _marker: PhantomData })
+    }
+
+    #[inline]
     pub fn last(&self) -> Option<I> {
         self.len().checked_sub(1).map(I::new)
     }
@@ -163,6 +176,16 @@ impl<I: Idx, T> IndexVec<I, T> {
     #[inline]
     pub fn truncate(&mut self, a: usize) {
         self.raw.truncate(a)
+    }
+
+    #[inline]
+    pub fn get(&self, index: I) -> Option<&T> {
+        self.raw.get(index.index())
+    }
+
+    #[inline]
+    pub fn get_mut(&mut self, index: I) -> Option<&mut T> {
+        self.raw.get_mut(index.index())
     }
 }
 
