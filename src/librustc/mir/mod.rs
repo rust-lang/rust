@@ -19,6 +19,7 @@ use hir::def::CtorKind;
 use hir::def_id::DefId;
 use ty::subst::Substs;
 use ty::{self, AdtDef, ClosureSubsts, Region, Ty};
+use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use util::ppaux;
 use rustc_back::slice;
 use hir::InlineAsm;
@@ -63,8 +64,7 @@ macro_rules! newtype_index {
 }
 
 /// Lowered representation of a single function.
-// Do not implement clone for Mir, which can be accidently done and kind of expensive.
-#[derive(RustcEncodable, RustcDecodable, Debug)]
+#[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Mir<'tcx> {
     /// List of basic blocks. References to basic block use a newtyped index type `BasicBlock`
     /// that indexes into this vector.
@@ -1330,6 +1330,350 @@ impl Location {
             self.statement_index <= other.statement_index
         } else {
             dominators.is_dominated_by(other.block, self.block)
+        }
+    }
+}
+
+
+/*
+ * TypeFoldable implementations for MIR types
+ */
+
+impl<'tcx> TypeFoldable<'tcx> for Mir<'tcx> {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+        Mir {
+            basic_blocks: self.basic_blocks.fold_with(folder),
+            visibility_scopes: self.visibility_scopes.clone(),
+            promoted: self.promoted.fold_with(folder),
+            return_ty: self.return_ty.fold_with(folder),
+            local_decls: self.local_decls.fold_with(folder),
+            arg_count: self.arg_count,
+            upvar_decls: self.upvar_decls.clone(),
+            spread_arg: self.spread_arg,
+            span: self.span,
+            cache: cache::Cache::new()
+        }
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        self.basic_blocks.visit_with(visitor) ||
+        self.promoted.visit_with(visitor)     ||
+        self.return_ty.visit_with(visitor)    ||
+        self.local_decls.visit_with(visitor)
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for LocalDecl<'tcx> {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+        LocalDecl {
+            ty: self.ty.fold_with(folder),
+            ..self.clone()
+        }
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        self.ty.visit_with(visitor)
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for BasicBlockData<'tcx> {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+        BasicBlockData {
+            statements: self.statements.fold_with(folder),
+            terminator: self.terminator.fold_with(folder),
+            is_cleanup: self.is_cleanup
+        }
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        self.statements.visit_with(visitor) || self.terminator.visit_with(visitor)
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for Statement<'tcx> {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+        use mir::StatementKind::*;
+
+        let kind = match self.kind {
+            Assign(ref lval, ref rval) => Assign(lval.fold_with(folder), rval.fold_with(folder)),
+            SetDiscriminant { ref lvalue, variant_index } => SetDiscriminant {
+                lvalue: lvalue.fold_with(folder),
+                variant_index: variant_index
+            },
+            StorageLive(ref lval) => StorageLive(lval.fold_with(folder)),
+            StorageDead(ref lval) => StorageDead(lval.fold_with(folder)),
+            InlineAsm { ref asm, ref outputs, ref inputs } => InlineAsm {
+                asm: asm.clone(),
+                outputs: outputs.fold_with(folder),
+                inputs: inputs.fold_with(folder)
+            },
+            Nop => Nop,
+        };
+        Statement {
+            source_info: self.source_info,
+            kind: kind
+        }
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        use mir::StatementKind::*;
+
+        match self.kind {
+            Assign(ref lval, ref rval) => { lval.visit_with(visitor) || rval.visit_with(visitor) }
+            SetDiscriminant { ref lvalue, .. } |
+            StorageLive(ref lvalue) |
+            StorageDead(ref lvalue) => lvalue.visit_with(visitor),
+            InlineAsm { ref outputs, ref inputs, .. } =>
+                outputs.visit_with(visitor) || inputs.visit_with(visitor),
+            Nop => false,
+        }
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+        use mir::TerminatorKind::*;
+
+        let kind = match self.kind {
+            Goto { target } => Goto { target: target },
+            SwitchInt { ref discr, switch_ty, ref values, ref targets } => SwitchInt {
+                discr: discr.fold_with(folder),
+                switch_ty: switch_ty.fold_with(folder),
+                values: values.clone(),
+                targets: targets.clone()
+            },
+            Drop { ref location, target, unwind } => Drop {
+                location: location.fold_with(folder),
+                target: target,
+                unwind: unwind
+            },
+            DropAndReplace { ref location, ref value, target, unwind } => DropAndReplace {
+                location: location.fold_with(folder),
+                value: value.fold_with(folder),
+                target: target,
+                unwind: unwind
+            },
+            Call { ref func, ref args, ref destination, cleanup } => {
+                let dest = destination.as_ref().map(|&(ref loc, dest)| {
+                    (loc.fold_with(folder), dest)
+                });
+
+                Call {
+                    func: func.fold_with(folder),
+                    args: args.fold_with(folder),
+                    destination: dest,
+                    cleanup: cleanup
+                }
+            },
+            Assert { ref cond, expected, ref msg, target, cleanup } => {
+                let msg = if let AssertMessage::BoundsCheck { ref len, ref index } = *msg {
+                    AssertMessage::BoundsCheck {
+                        len: len.fold_with(folder),
+                        index: index.fold_with(folder),
+                    }
+                } else {
+                    msg.clone()
+                };
+                Assert {
+                    cond: cond.fold_with(folder),
+                    expected: expected,
+                    msg: msg,
+                    target: target,
+                    cleanup: cleanup
+                }
+            },
+            Resume => Resume,
+            Return => Return,
+            Unreachable => Unreachable,
+        };
+        Terminator {
+            source_info: self.source_info,
+            kind: kind
+        }
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        use mir::TerminatorKind::*;
+
+        match self.kind {
+            SwitchInt { ref discr, switch_ty, .. } =>
+                discr.visit_with(visitor) || switch_ty.visit_with(visitor),
+            Drop { ref location, ..} => location.visit_with(visitor),
+            DropAndReplace { ref location, ref value, ..} =>
+                location.visit_with(visitor) || value.visit_with(visitor),
+            Call { ref func, ref args, ref destination, .. } => {
+                let dest = if let Some((ref loc, _)) = *destination {
+                    loc.visit_with(visitor)
+                } else { false };
+                dest || func.visit_with(visitor) || args.visit_with(visitor)
+            },
+            Assert { ref cond, ref msg, .. } => {
+                if cond.visit_with(visitor) {
+                    if let AssertMessage::BoundsCheck { ref len, ref index } = *msg {
+                        len.visit_with(visitor) || index.visit_with(visitor)
+                    } else {
+                        false
+                    }
+                } else {
+                    false
+                }
+            },
+            Goto { .. } |
+            Resume |
+            Return |
+            Unreachable => false
+        }
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for Lvalue<'tcx> {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+        match self {
+            &Lvalue::Projection(ref p) => Lvalue::Projection(p.fold_with(folder)),
+            _ => self.clone()
+        }
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        if let &Lvalue::Projection(ref p) = self {
+            p.visit_with(visitor)
+        } else {
+            false
+        }
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for Rvalue<'tcx> {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+        use mir::Rvalue::*;
+        match *self {
+            Use(ref op) => Use(op.fold_with(folder)),
+            Repeat(ref op, len) => Repeat(op.fold_with(folder), len),
+            Ref(region, bk, ref lval) => Ref(region.fold_with(folder), bk, lval.fold_with(folder)),
+            Len(ref lval) => Len(lval.fold_with(folder)),
+            Cast(kind, ref op, ty) => Cast(kind, op.fold_with(folder), ty.fold_with(folder)),
+            BinaryOp(op, ref rhs, ref lhs) =>
+                BinaryOp(op, rhs.fold_with(folder), lhs.fold_with(folder)),
+            CheckedBinaryOp(op, ref rhs, ref lhs) =>
+                CheckedBinaryOp(op, rhs.fold_with(folder), lhs.fold_with(folder)),
+            UnaryOp(op, ref val) => UnaryOp(op, val.fold_with(folder)),
+            Discriminant(ref lval) => Discriminant(lval.fold_with(folder)),
+            Box(ty) => Box(ty.fold_with(folder)),
+            Aggregate(ref kind, ref fields) => {
+                let kind = match *kind {
+                    AggregateKind::Array(ty) => AggregateKind::Array(ty.fold_with(folder)),
+                    AggregateKind::Tuple => AggregateKind::Tuple,
+                    AggregateKind::Adt(def, v, substs, n) =>
+                        AggregateKind::Adt(def, v, substs.fold_with(folder), n),
+                    AggregateKind::Closure(id, substs) =>
+                        AggregateKind::Closure(id, substs.fold_with(folder))
+                };
+                Aggregate(kind, fields.fold_with(folder))
+            }
+        }
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        use mir::Rvalue::*;
+        match *self {
+            Use(ref op) => op.visit_with(visitor),
+            Repeat(ref op, _) => op.visit_with(visitor),
+            Ref(region, _, ref lval) => region.visit_with(visitor) || lval.visit_with(visitor),
+            Len(ref lval) => lval.visit_with(visitor),
+            Cast(_, ref op, ty) => op.visit_with(visitor) || ty.visit_with(visitor),
+            BinaryOp(_, ref rhs, ref lhs) |
+            CheckedBinaryOp(_, ref rhs, ref lhs) =>
+                rhs.visit_with(visitor) || lhs.visit_with(visitor),
+            UnaryOp(_, ref val) => val.visit_with(visitor),
+            Discriminant(ref lval) => lval.visit_with(visitor),
+            Box(ty) => ty.visit_with(visitor),
+            Aggregate(ref kind, ref fields) => {
+                (match *kind {
+                    AggregateKind::Array(ty) => ty.visit_with(visitor),
+                    AggregateKind::Tuple => false,
+                    AggregateKind::Adt(_, _, substs, _) => substs.visit_with(visitor),
+                    AggregateKind::Closure(_, substs) => substs.visit_with(visitor)
+                }) || fields.visit_with(visitor)
+            }
+        }
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for Operand<'tcx> {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+        match *self {
+            Operand::Consume(ref lval) => Operand::Consume(lval.fold_with(folder)),
+            Operand::Constant(ref c) => Operand::Constant(c.fold_with(folder)),
+        }
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        match *self {
+            Operand::Consume(ref lval) => lval.visit_with(visitor),
+            Operand::Constant(ref c) => c.visit_with(visitor)
+        }
+    }
+}
+
+impl<'tcx, B, V> TypeFoldable<'tcx> for Projection<'tcx, B, V>
+    where B: TypeFoldable<'tcx>, V: TypeFoldable<'tcx>
+{
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+        use mir::ProjectionElem::*;
+
+        let base = self.base.fold_with(folder);
+        let elem = match self.elem {
+            Deref => Deref,
+            Field(f, ty) => Field(f, ty.fold_with(folder)),
+            Index(ref v) => Index(v.fold_with(folder)),
+            ref elem => elem.clone()
+        };
+
+        Projection {
+            base: base,
+            elem: elem
+        }
+    }
+
+    fn super_visit_with<Vs: TypeVisitor<'tcx>>(&self, visitor: &mut Vs) -> bool {
+        use mir::ProjectionElem::*;
+
+        self.base.visit_with(visitor) ||
+            match self.elem {
+                Field(_, ty) => ty.visit_with(visitor),
+                Index(ref v) => v.visit_with(visitor),
+                _ => false
+            }
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for Constant<'tcx> {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+        Constant {
+            span: self.span.clone(),
+            ty: self.ty.fold_with(folder),
+            literal: self.literal.fold_with(folder)
+        }
+    }
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        self.ty.visit_with(visitor) || self.literal.visit_with(visitor)
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for Literal<'tcx> {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+        match *self {
+            Literal::Item { def_id, substs } => Literal::Item {
+                def_id: def_id,
+                substs: substs.fold_with(folder)
+            },
+            _ => self.clone()
+        }
+    }
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        match *self {
+            Literal::Item { substs, .. } => substs.visit_with(visitor),
+            _ => false
         }
     }
 }

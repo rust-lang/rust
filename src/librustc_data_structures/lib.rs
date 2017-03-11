@@ -38,6 +38,7 @@
 #![feature(associated_consts)]
 #![feature(unsize)]
 #![feature(i128_type)]
+#![feature(conservative_impl_trait)]
 
 #![cfg_attr(unix, feature(libc))]
 #![cfg_attr(test, feature(test))]
