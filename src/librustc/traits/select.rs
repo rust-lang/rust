@@ -2461,7 +2461,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 let new_trait = tcx.mk_dynamic(
                     ty::Binder(tcx.mk_existential_predicates(iter)), r_b);
                 let InferOk { obligations, .. } =
-                    self.infcx.sub_types(false, &obligation.cause, new_trait, target)
+                    self.infcx.eq_types(false, &obligation.cause, new_trait, target)
                     .map_err(|_| Unimplemented)?;
                 self.inferred_obligations.extend(obligations);
 
@@ -2520,7 +2520,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             // [T; n] -> [T].
             (&ty::TyArray(a, _), &ty::TySlice(b)) => {
                 let InferOk { obligations, .. } =
-                    self.infcx.sub_types(false, &obligation.cause, a, b)
+                    self.infcx.eq_types(false, &obligation.cause, a, b)
                     .map_err(|_| Unimplemented)?;
                 self.inferred_obligations.extend(obligations);
             }
@@ -2583,7 +2583,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 });
                 let new_struct = tcx.mk_adt(def, tcx.mk_substs(params));
                 let InferOk { obligations, .. } =
-                    self.infcx.sub_types(false, &obligation.cause, new_struct, target)
+                    self.infcx.eq_types(false, &obligation.cause, new_struct, target)
                     .map_err(|_| Unimplemented)?;
                 self.inferred_obligations.extend(obligations);
 

@@ -12,6 +12,7 @@ use infer::type_variable;
 use ty::{self, Lift, Ty, TyCtxt};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use rustc_data_structures::accumulate_vec::AccumulateVec;
+use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 
 use std::rc::Rc;
 use syntax::abi;
@@ -832,5 +833,15 @@ impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for ty::error::ExpectedFoun
 
     fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
         self.expected.visit_with(visitor) || self.found.visit_with(visitor)
+    }
+}
+
+impl<'tcx, T: TypeFoldable<'tcx>, I: Idx> TypeFoldable<'tcx> for IndexVec<I, T> {
+    fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
+        self.iter().map(|x| x.fold_with(folder)).collect()
+    }
+
+    fn super_visit_with<V: TypeVisitor<'tcx>>(&self, visitor: &mut V) -> bool {
+        self.iter().any(|t| t.visit_with(visitor))
     }
 }

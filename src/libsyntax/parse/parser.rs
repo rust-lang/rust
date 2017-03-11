@@ -27,7 +27,7 @@ use ast::Local;
 use ast::MacStmtStyle;
 use ast::Mac_;
 use ast::{MutTy, Mutability};
-use ast::{Pat, PatKind};
+use ast::{Pat, PatKind, PathSegment};
 use ast::{PolyTraitRef, QSelf};
 use ast::{Stmt, StmtKind};
 use ast::{VariantData, StructField};
@@ -1048,7 +1048,7 @@ impl<'a> Parser<'a> {
         self.expected_tokens.clear();
     }
 
-    pub fn look_ahead<R, F>(&mut self, dist: usize, f: F) -> R where
+    pub fn look_ahead<R, F>(&self, dist: usize, f: F) -> R where
         F: FnOnce(&token::Token) -> R,
     {
         if dist == 0 {
@@ -1811,7 +1811,7 @@ impl<'a> Parser<'a> {
         };
 
         if is_global {
-            segments.insert(0, ast::PathSegment::crate_root());
+            segments.insert(0, PathSegment::crate_root());
         }
 
         // Assemble the span.
@@ -1829,11 +1829,12 @@ impl<'a> Parser<'a> {
     /// - `a::b<T,U>::c<V,W>`
     /// - `a::b<T,U>::c(V) -> W`
     /// - `a::b<T,U>::c(V)`
-    pub fn parse_path_segments_without_colons(&mut self) -> PResult<'a, Vec<ast::PathSegment>> {
+    pub fn parse_path_segments_without_colons(&mut self) -> PResult<'a, Vec<PathSegment>> {
         let mut segments = Vec::new();
         loop {
             // First, parse an identifier.
             let identifier = self.parse_path_segment_ident()?;
+            let ident_span = self.prev_span;
 
             if self.check(&token::ModSep) && self.look_ahead(1, |t| *t == token::Lt) {
                 self.bump();
@@ -1881,7 +1882,11 @@ impl<'a> Parser<'a> {
             };
 
             // Assemble and push the result.
-            segments.push(ast::PathSegment { identifier: identifier, parameters: parameters });
+            segments.push(PathSegment {
+                identifier: identifier,
+                span: ident_span,
+                parameters: parameters
+            });
 
             // Continue only if we see a `::`
             if !self.eat(&token::ModSep) {
@@ -1892,15 +1897,16 @@ impl<'a> Parser<'a> {
 
     /// Examples:
     /// - `a::b::<T,U>::c`
-    pub fn parse_path_segments_with_colons(&mut self) -> PResult<'a, Vec<ast::PathSegment>> {
+    pub fn parse_path_segments_with_colons(&mut self) -> PResult<'a, Vec<PathSegment>> {
         let mut segments = Vec::new();
         loop {
             // First, parse an identifier.
             let identifier = self.parse_path_segment_ident()?;
+            let ident_span = self.prev_span;
 
             // If we do not see a `::`, stop.
             if !self.eat(&token::ModSep) {
-                segments.push(identifier.into());
+                segments.push(PathSegment::from_ident(identifier, ident_span));
                 return Ok(segments);
             }
 
@@ -1909,8 +1915,9 @@ impl<'a> Parser<'a> {
                 // Consumed `a::b::<`, go look for types
                 let (lifetimes, types, bindings) = self.parse_generic_args()?;
                 self.expect_gt()?;
-                segments.push(ast::PathSegment {
+                segments.push(PathSegment {
                     identifier: identifier,
+                    span: ident_span,
                     parameters: ast::AngleBracketedParameterData {
                         lifetimes: lifetimes,
                         types: types,
@@ -1924,7 +1931,7 @@ impl<'a> Parser<'a> {
                 }
             } else {
                 // Consumed `a::`, go look for `b`
-                segments.push(identifier.into());
+                segments.push(PathSegment::from_ident(identifier, ident_span));
             }
         }
     }
@@ -1932,14 +1939,14 @@ impl<'a> Parser<'a> {
     /// Examples:
     /// - `a::b::c`
     pub fn parse_path_segments_without_types(&mut self)
-                                             -> PResult<'a, Vec<ast::PathSegment>> {
+                                             -> PResult<'a, Vec<PathSegment>> {
         let mut segments = Vec::new();
         loop {
             // First, parse an identifier.
             let identifier = self.parse_path_segment_ident()?;
 
             // Assemble and push the result.
-            segments.push(identifier.into());
+            segments.push(PathSegment::from_ident(identifier, self.prev_span));
 
             // If we do not see a `::` or see `::{`/`::*`, stop.
             if !self.check(&token::ModSep) || self.is_import_coupler() {
@@ -2272,6 +2279,12 @@ impl<'a> Parser<'a> {
                         lo,
                         BlockCheckMode::Unsafe(ast::UserProvided),
                         attrs);
+                }
+                if self.is_catch_expr() {
+                    assert!(self.eat_keyword(keywords::Do));
+                    assert!(self.eat_keyword(keywords::Catch));
+                    let lo = self.prev_span.lo;
+                    return self.parse_catch_expr(lo, attrs);
                 }
                 if self.eat_keyword(keywords::Return) {
                     if self.token.can_begin_expr() {
@@ -3092,6 +3105,16 @@ impl<'a> Parser<'a> {
         Ok(self.mk_expr(span_lo, hi, ExprKind::Loop(body, opt_ident), attrs))
     }
 
+    /// Parse a `do catch {...}` expression (`do catch` token already eaten)
+    pub fn parse_catch_expr(&mut self, span_lo: BytePos, mut attrs: ThinVec<Attribute>)
+        -> PResult<'a, P<Expr>>
+    {
+        let (iattrs, body) = self.parse_inner_attrs_and_block()?;
+        attrs.extend(iattrs);
+        let hi = body.span.hi;
+        Ok(self.mk_expr(span_lo, hi, ExprKind::Catch(body), attrs))
+    }
+
     // `match` token already eaten
     fn parse_match_expr(&mut self, mut attrs: ThinVec<Attribute>) -> PResult<'a, P<Expr>> {
         let match_span = self.prev_span;
@@ -3699,9 +3722,48 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn is_union_item(&mut self) -> bool {
+    fn is_catch_expr(&mut self) -> bool {
+        self.token.is_keyword(keywords::Do) &&
+        self.look_ahead(1, |t| t.is_keyword(keywords::Catch)) &&
+        self.look_ahead(2, |t| *t == token::OpenDelim(token::Brace)) &&
+
+        // prevent `while catch {} {}`, `if catch {} {} else {}`, etc.
+        !self.restrictions.contains(Restrictions::RESTRICTION_NO_STRUCT_LITERAL)
+    }
+
+    fn is_union_item(&self) -> bool {
         self.token.is_keyword(keywords::Union) &&
         self.look_ahead(1, |t| t.is_ident() && !t.is_any_keyword())
+    }
+
+    fn eat_macro_def(&mut self, attrs: &[Attribute], vis: &Visibility)
+                     -> PResult<'a, Option<P<Item>>> {
+        let lo = self.span.lo;
+        match self.token {
+            token::Ident(ident) if ident.name == "macro_rules" => {
+                if self.look_ahead(1, |t| *t == token::Not) {
+                    let prev_span = self.prev_span;
+                    self.complain_if_pub_macro(vis, prev_span);
+                    self.bump();
+                    self.bump();
+                }
+            }
+            _ => return Ok(None),
+        };
+
+        let id = self.parse_ident()?;
+        let (delim, tts) = self.expect_delimited_token_tree()?;
+        if delim != token::Brace {
+            if !self.eat(&token::Semi) {
+                let msg = "macros that expand to items must either be surrounded with braces \
+                           or followed by a semicolon";
+                self.span_err(self.prev_span, msg);
+            }
+        }
+
+        let hi = self.prev_span.hi;
+        let kind = ItemKind::MacroDef(tts);
+        Ok(Some(self.mk_item(lo, hi, id, kind, Visibility::Inherited, attrs.to_owned())))
     }
 
     fn parse_stmt_without_recovery(&mut self,
@@ -3716,6 +3778,12 @@ impl<'a> Parser<'a> {
             Stmt {
                 id: ast::DUMMY_NODE_ID,
                 node: StmtKind::Local(self.parse_local(attrs.into())?),
+                span: mk_sp(lo, self.prev_span.hi),
+            }
+        } else if let Some(macro_def) = self.eat_macro_def(&attrs, &Visibility::Inherited)? {
+            Stmt {
+                id: ast::DUMMY_NODE_ID,
+                node: StmtKind::Item(macro_def),
                 span: mk_sp(lo, self.prev_span.hi),
             }
         // Starts like a simple path, but not a union item.
@@ -4605,7 +4673,7 @@ impl<'a> Parser<'a> {
 
         let mut attrs = self.parse_outer_attributes()?;
         let lo = self.span.lo;
-        let vis = self.parse_visibility(true)?;
+        let vis = self.parse_visibility()?;
         let defaultness = self.parse_defaultness()?;
         let (name, node) = if self.eat_keyword(keywords::Type) {
             let name = self.parse_ident()?;
@@ -4839,6 +4907,7 @@ impl<'a> Parser<'a> {
     /// Parse struct Foo { ... }
     fn parse_item_struct(&mut self) -> PResult<'a, ItemInfo> {
         let class_name = self.parse_ident()?;
+
         let mut generics = self.parse_generics()?;
 
         // There is a special case worth noting here, as reported in issue #17904.
@@ -4888,6 +4957,7 @@ impl<'a> Parser<'a> {
     /// Parse union Foo { ... }
     fn parse_item_union(&mut self) -> PResult<'a, ItemInfo> {
         let class_name = self.parse_ident()?;
+
         let mut generics = self.parse_generics()?;
 
         let vdata = if self.token.is_keyword(keywords::Where) {
@@ -4936,7 +5006,7 @@ impl<'a> Parser<'a> {
             |p| {
                 let attrs = p.parse_outer_attributes()?;
                 let lo = p.span.lo;
-                let mut vis = p.parse_visibility(false)?;
+                let mut vis = p.parse_visibility()?;
                 let ty_is_interpolated =
                     p.token.is_interpolated() || p.look_ahead(1, |t| t.is_interpolated());
                 let mut ty = p.parse_ty()?;
@@ -4993,38 +5063,46 @@ impl<'a> Parser<'a> {
     fn parse_struct_decl_field(&mut self) -> PResult<'a, StructField> {
         let attrs = self.parse_outer_attributes()?;
         let lo = self.span.lo;
-        let vis = self.parse_visibility(true)?;
+        let vis = self.parse_visibility()?;
         self.parse_single_struct_field(lo, vis, attrs)
     }
 
-    // If `allow_path` is false, just parse the `pub` in `pub(path)` (but still parse `pub(crate)`)
-    fn parse_visibility(&mut self, allow_path: bool) -> PResult<'a, Visibility> {
-        let pub_crate = |this: &mut Self| {
-            let span = this.prev_span;
-            this.expect(&token::CloseDelim(token::Paren))?;
-            Ok(Visibility::Crate(span))
-        };
-
+    // Parse `pub`, `pub(crate)` and `pub(in path)` plus shortcuts
+    // `pub(self)` for `pub(in self)` and `pub(super)` for `pub(in super)`.
+    fn parse_visibility(&mut self) -> PResult<'a, Visibility> {
         if !self.eat_keyword(keywords::Pub) {
-            Ok(Visibility::Inherited)
-        } else if !allow_path {
-            // Look ahead to avoid eating the `(` in `pub(path)` while still parsing `pub(crate)`
-            if self.token == token::OpenDelim(token::Paren) &&
-               self.look_ahead(1, |t| t.is_keyword(keywords::Crate)) {
-                self.bump(); self.bump();
-                pub_crate(self)
-            } else {
-                Ok(Visibility::Public)
-            }
-        } else if !self.eat(&token::OpenDelim(token::Paren)) {
-            Ok(Visibility::Public)
-        } else if self.eat_keyword(keywords::Crate) {
-            pub_crate(self)
-        } else {
-            let path = self.parse_path(PathStyle::Mod)?.default_to_global();
-            self.expect(&token::CloseDelim(token::Paren))?;
-            Ok(Visibility::Restricted { path: P(path), id: ast::DUMMY_NODE_ID })
+            return Ok(Visibility::Inherited)
         }
+
+        if self.check(&token::OpenDelim(token::Paren)) {
+            if self.look_ahead(1, |t| t.is_keyword(keywords::Crate)) {
+                // `pub(crate)`
+                self.bump(); // `(`
+                self.bump(); // `crate`
+                let vis = Visibility::Crate(self.prev_span);
+                self.expect(&token::CloseDelim(token::Paren))?; // `)`
+                return Ok(vis)
+            } else if self.look_ahead(1, |t| t.is_keyword(keywords::In)) {
+                // `pub(in path)`
+                self.bump(); // `(`
+                self.bump(); // `in`
+                let path = self.parse_path(PathStyle::Mod)?.default_to_global(); // `path`
+                let vis = Visibility::Restricted { path: P(path), id: ast::DUMMY_NODE_ID };
+                self.expect(&token::CloseDelim(token::Paren))?; // `)`
+                return Ok(vis)
+            } else if self.look_ahead(2, |t| t == &token::CloseDelim(token::Paren)) &&
+                      self.look_ahead(1, |t| t.is_keyword(keywords::Super) ||
+                                             t.is_keyword(keywords::SelfValue)) {
+                // `pub(self)` or `pub(super)`
+                self.bump(); // `(`
+                let path = self.parse_path(PathStyle::Mod)?.default_to_global(); // `super`/`self`
+                let vis = Visibility::Restricted { path: P(path), id: ast::DUMMY_NODE_ID };
+                self.expect(&token::CloseDelim(token::Paren))?; // `)`
+                return Ok(vis)
+            }
+        }
+
+        Ok(Visibility::Public)
     }
 
     /// Parse defaultness: DEFAULT or nothing
@@ -5499,7 +5577,7 @@ impl<'a> Parser<'a> {
 
         let lo = self.span.lo;
 
-        let visibility = self.parse_visibility(true)?;
+        let visibility = self.parse_visibility()?;
 
         if self.eat_keyword(keywords::Use) {
             // USE ITEM
@@ -5767,6 +5845,10 @@ impl<'a> Parser<'a> {
                                     maybe_append(attrs, extra_attrs));
             return Ok(Some(item));
         }
+        if let Some(macro_def) = self.eat_macro_def(&attrs, &visibility)? {
+            return Ok(Some(macro_def));
+        }
+
         self.parse_macro_use_or_failure(attrs,macros_allowed,attributes_allowed,lo,visibility)
     }
 
@@ -5774,7 +5856,7 @@ impl<'a> Parser<'a> {
     fn parse_foreign_item(&mut self) -> PResult<'a, Option<ForeignItem>> {
         let attrs = self.parse_outer_attributes()?;
         let lo = self.span.lo;
-        let visibility = self.parse_visibility(true)?;
+        let visibility = self.parse_visibility()?;
 
         if self.check_keyword(keywords::Static) {
             // FOREIGN STATIC ITEM
@@ -5902,7 +5984,7 @@ impl<'a> Parser<'a> {
             // `{foo, bar}`, `::{foo, bar}`, `*`, or `::*`.
             self.eat(&token::ModSep);
             let prefix = ast::Path {
-                segments: vec![ast::PathSegment::crate_root()],
+                segments: vec![PathSegment::crate_root()],
                 span: mk_sp(lo, self.span.hi),
             };
             let view_path_kind = if self.eat(&token::BinOp(token::Star)) {
@@ -5948,7 +6030,6 @@ impl<'a> Parser<'a> {
             attrs: self.parse_inner_attributes()?,
             module: self.parse_mod_items(&token::Eof, lo)?,
             span: mk_sp(lo, self.span.lo),
-            exported_macros: Vec::new(),
         })
     }
 

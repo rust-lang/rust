@@ -134,7 +134,7 @@ impl Path {
     pub fn from_ident(s: Span, identifier: Ident) -> Path {
         Path {
             span: s,
-            segments: vec![identifier.into()],
+            segments: vec![PathSegment::from_ident(identifier, s)],
         }
     }
 
@@ -159,6 +159,8 @@ impl Path {
 pub struct PathSegment {
     /// The identifier portion of this path segment.
     pub identifier: Ident,
+    /// Span of the segment identifier.
+    pub span: Span,
 
     /// Type/lifetime parameters attached to this path. They come in
     /// two flavors: `Path<A,B,C>` and `Path(A,B) -> C`. Note that
@@ -170,16 +172,14 @@ pub struct PathSegment {
     pub parameters: Option<P<PathParameters>>,
 }
 
-impl From<Ident> for PathSegment {
-    fn from(id: Ident) -> Self {
-        PathSegment { identifier: id, parameters: None }
-    }
-}
-
 impl PathSegment {
+    pub fn from_ident(ident: Ident, span: Span) -> Self {
+        PathSegment { identifier: ident, span: span, parameters: None }
+    }
     pub fn crate_root() -> Self {
         PathSegment {
             identifier: keywords::CrateRoot.ident(),
+            span: DUMMY_SP,
             parameters: None,
         }
     }
@@ -414,7 +414,6 @@ pub struct Crate {
     pub module: Mod,
     pub attrs: Vec<Attribute>,
     pub span: Span,
-    pub exported_macros: Vec<MacroDef>,
 }
 
 /// A spanned compile-time attribute list item.
@@ -936,6 +935,8 @@ pub enum ExprKind {
     Closure(CaptureBy, P<FnDecl>, P<Expr>, Span),
     /// A block (`{ ... }`)
     Block(P<Block>),
+    /// A catch block (`catch { ... }`)
+    Catch(P<Block>),
 
     /// An assignment (`a = foo()`)
     Assign(P<Expr>, P<Expr>),
@@ -1855,10 +1856,13 @@ pub enum ItemKind {
              Option<TraitRef>, // (optional) trait this impl implements
              P<Ty>, // self
              Vec<ImplItem>),
-    /// A macro invocation (which includes macro definition).
+    /// A macro invocation.
     ///
     /// E.g. `macro_rules! foo { .. }` or `foo!(..)`
     Mac(Mac),
+
+    /// A macro definition.
+    MacroDef(ThinTokenStream),
 }
 
 impl ItemKind {
@@ -1877,6 +1881,7 @@ impl ItemKind {
             ItemKind::Union(..) => "union",
             ItemKind::Trait(..) => "trait",
             ItemKind::Mac(..) |
+            ItemKind::MacroDef(..) |
             ItemKind::Impl(..) |
             ItemKind::DefaultImpl(..) => "item"
         }
@@ -1909,24 +1914,6 @@ impl ForeignItemKind {
             ForeignItemKind::Fn(..) => "foreign function",
             ForeignItemKind::Static(..) => "foreign static item"
         }
-    }
-}
-
-/// A macro definition, in this crate or imported from another.
-///
-/// Not parsed directly, but created on macro import or `macro_rules!` expansion.
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub struct MacroDef {
-    pub ident: Ident,
-    pub attrs: Vec<Attribute>,
-    pub id: NodeId,
-    pub span: Span,
-    pub body: ThinTokenStream,
-}
-
-impl MacroDef {
-    pub fn stream(&self) -> TokenStream {
-        self.body.clone().into()
     }
 }
 

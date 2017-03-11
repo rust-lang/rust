@@ -948,7 +948,7 @@ pub fn map_crate<'hir>(forest: &'hir mut Forest,
     intravisit::walk_crate(&mut collector, &forest.krate);
     let map = collector.map;
 
-    if log_enabled!(::log::DEBUG) {
+    if log_enabled!(::log::LogLevel::Debug) {
         // This only makes sense for ordered stores; note the
         // enumerate to count the number of entries.
         let (entries_less_1, _) = map.iter().filter(|&x| {

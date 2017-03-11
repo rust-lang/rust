@@ -108,7 +108,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
             ItemKind::Mod(..) => DefPathData::Module(i.ident.name.as_str()),
             ItemKind::Static(..) | ItemKind::Const(..) | ItemKind::Fn(..) =>
                 DefPathData::ValueNs(i.ident.name.as_str()),
-            ItemKind::Mac(..) if i.id == DUMMY_NODE_ID => return, // Scope placeholder
+            ItemKind::MacroDef(..) => DefPathData::MacroDef(i.ident.name.as_str()),
             ItemKind::Mac(..) => return self.visit_macro_invoc(i.id, false),
             ItemKind::Use(ref view_path) => {
                 match view_path.node {
@@ -267,10 +267,6 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
 
     fn visit_lifetime_def(&mut self, def: &'a LifetimeDef) {
         self.create_def(def.lifetime.id, DefPathData::LifetimeDef(def.lifetime.name.as_str()));
-    }
-
-    fn visit_macro_def(&mut self, macro_def: &'a MacroDef) {
-        self.create_def(macro_def.id, DefPathData::MacroDef(macro_def.ident.name.as_str()));
     }
 
     fn visit_stmt(&mut self, stmt: &'a Stmt) {

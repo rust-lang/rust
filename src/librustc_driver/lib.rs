@@ -35,6 +35,7 @@
 extern crate arena;
 extern crate getopts;
 extern crate graphviz;
+extern crate env_logger;
 extern crate libc;
 extern crate rustc;
 extern crate rustc_back;
@@ -1127,6 +1128,7 @@ pub fn diagnostics_registry() -> errors::registry::Registry {
 }
 
 pub fn main() {
+    env_logger::init().unwrap();
     let result = run(|| run_compiler(&env::args().collect::<Vec<_>>(),
                                      &mut RustcDefaultCalls,
                                      None,

@@ -806,6 +806,12 @@ impl<'a, 'tcx> hir_visit::Visitor<'tcx> for LateContext<'a, 'tcx> {
         self.tables = old_tables;
     }
 
+    fn visit_body(&mut self, body: &'tcx hir::Body) {
+        run_lints!(self, check_body, late_passes, body);
+        hir_visit::walk_body(self, body);
+        run_lints!(self, check_body_post, late_passes, body);
+    }
+
     fn visit_item(&mut self, it: &'tcx hir::Item) {
         self.with_lint_attrs(&it.attrs, |cx| {
             run_lints!(cx, check_item, late_passes, it);

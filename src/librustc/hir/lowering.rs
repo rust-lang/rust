@@ -79,10 +79,12 @@ pub struct LoweringContext<'a> {
     trait_items: BTreeMap<hir::TraitItemId, hir::TraitItem>,
     impl_items: BTreeMap<hir::ImplItemId, hir::ImplItem>,
     bodies: BTreeMap<hir::BodyId, hir::Body>,
+    exported_macros: Vec<hir::MacroDef>,
 
     trait_impls: BTreeMap<DefId, Vec<NodeId>>,
     trait_default_impl: BTreeMap<DefId, NodeId>,
 
+    catch_scopes: Vec<NodeId>,
     loop_scopes: Vec<NodeId>,
     is_in_loop_condition: bool,
 
@@ -121,6 +123,8 @@ pub fn lower_crate(sess: &Session,
         bodies: BTreeMap::new(),
         trait_impls: BTreeMap::new(),
         trait_default_impl: BTreeMap::new(),
+        catch_scopes: Vec::new(),
+        exported_macros: Vec::new(),
         loop_scopes: Vec::new(),
         is_in_loop_condition: false,
         type_def_lifetime_params: DefIdMap(),
@@ -170,9 +174,10 @@ impl<'a> LoweringContext<'a> {
 
         impl<'lcx, 'interner> Visitor<'lcx> for ItemLowerer<'lcx, 'interner> {
             fn visit_item(&mut self, item: &'lcx Item) {
-                let hir_item = self.lctx.lower_item(item);
-                self.lctx.items.insert(item.id, hir_item);
-                visit::walk_item(self, item);
+                if let Some(hir_item) = self.lctx.lower_item(item) {
+                    self.lctx.items.insert(item.id, hir_item);
+                    visit::walk_item(self, item);
+                }
             }
 
             fn visit_trait_item(&mut self, item: &'lcx TraitItem) {
@@ -195,14 +200,13 @@ impl<'a> LoweringContext<'a> {
 
         let module = self.lower_mod(&c.module);
         let attrs = self.lower_attrs(&c.attrs);
-        let exported_macros = c.exported_macros.iter().map(|m| self.lower_macro_def(m)).collect();
         let body_ids = body_ids(&self.bodies);
 
         hir::Crate {
             module: module,
             attrs: attrs,
             span: c.span,
-            exported_macros: exported_macros,
+            exported_macros: hir::HirVec::from(self.exported_macros),
             items: self.items,
             trait_items: self.trait_items,
             impl_items: self.impl_items,
@@ -259,6 +263,21 @@ impl<'a> LoweringContext<'a> {
         span
     }
 
+    fn with_catch_scope<T, F>(&mut self, catch_id: NodeId, f: F) -> T
+        where F: FnOnce(&mut LoweringContext) -> T
+    {
+        let len = self.catch_scopes.len();
+        self.catch_scopes.push(catch_id);
+
+        let result = f(self);
+        assert_eq!(len + 1, self.catch_scopes.len(),
+            "catch scopes should be added and removed in stack order");
+
+        self.catch_scopes.pop().unwrap();
+
+        result
+    }
+
     fn with_loop_scope<T, F>(&mut self, loop_id: NodeId, f: F) -> T
         where F: FnOnce(&mut LoweringContext) -> T
     {
@@ -293,15 +312,17 @@ impl<'a> LoweringContext<'a> {
         result
     }
 
-    fn with_new_loop_scopes<T, F>(&mut self, f: F) -> T
+    fn with_new_scopes<T, F>(&mut self, f: F) -> T
         where F: FnOnce(&mut LoweringContext) -> T
     {
         let was_in_loop_condition = self.is_in_loop_condition;
         self.is_in_loop_condition = false;
 
+        let catch_scopes = mem::replace(&mut self.catch_scopes, Vec::new());
         let loop_scopes = mem::replace(&mut self.loop_scopes, Vec::new());
         let result = f(self);
-        mem::replace(&mut self.loop_scopes, loop_scopes);
+        self.catch_scopes = catch_scopes;
+        self.loop_scopes = loop_scopes;
 
         self.is_in_loop_condition = was_in_loop_condition;
 
@@ -1063,7 +1084,7 @@ impl<'a> LoweringContext<'a> {
                                self.record_body(value, None))
             }
             ItemKind::Fn(ref decl, unsafety, constness, abi, ref generics, ref body) => {
-                self.with_new_loop_scopes(|this| {
+                self.with_new_scopes(|this| {
                     let body = this.lower_block(body);
                     let body = this.expr_block(body, ThinVec::new());
                     let body_id = this.record_body(body, Some(decl));
@@ -1134,7 +1155,7 @@ impl<'a> LoweringContext<'a> {
                                bounds,
                                items)
             }
-            ItemKind::Mac(_) => panic!("Shouldn't still be around"),
+            ItemKind::MacroDef(..) | ItemKind::Mac(..) => panic!("Shouldn't still be around"),
         }
     }
 
@@ -1256,42 +1277,45 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
-    fn lower_macro_def(&mut self, m: &MacroDef) -> hir::MacroDef {
-        hir::MacroDef {
-            name: m.ident.name,
-            attrs: self.lower_attrs(&m.attrs),
-            id: m.id,
-            span: m.span,
-            body: m.body.clone().into(),
-        }
-    }
-
     fn lower_item_id(&mut self, i: &Item) -> SmallVector<hir::ItemId> {
-        if let ItemKind::Use(ref view_path) = i.node {
-            if let ViewPathList(_, ref imports) = view_path.node {
-                return iter::once(i.id).chain(imports.iter().map(|import| import.node.id))
-                    .map(|id| hir::ItemId { id: id }).collect();
+        match i.node {
+            ItemKind::Use(ref view_path) => {
+                if let ViewPathList(_, ref imports) = view_path.node {
+                    return iter::once(i.id).chain(imports.iter().map(|import| import.node.id))
+                        .map(|id| hir::ItemId { id: id }).collect();
+                }
             }
+            ItemKind::MacroDef(..) => return SmallVector::new(),
+            _ => {}
         }
         SmallVector::one(hir::ItemId { id: i.id })
     }
 
-    pub fn lower_item(&mut self, i: &Item) -> hir::Item {
+    pub fn lower_item(&mut self, i: &Item) -> Option<hir::Item> {
         let mut name = i.ident.name;
         let attrs = self.lower_attrs(&i.attrs);
         let mut vis = self.lower_visibility(&i.vis);
+        if let ItemKind::MacroDef(ref tts) = i.node {
+            if i.attrs.iter().any(|attr| attr.name() == "macro_export") {
+                self.exported_macros.push(hir::MacroDef {
+                    name: name, attrs: attrs, id: i.id, span: i.span, body: tts.clone().into(),
+                });
+            }
+            return None;
+        }
+
         let node = self.with_parent_def(i.id, |this| {
             this.lower_item_kind(i.id, &mut name, &attrs, &mut vis, &i.node)
         });
 
-        hir::Item {
+        Some(hir::Item {
             id: i.id,
             name: name,
             attrs: attrs,
             node: node,
             vis: vis,
             span: i.span,
-        }
+        })
     }
 
     fn lower_foreign_item(&mut self, i: &ForeignItem) -> hir::ForeignItem {
@@ -1660,13 +1684,17 @@ impl<'a> LoweringContext<'a> {
                                       this.lower_opt_sp_ident(opt_ident),
                                       hir::LoopSource::Loop))
                 }
+                ExprKind::Catch(ref body) => {
+                    // FIXME(cramertj): Add catch to HIR
+                    self.with_catch_scope(e.id, |this| hir::ExprBlock(this.lower_block(body)))
+                }
                 ExprKind::Match(ref expr, ref arms) => {
                     hir::ExprMatch(P(self.lower_expr(expr)),
                                    arms.iter().map(|x| self.lower_arm(x)).collect(),
                                    hir::MatchSource::Normal)
                 }
                 ExprKind::Closure(capture_clause, ref decl, ref body, fn_decl_span) => {
-                    self.with_new_loop_scopes(|this| {
+                    self.with_new_scopes(|this| {
                         this.with_parent_def(e.id, |this| {
                             let expr = this.lower_expr(body);
                             hir::ExprClosure(this.lower_capture_clause(capture_clause),
@@ -2064,6 +2092,12 @@ impl<'a> LoweringContext<'a> {
                     //     Err(err) => #[allow(unreachable_code)]
                     //                 return Carrier::from_error(From::from(err)),
                     // }
+
+                    // FIXME(cramertj): implement breaking to catch
+                    if !self.catch_scopes.is_empty() {
+                        bug!("`?` in catch scopes is unimplemented")
+                    }
+
                     let unstable_span = self.allow_internal_unstable("?", e.span);
 
                     // Carrier::translate(<expr>)

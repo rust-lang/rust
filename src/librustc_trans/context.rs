@@ -10,7 +10,8 @@
 
 use llvm;
 use llvm::{ContextRef, ModuleRef, ValueRef};
-use rustc::dep_graph::{DepGraph, DepNode, DepTrackingMap, DepTrackingMapConfig, WorkProduct};
+use rustc::dep_graph::{DepGraph, DepGraphSafe, DepNode, DepTrackingMap,
+                       DepTrackingMapConfig, WorkProduct};
 use middle::cstore::LinkMeta;
 use rustc::hir;
 use rustc::hir::def::ExportMap;
@@ -135,6 +136,8 @@ pub struct LocalCrateContext<'tcx> {
     /// (We have to make sure we don't invalidate any ValueRefs referring
     /// to constants.)
     statics_to_rauw: RefCell<Vec<(ValueRef, ValueRef)>>,
+
+    used_statics: RefCell<Vec<ValueRef>>,
 
     lltypes: RefCell<FxHashMap<Ty<'tcx>, Type>>,
     llsizingtypes: RefCell<FxHashMap<Ty<'tcx>, Type>>,
@@ -272,6 +275,9 @@ pub struct CrateContext<'a, 'tcx: 'a> {
     /// The index of `local` in `local_ccxs`.  This is used in
     /// `maybe_iter(true)` to identify the original `LocalCrateContext`.
     index: usize,
+}
+
+impl<'a, 'tcx> DepGraphSafe for CrateContext<'a, 'tcx> {
 }
 
 pub struct CrateContextIterator<'a, 'tcx: 'a> {
@@ -606,6 +612,7 @@ impl<'tcx> LocalCrateContext<'tcx> {
                 impl_method_cache: RefCell::new(FxHashMap()),
                 closure_bare_wrapper_cache: RefCell::new(FxHashMap()),
                 statics_to_rauw: RefCell::new(Vec::new()),
+                used_statics: RefCell::new(Vec::new()),
                 lltypes: RefCell::new(FxHashMap()),
                 llsizingtypes: RefCell::new(FxHashMap()),
                 type_hashcodes: RefCell::new(FxHashMap()),
@@ -784,6 +791,10 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
 
     pub fn statics_to_rauw<'a>(&'a self) -> &'a RefCell<Vec<(ValueRef, ValueRef)>> {
         &self.local().statics_to_rauw
+    }
+
+    pub fn used_statics<'a>(&'a self) -> &'a RefCell<Vec<ValueRef>> {
+        &self.local().used_statics
     }
 
     pub fn lltypes<'a>(&'a self) -> &'a RefCell<FxHashMap<Ty<'tcx>, Type>> {

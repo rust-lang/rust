@@ -30,6 +30,7 @@
 
 extern crate arena;
 extern crate getopts;
+extern crate env_logger;
 extern crate libc;
 extern crate rustc;
 extern crate rustc_const_eval;
@@ -99,6 +100,7 @@ struct Output {
 
 pub fn main() {
     const STACK_SIZE: usize = 32_000_000; // 32MB
+    env_logger::init().unwrap();
     let res = std::thread::Builder::new().stack_size(STACK_SIZE).spawn(move || {
         let s = env::args().collect::<Vec<_>>();
         main_args(&s)

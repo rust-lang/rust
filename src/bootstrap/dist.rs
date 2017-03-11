@@ -392,6 +392,7 @@ pub fn rust_src(build: &Build) {
     let src_dirs = [
         "man",
         "src",
+        "cargo",
     ];
 
     let filter_fn = move |path: &Path| {

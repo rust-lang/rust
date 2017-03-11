@@ -41,7 +41,7 @@ use rustc::mir::tcx::LvalueTy;
 use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::adjustment::CustomCoerceUnsized;
-use rustc::dep_graph::{DepNode, WorkProduct};
+use rustc::dep_graph::{AssertDepGraphSafe, DepNode, WorkProduct};
 use rustc::hir::map as hir_map;
 use rustc::util::common::time;
 use session::config::{self, NoDebugInfo};
@@ -55,7 +55,7 @@ use builder::Builder;
 use callee::{Callee};
 use common::{C_bool, C_bytes_in_context, C_i32, C_uint};
 use collector::{self, TransItemCollectionMode};
-use common::{C_struct_in_context, C_u64, C_undef};
+use common::{C_struct_in_context, C_u64, C_undef, C_array};
 use common::CrateContext;
 use common::{fulfill_obligation};
 use common::{type_is_zero_size, val_ty};
@@ -1211,21 +1211,40 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     // Instantiate translation items without filling out definitions yet...
     for ccx in crate_context_list.iter_need_trans() {
-        let cgu = ccx.codegen_unit();
-        let trans_items = cgu.items_in_deterministic_order(tcx, &symbol_map);
+        let dep_node = ccx.codegen_unit().work_product_dep_node();
+        tcx.dep_graph.with_task(dep_node,
+                                ccx,
+                                AssertDepGraphSafe(symbol_map.clone()),
+                                trans_decl_task);
 
-        tcx.dep_graph.with_task(cgu.work_product_dep_node(), || {
+        fn trans_decl_task<'a, 'tcx>(ccx: CrateContext<'a, 'tcx>,
+                                     symbol_map: AssertDepGraphSafe<Rc<SymbolMap<'tcx>>>) {
+            // FIXME(#40304): Instead of this, the symbol-map should be an
+            // on-demand thing that we compute.
+            let AssertDepGraphSafe(symbol_map) = symbol_map;
+            let cgu = ccx.codegen_unit();
+            let trans_items = cgu.items_in_deterministic_order(ccx.tcx(), &symbol_map);
             for (trans_item, linkage) in trans_items {
                 trans_item.predefine(&ccx, linkage);
             }
-        });
+        }
     }
 
     // ... and now that we have everything pre-defined, fill out those definitions.
     for ccx in crate_context_list.iter_need_trans() {
-        let cgu = ccx.codegen_unit();
-        let trans_items = cgu.items_in_deterministic_order(tcx, &symbol_map);
-        tcx.dep_graph.with_task(cgu.work_product_dep_node(), || {
+        let dep_node = ccx.codegen_unit().work_product_dep_node();
+        tcx.dep_graph.with_task(dep_node,
+                                ccx,
+                                AssertDepGraphSafe(symbol_map.clone()),
+                                trans_def_task);
+
+        fn trans_def_task<'a, 'tcx>(ccx: CrateContext<'a, 'tcx>,
+                                    symbol_map: AssertDepGraphSafe<Rc<SymbolMap<'tcx>>>) {
+            // FIXME(#40304): Instead of this, the symbol-map should be an
+            // on-demand thing that we compute.
+            let AssertDepGraphSafe(symbol_map) = symbol_map;
+            let cgu = ccx.codegen_unit();
+            let trans_items = cgu.items_in_deterministic_order(ccx.tcx(), &symbol_map);
             for (trans_item, _) in trans_items {
                 trans_item.define(&ccx);
             }
@@ -1243,11 +1262,29 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 }
             }
 
+            // Create llvm.used variable
+            if !ccx.used_statics().borrow().is_empty() {
+                debug!("llvm.used");
+
+                let name = CString::new("llvm.used").unwrap();
+                let section = CString::new("llvm.metadata").unwrap();
+                let array = C_array(Type::i8(&ccx).ptr_to(), &*ccx.used_statics().borrow());
+
+                unsafe {
+                    let g = llvm::LLVMAddGlobal(ccx.llmod(),
+                                                val_ty(array).to_ref(),
+                                                name.as_ptr());
+                    llvm::LLVMSetInitializer(g, array);
+                    llvm::LLVMRustSetLinkage(g, llvm::Linkage::AppendingLinkage);
+                    llvm::LLVMSetSection(g, section.as_ptr());
+                }
+            }
+
             // Finalize debuginfo
             if ccx.sess().opts.debuginfo != NoDebugInfo {
                 debuginfo::finalize(&ccx);
             }
-        });
+        }
     }
 
     symbol_names_test::report_symbol_names(&shared_ccx);

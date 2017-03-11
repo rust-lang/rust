@@ -59,6 +59,8 @@ pub struct Config {
     pub llvm_static_stdcpp: bool,
     pub llvm_link_shared: bool,
     pub llvm_targets: Option<String>,
+    pub llvm_link_jobs: Option<u32>,
+    pub llvm_clean_rebuild: bool,
 
     // rust codegen options
     pub rust_optimize: bool,
@@ -179,6 +181,8 @@ struct Llvm {
     version_check: Option<bool>,
     static_libstdcpp: Option<bool>,
     targets: Option<String>,
+    link_jobs: Option<u32>,
+    clean_rebuild: Option<bool>,
 }
 
 #[derive(RustcDecodable, Default, Clone)]
@@ -332,7 +336,9 @@ impl Config {
             set(&mut config.llvm_release_debuginfo, llvm.release_debuginfo);
             set(&mut config.llvm_version_check, llvm.version_check);
             set(&mut config.llvm_static_stdcpp, llvm.static_libstdcpp);
+            set(&mut config.llvm_clean_rebuild, llvm.clean_rebuild);
             config.llvm_targets = llvm.targets.clone();
+            config.llvm_link_jobs = llvm.link_jobs;
         }
 
         if let Some(ref rust) = toml.rust {
@@ -436,6 +442,7 @@ impl Config {
                 ("LLVM_VERSION_CHECK", self.llvm_version_check),
                 ("LLVM_STATIC_STDCPP", self.llvm_static_stdcpp),
                 ("LLVM_LINK_SHARED", self.llvm_link_shared),
+                ("LLVM_CLEAN_REBUILD", self.llvm_clean_rebuild),
                 ("OPTIMIZE", self.rust_optimize),
                 ("DEBUG_ASSERTIONS", self.rust_debug_assertions),
                 ("DEBUGINFO", self.rust_debuginfo),
@@ -460,12 +467,12 @@ impl Config {
             }
 
             match key {
-                "CFG_BUILD" => self.build = value.to_string(),
-                "CFG_HOST" => {
+                "CFG_BUILD" if value.len() > 0 => self.build = value.to_string(),
+                "CFG_HOST" if value.len() > 0 => {
                     self.host = value.split(" ").map(|s| s.to_string())
                                      .collect();
                 }
-                "CFG_TARGET" => {
+                "CFG_TARGET" if value.len() > 0 => {
                     self.target = value.split(" ").map(|s| s.to_string())
                                        .collect();
                 }
