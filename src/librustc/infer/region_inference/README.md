@@ -121,17 +121,19 @@ every expression, block, and pattern (patterns are considered to
 "execute" by testing the value they are applied to and creating any
 relevant bindings).  So, for example:
 
-    fn foo(x: isize, y: isize) { // -+
-    //  +------------+       //  |
-    //  |      +-----+       //  |
-    //  |  +-+ +-+ +-+       //  |
-    //  |  | | | | | |       //  |
-    //  v  v v v v v v       //  |
-        let z = x + y;       //  |
-        ...                  //  |
-    }                        // -+
+```rust
+fn foo(x: isize, y: isize) { // -+
+//  +------------+           //  |
+//  |      +-----+           //  |
+//  |  +-+ +-+ +-+           //  |
+//  |  | | | | | |           //  |
+//  v  v v v v v v           //  |
+    let z = x + y;           //  |
+    ...                      //  |
+}                            // -+
 
-    fn bar() { ... }
+fn bar() { ... }
+```
 
 In this example, there is a region for the fn body block as a whole,
 and then a subregion for the declaration of the local variable.
@@ -160,7 +162,9 @@ this, we get a lot of spurious errors around nested calls, in
 particular when combined with `&mut` functions. For example, a call
 like this one
 
-    self.foo(self.bar())
+```rust
+self.foo(self.bar())
+```
 
 where both `foo` and `bar` are `&mut self` functions will always yield
 an error.
@@ -168,20 +172,22 @@ an error.
 Here is a more involved example (which is safe) so we can see what's
 going on:
 
-    struct Foo { f: usize, g: usize }
-    ...
-    fn add(p: &mut usize, v: usize) {
-        *p += v;
-    }
-    ...
-    fn inc(p: &mut usize) -> usize {
-        *p += 1; *p
-    }
-    fn weird() {
-        let mut x: Box<Foo> = box Foo { ... };
-        'a: add(&mut (*x).f,
-                'b: inc(&mut (*x).f)) // (..)
-    }
+```rust
+struct Foo { f: usize, g: usize }
+// ...
+fn add(p: &mut usize, v: usize) {
+    *p += v;
+}
+// ...
+fn inc(p: &mut usize) -> usize {
+    *p += 1; *p
+}
+fn weird() {
+    let mut x: Box<Foo> = box Foo { /* ... */ };
+    'a: add(&mut (*x).f,
+            'b: inc(&mut (*x).f)) // (..)
+}
+```
 
 The important part is the line marked `(..)` which contains a call to
 `add()`. The first argument is a mutable borrow of the field `f`.  The
@@ -197,16 +203,18 @@ can see that this error is unnecessary. Let's examine the lifetimes
 involved with `'a` in detail. We'll break apart all the steps involved
 in a call expression:
 
-    'a: {
-        'a_arg1: let a_temp1: ... = add;
-        'a_arg2: let a_temp2: &'a mut usize = &'a mut (*x).f;
-        'a_arg3: let a_temp3: usize = {
-            let b_temp1: ... = inc;
-            let b_temp2: &'b = &'b mut (*x).f;
-            'b_call: b_temp1(b_temp2)
-        };
-        'a_call: a_temp1(a_temp2, a_temp3) // (**)
-    }
+```rust
+'a: {
+    'a_arg1: let a_temp1: ... = add;
+    'a_arg2: let a_temp2: &'a mut usize = &'a mut (*x).f;
+    'a_arg3: let a_temp3: usize = {
+        let b_temp1: ... = inc;
+        let b_temp2: &'b = &'b mut (*x).f;
+        'b_call: b_temp1(b_temp2)
+    };
+    'a_call: a_temp1(a_temp2, a_temp3) // (**)
+}
+```
 
 Here we see that the lifetime `'a` includes a number of substatements.
 In particular, there is this lifetime I've called `'a_call` that
@@ -225,19 +233,21 @@ it will not be *dereferenced* during the evaluation of the second
 argument, it can still be *invalidated* by that evaluation. Consider
 this similar but unsound example:
 
-    struct Foo { f: usize, g: usize }
-    ...
-    fn add(p: &mut usize, v: usize) {
-        *p += v;
-    }
-    ...
-    fn consume(x: Box<Foo>) -> usize {
-        x.f + x.g
-    }
-    fn weird() {
-        let mut x: Box<Foo> = box Foo { ... };
-        'a: add(&mut (*x).f, consume(x)) // (..)
-    }
+```rust
+struct Foo { f: usize, g: usize }
+// ...
+fn add(p: &mut usize, v: usize) {
+    *p += v;
+}
+// ...
+fn consume(x: Box<Foo>) -> usize {
+    x.f + x.g
+}
+fn weird() {
+    let mut x: Box<Foo> = box Foo { ... };
+    'a: add(&mut (*x).f, consume(x)) // (..)
+}
+```
 
 In this case, the second argument to `add` actually consumes `x`, thus
 invalidating the first argument.
