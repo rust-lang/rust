@@ -539,13 +539,15 @@ pub fn check_item_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> CompileResult 
 }
 
 pub fn check_item_bodies<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> CompileResult {
-    tcx.sess.track_errors(|| {
-        tcx.dep_graph.with_task(DepNode::TypeckBodiesKrate, || {
-            tcx.visit_all_bodies_in_krate(|body_owner_def_id, _body_id| {
-                tcx.item_tables(body_owner_def_id);
-            });
+    return tcx.sess.track_errors(|| {
+        tcx.dep_graph.with_task(DepNode::TypeckBodiesKrate, tcx, (), check_item_bodies_task);
+    });
+
+    fn check_item_bodies_task<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, (): ()) {
+        tcx.visit_all_bodies_in_krate(|body_owner_def_id, _body_id| {
+            tcx.item_tables(body_owner_def_id);
         });
-    })
+    }
 }
 
 pub fn provide(providers: &mut Providers) {
