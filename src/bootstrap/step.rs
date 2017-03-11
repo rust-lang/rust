@@ -640,7 +640,7 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
         rules.doc(&krate.doc_step, path)
              .dep(|s| s.name("librustc-link"))
              .host(true)
-             .default(default && build.config.compiler_docs)
+             .default(default && build.config.docs)
              .run(move |s| doc::rustc(build, s.stage, s.target));
     }
 
