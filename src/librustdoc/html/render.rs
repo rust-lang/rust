@@ -72,7 +72,7 @@ use html::format::{TyParamBounds, WhereClause, href, AbiSpace};
 use html::format::{VisSpace, Method, UnsafetySpace, MutableSpace};
 use html::format::fmt_impl_for_trait_page;
 use html::item_type::ItemType;
-use html::markdown::{self, Markdown, MarkdownHtml};
+use html::markdown::{self, Markdown, MarkdownHtml, MarkdownOutputStyle};
 use html::{highlight, layout};
 
 /// A pair of name and its optional document.
@@ -1650,7 +1650,8 @@ fn document_short(w: &mut fmt::Formatter, item: &clean::Item, link: AssocItemLin
         } else {
             format!("{}", &plain_summary_line(Some(s)))
         };
-        write!(w, "<div class='docblock'>{}</div>", Markdown(&markdown, false))?;
+        write!(w, "<div class='docblock'>{}</div>",
+               Markdown(&markdown, MarkdownOutputStyle::Fancy))?;
     }
     Ok(())
 }
@@ -1683,7 +1684,8 @@ fn get_doc_value(item: &clean::Item) -> Option<&str> {
 fn document_full(w: &mut fmt::Formatter, item: &clean::Item) -> fmt::Result {
     if let Some(s) = get_doc_value(item) {
         write!(w, "<div class='docblock'>{}</div>",
-               Markdown(&format!("{}{}", md_render_assoc_item(item), s), false))?;
+               Markdown(&format!("{}{}", md_render_assoc_item(item), s),
+                                 MarkdownOutputStyle::Fancy))?;
     }
     Ok(())
 }
@@ -1871,7 +1873,8 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
                        </tr>",
                        name = *myitem.name.as_ref().unwrap(),
                        stab_docs = stab_docs,
-                       docs = shorter(Some(&Markdown(doc_value, true).to_string())),
+                       docs = shorter(Some(&Markdown(doc_value,
+                                                     MarkdownOutputStyle::Compact).to_string())),
                        class = myitem.type_(),
                        stab = myitem.stability_class().unwrap_or("".to_string()),
                        unsafety_flag = unsafety_flag,
@@ -2901,7 +2904,7 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
         write!(w, "</span>")?;
         write!(w, "</h3>\n")?;
         if let Some(ref dox) = i.impl_item.doc_value() {
-            write!(w, "<div class='docblock'>{}</div>", Markdown(dox, false))?;
+            write!(w, "<div class='docblock'>{}</div>", Markdown(dox, MarkdownOutputStyle::Fancy))?;
         }
     }
 
