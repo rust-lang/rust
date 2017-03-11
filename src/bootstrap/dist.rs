@@ -944,7 +944,7 @@ pub fn hash_and_sign(build: &Build) {
     cmd.arg(distdir(build));
     cmd.arg(today.trim());
     cmd.arg(build.rust_package_vers());
-    cmd.arg(build.cargo_info.version(build, &build.cargo_release_num()));
+    cmd.arg(build.package_vers(&build.cargo_release_num()));
     cmd.arg(addr);
 
     t!(fs::create_dir_all(distdir(build)));
