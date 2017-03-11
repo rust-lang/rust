@@ -212,12 +212,6 @@ pub fn render(w: &mut fmt::Formatter,
         ret = ret.trim_right().to_owned();
 
         let id = ret.clone();
-        // Discard '<em>', '<code>' tags and some escaped characters,
-        // transform the contents of the header into a hyphenated string
-        // without non-alphanumeric characters other than '-' and '_'.
-        //
-        // This is a terrible hack working around how hoedown gives us rendered
-        // html for text rather than the raw text.
         let id = id.chars().filter_map(|c| {
             if c.is_alphanumeric() || c == '-' || c == '_' {
                 if c.is_ascii() {
