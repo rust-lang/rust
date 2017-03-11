@@ -79,7 +79,7 @@ fn load3<'a,'b>(ss: &'a SomeTrait) -> &'b SomeTrait {
     // which fails to type check.
 
     ss
-        //~^ ERROR lifetime bound not satisfied
+        //~^ ERROR cannot infer
         //~| ERROR cannot infer
 }
 
