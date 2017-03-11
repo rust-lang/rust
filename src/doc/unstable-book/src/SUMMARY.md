@@ -71,6 +71,7 @@
 - [repr_simd](repr-simd.md)
 - [rustc_attrs](rustc-attrs.md)
 - [rustc_diagnostic_macros](rustc-diagnostic-macros.md)
+- [rvalue_static_promotion](rvalue-static-promotion.md)
 - [sanitizer_runtime](sanitizer-runtime.md)
 - [simd](simd.md)
 - [simd_ffi](simd-ffi.md)
