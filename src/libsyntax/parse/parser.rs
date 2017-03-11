@@ -1048,7 +1048,7 @@ impl<'a> Parser<'a> {
         self.expected_tokens.clear();
     }
 
-    pub fn look_ahead<R, F>(&mut self, dist: usize, f: F) -> R where
+    pub fn look_ahead<R, F>(&self, dist: usize, f: F) -> R where
         F: FnOnce(&token::Token) -> R,
     {
         if dist == 0 {
@@ -3699,9 +3699,39 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn is_union_item(&mut self) -> bool {
+    fn is_union_item(&self) -> bool {
         self.token.is_keyword(keywords::Union) &&
         self.look_ahead(1, |t| t.is_ident() && !t.is_any_keyword())
+    }
+
+    fn eat_macro_def(&mut self, attrs: &[Attribute], vis: &Visibility)
+                     -> PResult<'a, Option<P<Item>>> {
+        let lo = self.span.lo;
+        match self.token {
+            token::Ident(ident) if ident.name == "macro_rules" => {
+                if self.look_ahead(1, |t| *t == token::Not) {
+                    let prev_span = self.prev_span;
+                    self.complain_if_pub_macro(vis, prev_span);
+                    self.bump();
+                    self.bump();
+                }
+            }
+            _ => return Ok(None),
+        };
+
+        let id = self.parse_ident()?;
+        let (delim, tts) = self.expect_delimited_token_tree()?;
+        if delim != token::Brace {
+            if !self.eat(&token::Semi) {
+                let msg = "macros that expand to items must either be surrounded with braces \
+                           or followed by a semicolon";
+                self.span_err(self.prev_span, msg);
+            }
+        }
+
+        let hi = self.prev_span.hi;
+        let kind = ItemKind::MacroDef(tts);
+        Ok(Some(self.mk_item(lo, hi, id, kind, Visibility::Inherited, attrs.to_owned())))
     }
 
     fn parse_stmt_without_recovery(&mut self,
@@ -3716,6 +3746,12 @@ impl<'a> Parser<'a> {
             Stmt {
                 id: ast::DUMMY_NODE_ID,
                 node: StmtKind::Local(self.parse_local(attrs.into())?),
+                span: mk_sp(lo, self.prev_span.hi),
+            }
+        } else if let Some(macro_def) = self.eat_macro_def(&attrs, &Visibility::Inherited)? {
+            Stmt {
+                id: ast::DUMMY_NODE_ID,
+                node: StmtKind::Item(macro_def),
                 span: mk_sp(lo, self.prev_span.hi),
             }
         // Starts like a simple path, but not a union item.
@@ -5767,6 +5803,10 @@ impl<'a> Parser<'a> {
                                     maybe_append(attrs, extra_attrs));
             return Ok(Some(item));
         }
+        if let Some(macro_def) = self.eat_macro_def(&attrs, &visibility)? {
+            return Ok(Some(macro_def));
+        }
+
         self.parse_macro_use_or_failure(attrs,macros_allowed,attributes_allowed,lo,visibility)
     }
 
@@ -5948,7 +5988,6 @@ impl<'a> Parser<'a> {
             attrs: self.parse_inner_attributes()?,
             module: self.parse_mod_items(&token::Eof, lo)?,
             span: mk_sp(lo, self.span.lo),
-            exported_macros: Vec::new(),
         })
     }
 

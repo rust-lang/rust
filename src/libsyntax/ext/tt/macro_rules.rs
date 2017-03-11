@@ -153,7 +153,7 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
 // Holy self-referential!
 
 /// Converts a `macro_rules!` invocation into a syntax extension.
-pub fn compile(sess: &ParseSess, def: &ast::MacroDef) -> SyntaxExtension {
+pub fn compile(sess: &ParseSess, def: &ast::Item) -> SyntaxExtension {
     let lhs_nm = ast::Ident::with_empty_ctxt(Symbol::gensym("lhs"));
     let rhs_nm = ast::Ident::with_empty_ctxt(Symbol::gensym("rhs"));
 
@@ -183,7 +183,11 @@ pub fn compile(sess: &ParseSess, def: &ast::MacroDef) -> SyntaxExtension {
     ];
 
     // Parse the macro_rules! invocation
-    let argument_map = match parse(sess, def.body.clone().into(), &argument_gram, None) {
+    let body = match def.node {
+        ast::ItemKind::MacroDef(ref body) => body.clone().into(),
+        _ => unreachable!(),
+    };
+    let argument_map = match parse(sess, body, &argument_gram, None) {
         Success(m) => m,
         Failure(sp, tok) => {
             let s = parse_failure_msg(tok);

@@ -79,6 +79,7 @@ pub struct LoweringContext<'a> {
     trait_items: BTreeMap<hir::TraitItemId, hir::TraitItem>,
     impl_items: BTreeMap<hir::ImplItemId, hir::ImplItem>,
     bodies: BTreeMap<hir::BodyId, hir::Body>,
+    exported_macros: Vec<hir::MacroDef>,
 
     trait_impls: BTreeMap<DefId, Vec<NodeId>>,
     trait_default_impl: BTreeMap<DefId, NodeId>,
@@ -121,6 +122,7 @@ pub fn lower_crate(sess: &Session,
         bodies: BTreeMap::new(),
         trait_impls: BTreeMap::new(),
         trait_default_impl: BTreeMap::new(),
+        exported_macros: Vec::new(),
         loop_scopes: Vec::new(),
         is_in_loop_condition: false,
         type_def_lifetime_params: DefIdMap(),
@@ -170,9 +172,10 @@ impl<'a> LoweringContext<'a> {
 
         impl<'lcx, 'interner> Visitor<'lcx> for ItemLowerer<'lcx, 'interner> {
             fn visit_item(&mut self, item: &'lcx Item) {
-                let hir_item = self.lctx.lower_item(item);
-                self.lctx.items.insert(item.id, hir_item);
-                visit::walk_item(self, item);
+                if let Some(hir_item) = self.lctx.lower_item(item) {
+                    self.lctx.items.insert(item.id, hir_item);
+                    visit::walk_item(self, item);
+                }
             }
 
             fn visit_trait_item(&mut self, item: &'lcx TraitItem) {
@@ -195,14 +198,13 @@ impl<'a> LoweringContext<'a> {
 
         let module = self.lower_mod(&c.module);
         let attrs = self.lower_attrs(&c.attrs);
-        let exported_macros = c.exported_macros.iter().map(|m| self.lower_macro_def(m)).collect();
         let body_ids = body_ids(&self.bodies);
 
         hir::Crate {
             module: module,
             attrs: attrs,
             span: c.span,
-            exported_macros: exported_macros,
+            exported_macros: hir::HirVec::from(self.exported_macros),
             items: self.items,
             trait_items: self.trait_items,
             impl_items: self.impl_items,
@@ -1134,7 +1136,7 @@ impl<'a> LoweringContext<'a> {
                                bounds,
                                items)
             }
-            ItemKind::Mac(_) => panic!("Shouldn't still be around"),
+            ItemKind::MacroDef(..) | ItemKind::Mac(..) => panic!("Shouldn't still be around"),
         }
     }
 
@@ -1256,42 +1258,45 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
-    fn lower_macro_def(&mut self, m: &MacroDef) -> hir::MacroDef {
-        hir::MacroDef {
-            name: m.ident.name,
-            attrs: self.lower_attrs(&m.attrs),
-            id: m.id,
-            span: m.span,
-            body: m.body.clone().into(),
-        }
-    }
-
     fn lower_item_id(&mut self, i: &Item) -> SmallVector<hir::ItemId> {
-        if let ItemKind::Use(ref view_path) = i.node {
-            if let ViewPathList(_, ref imports) = view_path.node {
-                return iter::once(i.id).chain(imports.iter().map(|import| import.node.id))
-                    .map(|id| hir::ItemId { id: id }).collect();
+        match i.node {
+            ItemKind::Use(ref view_path) => {
+                if let ViewPathList(_, ref imports) = view_path.node {
+                    return iter::once(i.id).chain(imports.iter().map(|import| import.node.id))
+                        .map(|id| hir::ItemId { id: id }).collect();
+                }
             }
+            ItemKind::MacroDef(..) => return SmallVector::new(),
+            _ => {}
         }
         SmallVector::one(hir::ItemId { id: i.id })
     }
 
-    pub fn lower_item(&mut self, i: &Item) -> hir::Item {
+    pub fn lower_item(&mut self, i: &Item) -> Option<hir::Item> {
         let mut name = i.ident.name;
         let attrs = self.lower_attrs(&i.attrs);
         let mut vis = self.lower_visibility(&i.vis);
+        if let ItemKind::MacroDef(ref tts) = i.node {
+            if i.attrs.iter().any(|attr| attr.name() == "macro_export") {
+                self.exported_macros.push(hir::MacroDef {
+                    name: name, attrs: attrs, id: i.id, span: i.span, body: tts.clone().into(),
+                });
+            }
+            return None;
+        }
+
         let node = self.with_parent_def(i.id, |this| {
             this.lower_item_kind(i.id, &mut name, &attrs, &mut vis, &i.node)
         });
 
-        hir::Item {
+        Some(hir::Item {
             id: i.id,
             name: name,
             attrs: attrs,
             node: node,
             vis: vis,
             span: i.span,
-        }
+        })
     }
 
     fn lower_foreign_item(&mut self, i: &ForeignItem) -> hir::ForeignItem {
