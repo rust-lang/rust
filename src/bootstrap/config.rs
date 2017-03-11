@@ -59,6 +59,7 @@ pub struct Config {
     pub llvm_static_stdcpp: bool,
     pub llvm_link_shared: bool,
     pub llvm_targets: Option<String>,
+    pub llvm_link_jobs: Option<u32>,
 
     // rust codegen options
     pub rust_optimize: bool,
@@ -117,6 +118,7 @@ pub struct Target {
     pub cc: Option<PathBuf>,
     pub cxx: Option<PathBuf>,
     pub ndk: Option<PathBuf>,
+    pub crt_static: Option<bool>,
     pub musl_root: Option<PathBuf>,
     pub qemu_rootfs: Option<PathBuf>,
 }
@@ -179,6 +181,7 @@ struct Llvm {
     version_check: Option<bool>,
     static_libstdcpp: Option<bool>,
     targets: Option<String>,
+    link_jobs: Option<u32>,
 }
 
 #[derive(RustcDecodable, Default, Clone)]
@@ -231,6 +234,7 @@ struct TomlTarget {
     cc: Option<String>,
     cxx: Option<String>,
     android_ndk: Option<String>,
+    crt_static: Option<bool>,
     musl_root: Option<String>,
     qemu_rootfs: Option<String>,
 }
@@ -333,6 +337,7 @@ impl Config {
             set(&mut config.llvm_version_check, llvm.version_check);
             set(&mut config.llvm_static_stdcpp, llvm.static_libstdcpp);
             config.llvm_targets = llvm.targets.clone();
+            config.llvm_link_jobs = llvm.link_jobs;
         }
 
         if let Some(ref rust) = toml.rust {
@@ -375,6 +380,7 @@ impl Config {
                 }
                 target.cxx = cfg.cxx.clone().map(PathBuf::from);
                 target.cc = cfg.cc.clone().map(PathBuf::from);
+                target.crt_static = cfg.crt_static.clone();
                 target.musl_root = cfg.musl_root.clone().map(PathBuf::from);
                 target.qemu_rootfs = cfg.qemu_rootfs.clone().map(PathBuf::from);
 
