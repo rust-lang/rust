@@ -14,9 +14,6 @@
 
 // === GDB TESTS ===================================================================================
 
-// there's no frame yet for gdb to reliably detect the language, set it explicitly
-// gdbr-command:set language rust
-
 // gdbg-command:print/d 'simple_tuple::NO_PADDING_8'
 // gdbr-command:print simple_tuple::NO_PADDING_8
 // gdbg-check:$1 = {__0 = -50, __1 = 50}
