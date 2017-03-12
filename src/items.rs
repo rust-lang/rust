@@ -763,7 +763,7 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
         // If the trait, generics, and trait bound cannot fit on the same line,
         // put the trait bounds on an indented new line
         if offset.width() + last_line_width(&result) + trait_bound_str.len() >
-           context.config.ideal_width {
+           context.config.comment_width {
             result.push('\n');
             let trait_indent = offset.block_only().block_indent(context.config);
             result.push_str(&trait_indent.to_string(context.config));
@@ -799,7 +799,7 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
         // put the where clause on a new line
         if !where_clause_str.contains('\n') &&
            last_line_width(&result) + where_clause_str.len() + offset.width() >
-           context.config.ideal_width {
+           context.config.comment_width {
             result.push('\n');
             let width = offset.block_indent + context.config.tab_spaces - 1;
             let where_indent = Indent::new(0, width);

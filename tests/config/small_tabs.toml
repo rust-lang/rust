@@ -1,5 +1,5 @@
 max_width = 100
-ideal_width = 80
+comment_width = 80
 tab_spaces = 2
 newline_style = "Unix"
 fn_brace_style = "SameLineWhere"

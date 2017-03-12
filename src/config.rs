@@ -338,7 +338,6 @@ create_config! {
         "Lines to format; this is not supported in rustfmt.toml, and can only be specified \
          via the --file-lines option";
     max_width: usize, 100, "Maximum width of each line";
-    ideal_width: usize, 80, "Ideal width of each line";
     error_on_line_overflow: bool, true, "Error if unable to get all lines within max_width";
     tab_spaces: usize, 4, "Number of spaces per tab";
     fn_call_width: usize, 60,
@@ -396,6 +395,7 @@ create_config! {
     take_source_hints: bool, false, "Retain some formatting characteristics from the source code";
     hard_tabs: bool, false, "Use tab characters for indentation, spaces for alignment";
     wrap_comments: bool, false, "Break comments to fit on the line";
+    comment_width: usize, 80, "Maximum length of comments. No effect unless wrap_comments = true";
     normalize_comments: bool, false, "Convert /* */ comments to // comments where possible";
     wrap_match_arms: bool, true, "Wrap multiline match arms in blocks";
     match_block_trailing_comma: bool, false,
