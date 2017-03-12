@@ -1018,19 +1018,16 @@ fn format_tuple_struct(context: &RewriteContext,
 
     let (tactic, item_indent) = match context.config.fn_args_layout {
         FnArgLayoutStyle::Visual => {
-            result.push('(');
-            (ListTactic::HorizontalVertical, offset.block_only() + result.len())
+            // 1 = `(`
+            (ListTactic::HorizontalVertical, offset.block_only() + result.len() + 1)
         }
         FnArgLayoutStyle::Block |
         FnArgLayoutStyle::BlockAlways => {
-            let indent = offset.block_only().block_indent(&context.config);
-            result.push_str("(\n");
-            result.push_str(&indent.to_string(&context.config));
-            (ListTactic::Vertical, indent)
+            (ListTactic::HorizontalVertical, offset.block_only().block_indent(&context.config))
         }
     };
-    // 2 = ");"
-    let item_budget = try_opt!(context.config.max_width.checked_sub(item_indent.width() + 2));
+    // 3 = `();`
+    let item_budget = try_opt!(context.config.max_width.checked_sub(item_indent.width() + 3));
 
     let items =
         itemize_list(context.codemap,
@@ -1048,31 +1045,34 @@ fn format_tuple_struct(context: &RewriteContext,
                      |field| field.rewrite(context, Shape::legacy(item_budget, item_indent)),
                      context.codemap.span_after(span, "("),
                      span.hi);
+    let body_budget = try_opt!(context.config.max_width.checked_sub(offset.block_only().width() +
+                                                                    result.len() +
+                                                                    3));
     let body = try_opt!(list_helper(items,
-                                    Shape::legacy(item_budget, item_indent),
+                                    // TODO budget is wrong in block case
+                                    Shape::legacy(body_budget, item_indent),
                                     context.config,
                                     tactic));
 
-    if context.config.spaces_within_parens && body.len() > 0 {
-        result.push(' ');
-    }
-
-    result.push_str(&body);
-
-    if context.config.spaces_within_parens && body.len() > 0 {
-        result.push(' ');
-    }
-
-    match context.config.fn_args_layout {
-        FnArgLayoutStyle::Visual => {
-            result.push(')');
+    if context.config.fn_args_layout == FnArgLayoutStyle::Visual || !body.contains('\n') {
+        result.push('(');
+        if context.config.spaces_within_parens && body.len() > 0 {
+            result.push(' ');
         }
-        FnArgLayoutStyle::Block |
-        FnArgLayoutStyle::BlockAlways => {
-            result.push('\n');
-            result.push_str(&offset.block_only().to_string(&context.config));
-            result.push(')');
+
+        result.push_str(&body);
+
+        if context.config.spaces_within_parens && body.len() > 0 {
+            result.push(' ');
         }
+        result.push(')');
+    } else {
+        result.push_str("(\n");
+        result.push_str(&item_indent.to_string(&context.config));
+        result.push_str(&body);
+        result.push('\n');
+        result.push_str(&offset.block_only().to_string(&context.config));
+        result.push(')');
     }
 
     if !where_clause_str.is_empty() && !where_clause_str.contains('\n') &&
@@ -1563,12 +1563,11 @@ fn rewrite_fn_base(context: &RewriteContext,
 
     let multi_line_arg_str = arg_str.contains('\n');
 
-    let put_args_in_block = (match context.config.fn_args_layout {
-                                 FnArgLayoutStyle::Block => multi_line_arg_str,
-                                 FnArgLayoutStyle::BlockAlways => true,
-                                 _ => false,
-                             } || generics_str.contains('\n')) &&
-                            !fd.inputs.is_empty();
+    let put_args_in_block = match context.config.fn_args_layout {
+        FnArgLayoutStyle::Block => multi_line_arg_str || generics_str.contains('\n'),
+        FnArgLayoutStyle::BlockAlways => true,
+        _ => false,
+    } && !fd.inputs.is_empty();
 
     if put_args_in_block {
         arg_indent = indent.block_indent(context.config);

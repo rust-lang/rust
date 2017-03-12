@@ -12,10 +12,11 @@ e: Eeeeeeeeeeeeeeeeeee) {
     foo();
 }
 
-fn bar<'a: 'bbbbbbbbbbbbbbbbbbbbbbbbbbb,
+fn bar<
+    'a: 'bbbbbbbbbbbbbbbbbbbbbbbbbbb,
     TTTTTTTTTTTTT,
-    UUUUUUUUUUUUUUUUUUUU: WWWWWWWWWWWWWWWWWWWWWWWW>
-    (a: Aaaaaaaaaaaaaaa) {
+    UUUUUUUUUUUUUUUUUUUU: WWWWWWWWWWWWWWWWWWWWWWWW
+>(a: Aaaaaaaaaaaaaaa) {
     bar();
 }
 
@@ -42,9 +43,11 @@ impl Foo {
         foo();
     }
 
-    fn bar<'a: 'bbbbbbbbbbbbbbbbbbbbbbbbbbb,
+    fn bar<
+        'a: 'bbbbbbbbbbbbbbbbbbbbbbbbbbb,
         TTTTTTTTTTTTT,
-        UUUUUUUUUUUUUUUUUUUU: WWWWWWWWWWWWWWWWWWWWWWWW>
+        UUUUUUUUUUUUUUUUUUUU: WWWWWWWWWWWWWWWWWWWWWWWW
+    >
         (a: Aaaaaaaaaaaaaaa) {
         bar();
     }
@@ -56,10 +59,11 @@ impl Foo {
     }
 }
 
-struct Foo<TTTTTTTTTTTTTTTTTTTTTTTTTTTT,
+struct Foo<
+    TTTTTTTTTTTTTTTTTTTTTTTTTTTT,
     UUUUUUUUUUUUUUUUUUUUUU,
     VVVVVVVVVVVVVVVVVVVVVVVVVVV,
-    WWWWWWWWWWWWWWWWWWWWWWWW>
-{
+    WWWWWWWWWWWWWWWWWWWWWWWW
+> {
     foo: Foo,
 }
