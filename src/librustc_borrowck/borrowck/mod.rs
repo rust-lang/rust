@@ -748,7 +748,9 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             db.span_label(span, &msg);
         }
         if let Some(span) = local_def {
-            db.span_label(span, &"this should be `mut`");
+            if let Ok(snippet) = self.tcx.sess.codemap().span_to_snippet(span) {
+                db.span_label(span, &format!("consider changing this to `mut {}`", snippet));
+            }
         }
         db
     }
