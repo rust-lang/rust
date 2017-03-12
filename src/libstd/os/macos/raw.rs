@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! MacOS-specific raw type definitions
+//! macOS-specific raw type definitions
 
 #![stable(feature = "raw_ext", since = "1.1.0")]
 #![rustc_deprecated(since = "1.8.0",

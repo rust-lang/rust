@@ -94,7 +94,7 @@ fn main() {
             // (E.g. negative float to unsigned integer goes through a
             // library routine on the default i686 platforms, and the
             // implementation of that routine differs on e.g. Linux
-            // vs. OSX, resulting in different answers.)
+            // vs. macOS, resulting in different answers.)
             if $from::is_float() {
                 if !$to::in_range(A) { from.0 = 0 as $to; to.0 = 0 as $to; }
                 if !$to::in_range(B) { from.1 = 0 as $to; to.1 = 0 as $to; }
