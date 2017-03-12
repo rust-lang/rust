@@ -248,6 +248,18 @@ impl OsString {
     }
 
     /// Converts this `OsString` into a boxed `OsStr`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(into_boxed_os_str)]
+    ///
+    /// use std::ffi::{OsString, OsStr};
+    ///
+    /// let s = OsString::from("hello");
+    ///
+    /// let b: Box<OsStr> = s.into_boxed_os_str();
+    /// ```
     #[unstable(feature = "into_boxed_os_str", issue = "0")]
     pub fn into_boxed_os_str(self) -> Box<OsStr> {
         unsafe { mem::transmute(self.inner.into_box()) }
