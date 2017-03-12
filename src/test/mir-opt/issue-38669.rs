@@ -35,7 +35,6 @@ fn main() {
 //     }
 //
 //     bb2: {
-//         StorageLive(_6);
 //         _0 = ();
 //         StorageDead(_4);
 //         StorageDead(_1);
