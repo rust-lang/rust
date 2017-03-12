@@ -55,8 +55,19 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
             return;
         }
 
-        if !matches!(kind, FnKind::ItemFn(..)) {
-            return;
+        match kind {
+            FnKind::ItemFn(.., attrs) => {
+                for a in attrs {
+                    if_let_chain!{[
+                        a.meta_item_list().is_some(),
+                        let Some(name) = a.name(),
+                        &*name.as_str() == "proc_macro_derive",
+                    ], {
+                        return;
+                    }}
+                }
+            },
+            _ => return,
         }
 
         // Allows these to be passed by value.
