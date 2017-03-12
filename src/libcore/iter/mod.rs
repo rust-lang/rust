@@ -336,7 +336,7 @@ mod range;
 mod sources;
 mod traits;
 
-/// An double-ended iterator with the direction inverted.
+/// A double-ended iterator with the direction inverted.
 ///
 /// This `struct` is created by the [`rev()`] method on [`Iterator`]. See its
 /// documentation for more.
