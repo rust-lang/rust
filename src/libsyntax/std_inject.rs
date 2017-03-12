@@ -82,7 +82,7 @@ pub fn maybe_inject_crates_ref(sess: &ParseSess,
         vis: ast::Visibility::Inherited,
         node: ast::ItemKind::Use(P(codemap::dummy_spanned(ast::ViewPathGlob(ast::Path {
             segments: ["{{root}}", name, "prelude", "v1"].into_iter().map(|name| {
-                ast::Ident::from_str(name).into()
+                ast::PathSegment::from_ident(ast::Ident::from_str(name), DUMMY_SP)
             }).collect(),
             span: span,
         })))),
