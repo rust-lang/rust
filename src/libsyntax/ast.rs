@@ -134,7 +134,7 @@ impl Path {
     pub fn from_ident(s: Span, identifier: Ident) -> Path {
         Path {
             span: s,
-            segments: vec![identifier.into()],
+            segments: vec![PathSegment::from_ident(identifier, s)],
         }
     }
 
@@ -159,6 +159,8 @@ impl Path {
 pub struct PathSegment {
     /// The identifier portion of this path segment.
     pub identifier: Ident,
+    /// Span of the segment identifier.
+    pub span: Span,
 
     /// Type/lifetime parameters attached to this path. They come in
     /// two flavors: `Path<A,B,C>` and `Path(A,B) -> C`. Note that
@@ -170,16 +172,14 @@ pub struct PathSegment {
     pub parameters: Option<P<PathParameters>>,
 }
 
-impl From<Ident> for PathSegment {
-    fn from(id: Ident) -> Self {
-        PathSegment { identifier: id, parameters: None }
-    }
-}
-
 impl PathSegment {
+    pub fn from_ident(ident: Ident, span: Span) -> Self {
+        PathSegment { identifier: ident, span: span, parameters: None }
+    }
     pub fn crate_root() -> Self {
         PathSegment {
             identifier: keywords::CrateRoot.ident(),
+            span: DUMMY_SP,
             parameters: None,
         }
     }
