@@ -450,11 +450,14 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
         let x = x as *mut T as *mut u8;
         let y = y as *mut T as *mut u8;
 
-        // use an xor-swap as x & y are guaranteed to never alias
-        for i in 0..size_of::<T>() as isize {
+        // can't use a for loop as the `range` impl calls `mem::swap` recursively
+        let mut i = 0;
+        while i < size_of::<T>() as isize {
+            // use an xor-swap as x & y are guaranteed to never alias
             *x.offset(i) ^= *y.offset(i);
             *y.offset(i) ^= *x.offset(i);
             *x.offset(i) ^= *y.offset(i);
+            i += 1;
         }
     }
 }
