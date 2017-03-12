@@ -97,9 +97,9 @@ pub const MAX: char = '\u{10ffff}';
 /// [`as`]: ../../book/casting-between-types.html#as
 ///
 /// For an unsafe version of this function which ignores these checks, see
-/// [`from_u32_unchecked()`].
+/// [`from_u32_unchecked`].
 ///
-/// [`from_u32_unchecked()`]: fn.from_u32_unchecked.html
+/// [`from_u32_unchecked`]: fn.from_u32_unchecked.html
 ///
 /// # Examples
 ///
@@ -152,9 +152,9 @@ pub fn from_u32(i: u32) -> Option<char> {
 ///
 /// This function is unsafe, as it may construct invalid `char` values.
 ///
-/// For a safe version of this function, see the [`from_u32()`] function.
+/// For a safe version of this function, see the [`from_u32`] function.
 ///
-/// [`from_u32()`]: fn.from_u32.html
+/// [`from_u32`]: fn.from_u32.html
 ///
 /// # Examples
 ///
@@ -479,10 +479,10 @@ impl CharExt for char {
 /// Returns an iterator that yields the hexadecimal Unicode escape of a
 /// character, as `char`s.
 ///
-/// This `struct` is created by the [`escape_unicode()`] method on [`char`]. See
+/// This `struct` is created by the [`escape_unicode`] method on [`char`]. See
 /// its documentation for more.
 ///
-/// [`escape_unicode()`]: ../../std/primitive.char.html#method.escape_unicode
+/// [`escape_unicode`]: ../../std/primitive.char.html#method.escape_unicode
 /// [`char`]: ../../std/primitive.char.html
 #[derive(Clone, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -600,10 +600,10 @@ impl fmt::Display for EscapeUnicode {
 
 /// An iterator that yields the literal escape code of a `char`.
 ///
-/// This `struct` is created by the [`escape_default()`] method on [`char`]. See
+/// This `struct` is created by the [`escape_default`] method on [`char`]. See
 /// its documentation for more.
 ///
-/// [`escape_default()`]: ../../std/primitive.char.html#method.escape_default
+/// [`escape_default`]: ../../std/primitive.char.html#method.escape_default
 /// [`char`]: ../../std/primitive.char.html
 #[derive(Clone, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -713,10 +713,10 @@ impl fmt::Display for EscapeDefault {
 
 /// An iterator that yields the literal escape code of a `char`.
 ///
-/// This `struct` is created by the [`escape_debug()`] method on [`char`]. See its
+/// This `struct` is created by the [`escape_debug`] method on [`char`]. See its
 /// documentation for more.
 ///
-/// [`escape_debug()`]: ../../std/primitive.char.html#method.escape_debug
+/// [`escape_debug`]: ../../std/primitive.char.html#method.escape_debug
 /// [`char`]: ../../std/primitive.char.html
 #[unstable(feature = "char_escape_debug", issue = "35068")]
 #[derive(Clone, Debug)]

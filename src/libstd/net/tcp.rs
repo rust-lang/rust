@@ -183,7 +183,7 @@ impl TcpStream {
 
     /// Sets the read timeout to the timeout specified.
     ///
-    /// If the value specified is [`None`], then [`read()`] calls will block
+    /// If the value specified is [`None`], then [`read`] calls will block
     /// indefinitely. It is an error to pass the zero `Duration` to this
     /// method.
     ///
@@ -194,7 +194,7 @@ impl TcpStream {
     /// error of the kind [`WouldBlock`], but Windows may return [`TimedOut`].
     ///
     /// [`None`]: ../../std/option/enum.Option.html#variant.None
-    /// [`read()`]: ../../std/io/trait.Read.html#tymethod.read
+    /// [`read`]: ../../std/io/trait.Read.html#tymethod.read
     /// [`WouldBlock`]: ../../std/io/enum.ErrorKind.html#variant.WouldBlock
     /// [`TimedOut`]: ../../std/io/enum.ErrorKind.html#variant.TimedOut
     ///
@@ -214,7 +214,7 @@ impl TcpStream {
 
     /// Sets the write timeout to the timeout specified.
     ///
-    /// If the value specified is [`None`], then [`write()`] calls will block
+    /// If the value specified is [`None`], then [`write`] calls will block
     /// indefinitely. It is an error to pass the zero [`Duration`] to this
     /// method.
     ///
@@ -225,7 +225,7 @@ impl TcpStream {
     /// an error of the kind [`WouldBlock`], but Windows may return [`TimedOut`].
     ///
     /// [`None`]: ../../std/option/enum.Option.html#variant.None
-    /// [`write()`]: ../../std/io/trait.Write.html#tymethod.write
+    /// [`write`]: ../../std/io/trait.Write.html#tymethod.write
     /// [`Duration`]: ../../std/time/struct.Duration.html
     /// [`WouldBlock`]: ../../std/io/enum.ErrorKind.html#variant.WouldBlock
     /// [`TimedOut`]: ../../std/io/enum.ErrorKind.html#variant.TimedOut
@@ -246,14 +246,14 @@ impl TcpStream {
 
     /// Returns the read timeout of this socket.
     ///
-    /// If the timeout is [`None`], then [`read()`] calls will block indefinitely.
+    /// If the timeout is [`None`], then [`read`] calls will block indefinitely.
     ///
     /// # Note
     ///
     /// Some platforms do not provide access to the current timeout.
     ///
     /// [`None`]: ../../std/option/enum.Option.html#variant.None
-    /// [`read()`]: ../../std/io/trait.Read.html#tymethod.read
+    /// [`read`]: ../../std/io/trait.Read.html#tymethod.read
     ///
     /// # Examples
     ///
@@ -272,14 +272,14 @@ impl TcpStream {
 
     /// Returns the write timeout of this socket.
     ///
-    /// If the timeout is [`None`], then [`write()`] calls will block indefinitely.
+    /// If the timeout is [`None`], then [`write`] calls will block indefinitely.
     ///
     /// # Note
     ///
     /// Some platforms do not provide access to the current timeout.
     ///
     /// [`None`]: ../../std/option/enum.Option.html#variant.None
-    /// [`write()`]: ../../std/io/trait.Write.html#tymethod.write
+    /// [`write`]: ../../std/io/trait.Write.html#tymethod.write
     ///
     /// # Examples
     ///
@@ -618,7 +618,7 @@ impl TcpListener {
 
     /// Gets the value of the `IP_TTL` option for this socket.
     ///
-    /// For more information about this option, see [`set_ttl()`][link].
+    /// For more information about this option, see [`set_ttl`][link].
     ///
     /// [link]: #method.set_ttl
     ///

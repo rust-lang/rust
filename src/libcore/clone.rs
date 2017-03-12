@@ -61,7 +61,7 @@
 /// ## Derivable
 ///
 /// This trait can be used with `#[derive]` if all fields are `Clone`. The `derive`d
-/// implementation of [`clone()`] calls [`clone()`] on each field.
+/// implementation of [`clone`] calls [`clone`] on each field.
 ///
 /// ## How can I implement `Clone`?
 ///
@@ -75,7 +75,7 @@
 /// `Clone` cannot be `derive`d, but can be implemented as:
 ///
 /// [`Copy`]: ../../std/marker/trait.Copy.html
-/// [`clone()`]: trait.Clone.html#tymethod.clone
+/// [`clone`]: trait.Clone.html#tymethod.clone
 ///
 /// ```
 /// #[derive(Copy)]
