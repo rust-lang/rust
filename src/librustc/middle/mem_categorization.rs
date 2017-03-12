@@ -846,7 +846,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         // When the corresponding feature isn't toggled, only promote `[T; 0]`.
         let promotable = match expr_ty.sty {
             ty::TyArray(_, 0) => true,
-            _ => promotable & self.tcx().sess.features.borrow().rvalue_static_promotion,
+            _ => promotable && self.tcx().sess.features.borrow().rvalue_static_promotion,
         };
 
         // Compute maximum lifetime of this rvalue. This is 'static if
