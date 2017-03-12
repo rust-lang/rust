@@ -407,7 +407,7 @@ enum PathSource<'a> {
     // Trait paths in bounds or impls.
     Trait,
     // Expression paths `path`, with optional parent context.
-    Expr(Option<&'a ExprKind>),
+    Expr(Option<&'a Expr>),
     // Paths in path patterns `Path`.
     Pat,
     // Paths in struct expressions and patterns `Path { .. }`.
@@ -464,7 +464,7 @@ impl<'a> PathSource<'a> {
                 ValueNS => "method or associated constant",
                 MacroNS => bug!("associated macro"),
             },
-            PathSource::Expr(parent) => match parent {
+            PathSource::Expr(parent) => match parent.map(|p| &p.node) {
                 // "function" here means "anything callable" rather than `Def::Fn`,
                 // this is not precise but usually more helpful than just "value".
                 Some(&ExprKind::Call(..)) => "function",
@@ -2200,7 +2200,8 @@ impl<'a> Resolver<'a> {
                           source: PathSource)
                           -> PathResolution {
         let segments = &path.segments.iter().map(|seg| seg.identifier).collect::<Vec<_>>();
-        self.smart_resolve_path_fragment(id, qself, segments, path.span, source)
+        let ident_span = path.segments.last().map_or(path.span, |seg| seg.span);
+        self.smart_resolve_path_fragment(id, qself, segments, path.span, ident_span, source)
     }
 
     fn smart_resolve_path_fragment(&mut self,
@@ -2208,6 +2209,7 @@ impl<'a> Resolver<'a> {
                                    qself: Option<&QSelf>,
                                    path: &[Ident],
                                    span: Span,
+                                   ident_span: Span,
                                    source: PathSource)
                                    -> PathResolution {
         let ns = source.namespace();
@@ -2219,9 +2221,9 @@ impl<'a> Resolver<'a> {
             let expected = source.descr_expected();
             let path_str = names_to_string(path);
             let code = source.error_code(def.is_some());
-            let (base_msg, fallback_label) = if let Some(def) = def {
+            let (base_msg, fallback_label, base_span) = if let Some(def) = def {
                 (format!("expected {}, found {} `{}`", expected, def.kind_name(), path_str),
-                 format!("not a {}", expected))
+                 format!("not a {}", expected), span)
             } else {
                 let item_str = path[path.len() - 1];
                 let (mod_prefix, mod_str) = if path.len() == 1 {
@@ -2237,9 +2239,9 @@ impl<'a> Resolver<'a> {
                     (mod_prefix, format!("`{}`", names_to_string(mod_path)))
                 };
                 (format!("cannot find {} `{}` in {}{}", expected, item_str, mod_prefix, mod_str),
-                 format!("not found in {}", mod_str))
+                 format!("not found in {}", mod_str), ident_span)
             };
-            let mut err = this.session.struct_span_err_with_code(span, &base_msg, code);
+            let mut err = this.session.struct_span_err_with_code(base_span, &base_msg, code);
 
             // Emit special messages for unresolved `Self` and `self`.
             if is_self_type(path, ns) {
@@ -2297,15 +2299,15 @@ impl<'a> Resolver<'a> {
                         err.span_label(span, &format!("type aliases cannot be used for traits"));
                         return err;
                     }
-                    (Def::Mod(..), PathSource::Expr(Some(parent))) => match *parent {
+                    (Def::Mod(..), PathSource::Expr(Some(parent))) => match parent.node {
                         ExprKind::Field(_, ident) => {
-                            err.span_label(span, &format!("did you mean `{}::{}`?",
-                                                           path_str, ident.node));
+                            err.span_label(parent.span, &format!("did you mean `{}::{}`?",
+                                                                 path_str, ident.node));
                             return err;
                         }
                         ExprKind::MethodCall(ident, ..) => {
-                            err.span_label(span, &format!("did you mean `{}::{}(...)`?",
-                                                           path_str, ident.node));
+                            err.span_label(parent.span, &format!("did you mean `{}::{}(...)`?",
+                                                                 path_str, ident.node));
                             return err;
                         }
                         _ => {}
@@ -2330,12 +2332,12 @@ impl<'a> Resolver<'a> {
 
             // Try Levenshtein if nothing else worked.
             if let Some(candidate) = this.lookup_typo_candidate(path, ns, is_expected) {
-                err.span_label(span, &format!("did you mean `{}`?", candidate));
+                err.span_label(ident_span, &format!("did you mean `{}`?", candidate));
                 return err;
             }
 
             // Fallback label.
-            err.span_label(span, &fallback_label);
+            err.span_label(base_span, &fallback_label);
             err
         };
         let report_errors = |this: &mut Self, def: Option<Def>| {
@@ -2455,7 +2457,7 @@ impl<'a> Resolver<'a> {
             // Make sure `A::B` in `<T as A>::B::C` is a trait item.
             let ns = if qself.position + 1 == path.len() { ns } else { TypeNS };
             let res = self.smart_resolve_path_fragment(id, None, &path[..qself.position + 1],
-                                                       span, PathSource::TraitItem(ns));
+                                                       span, span, PathSource::TraitItem(ns));
             return Some(PathResolution::with_unresolved_segments(
                 res.base_def(), res.unresolved_segments() + path.len() - qself.position - 1
             ));
@@ -2813,7 +2815,7 @@ impl<'a> Resolver<'a> {
                                        path: &[Ident],
                                        ns: Namespace,
                                        filter_fn: FilterFn)
-                                       -> Option<String>
+                                       -> Option<Symbol>
         where FilterFn: Fn(Def) -> bool
     {
         let add_module_candidates = |module: Module, names: &mut Vec<Name>| {
@@ -2827,7 +2829,7 @@ impl<'a> Resolver<'a> {
         };
 
         let mut names = Vec::new();
-        let prefix_str = if path.len() == 1 {
+        if path.len() == 1 {
             // Search in lexical scope.
             // Walk backwards up the ribs in scope and collect candidates.
             for rib in self.ribs[ns].iter().rev() {
@@ -2861,21 +2863,19 @@ impl<'a> Resolver<'a> {
                     names.push(*name);
                 }
             }
-            String::new()
         } else {
             // Search in module.
             let mod_path = &path[..path.len() - 1];
             if let PathResult::Module(module) = self.resolve_path(mod_path, Some(TypeNS), None) {
                 add_module_candidates(module, &mut names);
             }
-            names_to_string(mod_path) + "::"
-        };
+        }
 
         let name = path[path.len() - 1].name;
         // Make sure error reporting is deterministic.
         names.sort_by_key(|name| name.as_str());
         match find_best_match_for_name(names.iter(), &name.as_str(), None) {
-            Some(found) if found != name => Some(format!("{}{}", prefix_str, found)),
+            Some(found) if found != name => Some(found),
             _ => None,
         }
     }
@@ -2898,7 +2898,7 @@ impl<'a> Resolver<'a> {
         self.with_resolved_label(label, id, |this| this.visit_block(block));
     }
 
-    fn resolve_expr(&mut self, expr: &Expr, parent: Option<&ExprKind>) {
+    fn resolve_expr(&mut self, expr: &Expr, parent: Option<&Expr>) {
         // First, record candidate traits for this expression if it could
         // result in the invocation of a method call.
 
@@ -2979,11 +2979,11 @@ impl<'a> Resolver<'a> {
 
             // Equivalent to `visit::walk_expr` + passing some context to children.
             ExprKind::Field(ref subexpression, _) => {
-                self.resolve_expr(subexpression, Some(&expr.node));
+                self.resolve_expr(subexpression, Some(expr));
             }
             ExprKind::MethodCall(_, ref types, ref arguments) => {
                 let mut arguments = arguments.iter();
-                self.resolve_expr(arguments.next().unwrap(), Some(&expr.node));
+                self.resolve_expr(arguments.next().unwrap(), Some(expr));
                 for argument in arguments {
                     self.resolve_expr(argument, None);
                 }
@@ -2999,7 +2999,7 @@ impl<'a> Resolver<'a> {
                 });
             }
             ExprKind::Call(ref callee, ref arguments) => {
-                self.resolve_expr(callee, Some(&expr.node));
+                self.resolve_expr(callee, Some(expr));
                 for argument in arguments {
                     self.resolve_expr(argument, None);
                 }
@@ -3130,11 +3130,10 @@ impl<'a> Resolver<'a> {
                 if ident.name == lookup_name && ns == namespace {
                     if filter_fn(name_binding.def()) {
                         // create the path
-                        let span = name_binding.span;
                         let mut segms = path_segments.clone();
-                        segms.push(ident.into());
+                        segms.push(ast::PathSegment::from_ident(ident, name_binding.span));
                         let path = Path {
-                            span: span,
+                            span: name_binding.span,
                             segments: segms,
                         };
                         // the entity is accessible in the following cases:
@@ -3154,7 +3153,7 @@ impl<'a> Resolver<'a> {
                 if let Some(module) = name_binding.module() {
                     // form the path
                     let mut path_segments = path_segments.clone();
-                    path_segments.push(ident.into());
+                    path_segments.push(ast::PathSegment::from_ident(ident, name_binding.span));
 
                     if !in_module_is_extern || name_binding.vis == ty::Visibility::Public {
                         // add the module to the lookup

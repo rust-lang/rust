@@ -738,7 +738,7 @@ Available lint options:
               Allow <foo>
     -D <foo>           Deny <foo>
     -F <foo>           Forbid <foo> \
-              (deny, and deny all overrides)
+              (deny <foo> and all attempts to override)
 
 ");
 
