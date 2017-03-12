@@ -763,7 +763,7 @@ fn write_shared(cx: &Context,
             // going on). If they're in different crates then the crate defining
             // the trait will be interested in our implementation.
             if imp.def_id.krate == did.krate { continue }
-            write!(implementors, r#""{}","#, imp.impl_).unwrap();
+            write!(implementors, "{},", as_json(&imp.impl_.to_string())).unwrap();
         }
         implementors.push_str("];");
 
