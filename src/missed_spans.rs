@@ -143,7 +143,7 @@ impl<'a> FmtVisitor<'a> {
                         self.buffer.push_str(" ");
                     }
 
-                    let comment_width = ::std::cmp::min(self.config.ideal_width,
+                    let comment_width = ::std::cmp::min(self.config.comment_width,
                                                         self.config.max_width -
                                                         self.block_indent.width());
 

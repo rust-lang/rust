@@ -594,7 +594,7 @@ impl<'a> Rewrite for [ast::Attribute] {
                     let comment = try_opt!(rewrite_comment(comment,
                                                            false,
                                                            Shape::legacy(context.config
-                                                                             .ideal_width -
+                                                                             .comment_width -
                                                                          shape.indent.width(),
                                                                          shape.indent),
                                                            context.config));
@@ -610,7 +610,7 @@ impl<'a> Rewrite for [ast::Attribute] {
             if a_str.starts_with("//") {
                 a_str = try_opt!(rewrite_comment(&a_str,
                                                  false,
-                                                 Shape::legacy(context.config.ideal_width -
+                                                 Shape::legacy(context.config.comment_width -
                                                                shape.indent.width(),
                                                                shape.indent),
                                                  context.config));
