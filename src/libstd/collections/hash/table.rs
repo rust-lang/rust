@@ -506,6 +506,22 @@ impl<K, V, M> EmptyBucket<K, V, M>
             table: self.table,
         }
     }
+
+    /// Puts given key, remain value uninitialized.
+    /// It is only used for inplacement insertion.
+    pub unsafe fn put_key(mut self, hash: SafeHash, key: K) -> FullBucket<K, V, M> {
+        *self.raw.hash = hash.inspect();
+        let pair_mut = self.raw.pair as *mut (K, V);
+        ptr::write(&mut (*pair_mut).0, key);
+
+        self.table.borrow_table_mut().size += 1;
+
+        FullBucket {
+            raw: self.raw,
+            idx: self.idx,
+            table: self.table,
+        }
+    }
 }
 
 impl<K, V, M: Deref<Target = RawTable<K, V>>> FullBucket<K, V, M> {
@@ -580,6 +596,17 @@ impl<'t, K, V> FullBucket<K, V, &'t mut RawTable<K, V>> {
             k,
             v)
         }
+    }
+
+    /// Remove this bucket's `key` from the hashtable.
+    /// Only used for inplacement insertion.
+    /// NOTE: `Value` is uninitialized when this function is called, don't try to drop the `Value`.
+    pub unsafe fn remove_key(&mut self) {
+        self.table.size -= 1;
+
+        *self.raw.hash = EMPTY_BUCKET;
+        let pair_mut = self.raw.pair as *mut (K, V);
+        ptr::drop_in_place(&mut (*pair_mut).0); // only drop key
     }
 }
 
