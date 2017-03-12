@@ -448,7 +448,7 @@ pub unsafe fn uninitialized<T>() -> T {
 pub fn swap<T>(x: &mut T, y: &mut T) {
     unsafe {
         // Give ourselves some scratch space to work with
-        let mut t: [u8; 16] = mem::uninitialized();
+        let mut t: [u8; 16] = uninitialized();
 
         let x = x as *mut T as *mut u8;
         let y = y as *mut T as *mut u8;
