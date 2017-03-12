@@ -232,7 +232,7 @@ impl Build {
             None => false,
         };
         let rust_info = channel::GitInfo::new(&src);
-        let cargo_info = channel::GitInfo::new(&src.join("src/tools/cargo"));
+        let cargo_info = channel::GitInfo::new(&src.join("cargo"));
 
         Build {
             flags: flags,
