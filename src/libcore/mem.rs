@@ -109,7 +109,7 @@ pub use intrinsics::transmute;
 /// [`Clone`][clone]. You need the value's destructor to run only once,
 /// because a double `free` is undefined behavior.
 ///
-/// An example is the definition of [`mem::swap`][swap] in this module:
+/// An example is the (old) definition of [`mem::swap`][swap] in this module:
 ///
 /// ```
 /// use std::mem;
@@ -447,18 +447,15 @@ pub unsafe fn uninitialized<T>() -> T {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn swap<T>(x: &mut T, y: &mut T) {
     unsafe {
-        // Give ourselves some scratch space to work with
-        let mut t: T = uninitialized();
+        let x = x as *mut T as *mut u8;
+        let y = y as *mut T as *mut u8;
 
-        // Perform the swap, `&mut` pointers never alias
-        ptr::copy_nonoverlapping(&*x, &mut t, 1);
-        ptr::copy_nonoverlapping(&*y, x, 1);
-        ptr::copy_nonoverlapping(&t, y, 1);
-
-        // y and t now point to the same thing, but we need to completely
-        // forget `t` because we do not want to run the destructor for `T`
-        // on its value, which is still owned somewhere outside this function.
-        forget(t);
+        // use an xor-swap as x & y are guaranteed to never alias
+        for i in 0..size_of::<T>() as isize {
+            *x.offset(i) ^= *y.offset(i);
+            *y.offset(i) ^= *x.offset(i);
+            *x.offset(i) ^= *y.offset(i);
+        }
     }
 }
 
