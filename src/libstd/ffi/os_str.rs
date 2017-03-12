@@ -398,6 +398,16 @@ impl OsStr {
     /// Copies the slice into an owned [`OsString`].
     ///
     /// [`OsString`]: struct.OsString.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ffi::{OsStr, OsString};
+    ///
+    /// let os_str = OsStr::new("foo");
+    /// let os_string = os_str.to_os_string();
+    /// assert_eq!(os_string, OsString::from("foo"));
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn to_os_string(&self) -> OsString {
         OsString { inner: self.inner.to_owned() }
