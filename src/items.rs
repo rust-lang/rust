@@ -191,6 +191,7 @@ impl<'a> FmtVisitor<'a> {
                                               &item.vis,
                                               span,
                                               false,
+                                              false,
                                               false);
 
                 match rewrite {
@@ -258,7 +259,8 @@ impl<'a> FmtVisitor<'a> {
                                                                          vis,
                                                                          span,
                                                                          newline_brace,
-                                                                         has_body));
+                                                                         has_body,
+                                                                         true));
 
         if self.config.fn_brace_style != BraceStyle::AlwaysNextLine && !result.contains('\n') {
             newline_brace = false;
@@ -302,6 +304,7 @@ impl<'a> FmtVisitor<'a> {
                                                        sig.abi,
                                                        &ast::Visibility::Inherited,
                                                        span,
+                                                       false,
                                                        false,
                                                        false));
 
@@ -1455,7 +1458,8 @@ fn rewrite_fn_base(context: &RewriteContext,
                    vis: &ast::Visibility,
                    span: Span,
                    newline_brace: bool,
-                   has_body: bool)
+                   has_body: bool,
+                   has_braces: bool)
                    -> Option<(String, bool)> {
     let mut force_new_line_for_brace = false;
 
@@ -1665,7 +1669,6 @@ fn rewrite_fn_base(context: &RewriteContext,
     } || (put_args_in_block && ret_str.is_empty());
 
     if where_clause.predicates.len() == 1 && should_compress_where {
-        // TODO hitting this path, but using a newline
         let budget = try_opt!(context.config.max_width.checked_sub(last_line_width(&result)));
         if let Some(where_clause_str) =
             rewrite_where_clause(context,
@@ -1674,7 +1677,7 @@ fn rewrite_fn_base(context: &RewriteContext,
                                  Shape::legacy(budget, indent),
                                  Density::Compressed,
                                  "{",
-                                 !has_body,
+                                 !has_braces,
                                  put_args_in_block && ret_str.is_empty(),
                                  Some(span.hi)) {
             if !where_clause_str.contains('\n') {
@@ -1696,7 +1699,7 @@ fn rewrite_fn_base(context: &RewriteContext,
                                                          Shape::legacy(budget, indent),
                                                          Density::Tall,
                                                          "{",
-                                                         !has_body,
+                                                         !has_braces,
                                                          put_args_in_block && ret_str.is_empty(),
                                                          Some(span.hi)));
 
