@@ -463,14 +463,13 @@ impl Config {
             }
 
             match key {
-                "CFG_BUILD" => self.build = value.to_string(),
-                "CFG_HOST" => {
-                    self.host = value.split(" ").map(|s| s.to_string())
-                                     .collect();
+                "CFG_BUILD" if value.len() > 0 => self.build = value.to_string(),
+                "CFG_HOST" if value.len() > 0 => {
+                    self.host.extend(value.split(" ").map(|s| s.to_string()));
+
                 }
-                "CFG_TARGET" => {
-                    self.target = value.split(" ").map(|s| s.to_string())
-                                       .collect();
+                "CFG_TARGET" if value.len() > 0 => {
+                    self.target.extend(value.split(" ").map(|s| s.to_string()));
                 }
                 "CFG_MUSL_ROOT" if value.len() > 0 => {
                     self.musl_root = Some(parse_configure_path(value));
