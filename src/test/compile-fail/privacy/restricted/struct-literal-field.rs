@@ -15,7 +15,7 @@
 mod foo {
     pub mod bar {
         pub struct S {
-            pub(foo) x: i32,
+            pub(in foo) x: i32,
         }
     }
 

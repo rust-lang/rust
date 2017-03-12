@@ -23,11 +23,17 @@ use super::{
     ObjectSafetyViolation,
 };
 
+use errors::DiagnosticBuilder;
 use fmt_macros::{Parser, Piece, Position};
+use hir::{intravisit, Local, Pat};
+use hir::intravisit::{Visitor, NestedVisitorMap};
+use hir::map::NodeExpr;
 use hir::def_id::DefId;
 use infer::{self, InferCtxt};
 use infer::type_variable::TypeVariableOrigin;
 use rustc::lint::builtin::EXTRA_REQUIREMENT_IN_IMPL;
+use std::fmt;
+use syntax::ast;
 use ty::{self, AdtKind, ToPredicate, ToPolyTraitRef, Ty, TyCtxt, TypeFoldable};
 use ty::error::ExpectedFound;
 use ty::fast_reject;
@@ -35,12 +41,8 @@ use ty::fold::TypeFolder;
 use ty::subst::Subst;
 use util::nodemap::{FxHashMap, FxHashSet};
 
-use std::fmt;
-use syntax::ast;
-use hir::{intravisit, Local, Pat};
-use hir::intravisit::{Visitor, NestedVisitorMap};
 use syntax_pos::{DUMMY_SP, Span};
-use errors::DiagnosticBuilder;
+
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub struct TraitErrorKey<'tcx> {
@@ -848,15 +850,18 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
         err.span_label(cause.span, &format!("cannot infer type for `{}`", name));
 
-        let expr = self.tcx.hir.expect_expr(cause.body_id);
-
         let mut local_visitor = FindLocalByTypeVisitor {
             infcx: &self,
             target_ty: &ty,
             found_pattern: None,
         };
 
-        local_visitor.visit_expr(expr);
+        // #40294: cause.body_id can also be a fn declaration.
+        // Currently, if it's anything other than NodeExpr, we just ignore it
+        match self.tcx.hir.find(cause.body_id) {
+            Some(NodeExpr(expr)) => local_visitor.visit_expr(expr),
+            _ => ()
+        }
 
         if let Some(pattern) = local_visitor.found_pattern {
             let pattern_span = pattern.span;
