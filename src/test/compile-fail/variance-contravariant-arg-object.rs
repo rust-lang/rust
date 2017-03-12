@@ -21,7 +21,7 @@ fn get_min_from_max<'min, 'max>(v: Box<Get<&'max i32>>)
                                 -> Box<Get<&'min i32>>
     where 'max : 'min
 {
-    v //~ ERROR mismatched types
+    v //~ ERROR cannot infer an appropriate lifetime
 }
 
 fn get_max_from_min<'min, 'max, G>(v: Box<Get<&'min i32>>)
@@ -29,7 +29,7 @@ fn get_max_from_min<'min, 'max, G>(v: Box<Get<&'min i32>>)
     where 'max : 'min
 {
     // Previously OK:
-    v //~ ERROR mismatched types
+    v //~ ERROR cannot infer an appropriate lifetime
 }
 
 fn main() { }
