@@ -27,7 +27,7 @@ use ast::Local;
 use ast::MacStmtStyle;
 use ast::Mac_;
 use ast::{MutTy, Mutability};
-use ast::{Pat, PatKind};
+use ast::{Pat, PatKind, PathSegment};
 use ast::{PolyTraitRef, QSelf};
 use ast::{Stmt, StmtKind};
 use ast::{VariantData, StructField};
@@ -1811,7 +1811,7 @@ impl<'a> Parser<'a> {
         };
 
         if is_global {
-            segments.insert(0, ast::PathSegment::crate_root());
+            segments.insert(0, PathSegment::crate_root());
         }
 
         // Assemble the span.
@@ -1829,11 +1829,12 @@ impl<'a> Parser<'a> {
     /// - `a::b<T,U>::c<V,W>`
     /// - `a::b<T,U>::c(V) -> W`
     /// - `a::b<T,U>::c(V)`
-    pub fn parse_path_segments_without_colons(&mut self) -> PResult<'a, Vec<ast::PathSegment>> {
+    pub fn parse_path_segments_without_colons(&mut self) -> PResult<'a, Vec<PathSegment>> {
         let mut segments = Vec::new();
         loop {
             // First, parse an identifier.
             let identifier = self.parse_path_segment_ident()?;
+            let ident_span = self.prev_span;
 
             if self.check(&token::ModSep) && self.look_ahead(1, |t| *t == token::Lt) {
                 self.bump();
@@ -1881,7 +1882,11 @@ impl<'a> Parser<'a> {
             };
 
             // Assemble and push the result.
-            segments.push(ast::PathSegment { identifier: identifier, parameters: parameters });
+            segments.push(PathSegment {
+                identifier: identifier,
+                span: ident_span,
+                parameters: parameters
+            });
 
             // Continue only if we see a `::`
             if !self.eat(&token::ModSep) {
@@ -1892,15 +1897,16 @@ impl<'a> Parser<'a> {
 
     /// Examples:
     /// - `a::b::<T,U>::c`
-    pub fn parse_path_segments_with_colons(&mut self) -> PResult<'a, Vec<ast::PathSegment>> {
+    pub fn parse_path_segments_with_colons(&mut self) -> PResult<'a, Vec<PathSegment>> {
         let mut segments = Vec::new();
         loop {
             // First, parse an identifier.
             let identifier = self.parse_path_segment_ident()?;
+            let ident_span = self.prev_span;
 
             // If we do not see a `::`, stop.
             if !self.eat(&token::ModSep) {
-                segments.push(identifier.into());
+                segments.push(PathSegment::from_ident(identifier, ident_span));
                 return Ok(segments);
             }
 
@@ -1909,8 +1915,9 @@ impl<'a> Parser<'a> {
                 // Consumed `a::b::<`, go look for types
                 let (lifetimes, types, bindings) = self.parse_generic_args()?;
                 self.expect_gt()?;
-                segments.push(ast::PathSegment {
+                segments.push(PathSegment {
                     identifier: identifier,
+                    span: ident_span,
                     parameters: ast::AngleBracketedParameterData {
                         lifetimes: lifetimes,
                         types: types,
@@ -1924,7 +1931,7 @@ impl<'a> Parser<'a> {
                 }
             } else {
                 // Consumed `a::`, go look for `b`
-                segments.push(identifier.into());
+                segments.push(PathSegment::from_ident(identifier, ident_span));
             }
         }
     }
@@ -1932,14 +1939,14 @@ impl<'a> Parser<'a> {
     /// Examples:
     /// - `a::b::c`
     pub fn parse_path_segments_without_types(&mut self)
-                                             -> PResult<'a, Vec<ast::PathSegment>> {
+                                             -> PResult<'a, Vec<PathSegment>> {
         let mut segments = Vec::new();
         loop {
             // First, parse an identifier.
             let identifier = self.parse_path_segment_ident()?;
 
             // Assemble and push the result.
-            segments.push(identifier.into());
+            segments.push(PathSegment::from_ident(identifier, self.prev_span));
 
             // If we do not see a `::` or see `::{`/`::*`, stop.
             if !self.check(&token::ModSep) || self.is_import_coupler() {
@@ -5950,7 +5957,7 @@ impl<'a> Parser<'a> {
             // `{foo, bar}`, `::{foo, bar}`, `*`, or `::*`.
             self.eat(&token::ModSep);
             let prefix = ast::Path {
-                segments: vec![ast::PathSegment::crate_root()],
+                segments: vec![PathSegment::crate_root()],
                 span: mk_sp(lo, self.span.hi),
             };
             let view_path_kind = if self.eat(&token::BinOp(token::Star)) {
