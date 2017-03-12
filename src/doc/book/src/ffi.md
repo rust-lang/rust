@@ -687,7 +687,7 @@ attribute turns off Rust's name mangling, so that it is easier to link to.
 
 It’s important to be mindful of `panic!`s when working with FFI. A `panic!`
 across an FFI boundary is undefined behavior. If you’re writing code that may
-panic, you should run it in a closure with [`catch_unwind()`]:
+panic, you should run it in a closure with [`catch_unwind`]:
 
 ```rust
 use std::panic::catch_unwind;
@@ -706,11 +706,11 @@ pub extern fn oh_no() -> i32 {
 fn main() {}
 ```
 
-Please note that [`catch_unwind()`] will only catch unwinding panics, not
-those who abort the process. See the documentation of [`catch_unwind()`]
+Please note that [`catch_unwind`] will only catch unwinding panics, not
+those who abort the process. See the documentation of [`catch_unwind`]
 for more information.
 
-[`catch_unwind()`]: ../std/panic/fn.catch_unwind.html
+[`catch_unwind`]: ../std/panic/fn.catch_unwind.html
 
 # Representing opaque structs
 

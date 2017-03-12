@@ -30,7 +30,7 @@
 //! contexts involving built-in types, this is usually not a problem.
 //! However, using these operators in generic code, requires some
 //! attention if values have to be reused as opposed to letting the operators
-//! consume them. One option is to occasionally use [`clone()`].
+//! consume them. One option is to occasionally use [`clone`].
 //! Another option is to rely on the types involved providing additional
 //! operator implementations for references. For example, for a user-defined
 //! type `T` which is supposed to support addition, it is probably a good
@@ -143,7 +143,7 @@
 //! [`FnOnce`]: trait.FnOnce.html
 //! [`Add`]: trait.Add.html
 //! [`Sub`]: trait.Sub.html
-//! [`clone()`]: ../clone/trait.Clone.html#tymethod.clone
+//! [`clone`]: ../clone/trait.Clone.html#tymethod.clone
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -2027,7 +2027,7 @@ impl fmt::Debug for RangeFull {
 /// A (half-open) range which is bounded at both ends: { x | start <= x < end }.
 /// Use `start..end` (two dots) for its shorthand.
 ///
-/// See the [`contains()`](#method.contains) method for its characterization.
+/// See the [`contains`](#method.contains) method for its characterization.
 ///
 /// # Examples
 ///
@@ -2085,7 +2085,7 @@ impl<Idx: PartialOrd<Idx>> Range<Idx> {
 /// A range which is only bounded below: { x | start <= x }.
 /// Use `start..` for its shorthand.
 ///
-/// See the [`contains()`](#method.contains) method for its characterization.
+/// See the [`contains`](#method.contains) method for its characterization.
 ///
 /// Note: Currently, no overflow checking is done for the iterator
 /// implementation; if you use an integer range and the integer overflows, it
@@ -2141,7 +2141,7 @@ impl<Idx: PartialOrd<Idx>> RangeFrom<Idx> {
 /// A range which is only bounded above: { x | x < end }.
 /// Use `..end` (two dots) for its shorthand.
 ///
-/// See the [`contains()`](#method.contains) method for its characterization.
+/// See the [`contains`](#method.contains) method for its characterization.
 ///
 /// It cannot serve as an iterator because it doesn't have a starting point.
 ///
@@ -2207,7 +2207,7 @@ impl<Idx: PartialOrd<Idx>> RangeTo<Idx> {
 /// An inclusive range which is bounded at both ends: { x | start <= x <= end }.
 /// Use `start...end` (three dots) for its shorthand.
 ///
-/// See the [`contains()`](#method.contains) method for its characterization.
+/// See the [`contains`](#method.contains) method for its characterization.
 ///
 /// # Examples
 ///
@@ -2293,7 +2293,7 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
 /// An inclusive range which is only bounded above: { x | x <= end }.
 /// Use `...end` (three dots) for its shorthand.
 ///
-/// See the [`contains()`](#method.contains) method for its characterization.
+/// See the [`contains`](#method.contains) method for its characterization.
 ///
 /// It cannot serve as an iterator because it doesn't have a starting point.
 ///
