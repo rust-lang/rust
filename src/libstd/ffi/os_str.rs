@@ -188,6 +188,16 @@ impl OsString {
     /// in the given `OsString`.
     ///
     /// The collection may reserve more space to avoid frequent reallocations.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ffi::OsString;
+    ///
+    /// let mut s = OsString::new();
+    /// s.reserve(10);
+    /// assert!(s.capacity() >= 10);
+    /// ```
     #[stable(feature = "osstring_simple_functions", since = "1.9.0")]
     pub fn reserve(&mut self, additional: usize) {
         self.inner.reserve(additional)
