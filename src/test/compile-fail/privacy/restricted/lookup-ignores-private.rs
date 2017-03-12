@@ -16,10 +16,10 @@ mod foo {
     mod bar {
         #[derive(Default)]
         pub struct S {
-            pub(foo) x: i32,
+            pub(in foo) x: i32,
         }
         impl S {
-            pub(foo) fn f(&self) -> i32 { 0 }
+            pub(in foo) fn f(&self) -> i32 { 0 }
         }
 
         pub struct S2 {

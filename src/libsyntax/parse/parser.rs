@@ -4641,7 +4641,7 @@ impl<'a> Parser<'a> {
 
         let mut attrs = self.parse_outer_attributes()?;
         let lo = self.span.lo;
-        let vis = self.parse_visibility(true)?;
+        let vis = self.parse_visibility()?;
         let defaultness = self.parse_defaultness()?;
         let (name, node) = if self.eat_keyword(keywords::Type) {
             let name = self.parse_ident()?;
@@ -4972,7 +4972,7 @@ impl<'a> Parser<'a> {
             |p| {
                 let attrs = p.parse_outer_attributes()?;
                 let lo = p.span.lo;
-                let mut vis = p.parse_visibility(false)?;
+                let mut vis = p.parse_visibility()?;
                 let ty_is_interpolated =
                     p.token.is_interpolated() || p.look_ahead(1, |t| t.is_interpolated());
                 let mut ty = p.parse_ty()?;
@@ -5029,38 +5029,46 @@ impl<'a> Parser<'a> {
     fn parse_struct_decl_field(&mut self) -> PResult<'a, StructField> {
         let attrs = self.parse_outer_attributes()?;
         let lo = self.span.lo;
-        let vis = self.parse_visibility(true)?;
+        let vis = self.parse_visibility()?;
         self.parse_single_struct_field(lo, vis, attrs)
     }
 
-    // If `allow_path` is false, just parse the `pub` in `pub(path)` (but still parse `pub(crate)`)
-    fn parse_visibility(&mut self, allow_path: bool) -> PResult<'a, Visibility> {
-        let pub_crate = |this: &mut Self| {
-            let span = this.prev_span;
-            this.expect(&token::CloseDelim(token::Paren))?;
-            Ok(Visibility::Crate(span))
-        };
-
+    // Parse `pub`, `pub(crate)` and `pub(in path)` plus shortcuts
+    // `pub(self)` for `pub(in self)` and `pub(super)` for `pub(in super)`.
+    fn parse_visibility(&mut self) -> PResult<'a, Visibility> {
         if !self.eat_keyword(keywords::Pub) {
-            Ok(Visibility::Inherited)
-        } else if !allow_path {
-            // Look ahead to avoid eating the `(` in `pub(path)` while still parsing `pub(crate)`
-            if self.token == token::OpenDelim(token::Paren) &&
-               self.look_ahead(1, |t| t.is_keyword(keywords::Crate)) {
-                self.bump(); self.bump();
-                pub_crate(self)
-            } else {
-                Ok(Visibility::Public)
-            }
-        } else if !self.eat(&token::OpenDelim(token::Paren)) {
-            Ok(Visibility::Public)
-        } else if self.eat_keyword(keywords::Crate) {
-            pub_crate(self)
-        } else {
-            let path = self.parse_path(PathStyle::Mod)?.default_to_global();
-            self.expect(&token::CloseDelim(token::Paren))?;
-            Ok(Visibility::Restricted { path: P(path), id: ast::DUMMY_NODE_ID })
+            return Ok(Visibility::Inherited)
         }
+
+        if self.check(&token::OpenDelim(token::Paren)) {
+            if self.look_ahead(1, |t| t.is_keyword(keywords::Crate)) {
+                // `pub(crate)`
+                self.bump(); // `(`
+                self.bump(); // `crate`
+                let vis = Visibility::Crate(self.prev_span);
+                self.expect(&token::CloseDelim(token::Paren))?; // `)`
+                return Ok(vis)
+            } else if self.look_ahead(1, |t| t.is_keyword(keywords::In)) {
+                // `pub(in path)`
+                self.bump(); // `(`
+                self.bump(); // `in`
+                let path = self.parse_path(PathStyle::Mod)?.default_to_global(); // `path`
+                let vis = Visibility::Restricted { path: P(path), id: ast::DUMMY_NODE_ID };
+                self.expect(&token::CloseDelim(token::Paren))?; // `)`
+                return Ok(vis)
+            } else if self.look_ahead(2, |t| t == &token::CloseDelim(token::Paren)) &&
+                      self.look_ahead(1, |t| t.is_keyword(keywords::Super) ||
+                                             t.is_keyword(keywords::SelfValue)) {
+                // `pub(self)` or `pub(super)`
+                self.bump(); // `(`
+                let path = self.parse_path(PathStyle::Mod)?.default_to_global(); // `super`/`self`
+                let vis = Visibility::Restricted { path: P(path), id: ast::DUMMY_NODE_ID };
+                self.expect(&token::CloseDelim(token::Paren))?; // `)`
+                return Ok(vis)
+            }
+        }
+
+        Ok(Visibility::Public)
     }
 
     /// Parse defaultness: DEFAULT or nothing
@@ -5535,7 +5543,7 @@ impl<'a> Parser<'a> {
 
         let lo = self.span.lo;
 
-        let visibility = self.parse_visibility(true)?;
+        let visibility = self.parse_visibility()?;
 
         if self.eat_keyword(keywords::Use) {
             // USE ITEM
@@ -5814,7 +5822,7 @@ impl<'a> Parser<'a> {
     fn parse_foreign_item(&mut self) -> PResult<'a, Option<ForeignItem>> {
         let attrs = self.parse_outer_attributes()?;
         let lo = self.span.lo;
-        let visibility = self.parse_visibility(true)?;
+        let visibility = self.parse_visibility()?;
 
         if self.check_keyword(keywords::Static) {
             // FOREIGN STATIC ITEM
