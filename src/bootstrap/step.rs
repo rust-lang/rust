@@ -633,12 +633,16 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
     for (krate, path, default) in krates("test") {
         rules.doc(&krate.doc_step, path)
              .dep(|s| s.name("libtest-link"))
+             // Needed so rustdoc generates relative links to std.
+             .dep(|s| s.name("doc-crate-std"))
              .default(default && build.config.compiler_docs)
              .run(move |s| doc::test(build, s.stage, s.target));
     }
     for (krate, path, default) in krates("rustc-main") {
         rules.doc(&krate.doc_step, path)
              .dep(|s| s.name("librustc-link"))
+             // Needed so rustdoc generates relative links to std.
+             .dep(|s| s.name("doc-crate-std"))
              .host(true)
              .default(default && build.config.docs)
              .run(move |s| doc::rustc(build, s.stage, s.target));

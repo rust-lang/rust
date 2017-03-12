@@ -168,9 +168,7 @@ pub fn std(build: &Build, stage: u32, target: &str) {
     // We don't want to build docs for internal std dependencies unless
     // in compiler-docs mode. When not in that mode, we whitelist the crates
     // for which docs must be built.
-    if build.config.compiler_docs {
-        cargo.arg("-p").arg("std");
-    } else {
+    if !build.config.compiler_docs {
         cargo.arg("--no-deps");
         for krate in &["alloc", "collections", "core", "std", "std_unicode"] {
             cargo.arg("-p").arg(krate);
@@ -244,9 +242,15 @@ pub fn rustc(build: &Build, stage: u32, target: &str) {
          .arg(build.src.join("src/rustc/Cargo.toml"))
          .arg("--features").arg(build.rustc_features());
 
-    // Like with libstd above if compiler docs aren't enabled then we're not
-    // documenting internal dependencies, so we have a whitelist.
-    if !build.config.compiler_docs {
+    if build.config.compiler_docs {
+        // src/rustc/Cargo.toml contains bin crates called rustc and rustdoc
+        // which would otherwise overwrite the docs for the real rustc and
+        // rustdoc lib crates.
+        cargo.arg("-p").arg("rustc_driver")
+             .arg("-p").arg("rustdoc");
+    } else {
+        // Like with libstd above if compiler docs aren't enabled then we're not
+        // documenting internal dependencies, so we have a whitelist.
         cargo.arg("--no-deps");
         for krate in &["proc_macro"] {
             cargo.arg("-p").arg(krate);
