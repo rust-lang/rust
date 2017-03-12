@@ -1582,7 +1582,8 @@ impl Path {
 
     /// The path without its final component, if any.
     ///
-    /// Returns [`None`] if the path terminates in a root or prefix.
+    /// Returns [`None`] if the path terminates in a root or prefix, or if the
+    /// path has only one component.
     ///
     /// [`None`]: ../../std/option/enum.Option.html#variant.None
     ///
@@ -1607,7 +1608,15 @@ impl Path {
             match p {
                 Component::Normal(_) |
                 Component::CurDir |
-                Component::ParentDir => Some(comps.as_path()),
+                Component::ParentDir => {
+                    let parent_path = comps.as_path();
+                    // Never return the empty path.
+                    if parent_path.as_u8_slice().len() == 0 {
+                        None
+                    } else {
+                        Some(parent_path)
+                    }
+                }
                 _ => None,
             }
         })
@@ -2442,7 +2451,7 @@ mod tests {
            iter: ["foo"],
            has_root: false,
            is_absolute: false,
-           parent: Some(""),
+           parent: None,
            file_name: Some("foo"),
            file_stem: Some("foo"),
            extension: None
@@ -2472,7 +2481,7 @@ mod tests {
            iter: ["foo"],
            has_root: false,
            is_absolute: false,
-           parent: Some(""),
+           parent: None,
            file_name: Some("foo"),
            file_stem: Some("foo"),
            extension: None
@@ -2532,7 +2541,7 @@ mod tests {
            iter: ["."],
            has_root: false,
            is_absolute: false,
-           parent: Some(""),
+           parent: None,
            file_name: None,
            file_stem: None,
            extension: None
@@ -2552,7 +2561,7 @@ mod tests {
            iter: [".."],
            has_root: false,
            is_absolute: false,
-           parent: Some(""),
+           parent: None,
            file_name: None,
            file_stem: None,
            extension: None
@@ -2562,7 +2571,7 @@ mod tests {
            iter: ["foo"],
            has_root: false,
            is_absolute: false,
-           parent: Some(""),
+           parent: None,
            file_name: Some("foo"),
            file_stem: Some("foo"),
            extension: None
@@ -2582,7 +2591,7 @@ mod tests {
            iter: ["foo"],
            has_root: false,
            is_absolute: false,
-           parent: Some(""),
+           parent: None,
            file_name: Some("foo"),
            file_stem: Some("foo"),
            extension: None
@@ -2632,7 +2641,7 @@ mod tests {
            iter: ["."],
            has_root: false,
            is_absolute: false,
-           parent: Some(""),
+           parent: None,
            file_name: None,
            file_stem: None,
            extension: None
@@ -2642,7 +2651,7 @@ mod tests {
            iter: ["."],
            has_root: false,
            is_absolute: false,
-           parent: Some(""),
+           parent: None,
            file_name: None,
            file_stem: None,
            extension: None
@@ -2692,7 +2701,7 @@ mod tests {
            iter: [".foo"],
            has_root: false,
            is_absolute: false,
-           parent: Some(""),
+           parent: None,
            file_name: Some(".foo"),
            file_stem: Some(".foo"),
            extension: None
@@ -2716,7 +2725,7 @@ mod tests {
            iter: ["foo"],
            has_root: false,
            is_absolute: false,
-           parent: Some(""),
+           parent: None,
            file_name: Some("foo"),
            file_stem: Some("foo"),
            extension: None
@@ -2786,7 +2795,7 @@ mod tests {
            iter: ["foo"],
            has_root: false,
            is_absolute: false,
-           parent: Some(""),
+           parent: None,
            file_name: Some("foo"),
            file_stem: Some("foo"),
            extension: None
@@ -2846,7 +2855,7 @@ mod tests {
            iter: ["."],
            has_root: false,
            is_absolute: false,
-           parent: Some(""),
+           parent: None,
            file_name: None,
            file_stem: None,
            extension: None
@@ -2866,7 +2875,7 @@ mod tests {
            iter: [".."],
            has_root: false,
            is_absolute: false,
-           parent: Some(""),
+           parent: None,
            file_name: None,
            file_stem: None,
            extension: None
@@ -2876,7 +2885,7 @@ mod tests {
            iter: ["foo"],
            has_root: false,
            is_absolute: false,
-           parent: Some(""),
+           parent: None,
            file_name: Some("foo"),
            file_stem: Some("foo"),
            extension: None
@@ -2896,7 +2905,7 @@ mod tests {
            iter: ["foo"],
            has_root: false,
            is_absolute: false,
-           parent: Some(""),
+           parent: None,
            file_name: Some("foo"),
            file_stem: Some("foo"),
            extension: None
@@ -2946,7 +2955,7 @@ mod tests {
            iter: ["."],
            has_root: false,
            is_absolute: false,
-           parent: Some(""),
+           parent: None,
            file_name: None,
            file_stem: None,
            extension: None
@@ -2956,7 +2965,7 @@ mod tests {
            iter: ["."],
            has_root: false,
            is_absolute: false,
-           parent: Some(""),
+           parent: None,
            file_name: None,
            file_stem: None,
            extension: None
