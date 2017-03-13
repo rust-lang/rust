@@ -15,7 +15,7 @@ use rustc::mir;
 use rustc_data_structures::indexed_vec::Idx;
 
 use base;
-use common;
+use common::{self, CrateContext, C_null};
 use builder::Builder;
 use value::Value;
 use type_of;
@@ -77,6 +77,22 @@ impl<'tcx> fmt::Debug for OperandRef<'tcx> {
 }
 
 impl<'a, 'tcx> OperandRef<'tcx> {
+    pub fn new_zst(ccx: &CrateContext<'a, 'tcx>,
+                   ty: Ty<'tcx>) -> OperandRef<'tcx> {
+        assert!(common::type_is_zero_size(ccx, ty));
+        let llty = type_of::type_of(ccx, ty);
+        let val = if common::type_is_imm_pair(ccx, ty) {
+            let fields = llty.field_types();
+            OperandValue::Pair(C_null(fields[0]), C_null(fields[1]))
+        } else {
+            OperandValue::Immediate(C_null(llty))
+        };
+        OperandRef {
+            val: val,
+            ty: ty
+        }
+    }
+
     /// Asserts that this operand refers to a scalar and returns
     /// a reference to its value.
     pub fn immediate(self) -> ValueRef {
@@ -268,10 +284,17 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 bcx.store(base::from_immediate(bcx, s), lldest, align);
             }
             OperandValue::Pair(a, b) => {
+                let f_align = match *bcx.ccx.layout_of(operand.ty) {
+                    Layout::Univariant { ref variant, .. } if variant.packed => {
+                        Some(1)
+                    }
+                    _ => align
+                };
+
                 let a = base::from_immediate(bcx, a);
                 let b = base::from_immediate(bcx, b);
-                bcx.store(a, bcx.struct_gep(lldest, 0), align);
-                bcx.store(b, bcx.struct_gep(lldest, 1), align);
+                bcx.store(a, bcx.struct_gep(lldest, 0), f_align);
+                bcx.store(b, bcx.struct_gep(lldest, 1), f_align);
             }
         }
     }
