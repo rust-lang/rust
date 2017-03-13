@@ -166,7 +166,7 @@ impl Utf8Error {
     ///   that starts at the index given by `valid_up_to()`.
     ///   Decoding should resume after that sequence
     ///   (after inserting a U+FFFD REPLACEMENT CHARACTER) in case of lossy decoding.
-    #[unstable(feature = "utf8_error_error_len", reason ="new", issue = "0")]
+    #[unstable(feature = "utf8_error_error_len", reason ="new", issue = "40494")]
     pub fn error_len(&self) -> Option<usize> {
         self.error_len.map(|len| len as usize)
     }
