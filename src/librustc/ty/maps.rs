@@ -85,7 +85,7 @@ impl<'tcx> Value<'tcx> for Ty<'tcx> {
 
 pub struct CycleError<'a> {
     span: Span,
-    cycle: RefMut<'a, [(Span, Query)]>
+    cycle: RefMut<'a, [(Span, Query)]>,
 }
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {

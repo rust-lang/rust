@@ -23,7 +23,7 @@ use hir;
 #[derive(Clone, Copy, Debug)]
 pub struct ExpectedFound<T> {
     pub expected: T,
-    pub found: T
+    pub found: T,
 }
 
 // Data structures used in type unification

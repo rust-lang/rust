@@ -374,14 +374,13 @@ impl LocalPathBuffer {
     fn new(root_mode: RootMode) -> LocalPathBuffer {
         LocalPathBuffer {
             root_mode: root_mode,
-            str: String::new()
+            str: String::new(),
         }
     }
 
     fn into_string(self) -> String {
         self.str
     }
-
 }
 
 impl ItemPathBuffer for LocalPathBuffer {
