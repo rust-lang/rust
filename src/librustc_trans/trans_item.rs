@@ -20,28 +20,23 @@ use consts;
 use context::{CrateContext, SharedCrateContext};
 use common;
 use declare;
-use glue::DropGlueKind;
 use llvm;
 use monomorphize::Instance;
 use rustc::dep_graph::DepNode;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
-use rustc::hir::map::definitions::DefPathData;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::subst::Substs;
 use rustc_const_eval::fatal_const_eval_err;
 use syntax::ast::{self, NodeId};
 use syntax::attr;
 use type_of;
-use glue;
-use abi::{Abi, FnType};
 use back::symbol_names;
 use std::fmt::Write;
 use std::iter;
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug, Hash)]
 pub enum TransItem<'tcx> {
-    DropGlue(DropGlueKind<'tcx>),
     Fn(Instance<'tcx>),
     Static(NodeId)
 }
@@ -100,9 +95,6 @@ impl<'a, 'tcx> TransItem<'tcx> {
 
                 base::trans_instance(&ccx, instance);
             }
-            TransItem::DropGlue(dg) => {
-                glue::implement_drop_glue(&ccx, dg);
-            }
         }
 
         debug!("END IMPLEMENTING '{} ({})' in cgu {}",
@@ -130,9 +122,6 @@ impl<'a, 'tcx> TransItem<'tcx> {
             }
             TransItem::Fn(instance) => {
                 TransItem::predefine_fn(ccx, instance, linkage, &symbol_name);
-            }
-            TransItem::DropGlue(dg) => {
-                TransItem::predefine_drop_glue(ccx, dg, linkage, &symbol_name);
             }
         }
 
@@ -180,50 +169,12 @@ impl<'a, 'tcx> TransItem<'tcx> {
         }
 
         debug!("predefine_fn: mono_ty = {:?} instance = {:?}", mono_ty, instance);
-        match ccx.tcx().def_key(instance.def_id()).disambiguated_data.data {
-            DefPathData::StructCtor |
-            DefPathData::EnumVariant(..) |
-            DefPathData::ClosureExpr => {
-                attributes::inline(lldecl, attributes::InlineAttr::Hint);
-            }
-            _ => {}
+        if common::is_inline_instance(ccx.tcx(), &instance) {
+            attributes::inline(lldecl, attributes::InlineAttr::Hint);
         }
-
         attributes::from_fn_attrs(ccx, &attrs, lldecl);
 
         ccx.instances().borrow_mut().insert(instance, lldecl);
-    }
-
-    fn predefine_drop_glue(ccx: &CrateContext<'a, 'tcx>,
-                           dg: glue::DropGlueKind<'tcx>,
-                           linkage: llvm::Linkage,
-                           symbol_name: &str) {
-        let tcx = ccx.tcx();
-        assert_eq!(dg.ty(), glue::get_drop_glue_type(ccx.shared(), dg.ty()));
-        let t = dg.ty();
-
-        let sig = tcx.mk_fn_sig(
-            iter::once(tcx.mk_mut_ptr(t)),
-            tcx.mk_nil(),
-            false,
-            hir::Unsafety::Normal,
-            Abi::Rust
-        );
-
-        debug!("predefine_drop_glue: sig={}", sig);
-
-        let fn_ty = FnType::new(ccx, sig, &[]);
-        let llfnty = fn_ty.llvm_type(ccx);
-
-        assert!(declare::get_defined_value(ccx, symbol_name).is_none());
-        let llfn = declare::declare_cfn(ccx, symbol_name, llfnty);
-        unsafe { llvm::LLVMRustSetLinkage(llfn, linkage) };
-        if linkage == llvm::Linkage::LinkOnceODRLinkage ||
-           linkage == llvm::Linkage::WeakODRLinkage {
-            llvm::SetUniqueComdat(ccx.llmod(), llfn);
-        }
-        attributes::set_frame_pointer_elimination(ccx, llfn);
-        ccx.drop_glues().borrow_mut().insert(dg, (llfn, fn_ty));
     }
 
     pub fn compute_symbol_name(&self,
@@ -233,13 +184,6 @@ impl<'a, 'tcx> TransItem<'tcx> {
             TransItem::Static(node_id) => {
                 let def_id = scx.tcx().hir.local_def_id(node_id);
                 symbol_names::symbol_name(Instance::mono(scx.tcx(), def_id), scx)
-            }
-            TransItem::DropGlue(dg) => {
-                let prefix = match dg {
-                    DropGlueKind::Ty(_) => "drop",
-                    DropGlueKind::TyContents(_) => "drop_contents",
-                };
-                symbol_names::exported_name_from_type_and_prefix(scx, dg.ty(), prefix)
             }
         }
     }
@@ -257,7 +201,6 @@ impl<'a, 'tcx> TransItem<'tcx> {
                     InstantiationMode::GloballyShared
                 }
             }
-            TransItem::DropGlue(..) => InstantiationMode::LocalCopy,
             TransItem::Static(..) => InstantiationMode::GloballyShared,
         }
     }
@@ -267,7 +210,6 @@ impl<'a, 'tcx> TransItem<'tcx> {
             TransItem::Fn(ref instance) => {
                 instance.substs.types().next().is_some()
             }
-            TransItem::DropGlue(..) |
             TransItem::Static(..)   => false,
         }
     }
@@ -276,7 +218,6 @@ impl<'a, 'tcx> TransItem<'tcx> {
         let def_id = match *self {
             TransItem::Fn(ref instance) => instance.def_id(),
             TransItem::Static(node_id) => tcx.hir.local_def_id(node_id),
-            TransItem::DropGlue(..) => return None,
         };
 
         let attributes = tcx.get_attrs(def_id);
@@ -300,16 +241,6 @@ impl<'a, 'tcx> TransItem<'tcx> {
         let hir_map = &tcx.hir;
 
         return match *self {
-            TransItem::DropGlue(dg) => {
-                let mut s = String::with_capacity(32);
-                match dg {
-                    DropGlueKind::Ty(_) => s.push_str("drop-glue "),
-                    DropGlueKind::TyContents(_) => s.push_str("drop-glue-contents "),
-                };
-                let printer = DefPathBasedNames::new(tcx, false, false);
-                printer.push_type_name(dg.ty(), &mut s);
-                s
-            }
             TransItem::Fn(instance) => {
                 to_string_internal(tcx, "fn ", instance)
             },
@@ -334,13 +265,6 @@ impl<'a, 'tcx> TransItem<'tcx> {
 
     pub fn to_raw_string(&self) -> String {
         match *self {
-            TransItem::DropGlue(dg) => {
-                let prefix = match dg {
-                    DropGlueKind::Ty(_) => "Ty",
-                    DropGlueKind::TyContents(_) => "TyContents",
-                };
-                format!("DropGlue({}: {})", prefix, dg.ty() as *const _ as usize)
-            }
             TransItem::Fn(instance) => {
                 format!("Fn({:?}, {})",
                          instance.def,

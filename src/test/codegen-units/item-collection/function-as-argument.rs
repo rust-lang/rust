@@ -44,5 +44,3 @@ fn main() {
     //~ TRANS_ITEM fn function_as_argument::function[0]<f32, i64>
     take_fn_pointer(function, 0f32, 0i64);
 }
-
-//~ TRANS_ITEM drop-glue i8

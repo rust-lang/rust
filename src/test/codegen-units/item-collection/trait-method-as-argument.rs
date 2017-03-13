@@ -64,5 +64,3 @@ fn main() {
     //~ TRANS_ITEM fn core::ops[0]::FnMut[0]::call_mut[0]<fn(u32) -> u32, (u32)>
     take_foo_mut(Trait::foo, 'c');
 }
-
-//~ TRANS_ITEM drop-glue i8

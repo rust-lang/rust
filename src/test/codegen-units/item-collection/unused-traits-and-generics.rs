@@ -86,4 +86,3 @@ impl NonGeneric {
 
 // Only the non-generic methods should be instantiated:
 //~ TRANS_ITEM fn unused_traits_and_generics::{{impl}}[3]::foo[0]
-//~ TRANS_ITEM drop-glue i8

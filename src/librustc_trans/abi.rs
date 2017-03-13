@@ -11,7 +11,7 @@
 use llvm::{self, ValueRef, Integer, Pointer, Float, Double, Struct, Array, Vector, AttributePlace};
 use base;
 use builder::Builder;
-use common::{self, type_is_fat_ptr, C_uint};
+use common::{type_is_fat_ptr, C_uint};
 use context::CrateContext;
 use cabi_x86;
 use cabi_x86_64;
@@ -59,6 +59,7 @@ enum ArgKind {
 pub use self::attr_impl::ArgAttribute;
 
 #[allow(non_upper_case_globals)]
+#[allow(unused)]
 mod attr_impl {
     // The subset of llvm::Attribute needed for arguments, packed into a bitfield.
     bitflags! {
@@ -223,16 +224,6 @@ impl ArgType {
         self.kind == ArgKind::Ignore
     }
 
-    /// Get the LLVM type for an lvalue of the original Rust type of
-    /// this argument/return, i.e. the result of `type_of::type_of`.
-    pub fn memory_ty(&self, ccx: &CrateContext) -> Type {
-        if self.original_ty == Type::i1(ccx) {
-            Type::i8(ccx)
-        } else {
-            self.original_ty
-        }
-    }
-
     /// Store a direct/indirect value described by this ArgType into a
     /// lvalue for the original Rust type of this argument/return.
     /// Can be used for both storing formal arguments into Rust variables
@@ -342,17 +333,6 @@ impl FnType {
         fn_ty.args[1].ignore();
         fn_ty.adjust_for_abi(ccx, sig);
         fn_ty
-    }
-
-    pub fn from_instance<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                   instance: &ty::Instance<'tcx>,
-                                   extra_args: &[Ty<'tcx>]) -> FnType
-    {
-        let ity = common::instance_ty(ccx.shared(), instance);
-        let sig = common::ty_fn_sig(ccx, ity);
-        let sig = ccx.tcx().erase_late_bound_regions_and_normalize(&sig);
-
-        Self::new(ccx, sig, extra_args)
     }
 
     fn unadjusted<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,

@@ -15,7 +15,7 @@ use rustc::middle::region::ROOT_CODE_EXTENT;
 use rustc::mir::*;
 use rustc::mir::transform::MirSource;
 use rustc::ty::{self, Ty};
-use rustc::ty::subst::Subst;
+use rustc::ty::subst::{Kind, Subst};
 use rustc::ty::maps::Providers;
 
 use rustc_data_structures::indexed_vec::{IndexVec, Idx};
@@ -25,10 +25,13 @@ use syntax::ast;
 use syntax_pos::Span;
 
 use std::cell::RefCell;
+use std::fmt;
 use std::iter;
 use std::mem;
 
 use transform::{add_call_guards, no_landing_pads, simplify};
+use util::elaborate_drops::{self, DropElaborator, DropStyle, DropFlagMode};
+use util::patch::MirPatch;
 
 pub fn provide(providers: &mut Providers) {
     providers.mir_shims = make_shim;
@@ -101,6 +104,9 @@ fn make_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
                 None
             )
         }
+        ty::InstanceDef::DropGlue(def_id, ty) => {
+            build_drop_shim(tcx, &param_env, def_id, ty)
+        }
         ty::InstanceDef::Intrinsic(_) => {
             bug!("creating shims from intrinsics ({:?}) is unsupported", instance)
         }
@@ -143,6 +149,129 @@ fn local_decls_for_sig<'tcx>(sig: &ty::FnSig<'tcx>)
         .collect()
 }
 
+fn build_drop_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
+                             param_env: &ty::ParameterEnvironment<'tcx>,
+                             def_id: DefId,
+                             ty: Option<Ty<'tcx>>)
+                             -> Mir<'tcx>
+{
+    debug!("build_drop_shim(def_id={:?}, ty={:?})", def_id, ty);
+
+    let substs = if let Some(ty) = ty {
+        tcx.mk_substs(iter::once(Kind::from(ty)))
+    } else {
+        param_env.free_substs
+    };
+    let fn_ty = tcx.item_type(def_id).subst(tcx, substs);
+    let sig = tcx.erase_late_bound_regions(&fn_ty.fn_sig());
+    let span = tcx.def_span(def_id);
+
+    let source_info = SourceInfo { span, scope: ARGUMENT_VISIBILITY_SCOPE };
+
+    let return_block = BasicBlock::new(1);
+    let mut blocks = IndexVec::new();
+    let block = |blocks: &mut IndexVec<_, _>, kind| {
+        blocks.push(BasicBlockData {
+            statements: vec![],
+            terminator: Some(Terminator { source_info, kind }),
+            is_cleanup: false
+        })
+    };
+    block(&mut blocks, TerminatorKind::Goto { target: return_block });
+    block(&mut blocks, TerminatorKind::Return);
+
+    let mut mir = Mir::new(
+        blocks,
+        IndexVec::from_elem_n(
+            VisibilityScopeData { span: span, parent_scope: None }, 1
+        ),
+        IndexVec::new(),
+        sig.output(),
+        local_decls_for_sig(&sig),
+        sig.inputs().len(),
+        vec![],
+        span
+    );
+
+    if let Some(..) = ty {
+        let patch = {
+            let mut elaborator = DropShimElaborator {
+                mir: &mir,
+                patch: MirPatch::new(&mir),
+                tcx, param_env
+            };
+            let dropee = Lvalue::Projection(
+                box Projection {
+                    base: Lvalue::Local(Local::new(1+0)),
+                    elem: ProjectionElem::Deref
+                }
+                );
+            let resume_block = elaborator.patch.resume_block();
+            elaborate_drops::elaborate_drop(
+                &mut elaborator,
+                source_info,
+                false,
+                &dropee,
+                (),
+                return_block,
+                Some(resume_block),
+                START_BLOCK
+            );
+            elaborator.patch
+        };
+        patch.apply(&mut mir);
+    }
+
+    mir
+}
+
+pub struct DropShimElaborator<'a, 'tcx: 'a> {
+    mir: &'a Mir<'tcx>,
+    patch: MirPatch<'tcx>,
+    tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
+    param_env: &'a ty::ParameterEnvironment<'tcx>,
+}
+
+impl<'a, 'tcx> fmt::Debug for DropShimElaborator<'a, 'tcx> {
+    fn fmt(&self, _f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        Ok(())
+    }
+}
+
+impl<'a, 'tcx> DropElaborator<'a, 'tcx> for DropShimElaborator<'a, 'tcx> {
+    type Path = ();
+
+    fn patch(&mut self) -> &mut MirPatch<'tcx> { &mut self.patch }
+    fn mir(&self) -> &'a Mir<'tcx> { self.mir }
+    fn tcx(&self) -> ty::TyCtxt<'a, 'tcx, 'tcx> { self.tcx }
+    fn param_env(&self) -> &'a ty::ParameterEnvironment<'tcx> { self.param_env }
+
+    fn drop_style(&self, _path: Self::Path, mode: DropFlagMode) -> DropStyle {
+        if let DropFlagMode::Shallow = mode {
+            DropStyle::Static
+        } else {
+            DropStyle::Open
+        }
+    }
+
+    fn get_drop_flag(&mut self, _path: Self::Path) -> Option<Operand<'tcx>> {
+        None
+    }
+
+    fn clear_drop_flag(&mut self, _location: Location, _path: Self::Path, _mode: DropFlagMode) {
+    }
+
+    fn field_subpath(&self, _path: Self::Path, _field: Field) -> Option<Self::Path> {
+        None
+    }
+    fn deref_subpath(&self, _path: Self::Path) -> Option<Self::Path> {
+        None
+    }
+    fn downcast_subpath(&self, _path: Self::Path, _variant: usize) -> Option<Self::Path> {
+        Some(())
+    }
+}
+
 /// Build a "call" shim for `def_id`. The shim calls the
 /// function specified by `call_kind`, first adjusting its first
 /// argument according to `rcvr_adjustment`.
@@ -162,7 +291,6 @@ fn build_call_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
            def_id, rcvr_adjustment, call_kind, untuple_args);
 
     let fn_ty = tcx.item_type(def_id).subst(tcx, param_env.free_substs);
-    // Not normalizing here without a param env.
     let sig = tcx.erase_late_bound_regions(&fn_ty.fn_sig());
     let span = tcx.def_span(def_id);
 

@@ -96,6 +96,9 @@ pub fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         assert_eq!(common::val_ty(llfn), llptrty);
         debug!("get_fn: not casting pointer!");
 
+        if common::is_inline_instance(tcx, &instance) {
+            attributes::inline(llfn, attributes::InlineAttr::Hint);
+        }
         let attrs = instance.def.attrs(ccx.tcx());
         attributes::from_fn_attrs(ccx, &attrs, llfn);
 

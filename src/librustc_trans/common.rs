@@ -536,15 +536,26 @@ pub fn requests_inline<'a, 'tcx>(
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     instance: &ty::Instance<'tcx>
 ) -> bool {
+    if is_inline_instance(tcx, instance) {
+        return true
+    }
+    attr::requests_inline(&instance.def.attrs(tcx)[..])
+}
+
+pub fn is_inline_instance<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    instance: &ty::Instance<'tcx>
+) -> bool {
     let def_id = match instance.def {
         ty::InstanceDef::Item(def_id) => def_id,
+        ty::InstanceDef::DropGlue(_, Some(_)) => return false,
         _ => return true
     };
     match tcx.def_key(def_id).disambiguated_data.data {
         DefPathData::StructCtor |
         DefPathData::EnumVariant(..) |
         DefPathData::ClosureExpr => true,
-        _ => attr::requests_inline(&tcx.get_attrs(def_id)[..]),
+        _ => false
     }
 }
 

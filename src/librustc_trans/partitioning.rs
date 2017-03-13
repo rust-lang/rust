@@ -194,7 +194,6 @@ impl<'tcx> CodegenUnit<'tcx> {
                TransItem::Static(node_id) => {
                     exported_symbols.contains(&node_id)
                }
-               TransItem::DropGlue(..) => false,
             };
             exported.hash(&mut state);
         }
@@ -245,7 +244,6 @@ impl<'tcx> CodegenUnit<'tcx> {
                     tcx.hir.as_local_node_id(instance.def_id())
                 }
                 TransItem::Static(node_id) => Some(node_id),
-                TransItem::DropGlue(_) => None,
             }
         }
     }
@@ -341,7 +339,6 @@ fn place_root_translation_items<'a, 'tcx, I>(scx: &SharedCrateContext<'a, 'tcx>,
                     match trans_item {
                         TransItem::Fn(..) |
                         TransItem::Static(..) => llvm::ExternalLinkage,
-                        TransItem::DropGlue(..) => unreachable!(),
                     }
                 }
             };
@@ -461,6 +458,7 @@ fn characteristic_def_id_of_trans_item<'a, 'tcx>(scx: &SharedCrateContext<'a, 't
                 ty::InstanceDef::FnPtrShim(..) |
                 ty::InstanceDef::ClosureOnceShim { .. } |
                 ty::InstanceDef::Intrinsic(..) |
+                ty::InstanceDef::DropGlue(..) |
                 ty::InstanceDef::Virtual(..) => return None
             };
 
@@ -485,7 +483,6 @@ fn characteristic_def_id_of_trans_item<'a, 'tcx>(scx: &SharedCrateContext<'a, 't
 
             Some(def_id)
         }
-        TransItem::DropGlue(dg) => characteristic_def_id_of_type(dg.ty()),
         TransItem::Static(node_id) => Some(tcx.hir.local_def_id(node_id)),
     }
 }

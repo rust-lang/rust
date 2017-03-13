@@ -98,8 +98,9 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 let size = count.as_u64(bcx.tcx().sess.target.uint_type);
                 let size = C_uint(bcx.ccx, size);
                 let base = base::get_dataptr(&bcx, dest.llval);
-                tvec::slice_for_each(&bcx, base, tr_elem.ty, size, |bcx, llslot| {
+                tvec::slice_for_each(&bcx, base, tr_elem.ty, size, |bcx, llslot, loop_bb| {
                     self.store_operand(bcx, llslot, dest.alignment.to_align(), tr_elem);
+                    bcx.br(loop_bb);
                 })
             }
 
@@ -459,7 +460,6 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 };
                 (bcx, operand)
             }
-
             mir::Rvalue::Use(ref operand) => {
                 let operand = self.trans_operand(&bcx, operand);
                 (bcx, operand)
@@ -662,7 +662,7 @@ pub fn rvalue_creates_operand(rvalue: &mir::Rvalue) -> bool {
         mir::Rvalue::UnaryOp(..) |
         mir::Rvalue::Discriminant(..) |
         mir::Rvalue::Box(..) |
-        mir::Rvalue::Use(..) =>
+        mir::Rvalue::Use(..) => // (*)
             true,
         mir::Rvalue::Repeat(..) |
         mir::Rvalue::Aggregate(..) =>
