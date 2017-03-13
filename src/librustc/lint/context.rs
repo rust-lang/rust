@@ -113,13 +113,19 @@ impl<'a, S: Into<MultiSpan>> IntoEarlyLint for (S, &'a str) {
         let (span, msg) = self;
         let mut diagnostic = Diagnostic::new(errors::Level::Warning, msg);
         diagnostic.set_span(span);
-        EarlyLint { id: id, diagnostic: diagnostic }
+        EarlyLint {
+            id: id,
+            diagnostic: diagnostic,
+        }
     }
 }
 
 impl IntoEarlyLint for Diagnostic {
     fn into_early_lint(self, id: LintId) -> EarlyLint {
-        EarlyLint { id: id, diagnostic: self }
+        EarlyLint {
+            id: id,
+            diagnostic: self,
+        }
     }
 }
 
@@ -146,7 +152,7 @@ enum TargetLint {
 
 enum FindLintError {
     NotFound,
-    Removed
+    Removed,
 }
 
 impl LintStore {
@@ -1127,7 +1133,7 @@ enum CheckLintNameResult {
     NoLint,
     // The lint is either renamed or removed. This is the warning
     // message.
-    Warning(String)
+    Warning(String),
 }
 
 /// Checks the name of a lint for its existence, and whether it was
