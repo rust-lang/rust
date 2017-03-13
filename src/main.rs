@@ -89,7 +89,6 @@ impl<'a> CompilerCalls<'a> for ClippyCompilerCalls {
                                                            lint_groups,
                                                            llvm_passes,
                                                            attributes,
-                                                           mir_passes,
                                                            .. } = registry;
                     let sess = &state.session;
                     let mut ls = sess.lint_store.borrow_mut();
@@ -105,7 +104,6 @@ impl<'a> CompilerCalls<'a> for ClippyCompilerCalls {
                     }
 
                     sess.plugin_llvm_passes.borrow_mut().extend(llvm_passes);
-                    sess.mir_passes.borrow_mut().extend(mir_passes);
                     sess.plugin_attributes.borrow_mut().extend(attributes);
                 }
                 old(state);
