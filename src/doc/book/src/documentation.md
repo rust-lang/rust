@@ -183,24 +183,6 @@ To write some Rust code in a comment, use the triple graves:
 # fn foo() {}
 ```
 
-If you want something that's not Rust code, you can add an annotation:
-
-```rust
-/// ```c
-/// printf("Hello, world\n");
-/// ```
-# fn foo() {}
-```
-
-This will highlight according to whatever language you're showing off.
-If you're only showing plain text, choose `text`.
-
-It's important to choose the correct annotation here, because `rustdoc` uses it
-in an interesting way: It can be used to actually test your examples in a
-library crate, so that they don't get out of date. If you have some C code but
-`rustdoc` thinks it's Rust because you left off the annotation, `rustdoc` will
-complain when trying to generate the documentation.
-
 ## Documentation as tests
 
 Let's discuss our sample example documentation:
