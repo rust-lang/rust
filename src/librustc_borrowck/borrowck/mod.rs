@@ -747,9 +747,9 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
         if let Some((span, msg)) = immutable_field {
             db.span_label(span, &msg);
         }
-        if let Some(span) = local_def {
-            if let Ok(snippet) = self.tcx.sess.codemap().span_to_snippet(span) {
-                db.span_label(span, &format!("consider changing this to `mut {}`", snippet));
+        if let Some(let_span) = local_def {
+            if let Ok(snippet) = self.tcx.sess.codemap().span_to_snippet(let_span) {
+                db.span_label(let_span, &format!("consider changing this to `mut {}`", snippet));
             }
         }
         db
@@ -1119,6 +1119,11 @@ before rustc 1.16, this temporary lived longer - see issue #39283 \
                         }
                     } else {
                         db.span_label(*error_span, &format!("cannot borrow mutably"));
+                    }
+                } else if let Categorization::Interior(ref cmt, _) = err.cmt.cat {
+                    if let mc::MutabilityCategory::McImmutable = cmt.mutbl {
+                        db.span_label(*error_span,
+                                      &"cannot mutably borrow immutable field");
                     }
                 }
             }

@@ -4,7 +4,7 @@ error: cannot borrow immutable field `z.x` as mutable
 20 |     let z = Z { x: X::Y };
    |         - consider changing this to `mut z`
 21 |     let _ = &mut z.x;
-   |                  ^^^
+   |                  ^^^ cannot mutably borrow immutable field
 
 error: aborting due to previous error
 
