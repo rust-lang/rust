@@ -49,6 +49,7 @@ matrix:
         SCCACHE_ERROR_LOG=/tmp/sccache.log
         RUST_LOG=sccache=debug
         MACOSX_DEPLOYMENT_TARGET=10.7
+        ALLOW_PR=1
       os: osx
       osx_image: xcode8.2
       install: &osx_install_sccache >
