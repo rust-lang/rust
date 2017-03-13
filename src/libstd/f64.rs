@@ -1134,7 +1134,7 @@ impl f64 {
     /// assert_eq!((12.5f64).to_bits(), 0x4029000000000000);
     ///
     /// ```
-    #[unstable(feature = "float_bits_conv", reason = "recently added", issue = "0")]
+    #[unstable(feature = "float_bits_conv", reason = "recently added", issue = "40470")]
     #[inline]
     pub fn to_bits(self) -> u64 {
         unsafe { ::mem::transmute(self) }
@@ -1162,7 +1162,7 @@ impl f64 {
     /// // Example for a signaling NaN value:
     /// assert_eq!(f64::from_bits(0x7FF0000000000001), Err(()));
     /// ```
-    #[unstable(feature = "float_bits_conv", reason = "recently added", issue = "0")]
+    #[unstable(feature = "float_bits_conv", reason = "recently added", issue = "40470")]
     #[inline]
     pub fn from_bits(v: u64) -> Result<Self, ()> {
         match v {
