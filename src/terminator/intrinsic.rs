@@ -402,6 +402,25 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 }
             }
 
+            "write_bytes" => {
+                let u8 = self.tcx.types.u8;
+                let ty = substs.type_at(0);
+                let size = self.type_size(ty)?.expect("write_bytes() type must be sized");
+                let val_byte = self.value_to_primval(arg_vals[1], u8)?.to_u128()?;
+                let mut pattern: u128 = 0;
+                for ii in 0..size {
+                    pattern |= val_byte << (8 * ii);
+                }
+                let val_full = Value::ByVal(PrimVal::from_u128(pattern));
+                let mut ptr = arg_vals[0].read_ptr(&self.memory)?;
+
+                let count = self.value_to_primval(arg_vals[2], usize)?.to_u64()?;
+                for _ in 0..count {
+                    self.write_value_to_ptr(val_full, ptr, ty)?;
+                    ptr = ptr.offset(size);
+                }
+            }
+
             name => return Err(EvalError::Unimplemented(format!("unimplemented intrinsic: {}", name))),
         }
 
