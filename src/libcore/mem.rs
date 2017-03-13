@@ -447,8 +447,10 @@ pub unsafe fn uninitialized<T>() -> T {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn swap<T>(x: &mut T, y: &mut T) {
     unsafe {
+        const SWAP_BLOCK_SIZE: usize = 16;
+
         // Give ourselves some scratch space to work with
-        let mut t: [u8; 16] = uninitialized();
+        let mut t: [u8; SWAP_BLOCK_SIZE] = uninitialized();
 
         let x = x as *mut T as *mut u8;
         let y = y as *mut T as *mut u8;
@@ -457,12 +459,12 @@ pub fn swap<T>(x: &mut T, y: &mut T) {
         // can't use a for loop as the `range` impl calls `mem::swap` recursively
         let len = size_of::<T>() as isize;
         let mut i = 0;
-        while i + 16 <= len {
-            // Perform the swap 16 bytes at a time, `&mut` pointers never alias
-            ptr::copy_nonoverlapping(x.offset(i), t, 16);
-            ptr::copy_nonoverlapping(y.offset(i), x.offset(i), 16);
-            ptr::copy_nonoverlapping(t, y.offset(i), 16);
-            i += 16;
+        while i + SWAP_BLOCK_SIZE as isize <= len {
+            // Perform the swap SWAP_BLOCK_SIZE bytes at a time, `&mut` pointers never alias
+            ptr::copy_nonoverlapping(x.offset(i), t, SWAP_BLOCK_SIZE);
+            ptr::copy_nonoverlapping(y.offset(i), x.offset(i), SWAP_BLOCK_SIZE);
+            ptr::copy_nonoverlapping(t, y.offset(i), SWAP_BLOCK_SIZE);
+            i += SWAP_BLOCK_SIZE as isize;
         }
         if i < len {
             // Swap any remaining bytes
