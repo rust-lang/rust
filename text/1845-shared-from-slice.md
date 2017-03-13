@@ -1,7 +1,7 @@
-- Feature Name: shared_from_slice
+- Feature Name: `shared_from_slice`
 - Start Date: 2017-01-05
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#1845](https://github.com/rust-lang/rfcs/pull/1845)
+- Rust Issue: [rust-lang/rust#40475](https://github.com/rust-lang/rust/issues/40475)
 
 # Summary
 [summary]: #summary
@@ -80,7 +80,7 @@ Furthermore, since [`RcBox`][RcBox] is not exposed publically from [`std::rc`][s
 
 For [`Arc`][Arc] the synchronization overhead of doing `.clone()` is probably greater than the overhead of doing `Arc<Box<str>>`. But once the clones have been made, `Arc<str>` would probably be cheaper to dereference due to locality.
 
-Most of the motivations for [`Rc`][Rc] applies to [`Arc`][Arc] as well, but the use cases might be fewer. Therefore, the case for adding the same API for [`Arc`][Arc] is less clear. One could perhaps use it for multi threaded interning with a type such as: `Arc<Mutex<HashSet<Arc<str>>>>`. 
+Most of the motivations for [`Rc`][Rc] applies to [`Arc`][Arc] as well, but the use cases might be fewer. Therefore, the case for adding the same API for [`Arc`][Arc] is less clear. One could perhaps use it for multi threaded interning with a type such as: `Arc<Mutex<HashSet<Arc<str>>>>`.
 
 Because of the similarities between the layout of [`Rc`][Rc] and [`Arc`][Arc], almost identical implementations could be added for `From<&[T]> for Arc<[T]>` and `From<&str> for Arc<str>`. It would also be consistent to do so.
 
