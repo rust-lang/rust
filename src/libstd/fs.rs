@@ -1782,7 +1782,7 @@ impl DirBuilder {
             Err(e) => return Err(e),
         }
         match path.parent() {
-            Some(p) => try!(create_dir_all(p)),
+            Some(p) => try!(self.create_dir_all(p)),
             None => return Err(io::Error::new(io::ErrorKind::Other, "failed to create whole tree")),
         }
         match self.inner.mkdir(path) {
@@ -1809,6 +1809,7 @@ mod tests {
     use rand::{StdRng, Rng};
     use str;
     use sys_common::io::test::{TempDir, tmpdir};
+    use thread;
 
     #[cfg(windows)]
     use os::windows::fs::{symlink_dir, symlink_file};
@@ -2274,6 +2275,26 @@ mod tests {
         let result = fs::create_dir_all(&file);
 
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn concurrent_recursive_mkdir() {
+        for _ in 0..100 {
+            let mut dir = tmpdir().join("a");
+            for _ in 0..100 {
+                dir = dir.join("a");
+            }
+            let mut join = vec!();
+            for _ in 0..8 {
+                let dir = dir.clone();
+                join.push(thread::spawn(move || {
+                    check!(fs::create_dir_all(&dir));
+                }))
+            }
+
+            // No `Display` on result of `join()`
+            join.drain(..).map(|join| join.join().unwrap()).count();
+        }
     }
 
     #[test]
