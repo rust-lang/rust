@@ -170,8 +170,6 @@ more than one section:
 # fn foo() {}
 ```
 
-Let's discuss the details of these code blocks.
-
 #### Code block annotations
 
 To write some Rust code in a comment, use the triple graves:
@@ -182,6 +180,9 @@ To write some Rust code in a comment, use the triple graves:
 /// ```
 # fn foo() {}
 ```
+
+This will add code highlighting. If you are only showing plain text, put `text`
+instead of `rust` after the triple graves (see below).
 
 ## Documentation as tests
 
