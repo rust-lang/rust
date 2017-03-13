@@ -161,8 +161,9 @@ If you’d like to build the documentation, it’s almost the same:
 $ ./x.py doc
 ```
 
-The generated documentation will appear in a top-level `doc` directory,
-created by the `make` rule.
+The generated documentation will appear under `doc` in the `build` directory for
+the ABI used. I.e., if the ABI was `x86_64-pc-windows-msvc`, the directory will be
+`build\x86_64-pc-windows-msvc\doc`.
 
 ## Notes
 
