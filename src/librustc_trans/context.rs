@@ -21,7 +21,6 @@ use debuginfo;
 use callee;
 use base;
 use declare;
-use glue::DropGlueKind;
 use monomorphize::Instance;
 
 use partitioning::CodegenUnit;
@@ -46,7 +45,7 @@ use std::str;
 use syntax::ast;
 use syntax::symbol::InternedString;
 use syntax_pos::DUMMY_SP;
-use abi::{Abi, FnType};
+use abi::Abi;
 
 pub struct Stats {
     pub n_glues_created: Cell<usize>,
@@ -94,8 +93,6 @@ pub struct LocalCrateContext<'tcx> {
     previous_work_product: Option<WorkProduct>,
     codegen_unit: CodegenUnit<'tcx>,
     needs_unwind_cleanup_cache: RefCell<FxHashMap<Ty<'tcx>, bool>>,
-    fn_pointer_shims: RefCell<FxHashMap<Ty<'tcx>, ValueRef>>,
-    drop_glues: RefCell<FxHashMap<DropGlueKind<'tcx>, (ValueRef, FnType)>>,
     /// Cache instances of monomorphic and polymorphic items
     instances: RefCell<FxHashMap<Instance<'tcx>, ValueRef>>,
     /// Cache generated vtables
@@ -587,8 +584,6 @@ impl<'tcx> LocalCrateContext<'tcx> {
                 previous_work_product: previous_work_product,
                 codegen_unit: codegen_unit,
                 needs_unwind_cleanup_cache: RefCell::new(FxHashMap()),
-                fn_pointer_shims: RefCell::new(FxHashMap()),
-                drop_glues: RefCell::new(FxHashMap()),
                 instances: RefCell::new(FxHashMap()),
                 vtables: RefCell::new(FxHashMap()),
                 const_cstr_cache: RefCell::new(FxHashMap()),
@@ -721,15 +716,6 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
 
     pub fn needs_unwind_cleanup_cache(&self) -> &RefCell<FxHashMap<Ty<'tcx>, bool>> {
         &self.local().needs_unwind_cleanup_cache
-    }
-
-    pub fn fn_pointer_shims(&self) -> &RefCell<FxHashMap<Ty<'tcx>, ValueRef>> {
-        &self.local().fn_pointer_shims
-    }
-
-    pub fn drop_glues<'a>(&'a self)
-                          -> &'a RefCell<FxHashMap<DropGlueKind<'tcx>, (ValueRef, FnType)>> {
-        &self.local().drop_glues
     }
 
     pub fn instances<'a>(&'a self) -> &'a RefCell<FxHashMap<Instance<'tcx>, ValueRef>> {

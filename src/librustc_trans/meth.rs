@@ -14,28 +14,45 @@ use callee;
 use common::*;
 use builder::Builder;
 use consts;
-use glue;
 use machine;
+use monomorphize;
 use type_::Type;
 use type_of::*;
 use value::Value;
 use rustc::ty;
 
-// drop_glue pointer, size, align.
-const VTABLE_OFFSET: usize = 3;
+#[derive(Copy, Clone, Debug)]
+pub struct VirtualIndex(usize);
 
-/// Extracts a method from a trait object's vtable, at the specified index.
-pub fn get_virtual_method<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
-                                    llvtable: ValueRef,
-                                    vtable_index: usize) -> ValueRef {
-    // Load the data pointer from the object.
-    debug!("get_virtual_method(vtable_index={}, llvtable={:?})",
-           vtable_index, Value(llvtable));
+pub const DESTRUCTOR: VirtualIndex = VirtualIndex(0);
+pub const SIZE: VirtualIndex = VirtualIndex(1);
+pub const ALIGN: VirtualIndex = VirtualIndex(2);
 
-    let ptr = bcx.load_nonnull(bcx.gepi(llvtable, &[vtable_index + VTABLE_OFFSET]), None);
-    // Vtable loads are invariant
-    bcx.set_invariant_load(ptr);
-    ptr
+impl<'a, 'tcx> VirtualIndex {
+    pub fn from_index(index: usize) -> Self {
+        VirtualIndex(index + 3)
+    }
+
+    pub fn get_fn(self, bcx: &Builder<'a, 'tcx>, llvtable: ValueRef) -> ValueRef {
+        // Load the data pointer from the object.
+        debug!("get_fn({:?}, {:?})", Value(llvtable), self);
+
+        let ptr = bcx.load_nonnull(bcx.gepi(llvtable, &[self.0]), None);
+        // Vtable loads are invariant
+        bcx.set_invariant_load(ptr);
+        ptr
+    }
+
+    pub fn get_usize(self, bcx: &Builder<'a, 'tcx>, llvtable: ValueRef) -> ValueRef {
+        // Load the data pointer from the object.
+        debug!("get_int({:?}, {:?})", Value(llvtable), self);
+
+        let llvtable = bcx.pointercast(llvtable, Type::int(bcx.ccx).ptr_to());
+        let ptr = bcx.load(bcx.gepi(llvtable, &[self.0]), None);
+        // Vtable loads are invariant
+        bcx.set_invariant_load(ptr);
+        ptr
+    }
 }
 
 /// Creates a dynamic vtable for the given type and vtable origin.
@@ -68,8 +85,7 @@ pub fn get_vtable<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let align = align_of(ccx, ty);
 
     let mut components: Vec<_> = [
-        // Generate a destructor for the vtable.
-        glue::get_drop_glue(ccx, ty),
+        callee::get_fn(ccx, monomorphize::resolve_drop_in_place(ccx.shared(), ty)),
         C_uint(ccx, size),
         C_uint(ccx, align)
     ].iter().cloned().collect();

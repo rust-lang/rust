@@ -46,5 +46,3 @@ mod mod1 {
         static BAR: u32 = 0;
     }
 }
-
-//~ TRANS_ITEM drop-glue i8

@@ -35,6 +35,8 @@ pub enum InstanceDef<'tcx> {
     Virtual(DefId, usize),
     // <[mut closure] as FnOnce>::call_once
     ClosureOnceShim { call_once: DefId },
+    // drop_in_place::<T>; None for empty drop glue.
+    DropGlue(DefId, Option<Ty<'tcx>>),
 }
 
 impl<'tcx> InstanceDef<'tcx> {
@@ -46,7 +48,8 @@ impl<'tcx> InstanceDef<'tcx> {
             InstanceDef::Virtual(def_id, _) |
             InstanceDef::Intrinsic(def_id, ) |
             InstanceDef::ClosureOnceShim { call_once: def_id }
-                => def_id
+                => def_id,
+            InstanceDef::DropGlue(def_id, _) => def_id
         }
     }
 
@@ -65,6 +68,7 @@ impl<'tcx> InstanceDef<'tcx> {
         // real on-demand.
         let ty = match self {
             &InstanceDef::FnPtrShim(_, ty) => Some(ty),
+            &InstanceDef::DropGlue(_, ty) => ty,
             _ => None
         }.into_iter();
 
@@ -96,6 +100,9 @@ impl<'tcx> fmt::Display for Instance<'tcx> {
             }
             InstanceDef::ClosureOnceShim { .. } => {
                 write!(f, " - shim")
+            }
+            InstanceDef::DropGlue(_, ty) => {
+                write!(f, " - shim({:?})", ty)
             }
         }
     }

@@ -19,13 +19,13 @@ use base::{self, Lifetime};
 use callee;
 use builder::Builder;
 use common::{self, Funclet};
-use common::{C_bool, C_str_slice, C_struct, C_u32, C_undef};
+use common::{C_bool, C_str_slice, C_struct, C_u32, C_uint, C_undef};
 use consts;
 use machine::llalign_of_min;
 use meth;
 use monomorphize;
+use tvec;
 use type_of::{self, align_of};
-use glue;
 use type_::Type;
 
 use rustc_data_structures::indexed_vec::IndexVec;
@@ -209,21 +209,49 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             mir::TerminatorKind::Drop { ref location, target, unwind } => {
                 let ty = location.ty(&self.mir, bcx.tcx()).to_ty(bcx.tcx());
                 let ty = self.monomorphize(&ty);
+                let drop_fn = monomorphize::resolve_drop_in_place(bcx.ccx.shared(), ty);
 
-                // Double check for necessity to drop
-                if !bcx.ccx.shared().type_needs_drop(ty) {
+                if let ty::InstanceDef::DropGlue(_, None) = drop_fn.def {
+                    // we don't actually need to drop anything.
                     funclet_br(self, bcx, target);
-                    return;
+                    return
                 }
 
-                let mut lvalue = self.trans_lvalue(&bcx, location);
-                let drop_fn = glue::get_drop_glue(bcx.ccx, ty);
-                let drop_ty = glue::get_drop_glue_type(bcx.ccx.shared(), ty);
-                if bcx.ccx.shared().type_is_sized(ty) && drop_ty != ty {
-                    lvalue.llval = bcx.pointercast(
-                        lvalue.llval, type_of::type_of(bcx.ccx, drop_ty).ptr_to());
-                }
-                let args = &[lvalue.llval, lvalue.llextra][..1 + lvalue.has_extra() as usize];
+                let lvalue = self.trans_lvalue(&bcx, location);
+                let (drop_fn, need_extra) = match ty.sty {
+                    ty::TyDynamic(..) => (meth::DESTRUCTOR.get_fn(&bcx, lvalue.llextra),
+                                          false),
+                    ty::TyArray(ety, _) | ty::TySlice(ety) => {
+                        // FIXME: handle panics
+                        let drop_fn = monomorphize::resolve_drop_in_place(
+                            bcx.ccx.shared(), ety);
+                        let drop_fn = callee::get_fn(bcx.ccx, drop_fn);
+                        let bcx = tvec::slice_for_each(
+                            &bcx,
+                            lvalue.project_index(&bcx, C_uint(bcx.ccx, 0u64)),
+                            ety,
+                            lvalue.len(bcx.ccx),
+                            |bcx, llval, loop_bb| {
+                                self.set_debug_loc(&bcx, terminator.source_info);
+                                if let Some(unwind) = unwind {
+                                    bcx.invoke(
+                                        drop_fn,
+                                        &[llval],
+                                        loop_bb,
+                                        llblock(self, unwind),
+                                        cleanup_bundle
+                                    );
+                                } else {
+                                    bcx.call(drop_fn, &[llval], cleanup_bundle);
+                                    bcx.br(loop_bb);
+                                }
+                            });
+                        funclet_br(self, bcx, target);
+                        return
+                    }
+                    _ => (callee::get_fn(bcx.ccx, drop_fn), lvalue.has_extra())
+                };
+                let args = &[lvalue.llval, lvalue.llextra][..1 + need_extra as usize];
                 if let Some(unwind) = unwind {
                     bcx.invoke(
                         drop_fn,
@@ -417,23 +445,14 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     Some(ty::InstanceDef::Virtual(..)) => {
                         FnType::new_vtable(bcx.ccx, sig, &extra_args)
                     }
-                    _ => FnType::new(bcx.ccx, sig, &extra_args)
-                };
-
-                if intrinsic == Some("drop_in_place") {
-                    let &(_, target) = destination.as_ref().unwrap();
-                    let ty = instance.unwrap().substs.type_at(0);
-
-                    // Double check for necessity to drop
-                    if !bcx.ccx.shared().type_needs_drop(ty) {
+                    Some(ty::InstanceDef::DropGlue(_, None)) => {
+                        // empty drop glue - a nop.
+                        let &(_, target) = destination.as_ref().unwrap();
                         funclet_br(self, bcx, target);
                         return;
                     }
-
-                    let drop_fn = glue::get_drop_glue(bcx.ccx, ty);
-                    let llty = fn_ty.llvm_type(bcx.ccx).ptr_to();
-                    llfn = Some(bcx.pointercast(drop_fn, llty));
-                }
+                    _ => FnType::new(bcx.ccx, sig, &extra_args)
+                };
 
                 // The arguments we'll be passing. Plus one to account for outptr, if used.
                 let arg_count = fn_ty.args.len() + fn_ty.ret.is_indirect() as usize;
@@ -588,7 +607,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 let (ptr, meta) = (a, b);
                 if *next_idx == 0 {
                     if let Some(ty::InstanceDef::Virtual(_, idx)) = *def {
-                        let llmeth = meth::get_virtual_method(bcx, meta, idx);
+                        let llmeth = meth::VirtualIndex::from_index(idx).get_fn(bcx, meta);
                         let llty = fn_ty.llvm_type(bcx.ccx).ptr_to();
                         *llfn = Some(bcx.pointercast(llmeth, llty));
                     }
@@ -756,14 +775,18 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             return block;
         }
 
+        let block = self.blocks[target_bb];
+        let landing_pad = self.landing_pad_uncached(block);
+        self.landing_pads[target_bb] = Some(landing_pad);
+        landing_pad
+    }
+
+    fn landing_pad_uncached(&mut self, target_bb: BasicBlockRef) -> BasicBlockRef {
         if base::wants_msvc_seh(self.ccx.sess()) {
-            return self.blocks[target_bb];
+            return target_bb;
         }
 
-        let target = self.get_builder(target_bb);
-
         let bcx = self.new_block("cleanup");
-        self.landing_pads[target_bb] = Some(bcx.llbb());
 
         let ccx = bcx.ccx;
         let llpersonality = self.ccx.eh_personality();
@@ -772,7 +795,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         bcx.set_cleanup(llretval);
         let slot = self.get_personality_slot(&bcx);
         bcx.store(llretval, slot, None);
-        bcx.br(target.llbb());
+        bcx.br(target_bb);
         bcx.llbb()
     }
 

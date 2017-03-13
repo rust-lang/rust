@@ -10,9 +10,11 @@
 
 use abi::Abi;
 use common::*;
+use glue;
 
 use rustc::hir::def_id::DefId;
 use rustc::infer::TransNormalize;
+use rustc::middle::lang_items::DropInPlaceFnLangItem;
 use rustc::traits::{self, SelectionContext, Reveal};
 use rustc::ty::adjustment::CustomCoerceUnsized;
 use rustc::ty::fold::{TypeFolder, TypeFoldable};
@@ -242,8 +244,19 @@ pub fn resolve<'a, 'tcx>(
                 ty::InstanceDef::Intrinsic(def_id)
             }
             _ => {
-                debug!(" => free item");
-                ty::InstanceDef::Item(def_id)
+                if Some(def_id) == scx.tcx().lang_items.drop_in_place_fn() {
+                    let ty = substs.type_at(0);
+                    if glue::needs_drop_glue(scx, ty) {
+                        debug!(" => nontrivial drop glue");
+                        ty::InstanceDef::DropGlue(def_id, Some(ty))
+                    } else {
+                        debug!(" => trivial drop glue");
+                        ty::InstanceDef::DropGlue(def_id, None)
+                    }
+                } else {
+                    debug!(" => free item");
+                    ty::InstanceDef::Item(def_id)
+                }
             }
         };
         Instance { def, substs }
@@ -251,6 +264,16 @@ pub fn resolve<'a, 'tcx>(
     debug!("resolve(def_id={:?}, substs={:?}) = {}",
            def_id, substs, result);
     result
+}
+
+pub fn resolve_drop_in_place<'a, 'tcx>(
+    scx: &SharedCrateContext<'a, 'tcx>,
+    ty: Ty<'tcx>)
+    -> ty::Instance<'tcx>
+{
+    let def_id = scx.tcx().require_lang_item(DropInPlaceFnLangItem);
+    let substs = scx.tcx().intern_substs(&[Kind::from(ty)]);
+    resolve(scx, def_id, substs)
 }
 
 pub fn custom_coerce_unsize_info<'scx, 'tcx>(scx: &SharedCrateContext<'scx, 'tcx>,

@@ -403,7 +403,9 @@ pub fn load_ty<'a, 'tcx>(b: &Builder<'a, 'tcx>, ptr: ValueRef,
         // a char is a Unicode codepoint, and so takes values from 0
         // to 0x10FFFF inclusive only.
         b.load_range_assert(ptr, 0, 0x10FFFF + 1, llvm::False, alignment.to_align())
-    } else if (t.is_region_ptr() || t.is_box()) && !common::type_is_fat_ptr(ccx, t) {
+    } else if (t.is_region_ptr() || t.is_box() || t.is_fn())
+        && !common::type_is_fat_ptr(ccx, t)
+    {
         b.load_nonnull(ptr, alignment.to_align())
     } else {
         b.load(ptr, alignment.to_align())
