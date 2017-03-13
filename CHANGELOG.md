@@ -1,6 +1,9 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.119 — 2017-03-13
+* Rustup to *rustc 1.17.0-nightly (824c9ebbd 2017-03-12)*
+
 ## 0.0.118 — 2017-03-05
 * Rustup to *rustc 1.17.0-nightly (b1e31766d 2017-03-03)*
 
