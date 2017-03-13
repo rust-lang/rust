@@ -48,6 +48,7 @@ matrix:
         RUSTC_RETRY_LINKER_ON_SEGFAULT=1
         SCCACHE_ERROR_LOG=/tmp/sccache.log
         RUST_LOG=sccache=debug
+        MACOSX_DEPLOYMENT_TARGET=10.7
       os: osx
       osx_image: xcode8.2
       install: &osx_install_sccache >
@@ -60,6 +61,7 @@ matrix:
         RUSTC_RETRY_LINKER_ON_SEGFAULT=1
         SCCACHE_ERROR_LOG=/tmp/sccache.log
         RUST_LOG=sccache=debug
+        MACOSX_DEPLOYMENT_TARGET=10.7
       os: osx
       osx_image: xcode8.2
       install: *osx_install_sccache
@@ -72,6 +74,7 @@ matrix:
         RUSTC_RETRY_LINKER_ON_SEGFAULT=1
         SCCACHE_ERROR_LOG=/tmp/sccache.log
         RUST_LOG=sccache=debug
+        MACOSX_DEPLOYMENT_TARGET=10.7
       os: osx
       osx_image: xcode8.2
       install: >
@@ -85,6 +88,7 @@ matrix:
         RUSTC_RETRY_LINKER_ON_SEGFAULT=1
         SCCACHE_ERROR_LOG=/tmp/sccache.log
         RUST_LOG=sccache=debug
+        MACOSX_DEPLOYMENT_TARGET=10.7
       os: osx
       osx_image: xcode8.2
       install: *osx_install_sccache
@@ -102,6 +106,7 @@ matrix:
         RUSTC_RETRY_LINKER_ON_SEGFAULT=1
         SCCACHE_ERROR_LOG=/tmp/sccache.log
         RUST_LOG=sccache=debug
+        MACOSX_DEPLOYMENT_TARGET=10.7
       os: osx
       osx_image: xcode8.2
       install: *osx_install_sccache
