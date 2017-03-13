@@ -1238,11 +1238,11 @@ impl f32 {
     ///
     /// ```
     /// #![feature(float_bits_conv)]
-    /// assert!((1f32).to_bits() != 1f32 as u32); // to_bits() is not casting!
+    /// assert_ne!((1f32).to_bits(), 1f32 as u32); // to_bits() is not casting!
     /// assert_eq!((12.5f32).to_bits(), 0x41480000);
     ///
     /// ```
-    #[unstable(feature = "float_bits_conv", reason = "recently added", issue = "0")]
+    #[unstable(feature = "float_bits_conv", reason = "recently added", issue = "40470")]
     #[inline]
     pub fn to_bits(self) -> u32 {
         unsafe { ::mem::transmute(self) }
@@ -1270,7 +1270,7 @@ impl f32 {
     /// // Example for a signaling NaN value:
     /// assert_eq!(f32::from_bits(0x7F800001), Err(()));
     /// ```
-    #[unstable(feature = "float_bits_conv", reason = "recently added", issue = "0")]
+    #[unstable(feature = "float_bits_conv", reason = "recently added", issue = "40470")]
     #[inline]
     pub fn from_bits(v: u32) -> Result<Self, ()> {
         match v {
