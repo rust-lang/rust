@@ -285,6 +285,16 @@ pub fn docs(build: &Build, compiler: &Compiler) {
             continue
         }
 
+        // The nostarch directory in the book is for no starch, and so isn't guaranteed to build.
+        // we don't care if it doesn't build, so skip it.
+        use std::ffi::OsStr;
+        let path: &OsStr = p.as_ref();
+        if let Some(path) = path.to_str() {
+            if path.contains("nostarch") {
+                continue;
+            }
+        }
+
         println!("doc tests for: {}", p.display());
         markdown_test(build, compiler, &p);
     }
