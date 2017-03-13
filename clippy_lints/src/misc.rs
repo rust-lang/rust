@@ -307,7 +307,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                     if let Some(name) = get_item_name(cx, expr) {
                         let name = &*name.as_str();
                         if name == "eq" || name == "ne" || name == "is_nan" || name.starts_with("eq_") ||
-                        name.ends_with("_eq") {
+                           name.ends_with("_eq") {
                             return;
                         }
                     }
@@ -316,15 +316,15 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                         let rhs = Sugg::hir(cx, right, "..");
 
                         db.span_suggestion(expr.span,
-                                        "consider comparing them within some error",
-                                        format!("({}).abs() < error", lhs - rhs));
+                                           "consider comparing them within some error",
+                                           format!("({}).abs() < error", lhs - rhs));
                         db.span_note(expr.span, "std::f32::EPSILON and std::f64::EPSILON are available.");
                     });
                 } else if op == BiRem && is_integer_literal(right, 1) {
                     span_lint(cx, MODULO_ONE, expr.span, "any number modulo 1 will be 0");
                 }
             },
-            _ => {}
+            _ => {},
         }
         if in_attributes_expansion(cx, expr) {
             // Don't lint things expanded by #[derive(...)], etc
@@ -380,9 +380,9 @@ fn check_nan(cx: &LateContext, path: &Path, expr: &Expr) {
     if !in_constant(cx, expr.id) {
         path.segments.last().map(|seg| if &*seg.name.as_str() == "NAN" {
             span_lint(cx,
-                    CMP_NAN,
-                    expr.span,
-                    "doomed comparison with NAN, use `std::{f32,f64}::is_nan()` instead");
+                      CMP_NAN,
+                      expr.span,
+                      "doomed comparison with NAN, use `std::{f32,f64}::is_nan()` instead");
         });
     }
 }
