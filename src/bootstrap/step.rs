@@ -633,12 +633,16 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
     for (krate, path, default) in krates("test") {
         rules.doc(&krate.doc_step, path)
              .dep(|s| s.name("libtest-link"))
+             // Needed so rustdoc generates relative links to std.
+             .dep(|s| s.name("doc-crate-std"))
              .default(default && build.config.compiler_docs)
              .run(move |s| doc::test(build, s.stage, s.target));
     }
     for (krate, path, default) in krates("rustc-main") {
         rules.doc(&krate.doc_step, path)
              .dep(|s| s.name("librustc-link"))
+             // Needed so rustdoc generates relative links to std.
+             .dep(|s| s.name("doc-crate-std"))
              .host(true)
              .default(default && build.config.docs)
              .run(move |s| doc::rustc(build, s.stage, s.target));
@@ -1213,20 +1217,20 @@ mod tests {
             name: "std".to_string(),
             deps: Vec::new(),
             path: cwd.join("src/std"),
-            doc_step: "doc-std".to_string(),
+            doc_step: "doc-crate-std".to_string(),
             build_step: "build-crate-std".to_string(),
-            test_step: "test-std".to_string(),
-            bench_step: "bench-std".to_string(),
+            test_step: "test-crate-std".to_string(),
+            bench_step: "bench-crate-std".to_string(),
             version: String::new(),
         });
         build.crates.insert("test".to_string(), ::Crate {
             name: "test".to_string(),
             deps: Vec::new(),
             path: cwd.join("src/test"),
-            doc_step: "doc-test".to_string(),
+            doc_step: "doc-crate-test".to_string(),
             build_step: "build-crate-test".to_string(),
-            test_step: "test-test".to_string(),
-            bench_step: "bench-test".to_string(),
+            test_step: "test-crate-test".to_string(),
+            bench_step: "bench-crate-test".to_string(),
             version: String::new(),
         });
         build.crates.insert("rustc-main".to_string(), ::Crate {
@@ -1234,10 +1238,10 @@ mod tests {
             deps: Vec::new(),
             version: String::new(),
             path: cwd.join("src/rustc-main"),
-            doc_step: "doc-rustc-main".to_string(),
+            doc_step: "doc-crate-rustc-main".to_string(),
             build_step: "build-crate-rustc-main".to_string(),
-            test_step: "test-rustc-main".to_string(),
-            bench_step: "bench-rustc-main".to_string(),
+            test_step: "test-crate-rustc-main".to_string(),
+            bench_step: "bench-crate-rustc-main".to_string(),
         });
         return build
     }
