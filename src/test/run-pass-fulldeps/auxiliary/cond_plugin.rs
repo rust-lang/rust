@@ -49,9 +49,10 @@ fn cond(input: TokenStream) -> TokenStream {
             _ => false,
         };
         conds.push(if is_else || input.peek().is_none() {
-            qquote!({ unquote rhs })
+            quote!({ $rhs })
         } else {
-            qquote!(if unquote(test.unwrap()) { unquote rhs } else)
+            let test = test.unwrap();
+            quote!(if $test { $rhs } else)
         });
     }
 

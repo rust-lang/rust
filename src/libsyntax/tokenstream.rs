@@ -162,6 +162,12 @@ impl From<TokenTree> for TokenStream {
     }
 }
 
+impl From<Token> for TokenStream {
+    fn from(token: Token) -> TokenStream {
+        TokenTree::Token(DUMMY_SP, token).into()
+    }
+}
+
 impl<T: Into<TokenStream>> iter::FromIterator<T> for TokenStream {
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
         TokenStream::concat(iter.into_iter().map(Into::into).collect::<Vec<_>>())
