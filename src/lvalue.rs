@@ -219,14 +219,24 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     (ptr, LvalueExtra::None)
                 },
                 Value::ByVal(PrimVal::Undef) => {
-                    // FIXME: add some logic for when to not allocate
-                    (self.force_allocation(base)?.to_ptr(), LvalueExtra::None)
+                    // FIXME: allocate in fewer cases
+                    if self.ty_to_primval_kind(base_ty).is_ok() {
+                        return Ok(base);
+                    } else {
+                        (self.force_allocation(base)?.to_ptr(), LvalueExtra::None)
+                    }
                 },
                 Value::ByVal(_) => {
-                    assert_eq!(offset.bytes(), 0, "ByVal can only have 1 non zst field with offset 0");
+                    assert_eq!(field_index, 0, "ByVal can only have 1 non zst field with offset 0");
                     return Ok(base);
                 },
                 Value::ByValPair(_, _) => {
+                    let field_count = self.get_field_count(base_ty)?;
+                    if field_count == 1 {
+                        assert_eq!(field_index, 0, "{:?} has only one field", base_ty);
+                        return Ok(base);
+                    }
+                    assert_eq!(field_count, 2);
                     assert!(field_index < 2);
                     return Ok(Lvalue::Local {
                         frame,
