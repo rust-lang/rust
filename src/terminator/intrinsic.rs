@@ -207,14 +207,50 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 return self.eval_drop_impls(drops, span);
             }
 
-            "fabsf32" => {
+            "sinf32" | "fabsf32" | "cosf32" |
+            "sqrtf32" | "expf32" | "exp2f32" |
+            "logf32" | "log10f32" | "log2f32" |
+            "floorf32" | "ceilf32" | "truncf32" => {
                 let f = self.value_to_primval(arg_vals[0], f32)?.to_f32()?;
-                self.write_primval(dest, PrimVal::from_f32(f.abs()), dest_ty)?;
+                let f = match intrinsic_name {
+                    "sinf32" => f.sin(),
+                    "fabsf32" => f.abs(),
+                    "cosf32" => f.cos(),
+                    "sqrtf32" => f.sqrt(),
+                    "expf32" => f.exp(),
+                    "exp2f32" => f.exp2(),
+                    "logf32" => f.ln(),
+                    "log10f32" => f.log10(),
+                    "log2f32" => f.log2(),
+                    "floorf32" => f.floor(),
+                    "ceilf32" => f.ceil(),
+                    "truncf32" => f.trunc(),
+                    _ => bug!(),
+                };
+                self.write_primval(dest, PrimVal::from_f32(f), dest_ty)?;
             }
 
-            "fabsf64" => {
+            "sinf64" | "fabsf64" | "cosf64" |
+            "sqrtf64" | "expf64" | "exp2f64" |
+            "logf64" | "log10f64" | "log2f64" |
+            "floorf64" | "ceilf64" | "truncf64" => {
                 let f = self.value_to_primval(arg_vals[0], f64)?.to_f64()?;
-                self.write_primval(dest, PrimVal::from_f64(f.abs()), dest_ty)?;
+                let f = match intrinsic_name {
+                    "sinf64" => f.sin(),
+                    "fabsf64" => f.abs(),
+                    "cosf64" => f.cos(),
+                    "sqrtf64" => f.sqrt(),
+                    "expf64" => f.exp(),
+                    "exp2f64" => f.exp2(),
+                    "logf64" => f.ln(),
+                    "log10f64" => f.log10(),
+                    "log2f64" => f.log2(),
+                    "floorf64" => f.floor(),
+                    "ceilf64" => f.ceil(),
+                    "truncf64" => f.trunc(),
+                    _ => bug!(),
+                };
+                self.write_primval(dest, PrimVal::from_f64(f), dest_ty)?;
             }
 
             "fadd_fast" | "fsub_fast" | "fmul_fast" | "fdiv_fast" | "frem_fast" => {
@@ -320,6 +356,32 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.intrinsic_overflowing(mir::BinOp::Add, &args[0], &args[1], dest, dest_ty)?;
             }
 
+            "powf32" => {
+                let f = self.value_to_primval(arg_vals[0], f32)?.to_f32()?;
+                let f2 = self.value_to_primval(arg_vals[1], f32)?.to_f32()?;
+                self.write_primval(dest, PrimVal::from_f32(f.powf(f2)), dest_ty)?;
+            }
+
+            "powf64" => {
+                let f = self.value_to_primval(arg_vals[0], f64)?.to_f64()?;
+                let f2 = self.value_to_primval(arg_vals[1], f64)?.to_f64()?;
+                self.write_primval(dest, PrimVal::from_f64(f.powf(f2)), dest_ty)?;
+            }
+
+            "fmaf32" => {
+                let a = self.value_to_primval(arg_vals[0], f32)?.to_f32()?;
+                let b = self.value_to_primval(arg_vals[1], f32)?.to_f32()?;
+                let c = self.value_to_primval(arg_vals[2], f32)?.to_f32()?;
+                self.write_primval(dest, PrimVal::from_f32(a * b + c), dest_ty)?;
+            }
+
+            "fmaf64" => {
+                let a = self.value_to_primval(arg_vals[0], f64)?.to_f64()?;
+                let b = self.value_to_primval(arg_vals[1], f64)?.to_f64()?;
+                let c = self.value_to_primval(arg_vals[2], f64)?.to_f64()?;
+                self.write_primval(dest, PrimVal::from_f64(a * b + c), dest_ty)?;
+            }
+
             "powif32" => {
                 let f = self.value_to_primval(arg_vals[0], f32)?.to_f32()?;
                 let i = self.value_to_primval(arg_vals[1], i32)?.to_i128()?;
@@ -330,16 +392,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let f = self.value_to_primval(arg_vals[0], f64)?.to_f64()?;
                 let i = self.value_to_primval(arg_vals[1], i32)?.to_i128()?;
                 self.write_primval(dest, PrimVal::from_f64(f.powi(i as i32)), dest_ty)?;
-            }
-
-            "sqrtf32" => {
-                let f = self.value_to_primval(arg_vals[0], f32)?.to_f32()?;
-                self.write_primval(dest, PrimVal::from_f32(f.sqrt()), dest_ty)?;
-            }
-
-            "sqrtf64" => {
-                let f = self.value_to_primval(arg_vals[0], f64)?.to_f64()?;
-                self.write_primval(dest, PrimVal::from_f64(f.sqrt()), dest_ty)?;
             }
 
             "size_of" => {
