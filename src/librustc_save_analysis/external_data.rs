@@ -17,11 +17,10 @@ use syntax::print::pprust;
 use syntax::symbol::Symbol;
 use syntax_pos::Span;
 
-use std::path::PathBuf;
-
 use data::{self, Visibility, SigElement};
 
 use rls_data::{SpanData, CratePreludeData, Attribute};
+use rls_span::{Column, Row};
 
 // FIXME: this should be pub(crate), but the current snapshot doesn't allow it yet
 pub trait Lower {
@@ -48,10 +47,10 @@ pub fn span_from_span(span: Span, cm: &CodeMap) -> SpanData {
         file_name: start.file.name.clone().into(),
         byte_start: span.lo.0,
         byte_end: span.hi.0,
-        line_start: start.line,
-        line_end: end.line,
-        column_start: start.col.0 + 1,
-        column_end: end.col.0 + 1,
+        line_start: Row::new_one_indexed(start.line as u32),
+        line_end: Row::new_one_indexed(end.line as u32),
+        column_start: Column::new_one_indexed(start.col.0 as u32 + 1),
+        column_end: Column::new_one_indexed(end.col.0 as u32 + 1),
     }
 }
 
