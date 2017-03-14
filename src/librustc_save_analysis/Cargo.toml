@@ -12,6 +12,7 @@ crate-type = ["dylib"]
 log = { path = "../liblog" }
 rustc = { path = "../librustc" }
 syntax = { path = "../libsyntax" }
-serialize = { path = "../libserialize" }
+# FIXME should move rustc serialize out of tree
+rustc-serialize = "0.3"
 syntax_pos = { path = "../libsyntax_pos" }
 rls-data = { git = "https://github.com/nrc/rls-data" }

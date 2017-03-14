@@ -139,7 +139,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
             let lo_loc = self.span.sess.codemap().lookup_char_pos(c.span.lo);
             ExternalCrateData {
                 name: c.name,
-                num: CrateNum::from_u32(c.number),
+                num: c.number,
                 file_name: SpanUtils::make_path_string(&lo_loc.file.name),
             }
         }).collect();
