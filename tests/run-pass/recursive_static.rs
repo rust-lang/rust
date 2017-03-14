@@ -1,5 +1,3 @@
-#![feature(static_recursion)]
-
 struct S(&'static S);
 static S1: S = S(&S2);
 static S2: S = S(&S1);
