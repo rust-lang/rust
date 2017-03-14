@@ -718,6 +718,7 @@ version = "0.0.0"
 dependencies = [
  "log 0.0.0",
  "rls-data 0.1.0 (git+https://github.com/nrc/rls-data)",
+ "rls-span 0.1.0 (git+https://github.com/nrc/rls-span)",
  "rustc 0.0.0",
  "rustc-serialize 0.3.22 (registry+https://github.com/rust-lang/crates.io-index)",
  "syntax 0.0.0",

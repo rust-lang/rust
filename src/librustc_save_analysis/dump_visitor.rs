@@ -29,7 +29,7 @@
 
 use rustc::hir;
 use rustc::hir::def::Def;
-use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
+use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::hir::map::{Node, NodeItem};
 use rustc::session::Session;
 use rustc::ty::{self, TyCtxt, AssociatedItemContainer};

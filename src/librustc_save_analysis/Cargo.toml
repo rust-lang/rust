@@ -16,3 +16,4 @@ syntax = { path = "../libsyntax" }
 rustc-serialize = "0.3"
 syntax_pos = { path = "../libsyntax_pos" }
 rls-data = { git = "https://github.com/nrc/rls-data" }
+rls-span = { git = "https://github.com/nrc/rls-span" }

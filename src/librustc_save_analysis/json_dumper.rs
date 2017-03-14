@@ -15,12 +15,12 @@ use rustc_serialize::json::as_json;
 
 use rls_data::{self, Id, Analysis, Import, ImportKind, Def, DefKind, Ref, RefKind, MacroRef,
                Relation, RelationKind, Signature, SigElement, CratePreludeData};
+use rls_span::{Column, Row};
 
 use external_data;
 use external_data::*;
 use data::{self, VariableKind};
 use dump::Dump;
-use super::Format;
 
 pub struct JsonDumper<'b, W: Write + 'b> {
     output: &'b mut W,
@@ -94,7 +94,7 @@ impl<'b, W: Write + 'b> Dump for JsonDumper<'b, W> {
             sig: Some(data.sig.into()),
             attributes: data.attributes.into_iter().map(|a| a.into()).collect(),
         };
-        if data.span.file_name.to_str().unwrap() != def.value {
+        if def.span.file_name.to_str().unwrap() != def.value {
             // If the module is an out-of-line defintion, then we'll make the
             // defintion the first character in the module's file and turn the
             // the declaration into a reference to it.
@@ -108,10 +108,10 @@ impl<'b, W: Write + 'b> Dump for JsonDumper<'b, W> {
                 file_name: def.value.clone().into(),
                 byte_start: 0,
                 byte_end: 0,
-                line_start: 1,
-                line_end: 1,
-                column_start: 1,
-                column_end: 1,
+                line_start: Row::new_one_indexed(1),
+                line_end: Row::new_one_indexed(1),
+                column_start: Column::new_one_indexed(1),
+                column_end: Column::new_one_indexed(1),
             }
         }
 
