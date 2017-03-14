@@ -189,6 +189,13 @@ impl<I: Idx, T> IndexVec<I, T> {
     }
 }
 
+impl<I: Idx, T: Clone> IndexVec<I, T> {
+    #[inline]
+    pub fn resize(&mut self, new_len: usize, value: T) {
+        self.raw.resize(new_len, value)
+    }
+}
+
 impl<I: Idx, T> Index<I> for IndexVec<I, T> {
     type Output = T;
 
