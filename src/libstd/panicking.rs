@@ -519,9 +519,16 @@ pub fn begin_panic<M: Any + Send>(msg: M, file_line: &(&'static str, u32)) -> ! 
 /// run panic hooks, and then delegate to the actual implementation of panics.
 #[inline(never)]
 #[cold]
+#[allow(unused_variables)]
 fn rust_panic_with_hook(msg: Box<Any + Send>,
                         file_line: &(&'static str, u32)) -> ! {
-    let (file, line) = *file_line;
+    let (file, line) = {
+        if cfg!(feature = "mask_fileinfo_from_panic") {
+            ("", 0)
+        } else {
+            *file_line
+        }
+    };
 
     let panics = update_panic_count(1);
 
