@@ -745,7 +745,7 @@ pub struct Thread {
 
 impl Thread {
     // Used only internally to construct a thread object without spawning
-    fn new(name: Option<String>) -> Thread {
+    pub(crate) fn new(name: Option<String>) -> Thread {
         let cname = name.map(|n| {
             CString::new(n).expect("thread name may not contain interior null bytes")
         });
@@ -856,11 +856,6 @@ impl fmt::Debug for Thread {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Debug::fmt(&self.name(), f)
     }
-}
-
-// a hack to get around privacy restrictions
-impl thread_info::NewThread for Thread {
-    fn new(name: Option<String>) -> Thread { Thread::new(name) }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
