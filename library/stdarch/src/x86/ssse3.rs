@@ -11,7 +11,7 @@ pub fn _mm_abs_epi8(a: i8x16) -> u8x16 {
 #[allow(improper_ctypes)]
 extern {
     #[link_name = "llvm.x86.ssse3.pabs.b.128"]
-    pub fn pabsb128(a: i8x16) -> u8x16;
+    fn pabsb128(a: i8x16) -> u8x16;
 }
 
 #[cfg(test)]

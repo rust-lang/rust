@@ -8,3 +8,4 @@ pub type __m128i = ::v128::i8x16;
 // mod sse;
 mod sse2;
 mod ssse3;
+mod sse42;

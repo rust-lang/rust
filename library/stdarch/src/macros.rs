@@ -36,6 +36,28 @@ macro_rules! define_impl {
                 assert!(idx < $nelems);
                 unsafe { simd_insert(self, idx, val) }
             }
+
+            #[inline(always)]
+            pub fn load(slice: &[$elemty], offset: usize) -> $name {
+                assert!(slice[offset..].len() >= $nelems);
+                unsafe { $name::load_unchecked(slice, offset) }
+            }
+
+            #[inline(always)]
+            pub unsafe fn load_unchecked(
+                slice: &[$elemty],
+                offset: usize,
+            ) -> $name {
+                use std::mem::size_of;
+                use std::ptr;
+
+                let mut x = $name::splat(0 as $elemty);
+                ptr::copy_nonoverlapping(
+                    slice.get_unchecked(offset) as *const $elemty as *const u8,
+                    &mut x as *mut $name as *mut u8,
+                    size_of::<$name>());
+                x
+            }
         }
     }
 }
