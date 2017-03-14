@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![cfg_attr(not(stage0), feature(sanitizer_runtime))]
-#![cfg_attr(not(stage0), sanitizer_runtime)]
+#![sanitizer_runtime]
+#![feature(sanitizer_runtime)]
 #![feature(alloc_system)]
 #![feature(staged_api)]
 #![no_std]

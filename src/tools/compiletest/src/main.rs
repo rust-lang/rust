@@ -12,7 +12,6 @@
 
 #![feature(box_syntax)]
 #![feature(rustc_private)]
-#![feature(static_in_const)]
 #![feature(test)]
 #![feature(libc)]
 
