@@ -78,7 +78,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 // we are inherently singlethreaded and singlecored, this is a nop
             }
 
-            "atomic_xchg" => {
+            _ if intrinsic_name.starts_with("atomic_xchg") => {
                 let ty = substs.type_at(0);
                 let ptr = arg_vals[0].read_ptr(&self.memory)?;
                 let change = self.value_to_primval(arg_vals[1], ty)?;
@@ -92,8 +92,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.write_primval(Lvalue::from_ptr(ptr), change, ty)?;
             }
 
-            "atomic_cxchg_relaxed" |
-            "atomic_cxchg" => {
+            _ if intrinsic_name.starts_with("atomic_cxchg") => {
                 let ty = substs.type_at(0);
                 let ptr = arg_vals[0].read_ptr(&self.memory)?;
                 let expect_old = self.value_to_primval(arg_vals[1], ty)?;
@@ -111,8 +110,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.write_primval(Lvalue::from_ptr(ptr), change, ty)?;
             }
 
-            "atomic_xadd" |
-            "atomic_xadd_relaxed" => {
+            "atomic_or" | "atomic_or_acq" | "atomic_or_rel" | "atomic_or_acqrel" | "atomic_or_relaxed" |
+            "atomic_xor" | "atomic_xor_acq" | "atomic_xor_rel" | "atomic_xor_acqrel" | "atomic_xor_relaxed" |
+            "atomic_and" | "atomic_and_acq" | "atomic_and_rel" | "atomic_and_acqrel" | "atomic_and_relaxed" |
+            "atomic_xadd" | "atomic_xadd_acq" | "atomic_xadd_rel" | "atomic_xadd_acqrel" | "atomic_xadd_relaxed" |
+            "atomic_xsub" | "atomic_xsub_acq" | "atomic_xsub_rel" | "atomic_xsub_acqrel" | "atomic_xsub_relaxed" => {
                 let ty = substs.type_at(0);
                 let ptr = arg_vals[0].read_ptr(&self.memory)?;
                 let change = self.value_to_primval(arg_vals[1], ty)?;
@@ -124,27 +126,18 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 };
                 self.write_primval(dest, old, ty)?;
                 let kind = self.ty_to_primval_kind(ty)?;
+                let op = match intrinsic_name.split('_').nth(1).unwrap() {
+                    "or" => mir::BinOp::BitOr,
+                    "xor" => mir::BinOp::BitXor,
+                    "and" => mir::BinOp::BitAnd,
+                    "xadd" => mir::BinOp::Add,
+                    "xsub" => mir::BinOp::Sub,
+                    _ => bug!(),
+                };
                 // FIXME: what do atomics do on overflow?
-                let (val, _) = operator::binary_op(mir::BinOp::Add, old, kind, change, kind)?;
+                let (val, _) = operator::binary_op(op, old, kind, change, kind)?;
                 self.write_primval(Lvalue::from_ptr(ptr), val, ty)?;
             },
-
-            "atomic_xsub_rel" => {
-                let ty = substs.type_at(0);
-                let ptr = arg_vals[0].read_ptr(&self.memory)?;
-                let change = self.value_to_primval(arg_vals[1], ty)?;
-                let old = self.read_value(ptr, ty)?;
-                let old = match old {
-                    Value::ByVal(val) => val,
-                    Value::ByRef(_) => bug!("just read the value, can't be byref"),
-                    Value::ByValPair(..) => bug!("atomic_xsub_rel doesn't work with nonprimitives"),
-                };
-                self.write_primval(dest, old, ty)?;
-                let kind = self.ty_to_primval_kind(ty)?;
-                // FIXME: what do atomics do on overflow?
-                let (val, _) = operator::binary_op(mir::BinOp::Sub, old, kind, change, kind)?;
-                self.write_primval(Lvalue::from_ptr(ptr), val, ty)?;
-            }
 
             "breakpoint" => unimplemented!(), // halt miri
 
