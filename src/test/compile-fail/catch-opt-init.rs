@@ -10,11 +10,15 @@
 
 #![feature(catch_expr)]
 
+fn use_val<T: Sized>(_x: T) {}
+
 pub fn main() {
     let cfg_res;
     let _: Result<(), ()> = do catch {
         Err(())?;
         cfg_res = 5;
+        Ok::<(), ()>(())?;
+        use_val(cfg_res);
         Ok(())
     };
     assert_eq!(cfg_res, 5); //~ ERROR use of possibly uninitialized variable

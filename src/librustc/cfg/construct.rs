@@ -87,7 +87,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 stmts_exit = self.stmt(stmt, stmts_exit);
             }
             let blk_expr_exit = self.opt_expr(&blk.expr, stmts_exit);
-            self.add_contained_edge(blk_expr_exit, blk_expr_exit);
+            self.add_contained_edge(blk_expr_exit, expr_exit);
 
             self.breakable_block_scopes.pop();
 

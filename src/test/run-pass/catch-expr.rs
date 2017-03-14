@@ -58,6 +58,14 @@ pub fn main() {
     };
     assert_eq!(cfg_init, 5);
 
+    let cfg_init_2;
+    let _res: Result<(), ()> = do catch {
+        cfg_init_2 = 6;
+        Err(())?;
+        Ok(())
+    };
+    assert_eq!(cfg_init_2, 6);
+
     let my_string = "test".to_string();
     let res: Result<&str, ()> = do catch {
         Ok(&my_string)
