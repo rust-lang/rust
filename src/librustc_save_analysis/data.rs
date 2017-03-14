@@ -18,6 +18,8 @@ use rustc::hir::def_id::{CrateNum, DefId};
 use syntax::ast::{self, Attribute, NodeId};
 use syntax_pos::Span;
 
+use rls_data::ExternalCrateData;
+
 pub struct CrateData {
     pub name: String,
     pub number: u32,
@@ -113,14 +115,6 @@ pub struct CratePreludeData {
     pub crate_root: String,
     pub external_crates: Vec<ExternalCrateData>,
     pub span: Span,
-}
-
-/// Data for external crates in the prelude of a crate.
-#[derive(Debug, RustcEncodable)]
-pub struct ExternalCrateData {
-    pub name: String,
-    pub num: CrateNum,
-    pub file_name: String,
 }
 
 /// Data for enum declarations.

@@ -18,6 +18,8 @@ use data::{VariableKind, Visibility, SigElement};
 use dump::Dump;
 use super::Format;
 
+use rls_data::{SpanData, CratePreludeData};
+
 
 // A dumper to dump a restricted set of JSON information, designed for use with
 // libraries distributed without their source. Clients are likely to use type
