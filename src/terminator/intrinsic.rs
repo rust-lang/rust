@@ -405,13 +405,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "write_bytes" => {
                 let u8 = self.tcx.types.u8;
                 let ty = substs.type_at(0);
+                let ty_align = self.type_align(ty)?;
+                let val_byte = self.value_to_primval(arg_vals[1], u8)?.to_u128()? as u8;
                 let size = self.type_size(ty)?.expect("write_bytes() type must be sized");
-                let mut ptr = arg_vals[0].read_ptr(&self.memory)?;
+                let ptr = arg_vals[0].read_ptr(&self.memory)?;
                 let count = self.value_to_primval(arg_vals[2], usize)?.to_u64()?;
-                for _ in 0..(count * size) {
-                    self.write_value_to_ptr(arg_vals[1], ptr, u8)?;
-                    ptr = ptr.offset(1);
-                }
+                self.memory.check_align(ptr, size * count, ty_align)?;
+                self.memory.write_repeat(ptr, val_byte, size * count)?;
             }
 
             name => return Err(EvalError::Unimplemented(format!("unimplemented intrinsic: {}", name))),
