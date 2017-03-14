@@ -20,10 +20,10 @@
 	url = https://github.com/rust-lang/libc.git
 [submodule "src/doc/nomicon"]
 	path = src/doc/nomicon
-	url = https://github.com/rust-lang-nursery/nomicon
+	url = https://github.com/rust-lang-nursery/nomicon.git
 [submodule "src/tools/cargo"]
 	path = cargo
-	url = https://github.com/rust-lang/cargo
+	url = https://github.com/rust-lang/cargo.git
 [submodule "reference"]
 	path = src/doc/reference
 	url = https://github.com/rust-lang-nursery/reference.git
