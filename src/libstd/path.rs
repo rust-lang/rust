@@ -1210,6 +1210,14 @@ impl<'a> From<&'a Path> for Box<Path> {
     }
 }
 
+#[stable(feature = "path_default", since = "1.17.0")]
+impl<'a> Default for &'a Path {
+    fn default() -> &'a Path {
+        let default: &'a OsStr = Default::default();
+        Path::new(default)
+    }
+}
+
 #[stable(feature = "box_default_extra", since = "1.17.0")]
 impl Default for Box<Path> {
     fn default() -> Box<Path> {
