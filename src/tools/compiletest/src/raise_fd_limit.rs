@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/// darwin_fd_limit exists to work around an issue where launchctl on Mac OS X
+/// darwin_fd_limit exists to work around an issue where launchctl on macOS
 /// defaults the rlimit maxfiles to 256/unlimited. The default soft limit of 256
 /// ends up being far too low for our multithreaded scheduler testing, depending
 /// on the number of cores available.

@@ -351,7 +351,7 @@ fn mangle<PI: Iterator<Item=InternedString>>(path: PI, hash: &str) -> String {
     // Follow C++ namespace-mangling style, see
     // http://en.wikipedia.org/wiki/Name_mangling for more info.
     //
-    // It turns out that on OSX you can actually have arbitrary symbols in
+    // It turns out that on macOS you can actually have arbitrary symbols in
     // function names (at least when given to LLVM), but this is not possible
     // when using unix's linker. Perhaps one day when we just use a linker from LLVM
     // we won't need to do this name mangling. The problem with name mangling is

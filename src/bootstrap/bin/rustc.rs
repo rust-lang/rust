@@ -182,7 +182,7 @@ fn main() {
         if env::var("RUSTC_RPATH") == Ok("true".to_string()) {
             let rpath = if target.contains("apple") {
 
-                // Note that we need to take one extra step on OSX to also pass
+                // Note that we need to take one extra step on macOS to also pass
                 // `-Wl,-instal_name,@rpath/...` to get things to work right. To
                 // do that we pass a weird flag to the compiler to get it to do
                 // so. Note that this is definitely a hack, and we should likely

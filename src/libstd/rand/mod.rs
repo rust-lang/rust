@@ -52,7 +52,7 @@
 //!     If an application does not have `getrandom` and likely to be run soon after first booting,
 //!     or on a system with very few entropy sources, one should consider using `/dev/random` via
 //!     `ReaderRng`.
-//! -   On some systems (e.g. FreeBSD, OpenBSD and Mac OS X) there is no difference
+//! -   On some systems (e.g. FreeBSD, OpenBSD and macOS) there is no difference
 //!     between the two sources. (Also note that, on some systems e.g. FreeBSD, both `/dev/random`
 //!     and `/dev/urandom` may block once if the CSPRNG has not seeded yet.)
 
@@ -195,7 +195,7 @@ impl Rng for ThreadRng {
 /// A random number generator that retrieves randomness straight from
 /// the operating system. Platform sources:
 ///
-/// - Unix-like systems (Linux, Android, Mac OSX): read directly from
+/// - Unix-like systems (Linux, Android, macOS): read directly from
 ///   `/dev/urandom`, or from `getrandom(2)` system call if available.
 /// - Windows: calls `CryptGenRandom`, using the default cryptographic
 ///   service provider with the `PROV_RSA_FULL` type.
