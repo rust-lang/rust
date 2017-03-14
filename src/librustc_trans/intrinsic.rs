@@ -261,7 +261,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
         "ctlz" | "cttz" | "ctpop" | "bswap" |
         "add_with_overflow" | "sub_with_overflow" | "mul_with_overflow" |
         "overflowing_add" | "overflowing_sub" | "overflowing_mul" |
-        "unchecked_div" | "unchecked_rem" => {
+        "unchecked_div" | "unchecked_rem" | "unchecked_shl" | "unchecked_shr" => {
             let sty = &arg_tys[0].sty;
             match int_type_width_signed(sty, ccx) {
                 Some((width, signed)) =>
@@ -310,6 +310,13 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                                 bcx.srem(llargs[0], llargs[1])
                             } else {
                                 bcx.urem(llargs[0], llargs[1])
+                            },
+                        "unchecked_shl" => bcx.shl(llargs[0], llargs[1]),
+                        "unchecked_shr" =>
+                            if signed {
+                                bcx.ashr(llargs[0], llargs[1])
+                            } else {
+                                bcx.lshr(llargs[0], llargs[1])
                             },
                         _ => bug!(),
                     },
