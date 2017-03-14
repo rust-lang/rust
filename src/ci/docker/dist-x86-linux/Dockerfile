@@ -86,4 +86,10 @@ ENV RUST_CONFIGURE_ARGS \
       --enable-extended \
       --enable-sanitizers
 ENV SCRIPT python2.7 ../x.py dist --host $HOSTS --target $HOSTS
+
+# This is the only builder which will create source tarballs
 ENV DIST_SRC 1
+
+# When we build cargo in this container, we don't want it to use the system
+# libcurl, instead it should compile its own.
+ENV LIBCURL_NO_PKG_CONFIG 1
