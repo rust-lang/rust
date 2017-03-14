@@ -2280,6 +2280,12 @@ impl<'a> Parser<'a> {
                         BlockCheckMode::Unsafe(ast::UserProvided),
                         attrs);
                 }
+                if self.is_catch_expr() {
+                    assert!(self.eat_keyword(keywords::Do));
+                    assert!(self.eat_keyword(keywords::Catch));
+                    let lo = self.prev_span.lo;
+                    return self.parse_catch_expr(lo, attrs);
+                }
                 if self.eat_keyword(keywords::Return) {
                     if self.token.can_begin_expr() {
                         let e = self.parse_expr()?;
@@ -3099,6 +3105,16 @@ impl<'a> Parser<'a> {
         Ok(self.mk_expr(span_lo, hi, ExprKind::Loop(body, opt_ident), attrs))
     }
 
+    /// Parse a `do catch {...}` expression (`do catch` token already eaten)
+    pub fn parse_catch_expr(&mut self, span_lo: BytePos, mut attrs: ThinVec<Attribute>)
+        -> PResult<'a, P<Expr>>
+    {
+        let (iattrs, body) = self.parse_inner_attrs_and_block()?;
+        attrs.extend(iattrs);
+        let hi = body.span.hi;
+        Ok(self.mk_expr(span_lo, hi, ExprKind::Catch(body), attrs))
+    }
+
     // `match` token already eaten
     fn parse_match_expr(&mut self, mut attrs: ThinVec<Attribute>) -> PResult<'a, P<Expr>> {
         let match_span = self.prev_span;
@@ -3704,6 +3720,15 @@ impl<'a> Parser<'a> {
             self.recover_stmt_(SemiColonMode::Break);
             None
         })
+    }
+
+    fn is_catch_expr(&mut self) -> bool {
+        self.token.is_keyword(keywords::Do) &&
+        self.look_ahead(1, |t| t.is_keyword(keywords::Catch)) &&
+        self.look_ahead(2, |t| *t == token::OpenDelim(token::Brace)) &&
+
+        // prevent `while catch {} {}`, `if catch {} {} else {}`, etc.
+        !self.restrictions.contains(Restrictions::RESTRICTION_NO_STRUCT_LITERAL)
     }
 
     fn is_union_item(&self) -> bool {
@@ -4882,6 +4907,7 @@ impl<'a> Parser<'a> {
     /// Parse struct Foo { ... }
     fn parse_item_struct(&mut self) -> PResult<'a, ItemInfo> {
         let class_name = self.parse_ident()?;
+
         let mut generics = self.parse_generics()?;
 
         // There is a special case worth noting here, as reported in issue #17904.
@@ -4931,6 +4957,7 @@ impl<'a> Parser<'a> {
     /// Parse union Foo { ... }
     fn parse_item_union(&mut self) -> PResult<'a, ItemInfo> {
         let class_name = self.parse_ident()?;
+
         let mut generics = self.parse_generics()?;
 
         let vdata = if self.token.is_keyword(keywords::Where) {
