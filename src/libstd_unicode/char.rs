@@ -829,7 +829,7 @@ impl char {
     /// // Sometimes the result is more than one character:
     /// assert_eq!('İ'.to_lowercase().to_string(), "i\u{307}");
     ///
-    /// // Japanese scripts do not have case, and so:
+    /// // Japanese kanji characters do not have case, and so:
     /// assert_eq!('山'.to_lowercase().to_string(), "山");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -889,7 +889,7 @@ impl char {
     /// // Sometimes the result is more than one character:
     /// assert_eq!('ß'.to_uppercase().to_string(), "SS");
     ///
-    /// // Japanese does not have case, and so:
+    /// // Japanese kanji characters do not have case, and so:
     /// assert_eq!('山'.to_uppercase().to_string(), "山");
     /// ```
     ///
