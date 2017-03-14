@@ -178,25 +178,9 @@ pub fn binary_op<'tcx>(
 
     // These ops can have an RHS with a different numeric type.
     if bin_op == Shl || bin_op == Shr {
-        // These are the maximum values a bitshift RHS could possibly have. For example, u16
-        // can be bitshifted by 0..16, so masking with 0b1111 (16 - 1) will ensure we are in
-        // that range.
-        let type_bits: u32 = match left_kind {
-            I8  | U8  => 8,
-            I16 | U16 => 16,
-            I32 | U32 => 32,
-            I64 | U64 => 64,
-            I128 | U128 => 128,
-            _ => bug!("bad MIR: bitshift lhs is not integral"),
-        };
-
-        // Cast to `u32` because `overflowing_sh{l,r}` only take `u32`, then apply the bitmask
-        // to ensure it's within the valid shift value range.
-        let masked_shift_width = (r as u32) & (type_bits - 1);
-
         return match bin_op {
-            Shl => int_shift!(left_kind, overflowing_shl, l, masked_shift_width),
-            Shr => int_shift!(left_kind, overflowing_shr, l, masked_shift_width),
+            Shl => int_shift!(left_kind, overflowing_shl, l, r as u32),
+            Shr => int_shift!(left_kind, overflowing_shr, l, r as u32),
             _ => bug!("it has already been checked that this is a shift op"),
         };
     }
