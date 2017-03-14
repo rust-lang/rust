@@ -448,6 +448,12 @@ impl OsStr {
         self.inner.inner.len()
     }
 
+    /// Checks if the string is empty.
+    #[unstable(feature = "osstr_is_empty", reason = "recently added", issue = "30259")]
+    pub fn is_empty(&self) -> bool {
+        self.inner.inner.is_empty()
+    }
+
     /// Gets the underlying byte representation.
     ///
     /// Note: it is *crucial* that this API is private, to avoid
