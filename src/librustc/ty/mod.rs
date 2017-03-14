@@ -1376,6 +1376,8 @@ pub struct ReprOptions {
     pub packed: bool,
     pub simd: bool,
     pub int: Option<attr::IntType>,
+    // Internal only for now. If true, don't reorder fields.
+    pub linear: bool,
 }
 
 impl ReprOptions {
@@ -1398,6 +1400,9 @@ impl ReprOptions {
             ret.simd = true;
         }
 
+        // This is here instead of layout because the choice must make it into metadata.
+        ret.linear = !tcx.consider_optimizing(|| format!("Reorder fields of {:?}",
+            tcx.item_path_str(did)));
         ret
     }
 

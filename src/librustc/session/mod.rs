@@ -123,6 +123,20 @@ pub struct Session {
     pub code_stats: RefCell<CodeStats>,
 
     next_node_id: Cell<ast::NodeId>,
+
+    /// If -zfuel=crate=n is specified, Some(crate).
+    optimization_fuel_crate: Option<String>,
+    /// If -zfuel=crate=n is specified, initially set to n. Otherwise 0.
+    optimization_fuel_limit: Cell<u64>,
+    /// We're rejecting all further optimizations.
+    out_of_fuel: Cell<bool>,
+
+    // The next two are public because the driver needs to read them.
+
+    /// If -zprint-fuel=crate, Some(crate).
+    pub print_fuel_crate: Option<String>,
+    /// Always set to zero and incremented so that we can print fuel expended by a crate.
+    pub print_fuel: Cell<u64>,
 }
 
 pub struct PerfStats {
@@ -504,6 +518,33 @@ impl Session {
         println!("Total time spent decoding DefPath tables:      {}",
                  duration_to_secs_str(self.perf_stats.decode_def_path_tables_time.get()));
     }
+
+    /// We want to know if we're allowed to do an optimization for crate foo from -z fuel=foo=n.
+    /// This expends fuel if applicable, and records fuel if applicable.
+    pub fn consider_optimizing<T: Fn() -> String>(&self, crate_name: &str, msg: T) -> bool {
+        let mut ret = true;
+        match self.optimization_fuel_crate {
+            Some(ref c) if c == crate_name => {
+                let fuel = self.optimization_fuel_limit.get();
+                ret = fuel != 0;
+                if fuel == 0 && !self.out_of_fuel.get(){
+                    println!("optimization-fuel-exhausted: {}", msg());
+                    self.out_of_fuel.set(true);
+                }
+                else if fuel > 0{
+                    self.optimization_fuel_limit.set(fuel-1);
+                }
+            }
+            _ => {}
+        }
+        match self.print_fuel_crate {
+            Some(ref c) if c == crate_name=> {
+                self.print_fuel.set(self.print_fuel.get()+1);
+            },
+            _ => {}
+        }
+        ret
+    }
 }
 
 pub fn build_session(sopts: config::Options,
@@ -599,6 +640,12 @@ pub fn build_session_(sopts: config::Options,
         }
     );
 
+    let optimization_fuel_crate = sopts.debugging_opts.fuel.as_ref().map(|i| i.0.clone());
+    let optimization_fuel_limit = Cell::new(sopts.debugging_opts.fuel.as_ref()
+        .map(|i| i.1).unwrap_or(0));
+    let print_fuel_crate = sopts.debugging_opts.print_fuel.clone();
+    let print_fuel = Cell::new(0);
+
     let sess = Session {
         dep_graph: dep_graph.clone(),
         target: target_cfg,
@@ -640,6 +687,11 @@ pub fn build_session_(sopts: config::Options,
             decode_def_path_tables_time: Cell::new(Duration::from_secs(0)),
         },
         code_stats: RefCell::new(CodeStats::new()),
+        optimization_fuel_crate: optimization_fuel_crate,
+        optimization_fuel_limit: optimization_fuel_limit,
+        print_fuel_crate: print_fuel_crate,
+        print_fuel: print_fuel,
+        out_of_fuel: Cell::new(false),
     };
 
     init_llvm(&sess);
