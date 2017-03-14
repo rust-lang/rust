@@ -29,6 +29,11 @@ pub fn plugin_registrar(reg: &mut Registry) {
 
 // This macro is not very interesting, but it does contain delimited tokens with
 // no content - `()` and `{}` - which has caused problems in the past.
+// Also, it tests that we can escape `$` via `$$`.
 fn hello(_: TokenStream) -> TokenStream {
-    qquote!({ fn hello() {} hello(); })
+    quote!({
+        fn hello() {}
+        macro_rules! m { ($$($$t:tt)*) => { $$($$t)* } }
+        m!(hello());
+    })
 }

@@ -22,6 +22,6 @@ use syntax::parse::token;
 use syntax::tokenstream::TokenTree;
 
 fn main() {
-    let true_tok = TokenTree::Token(syntax_pos::DUMMY_SP, token::Ident(Ident::from_str("true")));
-    assert!(qquote!(true).eq_unspanned(&true_tok.into()));
+    let true_tok = token::Ident(Ident::from_str("true"));
+    assert!(quote!(true).eq_unspanned(&true_tok.into()));
 }
