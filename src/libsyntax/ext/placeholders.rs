@@ -178,17 +178,9 @@ impl<'a, 'b> Folder for PlaceholderExpander<'a, 'b> {
             block.stmts = block.stmts.move_flat_map(|mut stmt| {
                 remaining_stmts -= 1;
 
-                match stmt.node {
-                    // Avoid wasting a node id on a trailing expression statement,
-                    // which shares a HIR node with the expression itself.
-                    ast::StmtKind::Expr(ref expr) if remaining_stmts == 0 => stmt.id = expr.id,
-
-                    _ if self.monotonic => {
-                        assert_eq!(stmt.id, ast::DUMMY_NODE_ID);
-                        stmt.id = self.cx.resolver.next_node_id();
-                    }
-
-                    _ => {}
+                if self.monotonic {
+                    assert_eq!(stmt.id, ast::DUMMY_NODE_ID);
+                    stmt.id = self.cx.resolver.next_node_id();
                 }
 
                 Some(stmt)
