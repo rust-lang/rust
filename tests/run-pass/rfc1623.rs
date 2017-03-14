@@ -28,13 +28,13 @@ static STATIC_SIMPLE_FN: &fn(&[u8]) -> &[u8] = &(id_u8_slice as fn(&[u8]) -> &[u
 const CONST_SIMPLE_FN: &fn(&[u8]) -> &[u8] = &(id_u8_slice as fn(&[u8]) -> &[u8]);
 
 // this should be the same as without elision
-static STATIC_NON_ELIDED_fN: &for<'a> fn(&'a [u8]) -> &'a [u8] =
+static STATIC_NON_ELIDED_FN: &for<'a> fn(&'a [u8]) -> &'a [u8] =
     &(id_u8_slice as for<'a> fn(&'a [u8]) -> &'a [u8]);
-const CONST_NON_ELIDED_fN: &for<'a> fn(&'a [u8]) -> &'a [u8] =
+const CONST_NON_ELIDED_FN: &for<'a> fn(&'a [u8]) -> &'a [u8] =
     &(id_u8_slice as for<'a> fn(&'a [u8]) -> &'a [u8]);
 
 // another function that elides, each to a different unbound lifetime
-fn multi_args(a: &u8, b: &u8, c: &u8) {}
+fn multi_args(_a: &u8, _b: &u8, _c: &u8) {}
 
 static STATIC_MULTI_FN: &fn(&u8, &u8, &u8) = &(multi_args as fn(&u8, &u8, &u8));
 const CONST_MULTI_FN: &fn(&u8, &u8, &u8) = &(multi_args as fn(&u8, &u8, &u8));
