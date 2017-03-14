@@ -1,6 +1,7 @@
 // pub use self::sse::*;
 pub use self::sse2::*;
 pub use self::ssse3::*;
+pub use self::sse42::*;
 
 #[allow(non_camel_case_types)]
 pub type __m128i = ::v128::i8x16;
