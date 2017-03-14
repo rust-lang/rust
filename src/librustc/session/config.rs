@@ -971,7 +971,7 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
     always_encode_mir: bool = (false, parse_bool, [TRACKED],
           "encode MIR of all functions into the crate metadata"),
     osx_rpath_install_name: bool = (false, parse_bool, [TRACKED],
-          "pass `-install_name @rpath/...` to the OSX linker"),
+          "pass `-install_name @rpath/...` to the macOS linker"),
     sanitizer: Option<Sanitizer> = (None, parse_sanitizer, [TRACKED],
                                    "Use a sanitizer"),
 }

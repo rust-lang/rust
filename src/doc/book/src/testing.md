@@ -147,7 +147,7 @@ And that's reflected in the summary line:
 test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured
 ```
 
-We also get a non-zero status code. We can use `$?` on OS X and Linux:
+We also get a non-zero status code. We can use `$?` on macOS and Linux:
 
 ```bash
 $ echo $?

@@ -439,7 +439,7 @@ impl File {
         // Linux kernel then the flag is just ignored by the OS, so we continue
         // to explicitly ask for a CLOEXEC fd here.
         //
-        // The CLOEXEC flag, however, is supported on versions of OSX/BSD/etc
+        // The CLOEXEC flag, however, is supported on versions of macOS/BSD/etc
         // that we support, so we only do this on Linux currently.
         if cfg!(target_os = "linux") {
             fd.set_cloexec()?;
@@ -573,7 +573,7 @@ impl fmt::Debug for File {
         #[cfg(target_os = "macos")]
         fn get_path(fd: c_int) -> Option<PathBuf> {
             // FIXME: The use of PATH_MAX is generally not encouraged, but it
-            // is inevitable in this case because OS X defines `fcntl` with
+            // is inevitable in this case because macOS defines `fcntl` with
             // `F_GETPATH` in terms of `MAXPATHLEN`, and there are no
             // alternatives. If a better method is invented, it should be used
             // instead.
