@@ -1,7 +1,7 @@
 - Feature Name: eprintln
 - Start Date: 2017-01-23
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#1869](https://github.com/rust-lang/rfcs/pull/1869)
+- Rust Issue: [rust-lang/rust#40528](https://github.com/rust-lang/rust/issues/40528)
 
 # Summary
 [summary]: #summary
