@@ -54,6 +54,8 @@ use super::external_data::{Lower, make_def_id};
 use super::span_utils::SpanUtils;
 use super::recorder;
 
+use rls_data::ExternalCrateData;
+
 macro_rules! down_cast_data {
     ($id:ident, $kind:ident, $sp:expr) => {
         let $id = if let super::Data::$kind(data) = $id {
