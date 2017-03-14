@@ -143,15 +143,6 @@ fn id_from_def_id(id: DefId) -> Id {
     }
 }
 
-impl Into<rls_data::Attribute> for Attribute {
-    fn into(self) -> rls_data::Attribute {
-        rls_data::Attribute {
-            value: self.value,
-            span: self.span,
-        }
-    }
-}
-
 impl Into<Import> for ExternCrateData {
     fn into(self) -> Import {
         Import {
@@ -200,7 +191,7 @@ impl Into<Def> for EnumData {
             decl_id: None,
             docs: self.docs,
             sig: Some(self.sig.into()),
-            attributes: self.attributes.into_iter().map(|a| a.into()).collect(),
+            attributes: self.attributes,
         }
     }
 }
@@ -219,7 +210,7 @@ impl Into<Def> for TupleVariantData {
             decl_id: None,
             docs: self.docs,
             sig: Some(self.sig.into()),
-            attributes: self.attributes.into_iter().map(|a| a.into()).collect(),
+            attributes: self.attributes,
         }
     }
 }
@@ -237,7 +228,7 @@ impl Into<Def> for StructVariantData {
             decl_id: None,
             docs: self.docs,
             sig: Some(self.sig.into()),
-            attributes: self.attributes.into_iter().map(|a| a.into()).collect(),
+            attributes: self.attributes,
         }
     }
 }
@@ -255,7 +246,7 @@ impl Into<Def> for StructData {
             decl_id: None,
             docs: self.docs,
             sig: Some(self.sig.into()),
-            attributes: self.attributes.into_iter().map(|a| a.into()).collect(),
+            attributes: self.attributes,
         }
     }
 }
@@ -273,7 +264,7 @@ impl Into<Def> for TraitData {
             decl_id: None,
             docs: self.docs,
             sig: Some(self.sig.into()),
-            attributes: self.attributes.into_iter().map(|a| a.into()).collect(),
+            attributes: self.attributes,
         }
     }
 }
@@ -291,7 +282,7 @@ impl Into<Def> for FunctionData {
             decl_id: None,
             docs: self.docs,
             sig: Some(self.sig.into()),
-            attributes: self.attributes.into_iter().map(|a| a.into()).collect(),
+            attributes: self.attributes,
         }
     }
 }
@@ -309,7 +300,7 @@ impl Into<Def> for MethodData {
             decl_id: self.decl_id.map(|id| id_from_def_id(id)),
             docs: self.docs,
             sig: Some(self.sig.into()),
-            attributes: self.attributes.into_iter().map(|a| a.into()).collect(),
+            attributes: self.attributes,
         }
     }
 }
@@ -345,7 +336,7 @@ impl Into<Def> for TypeDefData {
             decl_id: None,
             docs: String::new(),
             sig: self.sig.map(|s| s.into()),
-            attributes: self.attributes.into_iter().map(|a| a.into()).collect(),
+            attributes: self.attributes,
         }
     }
 }
@@ -368,7 +359,7 @@ impl Into<Def> for VariableData {
             decl_id: None,
             docs: self.docs,
             sig: None,
-            attributes: self.attributes.into_iter().map(|a| a.into()).collect(),
+            attributes: self.attributes,
         }
     }
 }

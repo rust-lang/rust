@@ -21,7 +21,7 @@ use std::path::PathBuf;
 
 use data::{self, Visibility, SigElement};
 
-use rls_data::{SpanData, CratePreludeData};
+use rls_data::{SpanData, CratePreludeData, Attribute};
 
 // FIXME: this should be pub(crate), but the current snapshot doesn't allow it yet
 pub trait Lower {
@@ -53,13 +53,6 @@ pub fn span_from_span(span: Span, cm: &CodeMap) -> SpanData {
         column_start: start.col.0 + 1,
         column_end: end.col.0 + 1,
     }
-}
-
-/// Represent an arbitrary attribute on a code element
-#[derive(Clone, Debug, RustcEncodable)]
-pub struct Attribute {
-    pub value: String,
-    pub span: SpanData,
 }
 
 impl Lower for Vec<ast::Attribute> {
@@ -102,7 +95,7 @@ impl Lower for data::CratePreludeData {
 }
 
 /// Data for enum declarations.
-#[derive(Clone, Debug, RustcEncodable)]
+#[derive(Clone, Debug)]
 pub struct EnumData {
     pub id: DefId,
     pub value: String,
@@ -138,7 +131,7 @@ impl Lower for data::EnumData {
 }
 
 /// Data for extern crates.
-#[derive(Debug, RustcEncodable)]
+#[derive(Debug)]
 pub struct ExternCrateData {
     pub id: DefId,
     pub name: String,
@@ -164,7 +157,7 @@ impl Lower for data::ExternCrateData {
 }
 
 /// Data about a function call.
-#[derive(Debug, RustcEncodable)]
+#[derive(Debug)]
 pub struct FunctionCallData {
     pub span: SpanData,
     pub scope: DefId,
@@ -184,7 +177,7 @@ impl Lower for data::FunctionCallData {
 }
 
 /// Data for all kinds of functions and methods.
-#[derive(Clone, Debug, RustcEncodable)]
+#[derive(Clone, Debug)]
 pub struct FunctionData {
     pub id: DefId,
     pub name: String,
@@ -222,7 +215,7 @@ impl Lower for data::FunctionData {
 }
 
 /// Data about a function call.
-#[derive(Debug, RustcEncodable)]
+#[derive(Debug)]
 pub struct FunctionRefData {
     pub span: SpanData,
     pub scope: DefId,
@@ -240,7 +233,7 @@ impl Lower for data::FunctionRefData {
         }
     }
 }
-#[derive(Debug, RustcEncodable)]
+#[derive(Debug)]
 pub struct ImplData {
     pub id: DefId,
     pub span: SpanData,
@@ -263,7 +256,7 @@ impl Lower for data::ImplData {
     }
 }
 
-#[derive(Debug, RustcEncodable)]
+#[derive(Debug)]
 pub struct InheritanceData {
     pub span: SpanData,
     pub base_id: DefId,
@@ -283,7 +276,7 @@ impl Lower for data::InheritanceData {
 }
 
 /// Data about a macro declaration.
-#[derive(Debug, RustcEncodable)]
+#[derive(Debug)]
 pub struct MacroData {
     pub span: SpanData,
     pub name: String,
@@ -305,7 +298,7 @@ impl Lower for data::MacroData {
 }
 
 /// Data about a macro use.
-#[derive(Debug, RustcEncodable)]
+#[derive(Debug)]
 pub struct MacroUseData {
     pub span: SpanData,
     pub name: String,
@@ -331,7 +324,7 @@ impl Lower for data::MacroUseData {
 }
 
 /// Data about a method call.
-#[derive(Debug, RustcEncodable)]
+#[derive(Debug)]
 pub struct MethodCallData {
     pub span: SpanData,
     pub scope: DefId,
@@ -353,7 +346,7 @@ impl Lower for data::MethodCallData {
 }
 
 /// Data for method declarations (methods with a body are treated as functions).
-#[derive(Clone, Debug, RustcEncodable)]
+#[derive(Clone, Debug)]
 pub struct MethodData {
     pub id: DefId,
     pub name: String,
@@ -391,7 +384,7 @@ impl Lower for data::MethodData {
 }
 
 /// Data for modules.
-#[derive(Debug, RustcEncodable)]
+#[derive(Debug)]
 pub struct ModData {
     pub id: DefId,
     pub name: String,
@@ -427,7 +420,7 @@ impl Lower for data::ModData {
 }
 
 /// Data for a reference to a module.
-#[derive(Debug, RustcEncodable)]
+#[derive(Debug)]
 pub struct ModRefData {
     pub span: SpanData,
     pub scope: DefId,
@@ -448,7 +441,7 @@ impl Lower for data::ModRefData {
     }
 }
 
-#[derive(Debug, RustcEncodable)]
+#[derive(Debug)]
 pub struct StructData {
     pub span: SpanData,
     pub name: String,
@@ -485,7 +478,7 @@ impl Lower for data::StructData {
     }
 }
 
-#[derive(Debug, RustcEncodable)]
+#[derive(Debug)]
 pub struct StructVariantData {
     pub span: SpanData,
     pub name: String,
@@ -520,7 +513,7 @@ impl Lower for data::StructVariantData {
     }
 }
 
-#[derive(Debug, RustcEncodable)]
+#[derive(Debug)]
 pub struct TraitData {
     pub span: SpanData,
     pub name: String,
@@ -555,7 +548,7 @@ impl Lower for data::TraitData {
     }
 }
 
-#[derive(Debug, RustcEncodable)]
+#[derive(Debug)]
 pub struct TupleVariantData {
     pub span: SpanData,
     pub id: DefId,
@@ -591,7 +584,7 @@ impl Lower for data::TupleVariantData {
 }
 
 /// Data for a typedef.
-#[derive(Debug, RustcEncodable)]
+#[derive(Debug)]
 pub struct TypeDefData {
     pub id: DefId,
     pub name: String,
@@ -625,7 +618,7 @@ impl Lower for data::TypeDefData {
 }
 
 /// Data for a reference to a type or trait.
-#[derive(Clone, Debug, RustcEncodable)]
+#[derive(Clone, Debug)]
 pub struct TypeRefData {
     pub span: SpanData,
     pub scope: DefId,
@@ -646,7 +639,7 @@ impl Lower for data::TypeRefData {
     }
 }
 
-#[derive(Debug, RustcEncodable)]
+#[derive(Debug)]
 pub struct UseData {
     pub id: DefId,
     pub span: SpanData,
@@ -671,7 +664,7 @@ impl Lower for data::UseData {
     }
 }
 
-#[derive(Debug, RustcEncodable)]
+#[derive(Debug)]
 pub struct UseGlobData {
     pub id: DefId,
     pub span: SpanData,
@@ -695,7 +688,7 @@ impl Lower for data::UseGlobData {
 }
 
 /// Data for local and global variables (consts and statics).
-#[derive(Debug, RustcEncodable)]
+#[derive(Debug)]
 pub struct VariableData {
     pub id: DefId,
     pub name: String,
@@ -736,7 +729,7 @@ impl Lower for data::VariableData {
 
 /// Data for the use of some item (e.g., the use of a local variable, which
 /// will refer to that variables declaration (by ref_id)).
-#[derive(Debug, RustcEncodable)]
+#[derive(Debug)]
 pub struct VariableRefData {
     pub name: String,
     pub span: SpanData,
@@ -757,7 +750,7 @@ impl Lower for data::VariableRefData {
     }
 }
 
-#[derive(Clone, Debug, RustcEncodable)]
+#[derive(Clone, Debug)]
 pub struct Signature {
     pub span: SpanData,
     pub text: String,
