@@ -1769,11 +1769,20 @@ impl DirBuilder {
     }
 
     fn create_dir_all(&self, path: &Path) -> io::Result<()> {
+        use io::{ErrorKind};
         if path == Path::new("") || path.is_dir() { return Ok(()) }
         if let Some(p) = path.parent() {
             self.create_dir_all(p)?
         }
-        self.inner.mkdir(path)
+        match self.inner.mkdir(path) {
+            Err(ref e) if e.kind() == ErrorKind::AlreadyExists
+                && path.is_dir() => {
+                    // It looks like the directory was created after
+                    // we checked, so this is not an error after all.
+                    Ok(())
+                },
+            r => r,
+        }
     }
 }
 
