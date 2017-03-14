@@ -9,7 +9,7 @@ use rustc::mir;
 use rustc::traits::Reveal;
 use rustc::ty::layout::{self, Layout, Size};
 use rustc::ty::subst::{self, Subst, Substs};
-use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
+use rustc::ty::{self, Ty, TyCtxt, TypeFoldable, Binder};
 use rustc_data_structures::indexed_vec::Idx;
 use syntax::codemap::{self, DUMMY_SP};
 
@@ -223,6 +223,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         let without_lifetimes = self.tcx.erase_regions(&ty);
         let substituted = without_lifetimes.subst(self.tcx, substs);
         self.tcx.normalize_associated_type(&substituted)
+    }
+
+    pub fn erase_lifetimes<T>(&self, value: &Binder<T>) -> T
+        where T : TypeFoldable<'tcx>
+    {
+        let value = self.tcx.erase_late_bound_regions(value);
+        self.tcx.erase_regions(&value)
     }
 
     pub(super) fn type_size(&self, ty: Ty<'tcx>) -> EvalResult<'tcx, Option<u64>> {

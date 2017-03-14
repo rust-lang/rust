@@ -65,16 +65,14 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let func_ty = self.operand_ty(func);
                 let fn_def = match func_ty.sty {
                     ty::TyFnPtr(bare_sig) => {
-                        let bare_sig = self.tcx.erase_late_bound_regions(&bare_sig);
-                        let bare_sig = self.tcx.erase_regions(&bare_sig);
+                        let bare_sig = self.erase_lifetimes(&bare_sig);
                         let fn_ptr = self.eval_operand_to_primval(func)?.to_ptr()?;
                         let fn_def = self.memory.get_fn(fn_ptr.alloc_id)?;
                         match fn_def {
                             Function::Concrete(fn_def) => {
                                 // transmuting function pointers in miri is fine as long as the number of
                                 // arguments and the abi don't change.
-                                let sig = self.tcx.erase_late_bound_regions(&fn_def.sig);
-                                let sig = self.tcx.erase_regions(&sig);
+                                let sig = self.erase_lifetimes(&fn_def.sig);
                                 if sig.abi != bare_sig.abi ||
                                     sig.variadic != bare_sig.variadic ||
                                     sig.inputs_and_output != bare_sig.inputs_and_output {
@@ -82,8 +80,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                                 }
                             },
                             Function::NonCaptureClosureAsFnPtr(fn_def) => {
-                                let sig = self.tcx.erase_late_bound_regions(&fn_def.sig);
-                                let sig = self.tcx.erase_regions(&sig);
+                                let sig = self.erase_lifetimes(&fn_def.sig);
                                 assert_eq!(sig.abi, Abi::RustCall);
                                 if sig.variadic != bare_sig.variadic ||
                                     sig.inputs().len() != 1 {
@@ -170,8 +167,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         match fn_def {
             // Intrinsics can only be addressed directly
             Function::Concrete(FunctionDefinition { def_id, substs, sig }) if sig.abi() == Abi::RustIntrinsic => {
-                let sig = self.tcx.erase_late_bound_regions(&sig);
-                let sig = self.tcx.erase_regions(&sig);
+                let sig = self.erase_lifetimes(&sig);
                 let ty = sig.output();
                 let layout = self.type_layout(ty)?;
                 let (ret, target) = match destination {
@@ -184,8 +180,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             },
             // C functions can only be addressed directly
             Function::Concrete(FunctionDefinition { def_id, sig, ..}) if sig.abi() == Abi::C => {
-                let sig = self.tcx.erase_late_bound_regions(&sig);
-                let sig = self.tcx.erase_regions(&sig);
+                let sig = self.erase_lifetimes(&sig);
                 let ty = sig.output();
                 let (ret, target) = destination.unwrap();
                 self.call_c_abi(def_id, arg_operands, ret, ty)?;
@@ -275,8 +270,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 )
             },
             Function::NonCaptureClosureAsFnPtr(FunctionDefinition { def_id, substs, sig }) if sig.abi() == Abi::RustCall => {
-                let sig = self.tcx.erase_late_bound_regions(&sig);
-                let sig = self.tcx.erase_regions(&sig);
+                let sig = self.erase_lifetimes(&sig);
                 let mut args = Vec::new();
                 for arg in arg_operands {
                     let arg_val = self.eval_operand(arg)?;
