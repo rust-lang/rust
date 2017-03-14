@@ -14,8 +14,10 @@
 //! There are also some rather random cases (like const initializer
 //! expressions) that are mostly just leftovers.
 
+use hir;
 use hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE};
 use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::stable_hasher::StableHasher;
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 use std::fmt::Write;
@@ -121,6 +123,7 @@ pub struct Definitions {
     table: DefPathTable,
     node_to_def_index: NodeMap<DefIndex>,
     def_index_to_node: Vec<ast::NodeId>,
+    pub(super) node_to_hir_id: IndexVec<ast::NodeId, hir::HirId>,
 }
 
 /// A unique identifier that we can use to lookup a definition
@@ -206,6 +209,23 @@ impl DefPath {
         s
     }
 
+    /// Returns a string representation of the DefPath without
+    /// the crate-prefix. This method is useful if you don't have
+    /// a TyCtxt available.
+    pub fn to_string_no_crate(&self) -> String {
+        let mut s = String::with_capacity(self.data.len() * 16);
+
+        for component in &self.data {
+            write!(s,
+                   "::{}[{}]",
+                   component.data.as_interned_str(),
+                   component.disambiguator)
+                .unwrap();
+        }
+
+        s
+    }
+
     pub fn deterministic_hash(&self, tcx: TyCtxt) -> u64 {
         debug!("deterministic_hash({:?})", self);
         let mut state = StableHasher::new();
@@ -275,6 +295,7 @@ impl Definitions {
             },
             node_to_def_index: NodeMap(),
             def_index_to_node: vec![],
+            node_to_hir_id: IndexVec::new(),
         }
     }
 
@@ -366,6 +387,15 @@ impl Definitions {
         self.def_index_to_node.push(node_id);
 
         index
+    }
+
+    /// Initialize the ast::NodeId to HirId mapping once it has been generated during
+    /// AST to HIR lowering.
+    pub fn init_node_id_to_hir_id_mapping(&mut self,
+                                          mapping: IndexVec<ast::NodeId, hir::HirId>) {
+        assert!(self.node_to_hir_id.is_empty(),
+                "Trying initialize NodeId -> HirId mapping twice");
+        self.node_to_hir_id = mapping;
     }
 }
 
