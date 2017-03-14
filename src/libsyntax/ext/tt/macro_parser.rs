@@ -488,7 +488,7 @@ pub fn parse(sess: &ParseSess, tts: TokenStream, ms: &[TokenTree], directory: Op
 fn parse_nt<'a>(p: &mut Parser<'a>, sp: Span, name: &str) -> Nonterminal {
     match name {
         "tt" => {
-            return token::NtTT(panictry!(p.parse_token_tree()));
+            return token::NtTT(p.parse_token_tree());
         }
         _ => {}
     }

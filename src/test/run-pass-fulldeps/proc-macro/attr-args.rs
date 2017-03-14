@@ -19,6 +19,6 @@ use attr_args::attr_with_args;
 #[attr_with_args(text = "Hello, world!")]
 fn foo() {}
 
-fn main() {
-    assert_eq!(foo(), "Hello, world!");
-}
+#[::attr_args::identity
+  fn main() { assert_eq!(foo(), "Hello, world!"); }]
+struct Dummy;

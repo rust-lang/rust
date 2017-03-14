@@ -1165,6 +1165,7 @@ pub struct Resolver<'a> {
 
     privacy_errors: Vec<PrivacyError<'a>>,
     ambiguity_errors: Vec<AmbiguityError<'a>>,
+    gated_errors: FxHashSet<Span>,
     disallowed_shadowing: Vec<&'a LegacyBinding<'a>>,
 
     arenas: &'a ResolverArenas<'a>,
@@ -1355,6 +1356,7 @@ impl<'a> Resolver<'a> {
 
             privacy_errors: Vec::new(),
             ambiguity_errors: Vec::new(),
+            gated_errors: FxHashSet(),
             disallowed_shadowing: Vec::new(),
 
             arenas: arenas,
@@ -3359,8 +3361,9 @@ impl<'a> Resolver<'a> {
         if self.proc_macro_enabled { return; }
 
         for attr in attrs {
-            let maybe_binding = self.builtin_macros.get(&attr.name()).cloned().or_else(|| {
-                let ident = Ident::with_empty_ctxt(attr.name());
+            let name = unwrap_or!(attr.name(), continue);
+            let maybe_binding = self.builtin_macros.get(&name).cloned().or_else(|| {
+                let ident = Ident::with_empty_ctxt(name);
                 self.resolve_lexical_macro_path_segment(ident, MacroNS, None).ok()
             });
 

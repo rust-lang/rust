@@ -248,7 +248,7 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
     fn visit_item(&mut self, item: &'a ast::Item) {
         if let ast::ItemKind::MacroDef(..) = item.node {
             if self.is_proc_macro_crate &&
-               item.attrs.iter().any(|attr| attr.name() == "macro_export") {
+               item.attrs.iter().any(|attr| attr.path == "macro_export") {
                 let msg =
                     "cannot export macro_rules! macros from a `proc-macro` crate type currently";
                 self.handler.span_err(item.span, msg);
@@ -270,12 +270,12 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
         for attr in &item.attrs {
             if is_proc_macro_attr(&attr) {
                 if let Some(prev_attr) = found_attr {
-                    let msg = if attr.name() == prev_attr.name() {
+                    let msg = if attr.path == prev_attr.path {
                         format!("Only one `#[{}]` attribute is allowed on any given function",
-                                attr.name())
+                                attr.path)
                     } else {
                         format!("`#[{}]` and `#[{}]` attributes cannot both be applied \
-                                to the same function", attr.name(), prev_attr.name())
+                                to the same function", attr.path, prev_attr.path)
                     };
 
                     self.handler.struct_span_err(attr.span(), &msg)
@@ -299,7 +299,7 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
 
         if !is_fn {
             let msg = format!("the `#[{}]` attribute may only be used on bare functions",
-                              attr.name());
+                              attr.path);
 
             self.handler.span_err(attr.span(), &msg);
             return;
@@ -311,7 +311,7 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
 
         if !self.is_proc_macro_crate {
             let msg = format!("the `#[{}]` attribute is only usable with crates of the \
-                              `proc-macro` crate type", attr.name());
+                              `proc-macro` crate type", attr.path);
 
             self.handler.span_err(attr.span(), &msg);
             return;

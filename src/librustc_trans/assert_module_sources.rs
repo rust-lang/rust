@@ -113,7 +113,7 @@ impl<'a, 'tcx> AssertModuleSource<'a, 'tcx> {
     }
 
     fn field(&self, attr: &ast::Attribute, name: &str) -> ast::Name {
-        for item in attr.meta_item_list().unwrap_or(&[]) {
+        for item in attr.meta_item_list().unwrap_or_else(Vec::new) {
             if item.check_name(name) {
                 if let Some(value) = item.value_str() {
                     return value;

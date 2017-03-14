@@ -137,13 +137,13 @@ fn scrape_test_config(krate: &::rustc::hir::Crate) -> TestOptions {
         attrs: Vec::new(),
     };
 
-    let attrs = krate.attrs.iter()
-                     .filter(|a| a.check_name("doc"))
-                     .filter_map(|a| a.meta_item_list())
-                     .flat_map(|l| l)
-                     .filter(|a| a.check_name("test"))
-                     .filter_map(|a| a.meta_item_list())
-                     .flat_map(|l| l);
+    let test_attrs: Vec<_> = krate.attrs.iter()
+        .filter(|a| a.check_name("doc"))
+        .flat_map(|a| a.meta_item_list().unwrap_or_else(Vec::new))
+        .filter(|a| a.check_name("test"))
+        .collect();
+    let attrs = test_attrs.iter().flat_map(|a| a.meta_item_list().unwrap_or(&[]));
+
     for attr in attrs {
         if attr.check_name("no_crate_inject") {
             opts.no_crate_inject = true;
