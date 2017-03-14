@@ -73,10 +73,10 @@
 //! the element type of the slice is `i32`, the element type of the iterator is
 //! `&mut i32`.
 //!
-//! * [`.iter()`] and [`.iter_mut()`] are the explicit methods to return the default
+//! * [`.iter`] and [`.iter_mut`] are the explicit methods to return the default
 //!   iterators.
-//! * Further methods that return iterators are [`.split()`], [`.splitn()`],
-//!   [`.chunks()`], [`.windows()`] and more.
+//! * Further methods that return iterators are [`.split`], [`.splitn`],
+//!   [`.chunks`], [`.windows`] and more.
 //!
 //! *[See also the slice primitive type](../../std/primitive.slice.html).*
 //!
@@ -85,12 +85,12 @@
 //! [`Ord`]: ../../std/cmp/trait.Ord.html
 //! [`Iter`]: struct.Iter.html
 //! [`Hash`]: ../../std/hash/trait.Hash.html
-//! [`.iter()`]: ../../std/primitive.slice.html#method.iter
-//! [`.iter_mut()`]: ../../std/primitive.slice.html#method.iter_mut
-//! [`.split()`]: ../../std/primitive.slice.html#method.split
-//! [`.splitn()`]: ../../std/primitive.slice.html#method.splitn
-//! [`.chunks()`]: ../../std/primitive.slice.html#method.chunks
-//! [`.windows()`]: ../../std/primitive.slice.html#method.windows
+//! [`.iter`]: ../../std/primitive.slice.html#method.iter
+//! [`.iter_mut`]: ../../std/primitive.slice.html#method.iter_mut
+//! [`.split`]: ../../std/primitive.slice.html#method.split
+//! [`.splitn`]: ../../std/primitive.slice.html#method.splitn
+//! [`.chunks`]: ../../std/primitive.slice.html#method.chunks
+//! [`.windows`]: ../../std/primitive.slice.html#method.windows
 #![stable(feature = "rust1", since = "1.0.0")]
 
 // Many of the usings in this module are only used in the test configuration.
@@ -368,9 +368,9 @@ impl<T> [T] {
     }
 
     /// Returns a mutable reference to an element or subslice depending on the
-    /// type of index (see [`get()`]) or `None` if the index is out of bounds.
+    /// type of index (see [`get`]) or `None` if the index is out of bounds.
     ///
-    /// [`get()`]: #method.get
+    /// [`get`]: #method.get
     ///
     /// # Examples
     ///

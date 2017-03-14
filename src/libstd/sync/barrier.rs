@@ -52,10 +52,10 @@ struct BarrierState {
 
 /// A result returned from wait.
 ///
-/// Currently this opaque structure only has one method, [`.is_leader()`]. Only
+/// Currently this opaque structure only has one method, [`.is_leader`]. Only
 /// one thread will receive a result that will return `true` from this function.
 ///
-/// [`.is_leader()`]: #method.is_leader
+/// [`.is_leader`]: #method.is_leader
 ///
 /// # Examples
 ///

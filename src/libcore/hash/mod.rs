@@ -106,7 +106,7 @@ mod sip;
 ///
 /// This trait can be used with `#[derive]` if all fields implement `Hash`.
 /// When `derive`d, the resulting hash will be the combination of the values
-/// from calling [`.hash()`] on each field.
+/// from calling [`.hash`] on each field.
 ///
 /// ## How can I implement `Hash`?
 ///
@@ -133,7 +133,7 @@ mod sip;
 /// [`Eq`]: ../../std/cmp/trait.Eq.html
 /// [`HashMap`]: ../../std/collections/struct.HashMap.html
 /// [`HashSet`]: ../../std/collections/struct.HashSet.html
-/// [`.hash()`]: #tymethod.hash
+/// [`.hash`]: #tymethod.hash
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Hash {
     /// Feeds this value into the state given, updating the hasher as necessary.

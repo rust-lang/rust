@@ -2390,11 +2390,11 @@ impl usize {
 
 /// A classification of floating point numbers.
 ///
-/// This `enum` is used as the return type for [`f32::classify()`] and [`f64::classify()`]. See
+/// This `enum` is used as the return type for [`f32::classify`] and [`f64::classify`]. See
 /// their documentation for more.
 ///
-/// [`f32::classify()`]: ../../std/primitive.f32.html#method.classify
-/// [`f64::classify()`]: ../../std/primitive.f64.html#method.classify
+/// [`f32::classify`]: ../../std/primitive.f32.html#method.classify
+/// [`f64::classify`]: ../../std/primitive.f64.html#method.classify
 ///
 /// # Examples
 ///
@@ -2756,9 +2756,9 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, Par
 /// An error which can be returned when parsing an integer.
 ///
 /// This error is used as the error type for the `from_str_radix()` functions
-/// on the primitive integer types, such as [`i8::from_str_radix()`].
+/// on the primitive integer types, such as [`i8::from_str_radix`].
 ///
-/// [`i8::from_str_radix()`]: ../../std/primitive.i8.html#method.from_str_radix
+/// [`i8::from_str_radix`]: ../../std/primitive.i8.html#method.from_str_radix
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct ParseIntError {

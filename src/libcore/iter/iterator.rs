@@ -140,11 +140,11 @@ pub trait Iterator {
 
     /// Consumes the iterator, counting the number of iterations and returning it.
     ///
-    /// This method will evaluate the iterator until its [`next()`] returns
+    /// This method will evaluate the iterator until its [`next`] returns
     /// [`None`]. Once [`None`] is encountered, `count()` returns the number of
-    /// times it called [`next()`].
+    /// times it called [`next`].
     ///
-    /// [`next()`]: #tymethod.next
+    /// [`next`]: #tymethod.next
     /// [`None`]: ../../std/option/enum.Option.html#variant.None
     ///
     /// # Overflow Behavior
@@ -323,7 +323,7 @@ pub trait Iterator {
     ///
     /// In other words, it zips two iterators together, into a single one.
     ///
-    /// When either iterator returns [`None`], all further calls to [`next()`]
+    /// When either iterator returns [`None`], all further calls to [`next`]
     /// will return [`None`].
     ///
     /// # Examples
@@ -364,7 +364,7 @@ pub trait Iterator {
     ///
     /// `zip()` is often used to zip an infinite iterator to a finite one.
     /// This works because the finite iterator will eventually return [`None`],
-    /// ending the zipper. Zipping with `(0..)` can look a lot like [`enumerate()`]:
+    /// ending the zipper. Zipping with `(0..)` can look a lot like [`enumerate`]:
     ///
     /// ```
     /// let enumerate: Vec<_> = "foo".chars().enumerate().collect();
@@ -381,8 +381,8 @@ pub trait Iterator {
     /// assert_eq!((2, 'o'), zipper[2]);
     /// ```
     ///
-    /// [`enumerate()`]: trait.Iterator.html#method.enumerate
-    /// [`next()`]: ../../std/iter/trait.Iterator.html#tymethod.next
+    /// [`enumerate`]: trait.Iterator.html#method.enumerate
+    /// [`next`]: ../../std/iter/trait.Iterator.html#tymethod.next
     /// [`None`]: ../../std/option/enum.Option.html#variant.None
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -524,11 +524,11 @@ pub trait Iterator {
     /// closure returns [`None`], it will try again, and call the closure on the
     /// next element, seeing if it will return [`Some`].
     ///
-    /// Why `filter_map()` and not just [`filter()`].[`map()`]? The key is in this
+    /// Why `filter_map()` and not just [`filter()`].[`map`]? The key is in this
     /// part:
     ///
-    /// [`filter()`]: #method.filter
-    /// [`map()`]: #method.map
+    /// [`filter`]: #method.filter
+    /// [`map`]: #method.map
     ///
     /// > If the closure returns [`Some(element)`][`Some`], then that element is returned.
     ///
@@ -550,7 +550,7 @@ pub trait Iterator {
     /// assert_eq!(iter.next(), None);
     /// ```
     ///
-    /// Here's the same example, but with [`filter()`] and [`map()`]:
+    /// Here's the same example, but with [`filter`] and [`map`]:
     ///
     /// ```
     /// let a = ["1", "2", "lol"];
@@ -585,7 +585,7 @@ pub trait Iterator {
     /// iterator.
     ///
     /// `enumerate()` keeps its count as a [`usize`]. If you want to count by a
-    /// different sized integer, the [`zip()`] function provides similar
+    /// different sized integer, the [`zip`] function provides similar
     /// functionality.
     ///
     /// # Overflow Behavior
@@ -601,7 +601,7 @@ pub trait Iterator {
     ///
     /// [`usize::MAX`]: ../../std/usize/constant.MAX.html
     /// [`usize`]: ../../std/primitive.usize.html
-    /// [`zip()`]: #method.zip
+    /// [`zip`]: #method.zip
     ///
     /// # Examples
     ///
@@ -624,16 +624,16 @@ pub trait Iterator {
     /// Creates an iterator which can use `peek` to look at the next element of
     /// the iterator without consuming it.
     ///
-    /// Adds a [`peek()`] method to an iterator. See its documentation for
+    /// Adds a [`peek`] method to an iterator. See its documentation for
     /// more information.
     ///
-    /// Note that the underlying iterator is still advanced when [`peek()`] is
+    /// Note that the underlying iterator is still advanced when [`peek`] is
     /// called for the first time: In order to retrieve the next element,
-    /// [`next()`] is called on the underlying iterator, hence any side effects of
-    /// the [`next()`] method will occur.
+    /// [`next`] is called on the underlying iterator, hence any side effects of
+    /// the [`next`] method will occur.
     ///
-    /// [`peek()`]: struct.Peekable.html#method.peek
-    /// [`next()`]: ../../std/iter/trait.Iterator.html#tymethod.next
+    /// [`peek`]: struct.Peekable.html#method.peek
+    /// [`next`]: ../../std/iter/trait.Iterator.html#tymethod.next
     ///
     /// # Examples
     ///
@@ -666,9 +666,9 @@ pub trait Iterator {
         Peekable{iter: self, peeked: None}
     }
 
-    /// Creates an iterator that [`skip()`]s elements based on a predicate.
+    /// Creates an iterator that [`skip`]s elements based on a predicate.
     ///
-    /// [`skip()`]: #method.skip
+    /// [`skip`]: #method.skip
     ///
     /// `skip_while()` takes a closure as an argument. It will call this
     /// closure on each element of the iterator, and ignore elements
@@ -863,10 +863,10 @@ pub trait Iterator {
         Take{iter: self, n: n}
     }
 
-    /// An iterator adaptor similar to [`fold()`] that holds internal state and
+    /// An iterator adaptor similar to [`fold`] that holds internal state and
     /// produces a new iterator.
     ///
-    /// [`fold()`]: #method.fold
+    /// [`fold`]: #method.fold
     ///
     /// `scan()` takes two arguments: an initial value which seeds the internal
     /// state, and a closure with two arguments, the first being a mutable
@@ -910,16 +910,16 @@ pub trait Iterator {
 
     /// Creates an iterator that works like map, but flattens nested structure.
     ///
-    /// The [`map()`] adapter is very useful, but only when the closure
+    /// The [`map`] adapter is very useful, but only when the closure
     /// argument produces values. If it produces an iterator instead, there's
     /// an extra layer of indirection. `flat_map()` will remove this extra layer
     /// on its own.
     ///
-    /// Another way of thinking about `flat_map()`: [`map()`]'s closure returns
+    /// Another way of thinking about `flat_map()`: [`map`]'s closure returns
     /// one item for each element, and `flat_map()`'s closure returns an
     /// iterator for each element.
     ///
-    /// [`map()`]: #method.map
+    /// [`map`]: #method.map
     ///
     /// # Examples
     ///
@@ -1106,7 +1106,7 @@ pub trait Iterator {
     /// library, used in a variety of contexts.
     ///
     /// The most basic pattern in which `collect()` is used is to turn one
-    /// collection into another. You take a collection, call [`iter()`] on it,
+    /// collection into another. You take a collection, call [`iter`] on it,
     /// do a bunch of transformations, and then `collect()` at the end.
     ///
     /// One of the keys to `collect()`'s power is that many things you might
@@ -1211,7 +1211,7 @@ pub trait Iterator {
     /// assert_eq!(Ok(vec![1, 3]), result);
     /// ```
     ///
-    /// [`iter()`]: ../../std/iter/trait.Iterator.html#tymethod.next
+    /// [`iter`]: ../../std/iter/trait.Iterator.html#tymethod.next
     /// [`String`]: ../../std/string/struct.String.html
     /// [`char`]: ../../std/primitive.char.html
     /// [`Result`]: ../../std/result/enum.Result.html
@@ -1816,9 +1816,9 @@ pub trait Iterator {
     /// collections: one from the left elements of the pairs, and one
     /// from the right elements.
     ///
-    /// This function is, in some sense, the opposite of [`zip()`].
+    /// This function is, in some sense, the opposite of [`zip`].
     ///
-    /// [`zip()`]: #method.zip
+    /// [`zip`]: #method.zip
     ///
     /// # Examples
     ///
@@ -1849,12 +1849,12 @@ pub trait Iterator {
         (ts, us)
     }
 
-    /// Creates an iterator which [`clone()`]s all of its elements.
+    /// Creates an iterator which [`clone`]s all of its elements.
     ///
     /// This is useful when you have an iterator over `&T`, but you need an
     /// iterator over `T`.
     ///
-    /// [`clone()`]: ../../std/clone/trait.Clone.html#tymethod.clone
+    /// [`clone`]: ../../std/clone/trait.Clone.html#tymethod.clone
     ///
     /// # Examples
     ///

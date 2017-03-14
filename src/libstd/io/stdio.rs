@@ -332,11 +332,11 @@ impl<'a> fmt::Debug for StdinLock<'a> {
 ///
 /// Each handle shares a global buffer of data to be written to the standard
 /// output stream. Access is also synchronized via a lock and explicit control
-/// over locking is available via the [`lock()`] method.
+/// over locking is available via the [`lock`] method.
 ///
 /// Created by the [`io::stdout`] method.
 ///
-/// [`lock()`]: #method.lock
+/// [`lock`]: #method.lock
 /// [`io::stdout`]: fn.stdout.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Stdout {
