@@ -29,6 +29,8 @@
 extern crate serialize as rustc_serialize;
 extern crate syntax_pos;
 
+extern crate rls_data;
+
 
 mod csv_dumper;
 mod json_api_dumper;
