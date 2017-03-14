@@ -123,17 +123,21 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     },
                     Function::DropGlue(_) => Err(EvalError::ManuallyCalledDropGlue),
                     Function::Concrete(fn_def) => {
-                        trace!("sig: {:#?}", fn_def.sig);
+                        let sig = self.tcx.erase_late_bound_regions(&fn_def.sig);
+                        let sig = self.tcx.erase_regions(&sig);
+                        trace!("sig: {:#?}", sig);
                         args[0] = (
                             Value::ByVal(PrimVal::Ptr(self_ptr)),
-                            fn_def.sig.inputs().skip_binder()[0],
+                            sig.inputs()[0],
                         );
                         Ok((fn_def.def_id, fn_def.substs, Vec::new()))
                     },
                     Function::NonCaptureClosureAsFnPtr(fn_def) => {
+                        let sig = self.tcx.erase_late_bound_regions(&fn_def.sig);
+                        let sig = self.tcx.erase_regions(&sig);
                         args.insert(0, (
                             Value::ByVal(PrimVal::Undef),
-                            fn_def.sig.inputs().skip_binder()[0],
+                            sig.inputs()[0],
                         ));
                         Ok((fn_def.def_id, fn_def.substs, Vec::new()))
                     }
@@ -142,6 +146,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         Ok((fn_def.def_id, fn_def.substs, Vec::new()))
                     }
                     Function::FnPtrAsTraitObject(sig) => {
+                        let sig = self.tcx.erase_late_bound_regions(&sig);
+                        let sig = self.tcx.erase_regions(&sig);
                         trace!("sig: {:#?}", sig);
                         // the first argument was the fat ptr
                         args.remove(0);
@@ -149,13 +155,17 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         let fn_ptr = self.memory.read_ptr(self_ptr)?;
                         let fn_def = match self.memory.get_fn(fn_ptr.alloc_id)? {
                             Function::Concrete(fn_def) => {
-                                assert_eq!(sig, fn_def.sig);
+                                let fn_def_sig = self.tcx.erase_late_bound_regions(&fn_def.sig);
+                                let fn_def_sig = self.tcx.erase_regions(&fn_def_sig);
+                                assert_eq!(sig, fn_def_sig);
                                 fn_def
                             },
                             Function::NonCaptureClosureAsFnPtr(fn_def) => {
+                                let fn_def_sig = self.tcx.erase_late_bound_regions(&fn_def.sig);
+                                let fn_def_sig = self.tcx.erase_regions(&fn_def_sig);
                                 args.insert(0, (
                                     Value::ByVal(PrimVal::Undef),
-                                    fn_def.sig.inputs().skip_binder()[0],
+                                    fn_def_sig.inputs()[0],
                                 ));
                                 fn_def
                             },
@@ -280,8 +290,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     ty::TyFnDef(_, _, fn_ty) => self.tcx.erase_regions(&fn_ty),
                     _ => bug!("drop method is not a TyFnDef"),
                 };
+                let fn_ty = self.tcx.erase_late_bound_regions(&fn_ty);
+                let fn_ty = self.tcx.erase_regions(&fn_ty);
                 // The real type is taken from the self argument in `fn drop(&mut self)`
-                let real_ty = match fn_ty.inputs().skip_binder()[0].sty {
+                let real_ty = match fn_ty.inputs()[0].sty {
                     ty::TyRef(_, mt) => self.monomorphize(mt.ty, substs),
                     _ => bug!("first argument of Drop::drop must be &mut T"),
                 };

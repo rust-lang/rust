@@ -1,14 +1,14 @@
 use std::error::Error;
 use std::fmt;
 use rustc::mir;
-use rustc::ty::{PolyFnSig, Ty, layout};
+use rustc::ty::{FnSig, Ty, layout};
 use memory::{Pointer, Function};
 use rustc_const_math::ConstMathErr;
 use syntax::codemap::Span;
 
 #[derive(Clone, Debug)]
 pub enum EvalError<'tcx> {
-    FunctionPointerTyMismatch(PolyFnSig<'tcx>, PolyFnSig<'tcx>),
+    FunctionPointerTyMismatch(FnSig<'tcx>, FnSig<'tcx>),
     NoMirFor(String),
     UnterminatedCString(Pointer),
     DanglingPointerDeref,
@@ -151,7 +151,7 @@ impl<'tcx> fmt::Display for EvalError<'tcx> {
             },
             EvalError::NoMirFor(ref func) => write!(f, "no mir for `{}`", func),
             EvalError::FunctionPointerTyMismatch(sig, got) =>
-                write!(f, "tried to call a function with sig {} through a function pointer of type {}", sig.skip_binder(), got.skip_binder()),
+                write!(f, "tried to call a function with sig {} through a function pointer of type {}", sig, got),
             EvalError::ArrayIndexOutOfBounds(span, len, index) =>
                 write!(f, "index out of bounds: the len is {} but the index is {} at {:?}", len, index, span),
             EvalError::Math(span, ref err) =>

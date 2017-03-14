@@ -65,31 +65,36 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let func_ty = self.operand_ty(func);
                 let fn_def = match func_ty.sty {
                     ty::TyFnPtr(bare_sig) => {
+                        let bare_sig = self.tcx.erase_late_bound_regions(&bare_sig);
+                        let bare_sig = self.tcx.erase_regions(&bare_sig);
                         let fn_ptr = self.eval_operand_to_primval(func)?.to_ptr()?;
                         let fn_def = self.memory.get_fn(fn_ptr.alloc_id)?;
                         match fn_def {
                             Function::Concrete(fn_def) => {
                                 // transmuting function pointers in miri is fine as long as the number of
                                 // arguments and the abi don't change.
-                                // FIXME: also check the size of the arguments' type and the return type
-                                // Didn't get it to work, since that triggers an assertion in rustc which
-                                // checks whether the type has escaping regions
-                                if fn_def.sig.abi() != bare_sig.abi() ||
-                                    fn_def.sig.variadic() != bare_sig.variadic() ||
-                                    fn_def.sig.inputs().skip_binder().len() != bare_sig.inputs().skip_binder().len() {
-                                    return Err(EvalError::FunctionPointerTyMismatch(fn_def.sig, bare_sig));
+                                let sig = self.tcx.erase_late_bound_regions(&fn_def.sig);
+                                let sig = self.tcx.erase_regions(&sig);
+                                if sig.abi != bare_sig.abi ||
+                                    sig.variadic != bare_sig.variadic ||
+                                    sig.inputs_and_output != bare_sig.inputs_and_output {
+                                    return Err(EvalError::FunctionPointerTyMismatch(sig, bare_sig));
                                 }
                             },
                             Function::NonCaptureClosureAsFnPtr(fn_def) => {
-                                assert_eq!(fn_def.sig.abi(), Abi::RustCall);
-                                if fn_def.sig.variadic() != bare_sig.variadic() ||
-                                    fn_def.sig.inputs().skip_binder().len() != 1 {
-                                    return Err(EvalError::FunctionPointerTyMismatch(fn_def.sig, bare_sig));
+                                let sig = self.tcx.erase_late_bound_regions(&fn_def.sig);
+                                let sig = self.tcx.erase_regions(&sig);
+                                assert_eq!(sig.abi, Abi::RustCall);
+                                if sig.variadic != bare_sig.variadic ||
+                                    sig.inputs().len() != 1 {
+                                    return Err(EvalError::FunctionPointerTyMismatch(sig, bare_sig));
                                 }
-                                if let ty::TyTuple(fields, _) = fn_def.sig.inputs().skip_binder()[0].sty {
-                                    if fields.len() != bare_sig.inputs().skip_binder().len() {
-                                        return Err(EvalError::FunctionPointerTyMismatch(fn_def.sig, bare_sig));
+                                if let ty::TyTuple(fields, _) = sig.inputs()[0].sty {
+                                    if **fields != *bare_sig.inputs() {
+                                        return Err(EvalError::FunctionPointerTyMismatch(sig, bare_sig));
                                     }
+                                } else {
+                                    return Err(EvalError::FunctionPointerTyMismatch(sig, bare_sig));
                                 }
                             },
                             other => return Err(EvalError::ExpectedConcreteFunction(other)),
@@ -165,7 +170,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         match fn_def {
             // Intrinsics can only be addressed directly
             Function::Concrete(FunctionDefinition { def_id, substs, sig }) if sig.abi() == Abi::RustIntrinsic => {
-                let ty = *sig.output().skip_binder();
+                let sig = self.tcx.erase_late_bound_regions(&sig);
+                let sig = self.tcx.erase_regions(&sig);
+                let ty = sig.output();
                 let layout = self.type_layout(ty)?;
                 let (ret, target) = match destination {
                     Some(dest) if is_inhabited(self.tcx, ty) => dest,
@@ -177,7 +184,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             },
             // C functions can only be addressed directly
             Function::Concrete(FunctionDefinition { def_id, sig, ..}) if sig.abi() == Abi::C => {
-                let ty = *sig.output().skip_binder();
+                let sig = self.tcx.erase_late_bound_regions(&sig);
+                let sig = self.tcx.erase_regions(&sig);
+                let ty = sig.output();
                 let (ret, target) = destination.unwrap();
                 self.call_c_abi(def_id, arg_operands, ret, ty)?;
                 self.dump_local(ret);
@@ -266,6 +275,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 )
             },
             Function::NonCaptureClosureAsFnPtr(FunctionDefinition { def_id, substs, sig }) if sig.abi() == Abi::RustCall => {
+                let sig = self.tcx.erase_late_bound_regions(&sig);
+                let sig = self.tcx.erase_regions(&sig);
                 let mut args = Vec::new();
                 for arg in arg_operands {
                     let arg_val = self.eval_operand(arg)?;
@@ -274,7 +285,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 }
                 args.insert(0, (
                     Value::ByVal(PrimVal::Undef),
-                    sig.inputs().skip_binder()[0],
+                    sig.inputs()[0],
                 ));
                 self.eval_fn_call_inner(
                     def_id,
@@ -285,7 +296,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     span,
                 )
             }
-            other => Err(EvalError::Unimplemented(format!("can't call function kind {:?}", other))),
+            Function::Concrete(fn_def) => Err(EvalError::Unimplemented(format!("can't handle function with {:?} ABI", fn_def.sig.abi()))),
+            other => Err(EvalError::Unimplemented(format!("can't call function kind {:#?}", other))),
         }
     }
 
