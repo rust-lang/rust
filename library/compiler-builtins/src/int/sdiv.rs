@@ -33,9 +33,10 @@ macro_rules! mod_ {
         #[cfg_attr(not(test), no_mangle)]
         pub extern "C" fn $intrinsic(a: $ty, b: $ty) -> $tyret {
             let s = b >> (<$ty>::bits() - 1);
-            let b = (b ^ s) - s;
+            // NOTE(wrapping_sub) see comment in the `div` macro
+            let b = (b ^ s).wrapping_sub(s);
             let s = a >> (<$ty>::bits() - 1);
-            let a = (a ^ s) - s;
+            let a = (a ^ s).wrapping_sub(s);
 
             let r = urem!(a as $uty, b as $uty);
             ($conv)((r as $ty ^ s) - s)
