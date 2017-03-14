@@ -318,8 +318,7 @@ mod tests {
         let va = __m128i::from(u8x16::load(a, 0));
         let vb = __m128i::from(u8x16::load(b, 0));
         let i = sse42::_mm_cmpestri(
-            va, 3, vb, 6,
-            sse42::_SIDD_CMP_EQUAL_ORDERED);
+            va, 3, vb, 6, sse42::_SIDD_CMP_EQUAL_ORDERED);
         assert_eq!(3, i);
     }
 }
