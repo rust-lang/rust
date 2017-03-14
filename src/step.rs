@@ -242,8 +242,8 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ConstantExtractor<'a, 'b, 'tcx> {
         location: mir::Location
     ) {
         self.super_lvalue(lvalue, context, location);
-        if let mir::Lvalue::Static(ref statik) = *lvalue {
-            let def_id = statik.def_id;
+        if let mir::Lvalue::Static(ref static_) = *lvalue {
+            let def_id = static_.def_id;
             let substs = self.ecx.tcx.intern_substs(&[]);
             let span = self.span;
             if let Some(node_item) = self.ecx.tcx.hir.get_if_local(def_id) {

@@ -137,9 +137,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             Local(mir::RETURN_POINTER) => self.frame().return_lvalue,
             Local(local) => Lvalue::Local { frame: self.stack.len() - 1, local, field: None },
 
-            Static(ref statik) => {
+            Static(ref static_) => {
                 let substs = self.tcx.intern_substs(&[]);
-                Lvalue::Global(GlobalId { def_id: statik.def_id, substs, promoted: None })
+                Lvalue::Global(GlobalId { def_id: static_.def_id, substs, promoted: None })
             }
 
             Projection(ref proj) => return self.eval_lvalue_projection(proj),
