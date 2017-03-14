@@ -136,7 +136,7 @@ impl<'b, W: Write + 'b> Dump for JsonDumper<'b, W> {
 
 // DefId::index is a newtype and so the JSON serialisation is ugly. Therefore
 // we use our own Id which is the same, but without the newtype.
-fn id_from_def_id(id: DefId) -> Id {
+pub fn id_from_def_id(id: DefId) -> Id {
     Id {
         krate: id.krate.as_u32(),
         index: id.index.as_u32(),
