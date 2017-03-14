@@ -16,7 +16,7 @@
 register_long_diagnostics! {
 
 E0001: r##"
-## Note: this error code is no longer emitted by the compiler.
+#### Note: this error code is no longer emitted by the compiler.
 
 This error suggests that the expression arm corresponding to the noted pattern
 will never be reached as for all possible values of the expression being
@@ -43,7 +43,7 @@ arms.
 "##,
 
 E0002: r##"
-## Note: this error code is no longer emitted by the compiler.
+#### Note: this error code is no longer emitted by the compiler.
 
 This error indicates that an empty match expression is invalid because the type
 it is matching on is non-empty (there exist values of this type). In safe code
@@ -75,7 +75,7 @@ fn foo(x: Option<String>) {
 "##,
 
 E0003: r##"
-## Note: this error code is no longer emitted by the compiler.
+#### Note: this error code is no longer emitted by the compiler.
 
 Not-a-Number (NaN) values cannot be compared for equality and hence can never
 match the input to a match expression. So, the following will not compile:
