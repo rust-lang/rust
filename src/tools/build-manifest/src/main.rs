@@ -250,12 +250,13 @@ impl Builder {
             let mut components = Vec::new();
             let mut extensions = Vec::new();
 
-            // rustc/rust-std/cargo are all required, and so is rust-mingw if it's
-            // available for the target.
+            // rustc/rust-std/cargo/docs are all required, and so is rust-mingw
+            // if it's available for the target.
             components.extend(vec![
                 Component { pkg: "rustc".to_string(), target: host.to_string() },
                 Component { pkg: "rust-std".to_string(), target: host.to_string() },
                 Component { pkg: "cargo".to_string(), target: host.to_string() },
+                Component { pkg: "rust-docs".to_string(), target: host.to_string() },
             ]);
             if host.contains("pc-windows-gnu") {
                 components.push(Component {
@@ -264,12 +265,6 @@ impl Builder {
                 });
             }
 
-            // Docs, other standard libraries, and the source package are all
-            // optional.
-            extensions.push(Component {
-                pkg: "rust-docs".to_string(),
-                target: host.to_string(),
-            });
             for target in TARGETS {
                 if target != host {
                     extensions.push(Component {
