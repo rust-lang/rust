@@ -338,6 +338,7 @@ pub struct ValuesMut<'a, K: 'a, V: 'a> {
 }
 
 /// An iterator over a sub-range of BTreeMap's entries.
+#[stable(feature = "btree_range", since = "1.17.0")]
 pub struct Range<'a, K: 'a, V: 'a> {
     front: Handle<NodeRef<marker::Immut<'a>, K, V, marker::Leaf>, marker::Edge>,
     back: Handle<NodeRef<marker::Immut<'a>, K, V, marker::Leaf>, marker::Edge>,
@@ -351,6 +352,7 @@ impl<'a, K: 'a + fmt::Debug, V: 'a + fmt::Debug> fmt::Debug for Range<'a, K, V> 
 }
 
 /// A mutable iterator over a sub-range of BTreeMap's entries.
+#[stable(feature = "btree_range", since = "1.17.0")]
 pub struct RangeMut<'a, K: 'a, V: 'a> {
     front: Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>,
     back: Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>,
