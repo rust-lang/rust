@@ -447,24 +447,34 @@ pub unsafe fn uninitialized<T>() -> T {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn swap<T>(x: &mut T, y: &mut T) {
     unsafe {
-        const SWAP_BLOCK_SIZE: usize = 16;
+        // The approach here is to utilize simd to swap x & y efficiently. Testing reveals
+        // that swapping either 32 bytes or 64 bytes at a time is most efficient for intel
+        // Haswell E processors. LLVM is more able to optimize if we give a struct a
+        // #[repr(simd)], even if we don't actually use this struct directly.
+        #[repr(simd)]
+        struct Block(u64, u64, u64, u64);
+        let block_size = size_of::<Block>();
 
-        // Give ourselves some scratch space to work with
-        let mut t: [u8; SWAP_BLOCK_SIZE] = uninitialized();
+        // Create some uninitialized memory as scratch space
+        let mut t: Block = uninitialized();
 
+        // Get raw pointers to the bytes of x, y & t for easier manipulation
         let x = x as *mut T as *mut u8;
         let y = y as *mut T as *mut u8;
         let t = &mut t as *mut _ as *mut u8;
 
-        // can't use a for loop as the `range` impl calls `mem::swap` recursively
+        // Loop through x & y, copying them `Block` at a time
+        // The optimizer should unroll the loop fully for most types
+        // N.B. We can't use a for loop as the `range` impl calls `mem::swap` recursively
         let len = size_of::<T>() as isize;
         let mut i = 0;
-        while i + SWAP_BLOCK_SIZE as isize <= len {
-            // Perform the swap SWAP_BLOCK_SIZE bytes at a time, `&mut` pointers never alias
-            ptr::copy_nonoverlapping(x.offset(i), t, SWAP_BLOCK_SIZE);
-            ptr::copy_nonoverlapping(y.offset(i), x.offset(i), SWAP_BLOCK_SIZE);
-            ptr::copy_nonoverlapping(t, y.offset(i), SWAP_BLOCK_SIZE);
-            i += SWAP_BLOCK_SIZE as isize;
+        while i + block_size as isize <= len {
+            // Swap a block of bytes of x & y, using t as a temporary buffer
+            // This should be optimized into efficient SIMD operations where available
+            ptr::copy_nonoverlapping(x.offset(i), t, block_size);
+            ptr::copy_nonoverlapping(y.offset(i), x.offset(i), block_size);
+            ptr::copy_nonoverlapping(t, y.offset(i), block_size);
+            i += block_size as isize;
         }
         if i < len {
             // Swap any remaining bytes
