@@ -1775,6 +1775,10 @@ impl DirBuilder {
     }
 
     fn create_dir_all(&self, path: &Path) -> io::Result<()> {
+        if path == Path::new("") {
+            return Ok(())
+        }
+
         match self.inner.mkdir(path) {
             Ok(()) => return Ok(()),
             Err(ref e) if e.kind() == io::ErrorKind::NotFound => {}
@@ -2300,6 +2304,16 @@ mod tests {
     #[test]
     fn recursive_mkdir_slash() {
         check!(fs::create_dir_all(&Path::new("/")));
+    }
+
+    #[test]
+    fn recursive_mkdir_dot() {
+        check!(fs::create_dir_all(&Path::new(".")));
+    }
+
+    #[test]
+    fn recursive_mkdir_empty() {
+        check!(fs::create_dir_all(&Path::new("")));
     }
 
     #[test]
