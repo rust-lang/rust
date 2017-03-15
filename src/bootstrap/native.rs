@@ -222,9 +222,24 @@ pub fn openssl(build: &Build, target: &str) {
     let tarball = out.join(&name);
     if !tarball.exists() {
         let tmp = tarball.with_extension("tmp");
-        build.run(Command::new("curl")
-                        .arg("-o").arg(&tmp)
-                        .arg(format!("https://www.openssl.org/source/{}", name)));
+        // originally from https://www.openssl.org/source/...
+        let url = format!("https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/{}",
+                          name);
+        let mut ok = false;
+        for _ in 0..3 {
+            let status = Command::new("curl")
+                            .arg("-o").arg(&tmp)
+                            .arg(&url)
+                            .status()
+                            .expect("failed to spawn curl");
+            if status.success() {
+                ok = true;
+                break
+            }
+        }
+        if !ok {
+            panic!("failed to download openssl source")
+        }
         let mut shasum = if target.contains("apple") {
             let mut cmd = Command::new("shasum");
             cmd.arg("-a").arg("256");
