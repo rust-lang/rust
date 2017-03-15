@@ -10,7 +10,9 @@
 
 //! Slice management and manipulation
 //!
-//! For more details `std::slice`.
+//! For more details see [`std::slice`].
+//!
+//! [`std::slice`]: ../../std/slice/index.html
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
