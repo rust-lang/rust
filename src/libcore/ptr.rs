@@ -161,8 +161,6 @@ pub unsafe fn read<T>(src: *const T) -> T {
 /// Basic usage:
 ///
 /// ```
-/// #![feature(ptr_unaligned)]
-///
 /// let x = 12;
 /// let y = &x as *const i32;
 ///
@@ -171,7 +169,7 @@ pub unsafe fn read<T>(src: *const T) -> T {
 /// }
 /// ```
 #[inline(always)]
-#[unstable(feature = "ptr_unaligned", issue = "37955")]
+#[stable(feature = "ptr_unaligned", since = "1.17.0")]
 pub unsafe fn read_unaligned<T>(src: *const T) -> T {
     let mut tmp: T = mem::uninitialized();
     copy_nonoverlapping(src as *const u8,
@@ -243,8 +241,6 @@ pub unsafe fn write<T>(dst: *mut T, src: T) {
 /// Basic usage:
 ///
 /// ```
-/// #![feature(ptr_unaligned)]
-///
 /// let mut x = 0;
 /// let y = &mut x as *mut i32;
 /// let z = 12;
@@ -255,7 +251,7 @@ pub unsafe fn write<T>(dst: *mut T, src: T) {
 /// }
 /// ```
 #[inline]
-#[unstable(feature = "ptr_unaligned", issue = "37955")]
+#[stable(feature = "ptr_unaligned", since = "1.17.0")]
 pub unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
     copy_nonoverlapping(&src as *const T as *const u8,
                         dst as *mut u8,
