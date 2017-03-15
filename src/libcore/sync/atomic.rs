@@ -94,6 +94,29 @@ use intrinsics;
 use cell::UnsafeCell;
 use fmt;
 
+/// Save power or switch hyperthreads in a busy-wait spin-loop.
+///
+/// This function is deliberately more primitive than
+/// `std::thread::yield_now` and does not directly yield to the
+/// system's scheduler.  In some cases it might be useful to use a
+/// combination of both functions.  Careful benchmarking is advised.
+///
+/// On some platforms this function may not do anything at all.
+#[inline]
+#[unstable(feature = "hint_core_should_pause", issue = "41196")]
+pub fn hint_core_should_pause()
+{
+    #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+    unsafe {
+        asm!("pause" ::: "memory" : "volatile");
+    }
+
+    #[cfg(target_arch = "aarch64")]
+    unsafe {
+        asm!("yield" ::: "memory" : "volatile");
+    }
+}
+
 /// A boolean type which can be safely shared between threads.
 ///
 /// This type has the same in-memory representation as a `bool`.
