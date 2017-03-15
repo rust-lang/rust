@@ -1777,8 +1777,7 @@ impl DirBuilder {
     fn create_dir_all(&self, path: &Path) -> io::Result<()> {
         match self.inner.mkdir(path) {
             Ok(()) => return Ok(()),
-            Err(ref e)
-                if e.kind() == io::ErrorKind::AlreadyExists && path.is_dir() => return Ok(()),
+            Err(_) if path.is_dir() => return Ok(()),
             Err(ref e) if e.kind() == io::ErrorKind::NotFound => {}
             Err(e) => return Err(e),
         }
@@ -1788,7 +1787,7 @@ impl DirBuilder {
         }
         match self.inner.mkdir(path) {
             Ok(()) => Ok(()),
-            Err(ref e) if e.kind() == io::ErrorKind::AlreadyExists && path.is_dir() => Ok(()),
+            Err(_) if path.is_dir() => Ok(()),
             Err(e) => Err(e),
         }
     }
@@ -2280,7 +2279,7 @@ mod tests {
 
     #[test]
     fn concurrent_recursive_mkdir() {
-        for _ in 0..100 {
+        for _ in 0..50 {
             let mut dir = tmpdir().join("a");
             for _ in 0..100 {
                 dir = dir.join("a");
