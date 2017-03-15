@@ -97,6 +97,12 @@ impl Buf {
     pub fn into_box(self) -> Box<Slice> {
         unsafe { mem::transmute(self.inner.into_box()) }
     }
+
+    #[inline]
+    pub fn from_box(boxed: Box<Slice>) -> Buf {
+        let inner: Box<Wtf8> = unsafe { mem::transmute(boxed) };
+        Buf { inner: Wtf8Buf::from_box(inner) }
+    }
 }
 
 impl Slice {
