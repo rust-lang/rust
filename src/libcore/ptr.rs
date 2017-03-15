@@ -968,8 +968,16 @@ impl<T: ?Sized> Shared<T> {
     /// # Safety
     ///
     /// `ptr` must be non-null.
-    pub unsafe fn new(ptr: *mut T) -> Self {
+    pub unsafe fn new(ptr: *const T) -> Self {
         Shared { pointer: NonZero::new(ptr), _marker: PhantomData }
+    }
+}
+
+#[unstable(feature = "shared", issue = "27730")]
+impl<T: ?Sized> Shared<T> {
+    /// Acquires the underlying pointer as a `*mut` pointer.
+    pub unsafe fn as_mut_ptr(&self) -> *mut T {
+        **self as _
     }
 }
 
@@ -988,10 +996,10 @@ impl<T: ?Sized, U: ?Sized> CoerceUnsized<Shared<U>> for Shared<T> where T: Unsiz
 
 #[unstable(feature = "shared", issue = "27730")]
 impl<T: ?Sized> Deref for Shared<T> {
-    type Target = *mut T;
+    type Target = *const T;
 
     #[inline]
-    fn deref(&self) -> &*mut T {
+    fn deref(&self) -> &*const T {
         unsafe { mem::transmute(&*self.pointer) }
     }
 }
