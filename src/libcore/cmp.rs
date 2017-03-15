@@ -255,8 +255,6 @@ impl Ordering {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ordering_chaining)]
-    ///
     /// use std::cmp::Ordering;
     ///
     /// let result = Ordering::Equal.then(Ordering::Less);
@@ -277,7 +275,7 @@ impl Ordering {
     ///
     /// assert_eq!(result, Ordering::Less);
     /// ```
-    #[unstable(feature = "ordering_chaining", issue = "37053")]
+    #[stable(feature = "ordering_chaining", since = "1.17.0")]
     pub fn then(self, other: Ordering) -> Ordering {
         match self {
             Equal => other,
@@ -293,8 +291,6 @@ impl Ordering {
     /// # Examples
     ///
     /// ```
-    /// #![feature(ordering_chaining)]
-    ///
     /// use std::cmp::Ordering;
     ///
     /// let result = Ordering::Equal.then_with(|| Ordering::Less);
@@ -315,7 +311,7 @@ impl Ordering {
     ///
     /// assert_eq!(result, Ordering::Less);
     /// ```
-    #[unstable(feature = "ordering_chaining", issue = "37053")]
+    #[stable(feature = "ordering_chaining", since = "1.17.0")]
     pub fn then_with<F: FnOnce() -> Ordering>(self, f: F) -> Ordering {
         match self {
             Equal => f(),
