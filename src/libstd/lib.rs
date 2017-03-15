@@ -245,7 +245,6 @@
 #![feature(char_escape_debug)]
 #![feature(char_internals)]
 #![feature(collections)]
-#![feature(collections_bound)]
 #![feature(collections_range)]
 #![feature(compiler_builtins_lib)]
 #![feature(const_fn)]

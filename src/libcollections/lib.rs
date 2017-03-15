@@ -133,10 +133,13 @@ mod std {
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
 pub enum Bound<T> {
     /// An inclusive bound.
+    #[stable(feature = "collections_bound", since = "1.17.0")]
     Included(T),
     /// An exclusive bound.
+    #[stable(feature = "collections_bound", since = "1.17.0")]
     Excluded(T),
     /// An infinite endpoint. Indicates that there is no bound in this direction.
+    #[stable(feature = "collections_bound", since = "1.17.0")]
     Unbounded,
 }
 
