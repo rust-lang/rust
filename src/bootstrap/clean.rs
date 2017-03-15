@@ -22,9 +22,9 @@ use std::path::Path;
 use Build;
 
 pub fn clean(build: &Build) {
-    rm_rf(build, "tmp".as_ref());
-    rm_rf(build, &build.out.join("tmp"));
-    rm_rf(build, &build.out.join("dist"));
+    rm_rf("tmp".as_ref());
+    rm_rf(&build.out.join("tmp"));
+    rm_rf(&build.out.join("dist"));
 
     for host in build.config.host.iter() {
         let entries = match build.out.join(host).read_dir() {
@@ -38,12 +38,12 @@ pub fn clean(build: &Build) {
                 continue
             }
             let path = t!(entry.path().canonicalize());
-            rm_rf(build, &path);
+            rm_rf(&path);
         }
     }
 }
 
-fn rm_rf(build: &Build, path: &Path) {
+fn rm_rf(path: &Path) {
     if !path.exists() {
         return
     }
@@ -55,7 +55,7 @@ fn rm_rf(build: &Build, path: &Path) {
         let file = t!(file).path();
 
         if file.is_dir() {
-            rm_rf(build, &file);
+            rm_rf(&file);
         } else {
             // On windows we can't remove a readonly file, and git will
             // often clone files as readonly. As a result, we have some
