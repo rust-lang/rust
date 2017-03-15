@@ -189,6 +189,13 @@ impl<'tcx> QueryDescription for queries::mir_shims<'tcx> {
     }
 }
 
+impl<'tcx> QueryDescription for queries::typeck_item_bodies<'tcx> {
+    fn describe(_: TyCtxt, _: CrateNum) -> String {
+        format!("type-checking all item bodies")
+    }
+}
+
+
 macro_rules! define_maps {
     (<$tcx:tt>
      $($(#[$attr:meta])*
@@ -396,6 +403,8 @@ define_maps! { <'tcx>
     pub custom_coerce_unsized_kind: ItemSignature(DefId)
         -> ty::adjustment::CustomCoerceUnsized,
 
+    pub typeck_item_bodies: typeck_item_bodies_dep_node(CrateNum) -> (),
+
     pub typeck_tables: TypeckTables(DefId) -> &'tcx ty::TypeckTables<'tcx>,
 
     pub coherent_trait: coherent_trait_dep_node((CrateNum, DefId)) -> (),
@@ -419,4 +428,8 @@ fn coherent_inherent_impls_dep_node(_: CrateNum) -> DepNode<DefId> {
 
 fn mir_shim(instance: ty::InstanceDef) -> DepNode<DefId> {
     instance.dep_node()
+}
+
+fn typeck_item_bodies_dep_node(_: CrateNum) -> DepNode<DefId> {
+    DepNode::TypeckBodiesKrate
 }
