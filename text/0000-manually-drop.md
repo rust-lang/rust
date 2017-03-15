@@ -112,8 +112,8 @@ impl Drop for FruitBox {
             // Explicit ordering in which field destructors are run specified in the intuitive
             // location – the destructor of the structure containing the fields.
             // Moreover, one can now reorder fields within the struct however much they want.
-            peach.drop();
-            banana.drop();
+            ManuallyDrop::drop(&mut self.peach);
+            ManuallyDrop::drop(&mut self.banana);
         }
         // After destructor for `FruitBox` runs (this function), the destructor for Melon gets
         // invoked in the usual manner, as it is not wrapped in `ManuallyDrop`.
