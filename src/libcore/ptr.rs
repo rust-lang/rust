@@ -658,7 +658,6 @@ impl<T: ?Sized> Eq for *mut T {}
 /// # Examples
 ///
 /// ```
-/// #![feature(ptr_eq)]
 /// use std::ptr;
 ///
 /// let five = 5;
@@ -673,7 +672,7 @@ impl<T: ?Sized> Eq for *mut T {}
 /// assert!(ptr::eq(five_ref, same_five_ref));
 /// assert!(!ptr::eq(five_ref, other_five_ref));
 /// ```
-#[unstable(feature = "ptr_eq", reason = "newly added", issue = "36497")]
+#[stable(feature = "ptr_eq", since = "1.17.0")]
 #[inline]
 pub fn eq<T: ?Sized>(a: *const T, b: *const T) -> bool {
     a == b
