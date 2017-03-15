@@ -245,7 +245,7 @@ pub trait Unsize<T: ?Sized> {
 /// [`String`]'s buffer, leading to a double free.
 ///
 /// Generalizing the latter case, any type implementing [`Drop`] can't be `Copy`, because it's
-/// managing some resource besides its own [`size_of::<T>()`] bytes.
+/// managing some resource besides its own [`size_of::<T>`] bytes.
 ///
 /// If you try to implement `Copy` on a struct or enum containing non-`Copy` data, you will get
 /// the error [E0204].
@@ -262,7 +262,7 @@ pub trait Unsize<T: ?Sized> {
 /// [`Vec<T>`]: ../../std/vec/struct.Vec.html
 /// [`String`]: ../../std/string/struct.String.html
 /// [`Drop`]: ../../std/ops/trait.Drop.html
-/// [`size_of::<T>()`]: ../../std/mem/fn.size_of.html
+/// [`size_of::<T>`]: ../../std/mem/fn.size_of.html
 /// [`Clone`]: ../clone/trait.Clone.html
 /// [`String`]: ../../std/string/struct.String.html
 /// [`i32`]: ../../std/primitive.i32.html

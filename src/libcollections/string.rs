@@ -89,8 +89,8 @@ use boxed::Box;
 /// let hello = String::from("Hello, world!");
 /// ```
 ///
-/// You can append a [`char`] to a `String` with the [`push()`] method, and
-/// append a [`&str`] with the [`push_str()`] method:
+/// You can append a [`char`] to a `String` with the [`push`] method, and
+/// append a [`&str`] with the [`push_str`] method:
 ///
 /// ```
 /// let mut hello = String::from("Hello, ");
@@ -100,11 +100,11 @@ use boxed::Box;
 /// ```
 ///
 /// [`char`]: ../../std/primitive.char.html
-/// [`push()`]: #method.push
-/// [`push_str()`]: #method.push_str
+/// [`push`]: #method.push
+/// [`push_str`]: #method.push_str
 ///
 /// If you have a vector of UTF-8 bytes, you can create a `String` from it with
-/// the [`from_utf8()`] method:
+/// the [`from_utf8`] method:
 ///
 /// ```
 /// // some bytes, in a vector
@@ -116,7 +116,7 @@ use boxed::Box;
 /// assert_eq!("💖", sparkle_heart);
 /// ```
 ///
-/// [`from_utf8()`]: #method.from_utf8
+/// [`from_utf8`]: #method.from_utf8
 ///
 /// # UTF-8
 ///
@@ -136,11 +136,11 @@ use boxed::Box;
 /// Indexing is intended to be a constant-time operation, but UTF-8 encoding
 /// does not allow us to do this. Furthermore, it's not clear what sort of
 /// thing the index should return: a byte, a codepoint, or a grapheme cluster.
-/// The [`bytes()`] and [`chars()`] methods return iterators over the first
+/// The [`bytes`] and [`chars`] methods return iterators over the first
 /// two, respectively.
 ///
-/// [`bytes()`]: #method.bytes
-/// [`chars()`]: #method.chars
+/// [`bytes`]: #method.bytes
+/// [`chars`]: #method.chars
 ///
 /// # Deref
 ///
@@ -174,7 +174,7 @@ use boxed::Box;
 ///
 /// This buffer is always stored on the heap.
 ///
-/// You can look at these with the [`as_ptr()`], [`len()`], and [`capacity()`]
+/// You can look at these with the [`as_ptr`], [`len`], and [`capacity`]
 /// methods:
 ///
 /// ```
@@ -200,9 +200,9 @@ use boxed::Box;
 /// assert_eq!(String::from("Once upon a time..."), s);
 /// ```
 ///
-/// [`as_ptr()`]: #method.as_ptr
-/// [`len()`]: #method.len
-/// [`capacity()`]: #method.capacity
+/// [`as_ptr`]: #method.as_ptr
+/// [`len`]: #method.len
+/// [`capacity`]: #method.capacity
 ///
 /// If a `String` has enough capacity, adding elements to it will not
 /// re-allocate. For example, consider this program:
@@ -231,7 +231,7 @@ use boxed::Box;
 ///
 /// At first, we have no memory allocated at all, but as we append to the
 /// string, it increases its capacity appropriately. If we instead use the
-/// [`with_capacity()`] method to allocate the correct capacity initially:
+/// [`with_capacity`] method to allocate the correct capacity initially:
 ///
 /// ```
 /// let mut s = String::with_capacity(25);
@@ -244,7 +244,7 @@ use boxed::Box;
 /// }
 /// ```
 ///
-/// [`with_capacity()`]: #method.with_capacity
+/// [`with_capacity`]: #method.with_capacity
 ///
 /// We end up with a different output:
 ///
@@ -266,25 +266,25 @@ pub struct String {
 
 /// A possible error value when converting a `String` from a UTF-8 byte vector.
 ///
-/// This type is the error type for the [`from_utf8()`] method on [`String`]. It
+/// This type is the error type for the [`from_utf8`] method on [`String`]. It
 /// is designed in such a way to carefully avoid reallocations: the
-/// [`into_bytes()`] method will give back the byte vector that was used in the
+/// [`into_bytes`] method will give back the byte vector that was used in the
 /// conversion attempt.
 ///
-/// [`from_utf8()`]: struct.String.html#method.from_utf8
+/// [`from_utf8`]: struct.String.html#method.from_utf8
 /// [`String`]: struct.String.html
-/// [`into_bytes()`]: struct.FromUtf8Error.html#method.into_bytes
+/// [`into_bytes`]: struct.FromUtf8Error.html#method.into_bytes
 ///
 /// The [`Utf8Error`] type provided by [`std::str`] represents an error that may
 /// occur when converting a slice of [`u8`]s to a [`&str`]. In this sense, it's
 /// an analogue to `FromUtf8Error`, and you can get one from a `FromUtf8Error`
-/// through the [`utf8_error()`] method.
+/// through the [`utf8_error`] method.
 ///
 /// [`Utf8Error`]: ../../std/str/struct.Utf8Error.html
 /// [`std::str`]: ../../std/str/index.html
 /// [`u8`]: ../../std/primitive.u8.html
 /// [`&str`]: ../../std/primitive.str.html
-/// [`utf8_error()`]: #method.utf8_error
+/// [`utf8_error`]: #method.utf8_error
 ///
 /// # Examples
 ///
@@ -308,9 +308,9 @@ pub struct FromUtf8Error {
 
 /// A possible error value when converting a `String` from a UTF-16 byte slice.
 ///
-/// This type is the error type for the [`from_utf16()`] method on [`String`].
+/// This type is the error type for the [`from_utf16`] method on [`String`].
 ///
-/// [`from_utf16()`]: struct.String.html#method.from_utf16
+/// [`from_utf16`]: struct.String.html#method.from_utf16
 /// [`String`]: struct.String.html
 ///
 /// # Examples
@@ -335,10 +335,10 @@ impl String {
     /// buffer. While that means that this initial operation is very
     /// inexpensive, but may cause excessive allocation later, when you add
     /// data. If you have an idea of how much data the `String` will hold,
-    /// consider the [`with_capacity()`] method to prevent excessive
+    /// consider the [`with_capacity`] method to prevent excessive
     /// re-allocation.
     ///
-    /// [`with_capacity()`]: #method.with_capacity
+    /// [`with_capacity`]: #method.with_capacity
     ///
     /// # Examples
     ///
@@ -356,18 +356,18 @@ impl String {
     /// Creates a new empty `String` with a particular capacity.
     ///
     /// `String`s have an internal buffer to hold their data. The capacity is
-    /// the length of that buffer, and can be queried with the [`capacity()`]
+    /// the length of that buffer, and can be queried with the [`capacity`]
     /// method. This method creates an empty `String`, but one with an initial
     /// buffer that can hold `capacity` bytes. This is useful when you may be
     /// appending a bunch of data to the `String`, reducing the number of
     /// reallocations it needs to do.
     ///
-    /// [`capacity()`]: #method.capacity
+    /// [`capacity`]: #method.capacity
     ///
     /// If the given capacity is `0`, no allocation will occur, and this method
-    /// is identical to the [`new()`] method.
+    /// is identical to the [`new`] method.
     ///
-    /// [`new()`]: #method.new
+    /// [`new`]: #method.new
     ///
     /// # Examples
     ///
@@ -420,18 +420,18 @@ impl String {
     ///
     /// If you are sure that the byte slice is valid UTF-8, and you don't want
     /// to incur the overhead of the validity check, there is an unsafe version
-    /// of this function, [`from_utf8_unchecked()`], which has the same behavior
+    /// of this function, [`from_utf8_unchecked`], which has the same behavior
     /// but skips the check.
     ///
-    /// [`from_utf8_unchecked()`]: struct.String.html#method.from_utf8_unchecked
+    /// [`from_utf8_unchecked`]: struct.String.html#method.from_utf8_unchecked
     ///
     /// This method will take care to not copy the vector, for efficiency's
     /// sake.
     ///
     /// If you need a `&str` instead of a `String`, consider
-    /// [`str::from_utf8()`].
+    /// [`str::from_utf8`].
     ///
-    /// [`str::from_utf8()`]: ../../std/str/fn.from_utf8.html
+    /// [`str::from_utf8`]: ../../std/str/fn.from_utf8.html
     ///
     /// The inverse of this method is [`as_bytes`].
     ///
@@ -497,10 +497,10 @@ impl String {
     ///
     /// If you are sure that the byte slice is valid UTF-8, and you don't want
     /// to incur the overhead of the conversion, there is an unsafe version
-    /// of this function, [`from_utf8_unchecked()`], which has the same behavior
+    /// of this function, [`from_utf8_unchecked`], which has the same behavior
     /// but skips the checks.
     ///
-    /// [`from_utf8_unchecked()`]: struct.String.html#method.from_utf8_unchecked
+    /// [`from_utf8_unchecked`]: struct.String.html#method.from_utf8_unchecked
     ///
     /// This function returns a [`Cow<'a, str>`]. If our byte slice is invalid
     /// UTF-8, then we need to insert the replacement characters, which will
@@ -738,9 +738,9 @@ impl String {
     /// Converts a vector of bytes to a `String` without checking that the
     /// string contains valid UTF-8.
     ///
-    /// See the safe version, [`from_utf8()`], for more details.
+    /// See the safe version, [`from_utf8`], for more details.
     ///
-    /// [`from_utf8()`]: struct.String.html#method.from_utf8
+    /// [`from_utf8`]: struct.String.html#method.from_utf8
     ///
     /// # Safety
     ///
@@ -845,10 +845,10 @@ impl String {
     /// The capacity may be increased by more than `additional` bytes if it
     /// chooses, to prevent frequent reallocations.
     ///
-    /// If you do not want this "at least" behavior, see the [`reserve_exact()`]
+    /// If you do not want this "at least" behavior, see the [`reserve_exact`]
     /// method.
     ///
-    /// [`reserve_exact()`]: #method.reserve_exact
+    /// [`reserve_exact`]: #method.reserve_exact
     ///
     /// # Panics
     ///
@@ -892,10 +892,10 @@ impl String {
     /// Ensures that this `String`'s capacity is `additional` bytes
     /// larger than its length.
     ///
-    /// Consider using the [`reserve()`] method unless you absolutely know
+    /// Consider using the [`reserve`] method unless you absolutely know
     /// better than the allocator.
     ///
-    /// [`reserve()`]: #method.reserve
+    /// [`reserve`]: #method.reserve
     ///
     /// # Panics
     ///
@@ -1699,9 +1699,9 @@ impl<'a> Add<&'a str> for String {
 
 /// Implements the `+=` operator for appending to a `String`.
 ///
-/// This has the same behavior as the [`push_str()`] method.
+/// This has the same behavior as the [`push_str`] method.
 ///
-/// [`push_str()`]: struct.String.html#method.push_str
+/// [`push_str`]: struct.String.html#method.push_str
 #[stable(feature = "stringaddassign", since = "1.12.0")]
 impl<'a> AddAssign<&'a str> for String {
     #[inline]
@@ -1830,14 +1830,14 @@ impl ops::DerefMut for String {
 ///
 /// This `enum` is slightly awkward: it will never actually exist. This error is
 /// part of the type signature of the implementation of [`FromStr`] on
-/// [`String`]. The return type of [`from_str()`], requires that an error be
+/// [`String`]. The return type of [`from_str`], requires that an error be
 /// defined, but, given that a [`String`] can always be made into a new
 /// [`String`] without error, this type will never actually be returned. As
 /// such, it is only here to satisfy said signature, and is useless otherwise.
 ///
 /// [`FromStr`]: ../../std/str/trait.FromStr.html
 /// [`String`]: struct.String.html
-/// [`from_str()`]: ../../std/str/trait.FromStr.html#tymethod.from_str
+/// [`from_str`]: ../../std/str/trait.FromStr.html#tymethod.from_str
 #[stable(feature = "str_parse_error", since = "1.5.0")]
 #[derive(Copy)]
 pub enum ParseError {}
@@ -2058,10 +2058,10 @@ impl fmt::Write for String {
 
 /// A draining iterator for `String`.
 ///
-/// This struct is created by the [`drain()`] method on [`String`]. See its
+/// This struct is created by the [`drain`] method on [`String`]. See its
 /// documentation for more.
 ///
-/// [`drain()`]: struct.String.html#method.drain
+/// [`drain`]: struct.String.html#method.drain
 /// [`String`]: struct.String.html
 #[stable(feature = "drain", since = "1.6.0")]
 pub struct Drain<'a> {

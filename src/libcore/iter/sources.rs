@@ -16,9 +16,9 @@ use super::{FusedIterator, TrustedLen};
 
 /// An iterator that repeats an element endlessly.
 ///
-/// This `struct` is created by the [`repeat()`] function. See its documentation for more.
+/// This `struct` is created by the [`repeat`] function. See its documentation for more.
 ///
-/// [`repeat()`]: fn.repeat.html
+/// [`repeat`]: fn.repeat.html
 #[derive(Clone, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Repeat<A> {
@@ -50,9 +50,9 @@ impl<A: Clone> FusedIterator for Repeat<A> {}
 /// over and over and 🔁.
 ///
 /// Infinite iterators like `repeat()` are often used with adapters like
-/// [`take()`], in order to make them finite.
+/// [`take`], in order to make them finite.
 ///
-/// [`take()`]: trait.Iterator.html#method.take
+/// [`take`]: trait.Iterator.html#method.take
 ///
 /// # Examples
 ///
@@ -74,7 +74,7 @@ impl<A: Clone> FusedIterator for Repeat<A> {}
 /// assert_eq!(Some(4), fours.next());
 /// ```
 ///
-/// Going finite with [`take()`]:
+/// Going finite with [`take`]:
 ///
 /// ```
 /// use std::iter;
@@ -98,9 +98,9 @@ pub fn repeat<T: Clone>(elt: T) -> Repeat<T> {
 
 /// An iterator that yields nothing.
 ///
-/// This `struct` is created by the [`empty()`] function. See its documentation for more.
+/// This `struct` is created by the [`empty`] function. See its documentation for more.
 ///
-/// [`empty()`]: fn.empty.html
+/// [`empty`]: fn.empty.html
 #[stable(feature = "iter_empty", since = "1.2.0")]
 pub struct Empty<T>(marker::PhantomData<T>);
 
@@ -183,9 +183,9 @@ pub fn empty<T>() -> Empty<T> {
 
 /// An iterator that yields an element exactly once.
 ///
-/// This `struct` is created by the [`once()`] function. See its documentation for more.
+/// This `struct` is created by the [`once`] function. See its documentation for more.
 ///
-/// [`once()`]: fn.once.html
+/// [`once`]: fn.once.html
 #[derive(Clone, Debug)]
 #[stable(feature = "iter_once", since = "1.2.0")]
 pub struct Once<T> {
@@ -227,12 +227,12 @@ impl<T> FusedIterator for Once<T> {}
 
 /// Creates an iterator that yields an element exactly once.
 ///
-/// This is commonly used to adapt a single value into a [`chain()`] of other
+/// This is commonly used to adapt a single value into a [`chain`] of other
 /// kinds of iteration. Maybe you have an iterator that covers almost
 /// everything, but you need an extra special case. Maybe you have a function
 /// which works on iterators, but you only need to process one value.
 ///
-/// [`chain()`]: trait.Iterator.html#method.chain
+/// [`chain`]: trait.Iterator.html#method.chain
 ///
 /// # Examples
 ///

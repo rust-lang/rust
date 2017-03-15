@@ -28,12 +28,12 @@ pub mod pattern;
 /// A trait to abstract the idea of creating a new instance of a type from a
 /// string.
 ///
-/// `FromStr`'s [`from_str()`] method is often used implicitly, through
-/// [`str`]'s [`parse()`] method. See [`parse()`]'s documentation for examples.
+/// `FromStr`'s [`from_str`] method is often used implicitly, through
+/// [`str`]'s [`parse`] method. See [`parse`]'s documentation for examples.
 ///
-/// [`from_str()`]: #tymethod.from_str
+/// [`from_str`]: #tymethod.from_str
 /// [`str`]: ../../std/primitive.str.html
-/// [`parse()`]: ../../std/primitive.str.html#method.parse
+/// [`parse`]: ../../std/primitive.str.html#method.parse
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait FromStr: Sized {
     /// The associated error which can be returned from parsing.
@@ -182,13 +182,13 @@ impl Utf8Error {
 ///
 /// If you are sure that the byte slice is valid UTF-8, and you don't want to
 /// incur the overhead of the validity check, there is an unsafe version of
-/// this function, [`from_utf8_unchecked()`][fromutf8u], which has the same
+/// this function, [`from_utf8_unchecked`][fromutf8u], which has the same
 /// behavior but skips the check.
 ///
 /// [fromutf8u]: fn.from_utf8_unchecked.html
 ///
 /// If you need a `String` instead of a `&str`, consider
-/// [`String::from_utf8()`][string].
+/// [`String::from_utf8`][string].
 ///
 /// [string]: ../../std/string/struct.String.html#method.from_utf8
 ///
@@ -283,7 +283,7 @@ unsafe fn from_raw_parts_mut<'a>(p: *mut u8, len: usize) -> &'a mut str {
 /// Converts a slice of bytes to a string slice without checking
 /// that the string contains valid UTF-8.
 ///
-/// See the safe version, [`from_utf8()`][fromutf8], for more information.
+/// See the safe version, [`from_utf8`][fromutf8], for more information.
 ///
 /// [fromutf8]: fn.from_utf8.html
 ///
@@ -333,9 +333,9 @@ Section: Iterators
 
 /// Iterator for the char (representing *Unicode Scalar Values*) of a string
 ///
-/// Created with the method [`chars()`].
+/// Created with the method [`chars`].
 ///
-/// [`chars()`]: ../../std/primitive.str.html#method.chars
+/// [`chars`]: ../../std/primitive.str.html#method.chars
 #[derive(Clone, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Chars<'a> {
@@ -590,9 +590,9 @@ impl<'a> CharIndices<'a> {
 /// External iterator for a string's bytes.
 /// Use with the `std::iter` module.
 ///
-/// Created with the method [`bytes()`].
+/// Created with the method [`bytes`].
 ///
-/// [`bytes()`]: ../../std/primitive.str.html#method.bytes
+/// [`bytes`]: ../../std/primitive.str.html#method.bytes
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone, Debug)]
 pub struct Bytes<'a>(Cloned<slice::Iter<'a, u8>>);
@@ -925,14 +925,14 @@ impl<'a, P: Pattern<'a>> SplitInternal<'a, P> {
 
 generate_pattern_iterators! {
     forward:
-        /// Created with the method [`split()`].
+        /// Created with the method [`split`].
         ///
-        /// [`split()`]: ../../std/primitive.str.html#method.split
+        /// [`split`]: ../../std/primitive.str.html#method.split
         struct Split;
     reverse:
-        /// Created with the method [`rsplit()`].
+        /// Created with the method [`rsplit`].
         ///
-        /// [`rsplit()`]: ../../std/primitive.str.html#method.rsplit
+        /// [`rsplit`]: ../../std/primitive.str.html#method.rsplit
         struct RSplit;
     stability:
         #[stable(feature = "rust1", since = "1.0.0")]
@@ -943,14 +943,14 @@ generate_pattern_iterators! {
 
 generate_pattern_iterators! {
     forward:
-        /// Created with the method [`split_terminator()`].
+        /// Created with the method [`split_terminator`].
         ///
-        /// [`split_terminator()`]: ../../std/primitive.str.html#method.split_terminator
+        /// [`split_terminator`]: ../../std/primitive.str.html#method.split_terminator
         struct SplitTerminator;
     reverse:
-        /// Created with the method [`rsplit_terminator()`].
+        /// Created with the method [`rsplit_terminator`].
         ///
-        /// [`rsplit_terminator()`]: ../../std/primitive.str.html#method.rsplit_terminator
+        /// [`rsplit_terminator`]: ../../std/primitive.str.html#method.rsplit_terminator
         struct RSplitTerminator;
     stability:
         #[stable(feature = "rust1", since = "1.0.0")]
@@ -1003,14 +1003,14 @@ impl<'a, P: Pattern<'a>> SplitNInternal<'a, P> {
 
 generate_pattern_iterators! {
     forward:
-        /// Created with the method [`splitn()`].
+        /// Created with the method [`splitn`].
         ///
-        /// [`splitn()`]: ../../std/primitive.str.html#method.splitn
+        /// [`splitn`]: ../../std/primitive.str.html#method.splitn
         struct SplitN;
     reverse:
-        /// Created with the method [`rsplitn()`].
+        /// Created with the method [`rsplitn`].
         ///
-        /// [`rsplitn()`]: ../../std/primitive.str.html#method.rsplitn
+        /// [`rsplitn`]: ../../std/primitive.str.html#method.rsplitn
         struct RSplitN;
     stability:
         #[stable(feature = "rust1", since = "1.0.0")]
@@ -1054,14 +1054,14 @@ impl<'a, P: Pattern<'a>> MatchIndicesInternal<'a, P> {
 
 generate_pattern_iterators! {
     forward:
-        /// Created with the method [`match_indices()`].
+        /// Created with the method [`match_indices`].
         ///
-        /// [`match_indices()`]: ../../std/primitive.str.html#method.match_indices
+        /// [`match_indices`]: ../../std/primitive.str.html#method.match_indices
         struct MatchIndices;
     reverse:
-        /// Created with the method [`rmatch_indices()`].
+        /// Created with the method [`rmatch_indices`].
         ///
-        /// [`rmatch_indices()`]: ../../std/primitive.str.html#method.rmatch_indices
+        /// [`rmatch_indices`]: ../../std/primitive.str.html#method.rmatch_indices
         struct RMatchIndices;
     stability:
         #[stable(feature = "str_match_indices", since = "1.5.0")]
@@ -1107,14 +1107,14 @@ impl<'a, P: Pattern<'a>> MatchesInternal<'a, P> {
 
 generate_pattern_iterators! {
     forward:
-        /// Created with the method [`matches()`].
+        /// Created with the method [`matches`].
         ///
-        /// [`matches()`]: ../../std/primitive.str.html#method.matches
+        /// [`matches`]: ../../std/primitive.str.html#method.matches
         struct Matches;
     reverse:
-        /// Created with the method [`rmatches()`].
+        /// Created with the method [`rmatches`].
         ///
-        /// [`rmatches()`]: ../../std/primitive.str.html#method.rmatches
+        /// [`rmatches`]: ../../std/primitive.str.html#method.rmatches
         struct RMatches;
     stability:
         #[stable(feature = "str_matches", since = "1.2.0")]
@@ -1123,9 +1123,9 @@ generate_pattern_iterators! {
     delegate double ended;
 }
 
-/// Created with the method [`lines()`].
+/// Created with the method [`lines`].
 ///
-/// [`lines()`]: ../../std/primitive.str.html#method.lines
+/// [`lines`]: ../../std/primitive.str.html#method.lines
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone, Debug)]
 pub struct Lines<'a>(Map<SplitTerminator<'a, char>, LinesAnyMap>);
@@ -1156,9 +1156,9 @@ impl<'a> DoubleEndedIterator for Lines<'a> {
 #[unstable(feature = "fused", issue = "35602")]
 impl<'a> FusedIterator for Lines<'a> {}
 
-/// Created with the method [`lines_any()`].
+/// Created with the method [`lines_any`].
 ///
-/// [`lines_any()`]: ../../std/primitive.str.html#method.lines_any
+/// [`lines_any`]: ../../std/primitive.str.html#method.lines_any
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_deprecated(since = "1.4.0", reason = "use lines()/Lines instead now")]
 #[derive(Clone, Debug)]
