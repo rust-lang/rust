@@ -434,8 +434,8 @@ mod tests {
     }
 
     // See #14232 for more information, but it appears that signal delivery to a
-    // newly spawned process may just be raced in the OSX, so to prevent this
-    // test from being flaky we ignore it on OSX.
+    // newly spawned process may just be raced in the macOS, so to prevent this
+    // test from being flaky we ignore it on macOS.
     #[test]
     #[cfg_attr(target_os = "macos", ignore)]
     #[cfg_attr(target_os = "nacl", ignore)] // no signals on NaCl.
