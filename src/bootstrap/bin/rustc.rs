@@ -79,6 +79,7 @@ fn main() {
     cmd.args(&args)
         .arg("--cfg")
         .arg(format!("stage{}", stage))
+        .arg("--cfg").arg("rustbuild")
         .env(bootstrap::util::dylib_path_var(),
              env::join_paths(&dylib_path).unwrap());
 
