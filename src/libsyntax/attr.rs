@@ -18,8 +18,8 @@ use ast;
 use ast::{AttrId, Attribute, Name, Ident};
 use ast::{MetaItem, MetaItemKind, NestedMetaItem, NestedMetaItemKind};
 use ast::{Lit, LitKind, Expr, ExprKind, Item, Local, Stmt, StmtKind};
-use codemap::{Spanned, spanned, dummy_spanned, mk_sp};
-use syntax_pos::{Span, BytePos, DUMMY_SP};
+use codemap::{Spanned, respan, dummy_spanned};
+use syntax_pos::{Span, DUMMY_SP};
 use errors::Handler;
 use feature_gate::{Features, GatedCfg};
 use parse::lexer::comments::{doc_comment_style, strip_doc_comment_decoration};
@@ -447,17 +447,16 @@ pub fn mk_spanned_attr_outer(sp: Span, id: AttrId, item: MetaItem) -> Attribute 
     }
 }
 
-pub fn mk_sugared_doc_attr(id: AttrId, text: Symbol, lo: BytePos, hi: BytePos)
-                           -> Attribute {
+pub fn mk_sugared_doc_attr(id: AttrId, text: Symbol, span: Span) -> Attribute {
     let style = doc_comment_style(&text.as_str());
-    let lit = spanned(lo, hi, LitKind::Str(text, ast::StrStyle::Cooked));
+    let lit = respan(span, LitKind::Str(text, ast::StrStyle::Cooked));
     Attribute {
         id: id,
         style: style,
-        path: ast::Path::from_ident(mk_sp(lo, hi), ast::Ident::from_str("doc")),
-        tokens: MetaItemKind::NameValue(lit).tokens(mk_sp(lo, hi)),
+        path: ast::Path::from_ident(span, ast::Ident::from_str("doc")),
+        tokens: MetaItemKind::NameValue(lit).tokens(span),
         is_sugared_doc: true,
-        span: mk_sp(lo, hi),
+        span: span,
     }
 }
 

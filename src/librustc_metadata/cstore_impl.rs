@@ -36,7 +36,7 @@ use syntax::ast;
 use syntax::attr;
 use syntax::parse::filemap_to_stream;
 use syntax::symbol::Symbol;
-use syntax_pos::{mk_sp, Span};
+use syntax_pos::{Span, NO_EXPANSION};
 use rustc::hir::svh::Svh;
 use rustc_back::target::Target;
 use rustc::hir;
@@ -395,7 +395,7 @@ impl CrateStore for cstore::CStore {
         let source_name = format!("<{} macros>", name);
 
         let filemap = sess.parse_sess.codemap().new_filemap(source_name, None, def.body);
-        let local_span = mk_sp(filemap.start_pos, filemap.end_pos);
+        let local_span = Span { lo: filemap.start_pos, hi: filemap.end_pos, ctxt: NO_EXPANSION };
         let body = filemap_to_stream(&sess.parse_sess, filemap);
 
         // Mark the attrs as used
