@@ -1210,14 +1210,6 @@ impl<'a> From<&'a Path> for Box<Path> {
     }
 }
 
-#[stable(feature = "box_default_extra", since = "1.17.0")]
-impl Default for Box<Path> {
-    fn default() -> Box<Path> {
-        let boxed: Box<OsStr> = Default::default();
-        unsafe { mem::transmute(boxed) }
-    }
-}
-
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: ?Sized + AsRef<OsStr>> From<&'a T> for PathBuf {
     fn from(s: &'a T) -> PathBuf {
@@ -3709,11 +3701,5 @@ mod tests {
         assert_eq!(path, &*box1);
         assert_eq!(box1, box2);
         assert_eq!(&*box2, path);
-    }
-
-    #[test]
-    fn boxed_default() {
-        let boxed = <Box<Path>>::default();
-        assert!(boxed.as_os_str().is_empty());
     }
 }
