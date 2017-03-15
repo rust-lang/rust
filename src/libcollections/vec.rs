@@ -1897,6 +1897,22 @@ impl<'a, T> From<Cow<'a, [T]>> for Vec<T> where [T]: ToOwned<Owned=Vec<T>> {
     }
 }
 
+// note: test pulls in libstd, which causes errors here
+#[cfg(not(test))]
+#[stable(feature = "vec_from_box", since = "1.17.0")]
+impl<T> From<Box<[T]>> for Vec<T> {
+    fn from(s: Box<[T]>) -> Vec<T> {
+        s.into_vec()
+    }
+}
+
+#[stable(feature = "box_from_vec", since = "1.17.0")]
+impl<T> Into<Box<[T]>> for Vec<T> {
+    fn into(self) -> Box<[T]> {
+        self.into_boxed_slice()
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> From<&'a str> for Vec<u8> {
     fn from(s: &'a str) -> Vec<u8> {

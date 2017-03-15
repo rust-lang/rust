@@ -351,6 +351,12 @@ impl Wtf8Buf {
     pub fn into_box(self) -> Box<Wtf8> {
         unsafe { mem::transmute(self.bytes.into_boxed_slice()) }
     }
+
+    /// Converts a `Box<Wtf8>` into a `Wtf8Buf`.
+    pub fn from_box(boxed: Box<Wtf8>) -> Wtf8Buf {
+        let bytes: Box<[u8]> = unsafe { mem::transmute(boxed) };
+        Wtf8Buf { bytes: bytes.into_vec() }
+    }
 }
 
 /// Create a new WTF-8 string from an iterator of code points.

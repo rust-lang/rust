@@ -212,7 +212,7 @@ impl OsString {
     }
 
     /// Converts this `OsString` into a boxed `OsStr`.
-    #[unstable(feature = "into_boxed_os_str", issue = "0")]
+    #[unstable(feature = "into_boxed_os_str", issue = "40380")]
     pub fn into_boxed_os_str(self) -> Box<OsStr> {
         unsafe { mem::transmute(self.inner.into_box()) }
     }
@@ -448,6 +448,13 @@ impl OsStr {
         self.inner.inner.len()
     }
 
+    /// Converts a `Box<OsStr>` into an `OsString` without copying or allocating.
+    #[unstable(feature = "into_boxed_os_str", issue = "40380")]
+    pub fn into_os_string(self: Box<OsStr>) -> OsString {
+        let inner: Box<Slice> = unsafe { mem::transmute(self) };
+        OsString { inner: Buf::from_box(inner) }
+    }
+
     /// Gets the underlying byte representation.
     ///
     /// Note: it is *crucial* that this API is private, to avoid
@@ -461,6 +468,20 @@ impl OsStr {
 impl<'a> From<&'a OsStr> for Box<OsStr> {
     fn from(s: &'a OsStr) -> Box<OsStr> {
         unsafe { mem::transmute(s.inner.into_box()) }
+    }
+}
+
+#[stable(feature = "os_string_from_box", since = "1.17.0")]
+impl<'a> From<Box<OsStr>> for OsString {
+    fn from(boxed: Box<OsStr>) -> OsString {
+        boxed.into_os_string()
+    }
+}
+
+#[stable(feature = "box_from_c_string", since = "1.17.0")]
+impl Into<Box<OsStr>> for OsString {
+    fn into(self) -> Box<OsStr> {
+        self.into_boxed_os_str()
     }
 }
 
@@ -772,12 +793,11 @@ mod tests {
     fn into_boxed() {
         let orig = "Hello, world!";
         let os_str = OsStr::new(orig);
-        let os_string = os_str.to_owned();
-        let box1: Box<OsStr> = Box::from(os_str);
-        let box2 = os_string.into_boxed_os_str();
-        assert_eq!(os_str, &*box1);
-        assert_eq!(box1, box2);
-        assert_eq!(&*box2, os_str);
+        let boxed: Box<OsStr> = Box::from(os_str);
+        let os_string = os_str.to_owned().into_boxed_os_str().into_os_string();
+        assert_eq!(os_str, &*boxed);
+        assert_eq!(&*boxed, &*os_string);
+        assert_eq!(&*os_string, os_str);
     }
 
     #[test]
