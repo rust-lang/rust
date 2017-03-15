@@ -803,12 +803,11 @@ impl<T: fmt::Debug, E> Result<T, E> {
     /// Basic usage:
     ///
     /// ```{.should_panic}
-    /// # #![feature(result_expect_err)]
     /// let x: Result<u32, &str> = Ok(10);
     /// x.expect_err("Testing expect_err"); // panics with `Testing expect_err: 10`
     /// ```
     #[inline]
-    #[unstable(feature = "result_expect_err", issue = "39041")]
+    #[stable(feature = "result_expect_err", since = "1.17.0")]
     pub fn expect_err(self, msg: &str) -> E {
         match self {
             Ok(t) => unwrap_failed(msg, t),
