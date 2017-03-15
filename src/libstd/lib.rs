@@ -283,7 +283,6 @@
 #![feature(placement_in_syntax)]
 #![feature(placement_new_protocol)]
 #![feature(prelude_import)]
-#![feature(pub_restricted)]
 #![feature(rand)]
 #![feature(raw)]
 #![feature(repr_simd)]
@@ -309,6 +308,7 @@
 #![feature(vec_push_all)]
 #![feature(zero_one)]
 #![cfg_attr(test, feature(update_panic_count))]
+#![cfg_attr(stage0, feature(pub_restricted))]
 
 // Explicitly import the prelude. The compiler uses this same unstable attribute
 // to import the prelude implicitly when building crates that depend on std.

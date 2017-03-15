@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(pub_restricted)]
-
 macro_rules! define_struct {
     ($t:ty) => {
         struct S1(pub $t);

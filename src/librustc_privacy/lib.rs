@@ -951,7 +951,7 @@ impl<'a, 'tcx: 'a> TypeVisitor<'tcx> for SearchInterfaceForPrivateItemsVisitor<'
                     self.min_visibility = vis;
                 }
                 if !vis.is_at_least(self.required_visibility, self.tcx) {
-                    if self.tcx.sess.features.borrow().pub_restricted || self.has_old_errors {
+                    if self.has_old_errors {
                         let mut err = struct_span_err!(self.tcx.sess, self.span, E0446,
                             "private type `{}` in public interface", ty);
                         err.span_label(self.span, &format!("can't leak private type"));
@@ -986,7 +986,7 @@ impl<'a, 'tcx: 'a> TypeVisitor<'tcx> for SearchInterfaceForPrivateItemsVisitor<'
                 self.min_visibility = vis;
             }
             if !vis.is_at_least(self.required_visibility, self.tcx) {
-                if self.tcx.sess.features.borrow().pub_restricted || self.has_old_errors {
+                if self.has_old_errors {
                     struct_span_err!(self.tcx.sess, self.span, E0445,
                                      "private trait `{}` in public interface", trait_ref)
                         .span_label(self.span, &format!(
