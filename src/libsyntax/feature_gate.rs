@@ -260,9 +260,6 @@ declare_features! (
     // impl specialization (RFC 1210)
     (active, specialization, "1.7.0", Some(31844)),
 
-    // pub(restricted) visibilities (RFC 1422)
-    (active, pub_restricted, "1.9.0", Some(32409)),
-
     // Allow Drop types in statics/const functions (RFC 1440)
     (active, drop_types_in_const, "1.9.0", Some(33156)),
 
@@ -406,6 +403,9 @@ declare_features! (
     (accepted, field_init_shorthand, "1.17.0", Some(37340)),
     // Allows the definition recursive static items.
     (accepted, static_recursion, "1.17.0", Some(29719)),
+    // pub(restricted) visibilities (RFC 1422)
+    (accepted, pub_restricted, "1.17.0", Some(32409)),
+
 );
 // If you change this, please modify src/doc/unstable-book as well. You must
 // move that documentation into the relevant place in the other docs, and
@@ -1408,17 +1408,6 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             _ => {}
         }
         visit::walk_impl_item(self, ii);
-    }
-
-    fn visit_vis(&mut self, vis: &'a ast::Visibility) {
-        let span = match *vis {
-            ast::Visibility::Crate(span) => span,
-            ast::Visibility::Restricted { ref path, .. } => path.span,
-            _ => return,
-        };
-        gate_feature_post!(&self, pub_restricted, span, "`pub(restricted)` syntax is experimental");
-
-        visit::walk_vis(self, vis)
     }
 
     fn visit_generics(&mut self, g: &'a ast::Generics) {

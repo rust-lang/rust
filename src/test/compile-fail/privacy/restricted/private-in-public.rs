@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(pub_restricted)]
+#![deny(warnings)]
+#![allow(unused)]
 
 mod foo {
     struct Priv;
@@ -16,6 +17,7 @@ mod foo {
         use foo::Priv;
         pub(super) fn f(_: Priv) {}
         pub(crate) fn g(_: Priv) {} //~ ERROR E0446
+        //~^ this was previously accepted
     }
 }
 
