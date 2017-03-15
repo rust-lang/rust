@@ -1777,8 +1777,8 @@ impl DirBuilder {
     fn create_dir_all(&self, path: &Path) -> io::Result<()> {
         match self.inner.mkdir(path) {
             Ok(()) => return Ok(()),
-            Err(_) if path.is_dir() => return Ok(()),
             Err(ref e) if e.kind() == io::ErrorKind::NotFound => {}
+            Err(_) if path.is_dir() => return Ok(()),
             Err(e) => return Err(e),
         }
         match path.parent() {
