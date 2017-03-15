@@ -941,7 +941,7 @@ impl<'a, T> Hole<'a, T> {
     /// Unsafe because index must be within the data slice and not equal to pos.
     #[inline]
     unsafe fn get(&self, index: usize) -> &T {
-        debug_assert!(index != self.pos);
+        debug_assert_ne!(index, self.pos);
         debug_assert!(index < self.data.len());
         self.data.get_unchecked(index)
     }
@@ -951,7 +951,7 @@ impl<'a, T> Hole<'a, T> {
     /// Unsafe because index must be within the data slice and not equal to pos.
     #[inline]
     unsafe fn move_to(&mut self, index: usize) {
-        debug_assert!(index != self.pos);
+        debug_assert_ne!(index, self.pos);
         debug_assert!(index < self.data.len());
         let index_ptr: *const _ = self.data.get_unchecked(index);
         let hole_ptr = self.data.get_unchecked_mut(self.pos);
@@ -1194,8 +1194,8 @@ impl<T: Ord, I: IntoIterator<Item = T>> SpecExtend<I> for BinaryHeap<T> {
 }
 
 impl<T: Ord> SpecExtend<BinaryHeap<T>> for BinaryHeap<T> {
-    fn spec_extend(&mut self, ref mut other: BinaryHeap<T>) {
-        self.append(other);
+    fn spec_extend(&mut self, mut other: BinaryHeap<T>) {
+        self.append(&mut other);
     }
 }
 

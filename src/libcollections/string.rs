@@ -533,7 +533,7 @@ impl String {
     /// assert_eq!("Hello �World", output);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn from_utf8_lossy<'a>(v: &'a [u8]) -> Cow<'a, str> {
+    pub fn from_utf8_lossy(v: &[u8]) -> Cow<str> {
         let mut i;
         match str::from_utf8(v) {
             Ok(s) => return Cow::Borrowed(s),
@@ -591,9 +591,9 @@ impl String {
                     }
                     3 => {
                         match (byte, safe_get(v, i, total)) {
-                            (0xE0, 0xA0...0xBF) => (),
-                            (0xE1...0xEC, 0x80...0xBF) => (),
-                            (0xED, 0x80...0x9F) => (),
+                            (0xE0, 0xA0...0xBF) |
+                            (0xE1...0xEC, 0x80...0xBF) |
+                            (0xED, 0x80...0x9F) |
                             (0xEE...0xEF, 0x80...0xBF) => (),
                             _ => {
                                 error!();
@@ -609,8 +609,8 @@ impl String {
                     }
                     4 => {
                         match (byte, safe_get(v, i, total)) {
-                            (0xF0, 0x90...0xBF) => (),
-                            (0xF1...0xF3, 0x80...0xBF) => (),
+                            (0xF0, 0x90...0xBF) |
+                            (0xF1...0xF3, 0x80...0xBF) |
                             (0xF4, 0x80...0x8F) => (),
                             _ => {
                                 error!();

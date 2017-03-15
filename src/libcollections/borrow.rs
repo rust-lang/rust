@@ -254,7 +254,7 @@ impl<'a, B: ?Sized> fmt::Debug for Cow<'a, B>
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            Borrowed(ref b) => fmt::Debug::fmt(b, f),
+            Borrowed(b) => fmt::Debug::fmt(b, f),
             Owned(ref o) => fmt::Debug::fmt(o, f),
         }
     }
@@ -267,7 +267,7 @@ impl<'a, B: ?Sized> fmt::Display for Cow<'a, B>
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            Borrowed(ref b) => fmt::Display::fmt(b, f),
+            Borrowed(b) => fmt::Display::fmt(b, f),
             Owned(ref o) => fmt::Display::fmt(o, f),
         }
     }

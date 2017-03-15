@@ -95,7 +95,7 @@ pub struct IterMut<'a, T: 'a> {
 impl<'a, T: 'a + fmt::Debug> fmt::Debug for IterMut<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("IterMut")
-         .field(self.clone())
+         .field(self)
          .finish()
     }
 }
@@ -111,7 +111,7 @@ pub struct IntoIter<T> {
 impl<T: fmt::Debug> fmt::Debug for IntoIter<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("IntoIter")
-         .field(self.clone())
+         .field(self)
          .finish()
     }
 }
@@ -1020,8 +1020,8 @@ impl<I: IntoIterator> SpecExtend<I> for LinkedList<I::Item> {
 }
 
 impl<T> SpecExtend<LinkedList<T>> for LinkedList<T> {
-    fn spec_extend(&mut self, ref mut other: LinkedList<T>) {
-        self.append(other);
+    fn spec_extend(&mut self, mut other: LinkedList<T>) {
+        self.append(&mut other);
     }
 }
 
@@ -1110,7 +1110,7 @@ pub struct FrontPlace<'a, T: 'a> {
 impl<'a, T: 'a + fmt::Debug> fmt::Debug for FrontPlace<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("FrontPlace")
-         .field(self.clone())
+         .field(self)
          .finish()
     }
 }
@@ -1165,7 +1165,7 @@ pub struct BackPlace<'a, T: 'a> {
 impl<'a, T: 'a + fmt::Debug> fmt::Debug for BackPlace<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("BackPlace")
-         .field(self.clone())
+         .field(self)
          .finish()
     }
 }

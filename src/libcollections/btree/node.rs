@@ -347,7 +347,7 @@ impl<BorrowType, K, V, Type> NodeRef<BorrowType, K, V, Type> {
     }
 
     /// Temporarily takes out another, immutable reference to the same node.
-    fn reborrow<'a>(&'a self) -> NodeRef<marker::Immut<'a>, K, V, Type> {
+    fn reborrow(&self) -> NodeRef<marker::Immut, K, V, Type> {
         NodeRef {
             height: self.height,
             node: self.node,
@@ -964,7 +964,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
     fn insert_fit(&mut self, key: K, val: V, edge: Root<K, V>) {
         // Necessary for correctness, but in an internal module
         debug_assert!(self.node.len() < CAPACITY);
-        debug_assert!(edge.height == self.node.height - 1);
+        debug_assert_eq!(edge.height, self.node.height - 1);
 
         unsafe {
             // This cast is a lie, but it allows us to reuse the key/value insertion logic.
@@ -992,7 +992,7 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::Internal>, marker::
             -> InsertResult<'a, K, V, marker::Internal> {
 
         // Necessary for correctness, but this is an internal module
-        debug_assert!(edge.height == self.node.height - 1);
+        debug_assert_eq!(edge.height, self.node.height - 1);
 
         if self.node.len() < CAPACITY {
             self.insert_fit(key, val, edge);
@@ -1488,8 +1488,8 @@ impl<'a, K, V> Handle<NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>, ma
             let right_new_len = left_node.len() - left_new_len;
             let mut right_node = right.reborrow_mut();
 
-            debug_assert!(right_node.len() == 0);
-            debug_assert!(left_node.height == right_node.height);
+            debug_assert_eq!(right_node.len(), 0);
+            debug_assert_eq!(left_node.height, right_node.height);
 
             let left_kv = left_node.reborrow_mut().into_kv_pointers_mut();
             let right_kv = right_node.reborrow_mut().into_kv_pointers_mut();
