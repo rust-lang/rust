@@ -409,7 +409,7 @@ pub trait Iterator {
     /// If you're doing some sort of looping for a side effect, it's considered
     /// more idiomatic to use [`for`] than `map()`.
     ///
-    /// [`for`]: ../../book/loops.html#for
+    /// [`for`]: ../../book/first-edition/loops.html#for
     ///
     /// # Examples
     ///
@@ -1306,7 +1306,7 @@ pub trait Iterator {
     /// use a `for` loop with a list of things to build up a result. Those
     /// can be turned into `fold()`s:
     ///
-    /// [`for`]: ../../book/loops.html#for
+    /// [`for`]: ../../book/first-edition/loops.html#for
     ///
     /// ```
     /// let numbers = [1, 2, 3, 4, 5];

@@ -29,7 +29,7 @@
 /// ```
 ///
 /// [`assert!`]: macro.assert.html
-/// [`if`]: ../book/if.html
+/// [`if`]: ../book/first-edition/if.html
 /// [`BitAnd`]: ops/trait.BitAnd.html
 /// [`BitOr`]: ops/trait.BitOr.html
 /// [`Not`]: ops/trait.Not.html
@@ -490,7 +490,7 @@ mod prim_str { }
 /// assert_eq!(tuple.2, 'c');
 /// ```
 ///
-/// For more about tuples, see [the book](../book/primitive-types.html#tuples).
+/// For more about tuples, see [the book](../book/first-edition/primitive-types.html#tuples).
 ///
 /// # Trait implementations
 ///
