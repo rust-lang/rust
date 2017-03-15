@@ -13,6 +13,7 @@ use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use middle::const_val::ConstVal;
 use middle::privacy::AccessLevels;
 use mir;
+use session::CompileResult;
 use ty::{self, CrateInherentImpls, Ty, TyCtxt};
 
 use rustc_data_structures::indexed_vec::IndexVec;
@@ -201,6 +202,13 @@ impl<'tcx> QueryDescription for queries::privacy_access_levels<'tcx> {
         format!("privacy access levels")
     }
 }
+
+impl<'tcx> QueryDescription for queries::typeck_item_bodies<'tcx> {
+    fn describe(_: TyCtxt, _: CrateNum) -> String {
+        format!("type-checking all item bodies")
+    }
+}
+
 
 macro_rules! define_maps {
     (<$tcx:tt>
@@ -409,6 +417,8 @@ define_maps! { <'tcx>
     pub coerce_unsized_info: ItemSignature(DefId)
         -> ty::adjustment::CoerceUnsizedInfo,
 
+    pub typeck_item_bodies: typeck_item_bodies_dep_node(CrateNum) -> CompileResult,
+
     pub typeck_tables: TypeckTables(DefId) -> &'tcx ty::TypeckTables<'tcx>,
 
     pub coherent_trait: coherent_trait_dep_node((CrateNum, DefId)) -> (),
@@ -443,4 +453,8 @@ fn crate_inherent_impls_dep_node(_: CrateNum) -> DepNode<DefId> {
 
 fn mir_shim(instance: ty::InstanceDef) -> DepNode<DefId> {
     instance.dep_node()
+}
+
+fn typeck_item_bodies_dep_node(_: CrateNum) -> DepNode<DefId> {
+    DepNode::TypeckBodiesKrate
 }
