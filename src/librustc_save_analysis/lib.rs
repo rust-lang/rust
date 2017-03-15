@@ -133,6 +133,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     parent: None,
                     docs: docs_for_attrs(&item.attrs),
                     sig: self.sig_base_extern(item),
+                    attributes: item.attrs.clone(),
                 }))
             }
             ast::ForeignItemKind::Static(ref ty, m) => {
@@ -151,6 +152,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     visibility: From::from(&item.vis),
                     docs: docs_for_attrs(&item.attrs),
                     sig: Some(self.sig_base_extern(item)),
+                    attributes: item.attrs.clone(),
                 }))
             }
         }
