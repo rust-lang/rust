@@ -419,7 +419,7 @@ dependencies = [
 [[package]]
 name = "rls-span"
 version = "0.1.0"
-source = "git+https://github.com/nrc/rls-span#e9224b1c52d1d43f9f7b3bb065653c9e18bb532d"
+source = "git+https://github.com/nrc/rls-span#79375240da727c583ce656a6beb034c163313399"
 dependencies = [
  "rustc-serialize 0.3.22 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
