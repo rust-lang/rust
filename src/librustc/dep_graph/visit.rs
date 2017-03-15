@@ -29,7 +29,7 @@ pub fn visit_all_item_likes_in_krate<'a, 'tcx, V, F>(tcx: TyCtxt<'a, 'tcx, 'tcx>
     struct TrackingVisitor<'visit, 'tcx: 'visit, F: 'visit, V: 'visit> {
         tcx: TyCtxt<'visit, 'tcx, 'tcx>,
         dep_node_fn: &'visit mut F,
-        visitor: &'visit mut V
+        visitor: &'visit mut V,
     }
 
     impl<'visit, 'tcx, F, V> ItemLikeVisitor<'tcx> for TrackingVisitor<'visit, 'tcx, F, V>
@@ -70,13 +70,16 @@ pub fn visit_all_item_likes_in_krate<'a, 'tcx, V, F>(tcx: TyCtxt<'a, 'tcx, 'tcx>
     let mut tracking_visitor = TrackingVisitor {
         tcx: tcx,
         dep_node_fn: &mut dep_node_fn,
-        visitor: visitor
+        visitor: visitor,
     };
     krate.visit_all_item_likes(&mut tracking_visitor)
 }
 
 pub fn visit_all_bodies_in_krate<'a, 'tcx, C>(tcx: TyCtxt<'a, 'tcx, 'tcx>, callback: C)
-    where C: Fn(/* body_owner */ DefId, /* body id */ hir::BodyId),
+    where C: Fn(/* body_owner */
+                DefId,
+                /* body id */
+                hir::BodyId)
 {
     let krate = tcx.hir.krate();
     for &body_id in &krate.body_ids {

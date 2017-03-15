@@ -16,7 +16,7 @@ use infer::InferCtxt;
 use hir::map as hir_map;
 use traits::{self, Reveal};
 use ty::{self, Ty, TyCtxt, TypeAndMut, TypeFlags, TypeFoldable};
-use ty::{ParameterEnvironment};
+use ty::ParameterEnvironment;
 use ty::fold::TypeVisitor;
 use ty::layout::{Layout, LayoutError};
 use ty::TypeVariants::*;
@@ -39,13 +39,13 @@ use hir;
 
 type Disr = ConstInt;
 
- pub trait IntTypeExt {
+pub trait IntTypeExt {
     fn to_ty<'a, 'gcx, 'tcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx>;
     fn disr_incr<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, val: Option<Disr>)
                            -> Option<Disr>;
     fn assert_ty_matches(&self, val: Disr);
     fn initial_discriminant<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Disr;
- }
+}
 
 
 macro_rules! typed_literal {
@@ -133,7 +133,7 @@ impl IntTypeExt for attr::IntType {
 pub enum CopyImplementationError<'tcx> {
     InfrigingField(&'tcx ty::FieldDef),
     NotAnAdt,
-    HasDestructor
+    HasDestructor,
 }
 
 /// Describes whether a type is representable. For types that are not
@@ -159,14 +159,14 @@ impl<'tcx> ParameterEnvironment<'tcx> {
         tcx.infer_ctxt(self.clone(), Reveal::UserFacing).enter(|infcx| {
             let (adt, substs) = match self_type.sty {
                 ty::TyAdt(adt, substs) => (adt, substs),
-                _ => return Err(CopyImplementationError::NotAnAdt)
+                _ => return Err(CopyImplementationError::NotAnAdt),
             };
 
             let field_implements_copy = |field: &ty::FieldDef| {
                 let cause = traits::ObligationCause::dummy();
                 match traits::fully_normalize(&infcx, cause, &field.ty(tcx, substs)) {
                     Ok(ty) => !infcx.type_moves_by_default(ty, span),
-                    Err(..) => false
+                    Err(..) => false,
                 }
             };
 
@@ -198,7 +198,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     }
                 }
             }
-            _ => ()
+            _ => (),
         }
         false
     }
@@ -218,7 +218,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 adt.variants[0].fields.get(i).map(|f| f.ty(self, substs))
             }
             (&TyTuple(ref v, _), None) => v.get(i).cloned(),
-            _ => None
+            _ => None,
         }
     }
 
@@ -245,11 +245,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn struct_tail(self, mut ty: Ty<'tcx>) -> Ty<'tcx> {
         while let TyAdt(def, substs) = ty.sty {
             if !def.is_struct() {
-                break
+                break;
             }
             match def.struct_variant().fields.last() {
                 Some(f) => ty = f.ty(self, substs),
-                None => break
+                None => break,
             }
         }
         ty
@@ -267,14 +267,14 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         let (mut a, mut b) = (source, target);
         while let (&TyAdt(a_def, a_substs), &TyAdt(b_def, b_substs)) = (&a.sty, &b.sty) {
             if a_def != b_def || !a_def.is_struct() {
-                break
+                break;
             }
             match a_def.struct_variant().fields.last() {
                 Some(f) => {
                     a = f.ty(self, a_substs);
                     b = f.ty(self, b_substs);
                 }
-                _ => break
+                _ => break,
             }
         }
         (a, b)
@@ -373,7 +373,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
         let dtor_did = match dtor_did {
             Some(dtor) => dtor,
-            None => return None
+            None => return None,
         };
 
         // RFC 1238: if the destructor method is tagged with the
@@ -725,9 +725,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
 
                     substs_a.types().zip(substs_b.types()).all(|(a, b)| same_type(a, b))
                 }
-                _ => {
-                    a == b
-                }
+                _ => a == b,
             }
         }
 
