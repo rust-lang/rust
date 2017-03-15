@@ -174,6 +174,15 @@ impl Span {
         }
         result
     }
+
+    pub fn to(self, end: Span) -> Span {
+        // FIXME(jseyfried): self.ctxt should always equal end.ctxt here (c.f. issue #23480)
+        if end.ctxt == SyntaxContext::empty() {
+            Span { lo: self.lo, ..end }
+        } else {
+            Span { hi: end.hi, ..self }
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -208,7 +217,7 @@ impl serialize::UseSpecializedDecodable for Span {
         d.read_struct("Span", 2, |d| {
             let lo = d.read_struct_field("lo", 0, Decodable::decode)?;
             let hi = d.read_struct_field("hi", 1, Decodable::decode)?;
-            Ok(mk_sp(lo, hi))
+            Ok(Span { lo: lo, hi: hi, ctxt: NO_EXPANSION })
         })
     }
 }
@@ -695,11 +704,6 @@ pub struct FileLines {
 
 thread_local!(pub static SPAN_DEBUG: Cell<fn(Span, &mut fmt::Formatter) -> fmt::Result> =
                 Cell::new(default_span_debug));
-
-/* assuming that we're not in macro expansion */
-pub fn mk_sp(lo: BytePos, hi: BytePos) -> Span {
-    Span {lo: lo, hi: hi, ctxt: NO_EXPANSION}
-}
 
 pub struct MacroBacktrace {
     /// span where macro was applied to generate this code

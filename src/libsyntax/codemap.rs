@@ -49,10 +49,6 @@ pub struct Spanned<T> {
     pub span: Span,
 }
 
-pub fn spanned<T>(lo: BytePos, hi: BytePos, t: T) -> Spanned<T> {
-    respan(mk_sp(lo, hi), t)
-}
-
 pub fn respan<T>(sp: Span, t: T) -> Spanned<T> {
     Spanned {node: t, span: sp}
 }

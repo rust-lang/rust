@@ -742,7 +742,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         let ident_start = text.find(&name).expect("Name not in signature?");
         let ident_end = ident_start + name.len();
         Signature {
-            span: mk_sp(item.span.lo, item.span.lo + BytePos(text.len() as u32)),
+            span: Span { hi: item.span.lo + BytePos(text.len() as u32), ..item.span },
             text: text,
             ident_start: ident_start,
             ident_end: ident_end,

@@ -17,7 +17,7 @@ pub use self::PathParameters::*;
 pub use symbol::{Ident, Symbol as Name};
 pub use util::ThinVec;
 
-use syntax_pos::{mk_sp, BytePos, Span, DUMMY_SP};
+use syntax_pos::{Span, DUMMY_SP};
 use codemap::{respan, Spanned};
 use abi::Abi;
 use ext::hygiene::{Mark, SyntaxContext};
@@ -1433,7 +1433,7 @@ impl Arg {
                     TyKind::Rptr(lt, MutTy{ref ty, mutbl}) if ty.node == TyKind::ImplicitSelf => {
                         Some(respan(self.pat.span, SelfKind::Region(lt, mutbl)))
                     }
-                    _ => Some(respan(mk_sp(self.pat.span.lo, self.ty.span.hi),
+                    _ => Some(respan(self.pat.span.to(self.ty.span),
                                      SelfKind::Explicit(self.ty.clone(), mutbl))),
                 }
             }
@@ -1450,7 +1450,7 @@ impl Arg {
     }
 
     pub fn from_self(eself: ExplicitSelf, eself_ident: SpannedIdent) -> Arg {
-        let span = mk_sp(eself.span.lo, eself_ident.span.hi);
+        let span = eself.span.to(eself_ident.span);
         let infer_ty = P(Ty {
             id: DUMMY_NODE_ID,
             node: TyKind::ImplicitSelf,
@@ -1687,11 +1687,11 @@ pub struct PolyTraitRef {
 }
 
 impl PolyTraitRef {
-    pub fn new(lifetimes: Vec<LifetimeDef>, path: Path, lo: BytePos, hi: BytePos) -> Self {
+    pub fn new(lifetimes: Vec<LifetimeDef>, path: Path, span: Span) -> Self {
         PolyTraitRef {
             bound_lifetimes: lifetimes,
             trait_ref: TraitRef { path: path, ref_id: DUMMY_NODE_ID },
-            span: mk_sp(lo, hi),
+            span: span,
         }
     }
 }
