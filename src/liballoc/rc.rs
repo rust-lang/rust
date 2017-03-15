@@ -551,17 +551,13 @@ impl<T: ?Sized> Rc<T> {
     }
 
     #[inline]
-    #[unstable(feature = "ptr_eq",
-               reason = "newly added",
-               issue = "36497")]
+    #[stable(feature = "ptr_eq", since = "1.17.0")]
     /// Returns true if the two `Rc`s point to the same value (not
     /// just values that compare as equal).
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(ptr_eq)]
-    ///
     /// use std::rc::Rc;
     ///
     /// let five = Rc::new(5);
