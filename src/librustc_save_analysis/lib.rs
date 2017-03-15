@@ -124,6 +124,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         match item.node {
             ast::ForeignItemKind::Fn(ref decl, ref generics) => {
                 let sub_span = self.span_utils.sub_span_after_keyword(item.span, keywords::Fn);
+                filter!(self.span_utils, sub_span, item.span, None);
                 Some(Data::FunctionData(FunctionData {
                     id: item.id,
                     name: item.ident.to_string(),
@@ -136,11 +137,13 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     parent: None,
                     docs: docs_for_attrs(&item.attrs),
                     sig: self.sig_base_extern(item),
+                    attributes: item.attrs.clone(),
                 }))
             }
             ast::ForeignItemKind::Static(ref ty, m) => {
                 let keyword = if m { keywords::Mut } else { keywords::Static };
                 let sub_span = self.span_utils.sub_span_after_keyword(item.span, keyword);
+                filter!(self.span_utils, sub_span, item.span, None);
                 Some(Data::VariableData(VariableData {
                     id: item.id,
                     kind: VariableKind::Static,
@@ -154,6 +157,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
                     visibility: From::from(&item.vis),
                     docs: docs_for_attrs(&item.attrs),
                     sig: Some(self.sig_base_extern(item)),
+                    attributes: item.attrs.clone(),
                 }))
             }
         }
