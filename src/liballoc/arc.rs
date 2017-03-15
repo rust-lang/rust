@@ -461,17 +461,13 @@ impl<T: ?Sized> Arc<T> {
     }
 
     #[inline]
-    #[unstable(feature = "ptr_eq",
-               reason = "newly added",
-               issue = "36497")]
+    #[stable(feature = "ptr_eq", since = "1.17.0")]
     /// Returns true if the two `Arc`s point to the same value (not
     /// just values that compare as equal).
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(ptr_eq)]
-    ///
     /// use std::sync::Arc;
     ///
     /// let five = Arc::new(5);
