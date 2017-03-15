@@ -332,7 +332,10 @@ impl<T> Arc<T> {
     pub unsafe fn from_raw(ptr: *const T) -> Self {
         // To find the corresponding pointer to the `ArcInner` we need to subtract the offset of the
         // `data` field from the pointer.
-        Arc { ptr: Shared::new((ptr as *const u8).offset(-offset_of!(ArcInner<T>, data)) as *const _) }
+        let ptr = (ptr as *const u8).offset(-offset_of!(ArcInner<T>, data));
+        Arc {
+            ptr: Shared::new(ptr as *const _),
+        }
     }
 }
 
