@@ -268,6 +268,8 @@ impl<'a> Resolver<'a> {
                 self.define(parent, ident, TypeNS, imported_binding);
             }
 
+            ItemKind::GlobalAsm(..) => {}
+
             ItemKind::Mod(..) if item.ident == keywords::Invalid.ident() => {} // Crate root
 
             ItemKind::Mod(..) => {

@@ -267,6 +267,7 @@ pub enum EntryKind<'tcx> {
     ForeignImmStatic,
     ForeignMutStatic,
     ForeignMod,
+    GlobalAsm,
     Type,
     Enum(ReprOptions),
     Field,

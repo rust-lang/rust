@@ -1014,6 +1014,19 @@ impl_stable_hash_for!(struct hir::InlineAsmOutput {
     is_indirect
 });
 
+impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for hir::GlobalAsm {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a, 'tcx>,
+                                          hasher: &mut StableHasher<W>) {
+        let hir::GlobalAsm {
+            asm,
+            ctxt: _
+        } = *self;
+
+        asm.hash_stable(hcx, hasher);
+    }
+}
+
 impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for hir::InlineAsm {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a, 'tcx>,
