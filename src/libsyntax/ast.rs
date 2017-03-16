@@ -1583,6 +1583,16 @@ pub struct ForeignMod {
     pub items: Vec<ForeignItem>,
 }
 
+/// Global inline assembly
+///
+/// aka module-level assembly or file-scoped assembly
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
+pub struct GlobalAsm {
+    pub asm: Symbol,
+    pub asm_str_style: StrStyle,
+    pub expn_id: ExpnId,
+}
+
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct EnumDef {
     pub variants: Vec<Variant>,
@@ -1810,6 +1820,8 @@ pub enum ItemKind {
     ///
     /// E.g. `extern {}` or `extern "C" {}`
     ForeignMod(ForeignMod),
+    /// Module-level inline assembly (from `global_asm!()`)
+    GlobalAsm(P<GlobalAsm>),
     /// A type alias (`type` or `pub type`).
     ///
     /// E.g. `type Foo = Bar<u8>;`
@@ -1862,6 +1874,7 @@ impl ItemKind {
             ItemKind::Fn(..) => "function",
             ItemKind::Mod(..) => "module",
             ItemKind::ForeignMod(..) => "foreign module",
+            ItemKind::GlobalAsm(..) => "global asm",
             ItemKind::Ty(..) => "type alias",
             ItemKind::Enum(..) => "enum",
             ItemKind::Struct(..) => "struct",

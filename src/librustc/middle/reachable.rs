@@ -267,7 +267,8 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                     hir::ItemMod(..) | hir::ItemForeignMod(..) |
                     hir::ItemImpl(..) | hir::ItemTrait(..) |
                     hir::ItemStruct(..) | hir::ItemEnum(..) |
-                    hir::ItemUnion(..) | hir::ItemDefaultImpl(..) => {}
+                    hir::ItemUnion(..) | hir::ItemDefaultImpl(..) |
+                    hir::ItemGlobalAsm(..) => {}
                 }
             }
             hir_map::NodeTraitItem(trait_method) => {

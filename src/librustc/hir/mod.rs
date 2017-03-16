@@ -1494,6 +1494,13 @@ pub struct ForeignMod {
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub struct GlobalAsm {
+    pub asm: Symbol,
+    pub asm_str_style: StrStyle,
+    pub expn_id: ExpnId
+}
+
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct EnumDef {
     pub variants: HirVec<Variant>,
 }
@@ -1684,6 +1691,8 @@ pub enum Item_ {
     ItemMod(Mod),
     /// An external module
     ItemForeignMod(ForeignMod),
+    /// Module-level inline assembly (from global_asm!)
+    ItemGlobalAsm(P<GlobalAsm>),
     /// A type alias, e.g. `type Foo = Bar<u8>`
     ItemTy(P<Ty>, Generics),
     /// An enum definition, e.g. `enum Foo<A, B> {C<A>, D<B>}`
@@ -1718,6 +1727,7 @@ impl Item_ {
             ItemFn(..) => "function",
             ItemMod(..) => "module",
             ItemForeignMod(..) => "foreign module",
+            ItemGlobalAsm(..) => "global asm",
             ItemTy(..) => "type alias",
             ItemEnum(..) => "enum",
             ItemStruct(..) => "struct",
