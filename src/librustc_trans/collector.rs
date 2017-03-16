@@ -811,6 +811,7 @@ impl<'b, 'a, 'v> ItemLikeVisitor<'v> for RootCollector<'b, 'a, 'v> {
             hir::ItemExternCrate(..) |
             hir::ItemUse(..)         |
             hir::ItemForeignMod(..)  |
+            hir::ItemGlobalAsm(..)   |
             hir::ItemTy(..)          |
             hir::ItemDefaultImpl(..) |
             hir::ItemTrait(..)       |

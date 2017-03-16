@@ -343,6 +343,9 @@ declare_features! (
 
     // Used to preserve symbols (see llvm.used)
     (active, used, "1.18.0", Some(40289)),
+
+    // Allows module-level inline assembly by way of global_asm!()
+    (active, global_asm, "1.18.0", Some(35119)),
 );
 
 declare_features! (
@@ -978,6 +981,9 @@ pub const EXPLAIN_STMT_ATTR_SYNTAX: &'static str =
 
 pub const EXPLAIN_ASM: &'static str =
     "inline assembly is not stable enough for use and is subject to change";
+
+pub const EXPLAIN_GLOBAL_ASM: &'static str =
+    "module-level inline assembly is experimental and subject to change";
 
 pub const EXPLAIN_LOG_SYNTAX: &'static str =
     "`log_syntax!` is not stable enough for use and is subject to change";

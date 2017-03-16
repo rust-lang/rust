@@ -140,6 +140,10 @@ pub trait Folder : Sized {
         noop_fold_foreign_mod(nm, self)
     }
 
+    fn fold_global_asm(&mut self, ga: P<GlobalAsm>) -> P<GlobalAsm> {
+        noop_fold_global_asm(ga, self)
+    }
+
     fn fold_variant(&mut self, v: Variant) -> Variant {
         noop_fold_variant(v, self)
     }
@@ -410,6 +414,11 @@ pub fn noop_fold_foreign_mod<T: Folder>(ForeignMod {abi, items}: ForeignMod,
         abi: abi,
         items: items.move_map(|x| fld.fold_foreign_item(x)),
     }
+}
+
+pub fn noop_fold_global_asm<T: Folder>(ga: P<GlobalAsm>,
+                                       _: &mut T) -> P<GlobalAsm> {
+    ga
 }
 
 pub fn noop_fold_variant<T: Folder>(v: Variant, fld: &mut T) -> Variant {
@@ -867,6 +876,7 @@ pub fn noop_fold_item_kind<T: Folder>(i: ItemKind, folder: &mut T) -> ItemKind {
         }
         ItemKind::Mod(m) => ItemKind::Mod(folder.fold_mod(m)),
         ItemKind::ForeignMod(nm) => ItemKind::ForeignMod(folder.fold_foreign_mod(nm)),
+        ItemKind::GlobalAsm(ga) => ItemKind::GlobalAsm(folder.fold_global_asm(ga)),
         ItemKind::Ty(t, generics) => {
             ItemKind::Ty(folder.fold_ty(t), folder.fold_generics(generics))
         }
