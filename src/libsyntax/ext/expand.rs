@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast::{self, Block, Ident, PatKind, Path};
+use ast::{self, Block, Ident, NodeId, PatKind, Path};
 use ast::{MacStmtStyle, StmtKind, ItemKind};
 use attr::{self, HasAttrs};
 use codemap::{ExpnInfo, NameAndSpan, MacroBang, MacroAttribute};
@@ -321,7 +321,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         while let Some(expansions) = expansions.pop() {
             for (mark, expansion) in expansions.into_iter().rev() {
                 let derives = derives.remove(&mark).unwrap_or_else(Vec::new);
-                placeholder_expander.add(mark.as_placeholder_id(), expansion, derives);
+                placeholder_expander.add(NodeId::placeholder_from_mark(mark), expansion, derives);
             }
         }
 
@@ -703,7 +703,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                 ..self.cx.current_expansion.clone()
             },
         });
-        placeholder(expansion_kind, mark.as_placeholder_id())
+        placeholder(expansion_kind, NodeId::placeholder_from_mark(mark))
     }
 
     fn collect_bang(&mut self, mac: ast::Mac, span: Span, kind: ExpansionKind) -> Expansion {

@@ -136,12 +136,12 @@ pub mod print {
 }
 
 pub mod ext {
+    pub use syntax_pos::hygiene;
     pub mod base;
     pub mod build;
     pub mod derive;
     pub mod expand;
     pub mod placeholders;
-    pub mod hygiene;
     pub mod quote;
     pub mod source_util;
 
