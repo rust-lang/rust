@@ -20,7 +20,7 @@ pub use util::ThinVec;
 use syntax_pos::{mk_sp, BytePos, Span, DUMMY_SP, ExpnId};
 use codemap::{respan, Spanned};
 use abi::Abi;
-use ext::hygiene::SyntaxContext;
+use ext::hygiene::{Mark, SyntaxContext};
 use print::pprust;
 use ptr::P;
 use rustc_data_structures::indexed_vec;
@@ -255,6 +255,14 @@ impl NodeId {
 
     pub fn as_u32(&self) -> u32 {
         self.0
+    }
+
+    pub fn placeholder_from_mark(mark: Mark) -> Self {
+        NodeId(mark.as_u32())
+    }
+
+    pub fn placeholder_to_mark(self) -> Mark {
+        Mark::from_u32(self.0)
     }
 }
 

@@ -23,6 +23,7 @@
       html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![deny(warnings)]
 
+#![feature(const_fn)]
 #![feature(custom_attribute)]
 #![allow(unused_attributes)]
 #![feature(rustc_private)]
@@ -40,6 +41,8 @@ use serialize::{Encodable, Decodable, Encoder, Decoder};
 
 extern crate serialize;
 extern crate serialize as rustc_serialize; // used by deriving
+
+pub mod hygiene;
 
 pub type FileName = String;
 
