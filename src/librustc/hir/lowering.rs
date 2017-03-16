@@ -41,7 +41,7 @@
 // in the HIR, especially for multiple identifiers.
 
 use hir;
-use hir::map::{Definitions, DefKey};
+use hir::map::{Definitions, DefKey, REGULAR_SPACE};
 use hir::map::definitions::DefPathData;
 use hir::def_id::{DefIndex, DefId, CRATE_DEF_INDEX};
 use hir::def::{Def, PathResolution};
@@ -2711,7 +2711,10 @@ impl<'a> LoweringContext<'a> {
         let def_id = {
             let defs = self.resolver.definitions();
             let def_path_data = DefPathData::Binding(name.as_str());
-            let def_index = defs.create_def_with_parent(parent_def, id, def_path_data);
+            let def_index = defs.create_def_with_parent(parent_def,
+                                                        id,
+                                                        def_path_data,
+                                                        REGULAR_SPACE);
             DefId::local(def_index)
         };
 
