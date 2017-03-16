@@ -30,7 +30,7 @@ use std::fmt;
 use std::iter;
 use std::mem;
 
-use transform::{add_call_guards, no_landing_pads, simplify};
+use transform::{no_landing_pads, simplify};
 use util::elaborate_drops::{self, DropElaborator, DropStyle, DropFlagMode};
 use util::patch::MirPatch;
 
@@ -115,7 +115,6 @@ fn make_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
         debug!("make_shim({:?}) = untransformed {:?}", instance, result);
         no_landing_pads::no_landing_pads(tcx, &mut result);
         simplify::simplify_cfg(&mut result);
-        add_call_guards::add_call_guards(&mut result);
     debug!("make_shim({:?}) = {:?}", instance, result);
 
     let result = tcx.alloc_mir(result);
