@@ -1077,6 +1077,7 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
                 ItemFn(..) => "fn",
                 ItemMod(..) => "mod",
                 ItemForeignMod(..) => "foreign mod",
+                ItemGlobalAsm(..) => "global asm",
                 ItemTy(..) => "ty",
                 ItemEnum(..) => "enum",
                 ItemStruct(..) => "struct",

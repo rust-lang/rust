@@ -677,6 +677,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> EntryBuilder<'a, 'b, 'tcx> {
                 return self.encode_info_for_mod(FromId(item.id, (m, &item.attrs, &item.vis)));
             }
             hir::ItemForeignMod(_) => EntryKind::ForeignMod,
+            hir::ItemGlobalAsm(..) => EntryKind::GlobalAsm,
             hir::ItemTy(..) => EntryKind::Type,
             hir::ItemEnum(..) => EntryKind::Enum(get_repr_options(&tcx, def_id)),
             hir::ItemStruct(ref struct_def, _) => {
@@ -917,6 +918,7 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
             hir::ItemFn(..) |
             hir::ItemMod(..) |
             hir::ItemForeignMod(..) |
+            hir::ItemGlobalAsm(..) |
             hir::ItemExternCrate(..) |
             hir::ItemUse(..) |
             hir::ItemDefaultImpl(..) |
