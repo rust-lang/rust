@@ -79,7 +79,6 @@ fn main() {
     cmd.args(&args)
         .arg("--cfg")
         .arg(format!("stage{}", stage))
-        .arg("--cfg").arg("rustbuild")
         .env(bootstrap::util::dylib_path_var(),
              env::join_paths(&dylib_path).unwrap());
 
@@ -93,6 +92,13 @@ fn main() {
         // linking all deps statically into the dylib.
         if env::var_os("RUSTC_NO_PREFER_DYNAMIC").is_none() {
             cmd.arg("-Cprefer-dynamic");
+        }
+
+        // Pass the `rustbuild` feature flag to crates which rustbuild is
+        // building. See the comment in bootstrap/lib.rs where this env var is
+        // set for more details.
+        if env::var_os("RUSTBUILD_UNSTABLE").is_some() {
+            cmd.arg("--cfg").arg("rustbuild");
         }
 
         // Help the libc crate compile by assisting it in finding the MUSL
