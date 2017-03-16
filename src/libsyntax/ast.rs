@@ -17,7 +17,7 @@ pub use self::PathParameters::*;
 pub use symbol::Symbol as Name;
 pub use util::ThinVec;
 
-use syntax_pos::{mk_sp, Span, DUMMY_SP, ExpnId};
+use syntax_pos::{mk_sp, BytePos, Span, DUMMY_SP, ExpnId};
 use codemap::{respan, Spanned};
 use abi::Abi;
 use ext::hygiene::SyntaxContext;
@@ -1714,6 +1714,16 @@ pub struct PolyTraitRef {
     pub trait_ref: TraitRef,
 
     pub span: Span,
+}
+
+impl PolyTraitRef {
+    pub fn new(lifetimes: Vec<LifetimeDef>, path: Path, lo: BytePos, hi: BytePos) -> Self {
+        PolyTraitRef {
+            bound_lifetimes: lifetimes,
+            trait_ref: TraitRef { path: path, ref_id: DUMMY_NODE_ID },
+            span: mk_sp(lo, hi),
+        }
+    }
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
