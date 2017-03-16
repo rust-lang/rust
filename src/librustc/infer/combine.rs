@@ -38,7 +38,6 @@ use super::lub::Lub;
 use super::sub::Sub;
 use super::InferCtxt;
 use super::{MiscVariable, TypeTrace};
-use super::type_variable::{RelationDir, BiTo, EqTo, SubtypeOf, SupertypeOf};
 
 use ty::{IntType, UintType};
 use ty::{self, Ty, TyCtxt};
@@ -57,6 +56,11 @@ pub struct CombineFields<'infcx, 'gcx: 'infcx+'tcx, 'tcx: 'infcx> {
     pub trace: TypeTrace<'tcx>,
     pub cause: Option<ty::relate::Cause>,
     pub obligations: PredicateObligations<'tcx>,
+}
+
+#[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
+pub enum RelationDir {
+    SubtypeOf, SupertypeOf, EqTo
 }
 
 impl<'infcx, 'gcx, 'tcx> InferCtxt<'infcx, 'gcx, 'tcx> {
@@ -177,6 +181,8 @@ impl<'infcx, 'gcx, 'tcx> CombineFields<'infcx, 'gcx, 'tcx> {
                        a_is_expected: bool)
                        -> RelateResult<'tcx, ()>
     {
+        use self::RelationDir::*;
+
         // We use SmallVector here instead of Vec because this code is hot and
         // it's rare that the stack length exceeds 1.
         let mut stack = SmallVector::new();
@@ -224,7 +230,7 @@ impl<'infcx, 'gcx, 'tcx> CombineFields<'infcx, 'gcx, 'tcx> {
                     // Generalize type if necessary.
                     let generalized_ty = match dir {
                         EqTo => self.generalize(a_ty, b_vid, false),
-                        BiTo | SupertypeOf | SubtypeOf => self.generalize(a_ty, b_vid, true),
+                        SupertypeOf | SubtypeOf => self.generalize(a_ty, b_vid, true),
                     }?;
                     debug!("instantiate(a_ty={:?}, dir={:?}, \
                                         b_vid={:?}, generalized_ty={:?})",
@@ -232,8 +238,7 @@ impl<'infcx, 'gcx, 'tcx> CombineFields<'infcx, 'gcx, 'tcx> {
                            generalized_ty);
                     self.infcx.type_variables
                         .borrow_mut()
-                        .instantiate_and_push(
-                            b_vid, generalized_ty, &mut stack);
+                        .instantiate(b_vid, generalized_ty);
                     generalized_ty
                 }
             };
@@ -246,7 +251,6 @@ impl<'infcx, 'gcx, 'tcx> CombineFields<'infcx, 'gcx, 'tcx> {
             // to associate causes/spans with each of the relations in
             // the stack to get this right.
             match dir {
-                BiTo => Ok(a_ty),
                 EqTo => self.equate(a_is_expected).relate(&a_ty, &b_ty),
                 SubtypeOf => self.sub(a_is_expected).relate(&a_ty, &b_ty),
                 SupertypeOf => self.sub(a_is_expected).relate_with_variance(
