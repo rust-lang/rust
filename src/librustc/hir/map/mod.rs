@@ -17,7 +17,7 @@ pub use self::definitions::{Definitions, DefKey, DefPath, DefPathData,
 
 use dep_graph::{DepGraph, DepNode};
 
-use hir::def_id::{CRATE_DEF_INDEX, DefId, DefIndex};
+use hir::def_id::{CRATE_DEF_INDEX, DefId, DefIndex, DefIndexAddressSpace};
 
 use syntax::abi::Abi;
 use syntax::ast::{self, Name, NodeId, CRATE_NODE_ID};
@@ -37,6 +37,9 @@ mod collector;
 mod def_collector;
 pub mod definitions;
 mod hir_id_validator;
+
+pub const ITEM_LIKE_SPACE: DefIndexAddressSpace = DefIndexAddressSpace::Low;
+pub const REGULAR_SPACE: DefIndexAddressSpace = DefIndexAddressSpace::High;
 
 #[derive(Copy, Clone, Debug)]
 pub enum Node<'hir> {
@@ -345,10 +348,6 @@ impl<'hir> Map<'hir> {
                                }),
             }
         }
-    }
-
-    pub fn num_local_def_ids(&self) -> usize {
-        self.definitions.len()
     }
 
     pub fn definitions(&self) -> &Definitions {
