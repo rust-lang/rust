@@ -9,8 +9,7 @@
 // except according to those terms.
 
 use super::SubregionOrigin;
-use super::combine::CombineFields;
-use super::type_variable::{SubtypeOf, SupertypeOf};
+use super::combine::{CombineFields, RelationDir};
 
 use traits::Obligation;
 use ty::{self, Ty, TyCtxt};
@@ -104,11 +103,11 @@ impl<'combine, 'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx>
             }
             (&ty::TyInfer(TyVar(a_id)), _) => {
                 self.fields
-                    .instantiate(b, SupertypeOf, a_id, !self.a_is_expected)?;
+                    .instantiate(b, RelationDir::SupertypeOf, a_id, !self.a_is_expected)?;
                 Ok(a)
             }
             (_, &ty::TyInfer(TyVar(b_id))) => {
-                self.fields.instantiate(a, SubtypeOf, b_id, self.a_is_expected)?;
+                self.fields.instantiate(a, RelationDir::SubtypeOf, b_id, self.a_is_expected)?;
                 Ok(a)
             }
 

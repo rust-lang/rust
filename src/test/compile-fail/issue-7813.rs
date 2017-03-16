@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn main() {
-    let v = &[];
-    //~^ NOTE consider giving `it` a type
-    let it = v.iter(); //~ ERROR cannot infer type for `_`
+    let v = &[]; //~ NOTE consider giving `v` a type
+    let it = v.iter(); //~ ERROR type annotations needed
+    //~^ NOTE cannot infer type for `_`
 }
