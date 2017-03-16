@@ -1044,6 +1044,21 @@ impl Build {
         panic!("failed to find version in cargo's Cargo.toml")
     }
 
+    /// Returns the `a.b.c` version that the RLS is at.
+    fn rls_release_num(&self) -> String {
+        let mut toml = String::new();
+        t!(t!(File::open(self.src.join("rls/Cargo.toml"))).read_to_string(&mut toml));
+        for line in toml.lines() {
+            let prefix = "version = \"";
+            let suffix = "\"";
+            if line.starts_with(prefix) && line.ends_with(suffix) {
+                return line[prefix.len()..line.len() - suffix.len()].to_string()
+            }
+        }
+
+        panic!("failed to find version in the RLS's Cargo.toml")
+    }
+
     /// Returns whether unstable features should be enabled for the compiler
     /// we're building.
     fn unstable_features(&self) -> bool {
