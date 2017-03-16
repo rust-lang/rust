@@ -893,6 +893,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
          DB_OPTIONS, db_type_desc, dbsetters,
     verbose: bool = (false, parse_bool, [UNTRACKED],
         "in general, enable more debug printouts"),
+    span_free_formats: bool = (false, parse_bool, [UNTRACKED],
+        "when debug-printing compiler state, do not include spans"), // o/w tests have closure@path
     time_passes: bool = (false, parse_bool, [UNTRACKED],
         "measure time of each rustc pass"),
     count_llvm_insns: bool = (false, parse_bool,

@@ -789,7 +789,11 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
                 write!(f, "[closure")?;
 
                 if let Some(node_id) = tcx.hir.as_local_node_id(did) {
-                    write!(f, "@{:?}", tcx.hir.span(node_id))?;
+                    if tcx.sess.opts.debugging_opts.span_free_formats {
+                        write!(f, "@{:?}", node_id)?;
+                    } else {
+                        write!(f, "@{:?}", tcx.hir.span(node_id))?;
+                    }
                     let mut sep = " ";
                     tcx.with_freevars(node_id, |freevars| {
                         for (freevar, upvar_ty) in freevars.iter().zip(upvar_tys) {

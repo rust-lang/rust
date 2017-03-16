@@ -1224,7 +1224,11 @@ impl<'tcx> Debug for Rvalue<'tcx> {
 
                     AggregateKind::Closure(def_id, _) => ty::tls::with(|tcx| {
                         if let Some(node_id) = tcx.hir.as_local_node_id(def_id) {
-                            let name = format!("[closure@{:?}]", tcx.hir.span(node_id));
+                            let name = if tcx.sess.opts.debugging_opts.span_free_formats {
+                                format!("[closure@{:?}]", node_id)
+                            } else {
+                                format!("[closure@{:?}]", tcx.hir.span(node_id))
+                            };
                             let mut struct_fmt = fmt.debug_struct(&name);
 
                             tcx.with_freevars(node_id, |freevars| {
