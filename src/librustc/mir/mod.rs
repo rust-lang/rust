@@ -467,7 +467,7 @@ pub enum TerminatorKind<'tcx> {
         values: Cow<'tcx, [ConstInt]>,
 
         /// Possible branch sites. The last element of this vector is used
-        /// for the otherwise branch, so values.len() == targets.len() + 1
+        /// for the otherwise branch, so targets.len() == values.len() + 1
         /// should hold.
         // This invariant is quite non-obvious and also could be improved.
         // One way to make this invariant is to have something like this instead:
