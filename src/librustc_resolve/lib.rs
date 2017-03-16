@@ -1174,7 +1174,7 @@ pub struct Resolver<'a> {
 
     crate_loader: &'a mut CrateLoader,
     macro_names: FxHashSet<Name>,
-    builtin_macros: FxHashMap<Name, &'a NameBinding<'a>>,
+    global_macros: FxHashMap<Name, &'a NameBinding<'a>>,
     lexical_macro_resolutions: Vec<(Name, &'a Cell<LegacyScope<'a>>)>,
     macro_map: FxHashMap<DefId, Rc<SyntaxExtension>>,
     macro_defs: FxHashMap<Mark, DefId>,
@@ -1372,7 +1372,7 @@ impl<'a> Resolver<'a> {
 
             crate_loader: crate_loader,
             macro_names: FxHashSet(),
-            builtin_macros: FxHashMap(),
+            global_macros: FxHashMap(),
             lexical_macro_resolutions: Vec::new(),
             macro_map: FxHashMap(),
             macro_exports: Vec::new(),
@@ -2429,9 +2429,9 @@ impl<'a> Resolver<'a> {
                 };
             }
         }
-        let is_builtin = self.builtin_macros.get(&path[0].name).cloned()
+        let is_global = self.global_macros.get(&path[0].name).cloned()
             .map(|binding| binding.get_macro(self).kind() == MacroKind::Bang).unwrap_or(false);
-        if primary_ns != MacroNS && (is_builtin || self.macro_names.contains(&path[0].name)) {
+        if primary_ns != MacroNS && (is_global || self.macro_names.contains(&path[0].name)) {
             // Return some dummy definition, it's enough for error reporting.
             return Some(
                 PathResolution::new(Def::Macro(DefId::local(CRATE_DEF_INDEX), MacroKind::Bang))
