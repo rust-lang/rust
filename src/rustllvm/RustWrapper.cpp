@@ -606,26 +606,20 @@ extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateStaticVariable(
     InitExpr = Builder->createConstantValueExpression(
         FPVal->getValueAPF().bitcastToAPInt().getZExtValue());
   }
-#endif
 
-#if LLVM_VERSION_GE(4, 0)
   return wrap(Builder->createGlobalVariableExpression(
-#else
-  return wrap(Builder->createGlobalVariable(
-#endif
       unwrapDI<DIDescriptor>(Context), Name, LinkageName,
       unwrapDI<DIFile>(File), LineNo, unwrapDI<DIType>(Ty), IsLocalToUnit,
-#if LLVM_VERSION_GE(4, 0)
       InitExpr,
+      unwrapDIPtr<MDNode>(Decl),
+      AlignInBits));
 #else
+  return wrap(Builder->createGlobalVariable(
+      unwrapDI<DIDescriptor>(Context), Name, LinkageName,
+      unwrapDI<DIFile>(File), LineNo, unwrapDI<DIType>(Ty), IsLocalToUnit,
       InitVal,
+      unwrapDIPtr<MDNode>(Decl)));
 #endif
-      unwrapDIPtr<MDNode>(Decl)
-#if LLVM_VERSION_GE(4, 0)
-      ,
-      AlignInBits
-#endif
-      ));
 }
 
 extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateVariable(
