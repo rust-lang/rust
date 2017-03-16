@@ -26,3 +26,7 @@
 [submodule "book"]
 	path = src/doc/book
 	url = https://github.com/rust-lang/book.git
+[submodule "rls"]
+	path = rls
+	url = https://github.com/rust-lang-nursery/rls.git
+
