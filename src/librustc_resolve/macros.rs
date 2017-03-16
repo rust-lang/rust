@@ -84,7 +84,7 @@ pub struct LegacyBinding<'a> {
 #[derive(Copy, Clone)]
 pub enum MacroBinding<'a> {
     Legacy(&'a LegacyBinding<'a>),
-    Builtin(&'a NameBinding<'a>),
+    Global(&'a NameBinding<'a>),
     Modern(&'a NameBinding<'a>),
 }
 
@@ -92,13 +92,13 @@ impl<'a> MacroBinding<'a> {
     pub fn span(self) -> Span {
         match self {
             MacroBinding::Legacy(binding) => binding.span,
-            MacroBinding::Builtin(binding) | MacroBinding::Modern(binding) => binding.span,
+            MacroBinding::Global(binding) | MacroBinding::Modern(binding) => binding.span,
         }
     }
 
     pub fn binding(self) -> &'a NameBinding<'a> {
         match self {
-            MacroBinding::Builtin(binding) | MacroBinding::Modern(binding) => binding,
+            MacroBinding::Global(binding) | MacroBinding::Modern(binding) => binding,
             MacroBinding::Legacy(_) => panic!("unexpected MacroBinding::Legacy"),
         }
     }
@@ -189,7 +189,7 @@ impl<'a> base::Resolver for Resolver<'a> {
             vis: ty::Visibility::Invisible,
             expansion: Mark::root(),
         });
-        self.builtin_macros.insert(ident.name, binding);
+        self.global_macros.insert(ident.name, binding);
     }
 
     fn resolve_imports(&mut self) {
@@ -207,7 +207,7 @@ impl<'a> base::Resolver for Resolver<'a> {
                 attr::mark_known(&attrs[i]);
             }
 
-            match self.builtin_macros.get(&name).cloned() {
+            match self.global_macros.get(&name).cloned() {
                 Some(binding) => match *binding.get_macro(self) {
                     MultiModifier(..) | MultiDecorator(..) | SyntaxExtension::AttrProcMacro(..) => {
                         return Some(attrs.remove(i))
@@ -239,7 +239,7 @@ impl<'a> base::Resolver for Resolver<'a> {
                     }
                     let trait_name = traits[j].segments[0].identifier.name;
                     let legacy_name = Symbol::intern(&format!("derive_{}", trait_name));
-                    if !self.builtin_macros.contains_key(&legacy_name) {
+                    if !self.global_macros.contains_key(&legacy_name) {
                         continue
                     }
                     let span = traits.remove(j).span;
@@ -429,13 +429,13 @@ impl<'a> Resolver<'a> {
         loop {
             let result = if let Some(module) = module {
                 // Since expanded macros may not shadow the lexical scope and
-                // globs may not shadow builtin macros (both enforced below),
+                // globs may not shadow global macros (both enforced below),
                 // we resolve with restricted shadowing (indicated by the penultimate argument).
                 self.resolve_ident_in_module(module, ident, ns, true, record_used)
                     .map(MacroBinding::Modern)
             } else {
-                self.builtin_macros.get(&ident.name).cloned().ok_or(determinacy)
-                    .map(MacroBinding::Builtin)
+                self.global_macros.get(&ident.name).cloned().ok_or(determinacy)
+                    .map(MacroBinding::Global)
             };
 
             match result.map(MacroBinding::binding) {
@@ -520,11 +520,11 @@ impl<'a> Resolver<'a> {
 
         let binding = if let Some(binding) = binding {
             MacroBinding::Legacy(binding)
-        } else if let Some(binding) = self.builtin_macros.get(&name).cloned() {
+        } else if let Some(binding) = self.global_macros.get(&name).cloned() {
             if !self.use_extern_macros {
                 self.record_use(Ident::with_empty_ctxt(name), MacroNS, binding, DUMMY_SP);
             }
-            MacroBinding::Builtin(binding)
+            MacroBinding::Global(binding)
         } else {
             return None;
         };
@@ -564,7 +564,7 @@ impl<'a> Resolver<'a> {
                         .span_note(binding.span, &msg2)
                         .emit();
                 },
-                (Some(MacroBinding::Builtin(binding)), Ok(MacroBinding::Builtin(_))) => {
+                (Some(MacroBinding::Global(binding)), Ok(MacroBinding::Global(_))) => {
                     self.record_use(ident, MacroNS, binding, span);
                     self.err_if_macro_use_proc_macro(ident.name, span, binding);
                 },
@@ -593,11 +593,11 @@ impl<'a> Resolver<'a> {
             find_best_match_for_name(self.macro_names.iter(), name, None)
         } else {
             None
-        // Then check builtin macros.
+        // Then check global macros.
         }.or_else(|| {
             // FIXME: get_macro needs an &mut Resolver, can we do it without cloning?
-            let builtin_macros = self.builtin_macros.clone();
-            let names = builtin_macros.iter().filter_map(|(name, binding)| {
+            let global_macros = self.global_macros.clone();
+            let names = global_macros.iter().filter_map(|(name, binding)| {
                 if binding.get_macro(self).kind() == kind {
                     Some(name)
                 } else {
