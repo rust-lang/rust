@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #include "rustllvm.h"
+#include "llvm/IR/DebugInfoMetadata.h"
 #include "llvm/IR/DiagnosticInfo.h"
 #include "llvm/IR/DiagnosticPrinter.h"
 #include "llvm/IR/Instructions.h"
@@ -594,7 +595,7 @@ extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateStaticVariable(
     const char *LinkageName, LLVMRustMetadataRef File, unsigned LineNo,
     LLVMRustMetadataRef Ty, bool IsLocalToUnit, LLVMValueRef V,
     LLVMRustMetadataRef Decl = nullptr, uint32_t AlignInBits = 0) {
-  Constant *InitVal = cast<Constant>(unwrap(V));
+  llvm::GlobalVariable *InitVal = cast<llvm::GlobalVariable>(unwrap(V));
 
 #if LLVM_VERSION_GE(4, 0)
   llvm::DIExpression *InitExpr = nullptr;
@@ -607,10 +608,14 @@ extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateStaticVariable(
         FPVal->getValueAPF().bitcastToAPInt().getZExtValue());
   }
 
-  return wrap(Builder->createGlobalVariableExpression(
+  llvm::DIGlobalVariableExpression *VarExpr = Builder->createGlobalVariableExpression(
       unwrapDI<DIDescriptor>(Context), Name, LinkageName,
       unwrapDI<DIFile>(File), LineNo, unwrapDI<DIType>(Ty), IsLocalToUnit,
-      InitExpr, unwrapDIPtr<MDNode>(Decl), AlignInBits));
+      InitExpr, unwrapDIPtr<MDNode>(Decl), AlignInBits);
+
+  InitVal->setMetadata("dbg", VarExpr);
+
+  return wrap(VarExpr);
 #else
   return wrap(Builder->createGlobalVariable(
       unwrapDI<DIDescriptor>(Context), Name, LinkageName,
