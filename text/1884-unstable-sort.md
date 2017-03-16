@@ -1,7 +1,7 @@
-- Feature Name: sort_unstable
+- Feature Name: `sort_unstable`
 - Start Date: 2017-02-03
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#1884](https://github.com/rust-lang/rfcs/pull/1884)
+- Rust Issue: [rust-lang/rust#40585](https://github.com/rust-lang/rust/issues/40585)
 
 # Summary
 [summary]: #summary
@@ -99,7 +99,7 @@ pub trait SliceExt {
 
     fn sort_unstable_by<F>(&mut self, compare: F)
         where F: FnMut(&Self::Item, &Self::Item) -> Ordering;
-  
+
     fn sort_unstable_by_key<B, F>(&mut self, mut f: F)
         where F: FnMut(&Self::Item) -> B,
               B: Ord;
@@ -125,7 +125,7 @@ assert!(v == [1, 2, -3, 4, -5]);
 
 Proposed implementaton is available in the [pdqsort][stjepang-pdqsort] crate.
 
-**Q: Why choose this particular sort algorithm?**<br> 
+**Q: Why choose this particular sort algorithm?**<br>
 A: First, let's analyse what unstable sort algorithms other languages use:
 
 * C: quicksort
@@ -218,4 +218,4 @@ None.
 
 [orlp-pdqsort]: https://github.com/orlp/pdqsort
 [stjepang-pdqsort]: https://github.com/stjepang/pdqsort
-[blockquicksort]: http://drops.dagstuhl.de/opus/volltexte/2016/6389/pdf/LIPIcs-ESA-2016-38.pdf 
+[blockquicksort]: http://drops.dagstuhl.de/opus/volltexte/2016/6389/pdf/LIPIcs-ESA-2016-38.pdf
