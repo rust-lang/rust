@@ -610,15 +610,12 @@ extern "C" LLVMRustMetadataRef LLVMRustDIBuilderCreateStaticVariable(
   return wrap(Builder->createGlobalVariableExpression(
       unwrapDI<DIDescriptor>(Context), Name, LinkageName,
       unwrapDI<DIFile>(File), LineNo, unwrapDI<DIType>(Ty), IsLocalToUnit,
-      InitExpr,
-      unwrapDIPtr<MDNode>(Decl),
-      AlignInBits));
+      InitExpr, unwrapDIPtr<MDNode>(Decl), AlignInBits));
 #else
   return wrap(Builder->createGlobalVariable(
       unwrapDI<DIDescriptor>(Context), Name, LinkageName,
       unwrapDI<DIFile>(File), LineNo, unwrapDI<DIType>(Ty), IsLocalToUnit,
-      InitVal,
-      unwrapDIPtr<MDNode>(Decl)));
+      InitVal, unwrapDIPtr<MDNode>(Decl)));
 #endif
 }
 
