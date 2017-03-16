@@ -15,7 +15,6 @@
 //! and definition contexts*. J. Funct. Program. 22, 2 (March 2012), 181-216.
 //! DOI=10.1017/S0956796812000093 http://dx.doi.org/10.1017/S0956796812000093
 
-use ast::NodeId;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt;
@@ -47,16 +46,12 @@ impl Mark {
         Mark(0)
     }
 
-    pub fn from_placeholder_id(id: NodeId) -> Self {
-        Mark(id.as_u32())
-    }
-
-    pub fn as_placeholder_id(self) -> NodeId {
-        NodeId::from_u32(self.0)
-    }
-
     pub fn as_u32(self) -> u32 {
         self.0
+    }
+
+    pub fn from_u32(raw: u32) -> Mark {
+        Mark(raw)
     }
 }
 

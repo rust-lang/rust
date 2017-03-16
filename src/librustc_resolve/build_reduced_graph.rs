@@ -680,7 +680,7 @@ pub struct BuildReducedGraphVisitor<'a, 'b: 'a> {
 
 impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
     fn visit_invoc(&mut self, id: ast::NodeId) -> &'b InvocationData<'b> {
-        let mark = Mark::from_placeholder_id(id);
+        let mark = id.placeholder_to_mark();
         self.resolver.current_module.unresolved_invocations.borrow_mut().insert(mark);
         let invocation = self.resolver.invocations[&mark];
         invocation.module.set(self.resolver.current_module);
