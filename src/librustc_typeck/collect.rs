@@ -1074,6 +1074,7 @@ fn ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 ItemTrait(..) |
                 ItemMod(..) |
                 ItemForeignMod(..) |
+                ItemGlobalAsm(..) |
                 ItemExternCrate(..) |
                 ItemUse(..) => {
                     span_bug!(

@@ -342,6 +342,9 @@ declare_features! (
 
     // See rust-lang/rfcs#1414. Allows code like `let x: &'static u32 = &42` to work.
     (active, rvalue_static_promotion, "1.15.1", Some(38865)),
+
+    // Allows module-level inline assembly by way of global_asm!()
+    (active, global_asm, "1.17.0", Some(35119)),
 );
 
 declare_features! (
@@ -981,6 +984,9 @@ pub const EXPLAIN_STMT_ATTR_SYNTAX: &'static str =
 
 pub const EXPLAIN_ASM: &'static str =
     "inline assembly is not stable enough for use and is subject to change";
+
+pub const EXPLAIN_GLOBAL_ASM: &'static str =
+    "module-level inline assembly is experimental and subject to change";
 
 pub const EXPLAIN_LOG_SYNTAX: &'static str =
     "`log_syntax!` is not stable enough for use and is subject to change";

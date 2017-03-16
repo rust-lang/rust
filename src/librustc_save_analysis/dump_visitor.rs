@@ -341,6 +341,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
             Def::AssociatedTy(..) |
             Def::AssociatedConst(..) |
             Def::PrimTy(_) |
+            Def::GlobalAsm(_) |
             Def::Err => {
                span_bug!(span,
                          "process_def_kind for unexpected item: {:?}",

@@ -314,7 +314,8 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
             hir::ItemUse(..) |
             hir::ItemMod(..) |
             hir::ItemDefaultImpl(..) |
-            hir::ItemForeignMod(..) => {
+            hir::ItemForeignMod(..) |
+            hir::ItemGlobalAsm(..) => {
                 // These sorts of items have no lifetime parameters at all.
                 intravisit::walk_item(self, item);
             }

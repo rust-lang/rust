@@ -354,6 +354,7 @@ enum SawItemComponent {
     SawItemFn(Unsafety, Constness, Abi),
     SawItemMod,
     SawItemForeignMod(Abi),
+    SawItemGlobalAsm,
     SawItemTy,
     SawItemEnum,
     SawItemStruct,
@@ -372,6 +373,7 @@ fn saw_item(node: &Item_) -> SawItemComponent {
         ItemFn(_, unsafety, constness, abi, _, _) => SawItemFn(unsafety, constness, abi),
         ItemMod(..) => SawItemMod,
         ItemForeignMod(ref fm) => SawItemForeignMod(fm.abi),
+        ItemGlobalAsm(..) => SawItemGlobalAsm,
         ItemTy(..) => SawItemTy,
         ItemEnum(..) => SawItemEnum,
         ItemStruct(..) => SawItemStruct,
@@ -921,7 +923,8 @@ impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
             Def::AssociatedConst(..) |
             Def::Local(..) |
             Def::Upvar(..) |
-            Def::Macro(..) => {
+            Def::Macro(..) |
+            Def::GlobalAsm(..) => {
                 DefHash::SawDefId.hash(self.st);
                 self.hash_def_id(def.def_id());
             }

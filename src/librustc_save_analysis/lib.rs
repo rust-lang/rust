@@ -657,6 +657,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             Def::SelfTy(..) |
             Def::Label(..) |
             Def::Macro(..) |
+            Def::GlobalAsm(..) |
             Def::Err => None,
         }
     }
