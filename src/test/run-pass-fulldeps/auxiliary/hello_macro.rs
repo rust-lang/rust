@@ -8,29 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(plugin)]
-#![feature(plugin_registrar)]
-#![feature(rustc_private)]
-#![plugin(proc_macro_plugin)]
+// no-prefer-dynamic
 
-extern crate rustc_plugin;
-extern crate syntax;
+#![crate_type = "proc-macro"]
+#![feature(proc_macro, proc_macro_lib)]
 
-use rustc_plugin::Registry;
-use syntax::ext::base::SyntaxExtension;
-use syntax::symbol::Symbol;
-use syntax::tokenstream::TokenStream;
+extern crate proc_macro;
 
-#[plugin_registrar]
-pub fn plugin_registrar(reg: &mut Registry) {
-    reg.register_syntax_extension(Symbol::intern("hello"),
-                                  SyntaxExtension::ProcMacro(Box::new(hello)));
-}
+use proc_macro::{TokenStream, quote};
 
 // This macro is not very interesting, but it does contain delimited tokens with
 // no content - `()` and `{}` - which has caused problems in the past.
 // Also, it tests that we can escape `$` via `$$`.
-fn hello(_: TokenStream) -> TokenStream {
+#[proc_macro]
+pub fn hello(_: TokenStream) -> TokenStream {
     quote!({
         fn hello() {}
         macro_rules! m { ($$($$t:tt)*) => { $$($$t)* } }

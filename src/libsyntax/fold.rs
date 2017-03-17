@@ -573,7 +573,7 @@ pub fn noop_fold_tt<T: Folder>(tt: TokenTree, fld: &mut T) -> TokenTree {
 }
 
 pub fn noop_fold_tts<T: Folder>(tts: TokenStream, fld: &mut T) -> TokenStream {
-    tts.trees().map(|tt| fld.fold_tt(tt)).collect()
+    tts.map(|tt| fld.fold_tt(tt))
 }
 
 // apply ident folder if it's an ident, apply other folds to interpolated nodes

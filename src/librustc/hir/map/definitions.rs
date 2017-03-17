@@ -55,12 +55,19 @@ impl Clone for DefPathTable {
 }
 
 impl DefPathTable {
+    pub fn new() -> Self {
+        DefPathTable {
+            index_to_key: [vec![], vec![]],
+            key_to_index: FxHashMap(),
+            def_path_hashes: [vec![], vec![]],
+        }
+    }
 
-    fn allocate(&mut self,
-                key: DefKey,
-                def_path_hash: DefPathHash,
-                address_space: DefIndexAddressSpace)
-                -> DefIndex {
+    pub fn allocate(&mut self,
+                    key: DefKey,
+                    def_path_hash: DefPathHash,
+                    address_space: DefIndexAddressSpace)
+                    -> DefIndex {
         let index = {
             let index_to_key = &mut self.index_to_key[address_space.index()];
             let index = DefIndex::new(index_to_key.len() + address_space.start());
@@ -241,7 +248,7 @@ pub struct DefKey {
 }
 
 impl DefKey {
-    fn compute_stable_hash(&self, parent_hash: DefPathHash) -> DefPathHash {
+    pub fn compute_stable_hash(&self, parent_hash: DefPathHash) -> DefPathHash {
         let mut hasher = StableHasher::new();
 
         // We hash a 0u8 here to disambiguate between regular DefPath hashes,
@@ -284,7 +291,7 @@ impl DefKey {
         DefPathHash(hasher.finish())
     }
 
-    fn root_parent_stable_hash(crate_name: &str, crate_disambiguator: &str) -> DefPathHash {
+    pub fn root_parent_stable_hash(crate_name: &str, crate_disambiguator: &str) -> DefPathHash {
         let mut hasher = StableHasher::new();
         // Disambiguate this from a regular DefPath hash,
         // see compute_stable_hash() above.
@@ -446,11 +453,7 @@ impl Definitions {
     /// Create new empty definition map.
     pub fn new() -> Definitions {
         Definitions {
-            table: DefPathTable {
-                index_to_key: [vec![], vec![]],
-                key_to_index: FxHashMap(),
-                def_path_hashes: [vec![], vec![]],
-            },
+            table: DefPathTable::new(),
             node_to_def_index: NodeMap(),
             def_index_to_node: [vec![], vec![]],
             node_to_hir_id: IndexVec::new(),

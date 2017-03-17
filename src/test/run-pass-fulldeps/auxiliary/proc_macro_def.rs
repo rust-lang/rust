@@ -8,47 +8,37 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(plugin, plugin_registrar, rustc_private)]
-#![plugin(proc_macro_plugin)]
+// no-prefer-dynamic
 
-extern crate rustc_plugin;
-extern crate syntax;
+#![crate_type = "proc-macro"]
+#![feature(proc_macro, proc_macro_lib)]
 
-use rustc_plugin::Registry;
-use syntax::ext::base::SyntaxExtension;
-use syntax::tokenstream::TokenStream;
-use syntax::symbol::Symbol;
+extern crate proc_macro;
 
-#[plugin_registrar]
-pub fn plugin_registrar(reg: &mut Registry) {
-    reg.register_syntax_extension(Symbol::intern("attr_tru"),
-                                  SyntaxExtension::AttrProcMacro(Box::new(attr_tru)));
-    reg.register_syntax_extension(Symbol::intern("attr_identity"),
-                                  SyntaxExtension::AttrProcMacro(Box::new(attr_identity)));
-    reg.register_syntax_extension(Symbol::intern("tru"),
-                                  SyntaxExtension::ProcMacro(Box::new(tru)));
-    reg.register_syntax_extension(Symbol::intern("ret_tru"),
-                                  SyntaxExtension::ProcMacro(Box::new(ret_tru)));
-    reg.register_syntax_extension(Symbol::intern("identity"),
-                                  SyntaxExtension::ProcMacro(Box::new(identity)));
+use proc_macro::{TokenStream, quote};
+
+#[proc_macro_attribute]
+pub fn attr_tru(_attr: TokenStream, item: TokenStream) -> TokenStream {
+    let name = item.into_iter().skip(1).next().unwrap();
+    quote!(fn $name() -> bool { true })
 }
 
-fn attr_tru(_attr: TokenStream, _item: TokenStream) -> TokenStream {
-    quote!(fn f1() -> bool { true })
-}
-
-fn attr_identity(_attr: TokenStream, item: TokenStream) -> TokenStream {
+#[proc_macro_attribute]
+pub fn attr_identity(_attr: TokenStream, item: TokenStream) -> TokenStream {
     quote!($item)
 }
 
-fn tru(_ts: TokenStream) -> TokenStream {
+#[proc_macro]
+pub fn tru(_ts: TokenStream) -> TokenStream {
     quote!(true)
 }
 
-fn ret_tru(_ts: TokenStream) -> TokenStream {
+#[proc_macro]
+pub fn ret_tru(_ts: TokenStream) -> TokenStream {
     quote!(return true;)
 }
 
-fn identity(ts: TokenStream) -> TokenStream {
+#[proc_macro]
+pub fn identity(ts: TokenStream) -> TokenStream {
     quote!($ts)
 }

@@ -38,12 +38,19 @@ use symbol::Symbol;
 use std::ascii::AsciiExt;
 use std::env;
 
-macro_rules! setter {
-    ($field: ident) => {{
-        fn f(features: &mut Features) -> &mut bool {
-            &mut features.$field
+macro_rules! set {
+    (proc_macro) => {{
+        fn f(features: &mut Features, span: Span) {
+            features.declared_lib_features.push((Symbol::intern("proc_macro"), span));
+            features.proc_macro = true;
         }
-        f as fn(&mut Features) -> &mut bool
+        f as fn(&mut Features, Span)
+    }};
+    ($field: ident) => {{
+        fn f(features: &mut Features, _: Span) {
+            features.$field = true;
+        }
+        f as fn(&mut Features, Span)
     }}
 }
 
@@ -51,10 +58,9 @@ macro_rules! declare_features {
     ($((active, $feature: ident, $ver: expr, $issue: expr),)+) => {
         /// Represents active features that are currently being implemented or
         /// currently being considered for addition/removal.
-        const ACTIVE_FEATURES: &'static [(&'static str, &'static str,
-                                          Option<u32>, fn(&mut Features) -> &mut bool)] = &[
-            $((stringify!($feature), $ver, $issue, setter!($feature))),+
-        ];
+        const ACTIVE_FEATURES:
+                &'static [(&'static str, &'static str, Option<u32>, fn(&mut Features, Span))] =
+            &[$((stringify!($feature), $ver, $issue, set!($feature))),+];
 
         /// A set of features to be used by later passes.
         pub struct Features {
@@ -1464,9 +1470,9 @@ pub fn get_features(span_handler: &Handler, krate_attrs: &[ast::Attribute]) -> F
                         continue
                     };
 
-                    if let Some(&(_, _, _, setter)) = ACTIVE_FEATURES.iter()
+                    if let Some(&(_, _, _, set)) = ACTIVE_FEATURES.iter()
                         .find(|& &(n, _, _, _)| name == n) {
-                        *(setter(&mut features)) = true;
+                        set(&mut features, mi.span);
                         feature_checker.collect(&features, mi.span);
                     }
                     else if let Some(&(_, _, _)) = REMOVED_FEATURES.iter()
@@ -1500,7 +1506,7 @@ struct MutexFeatureChecker {
 
 impl MutexFeatureChecker {
     // If this method turns out to be a hotspot due to branching,
-    // the branching can be eliminated by modifying `setter!()` to set these spans
+    // the branching can be eliminated by modifying `set!()` to set these spans
     // only for the features that need to be checked for mutual exclusion.
     fn collect(&mut self, features: &Features, span: Span) {
         if features.proc_macro {

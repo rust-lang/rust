@@ -8,50 +8,37 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(unused_parens)]
-#![feature(plugin)]
-#![feature(plugin_registrar)]
-#![feature(rustc_private)]
-#![plugin(proc_macro_plugin)]
+// no-prefer-dynamic
 
-extern crate rustc_plugin;
-extern crate syntax;
+#![crate_type = "proc-macro"]
+#![feature(proc_macro, proc_macro_lib)]
 
-use rustc_plugin::Registry;
+extern crate proc_macro;
 
-use syntax::ext::base::SyntaxExtension;
-use syntax::parse::token::Token;
-use syntax::symbol::Symbol;
-use syntax::tokenstream::{TokenTree, TokenStream};
+use proc_macro::{TokenStream, TokenKind, quote};
 
-#[plugin_registrar]
-pub fn plugin_registrar(reg: &mut Registry) {
-    reg.register_syntax_extension(Symbol::intern("cond"),
-                                  SyntaxExtension::ProcMacro(Box::new(cond)));
-}
-
-fn cond(input: TokenStream) -> TokenStream {
+#[proc_macro]
+pub fn cond(input: TokenStream) -> TokenStream {
     let mut conds = Vec::new();
-    let mut input = input.trees().peekable();
+    let mut input = input.into_iter().peekable();
     while let Some(tree) = input.next() {
-        let mut cond = match tree {
-            TokenTree::Delimited(_, ref delimited) => delimited.stream(),
+        let cond = match tree.kind {
+            TokenKind::Sequence(_, cond) => cond,
             _ => panic!("Invalid input"),
         };
-        let mut trees = cond.trees();
-        let test = trees.next();
-        let rhs = trees.collect::<TokenStream>();
+        let mut cond_trees = cond.clone().into_iter();
+        let test = cond_trees.next().expect("Unexpected empty condition in `cond!`");
+        let rhs = cond_trees.collect::<TokenStream>();
         if rhs.is_empty() {
             panic!("Invalid macro usage in cond: {}", cond);
         }
-        let is_else = match test {
-            Some(TokenTree::Token(_, Token::Ident(ident))) if ident.name == "else" => true,
+        let is_else = match test.kind {
+            TokenKind::Word(word) => *word == *"else",
             _ => false,
         };
         conds.push(if is_else || input.peek().is_none() {
             quote!({ $rhs })
         } else {
-            let test = test.unwrap();
             quote!(if $test { $rhs } else)
         });
     }

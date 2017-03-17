@@ -578,7 +578,10 @@ impl SyntaxExtension {
 
     pub fn is_modern(&self) -> bool {
         match *self {
-            SyntaxExtension::DeclMacro(..) => true,
+            SyntaxExtension::DeclMacro(..) |
+            SyntaxExtension::ProcMacro(..) |
+            SyntaxExtension::AttrProcMacro(..) |
+            SyntaxExtension::ProcMacroDerive(..) => true,
             _ => false,
         }
     }

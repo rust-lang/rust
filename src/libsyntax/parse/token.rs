@@ -349,6 +349,60 @@ impl Token {
             _ => false,
         }
     }
+
+    pub fn glue(self, joint: Token) -> Option<Token> {
+        Some(match self {
+            Eq => match joint {
+                Eq => EqEq,
+                Gt => FatArrow,
+                _ => return None,
+            },
+            Lt => match joint {
+                Eq => Le,
+                Lt => BinOp(Shl),
+                Le => BinOpEq(Shl),
+                BinOp(Minus) => LArrow,
+                _ => return None,
+            },
+            Gt => match joint {
+                Eq => Ge,
+                Gt => BinOp(Shr),
+                Ge => BinOpEq(Shr),
+                _ => return None,
+            },
+            Not => match joint {
+                Eq => Ne,
+                _ => return None,
+            },
+            BinOp(op) => match joint {
+                Eq => BinOpEq(op),
+                BinOp(And) if op == And => AndAnd,
+                BinOp(Or) if op == Or => OrOr,
+                Gt if op == Minus => RArrow,
+                _ => return None,
+            },
+            Dot => match joint {
+                Dot => DotDot,
+                DotDot => DotDotDot,
+                _ => return None,
+            },
+            DotDot => match joint {
+                Dot => DotDotDot,
+                _ => return None,
+            },
+            Colon => match joint {
+                Colon => ModSep,
+                _ => return None,
+            },
+
+            Le | EqEq | Ne | Ge | AndAnd | OrOr | Tilde | BinOpEq(..) | At | DotDotDot | Comma |
+            Semi | ModSep | RArrow | LArrow | FatArrow | Pound | Dollar | Question |
+            OpenDelim(..) | CloseDelim(..) | Underscore => return None,
+
+            Literal(..) | Ident(..) | Lifetime(..) | Interpolated(..) | DocComment(..) |
+            Whitespace | Comment | Shebang(..) | Eof => return None,
+        })
+    }
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash)]
@@ -396,5 +450,14 @@ impl fmt::Debug for Nonterminal {
             NtArg(..) => f.pad("NtArg(..)"),
             NtVis(..) => f.pad("NtVis(..)"),
         }
+    }
+}
+
+pub fn is_op(tok: &Token) -> bool {
+    match *tok {
+        OpenDelim(..) | CloseDelim(..) | Literal(..) | DocComment(..) |
+        Ident(..) | Underscore | Lifetime(..) | Interpolated(..) |
+        Whitespace | Comment | Shebang(..) | Eof => false,
+        _ => true,
     }
 }

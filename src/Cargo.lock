@@ -882,14 +882,6 @@ name = "proc_macro"
 version = "0.0.0"
 dependencies = [
  "syntax 0.0.0",
-]
-
-[[package]]
-name = "proc_macro_plugin"
-version = "0.0.0"
-dependencies = [
- "rustc_plugin 0.0.0",
- "syntax 0.0.0",
  "syntax_pos 0.0.0",
 ]
 
@@ -1210,7 +1202,6 @@ dependencies = [
  "env_logger 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "graphviz 0.0.0",
  "log 0.3.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "proc_macro_plugin 0.0.0",
  "rustc 0.0.0",
  "rustc_back 0.0.0",
  "rustc_borrowck 0.0.0",

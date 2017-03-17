@@ -1777,7 +1777,7 @@ impl<'a> Parser<'a> {
         };
 
         if is_global {
-            segments.insert(0, PathSegment::crate_root());
+            segments.insert(0, PathSegment::crate_root(lo));
         }
 
         // Assemble the result.
@@ -6187,7 +6187,7 @@ impl<'a> Parser<'a> {
             // `{foo, bar}`, `::{foo, bar}`, `*`, or `::*`.
             self.eat(&token::ModSep);
             let prefix = ast::Path {
-                segments: vec![PathSegment::crate_root()],
+                segments: vec![PathSegment::crate_root(lo)],
                 span: lo.to(self.span),
             };
             let view_path_kind = if self.eat(&token::BinOp(token::Star)) {

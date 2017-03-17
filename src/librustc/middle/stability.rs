@@ -728,6 +728,7 @@ pub fn check_unused_or_stable_features<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let ref declared_lib_features = sess.features.borrow().declared_lib_features;
     let mut remaining_lib_features: FxHashMap<Symbol, Span>
         = declared_lib_features.clone().into_iter().collect();
+    remaining_lib_features.remove(&Symbol::intern("proc_macro"));
 
     fn format_stable_since_msg(version: &str) -> String {
         format!("this feature has been stable since {}. Attribute no longer needed", version)

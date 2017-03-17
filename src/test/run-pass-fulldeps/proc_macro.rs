@@ -12,10 +12,11 @@
 // ignore-stage1
 // ignore-cross-compile
 
-#![feature(plugin, custom_attribute)]
-#![feature(type_macros)]
+#![feature(proc_macro)]
 
-#![plugin(proc_macro_def)]
+extern crate proc_macro_def;
+
+use proc_macro_def::{attr_tru, attr_identity, identity, ret_tru, tru};
 
 #[attr_tru]
 fn f1() -> bool {

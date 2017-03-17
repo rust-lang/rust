@@ -100,7 +100,7 @@ impl Path {
         let name = self.segments[0].identifier.name;
         if !self.is_global() && name != "$crate" &&
            name != keywords::SelfValue.name() && name != keywords::Super.name() {
-            self.segments.insert(0, PathSegment::crate_root());
+            self.segments.insert(0, PathSegment::crate_root(self.span));
         }
         self
     }
@@ -134,10 +134,10 @@ impl PathSegment {
     pub fn from_ident(ident: Ident, span: Span) -> Self {
         PathSegment { identifier: ident, span: span, parameters: None }
     }
-    pub fn crate_root() -> Self {
+    pub fn crate_root(span: Span) -> Self {
         PathSegment {
-            identifier: keywords::CrateRoot.ident(),
-            span: DUMMY_SP,
+            identifier: Ident { ctxt: span.ctxt, ..keywords::CrateRoot.ident() },
+            span: span,
             parameters: None,
         }
     }
