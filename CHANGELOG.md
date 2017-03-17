@@ -1,6 +1,9 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.120 — 2017-03-17
+* Rustup to *rustc 1.17.0-nightly (0aeb9c129 2017-03-15)*
+
 ## 0.0.119 — 2017-03-13
 * Rustup to *rustc 1.17.0-nightly (824c9ebbd 2017-03-12)*
 
@@ -77,7 +80,7 @@ All notable changes to this project will be documented in this file.
 * New lint: [`get_unwrap`]
 
 ## 0.0.98 — 2016-11-08
-* Fixes a an issue due to a change in how cargo handles `--sysroot`, which broke `cargo clippy`
+* Fixes an issue due to a change in how cargo handles `--sysroot`, which broke `cargo clippy`
 
 ## 0.0.97 — 2016-11-03
 * For convenience, `cargo clippy` defines a `cargo-clippy` feature. This was

@@ -311,7 +311,7 @@ pub struct CastPass;
 declare_lint! {
     pub CAST_PRECISION_LOSS,
     Allow,
-    "casts that cause loss of precision, e.g `x as f32` where `x: u64`"
+    "casts that cause loss of precision, e.g. `x as f32` where `x: u64`"
 }
 
 /// **What it does:** Checks for casts from a signed to an unsigned numerical
@@ -332,7 +332,7 @@ declare_lint! {
 declare_lint! {
     pub CAST_SIGN_LOSS,
     Allow,
-    "casts from signed types to unsigned types, e.g `x as u32` where `x: i32`"
+    "casts from signed types to unsigned types, e.g. `x as u32` where `x: i32`"
 }
 
 /// **What it does:** Checks for on casts between numerical types that may
@@ -352,7 +352,7 @@ declare_lint! {
 declare_lint! {
     pub CAST_POSSIBLE_TRUNCATION,
     Allow,
-    "casts that may cause truncation of the value, e.g `x as u8` where `x: u32`, \
+    "casts that may cause truncation of the value, e.g. `x as u8` where `x: u32`, \
      or `x as i32` where `x: f32`"
 }
 
@@ -376,7 +376,7 @@ declare_lint! {
 declare_lint! {
     pub CAST_POSSIBLE_WRAP,
     Allow,
-    "casts that may cause wrapping around the value, e.g `x as i32` where `x: u32` \
+    "casts that may cause wrapping around the value, e.g. `x as i32` where `x: u32` \
      and `x > i32::MAX`"
 }
 
@@ -393,7 +393,7 @@ declare_lint! {
 declare_lint! {
     pub UNNECESSARY_CAST,
     Warn,
-    "cast to the same type, e.g `x as i32` where `x: i32`"
+    "cast to the same type, e.g. `x as i32` where `x: i32`"
 }
 
 /// Returns the size in bits of an integral type.

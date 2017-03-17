@@ -30,7 +30,7 @@ use utils::sugg::Sugg;
 declare_lint! {
     pub SINGLE_MATCH,
     Warn,
-    "a match statement with a single nontrivial arm (i.e, where the other arm \
+    "a match statement with a single nontrivial arm (i.e. where the other arm \
      is `_ => {}`) instead of `if let`"
 }
 
@@ -219,10 +219,10 @@ fn report_single_match_single_pattern(cx: &LateContext, ex: &Expr, arms: &[Arm],
         db.span_suggestion(expr.span,
                            "try this",
                            format!("if let {} = {} {}{}",
-                                    snippet(cx, arms[0].pats[0].span, ".."),
-                                    snippet(cx, ex.span, ".."),
-                                    expr_block(cx, &arms[0].body, None, ".."),
-                                    els_str));
+                                   snippet(cx, arms[0].pats[0].span, ".."),
+                                   snippet(cx, ex.span, ".."),
+                                   expr_block(cx, &arms[0].body, None, ".."),
+                                   els_str));
     });
 }
 
