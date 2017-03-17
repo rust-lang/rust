@@ -1256,9 +1256,9 @@ impl<T> [T] {
     ///
     /// v.sort_unstable_by_key(|k| k.abs());
     /// assert!(v == [1, 2, -3, 4, -5]);
+    /// ```
     ///
     /// [pdqsort]: https://github.com/orlp/pdqsort
-    /// ```
     // FIXME #40585: Mention `sort_unstable_by_key` in the documentation for `sort_by_key`.
     #[unstable(feature = "sort_unstable", issue = "40585")]
     #[inline]
