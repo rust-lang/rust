@@ -9,16 +9,12 @@
 // except according to those terms.
 
 #![feature(overlapping_marker_traits)]
-#![feature(optin_builtin_traits)]
+#![feature(specialization)]
 
 trait MyMarker {}
 
-impl<T: Copy> MyMarker for T {}
-impl<T: Eq> MyMarker for T {}
-
-struct MyStruct;
-impl !Send for MyStruct {}
-impl !Send for MyStruct {}
+impl<T> MyMarker for T {}
+impl<T> MyMarker for Vec<T> {}
 
 fn foo<T: MyMarker>(t: T) -> T {
     t
