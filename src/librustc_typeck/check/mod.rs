@@ -3752,36 +3752,27 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             typ
           }
           hir::ExprArray(ref args) => {
-            let uty = expected.to_option(self).and_then(|uty| {
-                match uty.sty {
-                    ty::TyArray(ty, _) | ty::TySlice(ty) => Some(ty),
-                    _ => None
-                }
-            });
+              let uty = expected.to_option(self).and_then(|uty| {
+                  match uty.sty {
+                      ty::TyArray(ty, _) | ty::TySlice(ty) => Some(ty),
+                      _ => None
+                  }
+              });
 
-            let mut unified = self.next_ty_var(TypeVariableOrigin::TypeInference(expr.span));
-            let coerce_to = uty.unwrap_or(unified);
-
-            for (i, e) in args.iter().enumerate() {
-                let e_ty = self.check_expr_with_hint(e, coerce_to);
-                let cause = self.misc(e.span);
-
-                // Special-case the first element, as it has no "previous expressions".
-                let result = if i == 0 {
-                    self.try_coerce(e, e_ty, coerce_to)
-                } else {
-                    let prev_elems = || args[..i].iter().map(|e| &*e);
-                    self.try_find_coercion_lub(&cause, prev_elems, unified, e, e_ty)
-                };
-
-                match result {
-                    Ok(ty) => unified = ty,
-                    Err(e) => {
-                        self.report_mismatched_types(&cause, unified, e_ty, e).emit();
-                    }
-                }
-            }
-            tcx.mk_array(unified, args.len())
+              let element_ty = if !args.is_empty() {
+                  let coerce_to = uty.unwrap_or_else(
+                      || self.next_ty_var(TypeVariableOrigin::TypeInference(expr.span)));
+                  let mut coerce = CoerceMany::new(coerce_to);
+                  for e in args {
+                      let e_ty = self.check_expr_with_hint(e, coerce_to);
+                      let cause = self.misc(e.span);
+                      coerce.coerce(self, &cause, e, e_ty);
+                  }
+                  coerce.complete(self)
+              } else {
+                  self.next_ty_var(TypeVariableOrigin::TypeInference(expr.span))
+              };
+              tcx.mk_array(element_ty, args.len())
           }
           hir::ExprRepeat(ref element, count) => {
             let count = eval_length(self.tcx.global_tcx(), count, "repeat count")
