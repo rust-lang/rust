@@ -20,7 +20,7 @@ use std::env;
 use std::mem;
 use std::path::PathBuf;
 use syntax::ast;
-use syntax_pos::{Span, COMMAND_LINE_SP};
+use syntax_pos::{Span, DUMMY_SP};
 
 /// Pointer to a registrar function.
 pub type PluginRegistrarFun =
@@ -81,7 +81,7 @@ pub fn load_plugins(sess: &Session,
 
     if let Some(plugins) = addl_plugins {
         for plugin in plugins {
-            loader.load_plugin(COMMAND_LINE_SP, &plugin, vec![]);
+            loader.load_plugin(DUMMY_SP, &plugin, vec![]);
         }
     }
 

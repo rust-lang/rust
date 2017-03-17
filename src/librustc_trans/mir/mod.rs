@@ -26,7 +26,7 @@ use monomorphize::{self, Instance};
 use abi::FnType;
 use type_of;
 
-use syntax_pos::{DUMMY_SP, NO_EXPANSION, COMMAND_LINE_EXPN, BytePos, Span};
+use syntax_pos::{DUMMY_SP, NO_EXPANSION, BytePos, Span};
 use syntax::symbol::keywords;
 
 use std::iter;
@@ -124,24 +124,18 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         // In order to have a good line stepping behavior in debugger, we overwrite debug
         // locations of macro expansions with that of the outermost expansion site
         // (unless the crate is being compiled with `-Z debug-macros`).
-        if source_info.span.expn_id == NO_EXPANSION ||
-            source_info.span.expn_id == COMMAND_LINE_EXPN ||
-            self.ccx.sess().opts.debugging_opts.debug_macros {
-
+        if source_info.span.ctxt == NO_EXPANSION ||
+           self.ccx.sess().opts.debugging_opts.debug_macros {
             let scope = self.scope_metadata_for_loc(source_info.scope, source_info.span.lo);
             (scope, source_info.span)
         } else {
-            let cm = self.ccx.sess().codemap();
             // Walk up the macro expansion chain until we reach a non-expanded span.
             // We also stop at the function body level because no line stepping can occurr
             // at the level above that.
             let mut span = source_info.span;
-            while span.expn_id != NO_EXPANSION &&
-                  span.expn_id != COMMAND_LINE_EXPN &&
-                  span.expn_id != self.mir.span.expn_id {
-                if let Some(callsite_span) = cm.with_expn_info(span.expn_id,
-                                                    |ei| ei.map(|ei| ei.call_site.clone())) {
-                    span = callsite_span;
+            while span.ctxt != NO_EXPANSION && span.ctxt != self.mir.span.ctxt {
+                if let Some(info) = span.ctxt.outer().expn_info() {
+                    span = info.call_site;
                 } else {
                     break;
                 }

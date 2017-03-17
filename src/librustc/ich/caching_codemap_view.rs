@@ -47,10 +47,6 @@ impl<'tcx> CachingCodemapView<'tcx> {
         }
     }
 
-    pub fn codemap(&self) -> &'tcx CodeMap {
-        self.codemap
-    }
-
     pub fn byte_pos_to_line_and_col(&mut self,
                                     pos: BytePos)
                                     -> Option<(Rc<FileMap>, usize, BytePos)> {

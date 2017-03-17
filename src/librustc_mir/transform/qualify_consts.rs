@@ -223,7 +223,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
             }
 
             // This comes from a macro that has #[allow_internal_unstable].
-            if self.tcx.sess.codemap().span_allows_unstable(self.span) {
+            if self.span.allows_unstable() {
                 return;
             }
 
@@ -805,7 +805,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     self.def_id.is_local() &&
 
                     // this doesn't come from a macro that has #[allow_internal_unstable]
-                    !self.tcx.sess.codemap().span_allows_unstable(self.span)
+                    !self.span.allows_unstable()
                 {
                     let mut err = self.tcx.sess.struct_span_err(self.span,
                         "const fns are an unstable feature");

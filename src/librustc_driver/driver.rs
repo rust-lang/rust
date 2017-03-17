@@ -580,7 +580,7 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
 
     krate = time(time_passes, "crate injection", || {
         let alt_std_name = sess.opts.alt_std_name.clone();
-        syntax::std_inject::maybe_inject_crates_ref(&sess.parse_sess, krate, alt_std_name)
+        syntax::std_inject::maybe_inject_crates_ref(krate, alt_std_name)
     });
 
     let mut addl_plugins = Some(addl_plugins);
@@ -798,7 +798,7 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
 
     // Discard hygiene data, which isn't required after lowering to HIR.
     if !keep_hygiene_data(sess) {
-        syntax::ext::hygiene::reset_hygiene_data();
+        syntax::ext::hygiene::clear_markings();
     }
 
     Ok(ExpansionResult {
