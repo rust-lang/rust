@@ -104,42 +104,30 @@ fn filter_frames(frames: &[Frame],
     // We want to filter out frames with some prefixes
     // from both top and bottom of the call stack.
     static BAD_PREFIXES_TOP: &'static [&'static str] = &[
-        "_ZN3std3sys3imp9backtrace",
+        // std::sys::imp::backtrace
         "ZN3std3sys3imp9backtrace",
-        "std::sys::imp::backtrace",
-
-        "_ZN3std10sys_common9backtrace",
+        // std::sys_common::backtrace
         "ZN3std10sys_common9backtrace",
-        "std::sys_common::backtrace",
-
-        "_ZN3std9panicking",
+        // std::panicking
         "ZN3std9panicking",
-        "std::panicking",
-
-        "_ZN4core9panicking",
+        // core::panicking
         "ZN4core9panicking",
-        "core::panicking",
-
-        "_ZN4core6result13unwrap_failed",
+        // core::result::unwrap_failed
         "ZN4core6result13unwrap_failed",
-        "core::result::unwrap_failed",
 
         "rust_begin_unwind",
         "_ZN4drop",
         "mingw_set_invalid_parameter_handler",
     ];
     static BAD_PREFIXES_BOTTOM: &'static [&'static str] = &[
-        "_ZN4core9panicking",
+        // core::panicking
         "ZN4core9panicking",
-        "core::panicking",
-
-        "_ZN3std9panicking",
+        // std::panicking
         "ZN3std9panicking",
-        "std::panicking",
-
-        "_ZN3std5panic",
+        // std::panic
         "ZN3std5panic",
-        "std::panic",
+        // core::ops::FnOnce::call_once
+        "ZN4core3ops6FnOnce9call_once",
 
         "__rust_try",
         "BaseThreadInitThunk",
@@ -148,31 +136,20 @@ fn filter_frames(frames: &[Frame],
         "_ZN4drop",
         "mingw_set_invalid_parameter_handler",
 
-        "_ZN4core3ops6FnOnce9call_once",
-        "ZN4core3ops6FnOnce9call_once",
-        "core::ops::FnOnce::call_once",
-
         // tests
-        "_ZN91_$LT$std..panic..AssertUnwindSafe$LT$F$GT$$u20$as$u20$core..ops..FnOnce\
-         $LT$$LP$$RP$$GT$$GT$9call_once",
+        // test::run_test
+        "ZN4test8run_test",
+        // <std::panic::AssertUnwindSafe<F> as core::ops::FnOnce<()>>::call_once
         "ZN91_$LT$std..panic..AssertUnwindSafe$LT$F$GT$$u20$as$u20$core..ops..FnOnce\
          $LT$$LP$$RP$$GT$$GT$9call_once",
-        "<std::panic::AssertUnwindSafe<F> as core::ops::FnOnce<()>>::call_once",
-
-        "_ZN4test8run_test",
-        "ZN4test8run_test",
-        "test::run_test",
-
-        "_ZN42_$LT$F$u20$as$u20$test..FnBox$LT$T$GT$$GT$8call_box",
+        // <F as test::FnBox<T>>::call_box
         "ZN42_$LT$F$u20$as$u20$test..FnBox$LT$T$GT$$GT$8call_box",
-        "<F as test::FnBox<T>>::call_box",
-
     ];
 
     let is_good_frame = |frame: Frame, bad_prefixes: &[&str]| {
         resolve_symname(frame, |symname| {
             if let Some(mangled_symbol_name) = symname {
-                if !bad_prefixes.iter().any(|s| mangled_symbol_name.starts_with(s)) {
+                if !bad_prefixes.iter().any(|s| mangled_symbol_name.contains(s)) {
                     return Ok(())
                 }
             }
