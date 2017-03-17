@@ -2054,8 +2054,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         })
     }
 
-    pub fn custom_coerce_unsized_kind(self, did: DefId) -> adjustment::CustomCoerceUnsized {
-        queries::custom_coerce_unsized_kind::get(self, DUMMY_SP, did)
+    pub fn coerce_unsized_info(self, did: DefId) -> adjustment::CoerceUnsizedInfo {
+        queries::coerce_unsized_info::get(self, DUMMY_SP, did)
     }
 
     pub fn associated_item(self, def_id: DefId) -> AssociatedItem {
