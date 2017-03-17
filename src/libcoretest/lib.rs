@@ -19,18 +19,22 @@
 #![feature(decode_utf8)]
 #![feature(fixed_size_array)]
 #![feature(flt2dec)]
+#![feature(fmt_internals)]
 #![feature(libc)]
+#![feature(move_cell)]
 #![feature(nonzero)]
+#![feature(ordering_chaining)]
+#![feature(ptr_unaligned)]
 #![feature(rand)]
 #![feature(raw)]
 #![feature(sip_hash_13)]
 #![feature(slice_patterns)]
+#![feature(sort_unstable)]
 #![feature(step_by)]
 #![feature(test)]
 #![feature(try_from)]
 #![feature(unicode)]
 #![feature(unique)]
-#![feature(fmt_internals)]
 
 extern crate core;
 extern crate test;

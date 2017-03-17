@@ -1,4 +1,4 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -51,6 +51,8 @@ use mem;
 use marker::{Copy, Send, Sync, Sized, self};
 use iter_private::TrustedRandomAccess;
 
+mod sort;
+
 #[repr(C)]
 struct Repr<T> {
     pub data: *const T,
@@ -71,86 +73,119 @@ pub trait SliceExt {
 
     #[stable(feature = "core", since = "1.6.0")]
     fn split_at(&self, mid: usize) -> (&[Self::Item], &[Self::Item]);
+
     #[stable(feature = "core", since = "1.6.0")]
     fn iter(&self) -> Iter<Self::Item>;
+
     #[stable(feature = "core", since = "1.6.0")]
     fn split<P>(&self, pred: P) -> Split<Self::Item, P>
-                    where P: FnMut(&Self::Item) -> bool;
+        where P: FnMut(&Self::Item) -> bool;
+
     #[stable(feature = "core", since = "1.6.0")]
     fn splitn<P>(&self, n: usize, pred: P) -> SplitN<Self::Item, P>
-                     where P: FnMut(&Self::Item) -> bool;
+        where P: FnMut(&Self::Item) -> bool;
+
     #[stable(feature = "core", since = "1.6.0")]
     fn rsplitn<P>(&self,  n: usize, pred: P) -> RSplitN<Self::Item, P>
-                      where P: FnMut(&Self::Item) -> bool;
+        where P: FnMut(&Self::Item) -> bool;
+
     #[stable(feature = "core", since = "1.6.0")]
     fn windows(&self, size: usize) -> Windows<Self::Item>;
+
     #[stable(feature = "core", since = "1.6.0")]
     fn chunks(&self, size: usize) -> Chunks<Self::Item>;
+
     #[stable(feature = "core", since = "1.6.0")]
     fn get<I>(&self, index: I) -> Option<&I::Output>
         where I: SliceIndex<Self::Item>;
+
     #[stable(feature = "core", since = "1.6.0")]
     fn first(&self) -> Option<&Self::Item>;
+
     #[stable(feature = "core", since = "1.6.0")]
     fn split_first(&self) -> Option<(&Self::Item, &[Self::Item])>;
+
     #[stable(feature = "core", since = "1.6.0")]
     fn split_last(&self) -> Option<(&Self::Item, &[Self::Item])>;
+
     #[stable(feature = "core", since = "1.6.0")]
     fn last(&self) -> Option<&Self::Item>;
+
     #[stable(feature = "core", since = "1.6.0")]
     unsafe fn get_unchecked<I>(&self, index: I) -> &I::Output
         where I: SliceIndex<Self::Item>;
+
     #[stable(feature = "core", since = "1.6.0")]
     fn as_ptr(&self) -> *const Self::Item;
+
     #[stable(feature = "core", since = "1.6.0")]
     fn binary_search<Q: ?Sized>(&self, x: &Q) -> Result<usize, usize>
         where Self::Item: Borrow<Q>,
               Q: Ord;
+
     #[stable(feature = "core", since = "1.6.0")]
     fn binary_search_by<'a, F>(&'a self, f: F) -> Result<usize, usize>
         where F: FnMut(&'a Self::Item) -> Ordering;
+
     #[stable(feature = "slice_binary_search_by_key", since = "1.10.0")]
     fn binary_search_by_key<'a, B, F, Q: ?Sized>(&'a self, b: &Q, f: F) -> Result<usize, usize>
         where F: FnMut(&'a Self::Item) -> B,
               B: Borrow<Q>,
               Q: Ord;
+
     #[stable(feature = "core", since = "1.6.0")]
     fn len(&self) -> usize;
+
     #[stable(feature = "core", since = "1.6.0")]
     fn is_empty(&self) -> bool { self.len() == 0 }
+
     #[stable(feature = "core", since = "1.6.0")]
     fn get_mut<I>(&mut self, index: I) -> Option<&mut I::Output>
         where I: SliceIndex<Self::Item>;
+
     #[stable(feature = "core", since = "1.6.0")]
     fn iter_mut(&mut self) -> IterMut<Self::Item>;
+
     #[stable(feature = "core", since = "1.6.0")]
     fn first_mut(&mut self) -> Option<&mut Self::Item>;
+
     #[stable(feature = "core", since = "1.6.0")]
     fn split_first_mut(&mut self) -> Option<(&mut Self::Item, &mut [Self::Item])>;
+
     #[stable(feature = "core", since = "1.6.0")]
     fn split_last_mut(&mut self) -> Option<(&mut Self::Item, &mut [Self::Item])>;
+
     #[stable(feature = "core", since = "1.6.0")]
     fn last_mut(&mut self) -> Option<&mut Self::Item>;
+
     #[stable(feature = "core", since = "1.6.0")]
     fn split_mut<P>(&mut self, pred: P) -> SplitMut<Self::Item, P>
-                        where P: FnMut(&Self::Item) -> bool;
+        where P: FnMut(&Self::Item) -> bool;
+
     #[stable(feature = "core", since = "1.6.0")]
     fn splitn_mut<P>(&mut self, n: usize, pred: P) -> SplitNMut<Self::Item, P>
-                     where P: FnMut(&Self::Item) -> bool;
+        where P: FnMut(&Self::Item) -> bool;
+
     #[stable(feature = "core", since = "1.6.0")]
     fn rsplitn_mut<P>(&mut self,  n: usize, pred: P) -> RSplitNMut<Self::Item, P>
-                      where P: FnMut(&Self::Item) -> bool;
+        where P: FnMut(&Self::Item) -> bool;
+
     #[stable(feature = "core", since = "1.6.0")]
     fn chunks_mut(&mut self, chunk_size: usize) -> ChunksMut<Self::Item>;
+
     #[stable(feature = "core", since = "1.6.0")]
     fn swap(&mut self, a: usize, b: usize);
+
     #[stable(feature = "core", since = "1.6.0")]
     fn split_at_mut(&mut self, mid: usize) -> (&mut [Self::Item], &mut [Self::Item]);
+
     #[stable(feature = "core", since = "1.6.0")]
     fn reverse(&mut self);
+
     #[stable(feature = "core", since = "1.6.0")]
     unsafe fn get_unchecked_mut<I>(&mut self, index: I) -> &mut I::Output
         where I: SliceIndex<Self::Item>;
+
     #[stable(feature = "core", since = "1.6.0")]
     fn as_mut_ptr(&mut self) -> *mut Self::Item;
 
@@ -165,8 +200,22 @@ pub trait SliceExt {
 
     #[stable(feature = "clone_from_slice", since = "1.7.0")]
     fn clone_from_slice(&mut self, src: &[Self::Item]) where Self::Item: Clone;
+
     #[stable(feature = "copy_from_slice", since = "1.9.0")]
     fn copy_from_slice(&mut self, src: &[Self::Item]) where Self::Item: Copy;
+
+    #[unstable(feature = "sort_unstable", issue = "40585")]
+    fn sort_unstable(&mut self)
+        where Self::Item: Ord;
+
+    #[unstable(feature = "sort_unstable", issue = "40585")]
+    fn sort_unstable_by<F>(&mut self, compare: F)
+        where F: FnMut(&Self::Item, &Self::Item) -> Ordering;
+
+    #[unstable(feature = "sort_unstable", issue = "40585")]
+    fn sort_unstable_by_key<B, F>(&mut self, f: F)
+        where F: FnMut(&Self::Item) -> B,
+              B: Ord;
 }
 
 // Use macros to be generic over const/mut
@@ -238,7 +287,9 @@ impl<T> SliceExt for [T] {
     }
 
     #[inline]
-    fn split<P>(&self, pred: P) -> Split<T, P> where P: FnMut(&T) -> bool {
+    fn split<P>(&self, pred: P) -> Split<T, P>
+        where P: FnMut(&T) -> bool
+    {
         Split {
             v: self,
             pred: pred,
@@ -247,8 +298,8 @@ impl<T> SliceExt for [T] {
     }
 
     #[inline]
-    fn splitn<P>(&self, n: usize, pred: P) -> SplitN<T, P> where
-        P: FnMut(&T) -> bool,
+    fn splitn<P>(&self, n: usize, pred: P) -> SplitN<T, P>
+        where P: FnMut(&T) -> bool
     {
         SplitN {
             inner: GenericSplitN {
@@ -260,8 +311,8 @@ impl<T> SliceExt for [T] {
     }
 
     #[inline]
-    fn rsplitn<P>(&self, n: usize, pred: P) -> RSplitN<T, P> where
-        P: FnMut(&T) -> bool,
+    fn rsplitn<P>(&self, n: usize, pred: P) -> RSplitN<T, P>
+        where P: FnMut(&T) -> bool
     {
         RSplitN {
             inner: GenericSplitN {
@@ -422,13 +473,15 @@ impl<T> SliceExt for [T] {
     }
 
     #[inline]
-    fn split_mut<P>(&mut self, pred: P) -> SplitMut<T, P> where P: FnMut(&T) -> bool {
+    fn split_mut<P>(&mut self, pred: P) -> SplitMut<T, P>
+        where P: FnMut(&T) -> bool
+    {
         SplitMut { v: self, pred: pred, finished: false }
     }
 
     #[inline]
-    fn splitn_mut<P>(&mut self, n: usize, pred: P) -> SplitNMut<T, P> where
-        P: FnMut(&T) -> bool
+    fn splitn_mut<P>(&mut self, n: usize, pred: P) -> SplitNMut<T, P>
+        where P: FnMut(&T) -> bool
     {
         SplitNMut {
             inner: GenericSplitN {
@@ -450,7 +503,7 @@ impl<T> SliceExt for [T] {
                 invert: true
             }
         }
-   }
+    }
 
     #[inline]
     fn chunks_mut(&mut self, chunk_size: usize) -> ChunksMut<T> {
@@ -512,7 +565,10 @@ impl<T> SliceExt for [T] {
         m >= n && needle == &self[m-n..]
     }
 
-    fn binary_search<Q: ?Sized>(&self, x: &Q) -> Result<usize, usize> where T: Borrow<Q>, Q: Ord {
+    fn binary_search<Q: ?Sized>(&self, x: &Q) -> Result<usize, usize>
+        where T: Borrow<Q>,
+              Q: Ord
+    {
         self.binary_search_by(|p| p.borrow().cmp(x))
     }
 
@@ -547,6 +603,28 @@ impl<T> SliceExt for [T] {
               Q: Ord
     {
         self.binary_search_by(|k| f(k).borrow().cmp(b))
+    }
+
+    #[inline]
+    fn sort_unstable(&mut self)
+        where Self::Item: Ord
+    {
+        sort::quicksort(self, |a, b| a.lt(b));
+    }
+
+    #[inline]
+    fn sort_unstable_by<F>(&mut self, mut compare: F)
+        where F: FnMut(&Self::Item, &Self::Item) -> Ordering
+    {
+        sort::quicksort(self, |a, b| compare(a, b) == Ordering::Less);
+    }
+
+    #[inline]
+    fn sort_unstable_by_key<B, F>(&mut self, mut f: F)
+        where F: FnMut(&Self::Item) -> B,
+              B: Ord
+    {
+        sort::quicksort(self, |a, b| f(a).lt(&f(b)));
     }
 }
 

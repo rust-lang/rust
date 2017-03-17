@@ -11,6 +11,7 @@
 #![deny(warnings)]
 
 #![feature(rand)]
+#![feature(sort_unstable)]
 #![feature(test)]
 
 extern crate test;
