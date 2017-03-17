@@ -479,13 +479,6 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                 let ty = self.monomorphize(&constant.ty);
                 match constant.literal.clone() {
                     mir::Literal::Item { def_id, substs } => {
-                        // Shortcut for zero-sized types
-                        // which would not work with MirConstContext.
-                        if common::type_is_zero_size(self.ccx, ty) {
-                            let llty = type_of::type_of(self.ccx, ty);
-                            return Ok(Const::new(C_null(llty), ty));
-                        }
-
                         let substs = self.monomorphize(&substs);
                         MirConstContext::trans_def(self.ccx, def_id, substs, IndexVec::new())
                     }
@@ -927,13 +920,6 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         let ty = self.monomorphize(&constant.ty);
         let result = match constant.literal.clone() {
             mir::Literal::Item { def_id, substs } => {
-                // Shortcut for zero-sized types
-                // which would not work with MirConstContext.
-                if common::type_is_zero_size(bcx.ccx, ty) {
-                    let llty = type_of::type_of(bcx.ccx, ty);
-                    return Const::new(C_null(llty), ty);
-                }
-
                 let substs = self.monomorphize(&substs);
                 MirConstContext::trans_def(bcx.ccx, def_id, substs, IndexVec::new())
             }
