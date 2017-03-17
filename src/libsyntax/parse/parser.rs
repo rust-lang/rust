@@ -59,7 +59,7 @@ use util::ThinVec;
 
 use std::collections::HashSet;
 use std::{cmp, mem, slice};
-use std::path::{Path, PathBuf};
+use std::path::{self, Path, PathBuf};
 
 bitflags! {
     flags Restrictions: u8 {
@@ -5146,7 +5146,7 @@ impl<'a> Parser<'a> {
     pub fn default_submod_path(id: ast::Ident, dir_path: &Path, codemap: &CodeMap) -> ModulePath {
         let mod_name = id.to_string();
         let default_path_str = format!("{}.rs", mod_name);
-        let secondary_path_str = format!("{}/mod.rs", mod_name);
+        let secondary_path_str = format!("{}{}mod.rs", mod_name, path::MAIN_SEPARATOR);
         let default_path = dir_path.join(&default_path_str);
         let secondary_path = dir_path.join(&secondary_path_str);
         let default_exists = codemap.file_exists(&default_path);
@@ -5224,8 +5224,9 @@ impl<'a> Parser<'a> {
             };
             err.span_note(id_sp,
                           &format!("maybe move this module `{0}` to its own directory \
-                                     via `{0}/mod.rs`",
-                                    this_module));
+                                    via `{0}{1}mod.rs`",
+                                   this_module,
+                                   path::MAIN_SEPARATOR));
             if paths.path_exists {
                 err.span_note(id_sp,
                               &format!("... or maybe `use` the module `{}` instead \
