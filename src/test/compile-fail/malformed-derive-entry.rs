@@ -9,11 +9,11 @@
 // except according to those terms.
 
 #[derive(Copy(Bad))]
-//~^ ERROR malformed `derive` entry
+//~^ ERROR expected one of `)`, `,`, or `::`, found `(`
 struct Test1;
 
 #[derive(Copy="bad")]
-//~^ ERROR malformed `derive` entry
+//~^ ERROR expected one of `)`, `,`, or `::`, found `=`
 struct Test2;
 
 #[derive()]

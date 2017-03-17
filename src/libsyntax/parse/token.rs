@@ -17,7 +17,7 @@ pub use self::Token::*;
 use ast::{self};
 use ptr::P;
 use symbol::keywords;
-use tokenstream;
+use tokenstream::TokenTree;
 
 use std::fmt;
 use std::rc::Rc;
@@ -349,7 +349,7 @@ pub enum Nonterminal {
     /// Stuff inside brackets for attributes
     NtMeta(ast::MetaItem),
     NtPath(ast::Path),
-    NtTT(tokenstream::TokenTree),
+    NtTT(TokenTree),
     // These are not exposed to macros, but are used by quasiquote.
     NtArm(ast::Arm),
     NtImplItem(ast::ImplItem),

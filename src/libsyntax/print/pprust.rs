@@ -28,7 +28,7 @@ use ptr::P;
 use std_inject;
 use symbol::{Symbol, keywords};
 use syntax_pos::DUMMY_SP;
-use tokenstream::{self, TokenTree};
+use tokenstream::{self, TokenStream, TokenTree};
 
 use std::ascii;
 use std::io::{self, Write, Read};
@@ -327,6 +327,10 @@ pub fn tt_to_string(tt: tokenstream::TokenTree) -> String {
 
 pub fn tts_to_string(tts: &[tokenstream::TokenTree]) -> String {
     to_string(|s| s.print_tts(tts.iter().cloned().collect()))
+}
+
+pub fn tokens_to_string(tokens: TokenStream) -> String {
+    to_string(|s| s.print_tts(tokens))
 }
 
 pub fn stmt_to_string(stmt: &ast::Stmt) -> String {
@@ -750,7 +754,21 @@ pub trait PrintState<'a> {
                 ast::AttrStyle::Inner => word(self.writer(), "#![")?,
                 ast::AttrStyle::Outer => word(self.writer(), "#[")?,
             }
-            self.print_meta_item(&attr.meta())?;
+            if let Some(mi) = attr.meta() {
+                self.print_meta_item(&mi)?
+            } else {
+                for (i, segment) in attr.path.segments.iter().enumerate() {
+                    if i > 0 {
+                        word(self.writer(), "::")?
+                    }
+                    if segment.identifier.name != keywords::CrateRoot.name() &&
+                       segment.identifier.name != "$crate" {
+                        word(self.writer(), &segment.identifier.name.as_str())?;
+                    }
+                }
+                space(self.writer())?;
+                self.print_tts(attr.tokens.clone())?;
+            }
             word(self.writer(), "]")
         }
     }
@@ -785,6 +803,45 @@ pub trait PrintState<'a> {
                               |s, i| s.print_meta_list_item(&i))?;
                 self.pclose()?;
             }
+        }
+        self.end()
+    }
+
+    /// This doesn't deserve to be called "pretty" printing, but it should be
+    /// meaning-preserving. A quick hack that might help would be to look at the
+    /// spans embedded in the TTs to decide where to put spaces and newlines.
+    /// But it'd be better to parse these according to the grammar of the
+    /// appropriate macro, transcribe back into the grammar we just parsed from,
+    /// and then pretty-print the resulting AST nodes (so, e.g., we print
+    /// expression arguments as expressions). It can be done! I think.
+    fn print_tt(&mut self, tt: tokenstream::TokenTree) -> io::Result<()> {
+        match tt {
+            TokenTree::Token(_, ref tk) => {
+                word(self.writer(), &token_to_string(tk))?;
+                match *tk {
+                    parse::token::DocComment(..) => {
+                        hardbreak(self.writer())
+                    }
+                    _ => Ok(())
+                }
+            }
+            TokenTree::Delimited(_, ref delimed) => {
+                word(self.writer(), &token_to_string(&delimed.open_token()))?;
+                space(self.writer())?;
+                self.print_tts(delimed.stream())?;
+                space(self.writer())?;
+                word(self.writer(), &token_to_string(&delimed.close_token()))
+            },
+        }
+    }
+
+    fn print_tts(&mut self, tts: tokenstream::TokenStream) -> io::Result<()> {
+        self.ibox(0)?;
+        for (i, tt) in tts.into_trees().enumerate() {
+            if i != 0 {
+                space(self.writer())?;
+            }
+            self.print_tt(tt)?;
         }
         self.end()
     }
@@ -1456,45 +1513,6 @@ impl<'a> State<'a> {
 
             self.bclose(span)
         }
-    }
-
-    /// This doesn't deserve to be called "pretty" printing, but it should be
-    /// meaning-preserving. A quick hack that might help would be to look at the
-    /// spans embedded in the TTs to decide where to put spaces and newlines.
-    /// But it'd be better to parse these according to the grammar of the
-    /// appropriate macro, transcribe back into the grammar we just parsed from,
-    /// and then pretty-print the resulting AST nodes (so, e.g., we print
-    /// expression arguments as expressions). It can be done! I think.
-    pub fn print_tt(&mut self, tt: tokenstream::TokenTree) -> io::Result<()> {
-        match tt {
-            TokenTree::Token(_, ref tk) => {
-                word(&mut self.s, &token_to_string(tk))?;
-                match *tk {
-                    parse::token::DocComment(..) => {
-                        hardbreak(&mut self.s)
-                    }
-                    _ => Ok(())
-                }
-            }
-            TokenTree::Delimited(_, ref delimed) => {
-                word(&mut self.s, &token_to_string(&delimed.open_token()))?;
-                space(&mut self.s)?;
-                self.print_tts(delimed.stream())?;
-                space(&mut self.s)?;
-                word(&mut self.s, &token_to_string(&delimed.close_token()))
-            },
-        }
-    }
-
-    pub fn print_tts(&mut self, tts: tokenstream::TokenStream) -> io::Result<()> {
-        self.ibox(0)?;
-        for (i, tt) in tts.into_trees().enumerate() {
-            if i != 0 {
-                space(&mut self.s)?;
-            }
-            self.print_tt(tt)?;
-        }
-        self.end()
     }
 
     pub fn print_variant(&mut self, v: &ast::Variant) -> io::Result<()> {
