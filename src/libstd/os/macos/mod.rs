@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! MacOS-specific definitions
+//! macOS-specific definitions
 
 #![stable(feature = "raw_ext", since = "1.1.0")]
 

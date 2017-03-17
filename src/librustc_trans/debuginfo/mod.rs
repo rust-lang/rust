@@ -164,9 +164,9 @@ pub fn finalize(cx: &CrateContext) {
         llvm::LLVMRustDIBuilderFinalize(DIB(cx));
         llvm::LLVMRustDIBuilderDispose(DIB(cx));
         // Debuginfo generation in LLVM by default uses a higher
-        // version of dwarf than OS X currently understands. We can
+        // version of dwarf than macOS currently understands. We can
         // instruct LLVM to emit an older version of dwarf, however,
-        // for OS X to understand. For more info see #11352
+        // for macOS to understand. For more info see #11352
         // This can be overridden using --llvm-opts -dwarf-version,N.
         // Android has the same issue (#22398)
         if cx.sess().target.target.options.is_like_osx ||
