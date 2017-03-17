@@ -13,7 +13,7 @@
 //! Single-threaded reference-counting pointers.
 //!
 //! The type [`Rc<T>`][`Rc`] provides shared ownership of a value of type `T`,
-//! allocated in the heap. Invoking [`clone()`][clone] on [`Rc`] produces a new
+//! allocated in the heap. Invoking [`clone`][clone] on [`Rc`] produces a new
 //! pointer to the same value in the heap. When the last [`Rc`] pointer to a
 //! given value is destroyed, the pointed-to value is also destroyed.
 //!
@@ -30,7 +30,7 @@
 //! threads. If you need multi-threaded, atomic reference counting, use
 //! [`sync::Arc`][arc].
 //!
-//! The [`downgrade()`][downgrade] method can be used to create a non-owning
+//! The [`downgrade`][downgrade] method can be used to create a non-owning
 //! [`Weak`] pointer. A [`Weak`] pointer can be [`upgrade`][upgrade]d
 //! to an [`Rc`], but this will return [`None`] if the value has
 //! already been dropped.

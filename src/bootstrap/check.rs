@@ -176,7 +176,7 @@ pub fn compiletest(build: &Build,
     cmd.arg("--docck-python").arg(build.python());
 
     if build.config.build.ends_with("apple-darwin") {
-        // Force /usr/bin/python on OSX for LLDB tests because we're loading the
+        // Force /usr/bin/python on macOS for LLDB tests because we're loading the
         // LLDB plugin's compiled module which only works with the system python
         // (namely not Homebrew-installed python)
         cmd.arg("--lldb-python").arg("/usr/bin/python");

@@ -249,7 +249,7 @@ pub fn rustc(build: &Build, target: &str, compiler: &Compiler) {
         cargo.env("CFG_LLVM_ROOT", s);
     }
     // Building with a static libstdc++ is only supported on linux right now,
-    // not for MSVC or OSX
+    // not for MSVC or macOS
     if build.config.llvm_static_stdcpp &&
        !target.contains("windows") &&
        !target.contains("apple") {

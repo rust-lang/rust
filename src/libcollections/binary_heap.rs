@@ -218,10 +218,10 @@ pub struct BinaryHeap<T> {
     data: Vec<T>,
 }
 
-/// A container object that represents the result of the [`peek_mut()`] method
+/// A container object that represents the result of the [`peek_mut`] method
 /// on `BinaryHeap`. See its documentation for details.
 ///
-/// [`peek_mut()`]: struct.BinaryHeap.html#method.peek_mut
+/// [`peek_mut`]: struct.BinaryHeap.html#method.peek_mut
 #[stable(feature = "binary_heap_peek_mut", since = "1.12.0")]
 pub struct PeekMut<'a, T: 'a + Ord> {
     heap: &'a mut BinaryHeap<T>,

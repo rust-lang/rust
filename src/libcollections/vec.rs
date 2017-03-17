@@ -16,7 +16,7 @@
 //!
 //! # Examples
 //!
-//! You can explicitly create a [`Vec<T>`] with [`new()`]:
+//! You can explicitly create a [`Vec<T>`] with [`new`]:
 //!
 //! ```
 //! let v: Vec<i32> = Vec::new();
@@ -58,7 +58,7 @@
 //! ```
 //!
 //! [`Vec<T>`]: ../../std/vec/struct.Vec.html
-//! [`new()`]: ../../std/vec/struct.Vec.html#method.new
+//! [`new`]: ../../std/vec/struct.Vec.html#method.new
 //! [`push`]: ../../std/vec/struct.Vec.html#method.push
 //! [`Index`]: ../../std/ops/trait.Index.html
 //! [`IndexMut`]: ../../std/ops/trait.IndexMut.html
@@ -216,19 +216,19 @@ use Bound::{Excluded, Included, Unbounded};
 /// The pointer will never be null, so this type is null-pointer-optimized.
 ///
 /// However, the pointer may not actually point to allocated memory. In particular,
-/// if you construct a `Vec` with capacity 0 via [`Vec::new()`], [`vec![]`][`vec!`],
-/// [`Vec::with_capacity(0)`][`Vec::with_capacity`], or by calling [`shrink_to_fit()`]
+/// if you construct a `Vec` with capacity 0 via [`Vec::new`], [`vec![]`][`vec!`],
+/// [`Vec::with_capacity(0)`][`Vec::with_capacity`], or by calling [`shrink_to_fit`]
 /// on an empty Vec, it will not allocate memory. Similarly, if you store zero-sized
 /// types inside a `Vec`, it will not allocate space for them. *Note that in this case
-/// the `Vec` may not report a [`capacity()`] of 0*. `Vec` will allocate if and only
-/// if [`mem::size_of::<T>()`]` * capacity() > 0`. In general, `Vec`'s allocation
+/// the `Vec` may not report a [`capacity`] of 0*. `Vec` will allocate if and only
+/// if [`mem::size_of::<T>`]` * capacity() > 0`. In general, `Vec`'s allocation
 /// details are subtle enough that it is strongly recommended that you only
 /// free memory allocated by a `Vec` by creating a new `Vec` and dropping it.
 ///
 /// If a `Vec` *has* allocated memory, then the memory it points to is on the heap
 /// (as defined by the allocator Rust is configured to use by default), and its
-/// pointer points to [`len()`] initialized elements in order (what you would see
-/// if you coerced it to a slice), followed by [`capacity()`]` - `[`len()`]
+/// pointer points to [`len`] initialized elements in order (what you would see
+/// if you coerced it to a slice), followed by [`capacity`]` - `[`len`]
 /// logically uninitialized elements.
 ///
 /// `Vec` will never perform a "small optimization" where elements are actually
@@ -244,13 +244,13 @@ use Bound::{Excluded, Included, Unbounded};
 ///
 /// `Vec` will never automatically shrink itself, even if completely empty. This
 /// ensures no unnecessary allocations or deallocations occur. Emptying a `Vec`
-/// and then filling it back up to the same [`len()`] should incur no calls to
+/// and then filling it back up to the same [`len`] should incur no calls to
 /// the allocator. If you wish to free up unused memory, use
-/// [`shrink_to_fit`][`shrink_to_fit()`].
+/// [`shrink_to_fit`][`shrink_to_fit`].
 ///
 /// [`push`] and [`insert`] will never (re)allocate if the reported capacity is
 /// sufficient. [`push`] and [`insert`] *will* (re)allocate if
-/// [`len()`]` == `[`capacity()`]. That is, the reported capacity is completely
+/// [`len`]` == `[`capacity`]. That is, the reported capacity is completely
 /// accurate, and can be relied on. It can even be used to manually free the memory
 /// allocated by a `Vec` if desired. Bulk insertion methods *may* reallocate, even
 /// when not necessary.
@@ -262,7 +262,7 @@ use Bound::{Excluded, Included, Unbounded};
 ///
 /// `vec![x; n]`, `vec![a, b, c, d]`, and
 /// [`Vec::with_capacity(n)`][`Vec::with_capacity`], will all produce a `Vec`
-/// with exactly the requested capacity. If [`len()`]` == `[`capacity()`],
+/// with exactly the requested capacity. If [`len`]` == `[`capacity`],
 /// (as is the case for the [`vec!`] macro), then a `Vec<T>` can be converted to
 /// and from a [`Box<[T]>`][owned slice] without reallocating or moving the elements.
 ///
@@ -283,11 +283,11 @@ use Bound::{Excluded, Included, Unbounded};
 /// [`String`]: ../../std/string/struct.String.html
 /// [`&str`]: ../../std/primitive.str.html
 /// [`Vec::with_capacity`]: ../../std/vec/struct.Vec.html#method.with_capacity
-/// [`Vec::new()`]: ../../std/vec/struct.Vec.html#method.new
-/// [`shrink_to_fit()`]: ../../std/vec/struct.Vec.html#method.shrink_to_fit
-/// [`capacity()`]: ../../std/vec/struct.Vec.html#method.capacity
-/// [`mem::size_of::<T>()`]: ../../std/mem/fn.size_of.html
-/// [`len()`]: ../../std/vec/struct.Vec.html#method.len
+/// [`Vec::new`]: ../../std/vec/struct.Vec.html#method.new
+/// [`shrink_to_fit`]: ../../std/vec/struct.Vec.html#method.shrink_to_fit
+/// [`capacity`]: ../../std/vec/struct.Vec.html#method.capacity
+/// [`mem::size_of::<T>`]: ../../std/mem/fn.size_of.html
+/// [`len`]: ../../std/vec/struct.Vec.html#method.len
 /// [`push`]: ../../std/vec/struct.Vec.html#method.push
 /// [`insert`]: ../../std/vec/struct.Vec.html#method.insert
 /// [`reserve`]: ../../std/vec/struct.Vec.html#method.reserve
@@ -504,12 +504,12 @@ impl<T> Vec<T> {
     /// Converts the vector into [`Box<[T]>`][owned slice].
     ///
     /// Note that this will drop any excess capacity. Calling this and
-    /// converting back to a vector with [`into_vec()`] is equivalent to calling
-    /// [`shrink_to_fit()`].
+    /// converting back to a vector with [`into_vec`] is equivalent to calling
+    /// [`shrink_to_fit`].
     ///
     /// [owned slice]: ../../std/boxed/struct.Box.html
-    /// [`into_vec()`]: ../../std/primitive.slice.html#method.into_vec
-    /// [`shrink_to_fit()`]: #method.shrink_to_fit
+    /// [`into_vec`]: ../../std/primitive.slice.html#method.into_vec
+    /// [`shrink_to_fit`]: #method.shrink_to_fit
     ///
     /// # Examples
     ///
@@ -838,7 +838,11 @@ impl<T> Vec<T> {
         self.dedup_by(|a, b| key(a) == key(b))
     }
 
-    /// Removes consecutive elements in the vector that resolve to the same key.
+    /// Removes consecutive elements in the vector according to a predicate.
+    ///
+    /// The `same_bucket` function is passed references to two elements from the vector, and
+    /// returns `true` if the elements compare equal, or `false` if they do not. Only the first
+    /// of adjacent equal items is kept.
     ///
     /// If the vector is sorted, this removes all duplicates.
     ///
