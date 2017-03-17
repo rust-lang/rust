@@ -1404,7 +1404,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 //
 // And here we run into yet another obscure archive bug: in which metadata
 // loaded from archives may have trailing garbage bytes. Awhile back one of
-// our tests was failing sporadically on the OSX 64-bit builders (both nopt
+// our tests was failing sporadically on the macOS 64-bit builders (both nopt
 // and opt) by having ebml generate an out-of-bounds panic when looking at
 // metadata.
 //
