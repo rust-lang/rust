@@ -204,7 +204,7 @@ impl SocketAddr {
         let len = self.len as usize - sun_path_offset();
         let path = unsafe { mem::transmute::<&[libc::c_char], &[u8]>(&self.addr.sun_path) };
 
-        // OSX seems to return a len of 16 and a zeroed sun_path for unnamed addresses
+        // macOS seems to return a len of 16 and a zeroed sun_path for unnamed addresses
         if len == 0 || (cfg!(not(target_os = "linux")) && self.addr.sun_path[0] == 0) {
             AddressKind::Unnamed
         } else if self.addr.sun_path[0] == 0 {

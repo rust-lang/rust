@@ -583,7 +583,7 @@ fn link_rlib<'a>(sess: &'a Session,
             }
 
             // After adding all files to the archive, we need to update the
-            // symbol table of the archive. This currently dies on OSX (see
+            // symbol table of the archive. This currently dies on macOS (see
             // #11162), and isn't necessary there anyway
             if !sess.target.target.options.is_like_osx {
                 ab.update_symbols();
@@ -764,7 +764,7 @@ fn link_natively(sess: &Session,
     // pain to land PRs when they spuriously fail due to a segfault.
     //
     // The issue #38878 has some more debugging information on it as well, but
-    // this unfortunately looks like it's just a race condition in OSX's linker
+    // this unfortunately looks like it's just a race condition in macOS's linker
     // with some thread pool working in the background. It seems that no one
     // currently knows a fix for this so in the meantime we're left with this...
     info!("{:?}", &cmd);
@@ -841,7 +841,7 @@ fn link_natively(sess: &Session,
     }
 
 
-    // On OSX, debuggers need this utility to get run to do some munging of
+    // On macOS, debuggers need this utility to get run to do some munging of
     // the symbols
     if sess.target.target.options.is_like_osx && sess.opts.debuginfo != NoDebugInfo {
         match Command::new("dsymutil").arg(out_filename).output() {

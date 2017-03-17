@@ -30,7 +30,7 @@ pub use imp::*;
 mod imp {
     use libc::{c_int, c_void, size_t};
 
-    // Note that the symbols here are prefixed by default on OSX and Windows (we
+    // Note that the symbols here are prefixed by default on macOS and Windows (we
     // don't explicitly request it), and on Android and DragonFly we explicitly
     // request it as unprefixing cause segfaults (mismatches in allocators).
     extern "C" {

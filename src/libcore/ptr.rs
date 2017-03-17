@@ -191,9 +191,8 @@ pub unsafe fn read_unaligned<T>(src: *const T) -> T {
 /// allocations or resources, so care must be taken not to overwrite an object
 /// that should be dropped.
 ///
-/// It does not immediately drop the contents of `src` either; it is rather
-/// *moved* into the memory location `dst` and will be dropped whenever that
-/// location goes out of scope.
+/// Additionally, it does not drop `src`. Semantically, `src` is moved into the
+/// location pointed to by `dst`.
 ///
 /// This is appropriate for initializing uninitialized memory, or overwriting
 /// memory that has previously been `read` from.
@@ -232,6 +231,9 @@ pub unsafe fn write<T>(dst: *mut T, src: T) {
 /// It does not drop the contents of `dst`. This is safe, but it could leak
 /// allocations or resources, so care must be taken not to overwrite an object
 /// that should be dropped.
+///
+/// Additionally, it does not drop `src`. Semantically, `src` is moved into the
+/// location pointed to by `dst`.
 ///
 /// This is appropriate for initializing uninitialized memory, or overwriting
 /// memory that has previously been `read` from.
