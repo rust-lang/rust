@@ -155,11 +155,6 @@ pub fn specializes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         return r;
     }
 
-    if tcx.impl_always_allowed_to_overlap(impl1_def_id)
-        && tcx.impl_always_allowed_to_overlap(impl2_def_id) {
-        return true;
-    }
-
     // The feature gate should prevent introducing new specializations, but not
     // taking advantage of upstream ones.
     if !tcx.sess.features.borrow().specialization &&
