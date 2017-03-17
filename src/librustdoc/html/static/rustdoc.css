@@ -167,7 +167,7 @@ nav.sub {
 	position: absolute;
 	left: 0;
 	top: 0;
-	min-height: 100vh;
+	min-height: 100%;
 }
 
 .sidebar .current {
