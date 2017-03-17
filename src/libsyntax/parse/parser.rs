@@ -3781,7 +3781,9 @@ impl<'a> Parser<'a> {
         }
 
         let span = lo.to(self.prev_span);
-        let kind = ItemKind::MacroDef(tts);
+        let kind = ItemKind::MacroDef(ast::MacroDef {
+            tokens: tts,
+        });
         Ok(Some(self.mk_item(span, id, kind, Visibility::Inherited, attrs.to_owned())))
     }
 

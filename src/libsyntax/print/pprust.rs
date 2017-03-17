@@ -1392,7 +1392,7 @@ impl<'a> State<'a> {
                 self.print_ident(item.ident)?;
                 self.cbox(INDENT_UNIT)?;
                 self.popen()?;
-                self.print_tts(tts.clone().into())?;
+                self.print_tts(tts.stream())?;
                 self.pclose()?;
                 word(&mut self.s, ";")?;
                 self.end()?;

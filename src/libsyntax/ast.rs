@@ -1019,6 +1019,17 @@ impl Mac_ {
     }
 }
 
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub struct MacroDef {
+    pub tokens: ThinTokenStream,
+}
+
+impl MacroDef {
+    pub fn stream(&self) -> TokenStream {
+        self.tokens.clone().into()
+    }
+}
+
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
 pub enum StrStyle {
     /// A regular string, like `"foo"`
@@ -1863,7 +1874,7 @@ pub enum ItemKind {
     Mac(Mac),
 
     /// A macro definition.
-    MacroDef(ThinTokenStream),
+    MacroDef(MacroDef),
 }
 
 impl ItemKind {
