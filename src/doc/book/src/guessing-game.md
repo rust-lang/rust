@@ -217,7 +217,7 @@ The next part will use this handle to get input from the user:
 .read_line(&mut guess)
 ```
 
-Here, we call the [`read_line()`][read_line] method on our handle.
+Here, we call the [`read_line`][read_line] method on our handle.
 [Methods][method] are like associated functions, but are only available on a
 particular instance of a type, rather than the type itself. We’re also passing
 one argument to `read_line()`: `&mut guess`.
