@@ -5036,11 +5036,7 @@ impl<'a> Parser<'a> {
                                        the path:",
                                        path);
                 self.expect(&token::CloseDelim(token::Paren))?;  // `)`
-                let sp = Span {
-                    lo: start_span.lo,
-                    hi: self.prev_span.hi,
-                    expn_id: start_span.expn_id,
-                };
+                let sp = start_span.to(self.prev_span);
                 let mut err = self.span_fatal_help(sp, &msg, &suggestion);
                 err.span_suggestion(path_span, &help_msg, format!("in {}", path));
                 err.emit();  // emit diagnostic, but continue with public visibility

@@ -462,8 +462,7 @@ impl<'a> SpanUtils<'a> {
 
         // Otherwise, a generated span is deemed invalid if it is not a sub-span of the root
         // callsite. This filters out macro internal variables and most malformed spans.
-        let span = self.sess.codemap().source_callsite(parent);
-        !(span.contains(parent))
+        !parent.source_callsite().contains(parent)
     }
 }
 

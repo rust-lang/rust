@@ -26,14 +26,6 @@ fn main() {
         &ps,
         syntax::ext::expand::ExpansionConfig::default("qquote".to_string()),
         &mut resolver);
-    cx.bt_push(syntax::codemap::ExpnInfo {
-        call_site: DUMMY_SP,
-        callee: syntax::codemap::NameAndSpan {
-            format: syntax::codemap::MacroBang(Symbol::intern("")),
-            allow_internal_unstable: false,
-            span: None,
-        }
-    });
     let cx = &mut cx;
 
     macro_rules! check {

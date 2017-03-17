@@ -467,7 +467,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn check_stability(self, def_id: DefId, id: NodeId, span: Span) {
-        if self.sess.codemap().span_allows_unstable(span) {
+        if span.allows_unstable() {
             debug!("stability: \
                     skipping span={:?} since it is internal", span);
             return;

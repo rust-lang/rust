@@ -17,9 +17,10 @@ use self::SawTraitOrImplItemComponent::*;
 use syntax::abi::Abi;
 use syntax::ast::{self, Name, NodeId};
 use syntax::attr;
+use syntax::ext::hygiene::SyntaxContext;
 use syntax::parse::token;
 use syntax::symbol::InternedString;
-use syntax_pos::{Span, NO_EXPANSION, COMMAND_LINE_EXPN, BytePos};
+use syntax_pos::{Span, BytePos};
 use syntax::tokenstream;
 use rustc::hir;
 use rustc::hir::*;
@@ -92,10 +93,10 @@ impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
             span.hi
         };
 
-        let expn_kind = match span.expn_id {
-            NO_EXPANSION => SawSpanExpnKind::NoExpansion,
-            COMMAND_LINE_EXPN => SawSpanExpnKind::CommandLine,
-            _ => SawSpanExpnKind::SomeExpansion,
+        let expn_kind = if span.ctxt == SyntaxContext::empty() {
+            SawSpanExpnKind::NoExpansion
+        } else {
+            SawSpanExpnKind::SomeExpansion
         };
 
         let loc1 = self.codemap.byte_pos_to_line_and_col(span.lo);
@@ -121,8 +122,7 @@ impl<'a, 'hash, 'tcx> StrictVersionHashVisitor<'a, 'hash, 'tcx> {
         saw.hash(self.st);
 
         if expn_kind == SawSpanExpnKind::SomeExpansion {
-            let call_site = self.codemap.codemap().source_callsite(span);
-            self.hash_span(call_site);
+            self.hash_span(span.source_callsite());
         }
     }
 
@@ -483,7 +483,6 @@ fn saw_impl_item(ii: &ImplItemKind) -> SawTraitOrImplItemComponent {
 #[derive(Clone, Copy, Hash, Eq, PartialEq)]
 enum SawSpanExpnKind {
     NoExpansion,
-    CommandLine,
     SomeExpansion,
 }
 
@@ -501,7 +500,7 @@ impl<'a> Hash for StableInlineAsm<'a> {
             volatile,
             alignstack,
             dialect,
-            expn_id: _, // This is used for error reporting
+            ctxt: _, // This is used for error reporting
         } = *self.0;
 
         asm.as_str().hash(state);
