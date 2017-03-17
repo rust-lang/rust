@@ -1296,7 +1296,7 @@ impl<'a> LoweringContext<'a> {
         let attrs = self.lower_attrs(&i.attrs);
         let mut vis = self.lower_visibility(&i.vis);
         if let ItemKind::MacroDef(ref tts) = i.node {
-            if i.attrs.iter().any(|attr| attr.name() == "macro_export") {
+            if i.attrs.iter().any(|attr| attr.path == "macro_export") {
                 self.exported_macros.push(hir::MacroDef {
                     name: name, attrs: attrs, id: i.id, span: i.span, body: tts.clone().into(),
                 });
