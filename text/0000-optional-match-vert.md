@@ -6,47 +6,24 @@
 # Summary
 [summary]: #summary
 
-See how in the following, all the `|` bars are mostly aligned except the last one:
+This is a proposal for the rust grammar to support verts `|` *both*
+at the beginning of the pattern and at the end. Consider the following
+example:
 
 ```rust
-
 use E::*;
 
-enum E {
-    A,
-    B,
-    C,
-    D,
-}
+enum E { A, B, C, D }
 
 fn main() {
-    match A {
-        A |
-        B |
-        C |
-        D => (),
+    // This is valid Rust
+    match foo {
+        A | B | C | D => (),
     }
-}
-```
 
-I'd propose it be allowed at the beginning of the pattern as well enabling something like this:
-
-```rust
-use E::*;
-
-enum E {
-    A,
-    B,
-    C,
-    D,
-}
-
-fn main() {
-    match A {
-    | A
-    | B
-    | C
-    | D => (),
+    // This is an example of what this proposal should allow.
+    match foo {
+        | A | B | C | D | => (),
     }
 }
 ```
@@ -54,14 +31,12 @@ fn main() {
 # Motivation
 [motivation]: #motivation
 
-This is taking a feature which is nice about `F#` and allowing it by a straightforward
-extension of the current rust language.
+This is taking a feature which is nice about `F#` and allowing it by a
+straightforward extension of the current rust language. After having used
+this in `F#`, it seems limiting to not even support this at the language
+level.
 
-Also, this appears to be the official style for F# matches and it has grown on me a lot.
-It highlights the matches and doesn't require as much deeper nesting. After getting used to the
-F# style, the inability to do this is rust seems a bit limiting.
-
-## F# Context
+## `F#` Context
 
 In `F#`, enumerations (called `unions`) are declared in the following fashion where
 all of these are equivalent:
@@ -77,191 +52,168 @@ type IntOrBool =
 type IntOrBool = | I of int | B of bool
 ```
 
-Their `match` statements adopt a similar style to this:
+Their `match` statements adopt a similar style to this. Note that every `|` is aligned,
+something which is not possible with current Rust:
 
 ```F#
 match foo with
-| I -> ""
-| B -> ""
+    | I -> ""
+    | B -> ""
 ```
 
-In Rust, these would look like this:
+## Maximizing `|` alignment
+
+In Rust, about the best we can do is align via the trailing edge:
 
 ```rust
-enum IntOrBool {
-    I(i32),
-    B(bool),
-}
+use E::*;
 
-// Currently a preceding vert is disallowed
-match foo {
-| I => "",
-| B => "",
-}
-```
-The appealing feature about this is that this style allows `match` semantics without
-requiring the double nesting of a typical `match`.
-
-## Example A
-
-All of these matches are equivalent.
-
-```rust
-enum E {
-    A,
-    B,
-    C,
-    D,
-}
+enum E { A, B, C, D }
 
 fn main() {
-    match A {
+    match foo {
+        A |
+        B |
+        C |
+        D => (),
+    //    ^ Inconsistently missing a `|`
+    }
+}
+```
+
+Allowing this proposal would allow this example to take one of the following forms:
+
+```rust
+use E::*;
+
+enum E { A, B, C, D }
+
+fn main() {
+    match foo {
+        A |
+        B |
+        C |
+        D | => (),
+    //    ^ Gained consistency by having a vert.
+    }
+
+    match foo {
+        | A
+        | B
+        | C
+        | D => (),
+    //  ^ Gained *both* an alternative style and consistency.
+    }
+}
+```
+
+## Flexibility in single line matches
+
+It would allow these examples which are all equivalent:
+
+```rust
+use E::*;
+
+enum E { A, B, C, D }
+
+fn main() {
+    // Only trailing `|`.
+    match foo {
+        A | B | C | D | => (),
+    }
+
+    // Only preceding `|`.
+    match foo {
+        | A | B | C | D => (),
+    }
+
+    // Both preceding and trailing `|`.
+    match foo {
+        | A | B | C | D | => (),
+    }
+
+    // Neither preceding nor trailing `|`.
+    match foo {
+        A | B | C | D => (),
+    }
+}
+```
+
+> There should be no ambiguity about what each of these mean. Preference
+between these should just come down to a choice of style.
+
+## Benefits to macros
+
+This benefits macros. Needs filling in.
+
+## Multiple branches
+
+All of these matches are equivalent, each written in a different style:
+
+```rust
+use E::*;
+
+enum E { A, B, C, D }
+
+fn main() {
+    match foo {
         A | B => println!("Give me A | B!"),
         C | D => println!("Give me C | D!"),
     }
 
-    match A {
-    | A | B => println!("Give me A | B!"),
-    | C | D => println!("Give me C | D!"),
+    match foo {
+        | A | B => println!("Give me A | B!"),
+        | C | D => println!("Give me C | D!"),
     }
 
-    match A {
-    | A
-    | B => println!("Give me A | B!"),
-    | C
-    | D => println!("Give me C | D!"),
+    match foo {
+        | A
+        | B => println!("Give me A | B!"),
+        | C
+        | D => println!("Give me C | D!"),
     }
 
-    match A {
+    match foo {
         A | B =>
             println!("Give me A | B!"),
         C | D =>
             println!("Give me C | D!"),
     }
-}
-```
 
-## Example B
-
-```rust
-enum E { A, B, C }
-
-fn main() {
-    use E::*;
-    let value = A;
-
-    match value {
-    | A
-    | B => {},
-    | C => {}
-//  ^ Following the style above, a `|` could be placed before the first
-// element of every branch.
-
-    match value {
-    | A
-    | B => {},
-    C => {}
-//  ^ Including a `|` for the `A` but not for the `C` seems inconsistent
-// but hardly invalid. Branches *always* follow the `=>`. Not something
-// to be greatly concerned about.
+    match foo {
+        A |
+        B | => println!("Give me A | B!"),
+        C |
+        D | => println!("Give me C | D!"),
     }
 }
 ```
 
-## Example C
-
-A more thorough example is included below. Note how the bottom example how at most,
-only tabs in twice from the start of the match. In contrast, the top tabs in four times.
+## Comparing misalignment
 
 ```rust
-struct FavoriteBook {
-    author: &'static str,
-    title: &'static str,
-    date: u64
-}
+use E::*;
 
-// Full name and surname. 
-enum Franks { Alice, Brenda, Charles, Dave, Steve }
-enum Sawyer { Tom, Sid, May }
-
-enum Name {
-    Franks(Franks),
-    Sawyer(Sawyer),
-}
+enum E { A, B, C }
 
 fn main() {
-    let name = Name::Sawyer(Sawyer::Tom);
+    match foo {
+        | A
+        | B => {},
+        | C => {}
+    //  ^ Following the style above, a `|` could be placed before the first
+    // element of every branch.
 
-    // Here is the first match in a typical rust style
-    match name {
-        Name::Franks(name) =>
-            match name {
-                Franks::Alice |
-                Franks::Brenda |
-                Franks::Dave => FavoriteBook {
-                    author: "alice berkley",
-                    title: "Name of a popular book",
-                    date: 1982,
-                },
-                Franks::Charles |
-                Franks::Steve => FavoriteBook {
-                    author: "fred marko",
-                    title: "We'll use a different name here",
-                    date: 1960,
-                },
-			},
-        Name::Sawyer(name) =>
-            match name {
-                Sawyer::Tom => FavoriteBook {
-                    author: "another name",
-                    title: "Again we change it",
-                    date: 1999,
-                },
-                Sawyer::Sid |
-                Sawyer::May => FavoriteBook {
-                    author: "again another name",
-                    title: "here is a different title",
-                    date: 1972,
-                },
-            }
-    };
-
-    // An alternate rust style might look something like this:
-    match name {
-    | Name::Franks(name) =>
-        match name {
-        | Franks::Alice
-        | Franks::Brenda
-        | Franks::Dave => FavoriteBook {
-            author: "alice berkley",
-            title: "Name of a popular book",
-            date: 1982
-        },
-        | Franks::Charles
-        | Franks::Steve => FavoriteBook {
-            author: "fred marko",
-            title: "We'll use a different name here",
-            date: 1960
-        },
-        }
-    | Name::Sawyer(name) =>
-        match name {
-        | Sawyer::Tom => FavoriteBook {
-            author: "another name",
-            title: "Again we change it",
-            date: 1999
-        },
-        | Sawyer::Sid
-        | Sawyer::May => FavoriteBook {
-            author: "again another name",
-            title: "here is a different title",
-            date: 1972
-        },
-        }
-    };
+    match value {
+        | A
+        | B => {},
+        C => {}
+    //  ^ Including a `|` for the `A` but not for the `C` seems inconsistent
+    // but hardly invalid. Branches *always* follow the `=>`. Not something
+    // a *grammar* should be greatly concerned about.
+    }
 }
 ```
-
 
 # Detailed design
 [design]: #detailed-design
@@ -280,9 +232,9 @@ match_pat : '|' ? pat [ '|' pat ] * [ "if" expr ] ? ;
 # How We Teach This
 [how-we-teach-this]: #how-we-teach-this
 
-Adding examples for this are straightforward. You just include an example pointing out that
-leading verts are allowed. That style could also be shown as well if desired. Simple
-examples such as below should be easy to add to all different resources.
+Adding examples for this are straightforward. You just include an example pointing
+out that leading verts are allowed. Simple examples such as below should be easy to
+add to all different resources.
 
 ```rust
 enum Cat {
@@ -308,10 +260,10 @@ fn main() {
     }
 
     match dog {
-    | Dog::Dachshund => "Dachshund",
-    // Leading `|` is allowed.
-    | Dog::Poodle
-    | Dog::PitBull => "Not a dachshund",
+        | Dog::Dachshund => "Dachshund",
+        // Leading `|` is allowed.
+        | Dog::Poodle
+        | Dog::PitBull => "Not a dachshund",
     }
 }
 ```
@@ -319,31 +271,7 @@ fn main() {
 # Drawbacks
 [drawbacks]: #drawbacks
 
-Nesting braces without nesting gets a little weird. This doesn't seem problematic but
-stylistically, it might just seem quirky. `F#` doesn't have this problem because they use
-whitespace for nesting I believe.
-
-```rust
-struct S {msg: &'static str }
-enum E { A, B, C }
-
-fn main() {
-    let e = E::A;
-
-    match e {
-    | E::A => S {
-        msg: "A",
-    },
-    | E::B => S {
-        msg: "B",
-    },
-    | E::C => S {
-        msg: "C",
-    },
-    }
-//  ^ Braces all hit the same level.
-//    This example may seem trivial but example c also showcased the exact same thing.
-```
+N/A
 
 # Alternatives
 [alternatives]: #alternatives
