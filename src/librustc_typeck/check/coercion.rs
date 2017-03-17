@@ -715,13 +715,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// Given some expressions, their known unified type and another expression,
     /// tries to unify the types, potentially inserting coercions on any of the
     /// provided expressions and returns their LUB (aka "common supertype").
-    pub fn try_find_coercion_lub<'b, E, I>(&self,
-                                           cause: &ObligationCause<'tcx>,
-                                           exprs: E,
-                                           prev_ty: Ty<'tcx>,
-                                           new: &'b hir::Expr,
-                                           new_ty: Ty<'tcx>)
-                                           -> RelateResult<'tcx, Ty<'tcx>>
+    ///
+    /// This is really an internal helper. From outside the coercion
+    /// module, you should instantiate a `CoerceMany` instance.
+    fn try_find_coercion_lub<'b, E, I>(&self,
+                                       cause: &ObligationCause<'tcx>,
+                                       exprs: E,
+                                       prev_ty: Ty<'tcx>,
+                                       new: &'b hir::Expr,
+                                       new_ty: Ty<'tcx>)
+                                       -> RelateResult<'tcx, Ty<'tcx>>
         where E: Fn() -> I,
               I: IntoIterator<Item = &'b hir::Expr>
     {
