@@ -11,6 +11,8 @@
 
 set -ex
 
+source shared.sh
+
 BINUTILS=2.25.1
 GCC=5.3.0
 TARGET=powerpc64le-linux-gnu
@@ -40,9 +42,9 @@ pushd binutils-$TARGET
 curl https://ftp.gnu.org/gnu/binutils/binutils-$BINUTILS.tar.bz2 | tar xjf -
 mkdir binutils-build
 cd binutils-build
-../binutils-$BINUTILS/configure --target=$TARGET --with-sysroot=$SYSROOT
-make -j10
-make install
+hide_output ../binutils-$BINUTILS/configure --target=$TARGET --with-sysroot=$SYSROOT
+hide_output make -j10
+hide_output make install
 popd
 rm -rf binutils-$TARGET
 
@@ -51,11 +53,11 @@ mkdir gcc-$TARGET
 pushd gcc-$TARGET
 curl https://ftp.gnu.org/gnu/gcc/gcc-$GCC/gcc-$GCC.tar.bz2 | tar xjf -
 cd gcc-$GCC
-./contrib/download_prerequisites
+hide_output ./contrib/download_prerequisites
 
 mkdir ../gcc-build
 cd ../gcc-build
-../gcc-$GCC/configure                            \
+hide_output ../gcc-$GCC/configure                            \
   --enable-languages=c,c++                       \
   --target=$TARGET                               \
   --with-cpu=power8                              \
@@ -72,8 +74,8 @@ cd ../gcc-build
   --disable-libsanitizer                         \
   --disable-libquadmath-support                  \
   --disable-lto
-make -j10
-make install
+hide_output hide_output make -j10
+hide_output make install
 
 popd
 rm -rf gcc-$TARGET
