@@ -131,6 +131,12 @@ fn main() {
         if is_crossed && flag.starts_with("-m") {
             continue;
         }
+
+        // -Wdate-time is not supported by the netbsd cross compiler
+        if is_crossed && target.contains("netbsd") && flag.contains("date-time") {
+            continue;
+        }
+
         cfg.flag(flag);
     }
 
