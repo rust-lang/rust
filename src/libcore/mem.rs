@@ -617,7 +617,7 @@ pub fn drop<T>(_x: T) { }
 /// the contained value.
 ///
 /// This function will unsafely assume the pointer `src` is valid for
-/// [`size_of::<U>()`][size_of] bytes by transmuting `&T` to `&U` and then reading
+/// [`size_of::<U>`][size_of] bytes by transmuting `&T` to `&U` and then reading
 /// the `&U`. It will also unsafely create a copy of the contained value instead of
 /// moving out of `src`.
 ///

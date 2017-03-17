@@ -49,10 +49,10 @@ pub use tables::UNICODE_VERSION;
 
 /// Returns an iterator that yields the lowercase equivalent of a `char`.
 ///
-/// This `struct` is created by the [`to_lowercase()`] method on [`char`]. See
+/// This `struct` is created by the [`to_lowercase`] method on [`char`]. See
 /// its documentation for more.
 ///
-/// [`to_lowercase()`]: ../../std/primitive.char.html#method.to_lowercase
+/// [`to_lowercase`]: ../../std/primitive.char.html#method.to_lowercase
 /// [`char`]: ../../std/primitive.char.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct ToLowercase(CaseMappingIter);
@@ -70,10 +70,10 @@ impl FusedIterator for ToLowercase {}
 
 /// Returns an iterator that yields the uppercase equivalent of a `char`.
 ///
-/// This `struct` is created by the [`to_uppercase()`] method on [`char`]. See
+/// This `struct` is created by the [`to_uppercase`] method on [`char`]. See
 /// its documentation for more.
 ///
-/// [`to_uppercase()`]: ../../std/primitive.char.html#method.to_uppercase
+/// [`to_uppercase`]: ../../std/primitive.char.html#method.to_uppercase
 /// [`char`]: ../../std/primitive.char.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct ToUppercase(CaseMappingIter);
@@ -183,7 +183,7 @@ impl char {
     /// * `a-z`
     /// * `A-Z`
     ///
-    /// For a more comprehensive understanding of 'digit', see [`is_numeric()`][is_numeric].
+    /// For a more comprehensive understanding of 'digit', see [`is_numeric`][is_numeric].
     ///
     /// [is_numeric]: #method.is_numeric
     ///
@@ -465,10 +465,10 @@ impl char {
     /// Returns the number of 16-bit code units this `char` would need if
     /// encoded in UTF-16.
     ///
-    /// See the documentation for [`len_utf8()`] for more explanation of this
+    /// See the documentation for [`len_utf8`] for more explanation of this
     /// concept. This function is a mirror, but for UTF-16 instead of UTF-8.
     ///
-    /// [`len_utf8()`]: #method.len_utf8
+    /// [`len_utf8`]: #method.len_utf8
     ///
     /// # Examples
     ///
