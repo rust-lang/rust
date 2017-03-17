@@ -28,7 +28,6 @@
 #![feature(shared)]
 #![feature(collections_range)]
 #![feature(collections_bound)]
-#![cfg_attr(stage0,feature(field_init_shorthand))]
 #![feature(nonzero)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
