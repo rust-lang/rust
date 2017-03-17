@@ -99,7 +99,7 @@ fn register_native_lib(sess: &Session,
     }
     let is_osx = sess.target.target.options.is_like_osx;
     if lib.kind == cstore::NativeFramework && !is_osx {
-        let msg = "native frameworks are only available on OSX targets";
+        let msg = "native frameworks are only available on macOS targets";
         match span {
             Some(span) => span_err!(sess, span, E0455, "{}", msg),
             None => sess.err(msg),

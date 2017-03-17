@@ -30,7 +30,7 @@ extern crate allocator_dylib;
 // that this just passes on those platforms we link in some other allocator to
 // ensure we get the same error.
 //
-// So long as we CI linux/OSX we should be good.
+// So long as we CI linux/macOS we should be good.
 #[cfg(any(target_os = "linux", target_os = "macos"))]
 extern crate alloc_jemalloc;
 #[cfg(not(any(target_os = "linux", target_os = "macos")))]
