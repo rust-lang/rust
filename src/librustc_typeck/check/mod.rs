@@ -1526,6 +1526,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         if self.diverges.get() == Diverges::Always {
             self.diverges.set(Diverges::WarnedAlways);
 
+            debug!("warn_if_unreachable: id={:?} span={:?} kind={}", id, span, kind);
+
             self.tables.borrow_mut().lints.add_lint(
                 lint::builtin::UNREACHABLE_CODE,
                 id, span,
@@ -2545,8 +2547,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     Expectation::rvalue_hint(self, ty)
                 });
 
-                let checked_ty = self.check_expr_with_expectation(&arg,
-                                        expected.unwrap_or(ExpectHasType(formal_ty)));
+                let checked_ty = self.check_expr_with_expectation(
+                    &arg,
+                    expected.unwrap_or(ExpectHasType(formal_ty)));
+
                 // 2. Coerce to the most detailed type that could be coerced
                 //    to, which is `expected_ty` if `rvalue_hint` returns an
                 //    `ExpectHasType(expected_ty)`, or the `formal_ty` otherwise.
