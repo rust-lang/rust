@@ -102,9 +102,12 @@ fn enforce_trait_manually_implementable(tcx: TyCtxt, impl_def_id: DefId, trait_d
 }
 
 pub fn provide(providers: &mut Providers) {
+    use self::builtin::coerce_unsized_info;
+
     *providers = Providers {
         coherent_trait,
         coherent_inherent_impls,
+        coerce_unsized_info,
         ..*providers
     };
 }

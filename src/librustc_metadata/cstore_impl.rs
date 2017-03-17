@@ -88,9 +88,9 @@ provide! { <'tcx> tcx, def_id, cdata
     }
     associated_item => { cdata.get_associated_item(def_id.index) }
     impl_trait_ref => { cdata.get_impl_trait(def_id.index, tcx) }
-    custom_coerce_unsized_kind => {
-        cdata.get_custom_coerce_unsized_kind(def_id.index).unwrap_or_else(|| {
-            bug!("custom_coerce_unsized_kind: `{:?}` is missing its kind", def_id);
+    coerce_unsized_info => {
+        cdata.get_coerce_unsized_info(def_id.index).unwrap_or_else(|| {
+            bug!("coerce_unsized_info: `{:?}` is missing its info", def_id);
         })
     }
     mir => {

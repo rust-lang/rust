@@ -393,8 +393,8 @@ define_maps! { <'tcx>
     pub closure_type: ItemSignature(DefId) -> ty::PolyFnSig<'tcx>,
 
     /// Caches CoerceUnsized kinds for impls on custom types.
-    pub custom_coerce_unsized_kind: ItemSignature(DefId)
-        -> ty::adjustment::CustomCoerceUnsized,
+    pub coerce_unsized_info: ItemSignature(DefId)
+        -> ty::adjustment::CoerceUnsizedInfo,
 
     pub typeck_tables: TypeckTables(DefId) -> &'tcx ty::TypeckTables<'tcx>,
 
