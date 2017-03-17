@@ -25,7 +25,7 @@ rustc_trans = { path = "../librustc_trans" }
 serialize = { path = "../libserialize" }
 syntax = { path = "../libsyntax" }
 syntax_pos = { path = "../libsyntax_pos" }
-pulldown-cmark = "0.0.9"
+pulldown-cmark = { version = "0.0.14", default-features = false }
 
 [build-dependencies]
 build_helper = { path = "../build_helper" }
