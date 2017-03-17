@@ -1736,7 +1736,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 if other.evaluation == EvaluatedToOk {
                     if let ImplCandidate(victim_def) = victim.candidate {
                         let tcx = self.tcx().global_tcx();
-                        return traits::specializes(tcx, other_def, victim_def);
+                        return traits::specializes(tcx, other_def, victim_def) ||
+                            tcx.impls_are_allowed_to_overlap(other_def, victim_def);
                     }
                 }
 
