@@ -277,6 +277,7 @@ impl Ordering {
     ///
     /// assert_eq!(result, Ordering::Less);
     /// ```
+    #[inline]
     #[unstable(feature = "ordering_chaining", issue = "37053")]
     pub fn then(self, other: Ordering) -> Ordering {
         match self {
@@ -315,6 +316,7 @@ impl Ordering {
     ///
     /// assert_eq!(result, Ordering::Less);
     /// ```
+    #[inline]
     #[unstable(feature = "ordering_chaining", issue = "37053")]
     pub fn then_with<F: FnOnce() -> Ordering>(self, f: F) -> Ordering {
         match self {
