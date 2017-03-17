@@ -15,16 +15,14 @@ use E::*;
 
 enum E { A, B, C, D }
 
-fn main() {
-    // This is valid Rust
-    match foo {
-        A | B | C | D => (),
-    }
+// This is valid Rust
+match foo {
+    A | B | C | D => (),
+}
 
-    // This is an example of what this proposal should allow.
-    match foo {
-        | A | B | C | D | => (),
-    }
+// This is an example of what this proposal should allow.
+match foo {
+    | A | B | C | D | => (),
 }
 ```
 
@@ -70,14 +68,12 @@ use E::*;
 
 enum E { A, B, C, D }
 
-fn main() {
-    match foo {
-        A |
-        B |
-        C |
-        D => (),
-    //    ^ Inconsistently missing a `|`
-    }
+match foo {
+    A |
+    B |
+    C |
+    D => (),
+//    ^ Inconsistently missing a `|`
 }
 ```
 
@@ -88,22 +84,20 @@ use E::*;
 
 enum E { A, B, C, D }
 
-fn main() {
-    match foo {
-        A |
-        B |
-        C |
-        D | => (),
-    //    ^ Gained consistency by having a vert.
-    }
+match foo {
+    A |
+    B |
+    C |
+    D | => (),
+//    ^ Gained consistency by having a vert.
+}
 
-    match foo {
-        | A
-        | B
-        | C
-        | D => (),
-    //  ^ Gained *both* an alternative style and consistency.
-    }
+match foo {
+    | A
+    | B
+    | C
+    | D => (),
+//  ^ Gained *both* an alternative style and consistency.
 }
 ```
 
@@ -116,26 +110,24 @@ use E::*;
 
 enum E { A, B, C, D }
 
-fn main() {
-    // Only trailing `|`.
-    match foo {
-        A | B | C | D | => (),
-    }
+// Only trailing `|`.
+match foo {
+    A | B | C | D | => (),
+}
 
-    // Only preceding `|`.
-    match foo {
-        | A | B | C | D => (),
-    }
+// Only preceding `|`.
+match foo {
+    | A | B | C | D => (),
+}
 
-    // Both preceding and trailing `|`.
-    match foo {
-        | A | B | C | D | => (),
-    }
+// Both preceding and trailing `|`.
+match foo {
+    | A | B | C | D | => (),
+}
 
-    // Neither preceding nor trailing `|`.
-    match foo {
-        A | B | C | D => (),
-    }
+// Neither preceding nor trailing `|`.
+match foo {
+    A | B | C | D => (),
 }
 ```
 
@@ -155,37 +147,35 @@ use E::*;
 
 enum E { A, B, C, D }
 
-fn main() {
-    match foo {
-        A | B => println!("Give me A | B!"),
-        C | D => println!("Give me C | D!"),
-    }
+match foo {
+    A | B => println!("Give me A | B!"),
+    C | D => println!("Give me C | D!"),
+}
 
-    match foo {
-        | A | B => println!("Give me A | B!"),
-        | C | D => println!("Give me C | D!"),
-    }
+match foo {
+    | A | B => println!("Give me A | B!"),
+    | C | D => println!("Give me C | D!"),
+}
 
-    match foo {
-        | A
-        | B => println!("Give me A | B!"),
-        | C
-        | D => println!("Give me C | D!"),
-    }
+match foo {
+    | A
+    | B => println!("Give me A | B!"),
+    | C
+    | D => println!("Give me C | D!"),
+}
 
-    match foo {
-        A | B =>
-            println!("Give me A | B!"),
-        C | D =>
-            println!("Give me C | D!"),
-    }
+match foo {
+    A | B =>
+        println!("Give me A | B!"),
+    C | D =>
+        println!("Give me C | D!"),
+}
 
-    match foo {
-        A |
-        B | => println!("Give me A | B!"),
-        C |
-        D | => println!("Give me C | D!"),
-    }
+match foo {
+    A |
+    B | => println!("Give me A | B!"),
+    C |
+    D | => println!("Give me C | D!"),
 }
 ```
 
@@ -196,22 +186,20 @@ use E::*;
 
 enum E { A, B, C }
 
-fn main() {
-    match foo {
-        | A
-        | B => {},
-        | C => {}
-    //  ^ Following the style above, a `|` could be placed before the first
-    // element of every branch.
+match foo {
+    | A
+    | B => {},
+    | C => {}
+//  ^ Following the style above, a `|` could be placed before the first
+// element of every branch.
 
-    match value {
-        | A
-        | B => {},
-        C => {}
-    //  ^ Including a `|` for the `A` but not for the `C` seems inconsistent
-    // but hardly invalid. Branches *always* follow the `=>`. Not something
-    // a *grammar* should be greatly concerned about.
-    }
+match value {
+    | A
+    | B => {},
+    C => {}
+//  ^ Including a `|` for the `A` but not for the `C` seems inconsistent
+// but hardly invalid. Branches *always* follow the `=>`. Not something
+// a *grammar* should be greatly concerned about.
 }
 ```
 
@@ -226,7 +214,7 @@ need updating.
 // Before
 match_pat : pat [ '|' pat ] * [ "if" expr ] ? ;
 // After
-match_pat : '|' ? pat [ '|' pat ] * [ "if" expr ] ? ;
+match_pat : '|' ? pat [ '|' pat ] * '|' ? [ "if" expr ] ? ;
 ```
 
 # How We Teach This
