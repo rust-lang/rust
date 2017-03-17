@@ -318,8 +318,8 @@ pub struct TargetOptions {
     /// Whether the target toolchain is like OpenBSD's.
     /// Only useful for compiling against OpenBSD, for configuring abi when returning a struct.
     pub is_like_openbsd: bool,
-    /// Whether the target toolchain is like OSX's. Only useful for compiling against iOS/OS X, in
-    /// particular running dsymutil and some other stuff like `-dead_strip`. Defaults to false.
+    /// Whether the target toolchain is like macOS's. Only useful for compiling against iOS/macOS,
+    /// in particular running dsymutil and some other stuff like `-dead_strip`. Defaults to false.
     pub is_like_osx: bool,
     /// Whether the target toolchain is like Solaris's.
     /// Only useful for compiling against Illumos/Solaris,

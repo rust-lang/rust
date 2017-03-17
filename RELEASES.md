@@ -5056,7 +5056,7 @@ Version 0.1  (2012-01-20)
 
    * Compiler works with the following configurations:
       * Linux: x86 and x86_64 hosts and targets
-      * MacOS: x86 and x86_64 hosts and targets
+      * macOS: x86 and x86_64 hosts and targets
       * Windows: x86 hosts and targets
 
    * Cross compilation / multi-target configuration supported.

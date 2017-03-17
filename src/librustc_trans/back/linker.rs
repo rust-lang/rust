@@ -139,7 +139,7 @@ impl<'a> Linker for GnuLinker<'a> {
                     .arg("-l").arg(lib)
                     .arg("-Wl,--no-whole-archive");
         } else {
-            // -force_load is the OSX equivalent of --whole-archive, but it
+            // -force_load is the macOS equivalent of --whole-archive, but it
             // involves passing the full path to the library to link.
             let mut v = OsString::from("-Wl,-force_load,");
             v.push(&archive::find_library(lib, search_path, &self.sess));
