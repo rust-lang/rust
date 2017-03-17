@@ -52,14 +52,16 @@ pub fn construct<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         tables: tables,
         graph: graph,
         fn_exit: fn_exit,
-        loop_scopes: Vec::new()
+        loop_scopes: Vec::new(),
     };
     body_exit = cfg_builder.expr(&body.value, entry);
     cfg_builder.add_contained_edge(body_exit, fn_exit);
-    let CFGBuilder {graph, ..} = cfg_builder;
-    CFG {graph: graph,
-         entry: entry,
-         exit: fn_exit}
+    let CFGBuilder { graph, .. } = cfg_builder;
+    CFG {
+        graph: graph,
+        entry: entry,
+        exit: fn_exit,
+    }
 }
 
 impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
@@ -81,7 +83,8 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 self.add_ast_node(id, &[exit])
             }
 
-            hir::StmtExpr(ref expr, id) | hir::StmtSemi(ref expr, id) => {
+            hir::StmtExpr(ref expr, id) |
+            hir::StmtSemi(ref expr, id) => {
                 let exit = self.expr(&expr, pred);
                 self.add_ast_node(id, &[exit])
             }
@@ -95,9 +98,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 self.pat(&local.pat, init_exit)
             }
 
-            hir::DeclItem(_) => {
-                pred
-            }
+            hir::DeclItem(_) => pred,
         }
     }
 
@@ -107,9 +108,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
             PatKind::Path(_) |
             PatKind::Lit(..) |
             PatKind::Range(..) |
-            PatKind::Wild => {
-                self.add_ast_node(pat.id, &[pred])
-            }
+            PatKind::Wild => self.add_ast_node(pat.id, &[pred]),
 
             PatKind::Box(ref subpat) |
             PatKind::Ref(ref subpat, _) |
@@ -125,8 +124,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
             }
 
             PatKind::Struct(_, ref subpats, _) => {
-                let pats_exit =
-                    self.pats_all(subpats.iter().map(|f| &f.node.pat), pred);
+                let pats_exit = self.pats_all(subpats.iter().map(|f| &f.node.pat), pred);
                 self.add_ast_node(pat.id, &[pats_exit])
             }
 
@@ -385,7 +383,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
         let method_call = ty::MethodCall::expr(call_expr.id);
         let fn_ty = match self.tables.method_map.get(&method_call) {
             Some(method) => method.ty,
-            None => self.tables.expr_ty_adjusted(func_or_rcvr)
+            None => self.tables.expr_ty_adjusted(func_or_rcvr),
         };
 
         let func_or_rcvr_exit = self.expr(func_or_rcvr, pred);
@@ -556,7 +554,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                         from_index: CFGIndex,
                         to_loop: LoopScope,
                         to_index: CFGIndex) {
-        let mut data = CFGEdgeData {exiting_scopes: vec![] };
+        let mut data = CFGEdgeData { exiting_scopes: vec![] };
         let mut scope = self.tcx.region_maps.node_extent(from_expr.id);
         let target_scope = self.tcx.region_maps.node_extent(to_loop.loop_id);
         while scope != target_scope {
@@ -591,7 +589,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 }
                 span_bug!(expr.span, "no loop scope for id {}", loop_id);
             }
-            Err(err) => span_bug!(expr.span, "loop scope error: {}",  err)
+            Err(err) => span_bug!(expr.span, "loop scope error: {}", err),
         }
     }
 }
