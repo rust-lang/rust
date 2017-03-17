@@ -20,6 +20,7 @@ use std::collections::HashMap;
 use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::env;
 
 use build_helper::{output, mtime, up_to_date};
 use filetime::FileTime;
@@ -44,6 +45,11 @@ pub fn std(build: &Build, target: &str, compiler: &Compiler) {
     build.clear_if_dirty(&out_dir, &build.compiler_path(compiler));
     let mut cargo = build.cargo(compiler, Mode::Libstd, target, "build");
     let mut features = build.std_features();
+
+    if let Ok(target) = env::var("MACOSX_STD_DEPLOYMENT_TARGET") {
+        cargo.env("MACOSX_DEPLOYMENT_TARGET", target);
+    }
+
     // When doing a local rebuild we tell cargo that we're stage1 rather than
     // stage0. This works fine if the local rust and being-built rust have the
     // same view of what the default allocator is, but fails otherwise. Since
@@ -170,6 +176,9 @@ pub fn test(build: &Build, target: &str, compiler: &Compiler) {
     let out_dir = build.cargo_out(compiler, Mode::Libtest, target);
     build.clear_if_dirty(&out_dir, &libstd_stamp(build, compiler, target));
     let mut cargo = build.cargo(compiler, Mode::Libtest, target, "build");
+    if let Ok(target) = env::var("MACOSX_STD_DEPLOYMENT_TARGET") {
+        cargo.env("MACOSX_DEPLOYMENT_TARGET", target);
+    }
     cargo.arg("--manifest-path")
          .arg(build.src.join("src/libtest/Cargo.toml"));
     build.run(&mut cargo);
@@ -249,7 +258,7 @@ pub fn rustc(build: &Build, target: &str, compiler: &Compiler) {
         cargo.env("CFG_LLVM_ROOT", s);
     }
     // Building with a static libstdc++ is only supported on linux right now,
-    // not for MSVC or OSX
+    // not for MSVC or macOS
     if build.config.llvm_static_stdcpp &&
        !target.contains("windows") &&
        !target.contains("apple") {

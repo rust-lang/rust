@@ -298,9 +298,9 @@ impl str {
     /// excluding `end`.
     ///
     /// To get a mutable string slice instead, see the
-    /// [`slice_mut_unchecked()`] method.
+    /// [`slice_mut_unchecked`] method.
     ///
-    /// [`slice_mut_unchecked()`]: #method.slice_mut_unchecked
+    /// [`slice_mut_unchecked`]: #method.slice_mut_unchecked
     ///
     /// # Safety
     ///
@@ -341,9 +341,9 @@ impl str {
     /// excluding `end`.
     ///
     /// To get an immutable string slice instead, see the
-    /// [`slice_unchecked()`] method.
+    /// [`slice_unchecked`] method.
     ///
-    /// [`slice_unchecked()`]: #method.slice_unchecked
+    /// [`slice_unchecked`]: #method.slice_unchecked
     ///
     /// # Safety
     ///
@@ -367,10 +367,10 @@ impl str {
     /// The two slices returned go from the start of the string slice to `mid`,
     /// and from `mid` to the end of the string slice.
     ///
-    /// To get mutable string slices instead, see the [`split_at_mut()`]
+    /// To get mutable string slices instead, see the [`split_at_mut`]
     /// method.
     ///
-    /// [`split_at_mut()`]: #method.split_at_mut
+    /// [`split_at_mut`]: #method.split_at_mut
     ///
     /// # Panics
     ///
@@ -403,9 +403,9 @@ impl str {
     /// The two slices returned go from the start of the string slice to `mid`,
     /// and from `mid` to the end of the string slice.
     ///
-    /// To get immutable string slices instead, see the [`split_at()`] method.
+    /// To get immutable string slices instead, see the [`split_at`] method.
     ///
-    /// [`split_at()`]: #method.split_at
+    /// [`split_at`]: #method.split_at
     ///
     /// # Panics
     ///
@@ -824,10 +824,10 @@ impl str {
     /// [`DoubleEndedIterator`]: iter/trait.DoubleEndedIterator.html
     ///
     /// If the pattern allows a reverse search but its results might differ
-    /// from a forward search, the [`rsplit()`] method can be used.
+    /// from a forward search, the [`rsplit`] method can be used.
     ///
     /// [`char`]: primitive.char.html
-    /// [`rsplit()`]: #method.rsplit
+    /// [`rsplit`]: #method.rsplit
     ///
     /// # Examples
     ///
@@ -912,9 +912,9 @@ impl str {
     /// assert_eq!(d, &["a", "b", "c"]);
     /// ```
     ///
-    /// Use [`split_whitespace()`] for this behavior.
+    /// Use [`split_whitespace`] for this behavior.
     ///
-    /// [`split_whitespace()`]: #method.split_whitespace
+    /// [`split_whitespace`]: #method.split_whitespace
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn split<'a, P: Pattern<'a>>(&'a self, pat: P) -> Split<'a, P> {
         core_str::StrExt::split(self, pat)
@@ -936,9 +936,9 @@ impl str {
     ///
     /// [`DoubleEndedIterator`]: iter/trait.DoubleEndedIterator.html
     ///
-    /// For iterating from the front, the [`split()`] method can be used.
+    /// For iterating from the front, the [`split`] method can be used.
     ///
-    /// [`split()`]: #method.split
+    /// [`split`]: #method.split
     ///
     /// # Examples
     ///
@@ -977,10 +977,10 @@ impl str {
     /// The pattern can be a `&str`, [`char`], or a closure that determines the
     /// split.
     ///
-    /// Equivalent to [`split()`], except that the trailing substring
+    /// Equivalent to [`split`], except that the trailing substring
     /// is skipped if empty.
     ///
-    /// [`split()`]: #method.split
+    /// [`split`]: #method.split
     ///
     /// This method can be used for string data that is _terminated_,
     /// rather than _separated_ by a pattern.
@@ -995,9 +995,9 @@ impl str {
     /// [`char`]: primitive.char.html
     ///
     /// If the pattern allows a reverse search but its results might differ
-    /// from a forward search, the [`rsplit_terminator()`] method can be used.
+    /// from a forward search, the [`rsplit_terminator`] method can be used.
     ///
-    /// [`rsplit_terminator()`]: #method.rsplit_terminator
+    /// [`rsplit_terminator`]: #method.rsplit_terminator
     ///
     /// # Examples
     ///
@@ -1025,10 +1025,10 @@ impl str {
     ///
     /// [`char`]: primitive.char.html
     ///
-    /// Equivalent to [`split()`], except that the trailing substring is
+    /// Equivalent to [`split`], except that the trailing substring is
     /// skipped if empty.
     ///
-    /// [`split()`]: #method.split
+    /// [`split`]: #method.split
     ///
     /// This method can be used for string data that is _terminated_,
     /// rather than _separated_ by a pattern.
@@ -1039,10 +1039,10 @@ impl str {
     /// reverse search, and it will be double ended if a forward/reverse
     /// search yields the same elements.
     ///
-    /// For iterating from the front, the [`split_terminator()`] method can be
+    /// For iterating from the front, the [`split_terminator`] method can be
     /// used.
     ///
-    /// [`split_terminator()`]: #method.split_terminator
+    /// [`split_terminator`]: #method.split_terminator
     ///
     /// # Examples
     ///
@@ -1076,10 +1076,10 @@ impl str {
     /// The returned iterator will not be double ended, because it is
     /// not efficient to support.
     ///
-    /// If the pattern allows a reverse search, the [`rsplitn()`] method can be
+    /// If the pattern allows a reverse search, the [`rsplitn`] method can be
     /// used.
     ///
-    /// [`rsplitn()`]: #method.rsplitn
+    /// [`rsplitn`]: #method.rsplitn
     ///
     /// # Examples
     ///
@@ -1127,9 +1127,9 @@ impl str {
     /// The returned iterator will not be double ended, because it is not
     /// efficient to support.
     ///
-    /// For splitting from the front, the [`splitn()`] method can be used.
+    /// For splitting from the front, the [`splitn`] method can be used.
     ///
-    /// [`splitn()`]: #method.splitn
+    /// [`splitn`]: #method.splitn
     ///
     /// # Examples
     ///
@@ -1177,9 +1177,9 @@ impl str {
     /// [`char`]: primitive.char.html
     ///
     /// If the pattern allows a reverse search but its results might differ
-    /// from a forward search, the [`rmatches()`] method can be used.
+    /// from a forward search, the [`rmatches`] method can be used.
     ///
-    /// [`rmatches()`]: #method.rmatches
+    /// [`rmatches`]: #method.rmatches
     ///
     /// # Examples
     ///
@@ -1213,9 +1213,9 @@ impl str {
     ///
     /// [`DoubleEndedIterator`]: iter/trait.DoubleEndedIterator.html
     ///
-    /// For iterating from the front, the [`matches()`] method can be used.
+    /// For iterating from the front, the [`matches`] method can be used.
     ///
-    /// [`matches()`]: #method.matches
+    /// [`matches`]: #method.matches
     ///
     /// # Examples
     ///
@@ -1255,9 +1255,9 @@ impl str {
     /// [`DoubleEndedIterator`]: iter/trait.DoubleEndedIterator.html
     ///
     /// If the pattern allows a reverse search but its results might differ
-    /// from a forward search, the [`rmatch_indices()`] method can be used.
+    /// from a forward search, the [`rmatch_indices`] method can be used.
     ///
-    /// [`rmatch_indices()`]: #method.rmatch_indices
+    /// [`rmatch_indices`]: #method.rmatch_indices
     ///
     /// # Examples
     ///
@@ -1297,9 +1297,9 @@ impl str {
     ///
     /// [`DoubleEndedIterator`]: iter/trait.DoubleEndedIterator.html
     ///
-    /// For iterating from the front, the [`match_indices()`] method can be used.
+    /// For iterating from the front, the [`match_indices`] method can be used.
     ///
-    /// [`match_indices()`]: #method.match_indices
+    /// [`match_indices`]: #method.match_indices
     ///
     /// # Examples
     ///

@@ -116,7 +116,7 @@ pub fn create_dir_racy(path: &Path) -> io::Result<()> {
     match fs::create_dir(path) {
         Ok(()) => return Ok(()),
         Err(ref e) if e.kind() == io::ErrorKind::AlreadyExists => return Ok(()),
-        Err(ref e) if e.kind() == io::ErrorKind::NotFound => {}
+        Err(ref e) if e.kind() == io::ErrorKind::NotFound => (),
         Err(e) => return Err(e),
     }
     match path.parent() {

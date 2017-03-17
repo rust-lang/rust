@@ -249,7 +249,7 @@ impl Command {
     // mutex, and then after the fork they unlock it.
     //
     // Despite this information, libnative's spawn has been witnessed to
-    // deadlock on both OSX and FreeBSD. I'm not entirely sure why, but
+    // deadlock on both macOS and FreeBSD. I'm not entirely sure why, but
     // all collected backtraces point at malloc/free traffic in the
     // child spawned process.
     //

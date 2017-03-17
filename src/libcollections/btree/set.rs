@@ -113,6 +113,7 @@ pub struct IntoIter<T> {
 /// [`BTreeSet`]: struct.BTreeSet.html
 /// [`range`]: struct.BTreeSet.html#method.range
 #[derive(Debug)]
+#[stable(feature = "btree_range", since = "1.17.0")]
 pub struct Range<'a, T: 'a> {
     iter: ::btree_map::Range<'a, T, ()>,
 }
@@ -264,8 +265,6 @@ impl<T: Ord> BTreeSet<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(btree_range, collections_bound)]
-    ///
     /// use std::collections::BTreeSet;
     /// use std::collections::Bound::Included;
     ///
@@ -278,9 +277,7 @@ impl<T: Ord> BTreeSet<T> {
     /// }
     /// assert_eq!(Some(&5), set.range(4..).next());
     /// ```
-    #[unstable(feature = "btree_range",
-               reason = "matches collection reform specification, waiting for dust to settle",
-               issue = "27787")]
+    #[stable(feature = "btree_range", since = "1.17.0")]
     pub fn range<K: ?Sized, R>(&self, range: R) -> Range<T>
         where K: Ord, T: Borrow<K>, R: RangeArgument<K>
     {

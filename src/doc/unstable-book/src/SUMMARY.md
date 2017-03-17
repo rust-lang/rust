@@ -75,6 +75,7 @@
 - [simd](simd.md)
 - [simd_ffi](simd-ffi.md)
 - [slice_patterns](slice-patterns.md)
+- [sort_unstable](sort-unstable.md)
 - [specialization](specialization.md)
 - [staged_api](staged-api.md)
 - [start](start.md)

@@ -21,7 +21,7 @@
 //! of other types, and you can implement them for your types too. As such,
 //! you'll see a few different types of I/O throughout the documentation in
 //! this module: [`File`]s, [`TcpStream`]s, and sometimes even [`Vec<T>`]s. For
-//! example, [`Read`] adds a [`read()`] method, which we can use on `File`s:
+//! example, [`Read`] adds a [`read`] method, which we can use on `File`s:
 //!
 //! ```
 //! use std::io;
@@ -106,7 +106,7 @@
 //! ```
 //!
 //! [`BufWriter`] doesn't add any new ways of writing; it just buffers every call
-//! to [`write()`]:
+//! to [`write`]:
 //!
 //! ```
 //! use std::io;
@@ -157,7 +157,7 @@
 //! # }
 //! ```
 //!
-//! Of course, using [`io::stdout()`] directly is less common than something like
+//! Of course, using [`io::stdout`] directly is less common than something like
 //! [`println!`].
 //!
 //! ## Iterator types
@@ -245,13 +245,13 @@
 //! [`Vec<T>`]: ../vec/struct.Vec.html
 //! [`BufReader`]: struct.BufReader.html
 //! [`BufWriter`]: struct.BufWriter.html
-//! [`write()`]: trait.Write.html#tymethod.write
-//! [`io::stdout()`]: fn.stdout.html
+//! [`write`]: trait.Write.html#tymethod.write
+//! [`io::stdout`]: fn.stdout.html
 //! [`println!`]: ../macro.println.html
 //! [`Lines`]: struct.Lines.html
 //! [`io::Result`]: type.Result.html
 //! [`?` operator]: ../../book/syntax-index.html
-//! [`read()`]: trait.Read.html#tymethod.read
+//! [`read`]: trait.Read.html#tymethod.read
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -530,7 +530,7 @@ pub trait Read {
     /// If the data in this stream is *not* valid UTF-8 then an error is
     /// returned and `buf` is unchanged.
     ///
-    /// See [`read_to_end()`][readtoend] for other error semantics.
+    /// See [`read_to_end`][readtoend] for other error semantics.
     ///
     /// [readtoend]: #method.read_to_end
     ///
@@ -815,12 +815,12 @@ pub trait Read {
 ///
 /// Implementors of the `Write` trait are sometimes called 'writers'.
 ///
-/// Writers are defined by two required methods, [`write()`] and [`flush()`]:
+/// Writers are defined by two required methods, [`write`] and [`flush`]:
 ///
-/// * The [`write()`] method will attempt to write some data into the object,
+/// * The [`write`] method will attempt to write some data into the object,
 ///   returning how many bytes were successfully written.
 ///
-/// * The [`flush()`] method is useful for adaptors and explicit buffers
+/// * The [`flush`] method is useful for adaptors and explicit buffers
 ///   themselves for ensuring that all buffered data has been pushed out to the
 ///   'true sink'.
 ///
@@ -828,8 +828,8 @@ pub trait Read {
 /// throughout [`std::io`] take and provide types which implement the `Write`
 /// trait.
 ///
-/// [`write()`]: #tymethod.write
-/// [`flush()`]: #tymethod.flush
+/// [`write`]: #tymethod.write
+/// [`flush`]: #tymethod.flush
 /// [`std::io`]: index.html
 ///
 /// # Examples
@@ -1159,7 +1159,7 @@ fn read_until<R: BufRead + ?Sized>(r: &mut R, delim: u8, buf: &mut Vec<u8>)
 ///
 /// For example, reading line-by-line is inefficient without using a buffer, so
 /// if you want to read by line, you'll need `BufRead`, which includes a
-/// [`read_line()`] method as well as a [`lines()`] iterator.
+/// [`read_line`] method as well as a [`lines`] iterator.
 ///
 /// # Examples
 ///
@@ -1183,8 +1183,8 @@ fn read_until<R: BufRead + ?Sized>(r: &mut R, delim: u8, buf: &mut Vec<u8>)
 ///
 /// [`BufReader`]: struct.BufReader.html
 /// [`File`]: ../fs/struct.File.html
-/// [`read_line()`]: #method.read_line
-/// [`lines()`]: #method.lines
+/// [`read_line`]: #method.read_line
+/// [`lines`]: #method.lines
 /// [`Read`]: trait.Read.html
 ///
 /// ```
@@ -1209,13 +1209,13 @@ pub trait BufRead: Read {
     /// Fills the internal buffer of this object, returning the buffer contents.
     ///
     /// This function is a lower-level call. It needs to be paired with the
-    /// [`consume()`] method to function properly. When calling this
+    /// [`consume`] method to function properly. When calling this
     /// method, none of the contents will be "read" in the sense that later
-    /// calling `read` may return the same contents. As such, [`consume()`] must
+    /// calling `read` may return the same contents. As such, [`consume`] must
     /// be called with the number of bytes that are consumed from this buffer to
     /// ensure that the bytes are never returned twice.
     ///
-    /// [`consume()`]: #tymethod.consume
+    /// [`consume`]: #tymethod.consume
     ///
     /// An empty buffer returned indicates that the stream has reached EOF.
     ///
@@ -1256,21 +1256,21 @@ pub trait BufRead: Read {
     /// so they should no longer be returned in calls to `read`.
     ///
     /// This function is a lower-level call. It needs to be paired with the
-    /// [`fill_buf()`] method to function properly. This function does
+    /// [`fill_buf`] method to function properly. This function does
     /// not perform any I/O, it simply informs this object that some amount of
-    /// its buffer, returned from [`fill_buf()`], has been consumed and should
+    /// its buffer, returned from [`fill_buf`], has been consumed and should
     /// no longer be returned. As such, this function may do odd things if
-    /// [`fill_buf()`] isn't called before calling it.
+    /// [`fill_buf`] isn't called before calling it.
     ///
     /// The `amt` must be `<=` the number of bytes in the buffer returned by
-    /// [`fill_buf()`].
+    /// [`fill_buf`].
     ///
     /// # Examples
     ///
-    /// Since `consume()` is meant to be used with [`fill_buf()`],
+    /// Since `consume()` is meant to be used with [`fill_buf`],
     /// that method's example includes an example of `consume()`.
     ///
-    /// [`fill_buf()`]: #tymethod.fill_buf
+    /// [`fill_buf`]: #tymethod.fill_buf
     #[stable(feature = "rust1", since = "1.0.0")]
     fn consume(&mut self, amt: usize);
 
@@ -1285,7 +1285,7 @@ pub trait BufRead: Read {
     /// # Errors
     ///
     /// This function will ignore all instances of [`ErrorKind::Interrupted`] and
-    /// will otherwise return any errors returned by [`fill_buf()`].
+    /// will otherwise return any errors returned by [`fill_buf`].
     ///
     /// If an I/O error is encountered then all bytes read so far will be
     /// present in `buf` and its length will have been adjusted appropriately.
@@ -1295,7 +1295,7 @@ pub trait BufRead: Read {
     /// A locked standard input implements `BufRead`. In this example, we'll
     /// read from standard input until we see an `a` byte.
     ///
-    /// [`fill_buf()`]: #tymethod.fill_buf
+    /// [`fill_buf`]: #tymethod.fill_buf
     /// [`ErrorKind::Interrupted`]: enum.ErrorKind.html#variant.Interrupted
     ///
     /// ```
@@ -1330,7 +1330,7 @@ pub trait BufRead: Read {
     ///
     /// # Errors
     ///
-    /// This function has the same error semantics as [`read_until()`] and will
+    /// This function has the same error semantics as [`read_until`] and will
     /// also return an error if the read bytes are not valid UTF-8. If an I/O
     /// error is encountered then `buf` may contain some bytes already read in
     /// the event that all data read so far was valid UTF-8.
@@ -1339,11 +1339,11 @@ pub trait BufRead: Read {
     ///
     /// A locked standard input implements `BufRead`. In this example, we'll
     /// read all of the lines from standard input. If we were to do this in
-    /// an actual project, the [`lines()`] method would be easier, of
+    /// an actual project, the [`lines`] method would be easier, of
     /// course.
     ///
-    /// [`lines()`]: #method.lines
-    /// [`read_until()`]: #method.read_until
+    /// [`lines`]: #method.lines
+    /// [`read_until`]: #method.read_until
     ///
     /// ```
     /// use std::io;
@@ -1375,7 +1375,7 @@ pub trait BufRead: Read {
     /// [`io::Result`]`<`[`Vec<u8>`]`>`. Each vector returned will *not* have
     /// the delimiter byte at the end.
     ///
-    /// This function will yield errors whenever [`read_until()`] would have
+    /// This function will yield errors whenever [`read_until`] would have
     /// also yielded an error.
     ///
     /// # Examples
@@ -1385,7 +1385,7 @@ pub trait BufRead: Read {
     ///
     /// [`io::Result`]: type.Result.html
     /// [`Vec<u8>`]: ../vec/struct.Vec.html
-    /// [`read_until()`]: #method.read_until
+    /// [`read_until`]: #method.read_until
     ///
     /// ```
     /// use std::io;
@@ -1428,9 +1428,9 @@ pub trait BufRead: Read {
     ///
     /// # Errors
     ///
-    /// Each line of the iterator has the same error semantics as [`BufRead::read_line()`].
+    /// Each line of the iterator has the same error semantics as [`BufRead::read_line`].
     ///
-    /// [`BufRead::read_line()`]: trait.BufRead.html#method.read_line
+    /// [`BufRead::read_line`]: trait.BufRead.html#method.read_line
     #[stable(feature = "rust1", since = "1.0.0")]
     fn lines(self) -> Lines<Self> where Self: Sized {
         Lines { buf: self }
@@ -1439,10 +1439,10 @@ pub trait BufRead: Read {
 
 /// Adaptor to chain together two readers.
 ///
-/// This struct is generally created by calling [`chain()`] on a reader.
-/// Please see the documentation of [`chain()`] for more details.
+/// This struct is generally created by calling [`chain`] on a reader.
+/// Please see the documentation of [`chain`] for more details.
 ///
-/// [`chain()`]: trait.Read.html#method.chain
+/// [`chain`]: trait.Read.html#method.chain
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Chain<T, U> {
     first: T,
@@ -1496,10 +1496,10 @@ impl<T: BufRead, U: BufRead> BufRead for Chain<T, U> {
 
 /// Reader adaptor which limits the bytes read from an underlying reader.
 ///
-/// This struct is generally created by calling [`take()`] on a reader.
-/// Please see the documentation of [`take()`] for more details.
+/// This struct is generally created by calling [`take`] on a reader.
+/// Please see the documentation of [`take`] for more details.
 ///
-/// [`take()`]: trait.Read.html#method.take
+/// [`take`]: trait.Read.html#method.take
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
 pub struct Take<T> {
@@ -1614,10 +1614,10 @@ fn read_one_byte(reader: &mut Read) -> Option<Result<u8>> {
 
 /// An iterator over `u8` values of a reader.
 ///
-/// This struct is generally created by calling [`bytes()`] on a reader.
-/// Please see the documentation of [`bytes()`] for more details.
+/// This struct is generally created by calling [`bytes`] on a reader.
+/// Please see the documentation of [`bytes`] for more details.
 ///
-/// [`bytes()`]: trait.Read.html#method.bytes
+/// [`bytes`]: trait.Read.html#method.bytes
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
 pub struct Bytes<R> {
@@ -1635,7 +1635,7 @@ impl<R: Read> Iterator for Bytes<R> {
 
 /// An iterator over the `char`s of a reader.
 ///
-/// This struct is generally created by calling [`chars()`][chars] on a reader.
+/// This struct is generally created by calling [`chars`][chars] on a reader.
 /// Please see the documentation of `chars()` for more details.
 ///
 /// [chars]: trait.Read.html#method.chars
@@ -1726,7 +1726,7 @@ impl fmt::Display for CharsError {
 /// An iterator over the contents of an instance of `BufRead` split on a
 /// particular byte.
 ///
-/// This struct is generally created by calling [`split()`][split] on a
+/// This struct is generally created by calling [`split`][split] on a
 /// `BufRead`. Please see the documentation of `split()` for more details.
 ///
 /// [split]: trait.BufRead.html#method.split
@@ -1758,7 +1758,7 @@ impl<B: BufRead> Iterator for Split<B> {
 
 /// An iterator over the lines of an instance of `BufRead`.
 ///
-/// This struct is generally created by calling [`lines()`][lines] on a
+/// This struct is generally created by calling [`lines`][lines] on a
 /// `BufRead`. Please see the documentation of `lines()` for more details.
 ///
 /// [lines]: trait.BufRead.html#method.lines
