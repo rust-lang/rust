@@ -53,7 +53,9 @@ matrix:
       osx_image: xcode8.2
       install: &osx_install_sccache >
         travis_retry curl -o /usr/local/bin/sccache https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-03-16-sccache-x86_64-apple-darwin &&
-          chmod +x /usr/local/bin/sccache
+          chmod +x /usr/local/bin/sccache &&
+        travis_retry curl -o /usr/local/bin/stamp https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-03-17-stamp-x86_64-apple-darwin &&
+          chmod +x /usr/local/bin/stamp
     - env: >
         RUST_CHECK_TARGET=check
         RUST_CONFIGURE_ARGS=--build=i686-apple-darwin
@@ -118,6 +120,11 @@ env:
     # AWS_SECRET_ACCESS_KEY=...
     - secure: "Pixhh0hXDqGCdOyLtGFjli3J2AtDWIpyb2btIrLe956nCBDRutRoMm6rv5DI9sFZN07Mms7VzNNvhc9wCW1y63JAm414d2Co7Ob8kWMZlz9l9t7ACHuktUiis8yr+S4Quq1Vqd6pqi7pf2J++UxC8R/uLeqVrubzr6+X7AbmEFE="
 
+# Note that this is overridden on OSX builders
+install: >
+  travis_retry curl -o /usr/local/bin/stamp https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-03-17-stamp-x86_64-unknown-linux-musl &&
+    chmod +x /usr/local/bin/stamp
+
 before_script:
   - >
       echo "#### Disk usage before running script:";
@@ -129,11 +136,11 @@ script:
       if [ "$ALLOW_PR" = "" ] && [ "$TRAVIS_BRANCH" != "auto" ]; then
           echo skipping, not a full build;
       elif [ "$TRAVIS_OS_NAME" = "osx" ]; then
-          travis_retry sh -c 'git submodule deinit -f . && git submodule update --init' &&
-          src/ci/run.sh;
+          travis_retry stamp sh -c 'git submodule deinit -f . && git submodule update --init' &&
+          stamp src/ci/run.sh;
       else
-          travis_retry sh -c 'git submodule deinit -f . && git submodule update --init' &&
-          src/ci/docker/run.sh $IMAGE;
+          travis_retry stamp sh -c 'git submodule deinit -f . && git submodule update --init' &&
+          stamp src/ci/docker/run.sh $IMAGE;
       fi
 
 after_success:
