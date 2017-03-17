@@ -230,37 +230,50 @@ match_pat : '|' ? pat [ '|' pat ] * '|' ? [ "if" expr ] ? ;
 [how-we-teach-this]: #how-we-teach-this
 
 Adding examples for this are straightforward. You just include an example pointing
-out that leading verts are allowed. Simple examples such as below should be easy to
-add to all different resources.
+out that leading and trailing verts are allowed. Simple examples such as below should
+be easy to add to all different resources.
 
 ```rust
-enum Cat {
-    Burmese,
-    Munchkin,
-    Siamese,
-}
+use Letter::*;
 
-enum Dog {
-    Dachshund,
-    Poodle,
-    PitBull,
+enum Letter {
+    A,
+    B,
+    C,
+    D,
 }
 
 fn main() {
-    let cat = Cat::MunchKin;
-    let dog = Dog::Poodle;
+    let a = Letter::A;
+    let b = Letter::B;
+    let c = Letter::C;
+    let d = Letter::D;
 
-    match cat {
-        Cat::Burmese => "Burmese",
+    match a {
+        A => "A",
         // Can do alternatives with a `|`.
-        Cat::MunchKin | Cat::Siamese => "Not burmese",
+        B | C | D => "B, C, or D",
     }
 
-    match dog {
-        | Dog::Dachshund => "Dachshund",
+    match b {
+        | A => "A",
         // Leading `|` is allowed.
-        | Dog::Poodle
-        | Dog::PitBull => "Not a dachshund",
+        | B
+        | C
+        | D => "B, C, or D",
+    }
+
+    match c {
+        A | => "A",
+        // Trailing `|` is allowed.
+        B |
+        C |
+        D | => "B, C, or D",
+    }
+
+    match d {
+        // Both are allowed.
+        | A | B | C | D | => "Got a letter",
     }
 }
 ```
