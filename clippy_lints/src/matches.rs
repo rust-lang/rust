@@ -30,7 +30,7 @@ use utils::sugg::Sugg;
 declare_lint! {
     pub SINGLE_MATCH,
     Warn,
-    "a match statement with a single nontrivial arm (i.e, where the other arm \
+    "a match statement with a single nontrivial arm (i.e. where the other arm \
      is `_ => {}`) instead of `if let`"
 }
 
