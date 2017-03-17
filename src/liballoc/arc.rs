@@ -102,7 +102,7 @@ const MAX_REFCOUNT: usize = (isize::MAX) as usize;
 /// [downgrade]: struct.Arc.html#method.downgrade
 /// [upgrade]: struct.Weak.html#method.upgrade
 /// [`None`]: ../../std/option/enum.Option.html#variant.None
-/// [assoc]: ../../book/method-syntax.html#associated-functions
+/// [assoc]: ../../book/first-edition/method-syntax.html#associated-functions
 ///
 /// # Examples
 ///
@@ -287,17 +287,15 @@ impl<T> Arc<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(rc_raw)]
-    ///
     /// use std::sync::Arc;
     ///
     /// let x = Arc::new(10);
     /// let x_ptr = Arc::into_raw(x);
     /// assert_eq!(unsafe { *x_ptr }, 10);
     /// ```
-    #[unstable(feature = "rc_raw", issue = "37197")]
-    pub fn into_raw(this: Self) -> *mut T {
-        let ptr = unsafe { &mut (**this.ptr).data as *mut _ };
+    #[stable(feature = "rc_raw", since = "1.17.0")]
+    pub fn into_raw(this: Self) -> *const T {
+        let ptr = unsafe { &(**this.ptr).data as *const _ };
         mem::forget(this);
         ptr
     }
@@ -315,8 +313,6 @@ impl<T> Arc<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(rc_raw)]
-    ///
     /// use std::sync::Arc;
     ///
     /// let x = Arc::new(10);
@@ -332,11 +328,14 @@ impl<T> Arc<T> {
     ///
     /// // The memory was freed when `x` went out of scope above, so `x_ptr` is now dangling!
     /// ```
-    #[unstable(feature = "rc_raw", issue = "37197")]
-    pub unsafe fn from_raw(ptr: *mut T) -> Self {
+    #[stable(feature = "rc_raw", since = "1.17.0")]
+    pub unsafe fn from_raw(ptr: *const T) -> Self {
         // To find the corresponding pointer to the `ArcInner` we need to subtract the offset of the
         // `data` field from the pointer.
-        Arc { ptr: Shared::new((ptr as *mut u8).offset(-offset_of!(ArcInner<T>, data)) as *mut _) }
+        let ptr = (ptr as *const u8).offset(-offset_of!(ArcInner<T>, data));
+        Arc {
+            ptr: Shared::new(ptr as *const _),
+        }
     }
 }
 
@@ -448,7 +447,7 @@ impl<T: ?Sized> Arc<T> {
     // Non-inlined part of `drop`.
     #[inline(never)]
     unsafe fn drop_slow(&mut self) {
-        let ptr = *self.ptr;
+        let ptr = self.ptr.as_mut_ptr();
 
         // Destroy the data at this time, even though we may not free the box
         // allocation itself (there may still be weak pointers lying around).
@@ -461,17 +460,13 @@ impl<T: ?Sized> Arc<T> {
     }
 
     #[inline]
-    #[unstable(feature = "ptr_eq",
-               reason = "newly added",
-               issue = "36497")]
+    #[stable(feature = "ptr_eq", since = "1.17.0")]
     /// Returns true if the two `Arc`s point to the same value (not
     /// just values that compare as equal).
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(ptr_eq)]
-    ///
     /// use std::sync::Arc;
     ///
     /// let five = Arc::new(5);
@@ -628,7 +623,7 @@ impl<T: Clone> Arc<T> {
         // As with `get_mut()`, the unsafety is ok because our reference was
         // either unique to begin with, or became one upon cloning the contents.
         unsafe {
-            let inner = &mut **this.ptr;
+            let inner = &mut *this.ptr.as_mut_ptr();
             &mut inner.data
         }
     }
@@ -671,7 +666,7 @@ impl<T: ?Sized> Arc<T> {
             // the Arc itself to be `mut`, so we're returning the only possible
             // reference to the inner data.
             unsafe {
-                let inner = &mut **this.ptr;
+                let inner = &mut *this.ptr.as_mut_ptr();
                 Some(&mut inner.data)
             }
         } else {

@@ -838,7 +838,11 @@ impl<T> Vec<T> {
         self.dedup_by(|a, b| key(a) == key(b))
     }
 
-    /// Removes consecutive elements in the vector that resolve to the same key.
+    /// Removes consecutive elements in the vector according to a predicate.
+    ///
+    /// The `same_bucket` function is passed references to two elements from the vector, and
+    /// returns `true` if the elements compare equal, or `false` if they do not. Only the first
+    /// of adjacent equal items is kept.
     ///
     /// If the vector is sorted, this removes all duplicates.
     ///
@@ -2116,7 +2120,7 @@ unsafe impl<#[may_dangle] T> Drop for IntoIter<T> {
         for _x in self.by_ref() {}
 
         // RawVec handles deallocation
-        let _ = unsafe { RawVec::from_raw_parts(*self.buf, self.cap) };
+        let _ = unsafe { RawVec::from_raw_parts(self.buf.as_mut_ptr(), self.cap) };
     }
 }
 
@@ -2181,7 +2185,7 @@ impl<'a, T> Drop for Drain<'a, T> {
 
         if self.tail_len > 0 {
             unsafe {
-                let source_vec = &mut **self.vec;
+                let source_vec = &mut *self.vec.as_mut_ptr();
                 // memmove back untouched tail, update to new length
                 let start = source_vec.len();
                 let tail = self.tail_start;
