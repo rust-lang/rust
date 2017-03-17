@@ -42,6 +42,7 @@ pub enum TypeVariableOrigin {
     AdjustmentType(Span),
     DivergingStmt(Span),
     DivergingBlockExpr(Span),
+    DivergingFn(Span),
     LatticeVariable(Span),
 }
 
