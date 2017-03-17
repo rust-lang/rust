@@ -79,9 +79,7 @@ matrix:
         MACOSX_STD_DEPLOYMENT_TARGET=10.7
       os: osx
       osx_image: xcode8.2
-      install: >
-        travis_retry curl -o /usr/local/bin/sccache https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-03-16-sccache-x86_64-apple-darwin &&
-          chmod +x /usr/local/bin/sccache
+      install: *osx_install_sccache
     - env: >
         RUST_CHECK_TARGET=dist
         RUST_CONFIGURE_ARGS="--target=aarch64-apple-ios,armv7-apple-ios,armv7s-apple-ios,i386-apple-ios,x86_64-apple-ios --enable-extended"
@@ -122,8 +120,9 @@ env:
 
 # Note that this is overridden on OSX builders
 install: >
-  travis_retry curl -o /usr/local/bin/stamp https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-03-17-stamp-x86_64-unknown-linux-musl &&
-    chmod +x /usr/local/bin/stamp
+  travis_retry curl -o $HOME/stamp https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-03-17-stamp-x86_64-unknown-linux-musl &&
+    chmod +x $HOME/stamp &&
+    export PATH=$PATH:$HOME
 
 before_script:
   - >
