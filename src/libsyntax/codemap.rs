@@ -17,6 +17,8 @@
 //! within the CodeMap, which upon request can be converted to line and column
 //! information, source code snippets, etc.
 
+pub use syntax_pos::*;
+pub use syntax_pos::hygiene::{ExpnFormat, ExpnInfo, NameAndSpan};
 pub use self::ExpnFormat::*;
 
 use std::cell::RefCell;
@@ -26,33 +28,19 @@ use std::rc::Rc;
 use std::env;
 use std::fs;
 use std::io::{self, Read};
-pub use syntax_pos::*;
 use errors::CodeMapper;
-
-use ast::Name;
 
 /// Return the span itself if it doesn't come from a macro expansion,
 /// otherwise return the call site span up to the `enclosing_sp` by
 /// following the `expn_info` chain.
-pub fn original_sp(cm: &CodeMap, sp: Span, enclosing_sp: Span) -> Span {
-    let call_site1 = cm.with_expn_info(sp.expn_id, |ei| ei.map(|ei| ei.call_site));
-    let call_site2 = cm.with_expn_info(enclosing_sp.expn_id, |ei| ei.map(|ei| ei.call_site));
+pub fn original_sp(sp: Span, enclosing_sp: Span) -> Span {
+    let call_site1 = sp.ctxt.outer().expn_info().map(|ei| ei.call_site);
+    let call_site2 = enclosing_sp.ctxt.outer().expn_info().map(|ei| ei.call_site);
     match (call_site1, call_site2) {
         (None, _) => sp,
         (Some(call_site1), Some(call_site2)) if call_site1 == call_site2 => sp,
-        (Some(call_site1), _) => original_sp(cm, call_site1, enclosing_sp),
+        (Some(call_site1), _) => original_sp(call_site1, enclosing_sp),
     }
-}
-
-/// The source of expansion.
-#[derive(Clone, Hash, Debug, PartialEq, Eq)]
-pub enum ExpnFormat {
-    /// e.g. #[derive(...)] <item>
-    MacroAttribute(Name),
-    /// e.g. `format!()`
-    MacroBang(Name),
-    /// Desugaring done by the compiler during HIR lowering.
-    CompilerDesugaring(Name)
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
@@ -71,47 +59,6 @@ pub fn respan<T>(sp: Span, t: T) -> Spanned<T> {
 
 pub fn dummy_spanned<T>(t: T) -> Spanned<T> {
     respan(DUMMY_SP, t)
-}
-
-#[derive(Clone, Hash, Debug)]
-pub struct NameAndSpan {
-    /// The format with which the macro was invoked.
-    pub format: ExpnFormat,
-    /// Whether the macro is allowed to use #[unstable]/feature-gated
-    /// features internally without forcing the whole crate to opt-in
-    /// to them.
-    pub allow_internal_unstable: bool,
-    /// The span of the macro definition itself. The macro may not
-    /// have a sensible definition span (e.g. something defined
-    /// completely inside libsyntax) in which case this is None.
-    pub span: Option<Span>
-}
-
-impl NameAndSpan {
-    pub fn name(&self) -> Name {
-        match self.format {
-            ExpnFormat::MacroAttribute(s) |
-            ExpnFormat::MacroBang(s) |
-            ExpnFormat::CompilerDesugaring(s) => s,
-        }
-    }
-}
-
-/// Extra information for tracking spans of macro and syntax sugar expansion
-#[derive(Hash, Debug)]
-pub struct ExpnInfo {
-    /// The location of the actual macro invocation or syntax sugar , e.g.
-    /// `let x = foo!();` or `if let Some(y) = x {}`
-    ///
-    /// This may recursively refer to other macro invocations, e.g. if
-    /// `foo!()` invoked `bar!()` internally, and there was an
-    /// expression inside `bar!`; the call_site of the expression in
-    /// the expansion would point to the `bar!` invocation; that
-    /// call_site span would have its own ExpnInfo, with the call_site
-    /// pointing to the `foo!` invocation.
-    pub call_site: Span,
-    /// Information about the expansion.
-    pub callee: NameAndSpan
 }
 
 // _____________________________________________________________________________
@@ -161,7 +108,6 @@ impl FileLoader for RealFileLoader {
 
 pub struct CodeMap {
     pub files: RefCell<Vec<Rc<FileMap>>>,
-    expansions: RefCell<Vec<ExpnInfo>>,
     file_loader: Box<FileLoader>
 }
 
@@ -169,7 +115,6 @@ impl CodeMap {
     pub fn new() -> CodeMap {
         CodeMap {
             files: RefCell::new(Vec::new()),
-            expansions: RefCell::new(Vec::new()),
             file_loader: Box::new(RealFileLoader)
         }
     }
@@ -177,7 +122,6 @@ impl CodeMap {
     pub fn with_file_loader(file_loader: Box<FileLoader>) -> CodeMap {
         CodeMap {
             files: RefCell::new(Vec::new()),
-            expansions: RefCell::new(Vec::new()),
             file_loader: file_loader
         }
     }
@@ -353,14 +297,14 @@ impl CodeMap {
     /// Returns `Some(span)`, a union of the lhs and rhs span.  The lhs must precede the rhs. If
     /// there are gaps between lhs and rhs, the resulting union will cross these gaps.
     /// For this to work, the spans have to be:
-    ///    * the expn_id of both spans much match
+    ///    * the ctxt of both spans much match
     ///    * the lhs span needs to end on the same line the rhs span begins
     ///    * the lhs span must start at or before the rhs span
     pub fn merge_spans(&self, sp_lhs: Span, sp_rhs: Span) -> Option<Span> {
         use std::cmp;
 
         // make sure we're at the same expansion id
-        if sp_lhs.expn_id != sp_rhs.expn_id {
+        if sp_lhs.ctxt != sp_rhs.ctxt {
             return None;
         }
 
@@ -383,7 +327,7 @@ impl CodeMap {
             Some(Span {
                 lo: cmp::min(sp_lhs.lo, sp_rhs.lo),
                 hi: cmp::max(sp_lhs.hi, sp_rhs.hi),
-                expn_id: sp_lhs.expn_id,
+                ctxt: sp_lhs.ctxt,
             })
         } else {
             None
@@ -391,10 +335,6 @@ impl CodeMap {
     }
 
     pub fn span_to_string(&self, sp: Span) -> String {
-        if sp == COMMAND_LINE_SP {
-            return "<command line option>".to_string();
-        }
-
         if self.files.borrow().is_empty() && sp.source_equal(&DUMMY_SP) {
             return "no-location".to_string();
         }
@@ -407,62 +347,6 @@ impl CodeMap {
                         lo.col.to_usize() + 1,
                         hi.line,
                         hi.col.to_usize() + 1)).to_string()
-    }
-
-    /// Return the source span - this is either the supplied span, or the span for
-    /// the macro callsite that expanded to it.
-    pub fn source_callsite(&self, sp: Span) -> Span {
-        let mut span = sp;
-        // Special case - if a macro is parsed as an argument to another macro, the source
-        // callsite is the first callsite, which is also source-equivalent to the span.
-        let mut first = true;
-        while span.expn_id != NO_EXPANSION && span.expn_id != COMMAND_LINE_EXPN {
-            if let Some(callsite) = self.with_expn_info(span.expn_id,
-                                               |ei| ei.map(|ei| ei.call_site.clone())) {
-                if first && span.source_equal(&callsite) {
-                    if self.lookup_char_pos(span.lo).file.is_real_file() {
-                        return Span { expn_id: NO_EXPANSION, .. span };
-                    }
-                }
-                first = false;
-                span = callsite;
-            }
-            else {
-                break;
-            }
-        }
-        span
-    }
-
-    /// Return the source callee.
-    ///
-    /// Returns None if the supplied span has no expansion trace,
-    /// else returns the NameAndSpan for the macro definition
-    /// corresponding to the source callsite.
-    pub fn source_callee(&self, sp: Span) -> Option<NameAndSpan> {
-        let mut span = sp;
-        // Special case - if a macro is parsed as an argument to another macro, the source
-        // callsite is source-equivalent to the span, and the source callee is the first callee.
-        let mut first = true;
-        while let Some(callsite) = self.with_expn_info(span.expn_id,
-                                            |ei| ei.map(|ei| ei.call_site.clone())) {
-            if first && span.source_equal(&callsite) {
-                if self.lookup_char_pos(span.lo).file.is_real_file() {
-                    return self.with_expn_info(span.expn_id,
-                                               |ei| ei.map(|ei| ei.callee.clone()));
-                }
-            }
-            first = false;
-            if let Some(_) = self.with_expn_info(callsite.expn_id,
-                                                 |ei| ei.map(|ei| ei.call_site.clone())) {
-                span = callsite;
-            }
-            else {
-                return self.with_expn_info(span.expn_id,
-                                           |ei| ei.map(|ei| ei.callee.clone()));
-            }
-        }
-        None
     }
 
     pub fn span_to_filename(&self, sp: Span) -> FileName {
@@ -628,110 +512,8 @@ impl CodeMap {
         return a;
     }
 
-    pub fn record_expansion(&self, expn_info: ExpnInfo) -> ExpnId {
-        let mut expansions = self.expansions.borrow_mut();
-        expansions.push(expn_info);
-        let len = expansions.len();
-        if len > u32::max_value() as usize {
-            panic!("too many ExpnInfo's!");
-        }
-        ExpnId(len as u32 - 1)
-    }
-
-    pub fn with_expn_info<T, F>(&self, id: ExpnId, f: F) -> T where
-        F: FnOnce(Option<&ExpnInfo>) -> T,
-    {
-        match id {
-            NO_EXPANSION | COMMAND_LINE_EXPN => f(None),
-            ExpnId(i) => f(Some(&(*self.expansions.borrow())[i as usize]))
-        }
-    }
-
-    /// Check if a span is "internal" to a macro in which #[unstable]
-    /// items can be used (that is, a macro marked with
-    /// `#[allow_internal_unstable]`).
-    pub fn span_allows_unstable(&self, span: Span) -> bool {
-        debug!("span_allows_unstable(span = {:?})", span);
-        let mut allows_unstable = false;
-        let mut expn_id = span.expn_id;
-        loop {
-            let quit = self.with_expn_info(expn_id, |expninfo| {
-                debug!("span_allows_unstable: expninfo = {:?}", expninfo);
-                expninfo.map_or(/* hit the top level */ true, |info| {
-
-                    let span_comes_from_this_expansion =
-                        info.callee.span.map_or(span.source_equal(&info.call_site), |mac_span| {
-                            mac_span.contains(span)
-                        });
-
-                    debug!("span_allows_unstable: span: {:?} call_site: {:?} callee: {:?}",
-                           (span.lo, span.hi),
-                           (info.call_site.lo, info.call_site.hi),
-                           info.callee.span.map(|x| (x.lo, x.hi)));
-                    debug!("span_allows_unstable: from this expansion? {}, allows unstable? {}",
-                           span_comes_from_this_expansion,
-                           info.callee.allow_internal_unstable);
-                    if span_comes_from_this_expansion {
-                        allows_unstable = info.callee.allow_internal_unstable;
-                        // we've found the right place, stop looking
-                        true
-                    } else {
-                        // not the right place, keep looking
-                        expn_id = info.call_site.expn_id;
-                        false
-                    }
-                })
-            });
-            if quit {
-                break
-            }
-        }
-        debug!("span_allows_unstable? {}", allows_unstable);
-        allows_unstable
-    }
-
     pub fn count_lines(&self) -> usize {
         self.files.borrow().iter().fold(0, |a, f| a + f.count_lines())
-    }
-
-    pub fn macro_backtrace(&self, span: Span) -> Vec<MacroBacktrace> {
-        let mut prev_span = DUMMY_SP;
-        let mut span = span;
-        let mut result = vec![];
-        loop {
-            let span_name_span = self.with_expn_info(span.expn_id, |expn_info| {
-                expn_info.map(|ei| {
-                    let (pre, post) = match ei.callee.format {
-                        MacroAttribute(..) => ("#[", "]"),
-                        MacroBang(..) => ("", "!"),
-                        CompilerDesugaring(..) => ("desugaring of `", "`"),
-                    };
-                    let macro_decl_name = format!("{}{}{}",
-                                                  pre,
-                                                  ei.callee.name(),
-                                                  post);
-                    let def_site_span = ei.callee.span;
-                    (ei.call_site, macro_decl_name, def_site_span)
-                })
-            });
-
-            match span_name_span {
-                None => break,
-                Some((call_site, macro_decl_name, def_site_span)) => {
-                    // Don't print recursive invocations
-                    if !call_site.source_equal(&prev_span) {
-                        result.push(MacroBacktrace {
-                            call_site: call_site,
-                            macro_decl_name: macro_decl_name,
-                            def_site_span: def_site_span,
-                        });
-                    }
-                    prev_span = span;
-                    span = call_site;
-                }
-            }
-        }
-        result
     }
 }
 
@@ -748,9 +530,6 @@ impl CodeMapper for CodeMap {
     fn span_to_filename(&self, sp: Span) -> FileName {
         self.span_to_filename(sp)
     }
-    fn macro_backtrace(&self, span: Span) -> Vec<MacroBacktrace> {
-        self.macro_backtrace(span)
-    }
     fn merge_spans(&self, sp_lhs: Span, sp_rhs: Span) -> Option<Span> {
         self.merge_spans(sp_lhs, sp_rhs)
     }
@@ -763,7 +542,6 @@ impl CodeMapper for CodeMap {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use symbol::keywords;
     use std::rc::Rc;
 
     #[test]
@@ -912,7 +690,7 @@ mod tests {
     fn t7() {
         // Test span_to_lines for a span ending at the end of filemap
         let cm = init_code_map();
-        let span = Span {lo: BytePos(12), hi: BytePos(23), expn_id: NO_EXPANSION};
+        let span = Span {lo: BytePos(12), hi: BytePos(23), ctxt: NO_EXPANSION};
         let file_lines = cm.span_to_lines(span).unwrap();
 
         assert_eq!(file_lines.file.name, "blork.rs");
@@ -928,7 +706,7 @@ mod tests {
         assert_eq!(input.len(), selection.len());
         let left_index = selection.find('~').unwrap() as u32;
         let right_index = selection.rfind('~').map(|x|x as u32).unwrap_or(left_index);
-        Span { lo: BytePos(left_index), hi: BytePos(right_index + 1), expn_id: NO_EXPANSION }
+        Span { lo: BytePos(left_index), hi: BytePos(right_index + 1), ctxt: NO_EXPANSION }
     }
 
     /// Test span_to_snippet and span_to_lines for a span coverting 3
@@ -958,7 +736,7 @@ mod tests {
     fn t8() {
         // Test span_to_snippet for a span ending at the end of filemap
         let cm = init_code_map();
-        let span = Span {lo: BytePos(12), hi: BytePos(23), expn_id: NO_EXPANSION};
+        let span = Span {lo: BytePos(12), hi: BytePos(23), ctxt: NO_EXPANSION};
         let snippet = cm.span_to_snippet(span);
 
         assert_eq!(snippet, Ok("second line".to_string()));
@@ -968,7 +746,7 @@ mod tests {
     fn t9() {
         // Test span_to_str for a span ending at the end of filemap
         let cm = init_code_map();
-        let span = Span {lo: BytePos(12), hi: BytePos(23), expn_id: NO_EXPANSION};
+        let span = Span {lo: BytePos(12), hi: BytePos(23), ctxt: NO_EXPANSION};
         let sstr =  cm.span_to_string(span);
 
         assert_eq!(sstr, "blork.rs:2:1: 2:12");
@@ -1022,7 +800,7 @@ mod tests {
                     let span = Span {
                         lo: BytePos(lo as u32 + file.start_pos.0),
                         hi: BytePos(hi as u32 + file.start_pos.0),
-                        expn_id: NO_EXPANSION,
+                        ctxt: NO_EXPANSION,
                     };
                     assert_eq!(&self.span_to_snippet(span).unwrap()[..],
                             substring);
@@ -1031,46 +809,5 @@ mod tests {
                 i += 1;
             }
         }
-    }
-
-    fn init_expansion_chain(cm: &CodeMap) -> Span {
-        // Creates an expansion chain containing two recursive calls
-        // root -> expA -> expA -> expB -> expB -> end
-        let root = Span { lo: BytePos(0), hi: BytePos(11), expn_id: NO_EXPANSION };
-
-        let format_root = ExpnFormat::MacroBang(keywords::Invalid.name());
-        let callee_root = NameAndSpan { format: format_root,
-                                        allow_internal_unstable: false,
-                                        span: Some(root) };
-
-        let info_a1 = ExpnInfo { call_site: root, callee: callee_root };
-        let id_a1 = cm.record_expansion(info_a1);
-        let span_a1 = Span { lo: BytePos(12), hi: BytePos(23), expn_id: id_a1 };
-
-        let format_a = ExpnFormat::MacroBang(keywords::As.name());
-        let callee_a = NameAndSpan { format: format_a,
-                                      allow_internal_unstable: false,
-                                      span: Some(span_a1) };
-
-        let info_a2 = ExpnInfo { call_site: span_a1, callee: callee_a.clone() };
-        let id_a2 = cm.record_expansion(info_a2);
-        let span_a2 = Span { lo: BytePos(12), hi: BytePos(23), expn_id: id_a2 };
-
-        let info_b1 = ExpnInfo { call_site: span_a2, callee: callee_a };
-        let id_b1 = cm.record_expansion(info_b1);
-        let span_b1 = Span { lo: BytePos(25), hi: BytePos(36), expn_id: id_b1 };
-
-        let format_b = ExpnFormat::MacroBang(keywords::Box.name());
-        let callee_b = NameAndSpan { format: format_b,
-                                     allow_internal_unstable: false,
-                                     span: None };
-
-        let info_b2 = ExpnInfo { call_site: span_b1, callee: callee_b.clone() };
-        let id_b2 = cm.record_expansion(info_b2);
-        let span_b2 = Span { lo: BytePos(25), hi: BytePos(36), expn_id: id_b2 };
-
-        let info_end = ExpnInfo { call_site: span_b2, callee: callee_b };
-        let id_end = cm.record_expansion(info_end);
-        Span { lo: BytePos(37), hi: BytePos(48), expn_id: id_end }
     }
 }

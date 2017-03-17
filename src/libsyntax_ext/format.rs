@@ -641,10 +641,11 @@ impl<'a, 'b> Context<'a, 'b> {
 
     fn format_arg(ecx: &ExtCtxt,
                   macsp: Span,
-                  sp: Span,
+                  mut sp: Span,
                   ty: &ArgumentType,
                   arg: P<ast::Expr>)
                   -> P<ast::Expr> {
+        sp.ctxt = sp.ctxt.apply_mark(ecx.current_expansion.mark);
         let trait_ = match *ty {
             Placeholder(ref tyname) => {
                 match &tyname[..] {
