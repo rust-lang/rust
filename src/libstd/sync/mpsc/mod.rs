@@ -460,10 +460,10 @@ impl<T> UnsafeFlavor<T> for Receiver<T> {
 /// All data sent on the sender will become available on the receiver, and no
 /// send will block the calling thread (this channel has an "infinite buffer").
 ///
-/// If the [`Receiver`] is disconnected while trying to [`send()`] with the
-/// [`Sender`], the [`send()`] method will return an error.
+/// If the [`Receiver`] is disconnected while trying to [`send`] with the
+/// [`Sender`], the [`send`] method will return an error.
 ///
-/// [`send()`]: ../../../std/sync/mpsc/struct.Sender.html#method.send
+/// [`send`]: ../../../std/sync/mpsc/struct.Sender.html#method.send
 /// [`Sender`]: ../../../std/sync/mpsc/struct.Sender.html
 /// [`Receiver`]: ../../../std/sync/mpsc/struct.Receiver.html
 ///
@@ -504,13 +504,13 @@ pub fn channel<T>() -> (Sender<T>, Receiver<T>) {
 /// `bound` specifies the buffer size. When the internal buffer becomes full,
 /// future sends will *block* waiting for the buffer to open up. Note that a
 /// buffer size of 0 is valid, in which case this becomes "rendezvous channel"
-/// where each [`send()`] will not return until a recv is paired with it.
+/// where each [`send`] will not return until a recv is paired with it.
 ///
 /// Like asynchronous channels, if the [`Receiver`] is disconnected while
-/// trying to [`send()`] with the [`SyncSender`], the [`send()`] method will
+/// trying to [`send`] with the [`SyncSender`], the [`send`] method will
 /// return an error.
 ///
-/// [`send()`]: ../../../std/sync/mpsc/struct.SyncSender.html#method.send
+/// [`send`]: ../../../std/sync/mpsc/struct.SyncSender.html#method.send
 /// [`SyncSender`]: ../../../std/sync/mpsc/struct.SyncSender.html
 /// [`Receiver`]: ../../../std/sync/mpsc/struct.Receiver.html
 ///

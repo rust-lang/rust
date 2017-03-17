@@ -90,29 +90,29 @@
 //! two ways:
 //!
 //! * By spawning a new thread, e.g. using the [`thread::spawn`][`spawn`]
-//!   function, and calling [`thread()`] on the [`JoinHandle`].
-//! * By requesting the current thread, using the [`thread::current()`] function.
+//!   function, and calling [`thread`] on the [`JoinHandle`].
+//! * By requesting the current thread, using the [`thread::current`] function.
 //!
-//! The [`thread::current()`] function is available even for threads not spawned
+//! The [`thread::current`] function is available even for threads not spawned
 //! by the APIs of this module.
 //!
 //! ## Blocking support: park and unpark
 //!
 //! Every thread is equipped with some basic low-level blocking support, via the
-//! [`thread::park()`][`park()`] function and [`thread::Thread::unpark()`][`unpark()`]
-//! method. [`park()`] blocks the current thread, which can then be resumed from
-//! another thread by calling the [`unpark()`] method on the blocked thread's handle.
+//! [`thread::park`][`park`] function and [`thread::Thread::unpark()`][`unpark`]
+//! method. [`park`] blocks the current thread, which can then be resumed from
+//! another thread by calling the [`unpark`] method on the blocked thread's handle.
 //!
 //! Conceptually, each [`Thread`] handle has an associated token, which is
 //! initially not present:
 //!
-//! * The [`thread::park()`][`park()`] function blocks the current thread unless or until
+//! * The [`thread::park`][`park`] function blocks the current thread unless or until
 //!   the token is available for its thread handle, at which point it atomically
 //!   consumes the token. It may also return *spuriously*, without consuming the
-//!   token. [`thread::park_timeout()`] does the same, but allows specifying a
+//!   token. [`thread::park_timeout`] does the same, but allows specifying a
 //!   maximum time to block the thread for.
 //!
-//! * The [`unpark()`] method on a [`Thread`] atomically makes the token available
+//! * The [`unpark`] method on a [`Thread`] atomically makes the token available
 //!   if it wasn't already.
 //!
 //! In other words, each [`Thread`] acts a bit like a semaphore with initial count
@@ -122,7 +122,7 @@
 //! The API is typically used by acquiring a handle to the current thread,
 //! placing that handle in a shared data structure so that other threads can
 //! find it, and then `park`ing. When some desired condition is met, another
-//! thread calls [`unpark()`] on the handle.
+//! thread calls [`unpark`] on the handle.
 //!
 //! The motivation for this design is twofold:
 //!
@@ -151,18 +151,18 @@
 //! [`Arc`]: ../../std/sync/struct.Arc.html
 //! [`spawn`]: ../../std/thread/fn.spawn.html
 //! [`JoinHandle`]: ../../std/thread/struct.JoinHandle.html
-//! [`thread()`]: ../../std/thread/struct.JoinHandle.html#method.thread
+//! [`thread`]: ../../std/thread/struct.JoinHandle.html#method.thread
 //! [`join`]: ../../std/thread/struct.JoinHandle.html#method.join
 //! [`Result`]: ../../std/result/enum.Result.html
 //! [`Ok`]: ../../std/result/enum.Result.html#variant.Ok
 //! [`Err`]: ../../std/result/enum.Result.html#variant.Err
 //! [`panic!`]: ../../std/macro.panic.html
 //! [`Builder`]: ../../std/thread/struct.Builder.html
-//! [`thread::current()`]: ../../std/thread/fn.spawn.html
+//! [`thread::current`]: ../../std/thread/fn.spawn.html
 //! [`Thread`]: ../../std/thread/struct.Thread.html
-//! [`park()`]: ../../std/thread/fn.park.html
-//! [`unpark()`]: ../../std/thread/struct.Thread.html#method.unpark
-//! [`thread::park_timeout()`]: ../../std/thread/fn.park_timeout.html
+//! [`park`]: ../../std/thread/fn.park.html
+//! [`unpark`]: ../../std/thread/struct.Thread.html#method.unpark
+//! [`thread::park_timeout`]: ../../std/thread/fn.park_timeout.html
 //! [`Cell`]: ../cell/struct.Cell.html
 //! [`RefCell`]: ../cell/struct.RefCell.html
 //! [`thread_local!`]: ../macro.thread_local.html
@@ -547,7 +547,7 @@ pub fn sleep(dur: Duration) {
 /// Blocks unless or until the current thread's token is made available.
 ///
 /// Every thread is equipped with some basic low-level blocking support, via
-/// the `park()` function and the [`unpark()`][unpark] method. These can be
+/// the `park()` function and the [`unpark`][unpark] method. These can be
 /// used as a more CPU-efficient implementation of a spinlock.
 ///
 /// [unpark]: struct.Thread.html#method.unpark
@@ -745,7 +745,7 @@ pub struct Thread {
 
 impl Thread {
     // Used only internally to construct a thread object without spawning
-    fn new(name: Option<String>) -> Thread {
+    pub(crate) fn new(name: Option<String>) -> Thread {
         let cname = name.map(|n| {
             CString::new(n).expect("thread name may not contain interior null bytes")
         });
@@ -856,11 +856,6 @@ impl fmt::Debug for Thread {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Debug::fmt(&self.name(), f)
     }
-}
-
-// a hack to get around privacy restrictions
-impl thread_info::NewThread for Thread {
-    fn new(name: Option<String>) -> Thread { Thread::new(name) }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

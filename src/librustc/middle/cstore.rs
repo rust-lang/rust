@@ -123,7 +123,7 @@ pub enum LinkagePreference {
 pub enum NativeLibraryKind {
     NativeStatic,    // native static library (.a archive)
     NativeStaticNobundle, // native static library, which doesn't get bundled into .rlibs
-    NativeFramework, // OSX-specific
+    NativeFramework, // macOS-specific
     NativeUnknown,   // default way to specify a dynamic library
 }
 
