@@ -415,15 +415,16 @@ impl Diverges {
 }
 
 #[derive(Clone)]
-pub struct BreakableCtxt<'gcx, 'tcx> {
-    unified: Ty<'tcx>,
-    coerce_to: Ty<'tcx>,
-    break_exprs: Vec<&'gcx hir::Expr>,
+pub struct BreakableCtxt<'gcx: 'tcx, 'tcx> {
     may_break: bool,
+
+    // this is `null` for loops where break with a value is illegal,
+    // such as `while`, `for`, and `while let`
+    coerce: Option<CoerceMany<'gcx, 'tcx>>,
 }
 
 #[derive(Clone)]
-pub struct EnclosingBreakables<'gcx, 'tcx> {
+pub struct EnclosingBreakables<'gcx: 'tcx, 'tcx> {
     stack: Vec<BreakableCtxt<'gcx, 'tcx>>,
     by_id: NodeMap<usize>,
 }
@@ -3547,60 +3548,66 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
               tcx.mk_nil()
           }
           hir::ExprBreak(destination, ref expr_opt) => {
-            if let Some(target_id) = destination.target_id.opt_id() {
-                let coerce_to = {
-                    let mut enclosing_breakables = self.enclosing_breakables.borrow_mut();
-                    enclosing_breakables.find_breakable(target_id).coerce_to
-                };
+              if let Some(target_id) = destination.target_id.opt_id() {
+                  let (e_ty, cause);
+                  if let Some(ref e) = *expr_opt {
+                      // If this is a break with a value, we need to type-check
+                      // the expression. Get an expected type from the loop context.
+                      let opt_coerce_to = {
+                          let mut enclosing_breakables = self.enclosing_breakables.borrow_mut();
+                          enclosing_breakables.find_breakable(target_id)
+                                              .coerce
+                                              .as_ref()
+                                              .map(|coerce| coerce.expected_ty())
+                      };
 
-                let e_ty;
-                let cause;
-                if let Some(ref e) = *expr_opt {
-                    // Recurse without `enclosing_loops` borrowed.
-                    e_ty = self.check_expr_with_hint(e, coerce_to);
-                    cause = self.misc(e.span);
-                    // Notably, the recursive call may alter coerce_to - must not keep using it!
-                } else {
-                    // `break` without argument acts like `break ()`.
-                    e_ty = tcx.mk_nil();
-                    cause = self.misc(expr.span);
-                }
+                      // If the loop context is not a `loop { }`, then break with
+                      // a value is illegal, and `opt_coerce_to` will be `None`.
+                      // Just set expectation to error in that case.
+                      let coerce_to = opt_coerce_to.unwrap_or(tcx.types.err);
 
-                let mut enclosing_breakables = self.enclosing_breakables.borrow_mut();
-                let ctxt = enclosing_breakables.find_breakable(target_id);
+                      // Recurse without `enclosing_breakables` borrowed.
+                      e_ty = self.check_expr_with_hint(e, coerce_to);
+                      cause = self.misc(e.span);
+                  } else {
+                      // Otherwise, this is a break *without* a value. That's
+                      // always legal, and is equivalent to `break ()`.
+                      e_ty = tcx.mk_nil();
+                      cause = self.misc(expr.span);
+                  }
 
-                let result = if let Some(ref e) = *expr_opt {
-                    // Special-case the first element, as it has no "previous expressions".
-                    let result = if !ctxt.may_break {
-                        self.try_coerce(e, e_ty, ctxt.coerce_to)
-                    } else {
-                        self.try_find_coercion_lub(&cause, || ctxt.break_exprs.iter().cloned(),
-                                                   ctxt.unified, e, e_ty)
-                    };
+                  // Now that we have type-checked `expr_opt`, borrow
+                  // the `enclosing_loops` field and let's coerce the
+                  // type of `expr_opt` into what is expected.
+                  let mut enclosing_breakables = self.enclosing_breakables.borrow_mut();
+                  let ctxt = enclosing_breakables.find_breakable(target_id);
+                  if let Some(ref mut coerce) = ctxt.coerce {
+                      if let Some(ref e) = *expr_opt {
+                          coerce.coerce(self, &cause, e, e_ty);
+                      } else {
+                          assert!(e_ty.is_nil());
+                          coerce.coerce_forced_unit(self, &cause);
+                      }
+                  } else {
+                      // If `ctxt.coerce` is `None`, we can just ignore
+                      // the type of the expresison.  This is because
+                      // either this was a break *without* a value, in
+                      // which case it is always a legal type (`()`), or
+                      // else an error would have been flagged by the
+                      // `loops` pass for using break with an expression
+                      // where you are not supposed to.
+                      assert!(expr_opt.is_none() || self.tcx.sess.err_count() > 0);
+                  }
 
-                    ctxt.break_exprs.push(e);
-                    result
-                } else {
-                    self.eq_types(true, &cause, e_ty, ctxt.unified)
-                        .map(|InferOk { obligations, .. }| {
-                            // FIXME(#32730) propagate obligations
-                            assert!(obligations.is_empty());
-                            e_ty
-                        })
-                };
-                match result {
-                    Ok(ty) => ctxt.unified = ty,
-                    Err(err) => {
-                        self.report_mismatched_types(&cause, ctxt.unified, e_ty, err).emit();
-                    }
-                }
+                  ctxt.may_break = true;
+              } else {
+                  // Otherwise, we failed to find the enclosing loop; this can only happen if the
+                  // `break` was not inside a loop at all, which is caught by the loop-checking pass.
+                  assert!(self.tcx.sess.err_count() > 0);
+              }
 
-                ctxt.may_break = true;
-            }
-            // Otherwise, we failed to find the enclosing breakable; this can only happen if the
-            // `break` target was not found, which is caught in HIR lowering and reported by the
-            // loop-checking pass.
-            tcx.types.never
+              // the type of a `break` is always `!`, since it diverges
+              tcx.types.never
           }
           hir::ExprAgain(_) => { tcx.types.never }
           hir::ExprRet(ref expr_opt) => {
@@ -3645,51 +3652,59 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                    expr.span, expected)
           }
           hir::ExprWhile(ref cond, ref body, _) => {
-            let unified = self.tcx.mk_nil();
-            let coerce_to = unified;
-            let ctxt = BreakableCtxt {
-                unified: unified,
-                coerce_to: coerce_to,
-                break_exprs: vec![],
-                may_break: true,
-            };
-            self.with_breakable_ctxt(expr.id, ctxt, || {
-                self.check_expr_has_type(&cond, tcx.types.bool);
-                let cond_diverging = self.diverges.get();
-                self.check_block_no_value(&body);
+              let ctxt = BreakableCtxt {
+                  // cannot use break with a value from a while loop
+                  coerce: None,
+                  may_break: true,
+              };
 
-                // We may never reach the body so it diverging means nothing.
-                self.diverges.set(cond_diverging);
-            });
+              self.with_breakable_ctxt(expr.id, ctxt, || {
+                  self.check_expr_has_type(&cond, tcx.types.bool);
+                  let cond_diverging = self.diverges.get();
+                  self.check_block_no_value(&body);
 
-            if self.has_errors.get() {
-                tcx.types.err
-            } else {
-                tcx.mk_nil()
-            }
+                  // We may never reach the body so it diverging means nothing.
+                  self.diverges.set(cond_diverging);
+              });
+
+              self.tcx.mk_nil()
           }
-          hir::ExprLoop(ref body, _, _) => {
-            let unified = self.next_ty_var(TypeVariableOrigin::TypeInference(body.span));
-            let coerce_to = expected.only_has_type(self).unwrap_or(unified);
-            let ctxt = BreakableCtxt {
-                unified: unified,
-                coerce_to: coerce_to,
-                break_exprs: vec![],
-                may_break: false,
-            };
+          hir::ExprLoop(ref body, _, source) => {
+              let coerce = match source {
+                  // you can only use break with a value from a normal `loop { }`
+                  hir::LoopSource::Loop => {
+                      let coerce_to = expected.only_has_type_or_fresh_var(self, body.span);
+                      Some(CoerceMany::new(coerce_to))
+                  }
 
-            let (ctxt, ()) = self.with_breakable_ctxt(expr.id, ctxt, || {
-                self.check_block_no_value(&body);
-            });
-            if ctxt.may_break {
-                // No way to know whether it's diverging because
-                // of a `break` or an outer `break` or `return.
-                self.diverges.set(Diverges::Maybe);
+                  hir::LoopSource::WhileLet |
+                  hir::LoopSource::ForLoop => {
+                      None
+                  }
+              };
 
-                ctxt.unified
-            } else {
-                tcx.types.never
-            }
+              let ctxt = BreakableCtxt {
+                  coerce: coerce,
+                  may_break: false, // will get updated if/when we find a `break`
+              };
+
+              let (ctxt, ()) = self.with_breakable_ctxt(expr.id, ctxt, || {
+                  self.check_block_no_value(&body);
+              });
+
+              if ctxt.may_break {
+                  // No way to know whether it's diverging because
+                  // of a `break` or an outer `break` or `return.
+                  self.diverges.set(Diverges::Maybe);
+              }
+
+              // If we permit break with a value, then result type is
+              // the LUB of the breaks (possibly ! if none); else, it
+              // is nil. This makes sense because infinite loops
+              // (which would have type !) are only possible iff we
+              // permit break with a value [1].
+              assert!(ctxt.coerce.is_some() || ctxt.may_break); // [1]
+              ctxt.coerce.map(|c| c.complete(self)).unwrap_or(self.tcx.mk_nil())
           }
           hir::ExprMatch(ref discrim, ref arms, match_src) => {
             self.check_match(expr, &discrim, arms, expected, match_src)
