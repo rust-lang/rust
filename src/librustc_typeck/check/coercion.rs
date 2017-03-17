@@ -169,7 +169,23 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
         }
 
         if a.is_never() {
-            return success(Adjust::NeverToAny, b, vec![]);
+            // Subtle: If we are coercing from `!` to `?T`, where `?T` is an unbound
+            // type variable, we want `?T` to fallback to `!` if not
+            // otherwise constrained. An example where this arises:
+            //
+            //     let _: Option<?T> = Some({ return; });
+            //
+            // here, we would coerce from `!` to `?T`.
+            let b = self.shallow_resolve(b);
+            return if self.shallow_resolve(b).is_ty_var() {
+                // micro-optimization: no need for this if `b` is
+                // already resolved in some way.
+                let diverging_ty = self.next_diverging_ty_var(
+                    TypeVariableOrigin::AdjustmentType(self.cause.span));
+                self.unify_and(&b, &diverging_ty, Adjust::NeverToAny)
+            } else {
+                success(Adjust::NeverToAny, b, vec![])
+            };
         }
 
         // Consider coercing the subtype to a DST
@@ -687,11 +703,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             let adjustment = self.register_infer_ok_obligations(ok);
             if !adjustment.is_identity() {
                 debug!("Success, coerced with {:?}", adjustment);
-                match self.tables.borrow().adjustments.get(&expr.id) {
-                    None |
-                    Some(&Adjustment { kind: Adjust::NeverToAny, .. }) => (),
-                    _ => bug!("expr already has an adjustment on it!"),
-                };
+                if self.tables.borrow().adjustments.get(&expr.id).is_some() {
+                    bug!("expr already has an adjustment on it!");
+                }
                 self.write_adjustment(expr.id, adjustment);
             }
             Ok(adjustment.target)
