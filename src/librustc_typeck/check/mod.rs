@@ -448,7 +448,7 @@ pub struct FnCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     // expects the types within the function to be consistent.
     err_count_on_creation: usize,
 
-    ret_ty: Option<Ty<'tcx>>,
+    ret_coercion: Option<RefCell<CoerceMany<'gcx, 'tcx>>>,
 
     ps: RefCell<UnsafetyState>,
 
@@ -679,7 +679,7 @@ fn typeck_tables<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
             check_fn(&inh, fn_sig, decl, id, body)
         } else {
-            let fcx = FnCtxt::new(&inh, None, body.value.id);
+            let fcx = FnCtxt::new(&inh, body.value.id);
             let expected_type = tcx.item_type(def_id);
             let expected_type = fcx.normalize_associated_types_in(body.value.span, &expected_type);
             fcx.require_type_is_sized(expected_type, body.value.span, traits::ConstSized);
@@ -800,15 +800,16 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
 
     // Create the function context.  This is either derived from scratch or,
     // in the case of function expressions, based on the outer context.
-    let mut fcx = FnCtxt::new(inherited, None, body.value.id);
-    let ret_ty = fn_sig.output();
+    let mut fcx = FnCtxt::new(inherited, body.value.id);
     *fcx.ps.borrow_mut() = UnsafetyState::function(fn_sig.unsafety, fn_id);
 
+    let ret_ty = fn_sig.output();
     fcx.require_type_is_sized(ret_ty, decl.output.span(), traits::ReturnType);
-    fcx.ret_ty = fcx.instantiate_anon_types(&Some(ret_ty));
+    let ret_ty = fcx.instantiate_anon_types(&ret_ty);
+    fcx.ret_coercion = Some(RefCell::new(CoerceMany::new(ret_ty)));
     fn_sig = fcx.tcx.mk_fn_sig(
         fn_sig.inputs().iter().cloned(),
-        fcx.ret_ty.unwrap(),
+        ret_ty,
         fn_sig.variadic,
         fn_sig.unsafety,
         fn_sig.abi
@@ -833,7 +834,38 @@ fn check_fn<'a, 'gcx, 'tcx>(inherited: &'a Inherited<'a, 'gcx, 'tcx>,
 
     inherited.tables.borrow_mut().liberated_fn_sigs.insert(fn_id, fn_sig);
 
-    fcx.check_expr_coercable_to_type(&body.value, fcx.ret_ty.unwrap());
+    fcx.check_return_expr(&body.value);
+
+    // Finalize the return check by taking the LUB of the return types
+    // we saw and assigning it to the expected return type. This isn't
+    // really expected to fail, since the coercions would have failed
+    // earlier when trying to find a LUB.
+    //
+    // However, the behavior around `!` is sort of complex. In the
+    // event that the `actual_return_ty` comes back as `!`, that
+    // indicates that the fn either does not return or "returns" only
+    // values of type `!`. In this case, if there is an expected
+    // return type that is *not* `!`, that should be ok. But if the
+    // return type is being inferred, we want to "fallback" to `!`:
+    //
+    //     let x = move || panic!();
+    //
+    // To allow for that, I am creating a type variable with diverging
+    // fallback. This was deemed ever so slightly better than unifying
+    // the return value with `!` because it allows for the caller to
+    // make more assumptions about the return type (e.g., they could do
+    //
+    //     let y: Option<u32> = Some(x());
+    //
+    // which would then cause this return type to become `u32`, not
+    // `!`).
+    let coercion = fcx.ret_coercion.take().unwrap().into_inner();
+    let mut actual_return_ty = coercion.complete(&fcx);
+    if actual_return_ty.is_never() {
+        actual_return_ty = fcx.next_diverging_ty_var(
+            TypeVariableOrigin::DivergingFn(body.value.span));
+    }
+    fcx.demand_suptype(body.value.span, ret_ty, actual_return_ty);
 
     fcx
 }
@@ -1429,14 +1461,13 @@ enum TupleArgumentsFlag {
 
 impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn new(inh: &'a Inherited<'a, 'gcx, 'tcx>,
-               rty: Option<Ty<'tcx>>,
                body_id: ast::NodeId)
                -> FnCtxt<'a, 'gcx, 'tcx> {
         FnCtxt {
             ast_ty_to_ty_cache: RefCell::new(NodeMap()),
             body_id: body_id,
             err_count_on_creation: inh.tcx.sess.err_count(),
-            ret_ty: rty,
+            ret_coercion: None,
             ps: RefCell::new(UnsafetyState::function(hir::Unsafety::Normal,
                                                      ast::CRATE_NODE_ID)),
             diverges: Cell::new(Diverges::Maybe),
@@ -2738,6 +2769,23 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         ret_ty
     }
 
+    fn check_return_expr(&self, return_expr: &'gcx hir::Expr) {
+        let ret_coercion =
+            self.ret_coercion
+                .as_ref()
+                .unwrap_or_else(|| span_bug!(return_expr.span,
+                                             "check_return_expr called outside fn body"));
+
+        let ret_ty = ret_coercion.borrow().expected_ty();
+        let return_expr_ty = self.check_expr_with_hint(return_expr, ret_ty);
+        ret_coercion.borrow_mut()
+                    .coerce(self,
+                            &self.misc(return_expr.span),
+                            return_expr,
+                            return_expr_ty);
+    }
+
+
     // A generic function for checking the then and else in an if
     // or if-else.
     fn check_then_else(&self,
@@ -3522,24 +3570,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
           }
           hir::ExprAgain(_) => { tcx.types.never }
           hir::ExprRet(ref expr_opt) => {
-            if self.ret_ty.is_none() {
+            if self.ret_coercion.is_none() {
                 struct_span_err!(self.tcx.sess, expr.span, E0572,
                                  "return statement outside of function body").emit();
             } else if let Some(ref e) = *expr_opt {
-                self.check_expr_coercable_to_type(&e, self.ret_ty.unwrap());
+                self.check_return_expr(e);
             } else {
-                match self.eq_types(false,
-                                    &self.misc(expr.span),
-                                    self.ret_ty.unwrap(),
-                                    tcx.mk_nil()) {
-                    Ok(ok) => self.register_infer_ok_obligations(ok),
-                    Err(_) => {
-                        struct_span_err!(tcx.sess, expr.span, E0069,
-                                         "`return;` in a function whose return type is not `()`")
-                            .span_label(expr.span, &format!("return type is not ()"))
-                            .emit();
-                    }
-                }
+                let mut coercion = self.ret_coercion.as_ref().unwrap().borrow_mut();
+                let cause = self.cause(expr.span, ObligationCauseCode::ReturnNoExpression);
+                coercion.coerce_forced_unit(self, &cause);
             }
             tcx.types.never
           }
