@@ -306,7 +306,8 @@
 //! `%`. The actual grammar for the formatting syntax is:
 //!
 //! ```text
-//! format_string := <text> [ format <text> ] *
+//! format_string := <text> [ maybe-format <text> ] *
+//! maybe-format := '{' '{' | '}' '}' | <format>
 //! format := '{' [ argument ] [ ':' format_spec ] '}'
 //! argument := integer | identifier
 //!
