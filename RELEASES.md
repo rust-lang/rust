@@ -4,7 +4,6 @@ Version 1.16.0 (2017-03-16)
 Language
 --------
 
-* Lifetimes in statics and consts default to `'static`. [RFC 1623]
 * [The compiler's `dead_code` lint now accounts for type aliases][38051].
 * [Uninhabitable enums (those without any variants) no longer permit wildcard
   match patterns][38069]
