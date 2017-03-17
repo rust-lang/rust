@@ -8,31 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that diverging types default to () (with feature(never_type) disabled).
+// Test a regression found when building compiler. The `produce()`
+// error type `T` winds up getting unified with result of `x.parse()`;
+// the type of the closure given to `unwrap_or_else` needs to be
+// inferred to `usize`.
 
-trait Balls: Sized {
-    fn smeg() -> Result<Self, ()>;
-}
+use std::num::ParseIntError;
 
-impl Balls for () {
-    fn smeg() -> Result<(), ()> { Ok(()) }
-}
-
-struct Flah;
-
-impl Flah {
-    fn flah<T: Balls>(&self) -> Result<T, ()> {
-        T::smeg()
-    }
-}
-
-fn doit() -> Result<(), ()> {
-    // The type of _ is unconstrained here and should default to ()
-    let _ = try!(Flah.flah());
-    Ok(())
+fn produce<T>() -> Result<&'static str, T> {
+    Ok("22")
 }
 
 fn main() {
-    let _ = doit();
+    let x: usize = produce()
+        .and_then(|x| x.parse())
+        .unwrap_or_else(|_| panic!());
+    println!("{}", x);
 }
-
