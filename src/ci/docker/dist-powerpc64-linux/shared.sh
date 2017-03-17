@@ -1,4 +1,3 @@
-#!/bin/bash
 # Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 # file at the top-level directory of this distribution and at
 # http://rust-lang.org/COPYRIGHT.
@@ -9,13 +8,18 @@
 # option. This file may not be copied, modified, or distributed
 # except according to those terms.
 
-set -ex
-
-source shared.sh
-
-mkdir build
-cd build
-cp ../powerpc64-linux-gnu.config .config
-hide_output ct-ng build
-cd ..
-rm -rf build
+hide_output() {
+  set +x
+  on_err="
+echo ERROR: An error was encountered with the build.
+cat /tmp/build.log
+exit 1
+"
+  trap "$on_err" ERR
+  bash -c "while true; do sleep 30; echo \$(date) - building ...; done" &
+  PING_LOOP_PID=$!
+  $@ &> /tmp/build.log
+  trap - ERR
+  kill $PING_LOOP_PID
+  set -x
+}
