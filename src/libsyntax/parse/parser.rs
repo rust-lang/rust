@@ -2919,7 +2919,10 @@ impl<'a> Parser<'a> {
                 let op_span = mk_sp(op.span.lo, self.span.hi);
                 let mut err = self.diagnostic().struct_span_err(op_span,
                     "chained comparison operators require parentheses");
-                if op.node == BinOpKind::Lt && *outer_op == AssocOp::Greater {
+                if op.node == BinOpKind::Lt &&
+                    *outer_op == AssocOp::Less ||  // Include `<` to provide this recommendation
+                    *outer_op == AssocOp::Greater  // even in a case like the following:
+                {                                  //     Foo<Bar<Baz<Qux, ()>>>
                     err.help(
                         "use `::<...>` instead of `<...>` if you meant to specify type arguments");
                 }
