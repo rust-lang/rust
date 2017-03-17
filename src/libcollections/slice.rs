@@ -1173,6 +1173,8 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
+    /// #![feature(sort_unstable)]
+    ///
     /// let mut v = [-5, 4, 1, -3, 2];
     ///
     /// v.sort_unstable();
@@ -1208,6 +1210,8 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
+    /// #![feature(sort_unstable)]
+    ///
     /// let mut v = [5, 4, 1, 3, 2];
     /// v.sort_unstable_by(|a, b| a.cmp(b));
     /// assert!(v == [1, 2, 3, 4, 5]);
@@ -1246,6 +1250,8 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
+    /// #![feature(sort_unstable)]
+    ///
     /// let mut v = [-5i32, 4, 1, -3, 2];
     ///
     /// v.sort_unstable_by_key(|k| k.abs());
