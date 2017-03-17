@@ -35,18 +35,18 @@ cd netbsd
 
 mkdir -p /x-tools/x86_64-unknown-netbsd/sysroot
 
-BSD=7.0.2
+URL=https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror
 
 # Originally from ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-$BSD/source/sets/*.tgz
-curl https://dl.timnn.me/69608745091236e7/$BSD/src.tgz | tar xzf -
-curl https://dl.timnn.me/69608745091236e7/$BSD/gnusrc.tgz | tar xzf -
-curl https://dl.timnn.me/69608745091236e7/$BSD/sharesrc.tgz | tar xzf -
-curl https://dl.timnn.me/69608745091236e7/$BSD/syssrc.tgz | tar xzf -
+curl $URL/2017-03-17-netbsd-src.tgz | tar xzf -
+curl $URL/2017-03-17-netbsd-gnusrc.tgz | tar xzf -
+curl $URL/2017-03-17-netbsd-sharesrc.tgz | tar xzf -
+curl $URL/2017-03-17-netbsd-syssrc.tgz | tar xzf -
 
 # Originally from ftp://ftp.netbsd.org/pub/NetBSD/NetBSD-$BSD/amd64/binary/sets/*.tgz
-curl https://dl.timnn.me/69608745091236e7/$BSD/base.tgz | \
+curl $URL/2017-03-17-netbsd-base.tgz | \
   tar xzf - -C /x-tools/x86_64-unknown-netbsd/sysroot ./usr/include ./usr/lib ./lib
-curl https://dl.timnn.me/69608745091236e7/$BSD/comp.tgz | \
+curl $URL/2017-03-17-netbsd-comp.tgz | \
   tar xzf - -C /x-tools/x86_64-unknown-netbsd/sysroot ./usr/include ./usr/lib
 
 cd usr/src
