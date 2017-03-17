@@ -21,7 +21,7 @@
 //! contained an `extern crate std;` import at the [crate root]. Therefore the
 //! standard library can be accessed in [`use`] statements through the path
 //! `std`, as in [`use std::env`], or in expressions through the absolute path
-//! `::std`, as in [`::std::env::args()`].
+//! `::std`, as in [`::std::env::args`].
 //!
 //! # How to read this documentation
 //!
@@ -156,7 +156,7 @@
 //! [TCP]: net/struct.TcpStream.html
 //! [The Rust Prelude]: prelude/index.html
 //! [UDP]: net/struct.UdpSocket.html
-//! [`::std::env::args()`]: env/fn.args.html
+//! [`::std::env::args`]: env/fn.args.html
 //! [`Arc`]: sync/struct.Arc.html
 //! [owned slice]: boxed/index.html
 //! [`Cell`]: cell/struct.Cell.html
