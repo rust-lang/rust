@@ -104,6 +104,12 @@ impl Buf {
     pub fn into_box(self) -> Box<Slice> {
         unsafe { mem::transmute(self.inner.into_boxed_slice()) }
     }
+
+    #[inline]
+    pub fn from_box(boxed: Box<Slice>) -> Buf {
+        let inner: Box<[u8]> = unsafe { mem::transmute(boxed) };
+        Buf { inner: inner.into_vec() }
+    }
 }
 
 impl Slice {
