@@ -16,7 +16,8 @@
 //! # Examples
 //!
 //! ```rust
-//! use std::hash::{Hash, SipHasher, Hasher};
+//! use std::collections::hash_map::DefaultHasher;
+//! use std::hash::{Hash, Hasher};
 //!
 //! #[derive(Hash)]
 //! struct Person {
@@ -25,13 +26,21 @@
 //!     phone: u64,
 //! }
 //!
-//! let person1 = Person { id: 5, name: "Janet".to_string(), phone: 555_666_7777 };
-//! let person2 = Person { id: 5, name: "Bob".to_string(), phone: 555_666_7777 };
+//! let person1 = Person {
+//!     id: 5,
+//!     name: "Janet".to_string(),
+//!     phone: 555_666_7777,
+//! };
+//! let person2 = Person {
+//!     id: 5,
+//!     name: "Bob".to_string(),
+//!     phone: 555_666_7777,
+//! };
 //!
-//! assert!(hash(&person1) != hash(&person2));
+//! assert!(calculate_hash(&person1) != calculate_hash(&person2));
 //!
-//! fn hash<T: Hash>(t: &T) -> u64 {
-//!     let mut s = SipHasher::new();
+//! fn calculate_hash<T: Hash>(t: &T) -> u64 {
+//!     let mut s = DefaultHasher::new();
 //!     t.hash(&mut s);
 //!     s.finish()
 //! }
@@ -43,11 +52,12 @@
 //! [`Hash`]: trait.Hash.html
 //!
 //! ```rust
-//! use std::hash::{Hash, Hasher, SipHasher};
+//! use std::collections::hash_map::DefaultHasher;
+//! use std::hash::{Hash, Hasher};
 //!
 //! struct Person {
 //!     id: u32,
-//! # #[allow(dead_code)]
+//!     # #[allow(dead_code)]
 //!     name: String,
 //!     phone: u64,
 //! }
@@ -59,13 +69,21 @@
 //!     }
 //! }
 //!
-//! let person1 = Person { id: 5, name: "Janet".to_string(), phone: 555_666_7777 };
-//! let person2 = Person { id: 5, name: "Bob".to_string(), phone: 555_666_7777 };
+//! let person1 = Person {
+//!     id: 5,
+//!     name: "Janet".to_string(),
+//!     phone: 555_666_7777,
+//! };
+//! let person2 = Person {
+//!     id: 5,
+//!     name: "Bob".to_string(),
+//!     phone: 555_666_7777,
+//! };
 //!
-//! assert_eq!(hash(&person1), hash(&person2));
+//! assert_eq!(calculate_hash(&person1), calculate_hash(&person2));
 //!
-//! fn hash<T: Hash>(t: &T) -> u64 {
-//!     let mut s = SipHasher::new();
+//! fn calculate_hash<T: Hash>(t: &T) -> u64 {
+//!     let mut s = DefaultHasher::new();
 //!     t.hash(&mut s);
 //!     s.finish()
 //! }
