@@ -349,6 +349,9 @@ declare_features! (
 
     // Allows module-level inline assembly by way of global_asm!()
     (active, global_asm, "1.18.0", Some(35119)),
+
+    // Allows overlapping impls of marker traits
+    (active, overlapping_marker_traits, "1.18.0", Some(29864)),
 );
 
 declare_features! (

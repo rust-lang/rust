@@ -8,24 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(overlapping_marker_traits)]
-#![feature(optin_builtin_traits)]
-
 trait MyMarker {}
 
-impl<T: Copy> MyMarker for T {}
-impl<T: Eq> MyMarker for T {}
+impl<T> MyMarker for T {}
+impl<T> MyMarker for Vec<T> {}
+//~^ ERROR E0119
 
-struct MyStruct;
-impl !Send for MyStruct {}
-impl !Send for MyStruct {}
-
-fn foo<T: MyMarker>(t: T) -> T {
-    t
-}
-
-fn main() {
-    assert_eq!(1, foo(1));
-    assert_eq!(2.0, foo(2.0));
-    assert_eq!(vec![1], foo(vec![1]));
-}
+fn main() {}

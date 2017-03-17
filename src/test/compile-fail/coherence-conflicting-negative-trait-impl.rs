@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![feature(optin_builtin_traits)]
+#![feature(overlapping_marker_traits)]
 
 trait MyTrait {}
 
