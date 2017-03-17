@@ -61,7 +61,7 @@ match foo with
 
 ## Maximizing `|` alignment
 
-In Rust, about the best we can do is align via the trailing edge:
+In Rust, about the best we can do is an inconsistent alignment:
 
 ```rust
 use E::*;
@@ -74,6 +74,15 @@ match foo {
     C |
     D => (),
 //    ^ Inconsistently missing a `|`
+}
+
+match foo {
+//  |
+//  V Inconsistently missing a `|`.
+      A
+    | B
+    | C
+    | D => (),
 }
 ```
 
@@ -97,7 +106,7 @@ match foo {
     | B
     | C
     | D => (),
-//  ^ Gained *both* an alternative style and consistency.
+//  ^ Also gained consistency.
 }
 ```
 
@@ -207,8 +216,8 @@ match value {
 [design]: #detailed-design
 
 I don't know about the implementation but the grammar could be updated so that
-an optional `|` is allowed at the beginning. Nothing else in the grammar should
-need updating.
+an optional `|` is allowed at the beginning and the end. Nothing else in the
+grammar should need updating.
 
 ```text
 // Before
