@@ -161,8 +161,6 @@ pub unsafe fn read<T>(src: *const T) -> T {
 /// Basic usage:
 ///
 /// ```
-/// #![feature(ptr_unaligned)]
-///
 /// let x = 12;
 /// let y = &x as *const i32;
 ///
@@ -171,7 +169,7 @@ pub unsafe fn read<T>(src: *const T) -> T {
 /// }
 /// ```
 #[inline(always)]
-#[unstable(feature = "ptr_unaligned", issue = "37955")]
+#[stable(feature = "ptr_unaligned", since = "1.17.0")]
 pub unsafe fn read_unaligned<T>(src: *const T) -> T {
     let mut tmp: T = mem::uninitialized();
     copy_nonoverlapping(src as *const u8,
@@ -243,8 +241,6 @@ pub unsafe fn write<T>(dst: *mut T, src: T) {
 /// Basic usage:
 ///
 /// ```
-/// #![feature(ptr_unaligned)]
-///
 /// let mut x = 0;
 /// let y = &mut x as *mut i32;
 /// let z = 12;
@@ -255,7 +251,7 @@ pub unsafe fn write<T>(dst: *mut T, src: T) {
 /// }
 /// ```
 #[inline]
-#[unstable(feature = "ptr_unaligned", issue = "37955")]
+#[stable(feature = "ptr_unaligned", since = "1.17.0")]
 pub unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
     copy_nonoverlapping(&src as *const T as *const u8,
                         dst as *mut u8,
@@ -662,7 +658,6 @@ impl<T: ?Sized> Eq for *mut T {}
 /// # Examples
 ///
 /// ```
-/// #![feature(ptr_eq)]
 /// use std::ptr;
 ///
 /// let five = 5;
@@ -677,7 +672,7 @@ impl<T: ?Sized> Eq for *mut T {}
 /// assert!(ptr::eq(five_ref, same_five_ref));
 /// assert!(!ptr::eq(five_ref, other_five_ref));
 /// ```
-#[unstable(feature = "ptr_eq", reason = "newly added", issue = "36497")]
+#[stable(feature = "ptr_eq", since = "1.17.0")]
 #[inline]
 pub fn eq<T: ?Sized>(a: *const T, b: *const T) -> bool {
     a == b
@@ -972,8 +967,16 @@ impl<T: ?Sized> Shared<T> {
     /// # Safety
     ///
     /// `ptr` must be non-null.
-    pub unsafe fn new(ptr: *mut T) -> Self {
+    pub unsafe fn new(ptr: *const T) -> Self {
         Shared { pointer: NonZero::new(ptr), _marker: PhantomData }
+    }
+}
+
+#[unstable(feature = "shared", issue = "27730")]
+impl<T: ?Sized> Shared<T> {
+    /// Acquires the underlying pointer as a `*mut` pointer.
+    pub unsafe fn as_mut_ptr(&self) -> *mut T {
+        **self as _
     }
 }
 
@@ -992,10 +995,10 @@ impl<T: ?Sized, U: ?Sized> CoerceUnsized<Shared<U>> for Shared<T> where T: Unsiz
 
 #[unstable(feature = "shared", issue = "27730")]
 impl<T: ?Sized> Deref for Shared<T> {
-    type Target = *mut T;
+    type Target = *const T;
 
     #[inline]
-    fn deref(&self) -> &*mut T {
+    fn deref(&self) -> &*const T {
         unsafe { mem::transmute(&*self.pointer) }
     }
 }

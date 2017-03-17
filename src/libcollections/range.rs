@@ -29,7 +29,6 @@ pub trait RangeArgument<T: ?Sized> {
     /// ```
     /// #![feature(collections)]
     /// #![feature(collections_range)]
-    /// #![feature(collections_bound)]
     ///
     /// extern crate collections;
     ///
@@ -52,7 +51,6 @@ pub trait RangeArgument<T: ?Sized> {
     /// ```
     /// #![feature(collections)]
     /// #![feature(collections_range)]
-    /// #![feature(collections_bound)]
     ///
     /// extern crate collections;
     ///
