@@ -52,6 +52,7 @@
 #![feature(shared)]
 #![feature(slice_get_slice)]
 #![feature(slice_patterns)]
+#![feature(sort_unstable)]
 #![feature(specialization)]
 #![feature(staged_api)]
 #![feature(str_internals)]

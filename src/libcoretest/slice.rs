@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use core::result::Result::{Ok, Err};
+use rand::{Rng, XorShiftRng};
 
 #[test]
 fn test_binary_search() {
@@ -139,9 +140,6 @@ fn test_chunks_mut_last() {
     assert_eq!(c2.last().unwrap()[0], 4);
 }
 
-
-
-
 #[test]
 fn test_windows_count() {
     let v: &[i32] = &[0, 1, 2, 3, 4, 5];
@@ -223,4 +221,41 @@ fn get_unchecked_mut_range() {
         assert_eq!(v.get_unchecked_mut(2..), &mut[2, 3, 4, 5][..]);
         assert_eq!(v.get_unchecked_mut(1..4), &mut [1, 2, 3][..]);
     }
+}
+
+#[test]
+fn sort_unstable() {
+    let mut v = [0; 600];
+    let mut v1 = [0; 600];
+    let mut rng = XorShiftRng::new_unseeded();
+
+    for len in (2..25).chain(500..510) {
+        for &modulus in &[10, 1000] {
+            for _ in 0..100 {
+                for i in 0..len {
+                    let num = rng.gen::<i32>() % modulus;
+                    v[i] = num;
+                    v1[i] = num;
+                }
+
+                v.sort_unstable();
+                assert!(v.windows(2).all(|w| w[0] <= w[1]));
+
+                v1.sort_unstable_by(|a, b| a.cmp(b));
+                assert!(v1.windows(2).all(|w| w[0] <= w[1]));
+
+                v1.sort_unstable_by(|a, b| b.cmp(a));
+                assert!(v1.windows(2).all(|w| w[0] >= w[1]));
+            }
+        }
+    }
+
+    // Should not panic.
+    [0i32; 0].sort_unstable();
+    [(); 10].sort_unstable();
+    [(); 100].sort_unstable();
+
+    let mut v = [0xDEADBEEFu64];
+    v.sort_unstable();
+    assert!(v == [0xDEADBEEF]);
 }
