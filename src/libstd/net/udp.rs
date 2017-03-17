@@ -175,7 +175,7 @@ impl UdpSocket {
 
     /// Sets the read timeout to the timeout specified.
     ///
-    /// If the value specified is [`None`], then [`read()`] calls will block
+    /// If the value specified is [`None`], then [`read`] calls will block
     /// indefinitely. It is an error to pass the zero [`Duration`] to this
     /// method.
     ///
@@ -186,7 +186,7 @@ impl UdpSocket {
     /// error of the kind [`WouldBlock`], but Windows may return [`TimedOut`].
     ///
     /// [`None`]: ../../std/option/enum.Option.html#variant.None
-    /// [`read()`]: ../../std/io/trait.Read.html#tymethod.read
+    /// [`read`]: ../../std/io/trait.Read.html#tymethod.read
     /// [`Duration`]: ../../std/time/struct.Duration.html
     /// [`WouldBlock`]: ../../std/io/enum.ErrorKind.html#variant.WouldBlock
     /// [`TimedOut`]: ../../std/io/enum.ErrorKind.html#variant.TimedOut
@@ -206,7 +206,7 @@ impl UdpSocket {
 
     /// Sets the write timeout to the timeout specified.
     ///
-    /// If the value specified is [`None`], then [`write()`] calls will block
+    /// If the value specified is [`None`], then [`write`] calls will block
     /// indefinitely. It is an error to pass the zero [`Duration`] to this
     /// method.
     ///
@@ -217,7 +217,7 @@ impl UdpSocket {
     /// an error of the kind [`WouldBlock`], but Windows may return [`TimedOut`].
     ///
     /// [`None`]: ../../std/option/enum.Option.html#variant.None
-    /// [`write()`]: ../../std/io/trait.Write.html#tymethod.write
+    /// [`write`]: ../../std/io/trait.Write.html#tymethod.write
     /// [`Duration`]: ../../std/time/struct.Duration.html
     /// [`WouldBlock`]: ../../std/io/enum.ErrorKind.html#variant.WouldBlock
     /// [`TimedOut`]: ../../std/io/enum.ErrorKind.html#variant.TimedOut
@@ -237,10 +237,10 @@ impl UdpSocket {
 
     /// Returns the read timeout of this socket.
     ///
-    /// If the timeout is [`None`], then [`read()`] calls will block indefinitely.
+    /// If the timeout is [`None`], then [`read`] calls will block indefinitely.
     ///
     /// [`None`]: ../../std/option/enum.Option.html#variant.None
-    /// [`read()`]: ../../std/io/trait.Read.html#tymethod.read
+    /// [`read`]: ../../std/io/trait.Read.html#tymethod.read
     ///
     /// # Examples
     ///
@@ -258,10 +258,10 @@ impl UdpSocket {
 
     /// Returns the write timeout of this socket.
     ///
-    /// If the timeout is [`None`], then [`write()`] calls will block indefinitely.
+    /// If the timeout is [`None`], then [`write`] calls will block indefinitely.
     ///
     /// [`None`]: ../../std/option/enum.Option.html#variant.None
-    /// [`write()`]: ../../std/io/trait.Write.html#tymethod.write
+    /// [`write`]: ../../std/io/trait.Write.html#tymethod.write
     ///
     /// # Examples
     ///
@@ -560,10 +560,10 @@ impl UdpSocket {
 
     /// Sends data on the socket to the remote address to which it is connected.
     ///
-    /// The [`connect()`] method will connect this socket to a remote address. This
+    /// The [`connect`] method will connect this socket to a remote address. This
     /// method will fail if the socket is not connected.
     ///
-    /// [`connect()`]: #method.connect
+    /// [`connect`]: #method.connect
     ///
     /// # Examples
     ///

@@ -170,8 +170,6 @@ more than one section:
 # fn foo() {}
 ```
 
-Let's discuss the details of these code blocks.
-
 #### Code block annotations
 
 To write some Rust code in a comment, use the triple graves:
@@ -183,23 +181,8 @@ To write some Rust code in a comment, use the triple graves:
 # fn foo() {}
 ```
 
-If you want something that's not Rust code, you can add an annotation:
-
-```rust
-/// ```c
-/// printf("Hello, world\n");
-/// ```
-# fn foo() {}
-```
-
-This will highlight according to whatever language you're showing off.
-If you're only showing plain text, choose `text`.
-
-It's important to choose the correct annotation here, because `rustdoc` uses it
-in an interesting way: It can be used to actually test your examples in a
-library crate, so that they don't get out of date. If you have some C code but
-`rustdoc` thinks it's Rust because you left off the annotation, `rustdoc` will
-complain when trying to generate the documentation.
+This will add code highlighting. If you are only showing plain text, put `text`
+instead of `rust` after the triple graves (see below).
 
 ## Documentation as tests
 
