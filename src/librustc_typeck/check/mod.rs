@@ -77,6 +77,7 @@ type parameter).
 */
 
 pub use self::Expectation::*;
+use self::coercion::CoerceMany;
 pub use self::compare_method::{compare_impl_method, compare_const_impl};
 use self::TupleArgumentsFlag::*;
 
@@ -299,11 +300,22 @@ impl<'a, 'gcx, 'tcx> Expectation<'tcx> {
         }
     }
 
+    /// It sometimes happens that we want to turn an expectation into
+    /// a **hard constraint** (i.e., something that must be satisfied
+    /// for the program to type-check). `only_has_type` will return
+    /// such a constraint, if it exists.
     fn only_has_type(self, fcx: &FnCtxt<'a, 'gcx, 'tcx>) -> Option<Ty<'tcx>> {
         match self.resolve(fcx) {
             ExpectHasType(ty) => Some(ty),
             _ => None
         }
+    }
+
+    /// Like `only_has_type`, but instead of returning `None` if no
+    /// hard constraint exists, creates a fresh type variable.
+    fn only_has_type_or_fresh_var(self, fcx: &FnCtxt<'a, 'gcx, 'tcx>, span: Span) -> Ty<'tcx> {
+        self.only_has_type(fcx)
+            .unwrap_or_else(|| fcx.next_ty_var(TypeVariableOrigin::MiscVariable(span)))
     }
 }
 
@@ -2743,54 +2755,39 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let then_diverges = self.diverges.get();
         self.diverges.set(Diverges::Maybe);
 
-        let unit = self.tcx.mk_nil();
-        let (cause, expected_ty, found_ty, result);
+        // We've already taken the expected type's preferences
+        // into account when typing the `then` branch. To figure
+        // out the initial shot at a LUB, we thus only consider
+        // `expected` if it represents a *hard* constraint
+        // (`only_has_type`); otherwise, we just go with a
+        // fresh type variable.
+        let coerce_to_ty = expected.only_has_type_or_fresh_var(self, sp);
+        let mut coerce = CoerceMany::new(coerce_to_ty);
+
+        let if_cause = self.cause(sp, ObligationCauseCode::IfExpression);
+        coerce.coerce(self, &if_cause, then_expr, then_ty);
+
         if let Some(else_expr) = opt_else_expr {
             let else_ty = self.check_expr_with_expectation(else_expr, expected);
             let else_diverges = self.diverges.get();
-            cause = self.cause(sp, ObligationCauseCode::IfExpression);
 
-            // Only try to coerce-unify if we have a then expression
-            // to assign coercions to, otherwise it's () or diverging.
-            expected_ty = then_ty;
-            found_ty = else_ty;
-
-            let coerce_to = expected.only_has_type(self).unwrap_or(then_ty);
-            result = {
-                self.try_coerce(then_expr, then_ty, coerce_to)
-                    .and_then(|t| {
-                        self.try_find_coercion_lub(&cause, || Some(then_expr), t, else_expr, else_ty)
-                    })
-            };
+            coerce.coerce(self, &if_cause, else_expr, else_ty);
 
             // We won't diverge unless both branches do (or the condition does).
             self.diverges.set(cond_diverges | then_diverges & else_diverges);
         } else {
+            let else_cause = self.cause(sp, ObligationCauseCode::IfExpressionWithNoElse);
+            coerce.coerce_forced_unit(self, &else_cause);
+
             // If the condition is false we can't diverge.
             self.diverges.set(cond_diverges);
-
-            cause = self.cause(sp, ObligationCauseCode::IfExpressionWithNoElse);
-            expected_ty = unit;
-            found_ty = then_ty;
-            result = self.eq_types(true, &cause, unit, then_ty)
-                         .map(|ok| {
-                             self.register_infer_ok_obligations(ok);
-                             unit
-                         });
         }
 
-        match result {
-            Ok(ty) => {
-                if cond_ty.references_error() {
-                    self.tcx.types.err
-                } else {
-                    ty
-                }
-            }
-            Err(e) => {
-                self.report_mismatched_types(&cause, expected_ty, found_ty, e).emit();
-                self.tcx.types.err
-            }
+        let result_ty = coerce.complete(self);
+        if cond_ty.references_error() {
+            self.tcx.types.err
+        } else {
+            result_ty
         }
     }
 
