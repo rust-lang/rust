@@ -48,7 +48,7 @@ use std::str::FromStr;
 
 use syntax::errors::DiagnosticBuilder;
 use syntax::parse;
-use syntax::tokenstream::TokenStream as TokenStream_;
+use syntax::tokenstream;
 
 /// The main type provided by this crate, representing an abstract stream of
 /// tokens.
@@ -60,9 +60,7 @@ use syntax::tokenstream::TokenStream as TokenStream_;
 /// The API of this type is intentionally bare-bones, but it'll be expanded over
 /// time!
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
-pub struct TokenStream {
-    inner: TokenStream_,
-}
+pub struct TokenStream(tokenstream::TokenStream);
 
 /// Error returned from `TokenStream::from_str`.
 #[derive(Debug)]
@@ -91,26 +89,22 @@ pub mod __internal {
     use syntax::ext::hygiene::Mark;
     use syntax::ptr::P;
     use syntax::parse::{self, token, ParseSess};
-    use syntax::tokenstream::{TokenTree, TokenStream as TokenStream_};
+    use syntax::tokenstream;
 
     use super::{TokenStream, LexError};
 
     pub fn new_token_stream(item: P<ast::Item>) -> TokenStream {
-        TokenStream {
-            inner: TokenTree::Token(item.span, token::Interpolated(Rc::new(token::NtItem(item))))
-                .into()
-        }
+        let (span, token) = (item.span, token::Interpolated(Rc::new(token::NtItem(item))));
+        TokenStream(tokenstream::TokenTree::Token(span, token).into())
     }
 
-    pub fn token_stream_wrap(inner: TokenStream_) -> TokenStream {
-        TokenStream {
-            inner: inner
-        }
+    pub fn token_stream_wrap(inner: tokenstream::TokenStream) -> TokenStream {
+        TokenStream(inner)
     }
 
     pub fn token_stream_parse_items(stream: TokenStream) -> Result<Vec<P<ast::Item>>, LexError> {
         with_sess(move |(sess, _)| {
-            let mut parser = parse::stream_to_parser(sess, stream.inner);
+            let mut parser = parse::stream_to_parser(sess, stream.0);
             let mut items = Vec::new();
 
             while let Some(item) = try!(parser.parse_item().map_err(super::parse_to_lex_err)) {
@@ -121,8 +115,8 @@ pub mod __internal {
         })
     }
 
-    pub fn token_stream_inner(stream: TokenStream) -> TokenStream_ {
-        stream.inner
+    pub fn token_stream_inner(stream: TokenStream) -> tokenstream::TokenStream {
+        stream.0
     }
 
     pub trait Registry {
@@ -197,6 +191,6 @@ impl FromStr for TokenStream {
 #[stable(feature = "proc_macro_lib", since = "1.15.0")]
 impl fmt::Display for TokenStream {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        self.inner.fmt(f)
+        self.0.fmt(f)
     }
 }

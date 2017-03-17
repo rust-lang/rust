@@ -199,7 +199,7 @@ impl TokenStream {
     pub fn concat(mut streams: Vec<TokenStream>) -> TokenStream {
         match streams.len() {
             0 => TokenStream::empty(),
-            1 => TokenStream::from(streams.pop().unwrap()),
+            1 => streams.pop().unwrap(),
             _ => TokenStream::concat_rc_slice(RcSlice::new(streams)),
         }
     }
@@ -244,41 +244,41 @@ struct StreamCursor {
     stack: Vec<(RcSlice<TokenStream>, usize)>,
 }
 
-impl Iterator for Cursor {
-    type Item = TokenTree;
-
+impl StreamCursor {
     fn next(&mut self) -> Option<TokenTree> {
-        let cursor = match self.0 {
-            CursorKind::Stream(ref mut cursor) => cursor,
-            CursorKind::Tree(ref tree, ref mut consumed @ false) => {
-                *consumed = true;
-                return Some(tree.clone());
-            }
-            _ => return None,
-        };
-
         loop {
-            if cursor.index < cursor.stream.len() {
-                match cursor.stream[cursor.index].kind.clone() {
-                    TokenStreamKind::Tree(tree) => {
-                        cursor.index += 1;
-                        return Some(tree);
-                    }
+            if self.index < self.stream.len() {
+                self.index += 1;
+                match self.stream[self.index - 1].kind.clone() {
+                    TokenStreamKind::Tree(tree) => return Some(tree),
                     TokenStreamKind::Stream(stream) => {
-                        cursor.stack.push((mem::replace(&mut cursor.stream, stream),
-                                           mem::replace(&mut cursor.index, 0) + 1));
+                        self.stack.push((mem::replace(&mut self.stream, stream),
+                                         mem::replace(&mut self.index, 0)));
                     }
-                    TokenStreamKind::Empty => {
-                        cursor.index += 1;
-                    }
+                    TokenStreamKind::Empty => {}
                 }
-            } else if let Some((stream, index)) = cursor.stack.pop() {
-                cursor.stream = stream;
-                cursor.index = index;
+            } else if let Some((stream, index)) = self.stack.pop() {
+                self.stream = stream;
+                self.index = index;
             } else {
                 return None;
             }
         }
+    }
+}
+
+impl Iterator for Cursor {
+    type Item = TokenTree;
+
+    fn next(&mut self) -> Option<TokenTree> {
+        let (tree, consumed) = match self.0 {
+            CursorKind::Tree(ref tree, ref mut consumed @ false) => (tree, consumed),
+            CursorKind::Stream(ref mut cursor) => return cursor.next(),
+            _ => return None,
+        };
+
+        *consumed = true;
+        Some(tree.clone())
     }
 }
 
