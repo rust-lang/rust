@@ -61,7 +61,7 @@ USER rustbuild
 WORKDIR /tmp
 
 COPY patches/ /tmp/patches/
-COPY powerpc64-linux-gnu.config build-powerpc64-toolchain.sh /tmp/
+COPY shared.sh powerpc64-linux-gnu.config build-powerpc64-toolchain.sh /tmp/
 RUN ./build-powerpc64-toolchain.sh
 
 USER root
