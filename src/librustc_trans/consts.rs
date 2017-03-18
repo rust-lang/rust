@@ -9,6 +9,7 @@
 // except according to those terms.
 
 
+use back::symbol_names;
 use llvm;
 use llvm::{SetUnnamedAddr};
 use llvm::{ValueRef, True};
@@ -24,7 +25,6 @@ use monomorphize::Instance;
 use type_::Type;
 use type_of;
 use rustc::ty;
-use rustc::ty::subst::Substs;
 
 use rustc::hir;
 
@@ -80,12 +80,12 @@ pub fn addr_of(ccx: &CrateContext,
 }
 
 pub fn get_static(ccx: &CrateContext, def_id: DefId) -> ValueRef {
-    let instance = Instance::mono(ccx.shared(), def_id);
+    let instance = Instance::mono(ccx.tcx(), def_id);
     if let Some(&g) = ccx.instances().borrow().get(&instance) {
         return g;
     }
 
-    let ty = common::def_ty(ccx.shared(), def_id, Substs::empty());
+    let ty = common::instance_ty(ccx.shared(), &instance);
     let g = if let Some(id) = ccx.tcx().hir.as_local_node_id(def_id) {
 
         let llty = type_of::type_of(ccx, ty);
@@ -114,7 +114,7 @@ pub fn get_static(ccx: &CrateContext, def_id: DefId) -> ValueRef {
             hir_map::NodeForeignItem(&hir::ForeignItem {
                 ref attrs, span, node: hir::ForeignItemStatic(..), ..
             }) => {
-                let sym = instance.symbol_name(ccx.shared());
+                let sym = symbol_names::symbol_name(instance, ccx.shared());
                 let g = if let Some(name) =
                         attr::first_attr_value_str_by_name(&attrs, "linkage") {
                     // If this is a static with a linkage specified, then we need to handle
@@ -174,7 +174,7 @@ pub fn get_static(ccx: &CrateContext, def_id: DefId) -> ValueRef {
 
         g
     } else {
-        let sym = instance.symbol_name(ccx.shared());
+        let sym = symbol_names::symbol_name(instance, ccx.shared());
 
         // FIXME(nagisa): perhaps the map of externs could be offloaded to llvm somehow?
         // FIXME(nagisa): investigate whether it can be changed into define_global
@@ -235,7 +235,8 @@ pub fn trans_static<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             v
         };
 
-        let ty = common::def_ty(ccx.shared(), def_id, Substs::empty());
+        let instance = Instance::mono(ccx.tcx(), def_id);
+        let ty = common::instance_ty(ccx.shared(), &instance);
         let llty = type_of::type_of(ccx, ty);
         let g = if val_llty == llty {
             g

@@ -59,6 +59,7 @@ enum ArgKind {
 pub use self::attr_impl::ArgAttribute;
 
 #[allow(non_upper_case_globals)]
+#[allow(unused)]
 mod attr_impl {
     // The subset of llvm::Attribute needed for arguments, packed into a bitfield.
     bitflags! {
@@ -223,16 +224,6 @@ impl ArgType {
         self.kind == ArgKind::Ignore
     }
 
-    /// Get the LLVM type for an lvalue of the original Rust type of
-    /// this argument/return, i.e. the result of `type_of::type_of`.
-    pub fn memory_ty(&self, ccx: &CrateContext) -> Type {
-        if self.original_ty == Type::i1(ccx) {
-            Type::i8(ccx)
-        } else {
-            self.original_ty
-        }
-    }
-
     /// Store a direct/indirect value described by this ArgType into a
     /// lvalue for the original Rust type of this argument/return.
     /// Can be used for both storing formal arguments into Rust variables
@@ -334,9 +325,19 @@ impl FnType {
         fn_ty
     }
 
-    pub fn unadjusted<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+    pub fn new_vtable<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                 sig: ty::FnSig<'tcx>,
                                 extra_args: &[Ty<'tcx>]) -> FnType {
+        let mut fn_ty = FnType::unadjusted(ccx, sig, extra_args);
+        // Don't pass the vtable, it's not an argument of the virtual fn.
+        fn_ty.args[1].ignore();
+        fn_ty.adjust_for_abi(ccx, sig);
+        fn_ty
+    }
+
+    fn unadjusted<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                            sig: ty::FnSig<'tcx>,
+                            extra_args: &[Ty<'tcx>]) -> FnType {
         use self::Abi::*;
         let cconv = match ccx.sess().target.target.adjust_abi(sig.abi) {
             RustIntrinsic | PlatformIntrinsic |
@@ -532,9 +533,9 @@ impl FnType {
         }
     }
 
-    pub fn adjust_for_abi<'a, 'tcx>(&mut self,
-                                    ccx: &CrateContext<'a, 'tcx>,
-                                    sig: ty::FnSig<'tcx>) {
+    fn adjust_for_abi<'a, 'tcx>(&mut self,
+                                ccx: &CrateContext<'a, 'tcx>,
+                                sig: ty::FnSig<'tcx>) {
         let abi = sig.abi;
         if abi == Abi::Unadjusted { return }
 

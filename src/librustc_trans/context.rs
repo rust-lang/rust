@@ -18,10 +18,9 @@ use rustc::hir::def::ExportMap;
 use rustc::hir::def_id::DefId;
 use rustc::traits;
 use debuginfo;
-use callee::Callee;
+use callee;
 use base;
 use declare;
-use glue::DropGlueKind;
 use monomorphize::Instance;
 
 use partitioning::CodegenUnit;
@@ -46,7 +45,7 @@ use std::str;
 use syntax::ast;
 use syntax::symbol::InternedString;
 use syntax_pos::DUMMY_SP;
-use abi::{Abi, FnType};
+use abi::Abi;
 
 pub struct Stats {
     pub n_glues_created: Cell<usize>,
@@ -94,8 +93,6 @@ pub struct LocalCrateContext<'tcx> {
     previous_work_product: Option<WorkProduct>,
     codegen_unit: CodegenUnit<'tcx>,
     needs_unwind_cleanup_cache: RefCell<FxHashMap<Ty<'tcx>, bool>>,
-    fn_pointer_shims: RefCell<FxHashMap<Ty<'tcx>, ValueRef>>,
-    drop_glues: RefCell<FxHashMap<DropGlueKind<'tcx>, (ValueRef, FnType)>>,
     /// Cache instances of monomorphic and polymorphic items
     instances: RefCell<FxHashMap<Instance<'tcx>, ValueRef>>,
     /// Cache generated vtables
@@ -546,16 +543,6 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
         &self.translation_items
     }
 
-    /// Given the def-id of some item that has no type parameters, make
-    /// a suitable "empty substs" for it.
-    pub fn empty_substs_for_def_id(&self, item_def_id: DefId) -> &'tcx Substs<'tcx> {
-        Substs::for_item(self.tcx(), item_def_id,
-                         |_, _| self.tcx().mk_region(ty::ReErased),
-                         |_, _| {
-            bug!("empty_substs_for_def_id: {:?} has type parameters", item_def_id)
-        })
-    }
-
     pub fn metadata_symbol_name(&self) -> String {
         format!("rust_metadata_{}_{}",
                 self.link_meta().crate_name,
@@ -597,8 +584,6 @@ impl<'tcx> LocalCrateContext<'tcx> {
                 previous_work_product: previous_work_product,
                 codegen_unit: codegen_unit,
                 needs_unwind_cleanup_cache: RefCell::new(FxHashMap()),
-                fn_pointer_shims: RefCell::new(FxHashMap()),
-                drop_glues: RefCell::new(FxHashMap()),
                 instances: RefCell::new(FxHashMap()),
                 vtables: RefCell::new(FxHashMap()),
                 const_cstr_cache: RefCell::new(FxHashMap()),
@@ -731,15 +716,6 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
 
     pub fn needs_unwind_cleanup_cache(&self) -> &RefCell<FxHashMap<Ty<'tcx>, bool>> {
         &self.local().needs_unwind_cleanup_cache
-    }
-
-    pub fn fn_pointer_shims(&self) -> &RefCell<FxHashMap<Ty<'tcx>, ValueRef>> {
-        &self.local().fn_pointer_shims
-    }
-
-    pub fn drop_glues<'a>(&'a self)
-                          -> &'a RefCell<FxHashMap<DropGlueKind<'tcx>, (ValueRef, FnType)>> {
-        &self.local().drop_glues
     }
 
     pub fn instances<'a>(&'a self) -> &'a RefCell<FxHashMap<Instance<'tcx>, ValueRef>> {
@@ -886,7 +862,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
     /// Given the def-id of some item that has no type parameters, make
     /// a suitable "empty substs" for it.
     pub fn empty_substs_for_def_id(&self, item_def_id: DefId) -> &'tcx Substs<'tcx> {
-        self.shared().empty_substs_for_def_id(item_def_id)
+        self.tcx().empty_substs_for_def_id(item_def_id)
     }
 
     /// Generate a new symbol name with the given prefix. This symbol name must
@@ -930,7 +906,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         let tcx = self.tcx();
         let llfn = match tcx.lang_items.eh_personality() {
             Some(def_id) if !base::wants_msvc_seh(self.sess()) => {
-                Callee::def(self, def_id, tcx.intern_substs(&[])).reify(self)
+                callee::resolve_and_get_fn(self, def_id, tcx.intern_substs(&[]))
             }
             _ => {
                 let name = if base::wants_msvc_seh(self.sess()) {
@@ -958,7 +934,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         let tcx = self.tcx();
         assert!(self.sess().target.target.options.custom_unwind_resume);
         if let Some(def_id) = tcx.lang_items.eh_unwind_resume() {
-            let llfn = Callee::def(self, def_id, tcx.intern_substs(&[])).reify(self);
+            let llfn = callee::resolve_and_get_fn(self, def_id, tcx.intern_substs(&[]));
             unwresume.set(Some(llfn));
             return llfn;
         }

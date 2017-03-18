@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags:-Zprint-trans-items=eager
+pub mod elaborate_drops;
+pub mod def_use;
+pub mod patch;
 
-pub static FN : fn() = foo::<i32>;
+mod graphviz;
+mod pretty;
 
-pub fn foo<T>() { }
-
-//~ TRANS_ITEM fn static_init::foo[0]<i32>
-//~ TRANS_ITEM static static_init::FN[0]
-
-fn main() { }
-
-//~ TRANS_ITEM fn static_init::main[0]
+pub use self::pretty::{dump_mir, write_mir_pretty};
+pub use self::graphviz::{write_mir_graphviz};
+pub use self::graphviz::write_node_label as write_graphviz_node_label;

@@ -89,6 +89,7 @@ pub enum DepNode<D: Clone + Debug> {
     // things read/modify that MIR.
     MirKrate,
     Mir(D),
+    MirShim(Vec<D>),
 
     BorrowCheckKrate,
     BorrowCheck(D),
@@ -258,6 +259,10 @@ impl<D: Clone + Debug> DepNode<D> {
             IntrinsicCheck(ref d) => op(d).map(IntrinsicCheck),
             MatchCheck(ref d) => op(d).map(MatchCheck),
             Mir(ref d) => op(d).map(Mir),
+            MirShim(ref def_ids) => {
+                let def_ids: Option<Vec<E>> = def_ids.iter().map(op).collect();
+                def_ids.map(MirShim)
+            }
             BorrowCheck(ref d) => op(d).map(BorrowCheck),
             RvalueCheck(ref d) => op(d).map(RvalueCheck),
             StabilityCheck(ref d) => op(d).map(StabilityCheck),

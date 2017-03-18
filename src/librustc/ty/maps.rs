@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use dep_graph::{DepGraph, DepNode, DepTrackingMap, DepTrackingMapConfig};
-use hir::def_id::{CrateNum, DefId};
+use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use middle::const_val::ConstVal;
 use mir;
 use ty::{self, Ty, TyCtxt};
@@ -22,6 +22,16 @@ use syntax_pos::{Span, DUMMY_SP};
 trait Key {
     fn map_crate(&self) -> CrateNum;
     fn default_span(&self, tcx: TyCtxt) -> Span;
+}
+
+impl<'tcx> Key for ty::InstanceDef<'tcx> {
+    fn map_crate(&self) -> CrateNum {
+        LOCAL_CRATE
+    }
+
+    fn default_span(&self, tcx: TyCtxt) -> Span {
+        tcx.def_span(self.def_id())
+    }
 }
 
 impl Key for CrateNum {
@@ -83,9 +93,9 @@ impl<'tcx> Value<'tcx> for Ty<'tcx> {
     }
 }
 
-pub struct CycleError<'a> {
+pub struct CycleError<'a, 'tcx: 'a> {
     span: Span,
-    cycle: RefMut<'a, [(Span, Query)]>,
+    cycle: RefMut<'a, [(Span, Query<'tcx>)]>,
 }
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
@@ -110,8 +120,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         err.emit();
     }
 
-    fn cycle_check<F, R>(self, span: Span, query: Query, compute: F)
-                         -> Result<R, CycleError<'a>>
+    fn cycle_check<F, R>(self, span: Span, query: Query<'gcx>, compute: F)
+                         -> Result<R, CycleError<'a, 'gcx>>
         where F: FnOnce() -> R
     {
         {
@@ -172,13 +182,20 @@ impl<'tcx> QueryDescription for queries::coherent_inherent_impls<'tcx> {
     }
 }
 
+impl<'tcx> QueryDescription for queries::mir_shims<'tcx> {
+    fn describe(tcx: TyCtxt, def: ty::InstanceDef<'tcx>) -> String {
+        format!("generating MIR shim for `{}`",
+                tcx.item_path_str(def.def_id()))
+    }
+}
+
 macro_rules! define_maps {
     (<$tcx:tt>
      $($(#[$attr:meta])*
        pub $name:ident: $node:ident($K:ty) -> $V:ty),*) => {
         pub struct Maps<$tcx> {
             providers: IndexVec<CrateNum, Providers<$tcx>>,
-            query_stack: RefCell<Vec<(Span, Query)>>,
+            query_stack: RefCell<Vec<(Span, Query<$tcx>)>>,
             $($(#[$attr])* pub $name: RefCell<DepTrackingMap<queries::$name<$tcx>>>),*
         }
 
@@ -196,11 +213,11 @@ macro_rules! define_maps {
 
         #[allow(bad_style)]
         #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-        pub enum Query {
+        pub enum Query<$tcx> {
             $($(#[$attr])* $name($K)),*
         }
 
-        impl Query {
+        impl<$tcx> Query<$tcx> {
             pub fn describe(&self, tcx: TyCtxt) -> String {
                 match *self {
                     $(Query::$name(key) => queries::$name::describe(tcx, key)),*
@@ -233,7 +250,7 @@ macro_rules! define_maps {
                                   mut span: Span,
                                   key: $K,
                                   f: F)
-                                  -> Result<R, CycleError<'a>>
+                                  -> Result<R, CycleError<'a, $tcx>>
                 where F: FnOnce(&$V) -> R
             {
                 if let Some(result) = tcx.maps.$name.borrow().get(&key) {
@@ -256,7 +273,7 @@ macro_rules! define_maps {
             }
 
             pub fn try_get(tcx: TyCtxt<'a, $tcx, 'lcx>, span: Span, key: $K)
-                           -> Result<$V, CycleError<'a>> {
+                           -> Result<$V, CycleError<'a, $tcx>> {
                 Self::try_get_with(tcx, span, key, Clone::clone)
             }
 
@@ -387,7 +404,9 @@ define_maps! { <'tcx>
 
     /// Results of evaluating monomorphic constants embedded in
     /// other items, such as enum variant explicit discriminants.
-    pub monomorphic_const_eval: MonomorphicConstEval(DefId) -> Result<ConstVal<'tcx>, ()>
+    pub monomorphic_const_eval: MonomorphicConstEval(DefId) -> Result<ConstVal<'tcx>, ()>,
+
+    pub mir_shims: mir_shim(ty::InstanceDef<'tcx>) -> &'tcx RefCell<mir::Mir<'tcx>>
 }
 
 fn coherent_trait_dep_node((_, def_id): (CrateNum, DefId)) -> DepNode<DefId> {
@@ -396,4 +415,8 @@ fn coherent_trait_dep_node((_, def_id): (CrateNum, DefId)) -> DepNode<DefId> {
 
 fn coherent_inherent_impls_dep_node(_: CrateNum) -> DepNode<DefId> {
     DepNode::Coherence
+}
+
+fn mir_shim(instance: ty::InstanceDef) -> DepNode<DefId> {
+    instance.dep_node()
 }

@@ -205,7 +205,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         return FunctionDebugContext::DebugInfoDisabled;
     }
 
-    for attr in cx.tcx().get_attrs(instance.def).iter() {
+    for attr in instance.def.attrs(cx.tcx()).iter() {
         if attr.check_name("no_debug") {
             return FunctionDebugContext::FunctionWithoutDebugInfo;
         }
@@ -229,11 +229,11 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     };
 
     // Find the enclosing function, in case this is a closure.
-    let def_key = cx.tcx().def_key(instance.def);
+    let def_key = cx.tcx().def_key(instance.def_id());
     let mut name = def_key.disambiguated_data.data.to_string();
     let name_len = name.len();
 
-    let fn_def_id = cx.tcx().closure_base_def_id(instance.def);
+    let fn_def_id = cx.tcx().closure_base_def_id(instance.def_id());
 
     // Get_template_parameters() will append a `<...>` clause to the function
     // name if necessary.
@@ -246,11 +246,11 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                                       &mut name);
 
     // Build the linkage_name out of the item path and "template" parameters.
-    let linkage_name = mangled_name_of_item(cx, instance.def, &name[name_len..]);
+    let linkage_name = mangled_name_of_item(cx, instance.def_id(), &name[name_len..]);
 
     let scope_line = span_start(cx, span).line;
 
-    let local_id = cx.tcx().hir.as_local_node_id(instance.def);
+    let local_id = cx.tcx().hir.as_local_node_id(instance.def_id());
     let is_local_to_unit = local_id.map_or(false, |id| is_node_local_to_unit(cx, id));
 
     let function_name = CString::new(name).unwrap();
@@ -394,7 +394,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         // First, let's see if this is a method within an inherent impl. Because
         // if yes, we want to make the result subroutine DIE a child of the
         // subroutine's self-type.
-        let self_type = cx.tcx().impl_of_method(instance.def).and_then(|impl_def_id| {
+        let self_type = cx.tcx().impl_of_method(instance.def_id()).and_then(|impl_def_id| {
             // If the method does *not* belong to a trait, proceed
             if cx.tcx().trait_id_of_impl(impl_def_id).is_none() {
                 let impl_self_ty =
@@ -417,9 +417,9 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
         self_type.unwrap_or_else(|| {
             namespace::item_namespace(cx, DefId {
-                krate: instance.def.krate,
+                krate: instance.def_id().krate,
                 index: cx.tcx()
-                         .def_key(instance.def)
+                         .def_key(instance.def_id())
                          .parent
                          .expect("get_containing_scope: missing parent?")
             })
