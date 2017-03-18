@@ -1468,6 +1468,18 @@ pub enum Visibility {
     Inherited,
 }
 
+impl Visibility {
+    pub fn is_pub_restricted(&self) -> bool {
+        use self::Visibility::*;
+        match self {
+            &Public |
+            &Inherited => false,
+            &Crate |
+            &Restricted { .. } => true,
+        }
+    }
+}
+
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct StructField {
     pub span: Span,
