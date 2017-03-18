@@ -522,6 +522,7 @@ pub fn noop_fold_mac<T: Folder>(Spanned {node, span}: Mac, fld: &mut T) -> Mac {
 pub fn noop_fold_macro_def<T: Folder>(def: MacroDef, fld: &mut T) -> MacroDef {
     MacroDef {
         tokens: fld.fold_tts(def.tokens.into()).into(),
+        legacy: def.legacy,
     }
 }
 

@@ -1502,10 +1502,11 @@ impl<'a> LoweringContext<'a> {
     pub fn lower_item(&mut self, i: &Item) -> Option<hir::Item> {
         let mut name = i.ident.name;
         let attrs = self.lower_attrs(&i.attrs);
-        if let ItemKind::MacroDef(ref tts) = i.node {
-            if i.attrs.iter().any(|attr| attr.path == "macro_export") {
+        if let ItemKind::MacroDef(ref def) = i.node {
+            if !def.legacy || i.attrs.iter().any(|attr| attr.path == "macro_export") {
+                let (body, legacy) = (def.stream(), def.legacy);
                 self.exported_macros.push(hir::MacroDef {
-                    name: name, attrs: attrs, id: i.id, span: i.span, body: tts.stream(),
+                    name: name, attrs: attrs, id: i.id, span: i.span, body: body, legacy: legacy,
                 });
             }
             return None;

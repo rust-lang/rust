@@ -803,7 +803,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
             };
 
             if binding.vis == ty::Visibility::Public &&
-               (binding.is_import() || binding.is_extern_crate()) {
+               (binding.is_import() || binding.is_macro_def()) {
                 let def = binding.def();
                 if def != Def::Err {
                     if !def.def_id().is_local() {

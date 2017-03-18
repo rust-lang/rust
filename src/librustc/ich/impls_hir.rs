@@ -332,6 +332,7 @@ impl_stable_hash_for!(struct hir::MacroDef {
     attrs,
     id,
     span,
+    legacy,
     body
 });
 

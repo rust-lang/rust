@@ -1022,6 +1022,7 @@ impl Mac_ {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct MacroDef {
     pub tokens: ThinTokenStream,
+    pub legacy: bool,
 }
 
 impl MacroDef {

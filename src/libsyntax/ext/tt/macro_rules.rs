@@ -162,6 +162,12 @@ pub fn compile(sess: &ParseSess, features: &RefCell<Features>, def: &ast::Item) 
     let lhs_nm = ast::Ident::with_empty_ctxt(Symbol::gensym("lhs"));
     let rhs_nm = ast::Ident::with_empty_ctxt(Symbol::gensym("rhs"));
 
+    // Parse the macro_rules! invocation
+    let body = match def.node {
+        ast::ItemKind::MacroDef(ref body) => body,
+        _ => unreachable!(),
+    };
+
     // The pattern that macro_rules matches.
     // The grammar for macro_rules! is:
     // $( $lhs:tt => $rhs:tt );+
@@ -174,7 +180,7 @@ pub fn compile(sess: &ParseSess, features: &RefCell<Features>, def: &ast::Item) 
                 quoted::TokenTree::Token(DUMMY_SP, token::FatArrow),
                 quoted::TokenTree::MetaVarDecl(DUMMY_SP, rhs_nm, ast::Ident::from_str("tt")),
             ],
-            separator: Some(token::Semi),
+            separator: Some(if body.legacy { token::Semi } else { token::Comma }),
             op: quoted::KleeneOp::OneOrMore,
             num_captures: 2,
         })),
@@ -187,12 +193,7 @@ pub fn compile(sess: &ParseSess, features: &RefCell<Features>, def: &ast::Item) 
         })),
     ];
 
-    // Parse the macro_rules! invocation
-    let body = match def.node {
-        ast::ItemKind::MacroDef(ref body) => body.stream(),
-        _ => unreachable!(),
-    };
-    let argument_map = match parse(sess, body, &argument_gram, None, true) {
+    let argument_map = match parse(sess, body.stream(), &argument_gram, None, true) {
         Success(m) => m,
         Failure(sp, tok) => {
             let s = parse_failure_msg(tok);
