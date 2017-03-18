@@ -338,6 +338,7 @@ pub struct ValuesMut<'a, K: 'a, V: 'a> {
 }
 
 /// An iterator over a sub-range of BTreeMap's entries.
+#[stable(feature = "btree_range", since = "1.17.0")]
 pub struct Range<'a, K: 'a, V: 'a> {
     front: Handle<NodeRef<marker::Immut<'a>, K, V, marker::Leaf>, marker::Edge>,
     back: Handle<NodeRef<marker::Immut<'a>, K, V, marker::Leaf>, marker::Edge>,
@@ -351,6 +352,7 @@ impl<'a, K: 'a + fmt::Debug, V: 'a + fmt::Debug> fmt::Debug for Range<'a, K, V> 
 }
 
 /// A mutable iterator over a sub-range of BTreeMap's entries.
+#[stable(feature = "btree_range", since = "1.17.0")]
 pub struct RangeMut<'a, K: 'a, V: 'a> {
     front: Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>,
     back: Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>,
@@ -724,8 +726,6 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(btree_range, collections_bound)]
-    ///
     /// use std::collections::BTreeMap;
     /// use std::collections::Bound::Included;
     ///
@@ -738,9 +738,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// }
     /// assert_eq!(Some((&5, &"b")), map.range(4..).next());
     /// ```
-    #[unstable(feature = "btree_range",
-               reason = "matches collection reform specification, waiting for dust to settle",
-               issue = "27787")]
+    #[stable(feature = "btree_range", since = "1.17.0")]
     pub fn range<T: ?Sized, R>(&self, range: R) -> Range<K, V>
         where T: Ord, K: Borrow<T>, R: RangeArgument<T>
     {
@@ -768,8 +766,6 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// Basic usage:
     ///
     /// ```
-    /// #![feature(btree_range)]
-    ///
     /// use std::collections::BTreeMap;
     ///
     /// let mut map: BTreeMap<&str, i32> = ["Alice", "Bob", "Carol", "Cheryl"].iter()
@@ -782,9 +778,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     ///     println!("{} => {}", name, balance);
     /// }
     /// ```
-    #[unstable(feature = "btree_range",
-               reason = "matches collection reform specification, waiting for dust to settle",
-               issue = "27787")]
+    #[stable(feature = "btree_range", since = "1.17.0")]
     pub fn range_mut<T: ?Sized, R>(&mut self, range: R) -> RangeMut<K, V>
         where T: Ord, K: Borrow<T>, R: RangeArgument<T>
     {
