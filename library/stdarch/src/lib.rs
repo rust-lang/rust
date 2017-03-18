@@ -5,6 +5,7 @@
 )]
 
 pub use v128::*;
+pub use v256::*;
 pub use v64::*;
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 pub use x86::*;
@@ -13,6 +14,7 @@ pub use x86::*;
 mod macros;
 mod simd;
 mod v128;
+mod v256;
 mod v64;
 #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
 mod x86;

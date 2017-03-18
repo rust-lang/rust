@@ -8,8 +8,10 @@ macro_rules! define_ty {
 }
 
 macro_rules! define_impl {
-    ($name:ident, $elemty:ident, $nelems:expr,
-     $($elname:ident),+) => {
+    (
+        $name:ident, $elemty:ident, $nelems:expr, $boolname:ident,
+        $($elname:ident),+
+    ) => {
         impl $name {
             #[inline]
             pub fn new($($elname: $elemty),*) -> $name {
@@ -25,25 +27,46 @@ macro_rules! define_impl {
                 }),*)
             }
 
-            #[inline(always)]
+            #[inline]
             pub fn extract(self, idx: u32) -> $elemty {
                 assert!(idx < $nelems);
                 unsafe { simd_extract(self, idx) }
             }
 
-            #[inline(always)]
-            pub fn insert(self, idx: u32, val: $elemty) -> $name {
+            #[inline]
+            pub fn replace(self, idx: u32, val: $elemty) -> $name {
                 assert!(idx < $nelems);
                 unsafe { simd_insert(self, idx, val) }
             }
 
-            #[inline(always)]
+            #[inline]
+            pub fn store(self, slice: &mut [$elemty], offset: usize) {
+                assert!(slice[offset..].len() >= $nelems);
+                unsafe { self.store_unchecked(slice, offset) }
+            }
+
+            #[inline]
+            pub unsafe fn store_unchecked(
+                self,
+                slice: &mut [$elemty],
+                offset: usize,
+            ) {
+                use std::mem::size_of;
+                use std::ptr;
+
+                ptr::copy_nonoverlapping(
+                    &self as *const $name as *const u8,
+                    slice.get_unchecked_mut(offset) as *mut $elemty as *mut u8,
+                    size_of::<$name>());
+            }
+
+            #[inline]
             pub fn load(slice: &[$elemty], offset: usize) -> $name {
                 assert!(slice[offset..].len() >= $nelems);
                 unsafe { $name::load_unchecked(slice, offset) }
             }
 
-            #[inline(always)]
+            #[inline]
             pub unsafe fn load_unchecked(
                 slice: &[$elemty],
                 offset: usize,
@@ -57,6 +80,36 @@ macro_rules! define_impl {
                     &mut x as *mut $name as *mut u8,
                     size_of::<$name>());
                 x
+            }
+
+            #[inline]
+            pub fn eq(self, other: $name) -> $boolname {
+                unsafe { simd_eq(self, other) }
+            }
+
+            #[inline]
+            pub fn ne(self, other: $name) -> $boolname {
+                unsafe { simd_ne(self, other) }
+            }
+
+            #[inline]
+            pub fn lt(self, other: $name) -> $boolname {
+                unsafe { simd_lt(self, other) }
+            }
+
+            #[inline]
+            pub fn le(self, other: $name) -> $boolname {
+                unsafe { simd_le(self, other) }
+            }
+
+            #[inline]
+            pub fn gt(self, other: $name) -> $boolname {
+                unsafe { simd_gt(self, other) }
+            }
+
+            #[inline]
+            pub fn ge(self, other: $name) -> $boolname {
+                unsafe { simd_ge(self, other) }
             }
         }
     }
@@ -174,6 +227,18 @@ macro_rules! define_integer_ops {
                 $ty, $elem,
                 u8, u16, u32, u64, usize,
                 i8, i16, i32, i64, isize);
+        )+
+    }
+}
+
+macro_rules! define_casts {
+    ($(($ty:ident, $floatty:ident, $floatcast:ident)),+) => {
+        $(
+            impl $ty {
+                pub fn $floatcast(self) -> ::$floatty {
+                    unsafe { simd_cast(self) }
+                }
+            }
         )+
     }
 }

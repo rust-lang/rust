@@ -2,7 +2,9 @@ use std::mem;
 use std::os::raw::c_void;
 use std::ptr;
 
-use simd::*;
+use simd::{
+    simd_cast, simd_shuffle2, simd_shuffle4, simd_shuffle8, simd_shuffle16,
+};
 use x86::__m128i;
 use v128::*;
 use v64::*;
@@ -519,63 +521,63 @@ pub fn _mm_xor_si128(a: __m128i, b: __m128i) -> __m128i {
 #[inline(always)]
 #[target_feature = "+sse2"]
 pub fn _mm_cmpeq_epi8(a: i8x16, b: i8x16) -> i8x16 {
-    unsafe { simd_eq(a, b) }
+    a.eq(b)
 }
 
 /// Compare packed 16-bit integers in `a` and `b` for equality.
 #[inline(always)]
 #[target_feature = "+sse2"]
 pub fn _mm_cmpeq_epi16(a: i16x8, b: i16x8) -> i16x8 {
-    unsafe { simd_eq(a, b) }
+    a.eq(b)
 }
 
 /// Compare packed 32-bit integers in `a` and `b` for equality.
 #[inline(always)]
 #[target_feature = "+sse2"]
 pub fn _mm_cmpeq_epi32(a: i32x4, b: i32x4) -> i32x4 {
-    unsafe { simd_eq(a, b) }
+    a.eq(b)
 }
 
 /// Compare packed 8-bit integers in `a` and `b` for greater-than.
 #[inline(always)]
 #[target_feature = "+sse2"]
 pub fn _mm_cmpgt_epi8(a: i8x16, b: i8x16) -> i8x16 {
-    unsafe { simd_gt(a, b) }
+    a.gt(b)
 }
 
 /// Compare packed 16-bit integers in `a` and `b` for greater-than.
 #[inline(always)]
 #[target_feature = "+sse2"]
 pub fn _mm_cmpgt_epi16(a: i16x8, b: i16x8) -> i16x8 {
-    unsafe { simd_gt(a, b) }
+    a.gt(b)
 }
 
 /// Compare packed 32-bit integers in `a` and `b` for greater-than.
 #[inline(always)]
 #[target_feature = "+sse2"]
 pub fn _mm_cmpgt_epi32(a: i32x4, b: i32x4) -> i32x4 {
-    unsafe { simd_gt(a, b) }
+    a.gt(b)
 }
 
 /// Compare packed 8-bit integers in `a` and `b` for less-than.
 #[inline(always)]
 #[target_feature = "+sse2"]
 pub fn _mm_cmplt_epi8(a: i8x16, b: i8x16) -> i8x16 {
-    unsafe { simd_lt(a, b) }
+    a.lt(b)
 }
 
 /// Compare packed 16-bit integers in `a` and `b` for less-than.
 #[inline(always)]
 #[target_feature = "+sse2"]
 pub fn _mm_cmplt_epi16(a: i16x8, b: i16x8) -> i16x8 {
-    unsafe { simd_lt(a, b) }
+    a.lt(b)
 }
 
 /// Compare packed 32-bit integers in `a` and `b` for less-than.
 #[inline(always)]
 #[target_feature = "+sse2"]
 pub fn _mm_cmplt_epi32(a: i32x4, b: i32x4) -> i32x4 {
-    unsafe { simd_lt(a, b) }
+    a.lt(b)
 }
 
 /// Convert the lower two packed 32-bit integers in `a` to packed
@@ -591,7 +593,7 @@ pub fn _mm_cvtepi32_pd(a: i32x4) -> f64x2  {
 #[inline(always)]
 #[target_feature = "+sse2"]
 pub fn _mm_cvtsi32_sd(a: f64x2, b: i32) -> f64x2 {
-    a.insert(0, b as f64)
+    a.replace(0, b as f64)
 }
 
 /// Return `a` with its lower element replaced by `b` after converting it to
@@ -599,7 +601,7 @@ pub fn _mm_cvtsi32_sd(a: f64x2, b: i32) -> f64x2 {
 #[inline(always)]
 #[target_feature = "+sse2"]
 pub fn _mm_cvtsi64_sd(a: f64x2, b: i64) -> f64x2 {
-    a.insert(0, b as f64)
+    a.replace(0, b as f64)
 }
 
 /// Return `a` with its lower element replaced by `b` after converting it to
@@ -842,7 +844,7 @@ pub unsafe fn _mm_storel_epi64(mem_addr: *mut __m128i, a: __m128i) {
 #[inline(always)]
 #[target_feature = "+sse2"]
 pub fn _mm_move_epi64(a: i64x2) -> i64x2 {
-    a.insert(1, 0)
+    a.replace(1, 0)
 }
 
 /// Convert packed 16-bit integers from `a` and `b` to packed 8-bit integers
@@ -880,7 +882,7 @@ pub fn _mm_extract_epi16(a: i16x8, imm8: i32) -> i32 {
 #[inline(always)]
 #[target_feature = "+sse2"]
 pub fn _mm_insert_epi16(a: i16x8, i: i32, imm8: i32) -> i16x8 {
-    a.insert(imm8 as u32 & 0b111, i as i16)
+    a.replace(imm8 as u32 & 0b111, i as i16)
 }
 
 /// Return a mask of the most significant bit of each element in `a`.
@@ -1134,7 +1136,7 @@ pub fn _mm_unpacklo_epi64(a: i64x2, b: i64x2) -> i64x2 {
 #[inline(always)]
 #[target_feature = "+sse2"]
 pub fn _mm_add_sd(a: f64x2, b: f64x2) -> f64x2 {
-    a.insert(0, a.extract(0) + b.extract(0))
+    a.replace(0, a.extract(0) + b.extract(0))
 }
 
 /// Add packed double-precision (64-bit) floating-point elements in `a` and
@@ -1150,7 +1152,7 @@ pub fn _mm_add_pd(a: f64x2, b: f64x2) -> f64x2 {
 #[inline(always)]
 #[target_feature = "+sse2"]
 pub fn _mm_div_sd(a: f64x2, b: f64x2) -> f64x2 {
-    a.insert(0, a.extract(0) / b.extract(0))
+    a.replace(0, a.extract(0) / b.extract(0))
 }
 
 /// Divide packed double-precision (64-bit) floating-point elements in `a` by
@@ -1198,7 +1200,7 @@ pub fn _mm_min_pd(a: f64x2, b: f64x2) -> f64x2 {
 #[inline(always)]
 #[target_feature = "+sse2"]
 pub fn _mm_mul_sd(a: f64x2, b: f64x2) -> f64x2 {
-    a.insert(0, a.extract(0) * b.extract(0))
+    a.replace(0, a.extract(0) * b.extract(0))
 }
 
 /// Multiply packed double-precision (64-bit) floating-point elements in `a`
@@ -1214,7 +1216,7 @@ pub fn _mm_mul_pd(a: f64x2, b: f64x2) -> f64x2 {
 #[inline(always)]
 #[target_feature = "+sse2"]
 pub fn _mm_sqrt_sd(a: f64x2, b: f64x2) -> f64x2 {
-    a.insert(0, unsafe { sqrtsd(b).extract(0) })
+    a.replace(0, unsafe { sqrtsd(b).extract(0) })
 }
 
 /// Return a new vector with the square root of each of the values in `a`.
@@ -1229,7 +1231,7 @@ pub fn _mm_sqrt_pd(a: f64x2) -> f64x2 {
 #[inline(always)]
 #[target_feature = "+sse2"]
 pub fn _mm_sub_sd(a: f64x2, b: f64x2) -> f64x2 {
-    a.insert(0, a.extract(0) - b.extract(0))
+    a.replace(0, a.extract(0) - b.extract(0))
 }
 
 /// Subtract packed double-precision (64-bit) floating-point elements in `b`
@@ -1314,7 +1316,7 @@ pub fn _mm_cmple_sd(a: f64x2, b: f64x2) -> f64x2 {
 #[inline(always)]
 #[target_feature = "+sse2"]
 pub fn _mm_cmpgt_sd(a: f64x2, b: f64x2) -> f64x2 {
-    _mm_cmplt_sd(b, a).insert(1, a.extract(1))
+    _mm_cmplt_sd(b, a).replace(1, a.extract(1))
 }
 
 /// Return a new vector with the low element of `a` replaced by the
@@ -1322,7 +1324,7 @@ pub fn _mm_cmpgt_sd(a: f64x2, b: f64x2) -> f64x2 {
 #[inline(always)]
 #[target_feature = "+sse2"]
 pub fn _mm_cmpge_sd(a: f64x2, b: f64x2) -> f64x2 {
-    _mm_cmple_sd(b, a).insert(1, a.extract(1))
+    _mm_cmple_sd(b, a).replace(1, a.extract(1))
 }
 
 /// Return a new vector with the low element of `a` replaced by the result
@@ -1373,7 +1375,7 @@ pub fn _mm_cmpnle_sd(a: f64x2, b: f64x2) -> f64x2 {
 #[inline(always)]
 #[target_feature = "+sse2"]
 pub fn _mm_cmpngt_sd(a: f64x2, b: f64x2) -> f64x2 {
-    _mm_cmpnlt_sd(b, a).insert(1, a.extract(1))
+    _mm_cmpnlt_sd(b, a).replace(1, a.extract(1))
 }
 
 /// Return a new vector with the low element of `a` replaced by the
@@ -1381,7 +1383,7 @@ pub fn _mm_cmpngt_sd(a: f64x2, b: f64x2) -> f64x2 {
 #[inline(always)]
 #[target_feature = "+sse2"]
 pub fn _mm_cmpnge_sd(a: f64x2, b: f64x2) -> f64x2 {
-    _mm_cmpnle_sd(b, a).insert(1, a.extract(1))
+    _mm_cmpnle_sd(b, a).replace(1, a.extract(1))
 }
 
 /// Compare corresponding elements in `a` and `b` for equality.
@@ -1553,8 +1555,15 @@ pub fn _mm_ucomineq_sd(a: f64x2, b: f64x2) -> bool {
     unsafe { mem::transmute(ucomineqsd(a, b) as u8) }
 }
 
-
-
+/// Return a mask of the most significant bit of each element in `a`.
+///
+/// The mask is stored in the 2 least significant bits of the return value.
+/// All other bits are set to `0`.
+#[inline(always)]
+#[target_feature = "+sse2"]
+pub fn _mm_movemask_pd(a: f64x2) -> i32 {
+    unsafe { movmskpd(a) }
+}
 
 
 
@@ -1703,6 +1712,8 @@ extern {
     fn ucomigesd(a: f64x2, b: f64x2) -> i32;
     #[link_name = "llvm.x86.sse2.ucomineq.sd"]
     fn ucomineqsd(a: f64x2, b: f64x2) -> i32;
+    #[link_name = "llvm.x86.sse2.movmsk.pd"]
+    fn movmskpd(a: f64x2) -> i32;
 }
 
 #[cfg(test)]
@@ -2306,7 +2317,7 @@ mod tests {
         let a = i16x8::new(0, 1, 2, 3, 4, 5, 6, 7);
         let b = i16x8::new(7, 6, 2, 4, 3, 2, 1, 0);
         let r = sse2::_mm_cmpeq_epi16(a, b);
-        assert_eq!(r, i16x8::splat(0).insert(2, 0xFFFFu16 as i16));
+        assert_eq!(r, i16x8::splat(0).replace(2, 0xFFFFu16 as i16));
     }
 
     #[test]
@@ -2314,55 +2325,55 @@ mod tests {
         let a = i32x4::new(0, 1, 2, 3);
         let b = i32x4::new(3, 2, 2, 0);
         let r = sse2::_mm_cmpeq_epi32(a, b);
-        assert_eq!(r, i32x4::splat(0).insert(2, 0xFFFFFFFFu32 as i32));
+        assert_eq!(r, i32x4::splat(0).replace(2, 0xFFFFFFFFu32 as i32));
     }
 
     #[test]
     fn _mm_cmpgt_epi8() {
-        let a = i8x16::splat(0).insert(0, 5);
+        let a = i8x16::splat(0).replace(0, 5);
         let b = i8x16::splat(0);
         let r = sse2::_mm_cmpgt_epi8(a, b);
-        assert_eq!(r, i8x16::splat(0).insert(0, 0xFFu8 as i8));
+        assert_eq!(r, i8x16::splat(0).replace(0, 0xFFu8 as i8));
     }
 
     #[test]
     fn _mm_cmpgt_epi16() {
-        let a = i16x8::splat(0).insert(0, 5);
+        let a = i16x8::splat(0).replace(0, 5);
         let b = i16x8::splat(0);
         let r = sse2::_mm_cmpgt_epi16(a, b);
-        assert_eq!(r, i16x8::splat(0).insert(0, 0xFFFFu16 as i16));
+        assert_eq!(r, i16x8::splat(0).replace(0, 0xFFFFu16 as i16));
     }
 
     #[test]
     fn _mm_cmpgt_epi32() {
-        let a = i32x4::splat(0).insert(0, 5);
+        let a = i32x4::splat(0).replace(0, 5);
         let b = i32x4::splat(0);
         let r = sse2::_mm_cmpgt_epi32(a, b);
-        assert_eq!(r, i32x4::splat(0).insert(0, 0xFFFFFFFFu32 as i32));
+        assert_eq!(r, i32x4::splat(0).replace(0, 0xFFFFFFFFu32 as i32));
     }
 
     #[test]
     fn _mm_cmplt_epi8() {
         let a = i8x16::splat(0);
-        let b = i8x16::splat(0).insert(0, 5);
+        let b = i8x16::splat(0).replace(0, 5);
         let r = sse2::_mm_cmplt_epi8(a, b);
-        assert_eq!(r, i8x16::splat(0).insert(0, 0xFFu8 as i8));
+        assert_eq!(r, i8x16::splat(0).replace(0, 0xFFu8 as i8));
     }
 
     #[test]
     fn _mm_cmplt_epi16() {
         let a = i16x8::splat(0);
-        let b = i16x8::splat(0).insert(0, 5);
+        let b = i16x8::splat(0).replace(0, 5);
         let r = sse2::_mm_cmplt_epi16(a, b);
-        assert_eq!(r, i16x8::splat(0).insert(0, 0xFFFFu16 as i16));
+        assert_eq!(r, i16x8::splat(0).replace(0, 0xFFFFu16 as i16));
     }
 
     #[test]
     fn _mm_cmplt_epi32() {
         let a = i32x4::splat(0);
-        let b = i32x4::splat(0).insert(0, 5);
+        let b = i32x4::splat(0).replace(0, 5);
         let r = sse2::_mm_cmplt_epi32(a, b);
-        assert_eq!(r, i32x4::splat(0).insert(0, 0xFFFFFFFFu32 as i32));
+        assert_eq!(r, i32x4::splat(0).replace(0, 0xFFFFFFFFu32 as i32));
     }
 
     #[test]
@@ -2504,12 +2515,12 @@ mod tests {
     #[test]
     fn _mm_maskmoveu_si128() {
         let a = i8x16::splat(9);
-        let mask = i8x16::splat(0).insert(2, 0x80u8 as i8);
+        let mask = i8x16::splat(0).replace(2, 0x80u8 as i8);
         let mut r = i8x16::splat(0);
         unsafe {
             sse2::_mm_maskmoveu_si128(a, mask, &mut r as *mut _ as *mut i8);
         }
-        assert_eq!(r, i8x16::splat(0).insert(2, 9));
+        assert_eq!(r, i8x16::splat(0).replace(2, 9));
     }
 
     #[test]
@@ -2586,7 +2597,7 @@ mod tests {
     #[test]
     fn _mm_insert_epi16() {
         let a = i16x8::new(0, 1, 2, 3, 4, 5, 6, 7);
-        assert_eq!(sse2::_mm_insert_epi16(a, 9, 0), a.insert(0, 9));
+        assert_eq!(sse2::_mm_insert_epi16(a, 9, 0), a.replace(0, 9));
     }
 
     #[test]
@@ -3206,5 +3217,14 @@ mod tests {
     fn _mm_ucomineq_sd() {
         let (a, b) = (f64x2::new(1.0, 2.0), f64x2::new(1.0, 3.0));
         assert!(!sse2::_mm_ucomineq_sd(a, b));
+    }
+
+    #[test]
+    fn _mm_movemask_pd() {
+        let r = sse2::_mm_movemask_pd(f64x2::new(-1.0, 5.0));
+        assert_eq!(r, 0b01);
+
+        let r = sse2::_mm_movemask_pd(f64x2::new(-1.0, -5.0));
+        assert_eq!(r, 0b11);
     }
 }

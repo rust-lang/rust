@@ -1,3 +1,167 @@
+**TIP**: Use the following command to generate a section in this list for
+Intel intrinsics. Replace `SSE4.2` with the intended type.
+
+```
+rg '^<intrinsic' intel-intrinsics-3.3.15.xml | rg "'SSE4.2'" | rg '^.*name=\x27([^\x27]+)\x27.*$' -r '* [ ] `$1`' >> TODO.md
+```
+
+
+sse
+---
+* [ ] `_MM_TRANSPOSE4_PS`
+* [ ] `_mm_getcsr`
+* [ ] `_mm_setcsr`
+* [ ] `_MM_GET_EXCEPTION_STATE`
+* [ ] `_MM_SET_EXCEPTION_STATE`
+* [ ] `_MM_GET_EXCEPTION_MASK`
+* [ ] `_MM_SET_EXCEPTION_MASK`
+* [ ] `_MM_GET_ROUNDING_MODE`
+* [ ] `_MM_SET_ROUNDING_MODE`
+* [ ] `_MM_GET_FLUSH_ZERO_MODE`
+* [ ] `_MM_SET_FLUSH_ZERO_MODE`
+* [ ] `_mm_prefetch`
+* [ ] `_mm_sfence`
+* [ ] `_mm_max_pi16`
+* [ ] `_m_pmaxsw`
+* [ ] `_mm_max_pu8`
+* [ ] `_m_pmaxub`
+* [ ] `_mm_min_pi16`
+* [ ] `_m_pminsw`
+* [ ] `_mm_min_pu8`
+* [ ] `_m_pminub`
+* [ ] `_mm_mulhi_pu16`
+* [ ] `_m_pmulhuw`
+* [ ] `_mm_avg_pu8`
+* [ ] `_m_pavgb`
+* [ ] `_mm_avg_pu16`
+* [ ] `_m_pavgw`
+* [ ] `_mm_sad_pu8`
+* [ ] `_m_psadbw`
+* [ ] `_mm_cvtsi32_ss`
+* [ ] `_mm_cvt_si2ss`
+* [ ] `_mm_cvtsi64_ss`
+* [ ] `_mm_cvtpi32_ps`
+* [ ] `_mm_cvt_pi2ps`
+* [ ] `_mm_cvtpi16_ps`
+* [ ] `_mm_cvtpu16_ps`
+* [ ] `_mm_cvtpi8_ps`
+* [ ] `_mm_cvtpu8_ps`
+* [ ] `_mm_cvtpi32x2_ps`
+* [ ] `_mm_stream_pi`
+* [ ] `_mm_maskmove_si64`
+* [ ] `_m_maskmovq`
+* [ ] `_mm_extract_pi16`
+* [ ] `_m_pextrw`
+* [ ] `_mm_insert_pi16`
+* [ ] `_m_pinsrw`
+* [ ] `_mm_movemask_pi8`
+* [ ] `_m_pmovmskb`
+* [ ] `_mm_shuffle_pi16`
+* [ ] `_m_pshufw`
+* [ ] `_mm_add_ss`
+* [ ] `_mm_add_ps`
+* [ ] `_mm_sub_ss`
+* [ ] `_mm_sub_ps`
+* [ ] `_mm_mul_ss`
+* [ ] `_mm_mul_ps`
+* [ ] `_mm_div_ss`
+* [ ] `_mm_div_ps`
+* [ ] `_mm_sqrt_ss`
+* [x] `_mm_sqrt_ps`
+* [ ] `_mm_rcp_ss`
+* [x] `_mm_rcp_ps`
+* [ ] `_mm_rsqrt_ss`
+* [x] `_mm_rsqrt_ps`
+* [ ] `_mm_min_ss`
+* [x] `_mm_min_ps`
+* [ ] `_mm_max_ss`
+* [x] `_mm_max_ps`
+* [ ] `_mm_and_ps`
+* [ ] `_mm_andnot_ps`
+* [ ] `_mm_or_ps`
+* [ ] `_mm_xor_ps`
+* [ ] `_mm_cmpeq_ss`
+* [ ] `_mm_cmpeq_ps`
+* [ ] `_mm_cmplt_ss`
+* [ ] `_mm_cmplt_ps`
+* [ ] `_mm_cmple_ss`
+* [ ] `_mm_cmple_ps`
+* [ ] `_mm_cmpgt_ss`
+* [ ] `_mm_cmpgt_ps`
+* [ ] `_mm_cmpge_ss`
+* [ ] `_mm_cmpge_ps`
+* [ ] `_mm_cmpneq_ss`
+* [ ] `_mm_cmpneq_ps`
+* [ ] `_mm_cmpnlt_ss`
+* [ ] `_mm_cmpnlt_ps`
+* [ ] `_mm_cmpnle_ss`
+* [ ] `_mm_cmpnle_ps`
+* [ ] `_mm_cmpngt_ss`
+* [ ] `_mm_cmpngt_ps`
+* [ ] `_mm_cmpnge_ss`
+* [ ] `_mm_cmpnge_ps`
+* [ ] `_mm_cmpord_ss`
+* [ ] `_mm_cmpord_ps`
+* [ ] `_mm_cmpunord_ss`
+* [ ] `_mm_cmpunord_ps`
+* [ ] `_mm_comieq_ss`
+* [ ] `_mm_comilt_ss`
+* [ ] `_mm_comile_ss`
+* [ ] `_mm_comigt_ss`
+* [ ] `_mm_comige_ss`
+* [ ] `_mm_comineq_ss`
+* [ ] `_mm_ucomieq_ss`
+* [ ] `_mm_ucomilt_ss`
+* [ ] `_mm_ucomile_ss`
+* [ ] `_mm_ucomigt_ss`
+* [ ] `_mm_ucomige_ss`
+* [ ] `_mm_ucomineq_ss`
+* [ ] `_mm_cvtss_si32`
+* [ ] `_mm_cvt_ss2si`
+* [ ] `_mm_cvtss_si64`
+* [ ] `_mm_cvtss_f32`
+* [ ] `_mm_cvtps_pi32`
+* [ ] `_mm_cvt_ps2pi`
+* [ ] `_mm_cvttss_si32`
+* [ ] `_mm_cvtt_ss2si`
+* [ ] `_mm_cvttss_si64`
+* [ ] `_mm_cvttps_pi32`
+* [ ] `_mm_cvtt_ps2pi`
+* [ ] `_mm_cvtps_pi16`
+* [ ] `_mm_cvtps_pi8`
+* [ ] `_mm_set_ss`
+* [ ] `_mm_set1_ps`
+* [ ] `_mm_set_ps1`
+* [ ] `_mm_set_ps`
+* [ ] `_mm_setr_ps`
+* [ ] `_mm_setzero_ps`
+* [ ] `_mm_loadh_pi`
+* [ ] `_mm_loadl_pi`
+* [ ] `_mm_load_ss`
+* [ ] `_mm_load1_ps`
+* [ ] `_mm_load_ps1`
+* [ ] `_mm_load_ps`
+* [ ] `_mm_loadu_ps`
+* [ ] `_mm_loadr_ps`
+* [ ] `_mm_stream_ps`
+* [ ] `_mm_storeh_pi`
+* [ ] `_mm_storel_pi`
+* [ ] `_mm_store_ss`
+* [ ] `_mm_store1_ps`
+* [ ] `_mm_store_ps1`
+* [ ] `_mm_store_ps`
+* [ ] `_mm_storeu_ps`
+* [ ] `_mm_storer_ps`
+* [ ] `_mm_move_ss`
+* [ ] `_mm_shuffle_ps`
+* [ ] `_mm_unpackhi_ps`
+* [ ] `_mm_unpacklo_ps`
+* [ ] `_mm_movehl_ps`
+* [ ] `_mm_movelh_ps`
+* [x] `_mm_movemask_ps`
+* [ ] `_mm_undefined_ps`
+
+
 sse2
 ----
 * [x] `_mm_pause`
@@ -221,7 +385,7 @@ sse2
 * [ ] `_mm_storel_pd`
 * [ ] `_mm_unpackhi_pd`
 * [ ] `_mm_unpacklo_pd`
-* [ ] `_mm_movemask_pd`
+* [x] `_mm_movemask_pd`
 * [ ] `_mm_shuffle_pd`
 * [ ] `_mm_move_sd`
 * [ ] `_mm_castpd_ps`
@@ -232,6 +396,21 @@ sse2
 * [ ] `_mm_castsi128_ps`
 * [ ] `_mm_undefined_pd`
 * [ ] `_mm_undefined_si128`
+
+
+sse3
+----
+* [ ] `_mm_addsub_ps`
+* [ ] `_mm_addsub_pd`
+* [ ] `_mm_hadd_pd`
+* [ ] `_mm_hadd_ps`
+* [ ] `_mm_hsub_pd`
+* [ ] `_mm_hsub_ps`
+* [ ] `_mm_lddqu_si128`
+* [ ] `_mm_movedup_pd`
+* [ ] `_mm_loaddup_pd`
+* [ ] `_mm_movehdup_ps`
+* [ ] `_mm_moveldup_ps`
 
 
 ssse3
@@ -268,3 +447,91 @@ ssse3
 * [ ] `_mm_sign_pi8`
 * [ ] `_mm_sign_pi16`
 * [ ] `_mm_sign_pi32`
+
+
+sse4.1
+------
+* [ ] `_mm_blend_pd`
+* [ ] `_mm_blend_ps`
+* [ ] `_mm_blendv_pd`
+* [ ] `_mm_blendv_ps`
+* [ ] `_mm_blendv_epi8`
+* [ ] `_mm_blend_epi16`
+* [ ] `_mm_dp_pd`
+* [ ] `_mm_dp_ps`
+* [ ] `_mm_extract_ps`
+* [ ] `_mm_extract_epi8`
+* [ ] `_mm_extract_epi32`
+* [ ] `_mm_extract_epi64`
+* [ ] `_mm_insert_ps`
+* [ ] `_mm_insert_epi8`
+* [ ] `_mm_insert_epi32`
+* [ ] `_mm_insert_epi64`
+* [ ] `_mm_max_epi8`
+* [ ] `_mm_max_epi32`
+* [ ] `_mm_max_epu32`
+* [ ] `_mm_max_epu16`
+* [ ] `_mm_min_epi8`
+* [ ] `_mm_min_epi32`
+* [ ] `_mm_min_epu32`
+* [ ] `_mm_min_epu16`
+* [ ] `_mm_packus_epi32`
+* [ ] `_mm_cmpeq_epi64`
+* [ ] `_mm_cvtepi8_epi16`
+* [ ] `_mm_cvtepi8_epi32`
+* [ ] `_mm_cvtepi8_epi64`
+* [ ] `_mm_cvtepi16_epi32`
+* [ ] `_mm_cvtepi16_epi64`
+* [ ] `_mm_cvtepi32_epi64`
+* [ ] `_mm_cvtepu8_epi16`
+* [ ] `_mm_cvtepu8_epi32`
+* [ ] `_mm_cvtepu8_epi64`
+* [ ] `_mm_cvtepu16_epi32`
+* [ ] `_mm_cvtepu16_epi64`
+* [ ] `_mm_cvtepu32_epi64`
+* [ ] `_mm_mul_epi32`
+* [ ] `_mm_mullo_epi32`
+* [ ] `_mm_testz_si128`
+* [ ] `_mm_testc_si128`
+* [ ] `_mm_testnzc_si128`
+* [ ] `_mm_test_all_zeros`
+* [ ] `_mm_test_mix_ones_zeros`
+* [ ] `_mm_test_all_ones`
+* [ ] `_mm_round_pd`
+* [ ] `_mm_floor_pd`
+* [ ] `_mm_ceil_pd`
+* [ ] `_mm_round_ps`
+* [ ] `_mm_floor_ps`
+* [ ] `_mm_ceil_ps`
+* [ ] `_mm_round_sd`
+* [ ] `_mm_floor_sd`
+* [ ] `_mm_ceil_sd`
+* [ ] `_mm_round_ss`
+* [ ] `_mm_floor_ss`
+* [ ] `_mm_ceil_ss`
+* [ ] `_mm_minpos_epu16`
+* [ ] `_mm_mpsadbw_epu8`
+* [ ] `_mm_stream_load_si128`
+
+
+sse4.2
+------
+* [ ] `_mm_cmpistrm`
+* [ ] `_mm_cmpistri`
+* [ ] `_mm_cmpistrz`
+* [ ] `_mm_cmpistrc`
+* [ ] `_mm_cmpistrs`
+* [ ] `_mm_cmpistro`
+* [ ] `_mm_cmpistra`
+* [ ] `_mm_cmpestrm`
+* [ ] `_mm_cmpestri`
+* [ ] `_mm_cmpestrz`
+* [ ] `_mm_cmpestrc`
+* [ ] `_mm_cmpestrs`
+* [ ] `_mm_cmpestro`
+* [ ] `_mm_cmpestra`
+* [ ] `_mm_cmpgt_epi64`
+* [ ] `_mm_crc32_u8`
+* [ ] `_mm_crc32_u16`
+* [ ] `_mm_crc32_u32`
+* [ ] `_mm_crc32_u64`
