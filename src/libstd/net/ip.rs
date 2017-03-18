@@ -636,6 +636,7 @@ impl FromInner<c::in_addr> for Ipv4Addr {
 
 #[stable(feature = "ip_u32", since = "1.1.0")]
 impl From<Ipv4Addr> for u32 {
+    /// It performs the conversion in network order (big-endian).
     fn from(ip: Ipv4Addr) -> u32 {
         let ip = ip.octets();
         ((ip[0] as u32) << 24) + ((ip[1] as u32) << 16) + ((ip[2] as u32) << 8) + (ip[3] as u32)
@@ -644,6 +645,7 @@ impl From<Ipv4Addr> for u32 {
 
 #[stable(feature = "ip_u32", since = "1.1.0")]
 impl From<u32> for Ipv4Addr {
+    /// It performs the conversion in network order (big-endian).
     fn from(ip: u32) -> Ipv4Addr {
         Ipv4Addr::new((ip >> 24) as u8, (ip >> 16) as u8, (ip >> 8) as u8, ip as u8)
     }
