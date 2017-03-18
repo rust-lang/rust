@@ -8,14 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Regression test: even though `Ok` is dead-code, its type needs to
-// be influenced by the result of `Err` or else we get a "type
-// variable unconstrained" error.
+#![allow(unreachable_code)]
+
+// Regression test for #39808. The type parameter of `Owned` was
+// considered to be "unconstrained" because the type resulting from
+// `format!` (`String`) was not being propagated upward, owing to the
+// fact that the expression diverges.
+
+use std::borrow::Cow;
 
 fn main() {
     let _ = if false {
-        Ok(return)
+        Cow::Owned(format!("{:?}", panic!())) /* as Cow<str> */ // uncomment to fix
     } else {
-        Err("")
+        Cow::Borrowed("")
     };
 }
