@@ -1563,7 +1563,7 @@ impl<T> ops::DerefMut for Vec<T> {
 impl<T> FromIterator<T> for Vec<T> {
     #[inline]
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Vec<T> {
-        <Self as SpecExtend<_, _>>::from_iter(iter.into_iter())
+        <Self as SpecExtend<T, I::IntoIter>>::from_iter(iter.into_iter())
     }
 }
 
@@ -1631,7 +1631,7 @@ impl<'a, T> IntoIterator for &'a mut Vec<T> {
 impl<T> Extend<T> for Vec<T> {
     #[inline]
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
-        self.spec_extend(iter.into_iter())
+        <Self as SpecExtend<T, I::IntoIter>>::spec_extend(self, iter.into_iter())
     }
 }
 
@@ -1662,7 +1662,7 @@ impl<T, I> SpecExtend<T, I> for Vec<T>
                 vector
             }
         };
-        vector.spec_extend(iterator);
+        <Vec<T> as SpecExtend<T, I>>::spec_extend(&mut vector, iterator);
         vector
     }
 
@@ -1674,7 +1674,7 @@ impl<T, I> SpecExtend<T, I> for Vec<T>
 impl<T, I> SpecExtend<T, I> for Vec<T>
     where I: TrustedLen<Item=T>,
 {
-    fn from_iter(iterator: I) -> Self {
+    default fn from_iter(iterator: I) -> Self {
         let mut vector = Vec::new();
         vector.spec_extend(iterator);
         vector
@@ -1702,6 +1702,27 @@ impl<T, I> SpecExtend<T, I> for Vec<T>
             }
         } else {
             self.extend_desugared(iterator)
+        }
+    }
+}
+
+impl<T> SpecExtend<T, IntoIter<T>> for Vec<T> {
+    fn from_iter(iterator: IntoIter<T>) -> Self {
+        // A common case is passing a vector into a function which immediately
+        // re-collects into a vector. We can short circuit this if the IntoIter
+        // has not been advanced at all.
+        if *iterator.buf == iterator.ptr as *mut T {
+            unsafe {
+                let vec = Vec::from_raw_parts(*iterator.buf as *mut T,
+                                              iterator.len(),
+                                              iterator.cap);
+                mem::forget(iterator);
+                vec
+            }
+        } else {
+            let mut vector = Vec::new();
+            vector.spec_extend(iterator);
+            vector
         }
     }
 }
