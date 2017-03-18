@@ -4626,7 +4626,7 @@ impl<'a> Parser<'a> {
 
         let mut attrs = self.parse_outer_attributes()?;
         let lo = self.span.lo;
-        let vis = self.parse_visibility()?;
+        let vis = self.parse_visibility(false)?;
         let defaultness = self.parse_defaultness()?;
         let (name, node) = if self.eat_keyword(keywords::Type) {
             let name = self.parse_ident()?;
@@ -4939,25 +4939,8 @@ impl<'a> Parser<'a> {
             |p| {
                 let attrs = p.parse_outer_attributes()?;
                 let lo = p.span.lo;
-                let mut vis = p.parse_visibility()?;
-                let ty_is_interpolated =
-                    p.token.is_interpolated() || p.look_ahead(1, |t| t.is_interpolated());
-                let mut ty = p.parse_ty()?;
-
-                // Handle `pub(path) type`, in which `vis` will be `pub` and `ty` will be `(path)`.
-                if vis == Visibility::Public && !ty_is_interpolated &&
-                   p.token != token::Comma && p.token != token::CloseDelim(token::Paren) {
-                    ty = if let TyKind::Paren(ref path_ty) = ty.node {
-                        if let TyKind::Path(None, ref path) = path_ty.node {
-                            vis = Visibility::Restricted { path: P(path.clone()), id: path_ty.id };
-                            Some(p.parse_ty()?)
-                        } else {
-                            None
-                        }
-                    } else {
-                        None
-                    }.unwrap_or(ty);
-                }
+                let vis = p.parse_visibility(true)?;
+                let ty = p.parse_ty()?;
                 Ok(StructField {
                     span: mk_sp(lo, p.span.hi),
                     vis: vis,
@@ -4996,18 +4979,25 @@ impl<'a> Parser<'a> {
     fn parse_struct_decl_field(&mut self) -> PResult<'a, StructField> {
         let attrs = self.parse_outer_attributes()?;
         let lo = self.span.lo;
-        let vis = self.parse_visibility()?;
+        let vis = self.parse_visibility(false)?;
         self.parse_single_struct_field(lo, vis, attrs)
     }
 
-    // Parse `pub`, `pub(crate)` and `pub(in path)` plus shortcuts
-    // `pub(self)` for `pub(in self)` and `pub(super)` for `pub(in super)`.
-    fn parse_visibility(&mut self) -> PResult<'a, Visibility> {
+    /// Parse `pub`, `pub(crate)` and `pub(in path)` plus shortcuts `pub(self)` for `pub(in self)`
+    /// and `pub(super)` for `pub(in super)`.  If the following element can't be a tuple (i.e. it's
+    /// a function definition, it's not a tuple struct field) and the contents within the parens
+    /// isn't valid, emit a proper diagnostic.
+    fn parse_visibility(&mut self, can_take_tuple: bool) -> PResult<'a, Visibility> {
         if !self.eat_keyword(keywords::Pub) {
             return Ok(Visibility::Inherited)
         }
 
         if self.check(&token::OpenDelim(token::Paren)) {
+            let start_span = self.span;
+            // We don't `self.bump()` the `(` yet because this might be a struct definition where
+            // `()` or a tuple might be allowed. For example, `struct Struct(pub (), pub (usize));`.
+            // Because of this, we only `bump` the `(` if we're assured it is appropriate to do so
+            // by the following tokens.
             if self.look_ahead(1, |t| t.is_keyword(keywords::Crate)) {
                 // `pub(crate)`
                 self.bump(); // `(`
@@ -5032,6 +5022,28 @@ impl<'a> Parser<'a> {
                 let vis = Visibility::Restricted { path: P(path), id: ast::DUMMY_NODE_ID };
                 self.expect(&token::CloseDelim(token::Paren))?; // `)`
                 return Ok(vis)
+            } else if !can_take_tuple {  // Provide this diagnostic if this is not a tuple struct
+                // `pub(something) fn ...` or `struct X { pub(something) y: Z }`
+                self.bump(); // `(`
+                let msg = "incorrect visibility restriction";
+                let suggestion = r##"some possible visibility restrictions are:
+`pub(crate)`: visible only on the current crate
+`pub(super)`: visible only in the current module's parent
+`pub(in path::to::module)`: visible only on the specified path"##;
+                let path = self.parse_path(PathStyle::Mod)?;
+                let path_span = self.prev_span;
+                let help_msg = format!("to make this visible only to module `{}`, add `in` before \
+                                       the path:",
+                                       path);
+                self.expect(&token::CloseDelim(token::Paren))?;  // `)`
+                let sp = Span {
+                    lo: start_span.lo,
+                    hi: self.prev_span.hi,
+                    expn_id: start_span.expn_id,
+                };
+                let mut err = self.span_fatal_help(sp, &msg, &suggestion);
+                err.span_suggestion(path_span, &help_msg, format!("in {}", path));
+                err.emit();  // emit diagnostic, but continue with public visibility
             }
         }
 
@@ -5508,7 +5520,7 @@ impl<'a> Parser<'a> {
 
         let lo = self.span.lo;
 
-        let visibility = self.parse_visibility()?;
+        let visibility = self.parse_visibility(false)?;
 
         if self.eat_keyword(keywords::Use) {
             // USE ITEM
@@ -5787,7 +5799,7 @@ impl<'a> Parser<'a> {
     fn parse_foreign_item(&mut self) -> PResult<'a, Option<ForeignItem>> {
         let attrs = self.parse_outer_attributes()?;
         let lo = self.span.lo;
-        let visibility = self.parse_visibility()?;
+        let visibility = self.parse_visibility(false)?;
 
         if self.check_keyword(keywords::Static) {
             // FOREIGN STATIC ITEM
