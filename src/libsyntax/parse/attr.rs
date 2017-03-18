@@ -14,8 +14,9 @@ use syntax_pos::{mk_sp, Span};
 use codemap::spanned;
 use parse::common::SeqSep;
 use parse::PResult;
-use parse::token;
-use parse::parser::{Parser, TokenType};
+use parse::token::{self, Nonterminal};
+use parse::parser::{Parser, TokenType, PathStyle};
+use tokenstream::TokenStream;
 
 #[derive(PartialEq, Eq, Debug)]
 enum InnerAttributeParsePolicy<'a> {
@@ -91,7 +92,7 @@ impl<'a> Parser<'a> {
         debug!("parse_attribute_with_inner_parse_policy: inner_parse_policy={:?} self.token={:?}",
                inner_parse_policy,
                self.token);
-        let (span, value, mut style) = match self.token {
+        let (span, path, tokens, mut style) = match self.token {
             token::Pound => {
                 let lo = self.span.lo;
                 self.bump();
@@ -119,11 +120,11 @@ impl<'a> Parser<'a> {
                 };
 
                 self.expect(&token::OpenDelim(token::Bracket))?;
-                let meta_item = self.parse_meta_item()?;
+                let (path, tokens) = self.parse_path_and_tokens()?;
                 self.expect(&token::CloseDelim(token::Bracket))?;
                 let hi = self.prev_span.hi;
 
-                (mk_sp(lo, hi), meta_item, style)
+                (mk_sp(lo, hi), path, tokens, style)
             }
             _ => {
                 let token_str = self.this_token_to_string();
@@ -143,9 +144,27 @@ impl<'a> Parser<'a> {
         Ok(ast::Attribute {
             id: attr::mk_attr_id(),
             style: style,
-            value: value,
+            path: path,
+            tokens: tokens,
             is_sugared_doc: false,
             span: span,
+        })
+    }
+
+    pub fn parse_path_and_tokens(&mut self) -> PResult<'a, (ast::Path, TokenStream)> {
+        let meta = match self.token {
+            token::Interpolated(ref nt) => match **nt {
+                Nonterminal::NtMeta(ref meta) => Some(meta.clone()),
+                _ => None,
+            },
+            _ => None,
+        };
+        Ok(if let Some(meta) = meta {
+            self.bump();
+            (ast::Path::from_ident(meta.span, ast::Ident::with_empty_ctxt(meta.name)),
+             meta.node.tokens(meta.span))
+        } else {
+            (self.parse_path(PathStyle::Mod)?, self.parse_tokens())
         })
     }
 
@@ -221,15 +240,20 @@ impl<'a> Parser<'a> {
 
         let lo = self.span.lo;
         let ident = self.parse_ident()?;
-        let node = if self.eat(&token::Eq) {
+        let node = self.parse_meta_item_kind()?;
+        let hi = self.prev_span.hi;
+        Ok(ast::MetaItem { name: ident.name, node: node, span: mk_sp(lo, hi) })
+    }
+
+    pub fn parse_meta_item_kind(&mut self) -> PResult<'a, ast::MetaItemKind> {
+        Ok(if self.eat(&token::Eq) {
             ast::MetaItemKind::NameValue(self.parse_unsuffixed_lit()?)
         } else if self.token == token::OpenDelim(token::Paren) {
             ast::MetaItemKind::List(self.parse_meta_seq()?)
         } else {
+            self.eat(&token::OpenDelim(token::Paren));
             ast::MetaItemKind::Word
-        };
-        let hi = self.prev_span.hi;
-        Ok(ast::MetaItem { name: ident.name, node: node, span: mk_sp(lo, hi) })
+        })
     }
 
     /// matches meta_item_inner : (meta_item | UNSUFFIXED_LIT) ;

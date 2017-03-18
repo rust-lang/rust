@@ -60,7 +60,6 @@ use util::ThinVec;
 use std::collections::HashSet;
 use std::{cmp, mem, slice};
 use std::path::{Path, PathBuf};
-use std::rc::Rc;
 
 bitflags! {
     flags Restrictions: u8 {
@@ -891,7 +890,7 @@ impl<'a> Parser<'a> {
 
         self.parse_seq_to_before_tokens(kets,
                                         SeqSep::none(),
-                                        |p| p.parse_token_tree(),
+                                        |p| Ok(p.parse_token_tree()),
                                         |mut e| handler.cancel(&mut e));
     }
 
@@ -1267,7 +1266,7 @@ impl<'a> Parser<'a> {
                                 break;
                             }
                             token::OpenDelim(token::Brace) => {
-                                self.parse_token_tree()?;
+                                self.parse_token_tree();
                                 break;
                             }
                             _ => self.bump(),
@@ -1643,44 +1642,15 @@ impl<'a> Parser<'a> {
                 _ => { return self.unexpected_last(&self.token); }
             },
             token::Literal(lit, suf) => {
-                let (suffix_illegal, out) = match lit {
-                    token::Byte(i) => (true, LitKind::Byte(parse::byte_lit(&i.as_str()).0)),
-                    token::Char(i) => (true, LitKind::Char(parse::char_lit(&i.as_str()).0)),
-
-                    // there are some valid suffixes for integer and
-                    // float literals, so all the handling is done
-                    // internally.
-                    token::Integer(s) => {
-                        let diag = &self.sess.span_diagnostic;
-                        (false, parse::integer_lit(&s.as_str(), suf, diag, self.span))
-                    }
-                    token::Float(s) => {
-                        let diag = &self.sess.span_diagnostic;
-                        (false, parse::float_lit(&s.as_str(), suf, diag, self.span))
-                    }
-
-                    token::Str_(s) => {
-                        let s = Symbol::intern(&parse::str_lit(&s.as_str()));
-                        (true, LitKind::Str(s, ast::StrStyle::Cooked))
-                    }
-                    token::StrRaw(s, n) => {
-                        let s = Symbol::intern(&parse::raw_str_lit(&s.as_str()));
-                        (true, LitKind::Str(s, ast::StrStyle::Raw(n)))
-                    }
-                    token::ByteStr(i) => {
-                        (true, LitKind::ByteStr(parse::byte_str_lit(&i.as_str())))
-                    }
-                    token::ByteStrRaw(i, _) => {
-                        (true, LitKind::ByteStr(Rc::new(i.to_string().into_bytes())))
-                    }
-                };
+                let diag = Some((self.span, &self.sess.span_diagnostic));
+                let (suffix_illegal, result) = parse::lit_token(lit, suf, diag);
 
                 if suffix_illegal {
                     let sp = self.span;
                     self.expect_no_suffix(sp, &format!("{} literal", lit.short_name()), suf)
                 }
 
-                out
+                result.unwrap()
             }
             _ => { return self.unexpected_last(&self.token); }
         };
@@ -2108,10 +2078,10 @@ impl<'a> Parser<'a> {
 
     fn expect_delimited_token_tree(&mut self) -> PResult<'a, (token::DelimToken, ThinTokenStream)> {
         match self.token {
-            token::OpenDelim(delim) => self.parse_token_tree().map(|tree| match tree {
-                TokenTree::Delimited(_, delimited) => (delim, delimited.stream().into()),
+            token::OpenDelim(delim) => match self.parse_token_tree() {
+                TokenTree::Delimited(_, delimited) => Ok((delim, delimited.stream().into())),
                 _ => unreachable!(),
-            }),
+            },
             _ => Err(self.fatal("expected open delimiter")),
         }
     }
@@ -2656,24 +2626,23 @@ impl<'a> Parser<'a> {
     }
 
     /// parse a single token tree from the input.
-    pub fn parse_token_tree(&mut self) -> PResult<'a, TokenTree> {
+    pub fn parse_token_tree(&mut self) -> TokenTree {
         match self.token {
             token::OpenDelim(..) => {
                 let frame = mem::replace(&mut self.token_cursor.frame,
                                          self.token_cursor.stack.pop().unwrap());
                 self.span = frame.span;
                 self.bump();
-                return Ok(TokenTree::Delimited(frame.span, Delimited {
+                TokenTree::Delimited(frame.span, Delimited {
                     delim: frame.delim,
                     tts: frame.tree_cursor.original_stream().into(),
-                }));
+                })
             },
             token::CloseDelim(_) | token::Eof => unreachable!(),
             _ => {
                 let token = mem::replace(&mut self.token, token::Underscore);
-                let res = Ok(TokenTree::Token(self.span, token));
                 self.bump();
-                res
+                TokenTree::Token(self.prev_span, token)
             }
         }
     }
@@ -2683,9 +2652,20 @@ impl<'a> Parser<'a> {
     pub fn parse_all_token_trees(&mut self) -> PResult<'a, Vec<TokenTree>> {
         let mut tts = Vec::new();
         while self.token != token::Eof {
-            tts.push(self.parse_token_tree()?);
+            tts.push(self.parse_token_tree());
         }
         Ok(tts)
+    }
+
+    pub fn parse_tokens(&mut self) -> TokenStream {
+        let mut result = Vec::new();
+        loop {
+            match self.token {
+                token::Eof | token::CloseDelim(..) => break,
+                _ => result.push(self.parse_token_tree().into()),
+            }
+        }
+        TokenStream::concat(result)
     }
 
     /// Parse a prefix-unary-operator expr
@@ -5181,11 +5161,9 @@ impl<'a> Parser<'a> {
                     let attr = ast::Attribute {
                         id: attr::mk_attr_id(),
                         style: ast::AttrStyle::Outer,
-                        value: ast::MetaItem {
-                            name: Symbol::intern("warn_directory_ownership"),
-                            node: ast::MetaItemKind::Word,
-                            span: syntax_pos::DUMMY_SP,
-                        },
+                        path: ast::Path::from_ident(syntax_pos::DUMMY_SP,
+                                                    Ident::from_str("warn_directory_ownership")),
+                        tokens: TokenStream::empty(),
                         is_sugared_doc: false,
                         span: syntax_pos::DUMMY_SP,
                     };
