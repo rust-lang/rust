@@ -394,7 +394,6 @@ impl<T> Cell<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(move_cell)]
     /// use std::cell::Cell;
     ///
     /// let c1 = Cell::new(5i32);
@@ -404,7 +403,7 @@ impl<T> Cell<T> {
     /// assert_eq!(5, c2.get());
     /// ```
     #[inline]
-    #[unstable(feature = "move_cell", issue = "39264")]
+    #[stable(feature = "move_cell", since = "1.17.0")]
     pub fn swap(&self, other: &Self) {
         if ptr::eq(self, other) {
             return;
@@ -419,7 +418,6 @@ impl<T> Cell<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(move_cell)]
     /// use std::cell::Cell;
     ///
     /// let c = Cell::new(5);
@@ -427,7 +425,7 @@ impl<T> Cell<T> {
     ///
     /// assert_eq!(5, old);
     /// ```
-    #[unstable(feature = "move_cell", issue = "39264")]
+    #[stable(feature = "move_cell", since = "1.17.0")]
     pub fn replace(&self, val: T) -> T {
         mem::replace(unsafe { &mut *self.value.get() }, val)
     }
@@ -437,7 +435,6 @@ impl<T> Cell<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(move_cell)]
     /// use std::cell::Cell;
     ///
     /// let c = Cell::new(5);
@@ -445,7 +442,7 @@ impl<T> Cell<T> {
     ///
     /// assert_eq!(five, 5);
     /// ```
-    #[unstable(feature = "move_cell", issue = "39264")]
+    #[stable(feature = "move_cell", since = "1.17.0")]
     pub fn into_inner(self) -> T {
         unsafe { self.value.into_inner() }
     }
@@ -457,7 +454,6 @@ impl<T: Default> Cell<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(move_cell)]
     /// use std::cell::Cell;
     ///
     /// let c = Cell::new(5);
@@ -466,7 +462,7 @@ impl<T: Default> Cell<T> {
     /// assert_eq!(five, 5);
     /// assert_eq!(c.into_inner(), 0);
     /// ```
-    #[unstable(feature = "move_cell", issue = "39264")]
+    #[stable(feature = "move_cell", since = "1.17.0")]
     pub fn take(&self) -> T {
         self.replace(Default::default())
     }
