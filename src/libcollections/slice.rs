@@ -1668,9 +1668,9 @@ fn merge_sort<T, F>(v: &mut [T], mut is_less: F)
     where F: FnMut(&T, &T) -> bool
 {
     // Slices of up to this length get sorted using insertion sort.
-    const MAX_INSERTION: usize = 16;
+    const MAX_INSERTION: usize = 20;
     // Very short runs are extended using insertion sort to span at least this many elements.
-    const MIN_RUN: usize = 8;
+    const MIN_RUN: usize = 10;
 
     // Sorting has no meaningful behavior on zero-sized types.
     if size_of::<T>() == 0 {

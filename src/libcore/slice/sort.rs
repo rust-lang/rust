@@ -355,7 +355,7 @@ fn partition<T, F>(v: &mut [T], pivot: usize, is_less: &mut F) -> (usize, bool)
                 l += 1;
             }
 
-            // Find the last element lesser that the pivot.
+            // Find the last element smaller that the pivot.
             while l < r && !is_less(v.get_unchecked(r - 1), pivot) {
                 r -= 1;
             }
@@ -472,7 +472,7 @@ fn choose_pivot<T, F>(v: &mut [T], is_less: &mut F) -> (usize, bool)
 {
     // Minimal length to choose the median-of-medians method.
     // Shorter slices use the simple median-of-three method.
-    const SHORTEST_MEDIAN_OF_MEDIANS: usize = 90;
+    const SHORTEST_MEDIAN_OF_MEDIANS: usize = 80;
     // Maximal number of swaps that can be performed in this function.
     const MAX_SWAPS: usize = 4 * 3;
 
@@ -539,7 +539,7 @@ fn recurse<'a, T, F>(mut v: &'a mut [T], is_less: &mut F, mut pred: Option<&'a T
     where F: FnMut(&T, &T) -> bool
 {
     // Slices of up to this length get sorted using insertion sort.
-    const MAX_INSERTION: usize = 16;
+    const MAX_INSERTION: usize = 20;
 
     // True if the last partitioning was reasonably balanced.
     let mut was_balanced = true;
@@ -627,8 +627,8 @@ pub fn quicksort<T, F>(v: &mut [T], mut is_less: F)
         return;
     }
 
-    // Limit the number of imbalanced partitions to `floor(log2(len)) + 2`.
-    let limit = mem::size_of::<usize>() * 8 - v.len().leading_zeros() as usize + 1;
+    // Limit the number of imbalanced partitions to `floor(log2(len)) + 1`.
+    let limit = mem::size_of::<usize>() * 8 - v.len().leading_zeros() as usize;
 
     recurse(v, &mut is_less, None, limit);
 }
