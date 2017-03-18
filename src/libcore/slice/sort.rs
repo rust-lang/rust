@@ -464,10 +464,10 @@ fn break_patterns<T>(v: &mut [T]) {
     }
 }
 
-/// Chooses a pivot in `v` and returns it's index.
+/// Chooses a pivot in `v` and returns the index and true if the slice is likely already sorted.
 ///
 /// Elements in `v` might be reordered in the process.
-fn choose_pivot<T, F>(v: &mut [T], is_less: &mut F) -> usize
+fn choose_pivot<T, F>(v: &mut [T], is_less: &mut F) -> (usize, bool)
     where F: FnMut(&T, &T) -> bool
 {
     // Minimal length to choose the median-of-medians method.
@@ -520,12 +520,12 @@ fn choose_pivot<T, F>(v: &mut [T], is_less: &mut F) -> usize
     }
 
     if swaps < MAX_SWAPS {
-        b
+        (b, swaps == 0)
     } else {
         // The maximal number of swaps was performed. Chances are the slice is descending or mostly
         // descending, so reversing will probably help sort it faster.
         v.reverse();
-        len - 1 - b
+        (len - 1 - b, true)
     }
 }
 
@@ -541,8 +541,10 @@ fn recurse<'a, T, F>(mut v: &'a mut [T], is_less: &mut F, mut pred: Option<&'a T
     // Slices of up to this length get sorted using insertion sort.
     const MAX_INSERTION: usize = 16;
 
-    // This is `true` if the last partitioning was balanced.
+    // True if the last partitioning was reasonably balanced.
     let mut was_balanced = true;
+    // True if the last partitioning didn't shuffle elements (the slice was already partitioned).
+    let mut was_partitioned = true;
 
     loop {
         let len = v.len();
@@ -567,7 +569,17 @@ fn recurse<'a, T, F>(mut v: &'a mut [T], is_less: &mut F, mut pred: Option<&'a T
             limit -= 1;
         }
 
-        let pivot = choose_pivot(v, is_less);
+        // Choose a pivot and try guessing whether the slice is already sorted.
+        let (pivot, likely_sorted) = choose_pivot(v, is_less);
+
+        // If the last partitioning was decently balanced and didn't shuffle elements, and if pivot
+        // selection predicts the slice is likely already sorted...
+        if was_balanced && was_partitioned && likely_sorted {
+            // Check whether the slice really is sorted. If so, we're done.
+            if v.windows(2).all(|w| !is_less(&w[1], &w[0])) {
+                return;
+            }
+        }
 
         // If the chosen pivot is equal to the predecessor, then it's the smallest element in the
         // slice. Partition the slice into elements equal to and elements greater than the pivot.
@@ -582,14 +594,10 @@ fn recurse<'a, T, F>(mut v: &'a mut [T], is_less: &mut F, mut pred: Option<&'a T
             }
         }
 
-        let (mid, was_partitioned) = partition(v, pivot, is_less);
+        // Partition the slice.
+        let (mid, was_p) = partition(v, pivot, is_less);
         was_balanced = cmp::min(mid, len - mid) >= len / 8;
-
-        // If the partitioning is decently balanced and the slice was already partitioned, there
-        // are good chances it is also completely sorted. If so, we're done.
-        if was_balanced && was_partitioned && v.windows(2).all(|w| !is_less(&w[1], &w[0])) {
-            return;
-        }
+        was_partitioned = was_p;
 
         // Split the slice into `left`, `pivot`, and `right`.
         let (left, right) = {v}.split_at_mut(mid);
