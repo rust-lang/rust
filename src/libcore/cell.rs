@@ -725,6 +725,15 @@ impl<T: ?Sized> RefCell<T> {
     /// This call borrows `RefCell` mutably (at compile-time) so there is no
     /// need for dynamic checks.
     ///
+    /// However be cautious: this method expects `self` to be mutable, which is
+    /// generally not the case when using a `RefCell`. Take a look at the
+    /// [`borrow_mut`] method instead if `self` isn't mutable.
+    ///
+    /// Also, please be aware that this method is only for special circumstances and is usually
+    /// not you want. In case of doubt, use [`borrow_mut`] instead.
+    ///
+    /// [`borrow_mut`]: #method.borrow_mut
+    ///
     /// # Examples
     ///
     /// ```
