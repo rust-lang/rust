@@ -8,6 +8,10 @@ git:
   depth: 1
   submodules: false
 
+branches:
+  except:
+    - master
+
 matrix:
   fast_finish: true
   include:
