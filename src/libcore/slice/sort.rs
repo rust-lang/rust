@@ -156,7 +156,7 @@ fn partition_in_blocks<T, F>(v: &mut [T], pivot: &T, is_less: &mut F) -> usize
     // The partitioning algorithm repeats the following steps until completion:
     //
     // 1. Trace a block from the left side to identify elements greater than or equal to the pivot.
-    // 2. Trace a block from the right side to identify elements less than the pivot.
+    // 2. Trace a block from the right side to identify elements smaller than the pivot.
     // 3. Exchange the identified elements between the left and right side.
     //
     // We keep the following variables for a block of elements:
@@ -166,14 +166,14 @@ fn partition_in_blocks<T, F>(v: &mut [T], pivot: &T, is_less: &mut F) -> usize
     // 3. `end` - End pointer into the `offsets` array.
     // 4. `offsets - Indices of out-of-order elements within the block.
 
-    // The current block on the left side: `v[l .. l + block_l]`.
+    // The current block on the left side (from `l` to `l.offset(block_l)`).
     let mut l = v.as_mut_ptr();
     let mut block_l = BLOCK;
     let mut start_l = ptr::null_mut();
     let mut end_l = ptr::null_mut();
     let mut offsets_l: [u8; BLOCK] = unsafe { mem::uninitialized() };
 
-    // The current block on the right side: `v[r - block_r .. r]`.
+    // The current block on the right side (from `r.offset(-block_r)` to `r`).
     let mut r = unsafe { l.offset(v.len() as isize) };
     let mut block_r = BLOCK;
     let mut start_r = ptr::null_mut();
