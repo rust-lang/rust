@@ -662,6 +662,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
     pub fn bckerr_to_diag(&self, err: &BckError<'tcx>) -> DiagnosticBuilder<'a> {
         let span = err.span.clone();
         let mut immutable_field = None;
+        let mut local_def = None;
 
         let msg = &match err.code {
             err_mutbl => {
@@ -711,6 +712,14 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                                 }
                                 None
                             });
+                        local_def = err.cmt.get_def()
+                            .and_then(|nid| {
+                                if !self.tcx.hir.is_argument(nid) {
+                                    Some(self.tcx.hir.span(nid))
+                                } else {
+                                    None
+                                }
+                            });
 
                         format!("cannot borrow {} as mutable", descr)
                     }
@@ -740,6 +749,11 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
         let mut db = self.struct_span_err(span, msg);
         if let Some((span, msg)) = immutable_field {
             db.span_label(span, &msg);
+        }
+        if let Some(let_span) = local_def {
+            if let Ok(snippet) = self.tcx.sess.codemap().span_to_snippet(let_span) {
+                db.span_label(let_span, &format!("consider changing this to `mut {}`", snippet));
+            }
         }
         db
     }
@@ -1108,6 +1122,11 @@ before rustc 1.16, this temporary lived longer - see issue #39283 \
                         }
                     } else {
                         db.span_label(*error_span, &format!("cannot borrow mutably"));
+                    }
+                } else if let Categorization::Interior(ref cmt, _) = err.cmt.cat {
+                    if let mc::MutabilityCategory::McImmutable = cmt.mutbl {
+                        db.span_label(*error_span,
+                                      &"cannot mutably borrow immutable field");
                     }
                 }
             }
