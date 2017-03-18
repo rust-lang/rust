@@ -478,9 +478,10 @@ impl<'a> Resolver<'a> {
                     self.define(module, ident, ns, (child.def, ty::Visibility::Public,
                                                     DUMMY_SP, Mark::root()));
 
-                    let has_self = self.session.cstore.associated_item_cloned(child.def.def_id())
-                                       .method_has_self_argument;
-                    self.trait_item_map.insert((def_id, child.name, ns), (child.def, has_self));
+                    if self.session.cstore.associated_item_cloned(child.def.def_id())
+                           .method_has_self_argument {
+                        self.has_self.insert(child.def.def_id());
+                    }
                 }
                 module.populated.set(true);
             }
@@ -773,7 +774,6 @@ impl<'a, 'b> Visitor<'a> for BuildReducedGraphVisitor<'a, 'b> {
 
     fn visit_trait_item(&mut self, item: &'a TraitItem) {
         let parent = self.resolver.current_module;
-        let def_id = parent.def_id().unwrap();
 
         if let TraitItemKind::Macro(_) = item.node {
             self.visit_invoc(item.id);
@@ -782,15 +782,17 @@ impl<'a, 'b> Visitor<'a> for BuildReducedGraphVisitor<'a, 'b> {
 
         // Add the item to the trait info.
         let item_def_id = self.resolver.definitions.local_def_id(item.id);
-        let (def, ns, has_self) = match item.node {
-            TraitItemKind::Const(..) => (Def::AssociatedConst(item_def_id), ValueNS, false),
-            TraitItemKind::Method(ref sig, _) =>
-                (Def::Method(item_def_id), ValueNS, sig.decl.has_self()),
-            TraitItemKind::Type(..) => (Def::AssociatedTy(item_def_id), TypeNS, false),
+        let (def, ns) = match item.node {
+            TraitItemKind::Const(..) => (Def::AssociatedConst(item_def_id), ValueNS),
+            TraitItemKind::Method(ref sig, _) => {
+                if sig.decl.has_self() {
+                    self.resolver.has_self.insert(item_def_id);
+                }
+                (Def::Method(item_def_id), ValueNS)
+            }
+            TraitItemKind::Type(..) => (Def::AssociatedTy(item_def_id), TypeNS),
             TraitItemKind::Macro(_) => bug!(),  // handled above
         };
-
-        self.resolver.trait_item_map.insert((def_id, item.ident.name, ns), (def, has_self));
 
         let vis = ty::Visibility::Public;
         self.resolver.define(parent, item.ident, ns, (def, vis, item.span, self.expansion));
