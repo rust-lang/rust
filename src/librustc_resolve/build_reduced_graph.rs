@@ -23,7 +23,7 @@ use {resolve_error, resolve_struct_error, ResolutionError};
 
 use rustc::middle::cstore::LoadedMacro;
 use rustc::hir::def::*;
-use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefId};
+use rustc::hir::def_id::{CrateNum, BUILTIN_MACROS_CRATE, CRATE_DEF_INDEX, DefId};
 use rustc::ty;
 
 use std::cell::Cell;
@@ -496,6 +496,9 @@ impl<'a> Resolver<'a> {
         let def_id = self.macro_defs[&expansion];
         if let Some(id) = self.definitions.as_local_node_id(def_id) {
             self.local_macro_def_scopes[&id]
+        } else if def_id.krate == BUILTIN_MACROS_CRATE {
+            // FIXME(jseyfried): This happens when `include!()`ing a `$crate::` path, c.f, #40469.
+            self.graph_root
         } else {
             let module_def_id = ty::DefIdTree::parent(&*self, def_id).unwrap();
             self.get_extern_crate_root(module_def_id.krate)
