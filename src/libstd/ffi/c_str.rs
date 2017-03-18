@@ -798,13 +798,6 @@ impl ops::Index<ops::RangeFull> for CString {
 }
 
 #[stable(feature = "cstring_asref", since = "1.7.0")]
-impl AsRef<CStr> for CStr {
-    fn as_ref(&self) -> &CStr {
-        self
-    }
-}
-
-#[stable(feature = "cstring_asref", since = "1.7.0")]
 impl AsRef<CStr> for CString {
     fn as_ref(&self) -> &CStr {
         self

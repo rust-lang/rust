@@ -232,6 +232,14 @@ pub trait TryFrom<T>: Sized {
 // GENERIC IMPLS
 ////////////////////////////////////////////////////////////////////////////////
 
+// As is reflexive
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a, T: ?Sized> AsRef<T> for T {
+    fn as_ref(&self) -> &T {
+        self
+    }
+}
+
 // As lifts over &
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: ?Sized, U: ?Sized> AsRef<U> for &'a T where T: AsRef<U> {
@@ -255,6 +263,14 @@ impl<'a, T: ?Sized, U: ?Sized> AsRef<U> for &'a mut T where T: AsRef<U> {
 //         self.deref().as_ref()
 //     }
 // }
+
+// AsMut is reflexive
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a, T: ?Sized> AsMut<T> for T {
+    fn as_mut(&mut self) -> &mut T {
+        self
+    }
+}
 
 // AsMut lifts over &mut
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -294,31 +310,5 @@ impl<T, U> TryInto<U> for T where U: TryFrom<T> {
 
     fn try_into(self) -> Result<U, U::Err> {
         U::try_from(self)
-    }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// CONCRETE IMPLS
-////////////////////////////////////////////////////////////////////////////////
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<T> AsRef<[T]> for [T] {
-    fn as_ref(&self) -> &[T] {
-        self
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<T> AsMut<[T]> for [T] {
-    fn as_mut(&mut self) -> &mut [T] {
-        self
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl AsRef<str> for str {
-    #[inline]
-    fn as_ref(&self) -> &str {
-        self
     }
 }

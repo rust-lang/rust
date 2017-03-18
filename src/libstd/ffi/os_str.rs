@@ -681,13 +681,6 @@ impl ToOwned for OsStr {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl AsRef<OsStr> for OsStr {
-    fn as_ref(&self) -> &OsStr {
-        self
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
 impl AsRef<OsStr> for OsString {
     fn as_ref(&self) -> &OsStr {
         self
