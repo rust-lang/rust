@@ -859,6 +859,7 @@ macro_rules! int_impl {
 
         /// Stage 0
         #[stable(feature = "num_wrapping", since = "1.2.0")]
+        #[inline(always)]
         #[cfg(stage0)]
         pub fn wrapping_shl(self, rhs: u32) -> Self {
             self.overflowing_shl(rhs).0
@@ -894,6 +895,7 @@ macro_rules! int_impl {
 
         /// Stage 0
         #[stable(feature = "num_wrapping", since = "1.2.0")]
+        #[inline(always)]
         #[cfg(stage0)]
         pub fn wrapping_shr(self, rhs: u32) -> Self {
             self.overflowing_shr(rhs).0
@@ -2025,6 +2027,7 @@ macro_rules! uint_impl {
 
         /// Stage 0
         #[stable(feature = "num_wrapping", since = "1.2.0")]
+        #[inline(always)]
         #[cfg(stage0)]
         pub fn wrapping_shl(self, rhs: u32) -> Self {
             self.overflowing_shl(rhs).0
@@ -2060,6 +2063,7 @@ macro_rules! uint_impl {
 
         /// Stage 0
         #[stable(feature = "num_wrapping", since = "1.2.0")]
+        #[inline(always)]
         #[cfg(stage0)]
         pub fn wrapping_shr(self, rhs: u32) -> Self {
             self.overflowing_shr(rhs).0
