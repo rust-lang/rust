@@ -19,7 +19,7 @@ use syntax_pos::DUMMY_SP;
 
 use std::iter;
 
-pub fn qquote<'cx>(stream: TokenStream) -> TokenStream {
+pub fn quote<'cx>(stream: TokenStream) -> TokenStream {
     stream.quote()
 }
 
@@ -72,28 +72,32 @@ impl Quote for TokenStream {
             return quote!(::syntax::tokenstream::TokenStream::empty());
         }
 
-        struct Quote(iter::Peekable<tokenstream::Cursor>);
+        struct Quoter(iter::Peekable<tokenstream::Cursor>);
 
-        impl Iterator for Quote {
+        impl Iterator for Quoter {
             type Item = TokenStream;
 
             fn next(&mut self) -> Option<TokenStream> {
-                let is_unquote = match self.0.peek() {
-                    Some(&TokenTree::Token(_, Token::Ident(ident))) if ident.name == "unquote" => {
-                        self.0.next();
-                        true
+                let quoted_tree = if let Some(&TokenTree::Token(_, Token::Dollar)) = self.0.peek() {
+                    self.0.next();
+                    match self.0.next() {
+                        Some(tree @ TokenTree::Token(_, Token::Ident(..))) => Some(tree.into()),
+                        Some(tree @ TokenTree::Token(_, Token::Dollar)) => Some(tree.quote()),
+                        // FIXME(jseyfried): improve these diagnostics
+                        Some(..) => panic!("`$` must be followed by an ident or `$` in `quote!`"),
+                        None => panic!("unexpected trailing `$` in `quote!`"),
                     }
-                    _ => false,
+                } else {
+                    self.0.next().as_ref().map(Quote::quote)
                 };
 
-                self.0.next().map(|tree| {
-                    let quoted_tree = if is_unquote { tree.into() } else { tree.quote() };
+                quoted_tree.map(|quoted_tree| {
                     quote!(::syntax::tokenstream::TokenStream::from((unquote quoted_tree)),)
                 })
             }
         }
 
-        let quoted = Quote(self.trees().peekable()).collect::<TokenStream>();
+        let quoted = Quoter(self.trees().peekable()).collect::<TokenStream>();
         quote!([(unquote quoted)].iter().cloned().collect::<::syntax::tokenstream::TokenStream>())
     }
 }

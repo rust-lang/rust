@@ -1,4 +1,4 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,20 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-stage1
-
-#![feature(plugin)]
-#![feature(rustc_private)]
-#![plugin(proc_macro_plugin)]
-
-extern crate syntax;
-extern crate syntax_pos;
-
-use syntax::ast::Ident;
-use syntax::parse::token;
-use syntax::tokenstream::TokenTree;
+#[repr(u8)]
+enum Foo {
+    Foo(u8),
+}
 
 fn main() {
-    let true_tok = token::Ident(Ident::from_str("true"));
-    assert!(quote!(true).eq_unspanned(&true_tok.into()));
+    match Foo::Foo(1) {
+        _ => ()
+    }
 }

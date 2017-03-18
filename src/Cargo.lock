@@ -137,7 +137,7 @@ dependencies = [
 name = "compiletest"
 version = "0.0.0"
 dependencies = [
- "env_logger 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "env_logger 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "filetime 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.3.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc-serialize 0.3.22 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -151,14 +151,6 @@ version = "0.0.0"
 name = "dtoa"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-
-[[package]]
-name = "env_logger"
-version = "0.3.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-dependencies = [
- "log 0.3.7 (registry+https://github.com/rust-lang/crates.io-index)",
-]
 
 [[package]]
 name = "env_logger"
@@ -259,10 +251,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "linkchecker"
 version = "0.1.0"
-
-[[package]]
-name = "log"
-version = "0.0.0"
 
 [[package]]
 name = "log"
@@ -412,7 +400,7 @@ dependencies = [
  "arena 0.0.0",
  "fmt_macros 0.0.0",
  "graphviz 0.0.0",
- "log 0.0.0",
+ "log 0.3.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc_back 0.0.0",
  "rustc_bitflags 0.0.0",
  "rustc_const_math 0.0.0",
@@ -452,7 +440,7 @@ dependencies = [
 name = "rustc_back"
 version = "0.0.0"
 dependencies = [
- "log 0.0.0",
+ "log 0.3.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "serialize 0.0.0",
  "syntax 0.0.0",
 ]
@@ -466,7 +454,7 @@ name = "rustc_borrowck"
 version = "0.0.0"
 dependencies = [
  "graphviz 0.0.0",
- "log 0.0.0",
+ "log 0.3.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc 0.0.0",
  "rustc_data_structures 0.0.0",
  "rustc_errors 0.0.0",
@@ -481,7 +469,7 @@ version = "0.0.0"
 dependencies = [
  "arena 0.0.0",
  "graphviz 0.0.0",
- "log 0.0.0",
+ "log 0.3.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc 0.0.0",
  "rustc_back 0.0.0",
  "rustc_const_math 0.0.0",
@@ -503,7 +491,7 @@ dependencies = [
 name = "rustc_data_structures"
 version = "0.0.0"
 dependencies = [
- "log 0.0.0",
+ "log 0.3.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "serialize 0.0.0",
 ]
 
@@ -512,8 +500,9 @@ name = "rustc_driver"
 version = "0.0.0"
 dependencies = [
  "arena 0.0.0",
+ "env_logger 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "graphviz 0.0.0",
- "log 0.0.0",
+ "log 0.3.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "proc_macro_plugin 0.0.0",
  "rustc 0.0.0",
  "rustc_back 0.0.0",
@@ -552,7 +541,7 @@ name = "rustc_incremental"
 version = "0.0.0"
 dependencies = [
  "graphviz 0.0.0",
- "log 0.0.0",
+ "log 0.3.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc 0.0.0",
  "rustc_data_structures 0.0.0",
  "serialize 0.0.0",
@@ -564,7 +553,7 @@ dependencies = [
 name = "rustc_lint"
 version = "0.0.0"
 dependencies = [
- "log 0.0.0",
+ "log 0.3.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc 0.0.0",
  "rustc_back 0.0.0",
  "rustc_const_eval 0.0.0",
@@ -596,7 +585,7 @@ name = "rustc_metadata"
 version = "0.0.0"
 dependencies = [
  "flate 0.0.0",
- "log 0.0.0",
+ "log 0.3.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "proc_macro 0.0.0",
  "rustc 0.0.0",
  "rustc_back 0.0.0",
@@ -615,7 +604,7 @@ name = "rustc_mir"
 version = "0.0.0"
 dependencies = [
  "graphviz 0.0.0",
- "log 0.0.0",
+ "log 0.3.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc 0.0.0",
  "rustc_bitflags 0.0.0",
  "rustc_const_eval 0.0.0",
@@ -639,7 +628,7 @@ dependencies = [
 name = "rustc_passes"
 version = "0.0.0"
 dependencies = [
- "log 0.0.0",
+ "log 0.3.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc 0.0.0",
  "rustc_const_eval 0.0.0",
  "rustc_const_math 0.0.0",
@@ -678,7 +667,7 @@ name = "rustc_resolve"
 version = "0.0.0"
 dependencies = [
  "arena 0.0.0",
- "log 0.0.0",
+ "log 0.3.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc 0.0.0",
  "rustc_errors 0.0.0",
  "syntax 0.0.0",
@@ -689,7 +678,7 @@ dependencies = [
 name = "rustc_save_analysis"
 version = "0.0.0"
 dependencies = [
- "log 0.0.0",
+ "log 0.3.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc 0.0.0",
  "serialize 0.0.0",
  "syntax 0.0.0",
@@ -701,7 +690,7 @@ name = "rustc_trans"
 version = "0.0.0"
 dependencies = [
  "flate 0.0.0",
- "log 0.0.0",
+ "log 0.3.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc 0.0.0",
  "rustc_back 0.0.0",
  "rustc_bitflags 0.0.0",
@@ -733,7 +722,7 @@ version = "0.0.0"
 dependencies = [
  "arena 0.0.0",
  "fmt_macros 0.0.0",
- "log 0.0.0",
+ "log 0.3.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc 0.0.0",
  "rustc_back 0.0.0",
  "rustc_const_eval 0.0.0",
@@ -751,8 +740,9 @@ version = "0.0.0"
 dependencies = [
  "arena 0.0.0",
  "build_helper 0.1.0",
+ "env_logger 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "gcc 0.3.43 (registry+https://github.com/rust-lang/crates.io-index)",
- "log 0.0.0",
+ "log 0.3.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc 0.0.0",
  "rustc_back 0.0.0",
  "rustc_const_eval 0.0.0",
@@ -828,7 +818,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "syntax"
 version = "0.0.0"
 dependencies = [
- "log 0.0.0",
+ "log 0.3.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc_bitflags 0.0.0",
  "rustc_data_structures 0.0.0",
  "rustc_errors 0.0.0",
@@ -841,7 +831,7 @@ name = "syntax_ext"
 version = "0.0.0"
 dependencies = [
  "fmt_macros 0.0.0",
- "log 0.0.0",
+ "log 0.3.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "proc_macro 0.0.0",
  "rustc_errors 0.0.0",
  "syntax 0.0.0",
@@ -966,7 +956,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum clap 2.20.5 (registry+https://github.com/rust-lang/crates.io-index)" = "7db281b0520e97fbd15cd615dcd8f8bcad0c26f5f7d5effe705f090f39e9a758"
 "checksum cmake 0.1.21 (registry+https://github.com/rust-lang/crates.io-index)" = "e1acc68a3f714627af38f9f5d09706a28584ba60dfe2cca68f40bf779f941b25"
 "checksum dtoa 0.4.1 (registry+https://github.com/rust-lang/crates.io-index)" = "80c8b71fd71146990a9742fc06dcbbde19161a267e0ad4e572c35162f4578c90"
-"checksum env_logger 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)" = "15abd780e45b3ea4f76b4e9a26ff4843258dd8a3eed2775a0e7368c2e7936c2f"
 "checksum env_logger 0.4.2 (registry+https://github.com/rust-lang/crates.io-index)" = "e3856f1697098606fc6cb97a93de88ca3f3bc35bb878c725920e6e82ecf05e83"
 "checksum filetime 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)" = "5363ab8e4139b8568a6237db5248646e5a8a2f89bd5ccb02092182b11fd3e922"
 "checksum gcc 0.3.43 (registry+https://github.com/rust-lang/crates.io-index)" = "c07c758b972368e703a562686adb39125707cc1ef3399da8c019fc6c2498a75d"

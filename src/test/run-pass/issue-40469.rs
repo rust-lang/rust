@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![sanitizer_runtime]
-#![feature(sanitizer_runtime)]
-#![feature(alloc_system)]
-#![feature(staged_api)]
-#![no_std]
-#![unstable(feature = "sanitizer_runtime_lib",
-            reason = "internal implementation detail of sanitizers",
-            issue = "0")]
+#![allow(dead_code)]
 
-extern crate alloc_system;
+include!("auxiliary/issue_40469.rs");
+fn f() { m!(); }
+
+fn main() {}
