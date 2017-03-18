@@ -60,6 +60,7 @@ use rustc::middle::privacy::AccessLevels;
 use rustc::middle::stability;
 use rustc::hir;
 use rustc::util::nodemap::{FxHashMap, FxHashSet};
+use rustc::session::config::nightly_options::is_nightly_build;
 use rustc_data_structures::flock;
 
 use clean::{self, AttributesExt, GetDefId, SelfTy, Mutability};
@@ -2316,9 +2317,10 @@ fn render_assoc_item(w: &mut fmt::Formatter,
             }
         };
         // FIXME(#24111): remove when `const_fn` is stabilized
-        let vis_constness = match UnstableFeatures::from_environment() {
-            UnstableFeatures::Allow => constness,
-            _ => hir::Constness::NotConst
+        let vis_constness = if is_nightly_build() {
+            constness
+        } else {
+            hir::Constness::NotConst
         };
         let prefix = format!("{}{}{:#}fn {}{:#}",
                              ConstnessSpace(vis_constness),
