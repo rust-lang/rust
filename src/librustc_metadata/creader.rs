@@ -973,9 +973,11 @@ impl<'a> CrateLoader<'a> {
 
 impl<'a> CrateLoader<'a> {
     pub fn preprocess(&mut self, krate: &ast::Crate) {
-        for attr in krate.attrs.iter().filter(|m| m.name() == "link_args") {
-            if let Some(linkarg) = attr.value_str() {
-                self.cstore.add_used_link_args(&linkarg.as_str());
+        for attr in &krate.attrs {
+            if attr.path == "link_args" {
+                if let Some(linkarg) = attr.value_str() {
+                    self.cstore.add_used_link_args(&linkarg.as_str());
+                }
             }
         }
     }

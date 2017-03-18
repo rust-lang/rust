@@ -54,7 +54,7 @@ use std::path::{Path, PathBuf};
 use syntax::ast::{self, NodeId, PatKind, Attribute, CRATE_NODE_ID};
 use syntax::parse::lexer::comments::strip_doc_comment_decoration;
 use syntax::parse::token;
-use syntax::symbol::{Symbol, keywords};
+use syntax::symbol::keywords;
 use syntax::visit::{self, Visitor};
 use syntax::print::pprust::{ty_to_string, arg_to_string};
 use syntax::codemap::MacroAttribute;
@@ -829,11 +829,10 @@ impl<'a> Visitor<'a> for PathCollector {
 }
 
 fn docs_for_attrs(attrs: &[Attribute]) -> String {
-    let doc = Symbol::intern("doc");
     let mut result = String::new();
 
     for attr in attrs {
-        if attr.name() == doc {
+        if attr.check_name("doc") {
             if let Some(val) = attr.value_str() {
                 if attr.is_sugared_doc {
                     result.push_str(&strip_doc_comment_decoration(&val.as_str()));

@@ -116,6 +116,12 @@ pub struct Path {
     pub segments: Vec<PathSegment>,
 }
 
+impl<'a> PartialEq<&'a str> for Path {
+    fn eq(&self, string: &&'a str) -> bool {
+        self.segments.len() == 1 && self.segments[0].identifier.name == *string
+    }
+}
+
 impl fmt::Debug for Path {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "path({})", pprust::path_to_string(self))
@@ -1681,7 +1687,8 @@ pub struct AttrId(pub usize);
 pub struct Attribute {
     pub id: AttrId,
     pub style: AttrStyle,
-    pub value: MetaItem,
+    pub path: Path,
+    pub tokens: TokenStream,
     pub is_sugared_doc: bool,
     pub span: Span,
 }
