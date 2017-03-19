@@ -90,10 +90,10 @@ macro_rules! assert {
 /// On panic, this macro will print the values of the expressions with their
 /// debug representations.
 ///
-/// Like [`assert!()`], this macro has a second version, where a custom
+/// Like [`assert!`], this macro has a second version, where a custom
 /// panic message can be provided.
 ///
-/// [`assert!()`]: macro.assert.html
+/// [`assert!`]: macro.assert.html
 ///
 /// # Examples
 ///

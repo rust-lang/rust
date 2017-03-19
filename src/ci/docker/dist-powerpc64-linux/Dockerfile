@@ -28,7 +28,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   pkg-config
 
 RUN curl -o /usr/local/bin/sccache \
-      https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-02-25-sccache-x86_64-unknown-linux-musl && \
+      https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-03-16-sccache-x86_64-unknown-linux-musl && \
       chmod +x /usr/local/bin/sccache
 
 RUN curl -OL https://github.com/Yelp/dumb-init/releases/download/v1.2.0/dumb-init_1.2.0_amd64.deb && \
@@ -61,7 +61,7 @@ USER rustbuild
 WORKDIR /tmp
 
 COPY patches/ /tmp/patches/
-COPY powerpc64-linux-gnu.config build-powerpc64-toolchain.sh /tmp/
+COPY shared.sh powerpc64-linux-gnu.config build-powerpc64-toolchain.sh /tmp/
 RUN ./build-powerpc64-toolchain.sh
 
 USER root

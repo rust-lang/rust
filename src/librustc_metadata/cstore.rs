@@ -269,9 +269,12 @@ impl CrateMetadata {
     }
 
     pub fn is_staged_api(&self) -> bool {
-        self.get_item_attrs(CRATE_DEF_INDEX)
-            .iter()
-            .any(|attr| attr.name() == "stable" || attr.name() == "unstable")
+        for attr in self.get_item_attrs(CRATE_DEF_INDEX) {
+            if attr.path == "stable" || attr.path == "unstable" {
+                return true;
+            }
+        }
+        false
     }
 
     pub fn is_allocator(&self) -> bool {

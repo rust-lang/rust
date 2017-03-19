@@ -142,7 +142,7 @@ impl<T> LinkedList<T> {
 
             match self.head {
                 None => self.tail = node,
-                Some(head) => (**head).prev = node,
+                Some(head) => (*head.as_mut_ptr()).prev = node,
             }
 
             self.head = node;
@@ -154,12 +154,12 @@ impl<T> LinkedList<T> {
     #[inline]
     fn pop_front_node(&mut self) -> Option<Box<Node<T>>> {
         self.head.map(|node| unsafe {
-            let node = Box::from_raw(*node);
+            let node = Box::from_raw(node.as_mut_ptr());
             self.head = node.next;
 
             match self.head {
                 None => self.tail = None,
-                Some(head) => (**head).prev = None,
+                Some(head) => (*head.as_mut_ptr()).prev = None,
             }
 
             self.len -= 1;
@@ -177,7 +177,7 @@ impl<T> LinkedList<T> {
 
             match self.tail {
                 None => self.head = node,
-                Some(tail) => (**tail).next = node,
+                Some(tail) => (*tail.as_mut_ptr()).next = node,
             }
 
             self.tail = node;
@@ -189,12 +189,12 @@ impl<T> LinkedList<T> {
     #[inline]
     fn pop_back_node(&mut self) -> Option<Box<Node<T>>> {
         self.tail.map(|node| unsafe {
-            let node = Box::from_raw(*node);
+            let node = Box::from_raw(node.as_mut_ptr());
             self.tail = node.prev;
 
             match self.tail {
                 None => self.head = None,
-                Some(tail) => (**tail).next = None,
+                Some(tail) => (*tail.as_mut_ptr()).next = None,
             }
 
             self.len -= 1;
@@ -269,8 +269,8 @@ impl<T> LinkedList<T> {
             Some(tail) => {
                 if let Some(other_head) = other.head.take() {
                     unsafe {
-                        (**tail).next = Some(other_head);
-                        (**other_head).prev = Some(tail);
+                        (*tail.as_mut_ptr()).next = Some(other_head);
+                        (*other_head.as_mut_ptr()).prev = Some(tail);
                     }
 
                     self.tail = other.tail.take();
@@ -484,7 +484,7 @@ impl<T> LinkedList<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn front_mut(&mut self) -> Option<&mut T> {
-        self.head.map(|node| unsafe { &mut (**node).element })
+        self.head.map(|node| unsafe { &mut (*node.as_mut_ptr()).element })
     }
 
     /// Provides a reference to the back element, or `None` if the list is
@@ -530,7 +530,7 @@ impl<T> LinkedList<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn back_mut(&mut self) -> Option<&mut T> {
-        self.tail.map(|node| unsafe { &mut (**node).element })
+        self.tail.map(|node| unsafe { &mut (*node.as_mut_ptr()).element })
     }
 
     /// Adds an element first in the list.
@@ -675,9 +675,9 @@ impl<T> LinkedList<T> {
         let second_part_head;
 
         unsafe {
-            second_part_head = (**split_node.unwrap()).next.take();
+            second_part_head = (*split_node.unwrap().as_mut_ptr()).next.take();
             if let Some(head) = second_part_head {
-                (**head).prev = None;
+                (*head.as_mut_ptr()).prev = None;
             }
         }
 
@@ -816,7 +816,7 @@ impl<'a, T> Iterator for IterMut<'a, T> {
             None
         } else {
             self.head.map(|node| unsafe {
-                let node = &mut **node;
+                let node = &mut *node.as_mut_ptr();
                 self.len -= 1;
                 self.head = node.next;
                 &mut node.element
@@ -838,7 +838,7 @@ impl<'a, T> DoubleEndedIterator for IterMut<'a, T> {
             None
         } else {
             self.tail.map(|node| unsafe {
-                let node = &mut **node;
+                let node = &mut *node.as_mut_ptr();
                 self.len -= 1;
                 self.tail = node.prev;
                 &mut node.element
@@ -896,8 +896,8 @@ impl<'a, T> IterMut<'a, T> {
                     element: element,
                 })));
 
-                (**prev).next = node;
-                (**head).prev = node;
+                (*prev.as_mut_ptr()).next = node;
+                (*head.as_mut_ptr()).prev = node;
 
                 self.list.len += 1;
             },
@@ -929,7 +929,7 @@ impl<'a, T> IterMut<'a, T> {
         if self.len == 0 {
             None
         } else {
-            self.head.map(|node| unsafe { &mut (**node).element })
+            self.head.map(|node| unsafe { &mut (*node.as_mut_ptr()).element })
         }
     }
 }

@@ -99,7 +99,7 @@ fn register_native_lib(sess: &Session,
     }
     let is_osx = sess.target.target.options.is_like_osx;
     if lib.kind == cstore::NativeFramework && !is_osx {
-        let msg = "native frameworks are only available on OSX targets";
+        let msg = "native frameworks are only available on macOS targets";
         match span {
             Some(span) => span_err!(sess, span, E0455, "{}", msg),
             None => sess.err(msg),
@@ -973,9 +973,11 @@ impl<'a> CrateLoader<'a> {
 
 impl<'a> CrateLoader<'a> {
     pub fn preprocess(&mut self, krate: &ast::Crate) {
-        for attr in krate.attrs.iter().filter(|m| m.name() == "link_args") {
-            if let Some(linkarg) = attr.value_str() {
-                self.cstore.add_used_link_args(&linkarg.as_str());
+        for attr in &krate.attrs {
+            if attr.path == "link_args" {
+                if let Some(linkarg) = attr.value_str() {
+                    self.cstore.add_used_link_args(&linkarg.as_str());
+                }
             }
         }
     }

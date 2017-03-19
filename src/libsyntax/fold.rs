@@ -489,7 +489,8 @@ pub fn noop_fold_attribute<T: Folder>(attr: Attribute, fld: &mut T) -> Option<At
     Some(Attribute {
         id: attr.id,
         style: attr.style,
-        value: fld.fold_meta_item(attr.value),
+        path: fld.fold_path(attr.path),
+        tokens: fld.fold_tts(attr.tokens),
         is_sugared_doc: attr.is_sugared_doc,
         span: fld.new_span(attr.span),
     })
@@ -612,7 +613,7 @@ pub fn noop_fold_interpolated<T: Folder>(nt: token::Nonterminal, fld: &mut T)
         token::NtExpr(expr) => token::NtExpr(fld.fold_expr(expr)),
         token::NtTy(ty) => token::NtTy(fld.fold_ty(ty)),
         token::NtIdent(id) => token::NtIdent(Spanned::<Ident>{node: fld.fold_ident(id.node), ..id}),
-        token::NtMeta(meta_item) => token::NtMeta(fld.fold_meta_item(meta_item)),
+        token::NtMeta(meta) => token::NtMeta(fld.fold_meta_item(meta)),
         token::NtPath(path) => token::NtPath(fld.fold_path(path)),
         token::NtTT(tt) => token::NtTT(fld.fold_tt(tt)),
         token::NtArm(arm) => token::NtArm(fld.fold_arm(arm)),
@@ -1371,7 +1372,7 @@ mod tests {
             matches_codepattern,
             "matches_codepattern",
             pprust::to_string(|s| fake_print_crate(s, &folded_crate)),
-            "#[a]mod zz{fn zz(zz:zz,zz:zz){zz!(zz,zz,zz);zz;zz}}".to_string());
+            "#[zz]mod zz{fn zz(zz:zz,zz:zz){zz!(zz,zz,zz);zz;zz}}".to_string());
     }
 
     // even inside macro defs....

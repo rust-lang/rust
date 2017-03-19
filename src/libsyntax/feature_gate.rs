@@ -342,6 +342,9 @@ declare_features! (
 
     // Allows the `catch {...}` expression
     (active, catch_expr, "1.17.0", Some(31436)),
+
+    // See rust-lang/rfcs#1414. Allows code like `let x: &'static u32 = &42` to work.
+    (active, rvalue_static_promotion, "1.15.1", Some(38865)),
 );
 
 declare_features! (
@@ -862,35 +865,34 @@ macro_rules! gate_feature {
 impl<'a> Context<'a> {
     fn check_attribute(&self, attr: &ast::Attribute, is_macro: bool) {
         debug!("check_attribute(attr = {:?})", attr);
-        let name = &*attr.name().as_str();
+        let name = unwrap_or!(attr.name(), return);
+
         for &(n, ty, ref gateage) in BUILTIN_ATTRIBUTES {
-            if n == name {
+            if name == n {
                 if let &Gated(_, ref name, ref desc, ref has_feature) = gateage {
                     gate_feature_fn!(self, has_feature, attr.span, name, desc);
                 }
-                debug!("check_attribute: {:?} is builtin, {:?}, {:?}", name, ty, gateage);
+                debug!("check_attribute: {:?} is builtin, {:?}, {:?}", attr.path, ty, gateage);
                 return;
             }
         }
         for &(ref n, ref ty) in self.plugin_attributes {
-            if n == name {
+            if attr.path == &**n {
                 // Plugins can't gate attributes, so we don't check for it
                 // unlike the code above; we only use this loop to
                 // short-circuit to avoid the checks below
-                debug!("check_attribute: {:?} is registered by a plugin, {:?}", name, ty);
+                debug!("check_attribute: {:?} is registered by a plugin, {:?}", attr.path, ty);
                 return;
             }
         }
-        if name.starts_with("rustc_") {
+        if name.as_str().starts_with("rustc_") {
             gate_feature!(self, rustc_attrs, attr.span,
                           "unless otherwise specified, attributes \
                            with the prefix `rustc_` \
                            are reserved for internal compiler diagnostics");
-        } else if name.starts_with("derive_") {
+        } else if name.as_str().starts_with("derive_") {
             gate_feature!(self, custom_derive, attr.span, EXPLAIN_DERIVE_UNDERSCORE);
-        } else if attr::is_known(attr) {
-            debug!("check_attribute: {:?} is known", name);
-        } else {
+        } else if !attr::is_known(attr) {
             // Only run the custom attribute lint during regular
             // feature gate checking. Macro gating runs
             // before the plugin attributes are registered
@@ -901,7 +903,7 @@ impl<'a> Context<'a> {
                                         unknown to the compiler and \
                                         may have meaning \
                                         added to it in the future",
-                                       name));
+                                       attr.path));
             }
         }
     }
@@ -1100,7 +1102,12 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             self.context.check_attribute(attr, false);
         }
 
-        if contains_novel_literal(&attr.value) {
+        if self.context.features.proc_macro && attr::is_known(attr) {
+            return
+        }
+
+        let meta = panictry!(attr.parse_meta(&self.context.parse_sess));
+        if contains_novel_literal(&meta) {
             gate_feature_post!(&self, attr_literals, attr.span,
                                "non-string literals in attributes, or string \
                                literals in top-level positions, are experimental");
@@ -1163,8 +1170,8 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                                                                        `#[repr(simd)]` instead");
                 }
                 for attr in &i.attrs {
-                    if attr.name() == "repr" {
-                        for item in attr.meta_item_list().unwrap_or(&[]) {
+                    if attr.path == "repr" {
+                        for item in attr.meta_item_list().unwrap_or_else(Vec::new) {
                             if item.check_name("simd") {
                                 gate_feature_post!(&self, repr_simd, i.span,
                                                    "SIMD types are experimental \

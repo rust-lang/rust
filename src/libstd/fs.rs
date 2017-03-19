@@ -142,14 +142,14 @@ pub struct DirEntry(fs_imp::DirEntry);
 /// [`File::open`]: struct.File.html#method.open
 /// [`File::create`]: struct.File.html#method.create
 ///
-/// Generally speaking, when using `OpenOptions`, you'll first call [`new()`],
-/// then chain calls to methods to set each option, then call [`open()`],
+/// Generally speaking, when using `OpenOptions`, you'll first call [`new`],
+/// then chain calls to methods to set each option, then call [`open`],
 /// passing the path of the file you're trying to open. This will give you a
 /// [`io::Result`][result] with a [`File`][file] inside that you can further
 /// operate on.
 ///
-/// [`new()`]: struct.OpenOptions.html#method.new
-/// [`open()`]: struct.OpenOptions.html#method.open
+/// [`new`]: struct.OpenOptions.html#method.new
+/// [`open`]: struct.OpenOptions.html#method.open
 /// [result]: ../io/type.Result.html
 /// [file]: struct.File.html
 ///

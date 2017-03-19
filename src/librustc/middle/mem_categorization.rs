@@ -195,6 +195,21 @@ pub struct cmt_<'tcx> {
 pub type cmt<'tcx> = Rc<cmt_<'tcx>>;
 
 impl<'tcx> cmt_<'tcx> {
+    pub fn get_def(&self) -> Option<ast::NodeId> {
+        match self.cat {
+            Categorization::Deref(ref cmt, ..) |
+            Categorization::Interior(ref cmt, _) |
+            Categorization::Downcast(ref cmt, _) => {
+                if let Categorization::Local(nid) = cmt.cat {
+                    Some(nid)
+                } else {
+                    None
+                }
+            }
+            _ => None
+        }
+    }
+
     pub fn get_field(&self, name: ast::Name) -> Option<DefId> {
         match self.cat {
             Categorization::Deref(ref cmt, ..) |
@@ -843,11 +858,10 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         let promotable = self.tcx().rvalue_promotable_to_static.borrow().get(&id).cloned()
                                    .unwrap_or(false);
 
-        // Only promote `[T; 0]` before an RFC for rvalue promotions
-        // is accepted.
+        // When the corresponding feature isn't toggled, only promote `[T; 0]`.
         let promotable = match expr_ty.sty {
             ty::TyArray(_, 0) => true,
-            _ => promotable & false
+            _ => promotable && self.tcx().sess.features.borrow().rvalue_static_promotion,
         };
 
         // Compute maximum lifetime of this rvalue. This is 'static if

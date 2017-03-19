@@ -154,14 +154,14 @@ pub trait AsMut<T: ?Sized> {
 /// # Generic Impls
 ///
 /// - [`From<T>`][From]` for U` implies `Into<U> for T`
-/// - [`into()`] is reflexive, which means that `Into<T> for T` is implemented
+/// - [`into`] is reflexive, which means that `Into<T> for T` is implemented
 ///
 /// [`TryInto`]: trait.TryInto.html
 /// [`Option<T>`]: ../../std/option/enum.Option.html
 /// [`Result<T, E>`]: ../../std/result/enum.Result.html
 /// [`String`]: ../../std/string/struct.String.html
 /// [From]: trait.From.html
-/// [`into()`]: trait.Into.html#tymethod.into
+/// [`into`]: trait.Into.html#tymethod.into
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Into<T>: Sized {
     /// Performs the conversion.
@@ -187,14 +187,14 @@ pub trait Into<T>: Sized {
 /// # Generic impls
 ///
 /// - `From<T> for U` implies [`Into<U>`]` for T`
-/// - [`from()`] is reflexive, which means that `From<T> for T` is implemented
+/// - [`from`] is reflexive, which means that `From<T> for T` is implemented
 ///
 /// [`TryFrom`]: trait.TryFrom.html
 /// [`Option<T>`]: ../../std/option/enum.Option.html
 /// [`Result<T, E>`]: ../../std/result/enum.Result.html
 /// [`String`]: ../../std/string/struct.String.html
 /// [`Into<U>`]: trait.Into.html
-/// [`from()`]: trait.From.html#tymethod.from
+/// [`from`]: trait.From.html#tymethod.from
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait From<T>: Sized {
     /// Performs the conversion.

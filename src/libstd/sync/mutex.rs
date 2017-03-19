@@ -132,16 +132,16 @@ unsafe impl<T: ?Sized + Send> Sync for Mutex<T> { }
 /// An RAII implementation of a "scoped lock" of a mutex. When this structure is
 /// dropped (falls out of scope), the lock will be unlocked.
 ///
-/// The data protected by the mutex can be access through this guard via its
+/// The data protected by the mutex can be accessed through this guard via its
 /// [`Deref`] and [`DerefMut`] implementations.
 ///
-/// This structure is created by the [`lock()`] and [`try_lock()`] methods on
+/// This structure is created by the [`lock`] and [`try_lock`] methods on
 /// [`Mutex`].
 ///
 /// [`Deref`]: ../../std/ops/trait.Deref.html
 /// [`DerefMut`]: ../../std/ops/trait.DerefMut.html
-/// [`lock()`]: struct.Mutex.html#method.lock
-/// [`try_lock()`]: struct.Mutex.html#method.try_lock
+/// [`lock`]: struct.Mutex.html#method.lock
+/// [`try_lock`]: struct.Mutex.html#method.try_lock
 /// [`Mutex`]: struct.Mutex.html
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]

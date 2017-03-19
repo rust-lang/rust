@@ -113,13 +113,19 @@ impl<'a, S: Into<MultiSpan>> IntoEarlyLint for (S, &'a str) {
         let (span, msg) = self;
         let mut diagnostic = Diagnostic::new(errors::Level::Warning, msg);
         diagnostic.set_span(span);
-        EarlyLint { id: id, diagnostic: diagnostic }
+        EarlyLint {
+            id: id,
+            diagnostic: diagnostic,
+        }
     }
 }
 
 impl IntoEarlyLint for Diagnostic {
     fn into_early_lint(self, id: LintId) -> EarlyLint {
-        EarlyLint { id: id, diagnostic: self }
+        EarlyLint {
+            id: id,
+            diagnostic: self,
+        }
     }
 }
 
@@ -146,7 +152,7 @@ enum TargetLint {
 
 enum FindLintError {
     NotFound,
-    Removed
+    Removed,
 }
 
 impl LintStore {
@@ -402,14 +408,14 @@ pub fn gather_attrs(attrs: &[ast::Attribute]) -> Vec<Result<(ast::Name, Level, S
 pub fn gather_attr(attr: &ast::Attribute) -> Vec<Result<(ast::Name, Level, Span), Span>> {
     let mut out = vec![];
 
-    let level = match Level::from_str(&attr.name().as_str()) {
+    let level = match attr.name().and_then(|name| Level::from_str(&name.as_str())) {
         None => return out,
         Some(lvl) => lvl,
     };
 
+    let meta = unwrap_or!(attr.meta(), return out);
     attr::mark_used(attr);
 
-    let meta = &attr.value;
     let metas = if let Some(metas) = meta.meta_item_list() {
         metas
     } else {
@@ -1127,7 +1133,7 @@ enum CheckLintNameResult {
     NoLint,
     // The lint is either renamed or removed. This is the warning
     // message.
-    Warning(String)
+    Warning(String),
 }
 
 /// Checks the name of a lint for its existence, and whether it was

@@ -13,11 +13,9 @@
 #![feature(binary_heap_extras)]
 #![feature(binary_heap_peek_mut_pop)]
 #![feature(box_syntax)]
-#![feature(btree_range)]
 #![feature(inclusive_range_syntax)]
 #![feature(collection_placement)]
 #![feature(collections)]
-#![feature(collections_bound)]
 #![feature(const_fn)]
 #![feature(exact_size_is_empty)]
 #![feature(pattern)]
@@ -28,6 +26,7 @@
 #![feature(test)]
 #![feature(unboxed_closures)]
 #![feature(unicode)]
+#![feature(utf8_error_error_len)]
 
 extern crate collections;
 extern crate test;

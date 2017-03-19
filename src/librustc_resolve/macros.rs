@@ -28,8 +28,11 @@ use syntax::ext::placeholders::placeholder;
 use syntax::ext::tt::macro_rules;
 use syntax::feature_gate::{self, emit_feature_err, GateIssue};
 use syntax::fold::{self, Folder};
+use syntax::parse::parser::PathStyle;
+use syntax::parse::token::{self, Token};
 use syntax::ptr::P;
 use syntax::symbol::{Symbol, keywords};
+use syntax::tokenstream::{TokenStream, TokenTree, Delimited};
 use syntax::util::lev_distance::find_best_match_for_name;
 use syntax_pos::{Span, DUMMY_SP};
 
@@ -179,12 +182,14 @@ impl<'a> base::Resolver for Resolver<'a> {
     fn find_legacy_attr_invoc(&mut self, attrs: &mut Vec<ast::Attribute>)
                               -> Option<ast::Attribute> {
         for i in 0..attrs.len() {
+            let name = unwrap_or!(attrs[i].name(), continue);
+
             if self.session.plugin_attributes.borrow().iter()
-                    .any(|&(ref attr_nm, _)| attrs[i].name() == &**attr_nm) {
+                    .any(|&(ref attr_nm, _)| name == &**attr_nm) {
                 attr::mark_known(&attrs[i]);
             }
 
-            match self.builtin_macros.get(&attrs[i].name()).cloned() {
+            match self.builtin_macros.get(&name).cloned() {
                 Some(binding) => match *binding.get_macro(self) {
                     MultiModifier(..) | MultiDecorator(..) | SyntaxExtension::AttrProcMacro(..) => {
                         return Some(attrs.remove(i))
@@ -197,17 +202,25 @@ impl<'a> base::Resolver for Resolver<'a> {
 
         // Check for legacy derives
         for i in 0..attrs.len() {
-            if attrs[i].name() == "derive" {
-                let mut traits = match attrs[i].meta_item_list() {
-                    Some(traits) if !traits.is_empty() => traits.to_owned(),
-                    _ => continue,
+            let name = unwrap_or!(attrs[i].name(), continue);
+
+            if name == "derive" {
+                let result = attrs[i].parse_list(&self.session.parse_sess,
+                                                 |parser| parser.parse_path(PathStyle::Mod));
+                let mut traits = match result {
+                    Ok(traits) => traits,
+                    Err(mut e) => {
+                        e.cancel();
+                        continue
+                    }
                 };
 
                 for j in 0..traits.len() {
-                    let legacy_name = Symbol::intern(&match traits[j].word() {
-                        Some(..) => format!("derive_{}", traits[j].name().unwrap()),
-                        None => continue,
-                    });
+                    if traits[j].segments.len() > 1 {
+                        continue
+                    }
+                    let trait_name = traits[j].segments[0].identifier.name;
+                    let legacy_name = Symbol::intern(&format!("derive_{}", trait_name));
                     if !self.builtin_macros.contains_key(&legacy_name) {
                         continue
                     }
@@ -216,18 +229,27 @@ impl<'a> base::Resolver for Resolver<'a> {
                     if traits.is_empty() {
                         attrs.remove(i);
                     } else {
-                        attrs[i].value = ast::MetaItem {
-                            name: attrs[i].name(),
-                            span: attrs[i].span,
-                            node: ast::MetaItemKind::List(traits),
-                        };
+                        let mut tokens = Vec::new();
+                        for (i, path) in traits.iter().enumerate() {
+                            if i > 0 {
+                                tokens.push(TokenTree::Token(attrs[i].span, Token::Comma).into());
+                            }
+                            for (j, segment) in path.segments.iter().enumerate() {
+                                if j > 0 {
+                                    tokens.push(TokenTree::Token(path.span, Token::ModSep).into());
+                                }
+                                let tok = Token::Ident(segment.identifier);
+                                tokens.push(TokenTree::Token(path.span, tok).into());
+                            }
+                        }
+                        attrs[i].tokens = TokenTree::Delimited(attrs[i].span, Delimited {
+                            delim: token::Paren,
+                            tts: TokenStream::concat(tokens).into(),
+                        }).into();
                     }
                     return Some(ast::Attribute {
-                        value: ast::MetaItem {
-                            name: legacy_name,
-                            span: span,
-                            node: ast::MetaItemKind::Word,
-                        },
+                        path: ast::Path::from_ident(span, Ident::with_empty_ctxt(legacy_name)),
+                        tokens: TokenStream::empty(),
                         id: attr::mk_attr_id(),
                         style: ast::AttrStyle::Outer,
                         is_sugared_doc: false,
@@ -267,28 +289,27 @@ impl<'a> Resolver<'a> {
             InvocationKind::Bang { ref mac, .. } => {
                 return self.resolve_macro_to_def(scope, &mac.node.path, MacroKind::Bang, force);
             }
-            InvocationKind::Derive { name, span, .. } => {
-                let path = ast::Path::from_ident(span, Ident::with_empty_ctxt(name));
-                return self.resolve_macro_to_def(scope, &path, MacroKind::Derive, force);
+            InvocationKind::Derive { ref path, .. } => {
+                return self.resolve_macro_to_def(scope, path, MacroKind::Derive, force);
             }
         };
 
-        let (attr_name, path) = {
-            let attr = attr.as_ref().unwrap();
-            (attr.name(), ast::Path::from_ident(attr.span, Ident::with_empty_ctxt(attr.name())))
-        };
 
-        let mut determined = true;
+        let path = attr.as_ref().unwrap().path.clone();
+        let mut determinacy = Determinacy::Determined;
         match self.resolve_macro_to_def(scope, &path, MacroKind::Attr, force) {
             Ok(def) => return Ok(def),
-            Err(Determinacy::Undetermined) => determined = false,
+            Err(Determinacy::Undetermined) => determinacy = Determinacy::Undetermined,
             Err(Determinacy::Determined) if force => return Err(Determinacy::Determined),
             Err(Determinacy::Determined) => {}
         }
 
-        for &(name, span) in traits {
-            let path = ast::Path::from_ident(span, Ident::with_empty_ctxt(name));
-            match self.resolve_macro(scope, &path, MacroKind::Derive, force) {
+        let attr_name = match path.segments.len() {
+            1 => path.segments[0].identifier.name,
+            _ => return Err(determinacy),
+        };
+        for path in traits {
+            match self.resolve_macro(scope, path, MacroKind::Derive, force) {
                 Ok(ext) => if let SyntaxExtension::ProcMacroDerive(_, ref inert_attrs) = *ext {
                     if inert_attrs.contains(&attr_name) {
                         // FIXME(jseyfried) Avoid `mem::replace` here.
@@ -307,12 +328,12 @@ impl<'a> Resolver<'a> {
                     }
                     return Err(Determinacy::Undetermined);
                 },
-                Err(Determinacy::Undetermined) => determined = false,
+                Err(Determinacy::Undetermined) => determinacy = Determinacy::Undetermined,
                 Err(Determinacy::Determined) => {}
             }
         }
 
-        Err(if determined { Determinacy::Determined } else { Determinacy::Undetermined })
+        Err(determinacy)
     }
 
     fn resolve_macro_to_def(&mut self, scope: Mark, path: &ast::Path, kind: MacroKind, force: bool)
@@ -331,7 +352,7 @@ impl<'a> Resolver<'a> {
         self.current_module = invocation.module.get();
 
         if path.len() > 1 {
-            if !self.use_extern_macros {
+            if !self.use_extern_macros && self.gated_errors.insert(span) {
                 let msg = "non-ident macro paths are experimental";
                 let feature = "use_extern_macros";
                 emit_feature_err(&self.session.parse_sess, feature, span, GateIssue::Language, msg);

@@ -48,10 +48,12 @@ matrix:
         RUSTC_RETRY_LINKER_ON_SEGFAULT=1
         SCCACHE_ERROR_LOG=/tmp/sccache.log
         RUST_LOG=sccache=debug
+        MACOSX_DEPLOYMENT_TARGET=10.8
+        MACOSX_STD_DEPLOYMENT_TARGET=10.7
       os: osx
       osx_image: xcode8.2
       install: &osx_install_sccache >
-        travis_retry curl -o /usr/local/bin/sccache https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-02-25-sccache-x86_64-apple-darwin &&
+        travis_retry curl -o /usr/local/bin/sccache https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-03-16-sccache-x86_64-apple-darwin &&
           chmod +x /usr/local/bin/sccache
     - env: >
         RUST_CHECK_TARGET=check
@@ -60,6 +62,8 @@ matrix:
         RUSTC_RETRY_LINKER_ON_SEGFAULT=1
         SCCACHE_ERROR_LOG=/tmp/sccache.log
         RUST_LOG=sccache=debug
+        MACOSX_DEPLOYMENT_TARGET=10.8
+        MACOSX_STD_DEPLOYMENT_TARGET=10.7
       os: osx
       osx_image: xcode8.2
       install: *osx_install_sccache
@@ -72,10 +76,12 @@ matrix:
         RUSTC_RETRY_LINKER_ON_SEGFAULT=1
         SCCACHE_ERROR_LOG=/tmp/sccache.log
         RUST_LOG=sccache=debug
+        MACOSX_DEPLOYMENT_TARGET=10.8
+        MACOSX_STD_DEPLOYMENT_TARGET=10.7
       os: osx
       osx_image: xcode8.2
       install: >
-        travis_retry curl -o /usr/local/bin/sccache https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-02-25-sccache-x86_64-apple-darwin &&
+        travis_retry curl -o /usr/local/bin/sccache https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-03-16-sccache-x86_64-apple-darwin &&
           chmod +x /usr/local/bin/sccache
     - env: >
         RUST_CHECK_TARGET=dist
@@ -85,6 +91,8 @@ matrix:
         RUSTC_RETRY_LINKER_ON_SEGFAULT=1
         SCCACHE_ERROR_LOG=/tmp/sccache.log
         RUST_LOG=sccache=debug
+        MACOSX_DEPLOYMENT_TARGET=10.8
+        MACOSX_STD_DEPLOYMENT_TARGET=10.7
       os: osx
       osx_image: xcode8.2
       install: *osx_install_sccache
@@ -102,6 +110,8 @@ matrix:
         RUSTC_RETRY_LINKER_ON_SEGFAULT=1
         SCCACHE_ERROR_LOG=/tmp/sccache.log
         RUST_LOG=sccache=debug
+        MACOSX_DEPLOYMENT_TARGET=10.8
+        MACOSX_STD_DEPLOYMENT_TARGET=10.7
       os: osx
       osx_image: xcode8.2
       install: *osx_install_sccache

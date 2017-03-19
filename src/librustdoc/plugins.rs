@@ -42,7 +42,7 @@ impl PluginManager {
     /// Load a plugin with the given name.
     ///
     /// Turns `name` into the proper dynamic library filename for the given
-    /// platform. On windows, it turns into name.dll, on OS X, name.dylib, and
+    /// platform. On windows, it turns into name.dll, on macOS, name.dylib, and
     /// elsewhere, libname.so.
     pub fn load_plugin(&mut self, name: String) {
         let x = self.prefix.join(libname(name));

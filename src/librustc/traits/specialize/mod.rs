@@ -37,7 +37,7 @@ pub mod specialization_graph;
 pub struct OverlapError {
     pub with_impl: DefId,
     pub trait_desc: String,
-    pub self_desc: Option<String>
+    pub self_desc: Option<String>,
 }
 
 /// Given a subst for the requested impl, translate it to a subst
@@ -274,7 +274,7 @@ fn fulfill_implication<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
 }
 
 pub struct SpecializesCache {
-    map: FxHashMap<(DefId, DefId), bool>
+    map: FxHashMap<(DefId, DefId), bool>,
 }
 
 impl SpecializesCache {

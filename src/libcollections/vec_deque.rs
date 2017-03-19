@@ -2125,7 +2125,7 @@ impl<'a, T: 'a> Drop for Drain<'a, T> {
     fn drop(&mut self) {
         for _ in self.by_ref() {}
 
-        let source_deque = unsafe { &mut **self.deque };
+        let source_deque = unsafe { &mut *self.deque.as_mut_ptr() };
 
         // T = source_deque_tail; H = source_deque_head; t = drain_tail; h = drain_head
         //
