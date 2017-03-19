@@ -254,15 +254,6 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         bcx.llbb()
     }
 
-    pub fn unreachable_block(&mut self) -> BasicBlockRef {
-        self.unreachable_block.unwrap_or_else(|| {
-            let bl = self.new_block("unreachable");
-            bl.unreachable();
-            self.unreachable_block = Some(bl.llbb());
-            bl.llbb()
-        })
-    }
-
     pub fn new_block(&self, name: &str) -> Builder<'a, 'tcx> {
         Builder::new_block(self.ccx, self.llfn, name)
     }

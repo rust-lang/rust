@@ -239,15 +239,19 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
         // Translate the actual panic invoke/call.
         if let Some(unwind) = cleanup {
-            bcx.invoke(llfn,
-                        &args,
-                        self.unreachable_block(),
-                        self.landing_pad_to(unwind),
-                        cleanup_bundle);
+            let old_bcx = bcx;
+            bcx = old_bcx.build_sibling_block("assert-next");
+            old_bcx.invoke(
+                llfn,
+                &args,
+                bcx.llbb(),
+                self.landing_pad_to(unwind),
+                cleanup_bundle
+            );
         } else {
             bcx.call(llfn, &args, cleanup_bundle);
-            bcx.unreachable();
         }
+        bcx.unreachable();
 
         success_block
     }

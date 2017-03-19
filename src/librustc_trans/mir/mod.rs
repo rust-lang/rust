@@ -73,9 +73,6 @@ pub struct MirContext<'a, 'tcx:'a> {
     /// and eagerly on MSVC.
     landing_pads: IndexVec<mir::Block, Option<BasicBlockRef>>,
 
-    /// Cached unreachable block
-    unreachable_block: Option<BasicBlockRef>,
-
     /// The location where each MIR arg/var/tmp/ret is stored. This is
     /// usually an `LvalueRef` representing an alloca, but not always:
     /// sometimes we can skip the alloca and just store the value
@@ -236,7 +233,6 @@ pub fn trans_mir<'a, 'tcx: 'a>(
         ccx: ccx,
         llpersonalityslot: None,
         blocks: block_bcxs,
-        unreachable_block: None,
         cleanup_kinds: cleanup_kinds,
         landing_pads: IndexVec::from_elem(None, mir.basic_blocks()),
         scopes: scopes,
