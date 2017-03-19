@@ -61,30 +61,12 @@ configuration_option_enum! { ReturnIndent:
     WithWhereClause,
 }
 
-// How to style a struct literal.
-configuration_option_enum! { StructLitStyle:
+configuration_option_enum! { IndentStyle:
     // First line on the same line as the opening brace, all lines aligned with
     // the first line.
     Visual,
     // First line is on a new line and all lines align with block indent.
     Block,
-    // FIXME Maybe we should also have an option to align types.
-}
-
-// How to style fn args.
-configuration_option_enum! { FnArgLayoutStyle:
-    // First line on the same line as the opening brace, all lines aligned with
-    // the first line.
-    Visual,
-    // Put args on one line if they fit, or start a new line with block indent.
-    Block,
-}
-
-configuration_option_enum! { BlockIndentStyle:
-    // One level deeper than parent.
-    Tabbed,
-    // Aligned with block open.
-    Visual,
 }
 
 configuration_option_enum! { Density:
@@ -357,10 +339,10 @@ create_config! {
         "Location of return type in function declaration";
     fn_args_paren_newline: bool, true, "If function argument parenthesis goes on a newline";
     fn_args_density: Density, Density::Tall, "Argument density in functions";
-    fn_args_layout: FnArgLayoutStyle, FnArgLayoutStyle::Visual,
+    fn_args_layout: IndentStyle, IndentStyle::Visual,
         "Layout of function arguments and tuple structs";
-    fn_arg_indent: BlockIndentStyle, BlockIndentStyle::Visual, "Indent on function arguments";
-    array_layout: FnArgLayoutStyle, FnArgLayoutStyle::Visual, "Indent on arrays";
+    fn_arg_indent: IndentStyle, IndentStyle::Visual, "Indent on function arguments";
+    array_layout: IndentStyle, IndentStyle::Visual, "Indent on arrays";
     type_punctuation_density: TypeDensity, TypeDensity::Wide,
         "Determines if '+' or '=' are wrapped in spaces in the punctuation of types";
     where_style: Style, Style::Default, "Overall strategy for where clauses";
@@ -368,20 +350,20 @@ create_config! {
     // function decl?
     where_density: Density, Density::CompressedIfEmpty, "Density of a where clause";
     // Visual will be treated like Tabbed
-    where_indent: BlockIndentStyle, BlockIndentStyle::Tabbed, "Indentation of a where clause";
+    where_indent: IndentStyle, IndentStyle::Block, "Indentation of a where clause";
     where_layout: ListTactic, ListTactic::Vertical, "Element layout inside a where clause";
-    where_pred_indent: BlockIndentStyle, BlockIndentStyle::Visual,
+    where_pred_indent: IndentStyle, IndentStyle::Visual,
         "Indentation style of a where predicate";
     generics_style: Style, Style::Default, "Overall strategy for generics";
-    generics_indent: BlockIndentStyle, BlockIndentStyle::Visual, "Indentation of generics";
-    struct_lit_style: StructLitStyle, StructLitStyle::Block, "Style of struct definition";
+    generics_indent: IndentStyle, IndentStyle::Visual, "Indentation of generics";
+    struct_lit_style: IndentStyle, IndentStyle::Block, "Style of struct definition";
     struct_lit_multiline_style: MultilineStyle, MultilineStyle::PreferSingle,
         "Multiline style on literal structs";
     report_todo: ReportTactic, ReportTactic::Never,
         "Report all, none or unnumbered occurrences of TODO in source file comments";
     report_fixme: ReportTactic, ReportTactic::Never,
         "Report all, none or unnumbered occurrences of FIXME in source file comments";
-    chain_indent: BlockIndentStyle, BlockIndentStyle::Tabbed, "Indentation of chain";
+    chain_indent: IndentStyle, IndentStyle::Block, "Indentation of chain";
     chain_one_line_max: usize, 4, "Maximum number of elements in a chain to fit on a single line";
     reorder_imports: bool, false, "Reorder import statements alphabetically";
     reorder_imported_names: bool, false,

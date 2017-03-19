@@ -24,7 +24,7 @@ use string::{StringFormat, rewrite_string};
 use utils::{extra_offset, last_line_width, wrap_str, binary_search, first_line_width,
             semicolon_for_stmt, trimmed_last_line_width, left_most_sub_expr, stmt_expr};
 use visitor::FmtVisitor;
-use config::{Config, StructLitStyle, MultilineStyle, ControlBraceStyle, FnArgLayoutStyle};
+use config::{Config, IndentStyle, MultilineStyle, ControlBraceStyle};
 use comment::{FindUncommented, rewrite_comment, contains_comment, recover_comment_removed};
 use types::{rewrite_path, PathContext};
 use items::{span_lo_for_arg, span_hi_for_arg};
@@ -331,8 +331,8 @@ pub fn rewrite_array<'a, I>(expr_iter: I,
     };
 
     let nested_shape = match context.config.array_layout {
-        FnArgLayoutStyle::Block => shape.block().block_indent(context.config.tab_spaces),
-        FnArgLayoutStyle::Visual => {
+        IndentStyle::Block => shape.block().block_indent(context.config.tab_spaces),
+        IndentStyle::Visual => {
             try_opt!(shape.visual_indent(bracket_size).sub_width(bracket_size * 2))
         }
     };
@@ -361,14 +361,14 @@ pub fn rewrite_array<'a, I>(expr_iter: I,
                                            |acc, x| acc.and_then(|y| x.map(|x| x || y))));
 
     let tactic = match context.config.array_layout {
-        FnArgLayoutStyle::Block => {
+        IndentStyle::Block => {
             // TODO wrong shape in one-line case
             match shape.width.checked_sub(2 * bracket_size) {
                 Some(width) => definitive_tactic(&items, ListTactic::HorizontalVertical, width),
                 None => DefinitiveListTactic::Vertical,
             }
         }
-        FnArgLayoutStyle::Visual => {
+        IndentStyle::Visual => {
             if has_long_item || items.iter().any(ListItem::is_multiline) {
                 definitive_tactic(&items, ListTactic::HorizontalVertical, nested_shape.width)
             } else {
@@ -387,7 +387,7 @@ pub fn rewrite_array<'a, I>(expr_iter: I,
     };
     let list_str = try_opt!(write_list(&items, &fmt));
 
-    let result = if context.config.array_layout == FnArgLayoutStyle::Visual ||
+    let result = if context.config.array_layout == IndentStyle::Visual ||
                     tactic != DefinitiveListTactic::Vertical {
         if context.config.spaces_within_square_brackets && list_str.len() > 0 {
             format!("[ {} ]", list_str)
@@ -1734,10 +1734,10 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
     // Foo { a: Foo } - indent is +3, width is -5.
     let h_shape = shape.sub_width(path_str.len() + 5);
     let v_shape = match context.config.struct_lit_style {
-        StructLitStyle::Visual => {
+        IndentStyle::Visual => {
             try_opt!(try_opt!(shape.shrink_left(path_str.len() + 3)).sub_width(2))
         }
-        StructLitStyle::Block => {
+        IndentStyle::Block => {
             let shape = shape.block_indent(context.config.tab_spaces);
             Shape {
                 width: try_opt!(context.config.max_width.checked_sub(shape.indent.width())),
@@ -1784,7 +1784,7 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
 
     let tactic = if let Some(h_shape) = h_shape {
         let mut prelim_tactic = match (context.config.struct_lit_style, fields.len()) {
-            (StructLitStyle::Visual, 1) => ListTactic::HorizontalVertical,
+            (IndentStyle::Visual, 1) => ListTactic::HorizontalVertical,
             _ => context.config.struct_lit_multiline_style.to_list_tactic(),
         };
 
@@ -1802,7 +1802,7 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
         _ => v_shape,
     };
 
-    let ends_with_newline = context.config.struct_lit_style != StructLitStyle::Visual &&
+    let ends_with_newline = context.config.struct_lit_style != IndentStyle::Visual &&
                             tactic == DefinitiveListTactic::Vertical;
 
     let fmt = ListFormatting {
@@ -1825,7 +1825,7 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
     }
 
     // One liner or visual indent.
-    if context.config.struct_lit_style == StructLitStyle::Visual ||
+    if context.config.struct_lit_style == IndentStyle::Visual ||
        (context.config.struct_lit_multiline_style != MultilineStyle::ForceMulti &&
         !fields_str.contains('\n') &&
         fields_str.len() <= h_shape.map(|s| s.width).unwrap_or(0)) {

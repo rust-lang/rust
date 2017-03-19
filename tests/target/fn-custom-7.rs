@@ -1,7 +1,7 @@
 // rustfmt-normalize_comments: true
 // rustfmt-fn_args_layout: Block
 // rustfmt-fn_args_density: Vertical
-// rustfmt-fn_arg_indent: Tabbed
+// rustfmt-fn_arg_indent: Block
 // rustfmt-fn_brace_style: AlwaysNextLine
 
 // Case with only one variable.

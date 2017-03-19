@@ -21,7 +21,7 @@ use expr::{is_empty_block, is_simple_block_stmt, rewrite_assign_rhs, type_annota
 use comment::{FindUncommented, contains_comment};
 use visitor::FmtVisitor;
 use rewrite::{Rewrite, RewriteContext};
-use config::{Config, BlockIndentStyle, Density, ReturnIndent, BraceStyle, FnArgLayoutStyle, Style};
+use config::{Config, IndentStyle, Density, ReturnIndent, BraceStyle, Style};
 use itertools::Itertools;
 
 use syntax::{ast, abi, codemap, ptr, symbol};
@@ -779,9 +779,8 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
 
         let where_density =
             if (context.config.where_density == Density::Compressed &&
-                (!result.contains('\n') ||
-                 context.config.fn_args_layout == FnArgLayoutStyle::Block)) ||
-               (context.config.fn_args_layout == FnArgLayoutStyle::Block && result.is_empty()) ||
+                (!result.contains('\n') || context.config.fn_args_layout == IndentStyle::Block)) ||
+               (context.config.fn_args_layout == IndentStyle::Block && result.is_empty()) ||
                (context.config.where_density == Density::CompressedIfEmpty && !has_body &&
                 !result.contains('\n')) {
                 Density::Compressed
@@ -1020,11 +1019,11 @@ fn format_tuple_struct(context: &RewriteContext,
     };
 
     let (tactic, item_indent) = match context.config.fn_args_layout {
-        FnArgLayoutStyle::Visual => {
+        IndentStyle::Visual => {
             // 1 = `(`
             (ListTactic::HorizontalVertical, offset.block_only() + result.len() + 1)
         }
-        FnArgLayoutStyle::Block => {
+        IndentStyle::Block => {
             (ListTactic::HorizontalVertical, offset.block_only().block_indent(&context.config))
         }
     };
@@ -1056,7 +1055,7 @@ fn format_tuple_struct(context: &RewriteContext,
                                     context.config,
                                     tactic));
 
-    if context.config.fn_args_layout == FnArgLayoutStyle::Visual || !body.contains('\n') {
+    if context.config.fn_args_layout == IndentStyle::Visual || !body.contains('\n') {
         result.push('(');
         if context.config.spaces_within_parens && body.len() > 0 {
             result.push(' ');
@@ -1512,7 +1511,7 @@ fn rewrite_fn_base(context: &RewriteContext,
     let (mut one_line_budget, mut multi_line_budget, mut arg_indent) =
         try_opt!(compute_budgets_for_args(context, &result, indent, ret_str_len, newline_brace));
 
-    if context.config.fn_args_layout == FnArgLayoutStyle::Block {
+    if context.config.fn_args_layout == IndentStyle::Block {
         arg_indent = indent.block_indent(context.config);
         multi_line_budget = context.config.max_width - arg_indent.width();
     }
@@ -1566,7 +1565,7 @@ fn rewrite_fn_base(context: &RewriteContext,
     let multi_line_arg_str = arg_str.contains('\n');
 
     let put_args_in_block = match context.config.fn_args_layout {
-        FnArgLayoutStyle::Block => multi_line_arg_str || generics_str.contains('\n'),
+        IndentStyle::Block => multi_line_arg_str || generics_str.contains('\n'),
         _ => false,
     } && !fd.inputs.is_empty();
 
@@ -1590,7 +1589,7 @@ fn rewrite_fn_base(context: &RewriteContext,
     if !ret_str.is_empty() {
         let ret_should_indent = match context.config.fn_args_layout {
             // If our args are block layout then we surely must have space.
-            FnArgLayoutStyle::Block if put_args_in_block => false,
+            IndentStyle::Block if put_args_in_block => false,
             _ => {
                 // If we've already gone multi-line, or the return type would push over the max
                 // width, then put the return type on a new line. With the +1 for the signature
@@ -1802,8 +1801,8 @@ fn rewrite_args(context: &RewriteContext,
     }
 
     let indent = match context.config.fn_arg_indent {
-        BlockIndentStyle::Tabbed => indent.block_indent(context.config),
-        BlockIndentStyle::Visual => arg_indent,
+        IndentStyle::Block => indent.block_indent(context.config),
+        IndentStyle::Visual => arg_indent,
     };
 
     let tactic = definitive_tactic(&arg_items,
@@ -1817,7 +1816,7 @@ fn rewrite_args(context: &RewriteContext,
     debug!("rewrite_args: budget: {}, tactic: {:?}", budget, tactic);
 
     let (trailing_comma, end_with_newline) = match context.config.fn_args_layout {
-        FnArgLayoutStyle::Block => (SeparatorTactic::Vertical, true),
+        IndentStyle::Block => (SeparatorTactic::Vertical, true),
         _ => (SeparatorTactic::Never, false),
     };
 
@@ -1909,9 +1908,9 @@ fn rewrite_generics(context: &RewriteContext,
     }
 
     let offset = match context.config.generics_indent {
-        BlockIndentStyle::Tabbed => shape.indent.block_indent(context.config),
+        IndentStyle::Block => shape.indent.block_indent(context.config),
         // 1 = <
-        BlockIndentStyle::Visual => generics_offset + 1,
+        IndentStyle::Visual => generics_offset + 1,
     };
 
     let h_budget = try_opt!(shape.width.checked_sub(generics_offset.width() + 2));
@@ -1945,7 +1944,7 @@ fn rewrite_generics(context: &RewriteContext,
     let list_str =
         try_opt!(format_item_list(items, Shape::legacy(h_budget, offset), context.config));
 
-    let result = if context.config.generics_indent != BlockIndentStyle::Visual &&
+    let result = if context.config.generics_indent != IndentStyle::Visual &&
                     list_str.contains('\n') {
         format!("<\n{}{}\n{}>",
                 offset.to_string(context.config),
@@ -2074,9 +2073,9 @@ fn rewrite_where_clause(context: &RewriteContext,
     let extra_indent = Indent::new(context.config.tab_spaces, 0);
 
     let offset = match context.config.where_pred_indent {
-        BlockIndentStyle::Tabbed => shape.indent + extra_indent.block_indent(context.config),
+        IndentStyle::Block => shape.indent + extra_indent.block_indent(context.config),
         // 6 = "where ".len()
-        BlockIndentStyle::Visual => shape.indent + extra_indent + 6,
+        IndentStyle::Visual => shape.indent + extra_indent + 6,
     };
     // FIXME: if where_pred_indent != Visual, then the budgets below might
     // be out by a char or two.

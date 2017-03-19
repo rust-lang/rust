@@ -80,7 +80,7 @@ use Shape;
 use rewrite::{Rewrite, RewriteContext};
 use utils::{wrap_str, first_line_width, last_line_width};
 use expr::rewrite_call;
-use config::BlockIndentStyle;
+use config::IndentStyle;
 use macros::convert_try_mac;
 
 use std::iter;
@@ -134,8 +134,8 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
     let first_child_shape = if extend {
         let mut shape = try_opt!(parent_shape.shrink_left(last_line_width(&parent_rewrite)));
         match context.config.chain_indent {
-            BlockIndentStyle::Visual => other_child_shape,
-            BlockIndentStyle::Tabbed => {
+            IndentStyle::Visual => other_child_shape,
+            IndentStyle::Block => {
                 shape.offset = shape.offset.checked_sub(context.config.tab_spaces).unwrap_or(0);
                 shape.indent.block_indent += context.config.tab_spaces;
                 shape
@@ -294,8 +294,8 @@ fn make_subexpr_list(expr: &ast::Expr, context: &RewriteContext) -> (ast::Expr, 
 
 fn chain_indent(context: &RewriteContext, shape: Shape) -> Shape {
     match context.config.chain_indent {
-        BlockIndentStyle::Visual => shape.visual_indent(0),
-        BlockIndentStyle::Tabbed => shape.block_indent(context.config.tab_spaces),
+        IndentStyle::Visual => shape.visual_indent(0),
+        IndentStyle::Block => shape.block_indent(context.config.tab_spaces),
     }
 }
 

@@ -1,4 +1,4 @@
-// rustfmt-chain_indent: Tabbed
+// rustfmt-chain_indent: Block
 
 fn test() {
     let x = my_long_function()
