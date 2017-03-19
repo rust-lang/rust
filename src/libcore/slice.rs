@@ -2179,6 +2179,16 @@ pub unsafe fn from_raw_parts_mut<'a, T>(p: *mut T, len: usize) -> &'a mut [T] {
 // Comparison traits
 //
 
+// A compile time optimization for faster bytewise slice comparison
+include!(concat!(env!("OUT_DIR"), "/memcmp_optimization.rs"));
+
+// The compare macro for the bytewise slice comparison
+macro_rules! cmp (
+    ($left:expr, $right: expr, $var:ident, $offset:expr) => {{
+        unsafe {*($left.offset($offset) as *const $var) == *($right.offset($offset) as *const $var)}
+    }}
+);
+
 extern {
     /// Call implementation provided memcmp
     ///
@@ -2258,11 +2268,8 @@ impl<A> SlicePartialEq<A> for [A]
         if self.as_ptr() == other.as_ptr() {
             return true;
         }
-        unsafe {
-            let size = mem::size_of_val(self);
-            memcmp(self.as_ptr() as *const u8,
-                   other.as_ptr() as *const u8, size) == 0
-        }
+        let size = mem::size_of_val(self);
+        slice_compare!(other.as_ptr() as *const u8, self.as_ptr() as *const u8, size)
     }
 }
 
