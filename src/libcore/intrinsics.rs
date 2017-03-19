@@ -1238,6 +1238,15 @@ extern "rust-intrinsic" {
     /// undefined behavior where y = 0 or x = `T::min_value()` and y = -1
     pub fn unchecked_rem<T>(x: T, y: T) -> T;
 
+    /// Performs an unchecked left shift, resulting in undefined behavior when
+    /// y < 0 or y >= N, where N is the width of T in bits.
+    #[cfg(not(stage0))]
+    pub fn unchecked_shl<T>(x: T, y: T) -> T;
+    /// Performs an unchecked right shift, resulting in undefined behavior when
+    /// y < 0 or y >= N, where N is the width of T in bits.
+    #[cfg(not(stage0))]
+    pub fn unchecked_shr<T>(x: T, y: T) -> T;
+
     /// Returns (a + b) mod 2^N, where N is the width of T in bits.
     /// The stabilized versions of this intrinsic are available on the integer
     /// primitives via the `wrapping_add` method. For example,

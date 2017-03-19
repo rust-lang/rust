@@ -82,6 +82,16 @@ impl<T> RawVec<T> {
     ///
     /// Aborts on OOM
     pub fn with_capacity(cap: usize) -> Self {
+        RawVec::allocate(cap, false)
+    }
+
+    /// Like `with_capacity` but guarantees the buffer is zeroed.
+    pub fn with_capacity_zeroed(cap: usize) -> Self {
+        RawVec::allocate(cap, true)
+    }
+
+    #[inline]
+    fn allocate(cap: usize, zeroed: bool) -> Self {
         unsafe {
             let elem_size = mem::size_of::<T>();
 
@@ -93,7 +103,11 @@ impl<T> RawVec<T> {
                 heap::EMPTY as *mut u8
             } else {
                 let align = mem::align_of::<T>();
-                let ptr = heap::allocate(alloc_size, align);
+                let ptr = if zeroed {
+                    heap::allocate_zeroed(alloc_size, align)
+                } else {
+                    heap::allocate(alloc_size, align)
+                };
                 if ptr.is_null() {
                     oom()
                 }
