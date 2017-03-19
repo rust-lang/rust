@@ -875,9 +875,8 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                     func: Operand::Constant(Constant {
                         span: c.source_info.span,
                         ty: fty,
-                        literal: Literal::Item {
-                            def_id: free_func,
-                            substs: substs
+                        literal: Literal::Value {
+                            value: ConstVal::Function(free_func, substs),
                         }
                     }),
                     args: vec![Operand::Consume(c.lvalue.clone())],
