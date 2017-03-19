@@ -233,16 +233,21 @@ fn main() {
         }
     }
 
-    // OpenBSD has a particular C++ runtime library name
+    let llvm_static_stdcpp = env::var_os("LLVM_STATIC_STDCPP");
+
     let stdcppname = if target.contains("openbsd") {
+        // OpenBSD has a particular C++ runtime library name
         "estdc++"
+    } else if target.contains("netbsd") && llvm_static_stdcpp.is_some() {
+        // NetBSD uses a separate library when relocation is required
+        "stdc++_pic"
     } else {
         "stdc++"
     };
 
     // C++ runtime library
     if !target.contains("msvc") {
-        if let Some(s) = env::var_os("LLVM_STATIC_STDCPP") {
+        if let Some(s) = llvm_static_stdcpp {
             assert!(!cxxflags.contains("stdlib=libc++"));
             let path = PathBuf::from(s);
             println!("cargo:rustc-link-search=native={}",
