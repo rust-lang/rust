@@ -12,18 +12,18 @@ use llvm::{self, ValueRef};
 use rustc::ty::{self, Ty};
 use rustc::ty::cast::{CastTy, IntTy};
 use rustc::ty::layout::Layout;
-use rustc::ty::subst::{Kind, Subst};
 use rustc::mir::tcx::LvalueTy;
 use rustc::mir;
 use middle::lang_items::ExchangeMallocFnLangItem;
 
 use base;
 use builder::Builder;
-use callee::Callee;
+use callee;
 use common::{self, val_ty, C_bool, C_null, C_uint};
 use common::{C_integral};
 use adt;
 use machine;
+use monomorphize;
 use type_::Type;
 use type_of;
 use tvec;
@@ -98,8 +98,9 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 let size = count.as_u64(bcx.tcx().sess.target.uint_type);
                 let size = C_uint(bcx.ccx, size);
                 let base = base::get_dataptr(&bcx, dest.llval);
-                tvec::slice_for_each(&bcx, base, tr_elem.ty, size, |bcx, llslot| {
+                tvec::slice_for_each(&bcx, base, tr_elem.ty, size, |bcx, llslot, loop_bb| {
                     self.store_operand(bcx, llslot, dest.alignment.to_align(), tr_elem);
+                    bcx.br(loop_bb);
                 })
             }
 
@@ -183,8 +184,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         match operand.ty.sty {
                             ty::TyFnDef(def_id, substs, _) => {
                                 OperandValue::Immediate(
-                                    Callee::def(bcx.ccx, def_id, substs)
-                                        .reify(bcx.ccx))
+                                    callee::resolve_and_get_fn(bcx.ccx, def_id, substs))
                             }
                             _ => {
                                 bug!("{} cannot be reified to a fn ptr", operand.ty)
@@ -194,20 +194,9 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     mir::CastKind::ClosureFnPointer => {
                         match operand.ty.sty {
                             ty::TyClosure(def_id, substs) => {
-                                // Get the def_id for FnOnce::call_once
-                                let fn_once = bcx.tcx().lang_items.fn_once_trait().unwrap();
-                                let call_once = bcx.tcx()
-                                    .global_tcx().associated_items(fn_once)
-                                    .find(|it| it.kind == ty::AssociatedKind::Method)
-                                    .unwrap().def_id;
-                                // Now create its substs [Closure, Tuple]
-                                let input = bcx.tcx().closure_type(def_id)
-                                    .subst(bcx.tcx(), substs.substs).input(0);
-                                let substs = bcx.tcx().mk_substs([operand.ty, input.skip_binder()]
-                                    .iter().cloned().map(Kind::from));
-                                OperandValue::Immediate(
-                                    Callee::def(bcx.ccx, call_once, substs)
-                                        .reify(bcx.ccx))
+                                let instance = monomorphize::resolve_closure(
+                                    bcx.ccx.shared(), def_id, substs, ty::ClosureKind::FnOnce);
+                                OperandValue::Immediate(callee::get_fn(bcx.ccx, instance))
                             }
                             _ => {
                                 bug!("{} cannot be cast to a fn ptr", operand.ty)
@@ -461,8 +450,8 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         bcx.sess().fatal(&format!("allocation of `{}` {}", box_ty, s));
                     }
                 };
-                let r = Callee::def(bcx.ccx, def_id, bcx.tcx().intern_substs(&[]))
-                    .reify(bcx.ccx);
+                let instance = ty::Instance::mono(bcx.tcx(), def_id);
+                let r = callee::get_fn(bcx.ccx, instance);
                 let val = bcx.pointercast(bcx.call(r, &[llsize, llalign], None), llty_ptr);
 
                 let operand = OperandRef {
@@ -471,7 +460,6 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 };
                 (bcx, operand)
             }
-
             mir::Rvalue::Use(ref operand) => {
                 let operand = self.trans_operand(&bcx, operand);
                 (bcx, operand)
@@ -674,7 +662,7 @@ pub fn rvalue_creates_operand(rvalue: &mir::Rvalue) -> bool {
         mir::Rvalue::UnaryOp(..) |
         mir::Rvalue::Discriminant(..) |
         mir::Rvalue::Box(..) |
-        mir::Rvalue::Use(..) =>
+        mir::Rvalue::Use(..) => // (*)
             true,
         mir::Rvalue::Repeat(..) |
         mir::Rvalue::Aggregate(..) =>

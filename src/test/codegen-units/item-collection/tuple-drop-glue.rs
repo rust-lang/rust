@@ -13,8 +13,7 @@
 
 #![deny(dead_code)]
 
-//~ TRANS_ITEM drop-glue tuple_drop_glue::Dropped[0]
-//~ TRANS_ITEM drop-glue-contents tuple_drop_glue::Dropped[0]
+//~ TRANS_ITEM fn core::ptr[0]::drop_in_place[0]<tuple_drop_glue::Dropped[0]> @@ tuple_drop_glue.cgu-0[Internal]
 struct Dropped;
 
 impl Drop for Dropped {
@@ -24,10 +23,10 @@ impl Drop for Dropped {
 
 //~ TRANS_ITEM fn tuple_drop_glue::main[0]
 fn main() {
-    //~ TRANS_ITEM drop-glue (u32, tuple_drop_glue::Dropped[0])
+    //~ TRANS_ITEM fn core::ptr[0]::drop_in_place[0]<(u32, tuple_drop_glue::Dropped[0])> @@ tuple_drop_glue.cgu-0[Internal]
     let x = (0u32, Dropped);
 
-    //~ TRANS_ITEM drop-glue (i16, (tuple_drop_glue::Dropped[0], bool))
-    //~ TRANS_ITEM drop-glue (tuple_drop_glue::Dropped[0], bool)
+    //~ TRANS_ITEM fn core::ptr[0]::drop_in_place[0]<(i16, (tuple_drop_glue::Dropped[0], bool))> @@ tuple_drop_glue.cgu-0[Internal]
+    //~ TRANS_ITEM fn core::ptr[0]::drop_in_place[0]<(tuple_drop_glue::Dropped[0], bool)> @@ tuple_drop_glue.cgu-0[Internal]
     let x = (0i16, (Dropped, true));
 }

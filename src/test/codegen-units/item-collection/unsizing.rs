@@ -57,11 +57,13 @@ fn main()
 {
     // simple case
     let bool_sized = &true;
-    //~ TRANS_ITEM drop-glue i8
+    //~ TRANS_ITEM fn core::ptr[0]::drop_in_place[0]<bool> @@ unsizing.cgu-0[Internal]
     //~ TRANS_ITEM fn unsizing::{{impl}}[0]::foo[0]
     let _bool_unsized = bool_sized as &Trait;
 
-    let char_sized = &true;
+    let char_sized = &'a';
+
+    //~ TRANS_ITEM fn core::ptr[0]::drop_in_place[0]<char> @@ unsizing.cgu-0[Internal]
     //~ TRANS_ITEM fn unsizing::{{impl}}[1]::foo[0]
     let _char_unsized = char_sized as &Trait;
 
@@ -71,11 +73,13 @@ fn main()
         _b: 2,
         _c: 3.0f64
     };
+    //~ TRANS_ITEM fn core::ptr[0]::drop_in_place[0]<f64> @@ unsizing.cgu-0[Internal]
     //~ TRANS_ITEM fn unsizing::{{impl}}[2]::foo[0]
     let _struct_unsized = struct_sized as &Struct<Trait>;
 
     // custom coercion
     let wrapper_sized = Wrapper(&0u32);
+    //~ TRANS_ITEM fn core::ptr[0]::drop_in_place[0]<u32> @@ unsizing.cgu-0[Internal]
     //~ TRANS_ITEM fn unsizing::{{impl}}[3]::foo[0]
     let _wrapper_sized = wrapper_sized as Wrapper<Trait>;
 }
