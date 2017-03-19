@@ -1,6 +1,6 @@
-// rustfmt-fn_arg_indent: Inherit
+// rustfmt-fn_arg_indent: Tabbed
 // rustfmt-generics_indent: Tabbed
-// rustfmt-where_indent: Inherit
+// rustfmt-where_indent: Tabbed
 // rustfmt-where_layout: Mixed
 // Test different indents.
 

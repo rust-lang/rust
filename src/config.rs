@@ -83,8 +83,6 @@ configuration_option_enum! { FnArgLayoutStyle:
 }
 
 configuration_option_enum! { BlockIndentStyle:
-    // Same level as parent.
-    Inherit,
     // One level deeper than parent.
     Tabbed,
     // Aligned with block open.

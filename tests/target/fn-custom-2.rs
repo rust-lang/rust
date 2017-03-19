@@ -1,14 +1,14 @@
-// rustfmt-fn_arg_indent: Inherit
+// rustfmt-fn_arg_indent: Tabbed
 // rustfmt-generics_indent: Tabbed
-// rustfmt-where_indent: Inherit
+// rustfmt-where_indent: Tabbed
 // rustfmt-where_layout: Mixed
 // Test different indents.
 
 fn foo(a: Aaaaaaaaaaaaaaa,
-b: Bbbbbbbbbbbbbbbb,
-c: Ccccccccccccccccc,
-d: Ddddddddddddddddddddddddd,
-e: Eeeeeeeeeeeeeeeeeee) {
+    b: Bbbbbbbbbbbbbbbb,
+    c: Ccccccccccccccccc,
+    d: Ddddddddddddddddddddddddd,
+    e: Eeeeeeeeeeeeeeeeeee) {
     foo();
 }
 
@@ -21,25 +21,25 @@ fn bar<
 }
 
 fn baz()
-where X: TTTTTTTT
+    where X: TTTTTTTT
 {
     baz();
 }
 
 fn qux()
-where X: TTTTTTTTTTTTTTTTTTTTTTTTTTTT, X: TTTTTTTTTTTTTTTTTTTTTTTTTTTT,
-      X: TTTTTTTTTTTTTTTTTTTTTTTTTTTT, X: TTTTTTTTTTTTTTTTTTTTTTTTTTTT
+    where X: TTTTTTTTTTTTTTTTTTTTTTTTTTTT, X: TTTTTTTTTTTTTTTTTTTTTTTTTTTT,
+          X: TTTTTTTTTTTTTTTTTTTTTTTTTTTT, X: TTTTTTTTTTTTTTTTTTTTTTTTTTTT
 {
     baz();
 }
 
 impl Foo {
     fn foo(self,
-    a: Aaaaaaaaaaaaaaa,
-    b: Bbbbbbbbbbbbbbbb,
-    c: Ccccccccccccccccc,
-    d: Ddddddddddddddddddddddddd,
-    e: Eeeeeeeeeeeeeeeeeee) {
+        a: Aaaaaaaaaaaaaaa,
+        b: Bbbbbbbbbbbbbbbb,
+        c: Ccccccccccccccccc,
+        d: Ddddddddddddddddddddddddd,
+        e: Eeeeeeeeeeeeeeeeeee) {
         foo();
     }
 
@@ -53,7 +53,7 @@ impl Foo {
     }
 
     fn baz()
-    where X: TTTTTTTT
+        where X: TTTTTTTT
     {
         baz();
     }

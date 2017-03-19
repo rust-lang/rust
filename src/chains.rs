@@ -123,7 +123,7 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
                       parent_shape.block_indent(context.config.tab_spaces)),
          false)
     } else {
-        (chain_indent_newline(context, shape.add_offset(parent_rewrite.len())), false)
+        (shape.block_indent(context.config.tab_spaces), false)
     };
 
     let max_width = try_opt!((shape.width + shape.indent.width() + shape.offset)
@@ -135,7 +135,6 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
         let mut shape = try_opt!(parent_shape.shrink_left(last_line_width(&parent_rewrite)));
         match context.config.chain_indent {
             BlockIndentStyle::Visual => other_child_shape,
-            BlockIndentStyle::Inherit => shape,
             BlockIndentStyle::Tabbed => {
                 shape.offset = shape.offset.checked_sub(context.config.tab_spaces).unwrap_or(0);
                 shape.indent.block_indent += context.config.tab_spaces;
@@ -296,19 +295,7 @@ fn make_subexpr_list(expr: &ast::Expr, context: &RewriteContext) -> (ast::Expr, 
 fn chain_indent(context: &RewriteContext, shape: Shape) -> Shape {
     match context.config.chain_indent {
         BlockIndentStyle::Visual => shape.visual_indent(0),
-        BlockIndentStyle::Inherit => shape.block_indent(0),
         BlockIndentStyle::Tabbed => shape.block_indent(context.config.tab_spaces),
-    }
-}
-
-// Ignores visual indenting because this function should be called where it is
-// not possible to use visual indentation because we are starting on a newline.
-fn chain_indent_newline(context: &RewriteContext, shape: Shape) -> Shape {
-    match context.config.chain_indent {
-        BlockIndentStyle::Inherit => shape.block_indent(0),
-        BlockIndentStyle::Visual | BlockIndentStyle::Tabbed => {
-            shape.block_indent(context.config.tab_spaces)
-        }
     }
 }
 

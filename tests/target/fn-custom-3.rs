@@ -1,5 +1,5 @@
 // rustfmt-fn_arg_indent: Tabbed
-// rustfmt-generics_indent: Inherit
+// rustfmt-generics_indent: Tabbed
 // rustfmt-where_layout: HorizontalVertical
 // Test different indents.
 
@@ -12,9 +12,9 @@ fn foo(a: Aaaaaaaaaaaaaaa,
 }
 
 fn bar<
-'a: 'bbbbbbbbbbbbbbbbbbbbbbbbbbb,
-TTTTTTTTTTTTT,
-UUUUUUUUUUUUUUUUUUUU: WWWWWWWWWWWWWWWWWWWWWWWW
+    'a: 'bbbbbbbbbbbbbbbbbbbbbbbbbbb,
+    TTTTTTTTTTTTT,
+    UUUUUUUUUUUUUUUUUUUU: WWWWWWWWWWWWWWWWWWWWWWWW
 >(a: Aaaaaaaaaaaaaaa) {
     bar();
 }
@@ -45,9 +45,9 @@ impl Foo {
     }
 
     fn bar<
-    'a: 'bbbbbbbbbbbbbbbbbbbbbbbbbbb,
-    TTTTTTTTTTTTT,
-    UUUUUUUUUUUUUUUUUUUU: WWWWWWWWWWWWWWWWWWWWWWWW
+        'a: 'bbbbbbbbbbbbbbbbbbbbbbbbbbb,
+        TTTTTTTTTTTTT,
+        UUUUUUUUUUUUUUUUUUUU: WWWWWWWWWWWWWWWWWWWWWWWW
     >
         (a: Aaaaaaaaaaaaaaa) {
         bar();
@@ -55,10 +55,10 @@ impl Foo {
 }
 
 struct Foo<
-TTTTTTTTTTTTTTTTTTTTTTTTTTTT,
-UUUUUUUUUUUUUUUUUUUUUU,
-VVVVVVVVVVVVVVVVVVVVVVVVVVV,
-WWWWWWWWWWWWWWWWWWWWWWWW
+    TTTTTTTTTTTTTTTTTTTTTTTTTTTT,
+    UUUUUUUUUUUUUUUUUUUUUU,
+    VVVVVVVVVVVVVVVVVVVVVVVVVVV,
+    WWWWWWWWWWWWWWWWWWWWWWWW
 > {
     foo: Foo,
 }
