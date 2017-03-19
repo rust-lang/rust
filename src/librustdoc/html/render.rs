@@ -2620,11 +2620,11 @@ fn render_attributes(w: &mut fmt::Formatter, it: &clean::Item) -> fmt::Result {
     let mut attrs = String::new();
 
     for attr in &it.attrs.other_attrs {
-        let name = attr.name();
+        let name = attr.name().unwrap();
         if !ATTRIBUTE_WHITELIST.contains(&&name.as_str()[..]) {
             continue;
         }
-        if let Some(s) = render_attribute(attr.meta()) {
+        if let Some(s) = render_attribute(&attr.meta().unwrap()) {
             attrs.push_str(&format!("#[{}]\n", s));
         }
     }

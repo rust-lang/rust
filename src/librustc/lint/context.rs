@@ -408,14 +408,14 @@ pub fn gather_attrs(attrs: &[ast::Attribute]) -> Vec<Result<(ast::Name, Level, S
 pub fn gather_attr(attr: &ast::Attribute) -> Vec<Result<(ast::Name, Level, Span), Span>> {
     let mut out = vec![];
 
-    let level = match Level::from_str(&attr.name().as_str()) {
+    let level = match attr.name().and_then(|name| Level::from_str(&name.as_str())) {
         None => return out,
         Some(lvl) => lvl,
     };
 
+    let meta = unwrap_or!(attr.meta(), return out);
     attr::mark_used(attr);
 
-    let meta = &attr.value;
     let metas = if let Some(metas) = meta.meta_item_list() {
         metas
     } else {
