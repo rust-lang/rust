@@ -34,6 +34,15 @@ macro_rules! t {
     })
 }
 
+macro_rules! tidy_error {
+    ($bad:expr, $fmt:expr, $($arg:tt)*) => ({
+        use std::io::Write;
+        *$bad = true;
+        write!(::std::io::stderr(), "tidy error: ").expect("could not write to stderr");
+        writeln!(::std::io::stderr(), $fmt, $($arg)*).expect("could not write to stderr");
+    });
+}
+
 mod bins;
 mod style;
 mod errors;
