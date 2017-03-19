@@ -2283,9 +2283,10 @@ mod tests {
 
     #[test]
     fn concurrent_recursive_mkdir() {
-        for _ in 0..50 {
-            let mut dir = tmpdir().join("a");
-            for _ in 0..100 {
+        for _ in 0..100 {
+            let dir = tmpdir();
+            let mut dir = dir.join("a");
+            for _ in 0..40 {
                 dir = dir.join("a");
             }
             let mut join = vec!();
