@@ -1534,6 +1534,12 @@ pub fn create_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// error conditions for when a directory is being created (after it is
 /// determined to not exist) are outlined by `fs::create_dir`.
 ///
+/// Notable exception is made for situations where any of the directories
+/// specified in the `path` could not be created as it was created concurrently.
+/// Such cases are considered success. In other words: calling `create_dir_all`
+/// concurrently from multiple threads or processes is guaranteed to not fail
+/// due to race itself.
+///
 /// # Examples
 ///
 /// ```
@@ -1769,11 +1775,25 @@ impl DirBuilder {
     }
 
     fn create_dir_all(&self, path: &Path) -> io::Result<()> {
-        if path == Path::new("") || path.is_dir() { return Ok(()) }
-        if let Some(p) = path.parent() {
-            self.create_dir_all(p)?
+        if path == Path::new("") {
+            return Ok(())
         }
-        self.inner.mkdir(path)
+
+        match self.inner.mkdir(path) {
+            Ok(()) => return Ok(()),
+            Err(ref e) if e.kind() == io::ErrorKind::NotFound => {}
+            Err(_) if path.is_dir() => return Ok(()),
+            Err(e) => return Err(e),
+        }
+        match path.parent() {
+            Some(p) => try!(self.create_dir_all(p)),
+            None => return Err(io::Error::new(io::ErrorKind::Other, "failed to create whole tree")),
+        }
+        match self.inner.mkdir(path) {
+            Ok(()) => Ok(()),
+            Err(_) if path.is_dir() => Ok(()),
+            Err(e) => Err(e),
+        }
     }
 }
 
@@ -1793,6 +1813,7 @@ mod tests {
     use rand::{StdRng, Rng};
     use str;
     use sys_common::io::test::{TempDir, tmpdir};
+    use thread;
 
     #[cfg(windows)]
     use os::windows::fs::{symlink_dir, symlink_file};
@@ -2261,8 +2282,39 @@ mod tests {
     }
 
     #[test]
+    fn concurrent_recursive_mkdir() {
+        for _ in 0..100 {
+            let dir = tmpdir();
+            let mut dir = dir.join("a");
+            for _ in 0..40 {
+                dir = dir.join("a");
+            }
+            let mut join = vec!();
+            for _ in 0..8 {
+                let dir = dir.clone();
+                join.push(thread::spawn(move || {
+                    check!(fs::create_dir_all(&dir));
+                }))
+            }
+
+            // No `Display` on result of `join()`
+            join.drain(..).map(|join| join.join().unwrap()).count();
+        }
+    }
+
+    #[test]
     fn recursive_mkdir_slash() {
         check!(fs::create_dir_all(&Path::new("/")));
+    }
+
+    #[test]
+    fn recursive_mkdir_dot() {
+        check!(fs::create_dir_all(&Path::new(".")));
+    }
+
+    #[test]
+    fn recursive_mkdir_empty() {
+        check!(fs::create_dir_all(&Path::new("")));
     }
 
     #[test]
