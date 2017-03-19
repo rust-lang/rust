@@ -9,18 +9,12 @@
 // except according to those terms.
 
 use llvm::{ValueRef, BasicBlockRef};
-use rustc::ty;
 use rustc::mir;
 use rustc::middle::const_val::ConstInt;
 use base::{self, Lifetime};
-use callee;
 use builder::Builder;
 use common::Funclet;
-use common::C_uint;
 use machine::llalign_of_min;
-use meth;
-use monomorphize;
-use tvec;
 use type_::Type;
 
 use rustc_data_structures::indexed_vec::IndexVec;
@@ -198,67 +192,9 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             }
 
             mir::TerminatorKind::Drop { ref location, target, unwind } => {
-                let ty = location.ty(&self.mir, bcx.tcx()).to_ty(bcx.tcx());
-                let ty = self.monomorphize(&ty);
-                let drop_fn = monomorphize::resolve_drop_in_place(bcx.ccx.shared(), ty);
-
-                if let ty::InstanceDef::DropGlue(_, None) = drop_fn.def {
-                    // we don't actually need to drop anything.
-                    funclet_br(self, bcx, target);
-                    return
-                }
-
-                let lvalue = self.trans_lvalue(&bcx, location);
-                let (drop_fn, need_extra) = match ty.sty {
-                    ty::TyDynamic(..) => (meth::DESTRUCTOR.get_fn(&bcx, lvalue.llextra),
-                                          false),
-                    ty::TyArray(ety, _) | ty::TySlice(ety) => {
-                        // FIXME: handle panics
-                        let drop_fn = monomorphize::resolve_drop_in_place(
-                            bcx.ccx.shared(), ety);
-                        let drop_fn = callee::get_fn(bcx.ccx, drop_fn);
-                        let bcx = tvec::slice_for_each(
-                            &bcx,
-                            lvalue.project_index(&bcx, C_uint(bcx.ccx, 0u64)),
-                            ety,
-                            lvalue.len(bcx.ccx),
-                            |mut bcx, llval, loop_bb| {
-                                self.set_debug_loc(&bcx, terminator.source_info);
-                                if let Some(unwind) = unwind {
-                                    let old_bcx = bcx;
-                                    bcx = old_bcx.build_sibling_block("drop-next");
-                                    old_bcx.invoke(
-                                        drop_fn,
-                                        &[llval],
-                                        bcx.llbb(),
-                                        self.landing_pad_to(unwind),
-                                        cleanup_bundle
-                                    );
-                                } else {
-                                    bcx.call(drop_fn, &[llval], cleanup_bundle);
-                                }
-                                bcx.br(loop_bb);
-                                bcx
-                            });
-                        funclet_br(self, bcx, target);
-                        return
-                    }
-                    _ => (callee::get_fn(bcx.ccx, drop_fn), lvalue.has_extra())
-                };
-                let args = &[lvalue.llval, lvalue.llextra][..1 + need_extra as usize];
-                if let Some(unwind) = unwind {
-                    let old_bcx = bcx;
-                    bcx = old_bcx.build_sibling_block("drop-next");
-                    old_bcx.invoke(
-                        drop_fn,
-                        args,
-                        bcx.llbb(),
-                        self.landing_pad_to(unwind),
-                        cleanup_bundle
-                    );
-                } else {
-                    bcx.call(drop_fn, args, cleanup_bundle);
-                }
+                bcx = self.trans_drop(
+                    bcx, location, unwind, cleanup_bundle, terminator.source_info
+                );
                 funclet_br(self, bcx, target);
             }
 

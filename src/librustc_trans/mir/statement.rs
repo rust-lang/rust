@@ -16,7 +16,7 @@ use rustc::middle::lang_items;
 
 use base;
 use asm;
-use common::{self, C_bool, C_str_slice, C_u32, C_struct, C_undef};
+use common::{self, C_bool, C_str_slice, C_u32, C_struct, C_undef, C_uint};
 use builder::Builder;
 use syntax::symbol::Symbol;
 use machine::llalign_of_min;
@@ -24,6 +24,7 @@ use consts;
 use callee;
 use monomorphize;
 use meth;
+use tvec;
 use abi::{Abi, FnType, ArgType};
 use type_::Type;
 use type_of::{self, align_of};
@@ -249,6 +250,76 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         }
 
         success_block
+    }
+
+    pub fn trans_drop(
+        &mut self,
+        mut bcx: Builder<'a, 'tcx>,
+        location: &mir::Lvalue<'tcx>,
+        unwind: Option<mir::Block>,
+        cleanup_bundle: Option<&OperandBundleDef>,
+        source_info: mir::SourceInfo,
+    ) -> Builder<'a, 'tcx> {
+        let ty = location.ty(&self.mir, bcx.tcx()).to_ty(bcx.tcx());
+        let ty = self.monomorphize(&ty);
+        let drop_fn = monomorphize::resolve_drop_in_place(bcx.ccx.shared(), ty);
+
+        if let ty::InstanceDef::DropGlue(_, None) = drop_fn.def {
+            // we don't actually need to drop anything.
+            return bcx;
+        }
+
+        let lvalue = self.trans_lvalue(&bcx, location);
+        let (drop_fn, need_extra) = match ty.sty {
+            ty::TyDynamic(..) => (meth::DESTRUCTOR.get_fn(&bcx, lvalue.llextra),
+                                    false),
+            ty::TyArray(ety, _) | ty::TySlice(ety) => {
+                // FIXME: handle panics
+                let drop_fn = monomorphize::resolve_drop_in_place(
+                    bcx.ccx.shared(), ety);
+                let drop_fn = callee::get_fn(bcx.ccx, drop_fn);
+                return tvec::slice_for_each(
+                    &bcx,
+                    lvalue.project_index(&bcx, C_uint(bcx.ccx, 0u64)),
+                    ety,
+                    lvalue.len(bcx.ccx),
+                    |mut bcx, llval, loop_bb| {
+                        self.set_debug_loc(&bcx, source_info);
+                        if let Some(unwind) = unwind {
+                            let old_bcx = bcx;
+                            bcx = old_bcx.build_sibling_block("drop-next");
+                            old_bcx.invoke(
+                                drop_fn,
+                                &[llval],
+                                bcx.llbb(),
+                                self.landing_pad_to(unwind),
+                                cleanup_bundle
+                            );
+                        } else {
+                            bcx.call(drop_fn, &[llval], cleanup_bundle);
+                        }
+                        bcx.br(loop_bb);
+                        bcx
+                    });
+            }
+            _ => (callee::get_fn(bcx.ccx, drop_fn), lvalue.has_extra())
+        };
+        let args = &[lvalue.llval, lvalue.llextra][..1 + need_extra as usize];
+        if let Some(unwind) = unwind {
+            let old_bcx = bcx;
+            bcx = old_bcx.build_sibling_block("drop-next");
+            old_bcx.invoke(
+                drop_fn,
+                args,
+                bcx.llbb(),
+                self.landing_pad_to(unwind),
+                cleanup_bundle
+            );
+        } else {
+            bcx.call(drop_fn, args, cleanup_bundle);
+        }
+
+        bcx
     }
 
     pub fn trans_call(
