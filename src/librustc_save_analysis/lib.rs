@@ -884,7 +884,7 @@ pub fn process_crate<'l, 'tcx>(tcx: TyCtxt<'l, 'tcx, 'tcx>,
         },
     };
 
-    if let Err(e) = rustc::util::fs::create_dir_racy(&root_path) {
+    if let Err(e) = std::fs::create_dir_all(&root_path) {
         tcx.sess.err(&format!("Could not create directory {}: {}",
                               root_path.display(),
                               e));
