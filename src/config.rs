@@ -78,8 +78,6 @@ configuration_option_enum! { FnArgLayoutStyle:
     Visual,
     // Put args on one line if they fit, or start a new line with block indent.
     Block,
-    // First line is on a new line and all lines align with block indent.
-    BlockAlways,
 }
 
 configuration_option_enum! { BlockIndentStyle:

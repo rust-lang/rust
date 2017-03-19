@@ -1,11 +1,9 @@
-// rustfmt-fn_args_layout: BlockAlways
+// rustfmt-fn_args_layout: Block
 // rustfmt-where_indent: Tabbed
 // rustfmt-fn_brace_style: PreferSameLine
 // Test different indents.
 
-fn foo(
-    a: Aaaaaaaaaaaaaa, b: Bbbbbbbbbbbbbb,
-) {
+fn foo(a: Aaaaaaaaaaaaaa, b: Bbbbbbbbbbbbbb) {
     foo();
 }
 
@@ -19,9 +17,7 @@ fn bar(
     bar();
 }
 
-fn foo(
-    a: Aaaaaaaaaaaaaa, b: Bbbbbbbbbbbbbb,
-) -> String {
+fn foo(a: Aaaaaaaaaaaaaa, b: Bbbbbbbbbbbbbb) -> String {
     foo();
 }
 
@@ -35,9 +31,8 @@ fn bar(
     bar();
 }
 
-fn foo(
-    a: Aaaaaaaaaaaaaa, b: Bbbbbbbbbbbbbb,
-) where T: UUUUUUUUUUU {
+fn foo(a: Aaaaaaaaaaaaaa, b: Bbbbbbbbbbbbbb)
+    where T: UUUUUUUUUUU {
     foo();
 }
 
@@ -51,9 +46,7 @@ fn bar(
     bar();
 }
 
-fn foo(
-    a: Aaaaaaaaaaaaaa, b: Bbbbbbbbbbbbbb,
-) -> String
+fn foo(a: Aaaaaaaaaaaaaa, b: Bbbbbbbbbbbbbb) -> String
     where T: UUUUUUUUUUU {
     foo();
 }
@@ -70,13 +63,7 @@ fn bar(
 }
 
 trait Test {
-    fn foo(
-        a: u8,
-    ) {
-    }
+    fn foo(a: u8) {}
 
-    fn bar(
-        a: u8,
-    ) -> String {
-    }
+    fn bar(a: u8) -> String {}
 }

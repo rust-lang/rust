@@ -1024,8 +1024,7 @@ fn format_tuple_struct(context: &RewriteContext,
             // 1 = `(`
             (ListTactic::HorizontalVertical, offset.block_only() + result.len() + 1)
         }
-        FnArgLayoutStyle::Block |
-        FnArgLayoutStyle::BlockAlways => {
+        FnArgLayoutStyle::Block => {
             (ListTactic::HorizontalVertical, offset.block_only().block_indent(&context.config))
         }
     };
@@ -1513,8 +1512,7 @@ fn rewrite_fn_base(context: &RewriteContext,
     let (mut one_line_budget, mut multi_line_budget, mut arg_indent) =
         try_opt!(compute_budgets_for_args(context, &result, indent, ret_str_len, newline_brace));
 
-    if context.config.fn_args_layout == FnArgLayoutStyle::Block ||
-       context.config.fn_args_layout == FnArgLayoutStyle::BlockAlways {
+    if context.config.fn_args_layout == FnArgLayoutStyle::Block {
         arg_indent = indent.block_indent(context.config);
         multi_line_budget = context.config.max_width - arg_indent.width();
     }
@@ -1569,7 +1567,6 @@ fn rewrite_fn_base(context: &RewriteContext,
 
     let put_args_in_block = match context.config.fn_args_layout {
         FnArgLayoutStyle::Block => multi_line_arg_str || generics_str.contains('\n'),
-        FnArgLayoutStyle::BlockAlways => true,
         _ => false,
     } && !fd.inputs.is_empty();
 
@@ -1594,7 +1591,6 @@ fn rewrite_fn_base(context: &RewriteContext,
         let ret_should_indent = match context.config.fn_args_layout {
             // If our args are block layout then we surely must have space.
             FnArgLayoutStyle::Block if put_args_in_block => false,
-            FnArgLayoutStyle::BlockAlways => false,
             _ => {
                 // If we've already gone multi-line, or the return type would push over the max
                 // width, then put the return type on a new line. With the +1 for the signature
@@ -1822,7 +1818,6 @@ fn rewrite_args(context: &RewriteContext,
 
     let (trailing_comma, end_with_newline) = match context.config.fn_args_layout {
         FnArgLayoutStyle::Block => (SeparatorTactic::Vertical, true),
-        FnArgLayoutStyle::BlockAlways => (SeparatorTactic::Always, true),
         _ => (SeparatorTactic::Never, false),
     };
 

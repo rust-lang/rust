@@ -331,8 +331,7 @@ pub fn rewrite_array<'a, I>(expr_iter: I,
     };
 
     let nested_shape = match context.config.array_layout {
-        FnArgLayoutStyle::Block |
-        FnArgLayoutStyle::BlockAlways => shape.block().block_indent(context.config.tab_spaces),
+        FnArgLayoutStyle::Block => shape.block().block_indent(context.config.tab_spaces),
         FnArgLayoutStyle::Visual => {
             try_opt!(shape.visual_indent(bracket_size).sub_width(bracket_size * 2))
         }
@@ -369,7 +368,6 @@ pub fn rewrite_array<'a, I>(expr_iter: I,
                 None => DefinitiveListTactic::Vertical,
             }
         }
-        FnArgLayoutStyle::BlockAlways => DefinitiveListTactic::Vertical,
         FnArgLayoutStyle::Visual => {
             if has_long_item || items.iter().any(ListItem::is_multiline) {
                 definitive_tactic(&items, ListTactic::HorizontalVertical, nested_shape.width)
