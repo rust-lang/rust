@@ -843,11 +843,10 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         let promotable = self.tcx().rvalue_promotable_to_static.borrow().get(&id).cloned()
                                    .unwrap_or(false);
 
-        // Only promote `[T; 0]` before an RFC for rvalue promotions
-        // is accepted.
+        // When the corresponding feature isn't toggled, only promote `[T; 0]`.
         let promotable = match expr_ty.sty {
             ty::TyArray(_, 0) => true,
-            _ => promotable & false
+            _ => promotable && self.tcx().sess.features.borrow().rvalue_static_promotion,
         };
 
         // Compute maximum lifetime of this rvalue. This is 'static if

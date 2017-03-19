@@ -342,6 +342,9 @@ declare_features! (
 
     // Allows the `catch {...}` expression
     (active, catch_expr, "1.17.0", Some(31436)),
+
+    // See rust-lang/rfcs#1414. Allows code like `let x: &'static u32 = &42` to work.
+    (active, rvalue_static_promotion, "1.15.1", Some(38865)),
 );
 
 declare_features! (
