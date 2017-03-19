@@ -1369,10 +1369,71 @@ impl<T: PartialEq> Vec<T> {
 #[doc(hidden)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn from_elem<T: Clone>(elem: T, n: usize) -> Vec<T> {
-    let mut v = Vec::with_capacity(n);
-    v.extend_with_element(n, elem);
-    v
+    <T as SpecFromElem>::from_elem(elem, n)
 }
+
+// Specialization trait used for Vec::from_elem
+trait SpecFromElem: Sized {
+    fn from_elem(elem: Self, n: usize) -> Vec<Self>;
+}
+
+impl<T: Clone> SpecFromElem for T {
+    default fn from_elem(elem: Self, n: usize) -> Vec<Self> {
+        let mut v = Vec::with_capacity(n);
+        v.extend_with_element(n, elem);
+        v
+    }
+}
+
+impl SpecFromElem for u8 {
+    #[inline]
+    fn from_elem(elem: u8, n: usize) -> Vec<u8> {
+        if elem == 0 {
+            return Vec {
+                buf: RawVec::with_capacity_zeroed(n),
+                len: n,
+            }
+        }
+        unsafe {
+            let mut v = Vec::with_capacity(n);
+            ptr::write_bytes(v.as_mut_ptr(), elem, n);
+            v.set_len(n);
+            v
+        }
+    }
+}
+
+macro_rules! impl_spec_from_elem_int {
+    ($t: ty) => {
+        impl SpecFromElem for $t {
+            #[inline]
+            fn from_elem(elem: $t, n: usize) -> Vec<$t> {
+                if elem == 0 {
+                    return Vec {
+                        buf: RawVec::with_capacity_zeroed(n),
+                        len: n,
+                    }
+                }
+                let mut v = Vec::with_capacity(n);
+                v.extend_with_element(n, elem);
+                v
+            }
+        }
+    }
+}
+
+impl_spec_from_elem_int!(i8);
+impl_spec_from_elem_int!(i16);
+impl_spec_from_elem_int!(i32);
+impl_spec_from_elem_int!(i64);
+impl_spec_from_elem_int!(i128);
+impl_spec_from_elem_int!(isize);
+
+impl_spec_from_elem_int!(u16);
+impl_spec_from_elem_int!(u32);
+impl_spec_from_elem_int!(u64);
+impl_spec_from_elem_int!(u128);
+impl_spec_from_elem_int!(usize);
 
 ////////////////////////////////////////////////////////////////////////////////
 // Common trait implementations for Vec
