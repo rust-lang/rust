@@ -24,7 +24,7 @@ use string::{StringFormat, rewrite_string};
 use utils::{extra_offset, last_line_width, wrap_str, binary_search, first_line_width,
             semicolon_for_stmt, trimmed_last_line_width, left_most_sub_expr, stmt_expr};
 use visitor::FmtVisitor;
-use config::{Config, StructLitStyle, MultilineStyle, ControlBraceStyle};
+use config::{Config, StructLitStyle, MultilineStyle, ControlBraceStyle, FnArgLayoutStyle};
 use comment::{FindUncommented, rewrite_comment, contains_comment, recover_comment_removed};
 use types::{rewrite_path, PathContext};
 use items::{span_lo_for_arg, span_hi_for_arg};
@@ -329,7 +329,15 @@ pub fn rewrite_array<'a, I>(expr_iter: I,
     } else {
         1 // "["
     };
-    let nested_shape = try_opt!(shape.visual_indent(bracket_size).sub_width(bracket_size * 2));
+
+    let nested_shape = match context.config.array_layout {
+        FnArgLayoutStyle::Block |
+        FnArgLayoutStyle::BlockAlways => shape.block().block_indent(context.config.tab_spaces),
+        FnArgLayoutStyle::Visual => {
+            try_opt!(shape.visual_indent(bracket_size).sub_width(bracket_size * 2))
+        }
+    };
+
     let items = itemize_list(context.codemap,
                              expr_iter,
                              "]",
@@ -340,15 +348,35 @@ pub fn rewrite_array<'a, I>(expr_iter: I,
                              span.hi)
             .collect::<Vec<_>>();
 
+    if items.is_empty() {
+        if context.config.spaces_within_square_brackets {
+            return Some("[ ]".to_string());
+        } else {
+            return Some("[]".to_string());
+        }
+    }
+
     let has_long_item = try_opt!(items.iter()
                                      .map(|li| li.item.as_ref().map(|s| s.len() > 10))
                                      .fold(Some(false),
                                            |acc, x| acc.and_then(|y| x.map(|x| x || y))));
 
-    let tactic = if has_long_item || items.iter().any(ListItem::is_multiline) {
-        definitive_tactic(&items, ListTactic::HorizontalVertical, nested_shape.width)
-    } else {
-        DefinitiveListTactic::Mixed
+    let tactic = match context.config.array_layout {
+        FnArgLayoutStyle::Block => {
+            // TODO wrong shape in one-line case
+            match shape.width.checked_sub(2 * bracket_size) {
+                Some(width) => definitive_tactic(&items, ListTactic::HorizontalVertical, width),
+                None => DefinitiveListTactic::Vertical,
+            }
+        }
+        FnArgLayoutStyle::BlockAlways => DefinitiveListTactic::Vertical,
+        FnArgLayoutStyle::Visual => {
+            if has_long_item || items.iter().any(ListItem::is_multiline) {
+                definitive_tactic(&items, ListTactic::HorizontalVertical, nested_shape.width)
+            } else {
+                DefinitiveListTactic::Mixed
+            }
+        }
     };
 
     let fmt = ListFormatting {
@@ -361,11 +389,21 @@ pub fn rewrite_array<'a, I>(expr_iter: I,
     };
     let list_str = try_opt!(write_list(&items, &fmt));
 
-    Some(if context.config.spaces_within_square_brackets && list_str.len() > 0 {
-             format!("[ {} ]", list_str)
-         } else {
-             format!("[{}]", list_str)
-         })
+    let result = if context.config.array_layout == FnArgLayoutStyle::Visual ||
+                    tactic != DefinitiveListTactic::Vertical {
+        if context.config.spaces_within_square_brackets && list_str.len() > 0 {
+            format!("[ {} ]", list_str)
+        } else {
+            format!("[{}]", list_str)
+        }
+    } else {
+        format!("[\n{}{},\n{}]",
+                nested_shape.indent.to_string(context.config),
+                list_str,
+                shape.block().indent.to_string(context.config))
+    };
+
+    Some(result)
 }
 
 // This functions is pretty messy because of the rules around closures and blocks:
