@@ -231,20 +231,23 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                             lvalue.project_index(&bcx, C_uint(bcx.ccx, 0u64)),
                             ety,
                             lvalue.len(bcx.ccx),
-                            |bcx, llval, loop_bb| {
+                            |mut bcx, llval, loop_bb| {
                                 self.set_debug_loc(&bcx, terminator.source_info);
                                 if let Some(unwind) = unwind {
-                                    bcx.invoke(
+                                    let old_bcx = bcx;
+                                    bcx = old_bcx.build_sibling_block("drop-next");
+                                    old_bcx.invoke(
                                         drop_fn,
                                         &[llval],
-                                        loop_bb,
-                                        llblock(self, unwind),
+                                        bcx.llbb(),
+                                        self.landing_pad_to(unwind),
                                         cleanup_bundle
                                     );
                                 } else {
                                     bcx.call(drop_fn, &[llval], cleanup_bundle);
-                                    bcx.br(loop_bb);
                                 }
+                                bcx.br(loop_bb);
+                                bcx
                             });
                         funclet_br(self, bcx, target);
                         return
@@ -253,17 +256,19 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 };
                 let args = &[lvalue.llval, lvalue.llextra][..1 + need_extra as usize];
                 if let Some(unwind) = unwind {
-                    bcx.invoke(
+                    let old_bcx = bcx;
+                    bcx = old_bcx.build_sibling_block("drop-next");
+                    old_bcx.invoke(
                         drop_fn,
                         args,
-                        self.blocks[target],
-                        llblock(self, unwind),
+                        bcx.llbb(),
+                        self.landing_pad_to(unwind),
                         cleanup_bundle
                     );
                 } else {
                     bcx.call(drop_fn, args, cleanup_bundle);
-                    funclet_br(self, bcx, target);
                 }
+                funclet_br(self, bcx, target);
             }
 
             mir::TerminatorKind::Assert { ref cond, expected, ref msg, target, cleanup } => {
@@ -297,12 +302,12 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 let cond = bcx.call(expect, &[cond, C_bool(bcx.ccx, expected)], None);
 
                 // Create the failure block and the conditional branch to it.
-                let lltarget = llblock(self, target);
+                let success_block = self.new_block("success");
                 let panic_block = self.new_block("panic");
                 if expected {
-                    bcx.cond_br(cond, lltarget, panic_block.llbb());
+                    bcx.cond_br(cond, success_block.llbb(), panic_block.llbb());
                 } else {
-                    bcx.cond_br(cond, panic_block.llbb(), lltarget);
+                    bcx.cond_br(cond, panic_block.llbb(), success_block.llbb());
                 }
 
                 // After this point, bcx is the block for the call to panic.
@@ -377,12 +382,14 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     bcx.invoke(llfn,
                                &args,
                                self.unreachable_block(),
-                               llblock(self, unwind),
+                               self.landing_pad_to(unwind),
                                cleanup_bundle);
                 } else {
                     bcx.call(llfn, &args, cleanup_bundle);
                     bcx.unreachable();
                 }
+
+                success_block.br(self.blocks[target]);
             }
 
             mir::TerminatorKind::DropAndReplace { .. } => {
@@ -552,42 +559,33 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     _ => span_bug!(span, "no llfn for call"),
                 };
 
-                // Many different ways to call a function handled here
-                if let &Some(cleanup) = cleanup {
-                    let ret_bcx = if let Some((_, target)) = *destination {
-                        self.blocks[target]
-                    } else {
-                        self.unreachable_block()
-                    };
-                    let invokeret = bcx.invoke(fn_ptr,
-                                               &llargs,
-                                               ret_bcx,
-                                               llblock(self, cleanup),
-                                               cleanup_bundle);
-                    fn_ty.apply_attrs_callsite(invokeret);
-
-                    if let Some((_, target)) = *destination {
-                        let ret_bcx = self.get_builder(target);
-                        self.set_debug_loc(&ret_bcx, terminator.source_info);
-                        let op = OperandRef {
-                            val: Immediate(invokeret),
-                            ty: sig.output(),
-                        };
-                        self.store_return(&ret_bcx, ret_dest, fn_ty.ret, op);
-                    }
+                let llret = if let &Some(cleanup) = cleanup {
+                    let old_bcx = bcx;
+                    bcx = old_bcx.build_sibling_block("call-next");
+                    self.set_debug_loc(&bcx, terminator.source_info);
+                    old_bcx.invoke(
+                        fn_ptr,
+                        &llargs,
+                        bcx.llbb(),
+                        self.landing_pad_to(cleanup),
+                        cleanup_bundle,
+                    )
                 } else {
-                    let llret = bcx.call(fn_ptr, &llargs, cleanup_bundle);
-                    fn_ty.apply_attrs_callsite(llret);
-                    if let Some((_, target)) = *destination {
-                        let op = OperandRef {
-                            val: Immediate(llret),
-                            ty: sig.output(),
-                        };
-                        self.store_return(&bcx, ret_dest, fn_ty.ret, op);
-                        funclet_br(self, bcx, target);
-                    } else {
-                        bcx.unreachable();
-                    }
+                    bcx.call(fn_ptr, &llargs, cleanup_bundle)
+                };
+
+                fn_ty.apply_attrs_callsite(llret);
+
+                let op = OperandRef {
+                    val: Immediate(llret),
+                    ty: sig.output(),
+                };
+                self.store_return(&bcx, ret_dest, fn_ty.ret, op);
+
+                if let Some((_, target)) = *destination {
+                    funclet_br(self, bcx, target);
+                } else {
+                    bcx.unreachable();
                 }
             }
         }
