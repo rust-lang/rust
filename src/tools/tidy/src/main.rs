@@ -16,9 +16,11 @@
 
 extern crate regex;
 
-use std::fs;
-use std::path::{PathBuf, Path};
 use std::env;
+use std::fs;
+use std::io::{self, Write};
+use std::path::{PathBuf, Path};
+use std::process;
 
 macro_rules! t {
     ($e:expr, $p:expr) => (match $e {
@@ -60,7 +62,8 @@ fn main() {
     }
 
     if bad {
-        panic!("some tidy checks failed");
+        writeln!(io::stderr(), "some tidy checks failed").expect("could not write to stderr");
+        process::exit(1);
     }
 }
 
