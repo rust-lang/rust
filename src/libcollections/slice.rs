@@ -230,7 +230,7 @@ impl<T> [T] {
         core_slice::SliceExt::first_mut(self)
     }
 
-    /// Returns the first and all the rest of the elements of a slice.
+    /// Returns the first and all the rest of the elements of a slice, or `None` if it is empty.
     ///
     /// # Examples
     ///
@@ -248,7 +248,7 @@ impl<T> [T] {
         core_slice::SliceExt::split_first(self)
     }
 
-    /// Returns the first and all the rest of the elements of a slice.
+    /// Returns the first and all the rest of the elements of a slice, or `None` if it is empty.
     ///
     /// # Examples
     ///
@@ -268,7 +268,7 @@ impl<T> [T] {
         core_slice::SliceExt::split_first_mut(self)
     }
 
-    /// Returns the last and all the rest of the elements of a slice.
+    /// Returns the last and all the rest of the elements of a slice, or `None` if it is empty.
     ///
     /// # Examples
     ///
@@ -287,7 +287,7 @@ impl<T> [T] {
 
     }
 
-    /// Returns the last and all the rest of the elements of a slice.
+    /// Returns the last and all the rest of the elements of a slice, or `None` if it is empty.
     ///
     /// # Examples
     ///
