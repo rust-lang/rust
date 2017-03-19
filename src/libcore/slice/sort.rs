@@ -38,61 +38,122 @@ impl<T> Drop for CopyOnDrop<T> {
     }
 }
 
+/// Shifts the first element to the right until it encounters a greater or equal element.
+fn shift_head<T, F>(v: &mut [T], is_less: &mut F)
+    where F: FnMut(&T, &T) -> bool
+{
+    let len = v.len();
+    unsafe {
+        // If the first two elements are out-of-order...
+        if len >= 2 && is_less(v.get_unchecked(1), v.get_unchecked(0)) {
+            // Read the first element into a stack-allocated variable. If a following comparison
+            // operation panics, `hole` will get dropped and automatically write the element back
+            // into the slice.
+            let mut tmp = NoDrop { value: ptr::read(v.get_unchecked(0)) };
+            let mut hole = CopyOnDrop {
+                src: &mut tmp.value,
+                dest: v.get_unchecked_mut(1),
+            };
+            ptr::copy_nonoverlapping(v.get_unchecked(1), v.get_unchecked_mut(0), 1);
+
+            for i in 2..len {
+                if !is_less(&v[i], &tmp.value) {
+                    break;
+                }
+
+                // Move `i`-th element one place to the left, thus shifting the hole to the right.
+                ptr::copy_nonoverlapping(v.get_unchecked(i), v.get_unchecked_mut(i - 1), 1);
+                hole.dest = v.get_unchecked_mut(i);
+            }
+            // `hole` gets dropped and thus copies `tmp` into the remaining hole in `v`.
+        }
+    }
+}
+
+/// Shifts the last element to the left until it encounters a smaller or equal element.
+fn shift_tail<T, F>(v: &mut [T], is_less: &mut F)
+    where F: FnMut(&T, &T) -> bool
+{
+    let len = v.len();
+    unsafe {
+        // If the last two elements are out-of-order...
+        if len >= 2 && is_less(v.get_unchecked(len - 1), v.get_unchecked(len - 2)) {
+            // Read the last element into a stack-allocated variable. If a following comparison
+            // operation panics, `hole` will get dropped and automatically write the element back
+            // into the slice.
+            let mut tmp = NoDrop { value: ptr::read(v.get_unchecked(len - 1)) };
+            let mut hole = CopyOnDrop {
+                src: &mut tmp.value,
+                dest: v.get_unchecked_mut(len - 2),
+            };
+            ptr::copy_nonoverlapping(v.get_unchecked(len - 2), v.get_unchecked_mut(len - 1), 1);
+
+            for i in (0..len-2).rev() {
+                if !is_less(&tmp.value, v.get_unchecked(i)) {
+                    break;
+                }
+
+                // Move `i`-th element one place to the right, thus shifting the hole to the left.
+                ptr::copy_nonoverlapping(v.get_unchecked(i), v.get_unchecked_mut(i + 1), 1);
+                hole.dest = v.get_unchecked_mut(i);
+            }
+            // `hole` gets dropped and thus copies `tmp` into the remaining hole in `v`.
+        }
+    }
+}
+
+/// Partially sorts a slice by shifting several out-of-order elements around.
+///
+/// Returns true if the slice is sorted at the end. This function is `O(n)` worst-case.
+#[cold]
+fn partial_insertion_sort<T, F>(v: &mut [T], is_less: &mut F) -> bool
+    where F: FnMut(&T, &T) -> bool
+{
+    // Maximum number of adjacent out-of-order pairs that will get shifted.
+    const MAX_STEPS: usize = 5;
+    // If the slice is shorter than this, don't shift any elements.
+    const SHORTEST_SHIFTING: usize = 50;
+
+    let len = v.len();
+    let mut i = 1;
+
+    for _ in 0..MAX_STEPS {
+        unsafe {
+            // Find the next pair of adjacent out-of-order elements.
+            while i < len && !is_less(v.get_unchecked(i), v.get_unchecked(i - 1)) {
+                i += 1;
+            }
+        }
+
+        // Are we done?
+        if i == len {
+            return true;
+        }
+
+        // Don't shift elements on short arrays, that has a performance cost.
+        if len < SHORTEST_SHIFTING {
+            return false;
+        }
+
+        // Swap the found pair of elements. This puts them in correct order.
+        v.swap(i - 1, i);
+
+        // Shift the smaller element to the left.
+        shift_tail(&mut v[..i], is_less);
+        // Shift the greater element to the right.
+        shift_head(&mut v[i..], is_less);
+    }
+
+    // Didn't manage to sort the slice in the limited number of steps.
+    false
+}
+
 /// Sorts a slice using insertion sort, which is `O(n^2)` worst-case.
 fn insertion_sort<T, F>(v: &mut [T], is_less: &mut F)
     where F: FnMut(&T, &T) -> bool
 {
-    let len = v.len();
-
-    for i in 1..len {
-        unsafe {
-            if is_less(v.get_unchecked(i), v.get_unchecked(i - 1)) {
-                // There are three ways to implement insertion here:
-                //
-                // 1. Swap adjacent elements until the first one gets to its final destination.
-                //    However, this way we copy data around more than is necessary. If elements are
-                //    big structures (costly to copy), this method will be slow.
-                //
-                // 2. Iterate until the right place for the first element is found. Then shift the
-                //    elements succeeding it to make room for it and finally place it into the
-                //    remaining hole. This is a good method.
-                //
-                // 3. Copy the first element into a temporary variable. Iterate until the right
-                //    place for it is found. As we go along, copy every traversed element into the
-                //    slot preceding it. Finally, copy data from the temporary variable into the
-                //    remaining hole. This method is very good. Benchmarks demonstrated slightly
-                //    better performance than with the 2nd method.
-                //
-                // All methods were benchmarked, and the 3rd showed best results. So we chose that
-                // one.
-                let mut tmp = NoDrop { value: ptr::read(v.get_unchecked(i)) };
-
-                // Intermediate state of the insertion process is always tracked by `hole`, which
-                // serves two purposes:
-                // 1. Protects integrity of `v` from panics in `is_less`.
-                // 2. Fills the remaining hole in `v` in the end.
-                //
-                // Panic safety:
-                //
-                // If `is_less` panics at any point during the process, `hole` will get dropped and
-                // fill the hole in `v` with `tmp`, thus ensuring that `v` still holds every object
-                // it initially held exactly once.
-                let mut hole = CopyOnDrop {
-                    src: &mut tmp.value,
-                    dest: v.get_unchecked_mut(i - 1),
-                };
-                ptr::copy_nonoverlapping(v.get_unchecked(i - 1), v.get_unchecked_mut(i), 1);
-
-                for h in (0..i-1).rev() {
-                    if !is_less(&tmp.value, v.get_unchecked(h)) {
-                        break;
-                    }
-                    ptr::copy_nonoverlapping(v.get_unchecked(h), v.get_unchecked_mut(h + 1), 1);
-                    hole.dest = v.get_unchecked_mut(h);
-                }
-                // `hole` gets dropped and thus copies `tmp` into the remaining hole in `v`.
-            }
-        }
+    for i in 2..v.len()+1 {
+        shift_tail(&mut v[..i], is_less);
     }
 }
 
@@ -179,6 +240,9 @@ fn partition_in_blocks<T, F>(v: &mut [T], pivot: &T, is_less: &mut F) -> usize
     let mut start_r = ptr::null_mut();
     let mut end_r = ptr::null_mut();
     let mut offsets_r: [u8; BLOCK] = unsafe { mem::uninitialized() };
+
+    // FIXME: When we get VLAs, try creating one array of length `min(v.len(), 2 * BLOCK)` rather
+    // than two fixed-size arrays of length `BLOCK`. VLAs might be more cache-efficient.
 
     // Returns the number of elements between pointers `l` (inclusive) and `r` (exclusive).
     fn width<T>(l: *mut T, r: *mut T) -> usize {
@@ -470,10 +534,10 @@ fn break_patterns<T>(v: &mut [T]) {
 fn choose_pivot<T, F>(v: &mut [T], is_less: &mut F) -> (usize, bool)
     where F: FnMut(&T, &T) -> bool
 {
-    // Minimal length to choose the median-of-medians method.
+    // Minimum length to choose the median-of-medians method.
     // Shorter slices use the simple median-of-three method.
-    const SHORTEST_MEDIAN_OF_MEDIANS: usize = 80;
-    // Maximal number of swaps that can be performed in this function.
+    const SHORTEST_MEDIAN_OF_MEDIANS: usize = 50;
+    // Maximum number of swaps that can be performed in this function.
     const MAX_SWAPS: usize = 4 * 3;
 
     let len = v.len();
@@ -522,7 +586,7 @@ fn choose_pivot<T, F>(v: &mut [T], is_less: &mut F) -> (usize, bool)
     if swaps < MAX_SWAPS {
         (b, swaps == 0)
     } else {
-        // The maximal number of swaps was performed. Chances are the slice is descending or mostly
+        // The maximum number of swaps was performed. Chances are the slice is descending or mostly
         // descending, so reversing will probably help sort it faster.
         v.reverse();
         (len - 1 - b, true)
@@ -575,8 +639,9 @@ fn recurse<'a, T, F>(mut v: &'a mut [T], is_less: &mut F, mut pred: Option<&'a T
         // If the last partitioning was decently balanced and didn't shuffle elements, and if pivot
         // selection predicts the slice is likely already sorted...
         if was_balanced && was_partitioned && likely_sorted {
-            // Check whether the slice really is sorted. If so, we're done.
-            if v.windows(2).all(|w| !is_less(&w[1], &w[0])) {
+            // Try identifying several out-of-order elements and shifting them to correct
+            // positions. If the slice ends up being completely sorted, we're done.
+            if partial_insertion_sort(v, is_less) {
                 return;
             }
         }
