@@ -14,6 +14,8 @@
 //! etc. This is run by default on `make check` and as part of the auto
 //! builders.
 
+extern crate regex;
+
 use std::fs;
 use std::path::{PathBuf, Path};
 use std::env;
@@ -37,6 +39,7 @@ mod features;
 mod cargo;
 mod pal;
 mod deps;
+mod unstable_book;
 
 fn main() {
     let path = env::args_os().skip(1).next().expect("need an argument");
@@ -51,6 +54,7 @@ fn main() {
     cargo::check(&path, &mut bad);
     features::check(&path, &mut bad);
     pal::check(&path, &mut bad);
+    unstable_book::check(&path, &mut bad);
     if !args.iter().any(|s| *s == "--no-vendor") {
         deps::check(&path, &mut bad);
     }
