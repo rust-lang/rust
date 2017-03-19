@@ -1387,7 +1387,7 @@ impl<'tcx> Clean<Item> for ty::AssociatedItem {
                         decl: decl,
                         abi: sig.abi(),
 
-                        // trait methods canot (currently, at least) be const
+                        // trait methods cannot (currently, at least) be const
                         constness: hir::Constness::NotConst,
                     })
                 } else {
