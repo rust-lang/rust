@@ -1,13 +1,15 @@
-// rustfmt-fn_arg_indent: Block
+// rustfmt-fn_args_layout: Block
 // rustfmt-generics_indent: Block
 // rustfmt-where_layout: HorizontalVertical
 // Test different indents.
 
-fn foo(a: Aaaaaaaaaaaaaaa,
+fn foo(
+    a: Aaaaaaaaaaaaaaa,
     b: Bbbbbbbbbbbbbbbb,
     c: Ccccccccccccccccc,
     d: Ddddddddddddddddddddddddd,
-    e: Eeeeeeeeeeeeeeeeeee) {
+    e: Eeeeeeeeeeeeeeeeeee,
+) {
     foo();
 }
 
@@ -15,7 +17,9 @@ fn bar<
     'a: 'bbbbbbbbbbbbbbbbbbbbbbbbbbb,
     TTTTTTTTTTTTT,
     UUUUUUUUUUUUUUUUUUUU: WWWWWWWWWWWWWWWWWWWWWWWW
->(a: Aaaaaaaaaaaaaaa) {
+>(
+    a: Aaaaaaaaaaaaaaa,
+) {
     bar();
 }
 
@@ -35,12 +39,14 @@ fn qux()
 }
 
 impl Foo {
-    fn foo(self,
+    fn foo(
+        self,
         a: Aaaaaaaaaaaaaaa,
         b: Bbbbbbbbbbbbbbbb,
         c: Ccccccccccccccccc,
         d: Ddddddddddddddddddddddddd,
-        e: Eeeeeeeeeeeeeeeeeee) {
+        e: Eeeeeeeeeeeeeeeeeee,
+    ) {
         foo();
     }
 
@@ -49,7 +55,9 @@ impl Foo {
         TTTTTTTTTTTTT,
         UUUUUUUUUUUUUUUUUUUU: WWWWWWWWWWWWWWWWWWWWWWWW
     >
-        (a: Aaaaaaaaaaaaaaa) {
+        (
+        a: Aaaaaaaaaaaaaaa,
+    ) {
         bar();
     }
 }

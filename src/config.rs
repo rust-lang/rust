@@ -341,7 +341,6 @@ create_config! {
     fn_args_density: Density, Density::Tall, "Argument density in functions";
     fn_args_layout: IndentStyle, IndentStyle::Visual,
         "Layout of function arguments and tuple structs";
-    fn_arg_indent: IndentStyle, IndentStyle::Visual, "Indent on function arguments";
     array_layout: IndentStyle, IndentStyle::Visual, "Indent on arrays";
     type_punctuation_density: TypeDensity, TypeDensity::Wide,
         "Determines if '+' or '=' are wrapped in spaces in the punctuation of types";

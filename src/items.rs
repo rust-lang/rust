@@ -1800,9 +1800,11 @@ fn rewrite_args(context: &RewriteContext,
         item.item = Some(arg);
     }
 
-    let indent = match context.config.fn_arg_indent {
-        IndentStyle::Block => indent.block_indent(context.config),
-        IndentStyle::Visual => arg_indent,
+    let (indent, trailing_comma, end_with_newline) = match context.config.fn_args_layout {
+        IndentStyle::Block => {
+            (indent.block_indent(context.config), SeparatorTactic::Vertical, true)
+        }
+        IndentStyle::Visual => (arg_indent, SeparatorTactic::Never, false),
     };
 
     let tactic = definitive_tactic(&arg_items,
@@ -1814,11 +1816,6 @@ fn rewrite_args(context: &RewriteContext,
     };
 
     debug!("rewrite_args: budget: {}, tactic: {:?}", budget, tactic);
-
-    let (trailing_comma, end_with_newline) = match context.config.fn_args_layout {
-        IndentStyle::Block => (SeparatorTactic::Vertical, true),
-        _ => (SeparatorTactic::Never, false),
-    };
 
     let fmt = ListFormatting {
         tactic: tactic,
