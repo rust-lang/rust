@@ -439,7 +439,7 @@ impl<'a> TraitDef<'a> {
                 attrs.extend(item.attrs
                     .iter()
                     .filter(|a| {
-                        match &*a.name().as_str() {
+                        a.name().is_some() && match &*a.name().unwrap().as_str() {
                             "allow" | "warn" | "deny" | "forbid" | "stable" | "unstable" => true,
                             _ => false,
                         }
