@@ -230,7 +230,7 @@ impl<T> [T] {
         core_slice::SliceExt::first_mut(self)
     }
 
-    /// Returns the first and all the rest of the elements of a slice.
+    /// Returns the first and all the rest of the elements of a slice, or `None` if it is empty.
     ///
     /// # Examples
     ///
@@ -248,7 +248,7 @@ impl<T> [T] {
         core_slice::SliceExt::split_first(self)
     }
 
-    /// Returns the first and all the rest of the elements of a slice.
+    /// Returns the first and all the rest of the elements of a slice, or `None` if it is empty.
     ///
     /// # Examples
     ///
@@ -268,7 +268,7 @@ impl<T> [T] {
         core_slice::SliceExt::split_first_mut(self)
     }
 
-    /// Returns the last and all the rest of the elements of a slice.
+    /// Returns the last and all the rest of the elements of a slice, or `None` if it is empty.
     ///
     /// # Examples
     ///
@@ -287,7 +287,7 @@ impl<T> [T] {
 
     }
 
-    /// Returns the last and all the rest of the elements of a slice.
+    /// Returns the last and all the rest of the elements of a slice, or `None` if it is empty.
     ///
     /// # Examples
     ///
@@ -437,8 +437,8 @@ impl<T> [T] {
     /// The caller must ensure that the slice outlives the pointer this
     /// function returns, or else it will end up pointing to garbage.
     ///
-    /// Modifying the slice may cause its buffer to be reallocated, which
-    /// would also make any pointers to it invalid.
+    /// Modifying the container referenced by this slice may cause its buffer
+    /// to be reallocated, which would also make any pointers to it invalid.
     ///
     /// # Examples
     ///
@@ -463,8 +463,8 @@ impl<T> [T] {
     /// The caller must ensure that the slice outlives the pointer this
     /// function returns, or else it will end up pointing to garbage.
     ///
-    /// Modifying the slice may cause its buffer to be reallocated, which
-    /// would also make any pointers to it invalid.
+    /// Modifying the container referenced by this slice may cause its buffer
+    /// to be reallocated, which would also make any pointers to it invalid.
     ///
     /// # Examples
     ///
