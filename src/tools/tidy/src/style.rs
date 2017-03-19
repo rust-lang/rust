@@ -112,8 +112,7 @@ pub fn check(path: &Path, bad: &mut bool) {
         let skip_length = contents.contains("ignore-tidy-linelength");
         for (i, line) in contents.split("\n").enumerate() {
             let mut err = |msg: &str| {
-                println!("{}:{}: {}", file.display(), i + 1, msg);
-                *bad = true;
+                tidy_error!(bad, "{}:{}: {}", file.display(), i + 1, msg);
             };
             if !skip_length && line.chars().count() > COLS
                 && !long_line_is_ok(line) {
@@ -138,8 +137,7 @@ pub fn check(path: &Path, bad: &mut bool) {
             }
         }
         if !licenseck(file, &contents) {
-            println!("{}: incorrect license", file.display());
-            *bad = true;
+            tidy_error!(bad, "{}: incorrect license", file.display());
         }
     })
 }

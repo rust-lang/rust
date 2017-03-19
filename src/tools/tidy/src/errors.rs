@@ -79,11 +79,10 @@ pub fn check(path: &Path, bad: &mut bool) {
             continue
         }
 
-        println!("duplicate error code: {}", code);
+        tidy_error!(bad, "duplicate error code: {}", code);
         for &(ref file, line_num, ref line) in entries.iter() {
-            println!("{}:{}: {}", file.display(), line_num, line);
+            tidy_error!(bad, "{}:{}: {}", file.display(), line_num, line);
         }
-        *bad = true;
     }
 
     if !*bad {

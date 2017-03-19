@@ -126,8 +126,7 @@ fn check_cfgs(contents: &mut String, file: &Path,
             Ok(_) => unreachable!(),
             Err(i) => i + 1
         };
-        println!("{}:{}: platform-specific cfg: {}", file.display(), line, cfg);
-        *bad = true;
+        tidy_error!(bad, "{}:{}: platform-specific cfg: {}", file.display(), line, cfg);
     };
 
     for (idx, cfg) in cfgs.into_iter() {
