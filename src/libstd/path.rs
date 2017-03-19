@@ -1501,7 +1501,7 @@ impl Path {
     /// assert_eq!(path.to_string_lossy(), "foo.txt");
     /// ```
     ///
-    /// Had `os_str` contained invalid unicode, the `to_string_lossy` call might
+    /// Had `path` contained invalid unicode, the `to_string_lossy` call might
     /// have returned `"fo�.txt"`.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn to_string_lossy(&self) -> Cow<str> {
