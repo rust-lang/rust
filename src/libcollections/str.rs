@@ -32,7 +32,7 @@ use borrow::{Borrow, ToOwned};
 use string::String;
 use std_unicode;
 use vec::Vec;
-use slice::SliceConcatExt;
+use slice::{SliceConcatExt, SliceIndex};
 use boxed::Box;
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1814,5 +1814,21 @@ impl str {
         let mut s = String::with_capacity(self.len() * n);
         s.extend((0..n).map(|_| self));
         s
+    }
+
+    #[unstable(feature = "str_range_slice", issue = "39932")]
+    pub fn get<I>(&self, index: I) -> Option<&I::Output>
+        where I: SliceIndex<u8>
+    {
+        let bytes : &[u8] = unsafe { mem::transmute(self) };
+        index.get(bytes)
+    }
+
+    #[unstable(feature = "str_range_slice", issue = "39932")]
+    pub fn get_mut<I>(&mut self, index: I) -> Option<&mut I::Output>
+        where I: SliceIndex<u8>
+    {
+        let bytes : &mut [u8] = unsafe { mem::transmute(self) };
+        index.get_mut(bytes)
     }
 }

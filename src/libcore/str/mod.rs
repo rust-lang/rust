@@ -21,7 +21,7 @@ use char;
 use fmt;
 use iter::{Map, Cloned, FusedIterator};
 use mem;
-use slice;
+use slice::{self, SliceIndex};
 
 pub mod pattern;
 
@@ -1748,6 +1748,12 @@ pub trait StrExt {
     unsafe fn slice_unchecked(&self, begin: usize, end: usize) -> &str;
     #[stable(feature = "core", since = "1.6.0")]
     unsafe fn slice_mut_unchecked(&mut self, begin: usize, end: usize) -> &mut str;
+    #[unstable(feature = "str_range_slice", issue = "39932")]
+    unsafe fn get_unchecked<I>(&self, index: I) -> &I::Output
+        where I: SliceIndex<u8>;
+    #[unstable(feature = "str_range_slice", issue = "39932")]
+    unsafe fn get_unchecked_mut<I>(&mut self, index: I) -> &mut I::Output
+        where I: SliceIndex<u8>;
     #[stable(feature = "core", since = "1.6.0")]
     fn starts_with<'a, P: Pattern<'a>>(&'a self, pat: P) -> bool;
     #[stable(feature = "core", since = "1.6.0")]
@@ -2082,6 +2088,22 @@ impl StrExt for str {
 
     #[inline]
     fn parse<T: FromStr>(&self) -> Result<T, T::Err> { FromStr::from_str(self) }
+
+    #[inline]
+    unsafe fn get_unchecked<I>(&self, index: I) -> &I::Output
+        where I: SliceIndex<u8>
+    {
+        let bytes : &[u8] = mem::transmute(self);
+        index.get_unchecked(bytes)
+    }
+
+    #[inline]
+    unsafe fn get_unchecked_mut<I>(&mut self, index: I) -> &mut I::Output
+        where I: SliceIndex<u8>
+    {
+        let bytes : &mut [u8] = mem::transmute(self);
+        index.get_unchecked_mut(bytes)
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
