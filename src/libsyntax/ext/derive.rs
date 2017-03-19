@@ -12,36 +12,31 @@ use attr::HasAttrs;
 use {ast, codemap};
 use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
+use parse::parser::PathStyle;
 use symbol::Symbol;
 use syntax_pos::Span;
 
-pub fn collect_derives(cx: &mut ExtCtxt, attrs: &mut Vec<ast::Attribute>) -> Vec<(Symbol, Span)> {
+pub fn collect_derives(cx: &mut ExtCtxt, attrs: &mut Vec<ast::Attribute>) -> Vec<ast::Path> {
     let mut result = Vec::new();
     attrs.retain(|attr| {
-        if attr.name() != "derive" {
+        if attr.path != "derive" {
             return true;
         }
 
-        if attr.value_str().is_some() {
-            cx.span_err(attr.span, "unexpected value in `derive`");
-            return false;
-        }
-
-        let traits = attr.meta_item_list().unwrap_or(&[]).to_owned();
-        if traits.is_empty() {
-            cx.span_warn(attr.span, "empty trait list in `derive`");
-            return false;
-        }
-
-        for titem in traits {
-            if titem.word().is_none() {
-                cx.span_err(titem.span, "malformed `derive` entry");
-                return false;
+        match attr.parse_list(cx.parse_sess, |parser| parser.parse_path(PathStyle::Mod)) {
+            Ok(ref traits) if traits.is_empty() => {
+                cx.span_warn(attr.span, "empty trait list in `derive`");
+                false
             }
-            result.push((titem.name().unwrap(), titem.span));
+            Ok(traits) => {
+                result.extend(traits);
+                true
+            }
+            Err(mut e) => {
+                e.emit();
+                false
+            }
         }
-
-        true
     });
     result
 }
@@ -60,21 +55,21 @@ fn allow_unstable(cx: &mut ExtCtxt, span: Span, attr_name: &str) -> Span {
     }
 }
 
-pub fn add_derived_markers<T: HasAttrs>(cx: &mut ExtCtxt, traits: &[(Symbol, Span)], item: T) -> T {
+pub fn add_derived_markers<T: HasAttrs>(cx: &mut ExtCtxt, traits: &[ast::Path], item: T) -> T {
     let span = match traits.get(0) {
-        Some(&(_, span)) => span,
+        Some(path) => path.span,
         None => return item,
     };
 
     item.map_attrs(|mut attrs| {
-        if traits.iter().any(|&(name, _)| name == "PartialEq") &&
-           traits.iter().any(|&(name, _)| name == "Eq") {
+        if traits.iter().any(|path| *path == "PartialEq") &&
+           traits.iter().any(|path| *path == "Eq") {
             let span = allow_unstable(cx, span, "derive(PartialEq, Eq)");
             let meta = cx.meta_word(span, Symbol::intern("structural_match"));
             attrs.push(cx.attribute(span, meta));
         }
-        if traits.iter().any(|&(name, _)| name == "Copy") &&
-           traits.iter().any(|&(name, _)| name == "Clone") {
+        if traits.iter().any(|path| *path == "Copy") &&
+           traits.iter().any(|path| *path == "Clone") {
             let span = allow_unstable(cx, span, "derive(Copy, Clone)");
             let meta = cx.meta_word(span, Symbol::intern("rustc_copy_clone_marker"));
             attrs.push(cx.attribute(span, meta));
