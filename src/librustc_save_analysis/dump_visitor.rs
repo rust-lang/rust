@@ -29,7 +29,7 @@
 
 use rustc::hir;
 use rustc::hir::def::Def;
-use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
+use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::hir::map::{Node, NodeItem};
 use rustc::session::Session;
 use rustc::ty::{self, TyCtxt, AssociatedItemContainer};
@@ -53,6 +53,8 @@ use super::dump::Dump;
 use super::external_data::{Lower, make_def_id};
 use super::span_utils::SpanUtils;
 use super::recorder;
+
+use rls_data::ExternalCrateData;
 
 macro_rules! down_cast_data {
     ($id:ident, $kind:ident, $sp:expr) => {
@@ -137,7 +139,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
             let lo_loc = self.span.sess.codemap().lookup_char_pos(c.span.lo);
             ExternalCrateData {
                 name: c.name,
-                num: CrateNum::from_u32(c.number),
+                num: c.number,
                 file_name: SpanUtils::make_path_string(&lo_loc.file.name),
             }
         }).collect();

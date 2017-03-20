@@ -26,8 +26,11 @@
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
-extern crate serialize as rustc_serialize;
+extern crate rustc_serialize;
 extern crate syntax_pos;
+
+extern crate rls_data;
+extern crate rls_span;
 
 
 mod csv_dumper;

@@ -94,6 +94,13 @@ fn main() {
             cmd.arg("-Cprefer-dynamic");
         }
 
+        // Pass the `rustbuild` feature flag to crates which rustbuild is
+        // building. See the comment in bootstrap/lib.rs where this env var is
+        // set for more details.
+        if env::var_os("RUSTBUILD_UNSTABLE").is_some() {
+            cmd.arg("--cfg").arg("rustbuild");
+        }
+
         // Help the libc crate compile by assisting it in finding the MUSL
         // native libraries.
         if let Some(s) = env::var_os("MUSL_ROOT") {
