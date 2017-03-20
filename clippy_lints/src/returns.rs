@@ -150,9 +150,5 @@ impl EarlyLintPass for ReturnPass {
 }
 
 fn attr_is_cfg(attr: &ast::Attribute) -> bool {
-    if attr.meta_item_list().is_some() {
-       attr.name().map_or(false, |n| n == "cfg")
-    } else {
-        false
-    }
+    attr.meta_item_list().is_some() && attr.name().map_or(false, |n| n == "cfg")
 }
