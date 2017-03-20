@@ -711,9 +711,8 @@ fn method_callee<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         ty: callee.ty,
         span: expr.span,
         kind: ExprKind::Literal {
-            literal: Literal::Item {
-                def_id: callee.def_id,
-                substs: callee.substs,
+            literal: Literal::Value {
+                value: ConstVal::Function(callee.def_id, callee.substs),
             },
         },
     }
@@ -740,14 +739,24 @@ fn convert_path_expr<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                                      -> ExprKind<'tcx> {
     let substs = cx.tables().node_id_item_substs(expr.id)
         .unwrap_or_else(|| cx.tcx.intern_substs(&[]));
-    let def_id = match def {
+    match def {
         // A regular function, constructor function or a constant.
         Def::Fn(def_id) |
         Def::Method(def_id) |
         Def::StructCtor(def_id, CtorKind::Fn) |
-        Def::VariantCtor(def_id, CtorKind::Fn) |
+        Def::VariantCtor(def_id, CtorKind::Fn) => ExprKind::Literal {
+            literal: Literal::Value {
+                value: ConstVal::Function(def_id, substs),
+            },
+        },
+
         Def::Const(def_id) |
-        Def::AssociatedConst(def_id) => def_id,
+        Def::AssociatedConst(def_id) => ExprKind::Literal {
+            literal: Literal::Item {
+                def_id: def_id,
+                substs: substs,
+            },
+        },
 
         Def::StructCtor(def_id, CtorKind::Const) |
         Def::VariantCtor(def_id, CtorKind::Const) => {
@@ -755,7 +764,7 @@ fn convert_path_expr<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
                 // A unit struct/variant which is used as a value.
                 // We return a completely different ExprKind here to account for this special case.
                 ty::TyAdt(adt_def, substs) => {
-                    return ExprKind::Adt {
+                    ExprKind::Adt {
                         adt_def: adt_def,
                         variant_index: adt_def.variant_index_with_id(def_id),
                         substs: substs,
@@ -767,17 +776,11 @@ fn convert_path_expr<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             }
         }
 
-        Def::Static(node_id, _) => return ExprKind::StaticRef { id: node_id },
+        Def::Static(node_id, _) => ExprKind::StaticRef { id: node_id },
 
-        Def::Local(..) | Def::Upvar(..) => return convert_var(cx, expr, def),
+        Def::Local(..) | Def::Upvar(..) => convert_var(cx, expr, def),
 
         _ => span_bug!(expr.span, "def `{:?}` not yet implemented", def),
-    };
-    ExprKind::Literal {
-        literal: Literal::Item {
-            def_id: def_id,
-            substs: substs,
-        },
     }
 }
 
