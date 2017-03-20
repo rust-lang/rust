@@ -236,7 +236,8 @@ impl<'a> CrateLoader<'a> {
             // path (this is a top-level dependency) as we don't want to
             // implicitly load anything inside the dependency lookup path.
             let prev_kind = source.dylib.as_ref().or(source.rlib.as_ref())
-                                  .unwrap().1;
+                                  .or(source.rmeta.as_ref())
+                                  .expect("No sources for crate").1;
             if ret.is_none() && (prev_kind == kind || prev_kind == PathKind::All) {
                 ret = Some(cnum);
             }
