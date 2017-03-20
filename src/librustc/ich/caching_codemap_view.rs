@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc::ty::TyCtxt;
+use ty::TyCtxt;
 use std::rc::Rc;
 use syntax::codemap::CodeMap;
 use syntax_pos::{BytePos, FileMap};

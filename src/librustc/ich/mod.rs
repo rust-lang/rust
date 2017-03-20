@@ -10,6 +10,8 @@
 
 pub use self::fingerprint::Fingerprint;
 pub use self::def_path_hash::DefPathHashes;
+pub use self::caching_codemap_view::CachingCodemapView;
 
 mod fingerprint;
 mod def_path_hash;
+mod caching_codemap_view;

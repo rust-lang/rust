@@ -26,11 +26,10 @@ use rustc::hir::*;
 use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit::{self as visit, Visitor};
-use rustc::ich::DefPathHashes;
+use rustc::ich::{DefPathHashes, CachingCodemapView};
 use rustc::ty::TyCtxt;
 use std::hash::{Hash, Hasher};
 
-use super::caching_codemap_view::CachingCodemapView;
 use super::IchHasher;
 
 const IGNORED_ATTRIBUTES: &'static [&'static str] = &[
