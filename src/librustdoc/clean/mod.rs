@@ -2241,11 +2241,11 @@ pub enum PathParameters {
     AngleBracketed {
         lifetimes: Vec<Lifetime>,
         types: Vec<Type>,
-        bindings: Vec<TypeBinding>
+        bindings: Vec<TypeBinding>,
     },
     Parenthesized {
         inputs: Vec<Type>,
-        output: Option<Type>
+        output: Option<Type>,
     }
 }
 
@@ -2260,14 +2260,14 @@ impl Clean<PathParameters> for hir::PathParameters {
                         data.lifetimes.clean(cx)
                     },
                     types: data.types.clean(cx),
-                    bindings: data.bindings.clean(cx)
+                    bindings: data.bindings.clean(cx),
                 }
             }
 
             hir::ParenthesizedParameters(ref data) => {
                 PathParameters::Parenthesized {
                     inputs: data.inputs.clean(cx),
-                    output: data.output.clean(cx)
+                    output: data.output.clean(cx),
                 }
             }
         }

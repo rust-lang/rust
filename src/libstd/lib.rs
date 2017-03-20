@@ -272,6 +272,7 @@
 #![feature(linkage)]
 #![feature(macro_reexport)]
 #![feature(needs_panic_runtime)]
+#![feature(never_type)]
 #![feature(num_bits_bytes)]
 #![feature(old_wrapping)]
 #![feature(on_unimplemented)]
