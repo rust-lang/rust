@@ -9,6 +9,7 @@
 // except according to those terms.
 
 pub use self::fingerprint::Fingerprint;
+pub use self::def_path_hash::DefPathHashes;
 
 mod fingerprint;
-
+mod def_path_hash;
