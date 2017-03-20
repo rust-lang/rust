@@ -10,6 +10,10 @@
 
 use hir::def_id::DefId;
 use rustc_data_structures::fx::FxHashMap;
+
+#[cfg(debug_assertions)]
+use rustc_data_structures::fx::FxHashSet;
+
 use std::cell::RefCell;
 use std::collections::hash_map::Entry;
 use std::ops::Index;
@@ -26,6 +30,8 @@ pub struct DepTrackingMap<M: DepTrackingMapConfig> {
     phantom: PhantomData<M>,
     graph: DepGraph,
     map: FxHashMap<M::Key, M::Value>,
+    #[cfg(debug_assertions)]
+    tombstones: RefCell<FxHashSet<M::Key>>,
 }
 
 pub trait DepTrackingMapConfig {
@@ -35,6 +41,17 @@ pub trait DepTrackingMapConfig {
 }
 
 impl<M: DepTrackingMapConfig> DepTrackingMap<M> {
+    #[cfg(debug_assertions)]
+    pub fn new(graph: DepGraph) -> DepTrackingMap<M> {
+        DepTrackingMap {
+            phantom: PhantomData,
+            graph: graph,
+            map: FxHashMap(),
+            tombstones: RefCell::new(FxHashSet()),
+        }
+    }
+
+    #[cfg(not(debug_assertions))]
     pub fn new(graph: DepGraph) -> DepTrackingMap<M> {
         DepTrackingMap {
             phantom: PhantomData,
@@ -59,13 +76,31 @@ impl<M: DepTrackingMapConfig> DepTrackingMap<M> {
 
     pub fn get(&self, k: &M::Key) -> Option<&M::Value> {
         self.read(k);
-        self.map.get(k)
+        let result = self.map.get(k);
+
+        #[cfg(debug_assertions)]
+        {
+            if result.is_none() {
+                self.tombstones.borrow_mut().insert(k.clone());
+            }
+        }
+
+        result
     }
 
     pub fn insert(&mut self, k: M::Key, v: M::Value) {
         self.write(&k);
+
+        // If we ever read a `None` value for this key, we do not want
+        // to permit a later write to it. The only valid use case for
+        // this is the memoization pattern: for that, use `memoize()`
+        // below
+        #[cfg(debug_assertions)]
+        assert!(!self.tombstones.borrow().contains(&k),
+                "inserting to `{0:?}` after reading from `{0:?}`",
+                M::to_dep_node(&k));
         let old_value = self.map.insert(k, v);
-        assert!(old_value.is_none());
+        assert!(old_value.is_none(), "inserted value twice");
     }
 
     pub fn entry(&mut self, k: M::Key) -> Entry<M::Key, M::Value> {
@@ -75,7 +110,13 @@ impl<M: DepTrackingMapConfig> DepTrackingMap<M> {
 
     pub fn contains_key(&self, k: &M::Key) -> bool {
         self.read(k);
-        self.map.contains_key(k)
+        if self.map.contains_key(k) {
+            true
+        } else {
+            #[cfg(debug_assertions)]
+            self.tombstones.borrow_mut().insert(k.clone());
+            false
+        }
     }
 
     pub fn keys(&self) -> Vec<M::Key> {
@@ -125,7 +166,7 @@ impl<M: DepTrackingMapConfig> MemoizationMap for RefCell<DepTrackingMap<M>> {
     ///     let item_def_id = ccx.tcx.hir.local_def_id(it.id);
     ///     ccx.tcx.item_types.memoized(item_def_id, || {
     ///         ccx.tcx.dep_graph.read(DepNode::Hir(item_def_id)); // (*)
-    ///         compute_type_of_item(ccx, item)
+    ///         Some(compute_type_of_item(ccx, item))
     ///     });
     /// }
     /// ```
@@ -134,7 +175,7 @@ impl<M: DepTrackingMapConfig> MemoizationMap for RefCell<DepTrackingMap<M>> {
     /// accesses the body of the item `item`, so we register a read
     /// from `Hir(item_def_id)`.
     fn memoize<OP>(&self, key: M::Key, op: OP) -> M::Value
-        where OP: FnOnce() -> M::Value
+        where OP: FnOnce() -> Option<M::Value>
     {
         let graph;
         {
@@ -147,9 +188,18 @@ impl<M: DepTrackingMapConfig> MemoizationMap for RefCell<DepTrackingMap<M>> {
         }
 
         let _task = graph.in_task(M::to_dep_node(&key));
-        let result = op();
-        self.borrow_mut().map.insert(key, result.clone());
-        result
+        if let Some(result) = op() {
+            let old_value = self.borrow_mut().map.insert(key, result.clone());
+            assert!(old_value.is_none());
+            result
+        } else {
+            self.borrow().map
+                         .get(&key)
+                         .unwrap_or_else(|| bug!(
+                            "memoize closure failed to write to {:?}", M::to_dep_node(&key)
+                         ))
+                         .clone()
+        }
     }
 }
 

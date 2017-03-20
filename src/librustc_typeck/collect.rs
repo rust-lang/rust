@@ -610,7 +610,7 @@ fn convert_enum_variant_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         prev_discr = Some(if let Some(e) = variant.node.disr_expr {
             let expr_did = tcx.hir.local_def_id(e.node_id);
             let result = tcx.maps.monomorphic_const_eval.memoize(expr_did, || {
-                evaluate_disr_expr(tcx, e)
+                Some(evaluate_disr_expr(tcx, e))
             });
 
             match result {

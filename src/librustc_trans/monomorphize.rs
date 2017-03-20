@@ -121,7 +121,7 @@ impl<'a, 'b, 'gcx> TypeFolder<'gcx, 'gcx> for AssociatedTypeNormalizer<'a, 'b, '
         } else {
             self.shared.project_cache().memoize(ty, || {
                 debug!("AssociatedTypeNormalizer: ty={:?}", ty);
-                self.shared.tcx().normalize_associated_type(&ty)
+                Some(self.shared.tcx().normalize_associated_type(&ty))
             })
         }
     }
