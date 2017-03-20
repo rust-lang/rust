@@ -34,21 +34,21 @@ pub fn plugin_registrar(reg: &mut Registry) {
 }
 
 fn attr_tru(_attr: TokenStream, _item: TokenStream) -> TokenStream {
-    qquote!(fn f1() -> bool { true })
+    quote!(fn f1() -> bool { true })
 }
 
 fn attr_identity(_attr: TokenStream, item: TokenStream) -> TokenStream {
-    qquote!(unquote item)
+    quote!($item)
 }
 
 fn tru(_ts: TokenStream) -> TokenStream {
-    qquote!(true)
+    quote!(true)
 }
 
 fn ret_tru(_ts: TokenStream) -> TokenStream {
-    qquote!(return true;)
+    quote!(return true;)
 }
 
 fn identity(ts: TokenStream) -> TokenStream {
-    qquote!(unquote ts)
+    quote!($ts)
 }
