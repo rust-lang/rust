@@ -35,7 +35,7 @@ use rustc::hir;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
 use rustc::hir::intravisit as visit;
 use rustc::hir::intravisit::{Visitor, NestedVisitorMap};
-use rustc::ich::{Fingerprint, DefPathHashes};
+use rustc::ich::{Fingerprint, DefPathHashes, CachingCodemapView};
 use rustc::ty::TyCtxt;
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::fx::FxHashMap;
@@ -43,10 +43,8 @@ use rustc::util::common::record_time;
 use rustc::session::config::DebugInfoLevel::NoDebugInfo;
 
 use self::svh_visitor::StrictVersionHashVisitor;
-use self::caching_codemap_view::CachingCodemapView;
 
 mod svh_visitor;
-mod caching_codemap_view;
 
 pub type IchHasher = StableHasher<Fingerprint>;
 
