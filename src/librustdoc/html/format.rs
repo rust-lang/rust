@@ -481,7 +481,7 @@ fn resolved_path(w: &mut fmt::Formatter, did: DefId, path: &clean::Path,
         if is_not_debug {
             write!(w, "{:#}{:#}", HRef::new(did, &last.name), last.params)?;
         } else {
-            write!(w, "{:?}{:?}", HRef::new(did, &last.name), last.params)?;
+            write!(w, "{:?}{}", HRef::new(did, &last.name), last.params)?;
         }
     } else {
         if is_not_debug {
@@ -507,7 +507,7 @@ fn resolved_path(w: &mut fmt::Formatter, did: DefId, path: &clean::Path,
             } else {
                 format!("{:?}", HRef::new(did, &last.name))
             };
-            write!(w, "{}{:?}", path, last.params)?;
+            write!(w, "{}{}", path, last.params)?;
         }
     }
     Ok(())
