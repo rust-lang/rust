@@ -518,13 +518,13 @@ pub trait Iterator {
 
     /// Creates an iterator that both filters and maps.
     ///
-    /// The closure must return an [`Option<T>`]. `filter_map()` creates an
+    /// The closure must return an [`Option<T>`]. `filter_map` creates an
     /// iterator which calls this closure on each element. If the closure
     /// returns [`Some(element)`][`Some`], then that element is returned. If the
     /// closure returns [`None`], it will try again, and call the closure on the
     /// next element, seeing if it will return [`Some`].
     ///
-    /// Why `filter_map()` and not just [`filter()`].[`map`]? The key is in this
+    /// Why `filter_map` and not just [`filter`].[`map`]? The key is in this
     /// part:
     ///
     /// [`filter`]: #method.filter
@@ -534,7 +534,7 @@ pub trait Iterator {
     ///
     /// In other words, it removes the [`Option<T>`] layer automatically. If your
     /// mapping is already returning an [`Option<T>`] and you want to skip over
-    /// [`None`]s, then `filter_map()` is much, much nicer to use.
+    /// [`None`]s, then `filter_map` is much, much nicer to use.
     ///
     /// # Examples
     ///
