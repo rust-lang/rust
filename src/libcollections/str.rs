@@ -59,6 +59,27 @@ pub use std_unicode::str::SplitWhitespace;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::pattern;
 
+/// Unicode string slices.
+///
+/// The `&str` type is one of the two main string types, the other being `String`. Unlike its `String` counterpart, its contents
+/// are borrowed and therefore cannot be moved someplace else.
+///
+/// # Basic Usage
+/// A basic string declaration of `&str` type:
+///
+/// ```
+/// let hello_world = "Hello, World!";
+/// ```
+/// Here we have declared a string literal, also known as a string slice.
+/// String literals have a static lifetime, which means the string `hello_world`
+/// is guaranteed to be valid for the duration of the entire program. We can explicitly specify
+/// `hello_world`'s lifetime as well:
+///
+/// ```
+/// let hello_world:&'static str = "Hello, world!";
+/// ```
+///
+
 #[unstable(feature = "slice_concat_ext",
            reason = "trait should not have to exist",
            issue = "27747")]
