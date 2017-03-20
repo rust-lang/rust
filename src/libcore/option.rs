@@ -147,6 +147,7 @@
 
 use iter::{FromIterator, FusedIterator, TrustedLen};
 use mem;
+use ops::Deref;
 
 // Note that this is not a lang item per se, but it has a hidden dependency on
 // `Iterator`, which is one. The compiler assumes that the `next` method of
@@ -726,7 +727,7 @@ impl<T> Option<T> {
     }
 }
 
-impl<'a, T: Clone> Option<&'a T> {
+impl<T: Clone, D: Deref<Target = T>> Option<D> {
     /// Maps an `Option<&T>` to an `Option<T>` by cloning the contents of the
     /// option.
     ///
