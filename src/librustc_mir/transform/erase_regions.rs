@@ -13,7 +13,7 @@
 //! care erasing regions all over the place.
 
 use rustc::ty::subst::Substs;
-use rustc::ty::{Ty, TyCtxt};
+use rustc::ty::{Ty, TyCtxt, ReErased, ClosureSubsts};
 use rustc::mir::*;
 use rustc::mir::visit::MutVisitor;
 use rustc::mir::transform::{MirPass, MirSource, Pass};
@@ -38,6 +38,23 @@ impl<'a, 'tcx> MutVisitor<'tcx> for EraseRegionsVisitor<'a, 'tcx> {
 
     fn visit_substs(&mut self, substs: &mut &'tcx Substs<'tcx>) {
         *substs = self.tcx.erase_regions(&{*substs});
+    }
+
+    fn visit_rvalue(&mut self, rvalue: &mut Rvalue<'tcx>, location: Location) {
+        match *rvalue {
+            Rvalue::Ref(ref mut r, _, _) => {
+                *r = self.tcx.mk_region(ReErased);
+            }
+            _ => {
+                /* only the above variant contains regions */
+            }
+        }
+        self.super_rvalue(rvalue, location);
+    }
+
+    fn visit_closure_substs(&mut self,
+                            substs: &mut ClosureSubsts<'tcx>) {
+        *substs = self.tcx.erase_regions(substs);
     }
 }
 
