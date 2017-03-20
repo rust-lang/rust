@@ -46,8 +46,13 @@
             issue = "0")]
 #![allow(missing_docs)]
 
-extern "rust-intrinsic" {
+#[cfg(not(stage0))]
+#[stable(feature = "drop_in_place", since = "1.8.0")]
+#[rustc_deprecated(reason = "no longer an intrinsic - use `ptr::drop_in_place` directly",
+                   since = "1.18.0")]
+pub use ptr::drop_in_place;
 
+extern "rust-intrinsic" {
     // NB: These intrinsics take raw pointers because they mutate aliased
     // memory, which is not valid for either `&` or `&mut`.
 
@@ -622,6 +627,7 @@ extern "rust-intrinsic" {
     pub fn size_of_val<T: ?Sized>(_: &T) -> usize;
     pub fn min_align_of_val<T: ?Sized>(_: &T) -> usize;
 
+    #[cfg(stage0)]
     /// Executes the destructor (if any) of the pointed-to value.
     ///
     /// This has two use cases:

@@ -110,7 +110,7 @@ use rustc::dep_graph::{DepNode, WorkProductId};
 use rustc::hir::def_id::DefId;
 use rustc::hir::map::DefPathData;
 use rustc::session::config::NUMBERED_CODEGEN_UNIT_MARKER;
-use rustc::ty::TyCtxt;
+use rustc::ty::{self, TyCtxt};
 use rustc::ty::item_path::characteristic_def_id_of_type;
 use rustc_incremental::IchHasher;
 use std::cmp::Ordering;
@@ -186,14 +186,14 @@ impl<'tcx> CodegenUnit<'tcx> {
             symbol_name.hash(&mut state);
             let exported = match item {
                TransItem::Fn(ref instance) => {
-                    let node_id = scx.tcx().hir.as_local_node_id(instance.def);
+                   let node_id =
+                       scx.tcx().hir.as_local_node_id(instance.def_id());
                     node_id.map(|node_id| exported_symbols.contains(&node_id))
                            .unwrap_or(false)
                }
                TransItem::Static(node_id) => {
                     exported_symbols.contains(&node_id)
                }
-               TransItem::DropGlue(..) => false,
             };
             exported.hash(&mut state);
         }
@@ -241,10 +241,9 @@ impl<'tcx> CodegenUnit<'tcx> {
         fn local_node_id(tcx: TyCtxt, trans_item: TransItem) -> Option<NodeId> {
             match trans_item {
                 TransItem::Fn(instance) => {
-                    tcx.hir.as_local_node_id(instance.def)
+                    tcx.hir.as_local_node_id(instance.def_id())
                 }
                 TransItem::Static(node_id) => Some(node_id),
-                TransItem::DropGlue(_) => None,
             }
         }
     }
@@ -340,7 +339,6 @@ fn place_root_translation_items<'a, 'tcx, I>(scx: &SharedCrateContext<'a, 'tcx>,
                     match trans_item {
                         TransItem::Fn(..) |
                         TransItem::Static(..) => llvm::ExternalLinkage,
-                        TransItem::DropGlue(..) => unreachable!(),
                     }
                 }
             };
@@ -455,17 +453,26 @@ fn characteristic_def_id_of_trans_item<'a, 'tcx>(scx: &SharedCrateContext<'a, 't
     let tcx = scx.tcx();
     match trans_item {
         TransItem::Fn(instance) => {
+            let def_id = match instance.def {
+                ty::InstanceDef::Item(def_id) => def_id,
+                ty::InstanceDef::FnPtrShim(..) |
+                ty::InstanceDef::ClosureOnceShim { .. } |
+                ty::InstanceDef::Intrinsic(..) |
+                ty::InstanceDef::DropGlue(..) |
+                ty::InstanceDef::Virtual(..) => return None
+            };
+
             // If this is a method, we want to put it into the same module as
             // its self-type. If the self-type does not provide a characteristic
             // DefId, we use the location of the impl after all.
 
-            if tcx.trait_of_item(instance.def).is_some() {
+            if tcx.trait_of_item(def_id).is_some() {
                 let self_ty = instance.substs.type_at(0);
                 // This is an implementation of a trait method.
-                return characteristic_def_id_of_type(self_ty).or(Some(instance.def));
+                return characteristic_def_id_of_type(self_ty).or(Some(def_id));
             }
 
-            if let Some(impl_def_id) = tcx.impl_of_method(instance.def) {
+            if let Some(impl_def_id) = tcx.impl_of_method(def_id) {
                 // This is a method within an inherent impl, find out what the
                 // self-type is:
                 let impl_self_ty = common::def_ty(scx, impl_def_id, instance.substs);
@@ -474,9 +481,8 @@ fn characteristic_def_id_of_trans_item<'a, 'tcx>(scx: &SharedCrateContext<'a, 't
                 }
             }
 
-            Some(instance.def)
+            Some(def_id)
         }
-        TransItem::DropGlue(dg) => characteristic_def_id_of_type(dg.ty()),
         TransItem::Static(node_id) => Some(tcx.hir.local_def_id(node_id)),
     }
 }

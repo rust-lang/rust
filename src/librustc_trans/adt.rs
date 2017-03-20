@@ -363,28 +363,6 @@ fn load_discr(bcx: &Builder, ity: layout::Integer, ptr: ValueRef,
     }
 }
 
-/// Yield information about how to dispatch a case of the
-/// discriminant-like value returned by `trans_switch`.
-///
-/// This should ideally be less tightly tied to `_match`.
-pub fn trans_case<'a, 'tcx>(bcx: &Builder<'a, 'tcx>, t: Ty<'tcx>, value: Disr) -> ValueRef {
-    let l = bcx.ccx.layout_of(t);
-    match *l {
-        layout::CEnum { discr, .. }
-        | layout::General { discr, .. }=> {
-            C_integral(Type::from_integer(bcx.ccx, discr), value.0, true)
-        }
-        layout::RawNullablePointer { .. } |
-        layout::StructWrappedNullablePointer { .. } => {
-            assert!(value == Disr(0) || value == Disr(1));
-            C_bool(bcx.ccx, value != Disr(0))
-        }
-        _ => {
-            bug!("{} does not have a discriminant. Represented as {:#?}", t, l);
-        }
-    }
-}
-
 /// Set the discriminant for a new value of the given case of the given
 /// representation.
 pub fn trans_set_discr<'a, 'tcx>(bcx: &Builder<'a, 'tcx>, t: Ty<'tcx>, val: ValueRef, to: Disr) {
