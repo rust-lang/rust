@@ -555,7 +555,6 @@ enum StructKind {
 }
 
 impl<'a, 'gcx, 'tcx> Struct {
-    // FIXME(camlorn): reprs need a better representation to deal with multiple reprs on one type.
     fn new(dl: &TargetDataLayout, fields: &Vec<&'a Layout>,
                   repr: &ReprOptions, kind: StructKind,
                   scapegoat: Ty<'gcx>) -> Result<Struct, LayoutError<'gcx>> {
@@ -573,12 +572,8 @@ impl<'a, 'gcx, 'tcx> Struct {
         // Neither do  1-member and 2-member structs.
         // In addition, code in trans assume that 2-element structs can become pairs.
         // It's easier to just short-circuit here.
-        let mut can_optimize = (fields.len() > 2 || StructKind::EnumVariant == kind)
-            && ! (repr.c || repr.packed);
-
-        // Disable field reordering until we can decide what to do.
-        // The odd pattern here avoids a warning about the value never being read.
-        if can_optimize { can_optimize = false; }
+        let can_optimize = (fields.len() > 2 || StructKind::EnumVariant == kind)
+            && ! (repr.c || repr.packed || repr.linear || repr.simd);
 
         let (optimize, sort_ascending) = match kind {
             StructKind::AlwaysSizedUnivariant => (can_optimize, false),
