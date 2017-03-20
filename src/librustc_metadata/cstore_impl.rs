@@ -109,6 +109,7 @@ provide! { <'tcx> tcx, def_id, cdata
     typeck_tables => { cdata.item_body_tables(def_id.index, tcx) }
     closure_kind => { cdata.closure_kind(def_id.index) }
     closure_type => { cdata.closure_ty(def_id.index, tcx) }
+    inherent_impls => { Rc::new(cdata.get_inherent_implementations_for_type(def_id.index)) }
 }
 
 impl CrateStore for cstore::CStore {
@@ -160,12 +161,6 @@ impl CrateStore for cstore::CStore {
         // incremental recompilation ever enabled.
         assert!(!self.dep_graph.is_fully_enabled());
         self.get_crate_data(did.krate).get_fn_arg_names(did.index)
-    }
-
-    fn inherent_implementations_for_type(&self, def_id: DefId) -> Vec<DefId>
-    {
-        self.dep_graph.read(DepNode::MetaData(def_id));
-        self.get_crate_data(def_id.krate).get_inherent_implementations_for_type(def_id.index)
     }
 
     fn implementations_of_trait(&self, filter: Option<DefId>) -> Vec<DefId>
