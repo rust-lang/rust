@@ -678,17 +678,13 @@ fn parse_attrs<F: FnMut(u64)>(sess: &Session, attrs: &[ast::Attribute], name: &'
         if attr.is_sugared_doc {
             continue;
         }
-        if let ast::MetaItemKind::NameValue(ref value) = attr.value.node {
-            if attr.name() == name {
-                if let LitKind::Str(ref s, _) = value.node {
-                    if let Ok(value) = FromStr::from_str(&*s.as_str()) {
-                        attr::mark_used(attr);
-                        f(value)
-                    } else {
-                        sess.span_err(value.span, "not a number");
-                    }
+        if let Some(ref value) = attr.value_str() {
+            if attr.name().map_or(false, |n| n == name) {
+                if let Ok(value) = FromStr::from_str(&*value.as_str()) {
+                    attr::mark_used(attr);
+                    f(value)
                 } else {
-                    unreachable!()
+                    sess.span_err(attr.span, "not a number");
                 }
             }
         }
