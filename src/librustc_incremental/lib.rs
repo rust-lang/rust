@@ -46,7 +46,6 @@ const ATTR_THEN_THIS_WOULD_NEED: &'static str = "rustc_then_this_would_need";
 mod assert_dep_graph;
 mod calculate_svh;
 mod persist;
-pub mod ich;
 
 pub use assert_dep_graph::assert_dep_graph;
 pub use calculate_svh::compute_incremental_hashes_map;
