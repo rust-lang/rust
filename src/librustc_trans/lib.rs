@@ -28,6 +28,7 @@
 #![feature(box_syntax)]
 #![feature(const_fn)]
 #![feature(custom_attribute)]
+#![cfg_attr(stage0, feature(field_init_shorthand))]
 #![allow(unused_attributes)]
 #![feature(i128_type)]
 #![feature(libc)]
@@ -112,7 +113,6 @@ mod cabi_x86;
 mod cabi_x86_64;
 mod cabi_x86_win64;
 mod callee;
-mod cleanup;
 mod collector;
 mod common;
 mod consts;

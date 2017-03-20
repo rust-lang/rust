@@ -26,8 +26,7 @@ use rustc::session::config::Input;
 use rustc_borrowck as borrowck;
 use rustc_borrowck::graphviz as borrowck_dot;
 
-use rustc_mir::pretty::write_mir_pretty;
-use rustc_mir::graphviz::write_mir_graphviz;
+use rustc_mir::util::{write_mir_pretty, write_mir_graphviz};
 
 use syntax::ast::{self, BlockCheckMode};
 use syntax::fold::{self, Folder};
