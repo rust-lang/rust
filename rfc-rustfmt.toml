@@ -1,4 +1,4 @@
 fn_args_layout = "Block"
 array_layout = "Block"
 where_style = "Rfc"
-generics_indent = "Tabbed"
+generics_indent = "Block"

@@ -98,3 +98,11 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
         }
     }
 }
+
+fn foo() {
+    lifetimes_iter___map(|lasdfasfd| {
+                             let hi = if l.bounds.is_empty() {
+                                 l.lifetime.span.hi
+                             };
+                         });
+}

@@ -15,7 +15,8 @@ use syntax::codemap::{self, CodeMap, BytePos};
 
 use {Indent, Shape};
 use comment::{FindUncommented, rewrite_comment, find_comment_end};
-use config::Config;
+use config::{Config, IndentStyle};
+use rewrite::RewriteContext;
 
 #[derive(Eq, PartialEq, Debug, Copy, Clone)]
 /// Formatting tactic for lists. This will be cast down to a
@@ -500,5 +501,83 @@ fn comment_len(comment: Option<&str>) -> usize {
             }
         }
         None => 0,
+    }
+}
+
+// Compute horizontal and vertical shapes for a struct-lit-like thing.
+pub fn struct_lit_shape(shape: Shape,
+                        context: &RewriteContext,
+                        prefix_width: usize,
+                        suffix_width: usize)
+                        -> Option<(Option<Shape>, Shape)> {
+    let v_shape = match context.config.struct_lit_style {
+        IndentStyle::Visual => {
+            try_opt!(try_opt!(shape.shrink_left(prefix_width)).sub_width(suffix_width))
+        }
+        IndentStyle::Block => {
+            let shape = shape.block_indent(context.config.tab_spaces);
+            Shape {
+                width: try_opt!(context.config.max_width.checked_sub(shape.indent.width())),
+                ..shape
+            }
+        }
+    };
+    let h_shape = shape.sub_width(prefix_width + suffix_width);
+    Some((h_shape, v_shape))
+}
+
+// Compute the tactic for the internals of a struct-lit-like thing.
+pub fn struct_lit_tactic(h_shape: Option<Shape>,
+                         context: &RewriteContext,
+                         items: &[ListItem])
+                         -> DefinitiveListTactic {
+    if let Some(h_shape) = h_shape {
+        let mut prelim_tactic = match (context.config.struct_lit_style, items.len()) {
+            (IndentStyle::Visual, 1) => ListTactic::HorizontalVertical,
+            _ => context.config.struct_lit_multiline_style.to_list_tactic(),
+        };
+
+        if prelim_tactic == ListTactic::HorizontalVertical && items.len() > 1 {
+            prelim_tactic = ListTactic::LimitedHorizontalVertical(context.config.struct_lit_width);
+        }
+
+        definitive_tactic(items, prelim_tactic, h_shape.width)
+    } else {
+        DefinitiveListTactic::Vertical
+    }
+}
+
+// Given a tactic and possible shapes for horizontal and vertical layout,
+// come up with the actual shape to use.
+pub fn shape_for_tactic(tactic: DefinitiveListTactic,
+                        h_shape: Option<Shape>,
+                        v_shape: Shape)
+                        -> Shape {
+    match tactic {
+        DefinitiveListTactic::Horizontal => h_shape.unwrap(),
+        _ => v_shape,
+    }
+}
+
+// Create a ListFormatting object for formatting the internals of a
+// struct-lit-like thing, that is a series of fields.
+pub fn struct_lit_formatting<'a>(shape: Shape,
+                                 tactic: DefinitiveListTactic,
+                                 context: &'a RewriteContext,
+                                 force_no_trailing_comma: bool)
+                                 -> ListFormatting<'a> {
+    let ends_with_newline = context.config.struct_lit_style != IndentStyle::Visual &&
+                            tactic == DefinitiveListTactic::Vertical;
+    ListFormatting {
+        tactic: tactic,
+        separator: ",",
+        trailing_separator: if force_no_trailing_comma {
+            SeparatorTactic::Never
+        } else {
+            context.config.trailing_comma
+        },
+        shape: shape,
+        ends_with_newline: ends_with_newline,
+        config: context.config,
     }
 }

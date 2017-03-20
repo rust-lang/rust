@@ -37,12 +37,11 @@ impl Rewrite for ast::Local {
                shape.width,
                shape.indent);
         let mut result = "let ".to_owned();
-        let pattern_offset = shape.indent + result.len();
-        // 1 = ;
-        let pattern_width = try_opt!(shape.width.checked_sub(pattern_offset.width() + 1));
 
-        let pat_str = try_opt!(self.pat.rewrite(&context,
-                                                Shape::legacy(pattern_width, pattern_offset)));
+        let pat_shape = try_opt!(shape.offset_left(result.len()));
+        // 1 = ;
+        let pat_shape = try_opt!(pat_shape.sub_width(1));
+        let pat_str = try_opt!(self.pat.rewrite(&context, pat_shape));
         result.push_str(&pat_str);
 
         // String that is placed within the assignment pattern and expression.
@@ -71,12 +70,13 @@ impl Rewrite for ast::Local {
 
         if let Some(ref ex) = self.init {
             // 1 = trailing semicolon;
-            let budget = try_opt!(shape.width.checked_sub(shape.indent.block_only().width() + 1));
+            //let budget = try_opt!(shape.width.checked_sub(shape.indent.block_only().width() + 1));
+            let nested_shape = try_opt!(shape.sub_width(1));
 
             result = try_opt!(rewrite_assign_rhs(&context,
                                                  result,
                                                  ex,
-                                                 Shape::legacy(budget, shape.indent.block_only())));
+                                                 nested_shape));
         }
 
         result.push(';');

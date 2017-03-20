@@ -10,9 +10,11 @@
 
 use Shape;
 use codemap::SpanUtils;
+use config::{IndentStyle, MultilineStyle};
 use rewrite::{Rewrite, RewriteContext};
 use utils::{wrap_str, format_mutability};
-use lists::{format_item_list, itemize_list, ListItem};
+use lists::{format_item_list, itemize_list, ListItem, struct_lit_shape, struct_lit_tactic,
+            shape_for_tactic, struct_lit_formatting, write_list};
 use expr::{rewrite_unary_prefix, rewrite_pair};
 use types::{rewrite_path, PathContext};
 use super::Spanned;
@@ -112,48 +114,7 @@ impl Rewrite for Pat {
                 wrap_str(result, context.config.max_width, shape)
             }
             PatKind::Struct(ref path, ref fields, elipses) => {
-                let path = try_opt!(rewrite_path(context, PathContext::Expr, None, path, shape));
-
-                let (elipses_str, terminator) = if elipses { (", ..", "..") } else { ("", "}") };
-
-                // 5 = `{` plus space before and after plus `}` plus space before.
-                let budget = try_opt!(shape.width.checked_sub(path.len() + 5 + elipses_str.len()));
-                // FIXME Using visual indenting, should use block or visual to match
-                // struct lit preference (however, in practice I think it is rare
-                // for struct patterns to be multi-line).
-                // 3 = `{` plus space before and after.
-                let offset = shape.indent + path.len() + 3;
-
-                let items =
-                    itemize_list(context.codemap,
-                                 fields.iter(),
-                                 terminator,
-                                 |f| f.span.lo,
-                                 |f| f.span.hi,
-                                 |f| f.node.rewrite(context, Shape::legacy(budget, offset)),
-                                 context.codemap.span_after(self.span, "{"),
-                                 self.span.hi);
-                let mut field_string = try_opt!(format_item_list(items,
-                                                                 Shape::legacy(budget, offset),
-                                                                 context.config));
-                if elipses {
-                    if field_string.contains('\n') {
-                        field_string.push_str(",\n");
-                        field_string.push_str(&offset.to_string(context.config));
-                        field_string.push_str("..");
-                    } else {
-                        if !field_string.is_empty() {
-                            field_string.push_str(", ");
-                        }
-                        field_string.push_str("..");
-                    }
-                }
-
-                if field_string.is_empty() {
-                    Some(format!("{} {{}}", path))
-                } else {
-                    Some(format!("{} {{ {} }}", path, field_string))
-                }
+                rewrite_struct_pat(path, fields, elipses, self.span, context, shape)
             }
             // FIXME(#819) format pattern macros.
             PatKind::Mac(..) => {
@@ -161,6 +122,72 @@ impl Rewrite for Pat {
             }
         }
     }
+}
+
+fn rewrite_struct_pat(path: &ast::Path,
+                      fields: &[codemap::Spanned<ast::FieldPat>],
+                      elipses: bool,
+                      span: Span,
+                      context: &RewriteContext,
+                      shape: Shape)
+                      -> Option<String> {
+    let path_shape = try_opt!(shape.sub_width(2));
+    let path_str = try_opt!(rewrite_path(context, PathContext::Expr, None, path, path_shape));
+
+    if fields.len() == 0 && !elipses {
+        return Some(format!("{} {{}}", path_str));
+    }
+
+    let (elipses_str, terminator) = if elipses { (", ..", "..") } else { ("", "}") };
+
+    // 3 = ` { `, 2 = ` }`.
+    let (h_shape, v_shape) =
+        try_opt!(struct_lit_shape(shape, context, path_str.len() + 3, elipses_str.len() + 2));
+
+    let items = itemize_list(context.codemap,
+                             fields.iter(),
+                             terminator,
+                             |f| f.span.lo,
+                             |f| f.span.hi,
+                             |f| f.node.rewrite(context, v_shape),
+                             context.codemap.span_after(span, "{"),
+                             span.hi);
+    let item_vec = items.collect::<Vec<_>>();
+
+    let tactic = struct_lit_tactic(h_shape, context, &item_vec);
+    let nested_shape = shape_for_tactic(tactic, h_shape, v_shape);
+    let fmt = struct_lit_formatting(nested_shape, tactic, context, false);
+
+    let mut fields_str = try_opt!(write_list(&item_vec, &fmt));
+
+    if elipses {
+        if fields_str.contains('\n') {
+            fields_str.push_str("\n");
+            fields_str.push_str(&nested_shape.indent.to_string(context.config));
+            fields_str.push_str("..");
+        } else {
+            if !fields_str.is_empty() {
+                fields_str.push_str(", ");
+            }
+            fields_str.push_str("..");
+        }
+    }
+
+
+    let fields_str = if context.config.struct_lit_style == IndentStyle::Block &&
+                        (fields_str.contains('\n') ||
+                         context.config.struct_lit_multiline_style == MultilineStyle::ForceMulti ||
+                         fields_str.len() > h_shape.map(|s| s.width).unwrap_or(0)) {
+        format!("\n{}{}\n{}",
+                v_shape.indent.to_string(context.config),
+                fields_str,
+                shape.indent.to_string(context.config))
+    } else {
+        // One liner or visual indent.
+        format!(" {} ", fields_str)
+    };
+
+    Some(format!("{} {{{}}}", path_str, fields_str))
 }
 
 impl Rewrite for FieldPat {
@@ -175,7 +202,6 @@ impl Rewrite for FieldPat {
         }
     }
 }
-
 
 enum TuplePatField<'a> {
     Pat(&'a ptr::P<ast::Pat>),

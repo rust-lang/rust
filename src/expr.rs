@@ -19,7 +19,8 @@ use {Indent, Shape, Spanned};
 use codemap::SpanUtils;
 use rewrite::{Rewrite, RewriteContext};
 use lists::{write_list, itemize_list, ListFormatting, SeparatorTactic, ListTactic,
-            DefinitiveListTactic, definitive_tactic, ListItem, format_item_list};
+            DefinitiveListTactic, definitive_tactic, ListItem, format_item_list,
+            struct_lit_shape, struct_lit_tactic, shape_for_tactic, struct_lit_formatting};
 use string::{StringFormat, rewrite_string};
 use utils::{extra_offset, last_line_width, wrap_str, binary_search, first_line_width,
             semicolon_for_stmt, trimmed_last_line_width, left_most_sub_expr, stmt_expr};
@@ -658,8 +659,7 @@ impl Rewrite for ast::Stmt {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         let result = match self.node {
             ast::StmtKind::Local(ref local) => {
-                local.rewrite(context,
-                              Shape::legacy(context.config.max_width, shape.indent))
+                local.rewrite(context, shape)
             }
             ast::StmtKind::Expr(ref ex) |
             ast::StmtKind::Semi(ref ex) => {
@@ -893,7 +893,6 @@ impl<'a> Rewrite for ControlFlow<'a> {
             block_width
         };
 
-        // TODO this .block() - not what we want if we are actually visually indented
         let block_shape = Shape { width: block_width, ..shape };
         let block_str = try_opt!(self.block.rewrite(context, block_shape));
 
@@ -1120,8 +1119,9 @@ fn rewrite_match(context: &RewriteContext,
     }
 
     // `match `cond` {`
-    let cond_budget = try_opt!(shape.width.checked_sub(8));
-    let cond_str = try_opt!(cond.rewrite(context, Shape::legacy(cond_budget, shape.indent + 6)));
+    let cond_shape = try_opt!(shape.shrink_left(6));
+    let cond_shape = try_opt!(cond_shape.sub_width(2));
+    let cond_str = try_opt!(cond.rewrite(context, cond_shape));
     let alt_block_sep = String::from("\n") + &shape.indent.block_only().to_string(context.config);
     let block_sep = match context.config.control_brace_style {
         ControlBraceStyle::AlwaysSameLine => " ",
@@ -1563,7 +1563,11 @@ fn rewrite_call_inner<R>(context: &RewriteContext,
     let callee = callee.borrow();
     // FIXME using byte lens instead of char lens (and probably all over the
     // place too)
-    let callee_str = match callee.rewrite(context, Shape { width: max_callee_width, ..shape }) {
+    let callee_str = match callee.rewrite(context,
+                                          Shape {
+                                              width: max_callee_width,
+                                              ..shape
+                                          }) {
         Some(string) => {
             if !string.contains('\n') && string.len() > max_callee_width {
                 panic!("{:?} {}", string, max_callee_width);
@@ -1731,115 +1735,71 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
     let path_shape = try_opt!(shape.sub_width(2));
     let path_str = try_opt!(rewrite_path(context, PathContext::Expr, None, path, path_shape));
 
-    // Foo { a: Foo } - indent is +3, width is -5.
-    let h_shape = shape.sub_width(path_str.len() + 5);
-    let v_shape = match context.config.struct_lit_style {
-        IndentStyle::Visual => {
-            try_opt!(try_opt!(shape.shrink_left(path_str.len() + 3)).sub_width(2))
-        }
-        IndentStyle::Block => {
-            let shape = shape.block_indent(context.config.tab_spaces);
-            Shape {
-                width: try_opt!(context.config.max_width.checked_sub(shape.indent.width())),
-                ..shape
-            }
-        }
-    };
+    if fields.len() == 0 && base.is_none() {
+        return Some(format!("{} {{}}", path_str));
+    }
 
     let field_iter = fields.into_iter()
         .map(StructLitField::Regular)
         .chain(base.into_iter().map(StructLitField::Base));
 
+    // Foo { a: Foo } - indent is +3, width is -5.
+    let (h_shape, v_shape) = try_opt!(struct_lit_shape(shape, context, path_str.len() + 3, 2));
+
+    let span_lo = |item: &StructLitField| match *item {
+        StructLitField::Regular(field) => field.span.lo,
+        StructLitField::Base(expr) => {
+            let last_field_hi = fields.last().map_or(span.lo, |field| field.span.hi);
+            let snippet = context.snippet(mk_sp(last_field_hi, expr.span.lo));
+            let pos = snippet.find_uncommented("..").unwrap();
+            last_field_hi + BytePos(pos as u32)
+        }
+    };
+    let span_hi = |item: &StructLitField| match *item {
+        StructLitField::Regular(field) => field.span.hi,
+        StructLitField::Base(expr) => expr.span.hi,
+    };
+    let rewrite = |item: &StructLitField| match *item {
+        StructLitField::Regular(field) => {
+            // The 1 taken from the v_budget is for the comma.
+            rewrite_field(context, field, try_opt!(v_shape.sub_width(1)))
+        }
+        StructLitField::Base(expr) => {
+            // 2 = ..
+            expr.rewrite(context, try_opt!(v_shape.shrink_left(2))).map(|s| format!("..{}", s))
+        }
+    };
+
     let items = itemize_list(context.codemap,
                              field_iter,
                              "}",
-                             |item| match *item {
-                                 StructLitField::Regular(field) => field.span.lo,
-                                 StructLitField::Base(expr) => {
-        let last_field_hi = fields.last().map_or(span.lo, |field| field.span.hi);
-        let snippet = context.snippet(mk_sp(last_field_hi, expr.span.lo));
-        let pos = snippet.find_uncommented("..").unwrap();
-        last_field_hi + BytePos(pos as u32)
-    }
-                             },
-                             |item| match *item {
-                                 StructLitField::Regular(field) => field.span.hi,
-                                 StructLitField::Base(expr) => expr.span.hi,
-                             },
-                             |item| {
-        match *item {
-            StructLitField::Regular(field) => {
-                // The 1 taken from the v_budget is for the comma.
-                rewrite_field(context, field, try_opt!(v_shape.sub_width(1)))
-            }
-            StructLitField::Base(expr) => {
-                // 2 = ..
-                expr.rewrite(context, try_opt!(v_shape.shrink_left(2))).map(|s| format!("..{}", s))
-            }
-        }
-    },
+                             span_lo,
+                             span_hi,
+                             rewrite,
                              context.codemap.span_after(span, "{"),
                              span.hi);
     let item_vec = items.collect::<Vec<_>>();
 
-    let tactic = if let Some(h_shape) = h_shape {
-        let mut prelim_tactic = match (context.config.struct_lit_style, fields.len()) {
-            (IndentStyle::Visual, 1) => ListTactic::HorizontalVertical,
-            _ => context.config.struct_lit_multiline_style.to_list_tactic(),
-        };
+    let tactic = struct_lit_tactic(h_shape, context, &item_vec);
+    let nested_shape = shape_for_tactic(tactic, h_shape, v_shape);
+    let fmt = struct_lit_formatting(nested_shape, tactic, context, base.is_some());
 
-        if prelim_tactic == ListTactic::HorizontalVertical && fields.len() > 1 {
-            prelim_tactic = ListTactic::LimitedHorizontalVertical(context.config.struct_lit_width);
-        }
-
-        definitive_tactic(&item_vec, prelim_tactic, h_shape.width)
-    } else {
-        DefinitiveListTactic::Vertical
-    };
-
-    let nested_shape = match tactic {
-        DefinitiveListTactic::Horizontal => h_shape.unwrap(),
-        _ => v_shape,
-    };
-
-    let ends_with_newline = context.config.struct_lit_style != IndentStyle::Visual &&
-                            tactic == DefinitiveListTactic::Vertical;
-
-    let fmt = ListFormatting {
-        tactic: tactic,
-        separator: ",",
-        trailing_separator: if base.is_some() {
-            SeparatorTactic::Never
-        } else {
-            context.config.trailing_comma
-        },
-        shape: nested_shape,
-        ends_with_newline: ends_with_newline,
-        config: context.config,
-    };
     let fields_str = try_opt!(write_list(&item_vec, &fmt));
+    let fields_str = if context.config.struct_lit_style == IndentStyle::Block &&
+                        (fields_str.contains('\n') ||
+                         context.config.struct_lit_multiline_style == MultilineStyle::ForceMulti ||
+                         fields_str.len() > h_shape.map(|s| s.width).unwrap_or(0)) {
+        format!("\n{}{}\n{}",
+                v_shape.indent.to_string(context.config),
+                fields_str,
+                shape.indent.to_string(context.config))
+    } else {
+        // One liner or visual indent.
+        format!(" {} ", fields_str)
+    };
 
-    // Empty struct.
-    if fields_str.is_empty() {
-        return Some(format!("{} {{}}", path_str));
-    }
+    Some(format!("{} {{{}}}", path_str, fields_str))
 
-    // One liner or visual indent.
-    if context.config.struct_lit_style == IndentStyle::Visual ||
-       (context.config.struct_lit_multiline_style != MultilineStyle::ForceMulti &&
-        !fields_str.contains('\n') &&
-        fields_str.len() <= h_shape.map(|s| s.width).unwrap_or(0)) {
-        return Some(format!("{} {{ {} }}", path_str, fields_str));
-    }
-
-    // Multiple lines.
-    let inner_indent = v_shape.indent.to_string(context.config);
-    let outer_indent = shape.indent.to_string(context.config);
-    Some(format!("{} {{\n{}{}\n{}}}",
-                 path_str,
-                 inner_indent,
-                 fields_str,
-                 outer_indent))
     // FIXME if context.config.struct_lit_style == Visual, but we run out
     // of space, we should fall back to BlockIndent.
 }
@@ -1996,7 +1956,7 @@ pub fn rewrite_assign_rhs<S: Into<String>>(context: &RewriteContext,
     let max_width = try_opt!(shape.width.checked_sub(last_line_width + 1));
     let rhs = ex.rewrite(context,
                          Shape::offset(max_width,
-                                       shape.indent.block_only(),
+                                       shape.indent,
                                        shape.indent.alignment + last_line_width + 1));
 
     fn count_line_breaks(src: &str) -> usize {

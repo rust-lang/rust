@@ -330,6 +330,14 @@ impl Shape {
              })
     }
 
+    pub fn offset_left(&self, width: usize) -> Option<Shape> {
+        Some(Shape {
+                 width: try_opt!(self.width.checked_sub(width)),
+                 indent: self.indent,
+                 offset: self.offset + width,
+             })
+    }
+
     pub fn used_width(&self) -> usize {
         self.indent.block_indent + self.offset
     }

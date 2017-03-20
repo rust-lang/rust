@@ -320,7 +320,7 @@ create_config! {
     tab_spaces: usize, 4, "Number of spaces per tab";
     fn_call_width: usize, 60,
         "Maximum width of the args of a function call before falling back to vertical formatting";
-    struct_lit_width: usize, 16,
+    struct_lit_width: usize, 18,
         "Maximum width in the body of a struct lit before falling back to vertical formatting";
     struct_variant_width: usize, 35,
         "Maximum width in the body of a struct variant before falling back to vertical formatting";
@@ -380,7 +380,7 @@ create_config! {
     wrap_match_arms: bool, true, "Wrap multiline match arms in blocks";
     match_block_trailing_comma: bool, false,
         "Put a trailing comma after a block based match arm (non-block arms are not affected)";
-    closure_block_indent_threshold: isize, 5, "How many lines a closure must have before it is \
+    closure_block_indent_threshold: isize, 7, "How many lines a closure must have before it is \
                                                block indented. -1 means never use block indent.";
     space_before_type_annotation: bool, false,
         "Leave a space before the colon in a type annotation";
