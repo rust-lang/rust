@@ -1045,6 +1045,7 @@ impl<'a> Formatter<'a> {
             // is zero
             Some(min) if self.sign_aware_zero_pad() => {
                 self.fill = '0';
+                self.align = rt::v1::Alignment::Right;
                 write_prefix(self)?;
                 self.with_padding(min - width, rt::v1::Alignment::Right, |f| {
                     f.buf.write_str(buf)
@@ -1153,8 +1154,9 @@ impl<'a> Formatter<'a> {
             // for the sign-aware zero padding, we render the sign first and
             // behave as if we had no sign from the beginning.
             let mut formatted = formatted.clone();
-            let mut align = self.align;
             let old_fill = self.fill;
+            let old_align = self.align;
+            let mut align = old_align;
             if self.sign_aware_zero_pad() {
                 // a sign always goes first
                 let sign = unsafe { str::from_utf8_unchecked(formatted.sign) };
@@ -1165,6 +1167,7 @@ impl<'a> Formatter<'a> {
                 width = if width < sign.len() { 0 } else { width - sign.len() };
                 align = rt::v1::Alignment::Right;
                 self.fill = '0';
+                self.align = rt::v1::Alignment::Right;
             }
 
             // remaining parts go through the ordinary padding process.
@@ -1177,6 +1180,7 @@ impl<'a> Formatter<'a> {
                 })
             };
             self.fill = old_fill;
+            self.align = old_align;
             ret
         } else {
             // this is the common case and we take a shortcut
