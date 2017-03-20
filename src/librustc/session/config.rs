@@ -636,6 +636,8 @@ macro_rules! options {
             Some("either `panic` or `abort`");
         pub const parse_sanitizer: Option<&'static str> =
             Some("one of: `address`, `leak`, `memory` or `thread`");
+        pub const parse_optimization_fuel: Option<&'static str> =
+            Some("crate=integer");
     }
 
     #[allow(dead_code)]
@@ -771,6 +773,21 @@ macro_rules! options {
                 _ => return false,
             }
             true
+        }
+
+        fn parse_optimization_fuel(slot: &mut Option<(String, u64)>, v: Option<&str>) -> bool {
+            match v {
+                None => false,
+                Some(s) => {
+                    let parts = s.split('=').collect::<Vec<_>>();
+                    if parts.len() != 2 { return false; }
+                    let crate_name = parts[0].to_string();
+                    let fuel = parts[1].parse::<u64>();
+                    if fuel.is_err() { return false; }
+                    *slot = Some((crate_name, fuel.unwrap()));
+                    true
+                }
+            }
         }
     }
 ) }
@@ -974,6 +991,10 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "pass `-install_name @rpath/...` to the macOS linker"),
     sanitizer: Option<Sanitizer> = (None, parse_sanitizer, [TRACKED],
                                    "Use a sanitizer"),
+    fuel: Option<(String, u64)> = (None, parse_optimization_fuel, [TRACKED],
+        "Set the optimization fuel quota for a crate."),
+    print_fuel: Option<String> = (None, parse_opt_string, [TRACKED],
+        "Make Rustc print the total optimization fuel used by a crate."),
 }
 
 pub fn default_lib_output() -> CrateType {
@@ -1766,11 +1787,13 @@ mod dep_tracking {
 
     impl_dep_tracking_hash_via_hash!(bool);
     impl_dep_tracking_hash_via_hash!(usize);
+    impl_dep_tracking_hash_via_hash!(u64);
     impl_dep_tracking_hash_via_hash!(String);
     impl_dep_tracking_hash_via_hash!(lint::Level);
     impl_dep_tracking_hash_via_hash!(Option<bool>);
     impl_dep_tracking_hash_via_hash!(Option<usize>);
     impl_dep_tracking_hash_via_hash!(Option<String>);
+    impl_dep_tracking_hash_via_hash!(Option<(String, u64)>);
     impl_dep_tracking_hash_via_hash!(Option<PanicStrategy>);
     impl_dep_tracking_hash_via_hash!(Option<lint::Level>);
     impl_dep_tracking_hash_via_hash!(Option<PathBuf>);
@@ -1792,6 +1815,7 @@ mod dep_tracking {
     impl_dep_tracking_hash_for_sortable_vec_of!((String, lint::Level));
     impl_dep_tracking_hash_for_sortable_vec_of!((String, Option<String>,
                                                  Option<cstore::NativeLibraryKind>));
+    impl_dep_tracking_hash_for_sortable_vec_of!((String, u64));
     impl DepTrackingHash for SearchPaths {
         fn hash(&self, hasher: &mut DefaultHasher, _: ErrorOutputType) {
             let mut elems: Vec<_> = self

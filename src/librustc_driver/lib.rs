@@ -514,6 +514,14 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
             control.make_glob_map = resolve::MakeGlobMap::Yes;
         }
 
+        if sess.print_fuel_crate.is_some() {
+            control.compilation_done.callback = box |state| {
+                let sess = state.session;
+                println!("Fuel used by {}: {}",
+                    sess.print_fuel_crate.as_ref().unwrap(),
+                    sess.print_fuel.get());
+            }
+        }
         control
     }
 }
