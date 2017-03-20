@@ -405,7 +405,7 @@ impl<T: ?Sized> *const T {
     }
 
     /// Calculates the offset from a pointer. `count` is in units of T; e.g. a
-    /// `count` of 3 represents a pointer offset of `3 * sizeof::<T>()` bytes.
+    /// `count` of 3 represents a pointer offset of `3 * size_of::<T>()` bytes.
     ///
     /// # Safety
     ///
@@ -435,7 +435,7 @@ impl<T: ?Sized> *const T {
 
     /// Calculates the offset from a pointer using wrapping arithmetic.
     /// `count` is in units of T; e.g. a `count` of 3 represents a pointer
-    /// offset of `3 * sizeof::<T>()` bytes.
+    /// offset of `3 * size_of::<T>()` bytes.
     ///
     /// # Safety
     ///
@@ -529,7 +529,7 @@ impl<T: ?Sized> *mut T {
     }
 
     /// Calculates the offset from a pointer. `count` is in units of T; e.g. a
-    /// `count` of 3 represents a pointer offset of `3 * sizeof::<T>()` bytes.
+    /// `count` of 3 represents a pointer offset of `3 * size_of::<T>()` bytes.
     ///
     /// # Safety
     ///
@@ -558,7 +558,7 @@ impl<T: ?Sized> *mut T {
 
     /// Calculates the offset from a pointer using wrapping arithmetic.
     /// `count` is in units of T; e.g. a `count` of 3 represents a pointer
-    /// offset of `3 * sizeof::<T>()` bytes.
+    /// offset of `3 * size_of::<T>()` bytes.
     ///
     /// # Safety
     ///
