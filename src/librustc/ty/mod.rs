@@ -31,7 +31,7 @@ use ty::subst::{Subst, Substs};
 use ty::util::IntTypeExt;
 use ty::walk::TypeWalker;
 use util::common::MemoizationMap;
-use util::nodemap::{NodeSet, FxHashMap};
+use util::nodemap::{NodeSet, DefIdMap, FxHashMap};
 
 use serialize::{self, Encodable, Encoder};
 use std::borrow::Cow;
@@ -2345,34 +2345,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         def.flags.get().intersects(TraitFlags::HAS_DEFAULT_IMPL)
     }
 
-    /// Populates the type context with all the inherent implementations for
-    /// the given type if necessary.
-    pub fn populate_inherent_implementations_for_type_if_necessary(self,
-                                                                   span: Span,
-                                                                   type_id: DefId) {
-        if type_id.is_local() {
-            // Make sure coherence of inherent impls ran already.
-            ty::queries::coherent_inherent_impls::force(self, span, LOCAL_CRATE);
-            return
-        }
-
-        // The type is not local, hence we are reading this out of
-        // metadata and don't need to track edges.
-        let _ignore = self.dep_graph.in_ignore();
-
-        if self.populated_external_types.borrow().contains(&type_id) {
-            return
-        }
-
-        debug!("populate_inherent_implementations_for_type_if_necessary: searching for {:?}",
-               type_id);
-
-        let inherent_impls = self.sess.cstore.inherent_implementations_for_type(type_id);
-
-        self.maps.inherent_impls.borrow_mut().insert(type_id, inherent_impls);
-        self.populated_external_types.borrow_mut().insert(type_id);
-    }
-
     /// Populates the type context with all the implementations for the given
     /// trait if necessary.
     pub fn populate_implementations_for_trait_if_necessary(self, trait_id: DefId) {
@@ -2637,3 +2609,16 @@ pub fn provide(providers: &mut ty::maps::Providers) {
         ..*providers
     };
 }
+
+
+/// A map for the local crate mapping each type to a vector of its
+/// inherent impls. This is not meant to be used outside of coherence;
+/// rather, you should request the vector for a specific type via
+/// `ty::queries::inherent_impls::get(def_id)` so as to minimize your
+/// dependencies (constructing this map requires touching the entire
+/// crate).
+#[derive(Clone, Debug)]
+pub struct CrateInherentImpls {
+    pub inherent_impls: DefIdMap<Rc<Vec<DefId>>>,
+}
+

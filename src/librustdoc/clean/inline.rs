@@ -232,14 +232,12 @@ fn build_type_alias(cx: &DocContext, did: DefId) -> clean::Typedef {
 
 pub fn build_impls(cx: &DocContext, did: DefId) -> Vec<clean::Item> {
     let tcx = cx.tcx;
-    tcx.populate_inherent_implementations_for_type_if_necessary(DUMMY_SP, did);
     let mut impls = Vec::new();
 
-    if let Some(i) = tcx.maps.inherent_impls.borrow().get(&did) {
-        for &did in i.iter() {
-            build_impl(cx, did, &mut impls);
-        }
+    for &did in ty::queries::inherent_impls::get(tcx, DUMMY_SP, did).iter() {
+        build_impl(cx, did, &mut impls);
     }
+
     // If this is the first time we've inlined something from another crate, then
     // we inline *all* impls from all the crates into this crate. Note that there's
     // currently no way for us to filter this based on type, and we likely need

@@ -12,7 +12,7 @@ use dep_graph::{DepGraph, DepNode, DepTrackingMap, DepTrackingMapConfig};
 use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use middle::const_val::ConstVal;
 use mir;
-use ty::{self, Ty, TyCtxt};
+use ty::{self, CrateInherentImpls, Ty, TyCtxt};
 
 use rustc_data_structures::indexed_vec::IndexVec;
 use std::cell::{RefCell, RefMut};
@@ -176,9 +176,15 @@ impl<'tcx> QueryDescription for queries::coherent_trait<'tcx> {
     }
 }
 
-impl<'tcx> QueryDescription for queries::coherent_inherent_impls<'tcx> {
+impl<'tcx> QueryDescription for queries::crate_inherent_impls<'tcx> {
+    fn describe(_: TyCtxt, k: CrateNum) -> String {
+        format!("all inherent impls defined in crate `{:?}`", k)
+    }
+}
+
+impl<'tcx> QueryDescription for queries::crate_inherent_impls_overlap_check<'tcx> {
     fn describe(_: TyCtxt, _: CrateNum) -> String {
-        format!("coherence checking all inherent impls")
+        format!("check for overlap between inherent impls defined in this crate")
     }
 }
 
@@ -368,7 +374,7 @@ define_maps! { <'tcx>
     /// Maps a DefId of a type to a list of its inherent impls.
     /// Contains implementations of methods that are inherent to a type.
     /// Methods in these implementations don't need to be exported.
-    pub inherent_impls: InherentImpls(DefId) -> Vec<DefId>,
+    pub inherent_impls: InherentImpls(DefId) -> Rc<Vec<DefId>>,
 
     /// Maps from the def-id of a function/method or const/static
     /// to its MIR. Mutation is done at an item granularity to
@@ -400,7 +406,15 @@ define_maps! { <'tcx>
 
     pub coherent_trait: coherent_trait_dep_node((CrateNum, DefId)) -> (),
 
-    pub coherent_inherent_impls: coherent_inherent_impls_dep_node(CrateNum) -> (),
+    /// Gets a complete map from all types to their inherent impls.
+    /// Not meant to be used directly outside of coherence.
+    /// (Defined only for LOCAL_CRATE)
+    pub crate_inherent_impls: crate_inherent_impls_dep_node(CrateNum) -> CrateInherentImpls,
+
+    /// Checks all types in the krate for overlap in their inherent impls. Reports errors.
+    /// Not meant to be used directly outside of coherence.
+    /// (Defined only for LOCAL_CRATE)
+    pub crate_inherent_impls_overlap_check: crate_inherent_impls_dep_node(CrateNum) -> (),
 
     /// Results of evaluating monomorphic constants embedded in
     /// other items, such as enum variant explicit discriminants.
@@ -413,7 +427,7 @@ fn coherent_trait_dep_node((_, def_id): (CrateNum, DefId)) -> DepNode<DefId> {
     DepNode::CoherenceCheckTrait(def_id)
 }
 
-fn coherent_inherent_impls_dep_node(_: CrateNum) -> DepNode<DefId> {
+fn crate_inherent_impls_dep_node(_: CrateNum) -> DepNode<DefId> {
     DepNode::Coherence
 }
 
