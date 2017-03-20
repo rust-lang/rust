@@ -33,13 +33,13 @@ enum e3 {
 
 struct ReorderedStruct {
     a: u8,
-    b: u64,
+    b: u16,
     c: u8
 }
 
 enum ReorderedEnum {
-    A(u8, u64, u8),
-    B(u8, u64, u8),
+    A(u8, u16, u8),
+    B(u8, u16, u8),
 }
 
 pub fn main() {
@@ -65,6 +65,6 @@ pub fn main() {
     assert_eq!(size_of::<e1>(), 8 as usize);
     assert_eq!(size_of::<e2>(), 8 as usize);
     assert_eq!(size_of::<e3>(), 4 as usize);
-    assert_eq!(size_of::<ReorderedStruct>(), 16);
-    assert_eq!(size_of::<ReorderedEnum>(), 16);
+    assert_eq!(size_of::<ReorderedStruct>(), 4);
+    assert_eq!(size_of::<ReorderedEnum>(), 6);
 }
