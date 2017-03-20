@@ -162,6 +162,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         match error {
             MethodError::NoMatch(NoMatchData { static_candidates: static_sources,
+                                               lev_candidates,
                                                unsatisfied_predicates,
                                                out_of_scope_traits,
                                                mode,
@@ -282,6 +283,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                               item_name,
                                               rcvr_expr,
                                               out_of_scope_traits);
+
+                if !lev_candidates.is_empty() {
+                    for meth in lev_candidates.iter().take(5) {
+                        err.help(&format!("did you mean `{}`?", meth.name));
+                    }
+                }
                 err.emit();
             }
 
