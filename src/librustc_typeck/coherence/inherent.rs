@@ -19,6 +19,13 @@ use rustc::ty::{self, TyCtxt};
 use syntax::ast;
 use syntax_pos::Span;
 
+pub fn check<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
+    tcx.visit_all_item_likes_in_krate(DepNode::CoherenceCheckImpl,
+                                      &mut InherentCollect { tcx });
+    tcx.visit_all_item_likes_in_krate(DepNode::CoherenceOverlapCheckSpecial,
+                                      &mut InherentOverlapChecker { tcx });
+}
+
 struct InherentCollect<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>
 }
@@ -348,9 +355,3 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for InherentOverlapChecker<'a, 'tcx> {
     }
 }
 
-pub fn check<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    tcx.visit_all_item_likes_in_krate(DepNode::CoherenceCheckImpl,
-                                      &mut InherentCollect { tcx });
-    tcx.visit_all_item_likes_in_krate(DepNode::CoherenceOverlapCheckSpecial,
-                                      &mut InherentOverlapChecker { tcx });
-}
