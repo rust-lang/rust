@@ -33,9 +33,9 @@ fn main() {
 In today's Rust, you can write function signatures like:
 
 ````rust,ignore
-fn consume_iter_static<I: Iterator<u8>>(iter: I) { }
+fn consume_iter_static<I: Iterator<Item=u8>>(iter: I) { }
 
-fn consume_iter_dynamic(iter: Box<Iterator<u8>>) { }
+fn consume_iter_dynamic(iter: Box<Iterator<Item=u8>>) { }
 ````
 
 In both cases, the function does not depend on the exact type of the argument.
@@ -50,13 +50,13 @@ The type held is "abstract", and is assumed only to satisfy a trait bound.
 On the other hand, while you can write:
 
 ````rust,ignore
-fn produce_iter_dynamic() -> Box<Iterator<u8>> { }
+fn produce_iter_dynamic() -> Box<Iterator<Item=u8>> { }
 ````
 
 ...but you _cannot_ write something like:
 
 ````rust,ignore
-fn produce_iter_static() -> Iterator<u8> { }
+fn produce_iter_static() -> Iterator<Item=u8> { }
 ````
 
 That is, in today's Rust, abstract return types can only be written using trait
