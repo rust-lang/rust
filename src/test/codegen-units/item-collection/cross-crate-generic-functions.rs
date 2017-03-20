@@ -30,5 +30,3 @@ fn main()
     // This should not introduce a codegen item
     let _ = cgu_generic_function::exported_but_not_generic(3);
 }
-
-//~ TRANS_ITEM drop-glue i8

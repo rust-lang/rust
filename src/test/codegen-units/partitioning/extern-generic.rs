@@ -60,5 +60,3 @@ mod mod3 {
 // once for the current crate
 //~ TRANS_ITEM fn cgu_generic_function::foo[0]<&str> @@ cgu_generic_function.volatile[External]
 //~ TRANS_ITEM fn cgu_generic_function::bar[0]<&str> @@ cgu_generic_function.volatile[External]
-
-//~ TRANS_ITEM drop-glue i8

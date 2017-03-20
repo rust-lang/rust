@@ -1,4 +1,4 @@
-// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,11 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(rustc_private)]
+#![crate_name="foo"]
 
-#[macro_use] extern crate log;
+use std::mem::size_of;
 
-pub fn foo<T>() {
-    fn death() -> isize { panic!() }
-    debug!("{}", (||{ death() })());
+// compile-flags: -Z fuel=foo=1
+
+struct S1(u8, u16, u8);
+struct S2(u8, u16, u8);
+
+fn main() {
+    let optimized = (size_of::<S1>() == 4) as usize
+        +(size_of::<S2>() == 4) as usize;
+    assert_eq!(optimized, 1);
 }
+
+

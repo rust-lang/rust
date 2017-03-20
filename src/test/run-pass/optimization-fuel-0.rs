@@ -1,4 +1,4 @@
-// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,17 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags:-C debug-assertions=no
-// exec-env:RUST_LOG=logging-enabled-debug=debug
+#![crate_name="foo"]
 
+use std::mem::size_of;
 
-#![feature(rustc_private)]
+// compile-flags: -Z fuel=foo=0
 
-#[macro_use]
-extern crate log;
+struct S1(u8, u16, u8);
+struct S2(u8, u16, u8);
 
-pub fn main() {
-    if log_enabled!(log::DEBUG) {
-        panic!("what?! debugging?");
-    }
+fn main() {
+    assert_eq!(size_of::<S1>(), 6);
+    assert_eq!(size_of::<S2>(), 6);
 }
+

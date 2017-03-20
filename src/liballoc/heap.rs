@@ -23,6 +23,7 @@ use core::intrinsics::{min_align_of_val, size_of_val};
 extern "C" {
     #[allocator]
     fn __rust_allocate(size: usize, align: usize) -> *mut u8;
+    fn __rust_allocate_zeroed(size: usize, align: usize) -> *mut u8;
     fn __rust_deallocate(ptr: *mut u8, old_size: usize, align: usize);
     fn __rust_reallocate(ptr: *mut u8, old_size: usize, size: usize, align: usize) -> *mut u8;
     fn __rust_reallocate_inplace(ptr: *mut u8,
@@ -57,6 +58,20 @@ fn check_size_and_alignment(size: usize, align: usize) {
 pub unsafe fn allocate(size: usize, align: usize) -> *mut u8 {
     check_size_and_alignment(size, align);
     __rust_allocate(size, align)
+}
+
+/// Return a pointer to `size` bytes of memory aligned to `align` and
+/// initialized to zeroes.
+///
+/// On failure, return a null pointer.
+///
+/// Behavior is undefined if the requested size is 0 or the alignment is not a
+/// power of 2. The alignment must be no larger than the largest supported page
+/// size on the platform.
+#[inline]
+pub unsafe fn allocate_zeroed(size: usize, align: usize) -> *mut u8 {
+    check_size_and_alignment(size, align);
+    __rust_allocate_zeroed(size, align)
 }
 
 /// Resize the allocation referenced by `ptr` to `size` bytes.
@@ -161,6 +176,23 @@ mod tests {
     use self::test::Bencher;
     use boxed::Box;
     use heap;
+
+    #[test]
+    fn allocate_zeroed() {
+        unsafe {
+            let size = 1024;
+            let mut ptr = heap::allocate_zeroed(size, 1);
+            if ptr.is_null() {
+                ::oom()
+            }
+            let end = ptr.offset(size as isize);
+            while ptr < end {
+                assert_eq!(*ptr, 0);
+                ptr = ptr.offset(1);
+            }
+            heap::deallocate(ptr, size, 1);
+        }
+    }
 
     #[test]
     fn basic_reallocate_inplace_noop() {

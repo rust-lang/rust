@@ -34,30 +34,24 @@ use back::linker::LinkerInfo;
 use back::symbol_export::{self, ExportedSymbols};
 use llvm::{Linkage, ValueRef, Vector, get_param};
 use llvm;
-use rustc::hir::def_id::{DefId, LOCAL_CRATE};
+use rustc::hir::def_id::LOCAL_CRATE;
 use middle::lang_items::StartFnLangItem;
-use rustc::ty::subst::Substs;
-use rustc::mir::tcx::LvalueTy;
-use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::adjustment::CustomCoerceUnsized;
 use rustc::dep_graph::{AssertDepGraphSafe, DepNode, WorkProduct};
 use rustc::hir::map as hir_map;
 use rustc::util::common::time;
 use session::config::{self, NoDebugInfo};
 use rustc_incremental::IncrementalHashesMap;
 use session::{self, DataTypeKind, Session};
-use abi::{self, FnType};
+use abi;
 use mir::lvalue::LvalueRef;
-use adt;
 use attributes;
 use builder::Builder;
-use callee::{Callee};
+use callee;
 use common::{C_bool, C_bytes_in_context, C_i32, C_uint};
 use collector::{self, TransItemCollectionMode};
 use common::{C_struct_in_context, C_u64, C_undef};
 use common::CrateContext;
-use common::{fulfill_obligation};
 use common::{type_is_zero_size, val_ty};
 use common;
 use consts;
@@ -65,7 +59,7 @@ use context::{SharedCrateContext, CrateContextList};
 use debuginfo;
 use declare;
 use machine;
-use machine::{llalign_of_min, llsize_of};
+use machine::llsize_of;
 use meth;
 use mir;
 use monomorphize::{self, Instance};
@@ -76,7 +70,6 @@ use trans_item::{TransItem, DefPathBasedNames};
 use type_::Type;
 use type_of;
 use value::Value;
-use Disr;
 use util::nodemap::{NodeSet, FxHashMap, FxHashSet};
 
 use libc::c_uint;
@@ -84,7 +77,7 @@ use std::ffi::{CStr, CString};
 use std::rc::Rc;
 use std::str;
 use std::i32;
-use syntax_pos::{Span, DUMMY_SP};
+use syntax_pos::Span;
 use syntax::attr;
 use rustc::hir;
 use rustc::ty::layout::{self, Layout};
@@ -317,25 +310,6 @@ pub fn coerce_unsized_into<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
     }
 }
 
-pub fn custom_coerce_unsize_info<'scx, 'tcx>(scx: &SharedCrateContext<'scx, 'tcx>,
-                                             source_ty: Ty<'tcx>,
-                                             target_ty: Ty<'tcx>)
-                                             -> CustomCoerceUnsized {
-    let trait_ref = ty::Binder(ty::TraitRef {
-        def_id: scx.tcx().lang_items.coerce_unsized_trait().unwrap(),
-        substs: scx.tcx().mk_substs_trait(source_ty, &[target_ty])
-    });
-
-    match fulfill_obligation(scx, DUMMY_SP, trait_ref) {
-        traits::VtableImpl(traits::VtableImplData { impl_def_id, .. }) => {
-            scx.tcx().custom_coerce_unsized_kind(impl_def_id)
-        }
-        vtable => {
-            bug!("invalid CoerceUnsized vtable: {:?}", vtable);
-        }
-    }
-}
-
 pub fn cast_shift_expr_rhs(
     cx: &Builder, op: hir::BinOp_, lhs: ValueRef, rhs: ValueRef
 ) -> ValueRef {
@@ -429,7 +403,9 @@ pub fn load_ty<'a, 'tcx>(b: &Builder<'a, 'tcx>, ptr: ValueRef,
         // a char is a Unicode codepoint, and so takes values from 0
         // to 0x10FFFF inclusive only.
         b.load_range_assert(ptr, 0, 0x10FFFF + 1, llvm::False, alignment.to_align())
-    } else if (t.is_region_ptr() || t.is_box()) && !common::type_is_fat_ptr(ccx, t) {
+    } else if (t.is_region_ptr() || t.is_box() || t.is_fn())
+        && !common::type_is_fat_ptr(ccx, t)
+    {
         b.load_nonnull(ptr, alignment.to_align())
     } else {
         b.load(ptr, alignment.to_align())
@@ -569,11 +545,11 @@ pub fn memcpy_ty<'a, 'tcx>(
 }
 
 pub fn call_memset<'a, 'tcx>(b: &Builder<'a, 'tcx>,
-                               ptr: ValueRef,
-                               fill_byte: ValueRef,
-                               size: ValueRef,
-                               align: ValueRef,
-                               volatile: bool) -> ValueRef {
+                             ptr: ValueRef,
+                             fill_byte: ValueRef,
+                             size: ValueRef,
+                             align: ValueRef,
+                             volatile: bool) -> ValueRef {
     let ptr_width = &b.ccx.sess().target.target.target_pointer_width[..];
     let intrinsic_key = format!("llvm.memset.p0i8.i{}", ptr_width);
     let llintrinsicfn = b.ccx.get_intrinsic(&intrinsic_key);
@@ -585,7 +561,7 @@ pub fn trans_instance<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, instance: Instance
     let _s = if ccx.sess().trans_stats() {
         let mut instance_name = String::new();
         DefPathBasedNames::new(ccx.tcx(), true, true)
-            .push_def_path(instance.def, &mut instance_name);
+            .push_def_path(instance.def_id(), &mut instance_name);
         Some(StatRecorder::new(ccx, instance_name))
     } else {
         None
@@ -596,7 +572,7 @@ pub fn trans_instance<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, instance: Instance
     // release builds.
     info!("trans_instance({})", instance);
 
-    let fn_ty = common::def_ty(ccx.shared(), instance.def, instance.substs);
+    let fn_ty = common::instance_ty(ccx.shared(), &instance);
     let sig = common::ty_fn_sig(ccx, fn_ty);
     let sig = ccx.tcx().erase_late_bound_regions_and_normalize(&sig);
 
@@ -611,74 +587,8 @@ pub fn trans_instance<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, instance: Instance
         attributes::emit_uwtable(lldecl, true);
     }
 
-    let mir = ccx.tcx().item_mir(instance.def);
+    let mir = ccx.tcx().instance_mir(instance.def);
     mir::trans_mir(ccx, lldecl, &mir, instance, sig);
-}
-
-pub fn trans_ctor_shim<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                 def_id: DefId,
-                                 substs: &'tcx Substs<'tcx>,
-                                 disr: Disr,
-                                 llfn: ValueRef) {
-    attributes::inline(llfn, attributes::InlineAttr::Hint);
-    attributes::set_frame_pointer_elimination(ccx, llfn);
-
-    let ctor_ty = common::def_ty(ccx.shared(), def_id, substs);
-    let sig = ccx.tcx().erase_late_bound_regions_and_normalize(&ctor_ty.fn_sig());
-    let fn_ty = FnType::new(ccx, sig, &[]);
-
-    let bcx = Builder::new_block(ccx, llfn, "entry-block");
-    if !fn_ty.ret.is_ignore() {
-        // But if there are no nested returns, we skip the indirection
-        // and have a single retslot
-        let dest = if fn_ty.ret.is_indirect() {
-            get_param(llfn, 0)
-        } else {
-            // We create an alloca to hold a pointer of type `ret.original_ty`
-            // which will hold the pointer to the right alloca which has the
-            // final ret value
-            bcx.alloca(fn_ty.ret.memory_ty(ccx), "sret_slot")
-        };
-        // Can return unsized value
-        let mut dest_val = LvalueRef::new_sized_ty(dest, sig.output(), Alignment::AbiAligned);
-        dest_val.ty = LvalueTy::Downcast {
-            adt_def: sig.output().ty_adt_def().unwrap(),
-            substs: substs,
-            variant_index: disr.0 as usize,
-        };
-        let mut llarg_idx = fn_ty.ret.is_indirect() as usize;
-        let mut arg_idx = 0;
-        for (i, arg_ty) in sig.inputs().iter().enumerate() {
-            let (lldestptr, _) = dest_val.trans_field_ptr(&bcx, i);
-            let arg = &fn_ty.args[arg_idx];
-            arg_idx += 1;
-            if common::type_is_fat_ptr(bcx.ccx, arg_ty) {
-                let meta = &fn_ty.args[arg_idx];
-                arg_idx += 1;
-                arg.store_fn_arg(&bcx, &mut llarg_idx, get_dataptr(&bcx, lldestptr));
-                meta.store_fn_arg(&bcx, &mut llarg_idx, get_meta(&bcx, lldestptr));
-            } else {
-                arg.store_fn_arg(&bcx, &mut llarg_idx, lldestptr);
-            }
-        }
-        adt::trans_set_discr(&bcx, sig.output(), dest, disr);
-
-        if fn_ty.ret.is_indirect() {
-            bcx.ret_void();
-            return;
-        }
-
-        if let Some(cast_ty) = fn_ty.ret.cast {
-            bcx.ret(bcx.load(
-                bcx.pointercast(dest, cast_ty.ptr_to()),
-                Some(llalign_of_min(ccx, fn_ty.ret.ty))
-            ));
-        } else {
-            bcx.ret(bcx.load(dest, None))
-        }
-    } else {
-        bcx.ret_void();
-    }
 }
 
 pub fn llvm_linkage_by_name(name: &str) -> Option<Linkage> {
@@ -721,7 +631,7 @@ pub fn set_link_section(ccx: &CrateContext,
 }
 
 /// Create the `main` function which will initialise the rust runtime and call
-/// users’ main function.
+/// users main function.
 pub fn maybe_create_entry_wrapper(ccx: &CrateContext) {
     let (main_def_id, span) = match *ccx.sess().entry_fn.borrow() {
         Some((id, span)) => {
@@ -738,7 +648,7 @@ pub fn maybe_create_entry_wrapper(ccx: &CrateContext) {
         ccx.tcx().sess.span_fatal(span, "compilation successful");
     }
 
-    let instance = Instance::mono(ccx.shared(), main_def_id);
+    let instance = Instance::mono(ccx.tcx(), main_def_id);
 
     if !ccx.codegen_unit().contains_item(&TransItem::Fn(instance)) {
         // We want to create the wrapper in the same codegen unit as Rust's main
@@ -746,7 +656,7 @@ pub fn maybe_create_entry_wrapper(ccx: &CrateContext) {
         return;
     }
 
-    let main_llfn = Callee::def(ccx, main_def_id, instance.substs).reify(ccx);
+    let main_llfn = callee::get_fn(ccx, instance);
 
     let et = ccx.sess().entry_type.get().unwrap();
     match et {
@@ -780,8 +690,8 @@ pub fn maybe_create_entry_wrapper(ccx: &CrateContext) {
 
         let (start_fn, args) = if use_start_lang_item {
             let start_def_id = ccx.tcx().require_lang_item(StartFnLangItem);
-            let empty_substs = ccx.tcx().intern_substs(&[]);
-            let start_fn = Callee::def(ccx, start_def_id, empty_substs).reify(ccx);
+            let start_instance = Instance::mono(ccx.tcx(), start_def_id);
+            let start_fn = callee::get_fn(ccx, start_instance);
             (start_fn, vec![bld.pointercast(rust_main, Type::i8p(ccx).ptr_to()), get_param(llfn, 0),
                 get_param(llfn, 1)])
         } else {

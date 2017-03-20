@@ -9,9 +9,10 @@
 // except according to those terms.
 
 use llvm::ValueRef;
-use rustc::ty::Ty;
+use rustc::ty::{self, Ty};
 use rustc::ty::layout::Layout;
 use rustc::mir;
+use rustc::mir::tcx::LvalueTy;
 use rustc_data_structures::indexed_vec::Idx;
 
 use base;
@@ -22,9 +23,10 @@ use type_of;
 use type_::Type;
 
 use std::fmt;
+use std::ptr;
 
 use super::{MirContext, LocalRef};
-use super::lvalue::Alignment;
+use super::lvalue::{Alignment, LvalueRef};
 
 /// The representation of a Rust value. The enum variant is in fact
 /// uniquely determined by the value's type, but is kept as a
@@ -83,6 +85,22 @@ impl<'a, 'tcx> OperandRef<'tcx> {
         match self.val {
             OperandValue::Immediate(s) => s,
             _ => bug!("not immediate: {:?}", self)
+        }
+    }
+
+    pub fn deref(self) -> LvalueRef<'tcx> {
+        let projected_ty = self.ty.builtin_deref(true, ty::NoPreference)
+            .unwrap().ty;
+        let (llptr, llextra) = match self.val {
+            OperandValue::Immediate(llptr) => (llptr, ptr::null_mut()),
+            OperandValue::Pair(llptr, llextra) => (llptr, llextra),
+            OperandValue::Ref(..) => bug!("Deref of by-Ref operand {:?}", self)
+        };
+        LvalueRef {
+            llval: llptr,
+            llextra: llextra,
+            ty: LvalueTy::from_ty(projected_ty),
+            alignment: Alignment::AbiAligned,
         }
     }
 
@@ -236,7 +254,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             }
 
             mir::Operand::Constant(ref constant) => {
-                let val = self.trans_constant(bcx, constant);
+                let val = self.trans_constant(&bcx, constant);
                 let operand = val.to_operand(bcx.ccx);
                 if let OperandValue::Ref(ptr, align) = operand.val {
                     // If this is a OperandValue::Ref to an immediate constant, load it.

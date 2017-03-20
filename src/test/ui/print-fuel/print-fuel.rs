@@ -1,4 +1,4 @@
-// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,20 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// exec-env:RUST_LOG=logging_enabled=info
-// ignore-emscripten: FIXME(#31622)
+#![crate_name="foo"]
+#![allow(dead_code)]
 
+// compile-flags: -Z print-fuel=foo
 
-#![feature(rustc_private)]
+struct S1(u8, u16, u8);
+struct S2(u8, u16, u8);
+struct S3(u8, u16, u8);
 
-#[macro_use]
-extern crate log;
-
-pub fn main() {
-    if log_enabled!(log::DEBUG) {
-        panic!("what?! debugging?");
-    }
-    if !log_enabled!(log::INFO) {
-        panic!("what?! no info?");
-    }
+fn main() {
 }

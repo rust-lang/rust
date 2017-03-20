@@ -35,6 +35,7 @@
 extern crate arena;
 extern crate getopts;
 extern crate graphviz;
+extern crate env_logger;
 extern crate libc;
 extern crate rustc;
 extern crate rustc_back;
@@ -514,6 +515,14 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
             control.make_glob_map = resolve::MakeGlobMap::Yes;
         }
 
+        if sess.print_fuel_crate.is_some() {
+            control.compilation_done.callback = box |state| {
+                let sess = state.session;
+                println!("Fuel used by {}: {}",
+                    sess.print_fuel_crate.as_ref().unwrap(),
+                    sess.print_fuel.get());
+            }
+        }
         control
     }
 }
@@ -1127,6 +1136,7 @@ pub fn diagnostics_registry() -> errors::registry::Registry {
 }
 
 pub fn main() {
+    env_logger::init().unwrap();
     let result = run(|| run_compiler(&env::args().collect::<Vec<_>>(),
                                      &mut RustcDefaultCalls,
                                      None,

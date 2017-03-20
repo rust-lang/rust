@@ -15,7 +15,7 @@ use std::fmt;
 use rustc::ty::TyCtxt;
 use rustc::mir::*;
 use rustc::mir::transform::{Pass, MirPass, MirPassHook, MirSource};
-use pretty;
+use util as mir_util;
 
 pub struct Marker<'a>(pub &'a str);
 
@@ -56,7 +56,7 @@ impl<'tcx> MirPassHook<'tcx> for DumpMir {
         pass: &Pass,
         is_after: bool)
     {
-        pretty::dump_mir(
+        mir_util::dump_mir(
             tcx,
             &*pass.name(),
             &Disambiguator {

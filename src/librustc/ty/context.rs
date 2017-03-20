@@ -728,6 +728,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             ast_ty_to_ty_cache: RefCell::new(NodeMap()),
        }, f)
     }
+
+    pub fn consider_optimizing<T: Fn() -> String>(&self, msg: T) -> bool {
+        let cname = self.crate_name(LOCAL_CRATE).as_str();
+        self.sess.consider_optimizing(&cname, msg)
+    }
 }
 
 impl<'gcx: 'tcx, 'tcx> GlobalCtxt<'gcx> {
@@ -1466,6 +1471,15 @@ impl<T, R> InternIteratorElement<T, R> for T {
     type Output = R;
     fn intern_with<I: Iterator<Item=Self>, F: FnOnce(&[T]) -> R>(iter: I, f: F) -> Self::Output {
         f(&iter.collect::<AccumulateVec<[_; 8]>>())
+    }
+}
+
+impl<'a, T, R> InternIteratorElement<T, R> for &'a T
+    where T: Clone + 'a
+{
+    type Output = R;
+    fn intern_with<I: Iterator<Item=Self>, F: FnOnce(&[T]) -> R>(iter: I, f: F) -> Self::Output {
+        f(&iter.cloned().collect::<AccumulateVec<[_; 8]>>())
     }
 }
 
