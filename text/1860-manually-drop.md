@@ -1,7 +1,7 @@
-- Feature Name: manually_drop
+- Feature Name: `manually_drop`
 - Start Date: 2017-01-20
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#1860](https://github.com/rust-lang/rfcs/pull/1860)
+- Rust Issue: [rust-lang/rust#40673](https://github.com/rust-lang/rust/issues/40673)
 
 # Summary
 [summary]: #summary
