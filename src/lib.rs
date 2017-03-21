@@ -1,6 +1,4 @@
 #![feature(
-    btree_range,
-    collections,
     i128_type,
     pub_restricted,
     rustc_private,
