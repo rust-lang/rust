@@ -18,6 +18,7 @@
 //! LLVM and compiler-rt are essentially just wired up to everything else to
 //! ensure that they're always in place if needed.
 
+use std::env;
 use std::fs::{self, File};
 use std::io::{Read, Write};
 use std::path::Path;
@@ -143,6 +144,10 @@ pub fn llvm(build: &Build, target: &str) {
 
         cfg.define("CMAKE_C_FLAGS", build.cflags(target).join(" "));
         cfg.define("CMAKE_CXX_FLAGS", build.cflags(target).join(" "));
+    }
+
+    if env::var_os("SCCACHE_ERROR_LOG").is_some() {
+        cfg.env("RUST_LOG", "sccache=debug");
     }
 
     // FIXME: we don't actually need to build all LLVM tools and all LLVM
