@@ -2328,7 +2328,7 @@ macro_rules! uint_impl {
         }
 
         /// Returns the smallest power of two greater than or equal to `self`.
-        /// Unspecified behavior on overflow.
+        /// More details about overflow behavior can be found in [RFC 560].
         ///
         /// # Examples
         ///
@@ -2338,6 +2338,8 @@ macro_rules! uint_impl {
         /// assert_eq!(2u8.next_power_of_two(), 2);
         /// assert_eq!(3u8.next_power_of_two(), 4);
         /// ```
+        ///
+        /// [RFC 560]: https://github.com/rust-lang/rfcs/blob/master/text/0560-integer-overflow.md
         #[stable(feature = "rust1", since = "1.0.0")]
         #[inline]
         pub fn next_power_of_two(self) -> Self {
