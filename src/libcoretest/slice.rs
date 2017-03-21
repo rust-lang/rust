@@ -8,7 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::slice::heapsort;
 use core::result::Result::{Ok, Err};
+use rand::{Rng, XorShiftRng};
 
 #[test]
 fn test_binary_search() {
@@ -139,9 +141,6 @@ fn test_chunks_mut_last() {
     assert_eq!(c2.last().unwrap()[0], 4);
 }
 
-
-
-
 #[test]
 fn test_windows_count() {
     let v: &[i32] = &[0, 1, 2, 3, 4, 5];
@@ -223,4 +222,58 @@ fn get_unchecked_mut_range() {
         assert_eq!(v.get_unchecked_mut(2..), &mut[2, 3, 4, 5][..]);
         assert_eq!(v.get_unchecked_mut(1..4), &mut [1, 2, 3][..]);
     }
+}
+
+#[test]
+fn sort_unstable() {
+    let mut v = [0; 600];
+    let mut tmp = [0; 600];
+    let mut rng = XorShiftRng::new_unseeded();
+
+    for len in (2..25).chain(500..510) {
+        let v = &mut v[0..len];
+        let tmp = &mut tmp[0..len];
+
+        for &modulus in &[5, 10, 100, 1000] {
+            for _ in 0..100 {
+                for i in 0..len {
+                    v[i] = rng.gen::<i32>() % modulus;
+                }
+
+                // Sort in default order.
+                tmp.copy_from_slice(v);
+                tmp.sort_unstable();
+                assert!(tmp.windows(2).all(|w| w[0] <= w[1]));
+
+                // Sort in ascending order.
+                tmp.copy_from_slice(v);
+                tmp.sort_unstable_by(|a, b| a.cmp(b));
+                assert!(tmp.windows(2).all(|w| w[0] <= w[1]));
+
+                // Sort in descending order.
+                tmp.copy_from_slice(v);
+                tmp.sort_unstable_by(|a, b| b.cmp(a));
+                assert!(tmp.windows(2).all(|w| w[0] >= w[1]));
+
+                // Test heapsort using `<` operator.
+                tmp.copy_from_slice(v);
+                heapsort(tmp, |a, b| a < b);
+                assert!(tmp.windows(2).all(|w| w[0] <= w[1]));
+
+                // Test heapsort using `>` operator.
+                tmp.copy_from_slice(v);
+                heapsort(tmp, |a, b| a > b);
+                assert!(tmp.windows(2).all(|w| w[0] >= w[1]));
+            }
+        }
+    }
+
+    // Should not panic.
+    [0i32; 0].sort_unstable();
+    [(); 10].sort_unstable();
+    [(); 100].sort_unstable();
+
+    let mut v = [0xDEADBEEFu64];
+    v.sort_unstable();
+    assert!(v == [0xDEADBEEF]);
 }
