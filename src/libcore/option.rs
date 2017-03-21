@@ -219,12 +219,14 @@ impl<T> Option<T> {
     ///
     /// # Examples
     ///
-    /// Convert an `Option<String>` into an `Option<usize>`, preserving the original.
+    /// Convert an `Option<`[`String`]`>` into an `Option<`[`usize`]`>`, preserving the original.
     /// The [`map`] method takes the `self` argument by value, consuming the original,
     /// so this technique uses `as_ref` to first take an `Option` to a reference
     /// to the value inside the original.
     ///
     /// [`map`]: enum.Option.html#method.map
+    /// [`String`]: ../../std/string/struct.String.html
+    /// [`usize`]: ../../std/primitive.usize.html
     ///
     /// ```
     /// let num_as_str: Option<String> = Some("10".to_string());
@@ -271,8 +273,10 @@ impl<T> Option<T> {
     ///
     /// # Panics
     ///
-    /// Panics if the value is a `None` with a custom panic message provided by
+    /// Panics if the value is a [`None`] with a custom panic message provided by
     /// `msg`.
+    ///
+    /// [`None`]: #variant.None
     ///
     /// # Examples
     ///
@@ -302,7 +306,9 @@ impl<T> Option<T> {
     ///
     /// # Panics
     ///
-    /// Panics if the self value equals `None`.
+    /// Panics if the self value equals [`None`].
+    ///
+    /// [`None`]: #variant.None
     ///
     /// # Examples
     ///
@@ -367,7 +373,10 @@ impl<T> Option<T> {
     ///
     /// # Examples
     ///
-    /// Convert an `Option<String>` into an `Option<usize>`, consuming the original:
+    /// Convert an `Option<`[`String`]`>` into an `Option<`[`usize`]`>`, consuming the original:
+    ///
+    /// [`String`]: ../../std/string/struct.String.html
+    /// [`usize`]: ../../std/primitive.usize.html
     ///
     /// ```
     /// let maybe_some_string = Some(String::from("Hello, World!"));
