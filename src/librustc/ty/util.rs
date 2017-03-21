@@ -513,7 +513,9 @@ impl<'a, 'gcx, 'tcx, W> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx, W>
         match *r {
             ty::ReErased |
             ty::ReStatic |
-            ty::ReEmpty => {}
+            ty::ReEmpty => {
+                // No variant fields to hash for these ...
+            }
             ty::ReLateBound(db, ty::BrAnon(i)) => {
                 self.hash(db.depth);
                 self.hash(i);
