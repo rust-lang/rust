@@ -77,7 +77,7 @@ type parameter).
 */
 
 pub use self::Expectation::*;
-use self::coercion::CoerceMany;
+use self::coercion::{CoerceMany, DynamicCoerceMany};
 pub use self::compare_method::{compare_impl_method, compare_const_impl};
 use self::TupleArgumentsFlag::*;
 
@@ -420,7 +420,7 @@ pub struct BreakableCtxt<'gcx: 'tcx, 'tcx> {
 
     // this is `null` for loops where break with a value is illegal,
     // such as `while`, `for`, and `while let`
-    coerce: Option<CoerceMany<'gcx, 'tcx>>,
+    coerce: Option<DynamicCoerceMany<'gcx, 'tcx>>,
 }
 
 #[derive(Clone)]
@@ -450,7 +450,7 @@ pub struct FnCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     // expects the types within the function to be consistent.
     err_count_on_creation: usize,
 
-    ret_coercion: Option<RefCell<CoerceMany<'gcx, 'tcx>>>,
+    ret_coercion: Option<RefCell<DynamicCoerceMany<'gcx, 'tcx>>>,
 
     ps: RefCell<UnsafetyState>,
 
@@ -2245,12 +2245,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 expr, base_expr, adj_ty, autoderefs,
                 false, lvalue_pref, idx_ty)
             {
-                autoderef.finalize(lvalue_pref, Some(base_expr));
+                autoderef.finalize(lvalue_pref, &[base_expr]);
                 return Some(final_mt);
             }
 
             if let ty::TyArray(element_ty, _) = adj_ty.sty {
-                autoderef.finalize(lvalue_pref, Some(base_expr));
+                autoderef.finalize(lvalue_pref, &[base_expr]);
                 let adjusted_ty = self.tcx.mk_slice(element_ty);
                 return self.try_index_step(
                     MethodCall::expr(expr.id), expr, base_expr,
@@ -2861,7 +2861,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // (`only_has_type`); otherwise, we just go with a
         // fresh type variable.
         let coerce_to_ty = expected.only_has_type_or_fresh_var(self, sp);
-        let mut coerce = CoerceMany::new(coerce_to_ty);
+        let mut coerce: DynamicCoerceMany = CoerceMany::new(coerce_to_ty);
 
         let if_cause = self.cause(sp, ObligationCauseCode::IfExpression);
         coerce.coerce(self, &if_cause, then_expr, then_ty);
@@ -2908,7 +2908,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     if let Some(field) = base_def.struct_variant().find_field_named(field.node) {
                         let field_ty = self.field_ty(expr.span, field, substs);
                         if self.tcx.vis_is_accessible_from(field.vis, self.body_id) {
-                            autoderef.finalize(lvalue_pref, Some(base));
+                            autoderef.finalize(lvalue_pref, &[base]);
                             self.write_autoderef_adjustment(base.id, autoderefs, base_t);
 
                             self.tcx.check_stability(field.did, expr.id, expr.span);
@@ -3032,7 +3032,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             };
 
             if let Some(field_ty) = field {
-                autoderef.finalize(lvalue_pref, Some(base));
+                autoderef.finalize(lvalue_pref, &[base]);
                 self.write_autoderef_adjustment(base.id, autoderefs, base_t);
                 return field_ty;
             }
@@ -3768,7 +3768,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
               let element_ty = if !args.is_empty() {
                   let coerce_to = uty.unwrap_or_else(
                       || self.next_ty_var(TypeVariableOrigin::TypeInference(expr.span)));
-                  let mut coerce = CoerceMany::new(coerce_to);
+                  let mut coerce = CoerceMany::with_coercion_sites(coerce_to, args);
                   for e in args {
                       let e_ty = self.check_expr_with_hint(e, coerce_to);
                       let cause = self.misc(e.span);

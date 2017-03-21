@@ -79,6 +79,7 @@ This API is completely unstable and subject to change.
 #![feature(conservative_impl_trait)]
 #![cfg_attr(stage0,feature(field_init_shorthand))]
 #![feature(loop_break_value)]
+#![feature(never_type)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
