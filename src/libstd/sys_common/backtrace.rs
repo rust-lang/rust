@@ -93,6 +93,8 @@ fn _print(w: &mut Write, format: PrintFormat) -> io::Result<()> {
     Ok(())
 }
 
+/// Returns a number of frames to remove at the beginning and at the end of the
+/// backtrace, according to the backtrace format.
 fn filter_frames(frames: &[Frame],
                  format: PrintFormat,
                  context: &BacktraceContext) -> (usize, usize)
@@ -101,8 +103,10 @@ fn filter_frames(frames: &[Frame],
         return (0, 0);
     }
 
-    // We want to filter out frames with some prefixes
-    // from both top and bottom of the call stack.
+    // Frames to remove from the top of the backtrace.
+    //
+    // The raw form is used so that we don't have to demangle the symbol names.
+    // The `a::b::c` form can show up on Windows/MSVC.
     static BAD_PREFIXES_TOP: &'static [&'static str] = &[
         // std::sys::imp::backtrace
         "ZN3std3sys3imp9backtrace",
@@ -119,6 +123,9 @@ fn filter_frames(frames: &[Frame],
         "_ZN4drop",
         "mingw_set_invalid_parameter_handler",
     ];
+
+    // All the frames after these symbols will be removed.
+    // See `rt.rs` and `libtest` for their generation.
     static BAD_PREFIXES_BOTTOM: &'static [&'static str] = &[
         "__rust_begin_backtrace_binary",
         "__rust_begin_backtrace_test",
@@ -140,16 +147,16 @@ fn filter_frames(frames: &[Frame],
     }).unwrap_or(frames.len());
 
     let skipped_after = frames.iter().rev().position(|frame| {
-        let mut is_rmcp = false;
+        let mut is_marker = false;
         let _ = resolve_symname(*frame, |symname| {
             if let Some(mangled_symbol_name) = symname {
                 if BAD_PREFIXES_BOTTOM.iter().any(|s| mangled_symbol_name.contains(s)) {
-                    is_rmcp = true;
+                    is_marker = true;
                 }
             }
             Ok(())
         }, context);
-        is_rmcp
+        is_marker
     }).map(|x| x + 1 /* also ignore the marker frame */).unwrap_or(0);
 
     if skipped_before + skipped_after >= frames.len() {
