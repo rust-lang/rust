@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -9,10 +9,22 @@
 // except according to those terms.
 
 fn main() {
-    let xs : Vec<Option<i32>> = vec![Some(1), None];
+    let _ = foo();
 
-    for Some(x) in xs {}
-    //~^ ERROR E0297
-    //~| NOTE pattern `None` not covered
-    //~| NOTE in this expansion of desugaring of `for`
+    for x in vec![1, 2, 3, 4] {
+        println!("{}", x);
+    }
+
+    while let Some(x) = Some(1) {
+        println!("{}", x);
+    }
+}
+
+fn foo() -> Result<(), ()> {
+    bar()?;
+    Ok(())
+}
+
+fn bar() -> Result<(), ()> {
+    Ok(())
 }

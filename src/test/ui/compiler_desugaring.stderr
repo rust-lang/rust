@@ -1,0 +1,16 @@
+error[E0308]: match arms have incompatible types
+  --> $DIR/compiler_desugaring.rs:19:18
+   |
+19 |     let _: i32 = bar()?; //~ ERROR E0308
+   |                  ^^^^^^ expected i32, found ()
+   |
+   = note: expected type `i32`
+              found type `()`
+note: match arm with an incompatible type
+  --> $DIR/compiler_desugaring.rs:19:18
+   |
+19 |     let _: i32 = bar()?; //~ ERROR E0308
+   |                  ^^^^^^
+
+error: aborting due to previous error
+
