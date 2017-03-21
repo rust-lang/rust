@@ -21,7 +21,7 @@ use rustc::ty;
 use rustc::lint::builtin::PRIVATE_IN_PUBLIC;
 use rustc::hir::def_id::DefId;
 use rustc::hir::def::*;
-use rustc::util::nodemap::FxHashSet;
+use rustc::util::nodemap::FxHashMap;
 
 use syntax::ast::{Ident, NodeId};
 use syntax::ext::base::Determinacy::{self, Determined, Undetermined};
@@ -763,10 +763,11 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         *module.globs.borrow_mut() = Vec::new();
 
         let mut reexports = Vec::new();
+        let mut exported_macro_names = FxHashMap();
         if module as *const _ == self.graph_root as *const _ {
-            let mut exported_macro_names = FxHashSet();
-            for export in mem::replace(&mut self.macro_exports, Vec::new()).into_iter().rev() {
-                if exported_macro_names.insert(export.name) {
+            let macro_exports = mem::replace(&mut self.macro_exports, Vec::new());
+            for export in macro_exports.into_iter().rev() {
+                if exported_macro_names.insert(export.name, export.span).is_none() {
                     reexports.push(export);
                 }
             }
@@ -786,7 +787,17 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                     if !def.def_id().is_local() {
                         self.session.cstore.export_macros(def.def_id().krate);
                     }
-                    reexports.push(Export { name: ident.name, def: def });
+                    if let Def::Macro(..) = def {
+                        if let Some(&span) = exported_macro_names.get(&ident.name) {
+                            let msg =
+                                format!("a macro named `{}` has already been exported", ident);
+                            self.session.struct_span_err(span, &msg)
+                                .span_label(span, &format!("`{}` already exported", ident))
+                                .span_note(binding.span, "previous macro export here")
+                                .emit();
+                        }
+                    }
+                    reexports.push(Export { name: ident.name, def: def, span: binding.span });
                 }
             }
 
