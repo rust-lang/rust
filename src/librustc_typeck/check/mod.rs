@@ -3605,8 +3605,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
                   ctxt.may_break = true;
               } else {
-                  // Otherwise, we failed to find the enclosing loop; this can only happen if the
-                  // `break` was not inside a loop at all, which is caught by the loop-checking pass.
+                  // Otherwise, we failed to find the enclosing loop;
+                  // this can only happen if the `break` was not
+                  // inside a loop at all, which is caught by the
+                  // loop-checking pass.
                   assert!(self.tcx.sess.err_count() > 0);
               }
 
