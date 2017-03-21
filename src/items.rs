@@ -73,10 +73,7 @@ impl Rewrite for ast::Local {
             //let budget = try_opt!(shape.width.checked_sub(shape.indent.block_only().width() + 1));
             let nested_shape = try_opt!(shape.sub_width(1));
 
-            result = try_opt!(rewrite_assign_rhs(&context,
-                                                 result,
-                                                 ex,
-                                                 nested_shape));
+            result = try_opt!(rewrite_assign_rhs(&context, result, ex, nested_shape));
         }
 
         result.push(';');
@@ -932,13 +929,13 @@ fn format_struct_struct(context: &RewriteContext,
                      fields.iter(),
                      "}",
                      |field| {
-            // Include attributes and doc comments, if present
-            if !field.attrs.is_empty() {
-                field.attrs[0].span.lo
-            } else {
-                field.span.lo
-            }
-        },
+                         // Include attributes and doc comments, if present
+                         if !field.attrs.is_empty() {
+                             field.attrs[0].span.lo
+                         } else {
+                             field.span.lo
+                         }
+                     },
                      |field| field.ty.span.hi,
                      |field| field.rewrite(context, Shape::legacy(item_budget, item_indent)),
                      context.codemap.span_after(span, "{"),
@@ -1035,13 +1032,13 @@ fn format_tuple_struct(context: &RewriteContext,
                      fields.iter(),
                      ")",
                      |field| {
-            // Include attributes and doc comments, if present
-            if !field.attrs.is_empty() {
-                field.attrs[0].span.lo
-            } else {
-                field.span.lo
-            }
-        },
+                         // Include attributes and doc comments, if present
+                         if !field.attrs.is_empty() {
+                             field.attrs[0].span.lo
+                         } else {
+                             field.span.lo
+                         }
+                     },
                      |field| field.ty.span.hi,
                      |field| field.rewrite(context, Shape::legacy(item_budget, item_indent)),
                      context.codemap.span_after(span, "("),
@@ -1920,13 +1917,13 @@ fn rewrite_generics(context: &RewriteContext,
 
     // Extract comments between generics.
     let lt_spans = lifetimes.iter().map(|l| {
-        let hi = if l.bounds.is_empty() {
-            l.lifetime.span.hi
-        } else {
-            l.bounds[l.bounds.len() - 1].span.hi
-        };
-        mk_sp(l.lifetime.span.lo, hi)
-    });
+                                            let hi = if l.bounds.is_empty() {
+                                                l.lifetime.span.hi
+                                            } else {
+                                                l.bounds[l.bounds.len() - 1].span.hi
+                                            };
+                                            mk_sp(l.lifetime.span.lo, hi)
+                                        });
     let ty_spans = tys.iter().map(span_for_ty_param);
 
     let items = itemize_list(context.codemap,

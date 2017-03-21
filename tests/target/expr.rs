@@ -174,19 +174,19 @@ fn arrays() {
               1];
 
     let a = WeightedChoice::new(&mut [Weighted {
-                                          weight: x,
+                                          weightweight: x,
                                           item: 0,
                                       },
                                       Weighted {
-                                          weight: 1,
+                                          weightweight: 1,
                                           item: 1,
                                       },
                                       Weighted {
-                                          weight: x,
+                                          weightweight: x,
                                           item: 2,
                                       },
                                       Weighted {
-                                          weight: 1,
+                                          weightweight: 1,
                                           item: 3,
                                       }]);
 

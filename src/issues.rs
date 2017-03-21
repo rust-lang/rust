@@ -98,7 +98,10 @@ impl BadIssueSeeker {
     // unnumbered TO-DO or FIX-ME.
     pub fn inspect(&mut self, c: char) -> Option<Issue> {
         match self.state {
-            Seeking::Issue { todo_idx, fixme_idx } => {
+            Seeking::Issue {
+                todo_idx,
+                fixme_idx,
+            } => {
                 self.state = self.inspect_issue(c, todo_idx, fixme_idx);
             }
             Seeking::Number { issue, part } => {

@@ -24,13 +24,24 @@ fn main() {
     let foo {} = 42;
     let foo { .. } = 42;
     let foo { x, y: ref foo, .. } = 42;
-    let foo { x, yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy: ref foo, .. } = 42;
-    let foo { x, yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy: ref foo } = 42;
-    let foo { x,
-              yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy: ref foo,
-              .. };
-    let foo { x,
-              yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy: ref foo };
+    let foo {
+        x,
+        yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy: ref foo,
+        ..
+    } = 42;
+    let foo {
+        x,
+        yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy: ref foo,
+    } = 42;
+    let foo {
+        x,
+        yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy: ref foo,
+        ..
+    };
+    let foo {
+        x,
+        yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy: ref foo,
+    };
 }
 
 impl<'a, 'b> ResolveGeneratedContentFragmentMutator<'a, 'b> {

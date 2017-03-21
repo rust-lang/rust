@@ -19,8 +19,8 @@ use {Indent, Shape, Spanned};
 use codemap::SpanUtils;
 use rewrite::{Rewrite, RewriteContext};
 use lists::{write_list, itemize_list, ListFormatting, SeparatorTactic, ListTactic,
-            DefinitiveListTactic, definitive_tactic, ListItem, format_item_list,
-            struct_lit_shape, struct_lit_tactic, shape_for_tactic, struct_lit_formatting};
+            DefinitiveListTactic, definitive_tactic, ListItem, format_item_list, struct_lit_shape,
+            struct_lit_tactic, shape_for_tactic, struct_lit_formatting};
 use string::{StringFormat, rewrite_string};
 use utils::{extra_offset, last_line_width, wrap_str, binary_search, first_line_width,
             semicolon_for_stmt, trimmed_last_line_width, left_most_sub_expr, stmt_expr};
@@ -308,7 +308,11 @@ pub fn rewrite_pair<LHS, RHS>(lhs: &LHS,
         .visual_indent(prefix.len());
 
     let rhs_result = try_opt!(rhs.rewrite(context, rhs_shape));
-    let lhs_result = try_opt!(lhs.rewrite(context, Shape { width: lhs_budget, ..shape }));
+    let lhs_result = try_opt!(lhs.rewrite(context,
+                                          Shape {
+                                              width: lhs_budget,
+                                              ..shape
+                                          }));
     Some(format!("{}{}{}\n{}{}{}",
                  prefix,
                  lhs_result,
@@ -658,9 +662,7 @@ impl Rewrite for ast::Block {
 impl Rewrite for ast::Stmt {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         let result = match self.node {
-            ast::StmtKind::Local(ref local) => {
-                local.rewrite(context, shape)
-            }
+            ast::StmtKind::Local(ref local) => local.rewrite(context, shape),
             ast::StmtKind::Expr(ref ex) |
             ast::StmtKind::Semi(ref ex) => {
                 let suffix = if semicolon_for_stmt(self) { ";" } else { "" };
@@ -893,7 +895,10 @@ impl<'a> Rewrite for ControlFlow<'a> {
             block_width
         };
 
-        let block_shape = Shape { width: block_width, ..shape };
+        let block_shape = Shape {
+            width: block_width,
+            ..shape
+        };
         let block_str = try_opt!(self.block.rewrite(context, block_shape));
 
         let cond_span = if let Some(cond) = self.cond {
@@ -975,7 +980,10 @@ impl<'a> Rewrite for ControlFlow<'a> {
                     last_in_chain = true;
                     // When rewriting a block, the width is only used for single line
                     // blocks, passing 1 lets us avoid that.
-                    let else_shape = Shape { width: min(1, shape.width), ..shape };
+                    let else_shape = Shape {
+                        width: min(1, shape.width),
+                        ..shape
+                    };
                     else_block.rewrite(context, else_shape)
                 }
             };
@@ -1175,7 +1183,11 @@ fn rewrite_match(context: &RewriteContext,
 }
 
 fn arm_start_pos(arm: &ast::Arm) -> BytePos {
-    let &ast::Arm { ref attrs, ref pats, .. } = arm;
+    let &ast::Arm {
+             ref attrs,
+             ref pats,
+             ..
+         } = arm;
     if !attrs.is_empty() {
         return attrs[0].span.lo;
     }
@@ -1205,7 +1217,12 @@ fn arm_comma(config: &Config, body: &ast::Expr) -> &'static str {
 impl Rewrite for ast::Arm {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         debug!("Arm::rewrite {:?} {:?}", self, shape);
-        let &ast::Arm { ref attrs, ref pats, ref guard, ref body } = self;
+        let &ast::Arm {
+                 ref attrs,
+                 ref pats,
+                 ref guard,
+                 ref body,
+             } = self;
 
         // FIXME this is all a bit grotty, would be nice to abstract out the
         // treatment of attributes.
@@ -1250,7 +1267,10 @@ impl Rewrite for ast::Arm {
         let pats_str = try_opt!(write_list(items, &fmt));
 
         let guard_shape = if pats_str.contains('\n') {
-            Shape { width: context.config.max_width - shape.indent.width(), ..shape }
+            Shape {
+                width: context.config.max_width - shape.indent.width(),
+                ..shape
+            }
         } else {
             shape
         };
@@ -1598,7 +1618,10 @@ fn rewrite_call_inner<R>(context: &RewriteContext,
                              |item| item.span.hi,
                              |item| {
                                  item.rewrite(context,
-                                              Shape { width: remaining_width, ..nested_shape })
+                                              Shape {
+                                                  width: remaining_width,
+                                                  ..nested_shape
+                                              })
                              },
                              span.lo,
                              span.hi);

@@ -174,19 +174,19 @@ fn arrays() {
     let xy =    [ strukt  { test123: value_one_two_three_four, turbo: coolio(), } , /* comment  */   1 ];
 
         let a =WeightedChoice::new(&mut [Weighted {
-            weight: x,
+            weightweight: x,
             item: 0,
         },
                                   Weighted {
-            weight: 1,
+            weightweight: 1,
             item: 1,
         },
                                   Weighted {
-            weight: x,
+            weightweight: x,
             item: 2,
         },
                                   Weighted {
-            weight: 1,
+            weightweight: 1,
             item: 3,
         }]);
 

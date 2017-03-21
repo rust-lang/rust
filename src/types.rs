@@ -357,21 +357,21 @@ impl Rewrite for ast::WherePredicate {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         // TODO: dead spans?
         let result = match *self {
-            ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate { ref bound_lifetimes,
-                                                                           ref bounded_ty,
-                                                                           ref bounds,
-                                                                           .. }) => {
+            ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate {
+                                                    ref bound_lifetimes,
+                                                    ref bounded_ty,
+                                                    ref bounds,
+                                                    ..
+                                                }) => {
                 let type_str = try_opt!(bounded_ty.rewrite(context, shape));
 
                 let colon = type_bound_colon(context);
 
                 if !bound_lifetimes.is_empty() {
                     let lifetime_str: String = try_opt!(bound_lifetimes.iter()
-                                                               .map(|lt| {
-                                                                   lt.rewrite(context, shape)
-                                                               })
-                                                               .intersperse(Some(", ".to_string()))
-                                                               .collect());
+                                     .map(|lt| lt.rewrite(context, shape))
+                                     .intersperse(Some(", ".to_string()))
+                                     .collect());
 
                     // 6 = "for<> ".len()
                     let used_width = lifetime_str.len() + type_str.len() + colon.len() + 6;
@@ -386,7 +386,11 @@ impl Rewrite for ast::WherePredicate {
                                                     .collect());
 
                     if context.config.spaces_within_angle_brackets && lifetime_str.len() > 0 {
-                        format!("for< {} > {}{}{}", lifetime_str, type_str, colon, bounds_str)
+                        format!("for< {} > {}{}{}",
+                                lifetime_str,
+                                type_str,
+                                colon,
+                                bounds_str)
                     } else {
                         format!("for<{}> {}{}{}", lifetime_str, type_str, colon, bounds_str)
                     }
@@ -405,14 +409,18 @@ impl Rewrite for ast::WherePredicate {
                     format!("{}{}{}", type_str, colon, bounds_str)
                 }
             }
-            ast::WherePredicate::RegionPredicate(ast::WhereRegionPredicate { ref lifetime,
-                                                                             ref bounds,
-                                                                             .. }) => {
+            ast::WherePredicate::RegionPredicate(ast::WhereRegionPredicate {
+                                                     ref lifetime,
+                                                     ref bounds,
+                                                     ..
+                                                 }) => {
                 try_opt!(rewrite_bounded_lifetime(lifetime, bounds.iter(), context, shape))
             }
-            ast::WherePredicate::EqPredicate(ast::WhereEqPredicate { ref lhs_ty,
-                                                                     ref rhs_ty,
-                                                                     .. }) => {
+            ast::WherePredicate::EqPredicate(ast::WhereEqPredicate {
+                                                 ref lhs_ty,
+                                                 ref rhs_ty,
+                                                 ..
+                                             }) => {
                 let lhs_ty_str = try_opt!(lhs_ty.rewrite(context, shape));
                 // 3 = " = ".len()
                 let used_width = 3 + lhs_ty_str.len();

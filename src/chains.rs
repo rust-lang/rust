@@ -130,7 +130,10 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
                                  .checked_sub(nested_shape.indent.width() +
                                               nested_shape.offset));
 
-    let other_child_shape = Shape { width: max_width, ..nested_shape };
+    let other_child_shape = Shape {
+        width: max_width,
+        ..nested_shape
+    };
     let first_child_shape = if extend {
         let mut shape = try_opt!(parent_shape.shrink_left(last_line_width(&parent_rewrite)));
         match context.config.chain_indent {

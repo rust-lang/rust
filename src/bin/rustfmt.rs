@@ -219,7 +219,10 @@ fn execute(opts: &Options) -> FmtResult<Summary> {
 
             Ok(run(Input::Text(input), &config))
         }
-        Operation::Format { mut files, config_path } => {
+        Operation::Format {
+            mut files,
+            config_path,
+        } => {
             let options = try!(CliOptions::from_matches(&matches));
 
             // Add any additional files that were specified via `--file-lines`.
