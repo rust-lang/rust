@@ -606,22 +606,25 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             }
         }
         hir::ExprRet(ref v) => ExprKind::Return { value: v.to_ref() },
-        hir::ExprBreak(label, ref value) => {
-            match label.loop_id.into() {
-                Ok(loop_id) => ExprKind::Break {
-                    label: cx.tcx.region_maps.node_extent(loop_id),
+        hir::ExprBreak(dest, ref value) => {
+            match dest.target_id {
+                hir::ScopeTarget::Block(target_id) |
+                hir::ScopeTarget::Loop(hir::LoopIdResult::Ok(target_id)) => ExprKind::Break {
+                    label: cx.tcx.region_maps.node_extent(target_id),
                     value: value.to_ref(),
                 },
-                Err(err) => bug!("invalid loop id for break: {}", err)
+                hir::ScopeTarget::Loop(hir::LoopIdResult::Err(err)) =>
+                    bug!("invalid loop id for break: {}", err)
             }
-
         }
-        hir::ExprAgain(label) => {
-            match label.loop_id.into() {
-                Ok(loop_id) => ExprKind::Continue {
+        hir::ExprAgain(dest) => {
+            match dest.target_id {
+                hir::ScopeTarget::Block(_) => bug!("cannot continue to blocks"),
+                hir::ScopeTarget::Loop(hir::LoopIdResult::Ok(loop_id)) => ExprKind::Continue {
                     label: cx.tcx.region_maps.node_extent(loop_id),
                 },
-                Err(err) => bug!("invalid loop id for continue: {}", err)
+                hir::ScopeTarget::Loop(hir::LoopIdResult::Err(err)) =>
+                    bug!("invalid loop id for continue: {}", err)
             }
         }
         hir::ExprMatch(ref discr, ref arms, _) => {

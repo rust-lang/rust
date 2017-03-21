@@ -36,9 +36,9 @@ pub struct Builder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     /// see the `scope` module for more details
     scopes: Vec<scope::Scope<'tcx>>,
 
-    /// the current set of loops; see the `scope` module for more
+    /// the current set of breakables; see the `scope` module for more
     /// details
-    loop_scopes: Vec<scope::LoopScope<'tcx>>,
+    breakable_scopes: Vec<scope::BreakableScope<'tcx>>,
 
     /// the vector of all scopes that we have created thus far;
     /// we track this for debuginfo later
@@ -248,7 +248,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             scopes: vec![],
             visibility_scopes: IndexVec::new(),
             visibility_scope: ARGUMENT_VISIBILITY_SCOPE,
-            loop_scopes: vec![],
+            breakable_scopes: vec![],
             local_decls: IndexVec::from_elem_n(LocalDecl::new_return_pointer(return_ty), 1),
             var_indices: NodeMap(),
             unit_temp: None,
