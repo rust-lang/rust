@@ -683,7 +683,7 @@ impl<'a, 'tcx> CrateMetadata {
                         },
                         ext.kind()
                     );
-                    callback(def::Export { name: name, def: def });
+                    callback(def::Export { name: name, def: def, span: DUMMY_SP });
                 }
             }
             return
@@ -720,6 +720,7 @@ impl<'a, 'tcx> CrateMetadata {
                                 callback(def::Export {
                                     def: def,
                                     name: self.item_name(child_index),
+                                    span: self.entry(child_index).span.decode(self),
                                 });
                             }
                         }
@@ -732,12 +733,10 @@ impl<'a, 'tcx> CrateMetadata {
                 }
 
                 let def_key = self.def_key(child_index);
+                let span = child.span.decode(self);
                 if let (Some(def), Some(name)) =
                     (self.get_def(child_index), def_key.disambiguated_data.data.get_opt_name()) {
-                    callback(def::Export {
-                        def: def,
-                        name: name,
-                    });
+                    callback(def::Export { def: def, name: name, span: span });
                     // For non-reexport structs and variants add their constructors to children.
                     // Reexport lists automatically contain constructors when necessary.
                     match def {
@@ -745,10 +744,7 @@ impl<'a, 'tcx> CrateMetadata {
                             if let Some(ctor_def_id) = self.get_struct_ctor_def_id(child_index) {
                                 let ctor_kind = self.get_ctor_kind(child_index);
                                 let ctor_def = Def::StructCtor(ctor_def_id, ctor_kind);
-                                callback(def::Export {
-                                    def: ctor_def,
-                                    name: name,
-                                });
+                                callback(def::Export { def: ctor_def, name: name, span: span });
                             }
                         }
                         Def::Variant(def_id) => {
@@ -756,10 +752,7 @@ impl<'a, 'tcx> CrateMetadata {
                             // value namespace, they are reserved for possible future use.
                             let ctor_kind = self.get_ctor_kind(child_index);
                             let ctor_def = Def::VariantCtor(def_id, ctor_kind);
-                            callback(def::Export {
-                                def: ctor_def,
-                                name: name,
-                            });
+                            callback(def::Export { def: ctor_def, name: name, span: span });
                         }
                         _ => {}
                     }

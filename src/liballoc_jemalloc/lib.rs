@@ -40,6 +40,10 @@ mod imp {
         fn mallocx(size: size_t, flags: c_int) -> *mut c_void;
         #[cfg_attr(any(target_os = "macos", target_os = "android", target_os = "ios",
                        target_os = "dragonfly", target_os = "windows"),
+                   link_name = "je_calloc")]
+        fn calloc(size: size_t, flags: c_int) -> *mut c_void;
+        #[cfg_attr(any(target_os = "macos", target_os = "android", target_os = "ios",
+                       target_os = "dragonfly", target_os = "windows"),
                    link_name = "je_rallocx")]
         fn rallocx(ptr: *mut c_void, size: size_t, flags: c_int) -> *mut c_void;
         #[cfg_attr(any(target_os = "macos", target_os = "android", target_os = "ios",
@@ -55,6 +59,8 @@ mod imp {
                    link_name = "je_nallocx")]
         fn nallocx(size: size_t, flags: c_int) -> size_t;
     }
+
+    const MALLOCX_ZERO: c_int = 0x40;
 
     // The minimum alignment guaranteed by the architecture. This value is used to
     // add fast paths for low alignment values. In practice, the alignment is a
@@ -89,6 +95,16 @@ mod imp {
     pub extern "C" fn __rust_allocate(size: usize, align: usize) -> *mut u8 {
         let flags = align_to_flags(align);
         unsafe { mallocx(size as size_t, flags) as *mut u8 }
+    }
+
+    #[no_mangle]
+    pub extern "C" fn __rust_allocate_zeroed(size: usize, align: usize) -> *mut u8 {
+        if align <= MIN_ALIGN {
+            unsafe { calloc(size as size_t, 1) as *mut u8 }
+        } else {
+            let flags = align_to_flags(align) | MALLOCX_ZERO;
+            unsafe { mallocx(size as size_t, flags) as *mut u8 }
+        }
     }
 
     #[no_mangle]
@@ -132,6 +148,11 @@ mod imp {
 
     #[no_mangle]
     pub extern "C" fn __rust_allocate(_size: usize, _align: usize) -> *mut u8 {
+        bogus()
+    }
+
+    #[no_mangle]
+    pub extern "C" fn __rust_allocate_zeroed(_size: usize, _align: usize) -> *mut u8 {
         bogus()
     }
 
