@@ -131,7 +131,6 @@ install:
   - handle.exe -accepteula -help
 
   # Attempt to debug sccache failures
-  - set RUST_LOG=sccache=debug
   - set SCCACHE_ERROR_LOG=%CD%/sccache.log
 
 test_script:
