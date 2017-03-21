@@ -40,7 +40,19 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 this.in_scope(extent, block, |this| this.into(destination, block, value))
             }
             ExprKind::Block { body: ast_block } => {
-                this.ast_block(destination, block, ast_block)
+                if let Some(_) = ast_block.break_to_expr_id {
+                    // This is a `break`-able block (currently only `catch { ... }`)
+                    let exit_block = this.cfg.start_new_block();
+                    let block_exit = this.in_breakable_scope(None, exit_block,
+                                                             destination.clone(), |this| {
+                        this.ast_block(destination, block, ast_block)
+                    });
+                    this.cfg.terminate(unpack!(block_exit), source_info,
+                                       TerminatorKind::Goto { target: exit_block });
+                    exit_block.unit()
+                } else {
+                    this.ast_block(destination, block, ast_block)
+                }
             }
             ExprKind::Match { discriminant, arms } => {
                 this.match_expr(destination, expr_span, block, discriminant, arms)
@@ -165,8 +177,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 this.cfg.terminate(block, source_info,
                                    TerminatorKind::Goto { target: loop_block });
 
-                this.in_loop_scope(
-                    loop_block, exit_block, destination.clone(),
+                this.in_breakable_scope(
+                    Some(loop_block), exit_block, destination.clone(),
                     move |this| {
                         // conduct the test, if necessary
                         let body_block;

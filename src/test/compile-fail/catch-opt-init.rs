@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,20 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// gate-test-pub_restricted
+#![feature(catch_expr)]
 
-pub(crate) //~ ERROR experimental
-mod foo {}
+fn use_val<T: Sized>(_x: T) {}
 
-pub(self) //~ ERROR experimental
-mod bar {}
+pub fn main() {
+    let cfg_res;
+    let _: Result<(), ()> = do catch {
+        Err(())?;
+        cfg_res = 5;
+        Ok::<(), ()>(())?;
+        use_val(cfg_res);
+        Ok(())
+    };
+    assert_eq!(cfg_res, 5); //~ ERROR use of possibly uninitialized variable
+}
 
-struct S {
-    pub(self) x: i32, //~ ERROR experimental
-}
-impl S {
-    pub(self) fn f() {} //~ ERROR experimental
-}
-extern {
-    pub(self) fn f(); //~ ERROR experimental
-}

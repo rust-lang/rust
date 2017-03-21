@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-mod foo {
-    struct Priv;
-    mod bar {
-        use foo::Priv;
-        pub(super) fn f(_: Priv) {}
-        pub(crate) fn g(_: Priv) {} //~ ERROR E0446
-    }
-}
+#![feature(catch_expr)]
 
-fn main() { }
+pub fn main() {
+    let res: Result<i32, i32> = do catch {
+        Err("")?; //~ ERROR the trait bound `i32: std::convert::From<&str>` is not satisfied
+        Ok(5)
+    };
+    let res: Result<i32, i32> = do catch {
+        Ok("") //~ mismatched types
+    };
+}

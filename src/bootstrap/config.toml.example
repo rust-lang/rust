@@ -88,11 +88,11 @@
 # for each target triple.
 #target = ["x86_64-unknown-linux-gnu"] # defaults to just the build triple
 
-# Instead of downloading the src/nightlies.txt version of Cargo specified, use
+# Instead of downloading the src/stage0.txt version of Cargo specified, use
 # this Cargo binary instead to build all Rust code
 #cargo = "/path/to/bin/cargo"
 
-# Instead of downloading the src/nightlies.txt version of the compiler
+# Instead of downloading the src/stage0.txt version of the compiler
 # specified, use this rustc binary instead as the stage0 snapshot compiler.
 #rustc = "/path/to/bin/rustc"
 

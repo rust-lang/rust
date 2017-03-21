@@ -53,6 +53,82 @@ pub fn rustbook(build: &Build, target: &str, name: &str) {
                    .arg(out));
 }
 
+/// Build the book and associated stuff.
+///
+/// We need to build:
+///
+/// * Book (first edition)
+/// * Book (second edition)
+/// * Index page
+/// * Redirect pages
+pub fn book(build: &Build, target: &str, name: &str) {
+    // build book first edition
+    rustbook(build, target, &format!("{}/first-edition", name));
+
+    // build book second edition
+    rustbook(build, target, &format!("{}/second-edition", name));
+
+    // build the index page
+    let index = format!("{}/index.md", name);
+    println!("Documenting book index ({})", target);
+    invoke_rustdoc(build, target, &index);
+
+    // build the redirect pages
+    println!("Documenting book redirect pages ({})", target);
+    for file in t!(fs::read_dir(build.src.join("src/doc/book/redirects"))) {
+        let file = t!(file);
+        let path = file.path();
+        let path = path.to_str().unwrap();
+
+        invoke_rustdoc(build, target, path);
+    }
+}
+
+fn invoke_rustdoc(build: &Build, target: &str, markdown: &str) {
+    let out = build.doc_out(target);
+
+    let compiler = Compiler::new(0, &build.config.build);
+
+    let path = build.src.join("src/doc").join(markdown);
+
+    let rustdoc = build.rustdoc(&compiler);
+
+    let favicon = build.src.join("src/doc/favicon.inc");
+    let footer = build.src.join("src/doc/footer.inc");
+
+    let version_input = build.src.join("src/doc/version_info.html.template");
+    let version_info = out.join("version_info.html");
+
+    if !up_to_date(&version_input, &version_info) {
+        let mut info = String::new();
+        t!(t!(File::open(&version_input)).read_to_string(&mut info));
+        let info = info.replace("VERSION", &build.rust_release())
+                       .replace("SHORT_HASH", build.rust_info.sha_short().unwrap_or(""))
+                       .replace("STAMP", build.rust_info.sha().unwrap_or(""));
+        t!(t!(File::create(&version_info)).write_all(info.as_bytes()));
+    }
+
+    let mut cmd = Command::new(&rustdoc);
+
+    build.add_rustc_lib_path(&compiler, &mut cmd);
+
+    let out = out.join("book");
+
+    t!(fs::copy(build.src.join("src/doc/rust.css"), out.join("rust.css")));
+
+    cmd.arg("--html-after-content").arg(&footer)
+        .arg("--html-before-content").arg(&version_info)
+        .arg("--html-in-header").arg(&favicon)
+        .arg("--markdown-playground-url")
+        .arg("https://play.rust-lang.org/")
+        .arg("-o").arg(&out)
+        .arg(&path)
+        .arg("--markdown-css")
+        .arg("rust.css");
+
+    build.run(&mut cmd);
+}
+
 /// Generates all standalone documentation as compiled by the rustdoc in `stage`
 /// for the `target` into `out`.
 ///

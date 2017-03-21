@@ -46,6 +46,26 @@ use std::mem::replace;
 pub mod diagnostics;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// Visitor used to determine if pub(restricted) is used anywhere in the crate.
+///
+/// This is done so that `private_in_public` warnings can be turned into hard errors
+/// in crates that have been updated to use pub(restricted).
+////////////////////////////////////////////////////////////////////////////////
+struct PubRestrictedVisitor<'a, 'tcx: 'a> {
+    tcx:  TyCtxt<'a, 'tcx, 'tcx>,
+    has_pub_restricted: bool,
+}
+
+impl<'a, 'tcx> Visitor<'tcx> for PubRestrictedVisitor<'a, 'tcx> {
+    fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'tcx> {
+        NestedVisitorMap::All(&self.tcx.hir)
+    }
+    fn visit_vis(&mut self, vis: &'tcx hir::Visibility) {
+        self.has_pub_restricted = self.has_pub_restricted || vis.is_pub_restricted();
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// The embargo visitor, used to determine the exports of the ast
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -891,6 +911,7 @@ struct SearchInterfaceForPrivateItemsVisitor<'a, 'tcx: 'a> {
     required_visibility: ty::Visibility,
     /// The visibility of the least visible component that has been visited
     min_visibility: ty::Visibility,
+    has_pub_restricted: bool,
     has_old_errors: bool,
 }
 
@@ -951,7 +972,7 @@ impl<'a, 'tcx: 'a> TypeVisitor<'tcx> for SearchInterfaceForPrivateItemsVisitor<'
                     self.min_visibility = vis;
                 }
                 if !vis.is_at_least(self.required_visibility, self.tcx) {
-                    if self.tcx.sess.features.borrow().pub_restricted || self.has_old_errors {
+                    if self.has_pub_restricted || self.has_old_errors {
                         let mut err = struct_span_err!(self.tcx.sess, self.span, E0446,
                             "private type `{}` in public interface", ty);
                         err.span_label(self.span, &format!("can't leak private type"));
@@ -986,7 +1007,7 @@ impl<'a, 'tcx: 'a> TypeVisitor<'tcx> for SearchInterfaceForPrivateItemsVisitor<'
                 self.min_visibility = vis;
             }
             if !vis.is_at_least(self.required_visibility, self.tcx) {
-                if self.tcx.sess.features.borrow().pub_restricted || self.has_old_errors {
+                if self.has_pub_restricted || self.has_old_errors {
                     struct_span_err!(self.tcx.sess, self.span, E0445,
                                      "private trait `{}` in public interface", trait_ref)
                         .span_label(self.span, &format!(
@@ -1008,6 +1029,7 @@ impl<'a, 'tcx: 'a> TypeVisitor<'tcx> for SearchInterfaceForPrivateItemsVisitor<'
 
 struct PrivateItemsInPublicInterfacesVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    has_pub_restricted: bool,
     old_error_set: &'a NodeSet,
     inner_visibility: ty::Visibility,
 }
@@ -1044,6 +1066,7 @@ impl<'a, 'tcx> PrivateItemsInPublicInterfacesVisitor<'a, 'tcx> {
             span: self.tcx.hir.span(item_id),
             min_visibility: ty::Visibility::Public,
             required_visibility: required_visibility,
+            has_pub_restricted: self.has_pub_restricted,
             has_old_errors: has_old_errors,
         }
     }
@@ -1227,9 +1250,20 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         };
         intravisit::walk_crate(&mut visitor, krate);
 
+
+        let has_pub_restricted = {
+            let mut pub_restricted_visitor = PubRestrictedVisitor {
+                tcx: tcx,
+                has_pub_restricted: false
+            };
+            intravisit::walk_crate(&mut pub_restricted_visitor, krate);
+            pub_restricted_visitor.has_pub_restricted
+        };
+
         // Check for private types and traits in public interfaces
         let mut visitor = PrivateItemsInPublicInterfacesVisitor {
             tcx: tcx,
+            has_pub_restricted: has_pub_restricted,
             old_error_set: &visitor.old_error_set,
             inner_visibility: ty::Visibility::Public,
         };
