@@ -14,6 +14,7 @@
 //! item-path. This is used for unit testing the code that generates
 //! paths etc in all kinds of annoying scenarios.
 
+use asm;
 use attributes;
 use base;
 use consts;
@@ -38,7 +39,8 @@ use std::iter;
 #[derive(PartialEq, Eq, Clone, Copy, Debug, Hash)]
 pub enum TransItem<'tcx> {
     Fn(Instance<'tcx>),
-    Static(NodeId)
+    Static(NodeId),
+    GlobalAsm(NodeId),
 }
 
 /// Describes how a translation item will be instantiated in object files.
@@ -89,6 +91,14 @@ impl<'a, 'tcx> TransItem<'tcx> {
                     span_bug!(item.span, "Mismatch between hir::Item type and TransItem type")
                 }
             }
+            TransItem::GlobalAsm(node_id) => {
+                let item = ccx.tcx().hir.expect_item(node_id);
+                if let hir::ItemGlobalAsm(ref ga) = item.node {
+                    asm::trans_global_asm(ccx, ga);
+                } else {
+                    span_bug!(item.span, "Mismatch between hir::Item type and TransItem type")
+                }
+            }
             TransItem::Fn(instance) => {
                 let _task = ccx.tcx().dep_graph.in_task(
                     DepNode::TransCrateItem(instance.def_id())); // (*)
@@ -123,6 +133,7 @@ impl<'a, 'tcx> TransItem<'tcx> {
             TransItem::Fn(instance) => {
                 TransItem::predefine_fn(ccx, instance, linkage, &symbol_name);
             }
+            TransItem::GlobalAsm(..) => {}
         }
 
         debug!("END PREDEFINING '{} ({})' in cgu {}",
@@ -185,6 +196,10 @@ impl<'a, 'tcx> TransItem<'tcx> {
                 let def_id = scx.tcx().hir.local_def_id(node_id);
                 symbol_names::symbol_name(Instance::mono(scx.tcx(), def_id), scx)
             }
+            TransItem::GlobalAsm(node_id) => {
+                let def_id = scx.tcx().hir.local_def_id(node_id);
+                format!("global_asm_{:?}", def_id)
+            }
         }
     }
 
@@ -202,6 +217,7 @@ impl<'a, 'tcx> TransItem<'tcx> {
                 }
             }
             TransItem::Static(..) => InstantiationMode::GloballyShared,
+            TransItem::GlobalAsm(..) => InstantiationMode::GloballyShared,
         }
     }
 
@@ -210,7 +226,8 @@ impl<'a, 'tcx> TransItem<'tcx> {
             TransItem::Fn(ref instance) => {
                 instance.substs.types().next().is_some()
             }
-            TransItem::Static(..)   => false,
+            TransItem::Static(..) |
+            TransItem::GlobalAsm(..) => false,
         }
     }
 
@@ -218,6 +235,7 @@ impl<'a, 'tcx> TransItem<'tcx> {
         let def_id = match *self {
             TransItem::Fn(ref instance) => instance.def_id(),
             TransItem::Static(node_id) => tcx.hir.local_def_id(node_id),
+            TransItem::GlobalAsm(..) => return None,
         };
 
         let attributes = tcx.get_attrs(def_id);
@@ -249,6 +267,9 @@ impl<'a, 'tcx> TransItem<'tcx> {
                 let instance = Instance::new(def_id, tcx.intern_substs(&[]));
                 to_string_internal(tcx, "static ", instance)
             },
+            TransItem::GlobalAsm(..) => {
+                "global_asm".to_string()
+            }
         };
 
         fn to_string_internal<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -272,6 +293,9 @@ impl<'a, 'tcx> TransItem<'tcx> {
             }
             TransItem::Static(id) => {
                 format!("Static({:?})", id)
+            }
+            TransItem::GlobalAsm(id) => {
+                format!("GlobalAsm({:?})", id)
             }
         }
     }
