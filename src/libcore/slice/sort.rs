@@ -57,7 +57,7 @@ fn shift_head<T, F>(v: &mut [T], is_less: &mut F)
             ptr::copy_nonoverlapping(v.get_unchecked(1), v.get_unchecked_mut(0), 1);
 
             for i in 2..len {
-                if !is_less(&v[i], &tmp.value) {
+                if !is_less(v.get_unchecked(i), &tmp.value) {
                     break;
                 }
 
@@ -159,7 +159,7 @@ fn insertion_sort<T, F>(v: &mut [T], is_less: &mut F)
 
 /// Sorts `v` using heapsort, which guarantees `O(n log n)` worst-case.
 #[cold]
-fn heapsort<T, F>(v: &mut [T], is_less: &mut F)
+pub fn heapsort<T, F>(v: &mut [T], is_less: &mut F)
     where F: FnMut(&T, &T) -> bool
 {
     // This binary heap respects the invariant `parent >= child`.

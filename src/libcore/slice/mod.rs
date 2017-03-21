@@ -2253,6 +2253,15 @@ pub unsafe fn from_raw_parts_mut<'a, T>(p: *mut T, len: usize) -> &'a mut [T] {
     mem::transmute(Repr { data: p, len: len })
 }
 
+// This function is public only because there is no other way to unit test heapsort.
+#[unstable(feature = "sort_internals", reason = "internal to sort module", issue = "0")]
+#[doc(hidden)]
+pub fn heapsort<T, F>(v: &mut [T], mut is_less: F)
+    where F: FnMut(&T, &T) -> bool
+{
+    sort::heapsort(v, &mut is_less);
+}
+
 //
 // Comparison traits
 //
