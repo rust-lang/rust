@@ -108,15 +108,19 @@ fn filter_frames(frames: &[Frame],
     // The raw form is used so that we don't have to demangle the symbol names.
     // The `a::b::c` form can show up on Windows/MSVC.
     static BAD_PREFIXES_TOP: &'static [&'static str] = &[
-        // std::sys::imp::backtrace
+        "std::sys::imp::backtrace",
         "ZN3std3sys3imp9backtrace",
-        // std::sys_common::backtrace
+
+        "std::sys_common::backtrace",
         "ZN3std10sys_common9backtrace",
-        // std::panicking
+
+        "std::panicking",
         "ZN3std9panicking",
-        // core::panicking
+
+        "core::panicking",
         "ZN4core9panicking",
-        // core::result::unwrap_failed
+
+        "core::result::unwrap_failed",
         "ZN4core6result13unwrap_failed",
 
         "rust_begin_unwind",
