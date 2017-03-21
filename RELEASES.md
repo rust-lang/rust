@@ -304,7 +304,8 @@ Cargo
 * [Fix retrying crate downloads for network errors][cargo/3348]
 * [Implement string lookup for `build.rustflags` config key][cargo/3356]
 * [Emit more info on --message-format=json][cargo/3319]
-* [Assume `build.rs` in the same directory as `Cargo.toml` is a build script][cargo/3361]
+* [Assume `build.rs` in the same directory as `Cargo.toml` is a build
+  script][cargo/3361]
 * [Don't ignore errors in workspace manifest][cargo/3409]
 * [Fix `--message-format JSON` when rustc emits non-JSON warnings][cargo/3410]
 
@@ -329,8 +330,8 @@ Misc
 * [Rust supports i686-unknown-openbsd][38086]. Tier 3 support. No testing or
   releases.
 * [Rust supports the MSP430][37627]. Tier 3 support. No testing or releases.
-* [Rust supports the ARMv5TE architecture][37615]. Tier 3 support. No testing or
-  releases.
+* [Rust supports the ARMv5TE architecture][37615]. Tier 3 support. No testing
+  or releases.
 
 Compatibility Notes
 -------------------
@@ -922,13 +923,16 @@ Version 1.12.1 (2016-10-20)
 Regression Fixes
 ----------------
 
-* [ICE: 'rustc' panicked at 'assertion failed: concrete_substs.is_normalized_for_trans()' #36381][36381]
+* [ICE: 'rustc' panicked at 'assertion failed: concrete_substs.is_normalized_
+  for_trans()' #36381][36381]
 * [Confusion with double negation and booleans][36856]
 * [rustc 1.12.0 fails with SIGSEGV in release mode (syn crate 0.8.0)][36875]
 * [Rustc 1.12.0 Windows build of `ethcore` crate fails with LLVM error][36924]
-* [1.12.0: High memory usage when linking in release mode with debug info][36926]
+* [1.12.0: High memory usage when linking in release mode with debug
+  info][36926]
 * [Corrupted memory after updated to 1.12][36936]
-* ["Let NullaryConstructor = something;" causes internal compiler error: "tried to overwrite interned AdtDef"][37026]
+* ["Let NullaryConstructor = something;" causes internal compiler error: "tried
+  to overwrite interned AdtDef"][37026]
 * [Fix ICE: inject bitcast if types mismatch for invokes/calls/stores][37112]
 * [debuginfo: Handle spread_arg case in MIR-trans in a more stable way.][37153]
 
@@ -1164,7 +1168,7 @@ Tooling
 * [Test binaries now support a `--test-threads` argument to specify the number
   of threads used to run tests, and which acts the same as the
   `RUST_TEST_THREADS` environment variable]
-  (https://github.com/rust-lang/rust/pull/35414)  
+  (https://github.com/rust-lang/rust/pull/35414)
 * [The test runner now emits a warning when tests run over 60 seconds]
   (https://github.com/rust-lang/rust/pull/35405)
 * [rustdoc: Fix methods in search results]
@@ -2216,15 +2220,22 @@ Libraries
     be the same length
     * `<[T]>::`[`sort_by_key`]
   * checked, saturated, and overflowing operations
-    * [`i32::checked_rem`], [`i32::checked_neg`], [`i32::checked_shl`], [`i32::checked_shr`]
+    * [`i32::checked_rem`], [`i32::checked_neg`], [`i32::checked_shl`],
+      [`i32::checked_shr`]
     * [`i32::saturating_mul`]
-    * [`i32::overflowing_add`], [`i32::overflowing_sub`], [`i32::overflowing_mul`], [`i32::overflowing_div`]
-    * [`i32::overflowing_rem`], [`i32::overflowing_neg`], [`i32::overflowing_shl`], [`i32::overflowing_shr`]
-    * [`u32::checked_rem`], [`u32::checked_neg`], [`u32::checked_shl`], [`u32::checked_shl`]
+    * [`i32::overflowing_add`], [`i32::overflowing_sub`],
+      [`i32::overflowing_mul`], [`i32::overflowing_div`]
+    * [`i32::overflowing_rem`], [`i32::overflowing_neg`],
+      [`i32::overflowing_shl`], [`i32::overflowing_shr`]
+    * [`u32::checked_rem`], [`u32::checked_neg`], [`u32::checked_shl`],
+      [`u32::checked_shl`]
     * [`u32::saturating_mul`]
-    * [`u32::overflowing_add`], [`u32::overflowing_sub`], [`u32::overflowing_mul`], [`u32::overflowing_div`]
-    * [`u32::overflowing_rem`], [`u32::overflowing_neg`], [`u32::overflowing_shl`], [`u32::overflowing_shr`]
-    * and checked, saturated, and overflowing operations for other primitive types
+    * [`u32::overflowing_add`], [`u32::overflowing_sub`],
+      [`u32::overflowing_mul`], [`u32::overflowing_div`]
+    * [`u32::overflowing_rem`], [`u32::overflowing_neg`],
+      [`u32::overflowing_shl`], [`u32::overflowing_shr`]
+    * and checked, saturated, and overflowing operations for other primitive
+      types
   * FFI
     * [`ffi::IntoStringError`]
     * [`CString::into_string`]
@@ -3320,7 +3331,8 @@ Highlights
     access to all underlying information.
 * The compiler now contains extended explanations of many errors. When an error
   with an explanation occurs the compiler suggests using the `--explain` flag
-  to read the explanation. Error explanations are also [available online][err-index].
+  to read the explanation. Error explanations are also
+  [available online][err-index].
 * Thanks to multiple [improvements][sk] to [type checking][pre], as
   well as other work, the time to bootstrap the compiler decreased by
   32%.
@@ -4155,7 +4167,8 @@ Version 0.10 (2014-04-03)
     * Trailing commas are now allowed in argument lists and tuple patterns.
     * The `do` keyword has been removed, it is now a reserved keyword.
     * Default type parameters have been implemented, but are feature gated.
-    * Borrowed variables through captures in closures are now considered soundly.
+    * Borrowed variables through captures in closures are now considered
+      soundly.
     * `extern mod` is now `extern crate`
     * The `Freeze` trait has been removed.
     * The `Share` trait has been added for types that can be shared among
@@ -4186,8 +4199,8 @@ Version 0.10 (2014-04-03)
     * std: The `vec` module has been renamed to `slice`.
     * std: A new vector type, `Vec<T>`, has been added in preparation for DST.
       This will become the only growable vector in the future.
-    * std: `std::io` now has more public-reexports. Types such as `BufferedReader`
-      are now found at `std::io::BufferedReader` instead of
+    * std: `std::io` now has more public-reexports. Types such as
+      `BufferedReader` are now found at `std::io::BufferedReader` instead of
       `std::io::buffered::BufferedReader`.
     * std: `print` and `println` are no longer in the prelude, the `print!` and
       `println!` macros are intended to be used instead.
@@ -4209,7 +4222,8 @@ Version 0.10 (2014-04-03)
       can be found on the wiki's style guide.
     * std: `eof()` has been removed from the `Reader` trait. Specific types may
       still implement the function.
-    * std: Networking types are now cloneable to allow simultaneous reads/writes.
+    * std: Networking types are now cloneable to allow simultaneous
+      reads/writes.
     * std: `assert_approx_eq!` has been removed
     * std: The `e` and `E` formatting specifiers for floats have been added to
       print them in exponential notation.
@@ -4330,24 +4344,25 @@ Version 0.9 (2014-01-09)
       * Comments may be nested.
       * Values automatically coerce to trait objects they implement, without
         an explicit `as`.
-      * Enum discriminants are no longer an entire word but as small as needed to
-        contain all the variants. The `repr` attribute can be used to override
-        the discriminant size, as in `#[repr(int)]` for integer-sized, and
-        `#[repr(C)]` to match C enums.
+      * Enum discriminants are no longer an entire word but as small as needed
+        to contain all the variants. The `repr` attribute can be used to
+        override the discriminant size, as in `#[repr(int)]` for integer-sized,
+        and `#[repr(C)]` to match C enums.
       * Non-string literals are not allowed in attributes (they never worked).
       * The FFI now supports variadic functions.
       * Octal numeric literals, as in `0o7777`.
-      * The `concat!` syntax extension performs compile-time string concatenation.
+      * The `concat!` syntax extension performs compile-time string
+        concatenation.
       * The `#[fixed_stack_segment]` and `#[rust_stack]` attributes have been
         removed as Rust no longer uses segmented stacks.
       * Non-ascii identifiers are feature-gated (`#[feature(non_ascii_idents)]`).
-      * Ignoring all fields of an enum variant or tuple-struct is done with `..`,
-        not `*`; ignoring remaining fields of a struct is also done with `..`,
-        not `_`; ignoring a slice of a vector is done with `..`, not `.._`.
+      * Ignoring all fields of an enum variant or tuple-struct is done with
+        `..`, not `*`; ignoring remaining fields of a struct is also done with
+        `..`, not `_`; ignoring a slice of a vector is done with `..`, not `.._`.
       * `rustc` supports the "win64" calling convention via `extern "win64"`.
       * `rustc` supports the "system" calling convention, which defaults to the
-        preferred convention for the target platform, "stdcall" on 32-bit Windows,
-        "C" elsewhere.
+        preferred convention for the target platform, "stdcall" on 32-bit
+        Windows, "C" elsewhere.
       * The `type_overflow` lint (default: warn) checks literals for overflow.
       * The `unsafe_block` lint (default: allow) checks for usage of `unsafe`.
       * The `attribute_usage` lint (default: warn) warns about unknown

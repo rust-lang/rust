@@ -106,8 +106,8 @@ Usually, access to a vector with `[]` is very fast. But, because each character
 in a UTF-8 encoded string can be multiple bytes, you have to walk over the
 string to find the nᵗʰ letter of a string. This is a significantly more
 expensive operation, and we don’t want to be misleading. Furthermore, ‘letter’
-isn’t something defined in Unicode, exactly. We can choose to look at a string as
-individual bytes, or as codepoints:
+isn’t something defined in Unicode, exactly. We can choose to look at a string
+as individual bytes, or as codepoints:
 
 ```rust
 let hachiko = "忠犬ハチ公";
@@ -163,8 +163,8 @@ let hachi = &dog[0..2];
 with this error:
 
 ```text
-thread 'main' panicked at 'byte index 2 is not a char boundary; it is inside '忠'
-(bytes 0..3) of `忠犬ハチ公`'
+thread 'main' panicked at 'byte index 2 is not a char boundary; it is inside
+'忠' (bytes 0..3) of `忠犬ハチ公`'
 ```
 
 ## Concatenation

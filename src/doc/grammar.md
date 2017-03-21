@@ -2,8 +2,8 @@
 
 # Introduction
 
-This document is the primary reference for the Rust programming language grammar. It
-provides only one kind of material:
+This document is the primary reference for the Rust programming language
+grammar. It provides only one kind of material:
 
   - Chapters that formally define the language grammar.
 
@@ -90,8 +90,8 @@ codepoints, but a small number are defined in terms of Unicode properties or
 explicit codepoint lists. [^inputformat]
 
 [^inputformat]: Substitute definitions for the special Unicode productions are
-  provided to the grammar verifier, restricted to ASCII range, when verifying the
-  grammar in this document.
+  provided to the grammar verifier, restricted to ASCII range, when verifying
+  the grammar in this document.
 
 ## Special Unicode Productions
 
@@ -710,7 +710,8 @@ return_expr : "return" expr ? ;
 
 # Type system
 
-**FIXME:** is this entire chapter relevant here? Or should it all have been covered by some production already?
+**FIXME:** is this entire chapter relevant here? Or should it all have been
+covered by some production already?
 
 ## Types
 
@@ -790,7 +791,8 @@ never_type : "!" ;
 
 # Memory and concurrency models
 
-**FIXME:** is this entire chapter relevant here? Or should it all have been covered by some production already?
+**FIXME:** is this entire chapter relevant here? Or should it all have been
+covered by some production already?
 
 ## Memory model
 

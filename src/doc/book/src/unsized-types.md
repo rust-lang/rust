@@ -2,9 +2,9 @@
 
 Most types have a particular size, in bytes, that is knowable at compile time.
 For example, an `i32` is thirty-two bits big, or four bytes. However, there are
-some types which are useful to express, but do not have a defined size. These are
-called ‘unsized’ or ‘dynamically sized’ types. One example is `[T]`. This type
-represents a certain number of `T` in sequence. But we don’t know how many
+some types which are useful to express, but do not have a defined size. These
+are called ‘unsized’ or ‘dynamically sized’ types. One example is `[T]`. This
+type represents a certain number of `T` in sequence. But we don’t know how many
 there are, so the size is not known.
 
 Rust understands a few of these types, but they have some restrictions. There
