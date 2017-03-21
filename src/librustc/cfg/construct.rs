@@ -22,13 +22,20 @@ struct CFGBuilder<'a, 'tcx: 'a> {
     graph: CFGGraph,
     fn_exit: CFGIndex,
     loop_scopes: Vec<LoopScope>,
+    breakable_block_scopes: Vec<BlockScope>,
+}
+
+#[derive(Copy, Clone)]
+struct BlockScope {
+    block_expr_id: ast::NodeId, // id of breakable block expr node
+    break_index: CFGIndex, // where to go on `break`
 }
 
 #[derive(Copy, Clone)]
 struct LoopScope {
     loop_id: ast::NodeId,     // id of loop/while node
     continue_index: CFGIndex, // where to go on a `loop`
-    break_index: CFGIndex,    // where to go on a `break
+    break_index: CFGIndex,    // where to go on a `break`
 }
 
 pub fn construct<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -53,6 +60,7 @@ pub fn construct<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         graph: graph,
         fn_exit: fn_exit,
         loop_scopes: Vec::new(),
+        breakable_block_scopes: Vec::new(),
     };
     body_exit = cfg_builder.expr(&body.value, entry);
     cfg_builder.add_contained_edge(body_exit, fn_exit);
@@ -66,14 +74,34 @@ pub fn construct<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
     fn block(&mut self, blk: &hir::Block, pred: CFGIndex) -> CFGIndex {
-        let mut stmts_exit = pred;
-        for stmt in &blk.stmts {
-            stmts_exit = self.stmt(stmt, stmts_exit);
+        if let Some(break_to_expr_id) = blk.break_to_expr_id {
+            let expr_exit = self.add_ast_node(blk.id, &[]);
+
+            self.breakable_block_scopes.push(BlockScope {
+                block_expr_id: break_to_expr_id,
+                break_index: expr_exit,
+            });
+
+            let mut stmts_exit = pred;
+            for stmt in &blk.stmts {
+                stmts_exit = self.stmt(stmt, stmts_exit);
+            }
+            let blk_expr_exit = self.opt_expr(&blk.expr, stmts_exit);
+            self.add_contained_edge(blk_expr_exit, expr_exit);
+
+            self.breakable_block_scopes.pop();
+
+            expr_exit
+        } else {
+            let mut stmts_exit = pred;
+            for stmt in &blk.stmts {
+                stmts_exit = self.stmt(stmt, stmts_exit);
+            }
+
+            let expr_exit = self.opt_expr(&blk.expr, stmts_exit);
+
+            self.add_ast_node(blk.id, &[expr_exit])
         }
-
-        let expr_exit = self.opt_expr(&blk.expr, stmts_exit);
-
-        self.add_ast_node(blk.id, &[expr_exit])
     }
 
     fn stmt(&mut self, stmt: &hir::Stmt, pred: CFGIndex) -> CFGIndex {
@@ -295,18 +323,18 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
 
             hir::ExprBreak(destination, ref opt_expr) => {
                 let v = self.opt_expr(opt_expr, pred);
-                let loop_scope = self.find_scope(expr, destination);
+                let (scope_id, break_dest) =
+                    self.find_scope_edge(expr, destination, ScopeCfKind::Break);
                 let b = self.add_ast_node(expr.id, &[v]);
-                self.add_exiting_edge(expr, b,
-                                      loop_scope, loop_scope.break_index);
+                self.add_exiting_edge(expr, b, scope_id, break_dest);
                 self.add_unreachable_node()
             }
 
             hir::ExprAgain(destination) => {
-                let loop_scope = self.find_scope(expr, destination);
+                let (scope_id, cont_dest) =
+                    self.find_scope_edge(expr, destination, ScopeCfKind::Continue);
                 let a = self.add_ast_node(expr.id, &[pred]);
-                self.add_exiting_edge(expr, a,
-                                      loop_scope, loop_scope.continue_index);
+                self.add_exiting_edge(expr, a, scope_id, cont_dest);
                 self.add_unreachable_node()
             }
 
@@ -552,11 +580,11 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
     fn add_exiting_edge(&mut self,
                         from_expr: &hir::Expr,
                         from_index: CFGIndex,
-                        to_loop: LoopScope,
+                        scope_id: ast::NodeId,
                         to_index: CFGIndex) {
         let mut data = CFGEdgeData { exiting_scopes: vec![] };
         let mut scope = self.tcx.region_maps.node_extent(from_expr.id);
-        let target_scope = self.tcx.region_maps.node_extent(to_loop.loop_id);
+        let target_scope = self.tcx.region_maps.node_extent(scope_id);
         while scope != target_scope {
             data.exiting_scopes.push(scope.node_id(&self.tcx.region_maps));
             scope = self.tcx.region_maps.encl_scope(scope);
@@ -576,20 +604,42 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
         self.graph.add_edge(from_index, self.fn_exit, data);
     }
 
-    fn find_scope(&self,
+    fn find_scope_edge(&self,
                   expr: &hir::Expr,
-                  destination: hir::Destination) -> LoopScope {
+                  destination: hir::Destination,
+                  scope_cf_kind: ScopeCfKind) -> (ast::NodeId, CFGIndex) {
 
-        match destination.loop_id.into() {
-            Ok(loop_id) => {
+        match destination.target_id {
+            hir::ScopeTarget::Block(block_expr_id) => {
+                for b in &self.breakable_block_scopes {
+                    if b.block_expr_id == block_expr_id {
+                        return (block_expr_id, match scope_cf_kind {
+                            ScopeCfKind::Break => b.break_index,
+                            ScopeCfKind::Continue => bug!("can't continue to block"),
+                        });
+                    }
+                }
+                span_bug!(expr.span, "no block expr for id {}", block_expr_id);
+            }
+            hir::ScopeTarget::Loop(hir::LoopIdResult::Ok(loop_id)) => {
                 for l in &self.loop_scopes {
                     if l.loop_id == loop_id {
-                        return *l;
+                        return (loop_id, match scope_cf_kind {
+                            ScopeCfKind::Break => l.break_index,
+                            ScopeCfKind::Continue => l.continue_index,
+                        });
                     }
                 }
                 span_bug!(expr.span, "no loop scope for id {}", loop_id);
             }
-            Err(err) => span_bug!(expr.span, "loop scope error: {}", err),
+            hir::ScopeTarget::Loop(hir::LoopIdResult::Err(err)) =>
+                span_bug!(expr.span, "loop scope error: {}",  err),
         }
     }
+}
+
+#[derive(Copy, Clone, Eq, PartialEq)]
+enum ScopeCfKind {
+    Break,
+    Continue,
 }

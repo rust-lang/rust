@@ -485,6 +485,9 @@ pub struct Block {
     /// Distinguishes between `unsafe { ... }` and `{ ... }`
     pub rules: BlockCheckMode,
     pub span: Span,
+    /// The id of the expression that `break` breaks to if the block can be broken out of.
+    /// Currently only `Some(_)` for `catch {}` blocks
+    pub break_to_expr_id: Option<NodeId>,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash)]
@@ -1081,13 +1084,29 @@ impl From<Result<NodeId, LoopIdError>> for LoopIdResult {
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
+pub enum ScopeTarget {
+    Block(NodeId),
+    Loop(LoopIdResult),
+}
+
+impl ScopeTarget {
+    pub fn opt_id(self) -> Option<NodeId> {
+        match self {
+            ScopeTarget::Block(node_id) |
+            ScopeTarget::Loop(LoopIdResult::Ok(node_id)) => Some(node_id),
+            ScopeTarget::Loop(LoopIdResult::Err(_)) => None,
+        }
+    }
+}
+
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
 pub struct Destination {
     // This is `Some(_)` iff there is an explicit user-specified `label
     pub ident: Option<Spanned<Ident>>,
 
     // These errors are caught and then reported during the diagnostics pass in
     // librustc_passes/loops.rs
-    pub loop_id: LoopIdResult,
+    pub target_id: ScopeTarget,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
@@ -1466,6 +1485,18 @@ pub enum Visibility {
     Crate,
     Restricted { path: P<Path>, id: NodeId },
     Inherited,
+}
+
+impl Visibility {
+    pub fn is_pub_restricted(&self) -> bool {
+        use self::Visibility::*;
+        match self {
+            &Public |
+            &Inherited => false,
+            &Crate |
+            &Restricted { .. } => true,
+        }
+    }
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]

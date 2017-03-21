@@ -174,7 +174,7 @@
 //! [slice]: primitive.slice.html
 //! [`atomic`]: sync/atomic/index.html
 //! [`collections`]: collections/index.html
-//! [`for`]: ../book/loops.html#for
+//! [`for`]: ../book/first-edition/loops.html#for
 //! [`format!`]: macro.format.html
 //! [`fs`]: fs/index.html
 //! [`io`]: io/index.html
@@ -189,14 +189,14 @@
 //! [`sync`]: sync/index.html
 //! [`thread`]: thread/index.html
 //! [`use std::env`]: env/index.html
-//! [`use`]: ../book/crates-and-modules.html#importing-modules-with-use
-//! [crate root]: ../book/crates-and-modules.html#basic-terminology-crates-and-modules
+//! [`use`]: ../book/first-edition/crates-and-modules.html#importing-modules-with-use
+//! [crate root]: ../book/first-edition/crates-and-modules.html#basic-terminology-crates-and-modules
 //! [crates.io]: https://crates.io
-//! [deref coercions]: ../book/deref-coercions.html
+//! [deref coercions]: ../book/first-edition/deref-coercions.html
 //! [files]: fs/struct.File.html
 //! [multithreading]: thread/index.html
 //! [other]: #what-is-in-the-standard-library-documentation
-//! [primitive types]: ../book/primitive-types.html
+//! [primitive types]: ../book/first-edition/primitive-types.html
 
 #![crate_name = "std"]
 #![stable(feature = "rust1", since = "1.0.0")]
@@ -283,7 +283,6 @@
 #![feature(placement_in_syntax)]
 #![feature(placement_new_protocol)]
 #![feature(prelude_import)]
-#![feature(pub_restricted)]
 #![feature(rand)]
 #![feature(raw)]
 #![feature(repr_simd)]
@@ -309,6 +308,7 @@
 #![feature(vec_push_all)]
 #![feature(zero_one)]
 #![cfg_attr(test, feature(update_panic_count))]
+#![cfg_attr(stage0, feature(pub_restricted))]
 
 // Explicitly import the prelude. The compiler uses this same unstable attribute
 // to import the prelude implicitly when building crates that depend on std.

@@ -10,8 +10,6 @@
 
 // aux-build:privacy-struct-ctor.rs
 
-#![feature(pub_restricted)]
-
 extern crate privacy_struct_ctor as xcrate;
 
 mod m {

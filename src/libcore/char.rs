@@ -94,7 +94,7 @@ pub const MAX: char = '\u{10ffff}';
 ///
 /// [`char`]: ../../std/primitive.char.html
 /// [`u32`]: ../../std/primitive.u32.html
-/// [`as`]: ../../book/casting-between-types.html#as
+/// [`as`]: ../../book/first-edition/casting-between-types.html#as
 ///
 /// For an unsafe version of this function which ignores these checks, see
 /// [`from_u32_unchecked`].
@@ -146,7 +146,7 @@ pub fn from_u32(i: u32) -> Option<char> {
 ///
 /// [`char`]: ../../std/primitive.char.html
 /// [`u32`]: ../../std/primitive.u32.html
-/// [`as`]: ../../book/casting-between-types.html#as
+/// [`as`]: ../../book/first-edition/casting-between-types.html#as
 ///
 /// # Safety
 ///
