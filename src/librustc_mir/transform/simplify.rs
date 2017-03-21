@@ -90,11 +90,9 @@ impl<'a, 'tcx: 'a> CfgSimplifier<'a, 'tcx> {
         // dead blocks, which we don't want to.
         pred_count[START_BLOCK] = 1;
 
-        for (_, data) in traversal::preorder(mir) {
-            if let Some(ref term) = data.terminator {
-                for &tgt in term.successors().iter() {
-                    pred_count[tgt] += 1;
-                }
+        for (bb, _) in traversal::preorder(mir) {
+            for &tgt in mir.successors_for(bb).iter() {
+                pred_count[tgt] += 1;
             }
         }
 
@@ -120,6 +118,8 @@ impl<'a, 'tcx: 'a> CfgSimplifier<'a, 'tcx> {
                 let mut terminator = self.basic_blocks[bb].terminator.take()
                     .expect("invalid terminator state");
 
+                // NB: No need to call collapse_goto_chain on statement successors because
+                // the statements aren't empty, so we cannot collapse blocks.
                 for successor in terminator.successors_mut() {
                     self.collapse_goto_chain(successor, &mut changed);
                 }
@@ -272,6 +272,12 @@ pub fn remove_dead_blocks(mir: &mut Mir) {
     basic_blocks.raw.truncate(used_blocks);
 
     for block in basic_blocks {
+        for stmt in &mut block.statements {
+            for tgt in stmt.successors_mut() {
+                *tgt = replacements[tgt.index()];
+            }
+        }
+
         for target in block.terminator_mut().successors_mut() {
             *target = replacements[target.index()];
         }

@@ -15,6 +15,7 @@ use rustc::hir::def_id::DefId;
 use rustc_data_structures::bitvec::BitVector;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc_data_structures::graph;
+use rustc_data_structures::control_flow_graph::ControlFlowGraph;
 
 use rustc::dep_graph::DepNode;
 use rustc::mir::*;
@@ -342,7 +343,8 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                 match stmt.kind {
                     StatementKind::StorageLive(_) |
                     StatementKind::StorageDead(_) |
-                    StatementKind::Nop => {}
+                    StatementKind::Nop => {},
+                    StatementKind::Assert { .. } => cost += CALL_PENALTY - INSTR_COST,
                     _ => cost += INSTR_COST
                 }
             }
@@ -384,12 +386,11 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                         }
                     }
                 }
-                TerminatorKind::Assert { .. } => cost += CALL_PENALTY,
                 _ => cost += INSTR_COST
             }
 
             if !is_drop {
-                for &succ in &term.successors()[..] {
+                for succ in ControlFlowGraph::successors(callee_mir, bb) {
                     work_list.push(succ);
                 }
             }
@@ -798,16 +799,6 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
                     *cleanup = self.cleanup_block;
                 }
             }
-            TerminatorKind::Assert { ref mut target, ref mut cleanup, .. } => {
-                *target = self.update_target(*target);
-                if let Some(tgt) = *cleanup {
-                    *cleanup = Some(self.update_target(tgt));
-                } else if !self.in_cleanup_block {
-                    // Unless this assert is in a cleanup block, add an unwind edge to
-                    // the orignal call's cleanup block
-                    *cleanup = self.cleanup_block;
-                }
-            }
             TerminatorKind::Return => {
                 *kind = TerminatorKind::Goto { target: self.return_block };
             }
@@ -817,6 +808,25 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
                 }
             }
             TerminatorKind::Unreachable => { }
+        }
+    }
+
+    fn visit_statement(
+        &mut self,
+        block: Block,
+        statement: &mut Statement<'tcx>,
+        location: Location
+    ) {
+        self.super_statement(block, statement, location);
+
+        if let StatementKind::Assert { ref mut cleanup, .. } = statement.kind {
+            if let Some(tgt) = *cleanup {
+                *cleanup = Some(self.update_target(tgt));
+            } else if !self.in_cleanup_block {
+                // Unless this assert is in a cleanup block, add an unwind edge to
+                // the orignal call's cleanup block
+                *cleanup = self.cleanup_block;
+            }
         }
     }
 

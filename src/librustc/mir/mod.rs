@@ -163,8 +163,18 @@ impl<'tcx> Mir<'tcx> {
     }
 
     #[inline]
+    pub fn successors(&self) -> Ref<IndexVec<Block, Vec<Block>>> {
+        self.cache.successors(self)
+    }
+
+    #[inline]
     pub fn predecessors_for(&self, bb: Block) -> Ref<Vec<Block>> {
         Ref::map(self.predecessors(), |p| &p[bb])
+    }
+
+    #[inline]
+    pub fn successors_for(&self, bb: Block) -> Ref<Vec<Block>> {
+        Ref::map(self.successors(), |p| &p[bb])
     }
 
     #[inline]
@@ -723,6 +733,24 @@ impl<'tcx> Statement<'tcx> {
     /// invalidating statement indices in `Location`s.
     pub fn make_nop(&mut self) {
         self.kind = StatementKind::Nop
+    }
+
+    pub fn successors(&self) -> Cow<[Block]> {
+        match self.kind {
+            StatementKind::Assert { cleanup: Some(unwind), .. } => {
+                vec![unwind].into_cow()
+            }
+            _ => (&[]).into_cow(),
+        }
+    }
+
+    pub fn successors_mut(&mut self) -> Vec<&mut Block> {
+        match self.kind {
+            StatementKind::Assert { cleanup: Some(ref mut unwind), .. } => {
+                vec![unwind]
+            }
+            _ => Vec::new(),
+        }
     }
 }
 
@@ -1302,7 +1330,7 @@ impl<'tcx> ControlFlowGraph for Mir<'tcx> {
     fn successors<'graph>(&'graph self, node: Self::Node)
                           -> <Self as GraphSuccessors<'graph>>::Iter
     {
-        self.basic_blocks[node].terminator().successors().into_owned().into_iter()
+        self.successors_for(node).clone().into_iter()
     }
 }
 

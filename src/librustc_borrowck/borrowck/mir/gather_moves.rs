@@ -413,6 +413,7 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
                           "SetDiscriminant should not exist during borrowck");
             }
             StatementKind::InlineAsm { .. } |
+            StatementKind::Assert { .. } |
             StatementKind::Nop => {}
         }
     }
@@ -464,7 +465,6 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
                 self.gather_move(loc, &Lvalue::Local(RETURN_POINTER));
             }
 
-            TerminatorKind::Assert { .. } |
             TerminatorKind::SwitchInt { .. } => {
                 // branching terminators - these don't move anything
             }

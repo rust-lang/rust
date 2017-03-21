@@ -11,7 +11,6 @@
 //! A pass that simplifies branches when their condition is known.
 
 use rustc::ty::TyCtxt;
-use rustc::middle::const_val::ConstVal;
 use rustc::mir::transform::{MirPass, MirSource, Pass};
 use rustc::mir::*;
 
@@ -46,13 +45,6 @@ impl<'l, 'tcx> MirPass<'tcx> for SimplifyBranches<'l> {
                     } else {
                         continue
                     }
-                },
-                TerminatorKind::Assert { target, cond: Operand::Constant(Constant {
-                    literal: Literal::Value {
-                        value: ConstVal::Bool(cond)
-                    }, ..
-                }), expected, .. } if cond == expected => {
-                    TerminatorKind::Goto { target: target }
                 },
                 _ => continue
             };

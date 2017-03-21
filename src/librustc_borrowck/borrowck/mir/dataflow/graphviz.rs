@@ -125,7 +125,7 @@ pub type Node = Block;
 pub struct Edge { source: Block, index: usize }
 
 fn outgoing(mir: &Mir, bb: Block) -> Vec<Edge> {
-    let succ_len = mir[bb].terminator().successors().len();
+    let succ_len = mir.successors_for(bb).len();
     (0..succ_len).map(|index| Edge { source: bb, index: index}).collect()
 }
 

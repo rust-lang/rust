@@ -116,6 +116,8 @@ fn write_edges<W: Write>(source: Block, mir: &Mir, w: &mut W) -> io::Result<()> 
     let terminator = mir[source].terminator();
     let labels = terminator.kind.fmt_successor_labels();
 
+    // FIXME: This should utilize ControlFlowGraph::successors(mir, source) but the
+    // fmt_successor_labels is only implemented for terminators as of right now.
     for (&target, label) in terminator.successors().iter().zip(labels) {
         writeln!(w, r#"    {} -> {} [label="{}"];"#, node(source), node(target), label)?;
     }

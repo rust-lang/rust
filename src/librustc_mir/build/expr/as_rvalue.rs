@@ -89,15 +89,16 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                          Rvalue::BinaryOp(BinOp::Eq, arg.clone(), minval));
 
                     let err = ConstMathErr::Overflow(Op::Neg);
-                    this.cfg.push(block, Statement {
-                        source_info: this.source_info(expr_span),
+                    let stmt = Statement {
+                        source_info: source_info,
                         kind: StatementKind::Assert {
                             cond: Operand::Consume(is_min),
                             expected: false,
                             msg: AssertMessage::Math(err),
                             cleanup: this.diverge_cleanup(),
                         },
-                    });
+                    };
+                    this.cfg.push(block, stmt);
                 }
                 block.and(Rvalue::UnaryOp(op, arg))
             }
@@ -261,7 +262,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn build_binary_op(&mut self, mut block: Block,
+    pub fn build_binary_op(&mut self, block: Block,
                            op: BinOp, span: Span, ty: ty::Ty<'tcx>,
                            lhs: Operand<'tcx>, rhs: Operand<'tcx>) -> BlockAnd<Rvalue<'tcx>> {
         let source_info = self.source_info(span);
@@ -291,15 +292,16 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 }
             });
 
-            self.cfg.push(block, Statement {
-                source_info: self.source_info(span),
+            let stmt = Statement {
+                source_info: source_info,
                 kind: StatementKind::Assert {
                     cond: Operand::Consume(of),
                     expected: false,
                     msg: AssertMessage::Math(err),
                     cleanup: self.diverge_cleanup(),
                 },
-            });
+            };
+            self.cfg.push(block, stmt);
             block.and(Rvalue::Use(Operand::Consume(val)))
         } else {
             if ty.is_integral() && (op == BinOp::Div || op == BinOp::Rem) {
@@ -320,15 +322,16 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 self.cfg.push_assign(block, source_info, &is_zero,
                                      Rvalue::BinaryOp(BinOp::Eq, rhs.clone(), zero));
 
-                self.cfg.push(block, Statement {
-                    source_info: self.source_info(span),
+                let stmt = Statement {
+                    source_info: source_info,
                     kind: StatementKind::Assert {
                         cond: Operand::Consume(is_zero),
                         expected: false,
                         msg: AssertMessage::Math(zero_err),
                         cleanup: self.diverge_cleanup(),
                     },
-                });
+                };
+                self.cfg.push(block, stmt);
 
                 // We only need to check for the overflow in one case:
                 // MIN / -1, and only for signed values.
@@ -352,15 +355,16 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     self.cfg.push_assign(block, source_info, &of,
                                          Rvalue::BinaryOp(BinOp::BitAnd, is_neg_1, is_min));
 
-                    self.cfg.push(block, Statement {
-                        source_info: self.source_info(span),
+                    let stmt = Statement {
+                        source_info: source_info,
                         kind: StatementKind::Assert {
                             cond: Operand::Consume(of),
                             expected: false,
                             msg: AssertMessage::Math(overflow_err),
                             cleanup: self.diverge_cleanup(),
                         },
-                    });
+                    };
+                    self.cfg.push(block, stmt);
                 }
             }
 

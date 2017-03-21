@@ -64,15 +64,11 @@ impl<'a, 'tcx> Iterator for Preorder<'a, 'tcx> {
                 continue;
             }
 
-            let data = &self.mir[idx];
-
-            if let Some(ref term) = data.terminator {
-                for &succ in term.successors().iter() {
-                    self.worklist.push(succ);
-                }
+            for &succ in self.mir.successors_for(idx).iter() {
+                self.worklist.push(succ);
             }
 
-            return Some((idx, data));
+            return Some((idx, &self.mir[idx]));
         }
 
         None
@@ -111,17 +107,11 @@ impl<'a, 'tcx> Postorder<'a, 'tcx> {
             visit_stack: Vec::new()
         };
 
+        po.visited.insert(root.index());
 
-        let data = &po.mir[root];
-
-        if let Some(ref term) = data.terminator {
-            po.visited.insert(root.index());
-
-            let succs = term.successors().into_owned().into_iter();
-
-            po.visit_stack.push((root, succs));
-            po.traverse_successor();
-        }
+        let succs = ControlFlowGraph::successors(&po.mir, root);
+        po.visit_stack.push((root, succs));
+        po.traverse_successor();
 
         po
     }
@@ -186,10 +176,7 @@ impl<'a, 'tcx> Postorder<'a, 'tcx> {
             };
 
             if self.visited.insert(bb.index()) {
-                if let Some(ref term) = self.mir[bb].terminator {
-                    let succs = term.successors().into_owned().into_iter();
-                    self.visit_stack.push((bb, succs));
-                }
+                self.visit_stack.push((bb, ControlFlowGraph::successors(&self.mir, bb)));
             }
         }
     }

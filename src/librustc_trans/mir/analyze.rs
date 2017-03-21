@@ -14,7 +14,7 @@
 use rustc_data_structures::bitvec::BitVector;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc::middle::const_val::ConstVal;
-use rustc::mir::{self, Location, TerminatorKind, Literal};
+use rustc::mir::{self, Location, TerminatorKind, Literal, StatementKind};
 use rustc::mir::visit::{Visitor, LvalueContext};
 use rustc::mir::traversal;
 use common;
@@ -202,6 +202,26 @@ pub fn cleanup_kinds<'a, 'tcx>(mir: &mir::Mir<'tcx>) -> IndexVec<mir::Block, Cle
     fn discover_masters<'tcx>(result: &mut IndexVec<mir::Block, CleanupKind>,
                               mir: &mir::Mir<'tcx>) {
         for (bb, data) in mir.basic_blocks().iter_enumerated() {
+            for stmt in data.statements.iter() {
+                match stmt.kind {
+                    StatementKind::Assign(..) |
+                    StatementKind::SetDiscriminant { .. } |
+                    StatementKind::StorageLive(..) |
+                    StatementKind::StorageDead(..) |
+                    StatementKind::InlineAsm { .. } |
+                    StatementKind::Nop => {
+                        /* nothing to do */
+                    },
+                    StatementKind::Assert { cleanup: unwind, .. } => {
+                        if let Some(unwind) = unwind {
+                            debug!("cleanup_kinds: {:?}/{:?} registering {:?} as funclet",
+                                bb, data, unwind);
+                            result[unwind] = CleanupKind::Funclet;
+                        }
+                    }
+                }
+            }
+
             match data.terminator().kind {
                 TerminatorKind::Goto { .. } |
                 TerminatorKind::Resume |
@@ -211,7 +231,6 @@ pub fn cleanup_kinds<'a, 'tcx>(mir: &mir::Mir<'tcx>) -> IndexVec<mir::Block, Cle
                     /* nothing to do */
                 }
                 TerminatorKind::Call { cleanup: unwind, .. } |
-                TerminatorKind::Assert { cleanup: unwind, .. } |
                 TerminatorKind::DropAndReplace { unwind, .. } |
                 TerminatorKind::Drop { unwind, .. } => {
                     if let Some(unwind) = unwind {
@@ -252,7 +271,7 @@ pub fn cleanup_kinds<'a, 'tcx>(mir: &mir::Mir<'tcx>) -> IndexVec<mir::Block, Cle
             debug!("cleanup_kinds: {:?}/{:?}/{:?} propagating funclet {:?}",
                    bb, data, result[bb], funclet);
 
-            for &succ in data.terminator().successors().iter() {
+            for &succ in mir.successors_for(bb).iter() {
                 let kind = result[succ];
                 debug!("cleanup_kinds: propagating {:?} to {:?}/{:?}",
                        funclet, succ, kind);

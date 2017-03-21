@@ -17,7 +17,8 @@ use rustc_serialize as serialize;
 
 #[derive(Clone, Debug)]
 pub struct Cache {
-    predecessors: RefCell<Option<IndexVec<Block, Vec<Block>>>>
+    predecessors: RefCell<Option<IndexVec<Block, Vec<Block>>>>,
+    successors: RefCell<Option<IndexVec<Block, Vec<Block>>>>,
 }
 
 
@@ -37,13 +38,15 @@ impl serialize::Decodable for Cache {
 impl Cache {
     pub fn new() -> Self {
         Cache {
-            predecessors: RefCell::new(None)
+            predecessors: RefCell::new(None),
+            successors: RefCell::new(None)
         }
     }
 
     pub fn invalidate(&self) {
         // FIXME: consider being more fine-grained
         *self.predecessors.borrow_mut() = None;
+        *self.successors.borrow_mut() = None;
     }
 
     pub fn predecessors(&self, mir: &Mir) -> Ref<IndexVec<Block, Vec<Block>>> {
@@ -53,14 +56,47 @@ impl Cache {
 
         Ref::map(self.predecessors.borrow(), |p| p.as_ref().unwrap())
     }
+
+    pub fn successors(&self, mir: &Mir) -> Ref<IndexVec<Block, Vec<Block>>> {
+        if self.successors.borrow().is_none() {
+            *self.successors.borrow_mut() = Some(calculate_successors(mir));
+        }
+
+        Ref::map(self.successors.borrow(), |p| p.as_ref().unwrap())
+    }
 }
 
 fn calculate_predecessors(mir: &Mir) -> IndexVec<Block, Vec<Block>> {
     let mut result = IndexVec::from_elem(vec![], mir.basic_blocks());
     for (bb, data) in mir.basic_blocks().iter_enumerated() {
+        for stmt in &data.statements {
+            for &tgt in stmt.successors().iter() {
+                result[tgt].push(bb);
+            }
+        }
+
         if let Some(ref term) = data.terminator {
             for &tgt in term.successors().iter() {
                 result[tgt].push(bb);
+            }
+        }
+    }
+
+    result
+}
+
+fn calculate_successors(mir: &Mir) -> IndexVec<Block, Vec<Block>> {
+    let mut result = IndexVec::from_elem(vec![], mir.basic_blocks());
+    for (bb, data) in mir.basic_blocks().iter_enumerated() {
+        for stmt in &data.statements {
+            for &tgt in stmt.successors().iter() {
+                result[bb].push(tgt);
+            }
+        }
+
+        if let Some(ref term) = data.terminator {
+            for &tgt in term.successors().iter() {
+                result[bb].push(tgt);
             }
         }
     }

@@ -32,13 +32,33 @@ impl<'tcx> MutVisitor<'tcx> for NoLandingPads {
                 /* nothing to do */
             },
             TerminatorKind::Call { cleanup: ref mut unwind, .. } |
-            TerminatorKind::Assert { cleanup: ref mut unwind, .. } |
             TerminatorKind::DropAndReplace { ref mut unwind, .. } |
             TerminatorKind::Drop { ref mut unwind, .. } => {
                 unwind.take();
             },
         }
         self.super_terminator(bb, terminator, location);
+    }
+
+    fn visit_statement(
+        &mut self,
+        bb: Block,
+        statement: &mut Statement<'tcx>,
+        location: Location) {
+        match statement.kind {
+            StatementKind::Assign(..) |
+            StatementKind::SetDiscriminant { .. } |
+            StatementKind::StorageLive(..) |
+            StatementKind::StorageDead(..) |
+            StatementKind::InlineAsm { .. } |
+            StatementKind::Nop => {
+                /* nothing to do */
+            },
+            StatementKind::Assert { cleanup: ref mut unwind, .. } => {
+                unwind.take();
+            }
+        }
+        self.super_statement(bb, statement, location);
     }
 }
 

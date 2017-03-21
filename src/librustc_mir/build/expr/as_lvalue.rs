@@ -75,15 +75,16 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     len: Operand::Consume(len),
                     index: idx.clone()
                 };
-                this.cfg.push(block, Statement {
-                    source_info: this.source_info(expr_span),
+                let stmt = Statement {
+                    source_info: source_info,
                     kind: StatementKind::Assert {
                         cond: Operand::Consume(lt),
                         expected: true,
                         msg: msg,
                         cleanup: this.diverge_cleanup(),
                     }
-                });
+                };
+                this.cfg.push(block, stmt);
                 block.and(slice.index(idx))
             }
             ExprKind::SelfRef => {

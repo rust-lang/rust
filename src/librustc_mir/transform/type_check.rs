@@ -397,6 +397,21 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     }
                 }
             }
+            StatementKind::Assert { ref cond, ref msg, .. } => {
+                let cond_ty = cond.ty(mir, tcx);
+                if cond_ty != tcx.types.bool {
+                    span_mirbug!(self, stmt, "bad Assert ({:?}, not bool", cond_ty);
+                }
+
+                if let AssertMessage::BoundsCheck { ref len, ref index } = *msg {
+                    if len.ty(mir, tcx) != tcx.types.usize {
+                        span_mirbug!(self, len, "bounds-check length non-usize {:?}", len)
+                    }
+                    if index.ty(mir, tcx) != tcx.types.usize {
+                        span_mirbug!(self, index, "bounds-check index non-usize {:?}", index)
+                    }
+                }
+            }
             StatementKind::InlineAsm { .. } |
             StatementKind::Nop => {}
         }
@@ -460,21 +475,6 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     self.check_box_free_inputs(mir, term, &sig, args);
                 } else {
                     self.check_call_inputs(mir, term, &sig, args);
-                }
-            }
-            TerminatorKind::Assert { ref cond, ref msg, .. } => {
-                let cond_ty = cond.ty(mir, tcx);
-                if cond_ty != tcx.types.bool {
-                    span_mirbug!(self, term, "bad Assert ({:?}, not bool", cond_ty);
-                }
-
-                if let AssertMessage::BoundsCheck { ref len, ref index } = *msg {
-                    if len.ty(mir, tcx) != tcx.types.usize {
-                        span_mirbug!(self, len, "bounds-check length non-usize {:?}", len)
-                    }
-                    if index.ty(mir, tcx) != tcx.types.usize {
-                        span_mirbug!(self, index, "bounds-check index non-usize {:?}", index)
-                    }
                 }
             }
         }
@@ -605,8 +605,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             }
             TerminatorKind::Unreachable => {}
             TerminatorKind::Drop { target, unwind, .. } |
-            TerminatorKind::DropAndReplace { target, unwind, .. } |
-            TerminatorKind::Assert { target, cleanup: unwind, .. } => {
+            TerminatorKind::DropAndReplace { target, unwind, .. } => {
                 self.assert_iscleanup(mir, block, target, is_cleanup);
                 if let Some(unwind) = unwind {
                     if is_cleanup {

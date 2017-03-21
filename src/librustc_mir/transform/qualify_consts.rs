@@ -377,7 +377,6 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
                 TerminatorKind::Goto { target } |
                 // Drops are considered noops.
                 TerminatorKind::Drop { target, .. } |
-                TerminatorKind::Assert { target, .. } |
                 TerminatorKind::Call { destination: Some((_, target)), .. } => {
                     Some(target)
                 }
@@ -914,6 +913,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                 StatementKind::StorageLive(_) |
                 StatementKind::StorageDead(_) |
                 StatementKind::InlineAsm {..} |
+                StatementKind::Assert { .. } |
                 StatementKind::Nop => {}
             }
         });

@@ -566,8 +566,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
             mir::TerminatorKind::SwitchInt { .. } |
             mir::TerminatorKind::Resume |
             mir::TerminatorKind::Return |
-            mir::TerminatorKind::Unreachable |
-            mir::TerminatorKind::Assert { .. } => {}
+            mir::TerminatorKind::Unreachable => {}
         }
 
         self.super_terminator_kind(block, kind, location);

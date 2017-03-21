@@ -286,6 +286,30 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                             Err(err) => if failure.is_ok() { failure = Err(err); }
                         }
                     }
+                    mir::StatementKind::Assert { ref cond, expected, ref msg, .. } => {
+                        let cond = self.const_operand(cond, span)?;
+                        let cond_bool = common::const_to_uint(cond.llval) != 0;
+                        if cond_bool != expected {
+                            let err = match *msg {
+                                mir::AssertMessage::BoundsCheck { ref len, ref index } => {
+                                    let len = self.const_operand(len, span)?;
+                                    let index = self.const_operand(index, span)?;
+                                    ErrKind::IndexOutOfBounds {
+                                        len: common::const_to_uint(len.llval),
+                                        index: common::const_to_uint(index.llval)
+                                    }
+                                }
+                                mir::AssertMessage::Math(ref err) => {
+                                    ErrKind::Math(err.clone())
+                                }
+                            };
+
+                            let err = ConstEvalErr{ span: span, kind: err };
+                            report_const_eval_err(tcx, &err, span, "expression");
+                            failure = Err(err);
+                        }
+                    }
+
                     mir::StatementKind::StorageLive(_) |
                     mir::StatementKind::StorageDead(_) |
                     mir::StatementKind::Nop => {}
@@ -306,31 +330,6 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                     return Ok(self.locals[mir::RETURN_POINTER].unwrap_or_else(|| {
                         span_bug!(span, "no returned value in constant");
                     }));
-                }
-
-                mir::TerminatorKind::Assert { ref cond, expected, ref msg, target, .. } => {
-                    let cond = self.const_operand(cond, span)?;
-                    let cond_bool = common::const_to_uint(cond.llval) != 0;
-                    if cond_bool != expected {
-                        let err = match *msg {
-                            mir::AssertMessage::BoundsCheck { ref len, ref index } => {
-                                let len = self.const_operand(len, span)?;
-                                let index = self.const_operand(index, span)?;
-                                ErrKind::IndexOutOfBounds {
-                                    len: common::const_to_uint(len.llval),
-                                    index: common::const_to_uint(index.llval)
-                                }
-                            }
-                            mir::AssertMessage::Math(ref err) => {
-                                ErrKind::Math(err.clone())
-                            }
-                        };
-
-                        let err = ConstEvalErr{ span: span, kind: err };
-                        report_const_eval_err(tcx, &err, span, "expression");
-                        failure = Err(err);
-                    }
-                    target
                 }
 
                 mir::TerminatorKind::Call { ref func, ref args, ref destination, .. } => {
