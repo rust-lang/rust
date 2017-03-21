@@ -349,6 +349,9 @@ fn collect_items_rec<'a, 'tcx: 'a>(scx: &SharedCrateContext<'a, 'tcx>,
 
             collect_neighbours(scx, instance, &mut neighbors);
         }
+        TransItem::GlobalAsm(..) => {
+            recursion_depth_reset = None;
+        }
     }
 
     record_inlining_canditates(scx.tcx(), starting_point, &neighbors[..], inlining_map);
@@ -811,7 +814,6 @@ impl<'b, 'a, 'v> ItemLikeVisitor<'v> for RootCollector<'b, 'a, 'v> {
             hir::ItemExternCrate(..) |
             hir::ItemUse(..)         |
             hir::ItemForeignMod(..)  |
-            hir::ItemGlobalAsm(..)   |
             hir::ItemTy(..)          |
             hir::ItemDefaultImpl(..) |
             hir::ItemTrait(..)       |
@@ -840,6 +842,12 @@ impl<'b, 'a, 'v> ItemLikeVisitor<'v> for RootCollector<'b, 'a, 'v> {
                         visit_drop_use(self.scx, ty, true, self.output);
                     }
                 }
+            }
+            hir::ItemGlobalAsm(..) => {
+                debug!("RootCollector: ItemGlobalAsm({})",
+                       def_id_to_string(self.scx.tcx(),
+                                        self.scx.tcx().hir.local_def_id(item.id)));
+                self.output.push(TransItem::GlobalAsm(item.id));
             }
             hir::ItemStatic(..) => {
                 debug!("RootCollector: ItemStatic({})",
