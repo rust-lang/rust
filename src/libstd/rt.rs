@@ -29,8 +29,7 @@ pub use panicking::{begin_panic, begin_panic_fmt, update_panic_count};
 
 #[cfg(not(test))]
 #[lang = "start"]
-fn lang_start(main: *const u8, argc: isize, argv: *const *const u8) -> isize {
-    use mem;
+fn lang_start(main: fn(), argc: isize, argv: *const *const u8) -> isize {
     use panic;
     use sys;
     use sys_common;
@@ -54,7 +53,9 @@ fn lang_start(main: *const u8, argc: isize, argv: *const *const u8) -> isize {
         sys::args::init(argc, argv);
 
         // Let's run some code!
-        let res = panic::catch_unwind(mem::transmute::<_, fn()>(main));
+        let res = panic::catch_unwind(|| {
+            __rust_begin_backtrace_binary(main)
+        });
         sys_common::cleanup();
         res.is_err()
     };
@@ -64,4 +65,11 @@ fn lang_start(main: *const u8, argc: isize, argv: *const *const u8) -> isize {
     } else {
         0
     }
+}
+
+/// Fixed frame used to clean the backtrace with `RUST_BACKTRACE=1`.
+#[no_mangle]
+#[inline(never)]
+pub fn __rust_begin_backtrace_binary(f: fn()) {
+    f()
 }

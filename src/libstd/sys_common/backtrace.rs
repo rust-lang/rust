@@ -120,30 +120,8 @@ fn filter_frames(frames: &[Frame],
         "mingw_set_invalid_parameter_handler",
     ];
     static BAD_PREFIXES_BOTTOM: &'static [&'static str] = &[
-        // core::panicking
-        "ZN4core9panicking",
-        // std::panicking
-        "ZN3std9panicking",
-        // std::panic
-        "ZN3std5panic",
-        // core::ops::FnOnce::call_once
-        "ZN4core3ops6FnOnce9call_once",
-
-        "__rust_try",
-        "BaseThreadInitThunk",
-        "RtlInitializeExceptionChain",
-        "__scrt_common_main_seh",
-        "_ZN4drop",
-        "mingw_set_invalid_parameter_handler",
-
-        // tests
-        // test::run_test
-        "ZN4test8run_test",
-        // <std::panic::AssertUnwindSafe<F> as core::ops::FnOnce<()>>::call_once
-        "ZN91_$LT$std..panic..AssertUnwindSafe$LT$F$GT$$u20$as$u20$core..ops..FnOnce\
-         $LT$$LP$$RP$$GT$$GT$9call_once",
-        // <F as test::FnBox<T>>::call_box
-        "ZN42_$LT$F$u20$as$u20$test..FnBox$LT$T$GT$$GT$8call_box",
+        "__rust_begin_backtrace_binary",
+        "__rust_begin_backtrace_test",
     ];
 
     let is_good_frame = |frame: Frame, bad_prefixes: &[&str]| {
@@ -160,25 +138,19 @@ fn filter_frames(frames: &[Frame],
     let skipped_before = frames.iter().position(|frame| {
         is_good_frame(*frame, BAD_PREFIXES_TOP)
     }).unwrap_or(frames.len());
-    let idx_catch_panic = frames.iter().rposition(|frame| {
+
+    let skipped_after = frames.iter().rev().position(|frame| {
         let mut is_rmcp = false;
         let _ = resolve_symname(*frame, |symname| {
             if let Some(mangled_symbol_name) = symname {
-                if mangled_symbol_name.contains("rust_maybe_catch_panic") {
+                if BAD_PREFIXES_BOTTOM.iter().any(|s| mangled_symbol_name.contains(s)) {
                     is_rmcp = true;
                 }
             }
             Ok(())
         }, context);
         is_rmcp
-    }).unwrap_or(frames.len());
-    let skipped_after =
-        frames.len() - idx_catch_panic
-                     + frames[skipped_before..idx_catch_panic].iter()
-                                                              .rev()
-                                                              .position(|frame| {
-        is_good_frame(*frame, BAD_PREFIXES_BOTTOM)
-    }).unwrap_or(0);
+    }).map(|x| x + 1 /* also ignore the marker frame */).unwrap_or(0);
 
     if skipped_before + skipped_after >= frames.len() {
         // Avoid showing completely empty backtraces

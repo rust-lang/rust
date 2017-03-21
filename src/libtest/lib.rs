@@ -1363,10 +1363,27 @@ pub fn run_test(opts: &TestOpts,
             monitor_ch.send((desc, TrMetrics(mm), Vec::new())).unwrap();
             return;
         }
-        DynTestFn(f) => run_test_inner(desc, monitor_ch, opts.nocapture, f),
-        StaticTestFn(f) => run_test_inner(desc, monitor_ch, opts.nocapture,
-                                          Box::new(move |()| f())),
+        DynTestFn(f) =>
+            run_test_inner(desc, monitor_ch, opts.nocapture,
+                           Box::new(move |()| __rust_begin_backtrace_test_boxfn(f))),
+        StaticTestFn(f) =>
+            run_test_inner(desc, monitor_ch, opts.nocapture,
+                           Box::new(move |()| __rust_begin_backtrace_test(f))),
     }
+}
+
+/// Fixed frame used to clean the backtrace with `RUST_BACKTRACE=1`.
+#[no_mangle]
+#[inline(never)]
+pub fn __rust_begin_backtrace_test_boxfn(f: Box<FnBox<()>>) {
+    f.call_box(())
+}
+
+/// Fixed frame used to clean the backtrace with `RUST_BACKTRACE=1`.
+#[no_mangle]
+#[inline(never)]
+pub fn __rust_begin_backtrace_test(f: fn()) {
+    f()
 }
 
 fn calc_result(desc: &TestDesc, task_result: Result<(), Box<Any + Send>>) -> TestResult {
