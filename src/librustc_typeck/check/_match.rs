@@ -474,7 +474,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 Expectation::ExpectHasType(ety) if ety != self.tcx.mk_nil() => ety,
                 _ => self.next_ty_var(TypeVariableOrigin::MiscVariable(expr.span)),
             };
-            CoerceMany::new(coerce_first)
+            CoerceMany::with_coercion_sites(coerce_first, arms)
         };
 
         for (i, (arm, pats_diverge)) in arms.iter().zip(all_arm_pats_diverge).enumerate() {
