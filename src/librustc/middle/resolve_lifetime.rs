@@ -434,7 +434,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
             self.resolve_elided_lifetimes(slice::ref_slice(lifetime_ref));
             return;
         }
-        if lifetime_ref.name == keywords::StaticLifetime.name() {
+        if lifetime_ref.is_static() {
             self.insert_lifetime(lifetime_ref, Region::Static);
             return;
         }
@@ -1434,7 +1434,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             let lifetime_i = &lifetimes[i];
 
             for lifetime in lifetimes {
-                if lifetime.lifetime.name == keywords::StaticLifetime.name() {
+                if lifetime.lifetime.is_static() {
                     let lifetime = lifetime.lifetime;
                     let mut err = struct_span_err!(self.sess, lifetime.span, E0262,
                                   "invalid lifetime parameter name: `{}`", lifetime.name);

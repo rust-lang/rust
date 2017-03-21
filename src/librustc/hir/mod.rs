@@ -100,6 +100,10 @@ impl Lifetime {
     pub fn is_elided(&self) -> bool {
         self.name == keywords::Invalid.name()
     }
+
+    pub fn is_static(&self) -> bool {
+        self.name == keywords::StaticLifetime.name()
+    }
 }
 
 /// A lifetime definition, eg `'a: 'b+'c+'d`
