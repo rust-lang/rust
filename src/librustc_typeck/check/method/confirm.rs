@@ -137,7 +137,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         assert_eq!(n, pick.autoderefs);
 
         autoderef.unambiguous_final_ty();
-        autoderef.finalize(LvaluePreference::NoPreference, Some(self.self_expr));
+        autoderef.finalize(LvaluePreference::NoPreference, &[self.self_expr]);
 
         let target = pick.unsize.unwrap_or(autoderefd_ty);
         let target = target.adjust_for_autoref(self.tcx, autoref);
@@ -444,7 +444,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
                                       "expr was deref-able {} times but now isn't?",
                                       autoderefs);
                         });
-                        autoderef.finalize(PreferMutLvalue, Some(expr));
+                        autoderef.finalize(PreferMutLvalue, &[expr]);
                     }
                 }
                 Some(_) | None => {}
