@@ -1669,7 +1669,9 @@ impl<'a> LoweringContext<'a> {
                         }
                     });
 
-                    hir::ExprIf(P(self.lower_expr(cond)), self.lower_block(blk), else_opt)
+                    let then_blk = self.lower_block(blk);
+                    let then_expr = self.expr_block(then_blk, ThinVec::new());
+                    hir::ExprIf(P(self.lower_expr(cond)), P(then_expr), else_opt)
                 }
                 ExprKind::While(ref cond, ref body, opt_ident) => {
                     self.with_loop_scope(e.id, |this|
@@ -1880,7 +1882,7 @@ impl<'a> LoweringContext<'a> {
                                                 attrs: hir_vec![],
                                                 pats: hir_vec![pat_under],
                                                 guard: Some(cond),
-                                                body: P(self.expr_block(then, ThinVec::new())),
+                                                body: then,
                                             });
                                             else_opt.map(|else_opt| (else_opt, true))
                                         }

@@ -414,9 +414,9 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                 self.consume_exprs(exprs);
             }
 
-            hir::ExprIf(ref cond_expr, ref then_blk, ref opt_else_expr) => {
+            hir::ExprIf(ref cond_expr, ref then_expr, ref opt_else_expr) => {
                 self.consume_expr(&cond_expr);
-                self.walk_block(&then_blk);
+                self.walk_expr(&then_expr);
                 if let Some(ref else_expr) = *opt_else_expr {
                     self.consume_expr(&else_expr);
                 }
