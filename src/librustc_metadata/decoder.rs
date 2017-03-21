@@ -558,7 +558,6 @@ impl<'a, 'tcx> CrateMetadata {
             EntryKind::Union(_, _) => ty::AdtKind::Union,
             _ => bug!("get_adt_def called on a non-ADT {:?}", did),
         };
-        let mut ctor_index = None;
         let variants = if let ty::AdtKind::Enum = kind {
             item.children
                 .decode(self)
@@ -570,8 +569,7 @@ impl<'a, 'tcx> CrateMetadata {
                 })
                 .collect()
         } else {
-            let (variant, struct_ctor) = self.get_variant(&item, item_id, tcx);
-            ctor_index = struct_ctor;
+            let (variant, _struct_ctor) = self.get_variant(&item, item_id, tcx);
             vec![variant]
         };
         let (kind, repr) = match item.kind {
@@ -581,13 +579,7 @@ impl<'a, 'tcx> CrateMetadata {
             _ => bug!("get_adt_def called on a non-ADT {:?}", did),
         };
 
-        let adt = tcx.alloc_adt_def(did, kind, variants, repr);
-        if let Some(ctor_index) = ctor_index {
-            // Make adt definition available through constructor id as well.
-            tcx.maps.adt_def.borrow_mut().insert(self.local_def_id(ctor_index), adt);
-        }
-
-        adt
+        tcx.alloc_adt_def(did, kind, variants, repr)
     }
 
     pub fn get_predicates(&self,
