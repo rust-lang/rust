@@ -11,7 +11,7 @@
 use utils;
 
 use std::path::{Path, PathBuf};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use syntax::ast;
 use syntax::codemap;
@@ -22,8 +22,8 @@ use syntax::parse::parser;
 /// If a file is used twice in a crate, it appears only once.
 pub fn list_files<'a>(krate: &'a ast::Crate,
                       codemap: &codemap::CodeMap)
-                      -> HashMap<PathBuf, &'a ast::Mod> {
-    let mut result = HashMap::new();
+                      -> BTreeMap<PathBuf, &'a ast::Mod> {
+    let mut result = BTreeMap::new(); // Enforce file order determinism
     let root_filename: PathBuf = codemap.span_to_filename(krate.span).into();
     list_submodules(&krate.module,
                     root_filename.parent().unwrap(),
@@ -37,7 +37,7 @@ pub fn list_files<'a>(krate: &'a ast::Crate,
 fn list_submodules<'a>(module: &'a ast::Mod,
                        search_dir: &Path,
                        codemap: &codemap::CodeMap,
-                       result: &mut HashMap<PathBuf, &'a ast::Mod>) {
+                       result: &mut BTreeMap<PathBuf, &'a ast::Mod>) {
     debug!("list_submodules: search_dir: {:?}", search_dir);
     for item in &module.items {
         if let ast::ItemKind::Mod(ref sub_mod) = item.node {
