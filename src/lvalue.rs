@@ -1,7 +1,5 @@
-use rustc::hir::def_id::DefId;
 use rustc::mir;
 use rustc::ty::layout::{Size, Align};
-use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty};
 use rustc_data_structures::indexed_vec::Idx;
 
@@ -42,15 +40,9 @@ pub enum LvalueExtra {
 /// Uniquely identifies a specific constant or static.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct GlobalId<'tcx> {
-    /// For a constant or static, the `DefId` of the item itself.
-    /// For a promoted global, the `DefId` of the function they belong to.
-    pub(super) def_id: DefId,
-
-    /// For statics and constants this is `Substs::empty()`, so only promoteds and associated
-    /// constants actually have something useful here. We could special case statics and constants,
-    /// but that would only require more branching when working with constants, and not bring any
-    /// real benefits.
-    pub(super) substs: &'tcx Substs<'tcx>,
+    /// For a constant or static, the `Instance` of the item itself.
+    /// For a promoted global, the `Instance` of the function they belong to.
+    pub(super) instance: ty::Instance<'tcx>,
 
     /// The index for promoted globals within their function's `Mir`.
     pub(super) promoted: Option<mir::Promoted>,
@@ -138,8 +130,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             Local(local) => Lvalue::Local { frame: self.stack.len() - 1, local, field: None },
 
             Static(ref static_) => {
-                let substs = self.tcx.intern_substs(&[]);
-                Lvalue::Global(GlobalId { def_id: static_.def_id, substs, promoted: None })
+                let instance = ty::Instance::mono(self.tcx, static_.def_id);
+                Lvalue::Global(GlobalId { instance, promoted: None })
             }
 
             Projection(ref proj) => return self.eval_lvalue_projection(proj),

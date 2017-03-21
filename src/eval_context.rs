@@ -8,7 +8,7 @@ use rustc::middle::const_val::ConstVal;
 use rustc::mir;
 use rustc::traits::Reveal;
 use rustc::ty::layout::{self, Layout, Size};
-use rustc::ty::subst::{self, Subst, Substs};
+use rustc::ty::subst::{Subst, Substs, Kind};
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable, Binder};
 use rustc_data_structures::indexed_vec::Idx;
 use syntax::codemap::{self, DUMMY_SP};
@@ -52,11 +52,8 @@ pub struct Frame<'tcx> {
     /// The MIR for the function called on this frame.
     pub mir: MirRef<'tcx>,
 
-    /// The def_id of the current function.
-    pub def_id: DefId,
-
-    /// type substitutions for the current function invocation.
-    pub substs: &'tcx Substs<'tcx>,
+    /// The def_id and substs of the current function
+    pub instance: ty::Instance<'tcx>,
 
     /// The span of the call site.
     pub span: codemap::Span,
@@ -77,12 +74,6 @@ pub struct Frame<'tcx> {
     ///
     /// Before being initialized, all locals are `Value::ByVal(PrimVal::Undef)`.
     pub locals: Vec<Value>,
-
-    /// Temporary allocations introduced to save stackframes
-    /// This is pure interpreter magic and has nothing to do with how rustc does it
-    /// An example is calling an FnMut closure that has been converted to a FnOnce closure
-    /// The value's destructor will be called and the memory freed when the stackframe finishes
-    pub interpreter_temporaries: Vec<(Pointer, Ty<'tcx>)>,
 
     ////////////////////////////////////////////////////////////////////////////////
     // Current position within the function
@@ -208,12 +199,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         ty.is_sized(self.tcx, &self.tcx.empty_parameter_environment(), DUMMY_SP)
     }
 
-    pub fn load_mir(&self, def_id: DefId) -> EvalResult<'tcx, MirRef<'tcx>> {
-        trace!("load mir {:?}", def_id);
-        if def_id.is_local() || self.tcx.sess.cstore.is_item_mir_available(def_id) {
-            Ok(self.tcx.item_mir(def_id))
-        } else {
-            Err(EvalError::NoMirFor(self.tcx.item_path_str(def_id)))
+    pub fn load_mir(&self, instance: ty::InstanceDef<'tcx>) -> EvalResult<'tcx, MirRef<'tcx>> {
+        trace!("load mir {:?}", instance);
+        match instance {
+            ty::InstanceDef::Item(def_id) => self.tcx.maybe_item_mir(def_id).ok_or_else(|| EvalError::NoMirFor(self.tcx.item_path_str(def_id))),
+            _ => Ok(self.tcx.instance_mir(instance)),
         }
     }
 
@@ -272,13 +262,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
     pub fn push_stack_frame(
         &mut self,
-        def_id: DefId,
+        instance: ty::Instance<'tcx>,
         span: codemap::Span,
         mir: MirRef<'tcx>,
-        substs: &'tcx Substs<'tcx>,
         return_lvalue: Lvalue<'tcx>,
         return_to_block: StackPopCleanup,
-        temporaries: Vec<(Pointer, Ty<'tcx>)>,
     ) -> EvalResult<'tcx> {
         ::log_settings::settings().indentation += 1;
 
@@ -293,10 +281,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             return_to_block,
             return_lvalue,
             locals,
-            interpreter_temporaries: temporaries,
             span,
-            def_id,
-            substs,
+            instance,
             stmt: 0,
         });
 
@@ -352,13 +338,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 }
             }
         }
-        // drop and deallocate all temporary allocations
-        for (ptr, ty) in frame.interpreter_temporaries {
-            trace!("dropping temporary allocation");
-            let mut drops = Vec::new();
-            self.drop(Lvalue::from_ptr(ptr), ty, &mut drops)?;
-            self.eval_drop_impls(drops, frame.span)?;
-        }
+
         Ok(())
     }
 
@@ -665,8 +645,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     }
 
                     ReifyFnPointer => match self.operand_ty(operand).sty {
-                        ty::TyFnDef(def_id, substs, sig) => {
-                            let fn_ptr = self.memory.create_fn_ptr(def_id, substs, sig);
+                        ty::TyFnDef(def_id, substs, _) => {
+                            let fn_ptr = self.memory.create_fn_ptr(def_id, substs);
                             self.write_value(Value::ByVal(PrimVal::Ptr(fn_ptr)), dest, dest_ty)?;
                         },
                         ref other => bug!("reify fn pointer on {:?}", other),
@@ -682,8 +662,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                     ClosureFnPointer => match self.operand_ty(operand).sty {
                         ty::TyClosure(def_id, substs) => {
-                            let fn_ty = self.tcx.closure_type(def_id);
-                            let fn_ptr = self.memory.create_fn_ptr_from_noncapture_closure(def_id, substs, fn_ty);
+                            let instance = resolve_closure(self.tcx, def_id, substs, ty::ClosureKind::FnOnce);
+                            let fn_ptr = self.memory.create_fn_alloc(instance);
                             self.write_value(Value::ByVal(PrimVal::Ptr(fn_ptr)), dest, dest_ty)?;
                         },
                         ref other => bug!("reify fn pointer on {:?}", other),
@@ -845,16 +825,15 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                             // function items are zero sized
                             Value::ByRef(self.memory.allocate(0, 0)?)
                         } else {
-                            let (def_id, substs) = self.resolve_associated_const(def_id, substs);
-                            let cid = GlobalId { def_id, substs, promoted: None };
+                            let instance = self.resolve_associated_const(def_id, substs);
+                            let cid = GlobalId { instance, promoted: None };
                             self.globals.get(&cid).expect("static/const not cached").value
                         }
                     }
 
                     Literal::Promoted { index } => {
                         let cid = GlobalId {
-                            def_id: self.frame().def_id,
-                            substs: self.substs(),
+                            instance: self.frame().instance,
                             promoted: Some(index),
                         };
                         self.globals.get(&cid).expect("promoted not cached").value
@@ -891,8 +870,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     },
                     val => {
                         let ty = self.stack[frame].mir.local_decls[local].ty;
-                        let ty = self.monomorphize(ty, self.stack[frame].substs);
-                        let substs = self.stack[frame].substs;
+                        let ty = self.monomorphize(ty, self.stack[frame].instance.substs);
+                        let substs = self.stack[frame].instance.substs;
                         let ptr = self.alloc_ptr_with_substs(ty, substs)?;
                         self.stack[frame].locals[local.index() - 1] = Value::ByRef(ptr);
                         self.write_value_to_ptr(val, ptr, ty)?;
@@ -911,7 +890,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 match global_val.value {
                     Value::ByRef(ptr) => Lvalue::from_ptr(ptr),
                     _ => {
-                        let ptr = self.alloc_ptr_with_substs(global_val.ty, cid.substs)?;
+                        let ptr = self.alloc_ptr_with_substs(global_val.ty, cid.instance.substs)?;
                         self.memory.mark_static(ptr.alloc_id);
                         self.write_value_to_ptr(global_val.value, ptr, global_val.ty)?;
                         // see comment on `initialized` field
@@ -1289,7 +1268,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     }
 
     pub(super) fn substs(&self) -> &'tcx Substs<'tcx> {
-        self.frame().substs
+        self.frame().instance.substs
     }
 
     fn unsize_into_ptr(
@@ -1320,7 +1299,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             (_, &ty::TyDynamic(ref data, _)) => {
                 let trait_ref = data.principal().unwrap().with_self_ty(self.tcx, src_pointee_ty);
                 let trait_ref = self.tcx.erase_regions(&trait_ref);
-                let vtable = self.get_vtable(trait_ref)?;
+                let vtable = self.get_vtable(src_pointee_ty, trait_ref)?;
                 let ptr = src.read_ptr(&self.memory)?;
                 let ptr = PrimVal::Ptr(ptr);
                 let extra = PrimVal::Ptr(vtable);
@@ -1519,7 +1498,8 @@ pub fn eval_main<'a, 'tcx: 'a>(
     limits: ResourceLimits,
 ) {
     let mut ecx = EvalContext::new(tcx, limits);
-    let mir = ecx.load_mir(def_id).expect("main function's MIR not found");
+    let instance = ty::Instance::mono(tcx, def_id);
+    let mir = ecx.load_mir(instance.def).expect("main function's MIR not found");
 
     if !mir.return_ty.is_nil() || mir.arg_count != 0 {
         let msg = "miri does not support main functions without `fn()` type signatures";
@@ -1528,13 +1508,11 @@ pub fn eval_main<'a, 'tcx: 'a>(
     }
 
     ecx.push_stack_frame(
-        def_id,
+        instance,
         DUMMY_SP,
         mir,
-        tcx.intern_substs(&[]),
         Lvalue::from_ptr(Pointer::zst_ptr()),
         StackPopCleanup::None,
-        Vec::new(),
     ).expect("could not allocate first stack frame");
 
     loop {
@@ -1564,23 +1542,12 @@ fn report(tcx: TyCtxt, ecx: &EvalContext, e: EvalError) {
         block.terminator().source_info.span
     };
     let mut err = tcx.sess.struct_span_err(span, &e.to_string());
-    for &Frame { def_id, substs, span, .. } in ecx.stack().iter().rev() {
-        if tcx.def_key(def_id).disambiguated_data.data == DefPathData::ClosureExpr {
+    for &Frame { instance, span, .. } in ecx.stack().iter().rev() {
+        if tcx.def_key(instance.def_id()).disambiguated_data.data == DefPathData::ClosureExpr {
             err.span_note(span, "inside call to closure");
             continue;
         }
-        // FIXME(solson): Find a way to do this without this Display impl hack.
-        use rustc::util::ppaux;
-        use std::fmt;
-        struct Instance<'tcx>(DefId, &'tcx subst::Substs<'tcx>);
-        impl<'tcx> ::std::panic::UnwindSafe for Instance<'tcx> {}
-        impl<'tcx> ::std::panic::RefUnwindSafe for Instance<'tcx> {}
-        impl<'tcx> fmt::Display for Instance<'tcx> {
-            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                ppaux::parameterized(f, self.1, self.0, &[])
-            }
-        }
-        err.span_note(span, &format!("inside call to {}", Instance(def_id, substs)));
+        err.span_note(span, &format!("inside call to {}", instance));
     }
     err.emit();
 }
@@ -1655,5 +1622,82 @@ impl<'b, 'tcx: 'b> IntoValTyPair<'tcx> for &'b mir::Operand<'tcx> {
         let value = ecx.eval_operand(self)?;
         let value_ty = ecx.operand_ty(self);
         Ok((value, value_ty))
+    }
+}
+
+
+/// FIXME: expose trans::monomorphize::resolve_closure
+pub fn resolve_closure<'a, 'tcx> (
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    def_id: DefId,
+    substs: ty::ClosureSubsts<'tcx>,
+    requested_kind: ty::ClosureKind,
+) -> ty::Instance<'tcx> {
+    let actual_kind = tcx.closure_kind(def_id);
+    match needs_fn_once_adapter_shim(actual_kind, requested_kind) {
+        Ok(true) => fn_once_adapter_instance(tcx, def_id, substs),
+        _ => ty::Instance::new(def_id, substs.substs)
+    }
+}
+
+fn fn_once_adapter_instance<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    closure_did: DefId,
+    substs: ty::ClosureSubsts<'tcx>,
+) -> ty::Instance<'tcx> {
+    debug!("fn_once_adapter_shim({:?}, {:?})",
+           closure_did,
+           substs);
+    let fn_once = tcx.lang_items.fn_once_trait().unwrap();
+    let call_once = tcx.associated_items(fn_once)
+        .find(|it| it.kind == ty::AssociatedKind::Method)
+        .unwrap().def_id;
+    let def = ty::InstanceDef::ClosureOnceShim { call_once };
+
+    let self_ty = tcx.mk_closure_from_closure_substs(
+        closure_did, substs);
+
+    let sig = tcx.closure_type(closure_did).subst(tcx, substs.substs);
+    let sig = tcx.erase_late_bound_regions_and_normalize(&sig);
+    assert_eq!(sig.inputs().len(), 1);
+    let substs = tcx.mk_substs([
+        Kind::from(self_ty),
+        Kind::from(sig.inputs()[0]),
+    ].iter().cloned());
+
+    debug!("fn_once_adapter_shim: self_ty={:?} sig={:?}", self_ty, sig);
+    ty::Instance { def, substs }
+}
+
+fn needs_fn_once_adapter_shim(actual_closure_kind: ty::ClosureKind,
+                              trait_closure_kind: ty::ClosureKind)
+                              -> Result<bool, ()>
+{
+    match (actual_closure_kind, trait_closure_kind) {
+        (ty::ClosureKind::Fn, ty::ClosureKind::Fn) |
+        (ty::ClosureKind::FnMut, ty::ClosureKind::FnMut) |
+        (ty::ClosureKind::FnOnce, ty::ClosureKind::FnOnce) => {
+            // No adapter needed.
+           Ok(false)
+        }
+        (ty::ClosureKind::Fn, ty::ClosureKind::FnMut) => {
+            // The closure fn `llfn` is a `fn(&self, ...)`.  We want a
+            // `fn(&mut self, ...)`. In fact, at trans time, these are
+            // basically the same thing, so we can just return llfn.
+            Ok(false)
+        }
+        (ty::ClosureKind::Fn, ty::ClosureKind::FnOnce) |
+        (ty::ClosureKind::FnMut, ty::ClosureKind::FnOnce) => {
+            // The closure fn `llfn` is a `fn(&self, ...)` or `fn(&mut
+            // self, ...)`.  We want a `fn(self, ...)`. We can produce
+            // this by doing something like:
+            //
+            //     fn call_once(self, ...) { call_mut(&self, ...) }
+            //     fn call_once(mut self, ...) { call_mut(&mut self, ...) }
+            //
+            // These are both the same at trans time.
+            Ok(true)
+        }
+        _ => Err(()),
     }
 }

@@ -3,7 +3,7 @@ use std::collections::{btree_map, BTreeMap, HashMap, HashSet, VecDeque, BTreeSet
 use std::{fmt, iter, ptr, mem, io};
 
 use rustc::hir::def_id::DefId;
-use rustc::ty::{self, PolyFnSig, ClosureSubsts};
+use rustc::ty;
 use rustc::ty::subst::Substs;
 use rustc::ty::layout::{self, TargetDataLayout};
 
@@ -102,44 +102,6 @@ impl Pointer {
     }
 }
 
-#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq)]
-/// Identifies a specific monomorphized function
-pub struct FunctionDefinition<'tcx> {
-    pub def_id: DefId,
-    pub substs: &'tcx Substs<'tcx>,
-    pub sig: PolyFnSig<'tcx>,
-}
-
-/// Either a concrete function, or a glue function
-#[derive(Debug, Copy, Clone, Hash, Eq, PartialEq)]
-pub enum Function<'tcx> {
-    /// A function or method created by compiling code
-    Concrete(FunctionDefinition<'tcx>),
-    /// Glue required to call a regular function through a Fn(Mut|Once) trait object
-    FnDefAsTraitObject(FunctionDefinition<'tcx>),
-    /// A drop glue function only needs to know the real type, and then miri can extract
-    /// that type from a vtable's drop pointer.
-    /// Instead of storing some drop function, we act as if there are no trait objects, by
-    /// mapping trait objects to their real types before acting on them.
-    DropGlue(ty::Ty<'tcx>),
-    /// Glue required to treat the ptr part of a fat pointer
-    /// as a function pointer
-    FnPtrAsTraitObject(PolyFnSig<'tcx>),
-    /// Glue for Closures
-    Closure(FunctionDefinition<'tcx>),
-    /// Glue for noncapturing closures casted to function pointers
-    NonCaptureClosureAsFnPtr(FunctionDefinition<'tcx>),
-}
-
-impl<'tcx> Function<'tcx> {
-    pub fn expect_drop_glue_real_ty(self) -> EvalResult<'tcx, ty::Ty<'tcx>> {
-        match self {
-            Function::DropGlue(real_ty) => Ok(real_ty),
-            other => Err(EvalError::ExpectedDropGlue(other)),
-        }
-    }
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 // Top-level interpreter memory
 ////////////////////////////////////////////////////////////////////////////////
@@ -165,10 +127,10 @@ pub struct Memory<'a, 'tcx> {
 
     /// Function "allocations". They exist solely so pointers have something to point to, and
     /// we can figure out what they point to.
-    functions: HashMap<AllocId, Function<'tcx>>,
+    functions: HashMap<AllocId, ty::Instance<'tcx>>,
 
     /// Inverse map of `functions` so we don't allocate a new pointer every time we need one
-    function_alloc_cache: HashMap<Function<'tcx>, AllocId>,
+    function_alloc_cache: HashMap<ty::Instance<'tcx>, AllocId>,
 
     /// Target machine data layout to emulate.
     pub layout: &'a TargetDataLayout,
@@ -214,55 +176,20 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         self.alloc_map.iter()
     }
 
-    pub fn create_closure_ptr(&mut self, def_id: DefId, substs: ClosureSubsts<'tcx>, sig: PolyFnSig<'tcx>) -> Pointer {
-        self.create_fn_alloc(Function::Closure(FunctionDefinition {
-            def_id,
-            substs: substs.substs,
-            sig,
-        }))
+    pub fn create_fn_ptr(&mut self, def_id: DefId, substs: &'tcx Substs<'tcx>) -> Pointer {
+        let instance = ty::Instance::new(def_id, substs);
+        self.create_fn_alloc(instance)
     }
 
-    pub fn create_fn_ptr_from_noncapture_closure(&mut self, def_id: DefId, substs: ClosureSubsts<'tcx>, sig: PolyFnSig<'tcx>) -> Pointer {
-        self.create_fn_alloc(Function::NonCaptureClosureAsFnPtr(FunctionDefinition {
-            def_id,
-            substs: substs.substs,
-            sig,
-        }))
-    }
-
-    pub fn create_fn_as_trait_glue(&mut self, def_id: DefId, substs: &'tcx Substs, sig: PolyFnSig<'tcx>) -> Pointer {
-        self.create_fn_alloc(Function::FnDefAsTraitObject(FunctionDefinition {
-            def_id,
-            substs,
-            sig,
-        }))
-    }
-
-    pub fn create_fn_ptr_as_trait_glue(&mut self, sig: PolyFnSig<'tcx>) -> Pointer {
-        self.create_fn_alloc(Function::FnPtrAsTraitObject(sig))
-    }
-
-    pub fn create_drop_glue(&mut self, ty: ty::Ty<'tcx>) -> Pointer {
-        self.create_fn_alloc(Function::DropGlue(ty))
-    }
-
-    pub fn create_fn_ptr(&mut self, def_id: DefId, substs: &'tcx Substs, sig: PolyFnSig<'tcx>) -> Pointer {
-        self.create_fn_alloc(Function::Concrete(FunctionDefinition {
-            def_id,
-            substs,
-            sig,
-        }))
-    }
-
-    fn create_fn_alloc(&mut self, def: Function<'tcx>) -> Pointer {
-        if let Some(&alloc_id) = self.function_alloc_cache.get(&def) {
+    pub fn create_fn_alloc(&mut self, instance: ty::Instance<'tcx>) -> Pointer {
+        if let Some(&alloc_id) = self.function_alloc_cache.get(&instance) {
             return Pointer::new(alloc_id, 0);
         }
         let id = self.next_id;
         debug!("creating fn ptr: {}", id);
         self.next_id.0 += 1;
-        self.functions.insert(id, def);
-        self.function_alloc_cache.insert(def, id);
+        self.functions.insert(id, instance);
+        self.function_alloc_cache.insert(instance, id);
         Pointer::new(id, 0)
     }
 
@@ -469,7 +396,7 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         }
     }
 
-    pub fn get_fn(&self, id: AllocId) -> EvalResult<'tcx, Function<'tcx>> {
+    pub fn get_fn(&self, id: AllocId) -> EvalResult<'tcx, ty::Instance<'tcx>> {
         debug!("reading fn ptr: {}", id);
         match self.functions.get(&id) {
             Some(&fndef) => Ok(fndef),
@@ -501,28 +428,8 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 
             let alloc = match (self.alloc_map.get(&id), self.functions.get(&id)) {
                 (Some(a), None) => a,
-                (None, Some(&Function::Concrete(fn_def))) => {
-                    trace!("{} {}", msg, dump_fn_def(fn_def));
-                    continue;
-                },
-                (None, Some(&Function::DropGlue(real_ty))) => {
-                    trace!("{} drop glue for {}", msg, real_ty);
-                    continue;
-                },
-                (None, Some(&Function::FnDefAsTraitObject(fn_def))) => {
-                    trace!("{} fn as Fn glue for {}", msg, dump_fn_def(fn_def));
-                    continue;
-                },
-                (None, Some(&Function::FnPtrAsTraitObject(fn_def))) => {
-                    trace!("{} fn ptr as Fn glue (signature: {:?})", msg, fn_def);
-                    continue;
-                },
-                (None, Some(&Function::Closure(fn_def))) => {
-                    trace!("{} closure glue for {}", msg, dump_fn_def(fn_def));
-                    continue;
-                },
-                (None, Some(&Function::NonCaptureClosureAsFnPtr(fn_def))) => {
-                    trace!("{} non-capture closure as fn ptr glue for {}", msg, dump_fn_def(fn_def));
+                (None, Some(instance)) => {
+                    trace!("{} {}", msg, instance);
                     continue;
                 },
                 (None, None) => {
@@ -592,11 +499,6 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
         self.dump_allocs(leaks);
         n
     }
-}
-
-fn dump_fn_def<'tcx>(fn_def: FunctionDefinition<'tcx>) -> String {
-    let name = ty::tls::with(|tcx| tcx.item_path_str(fn_def.def_id));
-    format!("function pointer: {}: {}", name, fn_def.sig.skip_binder())
 }
 
 /// Byte accessors

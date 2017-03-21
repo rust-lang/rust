@@ -1,4 +1,3 @@
-use rustc::hir::def_id::DefId;
 use rustc::mir;
 use rustc::ty::layout::{Layout, Size, Align};
 use rustc::ty::subst::Substs;
@@ -13,8 +12,7 @@ use value::{PrimVal, PrimValKind, Value};
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     pub(super) fn call_intrinsic(
         &mut self,
-        def_id: DefId,
-        substs: &'tcx Substs<'tcx>,
+        instance: ty::Instance<'tcx>,
         args: &[mir::Operand<'tcx>],
         dest: Lvalue<'tcx>,
         dest_ty: Ty<'tcx>,
@@ -31,7 +29,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         let f32 = self.tcx.types.f32;
         let f64 = self.tcx.types.f64;
 
-        let intrinsic_name = &self.tcx.item_name(def_id).as_str()[..];
+        let intrinsic_name = &self.tcx.item_name(instance.def_id()).as_str()[..];
         match intrinsic_name {
             "add_with_overflow" =>
                 self.intrinsic_with_overflow(mir::BinOp::Add, &args[0], &args[1], dest, dest_ty)?,
@@ -60,7 +58,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "atomic_load_relaxed" |
             "atomic_load_acq" |
             "volatile_load" => {
-                let ty = substs.type_at(0);
+                let ty = instance.substs.type_at(0);
                 let ptr = arg_vals[0].read_ptr(&self.memory)?;
                 self.write_value(Value::ByRef(ptr), dest, ty)?;
             }
@@ -69,7 +67,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "atomic_store_relaxed" |
             "atomic_store_rel" |
             "volatile_store" => {
-                let ty = substs.type_at(0);
+                let ty = instance.substs.type_at(0);
                 let dest = arg_vals[0].read_ptr(&self.memory)?;
                 self.write_value_to_ptr(arg_vals[1], dest, ty)?;
             }
@@ -79,7 +77,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             _ if intrinsic_name.starts_with("atomic_xchg") => {
-                let ty = substs.type_at(0);
+                let ty = instance.substs.type_at(0);
                 let ptr = arg_vals[0].read_ptr(&self.memory)?;
                 let change = self.value_to_primval(arg_vals[1], ty)?;
                 let old = self.read_value(ptr, ty)?;
@@ -93,7 +91,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             _ if intrinsic_name.starts_with("atomic_cxchg") => {
-                let ty = substs.type_at(0);
+                let ty = instance.substs.type_at(0);
                 let ptr = arg_vals[0].read_ptr(&self.memory)?;
                 let expect_old = self.value_to_primval(arg_vals[1], ty)?;
                 let change = self.value_to_primval(arg_vals[2], ty)?;
@@ -115,7 +113,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "atomic_and" | "atomic_and_acq" | "atomic_and_rel" | "atomic_and_acqrel" | "atomic_and_relaxed" |
             "atomic_xadd" | "atomic_xadd_acq" | "atomic_xadd_rel" | "atomic_xadd_acqrel" | "atomic_xadd_relaxed" |
             "atomic_xsub" | "atomic_xsub_acq" | "atomic_xsub_rel" | "atomic_xsub_acqrel" | "atomic_xsub_relaxed" => {
-                let ty = substs.type_at(0);
+                let ty = instance.substs.type_at(0);
                 let ptr = arg_vals[0].read_ptr(&self.memory)?;
                 let change = self.value_to_primval(arg_vals[1], ty)?;
                 let old = self.read_value(ptr, ty)?;
@@ -144,7 +142,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "copy" |
             "copy_nonoverlapping" => {
                 // FIXME: check whether overlapping occurs
-                let elem_ty = substs.type_at(0);
+                let elem_ty = instance.substs.type_at(0);
                 let elem_size = self.type_size(elem_ty)?.expect("cannot copy unsized value");
                 let elem_align = self.type_align(elem_ty)?;
                 let src = arg_vals[0].read_ptr(&self.memory)?;
@@ -157,7 +155,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             "cttz" |
             "ctlz" |
             "bswap" => {
-                let ty = substs.type_at(0);
+                let ty = instance.substs.type_at(0);
                 let num = self.value_to_primval(arg_vals[0], ty)?;
                 let kind = self.ty_to_primval_kind(ty)?;
                 let num = numeric_intrinsic(intrinsic_name, num, kind)?;
@@ -165,39 +163,10 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             "discriminant_value" => {
-                let ty = substs.type_at(0);
+                let ty = instance.substs.type_at(0);
                 let adt_ptr = arg_vals[0].read_ptr(&self.memory)?;
                 let discr_val = self.read_discriminant_value(adt_ptr, ty)?;
                 self.write_primval(dest, PrimVal::Bytes(discr_val), dest_ty)?;
-            }
-
-            "drop_in_place" => {
-                let ty = substs.type_at(0);
-                trace!("drop in place on {}", ty);
-                let ptr_ty = self.tcx.mk_mut_ptr(ty);
-                let lvalue = match self.follow_by_ref_value(arg_vals[0], ptr_ty)? {
-                    Value::ByRef(_) => bug!("follow_by_ref_value returned ByRef"),
-                    Value::ByVal(value) => Lvalue::from_ptr(value.to_ptr()?),
-                    Value::ByValPair(ptr, extra) => Lvalue::Ptr {
-                        ptr: ptr.to_ptr()?,
-                        extra: match self.tcx.struct_tail(ty).sty {
-                            ty::TyDynamic(..) => LvalueExtra::Vtable(extra.to_ptr()?),
-                            ty::TyStr | ty::TySlice(_) => LvalueExtra::Length(extra.to_u64()?),
-                            _ => bug!("invalid fat pointer type: {}", ptr_ty),
-                        },
-                    },
-                };
-                let mut drops = Vec::new();
-                self.drop(lvalue, ty, &mut drops)?;
-                let span = {
-                    let frame = self.frame();
-                    frame.mir[frame.block].terminator().source_info.span
-                };
-                // need to change the block before pushing the drop impl stack frames
-                // we could do this for all intrinsics before evaluating the intrinsics, but if
-                // the evaluation fails, we should not have moved forward
-                self.goto_block(target);
-                return self.eval_drop_impls(drops, span);
             }
 
             "sinf32" | "fabsf32" | "cosf32" |
@@ -247,7 +216,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             "fadd_fast" | "fsub_fast" | "fmul_fast" | "fdiv_fast" | "frem_fast" => {
-                let ty = substs.type_at(0);
+                let ty = instance.substs.type_at(0);
                 let kind = self.ty_to_primval_kind(ty)?;
                 let a = self.value_to_primval(arg_vals[0], ty)?;
                 let b = self.value_to_primval(arg_vals[1], ty)?;
@@ -279,7 +248,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         Value::ByVal(PrimVal::Undef) => match this.ty_to_primval_kind(dest_ty) {
                             Ok(_) => Value::ByVal(PrimVal::Bytes(0)),
                             Err(_) => {
-                                let ptr = this.alloc_ptr_with_substs(dest_ty, substs)?;
+                                let ptr = this.alloc_ptr_with_substs(dest_ty, instance.substs)?;
                                 this.memory.write_repeat(ptr, 0, size)?;
                                 Value::ByRef(ptr)
                             }
@@ -299,14 +268,14 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             "min_align_of" => {
-                let elem_ty = substs.type_at(0);
+                let elem_ty = instance.substs.type_at(0);
                 let elem_align = self.type_align(elem_ty)?;
                 let align_val = PrimVal::from_u128(elem_align as u128);
                 self.write_primval(dest, align_val, dest_ty)?;
             }
 
             "pref_align_of" => {
-                let ty = substs.type_at(0);
+                let ty = instance.substs.type_at(0);
                 let layout = self.type_layout(ty)?;
                 let align = layout.align(&self.tcx.data_layout).pref();
                 let align_val = PrimVal::from_u128(align as u128);
@@ -314,20 +283,20 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             "move_val_init" => {
-                let ty = substs.type_at(0);
+                let ty = instance.substs.type_at(0);
                 let ptr = arg_vals[0].read_ptr(&self.memory)?;
                 self.write_value_to_ptr(arg_vals[1], ptr, ty)?;
             }
 
             "needs_drop" => {
-                let ty = substs.type_at(0);
+                let ty = instance.substs.type_at(0);
                 let env = self.tcx.empty_parameter_environment();
                 let needs_drop = self.tcx.type_needs_drop_given_env(ty, &env);
                 self.write_primval(dest, PrimVal::from_bool(needs_drop), dest_ty)?;
             }
 
             "offset" => {
-                let pointee_ty = substs.type_at(0);
+                let pointee_ty = instance.substs.type_at(0);
                 // FIXME: assuming here that type size is < i64::max_value()
                 let pointee_size = self.type_size(pointee_ty)?.expect("cannot offset a pointer to an unsized type") as i64;
                 let offset = self.value_to_primval(arg_vals[1], isize)?.to_i128()? as i64;
@@ -388,7 +357,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             "size_of" => {
-                let ty = substs.type_at(0);
+                let ty = instance.substs.type_at(0);
                 // FIXME: change the `box_free` lang item to take `T: ?Sized` and have it use the
                 // `size_of_val` intrinsic, then change this back to
                 // .expect("size_of intrinsic called on unsized value")
@@ -398,32 +367,32 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             "size_of_val" => {
-                let ty = substs.type_at(0);
+                let ty = instance.substs.type_at(0);
                 let (size, _) = self.size_and_align_of_dst(ty, arg_vals[0])?;
                 self.write_primval(dest, PrimVal::from_u128(size as u128), dest_ty)?;
             }
 
             "min_align_of_val" |
             "align_of_val" => {
-                let ty = substs.type_at(0);
+                let ty = instance.substs.type_at(0);
                 let (_, align) = self.size_and_align_of_dst(ty, arg_vals[0])?;
                 self.write_primval(dest, PrimVal::from_u128(align as u128), dest_ty)?;
             }
 
             "type_name" => {
-                let ty = substs.type_at(0);
+                let ty = instance.substs.type_at(0);
                 let ty_name = ty.to_string();
                 let s = self.str_to_value(&ty_name)?;
                 self.write_value(s, dest, dest_ty)?;
             }
             "type_id" => {
-                let ty = substs.type_at(0);
+                let ty = instance.substs.type_at(0);
                 let n = self.tcx.type_id_hash(ty);
                 self.write_primval(dest, PrimVal::Bytes(n as u128), dest_ty)?;
             }
 
             "transmute" => {
-                let dest_ty = substs.type_at(1);
+                let dest_ty = instance.substs.type_at(1);
                 self.write_value(arg_vals[0], dest, dest_ty)?;
             }
 
@@ -449,7 +418,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             "write_bytes" => {
                 let u8 = self.tcx.types.u8;
-                let ty = substs.type_at(0);
+                let ty = instance.substs.type_at(0);
                 let ty_align = self.type_align(ty)?;
                 let val_byte = self.value_to_primval(arg_vals[1], u8)?.to_u128()? as u8;
                 let size = self.type_size(ty)?.expect("write_bytes() type must be sized");

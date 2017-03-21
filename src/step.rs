@@ -45,8 +45,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             let mut new = Ok(0);
             ConstantExtractor {
                 span: stmt.source_info.span,
-                substs: self.substs(),
-                def_id: self.frame().def_id,
+                instance: self.frame().instance,
                 ecx: self,
                 mir: Ref::clone(&mir),
                 new_constants: &mut new,
@@ -63,8 +62,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         let mut new = Ok(0);
         ConstantExtractor {
             span: terminator.source_info.span,
-            substs: self.substs(),
-            def_id: self.frame().def_id,
+            instance: self.frame().instance,
             ecx: self,
             mir: Ref::clone(&mir),
             new_constants: &mut new,
@@ -145,8 +143,7 @@ struct ConstantExtractor<'a, 'b: 'a, 'tcx: 'b> {
     span: Span,
     ecx: &'a mut EvalContext<'b, 'tcx>,
     mir: MirRef<'tcx>,
-    def_id: DefId,
-    substs: &'tcx subst::Substs<'tcx>,
+    instance: ty::Instance<'tcx>,
     new_constants: &'a mut EvalResult<'tcx, u64>,
 }
 
@@ -158,26 +155,24 @@ impl<'a, 'b, 'tcx> ConstantExtractor<'a, 'b, 'tcx> {
         span: Span,
         shared: bool,
     ) {
-        let (def_id, substs) = self.ecx.resolve_associated_const(def_id, substs);
-        let cid = GlobalId { def_id, substs, promoted: None };
+        let instance = self.ecx.resolve_associated_const(def_id, substs);
+        let cid = GlobalId { instance, promoted: None };
         if self.ecx.globals.contains_key(&cid) {
             return;
         }
         self.try(|this| {
-            let mir = this.ecx.load_mir(def_id)?;
+            let mir = this.ecx.load_mir(instance.def)?;
             this.ecx.globals.insert(cid, Global::uninitialized(mir.return_ty));
             let mutable = !shared || mir.return_ty.type_contents(this.ecx.tcx).interior_unsafe();
             let cleanup = StackPopCleanup::MarkStatic(mutable);
             let name = ty::tls::with(|tcx| tcx.item_path_str(def_id));
             trace!("pushing stack frame for global: {}", name);
             this.ecx.push_stack_frame(
-                def_id,
+                instance,
                 span,
                 mir,
-                substs,
                 Lvalue::Global(cid),
                 cleanup,
-                Vec::new(),
             )
         });
     }
@@ -210,8 +205,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ConstantExtractor<'a, 'b, 'tcx> {
             },
             mir::Literal::Promoted { index } => {
                 let cid = GlobalId {
-                    def_id: self.def_id,
-                    substs: self.substs,
+                    instance: self.instance,
                     promoted: Some(index),
                 };
                 if self.ecx.globals.contains_key(&cid) {
@@ -220,16 +214,14 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ConstantExtractor<'a, 'b, 'tcx> {
                 let mir = Ref::clone(&self.mir);
                 let mir = Ref::map(mir, |mir| &mir.promoted[index]);
                 self.try(|this| {
-                    let ty = this.ecx.monomorphize(mir.return_ty, this.substs);
+                    let ty = this.ecx.monomorphize(mir.return_ty, this.instance.substs);
                     this.ecx.globals.insert(cid, Global::uninitialized(ty));
                     trace!("pushing stack frame for {:?}", index);
-                    this.ecx.push_stack_frame(this.def_id,
+                    this.ecx.push_stack_frame(this.instance,
                                               constant.span,
                                               mir,
-                                              this.substs,
                                               Lvalue::Global(cid),
-                                              StackPopCleanup::MarkStatic(false),
-                                              Vec::new())
+                                              StackPopCleanup::MarkStatic(false))
                 });
             }
         }

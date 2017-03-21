@@ -1,9 +1,6 @@
 use rustc::hir::def_id::DefId;
 use rustc::mir;
-use rustc::ty::layout::Layout;
-use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty};
-use rustc_const_math::ConstInt;
 use syntax::codemap::Span;
 use syntax::attr;
 use syntax::abi::Abi;
@@ -11,12 +8,11 @@ use syntax::abi::Abi;
 use error::{EvalError, EvalResult};
 use eval_context::{EvalContext, IntegerExt, StackPopCleanup, is_inhabited};
 use lvalue::Lvalue;
-use memory::{Pointer, FunctionDefinition, Function};
+use memory::Pointer;
 use value::PrimVal;
 use value::Value;
 
 mod intrinsic;
-mod drop;
 
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     pub(super) fn goto_block(&mut self, target: mir::BasicBlock) {
@@ -64,46 +60,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
                 let func_ty = self.operand_ty(func);
                 let fn_def = match func_ty.sty {
-                    ty::TyFnPtr(bare_sig) => {
-                        let bare_sig = self.erase_lifetimes(&bare_sig);
+                    ty::TyFnPtr(_) => {
                         let fn_ptr = self.eval_operand_to_primval(func)?.to_ptr()?;
-                        let fn_def = self.memory.get_fn(fn_ptr.alloc_id)?;
-                        match fn_def {
-                            Function::Concrete(fn_def) => {
-                                // transmuting function pointers in miri is fine as long as the number of
-                                // arguments and the abi don't change.
-                                let sig = self.erase_lifetimes(&fn_def.sig);
-                                if sig.abi != bare_sig.abi ||
-                                    sig.variadic != bare_sig.variadic ||
-                                    sig.inputs_and_output != bare_sig.inputs_and_output {
-                                    return Err(EvalError::FunctionPointerTyMismatch(sig, bare_sig));
-                                }
-                            },
-                            Function::NonCaptureClosureAsFnPtr(fn_def) => {
-                                let sig = self.erase_lifetimes(&fn_def.sig);
-                                assert_eq!(sig.abi, Abi::RustCall);
-                                if sig.variadic != bare_sig.variadic ||
-                                    sig.inputs().len() != 1 {
-                                    return Err(EvalError::FunctionPointerTyMismatch(sig, bare_sig));
-                                }
-                                if let ty::TyTuple(fields, _) = sig.inputs()[0].sty {
-                                    if **fields != *bare_sig.inputs() {
-                                        return Err(EvalError::FunctionPointerTyMismatch(sig, bare_sig));
-                                    }
-                                } else {
-                                    return Err(EvalError::FunctionPointerTyMismatch(sig, bare_sig));
-                                }
-                            },
-                            other => return Err(EvalError::ExpectedConcreteFunction(other)),
-                        }
                         self.memory.get_fn(fn_ptr.alloc_id)?
                     },
-                    ty::TyFnDef(def_id, substs, fn_ty) => Function::Concrete(FunctionDefinition {
-                        def_id,
-                        substs,
-                        sig: fn_ty,
-                    }),
-
+                    ty::TyFnDef(def_id, substs, _) => ty::Instance::new(def_id, substs),
                     _ => {
                         let msg = format!("can't handle callee of type {:?}", func_ty);
                         return Err(EvalError::Unimplemented(msg));
@@ -112,19 +73,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.eval_fn_call(fn_def, destination, args, terminator.source_info.span)?;
             }
 
-            Drop { ref location, target, .. } => {
-                let lval = self.eval_lvalue(location)?;
-
-                let ty = self.lvalue_ty(location);
-
-                // we can't generate the drop stack frames on the fly,
-                // because that would change our call stack
-                // and very much confuse the further processing of the drop glue
-                let mut drops = Vec::new();
-                self.drop(lval, ty, &mut drops)?;
-                self.goto_block(target);
-                self.eval_drop_impls(drops, terminator.source_info.span)?;
-            }
+            Drop { .. } => unreachable!(),
 
             Assert { ref cond, expected, ref msg, target, .. } => {
                 let cond_val = self.eval_operand_to_primval(cond)?.to_bool()?;
@@ -158,15 +107,18 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
     fn eval_fn_call(
         &mut self,
-        fn_def: Function<'tcx>,
+        instance: ty::Instance<'tcx>,
         destination: Option<(Lvalue<'tcx>, mir::BasicBlock)>,
         arg_operands: &[mir::Operand<'tcx>],
         span: Span,
     ) -> EvalResult<'tcx> {
-        use syntax::abi::Abi;
-        match fn_def {
-            // Intrinsics can only be addressed directly
-            Function::Concrete(FunctionDefinition { def_id, substs, sig }) if sig.abi() == Abi::RustIntrinsic => {
+        let sig = match instance.def.def_ty(self.tcx).sty {
+            ty::TyFnPtr(bare_sig) => bare_sig,
+            ty::TyFnDef(_, _, fn_ty) => fn_ty,
+            ref other => bug!("expected function or pointer, got {:?}", other),
+        };
+        match sig.abi() {
+            Abi::RustIntrinsic => {
                 let sig = self.erase_lifetimes(&sig);
                 let ty = sig.output();
                 let layout = self.type_layout(ty)?;
@@ -174,139 +126,51 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     Some(dest) if is_inhabited(self.tcx, ty) => dest,
                     _ => return Err(EvalError::Unreachable),
                 };
-                self.call_intrinsic(def_id, substs, arg_operands, ret, ty, layout, target)?;
+                self.call_intrinsic(instance, arg_operands, ret, ty, layout, target)?;
                 self.dump_local(ret);
                 Ok(())
             },
-            // C functions can only be addressed directly
-            Function::Concrete(FunctionDefinition { def_id, sig, ..}) if sig.abi() == Abi::C => {
+            Abi::C => {
                 let sig = self.erase_lifetimes(&sig);
                 let ty = sig.output();
                 let (ret, target) = destination.unwrap();
-                self.call_c_abi(def_id, arg_operands, ret, ty)?;
+                match instance.def {
+                    ty::InstanceDef::Item(_) => {},
+                    _ => bug!("C abi function must be InstanceDef::Item"),
+                }
+                self.call_c_abi(instance.def_id(), arg_operands, ret, ty)?;
                 self.dump_local(ret);
                 self.goto_block(target);
                 Ok(())
             },
-            Function::DropGlue(_) => Err(EvalError::ManuallyCalledDropGlue),
-            Function::Concrete(FunctionDefinition { def_id, sig, substs }) if sig.abi() == Abi::Rust || sig.abi() == Abi::RustCall => {
+            Abi::Rust | Abi::RustCall => {
                 let mut args = Vec::new();
                 for arg in arg_operands {
                     let arg_val = self.eval_operand(arg)?;
                     let arg_ty = self.operand_ty(arg);
                     args.push((arg_val, arg_ty));
                 }
-
-                // Only trait methods can have a Self parameter.
-                let (resolved_def_id, resolved_substs, temporaries) =
-                    if let Some(trait_id) = self.tcx.trait_of_item(def_id) {
-                        self.trait_method(trait_id, def_id, substs, &mut args)?
-                    } else {
-                        (def_id, substs, Vec::new())
-                    };
-
-                // FIXME(eddyb) Detect ADT constructors more efficiently.
-                if let Some(adt_def) = sig.output().skip_binder().ty_adt_def() {
-                    let dids = adt_def.variants.iter().map(|v| v.did);
-                    let discrs = adt_def.discriminants(self.tcx).map(ConstInt::to_u128_unchecked);
-                    if let Some((_, disr_val)) = dids.zip(discrs).find(|&(did, _)| resolved_def_id == did) {
-                        let (lvalue, target) = destination.expect("tuple struct constructors can't diverge");
-                        let dest_ty = self.tcx.item_type(adt_def.did);
-                        let dest_layout = self.type_layout(dest_ty)?;
-                        trace!("layout({:?}) = {:#?}", dest_ty, dest_layout);
-                        match *dest_layout {
-                            Layout::Univariant { .. } => {
-                                assert_eq!(disr_val, 0);
-                                self.assign_fields(lvalue, dest_ty, args)?;
-                            },
-                            Layout::General { discr, ref variants, .. } => {
-                                let discr_size = discr.size().bytes();
-                                self.assign_discr_and_fields(
-                                    lvalue,
-                                    dest_ty,
-                                    variants[disr_val as usize].offsets[0].bytes(),
-                                    args,
-                                    disr_val,
-                                    disr_val as usize,
-                                    discr_size,
-                                )?;
-                            },
-                            Layout::StructWrappedNullablePointer { nndiscr, ref discrfield, .. } => {
-                                if nndiscr as u128 == disr_val {
-                                    self.assign_fields(lvalue, dest_ty, args)?;
-                                } else {
-                                    for (_, ty) in args {
-                                        assert_eq!(self.type_size(ty)?, Some(0));
-                                    }
-                                    let (offset, ty) = self.nonnull_offset_and_ty(dest_ty, nndiscr, discrfield)?;
-
-                                    // FIXME(solson)
-                                    let dest = self.force_allocation(lvalue)?.to_ptr();
-
-                                    let dest = dest.offset(offset.bytes());
-                                    let dest_size = self.type_size(ty)?
-                                        .expect("bad StructWrappedNullablePointer discrfield");
-                                    self.memory.write_int(dest, 0, dest_size)?;
-                                }
-                            },
-                            Layout::RawNullablePointer { .. } => {
-                                assert_eq!(args.len(), 1);
-                                let (val, ty) = args.pop().unwrap();
-                                self.write_value(val, lvalue, ty)?;
-                            },
-                            _ => bug!("bad layout for tuple struct constructor: {:?}", dest_layout),
-                        }
-                        self.goto_block(target);
-                        return Ok(());
-                    }
-                }
                 self.eval_fn_call_inner(
-                    resolved_def_id,
-                    resolved_substs,
+                    instance,
                     destination,
                     args,
-                    temporaries,
                     span,
                 )
             },
-            Function::NonCaptureClosureAsFnPtr(FunctionDefinition { def_id, substs, sig }) if sig.abi() == Abi::RustCall => {
-                let sig = self.erase_lifetimes(&sig);
-                let mut args = Vec::new();
-                for arg in arg_operands {
-                    let arg_val = self.eval_operand(arg)?;
-                    let arg_ty = self.operand_ty(arg);
-                    args.push((arg_val, arg_ty));
-                }
-                args.insert(0, (
-                    Value::ByVal(PrimVal::Undef),
-                    sig.inputs()[0],
-                ));
-                self.eval_fn_call_inner(
-                    def_id,
-                    substs,
-                    destination,
-                    args,
-                    Vec::new(),
-                    span,
-                )
-            }
-            Function::Concrete(fn_def) => Err(EvalError::Unimplemented(format!("can't handle function with {:?} ABI", fn_def.sig.abi()))),
-            other => Err(EvalError::Unimplemented(format!("can't call function kind {:#?}", other))),
+            other => Err(EvalError::Unimplemented(format!("can't handle function with {:?} ABI", other))),
         }
     }
 
     fn eval_fn_call_inner(
         &mut self,
-        resolved_def_id: DefId,
-        resolved_substs: &'tcx Substs,
+        instance: ty::Instance<'tcx>,
         destination: Option<(Lvalue<'tcx>, mir::BasicBlock)>,
         args: Vec<(Value, Ty<'tcx>)>,
-        temporaries: Vec<(Pointer, Ty<'tcx>)>,
         span: Span,
     ) -> EvalResult<'tcx> {
-        trace!("eval_fn_call_inner: {:#?}, {:#?}, {:#?}", args, temporaries, destination);
+        trace!("eval_fn_call_inner: {:#?}, {:#?}", args, destination);
 
-        let mir = match self.load_mir(resolved_def_id) {
+        let mir = match self.load_mir(instance.def) {
             Ok(mir) => mir,
             Err(EvalError::NoMirFor(path)) => {
                 match &path[..] {
@@ -344,13 +208,11 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         };
 
         self.push_stack_frame(
-            resolved_def_id,
+            instance,
             span,
             mir,
-            resolved_substs,
             return_lvalue,
             return_to_block,
-            temporaries,
         )?;
 
         let arg_locals = self.frame().mir.args_iter();
@@ -528,35 +390,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         // Since we pushed no stack frame, the main loop will act
         // as if the call just completed and it's returning to the
         // current frame.
-        Ok(())
-    }
-
-    pub(crate) fn unpack_fn_args(&self, args: &mut Vec<(Value, Ty<'tcx>)>) -> EvalResult<'tcx> {
-        if let Some((last, last_ty)) = args.pop() {
-            let last_layout = self.type_layout(last_ty)?;
-            match (&last_ty.sty, last_layout) {
-                (&ty::TyTuple(fields, _),
-                 &Layout::Univariant { ref variant, .. }) => {
-                    let offsets = variant.offsets.iter().map(|s| s.bytes());
-                    match last {
-                        Value::ByRef(last_ptr) => {
-                            for (offset, ty) in offsets.zip(fields) {
-                                let arg = Value::ByRef(last_ptr.offset(offset));
-                                args.push((arg, ty));
-                            }
-                        },
-                        // propagate undefs
-                        undef @ Value::ByVal(PrimVal::Undef) => {
-                            for field_ty in fields {
-                                args.push((undef, field_ty));
-                            }
-                        },
-                        _ => bug!("rust-call ABI tuple argument was {:?}, but {:?} were expected", last, fields),
-                    }
-                }
-                ty => bug!("expected tuple as last argument in function with 'rust-call' ABI, got {:?}", ty),
-            }
-        }
         Ok(())
     }
 }
