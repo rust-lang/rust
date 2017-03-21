@@ -45,8 +45,17 @@ impl<'a, 'tcx> MutVisitor<'tcx> for EraseRegionsVisitor<'a, 'tcx> {
             Rvalue::Ref(ref mut r, _, _) => {
                 *r = self.tcx.mk_region(ReErased);
             }
-            _ => {
-                /* only the above variant contains regions */
+            Rvalue::Use(..) |
+            Rvalue::Repeat(..) |
+            Rvalue::Len(..) |
+            Rvalue::Cast(..) |
+            Rvalue::BinaryOp(..) |
+            Rvalue::CheckedBinaryOp(..) |
+            Rvalue::UnaryOp(..) |
+            Rvalue::Discriminant(..) |
+            Rvalue::Box(..) |
+            Rvalue::Aggregate(..) => {
+                // These variants don't contain regions.
             }
         }
         self.super_rvalue(rvalue, location);
