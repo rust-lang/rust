@@ -2585,24 +2585,22 @@ fn associated_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
     let parent_item = tcx.hir.expect_item(parent_id);
     match parent_item.node {
         hir::ItemImpl(.., ref impl_trait_ref, _, ref impl_item_refs) => {
-            for impl_item_ref in impl_item_refs {
+            if let Some(impl_item_ref) = impl_item_refs.iter().find(|i| i.id.node_id == id) {
                 let assoc_item =
                     tcx.associated_item_from_impl_item_ref(parent_def_id,
                                                             impl_trait_ref.is_some(),
                                                             impl_item_ref);
-                if assoc_item.def_id == def_id {
-                    return assoc_item;
-                }
+                debug_assert_eq!(assoc_item.def_id, def_id);
+                return assoc_item;
             }
         }
 
         hir::ItemTrait(.., ref trait_item_refs) => {
-            for trait_item_ref in trait_item_refs {
+            if let Some(trait_item_ref) = trait_item_refs.iter().find(|i| i.id.node_id == id) {
                 let assoc_item =
                     tcx.associated_item_from_trait_item_ref(parent_def_id, trait_item_ref);
-                if assoc_item.def_id == def_id {
-                    return assoc_item;
-                }
+                debug_assert_eq!(assoc_item.def_id, def_id);
+                return assoc_item;
             }
         }
 
