@@ -332,7 +332,7 @@ impl fmt::Display for Utf8Error {
 Section: Iterators
 */
 
-/// Iterator for the char (representing *Unicode Scalar Values*) of a string
+/// Iterator for the char (representing *Unicode Scalar Values*) of a string.
 ///
 /// Created with the method [`chars`].
 ///
