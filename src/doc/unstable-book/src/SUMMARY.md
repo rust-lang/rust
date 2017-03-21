@@ -65,7 +65,6 @@
 - [plugin_registrar](plugin-registrar.md)
 - [prelude_import](prelude-import.md)
 - [proc_macro](proc-macro.md)
-- [pub_restricted](pub-restricted.md)
 - [quote](quote.md)
 - [relaxed_adts](relaxed-adts.md)
 - [repr_simd](repr-simd.md)
