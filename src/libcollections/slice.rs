@@ -1092,36 +1092,6 @@ impl<T> [T] {
         merge_sort(self, |a, b| a.lt(b));
     }
 
-    /// Sorts the slice using `f` to extract a key to compare elements by.
-    ///
-    /// This sort is stable (i.e. does not reorder equal elements) and `O(n log n)` worst-case.
-    ///
-    /// # Current implementation
-    ///
-    /// The current algorithm is an adaptive, iterative merge sort inspired by
-    /// [timsort](https://en.wikipedia.org/wiki/Timsort).
-    /// It is designed to be very fast in cases where the slice is nearly sorted, or consists of
-    /// two or more sorted sequences concatenated one after another.
-    ///
-    /// Also, it allocates temporary storage half the size of `self`, but for short slices a
-    /// non-allocating insertion sort is used instead.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let mut v = [-5i32, 4, 1, -3, 2];
-    ///
-    /// v.sort_by_key(|k| k.abs());
-    /// assert!(v == [1, 2, -3, 4, -5]);
-    /// ```
-    #[stable(feature = "slice_sort_by_key", since = "1.7.0")]
-    #[inline]
-    pub fn sort_by_key<B, F>(&mut self, mut f: F)
-        where F: FnMut(&T) -> B, B: Ord
-    {
-        merge_sort(self, |a, b| f(a).lt(&f(b)));
-    }
-
     /// Sorts the slice using `compare` to compare elements.
     ///
     /// This sort is stable (i.e. does not reorder equal elements) and `O(n log n)` worst-case.
@@ -1153,6 +1123,150 @@ impl<T> [T] {
         where F: FnMut(&T, &T) -> Ordering
     {
         merge_sort(self, |a, b| compare(a, b) == Less);
+    }
+
+    /// Sorts the slice using `f` to extract a key to compare elements by.
+    ///
+    /// This sort is stable (i.e. does not reorder equal elements) and `O(n log n)` worst-case.
+    ///
+    /// # Current implementation
+    ///
+    /// The current algorithm is an adaptive, iterative merge sort inspired by
+    /// [timsort](https://en.wikipedia.org/wiki/Timsort).
+    /// It is designed to be very fast in cases where the slice is nearly sorted, or consists of
+    /// two or more sorted sequences concatenated one after another.
+    ///
+    /// Also, it allocates temporary storage half the size of `self`, but for short slices a
+    /// non-allocating insertion sort is used instead.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut v = [-5i32, 4, 1, -3, 2];
+    ///
+    /// v.sort_by_key(|k| k.abs());
+    /// assert!(v == [1, 2, -3, 4, -5]);
+    /// ```
+    #[stable(feature = "slice_sort_by_key", since = "1.7.0")]
+    #[inline]
+    pub fn sort_by_key<B, F>(&mut self, mut f: F)
+        where F: FnMut(&T) -> B, B: Ord
+    {
+        merge_sort(self, |a, b| f(a).lt(&f(b)));
+    }
+
+    /// Sorts the slice, but may not preserve the order of equal elements.
+    ///
+    /// This sort is unstable (i.e. may reorder equal elements), in-place (i.e. does not allocate),
+    /// and `O(n log n)` worst-case.
+    ///
+    /// # Current implementation
+    ///
+    /// The current algorithm is based on Orson Peters' [pdqsort][pattern-defeating quicksort],
+    /// which is a quicksort variant designed to be very fast on certain kinds of patterns,
+    /// sometimes achieving linear time. It is randomized but deterministic, and falls back to
+    /// heapsort on degenerate inputs.
+    ///
+    /// It is generally faster than stable sorting, except in a few special cases, e.g. when the
+    /// slice consists of several concatenated sorted sequences.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(sort_unstable)]
+    ///
+    /// let mut v = [-5, 4, 1, -3, 2];
+    ///
+    /// v.sort_unstable();
+    /// assert!(v == [-5, -3, 1, 2, 4]);
+    /// ```
+    ///
+    /// [pdqsort]: https://github.com/orlp/pdqsort
+    // FIXME #40585: Mention `sort_unstable` in the documentation for `sort`.
+    #[unstable(feature = "sort_unstable", issue = "40585")]
+    #[inline]
+    pub fn sort_unstable(&mut self)
+        where T: Ord
+    {
+        core_slice::SliceExt::sort_unstable(self);
+    }
+
+    /// Sorts the slice using `compare` to compare elements, but may not preserve the order of
+    /// equal elements.
+    ///
+    /// This sort is unstable (i.e. may reorder equal elements), in-place (i.e. does not allocate),
+    /// and `O(n log n)` worst-case.
+    ///
+    /// # Current implementation
+    ///
+    /// The current algorithm is based on Orson Peters' [pdqsort][pattern-defeating quicksort],
+    /// which is a quicksort variant designed to be very fast on certain kinds of patterns,
+    /// sometimes achieving linear time. It is randomized but deterministic, and falls back to
+    /// heapsort on degenerate inputs.
+    ///
+    /// It is generally faster than stable sorting, except in a few special cases, e.g. when the
+    /// slice consists of several concatenated sorted sequences.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(sort_unstable)]
+    ///
+    /// let mut v = [5, 4, 1, 3, 2];
+    /// v.sort_unstable_by(|a, b| a.cmp(b));
+    /// assert!(v == [1, 2, 3, 4, 5]);
+    ///
+    /// // reverse sorting
+    /// v.sort_unstable_by(|a, b| b.cmp(a));
+    /// assert!(v == [5, 4, 3, 2, 1]);
+    /// ```
+    ///
+    /// [pdqsort]: https://github.com/orlp/pdqsort
+    // FIXME #40585: Mention `sort_unstable_by` in the documentation for `sort_by`.
+    #[unstable(feature = "sort_unstable", issue = "40585")]
+    #[inline]
+    pub fn sort_unstable_by<F>(&mut self, compare: F)
+        where F: FnMut(&T, &T) -> Ordering
+    {
+        core_slice::SliceExt::sort_unstable_by(self, compare);
+    }
+
+    /// Sorts the slice using `f` to extract a key to compare elements by, but may not preserve the
+    /// order of equal elements.
+    ///
+    /// This sort is unstable (i.e. may reorder equal elements), in-place (i.e. does not allocate),
+    /// and `O(n log n)` worst-case.
+    ///
+    /// # Current implementation
+    ///
+    /// The current algorithm is based on Orson Peters' [pdqsort][pattern-defeating quicksort],
+    /// which is a quicksort variant designed to be very fast on certain kinds of patterns,
+    /// sometimes achieving linear time. It is randomized but deterministic, and falls back to
+    /// heapsort on degenerate inputs.
+    ///
+    /// It is generally faster than stable sorting, except in a few special cases, e.g. when the
+    /// slice consists of several concatenated sorted sequences.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(sort_unstable)]
+    ///
+    /// let mut v = [-5i32, 4, 1, -3, 2];
+    ///
+    /// v.sort_unstable_by_key(|k| k.abs());
+    /// assert!(v == [1, 2, -3, 4, -5]);
+    /// ```
+    ///
+    /// [pdqsort]: https://github.com/orlp/pdqsort
+    // FIXME #40585: Mention `sort_unstable_by_key` in the documentation for `sort_by_key`.
+    #[unstable(feature = "sort_unstable", issue = "40585")]
+    #[inline]
+    pub fn sort_unstable_by_key<B, F>(&mut self, f: F)
+        where F: FnMut(&T) -> B,
+              B: Ord
+    {
+        core_slice::SliceExt::sort_unstable_by_key(self, f);
     }
 
     /// Copies the elements from `src` into `self`.
@@ -1553,28 +1667,20 @@ unsafe fn merge<T, F>(v: &mut [T], mid: usize, buf: *mut T, is_less: &mut F)
 fn merge_sort<T, F>(v: &mut [T], mut is_less: F)
     where F: FnMut(&T, &T) -> bool
 {
+    // Slices of up to this length get sorted using insertion sort.
+    const MAX_INSERTION: usize = 20;
+    // Very short runs are extended using insertion sort to span at least this many elements.
+    const MIN_RUN: usize = 10;
+
     // Sorting has no meaningful behavior on zero-sized types.
     if size_of::<T>() == 0 {
         return;
     }
 
-    // FIXME #12092: These numbers are platform-specific and need more extensive testing/tuning.
-    //
-    // If `v` has length up to `max_insertion`, simply switch to insertion sort because it is going
-    // to perform better than merge sort. For bigger types `T`, the threshold is smaller.
-    //
-    // Short runs are extended using insertion sort to span at least `min_run` elements, in order
-    // to improve performance.
-    let (max_insertion, min_run) = if size_of::<T>() <= 2 * mem::size_of::<usize>() {
-        (64, 32)
-    } else {
-        (32, 16)
-    };
-
     let len = v.len();
 
     // Short arrays get sorted in-place via insertion sort to avoid allocations.
-    if len <= max_insertion {
+    if len <= MAX_INSERTION {
         if len >= 2 {
             for i in (0..len-1).rev() {
                 insert_head(&mut v[i..], &mut is_less);
@@ -1618,7 +1724,7 @@ fn merge_sort<T, F>(v: &mut [T], mut is_less: F)
 
         // Insert some more elements into the run if it's too short. Insertion sort is faster than
         // merge sort on short sequences, so this significantly improves performance.
-        while start > 0 && end - start < min_run {
+        while start > 0 && end - start < MIN_RUN {
             start -= 1;
             insert_head(&mut v[start..end], &mut is_less);
         }
