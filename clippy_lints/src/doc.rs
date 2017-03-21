@@ -89,11 +89,9 @@ pub fn check_attrs<'a>(cx: &EarlyContext, valid_idents: &[String], attrs: &'a [a
 
     for attr in attrs {
         if attr.is_sugared_doc {
-            if let ast::MetaItemKind::NameValue(ref doc) = attr.value.node {
-                if let ast::LitKind::Str(ref doc, _) = doc.node {
+            if let Some(ref doc) = attr.value_str() {
                     let doc = (*doc.as_str()).to_owned();
                     docs.extend_from_slice(&strip_doc_comment_decoration((doc, attr.span)));
-                }
             }
         }
     }

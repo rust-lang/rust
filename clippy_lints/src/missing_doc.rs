@@ -77,7 +77,7 @@ impl MissingDoc {
             return;
         }
 
-        let has_doc = attrs.iter().any(|a| a.is_value_str() && a.name() == "doc");
+        let has_doc = attrs.iter().any(|a| a.is_value_str() && a.name().map_or(false, |n| n == "doc"));
         if !has_doc {
             cx.span_lint(MISSING_DOCS_IN_PRIVATE_ITEMS,
                          sp,
