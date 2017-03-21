@@ -628,32 +628,6 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                            });
         next_target.unit()
     }
-
-    /// Create an Assert terminator and return the success block.
-    /// If the boolean condition operand is not the expected value,
-    /// a runtime panic will be caused with the given message.
-    pub fn assert(&mut self, block: Block,
-                  cond: Operand<'tcx>,
-                  expected: bool,
-                  msg: AssertMessage<'tcx>,
-                  span: Span)
-                  -> Block {
-        let source_info = self.source_info(span);
-
-        let success_block = self.cfg.start_new_block();
-        let cleanup = self.diverge_cleanup();
-
-        self.cfg.terminate(block, source_info,
-                           TerminatorKind::Assert {
-                               cond: cond,
-                               expected: expected,
-                               msg: msg,
-                               target: success_block,
-                               cleanup: cleanup
-                           });
-
-        success_block
-    }
 }
 
 /// Builds drops for pop_scope and exit_scope.

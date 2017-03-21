@@ -344,6 +344,14 @@ macro_rules! make_mir_visitor {
                             self.visit_operand(input, location);
                         }
                     }
+                    StatementKind::Assert { ref $($mutability)* cond,
+                                            expected: _,
+                                            ref $($mutability)* msg,
+                                            cleanup } => {
+                        self.visit_operand(cond, location);
+                        self.visit_assert_message(msg, location);
+                        cleanup.map(|t| self.visit_branch(block, t));
+                    }
                     StatementKind::Nop => {}
                 }
             }
@@ -428,17 +436,6 @@ macro_rules! make_mir_visitor {
                             self.visit_lvalue(destination, LvalueContext::Call, source_location);
                             self.visit_branch(block, target);
                         }
-                        cleanup.map(|t| self.visit_branch(block, t));
-                    }
-
-                    TerminatorKind::Assert { ref $($mutability)* cond,
-                                             expected: _,
-                                             ref $($mutability)* msg,
-                                             target,
-                                             cleanup } => {
-                        self.visit_operand(cond, source_location);
-                        self.visit_assert_message(msg, source_location);
-                        self.visit_branch(block, target);
                         cleanup.map(|t| self.visit_branch(block, t));
                     }
                 }

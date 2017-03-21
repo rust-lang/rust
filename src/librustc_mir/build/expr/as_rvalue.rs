@@ -89,8 +89,15 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                          Rvalue::BinaryOp(BinOp::Eq, arg.clone(), minval));
 
                     let err = ConstMathErr::Overflow(Op::Neg);
-                    block = this.assert(block, Operand::Consume(is_min), false,
-                                        AssertMessage::Math(err), expr_span);
+                    this.cfg.push(block, Statement {
+                        source_info: this.source_info(expr_span),
+                        kind: StatementKind::Assert {
+                            cond: Operand::Consume(is_min),
+                            expected: false,
+                            msg: AssertMessage::Math(err),
+                            cleanup: this.diverge_cleanup(),
+                        },
+                    });
                 }
                 block.and(Rvalue::UnaryOp(op, arg))
             }
@@ -284,9 +291,15 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 }
             });
 
-            block = self.assert(block, Operand::Consume(of), false,
-                                AssertMessage::Math(err), span);
-
+            self.cfg.push(block, Statement {
+                source_info: self.source_info(span),
+                kind: StatementKind::Assert {
+                    cond: Operand::Consume(of),
+                    expected: false,
+                    msg: AssertMessage::Math(err),
+                    cleanup: self.diverge_cleanup(),
+                },
+            });
             block.and(Rvalue::Use(Operand::Consume(val)))
         } else {
             if ty.is_integral() && (op == BinOp::Div || op == BinOp::Rem) {
@@ -307,8 +320,15 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 self.cfg.push_assign(block, source_info, &is_zero,
                                      Rvalue::BinaryOp(BinOp::Eq, rhs.clone(), zero));
 
-                block = self.assert(block, Operand::Consume(is_zero), false,
-                                    AssertMessage::Math(zero_err), span);
+                self.cfg.push(block, Statement {
+                    source_info: self.source_info(span),
+                    kind: StatementKind::Assert {
+                        cond: Operand::Consume(is_zero),
+                        expected: false,
+                        msg: AssertMessage::Math(zero_err),
+                        cleanup: self.diverge_cleanup(),
+                    },
+                });
 
                 // We only need to check for the overflow in one case:
                 // MIN / -1, and only for signed values.
@@ -332,8 +352,15 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     self.cfg.push_assign(block, source_info, &of,
                                          Rvalue::BinaryOp(BinOp::BitAnd, is_neg_1, is_min));
 
-                    block = self.assert(block, Operand::Consume(of), false,
-                                        AssertMessage::Math(overflow_err), span);
+                    self.cfg.push(block, Statement {
+                        source_info: self.source_info(span),
+                        kind: StatementKind::Assert {
+                            cond: Operand::Consume(of),
+                            expected: false,
+                            msg: AssertMessage::Math(overflow_err),
+                            cleanup: self.diverge_cleanup(),
+                        },
+                    });
                 }
             }
 

@@ -91,7 +91,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         };
 
         for statement in &data.statements {
-            bcx = self.trans_statement(bcx, statement);
+            bcx = self.trans_statement(bcx, statement, cleanup_bundle);
         }
 
         let terminator = data.terminator();
@@ -194,13 +194,6 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             mir::TerminatorKind::Drop { ref location, target, unwind } => {
                 bcx = self.trans_drop(
                     bcx, location, unwind, cleanup_bundle, terminator.source_info
-                );
-                funclet_br(self, bcx, target);
-            }
-
-            mir::TerminatorKind::Assert { ref cond, expected, ref msg, target, cleanup } => {
-                bcx = self.trans_assert(
-                    bcx, cond, expected, msg, cleanup, cleanup_bundle, terminator.source_info
                 );
                 funclet_br(self, bcx, target);
             }

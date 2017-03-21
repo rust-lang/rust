@@ -42,7 +42,8 @@ use super::operand::OperandValue::{Pair, Ref, Immediate};
 impl<'a, 'tcx> MirContext<'a, 'tcx> {
     pub fn trans_statement(&mut self,
                            bcx: Builder<'a, 'tcx>,
-                           statement: &mir::Statement<'tcx>)
+                           statement: &mir::Statement<'tcx>,
+                           cleanup_bundle: Option<&OperandBundleDef>)
                            -> Builder<'a, 'tcx> {
         debug!("trans_statement(statement={:?})", statement);
 
@@ -105,6 +106,11 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
                 asm::trans_inline_asm(&bcx, asm, outputs, input_vals);
                 bcx
+            }
+            mir::StatementKind::Assert { ref cond, expected, ref msg, cleanup } => {
+                self.trans_assert(
+                    bcx, cond, expected, msg, cleanup, cleanup_bundle, statement.source_info
+                )
             }
             mir::StatementKind::Nop => bcx,
         }

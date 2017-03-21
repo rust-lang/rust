@@ -75,9 +75,16 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     len: Operand::Consume(len),
                     index: idx.clone()
                 };
-                let success = this.assert(block, Operand::Consume(lt), true,
-                                          msg, expr_span);
-                success.and(slice.index(idx))
+                this.cfg.push(block, Statement {
+                    source_info: this.source_info(expr_span),
+                    kind: StatementKind::Assert {
+                        cond: Operand::Consume(lt),
+                        expected: true,
+                        msg: msg,
+                        cleanup: this.diverge_cleanup(),
+                    }
+                });
+                block.and(slice.index(idx))
             }
             ExprKind::SelfRef => {
                 block.and(Lvalue::Local(Local::new(1)))

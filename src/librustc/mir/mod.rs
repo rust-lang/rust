@@ -517,16 +517,6 @@ pub enum TerminatorKind<'tcx> {
         /// Cleanups to be done if the call unwinds.
         cleanup: Option<Block>
     },
-
-    /// Jump to the target if the condition has the expected value,
-    /// otherwise panic with a message and a cleanup target.
-    Assert {
-        cond: Operand<'tcx>,
-        expected: bool,
-        msg: AssertMessage<'tcx>,
-        target: Block,
-        cleanup: Option<Block>
-    }
 }
 
 impl<'tcx> Terminator<'tcx> {
@@ -572,8 +562,6 @@ impl<'tcx> TerminatorKind<'tcx> {
             Drop { ref target, unwind: None, .. } => {
                 slice::ref_slice(target).into_cow()
             }
-            Assert { target, cleanup: Some(unwind), .. } => vec![target, unwind].into_cow(),
-            Assert { ref target, .. } => slice::ref_slice(target).into_cow(),
         }
     }
 
@@ -597,8 +585,6 @@ impl<'tcx> TerminatorKind<'tcx> {
             Drop { ref mut target, unwind: None, .. } => {
                 vec![target]
             }
-            Assert { ref mut target, cleanup: Some(ref mut unwind), .. } => vec![target, unwind],
-            Assert { ref mut target, .. } => vec![target]
         }
     }
 }
@@ -680,26 +666,6 @@ impl<'tcx> TerminatorKind<'tcx> {
                 }
                 write!(fmt, ")")
             }
-            Assert { ref cond, expected, ref msg, .. } => {
-                write!(fmt, "assert(")?;
-                if !expected {
-                    write!(fmt, "!")?;
-                }
-                write!(fmt, "{:?}, ", cond)?;
-
-                match *msg {
-                    AssertMessage::BoundsCheck { ref len, ref index } => {
-                        write!(fmt, "{:?}, {:?}, {:?}",
-                               "index out of bounds: the len is {} but the index is {}",
-                               len, index)?;
-                    }
-                    AssertMessage::Math(ref err) => {
-                        write!(fmt, "{:?}", err.description())?;
-                    }
-                }
-
-                write!(fmt, ")")
-            }
         }
     }
 
@@ -730,9 +696,6 @@ impl<'tcx> TerminatorKind<'tcx> {
             Drop { unwind: Some(_), .. } => {
                 vec!["return".into_cow(), "unwind".into_cow()]
             }
-            Assert { cleanup: None, .. } => vec!["".into()],
-            Assert { .. } =>
-                vec!["success".into_cow(), "unwind".into_cow()]
         }
     }
 }
@@ -783,6 +746,15 @@ pub enum StatementKind<'tcx> {
         inputs: Vec<Operand<'tcx>>
     },
 
+    /// Jump to the target if the condition has the expected value,
+    /// otherwise panic with a message and a cleanup target.
+    Assert {
+        cond: Operand<'tcx>,
+        expected: bool,
+        msg: AssertMessage<'tcx>,
+        cleanup: Option<Block>
+    },
+
     /// No-op. Useful for deleting instructions without affecting statement indices.
     Nop,
 }
@@ -799,6 +771,26 @@ impl<'tcx> Debug for Statement<'tcx> {
             },
             InlineAsm { ref asm, ref outputs, ref inputs } => {
                 write!(fmt, "asm!({:?} : {:?} : {:?})", asm, outputs, inputs)
+            },
+            Assert { ref cond, expected, ref msg, .. } => {
+                write!(fmt, "assert(")?;
+                if !expected {
+                    write!(fmt, "!")?;
+                }
+                write!(fmt, "{:?}, ", cond)?;
+
+                match *msg {
+                    AssertMessage::BoundsCheck { ref len, ref index } => {
+                        write!(fmt, "{:?}, {:?}, {:?}",
+                               "index out of bounds: the len is {} but the index is {}",
+                               len, index)?;
+                    }
+                    AssertMessage::Math(ref err) => {
+                        write!(fmt, "{:?}", err.description())?;
+                    }
+                }
+
+                write!(fmt, ")")
             },
             Nop => write!(fmt, "nop"),
         }
@@ -1423,6 +1415,22 @@ impl<'tcx> TypeFoldable<'tcx> for Statement<'tcx> {
                 outputs: outputs.fold_with(folder),
                 inputs: inputs.fold_with(folder)
             },
+            Assert { ref cond, expected, ref msg, cleanup } => {
+                let msg = if let AssertMessage::BoundsCheck { ref len, ref index } = *msg {
+                    AssertMessage::BoundsCheck {
+                        len: len.fold_with(folder),
+                        index: index.fold_with(folder),
+                    }
+                } else {
+                    msg.clone()
+                };
+                Assert {
+                    cond: cond.fold_with(folder),
+                    expected: expected,
+                    msg: msg,
+                    cleanup: cleanup
+                }
+            },
             Nop => Nop,
         };
         Statement {
@@ -1441,6 +1449,17 @@ impl<'tcx> TypeFoldable<'tcx> for Statement<'tcx> {
             StorageDead(ref lvalue) => lvalue.visit_with(visitor),
             InlineAsm { ref outputs, ref inputs, .. } =>
                 outputs.visit_with(visitor) || inputs.visit_with(visitor),
+            Assert { ref cond, ref msg, .. } => {
+                if cond.visit_with(visitor) {
+                    if let AssertMessage::BoundsCheck { ref len, ref index } = *msg {
+                        len.visit_with(visitor) || index.visit_with(visitor)
+                    } else {
+                        false
+                    }
+                } else {
+                    false
+                }
+            },
             Nop => false,
         }
     }
@@ -1481,23 +1500,6 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
                     cleanup: cleanup
                 }
             },
-            Assert { ref cond, expected, ref msg, target, cleanup } => {
-                let msg = if let AssertMessage::BoundsCheck { ref len, ref index } = *msg {
-                    AssertMessage::BoundsCheck {
-                        len: len.fold_with(folder),
-                        index: index.fold_with(folder),
-                    }
-                } else {
-                    msg.clone()
-                };
-                Assert {
-                    cond: cond.fold_with(folder),
-                    expected: expected,
-                    msg: msg,
-                    target: target,
-                    cleanup: cleanup
-                }
-            },
             Resume => Resume,
             Return => Return,
             Unreachable => Unreachable,
@@ -1522,17 +1524,6 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
                     loc.visit_with(visitor)
                 } else { false };
                 dest || func.visit_with(visitor) || args.visit_with(visitor)
-            },
-            Assert { ref cond, ref msg, .. } => {
-                if cond.visit_with(visitor) {
-                    if let AssertMessage::BoundsCheck { ref len, ref index } = *msg {
-                        len.visit_with(visitor) || index.visit_with(visitor)
-                    } else {
-                        false
-                    }
-                } else {
-                    false
-                }
             },
             Goto { .. } |
             Resume |
