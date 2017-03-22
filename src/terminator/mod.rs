@@ -80,18 +80,22 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let src_ptr = self.force_allocation(lval)?.to_ptr();
 
                 let ty = self.lvalue_ty(location);
+                let ty = ::eval_context::apply_param_substs(self.tcx, self.substs(), &ty);
 
                 self.goto_block(target);
-                let drop_in_place = self.tcx.lang_items.drop_in_place_fn().expect("drop_in_place lang item not available");
-                let env = self.tcx.empty_parameter_environment();
-                let def = if self.tcx.type_needs_drop_given_env(ty, &env) {
-                    ty::InstanceDef::DropGlue(drop_in_place, Some(ty))
-                } else {
-                    ty::InstanceDef::DropGlue(drop_in_place, None)
+                let instance = ::eval_context::resolve_drop_in_place(self.tcx, ty);
+
+                if let ty::InstanceDef::DropGlue(_, None) = instance.def {
+                    // we don't actually need to drop anything
+                    return Ok(());
+                }
+
+                let mir = match ty.sty {
+                    ty::TyDynamic(..) => unimplemented!(),
+                    ty::TyArray(..) | ty::TySlice(..) => ::eval_context::MirRef::clone(&self.seq_drop_glue),
+                    _ => self.load_mir(instance.def)?,
                 };
-                let substs = self.substs();
-                let instance = ty::Instance { substs, def };
-                let mir = self.load_mir(instance.def)?;
+
                 self.push_stack_frame(
                     instance,
                     terminator.source_info.span,
@@ -162,19 +166,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.dump_local(ret);
                 Ok(())
             },
-            /*Abi::C => {
-                let sig = self.erase_lifetimes(&sig);
-                let ty = sig.output();
-                let (ret, target) = destination.unwrap();
-                match instance.def {
-                    ty::InstanceDef::Item(_) => {},
-                    _ => bug!("C abi function must be InstanceDef::Item"),
-                }
-                self.call_c_abi(instance.def_id(), arg_operands, ret, ty)?;
-                self.dump_local(ret);
-                self.goto_block(target);
-                Ok(())
-            },*/
             ty::InstanceDef::ClosureOnceShim{..} => {
                 let mut args = Vec::new();
                 for arg in arg_operands {
@@ -198,7 +189,14 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     args.push((arg_val, arg_ty));
                 }
                 match sig.abi {
-                    Abi::C => unimplemented!(),
+                    Abi::C => {
+                        let ty = sig.output();
+                        let (ret, target) = destination.unwrap();
+                        self.call_c_abi(instance.def_id(), arg_operands, ret, ty)?;
+                        self.dump_local(ret);
+                        self.goto_block(target);
+                        return Ok(());
+                    },
                     Abi::Rust => {},
                     Abi::RustCall => self.unpack_fn_args(&mut args)?,
                     _ => unimplemented!(),
