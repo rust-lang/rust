@@ -340,9 +340,9 @@ Here, `T` adds a `Bar` bound. Now consider:
 trait Bar<T> = PartialEq<T: Bar>;
 ```
 
-Currently, we don’t have a proper interesting of that situation, because we’re adding in both cases
-a bound, and we don’t know how to disambiguate between *pre-condition* and *implication*. That is,
-is that added `Bar` bound a constraint that `T` must fulfil in order for the trait alias to be
+Currently, we don’t have a proper understanding of that situation, because we’re adding in both
+cases a bound, and we don’t know how to disambiguate between *pre-condition* and *implication*. That
+is, is that added `Bar` bound a constraint that `T` must fulfil in order for the trait alias to be
 met, or is it a constraint the trait alias itself adds? To disambiguate, consider:
 
 ```rust
