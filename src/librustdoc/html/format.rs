@@ -1096,9 +1096,9 @@ impl fmt::Display for clean::ImportSource {
 impl fmt::Display for clean::TypeBinding {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if f.alternate() {
-            write!(f, "{}={:#}", self.name, self.ty)
+            write!(f, "{} = {:#}", self.name, self.ty)
         } else {
-            write!(f, "{}={}", self.name, self.ty)
+            write!(f, "{} = {}", self.name, self.ty)
         }
     }
 }

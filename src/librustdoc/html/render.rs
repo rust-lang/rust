@@ -2808,7 +2808,7 @@ fn render_assoc_items(w: &mut fmt::Formatter,
             }
             AssocItemRender::DerefFor { trait_, type_, deref_mut_ } => {
                 write!(w, "<h2 id='deref-methods'>Methods from \
-                               {}&lt;Target={}&gt;</h2>", trait_, type_)?;
+                               {}&lt;Target = {}&gt;</h2>", trait_, type_)?;
                 RenderMode::ForDeref { mut_: deref_mut_ }
             }
         };
