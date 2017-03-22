@@ -210,7 +210,7 @@ pub enum Ordering {
 }
 
 impl Ordering {
-    /// Reverse the `Ordering`.
+    /// Reverses the `Ordering`.
     ///
     /// * `Less` becomes `Greater`.
     /// * `Greater` becomes `Less`.
@@ -616,7 +616,7 @@ pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
     }
 }
 
-/// Compare and return the minimum of two values.
+/// Compares and returns the minimum of two values.
 ///
 /// Returns the first argument if the comparison determines them to be equal.
 ///
@@ -634,7 +634,7 @@ pub fn min<T: Ord>(v1: T, v2: T) -> T {
     if v1 <= v2 { v1 } else { v2 }
 }
 
-/// Compare and return the maximum of two values.
+/// Compares and returns the maximum of two values.
 ///
 /// Returns the second argument if the comparison determines them to be equal.
 ///

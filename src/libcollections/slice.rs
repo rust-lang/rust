@@ -195,7 +195,7 @@ impl<T> [T] {
         core_slice::SliceExt::is_empty(self)
     }
 
-    /// Returns the first element of a slice, or `None` if it is empty.
+    /// Returns the first element of the slice, or `None` if it is empty.
     ///
     /// # Examples
     ///
@@ -212,7 +212,7 @@ impl<T> [T] {
         core_slice::SliceExt::first(self)
     }
 
-    /// Returns a mutable pointer to the first element of a slice, or `None` if it is empty.
+    /// Returns a mutable pointer to the first element of the slice, or `None` if it is empty.
     ///
     /// # Examples
     ///
@@ -230,7 +230,7 @@ impl<T> [T] {
         core_slice::SliceExt::first_mut(self)
     }
 
-    /// Returns the first and all the rest of the elements of a slice, or `None` if it is empty.
+    /// Returns the first and all the rest of the elements of the slice, or `None` if it is empty.
     ///
     /// # Examples
     ///
@@ -248,7 +248,7 @@ impl<T> [T] {
         core_slice::SliceExt::split_first(self)
     }
 
-    /// Returns the first and all the rest of the elements of a slice, or `None` if it is empty.
+    /// Returns the first and all the rest of the elements of the slice, or `None` if it is empty.
     ///
     /// # Examples
     ///
@@ -268,7 +268,7 @@ impl<T> [T] {
         core_slice::SliceExt::split_first_mut(self)
     }
 
-    /// Returns the last and all the rest of the elements of a slice, or `None` if it is empty.
+    /// Returns the last and all the rest of the elements of the slice, or `None` if it is empty.
     ///
     /// # Examples
     ///
@@ -287,7 +287,7 @@ impl<T> [T] {
 
     }
 
-    /// Returns the last and all the rest of the elements of a slice, or `None` if it is empty.
+    /// Returns the last and all the rest of the elements of the slice, or `None` if it is empty.
     ///
     /// # Examples
     ///
@@ -307,7 +307,7 @@ impl<T> [T] {
         core_slice::SliceExt::split_last_mut(self)
     }
 
-    /// Returns the last element of a slice, or `None` if it is empty.
+    /// Returns the last element of the slice, or `None` if it is empty.
     ///
     /// # Examples
     ///
@@ -485,7 +485,7 @@ impl<T> [T] {
         core_slice::SliceExt::as_mut_ptr(self)
     }
 
-    /// Swaps two elements in a slice.
+    /// Swaps two elements in the slice.
     ///
     /// # Arguments
     ///
@@ -509,7 +509,7 @@ impl<T> [T] {
         core_slice::SliceExt::swap(self, a, b)
     }
 
-    /// Reverses the order of elements in a slice, in place.
+    /// Reverses the order of elements in the slice, in place.
     ///
     /// # Example
     ///
@@ -955,7 +955,7 @@ impl<T> [T] {
         core_slice::SliceExt::ends_with(self, needle)
     }
 
-    /// Binary search a sorted slice for a given element.
+    /// Binary searches this sorted slice for a given element.
     ///
     /// If the value is found then `Ok` is returned, containing the
     /// index of the matching element; if the value is not found then
@@ -984,7 +984,7 @@ impl<T> [T] {
         core_slice::SliceExt::binary_search(self, x)
     }
 
-    /// Binary search a sorted slice with a comparator function.
+    /// Binary searches this sorted slice with a comparator function.
     ///
     /// The comparator function should implement an order consistent
     /// with the sort order of the underlying slice, returning an
@@ -1023,7 +1023,7 @@ impl<T> [T] {
         core_slice::SliceExt::binary_search_by(self, f)
     }
 
-    /// Binary search a sorted slice with a key extraction function.
+    /// Binary searches this sorted slice with a key extraction function.
     ///
     /// Assumes that the slice is sorted by the key, for instance with
     /// [`sort_by_key`] using the same key extraction function.
@@ -1092,7 +1092,7 @@ impl<T> [T] {
         merge_sort(self, |a, b| a.lt(b));
     }
 
-    /// Sorts the slice using `compare` to compare elements.
+    /// Sorts the slice with a comparator function.
     ///
     /// This sort is stable (i.e. does not reorder equal elements) and `O(n log n)` worst-case.
     ///
@@ -1125,7 +1125,7 @@ impl<T> [T] {
         merge_sort(self, |a, b| compare(a, b) == Less);
     }
 
-    /// Sorts the slice using `f` to extract a key to compare elements by.
+    /// Sorts the slice with a key extraction function.
     ///
     /// This sort is stable (i.e. does not reorder equal elements) and `O(n log n)` worst-case.
     ///
@@ -1191,8 +1191,8 @@ impl<T> [T] {
         core_slice::SliceExt::sort_unstable(self);
     }
 
-    /// Sorts the slice using `compare` to compare elements, but may not preserve the order of
-    /// equal elements.
+    /// Sorts the slice with a comparator function, but may not preserve the order of equal
+    /// elements.
     ///
     /// This sort is unstable (i.e. may reorder equal elements), in-place (i.e. does not allocate),
     /// and `O(n log n)` worst-case.
@@ -1231,8 +1231,8 @@ impl<T> [T] {
         core_slice::SliceExt::sort_unstable_by(self, compare);
     }
 
-    /// Sorts the slice using `f` to extract a key to compare elements by, but may not preserve the
-    /// order of equal elements.
+    /// Sorts the slice with a key extraction function, but may not preserve the order of equal
+    /// elements.
     ///
     /// This sort is unstable (i.e. may reorder equal elements), in-place (i.e. does not allocate),
     /// and `O(n log n)` worst-case.
@@ -1312,7 +1312,6 @@ impl<T> [T] {
     pub fn copy_from_slice(&mut self, src: &[T]) where T: Copy {
         core_slice::SliceExt::copy_from_slice(self, src)
     }
-
 
     /// Copies `self` into a new `Vec`.
     ///

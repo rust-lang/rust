@@ -1511,7 +1511,7 @@ fn ptrdistance<T>(start: *const T, end: *const T) -> usize {
 trait PointerExt : Copy {
     unsafe fn slice_offset(self, i: isize) -> Self;
 
-    /// Increment self by 1, but return the old value
+    /// Increments `self` by 1, but returns the old value.
     #[inline(always)]
     unsafe fn post_inc(&mut self) -> Self {
         let current = *self;
@@ -1519,7 +1519,7 @@ trait PointerExt : Copy {
         current
     }
 
-    /// Decrement self by 1, and return the new value
+    /// Decrements `self` by 1, and returns the new value.
     #[inline(always)]
     unsafe fn pre_dec(&mut self) -> Self {
         *self = self.slice_offset(-1);
@@ -1545,7 +1545,7 @@ impl<T> PointerExt for *mut T {
 /// splitn, splitn_mut etc can be implemented once.
 #[doc(hidden)]
 trait SplitIter: DoubleEndedIterator {
-    /// Mark the underlying iterator as complete, extracting the remaining
+    /// Marks the underlying iterator as complete, extracting the remaining
     /// portion of the slice.
     fn finish(&mut self) -> Option<Self::Item>;
 }
@@ -2267,11 +2267,11 @@ pub fn heapsort<T, F>(v: &mut [T], mut is_less: F)
 //
 
 extern {
-    /// Call implementation provided memcmp
+    /// Calls implementation provided memcmp.
     ///
     /// Interprets the data as u8.
     ///
-    /// Return 0 for equal, < 0 for less than and > 0 for greater
+    /// Returns 0 for equal, < 0 for less than and > 0 for greater
     /// than.
     // FIXME(#32610): Return type should be c_int
     fn memcmp(s1: *const u8, s2: *const u8, n: usize) -> i32;
