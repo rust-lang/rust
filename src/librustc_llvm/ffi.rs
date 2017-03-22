@@ -507,6 +507,7 @@ extern "C" {
 
     /// See Module::setModuleInlineAsm.
     pub fn LLVMSetModuleInlineAsm(M: ModuleRef, Asm: *const c_char);
+    pub fn LLVMRustAppendModuleInlineAsm(M: ModuleRef, Asm: *const c_char);
 
     /// See llvm::LLVMTypeKind::getTypeID.
     pub fn LLVMRustGetTypeKind(Ty: TypeRef) -> TypeKind;
