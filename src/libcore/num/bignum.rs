@@ -148,14 +148,14 @@ macro_rules! define_bignum {
                 $name { size: sz, base: base }
             }
 
-            /// Return the internal digits as a slice `[a, b, c, ...]` such that the numeric
+            /// Returns the internal digits as a slice `[a, b, c, ...]` such that the numeric
             /// value is `a + b * 2^W + c * 2^(2W) + ...` where `W` is the number of bits in
             /// the digit type.
             pub fn digits(&self) -> &[$ty] {
                 &self.base[..self.size]
             }
 
-            /// Return the `i`-th bit where bit 0 is the least significant one.
+            /// Returns the `i`-th bit where bit 0 is the least significant one.
             /// In other words, the bit with weight `2^i`.
             pub fn get_bit(&self, i: usize) -> u8 {
                 use mem;
@@ -166,7 +166,7 @@ macro_rules! define_bignum {
                 ((self.base[d] >> b) & 1) as u8
             }
 
-            /// Returns true if the bignum is zero.
+            /// Returns `true` if the bignum is zero.
             pub fn is_zero(&self) -> bool {
                 self.digits().iter().all(|&v| v == 0)
             }

@@ -380,7 +380,7 @@ pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
 
 #[lang = "const_ptr"]
 impl<T: ?Sized> *const T {
-    /// Returns true if the pointer is null.
+    /// Returns `true` if the pointer is null.
     ///
     /// # Examples
     ///
@@ -504,7 +504,7 @@ impl<T: ?Sized> *const T {
 
 #[lang = "mut_ptr"]
 impl<T: ?Sized> *mut T {
-    /// Returns true if the pointer is null.
+    /// Returns `true` if the pointer is null.
     ///
     /// # Examples
     ///

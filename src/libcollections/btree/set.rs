@@ -415,7 +415,7 @@ impl<T: Ord> BTreeSet<T> {
         self.map.len()
     }
 
-    /// Returns true if the set contains no elements.
+    /// Returns `true` if the set contains no elements.
     ///
     /// # Examples
     ///

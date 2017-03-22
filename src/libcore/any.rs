@@ -137,7 +137,7 @@ impl fmt::Debug for Any + Send {
 }
 
 impl Any {
-    /// Returns true if the boxed type is the same as `T`.
+    /// Returns `true` if the boxed type is the same as `T`.
     ///
     /// # Examples
     ///
