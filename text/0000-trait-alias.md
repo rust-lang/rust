@@ -30,13 +30,13 @@ It’s not uncommon to do that in *generic* crates and implement them in *backen
 // in the backend crate
 pub struct Backend;
 
-impl trait Foo<Backend> for i32 {
+impl Foo<Backend> for i32 {
   // ...
 }
 ```
 
 Users who want to use that crate will have to export both the trait `Foo` from the generic crate
-*and* the backend singleton type from the backend crate. Instead, we would like to be able to let
+*and* the backend singleton type from the backend crate. Instead, we would like to be able to leave
 the backend singleton type hidden in the crate. The first shot would be to create a new trait for
 our backend:
 
