@@ -2,6 +2,7 @@ use rustc::hir::def_id::DefId;
 use rustc::mir;
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::Layout;
+use rustc::ty::subst::Kind;
 use syntax::codemap::Span;
 use syntax::attr;
 use syntax::abi::Abi;
@@ -76,24 +77,36 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             }
 
             Drop { ref location, target, .. } => {
+                trace!("TerminatorKind::drop: {:?}, {:?}", location, self.substs());
                 let lval = self.eval_lvalue(location)?;
+                trace!("drop lval: {:#?}", lval);
                 let src_ptr = self.force_allocation(lval)?.to_ptr();
-
                 let ty = self.lvalue_ty(location);
+                self.goto_block(target);
+
                 let ty = ::eval_context::apply_param_substs(self.tcx, self.substs(), &ty);
 
-                self.goto_block(target);
-                let instance = ::eval_context::resolve_drop_in_place(self.tcx, ty);
+                let mut instance = ::eval_context::resolve_drop_in_place(self.tcx, ty);
 
                 if let ty::InstanceDef::DropGlue(_, None) = instance.def {
                     // we don't actually need to drop anything
                     return Ok(());
                 }
-
+                let arg;
                 let mir = match ty.sty {
                     ty::TyDynamic(..) => unimplemented!(),
-                    ty::TyArray(..) | ty::TySlice(..) => ::eval_context::MirRef::clone(&self.seq_drop_glue),
-                    _ => self.load_mir(instance.def)?,
+                    ty::TyArray(elem, n) => {
+                        instance.substs = self.tcx.mk_substs([
+                            Kind::from(elem),
+                        ].iter().cloned());
+                        arg = Value::ByValPair(PrimVal::Ptr(src_ptr), PrimVal::Bytes(n as u128));
+                        ::eval_context::MirRef::clone(&self.seq_drop_glue)
+                    },
+                    ty::TySlice(ref elem) => unimplemented!(),
+                    _ => {
+                        arg = Value::ByVal(PrimVal::Ptr(src_ptr));
+                        self.load_mir(instance.def)?
+                    },
                 };
 
                 self.push_stack_frame(
@@ -109,7 +122,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let arg_local = arg_locals.next().unwrap();
                 let dest = self.eval_lvalue(&mir::Lvalue::Local(arg_local))?;
                 let arg_ty = self.tcx.mk_mut_ptr(ty);
-                self.write_value(Value::ByVal(PrimVal::Ptr(src_ptr)), dest, arg_ty)?;
+                self.write_value(arg, dest, arg_ty)?;
             }
 
             Assert { ref cond, expected, ref msg, target, .. } => {

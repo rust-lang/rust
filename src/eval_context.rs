@@ -16,6 +16,7 @@ use rustc_data_structures::indexed_vec::Idx;
 use syntax::codemap::{self, DUMMY_SP, Span};
 use syntax::ast;
 use syntax::abi::Abi;
+use syntax::symbol::Symbol;
 
 use error::{EvalError, EvalResult};
 use lvalue::{Global, GlobalId, Lvalue, LvalueExtra};
@@ -231,7 +232,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                                 span: DUMMY_SP,
                                 ty: tcx.types.usize,
                                 literal: mir::Literal::Value {
-                                    value: ConstVal::Integral(ConstInt::Usize(ConstUsize::new(0, tcx.sess.target.uint_type).unwrap())),
+                                    value: ConstVal::Integral(ConstInt::Usize(ConstUsize::new(1, tcx.sess.target.uint_type).unwrap())),
                                 },
                             }),
                         )
@@ -262,7 +263,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             },
             mir::LocalDecl {
                 mutability: mir::Mutability::Mut,
-                ty: tcx.mk_mut_ptr(tcx.mk_self_type()),
+                ty: tcx.mk_mut_ptr(tcx.mk_slice(tcx.mk_param(0, Symbol::intern("T")))),
                 name: None,
                 source_info: None,
             },
