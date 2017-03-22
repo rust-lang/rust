@@ -44,6 +44,7 @@
 #![feature(heap_api)]
 #![feature(inclusive_range)]
 #![feature(lang_items)]
+#![feature(manually_drop)]
 #![feature(nonzero)]
 #![feature(pattern)]
 #![feature(placement_in)]
