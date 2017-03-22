@@ -1223,6 +1223,28 @@ fn main() {
 ```
 "##,
 
+E0090: r##"
+You gave too few lifetime parameters. Example:
+
+```compile_fail,E0090
+fn foo<'a: 'b, 'b: 'a>() {}
+
+fn main() {
+    foo::<'static>(); // error, expected 2 lifetime parameters
+}
+```
+
+Please check you give the right number of lifetime parameters. Example:
+
+```
+fn foo<'a: 'b, 'b: 'a>() {}
+
+fn main() {
+    foo::<'static, 'static>();
+}
+```
+"##,
+
 E0091: r##"
 You gave an unnecessary type parameter in a type alias. Erroneous code
 example:
@@ -4120,7 +4142,6 @@ register_diagnostics! {
 //  E0068,
 //  E0085,
 //  E0086,
-    E0090,
     E0103, // @GuillaumeGomez: I was unable to get this error, try your best!
     E0104,
 //  E0123,

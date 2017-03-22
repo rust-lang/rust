@@ -2568,17 +2568,17 @@ pub trait Float: Sized {
                                  implementable outside the standard library")]
     fn one() -> Self;
 
-    /// Returns true if this value is NaN and false otherwise.
+    /// Returns `true` if this value is NaN and false otherwise.
     #[stable(feature = "core", since = "1.6.0")]
     fn is_nan(self) -> bool;
-    /// Returns true if this value is positive infinity or negative infinity and
+    /// Returns `true` if this value is positive infinity or negative infinity and
     /// false otherwise.
     #[stable(feature = "core", since = "1.6.0")]
     fn is_infinite(self) -> bool;
-    /// Returns true if this number is neither infinite nor NaN.
+    /// Returns `true` if this number is neither infinite nor NaN.
     #[stable(feature = "core", since = "1.6.0")]
     fn is_finite(self) -> bool;
-    /// Returns true if this number is neither zero, infinite, denormal, or NaN.
+    /// Returns `true` if this number is neither zero, infinite, denormal, or NaN.
     #[stable(feature = "core", since = "1.6.0")]
     fn is_normal(self) -> bool;
     /// Returns the category that this number falls into.

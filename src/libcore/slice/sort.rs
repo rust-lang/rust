@@ -104,7 +104,7 @@ fn shift_tail<T, F>(v: &mut [T], is_less: &mut F)
 
 /// Partially sorts a slice by shifting several out-of-order elements around.
 ///
-/// Returns true if the slice is sorted at the end. This function is `O(n)` worst-case.
+/// Returns `true` if the slice is sorted at the end. This function is `O(n)` worst-case.
 #[cold]
 fn partial_insertion_sort<T, F>(v: &mut [T], is_less: &mut F) -> bool
     where F: FnMut(&T, &T) -> bool
@@ -528,7 +528,7 @@ fn break_patterns<T>(v: &mut [T]) {
     }
 }
 
-/// Chooses a pivot in `v` and returns the index and true if the slice is likely already sorted.
+/// Chooses a pivot in `v` and returns the index and `true` if the slice is likely already sorted.
 ///
 /// Elements in `v` might be reordered in the process.
 fn choose_pivot<T, F>(v: &mut [T], is_less: &mut F) -> (usize, bool)
