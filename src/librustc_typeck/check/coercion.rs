@@ -914,7 +914,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 /// }
 /// let final_ty = coerce.complete(fcx);
 /// ```
-#[derive(Clone)] // (*)
 pub struct CoerceMany<'gcx, 'tcx, 'exprs, E>
     where 'gcx: 'tcx, E: 'exprs + AsCoercionSite,
 {
@@ -928,15 +927,12 @@ pub struct CoerceMany<'gcx, 'tcx, 'exprs, E>
 /// a buffer. We use this in `check/mod.rs` for things like `break`.
 pub type DynamicCoerceMany<'gcx, 'tcx> = CoerceMany<'gcx, 'tcx, 'gcx, P<hir::Expr>>;
 
-#[derive(Clone)] // (*)
 enum Expressions<'gcx, 'exprs, E>
     where E: 'exprs + AsCoercionSite,
 {
     Dynamic(Vec<&'gcx hir::Expr>),
     UpFront(&'exprs [E]),
 }
-
-// (*) this is clone because `FnCtxt` is clone, but it seems dubious -- nmatsakis
 
 impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
     where 'gcx: 'tcx, E: 'exprs + AsCoercionSite,

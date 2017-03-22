@@ -415,7 +415,6 @@ impl Diverges {
     }
 }
 
-#[derive(Clone)]
 pub struct BreakableCtxt<'gcx: 'tcx, 'tcx> {
     may_break: bool,
 
@@ -424,7 +423,6 @@ pub struct BreakableCtxt<'gcx: 'tcx, 'tcx> {
     coerce: Option<DynamicCoerceMany<'gcx, 'tcx>>,
 }
 
-#[derive(Clone)]
 pub struct EnclosingBreakables<'gcx: 'tcx, 'tcx> {
     stack: Vec<BreakableCtxt<'gcx, 'tcx>>,
     by_id: NodeMap<usize>,
@@ -439,7 +437,6 @@ impl<'gcx, 'tcx> EnclosingBreakables<'gcx, 'tcx> {
     }
 }
 
-#[derive(Clone)]
 pub struct FnCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     ast_ty_to_ty_cache: RefCell<NodeMap<Ty<'tcx>>>,
 
