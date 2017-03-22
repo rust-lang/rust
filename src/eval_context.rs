@@ -10,8 +10,11 @@ use rustc::traits::Reveal;
 use rustc::ty::layout::{self, Layout, Size};
 use rustc::ty::subst::{Subst, Substs, Kind};
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable, Binder};
+use rustc::traits;
 use rustc_data_structures::indexed_vec::Idx;
-use syntax::codemap::{self, DUMMY_SP};
+use syntax::codemap::{self, DUMMY_SP, Span};
+use syntax::ast;
+use syntax::abi::Abi;
 
 use error::{EvalError, EvalResult};
 use lvalue::{Global, GlobalId, Lvalue, LvalueExtra};
@@ -1700,4 +1703,258 @@ fn needs_fn_once_adapter_shim(actual_closure_kind: ty::ClosureKind,
         }
         _ => Err(()),
     }
+}
+
+/// The point where linking happens. Resolve a (def_id, substs)
+/// pair to an instance.
+pub fn resolve<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    def_id: DefId,
+    substs: &'tcx Substs<'tcx>
+) -> ty::Instance<'tcx> {
+    debug!("resolve(def_id={:?}, substs={:?})",
+           def_id, substs);
+    let result = if let Some(trait_def_id) = tcx.trait_of_item(def_id) {
+        debug!(" => associated item, attempting to find impl");
+        let item = tcx.associated_item(def_id);
+        resolve_associated_item(tcx, &item, trait_def_id, substs)
+    } else {
+        let item_type = def_ty(tcx, def_id, substs);
+        let def = match item_type.sty {
+            ty::TyFnDef(_, _, f) if
+                f.abi() == Abi::RustIntrinsic ||
+                f.abi() == Abi::PlatformIntrinsic =>
+            {
+                debug!(" => intrinsic");
+                ty::InstanceDef::Intrinsic(def_id)
+            }
+            _ => {
+                if Some(def_id) == tcx.lang_items.drop_in_place_fn() {
+                    let ty = substs.type_at(0);
+                    if needs_drop_glue(tcx, ty) {
+                        debug!(" => nontrivial drop glue");
+                        ty::InstanceDef::DropGlue(def_id, Some(ty))
+                    } else {
+                        debug!(" => trivial drop glue");
+                        ty::InstanceDef::DropGlue(def_id, None)
+                    }
+                } else {
+                    debug!(" => free item");
+                    ty::InstanceDef::Item(def_id)
+                }
+            }
+        };
+        ty::Instance { def, substs }
+    };
+    debug!("resolve(def_id={:?}, substs={:?}) = {}",
+           def_id, substs, result);
+    result
+}
+
+pub fn needs_drop_glue<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, t: Ty<'tcx>) -> bool {
+    assert!(t.is_normalized_for_trans());
+
+    let t = tcx.erase_regions(&t);
+
+    // FIXME (#22815): note that type_needs_drop conservatively
+    // approximates in some cases and may say a type expression
+    // requires drop glue when it actually does not.
+    //
+    // (In this case it is not clear whether any harm is done, i.e.
+    // erroneously returning `true` in some cases where we could have
+    // returned `false` does not appear unsound. The impact on
+    // code quality is unknown at this time.)
+
+    let env = tcx.empty_parameter_environment();
+    if !tcx.type_needs_drop_given_env(t, &env) {
+        return false;
+    }
+    match t.sty {
+        ty::TyAdt(def, _) if def.is_box() => {
+            let typ = t.boxed_ty();
+            if !tcx.type_needs_drop_given_env(typ, &env) && type_is_sized(tcx, typ) {
+                tcx.infer_ctxt((), traits::Reveal::All).enter(|infcx| {
+                    let layout = t.layout(&infcx).unwrap();
+                    if layout.size(&tcx.data_layout).bytes() == 0 {
+                        // `Box<ZeroSizeType>` does not allocate.
+                        false
+                    } else {
+                        true
+                    }
+                })
+            } else {
+                true
+            }
+        }
+        _ => true
+    }
+}
+
+fn resolve_associated_item<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    trait_item: &ty::AssociatedItem,
+    trait_id: DefId,
+    rcvr_substs: &'tcx Substs<'tcx>
+) -> ty::Instance<'tcx> {
+    let def_id = trait_item.def_id;
+    debug!("resolve_associated_item(trait_item={:?}, \
+                                    trait_id={:?}, \
+                                    rcvr_substs={:?})",
+           def_id, trait_id, rcvr_substs);
+
+    let trait_ref = ty::TraitRef::from_method(tcx, trait_id, rcvr_substs);
+    let vtbl = fulfill_obligation(tcx, DUMMY_SP, ty::Binder(trait_ref));
+
+    // Now that we know which impl is being used, we can dispatch to
+    // the actual function:
+    match vtbl {
+        ::rustc::traits::VtableImpl(impl_data) => {
+            let (def_id, substs) = ::rustc::traits::find_associated_item(
+                tcx, trait_item, rcvr_substs, &impl_data);
+            let substs = tcx.erase_regions(&substs);
+            ty::Instance::new(def_id, substs)
+        }
+        ::rustc::traits::VtableClosure(closure_data) => {
+            let trait_closure_kind = tcx.lang_items.fn_trait_kind(trait_id).unwrap();
+            resolve_closure(tcx, closure_data.closure_def_id, closure_data.substs,
+                            trait_closure_kind)
+        }
+        ::rustc::traits::VtableFnPointer(ref data) => {
+            ty::Instance {
+                def: ty::InstanceDef::FnPtrShim(trait_item.def_id, data.fn_ty),
+                substs: rcvr_substs
+            }
+        }
+        ::rustc::traits::VtableObject(ref data) => {
+            let index = tcx.get_vtable_index_of_object_method(data, def_id);
+            ty::Instance {
+                def: ty::InstanceDef::Virtual(def_id, index),
+                substs: rcvr_substs
+            }
+        }
+        _ => {
+            bug!("static call to invalid vtable: {:?}", vtbl)
+        }
+    }
+}
+
+pub fn def_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                        def_id: DefId,
+                        substs: &'tcx Substs<'tcx>)
+                        -> Ty<'tcx>
+{
+    let ty = tcx.item_type(def_id);
+    apply_param_substs(tcx, substs, &ty)
+}
+
+/// Monomorphizes a type from the AST by first applying the in-scope
+/// substitutions and then normalizing any associated types.
+pub fn apply_param_substs<'a, 'tcx, T>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                       param_substs: &Substs<'tcx>,
+                                       value: &T)
+                                       -> T
+    where T: ::rustc::infer::TransNormalize<'tcx>
+{
+    debug!("apply_param_substs(param_substs={:?}, value={:?})", param_substs, value);
+    let substituted = value.subst(tcx, param_substs);
+    let substituted = tcx.erase_regions(&substituted);
+    AssociatedTypeNormalizer{ tcx }.fold(&substituted)
+}
+
+
+struct AssociatedTypeNormalizer<'a, 'tcx: 'a> {
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+}
+
+impl<'a, 'tcx> AssociatedTypeNormalizer<'a, 'tcx> {
+    fn fold<T: TypeFoldable<'tcx>>(&mut self, value: &T) -> T {
+        if !value.has_projection_types() {
+            value.clone()
+        } else {
+            value.fold_with(self)
+        }
+    }
+}
+
+impl<'a, 'tcx> ::rustc::ty::fold::TypeFolder<'tcx, 'tcx> for AssociatedTypeNormalizer<'a, 'tcx> {
+    fn tcx<'c>(&'c self) -> TyCtxt<'c, 'tcx, 'tcx> {
+        self.tcx
+    }
+
+    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        if !ty.has_projection_types() {
+            ty
+        } else {
+            self.tcx.normalize_associated_type(&ty)
+        }
+    }
+}
+
+fn type_is_sized<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, ty: Ty<'tcx>) -> bool {
+    // generics are weird, don't run this function on a generic
+    assert!(!ty.needs_subst());
+    ty.is_sized(tcx, &tcx.empty_parameter_environment(), DUMMY_SP)
+}
+
+/// Attempts to resolve an obligation. The result is a shallow vtable resolution -- meaning that we
+/// do not (necessarily) resolve all nested obligations on the impl. Note that type check should
+/// guarantee to us that all nested obligations *could be* resolved if we wanted to.
+fn fulfill_obligation<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                span: Span,
+                                trait_ref: ty::PolyTraitRef<'tcx>)
+                                -> traits::Vtable<'tcx, ()>
+{
+    // Remove any references to regions; this helps improve caching.
+    let trait_ref = tcx.erase_regions(&trait_ref);
+
+    debug!("trans::fulfill_obligation(trait_ref={:?}, def_id={:?})",
+            trait_ref, trait_ref.def_id());
+
+    // Do the initial selection for the obligation. This yields the
+    // shallow result we are looking for -- that is, what specific impl.
+    tcx.infer_ctxt((), Reveal::All).enter(|infcx| {
+        let mut selcx = traits::SelectionContext::new(&infcx);
+
+        let obligation_cause = traits::ObligationCause::misc(span,
+                                                            ast::DUMMY_NODE_ID);
+        let obligation = traits::Obligation::new(obligation_cause,
+                                                    trait_ref.to_poly_trait_predicate());
+
+        let selection = match selcx.select(&obligation) {
+            Ok(Some(selection)) => selection,
+            Ok(None) => {
+                // Ambiguity can happen when monomorphizing during trans
+                // expands to some humongo type that never occurred
+                // statically -- this humongo type can then overflow,
+                // leading to an ambiguous result. So report this as an
+                // overflow bug, since I believe this is the only case
+                // where ambiguity can result.
+                debug!("Encountered ambiguity selecting `{:?}` during trans, \
+                        presuming due to overflow",
+                        trait_ref);
+                tcx.sess.span_fatal(span,
+                    "reached the recursion limit during monomorphization \
+                        (selection ambiguity)");
+            }
+            Err(e) => {
+                span_bug!(span, "Encountered error `{:?}` selecting `{:?}` during trans",
+                            e, trait_ref)
+            }
+        };
+
+        debug!("fulfill_obligation: selection={:?}", selection);
+
+        // Currently, we use a fulfillment context to completely resolve
+        // all nested obligations. This is because they can inform the
+        // inference of the impl's type parameters.
+        let mut fulfill_cx = traits::FulfillmentContext::new();
+        let vtable = selection.map(|predicate| {
+            debug!("fulfill_obligation: register_predicate_obligation {:?}", predicate);
+            fulfill_cx.register_predicate_obligation(&infcx, predicate);
+        });
+        let vtable = infcx.drain_fulfillment_cx_or_panic(span, &mut fulfill_cx, &vtable);
+
+        info!("Cache miss: {:?} => {:?}", trait_ref, vtable);
+        vtable
+    })
 }

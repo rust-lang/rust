@@ -1,6 +1,7 @@
 use rustc::hir::def_id::DefId;
 use rustc::mir;
 use rustc::ty::{self, Ty};
+use rustc::ty::layout::Layout;
 use syntax::codemap::Span;
 use syntax::attr;
 use syntax::abi::Abi;
@@ -59,21 +60,44 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 };
 
                 let func_ty = self.operand_ty(func);
-                let fn_def = match func_ty.sty {
-                    ty::TyFnPtr(_) => {
+                let (fn_def, abi) = match func_ty.sty {
+                    ty::TyFnPtr(sig) => {
                         let fn_ptr = self.eval_operand_to_primval(func)?.to_ptr()?;
-                        self.memory.get_fn(fn_ptr.alloc_id)?
+                        (self.memory.get_fn(fn_ptr.alloc_id)?, sig.abi())
                     },
-                    ty::TyFnDef(def_id, substs, _) => ty::Instance::new(def_id, substs),
+                    ty::TyFnDef(def_id, substs, sig) => (::eval_context::resolve(self.tcx, def_id, substs), sig.abi()),
                     _ => {
                         let msg = format!("can't handle callee of type {:?}", func_ty);
                         return Err(EvalError::Unimplemented(msg));
                     }
                 };
-                self.eval_fn_call(fn_def, destination, args, terminator.source_info.span)?;
+                self.eval_fn_call(fn_def, destination, args, terminator.source_info.span, abi)?;
             }
 
-            Drop { .. } => unreachable!(),
+            Drop { ref location, target, .. } => {
+                let lval = self.eval_lvalue(location)?;
+
+                let ty = self.lvalue_ty(location);
+
+                self.goto_block(target);
+                let drop_in_place = self.tcx.lang_items.drop_in_place_fn().expect("drop_in_place lang item not available");
+                let env = self.tcx.empty_parameter_environment();
+                let def = if self.tcx.type_needs_drop_given_env(ty, &env) {
+                    ty::InstanceDef::DropGlue(drop_in_place, Some(ty))
+                } else {
+                    ty::InstanceDef::DropGlue(drop_in_place, None)
+                };
+                let substs = self.substs();
+                let instance = ty::Instance { substs, def };
+                let mir = self.load_mir(instance.def)?;
+                self.push_stack_frame(
+                    instance,
+                    terminator.source_info.span,
+                    mir,
+                    Lvalue::from_ptr(Pointer::zst_ptr()),
+                    StackPopCleanup::None,
+                )?;
+            }
 
             Assert { ref cond, expected, ref msg, target, .. } => {
                 let cond_val = self.eval_operand_to_primval(cond)?.to_bool()?;
@@ -111,15 +135,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         destination: Option<(Lvalue<'tcx>, mir::BasicBlock)>,
         arg_operands: &[mir::Operand<'tcx>],
         span: Span,
+        abi: Abi,
     ) -> EvalResult<'tcx> {
-        let sig = match instance.def.def_ty(self.tcx).sty {
-            ty::TyFnPtr(bare_sig) => bare_sig,
-            ty::TyFnDef(_, _, fn_ty) => fn_ty,
-            ref other => bug!("expected function or pointer, got {:?}", other),
-        };
-        match sig.abi() {
-            Abi::RustIntrinsic => {
-                let sig = self.erase_lifetimes(&sig);
+        trace!("eval_fn_call: {:#?}", instance);
+        match instance.def {
+            ty::InstanceDef::Intrinsic(..) => {
+                unimplemented!();
+                /*let sig = self.erase_lifetimes(&sig);
                 let ty = sig.output();
                 let layout = self.type_layout(ty)?;
                 let (ret, target) = match destination {
@@ -128,9 +150,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 };
                 self.call_intrinsic(instance, arg_operands, ret, ty, layout, target)?;
                 self.dump_local(ret);
-                Ok(())
+                Ok(())*/
             },
-            Abi::C => {
+            /*Abi::C => {
                 let sig = self.erase_lifetimes(&sig);
                 let ty = sig.output();
                 let (ret, target) = destination.unwrap();
@@ -142,13 +164,34 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.dump_local(ret);
                 self.goto_block(target);
                 Ok(())
-            },
-            Abi::Rust | Abi::RustCall => {
+            },*/
+            ty::InstanceDef::ClosureOnceShim{..} => {
                 let mut args = Vec::new();
                 for arg in arg_operands {
                     let arg_val = self.eval_operand(arg)?;
                     let arg_ty = self.operand_ty(arg);
                     args.push((arg_val, arg_ty));
+                }
+                assert_eq!(abi, Abi::RustCall);
+                self.eval_fn_call_inner(
+                    instance,
+                    destination,
+                    args,
+                    span,
+                )
+            }
+            ty::InstanceDef::Item(_) => {
+                let mut args = Vec::new();
+                for arg in arg_operands {
+                    let arg_val = self.eval_operand(arg)?;
+                    let arg_ty = self.operand_ty(arg);
+                    args.push((arg_val, arg_ty));
+                }
+                match abi {
+                    Abi::C => unimplemented!(),
+                    Abi::Rust => {},
+                    Abi::RustCall => self.unpack_fn_args(&mut args)?,
+                    _ => unimplemented!(),
                 }
                 self.eval_fn_call_inner(
                     instance,
@@ -157,7 +200,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     span,
                 )
             },
-            other => Err(EvalError::Unimplemented(format!("can't handle function with {:?} ABI", other))),
+            _ => Err(EvalError::Unimplemented(format!("can't handle function with {:?} ABI", abi))),
         }
     }
 
@@ -168,7 +211,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         args: Vec<(Value, Ty<'tcx>)>,
         span: Span,
     ) -> EvalResult<'tcx> {
-        trace!("eval_fn_call_inner: {:#?}, {:#?}", args, destination);
+        trace!("eval_fn_call_inner: {:#?}, {:#?}, {:#?}", instance, args, destination);
+
+        // Only trait methods can have a Self parameter.
 
         let mir = match self.load_mir(instance.def) {
             Ok(mir) => mir,
@@ -390,6 +435,35 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         // Since we pushed no stack frame, the main loop will act
         // as if the call just completed and it's returning to the
         // current frame.
+        Ok(())
+    }
+
+    pub(crate) fn unpack_fn_args(&self, args: &mut Vec<(Value, Ty<'tcx>)>) -> EvalResult<'tcx> {
+        if let Some((last, last_ty)) = args.pop() {
+            let last_layout = self.type_layout(last_ty)?;
+            match (&last_ty.sty, last_layout) {
+                (&ty::TyTuple(fields, _),
+                 &Layout::Univariant { ref variant, .. }) => {
+                    let offsets = variant.offsets.iter().map(|s| s.bytes());
+                    match last {
+                        Value::ByRef(last_ptr) => {
+                            for (offset, ty) in offsets.zip(fields) {
+                                let arg = Value::ByRef(last_ptr.offset(offset));
+                                args.push((arg, ty));
+                            }
+                        },
+                        // propagate undefs
+                        undef @ Value::ByVal(PrimVal::Undef) => {
+                            for field_ty in fields {
+                                args.push((undef, field_ty));
+                            }
+                        },
+                        _ => bug!("rust-call ABI tuple argument was {:?}, but {:?} were expected", last, fields),
+                    }
+                }
+                ty => bug!("expected tuple as last argument in function with 'rust-call' ABI, got {:?}", ty),
+            }
+        }
         Ok(())
     }
 }
