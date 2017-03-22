@@ -31,6 +31,7 @@ pub use rustc_const_eval::pattern::{BindingMode, Pattern, PatternKind, FieldPatt
 
 #[derive(Clone, Debug)]
 pub struct Block<'tcx> {
+    pub targeted_by_break: bool,
     pub extent: CodeExtent,
     pub span: Span,
     pub stmts: Vec<StmtRef<'tcx>>,
