@@ -20,12 +20,6 @@ use cmp;
 use mem;
 use ptr;
 
-/// Holds a value, but never drops it.
-#[allow(unions_with_drop_fields)]
-union NoDrop<T> {
-    value: T
-}
-
 /// When dropped, copies from `src` into `dest`.
 struct CopyOnDrop<T> {
     src: *mut T,
@@ -49,15 +43,15 @@ fn shift_head<T, F>(v: &mut [T], is_less: &mut F)
             // Read the first element into a stack-allocated variable. If a following comparison
             // operation panics, `hole` will get dropped and automatically write the element back
             // into the slice.
-            let mut tmp = NoDrop { value: ptr::read(v.get_unchecked(0)) };
+            let mut tmp = mem::ManuallyDrop::new(ptr::read(v.get_unchecked(0)));
             let mut hole = CopyOnDrop {
-                src: &mut tmp.value,
+                src: &mut *tmp,
                 dest: v.get_unchecked_mut(1),
             };
             ptr::copy_nonoverlapping(v.get_unchecked(1), v.get_unchecked_mut(0), 1);
 
             for i in 2..len {
-                if !is_less(v.get_unchecked(i), &tmp.value) {
+                if !is_less(v.get_unchecked(i), &*tmp) {
                     break;
                 }
 
@@ -81,15 +75,15 @@ fn shift_tail<T, F>(v: &mut [T], is_less: &mut F)
             // Read the last element into a stack-allocated variable. If a following comparison
             // operation panics, `hole` will get dropped and automatically write the element back
             // into the slice.
-            let mut tmp = NoDrop { value: ptr::read(v.get_unchecked(len - 1)) };
+            let mut tmp = mem::ManuallyDrop::new(ptr::read(v.get_unchecked(len - 1)));
             let mut hole = CopyOnDrop {
-                src: &mut tmp.value,
+                src: &mut *tmp,
                 dest: v.get_unchecked_mut(len - 2),
             };
             ptr::copy_nonoverlapping(v.get_unchecked(len - 2), v.get_unchecked_mut(len - 1), 1);
 
             for i in (0..len-2).rev() {
-                if !is_less(&tmp.value, v.get_unchecked(i)) {
+                if !is_less(&*tmp, v.get_unchecked(i)) {
                     break;
                 }
 
@@ -403,12 +397,12 @@ fn partition<T, F>(v: &mut [T], pivot: usize, is_less: &mut F) -> (usize, bool)
 
         // Read the pivot into a stack-allocated variable for efficiency. If a following comparison
         // operation panics, the pivot will be automatically written back into the slice.
-        let mut tmp = NoDrop { value: unsafe { ptr::read(pivot) } };
+        let mut tmp = mem::ManuallyDrop::new(unsafe { ptr::read(pivot) });
         let _pivot_guard = CopyOnDrop {
-            src: unsafe { &mut tmp.value },
+            src: &mut *tmp,
             dest: pivot,
         };
-        let pivot = unsafe { &tmp.value };
+        let pivot = &*tmp;
 
         // Find the first pair of out-of-order elements.
         let mut l = 0;
@@ -452,12 +446,12 @@ fn partition_equal<T, F>(v: &mut [T], pivot: usize, is_less: &mut F) -> usize
 
     // Read the pivot into a stack-allocated variable for efficiency. If a following comparison
     // operation panics, the pivot will be automatically written back into the slice.
-    let mut tmp = NoDrop { value: unsafe { ptr::read(pivot) } };
+    let mut tmp = mem::ManuallyDrop::new(unsafe { ptr::read(pivot) });
     let _pivot_guard = CopyOnDrop {
-        src: unsafe { &mut tmp.value },
+        src: &mut *tmp,
         dest: pivot,
     };
-    let pivot = unsafe { &tmp.value };
+    let pivot = &*tmp;
 
     // Now partition the slice.
     let mut l = 0;
