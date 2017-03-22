@@ -2,18 +2,18 @@ use rustc::hir::def_id::DefId;
 use rustc::mir;
 use rustc::ty::{self, Ty};
 use rustc::ty::layout::Layout;
-use rustc::ty::subst::Kind;
 use syntax::codemap::Span;
 use syntax::attr;
 use syntax::abi::Abi;
 
 use error::{EvalError, EvalResult};
 use eval_context::{EvalContext, IntegerExt, StackPopCleanup, is_inhabited};
-use lvalue::{Lvalue, LvalueExtra};
+use lvalue::Lvalue;
 use memory::Pointer;
 use value::PrimVal;
 use value::Value;
 
+mod drop;
 mod intrinsic;
 
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
@@ -79,75 +79,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             Drop { ref location, target, .. } => {
                 trace!("TerminatorKind::drop: {:?}, {:?}", location, self.substs());
                 let lval = self.eval_lvalue(location)?;
-                trace!("drop lval: {:#?}", lval);
                 let ty = self.lvalue_ty(location);
                 self.goto_block(target);
-
                 let ty = ::eval_context::apply_param_substs(self.tcx, self.substs(), &ty);
 
-                let mut instance = ::eval_context::resolve_drop_in_place(self.tcx, ty);
-
-                if let ty::InstanceDef::DropGlue(_, None) = instance.def {
-                    // we don't actually need to drop anything
-                    return Ok(());
-                }
-                let arg;
-                let mir = match ty.sty {
-                    ty::TyDynamic(..) => {
-                        if let Lvalue::Ptr { ptr, extra: LvalueExtra::Vtable(vtable) } = lval {
-                            arg = Value::ByValPair(PrimVal::Ptr(ptr), PrimVal::Ptr(vtable));
-                            match self.read_drop_type_from_vtable(vtable)? {
-                                Some(func) => {
-                                    instance = func;
-                                    self.load_mir(func.def)?
-                                },
-                                // no drop fn -> bail out
-                                None => return Ok(()),
-                            }
-                        } else {
-                            panic!("expected fat lvalue, got {:?}", lval);
-                        }
-                    },
-                    ty::TyArray(elem, n) => {
-                        instance.substs = self.tcx.mk_substs([
-                            Kind::from(elem),
-                        ].iter().cloned());
-                        let src_ptr = self.force_allocation(lval)?.to_ptr();
-                        arg = Value::ByValPair(PrimVal::Ptr(src_ptr), PrimVal::Bytes(n as u128));
-                        ::eval_context::MirRef::clone(&self.seq_drop_glue)
-                    },
-                    ty::TySlice(elem) => {
-                        instance.substs = self.tcx.mk_substs([
-                            Kind::from(elem),
-                        ].iter().cloned());
-                        if let Lvalue::Ptr { ptr, extra: LvalueExtra::Length(len) } = lval {
-                            arg = Value::ByValPair(PrimVal::Ptr(ptr), PrimVal::Bytes(len as u128));
-                            ::eval_context::MirRef::clone(&self.seq_drop_glue)
-                        } else {
-                            panic!("slice without length: {:?}", lval);
-                        }
-                    },
-                    _ => {
-                        let src_ptr = self.force_allocation(lval)?.to_ptr();
-                        arg = Value::ByVal(PrimVal::Ptr(src_ptr));
-                        self.load_mir(instance.def)?
-                    },
-                };
-
-                self.push_stack_frame(
-                    instance,
-                    terminator.source_info.span,
-                    mir,
-                    Lvalue::from_ptr(Pointer::zst_ptr()),
-                    StackPopCleanup::None,
-                )?;
-
-                let mut arg_locals = self.frame().mir.args_iter();
-                assert_eq!(self.frame().mir.arg_count, 1);
-                let arg_local = arg_locals.next().unwrap();
-                let dest = self.eval_lvalue(&mir::Lvalue::Local(arg_local))?;
-                let arg_ty = self.tcx.mk_mut_ptr(ty);
-                self.write_value(arg, dest, arg_ty)?;
+                let instance = ::eval_context::resolve_drop_in_place(self.tcx, ty);
+                self.drop_lvalue(lval, instance, ty, terminator.source_info.span)?;
             }
 
             Assert { ref cond, expected, ref msg, target, .. } => {
@@ -246,6 +183,22 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     span,
                 )
             },
+            ty::InstanceDef::DropGlue(..) => {
+                assert_eq!(arg_operands.len(), 1);
+                assert_eq!(sig.abi, Abi::Rust);
+                let val = self.eval_operand(&arg_operands[0])?;
+                let ty = self.operand_ty(&arg_operands[0]);
+                let (_, target) = destination.expect("diverging drop glue");
+                self.goto_block(target);
+                // FIXME: deduplicate these matches
+                let pointee_type = match ty.sty {
+                    ty::TyRawPtr(ref tam) |
+                    ty::TyRef(_, ref tam) => tam.ty,
+                    ty::TyAdt(ref def, _) if def.is_box() => ty.boxed_ty(),
+                    _ => bug!("can only deref pointer types"),
+                };
+                self.drop(val, instance, pointee_type, span)
+            }
             _ => Err(EvalError::Unimplemented(format!("can't handle function with {:?} ABI", sig.abi))),
         }
     }
