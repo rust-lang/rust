@@ -94,7 +94,9 @@ boilerplate is a definitive plus to the language and might be one of the most in
 
 ## Syntax
 
-The syntax chosen to make a *trait alias* is:
+### Declaration
+
+The syntax chosen to declare a *trait alias* is:
 
 ```rust
 trait TraitAlias = Trait;
@@ -126,17 +128,14 @@ ATTRIBUTE* VISIBILITY? trait IDENTIFIER(<GENERIC_PARAMS>)? = GENERIC_BOUNDS (whe
 
 `GENERIC_BOUNDS` is a list of zero or more traits and lifetimes separated by `+`, the same as the
 current syntax for bounds on a type parameter, and `PREDICATES` is a comma-separated list of zero or
-more predicates, just like any other `where` clause. A trait alias containing only lifetimes (`trait
-Static = 'static;`) is not allowed.
+more predicates, just like any other `where` clause.
 
-## Semantics
+## Use semantics
 
-Trait aliases can be used in any place arbitrary bounds would be syntactically legal.
+You cannot directly `impl` a trait alias, but you can have them as *bounds*, *trait objects* and
+*impl Trait*.
 
-You cannot directly `impl` a trait alias, but can have them as *bounds*, *trait objects* and *impl
-Trait*.
-
-When using a trait alias as an object type, it is subject to object safety restrictions _after_
+When using a trait alias as a trait object, it is subject to object safety restrictions *after*
 substituting the aliased traits. This means:
 
 1. It contains an object safe trait, optionally a lifetime, and zero or more of these other bounds:
@@ -259,9 +258,9 @@ implement `Foo`.
 
 There’s currently no alternative to the impl problem described here.
 
-## `ContraintKinds`
+## `ConstraintKinds`
 
-Similar to Haskell's ContraintKinds, we could declare an entire predicate as a reified list of
+Similar to GHC’s `ContraintKinds`, we could declare an entire predicate as a reified list of
 constraints, instead of creating an alias for a set of supertraits and predicates. Syntax would be
 something like `constraint Foo<T> = T: Bar, Vec<T>: Baz;`, used as `fn quux<T>(...) where Foo<T> { ... }`
 (i.e. direct substitution). Trait object usage is unclear.
@@ -269,6 +268,23 @@ something like `constraint Foo<T> = T: Bar, Vec<T>: Baz;`, used as `fn quux<T>(.
 # Unresolved questions
 [unresolved]: #unresolved-questions
  
+## Trait alias containing only lifetimes
+
+This is annoying. Consider:
+
+```rust
+trait Static = 'static;
+
+fn foo<T>(t: T) where T: Static {}
+```
+
+Such an alias is legit. However, I feel concerned about the actual meaning of the declaration – i.e.
+using the `trait` keyword to define alias on *lifetimes* seems a wrong design choice and seems not
+very consistent.
+
+If we chose another keyword, like `constraint`, I feel less concerned and it would open further
+opportunies – see the `ConstraintKinds` alternative discussion above.
+
 ## Which bounds need to be repeated when using a trait alias?
 
 [RFC 1927](https://github.com/rust-lang/rfcs/pull/1927) intends to change the rules here for traits,
