@@ -43,14 +43,14 @@ environment:
   # *not* use debug assertions and llvm assertions. This is because they take
   # too long on appveyor and this is tested by rustbuild below.
   - MSYS_BITS: 32
-    RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu
+    RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu --enable-ninja
     SCRIPT: python x.py test
     MINGW_URL: https://s3.amazonaws.com/rust-lang-ci
     MINGW_ARCHIVE: i686-4.9.2-release-win32-dwarf-rt_v4-rev4.7z
     MINGW_DIR: mingw32
   - MSYS_BITS: 64
     SCRIPT: python x.py test
-    RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu
+    RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu --enable-ninja
     MINGW_URL: https://s3.amazonaws.com/rust-lang-ci
     MINGW_ARCHIVE: x86_64-4.9.2-release-win32-seh-rt_v4-rev4.7z
     MINGW_DIR: mingw64
@@ -68,7 +68,7 @@ environment:
     SCRIPT: python x.py dist
     DEPLOY: 1
   - MSYS_BITS: 32
-    RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu --enable-extended
+    RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu --enable-extended --enable-ninja
     SCRIPT: python x.py dist
     MINGW_URL: https://s3.amazonaws.com/rust-lang-ci
     MINGW_ARCHIVE: i686-4.9.2-release-win32-dwarf-rt_v4-rev4.7z
@@ -76,7 +76,7 @@ environment:
     DEPLOY: 1
   - MSYS_BITS: 64
     SCRIPT: python x.py dist
-    RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu --enable-extended
+    RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu --enable-extended --enable-ninja
     MINGW_URL: https://s3.amazonaws.com/rust-lang-ci
     MINGW_ARCHIVE: x86_64-4.9.2-release-win32-seh-rt_v4-rev4.7z
     MINGW_DIR: mingw64
@@ -116,8 +116,15 @@ install:
 
   # Download and install sccache
   - appveyor-retry appveyor DownloadFile https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-03-16-sccache-x86_64-pc-windows-msvc
-  - mv 2017-03-16-sccache-x86_64-pc-windows-msvc sccache
+  - mv 2017-03-16-sccache-x86_64-pc-windows-msvc sccache.exe
   - set PATH=%PATH%;%CD%
+
+  # Download and install ninja
+  #
+  # Note that this is originally from the github releases patch of Ninja
+  - appveyor-retry appveyor DownloadFile https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-03-15-ninja-win.zip
+  - 7z x 2017-03-15-ninja-win.zip
+  # - set PATH=%PATH%;%CD% -- this already happens above for sccache
 
   # Install InnoSetup to get `iscc` used to produce installers
   - appveyor-retry choco install -y InnoSetup
