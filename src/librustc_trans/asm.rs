@@ -129,6 +129,6 @@ pub fn trans_global_asm<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                   ga: &hir::GlobalAsm) {
     let asm = CString::new(ga.asm.as_str().as_bytes()).unwrap();
     unsafe {
-        llvm::LLVMSetModuleInlineAsm(ccx.llmod(), asm.as_ptr());
+        llvm::LLVMRustAppendModuleInlineAsm(ccx.llmod(), asm.as_ptr());
     }
 }
