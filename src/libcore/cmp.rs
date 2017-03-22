@@ -337,19 +337,19 @@ impl Ordering {
 /// assert_eq!(v, vec![3, 2, 1, 6, 5, 4]);
 /// ```
 #[derive(PartialEq, Eq, Debug)]
-#[stable(feature = "rust1", since = "1.8.0")]
-pub struct Reverse<T: Ord + PartialOrd + Eq + PartialEq>(pub T);
+#[stable(feature = "rust1", since = "1.18.0")]
+pub struct Reverse<T>(pub T);
 
-#[stable(feature = "rust1", since = "1.8.0")]
-impl<T: Ord + PartialOrd + Eq + PartialEq> PartialOrd for Reverse<T> {
+#[stable(feature = "rust1", since = "1.18.0")]
+impl<T: PartialOrd> PartialOrd for Reverse<T> {
     #[inline]
     fn partial_cmp(&self, other: &Reverse<T>) -> Option<Ordering> {
         other.0.partial_cmp(&self.0)
     }
 }
 
-#[stable(feature = "rust1", since = "1.8.0")]
-impl<T: Ord + PartialOrd + Eq + PartialEq> Ord for Reverse<T> {
+#[stable(feature = "rust1", since = "1.18.0")]
+impl<T: Ord> Ord for Reverse<T> {
     #[inline]
     fn cmp(&self, other: &Reverse<T>) -> Ordering {
         other.0.cmp(&self.0)
