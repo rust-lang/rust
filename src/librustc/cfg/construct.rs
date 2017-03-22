@@ -74,11 +74,11 @@ pub fn construct<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
     fn block(&mut self, blk: &hir::Block, pred: CFGIndex) -> CFGIndex {
-        if let Some(break_to_expr_id) = blk.break_to_expr_id {
+        if blk.targeted_by_break {
             let expr_exit = self.add_ast_node(blk.id, &[]);
 
             self.breakable_block_scopes.push(BlockScope {
-                block_expr_id: break_to_expr_id,
+                block_expr_id: blk.id,
                 break_index: expr_exit,
             });
 

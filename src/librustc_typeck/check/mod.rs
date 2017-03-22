@@ -416,15 +416,11 @@ pub struct EnclosingBreakables<'gcx, 'tcx> {
 }
 
 impl<'gcx, 'tcx> EnclosingBreakables<'gcx, 'tcx> {
-    fn find_breakable(&mut self, target: hir::ScopeTarget)
-        -> Option<&mut BreakableCtxt<'gcx, 'tcx>>
-    {
-        let opt_index = target.opt_id().and_then(|id| self.by_id.get(&id).cloned());
-        if let Some(ix) = opt_index {
-            Some(&mut self.stack[ix])
-        } else {
-            None
-        }
+    fn find_breakable(&mut self, target_id: ast::NodeId) -> &mut BreakableCtxt<'gcx, 'tcx> {
+        let ix = *self.by_id.get(&target_id).unwrap_or_else(|| {
+            bug!("could not find enclosing breakable with id {}", target_id);
+        });
+        &mut self.stack[ix]
     }
 }
 
@@ -3472,12 +3468,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
               tcx.mk_nil()
           }
           hir::ExprBreak(destination, ref expr_opt) => {
-            let coerce_to = {
-                let mut enclosing_breakables = self.enclosing_breakables.borrow_mut();
-                enclosing_breakables
-                    .find_breakable(destination.target_id).map(|ctxt| ctxt.coerce_to)
-            };
-            if let Some(coerce_to) = coerce_to {
+            if let Some(target_id) = destination.target_id.opt_id() {
+                let coerce_to = {
+                    let mut enclosing_breakables = self.enclosing_breakables.borrow_mut();
+                    enclosing_breakables.find_breakable(target_id).coerce_to
+                };
+
                 let e_ty;
                 let cause;
                 if let Some(ref e) = *expr_opt {
@@ -3492,7 +3488,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
 
                 let mut enclosing_breakables = self.enclosing_breakables.borrow_mut();
-                let ctxt = enclosing_breakables.find_breakable(destination.target_id).unwrap();
+                let ctxt = enclosing_breakables.find_breakable(target_id);
 
                 let result = if let Some(ref e) = *expr_opt {
                     // Special-case the first element, as it has no "previous expressions".
@@ -4024,7 +4020,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             replace(&mut *fcx_ps, unsafety_state)
         };
 
-        let mut ty = if let Some(break_to_expr_id) = blk.break_to_expr_id {
+        let mut ty = if blk.targeted_by_break {
             let unified = self.next_ty_var(TypeVariableOrigin::TypeInference(blk.span));
             let coerce_to = expected.only_has_type(self).unwrap_or(unified);
             let ctxt = BreakableCtxt {
@@ -4034,15 +4030,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 may_break: false,
             };
 
-            let (mut ctxt, (e_ty, cause)) = self.with_breakable_ctxt(break_to_expr_id, ctxt, || {
+            let (mut ctxt, (e_ty, cause)) = self.with_breakable_ctxt(blk.id, ctxt, || {
                 for s in &blk.stmts {
                     self.check_stmt(s);
                 }
                 let coerce_to = {
                     let mut enclosing_breakables = self.enclosing_breakables.borrow_mut();
-                    enclosing_breakables.find_breakable(
-                        hir::ScopeTarget::Block(break_to_expr_id)
-                    ).unwrap().coerce_to
+                    enclosing_breakables.find_breakable(blk.id).coerce_to
                 };
                 let e_ty;
                 let cause;
