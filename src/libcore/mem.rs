@@ -736,3 +736,99 @@ pub fn discriminant<T>(v: &T) -> Discriminant<T> {
     }
 }
 
+
+/// A wrapper to inhibit compiler from automatically calling `T`’s destructor.
+///
+/// This wrapper is 0-cost.
+///
+/// # Examples
+///
+/// This wrapper helps with explicitly documenting the drop order dependencies between fields of
+/// the type:
+///
+/// ```rust
+/// # #![feature(manually_drop)]
+/// use std::mem::ManuallyDrop;
+/// struct Peach;
+/// struct Banana;
+/// struct Melon;
+/// struct FruitBox {
+///     // Immediately clear there’s something non-trivial going on with these fields.
+///     peach: ManuallyDrop<Peach>,
+///     melon: Melon, // Field that’s independent of the other two.
+///     banana: ManuallyDrop<Banana>,
+/// }
+///
+/// impl Drop for FruitBox {
+///     fn drop(&mut self) {
+///         unsafe {
+///             // Explicit ordering in which field destructors are run specified in the intuitive
+///             // location – the destructor of the structure containing the fields.
+///             // Moreover, one can now reorder fields within the struct however much they want.
+///             ManuallyDrop::drop(&mut self.peach);
+///             ManuallyDrop::drop(&mut self.banana);
+///         }
+///         // After destructor for `FruitBox` runs (this function), the destructor for Melon gets
+///         // invoked in the usual manner, as it is not wrapped in `ManuallyDrop`.
+///     }
+/// }
+/// ```
+#[unstable(feature = "manually_drop", issue = "40673")]
+#[allow(unions_with_drop_fields)]
+pub union ManuallyDrop<T>{ value: T }
+
+impl<T> ManuallyDrop<T> {
+    /// Wrap a value to be manually dropped.
+    #[unstable(feature = "manually_drop", issue = "40673")]
+    pub fn new(value: T) -> ManuallyDrop<T> {
+        ManuallyDrop { value: value }
+    }
+
+    /// Extract the value from the ManuallyDrop container.
+    #[unstable(feature = "manually_drop", issue = "40673")]
+    pub fn into_inner(self) -> T {
+        unsafe {
+            self.value
+        }
+    }
+
+    /// Manually drops the contained value.
+    ///
+    /// # Unsafety
+    ///
+    /// This function runs the destructor of the contained value and thus the wrapped value
+    /// now represents uninitialized data. It is up to the user of this method to ensure the
+    /// uninitialized data is not actually used.
+    #[unstable(feature = "manually_drop", issue = "40673")]
+    pub unsafe fn drop(slot: &mut ManuallyDrop<T>) {
+        ptr::drop_in_place(&mut slot.value)
+    }
+}
+
+#[unstable(feature = "manually_drop", issue = "40673")]
+impl<T> ::ops::Deref for ManuallyDrop<T> {
+    type Target = T;
+    fn deref(&self) -> &Self::Target {
+        unsafe {
+            &self.value
+        }
+    }
+}
+
+#[unstable(feature = "manually_drop", issue = "40673")]
+impl<T> ::ops::DerefMut for ManuallyDrop<T> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        unsafe {
+            &mut self.value
+        }
+    }
+}
+
+#[unstable(feature = "manually_drop", issue = "40673")]
+impl<T: ::fmt::Debug> ::fmt::Debug for ManuallyDrop<T> {
+    fn fmt(&self, fmt: &mut ::fmt::Formatter) -> ::fmt::Result {
+        unsafe {
+            fmt.debug_tuple("ManuallyDrop").field(&self.value).finish()
+        }
+    }
+}
