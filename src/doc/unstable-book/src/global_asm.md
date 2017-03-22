@@ -27,7 +27,7 @@ A simple usage looks like this:
 ```rust,ignore
 # #![feature(global_asm)]
 # you also need relevant target_arch cfgs
-global_asm!(include_str("something_neato.s"));
+global_asm!(include_str!("something_neato.s"));
 ```
 
 And a more complicated usage looks like this:

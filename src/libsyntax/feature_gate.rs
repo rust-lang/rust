@@ -986,7 +986,7 @@ pub const EXPLAIN_ASM: &'static str =
     "inline assembly is not stable enough for use and is subject to change";
 
 pub const EXPLAIN_GLOBAL_ASM: &'static str =
-    "module-level inline assembly is experimental and subject to change";
+    "`global_asm!` is not stable enough for use and is subject to change";
 
 pub const EXPLAIN_LOG_SYNTAX: &'static str =
     "`log_syntax!` is not stable enough for use and is subject to change";
