@@ -135,13 +135,15 @@ more predicates, just like any other `where` clause.
 You cannot directly `impl` a trait alias, but you can have them as *bounds*, *trait objects* and
 *impl Trait*.
 
+---
+
 When using a trait alias as a trait object, it is subject to object safety restrictions *after*
 substituting the aliased traits. This means:
 
-1. It contains an object safe trait, optionally a lifetime, and zero or more of these other bounds:
-   `Send`, `Sync` (that is, `trait Show = Display + Debug;` would not be object safe).
-2. All the associated types of the trait need to be specified.
-3. The `where` clause, if present, only contains bounds on `Self`.
+1. it contains an object safe trait, optionally a lifetime, and zero or more of these other bounds:
+   `Send`, `Sync` (that is, `trait Show = Display + Debug;` would not be object safe);
+2. all the associated types of the trait need to be specified;
+3. the `where` clause, if present, only contains bounds on `Self`.
 
 Some examples:
 
@@ -307,3 +309,55 @@ trait Foo<T> = where Self: PartialEq<T>, T: Bar;
 
 [Issue 21903](https://github.com/rust-lang/rust/issues/21903) explains the same problem for type
 aliasing.
+
+**Note: what about the following proposal below?**
+
+When using a trait alias as a bound, you cannot add extra bound on the input parameters, like in the
+following:
+
+```rust
+trait Foo<T: Bar> = PartialEq<T>;
+```
+
+Here, `T` adds a `Bar` bound. Now consider:
+
+```rust
+trait Bar<T> = PartialEq<T: Bar>;
+```
+
+Currently, we don’t have a proper interesting of that situation, because we’re adding in both cases
+a bound, and we don’t know how to disambiguate between *pre-condition* and *implication*. That is,
+is that added `Bar` bound a constraint that `T` must fulfil in order for the trait alias to be
+met, or is it a constraint the trait alias itself adds? To disambiguate, consider:
+
+```rust
+trait BarPrecond<T> where T: Bar = PartialEq<T>;
+trait BarImplic<T> = PartialEq<T> where T: Bar;
+trait BarImpossible<T> where T: Bar = PartialEq<T> where T: Bar;
+```
+
+`BarPrecond` would require the use-site code to fulfil the constraint, like the following:
+
+```rust
+fn foo<A, T>() where A: BarPrecond<T>, T: Bar {}
+```
+
+`BarImplic` would give us `T: Bar`:
+
+```rust
+fn foo<A, T>() where A: BarImplic<T> {
+  // T: Bar because given by BarImplic<T>
+}
+```
+
+`BarImpossible` wouldn’t compile because we try to express a pre-condition and an implication for
+the same bound at the same time. However, it’d be possible to have both a pre-condition and an
+implication on a parameter:
+
+```rust
+trait BarBoth<T> where T: Bar = PartialEq<T> where T: Debug;
+
+fn foo<A, T>() where A: BarBoth<T>, T: Bar {
+  // T: Debug because given by BarBoth
+}
+```
