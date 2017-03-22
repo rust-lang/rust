@@ -343,13 +343,13 @@ pub struct Chars<'a> {
     iter: slice::Iter<'a, u8>
 }
 
-/// Return the initial codepoint accumulator for the first byte.
+/// Returns the initial codepoint accumulator for the first byte.
 /// The first byte is special, only want bottom 5 bits for width 2, 4 bits
 /// for width 3, and 3 bits for width 4.
 #[inline]
 fn utf8_first_byte(byte: u8, width: u32) -> u32 { (byte & (0x7F >> width)) as u32 }
 
-/// Return the value of `ch` updated with continuation byte `byte`.
+/// Returns the value of `ch` updated with continuation byte `byte`.
 #[inline]
 fn utf8_acc_cont_byte(ch: u32, byte: u8) -> u32 { (ch << 6) | (byte & CONT_MASK) as u32 }
 
@@ -1244,13 +1244,13 @@ Section: UTF-8 validation
 // use truncation to fit u64 into usize
 const NONASCII_MASK: usize = 0x80808080_80808080u64 as usize;
 
-/// Return `true` if any byte in the word `x` is nonascii (>= 128).
+/// Returns `true` if any byte in the word `x` is nonascii (>= 128).
 #[inline]
 fn contains_nonascii(x: usize) -> bool {
     (x & NONASCII_MASK) != 0
 }
 
-/// Walk through `iter` checking that it's a valid UTF-8 sequence,
+/// Walks through `iter` checking that it's a valid UTF-8 sequence,
 /// returning `true` in that case, or, if it is invalid, `false` with
 /// `iter` reset such that it is pointing at the first byte in the
 /// invalid sequence.
@@ -1389,16 +1389,16 @@ static UTF8_CHAR_WIDTH: [u8; 256] = [
 4,4,4,4,4,0,0,0,0,0,0,0,0,0,0,0, // 0xFF
 ];
 
-/// Given a first byte, determine how many bytes are in this UTF-8 character
+/// Given a first byte, determines how many bytes are in this UTF-8 character.
 #[unstable(feature = "str_internals", issue = "0")]
 #[inline]
 pub fn utf8_char_width(b: u8) -> usize {
     return UTF8_CHAR_WIDTH[b as usize] as usize;
 }
 
-/// Mask of the value bits of a continuation byte
+/// Mask of the value bits of a continuation byte.
 const CONT_MASK: u8 = 0b0011_1111;
-/// Value of the tag bits (tag mask is !CONT_MASK) of a continuation byte
+/// Value of the tag bits (tag mask is !CONT_MASK) of a continuation byte.
 const TAG_CONT_U8: u8 = 0b1000_0000;
 
 /*
