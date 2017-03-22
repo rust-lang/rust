@@ -306,7 +306,7 @@ impl str {
     /// assert!(v.get(..8).is_none());
     /// assert!(v.get(..42).is_none());
     /// ```
-    #[unstable(feature = "str_checked_slicing", issue = "0")]
+    #[unstable(feature = "str_checked_slicing", issue = "39932")]
     #[inline]
     pub fn get<I: SliceIndex<str>>(&self, i: I) -> Option<&I::Output> {
         core_str::StrExt::get(self, i)
@@ -327,7 +327,7 @@ impl str {
     /// assert!(v.get_mut(..8).is_none());
     /// assert!(v.get_mut(..42).is_none());
     /// ```
-    #[unstable(feature = "str_checked_slicing", issue = "0")]
+    #[unstable(feature = "str_checked_slicing", issue = "39932")]
     #[inline]
     pub fn get_mut<I: SliceIndex<str>>(&mut self, i: I) -> Option<&mut I::Output> {
         core_str::StrExt::get_mut(self, i)
@@ -360,7 +360,7 @@ impl str {
     ///     assert_eq!("🌏", v.get_unchecked(7..11));
     /// }
     /// ```
-    #[unstable(feature = "str_checked_slicing", issue = "0")]
+    #[unstable(feature = "str_checked_slicing", issue = "39932")]
     #[inline]
     pub unsafe fn get_unchecked<I: SliceIndex<str>>(&self, i: I) -> &I::Output {
         core_str::StrExt::get_unchecked(self, i)
@@ -393,7 +393,7 @@ impl str {
     ///     assert_eq!("🌏", v.get_unchecked_mut(7..11));
     /// }
     /// ```
-    #[unstable(feature = "str_checked_slicing", issue = "0")]
+    #[unstable(feature = "str_checked_slicing", issue = "39932")]
     #[inline]
     pub unsafe fn get_unchecked_mut<I: SliceIndex<str>>(&mut self, i: I) -> &mut I::Output {
         core_str::StrExt::get_unchecked_mut(self, i)
