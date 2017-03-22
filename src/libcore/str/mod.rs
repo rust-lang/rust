@@ -1683,7 +1683,7 @@ mod traits {
         }
     }
 
-    #[unstable(feature = "str_checked_slicing", issue = "0")]
+    #[unstable(feature = "str_checked_slicing", issue = "39932")]
     impl SliceIndex<str> for ops::RangeFull {
         type Output = str;
         #[inline]
@@ -1712,7 +1712,7 @@ mod traits {
         }
     }
 
-    #[unstable(feature = "str_checked_slicing", issue = "0")]
+    #[unstable(feature = "str_checked_slicing", issue = "39932")]
     impl SliceIndex<str> for ops::Range<usize> {
         type Output = str;
         #[inline]
@@ -1766,7 +1766,7 @@ mod traits {
         }
     }
 
-    #[unstable(feature = "str_checked_slicing", issue = "0")]
+    #[unstable(feature = "str_checked_slicing", issue = "39932")]
     impl SliceIndex<str> for ops::RangeTo<usize> {
         type Output = str;
         #[inline]
@@ -1810,7 +1810,7 @@ mod traits {
         }
     }
 
-    #[unstable(feature = "str_checked_slicing", issue = "0")]
+    #[unstable(feature = "str_checked_slicing", issue = "39932")]
     impl SliceIndex<str> for ops::RangeFrom<usize> {
         type Output = str;
         #[inline]
@@ -1856,7 +1856,7 @@ mod traits {
         }
     }
 
-    #[unstable(feature = "str_checked_slicing", issue = "0")]
+    #[unstable(feature = "str_checked_slicing", issue = "39932")]
     impl SliceIndex<str> for ops::RangeInclusive<usize> {
         type Output = str;
         #[inline]
@@ -1905,7 +1905,7 @@ mod traits {
 
 
 
-    #[unstable(feature = "str_checked_slicing", issue = "0")]
+    #[unstable(feature = "str_checked_slicing", issue = "39932")]
     impl SliceIndex<str> for ops::RangeToInclusive<usize> {
         type Output = str;
         #[inline]
@@ -2001,13 +2001,13 @@ pub trait StrExt {
     #[rustc_deprecated(since = "1.6.0", reason = "use lines() instead now")]
     #[allow(deprecated)]
     fn lines_any(&self) -> LinesAny;
-    #[unstable(feature = "str_checked_slicing", issue = "0")]
+    #[unstable(feature = "str_checked_slicing", issue = "39932")]
     fn get<I: SliceIndex<str>>(&self, i: I) -> Option<&I::Output>;
-    #[unstable(feature = "str_checked_slicing", issue = "0")]
+    #[unstable(feature = "str_checked_slicing", issue = "39932")]
     fn get_mut<I: SliceIndex<str>>(&mut self, i: I) -> Option<&mut I::Output>;
-    #[unstable(feature = "str_checked_slicing", issue = "0")]
+    #[unstable(feature = "str_checked_slicing", issue = "39932")]
     unsafe fn get_unchecked<I: SliceIndex<str>>(&self, i: I) -> &I::Output;
-    #[unstable(feature = "str_checked_slicing", issue = "0")]
+    #[unstable(feature = "str_checked_slicing", issue = "39932")]
     unsafe fn get_unchecked_mut<I: SliceIndex<str>>(&mut self, i: I) -> &mut I::Output;
     #[stable(feature = "core", since = "1.6.0")]
     unsafe fn slice_unchecked(&self, begin: usize, end: usize) -> &str;
