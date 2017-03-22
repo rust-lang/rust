@@ -9,7 +9,7 @@ use syntax::abi::Abi;
 
 use error::{EvalError, EvalResult};
 use eval_context::{EvalContext, IntegerExt, StackPopCleanup, is_inhabited};
-use lvalue::Lvalue;
+use lvalue::{Lvalue, LvalueExtra};
 use memory::Pointer;
 use value::PrimVal;
 use value::Value;
@@ -80,7 +80,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 trace!("TerminatorKind::drop: {:?}, {:?}", location, self.substs());
                 let lval = self.eval_lvalue(location)?;
                 trace!("drop lval: {:#?}", lval);
-                let src_ptr = self.force_allocation(lval)?.to_ptr();
                 let ty = self.lvalue_ty(location);
                 self.goto_block(target);
 
@@ -94,16 +93,32 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 }
                 let arg;
                 let mir = match ty.sty {
-                    ty::TyDynamic(..) => unimplemented!(),
+                    ty::TyDynamic(..) => {
+                        if let Lvalue::Ptr { ptr, extra: LvalueExtra::Vtable(vtable) } = lval {
+                            arg = Value::ByValPair(PrimVal::Ptr(ptr), PrimVal::Ptr(vtable));
+                            match self.read_drop_type_from_vtable(vtable)? {
+                                Some(func) => {
+                                    instance = func;
+                                    self.load_mir(func.def)?
+                                },
+                                // no drop fn -> bail out
+                                None => return Ok(()),
+                            }
+                        } else {
+                            panic!("expected fat lvalue, got {:?}", lval);
+                        }
+                    },
                     ty::TyArray(elem, n) => {
                         instance.substs = self.tcx.mk_substs([
                             Kind::from(elem),
                         ].iter().cloned());
+                        let src_ptr = self.force_allocation(lval)?.to_ptr();
                         arg = Value::ByValPair(PrimVal::Ptr(src_ptr), PrimVal::Bytes(n as u128));
                         ::eval_context::MirRef::clone(&self.seq_drop_glue)
                     },
                     ty::TySlice(ref elem) => unimplemented!(),
                     _ => {
+                        let src_ptr = self.force_allocation(lval)?.to_ptr();
                         arg = Value::ByVal(PrimVal::Ptr(src_ptr));
                         self.load_mir(instance.def)?
                     },
