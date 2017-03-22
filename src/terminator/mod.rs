@@ -60,22 +60,24 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 };
 
                 let func_ty = self.operand_ty(func);
-                let (fn_def, abi) = match func_ty.sty {
+                let (fn_def, sig) = match func_ty.sty {
                     ty::TyFnPtr(sig) => {
                         let fn_ptr = self.eval_operand_to_primval(func)?.to_ptr()?;
-                        (self.memory.get_fn(fn_ptr.alloc_id)?, sig.abi())
+                        (self.memory.get_fn(fn_ptr.alloc_id)?, sig)
                     },
-                    ty::TyFnDef(def_id, substs, sig) => (::eval_context::resolve(self.tcx, def_id, substs), sig.abi()),
+                    ty::TyFnDef(def_id, substs, sig) => (::eval_context::resolve(self.tcx, def_id, substs), sig),
                     _ => {
                         let msg = format!("can't handle callee of type {:?}", func_ty);
                         return Err(EvalError::Unimplemented(msg));
                     }
                 };
-                self.eval_fn_call(fn_def, destination, args, terminator.source_info.span, abi)?;
+                let sig = self.erase_lifetimes(&sig);
+                self.eval_fn_call(fn_def, destination, args, terminator.source_info.span, sig)?;
             }
 
             Drop { ref location, target, .. } => {
                 let lval = self.eval_lvalue(location)?;
+                let src_ptr = self.force_allocation(lval)?.to_ptr();
 
                 let ty = self.lvalue_ty(location);
 
@@ -97,6 +99,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     Lvalue::from_ptr(Pointer::zst_ptr()),
                     StackPopCleanup::None,
                 )?;
+
+                let mut arg_locals = self.frame().mir.args_iter();
+                assert_eq!(self.frame().mir.arg_count, 1);
+                let arg_local = arg_locals.next().unwrap();
+                let dest = self.eval_lvalue(&mir::Lvalue::Local(arg_local))?;
+                let arg_ty = self.tcx.mk_mut_ptr(ty);
+                self.write_value(Value::ByVal(PrimVal::Ptr(src_ptr)), dest, arg_ty)?;
             }
 
             Assert { ref cond, expected, ref msg, target, .. } => {
@@ -135,22 +144,23 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         destination: Option<(Lvalue<'tcx>, mir::BasicBlock)>,
         arg_operands: &[mir::Operand<'tcx>],
         span: Span,
-        abi: Abi,
+        sig: ty::FnSig<'tcx>,
     ) -> EvalResult<'tcx> {
         trace!("eval_fn_call: {:#?}", instance);
         match instance.def {
             ty::InstanceDef::Intrinsic(..) => {
-                unimplemented!();
-                /*let sig = self.erase_lifetimes(&sig);
-                let ty = sig.output();
-                let layout = self.type_layout(ty)?;
                 let (ret, target) = match destination {
-                    Some(dest) if is_inhabited(self.tcx, ty) => dest,
+                    Some(dest) => dest,
                     _ => return Err(EvalError::Unreachable),
                 };
+                let ty = sig.output();
+                if !is_inhabited(self.tcx, ty) {
+                    return Err(EvalError::Unreachable);
+                }
+                let layout = self.type_layout(ty)?;
                 self.call_intrinsic(instance, arg_operands, ret, ty, layout, target)?;
                 self.dump_local(ret);
-                Ok(())*/
+                Ok(())
             },
             /*Abi::C => {
                 let sig = self.erase_lifetimes(&sig);
@@ -172,7 +182,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     let arg_ty = self.operand_ty(arg);
                     args.push((arg_val, arg_ty));
                 }
-                assert_eq!(abi, Abi::RustCall);
+                assert_eq!(sig.abi, Abi::RustCall);
                 self.eval_fn_call_inner(
                     instance,
                     destination,
@@ -187,7 +197,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     let arg_ty = self.operand_ty(arg);
                     args.push((arg_val, arg_ty));
                 }
-                match abi {
+                match sig.abi {
                     Abi::C => unimplemented!(),
                     Abi::Rust => {},
                     Abi::RustCall => self.unpack_fn_args(&mut args)?,
@@ -200,7 +210,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     span,
                 )
             },
-            _ => Err(EvalError::Unimplemented(format!("can't handle function with {:?} ABI", abi))),
+            _ => Err(EvalError::Unimplemented(format!("can't handle function with {:?} ABI", sig.abi))),
         }
     }
 
