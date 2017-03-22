@@ -120,6 +120,21 @@ Furthermore, it’s possible to use only the `where` clause by leaving the list 
 trait DebugDefault = where Self: Debug + Default;
 ```
 
+It’s also possible to partially bind associated types of the right hand side:
+
+```rust
+trait IntoIntIterator = IntoIterator<Item=i32>;
+```
+
+This would leave `IntoIntIterator` with a *free parameter* being `IntoIter`, and it should be bind
+the same way associated types are bound with regular traits:
+
+```rust
+fn foo<I>(int_iter: I) where I: IntoIntIterator<IntoIter = std::slice::Iter<i32>> {}
+```
+
+---
+
 Specifically, the grammar being added is, in informal notation:
 
 ```
