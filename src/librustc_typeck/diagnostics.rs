@@ -1224,13 +1224,23 @@ fn main() {
 "##,
 
 E0090: r##"
-The wrong number of lifetimes were supplied. For example:
+You gave too few lifetime parameters. Example:
 
 ```compile_fail,E0090
 fn foo<'a: 'b, 'b: 'a>() {}
 
 fn main() {
     foo::<'static>(); // error, expected 2 lifetime parameters
+}
+```
+
+Please check you give the right number of lifetime parameters. Example:
+
+```
+fn foo<'a: 'b, 'b: 'a>() {}
+
+fn main() {
+    foo::<'static, 'static>();
 }
 ```
 "##,
