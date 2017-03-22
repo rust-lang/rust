@@ -657,7 +657,7 @@ impl<'a> Parser<'a> {
             }
             ExpansionKind::Expr => Expansion::Expr(self.parse_expr()?),
             ExpansionKind::OptExpr => Expansion::OptExpr(Some(self.parse_expr()?)),
-            ExpansionKind::Ty => Expansion::Ty(self.parse_ty_no_plus()?),
+            ExpansionKind::Ty => Expansion::Ty(self.parse_ty()?),
             ExpansionKind::Pat => Expansion::Pat(self.parse_pat()?),
         })
     }
