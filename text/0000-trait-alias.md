@@ -124,17 +124,23 @@ Specifically, the grammar being added is, in informal notation:
 ATTRIBUTE* VISIBILITY? trait IDENTIFIER(<GENERIC_PARAMS>)? = GENERIC_BOUNDS (where PREDICATES)?;
 ```
 
-`GENERIC_BOUNDS` is a list of zero or more traits and lifetimes separated by `+`, the same as the current syntax for bounds on a type parameter, and `PREDICATES` is a comma-separated list of zero or more predicates, just like any other `where` clause. A trait alias containing only lifetimes (`trait Static = 'static;`) is not allowed.
+`GENERIC_BOUNDS` is a list of zero or more traits and lifetimes separated by `+`, the same as the
+current syntax for bounds on a type parameter, and `PREDICATES` is a comma-separated list of zero or
+more predicates, just like any other `where` clause. A trait alias containing only lifetimes (`trait
+Static = 'static;`) is not allowed.
 
 ## Semantics
 
 Trait aliases can be used in any place arbitrary bounds would be syntactically legal.
 
-You cannot directly `impl` a trait alias, but can have them as *bounds*, *trait objects* and *impl Trait*.
+You cannot directly `impl` a trait alias, but can have them as *bounds*, *trait objects* and *impl
+Trait*.
 
-When using a trait alias as an object type, it is subject to object safety restrictions _after_ substituting the aliased traits. This means:
+When using a trait alias as an object type, it is subject to object safety restrictions _after_
+substituting the aliased traits. This means:
 
-1. It contains an object safe trait, optionally a lifetime, and zero or more of these other bounds: `Send`, `Sync` (that is, `trait Show = Display + Debug;` would not be object safe).
+1. It contains an object safe trait, optionally a lifetime, and zero or more of these other bounds:
+   `Send`, `Sync` (that is, `trait Show = Display + Debug;` would not be object safe).
 2. All the associated types of the trait need to be specified.
 3. The `where` clause, if present, only contains bounds on `Self`.
 
@@ -154,19 +160,22 @@ fn bar3(x: Box<PrintableIterator>) { ... } // ERROR: too many traits (*)
 fn bar4(x: Box<IntIterator + Sink + 'static>) { ... } // ok (*)
 ```
 
-The lines marked with `(*)` assume that [#24010](https://github.com/rust-lang/rust/issues/24010) is fixed.
+The lines marked with `(*)` assume that [#24010](https://github.com/rust-lang/rust/issues/24010) is
+fixed.
 
 # Teaching
 [teaching]: #teaching
 
-[Traits](https://doc.rust-lang.org/book/traits.html) are obviously a huge prerequisite. Traits aliases could be introduced at the end of
-that chapter.
+[Traits](https://doc.rust-lang.org/book/traits.html) are obviously a huge prerequisite. Traits
+aliases could be introduced at the end of that chapter.
 
-Conceptually, a *trait alias* is a syntax shortcut used to reason about one or more trait(s). Inherently, the *trait alias* is usable
-in a limited set of places:
+Conceptually, a *trait alias* is a syntax shortcut used to reason about one or more trait(s).
+Inherently, the *trait alias* is usable in a limited set of places:
 
-- as a *bound*: exactly like a *trait*, a *trait alias* can be used to constraint a type (type parameters list, where-clause)
-- as a *trait object*: same thing as with a *trait*, a *trait alias* can be used as a *trait object* if it fits object safety restrictions (see above in the [semantics](#semantics) section)
+- as a *bound*: exactly like a *trait*, a *trait alias* can be used to constraint a type (type
+  parameters list, where-clause)
+- as a *trait object*: same thing as with a *trait*, a *trait alias* can be used as a *trait object*
+  if it fits object safety restrictions (see above in the [semantics](#semantics) section)
 - in an [`impl Trait`](https://github.com/rust-lang/rfcs/blob/master/text/1522-conservative-impl-trait.md)
 
 Examples should be showed for all of the three cases above:
@@ -191,9 +200,9 @@ fn iterate_object(si: &StringIterator) {} // used as trait object
 fn string_iterator_debug() -> impl Debug + StringIterator {} // used in an impl Trait
 ```
 
-As shown above, a *trait alias* can substitute associated types. It doesn’t have to substitute them all. In that case, the *trait alias*
-is left incomplete and you have to pass it the associated types that are left. Example with the
-[tokio case](#second-example-ergonomic-collections-and-scrapping-boilerplate):
+As shown above, a *trait alias* can substitute associated types. It doesn’t have to substitute them
+all. In that case, the *trait alias* is left incomplete and you have to pass it the associated types
+that are left. Example with the [tokio case](#second-example-ergonomic-collections-and-scrapping-boilerplate):
 
 ```rust
 pub trait Service {
@@ -214,57 +223,71 @@ trait MyHttpService = HttpService<Future = MyFuture>; // assume MyFuture exists 
 
 - Adds another construct to the language.
 
-- The syntax `trait TraitAlias = Trait` requires lookahead in the parser to disambiguate a trait from a trait alias.
+- The syntax `trait TraitAlias = Trait` requires lookahead in the parser to disambiguate a trait
+  from a trait alias.
 
 # Alternatives
 [alternatives]: #alternatives
 
-- Should we use `type` as the keyword instead of `trait`?
+## Should we use `type` as the keyword instead of `trait`?
 
-    `type Foo = Bar;` already creates an alias `Foo` that can be used as a trait object.
-    
-    If we used `type` for the keyword, this would imply that `Foo` could also be used as a bound as well. If we use `trait` as proposed in the body of the RFC, then `type Foo = Bar;` and `trait Foo = Bar;` _both_ create an alias for the object type, but only the latter creates an alias that can be used as a bound, which is a confusing bit of redundancy.
-    
-    However, this mixes the concepts of types and traits, which are different, and allows nonsense like `type Foo = Rc<i32> + f32;` to parse.
+`type Foo = Bar;` already creates an alias `Foo` that can be used as a trait object.
 
-- It’s possible to create a new trait that derives the trait to alias, and provide a universal `impl`:
-    
-    ```rust
-    trait Foo {}
-    
-    trait FooFakeAlias: Foo {}
-    
-    impl<T> Foo for T where T: FooFakeAlias {}
-    ```
-    
-    This works for trait objects and trait bounds only. You cannot implement `FooFakeAlias` directly
-    because you need to implement `Foo` first – hence, you don’t really need `FooFakeAlias` if you can
-    implement `Foo`.
-    
-    There’s currently no alternative to the impl problem described here.
+If we used `type` for the keyword, this would imply that `Foo` could also be used as a bound as
+well. If we use `trait` as proposed in the body of the RFC, then `type Foo = Bar;` and
+`trait Foo = Bar;` _both_ create an alias for the object type, but only the latter creates an alias
+that can be used as a bound, which is a confusing bit of redundancy.
 
-- Similar to Haskell's ContraintKinds, we could declare an entire predicate as a reified list of constraints, instead of creating an alias for a set of supertraits and predicates. Syntax would be something like `constraint Foo<T> = T: Bar, Vec<T>: Baz;`, used as `fn quux<T>(...) where Foo<T> { ... }` (i.e. direct substitution). Trait object usage is unclear.
+However, this mixes the concepts of types and traits, which are different, and allows nonsense like
+`type Foo = Rc<i32> + f32;` to parse.
+
+## Supertraits & universal `impl`
+
+It’s possible to create a new trait that derives the trait to alias, and provide a universal `impl`
+
+```rust
+trait Foo {}
+
+trait FooFakeAlias: Foo {}
+
+impl<T> Foo for T where T: FooFakeAlias {}
+```
+
+This works for trait objects and trait bounds only. You cannot implement `FooFakeAlias` directly
+because you need to implement `Foo` first – hence, you don’t really need `FooFakeAlias` if you can
+implement `Foo`.
+
+There’s currently no alternative to the impl problem described here.
+
+## `ContraintKinds`
+
+Similar to Haskell's ContraintKinds, we could declare an entire predicate as a reified list of
+constraints, instead of creating an alias for a set of supertraits and predicates. Syntax would be
+something like `constraint Foo<T> = T: Bar, Vec<T>: Baz;`, used as `fn quux<T>(...) where Foo<T> { ... }`
+(i.e. direct substitution). Trait object usage is unclear.
 
 # Unresolved questions
 [unresolved]: #unresolved-questions
  
-- Which bounds need to be repeated when using a trait alias?
+## Which bounds need to be repeated when using a trait alias?
 
-    [RFC 1927](https://github.com/rust-lang/rfcs/pull/1927) intends to change the rules here for traits, and we likely want to have the rules for trait aliases be the same to avoid confusion.
-    
-    The `contraint` alternative sidesteps this issue.
+[RFC 1927](https://github.com/rust-lang/rfcs/pull/1927) intends to change the rules here for traits,
+and we likely want to have the rules for trait aliases be the same to avoid confusion.
 
-- What about bounds on type variable declaration in the trait alias? Consider the following:
+The `constraint` alternative sidesteps this issue.
 
-    ```rust
-    trait Foo<T: Bar> = PartialEq<T>;
-    ```
-    
-    `PartialEq` has no super-trait `Bar`, but we’re adding one via our trait alias. What is the behavior
-    of such a feature? One possible desugaring is:
-    
-    ```rust
-    trait Foo<T> = where Self: PartialEq<T>, T: Bar;
-    ```
+## What about bounds on type variable declaration in the trait alias?
 
-    [Issue 21903](https://github.com/rust-lang/rust/issues/21903) explains the same problem for type aliasing.
+```rust
+trait Foo<T: Bar> = PartialEq<T>;
+```
+
+`PartialEq` has no super-trait `Bar`, but we’re adding one via our trait alias. What is the behavior
+of such a feature? One possible desugaring is:
+
+```rust
+trait Foo<T> = where Self: PartialEq<T>, T: Bar;
+```
+
+[Issue 21903](https://github.com/rust-lang/rust/issues/21903) explains the same problem for type
+aliasing.
