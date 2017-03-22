@@ -46,10 +46,15 @@ const MAXIMUM_ZST_CAPACITY: usize = 1 << (64 - 1); // Largest possible power of 
 /// `VecDeque` is a growable ring buffer, which can be used as a double-ended
 /// queue efficiently.
 ///
-/// The "default" usage of this type as a queue is to use `push_back` to add to
-/// the queue, and `pop_front` to remove from the queue. `extend` and `append`
+/// The "default" usage of this type as a queue is to use [`push_back`] to add to
+/// the queue, and [`pop_front`] to remove from the queue. [`extend`] and [`append`]
 /// push onto the back in this manner, and iterating over `VecDeque` goes front
 /// to back.
+///
+/// [`push_back`]: #method.push_back
+/// [`pop_front`]: #method.pop_front
+/// [`extend`]: #method.extend
+/// [`append`]: #method.append
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct VecDeque<T> {
     // tail and head are pointers into the buffer. Tail always points
@@ -92,13 +97,13 @@ impl<T> Default for VecDeque<T> {
 }
 
 impl<T> VecDeque<T> {
-    /// Marginally more convenient
+    /// Marginally more convenient.
     #[inline]
     fn ptr(&self) -> *mut T {
         self.buf.ptr()
     }
 
-    /// Marginally more convenient
+    /// Marginally more convenient.
     #[inline]
     fn cap(&self) -> usize {
         if mem::size_of::<T>() == 0 {
@@ -109,19 +114,19 @@ impl<T> VecDeque<T> {
         }
     }
 
-    /// Turn ptr into a slice
+    /// Turn ptr into a slice.
     #[inline]
     unsafe fn buffer_as_slice(&self) -> &[T] {
         slice::from_raw_parts(self.ptr(), self.cap())
     }
 
-    /// Turn ptr into a mut slice
+    /// Turn ptr into a mut slice.
     #[inline]
     unsafe fn buffer_as_mut_slice(&mut self) -> &mut [T] {
         slice::from_raw_parts_mut(self.ptr(), self.cap())
     }
 
-    /// Moves an element out of the buffer
+    /// Moves an element out of the buffer.
     #[inline]
     unsafe fn buffer_read(&mut self, off: usize) -> T {
         ptr::read(self.ptr().offset(off as isize))
@@ -133,7 +138,7 @@ impl<T> VecDeque<T> {
         ptr::write(self.ptr().offset(off as isize), value);
     }
 
-    /// Returns true if and only if the buffer is at capacity
+    /// Returns true if and only if the buffer is at capacity.
     #[inline]
     fn is_full(&self) -> bool {
         self.cap() - self.len() == 1
@@ -506,12 +511,15 @@ impl<T> VecDeque<T> {
     /// given `VecDeque`. Does nothing if the capacity is already sufficient.
     ///
     /// Note that the allocator may give the collection more space than it requests. Therefore
-    /// capacity can not be relied upon to be precisely minimal. Prefer `reserve` if future
+    /// capacity can not be relied upon to be precisely minimal. Prefer [`reserve`] if future
     /// insertions are expected.
     ///
     /// # Panics
     ///
-    /// Panics if the new capacity overflows `usize`.
+    /// Panics if the new capacity overflows [`usize`].
+    ///
+    /// [`reserve`]: #method.reserve
+    /// [`usize`]: ../../std/primitive.usize.html
     ///
     /// # Examples
     ///
@@ -532,7 +540,9 @@ impl<T> VecDeque<T> {
     ///
     /// # Panics
     ///
-    /// Panics if the new capacity overflows `usize`.
+    /// Panics if the new capacity overflows [`usize`].
+    ///
+    /// [`usize`]: ../../std/primitive.usize.html
     ///
     /// # Examples
     ///
@@ -788,7 +798,7 @@ impl<T> VecDeque<T> {
         count(self.tail, self.head, self.cap())
     }
 
-    /// Returns true if the buffer contains no elements
+    /// Returns true if the buffer contains no elements.
     ///
     /// # Examples
     ///
@@ -812,13 +822,16 @@ impl<T> VecDeque<T> {
     /// consumed until the end.
     ///
     /// Note 2: It is unspecified how many elements are removed from the deque,
-    /// if the `Drain` value is not dropped, but the borrow it holds expires
-    /// (eg. due to mem::forget).
+    /// if the [`Drain`] value is not dropped, but the borrow it holds expires
+    /// (eg. due to [`mem::forget`]).
     ///
     /// # Panics
     ///
     /// Panics if the starting point is greater than the end point or if
     /// the end point is greater than the length of the vector.
+    ///
+    /// [`Drain`]: ../../std/collections/vec_deque/struct.Drain.html
+    /// [`mem::forget`]: ../../std/mem/fn.forget.html
     ///
     /// # Examples
     ///
@@ -941,8 +954,10 @@ impl<T> VecDeque<T> {
         a.contains(x) || b.contains(x)
     }
 
-    /// Provides a reference to the front element, or `None` if the sequence is
+    /// Provides a reference to the front element, or [`None`] if the sequence is
     /// empty.
+    ///
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
     ///
     /// # Examples
     ///
@@ -965,8 +980,10 @@ impl<T> VecDeque<T> {
         }
     }
 
-    /// Provides a mutable reference to the front element, or `None` if the
+    /// Provides a mutable reference to the front element, or [`None`] if the
     /// sequence is empty.
+    ///
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
     ///
     /// # Examples
     ///
@@ -993,8 +1010,10 @@ impl<T> VecDeque<T> {
         }
     }
 
-    /// Provides a reference to the back element, or `None` if the sequence is
+    /// Provides a reference to the back element, or [`None`] if the sequence is
     /// empty.
+    ///
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
     ///
     /// # Examples
     ///
@@ -1017,8 +1036,10 @@ impl<T> VecDeque<T> {
         }
     }
 
-    /// Provides a mutable reference to the back element, or `None` if the
+    /// Provides a mutable reference to the back element, or [`None`] if the
     /// sequence is empty.
+    ///
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
     ///
     /// # Examples
     ///
@@ -1046,8 +1067,10 @@ impl<T> VecDeque<T> {
         }
     }
 
-    /// Removes the first element and returns it, or `None` if the sequence is
+    /// Removes the first element and returns it, or [`None`] if the sequence is
     /// empty.
+    ///
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
     ///
     /// # Examples
     ///
@@ -1117,8 +1140,10 @@ impl<T> VecDeque<T> {
         unsafe { self.buffer_write(head, value) }
     }
 
-    /// Removes the last element from a buffer and returns it, or `None` if
+    /// Removes the last element from a buffer and returns it, or [`None`] if
     /// it is empty.
+    ///
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
     ///
     /// # Examples
     ///
@@ -1152,9 +1177,11 @@ impl<T> VecDeque<T> {
     ///
     /// This does not preserve ordering, but is O(1).
     ///
-    /// Returns `None` if `index` is out of bounds.
+    /// Returns [`None`] if `index` is out of bounds.
     ///
     /// Element at index 0 is the front of the queue.
+    ///
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
     ///
     /// # Examples
     ///
@@ -1187,9 +1214,11 @@ impl<T> VecDeque<T> {
     ///
     /// This does not preserve ordering, but is O(1).
     ///
-    /// Returns `None` if `index` is out of bounds.
+    /// Returns [`None`] if `index` is out of bounds.
     ///
     /// Element at index 0 is the front of the queue.
+    ///
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
     ///
     /// # Examples
     ///
@@ -1224,7 +1253,7 @@ impl<T> VecDeque<T> {
     ///
     /// # Panics
     ///
-    /// Panics if `index` is greater than `VecDeque`'s length
+    /// Panics if `index` is greater than `VecDeque`'s length.
     ///
     /// # Examples
     ///
@@ -1442,9 +1471,11 @@ impl<T> VecDeque<T> {
     /// Removes and returns the element at `index` from the `VecDeque`.
     /// Whichever end is closer to the removal point will be moved to make
     /// room, and all the affected elements will be moved to new positions.
-    /// Returns `None` if `index` is out of bounds.
+    /// Returns [`None`] if `index` is out of bounds.
     ///
     /// Element at index 0 is the front of the queue.
+    ///
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
     ///
     /// # Examples
     ///
@@ -1688,7 +1719,9 @@ impl<T> VecDeque<T> {
     ///
     /// # Panics
     ///
-    /// Panics if the new number of elements in self overflows a `usize`.
+    /// Panics if the new number of elements in self overflows a [`usize`].
+    ///
+    /// [`usize`]: ../../std/primitive.usize.html
     ///
     /// # Examples
     ///

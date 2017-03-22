@@ -20,7 +20,7 @@
 //! processing. They are exceptionally good at doing what they do. All the other
 //! collections in the standard library have specific use cases where they are
 //! the optimal choice, but these cases are borderline *niche* in comparison.
-//! Even when `Vec` and `HashMap` are technically suboptimal, they're probably a
+//! Even when [`Vec`] and [`HashMap`] are technically suboptimal, they're probably a
 //! good enough choice to get started.
 //!
 //! Rust's collections can be grouped into four major categories:
@@ -37,6 +37,7 @@
 //! individual collections can be found on their own documentation pages.
 //!
 //! ### Use a `Vec` when:
+//!
 //! * You want to collect items up to be processed or sent elsewhere later, and
 //!   don't care about any properties of the actual values being stored.
 //! * You want a sequence of elements in a particular order, and will only be
@@ -46,12 +47,14 @@
 //! * You want a heap-allocated array.
 //!
 //! ### Use a `VecDeque` when:
+//!
 //! * You want a [`Vec`] that supports efficient insertion at both ends of the
 //!   sequence.
 //! * You want a queue.
 //! * You want a double-ended queue (deque).
 //!
 //! ### Use a `LinkedList` when:
+//!
 //! * You want a [`Vec`] or [`VecDeque`] of unknown size, and can't tolerate
 //!   amortization.
 //! * You want to efficiently split and append lists.
@@ -59,11 +62,13 @@
 //!   list.
 //!
 //! ### Use a `HashMap` when:
+//!
 //! * You want to associate arbitrary keys with an arbitrary value.
 //! * You want a cache.
 //! * You want a map, with no extra functionality.
 //!
 //! ### Use a `BTreeMap` when:
+//!
 //! * You're interested in what the smallest or largest key-value pair is.
 //! * You want to find the largest or smallest key that is smaller or larger
 //!   than something.
@@ -71,6 +76,7 @@
 //! * You want a map sorted by its keys.
 //!
 //! ### Use the `Set` variant of any of these `Map`s when:
+//!
 //! * You just want to remember which keys you've seen.
 //! * There is no meaningful value to associate with your keys.
 //! * You just want a set.
@@ -451,7 +457,7 @@ pub mod hash_map {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub mod hash_set {
     //! An implementation of a hash set using the underlying representation of a
-    //! HashMap where the value is ().
+    //! `HashMap` where the value is ().
     #[stable(feature = "rust1", since = "1.0.0")]
     pub use super::hash::set::*;
 }
