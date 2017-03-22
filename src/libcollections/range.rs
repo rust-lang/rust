@@ -22,7 +22,7 @@ use Bound::{self, Excluded, Included, Unbounded};
 pub trait RangeArgument<T: ?Sized> {
     /// Start index bound.
     ///
-    /// Returns start value as a `Bound`.
+    /// Returns the start value as a `Bound`.
     ///
     /// # Examples
     ///
@@ -44,7 +44,7 @@ pub trait RangeArgument<T: ?Sized> {
 
     /// End index bound.
     ///
-    /// Returns end value as a `Bound`.
+    /// Returns the end value as a `Bound`.
     ///
     /// # Examples
     ///
