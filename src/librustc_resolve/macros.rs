@@ -653,7 +653,7 @@ impl<'a> Resolver<'a> {
 
         if attr::contains_name(&item.attrs, "macro_export") {
             let def = Def::Macro(def_id, MacroKind::Bang);
-            self.macro_exports.push(Export { name: ident.name, def: def });
+            self.macro_exports.push(Export { name: ident.name, def: def, span: item.span });
         }
     }
 

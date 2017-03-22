@@ -605,7 +605,7 @@ impl<'a> Resolver<'a> {
             let ident = Ident::with_empty_ctxt(name);
             let result = self.resolve_ident_in_module(module, ident, MacroNS, false, None);
             if let Ok(binding) = result {
-                self.macro_exports.push(Export { name: name, def: binding.def() });
+                self.macro_exports.push(Export { name: name, def: binding.def(), span: span });
             } else {
                 span_err!(self.session, span, E0470, "reexported macro not found");
             }
