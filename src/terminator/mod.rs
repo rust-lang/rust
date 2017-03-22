@@ -116,7 +116,17 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         arg = Value::ByValPair(PrimVal::Ptr(src_ptr), PrimVal::Bytes(n as u128));
                         ::eval_context::MirRef::clone(&self.seq_drop_glue)
                     },
-                    ty::TySlice(ref elem) => unimplemented!(),
+                    ty::TySlice(elem) => {
+                        instance.substs = self.tcx.mk_substs([
+                            Kind::from(elem),
+                        ].iter().cloned());
+                        if let Lvalue::Ptr { ptr, extra: LvalueExtra::Length(len) } = lval {
+                            arg = Value::ByValPair(PrimVal::Ptr(ptr), PrimVal::Bytes(len as u128));
+                            ::eval_context::MirRef::clone(&self.seq_drop_glue)
+                        } else {
+                            panic!("slice without length: {:?}", lval);
+                        }
+                    },
                     _ => {
                         let src_ptr = self.force_allocation(lval)?.to_ptr();
                         arg = Value::ByVal(PrimVal::Ptr(src_ptr));
