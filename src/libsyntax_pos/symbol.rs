@@ -35,8 +35,8 @@ impl Ident {
         Ident::with_empty_ctxt(Symbol::intern(string))
     }
 
-    pub fn unhygienize(self) -> Ident {
-        Ident { name: self.name, ctxt: SyntaxContext::empty() }
+    pub fn modern(self) -> Ident {
+        Ident { name: self.name, ctxt: self.ctxt.modern() }
     }
 }
 

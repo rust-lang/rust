@@ -388,7 +388,7 @@ impl CrateStore for cstore::CStore {
             attrs: attrs.iter().cloned().collect(),
             node: ast::ItemKind::MacroDef(ast::MacroDef {
                 tokens: body.into(),
-                legacy: true,
+                legacy: def.legacy,
             }),
             vis: ast::Visibility::Inherited,
         })

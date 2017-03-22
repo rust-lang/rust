@@ -134,21 +134,20 @@ impl<'a> NameResolution<'a> {
 impl<'a> Resolver<'a> {
     fn resolution(&self, module: Module<'a>, ident: Ident, ns: Namespace)
                   -> &'a RefCell<NameResolution<'a>> {
-        let ident = ident.unhygienize();
-        *module.resolutions.borrow_mut().entry((ident, ns))
+        *module.resolutions.borrow_mut().entry((ident.modern(), ns))
                .or_insert_with(|| self.arenas.alloc_name_resolution())
     }
 
     /// Attempts to resolve `ident` in namespaces `ns` of `module`.
     /// Invariant: if `record_used` is `Some`, import resolution must be complete.
-    pub fn resolve_ident_in_module(&mut self,
-                                   module: Module<'a>,
-                                   ident: Ident,
-                                   ns: Namespace,
-                                   restricted_shadowing: bool,
-                                   record_used: bool,
-                                   path_span: Span)
-                                   -> Result<&'a NameBinding<'a>, Determinacy> {
+    pub fn resolve_ident_in_module_unadjusted(&mut self,
+                                              module: Module<'a>,
+                                              ident: Ident,
+                                              ns: Namespace,
+                                              restricted_shadowing: bool,
+                                              record_used: bool,
+                                              path_span: Span)
+                                              -> Result<&'a NameBinding<'a>, Determinacy> {
         self.populate_module_if_necessary(module);
 
         let resolution = self.resolution(module, ident, ns)
@@ -233,20 +232,22 @@ impl<'a> Resolver<'a> {
             return Err(Determined);
         }
         for directive in module.globs.borrow().iter() {
-            if self.is_accessible(directive.vis.get()) {
-                if let Some(module) = directive.imported_module.get() {
-                    let result = self.resolve_ident_in_module(module,
-                                                              ident,
-                                                              ns,
-                                                              false,
-                                                              false,
-                                                              path_span);
-                    if let Err(Undetermined) = result {
-                        return Err(Undetermined);
-                    }
-                } else {
-                    return Err(Undetermined);
-                }
+            if !self.is_accessible(directive.vis.get()) {
+                continue
+            }
+            let module = unwrap_or!(directive.imported_module.get(), return Err(Undetermined));
+            let (orig_current_module, mut ident) = (self.current_module, ident.modern());
+            match ident.ctxt.glob_adjust(module.expansion, directive.span.ctxt.modern()) {
+                Some(Some(def)) => self.current_module = self.macro_def_scope(def),
+                Some(None) => {}
+                None => continue,
+            };
+            let result = self.resolve_ident_in_module_unadjusted(
+                module, ident, ns, false, false, path_span,
+            );
+            self.current_module = orig_current_module;
+            if let Err(Undetermined) = result {
+                return Err(Undetermined);
             }
         }
 
@@ -394,7 +395,14 @@ impl<'a> Resolver<'a> {
 
         // Define `binding` in `module`s glob importers.
         for directive in module.glob_importers.borrow_mut().iter() {
-            if self.is_accessible_from(binding.vis, directive.parent) {
+            let mut ident = ident.modern();
+            let scope = match ident.ctxt.reverse_glob_adjust(module.expansion,
+                                                             directive.span.ctxt.modern()) {
+                Some(Some(def)) => self.macro_def_scope(def),
+                Some(None) => directive.parent,
+                None => continue,
+            };
+            if self.is_accessible_from(binding.vis, scope) {
                 let imported_binding = self.import(binding, directive);
                 let _ = self.try_define(directive.parent, ident, ns, imported_binding);
             }
@@ -767,8 +775,14 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         let bindings = module.resolutions.borrow().iter().filter_map(|(&ident, resolution)| {
             resolution.borrow().binding().map(|binding| (ident, binding))
         }).collect::<Vec<_>>();
-        for ((ident, ns), binding) in bindings {
-            if binding.pseudo_vis() == ty::Visibility::Public || self.is_accessible(binding.vis) {
+        for ((mut ident, ns), binding) in bindings {
+            let scope = match ident.ctxt.reverse_glob_adjust(module.expansion,
+                                                             directive.span.ctxt.modern()) {
+                Some(Some(def)) => self.macro_def_scope(def),
+                Some(None) => self.current_module,
+                None => continue,
+            };
+            if self.is_accessible_from(binding.pseudo_vis(), scope) {
                 let imported_binding = self.import(binding, directive);
                 let _ = self.try_define(directive.parent, ident, ns, imported_binding);
             }

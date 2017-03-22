@@ -162,7 +162,7 @@ fn call_intrinsic(cx: &ExtCtxt,
     } else { // Avoid instability errors with user defined curstom derives, cc #36316
         let mut info = cx.current_expansion.mark.expn_info().unwrap();
         info.callee.allow_internal_unstable = true;
-        let mark = Mark::fresh();
+        let mark = Mark::fresh(Mark::root());
         mark.set_expn_info(info);
         span.ctxt = SyntaxContext::empty().apply_mark(mark);
     }
