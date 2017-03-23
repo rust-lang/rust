@@ -198,6 +198,28 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     _ => bug!("can only deref pointer types"),
                 };
                 self.drop(val, instance, pointee_type, span)
+            },
+            ty::InstanceDef::FnPtrShim(..) => {
+                let mut args = Vec::new();
+                for arg in arg_operands {
+                    let arg_val = self.eval_operand(arg)?;
+                    let arg_ty = self.operand_ty(arg);
+                    args.push((arg_val, arg_ty));
+                }
+                match sig.abi {
+                    Abi::Rust => {
+                        args.remove(0);
+                    },
+                    Abi::RustCall => {},
+                    _ => unimplemented!(),
+                }
+                trace!("ABI: {}", sig.abi);
+                self.eval_fn_call_inner(
+                    instance,
+                    destination,
+                    args,
+                    span,
+                )
             }
             _ => Err(EvalError::Unimplemented(format!("can't handle function with {:?} ABI", sig.abi))),
         }
