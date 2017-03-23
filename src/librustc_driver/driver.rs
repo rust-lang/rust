@@ -807,7 +807,6 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
         expanded_crate: krate,
         defs: resolver.definitions,
         analysis: ty::CrateAnalysis {
-            export_map: resolver.export_map,
             access_levels: AccessLevels::default(),
             reachable: NodeSet(),
             name: crate_name.to_string(),
@@ -815,10 +814,11 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
         },
         resolutions: Resolutions {
             freevars: resolver.freevars,
+            export_map: resolver.export_map,
             trait_map: resolver.trait_map,
             maybe_unused_trait_imports: resolver.maybe_unused_trait_imports,
         },
-        hir_forest: hir_forest
+        hir_forest: hir_forest,
     })
 }
 
@@ -932,7 +932,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
         analysis.access_levels =
             time(time_passes, "privacy checking", || {
-                rustc_privacy::check_crate(tcx, &analysis.export_map)
+                rustc_privacy::check_crate(tcx)
             });
 
         time(time_passes,

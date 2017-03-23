@@ -198,7 +198,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             self.visit_item(item, None, &mut om);
         }
         self.inside_public_path = orig_inside_public_path;
-        if let Some(exports) = self.cx.export_map.get(&id) {
+        if let Some(exports) = self.cx.tcx.export_map.get(&id) {
             for export in exports {
                 if let Def::Macro(def_id, ..) = export.def {
                     if def_id.krate == LOCAL_CRATE {

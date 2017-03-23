@@ -496,12 +496,12 @@ impl CrateStore for cstore::CStore {
         self.do_extern_mod_stmt_cnum(emod_id)
     }
 
-    fn encode_metadata<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                 reexports: &def::ExportMap,
+    fn encode_metadata<'a, 'tcx>(&self,
+                                 tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                  link_meta: &LinkMeta,
                                  reachable: &NodeSet) -> Vec<u8>
     {
-        encoder::encode_metadata(tcx, self, reexports, link_meta, reachable)
+        encoder::encode_metadata(tcx, self, link_meta, reachable)
     }
 
     fn metadata_encoding_version(&self) -> &[u8]
