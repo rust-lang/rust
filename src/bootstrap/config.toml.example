@@ -152,6 +152,9 @@
 # known-good version of OpenSSL, compile it, and link it to Cargo.
 #openssl-static = false
 
+# Run the build with low priority
+#low_priority = false
+
 # =============================================================================
 # General install configuration options
 # =============================================================================

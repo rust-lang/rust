@@ -76,6 +76,9 @@ extern crate num_cpus;
 extern crate rustc_serialize;
 extern crate toml;
 
+#[cfg(unix)]
+extern crate libc;
+
 use std::cmp;
 use std::collections::HashMap;
 use std::env;
@@ -108,9 +111,29 @@ pub mod util;
 #[cfg(windows)]
 mod job;
 
-#[cfg(not(windows))]
+#[cfg(unix)]
 mod job {
-    pub unsafe fn setup() {}
+    use libc;
+
+    //apparently glibc defines their own enum for this parameter, in a different type
+    #[cfg(not(any(target_env = "musl", target_env = "musleabi", target_env = "musleabihf",
+                  target_os = "emscripten", target_arch = "mips", target_arch = "mipsel")))]
+    const PRIO_PGRP: libc::c_uint = libc::PRIO_PGRP as libc::c_uint;
+    #[cfg(any(target_env = "musl", target_env = "musleabi", target_env = "musleabihf",
+              target_os = "emscripten", target_arch = "mips", target_arch = "mipsel"))]
+    const PRIO_PGRP: libc::c_int = libc::PRIO_PGRP;
+
+    pub unsafe fn setup(build: &mut ::Build) {
+        if build.config.low_priority {
+            libc::setpriority(PRIO_PGRP, 0, 10);
+        }
+    }
+}
+
+#[cfg(not(any(unix, windows)))]
+mod job {
+    pub unsafe fn setup(_build: &mut ::Build) {
+    }
 }
 
 pub use config::Config;
@@ -263,7 +286,7 @@ impl Build {
     /// Executes the entire build, as configured by the flags and configuration.
     pub fn build(&mut self) {
         unsafe {
-            job::setup();
+            job::setup(self);
         }
 
         if let Subcommand::Clean = self.flags.cmd {
