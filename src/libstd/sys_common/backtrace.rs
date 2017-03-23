@@ -143,7 +143,7 @@ fn filter_frames(frames: &[Frame],
         is_good_frame(*frame, BAD_PREFIXES_TOP)
     }).unwrap_or(frames.len());
 
-    let skipped_after = frames.iter().rev().position(|frame| {
+    let skipped_after = frames.len() - frames.iter().position(|frame| {
         let mut is_marker = false;
         let _ = resolve_symname(*frame, |symname| {
             if let Some(mangled_symbol_name) = symname {
@@ -155,7 +155,7 @@ fn filter_frames(frames: &[Frame],
             Ok(())
         }, context);
         is_marker
-    }).map(|x| x + 1 /* also ignore the marker frame */).unwrap_or(0);
+    }).unwrap_or(frames.len());
 
     if skipped_before + skipped_after >= frames.len() {
         // Avoid showing completely empty backtraces
