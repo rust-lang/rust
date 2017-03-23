@@ -1015,6 +1015,11 @@ impl Build {
         self.package_vers(channel::CFG_RELEASE_NUM)
     }
 
+    /// Returns the value of `package_vers` above for Cargo
+    fn cargo_package_vers(&self) -> String {
+        self.package_vers(&self.cargo_release_num())
+    }
+
     /// Returns the `version` string associated with this compiler for Rust
     /// itself.
     ///
