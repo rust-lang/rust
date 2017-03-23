@@ -182,6 +182,7 @@ deploy:
     on:
       branch: auto
       DEPLOY: 1
+    max_error_retry: 5
 
   # This provider is the same as the one above except that it has a slightly
   # different upload directory and a slightly different trigger
@@ -198,6 +199,7 @@ deploy:
     on:
       branch: auto
       DEPLOY_ALT: 1
+    max_error_retry: 5
 
 # init:
 #   - ps: iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))
