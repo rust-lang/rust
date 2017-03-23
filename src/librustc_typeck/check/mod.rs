@@ -87,7 +87,7 @@ use fmt_macros::{Parser, Piece, Position};
 use hir::def::{Def, CtorKind};
 use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_back::slice::ref_slice;
-use rustc::infer::{self, InferCtxt, InferOk, RegionVariableOrigin, TypeTrace};
+use rustc::infer::{self, InferCtxt, InferOk, RegionVariableOrigin};
 use rustc::infer::type_variable::{self, TypeVariableOrigin};
 use rustc::ty::subst::{Kind, Subst, Substs};
 use rustc::traits::{self, ObligationCause, ObligationCauseCode, Reveal};
@@ -99,6 +99,7 @@ use rustc::ty::adjustment;
 use rustc::ty::fold::{BottomUpFolder, TypeFoldable};
 use rustc::ty::maps::Providers;
 use rustc::ty::util::{Representability, IntTypeExt};
+use errors::DiagnosticBuilder;
 use require_c_abi_if_variadic;
 use session::{Session, CompileResult};
 use TypeAndSubsts;
@@ -2875,7 +2876,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             self.diverges.set(cond_diverges | then_diverges & else_diverges);
         } else {
             let else_cause = self.cause(sp, ObligationCauseCode::IfExpressionWithNoElse);
-            coerce.coerce_forced_unit(self, &else_cause);
+            coerce.coerce_forced_unit(self, &else_cause, &mut |_| ());
 
             // If the condition is false we can't diverge.
             self.diverges.set(cond_diverges);
@@ -3591,7 +3592,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                           coerce.coerce(self, &cause, e, e_ty, e_diverges);
                       } else {
                           assert!(e_ty.is_nil());
-                          coerce.coerce_forced_unit(self, &cause);
+                          coerce.coerce_forced_unit(self, &cause, &mut |_| ());
                       }
                   } else {
                       // If `ctxt.coerce` is `None`, we can just ignore
@@ -3626,7 +3627,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             } else {
                 let mut coercion = self.ret_coercion.as_ref().unwrap().borrow_mut();
                 let cause = self.cause(expr.span, ObligationCauseCode::ReturnNoExpression);
-                coercion.coerce_forced_unit(self, &cause);
+                coercion.coerce_forced_unit(self, &cause, &mut |_| ());
             }
             tcx.types.never
           }
@@ -4158,8 +4159,23 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                               tail_expr,
                               tail_expr_ty,
                               self.diverges.get()); // TODO
-            } else if !self.diverges.get().always() {
-                coerce.coerce_forced_unit(self, &self.misc(blk.span));
+            } else {
+                // Subtle: if there is no explicit tail expression,
+                // that is typically equivalent to a tail expression
+                // of `()` -- except if the block diverges. In that
+                // case, there is no value supplied from the tail
+                // expression (assuming there are no other breaks,
+                // this implies that the type of the block will be
+                // `!`).
+                if !self.diverges.get().always() {
+                    coerce.coerce_forced_unit(self, &self.misc(blk.span), &mut |err| {
+                        if let Some(expected_ty) = expected.only_has_type(self) {
+                            self.consider_hint_about_removing_semicolon(blk,
+                                                                        expected_ty,
+                                                                        err);
+                        }
+                    });
+                }
             }
         });
 
@@ -4175,43 +4191,42 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         ty
     }
 
-    pub fn check_block_no_expr(&self, blk: &'gcx hir::Block, ty: Ty<'tcx>, ety: Ty<'tcx>) {
-        // We're not diverging and there's an expected type, which,
-        // in case it's not `()`, could result in an error higher-up.
-        // We have a chance to error here early and be more helpful.
-        let cause = self.misc(blk.span);
-        let trace = TypeTrace::types(&cause, false, ty, ety);
-        match self.sub_types(false, &cause, ty, ety) {
-            Ok(InferOk { obligations, .. }) => {
-                // FIXME(#32730) propagate obligations
-                assert!(obligations.is_empty());
-            },
-            Err(err) => {
-                let mut err = self.report_and_explain_type_error(trace, &err);
-
-                // Be helpful when the user wrote `{... expr;}` and
-                // taking the `;` off is enough to fix the error.
-                let mut extra_semi = None;
-                if let Some(stmt) = blk.stmts.last() {
-                    if let hir::StmtSemi(ref e, _) = stmt.node {
-                        if self.can_sub_types(self.node_ty(e.id), ety).is_ok() {
-                            extra_semi = Some(stmt);
-                        }
-                    }
-                }
-                if let Some(last_stmt) = extra_semi {
-                    let original_span = original_sp(last_stmt.span, blk.span);
-                    let span_semi = Span {
-                        lo: original_span.hi - BytePos(1),
-                        hi: original_span.hi,
-                        ctxt: original_span.ctxt,
-                    };
-                    err.span_help(span_semi, "consider removing this semicolon:");
-                }
-
-                err.emit();
-            }
+    /// A common error is to add an extra semicolon:
+    ///
+    /// ```
+    /// fn foo() -> usize {
+    ///     22;
+    /// }
+    /// ```
+    ///
+    /// This routine checks if the final statement in a block is an
+    /// expression with an explicit semicolon whose type is compatible
+    /// with `expected_ty`. If so, it suggests removing the semicolon.
+    fn consider_hint_about_removing_semicolon(&self,
+                                              blk: &'gcx hir::Block,
+                                              expected_ty: Ty<'tcx>,
+                                              err: &mut DiagnosticBuilder) {
+        // Be helpful when the user wrote `{... expr;}` and
+        // taking the `;` off is enough to fix the error.
+        let last_stmt = match blk.stmts.last() {
+            Some(s) => s,
+            None => return,
+        };
+        let last_expr = match last_stmt.node {
+            hir::StmtSemi(ref e, _) => e,
+            _ => return,
+        };
+        let last_expr_ty = self.expr_ty(last_expr);
+        if self.can_sub_types(last_expr_ty, expected_ty).is_err() {
+            return;
         }
+        let original_span = original_sp(last_stmt.span, blk.span);
+        let span_semi = Span {
+            lo: original_span.hi - BytePos(1),
+            hi: original_span.hi,
+            ctxt: original_span.ctxt,
+        };
+        err.span_help(span_semi, "consider removing this semicolon:");
     }
 
     // Instantiates the given path, which must refer to an item with the given

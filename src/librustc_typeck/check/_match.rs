@@ -498,7 +498,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             if is_if_let_fallback {
                 let cause = self.cause(expr.span, ObligationCauseCode::IfExpressionWithNoElse);
                 assert!(arm_ty.is_nil());
-                coercion.coerce_forced_unit(self, &cause);
+                coercion.coerce_forced_unit(self, &cause, &mut |_| ());
             } else {
                 let cause = self.cause(expr.span, ObligationCauseCode::MatchExpressionArm {
                     arm_span: arm.body.span,
