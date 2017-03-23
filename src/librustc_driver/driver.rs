@@ -209,6 +209,13 @@ pub fn compile_input(sess: &Session,
                 tcx.print_debug_stats();
             }
 
+            if tcx.sess.opts.output_types.contains_key(&OutputType::Mir) {
+                if let Err(e) = mir::transform::dump_mir::emit_mir(tcx, &outputs) {
+                    sess.err(&format!("could not emit MIR: {}", e));
+                    sess.abort_if_errors();
+                }
+            }
+
             Ok((outputs, trans))
         })??
     };
