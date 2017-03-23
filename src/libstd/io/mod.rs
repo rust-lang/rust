@@ -144,7 +144,8 @@
 //! # Ok(())
 //! # }
 //! ```
-//! Note that you cannot use the `?` operator in functions that do not return a `Result` (e.g. `main()`).
+//!
+//! Note that you cannot use the `?` operator in functions that do not return a `Result<T, E>` (e.g. `main`).
 //! Instead, you can `match` on the return value to catch any possible errors:
 //! 
 //! ```
