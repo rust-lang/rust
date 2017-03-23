@@ -1,0 +1,47 @@
+error: incorrect visibility restriction
+  --> $DIR/pub-restricted.rs:15:5
+   |
+15 | pub (a) fn afn() {}
+   |     ^^^
+   |
+   = help: some possible visibility restrictions are:
+           `pub(crate)`: visible only on the current crate
+           `pub(super)`: visible only in the current module's parent
+           `pub(in path::to::module)`: visible only on the specified path
+help: to make this visible only to module `a`, add `in` before the path:
+   | pub (in a) fn afn() {}
+
+error: incorrect visibility restriction
+  --> $DIR/pub-restricted.rs:16:5
+   |
+16 | pub (b) fn bfn() {}
+   |     ^^^
+   |
+   = help: some possible visibility restrictions are:
+           `pub(crate)`: visible only on the current crate
+           `pub(super)`: visible only in the current module's parent
+           `pub(in path::to::module)`: visible only on the specified path
+help: to make this visible only to module `b`, add `in` before the path:
+   | pub (in b) fn bfn() {}
+
+error: incorrect visibility restriction
+  --> $DIR/pub-restricted.rs:32:13
+   |
+32 |         pub (a) invalid: usize,
+   |             ^^^
+   |
+   = help: some possible visibility restrictions are:
+           `pub(crate)`: visible only on the current crate
+           `pub(super)`: visible only in the current module's parent
+           `pub(in path::to::module)`: visible only on the specified path
+help: to make this visible only to module `a`, add `in` before the path:
+   |         pub (in a) invalid: usize,
+
+error: visibilities can only be restricted to ancestor modules
+  --> $DIR/pub-restricted.rs:33:17
+   |
+33 |         pub (in x) non_parent_invalid: usize,
+   |                 ^
+
+error: aborting due to 4 previous errors
+
