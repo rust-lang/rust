@@ -110,7 +110,6 @@ mod sty;
 /// produced by the driver and fed to trans and later passes.
 #[derive(Clone)]
 pub struct CrateAnalysis {
-    pub export_map: ExportMap,
     pub access_levels: middle::privacy::AccessLevels,
     pub reachable: NodeSet,
     pub name: String,
@@ -122,6 +121,7 @@ pub struct Resolutions {
     pub freevars: FreevarMap,
     pub trait_map: TraitMap,
     pub maybe_unused_trait_imports: NodeSet,
+    pub export_map: ExportMap,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]

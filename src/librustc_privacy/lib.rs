@@ -27,7 +27,7 @@ extern crate syntax_pos;
 
 use rustc::dep_graph::DepNode;
 use rustc::hir::{self, PatKind};
-use rustc::hir::def::{self, Def};
+use rustc::hir::def::Def;
 use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir::itemlikevisit::DeepVisitor;
@@ -71,7 +71,6 @@ impl<'a, 'tcx> Visitor<'tcx> for PubRestrictedVisitor<'a, 'tcx> {
 
 struct EmbargoVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    export_map: &'a def::ExportMap,
 
     // Accessibility levels for reachable nodes
     access_levels: AccessLevels,
@@ -324,7 +323,7 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
         // This code is here instead of in visit_item so that the
         // crate module gets processed as well.
         if self.prev_level.is_some() {
-            if let Some(exports) = self.export_map.get(&id) {
+            if let Some(exports) = self.tcx.export_map.get(&id) {
                 for export in exports {
                     if let Some(node_id) = self.tcx.hir.as_local_node_id(export.def.def_id()) {
                         self.update(node_id, Some(AccessLevel::Exported));
@@ -1204,9 +1203,7 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
     fn visit_pat(&mut self, _: &'tcx hir::Pat) {}
 }
 
-pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                             export_map: &def::ExportMap)
-                             -> AccessLevels {
+pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> AccessLevels {
     let _task = tcx.dep_graph.in_task(DepNode::Privacy);
 
     let krate = tcx.hir.krate();
@@ -1226,7 +1223,6 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // items which are reachable from external crates based on visibility.
     let mut visitor = EmbargoVisitor {
         tcx: tcx,
-        export_map: export_map,
         access_levels: Default::default(),
         prev_level: Some(AccessLevel::Public),
         changed: false,
