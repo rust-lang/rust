@@ -94,6 +94,12 @@
 //! compiler - but they are documented here the same). Like the prelude, the
 //! standard macros are imported by default into all crates.
 //!
+//! # Contributing changes to the documentation
+//!
+//! The source for this documentation can be found on [github](https://github.com/rust-lang/rust/tree/master/src/libstd).
+//! To contribute changes, you can search for nearby strings in github to find
+//! relevant files, then submit pull-requests with your suggested changes.
+//!
 //! # A Tour of The Rust Standard Library
 //!
 //! The rest of this crate documentation is dedicated to pointing out notable
