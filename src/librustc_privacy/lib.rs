@@ -17,6 +17,7 @@
       html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![deny(warnings)]
 
+#![cfg_attr(stage0, feature(field_init_shorthand))]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
@@ -25,10 +26,9 @@ extern crate rustc;
 #[macro_use] extern crate syntax;
 extern crate syntax_pos;
 
-use rustc::dep_graph::DepNode;
 use rustc::hir::{self, PatKind};
 use rustc::hir::def::Def;
-use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
+use rustc::hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE, CrateNum, DefId};
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir::itemlikevisit::DeepVisitor;
 use rustc::hir::pat_util::EnumerateAndAdjustIterator;
@@ -36,12 +36,14 @@ use rustc::lint;
 use rustc::middle::privacy::{AccessLevel, AccessLevels};
 use rustc::ty::{self, TyCtxt, Ty, TypeFoldable};
 use rustc::ty::fold::TypeVisitor;
+use rustc::ty::maps::Providers;
 use rustc::util::nodemap::NodeSet;
 use syntax::ast;
-use syntax_pos::Span;
+use syntax_pos::{DUMMY_SP, Span};
 
 use std::cmp;
 use std::mem::replace;
+use std::rc::Rc;
 
 pub mod diagnostics;
 
@@ -1203,8 +1205,23 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
     fn visit_pat(&mut self, _: &'tcx hir::Pat) {}
 }
 
-pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> AccessLevels {
-    let _task = tcx.dep_graph.in_task(DepNode::Privacy);
+pub fn provide(providers: &mut Providers) {
+    *providers = Providers {
+        privacy_access_levels,
+        ..*providers
+    };
+}
+
+pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Rc<AccessLevels> {
+    tcx.dep_graph.with_ignore(|| { // FIXME
+        ty::queries::privacy_access_levels::get(tcx, DUMMY_SP, LOCAL_CRATE)
+    })
+}
+
+fn privacy_access_levels<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                   krate: CrateNum)
+                                   -> Rc<AccessLevels> {
+    assert_eq!(krate, LOCAL_CRATE);
 
     let krate = tcx.hir.krate();
 
@@ -1266,7 +1283,7 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> AccessLevels {
         krate.visit_all_item_likes(&mut DeepVisitor::new(&mut visitor));
     }
 
-    visitor.access_levels
+    Rc::new(visitor.access_levels)
 }
 
 __build_diagnostic_array! { librustc_privacy, DIAGNOSTICS }

@@ -48,6 +48,7 @@ use std::fs;
 use std::io::{self, Write};
 use std::iter;
 use std::path::{Path, PathBuf};
+use std::rc::Rc;
 use syntax::{ast, diagnostics, visit};
 use syntax::attr;
 use syntax::ext::base::ExtCtxt;
@@ -807,7 +808,7 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
         expanded_crate: krate,
         defs: resolver.definitions,
         analysis: ty::CrateAnalysis {
-            access_levels: AccessLevels::default(),
+            access_levels: Rc::new(AccessLevels::default()),
             reachable: NodeSet(),
             name: crate_name.to_string(),
             glob_map: if resolver.make_glob_map { Some(resolver.glob_map) } else { None },
@@ -888,6 +889,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
     let mut local_providers = ty::maps::Providers::default();
     mir::provide(&mut local_providers);
+    rustc_privacy::provide(&mut local_providers);
     typeck::provide(&mut local_providers);
     ty::provide(&mut local_providers);
 
@@ -931,9 +933,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
              || consts::check_crate(tcx));
 
         analysis.access_levels =
-            time(time_passes, "privacy checking", || {
-                rustc_privacy::check_crate(tcx)
-            });
+            time(time_passes, "privacy checking", || rustc_privacy::check_crate(tcx));
 
         time(time_passes,
              "intrinsic checking",
@@ -1000,19 +1000,15 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
         analysis.reachable =
             time(time_passes,
                  "reachability checking",
-                 || reachable::find_reachable(tcx, &analysis.access_levels));
+                 || reachable::find_reachable(tcx));
 
-        time(time_passes, "death checking", || {
-            middle::dead::check_crate(tcx, &analysis.access_levels);
-        });
+        time(time_passes, "death checking", || middle::dead::check_crate(tcx));
 
         time(time_passes, "unused lib feature checking", || {
-            stability::check_unused_or_stable_features(tcx, &analysis.access_levels)
+            stability::check_unused_or_stable_features(tcx)
         });
 
-        time(time_passes,
-             "lint checking",
-             || lint::check_crate(tcx, &analysis.access_levels));
+        time(time_passes, "lint checking", || lint::check_crate(tcx));
 
         // The above three passes generate errors w/o aborting
         if sess.err_count() > 0 {
