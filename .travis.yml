@@ -164,6 +164,10 @@ after_failure:
   # anything shows up.
   - ls $HOME/Library/Logs/DiagnosticReports/
 
+  # attempt to debug anything killed by the oom killer on linux, just to see if
+  # it happened
+  - dmesg | grep -i kill
+
 # Save tagged docker images we created and load them if they're available
 before_cache:
   - docker history -q rust-ci |
