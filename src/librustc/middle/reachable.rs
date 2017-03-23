@@ -27,7 +27,9 @@ use util::nodemap::{NodeSet, FxHashSet};
 use syntax::abi::Abi;
 use syntax::ast;
 use syntax::attr;
+use syntax::codemap::DUMMY_SP;
 use hir;
+use hir::def_id::LOCAL_CRATE;
 use hir::intravisit::{Visitor, NestedVisitorMap};
 use hir::itemlikevisit::ItemLikeVisitor;
 use hir::intravisit;
@@ -359,10 +361,10 @@ impl<'a, 'tcx: 'a> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 
     }
 }
 
-pub fn find_reachable<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                access_levels: &privacy::AccessLevels)
-                                -> NodeSet {
+pub fn find_reachable<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> NodeSet {
     let _task = tcx.dep_graph.in_task(DepNode::Reachability);
+
+    let access_levels = &ty::queries::privacy_access_levels::get(tcx, DUMMY_SP, LOCAL_CRATE);
 
     let any_library = tcx.sess.crate_types.borrow().iter().any(|ty| {
         *ty == config::CrateTypeRlib || *ty == config::CrateTypeDylib ||

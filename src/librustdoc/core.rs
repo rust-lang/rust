@@ -184,8 +184,8 @@ pub fn run_core(search_paths: SearchPaths,
         // Convert from a NodeId set to a DefId set since we don't always have easy access
         // to the map from defid -> nodeid
         let access_levels = AccessLevels {
-            map: access_levels.map.into_iter()
-                                  .map(|(k, v)| (tcx.hir.local_def_id(k), v))
+            map: access_levels.map.iter()
+                                  .map(|(&k, &v)| (tcx.hir.local_def_id(k), v))
                                   .collect()
         };
 

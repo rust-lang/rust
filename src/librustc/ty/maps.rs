@@ -11,6 +11,7 @@
 use dep_graph::{DepGraph, DepNode, DepTrackingMap, DepTrackingMapConfig};
 use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use middle::const_val::ConstVal;
+use middle::privacy::AccessLevels;
 use mir;
 use ty::{self, Ty, TyCtxt};
 
@@ -186,6 +187,12 @@ impl<'tcx> QueryDescription for queries::mir_shims<'tcx> {
     fn describe(tcx: TyCtxt, def: ty::InstanceDef<'tcx>) -> String {
         format!("generating MIR shim for `{}`",
                 tcx.item_path_str(def.def_id()))
+    }
+}
+
+impl<'tcx> QueryDescription for queries::privacy_access_levels<'tcx> {
+    fn describe(_: TyCtxt, _: CrateNum) -> String {
+        format!("privacy access levels")
     }
 }
 
@@ -405,6 +412,9 @@ define_maps! { <'tcx>
     /// Results of evaluating monomorphic constants embedded in
     /// other items, such as enum variant explicit discriminants.
     pub monomorphic_const_eval: MonomorphicConstEval(DefId) -> Result<ConstVal<'tcx>, ()>,
+
+    /// Performs the privacy check and computes "access levels".
+    pub privacy_access_levels: PrivacyAccessLevels(CrateNum) -> Rc<AccessLevels>,
 
     pub mir_shims: mir_shim(ty::InstanceDef<'tcx>) -> &'tcx RefCell<mir::Mir<'tcx>>
 }

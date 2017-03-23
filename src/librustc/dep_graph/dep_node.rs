@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use hir::def_id::CrateNum;
 use std::fmt::Debug;
 use std::sync::Arc;
 
@@ -81,7 +82,7 @@ pub enum DepNode<D: Clone + Debug> {
     TypeckItemType(D),
     UnusedTraitCheck,
     CheckConst(D),
-    Privacy,
+    PrivacyAccessLevels(CrateNum),
     IntrinsicCheck(D),
     MatchCheck(D),
 
@@ -230,7 +231,7 @@ impl<D: Clone + Debug> DepNode<D> {
             CheckEntryFn => Some(CheckEntryFn),
             Variance => Some(Variance),
             UnusedTraitCheck => Some(UnusedTraitCheck),
-            Privacy => Some(Privacy),
+            PrivacyAccessLevels(k) => Some(PrivacyAccessLevels(k)),
             Reachability => Some(Reachability),
             DeadCheck => Some(DeadCheck),
             LateLintCheck => Some(LateLintCheck),
