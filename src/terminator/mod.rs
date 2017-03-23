@@ -12,6 +12,7 @@ use lvalue::Lvalue;
 use memory::Pointer;
 use value::PrimVal;
 use value::Value;
+use rustc_data_structures::indexed_vec::Idx;
 
 mod drop;
 mod intrinsic;
@@ -148,21 +149,38 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     let arg_ty = self.operand_ty(arg);
                     args.push((arg_val, arg_ty));
                 }
-                assert_eq!(sig.abi, Abi::RustCall);
                 self.eval_fn_call_inner(
                     instance,
                     destination,
-                    args,
                     span,
-                )
+                )?;
+                let mut arg_locals = self.frame().mir.args_iter();
+                match sig.abi {
+                    // closure as closure once
+                    Abi::RustCall => {
+                        for (arg_local, (arg_val, arg_ty)) in arg_locals.zip(args) {
+                            let dest = self.eval_lvalue(&mir::Lvalue::Local(arg_local))?;
+                            self.write_value(arg_val, dest, arg_ty)?;
+                        }
+                    },
+                    // non capture closure as fn ptr
+                    // need to inject zst ptr for closure object (aka do nothing)
+                    // and need to pack arguments
+                    Abi::Rust => {
+                        trace!("arg_locals: {:?}", self.frame().mir.args_iter().collect::<Vec<_>>());
+                        trace!("arg_operands: {:?}", arg_operands);
+                        let local = arg_locals.nth(1).unwrap();
+                        for (i, (arg_val, arg_ty)) in args.into_iter().enumerate() {
+                            let dest = self.eval_lvalue(&mir::Lvalue::Local(local).field(mir::Field::new(i), arg_ty))?;
+                            self.write_value(arg_val, dest, arg_ty)?;
+                        }
+                        
+                    },
+                    _ => bug!("bad ABI for ClosureOnceShim: {:?}", sig.abi),
+                }
+                Ok(())
             }
             ty::InstanceDef::Item(_) => {
-                let mut args = Vec::new();
-                for arg in arg_operands {
-                    let arg_val = self.eval_operand(arg)?;
-                    let arg_ty = self.operand_ty(arg);
-                    args.push((arg_val, arg_ty));
-                }
                 match sig.abi {
                     Abi::C => {
                         let ty = sig.output();
@@ -172,16 +190,59 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         self.goto_block(target);
                         return Ok(());
                     },
-                    Abi::Rust => {},
-                    Abi::RustCall => self.unpack_fn_args(&mut args)?,
+                    Abi::Rust | Abi::RustCall => {},
                     _ => unimplemented!(),
                 }
+                let mut args = Vec::new();
+                for arg in arg_operands {
+                    let arg_val = self.eval_operand(arg)?;
+                    let arg_ty = self.operand_ty(arg);
+                    args.push((arg_val, arg_ty));
+                }
+
                 self.eval_fn_call_inner(
                     instance,
                     destination,
-                    args,
                     span,
-                )
+                )?;
+
+                let mut arg_locals = self.frame().mir.args_iter();
+                match sig.abi {
+                    Abi::Rust => {
+                        for (arg_local, (arg_val, arg_ty)) in arg_locals.zip(args) {
+                            let dest = self.eval_lvalue(&mir::Lvalue::Local(arg_local))?;
+                            self.write_value(arg_val, dest, arg_ty)?;
+                        }
+                    }
+                    Abi::RustCall => {
+                        assert_eq!(args.len(), 2);
+
+                        {   // write first argument
+                            let first_local = arg_locals.next().unwrap();
+                            let dest = self.eval_lvalue(&mir::Lvalue::Local(first_local))?;
+                            let (arg_val, arg_ty) = args.remove(0);
+                            self.write_value(arg_val, dest, arg_ty)?;
+                        }
+
+                        // unpack and write all other args
+                        let (arg_val, arg_ty) = args.remove(0);
+                        let layout = self.type_layout(arg_ty)?;
+                        if let (&ty::TyTuple(fields, _), &Layout::Univariant { ref variant, .. }) = (&arg_ty.sty, layout) {
+                            let offsets = variant.offsets.iter().map(|s| s.bytes());
+                            if let Value::ByRef(ptr) = arg_val {
+                                for ((offset, ty), arg_local) in offsets.zip(fields).zip(arg_locals) {
+                                    let arg = Value::ByRef(ptr.offset(offset));
+                                    let dest = self.eval_lvalue(&mir::Lvalue::Local(arg_local))?;
+                                    self.write_value(arg, dest, ty)?;
+                                }
+                            }
+                        } else {
+                            bug!("rust-call ABI tuple argument was {:?}, {:?}", arg_ty, layout);
+                        }
+                    }
+                    _ => unimplemented!(),
+                }
+                Ok(())
             },
             ty::InstanceDef::DropGlue(..) => {
                 assert_eq!(arg_operands.len(), 1);
@@ -200,26 +261,31 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 self.drop(val, instance, pointee_type, span)
             },
             ty::InstanceDef::FnPtrShim(..) => {
+                trace!("ABI: {}", sig.abi);
                 let mut args = Vec::new();
                 for arg in arg_operands {
                     let arg_val = self.eval_operand(arg)?;
                     let arg_ty = self.operand_ty(arg);
                     args.push((arg_val, arg_ty));
                 }
+                self.eval_fn_call_inner(
+                    instance,
+                    destination,
+                    span,
+                )?;
+                let arg_locals = self.frame().mir.args_iter();
                 match sig.abi {
                     Abi::Rust => {
                         args.remove(0);
                     },
                     Abi::RustCall => {},
                     _ => unimplemented!(),
+                };
+                for (arg_local, (arg_val, arg_ty)) in arg_locals.zip(args) {
+                    let dest = self.eval_lvalue(&mir::Lvalue::Local(arg_local))?;
+                    self.write_value(arg_val, dest, arg_ty)?;
                 }
-                trace!("ABI: {}", sig.abi);
-                self.eval_fn_call_inner(
-                    instance,
-                    destination,
-                    args,
-                    span,
-                )
+                Ok(())
             }
             _ => Err(EvalError::Unimplemented(format!("can't handle function with {:?} ABI", sig.abi))),
         }
@@ -229,10 +295,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         &mut self,
         instance: ty::Instance<'tcx>,
         destination: Option<(Lvalue<'tcx>, mir::BasicBlock)>,
-        args: Vec<(Value, Ty<'tcx>)>,
         span: Span,
     ) -> EvalResult<'tcx> {
-        trace!("eval_fn_call_inner: {:#?}, {:#?}, {:#?}", instance, args, destination);
+        trace!("eval_fn_call_inner: {:#?}, {:#?}", instance, destination);
 
         // Only trait methods can have a Self parameter.
 
@@ -280,13 +345,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             return_lvalue,
             return_to_block,
         )?;
-
-        let arg_locals = self.frame().mir.args_iter();
-        assert_eq!(self.frame().mir.arg_count, args.len());
-        for (arg_local, (arg_val, arg_ty)) in arg_locals.zip(args) {
-            let dest = self.eval_lvalue(&mir::Lvalue::Local(arg_local))?;
-            self.write_value(arg_val, dest, arg_ty)?;
-        }
 
         Ok(())
     }
@@ -457,34 +515,5 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         // as if the call just completed and it's returning to the
         // current frame.
         Ok(())
-    }
-
-    pub(crate) fn unpack_fn_args(&self, args: &mut Vec<(Value, Ty<'tcx>)>) -> EvalResult<'tcx> {
-        if let Some((last, last_ty)) = args.pop() {
-            let last_layout = self.type_layout(last_ty)?;
-            match (&last_ty.sty, last_layout) {
-                (&ty::TyTuple(fields, _),
-                 &Layout::Univariant { ref variant, .. }) => {
-                    let offsets = variant.offsets.iter().map(|s| s.bytes());
-                    match last {
-                        Value::ByRef(last_ptr) => {
-                            for (offset, ty) in offsets.zip(fields) {
-                                let arg = Value::ByRef(last_ptr.offset(offset));
-                                args.push((arg, ty));
-                            }
-                        },
-                        // propagate undefs
-                        undef @ Value::ByVal(PrimVal::Undef) => {
-                            for field_ty in fields {
-                                args.push((undef, field_ty));
-                            }
-                        },
-                        _ => bug!("rust-call ABI tuple argument was {:?}, but {:?} were expected", last, fields),
-                    }
-                }
-                ty => bug!("expected tuple as last argument in function with 'rust-call' ABI, got {:?}", ty),
-            }
-        }
-        Ok(())
-    }
+    }   
 }
