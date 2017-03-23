@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use rustc::hir::def_id::DefId;
-use rustc::ty::TyCtxt;
-use rustc::util::nodemap::DefIdMap;
+use hir::def_id::DefId;
+use ty::TyCtxt;
+use util::nodemap::DefIdMap;
 
 pub struct DefPathHashes<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
