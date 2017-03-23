@@ -200,6 +200,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 (Size::from_bytes(field * elem_size), false)
             }
 
+            FatPointer { .. } => {
+                let bytes = field_index as u64 * self.memory.pointer_size();
+                let offset = Size::from_bytes(bytes);
+                (offset, false)
+            }
+
             _ => bug!("field access on non-product type: {:?}", base_layout),
         };
 

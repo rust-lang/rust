@@ -337,11 +337,18 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let (_, vtable) = self.eval_operand(&arg_operands[0])?.expect_ptr_vtable_pair(&self.memory)?;
                 let fn_ptr = self.memory.read_ptr(vtable.offset(ptr_size * (idx as u64 + 3)))?;
                 let instance = self.memory.get_fn(fn_ptr.alloc_id)?;
+                let mut arg_operands = arg_operands.to_vec();
+                let ty = self.operand_ty(&arg_operands[0]);
+                let ty = self.get_field_ty(ty, 0)?;
+                match arg_operands[0] {
+                    mir::Operand::Consume(ref mut lval) => *lval = lval.clone().field(mir::Field::new(0), ty),
+                    _ => bug!("virtual call first arg cannot be a constant"),
+                }
                 // recurse with concrete function
                 self.eval_fn_call(
                     instance,
                     destination,
-                    arg_operands,
+                    &arg_operands,
                     span,
                     sig,
                 )
