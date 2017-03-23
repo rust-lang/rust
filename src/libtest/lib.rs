@@ -1252,12 +1252,16 @@ pub fn convert_benchmarks_to_tests(tests: Vec<TestDescAndFn>) -> Vec<TestDescAnd
         let testfn = match x.testfn {
             DynBenchFn(bench) => {
                 DynTestFn(Box::new(move |()| {
-                    bench::run_once(|b| bench.run(b))
+                    bench::run_once(|b| {
+                        __rust_begin_short_backtrace_bench_dyn(&bench, b)
+                    })
                 }))
             }
             StaticBenchFn(benchfn) => {
                 DynTestFn(Box::new(move |()| {
-                    bench::run_once(|b| benchfn(b))
+                    bench::run_once(|b| {
+                        __rust_begin_short_backtrace_bench_static(benchfn, b)
+                    })
                 }))
             }
             f => f,
@@ -1382,6 +1386,18 @@ fn __rust_begin_short_backtrace_test_boxfn(f: Box<FnBox<()>>) {
 #[inline(never)]
 fn __rust_begin_short_backtrace_test(f: fn()) {
     f()
+}
+
+/// Fixed frame used to clean the backtrace with `RUST_BACKTRACE=1`.
+#[inline(never)]
+fn __rust_begin_short_backtrace_bench_static(f: fn(&mut Bencher), b: &mut Bencher) {
+    f(b)
+}
+
+/// Fixed frame used to clean the backtrace with `RUST_BACKTRACE=1`.
+#[inline(never)]
+fn __rust_begin_short_backtrace_bench_dyn(bench: &Box<TDynBenchFn>, b: &mut Bencher) {
+    bench.run(b)
 }
 
 fn calc_result(desc: &TestDesc, task_result: Result<(), Box<Any + Send>>) -> TestResult {
