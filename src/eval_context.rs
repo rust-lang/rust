@@ -2130,7 +2130,7 @@ fn fulfill_obligation<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         });
         let vtable = infcx.drain_fulfillment_cx_or_panic(span, &mut fulfill_cx, &vtable);
 
-        info!("Cache miss: {:?} => {:?}", trait_ref, vtable);
+        debug!("Cache miss: {:?} => {:?}", trait_ref, vtable);
         vtable
     })
 }
