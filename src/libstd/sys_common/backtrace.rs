@@ -128,13 +128,6 @@ fn filter_frames(frames: &[Frame],
         "mingw_set_invalid_parameter_handler",
     ];
 
-    // All the frames after these symbols will be removed.
-    // See `rt.rs` and `libtest` for their generation.
-    static BAD_PREFIXES_BOTTOM: &'static [&'static str] = &[
-        "__rust_begin_backtrace_binary",
-        "__rust_begin_backtrace_test",
-    ];
-
     let is_good_frame = |frame: Frame, bad_prefixes: &[&str]| {
         resolve_symname(frame, |symname| {
             if let Some(mangled_symbol_name) = symname {
@@ -154,7 +147,8 @@ fn filter_frames(frames: &[Frame],
         let mut is_marker = false;
         let _ = resolve_symname(*frame, |symname| {
             if let Some(mangled_symbol_name) = symname {
-                if BAD_PREFIXES_BOTTOM.iter().any(|s| mangled_symbol_name.contains(s)) {
+                // Use grep to find the concerned functions
+                if mangled_symbol_name.contains("__rust_begin_short_backtrace_") {
                     is_marker = true;
                 }
             }

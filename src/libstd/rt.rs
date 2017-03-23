@@ -54,7 +54,7 @@ fn lang_start(main: fn(), argc: isize, argv: *const *const u8) -> isize {
 
         // Let's run some code!
         let res = panic::catch_unwind(|| {
-            __rust_begin_backtrace_binary(main)
+            __rust_begin_short_backtrace_binary(main)
         });
         sys_common::cleanup();
         res.is_err()
@@ -68,8 +68,7 @@ fn lang_start(main: fn(), argc: isize, argv: *const *const u8) -> isize {
 }
 
 /// Fixed frame used to clean the backtrace with `RUST_BACKTRACE=1`.
-#[no_mangle]
 #[inline(never)]
-pub fn __rust_begin_backtrace_binary(f: fn()) {
+fn __rust_begin_short_backtrace_binary(f: fn()) {
     f()
 }

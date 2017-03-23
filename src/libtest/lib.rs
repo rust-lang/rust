@@ -1365,24 +1365,22 @@ pub fn run_test(opts: &TestOpts,
         }
         DynTestFn(f) =>
             run_test_inner(desc, monitor_ch, opts.nocapture,
-                           Box::new(move |()| __rust_begin_backtrace_test_boxfn(f))),
+                           Box::new(move |()| __rust_begin_short_backtrace_test_boxfn(f))),
         StaticTestFn(f) =>
             run_test_inner(desc, monitor_ch, opts.nocapture,
-                           Box::new(move |()| __rust_begin_backtrace_test(f))),
+                           Box::new(move |()| __rust_begin_short_backtrace_test(f))),
     }
 }
 
 /// Fixed frame used to clean the backtrace with `RUST_BACKTRACE=1`.
-#[no_mangle]
 #[inline(never)]
-pub fn __rust_begin_backtrace_test_boxfn(f: Box<FnBox<()>>) {
+fn __rust_begin_short_backtrace_test_boxfn(f: Box<FnBox<()>>) {
     f.call_box(())
 }
 
 /// Fixed frame used to clean the backtrace with `RUST_BACKTRACE=1`.
-#[no_mangle]
 #[inline(never)]
-pub fn __rust_begin_backtrace_test(f: fn()) {
+fn __rust_begin_short_backtrace_test(f: fn()) {
     f()
 }
 
