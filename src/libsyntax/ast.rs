@@ -23,6 +23,7 @@ use abi::Abi;
 use ext::hygiene::SyntaxContext;
 use print::pprust;
 use ptr::P;
+use rustc_data_structures::indexed_vec;
 use symbol::{Symbol, keywords};
 use tokenstream::{ThinTokenStream, TokenStream};
 
@@ -272,6 +273,16 @@ impl serialize::UseSpecializedEncodable for NodeId {
 impl serialize::UseSpecializedDecodable for NodeId {
     fn default_decode<D: Decoder>(d: &mut D) -> Result<NodeId, D::Error> {
         d.read_u32().map(NodeId)
+    }
+}
+
+impl indexed_vec::Idx for NodeId {
+    fn new(idx: usize) -> Self {
+        NodeId::new(idx)
+    }
+
+    fn index(self) -> usize {
+        self.as_usize()
     }
 }
 
