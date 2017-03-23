@@ -153,8 +153,16 @@ after_failure:
       echo "#### Build failed; Disk usage after running script:";
       df -h;
       du . | sort -nr | head -n100
+
+  # One of these is the linux sccache log, one is the OSX sccache log. Instead
+  # of worrying about what system we are just cat both. One of these commands
+  # will fail but that's ok, they'll both get executed.
   - cat obj/tmp/sccache.log
   - cat /tmp/sccache.log
+
+  # Random attempt at debugging currently. Just poking around in here to see if
+  # anything shows up.
+  - ls $HOME/Library/Logs/DiagnosticReports/
 
 # Save tagged docker images we created and load them if they're available
 before_cache:
