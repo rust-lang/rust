@@ -357,7 +357,9 @@ impl Builder {
             }
             unsafe {
                 thread_info::set(imp::guard::current(), their_thread);
-                let try_result = panic::catch_unwind(panic::AssertUnwindSafe(f));
+                let try_result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
+                    __rust_begin_short_backtrace_thread(f)
+                }));
                 *their_packet.get() = Some(try_result);
             }
         };
@@ -370,6 +372,14 @@ impl Builder {
             packet: Packet(my_packet),
         }))
     }
+}
+
+/// Fixed frame used to clean the backtrace with `RUST_BACKTRACE=1`.
+#[inline(never)]
+fn __rust_begin_short_backtrace_thread<F, T>(f: F) -> T
+    where F: FnOnce() -> T, F: Send + 'static, T: Send + 'static
+{
+    f()
 }
 
 ////////////////////////////////////////////////////////////////////////////////
