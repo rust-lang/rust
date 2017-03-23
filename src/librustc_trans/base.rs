@@ -583,7 +583,24 @@ pub fn trans_instance<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, instance: Instance
 
     ccx.stats().n_closures.set(ccx.stats().n_closures.get() + 1);
 
-    if !ccx.sess().no_landing_pads() {
+    // The `uwtable` attribute according to LLVM is:
+    //
+    //     This attribute indicates that the ABI being targeted requires that an
+    //     unwind table entry be produced for this function even if we can show
+    //     that no exceptions passes by it. This is normally the case for the
+    //     ELF x86-64 abi, but it can be disabled for some compilation units.
+    //
+    // Typically when we're compiling with `-C panic=abort` (which implies this
+    // `no_landing_pads` check) we don't need `uwtable` because we can't
+    // generate any exceptions! On Windows, however, exceptions include other
+    // events such as illegal instructions, segfaults, etc. This means that on
+    // Windows we end up still needing the `uwtable` attribute even if the `-C
+    // panic=abort` flag is passed.
+    //
+    // You can also find more info on why Windows is whitelisted here in:
+    //      https://bugzilla.mozilla.org/show_bug.cgi?id=1302078
+    if !ccx.sess().no_landing_pads() ||
+       ccx.sess().target.target.options.is_like_windows {
         attributes::emit_uwtable(lldecl, true);
     }
 
