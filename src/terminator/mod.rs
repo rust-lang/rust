@@ -167,11 +167,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     let arg_ty = self.operand_ty(arg);
                     args.push((arg_val, arg_ty));
                 }
-                self.eval_fn_call_inner(
+                if self.eval_fn_call_inner(
                     instance,
                     destination,
                     span,
-                )?;
+                )? {
+                    return Ok(());
+                }
                 let mut arg_locals = self.frame().mir.args_iter();
                 match sig.abi {
                     // closure as closure once
@@ -217,11 +219,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     args.push((arg_val, arg_ty));
                 }
 
-                self.eval_fn_call_inner(
+                if self.eval_fn_call_inner(
                     instance,
                     destination,
                     span,
-                )?;
+                )? {
+                    return Ok(());
+                }
 
                 let mut arg_locals = self.frame().mir.args_iter();
                 trace!("ABI: {:?}", sig.abi);
@@ -305,11 +309,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     let arg_ty = self.operand_ty(arg);
                     args.push((arg_val, arg_ty));
                 }
-                self.eval_fn_call_inner(
+                if self.eval_fn_call_inner(
                     instance,
                     destination,
                     span,
-                )?;
+                )? {
+                    return Ok(());
+                }
                 let arg_locals = self.frame().mir.args_iter();
                 match sig.abi {
                     Abi::Rust => {
@@ -341,12 +347,13 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         }
     }
 
+    /// Returns Ok(true) when the function was handled completely due to mir not being available
     fn eval_fn_call_inner(
         &mut self,
         instance: ty::Instance<'tcx>,
         destination: Option<(Lvalue<'tcx>, mir::BasicBlock)>,
         span: Span,
-    ) -> EvalResult<'tcx> {
+    ) -> EvalResult<'tcx, bool> {
         trace!("eval_fn_call_inner: {:#?}, {:#?}", instance, destination);
 
         // Only trait methods can have a Self parameter.
@@ -358,7 +365,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     // let's just ignore all output for now
                     "std::io::_print" => {
                         self.goto_block(destination.unwrap().1);
-                        return Ok(());
+                        return Ok(true);
                     },
                     "std::thread::Builder::new" => return Err(EvalError::Unimplemented("miri does not support threading".to_owned())),
                     "std::env::args" => return Err(EvalError::Unimplemented("miri does not support program arguments".to_owned())),
@@ -371,7 +378,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         let bool = self.tcx.types.bool;
                         self.write_primval(lval, PrimVal::from_bool(false), bool)?;
                         self.goto_block(block);
-                        return Ok(());
+                        return Ok(true);
                     }
                     _ => {},
                 }
@@ -396,7 +403,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             return_to_block,
         )?;
 
-        Ok(())
+        Ok(false)
     }
 
     pub fn read_discriminant_value(&self, adt_ptr: Pointer, adt_ty: Ty<'tcx>) -> EvalResult<'tcx, u128> {
