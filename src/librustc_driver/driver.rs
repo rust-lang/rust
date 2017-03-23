@@ -250,10 +250,7 @@ fn keep_hygiene_data(sess: &Session) -> bool {
 }
 
 fn keep_ast(sess: &Session) -> bool {
-    sess.opts.debugging_opts.keep_ast ||
-    sess.opts.debugging_opts.save_analysis ||
-    sess.opts.debugging_opts.save_analysis_csv ||
-    sess.opts.debugging_opts.save_analysis_api
+    sess.opts.debugging_opts.keep_ast || ::save_analysis(sess)
 }
 
 /// The name used for source code that doesn't originate in a file
