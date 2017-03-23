@@ -10,6 +10,7 @@
 
 use rustc::hir::{self, map as hir_map};
 use rustc::hir::lowering::lower_crate;
+use rustc::ich::Fingerprint;
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_mir as mir;
 use rustc::session::{Session, CompileResult, compile_result_from_err_count};
@@ -25,7 +26,6 @@ use rustc::util::nodemap::NodeSet;
 use rustc::util::fs::rename_or_copy_remove;
 use rustc_borrowck as borrowck;
 use rustc_incremental::{self, IncrementalHashesMap};
-use rustc_incremental::ich::Fingerprint;
 use rustc_resolve::{MakeGlobMap, Resolver};
 use rustc_metadata::creader::CrateLoader;
 use rustc_metadata::cstore::{self, CStore};
