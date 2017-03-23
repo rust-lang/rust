@@ -150,6 +150,7 @@
 //! 
 //! ```
 //! let mut input = String::new();
+//! 
 //! match io::stdin().read_line(&mut input) {
 //!     Err(why) => panic!("Failed to read input: {}", why.description()),
 //!     Ok(_) => println!("You typed: {}", input.trim()),
