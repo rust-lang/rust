@@ -2,9 +2,7 @@ use byteorder::{ReadBytesExt, WriteBytesExt, LittleEndian, BigEndian};
 use std::collections::{btree_map, BTreeMap, HashMap, HashSet, VecDeque, BTreeSet};
 use std::{fmt, iter, ptr, mem, io};
 
-use rustc::hir::def_id::DefId;
 use rustc::ty;
-use rustc::ty::subst::Substs;
 use rustc::ty::layout::{self, TargetDataLayout};
 
 use error::{EvalError, EvalResult};
@@ -174,11 +172,6 @@ impl<'a, 'tcx> Memory<'a, 'tcx> {
 
     pub fn allocations(&self) -> ::std::collections::hash_map::Iter<AllocId, Allocation> {
         self.alloc_map.iter()
-    }
-
-    pub fn create_fn_ptr(&mut self, def_id: DefId, substs: &'tcx Substs<'tcx>) -> Pointer {
-        let instance = ty::Instance::new(def_id, substs);
-        self.create_fn_alloc(instance)
     }
 
     pub fn create_fn_alloc(&mut self, instance: ty::Instance<'tcx>) -> Pointer {
