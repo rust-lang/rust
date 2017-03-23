@@ -224,6 +224,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 )?;
 
                 let mut arg_locals = self.frame().mir.args_iter();
+                trace!("ABI: {:?}", sig.abi);
+                trace!("arg_locals: {:?}", self.frame().mir.args_iter().collect::<Vec<_>>());
+                trace!("arg_operands: {:?}", arg_operands);
                 match sig.abi {
                     Abi::Rust => {
                         for (arg_local, (arg_val, arg_ty)) in arg_locals.zip(args) {
@@ -245,16 +248,27 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         let (arg_val, arg_ty) = args.remove(0);
                         let layout = self.type_layout(arg_ty)?;
                         if let (&ty::TyTuple(fields, _), &Layout::Univariant { ref variant, .. }) = (&arg_ty.sty, layout) {
+                            trace!("fields: {:?}", fields);
                             if self.frame().mir.args_iter().count() == fields.len() + 1 {
                                 let offsets = variant.offsets.iter().map(|s| s.bytes());
-                                if let Value::ByRef(ptr) = arg_val {
-                                    for ((offset, ty), arg_local) in offsets.zip(fields).zip(arg_locals) {
-                                        let arg = Value::ByRef(ptr.offset(offset));
-                                        let dest = self.eval_lvalue(&mir::Lvalue::Local(arg_local))?;
-                                        self.write_value(arg, dest, ty)?;
+                                match arg_val {
+                                    Value::ByRef(ptr) => {
+                                        for ((offset, ty), arg_local) in offsets.zip(fields).zip(arg_locals) {
+                                            let arg = Value::ByRef(ptr.offset(offset));
+                                            let dest = self.eval_lvalue(&mir::Lvalue::Local(arg_local))?;
+                                            trace!("writing arg {:?} to {:?} (type: {})", arg, dest, ty);
+                                            self.write_value(arg, dest, ty)?;
+                                        }
+                                    },
+                                    Value::ByVal(PrimVal::Undef) => {},
+                                    other => {
+                                        assert_eq!(fields.len(), 1);
+                                        let dest = self.eval_lvalue(&mir::Lvalue::Local(arg_locals.next().unwrap()))?;
+                                        self.write_value(other, dest, fields[0])?;
                                     }
                                 }
                             } else {
+                                trace!("manual impl of rust-call ABI");
                                 // called a manual impl of a rust-call function
                                 let dest = self.eval_lvalue(&mir::Lvalue::Local(arg_locals.next().unwrap()))?;
                                 self.write_value(arg_val, dest, arg_ty)?;
