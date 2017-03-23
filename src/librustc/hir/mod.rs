@@ -30,7 +30,7 @@ pub use self::Visibility::{Public, Inherited};
 pub use self::PathParameters::*;
 
 use hir::def::Def;
-use hir::def_id::DefId;
+use hir::def_id::{DefId, DefIndex, CRATE_DEF_INDEX};
 use util::nodemap::{NodeMap, FxHashSet};
 
 use syntax_pos::{Span, ExpnId, DUMMY_SP};
@@ -42,6 +42,8 @@ use syntax::ptr::P;
 use syntax::symbol::{Symbol, keywords};
 use syntax::tokenstream::TokenStream;
 use syntax::util::ThinVec;
+
+use rustc_data_structures::indexed_vec;
 
 use std::collections::BTreeMap;
 use std::fmt;
@@ -72,6 +74,63 @@ pub mod map;
 pub mod pat_util;
 pub mod print;
 pub mod svh;
+
+/// A HirId uniquely identifies a node in the HIR of then current crate. It is
+/// composed of the `owner`, which is the DefIndex of the directly enclosing
+/// hir::Item, hir::TraitItem, or hir::ImplItem (i.e. the closest "item-like"),
+/// and the `local_id` which is unique within the given owner.
+///
+/// This two-level structure makes for more stable values: One can move an item
+/// around within the source code, or add or remove stuff before it, without
+/// the local_id part of the HirId changing, which is a very useful property
+/// incremental compilation where we have to persist things through changes to
+/// the code base.
+#[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Debug,
+         RustcEncodable, RustcDecodable)]
+pub struct HirId {
+    pub owner: DefIndex,
+    pub local_id: ItemLocalId,
+}
+
+/// An `ItemLocalId` uniquely identifies something within a given "item-like",
+/// that is within a hir::Item, hir::TraitItem, or hir::ImplItem. There is no
+/// guarantee that the numerical value of a given `ItemLocalId` corresponds to
+/// the node's position within the owning item in any way, but there is a
+/// guarantee that the `LocalItemId`s within an owner occupy a dense range of
+/// integers starting at zero, so a mapping that maps all or most nodes within
+/// an "item-like" to something else can be implement by a `Vec` instead of a
+/// tree or hash map.
+#[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Debug,
+         RustcEncodable, RustcDecodable)]
+pub struct ItemLocalId(pub u32);
+
+impl ItemLocalId {
+    pub fn as_usize(&self) -> usize {
+        self.0 as usize
+    }
+}
+
+impl indexed_vec::Idx for ItemLocalId {
+    fn new(idx: usize) -> Self {
+        debug_assert!((idx as u32) as usize == idx);
+        ItemLocalId(idx as u32)
+    }
+
+    fn index(self) -> usize {
+        self.0 as usize
+    }
+}
+
+/// The `HirId` corresponding to CRATE_NODE_ID and CRATE_DEF_INDEX
+pub const CRATE_HIR_ID: HirId = HirId {
+    owner: CRATE_DEF_INDEX,
+    local_id: ItemLocalId(0)
+};
+
+pub const DUMMY_HIR_ID: HirId = HirId {
+    owner: CRATE_DEF_INDEX,
+    local_id: ItemLocalId(!0)
+};
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy)]
 pub struct Lifetime {

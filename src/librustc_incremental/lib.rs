@@ -36,17 +36,9 @@ extern crate serialize as rustc_serialize;
 extern crate syntax;
 extern crate syntax_pos;
 
-const ATTR_DIRTY: &'static str = "rustc_dirty";
-const ATTR_CLEAN: &'static str = "rustc_clean";
-const ATTR_DIRTY_METADATA: &'static str = "rustc_metadata_dirty";
-const ATTR_CLEAN_METADATA: &'static str = "rustc_metadata_clean";
-const ATTR_IF_THIS_CHANGED: &'static str = "rustc_if_this_changed";
-const ATTR_THEN_THIS_WOULD_NEED: &'static str = "rustc_then_this_would_need";
-
 mod assert_dep_graph;
 mod calculate_svh;
 mod persist;
-pub mod ich;
 
 pub use assert_dep_graph::assert_dep_graph;
 pub use calculate_svh::compute_incremental_hashes_map;

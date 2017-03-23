@@ -10,6 +10,7 @@
 
 use rustc::hir::{self, map as hir_map};
 use rustc::hir::lowering::lower_crate;
+use rustc::ich::Fingerprint;
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_mir as mir;
 use rustc::session::{Session, CompileResult, compile_result_from_err_count};
@@ -25,7 +26,6 @@ use rustc::util::nodemap::NodeSet;
 use rustc::util::fs::rename_or_copy_remove;
 use rustc_borrowck as borrowck;
 use rustc_incremental::{self, IncrementalHashesMap};
-use rustc_incremental::ich::Fingerprint;
 use rustc_resolve::{MakeGlobMap, Resolver};
 use rustc_metadata::creader::CrateLoader;
 use rustc_metadata::cstore::{self, CStore};
@@ -207,6 +207,13 @@ pub fn compile_input(sess: &Session,
             if log_enabled!(::log::INFO) {
                 println!("Post-trans");
                 tcx.print_debug_stats();
+            }
+
+            if tcx.sess.opts.output_types.contains_key(&OutputType::Mir) {
+                if let Err(e) = mir::transform::dump_mir::emit_mir(tcx, &outputs) {
+                    sess.err(&format!("could not emit MIR: {}", e));
+                    sess.abort_if_errors();
+                }
             }
 
             Ok((outputs, trans))

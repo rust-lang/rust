@@ -11,6 +11,7 @@
 use rustc::dep_graph::DepNode;
 use rustc::hir::def_id::{CrateNum, DefId};
 use rustc::hir::svh::Svh;
+use rustc::ich::Fingerprint;
 use rustc::ty::TyCtxt;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::flock;
@@ -18,7 +19,6 @@ use rustc_serialize::Decodable;
 use rustc_serialize::opaque::Decoder;
 
 use IncrementalHashesMap;
-use ich::Fingerprint;
 use super::data::*;
 use super::fs::*;
 use super::file_format;
