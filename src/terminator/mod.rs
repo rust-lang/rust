@@ -227,13 +227,19 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                         let (arg_val, arg_ty) = args.remove(0);
                         let layout = self.type_layout(arg_ty)?;
                         if let (&ty::TyTuple(fields, _), &Layout::Univariant { ref variant, .. }) = (&arg_ty.sty, layout) {
-                            let offsets = variant.offsets.iter().map(|s| s.bytes());
-                            if let Value::ByRef(ptr) = arg_val {
-                                for ((offset, ty), arg_local) in offsets.zip(fields).zip(arg_locals) {
-                                    let arg = Value::ByRef(ptr.offset(offset));
-                                    let dest = self.eval_lvalue(&mir::Lvalue::Local(arg_local))?;
-                                    self.write_value(arg, dest, ty)?;
+                            if self.frame().mir.args_iter().count() == fields.len() + 1 {
+                                let offsets = variant.offsets.iter().map(|s| s.bytes());
+                                if let Value::ByRef(ptr) = arg_val {
+                                    for ((offset, ty), arg_local) in offsets.zip(fields).zip(arg_locals) {
+                                        let arg = Value::ByRef(ptr.offset(offset));
+                                        let dest = self.eval_lvalue(&mir::Lvalue::Local(arg_local))?;
+                                        self.write_value(arg, dest, ty)?;
+                                    }
                                 }
+                            } else {
+                                // called a manual impl of a rust-call function
+                                let dest = self.eval_lvalue(&mir::Lvalue::Local(arg_locals.next().unwrap()))?;
+                                self.write_value(arg_val, dest, arg_ty)?;
                             }
                         } else {
                             bug!("rust-call ABI tuple argument was {:?}, {:?}", arg_ty, layout);
