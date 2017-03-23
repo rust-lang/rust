@@ -8,8 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use hir::BodyId;
 use hir::def_id::DefId;
 use hir::map::definitions::DefPathData;
+use middle::region::{CodeExtent, BlockRemainder};
 use ty::subst::{self, Subst};
 use ty::{BrAnon, BrEnv, BrFresh, BrNamed};
 use ty::{TyBool, TyChar, TyAdt};
@@ -30,6 +32,10 @@ use hir;
 
 pub fn verbose() -> bool {
     ty::tls::with(|tcx| tcx.sess.verbose())
+}
+
+pub fn identify_regions() -> bool {
+    ty::tls::with(|tcx| tcx.sess.opts.debugging_opts.identify_regions)
 }
 
 fn fn_sig(f: &mut fmt::Formatter,
@@ -518,6 +524,23 @@ impl fmt::Display for ty::RegionKind {
             ty::ReFree(ty::FreeRegion { bound_region: br, .. }) |
             ty::ReSkolemized(_, br) => {
                 write!(f, "{}", br)
+            }
+            ty::ReScope(code_extent) if identify_regions() => {
+                match code_extent {
+                    CodeExtent::Misc(node_id) =>
+                        write!(f, "'{}mce", node_id.as_u32()),
+                    CodeExtent::CallSiteScope(BodyId { node_id }) =>
+                        write!(f, "'{}cce", node_id.as_u32()),
+                    CodeExtent::ParameterScope(BodyId { node_id }) =>
+                        write!(f, "'{}pce", node_id.as_u32()),
+                    CodeExtent::DestructionScope(node_id) =>
+                        write!(f, "'{}dce", node_id.as_u32()),
+                    CodeExtent::Remainder(BlockRemainder { block, first_statement_index }) =>
+                        write!(f, "'{}_{}rce", block, first_statement_index),
+                }
+            }
+            ty::ReVar(region_vid) if identify_regions() => {
+                write!(f, "'{}rv", region_vid.index)
             }
             ty::ReScope(_) |
             ty::ReVar(_) |

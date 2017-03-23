@@ -1176,12 +1176,22 @@ impl<'tcx> Debug for Rvalue<'tcx> {
             UnaryOp(ref op, ref a) => write!(fmt, "{:?}({:?})", op, a),
             Discriminant(ref lval) => write!(fmt, "discriminant({:?})", lval),
             NullaryOp(ref op, ref t) => write!(fmt, "{:?}({:?})", op, t),
-            Ref(_, borrow_kind, ref lv) => {
+            Ref(region, borrow_kind, ref lv) => {
                 let kind_str = match borrow_kind {
                     BorrowKind::Shared => "",
                     BorrowKind::Mut | BorrowKind::Unique => "mut ",
                 };
-                write!(fmt, "&{}{:?}", kind_str, lv)
+
+                // When identifying regions, add trailing space if
+                // necessary.
+                let region = if ppaux::identify_regions() {
+                    let mut region = format!("{}", region);
+                    if region.len() > 0 { region.push(' '); }
+                    region
+                } else {
+                    "".to_owned()
+                };
+                write!(fmt, "&{}{}{:?}", region, kind_str, lv)
             }
 
             Aggregate(ref kind, ref lvs) => {
