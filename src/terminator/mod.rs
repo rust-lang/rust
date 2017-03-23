@@ -70,10 +70,15 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                             ty::TyFnDef(_, _, real_sig) => {
                                 let sig = self.erase_lifetimes(&sig);
                                 let real_sig = self.erase_lifetimes(&real_sig);
-                                if sig.abi != real_sig.abi ||
-                                    sig.variadic != real_sig.variadic ||
-                                    sig.inputs_and_output != real_sig.inputs_and_output {
-                                    return Err(EvalError::FunctionPointerTyMismatch(real_sig, sig));
+                                match instance.def {
+                                    // FIXME: this needs checks for weird transmutes
+                                    // we need to bail here, because noncapturing closures as fn ptrs fail the checks
+                                    ty::InstanceDef::ClosureOnceShim{..} => {}
+                                    _ => if sig.abi != real_sig.abi ||
+                                        sig.variadic != real_sig.variadic ||
+                                        sig.inputs_and_output != real_sig.inputs_and_output {
+                                        return Err(EvalError::FunctionPointerTyMismatch(real_sig, sig));
+                                    },
                                 }
                             },
                             ref other => bug!("instance def ty: {:?}", other),
