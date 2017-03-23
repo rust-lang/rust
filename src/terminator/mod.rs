@@ -65,7 +65,20 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let (fn_def, sig) = match func_ty.sty {
                     ty::TyFnPtr(sig) => {
                         let fn_ptr = self.eval_operand_to_primval(func)?.to_ptr()?;
-                        (self.memory.get_fn(fn_ptr.alloc_id)?, sig)
+                        let instance = self.memory.get_fn(fn_ptr.alloc_id)?;
+                        match instance.def.def_ty(self.tcx).sty {
+                            ty::TyFnDef(_, _, real_sig) => {
+                                let sig = self.erase_lifetimes(&sig);
+                                let real_sig = self.erase_lifetimes(&real_sig);
+                                if sig.abi != real_sig.abi ||
+                                    sig.variadic != real_sig.variadic ||
+                                    sig.inputs_and_output != real_sig.inputs_and_output {
+                                    return Err(EvalError::FunctionPointerTyMismatch(real_sig, sig));
+                                }
+                            },
+                            ref other => bug!("instance def ty: {:?}", other),
+                        }
+                        (instance, sig)
                     },
                     ty::TyFnDef(def_id, substs, sig) => (::eval_context::resolve(self.tcx, def_id, substs), sig),
                     _ => {
