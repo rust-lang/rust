@@ -287,57 +287,18 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 Ok(())
             },
             ty::InstanceDef::Virtual(_, idx) => {
-                trace!("ABI: {:?}", sig.abi);
-                let mut args = Vec::new();
-                for arg in arg_operands {
-                    let arg_val = self.eval_operand(arg)?;
-                    let arg_ty = self.operand_ty(arg);
-                    args.push((arg_val, arg_ty));
-                }
                 let ptr_size = self.memory.pointer_size();
-                let (_, vtable) = args[0].0.expect_ptr_vtable_pair(&self.memory)?;
-                // FIXME: do we need to rewrite args[0] to be a thin ptr?
+                let (_, vtable) = self.eval_operand(&arg_operands[0])?.expect_ptr_vtable_pair(&self.memory)?;
                 let fn_ptr = self.memory.read_ptr(vtable.offset(ptr_size * (idx as u64 + 3)))?;
                 let instance = self.memory.get_fn(fn_ptr.alloc_id)?;
-                self.eval_fn_call_inner(
+                // recurse with concrete function
+                self.eval_fn_call(
                     instance,
                     destination,
+                    arg_operands,
                     span,
-                )?;
-                match sig.abi {
-                    Abi::RustCall => {
-                        trace!("arg_locals: {:?}", self.frame().mir.args_iter().collect::<Vec<_>>());
-                        trace!("arg_operands: {:?}", arg_operands);
-                        trace!("args: {:#?}", args);
-
-                        assert_eq!(args.len(), 2);
-
-                        {   // write first argument
-                            let first_local = self.frame().mir.args_iter().next().unwrap();
-                            let dest = self.eval_lvalue(&mir::Lvalue::Local(first_local))?;
-                            let (arg_val, arg_ty) = args.remove(0);
-                            self.write_value(arg_val, dest, arg_ty)?;
-                        }
-
-                        // unpack and write all other args
-                        let (arg_val, arg_ty) = args.remove(0);
-                        let layout = self.type_layout(arg_ty)?;
-                        if let (&ty::TyTuple(fields, _), &Layout::Univariant { ref variant, .. }) = (&arg_ty.sty, layout) {
-                            let offsets = variant.offsets.iter().map(|s| s.bytes());
-                            if let Value::ByRef(ptr) = arg_val {
-                                for ((offset, ty), arg_local) in offsets.zip(fields).zip(self.frame().mir.args_iter().skip(1)) {
-                                    let arg = Value::ByRef(ptr.offset(offset));
-                                    let dest = self.eval_lvalue(&mir::Lvalue::Local(arg_local))?;
-                                    self.write_value(arg, dest, ty)?;
-                                }
-                            }
-                        } else {
-                            bug!("rust-call ABI tuple argument was {:?}, {:?}", arg_ty, layout);
-                        }
-                    },
-                    _ => unimplemented!(),
-                }
-                Ok(())
+                    sig,
+                )
             },
         }
     }
