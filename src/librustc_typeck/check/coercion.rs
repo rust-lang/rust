@@ -74,6 +74,7 @@ use rustc::ty::fold::TypeFoldable;
 use rustc::ty::error::TypeError;
 use rustc::ty::relate::RelateResult;
 use rustc::ty::subst::Subst;
+use errors::DiagnosticBuilder;
 use syntax::abi;
 use syntax::feature_gate;
 use syntax::ptr::P;
@@ -718,7 +719,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
                 self.write_adjustment(expr.id, adjustment);
             }
-            Ok(adjustment.target)
+
+            // We should now have added sufficient adjustments etc to
+            // ensure that the type of expression, post-adjustment, is
+            // a subtype of target.
+            Ok(target)
         })
     }
 
@@ -1000,7 +1005,7 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
                       expression_ty: Ty<'tcx>,
                       expression_diverges: Diverges)
     {
-        self.coerce_inner(fcx, cause, Some(expression), expression_ty, expression_diverges)
+        self.coerce_inner(fcx, cause, Some(expression), expression_ty, expression_diverges, None)
     }
 
     /// Indicates that one of the inputs is a "forced unit". This
@@ -1011,15 +1016,21 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
     /// purposes. Note that these tend to correspond to cases where
     /// the `()` expression is implicit in the source, and hence we do
     /// not take an expression argument.
+    ///
+    /// The `augment_error` gives you a chance to extend the error
+    /// message, in case any results (e.g., we use this to suggest
+    /// removing a `;`).
     pub fn coerce_forced_unit<'a>(&mut self,
                                   fcx: &FnCtxt<'a, 'gcx, 'tcx>,
-                                  cause: &ObligationCause<'tcx>)
+                                  cause: &ObligationCause<'tcx>,
+                                  augment_error: &mut FnMut(&mut DiagnosticBuilder))
     {
         self.coerce_inner(fcx,
                           cause,
                           None,
                           fcx.tcx.mk_nil(),
-                          Diverges::Maybe)
+                          Diverges::Maybe,
+                          Some(augment_error))
     }
 
     /// The inner coercion "engine". If `expression` is `None`, this
@@ -1030,7 +1041,8 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
                         cause: &ObligationCause<'tcx>,
                         expression: Option<&'gcx hir::Expr>,
                         mut expression_ty: Ty<'tcx>,
-                        expression_diverges: Diverges)
+                        expression_diverges: Diverges,
+                        augment_error: Option<&mut FnMut(&mut DiagnosticBuilder)>)
     {
         // Incorporate whatever type inference information we have
         // until now; in principle we might also want to process
@@ -1126,18 +1138,24 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
                     (self.final_ty.unwrap_or(self.expected_ty), expression_ty)
                 };
 
+                let mut db;
                 match cause.code {
                     ObligationCauseCode::ReturnNoExpression => {
-                        struct_span_err!(fcx.tcx.sess, cause.span, E0069,
-                                         "`return;` in a function whose return type is not `()`")
-                            .span_label(cause.span, &format!("return type is not ()"))
-                            .emit();
+                        db = struct_span_err!(
+                            fcx.tcx.sess, cause.span, E0069,
+                            "`return;` in a function whose return type is not `()`");
+                        db.span_label(cause.span, &format!("return type is not ()"));
                     }
                     _ => {
-                        fcx.report_mismatched_types(cause, expected, found, err)
-                           .emit();
+                        db = fcx.report_mismatched_types(cause, expected, found, err);
                     }
                 }
+
+                if let Some(mut augment_error) = augment_error {
+                    augment_error(&mut db);
+                }
+
+                db.emit();
 
                 self.final_ty = Some(fcx.tcx.types.err);
             }
