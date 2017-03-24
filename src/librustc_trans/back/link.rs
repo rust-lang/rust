@@ -734,9 +734,10 @@ fn link_natively(sess: &Session,
     }
 
     {
-        let mut linker = trans.linker_info.to_linker(&mut cmd, &sess);
+        let mut linker = trans.linker_info.to_linker(cmd, &sess);
         link_args(&mut *linker, sess, crate_type, tmpdir,
                   objects, out_filename, outputs, trans);
+        cmd = linker.finalize();
     }
     cmd.args(&sess.target.target.options.late_link_args);
     for obj in &sess.target.target.options.post_link_objects {
@@ -1021,38 +1022,18 @@ fn add_local_native_libraries(cmd: &mut Linker, sess: &Session) {
         }
     });
 
-    let pair = sess.cstore.used_libraries().into_iter().filter(|l| {
+    let relevant_libs = sess.cstore.used_libraries().into_iter().filter(|l| {
         relevant_lib(sess, l)
-    }).partition(|lib| {
-        lib.kind == NativeLibraryKind::NativeStatic
     });
-    let (staticlibs, others): (Vec<_>, Vec<_>) = pair;
-
-    // Some platforms take hints about whether a library is static or dynamic.
-    // For those that support this, we ensure we pass the option if the library
-    // was flagged "static" (most defaults are dynamic) to ensure that if
-    // libfoo.a and libfoo.so both exist that the right one is chosen.
-    cmd.hint_static();
 
     let search_path = archive_search_paths(sess);
-    for l in staticlibs {
-        // Here we explicitly ask that the entire archive is included into the
-        // result artifact. For more details see #15460, but the gist is that
-        // the linker will strip away any unused objects in the archive if we
-        // don't otherwise explicitly reference them. This can occur for
-        // libraries which are just providing bindings, libraries with generic
-        // functions, etc.
-        cmd.link_whole_staticlib(&l.name.as_str(), &search_path);
-    }
-
-    cmd.hint_dynamic();
-
-    for lib in others {
+    for lib in relevant_libs {
         match lib.kind {
             NativeLibraryKind::NativeUnknown => cmd.link_dylib(&lib.name.as_str()),
             NativeLibraryKind::NativeFramework => cmd.link_framework(&lib.name.as_str()),
             NativeLibraryKind::NativeStaticNobundle => cmd.link_staticlib(&lib.name.as_str()),
-            NativeLibraryKind::NativeStatic => bug!(),
+            NativeLibraryKind::NativeStatic => cmd.link_whole_staticlib(&lib.name.as_str(),
+                                                                        &search_path)
         }
     }
 }
