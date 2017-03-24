@@ -141,11 +141,11 @@ impl<'a> DiagnosticBuilder<'a> {
                                                   sp: S,
                                                   msg: &str)
                                                   -> &mut Self);
-    forward!(pub fn span_suggestion<S: Into<MultiSpan>>(&mut self,
-                                                        sp: S,
-                                                        msg: &str,
-                                                        suggestion: String)
-                                                        -> &mut Self);
+    forward!(pub fn span_suggestion(&mut self,
+                                    sp: Span,
+                                    msg: &str,
+                                    suggestion: String)
+                                    -> &mut Self);
     forward!(pub fn set_span<S: Into<MultiSpan>>(&mut self, sp: S) -> &mut Self);
     forward!(pub fn code(&mut self, s: String) -> &mut Self);
 
