@@ -437,6 +437,7 @@ impl Command {
     /// # Examples
     ///
     /// Basic usage:
+    ///
     /// ```no_run
     /// use std::process::{Command, Stdio};
     /// use std::env;
