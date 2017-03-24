@@ -289,7 +289,7 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
 
     pub fn t_param(&self, index: u32) -> Ty<'tcx> {
         let name = format!("T{}", index);
-        self.infcx.tcx.mk_param(index, Symbol::intern(&name[..]))
+        self.infcx.tcx.mk_param(index, Symbol::intern(&name))
     }
 
     pub fn re_early_bound(&self, index: u32, name: &'static str) -> &'tcx ty::Region {

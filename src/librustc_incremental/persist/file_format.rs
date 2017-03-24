@@ -99,9 +99,9 @@ pub fn read_file(sess: &Session, path: &Path) -> io::Result<Option<Vec<u8>>> {
         let rustc_version_str_len = rustc_version_str_len[0] as usize;
         let mut buffer = Vec::with_capacity(rustc_version_str_len);
         buffer.resize(rustc_version_str_len, 0);
-        file.read_exact(&mut buffer[..])?;
+        file.read_exact(&mut buffer)?;
 
-        if &buffer[..] != rustc_version().as_bytes() {
+        if buffer != rustc_version().as_bytes() {
             report_format_mismatch(sess, path, "Different compiler version");
             return Ok(None);
         }

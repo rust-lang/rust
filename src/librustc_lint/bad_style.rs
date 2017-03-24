@@ -88,7 +88,7 @@ impl NonCamelCaseTypes {
             } else {
                 format!("{} `{}` should have a camel case name such as `{}`", sort, name, c)
             };
-            cx.span_lint(NON_CAMEL_CASE_TYPES, span, &m[..]);
+            cx.span_lint(NON_CAMEL_CASE_TYPES, span, &m);
         }
     }
 }

@@ -818,7 +818,7 @@ pub struct GatedCfg {
 
 impl GatedCfg {
     pub fn gate(cfg: &ast::MetaItem) -> Option<GatedCfg> {
-        let name = &*cfg.name().as_str();
+        let name = cfg.name().as_str();
         GATED_CFGS.iter()
                   .position(|info| info.0 == name)
                   .map(|idx| {
@@ -865,8 +865,7 @@ macro_rules! gate_feature {
 impl<'a> Context<'a> {
     fn check_attribute(&self, attr: &ast::Attribute, is_macro: bool) {
         debug!("check_attribute(attr = {:?})", attr);
-        let name = unwrap_or!(attr.name(), return);
-
+        let name = unwrap_or!(attr.name(), return).as_str();
         for &(n, ty, ref gateage) in BUILTIN_ATTRIBUTES {
             if name == n {
                 if let &Gated(_, ref name, ref desc, ref has_feature) = gateage {
@@ -885,12 +884,12 @@ impl<'a> Context<'a> {
                 return;
             }
         }
-        if name.as_str().starts_with("rustc_") {
+        if name.starts_with("rustc_") {
             gate_feature!(self, rustc_attrs, attr.span,
                           "unless otherwise specified, attributes \
                            with the prefix `rustc_` \
                            are reserved for internal compiler diagnostics");
-        } else if name.as_str().starts_with("derive_") {
+        } else if name.starts_with("derive_") {
             gate_feature!(self, custom_derive, attr.span, EXPLAIN_DERIVE_UNDERSCORE);
         } else if !attr::is_known(attr) {
             // Only run the custom attribute lint during regular

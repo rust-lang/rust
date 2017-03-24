@@ -918,14 +918,14 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
                 self.encode_fields(def_id);
             }
             hir::ItemImpl(..) => {
-                for &trait_item_def_id in &self.tcx.associated_item_def_ids(def_id)[..] {
+                for &trait_item_def_id in self.tcx.associated_item_def_ids(def_id).iter() {
                     self.record(trait_item_def_id,
                                 EncodeContext::encode_info_for_impl_item,
                                 trait_item_def_id);
                 }
             }
             hir::ItemTrait(..) => {
-                for &item_def_id in &self.tcx.associated_item_def_ids(def_id)[..] {
+                for &item_def_id in self.tcx.associated_item_def_ids(def_id).iter() {
                     self.record(item_def_id,
                                 EncodeContext::encode_info_for_trait_item,
                                 item_def_id);

@@ -35,7 +35,7 @@ pub struct Blake2bCtx {
 impl ::std::fmt::Debug for Blake2bCtx {
     fn fmt(&self, fmt: &mut ::std::fmt::Formatter) -> Result<(), ::std::fmt::Error> {
         try!(write!(fmt, "hash: "));
-        for v in &self.h[..] {
+        for v in &self.h {
             try!(write!(fmt, "{:x}", v));
         }
         Ok(())
