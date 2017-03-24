@@ -45,7 +45,7 @@ pub fn expand_global_asm<'cx>(cx: &'cx mut ExtCtxt,
     }
 
     let mut p = cx.new_parser_from_tts(tts);
-    let (asm, asm_str_style) = match expr_to_string(cx,
+    let (asm, _) = match expr_to_string(cx,
                                                     panictry!(p.parse_expr()),
                                                     "inline assembly must be a string literal") {
         Some((s, st)) => (s, st),
@@ -67,7 +67,6 @@ pub fn expand_global_asm<'cx>(cx: &'cx mut ExtCtxt,
         id: ast::DUMMY_NODE_ID,
         node: ast::ItemKind::GlobalAsm(P(ast::GlobalAsm {
             asm: asm,
-            asm_str_style: asm_str_style,
             expn_id: expn_id,
         })),
         vis: ast::Visibility::Inherited,

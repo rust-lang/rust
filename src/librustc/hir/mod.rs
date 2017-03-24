@@ -1493,7 +1493,6 @@ pub struct ForeignMod {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct GlobalAsm {
     pub asm: Symbol,
-    pub asm_str_style: StrStyle,
     pub expn_id: ExpnId
 }
 
