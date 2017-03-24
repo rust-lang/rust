@@ -77,21 +77,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                          expected: Ty<'tcx>) {
         let expected = self.resolve_type_vars_with_obligations(expected);
 
-        // If we are "assigning" to a `!` location, then we can permit
-        // any type to be assigned there, so long as we are in
-        // dead-code. This applies to e.g. `fn foo() -> ! { return; 22
-        // }` but also `fn foo() { let x: ! = { return; 22 }; }`.
-        //
-        // You might imagine that we could just *always* bail if we
-        // are in dead-code, but we don't want to do that, because
-        // that leaves a lot of type variables unconstrained. See
-        // e.g. #39808 and #39984.
-        let in_dead_code = self.diverges.get().always();
-        if expected.is_never() && in_dead_code {
-            return;
-        }
-
-        if let Err(e) = self.try_coerce(expr, checked_ty, expected) {
+        if let Err(e) = self.try_coerce(expr, checked_ty, self.diverges.get(), expected) {
             let cause = self.misc(expr.span);
             let expr_ty = self.resolve_type_vars_with_obligations(checked_ty);
             let mode = probe::Mode::MethodCall;
