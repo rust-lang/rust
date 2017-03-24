@@ -314,7 +314,7 @@ impl<'a, 'gcx, 'tcx> Expectation<'tcx> {
 
     /// Like `only_has_type`, but instead of returning `None` if no
     /// hard constraint exists, creates a fresh type variable.
-    fn only_has_type_or_fresh_var(self, fcx: &FnCtxt<'a, 'gcx, 'tcx>, span: Span) -> Ty<'tcx> {
+    fn coercion_target_type(self, fcx: &FnCtxt<'a, 'gcx, 'tcx>, span: Span) -> Ty<'tcx> {
         self.only_has_type(fcx)
             .unwrap_or_else(|| fcx.next_ty_var(TypeVariableOrigin::MiscVariable(span)))
     }
@@ -2862,7 +2862,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // `expected` if it represents a *hard* constraint
         // (`only_has_type`); otherwise, we just go with a
         // fresh type variable.
-        let coerce_to_ty = expected.only_has_type_or_fresh_var(self, sp);
+        let coerce_to_ty = expected.coercion_target_type(self, sp);
         let mut coerce: DynamicCoerceMany = CoerceMany::new(coerce_to_ty);
 
         let if_cause = self.cause(sp, ObligationCauseCode::IfExpression);
@@ -3683,7 +3683,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
               let coerce = match source {
                   // you can only use break with a value from a normal `loop { }`
                   hir::LoopSource::Loop => {
-                      let coerce_to = expected.only_has_type_or_fresh_var(self, body.span);
+                      let coerce_to = expected.coercion_target_type(self, body.span);
                       Some(CoerceMany::new(coerce_to))
                   }
 
