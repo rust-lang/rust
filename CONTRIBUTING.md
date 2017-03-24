@@ -312,9 +312,11 @@ the other rollup-eligible patches too, and they'll get tested and merged at
 the same time.
 
 To find documentation-related issues, sort by the [T-doc label][tdoc].
-You can find documentation style guidelines in [RFC 1574][rfc1574].
 
 [tdoc]: https://github.com/rust-lang/rust/issues?q=is%3Aopen%20is%3Aissue%20label%3AT-doc
+
+You can find documentation style guidelines in [RFC 1574][rfc1574].
+
 [rfc1574]: https://github.com/rust-lang/rfcs/blob/master/text/1574-more-api-documentation-conventions.md#appendix-a-full-conventions-text
 
 In many cases, you don't need a full `./x.py doc`. You can use `rustdoc` directly
