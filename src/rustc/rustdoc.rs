@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![feature(rustdoc)]
+#![feature(rustc_private)]
 
 extern crate rustdoc;
 
