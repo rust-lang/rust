@@ -16,7 +16,7 @@
 //! DOI=10.1017/S0956796812000093 http://dx.doi.org/10.1017/S0956796812000093
 
 use Span;
-use symbol::Symbol;
+use symbol::{Ident, Symbol};
 
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 use std::cell::RefCell;
@@ -106,6 +106,7 @@ struct HygieneData {
     marks: Vec<MarkData>,
     syntax_contexts: Vec<SyntaxContextData>,
     markings: HashMap<(SyntaxContext, Mark), SyntaxContext>,
+    idents: HashMap<Symbol, Ident>,
 }
 
 impl HygieneData {
@@ -114,6 +115,7 @@ impl HygieneData {
             marks: vec![MarkData::default()],
             syntax_contexts: vec![SyntaxContextData::default()],
             markings: HashMap::new(),
+            idents: HashMap::new(),
         }
     }
 
@@ -346,5 +348,21 @@ impl Encodable for SyntaxContext {
 impl Decodable for SyntaxContext {
     fn decode<D: Decoder>(_: &mut D) -> Result<SyntaxContext, D::Error> {
         Ok(SyntaxContext::empty()) // FIXME(jseyfried) intercrate hygiene
+    }
+}
+
+impl Symbol {
+    pub fn from_ident(ident: Ident) -> Symbol {
+        HygieneData::with(|data| {
+            let symbol = Symbol::gensym(&ident.name.as_str());
+            data.idents.insert(symbol, ident);
+            symbol
+        })
+    }
+
+    pub fn to_ident(self) -> Ident {
+        HygieneData::with(|data| {
+            data.idents.get(&self).cloned().unwrap_or(Ident::with_empty_ctxt(self))
+        })
     }
 }

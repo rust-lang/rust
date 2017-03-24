@@ -371,7 +371,13 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
 
     fn push_inherent_candidate(&mut self, xform_self_ty: Ty<'tcx>, item: ty::AssociatedItem,
                                kind: CandidateKind<'tcx>, import_id: Option<ast::NodeId>) {
-        if self.tcx.vis_is_accessible_from(item.vis, self.body_id) {
+        let is_accessible = if let LookingFor::MethodName(name) = self.looking_for {
+            let def_scope = self.tcx.adjust(name, item.container.id(), self.body_id).1;
+            item.vis.is_accessible_from(def_scope, self.tcx)
+        } else {
+            true
+        };
+        if is_accessible {
             self.inherent_candidates.push(Candidate { xform_self_ty, item, kind, import_id });
         } else if self.private_candidate.is_none() {
             self.private_candidate = Some(item.def());
@@ -380,7 +386,13 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
 
     fn push_extension_candidate(&mut self, xform_self_ty: Ty<'tcx>, item: ty::AssociatedItem,
                                kind: CandidateKind<'tcx>, import_id: Option<ast::NodeId>) {
-        if self.tcx.vis_is_accessible_from(item.vis, self.body_id) {
+        let is_accessible = if let LookingFor::MethodName(name) = self.looking_for {
+            let def_scope = self.tcx.adjust(name, item.container.id(), self.body_id).1;
+            item.vis.is_accessible_from(def_scope, self.tcx)
+        } else {
+            true
+        };
+        if is_accessible {
             self.extension_candidates.push(Candidate { xform_self_ty, item, kind, import_id });
         } else if self.private_candidate.is_none() {
             self.private_candidate = Some(item.def());

@@ -1320,7 +1320,7 @@ impl<'a> Resolver<'a> {
         module_map.insert(DefId::local(CRATE_DEF_INDEX), graph_root);
 
         let mut definitions = Definitions::new();
-        DefCollector::new(&mut definitions)
+        DefCollector::new(&mut definitions, Mark::root())
             .collect_root(crate_name, &session.local_crate_disambiguator().as_str());
 
         let mut invocations = FxHashMap();

@@ -891,7 +891,8 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         let item = tcx.associated_items(trait_did).find(|i| i.name == assoc_name)
                                                   .expect("missing associated type");
         let def = Def::AssociatedTy(item.def_id);
-        if !tcx.vis_is_accessible_from(item.vis, ref_id) {
+        let def_scope = tcx.adjust(assoc_name, item.container.id(), ref_id).1;
+        if !item.vis.is_accessible_from(def_scope, tcx) {
             let msg = format!("{} `{}` is private", def.kind_name(), assoc_name);
             tcx.sess.span_err(span, &msg);
         }

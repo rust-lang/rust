@@ -22,6 +22,7 @@ use hir::map::{ITEM_LIKE_SPACE, REGULAR_SPACE};
 pub struct DefCollector<'a> {
     definitions: &'a mut Definitions,
     parent_def: Option<DefIndex>,
+    expansion: Mark,
     pub visit_macro_invoc: Option<&'a mut FnMut(MacroInvocationData)>,
 }
 
@@ -32,9 +33,10 @@ pub struct MacroInvocationData {
 }
 
 impl<'a> DefCollector<'a> {
-    pub fn new(definitions: &'a mut Definitions) -> Self {
+    pub fn new(definitions: &'a mut Definitions, expansion: Mark) -> Self {
         DefCollector {
             definitions: definitions,
+            expansion: expansion,
             parent_def: None,
             visit_macro_invoc: None,
         }
@@ -54,7 +56,8 @@ impl<'a> DefCollector<'a> {
                   -> DefIndex {
         let parent_def = self.parent_def.unwrap();
         debug!("create_def(node_id={:?}, data={:?}, parent_def={:?})", node_id, data, parent_def);
-        self.definitions.create_def_with_parent(parent_def, node_id, data, address_space)
+        self.definitions
+            .create_def_with_parent(parent_def, node_id, data, address_space, self.expansion)
     }
 
     pub fn with_parent<F: FnOnce(&mut Self)>(&mut self, parent_def: DefIndex, f: F) {

@@ -45,8 +45,9 @@ use std::rc::Rc;
 use std::slice;
 use std::vec::IntoIter;
 use std::mem;
-use syntax::ast::{self, DUMMY_NODE_ID, Name, NodeId};
+use syntax::ast::{self, DUMMY_NODE_ID, Name, Ident, NodeId};
 use syntax::attr;
+use syntax::ext::hygiene::{Mark, SyntaxContext};
 use syntax::symbol::{Symbol, InternedString};
 use syntax_pos::{DUMMY_SP, Span};
 use rustc_const_math::ConstInt;
@@ -268,7 +269,7 @@ impl Visibility {
                 def => Visibility::Restricted(def.def_id()),
             },
             hir::Inherited => {
-                Visibility::Restricted(tcx.hir.local_def_id(tcx.hir.get_module_parent(id)))
+                Visibility::Restricted(tcx.hir.get_module_parent(id))
             }
         }
     }
@@ -1823,17 +1824,22 @@ impl<'a, 'gcx, 'tcx> AdtDef {
 
 impl<'a, 'gcx, 'tcx> VariantDef {
     #[inline]
-    pub fn find_field_named(&self,
-                            name: ast::Name)
-                            -> Option<&FieldDef> {
-        self.fields.iter().find(|f| f.name == name)
+    pub fn find_field_named(&self, name: ast::Name) -> Option<&FieldDef> {
+        self.index_of_field_named(name).map(|index| &self.fields[index])
     }
 
-    #[inline]
-    pub fn index_of_field_named(&self,
-                                name: ast::Name)
-                                -> Option<usize> {
-        self.fields.iter().position(|f| f.name == name)
+    pub fn index_of_field_named(&self, name: ast::Name) -> Option<usize> {
+        if let Some(index) = self.fields.iter().position(|f| f.name == name) {
+            return Some(index);
+        }
+        let mut ident = name.to_ident();
+        while ident.ctxt != SyntaxContext::empty() {
+            ident.ctxt.remove_mark();
+            if let Some(field) = self.fields.iter().position(|f| f.name.to_ident() == ident) {
+                return Some(field);
+            }
+        }
+        None
     }
 
     #[inline]
@@ -2257,10 +2263,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn vis_is_accessible_from(self, vis: Visibility, block: NodeId) -> bool {
-        vis.is_accessible_from(self.hir.local_def_id(self.hir.get_module_parent(block)), self)
-    }
-
     pub fn item_name(self, id: DefId) -> ast::Name {
         if let Some(id) = self.hir.as_local_node_id(id) {
             self.hir.name(id)
@@ -2371,6 +2373,22 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         } else {
             Err(self.sess.cstore.crate_name(impl_did.krate))
         }
+    }
+
+    pub fn adjust(self, name: Name, scope: DefId, block: NodeId) -> (Ident, DefId) {
+        self.adjust_ident(name.to_ident(), scope, block)
+    }
+
+    pub fn adjust_ident(self, mut ident: Ident, scope: DefId, block: NodeId) -> (Ident, DefId) {
+        let expansion = match scope.krate {
+            LOCAL_CRATE => self.hir.definitions().expansion(scope.index),
+            _ => Mark::root(),
+        };
+        let scope = match ident.ctxt.adjust(expansion) {
+            Some(macro_def) => self.hir.definitions().macro_def_scope(macro_def),
+            None => self.hir.get_module_parent(block),
+        };
+        (ident, scope)
     }
 }
 

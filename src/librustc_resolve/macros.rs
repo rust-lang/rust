@@ -158,7 +158,7 @@ impl<'a> base::Resolver for Resolver<'a> {
 
     fn visit_expansion(&mut self, mark: Mark, expansion: &Expansion, derives: &[Mark]) {
         let invocation = self.invocations[&mark];
-        self.collect_def_ids(invocation, expansion);
+        self.collect_def_ids(mark, invocation, expansion);
 
         self.current_module = invocation.module.get();
         self.current_module.unresolved_invocations.borrow_mut().remove(&mark);
@@ -290,7 +290,12 @@ impl<'a> base::Resolver for Resolver<'a> {
                 Err(determinacy) => return Err(determinacy),
             },
         };
+
         self.macro_defs.insert(invoc.expansion_data.mark, def.def_id());
+        let normal_module_def_id =
+            self.macro_def_scope(invoc.expansion_data.mark).normal_ancestor_id;
+        self.definitions.add_macro_def_scope(invoc.expansion_data.mark, normal_module_def_id);
+
         self.unused_macros.remove(&def.def_id());
         let ext = self.get_macro(def);
         if ext.is_modern() {
@@ -665,7 +670,10 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    fn collect_def_ids(&mut self, invocation: &'a InvocationData<'a>, expansion: &Expansion) {
+    fn collect_def_ids(&mut self,
+                       mark: Mark,
+                       invocation: &'a InvocationData<'a>,
+                       expansion: &Expansion) {
         let Resolver { ref mut invocations, arenas, graph_root, .. } = *self;
         let InvocationData { def_index, const_expr, .. } = *invocation;
 
@@ -681,7 +689,7 @@ impl<'a> Resolver<'a> {
             });
         };
 
-        let mut def_collector = DefCollector::new(&mut self.definitions);
+        let mut def_collector = DefCollector::new(&mut self.definitions, mark);
         def_collector.visit_macro_invoc = Some(visit_macro_invoc);
         def_collector.with_parent(def_index, |def_collector| {
             if const_expr {

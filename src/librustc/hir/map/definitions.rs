@@ -24,6 +24,7 @@ use serialize::{Encodable, Decodable, Encoder, Decoder};
 use std::fmt::Write;
 use std::hash::Hash;
 use syntax::ast;
+use syntax::ext::hygiene::Mark;
 use syntax::symbol::{Symbol, InternedString};
 use ty::TyCtxt;
 use util::nodemap::NodeMap;
@@ -180,6 +181,8 @@ pub struct Definitions {
     node_to_def_index: NodeMap<DefIndex>,
     def_index_to_node: [Vec<ast::NodeId>; 2],
     pub(super) node_to_hir_id: IndexVec<ast::NodeId, hir::HirId>,
+    macro_def_scopes: FxHashMap<Mark, DefId>,
+    expansions: FxHashMap<DefIndex, Mark>,
 }
 
 // Unfortunately we have to provide a manual impl of Clone because of the
@@ -194,6 +197,8 @@ impl Clone for Definitions {
                 self.def_index_to_node[1].clone(),
             ],
             node_to_hir_id: self.node_to_hir_id.clone(),
+            macro_def_scopes: self.macro_def_scopes.clone(),
+            expansions: self.expansions.clone(),
         }
     }
 }
@@ -379,6 +384,8 @@ impl Definitions {
             node_to_def_index: NodeMap(),
             def_index_to_node: [vec![], vec![]],
             node_to_hir_id: IndexVec::new(),
+            macro_def_scopes: FxHashMap(),
+            expansions: FxHashMap(),
         }
     }
 
@@ -472,7 +479,8 @@ impl Definitions {
                                   parent: DefIndex,
                                   node_id: ast::NodeId,
                                   data: DefPathData,
-                                  address_space: DefIndexAddressSpace)
+                                  address_space: DefIndexAddressSpace,
+                                  expansion: Mark)
                                   -> DefIndex {
         debug!("create_def_with_parent(parent={:?}, node_id={:?}, data={:?})",
                parent, node_id, data);
@@ -510,6 +518,7 @@ impl Definitions {
         assert_eq!(index.as_array_index(),
                    self.def_index_to_node[address_space.index()].len());
         self.def_index_to_node[address_space.index()].push(node_id);
+        self.expansions.insert(index, expansion);
 
         debug!("create_def_with_parent: def_index_to_node[{:?} <-> {:?}", index, node_id);
         self.node_to_def_index.insert(node_id, index);
@@ -524,6 +533,18 @@ impl Definitions {
         assert!(self.node_to_hir_id.is_empty(),
                 "Trying initialize NodeId -> HirId mapping twice");
         self.node_to_hir_id = mapping;
+    }
+
+    pub fn expansion(&self, index: DefIndex) -> Mark {
+        self.expansions[&index]
+    }
+
+    pub fn macro_def_scope(&self, mark: Mark) -> DefId {
+        self.macro_def_scopes[&mark]
+    }
+
+    pub fn add_macro_def_scope(&mut self, mark: Mark, scope: DefId) {
+        self.macro_def_scopes.insert(mark, scope);
     }
 }
 
