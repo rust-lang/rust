@@ -112,7 +112,7 @@ fn borrowck_fn<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, body_id: hir::BodyId) {
                                                  &flowed_moves.move_data,
                                                  owner_id);
 
-    check_loans::check_loans(bccx, &loan_dfcx, &flowed_moves, &all_loans[..], body);
+    check_loans::check_loans(bccx, &loan_dfcx, &flowed_moves, &all_loans, body);
 }
 
 fn build_borrowck_dataflow_data<'a, 'tcx>(this: &mut BorrowckCtxt<'a, 'tcx>,

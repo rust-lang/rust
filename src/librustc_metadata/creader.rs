@@ -669,7 +669,7 @@ impl<'a> CrateLoader<'a> {
                                   name,
                                   config::host_triple(),
                                   self.sess.opts.target_triple);
-            span_fatal!(self.sess, span, E0456, "{}", &message[..]);
+            span_fatal!(self.sess, span, E0456, "{}", &message);
         }
 
         let root = ekrate.metadata.get_root();
