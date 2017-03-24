@@ -89,6 +89,7 @@ should go to.
 use build::{BlockAnd, BlockAndExtension, Builder, CFG};
 use rustc::middle::region::{CodeExtent, CodeExtentData};
 use rustc::middle::lang_items;
+use rustc::middle::const_val::ConstVal;
 use rustc::ty::subst::{Kind, Subst};
 use rustc::ty::{Ty, TyCtxt};
 use rustc::mir::*;
@@ -784,9 +785,8 @@ fn build_free<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
         func: Operand::Constant(Constant {
             span: data.span,
             ty: tcx.item_type(free_func).subst(tcx, substs),
-            literal: Literal::Item {
-                def_id: free_func,
-                substs: substs
+            literal: Literal::Value {
+                value: ConstVal::Function(free_func, substs),
             }
         }),
         args: vec![Operand::Consume(data.value.clone())],
