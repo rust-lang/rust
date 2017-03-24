@@ -27,10 +27,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   libssl-dev \
   pkg-config
 
-RUN curl -o /usr/local/bin/sccache \
-      https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-03-16-sccache-x86_64-unknown-linux-musl && \
-      chmod +x /usr/local/bin/sccache
-
 RUN curl -OL https://github.com/Yelp/dumb-init/releases/download/v1.2.0/dumb-init_1.2.0_amd64.deb && \
     dpkg -i dumb-init_*.deb && \
     rm dumb-init_*.deb
@@ -68,6 +64,10 @@ COPY build-netbsd-toolchain.sh /tmp/
 RUN ./build-netbsd-toolchain.sh
 
 USER root
+
+RUN curl -o /usr/local/bin/sccache \
+      https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-03-22-sccache-x86_64-unknown-linux-musl && \
+      chmod +x /usr/local/bin/sccache
 
 ENV PATH=$PATH:/x-tools/s390x-ibm-linux-gnu/bin:/x-tools/x86_64-unknown-netbsd/bin
 
