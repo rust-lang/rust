@@ -1162,7 +1162,7 @@ impl<T> [T] {
     ///
     /// # Current implementation
     ///
-    /// The current algorithm is based on Orson Peters' [pdqsort][pattern-defeating quicksort],
+    /// The current algorithm is based on Orson Peters' [pattern-defeating quicksort][pdqsort],
     /// which is a quicksort variant designed to be very fast on certain kinds of patterns,
     /// sometimes achieving linear time. It is randomized but deterministic, and falls back to
     /// heapsort on degenerate inputs.
@@ -1199,7 +1199,7 @@ impl<T> [T] {
     ///
     /// # Current implementation
     ///
-    /// The current algorithm is based on Orson Peters' [pdqsort][pattern-defeating quicksort],
+    /// The current algorithm is based on Orson Peters' [pattern-defeating quicksort][pdqsort],
     /// which is a quicksort variant designed to be very fast on certain kinds of patterns,
     /// sometimes achieving linear time. It is randomized but deterministic, and falls back to
     /// heapsort on degenerate inputs.
@@ -1239,7 +1239,7 @@ impl<T> [T] {
     ///
     /// # Current implementation
     ///
-    /// The current algorithm is based on Orson Peters' [pdqsort][pattern-defeating quicksort],
+    /// The current algorithm is based on Orson Peters' [pattern-defeating quicksort][pdqsort],
     /// which is a quicksort variant designed to be very fast on certain kinds of patterns,
     /// sometimes achieving linear time. It is randomized but deterministic, and falls back to
     /// heapsort on degenerate inputs.

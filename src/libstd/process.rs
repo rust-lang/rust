@@ -437,7 +437,10 @@ impl Command {
     /// # Examples
     ///
     /// Basic usage:
+    ///
     /// ```no_run
+    /// #![feature(command_envs)]
+    ///
     /// use std::process::{Command, Stdio};
     /// use std::env;
     /// use std::collections::HashMap;
