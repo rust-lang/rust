@@ -454,11 +454,19 @@ pub struct FnCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     ps: RefCell<UnsafetyState>,
 
     /// Whether the last checked node generates a divergence (e.g.,
-    /// `return` will set this to Always). In general, this is
-    /// typically set to *Maybe* on the way **down** the tree, and
-    /// then values are propagated **up** the tree. In a block, we
-    /// combine the results from statements and propagate the
-    /// end-result up.
+    /// `return` will set this to Always). In general, when entering
+    /// an expression or other node in the tree, the initial value
+    /// indicates whether prior parts of the containing expression may
+    /// have diverged. It is then typically set to `Maybe` (and the
+    /// old value remembered) for processing the subparts of the
+    /// current expression. As each subpart is processed, they may set
+    /// the flag to `Always` etc.  Finally, at the end, we take the
+    /// result and "union" it with the original value, so that when we
+    /// return the flag indicates if any subpart of the the parent
+    /// expression (up to and including this part) has diverged.  So,
+    /// if you read it after evaluating a subexpression `X`, the value
+    /// you get indicates whether any subexpression that was
+    /// evaluating up to and including `X` diverged.
     ///
     /// We use this flag for two purposes:
     ///
