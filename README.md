@@ -180,7 +180,7 @@ transparently:
 
 ## Lints
 
-There are 194 lints included in this crate:
+There are 196 lints included in this crate:
 
 name                                                                                                                   | default | triggers on
 -----------------------------------------------------------------------------------------------------------------------|---------|----------------------------------------------------------------------------------------------------------------------------------
@@ -218,6 +218,7 @@ name                                                                            
 [doc_markdown](https://github.com/Manishearth/rust-clippy/wiki#doc_markdown)                                           | warn    | presence of `_`, `::` or camel-case outside backticks in documentation
 [double_neg](https://github.com/Manishearth/rust-clippy/wiki#double_neg)                                               | warn    | `--x`, which is a double negation of `x` and not a pre-decrement as in C/C++
 [double_parens](https://github.com/Manishearth/rust-clippy/wiki#double_parens)                                         | warn    | Warn on unnecessary double parentheses
+[drop_copy](https://github.com/Manishearth/rust-clippy/wiki#drop_copy)                                                 | warn    | calls to `std::mem::drop` with a value that implements Copy
 [drop_ref](https://github.com/Manishearth/rust-clippy/wiki#drop_ref)                                                   | warn    | calls to `std::mem::drop` with a reference instead of an owned value
 [duplicate_underscore_argument](https://github.com/Manishearth/rust-clippy/wiki#duplicate_underscore_argument)         | warn    | function arguments having names which only differ by an underscore
 [empty_enum](https://github.com/Manishearth/rust-clippy/wiki#empty_enum)                                               | allow   | enum with no variants
@@ -238,6 +239,7 @@ name                                                                            
 [for_kv_map](https://github.com/Manishearth/rust-clippy/wiki#for_kv_map)                                               | warn    | looping on a map using `iter` when `keys` or `values` would do
 [for_loop_over_option](https://github.com/Manishearth/rust-clippy/wiki#for_loop_over_option)                           | warn    | for-looping over an `Option`, which is more clearly expressed as an `if let`
 [for_loop_over_result](https://github.com/Manishearth/rust-clippy/wiki#for_loop_over_result)                           | warn    | for-looping over a `Result`, which is more clearly expressed as an `if let`
+[forget_copy](https://github.com/Manishearth/rust-clippy/wiki#forget_copy)                                             | warn    | calls to `std::mem::forget` with a value that implements Copy
 [forget_ref](https://github.com/Manishearth/rust-clippy/wiki#forget_ref)                                               | warn    | calls to `std::mem::forget` with a reference instead of an owned value
 [get_unwrap](https://github.com/Manishearth/rust-clippy/wiki#get_unwrap)                                               | warn    | using `.get().unwrap()` or `.get_mut().unwrap()` when using `[]` would work instead
 [identity_op](https://github.com/Manishearth/rust-clippy/wiki#identity_op)                                             | warn    | using identity operations, e.g. `x + 0` or `y / 1`

@@ -1,6 +1,7 @@
 #![feature(plugin)]
 #![plugin(clippy)]
 
+
 use std::sync::Arc;
 use std::rc::Rc;
 
@@ -8,6 +9,7 @@ use std::mem::forget as forgetSomething;
 use std::mem as memstuff;
 
 #[deny(mem_forget)]
+#[allow(forget_copy)]
 fn main() {
     let five: i32 = 5;
     forgetSomething(five);

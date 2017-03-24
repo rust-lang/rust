@@ -1,25 +1,25 @@
 error: usage of mem::forget on Drop type
-  --> $DIR/mem_forget.rs:16:5
+  --> $DIR/mem_forget.rs:18:5
    |
-16 |     memstuff::forget(six);
+18 |     memstuff::forget(six);
    |     ^^^^^^^^^^^^^^^^^^^^^
    |
 note: lint level defined here
-  --> $DIR/mem_forget.rs:10:8
+  --> $DIR/mem_forget.rs:11:8
    |
-10 | #[deny(mem_forget)]
+11 | #[deny(mem_forget)]
    |        ^^^^^^^^^^
 
 error: usage of mem::forget on Drop type
-  --> $DIR/mem_forget.rs:20:5
+  --> $DIR/mem_forget.rs:22:5
    |
-20 |     std::mem::forget(seven);
+22 |     std::mem::forget(seven);
    |     ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: usage of mem::forget on Drop type
-  --> $DIR/mem_forget.rs:24:5
+  --> $DIR/mem_forget.rs:26:5
    |
-24 |     forgetSomething(eight);
+26 |     forgetSomething(eight);
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 3 previous errors

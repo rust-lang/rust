@@ -1,4 +1,4 @@
-error: call to `std::mem::drop` with a reference argument. Dropping a reference does nothing
+error: calls to `std::mem::drop` with a reference instead of an owned value. Dropping a reference does nothing.
   --> $DIR/drop_forget_ref.rs:12:5
    |
 12 |     drop(&SomeStruct);
@@ -15,7 +15,7 @@ note: argument has type &SomeStruct
 12 |     drop(&SomeStruct);
    |          ^^^^^^^^^^^
 
-error: call to `std::mem::forget` with a reference argument. Forgetting a reference does nothing
+error: calls to `std::mem::forget` with a reference instead of an owned value. Forgetting a reference does nothing.
   --> $DIR/drop_forget_ref.rs:13:5
    |
 13 |     forget(&SomeStruct);
@@ -32,7 +32,7 @@ note: argument has type &SomeStruct
 13 |     forget(&SomeStruct);
    |            ^^^^^^^^^^^
 
-error: call to `std::mem::drop` with a reference argument. Dropping a reference does nothing
+error: calls to `std::mem::drop` with a reference instead of an owned value. Dropping a reference does nothing.
   --> $DIR/drop_forget_ref.rs:16:5
    |
 16 |     drop(&owned1);
@@ -44,7 +44,7 @@ note: argument has type &SomeStruct
 16 |     drop(&owned1);
    |          ^^^^^^^
 
-error: call to `std::mem::drop` with a reference argument. Dropping a reference does nothing
+error: calls to `std::mem::drop` with a reference instead of an owned value. Dropping a reference does nothing.
   --> $DIR/drop_forget_ref.rs:17:5
    |
 17 |     drop(&&owned1);
@@ -56,7 +56,7 @@ note: argument has type &&SomeStruct
 17 |     drop(&&owned1);
    |          ^^^^^^^^
 
-error: call to `std::mem::drop` with a reference argument. Dropping a reference does nothing
+error: calls to `std::mem::drop` with a reference instead of an owned value. Dropping a reference does nothing.
   --> $DIR/drop_forget_ref.rs:18:5
    |
 18 |     drop(&mut owned1);
@@ -68,7 +68,7 @@ note: argument has type &mut SomeStruct
 18 |     drop(&mut owned1);
    |          ^^^^^^^^^^^
 
-error: call to `std::mem::forget` with a reference argument. Forgetting a reference does nothing
+error: calls to `std::mem::forget` with a reference instead of an owned value. Forgetting a reference does nothing.
   --> $DIR/drop_forget_ref.rs:21:5
    |
 21 |     forget(&owned2);
@@ -80,7 +80,7 @@ note: argument has type &SomeStruct
 21 |     forget(&owned2);
    |            ^^^^^^^
 
-error: call to `std::mem::forget` with a reference argument. Forgetting a reference does nothing
+error: calls to `std::mem::forget` with a reference instead of an owned value. Forgetting a reference does nothing.
   --> $DIR/drop_forget_ref.rs:22:5
    |
 22 |     forget(&&owned2);
@@ -92,7 +92,7 @@ note: argument has type &&SomeStruct
 22 |     forget(&&owned2);
    |            ^^^^^^^^
 
-error: call to `std::mem::forget` with a reference argument. Forgetting a reference does nothing
+error: calls to `std::mem::forget` with a reference instead of an owned value. Forgetting a reference does nothing.
   --> $DIR/drop_forget_ref.rs:23:5
    |
 23 |     forget(&mut owned2);
@@ -104,7 +104,7 @@ note: argument has type &mut SomeStruct
 23 |     forget(&mut owned2);
    |            ^^^^^^^^^^^
 
-error: call to `std::mem::drop` with a reference argument. Dropping a reference does nothing
+error: calls to `std::mem::drop` with a reference instead of an owned value. Dropping a reference does nothing.
   --> $DIR/drop_forget_ref.rs:27:5
    |
 27 |     drop(reference1);
@@ -116,7 +116,7 @@ note: argument has type &SomeStruct
 27 |     drop(reference1);
    |          ^^^^^^^^^^
 
-error: call to `std::mem::forget` with a reference argument. Forgetting a reference does nothing
+error: calls to `std::mem::forget` with a reference instead of an owned value. Forgetting a reference does nothing.
   --> $DIR/drop_forget_ref.rs:28:5
    |
 28 |     forget(&*reference1);
@@ -128,7 +128,7 @@ note: argument has type &SomeStruct
 28 |     forget(&*reference1);
    |            ^^^^^^^^^^^^
 
-error: call to `std::mem::drop` with a reference argument. Dropping a reference does nothing
+error: calls to `std::mem::drop` with a reference instead of an owned value. Dropping a reference does nothing.
   --> $DIR/drop_forget_ref.rs:31:5
    |
 31 |     drop(reference2);
@@ -140,7 +140,7 @@ note: argument has type &mut SomeStruct
 31 |     drop(reference2);
    |          ^^^^^^^^^^
 
-error: call to `std::mem::forget` with a reference argument. Forgetting a reference does nothing
+error: calls to `std::mem::forget` with a reference instead of an owned value. Forgetting a reference does nothing.
   --> $DIR/drop_forget_ref.rs:33:5
    |
 33 |     forget(reference3);
@@ -152,7 +152,7 @@ note: argument has type &mut SomeStruct
 33 |     forget(reference3);
    |            ^^^^^^^^^^
 
-error: call to `std::mem::drop` with a reference argument. Dropping a reference does nothing
+error: calls to `std::mem::drop` with a reference instead of an owned value. Dropping a reference does nothing.
   --> $DIR/drop_forget_ref.rs:36:5
    |
 36 |     drop(reference4);
@@ -164,7 +164,7 @@ note: argument has type &SomeStruct
 36 |     drop(reference4);
    |          ^^^^^^^^^^
 
-error: call to `std::mem::forget` with a reference argument. Forgetting a reference does nothing
+error: calls to `std::mem::forget` with a reference instead of an owned value. Forgetting a reference does nothing.
   --> $DIR/drop_forget_ref.rs:37:5
    |
 37 |     forget(reference4);
@@ -176,7 +176,7 @@ note: argument has type &SomeStruct
 37 |     forget(reference4);
    |            ^^^^^^^^^^
 
-error: call to `std::mem::drop` with a reference argument. Dropping a reference does nothing
+error: calls to `std::mem::drop` with a reference instead of an owned value. Dropping a reference does nothing.
   --> $DIR/drop_forget_ref.rs:42:5
    |
 42 |     drop(&val);
@@ -188,7 +188,7 @@ note: argument has type &T
 42 |     drop(&val);
    |          ^^^^
 
-error: call to `std::mem::forget` with a reference argument. Forgetting a reference does nothing
+error: calls to `std::mem::forget` with a reference instead of an owned value. Forgetting a reference does nothing.
   --> $DIR/drop_forget_ref.rs:48:5
    |
 48 |     forget(&val);
@@ -200,7 +200,7 @@ note: argument has type &T
 48 |     forget(&val);
    |            ^^^^
 
-error: call to `std::mem::drop` with a reference argument. Dropping a reference does nothing
+error: calls to `std::mem::drop` with a reference instead of an owned value. Dropping a reference does nothing.
   --> $DIR/drop_forget_ref.rs:56:5
    |
 56 |     std::mem::drop(&SomeStruct);
@@ -212,7 +212,7 @@ note: argument has type &SomeStruct
 56 |     std::mem::drop(&SomeStruct);
    |                    ^^^^^^^^^^^
 
-error: call to `std::mem::forget` with a reference argument. Forgetting a reference does nothing
+error: calls to `std::mem::forget` with a reference instead of an owned value. Forgetting a reference does nothing.
   --> $DIR/drop_forget_ref.rs:59:5
    |
 59 |     std::mem::forget(&SomeStruct);
