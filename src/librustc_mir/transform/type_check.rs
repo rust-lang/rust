@@ -15,6 +15,7 @@ use rustc::infer::{self, InferCtxt, InferOk};
 use rustc::traits::{self, Reveal};
 use rustc::ty::fold::TypeFoldable;
 use rustc::ty::{self, Ty, TyCtxt, TypeVariants};
+use rustc::middle::const_val::ConstVal;
 use rustc::mir::*;
 use rustc::mir::tcx::LvalueTy;
 use rustc::mir::transform::{MirPass, MirSource, Pass};
@@ -526,7 +527,9 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     fn is_box_free(&self, operand: &Operand<'tcx>) -> bool {
         match operand {
             &Operand::Constant(Constant {
-                literal: Literal::Item { def_id, .. }, ..
+                literal: Literal::Value {
+                    value: ConstVal::Function(def_id, _), ..
+                }, ..
             }) => {
                 Some(def_id) == self.tcx().lang_items.box_free_fn()
             }

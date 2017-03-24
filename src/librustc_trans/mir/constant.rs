@@ -101,9 +101,12 @@ impl<'tcx> Const<'tcx> {
             ConstVal::Str(ref v) => C_str_slice(ccx, v.clone()),
             ConstVal::ByteStr(ref v) => consts::addr_of(ccx, C_bytes(ccx, v), 1, "byte_str"),
             ConstVal::Struct(_) | ConstVal::Tuple(_) |
-            ConstVal::Array(..) | ConstVal::Repeat(..) |
+            ConstVal::Array(..) | ConstVal::Repeat(..) => {
+                bug!("MIR must not use `{:?}` (aggregates are expanded to MIR rvalues)", cv)
+            }
             ConstVal::Function(..) => {
-                bug!("MIR must not use `{:?}` (which refers to a local ID)", cv)
+                let llty = type_of::type_of(ccx, ty);
+                return Const::new(C_null(llty), ty);
             }
             ConstVal::Char(c) => C_integral(Type::char(ccx), c as u64, false),
         };
@@ -476,13 +479,6 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                 let ty = self.monomorphize(&constant.ty);
                 match constant.literal.clone() {
                     mir::Literal::Item { def_id, substs } => {
-                        // Shortcut for zero-sized types, including function item
-                        // types, which would not work with MirConstContext.
-                        if common::type_is_zero_size(self.ccx, ty) {
-                            let llty = type_of::type_of(self.ccx, ty);
-                            return Ok(Const::new(C_null(llty), ty));
-                        }
-
                         let substs = self.monomorphize(&substs);
                         MirConstContext::trans_def(self.ccx, def_id, substs, IndexVec::new())
                     }
@@ -924,13 +920,6 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         let ty = self.monomorphize(&constant.ty);
         let result = match constant.literal.clone() {
             mir::Literal::Item { def_id, substs } => {
-                // Shortcut for zero-sized types, including function item
-                // types, which would not work with MirConstContext.
-                if common::type_is_zero_size(bcx.ccx, ty) {
-                    let llty = type_of::type_of(bcx.ccx, ty);
-                    return Const::new(C_null(llty), ty);
-                }
-
                 let substs = self.monomorphize(&substs);
                 MirConstContext::trans_def(bcx.ccx, def_id, substs, IndexVec::new())
             }
