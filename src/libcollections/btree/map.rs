@@ -141,8 +141,7 @@ pub struct BTreeMap<K, V> {
 unsafe impl<#[may_dangle] K, #[may_dangle] V> Drop for BTreeMap<K, V> {
     fn drop(&mut self) {
         unsafe {
-            for _ in ptr::read(self).into_iter() {
-            }
+            drop(ptr::read(self).into_iter());
         }
     }
 }
