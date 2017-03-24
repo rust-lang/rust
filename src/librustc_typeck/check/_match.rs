@@ -504,7 +504,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     arm_span: arm.body.span,
                     source: match_src
                 });
-                coercion.coerce(self, &cause, &arm.body, arm_ty);
+                coercion.coerce(self, &cause, &arm.body, arm_ty, self.diverges.get());
             }
         }
 

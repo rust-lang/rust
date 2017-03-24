@@ -60,7 +60,7 @@
 //! sort of a minor point so I've opted to leave it for later---after all
 //! we may want to adjust precisely when coercions occur.
 
-use check::FnCtxt;
+use check::{Diverges, FnCtxt};
 
 use rustc::hir;
 use rustc::hir::def_id::DefId;
@@ -156,7 +156,11 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
         })
     }
 
-    fn coerce<E>(&self, exprs: &[E], a: Ty<'tcx>, b: Ty<'tcx>) -> CoerceResult<'tcx>
+    fn coerce<E>(&self,
+                 exprs: &[E],
+                 a: Ty<'tcx>,
+                 b: Ty<'tcx>)
+                 -> CoerceResult<'tcx>
         where E: AsCoercionSite
     {
         let a = self.shallow_resolve(a);
@@ -689,10 +693,18 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     pub fn try_coerce(&self,
                       expr: &hir::Expr,
                       expr_ty: Ty<'tcx>,
+                      expr_diverges: Diverges,
                       target: Ty<'tcx>)
                       -> RelateResult<'tcx, Ty<'tcx>> {
         let source = self.resolve_type_vars_with_obligations(expr_ty);
         debug!("coercion::try({:?}: {:?} -> {:?})", expr, source, target);
+
+        // Special-ish case: we can coerce any type `T` into the `!`
+        // type, but only if the source expression diverges.
+        if target.is_never() && expr_diverges.always() {
+            debug!("permit coercion to `!` because expr diverges");
+            return Ok(target);
+        }
 
         let cause = self.cause(expr.span, ObligationCauseCode::ExprAssignable);
         let coerce = Coerce::new(self, cause);
@@ -721,14 +733,21 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 exprs: &[E],
                                 prev_ty: Ty<'tcx>,
                                 new: &hir::Expr,
-                                new_ty: Ty<'tcx>)
+                                new_ty: Ty<'tcx>,
+                                new_diverges: Diverges)
                                 -> RelateResult<'tcx, Ty<'tcx>>
         where E: AsCoercionSite
     {
-
         let prev_ty = self.resolve_type_vars_with_obligations(prev_ty);
         let new_ty = self.resolve_type_vars_with_obligations(new_ty);
         debug!("coercion::try_find_lub({:?}, {:?})", prev_ty, new_ty);
+
+        // Special-ish case: we can coerce any type `T` into the `!`
+        // type, but only if the source expression diverges.
+        if prev_ty.is_never() && new_diverges.always() {
+            debug!("permit coercion to `!` because expr diverges");
+            return Ok(prev_ty);
+        }
 
         let trace = TypeTrace::types(cause, true, prev_ty, new_ty);
 
@@ -982,9 +1001,10 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
                       fcx: &FnCtxt<'a, 'gcx, 'tcx>,
                       cause: &ObligationCause<'tcx>,
                       expression: &'gcx hir::Expr,
-                      expression_ty: Ty<'tcx>)
+                      expression_ty: Ty<'tcx>,
+                      expression_diverges: Diverges)
     {
-        self.coerce_inner(fcx, cause, Some(expression), expression_ty)
+        self.coerce_inner(fcx, cause, Some(expression), expression_ty, expression_diverges)
     }
 
     /// Indicates that one of the inputs is a "forced unit". This
@@ -1002,7 +1022,8 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
         self.coerce_inner(fcx,
                           cause,
                           None,
-                          fcx.tcx.mk_nil())
+                          fcx.tcx.mk_nil(),
+                          Diverges::Maybe)
     }
 
     /// The inner coercion "engine". If `expression` is `None`, this
@@ -1012,7 +1033,8 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
                         fcx: &FnCtxt<'a, 'gcx, 'tcx>,
                         cause: &ObligationCause<'tcx>,
                         expression: Option<&'gcx hir::Expr>,
-                        mut expression_ty: Ty<'tcx>)
+                        mut expression_ty: Ty<'tcx>,
+                        expression_diverges: Diverges)
     {
         // Incorporate whatever type inference information we have
         // until now; in principle we might also want to process
@@ -1035,7 +1057,7 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
             if self.pushed == 0 {
                 // Special-case the first expression we are coercing.
                 // To be honest, I'm not entirely sure why we do this.
-                fcx.try_coerce(expression, expression_ty, self.expected_ty)
+                fcx.try_coerce(expression, expression_ty, expression_diverges, self.expected_ty)
             } else {
                 match self.expressions {
                     Expressions::Dynamic(ref exprs) =>
@@ -1043,13 +1065,15 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
                                                   exprs,
                                                   self.merged_ty(),
                                                   expression,
-                                                  expression_ty),
+                                                  expression_ty,
+                                                  expression_diverges),
                     Expressions::UpFront(ref coercion_sites) =>
                         fcx.try_find_coercion_lub(cause,
                                                   &coercion_sites[0..self.pushed],
                                                   self.merged_ty(),
                                                   expression,
-                                                  expression_ty),
+                                                  expression_ty,
+                                                  expression_diverges),
                 }
             }
         } else {

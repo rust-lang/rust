@@ -366,7 +366,7 @@ impl UnsafetyState {
 /// as diverging), with some manual adjustments for control-flow
 /// primitives (approximating a CFG).
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
-enum Diverges {
+pub enum Diverges {
     /// Potentially unknown, some cases converge,
     /// others require a CFG to determine them.
     Maybe,
@@ -2831,7 +2831,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     .coerce(self,
                             &self.misc(return_expr.span),
                             return_expr,
-                            return_expr_ty);
+                            return_expr_ty,
+                            self.diverges.get());
     }
 
 
@@ -2862,13 +2863,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let mut coerce: DynamicCoerceMany = CoerceMany::new(coerce_to_ty);
 
         let if_cause = self.cause(sp, ObligationCauseCode::IfExpression);
-        coerce.coerce(self, &if_cause, then_expr, then_ty);
+        coerce.coerce(self, &if_cause, then_expr, then_ty, then_diverges);
 
         if let Some(else_expr) = opt_else_expr {
             let else_ty = self.check_expr_with_expectation(else_expr, expected);
             let else_diverges = self.diverges.get();
 
-            coerce.coerce(self, &if_cause, else_expr, else_ty);
+            coerce.coerce(self, &if_cause, else_expr, else_ty, else_diverges);
 
             // We won't diverge unless both branches do (or the condition does).
             self.diverges.set(cond_diverges | then_diverges & else_diverges);
@@ -3551,7 +3552,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
           }
           hir::ExprBreak(destination, ref expr_opt) => {
               if let Some(target_id) = destination.target_id.opt_id() {
-                  let (e_ty, cause);
+                  let (e_ty, e_diverges, cause);
                   if let Some(ref e) = *expr_opt {
                       // If this is a break with a value, we need to type-check
                       // the expression. Get an expected type from the loop context.
@@ -3570,11 +3571,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
                       // Recurse without `enclosing_breakables` borrowed.
                       e_ty = self.check_expr_with_hint(e, coerce_to);
+                      e_diverges = self.diverges.get();
                       cause = self.misc(e.span);
                   } else {
                       // Otherwise, this is a break *without* a value. That's
                       // always legal, and is equivalent to `break ()`.
                       e_ty = tcx.mk_nil();
+                      e_diverges = Diverges::Maybe;
                       cause = self.misc(expr.span);
                   }
 
@@ -3585,7 +3588,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                   let ctxt = enclosing_breakables.find_breakable(target_id);
                   if let Some(ref mut coerce) = ctxt.coerce {
                       if let Some(ref e) = *expr_opt {
-                          coerce.coerce(self, &cause, e, e_ty);
+                          coerce.coerce(self, &cause, e, e_ty, e_diverges);
                       } else {
                           assert!(e_ty.is_nil());
                           coerce.coerce_forced_unit(self, &cause);
@@ -3767,10 +3770,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                   let coerce_to = uty.unwrap_or_else(
                       || self.next_ty_var(TypeVariableOrigin::TypeInference(expr.span)));
                   let mut coerce = CoerceMany::with_coercion_sites(coerce_to, args);
+                  assert_eq!(self.diverges.get(), Diverges::Maybe);
                   for e in args {
                       let e_ty = self.check_expr_with_hint(e, coerce_to);
                       let cause = self.misc(e.span);
-                      coerce.coerce(self, &cause, e, e_ty);
+                      coerce.coerce(self, &cause, e, e_ty, self.diverges.get());
                   }
                   coerce.complete(self)
               } else {
