@@ -152,8 +152,8 @@ fn partial_insertion_sort<T, F>(v: &mut [T], is_less: &mut F) -> bool
 fn insertion_sort<T, F>(v: &mut [T], is_less: &mut F)
     where F: FnMut(&T, &T) -> bool
 {
-    for i in 2..v.len()+1 {
-        shift_tail(&mut v[..i], is_less);
+    for i in 1..v.len() {
+        shift_tail(&mut v[..i+1], is_less);
     }
 }
 
