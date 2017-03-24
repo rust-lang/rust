@@ -51,7 +51,7 @@ def make_win_dist(rust_root, plat_root, target_triple):
 
     target_tools = ["gcc.exe", "ld.exe", "ar.exe", "dlltool.exe"]
 
-    rustc_dlls = ["libstdc++-6.dll"]
+    rustc_dlls = ["libstdc++-6.dll", "libwinpthread-1.dll"]
     if target_triple.startswith("i686-"):
         rustc_dlls.append("libgcc_s_dw2-1.dll")
     else:
@@ -67,6 +67,7 @@ def make_win_dist(rust_root, plat_root, target_triple):
                     "libstdc++.a",
                     "libiconv.a",
                     "libmoldname.a",
+                    "libpthread.a",
                     # Windows import libs
                     "libadvapi32.a",
                     "libbcrypt.a",
