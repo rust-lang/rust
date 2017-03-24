@@ -110,7 +110,7 @@ mod job;
 
 #[cfg(not(windows))]
 mod job {
-    pub unsafe fn setup(build: &mut Build) {}
+    pub unsafe fn setup(_build: &mut ::Build) {}
 }
 
 pub use config::Config;
