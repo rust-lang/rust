@@ -1700,6 +1700,23 @@ fn document_stability(w: &mut fmt::Formatter, cx: &Context, item: &clean::Item) 
     Ok(())
 }
 
+fn name_key(name: &str) -> (&str, u64, usize) {
+    // find number at end
+    let split = name.bytes().rposition(|b| b < b'0' || b'9' < b).map_or(0, |s| s + 1);
+
+    // count leading zeroes
+    let after_zeroes =
+        name[split..].bytes().position(|b| b != b'0').map_or(name.len(), |extra| split + extra);
+
+    // sort leading zeroes last
+    let num_zeroes = after_zeroes - split;
+
+    match name[split..].parse() {
+        Ok(n) => (&name[..split], n, num_zeroes),
+        Err(_) => (name, 0, num_zeroes),
+    }
+}
+
 fn item_module(w: &mut fmt::Formatter, cx: &Context,
                item: &clean::Item, items: &[clean::Item]) -> fmt::Result {
     document(w, cx, item)?;
@@ -1744,7 +1761,9 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
             (Some(stability::Stable), Some(stability::Unstable)) => return Ordering::Less,
             _ => {}
         }
-        i1.name.cmp(&i2.name)
+        let lhs = i1.name.as_ref().map_or("", |s| &**s);
+        let rhs = i2.name.as_ref().map_or("", |s| &**s);
+        name_key(lhs).cmp(&name_key(rhs))
     }
 
     indices.sort_by(|&i1, &i2| cmp(&items[i1], &items[i2], i1, i2));
@@ -3197,4 +3216,33 @@ fn test_unique_id() {
     test();
     reset_ids(true);
     test();
+}
+
+#[cfg(test)]
+#[test]
+fn test_name_key() {
+    assert_eq!(name_key("0"), ("", 0, 1));
+    assert_eq!(name_key("123"), ("", 123, 0));
+    assert_eq!(name_key("Fruit"), ("Fruit", 0, 0));
+    assert_eq!(name_key("Fruit0"), ("Fruit", 0, 1));
+    assert_eq!(name_key("Fruit0000"), ("Fruit", 0, 4));
+    assert_eq!(name_key("Fruit01"), ("Fruit", 1, 1));
+    assert_eq!(name_key("Fruit10"), ("Fruit", 10, 0));
+    assert_eq!(name_key("Fruit123"), ("Fruit", 123, 0));
+}
+
+#[cfg(test)]
+#[test]
+fn test_name_sorting() {
+    let names = ["Apple",
+                 "Banana",
+                 "Fruit", "Fruit0", "Fruit00",
+                 "Fruit1", "Fruit01",
+                 "Fruit2", "Fruit02",
+                 "Fruit20",
+                 "Fruit100",
+                 "Pear"];
+    let mut sorted = names.to_owned();
+    sorted.sort_by_key(|&s| name_key(s));
+    assert_eq!(names, sorted);
 }
