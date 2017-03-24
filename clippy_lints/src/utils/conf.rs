@@ -166,6 +166,7 @@ define_Conf! {
     ("doc-valid-idents", doc_valid_idents, [
         "MiB", "GiB", "TiB", "PiB", "EiB",
         "DirectX",
+        "ECMAScript",
         "GPLv2", "GPLv3",
         "GitHub",
         "IPv4", "IPv6",

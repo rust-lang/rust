@@ -1,5 +1,4 @@
 #![feature(rustc_private)]
-#![feature(collections_bound)]
 
 extern crate clippy_lints;
 extern crate syntax;

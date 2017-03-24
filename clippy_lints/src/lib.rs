@@ -9,7 +9,6 @@
 #![feature(slice_patterns)]
 #![feature(stmt_expr_attributes)]
 #![feature(conservative_impl_trait)]
-#![feature(collections_bound)]
 
 #![allow(indexing_slicing, shadow_reuse, unknown_lints, missing_docs_in_private_items)]
 #![allow(needless_lifetimes)]
@@ -447,6 +446,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         misc::REDUNDANT_PATTERN,
         misc::SHORT_CIRCUIT_STATEMENT,
         misc::TOPLEVEL_REF_ARG,
+        misc::ZERO_PTR,
         misc_early::BUILTIN_TYPE_SHADOW,
         misc_early::DOUBLE_NEG,
         misc_early::DUPLICATE_UNDERSCORE_ARGUMENT,
@@ -454,7 +454,6 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         misc_early::REDUNDANT_CLOSURE_CALL,
         misc_early::UNNEEDED_FIELD_PATTERN,
         misc_early::ZERO_PREFIXED_LITERAL,
-        misc_early::ZERO_PTR,
         mut_reference::UNNECESSARY_MUT_PASSED,
         mutex_atomic::MUTEX_ATOMIC,
         needless_bool::BOOL_COMPARISON,

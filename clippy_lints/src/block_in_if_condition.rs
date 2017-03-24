@@ -18,7 +18,7 @@ use utils::*;
 declare_lint! {
     pub BLOCK_IN_IF_CONDITION_EXPR,
     Warn,
-    "braces that can be eliminated in conditions, e.g `if { true } ...`"
+    "braces that can be eliminated in conditions, e.g. `if { true } ...`"
 }
 
 /// **What it does:** Checks for `if` conditions that use blocks containing

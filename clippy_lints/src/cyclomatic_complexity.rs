@@ -41,12 +41,13 @@ impl LintPass for CyclomaticComplexity {
 }
 
 impl CyclomaticComplexity {
-    fn check<'a, 'tcx: 'a>(&mut self, cx: &'a LateContext<'a, 'tcx>, expr: &'tcx Expr, span: Span) {
+    fn check<'a, 'tcx: 'a>(&mut self, cx: &'a LateContext<'a, 'tcx>, body: &'tcx Body, span: Span) {
         if in_macro(cx, span) {
             return;
         }
 
-        let cfg = CFG::new(cx.tcx, expr);
+        let cfg = CFG::new(cx.tcx, body);
+        let expr = &body.value;
         let n = cfg.graph.len_nodes() as u64;
         let e = cfg.graph.len_edges() as u64;
         if e + 2 < n {
@@ -101,7 +102,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CyclomaticComplexity {
     ) {
         let def_id = cx.tcx.hir.local_def_id(node_id);
         if !cx.tcx.has_attr(def_id, "test") {
-            self.check(cx, &body.value, span);
+            self.check(cx, body, span);
         }
     }
 
@@ -136,7 +137,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CCHelper<'a, 'tcx> {
                 let ty = self.cx.tables.node_id_to_type(callee.id);
                 match ty.sty {
                     ty::TyFnDef(_, _, ty) |
-                    ty::TyFnPtr(ty) if ty.sig.skip_binder().output().sty == ty::TyNever => {
+                    ty::TyFnPtr(ty) if ty.skip_binder().output().sty == ty::TyNever => {
                         self.divergence += 1;
                     },
                     _ => (),

@@ -86,8 +86,8 @@ impl LintPass for AttrPass {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AttrPass {
     fn check_attribute(&mut self, cx: &LateContext<'a, 'tcx>, attr: &'tcx Attribute) {
-        if let MetaItemKind::List(ref items) = attr.value.node {
-            if items.is_empty() || attr.name() != "deprecated" {
+        if let Some(ref items) = attr.meta_item_list() {
+            if items.is_empty() || attr.name().map_or(true, |n| n != "deprecated") {
                 return;
             }
             for item in items {
@@ -110,31 +110,33 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AttrPass {
             ItemExternCrate(_) |
             ItemUse(_, _) => {
                 for attr in &item.attrs {
-                    if let MetaItemKind::List(ref lint_list) = attr.value.node {
-                        match &*attr.name().as_str() {
-                            "allow" | "warn" | "deny" | "forbid" => {
-                                // whitelist `unused_imports` and `deprecated`
-                                for lint in lint_list {
-                                    if is_word(lint, "unused_imports") || is_word(lint, "deprecated") {
-                                        if let ItemUse(_, _) = item.node {
-                                            return;
+                    if let Some(ref lint_list) = attr.meta_item_list() {
+                        if let Some(name) = attr.name() {
+                            match &*name.as_str() {
+                                "allow" | "warn" | "deny" | "forbid" => {
+                                    // whitelist `unused_imports` and `deprecated`
+                                    for lint in lint_list {
+                                        if is_word(lint, "unused_imports") || is_word(lint, "deprecated") {
+                                            if let ItemUse(_, _) = item.node {
+                                                return;
+                                            }
                                         }
                                     }
-                                }
-                                if let Some(mut sugg) = snippet_opt(cx, attr.span) {
-                                    if sugg.len() > 1 {
-                                        span_lint_and_then(cx,
-                                                           USELESS_ATTRIBUTE,
-                                                           attr.span,
-                                                           "useless lint attribute",
-                                                           |db| {
-                                            sugg.insert(1, '!');
-                                            db.span_suggestion(attr.span, "if you just forgot a `!`, use", sugg);
-                                        });
+                                    if let Some(mut sugg) = snippet_opt(cx, attr.span) {
+                                        if sugg.len() > 1 {
+                                            span_lint_and_then(cx,
+                                                               USELESS_ATTRIBUTE,
+                                                               attr.span,
+                                                               "useless lint attribute",
+                                                               |db| {
+                                                sugg.insert(1, '!');
+                                                db.span_suggestion(attr.span, "if you just forgot a `!`, use", sugg);
+                                            });
+                                        }
                                     }
-                                }
-                            },
-                            _ => {},
+                                },
+                                _ => {},
+                            }
                         }
                     }
                 }
@@ -218,8 +220,8 @@ fn check_attrs(cx: &LateContext, span: Span, name: &Name, attrs: &[Attribute]) {
     }
 
     for attr in attrs {
-        if let MetaItemKind::List(ref values) = attr.value.node {
-            if values.len() != 1 || attr.name() != "inline" {
+        if let Some(ref values) = attr.meta_item_list() {
+            if values.len() != 1 || attr.name().map_or(true, |n| n != "inline") {
                 continue;
             }
             if is_word(&values[0], "always") {

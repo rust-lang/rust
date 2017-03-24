@@ -1,6 +1,24 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.121 — 2017-03-21
+* Rustup to *rustc 1.17.0-nightly (134c4a0f0 2017-03-20)*
+
+## 0.0.120 — 2017-03-17
+* Rustup to *rustc 1.17.0-nightly (0aeb9c129 2017-03-15)*
+
+## 0.0.119 — 2017-03-13
+* Rustup to *rustc 1.17.0-nightly (824c9ebbd 2017-03-12)*
+
+## 0.0.118 — 2017-03-05
+* Rustup to *rustc 1.17.0-nightly (b1e31766d 2017-03-03)*
+
+## 0.0.117 — 2017-03-01
+* Rustup to *rustc 1.17.0-nightly (be760566c 2017-02-28)*
+
+## 0.0.116 — 2017-02-28
+* Fix `cargo clippy` on 64 bit windows systems
+
 ## 0.0.115 — 2017-02-27
 * Rustup to *rustc 1.17.0-nightly (60a0edc6c 2017-02-26)*
 * New lints: [`zero_ptr`], [`never_loop`], [`mut_from_ref`]
@@ -65,7 +83,7 @@ All notable changes to this project will be documented in this file.
 * New lint: [`get_unwrap`]
 
 ## 0.0.98 — 2016-11-08
-* Fixes a an issue due to a change in how cargo handles `--sysroot`, which broke `cargo clippy`
+* Fixes an issue due to a change in how cargo handles `--sysroot`, which broke `cargo clippy`
 
 ## 0.0.97 — 2016-11-03
 * For convenience, `cargo clippy` defines a `cargo-clippy` feature. This was

@@ -58,6 +58,10 @@ impl EarlyLintPass for ItemsAfterStatements {
                 if in_macro(cx, it.span) {
                     return;
                 }
+                if let ItemKind::MacroDef(..) = it.node {
+                    // do not lint `macro_rules`, but continue processing further statements
+                    continue;
+                }
                 span_lint(cx,
                           ITEMS_AFTER_STATEMENTS,
                           it.span,

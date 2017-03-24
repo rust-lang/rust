@@ -4,13 +4,13 @@ use rustc::hir::intravisit::FnKind;
 use rustc::lint::*;
 use rustc::middle::const_val::ConstVal;
 use rustc::ty;
-use rustc_const_eval::EvalHint::ExprTypeChecked;
 use rustc_const_eval::ConstContext;
 use rustc_const_math::ConstFloat;
 use syntax::codemap::{Span, Spanned, ExpnFormat};
 use utils::{get_item_name, get_parent_expr, implements_trait, in_macro, is_integer_literal, match_path, snippet,
-            span_lint, span_lint_and_then, walk_ptrs_ty, last_path_segment, iter_input_pats};
+            span_lint, span_lint_and_then, walk_ptrs_ty, last_path_segment, iter_input_pats, in_constant};
 use utils::sugg::Sugg;
+use syntax::ast::LitKind;
 
 /// **What it does:** Checks for function arguments and let bindings denoted as `ref`.
 ///
@@ -173,6 +173,24 @@ declare_lint! {
     "using a short circuit boolean condition as a statement"
 }
 
+/// **What it does:** Catch casts from `0` to some pointer type
+///
+/// **Why is this bad?** This generally means `null` and is better expressed as
+/// {`std`, `core`}`::ptr::`{`null`, `null_mut`}.
+///
+/// **Known problems:** None.
+///
+/// **Example:**
+///
+/// ```rust
+/// 0 as *const u32
+/// ```
+declare_lint! {
+    pub ZERO_PTR,
+    Warn,
+    "using 0 as *{const, mut} T"
+}
+
 #[derive(Copy, Clone)]
 pub struct Pass;
 
@@ -185,7 +203,8 @@ impl LintPass for Pass {
                     MODULO_ONE,
                     REDUNDANT_PATTERN,
                     USED_UNDERSCORE_BINDING,
-                    SHORT_CIRCUIT_STATEMENT)
+                    SHORT_CIRCUIT_STATEMENT,
+                    ZERO_PTR)
     }
 }
 
@@ -264,41 +283,48 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     }
 
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
-        if let ExprBinary(ref cmp, ref left, ref right) = expr.node {
-            let op = cmp.node;
-            if op.is_comparison() {
-                if let ExprPath(QPath::Resolved(_, ref path)) = left.node {
-                    check_nan(cx, path, expr.span);
+        match expr.node {
+            ExprCast(ref e, ref ty) => {
+                check_cast(cx, expr.span, e, ty);
+                return;
+            },
+            ExprBinary(ref cmp, ref left, ref right) => {
+                let op = cmp.node;
+                if op.is_comparison() {
+                    if let ExprPath(QPath::Resolved(_, ref path)) = left.node {
+                        check_nan(cx, path, expr);
+                    }
+                    if let ExprPath(QPath::Resolved(_, ref path)) = right.node {
+                        check_nan(cx, path, expr);
+                    }
+                    check_to_owned(cx, left, right, true, cmp.span);
+                    check_to_owned(cx, right, left, false, cmp.span)
                 }
-                if let ExprPath(QPath::Resolved(_, ref path)) = right.node {
-                    check_nan(cx, path, expr.span);
-                }
-                check_to_owned(cx, left, right, true, cmp.span);
-                check_to_owned(cx, right, left, false, cmp.span)
-            }
-            if (op == BiEq || op == BiNe) && (is_float(cx, left) || is_float(cx, right)) {
-                if is_allowed(cx, left) || is_allowed(cx, right) {
-                    return;
-                }
-                if let Some(name) = get_item_name(cx, expr) {
-                    let name = &*name.as_str();
-                    if name == "eq" || name == "ne" || name == "is_nan" || name.starts_with("eq_") ||
-                       name.ends_with("_eq") {
+                if (op == BiEq || op == BiNe) && (is_float(cx, left) || is_float(cx, right)) {
+                    if is_allowed(cx, left) || is_allowed(cx, right) {
                         return;
                     }
-                }
-                span_lint_and_then(cx, FLOAT_CMP, expr.span, "strict comparison of f32 or f64", |db| {
-                    let lhs = Sugg::hir(cx, left, "..");
-                    let rhs = Sugg::hir(cx, right, "..");
+                    if let Some(name) = get_item_name(cx, expr) {
+                        let name = &*name.as_str();
+                        if name == "eq" || name == "ne" || name == "is_nan" || name.starts_with("eq_") ||
+                           name.ends_with("_eq") {
+                            return;
+                        }
+                    }
+                    span_lint_and_then(cx, FLOAT_CMP, expr.span, "strict comparison of f32 or f64", |db| {
+                        let lhs = Sugg::hir(cx, left, "..");
+                        let rhs = Sugg::hir(cx, right, "..");
 
-                    db.span_suggestion(expr.span,
-                                       "consider comparing them within some error",
-                                       format!("({}).abs() < error", lhs - rhs));
-                    db.span_note(expr.span, "std::f32::EPSILON and std::f64::EPSILON are available.");
-                });
-            } else if op == BiRem && is_integer_literal(right, 1) {
-                span_lint(cx, MODULO_ONE, expr.span, "any number modulo 1 will be 0");
-            }
+                        db.span_suggestion(expr.span,
+                                           "consider comparing them within some error",
+                                           format!("({}).abs() < error", lhs - rhs));
+                        db.span_note(expr.span, "std::f32::EPSILON and std::f64::EPSILON are available.");
+                    });
+                } else if op == BiRem && is_integer_literal(right, 1) {
+                    span_lint(cx, MODULO_ONE, expr.span, "any number modulo 1 will be 0");
+                }
+            },
+            _ => {},
         }
         if in_attributes_expansion(cx, expr) {
             // Don't lint things expanded by #[derive(...)], etc
@@ -350,37 +376,43 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     }
 }
 
-fn check_nan(cx: &LateContext, path: &Path, span: Span) {
-    path.segments.last().map(|seg| if &*seg.name.as_str() == "NAN" {
-        span_lint(cx,
-                  CMP_NAN,
-                  span,
-                  "doomed comparison with NAN, use `std::{f32,f64}::is_nan()` instead");
-    });
+fn check_nan(cx: &LateContext, path: &Path, expr: &Expr) {
+    if !in_constant(cx, expr.id) {
+        path.segments.last().map(|seg| if &*seg.name.as_str() == "NAN" {
+            span_lint(cx,
+                      CMP_NAN,
+                      expr.span,
+                      "doomed comparison with NAN, use `std::{f32,f64}::is_nan()` instead");
+        });
+    }
 }
 
 fn is_allowed(cx: &LateContext, expr: &Expr) -> bool {
-    let res = ConstContext::with_tables(cx.tcx, cx.tables).eval(expr, ExprTypeChecked);
+    let res = ConstContext::with_tables(cx.tcx, cx.tables).eval(expr);
     if let Ok(ConstVal::Float(val)) = res {
         use std::cmp::Ordering;
+        match val {
+            val @ ConstFloat::F32(_) => {
+                let zero = ConstFloat::F32(0.0);
 
-        let zero = ConstFloat::FInfer {
-            f32: 0.0,
-            f64: 0.0,
-        };
+                let infinity = ConstFloat::F32(::std::f32::INFINITY);
 
-        let infinity = ConstFloat::FInfer {
-            f32: ::std::f32::INFINITY,
-            f64: ::std::f64::INFINITY,
-        };
+                let neg_infinity = ConstFloat::F32(::std::f32::NEG_INFINITY);
 
-        let neg_infinity = ConstFloat::FInfer {
-            f32: ::std::f32::NEG_INFINITY,
-            f64: ::std::f64::NEG_INFINITY,
-        };
+                val.try_cmp(zero) == Ok(Ordering::Equal) || val.try_cmp(infinity) == Ok(Ordering::Equal) ||
+                val.try_cmp(neg_infinity) == Ok(Ordering::Equal)
+            },
+            val @ ConstFloat::F64(_) => {
+                let zero = ConstFloat::F64(0.0);
 
-        val.try_cmp(zero) == Ok(Ordering::Equal) || val.try_cmp(infinity) == Ok(Ordering::Equal) ||
-        val.try_cmp(neg_infinity) == Ok(Ordering::Equal)
+                let infinity = ConstFloat::F64(::std::f64::INFINITY);
+
+                let neg_infinity = ConstFloat::F64(::std::f64::NEG_INFINITY);
+
+                val.try_cmp(zero) == Ok(Ordering::Equal) || val.try_cmp(infinity) == Ok(Ordering::Equal) ||
+                val.try_cmp(neg_infinity) == Ok(Ordering::Equal)
+            },
+        }
     } else {
         false
     }
@@ -485,4 +517,20 @@ fn non_macro_local(cx: &LateContext, def: &def::Def) -> bool {
         },
         _ => false,
     }
+}
+
+fn check_cast(cx: &LateContext, span: Span, e: &Expr, ty: &Ty) {
+    if_let_chain! {[
+        let TyPtr(MutTy { mutbl, .. }) = ty.node,
+        let ExprLit(ref lit) = e.node,
+        let LitKind::Int(value, ..) = lit.node,
+        value == 0,
+        !in_constant(cx, e.id)
+    ], {
+        let msg = match mutbl {
+            Mutability::MutMutable => "`0 as *mut _` detected. Consider using `ptr::null_mut()`",
+            Mutability::MutImmutable => "`0 as *const _` detected. Consider using `ptr::null()`",
+        };
+        span_lint(cx, ZERO_PTR, span, msg);
+    }}
 }

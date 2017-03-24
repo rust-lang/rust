@@ -257,7 +257,7 @@ impl<'v, 't> RefVisitor<'v, 't> {
                         }
                     },
                     Def::Trait(def_id) => {
-                        let trait_def = self.cx.tcx.trait_defs.borrow()[&def_id];
+                        let trait_def = self.cx.tcx.maps.trait_def.borrow()[&def_id];
                         for _ in &self.cx.tcx.item_generics(trait_def.def_id).regions {
                             self.record(&None);
                         }

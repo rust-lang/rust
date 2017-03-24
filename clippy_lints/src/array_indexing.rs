@@ -1,9 +1,8 @@
 use rustc::lint::*;
 use rustc::middle::const_val::ConstVal;
 use rustc::ty;
-use rustc_const_eval::EvalHint::ExprTypeChecked;
 use rustc_const_eval::ConstContext;
-use rustc_const_math::ConstInt;
+use rustc_const_math::{ConstUsize, ConstIsize, ConstInt};
 use rustc::hir;
 use syntax::ast::RangeLimits;
 use utils::{self, higher};
@@ -61,11 +60,12 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ArrayIndexing {
             // Array with known size can be checked statically
             let ty = cx.tables.expr_ty(array);
             if let ty::TyArray(_, size) = ty.sty {
-                let size = ConstInt::Infer(size as u128);
+                let size = ConstInt::Usize(ConstUsize::new(size as u64, cx.sess().target.uint_type)
+                    .expect("array size is invalid"));
                 let constcx = ConstContext::with_tables(cx.tcx, cx.tables);
 
                 // Index is a constant uint
-                let const_index = constcx.eval(index, ExprTypeChecked);
+                let const_index = constcx.eval(index);
                 if let Ok(ConstVal::Integral(const_index)) = const_index {
                     if size <= const_index {
                         utils::span_lint(cx, OUT_OF_BOUNDS_INDEXING, e.span, "const index is out of bounds");
@@ -77,10 +77,10 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for ArrayIndexing {
                 // Index is a constant range
                 if let Some(range) = higher::range(index) {
                     let start = range.start
-                        .map(|start| constcx.eval(start, ExprTypeChecked))
+                        .map(|start| constcx.eval(start))
                         .map(|v| v.ok());
                     let end = range.end
-                        .map(|end| constcx.eval(end, ExprTypeChecked))
+                        .map(|end| constcx.eval(end))
                         .map(|v| v.ok());
 
                     if let Some((start, end)) = to_const_range(&start, &end, range.limits, size) {
@@ -117,13 +117,31 @@ fn to_const_range(
     let start = match *start {
         Some(Some(ConstVal::Integral(x))) => x,
         Some(_) => return None,
-        None => ConstInt::Infer(0),
+        None => ConstInt::U8(0),
     };
 
     let end = match *end {
         Some(Some(ConstVal::Integral(x))) => {
             if limits == RangeLimits::Closed {
-                (x + ConstInt::Infer(1)).expect("such a big array is not realistic")
+                match x {
+                        ConstInt::U8(_) => (x + ConstInt::U8(1)),
+                        ConstInt::U16(_) => (x + ConstInt::U16(1)),
+                        ConstInt::U32(_) => (x + ConstInt::U32(1)),
+                        ConstInt::U64(_) => (x + ConstInt::U64(1)),
+                        ConstInt::U128(_) => (x + ConstInt::U128(1)),
+                        ConstInt::Usize(ConstUsize::Us16(_)) => (x + ConstInt::Usize(ConstUsize::Us16(1))),
+                        ConstInt::Usize(ConstUsize::Us32(_)) => (x + ConstInt::Usize(ConstUsize::Us32(1))),
+                        ConstInt::Usize(ConstUsize::Us64(_)) => (x + ConstInt::Usize(ConstUsize::Us64(1))),
+                        ConstInt::I8(_) => (x + ConstInt::I8(1)),
+                        ConstInt::I16(_) => (x + ConstInt::I16(1)),
+                        ConstInt::I32(_) => (x + ConstInt::I32(1)),
+                        ConstInt::I64(_) => (x + ConstInt::I64(1)),
+                        ConstInt::I128(_) => (x + ConstInt::I128(1)),
+                        ConstInt::Isize(ConstIsize::Is16(_)) => (x + ConstInt::Isize(ConstIsize::Is16(1))),
+                        ConstInt::Isize(ConstIsize::Is32(_)) => (x + ConstInt::Isize(ConstIsize::Is32(1))),
+                        ConstInt::Isize(ConstIsize::Is64(_)) => (x + ConstInt::Isize(ConstIsize::Is64(1))),
+                    }
+                    .expect("such a big array is not realistic")
             } else {
                 x
             }

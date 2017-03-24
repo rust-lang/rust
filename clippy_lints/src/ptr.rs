@@ -113,7 +113,8 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for PointerPass {
 
 fn check_fn(cx: &LateContext, decl: &FnDecl, fn_id: NodeId) {
     let fn_def_id = cx.tcx.hir.local_def_id(fn_id);
-    let fn_ty = cx.tcx.item_type(fn_def_id).fn_sig().skip_binder();
+    let sig = cx.tcx.item_type(fn_def_id).fn_sig();
+    let fn_ty = sig.skip_binder();
 
     for (arg, ty) in decl.inputs.iter().zip(fn_ty.inputs()) {
         if let ty::TyRef(_, ty::TypeAndMut { ty, mutbl: MutImmutable }) = ty.sty {

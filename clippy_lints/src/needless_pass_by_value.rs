@@ -41,6 +41,10 @@ impl LintPass for NeedlessPassByValue {
     }
 }
 
+macro_rules! need {
+    ($e: expr) => { if let Some(x) = $e { x } else { return; } };
+}
+
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
     fn check_fn(
         &mut self,
@@ -55,14 +59,25 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
             return;
         }
 
-        if !matches!(kind, FnKind::ItemFn(..)) {
-            return;
+        match kind {
+            FnKind::ItemFn(.., attrs) => {
+                for a in attrs {
+                    if_let_chain!{[
+                        a.meta_item_list().is_some(),
+                        let Some(name) = a.name(),
+                        &*name.as_str() == "proc_macro_derive",
+                    ], {
+                        return;
+                    }}
+                }
+            },
+            _ => return,
         }
 
         // Allows these to be passed by value.
-        let fn_trait = cx.tcx.lang_items.fn_trait().expect("failed to find `Fn` trait");
-        let asref_trait = get_trait_def_id(cx, &paths::ASREF_TRAIT).expect("failed to find `AsRef` trait");
-        let borrow_trait = get_trait_def_id(cx, &paths::BORROW_TRAIT).expect("failed to find `Borrow` trait");
+        let fn_trait = need!(cx.tcx.lang_items.fn_trait());
+        let asref_trait = need!(get_trait_def_id(cx, &paths::ASREF_TRAIT));
+        let borrow_trait = need!(get_trait_def_id(cx, &paths::BORROW_TRAIT));
 
         let preds: Vec<ty::Predicate> = {
             let parameter_env = ty::ParameterEnvironment::for_item(cx.tcx, node_id);
@@ -85,7 +100,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
         let fn_def_id = cx.tcx.hir.local_def_id(node_id);
         let param_env = ty::ParameterEnvironment::for_item(cx.tcx, node_id);
         let fn_sig = cx.tcx.item_type(fn_def_id).fn_sig();
-        let fn_sig = cx.tcx.liberate_late_bound_regions(param_env.free_id_outlive, fn_sig);
+        let fn_sig = cx.tcx.liberate_late_bound_regions(param_env.free_id_outlive, &fn_sig);
 
         for ((input, ty), arg) in decl.inputs.iter().zip(fn_sig.inputs()).zip(&body.arguments) {
 

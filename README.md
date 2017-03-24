@@ -50,7 +50,7 @@ Then build by enabling the feature: `cargo build --features "clippy"`
 
 Instead of adding the `cfg_attr` attributes you can also run clippy on demand:
 `cargo rustc --features clippy -- -Z no-trans -Z extra-plugins=clippy`
-(the `-Z no trans`, while not neccessary, will stop the compilation process after
+(the `-Z no trans`, while not necessary, will stop the compilation process after
 typechecking (and lints) have completed, which can significantly reduce the runtime).
 
 ### As a cargo subcommand (`cargo clippy`)
@@ -191,16 +191,16 @@ name                                                                            
 [assign_ops](https://github.com/Manishearth/rust-clippy/wiki#assign_ops)                                               | allow   | any compound assignment operation
 [bad_bit_mask](https://github.com/Manishearth/rust-clippy/wiki#bad_bit_mask)                                           | warn    | expressions of the form `_ & mask == select` that will only ever return `true` or `false`
 [blacklisted_name](https://github.com/Manishearth/rust-clippy/wiki#blacklisted_name)                                   | warn    | usage of a blacklisted/placeholder name
-[block_in_if_condition_expr](https://github.com/Manishearth/rust-clippy/wiki#block_in_if_condition_expr)               | warn    | braces that can be eliminated in conditions, e.g `if { true } ...`
+[block_in_if_condition_expr](https://github.com/Manishearth/rust-clippy/wiki#block_in_if_condition_expr)               | warn    | braces that can be eliminated in conditions, e.g. `if { true } ...`
 [block_in_if_condition_stmt](https://github.com/Manishearth/rust-clippy/wiki#block_in_if_condition_stmt)               | warn    | complex blocks in conditions, e.g. `if { let x = true; x } ...`
 [bool_comparison](https://github.com/Manishearth/rust-clippy/wiki#bool_comparison)                                     | warn    | comparing a variable to a boolean, e.g. `if x == true`
 [box_vec](https://github.com/Manishearth/rust-clippy/wiki#box_vec)                                                     | warn    | usage of `Box<Vec<T>>`, vector elements are already on the heap
 [boxed_local](https://github.com/Manishearth/rust-clippy/wiki#boxed_local)                                             | warn    | using `Box<T>` where unnecessary
 [builtin_type_shadow](https://github.com/Manishearth/rust-clippy/wiki#builtin_type_shadow)                             | warn    | shadowing a builtin type
-[cast_possible_truncation](https://github.com/Manishearth/rust-clippy/wiki#cast_possible_truncation)                   | allow   | casts that may cause truncation of the value, e.g `x as u8` where `x: u32`, or `x as i32` where `x: f32`
-[cast_possible_wrap](https://github.com/Manishearth/rust-clippy/wiki#cast_possible_wrap)                               | allow   | casts that may cause wrapping around the value, e.g `x as i32` where `x: u32` and `x > i32::MAX`
-[cast_precision_loss](https://github.com/Manishearth/rust-clippy/wiki#cast_precision_loss)                             | allow   | casts that cause loss of precision, e.g `x as f32` where `x: u64`
-[cast_sign_loss](https://github.com/Manishearth/rust-clippy/wiki#cast_sign_loss)                                       | allow   | casts from signed types to unsigned types, e.g `x as u32` where `x: i32`
+[cast_possible_truncation](https://github.com/Manishearth/rust-clippy/wiki#cast_possible_truncation)                   | allow   | casts that may cause truncation of the value, e.g. `x as u8` where `x: u32`, or `x as i32` where `x: f32`
+[cast_possible_wrap](https://github.com/Manishearth/rust-clippy/wiki#cast_possible_wrap)                               | allow   | casts that may cause wrapping around the value, e.g. `x as i32` where `x: u32` and `x > i32::MAX`
+[cast_precision_loss](https://github.com/Manishearth/rust-clippy/wiki#cast_precision_loss)                             | allow   | casts that cause loss of precision, e.g. `x as f32` where `x: u64`
+[cast_sign_loss](https://github.com/Manishearth/rust-clippy/wiki#cast_sign_loss)                                       | allow   | casts from signed types to unsigned types, e.g. `x as u32` where `x: i32`
 [char_lit_as_u8](https://github.com/Manishearth/rust-clippy/wiki#char_lit_as_u8)                                       | warn    | casting a character literal to u8
 [chars_next_cmp](https://github.com/Manishearth/rust-clippy/wiki#chars_next_cmp)                                       | warn    | using `.chars().next()` to check if a string starts with a char
 [clone_double_ref](https://github.com/Manishearth/rust-clippy/wiki#clone_double_ref)                                   | warn    | using `clone` on `&&T`
@@ -336,7 +336,7 @@ name                                                                            
 [should_implement_trait](https://github.com/Manishearth/rust-clippy/wiki#should_implement_trait)                       | warn    | defining a method that should be implementing a std trait
 [similar_names](https://github.com/Manishearth/rust-clippy/wiki#similar_names)                                         | allow   | similarly named items and bindings
 [single_char_pattern](https://github.com/Manishearth/rust-clippy/wiki#single_char_pattern)                             | warn    | using a single-character str where a char could be used, e.g. `_.split("x")`
-[single_match](https://github.com/Manishearth/rust-clippy/wiki#single_match)                                           | warn    | a match statement with a single nontrivial arm (i.e, where the other arm is `_ => {}`) instead of `if let`
+[single_match](https://github.com/Manishearth/rust-clippy/wiki#single_match)                                           | warn    | a match statement with a single nontrivial arm (i.e. where the other arm is `_ => {}`) instead of `if let`
 [single_match_else](https://github.com/Manishearth/rust-clippy/wiki#single_match_else)                                 | allow   | a match statement with a two arms where the second arm's pattern is a wildcard instead of `if let`
 [string_add](https://github.com/Manishearth/rust-clippy/wiki#string_add)                                               | allow   | using `x + ..` where x is a `String` instead of `push_str()`
 [string_add_assign](https://github.com/Manishearth/rust-clippy/wiki#string_add_assign)                                 | allow   | using `x = x + ..` where x is a `String` instead of `push_str()`
@@ -354,7 +354,7 @@ name                                                                            
 [type_complexity](https://github.com/Manishearth/rust-clippy/wiki#type_complexity)                                     | warn    | usage of very complex types that might be better factored into `type` definitions
 [unicode_not_nfc](https://github.com/Manishearth/rust-clippy/wiki#unicode_not_nfc)                                     | allow   | using a unicode literal not in NFC normal form (see [unicode tr15](http://www.unicode.org/reports/tr15/) for further information)
 [unit_cmp](https://github.com/Manishearth/rust-clippy/wiki#unit_cmp)                                                   | warn    | comparing unit values
-[unnecessary_cast](https://github.com/Manishearth/rust-clippy/wiki#unnecessary_cast)                                   | warn    | cast to the same type, e.g `x as i32` where `x: i32`
+[unnecessary_cast](https://github.com/Manishearth/rust-clippy/wiki#unnecessary_cast)                                   | warn    | cast to the same type, e.g. `x as i32` where `x: i32`
 [unnecessary_mut_passed](https://github.com/Manishearth/rust-clippy/wiki#unnecessary_mut_passed)                       | warn    | an argument passed as a mutable reference although the callee only demands an immutable reference
 [unnecessary_operation](https://github.com/Manishearth/rust-clippy/wiki#unnecessary_operation)                         | warn    | outer expressions with no effect
 [unneeded_field_pattern](https://github.com/Manishearth/rust-clippy/wiki#unneeded_field_pattern)                       | warn    | struct fields bound to a wildcard instead of using `..`

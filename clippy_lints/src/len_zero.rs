@@ -186,7 +186,8 @@ fn has_is_empty(cx: &LateContext, expr: &Expr) -> bool {
     fn is_is_empty(cx: &LateContext, item: &ty::AssociatedItem) -> bool {
         if let ty::AssociatedKind::Method = item.kind {
             if &*item.name.as_str() == "is_empty" {
-                let ty = cx.tcx.item_type(item.def_id).fn_sig().skip_binder();
+                let sig = cx.tcx.item_type(item.def_id).fn_sig();
+                let ty = sig.skip_binder();
                 ty.inputs().len() == 1
             } else {
                 false
@@ -198,7 +199,7 @@ fn has_is_empty(cx: &LateContext, expr: &Expr) -> bool {
 
     /// Check the inherent impl's items for an `is_empty(self)` method.
     fn has_is_empty_impl(cx: &LateContext, id: DefId) -> bool {
-        cx.tcx.inherent_impls.borrow().get(&id).map_or(false, |impls| {
+        cx.tcx.maps.inherent_impls.borrow().get(&id).map_or(false, |impls| {
             impls.iter().any(|imp| cx.tcx.associated_items(*imp).any(|item| is_is_empty(cx, &item)))
         })
     }

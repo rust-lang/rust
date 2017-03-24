@@ -8,7 +8,6 @@ use rustc::lint::*;
 use rustc::middle::const_val::ConstVal;
 use rustc::middle::region::CodeExtent;
 use rustc::ty;
-use rustc_const_eval::EvalHint::ExprTypeChecked;
 use rustc_const_eval::ConstContext;
 use std::collections::HashMap;
 use syntax::ast;
@@ -596,8 +595,8 @@ fn check_for_loop_reverse_range(cx: &LateContext, arg: &Expr, expr: &Expr) {
     if let Some(higher::Range { start: Some(start), end: Some(end), limits }) = higher::range(arg) {
         // ...and both sides are compile-time constant integers...
         let constcx = ConstContext::with_tables(cx.tcx, cx.tables);
-        if let Ok(start_idx) = constcx.eval(start, ExprTypeChecked) {
-            if let Ok(end_idx) = constcx.eval(end, ExprTypeChecked) {
+        if let Ok(start_idx) = constcx.eval(start) {
+            if let Ok(end_idx) = constcx.eval(end) {
                 // ...and the start index is greater than the end index,
                 // this loop will never run. This is often confusing for developers
                 // who think that this will iterate from the larger value to the

@@ -2,7 +2,6 @@ use rustc::hir::*;
 use rustc::lint::*;
 use rustc::middle::const_val::ConstVal;
 use rustc::ty;
-use rustc_const_eval::EvalHint::ExprTypeChecked;
 use rustc_const_eval::ConstContext;
 use rustc_const_math::ConstInt;
 use std::cmp::Ordering;
@@ -11,7 +10,7 @@ use syntax::ast::LitKind;
 use syntax::codemap::Span;
 use utils::paths;
 use utils::{match_type, snippet, span_note_and_lint, span_lint_and_then, in_external_macro, expr_block, walk_ptrs_ty,
-            is_expn_of};
+            is_expn_of, remove_blocks};
 use utils::sugg::Sugg;
 
 /// **What it does:** Checks for matches with a single arm where an `if let`
@@ -31,7 +30,7 @@ use utils::sugg::Sugg;
 declare_lint! {
     pub SINGLE_MATCH,
     Warn,
-    "a match statement with a single nontrivial arm (i.e, where the other arm \
+    "a match statement with a single nontrivial arm (i.e. where the other arm \
      is `_ => {}`) instead of `if let`"
 }
 
@@ -180,11 +179,12 @@ fn check_single_match(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr) {
     if arms.len() == 2 &&
       arms[0].pats.len() == 1 && arms[0].guard.is_none() &&
       arms[1].pats.len() == 1 && arms[1].guard.is_none() {
-        let els = if is_unit_expr(&arms[1].body) {
+        let els = remove_blocks(&arms[1].body);
+        let els = if is_unit_expr(els) {
             None
-        } else if let ExprBlock(_) = arms[1].body.node {
+        } else if let ExprBlock(_) = els.node {
             // matches with blocks that contain statements are prettier as `if let + else`
-            Some(&*arms[1].body)
+            Some(els)
         } else {
             // allow match arms with just expressions
             return;
@@ -199,27 +199,31 @@ fn check_single_match(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr) {
 
 fn check_single_match_single_pattern(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr, els: Option<&Expr>) {
     if arms[1].pats[0].node == PatKind::Wild {
-        let lint = if els.is_some() {
-            SINGLE_MATCH_ELSE
-        } else {
-            SINGLE_MATCH
-        };
-        let els_str = els.map_or(String::new(), |els| format!(" else {}", expr_block(cx, els, None, "..")));
-        span_lint_and_then(cx,
-                           lint,
-                           expr.span,
-                           "you seem to be trying to use match for destructuring a single pattern. \
-                           Consider using `if let`",
-                           |db| {
-            db.span_suggestion(expr.span,
-                               "try this",
-                               format!("if let {} = {} {}{}",
-                                       snippet(cx, arms[0].pats[0].span, ".."),
-                                       snippet(cx, ex.span, ".."),
-                                       expr_block(cx, &arms[0].body, None, ".."),
-                                       els_str));
-        });
+        report_single_match_single_pattern(cx, ex, arms, expr, els);
     }
+}
+
+fn report_single_match_single_pattern(cx: &LateContext, ex: &Expr, arms: &[Arm], expr: &Expr, els: Option<&Expr>) {
+    let lint = if els.is_some() {
+        SINGLE_MATCH_ELSE
+    } else {
+        SINGLE_MATCH
+    };
+    let els_str = els.map_or(String::new(), |els| format!(" else {}", expr_block(cx, els, None, "..")));
+    span_lint_and_then(cx,
+                       lint,
+                       expr.span,
+                       "you seem to be trying to use match for destructuring a single pattern. Consider using `if \
+                        let`",
+                       |db| {
+        db.span_suggestion(expr.span,
+                           "try this",
+                           format!("if let {} = {} {}{}",
+                                   snippet(cx, arms[0].pats[0].span, ".."),
+                                   snippet(cx, ex.span, ".."),
+                                   expr_block(cx, &arms[0].body, None, ".."),
+                                   els_str));
+    });
 }
 
 fn check_single_match_opt_like(
@@ -254,26 +258,7 @@ fn check_single_match_opt_like(
 
     for &(ty_path, pat_path) in candidates {
         if &path == pat_path && match_type(cx, ty, ty_path) {
-            let lint = if els.is_some() {
-                SINGLE_MATCH_ELSE
-            } else {
-                SINGLE_MATCH
-            };
-            let els_str = els.map_or(String::new(), |els| format!(" else {}", expr_block(cx, els, None, "..")));
-            span_lint_and_then(cx,
-                               lint,
-                               expr.span,
-                               "you seem to be trying to use match for destructuring a single pattern. Consider \
-                                using `if let`",
-                               |db| {
-                db.span_suggestion(expr.span,
-                                   "try this",
-                                   format!("if let {} = {} {}{}",
-                                           snippet(cx, arms[0].pats[0].span, ".."),
-                                           snippet(cx, ex.span, ".."),
-                                           expr_block(cx, &arms[0].body, None, ".."),
-                                           els_str));
-            });
+            report_single_match_single_pattern(cx, ex, arms, expr, els);
         }
     }
 }
@@ -415,7 +400,7 @@ fn check_match_ref_pats(cx: &LateContext, ex: &Expr, arms: &[Arm], source: Match
 }
 
 /// Get all arms that are unbounded `PatRange`s.
-fn all_ranges(cx: &LateContext, arms: &[Arm]) -> Vec<SpannedRange<ConstVal>> {
+fn all_ranges<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, arms: &[Arm]) -> Vec<SpannedRange<ConstVal<'tcx>>> {
     let constcx = ConstContext::with_tables(cx.tcx, cx.tables);
     arms.iter()
         .flat_map(|arm| {
@@ -427,8 +412,8 @@ fn all_ranges(cx: &LateContext, arms: &[Arm]) -> Vec<SpannedRange<ConstVal>> {
                 .filter_map(|pat| {
                     if_let_chain! {[
                     let PatKind::Range(ref lhs, ref rhs, ref range_end) = pat.node,
-                    let Ok(lhs) = constcx.eval(lhs, ExprTypeChecked),
-                    let Ok(rhs) = constcx.eval(rhs, ExprTypeChecked)
+                    let Ok(lhs) = constcx.eval(lhs),
+                    let Ok(rhs) = constcx.eval(rhs)
                 ], {
                     let rhs = match *range_end {
                         RangeEnd::Included => Bound::Included(rhs),
@@ -439,7 +424,7 @@ fn all_ranges(cx: &LateContext, arms: &[Arm]) -> Vec<SpannedRange<ConstVal>> {
 
                     if_let_chain! {[
                     let PatKind::Lit(ref value) = pat.node,
-                    let Ok(value) = constcx.eval(value, ExprTypeChecked)
+                    let Ok(value) = constcx.eval(value)
                 ], {
                     return Some(SpannedRange { span: pat.span, node: (value.clone(), Bound::Included(value)) });
                 }}

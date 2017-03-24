@@ -99,6 +99,7 @@ impl<'a> Sugg<'a> {
             ast::ExprKind::Block(..) |
             ast::ExprKind::Break(..) |
             ast::ExprKind::Call(..) |
+            ast::ExprKind::Catch(..) |
             ast::ExprKind::Continue(..) |
             ast::ExprKind::Field(..) |
             ast::ExprKind::ForLoop(..) |

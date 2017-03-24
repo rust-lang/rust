@@ -9,6 +9,8 @@ use rustc::traits::Reveal;
 use rustc::traits;
 use rustc::ty::subst::Subst;
 use rustc::ty;
+use rustc::ty::layout::TargetDataLayout;
+use rustc::mir::transform::MirSource;
 use rustc_errors;
 use std::borrow::Cow;
 use std::env;
@@ -97,6 +99,17 @@ pub mod higher;
 pub fn differing_macro_contexts(lhs: Span, rhs: Span) -> bool {
     rhs.expn_id != lhs.expn_id
 }
+
+pub fn in_constant(cx: &LateContext, id: NodeId) -> bool {
+    let parent_id = cx.tcx.hir.get_parent(id);
+    match MirSource::from_node(cx.tcx, parent_id) {
+        MirSource::Fn(_) => false,
+        MirSource::Const(_) |
+        MirSource::Static(..) |
+        MirSource::Promoted(..) => true,
+    }
+}
+
 /// Returns true if this `expn_info` was expanded by any macro.
 pub fn in_macro<'a, T: LintContext<'a>>(cx: &T, span: Span) -> bool {
     cx.sess().codemap().with_expn_info(span.expn_id, |info| {
@@ -384,7 +397,7 @@ pub fn get_item_name(cx: &LateContext, expr: &Expr) -> Option<Name> {
 /// snippet(cx, expr.span, "..")
 /// ```
 pub fn snippet<'a, 'b, T: LintContext<'b>>(cx: &T, span: Span, default: &'a str) -> Cow<'a, str> {
-    cx.sess().codemap().span_to_snippet(span).map(From::from).unwrap_or_else(|_| Cow::Borrowed(default))
+    snippet_opt(cx, span).map_or_else(|| Cow::Borrowed(default), From::from)
 }
 
 /// Convert a span to a code snippet. Returns `None` if not available.
@@ -665,17 +678,13 @@ fn parse_attrs<F: FnMut(u64)>(sess: &Session, attrs: &[ast::Attribute], name: &'
         if attr.is_sugared_doc {
             continue;
         }
-        if let ast::MetaItemKind::NameValue(ref value) = attr.value.node {
-            if attr.name() == name {
-                if let LitKind::Str(ref s, _) = value.node {
-                    if let Ok(value) = FromStr::from_str(&*s.as_str()) {
-                        attr::mark_used(attr);
-                        f(value)
-                    } else {
-                        sess.span_err(value.span, "not a number");
-                    }
+        if let Some(ref value) = attr.value_str() {
+            if attr.name().map_or(false, |n| n == name) {
+                if let Ok(value) = FromStr::from_str(&*value.as_str()) {
+                    attr::mark_used(attr);
+                    f(value)
                 } else {
-                    unreachable!()
+                    sess.span_err(attr.span, "not a number");
                 }
             }
         }
@@ -781,7 +790,7 @@ pub fn return_ty<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, fn_item: NodeId) -> ty::T
     let parameter_env = ty::ParameterEnvironment::for_item(cx.tcx, fn_item);
     let fn_def_id = cx.tcx.hir.local_def_id(fn_item);
     let fn_sig = cx.tcx.item_type(fn_def_id).fn_sig();
-    let fn_sig = cx.tcx.liberate_late_bound_regions(parameter_env.free_id_outlive, fn_sig);
+    let fn_sig = cx.tcx.liberate_late_bound_regions(parameter_env.free_id_outlive, &fn_sig);
     fn_sig.output()
 }
 
@@ -806,7 +815,7 @@ pub fn same_tys<'a, 'tcx>(
 pub fn type_is_unsafe_function(ty: ty::Ty) -> bool {
     match ty.sty {
         ty::TyFnDef(_, _, f) |
-        ty::TyFnPtr(f) => f.unsafety == Unsafety::Unsafe,
+        ty::TyFnPtr(f) => f.unsafety() == Unsafety::Unsafe,
         _ => false,
     }
 }
@@ -971,4 +980,10 @@ pub fn is_try(expr: &Expr) -> Option<&Expr> {
     }
 
     None
+}
+
+pub fn type_size<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: ty::Ty<'tcx>) -> Option<u64> {
+    cx.tcx
+        .infer_ctxt((), Reveal::All)
+        .enter(|infcx| ty.layout(&infcx).ok().map(|lay| lay.size(&TargetDataLayout::parse(cx.sess())).bytes()))
 }

@@ -65,9 +65,9 @@ fn min_max<'a>(cx: &LateContext, expr: &'a Expr) -> Option<(MinMax, Constant, &'
             let def_id = cx.tables.qpath_def(qpath, path.id).def_id();
 
             if match_def_path(cx.tcx, def_id, &paths::CMP_MIN) {
-                fetch_const(args, MinMax::Min)
+                fetch_const(cx, args, MinMax::Min)
             } else if match_def_path(cx.tcx, def_id, &paths::CMP_MAX) {
-                fetch_const(args, MinMax::Max)
+                fetch_const(cx, args, MinMax::Max)
             } else {
                 None
             }
@@ -79,18 +79,18 @@ fn min_max<'a>(cx: &LateContext, expr: &'a Expr) -> Option<(MinMax, Constant, &'
     }
 }
 
-fn fetch_const(args: &[Expr], m: MinMax) -> Option<(MinMax, Constant, &Expr)> {
+fn fetch_const<'a>(cx: &LateContext, args: &'a [Expr], m: MinMax) -> Option<(MinMax, Constant, &'a Expr)> {
     if args.len() != 2 {
         return None;
     }
-    if let Some(c) = constant_simple(&args[0]) {
-        if constant_simple(&args[1]).is_none() {
+    if let Some(c) = constant_simple(cx, &args[0]) {
+        if constant_simple(cx, &args[1]).is_none() {
             // otherwise ignore
             Some((m, c, &args[1]))
         } else {
             None
         }
-    } else if let Some(c) = constant_simple(&args[1]) {
+    } else if let Some(c) = constant_simple(cx, &args[1]) {
         Some((m, c, &args[0]))
     } else {
         None

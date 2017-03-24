@@ -3,14 +3,15 @@
 use rustc::lint::LateContext;
 use rustc::hir::def::Def;
 use rustc_const_eval::lookup_const_by_id;
-use rustc_const_math::{ConstInt, ConstUsize, ConstIsize};
+use rustc_const_math::ConstInt;
 use rustc::hir::*;
+use rustc::ty::{self, TyCtxt};
 use std::cmp::Ordering::{self, Equal};
 use std::cmp::PartialOrd;
 use std::hash::{Hash, Hasher};
 use std::mem;
 use std::rc::Rc;
-use syntax::ast::{FloatTy, LitIntType, LitKind, StrStyle, UintTy, IntTy, NodeId};
+use syntax::ast::{FloatTy, LitKind, StrStyle, NodeId};
 use syntax::ptr::P;
 
 #[derive(Debug, Copy, Clone)]
@@ -50,21 +51,6 @@ pub enum Constant {
     Repeat(Box<Constant>, usize),
     /// a tuple of constants
     Tuple(Vec<Constant>),
-}
-
-impl Constant {
-    /// Convert to `u64` if possible.
-    ///
-    /// # panics
-    ///
-    /// If the constant could not be converted to `u64` losslessly.
-    fn as_u64(&self) -> u64 {
-        if let Constant::Int(val) = *self {
-            val.to_u64().expect("negative constant can't be casted to `u64`")
-        } else {
-            panic!("Could not convert a `{:?}` to `u64`", self);
-        }
-    }
 }
 
 impl PartialEq for Constant {
@@ -174,28 +160,33 @@ impl PartialOrd for Constant {
 
 /// parse a `LitKind` to a `Constant`
 #[allow(cast_possible_wrap)]
-pub fn lit_to_constant(lit: &LitKind) -> Constant {
+pub fn lit_to_constant<'a, 'tcx>(lit: &LitKind, tcx: TyCtxt<'a, 'tcx, 'tcx>, mut ty: ty::Ty<'tcx>) -> Constant {
+    use syntax::ast::*;
+    use syntax::ast::LitIntType::*;
+    use rustc::ty::util::IntTypeExt;
+
+    if let ty::TyAdt(adt, _) = ty.sty {
+        if adt.is_enum() {
+            ty = adt.repr.discr_type().to_ty(tcx)
+        }
+    }
     match *lit {
         LitKind::Str(ref is, style) => Constant::Str(is.to_string(), style),
         LitKind::Byte(b) => Constant::Int(ConstInt::U8(b)),
         LitKind::ByteStr(ref s) => Constant::Binary(s.clone()),
         LitKind::Char(c) => Constant::Char(c),
-        LitKind::Int(value, LitIntType::Unsuffixed) => Constant::Int(ConstInt::Infer(value)),
-        LitKind::Int(value, LitIntType::Unsigned(UintTy::U8)) => Constant::Int(ConstInt::U8(value as u8)),
-        LitKind::Int(value, LitIntType::Unsigned(UintTy::U16)) => Constant::Int(ConstInt::U16(value as u16)),
-        LitKind::Int(value, LitIntType::Unsigned(UintTy::U32)) => Constant::Int(ConstInt::U32(value as u32)),
-        LitKind::Int(value, LitIntType::Unsigned(UintTy::U64)) => Constant::Int(ConstInt::U64(value as u64)),
-        LitKind::Int(value, LitIntType::Unsigned(UintTy::U128)) => Constant::Int(ConstInt::U128(value as u128)),
-        LitKind::Int(value, LitIntType::Unsigned(UintTy::Us)) => {
-            Constant::Int(ConstInt::Usize(ConstUsize::Us32(value as u32)))
-        },
-        LitKind::Int(value, LitIntType::Signed(IntTy::I8)) => Constant::Int(ConstInt::I8(value as i8)),
-        LitKind::Int(value, LitIntType::Signed(IntTy::I16)) => Constant::Int(ConstInt::I16(value as i16)),
-        LitKind::Int(value, LitIntType::Signed(IntTy::I32)) => Constant::Int(ConstInt::I32(value as i32)),
-        LitKind::Int(value, LitIntType::Signed(IntTy::I64)) => Constant::Int(ConstInt::I64(value as i64)),
-        LitKind::Int(value, LitIntType::Signed(IntTy::I128)) => Constant::Int(ConstInt::I128(value as i128)),
-        LitKind::Int(value, LitIntType::Signed(IntTy::Is)) => {
-            Constant::Int(ConstInt::Isize(ConstIsize::Is32(value as i32)))
+        LitKind::Int(n, hint) => {
+            match (&ty.sty, hint) {
+                (&ty::TyInt(ity), _) |
+                (_, Signed(ity)) => {
+                    Constant::Int(ConstInt::new_signed_truncating(n as i128, ity, tcx.sess.target.int_type))
+                },
+                (&ty::TyUint(uty), _) |
+                (_, Unsigned(uty)) => {
+                    Constant::Int(ConstInt::new_unsigned_truncating(n as u128, uty, tcx.sess.target.uint_type))
+                },
+                _ => bug!(),
+            }
         },
         LitKind::Float(ref is, ty) => Constant::Float(is.to_string(), ty.into()),
         LitKind::FloatUnsuffixed(ref is) => Constant::Float(is.to_string(), FloatWidth::Any),
@@ -231,22 +222,20 @@ fn neg_float_str(s: &str) -> String {
 
 pub fn constant(lcx: &LateContext, e: &Expr) -> Option<(Constant, bool)> {
     let mut cx = ConstEvalLateContext {
-        lcx: Some(lcx),
+        tcx: lcx.tcx,
+        tables: lcx.tables,
         needed_resolution: false,
     };
     cx.expr(e).map(|cst| (cst, cx.needed_resolution))
 }
 
-pub fn constant_simple(e: &Expr) -> Option<Constant> {
-    let mut cx = ConstEvalLateContext {
-        lcx: None,
-        needed_resolution: false,
-    };
-    cx.expr(e)
+pub fn constant_simple(lcx: &LateContext, e: &Expr) -> Option<Constant> {
+    constant(lcx, e).and_then(|(cst, res)| if res { None } else { Some(cst) })
 }
 
-struct ConstEvalLateContext<'c, 'cc: 'c> {
-    lcx: Option<&'c LateContext<'c, 'cc>>,
+struct ConstEvalLateContext<'a, 'tcx: 'a> {
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    tables: &'a ty::TypeckTables<'tcx>,
     needed_resolution: bool,
 }
 
@@ -257,17 +246,15 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
             ExprPath(ref qpath) => self.fetch_path(qpath, e.id),
             ExprBlock(ref block) => self.block(block),
             ExprIf(ref cond, ref then, ref otherwise) => self.ifthenelse(cond, then, otherwise),
-            ExprLit(ref lit) => Some(lit_to_constant(&lit.node)),
+            ExprLit(ref lit) => Some(lit_to_constant(&lit.node, self.tcx, self.tables.expr_ty(e))),
             ExprArray(ref vec) => self.multi(vec).map(Constant::Vec),
             ExprTup(ref tup) => self.multi(tup).map(Constant::Tuple),
-            ExprRepeat(ref value, number_id) => {
-                if let Some(lcx) = self.lcx {
-                    self.binop_apply(value,
-                                     &lcx.tcx.hir.body(number_id).value,
-                                     |v, n| Some(Constant::Repeat(Box::new(v), n.as_u64() as usize)))
-                } else {
-                    None
-                }
+            ExprRepeat(ref value, _) => {
+                let n = match self.tables.expr_ty(e).sty {
+                    ty::TyArray(_, n) => n,
+                    _ => span_bug!(e.span, "typeck error"),
+                };
+                self.expr(value).map(|v| Constant::Repeat(Box::new(v), n))
             },
             ExprUnary(op, ref operand) => {
                 self.expr(operand).and_then(|o| match op {
@@ -292,24 +279,27 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
 
     /// lookup a possibly constant expression from a ExprPath
     fn fetch_path(&mut self, qpath: &QPath, id: NodeId) -> Option<Constant> {
-        if let Some(lcx) = self.lcx {
-            let def = lcx.tables.qpath_def(qpath, id);
-            match def {
-                Def::Const(def_id) |
-                Def::AssociatedConst(def_id) => {
-                    let substs = Some(lcx.tables
-                        .node_id_item_substs(id)
-                        .unwrap_or_else(|| lcx.tcx.intern_substs(&[])));
-                    if let Some((const_expr, _tab, _ty)) = lookup_const_by_id(lcx.tcx, def_id, substs) {
-                        let ret = self.expr(const_expr);
-                        if ret.is_some() {
-                            self.needed_resolution = true;
-                        }
-                        return ret;
+        let def = self.tables.qpath_def(qpath, id);
+        match def {
+            Def::Const(def_id) |
+            Def::AssociatedConst(def_id) => {
+                let substs = self.tables
+                    .node_id_item_substs(id)
+                    .unwrap_or_else(|| self.tcx.intern_substs(&[]));
+                if let Some((const_expr, tables)) = lookup_const_by_id(self.tcx, def_id, substs) {
+                    let mut cx = ConstEvalLateContext {
+                        tcx: self.tcx,
+                        tables: tables,
+                        needed_resolution: false,
+                    };
+                    let ret = cx.expr(const_expr);
+                    if ret.is_some() {
+                        self.needed_resolution = true;
                     }
-                },
-                _ => {},
-            }
+                    return ret;
+                }
+            },
+            _ => {},
         }
         None
     }
@@ -367,17 +357,6 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
             (BiGe, Constant::Int(l), Some(Constant::Int(r))) => Some(Constant::Bool(l >= r)),
             (BiGt, Constant::Int(l), Some(Constant::Int(r))) => Some(Constant::Bool(l > r)),
             _ => None,
-        }
-    }
-
-
-    fn binop_apply<F>(&mut self, left: &Expr, right: &Expr, op: F) -> Option<Constant>
-        where F: Fn(Constant, Constant) -> Option<Constant>
-    {
-        if let (Some(lc), Some(rc)) = (self.expr(left), self.expr(right)) {
-            op(lc, rc)
-        } else {
-            None
         }
     }
 }
