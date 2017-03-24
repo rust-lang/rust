@@ -56,6 +56,7 @@ use util::common::ErrorReported;
 pub struct CastCheck<'tcx> {
     expr: &'tcx hir::Expr,
     expr_ty: Ty<'tcx>,
+    expr_diverges: Diverges,
     cast_ty: Ty<'tcx>,
     cast_span: Span,
     span: Span,
@@ -115,6 +116,7 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
     pub fn new(fcx: &FnCtxt<'a, 'gcx, 'tcx>,
                expr: &'tcx hir::Expr,
                expr_ty: Ty<'tcx>,
+               expr_diverges: Diverges,
                cast_ty: Ty<'tcx>,
                cast_span: Span,
                span: Span)
@@ -122,6 +124,7 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
         let check = CastCheck {
             expr: expr,
             expr_ty: expr_ty,
+            expr_diverges: expr_diverges,
             cast_ty: cast_ty,
             cast_span: cast_span,
             span: span,
@@ -378,7 +381,7 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
                     // Attempt a coercion to a fn pointer type.
                     let res = fcx.try_coerce(self.expr,
                                              self.expr_ty,
-                                             Diverges::Maybe, // TODO
+                                             self.expr_diverges,
                                              fcx.tcx.mk_fn_ptr(f));
                     if !res.is_ok() {
                         return Err(CastError::NonScalar);
@@ -545,8 +548,7 @@ impl<'a, 'gcx, 'tcx> CastCheck<'tcx> {
     }
 
     fn try_coercion_cast(&self, fcx: &FnCtxt<'a, 'gcx, 'tcx>) -> bool {
-        // TODO
-        fcx.try_coerce(self.expr, self.expr_ty, Diverges::Maybe, self.cast_ty).is_ok()
+        fcx.try_coerce(self.expr, self.expr_ty, self.expr_diverges, self.cast_ty).is_ok()
     }
 }
 
