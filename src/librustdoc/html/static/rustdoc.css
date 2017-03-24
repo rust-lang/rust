@@ -141,7 +141,7 @@ pre {
 	padding: 14px;
 }
 
-.source pre {
+.source .content pre {
 	padding: 20px;
 }
 
@@ -149,7 +149,7 @@ img {
 	max-width: 100%;
 }
 
-.content.source {
+.source .content {
 	margin-top: 50px;
 	max-width: none;
 	overflow: visible;
@@ -231,7 +231,7 @@ nav.sub {
 	padding: 15px 0;
 }
 
-.content.source pre.rust {
+.source .content pre.rust {
 	white-space: pre;
 	overflow: auto;
 	padding-left: 0;
