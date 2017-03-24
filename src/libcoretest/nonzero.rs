@@ -42,6 +42,31 @@ fn test_match_on_nonzero_option() {
 }
 
 #[test]
+fn test_nonzero_new_option() {
+    let a = NonZero::new_option(42);
+    match a {
+        Some(val) => assert_eq!(*val, 42),
+        None => panic!("unexpected None while matching on NonZero::new_option(42)")
+    }
+
+    match NonZero::new_option(43) {
+        Some(val) => assert_eq!(*val, 43),
+        None => panic!("unexpected None while matching on NonZero::new_option(43)")
+    }
+
+    let b = NonZero::new_option(0);
+    match b {
+        Some(_) => panic!("unexpected Some(_) while matching on NonZero::new_option(0)"),
+        None => ()
+    }
+
+    match NonZero::new_option(0) {
+        Some(_) => panic!("unexpected Some(_) while matching on NonZero::new_option(0)"),
+        None => ()
+    }
+}
+
+#[test]
 fn test_match_option_empty_vec() {
     let a: Option<Vec<isize>> = Some(vec![]);
     match a {
