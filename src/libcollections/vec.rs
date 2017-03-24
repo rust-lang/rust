@@ -678,6 +678,30 @@ impl<T> Vec<T> {
         self.len = len;
     }
 
+    /// Sets the length of a vector.
+    ///
+    /// This will explicitly set the size of the vector, without actually
+    /// modifying its buffers, so it is up to the caller to ensure that the
+    /// vector is actually the specified size.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `len` is greater than the vector's capacity.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut v = vec![1, 2, 3, 4];
+    /// unsafe {
+    ///     v.set_len_checked(1);
+    /// }
+    /// ```
+    #[inline]
+    pub unsafe fn set_len_checked(&mut self, len: usize) {
+        assert!(len <= self.cap);
+        self.len = len;
+    }
+
     /// Removes an element from anywhere in the vector and return it, replacing
     /// it with the last element.
     ///
