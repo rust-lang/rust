@@ -926,7 +926,7 @@ pub struct CoerceMany<'gcx, 'tcx, 'exprs, E>
 
 /// The type of a `CoerceMany` that is storing up the expressions into
 /// a buffer. We use this in `check/mod.rs` for things like `break`.
-pub type DynamicCoerceMany<'gcx, 'tcx> = CoerceMany<'gcx, 'tcx, 'static, hir::Expr>;
+pub type DynamicCoerceMany<'gcx, 'tcx> = CoerceMany<'gcx, 'tcx, 'gcx, P<hir::Expr>>;
 
 #[derive(Clone)] // (*)
 enum Expressions<'gcx, 'exprs, E>

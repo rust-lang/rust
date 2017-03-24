@@ -86,6 +86,7 @@ use dep_graph::DepNode;
 use fmt_macros::{Parser, Piece, Position};
 use hir::def::{Def, CtorKind};
 use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
+use rustc_back::slice::ref_slice;
 use rustc::infer::{self, InferCtxt, InferOk, RegionVariableOrigin, TypeTrace};
 use rustc::infer::type_variable::{self, TypeVariableOrigin};
 use rustc::ty::subst::{Kind, Subst, Substs};
@@ -4108,102 +4109,64 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             replace(&mut *fcx_ps, unsafety_state)
         };
 
-        let mut ty = if blk.targeted_by_break {
-            let unified = self.next_ty_var(TypeVariableOrigin::TypeInference(blk.span));
-            let coerce_to = expected.only_has_type(self).unwrap_or(unified);
-            let ctxt = BreakableCtxt {
-                unified: unified,
-                coerce_to: coerce_to,
-                break_exprs: vec![],
-                may_break: false,
-            };
-
-            let (mut ctxt, (e_ty, cause)) = self.with_breakable_ctxt(blk.id, ctxt, || {
-                for s in &blk.stmts {
-                    self.check_stmt(s);
-                }
-                let coerce_to = {
-                    let mut enclosing_breakables = self.enclosing_breakables.borrow_mut();
-                    enclosing_breakables.find_breakable(blk.id).coerce_to
-                };
-                let e_ty;
-                let cause;
-                match blk.expr {
-                    Some(ref e) => {
-                        e_ty = self.check_expr_with_hint(e, coerce_to);
-                        cause = self.misc(e.span);
-                    },
-                    None => {
-                        e_ty = if self.diverges.get().always() {
-                            self.tcx.types.never
-                        } else {
-                            self.tcx.mk_nil()
-                        };
-                        cause = self.misc(blk.span);
-                    }
-                };
-
-                (e_ty, cause)
-            });
-
-        if let ExpectHasType(ety) = expected {
-            if let Some(ref e) = blk.expr {
-                let result = if !ctxt.may_break {
-                    self.try_coerce(e, e_ty, ctxt.coerce_to)
-                } else {
-                    self.try_find_coercion_lub(&cause, || ctxt.break_exprs.iter().cloned(),
-                                               ctxt.unified, e, e_ty)
-                };
-                match result {
-                    Ok(ty) => ctxt.unified = ty,
-                    Err(err) =>
-                        self.report_mismatched_types(&cause, ctxt.unified, e_ty, err).emit(),
-                }
-            } else if self.diverges.get().always() {
-                // No tail expression and the body diverges; ignore
-                // the expected type, and keep `!` as the type of the
-                // block.
-            } else {
-                self.check_block_no_expr(blk, self.tcx.mk_nil(), e_ty);
-            };
-
-            ctxt.unified
+        // In some cases, blocks have just one exit, but other blocks
+        // can be targeted by multiple breaks. This cannot happen in
+        // normal Rust syntax today, but it can happen when we desugar
+        // a `do catch { ... }` expression.
+        //
+        // Example 1:
+        //
+        //    'a: { if true { break 'a Err(()); } Ok(()) }
+        //
+        // Here we would wind up with two coercions, one from
+        // `Err(())` and the other from the tail expression
+        // `Ok(())`. If the tail expression is omitted, that's a
+        // "forced unit" -- unless the block diverges, in which
+        // case we can ignore the tail expression (e.g., `'a: {
+        // break 'a 22; }` would not force the type of the block
+        // to be `()`).
+        let tail_expr = blk.expr.as_ref();
+        let coerce_to_ty = expected.coercion_target_type(self, blk.span);
+        let coerce = if blk.targeted_by_break {
+            CoerceMany::new(coerce_to_ty)
         } else {
+            let tail_expr: &[P<hir::Expr>] = match tail_expr {
+                Some(e) => ref_slice(e),
+                None => &[],
+            };
+            CoerceMany::with_coercion_sites(coerce_to_ty, tail_expr)
+        };
+
+        let ctxt = BreakableCtxt {
+            coerce: Some(coerce),
+            may_break: false,
+        };
+
+        let (ctxt, ()) = self.with_breakable_ctxt(blk.id, ctxt, || {
             for s in &blk.stmts {
                 self.check_stmt(s);
             }
 
-            let mut ty = match blk.expr {
-                Some(ref e) => self.check_expr_with_expectation(e, expected),
-                None => if self.diverges.get().always() {
-                    self.tcx.types.never
-                } else {
-                    self.tcx.mk_nil()
-                },
-            };
+            // check the tail expression **without** holding the
+            // `enclosing_breakables` lock below.
+            let tail_expr_ty = tail_expr.map(|t| self.check_expr_with_expectation(t, expected));
 
-            if let ExpectHasType(ety) = expected {
-                if let Some(ref e) = blk.expr {
-                    // Coerce the tail expression to the right type.
-                    self.demand_coerce(e, ty, ety);
-
-                    // We already applied the type (and potentially errored),
-                    // use the expected type to avoid further errors out.
-                    ty = ety;
-                } else if self.diverges.get().always() {
-                    // No tail expression and the body diverges; ignore
-                    // the expected type, and keep `!` as the type of the
-                    // block.
-                } else {
-                    self.check_block_no_expr(blk, ty, ety);
-
-                    // We already applied the type (and potentially errored),
-                    // use the expected type to avoid further errors out.
-                    ty = ety;
-                }
+            let mut enclosing_breakables = self.enclosing_breakables.borrow_mut();
+            let mut ctxt = enclosing_breakables.find_breakable(blk.id);
+            let mut coerce = ctxt.coerce.as_mut().unwrap();
+            if let Some(tail_expr_ty) = tail_expr_ty {
+                let tail_expr = tail_expr.unwrap();
+                coerce.coerce(self,
+                              &self.misc(tail_expr.span),
+                              tail_expr,
+                              tail_expr_ty,
+                              self.diverges.get()); // TODO
+            } else if !self.diverges.get().always() {
+                coerce.coerce_forced_unit(self, &self.misc(blk.span));
             }
-            ty
-        };
+        });
+
+        let mut ty = ctxt.coerce.unwrap().complete(self);
 
         if self.has_errors.get() || ty.references_error() {
             ty = self.tcx.types.err
