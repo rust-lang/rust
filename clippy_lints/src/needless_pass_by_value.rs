@@ -41,6 +41,10 @@ impl LintPass for NeedlessPassByValue {
     }
 }
 
+macro_rules! need {
+    ($e: expr) => { if let Some(x) = $e { x } else { return; } };
+}
+
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
     fn check_fn(
         &mut self,
@@ -60,9 +64,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
         }
 
         // Allows these to be passed by value.
-        let fn_trait = cx.tcx.lang_items.fn_trait().expect("failed to find `Fn` trait");
-        let asref_trait = get_trait_def_id(cx, &paths::ASREF_TRAIT).expect("failed to find `AsRef` trait");
-        let borrow_trait = get_trait_def_id(cx, &paths::BORROW_TRAIT).expect("failed to find `Borrow` trait");
+        let fn_trait = need!(cx.tcx.lang_items.fn_trait());
+        let asref_trait = need!(get_trait_def_id(cx, &paths::ASREF_TRAIT));
+        let borrow_trait = need!(get_trait_def_id(cx, &paths::BORROW_TRAIT));
 
         let preds: Vec<ty::Predicate> = {
             let parameter_env = ty::ParameterEnvironment::for_item(cx.tcx, node_id);
