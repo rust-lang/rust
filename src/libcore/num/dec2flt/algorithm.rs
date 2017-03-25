@@ -141,7 +141,7 @@ pub fn fast_path<T: RawFloat>(integral: &[u8], fractional: &[u8], e: i64) -> Opt
 ///
 /// It rounds ``f`` to a float with 64 bit significand and multiplies it by the best approximation
 /// of `10^e` (in the same floating point format). This is often enough to get the correct result.
-/// However, when the result is close to halfway between two adjecent (ordinary) floats, the
+/// However, when the result is close to halfway between two adjacent (ordinary) floats, the
 /// compound rounding error from multiplying two approximation means the result may be off by a
 /// few bits. When this happens, the iterative Algorithm R fixes things up.
 ///
@@ -392,7 +392,7 @@ fn underflow<T: RawFloat>(x: Big, v: Big, rem: Big) -> T {
     //
     // Therefore, when the rounded-off bits are != 0.5 ULP, they decide the rounding
     // on their own. When they are equal and the remainder is non-zero, the value still
-    // needs to be rounded up. Only when the rounded off bits are 1/2 and the remainer
+    // needs to be rounded up. Only when the rounded off bits are 1/2 and the remainder
     // is zero, we have a half-to-even situation.
     let bits = x.bit_length();
     let lsb = bits - T::sig_bits() as usize;
