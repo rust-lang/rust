@@ -828,7 +828,7 @@ fn make_signature(decl: &ast::FnDecl, generics: &ast::Generics) -> String {
     if !generics.lifetimes.is_empty() || !generics.ty_params.is_empty() {
         sig.push('<');
         sig.push_str(&generics.lifetimes.iter()
-                              .map(|l| l.lifetime.name.to_string())
+                              .map(|l| l.lifetime.ident.name.to_string())
                               .collect::<Vec<_>>()
                               .join(", "));
         if !generics.lifetimes.is_empty() {

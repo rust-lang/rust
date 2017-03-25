@@ -1958,7 +1958,7 @@ impl<'a> Parser<'a> {
             token::Lifetime(ident) => {
                 let ident_span = self.span;
                 self.bump();
-                Lifetime { name: ident.name, span: ident_span, id: ast::DUMMY_NODE_ID }
+                Lifetime { ident: ident, span: ident_span, id: ast::DUMMY_NODE_ID }
             }
             _ => self.span_bug(self.span, "not a lifetime")
         }

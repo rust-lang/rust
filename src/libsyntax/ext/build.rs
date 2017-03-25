@@ -76,10 +76,10 @@ pub trait AstBuilder {
     fn trait_ref(&self, path: ast::Path) -> ast::TraitRef;
     fn poly_trait_ref(&self, span: Span, path: ast::Path) -> ast::PolyTraitRef;
     fn typarambound(&self, path: ast::Path) -> ast::TyParamBound;
-    fn lifetime(&self, span: Span, ident: ast::Name) -> ast::Lifetime;
+    fn lifetime(&self, span: Span, ident: ast::Ident) -> ast::Lifetime;
     fn lifetime_def(&self,
                     span: Span,
-                    name: ast::Name,
+                    ident: ast::Ident,
                     attrs: Vec<ast::Attribute>,
                     bounds: Vec<ast::Lifetime>)
                     -> ast::LifetimeDef;
@@ -478,19 +478,19 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         ast::TraitTyParamBound(self.poly_trait_ref(path.span, path), ast::TraitBoundModifier::None)
     }
 
-    fn lifetime(&self, span: Span, name: ast::Name) -> ast::Lifetime {
-        ast::Lifetime { id: ast::DUMMY_NODE_ID, span: span, name: name }
+    fn lifetime(&self, span: Span, ident: ast::Ident) -> ast::Lifetime {
+        ast::Lifetime { id: ast::DUMMY_NODE_ID, span: span, ident: ident }
     }
 
     fn lifetime_def(&self,
                     span: Span,
-                    name: ast::Name,
+                    ident: ast::Ident,
                     attrs: Vec<ast::Attribute>,
                     bounds: Vec<ast::Lifetime>)
                     -> ast::LifetimeDef {
         ast::LifetimeDef {
             attrs: attrs.into(),
-            lifetime: self.lifetime(span, name),
+            lifetime: self.lifetime(span, ident),
             bounds: bounds
         }
     }

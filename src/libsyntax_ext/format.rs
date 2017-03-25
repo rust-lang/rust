@@ -508,7 +508,7 @@ impl<'a, 'b> Context<'a, 'b> {
         let sp = piece_ty.span;
         let ty = ecx.ty_rptr(sp,
                              ecx.ty(sp, ast::TyKind::Slice(piece_ty)),
-                             Some(ecx.lifetime(sp, keywords::StaticLifetime.name())),
+                             Some(ecx.lifetime(sp, keywords::StaticLifetime.ident())),
                              ast::Mutability::Immutable);
         let slice = ecx.expr_vec_slice(sp, pieces);
         // static instead of const to speed up codegen by not requiring this to be inlined
@@ -536,7 +536,7 @@ impl<'a, 'b> Context<'a, 'b> {
 
         // First, build up the static array which will become our precompiled
         // format "string"
-        let static_lifetime = self.ecx.lifetime(self.fmtsp, keywords::StaticLifetime.name());
+        let static_lifetime = self.ecx.lifetime(self.fmtsp, keywords::StaticLifetime.ident());
         let piece_ty = self.ecx.ty_rptr(self.fmtsp,
                                         self.ecx.ty_ident(self.fmtsp, self.ecx.ident_of("str")),
                                         Some(static_lifetime),

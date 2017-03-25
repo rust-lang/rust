@@ -162,7 +162,7 @@ impl Lifetime {
     }
 
     pub fn is_static(&self) -> bool {
-        self.name == keywords::StaticLifetime.name()
+        self.name == "'static"
     }
 }
 

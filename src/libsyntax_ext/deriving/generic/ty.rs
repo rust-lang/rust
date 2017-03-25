@@ -118,14 +118,14 @@ pub fn nil_ty<'r>() -> Ty<'r> {
 
 fn mk_lifetime(cx: &ExtCtxt, span: Span, lt: &Option<&str>) -> Option<ast::Lifetime> {
     match *lt {
-        Some(ref s) => Some(cx.lifetime(span, cx.ident_of(*s).name)),
+        Some(s) => Some(cx.lifetime(span, Ident::from_str(s))),
         None => None,
     }
 }
 
 fn mk_lifetimes(cx: &ExtCtxt, span: Span, lt: &Option<&str>) -> Vec<ast::Lifetime> {
     match *lt {
-        Some(ref s) => vec![cx.lifetime(span, cx.ident_of(*s).name)],
+        Some(s) => vec![cx.lifetime(span, Ident::from_str(s))],
         None => vec![],
     }
 }
@@ -243,11 +243,11 @@ impl<'a> LifetimeBounds<'a> {
                        -> Generics {
         let lifetimes = self.lifetimes
             .iter()
-            .map(|&(ref lt, ref bounds)| {
+            .map(|&(lt, ref bounds)| {
                 let bounds = bounds.iter()
-                    .map(|b| cx.lifetime(span, cx.ident_of(*b).name))
+                    .map(|b| cx.lifetime(span, Ident::from_str(b)))
                     .collect();
-                cx.lifetime_def(span, cx.ident_of(*lt).name, vec![], bounds)
+                cx.lifetime_def(span, Ident::from_str(lt), vec![], bounds)
             })
             .collect();
         let ty_params = self.bounds
@@ -277,7 +277,7 @@ pub fn get_explicit_self(cx: &ExtCtxt,
                 respan(span,
                        match *ptr {
                            Borrowed(ref lt, mutbl) => {
-                               let lt = lt.map(|s| cx.lifetime(span, cx.ident_of(s).name));
+                               let lt = lt.map(|s| cx.lifetime(span, Ident::from_str(s)));
                                SelfKind::Region(lt, mutbl)
                            }
                            Raw(_) => {

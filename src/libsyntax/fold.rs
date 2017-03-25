@@ -694,7 +694,7 @@ pub fn noop_fold_ty_params<T: Folder>(tps: Vec<TyParam>, fld: &mut T) -> Vec<TyP
 pub fn noop_fold_lifetime<T: Folder>(l: Lifetime, fld: &mut T) -> Lifetime {
     Lifetime {
         id: fld.new_id(l.id),
-        name: l.name,
+        ident: fld.fold_ident(l.ident),
         span: fld.new_span(l.span)
     }
 }

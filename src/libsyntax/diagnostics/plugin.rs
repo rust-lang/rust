@@ -206,7 +206,7 @@ pub fn expand_build_diagnostic_array<'cx>(ecx: &'cx mut ExtCtxt,
             (descriptions.len(), ecx.expr_vec(span, descriptions))
         });
 
-    let static_ = ecx.lifetime(span, ecx.name_of("'static"));
+    let static_ = ecx.lifetime(span, Ident::from_str("'static"));
     let ty_str = ecx.ty_rptr(
         span,
         ecx.ty_ident(span, ecx.ident_of("str")),

@@ -985,7 +985,7 @@ impl<'a> LoweringContext<'a> {
     fn lower_lifetime(&mut self, l: &Lifetime) -> hir::Lifetime {
         hir::Lifetime {
             id: self.lower_node_id(l.id),
-            name: l.name,
+            name: self.lower_ident(l.ident),
             span: l.span,
         }
     }

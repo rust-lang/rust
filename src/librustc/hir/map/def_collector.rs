@@ -283,7 +283,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
 
     fn visit_lifetime_def(&mut self, def: &'a LifetimeDef) {
         self.create_def(def.lifetime.id,
-                        DefPathData::LifetimeDef(def.lifetime.name.as_str()),
+                        DefPathData::LifetimeDef(def.lifetime.ident.name.as_str()),
                         REGULAR_SPACE);
     }
 

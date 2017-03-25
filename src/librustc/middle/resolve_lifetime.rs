@@ -26,7 +26,6 @@ use std::mem::replace;
 use syntax::ast;
 use syntax::attr;
 use syntax::ptr::P;
-use syntax::symbol::keywords;
 use syntax_pos::Span;
 use errors::DiagnosticBuilder;
 use util::nodemap::{NodeMap, NodeSet, FxHashSet, FxHashMap, DefIdMap};
@@ -746,7 +745,7 @@ fn object_lifetime_defaults_for_item(hir_map: &Map, generics: &hir::Generics)
         match set {
             Set1::Empty => Set1::Empty,
             Set1::One(name) => {
-                if name == keywords::StaticLifetime.name() {
+                if name == "'static" {
                     Set1::One(Region::Static)
                 } else {
                     generics.lifetimes.iter().enumerate().find(|&(_, def)| {

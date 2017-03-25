@@ -2764,7 +2764,7 @@ impl<'a> State<'a> {
                           lifetime: &ast::Lifetime)
                           -> io::Result<()>
     {
-        self.print_name(lifetime.name)
+        self.print_name(lifetime.ident.name)
     }
 
     pub fn print_lifetime_bounds(&mut self,

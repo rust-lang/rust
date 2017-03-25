@@ -195,7 +195,7 @@ pub fn walk_local<'a, V: Visitor<'a>>(visitor: &mut V, local: &'a Local) {
 }
 
 pub fn walk_lifetime<'a, V: Visitor<'a>>(visitor: &mut V, lifetime: &'a Lifetime) {
-    visitor.visit_name(lifetime.span, lifetime.name);
+    visitor.visit_ident(lifetime.span, lifetime.ident);
 }
 
 pub fn walk_lifetime_def<'a, V: Visitor<'a>>(visitor: &mut V, lifetime_def: &'a LifetimeDef) {

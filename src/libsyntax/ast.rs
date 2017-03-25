@@ -37,7 +37,7 @@ use std::u32;
 pub struct Lifetime {
     pub id: NodeId,
     pub span: Span,
-    pub name: Name
+    pub ident: Ident,
 }
 
 impl fmt::Debug for Lifetime {
