@@ -29,7 +29,7 @@ use syntax::ast;
 use syntax::attr;
 use syntax::ptr::P;
 use syntax::symbol::keywords;
-use syntax_pos::Span;
+use syntax_pos::{mk_sp, Span};
 use errors::DiagnosticBuilder;
 use util::nodemap::{NodeMap, NodeSet, FxHashSet, FxHashMap, DefIdMap};
 use rustc_back::slice;
@@ -434,7 +434,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
             self.resolve_elided_lifetimes(slice::ref_slice(lifetime_ref));
             return;
         }
-        if lifetime_ref.name == keywords::StaticLifetime.name() {
+        if lifetime_ref.is_static() {
             self.insert_lifetime(lifetime_ref, Region::Static);
             return;
         }
@@ -1434,7 +1434,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             let lifetime_i = &lifetimes[i];
 
             for lifetime in lifetimes {
-                if lifetime.lifetime.name == keywords::StaticLifetime.name() {
+                if lifetime.lifetime.is_static() {
                     let lifetime = lifetime.lifetime;
                     let mut err = struct_span_err!(self.sess, lifetime.span, E0262,
                                   "invalid lifetime parameter name: `{}`", lifetime.name);
@@ -1464,7 +1464,17 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
             self.check_lifetime_def_for_shadowing(old_scope, &lifetime_i.lifetime);
 
             for bound in &lifetime_i.bounds {
-                self.resolve_lifetime_ref(bound);
+                if !bound.is_static() {
+                    self.resolve_lifetime_ref(bound);
+                } else {
+                    self.insert_lifetime(bound, Region::Static);
+                    let full_span = mk_sp(lifetime_i.lifetime.span.lo, bound.span.hi);
+                    self.sess.struct_span_warn(full_span,
+                        &format!("unnecessary lifetime parameter `{}`", lifetime_i.lifetime.name))
+                        .help(&format!("you can use the `'static` lifetime directly, in place \
+                                        of `{}`", lifetime_i.lifetime.name))
+                        .emit();
+                }
             }
         }
     }
