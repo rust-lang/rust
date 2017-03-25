@@ -846,7 +846,7 @@ impl char {
     /// will be returned back by the iterator.
     ///
     /// This performs complex unconditional mappings with no tailoring: it maps
-    /// one Unicode character to its lowercase equivalent according to the
+    /// one Unicode character to its uppercase equivalent according to the
     /// [Unicode database] and the additional complex mappings
     /// [`SpecialCasing.txt`]. Conditional mappings (based on context or
     /// language) are not considered here.
