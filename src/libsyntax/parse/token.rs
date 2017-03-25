@@ -103,6 +103,21 @@ fn ident_can_begin_expr(ident: ast::Ident) -> bool {
     ].contains(&ident.name)
 }
 
+fn ident_can_begin_type(ident: ast::Ident) -> bool {
+    let ident_token: Token = Ident(ident);
+
+    !ident_token.is_any_keyword() ||
+    ident_token.is_path_segment_keyword() ||
+    [
+        keywords::For.name(),
+        keywords::Impl.name(),
+        keywords::Fn.name(),
+        keywords::Unsafe.name(),
+        keywords::Extern.name(),
+        keywords::Typeof.name(),
+    ].contains(&ident.name)
+}
+
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Debug)]
 pub enum Token {
     /* Expression-operator symbols. */
@@ -182,23 +197,21 @@ impl Token {
     /// Returns `true` if the token can appear at the start of an expression.
     pub fn can_begin_expr(&self) -> bool {
         match *self {
-            OpenDelim(..)               => true,
-            Ident(ident)                => ident_can_begin_expr(ident),
-            Literal(..)                 => true,
-            Not                         => true,
-            BinOp(Minus)                => true,
-            BinOp(Star)                 => true,
-            BinOp(And)                  => true,
-            BinOp(Or)                   => true, // in lambda syntax
-            OrOr                        => true, // in lambda syntax
-            AndAnd                      => true, // double borrow
+            Ident(ident)                => ident_can_begin_expr(ident), // value name or keyword
+            OpenDelim(..)               => true, // tuple, array or block
+            Literal(..)                 => true, // literal
+            Not                         => true, // operator not
+            BinOp(Minus)                => true, // unary minus
+            BinOp(Star)                 => true, // dereference
+            BinOp(Or) | OrOr            => true, // closure
+            BinOp(And)                  => true, // reference
+            AndAnd                      => true, // double reference
             DotDot | DotDotDot          => true, // range notation
             Lt | BinOp(Shl)             => true, // associated path
-            ModSep                      => true,
-            Pound                       => true, // for expression attributes
+            ModSep                      => true, // global path
+            Pound                       => true, // expression attributes
             Interpolated(ref nt) => match **nt {
                 NtExpr(..) => true,
-                NtIdent(..) => true,
                 NtBlock(..) => true,
                 NtPath(..) => true,
                 _ => false,
@@ -210,19 +223,20 @@ impl Token {
     /// Returns `true` if the token can appear at the start of a type.
     pub fn can_begin_type(&self) -> bool {
         match *self {
+            Ident(ident)                => ident_can_begin_type(ident), // type name or keyword
             OpenDelim(Paren)            => true, // tuple
             OpenDelim(Bracket)          => true, // array
-            Ident(..)                   => true, // type name or keyword
             Underscore                  => true, // placeholder
             Not                         => true, // never
             BinOp(Star)                 => true, // raw pointer
             BinOp(And)                  => true, // reference
             AndAnd                      => true, // double reference
+            Question                    => true, // maybe bound in trait object
+            Lifetime(..)                => true, // lifetime bound in trait object
             Lt | BinOp(Shl)             => true, // associated path
             ModSep                      => true, // global path
             Interpolated(ref nt) => match **nt {
                 NtTy(..) => true,
-                NtIdent(..) => true,
                 NtPath(..) => true,
                 _ => false,
             },

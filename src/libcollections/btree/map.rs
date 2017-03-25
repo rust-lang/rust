@@ -141,8 +141,7 @@ pub struct BTreeMap<K, V> {
 unsafe impl<#[may_dangle] K, #[may_dangle] V> Drop for BTreeMap<K, V> {
     fn drop(&mut self) {
         unsafe {
-            for _ in ptr::read(self) {
-            }
+            drop(ptr::read(self).into_iter());
         }
     }
 }
@@ -526,7 +525,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
         }
     }
 
-    /// Returns true if the map contains a value for the specified key.
+    /// Returns `true` if the map contains a value for the specified key.
     ///
     /// The key may be any borrowed form of the map's key type, but the ordering
     /// on the borrowed form *must* match the ordering on the key type.
@@ -1965,7 +1964,7 @@ impl<K, V> BTreeMap<K, V> {
         self.length
     }
 
-    /// Returns true if the map contains no elements.
+    /// Returns `true` if the map contains no elements.
     ///
     /// # Examples
     ///

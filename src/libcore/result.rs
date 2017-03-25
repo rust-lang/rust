@@ -268,7 +268,7 @@ impl<T, E> Result<T, E> {
     // Querying the contained values
     /////////////////////////////////////////////////////////////////////////
 
-    /// Returns true if the result is `Ok`.
+    /// Returns `true` if the result is `Ok`.
     ///
     /// # Examples
     ///
@@ -290,7 +290,7 @@ impl<T, E> Result<T, E> {
         }
     }
 
-    /// Returns true if the result is `Err`.
+    /// Returns `true` if the result is `Err`.
     ///
     /// # Examples
     ///

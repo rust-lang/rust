@@ -399,9 +399,10 @@ fn test_sort() {
         }
     }
 
-    // shouldn't panic
-    let mut v: [i32; 0] = [];
-    v.sort();
+    // Should not panic.
+    [0i32; 0].sort();
+    [(); 10].sort();
+    [(); 100].sort();
 
     let mut v = [0xDEADBEEFu64];
     v.sort();
@@ -439,13 +440,6 @@ fn test_sort_stability() {
             assert!(v.windows(2).all(|w| w[0] <= w[1]));
         }
     }
-}
-
-#[test]
-fn test_sort_zero_sized_type() {
-    // Should not panic.
-    [(); 10].sort();
-    [(); 100].sort();
 }
 
 #[test]

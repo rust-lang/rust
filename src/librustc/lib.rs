@@ -34,7 +34,7 @@
 #![feature(libc)]
 #![feature(loop_break_value)]
 #![feature(nonzero)]
-#![feature(pub_restricted)]
+#![cfg_attr(stage0, feature(pub_restricted))]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
@@ -72,6 +72,7 @@ pub mod diagnostics;
 pub mod cfg;
 pub mod dep_graph;
 pub mod hir;
+pub mod ich;
 pub mod infer;
 pub mod lint;
 

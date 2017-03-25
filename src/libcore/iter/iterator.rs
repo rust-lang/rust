@@ -409,7 +409,7 @@ pub trait Iterator {
     /// If you're doing some sort of looping for a side effect, it's considered
     /// more idiomatic to use [`for`] than `map()`.
     ///
-    /// [`for`]: ../../book/loops.html#for
+    /// [`for`]: ../../book/first-edition/loops.html#for
     ///
     /// # Examples
     ///
@@ -518,13 +518,13 @@ pub trait Iterator {
 
     /// Creates an iterator that both filters and maps.
     ///
-    /// The closure must return an [`Option<T>`]. `filter_map()` creates an
+    /// The closure must return an [`Option<T>`]. `filter_map` creates an
     /// iterator which calls this closure on each element. If the closure
     /// returns [`Some(element)`][`Some`], then that element is returned. If the
     /// closure returns [`None`], it will try again, and call the closure on the
     /// next element, seeing if it will return [`Some`].
     ///
-    /// Why `filter_map()` and not just [`filter()`].[`map`]? The key is in this
+    /// Why `filter_map` and not just [`filter`].[`map`]? The key is in this
     /// part:
     ///
     /// [`filter`]: #method.filter
@@ -534,7 +534,7 @@ pub trait Iterator {
     ///
     /// In other words, it removes the [`Option<T>`] layer automatically. If your
     /// mapping is already returning an [`Option<T>`] and you want to skip over
-    /// [`None`]s, then `filter_map()` is much, much nicer to use.
+    /// [`None`]s, then `filter_map` is much, much nicer to use.
     ///
     /// # Examples
     ///
@@ -1306,7 +1306,7 @@ pub trait Iterator {
     /// use a `for` loop with a list of things to build up a result. Those
     /// can be turned into `fold()`s:
     ///
-    /// [`for`]: ../../book/loops.html#for
+    /// [`for`]: ../../book/first-edition/loops.html#for
     ///
     /// ```
     /// let numbers = [1, 2, 3, 4, 5];

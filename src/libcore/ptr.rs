@@ -37,8 +37,37 @@ pub use intrinsics::copy;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use intrinsics::write_bytes;
 
+#[cfg(stage0)]
 #[stable(feature = "drop_in_place", since = "1.8.0")]
 pub use intrinsics::drop_in_place;
+
+#[cfg(not(stage0))]
+/// Executes the destructor (if any) of the pointed-to value.
+///
+/// This has two use cases:
+///
+/// * It is *required* to use `drop_in_place` to drop unsized types like
+///   trait objects, because they can't be read out onto the stack and
+///   dropped normally.
+///
+/// * It is friendlier to the optimizer to do this over `ptr::read` when
+///   dropping manually allocated memory (e.g. when writing Box/Rc/Vec),
+///   as the compiler doesn't need to prove that it's sound to elide the
+///   copy.
+///
+/// # Undefined Behavior
+///
+/// This has all the same safety problems as `ptr::read` with respect to
+/// invalid pointers, types, and double drops.
+#[stable(feature = "drop_in_place", since = "1.8.0")]
+#[lang="drop_in_place"]
+#[inline]
+#[allow(unconditional_recursion)]
+pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
+    // Code here does not matter - this is replaced by the
+    // real drop glue by the compiler.
+    drop_in_place(to_drop);
+}
 
 /// Creates a null raw pointer.
 ///
@@ -351,7 +380,7 @@ pub unsafe fn write_volatile<T>(dst: *mut T, src: T) {
 
 #[lang = "const_ptr"]
 impl<T: ?Sized> *const T {
-    /// Returns true if the pointer is null.
+    /// Returns `true` if the pointer is null.
     ///
     /// # Examples
     ///
@@ -405,7 +434,7 @@ impl<T: ?Sized> *const T {
     }
 
     /// Calculates the offset from a pointer. `count` is in units of T; e.g. a
-    /// `count` of 3 represents a pointer offset of `3 * sizeof::<T>()` bytes.
+    /// `count` of 3 represents a pointer offset of `3 * size_of::<T>()` bytes.
     ///
     /// # Safety
     ///
@@ -435,7 +464,7 @@ impl<T: ?Sized> *const T {
 
     /// Calculates the offset from a pointer using wrapping arithmetic.
     /// `count` is in units of T; e.g. a `count` of 3 represents a pointer
-    /// offset of `3 * sizeof::<T>()` bytes.
+    /// offset of `3 * size_of::<T>()` bytes.
     ///
     /// # Safety
     ///
@@ -475,7 +504,7 @@ impl<T: ?Sized> *const T {
 
 #[lang = "mut_ptr"]
 impl<T: ?Sized> *mut T {
-    /// Returns true if the pointer is null.
+    /// Returns `true` if the pointer is null.
     ///
     /// # Examples
     ///
@@ -529,7 +558,7 @@ impl<T: ?Sized> *mut T {
     }
 
     /// Calculates the offset from a pointer. `count` is in units of T; e.g. a
-    /// `count` of 3 represents a pointer offset of `3 * sizeof::<T>()` bytes.
+    /// `count` of 3 represents a pointer offset of `3 * size_of::<T>()` bytes.
     ///
     /// # Safety
     ///
@@ -558,7 +587,7 @@ impl<T: ?Sized> *mut T {
 
     /// Calculates the offset from a pointer using wrapping arithmetic.
     /// `count` is in units of T; e.g. a `count` of 3 represents a pointer
-    /// offset of `3 * sizeof::<T>()` bytes.
+    /// offset of `3 * size_of::<T>()` bytes.
     ///
     /// # Safety
     ///

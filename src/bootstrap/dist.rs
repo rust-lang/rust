@@ -37,8 +37,12 @@ use channel;
 use util::{cp_r, libdir, is_dylib, cp_filtered, copy, exe};
 
 fn pkgname(build: &Build, component: &str) -> String {
-    assert!(component.starts_with("rust")); // does not work with cargo
-    format!("{}-{}", component, build.rust_package_vers())
+    if component == "cargo" {
+        format!("{}-{}", component, build.cargo_package_vers())
+    } else {
+        assert!(component.starts_with("rust"));
+        format!("{}-{}", component, build.rust_package_vers())
+    }
 }
 
 fn distdir(build: &Build) -> PathBuf {
@@ -533,7 +537,7 @@ pub fn cargo(build: &Build, stage: u32, target: &str) {
     let src = build.src.join("cargo");
     let etc = src.join("src/etc");
     let release_num = build.cargo_release_num();
-    let name = format!("cargo-{}", build.package_vers(&release_num));
+    let name = pkgname(build, "cargo");
     let version = build.cargo_info.version(build, &release_num);
 
     let tmp = tmpdir(build);
@@ -591,12 +595,11 @@ pub fn extended(build: &Build, stage: u32, target: &str) {
     println!("Dist extended stage{} ({})", stage, target);
 
     let dist = distdir(build);
-    let cargo_vers = build.cargo_release_num();
     let rustc_installer = dist.join(format!("{}-{}.tar.gz",
                                             pkgname(build, "rustc"),
                                             target));
-    let cargo_installer = dist.join(format!("cargo-{}-{}.tar.gz",
-                                            build.package_vers(&cargo_vers),
+    let cargo_installer = dist.join(format!("{}-{}.tar.gz",
+                                            pkgname(build, "cargo"),
                                             target));
     let docs_installer = dist.join(format!("{}-{}.tar.gz",
                                            pkgname(build, "rust-docs"),
@@ -674,7 +677,7 @@ pub fn extended(build: &Build, stage: u32, target: &str) {
 
         cp_r(&work.join(&format!("{}-{}", pkgname(build, "rustc"), target)),
              &pkg.join("rustc"));
-        cp_r(&work.join(&format!("cargo-nightly-{}", target)),
+        cp_r(&work.join(&format!("{}-{}", pkgname(build, "cargo"), target)),
              &pkg.join("cargo"));
         cp_r(&work.join(&format!("{}-{}", pkgname(build, "rust-docs"), target)),
              &pkg.join("rust-docs"));
@@ -726,7 +729,7 @@ pub fn extended(build: &Build, stage: u32, target: &str) {
         cp_r(&work.join(&format!("{}-{}", pkgname(build, "rustc"), target))
                   .join("rustc"),
              &exe.join("rustc"));
-        cp_r(&work.join(&format!("cargo-nightly-{}", target))
+        cp_r(&work.join(&format!("{}-{}", pkgname(build, "cargo"), target))
                   .join("cargo"),
              &exe.join("cargo"));
         cp_r(&work.join(&format!("{}-{}", pkgname(build, "rust-docs"), target))

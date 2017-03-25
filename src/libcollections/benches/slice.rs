@@ -169,6 +169,7 @@ fn random_inserts(b: &mut Bencher) {
         }
     })
 }
+
 #[bench]
 fn random_removes(b: &mut Bencher) {
     let mut rng = thread_rng();
@@ -216,65 +217,76 @@ fn gen_mostly_descending(len: usize) -> Vec<u64> {
     v
 }
 
+fn gen_strings(len: usize) -> Vec<String> {
+    let mut rng = thread_rng();
+    let mut v = vec![];
+    for _ in 0..len {
+        let n = rng.gen::<usize>() % 20 + 1;
+        v.push(rng.gen_ascii_chars().take(n).collect());
+    }
+    v
+}
+
 fn gen_big_random(len: usize) -> Vec<[u64; 16]> {
     let mut rng = thread_rng();
     rng.gen_iter().map(|x| [x; 16]).take(len).collect()
 }
 
-fn gen_big_ascending(len: usize) -> Vec<[u64; 16]> {
-    (0..len as u64).map(|x| [x; 16]).take(len).collect()
-}
-
-fn gen_big_descending(len: usize) -> Vec<[u64; 16]> {
-    (0..len as u64).rev().map(|x| [x; 16]).take(len).collect()
-}
-
-macro_rules! sort_bench {
-    ($name:ident, $gen:expr, $len:expr) => {
+macro_rules! sort {
+    ($f:ident, $name:ident, $gen:expr, $len:expr) => {
         #[bench]
         fn $name(b: &mut Bencher) {
-            b.iter(|| $gen($len).sort());
+            b.iter(|| $gen($len).$f());
             b.bytes = $len * mem::size_of_val(&$gen(1)[0]) as u64;
         }
     }
 }
 
-sort_bench!(sort_small_random, gen_random, 10);
-sort_bench!(sort_small_ascending, gen_ascending, 10);
-sort_bench!(sort_small_descending, gen_descending, 10);
-
-sort_bench!(sort_small_big_random, gen_big_random, 10);
-sort_bench!(sort_small_big_ascending, gen_big_ascending, 10);
-sort_bench!(sort_small_big_descending, gen_big_descending, 10);
-
-sort_bench!(sort_medium_random, gen_random, 100);
-sort_bench!(sort_medium_ascending, gen_ascending, 100);
-sort_bench!(sort_medium_descending, gen_descending, 100);
-
-sort_bench!(sort_large_random, gen_random, 10000);
-sort_bench!(sort_large_ascending, gen_ascending, 10000);
-sort_bench!(sort_large_descending, gen_descending, 10000);
-sort_bench!(sort_large_mostly_ascending, gen_mostly_ascending, 10000);
-sort_bench!(sort_large_mostly_descending, gen_mostly_descending, 10000);
-
-sort_bench!(sort_large_big_random, gen_big_random, 10000);
-sort_bench!(sort_large_big_ascending, gen_big_ascending, 10000);
-sort_bench!(sort_large_big_descending, gen_big_descending, 10000);
-
-#[bench]
-fn sort_large_random_expensive(b: &mut Bencher) {
-    let len = 10000;
-    b.iter(|| {
-        let mut v = gen_random(len);
-        let mut count = 0;
-        v.sort_by(|a: &u64, b: &u64| {
-            count += 1;
-            if count % 1_000_000_000 == 0 {
-                panic!("should not happen");
-            }
-            (*a as f64).cos().partial_cmp(&(*b as f64).cos()).unwrap()
-        });
-        black_box(count);
-    });
-    b.bytes = len as u64 * mem::size_of::<u64>() as u64;
+macro_rules! sort_expensive {
+    ($f:ident, $name:ident, $gen:expr, $len:expr) => {
+        #[bench]
+        fn $name(b: &mut Bencher) {
+            b.iter(|| {
+                let mut v = $gen($len);
+                let mut count = 0;
+                v.$f(|a: &u64, b: &u64| {
+                    count += 1;
+                    if count % 1_000_000_000 == 0 {
+                        panic!("should not happen");
+                    }
+                    (*a as f64).cos().partial_cmp(&(*b as f64).cos()).unwrap()
+                });
+                black_box(count);
+            });
+            b.bytes = $len as u64 * mem::size_of::<u64>() as u64;
+        }
+    }
 }
+
+sort!(sort, sort_small_ascending, gen_ascending, 10);
+sort!(sort, sort_small_descending, gen_descending, 10);
+sort!(sort, sort_small_random, gen_random, 10);
+sort!(sort, sort_small_big_random, gen_big_random, 10);
+sort!(sort, sort_medium_random, gen_random, 100);
+sort!(sort, sort_large_ascending, gen_ascending, 10000);
+sort!(sort, sort_large_descending, gen_descending, 10000);
+sort!(sort, sort_large_mostly_ascending, gen_mostly_ascending, 10000);
+sort!(sort, sort_large_mostly_descending, gen_mostly_descending, 10000);
+sort!(sort, sort_large_random, gen_random, 10000);
+sort!(sort, sort_large_big_random, gen_big_random, 10000);
+sort!(sort, sort_large_strings, gen_strings, 10000);
+sort_expensive!(sort_by, sort_large_random_expensive, gen_random, 10000);
+
+sort!(sort_unstable, sort_unstable_small_ascending, gen_ascending, 10);
+sort!(sort_unstable, sort_unstable_small_descending, gen_descending, 10);
+sort!(sort_unstable, sort_unstable_small_random, gen_random, 10);
+sort!(sort_unstable, sort_unstable_small_big_random, gen_big_random, 10);
+sort!(sort_unstable, sort_unstable_medium_random, gen_random, 100);
+sort!(sort_unstable, sort_unstable_large_ascending, gen_ascending, 10000);
+sort!(sort_unstable, sort_unstable_large_descending, gen_descending, 10000);
+sort!(sort_unstable, sort_unstable_large_mostly_ascending, gen_mostly_ascending, 10000);
+sort!(sort_unstable, sort_unstable_large_mostly_descending, gen_mostly_descending, 10000);
+sort!(sort_unstable, sort_unstable_large_random, gen_random, 10000);
+sort!(sort_unstable, sort_unstable_large_big_random, gen_big_random, 10000);
+sort!(sort_unstable, sort_unstable_large_strings, gen_strings, 10000);
+sort_expensive!(sort_unstable_by, sort_unstable_large_random_expensive, gen_random, 10000);

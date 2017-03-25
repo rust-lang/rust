@@ -22,14 +22,16 @@ use rustc::dep_graph::DepNode;
 use rustc::mir::Mir;
 use rustc::mir::transform::MirSource;
 use rustc::mir::visit::MutVisitor;
-use pretty;
+use shim;
 use hair::cx::Cx;
+use util as mir_util;
 
 use rustc::traits::Reveal;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::maps::Providers;
 use rustc::ty::subst::Substs;
 use rustc::hir;
+use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use syntax::abi::Abi;
 use syntax::ast;
 use syntax_pos::Span;
@@ -44,6 +46,31 @@ pub fn build_mir_for_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
         tcx.visit_all_bodies_in_krate(|body_owner_def_id, _body_id| {
             tcx.item_mir(body_owner_def_id);
         });
+
+        // Tuple struct/variant constructors don't have a BodyId, so we need
+        // to build them separately.
+        struct GatherCtors<'a, 'tcx: 'a> {
+            tcx: TyCtxt<'a, 'tcx, 'tcx>
+        }
+        impl<'a, 'tcx> Visitor<'tcx> for GatherCtors<'a, 'tcx> {
+            fn visit_variant_data(&mut self,
+                                  v: &'tcx hir::VariantData,
+                                  _: ast::Name,
+                                  _: &'tcx hir::Generics,
+                                  _: ast::NodeId,
+                                  _: Span) {
+                if let hir::VariantData::Tuple(_, node_id) = *v {
+                    self.tcx.item_mir(self.tcx.hir.local_def_id(node_id));
+                }
+                intravisit::walk_struct_def(self, v)
+            }
+            fn nested_visit_map<'b>(&'b mut self) -> NestedVisitorMap<'b, 'tcx> {
+                NestedVisitorMap::None
+            }
+        }
+        tcx.visit_all_item_likes_in_krate(DepNode::Mir, &mut GatherCtors {
+            tcx: tcx
+        }.as_deep_visitor());
     }
 }
 
@@ -95,6 +122,10 @@ fn build_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
                 _ => hir::BodyId { node_id: expr.id }
             }
         }
+        hir::map::NodeVariant(variant) =>
+            return create_constructor_shim(tcx, id, &variant.node.data),
+        hir::map::NodeStructCtor(ctor) =>
+            return create_constructor_shim(tcx, id, ctor),
         _ => unsupported()
     };
 
@@ -144,7 +175,7 @@ fn build_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
             mem::transmute::<Mir, Mir<'tcx>>(mir)
         };
 
-        pretty::dump_mir(tcx, "mir_map", &0, src, &mir);
+        mir_util::dump_mir(tcx, "mir_map", &0, src, &mir);
 
         tcx.alloc_mir(mir)
     })
@@ -180,6 +211,38 @@ impl<'a, 'gcx: 'tcx, 'tcx> MutVisitor<'tcx> for GlobalizeMir<'a, 'gcx> {
     }
 }
 
+fn create_constructor_shim<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                     ctor_id: ast::NodeId,
+                                     v: &'tcx hir::VariantData)
+                                     -> &'tcx RefCell<Mir<'tcx>>
+{
+    let span = tcx.hir.span(ctor_id);
+    if let hir::VariantData::Tuple(ref fields, ctor_id) = *v {
+        let pe = ty::ParameterEnvironment::for_item(tcx, ctor_id);
+        tcx.infer_ctxt(pe, Reveal::UserFacing).enter(|infcx| {
+            let (mut mir, src) =
+                shim::build_adt_ctor(&infcx, ctor_id, fields, span);
+
+            // Convert the Mir to global types.
+            let tcx = infcx.tcx.global_tcx();
+            let mut globalizer = GlobalizeMir {
+                tcx: tcx,
+                span: mir.span
+            };
+            globalizer.visit_mir(&mut mir);
+            let mir = unsafe {
+                mem::transmute::<Mir, Mir<'tcx>>(mir)
+            };
+
+            mir_util::dump_mir(tcx, "mir_map", &0, src, &mir);
+
+            tcx.alloc_mir(mir)
+        })
+    } else {
+        span_bug!(span, "attempting to create MIR for non-tuple variant {:?}", v);
+    }
+}
+
 ///////////////////////////////////////////////////////////////////////////
 // BuildMir -- walks a crate, looking for fn items and methods to build MIR from
 
@@ -189,12 +252,9 @@ fn closure_self_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              -> Ty<'tcx> {
     let closure_ty = tcx.body_tables(body_id).node_id_to_type(closure_expr_id);
 
-    // We're just hard-coding the idea that the signature will be
-    // &self or &mut self and hence will have a bound region with
-    // number 0, hokey.
     let region = ty::Region::ReFree(ty::FreeRegion {
         scope: tcx.region_maps.item_extent(body_id.node_id),
-        bound_region: ty::BoundRegion::BrAnon(0),
+        bound_region: ty::BoundRegion::BrEnv,
     });
     let region = tcx.mk_region(region);
 

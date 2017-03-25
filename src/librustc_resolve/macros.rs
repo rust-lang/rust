@@ -230,12 +230,12 @@ impl<'a> base::Resolver for Resolver<'a> {
                         attrs.remove(i);
                     } else {
                         let mut tokens = Vec::new();
-                        for (i, path) in traits.iter().enumerate() {
-                            if i > 0 {
+                        for (j, path) in traits.iter().enumerate() {
+                            if j > 0 {
                                 tokens.push(TokenTree::Token(attrs[i].span, Token::Comma).into());
                             }
-                            for (j, segment) in path.segments.iter().enumerate() {
-                                if j > 0 {
+                            for (k, segment) in path.segments.iter().enumerate() {
+                                if k > 0 {
                                     tokens.push(TokenTree::Token(path.span, Token::ModSep).into());
                                 }
                                 let tok = Token::Ident(segment.identifier);
@@ -653,7 +653,7 @@ impl<'a> Resolver<'a> {
 
         if attr::contains_name(&item.attrs, "macro_export") {
             let def = Def::Macro(def_id, MacroKind::Bang);
-            self.macro_exports.push(Export { name: ident.name, def: def });
+            self.macro_exports.push(Export { name: ident.name, def: def, span: item.span });
         }
     }
 

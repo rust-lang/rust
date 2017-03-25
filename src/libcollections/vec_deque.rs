@@ -133,7 +133,7 @@ impl<T> VecDeque<T> {
         ptr::write(self.ptr().offset(off as isize), value);
     }
 
-    /// Returns true if and only if the buffer is at capacity
+    /// Returns `true` if and only if the buffer is at full capacity.
     #[inline]
     fn is_full(&self) -> bool {
         self.cap() - self.len() == 1
@@ -788,7 +788,7 @@ impl<T> VecDeque<T> {
         count(self.tail, self.head, self.cap())
     }
 
-    /// Returns true if the buffer contains no elements
+    /// Returns `true` if the `VecDeque` is empty.
     ///
     /// # Examples
     ///

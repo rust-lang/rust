@@ -402,7 +402,7 @@ impl Diverges {
 }
 
 #[derive(Clone)]
-pub struct LoopCtxt<'gcx, 'tcx> {
+pub struct BreakableCtxt<'gcx, 'tcx> {
     unified: Ty<'tcx>,
     coerce_to: Ty<'tcx>,
     break_exprs: Vec<&'gcx hir::Expr>,
@@ -410,15 +410,17 @@ pub struct LoopCtxt<'gcx, 'tcx> {
 }
 
 #[derive(Clone)]
-pub struct EnclosingLoops<'gcx, 'tcx> {
-    stack: Vec<LoopCtxt<'gcx, 'tcx>>,
+pub struct EnclosingBreakables<'gcx, 'tcx> {
+    stack: Vec<BreakableCtxt<'gcx, 'tcx>>,
     by_id: NodeMap<usize>,
 }
 
-impl<'gcx, 'tcx> EnclosingLoops<'gcx, 'tcx> {
-    fn find_loop(&mut self, id: hir::LoopIdResult) -> Option<&mut LoopCtxt<'gcx, 'tcx>> {
-        let id_res: Result<_,_> = id.into();
-        if let Some(ix) = id_res.ok().and_then(|id| self.by_id.get(&id).cloned()) {
+impl<'gcx, 'tcx> EnclosingBreakables<'gcx, 'tcx> {
+    fn find_breakable(&mut self, target: hir::ScopeTarget)
+        -> Option<&mut BreakableCtxt<'gcx, 'tcx>>
+    {
+        let opt_index = target.opt_id().and_then(|id| self.by_id.get(&id).cloned());
+        if let Some(ix) = opt_index {
             Some(&mut self.stack[ix])
         } else {
             None
@@ -448,7 +450,7 @@ pub struct FnCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     /// Whether any child nodes have any type errors.
     has_errors: Cell<bool>,
 
-    enclosing_loops: RefCell<EnclosingLoops<'gcx, 'tcx>>,
+    enclosing_breakables: RefCell<EnclosingBreakables<'gcx, 'tcx>>,
 
     inh: &'a Inherited<'a, 'gcx, 'tcx>,
 }
@@ -1429,7 +1431,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                      ast::CRATE_NODE_ID)),
             diverges: Cell::new(Diverges::Maybe),
             has_errors: Cell::new(false),
-            enclosing_loops: RefCell::new(EnclosingLoops {
+            enclosing_breakables: RefCell::new(EnclosingBreakables {
                 stack: Vec::new(),
                 by_id: NodeMap(),
             }),
@@ -2292,7 +2294,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             match method_fn_ty.sty {
                 ty::TyFnDef(def_id, .., ref fty) => {
                     // HACK(eddyb) ignore self in the definition (see above).
-                    let expected_arg_tys = self.expected_types_for_fn_args(
+                    let expected_arg_tys = self.expected_inputs_for_expected_output(
                         sp,
                         expected,
                         fty.0.output(),
@@ -2645,14 +2647,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         TypeAndSubsts { substs: substs, ty: substd_ty }
     }
 
-    /// Unifies the return type with the expected type early, for more coercions
-    /// and forward type information on the argument expressions.
-    fn expected_types_for_fn_args(&self,
-                                  call_span: Span,
-                                  expected_ret: Expectation<'tcx>,
-                                  formal_ret: Ty<'tcx>,
-                                  formal_args: &[Ty<'tcx>])
-                                  -> Vec<Ty<'tcx>> {
+    /// Unifies the output type with the expected type early, for more coercions
+    /// and forward type information on the input expressions.
+    fn expected_inputs_for_expected_output(&self,
+                                           call_span: Span,
+                                           expected_ret: Expectation<'tcx>,
+                                           formal_ret: Ty<'tcx>,
+                                           formal_args: &[Ty<'tcx>])
+                                           -> Vec<Ty<'tcx>> {
         let expected_args = expected_ret.only_has_type(self).and_then(|ret_ty| {
             self.fudge_regions_if_ok(&RegionVariableOrigin::Coercion(call_span), || {
                 // Attempt to apply a subtyping relationship between the formal
@@ -2675,7 +2677,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }).collect())
             }).ok()
         }).unwrap_or(vec![]);
-        debug!("expected_types_for_fn_args(formal={:?} -> {:?}, expected={:?} -> {:?})",
+        debug!("expected_inputs_for_expected_output(formal={:?} -> {:?}, expected={:?} -> {:?})",
                formal_args, formal_ret,
                expected_args, expected_ret);
         expected_args
@@ -3032,14 +3034,22 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     fn check_expr_struct_fields(&self,
                                 adt_ty: Ty<'tcx>,
+                                expected: Expectation<'tcx>,
                                 expr_id: ast::NodeId,
                                 span: Span,
                                 variant: &'tcx ty::VariantDef,
                                 ast_fields: &'gcx [hir::Field],
                                 check_completeness: bool) {
         let tcx = self.tcx;
-        let (substs, adt_kind, kind_name) = match adt_ty.sty {
-            ty::TyAdt(adt, substs) => (substs, adt.adt_kind(), adt.variant_descr()),
+
+        let adt_ty_hint =
+            self.expected_inputs_for_expected_output(span, expected, adt_ty, &[adt_ty])
+                .get(0).cloned().unwrap_or(adt_ty);
+
+        let (substs, hint_substs, adt_kind, kind_name) = match (&adt_ty.sty, &adt_ty_hint.sty) {
+            (&ty::TyAdt(adt, substs), &ty::TyAdt(_, hint_substs)) => {
+                (substs, hint_substs, adt.adt_kind(), adt.variant_descr())
+            }
             _ => span_bug!(span, "non-ADT passed to check_expr_struct_fields")
         };
 
@@ -3054,10 +3064,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         // Typecheck each field.
         for field in ast_fields {
-            let expected_field_type;
+            let final_field_type;
+            let field_type_hint;
 
             if let Some(v_field) = remaining_fields.remove(&field.name.node) {
-                expected_field_type = self.field_ty(field.span, v_field, substs);
+                final_field_type = self.field_ty(field.span, v_field, substs);
+                field_type_hint = self.field_ty(field.span, v_field, hint_substs);
 
                 seen_fields.insert(field.name.node, field.span);
 
@@ -3069,7 +3081,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
             } else {
                 error_happened = true;
-                expected_field_type = tcx.types.err;
+                final_field_type = tcx.types.err;
+                field_type_hint = tcx.types.err;
                 if let Some(_) = variant.find_field_named(field.name.node) {
                     let mut err = struct_span_err!(self.tcx.sess,
                                                 field.name.span,
@@ -3091,7 +3104,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
             // Make sure to give a type to the field even if there's
             // an error, so we can continue typechecking
-            self.check_expr_coercable_to_type(&field.expr, expected_field_type);
+            let ty = self.check_expr_with_hint(&field.expr, field_type_hint);
+            self.demand_coerce(&field.expr, ty, final_field_type);
         }
 
         // Make sure the programmer specified correct number of fields.
@@ -3201,6 +3215,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
     fn check_expr_struct(&self,
                          expr: &hir::Expr,
+                         expected: Expectation<'tcx>,
                          qpath: &hir::QPath,
                          fields: &'gcx [hir::Field],
                          base_expr: &'gcx Option<P<hir::Expr>>) -> Ty<'tcx>
@@ -3219,7 +3234,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             hir::QPath::TypeRelative(ref qself, _) => qself.span
         };
 
-        self.check_expr_struct_fields(struct_ty, expr.id, path_span, variant, fields,
+        self.check_expr_struct_fields(struct_ty, expected, expr.id, path_span, variant, fields,
                                       base_expr.is_none());
         if let &Some(ref base_expr) = base_expr {
             self.check_expr_has_type(base_expr, struct_ty);
@@ -3467,10 +3482,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
               }
               tcx.mk_nil()
           }
-          hir::ExprBreak(label, ref expr_opt) => {
+          hir::ExprBreak(destination, ref expr_opt) => {
             let coerce_to = {
-                let mut enclosing_loops = self.enclosing_loops.borrow_mut();
-                enclosing_loops.find_loop(label.loop_id).map(|ctxt| ctxt.coerce_to)
+                let mut enclosing_breakables = self.enclosing_breakables.borrow_mut();
+                enclosing_breakables
+                    .find_breakable(destination.target_id).map(|ctxt| ctxt.coerce_to)
             };
             if let Some(coerce_to) = coerce_to {
                 let e_ty;
@@ -3486,8 +3502,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     cause = self.misc(expr.span);
                 }
 
-                let mut enclosing_loops = self.enclosing_loops.borrow_mut();
-                let ctxt = enclosing_loops.find_loop(label.loop_id).unwrap();
+                let mut enclosing_breakables = self.enclosing_breakables.borrow_mut();
+                let ctxt = enclosing_breakables.find_breakable(destination.target_id).unwrap();
 
                 let result = if let Some(ref e) = *expr_opt {
                     // Special-case the first element, as it has no "previous expressions".
@@ -3517,8 +3533,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
                 ctxt.may_break = true;
             }
-            // Otherwise, we failed to find the enclosing loop; this can only happen if the
-            // `break` was not inside a loop at all, which is caught by the loop-checking pass.
+            // Otherwise, we failed to find the enclosing breakable; this can only happen if the
+            // `break` target was not found, which is caught in HIR lowering and reported by the
+            // loop-checking pass.
             tcx.types.never
           }
           hir::ExprAgain(_) => { tcx.types.never }
@@ -3575,13 +3592,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
           hir::ExprWhile(ref cond, ref body, _) => {
             let unified = self.tcx.mk_nil();
             let coerce_to = unified;
-            let ctxt = LoopCtxt {
+            let ctxt = BreakableCtxt {
                 unified: unified,
                 coerce_to: coerce_to,
                 break_exprs: vec![],
                 may_break: true,
             };
-            self.with_loop_ctxt(expr.id, ctxt, || {
+            self.with_breakable_ctxt(expr.id, ctxt, || {
                 self.check_expr_has_type(&cond, tcx.types.bool);
                 let cond_diverging = self.diverges.get();
                 self.check_block_no_value(&body);
@@ -3599,14 +3616,14 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
           hir::ExprLoop(ref body, _, _) => {
             let unified = self.next_ty_var(TypeVariableOrigin::TypeInference(body.span));
             let coerce_to = expected.only_has_type(self).unwrap_or(unified);
-            let ctxt = LoopCtxt {
+            let ctxt = BreakableCtxt {
                 unified: unified,
                 coerce_to: coerce_to,
                 break_exprs: vec![],
                 may_break: false,
             };
 
-            let ctxt = self.with_loop_ctxt(expr.id, ctxt, || {
+            let (ctxt, ()) = self.with_breakable_ctxt(expr.id, ctxt, || {
                 self.check_block_no_value(&body);
             });
             if ctxt.may_break {
@@ -3625,8 +3642,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
           hir::ExprClosure(capture, ref decl, body_id, _) => {
               self.check_expr_closure(expr, capture, &decl, body_id, expected)
           }
-          hir::ExprBlock(ref b) => {
-            self.check_block_with_expected(&b, expected)
+          hir::ExprBlock(ref body) => {
+            self.check_block_with_expected(&body, expected)
           }
           hir::ExprCall(ref callee, ref args) => {
               self.check_call(expr, &callee, args, expected)
@@ -3764,7 +3781,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
           }
           hir::ExprStruct(ref qpath, ref fields, ref base_expr) => {
-            self.check_expr_struct(expr, qpath, fields, base_expr)
+            self.check_expr_struct(expr, expected, qpath, fields, base_expr)
           }
           hir::ExprField(ref base, ref field) => {
             self.check_field(expr, lvalue_pref, &base, field)
@@ -4018,65 +4035,96 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             replace(&mut *fcx_ps, unsafety_state)
         };
 
-        for s in &blk.stmts {
-            self.check_stmt(s);
-        }
+        let mut ty = if let Some(break_to_expr_id) = blk.break_to_expr_id {
+            let unified = self.next_ty_var(TypeVariableOrigin::TypeInference(blk.span));
+            let coerce_to = expected.only_has_type(self).unwrap_or(unified);
+            let ctxt = BreakableCtxt {
+                unified: unified,
+                coerce_to: coerce_to,
+                break_exprs: vec![],
+                may_break: false,
+            };
 
-        let mut ty = match blk.expr {
-            Some(ref e) => self.check_expr_with_expectation(e, expected),
-            None => self.tcx.mk_nil()
-        };
-
-        if self.diverges.get().always() {
-            ty = self.next_diverging_ty_var(TypeVariableOrigin::DivergingBlockExpr(blk.span));
-        } else if let ExpectHasType(ety) = expected {
-            if let Some(ref e) = blk.expr {
-                // Coerce the tail expression to the right type.
-                self.demand_coerce(e, ty, ety);
-            } else {
-                // We're not diverging and there's an expected type, which,
-                // in case it's not `()`, could result in an error higher-up.
-                // We have a chance to error here early and be more helpful.
-                let cause = self.misc(blk.span);
-                let trace = TypeTrace::types(&cause, false, ty, ety);
-                match self.sub_types(false, &cause, ty, ety) {
-                    Ok(InferOk { obligations, .. }) => {
-                        // FIXME(#32730) propagate obligations
-                        assert!(obligations.is_empty());
-                    },
-                    Err(err) => {
-                        let mut err = self.report_and_explain_type_error(trace, &err);
-
-                        // Be helpful when the user wrote `{... expr;}` and
-                        // taking the `;` off is enough to fix the error.
-                        let mut extra_semi = None;
-                        if let Some(stmt) = blk.stmts.last() {
-                            if let hir::StmtSemi(ref e, _) = stmt.node {
-                                if self.can_sub_types(self.node_ty(e.id), ety).is_ok() {
-                                    extra_semi = Some(stmt);
-                                }
-                            }
-                        }
-                        if let Some(last_stmt) = extra_semi {
-                            let original_span = original_sp(self.tcx.sess.codemap(),
-                                                            last_stmt.span, blk.span);
-                            let span_semi = Span {
-                                lo: original_span.hi - BytePos(1),
-                                hi: original_span.hi,
-                                expn_id: original_span.expn_id
-                            };
-                            err.span_help(span_semi, "consider removing this semicolon:");
-                        }
-
-                        err.emit();
-                    }
+            let (mut ctxt, (e_ty, cause)) = self.with_breakable_ctxt(break_to_expr_id, ctxt, || {
+                for s in &blk.stmts {
+                    self.check_stmt(s);
                 }
+                let coerce_to = {
+                    let mut enclosing_breakables = self.enclosing_breakables.borrow_mut();
+                    enclosing_breakables.find_breakable(
+                        hir::ScopeTarget::Block(break_to_expr_id)
+                    ).unwrap().coerce_to
+                };
+                let e_ty;
+                let cause;
+                match blk.expr {
+                    Some(ref e) => {
+                        e_ty = self.check_expr_with_hint(e, coerce_to);
+                        cause = self.misc(e.span);
+                    },
+                    None => {
+                        e_ty = self.tcx.mk_nil();
+                        cause = self.misc(blk.span);
+                    }
+                };
+
+                (e_ty, cause)
+            });
+
+            if let Some(ref e) = blk.expr {
+                let result = if !ctxt.may_break {
+                    self.try_coerce(e, e_ty, ctxt.coerce_to)
+                } else {
+                    self.try_find_coercion_lub(&cause, || ctxt.break_exprs.iter().cloned(),
+                                               ctxt.unified, e, e_ty)
+                };
+                match result {
+                    Ok(ty) => ctxt.unified = ty,
+                    Err(err) =>
+                        self.report_mismatched_types(&cause, ctxt.unified, e_ty, err).emit(),
+                }
+            } else {
+                self.check_block_no_expr(blk, self.tcx.mk_nil(), e_ty);
+            };
+
+            ctxt.unified
+        } else {
+            for s in &blk.stmts {
+                self.check_stmt(s);
             }
 
-            // We already applied the type (and potentially errored),
-            // use the expected type to avoid further errors out.
-            ty = ety;
-        }
+            let mut ty = match blk.expr {
+                Some(ref e) => self.check_expr_with_expectation(e, expected),
+                None => self.tcx.mk_nil()
+            };
+
+            if self.diverges.get().always() {
+                if let ExpectHasType(ety) = expected {
+                    // Avoid forcing a type (only `!` for now) in unreachable code.
+                    // FIXME(aburka) do we need this special case? and should it be is_uninhabited?
+                    if !ety.is_never() {
+                        if let Some(ref e) = blk.expr {
+                            // Coerce the tail expression to the right type.
+                            self.demand_coerce(e, ty, ety);
+                        }
+                    }
+                }
+
+                ty = self.next_diverging_ty_var(TypeVariableOrigin::DivergingBlockExpr(blk.span));
+            } else if let ExpectHasType(ety) = expected {
+                if let Some(ref e) = blk.expr {
+                    // Coerce the tail expression to the right type.
+                    self.demand_coerce(e, ty, ety);
+                } else {
+                    self.check_block_no_expr(blk, ty, ety);
+                }
+
+                // We already applied the type (and potentially errored),
+                // use the expected type to avoid further errors out.
+                ty = ety;
+            }
+            ty
+        };
 
         if self.has_errors.get() || ty.references_error() {
             ty = self.tcx.types.err
@@ -4086,6 +4134,46 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         *self.ps.borrow_mut() = prev;
         ty
+    }
+
+    pub fn check_block_no_expr(&self, blk: &'gcx hir::Block, ty: Ty<'tcx>, ety: Ty<'tcx>) {
+        // We're not diverging and there's an expected type, which,
+        // in case it's not `()`, could result in an error higher-up.
+        // We have a chance to error here early and be more helpful.
+        let cause = self.misc(blk.span);
+        let trace = TypeTrace::types(&cause, false, ty, ety);
+        match self.sub_types(false, &cause, ty, ety) {
+            Ok(InferOk { obligations, .. }) => {
+                // FIXME(#32730) propagate obligations
+                assert!(obligations.is_empty());
+            },
+            Err(err) => {
+                let mut err = self.report_and_explain_type_error(trace, &err);
+
+                // Be helpful when the user wrote `{... expr;}` and
+                // taking the `;` off is enough to fix the error.
+                let mut extra_semi = None;
+                if let Some(stmt) = blk.stmts.last() {
+                    if let hir::StmtSemi(ref e, _) = stmt.node {
+                        if self.can_sub_types(self.node_ty(e.id), ety).is_ok() {
+                            extra_semi = Some(stmt);
+                        }
+                    }
+                }
+                if let Some(last_stmt) = extra_semi {
+                    let original_span = original_sp(self.tcx.sess.codemap(),
+                                                    last_stmt.span, blk.span);
+                    let span_semi = Span {
+                        lo: original_span.hi - BytePos(1),
+                        hi: original_span.hi,
+                        expn_id: original_span.expn_id
+                    };
+                    err.span_help(span_semi, "consider removing this semicolon:");
+                }
+
+                err.emit();
+            }
+        }
     }
 
     // Instantiates the given path, which must refer to an item with the given
@@ -4485,22 +4573,24 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         })
     }
 
-    fn with_loop_ctxt<F: FnOnce()>(&self, id: ast::NodeId, ctxt: LoopCtxt<'gcx, 'tcx>, f: F)
-                                   -> LoopCtxt<'gcx, 'tcx> {
+    fn with_breakable_ctxt<F: FnOnce() -> R, R>(&self, id: ast::NodeId,
+                                        ctxt: BreakableCtxt<'gcx, 'tcx>, f: F)
+                                   -> (BreakableCtxt<'gcx, 'tcx>, R) {
         let index;
         {
-            let mut enclosing_loops = self.enclosing_loops.borrow_mut();
-            index = enclosing_loops.stack.len();
-            enclosing_loops.by_id.insert(id, index);
-            enclosing_loops.stack.push(ctxt);
+            let mut enclosing_breakables = self.enclosing_breakables.borrow_mut();
+            index = enclosing_breakables.stack.len();
+            enclosing_breakables.by_id.insert(id, index);
+            enclosing_breakables.stack.push(ctxt);
         }
-        f();
-        {
-            let mut enclosing_loops = self.enclosing_loops.borrow_mut();
-            debug_assert!(enclosing_loops.stack.len() == index + 1);
-            enclosing_loops.by_id.remove(&id).expect("missing loop context");
-            (enclosing_loops.stack.pop().expect("missing loop context"))
-        }
+        let result = f();
+        let ctxt = {
+            let mut enclosing_breakables = self.enclosing_breakables.borrow_mut();
+            debug_assert!(enclosing_breakables.stack.len() == index + 1);
+            enclosing_breakables.by_id.remove(&id).expect("missing breakable context");
+            enclosing_breakables.stack.pop().expect("missing breakable context")
+        };
+        (ctxt, result)
     }
 }
 

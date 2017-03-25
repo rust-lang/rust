@@ -47,21 +47,21 @@ matrix:
         SRC=.
         RUSTC_RETRY_LINKER_ON_SEGFAULT=1
         SCCACHE_ERROR_LOG=/tmp/sccache.log
-        RUST_LOG=sccache=debug
         MACOSX_DEPLOYMENT_TARGET=10.8
         MACOSX_STD_DEPLOYMENT_TARGET=10.7
       os: osx
       osx_image: xcode8.2
       install: &osx_install_sccache >
-        travis_retry curl -o /usr/local/bin/sccache https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-03-16-sccache-x86_64-apple-darwin &&
-          chmod +x /usr/local/bin/sccache
+        travis_retry curl -o /usr/local/bin/sccache https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-03-22-sccache-x86_64-apple-darwin &&
+          chmod +x /usr/local/bin/sccache &&
+        travis_retry curl -o /usr/local/bin/stamp https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-03-17-stamp-x86_64-apple-darwin &&
+          chmod +x /usr/local/bin/stamp
     - env: >
         RUST_CHECK_TARGET=check
         RUST_CONFIGURE_ARGS=--build=i686-apple-darwin
         SRC=.
         RUSTC_RETRY_LINKER_ON_SEGFAULT=1
         SCCACHE_ERROR_LOG=/tmp/sccache.log
-        RUST_LOG=sccache=debug
         MACOSX_DEPLOYMENT_TARGET=10.8
         MACOSX_STD_DEPLOYMENT_TARGET=10.7
       os: osx
@@ -75,14 +75,11 @@ matrix:
         DEPLOY=1
         RUSTC_RETRY_LINKER_ON_SEGFAULT=1
         SCCACHE_ERROR_LOG=/tmp/sccache.log
-        RUST_LOG=sccache=debug
         MACOSX_DEPLOYMENT_TARGET=10.8
         MACOSX_STD_DEPLOYMENT_TARGET=10.7
       os: osx
       osx_image: xcode8.2
-      install: >
-        travis_retry curl -o /usr/local/bin/sccache https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-03-16-sccache-x86_64-apple-darwin &&
-          chmod +x /usr/local/bin/sccache
+      install: *osx_install_sccache
     - env: >
         RUST_CHECK_TARGET=dist
         RUST_CONFIGURE_ARGS="--target=aarch64-apple-ios,armv7-apple-ios,armv7s-apple-ios,i386-apple-ios,x86_64-apple-ios --enable-extended"
@@ -90,7 +87,6 @@ matrix:
         DEPLOY=1
         RUSTC_RETRY_LINKER_ON_SEGFAULT=1
         SCCACHE_ERROR_LOG=/tmp/sccache.log
-        RUST_LOG=sccache=debug
         MACOSX_DEPLOYMENT_TARGET=10.8
         MACOSX_STD_DEPLOYMENT_TARGET=10.7
       os: osx
@@ -109,7 +105,6 @@ matrix:
         DEPLOY_ALT=1
         RUSTC_RETRY_LINKER_ON_SEGFAULT=1
         SCCACHE_ERROR_LOG=/tmp/sccache.log
-        RUST_LOG=sccache=debug
         MACOSX_DEPLOYMENT_TARGET=10.8
         MACOSX_STD_DEPLOYMENT_TARGET=10.7
       os: osx
@@ -123,6 +118,12 @@ env:
     # AWS_SECRET_ACCESS_KEY=...
     - secure: "Pixhh0hXDqGCdOyLtGFjli3J2AtDWIpyb2btIrLe956nCBDRutRoMm6rv5DI9sFZN07Mms7VzNNvhc9wCW1y63JAm414d2Co7Ob8kWMZlz9l9t7ACHuktUiis8yr+S4Quq1Vqd6pqi7pf2J++UxC8R/uLeqVrubzr6+X7AbmEFE="
 
+# Note that this is overridden on OSX builders
+install: >
+  travis_retry curl -o $HOME/stamp https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-03-17-stamp-x86_64-unknown-linux-musl &&
+    chmod +x $HOME/stamp &&
+    export PATH=$PATH:$HOME
+
 before_script:
   - >
       echo "#### Disk usage before running script:";
@@ -134,11 +135,11 @@ script:
       if [ "$ALLOW_PR" = "" ] && [ "$TRAVIS_BRANCH" != "auto" ]; then
           echo skipping, not a full build;
       elif [ "$TRAVIS_OS_NAME" = "osx" ]; then
-          travis_retry sh -c 'git submodule deinit -f . && git submodule update --init' &&
-          src/ci/run.sh;
+          travis_retry stamp sh -c 'git submodule deinit -f . && git submodule update --init' &&
+          stamp src/ci/run.sh;
       else
-          travis_retry sh -c 'git submodule deinit -f . && git submodule update --init' &&
-          src/ci/docker/run.sh $IMAGE;
+          travis_retry stamp sh -c 'git submodule deinit -f . && git submodule update --init' &&
+          stamp src/ci/docker/run.sh $IMAGE;
       fi
 
 after_success:
@@ -152,8 +153,20 @@ after_failure:
       echo "#### Build failed; Disk usage after running script:";
       df -h;
       du . | sort -nr | head -n100
+
+  # One of these is the linux sccache log, one is the OSX sccache log. Instead
+  # of worrying about what system we are just cat both. One of these commands
+  # will fail but that's ok, they'll both get executed.
   - cat obj/tmp/sccache.log
   - cat /tmp/sccache.log
+
+  # Random attempt at debugging currently. Just poking around in here to see if
+  # anything shows up.
+  - ls $HOME/Library/Logs/DiagnosticReports/
+
+  # attempt to debug anything killed by the oom killer on linux, just to see if
+  # it happened
+  - dmesg | grep -i kill
 
 # Save tagged docker images we created and load them if they're available
 before_cache:

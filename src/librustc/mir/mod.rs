@@ -17,7 +17,7 @@ use rustc_data_structures::control_flow_graph::{GraphPredecessors, GraphSuccesso
 use rustc_data_structures::control_flow_graph::ControlFlowGraph;
 use hir::def::CtorKind;
 use hir::def_id::DefId;
-use ty::subst::Substs;
+use ty::subst::{Subst, Substs};
 use ty::{self, AdtDef, ClosureSubsts, Region, Ty};
 use ty::fold::{TypeFoldable, TypeFolder, TypeVisitor};
 use util::ppaux;
@@ -467,7 +467,7 @@ pub enum TerminatorKind<'tcx> {
         values: Cow<'tcx, [ConstInt]>,
 
         /// Possible branch sites. The last element of this vector is used
-        /// for the otherwise branch, so values.len() == targets.len() + 1
+        /// for the otherwise branch, so targets.len() == values.len() + 1
         /// should hold.
         // This invariant is quite non-obvious and also could be improved.
         // One way to make this invariant is to have something like this instead:
@@ -980,6 +980,22 @@ impl<'tcx> Debug for Operand<'tcx> {
             Consume(ref lv) => write!(fmt, "{:?}", lv),
         }
     }
+}
+
+impl<'tcx> Operand<'tcx> {
+    pub fn function_handle<'a>(
+        tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
+        def_id: DefId,
+        substs: &'tcx Substs<'tcx>,
+        span: Span,
+    ) -> Self {
+        Operand::Constant(Constant {
+            span: span,
+            ty: tcx.item_type(def_id).subst(tcx, substs),
+            literal: Literal::Value { value: ConstVal::Function(def_id, substs) },
+        })
+    }
+
 }
 
 ///////////////////////////////////////////////////////////////////////////

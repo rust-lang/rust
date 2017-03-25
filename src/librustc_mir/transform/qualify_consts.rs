@@ -568,11 +568,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                 });
             }
             Operand::Constant(ref constant) => {
-                // Only functions and methods can have these types.
-                if let ty::TyFnDef(..) = constant.ty.sty {
-                    return;
-                }
-
                 if let Literal::Item { def_id, substs } = constant.literal {
                     // Don't peek inside generic (associated) constants.
                     if substs.types().next().is_some() {

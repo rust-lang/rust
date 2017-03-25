@@ -40,5 +40,3 @@ fn main() {
     //~ TRANS_ITEM fn items_within_generic_items::generic_fn[0]<i8>
     let _ = generic_fn(0i8);
 }
-
-//~ TRANS_ITEM drop-glue i8

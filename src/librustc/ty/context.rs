@@ -1469,6 +1469,15 @@ impl<T, R> InternIteratorElement<T, R> for T {
     }
 }
 
+impl<'a, T, R> InternIteratorElement<T, R> for &'a T
+    where T: Clone + 'a
+{
+    type Output = R;
+    fn intern_with<I: Iterator<Item=Self>, F: FnOnce(&[T]) -> R>(iter: I, f: F) -> Self::Output {
+        f(&iter.cloned().collect::<AccumulateVec<[_; 8]>>())
+    }
+}
+
 impl<T, R, E> InternIteratorElement<T, R> for Result<T, E> {
     type Output = Result<R, E>;
     fn intern_with<I: Iterator<Item=Self>, F: FnOnce(&[T]) -> R>(iter: I, f: F) -> Self::Output {

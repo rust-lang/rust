@@ -930,13 +930,13 @@ impl<'a, T> Hole<'a, T> {
         self.pos
     }
 
-    /// Return a reference to the element removed
+    /// Returns a reference to the element removed.
     #[inline]
     fn element(&self) -> &T {
         self.elt.as_ref().unwrap()
     }
 
-    /// Return a reference to the element at `index`.
+    /// Returns a reference to the element at `index`.
     ///
     /// Unsafe because index must be within the data slice and not equal to pos.
     #[inline]

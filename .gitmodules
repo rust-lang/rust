@@ -27,3 +27,6 @@
 [submodule "reference"]
 	path = src/doc/reference
 	url = https://github.com/rust-lang-nursery/reference.git
+[submodule "book"]
+	path = src/doc/book
+	url = https://github.com/rust-lang/book

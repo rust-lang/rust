@@ -17,12 +17,13 @@ pub use self::PathParameters::*;
 pub use symbol::Symbol as Name;
 pub use util::ThinVec;
 
-use syntax_pos::{mk_sp, Span, DUMMY_SP, ExpnId};
+use syntax_pos::{mk_sp, BytePos, Span, DUMMY_SP, ExpnId};
 use codemap::{respan, Spanned};
 use abi::Abi;
 use ext::hygiene::SyntaxContext;
 use print::pprust;
 use ptr::P;
+use rustc_data_structures::indexed_vec;
 use symbol::{Symbol, keywords};
 use tokenstream::{ThinTokenStream, TokenStream};
 
@@ -272,6 +273,16 @@ impl serialize::UseSpecializedEncodable for NodeId {
 impl serialize::UseSpecializedDecodable for NodeId {
     fn default_decode<D: Decoder>(d: &mut D) -> Result<NodeId, D::Error> {
         d.read_u32().map(NodeId)
+    }
+}
+
+impl indexed_vec::Idx for NodeId {
+    fn new(idx: usize) -> Self {
+        NodeId::new(idx)
+    }
+
+    fn index(self) -> usize {
+        self.as_usize()
     }
 }
 
@@ -1714,6 +1725,16 @@ pub struct PolyTraitRef {
     pub trait_ref: TraitRef,
 
     pub span: Span,
+}
+
+impl PolyTraitRef {
+    pub fn new(lifetimes: Vec<LifetimeDef>, path: Path, lo: BytePos, hi: BytePos) -> Self {
+        PolyTraitRef {
+            bound_lifetimes: lifetimes,
+            trait_ref: TraitRef { path: path, ref_id: DUMMY_NODE_ID },
+            span: mk_sp(lo, hi),
+        }
+    }
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]

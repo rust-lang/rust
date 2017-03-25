@@ -94,7 +94,7 @@ pub const MAX: char = '\u{10ffff}';
 ///
 /// [`char`]: ../../std/primitive.char.html
 /// [`u32`]: ../../std/primitive.u32.html
-/// [`as`]: ../../book/casting-between-types.html#as
+/// [`as`]: ../../book/first-edition/casting-between-types.html#as
 ///
 /// For an unsafe version of this function which ignores these checks, see
 /// [`from_u32_unchecked`].
@@ -146,7 +146,7 @@ pub fn from_u32(i: u32) -> Option<char> {
 ///
 /// [`char`]: ../../std/primitive.char.html
 /// [`u32`]: ../../std/primitive.u32.html
-/// [`as`]: ../../book/casting-between-types.html#as
+/// [`as`]: ../../book/first-edition/casting-between-types.html#as
 ///
 /// # Safety
 ///
@@ -209,10 +209,10 @@ impl From<u8> for char {
 
 #[unstable(feature = "try_from", issue = "33417")]
 impl TryFrom<u32> for char {
-    type Err = CharTryFromError;
+    type Error = CharTryFromError;
 
     #[inline]
-    fn try_from(i: u32) -> Result<Self, Self::Err> {
+    fn try_from(i: u32) -> Result<Self, Self::Error> {
         if (i > MAX as u32) || (i >= 0xD800 && i <= 0xDFFF) {
             Err(CharTryFromError(()))
         } else {

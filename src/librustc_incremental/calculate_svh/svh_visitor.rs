@@ -26,22 +26,11 @@ use rustc::hir::*;
 use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
 use rustc::hir::intravisit::{self as visit, Visitor};
+use rustc::ich::{DefPathHashes, CachingCodemapView, IGNORED_ATTRIBUTES};
 use rustc::ty::TyCtxt;
 use std::hash::{Hash, Hasher};
 
-use super::def_path_hash::DefPathHashes;
-use super::caching_codemap_view::CachingCodemapView;
 use super::IchHasher;
-
-const IGNORED_ATTRIBUTES: &'static [&'static str] = &[
-    "cfg",
-    ::ATTR_IF_THIS_CHANGED,
-    ::ATTR_THEN_THIS_WOULD_NEED,
-    ::ATTR_DIRTY,
-    ::ATTR_CLEAN,
-    ::ATTR_DIRTY_METADATA,
-    ::ATTR_CLEAN_METADATA
-];
 
 pub struct StrictVersionHashVisitor<'a, 'hash: 'a, 'tcx: 'hash> {
     pub tcx: TyCtxt<'hash, 'tcx, 'tcx>,

@@ -26,8 +26,11 @@
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
-extern crate serialize as rustc_serialize;
+extern crate rustc_serialize;
 extern crate syntax_pos;
+
+extern crate rls_data;
+extern crate rls_span;
 
 
 mod csv_dumper;
@@ -884,7 +887,7 @@ pub fn process_crate<'l, 'tcx>(tcx: TyCtxt<'l, 'tcx, 'tcx>,
         },
     };
 
-    if let Err(e) = rustc::util::fs::create_dir_racy(&root_path) {
+    if let Err(e) = std::fs::create_dir_all(&root_path) {
         tcx.sess.err(&format!("Could not create directory {}: {}",
                               root_path.display(),
                               e));
