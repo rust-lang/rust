@@ -842,7 +842,7 @@ impl char {
     /// Returns an iterator that yields the uppercase equivalent of a `char`
     /// as one or more `char`s.
     ///
-    /// If a character does not have a uppercase equivalent, the same character
+    /// If a character does not have an uppercase equivalent, the same character
     /// will be returned back by the iterator.
     ///
     /// This performs complex unconditional mappings with no tailoring: it maps
