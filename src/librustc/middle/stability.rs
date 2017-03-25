@@ -656,9 +656,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 /// Given the list of enabled features that were not language features (i.e. that
 /// were expected to be library features), and the list of features used from
 /// libraries, identify activated features that don't exist and error about them.
-pub fn check_unused_or_stable_features<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                                 access_levels: &AccessLevels) {
+pub fn check_unused_or_stable_features<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let sess = &tcx.sess;
+
+    let access_levels = &ty::queries::privacy_access_levels::get(tcx, DUMMY_SP, LOCAL_CRATE);
 
     if tcx.stability.borrow().staged_api[&LOCAL_CRATE] && tcx.sess.features.borrow().staged_api {
         let _task = tcx.dep_graph.in_task(DepNode::StabilityIndex);
