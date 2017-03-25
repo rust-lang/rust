@@ -14,13 +14,18 @@ error: expected one of `,`, `.`, `?`, or an operator, found `;`
   --> $DIR/token-error-correct-3.rs:23:35
    |
 23 |             callback(path.as_ref();  //~ NOTE: unclosed delimiter
-   |                                   ^
+   |                                  -^ unexpected token
+   |                                  |
+   |                                  expected one of `,`, `.`, `?`, or an operator after this
 
 error: expected one of `.`, `;`, `?`, `}`, or an operator, found `)`
   --> $DIR/token-error-correct-3.rs:29:9
    |
+25 |             fs::create_dir_all(path.as_ref()).map(|()| true) //~ ERROR: mismatched types
+   |                                                            - expected one of `.`, `;`, `?`, `}`, or an operator after this
+...
 29 |         } else { //~ ERROR: incorrect close delimiter: `}`
-   |         ^
+   |         ^ unexpected token
 
 error[E0425]: cannot find function `is_directory` in this scope
   --> $DIR/token-error-correct-3.rs:21:13
