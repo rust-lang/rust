@@ -139,6 +139,21 @@ pub enum AutoBorrow<'tcx> {
     RawPtr(hir::Mutability),
 }
 
+/// Information for `CoerceUnsized` impls, storing information we
+/// have computed about the coercion.
+///
+/// This struct can be obtained via the `coerce_impl_info` query.
+/// Demanding this struct also has the side-effect of reporting errors
+/// for inappropriate impls.
+#[derive(Clone, Copy, RustcEncodable, RustcDecodable, Debug)]
+pub struct CoerceUnsizedInfo {
+    /// If this is a "custom coerce" impl, then what kind of custom
+    /// coercion is it? This applies to impls of `CoerceUnsized` for
+    /// structs, primarily, where we store a bit of info about which
+    /// fields need to be coerced.
+    pub custom_kind: Option<CustomCoerceUnsized>
+}
+
 #[derive(Clone, Copy, RustcEncodable, RustcDecodable, Debug)]
 pub enum CustomCoerceUnsized {
     /// Records the index of the field being coerced.

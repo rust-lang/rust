@@ -88,9 +88,9 @@ provide! { <'tcx> tcx, def_id, cdata
     }
     associated_item => { cdata.get_associated_item(def_id.index) }
     impl_trait_ref => { cdata.get_impl_trait(def_id.index, tcx) }
-    custom_coerce_unsized_kind => {
-        cdata.get_custom_coerce_unsized_kind(def_id.index).unwrap_or_else(|| {
-            bug!("custom_coerce_unsized_kind: `{:?}` is missing its kind", def_id);
+    coerce_unsized_info => {
+        cdata.get_coerce_unsized_info(def_id.index).unwrap_or_else(|| {
+            bug!("coerce_unsized_info: `{:?}` is missing its info", def_id);
         })
     }
     mir => {
@@ -109,6 +109,7 @@ provide! { <'tcx> tcx, def_id, cdata
     typeck_tables => { cdata.item_body_tables(def_id.index, tcx) }
     closure_kind => { cdata.closure_kind(def_id.index) }
     closure_type => { cdata.closure_ty(def_id.index, tcx) }
+    inherent_impls => { Rc::new(cdata.get_inherent_implementations_for_type(def_id.index)) }
 }
 
 impl CrateStore for cstore::CStore {
@@ -160,12 +161,6 @@ impl CrateStore for cstore::CStore {
         // incremental recompilation ever enabled.
         assert!(!self.dep_graph.is_fully_enabled());
         self.get_crate_data(did.krate).get_fn_arg_names(did.index)
-    }
-
-    fn inherent_implementations_for_type(&self, def_id: DefId) -> Vec<DefId>
-    {
-        self.dep_graph.read(DepNode::MetaData(def_id));
-        self.get_crate_data(def_id.krate).get_inherent_implementations_for_type(def_id.index)
     }
 
     fn implementations_of_trait(&self, filter: Option<DefId>) -> Vec<DefId>
