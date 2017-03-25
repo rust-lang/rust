@@ -559,37 +559,51 @@ impl hash::Hash for SocketAddrV6 {
 }
 
 /// A trait for objects which can be converted or resolved to one or more
-/// `SocketAddr` values.
+/// [`SocketAddr`] values.
 ///
 /// This trait is used for generic address resolution when constructing network
 /// objects.  By default it is implemented for the following types:
 ///
-///  * `SocketAddr`, `SocketAddrV4`, `SocketAddrV6` - `to_socket_addrs` is
-///    identity function.
+///  * [`SocketAddr`]: [`to_socket_addrs`] is the identity function.
 ///
-///  * `(IpvNAddr, u16)` - `to_socket_addrs` constructs `SocketAddr` trivially.
+///  * [`SocketAddrV4`], [`SocketAddrV6`], `(`[`IpAddr`]`, `[`u16`]`)`,
+///    `(`[`Ipv4Addr`]`, `[`u16`]`)`, `(`[`Ipv6Addr`]`, `[`u16`]`)`:
+///    [`to_socket_addrs`] constructs a [`SocketAddr`] trivially.
 ///
-///  * `(&str, u16)` - the string should be either a string representation of an
-///    IP address expected by `FromStr` implementation for `IpvNAddr` or a host
+///  * `(`[`&str`]`, `[`u16`]`)`: the string should be either a string representation
+///    of an [`IpAddr`] address as expected by [`FromStr`] implementation or a host
 ///    name.
 ///
-///  * `&str` - the string should be either a string representation of a
-///    `SocketAddr` as expected by its `FromStr` implementation or a string like
-///    `<host_name>:<port>` pair where `<port>` is a `u16` value.
+///  * [`&str`]: the string should be either a string representation of a
+///    [`SocketAddr`] as expected by its [`FromStr`] implementation or a string like
+///    `<host_name>:<port>` pair where `<port>` is a [`u16`] value.
 ///
-/// This trait allows constructing network objects like `TcpStream` or
-/// `UdpSocket` easily with values of various types for the bind/connection
+/// This trait allows constructing network objects like [`TcpStream`] or
+/// [`UdpSocket`] easily with values of various types for the bind/connection
 /// address. It is needed because sometimes one type is more appropriate than
 /// the other: for simple uses a string like `"localhost:12345"` is much nicer
-/// than manual construction of the corresponding `SocketAddr`, but sometimes
-/// `SocketAddr` value is *the* main source of the address, and converting it to
+/// than manual construction of the corresponding [`SocketAddr`], but sometimes
+/// [`SocketAddr`] value is *the* main source of the address, and converting it to
 /// some other type (e.g. a string) just for it to be converted back to
-/// `SocketAddr` in constructor methods is pointless.
+/// [`SocketAddr`] in constructor methods is pointless.
 ///
 /// Addresses returned by the operating system that are not IP addresses are
 /// silently ignored.
 ///
-/// Some examples:
+/// [`FromStr`]: ../../std/str/trait.FromStr.html
+/// [`IpAddr`]: ../../std/net/enum.IpAddr.html
+/// [`Ipv4Addr`]: ../../std/net/struct.Ipv4Addr.html
+/// [`Ipv6Addr`]: ../../std/net/struct.Ipv6Addr.html
+/// [`SocketAddr`]: ../../std/net/enum.SocketAddr.html
+/// [`SocketAddrV4`]: ../../std/net/struct.SocketAddrV4.html
+/// [`SocketAddrV6`]: ../../std/net/struct.SocketAddrV6.html
+/// [`&str`]: ../../std/primitive.str.html
+/// [`TcpStream`]: ../../std/net/struct.TcpStream.html
+/// [`to_socket_addrs`]: #tymethod.to_socket_addrs
+/// [`UdpSocket`]: ../../std/net/struct.UdpSocket.html
+/// [`u16`]: ../../std/primitive.u16.html
+///
+/// # Examples
 ///
 /// ```no_run
 /// use std::net::{SocketAddrV4, TcpStream, UdpSocket, TcpListener, Ipv4Addr};
@@ -622,7 +636,7 @@ pub trait ToSocketAddrs {
     #[stable(feature = "rust1", since = "1.0.0")]
     type Iter: Iterator<Item=SocketAddr>;
 
-    /// Converts this object to an iterator of resolved `SocketAddr`s.
+    /// Converts this object to an iterator of resolved [`SocketAddr`]s.
     ///
     /// The returned iterator may not actually yield any values depending on the
     /// outcome of any resolution performed.
@@ -630,9 +644,13 @@ pub trait ToSocketAddrs {
     /// Note that this function may block the current thread while resolution is
     /// performed.
     ///
+    /// [`SocketAddr`]: ../../std/net/enum.SocketAddr.html
+    ///
     /// # Errors
     ///
-    /// Any errors encountered during resolution will be returned as an `Err`.
+    /// Any errors encountered during resolution will be returned as an [`Err`].
+    ///
+    /// [`Err`]: ../../std/result/enum.Result.html#variant.Err
     #[stable(feature = "rust1", since = "1.0.0")]
     fn to_socket_addrs(&self) -> io::Result<Self::Iter>;
 }
