@@ -58,8 +58,8 @@ pub mod pattern;
 ///                                  .split(",")
 ///                                  .collect();
 ///
-///         let x_fromstr = try!(coords[0].parse::<i32>());
-///         let y_fromstr = try!(coords[1].parse::<i32>());
+///         let x_fromstr = coords[0].parse::<i32>()?;
+///         let y_fromstr = coords[1].parse::<i32>()?;
 ///
 ///         Ok(Point { x: x_fromstr, y: y_fromstr })
 ///     }
