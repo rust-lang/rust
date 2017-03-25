@@ -296,9 +296,9 @@ impl Ipv4Addr {
 
     /// Returns true if this is a loopback address (127.0.0.0/8).
     ///
-    /// This property is defined by [RFC 1122].
+    /// This property is defined by [IETF RFC 1122].
     ///
-    /// [RFC 1122]: https://tools.ietf.org/html/rfc1122
+    /// [IETF RFC 1122]: https://tools.ietf.org/html/rfc1122
     ///
     /// # Examples
     ///
@@ -315,13 +315,13 @@ impl Ipv4Addr {
 
     /// Returns true if this is a private address.
     ///
-    /// The private address ranges are defined in [RFC 1918] and include:
+    /// The private address ranges are defined in [IETF RFC 1918] and include:
     ///
     ///  - 10.0.0.0/8
     ///  - 172.16.0.0/12
     ///  - 192.168.0.0/16
     ///
-    /// [RFC 1918]: https://tools.ietf.org/html/rfc1918
+    /// [IETF RFC 1918]: https://tools.ietf.org/html/rfc1918
     ///
     /// # Examples
     ///
@@ -348,9 +348,9 @@ impl Ipv4Addr {
 
     /// Returns true if the address is link-local (169.254.0.0/16).
     ///
-    /// This property is defined by [RFC 3927].
+    /// This property is defined by [IETF RFC 3927].
     ///
-    /// [RFC 3927]: https://tools.ietf.org/html/rfc3927
+    /// [IETF RFC 3927]: https://tools.ietf.org/html/rfc3927
     ///
     /// # Examples
     ///
@@ -403,9 +403,9 @@ impl Ipv4Addr {
     /// Returns true if this is a multicast address (224.0.0.0/4).
     ///
     /// Multicast addresses have a most significant octet between 224 and 239,
-    /// and is defined by [RFC 5771].
+    /// and is defined by [IETF RFC 5771].
     ///
-    /// [RFC 5771]: https://tools.ietf.org/html/rfc5771
+    /// [IETF RFC 5771]: https://tools.ietf.org/html/rfc5771
     ///
     /// # Examples
     ///
@@ -423,9 +423,9 @@ impl Ipv4Addr {
 
     /// Returns true if this is a broadcast address (255.255.255.255).
     ///
-    /// A broadcast address has all octets set to 255 as defined in [RFC 919].
+    /// A broadcast address has all octets set to 255 as defined in [IETF RFC 919].
     ///
-    /// [RFC 919]: https://tools.ietf.org/html/rfc919
+    /// [IETF RFC 919]: https://tools.ietf.org/html/rfc919
     ///
     /// # Examples
     ///
@@ -443,13 +443,13 @@ impl Ipv4Addr {
 
     /// Returns true if this address is in a range designated for documentation.
     ///
-    /// This is defined in [RFC 5737]:
+    /// This is defined in [IETF RFC 5737]:
     ///
     /// - 192.0.2.0/24 (TEST-NET-1)
     /// - 198.51.100.0/24 (TEST-NET-2)
     /// - 203.0.113.0/24 (TEST-NET-3)
     ///
-    /// [RFC 5737]: https://tools.ietf.org/html/rfc5737
+    /// [IETF RFC 5737]: https://tools.ietf.org/html/rfc5737
     ///
     /// # Examples
     ///
@@ -719,9 +719,9 @@ impl Ipv6Addr {
 
     /// Returns true for the special 'unspecified' address (::).
     ///
-    /// This property is defined in [RFC 4291].
+    /// This property is defined in [IETF RFC 4291].
     ///
-    /// [RFC 4291]: https://tools.ietf.org/html/rfc4291
+    /// [IETF RFC 4291]: https://tools.ietf.org/html/rfc4291
     ///
     /// # Examples
     ///
@@ -738,9 +738,9 @@ impl Ipv6Addr {
 
     /// Returns true if this is a loopback address (::1).
     ///
-    /// This property is defined in [RFC 4291].
+    /// This property is defined in [IETF RFC 4291].
     ///
-    /// [RFC 4291]: https://tools.ietf.org/html/rfc4291
+    /// [IETF RFC 4291]: https://tools.ietf.org/html/rfc4291
     ///
     /// # Examples
     ///
@@ -786,9 +786,9 @@ impl Ipv6Addr {
 
     /// Returns true if this is a unique local address (fc00::/7).
     ///
-    /// This property is defined in [RFC 4193].
+    /// This property is defined in [IETF RFC 4193].
     ///
-    /// [RFC 4193]: https://tools.ietf.org/html/rfc4193
+    /// [IETF RFC 4193]: https://tools.ietf.org/html/rfc4193
     ///
     /// # Examples
     ///
@@ -809,9 +809,9 @@ impl Ipv6Addr {
 
     /// Returns true if the address is unicast and link-local (fe80::/10).
     ///
-    /// This property is defined in [RFC 4291].
+    /// This property is defined in [IETF RFC 4291].
     ///
-    /// [RFC 4291]: https://tools.ietf.org/html/rfc4291
+    /// [IETF RFC 4291]: https://tools.ietf.org/html/rfc4291
     ///
     /// # Examples
     ///
@@ -853,9 +853,9 @@ impl Ipv6Addr {
     /// Returns true if this is an address reserved for documentation
     /// (2001:db8::/32).
     ///
-    /// This property is defined in [RFC 3849].
+    /// This property is defined in [IETF RFC 3849].
     ///
-    /// [RFC 3849]: https://tools.ietf.org/html/rfc3849
+    /// [IETF RFC 3849]: https://tools.ietf.org/html/rfc3849
     ///
     /// # Examples
     ///
@@ -939,9 +939,9 @@ impl Ipv6Addr {
 
     /// Returns true if this is a multicast address (ff00::/8).
     ///
-    /// This property is defined by [RFC 4291].
+    /// This property is defined by [IETF RFC 4291].
     ///
-    /// [RFC 4291]: https://tools.ietf.org/html/rfc4291
+    /// [IETF RFC 4291]: https://tools.ietf.org/html/rfc4291
     /// # Examples
     ///
     /// ```
