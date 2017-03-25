@@ -548,20 +548,20 @@ impl<'a> Parser<'a> {
             expected.dedup();
             let expect = tokens_to_string(&expected[..]);
             let actual = self.this_token_to_string();
-            Err(self.fatal(
-                &(if expected.len() > 1 {
-                    (format!("expected one of {}, found `{}`",
-                             expect,
-                             actual))
-                } else if expected.is_empty() {
-                    (format!("unexpected token: `{}`",
-                             actual))
-                } else {
-                    (format!("expected {}, found `{}`",
-                             expect,
-                             actual))
-                })[..]
-            ))
+            let (msg_exp, label_exp) = if expected.len() > 1 {
+                (format!("expected one of {}, found `{}`", expect, actual),
+                 format!("expected one of {} after this", expect))
+            } else if expected.is_empty() {
+                (format!("unexpected token: `{}`", actual),
+                 "unexpected token after this".to_string())
+            } else {
+                (format!("expected {}, found `{}`", expect, actual),
+                 format!("expected {} after this", expect))
+            };
+            let mut err = self.fatal(&msg_exp);
+            err.span_label(self.prev_span, &label_exp);
+            err.span_label(self.span, &"unexpected token");
+            Err(err)
         }
     }
 

@@ -32,7 +32,9 @@ error: expected one of `)`, `,`, `.`, `<`, `?`, `break`, `continue`, `false`, `f
   --> $DIR/token-error-correct.rs:14:13
    |
 14 |     foo(bar(;
-   |             ^
+   |            -^ unexpected token
+   |            |
+   |            expected one of `)`, `,`, `.`, `<`, `?`, `break`, `continue`, `false`, `for`, `if`, `loop`, `match`, `move`, `return`, `true`, `unsafe`, `while`, or an operator after this
 
 error: expected expression, found `)`
   --> $DIR/token-error-correct.rs:23:1

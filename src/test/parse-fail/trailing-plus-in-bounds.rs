@@ -16,4 +16,6 @@ fn main() {
     let x: Box<Debug+> = box 3 as Box<Debug+>; // Trailing `+` is OK
 }
 
-FAIL //~ ERROR
+FAIL
+//~^ ERROR
+//~| ERROR
