@@ -43,6 +43,10 @@ if [ ! -d emsdk_portable ]; then
     exit 1
 fi
 
+# Some versions of the EMSDK set the permissions of the root directory to
+# 0700. Ensure the directory is readable by all users.
+chmod 755 emsdk_portable
+
 source emsdk_portable/emsdk_env.sh
 hide_output emsdk update
 hide_output emsdk install --build=Release sdk-tag-1.37.1-32bit
