@@ -532,6 +532,7 @@ impl Crate {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct MacroDef {
     pub name: Name,
+    pub vis: Visibility,
     pub attrs: HirVec<Attribute>,
     pub id: NodeId,
     pub span: Span,

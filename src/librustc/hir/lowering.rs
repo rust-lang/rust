@@ -1515,18 +1515,23 @@ impl<'a> LoweringContext<'a> {
 
     pub fn lower_item(&mut self, i: &Item) -> Option<hir::Item> {
         let mut name = i.ident.name;
+        let mut vis = self.lower_visibility(&i.vis, None);
         let attrs = self.lower_attrs(&i.attrs);
         if let ItemKind::MacroDef(ref def) = i.node {
             if !def.legacy || i.attrs.iter().any(|attr| attr.path == "macro_export") {
-                let (body, legacy) = (def.stream(), def.legacy);
                 self.exported_macros.push(hir::MacroDef {
-                    name: name, attrs: attrs, id: i.id, span: i.span, body: body, legacy: legacy,
+                    name: name,
+                    vis: vis,
+                    attrs: attrs,
+                    id: i.id,
+                    span: i.span,
+                    body: def.stream(),
+                    legacy: def.legacy,
                 });
             }
             return None;
         }
 
-        let mut vis = self.lower_visibility(&i.vis, None);
         let node = self.with_parent_def(i.id, |this| {
             this.lower_item_kind(i.id, &mut name, &attrs, &mut vis, &i.node)
         });

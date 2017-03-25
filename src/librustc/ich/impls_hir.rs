@@ -329,6 +329,7 @@ impl_stable_hash_for!(enum hir::QPath {
 
 impl_stable_hash_for!(struct hir::MacroDef {
     name,
+    vis,
     attrs,
     id,
     span,
