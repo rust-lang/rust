@@ -14,15 +14,13 @@ error: expected one of `,`, `.`, `?`, or an operator, found `;`
   --> $DIR/token-error-correct-3.rs:23:35
    |
 23 |             callback(path.as_ref();  //~ NOTE: unclosed delimiter
-   |                                  -^ unexpected token
-   |                                  |
-   |                                  expected one of `,`, `.`, `?`, or an operator after this
+   |                                   ^ expected one of `,`, `.`, `?`, or an operator here
 
 error: expected one of `.`, `;`, `?`, `}`, or an operator, found `)`
   --> $DIR/token-error-correct-3.rs:29:9
    |
 25 |             fs::create_dir_all(path.as_ref()).map(|()| true) //~ ERROR: mismatched types
-   |                                                            - expected one of `.`, `;`, `?`, `}`, or an operator after this
+   |                                                             - expected one of `.`, `;`, `?`, `}`, or an operator here
 ...
 29 |         } else { //~ ERROR: incorrect close delimiter: `}`
    |         ^ unexpected token

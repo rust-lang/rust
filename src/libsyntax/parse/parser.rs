@@ -548,19 +548,32 @@ impl<'a> Parser<'a> {
             expected.dedup();
             let expect = tokens_to_string(&expected[..]);
             let actual = self.this_token_to_string();
-            let (msg_exp, label_exp) = if expected.len() > 1 {
+            let (msg_exp, (label_sp, label_exp)) = if expected.len() > 1 {
+                let short_expect = if expected.len() > 6 {
+                    format!("{} possible tokens", expected.len())
+                } else {
+                    expect.clone()
+                };
                 (format!("expected one of {}, found `{}`", expect, actual),
-                 format!("expected one of {} after this", expect))
+                 (self.prev_span.next_point(), format!("expected one of {} here", short_expect)))
             } else if expected.is_empty() {
                 (format!("unexpected token: `{}`", actual),
-                 "unexpected token after this".to_string())
+                 (self.prev_span, "unexpected token after this".to_string()))
             } else {
                 (format!("expected {}, found `{}`", expect, actual),
-                 format!("expected {} after this", expect))
+                 (self.prev_span.next_point(), format!("expected {} here", expect)))
             };
             let mut err = self.fatal(&msg_exp);
-            err.span_label(self.prev_span, &label_exp);
-            err.span_label(self.span, &"unexpected token");
+            let sp = if self.token == token::Token::Eof {
+                // This is EOF, don't want to point at the following char, but rather the last token
+                self.prev_span
+            } else {
+                label_sp
+            };
+            err.span_label(sp, &label_exp);
+            if label_sp != self.span {
+                err.span_label(self.span, &"unexpected token");
+            }
             Err(err)
         }
     }
