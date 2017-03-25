@@ -51,10 +51,21 @@ impl Cache {
 
     pub fn predecessors(&self, mir: &Mir) -> Ref<IndexVec<Block, Vec<Block>>> {
         if self.predecessors.borrow().is_none() {
-            *self.predecessors.borrow_mut() = Some(calculate_predecessors(mir));
+            *self.predecessors.borrow_mut() = Some(self.calculate_predecessors(mir));
         }
 
         Ref::map(self.predecessors.borrow(), |p| p.as_ref().unwrap())
+    }
+
+    fn calculate_predecessors(&self, mir: &Mir) -> IndexVec<Block, Vec<Block>> {
+        let mut result = IndexVec::from_elem(vec![], mir.basic_blocks());
+        for (bb, bbs) in self.successors(mir).iter_enumerated() {
+            for &tgt in bbs {
+                result[tgt].push(bb);
+            }
+        }
+
+        result
     }
 
     pub fn successors(&self, mir: &Mir) -> Ref<IndexVec<Block, Vec<Block>>> {
@@ -64,25 +75,6 @@ impl Cache {
 
         Ref::map(self.successors.borrow(), |p| p.as_ref().unwrap())
     }
-}
-
-fn calculate_predecessors(mir: &Mir) -> IndexVec<Block, Vec<Block>> {
-    let mut result = IndexVec::from_elem(vec![], mir.basic_blocks());
-    for (bb, data) in mir.basic_blocks().iter_enumerated() {
-        for stmt in &data.statements {
-            for &tgt in stmt.successors().iter() {
-                result[tgt].push(bb);
-            }
-        }
-
-        if let Some(ref term) = data.terminator {
-            for &tgt in term.successors().iter() {
-                result[tgt].push(bb);
-            }
-        }
-    }
-
-    result
 }
 
 fn calculate_successors(mir: &Mir) -> IndexVec<Block, Vec<Block>> {
