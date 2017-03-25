@@ -83,10 +83,14 @@ impl TcpStream {
     /// Opens a TCP connection to a remote host.
     ///
     /// `addr` is an address of the remote host. Anything which implements
-    /// `ToSocketAddrs` trait can be supplied for the address; see this trait
+    /// [`ToSocketAddrs`] trait can be supplied for the address; see this trait
     /// documentation for concrete examples.
-    /// In case `ToSocketAddrs::to_socket_addrs()` returns more than one entry,
+    /// In case [`ToSocketAddrs::to_socket_addrs()`] returns more than one entry,
     /// then the first valid and reachable address is used.
+    ///
+    /// [`ToSocketAddrs`]: ../../std/net/trait.ToSocketAddrs.html
+    /// [`ToSocketAddrs::to_socket_addrs()`]:
+    /// ../../std/net/trait.ToSocketAddrs.html#tymethod.to_socket_addrs
     ///
     /// # Examples
     ///
@@ -494,10 +498,13 @@ impl TcpListener {
     ///
     /// Binding with a port number of 0 will request that the OS assigns a port
     /// to this listener. The port allocated can be queried via the
-    /// `local_addr` method.
+    /// [`local_addr`] method.
     ///
-    /// The address type can be any implementor of `ToSocketAddrs` trait. See
+    /// The address type can be any implementor of [`ToSocketAddrs`] trait. See
     /// its documentation for concrete examples.
+    ///
+    /// [`local_addr`]: #method.local_addr
+    /// [`ToSocketAddrs`]: ../../std/net/trait.ToSocketAddrs.html
     ///
     /// # Examples
     ///
@@ -529,9 +536,11 @@ impl TcpListener {
 
     /// Creates a new independently owned handle to the underlying socket.
     ///
-    /// The returned `TcpListener` is a reference to the same socket that this
+    /// The returned [`TcpListener`] is a reference to the same socket that this
     /// object references. Both handles can be used to accept incoming
     /// connections and options set on one listener will affect the other.
+    ///
+    /// [`TcpListener`]: ../../std/net/struct.TcpListener.html
     ///
     /// # Examples
     ///
@@ -549,8 +558,10 @@ impl TcpListener {
     /// Accept a new incoming connection from this listener.
     ///
     /// This function will block the calling thread until a new TCP connection
-    /// is established. When established, the corresponding `TcpStream` and the
+    /// is established. When established, the corresponding [`TcpStream`] and the
     /// remote peer's address will be returned.
+    ///
+    /// [`TcpStream`]: ../../std/net/struct.TcpStream.html
     ///
     /// # Examples
     ///
