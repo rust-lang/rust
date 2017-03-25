@@ -81,8 +81,8 @@ fn calculate_successors(mir: &Mir) -> IndexVec<Block, Vec<Block>> {
     let mut result = IndexVec::from_elem(vec![], mir.basic_blocks());
     for (bb, data) in mir.basic_blocks().iter_enumerated() {
         for stmt in &data.statements {
-            for &tgt in stmt.successors().iter() {
-                result[bb].push(tgt);
+            if let Some(cleanup) = stmt.cleanup_target() {
+                result[bb].push(cleanup);
             }
         }
 

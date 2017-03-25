@@ -273,8 +273,8 @@ pub fn remove_dead_blocks(mir: &mut Mir) {
 
     for block in basic_blocks {
         for stmt in &mut block.statements {
-            for tgt in stmt.successors_mut() {
-                *tgt = replacements[tgt.index()];
+            if let Some(cleanup) = stmt.cleanup_target_mut() {
+                *cleanup = replacements[cleanup.index()];
             }
         }
 

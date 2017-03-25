@@ -735,21 +735,21 @@ impl<'tcx> Statement<'tcx> {
         self.kind = StatementKind::Nop
     }
 
-    pub fn successors(&self) -> Cow<[Block]> {
+    pub fn cleanup_target(&self) -> Option<Block> {
         match self.kind {
             StatementKind::Assert { cleanup: Some(unwind), .. } => {
-                vec![unwind].into_cow()
+                Some(unwind)
             }
-            _ => (&[]).into_cow(),
+            _ => None
         }
     }
 
-    pub fn successors_mut(&mut self) -> Vec<&mut Block> {
+    pub fn cleanup_target_mut(&mut self) -> Option<&mut Block> {
         match self.kind {
             StatementKind::Assert { cleanup: Some(ref mut unwind), .. } => {
-                vec![unwind]
+                Some(unwind)
             }
-            _ => Vec::new(),
+            _ => None
         }
     }
 }
