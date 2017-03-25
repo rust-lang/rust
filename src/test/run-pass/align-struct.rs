@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 #![feature(attr_literals)]
+#![feature(repr_align)]
 
 use std::mem;
 

@@ -8,18 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 #![feature(attr_literals)]
-#![feature(repr_align)]
-#![allow(dead_code)]
 
-#[repr(align(16))]
-struct A(i32);
-
-struct B(A);
-
-#[repr(packed)]
-struct C(A); //~ ERROR: packed struct cannot transitively contain a `[repr(align)]` struct
-
-#[repr(packed)]
-struct D(B); //~ ERROR: packed struct cannot transitively contain a `[repr(align)]` struct
+#[repr(align(64))]
+struct Foo(u64, u64); //~ error: the struct `#[repr(align(u16))]` attribute is experimental
 
 fn main() {}

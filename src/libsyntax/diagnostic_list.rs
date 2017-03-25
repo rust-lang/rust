@@ -292,5 +292,5 @@ register_diagnostics! {
     E0556, // malformed feature, expected just one word
     E0557, // feature has been removed
     E0584, // file for module `..` found at both .. and ..
-    E0589, // align representation must be a u16 power of two
+    E0589, // invalid `repr(align)` attribute
 }

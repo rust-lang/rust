@@ -972,19 +972,24 @@ pub fn find_repr_attrs(diagnostic: &Handler, attr: &Attribute) -> Vec<ReprAttr> 
                 } else if let Some((name, value)) = item.name_value_literal() {
                     if name == "align" {
                         recognised = true;
-                        let mut valid_align = false;
+                        let mut align_error = None;
                         if let ast::LitKind::Int(align, ast::LitIntType::Unsuffixed) = value.node {
                             if align.is_power_of_two() {
                                 // rustc::ty::layout::Align restricts align to <= 32768
                                 if align <= 32768 {
                                     acc.push(ReprAlign(align as u16));
-                                    valid_align = true;
+                                } else {
+                                    align_error = Some("larger than 32768");
                                 }
+                            } else {
+                                align_error = Some("not a power of two");
                             }
+                        } else {
+                            align_error = Some("not an unsuffixed integer");
                         }
-                        if !valid_align {
+                        if let Some(align_error) = align_error {
                             span_err!(diagnostic, item.span, E0589,
-                                      "align representation must be a u16 power of two");
+                                      "invalid `repr(align)` attribute: {}", align_error);
                         }
                     }
                 }
