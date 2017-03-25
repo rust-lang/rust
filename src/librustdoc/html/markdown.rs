@@ -106,11 +106,19 @@ thread_local!(pub static PLAYGROUND: RefCell<Option<(Option<String>, String)>> =
 
 macro_rules! event_loop_break {
     ($parser:expr, $toc_builder:expr, $shorter:expr, $buf:expr, $($end_event:pat)|*) => {{
+        event_loop_break($parser, $toc_builder, $shorter, $buf, false, $($end_event:pat)|*);
+    }};
+    ($parser:expr, $toc_builder:expr, $shorter:expr, $buf:expr, $escape:expr,
+     $($end_event:pat)|*) => {{
         while let Some(event) = $parser.next() {
             match event {
                 $($end_event)|* => break,
                 Event::Text(ref s) => {
-                    $buf.push_str(s);
+                    if $escape {
+                        $buf.push_str(&escape(s));
+                    } else {
+                        $buf.push_str(s);
+                    }
                 }
                 Event::SoftBreak | Event::HardBreak if !$buf.is_empty() => {
                     $buf.push(' ');
@@ -127,6 +135,13 @@ pub fn render(w: &mut fmt::Formatter,
               s: &str,
               print_toc: bool,
               shorter: MarkdownOutputStyle) -> fmt::Result {
+    fn escape(entry: &str) -> String {
+        entry.replace("<", "&lt;")
+             .replace("'", "&#39;")
+             .replace(">", "&gt;")
+             .replace("&", "&amp;")
+    }
+
     fn block(parser: &mut Parser, buffer: &mut String, lang: &str) {
         let mut origtext = String::new();
         while let Some(event) = parser.next() {
@@ -208,7 +223,7 @@ pub fn render(w: &mut fmt::Formatter,
     fn header(parser: &mut Parser, buffer: &mut String, toc_builder: &mut Option<TocBuilder>,
               shorter: MarkdownOutputStyle, level: i32) {
         let mut ret = String::new();
-        event_loop_break!(parser, toc_builder, shorter, ret, Event::End(Tag::Header(_)));
+        event_loop_break!(parser, toc_builder, shorter, ret, true, Event::End(Tag::Header(_)));
         ret = ret.trim_right().to_owned();
 
         let id = ret.clone();
@@ -241,28 +256,28 @@ pub fn render(w: &mut fmt::Formatter,
     fn codespan(parser: &mut Parser, buffer: &mut String, toc_builder: &mut Option<TocBuilder>,
                 shorter: MarkdownOutputStyle) {
         let mut content = String::new();
-        event_loop_break!(parser, toc_builder, shorter, content, Event::End(Tag::Code));
+        event_loop_break!(parser, toc_builder, shorter, content, true, Event::End(Tag::Code));
         buffer.push_str(&format!("<code>{}</code>",
                                  Escape(&collapse_whitespace(content.trim_right()))));
     }
 
     fn link(parser: &mut Parser, buffer: &mut String, toc_builder: &mut Option<TocBuilder>,
             shorter: MarkdownOutputStyle, url: &str, mut title: String) {
-        event_loop_break!(parser, toc_builder, shorter, title, Event::End(Tag::Link(_, _)));
+        event_loop_break!(parser, toc_builder, shorter, title, true, Event::End(Tag::Link(_, _)));
         buffer.push_str(&format!("<a href=\"{}\">{}</a>", url, title));
     }
 
     fn paragraph(parser: &mut Parser, buffer: &mut String, toc_builder: &mut Option<TocBuilder>,
                  shorter: MarkdownOutputStyle) {
         let mut content = String::new();
-        event_loop_break!(parser, toc_builder, shorter, content, Event::End(Tag::Paragraph));
+        event_loop_break!(parser, toc_builder, shorter, content, true, Event::End(Tag::Paragraph));
         buffer.push_str(&format!("<p>{}</p>", content.trim_right()));
     }
 
     fn cell(parser: &mut Parser, buffer: &mut String, toc_builder: &mut Option<TocBuilder>,
             shorter: MarkdownOutputStyle) {
         let mut content = String::new();
-        event_loop_break!(parser, toc_builder, shorter, content,
+        event_loop_break!(parser, toc_builder, shorter, content, true,
                           Event::End(Tag::TableHead) |
                               Event::End(Tag::Table(_)) |
                               Event::End(Tag::TableRow) |
@@ -336,7 +351,7 @@ pub fn render(w: &mut fmt::Formatter,
     fn blockquote(parser: &mut Parser, buffer: &mut String, toc_builder: &mut Option<TocBuilder>,
                   shorter: MarkdownOutputStyle) {
         let mut content = String::new();
-        event_loop_break!(parser, toc_builder, shorter, content, Event::End(Tag::BlockQuote));
+        event_loop_break!(parser, toc_builder, shorter, content, true, Event::End(Tag::BlockQuote));
         buffer.push_str(&format!("<blockquote>{}</blockquote>", content.trim_right()));
     }
 
@@ -347,7 +362,7 @@ pub fn render(w: &mut fmt::Formatter,
             match event {
                 Event::End(Tag::Item) => break,
                 Event::Text(ref s) => {
-                    content.push_str(s);
+                    content.push_str(&escape(s));
                 }
                 x => {
                     looper(parser, &mut content, Some(x), toc_builder, shorter);
@@ -377,14 +392,14 @@ pub fn render(w: &mut fmt::Formatter,
     fn emphasis(parser: &mut Parser, buffer: &mut String, toc_builder: &mut Option<TocBuilder>,
                 shorter: MarkdownOutputStyle) {
         let mut content = String::new();
-        event_loop_break!(parser, toc_builder, shorter, content, Event::End(Tag::Emphasis));
+        event_loop_break!(parser, toc_builder, shorter, content, true, Event::End(Tag::Emphasis));
         buffer.push_str(&format!("<em>{}</em>", content));
     }
 
     fn strong(parser: &mut Parser, buffer: &mut String, toc_builder: &mut Option<TocBuilder>,
               shorter: MarkdownOutputStyle) {
         let mut content = String::new();
-        event_loop_break!(parser, toc_builder, shorter, content, Event::End(Tag::Strong));
+        event_loop_break!(parser, toc_builder, shorter, content, true, Event::End(Tag::Strong));
         buffer.push_str(&format!("<strong>{}</strong>", content));
     }
 
@@ -644,9 +659,12 @@ pub fn plain_summary_line(md: &str) -> String {
                 Event::Start(Tag::Link(_, ref t)) if !self.is_first => {
                     (Some(t.as_ref().to_owned()), 1)
                 }
+                Event::Start(Tag::Code) => (Some("`".to_owned()), 1),
+                Event::End(Tag::Code) => (Some("`".to_owned()), -1),
+                Event::Start(Tag::Header(_)) => (None, 1),
                 Event::Text(ref s) if self.is_in > 0 => (Some(s.as_ref().to_owned()), 0),
                 Event::End(Tag::Link(_, ref t)) => (Some(t.as_ref().to_owned()), -1),
-                Event::End(Tag::Paragraph) => (None, -1),
+                Event::End(Tag::Paragraph) | Event::End(Tag::Header(_)) => (None, -1),
                 _ => (None, 0),
             };
             if is_in > 0 || (is_in < 0 && self.is_in > 0) {
@@ -728,17 +746,17 @@ mod tests {
             reset_ids(true);
         }
 
-        t("# Foo bar", "\n<h1 id='foo-bar' class='section-header'>\
-          <a href='#foo-bar'>Foo bar</a></h1>");
-        t("## Foo-bar_baz qux", "\n<h2 id='foo-bar_baz-qux' class=\'section-\
-          header'><a href='#foo-bar_baz-qux'>Foo-bar_baz qux</a></h2>");
+        t("# Foo bar", "<h1 id=\"foo-bar\" class=\"section-header\">\
+          <a href=\"#foo-bar\">Foo bar</a></h1>");
+        t("## Foo-bar_baz qux", "<h2 id=\"foo-bar_baz-qux\" class=\"section-\
+          header\"><a href=\"#foo-bar_baz-qux\">Foo-bar_baz qux</a></h2>");
         t("### **Foo** *bar* baz!?!& -_qux_-%",
-          "\n<h3 id='foo-bar-baz--_qux_-' class='section-header'>\
-          <a href='#foo-bar-baz--_qux_-'><strong>Foo</strong> \
+          "<h3 id=\"foo-bar-baz--_qux_-\" class=\"section-header\">\
+          <a href=\"#foo-bar-baz--_qux_-\"><strong>Foo</strong> \
           <em>bar</em> baz!?!&amp; -_qux_-%</a></h3>");
         t("####**Foo?** & \\*bar?!*  _`baz`_ ❤ #qux",
-          "\n<h4 id='foo--bar--baz--qux' class='section-header'>\
-          <a href='#foo--bar--baz--qux'><strong>Foo?</strong> &amp; *bar?!*  \
+          "<h4 id=\"foo--bar--baz--qux\" class=\"section-header\">\
+          <a href=\"#foo--bar--baz--qux\"><strong>Foo?</strong> &amp; *bar?!*  \
           <em><code>baz</code></em> ❤ #qux</a></h4>");
     }
 
@@ -750,18 +768,18 @@ mod tests {
         }
 
         let test = || {
-            t("# Example", "\n<h1 id='example' class='section-header'>\
-              <a href='#example'>Example</a></h1>");
-            t("# Panics", "\n<h1 id='panics' class='section-header'>\
-              <a href='#panics'>Panics</a></h1>");
-            t("# Example", "\n<h1 id='example-1' class='section-header'>\
-              <a href='#example-1'>Example</a></h1>");
-            t("# Main", "\n<h1 id='main-1' class='section-header'>\
-              <a href='#main-1'>Main</a></h1>");
-            t("# Example", "\n<h1 id='example-2' class='section-header'>\
-              <a href='#example-2'>Example</a></h1>");
-            t("# Panics", "\n<h1 id='panics-1' class='section-header'>\
-              <a href='#panics-1'>Panics</a></h1>");
+            t("# Example", "<h1 id=\"example\" class=\"section-header\">\
+              <a href=\"#example\">Example</a></h1>");
+            t("# Panics", "<h1 id=\"panics\" class=\"section-header\">\
+              <a href=\"#panics\">Panics</a></h1>");
+            t("# Example", "<h1 id=\"example-1\" class=\"section-header\">\
+              <a href=\"#example-1\">Example</a></h1>");
+            t("# Main", "<h1 id=\"main-1\" class=\"section-header\">\
+              <a href=\"#main-1\">Main</a></h1>");
+            t("# Example", "<h1 id=\"example-2\" class=\"section-header\">\
+              <a href=\"#example-2\">Example</a></h1>");
+            t("# Panics", "<h1 id=\"panics-1\" class=\"section-header\">\
+              <a href=\"#panics-1\">Panics</a></h1>");
         };
         test();
         reset_ids(true);
@@ -789,7 +807,7 @@ mod tests {
             assert_eq!(output, expect);
         }
 
-        t("`Struct<'a, T>`", "<p><code>Struct&lt;&#39;a, T&gt;</code></p>\n");
-        t("Struct<'a, T>", "<p>Struct&lt;&#39;a, T&gt;</p>\n");
+        t("`Struct<'a, T>`", "<p><code>Struct&lt;&#39;a, T&gt;</code></p>");
+        t("Struct<'a, T>", "<p>Struct&lt;&#39;a, T&gt;</p>");
     }
 }
