@@ -73,6 +73,15 @@ use sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 /// spawning process and can itself be constructed using a builder-style
 /// interface.
 ///
+/// There is no implementation of [`Drop`] for child processes,
+/// so if you do not ensure the `Child` has exited then it will continue to
+/// run, even after the `Child` handle to the child process has gone out of
+/// scope.
+///
+/// Calling [`wait`][`wait`] (or other functions that wrap around it) will make
+/// the parent process wait until the child has actually exited before
+/// continuing.
+///
 /// # Examples
 ///
 /// ```should_panic
@@ -88,17 +97,6 @@ use sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 ///
 /// assert!(ecode.success());
 /// ```
-///
-/// # Note
-///
-/// Take note that there is no implementation of [`Drop`] for child processes,
-/// so if you do not ensure the `Child` has exited then it will continue to
-/// run, even after the `Child` handle to the child process has gone out of
-/// scope.
-///
-/// Calling [`wait`][`wait`] (or other functions that wrap around it) will make
-/// the parent process wait until the child has actually exited before
-/// continuing.
 ///
 /// [`Command`]: struct.Command.html
 /// [`Drop`]: ../../core/ops/trait.Drop.html
