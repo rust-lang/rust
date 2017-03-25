@@ -154,13 +154,11 @@ fn write_graph_label<'a, 'tcx, W: Write>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             write!(w, "mut ")?;
         }
 
+        write!(w, "{:?}: {};", Lvalue::Local(local), escape(&decl.ty))?;
         if let Some(name) = decl.name {
-            write!(w, r#"{:?}: {}; // {}<br align="left"/>"#,
-                   Lvalue::Local(local), escape(&decl.ty), name)?;
-        } else {
-            write!(w, r#"let mut {:?}: {};<br align="left"/>"#,
-                   Lvalue::Local(local), escape(&decl.ty))?;
+            write!(w, " // {}", name)?;
         }
+        write!(w, r#"<br align="left"/>"#)?;
     }
 
     writeln!(w, ">;")
