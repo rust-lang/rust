@@ -18,6 +18,7 @@
 // aligned (while on most it is 8-byte aligned) and so the resulting
 // padding and overall computed sizes can be quite different.
 #![feature(attr_literals)]
+#![feature(repr_align)]
 #![allow(dead_code)]
 
 #[repr(align(16))]
