@@ -78,7 +78,7 @@ use sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 /// run, even after the `Child` handle to the child process has gone out of
 /// scope.
 ///
-/// Calling [`wait`][`wait`] (or other functions that wrap around it) will make
+/// Calling [`wait`] (or other functions that wrap around it) will make
 /// the parent process wait until the child has actually exited before
 /// continuing.
 ///
