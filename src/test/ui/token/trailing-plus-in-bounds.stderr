@@ -1,0 +1,7 @@
+error: expected one of `!` or `::`, found `<eof>`
+  --> ../../src/test/ui/token/trailing-plus-in-bounds.rs:19:1
+   |
+19 | FAIL
+   | ^^^^ expected one of `!` or `::` here
+
+error: aborting due to previous error
