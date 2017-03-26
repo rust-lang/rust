@@ -5,3 +5,4 @@ error: expected one of `!` or `::`, found `<eof>`
    | ^^^^ expected one of `!` or `::` here
 
 error: aborting due to previous error
+

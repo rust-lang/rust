@@ -571,7 +571,7 @@ impl<'a> Parser<'a> {
                 label_sp
             };
             err.span_label(sp, &label_exp);
-            if label_sp != self.span {
+            if !sp.source_equal(&self.span) {
                 err.span_label(self.span, &"unexpected token");
             }
             Err(err)
