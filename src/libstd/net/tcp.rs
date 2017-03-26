@@ -65,16 +65,14 @@ pub struct TcpStream(net_imp::TcpStream);
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct TcpListener(net_imp::TcpListener);
 
-/// An infinite iterator over the connections from a `TcpListener`.
-///
-/// This iterator will infinitely yield [`Some`] of the accepted connections. It
-/// is equivalent to calling `accept` in a loop.
+/// An iterator that infinitely [`accept`]s connections on a [`TcpListener`].
 ///
 /// This `struct` is created by the [`incoming`] method on [`TcpListener`].
+/// See its documentation for more.
 ///
-/// [`Some`]: ../../std/option/enum.Option.html#variant.Some
-/// [`incoming`]: struct.TcpListener.html#method.incoming
-/// [`TcpListener`]: struct.TcpListener.html
+/// [`accept`]: ../../std/net/struct.TcpListener.html#method.accept
+/// [`incoming`]: ../../std/net/struct.TcpListener.html#method.incoming
+/// [`TcpListener`]: ../../std/net/struct.TcpListener.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
 pub struct Incoming<'a> { listener: &'a TcpListener }
@@ -583,10 +581,12 @@ impl TcpListener {
     /// listener.
     ///
     /// The returned iterator will never return [`None`] and will also not yield
-    /// the peer's [`SocketAddr`] structure.
+    /// the peer's [`SocketAddr`] structure. Iterating over it is equivalent to
+    /// calling [`accept`] in a loop.
     ///
     /// [`None`]: ../../std/option/enum.Option.html#variant.None
     /// [`SocketAddr`]: ../../std/net/enum.SocketAddr.html
+    /// [`accept`]: #method.accept
     ///
     /// # Examples
     ///
