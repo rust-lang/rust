@@ -73,6 +73,13 @@ pub trait IntoRawFd {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+impl AsRawFd for RawFd {
+    fn as_raw_fd(&self) -> RawFd {
+        *self
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
 impl AsRawFd for fs::File {
     fn as_raw_fd(&self) -> RawFd {
         self.as_inner().fd().raw()
@@ -84,6 +91,14 @@ impl FromRawFd for fs::File {
         fs::File::from_inner(sys::fs::File::from_inner(fd))
     }
 }
+
+#[stable(feature = "into_raw_os", since = "1.4.0")]
+impl IntoRawFd for RawFd {
+    fn into_raw_fd(self) -> RawFd {
+        self
+    }
+}
+
 #[stable(feature = "into_raw_os", since = "1.4.0")]
 impl IntoRawFd for fs::File {
     fn into_raw_fd(self) -> RawFd {
