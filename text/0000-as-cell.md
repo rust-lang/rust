@@ -6,11 +6,11 @@
 # Summary
 [summary]: #summary
 
-For all `T`, define `Cell<T>` as having the same memory layout as `T` and
-add conversion functions with the following signatures to std:
-
-- `&mut T -> &Cell<T>`
-- `&mut [T] -> &[Cell<T>]`
+- Change `Cell<T>` to allow `T: ?Sized`.
+- Guarantee that `T` and `Cell<T>` have the same memory layout.
+- Enable the following conversions through the std lib:
+  - `&mut T -> &Cell<T> where T: ?Sized`
+  - `&Cell<[T]> -> &[Cell<T>]`
 
 > Note: https://github.com/rust-lang/rfcs/pull/1651 has been accepted recently,
 > so no `T: Copy` bound is needed anymore.
@@ -21,7 +21,7 @@ add conversion functions with the following signatures to std:
 Rust's iterators offer a safe, fast way to iterate over collections while avoiding
 additional bound checks.
 
-However, due to the borrow checker, they run into issues if you try to have
+However, due to the borrow checker, they run into issues if we try to have
 more than one iterator into the same data structure while mutating elements in it.
 
 Wanting to do this is not that unusual for many low level algorithms
@@ -53,7 +53,7 @@ for i in n..v.len() {
 
 ```
 
-...but this reintroduces the bound-checking costs.
+...but this reintroduces potential bound-checking costs.
 
 The alternative, short of changing the actual algorithms involved, is to use
 internal mutability to enable safe mutations even with overlapping shared views into the data:
@@ -79,13 +79,12 @@ This has the advantages of allowing both bound-check free iteration and
 aliasing references, but comes with restrictions that makes it not generally
 applicable, namely:
 
-- The need to modify the data structure containing the data (Which might not
-  always be possible because it might come from external code).
+- The need to change the definition of the data structure containing the data
+  (Which is not always possible because it might come from external code).
 - Loss of the ability to directly hand out `&T` and `&mut T` references to the data.
-- Refcounting overhead in case of `RefCell<T>`.
 
 This RFC proposes a way to address these in cases where `Cell<T>`
-would be used by introducing simple conversions functions
+could be used by introducing simple conversions functions
 to the standard library that allow the creation of shared borrowed
 `Cell<T>`s from mutably borrowed `T`s.
 
@@ -119,28 +118,27 @@ for (i, j) in v_slice[n..].iter().zip(v_slice) {
 
 ## Language
 
-In order for this proposal to be safe, __it needs to be guaranteed that
+The core of this proposal is the ability to cast a `&T` to a `&Cell<T>`,
+so in order for it to be safe, __it needs to be guaranteed that
 `T` and `Cell<T>` have the same memory layout__, and that there are no codegen
-issues based on viewing a reference to a `UnsafeCell`-less types as a
-reference to a `UnsafeCell`-containing type.
+issues based on viewing a reference to a type that does not contain a
+`UnsafeCell` as a reference to a type that does contain a `UnsafeCell`.
 
 As far as the author is aware, both should already implicitly
-fall out of the semantic of `Cell` and llvms notion of aliasing:
+fall out of the semantic of `Cell` and Rusts/llvms notion of aliasing:
 
 - `Cell` is safe interior mutability based on memcopying the `T`,
-  and thus does not need additional fields.
+  and thus does not need additional fields or padding.
 - `&mut T -> &U` is a sub borrow, which prevents access to the original `&mut T`
   for its duration, thus no aliasing.
 
-However, we might have to add an explicit language guarantee about
-the validity of this cast.
-
 ## Std library
 
-Add conversions functions for `&mut T -> &Cell<T>` and `&mut [T] -> &[Cell<T>]`
-to std, implemented with the equivalent of a simple `transmute()`.
+### `from_mut`
 
-As an initial design, `Cell` would provide them through additional constructors:
+We add a constructor to the cell API that enables the `&mut T -> &Cell<T>`
+conversion, implemented with the equivalent of a `transmute()` of the two
+pointers:
 
 ```rust
 impl<T> Cell<T> {
@@ -149,16 +147,120 @@ impl<T> Cell<T> {
             &*(t as *mut T as *const Cell<T>)
         }
     }
-    fn from_mut_slice<'a>(t: &'a mut [T]) -> &'a [Cell<T>] {
+}
+```
+
+In the future this could also be provided through `AsRef`, `Into` or `From`
+impls.
+
+### Unsized `Cell<T>`
+
+We extend `Cell<T>` to allow `T: ?Sized`, and move all compatible methods
+to a less restricted impl block:
+
+```rust
+pub struct Cell<T: ?Sized> {
+    value: UnsafeCell<T>,
+}
+
+impl<T: ?Sized> Cell<T> {
+    pub fn as_ptr(&self) -> *mut T;
+    pub fn get_mut(&mut self) -> &mut T;
+    pub fn from_mut(value: &mut T) -> &Cell<T>;
+}
+```
+
+This is purely done to enable cell slicing below, and should otherwise have no
+effect on any existing code.
+
+### Cell Slicing
+
+We enable a cast from `&Cell<[T]>` to `&[Cell<T>]`. This seems like it violates
+the "no interior references" API of `Cell` at first glance, but is actually
+safe:
+
+- A slice represents a number of elements next to each other.
+  Thus, if `&mut T -> &Cell<T>` is ok, then `&mut [T] -> &[Cell<T>]` would be as well.
+  `&mut [T] -> &Cell<[T]>` follows from `&mut T -> &Cell<T>` through substitution,
+  so `&Cell<T> <-> &[Cell<T>]` has to be valid.
+- The API of a `Cell<T>` is to allow internal mutability through single-threaded
+  memcopies only. Since a memcopy is just a copy of all bits that make up a type,
+  it does not matter if we logically do a memcopy to all elements of a slice
+  through a `&Cell<[T]>`, or just a memcopy to a single element through a
+  `&Cell<T>`.
+- Yet another way to look at it is that if we created a `&mut T` to each element
+  of a `&mut [T]`, and casted each of them to a `&Cell<T>`, their addresses
+  would allow "stitching" them back together to a single `&[Cell<T>]`
+
+For convenience, we expose this cast by implementing `Index` for `Cell<[T]>`:
+
+```rust
+impl<T> Index<RangeFull> for Cell<[T]> {
+    type Output = [Cell<T>];
+
+    fn index(&self, _: RangeFull) -> &[Cell<T>] {
         unsafe {
-            &*(t as *mut [T] as *const [Cell<T>])
+            &*(self as *const Cell<[T]> as *const [Cell<T>])
         }
+    }
+}
+
+impl<T> Index<Range<usize>> for Cell<[T]> {
+    type Output = [Cell<T>];
+
+    fn index(&self, idx: Range<usize>) -> &[Cell<T>] {
+        &self[..][idx]
+    }
+}
+
+impl<T> Index<RangeFrom<usize>> for Cell<[T]> {
+    type Output = [Cell<T>];
+
+    fn index(&self, idx: RangeFrom<usize>) -> &[Cell<T>] {
+        &self[..][idx]
+    }
+}
+
+impl<T> Index<RangeTo<usize>> for Cell<[T]> {
+    type Output = [Cell<T>];
+
+    fn index(&self, idx: RangeTo<usize>) -> &[Cell<T>] {
+        &self[..][idx]
+    }
+}
+
+impl<T> Index<usize> for Cell<[T]> {
+    type Output = Cell<T>;
+
+    fn index(&self, idx: usize) -> &Cell<T> {
+        &self[..][idx]
     }
 }
 ```
 
-It might also be possible to add `AsRef`, `Into` or `From`
-versions of these conversions.
+Using this, the motivation example can be written as such:
+
+```rust
+let mut v: Vec<i32> = ...;
+
+// convert the mutable borrow
+let v_slice: &[Cell<T>] = &Cell::from_mut(&mut v[..])[..];
+
+// example 1
+for i in v_slice {
+    for j in v_slice {
+        j.set(f(i.get(), j.get()));
+    }
+}
+
+// example 2
+for (i, j) in v_slice[n..].iter().zip(v_slice) {
+    i.set(g(g.get()));
+}
+
+```
+
+## Possible extensions
 
 The proposal only covers the base case `&mut T -> &Cell<T>`
 and the trivially implementable extension to `[T]`,
@@ -169,6 +271,58 @@ mutable iterators (with the goal of making them cloneable through this).
 See https://play.rust-lang.org/?gist=d012cebf462841887323185cff8ccbcc&version=stable&backtrace=0 for
 an example implementation and a more complex use case, and
 https://crates.io/crates/alias for an existing crate providing these features.
+
+# How We Teach This
+[how-we-teach-this]: #how-we-teach-this
+
+> What names and terminology work best for these concepts and why?
+How is this idea best presented—as a continuation of existing Rust patterns, or as a wholly new one?
+
+The API could be described as "temporarily opting-in to internal mutability".
+It would be a more flexible continuation of the existing usage of `Cell<T>`
+since the `Cell<T>` no longer needs to exist in the original location if
+you have mutable access to it.
+
+> Would the acceptance of this proposal change how Rust is taught to new users at any level?
+How should this feature be introduced and taught to existing Rust users?
+
+As it is, the API just provides a few neat casting functions. Nevertheless,
+with the legalization of the `&mut T -> &Cell<T>` cast there is the
+potential for a major change in how accessors to data structures are provided:
+
+In todays Rust, there are generally three different ways:
+- Owned access that starts off with a `T` and yield `U`.
+- Shared borrowed access that starts off with a `&T` and yields `&U`.
+- Mutable borrowed access that starts off with a `&mut T` and yields `&mut U`.
+
+With this change, it would be possible in many cases to add a fourth accessor:
+
+- Shared borrowed cell access that starts off with a `&mut T` and yields `&Cell<U>`.
+
+For example, today there exist:
+
+- `Vec<T> -> std::vec::IntoIter<T>`, which yields `T` values and is cloneable.
+- `&[T] -> std::slice::Iter<T>`, which yields `&T` values and is
+  cloneable because it does a shared borrow.
+- `&mut [T] -> std::slice::IterMut<T>`, which yields `&mut T` values and is
+  not cloneable because it does a mutable borrow.
+
+We could then add a fourth iterator like this:
+
+- &mut [T] -> `std::slice::CellIter<T>`, which yields `&Cell<T>` values and is
+  cloneable because it does a shared borrow.
+
+So there is the potential that we go away from teaching the "rule of three"
+of ownership and change it to a "rule of four".
+
+> What additions or changes to the Rust Reference, _The Rust Programming Language_, and/or _Rust by Example_ does it entail?
+
+- The reference should explain that the `&mut T -> &Cell<T>` cast,
+  or specifically the `&mut T -> &UnsafeCell<T>` cast is fine.
+- The book could use the API introduced here if it talks about internal mutability,
+  and use it as a "temporary opt-in" example.
+- Rust by Example could have a few basic examples of situations where this API
+  is useful, eg the ones mention in the motivation section above.
 
 # Drawbacks
 [drawbacks]: #drawbacks
@@ -193,6 +347,47 @@ If the casting guarantees can not be granted,
 code would have to use direct indexing as today, with either possible
 bound checking costs or the use of unsafe code to avoid them.
 
+## Removing cell slicing
+
+Instead of allowing unsized types in `Cell` and adding the `Index` impls,
+there could just be a single `&mut [T] -> &[Cell<T>]` conversions function:
+
+```rust
+impl<T> Cell<T> {
+    /// [...]
+
+    fn from_mut_slice<'a>(t: &'a mut [T]) -> &'a [Cell<T>] {
+        unsafe {
+            &*(t as *mut [T] as *const [Cell<T>])
+        }
+    }
+}
+```
+
+Usage:
+
+```
+let mut v: Vec<i32> = ...;
+
+// convert the mutable borrow
+let v_slice: &[Cell<T>] = Cell::from_mut_slice(&mut v);
+
+// example 1
+for i in v_slice {
+    for j in v_slice {
+        j.set(f(i.get(), j.get()));
+    }
+}
+
+// example 2
+for (i, j) in v_slice[n..].iter().zip(v_slice) {
+    i.set(g(g.get()));
+}
+```
+
+This would be less modular than the `&mut [T] -> &Cell<[T]> -> &[Cell<T>]`
+conversions steps, while still offering essentially the same API.
+
 ## Exposing the functions differently
 
 Instead of `Cell` constructors, we could just have freestanding functions
@@ -205,9 +400,9 @@ fn ref_as_cell<T>(t: &mut T) -> &Cell<T> {
     }
 }
 
-fn slice_as_cell<T>(t: &mut [T]) -> &[Cell<T>] {
+fn cell_slice<T>(t: &Cell<[T]>) -> &[Cell<T>] {
     unsafe {
-        &*(t as *mut [T] as *const [Cell<T>])
+        &*(t as *const Cell<[T]> as *const [Cell<T>])
     }
 }
 ```
@@ -232,15 +427,6 @@ impl<'a, T> AsCell for &'a mut T {
         }
     }
 }
-
-impl<'a, T> AsCell for &'a mut [T] {
-    type Cell = &'a [Cell<T>];
-    fn as_cell(self) -> Self::Cell {
-        unsafe {
-            &*(self as *mut [T] as *const [Cell<T>])
-        }
-    }
-}
 ```
 
 But given the issues of adding methods to pointer-like types,
@@ -250,6 +436,4 @@ this approach in general would probably be not a good idea
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
-Interactions with proposals like https://github.com/rust-lang/rfcs/pull/1651
-are not investigated, but seem to only be beneficial by allowing the proposed
-change to apply to more types.
+None so far.
