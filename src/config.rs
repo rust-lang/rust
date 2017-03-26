@@ -238,7 +238,15 @@ macro_rules! create_config {
             }
 
             pub fn from_toml(toml: &str) -> Config {
-                let parsed = toml.parse().expect("Could not parse TOML");
+                let parsed: toml::Value = toml.parse().expect("Could not parse TOML");
+                for (key, _) in parsed.as_table().expect("Parsed config was not table") {
+                    match &**key {
+                        $(
+                            stringify!($i) => (),
+                        )+
+                        _ => msg!("Warning: Unused configuration option {}", key),
+                    }
+                }
                 let parsed_config:ParsedConfig = match toml::decode(parsed) {
                     Some(decoded) => decoded,
                     None => {
