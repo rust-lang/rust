@@ -636,15 +636,13 @@ pub trait ToSocketAddrs {
     #[stable(feature = "rust1", since = "1.0.0")]
     type Iter: Iterator<Item=SocketAddr>;
 
-    /// Converts this object to an iterator of resolved [`SocketAddr`]s.
+    /// Converts this object to an iterator of resolved `SocketAddr`s.
     ///
     /// The returned iterator may not actually yield any values depending on the
     /// outcome of any resolution performed.
     ///
     /// Note that this function may block the current thread while resolution is
     /// performed.
-    ///
-    /// [`SocketAddr`]: ../../std/net/enum.SocketAddr.html
     ///
     /// # Errors
     ///
