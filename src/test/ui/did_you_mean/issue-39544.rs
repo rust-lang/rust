@@ -8,15 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-enum X {
+pub enum X {
     Y
 }
 
-struct Z {
+pub struct Z {
     x: X
 }
 
-fn main() {
+pub fn main() {
     let z = Z { x: X::Y };
     let _ = &mut z.x;
+}
+
+pub fn with_arg(z: Z, w: &Z) {
+    let _ = &mut z.x;
+    let _ = &mut w.x;
 }

@@ -6,5 +6,22 @@ error: cannot borrow immutable field `z.x` as mutable
 21 |     let _ = &mut z.x;
    |                  ^^^ cannot mutably borrow immutable field
 
-error: aborting due to previous error
+error: cannot borrow immutable field `z.x` as mutable
+  --> $DIR/issue-39544.rs:25:18
+   |
+24 | pub fn with_arg(z: Z, w: &Z) {
+   |                 - consider changing this to `mut z`
+25 |     let _ = &mut z.x;
+   |                  ^^^ cannot mutably borrow immutable field
+
+error: cannot borrow immutable field `w.x` as mutable
+  --> $DIR/issue-39544.rs:26:18
+   |
+24 | pub fn with_arg(z: Z, w: &Z) {
+   |                          -- use `&mut Z` here to make mutable
+25 |     let _ = &mut z.x;
+26 |     let _ = &mut w.x;
+   |                  ^^^ cannot mutably borrow immutable field
+
+error: aborting due to 3 previous errors
 
