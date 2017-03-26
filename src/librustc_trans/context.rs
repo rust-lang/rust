@@ -14,7 +14,6 @@ use rustc::dep_graph::{DepGraph, DepGraphSafe, DepNode, DepTrackingMap,
                        DepTrackingMapConfig, WorkProduct};
 use middle::cstore::LinkMeta;
 use rustc::hir;
-use rustc::hir::def::ExportMap;
 use rustc::hir::def_id::DefId;
 use rustc::traits;
 use debuginfo;
@@ -68,7 +67,6 @@ pub struct SharedCrateContext<'a, 'tcx: 'a> {
     metadata_llmod: ModuleRef,
     metadata_llcx: ContextRef,
 
-    export_map: ExportMap,
     exported_symbols: NodeSet,
     link_meta: LinkMeta,
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -402,7 +400,6 @@ unsafe fn create_context_and_module(sess: &Session, mod_name: &str) -> (ContextR
 
 impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
     pub fn new(tcx: TyCtxt<'b, 'tcx, 'tcx>,
-               export_map: ExportMap,
                link_meta: LinkMeta,
                exported_symbols: NodeSet,
                check_overflow: bool)
@@ -459,7 +456,6 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
         SharedCrateContext {
             metadata_llmod: metadata_llmod,
             metadata_llcx: metadata_llcx,
-            export_map: export_map,
             exported_symbols: exported_symbols,
             link_meta: link_meta,
             empty_param_env: tcx.empty_parameter_environment(),
@@ -497,10 +493,6 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
 
     pub fn metadata_llcx(&self) -> ContextRef {
         self.metadata_llcx
-    }
-
-    pub fn export_map<'a>(&'a self) -> &'a ExportMap {
-        &self.export_map
     }
 
     pub fn exported_symbols<'a>(&'a self) -> &'a NodeSet {
@@ -700,10 +692,6 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
 
     pub fn td(&self) -> llvm::TargetDataRef {
         unsafe { llvm::LLVMRustGetModuleDataLayout(self.llmod()) }
-    }
-
-    pub fn export_map<'a>(&'a self) -> &'a ExportMap {
-        &self.shared.export_map
     }
 
     pub fn exported_symbols<'a>(&'a self) -> &'a NodeSet {

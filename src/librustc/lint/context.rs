@@ -44,9 +44,10 @@ use std::ops::Deref;
 use syntax::attr;
 use syntax::ast;
 use syntax::symbol::Symbol;
-use syntax_pos::{MultiSpan, Span};
+use syntax_pos::{DUMMY_SP, MultiSpan, Span};
 use errors::{self, Diagnostic, DiagnosticBuilder};
 use hir;
+use hir::def_id::LOCAL_CRATE;
 use hir::intravisit as hir_visit;
 use syntax::visit as ast_visit;
 
@@ -1231,9 +1232,10 @@ fn check_lint_name_cmdline(sess: &Session, lint_cx: &LintStore,
 /// Perform lint checking on a crate.
 ///
 /// Consumes the `lint_store` field of the `Session`.
-pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                             access_levels: &AccessLevels) {
+pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let _task = tcx.dep_graph.in_task(DepNode::LateLintCheck);
+
+    let access_levels = &ty::queries::privacy_access_levels::get(tcx, DUMMY_SP, LOCAL_CRATE);
 
     let krate = tcx.hir.krate();
 

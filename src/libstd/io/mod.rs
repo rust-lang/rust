@@ -1290,28 +1290,42 @@ pub trait BufRead: Read {
     /// If an I/O error is encountered then all bytes read so far will be
     /// present in `buf` and its length will have been adjusted appropriately.
     ///
-    /// # Examples
-    ///
-    /// A locked standard input implements `BufRead`. In this example, we'll
-    /// read from standard input until we see an `a` byte.
-    ///
     /// [`fill_buf`]: #tymethod.fill_buf
     /// [`ErrorKind::Interrupted`]: enum.ErrorKind.html#variant.Interrupted
     ///
+    /// # Examples
+    ///
+    /// [`std::io::Cursor`][`Cursor`] is a type that implements `BufRead`. In
+    /// this example, we use [`Cursor`] to read all the bytes in a byte slice
+    /// in hyphen delimited segments:
+    ///
+    /// [`Cursor`]: struct.Cursor.html
+    ///
     /// ```
-    /// use std::io;
-    /// use std::io::prelude::*;
+    /// use std::io::{self, BufRead};
     ///
-    /// fn foo() -> io::Result<()> {
-    /// let stdin = io::stdin();
-    /// let mut stdin = stdin.lock();
-    /// let mut buffer = Vec::new();
+    /// let mut cursor = io::Cursor::new(b"lorem-ipsum");
+    /// let mut buf = vec![];
     ///
-    /// stdin.read_until(b'a', &mut buffer)?;
+    /// // cursor is at 'l'
+    /// let num_bytes = cursor.read_until(b'-', &mut buf)
+    ///     .expect("reading from cursor won't fail");
+    /// assert_eq!(num_bytes, 6);
+    /// assert_eq!(buf, b"lorem-");
+    /// buf.clear();
     ///
-    /// println!("{:?}", buffer);
-    /// # Ok(())
-    /// # }
+    /// // cursor is at 'i'
+    /// let num_bytes = cursor.read_until(b'-', &mut buf)
+    ///     .expect("reading from cursor won't fail");
+    /// assert_eq!(num_bytes, 5);
+    /// assert_eq!(buf, b"ipsum");
+    /// buf.clear();
+    ///
+    /// // cursor is at EOF
+    /// let num_bytes = cursor.read_until(b'-', &mut buf)
+    ///     .expect("reading from cursor won't fail");
+    /// assert_eq!(num_bytes, 0);
+    /// assert_eq!(buf, b"");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn read_until(&mut self, byte: u8, buf: &mut Vec<u8>) -> Result<usize> {
@@ -1337,28 +1351,36 @@ pub trait BufRead: Read {
     ///
     /// # Examples
     ///
-    /// A locked standard input implements `BufRead`. In this example, we'll
-    /// read all of the lines from standard input. If we were to do this in
-    /// an actual project, the [`lines`] method would be easier, of
-    /// course.
+    /// [`std::io::Cursor`][`Cursor`] is a type that implements `BufRead`. In
+    /// this example, we use [`Cursor`] to read all the lines in a byte slice:
     ///
-    /// [`lines`]: #method.lines
-    /// [`read_until`]: #method.read_until
+    /// [`Cursor`]: struct.Cursor.html
     ///
     /// ```
-    /// use std::io;
-    /// use std::io::prelude::*;
+    /// use std::io::{self, BufRead};
     ///
-    /// let stdin = io::stdin();
-    /// let mut stdin = stdin.lock();
-    /// let mut buffer = String::new();
+    /// let mut cursor = io::Cursor::new(b"foo\nbar");
+    /// let mut buf = String::new();
     ///
-    /// while stdin.read_line(&mut buffer).unwrap() > 0 {
-    ///     // work with buffer
-    ///     println!("{:?}", buffer);
+    /// // cursor is at 'f'
+    /// let num_bytes = cursor.read_line(&mut buf)
+    ///     .expect("reading from cursor won't fail");
+    /// assert_eq!(num_bytes, 4);
+    /// assert_eq!(buf, "foo\n");
+    /// buf.clear();
     ///
-    ///     buffer.clear();
-    /// }
+    /// // cursor is at 'b'
+    /// let num_bytes = cursor.read_line(&mut buf)
+    ///     .expect("reading from cursor won't fail");
+    /// assert_eq!(num_bytes, 3);
+    /// assert_eq!(buf, "bar");
+    /// buf.clear();
+    ///
+    /// // cursor is at EOF
+    /// let num_bytes = cursor.read_line(&mut buf)
+    ///     .expect("reading from cursor won't fail");
+    /// assert_eq!(num_bytes, 0);
+    /// assert_eq!(buf, "");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn read_line(&mut self, buf: &mut String) -> Result<usize> {
@@ -1378,24 +1400,28 @@ pub trait BufRead: Read {
     /// This function will yield errors whenever [`read_until`] would have
     /// also yielded an error.
     ///
-    /// # Examples
-    ///
-    /// A locked standard input implements `BufRead`. In this example, we'll
-    /// read some input from standard input, splitting on commas.
-    ///
     /// [`io::Result`]: type.Result.html
     /// [`Vec<u8>`]: ../vec/struct.Vec.html
     /// [`read_until`]: #method.read_until
     ///
+    /// # Examples
+    ///
+    /// [`std::io::Cursor`][`Cursor`] is a type that implements `BufRead`. In
+    /// this example, we use [`Cursor`] to iterate over all hyphen delimited
+    /// segments in a byte slice
+    ///
+    /// [`Cursor`]: struct.Cursor.html
+    ///
     /// ```
-    /// use std::io;
-    /// use std::io::prelude::*;
+    /// use std::io::{self, BufRead};
     ///
-    /// let stdin = io::stdin();
+    /// let cursor = io::Cursor::new(b"lorem-ipsum-dolor");
     ///
-    /// for content in stdin.lock().split(b',') {
-    ///     println!("{:?}", content.unwrap());
-    /// }
+    /// let mut split_iter = cursor.split(b'-').map(|l| l.unwrap());
+    /// assert_eq!(split_iter.next(), Some(b"lorem".to_vec()));
+    /// assert_eq!(split_iter.next(), Some(b"ipsum".to_vec()));
+    /// assert_eq!(split_iter.next(), Some(b"dolor".to_vec()));
+    /// assert_eq!(split_iter.next(), None);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn split(self, byte: u8) -> Split<Self> where Self: Sized {
@@ -1413,17 +1439,22 @@ pub trait BufRead: Read {
     ///
     /// # Examples
     ///
-    /// A locked standard input implements `BufRead`:
+    /// [`std::io::Cursor`][`Cursor`] is a type that implements `BufRead`. In
+    /// this example, we use [`Cursor`] to iterate over all the lines in a byte
+    /// slice.
+    ///
+    /// [`Cursor`]: struct.Cursor.html
     ///
     /// ```
-    /// use std::io;
-    /// use std::io::prelude::*;
+    /// use std::io::{self, BufRead};
     ///
-    /// let stdin = io::stdin();
+    /// let cursor = io::Cursor::new(b"lorem\nipsum\r\ndolor");
     ///
-    /// for line in stdin.lock().lines() {
-    ///     println!("{}", line.unwrap());
-    /// }
+    /// let mut lines_iter = cursor.lines().map(|l| l.unwrap());
+    /// assert_eq!(lines_iter.next(), Some(String::from("lorem")));
+    /// assert_eq!(lines_iter.next(), Some(String::from("ipsum")));
+    /// assert_eq!(lines_iter.next(), Some(String::from("dolor")));
+    /// assert_eq!(lines_iter.next(), None);
     /// ```
     ///
     /// # Errors

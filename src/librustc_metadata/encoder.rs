@@ -13,7 +13,6 @@ use index::Index;
 use schema::*;
 
 use rustc::middle::cstore::{LinkMeta, LinkagePreference, NativeLibrary};
-use rustc::hir::def;
 use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefIndex, DefId};
 use rustc::hir::map::definitions::DefPathTable;
 use rustc::middle::dependency_format::Linkage;
@@ -48,7 +47,6 @@ use super::index_builder::{FromId, IndexBuilder, Untracked};
 pub struct EncodeContext<'a, 'tcx: 'a> {
     opaque: opaque::Encoder<'a>,
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    reexports: &'a def::ExportMap,
     link_meta: &'a LinkMeta,
     cstore: &'a cstore::CStore,
     exported_symbols: &'a NodeSet,
@@ -306,7 +304,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let def_id = tcx.hir.local_def_id(id);
 
         let data = ModData {
-            reexports: match self.reexports.get(&id) {
+            reexports: match tcx.export_map.get(&id) {
                 Some(exports) if *vis == hir::Public => self.lazy_seq_ref(exports),
                 _ => LazySeq::empty(),
             },
@@ -1423,7 +1421,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
 pub fn encode_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                  cstore: &cstore::CStore,
-                                 reexports: &def::ExportMap,
                                  link_meta: &LinkMeta,
                                  exported_symbols: &NodeSet)
                                  -> Vec<u8> {
@@ -1437,7 +1434,6 @@ pub fn encode_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let mut ecx = EncodeContext {
             opaque: opaque::Encoder::new(&mut cursor),
             tcx: tcx,
-            reexports: reexports,
             link_meta: link_meta,
             cstore: cstore,
             exported_symbols: exported_symbols,

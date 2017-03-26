@@ -17,11 +17,11 @@ pub use self::fold::TypeFoldable;
 
 use dep_graph::{self, DepNode};
 use hir::{map as hir_map, FreevarMap, TraitMap};
-use middle;
 use hir::def::{Def, CtorKind, ExportMap};
 use hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
 use middle::const_val::ConstVal;
 use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem, FnOnceTraitLangItem};
+use middle::privacy::AccessLevels;
 use middle::region::{CodeExtent, ROOT_CODE_EXTENT};
 use middle::resolve_lifetime::ObjectLifetimeDefault;
 use mir::Mir;
@@ -108,10 +108,12 @@ mod sty;
 
 /// The complete set of all analyses described in this module. This is
 /// produced by the driver and fed to trans and later passes.
+///
+/// NB: These contents are being migrated into queries using the
+/// *on-demand* infrastructure.
 #[derive(Clone)]
 pub struct CrateAnalysis {
-    pub export_map: ExportMap,
-    pub access_levels: middle::privacy::AccessLevels,
+    pub access_levels: Rc<AccessLevels>,
     pub reachable: NodeSet,
     pub name: String,
     pub glob_map: Option<hir::GlobMap>,
@@ -122,6 +124,7 @@ pub struct Resolutions {
     pub freevars: FreevarMap,
     pub trait_map: TraitMap,
     pub maybe_unused_trait_imports: NodeSet,
+    pub export_map: ExportMap,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
