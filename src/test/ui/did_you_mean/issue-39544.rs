@@ -16,9 +16,35 @@ pub struct Z {
     x: X
 }
 
-pub fn main() {
+fn main() {
     let z = Z { x: X::Y };
     let _ = &mut z.x;
+}
+
+impl Z {
+    fn foo<'z>(&'z self) {
+        let _ = &mut self.x;
+    }
+
+    fn foo1(&self, other: &Z) {
+        let _ = &mut self.x;
+        let _ = &mut other.x;
+    }
+
+    fn foo2<'a>(&'a self, other: &Z) {
+        let _ = &mut self.x;
+        let _ = &mut other.x;
+    }
+
+    fn foo3<'a>(self: &'a Self, other: &Z) {
+        let _ = &mut self.x;
+        let _ = &mut other.x;
+    }
+
+    fn foo4(other: &Z) {
+        let _ = &mut other.x;
+    }
+
 }
 
 pub fn with_arg(z: Z, w: &Z) {
