@@ -755,7 +755,6 @@ fn write_metadata(cx: &SharedCrateContext,
 
     let cstore = &cx.tcx().sess.cstore;
     let metadata = cstore.encode_metadata(cx.tcx(),
-                                          cx.export_map(),
                                           cx.link_meta(),
                                           exported_symbols);
     if kind == MetadataKind::Uncompressed {
@@ -1056,7 +1055,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // particular items that will be processed.
     let krate = tcx.hir.krate();
 
-    let ty::CrateAnalysis { export_map, reachable, name, .. } = analysis;
+    let ty::CrateAnalysis { reachable, name, .. } = analysis;
     let exported_symbols = find_exported_symbols(tcx, reachable);
 
     let check_overflow = tcx.sess.overflow_checks();
@@ -1064,7 +1063,6 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let link_meta = link::build_link_meta(incremental_hashes_map, &name);
 
     let shared_ccx = SharedCrateContext::new(tcx,
-                                             export_map,
                                              link_meta.clone(),
                                              exported_symbols,
                                              check_overflow);
