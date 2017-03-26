@@ -17,10 +17,25 @@ use sys_common::net as net_imp;
 use sys_common::{AsInner, FromInner, IntoInner};
 use time::Duration;
 
-/// A structure which represents a TCP stream between a local socket and a
-/// remote socket.
+/// A TCP stream between a local and a remote socket.
 ///
-/// The socket will be closed when the value is dropped.
+/// After creating a `TcpStream` by either [`connect`]ing to a remote host or
+/// [`accept`]ing a connection on a [`TcpListener`], data can be transmitted
+/// by [reading] and [writing] to it.
+///
+/// The connection will be closed when the value is dropped. The reading and writing
+/// portions of the connection can also be shut down individually with the [`shutdown`]
+/// method.
+///
+/// The Transmission Control Protocol is specified in [IETF RFC 793].
+///
+/// [`accept`]: ../../std/net/struct.TcpListener.html#method.accept
+/// [`connect`]: #method.connect
+/// [IETF RFC 793]: https://tools.ietf.org/html/rfc793
+/// [reading]: ../../std/io/trait.Read.html
+/// [`shutdown`]: #method.shutdown
+/// [`TcpListener`]: ../../std/net/struct.TcpListener.html
+/// [writing]: ../../std/io/trait.Write.html
 ///
 /// # Examples
 ///
@@ -39,7 +54,21 @@ use time::Duration;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct TcpStream(net_imp::TcpStream);
 
-/// A structure representing a socket server.
+/// A TCP socket server, listening for connections.
+///
+/// After creating a `TcpListener` by [`bind`]ing it to a socket address, it listens
+/// for incoming TCP connections. These can be accepted by calling [`accept`] or by
+/// iterating over the [`Incoming`] iterator returned by [`incoming`].
+///
+/// The socket will be closed when the value is dropped.
+///
+/// The Transmission Control Protocol is specified in [IETF RFC 793].
+///
+/// [`accept`]: #method.accept
+/// [`bind`]: #method.bind
+/// [IETF RFC 793]: https://tools.ietf.org/html/rfc793
+/// [`Incoming`]: ../../std/net/struct.Incoming.html
+/// [`incoming`]: #method.incoming
 ///
 /// # Examples
 ///
