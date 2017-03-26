@@ -13,8 +13,8 @@ use codemap::SpanUtils;
 use config::{IndentStyle, MultilineStyle};
 use rewrite::{Rewrite, RewriteContext};
 use utils::{wrap_str, format_mutability};
-use lists::{format_item_list, itemize_list, ListItem, struct_lit_shape, struct_lit_tactic,
-            shape_for_tactic, struct_lit_formatting, write_list};
+use lists::{DefinitiveListTactic, format_item_list, itemize_list, ListItem, struct_lit_shape,
+            struct_lit_tactic, shape_for_tactic, struct_lit_formatting, write_list};
 use expr::{rewrite_unary_prefix, rewrite_pair};
 use types::{rewrite_path, PathContext};
 use super::Spanned;
@@ -167,7 +167,13 @@ fn rewrite_struct_pat(path: &ast::Path,
             fields_str.push_str("..");
         } else {
             if !fields_str.is_empty() {
-                fields_str.push_str(", ");
+                // there are preceeding struct fields being matched on
+                if fmt.tactic == DefinitiveListTactic::Vertical {
+                    // if the tactic is Vertical, write_list already added a trailing ,
+                    fields_str.push_str(" ");
+                } else {
+                    fields_str.push_str(", ");
+                }
             }
             fields_str.push_str("..");
         }
