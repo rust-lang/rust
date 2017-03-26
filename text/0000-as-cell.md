@@ -309,7 +309,7 @@ For example, today there exist:
 
 We could then add a fourth iterator like this:
 
-- &mut [T] -> `std::slice::CellIter<T>`, which yields `&Cell<T>` values and is
+- `&mut [T] -> std::slice::CellIter<T>`, which yields `&Cell<T>` values and is
   cloneable because it does a shared borrow.
 
 So there is the potential that we go away from teaching the "rule of three"
