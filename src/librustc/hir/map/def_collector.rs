@@ -92,7 +92,7 @@ impl<'a> DefCollector<'a> {
     fn visit_macro_invoc(&mut self, id: NodeId, const_expr: bool) {
         if let Some(ref mut visit) = self.visit_macro_invoc {
             visit(MacroInvocationData {
-                mark: Mark::from_placeholder_id(id),
+                mark: id.placeholder_to_mark(),
                 const_expr: const_expr,
                 def_index: self.parent_def.unwrap(),
             })
