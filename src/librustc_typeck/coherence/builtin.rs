@@ -18,6 +18,7 @@ use rustc::traits::{self, ObligationCause, Reveal};
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::ParameterEnvironment;
 use rustc::ty::TypeFoldable;
+use rustc::ty::adjustment::CoerceUnsizedInfo;
 use rustc::ty::subst::Subst;
 use rustc::ty::util::CopyImplementationError;
 use rustc::infer;
@@ -159,10 +160,25 @@ fn visit_implementation_of_copy<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 fn visit_implementation_of_coerce_unsized<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                                    coerce_unsized_trait: DefId,
+                                                    _: DefId,
                                                     impl_did: DefId) {
     debug!("visit_implementation_of_coerce_unsized: impl_did={:?}",
            impl_did);
+
+    // Just compute this for the side-effects, in particular reporting
+    // errors; other parts of the code may demand it for the info of
+    // course.
+    if impl_did.is_local() {
+        let span = tcx.def_span(impl_did);
+        ty::queries::coerce_unsized_info::get(tcx, span, impl_did);
+    }
+}
+
+pub fn coerce_unsized_info<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                     impl_did: DefId)
+                                     -> CoerceUnsizedInfo {
+    debug!("compute_coerce_unsized_info(impl_did={:?})", impl_did);
+    let coerce_unsized_trait = tcx.lang_items.coerce_unsized_trait().unwrap();
 
     let unsize_trait = match tcx.lang_items.require(UnsizeTraitLangItem) {
         Ok(id) => id,
@@ -171,16 +187,14 @@ fn visit_implementation_of_coerce_unsized<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
     };
 
-    let impl_node_id = if let Some(n) = tcx.hir.as_local_node_id(impl_did) {
-        n
-    } else {
-        debug!("visit_implementation_of_coerce_unsized(): impl not \
-                in this crate");
-        return;
-    };
+    // this provider should only get invoked for local def-ids
+    let impl_node_id = tcx.hir.as_local_node_id(impl_did).unwrap_or_else(|| {
+        bug!("coerce_unsized_info: invoked for non-local def-id {:?}", impl_did)
+    });
 
     let source = tcx.item_type(impl_did);
     let trait_ref = tcx.impl_trait_ref(impl_did).unwrap();
+    assert_eq!(trait_ref.def_id, coerce_unsized_trait);
     let target = trait_ref.substs.type_at(1);
     debug!("visit_implementation_of_coerce_unsized: {:?} -> {:?} (bound)",
            source,
@@ -191,6 +205,8 @@ fn visit_implementation_of_coerce_unsized<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let source = source.subst(tcx, &param_env.free_substs);
     let target = target.subst(tcx, &param_env.free_substs);
     assert!(!source.has_escaping_regions());
+
+    let err_info = CoerceUnsizedInfo { custom_kind: None };
 
     debug!("visit_implementation_of_coerce_unsized: {:?} -> {:?} (free)",
            source,
@@ -234,7 +250,7 @@ fn visit_implementation_of_coerce_unsized<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                definition; expected {}, found {}",
                               source_path,
                               target_path);
-                    return;
+                    return err_info;
                 }
 
                 let fields = &def_a.struct_variant().fields;
@@ -268,7 +284,7 @@ fn visit_implementation_of_coerce_unsized<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                               "the trait `CoerceUnsized` may only be implemented \
                                for a coercion between structures with one field \
                                being coerced, none found");
-                    return;
+                    return err_info;
                 } else if diff_fields.len() > 1 {
                     let item = tcx.hir.expect_item(impl_node_id);
                     let span = if let ItemImpl(.., Some(ref t), _, _) = item.node {
@@ -295,7 +311,7 @@ fn visit_implementation_of_coerce_unsized<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                           .join(", ")));
                     err.span_label(span, &format!("requires multiple coercions"));
                     err.emit();
-                    return;
+                    return err_info;
                 }
 
                 let (i, a, b) = diff_fields[0];
@@ -309,7 +325,7 @@ fn visit_implementation_of_coerce_unsized<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           E0376,
                           "the trait `CoerceUnsized` may only be implemented \
                            for a coercion between structures");
-                return;
+                return err_info;
             }
         };
 
@@ -331,8 +347,8 @@ fn visit_implementation_of_coerce_unsized<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             .caller_bounds);
         infcx.resolve_regions_and_report_errors(&free_regions, impl_node_id);
 
-        if let Some(kind) = kind {
-            tcx.maps.custom_coerce_unsized_kind.borrow_mut().insert(impl_did, kind);
+        CoerceUnsizedInfo {
+            custom_kind: kind
         }
-    });
+    })
 }
