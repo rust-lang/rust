@@ -293,11 +293,13 @@ impl<'a, 'tcx> Lift<'tcx> for ty::error::TypeError<'a> {
             RegionsNoOverlap(a, b) => {
                 return tcx.lift(&(a, b)).map(|(a, b)| RegionsNoOverlap(a, b))
             }
-            RegionsInsufficientlyPolymorphic(a, b) => {
-                return tcx.lift(&b).map(|b| RegionsInsufficientlyPolymorphic(a, b))
+            RegionsInsufficientlyPolymorphic(a, b, ref c) => {
+                let c = c.clone();
+                return tcx.lift(&b).map(|b| RegionsInsufficientlyPolymorphic(a, b, c))
             }
-            RegionsOverlyPolymorphic(a, b) => {
-                return tcx.lift(&b).map(|b| RegionsOverlyPolymorphic(a, b))
+            RegionsOverlyPolymorphic(a, b, ref c) => {
+                let c = c.clone();
+                return tcx.lift(&b).map(|b| RegionsOverlyPolymorphic(a, b, c))
             }
             IntMismatch(x) => IntMismatch(x),
             FloatMismatch(x) => FloatMismatch(x),
