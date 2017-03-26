@@ -518,7 +518,9 @@ impl Definitions {
         assert_eq!(index.as_array_index(),
                    self.def_index_to_node[address_space.index()].len());
         self.def_index_to_node[address_space.index()].push(node_id);
-        self.expansions.insert(index, expansion);
+        if expansion.is_modern() {
+            self.expansions.insert(index, expansion);
+        }
 
         debug!("create_def_with_parent: def_index_to_node[{:?} <-> {:?}", index, node_id);
         self.node_to_def_index.insert(node_id, index);
@@ -536,7 +538,7 @@ impl Definitions {
     }
 
     pub fn expansion(&self, index: DefIndex) -> Mark {
-        self.expansions[&index]
+        self.expansions.get(&index).cloned().unwrap_or(Mark::root())
     }
 
     pub fn macro_def_scope(&self, mark: Mark) -> DefId {

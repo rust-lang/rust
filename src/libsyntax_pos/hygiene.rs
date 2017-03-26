@@ -85,6 +85,10 @@ impl Mark {
         })
     }
 
+    pub fn is_modern(self) -> bool {
+        HygieneData::with(|data| data.marks[self.0 as usize].modern)
+    }
+
     pub fn set_modern(self) {
         HygieneData::with(|data| data.marks[self.0 as usize].modern = true)
     }
@@ -106,7 +110,7 @@ struct HygieneData {
     marks: Vec<MarkData>,
     syntax_contexts: Vec<SyntaxContextData>,
     markings: HashMap<(SyntaxContext, Mark), SyntaxContext>,
-    idents: HashMap<Symbol, Ident>,
+    gensym_to_ctxt: HashMap<Symbol, SyntaxContext>,
 }
 
 impl HygieneData {
@@ -115,7 +119,7 @@ impl HygieneData {
             marks: vec![MarkData::default()],
             syntax_contexts: vec![SyntaxContextData::default()],
             markings: HashMap::new(),
-            idents: HashMap::new(),
+            gensym_to_ctxt: HashMap::new(),
         }
     }
 
@@ -354,15 +358,18 @@ impl Decodable for SyntaxContext {
 impl Symbol {
     pub fn from_ident(ident: Ident) -> Symbol {
         HygieneData::with(|data| {
-            let symbol = Symbol::gensym(&ident.name.as_str());
-            data.idents.insert(symbol, ident);
-            symbol
+            let gensym = ident.name.gensymed();
+            data.gensym_to_ctxt.insert(gensym, ident.ctxt);
+            gensym
         })
     }
 
     pub fn to_ident(self) -> Ident {
         HygieneData::with(|data| {
-            data.idents.get(&self).cloned().unwrap_or(Ident::with_empty_ctxt(self))
+            match data.gensym_to_ctxt.get(&self) {
+                Some(&ctxt) => Ident { name: self.interned(), ctxt: ctxt },
+                None => Ident::with_empty_ctxt(self),
+            }
         })
     }
 }

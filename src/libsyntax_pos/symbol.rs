@@ -77,9 +77,17 @@ impl Symbol {
         with_interner(|interner| interner.intern(string))
     }
 
+    pub fn interned(self) -> Self {
+        with_interner(|interner| interner.interned(self))
+    }
+
     /// gensym's a new usize, using the current interner.
     pub fn gensym(string: &str) -> Self {
         with_interner(|interner| interner.gensym(string))
+    }
+
+    pub fn gensymed(self) -> Self {
+        with_interner(|interner| interner.gensymed(self))
     }
 
     pub fn as_str(self) -> InternedString {
@@ -129,6 +137,7 @@ impl<T: ::std::ops::Deref<Target=str>> PartialEq<T> for Symbol {
 pub struct Interner {
     names: HashMap<Box<str>, Symbol>,
     strings: Vec<Box<str>>,
+    gensyms: Vec<Symbol>,
 }
 
 impl Interner {
@@ -156,15 +165,29 @@ impl Interner {
         name
     }
 
-    fn gensym(&mut self, string: &str) -> Symbol {
-        let gensym = Symbol(self.strings.len() as u32);
-        // leave out of `names` to avoid colliding
-        self.strings.push(string.to_string().into_boxed_str());
-        gensym
+    pub fn interned(&self, symbol: Symbol) -> Symbol {
+        if (symbol.0 as usize) < self.strings.len() {
+            symbol
+        } else {
+            self.interned(self.gensyms[(!0 - symbol.0) as usize])
+        }
     }
 
-    pub fn get(&self, name: Symbol) -> &str {
-        &self.strings[name.0 as usize]
+    fn gensym(&mut self, string: &str) -> Symbol {
+        let symbol = self.intern(string);
+        self.gensymed(symbol)
+    }
+
+    fn gensymed(&mut self, symbol: Symbol) -> Symbol {
+        self.gensyms.push(symbol);
+        Symbol(!0 - self.gensyms.len() as u32 + 1)
+    }
+
+    pub fn get(&self, symbol: Symbol) -> &str {
+        match self.strings.get(symbol.0 as usize) {
+            Some(ref string) => string,
+            None => self.get(self.gensyms[(!0 - symbol.0) as usize]),
+        }
     }
 }
 
@@ -379,11 +402,10 @@ mod tests {
         assert_eq!(i.intern("cat"), Symbol(1));
         // dog is still at zero
         assert_eq!(i.intern("dog"), Symbol(0));
-        // gensym gets 3
-        assert_eq!(i.gensym("zebra"), Symbol(2));
+        assert_eq!(i.gensym("zebra"), Symbol(4294967295));
         // gensym of same string gets new number :
-        assert_eq!(i.gensym("zebra"), Symbol(3));
+        assert_eq!(i.gensym("zebra"), Symbol(4294967294));
         // gensym of *existing* string gets new number:
-        assert_eq!(i.gensym("dog"), Symbol(4));
+        assert_eq!(i.gensym("dog"), Symbol(4294967293));
     }
 }
