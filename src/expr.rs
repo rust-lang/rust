@@ -1137,7 +1137,12 @@ fn rewrite_match(context: &RewriteContext,
     };
     let mut result = format!("match {}{}{{", cond_str, block_sep);
 
-    let arm_shape = shape.block_indent(context.config.tab_spaces);
+    let arm_shape = if context.config.indent_match_arms {
+        shape.block_indent(context.config.tab_spaces)
+    } else {
+        shape.block_indent(0)
+    };
+
     let arm_indent_str = arm_shape.indent.to_string(context.config);
 
     let open_brace_pos = context.codemap.span_after(mk_sp(cond.span.hi, arm_start_pos(&arms[0])),

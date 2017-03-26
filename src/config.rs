@@ -388,6 +388,8 @@ create_config! {
     wrap_match_arms: bool, true, "Wrap multiline match arms in blocks";
     match_block_trailing_comma: bool, false,
         "Put a trailing comma after a block based match arm (non-block arms are not affected)";
+    indent_match_arms: bool, true, "Indent match arms instead of keeping them at the same \
+                                    indentation level as the match keyword";
     closure_block_indent_threshold: isize, 7, "How many lines a closure must have before it is \
                                                block indented. -1 means never use block indent.";
     space_before_type_annotation: bool, false,
