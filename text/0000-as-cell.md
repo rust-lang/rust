@@ -335,18 +335,6 @@ of ownership and change it to a "rule of four".
 # Alternatives
 [alternatives]: #alternatives
 
-## Just the language guarantee
-
-The cast could be guaranteed as correct, but not be provided by std
-itself. This would serve as legitimization of external implementations like
-[alias](https://crates.io/crates/alias).
-
-## No guarantees
-
-If the casting guarantees can not be granted,
-code would have to use direct indexing as today, with either possible
-bound checking costs or the use of unsafe code to avoid them.
-
 ## Removing cell slicing
 
 Instead of allowing unsized types in `Cell` and adding the `Index` impls,
@@ -387,6 +375,31 @@ for (i, j) in v_slice[n..].iter().zip(v_slice) {
 
 This would be less modular than the `&mut [T] -> &Cell<[T]> -> &[Cell<T>]`
 conversions steps, while still offering essentially the same API.
+
+## Cast to `&mut Cell<T>` instead of `&Cell<T>`
+
+Nothing that makes the `&mut T -> &Cell<T>` cast safe would prevent
+`&mut T -> &mut Cell<T>` from being safe either, and the latter can be
+trivially turned into a `&Cell<T>` while also allowing mutable access - eg to
+call `Cell::as_mut()` to cast back again.
+
+Similar to that, there could also be a way to turn a `&mut [Cell<T>]` back
+into a `&mut [T]`.
+
+However, this does not seem to be actually useful since the only reason to use
+this API is to make use of shared internal mutability.
+
+## Just the language guarantee
+
+The cast could be guaranteed as correct, but not be provided by std
+itself. This would serve as legitimization of external implementations like
+[alias](https://crates.io/crates/alias).
+
+## No guarantees
+
+If the casting guarantees can not be granted,
+code would have to use direct indexing as today, with either possible
+bound checking costs or the use of unsafe code to avoid them.
 
 ## Exposing the functions differently
 
