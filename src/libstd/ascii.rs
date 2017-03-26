@@ -63,7 +63,7 @@ pub trait AsciiExt {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn is_ascii(&self) -> bool;
 
-    /// Makes a copy of the value in it's ASCII upper case equivalent.
+    /// Makes a copy of the value in its ASCII upper case equivalent.
     ///
     /// ASCII letters 'a' to 'z' are mapped to 'A' to 'Z',
     /// but non-ASCII letters are unchanged.
@@ -92,7 +92,7 @@ pub trait AsciiExt {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn to_ascii_uppercase(&self) -> Self::Owned;
 
-    /// Makes a copy of the value in it's ASCII lower case equivalent.
+    /// Makes a copy of the value in its ASCII lower case equivalent.
     ///
     /// ASCII letters 'A' to 'Z' are mapped to 'a' to 'z',
     /// but non-ASCII letters are unchanged.
