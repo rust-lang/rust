@@ -323,8 +323,10 @@ pub fn rewrite_use_list(shape: Shape,
         _ => (),
     }
 
-    // 2 = {}
-    let remaining_width = shape.width.checked_sub(path_str.len() + 2).unwrap_or(0);
+    let colons_offset = if path_str.is_empty() { 0 } else { 2 };
+
+    // 2 = "{}"
+    let remaining_width = shape.width.checked_sub(path_str.len() + 2 + colons_offset).unwrap_or(0);
 
     let mut items = {
         // Dummy value, see explanation below.
@@ -351,20 +353,18 @@ pub fn rewrite_use_list(shape: Shape,
         items[1..].sort_by(|a, b| a.item.cmp(&b.item));
     }
 
-    let colons_offset = if path_str.is_empty() { 0 } else { 2 };
 
     let tactic = definitive_tactic(&items[first_index..],
                                    ::lists::ListTactic::Mixed,
                                    remaining_width);
+
     let fmt = ListFormatting {
         tactic: tactic,
         separator: ",",
         trailing_separator: SeparatorTactic::Never,
-        // FIXME This is too conservative, and will not use all width
-        // available
-        // (loose 1 column (";"))
+        // Add one to the indent to account for "{"
         shape: Shape::legacy(remaining_width,
-                             shape.indent + path_str.len() + 1 + colons_offset),
+                             shape.indent + path_str.len() + colons_offset + 1),
         ends_with_newline: false,
         config: context.config,
     };
