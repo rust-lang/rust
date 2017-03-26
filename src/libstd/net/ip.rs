@@ -99,7 +99,7 @@ pub struct Ipv4Addr {
 /// # Textual representation
 ///
 /// `Ipv6Addr` provides a [`FromStr`] implementation. There are many ways to represent
-/// an IPv6 address in text, but in general, each segments is written in hexadecimal 
+/// an IPv6 address in text, but in general, each segments is written in hexadecimal
 /// notation, and segments are separated by `:`. For more information, see
 /// [IETF RFC 5952].
 ///
