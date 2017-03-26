@@ -66,7 +66,7 @@ RUN ./build-netbsd-toolchain.sh
 USER root
 
 RUN curl -o /usr/local/bin/sccache \
-      https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-03-22-sccache-x86_64-unknown-linux-musl && \
+      https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-03-24-sccache-x86_64-unknown-linux-musl && \
       chmod +x /usr/local/bin/sccache
 
 ENV PATH=$PATH:/x-tools/s390x-ibm-linux-gnu/bin:/x-tools/x86_64-unknown-netbsd/bin
