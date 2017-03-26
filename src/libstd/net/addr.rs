@@ -20,15 +20,17 @@ use vec;
 use iter;
 use slice;
 
-/// Representation of a socket address for networking applications.
+/// An internet socket address, either IPv4 or IPv6.
 ///
-/// A socket address can either represent the IPv4 or IPv6 protocol and is
-/// paired with at least a port number as well. Each protocol may have more
-/// specific information about the address available to it as well.
+/// This enum can contain either an [`SocketAddrV4`] or an [`SocketAddrV6`]. see their
+/// respective documentation for more details.
+///
+/// [`SocketAddrV4`]: ../../std/net/struct.SocketAddrV4.html
+/// [`SocketAddrV6`]: ../../std/net/struct.SocketAddrV6.html
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum SocketAddr {
-    /// An IPv4 socket address which is a (ip, port) combination.
+    /// An IPv4 socket address.
     #[stable(feature = "rust1", since = "1.0.0")]
     V4(#[stable(feature = "rust1", since = "1.0.0")] SocketAddrV4),
     /// An IPv6 socket address.
@@ -36,18 +38,39 @@ pub enum SocketAddr {
     V6(#[stable(feature = "rust1", since = "1.0.0")] SocketAddrV6),
 }
 
-/// An IPv4 socket address which is a (ip, port) combination.
+/// An IPv4 socket address.
+///
+/// IPv4 socket addresses consist of an [IPv4 address] and a 16-bit port number, as
+/// stated in [IETF RFC 793].
+///
+/// See [`SocketAddr`] for a type encompassing both IPv4 and IPv6 socket addresses.
+///
+/// [IETF RFC 793]: https://tools.ietf.org/html/rfc793
+/// [IPv4 address]: ../../std/net/struct.Ipv4Addr.html
+/// [`SocketAddr`]: ../../std/net/enum.SocketAddr.html
 #[derive(Copy)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct SocketAddrV4 { inner: c::sockaddr_in }
 
 /// An IPv6 socket address.
+///
+/// IPv6 socket addresses consist of an [Ipv6 address], a 16-bit port number, as well
+/// as fields containing the traffic class, the flow label, and a scope identifier
+/// (see [IETF RFC 2553, Section 3.3] for more details).
+///
+/// See [`SocketAddr`] for a type encompassing both IPv4 and IPv6 socket addresses.
+///
+/// [IETF RFC 2553, Section 3.3]: https://tools.ietf.org/html/rfc2553#section-3.3
+/// [IPv6 address]: ../../std/net/struct.Ipv6Addr.html
+/// [`SocketAddr`]: ../../std/net/enum.SocketAddr.html
 #[derive(Copy)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct SocketAddrV6 { inner: c::sockaddr_in6 }
 
 impl SocketAddr {
-    /// Creates a new socket address from the (ip, port) pair.
+    /// Creates a new socket address from an [IP address] and a port number.
+    ///
+    /// [IP address]: ../../std/net/enum.IpAddr.html
     ///
     /// # Examples
     ///
@@ -84,7 +107,7 @@ impl SocketAddr {
         }
     }
 
-    /// Change the IP address associated with this socket address.
+    /// Changes the IP address associated with this socket address.
     ///
     /// # Examples
     ///
@@ -123,7 +146,7 @@ impl SocketAddr {
         }
     }
 
-    /// Change the port number associated with this socket address.
+    /// Changes the port number associated with this socket address.
     ///
     /// # Examples
     ///
@@ -142,8 +165,14 @@ impl SocketAddr {
         }
     }
 
-    /// Returns true if the IP in this `SocketAddr` is a valid IPv4 address,
-    /// false if it's a valid IPv6 address.
+    /// Returns [`true`] if the [IP address] in this `SocketAddr` is an
+    /// [IPv4 address] and [`false`] if it's an [IPv6 address].
+    ///
+    /// [`true`]: ../../std/primitive.bool.html
+    /// [`false`]: ../../std/primitive.bool.html
+    /// [IP address]: ../../std/net/enum.IpAddr.html
+    /// [IPv4 address]: ../../std/net/enum.IpAddr.html#variant.V4
+    /// [IPv6 address]: ../../std/net/enum.IpAddr.html#variant.V6
     ///
     /// # Examples
     ///
@@ -164,8 +193,14 @@ impl SocketAddr {
         }
     }
 
-    /// Returns true if the IP in this `SocketAddr` is a valid IPv6 address,
-    /// false if it's a valid IPv4 address.
+    /// Returns [`true`] if the [IP address] in this `SocketAddr` is an
+    /// [IPv6 address] and [`false`] if it's an [IPv4 address].
+    ///
+    /// [`true`]: ../../std/primitive.bool.html
+    /// [`false`]: ../../std/primitive.bool.html
+    /// [IP address]: ../../std/net/enum.IpAddr.html
+    /// [IPv4 address]: ../../std/net/enum.IpAddr.html#variant.V4
+    /// [IPv6 address]: ../../std/net/enum.IpAddr.html#variant.V6
     ///
     /// # Examples
     ///
@@ -189,7 +224,9 @@ impl SocketAddr {
 }
 
 impl SocketAddrV4 {
-    /// Creates a new socket address from the (ip, port) pair.
+    /// Creates a new socket address from an [IPv4 address] and a port number.
+    ///
+    /// [IPv4 address]: ../../std/net/struct.Ipv4Addr.html
     ///
     /// # Examples
     ///
@@ -227,7 +264,7 @@ impl SocketAddrV4 {
         }
     }
 
-    /// Change the IP address associated with this socket address.
+    /// Changes the IP address associated with this socket address.
     ///
     /// # Examples
     ///
@@ -258,7 +295,7 @@ impl SocketAddrV4 {
         ntoh(self.inner.sin_port)
     }
 
-    /// Change the port number associated with this socket address.
+    /// Changes the port number associated with this socket address.
     ///
     /// # Examples
     ///
@@ -276,8 +313,14 @@ impl SocketAddrV4 {
 }
 
 impl SocketAddrV6 {
-    /// Creates a new socket address from the ip/port/flowinfo/scope_id
-    /// components.
+    /// Creates a new socket address from an [IPv6 address], a 16-bit port number,
+    /// and the `flowinfo` and `scope_id` fields.
+    ///
+    /// For more information on the meaning and layout of the `flowinfo` and `scope_id`
+    /// parameters, see [IETF RFC 2553, Section 3.3].
+    ///
+    /// [IETF RFC 2553, Section 3.3]: https://tools.ietf.org/html/rfc2553#section-3.3
+    /// [IPv6 address]: ../../std/net/struct.Ipv6Addr.html
     ///
     /// # Examples
     ///
@@ -318,7 +361,7 @@ impl SocketAddrV6 {
         }
     }
 
-    /// Change the IP address associated with this socket address.
+    /// Changes the IP address associated with this socket address.
     ///
     /// # Examples
     ///
@@ -349,7 +392,7 @@ impl SocketAddrV6 {
         ntoh(self.inner.sin6_port)
     }
 
-    /// Change the port number associated with this socket address.
+    /// Changes the port number associated with this socket address.
     ///
     /// # Examples
     ///
@@ -365,8 +408,17 @@ impl SocketAddrV6 {
         self.inner.sin6_port = hton(new_port);
     }
 
-    /// Returns the flow information associated with this address,
-    /// corresponding to the `sin6_flowinfo` field in C.
+    /// Returns the flow information associated with this address.
+    ///
+    /// This information corresponds to the `sin6_flowinfo` field in C, as specified in
+    /// [IETF RFC 2553, Section 3.3]. It combines information about the flow label and
+    /// the traffic class as specified in [IETF RFC 2460], respectively [Section 6] and
+    /// [Section 7].
+    ///
+    /// [IETF RFC 2553, Section 3.3]: https://tools.ietf.org/html/rfc2553#section-3.3
+    /// [IETF RFC 2460]: https://tools.ietf.org/html/rfc2460
+    /// [Section 6]: https://tools.ietf.org/html/rfc2460#section-6
+    /// [Section 7]: https://tools.ietf.org/html/rfc2460#section-7
     ///
     /// # Examples
     ///
@@ -381,7 +433,11 @@ impl SocketAddrV6 {
         self.inner.sin6_flowinfo
     }
 
-    /// Change the flow information associated with this socket address.
+    /// Changes the flow information associated with this socket address.
+    ///
+    /// See the [`flowinfo`] method's documentation for more details.
+    ///
+    /// [`flowinfo`]: #method.flowinfo
     ///
     /// # Examples
     ///
@@ -397,8 +453,12 @@ impl SocketAddrV6 {
         self.inner.sin6_flowinfo = new_flowinfo;
     }
 
-    /// Returns the scope ID associated with this address,
-    /// corresponding to the `sin6_scope_id` field in C.
+    /// Returns the scope ID associated with this address.
+    ///
+    /// This information corresponds to the `sin6_scope_id` field in C, as specified in
+    /// [IETF RFC 2553, Section 3.3].
+    ///
+    /// [IETF RFC 2553, Section 3.3]: https://tools.ietf.org/html/rfc2553#section-3.3
     ///
     /// # Examples
     ///
@@ -414,6 +474,10 @@ impl SocketAddrV6 {
     }
 
     /// Change the scope ID associated with this socket address.
+    ///
+    /// See the [`scope_id`] method's documentation for more details.
+    ///
+    /// [`scope_id`]: #method.scope_id
     ///
     /// # Examples
     ///
