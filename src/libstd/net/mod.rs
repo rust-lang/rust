@@ -43,17 +43,30 @@ mod test;
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum Shutdown {
-    /// Indicates that the reading portion of this stream/socket should be shut
-    /// down. All currently blocked and future reads will return `Ok(0)`.
+    /// The reading portion of the [`TcpStream`] should be shut down.
+    ///
+    /// All currently blocked and future [reads] will return [`Ok(0)`].
+    ///
+    /// [`TcpStream`]: ../../std/net/struct.TcpStream.html
+    /// [reads]: ../../std/io/trait.Read.html
+    /// [`Ok(0)`]: ../../std/result/enum.Result.html#variant.Ok
     #[stable(feature = "rust1", since = "1.0.0")]
     Read,
-    /// Indicates that the writing portion of this stream/socket should be shut
-    /// down. All currently blocked and future writes will return an error.
+    /// The writing portion of the [`TcpStream`] should be shut down.
+    ///
+    /// All currently blocked and future [writes] will return an error.
+    ///
+    /// [`TcpStream`]: ../../std/net/struct.TcpStream.html
+    /// [writes]: ../../std/io/trait.Write.html
     #[stable(feature = "rust1", since = "1.0.0")]
     Write,
-    /// Shut down both the reading and writing portions of this stream.
+    /// Both the reading and the writing portions of the [`TcpStream`] should be shut down.
     ///
-    /// See `Shutdown::Read` and `Shutdown::Write` for more information.
+    /// See [`Shutdown::Read`] and [`Shutdown::Write`] for more information.
+    ///
+    /// [`TcpStream`]: ../../std/net/struct.TcpStream.html
+    /// [`Shutdown::Read`]: #variant.Read
+    /// [`Shutdown::Write`]: #variant.Write
     #[stable(feature = "rust1", since = "1.0.0")]
     Both,
 }
