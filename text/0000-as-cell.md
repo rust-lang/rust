@@ -182,7 +182,7 @@ safe:
 - A slice represents a number of elements next to each other.
   Thus, if `&mut T -> &Cell<T>` is ok, then `&mut [T] -> &[Cell<T>]` would be as well.
   `&mut [T] -> &Cell<[T]>` follows from `&mut T -> &Cell<T>` through substitution,
-  so `&Cell<T> <-> &[Cell<T>]` has to be valid.
+  so `&Cell<[T]> <-> &[Cell<T>]` has to be valid.
 - The API of a `Cell<T>` is to allow internal mutability through single-threaded
   memcopies only. Since a memcopy is just a copy of all bits that make up a type,
   it does not matter if we logically do a memcopy to all elements of a slice
