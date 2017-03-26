@@ -42,7 +42,6 @@ use std::fmt;
 use std::rc::Rc;
 use std::hash::{Hash, Hasher};
 use syntax::ast;
-use syntax::symbol::keywords;
 use syntax_pos::{MultiSpan, Span};
 use errors::DiagnosticBuilder;
 
@@ -809,32 +808,33 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
     }
 
     /// Given a type, if it is an immutable reference, return a suggestion to make it mutable
-    fn suggest_mut_for_immutable(&self, pty: &hir::Ty) -> Option<String> {
+    fn suggest_mut_for_immutable(&self, pty: &hir::Ty, is_implicit_self: bool) -> Option<String> {
         // Check wether the argument is an immutable reference
+        debug!("suggest_mut_for_immutable({:?}, {:?})", pty, is_implicit_self);
         if let hir::TyRptr(lifetime, hir::MutTy {
             mutbl: hir::Mutability::MutImmutable,
             ref ty
         }) = pty.node {
             // Account for existing lifetimes when generating the message
-            if !lifetime.is_elided() {
-                if let Ok(snippet) = self.tcx.sess.codemap().span_to_snippet(ty.span) {
-                    if let Ok(lifetime_snippet) = self.tcx.sess.codemap()
-                        .span_to_snippet(lifetime.span) {
-                            return Some(format!("use `&{} mut {}` here to make mutable",
-                                                lifetime_snippet,
-                                                snippet));
-                    }
-                }
-            } else if let Ok(snippet) = self.tcx.sess.codemap().span_to_snippet(pty.span) {
-                if snippet.starts_with("&") {
-                    return Some(format!("use `{}` here to make mutable",
-                                        snippet.replace("&", "&mut ")));
-                }
+            let pointee_snippet = match self.tcx.sess.codemap().span_to_snippet(ty.span) {
+                Ok(snippet) => snippet,
+                _ => return None
+            };
+
+            let lifetime_snippet = if !lifetime.is_elided() {
+                format!("{} ", match self.tcx.sess.codemap().span_to_snippet(lifetime.span) {
+                    Ok(lifetime_snippet) => lifetime_snippet,
+                    _ => return None
+                })
             } else {
-                bug!("couldn't find a snippet for span: {:?}", pty.span);
-            }
+                String::new()
+            };
+            Some(format!("use `&{}mut {}` here to make mutable",
+                         lifetime_snippet,
+                         if is_implicit_self { "self" } else { &*pointee_snippet }))
+        } else {
+            None
         }
-        None
     }
 
     fn local_binding_mode(&self, node_id: ast::NodeId) -> hir::BindingMode {
@@ -849,7 +849,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
         }
     }
 
-    fn local_ty(&self, node_id: ast::NodeId) -> Option<&hir::Ty> {
+    fn local_ty(&self, node_id: ast::NodeId) -> (Option<&hir::Ty>, bool) {
         let parent = self.tcx.hir.get_parent_node(node_id);
         let parent_node = self.tcx.hir.get(parent);
 
@@ -857,16 +857,17 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
         if let Some(fn_like) = FnLikeNode::from_node(parent_node) {
             // `nid`'s parent's `Body`
             let fn_body = self.tcx.hir.body(fn_like.body());
-            // Get the position of `nid` in the arguments list
+            // Get the position of `node_id` in the arguments list
             let arg_pos = fn_body.arguments.iter().position(|arg| arg.pat.id == node_id);
             if let Some(i) = arg_pos {
                 // The argument's `Ty`
-                Some(&fn_like.decl().inputs[i])
+                (Some(&fn_like.decl().inputs[i]),
+                 i == 0 && fn_like.decl().has_implicit_self)
             } else {
-                None
+                (None, false)
             }
         } else {
-            None
+            (None, false)
         }
     }
 
@@ -880,8 +881,8 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 let let_span = self.tcx.hir.span(node_id);
                 if let hir::BindingMode::BindByValue(..) = self.local_binding_mode(node_id) {
                     if let Ok(snippet) = self.tcx.sess.codemap().span_to_snippet(let_span) {
-                        if self.tcx.hir.name(node_id) == keywords::SelfValue.name() &&
-                            snippet != "self" {
+                        let (_, is_implicit_self) = self.local_ty(node_id);
+                        if is_implicit_self && snippet != "self" {
                             // avoid suggesting `mut &self`.
                             return
                         }
@@ -906,8 +907,9 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                         }
                     }
                     hir::BindingMode::BindByValue(..) => {
-                        if let Some(local_ty) = self.local_ty(node_id) {
-                            if let Some(msg) = self.suggest_mut_for_immutable(local_ty) {
+                        if let (Some(local_ty), is_implicit_self) = self.local_ty(node_id) {
+                            if let Some(msg) =
+                                 self.suggest_mut_for_immutable(local_ty, is_implicit_self) {
                                 db.span_label(local_ty.span, &msg);
                             }
                         }
@@ -921,7 +923,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 };
 
                 if let hir_map::Node::NodeField(ref field) = self.tcx.hir.get(node_id) {
-                    if let Some(msg) = self.suggest_mut_for_immutable(&field.ty) {
+                    if let Some(msg) = self.suggest_mut_for_immutable(&field.ty, false) {
                         db.span_label(field.ty.span, &msg);
                     }
                 }

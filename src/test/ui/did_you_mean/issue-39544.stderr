@@ -6,22 +6,89 @@ error: cannot borrow immutable field `z.x` as mutable
 21 |     let _ = &mut z.x;
    |                  ^^^ cannot mutably borrow immutable field
 
-error: cannot borrow immutable field `z.x` as mutable
-  --> $DIR/issue-39544.rs:25:18
+error: cannot borrow immutable field `self.x` as mutable
+  --> $DIR/issue-39544.rs:26:22
    |
-24 | pub fn with_arg(z: Z, w: &Z) {
+25 |     fn foo<'z>(&'z self) {
+   |                -------- use `&'z mut self` here to make mutable
+26 |         let _ = &mut self.x;
+   |                      ^^^^^^ cannot mutably borrow immutable field
+
+error: cannot borrow immutable field `self.x` as mutable
+  --> $DIR/issue-39544.rs:30:22
+   |
+29 |     fn foo1(&self, other: &Z) {
+   |             ----- use `&mut self` here to make mutable
+30 |         let _ = &mut self.x;
+   |                      ^^^^^^ cannot mutably borrow immutable field
+
+error: cannot borrow immutable field `other.x` as mutable
+  --> $DIR/issue-39544.rs:31:22
+   |
+29 |     fn foo1(&self, other: &Z) {
+   |                           -- use `&mut Z` here to make mutable
+30 |         let _ = &mut self.x;
+31 |         let _ = &mut other.x;
+   |                      ^^^^^^^ cannot mutably borrow immutable field
+
+error: cannot borrow immutable field `self.x` as mutable
+  --> $DIR/issue-39544.rs:35:22
+   |
+34 |     fn foo2<'a>(&'a self, other: &Z) {
+   |                 -------- use `&'a mut self` here to make mutable
+35 |         let _ = &mut self.x;
+   |                      ^^^^^^ cannot mutably borrow immutable field
+
+error: cannot borrow immutable field `other.x` as mutable
+  --> $DIR/issue-39544.rs:36:22
+   |
+34 |     fn foo2<'a>(&'a self, other: &Z) {
+   |                                  -- use `&mut Z` here to make mutable
+35 |         let _ = &mut self.x;
+36 |         let _ = &mut other.x;
+   |                      ^^^^^^^ cannot mutably borrow immutable field
+
+error: cannot borrow immutable field `self.x` as mutable
+  --> $DIR/issue-39544.rs:40:22
+   |
+39 |     fn foo3<'a>(self: &'a Self, other: &Z) {
+   |                       -------- use `&'a mut Self` here to make mutable
+40 |         let _ = &mut self.x;
+   |                      ^^^^^^ cannot mutably borrow immutable field
+
+error: cannot borrow immutable field `other.x` as mutable
+  --> $DIR/issue-39544.rs:41:22
+   |
+39 |     fn foo3<'a>(self: &'a Self, other: &Z) {
+   |                                        -- use `&mut Z` here to make mutable
+40 |         let _ = &mut self.x;
+41 |         let _ = &mut other.x;
+   |                      ^^^^^^^ cannot mutably borrow immutable field
+
+error: cannot borrow immutable field `other.x` as mutable
+  --> $DIR/issue-39544.rs:45:22
+   |
+44 |     fn foo4(other: &Z) {
+   |                    -- use `&mut Z` here to make mutable
+45 |         let _ = &mut other.x;
+   |                      ^^^^^^^ cannot mutably borrow immutable field
+
+error: cannot borrow immutable field `z.x` as mutable
+  --> $DIR/issue-39544.rs:51:18
+   |
+50 | pub fn with_arg(z: Z, w: &Z) {
    |                 - consider changing this to `mut z`
-25 |     let _ = &mut z.x;
+51 |     let _ = &mut z.x;
    |                  ^^^ cannot mutably borrow immutable field
 
 error: cannot borrow immutable field `w.x` as mutable
-  --> $DIR/issue-39544.rs:26:18
+  --> $DIR/issue-39544.rs:52:18
    |
-24 | pub fn with_arg(z: Z, w: &Z) {
+50 | pub fn with_arg(z: Z, w: &Z) {
    |                          -- use `&mut Z` here to make mutable
-25 |     let _ = &mut z.x;
-26 |     let _ = &mut w.x;
+51 |     let _ = &mut z.x;
+52 |     let _ = &mut w.x;
    |                  ^^^ cannot mutably borrow immutable field
 
-error: aborting due to 3 previous errors
+error: aborting due to 11 previous errors
 
