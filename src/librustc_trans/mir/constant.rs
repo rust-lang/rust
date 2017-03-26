@@ -18,7 +18,8 @@ use rustc::hir::def_id::DefId;
 use rustc::infer::TransNormalize;
 use rustc::mir;
 use rustc::mir::tcx::LvalueTy;
-use rustc::ty::{self, layout, Ty, TyCtxt, TypeFoldable};
+use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
+use rustc::ty::layout::{self, LayoutTyper};
 use rustc::ty::cast::{CastTy, IntTy};
 use rustc::ty::subst::{Kind, Substs, Subst};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
@@ -148,7 +149,7 @@ impl<'tcx> Const<'tcx> {
         } else {
             // Otherwise, or if the value is not immediate, we create
             // a constant LLVM global and cast its address if necessary.
-            let align = type_of::align_of(ccx, self.ty);
+            let align = ccx.align_of(self.ty);
             let ptr = consts::addr_of(ccx, self.llval, align, "const");
             OperandValue::Ref(consts::ptrcast(ptr, llty.ptr_to()), Alignment::AbiAligned)
         };
@@ -717,7 +718,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                     Base::Value(llval) => {
                         // FIXME: may be wrong for &*(&simd_vec as &fmt::Debug)
                         let align = if self.ccx.shared().type_is_sized(ty) {
-                            type_of::align_of(self.ccx, ty)
+                            self.ccx.align_of(ty)
                         } else {
                             self.ccx.tcx().data_layout.pointer_align.abi() as machine::llalign
                         };
@@ -979,7 +980,6 @@ fn trans_const<'a, 'tcx>(
     vals: &[ValueRef]
 ) -> ValueRef {
     let l = ccx.layout_of(t);
-    let dl = &ccx.tcx().data_layout;
     let variant_index = match *kind {
         mir::AggregateKind::Adt(_, index, _, _) => index,
         _ => 0,
@@ -1002,7 +1002,7 @@ fn trans_const<'a, 'tcx>(
             let mut vals_with_discr = vec![lldiscr];
             vals_with_discr.extend_from_slice(vals);
             let mut contents = build_const_struct(ccx, &variant, &vals_with_discr[..]);
-            let needed_padding = l.size(dl).bytes() - variant.stride().bytes();
+            let needed_padding = l.size(ccx).bytes() - variant.stride().bytes();
             if needed_padding > 0 {
                 contents.push(padding(ccx, needed_padding));
             }
@@ -1022,25 +1022,20 @@ fn trans_const<'a, 'tcx>(
             C_vector(vals)
         }
         layout::RawNullablePointer { nndiscr, .. } => {
-            let nnty = adt::compute_fields(ccx, t, nndiscr as usize, false)[0];
             if variant_index as u64 == nndiscr {
                 assert_eq!(vals.len(), 1);
                 vals[0]
             } else {
-                C_null(type_of::sizing_type_of(ccx, nnty))
+                C_null(type_of::type_of(ccx, t))
             }
         }
         layout::StructWrappedNullablePointer { ref nonnull, nndiscr, .. } => {
             if variant_index as u64 == nndiscr {
                 C_struct(ccx, &build_const_struct(ccx, &nonnull, vals), false)
             } else {
-                let fields = adt::compute_fields(ccx, t, nndiscr as usize, false);
-                let vals = fields.iter().map(|&ty| {
-                    // Always use null even if it's not the `discrfield`th
-                    // field; see #8506.
-                    C_null(type_of::sizing_type_of(ccx, ty))
-                }).collect::<Vec<ValueRef>>();
-                C_struct(ccx, &build_const_struct(ccx, &nonnull, &vals[..]), false)
+                // Always use null even if it's not the `discrfield`th
+                // field; see #8506.
+                C_null(type_of::type_of(ccx, t))
             }
         }
         _ => bug!("trans_const: cannot handle type {} repreented as {:#?}", t, l)

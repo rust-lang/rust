@@ -11,7 +11,7 @@
 use llvm::{self, ValueRef};
 use rustc::ty::{self, Ty};
 use rustc::ty::cast::{CastTy, IntTy};
-use rustc::ty::layout::Layout;
+use rustc::ty::layout::{Layout, LayoutTyper};
 use rustc::mir::tcx::LvalueTy;
 use rustc::mir;
 use middle::lang_items::ExchangeMallocFnLangItem;
@@ -438,7 +438,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 let content_ty: Ty<'tcx> = self.monomorphize(&content_ty);
                 let llty = type_of::type_of(bcx.ccx, content_ty);
                 let llsize = machine::llsize_of(bcx.ccx, llty);
-                let align = type_of::align_of(bcx.ccx, content_ty);
+                let align = bcx.ccx.align_of(content_ty);
                 let llalign = C_uint(bcx.ccx, align);
                 let llty_ptr = llty.ptr_to();
                 let box_ty = bcx.tcx().mk_box(content_ty);

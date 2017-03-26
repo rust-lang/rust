@@ -18,11 +18,10 @@ use llvm;
 use llvm::{ValueRef};
 use rustc::traits;
 use rustc::ty::{self, Ty, TypeFoldable};
+use rustc::ty::layout::LayoutTyper;
 use common::*;
-use machine::*;
 use meth;
 use monomorphize;
-use type_of::{sizing_type_of, align_of};
 use value::Value;
 use builder::Builder;
 
@@ -49,7 +48,7 @@ pub fn needs_drop_glue<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>, t: Ty<'tcx>
             if !scx.type_needs_drop(typ) && scx.type_is_sized(typ) {
                 scx.tcx().infer_ctxt((), traits::Reveal::All).enter(|infcx| {
                     let layout = t.layout(&infcx).unwrap();
-                    if layout.size(&scx.tcx().data_layout).bytes() == 0 {
+                    if layout.size(scx).bytes() == 0 {
                         // `Box<ZeroSizeType>` does not allocate.
                         false
                     } else {
@@ -69,9 +68,8 @@ pub fn size_and_align_of_dst<'a, 'tcx>(bcx: &Builder<'a, 'tcx>, t: Ty<'tcx>, inf
     debug!("calculate size of DST: {}; with lost info: {:?}",
            t, Value(info));
     if bcx.ccx.shared().type_is_sized(t) {
-        let sizing_type = sizing_type_of(bcx.ccx, t);
-        let size = llsize_of_alloc(bcx.ccx, sizing_type);
-        let align = align_of(bcx.ccx, t);
+        let size = bcx.ccx.size_of(t);
+        let align = bcx.ccx.align_of(t);
         debug!("size_and_align_of_dst t={} info={:?} size: {} align: {}",
                t, Value(info), size, align);
         let size = C_uint(bcx.ccx, size);
@@ -82,9 +80,8 @@ pub fn size_and_align_of_dst<'a, 'tcx>(bcx: &Builder<'a, 'tcx>, t: Ty<'tcx>, inf
         ty::TyAdt(def, substs) => {
             let ccx = bcx.ccx;
             // First get the size of all statically known fields.
-            // Don't use type_of::sizing_type_of because that expects t to be sized,
-            // and it also rounds up to alignment, which we want to avoid,
-            // as the unsized field's alignment could be smaller.
+            // Don't use size_of because it also rounds up to alignment, which we
+            // want to avoid, as the unsized field's alignment could be smaller.
             assert!(!t.is_simd());
             let layout = ccx.layout_of(t);
             debug!("DST {} layout: {:?}", t, layout);
@@ -154,14 +151,11 @@ pub fn size_and_align_of_dst<'a, 'tcx>(bcx: &Builder<'a, 'tcx>, t: Ty<'tcx>, inf
             (meth::SIZE.get_usize(bcx, info), meth::ALIGN.get_usize(bcx, info))
         }
         ty::TySlice(_) | ty::TyStr => {
-            let unit_ty = t.sequence_element_type(bcx.tcx());
+            let unit = t.sequence_element_type(bcx.tcx());
             // The info in this case is the length of the str, so the size is that
             // times the unit size.
-            let llunit_ty = sizing_type_of(bcx.ccx, unit_ty);
-            let unit_align = llalign_of_min(bcx.ccx, llunit_ty);
-            let unit_size = llsize_of_alloc(bcx.ccx, llunit_ty);
-            (bcx.mul(info, C_uint(bcx.ccx, unit_size)),
-             C_uint(bcx.ccx, unit_align))
+            (bcx.mul(info, C_uint(bcx.ccx, bcx.ccx.size_of(unit))),
+             C_uint(bcx.ccx, bcx.ccx.align_of(unit)))
         }
         _ => bug!("Unexpected unsized type, found {}", t)
     }

@@ -10,7 +10,7 @@
 
 use llvm::ValueRef;
 use rustc::ty::{self, Ty};
-use rustc::ty::layout::Layout;
+use rustc::ty::layout::{Layout, LayoutTyper};
 use rustc::mir;
 use rustc::mir::tcx::LvalueTy;
 use rustc_data_structures::indexed_vec::Idx;
