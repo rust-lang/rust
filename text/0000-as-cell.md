@@ -366,7 +366,7 @@ impl<T> Cell<T> {
 
 Usage:
 
-```
+```rust
 let mut v: Vec<i32> = ...;
 
 // convert the mutable borrow
