@@ -372,7 +372,7 @@ create_config! {
     report_fixme: ReportTactic, ReportTactic::Never,
         "Report all, none or unnumbered occurrences of FIXME in source file comments";
     chain_indent: IndentStyle, IndentStyle::Block, "Indentation of chain";
-    chain_one_line_max: usize, 4, "Maximum number of elements in a chain to fit on a single line";
+    chain_one_line_max: usize, 60, "Maximum length of a chain to fit on a single line";
     reorder_imports: bool, false, "Reorder import statements alphabetically";
     reorder_imported_names: bool, false,
         "Reorder lists of names in import statements alphabetically";
