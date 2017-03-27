@@ -195,13 +195,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for ConstantExtractor<'a, 'b, 'tcx> {
             // already computed by rustc
             mir::Literal::Value { .. } => {}
             mir::Literal::Item { def_id, substs } => {
-                if let ty::TyFnDef(..) = constant.ty.sty {
-                    // No need to do anything here,
-                    // because the type is the actual function, not the signature of the function.
-                    // Thus we can simply create a zero sized allocation in `evaluate_operand`
-                } else {
-                    self.global_item(def_id, substs, constant.span, true);
-                }
+                self.global_item(def_id, substs, constant.span, true);
             },
             mir::Literal::Promoted { index } => {
                 let cid = GlobalId {

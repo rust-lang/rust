@@ -342,7 +342,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         Ok(Value::ByValPair(PrimVal::Ptr(ptr), PrimVal::from_u128(s.len() as u128)))
     }
 
-    pub(super) fn const_to_value(&mut self, const_val: &ConstVal) -> EvalResult<'tcx, Value> {
+    pub(super) fn const_to_value(&mut self, const_val: &ConstVal<'tcx>) -> EvalResult<'tcx, Value> {
         use rustc::middle::const_val::ConstVal::*;
         use rustc_const_math::ConstFloat;
 
@@ -364,7 +364,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
 
             Struct(_)    => unimplemented!(),
             Tuple(_)     => unimplemented!(),
-            Function(_, _)  => unimplemented!(),
+            // function items are zero sized and thus have no readable value
+            Function(..)  => PrimVal::Undef,
             Array(_)     => unimplemented!(),
             Repeat(_, _) => unimplemented!(),
         };
@@ -995,20 +996,15 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         match *op {
             Consume(ref lvalue) => self.eval_and_read_lvalue(lvalue),
 
-            Constant(mir::Constant { ref literal, ty, .. }) => {
+            Constant(mir::Constant { ref literal, .. }) => {
                 use rustc::mir::Literal;
                 let value = match *literal {
                     Literal::Value { ref value } => self.const_to_value(value)?,
 
                     Literal::Item { def_id, substs } => {
-                        if let ty::TyFnDef(..) = ty.sty {
-                            // function items are zero sized
-                            Value::ByRef(self.memory.allocate(0, 0)?)
-                        } else {
-                            let instance = self.resolve_associated_const(def_id, substs);
-                            let cid = GlobalId { instance, promoted: None };
-                            self.globals.get(&cid).expect("static/const not cached").value
-                        }
+                        let instance = self.resolve_associated_const(def_id, substs);
+                        let cid = GlobalId { instance, promoted: None };
+                        self.globals.get(&cid).expect("static/const not cached").value
                     }
 
                     Literal::Promoted { index } => {
