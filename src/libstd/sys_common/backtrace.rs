@@ -148,7 +148,7 @@ fn filter_frames(frames: &[Frame],
         let _ = resolve_symname(*frame, |symname| {
             if let Some(mangled_symbol_name) = symname {
                 // Use grep to find the concerned functions
-                if mangled_symbol_name.contains("__rust_begin_short_backtrace_") {
+                if mangled_symbol_name.contains("__rust_begin_short_backtrace") {
                     is_marker = true;
                 }
             }
@@ -163,6 +163,15 @@ fn filter_frames(frames: &[Frame],
     }
 
     (skipped_before, skipped_after)
+}
+
+
+/// Fixed frame used to clean the backtrace with `RUST_BACKTRACE=1`.
+#[inline(never)]
+pub fn __rust_begin_short_backtrace<F, T>(f: F) -> T
+    where F: FnOnce() -> T, F: Send + 'static, T: Send + 'static
+{
+    f()
 }
 
 /// Controls how the backtrace should be formated.
