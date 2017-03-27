@@ -91,13 +91,13 @@ impl<T: Idx> IdxSet<T> {
 impl<T: Idx> Deref for IdxSetBuf<T> {
     type Target = IdxSet<T>;
     fn deref(&self) -> &IdxSet<T> {
-        unsafe { IdxSet::from_slice(&self.bits[..]) }
+        unsafe { IdxSet::from_slice(&self.bits) }
     }
 }
 
 impl<T: Idx> DerefMut for IdxSetBuf<T> {
     fn deref_mut(&mut self) -> &mut IdxSet<T> {
-        unsafe { IdxSet::from_slice_mut(&mut self.bits[..]) }
+        unsafe { IdxSet::from_slice_mut(&mut self.bits) }
     }
 }
 
@@ -135,11 +135,11 @@ impl<T: Idx> IdxSet<T> {
     }
 
     pub fn words(&self) -> &[Word] {
-        &self.bits[..]
+        &self.bits
     }
 
     pub fn words_mut(&mut self) -> &mut [Word] {
-        &mut self.bits[..]
+        &mut self.bits
     }
 
     pub fn clone_from(&mut self, other: &IdxSet<T>) {

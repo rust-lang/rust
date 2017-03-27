@@ -48,7 +48,7 @@ pub fn encode(n: u64, base: u64) -> String {
 #[test]
 fn test_encode() {
     fn test(n: u64, base: u64) {
-        assert_eq!(Ok(n), u64::from_str_radix(&encode(n, base)[..], base as u32));
+        assert_eq!(Ok(n), u64::from_str_radix(&encode(n, base), base as u32));
     }
 
     for base in 2..37 {

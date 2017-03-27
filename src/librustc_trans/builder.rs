@@ -627,7 +627,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         } else {
             let v = ixs.iter().map(|i| C_i32(self.ccx, *i as i32)).collect::<Vec<ValueRef>>();
             self.count_insn("gepi");
-            self.inbounds_gep(base, &v[..])
+            self.inbounds_gep(base, &v)
         }
     }
 
@@ -835,8 +835,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let s = format!("{} ({})",
                             text,
                             self.ccx.sess().codemap().span_to_string(sp));
-            debug!("{}", &s[..]);
-            self.add_comment(&s[..]);
+            debug!("{}", s);
+            self.add_comment(&s);
         }
     }
 

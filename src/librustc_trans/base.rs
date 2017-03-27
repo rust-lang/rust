@@ -514,7 +514,7 @@ pub fn call_memcpy<'a, 'tcx>(b: &Builder<'a, 'tcx>,
                                n_bytes: ValueRef,
                                align: u32) {
     let ccx = b.ccx;
-    let ptr_width = &ccx.sess().target.target.target_pointer_width[..];
+    let ptr_width = &ccx.sess().target.target.target_pointer_width;
     let key = format!("llvm.memcpy.p0i8.p0i8.i{}", ptr_width);
     let memcpy = ccx.get_intrinsic(&key);
     let src_ptr = b.pointercast(src, Type::i8p(ccx));
@@ -550,7 +550,7 @@ pub fn call_memset<'a, 'tcx>(b: &Builder<'a, 'tcx>,
                              size: ValueRef,
                              align: ValueRef,
                              volatile: bool) -> ValueRef {
-    let ptr_width = &b.ccx.sess().target.target.target_pointer_width[..];
+    let ptr_width = &b.ccx.sess().target.target.target_pointer_width;
     let intrinsic_key = format!("llvm.memset.p0i8.i{}", ptr_width);
     let llintrinsicfn = b.ccx.get_intrinsic(&intrinsic_key);
     let volatile = C_bool(b.ccx, volatile);
@@ -765,7 +765,7 @@ fn write_metadata(cx: &SharedCrateContext,
     let mut compressed = cstore.metadata_encoding_version().to_vec();
     compressed.extend_from_slice(&flate::deflate_bytes(&metadata));
 
-    let llmeta = C_bytes_in_context(cx.metadata_llcx(), &compressed[..]);
+    let llmeta = C_bytes_in_context(cx.metadata_llcx(), &compressed);
     let llconst = C_struct_in_context(cx.metadata_llcx(), &[llmeta], false);
     let name = cx.metadata_symbol_name();
     let buf = CString::new(name).unwrap();
@@ -796,7 +796,7 @@ fn internalize_symbols<'a, 'tcx>(sess: &Session,
                                  symbol_map: &SymbolMap<'tcx>,
                                  exported_symbols: &ExportedSymbols) {
     let export_threshold =
-        symbol_export::crates_export_threshold(&sess.crate_types.borrow()[..]);
+        symbol_export::crates_export_threshold(&sess.crate_types.borrow());
 
     let exported_symbols = exported_symbols
         .exported_symbols(LOCAL_CRATE)
@@ -1035,7 +1035,7 @@ pub fn find_exported_symbols(tcx: TyCtxt, reachable: NodeSet) -> NodeSet {
                 (generics.parent_types == 0 && generics.types.is_empty()) &&
                 // Functions marked with #[inline] are only ever translated
                 // with "internal" linkage and are never exported.
-                !attr::requests_inline(&attributes[..])
+                !attr::requests_inline(&attributes)
             }
 
             _ => false
@@ -1574,7 +1574,7 @@ fn collect_and_partition_translation_items<'a, 'tcx>(scx: &SharedCrateContext<'a
                 cgus.dedup();
                 for &(ref cgu_name, linkage) in cgus.iter() {
                     output.push_str(" ");
-                    output.push_str(&cgu_name[..]);
+                    output.push_str(&cgu_name);
 
                     let linkage_abbrev = match linkage {
                         llvm::Linkage::ExternalLinkage => "External",
