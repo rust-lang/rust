@@ -169,8 +169,6 @@ pub fn main() {
         return;
     }
 
-    let dep_path = env::current_dir().expect("current dir is not readable").join("target").join("debug").join("deps");
-
     if let Some("clippy") = std::env::args().nth(1).as_ref().map(AsRef::as_ref) {
         // this arm is executed on the initial call to `cargo clippy`
 
@@ -207,12 +205,11 @@ pub fn main() {
             let args = std::env::args().skip(2);
             if let Some(first) = target.kind.get(0) {
                 if target.kind.len() > 1 || first.ends_with("lib") {
-                    if let Err(code) = process(std::iter::once("--lib".to_owned()).chain(args), &dep_path) {
+                    if let Err(code) = process(std::iter::once("--lib".to_owned()).chain(args)) {
                         std::process::exit(code);
                     }
                 } else if ["bin", "example", "test", "bench"].contains(&&**first) {
-                    if let Err(code) = process(vec![format!("--{}", first), target.name].into_iter().chain(args),
-                                               &dep_path) {
+                    if let Err(code) = process(vec![format!("--{}", first), target.name].into_iter().chain(args)) {
                         std::process::exit(code);
                     }
                 }
@@ -271,9 +268,8 @@ pub fn main() {
     }
 }
 
-fn process<P, I>(old_args: I, dep_path: P) -> Result<(), i32>
-    where P: AsRef<Path>,
-          I: Iterator<Item = String>
+fn process<I>(old_args: I) -> Result<(), i32>
+    where I: Iterator<Item = String>
 {
 
     let mut args = vec!["rustc".to_owned()];
@@ -286,8 +282,6 @@ fn process<P, I>(old_args: I, dep_path: P) -> Result<(), i32>
     if !found_dashes {
         args.push("--".to_owned());
     }
-    args.push("-L".to_owned());
-    args.push(dep_path.as_ref().to_string_lossy().into_owned());
     args.push("-Zno-trans".to_owned());
     args.push("--cfg".to_owned());
     args.push(r#"feature="cargo-clippy""#.to_owned());
