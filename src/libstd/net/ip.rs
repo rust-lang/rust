@@ -114,6 +114,7 @@ pub struct Ipv4Addr {
 /// let localhost = Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1);
 /// assert_eq!("::1".parse(), Ok(localhost));
 /// assert_eq!(localhost.is_loopback(), true);
+/// ```
 #[derive(Copy)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Ipv6Addr {
@@ -266,13 +267,11 @@ impl IpAddr {
         }
     }
 
-    /// Returns [`true`] if this address is an [IPv4 address] and [`false`] if it's an
-    /// [IPv6 address].
+    /// Returns [`true`] if this address is an [IPv4 address], and [`false`] otherwise.
     ///
     /// [`true`]: ../../std/primitive.bool.html
     /// [`false`]: ../../std/primitive.bool.html
     /// [IPv4 address]: #variant.V4
-    /// [IPv6 address]: #variant.V6
     ///
     /// # Examples
     ///
@@ -293,12 +292,10 @@ impl IpAddr {
         }
     }
 
-    /// Returns [`true`] if this address is an [IPv6 address] and [`false`] if it's an
-    /// [IPv4 address].
+    /// Returns [`true`] if this address is an [IPv6 address], and [`false`] otherwise.
     ///
     /// [`true`]: ../../std/primitive.bool.html
     /// [`false`]: ../../std/primitive.bool.html
-    /// [IPv4 address]: #variant.V4
     /// [IPv6 address]: #variant.V6
     ///
     /// # Examples
