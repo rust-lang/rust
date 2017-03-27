@@ -17,5 +17,5 @@ fn main() {
     o.closure();
     //~^ ERROR no method named `closure` found
     //~| HELP use `(o.closure)(...)` if you meant to call the function stored in the `closure` field
-    //~| NOTE `closure` is a field storing a function, not a method
+    //~| NOTE field, not a method
 }

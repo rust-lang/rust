@@ -22,6 +22,6 @@ fn main() {
     demo.example(1);
     //~^ ERROR no method named `example`
     //~| HELP use `(demo.example)(...)`
-    //~| NOTE `example` is a field storing a function, not a method
+    //~| NOTE field, not a method
     // (demo.example)(1);
 }
