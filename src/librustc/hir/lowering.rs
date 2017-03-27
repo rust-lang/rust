@@ -1900,57 +1900,45 @@ impl<'a> LoweringContext<'a> {
                 hir::ExprIndex(P(self.lower_expr(el)), P(self.lower_expr(er)))
             }
             ExprKind::Range(ref e1, ref e2, lims) => {
-                fn make_struct(this: &mut LoweringContext,
-                               ast_expr: &Expr,
-                               path: &[&str],
-                               fields: &[(&str, &P<Expr>)]) -> hir::Expr {
-                    let struct_path = &iter::once(&"ops").chain(path).map(|s| *s)
-                                                         .collect::<Vec<_>>();
-                    let unstable_span = this.allow_internal_unstable("...", ast_expr.span);
-
-                    if fields.len() == 0 {
-                        this.expr_std_path(unstable_span, struct_path,
-                                           ast_expr.attrs.clone())
-                    } else {
-                        let fields = fields.into_iter().map(|&(s, e)| {
-                            let expr = P(this.lower_expr(&e));
-                            let unstable_span = this.allow_internal_unstable("...", e.span);
-                            this.field(Symbol::intern(s), expr, unstable_span)
-                        }).collect();
-                        let attrs = ast_expr.attrs.clone();
-
-                        this.expr_std_struct(unstable_span, struct_path, fields, None, attrs)
-                    }
-                }
-
                 use syntax::ast::RangeLimits::*;
 
-                return match (e1, e2, lims) {
-                    (&None,         &None,         HalfOpen) =>
-                        make_struct(self, e, &["RangeFull"], &[]),
+                let (path, variant) = match (e1, e2, lims) {
+                    (&None, &None, HalfOpen) => ("RangeFull", None),
+                    (&Some(..), &None, HalfOpen) => ("RangeFrom", None),
+                    (&None, &Some(..), HalfOpen) => ("RangeTo", None),
+                    (&Some(..), &Some(..), HalfOpen) => ("Range", None),
+                    (&None, &Some(..), Closed) => ("RangeToInclusive", None),
+                    (&Some(..), &Some(..), Closed) => ("RangeInclusive", Some("NonEmpty")),
+                    (_, &None, Closed) =>
+                        panic!(self.diagnostic().span_fatal(
+                            e.span, "inclusive range with no end")),
+                };
 
-                    (&Some(ref e1), &None,         HalfOpen) =>
-                        make_struct(self, e, &["RangeFrom"],
-                                             &[("start", e1)]),
+                let fields =
+                    e1.iter().map(|e| ("start", e)).chain(e2.iter().map(|e| ("end", e)))
+                    .map(|(s, e)| {
+                        let expr = P(self.lower_expr(&e));
+                        let unstable_span = self.allow_internal_unstable("...", e.span);
+                        self.field(Symbol::intern(s), expr, unstable_span)
+                    }).collect::<P<[hir::Field]>>();
 
-                    (&None,         &Some(ref e2), HalfOpen) =>
-                        make_struct(self, e, &["RangeTo"],
-                                             &[("end", e2)]),
+                let is_unit = fields.is_empty();
+                let unstable_span = self.allow_internal_unstable("...", e.span);
+                let struct_path =
+                    iter::once("ops").chain(iter::once(path)).chain(variant)
+                    .collect::<Vec<_>>();
+                let struct_path = self.std_path(unstable_span, &struct_path, is_unit);
+                let struct_path = hir::QPath::Resolved(None, P(struct_path));
 
-                    (&Some(ref e1), &Some(ref e2), HalfOpen) =>
-                        make_struct(self, e, &["Range"],
-                                             &[("start", e1), ("end", e2)]),
-
-                    (&None,         &Some(ref e2), Closed)   =>
-                        make_struct(self, e, &["RangeToInclusive"],
-                                             &[("end", e2)]),
-
-                    (&Some(ref e1), &Some(ref e2), Closed)   =>
-                        make_struct(self, e, &["RangeInclusive", "NonEmpty"],
-                                             &[("start", e1), ("end", e2)]),
-
-                    _ => panic!(self.diagnostic()
-                                    .span_fatal(e.span, "inclusive range with no end")),
+                return hir::Expr {
+                    id: self.lower_node_id(e.id),
+                    node: if is_unit {
+                        hir::ExprPath(struct_path)
+                    } else {
+                        hir::ExprStruct(struct_path, fields, None)
+                    },
+                    span: unstable_span,
+                    attrs: e.attrs.clone(),
                 };
             }
             ExprKind::Path(ref qself, ref path) => {
@@ -2611,17 +2599,6 @@ impl<'a> LoweringContext<'a> {
 
     fn expr_tuple(&mut self, sp: Span, exprs: hir::HirVec<hir::Expr>) -> P<hir::Expr> {
         P(self.expr(sp, hir::ExprTup(exprs), ThinVec::new()))
-    }
-
-    fn expr_std_struct(&mut self,
-                       span: Span,
-                       components: &[&str],
-                       fields: hir::HirVec<hir::Field>,
-                       e: Option<P<hir::Expr>>,
-                       attrs: ThinVec<Attribute>) -> hir::Expr {
-        let path = self.std_path(span, components, false);
-        let qpath = hir::QPath::Resolved(None, P(path));
-        self.expr(span, hir::ExprStruct(qpath, fields, e), attrs)
     }
 
     fn expr(&mut self, span: Span, node: hir::Expr_, attrs: ThinVec<Attribute>) -> hir::Expr {
