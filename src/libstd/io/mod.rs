@@ -145,16 +145,14 @@
 //! # }
 //! ```
 //!
-//! Note that you cannot use the `?` operator in functions that do not return a `Result<T, E>` (e.g. `main`).
-//! Instead, you can `match` on the return value to catch any possible errors:
-//! 
+//! Note that you cannot use the `?` operator in functions that do not return
+//! a `Result<T, E>` (e.g. `main`). Instead, you can call `.unwrap()` or `match`
+//! on the return value to catch any possible errors:
+//!
 //! ```
 //! let mut input = String::new();
-//! 
-//! match io::stdin().read_line(&mut input) {
-//!     Err(why) => panic!("Failed to read input: {}", why.description()),
-//!     Ok(_) => println!("You typed: {}", input.trim()),
-//! }
+//!
+//! io::stdin().read_line(&mut input).unwrap();
 //! ```
 //!
 //! And a very common source of output is standard output:
