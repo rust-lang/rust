@@ -27,7 +27,7 @@ use errors::DiagnosticBuilder;
 use fmt_macros::{Parser, Piece, Position};
 use hir::{self, intravisit, Local, Pat, Body};
 use hir::intravisit::{Visitor, NestedVisitorMap};
-use hir::map::NodeExpr;
+use hir::map::{Node, NodeExpr};
 use hir::def_id::DefId;
 use infer::{self, InferCtxt};
 use infer::type_variable::TypeVariableOrigin;
@@ -779,6 +779,18 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
+    fn foo(&self, id: ast::NodeId, ty: &hir::Ty, sp: Span, err: &mut DiagnosticBuilder<'tcx>) -> bool {
+        if let Some(Node::NodeItem(item)) = ty.ty_def_id().and_then(|id| {
+            self.hir.get_if_local(id)
+        }) {
+            if self.is_node_id_referenced_in_item(item, id) {
+                err.span_label(sp, &"recursive here");
+            }
+            true
+        } else {
+            false
+        }
+    }
     pub fn recursive_type_with_infinite_size_error(self,
                                                    type_def_id: DefId)
                                                    -> DiagnosticBuilder<'tcx>
@@ -793,7 +805,117 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         err.help(&format!("insert indirection (e.g., a `Box`, `Rc`, or `&`) \
                            at some point to make `{}` representable",
                           self.item_path_str(type_def_id)));
+
+        if let Some(Node::NodeItem(self_item)) = self.hir.get_if_local(type_def_id) {
+            match self_item.node {
+                hir::ItemStruct(hir::VariantData::Struct(ref fields, _), _) |
+                hir::ItemStruct(hir::VariantData::Tuple(ref fields, _), _) => {
+                    for field in fields {
+                        match field.ty.node {
+                            hir::TyPath(ref qpath) => {
+                                // Foo | Option<Foo>
+                                if let &hir::QPath::Resolved(_, ref path) = qpath {
+                                    for segment in path.segments.iter() {
+                                        if let hir::AngleBracketedParameters(
+                                            hir::AngleBracketedParameterData {
+                                                ref types, ..
+                                            }) = segment.parameters
+                                        {
+                                            for ty in types {
+                                                if self.foo(self_item.id, &ty, field.span,
+                                                            &mut err) {
+                                                    break;
+                                                }
+                                            }
+                                        }
+
+                                    }
+                                    match path.def {
+                                        hir::def::Def::Struct(did) | hir::def::Def::Enum(did) => {
+                                            let local = self.hir.get_if_local(did);
+                                            if let Some(Node::NodeItem(item)) = local {
+                                                if self.is_node_id_referenced_in_item(item,
+                                                                                      self_item.id)
+                                                {
+                                                    err.span_label(field.span, &"recursive here");
+                                                }
+                                            }
+                                        }
+                                        _ => (),
+                                    }
+                                }
+                            }
+                            hir::TySlice(ref ty) |
+                            hir::TyArray(ref ty, _) |
+                            hir::TyPtr(hir::MutTy { ref ty, .. }) |
+                            hir::TyRptr(_, hir::MutTy { ref ty, .. }) => {
+                                // &[Foo] | [Foo] | &'a [Foo]
+                                if let hir::TySlice(ref ty) = ty.node {
+                                    // &'a [Foo]
+                                    let _ = self.foo(self_item.id, &ty, field.span, &mut err);
+                                } else {
+                                    let _ = self.foo(self_item.id, &ty, field.span, &mut err);
+                                }
+                            }
+                            hir::TyTup(ref tys) => {
+                                // (Foo, Bar)
+                                for ty in tys {
+                                    if self.foo(self_item.id, &ty, field.span, &mut err) {
+                                        break;
+                                    }
+                                }
+                            }
+                            _ => (),
+                        }
+                    }
+                }
+                _ => (),
+            }
+        }
         err
+    }
+
+    fn is_node_id_referenced_in_item(&self, item: &hir::Item, node_id: ast::NodeId) -> bool {
+        if item.id == node_id {
+            return true;
+        }
+        match item.node {
+            hir::ItemStruct(hir::VariantData::Struct(ref fields, _), _) |
+            hir::ItemStruct(hir::VariantData::Tuple(ref fields, _), _) => {
+                for field in fields {
+                    if let Some(Node::NodeItem(ref item)) = field.ty.ty_def_id().and_then(|id| {
+                        self.hir.get_if_local(id)
+                    }) {
+                        if self.is_node_id_referenced_in_item(item, node_id) {
+                            return true;
+                        }
+                    }
+                }
+            }
+            hir::ItemEnum(hir::EnumDef { ref variants }, _) => {
+                for variant in variants {
+                    match variant.node.data {
+                        hir::VariantData::Struct(ref fields, _) |
+                        hir::VariantData::Tuple(ref fields, _) => {
+                            for field in fields {
+                                if let Some(Node::NodeItem(ref item)) = field.ty
+                                    .ty_def_id().and_then(|id| {
+                                        self.hir.get_if_local(id)
+                                    })
+                                {
+                                    if self.is_node_id_referenced_in_item(item, node_id) {
+                                        return true;
+                                    }
+                                }
+                            }
+                        }
+                        _ => (),
+                    }
+                }
+            }
+            _ => (),
+        }
+        false
     }
 
     pub fn report_object_safety_error(self,
