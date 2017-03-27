@@ -124,8 +124,6 @@ fn filter_frames(frames: &[Frame],
         "ZN4core6result13unwrap_failed",
 
         "rust_begin_unwind",
-        "_ZN4drop",
-        "mingw_set_invalid_parameter_handler",
     ];
 
     let is_good_frame = |frame: Frame, bad_prefixes: &[&str]| {
