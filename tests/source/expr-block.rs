@@ -1,4 +1,5 @@
 // rustfmt-array_layout: Block
+// rustfmt-fn_call_style: Block
 // Test expressions with block formatting.
 
 fn arrays() {
@@ -75,4 +76,36 @@ fn arrays() {
     let z = [xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx, yyyyyyyyyyyyyyyyyyyyyyyyyyy, zzzzzzzzzzzzzzzzz, q];
 
     [ 1 +   3, 4 ,  5, 6, 7, 7, fncall::<Vec<_>>(3-1)]
+}
+
+fn function_calls() {
+    let items = itemize_list(context.codemap,
+                             args.iter(),
+                             ")",
+                             |item| item.span.lo,
+                             |item| item.span.hi,
+                             |item| {
+                                 item.rewrite(context,
+                                              Shape {
+                                                  width: remaining_width,
+                                                  ..nested_shape
+                                              })
+                             },
+                             span.lo,
+                             span.hi);
+
+    itemize_list(context.codemap,
+                             args.iter(),
+                             ")",
+                             |item| item.span.lo,
+                             |item| item.span.hi,
+                             |item| {
+                                 item.rewrite(context,
+                                              Shape {
+                                                  width: remaining_width,
+                                                  ..nested_shape
+                                              })
+                             },
+                             span.lo,
+                             span.hi)
 }

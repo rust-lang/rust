@@ -7,7 +7,6 @@ fn_return_indent = "WithArgs"
 fn_args_paren_newline = true
 fn_args_density = "Tall"
 fn_args_layout = "Visual"
-fn_arg_indent = "Visual"
 where_density = "Tall"
 where_indent = "Block"
 where_layout = "Vertical"

@@ -366,6 +366,7 @@ create_config! {
     struct_lit_style: IndentStyle, IndentStyle::Block, "Style of struct definition";
     struct_lit_multiline_style: MultilineStyle, MultilineStyle::PreferSingle,
         "Multiline style on literal structs";
+    fn_call_style: IndentStyle, IndentStyle::Visual, "Indentation for function calls, etc.";
     report_todo: ReportTactic, ReportTactic::Never,
         "Report all, none or unnumbered occurrences of TODO in source file comments";
     report_fixme: ReportTactic, ReportTactic::Never,
