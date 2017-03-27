@@ -176,7 +176,6 @@ pub trait CrateStore {
     fn item_generics_cloned(&self, def: DefId) -> ty::Generics;
     fn item_attrs(&self, def_id: DefId) -> Vec<ast::Attribute>;
     fn fn_arg_names(&self, did: DefId) -> Vec<ast::Name>;
-    fn inherent_implementations_for_type(&self, def_id: DefId) -> Vec<DefId>;
 
     // trait info
     fn implementations_of_trait(&self, filter: Option<DefId>) -> Vec<DefId>;
@@ -310,7 +309,6 @@ impl CrateStore for DummyCrateStore {
         { bug!("item_generics_cloned") }
     fn item_attrs(&self, def_id: DefId) -> Vec<ast::Attribute> { bug!("item_attrs") }
     fn fn_arg_names(&self, did: DefId) -> Vec<ast::Name> { bug!("fn_arg_names") }
-    fn inherent_implementations_for_type(&self, def_id: DefId) -> Vec<DefId> { vec![] }
 
     // trait info
     fn implementations_of_trait(&self, filter: Option<DefId>) -> Vec<DefId> { vec![] }
