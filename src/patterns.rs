@@ -266,55 +266,54 @@ fn rewrite_tuple_pat(pats: &[ptr::P<ast::Pat>],
     }
 
     if pat_vec.is_empty() {
-        path_str
+        return Some(format!("{}()", try_opt!(path_str)));
+    }
+    // add comma if `(x,)`
+    let add_comma = path_str.is_none() && pat_vec.len() == 1 && dotdot_pos.is_none();
+
+    let path_len = path_str.as_ref().map(|p| p.len()).unwrap_or(0);
+    // 2 = "()".len(), 3 = "(,)".len()
+    let nested_shape = try_opt!(shape.sub_width(path_len + if add_comma { 3 } else { 2 }));
+    // 1 = "(".len()
+    let nested_shape = nested_shape.visual_indent(path_len + 1);
+    let mut items: Vec<_> = itemize_list(context.codemap,
+                                         pat_vec.iter(),
+                                         if add_comma { ",)" } else { ")" },
+                                         |item| item.span().lo,
+                                         |item| item.span().hi,
+                                         |item| item.rewrite(context, nested_shape),
+                                         context.codemap.span_after(span, "("),
+                                         span.hi - BytePos(1))
+            .collect();
+
+    // Condense wildcard string suffix into a single ..
+    let wildcard_suffix_len = count_wildcard_suffix_len(&items);
+
+    let list = if context.config.condense_wildcard_suffices && wildcard_suffix_len >= 2 {
+        let new_item_count = 1 + pats.len() - wildcard_suffix_len;
+        items[new_item_count - 1].item = Some("..".to_owned());
+
+        let da_iter = items.into_iter().take(new_item_count);
+        try_opt!(format_item_list(da_iter, nested_shape, context.config))
     } else {
-        // add comma if `(x,)`
-        let add_comma = path_str.is_none() && pat_vec.len() == 1 && dotdot_pos.is_none();
+        try_opt!(format_item_list(items.into_iter(), nested_shape, context.config))
+    };
 
-        let path_len = path_str.as_ref().map(|p| p.len()).unwrap_or(0);
-        // 2 = "()".len(), 3 = "(,)".len()
-        let nested_shape = try_opt!(shape.sub_width(path_len + if add_comma { 3 } else { 2 }));
-        // 1 = "(".len()
-        let nested_shape = nested_shape.visual_indent(path_len + 1);
-        let mut items: Vec<_> = itemize_list(context.codemap,
-                                             pat_vec.iter(),
-                                             if add_comma { ",)" } else { ")" },
-                                             |item| item.span().lo,
-                                             |item| item.span().hi,
-                                             |item| item.rewrite(context, nested_shape),
-                                             context.codemap.span_after(span, "("),
-                                             span.hi - BytePos(1))
-                .collect();
-
-        // Condense wildcard string suffix into a single ..
-        let wildcard_suffix_len = count_wildcard_suffix_len(&items);
-
-        let list = if context.config.condense_wildcard_suffices && wildcard_suffix_len >= 2 {
-            let new_item_count = 1 + pats.len() - wildcard_suffix_len;
-            items[new_item_count - 1].item = Some("..".to_owned());
-
-            let da_iter = items.into_iter().take(new_item_count);
-            try_opt!(format_item_list(da_iter, nested_shape, context.config))
-        } else {
-            try_opt!(format_item_list(items.into_iter(), nested_shape, context.config))
-        };
-
-        match path_str {
-            Some(path_str) => {
-                Some(if context.config.spaces_within_parens {
-                         format!("{}( {} )", path_str, list)
-                     } else {
-                         format!("{}({})", path_str, list)
-                     })
-            }
-            None => {
-                let comma = if add_comma { "," } else { "" };
-                Some(if context.config.spaces_within_parens {
-                         format!("( {}{} )", list, comma)
-                     } else {
-                         format!("({}{})", list, comma)
-                     })
-            }
+    match path_str {
+        Some(path_str) => {
+            Some(if context.config.spaces_within_parens {
+                     format!("{}( {} )", path_str, list)
+                 } else {
+                     format!("{}({})", path_str, list)
+                 })
+        }
+        None => {
+            let comma = if add_comma { "," } else { "" };
+            Some(if context.config.spaces_within_parens {
+                     format!("( {}{} )", list, comma)
+                 } else {
+                     format!("({}{})", list, comma)
+                 })
         }
     }
 }
