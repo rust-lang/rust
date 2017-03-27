@@ -565,7 +565,7 @@ pub mod option;
 /// assert_eq!(&[5], slice);
 /// ```
 ///
-/// A more compelx example. In this case, it’s the same example, because this
+/// A more complex example. In this case, it’s the same example, because this
 /// is a pretty trivial function, but use your imagination.
 ///
 /// ```
