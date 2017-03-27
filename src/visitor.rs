@@ -476,7 +476,8 @@ impl<'a> FmtVisitor<'a> {
             return true;
         }
 
-        let outers: Vec<_> = attrs.iter()
+        let outers: Vec<_> = attrs
+            .iter()
             .filter(|a| a.style == ast::AttrStyle::Outer)
             .cloned()
             .collect();
@@ -487,10 +488,10 @@ impl<'a> FmtVisitor<'a> {
         let first = &outers[0];
         self.format_missing_with_indent(source!(self, first.span).lo);
 
-        let rewrite = outers.rewrite(&self.get_context(),
-                                     Shape::legacy(self.config.max_width -
-                                                   self.block_indent.width(),
-                                                   self.block_indent))
+        let rewrite = outers
+            .rewrite(&self.get_context(),
+                     Shape::legacy(self.config.max_width - self.block_indent.width(),
+                                   self.block_indent))
             .unwrap();
         self.buffer.push_str(&rewrite);
         let last = outers.last().unwrap();

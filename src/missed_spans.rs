@@ -83,7 +83,8 @@ impl<'a> FmtVisitor<'a> {
         let local_end = self.codemap.lookup_byte_offset(span.hi);
         let start_index = local_begin.pos.to_usize();
         let end_index = local_end.pos.to_usize();
-        let big_snippet = &local_begin.fm
+        let big_snippet = &local_begin
+                               .fm
                                .src
                                .as_ref()
                                .unwrap()

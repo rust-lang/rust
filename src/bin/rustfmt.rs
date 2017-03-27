@@ -226,7 +226,8 @@ fn execute(opts: &Options) -> FmtResult<Summary> {
             let options = try!(CliOptions::from_matches(&matches));
 
             // Add any additional files that were specified via `--file-lines`.
-            files.extend(options.file_lines
+            files.extend(options
+                             .file_lines
                              .files()
                              .cloned()
                              .map(PathBuf::from));
@@ -338,7 +339,8 @@ fn determine_operation(matches: &Matches) -> FmtResult<Operation> {
     }
 
     // Read the config_path and convert to parent dir if a file is provided.
-    let config_path: Option<PathBuf> = matches.opt_str("config-path")
+    let config_path: Option<PathBuf> = matches
+        .opt_str("config-path")
         .map(PathBuf::from)
         .and_then(|dir| {
                       if dir.is_file() {
@@ -360,7 +362,8 @@ fn determine_operation(matches: &Matches) -> FmtResult<Operation> {
     }
 
     // We append files from `--file-lines` later in `execute()`.
-    let files: Vec<_> = matches.free
+    let files: Vec<_> = matches
+        .free
         .iter()
         .map(PathBuf::from)
         .collect();

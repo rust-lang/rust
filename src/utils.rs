@@ -127,7 +127,8 @@ pub fn contains_skip(attrs: &[Attribute]) -> bool {
 // Find the end of a TyParam
 #[inline]
 pub fn end_typaram(typaram: &ast::TyParam) -> BytePos {
-    typaram.bounds
+    typaram
+        .bounds
         .last()
         .map_or(typaram.span, |bound| match *bound {
             ast::RegionTyParamBound(ref lt) => lt.span,
@@ -278,7 +279,8 @@ pub fn wrap_str<S: AsRef<str>>(s: S, max_width: usize, shape: Shape) -> Option<S
             // indentation.
             // A special check for the last line, since the caller may
             // place trailing characters on this line.
-            if snippet.lines()
+            if snippet
+                   .lines()
                    .rev()
                    .next()
                    .unwrap()

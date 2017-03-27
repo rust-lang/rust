@@ -275,7 +275,8 @@ pub fn write_list<I, T>(items: I, formatting: &ListFormatting) -> Option<String>
 
         if tactic == DefinitiveListTactic::Vertical && item.post_comment.is_some() {
             // 1 = space between item and comment.
-            let width = formatting.shape
+            let width = formatting
+                .shape
                 .width
                 .checked_sub(item_last_line_width + 1)
                 .unwrap_or(1);
@@ -397,8 +398,8 @@ impl<'a, T, I, F1, F2, F3> Iterator for ListItems<'a, I, F1, F2, F3>
                 let first_newline = test_snippet.find('\n').unwrap_or(test_snippet.len());
                 // From the end of the first line of comments.
                 let test_snippet = &test_snippet[first_newline..];
-                let first = test_snippet.find(|c: char| !c.is_whitespace())
-                    .unwrap_or(test_snippet.len());
+                let first =
+                    test_snippet.find(|c: char| !c.is_whitespace()).unwrap_or(test_snippet.len());
                 // From the end of the first line of comments to the next non-whitespace char.
                 let test_snippet = &test_snippet[..first];
 

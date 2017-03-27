@@ -191,7 +191,8 @@ impl<'a> FmtVisitor<'a> {
     pub fn format_imports(&mut self, use_items: &[ptr::P<ast::Item>]) {
         // Find the location immediately before the first use item in the run. This must not lie
         // before the current `self.last_pos`
-        let pos_before_first_use_item = use_items.first()
+        let pos_before_first_use_item = use_items
+            .first()
             .map(|p_i| {
                      cmp::max(self.last_pos,
                               p_i.attrs
@@ -204,7 +205,8 @@ impl<'a> FmtVisitor<'a> {
         // Construct a list of pairs, each containing a `use` item and the start of span before
         // that `use` item.
         let mut last_pos_of_prev_use_item = pos_before_first_use_item;
-        let mut ordered_use_items = use_items.iter()
+        let mut ordered_use_items = use_items
+            .iter()
             .map(|p_i| {
                      let new_item = (&*p_i, last_pos_of_prev_use_item);
                      last_pos_of_prev_use_item = p_i.span.hi;

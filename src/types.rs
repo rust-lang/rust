@@ -206,7 +206,8 @@ fn rewrite_segment(path_context: PathContext,
                     .chain(data.bindings.iter().map(|x| SegmentParam::Binding(&*x)))
                     .collect::<Vec<_>>();
 
-                let next_span_lo = param_list.last()
+                let next_span_lo = param_list
+                    .last()
                     .unwrap()
                     .get_span()
                     .hi + BytePos(1);
@@ -297,28 +298,28 @@ fn format_function_type<'a, I>(inputs: I,
     // 1 for (
     let offset = shape.indent + 1;
     let list_lo = context.codemap.span_after(span, "(");
-    let items = itemize_list(context.codemap,
-                             // FIXME Would be nice to avoid this allocation,
-                             // but I couldn't get the types to work out.
-                             inputs.map(|i| ArgumentKind::Regular(Box::new(i)))
-                                 .chain(variadic_arg),
-                             ")",
-                             |arg| match *arg {
-                                 ArgumentKind::Regular(ref ty) => ty.span().lo,
-                                 ArgumentKind::Variadic(start) => start,
-                             },
-                             |arg| match *arg {
-                                 ArgumentKind::Regular(ref ty) => ty.span().hi,
-                                 ArgumentKind::Variadic(start) => start + BytePos(3),
-                             },
-                             |arg| match *arg {
-                                 ArgumentKind::Regular(ref ty) => {
-                                     ty.rewrite(context, Shape::legacy(budget, offset))
-                                 }
-                                 ArgumentKind::Variadic(_) => Some("...".to_owned()),
-                             },
-                             list_lo,
-                             span.hi);
+    let items =
+        itemize_list(context.codemap,
+                     // FIXME Would be nice to avoid this allocation,
+                     // but I couldn't get the types to work out.
+                     inputs.map(|i| ArgumentKind::Regular(Box::new(i))).chain(variadic_arg),
+                     ")",
+                     |arg| match *arg {
+                         ArgumentKind::Regular(ref ty) => ty.span().lo,
+                         ArgumentKind::Variadic(start) => start,
+                     },
+                     |arg| match *arg {
+                         ArgumentKind::Regular(ref ty) => ty.span().hi,
+                         ArgumentKind::Variadic(start) => start + BytePos(3),
+                     },
+                     |arg| match *arg {
+                         ArgumentKind::Regular(ref ty) => {
+                             ty.rewrite(context, Shape::legacy(budget, offset))
+                         }
+                         ArgumentKind::Variadic(_) => Some("...".to_owned()),
+                     },
+                     list_lo,
+                     span.hi);
 
     let list_str = try_opt!(format_fn_args(items, Shape::legacy(budget, offset), context.config));
 
@@ -680,7 +681,8 @@ fn rewrite_bare_fn(bare_fn: &ast::BareFnTy,
         // 6 = "for<> ".len(), 4 = "for<".
         // This doesn't work out so nicely for mutliline situation with lots of
         // rightward drift. If that is a problem, we could use the list stuff.
-        result.push_str(&try_opt!(bare_fn.lifetimes
+        result.push_str(&try_opt!(bare_fn
+                                      .lifetimes
                                       .iter()
                                       .map(|l| {
                                                l.rewrite(context,

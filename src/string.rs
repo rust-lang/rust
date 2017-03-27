@@ -42,7 +42,8 @@ pub fn rewrite_string<'a>(orig: &str, fmt: &StringFormat<'a>) -> Option<String> 
 
     // `cur_start` is the position in `orig` of the start of the current line.
     let mut cur_start = 0;
-    let mut result = String::with_capacity(stripped_str.len()
+    let mut result = String::with_capacity(stripped_str
+                                               .len()
                                                .checked_next_power_of_two()
                                                .unwrap_or(usize::max_value()));
     result.push_str(fmt.opener);

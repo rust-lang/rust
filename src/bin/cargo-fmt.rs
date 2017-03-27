@@ -96,7 +96,8 @@ fn format_crate(verbosity: Verbosity) -> Result<ExitStatus, std::io::Error> {
     let targets = try!(get_targets());
 
     // Currently only bin and lib files get formatted
-    let files: Vec<_> = targets.into_iter()
+    let files: Vec<_> = targets
+        .into_iter()
         .filter(|t| t.kind.should_format())
         .inspect(|t| if verbosity == Verbosity::Verbose {
                      println!("[{:?}] {:?}", t.kind, t.path)
@@ -165,11 +166,13 @@ fn get_targets() -> Result<Vec<Target>, std::io::Error> {
 
 fn target_from_json(jtarget: &Json) -> Target {
     let jtarget = jtarget.as_object().unwrap();
-    let path = PathBuf::from(jtarget.get("src_path")
+    let path = PathBuf::from(jtarget
+                                 .get("src_path")
                                  .unwrap()
                                  .as_string()
                                  .unwrap());
-    let kinds = jtarget.get("kind")
+    let kinds = jtarget
+        .get("kind")
         .unwrap()
         .as_array()
         .unwrap();

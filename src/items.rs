@@ -1129,7 +1129,8 @@ pub fn rewrite_type_alias(context: &RewriteContext,
     let line_width = last_line_width(&result);
     // This checked_sub may fail as the extra space after '=' is not taken into account
     // In that case the budget is set to 0 which will make ty.rewrite retry on a new line
-    let budget = context.config
+    let budget = context
+        .config
         .max_width
         .checked_sub(indent.width() + line_width + ";".len())
         .unwrap_or(0);
@@ -1720,12 +1721,12 @@ fn rewrite_args(context: &RewriteContext,
     // Account for sugary self.
     // FIXME: the comment for the self argument is dropped. This is blocked
     // on rust issue #27522.
-    let min_args =
-        explicit_self.and_then(|explicit_self| rewrite_explicit_self(explicit_self, args, context))
-            .map_or(1, |self_str| {
-                arg_item_strs[0] = self_str;
-                2
-            });
+    let min_args = explicit_self
+        .and_then(|explicit_self| rewrite_explicit_self(explicit_self, args, context))
+        .map_or(1, |self_str| {
+            arg_item_strs[0] = self_str;
+            2
+        });
 
     // Comments between args.
     let mut arg_items = Vec::new();
@@ -1852,7 +1853,8 @@ fn compute_budgets_for_args(context: &RewriteContext,
         if !newline_brace {
             used_space += 2;
         }
-        let one_line_budget = context.config
+        let one_line_budget = context
+            .config
             .max_width
             .checked_sub(used_space)
             .unwrap_or(0);
@@ -1962,7 +1964,8 @@ fn rewrite_trait_bounds(context: &RewriteContext,
         return Some(String::new());
     }
 
-    let bound_str = try_opt!(bounds.iter()
+    let bound_str = try_opt!(bounds
+                                 .iter()
                                  .map(|ty_bound| ty_bound.rewrite(&context, shape))
                                  .intersperse(Some(" + ".to_string()))
                                  .collect::<Option<String>>());

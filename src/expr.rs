@@ -360,7 +360,8 @@ pub fn rewrite_array<'a, I>(expr_iter: I,
         }
     }
 
-    let has_long_item = try_opt!(items.iter()
+    let has_long_item = try_opt!(items
+                                     .iter()
                                      .map(|li| li.item.as_ref().map(|s| s.len() > 10))
                                      .fold(Some(false),
                                            |acc, x| acc.and_then(|y| x.map(|x| x || y))));
@@ -1308,7 +1309,8 @@ impl Rewrite for ast::Arm {
         // Let's try and get the arm body on the same line as the condition.
         // 4 = ` => `.len()
         if shape.width > pat_width + comma.len() + 4 {
-            let arm_shape = shape.shrink_left(pat_width + 4)
+            let arm_shape = shape
+                .shrink_left(pat_width + 4)
                 .unwrap()
                 .sub_width(comma.len())
                 .unwrap()
@@ -1404,7 +1406,8 @@ fn rewrite_guard(context: &RewriteContext,
         // 4 = ` if `, 5 = ` => {`
         let overhead = pattern_width + 4 + 5;
         if overhead < shape.width {
-            let cond_shape = shape.shrink_left(pattern_width + 4)
+            let cond_shape = shape
+                .shrink_left(pattern_width + 4)
                 .unwrap()
                 .sub_width(5)
                 .unwrap();
@@ -1424,7 +1427,8 @@ fn rewrite_guard(context: &RewriteContext,
                                                        3));
             if let Some(cond_str) = cond_str {
                 return Some(format!("\n{}if {}",
-                                    shape.indent
+                                    shape
+                                        .indent
                                         .block_indent(context.config)
                                         .to_string(context.config),
                                     cond_str));
@@ -1538,7 +1542,8 @@ fn string_requires_rewrite(context: &RewriteContext,
                            string: &str,
                            shape: Shape)
                            -> bool {
-    if context.codemap
+    if context
+           .codemap
            .lookup_char_pos(span.lo)
            .col
            .0 != shape.indent.width() {
@@ -1610,7 +1615,8 @@ fn rewrite_call_inner<R>(context: &RewriteContext,
 
     let nested_shape = match context.config.fn_call_style {
         IndentStyle::Block => {
-            shape.block()
+            shape
+                .block()
                 .block_indent(context.config.tab_spaces)
                 .sub_width(context.config.tab_spaces)
         }
@@ -1781,9 +1787,9 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
         return Some(format!("{} {{}}", path_str));
     }
 
-    let field_iter = fields.into_iter()
-        .map(StructLitField::Regular)
-        .chain(base.into_iter().map(StructLitField::Base));
+    let field_iter =
+        fields.into_iter().map(StructLitField::Regular).chain(base.into_iter()
+                                                                  .map(StructLitField::Base));
 
     // Foo { a: Foo } - indent is +3, width is -5.
     let (h_shape, v_shape) = try_opt!(struct_lit_shape(shape, context, path_str.len() + 3, 2));
@@ -1895,7 +1901,8 @@ pub fn rewrite_tuple<'a, I>(context: &RewriteContext,
     if items.len() == 1 {
         // 3 = "(" + ",)"
         let nested_shape = try_opt!(shape.sub_width(3)).visual_indent(1);
-        return items.next()
+        return items
+                   .next()
                    .unwrap()
                    .rewrite(context, nested_shape)
                    .map(|s| if context.config.spaces_within_parens {

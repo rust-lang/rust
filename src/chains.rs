@@ -113,8 +113,9 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
         } else {
             chain_indent(context, shape.add_offset(parent_rewrite.len()))
         };
-        (nested_shape, context.config.chain_indent == IndentStyle::Visual ||
-                       parent_rewrite.len() <= context.config.tab_spaces)
+        (nested_shape,
+         context.config.chain_indent == IndentStyle::Visual ||
+         parent_rewrite.len() <= context.config.tab_spaces)
     } else if is_block_expr(&parent, &parent_rewrite) {
         // The parent is a block, so align the rest of the chain with the closing
         // brace.
@@ -425,7 +426,8 @@ fn rewrite_method_call(method_name: ast::Ident,
             format!("::<{}>", type_list.join(", "))
         };
 
-        (types.last()
+        (types
+             .last()
              .unwrap()
              .span
              .hi,
