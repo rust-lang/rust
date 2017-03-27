@@ -38,10 +38,11 @@ impl Rewrite for Pat {
                 let sub_pat = match *sub_pat {
                     Some(ref p) => {
                         // 3 - ` @ `.
-                        let width = try_opt!(shape.width.checked_sub(prefix.len() +
-                                                                     mut_infix.len() +
-                                                                     id_str.len() +
-                                                                     3));
+                        let width = try_opt!(shape
+                                                 .width
+                                                 .checked_sub(prefix.len() + mut_infix.len() +
+                                                              id_str.len() +
+                                                              3));
                         format!(" @ {}",
                                 try_opt!(p.rewrite(context, Shape::legacy(width, shape.indent))))
                     }
@@ -91,16 +92,22 @@ impl Rewrite for Pat {
             PatKind::Lit(ref expr) => expr.rewrite(context, shape),
             PatKind::Slice(ref prefix, ref slice_pat, ref suffix) => {
                 // Rewrite all the sub-patterns.
-                let prefix = prefix.iter().map(|p| p.rewrite(context, shape));
-                let slice_pat = slice_pat.as_ref().map(|p| {
-                                                           Some(format!("{}..",
-                                                            try_opt!(p.rewrite(context, shape))))
-                                                       });
-                let suffix = suffix.iter().map(|p| p.rewrite(context, shape));
+                let prefix = prefix
+                    .iter()
+                    .map(|p| p.rewrite(context, shape));
+                let slice_pat =
+                    slice_pat
+                        .as_ref()
+                        .map(|p| Some(format!("{}..", try_opt!(p.rewrite(context, shape)))));
+                let suffix = suffix
+                    .iter()
+                    .map(|p| p.rewrite(context, shape));
 
                 // Munge them together.
-                let pats: Option<Vec<String>> =
-                    prefix.chain(slice_pat.into_iter()).chain(suffix).collect();
+                let pats: Option<Vec<String>> = prefix
+                    .chain(slice_pat.into_iter())
+                    .chain(suffix)
+                    .collect();
 
                 // Check that all the rewrites succeeded, and if not return None.
                 let pats = try_opt!(pats);
@@ -239,7 +246,9 @@ fn rewrite_tuple_pat(pats: &[ptr::P<ast::Pat>],
                      context: &RewriteContext,
                      shape: Shape)
                      -> Option<String> {
-    let mut pat_vec: Vec<_> = pats.into_iter().map(|x| TuplePatField::Pat(x)).collect();
+    let mut pat_vec: Vec<_> = pats.into_iter()
+        .map(|x| TuplePatField::Pat(x))
+        .collect();
 
     if let Some(pos) = dotdot_pos {
         let prev = if pos == 0 {
@@ -271,7 +280,10 @@ fn rewrite_tuple_pat(pats: &[ptr::P<ast::Pat>],
     // add comma if `(x,)`
     let add_comma = path_str.is_none() && pat_vec.len() == 1 && dotdot_pos.is_none();
 
-    let path_len = path_str.as_ref().map(|p| p.len()).unwrap_or(0);
+    let path_len = path_str
+        .as_ref()
+        .map(|p| p.len())
+        .unwrap_or(0);
     // 2 = "()".len(), 3 = "(,)".len()
     let nested_shape = try_opt!(shape.sub_width(path_len + if add_comma { 3 } else { 2 }));
     // 1 = "(".len()
@@ -321,11 +333,13 @@ fn rewrite_tuple_pat(pats: &[ptr::P<ast::Pat>],
 fn count_wildcard_suffix_len(items: &[ListItem]) -> usize {
     let mut suffix_len = 0;
 
-    for item in items.iter().rev().take_while(|i| match i.item {
-                                                  Some(ref internal_string) if internal_string ==
-                                                                               "_" => true,
-                                                  _ => false,
-                                              }) {
+    for item in items
+            .iter()
+            .rev()
+            .take_while(|i| match i.item {
+                            Some(ref internal_string) if internal_string == "_" => true,
+                            _ => false,
+                        }) {
         suffix_len += 1;
 
         if item.pre_comment.is_some() || item.post_comment.is_some() {

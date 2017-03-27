@@ -110,7 +110,10 @@ fn format_crate(verbosity: Verbosity) -> Result<ExitStatus, std::io::Error> {
 
 fn get_fmt_args() -> Vec<String> {
     // All arguments after -- are passed to rustfmt
-    env::args().skip_while(|a| a != "--").skip(1).collect()
+    env::args()
+        .skip_while(|a| a != "--")
+        .skip(1)
+        .collect()
 }
 
 #[derive(Debug)]
@@ -143,7 +146,9 @@ pub struct Target {
 // Returns a vector of all compile targets of a crate
 fn get_targets() -> Result<Vec<Target>, std::io::Error> {
     let mut targets: Vec<Target> = vec![];
-    let output = try!(Command::new("cargo").arg("read-manifest").output());
+    let output = try!(Command::new("cargo")
+                          .arg("read-manifest")
+                          .output());
     if output.status.success() {
         // None of the unwraps should fail if output of `cargo read-manifest` is correct
         let data = &String::from_utf8(output.stdout).unwrap();

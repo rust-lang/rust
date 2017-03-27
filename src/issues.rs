@@ -225,12 +225,15 @@ fn find_unnumbered_issue() {
     fn check_fail(text: &str, failing_pos: usize) {
         let mut seeker = BadIssueSeeker::new(ReportTactic::Unnumbered, ReportTactic::Unnumbered);
         assert_eq!(Some(failing_pos),
-                   text.chars().position(|c| seeker.inspect(c).is_some()));
+                   text.chars()
+                       .position(|c| seeker.inspect(c).is_some()));
     }
 
     fn check_pass(text: &str) {
         let mut seeker = BadIssueSeeker::new(ReportTactic::Unnumbered, ReportTactic::Unnumbered);
-        assert_eq!(None, text.chars().position(|c| seeker.inspect(c).is_some()));
+        assert_eq!(None,
+                   text.chars()
+                       .position(|c| seeker.inspect(c).is_some()));
     }
 
     check_fail("TODO\n", 4);
@@ -250,7 +253,8 @@ fn find_unnumbered_issue() {
 fn find_issue() {
     fn is_bad_issue(text: &str, report_todo: ReportTactic, report_fixme: ReportTactic) -> bool {
         let mut seeker = BadIssueSeeker::new(report_todo, report_fixme);
-        text.chars().any(|c| seeker.inspect(c).is_some())
+        text.chars()
+            .any(|c| seeker.inspect(c).is_some())
     }
 
     assert!(is_bad_issue("TODO(@maintainer, #1222, hello)\n",

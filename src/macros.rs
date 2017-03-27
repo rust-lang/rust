@@ -109,7 +109,10 @@ pub fn rewrite_macro(mac: &ast::Mac,
             let expr = match parser.parse_expr() {
                 Ok(expr) => {
                     // Recovered errors.
-                    if context.parse_session.span_diagnostic.has_errors() {
+                    if context
+                           .parse_session
+                           .span_diagnostic
+                           .has_errors() {
                         return None;
                     }
 
@@ -156,13 +159,15 @@ pub fn rewrite_macro(mac: &ast::Mac,
             // Format macro invocation as array literal.
             let extra_offset = macro_name.len();
             let shape = try_opt!(shape.shrink_left(extra_offset));
-            let rewrite =
-                try_opt!(rewrite_array(expr_vec.iter().map(|x| &**x),
-                                       mk_sp(context.codemap.span_after(mac.span,
-                                                                        original_style.opener()),
-                                             mac.span.hi - BytePos(1)),
-                                       context,
-                                       shape));
+            let rewrite = try_opt!(rewrite_array(expr_vec.iter().map(|x| &**x),
+                                                 mk_sp(context
+                                                           .codemap
+                                                           .span_after(mac.span,
+                                                                       original_style
+                                                                           .opener()),
+                                                       mac.span.hi - BytePos(1)),
+                                                 context,
+                                                 shape));
 
             Some(format!("{}{}", macro_name, rewrite))
         }
@@ -193,9 +198,15 @@ pub fn convert_try_mac(mac: &ast::Mac, context: &RewriteContext) -> Option<ast::
 
 fn macro_style(mac: &ast::Mac, context: &RewriteContext) -> MacroStyle {
     let snippet = context.snippet(mac.span);
-    let paren_pos = snippet.find_uncommented("(").unwrap_or(usize::max_value());
-    let bracket_pos = snippet.find_uncommented("[").unwrap_or(usize::max_value());
-    let brace_pos = snippet.find_uncommented("{").unwrap_or(usize::max_value());
+    let paren_pos = snippet
+        .find_uncommented("(")
+        .unwrap_or(usize::max_value());
+    let bracket_pos = snippet
+        .find_uncommented("[")
+        .unwrap_or(usize::max_value());
+    let brace_pos = snippet
+        .find_uncommented("{")
+        .unwrap_or(usize::max_value());
 
     if paren_pos < bracket_pos && paren_pos < brace_pos {
         MacroStyle::Parens

@@ -42,10 +42,14 @@ pub fn make_diff(expected: &str, actual: &str, context_size: usize) -> Vec<Misma
                 }
 
                 while let Some(line) = context_queue.pop_front() {
-                    mismatch.lines.push(DiffLine::Context(line.to_owned()));
+                    mismatch
+                        .lines
+                        .push(DiffLine::Context(line.to_owned()));
                 }
 
-                mismatch.lines.push(DiffLine::Resulting(str.to_owned()));
+                mismatch
+                    .lines
+                    .push(DiffLine::Resulting(str.to_owned()));
                 lines_since_mismatch = 0;
             }
             diff::Result::Right(str) => {
@@ -55,10 +59,14 @@ pub fn make_diff(expected: &str, actual: &str, context_size: usize) -> Vec<Misma
                 }
 
                 while let Some(line) = context_queue.pop_front() {
-                    mismatch.lines.push(DiffLine::Context(line.to_owned()));
+                    mismatch
+                        .lines
+                        .push(DiffLine::Context(line.to_owned()));
                 }
 
-                mismatch.lines.push(DiffLine::Expected(str.to_owned()));
+                mismatch
+                    .lines
+                    .push(DiffLine::Expected(str.to_owned()));
                 line_number += 1;
                 lines_since_mismatch = 0;
             }
@@ -68,7 +76,9 @@ pub fn make_diff(expected: &str, actual: &str, context_size: usize) -> Vec<Misma
                 }
 
                 if lines_since_mismatch < context_size {
-                    mismatch.lines.push(DiffLine::Context(str.to_owned()));
+                    mismatch
+                        .lines
+                        .push(DiffLine::Context(str.to_owned()));
                 } else {
                     context_queue.push_back(str);
                 }

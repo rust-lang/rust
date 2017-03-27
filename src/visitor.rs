@@ -48,7 +48,9 @@ impl<'a> FmtVisitor<'a> {
                self.codemap.lookup_char_pos(stmt.span.hi));
 
         // FIXME(#434): Move this check to somewhere more central, eg Rewrite.
-        if !self.config.file_lines.contains(&self.codemap.lookup_line_range(stmt.span)) {
+        if !self.config
+                .file_lines
+                .contains(&self.codemap.lookup_line_range(stmt.span)) {
             return;
         }
 
@@ -116,7 +118,8 @@ impl<'a> FmtVisitor<'a> {
         } else {
             self.config.tab_spaces
         };
-        self.buffer.truncate(total_len - chars_too_many);
+        self.buffer
+            .truncate(total_len - chars_too_many);
         self.buffer.push_str("}");
         self.block_indent = self.block_indent.block_unindent(self.config);
     }
@@ -187,7 +190,9 @@ impl<'a> FmtVisitor<'a> {
         // the AST lumps them all together.
         match item.node {
             ast::ItemKind::Mod(ref m) => {
-                let outer_file = self.codemap.lookup_char_pos(item.span.lo).file;
+                let outer_file = self.codemap
+                    .lookup_char_pos(item.span.lo)
+                    .file;
                 let inner_file = self.codemap.lookup_char_pos(m.inner.lo).file;
                 if outer_file.name == inner_file.name {
                     // Module is inline, in this case we treat modules like any
@@ -506,8 +511,10 @@ impl<'a> FmtVisitor<'a> {
             // to be potentially reordered within `format_imports`. Otherwise, just format the
             // next item for output.
             if self.config.reorder_imports && is_use_item(&*items_left[0]) {
-                let use_item_length =
-                    items_left.iter().take_while(|ppi| is_use_item(&***ppi)).count();
+                let use_item_length = items_left
+                    .iter()
+                    .take_while(|ppi| is_use_item(&***ppi))
+                    .count();
                 let (use_items, rest) = items_left.split_at(use_item_length);
                 self.format_imports(use_items);
                 items_left = rest;
@@ -528,7 +535,8 @@ impl<'a> FmtVisitor<'a> {
         let is_internal = !(inner_span.lo.0 == 0 && inner_span.hi.0 == 0) &&
                           local_file_name == self.codemap.span_to_filename(inner_span);
 
-        self.buffer.push_str(&*utils::format_visibility(vis));
+        self.buffer
+            .push_str(&*utils::format_visibility(vis));
         self.buffer.push_str("mod ");
         self.buffer.push_str(&ident.to_string());
 

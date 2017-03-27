@@ -141,7 +141,10 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
         match context.config.chain_indent {
             IndentStyle::Visual => other_child_shape,
             IndentStyle::Block => {
-                shape.offset = shape.offset.checked_sub(context.config.tab_spaces).unwrap_or(0);
+                shape.offset = shape
+                    .offset
+                    .checked_sub(context.config.tab_spaces)
+                    .unwrap_or(0);
                 shape.indent.block_indent += context.config.tab_spaces;
                 shape
             }
@@ -154,29 +157,39 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
            other_child_shape);
 
     let child_shape_iter =
-        Some(first_child_shape).into_iter().chain(::std::iter::repeat(other_child_shape)
-                                                      .take(subexpr_list.len() - 1));
-    let iter = subexpr_list.iter().rev().zip(child_shape_iter);
+        Some(first_child_shape)
+            .into_iter()
+            .chain(::std::iter::repeat(other_child_shape).take(subexpr_list.len() - 1));
+    let iter = subexpr_list
+        .iter()
+        .rev()
+        .zip(child_shape_iter);
     let mut rewrites =
         try_opt!(iter.map(|(e, shape)| rewrite_chain_subexpr(e, total_span, context, shape))
                      .collect::<Option<Vec<_>>>());
 
     // Total of all items excluding the last.
-    let almost_total = rewrites[..rewrites.len() - 1].iter().fold(0, |a, b| {
-        a + first_line_width(b)
-    }) + parent_rewrite.len();
+    let almost_total = rewrites[..rewrites.len() - 1]
+        .iter()
+        .fold(0, |a, b| a + first_line_width(b)) + parent_rewrite.len();
     let one_line_len = rewrites.iter().fold(0, |a, r| a + r.len() + 1) + parent_rewrite.len();
 
-    let veto_single_line = if one_line_len > context.config.chain_one_line_max - 1 && rewrites.len() > 1 {
+    let veto_single_line = if one_line_len > context.config.chain_one_line_max - 1 &&
+                              rewrites.len() > 1 {
         true
     } else if context.config.take_source_hints && subexpr_list.len() > 1 {
         // Look at the source code. Unless all chain elements start on the same
         // line, we won't consider putting them on a single line either.
         let last_span = context.snippet(mk_sp(subexpr_list[1].span.hi, total_span.hi));
         let first_span = context.snippet(subexpr_list[1].span);
-        let last_iter = last_span.chars().take_while(|c| c.is_whitespace());
+        let last_iter = last_span
+            .chars()
+            .take_while(|c| c.is_whitespace());
 
-        first_span.chars().chain(last_iter).any(|c| c == '\n')
+        first_span
+            .chars()
+            .chain(last_iter)
+            .any(|c| c == '\n')
     } else {
         false
     };
@@ -228,11 +241,13 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
 
 // True if the chain is only `?`s.
 fn chain_only_try(exprs: &[ast::Expr]) -> bool {
-    exprs.iter().all(|e| if let ast::ExprKind::Try(_) = e.node {
-                         true
-                     } else {
-                         false
-                     })
+    exprs
+        .iter()
+        .all(|e| if let ast::ExprKind::Try(_) = e.node {
+                 true
+             } else {
+                 false
+             })
 }
 
 pub fn rewrite_try(expr: &ast::Expr,
@@ -243,7 +258,9 @@ pub fn rewrite_try(expr: &ast::Expr,
     let sub_expr = try_opt!(expr.rewrite(context, try_opt!(shape.sub_width(try_count))));
     Some(format!("{}{}",
                  sub_expr,
-                 iter::repeat("?").take(try_count).collect::<String>()))
+                 iter::repeat("?")
+                     .take(try_count)
+                     .collect::<String>()))
 }
 
 fn join_rewrites(rewrites: &[String], subexps: &[ast::Expr], connector: &str) -> String {
@@ -417,8 +434,10 @@ fn rewrite_method_call(method_name: ast::Ident,
     let (lo, type_str) = if types.is_empty() {
         (args[0].span.hi, String::new())
     } else {
-        let type_list: Vec<_> =
-            try_opt!(types.iter().map(|ty| ty.rewrite(context, shape)).collect());
+        let type_list: Vec<_> = try_opt!(types
+                                             .iter()
+                                             .map(|ty| ty.rewrite(context, shape))
+                                             .collect());
 
         let type_str = if context.config.spaces_within_angle_brackets && type_list.len() > 0 {
             format!("::< {} >", type_list.join(", "))
@@ -426,12 +445,7 @@ fn rewrite_method_call(method_name: ast::Ident,
             format!("::<{}>", type_list.join(", "))
         };
 
-        (types
-             .last()
-             .unwrap()
-             .span
-             .hi,
-         type_str)
+        (types.last().unwrap().span.hi, type_str)
     };
 
     let callee_str = format!(".{}{}", method_name, type_str);

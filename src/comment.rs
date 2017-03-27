@@ -84,7 +84,10 @@ pub fn rewrite_comment(orig: &str,
             ("// ", "", "// ")
         };
 
-    let max_chars = shape.width.checked_sub(closer.len() + opener.len()).unwrap_or(1);
+    let max_chars = shape
+        .width
+        .checked_sub(closer.len() + opener.len())
+        .unwrap_or(1);
     let indent_str = shape.indent.to_string(config);
     let fmt = StringFormat {
         opener: "",
@@ -597,9 +600,9 @@ fn changed_comment_content(orig: &str, new: &str) -> bool {
     // Cannot write this as a fn since we cannot return types containing closures
     let code_comment_content = |code| {
         let slices = UngroupedCommentCodeSlices::new(code);
-        slices.filter(|&(ref kind, _, _)| *kind == CodeCharKind::Comment).flat_map(|(_, _, s)| {
-            CommentReducer::new(s)
-        })
+        slices
+            .filter(|&(ref kind, _, _)| *kind == CodeCharKind::Comment)
+            .flat_map(|(_, _, s)| CommentReducer::new(s))
     };
     let res = code_comment_content(orig).ne(code_comment_content(new));
     debug!("comment::changed_comment_content: {}\norig: '{}'\nnew: '{}'\nraw_old: {}\nraw_new: {}",

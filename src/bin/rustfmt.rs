@@ -311,7 +311,10 @@ fn main() {
 fn print_usage(opts: &Options, reason: &str) {
     let reason = format!("{}\nusage: {} [options] <file>...",
                          reason,
-                         env::args_os().next().unwrap().to_string_lossy());
+                         env::args_os()
+                             .next()
+                             .unwrap()
+                             .to_string_lossy());
     println!("{}", opts.usage(&reason));
 }
 

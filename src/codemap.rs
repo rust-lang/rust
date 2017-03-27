@@ -26,10 +26,7 @@ pub struct LineRange {
 
 impl LineRange {
     pub fn file_name(&self) -> &str {
-        self.file
-            .as_ref()
-            .name
-            .as_str()
+        self.file.as_ref().name.as_str()
     }
 }
 

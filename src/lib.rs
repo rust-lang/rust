@@ -536,7 +536,9 @@ fn format_lines(text: &mut StringBuffer, name: &str, config: &Config, report: &m
                     });
     }
 
-    report.file_error_map.insert(name.to_owned(), errors);
+    report
+        .file_error_map
+        .insert(name.to_owned(), errors);
 }
 
 fn parse_input(input: Input,

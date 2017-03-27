@@ -46,14 +46,8 @@ fn compare_paths(a: &ast::Path, b: &ast::Path) -> Ordering {
 }
 
 fn compare_path_list_items(a: &ast::PathListItem, b: &ast::PathListItem) -> Ordering {
-    let a_name_str = &*a.node
-                           .name
-                           .name
-                           .as_str();
-    let b_name_str = &*b.node
-                           .name
-                           .name
-                           .as_str();
+    let a_name_str = &*a.node.name.name.as_str();
+    let b_name_str = &*b.node.name.name.as_str();
     let name_ordering = if a_name_str == "self" {
         if b_name_str == "self" {
             Ordering::Equal
@@ -71,7 +65,12 @@ fn compare_path_list_items(a: &ast::PathListItem, b: &ast::PathListItem) -> Orde
         match a.node.rename {
             Some(a_rename) => {
                 match b.node.rename {
-                    Some(b_rename) => a_rename.name.as_str().cmp(&b_rename.name.as_str()),
+                    Some(b_rename) => {
+                        a_rename
+                            .name
+                            .as_str()
+                            .cmp(&b_rename.name.as_str())
+                    }
                     None => Ordering::Greater,
                 }
             }
@@ -174,10 +173,7 @@ impl Rewrite for ast::ViewPath {
                 let prefix_shape = try_opt!(shape.sub_width(ident_str.len() + 4));
                 let path_str = try_opt!(rewrite_view_path_prefix(path, context, prefix_shape));
 
-                Some(if path.segments
-                            .last()
-                            .unwrap()
-                            .identifier == ident {
+                Some(if path.segments.last().unwrap().identifier == ident {
                          path_str
                      } else {
                          format!("{} as {}", path_str, ident_str)
@@ -328,7 +324,10 @@ pub fn rewrite_use_list(shape: Shape,
     let colons_offset = if path_str.is_empty() { 0 } else { 2 };
 
     // 2 = "{}"
-    let remaining_width = shape.width.checked_sub(path_str.len() + 2 + colons_offset).unwrap_or(0);
+    let remaining_width = shape
+        .width
+        .checked_sub(path_str.len() + 2 + colons_offset)
+        .unwrap_or(0);
 
     let mut items = {
         // Dummy value, see explanation below.
@@ -381,7 +380,9 @@ pub fn rewrite_use_list(shape: Shape,
 
 // Returns true when self item was found.
 fn move_self_to_front(items: &mut Vec<ListItem>) -> bool {
-    match items.iter().position(|item| item.item.as_ref().map(|x| &x[..]) == Some("self")) {
+    match items
+              .iter()
+              .position(|item| item.item.as_ref().map(|x| &x[..]) == Some("self")) {
         Some(pos) => {
             items[0] = items.remove(pos);
             true

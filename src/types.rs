@@ -163,10 +163,11 @@ impl<'a> Rewrite for SegmentParam<'a> {
                     TypeDensity::Compressed => format!("{}=", binding.ident),
                 };
                 let budget = try_opt!(shape.width.checked_sub(result.len()));
-                let rewrite = try_opt!(binding.ty.rewrite(context,
-                                                          Shape::legacy(budget,
-                                                                        shape.indent +
-                                                                        result.len())));
+                let rewrite =
+                    try_opt!(binding
+                                 .ty
+                                 .rewrite(context,
+                                          Shape::legacy(budget, shape.indent + result.len())));
                 result.push_str(&rewrite);
                 Some(result)
             }
@@ -202,16 +203,18 @@ fn rewrite_segment(path_context: PathContext,
                 let param_list = data.lifetimes
                     .iter()
                     .map(SegmentParam::LifeTime)
-                    .chain(data.types.iter().map(|x| SegmentParam::Type(&*x)))
-                    .chain(data.bindings.iter().map(|x| SegmentParam::Binding(&*x)))
+                    .chain(data.types
+                               .iter()
+                               .map(|x| SegmentParam::Type(&*x)))
+                    .chain(data.bindings
+                               .iter()
+                               .map(|x| SegmentParam::Binding(&*x)))
                     .collect::<Vec<_>>();
 
-                let next_span_lo = param_list
-                    .last()
-                    .unwrap()
-                    .get_span()
-                    .hi + BytePos(1);
-                let list_lo = context.codemap.span_after(codemap::mk_sp(*span_lo, span_hi), "<");
+                let next_span_lo = param_list.last().unwrap().get_span().hi + BytePos(1);
+                let list_lo = context
+                    .codemap
+                    .span_after(codemap::mk_sp(*span_lo, span_hi), "<");
                 let separator = if path_context == PathContext::Expr {
                     "::"
                 } else {
@@ -298,28 +301,29 @@ fn format_function_type<'a, I>(inputs: I,
     // 1 for (
     let offset = shape.indent + 1;
     let list_lo = context.codemap.span_after(span, "(");
-    let items =
-        itemize_list(context.codemap,
-                     // FIXME Would be nice to avoid this allocation,
-                     // but I couldn't get the types to work out.
-                     inputs.map(|i| ArgumentKind::Regular(Box::new(i))).chain(variadic_arg),
-                     ")",
-                     |arg| match *arg {
-                         ArgumentKind::Regular(ref ty) => ty.span().lo,
-                         ArgumentKind::Variadic(start) => start,
-                     },
-                     |arg| match *arg {
-                         ArgumentKind::Regular(ref ty) => ty.span().hi,
-                         ArgumentKind::Variadic(start) => start + BytePos(3),
-                     },
-                     |arg| match *arg {
-                         ArgumentKind::Regular(ref ty) => {
-                             ty.rewrite(context, Shape::legacy(budget, offset))
-                         }
-                         ArgumentKind::Variadic(_) => Some("...".to_owned()),
-                     },
-                     list_lo,
-                     span.hi);
+    let items = itemize_list(context.codemap,
+                             // FIXME Would be nice to avoid this allocation,
+                             // but I couldn't get the types to work out.
+                             inputs
+                                 .map(|i| ArgumentKind::Regular(Box::new(i)))
+                                 .chain(variadic_arg),
+                             ")",
+                             |arg| match *arg {
+                                 ArgumentKind::Regular(ref ty) => ty.span().lo,
+                                 ArgumentKind::Variadic(start) => start,
+                             },
+                             |arg| match *arg {
+                                 ArgumentKind::Regular(ref ty) => ty.span().hi,
+                                 ArgumentKind::Variadic(start) => start + BytePos(3),
+                             },
+                             |arg| match *arg {
+                                 ArgumentKind::Regular(ref ty) => {
+                                     ty.rewrite(context, Shape::legacy(budget, offset))
+                                 }
+                                 ArgumentKind::Variadic(_) => Some("...".to_owned()),
+                             },
+                             list_lo,
+                             span.hi);
 
     let list_str = try_opt!(format_fn_args(items, Shape::legacy(budget, offset), context.config));
 
@@ -455,8 +459,10 @@ fn rewrite_bounded_lifetime<'b, I>(lt: &ast::Lifetime,
     if bounds.len() == 0 {
         Some(result)
     } else {
-        let appendix: Vec<_> =
-            try_opt!(bounds.into_iter().map(|b| b.rewrite(context, shape)).collect());
+        let appendix: Vec<_> = try_opt!(bounds
+                                            .into_iter()
+                                            .map(|b| b.rewrite(context, shape))
+                                            .collect());
         let colon = type_bound_colon(context);
         let result = format!("{}{}{}", result, colon, appendix.join(" + "));
         wrap_str(result, context.config.max_width, shape)
@@ -494,7 +500,9 @@ impl Rewrite for ast::TyParamBounds {
             TypeDensity::Compressed => "+",
             TypeDensity::Wide => " + ",
         };
-        let strs: Vec<_> = try_opt!(self.iter().map(|b| b.rewrite(context, shape)).collect());
+        let strs: Vec<_> = try_opt!(self.iter()
+                                        .map(|b| b.rewrite(context, shape))
+                                        .collect());
         wrap_str(strs.join(joiner), context.config.max_width, shape)
     }
 }
@@ -550,10 +558,10 @@ impl Rewrite for ast::PolyTraitRef {
             // 6 is "for<> ".len()
             let extra_offset = lifetime_str.len() + 6;
             let max_path_width = try_opt!(shape.width.checked_sub(extra_offset));
-            let path_str = try_opt!(self.trait_ref.rewrite(context,
-                                                           Shape::legacy(max_path_width,
-                                                                         shape.indent +
-                                                                         extra_offset)));
+            let path_str = try_opt!(self.trait_ref
+                                        .rewrite(context,
+                                                 Shape::legacy(max_path_width,
+                                                               shape.indent + extra_offset)));
 
             Some(if context.config.spaces_within_angle_brackets && lifetime_str.len() > 0 {
                      format!("for< {} > {}", lifetime_str, path_str)
@@ -599,18 +607,20 @@ impl Rewrite for ast::Ty {
                     format!("&{} {}{}",
                             lt_str,
                             mut_str,
-                            try_opt!(mt.ty.rewrite(context,
-                                                   Shape::legacy(budget,
-                                                                 shape.indent + 2 + mut_len +
-                                                                 lt_len))))
+                            try_opt!(mt.ty
+                                         .rewrite(context,
+                                                  Shape::legacy(budget,
+                                                                shape.indent + 2 + mut_len +
+                                                                lt_len))))
                 }
                          None => {
                     let budget = try_opt!(shape.width.checked_sub(1 + mut_len));
                     format!("&{}{}",
                             mut_str,
-                            try_opt!(mt.ty.rewrite(context,
-                                                   Shape::legacy(budget,
-                                                                 shape.indent + 1 + mut_len))))
+                            try_opt!(mt.ty
+                                         .rewrite(context,
+                                                  Shape::legacy(budget,
+                                                                shape.indent + 1 + mut_len))))
                 }
                      })
             }
@@ -662,7 +672,8 @@ impl Rewrite for ast::Ty {
             ast::TyKind::Mac(..) => None,
             ast::TyKind::ImplicitSelf => Some(String::from("")),
             ast::TyKind::ImplTrait(ref it) => {
-                it.rewrite(context, shape).map(|it_str| format!("impl {}", it_str))
+                it.rewrite(context, shape)
+                    .map(|it_str| format!("impl {}", it_str))
             }
             ast::TyKind::Typeof(..) => unreachable!(),
         }

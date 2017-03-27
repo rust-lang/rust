@@ -89,7 +89,10 @@ pub struct FileLines(Option<MultiMap<String, Range>>);
 fn normalize_ranges(map: &mut MultiMap<String, Range>) {
     for (_, ranges) in map.iter_all_mut() {
         ranges.sort_by_key(|x| x.lo);
-        let merged = ranges.drain(..).coalesce(|x, y| x.merge(y).ok_or((x, y))).collect();
+        let merged = ranges
+            .drain(..)
+            .coalesce(|x, y| x.merge(y).ok_or((x, y)))
+            .collect();
         *ranges = merged;
     }
 }
@@ -124,7 +127,11 @@ impl FileLines {
                                                                        map.get_vec(&canonical)
                                                                            .ok_or(())
                                                                    }) {
-            Ok(ranges) => ranges.iter().any(|r| r.contains(Range::from(range))),
+            Ok(ranges) => {
+                ranges
+                    .iter()
+                    .any(|r| r.contains(Range::from(range)))
+            }
             Err(_) => false,
         }
     }
@@ -139,7 +146,11 @@ impl FileLines {
 
         match map.get_vec(range.file_name()) {
             None => false,
-            Some(ranges) => ranges.iter().any(|r| r.intersects(Range::from(range))),
+            Some(ranges) => {
+                ranges
+                    .iter()
+                    .any(|r| r.intersects(Range::from(range)))
+            }
         }
     }
 }
@@ -157,7 +168,12 @@ impl<'a> iter::Iterator for Files<'a> {
 
 fn canonicalize_path_string(s: &str) -> Result<String, ()> {
     match path::PathBuf::from(s).canonicalize() {
-        Ok(canonicalized) => canonicalized.to_str().map(|s| s.to_string()).ok_or(()),
+        Ok(canonicalized) => {
+            canonicalized
+                .to_str()
+                .map(|s| s.to_string())
+                .ok_or(())
+        }
         _ => Err(()),
     }
 }
@@ -168,7 +184,9 @@ impl str::FromStr for FileLines {
 
     fn from_str(s: &str) -> Result<FileLines, String> {
         let v: Vec<JsonSpan> = try!(json::decode(s).map_err(|e| e.to_string()));
-        let m = try!(v.into_iter().map(JsonSpan::into_tuple).collect());
+        let m = try!(v.into_iter()
+                         .map(JsonSpan::into_tuple)
+                         .collect());
         Ok(FileLines::from_multimap(m))
     }
 }

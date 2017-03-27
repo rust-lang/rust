@@ -83,12 +83,7 @@ impl<'a> FmtVisitor<'a> {
         let local_end = self.codemap.lookup_byte_offset(span.hi);
         let start_index = local_begin.pos.to_usize();
         let end_index = local_end.pos.to_usize();
-        let big_snippet = &local_begin
-                               .fm
-                               .src
-                               .as_ref()
-                               .unwrap()
-                               [start_index..end_index];
+        let big_snippet = &local_begin.fm.src.as_ref().unwrap()[start_index..end_index];
 
         let big_diff = (span.lo - big_span_lo).to_usize();
         let snippet = self.snippet(span);
@@ -113,7 +108,10 @@ impl<'a> FmtVisitor<'a> {
         let mut rewrite_next_comment = true;
 
         fn replace_chars(string: &str) -> String {
-            string.chars().map(|ch| if ch.is_whitespace() { ch } else { 'X' }).collect()
+            string
+                .chars()
+                .map(|ch| if ch.is_whitespace() { ch } else { 'X' })
+                .collect()
         }
 
         let replaced = match self.config.write_mode {
@@ -139,7 +137,8 @@ impl<'a> FmtVisitor<'a> {
                         if let Some('{') = last_char {
                             self.buffer.push_str("\n");
                         }
-                        self.buffer.push_str(&self.block_indent.to_string(self.config));
+                        self.buffer
+                            .push_str(&self.block_indent.to_string(self.config));
                     } else {
                         self.buffer.push_str(" ");
                     }
@@ -148,22 +147,23 @@ impl<'a> FmtVisitor<'a> {
                                                         self.config.max_width -
                                                         self.block_indent.width());
 
-                    self.buffer.push_str(&rewrite_comment(subslice,
-                                                          false,
-                                                          Shape::legacy(comment_width,
-                                                                        self.block_indent),
-                                                          self.config)
-                                                  .unwrap());
+                    self.buffer
+                        .push_str(&rewrite_comment(subslice,
+                                                   false,
+                                                   Shape::legacy(comment_width,
+                                                                 self.block_indent),
+                                                   self.config)
+                                           .unwrap());
 
                     last_wspace = None;
                     line_start = offset + subslice.len();
 
                     if let Some('/') = subslice.chars().skip(1).next() {
                         // check that there are no contained block comments
-                        if !subslice.split('\n').map(|s| s.trim_left()).any(|s| {
-                                                                                s.len() > 2 &&
-                                                                                &s[0..2] == "/*"
-                                                                            }) {
+                        if !subslice
+                                .split('\n')
+                                .map(|s| s.trim_left())
+                                .any(|s| s.len() > 2 && &s[0..2] == "/*") {
                             // Add a newline after line comments
                             self.buffer.push_str("\n");
                         }
@@ -189,7 +189,8 @@ impl<'a> FmtVisitor<'a> {
                         self.buffer.push_str(&snippet[line_start..lw]);
                         self.buffer.push_str("\n");
                     } else {
-                        self.buffer.push_str(&snippet[line_start..i + 1]);
+                        self.buffer
+                            .push_str(&snippet[line_start..i + 1]);
                     }
 
                     line_start = i + 1;
