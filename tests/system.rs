@@ -293,7 +293,8 @@ fn read_significant_comments(file_name: &str) -> HashMap<String, String> {
     let line_regex = regex::Regex::new(r"(^\s*$)|(^\s*//\s*rustfmt-[^:]+:\s*\S+)")
         .expect("Failed creating pattern 2");
 
-    reader.lines()
+    reader
+        .lines()
         .map(|line| line.expect("Failed getting line"))
         .take_while(|line| line_regex.is_match(&line))
         .filter_map(|line| {
