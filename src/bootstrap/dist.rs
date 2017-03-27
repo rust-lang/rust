@@ -339,7 +339,7 @@ pub fn analysis(build: &Build, compiler: &Compiler, target: &str) {
 
     let src = build.stage_out(&compiler, Mode::Libstd).join(target).join("release").join("deps");
 
-    let image_src = src.join("save-analysis");
+    let image_src = src.join("analysis");
     let dst = image.join("lib/rustlib").join(target).join("analysis");
     t!(fs::create_dir_all(&dst));
     println!("image_src: {:?}, dst: {:?}", image_src, dst);
@@ -358,6 +358,13 @@ pub fn analysis(build: &Build, compiler: &Compiler, target: &str) {
        .arg("--legacy-manifest-dirs=rustlib,cargo");
     build.run(&mut cmd);
     t!(fs::remove_dir_all(&image));
+
+    // Create plain source tarball
+    let mut cmd = Command::new("tar");
+    cmd.arg("-czf").arg(sanitize_sh(&distdir(build).join(&format!("{}-{}.tar.gz", name, target))))
+       .arg("analysis")
+       .current_dir(&src);
+    build.run(&mut cmd);
 }
 
 const CARGO_VENDOR_VERSION: &'static str = "0.1.4";
