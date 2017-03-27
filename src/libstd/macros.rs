@@ -124,6 +124,27 @@ macro_rules! println {
     ($fmt:expr, $($arg:tt)*) => (print!(concat!($fmt, "\n"), $($arg)*));
 }
 
+/// A macro to read a string from stdin
+///
+/// # Panics
+///
+/// Panics if writing to `io::stdin().read_line()` fails.
+///
+/// # Examples
+/// ```
+/// let input = readln!();
+/// println!("You entered {}", input);
+/// ```
+#[macro_export]
+macro_rules! readln {
+    () => {{
+        let mut input = String::new();
+        $crate::io::stdin().read_line(&mut input)
+            .expect("Could not read line from stdin");
+        input
+    }};
+}
+
 /// A macro to select an event from a number of receivers.
 ///
 /// This macro is used to wait for the first event to occur on a number of
