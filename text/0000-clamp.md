@@ -68,25 +68,18 @@ inline usually results in rather a lot of control flow structure to describe a f
 Add the following to std::cmp
 
 ```Rust
-use ops::RangeInclusive;
-/// Returns the upper bound of the range if input is greater than the range, and the lower bound of
-/// the range if input is less than the range.  Otherwise this will return input.
+/// Returns max if input is greater than max, and min if input is less than min.  
+/// Otherwise this will return input.
 #[inline]
-pub fn clamp<T: Ord>(input: T, range: RangeInclusive<T>) -> T {
-    if let RangeInclusive::NonEmpty{start, end} = range {
-        if input < start {
-            return start;
-        }
-        else if input > end {
-            return end;
-        }
-        else {
-            return input;
-        }
+pub fn clamp<T: Ord>(input: T, min: T, max: T) -> T {
+    if input < min {
+        min
+    }
+    else if input > max {
+        max
     }
     else {
-        // This should never be executed.
-        return input;
+        input
     }
 }
 ```
@@ -94,34 +87,27 @@ pub fn clamp<T: Ord>(input: T, range: RangeInclusive<T>) -> T {
 And the following to libstd/f32.rs, and a similar version for f64
 
 ```Rust
-use ops::RangeInclusive;
-/// Returns the upper bound if self is greater than the bound, and the lower bound if self is less than the bound.
+/// Returns max if self is greater than max, and min if self is less than min.
 /// Otherwise this returns self.
 ///
 /// # Examples
 ///
 /// ```
-/// assert!((-3.0f32).clamp(-2.0f32...1.0f32) == -2.0f32);
-/// assert!((0.0f32).clamp(-2.0f32...1.0f32) == 0.0f32);
-/// assert!((2.0f32).clamp(-2.0f32...1.0f32) == 1.0f32);
+/// assert!((-3.0f32).clamp(-2.0f32, 1.0f32) == -2.0f32);
+/// assert!((0.0f32).clamp(-2.0f32, 1.0f32) == 0.0f32);
+/// assert!((2.0f32).clamp(-2.0f32, 1.0f32) == 1.0f32);
 /// ```
 #[inline]
-pub fn clamp(self, range: RangeInclusive<f32>) -> f32 {
-  if let NonEmpty{start, end} = range {
-      if self < start {
-          return start;
-      }
-      else if self > max {
-          return max;
-      }
-      else {
-          return self;
-      }
-  }
-  else {
-      // This should never be executed.
-      return NAN;
-  }
+pub fn clamp(self, min: f32, max: f32>) -> f32 {
+    if input < min {
+        min
+    }
+    else if input > max {
+        max
+    }
+    else {
+        input
+    }
 }
 ```
 
@@ -131,8 +117,8 @@ the edge case behavior with a 3x3 chart.
 |  |INFINITY|NEG_INFINITY|NAN|
 |---|---|---|---|
 |self|return max;|return min;|return NAN;|
-|upper bound|No upper bound enforced|return NEG_INFINITY;|No upper bound enforced|
-|lower bound|return INFINITY;|No lower bound enforced|No lower bound enforced|
+|max|No max enforced|return NEG_INFINITY;|No max enforced|
+|min|return INFINITY;|No min enforced|No min enforced|
 
 # How We Teach This
 [how-we-teach-this]: #how-we-teach-this
