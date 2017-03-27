@@ -67,6 +67,7 @@ use pretty::{PpMode, UserIdentifiedItem};
 
 use rustc_resolve as resolve;
 use rustc_save_analysis as save;
+use rustc_save_analysis::DumpHandler;
 use rustc_trans::back::link;
 use rustc_trans::back::write::{create_target_machine, RELOC_MODEL_ARGS, CODE_GEN_MODEL_ARGS};
 use rustc::dep_graph::DepGraph;
@@ -507,8 +508,9 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                                         state.expanded_crate.unwrap(),
                                         state.analysis.unwrap(),
                                         state.crate_name.unwrap(),
-                                        state.out_dir,
-                                        save_analysis_format(state.session))
+                                        DumpHandler::new(save_analysis_format(state.session),
+                                                         state.out_dir,
+                                                         state.crate_name.unwrap()))
                 });
             };
             control.after_analysis.run_callback_on_error = true;
