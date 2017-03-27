@@ -71,14 +71,6 @@ Add the following to std::cmp
 use ops::RangeInclusive;
 /// Returns the upper bound of the range if input is greater than the range, and the lower bound of
 /// the range if input is less than the range.  Otherwise this will return input.
-///
-/// #Examples
-///
-/// ```
-/// assert!((-3).clamp(-2...1) == -2);
-/// assert!((0).clamp(-2...1) == 0);
-/// assert!((2).clamp(-2, 1) == 1);
-/// ```
 #[inline]
 pub fn clamp<T: Ord>(input: T, range: RangeInclusive<T>) -> T {
     if let RangeInclusive::NonEmpty{start, end} = range {
