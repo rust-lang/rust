@@ -202,19 +202,13 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                            stored in the `{1}` field",
                                                           expr_string,
                                                           item_name));
-                                        err.span_label(span,
-                                                       &format!("`{}` is a field storing a \
-                                                                 function, not a method",
-                                                                item_name));
                                     } else {
                                         err.help(&format!("did you mean to write `{0}.{1}` \
                                                            instead of `{0}.{1}(...)`?",
                                                           expr_string,
                                                           item_name));
-                                        err.span_label(span,
-                                                       &format!("`{}` is a field, not a method",
-                                                                item_name));
                                     }
+                                    err.span_label(span, &"field, not a method");
                                     break;
                                 }
                             }
