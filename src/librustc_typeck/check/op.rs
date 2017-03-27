@@ -244,8 +244,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
                         if let Some(missing_trait) = missing_trait {
                             if missing_trait == "std::ops::Add" &&
-                                self.check_str_addition(expr, lhs_expr, lhs_ty,
-                                                         rhs_expr, rhs_ty, &mut err) {
+                                self.check_str_addition(lhs_expr, lhs_ty,
+                                                         rhs_expr, rhs_ty_var, &mut err) {
                                 // This has nothing here because it means we did string
                                 // concatenation (e.g. "Hello " + "World!"). This means
                                 // we don't want the note in the else clause to be emitted
@@ -266,7 +266,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn check_str_addition(&self,
-                          expr: &'gcx hir::Expr,
                           lhs_expr: &'gcx hir::Expr,
                           lhs_ty: Ty<'tcx>,
                           rhs_expr: &'gcx hir::Expr,
@@ -281,18 +280,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     err.note("`+` can't be used to concatenate two `&str` strings");
                     let codemap = self.tcx.sess.codemap();
                     let suggestion =
-                        match (codemap.span_to_snippet(lhs_expr.span),
-                                codemap.span_to_snippet(rhs_expr.span)) {
-                            (Ok(lstring), Ok(rstring)) =>
-                                format!("{}.to_owned() + {}", lstring, rstring),
+                        match codemap.span_to_snippet(lhs_expr.span) {
+                            Ok(lstring) => format!("{}.to_owned()", lstring),
                             _ => format!("<expression>")
                         };
-                    err.span_suggestion(expr.span,
-                        &format!("to_owned() can be used to create an owned `String` \
+                    err.span_suggestion(lhs_expr.span,
+                        &format!("`to_owned()` can be used to create an owned `String` \
                                   from a string reference. String concatenation \
                                   appends the string on the right to the string \
                                   on the left and may require reallocation. This \
-                                  requires ownership of the string on the left."), suggestion);
+                                  requires ownership of the string on the left:"), suggestion);
                     is_string_addition = true;
                 }
 
