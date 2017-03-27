@@ -48,6 +48,7 @@ use rustc::hir::def::Def;
 use rustc::hir::map::Node;
 use rustc::hir::def_id::DefId;
 use rustc::session::config::CrateType::CrateTypeExecutable;
+use rustc::session::Session;
 use rustc::ty::{self, TyCtxt};
 
 use std::env;
@@ -866,55 +867,131 @@ impl Format {
     }
 }
 
-pub fn process_crate<'l, 'tcx>(tcx: TyCtxt<'l, 'tcx, 'tcx>,
-                               krate: &ast::Crate,
-                               analysis: &'l ty::CrateAnalysis,
-                               cratename: &str,
-                               odir: Option<&Path>,
-                               format: Format) {
+/// Defines what to do with the results of saving the analysis.
+pub trait SaveHandler {
+    fn save<'l, 'tcx>(&mut self,
+                      save_ctxt: SaveContext<'l, 'tcx>,
+                      krate: &ast::Crate,
+                      cratename: &str);
+}
+
+/// Dump the save-analysis results to a file.
+pub struct DumpHandler<'a> {
+    format: Format,
+    odir: Option<&'a Path>,
+    cratename: String
+}
+
+impl<'a> DumpHandler<'a> {
+    pub fn new(format: Format, odir: Option<&'a Path>, cratename: &str) -> DumpHandler<'a> {
+        DumpHandler {
+            format: format,
+            odir: odir,
+            cratename: cratename.to_owned()
+        }
+    }
+
+    fn output_file(&self, sess: &Session) -> File {
+        let mut root_path = match env::var_os("RUST_SAVE_ANALYSIS_FOLDER") {
+            Some(val) => PathBuf::from(val),
+            None => match self.odir {
+                Some(val) => val.join("save-analysis"),
+                None => PathBuf::from("save-analysis-temp"),
+            },
+        };
+
+        if let Err(e) = std::fs::create_dir_all(&root_path) {
+            error!("Could not create directory {}: {}", root_path.display(), e);
+        }
+
+        {
+            let disp = root_path.display();
+            info!("Writing output to {}", disp);
+        }
+
+        let executable = sess.crate_types.borrow().iter().any(|ct| *ct == CrateTypeExecutable);
+        let mut out_name = if executable {
+            "".to_owned()
+        } else {
+            "lib".to_owned()
+        };
+        out_name.push_str(&self.cratename);
+        out_name.push_str(&sess.opts.cg.extra_filename);
+        out_name.push_str(self.format.extension());
+        root_path.push(&out_name);
+        let output_file = File::create(&root_path).unwrap_or_else(|e| {
+            let disp = root_path.display();
+            sess.fatal(&format!("Could not open {}: {}", disp, e));
+        });
+        root_path.pop();
+        output_file
+    }
+}
+
+impl<'a> SaveHandler for DumpHandler<'a> {
+    fn save<'l, 'tcx>(&mut self,
+                      save_ctxt: SaveContext<'l, 'tcx>,
+                      krate: &ast::Crate,
+                      cratename: &str) {
+        macro_rules! dump {
+            ($new_dumper: expr) => {{
+                let mut dumper = $new_dumper;
+                let mut visitor = DumpVisitor::new(save_ctxt, &mut dumper);
+
+                visitor.dump_crate_info(cratename, krate);
+                visit::walk_crate(&mut visitor, krate);
+            }}
+        }
+
+        let output = &mut self.output_file(&save_ctxt.tcx.sess);
+
+        match self.format {
+            Format::Csv => dump!(CsvDumper::new(output)),
+            Format::Json => dump!(JsonDumper::new(output)),
+            Format::JsonApi => dump!(JsonApiDumper::new(output)),
+        }
+    }
+}
+
+/// Call a callback with the results of save-analysis.
+pub struct CallbackHandler<'b> {
+    pub callback: &'b mut FnMut(&rls_data::Analysis),
+}
+
+impl<'b> SaveHandler for CallbackHandler<'b> {
+    fn save<'l, 'tcx>(&mut self,
+                      save_ctxt: SaveContext<'l, 'tcx>,
+                      krate: &ast::Crate,
+                      cratename: &str) {
+        macro_rules! dump {
+            ($new_dumper: expr) => {{
+                let mut dumper = $new_dumper;
+                let mut visitor = DumpVisitor::new(save_ctxt, &mut dumper);
+
+                visitor.dump_crate_info(cratename, krate);
+                visit::walk_crate(&mut visitor, krate);
+            }}
+        }
+
+        // We're using the JsonDumper here because it has the format of the
+        // save-analysis results that we will pass to the callback. IOW, we are
+        // using the JsonDumper to collect the save-analysis results, but not
+        // actually to dump them to a file. This is all a bit convoluted and
+        // there is certainly a simpler design here trying to get out (FIXME).
+        dump!(JsonDumper::with_callback(self.callback))
+    }
+}
+
+pub fn process_crate<'l, 'tcx, H: SaveHandler>(tcx: TyCtxt<'l, 'tcx, 'tcx>,
+                                               krate: &ast::Crate,
+                                               analysis: &'l ty::CrateAnalysis,
+                                               cratename: &str,
+                                               mut handler: H) {
     let _ignore = tcx.dep_graph.in_ignore();
 
     assert!(analysis.glob_map.is_some());
 
     info!("Dumping crate {}", cratename);
-
-    // find a path to dump our data to
-    let mut root_path = match env::var_os("RUST_SAVE_ANALYSIS_FOLDER") {
-        Some(val) => PathBuf::from(val),
-        None => match odir {
-            Some(val) => val.join("save-analysis"),
-            None => PathBuf::from("save-analysis-temp"),
-        },
-    };
-
-    if let Err(e) = std::fs::create_dir_all(&root_path) {
-        tcx.sess.err(&format!("Could not create directory {}: {}",
-                              root_path.display(),
-                              e));
-    }
-
-    {
-        let disp = root_path.display();
-        info!("Writing output to {}", disp);
-    }
-
-    // Create output file.
-    let executable = tcx.sess.crate_types.borrow().iter().any(|ct| *ct == CrateTypeExecutable);
-    let mut out_name = if executable {
-        "".to_owned()
-    } else {
-        "lib".to_owned()
-    };
-    out_name.push_str(&cratename);
-    out_name.push_str(&tcx.sess.opts.cg.extra_filename);
-    out_name.push_str(format.extension());
-    root_path.push(&out_name);
-    let mut output_file = File::create(&root_path).unwrap_or_else(|e| {
-        let disp = root_path.display();
-        tcx.sess.fatal(&format!("Could not open {}: {}", disp, e));
-    });
-    root_path.pop();
-    let output = &mut output_file;
 
     let save_ctxt = SaveContext {
         tcx: tcx,
@@ -923,21 +1000,7 @@ pub fn process_crate<'l, 'tcx>(tcx: TyCtxt<'l, 'tcx, 'tcx>,
         span_utils: SpanUtils::new(&tcx.sess),
     };
 
-    macro_rules! dump {
-        ($new_dumper: expr) => {{
-            let mut dumper = $new_dumper;
-            let mut visitor = DumpVisitor::new(save_ctxt, &mut dumper);
-
-            visitor.dump_crate_info(cratename, krate);
-            visit::walk_crate(&mut visitor, krate);
-        }}
-    }
-
-    match format {
-        Format::Csv => dump!(CsvDumper::new(output)),
-        Format::Json => dump!(JsonDumper::new(output)),
-        Format::JsonApi => dump!(JsonApiDumper::new(output)),
-    }
+    handler.save(save_ctxt, krate, cratename)
 }
 
 // Utility functions for the module.
