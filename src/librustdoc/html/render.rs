@@ -2611,7 +2611,7 @@ fn render_attribute(attr: &ast::MetaItem) -> Option<String> {
     if attr.is_word() {
         Some(format!("{}", name))
     } else if let Some(v) = attr.value_str() {
-        Some(format!("{} = {:?}", name, &v.as_str()[..]))
+        Some(format!("{} = {:?}", name, v.as_str()))
     } else if let Some(values) = attr.meta_item_list() {
         let display: Vec<_> = values.iter().filter_map(|attr| {
             attr.meta_item().and_then(|mi| render_attribute(mi))
@@ -2642,7 +2642,7 @@ fn render_attributes(w: &mut fmt::Formatter, it: &clean::Item) -> fmt::Result {
 
     for attr in &it.attrs.other_attrs {
         let name = attr.name().unwrap();
-        if !ATTRIBUTE_WHITELIST.contains(&&name.as_str()[..]) {
+        if !ATTRIBUTE_WHITELIST.contains(&&*name.as_str()) {
             continue;
         }
         if let Some(s) = render_attribute(&attr.meta().unwrap()) {

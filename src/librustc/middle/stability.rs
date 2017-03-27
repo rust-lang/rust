@@ -536,7 +536,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 if !self.stability.borrow().active_features.contains(feature) {
                     let msg = match *reason {
                         Some(ref r) => format!("use of unstable library feature '{}': {}",
-                                               &feature.as_str(), &r),
+                                               feature.as_str(), &r),
                         None => format!("use of unstable library feature '{}'", &feature)
                     };
                     emit_feature_err(&self.sess.parse_sess, &feature.as_str(), span,

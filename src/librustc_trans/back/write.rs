@@ -105,7 +105,7 @@ impl SharedEmitter {
                 Some(ref code) => {
                     handler.emit_with_code(&MultiSpan::new(),
                                            &diag.msg,
-                                           &code[..],
+                                           &code,
                                            diag.lvl);
                 },
                 None => {
@@ -189,8 +189,8 @@ pub fn create_target_machine(sess: &Session) -> TargetMachineRef {
     let fdata_sections = ffunction_sections;
 
     let code_model_arg = match sess.opts.cg.code_model {
-        Some(ref s) => &s[..],
-        None => &sess.target.target.options.code_model[..],
+        Some(ref s) => &s,
+        None => &sess.target.target.options.code_model,
     };
 
     let code_model = match CODE_GEN_MODEL_ARGS.iter().find(
@@ -397,7 +397,7 @@ unsafe extern "C" fn inline_asm_handler(diag: SMDiagnosticRef,
     let msg = llvm::build_string(|s| llvm::LLVMRustWriteSMDiagnosticToString(diag, s))
         .expect("non-UTF8 SMDiagnostic");
 
-    report_inline_asm(cgcx, &msg[..], cookie);
+    report_inline_asm(cgcx, &msg, cookie);
 }
 
 unsafe extern "C" fn diagnostic_handler(info: DiagnosticInfoRef, user: *mut c_void) {
@@ -823,7 +823,7 @@ pub fn run_passes(sess: &Session,
         if trans.modules.len() == 1 {
             // 1) Only one codegen unit.  In this case it's no difficulty
             //    to copy `foo.0.x` to `foo.x`.
-            let module_name = Some(&(trans.modules[0].name)[..]);
+            let module_name = Some(&trans.modules[0].name[..]);
             let path = crate_output.temp_path(output_type, module_name);
             copy_gracefully(&path,
                             &crate_output.path(output_type));
@@ -939,7 +939,7 @@ pub fn run_passes(sess: &Session,
 
         if metadata_config.emit_bc && !user_wants_bitcode {
             let path = crate_output.temp_path(OutputType::Bitcode,
-                                              Some(&trans.metadata_module.name[..]));
+                                              Some(&trans.metadata_module.name));
             remove(sess, &path);
         }
     }

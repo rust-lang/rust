@@ -423,7 +423,7 @@ fn make_values_str(pairs: &[(&'static str, &str)]) -> String {
 
     let strs = pairs.map(|(f, v)| format!(",{},\"{}\"", f, escape(String::from(v))));
     strs.fold(String::new(), |mut s, ss| {
-        s.push_str(&ss[..]);
+        s.push_str(&ss);
         s
     })
 }

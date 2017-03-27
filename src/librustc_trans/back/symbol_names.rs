@@ -341,7 +341,7 @@ pub fn sanitize(s: &str) -> String {
     if !result.is_empty() &&
         result.as_bytes()[0] != '_' as u8 &&
         ! (result.as_bytes()[0] as char).is_xid_start() {
-        return format!("_{}", &result[..]);
+        return format!("_{}", result);
     }
 
     return result;

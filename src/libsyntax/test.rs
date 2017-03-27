@@ -616,7 +616,7 @@ fn mk_tests(cx: &TestCtxt) -> P<ast::Item> {
 
 fn is_test_crate(krate: &ast::Crate) -> bool {
     match attr::find_crate_name(&krate.attrs) {
-        Some(s) if "test" == &*s.as_str() => true,
+        Some(s) if "test" == s.as_str() => true,
         _ => false
     }
 }

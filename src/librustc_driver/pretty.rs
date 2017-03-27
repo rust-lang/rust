@@ -589,7 +589,7 @@ impl UserIdentifiedItem {
                                        -> NodesMatchingUII<'a, 'hir> {
         match *self {
             ItemViaNode(node_id) => NodesMatchingDirect(Some(node_id).into_iter()),
-            ItemViaPath(ref parts) => NodesMatchingSuffix(map.nodes_matching_suffix(&parts[..])),
+            ItemViaPath(ref parts) => NodesMatchingSuffix(map.nodes_matching_suffix(&parts)),
         }
     }
 
@@ -600,7 +600,7 @@ impl UserIdentifiedItem {
                                   user_option,
                                   self.reconstructed_input(),
                                   is_wrong_because);
-            sess.fatal(&message[..])
+            sess.fatal(&message)
         };
 
         let mut saw_node = ast::DUMMY_NODE_ID;
@@ -771,7 +771,7 @@ fn print_flowgraph<'a, 'tcx, W: Write>(variants: Vec<borrowck_dot::Variant>,
     fn expand_err_details(r: io::Result<()>) -> io::Result<()> {
         r.map_err(|ioerr| {
             io::Error::new(io::ErrorKind::Other,
-                           &format!("graphviz::render failed: {}", ioerr)[..])
+                           format!("graphviz::render failed: {}", ioerr))
         })
     }
 }

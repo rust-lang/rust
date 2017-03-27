@@ -311,7 +311,7 @@ fn check_arms<'a, 'tcx>(cx: &mut MatchCheckCtxt<'a, 'tcx>,
         for &(pat, hir_pat) in pats {
             let v = vec![pat];
 
-            match is_useful(cx, &seen, &v[..], LeaveOutWitness) {
+            match is_useful(cx, &seen, &v, LeaveOutWitness) {
                 NotUseful => {
                     match source {
                         hir::MatchSource::IfLetDesugar { .. } => {

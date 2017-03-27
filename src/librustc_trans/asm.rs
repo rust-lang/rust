@@ -77,14 +77,14 @@ pub fn trans_inline_asm<'a, 'tcx>(
           .chain(arch_clobbers.iter().map(|s| s.to_string()))
           .collect::<Vec<String>>().join(",");
 
-    debug!("Asm Constraints: {}", &all_constraints[..]);
+    debug!("Asm Constraints: {}", &all_constraints);
 
     // Depending on how many outputs we have, the return type is different
     let num_outputs = output_types.len();
     let output_type = match num_outputs {
         0 => Type::void(bcx.ccx),
         1 => output_types[0],
-        _ => Type::struct_(bcx.ccx, &output_types[..], false)
+        _ => Type::struct_(bcx.ccx, &output_types, false)
     };
 
     let dialect = match ia.dialect {

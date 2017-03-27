@@ -369,7 +369,7 @@ impl FnType {
             match sig.inputs().last().unwrap().sty {
                 ty::TyTuple(ref tupled_arguments, _) => {
                     inputs = &sig.inputs()[0..sig.inputs().len() - 1];
-                    &tupled_arguments[..]
+                    &tupled_arguments
                 }
                 _ => {
                     bug!("argument to function with \"rust-call\" ABI \
