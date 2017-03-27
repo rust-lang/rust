@@ -11,10 +11,10 @@
 //! Unicode string slices.
 //!
 //! The `&str` type is one of the two main string types, the other being `String`.
-//! Unlike its `String` counterpart, its contents are borrowed and therefore
-//! cannot be moved someplace else.
+//! Unlike its `String` counterpart, its contents are borrowed.
 //!
 //! # Basic Usage
+//!
 //! A basic string declaration of `&str` type:
 //!
 //! ```
@@ -27,7 +27,7 @@
 //! We can explicitly specify `hello_world`'s lifetime as well:
 //!
 //! ```
-//! let hello_world:&'static str = "Hello, world!";
+//! let hello_world: &'static str = "Hello, world!";
 //! ```
 //!
 //! *[See also the `str` primitive type](../../std/primitive.str.html).*
