@@ -15,11 +15,11 @@
 // makes all other generics or inline functions that it references
 // reachable as well.
 
-use dep_graph::DepNode;
 use hir::map as hir_map;
 use hir::def::Def;
-use hir::def_id::DefId;
+use hir::def_id::{DefId, CrateNum};
 use ty::{self, TyCtxt};
+use ty::maps::Providers;
 use middle::privacy;
 use session::config;
 use util::nodemap::{NodeSet, FxHashSet};
@@ -362,7 +362,11 @@ impl<'a, 'tcx: 'a> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 
 }
 
 pub fn find_reachable<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> NodeSet {
-    let _task = tcx.dep_graph.in_task(DepNode::Reachability);
+    ty::queries::reachable_set::get(tcx, DUMMY_SP, LOCAL_CRATE)
+}
+
+fn reachable_set<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, crate_num: CrateNum) -> NodeSet {
+    debug_assert!(crate_num == LOCAL_CRATE);
 
     let access_levels = &ty::queries::privacy_access_levels::get(tcx, DUMMY_SP, LOCAL_CRATE);
 
@@ -407,4 +411,11 @@ pub fn find_reachable<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> NodeSet {
 
     // Return the set of reachable symbols.
     reachable_context.reachable_symbols
+}
+
+pub fn provide(providers: &mut Providers) {
+    *providers = Providers {
+        reachable_set,
+        ..*providers
+    };
 }
