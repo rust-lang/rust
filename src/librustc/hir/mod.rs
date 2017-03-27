@@ -1299,6 +1299,20 @@ impl fmt::Debug for Ty {
     }
 }
 
+impl Ty {
+    pub fn ty_def_id(&self) -> Option<DefId> {
+        match self.node {
+            TyPath(QPath::Resolved(_, ref path)) => {
+                match path.def {
+                    Def::Struct(did) | Def::Enum(did) => Some(did),
+                    _ => None,
+                }
+            },
+            _ => None,
+        }
+    }
+}
+
 /// Not represented directly in the AST, referred to by name through a ty_path.
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
 pub enum PrimTy {
