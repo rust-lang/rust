@@ -5122,7 +5122,6 @@ impl<'a> Parser<'a> {
         }
 
         if self.check(&token::OpenDelim(token::Paren)) {
-            let start_span = self.span;
             // We don't `self.bump()` the `(` yet because this might be a struct definition where
             // `()` or a tuple might be allowed. For example, `struct Struct(pub (), pub (usize));`.
             // Because of this, we only `bump` the `(` if we're assured it is appropriate to do so
@@ -5165,8 +5164,7 @@ impl<'a> Parser<'a> {
                                        the path:",
                                        path);
                 self.expect(&token::CloseDelim(token::Paren))?;  // `)`
-                let sp = start_span.to(self.prev_span);
-                let mut err = self.span_fatal_help(sp, &msg, &suggestion);
+                let mut err = self.span_fatal_help(path_span, &msg, &suggestion);
                 err.span_suggestion(path_span, &help_msg, format!("in {}", path));
                 err.emit();  // emit diagnostic, but continue with public visibility
             }
