@@ -22,9 +22,11 @@ use slice;
 
 /// An internet socket address, either IPv4 or IPv6.
 ///
-/// This enum can contain either an [`SocketAddrV4`] or an [`SocketAddrV6`]. see their
-/// respective documentation for more details.
+/// Internet socket addresses consist of an [IP address], a 16-bit port number, as well
+/// as possibly some version-dependent additional information. See [`SocketAddrV4`]'s and
+/// [`SocketAddrV6`]'s respective documentation for more details.
 ///
+/// [IP address]: ../../std/net/enum.IpAddr.html
 /// [`SocketAddrV4`]: ../../std/net/struct.SocketAddrV4.html
 /// [`SocketAddrV6`]: ../../std/net/struct.SocketAddrV6.html
 ///
@@ -202,13 +204,12 @@ impl SocketAddr {
     }
 
     /// Returns [`true`] if the [IP address] in this `SocketAddr` is an
-    /// [IPv4 address] and [`false`] if it's an [IPv6 address].
+    /// [IPv4 address], and [`false`] otherwise.
     ///
     /// [`true`]: ../../std/primitive.bool.html
     /// [`false`]: ../../std/primitive.bool.html
     /// [IP address]: ../../std/net/enum.IpAddr.html
     /// [IPv4 address]: ../../std/net/enum.IpAddr.html#variant.V4
-    /// [IPv6 address]: ../../std/net/enum.IpAddr.html#variant.V6
     ///
     /// # Examples
     ///
@@ -230,12 +231,11 @@ impl SocketAddr {
     }
 
     /// Returns [`true`] if the [IP address] in this `SocketAddr` is an
-    /// [IPv6 address] and [`false`] if it's an [IPv4 address].
+    /// [IPv6 address], and [`false`] otherwise.
     ///
     /// [`true`]: ../../std/primitive.bool.html
     /// [`false`]: ../../std/primitive.bool.html
     /// [IP address]: ../../std/net/enum.IpAddr.html
-    /// [IPv4 address]: ../../std/net/enum.IpAddr.html#variant.V4
     /// [IPv6 address]: ../../std/net/enum.IpAddr.html#variant.V6
     ///
     /// # Examples
@@ -446,10 +446,10 @@ impl SocketAddrV6 {
 
     /// Returns the flow information associated with this address.
     ///
-    /// This information corresponds to the `sin6_flowinfo` field in C, as specified in
-    /// [IETF RFC 2553, Section 3.3]. It combines information about the flow label and
-    /// the traffic class as specified in [IETF RFC 2460], respectively [Section 6] and
-    /// [Section 7].
+    /// This information corresponds to the `sin6_flowinfo` field in C's `netinet/in.h`,
+    /// as specified in [IETF RFC 2553, Section 3.3].
+    /// It combines information about the flow label and the traffic class as specified
+    /// in [IETF RFC 2460], respectively [Section 6] and [Section 7].
     ///
     /// [IETF RFC 2553, Section 3.3]: https://tools.ietf.org/html/rfc2553#section-3.3
     /// [IETF RFC 2460]: https://tools.ietf.org/html/rfc2460
@@ -491,8 +491,8 @@ impl SocketAddrV6 {
 
     /// Returns the scope ID associated with this address.
     ///
-    /// This information corresponds to the `sin6_scope_id` field in C, as specified in
-    /// [IETF RFC 2553, Section 3.3].
+    /// This information corresponds to the `sin6_scope_id` field in C's `netinet/in.h`,
+    /// as specified in [IETF RFC 2553, Section 3.3].
     ///
     /// [IETF RFC 2553, Section 3.3]: https://tools.ietf.org/html/rfc2553#section-3.3
     ///
@@ -743,12 +743,6 @@ pub trait ToSocketAddrs {
     ///
     /// Note that this function may block the current thread while resolution is
     /// performed.
-    ///
-    /// # Errors
-    ///
-    /// Any errors encountered during resolution will be returned as an [`Err`].
-    ///
-    /// [`Err`]: ../../std/result/enum.Result.html#variant.Err
     #[stable(feature = "rust1", since = "1.0.0")]
     fn to_socket_addrs(&self) -> io::Result<Self::Iter>;
 }
