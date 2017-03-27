@@ -633,7 +633,7 @@ Here is a concrete example of a bug this rule prevents:
 
 ```rust
 // Test region-reborrow-from-shorter-mut-ref.rs:
-fn copy_pointer<'a,'b,T>(x: &'a mut &'b mut T) -> &'b mut T {
+fn copy_borrowed_ptr<'a,'b,T>(x: &'a mut &'b mut T) -> &'b mut T {
     &mut **p // ERROR due to clause (1)
 }
 fn main() {
