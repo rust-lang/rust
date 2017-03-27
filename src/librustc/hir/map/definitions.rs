@@ -23,8 +23,8 @@ use rustc_data_structures::stable_hasher::StableHasher;
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 use std::fmt::Write;
 use std::hash::Hash;
-use syntax::ast;
-use syntax::ext::hygiene::Mark;
+use syntax::ast::{self, Ident};
+use syntax::ext::hygiene::{Mark, SyntaxContext};
 use syntax::symbol::{Symbol, InternedString};
 use ty::TyCtxt;
 use util::nodemap::NodeMap;
@@ -327,7 +327,7 @@ impl DefPath {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
+#[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
 pub enum DefPathData {
     // Root: these should only be used for the root nodes, because
     // they are treated specially by the `def_path` function.
@@ -341,31 +341,31 @@ pub enum DefPathData {
     /// An impl
     Impl,
     /// Something in the type NS
-    TypeNs(InternedString),
+    TypeNs(Ident),
     /// Something in the value NS
-    ValueNs(InternedString),
+    ValueNs(Ident),
     /// A module declaration
-    Module(InternedString),
+    Module(Ident),
     /// A macro rule
-    MacroDef(InternedString),
+    MacroDef(Ident),
     /// A closure expression
     ClosureExpr,
 
     // Subportions of items
     /// A type parameter (generic parameter)
-    TypeParam(InternedString),
+    TypeParam(Ident),
     /// A lifetime definition
-    LifetimeDef(InternedString),
+    LifetimeDef(Ident),
     /// A variant of a enum
-    EnumVariant(InternedString),
+    EnumVariant(Ident),
     /// A struct field
-    Field(InternedString),
+    Field(Ident),
     /// Implicit ctor for a tuple-like struct
     StructCtor,
     /// Initializer for a const
     Initializer,
     /// Pattern binding
-    Binding(InternedString),
+    Binding(Ident),
     /// An `impl Trait` type node.
     ImplTrait,
     /// A `typeof` type node.
@@ -551,18 +551,18 @@ impl Definitions {
 }
 
 impl DefPathData {
-    pub fn get_opt_name(&self) -> Option<ast::Name> {
+    pub fn get_opt_ident(&self) -> Option<Ident> {
         use self::DefPathData::*;
         match *self {
-            TypeNs(ref name) |
-            ValueNs(ref name) |
-            Module(ref name) |
-            MacroDef(ref name) |
-            TypeParam(ref name) |
-            LifetimeDef(ref name) |
-            EnumVariant(ref name) |
-            Binding(ref name) |
-            Field(ref name) => Some(Symbol::intern(name)),
+            TypeNs(ident) |
+            ValueNs(ident) |
+            Module(ident) |
+            MacroDef(ident) |
+            TypeParam(ident) |
+            LifetimeDef(ident) |
+            EnumVariant(ident) |
+            Binding(ident) |
+            Field(ident) => Some(ident),
 
             Impl |
             CrateRoot |
@@ -575,19 +575,23 @@ impl DefPathData {
         }
     }
 
+    pub fn get_opt_name(&self) -> Option<ast::Name> {
+        self.get_opt_ident().map(|ident| ident.name)
+    }
+
     pub fn as_interned_str(&self) -> InternedString {
         use self::DefPathData::*;
         let s = match *self {
-            TypeNs(ref name) |
-            ValueNs(ref name) |
-            Module(ref name) |
-            MacroDef(ref name) |
-            TypeParam(ref name) |
-            LifetimeDef(ref name) |
-            EnumVariant(ref name) |
-            Binding(ref name) |
-            Field(ref name) => {
-                return name.clone();
+            TypeNs(ident) |
+            ValueNs(ident) |
+            Module(ident) |
+            MacroDef(ident) |
+            TypeParam(ident) |
+            LifetimeDef(ident) |
+            EnumVariant(ident) |
+            Binding(ident) |
+            Field(ident) => {
+                return ident.name.as_str();
             }
 
             // note that this does not show up in user printouts
@@ -607,5 +611,27 @@ impl DefPathData {
 
     pub fn to_string(&self) -> String {
         self.as_interned_str().to_string()
+    }
+}
+
+impl Eq for DefPathData {}
+impl PartialEq for DefPathData {
+    fn eq(&self, other: &DefPathData) -> bool {
+        ::std::mem::discriminant(self) == ::std::mem::discriminant(other) &&
+        self.get_opt_ident() == other.get_opt_ident()
+    }
+}
+
+impl ::std::hash::Hash for DefPathData {
+    fn hash<H: ::std::hash::Hasher>(&self, hasher: &mut H) {
+        ::std::mem::discriminant(self).hash(hasher);
+        if let Some(ident) = self.get_opt_ident() {
+            if ident.ctxt == SyntaxContext::empty() && ident.name == ident.name.interned() {
+                ident.name.as_str().hash(hasher)
+            } else {
+                // FIXME(jseyfried) implement stable hashing for idents with macros 2.0 hygiene info
+                ident.hash(hasher)
+            }
+        }
     }
 }

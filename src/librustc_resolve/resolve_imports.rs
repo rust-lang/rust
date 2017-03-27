@@ -803,7 +803,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
         if module as *const _ == self.graph_root as *const _ {
             let macro_exports = mem::replace(&mut self.macro_exports, Vec::new());
             for export in macro_exports.into_iter().rev() {
-                if exported_macro_names.insert(export.name, export.span).is_none() {
+                if exported_macro_names.insert(export.ident.modern(), export.span).is_none() {
                     reexports.push(export);
                 }
             }
@@ -824,7 +824,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                         self.session.cstore.export_macros(def.def_id().krate);
                     }
                     if let Def::Macro(..) = def {
-                        if let Some(&span) = exported_macro_names.get(&ident.name) {
+                        if let Some(&span) = exported_macro_names.get(&ident.modern()) {
                             let msg =
                                 format!("a macro named `{}` has already been exported", ident);
                             self.session.struct_span_err(span, &msg)
@@ -833,7 +833,7 @@ impl<'a, 'b:'a> ImportResolver<'a, 'b> {
                                 .emit();
                         }
                     }
-                    reexports.push(Export { name: ident.name, def: def, span: binding.span });
+                    reexports.push(Export { ident: ident.modern(), def: def, span: binding.span });
                 }
             }
 

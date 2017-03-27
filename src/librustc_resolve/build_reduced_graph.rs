@@ -439,7 +439,7 @@ impl<'a> Resolver<'a> {
 
     /// Builds the reduced graph for a single item in an external crate.
     fn build_reduced_graph_for_external_crate_def(&mut self, parent: Module<'a>, child: Export) {
-        let ident = Ident::with_empty_ctxt(child.name);
+        let ident = child.ident;
         let def = child.def;
         let def_id = def.def_id();
         let vis = self.session.cstore.visibility(def_id);
@@ -480,9 +480,8 @@ impl<'a> Resolver<'a> {
 
                 for child in self.session.cstore.item_children(def_id) {
                     let ns = if let Def::AssociatedTy(..) = child.def { TypeNS } else { ValueNS };
-                    let ident = Ident::with_empty_ctxt(child.name);
-                    self.define(module, ident, ns, (child.def, ty::Visibility::Public,
-                                                    DUMMY_SP, expansion));
+                    self.define(module, child.ident, ns,
+                                (child.def, ty::Visibility::Public, DUMMY_SP, expansion));
 
                     if self.session.cstore.associated_item_cloned(child.def.def_id())
                            .method_has_self_argument {
@@ -643,7 +642,7 @@ impl<'a> Resolver<'a> {
             let ident = Ident::with_empty_ctxt(name);
             let result = self.resolve_ident_in_module(module, ident, MacroNS, false, false, span);
             if let Ok(binding) = result {
-                self.macro_exports.push(Export { name: name, def: binding.def(), span: span });
+                self.macro_exports.push(Export { ident: ident, def: binding.def(), span: span });
             } else {
                 span_err!(self.session, span, E0470, "reexported macro not found");
             }

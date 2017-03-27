@@ -54,13 +54,24 @@ impl fmt::Display for Ident {
 
 impl Encodable for Ident {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        self.name.encode(s)
+        if self.ctxt.modern() == SyntaxContext::empty() {
+            s.emit_str(&self.name.as_str())
+        } else { // FIXME(jseyfried) intercrate hygiene
+            let mut string = "#".to_owned();
+            string.push_str(&self.name.as_str());
+            s.emit_str(&string)
+        }
     }
 }
 
 impl Decodable for Ident {
     fn decode<D: Decoder>(d: &mut D) -> Result<Ident, D::Error> {
-        Ok(Ident::with_empty_ctxt(Symbol::decode(d)?))
+        let string = d.read_str()?;
+        Ok(if !string.starts_with('#') {
+            Ident::from_str(&string)
+        } else { // FIXME(jseyfried) intercrate hygiene
+            Ident::with_empty_ctxt(Symbol::gensym(&string[1..]))
+        })
     }
 }
 

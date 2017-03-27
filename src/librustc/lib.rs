@@ -28,6 +28,7 @@
 #![feature(conservative_impl_trait)]
 #![feature(const_fn)]
 #![feature(core_intrinsics)]
+#![feature(discriminant_value)]
 #![feature(i128_type)]
 #![feature(libc)]
 #![feature(never_type)]

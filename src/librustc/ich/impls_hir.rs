@@ -1118,7 +1118,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for hir::def_id::DefIn
 }
 
 impl_stable_hash_for!(struct hir::def::Export {
-    name,
+    ident,
     def,
     span
 });
