@@ -40,7 +40,7 @@ fn pkgname(build: &Build, component: &str) -> String {
     if component == "cargo" {
         format!("{}-{}", component, build.cargo_package_vers())
     } else {
-        assert!(component.starts_with("rust"));
+        assert!(component.starts_with("rust") || component == "rls");
         format!("{}-{}", component, build.rust_package_vers())
     }
 }
@@ -540,7 +540,7 @@ pub fn cargo(build: &Build, stage: u32, target: &str) {
 
     let src = build.src.join("cargo");
     let etc = src.join("src/etc");
-    let release_num = build.cargo_release_num();
+    let release_num = build.release_num("cargo");
     let name = pkgname(build, "cargo");
     let version = build.cargo_info.version(build, &release_num);
 
@@ -599,7 +599,7 @@ pub fn rls(build: &Build, stage: u32, target: &str) {
     let compiler = Compiler::new(stage, &build.config.build);
 
     let src = build.src.join("rls");
-    let release_num = build.rls_release_num();
+    let release_num = build.release_num("rls");
     let name = format!("rls-{}", build.package_vers(&release_num));
 
     let tmp = tmpdir(build);
@@ -642,8 +642,9 @@ pub fn extended(build: &Build, stage: u32, target: &str) {
     let cargo_installer = dist.join(format!("{}-{}.tar.gz",
                                             pkgname(build, "cargo"),
                                             target));
-    let rls_installer = dist.join(format!("{}.tar.gz",
-                                          pkgname(build, "rls")));
+    let rls_installer = dist.join(format!("{}-{}.tar.gz",
+                                          pkgname(build, "rls"),
+                                          target));
     let analysis_installer = dist.join(format!("{}-{}.tar.gz",
                                                pkgname(build, "rust-analysis"),
                                                target));
@@ -720,8 +721,6 @@ pub fn extended(build: &Build, stage: u32, target: &str) {
         let _ = fs::remove_dir_all(&pkg);
         t!(fs::create_dir_all(pkg.join("rustc")));
         t!(fs::create_dir_all(pkg.join("cargo")));
-        t!(fs::create_dir_all(pkg.join("rls")));
-        t!(fs::create_dir_all(pkg.join("rust-analysis")));
         t!(fs::create_dir_all(pkg.join("rust-docs")));
         t!(fs::create_dir_all(pkg.join("rust-std")));
 
@@ -729,10 +728,6 @@ pub fn extended(build: &Build, stage: u32, target: &str) {
              &pkg.join("rustc"));
         cp_r(&work.join(&format!("{}-{}", pkgname(build, "cargo"), target)),
              &pkg.join("cargo"));
-        cp_r(&work.join(pkgname(build, "rls")),
-             &pkg.join("rls"));
-        cp_r(&work.join(&format!("{}-{}", pkgname(build, "rust-analysis"), target)),
-             &pkg.join("rust-analysis"));
         cp_r(&work.join(&format!("{}-{}", pkgname(build, "rust-docs"), target)),
              &pkg.join("rust-docs"));
         cp_r(&work.join(&format!("{}-{}", pkgname(build, "rust-std"), target)),
@@ -740,8 +735,6 @@ pub fn extended(build: &Build, stage: u32, target: &str) {
 
         install(&etc.join("pkg/postinstall"), &pkg.join("rustc"), 0o755);
         install(&etc.join("pkg/postinstall"), &pkg.join("cargo"), 0o755);
-        install(&etc.join("pkg/postinstall"), &pkg.join("rls"), 0o755);
-        install(&etc.join("pkg/postinstall"), &pkg.join("rust-analysis"), 0o755);
         install(&etc.join("pkg/postinstall"), &pkg.join("rust-docs"), 0o755);
         install(&etc.join("pkg/postinstall"), &pkg.join("rust-std"), 0o755);
 
@@ -755,8 +748,6 @@ pub fn extended(build: &Build, stage: u32, target: &str) {
         };
         pkgbuild("rustc");
         pkgbuild("cargo");
-        pkgbuild("rls");
-        pkgbuild("rust-analysis");
         pkgbuild("rust-docs");
         pkgbuild("rust-std");
 
@@ -782,8 +773,6 @@ pub fn extended(build: &Build, stage: u32, target: &str) {
         let _ = fs::remove_dir_all(&exe);
         t!(fs::create_dir_all(exe.join("rustc")));
         t!(fs::create_dir_all(exe.join("cargo")));
-        t!(fs::create_dir_all(exe.join("rls")));
-        t!(fs::create_dir_all(exe.join("rust-analysis")));
         t!(fs::create_dir_all(exe.join("rust-docs")));
         t!(fs::create_dir_all(exe.join("rust-std")));
         cp_r(&work.join(&format!("{}-{}", pkgname(build, "rustc"), target))
@@ -792,12 +781,6 @@ pub fn extended(build: &Build, stage: u32, target: &str) {
         cp_r(&work.join(&format!("{}-{}", pkgname(build, "cargo"), target))
                   .join("cargo"),
              &exe.join("cargo"));
-        cp_r(&work.join(pkgname(build, "rls"))
-                  .join("rls"),
-             &exe.join("rls"));
-        cp_r(&work.join(&format!("{}-{}", pkgname(build, "rust-analysis"), target))
-                  .join("rust-analysis"),
-             &exe.join("rust-analysis"));
         cp_r(&work.join(&format!("{}-{}", pkgname(build, "rust-docs"), target))
                   .join("rust-docs"),
              &exe.join("rust-docs"));
@@ -807,8 +790,6 @@ pub fn extended(build: &Build, stage: u32, target: &str) {
 
         t!(fs::remove_file(exe.join("rustc/manifest.in")));
         t!(fs::remove_file(exe.join("cargo/manifest.in")));
-        t!(fs::remove_file(exe.join("rls/manifest.in")));
-        t!(fs::remove_file(exe.join("rust-analysis/manifest.in")));
         t!(fs::remove_file(exe.join("rust-docs/manifest.in")));
         t!(fs::remove_file(exe.join("rust-std/manifest.in")));
 
@@ -868,26 +849,6 @@ pub fn extended(build: &Build, stage: u32, target: &str) {
         build.run(Command::new(&heat)
                         .current_dir(&exe)
                         .arg("dir")
-                        .arg("rls")
-                        .args(&heat_flags)
-                        .arg("-cg").arg("RlsGroup")
-                        .arg("-dr").arg("Rls")
-                        .arg("-var").arg("var.RlsDir")
-                        .arg("-out").arg(exe.join("RlsGroup.wxs"))
-                        .arg("-t").arg(etc.join("msi/squash-components.xsl")));
-        build.run(Command::new(&heat)
-                        .current_dir(&exe)
-                        .arg("dir")
-                        .arg("rust-analysis")
-                        .args(&heat_flags)
-                        .arg("-cg").arg("AnalysisGroup")
-                        .arg("-dr").arg("Analysis")
-                        .arg("-var").arg("var.AnalysisDir")
-                        .arg("-out").arg(exe.join("AnalysisGroup.wxs"))
-                        .arg("-t").arg(etc.join("msi/squash-components.xsl")));
-        build.run(Command::new(&heat)
-                        .current_dir(&exe)
-                        .arg("dir")
                         .arg("cargo")
                         .args(&heat_flags)
                         .arg("-cg").arg("CargoGroup")
@@ -925,8 +886,6 @@ pub fn extended(build: &Build, stage: u32, target: &str) {
                .arg("-nologo")
                .arg("-dRustcDir=rustc")
                .arg("-dDocsDir=rust-docs")
-               .arg("-dRlsDir=rls")
-               .arg("-dAnalysisDir=rust-analysis")
                .arg("-dCargoDir=cargo")
                .arg("-dStdDir=rust-std")
                .arg("-arch").arg(&arch)
@@ -944,8 +903,6 @@ pub fn extended(build: &Build, stage: u32, target: &str) {
         candle(&etc.join("msi/rustwelcomedlg.wxs"));
         candle("RustcGroup.wxs".as_ref());
         candle("DocsGroup.wxs".as_ref());
-        candle("RlsGroup.wxs".as_ref());
-        candle("AnalysisGroup.wxs".as_ref());
         candle("CargoGroup.wxs".as_ref());
         candle("StdGroup.wxs".as_ref());
 
@@ -968,8 +925,6 @@ pub fn extended(build: &Build, stage: u32, target: &str) {
            .arg("rustwelcomedlg.wixobj")
            .arg("RustcGroup.wixobj")
            .arg("DocsGroup.wixobj")
-           .arg("RlsGroup.wixobj")
-           .arg("AnalysisGroup.wixobj")
            .arg("CargoGroup.wixobj")
            .arg("StdGroup.wixobj")
            .current_dir(&exe);
@@ -1037,7 +992,7 @@ pub fn hash_and_sign(build: &Build) {
     cmd.arg(distdir(build));
     cmd.arg(today.trim());
     cmd.arg(build.rust_package_vers());
-    cmd.arg(build.package_vers(&build.cargo_release_num()));
+    cmd.arg(build.package_vers(&build.release_num("cargo")));
     cmd.arg(addr);
 
     t!(fs::create_dir_all(distdir(build)));

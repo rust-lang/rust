@@ -1017,7 +1017,7 @@ impl Build {
 
     /// Returns the value of `package_vers` above for Cargo
     fn cargo_package_vers(&self) -> String {
-        self.package_vers(&self.cargo_release_num())
+        self.package_vers(&self.release_num("cargo"))
     }
 
     /// Returns the `version` string associated with this compiler for Rust
@@ -1029,10 +1029,11 @@ impl Build {
         self.rust_info.version(self, channel::CFG_RELEASE_NUM)
     }
 
-    /// Returns the `a.b.c` version that Cargo is at.
-    fn cargo_release_num(&self) -> String {
+    /// Returns the `a.b.c` version that the given package is at.
+    fn release_num(&self, package: &str) -> String {
         let mut toml = String::new();
-        t!(t!(File::open(self.src.join("cargo/Cargo.toml"))).read_to_string(&mut toml));
+        let toml_file_name = self.src.join(&format!("{}/Cargo.toml", package));
+        t!(t!(File::open(toml_file_name)).read_to_string(&mut toml));
         for line in toml.lines() {
             let prefix = "version = \"";
             let suffix = "\"";
@@ -1041,22 +1042,7 @@ impl Build {
             }
         }
 
-        panic!("failed to find version in cargo's Cargo.toml")
-    }
-
-    /// Returns the `a.b.c` version that the RLS is at.
-    fn rls_release_num(&self) -> String {
-        let mut toml = String::new();
-        t!(t!(File::open(self.src.join("rls/Cargo.toml"))).read_to_string(&mut toml));
-        for line in toml.lines() {
-            let prefix = "version = \"";
-            let suffix = "\"";
-            if line.starts_with(prefix) && line.ends_with(suffix) {
-                return line[prefix.len()..line.len() - suffix.len()].to_string()
-            }
-        }
-
-        panic!("failed to find version in the RLS's Cargo.toml")
+        panic!("failed to find version in {}'s Cargo.toml", package)
     }
 
     /// Returns whether unstable features should be enabled for the compiler

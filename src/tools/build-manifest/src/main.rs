@@ -225,6 +225,7 @@ impl Builder {
         self.package("rust-src", &mut manifest.pkg, &["*"]);
 
         if self.rust_release == "nightly" {
+            self.package("rls", &mut manifest.pkg, HOSTS);
             self.package("rust-analysis", &mut manifest.pkg, TARGETS);
         }
 
@@ -276,6 +277,10 @@ impl Builder {
                     extensions.push(Component {
                         pkg: "rust-analysis".to_string(),
                         target: target.to_string(),
+                    });
+                    extensions.push(Component {
+                        pkg: "rls".to_string(),
+                        target: host.to_string(),
                     });
                 }
             }
