@@ -353,7 +353,7 @@ impl<'a> Linker for MsvcLinker<'a> {
         // `foo.lib` file if the dll doesn't actually export any symbols, so we
         // check to see if the file is there and just omit linking to it if it's
         // not present.
-        let name = format!("{}.dll.lib", lib);
+        let name = format!("{}.dll.rlib", lib);
         if fs::metadata(&path.join(&name)).is_ok() {
             self.cmd.arg(name);
         }

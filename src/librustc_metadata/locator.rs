@@ -890,25 +890,7 @@ fn get_metadata_section_imp(target: &Target,
     if !filename.exists() {
         return Err(format!("no such file: '{}'", filename.display()));
     }
-    if flavor == CrateFlavor::Rlib {
-        // Use ArchiveRO for speed here, it's backed by LLVM and uses mmap
-        // internally to read the file. We also avoid even using a memcpy by
-        // just keeping the archive along while the metadata is in use.
-        let archive = match ArchiveRO::open(filename) {
-            Some(ar) => ar,
-            None => {
-                debug!("llvm didn't like `{}`", filename.display());
-                return Err(format!("failed to read rlib metadata: '{}'", filename.display()));
-            }
-        };
-        return match ArchiveMetadata::new(archive).map(|ar| MetadataBlob::Archive(ar)) {
-            None => Err(format!("failed to read rlib metadata: '{}'", filename.display())),
-            Some(blob) => {
-                verify_decompressed_encoding_version(&blob, filename)?;
-                Ok(blob)
-            }
-        };
-    } else if flavor == CrateFlavor::Rmeta {
+    if flavor == CrateFlavor::Rmeta {
         let mut file = File::open(filename).map_err(|_|
             format!("could not open file: '{}'", filename.display()))?;
         let mut buf = vec![];
@@ -917,6 +899,32 @@ fn get_metadata_section_imp(target: &Target,
         let blob = MetadataBlob::Raw(buf);
         verify_decompressed_encoding_version(&blob, filename)?;
         return Ok(blob);
+    } else if flavor == CrateFlavor::Rlib || target.options.is_like_msvc {
+        // With MSVC, DLLs do not contain metadata. Instead, the import library
+        // for the DLL is itself an Rlib.
+        let rlib_filename = if flavor == CrateFlavor::Rlib {
+            filename.to_owned()
+        } else {
+            filename.with_extension("dll.rlib")
+        };
+
+        // Use ArchiveRO for speed here, it's backed by LLVM and uses mmap
+        // internally to read the file. We also avoid even using a memcpy by
+        // just keeping the archive along while the metadata is in use.
+        let archive = match ArchiveRO::open(&rlib_filename) {
+            Some(ar) => ar,
+            None => {
+                debug!("llvm didn't like `{}`", rlib_filename.display());
+                return Err(format!("failed to read rlib metadata: '{}'", rlib_filename.display()));
+            }
+        };
+        return match ArchiveMetadata::new(archive).map(|ar| MetadataBlob::Archive(ar)) {
+            None => Err(format!("failed to read rlib metadata: '{}'", rlib_filename.display())),
+            Some(blob) => {
+                verify_decompressed_encoding_version(&blob, &rlib_filename)?;
+                Ok(blob)
+            }
+        };
     }
     unsafe {
         let buf = common::path2cstr(filename);

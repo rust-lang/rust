@@ -825,6 +825,29 @@ fn link_natively(sess: &Session,
             }
             info!("linker stderr:\n{}", escape_string(&prog.stderr[..]));
             info!("linker stdout:\n{}", escape_string(&prog.stdout[..]));
+
+
+            // When linking a dynamic library with MSVC, we put the metadata
+            // in the import library, so we add that here.
+            if crate_type == config::CrateTypeDylib ||
+               crate_type == config::CrateTypeProcMacro {
+                if sess.target.target.options.is_like_msvc {
+                    // Find the import library and add the metadata to it
+                    let ref imp_lib_name = out_filename.with_extension("dll.lib");
+                    let ref imp_rlib_name = out_filename.with_extension("dll.rlib");
+
+                    // Import library may not exist if there were no exports
+                    if fs::metadata(imp_lib_name).is_ok() {
+                        add_metadata_to_existing_lib(sess, trans, Some(imp_lib_name),
+                                                     imp_rlib_name, tmpdir);
+                        // Remove plain lib file
+                        remove(sess, imp_lib_name);
+                    } else {
+                        add_metadata_to_existing_lib(sess, trans, None, imp_rlib_name, tmpdir);
+                    }
+                }
+            }
+
         },
         Err(e) => {
             sess.struct_err(&format!("could not exec the linker `{}`: {}", pname, e))
@@ -849,6 +872,22 @@ fn link_natively(sess: &Session,
             Err(e) => sess.fatal(&format!("failed to run dsymutil: {}", e)),
         }
     }
+}
+
+fn add_metadata_to_existing_lib(sess: &Session,
+                                trans: &CrateTranslation,
+                                input_lib: Option<&Path>,
+                                output_rlib: &Path,
+                                tmpdir: &Path) {
+
+    info!("adding metadata to {:?} to build {:?}", input_lib, output_rlib);
+    let mut ab = ArchiveBuilder::new(archive_config(sess, output_rlib, input_lib));
+    ab.update_symbols();
+
+    let metadata = tmpdir.join(sess.cstore.metadata_filename());
+    emit_metadata(sess, trans, &metadata);
+    ab.add_file(&metadata);
+    ab.build();
 }
 
 fn link_args(cmd: &mut Linker,
@@ -892,7 +931,11 @@ fn link_args(cmd: &mut Linker,
     // object file, so we link that in here.
     if crate_type == config::CrateTypeDylib ||
        crate_type == config::CrateTypeProcMacro {
-        cmd.add_object(&outputs.with_extension(METADATA_OBJ_NAME));
+        // We store the metadata in the import library instead of the DLL
+        // when targetting MSVC.
+        if !sess.target.target.options.is_like_msvc {
+            cmd.add_object(&outputs.with_extension(METADATA_OBJ_NAME));
+        }
     }
 
     // Try to strip as much out of the generated object by removing unused
@@ -1203,6 +1246,9 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
             lib.kind == NativeLibraryKind::NativeStatic && !relevant_lib(sess, lib)
         });
 
+        // If we're not doing LTO, don't need to remove metadata, and don't
+        // want to skip specific object files, then we can take the fast path,
+        // and pass the library directly to the linker without modification.
         if !sess.lto() && crate_type != config::CrateTypeDylib && !skip_native {
             cmd.link_rlib(&fix_windows_verbatim_for_gcc(cratepath));
             return
@@ -1286,6 +1332,7 @@ fn add_upstream_rust_crates(cmd: &mut Linker,
         if let Some(dir) = parent {
             cmd.include_path(&fix_windows_verbatim_for_gcc(dir));
         }
+
         let filestem = cratepath.file_stem().unwrap().to_str().unwrap();
         cmd.link_rust_dylib(&unlib(&sess.target, filestem),
                             parent.unwrap_or(Path::new("")));

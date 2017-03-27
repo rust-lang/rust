@@ -72,8 +72,12 @@ impl ExportedSymbols {
         }
 
         if scx.sess().crate_types.borrow().contains(&config::CrateTypeDylib) {
-            local_crate.push((scx.metadata_symbol_name(),
-                              SymbolExportLevel::Rust));
+            // When targetting MSVC, metadata is stored in import library
+            // so don't add an exported symbol for it.
+            if !scx.sess().target.target.options.is_like_msvc {
+                local_crate.push((scx.metadata_symbol_name(),
+                                  SymbolExportLevel::Rust));
+            }
         }
 
         let mut exports = FxHashMap();
