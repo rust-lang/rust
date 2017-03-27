@@ -172,7 +172,6 @@ impl<'a> base::Resolver for Resolver<'a> {
             expansion: mark,
         };
         expansion.visit_with(&mut visitor);
-        self.current_module.unresolved_invocations.borrow_mut().remove(&mark);
         invocation.expansion.set(visitor.legacy_scope);
     }
 
@@ -390,7 +389,7 @@ impl<'a> Resolver<'a> {
                     Err(Determinacy::Determined)
                 },
             };
-            self.current_module.macro_resolutions.borrow_mut()
+            self.current_module.nearest_item_scope().macro_resolutions.borrow_mut()
                 .push((path.into_boxed_slice(), span));
             return def;
         }
@@ -410,7 +409,7 @@ impl<'a> Resolver<'a> {
             }
         };
 
-        self.current_module.legacy_macro_resolutions.borrow_mut()
+        self.current_module.nearest_item_scope().legacy_macro_resolutions.borrow_mut()
             .push((scope, path[0], span, kind));
 
         result
