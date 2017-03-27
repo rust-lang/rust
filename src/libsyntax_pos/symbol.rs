@@ -12,10 +12,57 @@
 //! allows bidirectional lookup; i.e. given a value, one can easily find the
 //! type, and vice versa.
 
+use hygiene::SyntaxContext;
+
 use serialize::{Decodable, Decoder, Encodable, Encoder};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt;
+
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+pub struct Ident {
+    pub name: Symbol,
+    pub ctxt: SyntaxContext,
+}
+
+impl Ident {
+    pub const fn with_empty_ctxt(name: Symbol) -> Ident {
+        Ident { name: name, ctxt: SyntaxContext::empty() }
+    }
+
+    /// Maps a string to an identifier with an empty syntax context.
+    pub fn from_str(string: &str) -> Ident {
+        Ident::with_empty_ctxt(Symbol::intern(string))
+    }
+
+    pub fn unhygienize(self) -> Ident {
+        Ident { name: self.name, ctxt: SyntaxContext::empty() }
+    }
+}
+
+impl fmt::Debug for Ident {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}{:?}", self.name, self.ctxt)
+    }
+}
+
+impl fmt::Display for Ident {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Display::fmt(&self.name, f)
+    }
+}
+
+impl Encodable for Ident {
+    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+        self.name.encode(s)
+    }
+}
+
+impl Decodable for Ident {
+    fn decode<D: Decoder>(d: &mut D) -> Result<Ident, D::Error> {
+        Ok(Ident::with_empty_ctxt(Symbol::decode(d)?))
+    }
+}
 
 /// A symbol is an interned or gensymed string.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -128,19 +175,19 @@ macro_rules! declare_keywords {(
     $( ($index: expr, $konst: ident, $string: expr) )*
 ) => {
     pub mod keywords {
-        use ast;
+        use super::{Symbol, Ident};
         #[derive(Clone, Copy, PartialEq, Eq)]
         pub struct Keyword {
-            ident: ast::Ident,
+            ident: Ident,
         }
         impl Keyword {
-            #[inline] pub fn ident(self) -> ast::Ident { self.ident }
-            #[inline] pub fn name(self) -> ast::Name { self.ident.name }
+            #[inline] pub fn ident(self) -> Ident { self.ident }
+            #[inline] pub fn name(self) -> Symbol { self.ident.name }
         }
         $(
             #[allow(non_upper_case_globals)]
             pub const $konst: Keyword = Keyword {
-                ident: ast::Ident::with_empty_ctxt(super::Symbol($index))
+                ident: Ident::with_empty_ctxt(super::Symbol($index))
             };
         )*
     }

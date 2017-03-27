@@ -48,7 +48,6 @@ pub mod styled_buffer;
 mod lock;
 
 use syntax_pos::{BytePos, Loc, FileLinesResult, FileName, MultiSpan, Span, NO_EXPANSION};
-use syntax_pos::MacroBacktrace;
 
 #[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub enum RenderSpan {
@@ -75,7 +74,6 @@ pub trait CodeMapper {
     fn span_to_lines(&self, sp: Span) -> FileLinesResult;
     fn span_to_string(&self, sp: Span) -> String;
     fn span_to_filename(&self, sp: Span) -> FileName;
-    fn macro_backtrace(&self, span: Span) -> Vec<MacroBacktrace>;
     fn merge_spans(&self, sp_lhs: Span, sp_rhs: Span) -> Option<Span>;
 }
 
@@ -120,7 +118,7 @@ impl CodeSuggestion {
         let bounding_span = Span {
             lo: lo,
             hi: hi,
-            expn_id: NO_EXPANSION,
+            ctxt: NO_EXPANSION,
         };
         let lines = cm.span_to_lines(bounding_span).unwrap();
         assert!(!lines.lines.is_empty());

@@ -33,11 +33,12 @@ use hir::def::Def;
 use hir::def_id::{DefId, DefIndex, CRATE_DEF_INDEX};
 use util::nodemap::{NodeMap, FxHashSet};
 
-use syntax_pos::{Span, ExpnId, DUMMY_SP};
+use syntax_pos::{Span, DUMMY_SP};
 use syntax::codemap::{self, Spanned};
 use syntax::abi::Abi;
 use syntax::ast::{Ident, Name, NodeId, DUMMY_NODE_ID, AsmDialect};
 use syntax::ast::{Attribute, Lit, StrStyle, FloatTy, IntTy, UintTy, MetaItem};
+use syntax::ext::hygiene::SyntaxContext;
 use syntax::ptr::P;
 use syntax::symbol::{Symbol, keywords};
 use syntax::tokenstream::TokenStream;
@@ -1367,7 +1368,7 @@ pub struct InlineAsm {
     pub volatile: bool,
     pub alignstack: bool,
     pub dialect: AsmDialect,
-    pub expn_id: ExpnId,
+    pub ctxt: SyntaxContext,
 }
 
 /// represents an argument in a function header

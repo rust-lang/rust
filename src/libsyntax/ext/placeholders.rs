@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast;
+use ast::{self, NodeId};
 use codemap::{DUMMY_SP, dummy_spanned};
 use ext::base::ExtCtxt;
 use ext::expand::{Expansion, ExpansionKind};
@@ -88,7 +88,7 @@ impl<'a, 'b> PlaceholderExpander<'a, 'b> {
         let mut expansion = expansion.fold_with(self);
         if let Expansion::Items(mut items) = expansion {
             for derive in derives {
-                match self.remove(derive.as_placeholder_id()) {
+                match self.remove(NodeId::placeholder_from_mark(derive)) {
                     Expansion::Items(derived_items) => items.extend(derived_items),
                     _ => unreachable!(),
                 }
