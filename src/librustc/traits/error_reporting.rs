@@ -778,19 +778,53 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 }
 
-impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
-    fn foo(&self, id: ast::NodeId, ty: &hir::Ty, sp: Span, err: &mut DiagnosticBuilder<'tcx>) -> bool {
-        if let Some(Node::NodeItem(item)) = ty.ty_def_id().and_then(|id| {
-            self.hir.get_if_local(id)
-        }) {
-            if self.is_node_id_referenced_in_item(item, id) {
-                err.span_label(sp, &"recursive here");
+/// Get the `DefId` for a given struct or enum `Ty`.
+fn ty_def_id(ty: &hir::Ty) -> Option<DefId> {
+    match ty.node {
+        hir::TyPath(hir::QPath::Resolved(_, ref path)) => {
+            match path.def {
+                hir::def::Def::Struct(did) | hir::def::Def::Enum(did) => {
+                    Some(did)
+                }
+                _ => None,
             }
-            true
-        } else {
-            false
-        }
+        },
+        _ => None,
     }
+}
+
+impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
+    /// Add a span label to `err` pointing at `sp` if the field represented by `node_id` points
+    /// recursively at the type `ty` without indirection.
+    fn annotate_recursive_field_ty(&self,
+                                   node_id: ast::NodeId,
+                                   ty: &hir::Ty,
+                                   sp: Span,
+                                   err: &mut DiagnosticBuilder<'tcx>) -> bool {
+        if let Some(did) = ty_def_id(ty) {
+            return self.annotate_recursive_field_id(node_id, did, sp, err);
+        }
+        false
+    }
+
+    /// Add a span label to `err` pointing at `sp` if the field represented by `node_id` points
+    /// recursively at the type represented by `did` without indirection.
+    fn annotate_recursive_field_id(&self,
+                                   node_id:
+                                   ast::NodeId,
+                                   did: DefId,
+                                   sp: Span,
+                                   err: &mut DiagnosticBuilder<'tcx>) -> bool
+    {
+        if let Some(Node::NodeItem(item)) = self.hir.get_if_local(did) {
+            if self.is_node_id_referenced_in_item(item, node_id) {
+                err.span_label(sp, &"recursive without indirection");
+                return true;
+            }
+        }
+        false
+    }
+
     pub fn recursive_type_with_infinite_size_error(self,
                                                    type_def_id: DefId)
                                                    -> DiagnosticBuilder<'tcx>
@@ -806,114 +840,62 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                            at some point to make `{}` representable",
                           self.item_path_str(type_def_id)));
 
+        // Look at the type for the the recursive type's fields and label those that are causing it
+        // to be of infinite size.
         if let Some(Node::NodeItem(self_item)) = self.hir.get_if_local(type_def_id) {
-            match self_item.node {
-                hir::ItemStruct(hir::VariantData::Struct(ref fields, _), _) |
-                hir::ItemStruct(hir::VariantData::Tuple(ref fields, _), _) => {
-                    for field in fields {
-                        match field.ty.node {
-                            hir::TyPath(ref qpath) => {
-                                // Foo | Option<Foo>
-                                if let &hir::QPath::Resolved(_, ref path) = qpath {
-                                    for segment in path.segments.iter() {
-                                        if let hir::AngleBracketedParameters(
-                                            hir::AngleBracketedParameterData {
-                                                ref types, ..
-                                            }) = segment.parameters
-                                        {
-                                            for ty in types {
-                                                if self.foo(self_item.id, &ty, field.span,
-                                                            &mut err) {
-                                                    break;
-                                                }
-                                            }
-                                        }
-
-                                    }
-                                    match path.def {
-                                        hir::def::Def::Struct(did) | hir::def::Def::Enum(did) => {
-                                            let local = self.hir.get_if_local(did);
-                                            if let Some(Node::NodeItem(item)) = local {
-                                                if self.is_node_id_referenced_in_item(item,
-                                                                                      self_item.id)
-                                                {
-                                                    err.span_label(field.span, &"recursive here");
-                                                }
-                                            }
-                                        }
-                                        _ => (),
-                                    }
+            for field in self_item.node.fields() {
+                match field.ty.node {
+                    hir::TyPath(ref qpath) => {
+                        // Foo
+                        if let &hir::QPath::Resolved(_, ref path) = qpath {
+                            match path.def {
+                                hir::def::Def::Struct(did) |
+                                hir::def::Def::Enum(did) => {
+                                    self.annotate_recursive_field_id(self_item.id,
+                                                                     did,
+                                                                     field.span,
+                                                                     &mut err);
                                 }
+                                _ => (),
                             }
-                            hir::TySlice(ref ty) |
-                            hir::TyArray(ref ty, _) |
-                            hir::TyPtr(hir::MutTy { ref ty, .. }) |
-                            hir::TyRptr(_, hir::MutTy { ref ty, .. }) => {
-                                // &[Foo] | [Foo] | &'a [Foo]
-                                if let hir::TySlice(ref ty) = ty.node {
-                                    // &'a [Foo]
-                                    let _ = self.foo(self_item.id, &ty, field.span, &mut err);
-                                } else {
-                                    let _ = self.foo(self_item.id, &ty, field.span, &mut err);
-                                }
-                            }
-                            hir::TyTup(ref tys) => {
-                                // (Foo, Bar)
-                                for ty in tys {
-                                    if self.foo(self_item.id, &ty, field.span, &mut err) {
-                                        break;
-                                    }
-                                }
-                            }
-                            _ => (),
                         }
                     }
+                    hir::TyArray(ref ty, _) => {
+                        // [Foo]
+                        self.annotate_recursive_field_ty(self_item.id, &ty, field.span, &mut err);
+                    }
+                    hir::TyTup(ref tys) => {
+                        // (Foo, Bar)
+                        for ty in tys {
+                            if self.annotate_recursive_field_ty(self_item.id,
+                                                                &ty,
+                                                                field.span,
+                                                                &mut err) {
+                                break;
+                            }
+                        }
+                    }
+                    _ => (),
                 }
-                _ => (),
             }
         }
         err
     }
 
+    /// Given `item`, determine wether the node identified by `node_id` is referenced without any
+    /// indirection in any of `item`'s fields.
     fn is_node_id_referenced_in_item(&self, item: &hir::Item, node_id: ast::NodeId) -> bool {
         if item.id == node_id {
             return true;
         }
-        match item.node {
-            hir::ItemStruct(hir::VariantData::Struct(ref fields, _), _) |
-            hir::ItemStruct(hir::VariantData::Tuple(ref fields, _), _) => {
-                for field in fields {
-                    if let Some(Node::NodeItem(ref item)) = field.ty.ty_def_id().and_then(|id| {
-                        self.hir.get_if_local(id)
-                    }) {
-                        if self.is_node_id_referenced_in_item(item, node_id) {
-                            return true;
-                        }
-                    }
+        for field in item.node.fields() {
+            if let Some(Node::NodeItem(ref item)) = ty_def_id(&field.ty).and_then(|id| {
+                self.hir.get_if_local(id)
+            }) {
+                if self.is_node_id_referenced_in_item(item, node_id) {
+                    return true;
                 }
             }
-            hir::ItemEnum(hir::EnumDef { ref variants }, _) => {
-                for variant in variants {
-                    match variant.node.data {
-                        hir::VariantData::Struct(ref fields, _) |
-                        hir::VariantData::Tuple(ref fields, _) => {
-                            for field in fields {
-                                if let Some(Node::NodeItem(ref item)) = field.ty
-                                    .ty_def_id().and_then(|id| {
-                                        self.hir.get_if_local(id)
-                                    })
-                                {
-                                    if self.is_node_id_referenced_in_item(item, node_id) {
-                                        return true;
-                                    }
-                                }
-                            }
-                        }
-                        _ => (),
-                    }
-                }
-            }
-            _ => (),
         }
         false
     }
