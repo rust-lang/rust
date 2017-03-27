@@ -109,10 +109,7 @@ pub fn rewrite_macro(mac: &ast::Mac,
             let expr = match parser.parse_expr() {
                 Ok(expr) => {
                     // Recovered errors.
-                    if context
-                           .parse_session
-                           .span_diagnostic
-                           .has_errors() {
+                    if context.parse_session.span_diagnostic.has_errors() {
                         return None;
                     }
 

@@ -44,9 +44,7 @@ pub fn format_visibility(vis: &Visibility) -> Cow<'static, str> {
         Visibility::Crate(_) => Cow::from("pub(crate) "),
         Visibility::Restricted { ref path, .. } => {
             let Path { ref segments, .. } = **path;
-            let mut segments_iter = segments
-                .iter()
-                .map(|seg| seg.identifier.name.as_str());
+            let mut segments_iter = segments.iter().map(|seg| seg.identifier.name.as_str());
             if path.is_global() {
                 segments_iter
                     .next()
@@ -184,9 +182,7 @@ pub fn stmt_expr(stmt: &ast::Stmt) -> Option<&ast::Expr> {
 pub fn trim_newlines(input: &str) -> &str {
     match input.find(|c| c != '\n' && c != '\r') {
         Some(start) => {
-            let end = input
-                .rfind(|c| c != '\n' && c != '\r')
-                .unwrap_or(0) + 1;
+            let end = input.rfind(|c| c != '\n' && c != '\r').unwrap_or(0) + 1;
             &input[start..end]
         }
         None => "",

@@ -118,9 +118,7 @@ pub struct ListItem {
 
 impl ListItem {
     pub fn is_multiline(&self) -> bool {
-        self.item
-            .as_ref()
-            .map_or(false, |s| s.contains('\n')) || self.pre_comment.is_some() ||
+        self.item.as_ref().map_or(false, |s| s.contains('\n')) || self.pre_comment.is_some() ||
         self.post_comment
             .as_ref()
             .map_or(false, |s| s.contains('\n'))
@@ -199,10 +197,7 @@ pub fn write_list<I, T>(items: I, formatting: &ListFormatting) -> Option<String>
     let mut iter = items.into_iter().enumerate().peekable();
 
     let mut line_len = 0;
-    let indent_str = &formatting
-                          .shape
-                          .indent
-                          .to_string(formatting.config);
+    let indent_str = &formatting.shape.indent.to_string(formatting.config);
     while let Some((i, item)) = iter.next() {
         let item = item.as_ref();
         let inner_item = try_opt!(item.item.as_ref());
@@ -412,9 +407,7 @@ impl<'a, T, I, F1, F2, F3> Iterator for ListItems<'a, I, F1, F2, F3>
 
                     // Everything from the separator to the next item.
                     let test_snippet = &post_snippet[comment_end - 1..];
-                    let first_newline = test_snippet
-                        .find('\n')
-                        .unwrap_or(test_snippet.len());
+                    let first_newline = test_snippet.find('\n').unwrap_or(test_snippet.len());
                     // From the end of the first line of comments.
                     let test_snippet = &test_snippet[first_newline..];
                     let first = test_snippet
@@ -423,10 +416,7 @@ impl<'a, T, I, F1, F2, F3> Iterator for ListItems<'a, I, F1, F2, F3>
                     // From the end of the first line of comments to the next non-whitespace char.
                     let test_snippet = &test_snippet[..first];
 
-                    if test_snippet
-                           .chars()
-                           .filter(|c| c == &'\n')
-                           .count() > 1 {
+                    if test_snippet.chars().filter(|c| c == &'\n').count() > 1 {
                         // There were multiple line breaks which got trimmed to nothing.
                         new_lines = true;
                     }

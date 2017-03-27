@@ -291,7 +291,7 @@ fn issue1106() {
             self.ast_map.expect_item(enum_node_id).node {}
     }
 
-    for entry in WalkDir::new(path).into_iter().filter_entry(|entry| {
-                                                                 exclusions.filter_entry(entry)
-                                                             }) {}
+    for entry in WalkDir::new(path)
+            .into_iter()
+            .filter_entry(|entry| exclusions.filter_entry(entry)) {}
 }

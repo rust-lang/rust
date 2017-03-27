@@ -4,11 +4,7 @@
 // Test chain formatting.
 
 fn main() {
-    // Don't put chains on a single line if it wasn't so in source.
-    let a = b.c
-        .d
-        .1
-        .foo(|x| x + 1);
+    let a = b.c.d.1.foo(|x| x + 1);
 
     bbbbbbbbbbbbbbbbbbb.ccccccccccccccccccccccccccccccccccccc.ddddddddddddddddddddddddddd();
 
@@ -139,11 +135,8 @@ fn issue587() {
 fn try_shorthand() {
     let x = expr?;
     let y = expr.kaas()?.test();
-    let loooooooooooooooooooooooooooooooooooooooooong = does_this?
-        .look?
-        .good?
-        .should_we_break?
-        .after_the_first_question_mark?;
+    let loooooooooooooooooooooooooooooooooooooooooong =
+        does_this?.look?.good?.should_we_break?.after_the_first_question_mark?;
     let yyyy = expr?
         .another?
         .another?
@@ -154,11 +147,7 @@ fn try_shorthand() {
         .another?
         .another?
         .test();
-    let zzzz = expr?
-        .another?
-        .another?
-        .another?
-        .another?;
+    let zzzz = expr?.another?.another?.another?.another?;
     let aaa = x??????????????????????????????????????????????????????????????????????????;
 
     let y = a.very

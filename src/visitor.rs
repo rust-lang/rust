@@ -118,8 +118,7 @@ impl<'a> FmtVisitor<'a> {
         } else {
             self.config.tab_spaces
         };
-        self.buffer
-            .truncate(total_len - chars_too_many);
+        self.buffer.truncate(total_len - chars_too_many);
         self.buffer.push_str("}");
         self.block_indent = self.block_indent.block_unindent(self.config);
     }
@@ -190,9 +189,7 @@ impl<'a> FmtVisitor<'a> {
         // the AST lumps them all together.
         match item.node {
             ast::ItemKind::Mod(ref m) => {
-                let outer_file = self.codemap
-                    .lookup_char_pos(item.span.lo)
-                    .file;
+                let outer_file = self.codemap.lookup_char_pos(item.span.lo).file;
                 let inner_file = self.codemap.lookup_char_pos(m.inner.lo).file;
                 if outer_file.name == inner_file.name {
                     // Module is inline, in this case we treat modules like any
@@ -535,8 +532,7 @@ impl<'a> FmtVisitor<'a> {
         let is_internal = !(inner_span.lo.0 == 0 && inner_span.hi.0 == 0) &&
                           local_file_name == self.codemap.span_to_filename(inner_span);
 
-        self.buffer
-            .push_str(&*utils::format_visibility(vis));
+        self.buffer.push_str(&*utils::format_visibility(vis));
         self.buffer.push_str("mod ");
         self.buffer.push_str(&ident.to_string());
 

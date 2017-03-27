@@ -370,8 +370,7 @@ impl<'a> FmtVisitor<'a> {
                       enum_def: &ast::EnumDef,
                       generics: &ast::Generics,
                       span: Span) {
-        self.buffer
-            .push_str(&format_header("enum ", ident, vis));
+        self.buffer.push_str(&format_header("enum ", ident, vis));
 
         let enum_snippet = self.snippet(span);
         let brace_pos = enum_snippet.find_uncommented("{").unwrap();
@@ -584,9 +583,7 @@ pub fn format_impl(context: &RewriteContext, item: &ast::Item, offset: Indent) -
 
         if !items.is_empty() || contains_comment(&snippet[open_pos..]) {
             let mut visitor = FmtVisitor::from_codemap(context.parse_session, context.config);
-            visitor.block_indent = offset
-                .block_only()
-                .block_indent(context.config);
+            visitor.block_indent = offset.block_only().block_indent(context.config);
             visitor.last_pos = item.span.lo + BytePos(open_pos as u32);
 
             for item in items {
@@ -665,10 +662,7 @@ fn format_impl_ref_and_type(context: &RewriteContext,
                 result.push_str(" ");
             }
             let used_space = last_line_width(&result);
-            let budget = try_opt!(context
-                                      .config
-                                      .max_width
-                                      .checked_sub(used_space));
+            let budget = try_opt!(context.config.max_width.checked_sub(used_space));
             let indent = offset + used_space;
             result.push_str(&*try_opt!(trait_ref.rewrite(context, Shape::legacy(budget, indent))));
 
@@ -698,10 +692,7 @@ fn format_impl_ref_and_type(context: &RewriteContext,
         }
 
         // 1 = space before the type.
-        let budget = try_opt!(context
-                                  .config
-                                  .max_width
-                                  .checked_sub(used_space + 1));
+        let budget = try_opt!(context.config.max_width.checked_sub(used_space + 1));
         let indent = offset + result.len() + 1;
         let self_ty_str = self_ty.rewrite(context, Shape::legacy(budget, indent));
         if let Some(self_ty_str) = self_ty_str {
@@ -713,10 +704,7 @@ fn format_impl_ref_and_type(context: &RewriteContext,
         // Can't fit the self type on what's left of the line, so start a new one.
         let indent = offset.block_indent(context.config);
         result.push_str(&format!("\n{}", indent.to_string(context.config)));
-        let budget = try_opt!(context
-                                  .config
-                                  .max_width
-                                  .checked_sub(indent.width()));
+        let budget = try_opt!(context.config.max_width.checked_sub(indent.width()));
         result.push_str(&*try_opt!(self_ty.rewrite(context, Shape::legacy(budget, indent))));
         Some(result)
     } else {
@@ -790,9 +778,7 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
         if offset.width() + last_line_width(&result) + trait_bound_str.len() >
            context.config.comment_width {
             result.push('\n');
-            let trait_indent = offset
-                .block_only()
-                .block_indent(context.config);
+            let trait_indent = offset.block_only().block_indent(context.config);
             result.push_str(&trait_indent.to_string(context.config));
         }
         result.push_str(&trait_bound_str);
@@ -860,9 +846,7 @@ pub fn format_trait(context: &RewriteContext, item: &ast::Item, offset: Indent) 
 
         if !trait_items.is_empty() || contains_comment(&snippet[open_pos..]) {
             let mut visitor = FmtVisitor::from_codemap(context.parse_session, context.config);
-            visitor.block_indent = offset
-                .block_only()
-                .block_indent(context.config);
+            visitor.block_indent = offset.block_only().block_indent(context.config);
             visitor.last_pos = item.span.lo + BytePos(open_pos as u32);
 
             for item in trait_items {
@@ -1060,10 +1044,7 @@ fn format_tuple_struct(context: &RewriteContext,
             (ListTactic::HorizontalVertical, offset.block_only() + result.len() + 1)
         }
         IndentStyle::Block => {
-            (ListTactic::HorizontalVertical,
-             offset
-                 .block_only()
-                 .block_indent(&context.config))
+            (ListTactic::HorizontalVertical, offset.block_only().block_indent(&context.config))
         }
     };
     // 3 = `();`
@@ -1379,9 +1360,7 @@ impl Rewrite for ast::Arg {
                     result.push_str(" ");
                 }
                 result.push_str(":");
-                if context
-                       .config
-                       .space_after_type_annotation_colon {
+                if context.config.space_after_type_annotation_colon {
                     result.push_str(" ");
                 }
                 let max_width = try_opt!(shape.width.checked_sub(result.len()));
@@ -1695,10 +1674,7 @@ fn rewrite_fn_base(context: &RewriteContext,
         if multi_line_ret_str || ret_should_indent {
             // Now that we know the proper indent and width, we need to
             // re-layout the return type.
-            let budget = try_opt!(context
-                                      .config
-                                      .max_width
-                                      .checked_sub(ret_indent.width()));
+            let budget = try_opt!(context.config.max_width.checked_sub(ret_indent.width()));
             let ret_str = try_opt!(fd.output
                                        .rewrite(context, Shape::legacy(budget, ret_indent)));
             result.push_str(&ret_str);
@@ -1821,9 +1797,7 @@ fn rewrite_args(context: &RewriteContext,
             };
             let reduced_span = mk_sp(span.lo, second_arg_start);
 
-            context
-                .codemap
-                .span_after_last(reduced_span, ",")
+            context.codemap.span_after_last(reduced_span, ",")
         } else {
             span.lo
         };
@@ -1835,9 +1809,7 @@ fn rewrite_args(context: &RewriteContext,
 
         let variadic_arg = if variadic {
             let variadic_span = mk_sp(args.last().unwrap().ty.span.hi, span.hi);
-            let variadic_start = context
-                .codemap
-                .span_after(variadic_span, "...") - BytePos(3);
+            let variadic_start = context.codemap.span_after(variadic_span, "...") - BytePos(3);
             Some(ArgumentKind::Variadic(variadic_start))
         } else {
             None
@@ -1879,10 +1851,7 @@ fn rewrite_args(context: &RewriteContext,
     };
 
     let tactic = definitive_tactic(&arg_items,
-                                   context
-                                       .config
-                                       .fn_args_density
-                                       .to_list_tactic(),
+                                   context.config.fn_args_density.to_list_tactic(),
                                    one_line_budget);
     let budget = match tactic {
         DefinitiveListTactic::Horizontal => one_line_budget,
@@ -1988,9 +1957,7 @@ fn rewrite_generics(context: &RewriteContext,
         IndentStyle::Visual => generics_offset + 1,
     };
 
-    let h_budget = try_opt!(shape
-                                .width
-                                .checked_sub(generics_offset.width() + 2));
+    let h_budget = try_opt!(shape.width.checked_sub(generics_offset.width() + 2));
     // FIXME: might need to insert a newline if the generics are really long.
 
     // Strings for the generics.
@@ -2014,9 +1981,7 @@ fn rewrite_generics(context: &RewriteContext,
     let ty_spans = tys.iter().map(span_for_ty_param);
 
     let items = itemize_list(context.codemap,
-                             lt_spans
-                                 .chain(ty_spans)
-                                 .zip(lt_strs.chain(ty_strs)),
+                             lt_spans.chain(ty_spans).zip(lt_strs.chain(ty_strs)),
                              ">",
                              |&(sp, _)| sp.lo,
                              |&(sp, _)| sp.hi,

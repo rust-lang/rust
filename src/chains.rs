@@ -160,10 +160,7 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
         Some(first_child_shape)
             .into_iter()
             .chain(::std::iter::repeat(other_child_shape).take(subexpr_list.len() - 1));
-    let iter = subexpr_list
-        .iter()
-        .rev()
-        .zip(child_shape_iter);
+    let iter = subexpr_list.iter().rev().zip(child_shape_iter);
     let mut rewrites =
         try_opt!(iter.map(|(e, shape)| rewrite_chain_subexpr(e, total_span, context, shape))
                      .collect::<Option<Vec<_>>>());
@@ -182,14 +179,9 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
         // line, we won't consider putting them on a single line either.
         let last_span = context.snippet(mk_sp(subexpr_list[1].span.hi, total_span.hi));
         let first_span = context.snippet(subexpr_list[1].span);
-        let last_iter = last_span
-            .chars()
-            .take_while(|c| c.is_whitespace());
+        let last_iter = last_span.chars().take_while(|c| c.is_whitespace());
 
-        first_span
-            .chars()
-            .chain(last_iter)
-            .any(|c| c == '\n')
+        first_span.chars().chain(last_iter).any(|c| c == '\n')
     } else {
         false
     };
@@ -258,9 +250,7 @@ pub fn rewrite_try(expr: &ast::Expr,
     let sub_expr = try_opt!(expr.rewrite(context, try_opt!(shape.sub_width(try_count))));
     Some(format!("{}{}",
                  sub_expr,
-                 iter::repeat("?")
-                     .take(try_count)
-                     .collect::<String>()))
+                 iter::repeat("?").take(try_count).collect::<String>()))
 }
 
 fn join_rewrites(rewrites: &[String], subexps: &[ast::Expr], connector: &str) -> String {

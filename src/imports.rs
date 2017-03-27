@@ -65,12 +65,7 @@ fn compare_path_list_items(a: &ast::PathListItem, b: &ast::PathListItem) -> Orde
         match a.node.rename {
             Some(a_rename) => {
                 match b.node.rename {
-                    Some(b_rename) => {
-                        a_rename
-                            .name
-                            .as_str()
-                            .cmp(&b_rename.name.as_str())
-                    }
+                    Some(b_rename) => a_rename.name.as_str().cmp(&b_rename.name.as_str()),
                     None => Ordering::Greater,
                 }
             }
@@ -135,11 +130,8 @@ fn rewrite_view_path_prefix(path: &ast::Path,
                             context: &RewriteContext,
                             shape: Shape)
                             -> Option<String> {
-    let path_str = if path.segments
-           .last()
-           .unwrap()
-           .identifier
-           .to_string() == "self" && path.segments.len() > 1 {
+    let path_str = if path.segments.last().unwrap().identifier.to_string() == "self" &&
+                      path.segments.len() > 1 {
         let path = &ast::Path {
                         span: path.span.clone(),
                         segments: path.segments[..path.segments.len() - 1].to_owned(),

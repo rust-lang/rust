@@ -4,7 +4,6 @@
 // Test chain formatting.
 
 fn main() {
-    // Don't put chains on a single line if it wasn't so in source.
     let a = b .c
     .d.1
                 .foo(|x| x + 1);

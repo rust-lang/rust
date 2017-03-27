@@ -203,12 +203,8 @@ fn rewrite_segment(path_context: PathContext,
                 let param_list = data.lifetimes
                     .iter()
                     .map(SegmentParam::LifeTime)
-                    .chain(data.types
-                               .iter()
-                               .map(|x| SegmentParam::Type(&*x)))
-                    .chain(data.bindings
-                               .iter()
-                               .map(|x| SegmentParam::Binding(&*x)))
+                    .chain(data.types.iter().map(|x| SegmentParam::Type(&*x)))
+                    .chain(data.bindings.iter().map(|x| SegmentParam::Binding(&*x)))
                     .collect::<Vec<_>>();
 
                 let next_span_lo = param_list.last().unwrap().get_span().hi + BytePos(1);
@@ -500,9 +496,7 @@ impl Rewrite for ast::TyParamBounds {
             TypeDensity::Compressed => "+",
             TypeDensity::Wide => " + ",
         };
-        let strs: Vec<_> = try_opt!(self.iter()
-                                        .map(|b| b.rewrite(context, shape))
-                                        .collect());
+        let strs: Vec<_> = try_opt!(self.iter().map(|b| b.rewrite(context, shape)).collect());
         wrap_str(strs.join(joiner), context.config.max_width, shape)
     }
 }

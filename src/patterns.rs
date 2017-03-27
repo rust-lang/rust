@@ -92,16 +92,12 @@ impl Rewrite for Pat {
             PatKind::Lit(ref expr) => expr.rewrite(context, shape),
             PatKind::Slice(ref prefix, ref slice_pat, ref suffix) => {
                 // Rewrite all the sub-patterns.
-                let prefix = prefix
-                    .iter()
-                    .map(|p| p.rewrite(context, shape));
+                let prefix = prefix.iter().map(|p| p.rewrite(context, shape));
                 let slice_pat =
                     slice_pat
                         .as_ref()
                         .map(|p| Some(format!("{}..", try_opt!(p.rewrite(context, shape)))));
-                let suffix = suffix
-                    .iter()
-                    .map(|p| p.rewrite(context, shape));
+                let suffix = suffix.iter().map(|p| p.rewrite(context, shape));
 
                 // Munge them together.
                 let pats: Option<Vec<String>> = prefix
@@ -280,10 +276,7 @@ fn rewrite_tuple_pat(pats: &[ptr::P<ast::Pat>],
     // add comma if `(x,)`
     let add_comma = path_str.is_none() && pat_vec.len() == 1 && dotdot_pos.is_none();
 
-    let path_len = path_str
-        .as_ref()
-        .map(|p| p.len())
-        .unwrap_or(0);
+    let path_len = path_str.as_ref().map(|p| p.len()).unwrap_or(0);
     // 2 = "()".len(), 3 = "(,)".len()
     let nested_shape = try_opt!(shape.sub_width(path_len + if add_comma { 3 } else { 2 }));
     // 1 = "(".len()
