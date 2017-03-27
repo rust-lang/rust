@@ -19,7 +19,7 @@ use std::borrow::Cow;
 
 fn main() {
     let _ = if false {
-        Cow::Owned(format!("{:?}", panic!())) /* as Cow<str> */ // uncomment to fix
+        Cow::Owned(format!("{:?}", panic!()))
     } else {
         Cow::Borrowed("")
     };
