@@ -376,6 +376,44 @@ for (i, j) in v_slice[n..].iter().zip(v_slice) {
 This would be less modular than the `&mut [T] -> &Cell<[T]> -> &[Cell<T>]`
 conversions steps, while still offering essentially the same API.
 
+## Just the language guarantee
+
+The cast could be guaranteed as correct, but not be provided by std
+itself. This would serve as legitimization of external implementations like
+[alias](https://crates.io/crates/alias).
+
+## No guarantees
+
+If the casting guarantees can not be granted,
+code would have to use direct indexing as today, with either possible
+bound checking costs or the use of unsafe code to avoid them.
+
+## Replacing `Index` impls with `Deref`
+
+Instead of the `Index` impls, have only this `Deref` impl:
+
+```rust
+impl<T> Deref for Cell<[T]> {
+    type Target = [Cell<T>];
+
+    fn deref(&self) -> &[Cell<T>] {
+        unsafe {
+            &*(self as *const Cell<[T]> as *const [Cell<T>])
+        }
+    }
+}
+```
+
+Pro:
+
+- Automatic conversion due to deref coercions and auto deref.
+- Less redundancy since we don't repeat the slicing impls of `[T]`.
+
+Cons:
+
+- `Cell<[T]> -> [Cell<T>]` conversion does not seem like a good usecase
+  for `Deref`, since `Cell<[T]>` isn't a smartpointer.
+
 ## Cast to `&mut Cell<T>` instead of `&Cell<T>`
 
 Nothing that makes the `&mut T -> &Cell<T>` cast safe would prevent
@@ -388,18 +426,6 @@ into a `&mut [T]`.
 
 However, this does not seem to be actually useful since the only reason to use
 this API is to make use of shared internal mutability.
-
-## Just the language guarantee
-
-The cast could be guaranteed as correct, but not be provided by std
-itself. This would serve as legitimization of external implementations like
-[alias](https://crates.io/crates/alias).
-
-## No guarantees
-
-If the casting guarantees can not be granted,
-code would have to use direct indexing as today, with either possible
-bound checking costs or the use of unsafe code to avoid them.
 
 ## Exposing the functions differently
 
@@ -424,7 +450,7 @@ On the opposite spectrum, and should this feature end up being used
 somewhat commonly,
 we could provide the conversions by dedicated traits,
 possibly in the prelude, or use the std coherence hack to implement
-them directly on `&mut T` and `& mut [T]`:
+them directly on `&mut T` and `&mut [T]`:
 
 ```rust
 trait AsCell {
