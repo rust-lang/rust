@@ -693,7 +693,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 let data = ImplData {
                     polarity: hir::ImplPolarity::Positive,
                     parent_impl: None,
-                    coerce_unsized_kind: None,
+                    coerce_unsized_info: None,
                     trait_ref: tcx.impl_trait_ref(def_id).map(|trait_ref| self.lazy(&trait_ref)),
                 };
 
@@ -713,13 +713,21 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     None
                 };
 
+                // if this is an impl of `CoerceUnsized`, create its
+                // "unsized info", else just store None
+                let coerce_unsized_info =
+                    trait_ref.and_then(|t| {
+                        if Some(t.def_id) == tcx.lang_items.coerce_unsized_trait() {
+                            Some(ty::queries::coerce_unsized_info::get(tcx, item.span, def_id))
+                        } else {
+                            None
+                        }
+                    });
+
                 let data = ImplData {
                     polarity: polarity,
                     parent_impl: parent,
-                    coerce_unsized_kind: tcx.maps.custom_coerce_unsized_kind
-                        .borrow()
-                        .get(&def_id)
-                        .cloned(),
+                    coerce_unsized_info: coerce_unsized_info,
                     trait_ref: trait_ref.map(|trait_ref| self.lazy(&trait_ref)),
                 };
 
@@ -918,14 +926,14 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
                 self.encode_fields(def_id);
             }
             hir::ItemImpl(..) => {
-                for &trait_item_def_id in &self.tcx.associated_item_def_ids(def_id)[..] {
+                for &trait_item_def_id in self.tcx.associated_item_def_ids(def_id).iter() {
                     self.record(trait_item_def_id,
                                 EncodeContext::encode_info_for_impl_item,
                                 trait_item_def_id);
                 }
             }
             hir::ItemTrait(..) => {
-                for &item_def_id in &self.tcx.associated_item_def_ids(def_id)[..] {
+                for &item_def_id in self.tcx.associated_item_def_ids(def_id).iter() {
                     self.record(item_def_id,
                                 EncodeContext::encode_info_for_trait_item,
                                 item_def_id);

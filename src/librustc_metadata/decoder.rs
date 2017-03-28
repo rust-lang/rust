@@ -643,10 +643,10 @@ impl<'a, 'tcx> CrateMetadata {
         self.get_impl_data(id).polarity
     }
 
-    pub fn get_custom_coerce_unsized_kind(&self,
-                                          id: DefIndex)
-                                          -> Option<ty::adjustment::CustomCoerceUnsized> {
-        self.get_impl_data(id).coerce_unsized_kind
+    pub fn get_coerce_unsized_info(&self,
+                                   id: DefIndex)
+                                   -> Option<ty::adjustment::CoerceUnsizedInfo> {
+        self.get_impl_data(id).coerce_unsized_info
     }
 
     pub fn get_impl_trait(&self,

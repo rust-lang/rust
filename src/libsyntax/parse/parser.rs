@@ -5151,15 +5151,15 @@ impl<'a> Parser<'a> {
 
     fn push_directory(&mut self, id: Ident, attrs: &[Attribute]) {
         if let Some(path) = attr::first_attr_value_str_by_name(attrs, "path") {
-            self.directory.path.push(&*path.as_str());
+            self.directory.path.push(&path.as_str());
             self.directory.ownership = DirectoryOwnership::Owned;
         } else {
-            self.directory.path.push(&*id.name.as_str());
+            self.directory.path.push(&id.name.as_str());
         }
     }
 
     pub fn submod_path_from_attr(attrs: &[ast::Attribute], dir_path: &Path) -> Option<PathBuf> {
-        attr::first_attr_value_str_by_name(attrs, "path").map(|d| dir_path.join(&*d.as_str()))
+        attr::first_attr_value_str_by_name(attrs, "path").map(|d| dir_path.join(&d.as_str()))
     }
 
     /// Returns either a path to a module, or .

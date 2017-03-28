@@ -193,7 +193,16 @@ impl Command {
             // need to clean things up now to avoid confusing the program
             // we're about to run.
             let mut set: libc::sigset_t = mem::uninitialized();
-            t!(cvt(libc::sigemptyset(&mut set)));
+            if cfg!(target_os = "android") {
+                // Implementing sigemptyset allow us to support older Android
+                // versions. See the comment about Android and sig* functions in
+                // process_common.rs
+                libc::memset(&mut set as *mut _ as *mut _,
+                             0,
+                             mem::size_of::<libc::sigset_t>());
+            } else {
+                t!(cvt(libc::sigemptyset(&mut set)));
+            }
             t!(cvt(libc::pthread_sigmask(libc::SIG_SETMASK, &set,
                                          ptr::null_mut())));
             let ret = sys::signal(libc::SIGPIPE, libc::SIG_DFL);

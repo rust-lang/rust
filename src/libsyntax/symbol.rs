@@ -72,9 +72,9 @@ impl Decodable for Symbol {
     }
 }
 
-impl<'a> PartialEq<&'a str> for Symbol {
-    fn eq(&self, other: &&str) -> bool {
-        *self.as_str() == **other
+impl<T: ::std::ops::Deref<Target=str>> PartialEq<T> for Symbol {
+    fn eq(&self, other: &T) -> bool {
+        self.as_str() == other.deref()
     }
 }
 
@@ -244,9 +244,45 @@ fn with_interner<T, F: FnOnce(&mut Interner) -> T>(f: F) -> T {
 /// destroyed. In particular, they must not access string contents. This can
 /// be fixed in the future by just leaking all strings until thread death
 /// somehow.
-#[derive(Clone, PartialEq, Hash, PartialOrd, Eq, Ord)]
+#[derive(Clone, Hash, PartialOrd, Eq, Ord)]
 pub struct InternedString {
     string: &'static str,
+}
+
+impl<U: ?Sized> ::std::convert::AsRef<U> for InternedString where str: ::std::convert::AsRef<U> {
+    fn as_ref(&self) -> &U {
+        self.string.as_ref()
+    }
+}
+
+impl<T: ::std::ops::Deref<Target = str>> ::std::cmp::PartialEq<T> for InternedString {
+    fn eq(&self, other: &T) -> bool {
+        self.string == other.deref()
+    }
+}
+
+impl ::std::cmp::PartialEq<InternedString> for str {
+    fn eq(&self, other: &InternedString) -> bool {
+        self == other.string
+    }
+}
+
+impl<'a> ::std::cmp::PartialEq<InternedString> for &'a str {
+    fn eq(&self, other: &InternedString) -> bool {
+        *self == other.string
+    }
+}
+
+impl ::std::cmp::PartialEq<InternedString> for String {
+    fn eq(&self, other: &InternedString) -> bool {
+        self == other.string
+    }
+}
+
+impl<'a> ::std::cmp::PartialEq<InternedString> for &'a String {
+    fn eq(&self, other: &InternedString) -> bool {
+        *self == other.string
+    }
 }
 
 impl !Send for InternedString { }

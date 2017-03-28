@@ -1336,7 +1336,7 @@ trait SecondTrait : FirstTrait {
 
 E0398: r##"
 In Rust 1.3, the default object lifetime bounds are expected to change, as
-described in RFC #1156 [1]. You are getting a warning because the compiler
+described in [RFC 1156]. You are getting a warning because the compiler
 thinks it is possible that this change will cause a compilation error in your
 code. It is possible, though unlikely, that this is a false alarm.
 
@@ -1365,7 +1365,7 @@ fn foo<'a>(arg: &Box<SomeTrait+'a>) { ... }
 This explicitly states that you expect the trait object `SomeTrait` to contain
 references (with a maximum lifetime of `'a`).
 
-[1]: https://github.com/rust-lang/rfcs/pull/1156
+[RFC 1156]: https://github.com/rust-lang/rfcs/blob/master/text/1156-adjust-default-object-bounds.md
 "##,
 
 E0452: r##"
@@ -1771,6 +1771,7 @@ This pattern is incorrect because, because the type of `foo` is a function
 **item** (`typeof(foo)`), which is zero-sized, and the target type (`fn()`)
 is a function pointer, which is not zero-sized.
 This pattern should be rewritten. There are a few possible ways to do this:
+
 - change the original fn declaration to match the expected signature,
   and do the cast in the fn body (the prefered option)
 - cast the fn item fo a fn pointer before calling transmute, as shown here:

@@ -24,7 +24,8 @@ use syntax::ast;
 use syntax_pos::DUMMY_SP;
 
 mod builtin;
-mod inherent;
+mod inherent_impls;
+mod inherent_impls_overlap;
 mod orphan;
 mod overlap;
 mod unsafety;
@@ -102,9 +103,16 @@ fn enforce_trait_manually_implementable(tcx: TyCtxt, impl_def_id: DefId, trait_d
 }
 
 pub fn provide(providers: &mut Providers) {
+    use self::builtin::coerce_unsized_info;
+    use self::inherent_impls::{crate_inherent_impls, inherent_impls};
+    use self::inherent_impls_overlap::crate_inherent_impls_overlap_check;
+
     *providers = Providers {
         coherent_trait,
-        coherent_inherent_impls,
+        crate_inherent_impls,
+        inherent_impls,
+        crate_inherent_impls_overlap_check,
+        coerce_unsized_info,
         ..*providers
     };
 }
@@ -123,10 +131,6 @@ fn coherent_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     builtin::check_trait(tcx, def_id);
 }
 
-fn coherent_inherent_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, _: CrateNum) {
-    inherent::check(tcx);
-}
-
 pub fn check_coherence<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let _task = tcx.dep_graph.in_task(DepNode::Coherence);
     for &trait_def_id in tcx.hir.krate().trait_impls.keys() {
@@ -137,5 +141,7 @@ pub fn check_coherence<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     orphan::check(tcx);
     overlap::check_default_impls(tcx);
 
-    ty::queries::coherent_inherent_impls::get(tcx, DUMMY_SP, LOCAL_CRATE);
+    // these queries are executed for side-effects (error reporting):
+    ty::queries::crate_inherent_impls::get(tcx, DUMMY_SP, LOCAL_CRATE);
+    ty::queries::crate_inherent_impls_overlap_check::get(tcx, DUMMY_SP, LOCAL_CRATE);
 }

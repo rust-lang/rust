@@ -140,7 +140,7 @@ fn main() {
         cfg.flag(flag);
     }
 
-    for component in &components[..] {
+    for component in &components {
         let mut flag = String::from("-DLLVM_COMPONENT_");
         flag.push_str(&component.to_uppercase());
         cfg.flag(&flag);
@@ -173,7 +173,7 @@ fn main() {
     if !is_crossed {
         cmd.arg("--system-libs");
     }
-    cmd.args(&components[..]);
+    cmd.args(&components);
 
     for lib in output(&mut cmd).split_whitespace() {
         let name = if lib.starts_with("-l") {

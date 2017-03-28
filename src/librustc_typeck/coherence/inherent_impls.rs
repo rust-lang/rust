@@ -8,19 +8,82 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! The code in this module gathers up all of the inherent impls in
+//! the current crate and organizes them in a map. It winds up
+//! touching the whole crate and thus must be recomputed completely
+//! for any change, but it is very cheap to compute. In practice, most
+//! code in the compiler never *directly* requests this map. Instead,
+//! it requests the inherent impls specific to some type (via
+//! `ty::queries::inherent_impls::get(def_id)`). That value, however,
+//! is computed by selecting an idea from this table.
+
 use rustc::dep_graph::DepNode;
-use rustc::hir::def_id::DefId;
+use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::hir;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
-use rustc::lint;
-use rustc::traits::{self, Reveal};
-use rustc::ty::{self, TyCtxt};
+use rustc::ty::{self, CrateInherentImpls, TyCtxt};
+use rustc::util::nodemap::DefIdMap;
 
+use std::rc::Rc;
 use syntax::ast;
-use syntax_pos::Span;
+use syntax_pos::{DUMMY_SP, Span};
+
+/// On-demand query: yields a map containing all types mapped to their inherent impls.
+pub fn crate_inherent_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                      crate_num: CrateNum)
+                                      -> CrateInherentImpls {
+    assert_eq!(crate_num, LOCAL_CRATE);
+
+    let krate = tcx.hir.krate();
+    let mut collect = InherentCollect {
+        tcx,
+        impls_map: CrateInherentImpls {
+            inherent_impls: DefIdMap()
+        }
+    };
+    krate.visit_all_item_likes(&mut collect);
+    collect.impls_map
+}
+
+/// On-demand query: yields a vector of the inherent impls for a specific type.
+pub fn inherent_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                ty_def_id: DefId)
+                                -> Rc<Vec<DefId>> {
+    assert!(ty_def_id.is_local());
+
+    // NB. Until we adopt the red-green dep-tracking algorithm (see
+    // [the plan] for details on that), we do some hackery here to get
+    // the dependencies correct.  Basically, we use a `with_ignore` to
+    // read the result we want. If we didn't have the `with_ignore`,
+    // we would wind up with a dependency on the entire crate, which
+    // we don't want. Then we go and add dependencies on all the impls
+    // in the result (which is what we wanted).
+    //
+    // The result is a graph with an edge from `Hir(I)` for every impl
+    // `I` defined on some type `T` to `CoherentInherentImpls(T)`,
+    // thus ensuring that if any of those impls change, the set of
+    // inherent impls is considered dirty.
+    //
+    // [the plan]: https://github.com/rust-lang/rust-roadmap/issues/4
+
+    let result = tcx.dep_graph.with_ignore(|| {
+        let crate_map = ty::queries::crate_inherent_impls::get(tcx, DUMMY_SP, ty_def_id.krate);
+        match crate_map.inherent_impls.get(&ty_def_id) {
+            Some(v) => v.clone(),
+            None => Rc::new(vec![]),
+        }
+    });
+
+    for &impl_def_id in &result[..] {
+        tcx.dep_graph.read(DepNode::Hir(impl_def_id));
+    }
+
+    result
+}
 
 struct InherentCollect<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    impls_map: CrateInherentImpls,
 }
 
 impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for InherentCollect<'a, 'tcx> {
@@ -209,25 +272,19 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for InherentCollect<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> InherentCollect<'a, 'tcx> {
-    fn check_def_id(&self, item: &hir::Item, def_id: DefId) {
+    fn check_def_id(&mut self, item: &hir::Item, def_id: DefId) {
         if def_id.is_local() {
             // Add the implementation to the mapping from implementation to base
             // type def ID, if there is a base type for this implementation and
             // the implementation does not have any associated traits.
             let impl_def_id = self.tcx.hir.local_def_id(item.id);
+            let mut rc_vec = self.impls_map.inherent_impls
+                                           .entry(def_id)
+                                           .or_insert_with(|| Rc::new(vec![]));
 
-            // Subtle: it'd be better to collect these into a local map
-            // and then write the vector only once all items are known,
-            // but that leads to degenerate dep-graphs. The problem is
-            // that the write of that big vector winds up having reads
-            // from *all* impls in the krate, since we've lost the
-            // precision basically.  This would be ok in the firewall
-            // model so once we've made progess towards that we can modify
-            // the strategy here. In the meantime, using `push` is ok
-            // because we are doing this as a pre-pass before anyone
-            // actually reads from `inherent_impls` -- and we know this is
-            // true beacuse we hold the refcell lock.
-            self.tcx.maps.inherent_impls.borrow_mut().push(def_id, impl_def_id);
+            // At this point, there should not be any clones of the
+            // `Rc`, so we can still safely push into it in place:
+            Rc::get_mut(&mut rc_vec).unwrap().push(impl_def_id);
         } else {
             struct_span_err!(self.tcx.sess,
                              item.span,
@@ -266,91 +323,3 @@ impl<'a, 'tcx> InherentCollect<'a, 'tcx> {
     }
 }
 
-struct InherentOverlapChecker<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'a, 'tcx, 'tcx>
-}
-
-impl<'a, 'tcx> InherentOverlapChecker<'a, 'tcx> {
-    fn check_for_common_items_in_impls(&self, impl1: DefId, impl2: DefId) {
-        #[derive(Copy, Clone, PartialEq)]
-        enum Namespace {
-            Type,
-            Value,
-        }
-
-        let name_and_namespace = |def_id| {
-            let item = self.tcx.associated_item(def_id);
-            (item.name, match item.kind {
-                ty::AssociatedKind::Type => Namespace::Type,
-                ty::AssociatedKind::Const |
-                ty::AssociatedKind::Method => Namespace::Value,
-            })
-        };
-
-        let impl_items1 = self.tcx.associated_item_def_ids(impl1);
-        let impl_items2 = self.tcx.associated_item_def_ids(impl2);
-
-        for &item1 in &impl_items1[..] {
-            let (name, namespace) = name_and_namespace(item1);
-
-            for &item2 in &impl_items2[..] {
-                if (name, namespace) == name_and_namespace(item2) {
-                    let msg = format!("duplicate definitions with name `{}`", name);
-                    let node_id = self.tcx.hir.as_local_node_id(item1).unwrap();
-                    self.tcx.sess.add_lint(lint::builtin::OVERLAPPING_INHERENT_IMPLS,
-                                           node_id,
-                                           self.tcx.span_of_impl(item1).unwrap(),
-                                           msg);
-                }
-            }
-        }
-    }
-
-    fn check_for_overlapping_inherent_impls(&self, ty_def_id: DefId) {
-        let _task = self.tcx.dep_graph.in_task(DepNode::CoherenceOverlapInherentCheck(ty_def_id));
-
-        let inherent_impls = self.tcx.maps.inherent_impls.borrow();
-        let impls = match inherent_impls.get(&ty_def_id) {
-            Some(impls) => impls,
-            None => return,
-        };
-
-        for (i, &impl1_def_id) in impls.iter().enumerate() {
-            for &impl2_def_id in &impls[(i + 1)..] {
-                self.tcx.infer_ctxt((), Reveal::UserFacing).enter(|infcx| {
-                    if traits::overlapping_impls(&infcx, impl1_def_id, impl2_def_id).is_some() {
-                        self.check_for_common_items_in_impls(impl1_def_id, impl2_def_id)
-                    }
-                });
-            }
-        }
-    }
-}
-
-impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for InherentOverlapChecker<'a, 'tcx> {
-    fn visit_item(&mut self, item: &'v hir::Item) {
-        match item.node {
-            hir::ItemEnum(..) |
-            hir::ItemStruct(..) |
-            hir::ItemTrait(..) |
-            hir::ItemUnion(..) => {
-                let type_def_id = self.tcx.hir.local_def_id(item.id);
-                self.check_for_overlapping_inherent_impls(type_def_id);
-            }
-            _ => {}
-        }
-    }
-
-    fn visit_trait_item(&mut self, _trait_item: &hir::TraitItem) {
-    }
-
-    fn visit_impl_item(&mut self, _impl_item: &hir::ImplItem) {
-    }
-}
-
-pub fn check<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    tcx.visit_all_item_likes_in_krate(DepNode::CoherenceCheckImpl,
-                                      &mut InherentCollect { tcx });
-    tcx.visit_all_item_likes_in_krate(DepNode::CoherenceOverlapCheckSpecial,
-                                      &mut InherentOverlapChecker { tcx });
-}
