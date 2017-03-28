@@ -1,12 +1,8 @@
-error: can't qualify macro invocation with `pub`
-  --> $DIR/issue-40006.rs:14:5
+error: missing `fn` for method declaration
+  --> $DIR/issue-40006.rs:14:8
    |
 14 |     pub hello_method(&self) {
-   |     ^^^-            - expected `!` here for a macro invocation
-   |        |
-   |        did you mean to write `fn` here for a method declaration?
-   |
-   = help: try adjusting the macro to put `pub` inside the invocation
+   |        ^ missing `fn`
 
 error: aborting due to previous error
 

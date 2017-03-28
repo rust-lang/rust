@@ -4708,26 +4708,21 @@ impl<'a> Parser<'a> {
                 if let Err(mut bang_err) = bang_err {
                     // Given this code `pub path(`, it seems like this is not setting the
                     // visibility of a macro invocation, but rather a mistyped method declaration.
-                    // Keep the macro diagnostic, but also provide a hint that `fn` might be
-                    // missing. Don't complain about the missing `!` as a separate diagnostic, add
-                    // label in the appropriate place as part of one unified diagnostic.
+                    // Create a diagnostic pointing out that `fn` is missing.
                     //
                     // x |     pub path(&self) {
-                    //   |     ^^^-    - expected `!` here for a macro invocation
-                    //   |        |
-                    //   |        did you mean to write `fn` here for a method declaration?
+                    //   |        ^ missing `fn` for method declaration
 
+                    err.cancel();
                     bang_err.cancel();
-                    err.span_label(self.span, &"expected `!` here for a macro invocation");
                     //     pub  path(
                     //        ^^ `sp` below will point to this
                     let sp = mk_sp(prev_span.hi, self.prev_span.lo);
-                    err.span_label(sp,
-                                   &"did you mean to write `fn` here for a method declaration?");
+                    err = self.diagnostic()
+                        .struct_span_err(sp, "missing `fn` for method declaration");
+                    err.span_label(sp, &"missing `fn`");
                 }
                 return Err(err);
-            } else if let Err(bang_err) = bang_err {
-                return Err(bang_err);
             }
 
             // eat a matched-delimiter token tree:
