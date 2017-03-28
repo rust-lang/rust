@@ -1,7 +1,7 @@
 - Feature Name: compile\_error\_macro
 - Start Date: 2016-08-01
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#1695](https://github.com/rust-lang/rfcs/pull/1695)
+- Rust Issue: [rust-lang/rust#40872](https://github.com/rust-lang/rust/issues/40872)
 
 # Summary
 [summary]: #summary
