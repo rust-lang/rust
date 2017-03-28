@@ -10,17 +10,16 @@
 
 //! Markdown formatting for rustdoc
 //!
-//! This module implements markdown formatting through the hoedown C-library
-//! (bundled into the rust runtime). This module self-contains the C bindings
-//! and necessary legwork to render markdown, and exposes all of the
+//! This module implements markdown formatting through the pulldown-cmark
+//! rust-library. This module exposes all of the
 //! functionality through a unit-struct, `Markdown`, which has an implementation
 //! of `fmt::Display`. Example usage:
 //!
 //! ```rust,ignore
-//! use rustdoc::html::markdown::Markdown;
+//! use rustdoc::html::markdown::{Markdown, MarkdownOutputStyle};
 //!
 //! let s = "My *markdown* _text_";
-//! let html = format!("{}", Markdown(s));
+//! let html = format!("{}", Markdown(s, MarkdownOutputStyle::Fancy));
 //! // ... something using html
 //! ```
 
@@ -138,7 +137,7 @@ pub fn render(w: &mut fmt::Formatter,
               s: &str,
               print_toc: bool,
               shorter: MarkdownOutputStyle) -> fmt::Result {
-    fn block(parser: &mut Parser, buffer: &mut String, lang: &str) {
+    fn code_block(parser: &mut Parser, buffer: &mut String, lang: &str) {
         let mut origtext = String::new();
         while let Some(event) = parser.next() {
             match event {
@@ -216,8 +215,8 @@ pub fn render(w: &mut fmt::Formatter,
         });
     }
 
-    fn header(parser: &mut Parser, buffer: &mut String, toc_builder: &mut Option<TocBuilder>,
-              shorter: MarkdownOutputStyle, level: i32) {
+    fn heading(parser: &mut Parser, buffer: &mut String, toc_builder: &mut Option<TocBuilder>,
+               shorter: MarkdownOutputStyle, level: i32) {
         let mut ret = String::new();
         let mut id = String::new();
         event_loop_break!(parser, toc_builder, shorter, ret, true, &mut Some(&mut id),
@@ -250,8 +249,8 @@ pub fn render(w: &mut fmt::Formatter,
                                  ret, lvl = level, id = id, sec = sec));
     }
 
-    fn codespan(parser: &mut Parser, buffer: &mut String, toc_builder: &mut Option<TocBuilder>,
-                shorter: MarkdownOutputStyle, id: &mut Option<&mut String>) {
+    fn inline_code(parser: &mut Parser, buffer: &mut String, toc_builder: &mut Option<TocBuilder>,
+                   shorter: MarkdownOutputStyle, id: &mut Option<&mut String>) {
         let mut content = String::new();
         event_loop_break!(parser, toc_builder, shorter, content, false, id, Event::End(Tag::Code));
         buffer.push_str(&format!("<code>{}</code>",
@@ -274,8 +273,8 @@ pub fn render(w: &mut fmt::Formatter,
         buffer.push_str(&format!("<p>{}</p>", content.trim_right()));
     }
 
-    fn cell(parser: &mut Parser, buffer: &mut String, toc_builder: &mut Option<TocBuilder>,
-            shorter: MarkdownOutputStyle) {
+    fn table_cell(parser: &mut Parser, buffer: &mut String, toc_builder: &mut Option<TocBuilder>,
+                  shorter: MarkdownOutputStyle) {
         let mut content = String::new();
         event_loop_break!(parser, toc_builder, shorter, content, true, &mut None,
                           Event::End(Tag::TableHead) |
@@ -285,8 +284,8 @@ pub fn render(w: &mut fmt::Formatter,
         buffer.push_str(&format!("<td>{}</td>", content.trim()));
     }
 
-    fn row(parser: &mut Parser, buffer: &mut String, toc_builder: &mut Option<TocBuilder>,
-           shorter: MarkdownOutputStyle) {
+    fn table_row(parser: &mut Parser, buffer: &mut String, toc_builder: &mut Option<TocBuilder>,
+                 shorter: MarkdownOutputStyle) {
         let mut content = String::new();
         while let Some(event) = parser.next() {
             match event {
@@ -294,7 +293,7 @@ pub fn render(w: &mut fmt::Formatter,
                     Event::End(Tag::Table(_)) |
                     Event::End(Tag::TableRow) => break,
                 Event::Start(Tag::TableCell) => {
-                    cell(parser, &mut content, toc_builder, shorter);
+                    table_cell(parser, &mut content, toc_builder, shorter);
                 }
                 x => {
                     looper(parser, &mut content, Some(x), toc_builder, shorter, &mut None);
@@ -304,14 +303,14 @@ pub fn render(w: &mut fmt::Formatter,
         buffer.push_str(&format!("<tr>{}</tr>", content));
     }
 
-    fn head(parser: &mut Parser, buffer: &mut String, toc_builder: &mut Option<TocBuilder>,
-            shorter: MarkdownOutputStyle) {
+    fn table_head(parser: &mut Parser, buffer: &mut String, toc_builder: &mut Option<TocBuilder>,
+                  shorter: MarkdownOutputStyle) {
         let mut content = String::new();
         while let Some(event) = parser.next() {
             match event {
                 Event::End(Tag::TableHead) | Event::End(Tag::Table(_)) => break,
                 Event::Start(Tag::TableCell) => {
-                    cell(parser, &mut content, toc_builder, shorter);
+                    table_cell(parser, &mut content, toc_builder, shorter);
                 }
                 x => {
                     looper(parser, &mut content, Some(x), toc_builder, shorter, &mut None);
@@ -331,10 +330,10 @@ pub fn render(w: &mut fmt::Formatter,
             match event {
                 Event::End(Tag::Table(_)) => break,
                 Event::Start(Tag::TableHead) => {
-                    head(parser, &mut content, toc_builder, shorter);
+                    table_head(parser, &mut content, toc_builder, shorter);
                 }
                 Event::Start(Tag::TableRow) => {
-                    row(parser, &mut rows, toc_builder, shorter);
+                    table_row(parser, &mut rows, toc_builder, shorter);
                 }
                 _ => {}
             }
@@ -412,13 +411,13 @@ pub fn render(w: &mut fmt::Formatter,
         if let Some(event) = next_event {
             match event {
                 Event::Start(Tag::CodeBlock(lang)) => {
-                    block(parser, buffer, &*lang);
+                    code_block(parser, buffer, &*lang);
                 }
                 Event::Start(Tag::Header(level)) => {
-                    header(parser, buffer, toc_builder, shorter, level);
+                    heading(parser, buffer, toc_builder, shorter, level);
                 }
                 Event::Start(Tag::Code) => {
-                    codespan(parser, buffer, toc_builder, shorter, id);
+                    inline_code(parser, buffer, toc_builder, shorter, id);
                 }
                 Event::Start(Tag::Paragraph) => {
                     paragraph(parser, buffer, toc_builder, shorter, id);
