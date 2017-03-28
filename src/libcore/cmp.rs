@@ -330,6 +330,7 @@ impl Ordering {
 /// Example usage:
 ///
 /// ```
+/// #![feature(reverse_cmp_key)]
 /// use std::cmp::Reverse;
 ///
 /// let mut v = vec![1, 2, 3, 4, 5, 6];
@@ -337,10 +338,10 @@ impl Ordering {
 /// assert_eq!(v, vec![3, 2, 1, 6, 5, 4]);
 /// ```
 #[derive(PartialEq, Eq, Debug)]
-#[stable(feature = "rust1", since = "1.18.0")]
+#[unstable(feature = "reverse_cmp_key", issue = "40720")]
 pub struct Reverse<T>(pub T);
 
-#[stable(feature = "rust1", since = "1.18.0")]
+#[unstable(feature = "reverse_cmp_key", issue = "40720")]
 impl<T: PartialOrd> PartialOrd for Reverse<T> {
     #[inline]
     fn partial_cmp(&self, other: &Reverse<T>) -> Option<Ordering> {
@@ -348,7 +349,7 @@ impl<T: PartialOrd> PartialOrd for Reverse<T> {
     }
 }
 
-#[stable(feature = "rust1", since = "1.18.0")]
+#[unstable(feature = "reverse_cmp_key", issue = "40720")]
 impl<T: Ord> Ord for Reverse<T> {
     #[inline]
     fn cmp(&self, other: &Reverse<T>) -> Ordering {
