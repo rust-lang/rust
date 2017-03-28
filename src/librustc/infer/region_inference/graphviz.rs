@@ -159,7 +159,7 @@ impl<'a, 'gcx, 'tcx> ConstraintGraph<'a, 'gcx, 'tcx> {
                 add_node(n2);
             }
 
-            tcx.region_maps.each_encl_scope(|sub, sup| {
+            tcx.region_maps().each_encl_scope(|sub, sup| {
                 add_node(Node::Region(ty::ReScope(*sub)));
                 add_node(Node::Region(ty::ReScope(*sup)));
             });
@@ -245,7 +245,7 @@ impl<'a, 'gcx, 'tcx> dot::GraphWalk<'a> for ConstraintGraph<'a, 'gcx, 'tcx> {
     fn edges(&self) -> dot::Edges<Edge<'tcx>> {
         debug!("constraint graph has {} edges", self.map.len());
         let mut v: Vec<_> = self.map.keys().map(|e| Edge::Constraint(*e)).collect();
-        self.tcx.region_maps.each_encl_scope(|sub, sup| v.push(Edge::EnclScope(*sub, *sup)));
+        self.tcx.region_maps().each_encl_scope(|sub, sup| v.push(Edge::EnclScope(*sub, *sup)));
         debug!("region graph has {} edges", v.len());
         Cow::Owned(v)
     }

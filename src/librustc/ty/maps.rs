@@ -14,6 +14,7 @@ use hir::def::Def;
 use hir;
 use middle::const_val;
 use middle::privacy::AccessLevels;
+use middle::region::RegionMaps;
 use mir;
 use session::CompileResult;
 use ty::{self, CrateInherentImpls, Ty, TyCtxt};
@@ -288,6 +289,12 @@ impl<'tcx> QueryDescription for queries::describe_def<'tcx> {
 impl<'tcx> QueryDescription for queries::def_span<'tcx> {
     fn describe(_: TyCtxt, _: DefId) -> String {
         bug!("def_span")
+    }
+}
+
+impl<'tcx> QueryDescription for queries::region_resolve_crate<'tcx> {
+    fn describe(_: TyCtxt, _: CrateNum) -> String {
+        format!("resolve crate")
     }
 }
 
@@ -571,6 +578,8 @@ define_maps! { <'tcx>
 
     [] reachable_set: reachability_dep_node(CrateNum) -> Rc<NodeSet>,
 
+    [] region_resolve_crate: region_resolve_crate_dep_node(CrateNum) -> Rc<RegionMaps>,
+
     [] mir_shims: mir_shim_dep_node(ty::InstanceDef<'tcx>) -> &'tcx RefCell<mir::Mir<'tcx>>,
 
     [] def_symbol_name: SymbolName(DefId) -> ty::SymbolName,
@@ -590,6 +599,10 @@ fn crate_inherent_impls_dep_node(_: CrateNum) -> DepNode<DefId> {
 
 fn reachability_dep_node(_: CrateNum) -> DepNode<DefId> {
     DepNode::Reachability
+}
+
+fn region_resolve_crate_dep_node(_: CrateNum) -> DepNode<DefId> {
+    DepNode::RegionResolveCrate
 }
 
 fn mir_shim_dep_node(instance: ty::InstanceDef) -> DepNode<DefId> {

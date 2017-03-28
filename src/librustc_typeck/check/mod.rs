@@ -781,7 +781,7 @@ fn typeck_tables_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             check_abi(tcx, span, fn_sig.abi());
 
             // Compute the fty from point of view of inside fn.
-            let fn_scope = inh.tcx.region_maps.call_site_extent(id, body_id.node_id);
+            let fn_scope = inh.tcx.region_maps().call_site_extent(id, body_id.node_id);
             let fn_sig =
                 fn_sig.subst(inh.tcx, &inh.parameter_environment.free_substs);
             let fn_sig =
