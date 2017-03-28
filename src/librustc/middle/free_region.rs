@@ -136,10 +136,10 @@ impl FreeRegionMap {
                     true,
 
                 (&ty::ReScope(sub_scope), &ty::ReScope(super_scope)) =>
-                    tcx.region_maps.is_subscope_of(sub_scope, super_scope),
+                    tcx.region_maps().is_subscope_of(sub_scope, super_scope),
 
                 (&ty::ReScope(sub_scope), &ty::ReFree(fr)) =>
-                    tcx.region_maps.is_subscope_of(sub_scope, fr.scope) ||
+                    tcx.region_maps().is_subscope_of(sub_scope, fr.scope) ||
                     self.is_static(fr),
 
                 (&ty::ReFree(sub_fr), &ty::ReFree(super_fr)) =>

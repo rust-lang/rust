@@ -116,7 +116,7 @@ impl<'a, 'tcx> GuaranteeLifetimeContext<'a, 'tcx> {
             }
             Categorization::Local(local_id) => {
                 self.bccx.tcx.mk_region(ty::ReScope(
-                    self.bccx.tcx.region_maps.var_scope(local_id)))
+                    self.bccx.tcx.region_maps().var_scope(local_id)))
             }
             Categorization::StaticItem |
             Categorization::Deref(.., mc::UnsafePtr(..)) => {

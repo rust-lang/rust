@@ -12,6 +12,7 @@ use dep_graph::{DepGraph, DepNode, DepTrackingMap, DepTrackingMapConfig};
 use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use middle::const_val::ConstVal;
 use middle::privacy::AccessLevels;
+use middle::region::RegionMaps;
 use mir;
 use session::CompileResult;
 use ty::{self, CrateInherentImpls, Ty, TyCtxt};
@@ -213,6 +214,12 @@ impl<'tcx> QueryDescription for queries::typeck_item_bodies<'tcx> {
 impl<'tcx> QueryDescription for queries::reachable_set<'tcx> {
     fn describe(_: TyCtxt, _: CrateNum) -> String {
         format!("reachability")
+    }
+}
+
+impl<'tcx> QueryDescription for queries::region_resolve_crate<'tcx> {
+    fn describe(_: TyCtxt, _: CrateNum) -> String {
+        format!("resolve crate")
     }
 }
 
@@ -450,6 +457,8 @@ define_maps! { <'tcx>
 
     pub reachable_set: reachability_dep_node(CrateNum) -> NodeSet,
 
+    pub region_resolve_crate: region_resolve_crate_dep_node(CrateNum) -> Rc<RegionMaps>,
+
     pub mir_shims: mir_shim(ty::InstanceDef<'tcx>) -> &'tcx RefCell<mir::Mir<'tcx>>
 }
 
@@ -463,6 +472,10 @@ fn crate_inherent_impls_dep_node(_: CrateNum) -> DepNode<DefId> {
 
 fn reachability_dep_node(_: CrateNum) -> DepNode<DefId> {
     DepNode::Reachability
+}
+
+fn region_resolve_crate_dep_node(_: CrateNum) -> DepNode<DefId> {
+    DepNode::RegionResolveCrate
 }
 
 fn mir_shim(instance: ty::InstanceDef) -> DepNode<DefId> {

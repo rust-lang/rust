@@ -411,7 +411,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         // The outermost scope (`scopes[0]`) will be the `CallSiteScope`.
         // We want `scopes[1]`, which is the `ParameterScope`.
         assert!(self.scopes.len() >= 2);
-        assert!(match self.hir.tcx().region_maps.code_extent_data(self.scopes[1].extent) {
+        assert!(match self.hir.tcx().region_maps().code_extent_data(self.scopes[1].extent) {
             CodeExtentData::ParameterScope { .. } => true,
             _ => false,
         });
@@ -499,7 +499,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     scope.needs_cleanup = true;
                 }
                 let tcx = self.hir.tcx();
-                let extent_span = extent.span(&tcx.region_maps, &tcx.hir).unwrap();
+                let extent_span = extent.span(&tcx.region_maps(), &tcx.hir).unwrap();
                 // Attribute scope exit drops to scope's closing brace
                 let scope_end = Span { lo: extent_span.hi, .. extent_span};
                 scope.drops.push(DropData {

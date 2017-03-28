@@ -1212,13 +1212,13 @@ impl<'a, 'tcx> ParameterEnvironment<'tcx> {
                         let impl_def_id = tcx.hir.local_def_id(impl_id);
                         tcx.construct_parameter_environment(impl_item.span,
                                                             impl_def_id,
-                                                            tcx.region_maps.item_extent(id))
+                                                            tcx.region_maps().item_extent(id))
                     }
                     hir::ImplItemKind::Method(_, ref body) => {
                         tcx.construct_parameter_environment(
                             impl_item.span,
                             tcx.hir.local_def_id(id),
-                            tcx.region_maps.call_site_extent(id, body.node_id))
+                            tcx.region_maps().call_site_extent(id, body.node_id))
                     }
                 }
             }
@@ -1231,7 +1231,7 @@ impl<'a, 'tcx> ParameterEnvironment<'tcx> {
                         let trait_def_id = tcx.hir.local_def_id(trait_id);
                         tcx.construct_parameter_environment(trait_item.span,
                                                             trait_def_id,
-                                                            tcx.region_maps.item_extent(id))
+                                                            tcx.region_maps().item_extent(id))
                     }
                     hir::TraitItemKind::Method(_, ref body) => {
                         // Use call-site for extent (unless this is a
@@ -1239,10 +1239,10 @@ impl<'a, 'tcx> ParameterEnvironment<'tcx> {
                         // to the method id).
                         let extent = if let hir::TraitMethod::Provided(body_id) = *body {
                             // default impl: use call_site extent as free_id_outlive bound.
-                            tcx.region_maps.call_site_extent(id, body_id.node_id)
+                            tcx.region_maps().call_site_extent(id, body_id.node_id)
                         } else {
                             // no default impl: use item extent as free_id_outlive bound.
-                            tcx.region_maps.item_extent(id)
+                            tcx.region_maps().item_extent(id)
                         };
                         tcx.construct_parameter_environment(
                             trait_item.span,
@@ -1260,7 +1260,7 @@ impl<'a, 'tcx> ParameterEnvironment<'tcx> {
                         tcx.construct_parameter_environment(
                             item.span,
                             fn_def_id,
-                            tcx.region_maps.call_site_extent(id, body_id.node_id))
+                            tcx.region_maps().call_site_extent(id, body_id.node_id))
                     }
                     hir::ItemEnum(..) |
                     hir::ItemStruct(..) |
@@ -1272,13 +1272,13 @@ impl<'a, 'tcx> ParameterEnvironment<'tcx> {
                         let def_id = tcx.hir.local_def_id(id);
                         tcx.construct_parameter_environment(item.span,
                                                             def_id,
-                                                            tcx.region_maps.item_extent(id))
+                                                            tcx.region_maps().item_extent(id))
                     }
                     hir::ItemTrait(..) => {
                         let def_id = tcx.hir.local_def_id(id);
                         tcx.construct_parameter_environment(item.span,
                                                             def_id,
-                                                            tcx.region_maps.item_extent(id))
+                                                            tcx.region_maps().item_extent(id))
                     }
                     _ => {
                         span_bug!(item.span,
@@ -1296,7 +1296,7 @@ impl<'a, 'tcx> ParameterEnvironment<'tcx> {
                     tcx.construct_parameter_environment(
                         expr.span,
                         base_def_id,
-                        tcx.region_maps.call_site_extent(id, body.node_id))
+                        tcx.region_maps().call_site_extent(id, body.node_id))
                 } else {
                     tcx.empty_parameter_environment()
                 }
@@ -2472,7 +2472,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
         // for an empty parameter environment, there ARE no free
         // regions, so it shouldn't matter what we use for the free id
-        let free_id_outlive = self.region_maps.node_extent(ast::DUMMY_NODE_ID);
+        let free_id_outlive = self.region_maps().node_extent(ast::DUMMY_NODE_ID);
         ty::ParameterEnvironment {
             free_substs: self.intern_substs(&[]),
             caller_bounds: Vec::new(),
@@ -2508,7 +2508,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     /// See `ParameterEnvironment` struct def'n for details.
-    /// If you were using `free_id: NodeId`, you might try `self.region_maps.item_extent(free_id)`
+    /// If you were using `free_id: NodeId`, you might try `self.region_maps().item_extent(free_id)`
     /// for the `free_id_outlive` parameter. (But note that this is not always quite right.)
     pub fn construct_parameter_environment(self,
                                            span: Span,
@@ -2554,12 +2554,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             is_sized_cache: RefCell::new(FxHashMap()),
         };
 
-        let cause = traits::ObligationCause::misc(span, free_id_outlive.node_id(&self.region_maps));
+        let cause = traits::ObligationCause::misc(span,
+                                                  free_id_outlive.node_id(&self.region_maps()));
         traits::normalize_param_env_or_error(tcx, unnormalized_env, cause)
     }
 
     pub fn node_scope_region(self, id: NodeId) -> &'tcx Region {
-        self.mk_region(ty::ReScope(self.region_maps.node_extent(id)))
+        self.mk_region(ty::ReScope(self.region_maps().node_extent(id)))
     }
 
     pub fn visit_all_item_likes_in_krate<V,F>(self,

@@ -938,7 +938,7 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
                 // A "free" region can be interpreted as "some region
                 // at least as big as the block fr.scope_id".  So, we can
                 // reasonably compare free regions and scopes:
-                let r_id = self.tcx.region_maps.nearest_common_ancestor(fr.scope, s_id);
+                let r_id = self.tcx.region_maps().nearest_common_ancestor(fr.scope, s_id);
 
                 if r_id == fr.scope {
                     // if the free region's scope `fr.scope_id` is bigger than
@@ -957,7 +957,7 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
                 // subtype of the region corresponding to an inner
                 // block.
                 self.tcx.mk_region(ReScope(
-                    self.tcx.region_maps.nearest_common_ancestor(a_id, b_id)))
+                    self.tcx.region_maps().nearest_common_ancestor(a_id, b_id)))
             }
 
             (&ReFree(a_fr), &ReFree(b_fr)) => {

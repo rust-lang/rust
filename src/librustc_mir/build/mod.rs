@@ -137,10 +137,10 @@ pub fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
     let mut builder = Builder::new(hir, span, arguments.len(), return_ty);
 
     let call_site_extent =
-        tcx.region_maps.lookup_code_extent(
+        tcx.region_maps().lookup_code_extent(
             CodeExtentData::CallSiteScope { fn_id: fn_id, body_id: body.value.id });
     let arg_extent =
-        tcx.region_maps.lookup_code_extent(
+        tcx.region_maps().lookup_code_extent(
             CodeExtentData::ParameterScope { fn_id: fn_id, body_id: body.value.id });
     let mut block = START_BLOCK;
     unpack!(block = builder.in_scope(call_site_extent, block, |builder| {
@@ -203,7 +203,7 @@ pub fn construct_const<'a, 'gcx, 'tcx>(hir: Cx<'a, 'gcx, 'tcx>,
     let span = tcx.hir.span(tcx.hir.body_owner(body_id));
     let mut builder = Builder::new(hir, span, 0, ty);
 
-    let extent = tcx.region_maps.temporary_scope(ast_expr.id)
+    let extent = tcx.region_maps().temporary_scope(ast_expr.id)
                     .unwrap_or(ROOT_CODE_EXTENT);
     let mut block = START_BLOCK;
     let _ = builder.in_scope(extent, block, |builder| {

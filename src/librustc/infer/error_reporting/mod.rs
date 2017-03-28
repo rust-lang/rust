@@ -123,14 +123,14 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     format!("{}unknown scope: {:?}{}.  Please report a bug.",
                             prefix, scope, suffix)
                 };
-                let span = match scope.span(&self.region_maps, &self.hir) {
+                let span = match scope.span(&self.region_maps(), &self.hir) {
                     Some(s) => s,
                     None => {
                         err.note(&unknown_scope());
                         return;
                     }
                 };
-                let tag = match self.hir.find(scope.node_id(&self.region_maps)) {
+                let tag = match self.hir.find(scope.node_id(&self.region_maps())) {
                     Some(hir_map::NodeBlock(_)) => "block",
                     Some(hir_map::NodeExpr(expr)) => match expr.node {
                         hir::ExprCall(..) => "call",
@@ -150,7 +150,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                         return;
                     }
                 };
-                let scope_decorated_tag = match self.region_maps.code_extent_data(scope) {
+                let scope_decorated_tag = match self.region_maps().code_extent_data(scope) {
                     region::CodeExtentData::Misc(_) => tag,
                     region::CodeExtentData::CallSiteScope { .. } => {
                         "scope of call-site for function"
@@ -183,7 +183,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     }
                 };
 
-                let node = fr.scope.node_id(&self.region_maps);
+                let node = fr.scope.node_id(&self.region_maps());
                 let unknown;
                 let tag = match self.hir.find(node) {
                     Some(hir_map::NodeBlock(_)) |
