@@ -133,4 +133,5 @@ Alternatives were explored at https://internals.rust-lang.org/t/clamp-function-f
 [unresolved]: #unresolved-questions
 
 Should the float version of the clamp function live in f32 and f64, or in std::cmp as that's where the Ord version would go?
+
 Is the proposed handling for NAN inputs ideal?
