@@ -278,7 +278,7 @@ pub fn check_safety_of_destructor_if_necessary<'a, 'gcx, 'tcx>(
            ty, scope);
 
 
-    let parent_scope = match rcx.tcx.region_maps.opt_encl_scope(scope) {
+    let parent_scope = match rcx.tcx.region_maps().opt_encl_scope(scope) {
         Some(parent_scope) => parent_scope,
         // If no enclosing scope, then it must be the root scope
         // which cannot be outlived.

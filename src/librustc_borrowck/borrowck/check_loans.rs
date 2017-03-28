@@ -239,8 +239,8 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
         //! currently in scope.
 
         let tcx = self.tcx();
-        self.each_issued_loan(scope.node_id(&tcx.region_maps), |loan| {
-            if tcx.region_maps.is_subscope_of(scope, loan.kill_scope) {
+        self.each_issued_loan(scope.node_id(&tcx.region_maps()), |loan| {
+            if tcx.region_maps().is_subscope_of(scope, loan.kill_scope) {
                 op(loan)
             } else {
                 true
@@ -379,7 +379,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                new_loan);
 
         // Should only be called for loans that are in scope at the same time.
-        assert!(self.tcx().region_maps.scopes_intersect(old_loan.kill_scope,
+        assert!(self.tcx().region_maps().scopes_intersect(old_loan.kill_scope,
                                                         new_loan.kill_scope));
 
         self.report_error_if_loan_conflicts_with_restriction(
@@ -460,7 +460,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
             // 3. Where does old loan expire.
 
             let previous_end_span =
-                self.tcx().hir.span(old_loan.kill_scope.node_id(&self.tcx().region_maps))
+                self.tcx().hir.span(old_loan.kill_scope.node_id(&self.tcx().region_maps()))
                               .end_point();
 
             let mut err = match (new_loan.kind, old_loan.kind) {
@@ -710,7 +710,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
         let mut ret = UseOk;
 
         self.each_in_scope_loan_affecting_path(
-            self.tcx().region_maps.node_extent(expr_id), use_path, |loan| {
+            self.tcx().region_maps().node_extent(expr_id), use_path, |loan| {
             if !compatible_borrow_kinds(loan.kind, borrow_kind) {
                 ret = UseWhileBorrowed(loan.loan_path.clone(), loan.span);
                 false
@@ -824,7 +824,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
 
         // Check that we don't invalidate any outstanding loans
         if let Some(loan_path) = opt_loan_path(&assignee_cmt) {
-            let scope = self.tcx().region_maps.node_extent(assignment_id);
+            let scope = self.tcx().region_maps().node_extent(assignment_id);
             self.each_in_scope_loan_affecting_path(scope, &loan_path, |loan| {
                 self.report_illegal_mutation(assignment_span, &loan_path, loan);
                 false

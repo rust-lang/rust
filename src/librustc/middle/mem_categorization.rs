@@ -796,7 +796,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             // The environment of a closure is guaranteed to
             // outlive any bindings introduced in the body of the
             // closure itself.
-            scope: self.tcx().region_maps.item_extent(fn_body_id),
+            scope: self.tcx().region_maps().item_extent(fn_body_id),
             bound_region: ty::BrEnv
         }));
 
@@ -845,7 +845,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
     pub fn temporary_scope(&self, id: ast::NodeId) -> (&'tcx ty::Region, &'tcx ty::Region)
     {
         let (scope, old_scope) =
-            self.tcx().region_maps.old_and_new_temporary_scope(id);
+            self.tcx().region_maps().old_and_new_temporary_scope(id);
         (self.tcx().mk_region(match scope {
             Some(scope) => ty::ReScope(scope),
             None => ty::ReStatic

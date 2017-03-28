@@ -141,9 +141,9 @@ fn build_borrowck_dataflow_data<'a, 'tcx>(this: &mut BorrowckCtxt<'a, 'tcx>,
                              id_range,
                              all_loans.len());
     for (loan_idx, loan) in all_loans.iter().enumerate() {
-        loan_dfcx.add_gen(loan.gen_scope.node_id(&tcx.region_maps), loan_idx);
+        loan_dfcx.add_gen(loan.gen_scope.node_id(&tcx.region_maps()), loan_idx);
         loan_dfcx.add_kill(KillFrom::ScopeEnd,
-                           loan.kill_scope.node_id(&tcx.region_maps), loan_idx);
+                           loan.kill_scope.node_id(&tcx.region_maps()), loan_idx);
     }
     loan_dfcx.add_kills_from_flow_exits(cfg);
     loan_dfcx.propagate(cfg, body);
@@ -314,10 +314,10 @@ pub fn closure_to_block(closure_id: ast::NodeId,
 impl<'a, 'tcx> LoanPath<'tcx> {
     pub fn kill_scope(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> region::CodeExtent {
         match self.kind {
-            LpVar(local_id) => tcx.region_maps.var_scope(local_id),
+            LpVar(local_id) => tcx.region_maps().var_scope(local_id),
             LpUpvar(upvar_id) => {
                 let block_id = closure_to_block(upvar_id.closure_expr_id, tcx);
-                tcx.region_maps.node_extent(block_id)
+                tcx.region_maps().node_extent(block_id)
             }
             LpDowncast(ref base, _) |
             LpExtend(ref base, ..) => base.kill_scope(tcx),
@@ -966,7 +966,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
     fn region_end_span(&self, region: &'tcx ty::Region) -> Option<Span> {
         match *region {
             ty::ReScope(scope) => {
-                match scope.span(&self.tcx.region_maps, &self.tcx.hir) {
+                match scope.span(&self.tcx.region_maps(), &self.tcx.hir) {
                     Some(s) => {
                         Some(s.end_point())
                     }
@@ -1247,7 +1247,7 @@ before rustc 1.16, this temporary lived longer - see issue #39283 \
 fn statement_scope_span(tcx: TyCtxt, region: &ty::Region) -> Option<Span> {
     match *region {
         ty::ReScope(scope) => {
-            match tcx.hir.find(scope.node_id(&tcx.region_maps)) {
+            match tcx.hir.find(scope.node_id(&tcx.region_maps())) {
                 Some(hir_map::NodeStmt(stmt)) => Some(stmt.span),
                 _ => None
             }

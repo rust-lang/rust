@@ -16,7 +16,6 @@
 //! Most of the documentation on regions can be found in
 //! `middle/infer/region_inference/README.md`
 
-use dep_graph::DepNode;
 use hir::map as hir_map;
 use session::Session;
 use util::nodemap::{FxHashMap, NodeMap, NodeSet};
@@ -26,11 +25,15 @@ use std::cell::RefCell;
 use std::collections::hash_map::Entry;
 use std::fmt;
 use std::mem;
+use std::rc::Rc;
 use syntax::codemap;
 use syntax::ast::{self, NodeId};
 use syntax_pos::Span;
+use ty::TyCtxt;
+use ty::maps::Providers;
 
 use hir;
+use hir::def_id::{CrateNum, LOCAL_CRATE};
 use hir::intravisit::{self, Visitor, FnKind, NestedVisitorMap};
 use hir::{Block, Item, FnDecl, Arm, Pat, PatKind, Stmt, Expr, Local};
 
@@ -44,8 +47,13 @@ impl fmt::Debug for CodeExtent {
 
         ty::tls::with_opt(|opt_tcx| {
             if let Some(tcx) = opt_tcx {
-                if let Some(data) = tcx.region_maps.code_extents.borrow().get(self.0 as usize) {
-                    write!(f, "/{:?}", data)?;
+                let region_maps = tcx.region_maps();
+                {
+                    let code_extents = &region_maps.code_extents;
+                    if let Some(data) = code_extents.borrow().get(self.0 as usize) {
+                        write!(f, "/{:?}", data)?;
+                    }
+                    mem::drop(code_extents); // FIXME why is this necessary?
                 }
             }
             Ok(())
@@ -1256,9 +1264,19 @@ impl<'hir, 'a> Visitor<'hir> for RegionResolutionVisitor<'hir, 'a> {
     }
 }
 
-pub fn resolve_crate(sess: &Session, map: &hir_map::Map) -> RegionMaps {
-    let _task = map.dep_graph.in_task(DepNode::RegionResolveCrate);
-    let krate = map.krate();
+pub fn resolve_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Rc<RegionMaps> {
+    tcx.region_resolve_crate(LOCAL_CRATE)
+}
+
+fn region_resolve_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, crate_num: CrateNum)
+    -> Rc<RegionMaps>
+{
+    debug_assert!(crate_num == LOCAL_CRATE);
+
+    let sess = &tcx.sess;
+    let hir_map = &tcx.hir;
+
+    let krate = hir_map.krate();
 
     let maps = RegionMaps {
         code_extents: RefCell::new(vec![]),
@@ -1279,7 +1297,7 @@ pub fn resolve_crate(sess: &Session, map: &hir_map::Map) -> RegionMaps {
         let mut visitor = RegionResolutionVisitor {
             sess: sess,
             region_maps: &maps,
-            map: map,
+            map: hir_map,
             cx: Context {
                 root_id: None,
                 parent: ROOT_CODE_EXTENT,
@@ -1289,5 +1307,12 @@ pub fn resolve_crate(sess: &Session, map: &hir_map::Map) -> RegionMaps {
         };
         krate.visit_all_item_likes(&mut visitor.as_deep_visitor());
     }
-    return maps;
+    Rc::new(maps)
+}
+
+pub fn provide(providers: &mut Providers) {
+    *providers = Providers {
+        region_resolve_crate,
+        ..*providers
+    };
 }

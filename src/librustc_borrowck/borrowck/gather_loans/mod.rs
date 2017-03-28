@@ -45,7 +45,7 @@ pub fn gather_loans_in_fn<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
         bccx: bccx,
         infcx: &infcx,
         all_loans: Vec::new(),
-        item_ub: bccx.tcx.region_maps.node_extent(body.node_id),
+        item_ub: bccx.tcx.region_maps().node_extent(body.node_id),
         move_data: MoveData::new(),
         move_error_collector: move_error::MoveErrorCollector::new(),
     };
@@ -371,7 +371,7 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
                 };
                 debug!("loan_scope = {:?}", loan_scope);
 
-                let borrow_scope = self.tcx().region_maps.node_extent(borrow_id);
+                let borrow_scope = self.tcx().region_maps().node_extent(borrow_id);
                 let gen_scope = self.compute_gen_scope(borrow_scope, loan_scope);
                 debug!("gen_scope = {:?}", gen_scope);
 
@@ -458,7 +458,7 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
         //! notably method arguments, the loan may be introduced only
         //! later, once it comes into scope.
 
-        if self.bccx.tcx.region_maps.is_subscope_of(borrow_scope, loan_scope) {
+        if self.bccx.tcx.region_maps().is_subscope_of(borrow_scope, loan_scope) {
             borrow_scope
         } else {
             loan_scope
@@ -489,11 +489,11 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
         //! do not require restrictions and hence do not cause a loan.
 
         let lexical_scope = lp.kill_scope(self.bccx.tcx);
-        let rm = &self.bccx.tcx.region_maps;
+        let rm = &self.bccx.tcx.region_maps();
         if rm.is_subscope_of(lexical_scope, loan_scope) {
             lexical_scope
         } else {
-            assert!(self.bccx.tcx.region_maps.is_subscope_of(loan_scope, lexical_scope));
+            assert!(self.bccx.tcx.region_maps().is_subscope_of(loan_scope, lexical_scope));
             loan_scope
         }
     }

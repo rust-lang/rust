@@ -276,7 +276,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
 
         let body_id = body.id();
 
-        let call_site = self.tcx.region_maps.lookup_code_extent(
+        let call_site = self.tcx.region_maps().lookup_code_extent(
             region::CodeExtentData::CallSiteScope { fn_id: id, body_id: body_id.node_id });
         let old_call_site_scope = self.set_call_site_scope(Some(call_site));
 
@@ -302,7 +302,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
 
         let old_body_id = self.set_body_id(body_id.node_id);
         self.relate_free_regions(&fn_sig_tys[..], body_id.node_id, span);
-        self.link_fn_args(self.tcx.region_maps.node_extent(body_id.node_id), &body.arguments);
+        self.link_fn_args(self.tcx.region_maps().node_extent(body_id.node_id), &body.arguments);
         self.visit_body(body);
         self.visit_region_obligations(body_id.node_id);
 
@@ -450,7 +450,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
             // that the lifetime of any regions that appear in a
             // variable's type enclose at least the variable's scope.
 
-            let var_scope = tcx.region_maps.var_scope(id);
+            let var_scope = tcx.region_maps().var_scope(id);
             let var_region = self.tcx.mk_region(ty::ReScope(var_scope));
 
             let origin = infer::BindingTypeIsNotValidAtDecl(span);
@@ -868,7 +868,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         // call occurs.
         //
         // FIXME(#6268) to support nested method calls, should be callee_id
-        let callee_scope = self.tcx.region_maps.node_extent(call_expr.id);
+        let callee_scope = self.tcx.region_maps().node_extent(call_expr.id);
         let callee_region = self.tcx.mk_region(ty::ReScope(callee_scope));
 
         debug!("callee_region={:?}", callee_region);
@@ -1021,7 +1021,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         debug!("constrain_index(index_expr=?, indexed_ty={}",
                self.ty_to_string(indexed_ty));
 
-        let r_index_expr = ty::ReScope(self.tcx.region_maps.node_extent(index_expr.id));
+        let r_index_expr = ty::ReScope(self.tcx.region_maps().node_extent(index_expr.id));
         if let ty::TyRef(r_ptr, mt) = indexed_ty.sty {
             match mt.ty.sty {
                 ty::TySlice(_) | ty::TyStr => {

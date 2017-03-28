@@ -438,7 +438,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for ::middle::region::
                                           hcx: &mut StableHashingContext<'a, 'tcx>,
                                           hasher: &mut StableHasher<W>) {
         hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
-            hcx.tcx().region_maps.code_extent_data(*self).hash_stable(hcx, hasher);
+            hcx.tcx().region_maps().code_extent_data(*self).hash_stable(hcx, hasher);
         });
     }
 }
