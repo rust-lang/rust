@@ -945,6 +945,10 @@ impl<'a> fmt::Display for Method<'a> {
         let mut args = String::new();
         let mut args_plain = String::new();
         for (i, input) in decl.inputs.values.iter().enumerate() {
+            if i == 0 {
+                args.push_str("<br>");
+            }
+
             if let Some(selfty) = input.to_self() {
                 match selfty {
                     clean::SelfValue => {
@@ -986,8 +990,8 @@ impl<'a> fmt::Display for Method<'a> {
                 args_plain.push_str(&format!("{:#}", input.type_));
             }
             if i + 1 < decl.inputs.values.len() {
-                args.push_str(",");
-                args_plain.push_str(",");
+                args.push(',');
+                args_plain.push(',');
             }
         }
 
@@ -1003,27 +1007,19 @@ impl<'a> fmt::Display for Method<'a> {
             format!("{}", decl.output)
         };
 
-        let mut output: String;
-        let plain: String;
         let pad = repeat(" ").take(indent).collect::<String>();
-        if arrow.is_empty() {
-            output = format!("({})", args);
-            plain = format!("{}({})", pad, args_plain);
-        } else {
-            output = format!("({args})<br>{arrow}", args = args, arrow = arrow);
-            plain = format!("{pad}({args}){arrow}",
-                            pad = pad,
-                            args = args_plain,
-                            arrow = arrow_plain);
-        }
+        let plain = format!("{pad}({args}){arrow}",
+                        pad = pad,
+                        args = args_plain,
+                        arrow = arrow_plain);
 
-        if plain.len() > 80 {
-            let pad = repeat("&nbsp;").take(indent).collect::<String>();
-            let pad = format!("<br>{}", pad);
-            output = output.replace("<br>", &pad);
+        let output = if plain.len() > 80 {
+            let pad = "<br>&nbsp;&nbsp;&nbsp;&nbsp;";
+            format!("({args}<br>){arrow}", args = args.replace("<br>", pad), arrow = arrow)
         } else {
-            output = output.replace("<br>", "");
-        }
+            format!("({args}){arrow}", args = args.replace("<br>", ""), arrow = arrow)
+        };
+
         if f.alternate() {
             write!(f, "{}", output.replace("<br>", "\n"))
         } else {
