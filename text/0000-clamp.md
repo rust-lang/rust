@@ -69,10 +69,10 @@ Add the following to std::cmp
 
 ```Rust
 /// Returns max if input is greater than max, and min if input is less than min.  
-/// Otherwise this will return input.  Panics if max < min.
+/// Otherwise this will return input.  Panics if min > max.
 #[inline]
 pub fn clamp<T: Ord>(input: T, min: T, max: T) -> T {
-    assert!(max >= min);
+    assert!(min <= max);
     if input < min {
         min
     }
@@ -88,7 +88,7 @@ And the following to libstd/f32.rs, and a similar version for f64
 
 ```Rust
 /// Returns max if self is greater than max, and min if self is less than min.
-/// Otherwise this returns self.  Panics if max < min.
+/// Otherwise this returns self.  Panics if min > max.
 ///
 /// # Examples
 ///
@@ -97,12 +97,11 @@ And the following to libstd/f32.rs, and a similar version for f64
 /// assert!((0.0f32).clamp(-2.0f32, 1.0f32) == 0.0f32);
 /// assert!((2.0f32).clamp(-2.0f32, 1.0f32) == 1.0f32);
 /// ```
-#[inline]
-pub fn clamp(input:f32, min: f32, max: f32) -> f32 {
-    assert!(max >= min);
-    let mut x = input;
-    if !(x < min) { x = min; }
-    if !(x > max) { x = max; }
+pub fn clamp(self, min: f32, max: f32) -> f32 {
+    assert!(min <= max);
+    let mut x = self;
+    if x < min { x = min; }
+    if x > max { x = max; }
     x
 }
 ```
