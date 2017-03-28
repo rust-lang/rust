@@ -77,8 +77,7 @@ pub fn clamp<T: Ord>(input: T, min: T, max: T) -> T {
     }
     else if input > max {
         max
-    }
-    else {
+    } else {
         input
     }
 }
@@ -98,16 +97,11 @@ And the following to libstd/f32.rs, and a similar version for f64
 /// assert!((2.0f32).clamp(-2.0f32, 1.0f32) == 1.0f32);
 /// ```
 #[inline]
-pub fn clamp(self, min: f32, max: f32>) -> f32 {
-    if input < min {
-        min
-    }
-    else if input > max {
-        max
-    }
-    else {
-        input
-    }
+pub fn clamp(input:f32, min: f32, max: f32) -> f32 {
+    let mut x = input;
+    if !(x < min) { x = min; }
+    if !(x > max) { x = max; }
+    x
 }
 ```
 
@@ -117,8 +111,8 @@ the edge case behavior with a 3x3 chart.
 |  |INFINITY|NEG_INFINITY|NAN|
 |---|---|---|---|
 |self|return max;|return min;|return NAN;|
-|max|No max enforced|return NEG_INFINITY;|No max enforced|
-|min|return INFINITY;|No min enforced|No min enforced|
+|max|No max enforced|return NEG_INFINITY;|return NAN;|
+|min|return INFINITY;|No min enforced|return NAN;|
 
 # How We Teach This
 [how-we-teach-this]: #how-we-teach-this
@@ -139,3 +133,4 @@ Alternatives were explored at https://internals.rust-lang.org/t/clamp-function-f
 [unresolved]: #unresolved-questions
 
 Should the float version of the clamp function live in f32 and f64, or in std::cmp as that's where the Ord version would go?
+Is the proposed handling for NAN inputs ideal?
