@@ -2,7 +2,7 @@ error: incorrect visibility restriction
   --> $DIR/pub-restricted.rs:15:6
    |
 15 | pub (a) fn afn() {}
-   |      ^ to make this visible only to module `a`, add `in` before the path: `in a`
+   |      ^ make this visible only to module `a` with `in`: `in a`
    |
    = help: some possible visibility restrictions are:
            `pub(crate)`: visible only on the current crate
@@ -13,7 +13,7 @@ error: incorrect visibility restriction
   --> $DIR/pub-restricted.rs:16:6
    |
 16 | pub (b) fn bfn() {}
-   |      ^ to make this visible only to module `b`, add `in` before the path: `in b`
+   |      ^ make this visible only to module `b` with `in`: `in b`
    |
    = help: some possible visibility restrictions are:
            `pub(crate)`: visible only on the current crate
@@ -24,7 +24,7 @@ error: incorrect visibility restriction
   --> $DIR/pub-restricted.rs:32:14
    |
 32 |         pub (a) invalid: usize,
-   |              ^ to make this visible only to module `a`, add `in` before the path: `in a`
+   |              ^ make this visible only to module `a` with `in`: `in a`
    |
    = help: some possible visibility restrictions are:
            `pub(crate)`: visible only on the current crate
@@ -35,7 +35,7 @@ error: incorrect visibility restriction
   --> $DIR/pub-restricted.rs:41:6
    |
 41 | pub (xyz) fn xyz() {}
-   |      ^^^ to make this visible only to module `xyz`, add `in` before the path: `in xyz`
+   |      ^^^ make this visible only to module `xyz` with `in`: `in xyz`
    |
    = help: some possible visibility restrictions are:
            `pub(crate)`: visible only on the current crate

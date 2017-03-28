@@ -197,7 +197,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // error types are considered "builtin"
                 if !lhs_ty.references_error() {
                     if let IsAssign::Yes = is_assign {
-                        struct_span_err!(self.tcx.sess, lhs_expr.span, E0368,
+                        struct_span_err!(self.tcx.sess, expr.span, E0368,
                                          "binary assignment operation `{}=` \
                                           cannot be applied to type `{}`",
                                          op.node.as_str(),
@@ -207,7 +207,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                         op.node.as_str(), lhs_ty))
                             .emit();
                     } else {
-                        let mut err = struct_span_err!(self.tcx.sess, lhs_expr.span, E0369,
+                        let mut err = struct_span_err!(self.tcx.sess, expr.span, E0369,
                             "binary operation `{}` cannot be applied to type `{}`",
                             op.node.as_str(),
                             lhs_ty);
@@ -244,7 +244,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
                         if let Some(missing_trait) = missing_trait {
                             if missing_trait == "std::ops::Add" &&
-                                self.check_str_addition(lhs_expr, lhs_ty,
+                                self.check_str_addition(expr, lhs_expr, lhs_ty,
                                                          rhs_expr, rhs_ty_var, &mut err) {
                                 // This has nothing here because it means we did string
                                 // concatenation (e.g. "Hello " + "World!"). This means
@@ -266,6 +266,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn check_str_addition(&self,
+                          expr: &'gcx hir::Expr,
                           lhs_expr: &'gcx hir::Expr,
                           lhs_ty: Ty<'tcx>,
                           rhs_expr: &'gcx hir::Expr,
@@ -277,7 +278,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         if let TyRef(_, l_ty) = lhs_ty.sty {
             if let TyRef(_, r_ty) = rhs_ty.sty {
                 if l_ty.ty.sty == TyStr && r_ty.ty.sty == TyStr {
-                    err.note("`+` can't be used to concatenate two `&str` strings");
+                    err.span_label(expr.span,
+                        &"`+` can't be used to concatenate two `&str` strings");
                     let codemap = self.tcx.sess.codemap();
                     let suggestion =
                         match codemap.span_to_snippet(lhs_expr.span) {
@@ -289,7 +291,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                   from a string reference. String concatenation \
                                   appends the string on the right to the string \
                                   on the left and may require reallocation. This \
-                                  requires ownership of the string on the left:"), suggestion);
+                                  requires ownership of the string on the left."), suggestion);
                     is_string_addition = true;
                 }
 
