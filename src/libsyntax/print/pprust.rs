@@ -270,7 +270,6 @@ pub fn token_to_string(tok: &Token) -> String {
 
         /* Other */
         token::DocComment(s)        => s.to_string(),
-        token::SubstNt(s)           => format!("${}", s),
         token::Eof                  => "<eof>".to_string(),
         token::Whitespace           => " ".to_string(),
         token::Comment              => "/* */".to_string(),

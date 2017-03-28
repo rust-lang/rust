@@ -87,6 +87,8 @@ pub mod __internal {
     use std::rc::Rc;
 
     use syntax::ast;
+    use syntax::ext::base::ExtCtxt;
+    use syntax::ext::hygiene::Mark;
     use syntax::ptr::P;
     use syntax::parse::{self, token, ParseSess};
     use syntax::tokenstream::{TokenTree, TokenStream as TokenStream_};
@@ -107,7 +109,7 @@ pub mod __internal {
     }
 
     pub fn token_stream_parse_items(stream: TokenStream) -> Result<Vec<P<ast::Item>>, LexError> {
-        with_parse_sess(move |sess| {
+        with_sess(move |(sess, _)| {
             let mut parser = parse::stream_to_parser(sess, stream.inner);
             let mut items = Vec::new();
 
@@ -140,13 +142,14 @@ pub mod __internal {
 
     // Emulate scoped_thread_local!() here essentially
     thread_local! {
-        static CURRENT_SESS: Cell<*const ParseSess> = Cell::new(0 as *const _);
+        static CURRENT_SESS: Cell<(*const ParseSess, Mark)> =
+            Cell::new((0 as *const _, Mark::root()));
     }
 
-    pub fn set_parse_sess<F, R>(sess: &ParseSess, f: F) -> R
+    pub fn set_sess<F, R>(cx: &ExtCtxt, f: F) -> R
         where F: FnOnce() -> R
     {
-        struct Reset { prev: *const ParseSess }
+        struct Reset { prev: (*const ParseSess, Mark) }
 
         impl Drop for Reset {
             fn drop(&mut self) {
@@ -156,18 +159,18 @@ pub mod __internal {
 
         CURRENT_SESS.with(|p| {
             let _reset = Reset { prev: p.get() };
-            p.set(sess);
+            p.set((cx.parse_sess, cx.current_expansion.mark));
             f()
         })
     }
 
-    pub fn with_parse_sess<F, R>(f: F) -> R
-        where F: FnOnce(&ParseSess) -> R
+    pub fn with_sess<F, R>(f: F) -> R
+        where F: FnOnce((&ParseSess, Mark)) -> R
     {
         let p = CURRENT_SESS.with(|p| p.get());
-        assert!(!p.is_null(), "proc_macro::__internal::with_parse_sess() called \
-                               before set_parse_sess()!");
-        f(unsafe { &*p })
+        assert!(!p.0.is_null(), "proc_macro::__internal::with_sess() called \
+                                 before set_parse_sess()!");
+        f(unsafe { (&*p.0, p.1) })
     }
 }
 
@@ -181,10 +184,11 @@ impl FromStr for TokenStream {
     type Err = LexError;
 
     fn from_str(src: &str) -> Result<TokenStream, LexError> {
-        __internal::with_parse_sess(|sess| {
+        __internal::with_sess(|(sess, mark)| {
             let src = src.to_string();
             let name = "<proc-macro source code>".to_string();
-            let stream = parse::parse_stream_from_source_str(name, src, sess);
+            let call_site = mark.expn_info().unwrap().call_site;
+            let stream = parse::parse_stream_from_source_str(name, src, sess, Some(call_site));
             Ok(__internal::token_stream_wrap(stream))
         })
     }

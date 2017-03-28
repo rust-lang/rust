@@ -364,7 +364,7 @@ pub mod rt {
 
         fn parse_tts(&self, s: String) -> Vec<TokenTree> {
             let source_name = "<quote expansion>".to_owned();
-            parse::parse_stream_from_source_str(source_name, s, self.parse_sess())
+            parse::parse_stream_from_source_str(source_name, s, self.parse_sess(), None)
                 .into_trees().collect()
         }
     }
@@ -700,7 +700,7 @@ fn expr_mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> P<ast::Expr> {
         token::Underscore   => "Underscore",
         token::Eof          => "Eof",
 
-        token::Whitespace | token::SubstNt(_) | token::Comment | token::Shebang(_) => {
+        token::Whitespace | token::Comment | token::Shebang(_) => {
             panic!("unhandled token in quote!");
         }
     };

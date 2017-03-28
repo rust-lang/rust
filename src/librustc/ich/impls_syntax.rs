@@ -283,8 +283,7 @@ fn hash_token<'a, 'gcx, 'tcx, W: StableHasherResult>(token: &token::Token,
         }
 
         token::Token::Ident(ident) |
-        token::Token::Lifetime(ident) |
-        token::Token::SubstNt(ident) => ident.name.hash_stable(hcx, hasher),
+        token::Token::Lifetime(ident) => ident.name.hash_stable(hcx, hasher),
 
         token::Token::Interpolated(ref non_terminal) => {
             // FIXME(mw): This could be implemented properly. It's just a

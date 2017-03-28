@@ -34,7 +34,7 @@ impl base::AttrProcMacro for AttrProcMacro {
         let annotation = __internal::token_stream_wrap(annotation);
         let annotated = __internal::token_stream_wrap(annotated);
 
-        let res = __internal::set_parse_sess(&ecx.parse_sess, || {
+        let res = __internal::set_sess(ecx, || {
             panic::catch_unwind(panic::AssertUnwindSafe(|| (self.inner)(annotation, annotated)))
         });
 
@@ -69,7 +69,7 @@ impl base::ProcMacro for BangProcMacro {
                    -> TokenStream {
         let input = __internal::token_stream_wrap(input);
 
-        let res = __internal::set_parse_sess(&ecx.parse_sess, || {
+        let res = __internal::set_sess(ecx, || {
             panic::catch_unwind(panic::AssertUnwindSafe(|| (self.inner)(input)))
         });
 

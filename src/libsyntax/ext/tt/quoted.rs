@@ -78,9 +78,11 @@ pub enum KleeneOp {
 pub enum TokenTree {
     Token(Span, token::Token),
     Delimited(Span, Rc<Delimited>),
-    /// A kleene-style repetition sequence with a span
+    /// A kleene-style repetition sequence
     Sequence(Span, Rc<SequenceRepetition>),
-    /// Matches a nonterminal. This is only used in the left hand side of MBE macros.
+    /// E.g. `$var`
+    MetaVar(Span, ast::Ident),
+    /// E.g. `$var:expr`. This is only used in the left hand side of MBE macros.
     MetaVarDecl(Span, ast::Ident /* name to bind */, ast::Ident /* kind of nonterminal */),
 }
 
@@ -130,6 +132,7 @@ impl TokenTree {
     pub fn span(&self) -> Span {
         match *self {
             TokenTree::Token(sp, _) |
+            TokenTree::MetaVar(sp, _) |
             TokenTree::MetaVarDecl(sp, _, _) |
             TokenTree::Delimited(sp, _) |
             TokenTree::Sequence(sp, _) => sp,
@@ -144,7 +147,7 @@ pub fn parse(input: tokenstream::TokenStream, expect_matchers: bool, sess: &Pars
     while let Some(tree) = trees.next() {
         let tree = parse_tree(tree, &mut trees, expect_matchers, sess);
         match tree {
-            TokenTree::Token(start_sp, token::SubstNt(ident)) if expect_matchers => {
+            TokenTree::MetaVar(start_sp, ident) if expect_matchers => {
                 let span = match trees.next() {
                     Some(tokenstream::TokenTree::Token(span, token::Colon)) => match trees.next() {
                         Some(tokenstream::TokenTree::Token(end_sp, ref tok)) => match tok.ident() {
@@ -199,13 +202,13 @@ fn parse_tree<I>(tree: tokenstream::TokenTree,
                     let ident = ast::Ident { name: Symbol::intern("$crate"), ..ident };
                     TokenTree::Token(span, token::Ident(ident))
                 } else {
-                    TokenTree::Token(span, token::SubstNt(ident))
+                    TokenTree::MetaVar(span, ident)
                 }
             }
             Some(tokenstream::TokenTree::Token(span, tok)) => {
                 let msg = format!("expected identifier, found `{}`", pprust::token_to_string(&tok));
                 sess.span_diagnostic.span_err(span, &msg);
-                TokenTree::Token(span, token::SubstNt(keywords::Invalid.ident()))
+                TokenTree::MetaVar(span, keywords::Invalid.ident())
             }
             None => TokenTree::Token(span, token::Dollar),
         },

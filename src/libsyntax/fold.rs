@@ -588,7 +588,6 @@ pub fn noop_fold_token<T: Folder>(t: token::Token, fld: &mut T) -> token::Token 
             };
             token::Interpolated(Rc::new(fld.fold_interpolated(nt)))
         }
-        token::SubstNt(ident) => token::SubstNt(fld.fold_ident(ident)),
         _ => t
     }
 }

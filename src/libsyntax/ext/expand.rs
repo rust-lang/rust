@@ -16,7 +16,7 @@ use config::{is_test_or_bench, StripUnconfigured};
 use errors::FatalError;
 use ext::base::*;
 use ext::derive::{add_derived_markers, collect_derives};
-use ext::hygiene::Mark;
+use ext::hygiene::{Mark, SyntaxContext};
 use ext::placeholders::{placeholder, PlaceholderExpander};
 use feature_gate::{self, Features, is_builtin_attr};
 use fold;
@@ -470,7 +470,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             Ok(())
         };
 
-        let marked_tts = noop_fold_tts(mac.node.stream(), &mut Marker(mark));
         let opt_expanded = match *ext {
             SyntaxExtension::DeclMacro(ref expand, def_span) => {
                 if let Err(msg) = validate_and_set_expn_info(def_span.map(|(_, s)| s),
@@ -478,7 +477,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     self.cx.span_err(path.span, &msg);
                     return kind.dummy(span);
                 }
-                kind.make_from(expand.expand(self.cx, span, marked_tts))
+                kind.make_from(expand.expand(self.cx, span, mac.node.stream()))
             }
 
             NormalTT(ref expandfun, def_info, allow_internal_unstable) => {
@@ -487,7 +486,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     self.cx.span_err(path.span, &msg);
                     return kind.dummy(span);
                 }
-                kind.make_from(expandfun.expand(self.cx, span, marked_tts))
+                kind.make_from(expandfun.expand(self.cx, span, mac.node.stream()))
             }
 
             IdentTT(ref expander, tt_span, allow_internal_unstable) => {
@@ -506,7 +505,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     }
                 });
 
-                let input: Vec<_> = marked_tts.into_trees().collect();
+                let input: Vec<_> = mac.node.stream().into_trees().collect();
                 kind.make_from(expander.expand(self.cx, span, ident, input))
             }
 
@@ -541,21 +540,17 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     },
                 });
 
-                let tok_result = expandfun.expand(self.cx, span, marked_tts);
+                let tok_result = expandfun.expand(self.cx, span, mac.node.stream());
                 Some(self.parse_expansion(tok_result, kind, path, span))
             }
         };
 
-        let expanded = if let Some(expanded) = opt_expanded {
-            expanded
-        } else {
+        unwrap_or!(opt_expanded, {
             let msg = format!("non-{kind} macro in {kind} position: {name}",
                               name = path.segments[0].identifier.name, kind = kind.name());
             self.cx.span_err(path.span, &msg);
-            return kind.dummy(span);
-        };
-
-        expanded.fold_with(&mut Marker(mark))
+            kind.dummy(span)
+        })
     }
 
     /// Expand a derive invocation. Returns the result of expansion.
@@ -621,8 +616,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             }
         };
         parser.ensure_complete_parse(path, kind.name(), span);
-        // FIXME better span info
-        expansion.fold_with(&mut ChangeSpan { span: span })
+        expansion
     }
 }
 
@@ -673,7 +667,9 @@ impl<'a> Parser<'a> {
         if self.token != token::Eof {
             let msg = format!("macro expansion ignores token `{}` and any following",
                               self.this_token_to_string());
-            let mut err = self.diagnostic().struct_span_err(self.span, &msg);
+            let mut def_site_span = self.span;
+            def_site_span.ctxt = SyntaxContext::empty(); // Avoid emitting backtrace info twice.
+            let mut err = self.diagnostic().struct_span_err(def_site_span, &msg);
             let msg = format!("caused by the macro expansion here; the usage \
                                of `{}!` is likely invalid in {} context",
                                macro_path, kind_name);
@@ -787,12 +783,12 @@ fn stream_for_item(item: &Annotatable, parse_sess: &ParseSess) -> TokenStream {
         Annotatable::TraitItem(ref ti) => pprust::trait_item_to_string(ti),
         Annotatable::ImplItem(ref ii) => pprust::impl_item_to_string(ii),
     };
-    string_to_stream(text, parse_sess)
+    string_to_stream(text, parse_sess, item.span())
 }
 
-fn string_to_stream(text: String, parse_sess: &ParseSess) -> TokenStream {
+fn string_to_stream(text: String, parse_sess: &ParseSess, span: Span) -> TokenStream {
     let filename = String::from("<macro expansion>");
-    filemap_to_stream(parse_sess, parse_sess.codemap().new_filemap(filename, text))
+    filemap_to_stream(parse_sess, parse_sess.codemap().new_filemap(filename, text), Some(span))
 }
 
 impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {
@@ -1070,7 +1066,7 @@ impl<'feat> ExpansionConfig<'feat> {
 }
 
 // A Marker adds the given mark to the syntax context.
-struct Marker(Mark);
+pub struct Marker(pub Mark);
 
 impl Folder for Marker {
     fn fold_ident(&mut self, mut ident: Ident) -> Ident {

@@ -20,7 +20,7 @@ use syntax::ext::build::AstBuilder;
 use syntax::parse::token;
 use syntax::ptr::P;
 use syntax::symbol::{Symbol, keywords};
-use syntax_pos::{Span, DUMMY_SP};
+use syntax_pos::Span;
 use syntax::tokenstream;
 
 use std::collections::{HashMap, HashSet};
@@ -558,7 +558,9 @@ impl<'a, 'b> Context<'a, 'b> {
         // passed to this function.
         for (i, e) in self.args.into_iter().enumerate() {
             let name = self.ecx.ident_of(&format!("__arg{}", i));
-            pats.push(self.ecx.pat_ident(DUMMY_SP, name));
+            let span =
+                Span { ctxt: e.span.ctxt.apply_mark(self.ecx.current_expansion.mark), ..e.span };
+            pats.push(self.ecx.pat_ident(span, name));
             for ref arg_ty in self.arg_unique_types[i].iter() {
                 locals.push(Context::format_arg(self.ecx, self.macsp, e.span, arg_ty, name));
             }
@@ -672,10 +674,10 @@ impl<'a, 'b> Context<'a, 'b> {
 }
 
 pub fn expand_format_args<'cx>(ecx: &'cx mut ExtCtxt,
-                               sp: Span,
+                               mut sp: Span,
                                tts: &[tokenstream::TokenTree])
                                -> Box<base::MacResult + 'cx> {
-
+    sp.ctxt = sp.ctxt.apply_mark(ecx.current_expansion.mark);
     match parse_args(ecx, sp, tts) {
         Some((efmt, args, names)) => {
             MacEager::expr(expand_preparsed_format_args(ecx, sp, efmt, args, names))
@@ -696,7 +698,8 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt,
     // `ArgumentType` does not derive `Clone`.
     let arg_types: Vec<_> = (0..args.len()).map(|_| Vec::new()).collect();
     let arg_unique_types: Vec<_> = (0..args.len()).map(|_| Vec::new()).collect();
-    let macsp = ecx.call_site();
+    let mut macsp = ecx.call_site();
+    macsp.ctxt = macsp.ctxt.apply_mark(ecx.current_expansion.mark);
     let msg = "format argument must be a string literal.";
     let fmt = match expr_to_spanned_string(ecx, efmt, msg) {
         Some(fmt) => fmt,

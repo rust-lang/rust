@@ -372,7 +372,7 @@ impl CrateStore for cstore::CStore {
 
         let filemap = sess.parse_sess.codemap().new_filemap(source_name, def.body);
         let local_span = Span { lo: filemap.start_pos, hi: filemap.end_pos, ctxt: NO_EXPANSION };
-        let body = filemap_to_stream(&sess.parse_sess, filemap);
+        let body = filemap_to_stream(&sess.parse_sess, filemap, None);
 
         // Mark the attrs as used
         let attrs = data.get_item_attrs(id.index, &self.dep_graph);

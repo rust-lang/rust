@@ -903,17 +903,3 @@ pub fn get_exprs_from_tts(cx: &mut ExtCtxt,
     }
     Some(es)
 }
-
-pub struct ChangeSpan {
-    pub span: Span
-}
-
-impl Folder for ChangeSpan {
-    fn new_span(&mut self, _sp: Span) -> Span {
-        self.span
-    }
-
-    fn fold_mac(&mut self, mac: ast::Mac) -> ast::Mac {
-        fold::noop_fold_mac(mac, self)
-    }
-}

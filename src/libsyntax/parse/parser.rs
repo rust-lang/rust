@@ -2626,7 +2626,10 @@ impl<'a> Parser<'a> {
 
     pub fn process_potential_macro_variable(&mut self) {
         let ident = match self.token {
-            token::SubstNt(name) => {
+            token::Dollar if self.span.ctxt != syntax_pos::hygiene::SyntaxContext::empty() &&
+                             self.look_ahead(1, |t| t.is_ident()) => {
+                self.bump();
+                let name = match self.token { token::Ident(ident) => ident, _ => unreachable!() };
                 self.fatal(&format!("unknown macro variable `{}`", name)).emit();
                 return
             }

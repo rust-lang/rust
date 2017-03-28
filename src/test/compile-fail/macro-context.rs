@@ -23,5 +23,5 @@ fn main() {
         m!() => {}  //~ NOTE the usage of `m!` is likely invalid in pattern context
     }
 
-    m!();
+    m!(); //~ NOTE in this expansion
 }

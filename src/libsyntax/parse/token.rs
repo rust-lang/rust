@@ -172,9 +172,6 @@ pub enum Token {
     // Can be expanded into several tokens.
     /// Doc comment
     DocComment(ast::Name),
-    // In right-hand-sides of MBE macros:
-    /// A syntactic variable that will be filled in by macro expansion.
-    SubstNt(ast::Ident),
 
     // Junk. These carry no data because we don't really care about the data
     // they *would* carry, and don't really want to allocate a new ident for

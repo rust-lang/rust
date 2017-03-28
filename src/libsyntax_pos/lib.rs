@@ -186,7 +186,7 @@ impl Span {
 
     pub fn to(self, end: Span) -> Span {
         // FIXME(jseyfried): self.ctxt should always equal end.ctxt here (c.f. issue #23480)
-        if end.ctxt == SyntaxContext::empty() {
+        if self.ctxt == SyntaxContext::empty() {
             Span { lo: self.lo, ..end }
         } else {
             Span { hi: end.hi, ..self }
