@@ -303,7 +303,9 @@ pub fn write_list<I, T>(items: I, formatting: &ListFormatting) -> Option<String>
                                                              Shape::legacy(width, offset),
                                                              formatting.config));
 
-            result.push(' ');
+            if !formatted_comment.starts_with('\n') {
+                result.push(' ');
+            }
             result.push_str(&formatted_comment);
         }
 
