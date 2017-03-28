@@ -326,6 +326,16 @@ pub fn binary_search<C, T>(mut lo: usize, mut hi: usize, callback: C) -> Option<
     None
 }
 
+#[inline]
+pub fn place_spaces(before: bool, after: bool) -> &'static str {
+    match (before, after) {
+        (true, true) => " : ",
+        (true, false) => " :",
+        (false, true) => ": ",
+        (false, false) => ":",
+    }
+}
+
 #[test]
 fn bin_search_test() {
     let closure = |i| match i {
