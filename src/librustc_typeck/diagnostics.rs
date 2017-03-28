@@ -3185,7 +3185,7 @@ implementing traits from `std::ops`.
 String concatenation appends the string on the right to the string on the
 left and may require reallocation. This requires ownership of the string
 on the left. If something should be added to a string literal, move the
-literal to the heap by allocating it with `to_owned()` like in 
+literal to the heap by allocating it with `to_owned()` like in
 `"Your text".to_owned()`.
 
 "##,

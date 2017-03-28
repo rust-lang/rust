@@ -1490,9 +1490,8 @@ impl<'a> Parser<'a> {
         let bounds = self.parse_ty_param_bounds()?;
         let sum_span = ty.span.to(self.prev_span);
 
-        let mut err = struct_span_err!(self.sess.span_diagnostic, ty.span, E0178,
+        let mut err = struct_span_err!(self.sess.span_diagnostic, sum_span, E0178,
             "expected a path on the left-hand side of `+`, not `{}`", pprust::ty_to_string(&ty));
-        err.span_label(ty.span, &format!("expected a path"));
 
         match ty.node {
             TyKind::Rptr(ref lifetime, ref mut_ty) => {
@@ -1511,9 +1510,11 @@ impl<'a> Parser<'a> {
                 err.span_suggestion(sum_span, "try adding parentheses:", sum_with_parens);
             }
             TyKind::Ptr(..) | TyKind::BareFn(..) => {
-                help!(&mut err, "perhaps you forgot parentheses?");
+                err.span_label(sum_span, &"perhaps you forgot parentheses?");
             }
-            _ => {}
+            _ => {
+                err.span_label(sum_span, &"expected a path");
+            },
         }
         err.emit();
         Ok(())
