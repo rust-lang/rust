@@ -365,6 +365,7 @@ fn drop_flag_effects_for_location<'a, 'tcx, F>(
             mir::StatementKind::StorageDead(_) |
             mir::StatementKind::InlineAsm { .. } |
             mir::StatementKind::Assert { .. } |
+            mir::StatementKind::Call { .. } |
             mir::StatementKind::Nop => {}
         },
         None => {

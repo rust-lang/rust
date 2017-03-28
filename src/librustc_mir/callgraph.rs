@@ -79,11 +79,11 @@ struct CallVisitor<'a> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for CallVisitor<'a> {
-    fn visit_terminator_kind(&mut self, _block: Block,
-                             kind: &TerminatorKind<'tcx>, _loc: Location) {
-        if let TerminatorKind::Call {
+    fn visit_statement(&mut self, _block: Block,
+                       statement: &Statement<'tcx>, _loc: Location) {
+        if let StatementKind::Call {
             func: Operand::Constant(ref f)
-            , .. } = *kind {
+            , .. } = statement.kind {
             if let ty::TyFnDef(def_id, _, _) = f.ty.sty {
                 let callee = self.graph.add_node(def_id);
                 self.graph.graph.add_edge(self.caller, callee, ());

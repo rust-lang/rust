@@ -358,10 +358,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                               block,
                                               self.arg_count));
             if let Some(ref free_data) = scope.free {
-                let next = self.cfg.start_new_block();
-                let free = build_free(self.hir.tcx(), &tmp, free_data, next);
-                self.cfg.terminate(block, scope.source_info(span), free);
-                block = next;
+                self.cfg.push(block, Statement {
+                    source_info: scope.source_info(span),
+                    kind: build_free(self.hir.tcx(), &tmp, free_data)
+                });
             }
         }
         }
@@ -713,8 +713,12 @@ fn build_diverge_scope<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
             cached_block
         } else {
             let into = cfg.start_new_cleanup_block();
+            cfg.push(into, Statement {
+                source_info: source_info(free_data.span),
+                kind: build_free(tcx, unit_temp, free_data)
+            });
             cfg.terminate(into, source_info(free_data.span),
-                          build_free(tcx, unit_temp, free_data, target));
+                TerminatorKind::Goto { target: target });
             free_data.cached_block = Some(into);
             into
         };
@@ -750,12 +754,11 @@ fn build_diverge_scope<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
 
 fn build_free<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                               unit_temp: &Lvalue<'tcx>,
-                              data: &FreeData<'tcx>,
-                              target: Block)
-                              -> TerminatorKind<'tcx> {
+                              data: &FreeData<'tcx>)
+                              -> StatementKind<'tcx> {
     let free_func = tcx.require_lang_item(lang_items::BoxFreeFnLangItem);
     let substs = tcx.intern_substs(&[Kind::from(data.item_ty)]);
-    TerminatorKind::Call {
+    StatementKind::Call {
         func: Operand::Constant(Constant {
             span: data.span,
             ty: tcx.item_type(free_func).subst(tcx, substs),
@@ -764,7 +767,7 @@ fn build_free<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
             }
         }),
         args: vec![Operand::Consume(data.value.clone())],
-        destination: Some((unit_temp.clone(), target)),
+        destination: unit_temp.clone(),
         cleanup: None
     }
 }

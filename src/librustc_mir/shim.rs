@@ -366,17 +366,24 @@ fn build_call_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
         })
     };
 
+    statements.push(Statement {
+        source_info: source_info,
+        kind: StatementKind::Call {
+            func: callee,
+            args: args,
+            destination: Lvalue::Local(RETURN_POINTER),
+            cleanup: if let Adjustment::RefMut = rcvr_adjustment {
+                Some(Block::new(3))
+            } else {
+                None
+            }
+        },
+    });
+
     // BB #0
-    block(&mut blocks, statements, TerminatorKind::Call {
-        func: callee,
-        args: args,
-        destination: Some((Lvalue::Local(RETURN_POINTER),
-                           Block::new(1))),
-        cleanup: if let Adjustment::RefMut = rcvr_adjustment {
-            Some(Block::new(3))
-        } else {
-            None
-        }
+    // FIXME: This block shouldn't be necessary.
+    block(&mut blocks, statements, TerminatorKind::Goto {
+        target: Block::new(1)
     }, false);
 
     if let Adjustment::RefMut = rcvr_adjustment {

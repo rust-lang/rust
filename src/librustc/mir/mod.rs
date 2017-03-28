@@ -515,18 +515,6 @@ pub enum TerminatorKind<'tcx> {
         target: Block,
         unwind: Option<Block>,
     },
-
-    /// Block ends with a call of a converging function
-    Call {
-        /// The function that’s being called
-        func: Operand<'tcx>,
-        /// Arguments the function is called with
-        args: Vec<Operand<'tcx>>,
-        /// Destination for the return value. If some, the call is converging.
-        destination: Option<(Lvalue<'tcx>, Block)>,
-        /// Cleanups to be done if the call unwinds.
-        cleanup: Option<Block>
-    },
 }
 
 impl<'tcx> Terminator<'tcx> {
@@ -559,11 +547,6 @@ impl<'tcx> TerminatorKind<'tcx> {
             Resume => (&[]).into_cow(),
             Return => (&[]).into_cow(),
             Unreachable => (&[]).into_cow(),
-            Call { destination: Some((_, t)), cleanup: Some(c), .. } => vec![t, c].into_cow(),
-            Call { destination: Some((_, ref t)), cleanup: None, .. } =>
-                slice::ref_slice(t).into_cow(),
-            Call { destination: None, cleanup: Some(ref c), .. } => slice::ref_slice(c).into_cow(),
-            Call { destination: None, cleanup: None, .. } => (&[]).into_cow(),
             DropAndReplace { target, unwind: Some(unwind), .. } |
             Drop { target, unwind: Some(unwind), .. } => {
                 vec![target, unwind].into_cow()
@@ -585,10 +568,6 @@ impl<'tcx> TerminatorKind<'tcx> {
             Resume => Vec::new(),
             Return => Vec::new(),
             Unreachable => Vec::new(),
-            Call { destination: Some((_, ref mut t)), cleanup: Some(ref mut c), .. } => vec![t, c],
-            Call { destination: Some((_, ref mut t)), cleanup: None, .. } => vec![t],
-            Call { destination: None, cleanup: Some(ref mut c), .. } => vec![c],
-            Call { destination: None, cleanup: None, .. } => vec![],
             DropAndReplace { ref mut target, unwind: Some(ref mut unwind), .. } |
             Drop { ref mut target, unwind: Some(ref mut unwind), .. } => vec![target, unwind],
             DropAndReplace { ref mut target, unwind: None, .. } |
@@ -663,19 +642,6 @@ impl<'tcx> TerminatorKind<'tcx> {
             Drop { ref location, .. } => write!(fmt, "drop({:?})", location),
             DropAndReplace { ref location, ref value, .. } =>
                 write!(fmt, "replace({:?} <- {:?})", location, value),
-            Call { ref func, ref args, ref destination, .. } => {
-                if let Some((ref destination, _)) = *destination {
-                    write!(fmt, "{:?} = ", destination)?;
-                }
-                write!(fmt, "{:?}(", func)?;
-                for (index, arg) in args.iter().enumerate() {
-                    if index > 0 {
-                        write!(fmt, ", ")?;
-                    }
-                    write!(fmt, "{:?}", arg)?;
-                }
-                write!(fmt, ")")
-            }
         }
     }
 
@@ -695,11 +661,6 @@ impl<'tcx> TerminatorKind<'tcx> {
                       .chain(iter::once(String::from("otherwise").into()))
                       .collect()
             }
-            Call { destination: Some(_), cleanup: Some(_), .. } =>
-                vec!["return".into_cow(), "unwind".into_cow()],
-            Call { destination: Some(_), cleanup: None, .. } => vec!["return".into_cow()],
-            Call { destination: None, cleanup: Some(_), .. } => vec!["unwind".into_cow()],
-            Call { destination: None, cleanup: None, .. } => vec![],
             DropAndReplace { unwind: None, .. } |
             Drop { unwind: None, .. } => vec!["return".into_cow()],
             DropAndReplace { unwind: Some(_), .. } |
@@ -737,19 +698,39 @@ impl<'tcx> Statement<'tcx> {
 
     pub fn cleanup_target(&self) -> Option<Block> {
         match self.kind {
-            StatementKind::Assert { cleanup: Some(unwind), .. } => {
-                Some(unwind)
+            StatementKind::Assign(..) |
+            StatementKind::SetDiscriminant { .. } |
+            StatementKind::StorageLive(..) |
+            StatementKind::StorageDead(..) |
+            StatementKind::InlineAsm { .. } |
+            StatementKind::Nop => None,
+            StatementKind::Assert { cleanup: unwind, .. } |
+            StatementKind::Call { cleanup: unwind, .. } => {
+                if let Some(unwind) = unwind {
+                    Some(unwind)
+                } else {
+                    None
+                }
             }
-            _ => None
         }
     }
 
     pub fn cleanup_target_mut(&mut self) -> Option<&mut Block> {
         match self.kind {
-            StatementKind::Assert { cleanup: Some(ref mut unwind), .. } => {
-                Some(unwind)
+            StatementKind::Assign(..) |
+            StatementKind::SetDiscriminant { .. } |
+            StatementKind::StorageLive(..) |
+            StatementKind::StorageDead(..) |
+            StatementKind::InlineAsm { .. } |
+            StatementKind::Nop => None,
+            StatementKind::Assert { cleanup: ref mut unwind, .. } |
+            StatementKind::Call { cleanup: ref mut unwind, .. } => {
+                if let Some(ref mut unwind) = *unwind {
+                    Some(unwind)
+                } else {
+                    None
+                }
             }
-            _ => None
         }
     }
 }
@@ -780,6 +761,18 @@ pub enum StatementKind<'tcx> {
         cond: Operand<'tcx>,
         expected: bool,
         msg: AssertMessage<'tcx>,
+        cleanup: Option<Block>
+    },
+
+    /// Block ends with a call of a converging function
+    Call {
+        /// The function that’s being called
+        func: Operand<'tcx>,
+        /// Arguments the function is called with
+        args: Vec<Operand<'tcx>>,
+        /// Destination for the return value.
+        destination: Lvalue<'tcx>,
+        /// Cleanups to be done if the call unwinds.
         cleanup: Option<Block>
     },
 
@@ -818,6 +811,17 @@ impl<'tcx> Debug for Statement<'tcx> {
                     }
                 }
 
+                write!(fmt, ")")
+            },
+            Call { ref func, ref args, ref destination, .. } => {
+                write!(fmt, "{:?} = ", destination)?;
+                write!(fmt, "{:?}(", func)?;
+                for (index, arg) in args.iter().enumerate() {
+                    if index > 0 {
+                        write!(fmt, ", ")?;
+                    }
+                    write!(fmt, "{:?}", arg)?;
+                }
                 write!(fmt, ")")
             },
             Nop => write!(fmt, "nop"),
@@ -1459,6 +1463,16 @@ impl<'tcx> TypeFoldable<'tcx> for Statement<'tcx> {
                     cleanup: cleanup
                 }
             },
+            Call { ref func, ref args, ref destination, cleanup } => {
+                let dest = destination.fold_with(folder);
+
+                Call {
+                    func: func.fold_with(folder),
+                    args: args.fold_with(folder),
+                    destination: dest,
+                    cleanup: cleanup
+                }
+            },
             Nop => Nop,
         };
         Statement {
@@ -1488,6 +1502,10 @@ impl<'tcx> TypeFoldable<'tcx> for Statement<'tcx> {
                     false
                 }
             },
+            Call { ref func, ref args, ref destination, .. } => {
+                destination.visit_with(visitor) || func.visit_with(visitor) ||
+                args.visit_with(visitor)
+            },
             Nop => false,
         }
     }
@@ -1516,18 +1534,6 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
                 target: target,
                 unwind: unwind
             },
-            Call { ref func, ref args, ref destination, cleanup } => {
-                let dest = destination.as_ref().map(|&(ref loc, dest)| {
-                    (loc.fold_with(folder), dest)
-                });
-
-                Call {
-                    func: func.fold_with(folder),
-                    args: args.fold_with(folder),
-                    destination: dest,
-                    cleanup: cleanup
-                }
-            },
             Resume => Resume,
             Return => Return,
             Unreachable => Unreachable,
@@ -1547,12 +1553,6 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
             Drop { ref location, ..} => location.visit_with(visitor),
             DropAndReplace { ref location, ref value, ..} =>
                 location.visit_with(visitor) || value.visit_with(visitor),
-            Call { ref func, ref args, ref destination, .. } => {
-                let dest = if let Some((ref loc, _)) = *destination {
-                    loc.visit_with(visitor)
-                } else { false };
-                dest || func.visit_with(visitor) || args.visit_with(visitor)
-            },
             Goto { .. } |
             Resume |
             Return |

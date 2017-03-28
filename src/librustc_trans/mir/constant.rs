@@ -310,6 +310,29 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                         }
                     }
 
+                    mir::StatementKind::Call { ref func, ref args, ref destination, .. } => {
+                        let fn_ty = func.ty(self.mir, tcx);
+                        let fn_ty = self.monomorphize(&fn_ty);
+                        let (def_id, substs) = match fn_ty.sty {
+                            ty::TyFnDef(def_id, substs, _) => (def_id, substs),
+                            _ => span_bug!(span, "calling {:?} (of type {}) in constant",
+                            func, fn_ty)
+                        };
+
+                        let mut const_args = IndexVec::with_capacity(args.len());
+                        for arg in args {
+                            match self.const_operand(arg, span) {
+                                Ok(arg) => { const_args.push(arg); },
+                                Err(err) => if failure.is_ok() { failure = Err(err); }
+                            }
+                        }
+
+                        match MirConstContext::trans_def(self.ccx, def_id, substs, const_args) {
+                            Ok(value) => self.store(destination, value, span),
+                            Err(err) => if failure.is_ok() { failure = Err(err); }
+                        }
+                    }
+
                     mir::StatementKind::StorageLive(_) |
                     mir::StatementKind::StorageDead(_) |
                     mir::StatementKind::Nop => {}
@@ -332,32 +355,6 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                     }));
                 }
 
-                mir::TerminatorKind::Call { ref func, ref args, ref destination, .. } => {
-                    let fn_ty = func.ty(self.mir, tcx);
-                    let fn_ty = self.monomorphize(&fn_ty);
-                    let (def_id, substs) = match fn_ty.sty {
-                        ty::TyFnDef(def_id, substs, _) => (def_id, substs),
-                        _ => span_bug!(span, "calling {:?} (of type {}) in constant",
-                                       func, fn_ty)
-                    };
-
-                    let mut const_args = IndexVec::with_capacity(args.len());
-                    for arg in args {
-                        match self.const_operand(arg, span) {
-                            Ok(arg) => { const_args.push(arg); },
-                            Err(err) => if failure.is_ok() { failure = Err(err); }
-                        }
-                    }
-                    if let Some((ref dest, target)) = *destination {
-                        match MirConstContext::trans_def(self.ccx, def_id, substs, const_args) {
-                            Ok(value) => self.store(dest, value, span),
-                            Err(err) => if failure.is_ok() { failure = Err(err); }
-                        }
-                        target
-                    } else {
-                        span_bug!(span, "diverging {:?} in constant", terminator.kind);
-                    }
-                }
                 _ => span_bug!(span, "{:?} in constant", terminator.kind)
             };
         }

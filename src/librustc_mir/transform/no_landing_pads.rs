@@ -31,7 +31,6 @@ impl<'tcx> MutVisitor<'tcx> for NoLandingPads {
             TerminatorKind::SwitchInt { .. } => {
                 /* nothing to do */
             },
-            TerminatorKind::Call { cleanup: ref mut unwind, .. } |
             TerminatorKind::DropAndReplace { ref mut unwind, .. } |
             TerminatorKind::Drop { ref mut unwind, .. } => {
                 unwind.take();
@@ -54,8 +53,9 @@ impl<'tcx> MutVisitor<'tcx> for NoLandingPads {
             StatementKind::Nop => {
                 /* nothing to do */
             },
-            StatementKind::Assert { cleanup: ref mut unwind, .. } => {
-                unwind.take();
+            StatementKind::Call { ref mut cleanup, .. } |
+            StatementKind::Assert { ref mut cleanup, .. } => {
+                cleanup.take();
             }
         }
         self.super_statement(bb, statement, location);

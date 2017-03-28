@@ -412,6 +412,13 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
                 span_bug!(stmt.source_info.span,
                           "SetDiscriminant should not exist during borrowck");
             }
+            StatementKind::Call { ref func, ref args, ref destination, .. } => {
+                self.gather_operand(loc, func);
+                for arg in args {
+                    self.gather_operand(loc, arg);
+                }
+                self.create_move_path(destination);
+            }
             StatementKind::InlineAsm { .. } |
             StatementKind::Assert { .. } |
             StatementKind::Nop => {}
@@ -475,15 +482,6 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
             TerminatorKind::DropAndReplace { ref location, ref value, .. } => {
                 self.create_move_path(location);
                 self.gather_operand(loc, value);
-            }
-            TerminatorKind::Call { ref func, ref args, ref destination, cleanup: _ } => {
-                self.gather_operand(loc, func);
-                for arg in args {
-                    self.gather_operand(loc, arg);
-                }
-                if let Some((ref destination, _bb)) = *destination {
-                    self.create_move_path(destination);
-                }
             }
         }
     }

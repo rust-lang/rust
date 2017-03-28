@@ -300,7 +300,6 @@ impl<'a, 'tcx> BitDenotation for MaybeInitializedLvals<'a, 'tcx> {
     fn propagate_call_return(&self,
                              in_out: &mut IdxSet<MovePathIndex>,
                              _call_bb: mir::Block,
-                             _dest_bb: mir::Block,
                              dest_lval: &mir::Lvalue) {
         // when a call returns successfully, that means we need to set
         // the bits for that dest_lval to 1 (initialized).
@@ -357,7 +356,6 @@ impl<'a, 'tcx> BitDenotation for MaybeUninitializedLvals<'a, 'tcx> {
     fn propagate_call_return(&self,
                              in_out: &mut IdxSet<MovePathIndex>,
                              _call_bb: mir::Block,
-                             _dest_bb: mir::Block,
                              dest_lval: &mir::Lvalue) {
         // when a call returns successfully, that means we need to set
         // the bits for that dest_lval to 0 (initialized).
@@ -413,7 +411,6 @@ impl<'a, 'tcx> BitDenotation for DefinitelyInitializedLvals<'a, 'tcx> {
     fn propagate_call_return(&self,
                              in_out: &mut IdxSet<MovePathIndex>,
                              _call_bb: mir::Block,
-                             _dest_bb: mir::Block,
                              dest_lval: &mir::Lvalue) {
         // when a call returns successfully, that means we need to set
         // the bits for that dest_lval to 1 (initialized).
@@ -475,6 +472,7 @@ impl<'a, 'tcx> BitDenotation for MovingOutStatements<'a, 'tcx> {
             mir::StatementKind::StorageDead(_) |
             mir::StatementKind::InlineAsm { .. } |
             mir::StatementKind::Assert { .. } |
+            mir::StatementKind::Call { .. } |
             mir::StatementKind::Nop => {}
         }
     }
@@ -500,7 +498,6 @@ impl<'a, 'tcx> BitDenotation for MovingOutStatements<'a, 'tcx> {
     fn propagate_call_return(&self,
                              in_out: &mut IdxSet<MoveOutIndex>,
                              _call_bb: mir::Block,
-                             _dest_bb: mir::Block,
                              dest_lval: &mir::Lvalue) {
         let move_data = self.move_data();
         let bits_per_block = self.bits_per_block();

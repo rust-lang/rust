@@ -103,12 +103,14 @@ impl<'mir, 'a, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'tcx> {
         self.visit_rvalue(rvalue, location);
     }
 
-    fn visit_terminator_kind(&mut self,
-                             block: mir::Block,
-                             kind: &mir::TerminatorKind<'tcx>,
-                             location: Location) {
-        match *kind {
-            mir::TerminatorKind::Call {
+    fn visit_statement(
+        &mut self,
+        block: mir::Block,
+        statement: &mir::Statement<'tcx>,
+        location: Location
+    ) {
+        match statement.kind {
+            mir::StatementKind::Call {
                 func: mir::Operand::Constant(mir::Constant {
                     literal: Literal::Value {
                         value: ConstVal::Function(def_id, _), ..
@@ -126,7 +128,7 @@ impl<'mir, 'a, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'tcx> {
             _ => {}
         }
 
-        self.super_terminator_kind(block, kind, location);
+        self.super_statement(block, statement, location);
     }
 
     fn visit_lvalue(&mut self,
@@ -212,6 +214,7 @@ pub fn cleanup_kinds<'a, 'tcx>(mir: &mir::Mir<'tcx>) -> IndexVec<mir::Block, Cle
                     StatementKind::Nop => {
                         /* nothing to do */
                     },
+                    StatementKind::Call { cleanup: unwind, .. } |
                     StatementKind::Assert { cleanup: unwind, .. } => {
                         if let Some(unwind) = unwind {
                             debug!("cleanup_kinds: {:?}/{:?} registering {:?} as funclet",
@@ -230,7 +233,6 @@ pub fn cleanup_kinds<'a, 'tcx>(mir: &mir::Mir<'tcx>) -> IndexVec<mir::Block, Cle
                 TerminatorKind::SwitchInt { .. } => {
                     /* nothing to do */
                 }
-                TerminatorKind::Call { cleanup: unwind, .. } |
                 TerminatorKind::DropAndReplace { unwind, .. } |
                 TerminatorKind::Drop { unwind, .. } => {
                     if let Some(unwind) = unwind {

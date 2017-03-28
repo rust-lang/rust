@@ -366,6 +366,13 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 let lv_ty = lv.ty(mir, tcx).to_ty(tcx);
                 let rv_ty = rv.ty(mir, tcx);
                 if let Err(terr) = self.sub_types(rv_ty, lv_ty) {
+                    for (bb, bb_data) in mir.basic_blocks().iter_enumerated() {
+                        for stmt2 in &bb_data.statements {
+                            if stmt2.source_info == stmt.source_info {
+                                println!("for {:?} / {:#?}", bb, bb_data);
+                            }
+                        }
+                    }
                     span_mirbug!(self, stmt, "bad assignment ({:?} = {:?}): {:?}",
                                  lv_ty, rv_ty, terr);
                 }
@@ -410,6 +417,26 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                     if index.ty(mir, tcx) != tcx.types.usize {
                         span_mirbug!(self, index, "bounds-check index non-usize {:?}", index)
                     }
+                }
+            }
+            StatementKind::Call { ref func, ref args, ref destination, .. } => {
+                let func_ty = func.ty(mir, tcx);
+                debug!("check_stmt: call, func_ty={:?}", func_ty);
+                let sig = match func_ty.sty {
+                    ty::TyFnDef(.., sig) | ty::TyFnPtr(sig) => sig,
+                    _ => {
+                        span_mirbug!(self, stmt, "call to non-function {:?}", func_ty);
+                        return;
+                    }
+                };
+                let sig = tcx.erase_late_bound_regions(&sig);
+                let sig = self.normalize(&sig);
+                self.check_call_dest(mir, stmt, &sig, destination);
+
+                if self.is_box_free(func) {
+                    self.check_box_free_inputs(mir, stmt, &sig, args);
+                } else {
+                    self.check_call_inputs(mir, stmt, &sig, args);
                 }
             }
             StatementKind::InlineAsm { .. } |
@@ -457,68 +484,38 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 }
                 // FIXME: check the values
             }
-            TerminatorKind::Call { ref func, ref args, ref destination, .. } => {
-                let func_ty = func.ty(mir, tcx);
-                debug!("check_terminator: call, func_ty={:?}", func_ty);
-                let sig = match func_ty.sty {
-                    ty::TyFnDef(.., sig) | ty::TyFnPtr(sig) => sig,
-                    _ => {
-                        span_mirbug!(self, term, "call to non-function {:?}", func_ty);
-                        return;
-                    }
-                };
-                let sig = tcx.erase_late_bound_regions(&sig);
-                let sig = self.normalize(&sig);
-                self.check_call_dest(mir, term, &sig, destination);
-
-                if self.is_box_free(func) {
-                    self.check_box_free_inputs(mir, term, &sig, args);
-                } else {
-                    self.check_call_inputs(mir, term, &sig, args);
-                }
-            }
         }
     }
 
     fn check_call_dest(&mut self,
                        mir: &Mir<'tcx>,
-                       term: &Terminator<'tcx>,
+                       stmt: &Statement<'tcx>,
                        sig: &ty::FnSig<'tcx>,
-                       destination: &Option<(Lvalue<'tcx>, Block)>) {
+                       destination: &Lvalue<'tcx>) {
         let tcx = self.tcx();
-        match *destination {
-            Some((ref dest, _)) => {
-                let dest_ty = dest.ty(mir, tcx).to_ty(tcx);
-                if let Err(terr) = self.sub_types(sig.output(), dest_ty) {
-                    span_mirbug!(self, term,
-                                 "call dest mismatch ({:?} <- {:?}): {:?}",
-                                 dest_ty, sig.output(), terr);
-                }
-            },
-            None => {
-                // FIXME(canndrew): This is_never should probably be an is_uninhabited
-                if !sig.output().is_never() {
-                    span_mirbug!(self, term, "call to converging function {:?} w/o dest", sig);
-                }
-            },
+        let dest_ty = destination.ty(mir, tcx).to_ty(tcx);
+        if let Err(terr) = self.sub_types(sig.output(), dest_ty) {
+            span_mirbug!(self, stmt,
+                            "call dest mismatch ({:?} <- {:?}): {:?}",
+                            dest_ty, sig.output(), terr);
         }
     }
 
     fn check_call_inputs(&mut self,
                          mir: &Mir<'tcx>,
-                         term: &Terminator<'tcx>,
+                         stmt: &Statement<'tcx>,
                          sig: &ty::FnSig<'tcx>,
                          args: &[Operand<'tcx>])
     {
         debug!("check_call_inputs({:?}, {:?})", sig, args);
         if args.len() < sig.inputs().len() ||
            (args.len() > sig.inputs().len() && !sig.variadic) {
-            span_mirbug!(self, term, "call to {:?} with wrong # of args", sig);
+            span_mirbug!(self, stmt, "call to {:?} with wrong # of args", sig);
         }
         for (n, (fn_arg, op_arg)) in sig.inputs().iter().zip(args).enumerate() {
             let op_arg_ty = op_arg.ty(mir, self.tcx());
             if let Err(terr) = self.sub_types(op_arg_ty, fn_arg) {
-                span_mirbug!(self, term, "bad arg #{:?} ({:?} <- {:?}): {:?}",
+                span_mirbug!(self, stmt, "bad arg #{:?} ({:?} <- {:?}): {:?}",
                              n, fn_arg, op_arg_ty, terr);
             }
         }
@@ -539,7 +536,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
 
     fn check_box_free_inputs(&mut self,
                              mir: &Mir<'tcx>,
-                             term: &Terminator<'tcx>,
+                             stmt: &Statement<'tcx>,
                              sig: &ty::FnSig<'tcx>,
                              args: &[Operand<'tcx>])
     {
@@ -548,20 +545,20 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         // box_free takes a Box as a pointer. Allow for that.
 
         if sig.inputs().len() != 1 {
-            span_mirbug!(self, term, "box_free should take 1 argument");
+            span_mirbug!(self, stmt, "box_free should take 1 argument");
             return;
         }
 
         let pointee_ty = match sig.inputs()[0].sty {
             ty::TyRawPtr(mt) => mt.ty,
             _ => {
-                span_mirbug!(self, term, "box_free should take a raw ptr");
+                span_mirbug!(self, stmt, "box_free should take a raw ptr");
                 return;
             }
         };
 
         if args.len() != 1 {
-            span_mirbug!(self, term, "box_free called with wrong # of args");
+            span_mirbug!(self, stmt, "box_free called with wrong # of args");
             return;
         }
 
@@ -570,13 +567,13 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             ty::TyRawPtr(mt) => mt.ty,
             ty::TyAdt(def, _) if def.is_box() => ty.boxed_ty(),
             _ => {
-                span_mirbug!(self, term, "box_free called with bad arg ty");
+                span_mirbug!(self, stmt, "box_free called with bad arg ty");
                 return;
             }
         };
 
         if let Err(terr) = self.sub_types(arg_ty, pointee_ty) {
-            span_mirbug!(self, term, "bad box_free arg ({:?} <- {:?}): {:?}",
+            span_mirbug!(self, stmt, "bad box_free arg ({:?} <- {:?}): {:?}",
                          pointee_ty, arg_ty, terr);
         }
     }
@@ -584,6 +581,21 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     fn check_iscleanup(&mut self, mir: &Mir<'tcx>, block: &BlockData<'tcx>)
     {
         let is_cleanup = block.is_cleanup;
+
+        for stmt in &block.statements {
+            match stmt.kind {
+                StatementKind::Call { cleanup, .. } => {
+                    if let Some(cleanup) = cleanup {
+                        if is_cleanup {
+                            span_mirbug!(self, block, "cleanup on cleanup block")
+                        }
+                        self.assert_iscleanup(mir, block, cleanup, true);
+                    }
+                }
+                _ => {}
+            }
+        }
+
         self.last_span = block.terminator().source_info.span;
         match block.terminator().kind {
             TerminatorKind::Goto { target } =>
@@ -612,17 +624,6 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                         span_mirbug!(self, block, "unwind on cleanup block")
                     }
                     self.assert_iscleanup(mir, block, unwind, true);
-                }
-            }
-            TerminatorKind::Call { ref destination, cleanup, .. } => {
-                if let &Some((_, target)) = destination {
-                    self.assert_iscleanup(mir, block, target, is_cleanup);
-                }
-                if let Some(cleanup) = cleanup {
-                    if is_cleanup {
-                        span_mirbug!(self, block, "cleanup on cleanup block")
-                    }
-                    self.assert_iscleanup(mir, block, cleanup, true);
                 }
             }
         }

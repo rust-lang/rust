@@ -352,6 +352,17 @@ macro_rules! make_mir_visitor {
                         self.visit_assert_message(msg, location);
                         cleanup.map(|t| self.visit_branch(block, t));
                     }
+                    StatementKind::Call { ref $($mutability)* func,
+                                          ref $($mutability)* args,
+                                          ref $($mutability)* destination,
+                                          cleanup } => {
+                        self.visit_operand(func, location);
+                        for arg in args {
+                            self.visit_operand(arg, location);
+                        }
+                        self.visit_lvalue(destination, LvalueContext::Call, location);
+                        cleanup.map(|t| self.visit_branch(block, t));
+                    }
                     StatementKind::Nop => {}
                 }
             }
@@ -422,21 +433,6 @@ macro_rules! make_mir_visitor {
                         self.visit_operand(value, source_location);
                         self.visit_branch(block, target);
                         unwind.map(|t| self.visit_branch(block, t));
-                    }
-
-                    TerminatorKind::Call { ref $($mutability)* func,
-                                           ref $($mutability)* args,
-                                           ref $($mutability)* destination,
-                                           cleanup } => {
-                        self.visit_operand(func, source_location);
-                        for arg in args {
-                            self.visit_operand(arg, source_location);
-                        }
-                        if let Some((ref $($mutability)* destination, target)) = *destination {
-                            self.visit_lvalue(destination, LvalueContext::Call, source_location);
-                            self.visit_branch(block, target);
-                        }
-                        cleanup.map(|t| self.visit_branch(block, t));
                     }
                 }
             }

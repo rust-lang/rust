@@ -522,15 +522,19 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
                     Lvalue::Local(ref_lvalue),
                     Rvalue::Ref(re_erased, BorrowKind::Mut, self.lvalue.clone())
                 )
-            }],
-            terminator: Some(Terminator {
-                kind: TerminatorKind::Call {
+            },
+            Statement {
+                source_info: self.source_info,
+                kind: StatementKind::Call {
                     func: Operand::function_handle(tcx, drop_fn.def_id, substs,
                                                    self.source_info.span),
                     args: vec![Operand::Consume(Lvalue::Local(ref_lvalue))],
-                    destination: Some((unit_temp, succ)),
+                    destination: unit_temp,
                     cleanup: unwind,
-                },
+                }
+            }],
+            terminator: Some(Terminator {
+                kind: TerminatorKind::Goto { target: succ },
                 source_info: self.source_info
             }),
             is_cleanup: self.is_cleanup,
@@ -628,13 +632,23 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         let free_func = tcx.require_lang_item(lang_items::BoxFreeFnLangItem);
         let substs = tcx.mk_substs(iter::once(Kind::from(ty)));
 
-        let call = TerminatorKind::Call {
+        let call = StatementKind::Call {
             func: Operand::function_handle(tcx, free_func, substs, self.source_info.span),
             args: vec![Operand::Consume(self.lvalue.clone())],
-            destination: Some((unit_temp, target)),
+            destination: unit_temp,
             cleanup: None
         }; // FIXME(#6393)
-        let free_block = self.new_block(is_cleanup, call);
+        let free_block = self.elaborator.patch().new_block(BlockData {
+            statements: vec![Statement {
+                kind: call,
+                source_info: self.source_info,
+            }],
+            terminator: Some(Terminator {
+                source_info: self.source_info,
+                kind: TerminatorKind::Goto { target: target },
+            }),
+            is_cleanup: is_cleanup
+        });
 
         let block_start = Location { block: free_block, statement_index: 0 };
         self.elaborator.clear_drop_flag(block_start, self.path, DropFlagMode::Shallow);

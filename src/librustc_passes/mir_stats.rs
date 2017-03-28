@@ -130,6 +130,7 @@ impl<'a, 'tcx> mir_visit::Visitor<'tcx> for StatCollector<'a, 'tcx> {
             StatementKind::StorageDead(..) => "StatementKind::StorageDead",
             StatementKind::InlineAsm { .. } => "StatementKind::InlineAsm",
             StatementKind::Assert { .. } => "StatementKind::Assert",
+            StatementKind::Call { .. } => "StatementKind::Call",
             StatementKind::Nop => "StatementKind::Nop",
         }, &statement.kind);
         self.super_statement(block, statement, location);
@@ -156,7 +157,6 @@ impl<'a, 'tcx> mir_visit::Visitor<'tcx> for StatCollector<'a, 'tcx> {
             TerminatorKind::Unreachable => "TerminatorKind::Unreachable",
             TerminatorKind::Drop { .. } => "TerminatorKind::Drop",
             TerminatorKind::DropAndReplace { .. } => "TerminatorKind::DropAndReplace",
-            TerminatorKind::Call { .. } => "TerminatorKind::Call",
         }, kind);
         self.super_terminator_kind(block, kind, location);
     }

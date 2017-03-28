@@ -494,17 +494,19 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
 
     fn drop_flags_for_fn_rets(&mut self) {
         for (bb, data) in self.mir.basic_blocks().iter_enumerated() {
-            if let TerminatorKind::Call {
-                destination: Some((ref lv, tgt)), cleanup: Some(_), ..
-            } = data.terminator().kind {
-                assert!(!self.patch.is_patched(bb));
+            for (i, stmt) in data.statements.iter().enumerate() {
+                if let StatementKind::Call {
+                    destination: ref lv, cleanup: Some(_), ..
+                } = stmt.kind {
+                    // XXX: assert!(!self.patch.is_patched(bb));
 
-                let loc = Location { block: tgt, statement_index: 0 };
-                let path = self.move_data().rev_lookup.find(lv);
-                on_lookup_result_bits(
-                    self.tcx, self.mir, self.move_data(), path,
-                    |child| self.set_drop_flag(loc, child, DropFlagState::Present)
-                );
+                    let loc = Location { block: bb, statement_index: i };
+                    let path = self.move_data().rev_lookup.find(lv);
+                    on_lookup_result_bits(
+                        self.tcx, self.mir, self.move_data(), path,
+                        |child| self.set_drop_flag(loc, child, DropFlagState::Present)
+                    );
+                }
             }
         }
     }
@@ -546,10 +548,29 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                             allow_initializations = false;
                         }
                         _ => {
-                            assert!(!self.patch.is_patched(bb));
+                            assert!(!self.patch.is_patched(bb), "kind: {:?}",
+                                data.terminator().kind);
                         }
                     }
                 }
+
+                // There may be a critical edge after this call,
+                // so mark the return as initialized *before* the
+                // call.
+                // XXX:
+                //if i < data.statements.len() {
+                //    if let StatementKind::Call {
+                //        destination: ref lv, cleanup: None, ..
+                //    } = data.statements[i].kind {
+                //        let loc = Location { block: bb, statement_index: i };
+                //        let path = self.move_data().rev_lookup.find(lv);
+                //        on_lookup_result_bits(
+                //            self.tcx, self.mir, self.move_data(), path,
+                //            |child| self.set_drop_flag(loc, child, DropFlagState::Present)
+                //        );
+                //    }
+                //}
+
                 let loc = Location { block: bb, statement_index: i };
                 super::drop_flag_effects_for_location(
                     self.tcx, self.mir, self.env, loc, |path, ds| {
@@ -557,22 +578,6 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                             self.set_drop_flag(loc, path, ds)
                         }
                     }
-                )
-            }
-
-            // There may be a critical edge after this call,
-            // so mark the return as initialized *before* the
-            // call.
-            if let TerminatorKind::Call {
-                destination: Some((ref lv, _)), cleanup: None, ..
-            } = data.terminator().kind {
-                assert!(!self.patch.is_patched(bb));
-
-                let loc = Location { block: bb, statement_index: data.statements.len() };
-                let path = self.move_data().rev_lookup.find(lv);
-                on_lookup_result_bits(
-                    self.tcx, self.mir, self.move_data(), path,
-                    |child| self.set_drop_flag(loc, child, DropFlagState::Present)
                 );
             }
         }

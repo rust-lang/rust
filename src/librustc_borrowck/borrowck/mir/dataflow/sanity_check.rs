@@ -10,7 +10,6 @@
 
 use syntax::abi::{Abi};
 use syntax::ast;
-use syntax_pos::Span;
 
 use rustc::ty::{self, TyCtxt};
 use rustc::mir::{self, Mir};
@@ -61,12 +60,24 @@ fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     O: BitDenotation<Idx=MovePathIndex> + HasMoveData<'tcx>
 {
     let move_data = results.0.operator.move_data();
-    let mir::BlockData { ref statements, ref terminator, is_cleanup: _ } = mir[bb];
+    let mir::BlockData { ref statements, terminator: _, is_cleanup: _ } = mir[bb];
 
-    let (args, span) = match is_rustc_peek(tcx, terminator) {
-        Some(args_and_span) => args_and_span,
-        None => return,
-    };
+    let mut args: Option<&[mir::Operand]> = None;
+    let mut span = None;
+    // FIXME: Don't loop through statements twice, here, and below
+    for stmt in statements {
+        // FIXME: Can there potentially be multiple Call rustc_peek statements? If so,
+        // do we need to handle all of them? That is possible, of course, but will require slight
+        // refactoring..
+        if let Some(a) = is_rustc_peek(tcx, stmt) {
+            args = Some(a);
+            span = Some(stmt.source_info.span);
+        } else {
+            return;
+        }
+    }
+    let args = args.unwrap();
+    let span = span.unwrap();
     assert!(args.len() == 1);
     let peek_arg_lval = match args[0] {
         mir::Operand::Consume(ref lval @ mir::Lvalue::Local(_)) => Some(lval),
@@ -106,6 +117,7 @@ fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             mir::StatementKind::StorageDead(_) |
             mir::StatementKind::InlineAsm { .. } |
             mir::StatementKind::Assert { .. } |
+            mir::StatementKind::Call { .. } |
             mir::StatementKind::Nop => continue,
             mir::StatementKind::SetDiscriminant{ .. } =>
                 span_bug!(stmt.source_info.span,
@@ -158,21 +170,16 @@ fn each_block<'a, 'tcx, O>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 fn is_rustc_peek<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                           terminator: &'a Option<mir::Terminator<'tcx>>)
-                           -> Option<(&'a [mir::Operand<'tcx>], Span)> {
-    if let Some(mir::Terminator { ref kind, source_info, .. }) = *terminator {
-        if let mir::TerminatorKind::Call { func: ref oper, ref args, .. } = *kind
-        {
-            if let mir::Operand::Constant(ref func) = *oper
-            {
-                if let ty::TyFnDef(def_id, _, sig) = func.ty.sty
-                {
-                    let abi = sig.abi();
-                    let name = tcx.item_name(def_id);
-                    if abi == Abi::RustIntrinsic || abi == Abi::PlatformIntrinsic {
-                        if name == "rustc_peek" {
-                            return Some((args, source_info.span));
-                        }
+                           statement: &'a mir::Statement<'tcx>)
+                           -> Option<&'a [mir::Operand<'tcx>]> {
+    if let mir::StatementKind::Call { func: ref oper, ref args, .. } = statement.kind {
+        if let mir::Operand::Constant(ref func) = *oper {
+            if let ty::TyFnDef(def_id, _, sig) = func.ty.sty {
+                let abi = sig.abi();
+                let name = tcx.item_name(def_id);
+                if abi == Abi::RustIntrinsic || abi == Abi::PlatformIntrinsic {
+                    if name == "rustc_peek" {
+                        return Some(args);
                     }
                 }
             }

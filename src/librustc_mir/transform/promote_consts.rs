@@ -73,7 +73,7 @@ pub enum Candidate {
 
     /// Array of indices found in the third argument of
     /// a call to one of the simd_shuffleN intrinsics.
-    ShuffleIndices(Block)
+    ShuffleIndices(Location)
 }
 
 struct TempCollector<'tcx> {
@@ -174,18 +174,6 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
         })
     }
 
-    fn assign(&mut self, dest: Local, rvalue: Rvalue<'tcx>, span: Span) {
-        let last = self.promoted.basic_blocks().last().unwrap();
-        let data = &mut self.promoted[last];
-        data.statements.push(Statement {
-            source_info: SourceInfo {
-                span: span,
-                scope: ARGUMENT_VISIBILITY_SCOPE
-            },
-            kind: StatementKind::Assign(Lvalue::Local(dest), rvalue)
-        });
-    }
-
     /// Copy the initialization of this temp to the
     /// promoted MIR, recursing through temps.
     fn promote_temp(&mut self, temp: Local) -> Local {
@@ -215,71 +203,76 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
 
         // First, take the Rvalue or Call out of the source MIR,
         // or duplicate it, depending on keep_original.
-        if loc.statement_index < no_stmts {
-            let (mut rvalue, source_info) = {
-                let statement = &mut self.source[loc.block].statements[loc.statement_index];
-                let rhs = match statement.kind {
-                    StatementKind::Assign(_, ref mut rhs) => rhs,
-                    _ => {
-                        span_bug!(statement.source_info.span, "{:?} is not an assignment",
-                                  statement);
+        #[derive(Debug)]
+        enum StmtKind {
+            Assign,
+            Call,
+        }
+
+        let stmt_kind = match self.source[loc.block].statements[loc.statement_index].kind {
+            StatementKind::Call { .. } => StmtKind::Call,
+            StatementKind::Assign(..) => StmtKind::Assign,
+            _ => {
+                let statement = &self.source[loc.block].statements[loc.statement_index];
+                span_bug!(statement.source_info.span, "{:?} not promotable", statement.kind);
+            }
+        };
+
+        let kind = match stmt_kind {
+            StmtKind::Assign => {
+                let mut rvalue = {
+                    let statement = &mut self.source[loc.block].statements[loc.statement_index];
+                    let rhs = if let StatementKind::Assign(_, ref mut rhs) = statement.kind {
+                        rhs
+                    } else {
+                        bug!()
+                    };
+
+                    if self.keep_original {
+                        rhs.clone()
+                    } else {
+                        let unit = Rvalue::Aggregate(AggregateKind::Tuple, vec![]);
+                        mem::replace(rhs, unit)
                     }
                 };
-
-                (if self.keep_original {
-                    rhs.clone()
+                self.visit_rvalue(&mut rvalue, loc);
+                StatementKind::Assign(Lvalue::Local(new_temp), rvalue)
+            }
+            StmtKind::Call => {
+                let kind = if self.keep_original {
+                    self.source[loc.block].statements[loc.statement_index].kind.clone()
                 } else {
-                    let unit = Rvalue::Aggregate(AggregateKind::Tuple, vec![]);
-                    mem::replace(rhs, unit)
-                }, statement.source_info)
-            };
-
-            self.visit_rvalue(&mut rvalue, loc);
-            self.assign(new_temp, rvalue, source_info.span);
-        } else {
-            let terminator = if self.keep_original {
-                self.source[loc.block].terminator().clone()
-            } else {
-                let terminator = self.source[loc.block].terminator_mut();
-                let target = match terminator.kind {
-                    TerminatorKind::Call { destination: Some((_, target)), .. } => target,
-                    ref kind => {
-                        span_bug!(terminator.source_info.span, "{:?} not promotable", kind);
-                    }
+                    mem::replace(&mut self.source[loc.block].statements[loc.statement_index].kind,
+                        StatementKind::Nop)
                 };
-                Terminator {
-                    source_info: terminator.source_info,
-                    kind: mem::replace(&mut terminator.kind, TerminatorKind::Goto {
-                        target: target
-                    })
-                }
-            };
 
-            match terminator.kind {
-                TerminatorKind::Call { mut func, mut args, .. } => {
+                if let StatementKind::Call { mut func, mut args, .. } = kind {
                     self.visit_operand(&mut func, loc);
                     for arg in &mut args {
                         self.visit_operand(arg, loc);
                     }
 
-                    let last = self.promoted.basic_blocks().last().unwrap();
-                    let new_target = self.new_block();
-
-                    *self.promoted[last].terminator_mut() = Terminator {
-                        kind: TerminatorKind::Call {
-                            func: func,
-                            args: args,
-                            cleanup: None,
-                            destination: Some((Lvalue::Local(new_temp), new_target))
-                        },
-                        ..terminator
-                    };
+                    StatementKind::Call {
+                        func: func,
+                        args: args,
+                        cleanup: None,
+                        destination: Lvalue::Local(new_temp),
+                    }
+                } else {
+                    bug!()
                 }
-                ref kind => {
-                    span_bug!(terminator.source_info.span, "{:?} not promotable", kind);
-                }
-            };
+            },
         };
+
+        let last = self.promoted.basic_blocks().last().unwrap();
+        let data = &mut self.promoted[last];
+        data.statements.push(Statement {
+            source_info: SourceInfo {
+                span: self.source[loc.block].statements[loc.statement_index].source_info.span,
+                scope: ARGUMENT_VISIBILITY_SCOPE,
+            },
+            kind: kind
+        });
 
         self.keep_original = old_keep_original;
         new_temp
@@ -304,12 +297,12 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                     _ => bug!()
                 }
             }
-            Candidate::ShuffleIndices(bb) => {
-                match self.source[bb].terminator_mut().kind {
-                    TerminatorKind::Call { ref mut args, .. } => {
-                        Rvalue::Use(mem::replace(&mut args[2], new_operand))
-                    }
-                    _ => bug!()
+            Candidate::ShuffleIndices(Location { block: bb, statement_index: stmt_idx }) => {
+                let statement = &mut self.source[bb].statements[stmt_idx];
+                if let StatementKind::Call { ref mut args, .. } = statement.kind {
+                    Rvalue::Use(mem::replace(&mut args[2], new_operand))
+                } else {
+                    bug!()
                 }
             }
         };
@@ -318,7 +311,14 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
             statement_index: usize::MAX
         });
 
-        self.assign(RETURN_POINTER, rvalue, span);
+        let last = self.promoted.basic_blocks().last().unwrap();
+        self.promoted[last].statements.push(Statement {
+            source_info: SourceInfo {
+                span: span,
+                scope: ARGUMENT_VISIBILITY_SCOPE
+            },
+            kind: StatementKind::Assign(Lvalue::Local(RETURN_POINTER), rvalue)
+        });
         self.source.promoted.push(self.promoted);
     }
 }
@@ -363,18 +363,15 @@ pub fn promote_candidates<'a, 'tcx>(mir: &mut Mir<'tcx>,
                 }
                 (statement.source_info.span, dest.ty(mir, tcx).to_ty(tcx))
             }
-            Candidate::ShuffleIndices(bb) => {
-                let terminator = mir[bb].terminator();
-                let ty = match terminator.kind {
-                    TerminatorKind::Call { ref args, .. } => {
-                        args[2].ty(mir, tcx)
-                    }
-                    _ => {
-                        span_bug!(terminator.source_info.span,
-                                  "expected simd_shuffleN call to promote");
-                    }
+            Candidate::ShuffleIndices(Location { block: bb, statement_index: stmt_idx }) => {
+                let statement = &mir[bb].statements[stmt_idx];
+                let ty = if let StatementKind::Call { ref args, .. } = statement.kind {
+                    args[2].ty(mir, tcx)
+                } else {
+                    span_bug!(statement.source_info.span,
+                        "expected simd_shuffleN call to promote");
                 };
-                (terminator.source_info.span, ty)
+                (statement.source_info.span, ty)
             }
         };
 

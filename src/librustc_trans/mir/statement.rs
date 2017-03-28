@@ -112,6 +112,11 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     bcx, cond, expected, msg, cleanup, cleanup_bundle, statement.source_info
                 )
             }
+            mir::StatementKind::Call { ref func, ref args, ref destination, ref cleanup } => {
+                self.trans_call(
+                    bcx, func, args, destination, cleanup, cleanup_bundle, statement.source_info,
+                )
+            }
             mir::StatementKind::Nop => bcx,
         }
     }
@@ -337,7 +342,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         mut bcx: Builder<'a, 'tcx>,
         func: &mir::Operand<'tcx>,
         args: &[mir::Operand<'tcx>],
-        destination: &Option<(mir::Lvalue<'tcx>, mir::Block)>,
+        destination: &mir::Lvalue<'tcx>,
         cleanup: &Option<mir::Block>,
         cleanup_bundle: Option<&OperandBundleDef>,
         source_info: mir::SourceInfo,
@@ -379,8 +384,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         }
 
         if intrinsic == Some("transmute") {
-            let &(ref dest, _) = destination.as_ref().unwrap();
-            self.trans_transmute(&bcx, &args[0], dest);
+            self.trans_transmute(&bcx, &args[0], destination);
             return bcx;
         }
 
@@ -406,13 +410,8 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         let mut llargs = Vec::with_capacity(arg_count);
 
         // Prepare the return value destination
-        let ret_dest = if let Some((ref dest, _)) = *destination {
-            let is_intrinsic = intrinsic.is_some();
-            self.make_return_dest(&bcx, dest, &fn_ty.ret, &mut llargs,
-                                    is_intrinsic)
-        } else {
-            ReturnDest::Nothing
-        };
+        let ret_dest = self.make_return_dest(&bcx, destination, &fn_ty.ret, &mut llargs,
+            intrinsic.is_some());
 
         // Split the rust-call tupled arguments off.
         let (first_args, untuple) = if abi == Abi::RustCall && !args.is_empty() {

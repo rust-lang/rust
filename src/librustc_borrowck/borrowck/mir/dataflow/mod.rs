@@ -368,7 +368,6 @@ pub trait BitDenotation {
     fn propagate_call_return(&self,
                              in_out: &mut IdxSet<Self::Idx>,
                              call_bb: mir::Block,
-                             dest_bb: mir::Block,
                              dest_lval: &mir::Lvalue);
 }
 
@@ -457,16 +456,24 @@ impl<'a, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D>
                     self.propagate_bits_into_entry_set_for(in_out, changed, target);
                 }
             }
-            mir::TerminatorKind::Call { ref cleanup, ref destination, func: _, args: _ } => {
-                if let Some(ref unwind) = *cleanup {
-                    self.propagate_bits_into_entry_set_for(in_out, changed, unwind);
-                }
-                if let Some((ref dest_lval, ref dest_bb)) = *destination {
+        }
+
+        for stmt in bb_data.statements.iter() {
+            match stmt.kind {
+                mir::StatementKind::Assign(..) |
+                mir::StatementKind::SetDiscriminant { .. } |
+                mir::StatementKind::StorageLive(..) |
+                mir::StatementKind::StorageDead(..) |
+                mir::StatementKind::InlineAsm { .. } |
+                mir::StatementKind::Assert { .. } |
+                mir::StatementKind::Nop => {},
+                mir::StatementKind::Call { ref cleanup, ref destination, func: _, args: _ } => {
+                    if let Some(ref unwind) = *cleanup {
+                        self.propagate_bits_into_entry_set_for(in_out, changed, unwind);
+                    }
                     // N.B.: This must be done *last*, after all other
                     // propagation, as documented in comment above.
-                    self.flow_state.operator.propagate_call_return(
-                        in_out, bb, *dest_bb, dest_lval);
-                    self.propagate_bits_into_entry_set_for(in_out, changed, dest_bb);
+                    self.flow_state.operator.propagate_call_return(in_out, bb, destination);
                 }
             }
         }

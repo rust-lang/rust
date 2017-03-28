@@ -202,16 +202,6 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 bug!("undesugared DropAndReplace in trans: {:?}", data);
             }
 
-            mir::TerminatorKind::Call { ref func, ref args, ref destination, ref cleanup } => {
-                bcx = self.trans_call(
-                    bcx, func, args, destination, cleanup, cleanup_bundle, terminator.source_info,
-                );
-                if let Some((_, target)) = *destination {
-                    funclet_br(self, bcx, target);
-                } else {
-                    bcx.unreachable();
-                }
-            }
         }
     }
 
