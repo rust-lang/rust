@@ -150,6 +150,8 @@
 //! on the return value to catch any possible errors:
 //!
 //! ```
+//! use std::io;
+//!
 //! let mut input = String::new();
 //!
 //! io::stdin().read_line(&mut input).unwrap();
