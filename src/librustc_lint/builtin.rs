@@ -334,7 +334,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for MissingDoc {
             attr.check_name("doc") &&
             match attr.meta_item_list() {
                 None => false,
-                Some(l) => attr::list_contains_name(&l[..], "hidden"),
+                Some(l) => attr::list_contains_name(&l, "hidden"),
             }
         });
         self.doc_hidden_stack.push(doc_hidden);

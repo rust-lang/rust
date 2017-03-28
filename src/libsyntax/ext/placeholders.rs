@@ -106,8 +106,8 @@ impl<'a, 'b> PlaceholderExpander<'a, 'b> {
 impl<'a, 'b> Folder for PlaceholderExpander<'a, 'b> {
     fn fold_item(&mut self, item: P<ast::Item>) -> SmallVector<P<ast::Item>> {
         match item.node {
-            ast::ItemKind::Mac(ref mac) if !mac.node.path.segments.is_empty() => {}
             ast::ItemKind::Mac(_) => return self.remove(item.id).make_items(),
+            ast::ItemKind::MacroDef(_) => return SmallVector::one(item),
             _ => {}
         }
 

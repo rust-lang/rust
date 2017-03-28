@@ -55,7 +55,7 @@ impl Fingerprint {
 impl Encodable for Fingerprint {
     #[inline]
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        for &byte in &self.0[..] {
+        for &byte in &self.0 {
             s.emit_u8(byte)?;
         }
         Ok(())
@@ -66,7 +66,7 @@ impl Decodable for Fingerprint {
     #[inline]
     fn decode<D: Decoder>(d: &mut D) -> Result<Fingerprint, D::Error> {
         let mut result = Fingerprint([0u8; FINGERPRINT_LENGTH]);
-        for byte in &mut result.0[..] {
+        for byte in &mut result.0 {
             *byte = d.read_u8()?;
         }
         Ok(result)

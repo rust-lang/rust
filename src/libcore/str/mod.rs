@@ -35,6 +35,39 @@ pub mod pattern;
 /// [`from_str`]: #tymethod.from_str
 /// [`str`]: ../../std/primitive.str.html
 /// [`parse`]: ../../std/primitive.str.html#method.parse
+///
+/// # Examples
+///
+/// Basic implementation of `FromStr` on an example `Point` type:
+///
+/// ```
+/// use std::str::FromStr;
+/// use std::num::ParseIntError;
+///
+/// #[derive(Debug, PartialEq)]
+/// struct Point {
+///     x: i32,
+///     y: i32
+/// }
+///
+/// impl FromStr for Point {
+///     type Err = ParseIntError;
+///
+///     fn from_str(s: &str) -> Result<Self, Self::Err> {
+///         let coords: Vec<&str> = s.trim_matches(|p| p == '(' || p == ')' )
+///                                  .split(",")
+///                                  .collect();
+///
+///         let x_fromstr = coords[0].parse::<i32>()?;
+///         let y_fromstr = coords[1].parse::<i32>()?;
+///
+///         Ok(Point { x: x_fromstr, y: y_fromstr })
+///     }
+/// }
+///
+/// let p = Point::from_str("(1,2)");
+/// assert_eq!(p.unwrap(), Point{ x: 1, y: 2} )
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait FromStr: Sized {
     /// The associated error which can be returned from parsing.
@@ -101,7 +134,9 @@ impl FromStr for bool {
     }
 }
 
-/// An error returned when parsing a `bool` from a string fails.
+/// An error returned when parsing a `bool` using [`from_str`] fails
+///
+/// [`from_str`]: ../../std/primitive.bool.html#method.from_str
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct ParseBoolError { _priv: () }

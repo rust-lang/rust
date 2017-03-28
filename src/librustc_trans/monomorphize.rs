@@ -287,7 +287,7 @@ pub fn custom_coerce_unsize_info<'scx, 'tcx>(scx: &SharedCrateContext<'scx, 'tcx
 
     match fulfill_obligation(scx, DUMMY_SP, trait_ref) {
         traits::VtableImpl(traits::VtableImplData { impl_def_id, .. }) => {
-            scx.tcx().custom_coerce_unsized_kind(impl_def_id)
+            scx.tcx().coerce_unsized_info(impl_def_id).custom_kind.unwrap()
         }
         vtable => {
             bug!("invalid CoerceUnsized vtable: {:?}", vtable);
