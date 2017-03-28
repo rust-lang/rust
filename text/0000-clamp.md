@@ -69,9 +69,10 @@ Add the following to std::cmp
 
 ```Rust
 /// Returns max if input is greater than max, and min if input is less than min.  
-/// Otherwise this will return input.
+/// Otherwise this will return input.  Panics if max < min.
 #[inline]
 pub fn clamp<T: Ord>(input: T, min: T, max: T) -> T {
+    assert!(max >= min);
     if input < min {
         min
     }
@@ -87,7 +88,7 @@ And the following to libstd/f32.rs, and a similar version for f64
 
 ```Rust
 /// Returns max if self is greater than max, and min if self is less than min.
-/// Otherwise this returns self.
+/// Otherwise this returns self.  Panics if max < min.
 ///
 /// # Examples
 ///
@@ -98,6 +99,7 @@ And the following to libstd/f32.rs, and a similar version for f64
 /// ```
 #[inline]
 pub fn clamp(input:f32, min: f32, max: f32) -> f32 {
+    assert!(max >= min);
     let mut x = input;
     if !(x < min) { x = min; }
     if !(x > max) { x = max; }
@@ -111,8 +113,8 @@ the edge case behavior with a 3x3 chart.
 |  |INFINITY|NEG_INFINITY|NAN|
 |---|---|---|---|
 |self|return max;|return min;|return NAN;|
-|max|No max enforced|return NEG_INFINITY;|return NAN;|
-|min|return INFINITY;|No min enforced|return NAN;|
+|max|No max enforced|return NEG_INFINITY;|panic|
+|min|return INFINITY;|No min enforced|panic|
 
 # How We Teach This
 [how-we-teach-this]: #how-we-teach-this
