@@ -24,7 +24,7 @@ use lists::{write_list, itemize_list, ListFormatting, SeparatorTactic, ListTacti
 use string::{StringFormat, rewrite_string};
 use utils::{extra_offset, last_line_width, wrap_str, binary_search, first_line_width,
             semicolon_for_stmt, trimmed_last_line_width, left_most_sub_expr, stmt_expr,
-            place_spaces};
+            colon_spaces};
 use visitor::FmtVisitor;
 use config::{Config, IndentStyle, MultilineStyle, ControlBraceStyle};
 use comment::{FindUncommented, rewrite_comment, contains_comment, recover_comment_removed};
@@ -1891,8 +1891,9 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
     // of space, we should fall back to BlockIndent.
 }
 
-pub fn type_annotation_separator(config: &Config) -> & str {
-    place_spaces (config.space_before_type_annotation, config.space_after_type_annotation_colon)
+pub fn type_annotation_separator(config: &Config) -> &str {
+    colon_spaces(config.space_before_type_annotation,
+                 config.space_after_type_annotation_colon)
 }
 
 fn rewrite_field(context: &RewriteContext, field: &ast::Field, shape: Shape) -> Option<String> {

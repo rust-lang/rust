@@ -21,7 +21,7 @@ use {Shape, Spanned};
 use codemap::SpanUtils;
 use lists::{format_item_list, itemize_list, format_fn_args};
 use rewrite::{Rewrite, RewriteContext};
-use utils::{extra_offset, format_mutability, place_spaces, wrap_str};
+use utils::{extra_offset, format_mutability, colon_spaces, wrap_str};
 use expr::{rewrite_unary_prefix, rewrite_pair, rewrite_tuple};
 use config::TypeDensity;
 use itertools::Itertools;
@@ -346,7 +346,8 @@ fn format_function_type<'a, I>(inputs: I,
 }
 
 fn type_bound_colon(context: &RewriteContext) -> &'static str {
-    place_spaces(context.config.space_before_bound, context.config.space_after_bound_colon)
+    colon_spaces(context.config.space_before_bound,
+                 context.config.space_after_bound_colon)
 }
 
 impl Rewrite for ast::WherePredicate {

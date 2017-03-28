@@ -327,7 +327,7 @@ pub fn binary_search<C, T>(mut lo: usize, mut hi: usize, callback: C) -> Option<
 }
 
 #[inline]
-pub fn place_spaces(before: bool, after: bool) -> &'static str {
+pub fn colon_spaces(before: bool, after: bool) -> &'static str {
     match (before, after) {
         (true, true) => " : ",
         (true, false) => " :",
