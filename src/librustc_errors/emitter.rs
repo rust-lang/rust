@@ -37,9 +37,12 @@ impl Emitter for EmitterWriter {
 
         if let Some(sugg) = db.suggestion.clone() {
             assert_eq!(sugg.msp.primary_spans().len(), sugg.substitutes.len());
-            if sugg.substitutes.len() == 1 && // don't display multispans as labels
-               sugg.msg.split_whitespace().count() < 10 && // don't display long messages as labels
-               sugg.substitutes[0].find('\n').is_none() { // don't display multiline suggestions as labels
+            // don't display multispans as labels
+            if sugg.substitutes.len() == 1 &&
+               // don't display long messages as labels
+               sugg.msg.split_whitespace().count() < 10 &&
+               // don't display multiline suggestions as labels
+               sugg.substitutes[0].find('\n').is_none() {
                 let msg = format!("{} `{}`", sugg.msg, sugg.substitutes[0]);
                 primary_span.push_span_label(sugg.msp.primary_spans()[0], msg);
             } else {
