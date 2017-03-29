@@ -160,6 +160,7 @@ pub struct Parser<'a> {
     /// the span of the current token:
     pub span: Span,
     /// the span of the previous token:
+    pub meta_var_span: Option<Span>,
     pub prev_span: Span,
     /// the previous token kind
     prev_token_kind: PrevTokenKind,
@@ -417,6 +418,7 @@ impl<'a> Parser<'a> {
             token: token::Underscore,
             span: syntax_pos::DUMMY_SP,
             prev_span: syntax_pos::DUMMY_SP,
+            meta_var_span: None,
             prev_token_kind: PrevTokenKind::Other,
             restrictions: Restrictions::empty(),
             obsolete_set: HashSet::new(),
@@ -443,6 +445,7 @@ impl<'a> Parser<'a> {
             parser.directory.path = PathBuf::from(sess.codemap().span_to_filename(parser.span));
             parser.directory.path.pop();
         }
+        parser.process_potential_macro_variable();
         parser
     }
 
@@ -1012,7 +1015,7 @@ impl<'a> Parser<'a> {
             self.bug("attempted to bump the parser past EOF (may be stuck in a loop)");
         }
 
-        self.prev_span = self.span;
+        self.prev_span = self.meta_var_span.take().unwrap_or(self.span);
 
         // Record last token kind for possible error recovery.
         self.prev_token_kind = match self.token {
@@ -1028,7 +1031,7 @@ impl<'a> Parser<'a> {
         self.token = next.tok;
         self.expected_tokens.clear();
         // check after each token
-        self.check_unknown_macro_variable();
+        self.process_potential_macro_variable();
     }
 
     /// Advance the parser using provided token as a next one. Use this when
@@ -1722,7 +1725,7 @@ impl<'a> Parser<'a> {
     pub fn parse_path(&mut self, mode: PathStyle) -> PResult<'a, ast::Path> {
         maybe_whole!(self, NtPath, |x| x);
 
-        let lo = self.span;
+        let lo = self.meta_var_span.unwrap_or(self.span);
         let is_global = self.eat(&token::ModSep);
 
         // Parse any number of segments and bound sets. A segment is an
@@ -1744,13 +1747,9 @@ impl<'a> Parser<'a> {
             segments.insert(0, PathSegment::crate_root());
         }
 
-        // Assemble the span.
-        // FIXME(#39450) This is bogus if part of the path is macro generated.
-        let span = lo.to(self.prev_span);
-
         // Assemble the result.
         Ok(ast::Path {
-            span: span,
+            span: lo.to(self.prev_span),
             segments: segments,
         })
     }
@@ -1763,8 +1762,8 @@ impl<'a> Parser<'a> {
         let mut segments = Vec::new();
         loop {
             // First, parse an identifier.
+            let ident_span = self.span;
             let identifier = self.parse_path_segment_ident()?;
-            let ident_span = self.prev_span;
 
             if self.check(&token::ModSep) && self.look_ahead(1, |t| *t == token::Lt) {
                 self.bump();
@@ -1831,8 +1830,8 @@ impl<'a> Parser<'a> {
         let mut segments = Vec::new();
         loop {
             // First, parse an identifier.
+            let ident_span = self.span;
             let identifier = self.parse_path_segment_ident()?;
-            let ident_span = self.prev_span;
 
             // If we do not see a `::`, stop.
             if !self.eat(&token::ModSep) {
@@ -1873,10 +1872,11 @@ impl<'a> Parser<'a> {
         let mut segments = Vec::new();
         loop {
             // First, parse an identifier.
+            let ident_span = self.span;
             let identifier = self.parse_path_segment_ident()?;
 
             // Assemble and push the result.
-            segments.push(PathSegment::from_ident(identifier, self.prev_span));
+            segments.push(PathSegment::from_ident(identifier, ident_span));
 
             // If we do not see a `::` or see `::{`/`::*`, stop.
             if !self.check(&token::ModSep) || self.is_import_coupler() {
@@ -1896,8 +1896,9 @@ impl<'a> Parser<'a> {
     fn expect_lifetime(&mut self) -> Lifetime {
         match self.token {
             token::Lifetime(ident) => {
+                let ident_span = self.span;
                 self.bump();
-                Lifetime { name: ident.name, span: self.prev_span, id: ast::DUMMY_NODE_ID }
+                Lifetime { name: ident.name, span: ident_span, id: ast::DUMMY_NODE_ID }
             }
             _ => self.span_bug(self.span, "not a lifetime")
         }
@@ -2568,10 +2569,23 @@ impl<'a> Parser<'a> {
         return Ok(e);
     }
 
-    pub fn check_unknown_macro_variable(&mut self) {
-        if let token::SubstNt(name) = self.token {
-            self.fatal(&format!("unknown macro variable `{}`", name)).emit()
-        }
+    pub fn process_potential_macro_variable(&mut self) {
+        let ident = match self.token {
+            token::SubstNt(name) => {
+                self.fatal(&format!("unknown macro variable `{}`", name)).emit();
+                return
+            }
+            token::Interpolated(ref nt) => {
+                self.meta_var_span = Some(self.span);
+                match **nt {
+                    token::NtIdent(ident) => ident,
+                    _ => return,
+                }
+            }
+            _ => return,
+        };
+        self.token = token::Ident(ident.node);
+        self.span = ident.span;
     }
 
     /// parse a single token tree from the input.
@@ -2589,9 +2603,9 @@ impl<'a> Parser<'a> {
             },
             token::CloseDelim(_) | token::Eof => unreachable!(),
             _ => {
-                let token = mem::replace(&mut self.token, token::Underscore);
+                let (token, span) = (mem::replace(&mut self.token, token::Underscore), self.span);
                 self.bump();
-                TokenTree::Token(self.prev_span, token)
+                TokenTree::Token(span, token)
             }
         }
     }
@@ -3489,9 +3503,9 @@ impl<'a> Parser<'a> {
     fn parse_pat_ident(&mut self,
                        binding_mode: ast::BindingMode)
                        -> PResult<'a, PatKind> {
+        let ident_span = self.span;
         let ident = self.parse_ident()?;
-        let prev_span = self.prev_span;
-        let name = codemap::Spanned{span: prev_span, node: ident};
+        let name = codemap::Spanned{span: ident_span, node: ident};
         let sub = if self.eat(&token::At) {
             Some(self.parse_pat()?)
         } else {
@@ -4364,7 +4378,7 @@ impl<'a> Parser<'a> {
     fn parse_self_arg(&mut self) -> PResult<'a, Option<Arg>> {
         let expect_ident = |this: &mut Self| match this.token {
             // Preserve hygienic context.
-            token::Ident(ident) => { this.bump(); codemap::respan(this.prev_span, ident) }
+            token::Ident(ident) => { let sp = this.span; this.bump(); codemap::respan(sp, ident) }
             _ => unreachable!()
         };
         let isolated_self = |this: &mut Self, n| {
