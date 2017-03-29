@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -7,19 +7,24 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+#![crate_name="macros"]
 
-struct Example {
-    example: Box<Fn(i32) -> i32>
+#[macro_export]
+macro_rules! foo {
+    () => {};
 }
 
-fn main() {
-    let demo = Example {
-        example: Box::new(|x| {
-            x + 1
-        })
-    };
+#[macro_export]
+macro_rules! bar {
+    () => {};
+}
 
-    demo.example(1);    //~ ERROR no method named `example`
-                        //~^ NOTE use `(demo.example)(...)`
-    // (demo.example)(1);
+#[macro_export]
+macro_rules! baz {
+    () => {};
+}
+
+#[macro_export]
+macro_rules! quux {
+    () => {};
 }
