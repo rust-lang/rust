@@ -1036,7 +1036,7 @@ impl<'a> State<'a> {
                         word(&mut self.s, " else if ")?;
                         self.print_expr(&i)?;
                         space(&mut self.s)?;
-                        self.print_block(&then)?;
+                        self.print_expr(&then)?;
                         self.print_else(e.as_ref().map(|e| &**e))
                     }
                     // "final else"
@@ -1058,13 +1058,13 @@ impl<'a> State<'a> {
 
     pub fn print_if(&mut self,
                     test: &hir::Expr,
-                    blk: &hir::Block,
+                    blk: &hir::Expr,
                     elseopt: Option<&hir::Expr>)
                     -> io::Result<()> {
         self.head("if")?;
         self.print_expr(test)?;
         space(&mut self.s)?;
-        self.print_block(blk)?;
+        self.print_expr(blk)?;
         self.print_else(elseopt)
     }
 
