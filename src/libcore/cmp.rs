@@ -338,10 +338,10 @@ impl Ordering {
 /// assert_eq!(v, vec![3, 2, 1, 6, 5, 4]);
 /// ```
 #[derive(PartialEq, Eq, Debug)]
-#[unstable(feature = "reverse_cmp_key", issue = "40720")]
+#[unstable(feature = "reverse_cmp_key", issue = "40893")]
 pub struct Reverse<T>(pub T);
 
-#[unstable(feature = "reverse_cmp_key", issue = "40720")]
+#[unstable(feature = "reverse_cmp_key", issue = "40893")]
 impl<T: PartialOrd> PartialOrd for Reverse<T> {
     #[inline]
     fn partial_cmp(&self, other: &Reverse<T>) -> Option<Ordering> {
@@ -349,7 +349,7 @@ impl<T: PartialOrd> PartialOrd for Reverse<T> {
     }
 }
 
-#[unstable(feature = "reverse_cmp_key", issue = "40720")]
+#[unstable(feature = "reverse_cmp_key", issue = "40893")]
 impl<T: Ord> Ord for Reverse<T> {
     #[inline]
     fn cmp(&self, other: &Reverse<T>) -> Ordering {
