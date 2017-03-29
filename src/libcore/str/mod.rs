@@ -327,7 +327,9 @@ unsafe fn from_raw_parts_mut<'a>(p: *mut u8, len: usize) -> &'a mut str {
 ///
 /// This function is unsafe because it does not check that the bytes passed to
 /// it are valid UTF-8. If this constraint is violated, undefined behavior
-/// results, as the rest of Rust assumes that `&str`s are valid UTF-8.
+/// results, as the rest of Rust assumes that [`&str`]s are valid UTF-8.
+///
+/// [`&str`]: ../../std/primitive.str.html
 ///
 /// # Examples
 ///
