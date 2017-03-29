@@ -636,7 +636,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
         hir::ExprIf(ref cond, ref then, ref otherwise) => {
             ExprKind::If {
                 condition: cond.to_ref(),
-                then: block::to_expr_ref(cx, then),
+                then: then.to_ref(),
                 otherwise: otherwise.to_ref(),
             }
         }
