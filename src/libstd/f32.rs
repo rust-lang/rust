@@ -1254,29 +1254,35 @@ impl f32 {
     /// representation into the `f32` type, similar to the
     /// `transmute` function.
     ///
-    /// Note that this function is distinct from casting.
+    /// There is only one difference to a bare `transmute`:
+    /// Due to the implications onto Rust's safety promises being
+    /// uncertain, if the representation of a signaling NaN "sNaN" float
+    /// is passed to the function, a quiet NaN will be returned
+    /// instead.
     ///
-    /// Returns `Err(())` if the representation of a signaling NaN "sNaN"
-    /// float, is passed to the function.
+    /// Note that this function is distinct from casting.
     ///
     /// # Examples
     ///
     /// ```
     /// #![feature(float_bits_conv)]
     /// use std::f32;
-    /// let v = f32::from_bits(0x41480000).unwrap();
+    /// let v = f32::from_bits(0x41480000);
     /// let difference = (v - 12.5).abs();
     /// assert!(difference <= 1e-5);
     /// // Example for a signaling NaN value:
-    /// assert_eq!(f32::from_bits(0x7F800001), Err(()));
+    /// let snan = 0x7F800001;
+    /// assert_ne!(f32::from_bits(snan).to_bits(), snan);
     /// ```
     #[unstable(feature = "float_bits_conv", reason = "recently added", issue = "40470")]
     #[inline]
-    pub fn from_bits(v: u32) -> Result<Self, ()> {
+    pub fn from_bits(v: u32) -> Self {
         match v {
+            // sNaN limits source:
+            // https://www.doc.ic.ac.uk/~eedwards/compsys/float/nan.html
             0x7F800001 ... 0x7FBFFFFF |
-            0xFF800001 ... 0xFFBFFFFF => Err(()),
-            _ => Ok(unsafe { ::mem::transmute(v) }),
+            0xFF800001 ... 0xFFBFFFFF => ::f32::NAN,
+            _ => unsafe { ::mem::transmute(v) },
         }
     }
 }
@@ -1930,9 +1936,9 @@ mod tests {
         assert_eq!((12.5f32).to_bits(), 0x41480000);
         assert_eq!((1337f32).to_bits(), 0x44a72000);
         assert_eq!((-14.25f32).to_bits(), 0xc1640000);
-        assert_approx_eq!(f32::from_bits(0x3f800000).unwrap(), 1.0);
-        assert_approx_eq!(f32::from_bits(0x41480000).unwrap(), 12.5);
-        assert_approx_eq!(f32::from_bits(0x44a72000).unwrap(), 1337.0);
-        assert_approx_eq!(f32::from_bits(0xc1640000).unwrap(), -14.25);
+        assert_approx_eq!(f32::from_bits(0x3f800000), 1.0);
+        assert_approx_eq!(f32::from_bits(0x41480000), 12.5);
+        assert_approx_eq!(f32::from_bits(0x44a72000), 1337.0);
+        assert_approx_eq!(f32::from_bits(0xc1640000), -14.25);
     }
 }
