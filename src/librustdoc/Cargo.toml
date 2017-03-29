@@ -2,7 +2,6 @@
 authors = ["The Rust Project Developers"]
 name = "rustdoc"
 version = "0.0.0"
-build = "build.rs"
 
 [lib]
 name = "rustdoc"
@@ -26,6 +25,7 @@ rustc_trans = { path = "../librustc_trans" }
 serialize = { path = "../libserialize" }
 syntax = { path = "../libsyntax" }
 syntax_pos = { path = "../libsyntax_pos" }
+pulldown-cmark = { version = "0.0.14", default-features = false }
 
 [build-dependencies]
 build_helper = { path = "../build_helper" }

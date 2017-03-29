@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #![crate_name = "rustdoc"]
-#![unstable(feature = "rustdoc", issue = "27812")]
+#![unstable(feature = "rustc_private", issue = "27812")]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
@@ -48,6 +48,7 @@ extern crate test as testing;
 extern crate std_unicode;
 #[macro_use] extern crate log;
 extern crate rustc_errors as errors;
+extern crate pulldown_cmark;
 
 extern crate serialize as rustc_serialize; // used by deriving
 
