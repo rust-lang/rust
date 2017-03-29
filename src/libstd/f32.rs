@@ -1276,14 +1276,17 @@ impl f32 {
     /// ```
     #[unstable(feature = "float_bits_conv", reason = "recently added", issue = "40470")]
     #[inline]
-    pub fn from_bits(v: u32) -> Self {
-        match v {
-            // sNaN limits source:
-            // https://www.doc.ic.ac.uk/~eedwards/compsys/float/nan.html
-            0x7F800001 ... 0x7FBFFFFF |
-            0xFF800001 ... 0xFFBFFFFF => ::f32::NAN,
-            _ => unsafe { ::mem::transmute(v) },
+    pub fn from_bits(mut v: u32) -> Self {
+        const EXP_MASK: u32   = 0x7F800000;
+        const QNAN_MASK: u32  = 0x00400000;
+        const FRACT_MASK: u32 = 0x007FFFFF;
+        if v & EXP_MASK == EXP_MASK && v & FRACT_MASK != 0 {
+            // If we have a NaN value, we
+            // convert signaling NaN values to quiet NaN
+            // by setting the the highest bit of the fraction
+            v |= QNAN_MASK;
         }
+        unsafe { ::mem::transmute(v) }
     }
 }
 
@@ -1940,5 +1943,20 @@ mod tests {
         assert_approx_eq!(f32::from_bits(0x41480000), 12.5);
         assert_approx_eq!(f32::from_bits(0x44a72000), 1337.0);
         assert_approx_eq!(f32::from_bits(0xc1640000), -14.25);
+    }
+    #[test]
+    fn test_snan_masking() {
+        let snan: u32 = 0x7F801337;
+        const PAYLOAD_MASK: u32 = 0x003FFFFF;
+        const QNAN_MASK: u32  = 0x00400000;
+        let nan_masked_fl = f32::from_bits(snan);
+        let nan_masked = nan_masked_fl.to_bits();
+        // Ensure that signaling NaNs don't stay the same
+        assert_ne!(nan_masked, snan);
+        // Ensure that we have a quiet NaN
+        assert_ne!(nan_masked & QNAN_MASK, 0);
+        assert!(nan_masked_fl.is_nan());
+        // Ensure the payload wasn't touched during conversion
+        assert_eq!(nan_masked & PAYLOAD_MASK, snan & PAYLOAD_MASK);
     }
 }
