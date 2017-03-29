@@ -23,7 +23,8 @@ use lists::{write_list, itemize_list, ListFormatting, SeparatorTactic, ListTacti
             struct_lit_tactic, shape_for_tactic, struct_lit_formatting};
 use string::{StringFormat, rewrite_string};
 use utils::{extra_offset, last_line_width, wrap_str, binary_search, first_line_width,
-            semicolon_for_stmt, trimmed_last_line_width, left_most_sub_expr, stmt_expr};
+            semicolon_for_stmt, trimmed_last_line_width, left_most_sub_expr, stmt_expr,
+            colon_spaces};
 use visitor::FmtVisitor;
 use config::{Config, IndentStyle, MultilineStyle, ControlBraceStyle};
 use comment::{FindUncommented, rewrite_comment, contains_comment, recover_comment_removed};
@@ -1891,12 +1892,8 @@ fn rewrite_struct_lit<'a>(context: &RewriteContext,
 }
 
 pub fn type_annotation_separator(config: &Config) -> &str {
-    match (config.space_before_type_annotation, config.space_after_type_annotation_colon) {
-        (true, true) => " : ",
-        (true, false) => " :",
-        (false, true) => ": ",
-        (false, false) => ":",
-    }
+    colon_spaces(config.space_before_type_annotation,
+                 config.space_after_type_annotation_colon)
 }
 
 fn rewrite_field(context: &RewriteContext, field: &ast::Field, shape: Shape) -> Option<String> {

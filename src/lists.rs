@@ -207,7 +207,7 @@ pub fn write_list<I, T>(items: I, formatting: &ListFormatting) -> Option<String>
         let item_sep_len = if separate { sep_len } else { 0 };
 
         // Item string may be multi-line. Its length (used for block comment alignment)
-        // Should be only the length of the last line.
+        // should be only the length of the last line.
         let item_last_line = if item.is_multiline() {
             inner_item.lines().last().unwrap_or("")
         } else {
