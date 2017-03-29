@@ -84,7 +84,7 @@ use astconv::AstConv;
 use dep_graph::DepNode;
 use fmt_macros::{Parser, Piece, Position};
 use hir::def::{Def, CtorKind};
-use hir::def_id::{DefId, LOCAL_CRATE};
+use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::infer::{self, InferCtxt, InferOk, RegionVariableOrigin, TypeTrace};
 use rustc::infer::type_variable::{self, TypeVariableOrigin};
 use rustc::ty::subst::{Kind, Subst, Substs};
@@ -541,19 +541,21 @@ pub fn check_item_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> CompileResult 
 }
 
 pub fn check_item_bodies<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> CompileResult {
-    return tcx.sess.track_errors(|| {
-        tcx.dep_graph.with_task(DepNode::TypeckBodiesKrate, tcx, (), check_item_bodies_task);
-    });
+    ty::queries::typeck_item_bodies::get(tcx, DUMMY_SP, LOCAL_CRATE)
+}
 
-    fn check_item_bodies_task<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, (): ()) {
+fn typeck_item_bodies<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, crate_num: CrateNum) -> CompileResult {
+    debug_assert!(crate_num == LOCAL_CRATE);
+    tcx.sess.track_errors(|| {
         tcx.visit_all_bodies_in_krate(|body_owner_def_id, _body_id| {
             tcx.item_tables(body_owner_def_id);
         });
-    }
+    })
 }
 
 pub fn provide(providers: &mut Providers) {
     *providers = Providers {
+        typeck_item_bodies,
         typeck_tables,
         closure_type,
         closure_kind,
