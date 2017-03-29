@@ -680,3 +680,19 @@ fn test_placement_panic() {
     let _ = panic::catch_unwind(panic::AssertUnwindSafe(|| { vec.place_back() <- mkpanic(); }));
     assert_eq!(vec.len(), 3);
 }
+
+#[test]
+fn from_into_inner() {
+    let vec = vec![1, 2, 3];
+    let ptr = vec.as_ptr();
+    let vec = vec.into_iter().collect::<Vec<_>>();
+    assert_eq!(vec, [1, 2, 3]);
+    assert_eq!(vec.as_ptr(), ptr);
+
+    let ptr = &vec[1] as *const _;
+    let mut it = vec.into_iter();
+    it.next().unwrap();
+    let vec = it.collect::<Vec<_>>();
+    assert_eq!(vec, [2, 3]);
+    assert!(ptr != vec.as_ptr());
+}
