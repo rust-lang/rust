@@ -1061,12 +1061,12 @@ pub fn exit(code: i32) -> ! {
 ///
 /// ```
 /// use std::process;
-/// 
+///
 /// fn main() {
 ///     println!("aborting");
-/// 
+///
 ///     process::abort();
-/// 
+///
 ///     // execution never gets here
 /// }
 /// ```
