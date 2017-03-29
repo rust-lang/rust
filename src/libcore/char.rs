@@ -187,7 +187,7 @@ impl From<char> for u32 {
 /// with the character encoding that IANA calls ISO-8859-1.
 /// This encoding is compatible with ASCII.
 ///
-/// Note that this is different from ISO/IEC 8859-1 a.k.a. ISO 8859-1 (with one less hypen),
+/// Note that this is different from ISO/IEC 8859-1 a.k.a. ISO 8859-1 (with one less hyphen),
 /// which leaves some "blanks", byte values that are not assigned to any character.
 /// ISO-8859-1 (the IANA one) assigns them to the C0 and C1 control codes.
 ///
