@@ -1168,14 +1168,17 @@ impl f64 {
     /// ```
     #[unstable(feature = "float_bits_conv", reason = "recently added", issue = "40470")]
     #[inline]
-    pub fn from_bits(v: u64) -> Self {
-        match v {
-            // sNaN limits source:
-            // https://www.doc.ic.ac.uk/~eedwards/compsys/float/nan.html
-            0x7FF0000000000001 ... 0x7FF7FFFFFFFFFFFF |
-            0xFFF0000000000001 ... 0xFFF7FFFFFFFFFFFF => ::f64::NAN,
-            _ => unsafe { ::mem::transmute(v) },
+    pub fn from_bits(mut v: u64) -> Self {
+        const EXP_MASK: u64   = 0x7FF0000000000000;
+        const QNAN_MASK: u64  = 0x0001000000000000;
+        const FRACT_MASK: u64 = 0x000FFFFFFFFFFFFF;
+        if v & EXP_MASK == EXP_MASK && v & FRACT_MASK != 0 {
+            // If we have a NaN value, we
+            // convert signaling NaN values to quiet NaN
+            // by setting the the highest bit of the fraction
+            v |= QNAN_MASK;
         }
+        unsafe { ::mem::transmute(v) }
     }
 }
 
