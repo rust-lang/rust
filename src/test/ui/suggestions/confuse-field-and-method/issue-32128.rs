@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Obj<F> where F: FnMut() -> u32 {
-    closure: F,
+struct Example {
+    example: Box<Fn(i32) -> i32>
 }
 
 fn main() {
-    let o = Obj { closure: || 42 };
-    o.closure(); //~ ERROR no method named `closure` found
-    //~^ NOTE use `(o.closure)(...)` if you meant to call the function stored in the `closure` field
+    let demo = Example {
+        example: Box::new(|x| {
+            x + 1
+        })
+    };
+
+    demo.example(1);
+    //~^ ERROR no method named `example`
+    //~| HELP use `(demo.example)(...)`
+    //~| NOTE field, not a method
+    // (demo.example)(1);
 }
