@@ -350,7 +350,7 @@ pub fn walk_ty<'a, V: Visitor<'a>>(visitor: &mut V, typ: &'a Ty) {
         TyKind::Typeof(ref expression) => {
             visitor.visit_expr(expression)
         }
-        TyKind::Infer | TyKind::ImplicitSelf => {}
+        TyKind::Infer | TyKind::ImplicitSelf | TyKind::Err => {}
         TyKind::Mac(ref mac) => {
             visitor.visit_mac(mac)
         }

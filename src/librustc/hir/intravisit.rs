@@ -578,7 +578,7 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty) {
         TyTypeof(expression) => {
             visitor.visit_nested_body(expression)
         }
-        TyInfer => {}
+        TyInfer | TyErr => {}
     }
 }
 
