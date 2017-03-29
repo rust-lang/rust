@@ -25,7 +25,7 @@ use externalfiles::{ExternalHtml, LoadStringError, load_string};
 use html::render::reset_ids;
 use html::escape::Escape;
 use html::markdown;
-use html::markdown::{Markdown, MarkdownWithToc, find_testable_code};
+use html::markdown::{Markdown, MarkdownWithToc, MarkdownOutputStyle, find_testable_code};
 use test::{TestOptions, Collector};
 
 /// Separate any lines at the start of the file that begin with `# ` or `%`.
@@ -96,7 +96,7 @@ pub fn render(input: &str, mut output: PathBuf, matches: &getopts::Matches,
     let rendered = if include_toc {
         format!("{}", MarkdownWithToc(text))
     } else {
-        format!("{}", Markdown(text))
+        format!("{}", Markdown(text, MarkdownOutputStyle::Fancy))
     };
 
     let err = write!(
