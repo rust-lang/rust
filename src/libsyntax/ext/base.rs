@@ -215,7 +215,7 @@ impl<F> TTMacroExpander for F
         impl Folder for AvoidInterpolatedIdents {
             fn fold_tt(&mut self, tt: tokenstream::TokenTree) -> tokenstream::TokenTree {
                 if let tokenstream::TokenTree::Token(_, token::Interpolated(ref nt)) = tt {
-                    if let token::NtIdent(ident) = **nt {
+                    if let token::NtIdent(ident) = nt.0 {
                         return tokenstream::TokenTree::Token(ident.span, token::Ident(ident.node));
                     }
                 }

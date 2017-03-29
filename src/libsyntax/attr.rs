@@ -1057,7 +1057,7 @@ impl MetaItem {
     {
         let (mut span, name) = match tokens.next() {
             Some(TokenTree::Token(span, Token::Ident(ident))) => (span, ident.name),
-            Some(TokenTree::Token(_, Token::Interpolated(ref nt))) => match **nt {
+            Some(TokenTree::Token(_, Token::Interpolated(ref nt))) => match nt.0 {
                 token::Nonterminal::NtIdent(ident) => (ident.span, ident.node.name),
                 token::Nonterminal::NtMeta(ref meta) => return Some(meta.clone()),
                 _ => return None,
@@ -1229,7 +1229,7 @@ impl LitKind {
         match token {
             Token::Ident(ident) if ident.name == "true" => Some(LitKind::Bool(true)),
             Token::Ident(ident) if ident.name == "false" => Some(LitKind::Bool(false)),
-            Token::Interpolated(ref nt) => match **nt {
+            Token::Interpolated(ref nt) => match nt.0 {
                 token::NtExpr(ref v) => match v.node {
                     ExprKind::Lit(ref lit) => Some(lit.node.clone()),
                     _ => None,

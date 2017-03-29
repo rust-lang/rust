@@ -21,15 +21,15 @@ use ext::placeholders::{placeholder, PlaceholderExpander};
 use feature_gate::{self, Features, is_builtin_attr};
 use fold;
 use fold::*;
-use parse::{filemap_to_stream, ParseSess, DirectoryOwnership, PResult, token};
+use parse::{DirectoryOwnership, PResult};
+use parse::token::{self, Token};
 use parse::parser::Parser;
-use print::pprust;
 use ptr::P;
 use std_inject;
 use symbol::Symbol;
 use symbol::keywords;
 use syntax_pos::{Span, DUMMY_SP};
-use tokenstream::TokenStream;
+use tokenstream::{TokenStream, TokenTree};
 use util::small_vector::SmallVector;
 use visit::Visitor;
 
@@ -427,11 +427,13 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 kind.expect_from_annotatables(items)
             }
             SyntaxExtension::AttrProcMacro(ref mac) => {
-                let item_toks = stream_for_item(&item, self.cx.parse_sess);
-
-                let span = Span { ctxt: self.cx.backtrace(), ..attr.span };
-                let tok_result = mac.expand(self.cx, attr.span, attr.tokens, item_toks);
-                self.parse_expansion(tok_result, kind, &attr.path, span)
+                let item_tok = TokenTree::Token(DUMMY_SP, Token::interpolated(match item {
+                    Annotatable::Item(item) => token::NtItem(item),
+                    Annotatable::TraitItem(item) => token::NtTraitItem(item.unwrap()),
+                    Annotatable::ImplItem(item) => token::NtImplItem(item.unwrap()),
+                })).into();
+                let tok_result = mac.expand(self.cx, attr.span, attr.tokens, item_tok);
+                self.parse_expansion(tok_result, kind, &attr.path, attr.span)
             }
             SyntaxExtension::ProcMacroDerive(..) | SyntaxExtension::BuiltinDerive(..) => {
                 self.cx.span_err(attr.span, &format!("`{}` is a derive mode", attr.path));
@@ -767,28 +769,6 @@ pub fn find_attr_invoc(attrs: &mut Vec<ast::Attribute>) -> Option<ast::Attribute
     attrs.iter()
          .position(|a| !attr::is_known(a) && !is_builtin_attr(a))
          .map(|i| attrs.remove(i))
-}
-
-// These are pretty nasty. Ideally, we would keep the tokens around, linked from
-// the AST. However, we don't so we need to create new ones. Since the item might
-// have come from a macro expansion (possibly only in part), we can't use the
-// existing codemap.
-//
-// Therefore, we must use the pretty printer (yuck) to turn the AST node into a
-// string, which we then re-tokenise (double yuck), but first we have to patch
-// the pretty-printed string on to the end of the existing codemap (infinity-yuck).
-fn stream_for_item(item: &Annotatable, parse_sess: &ParseSess) -> TokenStream {
-    let text = match *item {
-        Annotatable::Item(ref i) => pprust::item_to_string(i),
-        Annotatable::TraitItem(ref ti) => pprust::trait_item_to_string(ti),
-        Annotatable::ImplItem(ref ii) => pprust::impl_item_to_string(ii),
-    };
-    string_to_stream(text, parse_sess, item.span())
-}
-
-fn string_to_stream(text: String, parse_sess: &ParseSess, span: Span) -> TokenStream {
-    let filename = String::from("<macro expansion>");
-    filemap_to_stream(parse_sess, parse_sess.codemap().new_filemap(filename, text), Some(span))
 }
 
 impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {

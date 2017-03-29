@@ -16,9 +16,11 @@ pub use self::Token::*;
 
 use ast::{self};
 use ptr::P;
+use serialize::{Decodable, Decoder, Encodable, Encoder};
 use symbol::keywords;
-use tokenstream::TokenTree;
+use tokenstream::{TokenStream, TokenTree};
 
+use std::cell::RefCell;
 use std::fmt;
 use std::rc::Rc;
 
@@ -168,7 +170,7 @@ pub enum Token {
     Lifetime(ast::Ident),
 
     /* For interpolation */
-    Interpolated(Rc<Nonterminal>),
+    Interpolated(Rc<(Nonterminal, LazyTokenStream)>),
     // Can be expanded into several tokens.
     /// Doc comment
     DocComment(ast::Name),
@@ -187,6 +189,10 @@ pub enum Token {
 }
 
 impl Token {
+    pub fn interpolated(nt: Nonterminal) -> Token {
+        Token::Interpolated(Rc::new((nt, LazyTokenStream::new())))
+    }
+
     /// Returns `true` if the token starts with '>'.
     pub fn is_like_gt(&self) -> bool {
         match *self {
@@ -211,7 +217,7 @@ impl Token {
             Lt | BinOp(Shl)             | // associated path
             ModSep                      | // global path
             Pound                       => true, // expression attributes
-            Interpolated(ref nt) => match **nt {
+            Interpolated(ref nt) => match nt.0 {
                 NtIdent(..) | NtExpr(..) | NtBlock(..) | NtPath(..) => true,
                 _ => false,
             },
@@ -234,7 +240,7 @@ impl Token {
             Lifetime(..)                | // lifetime bound in trait object
             Lt | BinOp(Shl)             | // associated path
             ModSep                      => true, // global path
-            Interpolated(ref nt) => match **nt {
+            Interpolated(ref nt) => match nt.0 {
                 NtIdent(..) | NtTy(..) | NtPath(..) => true,
                 _ => false,
             },
@@ -253,7 +259,7 @@ impl Token {
     pub fn ident(&self) -> Option<ast::Ident> {
         match *self {
             Ident(ident) => Some(ident),
-            Interpolated(ref nt) => match **nt {
+            Interpolated(ref nt) => match nt.0 {
                 NtIdent(ident) => Some(ident.node),
                 _ => None,
             },
@@ -285,7 +291,7 @@ impl Token {
     /// Returns `true` if the token is an interpolated path.
     pub fn is_path(&self) -> bool {
         if let Interpolated(ref nt) = *self {
-            if let NtPath(..) = **nt {
+            if let NtPath(..) = nt.0 {
                 return true;
             }
         }
@@ -459,5 +465,40 @@ pub fn is_op(tok: &Token) -> bool {
         Ident(..) | Underscore | Lifetime(..) | Interpolated(..) |
         Whitespace | Comment | Shebang(..) | Eof => false,
         _ => true,
+    }
+}
+
+#[derive(Clone, Eq, PartialEq, Debug)]
+pub struct LazyTokenStream(RefCell<Option<TokenStream>>);
+
+impl LazyTokenStream {
+    pub fn new() -> Self {
+        LazyTokenStream(RefCell::new(None))
+    }
+
+    pub fn force<F: FnOnce() -> TokenStream>(&self, f: F) -> TokenStream {
+        let mut opt_stream = self.0.borrow_mut();
+        if opt_stream.is_none() {
+            *opt_stream = Some(f());
+        };
+        opt_stream.clone().unwrap()
+    }
+}
+
+impl Encodable for LazyTokenStream {
+    fn encode<S: Encoder>(&self, _: &mut S) -> Result<(), S::Error> {
+        Ok(())
+    }
+}
+
+impl Decodable for LazyTokenStream {
+    fn decode<D: Decoder>(_: &mut D) -> Result<LazyTokenStream, D::Error> {
+        Ok(LazyTokenStream::new())
+    }
+}
+
+impl ::std::hash::Hash for LazyTokenStream {
+    fn hash<H: ::std::hash::Hasher>(&self, hasher: &mut H) {
+        self.0.borrow().hash(hasher);
     }
 }

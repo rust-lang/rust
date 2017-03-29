@@ -275,7 +275,7 @@ pub fn token_to_string(tok: &Token) -> String {
         token::Comment              => "/* */".to_string(),
         token::Shebang(s)           => format!("/* shebang: {}*/", s),
 
-        token::Interpolated(ref nt) => match **nt {
+        token::Interpolated(ref nt) => match nt.0 {
             token::NtExpr(ref e)        => expr_to_string(e),
             token::NtMeta(ref e)        => meta_item_to_string(e),
             token::NtTy(ref e)          => ty_to_string(e),

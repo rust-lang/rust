@@ -107,7 +107,7 @@ pub enum BlockMode {
 macro_rules! maybe_whole_expr {
     ($p:expr) => {
         if let token::Interpolated(nt) = $p.token.clone() {
-            match *nt {
+            match nt.0 {
                 token::NtExpr(ref e) => {
                     $p.bump();
                     return Ok((*e).clone());
@@ -134,7 +134,7 @@ macro_rules! maybe_whole_expr {
 macro_rules! maybe_whole {
     ($p:expr, $constructor:ident, |$x:ident| $e:expr) => {
         if let token::Interpolated(nt) = $p.token.clone() {
-            if let token::$constructor($x) = (*nt).clone() {
+            if let token::$constructor($x) = nt.0.clone() {
                 $p.bump();
                 return Ok($e);
             }
@@ -1620,7 +1620,7 @@ impl<'a> Parser<'a> {
     /// Matches token_lit = LIT_INTEGER | ...
     pub fn parse_lit_token(&mut self) -> PResult<'a, LitKind> {
         let out = match self.token {
-            token::Interpolated(ref nt) => match **nt {
+            token::Interpolated(ref nt) => match nt.0 {
                 token::NtExpr(ref v) => match v.node {
                     ExprKind::Lit(ref lit) => { lit.node.clone() }
                     _ => { return self.unexpected_last(&self.token); }
@@ -1791,7 +1791,7 @@ impl<'a> Parser<'a> {
     /// This is used when parsing derive macro paths in `#[derive]` attributes.
     pub fn parse_path_allowing_meta(&mut self, mode: PathStyle) -> PResult<'a, ast::Path> {
         let meta_ident = match self.token {
-            token::Interpolated(ref nt) => match **nt {
+            token::Interpolated(ref nt) => match nt.0 {
                 token::NtMeta(ref meta) => match meta.node {
                     ast::MetaItemKind::Word => Some(ast::Ident::with_empty_ctxt(meta.name)),
                     _ => None,
@@ -2635,7 +2635,7 @@ impl<'a> Parser<'a> {
             }
             token::Interpolated(ref nt) => {
                 self.meta_var_span = Some(self.span);
-                match **nt {
+                match nt.0 {
                     token::NtIdent(ident) => ident,
                     _ => return,
                 }

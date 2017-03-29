@@ -22,7 +22,7 @@ use ast::*;
 use ast;
 use syntax_pos::Span;
 use codemap::{Spanned, respan};
-use parse::token;
+use parse::token::{self, Token};
 use ptr::P;
 use symbol::keywords;
 use tokenstream::*;
@@ -586,7 +586,7 @@ pub fn noop_fold_token<T: Folder>(t: token::Token, fld: &mut T) -> token::Token 
                 Ok(nt) => nt,
                 Err(nt) => (*nt).clone(),
             };
-            token::Interpolated(Rc::new(fld.fold_interpolated(nt)))
+            Token::interpolated(fld.fold_interpolated(nt.0))
         }
         _ => t
     }

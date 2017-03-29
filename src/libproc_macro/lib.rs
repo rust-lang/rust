@@ -42,6 +42,7 @@
 #![feature(staged_api)]
 #![feature(lang_items)]
 
+#[macro_use]
 extern crate syntax;
 extern crate syntax_pos;
 
@@ -50,7 +51,8 @@ use std::str::FromStr;
 
 use syntax::ast;
 use syntax::errors::DiagnosticBuilder;
-use syntax::parse::{self, token};
+use syntax::parse::{self, token, parse_stream_from_source_str};
+use syntax::print::pprust;
 use syntax::symbol;
 use syntax::tokenstream;
 use syntax_pos::DUMMY_SP;
@@ -337,8 +339,18 @@ impl Iterator for TokenIter {
     type Item = TokenTree;
 
     fn next(&mut self) -> Option<TokenTree> {
-        self.next.take().or_else(|| self.cursor.next_as_stream())
-            .map(|next| TokenTree::from_raw(next, &mut self.next))
+        loop {
+            let next =
+                unwrap_or!(self.next.take().or_else(|| self.cursor.next_as_stream()), return None);
+            let tree = TokenTree::from_raw(next, &mut self.next);
+            if tree.span.0 == DUMMY_SP {
+                if let TokenKind::Sequence(Delimiter::None, stream) = tree.kind {
+                    self.cursor.insert(stream.0);
+                    continue
+                }
+            }
+            return Some(tree);
+        }
     }
 }
 
@@ -449,7 +461,14 @@ impl TokenTree {
             Ident(ident) | Lifetime(ident) => TokenKind::Word(Symbol(ident.name)),
             Literal(..) | DocComment(..) => TokenKind::Literal(self::Literal(token)),
 
-            Interpolated(..) => unimplemented!(),
+            Interpolated(ref nt) => __internal::with_sess(|(sess, _)| {
+                TokenKind::Sequence(Delimiter::None, TokenStream(nt.1.force(|| {
+                    // FIXME(jseyfried): Avoid this pretty-print + reparse hack
+                    let name = "<macro expansion>".to_owned();
+                    let source = pprust::token_to_string(&token);
+                    parse_stream_from_source_str(name, source, sess, Some(span))
+                })))
+            }),
 
             OpenDelim(..) | CloseDelim(..) => unreachable!(),
             Whitespace | Comment | Shebang(..) | Eof => unreachable!(),
@@ -530,20 +549,21 @@ pub mod __internal {
     pub use self::quote::{Quoter, __rt};
 
     use std::cell::Cell;
-    use std::rc::Rc;
 
     use syntax::ast;
     use syntax::ext::base::ExtCtxt;
     use syntax::ext::hygiene::Mark;
     use syntax::ptr::P;
-    use syntax::parse::{self, token, ParseSess};
+    use syntax::parse::{self, ParseSess};
+    use syntax::parse::token::{self, Token};
     use syntax::tokenstream;
+    use syntax_pos::DUMMY_SP;
 
     use super::{TokenStream, LexError};
 
     pub fn new_token_stream(item: P<ast::Item>) -> TokenStream {
-        let (span, token) = (item.span, token::Interpolated(Rc::new(token::NtItem(item))));
-        TokenStream(tokenstream::TokenTree::Token(span, token).into())
+        let token = Token::interpolated(token::NtItem(item));
+        TokenStream(tokenstream::TokenTree::Token(DUMMY_SP, token).into())
     }
 
     pub fn token_stream_wrap(inner: tokenstream::TokenStream) -> TokenStream {
