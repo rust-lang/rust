@@ -13,7 +13,6 @@ trait Trait<'a> {}
 fn main() {
     let _: &for<'a> Trait<'a> + 'static;
     //~^ ERROR expected a path on the left-hand side of `+`, not `& for<'a>Trait<'a>`
-    //~| NOTE expected a path
     //~| HELP try adding parentheses
     //~| SUGGESTION &( for<'a>Trait<'a> + 'static)
 }
