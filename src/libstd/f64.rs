@@ -1146,29 +1146,35 @@ impl f64 {
     /// representation into the `f64` type, similar to the
     /// `transmute` function.
     ///
-    /// Note that this function is distinct from casting.
+    /// There is only one difference to a bare `transmute`:
+    /// Due to the implications onto Rust's safety promises being
+    /// uncertain, if the representation of a signaling NaN "sNaN" float
+    /// is passed to the function, a quiet NaN will be returned
+    /// instead.
     ///
-    /// Returns `Err(())` if the representation of a signaling NaN "sNaN"
-    /// float, is passed to the function.
+    /// Note that this function is distinct from casting.
     ///
     /// # Examples
     ///
     /// ```
     /// #![feature(float_bits_conv)]
     /// use std::f64;
-    /// let v = f64::from_bits(0x4029000000000000).unwrap();
+    /// let v = f64::from_bits(0x4029000000000000);
     /// let difference = (v - 12.5).abs();
     /// assert!(difference <= 1e-5);
     /// // Example for a signaling NaN value:
-    /// assert_eq!(f64::from_bits(0x7FF0000000000001), Err(()));
+    /// let snan = 0x7FF0000000000001;
+    /// assert_ne!(f64::from_bits(snan).to_bits(), snan);
     /// ```
     #[unstable(feature = "float_bits_conv", reason = "recently added", issue = "40470")]
     #[inline]
-    pub fn from_bits(v: u64) -> Result<Self, ()> {
+    pub fn from_bits(v: u64) -> Self {
         match v {
+            // sNaN limits source:
+            // https://www.doc.ic.ac.uk/~eedwards/compsys/float/nan.html
             0x7FF0000000000001 ... 0x7FF7FFFFFFFFFFFF |
-            0xFFF0000000000001 ... 0xFFF7FFFFFFFFFFFF => Err(()),
-            _ => Ok(unsafe { ::mem::transmute(v) }),
+            0xFFF0000000000001 ... 0xFFF7FFFFFFFFFFFF => ::f64::NAN,
+            _ => unsafe { ::mem::transmute(v) },
         }
     }
 }
@@ -1815,9 +1821,9 @@ mod tests {
         assert_eq!((12.5f64).to_bits(), 0x4029000000000000);
         assert_eq!((1337f64).to_bits(), 0x4094e40000000000);
         assert_eq!((-14.25f64).to_bits(), 0xc02c800000000000);
-        assert_approx_eq!(f64::from_bits(0x3ff0000000000000).unwrap(), 1.0);
-        assert_approx_eq!(f64::from_bits(0x4029000000000000).unwrap(), 12.5);
-        assert_approx_eq!(f64::from_bits(0x4094e40000000000).unwrap(), 1337.0);
-        assert_approx_eq!(f64::from_bits(0xc02c800000000000).unwrap(), -14.25);
+        assert_approx_eq!(f64::from_bits(0x3ff0000000000000), 1.0);
+        assert_approx_eq!(f64::from_bits(0x4029000000000000), 12.5);
+        assert_approx_eq!(f64::from_bits(0x4094e40000000000), 1337.0);
+        assert_approx_eq!(f64::from_bits(0xc02c800000000000), -14.25);
     }
 }
