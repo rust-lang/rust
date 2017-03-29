@@ -527,7 +527,9 @@ fn break_patterns<T>(v: &mut [T]) {
             // we first take it modulo a power of two, and then decrease by `len` until it fits
             // into the range `[0, len - 1]`.
             let mut other = gen_usize() & (modulus - 1);
-            while other >= len {
+
+            // `other` is guaranteed to be less than `2 * len`.
+            if other >= len {
                 other -= len;
             }
 
