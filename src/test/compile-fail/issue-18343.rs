@@ -15,5 +15,5 @@ struct Obj<F> where F: FnMut() -> u32 {
 fn main() {
     let o = Obj { closure: || 42 };
     o.closure(); //~ ERROR no method named `closure` found
-    //~^ NOTE use `(o.closure)(...)` if you meant to call the function stored in the `closure` field
+    //~^ HELP use `(o.closure)(...)` if you meant to call the function stored in the `closure` field
 }
