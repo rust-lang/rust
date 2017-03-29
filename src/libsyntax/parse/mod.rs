@@ -218,9 +218,7 @@ pub fn filemap_to_stream(sess: &ParseSess, filemap: Rc<FileMap>) -> TokenStream 
 
 /// Given stream and the ParseSess, produce a parser
 pub fn stream_to_parser<'a>(sess: &'a ParseSess, stream: TokenStream) -> Parser<'a> {
-    let mut p = Parser::new(sess, stream, None, false);
-    p.check_unknown_macro_variable();
-    p
+    Parser::new(sess, stream, None, false)
 }
 
 /// Parse a string representing a character literal into its final form.

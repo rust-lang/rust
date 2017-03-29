@@ -209,7 +209,26 @@ impl<F> TTMacroExpander for F
 {
     fn expand<'cx>(&self, ecx: &'cx mut ExtCtxt, span: Span, input: TokenStream)
                    -> Box<MacResult+'cx> {
-        (*self)(ecx, span, &input.trees().collect::<Vec<_>>())
+        struct AvoidInterpolatedIdents;
+
+        impl Folder for AvoidInterpolatedIdents {
+            fn fold_tt(&mut self, tt: tokenstream::TokenTree) -> tokenstream::TokenTree {
+                if let tokenstream::TokenTree::Token(_, token::Interpolated(ref nt)) = tt {
+                    if let token::NtIdent(ident) = **nt {
+                        return tokenstream::TokenTree::Token(ident.span, token::Ident(ident.node));
+                    }
+                }
+                fold::noop_fold_tt(tt, self)
+            }
+
+            fn fold_mac(&mut self, mac: ast::Mac) -> ast::Mac {
+                fold::noop_fold_mac(mac, self)
+            }
+        }
+
+        let input: Vec<_> =
+            input.trees().map(|tt| AvoidInterpolatedIdents.fold_tt(tt)).collect();
+        (*self)(ecx, span, &input)
     }
 }
 

@@ -492,7 +492,7 @@ fn parse_nt<'a>(p: &mut Parser<'a>, sp: Span, name: &str) -> Nonterminal {
         _ => {}
     }
     // check at the beginning and the parser checks after each bump
-    p.check_unknown_macro_variable();
+    p.process_potential_macro_variable();
     match name {
         "item" => match panictry!(p.parse_item()) {
             Some(i) => token::NtItem(i),

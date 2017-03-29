@@ -136,11 +136,14 @@ pub fn parse(input: tokenstream::TokenStream, expect_matchers: bool, sess: &Pars
             TokenTree::Token(start_sp, token::SubstNt(ident)) if expect_matchers => {
                 let span = match trees.next() {
                     Some(tokenstream::TokenTree::Token(span, token::Colon)) => match trees.next() {
-                        Some(tokenstream::TokenTree::Token(end_sp, token::Ident(kind))) => {
-                            let span = Span { lo: start_sp.lo, ..end_sp };
-                            result.push(TokenTree::MetaVarDecl(span, ident, kind));
-                            continue
-                        }
+                        Some(tokenstream::TokenTree::Token(end_sp, ref tok)) => match tok.ident() {
+                            Some(kind) => {
+                                let span = Span { lo: start_sp.lo, ..end_sp };
+                                result.push(TokenTree::MetaVarDecl(span, ident, kind));
+                                continue
+                            }
+                            _ => end_sp,
+                        },
                         tree @ _ => tree.as_ref().map(tokenstream::TokenTree::span).unwrap_or(span),
                     },
                     tree @ _ => tree.as_ref().map(tokenstream::TokenTree::span).unwrap_or(start_sp),
