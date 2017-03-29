@@ -1383,6 +1383,9 @@ pub struct FnDecl {
     pub inputs: HirVec<P<Ty>>,
     pub output: FunctionRetTy,
     pub variadic: bool,
+    /// True if this function has an `self`, `&self` or `&mut self` receiver
+    /// (but not a `self: Xxx` one).
+    pub has_implicit_self: bool,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]

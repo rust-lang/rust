@@ -907,6 +907,13 @@ impl<'a> LoweringContext<'a> {
                 FunctionRetTy::Default(span) => hir::DefaultReturn(span),
             },
             variadic: decl.variadic,
+            has_implicit_self: decl.inputs.get(0).map_or(false, |arg| {
+                match arg.ty.node {
+                    TyKind::ImplicitSelf => true,
+                    TyKind::Rptr(_, ref mt) => mt.ty.node == TyKind::ImplicitSelf,
+                    _ => false
+                }
+            })
         })
     }
 
