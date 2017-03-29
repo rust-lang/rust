@@ -322,6 +322,41 @@ impl Ordering {
     }
 }
 
+/// A helper struct for reverse ordering.
+///
+/// This struct is a helper to be used with functions like `Vec::sort_by_key` and
+/// can be used to reverse order a part of a key.
+///
+/// Example usage:
+///
+/// ```
+/// #![feature(reverse_cmp_key)]
+/// use std::cmp::Reverse;
+///
+/// let mut v = vec![1, 2, 3, 4, 5, 6];
+/// v.sort_by_key(|&num| (num > 3, Reverse(num)));
+/// assert_eq!(v, vec![3, 2, 1, 6, 5, 4]);
+/// ```
+#[derive(PartialEq, Eq, Debug)]
+#[unstable(feature = "reverse_cmp_key", issue = "40893")]
+pub struct Reverse<T>(pub T);
+
+#[unstable(feature = "reverse_cmp_key", issue = "40893")]
+impl<T: PartialOrd> PartialOrd for Reverse<T> {
+    #[inline]
+    fn partial_cmp(&self, other: &Reverse<T>) -> Option<Ordering> {
+        other.0.partial_cmp(&self.0)
+    }
+}
+
+#[unstable(feature = "reverse_cmp_key", issue = "40893")]
+impl<T: Ord> Ord for Reverse<T> {
+    #[inline]
+    fn cmp(&self, other: &Reverse<T>) -> Ordering {
+        other.0.cmp(&self.0)
+    }
+}
+
 /// Trait for types that form a [total order](https://en.wikipedia.org/wiki/Total_order).
 ///
 /// An order is a total order if it is (for all `a`, `b` and `c`):
