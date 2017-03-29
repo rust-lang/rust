@@ -555,6 +555,7 @@ impl<'a> LoweringContext<'a> {
     fn lower_ty(&mut self, t: &Ty) -> P<hir::Ty> {
         let kind = match t.node {
             TyKind::Infer => hir::TyInfer,
+            TyKind::Err => hir::TyErr,
             TyKind::Slice(ref ty) => hir::TySlice(self.lower_ty(ty)),
             TyKind::Ptr(ref mt) => hir::TyPtr(self.lower_mt(mt)),
             TyKind::Rptr(ref region, ref mt) => {

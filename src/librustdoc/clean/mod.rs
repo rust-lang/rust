@@ -1805,7 +1805,7 @@ impl Clean<Type> for hir::Ty {
             }
             TyBareFn(ref barefn) => BareFunction(box barefn.clean(cx)),
             TyImplTrait(ref bounds) => ImplTrait(bounds.clean(cx)),
-            TyInfer => Infer,
+            TyInfer | TyErr => Infer,
             TyTypeof(..) => panic!("Unimplemented type {:?}", self.node),
         }
     }

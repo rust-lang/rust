@@ -450,6 +450,9 @@ impl<'a> State<'a> {
             hir::TyInfer => {
                 word(&mut self.s, "_")?;
             }
+            hir::TyErr => {
+                word(&mut self.s, "?")?;
+            }
         }
         self.end()
     }
