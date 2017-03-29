@@ -57,6 +57,7 @@ exec docker \
   --env DEPLOY_ALT=$DEPLOY_ALT \
   --env LOCAL_USER_ID=`id -u` \
   --volume "$HOME/.cargo:/cargo" \
+  --volume "$HOME/rustsrc:$HOME/rustsrc" \
   --privileged \
   --rm \
   rust-ci \

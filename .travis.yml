@@ -133,13 +133,14 @@ before_script:
 script:
   - >
       if [ "$ALLOW_PR" = "" ] && [ "$TRAVIS_BRANCH" != "auto" ]; then
-          echo skipping, not a full build;
-      elif [ "$TRAVIS_OS_NAME" = "osx" ]; then
-          travis_retry stamp sh -c 'git submodule deinit -f . && git submodule update --init' &&
-          stamp src/ci/run.sh;
+          echo skipping, not a full build
       else
-          travis_retry stamp sh -c 'git submodule deinit -f . && git submodule update --init' &&
-          stamp src/ci/docker/run.sh $IMAGE;
+          stamp src/ci/init_repo.sh . "$HOME/rustsrc" &&
+          if [ "$TRAVIS_OS_NAME" = "osx" ]; then
+              stamp src/ci/run.sh;
+          else
+              stamp src/ci/docker/run.sh $IMAGE;
+          fi
       fi
 
 after_success:
@@ -169,13 +170,21 @@ after_failure:
   - dmesg | grep -i kill
 
 # Save tagged docker images we created and load them if they're available
+# Travis saves caches whether the build failed or not, nuke rustsrc if
+# the failure was while updating it (as it may be in an bad state)
+# https://github.com/travis-ci/travis-ci/issues/4472
 before_cache:
   - docker history -q rust-ci |
     grep -v missing |
     xargs docker save |
     gzip > $HOME/docker/rust-ci.tar.gz
+  - if [ ! -f $HOME/rustsrc/cache_valid1 ]; then
+        echo "WARNING rustsrc cache was invalid when saving";
+        rm -rf $HOME/rustsrc && mkdir $HOME/rustsrc;
+    fi
 before_install:
   - zcat $HOME/docker/rust-ci.tar.gz | docker load || true
+  - mkdir -p $HOME/rustsrc
 
 notifications:
   email: false
@@ -183,6 +192,7 @@ notifications:
 cache:
   directories:
     - $HOME/docker
+    - $HOME/rustsrc
 
 before_deploy:
   - mkdir -p deploy/$TRAVIS_COMMIT
