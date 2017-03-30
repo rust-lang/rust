@@ -23,6 +23,7 @@ impl<'tcx> Mirror<'tcx> for &'tcx hir::Block {
         // in order to get the lexical scoping correctly.
         let stmts = mirror_stmts(cx, self.id, &*self.stmts);
         Block {
+            targeted_by_break: self.targeted_by_break,
             extent: cx.tcx.region_maps.node_extent(self.id),
             span: self.span,
             stmts: stmts,

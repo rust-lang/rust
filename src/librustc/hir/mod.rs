@@ -549,9 +549,11 @@ pub struct Block {
     /// Distinguishes between `unsafe { ... }` and `{ ... }`
     pub rules: BlockCheckMode,
     pub span: Span,
-    /// The id of the expression that `break` breaks to if the block can be broken out of.
-    /// Currently only `Some(_)` for `catch {}` blocks
-    pub break_to_expr_id: Option<NodeId>,
+    /// If true, then there may exist `break 'a` values that aim to
+    /// break out of this block early. As of this writing, this is not
+    /// currently permitted in Rust itself, but it is generated as
+    /// part of `catch` statements.
+    pub targeted_by_break: bool,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash)]
@@ -993,8 +995,8 @@ pub enum Expr_ {
     ExprType(P<Expr>, P<Ty>),
     /// An `if` block, with an optional else block
     ///
-    /// `if expr { block } else { expr }`
-    ExprIf(P<Expr>, P<Block>, Option<P<Expr>>),
+    /// `if expr { expr } else { expr }`
+    ExprIf(P<Expr>, P<Expr>, Option<P<Expr>>),
     /// A while loop, with an optional label
     ///
     /// `'label: while expr { block }`

@@ -167,6 +167,7 @@ impl<'a, 'tcx> Lift<'tcx> for traits::ObligationCauseCode<'a> {
     type Lifted = traits::ObligationCauseCode<'tcx>;
     fn lift_to_tcx<'b, 'gcx>(&self, tcx: TyCtxt<'b, 'gcx, 'tcx>) -> Option<Self::Lifted> {
         match *self {
+            super::ReturnNoExpression => Some(super::ReturnNoExpression),
             super::MiscObligation => Some(super::MiscObligation),
             super::SliceOrArrayElem => Some(super::SliceOrArrayElem),
             super::TupleElem => Some(super::TupleElem),
@@ -489,6 +490,7 @@ impl<'tcx> TypeFoldable<'tcx> for traits::ObligationCauseCode<'tcx> {
             super::StructInitializerSized |
             super::VariableType(_) |
             super::ReturnType |
+            super::ReturnNoExpression |
             super::RepeatVec |
             super::FieldSized |
             super::ConstSized |
@@ -533,6 +535,7 @@ impl<'tcx> TypeFoldable<'tcx> for traits::ObligationCauseCode<'tcx> {
             super::StructInitializerSized |
             super::VariableType(_) |
             super::ReturnType |
+            super::ReturnNoExpression |
             super::RepeatVec |
             super::FieldSized |
             super::ConstSized |

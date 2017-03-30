@@ -173,6 +173,9 @@ pub enum ObligationCauseCode<'tcx> {
 
     // method receiver
     MethodReceiver,
+
+    // `return` with no expression
+    ReturnNoExpression,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

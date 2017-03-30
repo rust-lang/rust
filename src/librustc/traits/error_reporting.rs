@@ -904,6 +904,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             ObligationCauseCode::StartFunctionType |
             ObligationCauseCode::IntrinsicType |
             ObligationCauseCode::MethodReceiver |
+            ObligationCauseCode::ReturnNoExpression |
             ObligationCauseCode::MiscObligation => {
             }
             ObligationCauseCode::SliceOrArrayElem => {
