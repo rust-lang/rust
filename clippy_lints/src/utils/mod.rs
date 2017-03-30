@@ -680,7 +680,7 @@ fn parse_attrs<F: FnMut(u64)>(sess: &Session, attrs: &[ast::Attribute], name: &'
         }
         if let Some(ref value) = attr.value_str() {
             if attr.name().map_or(false, |n| n == name) {
-                if let Ok(value) = FromStr::from_str(&*value.as_str()) {
+                if let Ok(value) = FromStr::from_str(&value.as_str()) {
                     attr::mark_used(attr);
                     f(value)
                 } else {

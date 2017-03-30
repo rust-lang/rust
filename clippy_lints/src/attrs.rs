@@ -237,7 +237,7 @@ fn check_attrs(cx: &LateContext, span: Span, name: &Name, attrs: &[Attribute]) {
 
 fn check_semver(cx: &LateContext, span: Span, lit: &Lit) {
     if let LitKind::Str(ref is, _) = lit.node {
-        if Version::parse(&*is.as_str()).is_ok() {
+        if Version::parse(&is.as_str()).is_ok() {
             return;
         }
     }

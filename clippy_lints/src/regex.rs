@@ -203,7 +203,7 @@ fn check_regex(cx: &LateContext, expr: &Expr, utf8: bool) {
 
     if let ExprLit(ref lit) = expr.node {
         if let LitKind::Str(ref r, _) = lit.node {
-            let r = &*r.as_str();
+            let r = &r.as_str();
             match builder.parse(r) {
                 Ok(r) => {
                     if let Some(repl) = is_trivial_regex(&r) {

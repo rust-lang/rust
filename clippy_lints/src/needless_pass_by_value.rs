@@ -65,7 +65,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                     if_let_chain!{[
                         a.meta_item_list().is_some(),
                         let Some(name) = a.name(),
-                        name.as_str() == "proc_macro_derive",
+                        name == "proc_macro_derive",
                     ], {
                         return;
                     }}
@@ -141,7 +141,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
                         match_type(cx, ty, &paths::VEC),
                         let TyPath(QPath::Resolved(_, ref path)) = input.node,
                         let Some(elem_ty) = path.segments.iter()
-                            .find(|seg| seg.name.as_str() == "Vec")
+                            .find(|seg| seg.name == "Vec")
                             .map(|ps| ps.parameters.types()[0]),
                     ], {
                         let slice_ty = format!("&[{}]", snippet(cx, elem_ty.span, "_"));

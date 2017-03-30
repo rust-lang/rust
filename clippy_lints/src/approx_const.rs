@@ -77,10 +77,10 @@ fn check_lit(cx: &LateContext, lit: &Lit, e: &Expr) {
 }
 
 fn check_known_consts(cx: &LateContext, e: &Expr, s: &symbol::Symbol, module: &str) {
-    let s = &*s.as_str();
+    let s = s.as_str();
     if s.parse::<f64>().is_ok() {
         for &(constant, name, min_digits) in KNOWN_CONSTS {
-            if is_approx_const(constant, s, min_digits) {
+            if is_approx_const(constant, &s, min_digits) {
                 span_lint(cx,
                           APPROX_CONSTANT,
                           e.span,
