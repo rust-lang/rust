@@ -1149,8 +1149,8 @@ impl f64 {
     /// There is only one difference to a bare `transmute`:
     /// Due to the implications onto Rust's safety promises being
     /// uncertain, if the representation of a signaling NaN "sNaN" float
-    /// is passed to the function, a quiet NaN will be returned
-    /// instead.
+    /// is passed to the function, the implementation is allowed to
+    /// return a quiet NaN instead.
     ///
     /// Note that this function is distinct from casting.
     ///
