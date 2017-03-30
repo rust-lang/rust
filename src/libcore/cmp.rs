@@ -347,6 +347,15 @@ impl<T: PartialOrd> PartialOrd for Reverse<T> {
     fn partial_cmp(&self, other: &Reverse<T>) -> Option<Ordering> {
         other.0.partial_cmp(&self.0)
     }
+
+    #[inline]
+    fn lt(&self, other: &Self) -> bool { other.0 < self.0 }
+    #[inline]
+    fn le(&self, other: &Self) -> bool { other.0 <= self.0 }
+    #[inline]
+    fn ge(&self, other: &Self) -> bool { other.0 >= self.0 }
+    #[inline]
+    fn gt(&self, other: &Self) -> bool { other.0 > self.0 }
 }
 
 #[unstable(feature = "reverse_cmp_key", issue = "40893")]
