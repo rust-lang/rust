@@ -289,7 +289,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
 
     pub fn consume_body(&mut self, body: &hir::Body) {
         debug!("consume_body(body={:?})", body);
-        
+
         for arg in &body.arguments {
             let arg_ty = return_if_err!(self.mc.infcx.node_ty(arg.pat.id));
 
