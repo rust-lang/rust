@@ -369,11 +369,15 @@ impl fmt::Display for Utf8Error {
 Section: Iterators
 */
 
-/// Iterator for the char (representing *Unicode Scalar Values*) of a string.
+/// An iterator over the [`char`]s of a string slice.
 ///
-/// Created with the method [`chars`].
+/// [`char`]: ../../std/primitive.char.html
 ///
-/// [`chars`]: ../../std/primitive.str.html#method.chars
+/// This struct is created by the [`chars()`] method on [`str`].
+/// See its documentation for more.
+///
+/// [`chars()`]: ../../std/primitive.str.html#method.chars
+/// [`str`]: ../../std/primitive.str.html
 #[derive(Clone, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Chars<'a> {
