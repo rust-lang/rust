@@ -8,29 +8,34 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Tests for RFC 1268: we allow overlapping impls of marker traits,
+// Test for RFC 1268: we allow overlapping impls of marker traits,
 // that is, traits without items. In this case, a type `T` is
-// `MyMarker` if it is either `Debug` or `Display`.
+// `MyMarker` if it is either `Debug` or `Display`. This test just
+// checks that we don't consider **all** types to be `MyMarker`.  See
+// also the companion test in
+// `run-pass/overlap-permitted-for-marker-traits.rs`.
 
 #![feature(overlapping_marker_traits)]
 #![feature(optin_builtin_traits)]
 
 use std::fmt::{Debug, Display};
 
-trait MyMarker {}
+trait Marker {}
 
-impl<T: Debug> MyMarker for T {}
-impl<T: Display> MyMarker for T {}
+impl<T: Debug> Marker for T {}
+impl<T: Display> Marker for T {}
 
-fn foo<T: MyMarker>(t: T) -> T {
-    t
-}
+fn is_marker<T: Marker>() { }
+
+struct NotDebugOrDisplay;
 
 fn main() {
     // Debug && Display:
-    assert_eq!(1, foo(1));
-    assert_eq!(2.0, foo(2.0));
+    is_marker::<i32>();
 
     // Debug && !Display:
-    assert_eq!(vec![1], foo(vec![1]));
+    is_marker::<Vec<i32>>();
+
+    // !Debug && !Display
+    is_marker::<NotDebugOrDisplay>(); //~ ERROR
 }

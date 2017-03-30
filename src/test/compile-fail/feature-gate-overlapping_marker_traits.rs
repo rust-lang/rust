@@ -8,10 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::fmt::{Debug, Display};
+
 trait MyMarker {}
 
-impl<T> MyMarker for T {}
-impl<T> MyMarker for Vec<T> {}
+impl<T: Display> MyMarker for T {}
+impl<T: Debug> MyMarker for T {}
 //~^ ERROR E0119
 
 fn main() {}
