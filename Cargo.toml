@@ -11,6 +11,9 @@ include = ["src/*.rs", "Cargo.toml", "build.rs", "LICENSE-*"]
 build = "build.rs"
 categories = ["development-tools"]
 
+[lib]
+doctest = false
+
 [features]
 default = ["cargo-fmt"]
 cargo-fmt = []
