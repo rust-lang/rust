@@ -625,12 +625,13 @@ impl<'a> CharIndices<'a> {
     }
 }
 
-/// External iterator for a string's bytes.
-/// Use with the `std::iter` module.
+/// An iterator over the bytes of a string slice.
 ///
-/// Created with the method [`bytes`].
+/// This struct is created by the [`bytes()`] method on [`str`].
+/// See its documentation for more.
 ///
-/// [`bytes`]: ../../std/primitive.str.html#method.bytes
+/// [`bytes()`]: ../../std/primitive.str.html#method.bytes
+/// [`str`]: ../../std/primitive.str.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone, Debug)]
 pub struct Bytes<'a>(Cloned<slice::Iter<'a, u8>>);
