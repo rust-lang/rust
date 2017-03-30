@@ -4163,12 +4163,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     }
                 }
                 if let Some(last_stmt) = extra_semi {
-                    let original_span = original_sp(self.tcx.sess.codemap(),
-                                                    last_stmt.span, blk.span);
+                    let original_span = original_sp(last_stmt.span, blk.span);
                     let span_semi = Span {
                         lo: original_span.hi - BytePos(1),
                         hi: original_span.hi,
-                        expn_id: original_span.expn_id
+                        ctxt: original_span.ctxt,
                     };
                     err.span_help(span_semi, "consider removing this semicolon:");
                 }

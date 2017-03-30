@@ -31,7 +31,6 @@ mod m2 {
 
 mod m3 {
     ::two_macros::m!(use foo::panic;); //~ NOTE `panic` could refer to the name imported here
-    //~| NOTE in this expansion
     fn f() { panic!(); } //~ ERROR ambiguous
     //~| NOTE `panic` is also a builtin macro
     //~| NOTE macro-expanded macro imports do not shadow

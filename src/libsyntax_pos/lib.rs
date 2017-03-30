@@ -23,7 +23,9 @@
       html_root_url = "https://doc.rust-lang.org/nightly/")]
 #![deny(warnings)]
 
+#![feature(const_fn)]
 #![feature(custom_attribute)]
+#![feature(optin_builtin_traits)]
 #![allow(unused_attributes)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
@@ -41,6 +43,11 @@ use serialize::{Encodable, Decodable, Encoder, Decoder};
 extern crate serialize;
 extern crate serialize as rustc_serialize; // used by deriving
 
+pub mod hygiene;
+pub use hygiene::{SyntaxContext, ExpnInfo, ExpnFormat, NameAndSpan};
+
+pub mod symbol;
+
 pub type FileName = String;
 
 /// Spans represent a region of code, used for error reporting. Positions in spans
@@ -57,7 +64,7 @@ pub struct Span {
     pub hi: BytePos,
     /// Information about where the macro came from, if this piece of
     /// code was created by a macro expansion.
-    pub expn_id: ExpnId
+    pub ctxt: SyntaxContext,
 }
 
 /// A collection of spans. Spans have two orthogonal attributes:
@@ -76,7 +83,7 @@ impl Span {
     /// Returns a new span representing just the end-point of this span
     pub fn end_point(self) -> Span {
         let lo = cmp::max(self.hi.0 - 1, self.lo.0);
-        Span { lo: BytePos(lo), hi: self.hi, expn_id: self.expn_id}
+        Span { lo: BytePos(lo), hi: self.hi, ctxt: self.ctxt }
     }
 
     /// Returns `self` if `self` is not the dummy span, and `other` otherwise.
@@ -102,6 +109,78 @@ impl Span {
             Some(Span { lo: cmp::max(self.lo, other.hi), .. self })
         } else {
             None
+        }
+    }
+
+    /// Return the source span - this is either the supplied span, or the span for
+    /// the macro callsite that expanded to it.
+    pub fn source_callsite(self) -> Span {
+        self.ctxt.outer().expn_info().map(|info| info.call_site.source_callsite()).unwrap_or(self)
+    }
+
+    /// Return the source callee.
+    ///
+    /// Returns None if the supplied span has no expansion trace,
+    /// else returns the NameAndSpan for the macro definition
+    /// corresponding to the source callsite.
+    pub fn source_callee(self) -> Option<NameAndSpan> {
+        fn source_callee(info: ExpnInfo) -> NameAndSpan {
+            match info.call_site.ctxt.outer().expn_info() {
+                Some(info) => source_callee(info),
+                None => info.callee,
+            }
+        }
+        self.ctxt.outer().expn_info().map(source_callee)
+    }
+
+    /// Check if a span is "internal" to a macro in which #[unstable]
+    /// items can be used (that is, a macro marked with
+    /// `#[allow_internal_unstable]`).
+    pub fn allows_unstable(&self) -> bool {
+        match self.ctxt.outer().expn_info() {
+            Some(info) => info.callee.allow_internal_unstable,
+            None => false,
+        }
+    }
+
+    pub fn macro_backtrace(mut self) -> Vec<MacroBacktrace> {
+        let mut prev_span = DUMMY_SP;
+        let mut result = vec![];
+        loop {
+            let info = match self.ctxt.outer().expn_info() {
+                Some(info) => info,
+                None => break,
+            };
+
+            let (pre, post) = match info.callee.format {
+                ExpnFormat::MacroAttribute(..) => ("#[", "]"),
+                ExpnFormat::MacroBang(..) => ("", "!"),
+                ExpnFormat::CompilerDesugaring(..) => ("desugaring of `", "`"),
+            };
+            let macro_decl_name = format!("{}{}{}", pre, info.callee.name(), post);
+            let def_site_span = info.callee.span;
+
+            // Don't print recursive invocations
+            if !info.call_site.source_equal(&prev_span) {
+                result.push(MacroBacktrace {
+                    call_site: info.call_site,
+                    macro_decl_name: macro_decl_name,
+                    def_site_span: def_site_span,
+                });
+            }
+
+            prev_span = self;
+            self = info.call_site;
+        }
+        result
+    }
+
+    pub fn to(self, end: Span) -> Span {
+        // FIXME(jseyfried): self.ctxt should always equal end.ctxt here (c.f. issue #23480)
+        if end.ctxt == SyntaxContext::empty() {
+            Span { lo: self.lo, ..end }
+        } else {
+            Span { hi: end.hi, ..self }
         }
     }
 }
@@ -138,14 +217,14 @@ impl serialize::UseSpecializedDecodable for Span {
         d.read_struct("Span", 2, |d| {
             let lo = d.read_struct_field("lo", 0, Decodable::decode)?;
             let hi = d.read_struct_field("hi", 1, Decodable::decode)?;
-            Ok(mk_sp(lo, hi))
+            Ok(Span { lo: lo, hi: hi, ctxt: NO_EXPANSION })
         })
     }
 }
 
 fn default_span_debug(span: Span, f: &mut fmt::Formatter) -> fmt::Result {
-    write!(f, "Span {{ lo: {:?}, hi: {:?}, expn_id: {:?} }}",
-           span.lo, span.hi, span.expn_id)
+    write!(f, "Span {{ lo: {:?}, hi: {:?}, ctxt: {:?} }}",
+           span.lo, span.hi, span.ctxt)
 }
 
 impl fmt::Debug for Span {
@@ -154,12 +233,7 @@ impl fmt::Debug for Span {
     }
 }
 
-pub const DUMMY_SP: Span = Span { lo: BytePos(0), hi: BytePos(0), expn_id: NO_EXPANSION };
-
-// Generic span to be used for code originating from the command line
-pub const COMMAND_LINE_SP: Span = Span { lo: BytePos(0),
-                                         hi: BytePos(0),
-                                         expn_id: COMMAND_LINE_EXPN };
+pub const DUMMY_SP: Span = Span { lo: BytePos(0), hi: BytePos(0), ctxt: NO_EXPANSION };
 
 impl MultiSpan {
     pub fn new() -> MultiSpan {
@@ -253,26 +327,7 @@ impl From<Span> for MultiSpan {
     }
 }
 
-#[derive(PartialEq, Eq, Clone, Debug, Hash, RustcEncodable, RustcDecodable, Copy, Ord, PartialOrd)]
-pub struct ExpnId(pub u32);
-
-pub const NO_EXPANSION: ExpnId = ExpnId(!0);
-// For code appearing from the command line
-pub const COMMAND_LINE_EXPN: ExpnId = ExpnId(!1);
-
-// For code generated by a procedural macro, without knowing which
-// Used in `qquote!`
-pub const PROC_EXPN: ExpnId = ExpnId(!2);
-
-impl ExpnId {
-    pub fn from_u32(id: u32) -> ExpnId {
-        ExpnId(id)
-    }
-
-    pub fn into_u32(self) -> u32 {
-        self.0
-    }
-}
+pub const NO_EXPANSION: SyntaxContext = SyntaxContext::empty();
 
 /// Identifies an offset of a multi-byte character in a FileMap
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable, Eq, PartialEq)]
@@ -649,11 +704,6 @@ pub struct FileLines {
 
 thread_local!(pub static SPAN_DEBUG: Cell<fn(Span, &mut fmt::Formatter) -> fmt::Result> =
                 Cell::new(default_span_debug));
-
-/* assuming that we're not in macro expansion */
-pub fn mk_sp(lo: BytePos, hi: BytePos) -> Span {
-    Span {lo: lo, hi: hi, expn_id: NO_EXPANSION}
-}
 
 pub struct MacroBacktrace {
     /// span where macro was applied to generate this code
