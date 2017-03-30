@@ -136,8 +136,8 @@ pub struct Scope<'tcx> {
     /// stage.
     free: Option<FreeData<'tcx>>,
 
-    /// The cache for drop chain on “normal” exit into a particular BasicBlock.
-    cached_exits: FxHashMap<(BasicBlock, CodeExtent), BasicBlock>,
+    /// The cache for drop chain on “normal” exit into a particular Block.
+    cached_exits: FxHashMap<(Block, CodeExtent), Block>,
 }
 
 struct DropData<'tcx> {
@@ -157,7 +157,7 @@ enum DropKind {
         /// contains code to run the current drop and all the preceding
         /// drops (i.e. those having lower index in Drop’s Scope drop
         /// array)
-        cached_block: Option<BasicBlock>
+        cached_block: Option<Block>
     },
     Storage
 }
@@ -174,7 +174,7 @@ struct FreeData<'tcx> {
 
     /// The cached block containing code to run the free. The block will also execute all the drops
     /// in the scope.
-    cached_block: Option<BasicBlock>
+    cached_block: Option<Block>
 }
 
 #[derive(Clone, Debug)]
@@ -182,10 +182,10 @@ pub struct BreakableScope<'tcx> {
     /// Extent of the loop
     pub extent: CodeExtent,
     /// Where the body of the loop begins. `None` if block
-    pub continue_block: Option<BasicBlock>,
+    pub continue_block: Option<Block>,
     /// Block to branch into when the loop or block terminates (either by being `break`-en out
     /// from, or by having its condition to become false)
-    pub break_block: BasicBlock,
+    pub break_block: Block,
     /// The destination of the loop/block expression itself (i.e. where to put the result of a
     /// `break` expression)
     pub break_destination: Lvalue<'tcx>,
@@ -215,7 +215,7 @@ impl<'tcx> Scope<'tcx> {
     ///
     /// Precondition: the caches must be fully filled (i.e. diverge_cleanup is called) in order for
     /// this method to work correctly.
-    fn cached_block(&self) -> Option<BasicBlock> {
+    fn cached_block(&self) -> Option<Block> {
         let mut drops = self.drops.iter().rev().filter_map(|data| {
             match data.kind {
                 DropKind::Value { cached_block } => Some(cached_block),
@@ -248,10 +248,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     ///
     /// Returns the might_break attribute of the BreakableScope used.
     pub fn in_breakable_scope<F, R>(&mut self,
-                            loop_block: Option<BasicBlock>,
-                            break_block: BasicBlock,
-                            break_destination: Lvalue<'tcx>,
-                            f: F) -> R
+                                    loop_block: Option<Block>,
+                                    break_block: Block,
+                                    break_destination: Lvalue<'tcx>,
+                                    f: F) -> R
         where F: FnOnce(&mut Builder<'a, 'gcx, 'tcx>) -> R
     {
         let extent = self.topmost_scope();
@@ -270,7 +270,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     /// Convenience wrapper that pushes a scope and then executes `f`
     /// to build its contents, popping the scope afterwards.
-    pub fn in_scope<F, R>(&mut self, extent: CodeExtent, mut block: BasicBlock, f: F) -> BlockAnd<R>
+    pub fn in_scope<F, R>(&mut self, extent: CodeExtent, mut block: Block, f: F) -> BlockAnd<R>
         where F: FnOnce(&mut Builder<'a, 'gcx, 'tcx>) -> BlockAnd<R>
     {
         debug!("in_scope(extent={:?}, block={:?})", extent, block);
@@ -303,7 +303,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// match 1-to-1 with `push_scope`.
     pub fn pop_scope(&mut self,
                      extent: CodeExtent,
-                     mut block: BasicBlock)
+                     mut block: Block)
                      -> BlockAnd<()> {
         debug!("pop_scope({:?}, {:?})", extent, block);
         // We need to have `cached_block`s available for all the drops, so we call diverge_cleanup
@@ -327,8 +327,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     pub fn exit_scope(&mut self,
                       span: Span,
                       extent: CodeExtent,
-                      mut block: BasicBlock,
-                      target: BasicBlock) {
+                      mut block: Block,
+                      target: Block) {
         debug!("exit_scope(extent={:?}, block={:?}, target={:?})", extent, block, target);
         let scope_count = 1 + self.scopes.iter().rev().position(|scope| scope.extent == extent)
                                                       .unwrap_or_else(||{
@@ -358,10 +358,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                                               block,
                                               self.arg_count));
             if let Some(ref free_data) = scope.free {
-                let next = self.cfg.start_new_block();
-                let free = build_free(self.hir.tcx(), &tmp, free_data, next);
-                self.cfg.terminate(block, scope.source_info(span), free);
-                block = next;
+                self.cfg.push(block, Statement {
+                    source_info: scope.source_info(span),
+                    kind: build_free(self.hir.tcx(), &tmp, free_data)
+                });
             }
         }
         }
@@ -550,7 +550,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// This path terminates in Resume. Returns the start of the path.
     /// See module comment for more details. None indicates there’s no
     /// cleanup to do at this point.
-    pub fn diverge_cleanup(&mut self) -> Option<BasicBlock> {
+    pub fn diverge_cleanup(&mut self) -> Option<Block> {
         if !self.scopes.iter().any(|scope| scope.needs_cleanup) {
             return None;
         }
@@ -591,7 +591,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     /// Utility function for *non*-scope code to build their own drops
     pub fn build_drop(&mut self,
-                      block: BasicBlock,
+                      block: Block,
                       span: Span,
                       location: Lvalue<'tcx>,
                       ty: Ty<'tcx>) -> BlockAnd<()> {
@@ -612,7 +612,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     /// Utility function for *non*-scope code to build their own drops
     pub fn build_drop_and_replace(&mut self,
-                                  block: BasicBlock,
+                                  block: Block,
                                   span: Span,
                                   location: Lvalue<'tcx>,
                                   value: Operand<'tcx>) -> BlockAnd<()> {
@@ -628,39 +628,13 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                            });
         next_target.unit()
     }
-
-    /// Create an Assert terminator and return the success block.
-    /// If the boolean condition operand is not the expected value,
-    /// a runtime panic will be caused with the given message.
-    pub fn assert(&mut self, block: BasicBlock,
-                  cond: Operand<'tcx>,
-                  expected: bool,
-                  msg: AssertMessage<'tcx>,
-                  span: Span)
-                  -> BasicBlock {
-        let source_info = self.source_info(span);
-
-        let success_block = self.cfg.start_new_block();
-        let cleanup = self.diverge_cleanup();
-
-        self.cfg.terminate(block, source_info,
-                           TerminatorKind::Assert {
-                               cond: cond,
-                               expected: expected,
-                               msg: msg,
-                               target: success_block,
-                               cleanup: cleanup
-                           });
-
-        success_block
-    }
 }
 
 /// Builds drops for pop_scope and exit_scope.
 fn build_scope_drops<'tcx>(cfg: &mut CFG<'tcx>,
                            scope: &Scope<'tcx>,
                            earlier_scopes: &[Scope<'tcx>],
-                           mut block: BasicBlock,
+                           mut block: Block,
                            arg_count: usize)
                            -> BlockAnd<()> {
     let mut iter = scope.drops.iter().rev().peekable();
@@ -711,8 +685,8 @@ fn build_diverge_scope<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                                        cfg: &mut CFG<'tcx>,
                                        unit_temp: &Lvalue<'tcx>,
                                        scope: &mut Scope<'tcx>,
-                                       mut target: BasicBlock)
-                                       -> BasicBlock
+                                       mut target: Block)
+                                       -> Block
 {
     // Build up the drops in **reverse** order. The end result will
     // look like:
@@ -739,8 +713,12 @@ fn build_diverge_scope<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
             cached_block
         } else {
             let into = cfg.start_new_cleanup_block();
+            cfg.push(into, Statement {
+                source_info: source_info(free_data.span),
+                kind: build_free(tcx, unit_temp, free_data)
+            });
             cfg.terminate(into, source_info(free_data.span),
-                          build_free(tcx, unit_temp, free_data, target));
+                TerminatorKind::Goto { target: target });
             free_data.cached_block = Some(into);
             into
         };
@@ -776,12 +754,11 @@ fn build_diverge_scope<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
 
 fn build_free<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                               unit_temp: &Lvalue<'tcx>,
-                              data: &FreeData<'tcx>,
-                              target: BasicBlock)
-                              -> TerminatorKind<'tcx> {
+                              data: &FreeData<'tcx>)
+                              -> StatementKind<'tcx> {
     let free_func = tcx.require_lang_item(lang_items::BoxFreeFnLangItem);
     let substs = tcx.intern_substs(&[Kind::from(data.item_ty)]);
-    TerminatorKind::Call {
+    StatementKind::Call {
         func: Operand::Constant(Constant {
             span: data.span,
             ty: tcx.item_type(free_func).subst(tcx, substs),
@@ -790,7 +767,7 @@ fn build_free<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
             }
         }),
         args: vec![Operand::Consume(data.value.clone())],
-        destination: Some((unit_temp.clone(), target)),
+        destination: unit_temp.clone(),
         cleanup: None
     }
 }

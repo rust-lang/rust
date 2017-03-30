@@ -14,13 +14,14 @@ use build::{BlockAnd, BlockAndExtension, Builder};
 use build::expr::category::Category;
 use hair::*;
 use rustc::mir::*;
+use rustc::mir::Block;
 
 use rustc_data_structures::indexed_vec::Idx;
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// Compile `expr`, yielding an lvalue that we can move from etc.
     pub fn as_lvalue<M>(&mut self,
-                        block: BasicBlock,
+                        block: Block,
                         expr: M)
                         -> BlockAnd<Lvalue<'tcx>>
         where M: Mirror<'tcx, Output=Expr<'tcx>>
@@ -30,7 +31,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     }
 
     fn expr_as_lvalue(&mut self,
-                      mut block: BasicBlock,
+                      mut block: Block,
                       expr: Expr<'tcx>)
                       -> BlockAnd<Lvalue<'tcx>> {
         debug!("expr_as_lvalue(block={:?}, expr={:?})", block, expr);
@@ -74,9 +75,17 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     len: Operand::Consume(len),
                     index: idx.clone()
                 };
-                let success = this.assert(block, Operand::Consume(lt), true,
-                                          msg, expr_span);
-                success.and(slice.index(idx))
+                let stmt = Statement {
+                    source_info: source_info,
+                    kind: StatementKind::Assert {
+                        cond: Operand::Consume(lt),
+                        expected: true,
+                        msg: msg,
+                        cleanup: this.diverge_cleanup(),
+                    }
+                };
+                this.cfg.push(block, stmt);
+                block.and(slice.index(idx))
             }
             ExprKind::SelfRef => {
                 block.and(Lvalue::Local(Local::new(1)))

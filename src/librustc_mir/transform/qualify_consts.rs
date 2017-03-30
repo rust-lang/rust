@@ -376,15 +376,8 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
             let target = match mir[bb].terminator().kind {
                 TerminatorKind::Goto { target } |
                 // Drops are considered noops.
-                TerminatorKind::Drop { target, .. } |
-                TerminatorKind::Assert { target, .. } |
-                TerminatorKind::Call { destination: Some((_, target)), .. } => {
+                TerminatorKind::Drop { target, .. } => {
                     Some(target)
-                }
-
-                // Non-terminating calls cannot produce any value.
-                TerminatorKind::Call { destination: None, .. } => {
-                    return Qualif::empty();
                 }
 
                 TerminatorKind::SwitchInt {..} |
@@ -761,113 +754,8 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
         }
     }
 
-    fn visit_terminator_kind(&mut self,
-                             bb: BasicBlock,
-                             kind: &TerminatorKind<'tcx>,
-                             location: Location) {
-        if let TerminatorKind::Call { ref func, ref args, ref destination, .. } = *kind {
-            self.visit_operand(func, location);
-
-            let fn_ty = func.ty(self.mir, self.tcx);
-            let (is_shuffle, is_const_fn) = match fn_ty.sty {
-                ty::TyFnDef(def_id, _, f) => {
-                    (f.abi() == Abi::PlatformIntrinsic &&
-                     self.tcx.item_name(def_id).as_str().starts_with("simd_shuffle"),
-                     is_const_fn(self.tcx, def_id))
-                }
-                _ => (false, false)
-            };
-
-            for (i, arg) in args.iter().enumerate() {
-                self.nest(|this| {
-                    this.visit_operand(arg, location);
-                    if is_shuffle && i == 2 && this.mode == Mode::Fn {
-                        let candidate = Candidate::ShuffleIndices(bb);
-                        if !this.qualif.intersects(Qualif::NEVER_PROMOTE) {
-                            this.promotion_candidates.push(candidate);
-                        } else {
-                            span_err!(this.tcx.sess, this.span, E0526,
-                                      "shuffle indices are not constant");
-                        }
-                    }
-                });
-            }
-
-            // Const fn calls.
-            if is_const_fn {
-                // We are in a const or static initializer,
-                if self.mode != Mode::Fn &&
-
-                    // feature-gate is not enabled,
-                    !self.tcx.sess.features.borrow().const_fn &&
-
-                    // this doesn't come from a crate with the feature-gate enabled,
-                    self.def_id.is_local() &&
-
-                    // this doesn't come from a macro that has #[allow_internal_unstable]
-                    !self.tcx.sess.codemap().span_allows_unstable(self.span)
-                {
-                    let mut err = self.tcx.sess.struct_span_err(self.span,
-                        "const fns are an unstable feature");
-                    help!(&mut err,
-                          "in Nightly builds, add `#![feature(const_fn)]` \
-                           to the crate attributes to enable");
-                    err.emit();
-                }
-            } else {
-                self.qualif = Qualif::NOT_CONST;
-                if self.mode != Mode::Fn {
-                    // FIXME(#24111) Remove this check when const fn stabilizes
-                    let (msg, note) = if let UnstableFeatures::Disallow =
-                            self.tcx.sess.opts.unstable_features {
-                        (format!("calls in {}s are limited to \
-                                  struct and enum constructors",
-                                 self.mode),
-                         Some("a limited form of compile-time function \
-                               evaluation is available on a nightly \
-                               compiler via `const fn`"))
-                    } else {
-                        (format!("calls in {}s are limited \
-                                  to constant functions, \
-                                  struct and enum constructors",
-                                 self.mode),
-                         None)
-                    };
-                    let mut err = struct_span_err!(self.tcx.sess, self.span, E0015, "{}", msg);
-                    if let Some(note) = note {
-                        err.span_note(self.span, note);
-                    }
-                    err.emit();
-                }
-            }
-
-            if let Some((ref dest, _)) = *destination {
-                // Avoid propagating irrelevant callee/argument qualifications.
-                if self.qualif.intersects(Qualif::CONST_ERROR) {
-                    self.qualif = Qualif::NOT_CONST;
-                } else {
-                    // Be conservative about the returned value of a const fn.
-                    let tcx = self.tcx;
-                    let ty = dest.ty(self.mir, tcx).to_ty(tcx);
-                    self.qualif = Qualif::empty();
-                    self.add_type(ty);
-
-                    // Let `const fn` transitively have destructors,
-                    // but they do get stopped in `const` or `static`.
-                    if self.mode != Mode::ConstFn {
-                        self.deny_drop();
-                    }
-                }
-                self.assign(dest, location);
-            }
-        } else {
-            // Qualify any operands inside other terminators.
-            self.super_terminator_kind(bb, kind, location);
-        }
-    }
-
     fn visit_assign(&mut self,
-                    _: BasicBlock,
+                    _: Block,
                     dest: &Lvalue<'tcx>,
                     rvalue: &Rvalue<'tcx>,
                     location: Location) {
@@ -903,24 +791,120 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
         self.span = source_info.span;
     }
 
-    fn visit_statement(&mut self, bb: BasicBlock, statement: &Statement<'tcx>, location: Location) {
+    fn visit_statement(&mut self, bb: Block, statement: &Statement<'tcx>, location: Location) {
         self.nest(|this| {
             this.visit_source_info(&statement.source_info);
             match statement.kind {
                 StatementKind::Assign(ref lvalue, ref rvalue) => {
                     this.visit_assign(bb, lvalue, rvalue, location);
                 }
+                StatementKind::Call { ref func, ref args, ref destination, .. } => {
+                    this.visit_operand(func, location);
+
+                    let fn_ty = func.ty(this.mir, this.tcx);
+                    let (is_shuffle, is_const_fn) = match fn_ty.sty {
+                        ty::TyFnDef(def_id, _, f) => {
+                            (f.abi() == Abi::PlatformIntrinsic &&
+                            this.tcx.item_name(def_id).as_str().starts_with("simd_shuffle"),
+                            is_const_fn(this.tcx, def_id))
+                        }
+                        _ => (false, false)
+                    };
+
+                    for (i, arg) in args.iter().enumerate() {
+                        this.nest(|this| {
+                            this.visit_operand(arg, location);
+                            if is_shuffle && i == 2 && this.mode == Mode::Fn {
+                                let candidate = Candidate::ShuffleIndices(location);
+                                if !this.qualif.intersects(Qualif::NEVER_PROMOTE) {
+                                    this.promotion_candidates.push(candidate);
+                                } else {
+                                    span_err!(this.tcx.sess, this.span, E0526,
+                                            "shuffle indices are not constant");
+                                }
+                            }
+                        });
+                    }
+
+                    // Const fn calls.
+                    if is_const_fn {
+                        // We are in a const or static initializer,
+                        if this.mode != Mode::Fn &&
+
+                            // feature-gate is not enabled,
+                            !this.tcx.sess.features.borrow().const_fn &&
+
+                            // this doesn't come from a crate with the feature-gate enabled,
+                            this.def_id.is_local() &&
+
+                            // this doesn't come from a macro that has #[allow_internal_unstable]
+                            !this.tcx.sess.codemap().span_allows_unstable(this.span)
+                        {
+                            let mut err = this.tcx.sess.struct_span_err(this.span,
+                                "const fns are an unstable feature");
+                            help!(&mut err,
+                                "in Nightly builds, add `#![feature(const_fn)]` \
+                                to the crate attributes to enable");
+                            err.emit();
+                        }
+                    } else {
+                        this.qualif = Qualif::NOT_CONST;
+                        if this.mode != Mode::Fn {
+                            // FIXME(#24111) Remove this check when const fn stabilizes
+                            let (msg, note) = if let UnstableFeatures::Disallow =
+                                    this.tcx.sess.opts.unstable_features {
+                                (format!("calls in {}s are limited to \
+                                        struct and enum constructors",
+                                        this.mode),
+                                Some("a limited form of compile-time function \
+                                    evaluation is available on a nightly \
+                                    compiler via `const fn`"))
+                            } else {
+                                (format!("calls in {}s are limited \
+                                        to constant functions, \
+                                        struct and enum constructors",
+                                        this.mode),
+                                None)
+                            };
+                            let mut err = struct_span_err!(this.tcx.sess, this.span, E0015, "{}",
+                                msg);
+                            if let Some(note) = note {
+                                err.span_note(this.span, note);
+                            }
+                            err.emit();
+                        }
+                    }
+
+                    // Avoid propagating irrelevant callee/argument qualifications.
+                    if this.qualif.intersects(Qualif::CONST_ERROR) {
+                        this.qualif = Qualif::NOT_CONST;
+                    } else {
+                        // Be conservative about the returned value of a const fn.
+                        let tcx = this.tcx;
+                        let ty = destination.ty(this.mir, tcx).to_ty(tcx);
+                        this.qualif = Qualif::empty();
+                        this.add_type(ty);
+
+                        // Let `const fn` transitively have destructors,
+                        // but they do get stopped in `const` or `static`.
+                        if this.mode != Mode::ConstFn {
+                            this.deny_drop();
+                        }
+                    }
+                    this.assign(destination, location);
+                }
                 StatementKind::SetDiscriminant { .. } |
                 StatementKind::StorageLive(_) |
                 StatementKind::StorageDead(_) |
                 StatementKind::InlineAsm {..} |
+                StatementKind::Assert { .. } |
                 StatementKind::Nop => {}
             }
         });
     }
 
     fn visit_terminator(&mut self,
-                        bb: BasicBlock,
+                        bb: Block,
                         terminator: &Terminator<'tcx>,
                         location: Location) {
         self.nest(|this| this.super_terminator(bb, terminator, location));

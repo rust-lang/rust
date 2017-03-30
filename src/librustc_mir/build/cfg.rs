@@ -17,31 +17,31 @@ use build::CFG;
 use rustc::mir::*;
 
 impl<'tcx> CFG<'tcx> {
-    pub fn block_data(&self, blk: BasicBlock) -> &BasicBlockData<'tcx> {
+    pub fn block_data(&self, blk: Block) -> &BlockData<'tcx> {
         &self.basic_blocks[blk]
     }
 
-    pub fn block_data_mut(&mut self, blk: BasicBlock) -> &mut BasicBlockData<'tcx> {
+    pub fn block_data_mut(&mut self, blk: Block) -> &mut BlockData<'tcx> {
         &mut self.basic_blocks[blk]
     }
 
-    pub fn start_new_block(&mut self) -> BasicBlock {
-        self.basic_blocks.push(BasicBlockData::new(None))
+    pub fn start_new_block(&mut self) -> Block {
+        self.basic_blocks.push(BlockData::new(None))
     }
 
-    pub fn start_new_cleanup_block(&mut self) -> BasicBlock {
+    pub fn start_new_cleanup_block(&mut self) -> Block {
         let bb = self.start_new_block();
         self.block_data_mut(bb).is_cleanup = true;
         bb
     }
 
-    pub fn push(&mut self, block: BasicBlock, statement: Statement<'tcx>) {
+    pub fn push(&mut self, block: Block, statement: Statement<'tcx>) {
         debug!("push({:?}, {:?})", block, statement);
         self.block_data_mut(block).statements.push(statement);
     }
 
     pub fn push_assign(&mut self,
-                       block: BasicBlock,
+                       block: Block,
                        source_info: SourceInfo,
                        lvalue: &Lvalue<'tcx>,
                        rvalue: Rvalue<'tcx>) {
@@ -52,7 +52,7 @@ impl<'tcx> CFG<'tcx> {
     }
 
     pub fn push_assign_constant(&mut self,
-                                block: BasicBlock,
+                                block: Block,
                                 source_info: SourceInfo,
                                 temp: &Lvalue<'tcx>,
                                 constant: Constant<'tcx>) {
@@ -61,7 +61,7 @@ impl<'tcx> CFG<'tcx> {
     }
 
     pub fn push_assign_unit(&mut self,
-                            block: BasicBlock,
+                            block: Block,
                             source_info: SourceInfo,
                             lvalue: &Lvalue<'tcx>) {
         self.push_assign(block, source_info, lvalue, Rvalue::Aggregate(
@@ -70,7 +70,7 @@ impl<'tcx> CFG<'tcx> {
     }
 
     pub fn terminate(&mut self,
-                     block: BasicBlock,
+                     block: Block,
                      source_info: SourceInfo,
                      kind: TerminatorKind<'tcx>) {
         debug!("terminating block {:?} <- {:?}", block, kind);

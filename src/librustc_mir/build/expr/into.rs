@@ -15,13 +15,14 @@ use build::expr::category::{Category, RvalueFunc};
 use hair::*;
 use rustc::ty;
 use rustc::mir::*;
+use rustc::mir::Block;
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// Compile `expr`, storing the result into `destination`, which
     /// is assumed to be uninitialized.
     pub fn into_expr(&mut self,
                      destination: &Lvalue<'tcx>,
-                     mut block: BasicBlock,
+                     mut block: Block,
                      expr: Expr<'tcx>)
                      -> BlockAnd<()>
     {
@@ -211,14 +212,14 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 exit_block.unit()
             }
             ExprKind::Call { ty, fun, args } => {
+                let fun = unpack!(block = this.as_local_operand(block, fun));
                 let diverges = match ty.sty {
                     ty::TyFnDef(_, _, ref f) | ty::TyFnPtr(ref f) => {
                         // FIXME(canndrew): This is_never should probably be an is_uninhabited
                         f.output().skip_binder().is_never()
                     }
-                    _ => false
+                    _ => false,
                 };
-                let fun = unpack!(block = this.as_local_operand(block, fun));
                 let args: Vec<_> =
                     args.into_iter()
                         .map(|arg| unpack!(block = this.as_local_operand(block, arg)))
@@ -226,16 +227,22 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
                 let success = this.cfg.start_new_block();
                 let cleanup = this.diverge_cleanup();
-                this.cfg.terminate(block, source_info, TerminatorKind::Call {
-                    func: fun,
-                    args: args,
-                    cleanup: cleanup,
-                    destination: if diverges {
-                        None
-                    } else {
-                        Some ((destination.clone(), success))
+                this.cfg.push(block, Statement {
+                    source_info: source_info,
+                    kind: StatementKind::Call {
+                        func: fun,
+                        args: args,
+                        cleanup: cleanup,
+                        destination: destination.clone(),
                     }
                 });
+                if diverges {
+                    this.cfg.terminate(block, source_info, TerminatorKind::Unreachable);
+                } else {
+                    this.cfg.terminate(block, source_info, TerminatorKind::Goto {
+                        target: success
+                    });
+                }
                 success.unit()
             }
 

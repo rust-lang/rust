@@ -82,7 +82,7 @@ impl<'a, 'tcx: 'a, BD> DataflowAnalysis<'a, 'tcx, BD>
         }
 
         for (bb, data) in self.mir.basic_blocks().iter_enumerated() {
-            let &mir::BasicBlockData { ref statements, ref terminator, is_cleanup: _ } = data;
+            let &mir::BlockData { ref statements, ref terminator, is_cleanup: _ } = data;
 
             let sets = &mut self.flow_state.sets.for_block(bb.index());
             for j_stmt in 0..statements.len() {
@@ -119,7 +119,7 @@ impl<'b, 'a: 'b, 'tcx: 'a, BD> PropagationContext<'b, 'a, 'tcx, BD>
                 in_out.subtract(sets.kill_set);
             }
             builder.propagate_bits_into_graph_successors_of(
-                in_out, &mut self.changed, (mir::BasicBlock::new(bb_idx), bb_data));
+                in_out, &mut self.changed, (mir::Block::new(bb_idx), bb_data));
         }
     }
 }
@@ -328,7 +328,7 @@ pub trait BitDenotation {
     /// the MIR.
     fn statement_effect(&self,
                         sets: &mut BlockSets<Self::Idx>,
-                        bb: mir::BasicBlock,
+                        bb: mir::Block,
                         idx_stmt: usize);
 
     /// Mutates the block-sets (the flow sets for the given
@@ -343,7 +343,7 @@ pub trait BitDenotation {
     /// terminator took.
     fn terminator_effect(&self,
                          sets: &mut BlockSets<Self::Idx>,
-                         bb: mir::BasicBlock,
+                         bb: mir::Block,
                          idx_term: usize);
 
     /// Mutates the block-sets according to the (flow-dependent)
@@ -367,8 +367,7 @@ pub trait BitDenotation {
     /// block.
     fn propagate_call_return(&self,
                              in_out: &mut IdxSet<Self::Idx>,
-                             call_bb: mir::BasicBlock,
-                             dest_bb: mir::BasicBlock,
+                             call_bb: mir::Block,
                              dest_lval: &mir::Lvalue);
 }
 
@@ -432,21 +431,19 @@ impl<'a, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D>
         &mut self,
         in_out: &mut IdxSet<D::Idx>,
         changed: &mut bool,
-        (bb, bb_data): (mir::BasicBlock, &mir::BasicBlockData))
+        (bb, bb_data): (mir::Block, &mir::BlockData))
     {
         match bb_data.terminator().kind {
             mir::TerminatorKind::Return |
             mir::TerminatorKind::Resume |
             mir::TerminatorKind::Unreachable => {}
             mir::TerminatorKind::Goto { ref target } |
-            mir::TerminatorKind::Assert { ref target, cleanup: None, .. } |
             mir::TerminatorKind::Drop { ref target, location: _, unwind: None } |
             mir::TerminatorKind::DropAndReplace {
                 ref target, value: _, location: _, unwind: None
             } => {
                 self.propagate_bits_into_entry_set_for(in_out, changed, target);
             }
-            mir::TerminatorKind::Assert { ref target, cleanup: Some(ref unwind), .. } |
             mir::TerminatorKind::Drop { ref target, location: _, unwind: Some(ref unwind) } |
             mir::TerminatorKind::DropAndReplace {
                 ref target, value: _, location: _, unwind: Some(ref unwind)
@@ -459,16 +456,24 @@ impl<'a, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D>
                     self.propagate_bits_into_entry_set_for(in_out, changed, target);
                 }
             }
-            mir::TerminatorKind::Call { ref cleanup, ref destination, func: _, args: _ } => {
-                if let Some(ref unwind) = *cleanup {
-                    self.propagate_bits_into_entry_set_for(in_out, changed, unwind);
-                }
-                if let Some((ref dest_lval, ref dest_bb)) = *destination {
+        }
+
+        for stmt in bb_data.statements.iter() {
+            match stmt.kind {
+                mir::StatementKind::Assign(..) |
+                mir::StatementKind::SetDiscriminant { .. } |
+                mir::StatementKind::StorageLive(..) |
+                mir::StatementKind::StorageDead(..) |
+                mir::StatementKind::InlineAsm { .. } |
+                mir::StatementKind::Assert { .. } |
+                mir::StatementKind::Nop => {},
+                mir::StatementKind::Call { ref cleanup, ref destination, func: _, args: _ } => {
+                    if let Some(ref unwind) = *cleanup {
+                        self.propagate_bits_into_entry_set_for(in_out, changed, unwind);
+                    }
                     // N.B.: This must be done *last*, after all other
                     // propagation, as documented in comment above.
-                    self.flow_state.operator.propagate_call_return(
-                        in_out, bb, *dest_bb, dest_lval);
-                    self.propagate_bits_into_entry_set_for(in_out, changed, dest_bb);
+                    self.flow_state.operator.propagate_call_return(in_out, bb, destination);
                 }
             }
         }
@@ -477,7 +482,7 @@ impl<'a, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D>
     fn propagate_bits_into_entry_set_for(&mut self,
                                          in_out: &IdxSet<D::Idx>,
                                          changed: &mut bool,
-                                         bb: &mir::BasicBlock) {
+                                         bb: &mir::Block) {
         let entry_set = self.flow_state.sets.for_block(bb.index()).on_entry;
         let set_changed = bitwise(entry_set.words_mut(),
                                   in_out.words(),

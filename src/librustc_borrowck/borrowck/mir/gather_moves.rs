@@ -126,9 +126,9 @@ pub trait HasMoveData<'tcx> {
 
 #[derive(Debug)]
 pub struct LocationMap<T> {
-    /// Location-indexed (BasicBlock for outer index, index within BB
+    /// Location-indexed (Block for outer index, index within BB
     /// for inner index) map.
-    map: IndexVec<BasicBlock, Vec<T>>,
+    map: IndexVec<Block, Vec<T>>,
 }
 
 impl<T> Index<Location> for LocationMap<T> {
@@ -412,7 +412,15 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
                 span_bug!(stmt.source_info.span,
                           "SetDiscriminant should not exist during borrowck");
             }
+            StatementKind::Call { ref func, ref args, ref destination, .. } => {
+                self.gather_operand(loc, func);
+                for arg in args {
+                    self.gather_operand(loc, arg);
+                }
+                self.create_move_path(destination);
+            }
             StatementKind::InlineAsm { .. } |
+            StatementKind::Assert { .. } |
             StatementKind::Nop => {}
         }
     }
@@ -464,7 +472,6 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
                 self.gather_move(loc, &Lvalue::Local(RETURN_POINTER));
             }
 
-            TerminatorKind::Assert { .. } |
             TerminatorKind::SwitchInt { .. } => {
                 // branching terminators - these don't move anything
             }
@@ -475,15 +482,6 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
             TerminatorKind::DropAndReplace { ref location, ref value, .. } => {
                 self.create_move_path(location);
                 self.gather_operand(loc, value);
-            }
-            TerminatorKind::Call { ref func, ref args, ref destination, cleanup: _ } => {
-                self.gather_operand(loc, func);
-                for arg in args {
-                    self.gather_operand(loc, arg);
-                }
-                if let Some((ref destination, _bb)) = *destination {
-                    self.create_move_path(destination);
-                }
             }
         }
     }

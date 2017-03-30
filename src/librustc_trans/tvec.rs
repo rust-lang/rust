@@ -20,7 +20,9 @@ pub fn slice_for_each<'a, 'tcx, F>(
     unit_ty: Ty<'tcx>,
     len: ValueRef,
     f: F
-) -> Builder<'a, 'tcx> where F: FnOnce(&Builder<'a, 'tcx>, ValueRef, BasicBlockRef) {
+) -> Builder<'a, 'tcx>
+    where F: FnOnce(Builder<'a, 'tcx>, ValueRef, BasicBlockRef) -> Builder<'a, 'tcx>
+{
     // Special-case vectors with elements of size 0  so they don't go out of bounds (#9890)
     let zst = type_is_zero_size(bcx.ccx, unit_ty);
     let add = |bcx: &Builder, a, b| if zst {
@@ -47,7 +49,7 @@ pub fn slice_for_each<'a, 'tcx, F>(
     header_bcx.cond_br(keep_going, body_bcx.llbb(), next_bcx.llbb());
 
     let next = add(&body_bcx, current, C_uint(bcx.ccx, 1usize));
-    f(&body_bcx, if zst { data_ptr } else { current }, header_bcx.llbb());
+    let body_bcx = f(body_bcx, if zst { data_ptr } else { current }, header_bcx.llbb());
     header_bcx.add_incoming_to_phi(current, next, body_bcx.llbb());
     next_bcx
 }

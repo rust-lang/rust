@@ -24,6 +24,7 @@ use rustc::middle::const_val::ConstVal;
 use rustc::ty::{self, Ty};
 use rustc::ty::util::IntTypeExt;
 use rustc::mir::*;
+use rustc::mir::Block;
 use rustc::hir::RangeEnd;
 use syntax_pos::Span;
 use std::cmp::Ordering;
@@ -176,10 +177,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     /// Generates the code to perform a test.
     pub fn perform_test(&mut self,
-                        block: BasicBlock,
+                        block: Block,
                         lvalue: &Lvalue<'tcx>,
                         test: &Test<'tcx>)
-                        -> Vec<BasicBlock> {
+                        -> Vec<Block> {
         let source_info = self.source_info(test.span);
         match test.kind {
             TestKind::Switch { adt_def, ref variants } => {
@@ -305,26 +306,28 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
                     let bool_ty = self.hir.bool_ty();
                     let eq_result = self.temp(bool_ty);
-                    let eq_block = self.cfg.start_new_block();
                     let cleanup = self.diverge_cleanup();
-                    self.cfg.terminate(block, source_info, TerminatorKind::Call {
-                        func: Operand::Constant(Constant {
-                            span: test.span,
-                            ty: mty,
-                            literal: method
-                        }),
-                        args: vec![val, expect],
-                        destination: Some((eq_result.clone(), eq_block)),
-                        cleanup: cleanup,
+                    self.cfg.push(block, Statement {
+                        source_info: source_info,
+                        kind: StatementKind::Call {
+                            func: Operand::Constant(Constant {
+                                span: test.span,
+                                ty: mty,
+                                literal: method
+                            }),
+                            args: vec![val, expect],
+                            destination: eq_result.clone(),
+                            cleanup: cleanup,
+                        },
                     });
 
                     // check the result
-                    let block = self.cfg.start_new_block();
-                    self.cfg.terminate(eq_block, source_info,
+                    let succ = self.cfg.start_new_block();
+                    self.cfg.terminate(block, source_info,
                                        TerminatorKind::if_(self.hir.tcx(),
                                                            Operand::Consume(eq_result),
-                                                           block, fail));
-                    vec![block, fail]
+                                                           succ, fail));
+                    vec![succ, fail]
                 } else {
                     let block = self.compare(block, fail, test.span, BinOp::Eq, expect, val);
                     vec![block, fail]
@@ -376,12 +379,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     }
 
     fn compare(&mut self,
-               block: BasicBlock,
-               fail_block: BasicBlock,
+               block: Block,
+               fail_block: Block,
                span: Span,
                op: BinOp,
                left: Operand<'tcx>,
-               right: Operand<'tcx>) -> BasicBlock {
+               right: Operand<'tcx>) -> Block {
         let bool_ty = self.hir.bool_ty();
         let result = self.temp(bool_ty);
 

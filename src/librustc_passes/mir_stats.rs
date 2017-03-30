@@ -14,7 +14,7 @@
 
 use rustc_const_math::{ConstUsize};
 use rustc::middle::const_val::{ConstVal};
-use rustc::mir::{AggregateKind, AssertMessage, BasicBlock, BasicBlockData};
+use rustc::mir::{AggregateKind, AssertMessage, Block, BlockData};
 use rustc::mir::{Constant, Literal, Location, LocalDecl};
 use rustc::mir::{Lvalue, LvalueElem, LvalueProjection};
 use rustc::mir::{Mir, Operand, ProjectionElem};
@@ -106,9 +106,9 @@ impl<'a, 'tcx> mir_visit::Visitor<'tcx> for StatCollector<'a, 'tcx> {
     }
 
     fn visit_basic_block_data(&mut self,
-                              block: BasicBlock,
-                              data: &BasicBlockData<'tcx>) {
-        self.record("BasicBlockData", data);
+                              block: Block,
+                              data: &BlockData<'tcx>) {
+        self.record("BlockData", data);
         self.super_basic_block_data(block, data);
     }
 
@@ -119,7 +119,7 @@ impl<'a, 'tcx> mir_visit::Visitor<'tcx> for StatCollector<'a, 'tcx> {
     }
 
     fn visit_statement(&mut self,
-                       block: BasicBlock,
+                       block: Block,
                        statement: &Statement<'tcx>,
                        location: Location) {
         self.record("Statement", statement);
@@ -129,13 +129,15 @@ impl<'a, 'tcx> mir_visit::Visitor<'tcx> for StatCollector<'a, 'tcx> {
             StatementKind::StorageLive(..) => "StatementKind::StorageLive",
             StatementKind::StorageDead(..) => "StatementKind::StorageDead",
             StatementKind::InlineAsm { .. } => "StatementKind::InlineAsm",
+            StatementKind::Assert { .. } => "StatementKind::Assert",
+            StatementKind::Call { .. } => "StatementKind::Call",
             StatementKind::Nop => "StatementKind::Nop",
         }, &statement.kind);
         self.super_statement(block, statement, location);
     }
 
     fn visit_terminator(&mut self,
-                        block: BasicBlock,
+                        block: Block,
                         terminator: &Terminator<'tcx>,
                         location: Location) {
         self.record("Terminator", terminator);
@@ -143,7 +145,7 @@ impl<'a, 'tcx> mir_visit::Visitor<'tcx> for StatCollector<'a, 'tcx> {
     }
 
     fn visit_terminator_kind(&mut self,
-                             block: BasicBlock,
+                             block: Block,
                              kind: &TerminatorKind<'tcx>,
                              location: Location) {
         self.record("TerminatorKind", kind);
@@ -155,8 +157,6 @@ impl<'a, 'tcx> mir_visit::Visitor<'tcx> for StatCollector<'a, 'tcx> {
             TerminatorKind::Unreachable => "TerminatorKind::Unreachable",
             TerminatorKind::Drop { .. } => "TerminatorKind::Drop",
             TerminatorKind::DropAndReplace { .. } => "TerminatorKind::DropAndReplace",
-            TerminatorKind::Call { .. } => "TerminatorKind::Call",
-            TerminatorKind::Assert { .. } => "TerminatorKind::Assert",
         }, kind);
         self.super_terminator_kind(block, kind, location);
     }

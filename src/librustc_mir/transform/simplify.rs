@@ -78,8 +78,8 @@ impl<'l> Pass for SimplifyCfg<'l> {
 }
 
 pub struct CfgSimplifier<'a, 'tcx: 'a> {
-    basic_blocks: &'a mut IndexVec<BasicBlock, BasicBlockData<'tcx>>,
-    pred_count: IndexVec<BasicBlock, u32>
+    basic_blocks: &'a mut IndexVec<Block, BlockData<'tcx>>,
+    pred_count: IndexVec<Block, u32>
 }
 
 impl<'a, 'tcx: 'a> CfgSimplifier<'a, 'tcx> {
@@ -90,11 +90,9 @@ impl<'a, 'tcx: 'a> CfgSimplifier<'a, 'tcx> {
         // dead blocks, which we don't want to.
         pred_count[START_BLOCK] = 1;
 
-        for (_, data) in traversal::preorder(mir) {
-            if let Some(ref term) = data.terminator {
-                for &tgt in term.successors().iter() {
-                    pred_count[tgt] += 1;
-                }
+        for (bb, _) in traversal::preorder(mir) {
+            for &tgt in mir.successors_for(bb).iter() {
+                pred_count[tgt] += 1;
             }
         }
 
@@ -110,7 +108,7 @@ impl<'a, 'tcx: 'a> CfgSimplifier<'a, 'tcx> {
         loop {
             let mut changed = false;
 
-            for bb in (0..self.basic_blocks.len()).map(BasicBlock::new) {
+            for bb in (0..self.basic_blocks.len()).map(Block::new) {
                 if self.pred_count[bb] == 0 {
                     continue
                 }
@@ -120,6 +118,8 @@ impl<'a, 'tcx: 'a> CfgSimplifier<'a, 'tcx> {
                 let mut terminator = self.basic_blocks[bb].terminator.take()
                     .expect("invalid terminator state");
 
+                // NB: No need to call collapse_goto_chain on statement successors because
+                // the statements aren't empty, so we cannot collapse blocks.
                 for successor in terminator.successors_mut() {
                     self.collapse_goto_chain(successor, &mut changed);
                 }
@@ -146,9 +146,9 @@ impl<'a, 'tcx: 'a> CfgSimplifier<'a, 'tcx> {
     }
 
     // Collapse a goto chain starting from `start`
-    fn collapse_goto_chain(&mut self, start: &mut BasicBlock, changed: &mut bool) {
+    fn collapse_goto_chain(&mut self, start: &mut Block, changed: &mut bool) {
         let mut terminator = match self.basic_blocks[*start] {
-            BasicBlockData {
+            BlockData {
                 ref statements,
                 terminator: ref mut terminator @ Some(Terminator {
                     kind: TerminatorKind::Goto { .. }, ..
@@ -258,10 +258,10 @@ pub fn remove_dead_blocks(mir: &mut Mir) {
     let basic_blocks = mir.basic_blocks_mut();
 
     let num_blocks = basic_blocks.len();
-    let mut replacements : Vec<_> = (0..num_blocks).map(BasicBlock::new).collect();
+    let mut replacements : Vec<_> = (0..num_blocks).map(Block::new).collect();
     let mut used_blocks = 0;
     for alive_index in seen.iter() {
-        replacements[alive_index] = BasicBlock::new(used_blocks);
+        replacements[alive_index] = Block::new(used_blocks);
         if alive_index != used_blocks {
             // Swap the next alive block data with the current available slot. Since alive_index is
             // non-decreasing this is a valid operation.
@@ -272,6 +272,12 @@ pub fn remove_dead_blocks(mir: &mut Mir) {
     basic_blocks.raw.truncate(used_blocks);
 
     for block in basic_blocks {
+        for stmt in &mut block.statements {
+            if let Some(cleanup) = stmt.cleanup_target_mut() {
+                *cleanup = replacements[cleanup.index()];
+            }
+        }
+
         for target in block.terminator_mut().successors_mut() {
             *target = replacements[target.index()];
         }
@@ -338,7 +344,7 @@ struct LocalUpdater {
 }
 
 impl<'tcx> MutVisitor<'tcx> for LocalUpdater {
-    fn visit_basic_block_data(&mut self, block: BasicBlock, data: &mut BasicBlockData<'tcx>) {
+    fn visit_basic_block_data(&mut self, block: Block, data: &mut BlockData<'tcx>) {
         // Remove unnecessary StorageLive and StorageDead annotations.
         data.statements.retain(|stmt| {
             match stmt.kind {

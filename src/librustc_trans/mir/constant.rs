@@ -286,6 +286,53 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                             Err(err) => if failure.is_ok() { failure = Err(err); }
                         }
                     }
+                    mir::StatementKind::Assert { ref cond, expected, ref msg, .. } => {
+                        let cond = self.const_operand(cond, span)?;
+                        let cond_bool = common::const_to_uint(cond.llval) != 0;
+                        if cond_bool != expected {
+                            let err = match *msg {
+                                mir::AssertMessage::BoundsCheck { ref len, ref index } => {
+                                    let len = self.const_operand(len, span)?;
+                                    let index = self.const_operand(index, span)?;
+                                    ErrKind::IndexOutOfBounds {
+                                        len: common::const_to_uint(len.llval),
+                                        index: common::const_to_uint(index.llval)
+                                    }
+                                }
+                                mir::AssertMessage::Math(ref err) => {
+                                    ErrKind::Math(err.clone())
+                                }
+                            };
+
+                            let err = ConstEvalErr{ span: span, kind: err };
+                            report_const_eval_err(tcx, &err, span, "expression");
+                            failure = Err(err);
+                        }
+                    }
+
+                    mir::StatementKind::Call { ref func, ref args, ref destination, .. } => {
+                        let fn_ty = func.ty(self.mir, tcx);
+                        let fn_ty = self.monomorphize(&fn_ty);
+                        let (def_id, substs) = match fn_ty.sty {
+                            ty::TyFnDef(def_id, substs, _) => (def_id, substs),
+                            _ => span_bug!(span, "calling {:?} (of type {}) in constant",
+                            func, fn_ty)
+                        };
+
+                        let mut const_args = IndexVec::with_capacity(args.len());
+                        for arg in args {
+                            match self.const_operand(arg, span) {
+                                Ok(arg) => { const_args.push(arg); },
+                                Err(err) => if failure.is_ok() { failure = Err(err); }
+                            }
+                        }
+
+                        match MirConstContext::trans_def(self.ccx, def_id, substs, const_args) {
+                            Ok(value) => self.store(destination, value, span),
+                            Err(err) => if failure.is_ok() { failure = Err(err); }
+                        }
+                    }
+
                     mir::StatementKind::StorageLive(_) |
                     mir::StatementKind::StorageDead(_) |
                     mir::StatementKind::Nop => {}
@@ -308,57 +355,6 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                     }));
                 }
 
-                mir::TerminatorKind::Assert { ref cond, expected, ref msg, target, .. } => {
-                    let cond = self.const_operand(cond, span)?;
-                    let cond_bool = common::const_to_uint(cond.llval) != 0;
-                    if cond_bool != expected {
-                        let err = match *msg {
-                            mir::AssertMessage::BoundsCheck { ref len, ref index } => {
-                                let len = self.const_operand(len, span)?;
-                                let index = self.const_operand(index, span)?;
-                                ErrKind::IndexOutOfBounds {
-                                    len: common::const_to_uint(len.llval),
-                                    index: common::const_to_uint(index.llval)
-                                }
-                            }
-                            mir::AssertMessage::Math(ref err) => {
-                                ErrKind::Math(err.clone())
-                            }
-                        };
-
-                        let err = ConstEvalErr{ span: span, kind: err };
-                        report_const_eval_err(tcx, &err, span, "expression");
-                        failure = Err(err);
-                    }
-                    target
-                }
-
-                mir::TerminatorKind::Call { ref func, ref args, ref destination, .. } => {
-                    let fn_ty = func.ty(self.mir, tcx);
-                    let fn_ty = self.monomorphize(&fn_ty);
-                    let (def_id, substs) = match fn_ty.sty {
-                        ty::TyFnDef(def_id, substs, _) => (def_id, substs),
-                        _ => span_bug!(span, "calling {:?} (of type {}) in constant",
-                                       func, fn_ty)
-                    };
-
-                    let mut const_args = IndexVec::with_capacity(args.len());
-                    for arg in args {
-                        match self.const_operand(arg, span) {
-                            Ok(arg) => { const_args.push(arg); },
-                            Err(err) => if failure.is_ok() { failure = Err(err); }
-                        }
-                    }
-                    if let Some((ref dest, target)) = *destination {
-                        match MirConstContext::trans_def(self.ccx, def_id, substs, const_args) {
-                            Ok(value) => self.store(dest, value, span),
-                            Err(err) => if failure.is_ok() { failure = Err(err); }
-                        }
-                        target
-                    } else {
-                        span_bug!(span, "diverging {:?} in constant", terminator.kind);
-                    }
-                }
                 _ => span_bug!(span, "{:?} in constant", terminator.kind)
             };
         }

@@ -25,14 +25,14 @@
 use build::{BlockAnd, BlockAndExtension, Builder};
 use build::matches::{Binding, MatchPair, Candidate};
 use hair::*;
-use rustc::mir::*;
+use rustc::mir::Block;
 use rustc_data_structures::fx::FxHashMap;
 
 use std::mem;
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     pub fn simplify_candidate<'pat>(&mut self,
-                                    block: BasicBlock,
+                                    block: Block,
                                     candidate: &mut Candidate<'pat, 'tcx>)
                                     -> BlockAnd<()> {
         // repeatedly simplify match pairs until fixed point is reached

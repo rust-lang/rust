@@ -15,6 +15,7 @@ use rustc::hir::def_id::DefId;
 use rustc_data_structures::bitvec::BitVector;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use rustc_data_structures::graph;
+use rustc_data_structures::control_flow_graph::ControlFlowGraph;
 
 use rustc::dep_graph::DepNode;
 use rustc::mir::*;
@@ -111,8 +112,8 @@ struct CallSite<'tcx> {
     caller: DefId,
     callee: DefId,
     substs: &'tcx Substs<'tcx>,
-    bb: BasicBlock,
-    location: SourceInfo,
+    source_info: SourceInfo,
+    location: Location,
 }
 
 impl<'a, 'tcx> Inliner<'a, 'tcx> {
@@ -139,17 +140,18 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                         if bb_data.is_cleanup { continue; }
 
                         // Only consider direct calls to functions
-                        let terminator = bb_data.terminator();
-                        if let TerminatorKind::Call {
-                            func: Operand::Constant(ref f), .. } = terminator.kind {
-                            if let ty::TyFnDef(callee_def_id, substs, _) = f.ty.sty {
-                                callsites.push(CallSite {
-                                    caller: def_id,
-                                    callee: callee_def_id,
-                                    substs: substs,
-                                    bb: bb,
-                                    location: terminator.source_info
-                                });
+                        for (i, statement) in bb_data.statements.iter().enumerate().rev() {
+                            if let StatementKind::Call {
+                                func: Operand::Constant(ref f), .. } = statement.kind {
+                                if let ty::TyFnDef(callee_def_id, substs, _) = f.ty.sty {
+                                    callsites.push(CallSite {
+                                        caller: def_id,
+                                        callee: callee_def_id,
+                                        substs: substs,
+                                        source_info: statement.source_info,
+                                        location: Location { block: bb, statement_index: i }
+                                    });
+                                }
                             }
                         }
                     }
@@ -217,19 +219,20 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                 // Add callsites from inlined function
                 for (bb, bb_data) in caller_mir.basic_blocks().iter_enumerated().skip(start) {
                     // Only consider direct calls to functions
-                    let terminator = bb_data.terminator();
-                    if let TerminatorKind::Call {
-                        func: Operand::Constant(ref f), .. } = terminator.kind {
-                        if let ty::TyFnDef(callee_def_id, substs, _) = f.ty.sty {
-                            // Don't inline the same function multiple times.
-                            if callsite.callee != callee_def_id {
-                                callsites.push(CallSite {
-                                    caller: callsite.caller,
-                                    callee: callee_def_id,
-                                    substs: substs,
-                                    bb: bb,
-                                    location: terminator.source_info
-                                });
+                    for (i, statement) in bb_data.statements.iter().enumerate().rev() {
+                        if let StatementKind::Call {
+                            func: Operand::Constant(ref f), .. } = statement.kind {
+                            if let ty::TyFnDef(callee_def_id, substs, _) = f.ty.sty {
+                                // Don't inline the same function multiple times.
+                                if callsite.callee != callee_def_id {
+                                    callsites.push(CallSite {
+                                        caller: callsite.caller,
+                                        callee: callee_def_id,
+                                        substs: substs,
+                                        source_info: statement.source_info,
+                                        location: Location { block: bb, statement_index: i }
+                                    });
+                                }
                             }
                         }
                     }
@@ -342,7 +345,26 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                 match stmt.kind {
                     StatementKind::StorageLive(_) |
                     StatementKind::StorageDead(_) |
-                    StatementKind::Nop => {}
+                    StatementKind::Nop => {},
+                    StatementKind::Assert { .. } => cost += CALL_PENALTY - INSTR_COST,
+                    StatementKind::Call { ref func, .. } => {
+                        if first_block &&
+                            func.ty(&callee_mir, tcx).fn_ret().skip_binder().is_never() {
+                            threshold = 0;
+                        }
+
+                        if let Operand::Constant(ref f) = *func {
+                            if let ty::TyFnDef(.., f) = f.ty.sty {
+                                // Don't give intrinsics the extra penalty for calls
+                                if f.abi() == Abi::RustIntrinsic ||
+                                   f.abi() == Abi::PlatformIntrinsic {
+                                    cost += INSTR_COST;
+                                } else {
+                                    cost += CALL_PENALTY;
+                                }
+                            }
+                        }
+                    }
                     _ => cost += INSTR_COST
                 }
             }
@@ -367,29 +389,17 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                     }
                 }
 
-                TerminatorKind::Unreachable |
-                TerminatorKind::Call { destination: None, .. } if first_block => {
+                TerminatorKind::Unreachable if first_block => {
                     // If the function always diverges, don't inline
                     // unless the cost is zero
                     threshold = 0;
                 }
 
-                TerminatorKind::Call {func: Operand::Constant(ref f), .. } => {
-                    if let ty::TyFnDef(.., f) = f.ty.sty {
-                        // Don't give intrinsics the extra penalty for calls
-                        if f.abi() == Abi::RustIntrinsic || f.abi() == Abi::PlatformIntrinsic {
-                            cost += INSTR_COST;
-                        } else {
-                            cost += CALL_PENALTY;
-                        }
-                    }
-                }
-                TerminatorKind::Assert { .. } => cost += CALL_PENALTY,
                 _ => cost += INSTR_COST
             }
 
             if !is_drop {
-                for &succ in &term.successors()[..] {
+                for succ in ControlFlowGraph::successors(callee_mir, bb) {
                     work_list.push(succ);
                 }
             }
@@ -425,19 +435,30 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
 
 
     fn inline_call(&self, callsite: CallSite<'tcx>,
-                             caller_mir: &mut Mir<'tcx>, mut callee_mir: Mir<'tcx>) -> bool {
+                   caller_mir: &mut Mir<'tcx>, mut callee_mir: Mir<'tcx>) -> bool {
 
         // Don't inline a function into itself
         if callsite.caller == callsite.callee { return false; }
 
         let _task = self.tcx.dep_graph.in_task(DepNode::Mir(callsite.caller));
 
+        match caller_mir[callsite.location.block]
+            .statements[callsite.location.statement_index].kind {
+            StatementKind::Call { .. } => {},
+            _ => return false,
+        }
 
-        let terminator = caller_mir[callsite.bb].terminator.take().unwrap();
-        match terminator.kind {
+        let statements_after = caller_mir[callsite.location.block].statements.split_off(
+            callsite.location.statement_index + 1
+        );
+        let mut after_block = BlockData::new(caller_mir[callsite.location.block].terminator.take());
+        after_block.statements = statements_after;
+        let new_block_idx = caller_mir.basic_blocks_mut().push(after_block);
+
+        let statement = caller_mir[callsite.location.block].statements.pop().unwrap();
+        match statement.kind {
             // FIXME: Handle inlining of diverging calls
-            TerminatorKind::Call { args, destination: Some(destination), cleanup, .. } => {
-
+            StatementKind::Call { args, destination, cleanup, .. } => {
                 debug!("Inlined {:?} into {:?}", callsite.callee, callsite.caller);
 
                 let is_box_free = Some(callsite.callee) == self.tcx.lang_items.box_free_fn();
@@ -448,11 +469,11 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
 
                 for mut scope in callee_mir.visibility_scopes.iter().cloned() {
                     if scope.parent_scope.is_none() {
-                        scope.parent_scope = Some(callsite.location.scope);
+                        scope.parent_scope = Some(callsite.source_info.scope);
                         scope.span = callee_mir.span;
                     }
 
-                    scope.span = callsite.location.span;
+                    scope.span = callsite.source_info.span;
 
                     let idx = caller_mir.visibility_scopes.push(scope);
                     scope_map.push(idx);
@@ -463,8 +484,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
 
                     if let Some(ref mut source_info) = local.source_info {
                         source_info.scope = scope_map[source_info.scope];
-
-                        source_info.span = callsite.location.span;
+                        source_info.span = callsite.source_info.span;
                     }
 
                     let idx = caller_mir.local_decls.push(local);
@@ -497,12 +517,12 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                     }
                 }
 
-                let dest = if dest_needs_borrow(&destination.0) {
+                let dest = if dest_needs_borrow(&destination) {
                     debug!("Creating temp for return destination");
                     let dest = Rvalue::Ref(
                         self.tcx.mk_region(ty::ReErased),
                         BorrowKind::Mut,
-                        destination.0);
+                        destination);
 
                     let ty = dest.ty(caller_mir, self.tcx);
 
@@ -512,17 +532,14 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                     let tmp = Lvalue::Local(tmp);
 
                     let stmt = Statement {
-                        source_info: callsite.location,
-                        kind: StatementKind::Assign(tmp.clone(), dest)
+                        source_info: callsite.source_info,
+                        kind: StatementKind::Assign(tmp.clone(), dest),
                     };
-                    caller_mir[callsite.bb]
-                        .statements.push(stmt);
-                    tmp.deref()
+                    caller_mir[callsite.location.block].statements.push(stmt);
+                    tmp
                 } else {
-                    destination.0
+                    destination
                 };
-
-                let return_block = destination.1;
 
                 let args : Vec<_> = if is_box_free {
                     assert!(args.len() == 1);
@@ -552,33 +569,24 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                     promoted_map: promoted_map,
                     _callsite: callsite,
                     destination: dest,
-                    return_block: return_block,
+                    return_block: new_block_idx,
                     cleanup_block: cleanup,
                     in_cleanup_block: false
                 };
-
 
                 for (bb, mut block) in callee_mir.basic_blocks_mut().drain_enumerated(..) {
                     integrator.visit_basic_block_data(bb, &mut block);
                     caller_mir.basic_blocks_mut().push(block);
                 }
 
-                let terminator = Terminator {
-                    source_info: callsite.location,
-                    kind: TerminatorKind::Goto { target: BasicBlock::new(bb_len) }
-                };
-
-                caller_mir[callsite.bb].terminator = Some(terminator);
+                caller_mir[callsite.location.block].terminator = Some(Terminator {
+                    source_info: callsite.source_info,
+                    kind: TerminatorKind::Goto { target: Block::new(bb_len) }
+                });
 
                 true
             }
-            kind => {
-                caller_mir[callsite.bb].terminator = Some(Terminator {
-                    source_info: terminator.source_info,
-                    kind: kind
-                });
-                false
-            }
+            _ => bug!()
         }
     }
 
@@ -595,11 +603,11 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
         let ref_tmp = Lvalue::Local(ref_tmp);
 
         let ref_stmt = Statement {
-            source_info: callsite.location,
+            source_info: callsite.source_info,
             kind: StatementKind::Assign(ref_tmp.clone(), arg)
         };
 
-        caller_mir[callsite.bb]
+        caller_mir[callsite.location.block]
             .statements.push(ref_stmt);
 
         let pointee_ty = match ptr_ty.sty {
@@ -616,11 +624,11 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
         let cast_tmp = Lvalue::Local(cast_tmp);
 
         let cast_stmt = Statement {
-            source_info: callsite.location,
+            source_info: callsite.source_info,
             kind: StatementKind::Assign(cast_tmp.clone(), raw_ptr)
         };
 
-        caller_mir[callsite.bb]
+        caller_mir[callsite.location.block]
             .statements.push(cast_stmt);
 
         Operand::Consume(cast_tmp)
@@ -650,10 +658,10 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
             let arg_tmp = Lvalue::Local(arg_tmp);
 
             let stmt = Statement {
-                source_info: callsite.location,
+                source_info: callsite.source_info,
                 kind: StatementKind::Assign(arg_tmp.clone(), arg)
             };
-            caller_mir[callsite.bb].statements.push(stmt);
+            caller_mir[callsite.location.block].statements.push(stmt);
             Operand::Consume(arg_tmp)
         }).collect()
     }
@@ -683,14 +691,14 @@ struct Integrator<'a, 'tcx: 'a> {
     promoted_map: IndexVec<Promoted, Promoted>,
     _callsite: CallSite<'tcx>,
     destination: Lvalue<'tcx>,
-    return_block: BasicBlock,
-    cleanup_block: Option<BasicBlock>,
+    return_block: Block,
+    cleanup_block: Option<Block>,
     in_cleanup_block: bool,
 }
 
 impl<'a, 'tcx> Integrator<'a, 'tcx> {
-    fn update_target(&self, tgt: BasicBlock) -> BasicBlock {
-        let new = BasicBlock::new(tgt.index() + self.block_idx);
+    fn update_target(&self, tgt: Block) -> Block {
+        let new = Block::new(tgt.index() + self.block_idx);
         debug!("Updating target `{:?}`, new: `{:?}`", tgt, new);
         new
     }
@@ -756,13 +764,13 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
         self.super_operand(operand, location);
     }
 
-    fn visit_basic_block_data(&mut self, block: BasicBlock, data: &mut BasicBlockData<'tcx>) {
+    fn visit_basic_block_data(&mut self, block: Block, data: &mut BlockData<'tcx>) {
         self.in_cleanup_block = data.is_cleanup;
         self.super_basic_block_data(block, data);
         self.in_cleanup_block = false;
     }
 
-    fn visit_terminator_kind(&mut self, block: BasicBlock,
+    fn visit_terminator_kind(&mut self, block: Block,
                              kind: &mut TerminatorKind<'tcx>, loc: Location) {
         self.super_terminator_kind(block, kind, loc);
 
@@ -786,28 +794,6 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
                     *unwind = self.cleanup_block;
                 }
             }
-            TerminatorKind::Call { ref mut destination, ref mut cleanup, .. } => {
-                if let Some((_, ref mut tgt)) = *destination {
-                    *tgt = self.update_target(*tgt);
-                }
-                if let Some(tgt) = *cleanup {
-                    *cleanup = Some(self.update_target(tgt));
-                } else if !self.in_cleanup_block {
-                    // Unless this call is in a cleanup block, add an unwind edge to
-                    // the orignal call's cleanup block
-                    *cleanup = self.cleanup_block;
-                }
-            }
-            TerminatorKind::Assert { ref mut target, ref mut cleanup, .. } => {
-                *target = self.update_target(*target);
-                if let Some(tgt) = *cleanup {
-                    *cleanup = Some(self.update_target(tgt));
-                } else if !self.in_cleanup_block {
-                    // Unless this assert is in a cleanup block, add an unwind edge to
-                    // the orignal call's cleanup block
-                    *cleanup = self.cleanup_block;
-                }
-            }
             TerminatorKind::Return => {
                 *kind = TerminatorKind::Goto { target: self.return_block };
             }
@@ -817,6 +803,34 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Integrator<'a, 'tcx> {
                 }
             }
             TerminatorKind::Unreachable => { }
+        }
+    }
+
+    fn visit_statement(
+        &mut self,
+        block: Block,
+        statement: &mut Statement<'tcx>,
+        location: Location
+    ) {
+        self.super_statement(block, statement, location);
+
+        match statement.kind {
+            StatementKind::Assign(..) |
+            StatementKind::SetDiscriminant { .. } |
+            StatementKind::StorageLive(..) |
+            StatementKind::StorageDead(..) |
+            StatementKind::InlineAsm { .. } |
+            StatementKind::Nop => {},
+            StatementKind::Assert { ref mut cleanup, .. } |
+            StatementKind::Call { ref mut cleanup, .. } => {
+                if let Some(tgt) = *cleanup {
+                    *cleanup = Some(self.update_target(tgt));
+                } else if !self.in_cleanup_block {
+                    // Unless this assert is in a cleanup block, add an unwind edge to
+                    // the orignal call's cleanup block
+                    *cleanup = self.cleanup_block;
+                }
+            }
         }
     }
 

@@ -66,9 +66,9 @@ macro_rules! newtype_index {
 /// Lowered representation of a single function.
 #[derive(Clone, RustcEncodable, RustcDecodable, Debug)]
 pub struct Mir<'tcx> {
-    /// List of basic blocks. References to basic block use a newtyped index type `BasicBlock`
+    /// List of basic blocks. References to basic block use a newtyped index type `Block`
     /// that indexes into this vector.
-    basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
+    basic_blocks: IndexVec<Block, BlockData<'tcx>>,
 
     /// List of visibility (lexical) scopes; these are referenced by statements
     /// and used (eventually) for debuginfo. Indexed by a `VisibilityScope`.
@@ -115,10 +115,10 @@ pub struct Mir<'tcx> {
 }
 
 /// where execution begins
-pub const START_BLOCK: BasicBlock = BasicBlock(0);
+pub const START_BLOCK: Block = Block(0);
 
 impl<'tcx> Mir<'tcx> {
-    pub fn new(basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
+    pub fn new(basic_blocks: IndexVec<Block, BlockData<'tcx>>,
                visibility_scopes: IndexVec<VisibilityScope, VisibilityScopeData>,
                promoted: IndexVec<Promoted, Mir<'tcx>>,
                return_ty: Ty<'tcx>,
@@ -147,28 +147,38 @@ impl<'tcx> Mir<'tcx> {
     }
 
     #[inline]
-    pub fn basic_blocks(&self) -> &IndexVec<BasicBlock, BasicBlockData<'tcx>> {
+    pub fn basic_blocks(&self) -> &IndexVec<Block, BlockData<'tcx>> {
         &self.basic_blocks
     }
 
     #[inline]
-    pub fn basic_blocks_mut(&mut self) -> &mut IndexVec<BasicBlock, BasicBlockData<'tcx>> {
+    pub fn basic_blocks_mut(&mut self) -> &mut IndexVec<Block, BlockData<'tcx>> {
         self.cache.invalidate();
         &mut self.basic_blocks
     }
 
     #[inline]
-    pub fn predecessors(&self) -> Ref<IndexVec<BasicBlock, Vec<BasicBlock>>> {
+    pub fn predecessors(&self) -> Ref<IndexVec<Block, Vec<Block>>> {
         self.cache.predecessors(self)
     }
 
     #[inline]
-    pub fn predecessors_for(&self, bb: BasicBlock) -> Ref<Vec<BasicBlock>> {
+    pub fn successors(&self) -> Ref<IndexVec<Block, Vec<Block>>> {
+        self.cache.successors(self)
+    }
+
+    #[inline]
+    pub fn predecessors_for(&self, bb: Block) -> Ref<Vec<Block>> {
         Ref::map(self.predecessors(), |p| &p[bb])
     }
 
     #[inline]
-    pub fn dominators(&self) -> Dominators<BasicBlock> {
+    pub fn successors_for(&self, bb: Block) -> Ref<Vec<Block>> {
+        Ref::map(self.successors(), |p| &p[bb])
+    }
+
+    #[inline]
+    pub fn dominators(&self) -> Dominators<Block> {
         dominators(self)
     }
 
@@ -243,18 +253,18 @@ impl<'tcx> Mir<'tcx> {
     }
 }
 
-impl<'tcx> Index<BasicBlock> for Mir<'tcx> {
-    type Output = BasicBlockData<'tcx>;
+impl<'tcx> Index<Block> for Mir<'tcx> {
+    type Output = BlockData<'tcx>;
 
     #[inline]
-    fn index(&self, index: BasicBlock) -> &BasicBlockData<'tcx> {
+    fn index(&self, index: Block) -> &BlockData<'tcx> {
         &self.basic_blocks()[index]
     }
 }
 
-impl<'tcx> IndexMut<BasicBlock> for Mir<'tcx> {
+impl<'tcx> IndexMut<Block> for Mir<'tcx> {
     #[inline]
-    fn index_mut(&mut self, index: BasicBlock) -> &mut BasicBlockData<'tcx> {
+    fn index_mut(&mut self, index: Block) -> &mut BlockData<'tcx> {
         &mut self.basic_blocks_mut()[index]
     }
 }
@@ -411,15 +421,15 @@ pub struct UpvarDecl {
 }
 
 ///////////////////////////////////////////////////////////////////////////
-// BasicBlock
+// Block
 
-newtype_index!(BasicBlock, "bb");
+newtype_index!(Block, "bb");
 
 ///////////////////////////////////////////////////////////////////////////
-// BasicBlockData and Terminator
+// BlockData and Terminator
 
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
-pub struct BasicBlockData<'tcx> {
+pub struct BlockData<'tcx> {
     /// List of statements in this block.
     pub statements: Vec<Statement<'tcx>>,
 
@@ -450,7 +460,7 @@ pub struct Terminator<'tcx> {
 pub enum TerminatorKind<'tcx> {
     /// block should have one successor in the graph; we jump there
     Goto {
-        target: BasicBlock,
+        target: Block,
     },
 
     /// operand evaluates to an integer; jump depending on its value
@@ -472,12 +482,12 @@ pub enum TerminatorKind<'tcx> {
         // This invariant is quite non-obvious and also could be improved.
         // One way to make this invariant is to have something like this instead:
         //
-        // branches: Vec<(ConstInt, BasicBlock)>,
-        // otherwise: Option<BasicBlock> // exhaustive if None
+        // branches: Vec<(ConstInt, Block)>,
+        // otherwise: Option<Block> // exhaustive if None
         //
         // However we’ve decided to keep this as-is until we figure a case
         // where some other approach seems to be strictly better than other.
-        targets: Vec<BasicBlock>,
+        targets: Vec<Block>,
     },
 
     /// Indicates that the landing pad is finished and unwinding should
@@ -494,54 +504,32 @@ pub enum TerminatorKind<'tcx> {
     /// Drop the Lvalue
     Drop {
         location: Lvalue<'tcx>,
-        target: BasicBlock,
-        unwind: Option<BasicBlock>
+        target: Block,
+        unwind: Option<Block>
     },
 
     /// Drop the Lvalue and assign the new value over it
     DropAndReplace {
         location: Lvalue<'tcx>,
         value: Operand<'tcx>,
-        target: BasicBlock,
-        unwind: Option<BasicBlock>,
+        target: Block,
+        unwind: Option<Block>,
     },
-
-    /// Block ends with a call of a converging function
-    Call {
-        /// The function that’s being called
-        func: Operand<'tcx>,
-        /// Arguments the function is called with
-        args: Vec<Operand<'tcx>>,
-        /// Destination for the return value. If some, the call is converging.
-        destination: Option<(Lvalue<'tcx>, BasicBlock)>,
-        /// Cleanups to be done if the call unwinds.
-        cleanup: Option<BasicBlock>
-    },
-
-    /// Jump to the target if the condition has the expected value,
-    /// otherwise panic with a message and a cleanup target.
-    Assert {
-        cond: Operand<'tcx>,
-        expected: bool,
-        msg: AssertMessage<'tcx>,
-        target: BasicBlock,
-        cleanup: Option<BasicBlock>
-    }
 }
 
 impl<'tcx> Terminator<'tcx> {
-    pub fn successors(&self) -> Cow<[BasicBlock]> {
+    pub fn successors(&self) -> Cow<[Block]> {
         self.kind.successors()
     }
 
-    pub fn successors_mut(&mut self) -> Vec<&mut BasicBlock> {
+    pub fn successors_mut(&mut self) -> Vec<&mut Block> {
         self.kind.successors_mut()
     }
 }
 
 impl<'tcx> TerminatorKind<'tcx> {
     pub fn if_<'a, 'gcx>(tcx: ty::TyCtxt<'a, 'gcx, 'tcx>, cond: Operand<'tcx>,
-                         t: BasicBlock, f: BasicBlock) -> TerminatorKind<'tcx> {
+                         t: Block, f: Block) -> TerminatorKind<'tcx> {
         static BOOL_SWITCH_FALSE: &'static [ConstInt] = &[ConstInt::U8(0)];
         TerminatorKind::SwitchInt {
             discr: cond,
@@ -551,7 +539,7 @@ impl<'tcx> TerminatorKind<'tcx> {
         }
     }
 
-    pub fn successors(&self) -> Cow<[BasicBlock]> {
+    pub fn successors(&self) -> Cow<[Block]> {
         use self::TerminatorKind::*;
         match *self {
             Goto { target: ref b } => slice::ref_slice(b).into_cow(),
@@ -559,11 +547,6 @@ impl<'tcx> TerminatorKind<'tcx> {
             Resume => (&[]).into_cow(),
             Return => (&[]).into_cow(),
             Unreachable => (&[]).into_cow(),
-            Call { destination: Some((_, t)), cleanup: Some(c), .. } => vec![t, c].into_cow(),
-            Call { destination: Some((_, ref t)), cleanup: None, .. } =>
-                slice::ref_slice(t).into_cow(),
-            Call { destination: None, cleanup: Some(ref c), .. } => slice::ref_slice(c).into_cow(),
-            Call { destination: None, cleanup: None, .. } => (&[]).into_cow(),
             DropAndReplace { target, unwind: Some(unwind), .. } |
             Drop { target, unwind: Some(unwind), .. } => {
                 vec![target, unwind].into_cow()
@@ -572,14 +555,12 @@ impl<'tcx> TerminatorKind<'tcx> {
             Drop { ref target, unwind: None, .. } => {
                 slice::ref_slice(target).into_cow()
             }
-            Assert { target, cleanup: Some(unwind), .. } => vec![target, unwind].into_cow(),
-            Assert { ref target, .. } => slice::ref_slice(target).into_cow(),
         }
     }
 
-    // FIXME: no mootable cow. I’m honestly not sure what a “cow” between `&mut [BasicBlock]` and
-    // `Vec<&mut BasicBlock>` would look like in the first place.
-    pub fn successors_mut(&mut self) -> Vec<&mut BasicBlock> {
+    // FIXME: no mootable cow. I’m honestly not sure what a “cow” between `&mut [Block]` and
+    // `Vec<&mut Block>` would look like in the first place.
+    pub fn successors_mut(&mut self) -> Vec<&mut Block> {
         use self::TerminatorKind::*;
         match *self {
             Goto { target: ref mut b } => vec![b],
@@ -587,25 +568,19 @@ impl<'tcx> TerminatorKind<'tcx> {
             Resume => Vec::new(),
             Return => Vec::new(),
             Unreachable => Vec::new(),
-            Call { destination: Some((_, ref mut t)), cleanup: Some(ref mut c), .. } => vec![t, c],
-            Call { destination: Some((_, ref mut t)), cleanup: None, .. } => vec![t],
-            Call { destination: None, cleanup: Some(ref mut c), .. } => vec![c],
-            Call { destination: None, cleanup: None, .. } => vec![],
             DropAndReplace { ref mut target, unwind: Some(ref mut unwind), .. } |
             Drop { ref mut target, unwind: Some(ref mut unwind), .. } => vec![target, unwind],
             DropAndReplace { ref mut target, unwind: None, .. } |
             Drop { ref mut target, unwind: None, .. } => {
                 vec![target]
             }
-            Assert { ref mut target, cleanup: Some(ref mut unwind), .. } => vec![target, unwind],
-            Assert { ref mut target, .. } => vec![target]
         }
     }
 }
 
-impl<'tcx> BasicBlockData<'tcx> {
-    pub fn new(terminator: Option<Terminator<'tcx>>) -> BasicBlockData<'tcx> {
-        BasicBlockData {
+impl<'tcx> BlockData<'tcx> {
+    pub fn new(terminator: Option<Terminator<'tcx>>) -> BlockData<'tcx> {
+        BlockData {
             statements: vec![],
             terminator: terminator,
             is_cleanup: false,
@@ -667,39 +642,6 @@ impl<'tcx> TerminatorKind<'tcx> {
             Drop { ref location, .. } => write!(fmt, "drop({:?})", location),
             DropAndReplace { ref location, ref value, .. } =>
                 write!(fmt, "replace({:?} <- {:?})", location, value),
-            Call { ref func, ref args, ref destination, .. } => {
-                if let Some((ref destination, _)) = *destination {
-                    write!(fmt, "{:?} = ", destination)?;
-                }
-                write!(fmt, "{:?}(", func)?;
-                for (index, arg) in args.iter().enumerate() {
-                    if index > 0 {
-                        write!(fmt, ", ")?;
-                    }
-                    write!(fmt, "{:?}", arg)?;
-                }
-                write!(fmt, ")")
-            }
-            Assert { ref cond, expected, ref msg, .. } => {
-                write!(fmt, "assert(")?;
-                if !expected {
-                    write!(fmt, "!")?;
-                }
-                write!(fmt, "{:?}, ", cond)?;
-
-                match *msg {
-                    AssertMessage::BoundsCheck { ref len, ref index } => {
-                        write!(fmt, "{:?}, {:?}, {:?}",
-                               "index out of bounds: the len is {} but the index is {}",
-                               len, index)?;
-                    }
-                    AssertMessage::Math(ref err) => {
-                        write!(fmt, "{:?}", err.description())?;
-                    }
-                }
-
-                write!(fmt, ")")
-            }
         }
     }
 
@@ -719,20 +661,12 @@ impl<'tcx> TerminatorKind<'tcx> {
                       .chain(iter::once(String::from("otherwise").into()))
                       .collect()
             }
-            Call { destination: Some(_), cleanup: Some(_), .. } =>
-                vec!["return".into_cow(), "unwind".into_cow()],
-            Call { destination: Some(_), cleanup: None, .. } => vec!["return".into_cow()],
-            Call { destination: None, cleanup: Some(_), .. } => vec!["unwind".into_cow()],
-            Call { destination: None, cleanup: None, .. } => vec![],
             DropAndReplace { unwind: None, .. } |
             Drop { unwind: None, .. } => vec!["return".into_cow()],
             DropAndReplace { unwind: Some(_), .. } |
             Drop { unwind: Some(_), .. } => {
                 vec!["return".into_cow(), "unwind".into_cow()]
             }
-            Assert { cleanup: None, .. } => vec!["".into()],
-            Assert { .. } =>
-                vec!["success".into_cow(), "unwind".into_cow()]
         }
     }
 }
@@ -761,6 +695,44 @@ impl<'tcx> Statement<'tcx> {
     pub fn make_nop(&mut self) {
         self.kind = StatementKind::Nop
     }
+
+    pub fn cleanup_target(&self) -> Option<Block> {
+        match self.kind {
+            StatementKind::Assign(..) |
+            StatementKind::SetDiscriminant { .. } |
+            StatementKind::StorageLive(..) |
+            StatementKind::StorageDead(..) |
+            StatementKind::InlineAsm { .. } |
+            StatementKind::Nop => None,
+            StatementKind::Assert { cleanup: unwind, .. } |
+            StatementKind::Call { cleanup: unwind, .. } => {
+                if let Some(unwind) = unwind {
+                    Some(unwind)
+                } else {
+                    None
+                }
+            }
+        }
+    }
+
+    pub fn cleanup_target_mut(&mut self) -> Option<&mut Block> {
+        match self.kind {
+            StatementKind::Assign(..) |
+            StatementKind::SetDiscriminant { .. } |
+            StatementKind::StorageLive(..) |
+            StatementKind::StorageDead(..) |
+            StatementKind::InlineAsm { .. } |
+            StatementKind::Nop => None,
+            StatementKind::Assert { cleanup: ref mut unwind, .. } |
+            StatementKind::Call { cleanup: ref mut unwind, .. } => {
+                if let Some(ref mut unwind) = *unwind {
+                    Some(unwind)
+                } else {
+                    None
+                }
+            }
+        }
+    }
 }
 
 #[derive(Clone, Debug, RustcEncodable, RustcDecodable)]
@@ -783,6 +755,27 @@ pub enum StatementKind<'tcx> {
         inputs: Vec<Operand<'tcx>>
     },
 
+    /// Jump to the target if the condition has the expected value,
+    /// otherwise panic with a message and a cleanup target.
+    Assert {
+        cond: Operand<'tcx>,
+        expected: bool,
+        msg: AssertMessage<'tcx>,
+        cleanup: Option<Block>
+    },
+
+    /// Block ends with a call of a converging function
+    Call {
+        /// The function that’s being called
+        func: Operand<'tcx>,
+        /// Arguments the function is called with
+        args: Vec<Operand<'tcx>>,
+        /// Destination for the return value.
+        destination: Lvalue<'tcx>,
+        /// Cleanups to be done if the call unwinds.
+        cleanup: Option<Block>
+    },
+
     /// No-op. Useful for deleting instructions without affecting statement indices.
     Nop,
 }
@@ -799,6 +792,37 @@ impl<'tcx> Debug for Statement<'tcx> {
             },
             InlineAsm { ref asm, ref outputs, ref inputs } => {
                 write!(fmt, "asm!({:?} : {:?} : {:?})", asm, outputs, inputs)
+            },
+            Assert { ref cond, expected, ref msg, .. } => {
+                write!(fmt, "assert(")?;
+                if !expected {
+                    write!(fmt, "!")?;
+                }
+                write!(fmt, "{:?}, ", cond)?;
+
+                match *msg {
+                    AssertMessage::BoundsCheck { ref len, ref index } => {
+                        write!(fmt, "{:?}, {:?}, {:?}",
+                               "index out of bounds: the len is {} but the index is {}",
+                               len, index)?;
+                    }
+                    AssertMessage::Math(ref err) => {
+                        write!(fmt, "{:?}", err.description())?;
+                    }
+                }
+
+                write!(fmt, ")")
+            },
+            Call { ref func, ref args, ref destination, .. } => {
+                write!(fmt, "{:?} = ", destination)?;
+                write!(fmt, "{:?}(", func)?;
+                for (index, arg) in args.iter().enumerate() {
+                    if index > 0 {
+                        write!(fmt, ", ")?;
+                    }
+                    write!(fmt, "{:?}", arg)?;
+                }
+                write!(fmt, ")")
             },
             Nop => write!(fmt, "nop"),
         }
@@ -1296,7 +1320,7 @@ fn item_path_str(def_id: DefId) -> String {
 
 impl<'tcx> ControlFlowGraph for Mir<'tcx> {
 
-    type Node = BasicBlock;
+    type Node = Block;
 
     fn num_nodes(&self) -> usize { self.basic_blocks.len() }
 
@@ -1310,24 +1334,24 @@ impl<'tcx> ControlFlowGraph for Mir<'tcx> {
     fn successors<'graph>(&'graph self, node: Self::Node)
                           -> <Self as GraphSuccessors<'graph>>::Iter
     {
-        self.basic_blocks[node].terminator().successors().into_owned().into_iter()
+        self.successors_for(node).clone().into_iter()
     }
 }
 
 impl<'a, 'b> GraphPredecessors<'b> for Mir<'a> {
-    type Item = BasicBlock;
-    type Iter = IntoIter<BasicBlock>;
+    type Item = Block;
+    type Iter = IntoIter<Block>;
 }
 
 impl<'a, 'b>  GraphSuccessors<'b> for Mir<'a> {
-    type Item = BasicBlock;
-    type Iter = IntoIter<BasicBlock>;
+    type Item = Block;
+    type Iter = IntoIter<Block>;
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Ord, PartialOrd)]
 pub struct Location {
     /// the location is within this block
-    pub block: BasicBlock,
+    pub block: Block,
 
     /// the location is the start of the this statement; or, if `statement_index`
     /// == num-statements, then the start of the terminator.
@@ -1341,7 +1365,7 @@ impl fmt::Debug for Location {
 }
 
 impl Location {
-    pub fn dominates(&self, other: &Location, dominators: &Dominators<BasicBlock>) -> bool {
+    pub fn dominates(&self, other: &Location, dominators: &Dominators<Block>) -> bool {
         if self.block == other.block {
             self.statement_index <= other.statement_index
         } else {
@@ -1392,9 +1416,9 @@ impl<'tcx> TypeFoldable<'tcx> for LocalDecl<'tcx> {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for BasicBlockData<'tcx> {
+impl<'tcx> TypeFoldable<'tcx> for BlockData<'tcx> {
     fn super_fold_with<'gcx: 'tcx, F: TypeFolder<'gcx, 'tcx>>(&self, folder: &mut F) -> Self {
-        BasicBlockData {
+        BlockData {
             statements: self.statements.fold_with(folder),
             terminator: self.terminator.fold_with(folder),
             is_cleanup: self.is_cleanup
@@ -1423,6 +1447,32 @@ impl<'tcx> TypeFoldable<'tcx> for Statement<'tcx> {
                 outputs: outputs.fold_with(folder),
                 inputs: inputs.fold_with(folder)
             },
+            Assert { ref cond, expected, ref msg, cleanup } => {
+                let msg = if let AssertMessage::BoundsCheck { ref len, ref index } = *msg {
+                    AssertMessage::BoundsCheck {
+                        len: len.fold_with(folder),
+                        index: index.fold_with(folder),
+                    }
+                } else {
+                    msg.clone()
+                };
+                Assert {
+                    cond: cond.fold_with(folder),
+                    expected: expected,
+                    msg: msg,
+                    cleanup: cleanup
+                }
+            },
+            Call { ref func, ref args, ref destination, cleanup } => {
+                let dest = destination.fold_with(folder);
+
+                Call {
+                    func: func.fold_with(folder),
+                    args: args.fold_with(folder),
+                    destination: dest,
+                    cleanup: cleanup
+                }
+            },
             Nop => Nop,
         };
         Statement {
@@ -1441,6 +1491,21 @@ impl<'tcx> TypeFoldable<'tcx> for Statement<'tcx> {
             StorageDead(ref lvalue) => lvalue.visit_with(visitor),
             InlineAsm { ref outputs, ref inputs, .. } =>
                 outputs.visit_with(visitor) || inputs.visit_with(visitor),
+            Assert { ref cond, ref msg, .. } => {
+                if cond.visit_with(visitor) {
+                    if let AssertMessage::BoundsCheck { ref len, ref index } = *msg {
+                        len.visit_with(visitor) || index.visit_with(visitor)
+                    } else {
+                        false
+                    }
+                } else {
+                    false
+                }
+            },
+            Call { ref func, ref args, ref destination, .. } => {
+                destination.visit_with(visitor) || func.visit_with(visitor) ||
+                args.visit_with(visitor)
+            },
             Nop => false,
         }
     }
@@ -1469,35 +1534,6 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
                 target: target,
                 unwind: unwind
             },
-            Call { ref func, ref args, ref destination, cleanup } => {
-                let dest = destination.as_ref().map(|&(ref loc, dest)| {
-                    (loc.fold_with(folder), dest)
-                });
-
-                Call {
-                    func: func.fold_with(folder),
-                    args: args.fold_with(folder),
-                    destination: dest,
-                    cleanup: cleanup
-                }
-            },
-            Assert { ref cond, expected, ref msg, target, cleanup } => {
-                let msg = if let AssertMessage::BoundsCheck { ref len, ref index } = *msg {
-                    AssertMessage::BoundsCheck {
-                        len: len.fold_with(folder),
-                        index: index.fold_with(folder),
-                    }
-                } else {
-                    msg.clone()
-                };
-                Assert {
-                    cond: cond.fold_with(folder),
-                    expected: expected,
-                    msg: msg,
-                    target: target,
-                    cleanup: cleanup
-                }
-            },
             Resume => Resume,
             Return => Return,
             Unreachable => Unreachable,
@@ -1517,23 +1553,6 @@ impl<'tcx> TypeFoldable<'tcx> for Terminator<'tcx> {
             Drop { ref location, ..} => location.visit_with(visitor),
             DropAndReplace { ref location, ref value, ..} =>
                 location.visit_with(visitor) || value.visit_with(visitor),
-            Call { ref func, ref args, ref destination, .. } => {
-                let dest = if let Some((ref loc, _)) = *destination {
-                    loc.visit_with(visitor)
-                } else { false };
-                dest || func.visit_with(visitor) || args.visit_with(visitor)
-            },
-            Assert { ref cond, ref msg, .. } => {
-                if cond.visit_with(visitor) {
-                    if let AssertMessage::BoundsCheck { ref len, ref index } = *msg {
-                        len.visit_with(visitor) || index.visit_with(visitor)
-                    } else {
-                        false
-                    }
-                } else {
-                    false
-                }
-            },
             Goto { .. } |
             Resume |
             Return |

@@ -1043,7 +1043,6 @@ pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         // From here on out, regions are gone.
         passes.push_pass(box mir::transform::erase_regions::EraseRegions);
 
-        passes.push_pass(box mir::transform::add_call_guards::AddCallGuards);
         passes.push_pass(box borrowck::ElaborateDrops);
         passes.push_pass(box mir::transform::no_landing_pads::NoLandingPads);
         passes.push_pass(box mir::transform::simplify::SimplifyCfg::new("elaborate-drops"));
@@ -1055,7 +1054,6 @@ pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         passes.push_pass(box mir::transform::copy_prop::CopyPropagation);
 
         passes.push_pass(box mir::transform::simplify::SimplifyLocals);
-        passes.push_pass(box mir::transform::add_call_guards::AddCallGuards);
         passes.push_pass(box mir::transform::dump_mir::Marker("PreTrans"));
 
         passes.run_passes(tcx);

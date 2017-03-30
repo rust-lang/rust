@@ -99,8 +99,9 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 let size = C_uint(bcx.ccx, size);
                 let base = base::get_dataptr(&bcx, dest.llval);
                 tvec::slice_for_each(&bcx, base, tr_elem.ty, size, |bcx, llslot, loop_bb| {
-                    self.store_operand(bcx, llslot, dest.alignment.to_align(), tr_elem);
+                    self.store_operand(&bcx, llslot, dest.alignment.to_align(), tr_elem);
                     bcx.br(loop_bb);
+                    bcx
                 })
             }
 

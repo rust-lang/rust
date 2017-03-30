@@ -275,7 +275,7 @@ impl<'a, 'tcx> BitDenotation for MaybeInitializedLvals<'a, 'tcx> {
 
     fn statement_effect(&self,
                         sets: &mut BlockSets<MovePathIndex>,
-                        bb: mir::BasicBlock,
+                        bb: mir::Block,
                         idx: usize)
     {
         drop_flag_effects_for_location(
@@ -287,7 +287,7 @@ impl<'a, 'tcx> BitDenotation for MaybeInitializedLvals<'a, 'tcx> {
 
     fn terminator_effect(&self,
                          sets: &mut BlockSets<MovePathIndex>,
-                         bb: mir::BasicBlock,
+                         bb: mir::Block,
                          statements_len: usize)
     {
         drop_flag_effects_for_location(
@@ -299,8 +299,7 @@ impl<'a, 'tcx> BitDenotation for MaybeInitializedLvals<'a, 'tcx> {
 
     fn propagate_call_return(&self,
                              in_out: &mut IdxSet<MovePathIndex>,
-                             _call_bb: mir::BasicBlock,
-                             _dest_bb: mir::BasicBlock,
+                             _call_bb: mir::Block,
                              dest_lval: &mir::Lvalue) {
         // when a call returns successfully, that means we need to set
         // the bits for that dest_lval to 1 (initialized).
@@ -332,7 +331,7 @@ impl<'a, 'tcx> BitDenotation for MaybeUninitializedLvals<'a, 'tcx> {
 
     fn statement_effect(&self,
                         sets: &mut BlockSets<MovePathIndex>,
-                        bb: mir::BasicBlock,
+                        bb: mir::Block,
                         idx: usize)
     {
         drop_flag_effects_for_location(
@@ -344,7 +343,7 @@ impl<'a, 'tcx> BitDenotation for MaybeUninitializedLvals<'a, 'tcx> {
 
     fn terminator_effect(&self,
                          sets: &mut BlockSets<MovePathIndex>,
-                         bb: mir::BasicBlock,
+                         bb: mir::Block,
                          statements_len: usize)
     {
         drop_flag_effects_for_location(
@@ -356,8 +355,7 @@ impl<'a, 'tcx> BitDenotation for MaybeUninitializedLvals<'a, 'tcx> {
 
     fn propagate_call_return(&self,
                              in_out: &mut IdxSet<MovePathIndex>,
-                             _call_bb: mir::BasicBlock,
-                             _dest_bb: mir::BasicBlock,
+                             _call_bb: mir::Block,
                              dest_lval: &mir::Lvalue) {
         // when a call returns successfully, that means we need to set
         // the bits for that dest_lval to 0 (initialized).
@@ -388,7 +386,7 @@ impl<'a, 'tcx> BitDenotation for DefinitelyInitializedLvals<'a, 'tcx> {
 
     fn statement_effect(&self,
                         sets: &mut BlockSets<MovePathIndex>,
-                        bb: mir::BasicBlock,
+                        bb: mir::Block,
                         idx: usize)
     {
         drop_flag_effects_for_location(
@@ -400,7 +398,7 @@ impl<'a, 'tcx> BitDenotation for DefinitelyInitializedLvals<'a, 'tcx> {
 
     fn terminator_effect(&self,
                          sets: &mut BlockSets<MovePathIndex>,
-                         bb: mir::BasicBlock,
+                         bb: mir::Block,
                          statements_len: usize)
     {
         drop_flag_effects_for_location(
@@ -412,8 +410,7 @@ impl<'a, 'tcx> BitDenotation for DefinitelyInitializedLvals<'a, 'tcx> {
 
     fn propagate_call_return(&self,
                              in_out: &mut IdxSet<MovePathIndex>,
-                             _call_bb: mir::BasicBlock,
-                             _dest_bb: mir::BasicBlock,
+                             _call_bb: mir::Block,
                              dest_lval: &mir::Lvalue) {
         // when a call returns successfully, that means we need to set
         // the bits for that dest_lval to 1 (initialized).
@@ -436,7 +433,7 @@ impl<'a, 'tcx> BitDenotation for MovingOutStatements<'a, 'tcx> {
     }
     fn statement_effect(&self,
                         sets: &mut BlockSets<MoveOutIndex>,
-                        bb: mir::BasicBlock,
+                        bb: mir::Block,
                         idx: usize) {
         let (tcx, mir, move_data) = (self.tcx, self.mir, self.move_data());
         let stmt = &mir[bb].statements[idx];
@@ -474,13 +471,15 @@ impl<'a, 'tcx> BitDenotation for MovingOutStatements<'a, 'tcx> {
             mir::StatementKind::StorageLive(_) |
             mir::StatementKind::StorageDead(_) |
             mir::StatementKind::InlineAsm { .. } |
+            mir::StatementKind::Assert { .. } |
+            mir::StatementKind::Call { .. } |
             mir::StatementKind::Nop => {}
         }
     }
 
     fn terminator_effect(&self,
                          sets: &mut BlockSets<MoveOutIndex>,
-                         bb: mir::BasicBlock,
+                         bb: mir::Block,
                          statements_len: usize)
     {
         let (mir, move_data) = (self.mir, self.move_data());
@@ -498,8 +497,7 @@ impl<'a, 'tcx> BitDenotation for MovingOutStatements<'a, 'tcx> {
 
     fn propagate_call_return(&self,
                              in_out: &mut IdxSet<MoveOutIndex>,
-                             _call_bb: mir::BasicBlock,
-                             _dest_bb: mir::BasicBlock,
+                             _call_bb: mir::Block,
                              dest_lval: &mir::Lvalue) {
         let move_data = self.move_data();
         let bits_per_block = self.bits_per_block();

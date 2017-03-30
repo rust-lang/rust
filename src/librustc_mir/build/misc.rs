@@ -101,7 +101,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     }
 
     pub fn push_usize(&mut self,
-                      block: BasicBlock,
+                      block: Block,
                       source_info: SourceInfo,
                       value: u64)
                       -> Lvalue<'tcx> {

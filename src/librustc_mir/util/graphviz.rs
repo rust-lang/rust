@@ -60,7 +60,7 @@ pub fn write_mir_graphviz<'a, 'b, 'tcx, W, I>(tcx: TyCtxt<'b, 'tcx, 'tcx>,
 ///
 /// `init` and `fini` are callbacks for emitting additional rows of
 /// data (using HTML enclosed with `<tr>` in the emitted text).
-pub fn write_node_label<W: Write, INIT, FINI>(block: BasicBlock,
+pub fn write_node_label<W: Write, INIT, FINI>(block: Block,
                                               mir: &Mir,
                                               w: &mut W,
                                               num_cols: u32,
@@ -103,7 +103,7 @@ pub fn write_node_label<W: Write, INIT, FINI>(block: BasicBlock,
 }
 
 /// Write a graphviz DOT node for the given basic block.
-fn write_node<W: Write>(block: BasicBlock, mir: &Mir, w: &mut W) -> io::Result<()> {
+fn write_node<W: Write>(block: Block, mir: &Mir, w: &mut W) -> io::Result<()> {
     // Start a new node with the label to follow, in one of DOT's pseudo-HTML tables.
     write!(w, r#"    {} [shape="none", label=<"#, node(block))?;
     write_node_label(block, mir, w, 1, |_| Ok(()), |_| Ok(()))?;
@@ -112,10 +112,12 @@ fn write_node<W: Write>(block: BasicBlock, mir: &Mir, w: &mut W) -> io::Result<(
 }
 
 /// Write graphviz DOT edges with labels between the given basic block and all of its successors.
-fn write_edges<W: Write>(source: BasicBlock, mir: &Mir, w: &mut W) -> io::Result<()> {
+fn write_edges<W: Write>(source: Block, mir: &Mir, w: &mut W) -> io::Result<()> {
     let terminator = mir[source].terminator();
     let labels = terminator.kind.fmt_successor_labels();
 
+    // FIXME: This should utilize ControlFlowGraph::successors(mir, source) but the
+    // fmt_successor_labels is only implemented for terminators as of right now.
     for (&target, label) in terminator.successors().iter().zip(labels) {
         writeln!(w, r#"    {} -> {} [label="{}"];"#, node(source), node(target), label)?;
     }
@@ -152,19 +154,17 @@ fn write_graph_label<'a, 'tcx, W: Write>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             write!(w, "mut ")?;
         }
 
+        write!(w, "{:?}: {};", Lvalue::Local(local), escape(&decl.ty))?;
         if let Some(name) = decl.name {
-            write!(w, r#"{:?}: {}; // {}<br align="left"/>"#,
-                   Lvalue::Local(local), escape(&decl.ty), name)?;
-        } else {
-            write!(w, r#"let mut {:?}: {};<br align="left"/>"#,
-                   Lvalue::Local(local), escape(&decl.ty))?;
+            write!(w, " // {}", name)?;
         }
+        write!(w, r#"<br align="left"/>"#)?;
     }
 
     writeln!(w, ">;")
 }
 
-fn node(block: BasicBlock) -> String {
+fn node(block: Block) -> String {
     format!("bb{}", block.index())
 }
 

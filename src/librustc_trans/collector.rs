@@ -542,17 +542,10 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
     }
 
     fn visit_terminator_kind(&mut self,
-                             block: mir::BasicBlock,
+                             block: mir::Block,
                              kind: &mir::TerminatorKind<'tcx>,
                              location: Location) {
-        let tcx = self.scx.tcx();
         match *kind {
-            mir::TerminatorKind::Call { ref func, .. } => {
-                let callee_ty = func.ty(self.mir, tcx);
-                let callee_ty = monomorphize::apply_param_substs(
-                    self.scx, self.param_substs, &callee_ty);
-                visit_fn_use(self.scx, callee_ty, true, &mut self.output);
-            }
             mir::TerminatorKind::Drop { ref location, .. } |
             mir::TerminatorKind::DropAndReplace { ref location, .. } => {
                 let ty = location.ty(self.mir, self.scx.tcx())
@@ -566,12 +559,36 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
             mir::TerminatorKind::SwitchInt { .. } |
             mir::TerminatorKind::Resume |
             mir::TerminatorKind::Return |
-            mir::TerminatorKind::Unreachable |
-            mir::TerminatorKind::Assert { .. } => {}
+            mir::TerminatorKind::Unreachable => {}
         }
 
         self.super_terminator_kind(block, kind, location);
     }
+
+    fn visit_statement(
+        &mut self,
+        _block: mir::Block,
+        statement: &mir::Statement<'tcx>,
+        _location: Location,
+    ) {
+        let tcx = self.scx.tcx();
+        match statement.kind {
+            mir::StatementKind::Call { ref func, .. } => {
+                let callee_ty = func.ty(self.mir, tcx);
+                let callee_ty = monomorphize::apply_param_substs(
+                    self.scx, self.param_substs, &callee_ty);
+                visit_fn_use(self.scx, callee_ty, true, &mut self.output);
+            }
+            mir::StatementKind::Assign(..) |
+            mir::StatementKind::SetDiscriminant { .. } |
+            mir::StatementKind::StorageLive(..) |
+            mir::StatementKind::StorageDead(..) |
+            mir::StatementKind::InlineAsm { .. } |
+            mir::StatementKind::Assert { .. } |
+            mir::StatementKind::Nop => {}
+        }
+    }
+
 }
 
 fn visit_drop_use<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,

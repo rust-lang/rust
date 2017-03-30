@@ -20,7 +20,7 @@ pub struct NoLandingPads;
 
 impl<'tcx> MutVisitor<'tcx> for NoLandingPads {
     fn visit_terminator(&mut self,
-                        bb: BasicBlock,
+                        bb: Block,
                         terminator: &mut Terminator<'tcx>,
                         location: Location) {
         match terminator.kind {
@@ -31,14 +31,34 @@ impl<'tcx> MutVisitor<'tcx> for NoLandingPads {
             TerminatorKind::SwitchInt { .. } => {
                 /* nothing to do */
             },
-            TerminatorKind::Call { cleanup: ref mut unwind, .. } |
-            TerminatorKind::Assert { cleanup: ref mut unwind, .. } |
             TerminatorKind::DropAndReplace { ref mut unwind, .. } |
             TerminatorKind::Drop { ref mut unwind, .. } => {
                 unwind.take();
             },
         }
         self.super_terminator(bb, terminator, location);
+    }
+
+    fn visit_statement(
+        &mut self,
+        bb: Block,
+        statement: &mut Statement<'tcx>,
+        location: Location) {
+        match statement.kind {
+            StatementKind::Assign(..) |
+            StatementKind::SetDiscriminant { .. } |
+            StatementKind::StorageLive(..) |
+            StatementKind::StorageDead(..) |
+            StatementKind::InlineAsm { .. } |
+            StatementKind::Nop => {
+                /* nothing to do */
+            },
+            StatementKind::Call { ref mut cleanup, .. } |
+            StatementKind::Assert { ref mut cleanup, .. } => {
+                cleanup.take();
+            }
+        }
+        self.super_statement(bb, statement, location);
     }
 }
 

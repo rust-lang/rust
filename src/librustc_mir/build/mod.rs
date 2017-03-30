@@ -52,13 +52,13 @@ pub struct Builder<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 
     /// cached block with the RESUME terminator; this is created
     /// when first set of cleanups are built.
-    cached_resume_block: Option<BasicBlock>,
+    cached_resume_block: Option<Block>,
     /// cached block with the RETURN terminator
-    cached_return_block: Option<BasicBlock>,
+    cached_return_block: Option<Block>,
 }
 
 struct CFG<'tcx> {
-    basic_blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
+    basic_blocks: IndexVec<Block, BlockData<'tcx>>,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -82,14 +82,14 @@ impl Idx for ScopeId {
 /// convenient.
 
 #[must_use] // if you don't use one of these results, you're leaving a dangling edge
-pub struct BlockAnd<T>(BasicBlock, T);
+pub struct BlockAnd<T>(Block, T);
 
 trait BlockAndExtension {
     fn and<T>(self, v: T) -> BlockAnd<T>;
     fn unit(self) -> BlockAnd<()>;
 }
 
-impl BlockAndExtension for BasicBlock {
+impl BlockAndExtension for Block {
     fn and<T>(self, v: T) -> BlockAnd<T> {
         BlockAnd(self, v)
     }
@@ -285,7 +285,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     }
 
     fn args_and_body(&mut self,
-                     mut block: BasicBlock,
+                     mut block: Block,
                      arguments: &[(Ty<'gcx>, Option<&'gcx hir::Pat>)],
                      argument_extent: CodeExtent,
                      ast_body: &'gcx hir::Expr)
@@ -348,7 +348,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn return_block(&mut self) -> BasicBlock {
+    fn return_block(&mut self) -> Block {
         match self.cached_return_block {
             Some(rb) => rb,
             None => {

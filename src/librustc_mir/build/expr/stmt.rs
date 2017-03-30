@@ -12,10 +12,11 @@ use build::{BlockAnd, BlockAndExtension, Builder};
 use build::scope::BreakableScope;
 use hair::*;
 use rustc::mir::*;
+use rustc::mir::Block;
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
-    pub fn stmt_expr(&mut self, mut block: BasicBlock, expr: Expr<'tcx>) -> BlockAnd<()> {
+    pub fn stmt_expr(&mut self, mut block: Block, expr: Expr<'tcx>) -> BlockAnd<()> {
         let this = self;
         let expr_span = expr.span;
         let source_info = this.source_info(expr.span);

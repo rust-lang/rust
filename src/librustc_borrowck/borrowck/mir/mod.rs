@@ -13,7 +13,7 @@ use borrowck::BorrowckCtxt;
 use syntax::ast::{self, MetaItem};
 use syntax_pos::DUMMY_SP;
 
-use rustc::mir::{self, BasicBlock, BasicBlockData, Mir, Statement, Terminator, Location};
+use rustc::mir::{self, Block, BlockData, Mir, Statement, Terminator, Location};
 use rustc::session::Session;
 use rustc::ty::{self, TyCtxt};
 use rustc_mir::util::elaborate_drops::DropFlagState;
@@ -164,8 +164,8 @@ pub struct MirBorrowckCtxt<'b, 'a: 'b, 'tcx: 'a> {
 }
 
 impl<'b, 'a: 'b, 'tcx: 'a> MirBorrowckCtxt<'b, 'a, 'tcx> {
-    fn process_basic_block(&mut self, bb: BasicBlock) {
-        let BasicBlockData { ref statements, ref terminator, is_cleanup: _ } =
+    fn process_basic_block(&mut self, bb: Block) {
+        let BlockData { ref statements, ref terminator, is_cleanup: _ } =
             self.mir[bb];
         for stmt in statements {
             self.process_statement(bb, stmt);
@@ -174,11 +174,11 @@ impl<'b, 'a: 'b, 'tcx: 'a> MirBorrowckCtxt<'b, 'a, 'tcx> {
         self.process_terminator(bb, terminator);
     }
 
-    fn process_statement(&mut self, bb: BasicBlock, stmt: &Statement<'tcx>) {
+    fn process_statement(&mut self, bb: Block, stmt: &Statement<'tcx>) {
         debug!("MirBorrowckCtxt::process_statement({:?}, {:?}", bb, stmt);
     }
 
-    fn process_terminator(&mut self, bb: BasicBlock, term: &Option<Terminator<'tcx>>) {
+    fn process_terminator(&mut self, bb: Block, term: &Option<Terminator<'tcx>>) {
         debug!("MirBorrowckCtxt::process_terminator({:?}, {:?})", bb, term);
     }
 }
@@ -364,6 +364,8 @@ fn drop_flag_effects_for_location<'a, 'tcx, F>(
             mir::StatementKind::StorageLive(_) |
             mir::StatementKind::StorageDead(_) |
             mir::StatementKind::InlineAsm { .. } |
+            mir::StatementKind::Assert { .. } |
+            mir::StatementKind::Call { .. } |
             mir::StatementKind::Nop => {}
         },
         None => {

@@ -15,12 +15,13 @@ use build::expr::category::Category;
 use hair::*;
 use rustc::middle::region::CodeExtent;
 use rustc::mir::*;
+use rustc::mir::Block;
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// Compile `expr` into a fresh temporary. This is used when building
     /// up rvalues so as to freeze the value that will be consumed.
     pub fn as_temp<M>(&mut self,
-                      block: BasicBlock,
+                      block: Block,
                       temp_lifetime: Option<CodeExtent>,
                       expr: M)
                       -> BlockAnd<Lvalue<'tcx>>
@@ -31,7 +32,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     }
 
     fn expr_as_temp(&mut self,
-                    mut block: BasicBlock,
+                    mut block: Block,
                     temp_lifetime: Option<CodeExtent>,
                     expr: Expr<'tcx>)
                     -> BlockAnd<Lvalue<'tcx>> {

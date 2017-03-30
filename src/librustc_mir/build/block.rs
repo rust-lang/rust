@@ -9,17 +9,19 @@
 // except according to those terms.
 
 use build::{BlockAnd, BlockAndExtension, Builder};
+use hair;
 use hair::*;
 use rustc::mir::*;
+use rustc::mir::Block;
 use rustc::hir;
 
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     pub fn ast_block(&mut self,
                      destination: &Lvalue<'tcx>,
-                     mut block: BasicBlock,
+                     mut block: Block,
                      ast_block: &'tcx hir::Block)
                      -> BlockAnd<()> {
-        let Block { extent, span, stmts, expr } = self.hir.mirror(ast_block);
+        let hair::Block { extent, span, stmts, expr } = self.hir.mirror(ast_block);
         self.in_scope(extent, block, move |this| {
             // This convoluted structure is to avoid using recursion as we walk down a list
             // of statements. Basically, the structure we get back is something like:
