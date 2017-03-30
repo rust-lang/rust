@@ -27,6 +27,7 @@
 
 use std::ascii::AsciiExt;
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::default::Default;
 use std::fmt::{self, Write};
 use std::str;
@@ -135,8 +136,8 @@ macro_rules! event_loop_break {
 
 struct ParserWrapper<'a> {
     parser: Parser<'a>,
-    footnotes: Vec<String>,
-    current_footnote_id: u16,
+    // The key is the footnote reference. The value is the footnote definition and the id.
+    footnotes: HashMap<String, (String, u16)>,
 }
 
 impl<'a> ParserWrapper<'a> {
@@ -144,18 +145,18 @@ impl<'a> ParserWrapper<'a> {
         ParserWrapper {
             parser: Parser::new_ext(s, pulldown_cmark::OPTION_ENABLE_TABLES |
                                        pulldown_cmark::OPTION_ENABLE_FOOTNOTES),
-            footnotes: Vec::new(),
-            current_footnote_id: 1,
+            footnotes: HashMap::new(),
         }
     }
+
     pub fn next(&mut self) -> Option<Event<'a>> {
         self.parser.next()
     }
 
-    pub fn get_next_footnote_id(&mut self) -> u16 {
-        let tmp = self.current_footnote_id;
-        self.current_footnote_id += 1;
-        tmp
+    pub fn get_entry(&mut self, key: &str) -> &mut (String, u16) {
+        let new_id = self.footnotes.keys().count() + 1;
+        let key = key.to_owned();
+        self.footnotes.entry(key).or_insert((String::new(), new_id as u16))
     }
 }
 
@@ -450,10 +451,11 @@ pub fn render(w: &mut fmt::Formatter,
 
     fn footnote(parser: &mut ParserWrapper, buffer: &mut String,
                 toc_builder: &mut Option<TocBuilder>, shorter: MarkdownOutputStyle,
-                mut definition: String, id: &mut Option<&mut String>) {
-        event_loop_break!(parser, toc_builder, shorter, definition, true, id,
+                id: &mut Option<&mut String>) {
+        let mut content = String::new();
+        event_loop_break!(parser, toc_builder, shorter, content, true, id,
                           Event::End(Tag::FootnoteDefinition(_)));
-        buffer.push_str(&definition);
+        buffer.push_str(&content);
     }
 
     fn rule(parser: &mut ParserWrapper, buffer: &mut String, toc_builder: &mut Option<TocBuilder>,
@@ -507,17 +509,24 @@ pub fn render(w: &mut fmt::Formatter,
                 }
                 Event::Start(Tag::FootnoteDefinition(ref def)) => {
                     let mut content = String::new();
-                    footnote(parser, &mut content, toc_builder, shorter, def.as_ref().to_owned(),
-                             id);
-                    let cur_len = parser.footnotes.len() + 1;
-                    parser.footnotes.push(format!("<li id=\"ref{}\">{}<a href=\"#supref{0}\" \
-                                                   rev=\"footnote\">↩</a></li>",
-                                                  cur_len, content));
+                    let def = def.as_ref();
+                    footnote(parser, &mut content, toc_builder, shorter, id);
+                    let entry = parser.get_entry(def);
+                    let cur_id = (*entry).1;
+                    (*entry).0.push_str(&format!("<li id=\"ref{}\">{}&nbsp;<a href=\"#supref{0}\" \
+                                                  rev=\"footnote\">↩</a></p></li>",
+                                                 cur_id,
+                                                 if content.ends_with("</p>") {
+                                                     &content[..content.len() - 4]
+                                                 } else {
+                                                     &content
+                                                 }));
                 }
-                Event::FootnoteReference(_) => {
+                Event::FootnoteReference(ref reference) => {
+                    let entry = parser.get_entry(reference.as_ref());
                     buffer.push_str(&format!("<sup id=\"supref{0}\"><a href=\"#ref{0}\">{0}</a>\
                                               </sup>",
-                                             parser.get_next_footnote_id()));
+                                             (*entry).1));
                 }
                 Event::Html(h) | Event::InlineHtml(h) => {
                     buffer.push_str(&*h);
@@ -545,7 +554,10 @@ pub fn render(w: &mut fmt::Formatter,
     }
     if !parser.footnotes.is_empty() {
         buffer.push_str(&format!("<div class=\"footnotes\"><hr><ol>{}</ol></div>",
-                                 parser.footnotes.join("")));
+                                 parser.footnotes.values()
+                                                 .map(|&(ref s, _)| s.as_str())
+                                                 .collect::<Vec<_>>()
+                                                 .join("")));
     }
     let mut ret = toc_builder.map_or(Ok(()), |builder| {
         write!(w, "<nav id=\"TOC\">{}</nav>", builder.into_toc())
