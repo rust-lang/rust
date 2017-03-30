@@ -607,14 +607,14 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                 lint_or_fun_call(cx, expr, &name.node.as_str(), args);
 
                 let self_ty = cx.tables.expr_ty_adjusted(&args[0]);
-                if args.len() == 1 && &*name.node.as_str() == "clone" {
+                if args.len() == 1 && name.node == "clone" {
                     lint_clone_on_copy(cx, expr, &args[0], self_ty);
                 }
 
                 match self_ty.sty {
                     ty::TyRef(_, ty) if ty.ty.sty == ty::TyStr => {
                         for &(method, pos) in &PATTERN_METHODS {
-                            if &*name.node.as_str() == method && args.len() > pos {
+                            if name.node == method && args.len() > pos {
                                 lint_single_char_pattern(cx, expr, &args[pos]);
                             }
                         }
@@ -646,7 +646,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
         ], {
             // check missing trait implementations
             for &(method_name, n_args, self_kind, out_type, trait_name) in &TRAIT_METHODS {
-                if &*name.as_str() == method_name &&
+                if name == method_name &&
                    sig.decl.inputs.len() == n_args &&
                    out_type.matches(&sig.decl.output) &&
                    self_kind.matches(&first_arg_ty, &first_arg, &self_ty, false) {
@@ -683,7 +683,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             }
 
             let ret_ty = return_ty(cx, implitem.id);
-            if &*name.as_str() == "new" &&
+            if name == "new" &&
                !ret_ty.walk().any(|t| same_tys(cx, t, ty, implitem.id)) {
                 span_lint(cx,
                           NEW_RET_NO_SELF,
@@ -712,7 +712,7 @@ fn lint_or_fun_call(cx: &LateContext, expr: &hir::Expr, name: &str, args: &[hir:
 
         if name == "unwrap_or" {
             if let hir::ExprPath(ref qpath) = fun.node {
-                let path: &str = &*last_path_segment(qpath).name.as_str();
+                let path = &*last_path_segment(qpath).name.as_str();
 
                 if ["default", "new"].contains(&path) {
                     let arg_ty = cx.tables.expr_ty(arg);
@@ -991,7 +991,7 @@ fn derefs_to_slice(cx: &LateContext, expr: &hir::Expr, ty: ty::Ty) -> Option<sug
     }
 
     if let hir::ExprMethodCall(name, _, ref args) = expr.node {
-        if &*name.node.as_str() == "iter" && may_slice(cx, cx.tables.expr_ty(&args[0])) {
+        if name.node == "iter" && may_slice(cx, cx.tables.expr_ty(&args[0])) {
             sugg::Sugg::hir_opt(cx, &args[0]).map(|sugg| sugg.addr())
         } else {
             None
@@ -1209,7 +1209,7 @@ fn lint_chars_next(cx: &LateContext, expr: &hir::Expr, chain: &hir::Expr, other:
         arg_char.len() == 1,
         let hir::ExprPath(ref qpath) = fun.node,
         let Some(segment) = single_segment_path(qpath),
-        &*segment.name.as_str() == "Some"
+        segment.name == "Some"
     ], {
         let self_ty = walk_ptrs_ty(cx.tables.expr_ty_adjusted(&args[0][0]));
 

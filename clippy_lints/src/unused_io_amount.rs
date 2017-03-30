@@ -56,8 +56,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedIoAmount {
             },
 
             hir::ExprMethodCall(ref symbol, _, ref args) => {
-                let symbol = &*symbol.node.as_str();
-                match symbol {
+                match &*symbol.node.as_str() {
                     "expect" | "unwrap" | "unwrap_or" | "unwrap_or_else" => {
                         check_method_call(cx, &args[0], expr);
                     },

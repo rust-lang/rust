@@ -199,7 +199,7 @@ fn allowed_lts_from(named_lts: &[LifetimeDef]) -> HashSet<RefLt> {
 
 fn lts_from_bounds<'a, T: Iterator<Item = &'a Lifetime>>(mut vec: Vec<RefLt>, bounds_lts: T) -> Vec<RefLt> {
     for lt in bounds_lts {
-        if &*lt.name.as_str() != "'static" {
+        if lt.name != "'static" {
             vec.push(RefLt::Named(lt.name));
         }
     }
@@ -228,7 +228,7 @@ impl<'v, 't> RefVisitor<'v, 't> {
 
     fn record(&mut self, lifetime: &Option<Lifetime>) {
         if let Some(ref lt) = *lifetime {
-            if &*lt.name.as_str() == "'static" {
+            if lt.name == "'static" {
                 self.lts.push(RefLt::Static);
             } else if lt.is_elided() {
                 self.lts.push(RefLt::Unnamed);
