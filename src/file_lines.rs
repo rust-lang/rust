@@ -140,9 +140,12 @@ impl FileLines {
             Some(ref map) => map,
         };
 
-        match map.get_vec(range.file_name()) {
-            None => false,
-            Some(ranges) => ranges.iter().any(|r| r.intersects(Range::from(range))),
+        match canonicalize_path_string(range.file_name()).and_then(|canonical| {
+                                                                       map.get_vec(&canonical)
+                                                                           .ok_or(())
+                                                                   }) {
+            Ok(ranges) => ranges.iter().any(|r| r.intersects(Range::from(range))),
+            Err(_) => false,
         }
     }
 }
