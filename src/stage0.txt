@@ -12,5 +12,4 @@
 # tarball for a stable release you'll likely see `1.x.0-$date` where `1.x.0` was
 # released on `$date`
 
-rustc: beta-2017-02-01
-cargo: 407edef22e894266eb562618cba5ca9757051946
+rustc: beta-2017-03-21
