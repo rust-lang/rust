@@ -93,7 +93,13 @@ And the following to std::cmp::PartialOrd.
 /// This function will return None if a comparison to either min or max couldn't be made.
 #[inline]
 pub fn partial_clamp(self, min: Self, max: Self) -> Option<Self> {
-    assert!(min <= max);
+    let min_max_compare = min.partial_cmp(&max);
+    if let None = min_max_compare {
+        return None;
+    }
+    else if let Some(cmp) = min_max_compare {
+        assert!(cmp == Ordering::Less || cmp == Ordering::Equal);
+    }
     let min_compare = input.partial_cmp(&min);
     if let Some(Ordering::Less) = min_compare {
         return Some(min);
