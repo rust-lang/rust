@@ -553,7 +553,15 @@ impl<'a> Chars<'a> {
     }
 }
 
-/// Iterator for a string's characters and their byte offsets.
+/// An iterator over the [`char`]s of a string slice, and their positions.
+///
+/// [`char`]: ../../std/primitive.char.html
+///
+/// This struct is created by the [`char_indices()`] method on [`str`].
+/// See its documentation for more.
+///
+/// [`char_indices()`]: ../../std/primitive.str.html#method.char_indices
+/// [`str`]: ../../std/primitive.str.html
 #[derive(Clone, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct CharIndices<'a> {
