@@ -141,8 +141,7 @@ install:
   - set SCCACHE_ERROR_LOG=%CD%/sccache.log
 
 test_script:
-  - mkdir C:\cache\rustsrc
-  - sh src/ci/init_repo.sh . /c/cache/rustsrc
+  - appveyor-retry sh -c 'git submodule deinit -f . && git submodule update --init'
   - set SRC=.
   - set NO_CCACHE=1
   - sh src/ci/run.sh
@@ -151,7 +150,6 @@ on_failure:
   - cat %CD%/sccache.log
 
 cache:
-  - C:\cache\rustsrc
   - "build/i686-pc-windows-msvc/llvm -> src/rustllvm/llvm-rebuild-trigger"
   - "build/x86_64-pc-windows-msvc/llvm -> src/rustllvm/llvm-rebuild-trigger"
   - "i686-pc-windows-msvc/llvm -> src/rustllvm/llvm-rebuild-trigger"
