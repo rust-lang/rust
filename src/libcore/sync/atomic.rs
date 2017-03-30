@@ -1171,6 +1171,8 @@ macro_rules! atomic_int {
 
             /// Add to the current value, returning the previous value.
             ///
+            /// This operation wraps around on overflow.
+            ///
             /// # Examples
             ///
             /// ```
@@ -1187,6 +1189,8 @@ macro_rules! atomic_int {
             }
 
             /// Subtract from the current value, returning the previous value.
+            ///
+            /// This operation wraps around on overflow.
             ///
             /// # Examples
             ///
