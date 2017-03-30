@@ -140,15 +140,6 @@ pub fn clamp(self, min: f32, max: f32) -> f32 {
 }
 ```
 
-There are 3 special float values the clamp function will need to handle, and 3 positions into which they can go so I will represent
-the edge case behavior with a 3x3 chart.
-
-|  |INFINITY|NEG_INFINITY|NAN|
-|---|---|---|---|
-|self|return max;|return min;|return NAN;|
-|max|No max enforced|return NEG_INFINITY;|panic|
-|min|return INFINITY;|No min enforced|panic|
-
 # How We Teach This
 [how-we-teach-this]: #how-we-teach-this
 
