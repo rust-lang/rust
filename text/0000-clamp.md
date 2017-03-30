@@ -73,10 +73,10 @@ Add the following to std::cmp::Ord
 #[inline]
 pub fn clamp(self, min: Self, max: Self) -> Self {
     assert!(min <= max);
-    if input < min {
+    if self < min {
         min
     }
-    else if input > max {
+    else if self > max {
         max
     } else {
         self
@@ -100,14 +100,14 @@ pub fn partial_clamp(self, min: Self, max: Self) -> Option<Self> {
     else if let Some(cmp) = min_max_compare {
         assert!(cmp == Ordering::Less || cmp == Ordering::Equal);
     }
-    let min_compare = input.partial_cmp(&min);
+    let min_compare = self.partial_cmp(&min);
     if let Some(Ordering::Less) = min_compare {
         return Some(min);
     }
     else if let None = min_compare {
         return None;
     }
-    let max_compare = input.partial_cmp(&max);
+    let max_compare = self.partial_cmp(&max);
     if let Some(Ordering::Greater) = max_compare {
         return Some(max);
     }
