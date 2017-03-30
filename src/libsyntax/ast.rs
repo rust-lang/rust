@@ -14,73 +14,24 @@ pub use self::TyParamBound::*;
 pub use self::UnsafeSource::*;
 pub use self::ViewPath_::*;
 pub use self::PathParameters::*;
-pub use symbol::Symbol as Name;
+pub use symbol::{Ident, Symbol as Name};
 pub use util::ThinVec;
 
-use syntax_pos::{mk_sp, BytePos, Span, DUMMY_SP, ExpnId};
+use syntax_pos::{Span, DUMMY_SP};
 use codemap::{respan, Spanned};
 use abi::Abi;
-use ext::hygiene::SyntaxContext;
+use ext::hygiene::{Mark, SyntaxContext};
 use print::pprust;
 use ptr::P;
 use rustc_data_structures::indexed_vec;
 use symbol::{Symbol, keywords};
 use tokenstream::{ThinTokenStream, TokenStream};
 
+use serialize::{self, Encoder, Decoder};
 use std::collections::HashSet;
 use std::fmt;
 use std::rc::Rc;
 use std::u32;
-
-use serialize::{self, Encodable, Decodable, Encoder, Decoder};
-
-/// An identifier contains a Name (index into the interner
-/// table) and a SyntaxContext to track renaming and
-/// macro expansion per Flatt et al., "Macros That Work Together"
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Ident {
-    pub name: Symbol,
-    pub ctxt: SyntaxContext
-}
-
-impl Ident {
-    pub const fn with_empty_ctxt(name: Name) -> Ident {
-        Ident { name: name, ctxt: SyntaxContext::empty() }
-    }
-
-    /// Maps a string to an identifier with an empty syntax context.
-    pub fn from_str(s: &str) -> Ident {
-        Ident::with_empty_ctxt(Symbol::intern(s))
-    }
-
-    pub fn unhygienize(&self) -> Ident {
-        Ident { name: self.name, ctxt: SyntaxContext::empty() }
-    }
-}
-
-impl fmt::Debug for Ident {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}{:?}", self.name, self.ctxt)
-    }
-}
-
-impl fmt::Display for Ident {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt(&self.name, f)
-    }
-}
-
-impl Encodable for Ident {
-    fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        self.name.encode(s)
-    }
-}
-
-impl Decodable for Ident {
-    fn decode<D: Decoder>(d: &mut D) -> Result<Ident, D::Error> {
-        Ok(Ident::with_empty_ctxt(Name::decode(d)?))
-    }
-}
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy)]
 pub struct Lifetime {
@@ -255,6 +206,14 @@ impl NodeId {
 
     pub fn as_u32(&self) -> u32 {
         self.0
+    }
+
+    pub fn placeholder_from_mark(mark: Mark) -> Self {
+        NodeId(mark.as_u32())
+    }
+
+    pub fn placeholder_to_mark(self) -> Mark {
+        Mark::from_u32(self.0)
     }
 }
 
@@ -1437,7 +1396,7 @@ pub struct InlineAsm {
     pub volatile: bool,
     pub alignstack: bool,
     pub dialect: AsmDialect,
-    pub expn_id: ExpnId,
+    pub ctxt: SyntaxContext,
 }
 
 /// An argument in a function header.
@@ -1474,7 +1433,7 @@ impl Arg {
                     TyKind::Rptr(lt, MutTy{ref ty, mutbl}) if ty.node == TyKind::ImplicitSelf => {
                         Some(respan(self.pat.span, SelfKind::Region(lt, mutbl)))
                     }
-                    _ => Some(respan(mk_sp(self.pat.span.lo, self.ty.span.hi),
+                    _ => Some(respan(self.pat.span.to(self.ty.span),
                                      SelfKind::Explicit(self.ty.clone(), mutbl))),
                 }
             }
@@ -1491,7 +1450,7 @@ impl Arg {
     }
 
     pub fn from_self(eself: ExplicitSelf, eself_ident: SpannedIdent) -> Arg {
-        let span = mk_sp(eself.span.lo, eself_ident.span.hi);
+        let span = eself.span.to(eself_ident.span);
         let infer_ty = P(Ty {
             id: DUMMY_NODE_ID,
             node: TyKind::ImplicitSelf,
@@ -1728,11 +1687,11 @@ pub struct PolyTraitRef {
 }
 
 impl PolyTraitRef {
-    pub fn new(lifetimes: Vec<LifetimeDef>, path: Path, lo: BytePos, hi: BytePos) -> Self {
+    pub fn new(lifetimes: Vec<LifetimeDef>, path: Path, span: Span) -> Self {
         PolyTraitRef {
             bound_lifetimes: lifetimes,
             trait_ref: TraitRef { path: path, ref_id: DUMMY_NODE_ID },
-            span: mk_sp(lo, hi),
+            span: span,
         }
     }
 }

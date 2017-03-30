@@ -39,7 +39,7 @@ use syntax::attr;
 use syntax::ast;
 use syntax::codemap;
 use syntax::ext::base::MacroKind;
-use syntax_pos::{self, Span, BytePos, Pos, DUMMY_SP};
+use syntax_pos::{self, Span, BytePos, Pos, DUMMY_SP, NO_EXPANSION};
 
 pub struct DecodeContext<'a, 'tcx: 'a> {
     opaque: opaque::Decoder<'a>,
@@ -243,7 +243,7 @@ impl<'a, 'tcx> SpecializedDecoder<Span> for DecodeContext<'a, 'tcx> {
         let sess = if let Some(sess) = self.sess {
             sess
         } else {
-            return Ok(syntax_pos::mk_sp(lo, hi));
+            return Ok(Span { lo: lo, hi: hi, ctxt: NO_EXPANSION });
         };
 
         let (lo, hi) = if lo > hi {
@@ -290,7 +290,7 @@ impl<'a, 'tcx> SpecializedDecoder<Span> for DecodeContext<'a, 'tcx> {
         let lo = (lo - filemap.original_start_pos) + filemap.translated_filemap.start_pos;
         let hi = (hi - filemap.original_start_pos) + filemap.translated_filemap.start_pos;
 
-        Ok(syntax_pos::mk_sp(lo, hi))
+        Ok(Span { lo: lo, hi: hi, ctxt: NO_EXPANSION })
     }
 }
 

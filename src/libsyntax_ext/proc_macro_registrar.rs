@@ -17,6 +17,7 @@ use syntax::codemap::{ExpnInfo, NameAndSpan, MacroAttribute};
 use syntax::ext::base::ExtCtxt;
 use syntax::ext::build::AstBuilder;
 use syntax::ext::expand::ExpansionConfig;
+use syntax::ext::hygiene::{Mark, SyntaxContext};
 use syntax::fold::Folder;
 use syntax::parse::ParseSess;
 use syntax::ptr::P;
@@ -360,7 +361,8 @@ fn mk_registrar(cx: &mut ExtCtxt,
                 custom_derives: &[ProcMacroDerive],
                 custom_attrs: &[ProcMacroDef],
                 custom_macros: &[ProcMacroDef]) -> P<ast::Item> {
-    let eid = cx.codemap().record_expansion(ExpnInfo {
+    let mark = Mark::fresh();
+    mark.set_expn_info(ExpnInfo {
         call_site: DUMMY_SP,
         callee: NameAndSpan {
             format: MacroAttribute(Symbol::intern("proc_macro")),
@@ -368,7 +370,7 @@ fn mk_registrar(cx: &mut ExtCtxt,
             allow_internal_unstable: true,
         }
     });
-    let span = Span { expn_id: eid, ..DUMMY_SP };
+    let span = Span { ctxt: SyntaxContext::empty().apply_mark(mark), ..DUMMY_SP };
 
     let proc_macro = Ident::from_str("proc_macro");
     let krate = cx.item(span,

@@ -29,7 +29,7 @@ use syntax::ast;
 use syntax::attr;
 use syntax::ptr::P;
 use syntax::symbol::keywords;
-use syntax_pos::{mk_sp, Span};
+use syntax_pos::Span;
 use errors::DiagnosticBuilder;
 use util::nodemap::{NodeMap, NodeSet, FxHashSet, FxHashMap, DefIdMap};
 use rustc_back::slice;
@@ -1468,8 +1468,7 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                     self.resolve_lifetime_ref(bound);
                 } else {
                     self.insert_lifetime(bound, Region::Static);
-                    let full_span = mk_sp(lifetime_i.lifetime.span.lo, bound.span.hi);
-                    self.sess.struct_span_warn(full_span,
+                    self.sess.struct_span_warn(lifetime_i.lifetime.span.to(bound.span),
                         &format!("unnecessary lifetime parameter `{}`", lifetime_i.lifetime.name))
                         .help(&format!("you can use the `'static` lifetime directly, in place \
                                         of `{}`", lifetime_i.lifetime.name))

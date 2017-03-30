@@ -690,9 +690,8 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         // Note we take care to use the source callsite/callee, to handle
         // nested expansions and ensure we only generate data for source-visible
         // macro uses.
-        let callsite = self.tcx.sess.codemap().source_callsite(span);
-        let callee = self.tcx.sess.codemap().source_callee(span);
-        let callee = option_try!(callee);
+        let callsite = span.source_callsite();
+        let callee = option_try!(span.source_callee());
         let callee_span = option_try!(callee.span);
 
         // Ignore attribute macros, their spans are usually mangled
@@ -743,7 +742,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         let ident_start = text.find(&name).expect("Name not in signature?");
         let ident_end = ident_start + name.len();
         Signature {
-            span: mk_sp(item.span.lo, item.span.lo + BytePos(text.len() as u32)),
+            span: Span { hi: item.span.lo + BytePos(text.len() as u32), ..item.span },
             text: text,
             ident_start: ident_start,
             ident_end: ident_end,
@@ -1013,5 +1012,5 @@ fn escape(s: String) -> String {
 // Helper function to determine if a span came from a
 // macro expansion or syntax extension.
 pub fn generated_code(span: Span) -> bool {
-    span.expn_id != NO_EXPANSION || span == DUMMY_SP
+    span.ctxt != NO_EXPANSION || span == DUMMY_SP
 }
