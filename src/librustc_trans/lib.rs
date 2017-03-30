@@ -28,7 +28,6 @@
 #![feature(box_syntax)]
 #![feature(const_fn)]
 #![feature(custom_attribute)]
-#![cfg_attr(stage0, feature(field_init_shorthand))]
 #![allow(unused_attributes)]
 #![feature(i128_type)]
 #![feature(libc)]
