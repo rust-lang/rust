@@ -21,8 +21,10 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::process::{Command, ExitStatus};
 use std::str;
+use std::collections::HashSet;
+use std::iter::FromIterator;
 
-use getopts::Options;
+use getopts::{Options, Matches};
 use rustc_serialize::json::Json;
 
 fn main() {
@@ -39,6 +41,11 @@ fn execute() -> i32 {
     opts.optflag("h", "help", "show this message");
     opts.optflag("q", "quiet", "no output printed to stdout");
     opts.optflag("v", "verbose", "use verbose output");
+    opts.optmulti("p",
+                  "package",
+                  "specify package to format (only usable in workspaces)",
+                  "<package>");
+    opts.optflag("", "all", "format all packages (only usable in workspaces)");
 
     let matches = match opts.parse(env::args().skip(1).take_while(|a| a != "--")) {
         Ok(m) => m,
@@ -63,7 +70,9 @@ fn execute() -> i32 {
         return success;
     }
 
-    match format_crate(verbosity) {
+    let workspace_hitlist = WorkspaceHitlist::from_matches(&matches);
+
+    match format_crate(verbosity, workspace_hitlist) {
         Err(e) => {
             print_usage(&opts, &e.to_string());
             failure
@@ -92,8 +101,10 @@ pub enum Verbosity {
     Quiet,
 }
 
-fn format_crate(verbosity: Verbosity) -> Result<ExitStatus, std::io::Error> {
-    let targets = try!(get_targets());
+fn format_crate(verbosity: Verbosity,
+                workspace_hitlist: WorkspaceHitlist)
+                -> Result<ExitStatus, std::io::Error> {
+    let targets = try!(get_targets(workspace_hitlist));
 
     // Currently only bin and lib files get formatted
     let files: Vec<_> = targets
@@ -140,25 +151,94 @@ pub struct Target {
     kind: TargetKind,
 }
 
+#[derive(Debug, PartialEq, Eq)]
+pub enum WorkspaceHitlist {
+    All,
+    Some(Vec<String>),
+    None,
+}
+
+impl WorkspaceHitlist {
+    pub fn get_some<'a>(&'a self) -> Option<&'a [String]> {
+        if let &WorkspaceHitlist::Some(ref hitlist) = self {
+            Some(&hitlist)
+        } else {
+            None
+        }
+    }
+
+    pub fn from_matches(matches: &Matches) -> WorkspaceHitlist {
+        match (matches.opt_present("all"), matches.opt_present("p")) {
+            (false, false) => WorkspaceHitlist::None,
+            (true, _) => WorkspaceHitlist::All,
+            (false, true) => WorkspaceHitlist::Some(matches.opt_strs("p")),
+        }
+    }
+}
+
 // Returns a vector of all compile targets of a crate
-fn get_targets() -> Result<Vec<Target>, std::io::Error> {
+fn get_targets(workspace_hitlist: WorkspaceHitlist) -> Result<Vec<Target>, std::io::Error> {
     let mut targets: Vec<Target> = vec![];
-    let output = try!(Command::new("cargo").arg("read-manifest").output());
+    if workspace_hitlist == WorkspaceHitlist::None {
+        let output = try!(Command::new("cargo").arg("read-manifest").output());
+        if output.status.success() {
+            // None of the unwraps should fail if output of `cargo read-manifest` is correct
+            let data = &String::from_utf8(output.stdout).unwrap();
+            let json = Json::from_str(data).unwrap();
+            let jtargets = json.find("targets").unwrap().as_array().unwrap();
+            for jtarget in jtargets {
+                targets.push(target_from_json(jtarget));
+            }
+
+            return Ok(targets);
+        }
+        return Err(std::io::Error::new(std::io::ErrorKind::NotFound,
+                                       str::from_utf8(&output.stderr).unwrap()));
+    }
+    // This happens when cargo-fmt is not used inside a crate or
+    // is used inside a workspace.
+    // To ensure backward compatability, we only use `cargo metadata` for workspaces.
+    // TODO: Is it possible only use metadata or read-manifest
+    let output = Command::new("cargo").arg("metadata")
+        .arg("--no-deps")
+        .output()?;
     if output.status.success() {
-        // None of the unwraps should fail if output of `cargo read-manifest` is correct
         let data = &String::from_utf8(output.stdout).unwrap();
         let json = Json::from_str(data).unwrap();
-        let jtargets = json.find("targets").unwrap().as_array().unwrap();
-        for jtarget in jtargets {
-            targets.push(target_from_json(jtarget));
+        let mut hitlist: HashSet<&String> = if workspace_hitlist != WorkspaceHitlist::All {
+            HashSet::from_iter(workspace_hitlist.get_some().unwrap())
+        } else {
+            HashSet::new() // Unused
+        };
+        let members: Vec<&Json> = json.find("packages")
+            .unwrap()
+            .as_array()
+            .unwrap()
+            .into_iter()
+            .filter(|member| if workspace_hitlist == WorkspaceHitlist::All {
+                        true
+                    } else {
+                        let member_name = member.find("name").unwrap().as_string().unwrap();
+                        hitlist.take(&member_name.to_string()).is_some()
+                    })
+            .collect();
+        if hitlist.len() != 0 {
+            // Mimick cargo of only outputting one <package> spec.
+            return Err(std::io::Error::new(std::io::ErrorKind::InvalidInput,
+                                           format!("package `{}` is not a member of the workspace",
+                                                   hitlist.iter().next().unwrap())));
         }
-
-        Ok(targets)
-    } else {
-        // This happens when cargo-fmt is not used inside a crate
-        Err(std::io::Error::new(std::io::ErrorKind::NotFound,
-                                str::from_utf8(&output.stderr).unwrap()))
+        for member in members {
+            let jtargets = member.find("targets").unwrap().as_array().unwrap();
+            for jtarget in jtargets {
+                targets.push(target_from_json(jtarget));
+            }
+        }
+        return Ok(targets);
     }
+    Err(std::io::Error::new(std::io::ErrorKind::NotFound,
+                            str::from_utf8(&output.stderr).unwrap()))
+
 }
 
 fn target_from_json(jtarget: &Json) -> Target {
