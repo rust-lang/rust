@@ -17,8 +17,13 @@ use core::char;
 use core::iter::{Filter, FusedIterator};
 use core::str::Split;
 
-/// An iterator over the non-whitespace substrings of a string,
-/// separated by any amount of whitespace.
+/// An iterator over sub-slices of the original string slice.
+///
+/// This struct is created by the [`split_whitespace()`] method on [`str`].
+/// See its documentation for more.
+///
+/// [`split_whitespace()`]: ../../std/primitive.str.html#method.split_whitespace
+/// [`str`]: ../../std/primitive.str.html
 #[stable(feature = "split_whitespace", since = "1.1.0")]
 pub struct SplitWhitespace<'a> {
     inner: Filter<Split<'a, fn(char) -> bool>, fn(&&str) -> bool>,
