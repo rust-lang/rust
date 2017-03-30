@@ -162,6 +162,10 @@ impl<'a> iter::Iterator for Files<'a> {
 }
 
 fn canonicalize_path_string(s: &str) -> Result<String, ()> {
+    if s == "stdin" {
+        return Ok(s.to_string());
+    }
+
     match path::PathBuf::from(s).canonicalize() {
         Ok(canonicalized) => canonicalized.to_str().map(|s| s.to_string()).ok_or(()),
         _ => Err(()),
