@@ -122,7 +122,7 @@ And the following to libstd/f32.rs, and a similar version for f64
 
 ```Rust
 /// Returns max if self is greater than max, and min if self is less than min.
-/// Otherwise this returns self.  Panics if min > max.
+/// Otherwise this returns self.  Panics if min > max, min equals NAN, or max equals NAN.
 ///
 /// # Examples
 ///
