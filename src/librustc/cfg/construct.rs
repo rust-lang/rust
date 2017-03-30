@@ -74,11 +74,11 @@ pub fn construct<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
     fn block(&mut self, blk: &hir::Block, pred: CFGIndex) -> CFGIndex {
-        if let Some(break_to_expr_id) = blk.break_to_expr_id {
+        if blk.targeted_by_break {
             let expr_exit = self.add_ast_node(blk.id, &[]);
 
             self.breakable_block_scopes.push(BlockScope {
-                block_expr_id: break_to_expr_id,
+                block_expr_id: blk.id,
                 break_index: expr_exit,
             });
 
@@ -195,7 +195,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 //   [..expr..]
                 //
                 let cond_exit = self.expr(&cond, pred);                // 1
-                let then_exit = self.block(&then, cond_exit);          // 2
+                let then_exit = self.expr(&then, cond_exit);          // 2
                 self.add_ast_node(expr.id, &[cond_exit, then_exit])      // 3,4
             }
 
@@ -215,7 +215,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 //   [..expr..]
                 //
                 let cond_exit = self.expr(&cond, pred);                // 1
-                let then_exit = self.block(&then, cond_exit);          // 2
+                let then_exit = self.expr(&then, cond_exit);          // 2
                 let else_exit = self.expr(&otherwise, cond_exit);      // 3
                 self.add_ast_node(expr.id, &[then_exit, else_exit])      // 4, 5
             }
