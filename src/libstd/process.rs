@@ -1059,7 +1059,7 @@ pub fn exit(code: i32) -> ! {
 ///
 /// # Examples
 ///
-/// ```
+/// ```no_run
 /// use std::process;
 ///
 /// fn main() {
