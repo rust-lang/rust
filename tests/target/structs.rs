@@ -117,9 +117,8 @@ struct FieldsWithAttributes {
 }
 
 struct Deep {
-    deeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeep: node::Handle<IdRef<'id, Node<K, V>>,
-                                                                         Type,
-                                                                         NodeType>,
+    deeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeep:
+        node::Handle<IdRef<'id, Node<K, V>>, Type, NodeType>,
 }
 
 struct Foo<T>(T);
@@ -172,3 +171,14 @@ struct Foo {
 }
 struct Foo { /* comment */ }
 struct Foo();
+
+struct LongStruct {
+    a: A,
+    the_quick_brown_fox_jumps_over_the_lazy_dog:
+        AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA,
+}
+
+struct Deep {
+    deeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeep:
+        node::Handle<IdRef<'id, Node<Key, Value>>, Type, NodeType>,
+}

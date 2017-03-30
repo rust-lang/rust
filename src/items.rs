@@ -1220,25 +1220,60 @@ impl Rewrite for ast::StructField {
         }
 
         let type_annotation_spacing = type_annotation_spacing(context.config);
-        let result = match name {
-            Some(name) => {
-                format!("{}{}{}{}:{}",
-                        attr_str,
-                        vis,
-                        name,
-                        type_annotation_spacing.0,
-                        type_annotation_spacing.1)
-            }
+        let mut result = match name {
+            Some(name) => format!("{}{}{}{}:", attr_str, vis, name, type_annotation_spacing.0),
             None => format!("{}{}", attr_str, vis),
         };
 
-        let last_line_width = last_line_width(&result);
+        let type_offset = shape.indent.block_indent(context.config);
+        let rewrite_type_in_next_line = || {
+            let budget = try_opt!(context
+                                      .config
+                                      .max_width
+                                      .checked_sub(type_offset.width()));
+            self.ty
+                .rewrite(context, Shape::legacy(budget, type_offset))
+        };
+
+        let last_line_width = last_line_width(&result) + type_annotation_spacing.1.len();
         let budget = try_opt!(shape.width.checked_sub(last_line_width));
-        let rewrite = try_opt!(self.ty
-                                   .rewrite(context,
-                                            Shape::legacy(budget,
-                                                          shape.indent + last_line_width)));
-        Some(result + &rewrite)
+        let ty_rewritten = self.ty
+            .rewrite(context,
+                     Shape::legacy(budget, shape.indent + last_line_width));
+        match ty_rewritten {
+            Some(ref ty) if ty.contains('\n') => {
+                let new_ty = rewrite_type_in_next_line();
+                match new_ty {
+                    Some(ref new_ty) if !new_ty.contains('\n') &&
+                                        new_ty.len() + type_offset.width() <=
+                                        context.config.max_width => {
+                        Some(format!("{}\n{}{}",
+                                     result,
+                                     type_offset.to_string(&context.config),
+                                     &new_ty))
+                    }
+                    _ => {
+                        if name.is_some() {
+                            result.push_str(type_annotation_spacing.1);
+                        }
+                        Some(result + &ty)
+                    }
+                }
+            }
+            Some(ty) => {
+                if name.is_some() {
+                    result.push_str(type_annotation_spacing.1);
+                }
+                Some(result + &ty)
+            }
+            None => {
+                let ty = try_opt!(rewrite_type_in_next_line());
+                Some(format!("{}\n{}{}",
+                             result,
+                             type_offset.to_string(&context.config),
+                             &ty))
+            }
+        }
     }
 }
 
