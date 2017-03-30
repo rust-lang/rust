@@ -17,7 +17,8 @@ use core::char;
 use core::iter::{Filter, FusedIterator};
 use core::str::Split;
 
-/// An iterator over sub-slices of the original string slice.
+/// An iterator over the non-whitespace substrings of a string,
+/// separated by any amount of whitespace.
 ///
 /// This struct is created by the [`split_whitespace()`] method on [`str`].
 /// See its documentation for more.
