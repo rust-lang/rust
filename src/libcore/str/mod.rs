@@ -1161,9 +1161,13 @@ generate_pattern_iterators! {
     delegate double ended;
 }
 
-/// Created with the method [`lines`].
+/// An iterator over the lines of a string, as string slices.
 ///
-/// [`lines`]: ../../std/primitive.str.html#method.lines
+/// This struct is created with the [`lines()`] method on [`str`].
+/// See its documentation for more.
+///
+/// [`lines()`]: ../../std/primitive.str.html#method.lines
+/// [`str`]: ../../std/primitive.str.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone, Debug)]
 pub struct Lines<'a>(Map<SplitTerminator<'a, char>, LinesAnyMap>);
