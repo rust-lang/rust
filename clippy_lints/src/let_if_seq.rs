@@ -69,7 +69,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetIfSeq {
                 let hir::StmtExpr(ref if_, _) = expr.node,
                 let hir::ExprIf(ref cond, ref then, ref else_) = if_.node,
                 !used_in_expr(cx, def_id, cond),
-                !used_in_expr(cx, def_id, &**then),
+                !used_in_expr(cx, def_id, &*then),
+                let hir::ExprBlock(ref then) = then.node,
+                let Some(value) = check_assign(cx, def_id, &*then),
             ], {
                 let span = Span { lo: stmt.span.lo, hi: if_.span.hi, ctxt: NO_EXPANSION };
 
@@ -104,7 +106,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetIfSeq {
                     mut=mutability,
                     name=name.node,
                     cond=snippet(cx, cond.span, "_"),
-                    then={ "" },
+                    then=if then.stmts.len() > 1 { " ..;" } else { "" },
                     else=if default_multi_stmts { " ..;" } else { "" },
                     value=snippet(cx, then.span, "<value>"),
                     default=snippet(cx, default.span, "<default>"),

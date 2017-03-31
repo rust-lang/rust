@@ -223,13 +223,15 @@ fn lint_match_arms(cx: &LateContext, expr: &Expr) {
 /// `if a { c } else if b { d } else { e }`.
 fn if_sequence(mut expr: &Expr) -> (SmallVector<&Expr>, SmallVector<&Block>) {
     let mut conds = SmallVector::new();
-    let mut blocks = SmallVector::new();
+    let mut blocks : SmallVector<&Block> = SmallVector::new();
 
     while let ExprIf(ref cond, ref then_expr, ref else_expr) = expr.node {
         conds.push(&**cond);
-        //FIXME
-        //blocks.push(&**then_expr);
-        //FIXME
+        if let ExprBlock(ref block) = then_expr.node {
+            blocks.push(&block);
+        } else {
+            panic!("ExprIf node is not an ExprBlock");
+        }
 
         if let Some(ref else_expr) = *else_expr {
             expr = else_expr;
@@ -241,9 +243,7 @@ fn if_sequence(mut expr: &Expr) -> (SmallVector<&Expr>, SmallVector<&Block>) {
     // final `else {..}`
     if !blocks.is_empty() {
         if let ExprBlock(ref block) = expr.node {
-            //FIXME
-            //blocks.push(&**block);
-            //FIXME
+            blocks.push(&**block);
         }
     }
 
@@ -315,10 +315,10 @@ fn search_same<T, Hash, Eq>(exprs: &[T], hash: Hash, eq: Eq) -> Option<(&T, &T)>
         return None;
     } else if exprs.len() == 2 {
         return if eq(&exprs[0], &exprs[1]) {
-            Some((&exprs[0], &exprs[1]))
-        } else {
-            None
-        };
+                   Some((&exprs[0], &exprs[1]))
+               } else {
+                   None
+               };
     }
 
     let mut map: HashMap<_, Vec<&_>> = HashMap::with_capacity(exprs.len());
