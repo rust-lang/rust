@@ -10,7 +10,7 @@
 
 #![crate_name = "foo"]
 
-// ignore-tidy-linelength
+// ignore-tidy-end-whitespace
 
 // @has foo/fn.f.html
 // @has - '<p>hard break:<br>after hard break</p>'
