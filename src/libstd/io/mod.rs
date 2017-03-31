@@ -145,6 +145,18 @@
 //! # }
 //! ```
 //!
+//! Note that you cannot use the `?` operator in functions that do not return
+//! a `Result<T, E>` (e.g. `main`). Instead, you can call `.unwrap()` or `match`
+//! on the return value to catch any possible errors:
+//!
+//! ```
+//! use std::io;
+//!
+//! let mut input = String::new();
+//!
+//! io::stdin().read_line(&mut input).unwrap();
+//! ```
+//!
 //! And a very common source of output is standard output:
 //!
 //! ```
