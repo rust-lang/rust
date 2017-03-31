@@ -42,7 +42,7 @@ impl LintPass for CyclomaticComplexity {
 
 impl CyclomaticComplexity {
     fn check<'a, 'tcx: 'a>(&mut self, cx: &'a LateContext<'a, 'tcx>, body: &'tcx Body, span: Span) {
-        if in_macro(cx, span) {
+        if in_macro(span) {
             return;
         }
 

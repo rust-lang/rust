@@ -135,7 +135,7 @@ impl<'a, 'tcx, 'b> SimilarNamesNameVisitor<'a, 'tcx, 'b> {
         }
     }
     fn check_name(&mut self, span: Span, name: Name) {
-        if in_macro(self.0.cx, span) {
+        if in_macro(span) {
             return;
         }
         let interned_name = name.as_str();

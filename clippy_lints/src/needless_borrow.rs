@@ -36,7 +36,7 @@ impl LintPass for NeedlessBorrow {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBorrow {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
-        if in_macro(cx, e.span) {
+        if in_macro(e.span) {
             return;
         }
         if let ExprAddrOf(MutImmutable, ref inner) = e.node {
@@ -55,7 +55,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBorrow {
         }
     }
     fn check_pat(&mut self, cx: &LateContext<'a, 'tcx>, pat: &'tcx Pat) {
-        if in_macro(cx, pat.span) {
+        if in_macro(pat.span) {
             return;
         }
         if_let_chain! {[

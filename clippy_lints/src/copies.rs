@@ -111,7 +111,7 @@ impl LintPass for CopyAndPaste {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CopyAndPaste {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
-        if !in_macro(cx, expr.span) {
+        if !in_macro(expr.span) {
             // skip ifs directly in else, it will be checked in the parent if
             if let Some(&Expr { node: ExprIf(_, _, Some(ref else_expr)), .. }) = get_parent_expr(cx, expr) {
                 if else_expr.id == expr.id {

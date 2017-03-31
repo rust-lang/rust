@@ -156,7 +156,7 @@ pub fn vec_macro<'e>(cx: &LateContext, expr: &'e hir::Expr) -> Option<VecArgs<'e
     if_let_chain!{[
         let hir::ExprCall(ref fun, ref args) = expr.node,
         let hir::ExprPath(ref path) = fun.node,
-        is_expn_of(cx, fun.span, "vec").is_some(),
+        is_expn_of(fun.span, "vec").is_some(),
     ], {
         let fun_def = resolve_node(cx, path, fun.id);
         return if match_def_path(cx.tcx, fun_def.def_id(), &paths::VEC_FROM_ELEM) && args.len() == 2 {

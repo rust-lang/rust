@@ -107,7 +107,7 @@ fn check_fn_decl(cx: &LateContext, decl: &FnDecl) {
 }
 
 fn check_ty(cx: &LateContext, ast_ty: &Ty) {
-    if in_macro(cx, ast_ty.span) {
+    if in_macro(ast_ty.span) {
         return;
     }
     match ast_ty.node {
@@ -199,7 +199,7 @@ fn check_let_unit(cx: &LateContext, decl: &Decl) {
         let bindtype = &cx.tables.pat_ty(&local.pat).sty;
         match *bindtype {
             ty::TyTuple(slice, _) if slice.is_empty() => {
-                if in_external_macro(cx, decl.span) || in_macro(cx, local.pat.span) {
+                if in_external_macro(cx, decl.span) || in_macro(local.pat.span) {
                     return;
                 }
                 if higher::is_from_for_desugar(decl) {
@@ -261,7 +261,7 @@ impl LintPass for UnitCmp {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnitCmp {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
-        if in_macro(cx, expr.span) {
+        if in_macro(expr.span) {
             return;
         }
         if let ExprBinary(ref cmp, ref left, _) = expr.node {
@@ -694,7 +694,7 @@ impl<'a, 'tcx> TypeComplexityPass {
     }
 
     fn check_type(&self, cx: &LateContext<'a, 'tcx>, ty: &'tcx Ty) {
-        if in_macro(cx, ty.span) {
+        if in_macro(ty.span) {
             return;
         }
         let score = {
@@ -797,7 +797,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CharLitAsU8 {
         if let ExprCast(ref e, _) = expr.node {
             if let ExprLit(ref l) = e.node {
                 if let LitKind::Char(_) = l.node {
-                    if ty::TyUint(UintTy::U8) == cx.tables.expr_ty(expr).sty && !in_macro(cx, expr.span) {
+                    if ty::TyUint(UintTy::U8) == cx.tables.expr_ty(expr).sty && !in_macro(expr.span) {
                         let msg = "casting character literal to u8. `char`s \
                                    are 4 bytes wide in rust, so casting to u8 \
                                    truncates them";
@@ -971,7 +971,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for AbsurdExtremeComparisons {
 
         if let ExprBinary(ref cmp, ref lhs, ref rhs) = expr.node {
             if let Some((culprit, result)) = detect_absurd_comparison(cx, cmp.node, lhs, rhs) {
-                if !in_macro(cx, expr.span) {
+                if !in_macro(expr.span) {
                     let msg = "this comparison involving the minimum or maximum element for this \
                                type contains a case that is always true or always false";
 

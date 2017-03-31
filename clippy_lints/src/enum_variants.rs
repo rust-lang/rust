@@ -228,7 +228,7 @@ impl EarlyLintPass for EnumVariantNames {
         let item_name = item.ident.name.as_str();
         let item_name_chars = item_name.chars().count();
         let item_camel = to_camel_case(&item_name);
-        if !in_macro(cx, item.span) {
+        if !in_macro(item.span) {
             if let Some(&(ref mod_name, ref mod_camel)) = self.modules.last() {
                 // constants don't have surrounding modules
                 if !mod_camel.is_empty() {

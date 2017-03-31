@@ -77,9 +77,9 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             // Search for `std::io::_print(..)` which is unique in a
             // `print!` expansion.
             if match_def_path(cx.tcx, fun_id, &paths::IO_PRINT) {
-                if let Some(span) = is_expn_of(cx, expr.span, "print") {
+                if let Some(span) = is_expn_of(expr.span, "print") {
                     // `println!` uses `print!`.
-                    let (span, name) = match is_expn_of(cx, span, "println") {
+                    let (span, name) = match is_expn_of(span, "println") {
                         Some(span) => (span, "println"),
                         None => (span, "print"),
                     };
@@ -125,7 +125,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                 if let ExprPath(ref qpath) = args[1].node {
                     let def_id = cx.tables.qpath_def(qpath, args[1].id).def_id();
                     if match_def_path(cx.tcx, def_id, &paths::DEBUG_FMT_METHOD) && !is_in_debug_impl(cx, expr) &&
-                       is_expn_of(cx, expr.span, "panic").is_none() {
+                       is_expn_of(expr.span, "panic").is_none() {
                         span_lint(cx, USE_DEBUG, args[0].span, "use of `Debug`-based formatting");
                     }
                 }

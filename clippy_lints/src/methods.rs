@@ -554,7 +554,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     // ^ required because `cyclomatic_complexity` attribute shows up as unused
     #[cyclomatic_complexity = "30"]
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr) {
-        if in_macro(cx, expr.span) {
+        if in_macro(expr.span) {
             return;
         }
 

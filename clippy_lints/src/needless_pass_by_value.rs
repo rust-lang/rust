@@ -55,7 +55,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessPassByValue {
         span: Span,
         node_id: NodeId
     ) {
-        if in_macro(cx, span) {
+        if in_macro(span) {
             return;
         }
 

@@ -78,7 +78,7 @@ impl LintPass for CollapsibleIf {
 
 impl EarlyLintPass for CollapsibleIf {
     fn check_expr(&mut self, cx: &EarlyContext, expr: &ast::Expr) {
-        if !in_macro(cx, expr.span) {
+        if !in_macro(expr.span) {
             check_if(cx, expr)
         }
     }
@@ -104,7 +104,7 @@ fn check_collapsible_maybe_if_let(cx: &EarlyContext, else_: &ast::Expr) {
     if_let_chain! {[
         let ast::ExprKind::Block(ref block) = else_.node,
         let Some(ref else_) = expr_block(block),
-        !in_macro(cx, else_.span),
+        !in_macro(else_.span),
     ], {
         match else_.node {
             ast::ExprKind::If(..) | ast::ExprKind::IfLet(..) => {

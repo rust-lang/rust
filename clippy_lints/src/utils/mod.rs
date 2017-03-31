@@ -111,7 +111,7 @@ pub fn in_constant(cx: &LateContext, id: NodeId) -> bool {
 }
 
 /// Returns true if this `expn_info` was expanded by any macro.
-pub fn in_macro<'a, T: LintContext<'a>>(cx: &T, span: Span) -> bool {
+pub fn in_macro(span: Span) -> bool {
     span.ctxt.outer().expn_info().map(|info| {
         match info.callee.format {// don't treat range expressions desugared to structs as "in_macro"
             ExpnFormat::CompilerDesugaring(name) => name != "...",
@@ -685,7 +685,7 @@ fn parse_attrs<F: FnMut(u64)>(sess: &Session, attrs: &[ast::Attribute], name: &'
 
 /// Return the pre-expansion span if is this comes from an expansion of the macro `name`.
 /// See also `is_direct_expn_of`.
-pub fn is_expn_of(cx: &LateContext, mut span: Span, name: &str) -> Option<Span> {
+pub fn is_expn_of(mut span: Span, name: &str) -> Option<Span> {
     loop {
         let span_name_span = span.ctxt.outer()
             .expn_info().map(|ei| (ei.callee.name(), ei.call_site));
@@ -705,7 +705,7 @@ pub fn is_expn_of(cx: &LateContext, mut span: Span, name: &str) -> Option<Span> 
 /// ```
 /// `42` is considered expanded from `foo!` and `bar!` by `is_expn_of` but only `bar!` by
 /// `is_direct_expn_of`.
-pub fn is_direct_expn_of(cx: &LateContext, span: Span, name: &str) -> Option<Span> {
+pub fn is_direct_expn_of(span: Span, name: &str) -> Option<Span> {
     let span_name_span = span.ctxt.outer()
         .expn_info().map(|ei| (ei.callee.name(), ei.call_site));
 
