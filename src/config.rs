@@ -12,7 +12,6 @@ extern crate toml;
 
 use file_lines::FileLines;
 use lists::{SeparatorTactic, ListTactic};
-use std::io::Write;
 
 macro_rules! configuration_option_enum{
     ($e:ident: $( $x:ident ),+ $(,)*) => {
@@ -237,26 +236,29 @@ macro_rules! create_config {
                 self
             }
 
-            pub fn from_toml(toml: &str) -> Config {
+            pub fn from_toml(toml: &str) -> Result<Config, String> {
                 let parsed: toml::Value = toml.parse().expect("Could not parse TOML");
+                let mut err: String = String::new();
                 for (key, _) in parsed.as_table().expect("Parsed config was not table") {
                     match &**key {
                         $(
                             stringify!($i) => (),
                         )+
-                        _ => msg!("Warning: Unused configuration option {}", key),
+                        _ => {
+                            let msg = &format!("Warning: Unknown configuration option `{}`\n", key);
+                            err.push_str(msg)
+                        }
                     }
                 }
-                let parsed_config:ParsedConfig = match toml::decode(parsed) {
-                    Some(decoded) => decoded,
+                match toml::decode(parsed) {
+                    Some(parsed_config) =>
+                        Ok(Config::default().fill_from_parsed_config(parsed_config)),
                     None => {
-                        msg!("Decoding config file failed. Config:\n{}", toml);
-                        let parsed: toml::Value = toml.parse().expect("Could not parse TOML");
-                        msg!("\n\nParsed:\n{:?}", parsed);
-                        panic!();
+                        err.push_str("Error: Decoding config file failed. ");
+                        err.push_str("Please check your config file.\n");
+                        Err(err)
                     }
-                };
-                Config::default().fill_from_parsed_config(parsed_config)
+                }
             }
 
             pub fn override_value(&mut self, key: &str, val: &str) {

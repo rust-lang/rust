@@ -285,7 +285,7 @@ fn get_config(config_file: Option<&str>) -> Config {
         .read_to_string(&mut def_config)
         .expect("Couldn't read config");
 
-    Config::from_toml(&def_config)
+    Config::from_toml(&def_config).expect("Invalid toml")
 }
 
 // Reads significant comments of the form: // rustfmt-key: value
