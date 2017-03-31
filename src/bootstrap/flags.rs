@@ -90,19 +90,31 @@ impl Flags {
         opts.optflag("h", "help", "print this help message");
 
         let usage = |n, opts: &Options| -> ! {
-            let subcommand = args.get(0).map(|s| &**s);
-            let brief = format!("Usage: x.py <subcommand> [options] [<args>...]");
+            let subcommand_help = format!("\
+Usage: x.py <subcommand> [options] [<paths>...]
 
-            println!("{}", opts.usage(&brief));
+Subcommands:
+    build       Compile either the compiler or libraries
+    test        Build and run some test suites
+    bench       Build and run some benchmarks
+    doc         Build documentation
+    clean       Clean out build directories
+    dist        Build and/or install distribution artifacts
+
+To learn more about a subcommand, run `./x.py <subcommand> -h`");
+
+            println!("{}", opts.usage(&subcommand_help));
+
+            let subcommand = args.get(0).map(|s| &**s);
             match subcommand {
                 Some("build") => {
                     println!("\
 Arguments:
-    This subcommand accepts a number of positional arguments of directories to
-    the crates and/or artifacts to compile. For example:
+    This subcommand accepts a number of paths to directories to the crates 
+    and/or artifacts to compile. For example:
 
         ./x.py build src/libcore
-        ./x.py build src/libproc_macro
+        ./x.py build src/libcore src/libproc_macro
         ./x.py build src/libstd --stage 1
 
     If no arguments are passed then the complete artifacts for that stage are
@@ -120,8 +132,8 @@ Arguments:
                 Some("test") => {
                     println!("\
 Arguments:
-    This subcommand accepts a number of positional arguments of directories to
-    tests that should be compiled and run. For example:
+    This subcommand accepts a number of paths to directories to tests that
+    should be compiled and run. For example:
 
         ./x.py test src/test/run-pass
         ./x.py test src/libstd --test-args hash_map
@@ -138,12 +150,12 @@ Arguments:
                 Some("doc") => {
                     println!("\
 Arguments:
-    This subcommand accepts a number of positional arguments of directories of
-    documentation to build. For example:
+    This subcommand accepts a number of paths to directories of documentation
+    to build. For example:
 
         ./x.py doc src/doc/book
         ./x.py doc src/doc/nomicon
-        ./x.py doc src/libstd
+        ./x.py doc src/doc/book src/libstd
 
     If no arguments are passed then everything is documented:
 
@@ -155,6 +167,7 @@ Arguments:
                 _ => {}
             }
 
+
             if let Some(subcommand) = subcommand {
                 if subcommand == "build" ||
                    subcommand == "test" ||
@@ -162,7 +175,6 @@ Arguments:
                    subcommand == "doc" ||
                    subcommand == "clean" ||
                    subcommand == "dist"  {
-                    println!("Available invocations:");
                     if args.iter().any(|a| a == "-v") {
                         let flags = Flags::parse(&["build".to_string()]);
                         let mut config = Config::default();
@@ -171,25 +183,13 @@ Arguments:
                         metadata::build(&mut build);
                         step::build_rules(&build).print_help(subcommand);
                     } else {
-                        println!("    ... elided, run `./x.py {} -h -v` to see",
+                        println!("Run `./x.py {} -h -v` to see a list of available paths.",
                                  subcommand);
                     }
 
                     println!("");
                 }
             }
-
-println!("\
-Subcommands:
-    build       Compile either the compiler or libraries
-    test        Build and run some test suites
-    bench       Build and run some benchmarks
-    doc         Build documentation
-    clean       Clean out build directories
-    dist        Build and/or install distribution artifacts
-
-To learn more about a subcommand, run `./x.py <subcommand> -h`
-");
 
             process::exit(n);
         };
@@ -256,8 +256,7 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`
                 }
             }
             "--help" => usage(0, &opts),
-            cmd => {
-                println!("unknown subcommand: {}", cmd);
+            _ => {
                 usage(1, &opts);
             }
         };
