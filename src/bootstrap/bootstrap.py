@@ -593,14 +593,16 @@ def main():
     start_time = time()
     try:
         bootstrap()
-        print("Build completed successfully in %s" % format_build_time(time() - start_time))
+        if ('-h' not in sys.argv) and ('--help' not in sys.argv):
+            print("Build completed successfully in %s" % format_build_time(time() - start_time))
     except (SystemExit, KeyboardInterrupt) as e:
         if hasattr(e, 'code') and isinstance(e.code, int):
             exit_code = e.code
         else:
             exit_code = 1
             print(e)
-        print("Build completed unsuccessfully in %s" % format_build_time(time() - start_time))
+        if ('-h' not in sys.argv) and ('--help' not in sys.argv):
+            print("Build completed unsuccessfully in %s" % format_build_time(time() - start_time))
         sys.exit(exit_code)
 
 if __name__ == '__main__':
