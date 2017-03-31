@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::cmp::Ordering::{Equal, Greater, Less};
 use core::slice::heapsort;
 use core::result::Result::{Ok, Err};
 use rand::{Rng, XorShiftRng};
@@ -266,6 +267,17 @@ fn sort_unstable() {
                 assert!(tmp.windows(2).all(|w| w[0] >= w[1]));
             }
         }
+    }
+
+    // Sort using a completely random comparison function.
+    // This will reorder the elements *somehow*, but won't panic.
+    for i in 0..v.len() {
+        v[i] = i as i32;
+    }
+    v.sort_unstable_by(|_, _| *rng.choose(&[Less, Equal, Greater]).unwrap());
+    v.sort_unstable();
+    for i in 0..v.len() {
+        assert_eq!(v[i], i as i32);
     }
 
     // Should not panic.

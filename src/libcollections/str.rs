@@ -133,9 +133,15 @@ impl<S: Borrow<str>> SliceConcatExt<str> for [S] {
     }
 }
 
-/// External iterator for a string's UTF-16 code units.
+/// An iterator of [`u16`] over the string encoded as UTF-16.
 ///
-/// For use with the `std::iter` module.
+/// [`u16`]: ../../std/primitive.u16.html
+///
+/// This struct is created by the [`encode_utf16`] method on [`str`].
+/// See its documentation for more.
+///
+/// [`encode_utf16`]: ../../std/primitive.str.html#method.encode_utf16
+/// [`str`]: ../../std/primitive.str.html
 #[derive(Clone)]
 #[stable(feature = "encode_utf16", since = "1.8.0")]
 pub struct EncodeUtf16<'a> {
