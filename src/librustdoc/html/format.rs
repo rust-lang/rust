@@ -49,13 +49,18 @@ pub struct MutableSpace(pub clean::Mutability);
 /// Similar to VisSpace, but used for mutability
 #[derive(Copy, Clone)]
 pub struct RawMutableSpace(pub clean::Mutability);
-/// Wrapper struct for emitting a where clause from Generics.
-pub struct WhereClause<'a>(pub &'a clean::Generics, pub usize);
 /// Wrapper struct for emitting type parameter bounds.
 pub struct TyParamBounds<'a>(pub &'a [clean::TyParamBound]);
 /// Wrapper struct for emitting a comma-separated list of items
 pub struct CommaSep<'a, T: 'a>(pub &'a [T]);
 pub struct AbiSpace(pub Abi);
+
+/// Wrapper struct for emitting a where clause from Generics.
+pub struct WhereClause<'a>{
+    pub gens: &'a clean::Generics,
+    pub indent: usize,
+    pub end_newline: bool,
+}
 
 pub struct HRef<'a> {
     pub did: DefId,
@@ -167,24 +172,27 @@ impl fmt::Display for clean::Generics {
 
 impl<'a> fmt::Display for WhereClause<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let &WhereClause(gens, pad) = self;
+        let &WhereClause{ gens, indent, end_newline } = self;
         if gens.where_predicates.is_empty() {
             return Ok(());
         }
         let mut clause = String::new();
         if f.alternate() {
-            clause.push_str(" where ");
+            clause.push_str(" where");
         } else {
-            clause.push_str(" <span class=\"where fmt-newline\">where ");
+            if end_newline {
+                clause.push_str("<span class=\"where fmt-newline\">where");
+            } else {
+                clause.push_str("<span class=\"where\">where");
+            }
         }
         for (i, pred) in gens.where_predicates.iter().enumerate() {
-            if i > 0 {
-                if f.alternate() {
-                    clause.push_str(", ");
-                } else {
-                    clause.push_str(",<br>");
-                }
+            if f.alternate() {
+                clause.push(' ');
+            } else {
+                clause.push_str("<br>");
             }
+
             match pred {
                 &clean::WherePredicate::BoundPredicate { ref ty, ref bounds } => {
                     let bounds = bounds;
@@ -213,21 +221,18 @@ impl<'a> fmt::Display for WhereClause<'a> {
                     }
                 }
             }
+
+            if i < gens.where_predicates.len() - 1 || end_newline {
+                clause.push(',');
+            }
         }
         if !f.alternate() {
             clause.push_str("</span>");
-            let plain = format!("{:#}", self);
-            if plain.len() + pad > 80 {
-                // break it onto its own line regardless, but make sure method impls and trait
-                // blocks keep their fixed padding (2 and 9, respectively)
-                let padding = if pad > 10 {
-                    repeat("&nbsp;").take(8).collect::<String>()
-                } else {
-                    repeat("&nbsp;").take(pad + 6).collect::<String>()
-                };
-                clause = clause.replace("<br>", &format!("<br>{}", padding));
-            } else {
-                clause = clause.replace("<br>", " ");
+            let padding = repeat("&nbsp;").take(indent + 4).collect::<String>();
+            clause = clause.replace("<br>", &format!("<br>{}", padding));
+            clause.insert_str(0, &repeat("&nbsp;").take(indent).collect::<String>());
+            if !end_newline {
+                clause.insert_str(0, "<br>");
             }
         }
         write!(f, "{}", clause)
@@ -838,43 +843,35 @@ fn fmt_impl(i: &clean::Impl,
             f: &mut fmt::Formatter,
             link_trait: bool,
             use_absolute: bool) -> fmt::Result {
-    let mut plain = String::new();
-
     if f.alternate() {
         write!(f, "impl{:#} ", i.generics)?;
     } else {
         write!(f, "impl{} ", i.generics)?;
     }
-    plain.push_str(&format!("impl{:#} ", i.generics));
 
     if let Some(ref ty) = i.trait_ {
         if i.polarity == Some(clean::ImplPolarity::Negative) {
             write!(f, "!")?;
-            plain.push_str("!");
         }
 
         if link_trait {
             fmt::Display::fmt(ty, f)?;
-            plain.push_str(&format!("{:#}", ty));
         } else {
             match *ty {
                 clean::ResolvedPath { typarams: None, ref path, is_generic: false, .. } => {
                     let last = path.segments.last().unwrap();
                     fmt::Display::fmt(&last.name, f)?;
                     fmt::Display::fmt(&last.params, f)?;
-                    plain.push_str(&format!("{:#}{:#}", last.name, last.params));
                 }
                 _ => unreachable!(),
             }
         }
         write!(f, " for ")?;
-        plain.push_str(" for ");
     }
 
     fmt_type(&i.for_, f, use_absolute, true)?;
-    plain.push_str(&format!("{:#}", i.for_));
 
-    fmt::Display::fmt(&WhereClause(&i.generics, plain.len() + 1), f)?;
+    fmt::Display::fmt(&WhereClause{ gens: &i.generics, indent: 0, end_newline: true }, f)?;
     Ok(())
 }
 
