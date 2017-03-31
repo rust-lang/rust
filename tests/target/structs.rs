@@ -182,3 +182,5 @@ struct Deep {
     deeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeep:
         node::Handle<IdRef<'id, Node<Key, Value>>, Type, NodeType>,
 }
+
+struct Foo<C = ()>(String);

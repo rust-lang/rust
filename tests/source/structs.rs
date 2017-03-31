@@ -178,3 +178,5 @@ struct Deep {
                                                                          Type,
                                                                          NodeType>,
 }
+
+struct Foo<C=()>(String);
