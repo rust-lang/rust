@@ -90,12 +90,11 @@ impl Flags {
         opts.optflag("h", "help", "print this help message");
 
         let usage = |n, opts: &Options| -> ! {
-            let command = args.get(0).map(|s| &**s);
-            let brief = format!("Usage: x.py {} [options] [<args>...]",
-                                command.unwrap_or("<command>"));
+            let subcommand = args.get(0).map(|s| &**s);
+            let brief = format!("Usage: x.py <subcommand> [options] [<args>...]");
 
             println!("{}", opts.usage(&brief));
-            match command {
+            match subcommand {
                 Some("build") => {
                     println!("\
 Arguments:
@@ -156,13 +155,13 @@ Arguments:
                 _ => {}
             }
 
-            if let Some(command) = command {
-                if command == "build" ||
-                   command == "dist" ||
-                   command == "doc" ||
-                   command == "test" ||
-                   command == "bench" ||
-                   command == "clean"  {
+            if let Some(subcommand) = subcommand {
+                if subcommand == "build" ||
+                   subcommand == "dist" ||
+                   subcommand == "doc" ||
+                   subcommand == "test" ||
+                   subcommand == "bench" ||
+                   subcommand == "clean"  {
                     println!("Available invocations:");
                     if args.iter().any(|a| a == "-v") {
                         let flags = Flags::parse(&["build".to_string()]);
@@ -170,10 +169,10 @@ Arguments:
                         config.build = flags.build.clone();
                         let mut build = Build::new(flags, config);
                         metadata::build(&mut build);
-                        step::build_rules(&build).print_help(command);
+                        step::build_rules(&build).print_help(subcommand);
                     } else {
                         println!("    ... elided, run `./x.py {} -h -v` to see",
-                                 command);
+                                 subcommand);
                     }
 
                     println!("");
@@ -189,13 +188,13 @@ Subcommands:
     clean       Clean out build directories
     dist        Build and/or install distribution artifacts
 
-To learn more about a subcommand, run `./x.py <command> -h`
+To learn more about a subcommand, run `./x.py <subcommand> -h`
 ");
 
             process::exit(n);
         };
         if args.len() == 0 {
-            println!("a command must be passed");
+            println!("a subcommand must be passed");
             usage(1, &opts);
         }
         let parse = |opts: &Options| {
@@ -258,7 +257,7 @@ To learn more about a subcommand, run `./x.py <command> -h`
             }
             "--help" => usage(0, &opts),
             cmd => {
-                println!("unknown command: {}", cmd);
+                println!("unknown subcommand: {}", cmd);
                 usage(1, &opts);
             }
         };
