@@ -1829,7 +1829,7 @@ impl str {
         fn map_uppercase_sigma(from: &str, i: usize, to: &mut String) {
             // See http://www.unicode.org/versions/Unicode7.0.0/ch03.pdf#G33992
             // for the definition of `Final_Sigma`.
-            debug_assert!('Σ'.len_utf8() == 2);
+            debug_assert_eq!('Σ'.len_utf8(), 2);
             let is_word_final = case_ignoreable_then_cased(from[..i].chars().rev()) &&
                                 !case_ignoreable_then_cased(from[i + 2..].chars());
             to.push_str(if is_word_final { "ς" } else { "σ" });
@@ -1876,7 +1876,7 @@ impl str {
     pub fn to_uppercase(&self) -> String {
         let mut s = String::with_capacity(self.len());
         s.extend(self.chars().flat_map(|c| c.to_uppercase()));
-        return s;
+        s
     }
 
     /// Escapes each char in `s` with `char::escape_debug`.
