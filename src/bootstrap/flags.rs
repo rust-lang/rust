@@ -157,11 +157,11 @@ Arguments:
 
             if let Some(subcommand) = subcommand {
                 if subcommand == "build" ||
-                   subcommand == "dist" ||
-                   subcommand == "doc" ||
                    subcommand == "test" ||
                    subcommand == "bench" ||
-                   subcommand == "clean"  {
+                   subcommand == "doc" ||
+                   subcommand == "clean" ||
+                   subcommand == "dist"  {
                     println!("Available invocations:");
                     if args.iter().any(|a| a == "-v") {
                         let flags = Flags::parse(&["build".to_string()]);
@@ -219,10 +219,6 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`
                 m = parse(&opts);
                 Subcommand::Build { paths: remaining_as_path(&m) }
             }
-            "doc" => {
-                m = parse(&opts);
-                Subcommand::Doc { paths: remaining_as_path(&m) }
-            }
             "test" => {
                 opts.optmulti("", "test-args", "extra arguments", "ARGS");
                 m = parse(&opts);
@@ -238,6 +234,10 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`
                     paths: remaining_as_path(&m),
                     test_args: m.opt_strs("test-args"),
                 }
+            }
+            "doc" => {
+                m = parse(&opts);
+                Subcommand::Doc { paths: remaining_as_path(&m) }
             }
             "clean" => {
                 m = parse(&opts);
