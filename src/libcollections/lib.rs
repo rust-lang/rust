@@ -61,6 +61,7 @@
 #![feature(unique)]
 #![feature(untagged_unions)]
 #![cfg_attr(test, feature(rand, test))]
+#![feature(offset_to)]
 
 #![no_std]
 
