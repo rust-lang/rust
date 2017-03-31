@@ -369,11 +369,15 @@ impl fmt::Display for Utf8Error {
 Section: Iterators
 */
 
-/// Iterator for the char (representing *Unicode Scalar Values*) of a string.
+/// An iterator over the [`char`]s of a string slice.
 ///
-/// Created with the method [`chars`].
+/// [`char`]: ../../std/primitive.char.html
+///
+/// This struct is created by the [`chars`] method on [`str`].
+/// See its documentation for more.
 ///
 /// [`chars`]: ../../std/primitive.str.html#method.chars
+/// [`str`]: ../../std/primitive.str.html
 #[derive(Clone, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Chars<'a> {
@@ -553,7 +557,15 @@ impl<'a> Chars<'a> {
     }
 }
 
-/// Iterator for a string's characters and their byte offsets.
+/// An iterator over the [`char`]s of a string slice, and their positions.
+///
+/// [`char`]: ../../std/primitive.char.html
+///
+/// This struct is created by the [`char_indices`] method on [`str`].
+/// See its documentation for more.
+///
+/// [`char_indices`]: ../../std/primitive.str.html#method.char_indices
+/// [`str`]: ../../std/primitive.str.html
 #[derive(Clone, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct CharIndices<'a> {
@@ -625,12 +637,13 @@ impl<'a> CharIndices<'a> {
     }
 }
 
-/// External iterator for a string's bytes.
-/// Use with the `std::iter` module.
+/// An iterator over the bytes of a string slice.
 ///
-/// Created with the method [`bytes`].
+/// This struct is created by the [`bytes`] method on [`str`].
+/// See its documentation for more.
 ///
 /// [`bytes`]: ../../std/primitive.str.html#method.bytes
+/// [`str`]: ../../std/primitive.str.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone, Debug)]
 pub struct Bytes<'a>(Cloned<slice::Iter<'a, u8>>);
@@ -1161,9 +1174,13 @@ generate_pattern_iterators! {
     delegate double ended;
 }
 
-/// Created with the method [`lines`].
+/// An iterator over the lines of a string, as string slices.
+///
+/// This struct is created with the [`lines`] method on [`str`].
+/// See its documentation for more.
 ///
 /// [`lines`]: ../../std/primitive.str.html#method.lines
+/// [`str`]: ../../std/primitive.str.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone, Debug)]
 pub struct Lines<'a>(Map<SplitTerminator<'a, char>, LinesAnyMap>);
