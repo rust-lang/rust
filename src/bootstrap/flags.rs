@@ -212,6 +212,8 @@ Arguments:
         let remaining_as_path = |m: &Matches| {
             m.free.iter().map(|p| cwd.join(p)).collect::<Vec<_>>()
         };
+        // TODO: Parse subcommand nicely up at top, so options can occur before the subcommand.
+        // TODO: Get the subcommand-specific options below into the help output
 
         let m: Matches;
         let cmd = match &args[0][..] {
