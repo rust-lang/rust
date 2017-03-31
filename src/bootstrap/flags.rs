@@ -89,7 +89,7 @@ impl Flags {
         opts.optopt("j", "jobs", "number of jobs to run in parallel", "JOBS");
         opts.optflag("h", "help", "print this help message");
 
-        let usage = |n, opts: &Options| -> ! {
+        let usage = |exit_code, opts: &Options| -> ! {
             let subcommand_help = format!("\
 Usage: x.py <subcommand> [options] [<paths>...]
 
@@ -191,7 +191,7 @@ Arguments:
                 }
             }
 
-            process::exit(n);
+            process::exit(exit_code);
         };
         if args.len() == 0 {
             println!("a subcommand must be passed");
