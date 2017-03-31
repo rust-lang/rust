@@ -322,4 +322,3 @@ impl<'a, 'tcx> InherentCollect<'a, 'tcx> {
         }
     }
 }
-
