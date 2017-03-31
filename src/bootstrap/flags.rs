@@ -88,6 +88,7 @@ impl Flags {
         opts.optopt("", "src", "path to the root of the rust checkout", "DIR");
         opts.optopt("j", "jobs", "number of jobs to run in parallel", "JOBS");
         opts.optflag("h", "help", "print this help message");
+        opts.optflag("", "no-notification", "don't display notification when build ended");
 
         let usage = |n, opts: &Options| -> ! {
             let command = args.get(0).map(|s| &**s);

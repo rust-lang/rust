@@ -692,7 +692,8 @@ def main():
     try:
         bootstrap()
         print("Build completed successfully in %s" % format_build_time(time() - start_time))
-        notify_build_done(time() - start_time, success=True)
+        if not '--no-notification' in sys.argv:
+            notify_build_done(time() - start_time, success=True)
     except (SystemExit, KeyboardInterrupt) as e:
         if hasattr(e, 'code') and isinstance(e.code, int):
             exit_code = e.code
@@ -700,7 +701,8 @@ def main():
             exit_code = 1
             print(e)
         print("Build completed unsuccessfully in %s" % format_build_time(time() - start_time))
-        notify_build_done(time() - start_time, success=False)
+        if not '--no-notification' in sys.argv:
+            notify_build_done(time() - start_time, success=False)
         sys.exit(exit_code)
 
 if __name__ == '__main__':
