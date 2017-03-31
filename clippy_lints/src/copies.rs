@@ -225,9 +225,11 @@ fn if_sequence(mut expr: &Expr) -> (SmallVector<&Expr>, SmallVector<&Block>) {
     let mut conds = SmallVector::new();
     let mut blocks = SmallVector::new();
 
-    while let ExprIf(ref cond, ref then_block, ref else_expr) = expr.node {
+    while let ExprIf(ref cond, ref then_expr, ref else_expr) = expr.node {
         conds.push(&**cond);
-        blocks.push(&**then_block);
+        //FIXME
+        //blocks.push(&**then_expr);
+        //FIXME
 
         if let Some(ref else_expr) = *else_expr {
             expr = else_expr;
@@ -239,7 +241,9 @@ fn if_sequence(mut expr: &Expr) -> (SmallVector<&Expr>, SmallVector<&Block>) {
     // final `else {..}`
     if !blocks.is_empty() {
         if let ExprBlock(ref block) = expr.node {
-            blocks.push(&**block);
+            //FIXME
+            //blocks.push(&**block);
+            //FIXME
         }
     }
 

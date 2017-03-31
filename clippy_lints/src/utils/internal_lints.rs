@@ -128,7 +128,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LintWithoutLintPass {
             // not able to capture the error.
             // Therefore, we need to climb the macro expansion tree and find the
             // actual span that invoked `declare_lint!`:
-            let lint_span = cx.sess().codemap().source_callsite(lint_span);
+            let lint_span = lint_span.ctxt.outer().expn_info().map(|ei| ei.call_site).expect("unable to get call_site");
 
             if !self.registered_lints.contains(lint_name) {
                 span_lint(cx,

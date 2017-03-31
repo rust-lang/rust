@@ -97,7 +97,7 @@ impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {
             },
             (&ExprIndex(ref la, ref li), &ExprIndex(ref ra, ref ri)) => self.eq_expr(la, ra) && self.eq_expr(li, ri),
             (&ExprIf(ref lc, ref lt, ref le), &ExprIf(ref rc, ref rt, ref re)) => {
-                self.eq_expr(lc, rc) && self.eq_block(lt, rt) && both(le, re, |l, r| self.eq_expr(l, r))
+                    self.eq_expr(lc, rc) && self.eq_expr(&**lt, &**rt) && both(le, re, |l, r| self.eq_expr(l, r))
             },
             (&ExprLit(ref l), &ExprLit(ref r)) => l.node == r.node,
             (&ExprLoop(ref lb, ref ll, ref lls), &ExprLoop(ref rb, ref rl, ref rls)) => {
@@ -395,7 +395,7 @@ impl<'a, 'tcx: 'a> SpanlessHash<'a, 'tcx> {
                 let c: fn(_, _, _) -> _ = ExprIf;
                 c.hash(&mut self.s);
                 self.hash_expr(cond);
-                self.hash_block(t);
+                self.hash_expr(&**t);
                 if let Some(ref e) = *e {
                     self.hash_expr(e);
                 }

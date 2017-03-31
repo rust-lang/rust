@@ -97,7 +97,7 @@ pub mod higher;
 /// Returns true if the two spans come from differing expansions (i.e. one is from a macro and one
 /// isn't).
 pub fn differing_macro_contexts(lhs: Span, rhs: Span) -> bool {
-    rhs.expn_id != lhs.expn_id
+    rhs.ctxt != lhs.ctxt
 }
 
 pub fn in_constant(cx: &LateContext, id: NodeId) -> bool {
@@ -112,18 +112,12 @@ pub fn in_constant(cx: &LateContext, id: NodeId) -> bool {
 
 /// Returns true if this `expn_info` was expanded by any macro.
 pub fn in_macro<'a, T: LintContext<'a>>(cx: &T, span: Span) -> bool {
-    cx.sess().codemap().with_expn_info(span.expn_id, |info| {
-        match info {
-            Some(info) => {
-                match info.callee.format {
-                    // don't treat range expressions desugared to structs as "in_macro"
-                    ExpnFormat::CompilerDesugaring(name) => name != "...",
-                    _ => true,
-                }
-            },
-            None => false,
+    span.ctxt.outer().expn_info().map(|info| {
+        match info.callee.format {// don't treat range expressions desugared to structs as "in_macro"
+            ExpnFormat::CompilerDesugaring(name) => name != "...",
+            _ => true,
         }
-    })
+    }).unwrap_or(false)
 }
 
 /// Returns true if the macro that expanded the crate was outside of the current crate or was a
@@ -131,22 +125,20 @@ pub fn in_macro<'a, T: LintContext<'a>>(cx: &T, span: Span) -> bool {
 pub fn in_external_macro<'a, T: LintContext<'a>>(cx: &T, span: Span) -> bool {
     /// Invokes `in_macro` with the expansion info of the given span slightly heavy, try to use
     /// this after other checks have already happened.
-    fn in_macro_ext<'a, T: LintContext<'a>>(cx: &T, opt_info: Option<&ExpnInfo>) -> bool {
+    fn in_macro_ext<'a, T: LintContext<'a>>(cx: &T, info: &ExpnInfo) -> bool {
         // no ExpnInfo = no macro
-        opt_info.map_or(false, |info| {
-            if let ExpnFormat::MacroAttribute(..) = info.callee.format {
-                // these are all plugins
-                return true;
-            }
-            // no span for the callee = external macro
-            info.callee.span.map_or(true, |span| {
-                // no snippet = external macro or compiler-builtin expansion
-                cx.sess().codemap().span_to_snippet(span).ok().map_or(true, |code| !code.starts_with("macro_rules"))
-            })
+        if let ExpnFormat::MacroAttribute(..) = info.callee.format {
+            // these are all plugins
+            return true;
+        }
+        // no span for the callee = external macro
+        info.callee.span.map_or(true, |span| {
+            // no snippet = external macro or compiler-builtin expansion
+            cx.sess().codemap().span_to_snippet(span).ok().map_or(true, |code| !code.starts_with("macro_rules"))
         })
     }
 
-    cx.sess().codemap().with_expn_info(span.expn_id, |info| in_macro_ext(cx, info))
+    span.ctxt.outer().expn_info().map(|info| in_macro_ext(cx, &info)).unwrap_or(false)
 }
 
 /// Check if a `DefId`'s path matches the given absolute type path usage.
@@ -695,10 +687,8 @@ fn parse_attrs<F: FnMut(u64)>(sess: &Session, attrs: &[ast::Attribute], name: &'
 /// See also `is_direct_expn_of`.
 pub fn is_expn_of(cx: &LateContext, mut span: Span, name: &str) -> Option<Span> {
     loop {
-        let span_name_span = cx.tcx
-            .sess
-            .codemap()
-            .with_expn_info(span.expn_id, |expn| expn.map(|ei| (ei.callee.name(), ei.call_site)));
+        let span_name_span = span.ctxt.outer()
+            .expn_info().map(|ei| (ei.callee.name(), ei.call_site));
 
         match span_name_span {
             Some((mac_name, new_span)) if mac_name == name => return Some(new_span),
@@ -716,10 +706,8 @@ pub fn is_expn_of(cx: &LateContext, mut span: Span, name: &str) -> Option<Span> 
 /// `42` is considered expanded from `foo!` and `bar!` by `is_expn_of` but only `bar!` by
 /// `is_direct_expn_of`.
 pub fn is_direct_expn_of(cx: &LateContext, span: Span, name: &str) -> Option<Span> {
-    let span_name_span = cx.tcx
-        .sess
-        .codemap()
-        .with_expn_info(span.expn_id, |expn| expn.map(|ei| (ei.callee.name(), ei.call_site)));
+    let span_name_span = span.ctxt.outer()
+        .expn_info().map(|ei| (ei.callee.name(), ei.call_site));
 
     match span_name_span {
         Some((mac_name, new_span)) if mac_name == name => Some(new_span),

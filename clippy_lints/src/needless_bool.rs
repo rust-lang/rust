@@ -76,7 +76,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBool {
                                    "this if-then-else expression returns a bool literal",
                                    |db| { db.span_suggestion(e.span, "you can reduce it to", hint); });
             };
-            match (fetch_bool_block(then_block), fetch_bool_expr(else_expr)) {
+            match (fetch_bool_expr(&**then_block), fetch_bool_expr(else_expr)) {
                 (RetBool(true), RetBool(true)) |
                 (Bool(true), Bool(true)) => {
                     span_lint(cx,

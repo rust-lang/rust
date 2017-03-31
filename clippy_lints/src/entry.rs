@@ -1,5 +1,5 @@
 use rustc::hir::*;
-use rustc::hir::intravisit::{Visitor, walk_expr, walk_block, NestedVisitorMap};
+use rustc::hir::intravisit::{Visitor, walk_expr, NestedVisitorMap};
 use rustc::lint::*;
 use syntax::codemap::Span;
 use utils::SpanlessEq;
@@ -46,8 +46,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for HashMapLint {
                 if let Some((ty, map, key)) = check_cond(cx, check) {
                     // in case of `if !m.contains_key(&k) { m.insert(k, v); }`
                     // we can give a better error message
-                    let sole_expr = else_block.is_none() &&
-                                    ((then_block.expr.is_some() as usize) + then_block.stmts.len() == 1);
+                    let sole_expr = else_block.is_none();
 
                     let mut visitor = InsertVisitor {
                         cx: cx,
@@ -58,7 +57,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for HashMapLint {
                         sole_expr: sole_expr,
                     };
 
-                    walk_block(&mut visitor, then_block);
+                    walk_expr(&mut visitor, &**then_block);
                 }
             } else if let Some(ref else_block) = *else_block {
                 if let Some((ty, map, key)) = check_cond(cx, check) {
