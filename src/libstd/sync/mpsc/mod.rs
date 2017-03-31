@@ -13,40 +13,50 @@
 //! This module provides message-based communication over channels, concretely
 //! defined among three types:
 //!
-//! * `Sender`
-//! * `SyncSender`
-//! * `Receiver`
+//! * [`Sender`]
+//! * [`SyncSender`]
+//! * [`Receiver`]
 //!
-//! A `Sender` or `SyncSender` is used to send data to a `Receiver`. Both
+//! A [`Sender`] or [`SyncSender`] is used to send data to a [`Receiver`]. Both
 //! senders are clone-able (multi-producer) such that many threads can send
 //! simultaneously to one receiver (single-consumer).
 //!
 //! These channels come in two flavors:
 //!
-//! 1. An asynchronous, infinitely buffered channel. The `channel()` function
+//! 1. An asynchronous, infinitely buffered channel. The [`channel()`] function
 //!    will return a `(Sender, Receiver)` tuple where all sends will be
 //!    **asynchronous** (they never block). The channel conceptually has an
 //!    infinite buffer.
 //!
-//! 2. A synchronous, bounded channel. The `sync_channel()` function will return
-//!    a `(SyncSender, Receiver)` tuple where the storage for pending messages
-//!    is a pre-allocated buffer of a fixed size. All sends will be
+//! 2. A synchronous, bounded channel. The [`sync_channel()`] function will
+//!    return a `(SyncSender, Receiver)` tuple where the storage for pending
+//!    messages is a pre-allocated buffer of a fixed size. All sends will be
 //!    **synchronous** by blocking until there is buffer space available. Note
-//!    that a bound of 0 is allowed, causing the channel to become a
-//!    "rendezvous" channel where each sender atomically hands off a message to
-//!    a receiver.
+//!    that a bound of 0 is allowed, causing the channel to become a "rendezvous"
+//!    channel where each sender atomically hands off a message to a receiver.
+//!
+//! [`Sender`]: ../../../std/sync/mpsc/struct.Sender.html
+//! [`SyncSender`]: ../../../std/sync/mpsc/struct.SyncSender.html
+//! [`Receiver`]: ../../../std/sync/mpsc/struct.Receiver.html
+//! [`send`]: ../../../std/sync/mpsc/struct.Sender.html#method.send
+//! [`channel()`]: ../../../std/sync/mpsc/fn.channel.html
+//! [`sync_channel()`]: ../../../std/sync/mpsc/fn.sync_channel.html
 //!
 //! ## Disconnection
 //!
-//! The send and receive operations on channels will all return a `Result`
+//! The send and receive operations on channels will all return a [`Result`]
 //! indicating whether the operation succeeded or not. An unsuccessful operation
 //! is normally indicative of the other half of a channel having "hung up" by
 //! being dropped in its corresponding thread.
 //!
 //! Once half of a channel has been deallocated, most operations can no longer
-//! continue to make progress, so `Err` will be returned. Many applications will
-//! continue to `unwrap()` the results returned from this module, instigating a
-//! propagation of failure among threads if one unexpectedly dies.
+//! continue to make progress, so [`Err`] will be returned. Many applications
+//! will continue to [`unwrap()`] the results returned from this module,
+//! instigating a propagation of failure among threads if one unexpectedly dies.
+//!
+//! [`Result`]: ../../../std/result/enum.Result.html
+//! [`Err`]: ../../../std/result/enum.Result.html#variant.Err
+//! [`unwrap()`]: ../../../std/result/enum.Result.html#method.unwrap
 //!
 //! # Examples
 //!
