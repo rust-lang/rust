@@ -94,4 +94,9 @@ fn main() {
 
     let attr = quote_attr!(cx, #![$meta]);
     check!(attribute_to_string, attr; r#"#![cfg(foo = "bar")]"#);
+
+    // quote_tokens!
+
+    let tokens = quote_tokens!(cx, $($$x),+);
+    check!(tts_to_string, tokens, quote_tokens!(cx, $tokens); "$ ( $ x ) , +");
 }

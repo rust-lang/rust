@@ -140,12 +140,12 @@ impl TokenTree {
     }
 }
 
-pub fn parse(input: tokenstream::TokenStream, expect_matchers: bool, sess: &ParseSess)
+pub fn parse(input: tokenstream::TokenStream, expect_matchers: bool, sess: &ParseSess, strict: bool)
              -> Vec<TokenTree> {
     let mut result = Vec::new();
     let mut trees = input.trees();
     while let Some(tree) = trees.next() {
-        let tree = parse_tree(tree, &mut trees, expect_matchers, sess);
+        let tree = parse_tree(tree, &mut trees, expect_matchers, sess, strict);
         match tree {
             TokenTree::MetaVar(start_sp, ident) if expect_matchers => {
                 let span = match trees.next() {
@@ -174,7 +174,8 @@ pub fn parse(input: tokenstream::TokenStream, expect_matchers: bool, sess: &Pars
 fn parse_tree<I>(tree: tokenstream::TokenTree,
                  trees: &mut I,
                  expect_matchers: bool,
-                 sess: &ParseSess)
+                 sess: &ParseSess,
+                 strict: bool)
                  -> TokenTree
     where I: Iterator<Item = tokenstream::TokenTree>,
 {
@@ -186,7 +187,7 @@ fn parse_tree<I>(tree: tokenstream::TokenTree,
                     let msg = format!("expected `(`, found `{}`", tok);
                     sess.span_diagnostic.span_err(span, &msg);
                 }
-                let sequence = parse(delimited.tts.into(), expect_matchers, sess);
+                let sequence = parse(delimited.tts.into(), expect_matchers, sess, strict);
                 let (separator, op) = parse_sep_and_kleene_op(trees, span, sess);
                 let name_captures = macro_parser::count_names(&sequence);
                 TokenTree::Sequence(span, Rc::new(SequenceRepetition {
@@ -207,9 +208,16 @@ fn parse_tree<I>(tree: tokenstream::TokenTree,
                 }
             }
             Some(tokenstream::TokenTree::Token(span, tok)) => {
-                let msg = format!("expected identifier, found `{}`", pprust::token_to_string(&tok));
-                sess.span_diagnostic.span_err(span, &msg);
-                TokenTree::MetaVar(span, keywords::Invalid.ident())
+                if strict {
+                    let msg = format!(
+                        "expected identifier, found `{}`",
+                        pprust::token_to_string(&tok)
+                    );
+                    sess.span_diagnostic.span_err(span, &msg);
+                    TokenTree::MetaVar(span, keywords::Invalid.ident())
+                } else {
+                    TokenTree::Token(span, tok)
+                }
             }
             None => TokenTree::Token(span, token::Dollar),
         },
@@ -217,7 +225,7 @@ fn parse_tree<I>(tree: tokenstream::TokenTree,
         tokenstream::TokenTree::Delimited(span, delimited) => {
             TokenTree::Delimited(span, Rc::new(Delimited {
                 delim: delimited.delim,
-                tts: parse(delimited.tts.into(), expect_matchers, sess),
+                tts: parse(delimited.tts.into(), expect_matchers, sess, strict),
             }))
         }
     }
