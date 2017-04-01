@@ -83,6 +83,7 @@
 #![cfg_attr(not(test), feature(exact_size_is_empty))]
 #![feature(fundamental)]
 #![feature(generic_param_attrs)]
+#![feature(integer_atomics)]
 #![feature(lang_items)]
 #![feature(needs_allocator)]
 #![feature(optin_builtin_traits)]
