@@ -933,9 +933,15 @@ impl<'a, A> Clone for Iter<'a, A> {
     }
 }
 
-/// An iterator over a mutable reference of the contained item in an [`Option`].
+/// An iterator over a mutable reference to the [`Some`] variant of an [`Option`].
+///
+/// The iterator yields one value if the [`Option`] is a [`Some`] variant, otherwise none.
+///
+/// This `struct` is created by [`Option::iter_mut`] function.
 ///
 /// [`Option`]: enum.Option.html
+/// [`Some`]: enum.Option.html#variant.Some
+/// [`Option::iter_mut`]: enum.Option.html#method.iter_mut
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
 pub struct IterMut<'a, A: 'a> { inner: Item<&'a mut A> }
