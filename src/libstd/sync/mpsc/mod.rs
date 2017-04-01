@@ -337,7 +337,7 @@ impl<T> !Sync for Receiver<T> { }
 /// [`next`] is called, waiting for a new message, and [`None`] will be returned
 /// when the corresponding channel has hung up.
 ///
-/// [`next`]: ../../../std/iter/trait.Iterator.html#method.next
+/// [`next`]: ../../../std/iter/trait.Iterator.html#tymethod.next
 /// [`None`]: ../../../std/option/enum.Option.html#variant.None
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
@@ -363,7 +363,7 @@ pub struct TryIter<'a, T: 'a> {
 /// whenever [`next`] is called, waiting for a new message, and [`None`] will be
 /// returned when the corresponding channel has hung up.
 ///
-/// [`next`]: ../../../std/iter/trait.Iterator.html#method.next
+/// [`next`]: ../../../std/iter/trait.Iterator.html#tymethod.next
 /// [`None`]: ../../../std/option/enum.Option.html#variant.None
 ///
 #[stable(feature = "receiver_into_iter", since = "1.1.0")]
