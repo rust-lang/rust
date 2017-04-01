@@ -18,7 +18,7 @@ use std::fs;
 use std::path::PathBuf;
 use std::process;
 
-use getopts::{Matches, Options};
+use getopts::{Options};
 
 use Build;
 use config::Config;
@@ -75,7 +75,22 @@ pub enum Subcommand {
 
 impl Flags {
     pub fn parse(args: &[String]) -> Flags {
+        let mut extra_help = String::new();
+        let mut subcommand_help = format!("\
+Usage: x.py <subcommand> [options] [<paths>...]
+
+Subcommands:
+    build       Compile either the compiler or libraries
+    test        Build and run some test suites
+    bench       Build and run some benchmarks
+    doc         Build documentation
+    clean       Clean out build directories
+    dist        Build and/or install distribution artifacts
+
+To learn more about a subcommand, run `./x.py <subcommand> -h`");
+
         let mut opts = Options::new();
+        // Options common to all subcommands
         opts.optflagmulti("v", "verbose", "use verbose output (-vv for very verbose)");
         opts.optflag("i", "incremental", "use incremental compilation");
         opts.optopt("", "config", "TOML configuration file for build", "FILE");
@@ -89,26 +104,38 @@ impl Flags {
         opts.optopt("j", "jobs", "number of jobs to run in parallel", "JOBS");
         opts.optflag("h", "help", "print this help message");
 
-        let usage = |exit_code, opts: &Options| -> ! {
-            let subcommand_help = format!("\
-Usage: x.py <subcommand> [options] [<paths>...]
+        // fn usage()
+        let usage = |exit_code: i32, opts: &Options, subcommand_help: &str, extra_help: &str| -> ! {
+            println!("{}", opts.usage(subcommand_help));
+            if !extra_help.is_empty() {
+                println!("{}", extra_help);
+            }
+            process::exit(exit_code);
+        };
 
-Subcommands:
-    build       Compile either the compiler or libraries
-    test        Build and run some test suites
-    bench       Build and run some benchmarks
-    doc         Build documentation
-    clean       Clean out build directories
-    dist        Build and/or install distribution artifacts
+        // Get subcommand
+        let matches = opts.parse(&args[..]).unwrap_or_else(|e| {
+            // Invalid argument/option format
+            println!("\n{}\n", e);
+            usage(1, &opts, &subcommand_help, &extra_help);
+        });
+        let subcommand = match matches.free.get(0) {
+            Some(s) => { s },
+            None  => {
+                // No subcommand -- lets only show the general usage and subcommand help in this case.
+                println!("{}\n", subcommand_help);
+                process::exit(0);
+            }
+        };
 
-To learn more about a subcommand, run `./x.py <subcommand> -h`");
+        // Get any optional paths which occur after the subcommand
+        let cwd = t!(env::current_dir());
+        let paths = matches.free[1..].iter().map(|p| cwd.join(p)).collect::<Vec<_>>();
 
-            println!("{}", opts.usage(&subcommand_help));
-
-            let subcommand = args.get(0).map(|s| &**s);
-            match subcommand {
-                Some("build") => {
-                    println!("\
+        // Some subcommands have specific arguments help text
+        match subcommand.as_str() {
+            "build" => {
+                subcommand_help.push_str("\n
 Arguments:
     This subcommand accepts a number of paths to directories to the crates 
     and/or artifacts to compile. For example:
@@ -125,12 +152,11 @@ Arguments:
 
     For a quick build with a usable compile, you can pass:
 
-        ./x.py build --stage 1 src/libtest
-");
-                }
-
-                Some("test") => {
-                    println!("\
+        ./x.py build --stage 1 src/libtest");
+            }
+            "test" => {
+                opts.optmulti("", "test-args", "extra arguments", "ARGS");
+                subcommand_help.push_str("\n
 Arguments:
     This subcommand accepts a number of paths to directories to tests that
     should be compiled and run. For example:
@@ -143,12 +169,13 @@ Arguments:
     compiled and tested.
 
         ./x.py test
-        ./x.py test --stage 1
-");
-                }
-
-                Some("doc") => {
-                    println!("\
+        ./x.py test --stage 1");
+            }
+            "bench" => {
+                opts.optmulti("", "test-args", "extra arguments", "ARGS");
+            }
+            "doc" => {
+                subcommand_help.push_str("\n
 Arguments:
     This subcommand accepts a number of paths to directories of documentation
     to build. For example:
@@ -160,111 +187,74 @@ Arguments:
     If no arguments are passed then everything is documented:
 
         ./x.py doc
-        ./x.py doc --stage 1
-");
-                }
-
-                _ => {}
+        ./x.py doc --stage 1");
             }
-
-
-            if let Some(subcommand) = subcommand {
-                if subcommand == "build" ||
-                   subcommand == "test" ||
-                   subcommand == "bench" ||
-                   subcommand == "doc" ||
-                   subcommand == "clean" ||
-                   subcommand == "dist"  {
-                    if args.iter().any(|a| a == "-v") {
-                        let flags = Flags::parse(&["build".to_string()]);
-                        let mut config = Config::default();
-                        config.build = flags.build.clone();
-                        let mut build = Build::new(flags, config);
-                        metadata::build(&mut build);
-                        step::build_rules(&build).print_help(subcommand);
-                    } else {
-                        println!("Run `./x.py {} -h -v` to see a list of available paths.",
-                                 subcommand);
-                    }
-
-                    println!("");
-                }
+            "dist" => {
+                opts.optflag("", "install", "run installer as well");
             }
-
-            process::exit(exit_code);
+            _ => { }
         };
-        if args.len() == 0 {
-            println!("a subcommand must be passed");
-            usage(1, &opts);
+
+        // All subcommands can have an optional "Available paths" section
+        if matches.opt_present("verbose") {
+            let flags = Flags::parse(&["build".to_string()]);
+            let mut config = Config::default();
+            config.build = flags.build.clone();
+            let mut build = Build::new(flags, config);
+            metadata::build(&mut build);
+            let maybe_rules_help = step::build_rules(&build).get_help(subcommand);
+            if maybe_rules_help.is_some() {
+                extra_help.push_str(maybe_rules_help.unwrap().as_str());
+            }
+        } else {
+            extra_help.push_str(format!("Run `./x.py {} -h -v` to see a list of available paths.",
+                     subcommand).as_str());
         }
-        let parse = |opts: &Options| {
-            let m = opts.parse(&args[1..]).unwrap_or_else(|e| {
-                println!("failed to parse options: {}", e);
-                usage(1, opts);
-            });
-            if m.opt_present("h") {
-                usage(0, opts);
-            }
-            return m
-        };
 
-        let cwd = t!(env::current_dir());
-        let remaining_as_path = |m: &Matches| {
-            m.free.iter().map(|p| cwd.join(p)).collect::<Vec<_>>()
-        };
-        // TODO: Parse subcommand nicely up at top, so options can occur before the subcommand.
-        // TODO: Get the subcommand-specific options below into the help output
+        // User passed in -h/--help?
+        if matches.opt_present("help") {
+            usage(0, &opts, &subcommand_help, &extra_help);
+        }
 
-        let m: Matches;
-        let cmd = match &args[0][..] {
+        let cmd = match subcommand.as_str() {
             "build" => {
-                m = parse(&opts);
-                Subcommand::Build { paths: remaining_as_path(&m) }
+                Subcommand::Build { paths: paths }
             }
             "test" => {
-                opts.optmulti("", "test-args", "extra arguments", "ARGS");
-                m = parse(&opts);
                 Subcommand::Test {
-                    paths: remaining_as_path(&m),
-                    test_args: m.opt_strs("test-args"),
+                    paths: paths,
+                    test_args: matches.opt_strs("test-args"),
                 }
             }
             "bench" => {
-                opts.optmulti("", "test-args", "extra arguments", "ARGS");
-                m = parse(&opts);
                 Subcommand::Bench {
-                    paths: remaining_as_path(&m),
-                    test_args: m.opt_strs("test-args"),
+                    paths: paths,
+                    test_args: matches.opt_strs("test-args"),
                 }
             }
             "doc" => {
-                m = parse(&opts);
-                Subcommand::Doc { paths: remaining_as_path(&m) }
+                Subcommand::Doc { paths: paths }
             }
             "clean" => {
-                m = parse(&opts);
-                if m.free.len() > 0 {
-                    println!("clean takes no arguments");
-                    usage(1, &opts);
+                if matches.free.len() > 0 {
+                    println!("\nclean takes no arguments\n");
+                    usage(1, &opts, &subcommand_help, &extra_help);
                 }
                 Subcommand::Clean
             }
             "dist" => {
-                opts.optflag("", "install", "run installer as well");
-                m = parse(&opts);
                 Subcommand::Dist {
-                    paths: remaining_as_path(&m),
-                    install: m.opt_present("install"),
+                    paths: paths,
+                    install: matches.opt_present("install"),
                 }
             }
-            "--help" => usage(0, &opts),
             _ => {
-                usage(1, &opts);
+                usage(1, &opts, &subcommand_help, &extra_help);
             }
         };
 
 
-        let cfg_file = m.opt_str("config").map(PathBuf::from).or_else(|| {
+        let cfg_file = matches.opt_str("config").map(PathBuf::from).or_else(|| {
             if fs::metadata("config.toml").is_ok() {
                 Some(PathBuf::from("config.toml"))
             } else {
@@ -272,31 +262,29 @@ Arguments:
             }
         });
 
-        let mut stage = m.opt_str("stage").map(|j| j.parse().unwrap());
+        let mut stage = matches.opt_str("stage").map(|j| j.parse().unwrap());
 
-        let incremental = m.opt_present("i");
-
-        if incremental {
+        if matches.opt_present("incremental") {
             if stage.is_none() {
                 stage = Some(1);
             }
         }
 
         Flags {
-            verbose: m.opt_count("v"),
+            verbose: matches.opt_count("verbose"),
             stage: stage,
-            on_fail: m.opt_str("on-fail"),
-            keep_stage: m.opt_str("keep-stage").map(|j| j.parse().unwrap()),
-            build: m.opt_str("build").unwrap_or_else(|| {
+            on_fail: matches.opt_str("on-fail"),
+            keep_stage: matches.opt_str("keep-stage").map(|j| j.parse().unwrap()),
+            build: matches.opt_str("build").unwrap_or_else(|| {
                 env::var("BUILD").unwrap()
             }),
-            host: split(m.opt_strs("host")),
-            target: split(m.opt_strs("target")),
+            host: split(matches.opt_strs("host")),
+            target: split(matches.opt_strs("target")),
             config: cfg_file,
-            src: m.opt_str("src").map(PathBuf::from),
-            jobs: m.opt_str("jobs").map(|j| j.parse().unwrap()),
+            src: matches.opt_str("src").map(PathBuf::from),
+            jobs: matches.opt_str("jobs").map(|j| j.parse().unwrap()),
             cmd: cmd,
-            incremental: incremental,
+            incremental: matches.opt_present("incremental"),
         }
     }
 }
