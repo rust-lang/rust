@@ -971,7 +971,7 @@ impl<'a> fmt::Display for Method<'a> {
                 }
             } else {
                 if i > 0 {
-                    args.push_str("<br> ");
+                    args.push_str(" <br>");
                     args_plain.push_str(" ");
                 }
                 if !input.name.is_empty() {
