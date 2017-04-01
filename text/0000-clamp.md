@@ -84,40 +84,6 @@ pub fn clamp(self, min: Self, max: Self) -> Self {
 }
 ```
 
-And the following to std::cmp::PartialOrd.
-
-```Rust
-/// Returns max if self is greater than max, and min if self is less than min.  
-/// Otherwise this will return self.  Panics if min > max.
-///
-/// This function will return None if a comparison to either min or max couldn't be made.
-#[inline]
-pub fn partial_clamp(self, min: Self, max: Self) -> Option<Self> {
-    let min_max_compare = min.partial_cmp(&max);
-    if let None = min_max_compare {
-        return None;
-    }
-    else if let Some(cmp) = min_max_compare {
-        assert!(cmp == Ordering::Less || cmp == Ordering::Equal);
-    }
-    let min_compare = self.partial_cmp(&min);
-    if let Some(Ordering::Less) = min_compare {
-        return Some(min);
-    }
-    else if let None = min_compare {
-        return None;
-    }
-    let max_compare = self.partial_cmp(&max);
-    if let Some(Ordering::Greater) = max_compare {
-        return Some(max);
-    }
-    else if let None = max_compare {
-        return None;
-    }
-    return Some(self);
-}
-```
-
 And the following to libstd/f32.rs, and a similar version for f64
 
 ```Rust
