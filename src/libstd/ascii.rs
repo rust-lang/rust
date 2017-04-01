@@ -9,6 +9,20 @@
 // except according to those terms.
 
 //! Operations on ASCII strings and characters.
+//!
+//! Most string operations in Rust act on UTF-8 strings. However, at times it
+//! makes more sense to only consider the ASCII character set for a specific
+//! operation.
+//!
+//! The [`AsciiExt`] trait provides methods that allow for character
+//! operations that only act on the ASCII subset and leave non-ASCII characters
+//! alone.
+//!
+//! The [`escape_default`] function provides an iterator over the bytes of an
+//! escaped version of the character given.
+//!
+//! [`AsciiExt`]: trait.AsciiExt.html
+//! [`escape_default`]: fn.escape_default.html
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
