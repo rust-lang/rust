@@ -40,7 +40,10 @@ matrix:
     - env: IMAGE=x86_64-gnu-distcheck
     - env: IMAGE=x86_64-gnu-incremental
 
-    # OSX builders
+    # OSX builders running tests, these run the full test suite.
+    #
+    # Note that the compiler is compiled to target 10.8 here because the Xcode
+    # version that we're using, 8.2, cannot compile LLVM for OSX 10.7.
     - env: >
         RUST_CHECK_TARGET=check
         RUST_CONFIGURE_ARGS=--build=x86_64-apple-darwin
@@ -68,6 +71,12 @@ matrix:
       osx_image: xcode8.2
       install: *osx_install_sccache
 
+    # OSX builders producing releases. These do not run the full test suite and
+    # just produce a bunch of artifacts.
+    #
+    # Note that these are running in the `xcode7` image instead of the
+    # `xcode8.2` image as above. That's because we want to build releases for
+    # OSX 10.7 and `xcode7` is the latest Xcode able to compile LLVM for 10.7.
     - env: >
         RUST_CHECK_TARGET=dist
         RUST_CONFIGURE_ARGS="--build=i686-apple-darwin --enable-extended"
@@ -75,10 +84,9 @@ matrix:
         DEPLOY=1
         RUSTC_RETRY_LINKER_ON_SEGFAULT=1
         SCCACHE_ERROR_LOG=/tmp/sccache.log
-        MACOSX_DEPLOYMENT_TARGET=10.8
-        MACOSX_STD_DEPLOYMENT_TARGET=10.7
+        MACOSX_DEPLOYMENT_TARGET=10.7
       os: osx
-      osx_image: xcode8.2
+      osx_image: xcode7
       install: *osx_install_sccache
     - env: >
         RUST_CHECK_TARGET=dist
@@ -87,10 +95,9 @@ matrix:
         DEPLOY=1
         RUSTC_RETRY_LINKER_ON_SEGFAULT=1
         SCCACHE_ERROR_LOG=/tmp/sccache.log
-        MACOSX_DEPLOYMENT_TARGET=10.8
-        MACOSX_STD_DEPLOYMENT_TARGET=10.7
+        MACOSX_DEPLOYMENT_TARGET=10.7
       os: osx
-      osx_image: xcode8.2
+      osx_image: xcode7
       install: *osx_install_sccache
 
     # "alternate" deployments, these are "nightlies" but don't have assertions
@@ -105,10 +112,9 @@ matrix:
         DEPLOY_ALT=1
         RUSTC_RETRY_LINKER_ON_SEGFAULT=1
         SCCACHE_ERROR_LOG=/tmp/sccache.log
-        MACOSX_DEPLOYMENT_TARGET=10.8
-        MACOSX_STD_DEPLOYMENT_TARGET=10.7
+        MACOSX_DEPLOYMENT_TARGET=10.7
       os: osx
-      osx_image: xcode8.2
+      osx_image: xcode7
       install: *osx_install_sccache
 
 env:
