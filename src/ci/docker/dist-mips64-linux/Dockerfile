@@ -13,7 +13,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   gdb \
   xz-utils \
   g++-mips64-linux-gnuabi64 \
-  g++-mips64el-linux-gnuabi64 \
   libssl-dev \
   pkg-config
 
@@ -27,7 +26,6 @@ RUN curl -OL https://github.com/Yelp/dumb-init/releases/download/v1.2.0/dumb-ini
 ENTRYPOINT ["/usr/bin/dumb-init", "--"]
 
 ENV HOSTS=mips64-unknown-linux-gnuabi64
-ENV HOSTS=$HOSTS,mips64el-unknown-linux-gnuabi64
 
 ENV RUST_CONFIGURE_ARGS --host=$HOSTS --enable-extended
 ENV SCRIPT python2.7 ../x.py dist --host $HOSTS --target $HOSTS

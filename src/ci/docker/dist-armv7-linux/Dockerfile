@@ -56,7 +56,7 @@ RUN mkdir /x-tools && chown rustbuild:rustbuild /x-tools
 USER rustbuild
 WORKDIR /tmp
 
-COPY arm-linux-gnueabi.config build-toolchains.sh /tmp/
+COPY build-toolchains.sh armv7-linux-gnueabihf.config /tmp/
 RUN ./build-toolchains.sh
 
 USER root
@@ -65,13 +65,13 @@ RUN curl -o /usr/local/bin/sccache \
       https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-03-24-sccache-x86_64-unknown-linux-musl && \
       chmod +x /usr/local/bin/sccache
 
-ENV PATH=$PATH:/x-tools/arm-unknown-linux-gnueabi/bin
+ENV PATH=$PATH:/x-tools/armv7-unknown-linux-gnueabihf/bin
 
-ENV CC_arm_unknown_linux_gnueabi=arm-unknown-linux-gnueabi-gcc \
-    AR_arm_unknown_linux_gnueabi=arm-unknown-linux-gnueabi-ar \
-    CXX_arm_unknown_linux_gnueabi=arm-unknown-linux-gnueabi-g++
+ENV CC_armv7_unknown_linux_gnueabihf=armv7-unknown-linux-gnueabihf-gcc \
+    AR_armv7_unknown_linux_gnueabihf=armv7-unknown-linux-gnueabihf-ar \
+    CXX_armv7_unknown_linux_gnueabihf=armv7-unknown-linux-gnueabihf-g++
 
-ENV HOSTS=arm-unknown-linux-gnueabi
+ENV HOSTS=armv7-unknown-linux-gnueabihf
 
 ENV RUST_CONFIGURE_ARGS --host=$HOSTS --enable-extended
 ENV SCRIPT python2.7 ../x.py dist --host $HOSTS --target $HOSTS

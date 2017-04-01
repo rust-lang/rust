@@ -25,7 +25,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   wget \
   xz-utils \
   libssl-dev \
-  pkg-config
+ pkg-config
 
 RUN curl -OL https://github.com/Yelp/dumb-init/releases/download/v1.2.0/dumb-init_1.2.0_amd64.deb && \
     dpkg -i dumb-init_*.deb && \
@@ -56,22 +56,22 @@ RUN mkdir /x-tools && chown rustbuild:rustbuild /x-tools
 USER rustbuild
 WORKDIR /tmp
 
-COPY arm-linux-gnueabi.config build-toolchains.sh /tmp/
-RUN ./build-toolchains.sh
-
 USER root
+
+RUN apt-get install -y --no-install-recommends rpm2cpio cpio
+COPY shared.sh build-powerpc64le-toolchain.sh /tmp/
+RUN ./build-powerpc64le-toolchain.sh
 
 RUN curl -o /usr/local/bin/sccache \
       https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-03-24-sccache-x86_64-unknown-linux-musl && \
       chmod +x /usr/local/bin/sccache
 
-ENV PATH=$PATH:/x-tools/arm-unknown-linux-gnueabi/bin
+ENV \
+    AR_powerpc64le_unknown_linux_gnu=powerpc64le-linux-gnu-ar \
+    CC_powerpc64le_unknown_linux_gnu=powerpc64le-linux-gnu-gcc \
+    CXX_powerpc64le_unknown_linux_gnu=powerpc64le-linux-gnu-g++
 
-ENV CC_arm_unknown_linux_gnueabi=arm-unknown-linux-gnueabi-gcc \
-    AR_arm_unknown_linux_gnueabi=arm-unknown-linux-gnueabi-ar \
-    CXX_arm_unknown_linux_gnueabi=arm-unknown-linux-gnueabi-g++
-
-ENV HOSTS=arm-unknown-linux-gnueabi
+ENV HOSTS=powerpc64le-unknown-linux-gnu
 
 ENV RUST_CONFIGURE_ARGS --host=$HOSTS --enable-extended
 ENV SCRIPT python2.7 ../x.py dist --host $HOSTS --target $HOSTS

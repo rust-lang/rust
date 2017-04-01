@@ -10,28 +10,18 @@
 # except according to those terms.
 
 set -ex
+source shared.sh
 
-hide_output() {
-  set +x
-  on_err="
-echo ERROR: An error was encountered with the build.
-cat /tmp/build.log
-exit 1
-"
-  trap "$on_err" ERR
-  bash -c "while true; do sleep 30; echo \$(date) - building ...; done" &
-  PING_LOOP_PID=$!
-  $@ &> /tmp/build.log
-  rm /tmp/build.log
-  trap - ERR
-  kill $PING_LOOP_PID
-  set -x
-}
+VERSION=1.0.2j
 
-mkdir build
-cd build
-cp ../arm-linux-gnueabi.config .config
-ct-ng oldconfig
-hide_output ct-ng build
+curl https://www.openssl.org/source/openssl-$VERSION.tar.gz | tar xzf -
+
+cd openssl-$VERSION
+hide_output ./config --prefix=/rustroot shared -fPIC
+hide_output make -j10
+hide_output make install
 cd ..
-rm -rf build
+rm -rf openssl-$VERSION
+
+# Make the system cert collection available to the new install.
+ln -nsf /etc/pki/tls/cert.pem /rustroot/ssl/
