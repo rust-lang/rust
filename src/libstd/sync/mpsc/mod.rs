@@ -312,13 +312,13 @@ mod spsc_queue;
 /// use std::time::Duration;
 /// let (send, recv) = channel();
 /// thread::spawn(move || {
-///     send.send("Hello world!");
+///     send.send("Hello world!").unwrap();
 ///     thread::sleep(Duration::from_secs(2)); // block for two seconds
-///     send.send("Delayed for 2 seconds");
+///     send.send("Delayed for 2 seconds").unwrap();
 /// });
-/// println!("{:?}", recv.recv()); // Received immediately
+/// println!("{}", recv.recv().unwrap()); // Received immediately
 /// println!("Waiting...");
-/// println!("{:?}", recv.recv()); // Received after 2 seconds
+/// println!("{}", recv.recv().unwrap()); // Received after 2 seconds
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Receiver<T> {
@@ -388,11 +388,11 @@ pub struct IntoIter<T> {
 /// let sender2 = sender.clone();
 /// // First thread owns sender
 /// thread::spawn(move || {
-///     sender.send(1);
+///     sender.send(1).unwrap();
 /// });
 /// // Second thread owns sender2
 /// thread::spawn(move || {
-///     sender2.send(2);
+///     sender2.send(2).unwrap();
 /// });
 /// let msg = receiver.recv().unwrap();
 /// let msg2 = receiver.recv().unwrap();
@@ -1099,9 +1099,9 @@ impl<T> Receiver<T> {
     /// use std::thread;
     /// let (send, recv) = channel();
     /// thread::spawn(move || {
-    ///     send.send(1u8);
-    ///     send.send(2u8);
-    ///     send.send(3u8);
+    ///     send.send(1u8).unwrap();
+    ///     send.send(2u8).unwrap();
+    ///     send.send(3u8).unwrap();
     /// });
     /// for x in recv.iter() {
     ///     println!("Got: {}", x);
