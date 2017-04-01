@@ -894,9 +894,15 @@ impl<A> ExactSizeIterator for Item<A> {}
 impl<A> FusedIterator for Item<A> {}
 unsafe impl<A> TrustedLen for Item<A> {}
 
-/// An iterator over a reference of the contained item in an [`Option`].
+/// An iterator over a reference to the [`Some`] variant of an [`Option`].
+///
+/// The iterator yields one value if the [`Option`] is a [`Some`] variant, otherwise none.
+///
+/// This `struct` is created by [`Option::iter`] function.
 ///
 /// [`Option`]: enum.Option.html
+/// [`Some`]: enum.Option.html#variant.Some
+/// [`Option::iter`]: enum.Option.html#method.iter
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
 pub struct Iter<'a, A: 'a> { inner: Item<&'a A> }
