@@ -1073,7 +1073,7 @@ impl<T> VecDeque<T> {
         }
     }
 
-    /// Prepends an element to the front of the `VecDeque`.
+    /// Prepends an element to the `VecDeque`.
     ///
     /// # Examples
     ///
