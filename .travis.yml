@@ -11,104 +11,14 @@ git:
 matrix:
   fast_finish: true
   include:
-    # Linux builders, all docker images
-    - env: IMAGE=arm-android
-    - env: IMAGE=armhf-gnu
-    - env: IMAGE=cross DEPLOY=1
-    - env: IMAGE=dist-android DEPLOY=1
-    - env: IMAGE=dist-arm-linux DEPLOY=1
-    - env: IMAGE=dist-armv7-aarch64-linux DEPLOY=1
-    - env: IMAGE=dist-freebsd DEPLOY=1
-    - env: IMAGE=dist-i586-gnu-i686-musl DEPLOY=1
-    - env: IMAGE=dist-fuchsia DEPLOY=1
-    - env: IMAGE=dist-mips-linux DEPLOY=1
-    - env: IMAGE=dist-mips64-linux DEPLOY=1
-    - env: IMAGE=dist-powerpc-linux DEPLOY=1
-    - env: IMAGE=dist-powerpc64-linux DEPLOY=1
-    - env: IMAGE=dist-s390x-linux-netbsd DEPLOY=1
-    - env: IMAGE=dist-x86-linux DEPLOY=1
-    - env: IMAGE=dist-x86_64-musl DEPLOY=1
-    - env: IMAGE=emscripten
-    - env: IMAGE=i686-gnu
-    - env: IMAGE=i686-gnu-nopt
-    - env: IMAGE=x86_64-gnu
-    - env: IMAGE=x86_64-gnu-full-bootstrap
-    - env: IMAGE=x86_64-gnu-aux
-    - env: IMAGE=x86_64-gnu-debug
-    - env: IMAGE=x86_64-gnu-nopt
-    - env: IMAGE=x86_64-gnu-llvm-3.7 ALLOW_PR=1 RUST_BACKTRACE=1
-    - env: IMAGE=x86_64-gnu-distcheck
-    - env: IMAGE=x86_64-gnu-incremental
-
     # OSX builders
     - env: >
-        RUST_CHECK_TARGET=check
-        RUST_CONFIGURE_ARGS=--build=x86_64-apple-darwin
+        SCRIPT="./x.py build src/llvm"
         SRC=.
-        RUSTC_RETRY_LINKER_ON_SEGFAULT=1
-        SCCACHE_ERROR_LOG=/tmp/sccache.log
-        MACOSX_DEPLOYMENT_TARGET=10.8
-        MACOSX_STD_DEPLOYMENT_TARGET=10.7
+        MACOSX_DEPLOYMENT_TARGET=10.7
+        ALLOW_PR=1
       os: osx
-      osx_image: xcode8.2
-      install: &osx_install_sccache >
-        travis_retry curl -o /usr/local/bin/sccache https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-03-24-sccache-x86_64-apple-darwin &&
-          chmod +x /usr/local/bin/sccache &&
-        travis_retry curl -o /usr/local/bin/stamp https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-03-17-stamp-x86_64-apple-darwin &&
-          chmod +x /usr/local/bin/stamp
-    - env: >
-        RUST_CHECK_TARGET=check
-        RUST_CONFIGURE_ARGS=--build=i686-apple-darwin
-        SRC=.
-        RUSTC_RETRY_LINKER_ON_SEGFAULT=1
-        SCCACHE_ERROR_LOG=/tmp/sccache.log
-        MACOSX_DEPLOYMENT_TARGET=10.8
-        MACOSX_STD_DEPLOYMENT_TARGET=10.7
-      os: osx
-      osx_image: xcode8.2
-      install: *osx_install_sccache
-
-    - env: >
-        RUST_CHECK_TARGET=dist
-        RUST_CONFIGURE_ARGS="--build=i686-apple-darwin --enable-extended"
-        SRC=.
-        DEPLOY=1
-        RUSTC_RETRY_LINKER_ON_SEGFAULT=1
-        SCCACHE_ERROR_LOG=/tmp/sccache.log
-        MACOSX_DEPLOYMENT_TARGET=10.8
-        MACOSX_STD_DEPLOYMENT_TARGET=10.7
-      os: osx
-      osx_image: xcode8.2
-      install: *osx_install_sccache
-    - env: >
-        RUST_CHECK_TARGET=dist
-        RUST_CONFIGURE_ARGS="--target=aarch64-apple-ios,armv7-apple-ios,armv7s-apple-ios,i386-apple-ios,x86_64-apple-ios --enable-extended"
-        SRC=.
-        DEPLOY=1
-        RUSTC_RETRY_LINKER_ON_SEGFAULT=1
-        SCCACHE_ERROR_LOG=/tmp/sccache.log
-        MACOSX_DEPLOYMENT_TARGET=10.8
-        MACOSX_STD_DEPLOYMENT_TARGET=10.7
-      os: osx
-      osx_image: xcode8.2
-      install: *osx_install_sccache
-
-    # "alternate" deployments, these are "nightlies" but don't have assertions
-    # turned on, they're deployed to a different location primarily for projects
-    # which are stuck on nightly and don't want llvm assertions in the artifacts
-    # that they use.
-    - env: IMAGE=dist-x86-linux DEPLOY_ALT=1
-    - env: >
-        RUST_CHECK_TARGET=dist
-        RUST_CONFIGURE_ARGS="--enable-extended"
-        SRC=.
-        DEPLOY_ALT=1
-        RUSTC_RETRY_LINKER_ON_SEGFAULT=1
-        SCCACHE_ERROR_LOG=/tmp/sccache.log
-        MACOSX_DEPLOYMENT_TARGET=10.8
-        MACOSX_STD_DEPLOYMENT_TARGET=10.7
-      os: osx
-      osx_image: xcode8.2
+      osx_image: xcode7.3
       install: *osx_install_sccache
 
 env:
@@ -118,30 +28,8 @@ env:
     # AWS_SECRET_ACCESS_KEY=...
     - secure: "Pixhh0hXDqGCdOyLtGFjli3J2AtDWIpyb2btIrLe956nCBDRutRoMm6rv5DI9sFZN07Mms7VzNNvhc9wCW1y63JAm414d2Co7Ob8kWMZlz9l9t7ACHuktUiis8yr+S4Quq1Vqd6pqi7pf2J++UxC8R/uLeqVrubzr6+X7AbmEFE="
 
-# Note that this is overridden on OSX builders
-install: >
-  travis_retry curl -o $HOME/stamp https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-03-17-stamp-x86_64-unknown-linux-musl &&
-    chmod +x $HOME/stamp &&
-    export PATH=$PATH:$HOME
-
-before_script:
-  - >
-      echo "#### Disk usage before running script:";
-      df -h;
-      du . | sort -nr | head -n100
-
 script:
-  - >
-      if [ "$ALLOW_PR" = "" ] && [ "$TRAVIS_BRANCH" != "auto" ]; then
-          echo skipping, not a full build
-      else
-          stamp src/ci/init_repo.sh . "$HOME/rustsrc" &&
-          if [ "$TRAVIS_OS_NAME" = "osx" ]; then
-              stamp src/ci/run.sh;
-          else
-              stamp src/ci/docker/run.sh $IMAGE;
-          fi
-      fi
+  - lldb --version
 
 after_success:
   - >
@@ -170,21 +58,13 @@ after_failure:
   - dmesg | grep -i kill
 
 # Save tagged docker images we created and load them if they're available
-# Travis saves caches whether the build failed or not, nuke rustsrc if
-# the failure was while updating it (as it may be in an bad state)
-# https://github.com/travis-ci/travis-ci/issues/4472
 before_cache:
   - docker history -q rust-ci |
     grep -v missing |
     xargs docker save |
     gzip > $HOME/docker/rust-ci.tar.gz
-  - if [ ! -f $HOME/rustsrc/cache_valid1 ]; then
-        echo "WARNING rustsrc cache was invalid when saving";
-        rm -rf $HOME/rustsrc && mkdir $HOME/rustsrc;
-    fi
 before_install:
   - zcat $HOME/docker/rust-ci.tar.gz | docker load || true
-  - mkdir -p $HOME/rustsrc
 
 notifications:
   email: false
@@ -192,7 +72,6 @@ notifications:
 cache:
   directories:
     - $HOME/docker
-    - $HOME/rustsrc
 
 before_deploy:
   - mkdir -p deploy/$TRAVIS_COMMIT
