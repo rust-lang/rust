@@ -1726,9 +1726,9 @@ impl DirBuilder {
         }
     }
 
-    /// Indicate that directories create should be created recursively, creating
-    /// all parent directories if they do not exist with the same security and
-    /// permissions settings.
+    /// Indicates that directories should be created recursively, creating all
+    /// parent directories. Parents that do not exist are created with the same
+    /// security and permissions settings.
     ///
     /// This option defaults to `false`.
     ///
@@ -1748,6 +1748,9 @@ impl DirBuilder {
 
     /// Create the specified directory with the options configured in this
     /// builder.
+    ///
+    /// It is considered an error if the directory already exists unless
+    /// recursive mode is enabled.
     ///
     /// # Examples
     ///
