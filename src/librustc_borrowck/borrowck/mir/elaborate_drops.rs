@@ -548,8 +548,9 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                             allow_initializations = false;
                         }
                         _ => {
-                            assert!(!self.patch.is_patched(bb), "kind: {:?}",
-                                data.terminator().kind);
+                            assert!(!self.patch.is_patched(bb), "kind: {:?}, source: {:?}, {:?}; bbdata: {:?}",
+                                data.terminator().kind, data.terminator().source_info,
+                                bb, data);
                         }
                     }
                 }
@@ -558,18 +559,18 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                 // so mark the return as initialized *before* the
                 // call.
                 // XXX:
-                //if i < data.statements.len() {
-                //    if let StatementKind::Call {
-                //        destination: ref lv, cleanup: None, ..
-                //    } = data.statements[i].kind {
-                //        let loc = Location { block: bb, statement_index: i };
-                //        let path = self.move_data().rev_lookup.find(lv);
-                //        on_lookup_result_bits(
-                //            self.tcx, self.mir, self.move_data(), path,
-                //            |child| self.set_drop_flag(loc, child, DropFlagState::Present)
-                //        );
-                //    }
-                //}
+                if i < data.statements.len() {
+                    if let StatementKind::Call {
+                        destination: ref lv, cleanup: None, ..
+                    } = data.statements[i].kind {
+                        let loc = Location { block: bb, statement_index: i };
+                        let path = self.move_data().rev_lookup.find(lv);
+                        on_lookup_result_bits(
+                            self.tcx, self.mir, self.move_data(), path,
+                            |child| self.set_drop_flag(loc, child, DropFlagState::Present)
+                        );
+                    }
+                }
 
                 let loc = Location { block: bb, statement_index: i };
                 super::drop_flag_effects_for_location(

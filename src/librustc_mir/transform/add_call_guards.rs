@@ -11,7 +11,7 @@
 use rustc::ty::TyCtxt;
 use rustc::mir::*;
 use rustc::mir::transform::{MirPass, MirSource, Pass};
-use rustc_data_structures::indexed_vec::{Idx, IndexVec};
+use rustc_data_structures::indexed_vec::Idx;
 
 pub struct AddCallGuards;
 
@@ -42,40 +42,74 @@ impl<'tcx> MirPass<'tcx> for AddCallGuards {
 }
 
 pub fn add_call_guards(mir: &mut Mir) {
-    let pred_count: IndexVec<_, _> =
-        mir.predecessors().iter().map(|ps| ps.len()).collect();
-
     // We need a place to store the new blocks generated
     let mut new_blocks = Vec::new();
 
     let cur_len = mir.basic_blocks().len();
 
     for block in mir.basic_blocks_mut() {
-        match block.terminator {
-            Some(Terminator {
-                kind: TerminatorKind::Call {
-                    destination: Some((_, ref mut destination)),
-                    cleanup: Some(_),
-                    ..
-                }, source_info
-            }) if pred_count[*destination] > 1 => {
-                // It's a critical edge, break it
-                let call_guard = BlockData {
-                    statements: vec![],
-                    is_cleanup: block.is_cleanup,
-                    terminator: Some(Terminator {
-                        source_info: source_info,
-                        kind: TerminatorKind::Goto { target: *destination }
-                    })
-                };
-
-                // Get the index it will be when inserted into the MIR
-                let idx = cur_len + new_blocks.len();
-                new_blocks.push(call_guard);
-                *destination = Block::new(idx);
+        // Call statement indices, since the last call.
+        let mut calls = Vec::new();
+        // Iterate in reverse to allow draining from the end of statements, not the middle
+        for i in (0..block.statements.len()).rev() {
+            if let StatementKind::Call { .. } = block.statements[i].kind {
+                calls.push(i);
             }
-            _ => {}
         }
+
+        let first_new_block_idx = cur_len + new_blocks.len();
+        let mut new_blocks_iter = Vec::new();
+
+        debug!("original statements = {:#?}", block.statements);
+
+        let mut is_first = true;
+
+        for &el in calls.iter() {
+            let after_call = block.statements.split_off(el + 1);
+
+            let next_block_idx = first_new_block_idx + new_blocks_iter.len();
+            let terminator = if is_first {
+                block.terminator.take().expect("invalid terminator state")
+            } else {
+                Terminator {
+                    source_info: after_call[0].source_info,
+                    kind: TerminatorKind::Goto { target: Block::new(next_block_idx - 1) }
+                }
+            };
+
+            debug!("cg: statements = {:?}", after_call);
+            let call_guard = BlockData {
+                statements: after_call,
+                is_cleanup: block.is_cleanup,
+                terminator: Some(terminator)
+            };
+
+            new_blocks_iter.push(call_guard);
+            is_first = false;
+        }
+
+        debug!("after blocks = {:#?}", new_blocks_iter);
+
+        for bb_data in &new_blocks_iter {
+            let c = bb_data.statements.iter().filter(|stmt| {
+                match stmt.kind {
+                    StatementKind::Call { .. } => true,
+                    _ => false,
+                }
+            }).count();
+            assert!(c <= 1, "{} calls in {:?}", c, bb_data);
+        }
+
+        if !new_blocks_iter.is_empty() {
+            block.terminator = Some(Terminator {
+                source_info: new_blocks_iter[0].terminator().source_info,
+                kind: TerminatorKind::Goto {
+                    target: Block::new(first_new_block_idx + new_blocks_iter.len() - 1)
+                }
+            });
+        }
+
+        new_blocks.extend(new_blocks_iter);
     }
 
     debug!("Broke {} N edges", new_blocks.len());

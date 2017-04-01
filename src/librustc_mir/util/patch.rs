@@ -66,6 +66,8 @@ impl<'tcx> MirPatch<'tcx> {
             })});
         result.resume_block = resume_block;
         if let Some(resume_stmt_block) = resume_stmt_block {
+            debug!("MirPatch: patching resume_stmt_block, statements: {:?}",
+                mir.basic_blocks()[resume_stmt_block].statements);
             result.patch_terminator(resume_stmt_block, TerminatorKind::Goto {
                 target: resume_block
             });

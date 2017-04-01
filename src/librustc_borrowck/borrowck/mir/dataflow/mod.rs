@@ -433,31 +433,12 @@ impl<'a, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D>
         changed: &mut bool,
         (bb, bb_data): (mir::Block, &mir::BlockData))
     {
-        match bb_data.terminator().kind {
-            mir::TerminatorKind::Return |
-            mir::TerminatorKind::Resume |
-            mir::TerminatorKind::Unreachable => {}
-            mir::TerminatorKind::Goto { ref target } |
-            mir::TerminatorKind::Drop { ref target, location: _, unwind: None } |
-            mir::TerminatorKind::DropAndReplace {
-                ref target, value: _, location: _, unwind: None
-            } => {
-                self.propagate_bits_into_entry_set_for(in_out, changed, target);
-            }
-            mir::TerminatorKind::Drop { ref target, location: _, unwind: Some(ref unwind) } |
-            mir::TerminatorKind::DropAndReplace {
-                ref target, value: _, location: _, unwind: Some(ref unwind)
-            } => {
-                self.propagate_bits_into_entry_set_for(in_out, changed, target);
-                self.propagate_bits_into_entry_set_for(in_out, changed, unwind);
-            }
-            mir::TerminatorKind::SwitchInt { ref targets, .. } => {
-                for target in targets {
-                    self.propagate_bits_into_entry_set_for(in_out, changed, target);
-                }
-            }
+        for succ in self.mir.successors_for(bb).iter() {
+            debug!("successor for {:?}: {:?}", bb, succ);
+            self.propagate_bits_into_entry_set_for(in_out, changed, succ);
         }
 
+        let mut seen_call = false;
         for stmt in bb_data.statements.iter() {
             match stmt.kind {
                 mir::StatementKind::Assign(..) |
@@ -467,12 +448,13 @@ impl<'a, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D>
                 mir::StatementKind::InlineAsm { .. } |
                 mir::StatementKind::Assert { .. } |
                 mir::StatementKind::Nop => {},
-                mir::StatementKind::Call { ref cleanup, ref destination, func: _, args: _ } => {
-                    if let Some(ref unwind) = *cleanup {
-                        self.propagate_bits_into_entry_set_for(in_out, changed, unwind);
-                    }
+                mir::StatementKind::Call { ref destination, .. } => {
                     // N.B.: This must be done *last*, after all other
                     // propagation, as documented in comment above.
+                    // XXX: Do this after all other calls?
+                    debug!("bck: {:?}: looking at call {:?} in {:?}", bb, stmt, bb_data.statements);
+                    assert!(seen_call == false);
+                    seen_call = true;
                     self.flow_state.operator.propagate_call_return(in_out, bb, destination);
                 }
             }
