@@ -585,11 +585,13 @@ pub fn render(w: &mut fmt::Formatter,
         }
     }
     if !parser.footnotes.is_empty() {
+        let mut v: Vec<_> = parser.footnotes.values().collect();
+        v.sort_by(|a, b| a.1.cmp(&b.1));
         buffer.push_str(&format!("<div class=\"footnotes\"><hr><ol>{}</ol></div>",
-                                 parser.footnotes.values()
-                                                 .map(|&(ref s, _)| s.as_str())
-                                                 .collect::<Vec<_>>()
-                                                 .join("")));
+                                 v.iter()
+                                  .map(|s| s.0.as_str())
+                                  .collect::<Vec<_>>()
+                                  .join("")));
     }
     let mut ret = toc_builder.map_or(Ok(()), |builder| {
         write!(w, "<nav id=\"TOC\">{}</nav>", builder.into_toc())
