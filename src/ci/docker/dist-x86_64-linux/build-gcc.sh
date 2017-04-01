@@ -11,27 +11,23 @@
 
 set -ex
 
-hide_output() {
-  set +x
-  on_err="
-echo ERROR: An error was encountered with the build.
-cat /tmp/build.log
-exit 1
-"
-  trap "$on_err" ERR
-  bash -c "while true; do sleep 30; echo \$(date) - building ...; done" &
-  PING_LOOP_PID=$!
-  $@ &> /tmp/build.log
-  rm /tmp/build.log
-  trap - ERR
-  kill $PING_LOOP_PID
-  set -x
-}
+source shared.sh
 
-mkdir build
-cd build
-cp ../arm-linux-gnueabi.config .config
-ct-ng oldconfig
-hide_output ct-ng build
+GCC=4.8.5
+
+curl https://ftp.gnu.org/gnu/gcc/gcc-$GCC/gcc-$GCC.tar.bz2 | tar xjf -
+cd gcc-$GCC
+./contrib/download_prerequisites
+mkdir ../gcc-build
+cd ../gcc-build
+hide_output ../gcc-$GCC/configure \
+    --prefix=/rustroot \
+    --enable-languages=c,c++
+hide_output make -j10
+hide_output make install
+ln -nsf gcc /rustroot/bin/cc
+
 cd ..
-rm -rf build
+rm -rf gcc-build
+rm -rf gcc-$GCC
+yum erase -y gcc gcc-c++ binutils

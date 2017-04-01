@@ -10,28 +10,16 @@
 # except according to those terms.
 
 set -ex
+source shared.sh
 
-hide_output() {
-  set +x
-  on_err="
-echo ERROR: An error was encountered with the build.
-cat /tmp/build.log
-exit 1
-"
-  trap "$on_err" ERR
-  bash -c "while true; do sleep 30; echo \$(date) - building ...; done" &
-  PING_LOOP_PID=$!
-  $@ &> /tmp/build.log
-  rm /tmp/build.log
-  trap - ERR
-  kill $PING_LOOP_PID
-  set -x
-}
+curl https://cdn.kernel.org/pub/linux/kernel/v3.x/linux-3.2.84.tar.xz | unxz | tar x
 
-mkdir build
-cd build
-cp ../arm-linux-gnueabi.config .config
-ct-ng oldconfig
-hide_output ct-ng build
+cd linux-3.2.84
+hide_output make mrproper
+hide_output make INSTALL_HDR_PATH=dest headers_install
+
+find dest/include \( -name .install -o -name ..install.cmd \) -delete
+yes | cp -fr dest/include/* /usr/include
+
 cd ..
-rm -rf build
+rm -rf linux-3.2.84
