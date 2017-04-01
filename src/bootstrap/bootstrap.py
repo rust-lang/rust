@@ -591,9 +591,10 @@ def bootstrap():
 
 def main():
     start_time = time()
+    help_triggered = ('-h' in sys.argv) or ('--help' in sys.argv) or (len(sys.argv) == 1)
     try:
         bootstrap()
-        if ('-h' not in sys.argv) and ('--help' not in sys.argv):
+        if not help_triggered:
             print("Build completed successfully in %s" % format_build_time(time() - start_time))
     except (SystemExit, KeyboardInterrupt) as e:
         if hasattr(e, 'code') and isinstance(e.code, int):
@@ -601,7 +602,7 @@ def main():
         else:
             exit_code = 1
             print(e)
-        if ('-h' not in sys.argv) and ('--help' not in sys.argv):
+        if not help_triggered:
             print("Build completed unsuccessfully in %s" % format_build_time(time() - start_time))
         sys.exit(exit_code)
 
