@@ -53,11 +53,11 @@ pub trait AsciiExt {
     /// use std::ascii::AsciiExt;
     ///
     /// let ascii = 'a';
-    /// let utf8 = '❤';
+    /// let non_ascii = '❤';
     /// let int_ascii = 97;
     ///
     /// assert!(ascii.is_ascii());
-    /// assert!(!utf8.is_ascii());
+    /// assert!(!non_ascii.is_ascii());
     /// assert!(int_ascii.is_ascii());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -79,11 +79,11 @@ pub trait AsciiExt {
     /// use std::ascii::AsciiExt;
     ///
     /// let ascii = 'a';
-    /// let utf8 = '❤';
+    /// let non_ascii = '❤';
     /// let int_ascii = 97;
     ///
     /// assert_eq!('A', ascii.to_ascii_uppercase());
-    /// assert_eq!('❤', utf8.to_ascii_uppercase());
+    /// assert_eq!('❤', non_ascii.to_ascii_uppercase());
     /// assert_eq!(65, int_ascii.to_ascii_uppercase());
     /// ```
     ///
@@ -108,11 +108,11 @@ pub trait AsciiExt {
     /// use std::ascii::AsciiExt;
     ///
     /// let ascii = 'A';
-    /// let utf8 = '❤';
+    /// let non_ascii = '❤';
     /// let int_ascii = 65;
     ///
     /// assert_eq!('a', ascii.to_ascii_lowercase());
-    /// assert_eq!('❤', utf8.to_ascii_lowercase());
+    /// assert_eq!('❤', non_ascii.to_ascii_lowercase());
     /// assert_eq!(97, int_ascii.to_ascii_lowercase());
     /// ```
     ///
@@ -934,8 +934,12 @@ impl AsciiExt for char {
     }
 }
 
-/// An iterator over the escaped version of a byte, constructed via
-/// `std::ascii::escape_default`.
+/// An iterator over the escaped version of a byte.
+///
+/// This `struct` is created by the [`escape_default`] function. See its
+/// documentation for more.
+///
+/// [`escape_default`]: fn.escape_default.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct EscapeDefault {
     range: Range<usize>,
@@ -966,6 +970,38 @@ pub struct EscapeDefault {
 ///
 /// assert_eq!(b'\\', escaped.next().unwrap());
 /// assert_eq!(b't', escaped.next().unwrap());
+///
+/// let mut escaped = ascii::escape_default(b'\r');
+///
+/// assert_eq!(b'\\', escaped.next().unwrap());
+/// assert_eq!(b'r', escaped.next().unwrap());
+///
+/// let mut escaped = ascii::escape_default(b'\n');
+///
+/// assert_eq!(b'\\', escaped.next().unwrap());
+/// assert_eq!(b'n', escaped.next().unwrap());
+///
+/// let mut escaped = ascii::escape_default(b'\'');
+///
+/// assert_eq!(b'\\', escaped.next().unwrap());
+/// assert_eq!(b'\'', escaped.next().unwrap());
+///
+/// let mut escaped = ascii::escape_default(b'"');
+///
+/// assert_eq!(b'\\', escaped.next().unwrap());
+/// assert_eq!(b'"', escaped.next().unwrap());
+///
+/// let mut escaped = ascii::escape_default(b'\\');
+///
+/// assert_eq!(b'\\', escaped.next().unwrap());
+/// assert_eq!(b'\\', escaped.next().unwrap());
+///
+/// let mut escaped = ascii::escape_default(b'\x9d');
+///
+/// assert_eq!(b'\\', escaped.next().unwrap());
+/// assert_eq!(b'x', escaped.next().unwrap());
+/// assert_eq!(b'9', escaped.next().unwrap());
+/// assert_eq!(b'd', escaped.next().unwrap());
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn escape_default(c: u8) -> EscapeDefault {
