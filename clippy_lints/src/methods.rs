@@ -1101,7 +1101,7 @@ fn lint_map_unwrap_or_else(cx: &LateContext, expr: &hir::Expr, map_args: &[hir::
                                expr.span,
                                msg,
                                expr.span,
-                               &format!("replace `map({0}).unwrap_or_else({1})` with `with map_or_else({1}, {0})`",
+                               &format!("replace `map({0}).unwrap_or_else({1})` with `map_or_else({1}, {0})`",
                                         map_snippet,
                                         unwrap_snippet));
         } else if same_span && multiline {

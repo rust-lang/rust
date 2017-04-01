@@ -117,7 +117,7 @@ note: lint level defined here
     |
 5   | #![deny(clippy, clippy_pedantic)]
     |                 ^^^^^^^^^^^^^^^
-    = note: replace `map(|x| x + 1).unwrap_or_else(|| 0)` with `with map_or_else(|| 0, |x| x + 1)`
+    = note: replace `map(|x| x + 1).unwrap_or_else(|| 0)` with `map_or_else(|| 0, |x| x + 1)`
 
 error: called `map(f).unwrap_or_else(g)` on an Option value. This can be done more directly by calling `map_or_else(g, f)` instead
    --> $DIR/methods.rs:120:13
