@@ -26,16 +26,16 @@
 //! As a library author, you should prefer implementing [`From<T>`][`From`] or
 //! [`TryFrom<T>`][`TryFrom`] rather than [`Into<U>`][`Into`] or [`TryInto<U>`][`TryInto`],
 //! as [`From`] and [`TryFrom`] provide greater flexibility and offer
-//! equivalent [`Into`] or [`TryInto`] implementations for free, thanks to a blanket implementation
-//! in the standard library.
+//! equivalent [`Into`] or [`TryInto`] implementations for free, thanks to a
+//! blanket implementation in the standard library.
 //!
 //! # Generic Implementations
 //!
 //! - [`AsRef`] and [`AsMut`] auto-dereference if the inner type is a reference
 //! - [`From`]`<U> for T` implies [`Into`]`<T> for U`
 //! - [`TryFrom`]`<U> for T` implies [`TryInto`]`<T> for U`
-//! - [`From`] and [`Into`] are reflexive, which means that all types can `into()`
-//!   themselves and `from()` themselves
+//! - [`From`] and [`Into`] are reflexive, which means that all types can
+//!   `into()` themselves and `from()` themselves
 //!
 //! See each trait for usage examples.
 //!
@@ -50,26 +50,31 @@
 
 use str::FromStr;
 
-/// A cheap reference-to-reference conversion. Used to convert a value to a reference value
-/// within generic code.
+/// A cheap reference-to-reference conversion. Used to convert a value to a
+/// reference value within generic code.
 ///
-/// `AsRef` is very similar to, but serves a slightly different purpose than, [`Borrow`].
+/// `AsRef` is very similar to, but serves a slightly different purpose than,
+/// [`Borrow`].
 ///
-/// `AsRef` is to be used when wishing to convert to a reference of another type.
-/// `Borrow` is more related to the notion of taking the reference. It is useful when wishing to abstract
-/// over the type of reference (`&T`, `&mut T`) or allow both the referenced and owned type to be treated in the same manner.
+/// `AsRef` is to be used when wishing to convert to a reference of another
+/// type.
+/// `Borrow` is more related to the notion of taking the reference. It is
+/// useful when wishing to abstract
+/// over the type of reference (`&T`, `&mut T`) or allow both the referenced
+/// and owned type to be treated in the same manner.
 /// The key difference between the two traits is the intention:
 ///
 /// - Use `AsRef` when goal is to simply convert into a reference
-/// - Use `Borrow` when goal is related to writing code that is agnostic to the type of borrow and if is reference or value
+/// - Use `Borrow` when goal is related to writing code that is agnostic to the
+/// type of borrow and if is reference or value
 ///
 /// See [the book][book] for a more detailed comparison.
 ///
 /// [book]: ../../book/borrow-and-asref.html
 /// [`Borrow`]: ../../std/borrow/trait.Borrow.html
 ///
-/// **Note: this trait must not fail**. If the conversion can fail, use a dedicated method which
-/// returns an [`Option<T>`] or a [`Result<T, E>`].
+/// **Note: this trait must not fail**. If the conversion can fail, use a
+/// dedicated method which returns an [`Option<T>`] or a [`Result<T, E>`].
 ///
 /// [`Option<T>`]: ../../std/option/enum.Option.html
 /// [`Result<T, E>`]: ../../std/result/enum.Result.html
@@ -77,12 +82,13 @@ use str::FromStr;
 /// # Generic Implementations
 ///
 /// - `AsRef` auto-dereferences if the inner type is a reference or a mutable
-/// reference (e.g.: `foo.as_ref()` will work the same if `foo` has type `&mut Foo` or `&&mut Foo`)
+/// reference (e.g.: `foo.as_ref()` will work the same if `foo` has type
+/// `&mut Foo` or `&&mut Foo`)
 ///
 /// # Examples
 /// An example implementation of the trait is [`Path`].
 ///
-/// [`Path`]: ../../std/struct.Path.html
+/// [`Path`]: ../../std/path/struct.Path.html
 ///
 /// ```
 /// impl AsRef<Path> for str {
@@ -119,8 +125,8 @@ pub trait AsRef<T: ?Sized> {
 ///
 /// This trait is similar to `AsRef` but used for converting mutable references.
 ///
-/// **Note: this trait must not fail**. If the conversion can fail, use a dedicated method which
-/// returns an [`Option<T>`] or a [`Result<T, E>`].
+/// **Note: this trait must not fail**. If the conversion can fail, use a
+/// dedicated method which returns an [`Option<T>`] or a [`Result<T, E>`].
 ///
 /// [`Option<T>`]: ../../std/option/enum.Option.html
 /// [`Result<T, E>`]: ../../std/result/enum.Result.html
@@ -128,7 +134,8 @@ pub trait AsRef<T: ?Sized> {
 /// # Generic Implementations
 ///
 /// - `AsMut` auto-dereferences if the inner type is a reference or a mutable
-/// reference (e.g.: `foo.as_ref()` will work the same if `foo` has type `&mut Foo` or `&&mut Foo`)
+/// reference (e.g.: `foo.as_ref()` will work the same if `foo` has type
+/// `&mut Foo` or `&&mut Foo`)
 ///
 /// # Examples
 ///
@@ -161,14 +168,17 @@ pub trait AsMut<T: ?Sized> {
     fn as_mut(&mut self) -> &mut T;
 }
 
-/// A conversion that consumes `self`, which may or may not be expensive. The reciprocal of [`From`][From].
+/// A conversion that consumes `self`, which may or may not be expensive. The
+/// reciprocal of [`From`][From].
 ///
-/// **Note: this trait must not fail**. If the conversion can fail, use [`TryInto`] or a dedicated
-/// method which returns an [`Option<T>`] or a [`Result<T, E>`].
+/// **Note: this trait must not fail**. If the conversion can fail, use
+/// [`TryInto`] or a dedicated method which returns an [`Option<T>`] or a
+/// [`Result<T, E>`].
 ///
-/// Library authors should not directly implement this trait, but should prefer implementing
-/// the [`From`][From] trait, which offers greater flexibility and provides an equivalent `Into`
-/// implementation for free, thanks to a blanket implementation in the standard library.
+/// Library authors should not directly implement this trait, but should prefer
+/// implementing the [`From`][From] trait, which offers greater flexibility and
+/// provides an equivalent `Into` implementation for free, thanks to a blanket
+/// implementation in the standard library.
 ///
 /// # Generic Implementations
 ///
@@ -202,18 +212,24 @@ pub trait Into<T>: Sized {
     fn into(self) -> T;
 }
 
-/// Simple and safe type conversions in to `Self`. It is the reciprocal of `Into`.
+/// Simple and safe type conversions in to `Self`. It is the reciprocal of
+/// `Into`.
 ///
-/// This trait is useful when performing error handling as described by [the book][book] and is closely related to the `?` operator.
+/// This trait is useful when performing error handling as described by
+/// [the book][book] and is closely related to the `?` operator.
 ///
-/// When constructing a function that is capable of failing the return type will generally be of the form `Result<T, E>`.
-/// The `From` trait allows for simplification of error handling by providing a means of returning a single error type that encapsulates
-/// numerous possible erroneous situations.
-/// This trait is not limited to error handling, rather the general case for this trait would be in any type conversions to have an
-/// explicit definition of how they are performed.
+/// When constructing a function that is capable of failing the return type
+/// will generally be of the form `Result<T, E>`.
+/// The `From` trait allows for simplification of error handling by providing a
+/// means of returning a single error type that encapsulates numerous possible
+/// erroneous situations.
+/// This trait is not limited to error handling, rather the general case for
+/// this trait would be in any type conversions to have an explicit definition
+/// of how they are performed.
 ///
-/// **Note: this trait must not fail**. If the conversion can fail, use [`TryFrom`] or a dedicated
-/// method which returns an [`Option<T>`] or a [`Result<T, E>`].
+/// **Note: this trait must not fail**. If the conversion can fail, use
+/// [`TryFrom`] or a dedicated method which returns an [`Option<T>`] or a
+/// [`Result<T, E>`].
 ///
 /// # Generic Implementations
 ///
@@ -265,7 +281,7 @@ pub trait Into<T>: Sized {
 /// [`String`]: ../../std/string/struct.String.html
 /// [`Into<U>`]: trait.Into.html
 /// [`from`]: trait.From.html#tymethod.from
-/// [book]: ../../book/error-handling.html#the-from-trait
+/// [book]: ../../book/error-handling.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait From<T>: Sized {
     /// Performs the conversion.
@@ -273,11 +289,13 @@ pub trait From<T>: Sized {
     fn from(T) -> Self;
 }
 
-/// An attempted conversion that consumes `self`, which may or may not be expensive.
+/// An attempted conversion that consumes `self`, which may or may not be
+/// expensive.
 ///
-/// Library authors should not directly implement this trait, but should prefer implementing
-/// the [`TryFrom`] trait, which offers greater flexibility and provides an equivalent `TryInto`
-/// implementation for free, thanks to a blanket implementation in the standard library.
+/// Library authors should not directly implement this trait, but should prefer
+/// implementing the [`TryFrom`] trait, which offers greater flexibility and
+/// provides an equivalent `TryInto` implementation for free, thanks to a
+/// blanket implementation in the standard library.
 ///
 /// [`TryFrom`]: trait.TryFrom.html
 #[unstable(feature = "try_from", issue = "33417")]
