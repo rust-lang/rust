@@ -779,6 +779,14 @@ pub union ManuallyDrop<T>{ value: T }
 
 impl<T> ManuallyDrop<T> {
     /// Wrap a value to be manually dropped.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # #![feature(manually_drop)]
+    /// use std::mem::ManuallyDrop;
+    /// ManuallyDrop::new(Box::new(()));
+    /// ```
     #[unstable(feature = "manually_drop", issue = "40673")]
     #[inline]
     pub fn new(value: T) -> ManuallyDrop<T> {
@@ -786,11 +794,20 @@ impl<T> ManuallyDrop<T> {
     }
 
     /// Extract the value from the ManuallyDrop container.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # #![feature(manually_drop)]
+    /// use std::mem::ManuallyDrop;
+    /// let x = ManuallyDrop::new(Box::new(()));
+    /// let _: Box<()> = ManuallyDrop::into_inner(x);
+    /// ```
     #[unstable(feature = "manually_drop", issue = "40673")]
     #[inline]
-    pub fn into_inner(self) -> T {
+    pub fn into_inner(slot: ManuallyDrop<T>) -> T {
         unsafe {
-            self.value
+            slot.value
         }
     }
 
