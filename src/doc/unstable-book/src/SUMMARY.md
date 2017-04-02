@@ -113,6 +113,7 @@
 - [loop_break_value](loop-break-value.md)
 - [macro_reexport](macro-reexport.md)
 - [main](main.md)
+- [manually_drop](manually-drop.md)
 - [map_entry_recover_keys](map-entry-recover-keys.md)
 - [mpsc_select](mpsc-select.md)
 - [n16](n16.md)
