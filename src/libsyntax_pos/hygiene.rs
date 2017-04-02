@@ -75,6 +75,10 @@ impl Mark {
         Mark(raw)
     }
 
+    pub fn parent(self) -> Mark {
+        HygieneData::with(|data| data.marks[self.0 as usize].parent)
+    }
+
     #[inline]
     pub fn expn_info(self) -> Option<ExpnInfo> {
         HygieneData::with(|data| data.marks[self.0 as usize].expn_info.clone())
