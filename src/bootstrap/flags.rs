@@ -244,7 +244,7 @@ Arguments:
                 Subcommand::Doc { paths: paths }
             }
             "clean" => {
-                if matches.free.len() > 0 {
+                if paths.len() > 0 {
                     println!("\nclean takes no arguments\n");
                     usage(1, &opts, &subcommand_help, &extra_help);
                 }
