@@ -350,7 +350,9 @@ impl<'a, T, I, F1, F2, F3> Iterator for ListItems<'a, I, F1, F2, F3>
                     .span_to_snippet(codemap::mk_sp(self.prev_span_end, (self.get_lo)(&item)))
                     .unwrap();
                 let trimmed_pre_snippet = pre_snippet.trim();
-                let pre_comment = if !trimmed_pre_snippet.is_empty() {
+                let has_pre_comment = trimmed_pre_snippet.contains("//") ||
+                                      trimmed_pre_snippet.contains("/*");
+                let pre_comment = if has_pre_comment {
                     Some(trimmed_pre_snippet.to_owned())
                 } else {
                     None
