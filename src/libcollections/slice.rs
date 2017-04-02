@@ -1527,6 +1527,19 @@ impl<T: Clone> ToOwned for [T] {
     fn to_owned(&self) -> Vec<T> {
         panic!("not available with cfg(test)")
     }
+
+    fn clone_into(&self, target: &mut Vec<T>) {
+        // drop anything in target that will not be overwritten
+        target.truncate(self.len());
+        let len = target.len();
+
+        // reuse the contained values' allocations/resources.
+        target.clone_from_slice(&self[..len]);
+
+        // target.len <= self.len due to the truncate above, so the
+        // slice here is always in-bounds.
+        target.extend_from_slice(&self[len..]);
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

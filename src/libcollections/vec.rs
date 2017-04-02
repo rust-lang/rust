@@ -1396,16 +1396,7 @@ impl<T: Clone> Clone for Vec<T> {
     }
 
     fn clone_from(&mut self, other: &Vec<T>) {
-        // drop anything in self that will not be overwritten
-        self.truncate(other.len());
-        let len = self.len();
-
-        // reuse the contained values' allocations/resources.
-        self.clone_from_slice(&other[..len]);
-
-        // self.len <= other.len due to the truncate above, so the
-        // slice here is always in-bounds.
-        self.extend_from_slice(&other[len..]);
+        other.as_slice().clone_into(self);
     }
 }
 
