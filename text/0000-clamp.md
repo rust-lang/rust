@@ -121,7 +121,7 @@ This is trivial to implement downstream, and several versions of it exist downst
 
 Alternatives were explored at https://internals.rust-lang.org/t/clamp-function-for-primitive-types/4999
 
-Additionally there is the option of placing clamp and partial_clamp in std::cmp in order to avoid backwards compatibility problems.  This is however semantically undesirable, as `1.clamp(2, 3);` is more readable than `clamp(1, 2, 3);`
+Additionally there is the option of placing clamp in std::cmp in order to avoid backwards compatibility problems.  This is however semantically undesirable, as `1.clamp(2, 3);` is more readable than `clamp(1, 2, 3);`
 
 # Unresolved questions
 [unresolved]: #unresolved-questions
