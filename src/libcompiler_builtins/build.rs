@@ -293,6 +293,12 @@ fn main() {
     }
 
     if target.contains("arm") && !target.contains("ios") {
+        // (At least) udivsi3.S is broken for Thumb 1 which our gcc uses by
+        // default, we don't want Thumb 2 since it isn't supported on some
+        // devices, so disable thumb entirely.
+        // Upstream bug: https://bugs.llvm.org/show_bug.cgi?id=32492
+        cfg.define("__ARM_ARCH_ISA_THUMB", Some("0"));
+
         sources.extend(&["arm/aeabi_cdcmp.S",
                          "arm/aeabi_cdcmpeq_check_nan.c",
                          "arm/aeabi_cfcmp.S",
