@@ -113,31 +113,28 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`");
             process::exit(exit_code);
         };
 
-        // Get subcommand
-        let matches = opts.parse(&args[..]).unwrap_or_else(|e| {
-            // Invalid argument/option format
-            println!("\n{}\n", e);
-            usage(1, &opts, &subcommand_help, &extra_help);
-        });
-        let subcommand = match matches.free.get(0) {
-            Some(s) => { s },
-            None  => {
-                // No subcommand -- lets only show the general usage and subcommand help in this case.
+        // We can't use getopt to parse the options until we have completed specifying which
+        // options are valid, but under the current implementation, some options are conditional on
+        // the subcommand. Therefore we must manually identify the subcommand first, so that we can
+        // complete the definition of the options.  Then we can use the getopt::Matches object from
+        // there on out.
+        let mut possible_subcommands = args.iter().collect::<Vec<_>>();
+        possible_subcommands.retain(|&s| !s.starts_with('-'));
+        let subcommand = match possible_subcommands.first() {
+            Some(s) => s,
+            None => {
+                // No subcommand -- show the general usage and subcommand help
                 println!("{}\n", subcommand_help);
                 process::exit(0);
             }
         };
-
-        // Get any optional paths which occur after the subcommand
-        let cwd = t!(env::current_dir());
-        let paths = matches.free[1..].iter().map(|p| cwd.join(p)).collect::<Vec<_>>();
 
         // Some subcommands have specific arguments help text
         match subcommand.as_str() {
             "build" => {
                 subcommand_help.push_str("\n
 Arguments:
-    This subcommand accepts a number of paths to directories to the crates 
+    This subcommand accepts a number of paths to directories to the crates
     and/or artifacts to compile. For example:
 
         ./x.py build src/libcore
@@ -194,6 +191,17 @@ Arguments:
             }
             _ => { }
         };
+
+        // Done specifying what options are possible, so do the getopts parsing
+        let matches = opts.parse(&args[..]).unwrap_or_else(|e| {
+            // Invalid argument/option format
+            println!("\n{}\n", e);
+            usage(1, &opts, &subcommand_help, &extra_help);
+        });
+        // Get any optional paths which occur after the subcommand
+        let cwd = t!(env::current_dir());
+        let paths = matches.free[1..].iter().map(|p| cwd.join(p)).collect::<Vec<_>>();
+
 
         // All subcommands can have an optional "Available paths" section
         if matches.opt_present("verbose") {
