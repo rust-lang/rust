@@ -27,6 +27,7 @@
 
 use std::ascii::AsciiExt;
 use std::cell::RefCell;
+use std::collections::HashMap;
 use std::default::Default;
 use std::fmt::{self, Write};
 use std::str;
@@ -115,6 +116,7 @@ macro_rules! event_loop_break {
             match event {
                 $($end_event)|* => break,
                 Event::Text(ref s) => {
+                    debug!("Text");
                     inner($id, s);
                     if $escape {
                         $buf.push_str(&format!("{}", Escape(s)));
@@ -122,8 +124,11 @@ macro_rules! event_loop_break {
                         $buf.push_str(s);
                     }
                 }
-                Event::SoftBreak | Event::HardBreak if !$buf.is_empty() => {
-                    $buf.push(' ');
+                Event::SoftBreak => {
+                    debug!("SoftBreak");
+                    if !$buf.is_empty() {
+                        $buf.push(' ');
+                    }
                 }
                 x => {
                     looper($parser, &mut $buf, Some(x), $toc_builder, $shorter, $id);
@@ -133,11 +138,38 @@ macro_rules! event_loop_break {
     }}
 }
 
+struct ParserWrapper<'a> {
+    parser: Parser<'a>,
+    // The key is the footnote reference. The value is the footnote definition and the id.
+    footnotes: HashMap<String, (String, u16)>,
+}
+
+impl<'a> ParserWrapper<'a> {
+    pub fn new(s: &'a str) -> ParserWrapper<'a> {
+        ParserWrapper {
+            parser: Parser::new_ext(s, pulldown_cmark::OPTION_ENABLE_TABLES |
+                                       pulldown_cmark::OPTION_ENABLE_FOOTNOTES),
+            footnotes: HashMap::new(),
+        }
+    }
+
+    pub fn next(&mut self) -> Option<Event<'a>> {
+        self.parser.next()
+    }
+
+    pub fn get_entry(&mut self, key: &str) -> &mut (String, u16) {
+        let new_id = self.footnotes.keys().count() + 1;
+        let key = key.to_owned();
+        self.footnotes.entry(key).or_insert((String::new(), new_id as u16))
+    }
+}
+
 pub fn render(w: &mut fmt::Formatter,
               s: &str,
               print_toc: bool,
               shorter: MarkdownOutputStyle) -> fmt::Result {
-    fn code_block(parser: &mut Parser, buffer: &mut String, lang: &str) {
+    fn code_block(parser: &mut ParserWrapper, buffer: &mut String, lang: &str) {
+        debug!("CodeBlock");
         let mut origtext = String::new();
         while let Some(event) = parser.next() {
             match event {
@@ -215,8 +247,9 @@ pub fn render(w: &mut fmt::Formatter,
         });
     }
 
-    fn heading(parser: &mut Parser, buffer: &mut String, toc_builder: &mut Option<TocBuilder>,
-               shorter: MarkdownOutputStyle, level: i32) {
+    fn heading(parser: &mut ParserWrapper, buffer: &mut String,
+               toc_builder: &mut Option<TocBuilder>, shorter: MarkdownOutputStyle, level: i32) {
+        debug!("Heading");
         let mut ret = String::new();
         let mut id = String::new();
         event_loop_break!(parser, toc_builder, shorter, ret, true, &mut Some(&mut id),
@@ -249,32 +282,53 @@ pub fn render(w: &mut fmt::Formatter,
                                  ret, lvl = level, id = id, sec = sec));
     }
 
-    fn inline_code(parser: &mut Parser, buffer: &mut String, toc_builder: &mut Option<TocBuilder>,
-                   shorter: MarkdownOutputStyle, id: &mut Option<&mut String>) {
+    fn inline_code(parser: &mut ParserWrapper, buffer: &mut String,
+                   toc_builder: &mut Option<TocBuilder>, shorter: MarkdownOutputStyle,
+                   id: &mut Option<&mut String>) {
+        debug!("InlineCode");
         let mut content = String::new();
         event_loop_break!(parser, toc_builder, shorter, content, false, id, Event::End(Tag::Code));
         buffer.push_str(&format!("<code>{}</code>",
                                  Escape(&collapse_whitespace(content.trim_right()))));
     }
 
-    fn link(parser: &mut Parser, buffer: &mut String, toc_builder: &mut Option<TocBuilder>,
-            shorter: MarkdownOutputStyle, url: &str, mut title: String,
+    fn link(parser: &mut ParserWrapper, buffer: &mut String, toc_builder: &mut Option<TocBuilder>,
+            shorter: MarkdownOutputStyle, url: &str, title: &str,
             id: &mut Option<&mut String>) {
-        event_loop_break!(parser, toc_builder, shorter, title, true, id,
+        debug!("Link");
+        let mut content = String::new();
+        event_loop_break!(parser, toc_builder, shorter, content, true, id,
                           Event::End(Tag::Link(_, _)));
-        buffer.push_str(&format!("<a href=\"{}\">{}</a>", url, title));
+        if title.is_empty() {
+            buffer.push_str(&format!("<a href=\"{}\">{}</a>", url, content));
+        } else {
+            buffer.push_str(&format!("<a href=\"{}\" title=\"{}\">{}</a>",
+                                     url, Escape(title), content));
+        }
     }
 
-    fn paragraph(parser: &mut Parser, buffer: &mut String, toc_builder: &mut Option<TocBuilder>,
-                 shorter: MarkdownOutputStyle, id: &mut Option<&mut String>) {
+    fn image(parser: &mut ParserWrapper, buffer: &mut String, toc_builder: &mut Option<TocBuilder>,
+            shorter: MarkdownOutputStyle, url: &str, mut title: String,
+            id: &mut Option<&mut String>) {
+        debug!("Image");
+        event_loop_break!(parser, toc_builder, shorter, title, true, id,
+                          Event::End(Tag::Image(_, _)));
+        buffer.push_str(&format!("<img src=\"{}\" alt=\"{}\">", url, title));
+    }
+
+    fn paragraph(parser: &mut ParserWrapper, buffer: &mut String,
+                 toc_builder: &mut Option<TocBuilder>, shorter: MarkdownOutputStyle,
+                 id: &mut Option<&mut String>) {
+        debug!("Paragraph");
         let mut content = String::new();
         event_loop_break!(parser, toc_builder, shorter, content, true, id,
                           Event::End(Tag::Paragraph));
         buffer.push_str(&format!("<p>{}</p>", content.trim_right()));
     }
 
-    fn table_cell(parser: &mut Parser, buffer: &mut String, toc_builder: &mut Option<TocBuilder>,
-                  shorter: MarkdownOutputStyle) {
+    fn table_cell(parser: &mut ParserWrapper, buffer: &mut String,
+                  toc_builder: &mut Option<TocBuilder>, shorter: MarkdownOutputStyle) {
+        debug!("TableCell");
         let mut content = String::new();
         event_loop_break!(parser, toc_builder, shorter, content, true, &mut None,
                           Event::End(Tag::TableHead) |
@@ -284,8 +338,9 @@ pub fn render(w: &mut fmt::Formatter,
         buffer.push_str(&format!("<td>{}</td>", content.trim()));
     }
 
-    fn table_row(parser: &mut Parser, buffer: &mut String, toc_builder: &mut Option<TocBuilder>,
-                 shorter: MarkdownOutputStyle) {
+    fn table_row(parser: &mut ParserWrapper, buffer: &mut String,
+                 toc_builder: &mut Option<TocBuilder>, shorter: MarkdownOutputStyle) {
+        debug!("TableRow");
         let mut content = String::new();
         while let Some(event) = parser.next() {
             match event {
@@ -303,8 +358,9 @@ pub fn render(w: &mut fmt::Formatter,
         buffer.push_str(&format!("<tr>{}</tr>", content));
     }
 
-    fn table_head(parser: &mut Parser, buffer: &mut String, toc_builder: &mut Option<TocBuilder>,
-                  shorter: MarkdownOutputStyle) {
+    fn table_head(parser: &mut ParserWrapper, buffer: &mut String,
+                  toc_builder: &mut Option<TocBuilder>, shorter: MarkdownOutputStyle) {
+        debug!("TableHead");
         let mut content = String::new();
         while let Some(event) = parser.next() {
             match event {
@@ -322,8 +378,9 @@ pub fn render(w: &mut fmt::Formatter,
         }
     }
 
-    fn table(parser: &mut Parser, buffer: &mut String, toc_builder: &mut Option<TocBuilder>,
+    fn table(parser: &mut ParserWrapper, buffer: &mut String, toc_builder: &mut Option<TocBuilder>,
              shorter: MarkdownOutputStyle) {
+        debug!("Table");
         let mut content = String::new();
         let mut rows = String::new();
         while let Some(event) = parser.next() {
@@ -347,16 +404,18 @@ pub fn render(w: &mut fmt::Formatter,
                                  }));
     }
 
-    fn blockquote(parser: &mut Parser, buffer: &mut String, toc_builder: &mut Option<TocBuilder>,
-                  shorter: MarkdownOutputStyle) {
+    fn blockquote(parser: &mut ParserWrapper, buffer: &mut String,
+                  toc_builder: &mut Option<TocBuilder>, shorter: MarkdownOutputStyle) {
+        debug!("BlockQuote");
         let mut content = String::new();
         event_loop_break!(parser, toc_builder, shorter, content, true, &mut None,
                           Event::End(Tag::BlockQuote));
         buffer.push_str(&format!("<blockquote>{}</blockquote>", content.trim_right()));
     }
 
-    fn list_item(parser: &mut Parser, buffer: &mut String, toc_builder: &mut Option<TocBuilder>,
-                 shorter: MarkdownOutputStyle) {
+    fn list_item(parser: &mut ParserWrapper, buffer: &mut String,
+                 toc_builder: &mut Option<TocBuilder>, shorter: MarkdownOutputStyle) {
+        debug!("ListItem");
         let mut content = String::new();
         while let Some(event) = parser.next() {
             match event {
@@ -372,8 +431,9 @@ pub fn render(w: &mut fmt::Formatter,
         buffer.push_str(&format!("<li>{}</li>", content));
     }
 
-    fn list(parser: &mut Parser, buffer: &mut String, toc_builder: &mut Option<TocBuilder>,
+    fn list(parser: &mut ParserWrapper, buffer: &mut String, toc_builder: &mut Option<TocBuilder>,
             shorter: MarkdownOutputStyle) {
+        debug!("List");
         let mut content = String::new();
         while let Some(event) = parser.next() {
             match event {
@@ -389,23 +449,45 @@ pub fn render(w: &mut fmt::Formatter,
         buffer.push_str(&format!("<ul>{}</ul>", content));
     }
 
-    fn emphasis(parser: &mut Parser, buffer: &mut String, toc_builder: &mut Option<TocBuilder>,
-                shorter: MarkdownOutputStyle, id: &mut Option<&mut String>) {
+    fn emphasis(parser: &mut ParserWrapper, buffer: &mut String,
+                toc_builder: &mut Option<TocBuilder>, shorter: MarkdownOutputStyle,
+                id: &mut Option<&mut String>) {
+        debug!("Emphasis");
         let mut content = String::new();
         event_loop_break!(parser, toc_builder, shorter, content, false, id,
                           Event::End(Tag::Emphasis));
         buffer.push_str(&format!("<em>{}</em>", content));
     }
 
-    fn strong(parser: &mut Parser, buffer: &mut String, toc_builder: &mut Option<TocBuilder>,
+    fn strong(parser: &mut ParserWrapper, buffer: &mut String, toc_builder: &mut Option<TocBuilder>,
               shorter: MarkdownOutputStyle, id: &mut Option<&mut String>) {
+        debug!("Strong");
         let mut content = String::new();
         event_loop_break!(parser, toc_builder, shorter, content, false, id,
                           Event::End(Tag::Strong));
         buffer.push_str(&format!("<strong>{}</strong>", content));
     }
 
-    fn looper<'a>(parser: &'a mut Parser, buffer: &mut String, next_event: Option<Event<'a>>,
+    fn footnote(parser: &mut ParserWrapper, buffer: &mut String,
+                toc_builder: &mut Option<TocBuilder>, shorter: MarkdownOutputStyle,
+                id: &mut Option<&mut String>) {
+        debug!("FootnoteDefinition");
+        let mut content = String::new();
+        event_loop_break!(parser, toc_builder, shorter, content, true, id,
+                          Event::End(Tag::FootnoteDefinition(_)));
+        buffer.push_str(&content);
+    }
+
+    fn rule(parser: &mut ParserWrapper, buffer: &mut String, toc_builder: &mut Option<TocBuilder>,
+            shorter: MarkdownOutputStyle, id: &mut Option<&mut String>) {
+        debug!("Rule");
+        let mut content = String::new();
+        event_loop_break!(parser, toc_builder, shorter, content, true, id,
+                          Event::End(Tag::Rule));
+        buffer.push_str("<hr>");
+    }
+
+    fn looper<'a>(parser: &'a mut ParserWrapper, buffer: &mut String, next_event: Option<Event<'a>>,
                   toc_builder: &mut Option<TocBuilder>, shorter: MarkdownOutputStyle,
                   id: &mut Option<&mut String>) -> bool {
         if let Some(event) = next_event {
@@ -423,7 +505,10 @@ pub fn render(w: &mut fmt::Formatter,
                     paragraph(parser, buffer, toc_builder, shorter, id);
                 }
                 Event::Start(Tag::Link(ref url, ref t)) => {
-                    link(parser, buffer, toc_builder, shorter, url, t.as_ref().to_owned(), id);
+                    link(parser, buffer, toc_builder, shorter, url, t.as_ref(), id);
+                }
+                Event::Start(Tag::Image(ref url, ref t)) => {
+                    image(parser, buffer, toc_builder, shorter, url, t.as_ref().to_owned(), id);
                 }
                 Event::Start(Tag::Table(_)) => {
                     table(parser, buffer, toc_builder, shorter);
@@ -440,7 +525,42 @@ pub fn render(w: &mut fmt::Formatter,
                 Event::Start(Tag::Strong) => {
                     strong(parser, buffer, toc_builder, shorter, id);
                 }
+                Event::Start(Tag::Rule) => {
+                    rule(parser, buffer, toc_builder, shorter, id);
+                }
+                Event::Start(Tag::FootnoteDefinition(ref def)) => {
+                    debug!("FootnoteDefinition");
+                    let mut content = String::new();
+                    let def = def.as_ref();
+                    footnote(parser, &mut content, toc_builder, shorter, id);
+                    let entry = parser.get_entry(def);
+                    let cur_id = (*entry).1;
+                    (*entry).0.push_str(&format!("<li id=\"ref{}\">{}&nbsp;<a href=\"#supref{0}\" \
+                                                  rev=\"footnote\">↩</a></p></li>",
+                                                 cur_id,
+                                                 if content.ends_with("</p>") {
+                                                     &content[..content.len() - 4]
+                                                 } else {
+                                                     &content
+                                                 }));
+                }
+                Event::FootnoteReference(ref reference) => {
+                    debug!("FootnoteReference");
+                    let entry = parser.get_entry(reference.as_ref());
+                    buffer.push_str(&format!("<sup id=\"supref{0}\"><a href=\"#ref{0}\">{0}</a>\
+                                              </sup>",
+                                             (*entry).1));
+                }
+                Event::HardBreak => {
+                    debug!("HardBreak");
+                    if shorter.is_fancy() {
+                        buffer.push_str("<br>");
+                    } else if !buffer.is_empty() {
+                        buffer.push(' ');
+                    }
+                }
                 Event::Html(h) | Event::InlineHtml(h) => {
+                    debug!("Html/InlineHtml");
                     buffer.push_str(&*h);
                 }
                 _ => {}
@@ -457,12 +577,21 @@ pub fn render(w: &mut fmt::Formatter,
         None
     };
     let mut buffer = String::new();
-    let mut parser = Parser::new_ext(s, pulldown_cmark::OPTION_ENABLE_TABLES);
+    let mut parser = ParserWrapper::new(s);
     loop {
         let next_event = parser.next();
         if !looper(&mut parser, &mut buffer, next_event, &mut toc_builder, shorter, &mut None) {
             break
         }
+    }
+    if !parser.footnotes.is_empty() {
+        let mut v: Vec<_> = parser.footnotes.values().collect();
+        v.sort_by(|a, b| a.1.cmp(&b.1));
+        buffer.push_str(&format!("<div class=\"footnotes\"><hr><ol>{}</ol></div>",
+                                 v.iter()
+                                  .map(|s| s.0.as_str())
+                                  .collect::<Vec<_>>()
+                                  .join("")));
     }
     let mut ret = toc_builder.map_or(Ok(()), |builder| {
         write!(w, "<nav id=\"TOC\">{}</nav>", builder.into_toc())
