@@ -18,7 +18,7 @@ use std::fs;
 use std::path::PathBuf;
 use std::process;
 
-use getopts::{Options};
+use getopts::Options;
 
 use Build;
 use config::Config;
