@@ -678,7 +678,7 @@ impl<T> Vec<T> {
         self.len = len;
     }
 
-    /// Removes an element from anywhere in the vector and return it, replacing
+    /// Removes an element from anywhere in the vector and returns it, replacing
     /// it with the last element.
     ///
     /// This does not preserve ordering, but is O(1).
