@@ -11,7 +11,7 @@
 use ast::{self, NodeId};
 use codemap::{DUMMY_SP, dummy_spanned};
 use ext::base::ExtCtxt;
-use ext::expand::{Expansion, ExpansionKind};
+use ext::expand::{Expansion, ExpansionKind, FullExpansion};
 use ext::hygiene::Mark;
 use tokenstream::TokenStream;
 use fold::*;
@@ -70,22 +70,15 @@ pub fn placeholder(kind: ExpansionKind, id: ast::NodeId) -> Expansion {
 }
 
 pub struct PlaceholderExpander<'a, 'b: 'a> {
-    expansions: HashMap<ast::NodeId, Expansion>,
-    cx: &'a mut ExtCtxt<'b>,
-    monotonic: bool,
+    pub expansions: &'a mut HashMap<Mark, FullExpansion>,
+    pub cx: &'a mut ExtCtxt<'b>,
+    pub monotonic: bool,
 }
 
 impl<'a, 'b> PlaceholderExpander<'a, 'b> {
-    pub fn new(cx: &'a mut ExtCtxt<'b>, monotonic: bool) -> Self {
-        PlaceholderExpander {
-            cx: cx,
-            expansions: HashMap::new(),
-            monotonic: monotonic,
-        }
-    }
-
-    pub fn add(&mut self, id: ast::NodeId, expansion: Expansion, derives: Vec<Mark>) {
-        let mut expansion = expansion.fold_with(self);
+    pub fn remove(&mut self, id: ast::NodeId) -> Expansion {
+        let FullExpansion { mut expansion, derives } =
+            self.expansions.remove(&id.placeholder_to_mark()).unwrap();
         if let Expansion::Items(mut items) = expansion {
             for derive in derives {
                 match self.remove(NodeId::placeholder_from_mark(derive)) {
@@ -95,11 +88,7 @@ impl<'a, 'b> PlaceholderExpander<'a, 'b> {
             }
             expansion = Expansion::Items(items);
         }
-        self.expansions.insert(id, expansion);
-    }
-
-    fn remove(&mut self, id: ast::NodeId) -> Expansion {
-        self.expansions.remove(&id).unwrap()
+        expansion
     }
 }
 

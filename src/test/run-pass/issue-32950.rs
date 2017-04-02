@@ -10,9 +10,12 @@
 
 #![feature(concat_idents)]
 
-#[derive(Debug)] //~ NOTE in this expansion
-struct Baz<T>(
-    concat_idents!(Foo, Bar) //~ ERROR `derive` cannot be used on items with type macros
+#[derive(Debug)]
+struct Baz<T>(T,
+    concat_idents!(Foo, Bar)
 );
+
+#[derive(Debug)]
+struct FooBar;
 
 fn main() {}

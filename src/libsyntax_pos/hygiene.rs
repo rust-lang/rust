@@ -37,10 +37,16 @@ pub struct SyntaxContextData {
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, Default, RustcEncodable, RustcDecodable)]
 pub struct Mark(u32);
 
+#[derive(Default)]
+struct MarkData {
+    parent: Mark,
+    expn_info: Option<ExpnInfo>,
+}
+
 impl Mark {
-    pub fn fresh() -> Self {
+    pub fn fresh(parent: Mark) -> Self {
         HygieneData::with(|data| {
-            data.marks.push(None);
+            data.marks.push(MarkData { parent: parent, expn_info: None });
             Mark(data.marks.len() as u32 - 1)
         })
     }
@@ -58,17 +64,21 @@ impl Mark {
         Mark(raw)
     }
 
+    pub fn parent(self) -> Mark {
+        HygieneData::with(|data| data.marks[self.0 as usize].parent)
+    }
+
     pub fn expn_info(self) -> Option<ExpnInfo> {
-        HygieneData::with(|data| data.marks[self.0 as usize].clone())
+        HygieneData::with(|data| data.marks[self.0 as usize].expn_info.clone())
     }
 
     pub fn set_expn_info(self, info: ExpnInfo) {
-        HygieneData::with(|data| data.marks[self.0 as usize] = Some(info))
+        HygieneData::with(|data| data.marks[self.0 as usize].expn_info = Some(info))
     }
 }
 
 struct HygieneData {
-    marks: Vec<Option<ExpnInfo>>,
+    marks: Vec<MarkData>,
     syntax_contexts: Vec<SyntaxContextData>,
     markings: HashMap<(SyntaxContext, Mark), SyntaxContext>,
 }
@@ -76,7 +86,7 @@ struct HygieneData {
 impl HygieneData {
     fn new() -> Self {
         HygieneData {
-            marks: vec![None],
+            marks: vec![MarkData::default()],
             syntax_contexts: vec![SyntaxContextData {
                 outer_mark: Mark::root(),
                 prev_ctxt: SyntaxContext::empty(),

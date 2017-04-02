@@ -17,7 +17,7 @@ use rustc::hir::def_id::{DefId, BUILTIN_MACROS_CRATE, CRATE_DEF_INDEX, DefIndex}
 use rustc::hir::def::{Def, Export};
 use rustc::hir::map::{self, DefCollector};
 use rustc::ty;
-use syntax::ast::{self, Name, Ident};
+use syntax::ast::{self, Name, Ident, Path};
 use syntax::attr::{self, HasAttrs};
 use syntax::errors::DiagnosticBuilder;
 use syntax::ext::base::{self, Annotatable, Determinacy, MultiModifier, MultiDecorator};
@@ -110,7 +110,7 @@ impl<'a> base::Resolver for Resolver<'a> {
     }
 
     fn get_module_scope(&mut self, id: ast::NodeId) -> Mark {
-        let mark = Mark::fresh();
+        let mark = Mark::fresh(Mark::root());
         let module = self.module_map[&self.definitions.local_def_id(id)];
         self.invocations.insert(mark, self.arenas.alloc_invocation_data(InvocationData {
             module: Cell::new(module),
@@ -156,16 +156,20 @@ impl<'a> base::Resolver for Resolver<'a> {
         self.whitelisted_legacy_custom_derives.contains(&name)
     }
 
-    fn visit_expansion(&mut self, mark: Mark, expansion: &Expansion, derives: &[Mark]) {
+    fn visit_expansion(&mut self, mark: Mark, expansion: &Expansion, derives: &[(Mark, Path)]) {
         let invocation = self.invocations[&mark];
         self.collect_def_ids(invocation, expansion);
 
         self.current_module = invocation.module.get();
-        self.current_module.unresolved_invocations.borrow_mut().remove(&mark);
-        self.current_module.unresolved_invocations.borrow_mut().extend(derives);
-        for &derive in derives {
-            self.invocations.insert(derive, invocation);
+        {
+            let mut unresolved = self.current_module.unresolved_invocations.borrow_mut();
+            unresolved.remove(&mark);
+            for &(derive, _) in derives {
+                unresolved.insert(derive);
+                self.invocations.insert(derive, invocation);
+            }
         }
+
         let mut visitor = BuildReducedGraphVisitor {
             resolver: self,
             legacy_scope: LegacyScope::Invocation(invocation),
