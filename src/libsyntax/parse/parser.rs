@@ -5057,6 +5057,8 @@ impl<'a> Parser<'a> {
     /// a function definition, it's not a tuple struct field) and the contents within the parens
     /// isn't valid, emit a proper diagnostic.
     pub fn parse_visibility(&mut self, can_take_tuple: bool) -> PResult<'a, Visibility> {
+        maybe_whole!(self, NtVis, |x| x);
+
         if !self.eat_keyword(keywords::Pub) {
             return Ok(Visibility::Inherited)
         }
