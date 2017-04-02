@@ -114,6 +114,7 @@
 - [lookup_host](lookup-host.md)
 - [loop_break_value](loop-break-value.md)
 - [macro_reexport](macro-reexport.md)
+- [macro_vis_matcher](macro-vis-matcher.md)
 - [main](main.md)
 - [manually_drop](manually-drop.md)
 - [map_entry_recover_keys](map-entry-recover-keys.md)
