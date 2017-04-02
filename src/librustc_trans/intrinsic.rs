@@ -188,7 +188,7 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
             C_nil(ccx)
         }
         // Effectively no-ops
-        "uninit" | "forget" => {
+        "uninit" => {
             C_nil(ccx)
         }
         "needs_drop" => {

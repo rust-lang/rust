@@ -171,7 +171,7 @@ pub use intrinsics::transmute;
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn forget<T>(t: T) {
-    unsafe { intrinsics::forget(t) }
+    ManuallyDrop::new(t);
 }
 
 /// Returns the size of a type in bytes.
@@ -780,12 +780,14 @@ pub union ManuallyDrop<T>{ value: T }
 impl<T> ManuallyDrop<T> {
     /// Wrap a value to be manually dropped.
     #[unstable(feature = "manually_drop", issue = "40673")]
+    #[inline]
     pub fn new(value: T) -> ManuallyDrop<T> {
         ManuallyDrop { value: value }
     }
 
     /// Extract the value from the ManuallyDrop container.
     #[unstable(feature = "manually_drop", issue = "40673")]
+    #[inline]
     pub fn into_inner(self) -> T {
         unsafe {
             self.value
@@ -800,6 +802,7 @@ impl<T> ManuallyDrop<T> {
     /// now represents uninitialized data. It is up to the user of this method to ensure the
     /// uninitialized data is not actually used.
     #[unstable(feature = "manually_drop", issue = "40673")]
+    #[inline]
     pub unsafe fn drop(slot: &mut ManuallyDrop<T>) {
         ptr::drop_in_place(&mut slot.value)
     }
@@ -808,6 +811,7 @@ impl<T> ManuallyDrop<T> {
 #[unstable(feature = "manually_drop", issue = "40673")]
 impl<T> ::ops::Deref for ManuallyDrop<T> {
     type Target = T;
+    #[inline]
     fn deref(&self) -> &Self::Target {
         unsafe {
             &self.value
@@ -817,6 +821,7 @@ impl<T> ::ops::Deref for ManuallyDrop<T> {
 
 #[unstable(feature = "manually_drop", issue = "40673")]
 impl<T> ::ops::DerefMut for ManuallyDrop<T> {
+    #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
         unsafe {
             &mut self.value

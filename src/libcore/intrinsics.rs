@@ -691,9 +691,6 @@ extern "rust-intrinsic" {
     /// initialize memory previous set to the result of `uninit`.
     pub fn uninit<T>() -> T;
 
-    /// Moves a value out of scope without running drop glue.
-    pub fn forget<T>(_: T) -> ();
-
     /// Reinterprets the bits of a value of one type as another type.
     ///
     /// Both types must have the same size. Neither the original, nor the result,
