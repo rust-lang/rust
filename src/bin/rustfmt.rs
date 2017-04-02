@@ -217,16 +217,26 @@ fn execute(opts: &Options) -> FmtResult<Summary> {
             // write_mode is always Plain for Stdin.
             config.write_mode = WriteMode::Plain;
 
+            // parse file_lines
+            if let Some(ref file_lines) = matches.opt_str("file-lines") {
+                config.file_lines = try!(file_lines.parse());
+                for f in config.file_lines.files() {
+                    if f != "stdin" {
+                        println!("Warning: Extra file listed in file_lines option '{}'", f);
+                    }
+                }
+            }
+
             Ok(run(Input::Text(input), &config))
         }
-        Operation::Format {
-            mut files,
-            config_path,
-        } => {
+        Operation::Format { files, config_path } => {
             let options = try!(CliOptions::from_matches(&matches));
 
-            // Add any additional files that were specified via `--file-lines`.
-            files.extend(options.file_lines.files().cloned().map(PathBuf::from));
+            for f in options.file_lines.files() {
+                if !files.contains(&PathBuf::from(f)) {
+                    println!("Warning: Extra file listed in file_lines option '{}'", f);
+                }
+            }
 
             let mut config = Config::default();
             let mut path = None;
@@ -345,9 +355,8 @@ fn determine_operation(matches: &Matches) -> FmtResult<Operation> {
                       Some(dir)
                   });
 
-    // if no file argument is supplied and `--file-lines` is not specified, read from stdin
-    if matches.free.is_empty() && !matches.opt_present("file-lines") {
-
+    // if no file argument is supplied, read from stdin
+    if matches.free.is_empty() {
         let mut buffer = String::new();
         try!(io::stdin().read_to_string(&mut buffer));
 
@@ -357,7 +366,6 @@ fn determine_operation(matches: &Matches) -> FmtResult<Operation> {
                   });
     }
 
-    // We append files from `--file-lines` later in `execute()`.
     let files: Vec<_> = matches.free.iter().map(PathBuf::from).collect();
 
     Ok(Operation::Format {
