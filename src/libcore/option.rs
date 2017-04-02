@@ -896,9 +896,9 @@ unsafe impl<A> TrustedLen for Item<A> {}
 
 /// An iterator over a reference to the [`Some`] variant of an [`Option`].
 ///
-/// The iterator yields one value if the [`Option`] is a [`Some`] variant, otherwise none.
+/// The iterator yields one value if the [`Option`] is a [`Some`], otherwise none.
 ///
-/// This `struct` is created by [`Option::iter`] function.
+/// This `struct` is created by the [`Option::iter`] function.
 ///
 /// [`Option`]: enum.Option.html
 /// [`Some`]: enum.Option.html#variant.Some
@@ -941,9 +941,9 @@ impl<'a, A> Clone for Iter<'a, A> {
 
 /// An iterator over a mutable reference to the [`Some`] variant of an [`Option`].
 ///
-/// The iterator yields one value if the [`Option`] is a [`Some`] variant, otherwise none.
+/// The iterator yields one value if the [`Option`] is a [`Some`], otherwise none.
 ///
-/// This `struct` is created by [`Option::iter_mut`] function.
+/// This `struct` is created by the [`Option::iter_mut`] function.
 ///
 /// [`Option`]: enum.Option.html
 /// [`Some`]: enum.Option.html#variant.Some
@@ -978,9 +978,9 @@ unsafe impl<'a, A> TrustedLen for IterMut<'a, A> {}
 
 /// An iterator over the value in [`Some`] variant of an [`Option`].
 ///
-/// The iterator yields one value if the [`Option`] is a [`Some`] variant, otherwise none.
+/// The iterator yields one value if the [`Option`] is a [`Some`], otherwise none.
 ///
-/// This `struct` is created by [`Option::into_iter`] function.
+/// This `struct` is created by the [`Option::into_iter`] function.
 ///
 /// [`Option`]: enum.Option.html
 /// [`Some`]: enum.Option.html#variant.Some
