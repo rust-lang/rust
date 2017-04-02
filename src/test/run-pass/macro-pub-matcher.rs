@@ -1,5 +1,4 @@
 #![allow(dead_code, unused_imports)]
-#![feature(pub_restricted)]
 
 /**
 Ensure that `:vis` matches can be captured in existing positions, and passed
@@ -56,15 +55,15 @@ mod with_pub_restricted {
 
 mod garden {
     mod with_pub_restricted_path {
-        vis_passthru! { pub(::garden) const A: i32 = 0; }
-        vis_passthru! { pub(::garden) enum B {} }
-        vis_passthru! { pub(::garden) extern "C" fn c() {} }
-        vis_passthru! { pub(::garden) mod d {} }
-        vis_passthru! { pub(::garden) static E: i32 = 0; }
-        vis_passthru! { pub(::garden) struct F; }
-        vis_passthru! { pub(::garden) trait G {} }
-        vis_passthru! { pub(::garden) type H = i32; }
-        vis_passthru! { pub(::garden) use A as I; }
+        vis_passthru! { pub(in garden) const A: i32 = 0; }
+        vis_passthru! { pub(in garden) enum B {} }
+        vis_passthru! { pub(in garden) extern "C" fn c() {} }
+        vis_passthru! { pub(in garden) mod d {} }
+        vis_passthru! { pub(in garden) static E: i32 = 0; }
+        vis_passthru! { pub(in garden) struct F; }
+        vis_passthru! { pub(in garden) trait G {} }
+        vis_passthru! { pub(in garden) type H = i32; }
+        vis_passthru! { pub(in garden) use A as I; }
     }
 }
 

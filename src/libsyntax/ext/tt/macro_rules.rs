@@ -793,13 +793,13 @@ fn is_in_follow(tok: &quoted::TokenTree, frag: &str) -> Result<bool, (String, &'
             "vis" => {
                 // Explicitly disallow `priv`, on the off chance it comes back.
                 match *tok {
-                    Comma => Ok(true),
-                    ModSep => Ok(true),
-                    MatchNt(_, ref frag, _, _) => {
-                        let name = frag.name.as_str();
-                        Ok(name == "ident" || name == "ty")
+                    TokenTree::Token(_, ref tok) => match *tok {
+                        Comma => Ok(true),
+                        ModSep => Ok(true),
+                        Ident(i) if i.name != "priv" => Ok(true),
+                        _ => Ok(false)
                     },
-                    Ident(i, _) if i.name.as_str() != "priv" => Ok(true),
+                    TokenTree::MetaVarDecl(_, _, frag) if frag.name =="ident" || frag.name == "ty" => Ok(true),
                     _ => Ok(false)
                 }
             },
