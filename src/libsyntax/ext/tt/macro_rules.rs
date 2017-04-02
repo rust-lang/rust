@@ -795,12 +795,12 @@ fn is_in_follow(tok: &quoted::TokenTree, frag: &str) -> Result<bool, (String, &'
                 match *tok {
                     TokenTree::Token(_, ref tok) => match *tok {
                         Comma => Ok(true),
-                        ModSep => Ok(true),
                         Ident(i) if i.name != "priv" => Ok(true),
-                        _ => Ok(false)
+                        ref tok => Ok(tok.can_begin_type())
                     },
-                    TokenTree::MetaVarDecl(_, _, frag)
-                        if frag.name =="ident" || frag.name == "ty" => Ok(true),
+                    TokenTree::MetaVarDecl(_, _, frag) if frag.name == "ident"
+                                                       || frag.name == "ty"
+                                                       || frag.name == "path" => Ok(true),
                     _ => Ok(false)
                 }
             },
