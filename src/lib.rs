@@ -481,7 +481,6 @@ fn format_lines(text: &mut StringBuffer, name: &str, config: &Config, report: &m
 
     for (c, b) in text.chars() {
         if c == '\r' {
-            line_len += c.len_utf8();
             continue;
         }
 
