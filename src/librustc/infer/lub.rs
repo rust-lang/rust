@@ -49,6 +49,7 @@ impl<'combine, 'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx>
         match variance {
             ty::Invariant => self.fields.equate(self.a_is_expected).relate(a, b),
             ty::Covariant => self.relate(a, b),
+            // FIXME(#41044) -- not correct, need test
             ty::Bivariant => Ok(a.clone()),
             ty::Contravariant => self.fields.glb(self.a_is_expected).relate(a, b),
         }
