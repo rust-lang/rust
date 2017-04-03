@@ -467,7 +467,7 @@ pub trait DoubleEndedIterator: Iterator {
         Self: Sized,
         P: FnMut(&Self::Item) -> bool
     {
-        for x in self.by_ref().rev() {
+        while let Some(x) = self.next_back() {
             if predicate(&x) { return Some(x) }
         }
         None
