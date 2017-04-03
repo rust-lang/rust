@@ -10,8 +10,27 @@
 
 //! Unicode string slices.
 //!
+//! The `&str` type is one of the two main string types, the other being `String`.
+//! Unlike its `String` counterpart, its contents are borrowed.
+//!
+//! # Basic Usage
+//!
+//! A basic string declaration of `&str` type:
+//!
+//! ```
+//! let hello_world = "Hello, World!";
+//! ```
+//!
+//! Here we have declared a string literal, also known as a string slice.
+//! String literals have a static lifetime, which means the string `hello_world`
+//! is guaranteed to be valid for the duration of the entire program.
+//! We can explicitly specify `hello_world`'s lifetime as well:
+//!
+//! ```
+//! let hello_world: &'static str = "Hello, world!";
+//! ```
+//!
 //! *[See also the `str` primitive type](../../std/primitive.str.html).*
-
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -32,7 +51,7 @@ use borrow::{Borrow, ToOwned};
 use string::String;
 use std_unicode;
 use vec::Vec;
-use slice::SliceConcatExt;
+use slice::{SliceConcatExt, SliceIndex};
 use boxed::Box;
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -114,9 +133,15 @@ impl<S: Borrow<str>> SliceConcatExt<str> for [S] {
     }
 }
 
-/// External iterator for a string's UTF-16 code units.
+/// An iterator of [`u16`] over the string encoded as UTF-16.
 ///
-/// For use with the `std::iter` module.
+/// [`u16`]: ../../std/primitive.u16.html
+///
+/// This struct is created by the [`encode_utf16`] method on [`str`].
+/// See its documentation for more.
+///
+/// [`encode_utf16`]: ../../std/primitive.str.html#method.encode_utf16
+/// [`str`]: ../../std/primitive.str.html
 #[derive(Clone)]
 #[stable(feature = "encode_utf16", since = "1.8.0")]
 pub struct EncodeUtf16<'a> {
@@ -289,6 +314,114 @@ impl str {
     #[inline]
     pub fn as_ptr(&self) -> *const u8 {
         core_str::StrExt::as_ptr(self)
+    }
+
+    /// Returns a subslice of `str`.
+    ///
+    /// This is the non-panicking alternative to indexing the `str`. Returns `None` whenever
+    /// equivalent indexing operation would panic.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(str_checked_slicing)]
+    /// let v = "🗻∈🌏";
+    /// assert_eq!(Some("🗻"), v.get(0..4));
+    /// assert!(v.get(1..).is_none());
+    /// assert!(v.get(..8).is_none());
+    /// assert!(v.get(..42).is_none());
+    /// ```
+    #[unstable(feature = "str_checked_slicing", issue = "39932")]
+    #[inline]
+    pub fn get<I: SliceIndex<str>>(&self, i: I) -> Option<&I::Output> {
+        core_str::StrExt::get(self, i)
+    }
+
+    /// Returns a mutable subslice of `str`.
+    ///
+    /// This is the non-panicking alternative to indexing the `str`. Returns `None` whenever
+    /// equivalent indexing operation would panic.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(str_checked_slicing)]
+    /// let mut v = String::from("🗻∈🌏");
+    /// assert_eq!(Some("🗻"), v.get_mut(0..4).map(|v| &*v));
+    /// assert!(v.get_mut(1..).is_none());
+    /// assert!(v.get_mut(..8).is_none());
+    /// assert!(v.get_mut(..42).is_none());
+    /// ```
+    #[unstable(feature = "str_checked_slicing", issue = "39932")]
+    #[inline]
+    pub fn get_mut<I: SliceIndex<str>>(&mut self, i: I) -> Option<&mut I::Output> {
+        core_str::StrExt::get_mut(self, i)
+    }
+
+    /// Returns a unchecked subslice of `str`.
+    ///
+    /// This is the unchecked alternative to indexing the `str`.
+    ///
+    /// # Safety
+    ///
+    /// Callers of this function are responsible that these preconditions are
+    /// satisfied:
+    ///
+    /// * The starting index must come before the ending index;
+    /// * Indexes must be within bounds of the original slice;
+    /// * Indexes must lie on UTF-8 sequence boundaries.
+    ///
+    /// Failing that, the returned string slice may reference invalid memory or
+    /// violate the invariants communicated by the `str` type.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(str_checked_slicing)]
+    /// let v = "🗻∈🌏";
+    /// unsafe {
+    ///     assert_eq!("🗻", v.get_unchecked(0..4));
+    ///     assert_eq!("∈", v.get_unchecked(4..7));
+    ///     assert_eq!("🌏", v.get_unchecked(7..11));
+    /// }
+    /// ```
+    #[unstable(feature = "str_checked_slicing", issue = "39932")]
+    #[inline]
+    pub unsafe fn get_unchecked<I: SliceIndex<str>>(&self, i: I) -> &I::Output {
+        core_str::StrExt::get_unchecked(self, i)
+    }
+
+    /// Returns a mutable, unchecked subslice of `str`.
+    ///
+    /// This is the unchecked alternative to indexing the `str`.
+    ///
+    /// # Safety
+    ///
+    /// Callers of this function are responsible that these preconditions are
+    /// satisfied:
+    ///
+    /// * The starting index must come before the ending index;
+    /// * Indexes must be within bounds of the original slice;
+    /// * Indexes must lie on UTF-8 sequence boundaries.
+    ///
+    /// Failing that, the returned string slice may reference invalid memory or
+    /// violate the invariants communicated by the `str` type.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # #![feature(str_checked_slicing)]
+    /// let mut v = String::from("🗻∈🌏");
+    /// unsafe {
+    ///     assert_eq!("🗻", v.get_unchecked_mut(0..4));
+    ///     assert_eq!("∈", v.get_unchecked_mut(4..7));
+    ///     assert_eq!("🌏", v.get_unchecked_mut(7..11));
+    /// }
+    /// ```
+    #[unstable(feature = "str_checked_slicing", issue = "39932")]
+    #[inline]
+    pub unsafe fn get_unchecked_mut<I: SliceIndex<str>>(&mut self, i: I) -> &mut I::Output {
+        core_str::StrExt::get_unchecked_mut(self, i)
     }
 
     /// Creates a string slice from another string slice, bypassing safety

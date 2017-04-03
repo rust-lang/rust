@@ -91,6 +91,9 @@ pub fn write_mir_pretty<'a, 'b, 'tcx, I>(tcx: TyCtxt<'b, 'tcx, 'tcx>,
                                          -> io::Result<()>
     where I: Iterator<Item=DefId>, 'tcx: 'a
 {
+    writeln!(w, "// WARNING: This output format is intended for human consumers only")?;
+    writeln!(w, "// and is subject to change without notice. Knock yourself out.")?;
+
     let mut first = true;
     for def_id in iter.filter(DefId::is_local) {
         let mir = &tcx.item_mir(def_id);

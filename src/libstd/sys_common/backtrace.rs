@@ -19,7 +19,7 @@ use io;
 use libc;
 use str;
 use sync::atomic::{self, Ordering};
-use path::Path;
+use path::{self, Path};
 use sys::mutex::Mutex;
 use ptr;
 
@@ -262,7 +262,7 @@ fn output_fileline(w: &mut Write, file: &[u8], line: libc::c_int,
         if let Ok(cwd) = env::current_dir() {
             if let Ok(stripped) = file_path.strip_prefix(&cwd) {
                 if let Some(s) = stripped.to_str() {
-                    write!(w, "  at ./{}:{}", s, line)?;
+                    write!(w, "  at .{}{}:{}", path::MAIN_SEPARATOR, s, line)?;
                     already_printed = true;
                 }
             }

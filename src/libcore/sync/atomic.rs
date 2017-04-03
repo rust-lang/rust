@@ -15,27 +15,37 @@
 //! types.
 //!
 //! This module defines atomic versions of a select number of primitive
-//! types, including `AtomicBool`, `AtomicIsize`, and `AtomicUsize`.
+//! types, including [`AtomicBool`], [`AtomicIsize`], and [`AtomicUsize`].
 //! Atomic types present operations that, when used correctly, synchronize
 //! updates between threads.
 //!
-//! Each method takes an `Ordering` which represents the strength of
+//! [`AtomicBool`]: struct.AtomicBool.html
+//! [`AtomicIsize`]: struct.AtomicIsize.html
+//! [`AtomicUsize`]: struct.AtomicUsize.html
+//!
+//! Each method takes an [`Ordering`] which represents the strength of
 //! the memory barrier for that operation. These orderings are the
 //! same as [LLVM atomic orderings][1]. For more information see the [nomicon][2].
+//!
+//! [`Ordering`]: enum.Ordering.html
 //!
 //! [1]: http://llvm.org/docs/LangRef.html#memory-model-for-concurrent-operations
 //! [2]: ../../../nomicon/atomics.html
 //!
-//! Atomic variables are safe to share between threads (they implement `Sync`)
+//! Atomic variables are safe to share between threads (they implement [`Sync`])
 //! but they do not themselves provide the mechanism for sharing and follow the
 //! [threading model](../../../std/thread/index.html#the-threading-model) of rust.
-//! The most common way to share an atomic variable is to put it into an `Arc` (an
+//! The most common way to share an atomic variable is to put it into an [`Arc`][arc] (an
 //! atomically-reference-counted shared pointer).
 //!
+//! [`Sync`]: ../../marker/trait.Sync.html
+//! [arc]: ../../../std/sync/struct.Arc.html
+//!
 //! Most atomic types may be stored in static variables, initialized using
-//! the provided static initializers like `ATOMIC_BOOL_INIT`. Atomic statics
+//! the provided static initializers like [`ATOMIC_BOOL_INIT`]. Atomic statics
 //! are often used for lazy global initialization.
 //!
+//! [`ATOMIC_BOOL_INIT`]: constant.ATOMIC_BOOL_INIT.html
 //!
 //! # Examples
 //!
@@ -148,22 +158,32 @@ unsafe impl<T> Sync for AtomicPtr<T> {}
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Copy, Clone, Debug)]
 pub enum Ordering {
-    /// No ordering constraints, only atomic operations. Corresponds to LLVM's
-    /// `Monotonic` ordering.
+    /// No ordering constraints, only atomic operations.
+    ///
+    /// Corresponds to LLVM's [`Monotonic`] ordering.
+    ///
+    /// [`Monotonic`]: http://llvm.org/docs/Atomics.html#monotonic
     #[stable(feature = "rust1", since = "1.0.0")]
     Relaxed,
     /// When coupled with a store, all previous writes become visible
-    /// to the other threads that perform a load with `Acquire` ordering
+    /// to the other threads that perform a load with [`Acquire`] ordering
     /// on the same value.
+    ///
+    /// [`Acquire`]: http://llvm.org/docs/Atomics.html#acquire
     #[stable(feature = "rust1", since = "1.0.0")]
     Release,
     /// When coupled with a load, all subsequent loads will see data
-    /// written before a store with `Release` ordering on the same value
+    /// written before a store with [`Release`] ordering on the same value
     /// in other threads.
+    ///
+    /// [`Release`]: http://llvm.org/docs/Atomics.html#release
     #[stable(feature = "rust1", since = "1.0.0")]
     Acquire,
-    /// When coupled with a load, uses `Acquire` ordering, and with a store
-    /// `Release` ordering.
+    /// When coupled with a load, uses [`Acquire`] ordering, and with a store
+    /// [`Release`] ordering.
+    ///
+    /// [`Acquire`]: http://llvm.org/docs/Atomics.html#acquire
+    /// [`Release`]: http://llvm.org/docs/Atomics.html#release
     #[stable(feature = "rust1", since = "1.0.0")]
     AcqRel,
     /// Like `AcqRel` with the additional guarantee that all threads see all
@@ -176,7 +196,9 @@ pub enum Ordering {
     __Nonexhaustive,
 }
 
-/// An `AtomicBool` initialized to `false`.
+/// An [`AtomicBool`] initialized to `false`.
+///
+/// [`AtomicBool`]: struct.AtomicBool.html
 #[cfg(target_has_atomic = "8")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const ATOMIC_BOOL_INIT: AtomicBool = AtomicBool::new(false);
@@ -250,7 +272,7 @@ impl AtomicBool {
     ///
     /// [`Ordering`]: enum.Ordering.html
     /// [`Release`]: enum.Ordering.html#variant.Release
-    /// [`AcqRel`]: enum.Ordering.html#variant.Release
+    /// [`AcqRel`]: enum.Ordering.html#variant.AcqRel
     ///
     /// # Examples
     ///
@@ -287,7 +309,10 @@ impl AtomicBool {
     ///
     /// # Panics
     ///
-    /// Panics if `order` is `Acquire` or `AcqRel`.
+    /// Panics if `order` is [`Acquire`] or [`AcqRel`].
+    ///
+    /// [`Acquire`]: enum.Ordering.html#variant.Acquire
+    /// [`AcqRel`]: enum.Ordering.html#variant.AcqRel
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn store(&self, val: bool, order: Ordering) {
@@ -404,7 +429,7 @@ impl AtomicBool {
 
     /// Stores a value into the `bool` if the current value is the same as the `current` value.
     ///
-    /// Unlike `compare_exchange`, this function is allowed to spuriously fail even when the
+    /// Unlike [`compare_exchange`], this function is allowed to spuriously fail even when the
     /// comparison succeeds, which can result in more efficient code on some platforms. The
     /// return value is a result indicating whether the new value was written and containing the
     /// previous value.
@@ -415,6 +440,7 @@ impl AtomicBool {
     /// failure ordering can't be [`Release`] or [`AcqRel`] and must be equivalent or
     /// weaker than the success ordering.
     ///
+    /// [`compare_exchange`]: #method.compare_exchange
     /// [`Ordering`]: enum.Ordering.html
     /// [`Release`]: enum.Ordering.html#variant.Release
     /// [`AcqRel`]: enum.Ordering.html#variant.Release
@@ -694,7 +720,10 @@ impl<T> AtomicPtr<T> {
     ///
     /// # Panics
     ///
-    /// Panics if `order` is `Acquire` or `AcqRel`.
+    /// Panics if `order` is [`Acquire`] or [`AcqRel`].
+    ///
+    /// [`Acquire`]: enum.Ordering.html#variant.Acquire
+    /// [`AcqRel`]: enum.Ordering.html#variant.AcqRel
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn store(&self, ptr: *mut T, order: Ordering) {
@@ -1008,7 +1037,10 @@ macro_rules! atomic_int {
             ///
             /// # Panics
             ///
-            /// Panics if `order` is `Acquire` or `AcqRel`.
+            /// Panics if `order` is [`Acquire`] or [`AcqRel`].
+            ///
+            /// [`Acquire`]: enum.Ordering.html#variant.Acquire
+            /// [`AcqRel`]: enum.Ordering.html#variant.AcqRel
             #[inline]
             #[$stable]
             pub fn store(&self, val: $int_type, order: Ordering) {

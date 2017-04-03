@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #![crate_name = "rustdoc"]
-#![unstable(feature = "rustdoc", issue = "27812")]
+#![unstable(feature = "rustc_private", issue = "27812")]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
 #![doc(html_logo_url = "https://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
@@ -30,6 +30,7 @@
 
 extern crate arena;
 extern crate getopts;
+extern crate env_logger;
 extern crate libc;
 extern crate rustc;
 extern crate rustc_const_eval;
@@ -47,6 +48,7 @@ extern crate test as testing;
 extern crate std_unicode;
 #[macro_use] extern crate log;
 extern crate rustc_errors as errors;
+extern crate pulldown_cmark;
 
 extern crate serialize as rustc_serialize; // used by deriving
 
@@ -99,6 +101,7 @@ struct Output {
 
 pub fn main() {
     const STACK_SIZE: usize = 32_000_000; // 32MB
+    env_logger::init().unwrap();
     let res = std::thread::Builder::new().stack_size(STACK_SIZE).spawn(move || {
         let s = env::args().collect::<Vec<_>>();
         main_args(&s)

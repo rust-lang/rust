@@ -983,16 +983,16 @@ impl<'tcx> Debug for Operand<'tcx> {
 }
 
 impl<'tcx> Operand<'tcx> {
-    pub fn item<'a>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
-                    def_id: DefId,
-                    substs: &'tcx Substs<'tcx>,
-                    span: Span)
-                    -> Self
-    {
+    pub fn function_handle<'a>(
+        tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
+        def_id: DefId,
+        substs: &'tcx Substs<'tcx>,
+        span: Span,
+    ) -> Self {
         Operand::Constant(Constant {
             span: span,
             ty: tcx.item_type(def_id).subst(tcx, substs),
-            literal: Literal::Item { def_id, substs }
+            literal: Literal::Value { value: ConstVal::Function(def_id, substs) },
         })
     }
 

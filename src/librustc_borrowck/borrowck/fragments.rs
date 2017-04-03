@@ -267,11 +267,11 @@ pub fn fixup_fragment_sets<'a, 'tcx>(this: &MoveData<'tcx>, tcx: TyCtxt<'a, 'tcx
     // First, filter out duplicates
     moved.sort();
     moved.dedup();
-    debug!("fragments 1 moved: {:?}", path_lps(&moved[..]));
+    debug!("fragments 1 moved: {:?}", path_lps(&moved));
 
     assigned.sort();
     assigned.dedup();
-    debug!("fragments 1 assigned: {:?}", path_lps(&assigned[..]));
+    debug!("fragments 1 assigned: {:?}", path_lps(&assigned));
 
     // Second, build parents from the moved and assigned.
     for m in &moved {
@@ -291,14 +291,14 @@ pub fn fixup_fragment_sets<'a, 'tcx>(this: &MoveData<'tcx>, tcx: TyCtxt<'a, 'tcx
 
     parents.sort();
     parents.dedup();
-    debug!("fragments 2 parents: {:?}", path_lps(&parents[..]));
+    debug!("fragments 2 parents: {:?}", path_lps(&parents));
 
     // Third, filter the moved and assigned fragments down to just the non-parents
-    moved.retain(|f| non_member(*f, &parents[..]));
-    debug!("fragments 3 moved: {:?}", path_lps(&moved[..]));
+    moved.retain(|f| non_member(*f, &parents));
+    debug!("fragments 3 moved: {:?}", path_lps(&moved));
 
-    assigned.retain(|f| non_member(*f, &parents[..]));
-    debug!("fragments 3 assigned: {:?}", path_lps(&assigned[..]));
+    assigned.retain(|f| non_member(*f, &parents));
+    debug!("fragments 3 assigned: {:?}", path_lps(&assigned));
 
     // Fourth, build the leftover from the moved, assigned, and parents.
     for m in &moved {
@@ -316,16 +316,16 @@ pub fn fixup_fragment_sets<'a, 'tcx>(this: &MoveData<'tcx>, tcx: TyCtxt<'a, 'tcx
 
     unmoved.sort();
     unmoved.dedup();
-    debug!("fragments 4 unmoved: {:?}", frag_lps(&unmoved[..]));
+    debug!("fragments 4 unmoved: {:?}", frag_lps(&unmoved));
 
     // Fifth, filter the leftover fragments down to its core.
     unmoved.retain(|f| match *f {
         AllButOneFrom(_) => true,
-        Just(mpi) => non_member(mpi, &parents[..]) &&
-            non_member(mpi, &moved[..]) &&
-            non_member(mpi, &assigned[..])
+        Just(mpi) => non_member(mpi, &parents) &&
+            non_member(mpi, &moved) &&
+            non_member(mpi, &assigned)
     });
-    debug!("fragments 5 unmoved: {:?}", frag_lps(&unmoved[..]));
+    debug!("fragments 5 unmoved: {:?}", frag_lps(&unmoved));
 
     // Swap contents back in.
     fragments.unmoved_fragments = unmoved;

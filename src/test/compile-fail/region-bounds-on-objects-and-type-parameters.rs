@@ -18,7 +18,7 @@ trait SomeTrait { }
 
 // Bounds on object types:
 
-struct Foo<'a,'b,'c> { //~ ERROR parameter `'b` is never used
+struct Foo<'a,'b,'c> { //~ ERROR parameter `'c` is never used
     // All of these are ok, because we can derive exactly one bound:
     a: Box<IsStatic>,
     b: Box<Is<'static>>,

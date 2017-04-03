@@ -31,7 +31,7 @@ const TEST_REPOS: &'static [Test] = &[
     Test {
         name: "iron",
         repo: "https://github.com/iron/iron",
-        sha: "16c858ec2901e2992fe5e529780f59fa8ed12903",
+        sha: "21c7dae29c3c214c08533c2a55ac649b418f2fe3",
         lock: Some(include_str!("lockfiles/iron-Cargo.lock")),
     },
     Test {

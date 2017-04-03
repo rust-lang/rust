@@ -586,7 +586,7 @@ fn android_copy_libs(build: &Build, compiler: &Compiler, target: &str) {
                       .arg(ADB_TEST_DIR));
 
     let target_dir = format!("{}/{}", ADB_TEST_DIR, target);
-    build.run(Command::new("adb").args(&["shell", "mkdir", &target_dir[..]]));
+    build.run(Command::new("adb").args(&["shell", "mkdir", &target_dir]));
 
     for f in t!(build.sysroot_libdir(compiler, target).read_dir()) {
         let f = t!(f);

@@ -13,7 +13,8 @@
 
 use rustc_data_structures::bitvec::BitVector;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
-use rustc::mir::{self, Location, TerminatorKind};
+use rustc::middle::const_val::ConstVal;
+use rustc::mir::{self, Location, TerminatorKind, Literal};
 use rustc::mir::visit::{Visitor, LvalueContext};
 use rustc::mir::traversal;
 use common;
@@ -109,7 +110,9 @@ impl<'mir, 'a, 'tcx> Visitor<'tcx> for LocalAnalyzer<'mir, 'a, 'tcx> {
         match *kind {
             mir::TerminatorKind::Call {
                 func: mir::Operand::Constant(mir::Constant {
-                    literal: mir::Literal::Item { def_id, .. }, ..
+                    literal: Literal::Value {
+                        value: ConstVal::Function(def_id, _), ..
+                    }, ..
                 }),
                 ref args, ..
             } if Some(def_id) == self.cx.ccx.tcx().lang_items.box_free_fn() => {

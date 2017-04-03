@@ -362,7 +362,7 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 &infcx.parameter_environment.caller_bounds);
             infcx.resolve_regions_and_report_errors(&free_regions, impl_m_body_id);
         } else {
-            let fcx = FnCtxt::new(&inh, Some(tcx.types.err), impl_m_body_id);
+            let fcx = FnCtxt::new(&inh, impl_m_body_id);
             fcx.regionck_item(impl_m_body_id, impl_m_span, &[]);
         }
 

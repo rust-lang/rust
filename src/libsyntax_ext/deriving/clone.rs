@@ -111,7 +111,7 @@ fn cs_clone_shallow(name: &str,
                         ty: P<ast::Ty>, span: Span, helper_name: &str) {
         // Generate statement `let _: helper_name<ty>;`,
         // set the expn ID so we can use the unstable struct.
-        let span = super::allow_unstable(cx, span, "derive(Clone)");
+        let span = Span { ctxt: cx.backtrace(), ..span};
         let assert_path = cx.path_all(span, true,
                                         cx.std_path(&["clone", helper_name]),
                                         vec![], vec![ty], vec![]);

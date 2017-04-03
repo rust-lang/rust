@@ -72,7 +72,7 @@ use html::format::{TyParamBounds, WhereClause, href, AbiSpace};
 use html::format::{VisSpace, Method, UnsafetySpace, MutableSpace};
 use html::format::fmt_impl_for_trait_page;
 use html::item_type::ItemType;
-use html::markdown::{self, Markdown, MarkdownHtml};
+use html::markdown::{self, Markdown, MarkdownHtml, MarkdownOutputStyle};
 use html::{highlight, layout};
 
 /// A pair of name and its optional document.
@@ -1650,7 +1650,8 @@ fn document_short(w: &mut fmt::Formatter, item: &clean::Item, link: AssocItemLin
         } else {
             format!("{}", &plain_summary_line(Some(s)))
         };
-        write!(w, "<div class='docblock'>{}</div>", Markdown(&markdown))?;
+        write!(w, "<div class='docblock'>{}</div>",
+               Markdown(&markdown, MarkdownOutputStyle::Fancy))?;
     }
     Ok(())
 }
@@ -1683,7 +1684,8 @@ fn get_doc_value(item: &clean::Item) -> Option<&str> {
 fn document_full(w: &mut fmt::Formatter, item: &clean::Item) -> fmt::Result {
     if let Some(s) = get_doc_value(item) {
         write!(w, "<div class='docblock'>{}</div>",
-               Markdown(&format!("{}{}", md_render_assoc_item(item), s)))?;
+               Markdown(&format!("{}{}", md_render_assoc_item(item), s),
+                                 MarkdownOutputStyle::Fancy))?;
     }
     Ok(())
 }
@@ -1698,6 +1700,23 @@ fn document_stability(w: &mut fmt::Formatter, cx: &Context, item: &clean::Item) 
         write!(w, "</div>")?;
     }
     Ok(())
+}
+
+fn name_key(name: &str) -> (&str, u64, usize) {
+    // find number at end
+    let split = name.bytes().rposition(|b| b < b'0' || b'9' < b).map_or(0, |s| s + 1);
+
+    // count leading zeroes
+    let after_zeroes =
+        name[split..].bytes().position(|b| b != b'0').map_or(name.len(), |extra| split + extra);
+
+    // sort leading zeroes last
+    let num_zeroes = after_zeroes - split;
+
+    match name[split..].parse() {
+        Ok(n) => (&name[..split], n, num_zeroes),
+        Err(_) => (name, 0, num_zeroes),
+    }
 }
 
 fn item_module(w: &mut fmt::Formatter, cx: &Context,
@@ -1744,7 +1763,9 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
             (Some(stability::Stable), Some(stability::Unstable)) => return Ordering::Less,
             _ => {}
         }
-        i1.name.cmp(&i2.name)
+        let lhs = i1.name.as_ref().map_or("", |s| &**s);
+        let rhs = i2.name.as_ref().map_or("", |s| &**s);
+        name_key(lhs).cmp(&name_key(rhs))
     }
 
     indices.sort_by(|&i1, &i2| cmp(&items[i1], &items[i2], i1, i2));
@@ -1852,7 +1873,8 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
                        </tr>",
                        name = *myitem.name.as_ref().unwrap(),
                        stab_docs = stab_docs,
-                       docs = shorter(Some(&Markdown(doc_value).to_string())),
+                       docs = shorter(Some(&Markdown(doc_value,
+                                                     MarkdownOutputStyle::Compact).to_string())),
                        class = myitem.type_(),
                        stab = myitem.stability_class().unwrap_or("".to_string()),
                        unsafety_flag = unsafety_flag,
@@ -2592,7 +2614,7 @@ fn render_attribute(attr: &ast::MetaItem) -> Option<String> {
     if attr.is_word() {
         Some(format!("{}", name))
     } else if let Some(v) = attr.value_str() {
-        Some(format!("{} = {:?}", name, &v.as_str()[..]))
+        Some(format!("{} = {:?}", name, v.as_str()))
     } else if let Some(values) = attr.meta_item_list() {
         let display: Vec<_> = values.iter().filter_map(|attr| {
             attr.meta_item().and_then(|mi| render_attribute(mi))
@@ -2623,7 +2645,7 @@ fn render_attributes(w: &mut fmt::Formatter, it: &clean::Item) -> fmt::Result {
 
     for attr in &it.attrs.other_attrs {
         let name = attr.name().unwrap();
-        if !ATTRIBUTE_WHITELIST.contains(&&name.as_str()[..]) {
+        if !ATTRIBUTE_WHITELIST.contains(&&*name.as_str()) {
             continue;
         }
         if let Some(s) = render_attribute(&attr.meta().unwrap()) {
@@ -2882,7 +2904,7 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
         write!(w, "</span>")?;
         write!(w, "</h3>\n")?;
         if let Some(ref dox) = i.impl_item.doc_value() {
-            write!(w, "<div class='docblock'>{}</div>", Markdown(dox))?;
+            write!(w, "<div class='docblock'>{}</div>", Markdown(dox, MarkdownOutputStyle::Fancy))?;
         }
     }
 
@@ -3197,4 +3219,33 @@ fn test_unique_id() {
     test();
     reset_ids(true);
     test();
+}
+
+#[cfg(test)]
+#[test]
+fn test_name_key() {
+    assert_eq!(name_key("0"), ("", 0, 1));
+    assert_eq!(name_key("123"), ("", 123, 0));
+    assert_eq!(name_key("Fruit"), ("Fruit", 0, 0));
+    assert_eq!(name_key("Fruit0"), ("Fruit", 0, 1));
+    assert_eq!(name_key("Fruit0000"), ("Fruit", 0, 4));
+    assert_eq!(name_key("Fruit01"), ("Fruit", 1, 1));
+    assert_eq!(name_key("Fruit10"), ("Fruit", 10, 0));
+    assert_eq!(name_key("Fruit123"), ("Fruit", 123, 0));
+}
+
+#[cfg(test)]
+#[test]
+fn test_name_sorting() {
+    let names = ["Apple",
+                 "Banana",
+                 "Fruit", "Fruit0", "Fruit00",
+                 "Fruit1", "Fruit01",
+                 "Fruit2", "Fruit02",
+                 "Fruit20",
+                 "Fruit100",
+                 "Pear"];
+    let mut sorted = names.to_owned();
+    sorted.sort_by_key(|&s| name_key(s));
+    assert_eq!(names, sorted);
 }

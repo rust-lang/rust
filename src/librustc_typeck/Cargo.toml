@@ -10,7 +10,7 @@ crate-type = ["dylib"]
 test = false
 
 [dependencies]
-log = { path = "../liblog" }
+log = "0.3"
 syntax = { path = "../libsyntax" }
 arena = { path = "../libarena" }
 fmt_macros = { path = "../libfmt_macros" }
