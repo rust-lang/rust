@@ -115,6 +115,8 @@ pub use core::slice::{Iter, IterMut};
 pub use core::slice::{SplitMut, ChunksMut, Split};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::slice::{SplitN, RSplitN, SplitNMut, RSplitNMut};
+#[unstable(feature = "slice_rsplit", issue = "41020")]
+pub use core::slice::{RSplit, RSplitMut};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::slice::{from_raw_parts, from_raw_parts_mut};
 #[unstable(feature = "slice_get_slice", issue = "35729")]
@@ -777,6 +779,72 @@ impl<T> [T] {
         where F: FnMut(&T) -> bool
     {
         core_slice::SliceExt::split_mut(self, pred)
+    }
+
+    /// Returns an iterator over subslices separated by elements that match
+    /// `pred`, starting at the end of the slice and working backwards.
+    /// The matched element is not contained in the subslices.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_rsplit)]
+    ///
+    /// let slice = [11, 22, 33, 0, 44, 55];
+    /// let mut iter = slice.rsplit(|num| *num == 0);
+    ///
+    /// assert_eq!(iter.next().unwrap(), &[44, 55]);
+    /// assert_eq!(iter.next().unwrap(), &[11, 22, 33]);
+    /// assert_eq!(iter.next(), None);
+    /// ```
+    ///
+    /// As with `split()`, if the first or last element is matched, an empty
+    /// slice will be the first (or last) item returned by the iterator.
+    ///
+    /// ```
+    /// #![feature(slice_rsplit)]
+    ///
+    /// let v = &[0, 1, 1, 2, 3, 5, 8];
+    /// let mut it = v.rsplit(|n| *n % 2 == 0);
+    /// assert_eq!(it.next().unwrap(), &[]);
+    /// assert_eq!(it.next().unwrap(), &[3, 5]);
+    /// assert_eq!(it.next().unwrap(), &[1, 1]);
+    /// assert_eq!(it.next().unwrap(), &[]);
+    /// assert_eq!(it.next(), None);
+    /// ```
+    #[unstable(feature = "slice_rsplit", issue = "41020")]
+    #[inline]
+    pub fn rsplit<F>(&self, pred: F) -> RSplit<T, F>
+        where F: FnMut(&T) -> bool
+    {
+        core_slice::SliceExt::rsplit(self, pred)
+    }
+
+    /// Returns an iterator over mutable subslices separated by elements that
+    /// match `pred`, starting at the end of the slice and working
+    /// backwards. The matched element is not contained in the subslices.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_rsplit)]
+    ///
+    /// let mut v = [100, 400, 300, 200, 600, 500];
+    ///
+    /// let mut count = 0;
+    /// for group in v.rsplit_mut(|num| *num % 3 == 0) {
+    ///     count += 1;
+    ///     group[0] = count;
+    /// }
+    /// assert_eq!(v, [3, 400, 300, 2, 600, 1]);
+    /// ```
+    ///
+    #[unstable(feature = "slice_rsplit", issue = "41020")]
+    #[inline]
+    pub fn rsplit_mut<F>(&mut self, pred: F) -> RSplitMut<T, F>
+        where F: FnMut(&T) -> bool
+    {
+        core_slice::SliceExt::rsplit_mut(self, pred)
     }
 
     /// Returns an iterator over subslices separated by elements that match
