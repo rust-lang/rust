@@ -679,7 +679,7 @@ impl<T> Vec<T> {
     }
 
     /// Removes an element from the vector and returns it.
-    /// 
+    ///
     /// The removed element is replaced by the last element of the vector.
     ///
     /// This does not preserve ordering, but is O(1).
