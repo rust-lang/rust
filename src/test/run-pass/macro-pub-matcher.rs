@@ -83,28 +83,12 @@ Ensure that the `:vis` matcher works in a more complex situation: parsing a
 struct definition.
 */
 macro_rules! vis_parse_struct {
-    /*
-    The rule duplication is currently unavoidable due to the leading attribute
-    matching.
-    */
-    ($(#[$($attrs:tt)*])* pub($($vis:tt)*) struct $name:ident {$($body:tt)*}) => {
-        vis_parse_struct! { @parse_fields $(#[$($attrs)*])*, pub($($vis)*), $name, $($body)* }
-    };
-    ($(#[$($attrs:tt)*])* pub struct $name:ident {$($body:tt)*}) => {
-        vis_parse_struct! { @parse_fields $(#[$($attrs)*])*, pub, $name, $($body)* }
-    };
-    ($(#[$($attrs:tt)*])* struct $name:ident {$($body:tt)*}) => {
-        vis_parse_struct! { @parse_fields $(#[$($attrs)*])*, , $name, $($body)* }
+    ($(#[$($attrs:tt)*])* $vis:vis struct $name:ident {$($body:tt)*}) => {
+        vis_parse_struct! { @parse_fields $(#[$($attrs)*])*, $vis, $name, $($body)* }
     };
 
-    ($(#[$($attrs:tt)*])* pub($($vis:tt)*) struct $name:ident ($($body:tt)*);) => {
-        vis_parse_struct! { @parse_tuple $(#[$($attrs)*])*, pub($($vis)*), $name, $($body)* }
-    };
-    ($(#[$($attrs:tt)*])* pub struct $name:ident ($($body:tt)*);) => {
-        vis_parse_struct! { @parse_tuple $(#[$($attrs)*])*, pub, $name, $($body)* }
-    };
-    ($(#[$($attrs:tt)*])* struct $name:ident ($($body:tt)*);) => {
-        vis_parse_struct! { @parse_tuple $(#[$($attrs)*])*, , $name, $($body)* }
+    ($(#[$($attrs:tt)*])* $vis:vis struct $name:ident ($($body:tt)*);) => {
+        vis_parse_struct! { @parse_tuple $(#[$($attrs)*])*, $vis, $name, $($body)* }
     };
 
     (@parse_fields
