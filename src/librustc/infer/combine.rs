@@ -224,6 +224,9 @@ impl<'infcx, 'gcx, 'tcx> CombineFields<'infcx, 'gcx, 'tcx> {
             // Check whether `vid` has been instantiated yet.  If not,
             // make a generalized form of `ty` and instantiate with
             // that.
+            //
+            // FIXME(#18653) -- we need to generalize nested type
+            // variables too.
             let b_ty = match b_ty {
                 Some(t) => t, // ...already instantiated.
                 None => {     // ...not yet instantiated:
