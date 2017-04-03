@@ -91,6 +91,8 @@ use str::FromStr;
 /// [`Path`]: ../../std/path/struct.Path.html
 ///
 /// ```
+/// use std::path::Path;
+///
 /// impl AsRef<Path> for str {
 ///     fn as_ref(&self) -> &Path {
 ///         Path::new(self)
@@ -123,7 +125,8 @@ pub trait AsRef<T: ?Sized> {
 
 /// A cheap, mutable reference-to-mutable reference conversion.
 ///
-/// This trait is similar to `AsRef` but used for converting mutable references.
+/// This trait is similar to `AsRef` but used for converting between mutable
+/// references.
 ///
 /// **Note: this trait must not fail**. If the conversion can fail, use a
 /// dedicated method which returns an [`Option<T>`] or a [`Result<T, E>`].
@@ -153,11 +156,13 @@ pub trait AsRef<T: ?Sized> {
 /// assert_eq!(*boxed_num, 1);
 /// ```
 ///
-/// Implementing `AsMut`:
+/// `Vec` implements `AsMut` for converting between itself and a primitive array:
 ///
 /// ```
-/// impl Type {
-/// let a = 1;
+/// impl<T> AsMut<[T]> for Vec<T> {
+///   fn as_mut(&mut self) -> &mut [T] {
+///     self
+///   }
 /// }
 /// ```
 ///
@@ -250,19 +255,22 @@ pub trait Into<T>: Sized {
 /// An example usage for error handling:
 ///
 /// ```
+/// use std::io::{self, Read};
+/// use std::num;
+///
 /// enum CliError {
 ///     IoError(io::Error),
 ///     ParseError(num::ParseIntError),
 /// }
 ///
-/// impl From<io::Error> for MyError {
+/// impl From<io::Error> for CliError {
 ///     fn from(error: io::Error) -> Self {
 ///         CliError::IoError(error)
 ///     }
 /// }
 ///
-/// impl From<num::ParseIntError> for MyError {
-///     fn from(error: io::Error) -> Self {
+/// impl From<num::ParseIntError> for CliError {
+///     fn from(error: num::ParseIntError) -> Self {
 ///         CliError::ParseError(error)
 ///     }
 /// }
