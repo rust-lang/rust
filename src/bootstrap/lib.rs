@@ -162,6 +162,7 @@ pub struct Build {
     cxx: HashMap<String, gcc::Tool>,
     crates: HashMap<String, Crate>,
     is_sudo: bool,
+    src_is_git: bool,
 }
 
 #[derive(Debug)]
@@ -233,6 +234,7 @@ impl Build {
         };
         let rust_info = channel::GitInfo::new(&src);
         let cargo_info = channel::GitInfo::new(&src.join("cargo"));
+        let src_is_git = src.join(".git").is_dir();
 
         Build {
             flags: flags,
@@ -251,6 +253,7 @@ impl Build {
             lldb_version: None,
             lldb_python_dir: None,
             is_sudo: is_sudo,
+            src_is_git: src_is_git,
         }
     }
 
@@ -307,10 +310,7 @@ impl Build {
             OutOfSync,
         }
 
-        if !self.config.submodules {
-            return
-        }
-        if fs::metadata(self.src.join(".git")).is_err() {
+        if !self.src_is_git || !self.config.submodules {
             return
         }
         let git = || {
