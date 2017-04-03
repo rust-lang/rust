@@ -23,12 +23,12 @@
 //!
 //! These channels come in two flavors:
 //!
-//! 1. An asynchronous, infinitely buffered channel. The [`channel()`] function
+//! 1. An asynchronous, infinitely buffered channel. The [`channel`] function
 //!    will return a `(Sender, Receiver)` tuple where all sends will be
 //!    **asynchronous** (they never block). The channel conceptually has an
 //!    infinite buffer.
 //!
-//! 2. A synchronous, bounded channel. The [`sync_channel()`] function will
+//! 2. A synchronous, bounded channel. The [`sync_channel`] function will
 //!    return a `(SyncSender, Receiver)` tuple where the storage for pending
 //!    messages is a pre-allocated buffer of a fixed size. All sends will be
 //!    **synchronous** by blocking until there is buffer space available. Note
@@ -39,8 +39,8 @@
 //! [`SyncSender`]: ../../../std/sync/mpsc/struct.SyncSender.html
 //! [`Receiver`]: ../../../std/sync/mpsc/struct.Receiver.html
 //! [`send`]: ../../../std/sync/mpsc/struct.Sender.html#method.send
-//! [`channel()`]: ../../../std/sync/mpsc/fn.channel.html
-//! [`sync_channel()`]: ../../../std/sync/mpsc/fn.sync_channel.html
+//! [`channel`]: ../../../std/sync/mpsc/fn.channel.html
+//! [`sync_channel`]: ../../../std/sync/mpsc/fn.sync_channel.html
 //!
 //! ## Disconnection
 //!
@@ -51,12 +51,12 @@
 //!
 //! Once half of a channel has been deallocated, most operations can no longer
 //! continue to make progress, so [`Err`] will be returned. Many applications
-//! will continue to [`unwrap()`] the results returned from this module,
+//! will continue to [`unwrap`] the results returned from this module,
 //! instigating a propagation of failure among threads if one unexpectedly dies.
 //!
 //! [`Result`]: ../../../std/result/enum.Result.html
 //! [`Err`]: ../../../std/result/enum.Result.html#variant.Err
-//! [`unwrap()`]: ../../../std/result/enum.Result.html#method.unwrap
+//! [`unwrap`]: ../../../std/result/enum.Result.html#method.unwrap
 //!
 //! # Examples
 //!
@@ -310,12 +310,15 @@ mod spsc_queue;
 /// use std::sync::mpsc::channel;
 /// use std::thread;
 /// use std::time::Duration;
+///
 /// let (send, recv) = channel();
+///
 /// thread::spawn(move || {
 ///     send.send("Hello world!").unwrap();
 ///     thread::sleep(Duration::from_secs(2)); // block for two seconds
 ///     send.send("Delayed for 2 seconds").unwrap();
 /// });
+///
 /// println!("{}", recv.recv().unwrap()); // Received immediately
 /// println!("Waiting...");
 /// println!("{}", recv.recv().unwrap()); // Received after 2 seconds
@@ -384,18 +387,23 @@ pub struct IntoIter<T> {
 /// ```rust
 /// use std::sync::mpsc::channel;
 /// use std::thread;
+///
 /// let (sender, receiver) = channel();
 /// let sender2 = sender.clone();
+///
 /// // First thread owns sender
 /// thread::spawn(move || {
 ///     sender.send(1).unwrap();
 /// });
+///
 /// // Second thread owns sender2
 /// thread::spawn(move || {
 ///     sender2.send(2).unwrap();
 /// });
+///
 /// let msg = receiver.recv().unwrap();
 /// let msg2 = receiver.recv().unwrap();
+///
 /// assert_eq!(3, msg + msg2);
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1097,12 +1105,15 @@ impl<T> Receiver<T> {
     /// ```rust
     /// use std::sync::mpsc::channel;
     /// use std::thread;
+    ///
     /// let (send, recv) = channel();
+    ///
     /// thread::spawn(move || {
     ///     send.send(1u8).unwrap();
     ///     send.send(2u8).unwrap();
     ///     send.send(3u8).unwrap();
     /// });
+    ///
     /// for x in recv.iter() {
     ///     println!("Got: {}", x);
     /// }
