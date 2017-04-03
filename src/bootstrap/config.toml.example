@@ -152,6 +152,11 @@
 # known-good version of OpenSSL, compile it, and link it to Cargo.
 #openssl-static = false
 
+# Indicates if there is a graphical notification when a build ends or not.
+# By default, if this option is not specified, it is turned off. You can
+# also specify it by passing "--notification" to your "x.py" script call.
+notification = true
+
 # =============================================================================
 # General install configuration options
 # =============================================================================
