@@ -509,18 +509,21 @@ impl<'a, 'gcx, 'tcx, W> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx, W>
     }
 
     fn visit_region(&mut self, r: &'tcx ty::Region) -> bool {
+        self.hash_discriminant_u8(r);
         match *r {
-            ty::ReErased => {
-                self.hash::<u32>(0);
+            ty::ReErased |
+            ty::ReStatic |
+            ty::ReEmpty => {
+                // No variant fields to hash for these ...
             }
             ty::ReLateBound(db, ty::BrAnon(i)) => {
-                assert!(db.depth > 0);
-                self.hash::<u32>(db.depth);
+                self.hash(db.depth);
                 self.hash(i);
             }
-            ty::ReStatic |
-            ty::ReEmpty |
-            ty::ReEarlyBound(..) |
+            ty::ReEarlyBound(ty::EarlyBoundRegion { index, name }) => {
+                self.hash(index);
+                self.hash(name.as_str());
+            }
             ty::ReLateBound(..) |
             ty::ReFree(..) |
             ty::ReScope(..) |

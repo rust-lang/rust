@@ -176,7 +176,6 @@ pub trait CrateStore {
     fn item_generics_cloned(&self, def: DefId) -> ty::Generics;
     fn item_attrs(&self, def_id: DefId) -> Vec<ast::Attribute>;
     fn fn_arg_names(&self, did: DefId) -> Vec<ast::Name>;
-    fn inherent_implementations_for_type(&self, def_id: DefId) -> Vec<DefId>;
 
     // trait info
     fn implementations_of_trait(&self, filter: Option<DefId>) -> Vec<DefId>;
@@ -255,8 +254,8 @@ pub trait CrateStore {
     fn used_crates(&self, prefer: LinkagePreference) -> Vec<(CrateNum, LibSource)>;
     fn used_crate_source(&self, cnum: CrateNum) -> CrateSource;
     fn extern_mod_stmt_cnum(&self, emod_id: ast::NodeId) -> Option<CrateNum>;
-    fn encode_metadata<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                 reexports: &def::ExportMap,
+    fn encode_metadata<'a, 'tcx>(&self,
+                                 tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                  link_meta: &LinkMeta,
                                  reachable: &NodeSet) -> Vec<u8>;
     fn metadata_encoding_version(&self) -> &[u8];
@@ -310,7 +309,6 @@ impl CrateStore for DummyCrateStore {
         { bug!("item_generics_cloned") }
     fn item_attrs(&self, def_id: DefId) -> Vec<ast::Attribute> { bug!("item_attrs") }
     fn fn_arg_names(&self, did: DefId) -> Vec<ast::Name> { bug!("fn_arg_names") }
-    fn inherent_implementations_for_type(&self, def_id: DefId) -> Vec<DefId> { vec![] }
 
     // trait info
     fn implementations_of_trait(&self, filter: Option<DefId>) -> Vec<DefId> { vec![] }
@@ -412,10 +410,10 @@ impl CrateStore for DummyCrateStore {
         { vec![] }
     fn used_crate_source(&self, cnum: CrateNum) -> CrateSource { bug!("used_crate_source") }
     fn extern_mod_stmt_cnum(&self, emod_id: ast::NodeId) -> Option<CrateNum> { None }
-    fn encode_metadata<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                           reexports: &def::ExportMap,
-                           link_meta: &LinkMeta,
-                           reachable: &NodeSet) -> Vec<u8> { vec![] }
+    fn encode_metadata<'a, 'tcx>(&self,
+                                 tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                 link_meta: &LinkMeta,
+                                 reachable: &NodeSet) -> Vec<u8> { vec![] }
     fn metadata_encoding_version(&self) -> &[u8] { bug!("metadata_encoding_version") }
 }
 

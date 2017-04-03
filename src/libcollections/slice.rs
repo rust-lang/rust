@@ -362,7 +362,7 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn get<I>(&self, index: I) -> Option<&I::Output>
-        where I: SliceIndex<T>
+        where I: SliceIndex<Self>
     {
         core_slice::SliceExt::get(self, index)
     }
@@ -385,7 +385,7 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn get_mut<I>(&mut self, index: I) -> Option<&mut I::Output>
-        where I: SliceIndex<T>
+        where I: SliceIndex<Self>
     {
         core_slice::SliceExt::get_mut(self, index)
     }
@@ -405,7 +405,7 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub unsafe fn get_unchecked<I>(&self, index: I) -> &I::Output
-        where I: SliceIndex<T>
+        where I: SliceIndex<Self>
     {
         core_slice::SliceExt::get_unchecked(self, index)
     }
@@ -427,7 +427,7 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub unsafe fn get_unchecked_mut<I>(&mut self, index: I) -> &mut I::Output
-        where I: SliceIndex<T>
+        where I: SliceIndex<Self>
     {
         core_slice::SliceExt::get_unchecked_mut(self, index)
     }
@@ -1162,7 +1162,7 @@ impl<T> [T] {
     ///
     /// # Current implementation
     ///
-    /// The current algorithm is based on Orson Peters' [pdqsort][pattern-defeating quicksort],
+    /// The current algorithm is based on Orson Peters' [pattern-defeating quicksort][pdqsort],
     /// which is a quicksort variant designed to be very fast on certain kinds of patterns,
     /// sometimes achieving linear time. It is randomized but deterministic, and falls back to
     /// heapsort on degenerate inputs.
@@ -1199,7 +1199,7 @@ impl<T> [T] {
     ///
     /// # Current implementation
     ///
-    /// The current algorithm is based on Orson Peters' [pdqsort][pattern-defeating quicksort],
+    /// The current algorithm is based on Orson Peters' [pattern-defeating quicksort][pdqsort],
     /// which is a quicksort variant designed to be very fast on certain kinds of patterns,
     /// sometimes achieving linear time. It is randomized but deterministic, and falls back to
     /// heapsort on degenerate inputs.
@@ -1239,7 +1239,7 @@ impl<T> [T] {
     ///
     /// # Current implementation
     ///
-    /// The current algorithm is based on Orson Peters' [pdqsort][pattern-defeating quicksort],
+    /// The current algorithm is based on Orson Peters' [pattern-defeating quicksort][pdqsort],
     /// which is a quicksort variant designed to be very fast on certain kinds of patterns,
     /// sometimes achieving linear time. It is randomized but deterministic, and falls back to
     /// heapsort on degenerate inputs.

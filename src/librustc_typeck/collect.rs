@@ -689,12 +689,6 @@ fn adt_def<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let node_id = tcx.hir.as_local_node_id(def_id).unwrap();
     let item = match tcx.hir.get(node_id) {
         NodeItem(item) => item,
-
-        // Make adt definition available through constructor id as well.
-        NodeStructCtor(_) => {
-            return tcx.lookup_adt_def(tcx.hir.get_parent_did(node_id));
-        }
-
         _ => bug!()
     };
 

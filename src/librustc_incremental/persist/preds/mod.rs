@@ -10,11 +10,11 @@
 
 use rustc::dep_graph::{DepGraphQuery, DepNode};
 use rustc::hir::def_id::DefId;
+use rustc::ich::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::graph::{Graph, NodeIndex};
 
 use super::hash::*;
-use ich::Fingerprint;
 
 mod compress;
 

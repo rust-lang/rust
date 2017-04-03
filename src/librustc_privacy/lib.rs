@@ -25,10 +25,9 @@ extern crate rustc;
 #[macro_use] extern crate syntax;
 extern crate syntax_pos;
 
-use rustc::dep_graph::DepNode;
 use rustc::hir::{self, PatKind};
-use rustc::hir::def::{self, Def};
-use rustc::hir::def_id::{CRATE_DEF_INDEX, DefId};
+use rustc::hir::def::Def;
+use rustc::hir::def_id::{CRATE_DEF_INDEX, LOCAL_CRATE, CrateNum, DefId};
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 use rustc::hir::itemlikevisit::DeepVisitor;
 use rustc::hir::pat_util::EnumerateAndAdjustIterator;
@@ -36,12 +35,14 @@ use rustc::lint;
 use rustc::middle::privacy::{AccessLevel, AccessLevels};
 use rustc::ty::{self, TyCtxt, Ty, TypeFoldable};
 use rustc::ty::fold::TypeVisitor;
+use rustc::ty::maps::Providers;
 use rustc::util::nodemap::NodeSet;
 use syntax::ast;
-use syntax_pos::Span;
+use syntax_pos::{DUMMY_SP, Span};
 
 use std::cmp;
 use std::mem::replace;
+use std::rc::Rc;
 
 pub mod diagnostics;
 
@@ -71,7 +72,6 @@ impl<'a, 'tcx> Visitor<'tcx> for PubRestrictedVisitor<'a, 'tcx> {
 
 struct EmbargoVisitor<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    export_map: &'a def::ExportMap,
 
     // Accessibility levels for reachable nodes
     access_levels: AccessLevels,
@@ -324,7 +324,7 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
         // This code is here instead of in visit_item so that the
         // crate module gets processed as well.
         if self.prev_level.is_some() {
-            if let Some(exports) = self.export_map.get(&id) {
+            if let Some(exports) = self.tcx.export_map.get(&id) {
                 for export in exports {
                     if let Some(node_id) = self.tcx.hir.as_local_node_id(export.def.def_id()) {
                         self.update(node_id, Some(AccessLevel::Exported));
@@ -1204,10 +1204,23 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
     fn visit_pat(&mut self, _: &'tcx hir::Pat) {}
 }
 
-pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                             export_map: &def::ExportMap)
-                             -> AccessLevels {
-    let _task = tcx.dep_graph.in_task(DepNode::Privacy);
+pub fn provide(providers: &mut Providers) {
+    *providers = Providers {
+        privacy_access_levels,
+        ..*providers
+    };
+}
+
+pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Rc<AccessLevels> {
+    tcx.dep_graph.with_ignore(|| { // FIXME
+        ty::queries::privacy_access_levels::get(tcx, DUMMY_SP, LOCAL_CRATE)
+    })
+}
+
+fn privacy_access_levels<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                   krate: CrateNum)
+                                   -> Rc<AccessLevels> {
+    assert_eq!(krate, LOCAL_CRATE);
 
     let krate = tcx.hir.krate();
 
@@ -1226,7 +1239,6 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // items which are reachable from external crates based on visibility.
     let mut visitor = EmbargoVisitor {
         tcx: tcx,
-        export_map: export_map,
         access_levels: Default::default(),
         prev_level: Some(AccessLevel::Public),
         changed: false,
@@ -1270,7 +1282,7 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         krate.visit_all_item_likes(&mut DeepVisitor::new(&mut visitor));
     }
 
-    visitor.access_levels
+    Rc::new(visitor.access_levels)
 }
 
 __build_diagnostic_array! { librustc_privacy, DIAGNOSTICS }

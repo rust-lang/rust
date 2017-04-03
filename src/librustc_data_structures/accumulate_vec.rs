@@ -91,8 +91,8 @@ impl<A: Array> Deref for AccumulateVec<A> {
     type Target = [A::Element];
     fn deref(&self) -> &Self::Target {
         match *self {
-            AccumulateVec::Array(ref v) => &v[..],
-            AccumulateVec::Heap(ref v) => &v[..],
+            AccumulateVec::Array(ref v) => v,
+            AccumulateVec::Heap(ref v) => v,
         }
     }
 }
@@ -100,8 +100,8 @@ impl<A: Array> Deref for AccumulateVec<A> {
 impl<A: Array> DerefMut for AccumulateVec<A> {
     fn deref_mut(&mut self) -> &mut [A::Element] {
         match *self {
-            AccumulateVec::Array(ref mut v) => &mut v[..],
-            AccumulateVec::Heap(ref mut v) => &mut v[..],
+            AccumulateVec::Array(ref mut v) => v,
+            AccumulateVec::Heap(ref mut v) => v,
         }
     }
 }

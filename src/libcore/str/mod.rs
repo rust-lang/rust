@@ -22,7 +22,7 @@ use convert::TryFrom;
 use fmt;
 use iter::{Map, Cloned, FusedIterator};
 use mem;
-use slice;
+use slice::{self, SliceIndex};
 
 pub mod pattern;
 
@@ -35,6 +35,39 @@ pub mod pattern;
 /// [`from_str`]: #tymethod.from_str
 /// [`str`]: ../../std/primitive.str.html
 /// [`parse`]: ../../std/primitive.str.html#method.parse
+///
+/// # Examples
+///
+/// Basic implementation of `FromStr` on an example `Point` type:
+///
+/// ```
+/// use std::str::FromStr;
+/// use std::num::ParseIntError;
+///
+/// #[derive(Debug, PartialEq)]
+/// struct Point {
+///     x: i32,
+///     y: i32
+/// }
+///
+/// impl FromStr for Point {
+///     type Err = ParseIntError;
+///
+///     fn from_str(s: &str) -> Result<Self, Self::Err> {
+///         let coords: Vec<&str> = s.trim_matches(|p| p == '(' || p == ')' )
+///                                  .split(",")
+///                                  .collect();
+///
+///         let x_fromstr = coords[0].parse::<i32>()?;
+///         let y_fromstr = coords[1].parse::<i32>()?;
+///
+///         Ok(Point { x: x_fromstr, y: y_fromstr })
+///     }
+/// }
+///
+/// let p = Point::from_str("(1,2)");
+/// assert_eq!(p.unwrap(), Point{ x: 1, y: 2} )
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait FromStr: Sized {
     /// The associated error which can be returned from parsing.
@@ -101,7 +134,9 @@ impl FromStr for bool {
     }
 }
 
-/// An error returned when parsing a `bool` from a string fails.
+/// An error returned when parsing a `bool` using [`from_str`] fails
+///
+/// [`from_str`]: ../../std/primitive.bool.html#method.from_str
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct ParseBoolError { _priv: () }
@@ -292,7 +327,9 @@ unsafe fn from_raw_parts_mut<'a>(p: *mut u8, len: usize) -> &'a mut str {
 ///
 /// This function is unsafe because it does not check that the bytes passed to
 /// it are valid UTF-8. If this constraint is violated, undefined behavior
-/// results, as the rest of Rust assumes that `&str`s are valid UTF-8.
+/// results, as the rest of Rust assumes that [`&str`]s are valid UTF-8.
+///
+/// [`&str`]: ../../std/primitive.str.html
 ///
 /// # Examples
 ///
@@ -332,11 +369,15 @@ impl fmt::Display for Utf8Error {
 Section: Iterators
 */
 
-/// Iterator for the char (representing *Unicode Scalar Values*) of a string.
+/// An iterator over the [`char`]s of a string slice.
 ///
-/// Created with the method [`chars`].
+/// [`char`]: ../../std/primitive.char.html
+///
+/// This struct is created by the [`chars`] method on [`str`].
+/// See its documentation for more.
 ///
 /// [`chars`]: ../../std/primitive.str.html#method.chars
+/// [`str`]: ../../std/primitive.str.html
 #[derive(Clone, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Chars<'a> {
@@ -516,7 +557,15 @@ impl<'a> Chars<'a> {
     }
 }
 
-/// Iterator for a string's characters and their byte offsets.
+/// An iterator over the [`char`]s of a string slice, and their positions.
+///
+/// [`char`]: ../../std/primitive.char.html
+///
+/// This struct is created by the [`char_indices`] method on [`str`].
+/// See its documentation for more.
+///
+/// [`char_indices`]: ../../std/primitive.str.html#method.char_indices
+/// [`str`]: ../../std/primitive.str.html
 #[derive(Clone, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct CharIndices<'a> {
@@ -588,12 +637,13 @@ impl<'a> CharIndices<'a> {
     }
 }
 
-/// External iterator for a string's bytes.
-/// Use with the `std::iter` module.
+/// An iterator over the bytes of a string slice.
 ///
-/// Created with the method [`bytes`].
+/// This struct is created by the [`bytes`] method on [`str`].
+/// See its documentation for more.
 ///
 /// [`bytes`]: ../../std/primitive.str.html#method.bytes
+/// [`str`]: ../../std/primitive.str.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone, Debug)]
 pub struct Bytes<'a>(Cloned<slice::Iter<'a, u8>>);
@@ -1124,9 +1174,13 @@ generate_pattern_iterators! {
     delegate double ended;
 }
 
-/// Created with the method [`lines`].
+/// An iterator over the lines of a string, as string slices.
+///
+/// This struct is created with the [`lines`] method on [`str`].
+/// See its documentation for more.
 ///
 /// [`lines`]: ../../std/primitive.str.html#method.lines
+/// [`str`]: ../../std/primitive.str.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone, Debug)]
 pub struct Lines<'a>(Map<SplitTerminator<'a, char>, LinesAnyMap>);
@@ -1408,6 +1462,8 @@ Section: Trait implementations
 mod traits {
     use cmp::Ordering;
     use ops;
+    use mem;
+    use slice::{self, SliceIndex};
     use str::eq_slice;
 
     /// Implements ordering of strings.
@@ -1490,14 +1546,7 @@ mod traits {
         type Output = str;
         #[inline]
         fn index(&self, index: ops::Range<usize>) -> &str {
-            // is_char_boundary checks that the index is in [0, .len()]
-            if index.start <= index.end &&
-               self.is_char_boundary(index.start) &&
-               self.is_char_boundary(index.end) {
-                unsafe { self.slice_unchecked(index.start, index.end) }
-            } else {
-                super::slice_error_fail(self, index.start, index.end)
-            }
+            index.index(self)
         }
     }
 
@@ -1519,14 +1568,7 @@ mod traits {
     impl ops::IndexMut<ops::Range<usize>> for str {
         #[inline]
         fn index_mut(&mut self, index: ops::Range<usize>) -> &mut str {
-            // is_char_boundary checks that the index is in [0, .len()]
-            if index.start <= index.end &&
-               self.is_char_boundary(index.start) &&
-               self.is_char_boundary(index.end) {
-                unsafe { self.slice_mut_unchecked(index.start, index.end) }
-            } else {
-                super::slice_error_fail(self, index.start, index.end)
-            }
+            index.index_mut(self)
         }
     }
 
@@ -1694,7 +1736,275 @@ mod traits {
             self.index_mut(0...index.end)
         }
     }
+
+    #[unstable(feature = "str_checked_slicing", issue = "39932")]
+    impl SliceIndex<str> for ops::RangeFull {
+        type Output = str;
+        #[inline]
+        fn get(self, slice: &str) -> Option<&Self::Output> {
+            Some(slice)
+        }
+        #[inline]
+        fn get_mut(self, slice: &mut str) -> Option<&mut Self::Output> {
+            Some(slice)
+        }
+        #[inline]
+        unsafe fn get_unchecked(self, slice: &str) -> &Self::Output {
+            slice
+        }
+        #[inline]
+        unsafe fn get_unchecked_mut(self, slice: &mut str) -> &mut Self::Output {
+            slice
+        }
+        #[inline]
+        fn index(self, slice: &str) -> &Self::Output {
+            slice
+        }
+        #[inline]
+        fn index_mut(self, slice: &mut str) -> &mut Self::Output {
+            slice
+        }
+    }
+
+    #[unstable(feature = "str_checked_slicing", issue = "39932")]
+    impl SliceIndex<str> for ops::Range<usize> {
+        type Output = str;
+        #[inline]
+        fn get(self, slice: &str) -> Option<&Self::Output> {
+            if self.start <= self.end &&
+               slice.is_char_boundary(self.start) &&
+               slice.is_char_boundary(self.end) {
+                Some(unsafe { self.get_unchecked(slice) })
+            } else {
+                None
+            }
+        }
+        #[inline]
+        fn get_mut(self, slice: &mut str) -> Option<&mut Self::Output> {
+            if self.start <= self.end &&
+               slice.is_char_boundary(self.start) &&
+               slice.is_char_boundary(self.end) {
+                Some(unsafe { self.get_unchecked_mut(slice) })
+            } else {
+                None
+            }
+        }
+        #[inline]
+        unsafe fn get_unchecked(self, slice: &str) -> &Self::Output {
+            let ptr = slice.as_ptr().offset(self.start as isize);
+            let len = self.end - self.start;
+            super::from_utf8_unchecked(slice::from_raw_parts(ptr, len))
+        }
+        #[inline]
+        unsafe fn get_unchecked_mut(self, slice: &mut str) -> &mut Self::Output {
+            let ptr = slice.as_ptr().offset(self.start as isize);
+            let len = self.end - self.start;
+            mem::transmute(slice::from_raw_parts_mut(ptr as *mut u8, len))
+        }
+        #[inline]
+        fn index(self, slice: &str) -> &Self::Output {
+            let (start, end) = (self.start, self.end);
+            self.get(slice).unwrap_or_else(|| super::slice_error_fail(slice, start, end))
+        }
+        #[inline]
+        fn index_mut(self, slice: &mut str) -> &mut Self::Output {
+            // is_char_boundary checks that the index is in [0, .len()]
+            // canot reuse `get` as above, because of NLL trouble
+            if self.start <= self.end &&
+               slice.is_char_boundary(self.start) &&
+               slice.is_char_boundary(self.end) {
+                unsafe { self.get_unchecked_mut(slice) }
+            } else {
+                super::slice_error_fail(slice, self.start, self.end)
+            }
+        }
+    }
+
+    #[unstable(feature = "str_checked_slicing", issue = "39932")]
+    impl SliceIndex<str> for ops::RangeTo<usize> {
+        type Output = str;
+        #[inline]
+        fn get(self, slice: &str) -> Option<&Self::Output> {
+            if slice.is_char_boundary(self.end) {
+                Some(unsafe { self.get_unchecked(slice) })
+            } else {
+                None
+            }
+        }
+        #[inline]
+        fn get_mut(self, slice: &mut str) -> Option<&mut Self::Output> {
+            if slice.is_char_boundary(self.end) {
+                Some(unsafe { self.get_unchecked_mut(slice) })
+            } else {
+                None
+            }
+        }
+        #[inline]
+        unsafe fn get_unchecked(self, slice: &str) -> &Self::Output {
+            let ptr = slice.as_ptr();
+            super::from_utf8_unchecked(slice::from_raw_parts(ptr, self.end))
+        }
+        #[inline]
+        unsafe fn get_unchecked_mut(self, slice: &mut str) -> &mut Self::Output {
+            let ptr = slice.as_ptr();
+            mem::transmute(slice::from_raw_parts_mut(ptr as *mut u8, self.end))
+        }
+        #[inline]
+        fn index(self, slice: &str) -> &Self::Output {
+            let end = self.end;
+            self.get(slice).unwrap_or_else(|| super::slice_error_fail(slice, 0, end))
+        }
+        #[inline]
+        fn index_mut(self, slice: &mut str) -> &mut Self::Output {
+            if slice.is_char_boundary(self.end) {
+                unsafe { self.get_unchecked_mut(slice) }
+            } else {
+                super::slice_error_fail(slice, 0, self.end)
+            }
+        }
+    }
+
+    #[unstable(feature = "str_checked_slicing", issue = "39932")]
+    impl SliceIndex<str> for ops::RangeFrom<usize> {
+        type Output = str;
+        #[inline]
+        fn get(self, slice: &str) -> Option<&Self::Output> {
+            if slice.is_char_boundary(self.start) {
+                Some(unsafe { self.get_unchecked(slice) })
+            } else {
+                None
+            }
+        }
+        #[inline]
+        fn get_mut(self, slice: &mut str) -> Option<&mut Self::Output> {
+            if slice.is_char_boundary(self.start) {
+                Some(unsafe { self.get_unchecked_mut(slice) })
+            } else {
+                None
+            }
+        }
+        #[inline]
+        unsafe fn get_unchecked(self, slice: &str) -> &Self::Output {
+            let ptr = slice.as_ptr().offset(self.start as isize);
+            let len = slice.len() - self.start;
+            super::from_utf8_unchecked(slice::from_raw_parts(ptr, len))
+        }
+        #[inline]
+        unsafe fn get_unchecked_mut(self, slice: &mut str) -> &mut Self::Output {
+            let ptr = slice.as_ptr().offset(self.start as isize);
+            let len = slice.len() - self.start;
+            mem::transmute(slice::from_raw_parts_mut(ptr as *mut u8, len))
+        }
+        #[inline]
+        fn index(self, slice: &str) -> &Self::Output {
+            let (start, end) = (self.start, slice.len());
+            self.get(slice).unwrap_or_else(|| super::slice_error_fail(slice, start, end))
+        }
+        #[inline]
+        fn index_mut(self, slice: &mut str) -> &mut Self::Output {
+            if slice.is_char_boundary(self.start) {
+                unsafe { self.get_unchecked_mut(slice) }
+            } else {
+                super::slice_error_fail(slice, self.start, slice.len())
+            }
+        }
+    }
+
+    #[unstable(feature = "str_checked_slicing", issue = "39932")]
+    impl SliceIndex<str> for ops::RangeInclusive<usize> {
+        type Output = str;
+        #[inline]
+        fn get(self, slice: &str) -> Option<&Self::Output> {
+            match self {
+                ops::RangeInclusive::Empty { .. } => 0..0,
+                ops::RangeInclusive::NonEmpty { start, end } => start..end+1,
+            }.get(slice)
+        }
+        #[inline]
+        fn get_mut(self, slice: &mut str) -> Option<&mut Self::Output> {
+            match self {
+                ops::RangeInclusive::Empty { .. } => 0..0,
+                ops::RangeInclusive::NonEmpty { start, end } => start..end+1,
+            }.get_mut(slice)
+        }
+        #[inline]
+        unsafe fn get_unchecked(self, slice: &str) -> &Self::Output {
+            match self {
+                ops::RangeInclusive::Empty { .. } => 0..0,
+                ops::RangeInclusive::NonEmpty { start, end } => start..end+1,
+            }.get_unchecked(slice)
+        }
+        #[inline]
+        unsafe fn get_unchecked_mut(self, slice: &mut str) -> &mut Self::Output {
+            match self {
+                ops::RangeInclusive::Empty { .. } => 0..0,
+                ops::RangeInclusive::NonEmpty { start, end } => start..end+1,
+            }.get_unchecked_mut(slice)
+        }
+        #[inline]
+        fn index(self, slice: &str) -> &Self::Output {
+            match self {
+                ops::RangeInclusive::Empty { .. } => 0..0,
+                ops::RangeInclusive::NonEmpty { start, end } => start..end+1,
+            }.index(slice)
+        }
+        #[inline]
+        fn index_mut(self, slice: &mut str) -> &mut Self::Output {
+            match self {
+                ops::RangeInclusive::Empty { .. } => 0..0,
+                ops::RangeInclusive::NonEmpty { start, end } => start..end+1,
+            }.index_mut(slice)
+        }
+    }
+
+
+
+    #[unstable(feature = "str_checked_slicing", issue = "39932")]
+    impl SliceIndex<str> for ops::RangeToInclusive<usize> {
+        type Output = str;
+        #[inline]
+        fn get(self, slice: &str) -> Option<&Self::Output> {
+            if slice.is_char_boundary(self.end + 1) {
+                Some(unsafe { self.get_unchecked(slice) })
+            } else {
+                None
+            }
+        }
+        #[inline]
+        fn get_mut(self, slice: &mut str) -> Option<&mut Self::Output> {
+            if slice.is_char_boundary(self.end + 1) {
+                Some(unsafe { self.get_unchecked_mut(slice) })
+            } else {
+                None
+            }
+        }
+        #[inline]
+        unsafe fn get_unchecked(self, slice: &str) -> &Self::Output {
+            let ptr = slice.as_ptr();
+            super::from_utf8_unchecked(slice::from_raw_parts(ptr, self.end + 1))
+        }
+        #[inline]
+        unsafe fn get_unchecked_mut(self, slice: &mut str) -> &mut Self::Output {
+            let ptr = slice.as_ptr();
+            mem::transmute(slice::from_raw_parts_mut(ptr as *mut u8, self.end + 1))
+        }
+        #[inline]
+        fn index(self, slice: &str) -> &Self::Output {
+            let end = self.end + 1;
+            self.get(slice).unwrap_or_else(|| super::slice_error_fail(slice, 0, end))
+        }
+        #[inline]
+        fn index_mut(self, slice: &mut str) -> &mut Self::Output {
+            if slice.is_char_boundary(self.end) {
+                unsafe { self.get_unchecked_mut(slice) }
+            } else {
+                super::slice_error_fail(slice, 0, self.end + 1)
+            }
+        }
+    }
+
 }
+
 
 /// Methods for string slices
 #[allow(missing_docs)]
@@ -1745,6 +2055,14 @@ pub trait StrExt {
     #[rustc_deprecated(since = "1.6.0", reason = "use lines() instead now")]
     #[allow(deprecated)]
     fn lines_any(&self) -> LinesAny;
+    #[unstable(feature = "str_checked_slicing", issue = "39932")]
+    fn get<I: SliceIndex<str>>(&self, i: I) -> Option<&I::Output>;
+    #[unstable(feature = "str_checked_slicing", issue = "39932")]
+    fn get_mut<I: SliceIndex<str>>(&mut self, i: I) -> Option<&mut I::Output>;
+    #[unstable(feature = "str_checked_slicing", issue = "39932")]
+    unsafe fn get_unchecked<I: SliceIndex<str>>(&self, i: I) -> &I::Output;
+    #[unstable(feature = "str_checked_slicing", issue = "39932")]
+    unsafe fn get_unchecked_mut<I: SliceIndex<str>>(&mut self, i: I) -> &mut I::Output;
     #[stable(feature = "core", since = "1.6.0")]
     unsafe fn slice_unchecked(&self, begin: usize, end: usize) -> &str;
     #[stable(feature = "core", since = "1.6.0")]
@@ -1935,17 +2253,33 @@ impl StrExt for str {
     }
 
     #[inline]
+    fn get<I: SliceIndex<str>>(&self, i: I) -> Option<&I::Output> {
+        i.get(self)
+    }
+
+    #[inline]
+    fn get_mut<I: SliceIndex<str>>(&mut self, i: I) -> Option<&mut I::Output> {
+        i.get_mut(self)
+    }
+
+    #[inline]
+    unsafe fn get_unchecked<I: SliceIndex<str>>(&self, i: I) -> &I::Output {
+        i.get_unchecked(self)
+    }
+
+    #[inline]
+    unsafe fn get_unchecked_mut<I: SliceIndex<str>>(&mut self, i: I) -> &mut I::Output {
+        i.get_unchecked_mut(self)
+    }
+
+    #[inline]
     unsafe fn slice_unchecked(&self, begin: usize, end: usize) -> &str {
-        let ptr = self.as_ptr().offset(begin as isize);
-        let len = end - begin;
-        from_utf8_unchecked(slice::from_raw_parts(ptr, len))
+        (begin..end).get_unchecked(self)
     }
 
     #[inline]
     unsafe fn slice_mut_unchecked(&mut self, begin: usize, end: usize) -> &mut str {
-        let ptr = self.as_ptr().offset(begin as isize);
-        let len = end - begin;
-        mem::transmute(slice::from_raw_parts_mut(ptr as *mut u8, len))
+        (begin..end).get_unchecked_mut(self)
     }
 
     #[inline]

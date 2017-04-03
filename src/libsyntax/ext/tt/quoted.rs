@@ -34,17 +34,19 @@ impl Delimited {
     }
 
     pub fn open_tt(&self, span: Span) -> TokenTree {
-        let open_span = match span {
-            DUMMY_SP => DUMMY_SP,
-            _ => Span { hi: span.lo + BytePos(self.delim.len() as u32), ..span },
+        let open_span = if span == DUMMY_SP {
+            DUMMY_SP
+        } else {
+            Span { hi: span.lo + BytePos(self.delim.len() as u32), ..span }
         };
         TokenTree::Token(open_span, self.open_token())
     }
 
     pub fn close_tt(&self, span: Span) -> TokenTree {
-        let close_span = match span {
-            DUMMY_SP => DUMMY_SP,
-            _ => Span { lo: span.hi - BytePos(self.delim.len() as u32), ..span },
+        let close_span = if span == DUMMY_SP {
+            DUMMY_SP
+        } else {
+            Span { lo: span.hi - BytePos(self.delim.len() as u32), ..span }
         };
         TokenTree::Token(close_span, self.close_token())
     }
@@ -134,11 +136,14 @@ pub fn parse(input: tokenstream::TokenStream, expect_matchers: bool, sess: &Pars
             TokenTree::Token(start_sp, token::SubstNt(ident)) if expect_matchers => {
                 let span = match trees.next() {
                     Some(tokenstream::TokenTree::Token(span, token::Colon)) => match trees.next() {
-                        Some(tokenstream::TokenTree::Token(end_sp, token::Ident(kind))) => {
-                            let span = Span { lo: start_sp.lo, ..end_sp };
-                            result.push(TokenTree::MetaVarDecl(span, ident, kind));
-                            continue
-                        }
+                        Some(tokenstream::TokenTree::Token(end_sp, ref tok)) => match tok.ident() {
+                            Some(kind) => {
+                                let span = Span { lo: start_sp.lo, ..end_sp };
+                                result.push(TokenTree::MetaVarDecl(span, ident, kind));
+                                continue
+                            }
+                            _ => end_sp,
+                        },
                         tree @ _ => tree.as_ref().map(tokenstream::TokenTree::span).unwrap_or(span),
                     },
                     tree @ _ => tree.as_ref().map(tokenstream::TokenTree::span).unwrap_or(start_sp),

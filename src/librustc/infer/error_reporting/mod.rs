@@ -426,30 +426,26 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     {
         debug!("note_issue_32330: terr={:?}", terr);
         match *terr {
-            TypeError::RegionsInsufficientlyPolymorphic(_, &Region::ReVar(vid)) |
-            TypeError::RegionsOverlyPolymorphic(_, &Region::ReVar(vid)) => {
-                match self.region_vars.var_origin(vid) {
-                    RegionVariableOrigin::EarlyBoundRegion(_, _, Some(Issue32330 {
-                        fn_def_id,
-                        region_name
-                    })) => {
-                        diag.note(
-                            &format!("lifetime parameter `{0}` declared on fn `{1}` \
-                                      appears only in the return type, \
-                                      but here is required to be higher-ranked, \
-                                      which means that `{0}` must appear in both \
-                                      argument and return types",
-                                     region_name,
-                                     self.tcx.item_path_str(fn_def_id)));
-                        diag.note(
-                            &format!("this error is the result of a recent bug fix; \
-                                      for more information, see issue #33685 \
-                                      <https://github.com/rust-lang/rust/issues/33685>"));
-                    }
-                    _ => { }
-                }
+            TypeError::RegionsInsufficientlyPolymorphic(_, _, Some(box Issue32330 {
+                fn_def_id, region_name
+            })) |
+            TypeError::RegionsOverlyPolymorphic(_, _, Some(box Issue32330 {
+                fn_def_id, region_name
+            })) => {
+                diag.note(
+                    &format!("lifetime parameter `{0}` declared on fn `{1}` \
+                              appears only in the return type, \
+                              but here is required to be higher-ranked, \
+                              which means that `{0}` must appear in both \
+                              argument and return types",
+                             region_name,
+                             self.tcx.item_path_str(fn_def_id)));
+                diag.note(
+                    &format!("this error is the result of a recent bug fix; \
+                              for more information, see issue #33685 \
+                              <https://github.com/rust-lang/rust/issues/33685>"));
             }
-            _ => { }
+            _ => {}
         }
     }
 

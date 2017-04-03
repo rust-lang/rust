@@ -15,11 +15,29 @@ use sys_common::net as net_imp;
 use sys_common::{AsInner, FromInner, IntoInner};
 use time::Duration;
 
-/// A User Datagram Protocol socket.
+/// A UDP socket.
 ///
-/// This is an implementation of a bound UDP socket. This supports both IPv4 and
-/// IPv6 addresses, and there is no corresponding notion of a server because UDP
-/// is a datagram protocol.
+/// After creating a `UdpSocket` by [`bind`]ing it to a socket address, data can be
+/// [sent to] and [received from] any other socket address.
+///
+/// Although UDP is a connectionless protocol, this implementation provides an interface
+/// to set an address where data should be sent and received from. After setting a remote
+/// address with [`connect`], data can be sent to and received from that address with
+/// [`send`] and [`recv`].
+///
+/// As stated in the User Datagram Protocol's specification in [IETF RFC 768], UDP is
+/// an unordered, unreliable protocol; refer to [`TcpListener`] and [`TcpStream`] for TCP
+/// primitives.
+///
+/// [`bind`]: #method.bind
+/// [`connect`]: #method.connect
+/// [IETF RFC 768]: https://tools.ietf.org/html/rfc768
+/// [`recv`]: #method.recv
+/// [received from]: #method.recv_from
+/// [`send`]: #method.send
+/// [sent to]: #method.send_to
+/// [`TcpListener`]: ../../std/net/struct.TcpListener.html
+/// [`TcpStream`]: ../../std/net/struct.TcpStream.html
 ///
 /// # Examples
 ///
@@ -582,8 +600,10 @@ impl UdpSocket {
     /// Receives data on the socket from the remote address to which it is
     /// connected.
     ///
-    /// The `connect` method will connect this socket to a remote address. This
+    /// The [`connect`] method will connect this socket to a remote address. This
     /// method will fail if the socket is not connected.
+    ///
+    /// [`connect`]: #method.connect
     ///
     /// # Examples
     ///

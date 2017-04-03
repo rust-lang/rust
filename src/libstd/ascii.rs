@@ -17,7 +17,7 @@ use mem;
 use ops::Range;
 use iter::FusedIterator;
 
-/// Extension methods for ASCII-subset only operations on string slices.
+/// Extension methods for ASCII-subset only operations.
 ///
 /// Be aware that operations on seemingly non-ASCII characters can sometimes
 /// have unexpected results. Consider this example:
@@ -54,19 +54,21 @@ pub trait AsciiExt {
     ///
     /// let ascii = 'a';
     /// let utf8 = '❤';
+    /// let int_ascii = 97;
     ///
     /// assert!(ascii.is_ascii());
     /// assert!(!utf8.is_ascii());
+    /// assert!(int_ascii.is_ascii());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn is_ascii(&self) -> bool;
 
-    /// Makes a copy of the string in ASCII upper case.
+    /// Makes a copy of the value in its ASCII upper case equivalent.
     ///
     /// ASCII letters 'a' to 'z' are mapped to 'A' to 'Z',
     /// but non-ASCII letters are unchanged.
     ///
-    /// To uppercase the string in-place, use [`make_ascii_uppercase`].
+    /// To uppercase the value in-place, use [`make_ascii_uppercase`].
     ///
     /// To uppercase ASCII characters in addition to non-ASCII characters, use
     /// [`str::to_uppercase`].
@@ -78,9 +80,11 @@ pub trait AsciiExt {
     ///
     /// let ascii = 'a';
     /// let utf8 = '❤';
+    /// let int_ascii = 97;
     ///
     /// assert_eq!('A', ascii.to_ascii_uppercase());
     /// assert_eq!('❤', utf8.to_ascii_uppercase());
+    /// assert_eq!(65, int_ascii.to_ascii_uppercase());
     /// ```
     ///
     /// [`make_ascii_uppercase`]: #tymethod.make_ascii_uppercase
@@ -88,12 +92,12 @@ pub trait AsciiExt {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn to_ascii_uppercase(&self) -> Self::Owned;
 
-    /// Makes a copy of the string in ASCII lower case.
+    /// Makes a copy of the value in its ASCII lower case equivalent.
     ///
     /// ASCII letters 'A' to 'Z' are mapped to 'a' to 'z',
     /// but non-ASCII letters are unchanged.
     ///
-    /// To lowercase the string in-place, use [`make_ascii_lowercase`].
+    /// To lowercase the value in-place, use [`make_ascii_lowercase`].
     ///
     /// To lowercase ASCII characters in addition to non-ASCII characters, use
     /// [`str::to_lowercase`].
@@ -105,9 +109,11 @@ pub trait AsciiExt {
     ///
     /// let ascii = 'A';
     /// let utf8 = '❤';
+    /// let int_ascii = 65;
     ///
     /// assert_eq!('a', ascii.to_ascii_lowercase());
     /// assert_eq!('❤', utf8.to_ascii_lowercase());
+    /// assert_eq!(97, int_ascii.to_ascii_lowercase());
     /// ```
     ///
     /// [`make_ascii_lowercase`]: #tymethod.make_ascii_lowercase
@@ -115,10 +121,10 @@ pub trait AsciiExt {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn to_ascii_lowercase(&self) -> Self::Owned;
 
-    /// Checks that two strings are an ASCII case-insensitive match.
+    /// Checks that two values are an ASCII case-insensitive match.
     ///
     /// Same as `to_ascii_lowercase(a) == to_ascii_lowercase(b)`,
-    /// but without allocating and copying temporary strings.
+    /// but without allocating and copying temporaries.
     ///
     /// # Examples
     ///
@@ -142,7 +148,7 @@ pub trait AsciiExt {
     /// ASCII letters 'a' to 'z' are mapped to 'A' to 'Z',
     /// but non-ASCII letters are unchanged.
     ///
-    /// To return a new uppercased string without modifying the existing one, use
+    /// To return a new uppercased value without modifying the existing one, use
     /// [`to_ascii_uppercase`].
     ///
     /// # Examples
@@ -166,7 +172,7 @@ pub trait AsciiExt {
     /// ASCII letters 'A' to 'Z' are mapped to 'a' to 'z',
     /// but non-ASCII letters are unchanged.
     ///
-    /// To return a new lowercased string without modifying the existing one, use
+    /// To return a new lowercased value without modifying the existing one, use
     /// [`to_ascii_lowercase`].
     ///
     /// # Examples

@@ -188,14 +188,6 @@ fn check_aliasability<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
             // user knows what they're doing in these cases.
             Ok(())
         }
-        (mc::Aliasability::ImmutableUnique(_), ty::MutBorrow) => {
-            bccx.report_aliasability_violation(
-                        borrow_span,
-                        loan_cause,
-                        mc::AliasableReason::UnaliasableImmutable,
-                        cmt);
-            Err(())
-        }
         (mc::Aliasability::FreelyAliasable(alias_cause), ty::UniqueImmBorrow) |
         (mc::Aliasability::FreelyAliasable(alias_cause), ty::MutBorrow) => {
             bccx.report_aliasability_violation(
@@ -510,4 +502,3 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
         self.move_error_collector.report_potential_errors(self.bccx);
     }
 }
-

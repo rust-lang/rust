@@ -57,9 +57,10 @@ pub fn run(lib_path: &str,
 
     let mut cmd = Command::new(prog);
     cmd.args(args)
-        .stdin(Stdio::piped())
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped());
+        .stderr(Stdio::piped())
+        .stdin(Stdio::piped());
+
     add_target_env(&mut cmd, lib_path, aux_path);
     for (key, val) in env {
         cmd.env(&key, &val);
