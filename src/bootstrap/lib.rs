@@ -234,7 +234,7 @@ impl Build {
         };
         let rust_info = channel::GitInfo::new(&src);
         let cargo_info = channel::GitInfo::new(&src.join("cargo"));
-        let src_is_git = src.join(".git").is_dir();
+        let src_is_git = src.join(".git").exists();
 
         Build {
             flags: flags,
