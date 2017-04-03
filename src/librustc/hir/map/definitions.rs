@@ -21,7 +21,7 @@ use rustc_data_structures::indexed_vec::IndexVec;
 use rustc_data_structures::stable_hasher::StableHasher;
 use serialize::{Encodable, Decodable, Encoder, Decoder};
 use std::fmt::Write;
-use std::hash::{Hash, Hasher};
+use std::hash::Hash;
 use syntax::ast;
 use syntax::symbol::{Symbol, InternedString};
 use ty::TyCtxt;
@@ -34,6 +34,7 @@ use util::nodemap::NodeMap;
 pub struct DefPathTable {
     index_to_key: [Vec<DefKey>; 2],
     key_to_index: FxHashMap<DefKey, DefIndex>,
+    def_path_hashes: [Vec<u64>; 2],
 }
 
 // Unfortunately we have to provide a manual impl of Clone because of the
@@ -44,6 +45,8 @@ impl Clone for DefPathTable {
             index_to_key: [self.index_to_key[0].clone(),
                            self.index_to_key[1].clone()],
             key_to_index: self.key_to_index.clone(),
+            def_path_hashes: [self.def_path_hashes[0].clone(),
+                              self.def_path_hashes[1].clone()],
         }
     }
 }
@@ -52,6 +55,7 @@ impl DefPathTable {
 
     fn allocate(&mut self,
                 key: DefKey,
+                def_path_hash: u64,
                 address_space: DefIndexAddressSpace)
                 -> DefIndex {
         let index = {
@@ -62,6 +66,9 @@ impl DefPathTable {
             index
         };
         self.key_to_index.insert(key, index);
+        self.def_path_hashes[address_space.index()].push(def_path_hash);
+        debug_assert!(self.def_path_hashes[address_space.index()].len() ==
+                      self.index_to_key[address_space.index()].len());
         index
     }
 
@@ -69,6 +76,12 @@ impl DefPathTable {
     pub fn def_key(&self, index: DefIndex) -> DefKey {
         self.index_to_key[index.address_space().index()]
                          [index.as_array_index()].clone()
+    }
+
+    #[inline(always)]
+    pub fn def_path_hash(&self, index: DefIndex) -> u64 {
+        self.def_path_hashes[index.address_space().index()]
+                            [index.as_array_index()]
     }
 
     #[inline(always)]
@@ -116,17 +129,28 @@ impl DefPathTable {
 
 impl Encodable for DefPathTable {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
+        // Index to key
         self.index_to_key[DefIndexAddressSpace::Low.index()].encode(s)?;
-        self.index_to_key[DefIndexAddressSpace::High.index()].encode(s)
+        self.index_to_key[DefIndexAddressSpace::High.index()].encode(s)?;
+
+        // DefPath hashes
+        self.def_path_hashes[DefIndexAddressSpace::Low.index()].encode(s)?;
+        self.def_path_hashes[DefIndexAddressSpace::High.index()].encode(s)?;
+
+        Ok(())
     }
 }
 
 impl Decodable for DefPathTable {
     fn decode<D: Decoder>(d: &mut D) -> Result<DefPathTable, D::Error> {
         let index_to_key_lo: Vec<DefKey> = Decodable::decode(d)?;
-        let index_to_key_high: Vec<DefKey> = Decodable::decode(d)?;
+        let index_to_key_hi: Vec<DefKey> = Decodable::decode(d)?;
 
-        let index_to_key = [index_to_key_lo, index_to_key_high];
+        let def_path_hashes_lo: Vec<u64> = Decodable::decode(d)?;
+        let def_path_hashes_hi: Vec<u64> = Decodable::decode(d)?;
+
+        let index_to_key = [index_to_key_lo, index_to_key_hi];
+        let def_path_hashes = [def_path_hashes_lo, def_path_hashes_hi];
 
         let mut key_to_index = FxHashMap();
 
@@ -141,6 +165,7 @@ impl Decodable for DefPathTable {
         Ok(DefPathTable {
             index_to_key: index_to_key,
             key_to_index: key_to_index,
+            def_path_hashes: def_path_hashes,
         })
     }
 }
@@ -182,6 +207,29 @@ pub struct DefKey {
 
     /// Identifier of this node.
     pub disambiguated_data: DisambiguatedDefPathData,
+}
+
+impl DefKey {
+    fn compute_stable_hash(&self, parent_hash: u64) -> u64 {
+        let mut hasher = StableHasher::new();
+
+        // We hash a 0u8 here to disambiguate between regular DefPath hashes,
+        // and the special "root_parent" below.
+        0u8.hash(&mut hasher);
+        parent_hash.hash(&mut hasher);
+        self.disambiguated_data.hash(&mut hasher);
+        hasher.finish()
+    }
+
+    fn root_parent_stable_hash(crate_name: &str, crate_disambiguator: &str) -> u64 {
+        let mut hasher = StableHasher::new();
+        // Disambiguate this from a regular DefPath hash,
+        // see compute_stable_hash() above.
+        1u8.hash(&mut hasher);
+        crate_name.hash(&mut hasher);
+        crate_disambiguator.hash(&mut hasher);
+        hasher.finish()
+    }
 }
 
 /// Pair of `DefPathData` and an integer disambiguator. The integer is
@@ -271,19 +319,6 @@ impl DefPath {
 
         s
     }
-
-    pub fn deterministic_hash(&self, tcx: TyCtxt) -> u64 {
-        debug!("deterministic_hash({:?})", self);
-        let mut state = StableHasher::new();
-        self.deterministic_hash_to(tcx, &mut state);
-        state.finish()
-    }
-
-    pub fn deterministic_hash_to<H: Hasher>(&self, tcx: TyCtxt, state: &mut H) {
-        tcx.original_crate_name(self.krate).as_str().hash(state);
-        tcx.crate_disambiguator(self.krate).as_str().hash(state);
-        self.data.hash(state);
-    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
@@ -338,6 +373,7 @@ impl Definitions {
             table: DefPathTable {
                 index_to_key: [vec![], vec![]],
                 key_to_index: FxHashMap(),
+                def_path_hashes: [vec![], vec![]],
             },
             node_to_def_index: NodeMap(),
             def_index_to_node: [vec![], vec![]],
@@ -357,6 +393,11 @@ impl Definitions {
 
     pub fn def_key(&self, index: DefIndex) -> DefKey {
         self.table.def_key(index)
+    }
+
+    #[inline(always)]
+    pub fn def_path_hash(&self, index: DefIndex) -> u64 {
+        self.table.def_path_hash(index)
     }
 
     pub fn def_index_for_def_key(&self, key: DefKey) -> Option<DefIndex> {
@@ -399,11 +440,37 @@ impl Definitions {
     }
 
     /// Add a definition with a parent definition.
+    pub fn create_root_def(&mut self,
+                           crate_name: &str,
+                           crate_disambiguator: &str)
+                           -> DefIndex {
+        let key = DefKey {
+            parent: None,
+            disambiguated_data: DisambiguatedDefPathData {
+                data: DefPathData::CrateRoot,
+                disambiguator: 0
+            }
+        };
+
+        let parent_hash = DefKey::root_parent_stable_hash(crate_name,
+                                                          crate_disambiguator);
+        let def_path_hash = key.compute_stable_hash(parent_hash);
+
+        // Create the definition.
+        let address_space = super::ITEM_LIKE_SPACE;
+        let index = self.table.allocate(key, def_path_hash, address_space);
+        assert!(self.def_index_to_node[address_space.index()].is_empty());
+        self.def_index_to_node[address_space.index()].push(ast::CRATE_NODE_ID);
+        self.node_to_def_index.insert(ast::CRATE_NODE_ID, index);
+
+        index
+    }
+
+    /// Add a definition with a parent definition.
     pub fn create_def_with_parent(&mut self,
-                                  parent: Option<DefIndex>,
+                                  parent: DefIndex,
                                   node_id: ast::NodeId,
                                   data: DefPathData,
-                                  // is_owner: bool)
                                   address_space: DefIndexAddressSpace)
                                   -> DefIndex {
         debug!("create_def_with_parent(parent={:?}, node_id={:?}, data={:?})",
@@ -415,12 +482,13 @@ impl Definitions {
                 data,
                 self.table.def_key(self.node_to_def_index[&node_id]));
 
-        assert_eq!(parent.is_some(), data != DefPathData::CrateRoot);
+        // The root node must be created with create_root_def()
+        assert!(data != DefPathData::CrateRoot);
 
         // Find a unique DefKey. This basically means incrementing the disambiguator
         // until we get no match.
         let mut key = DefKey {
-            parent: parent,
+            parent: Some(parent),
             disambiguated_data: DisambiguatedDefPathData {
                 data: data,
                 disambiguator: 0
@@ -431,10 +499,13 @@ impl Definitions {
             key.disambiguated_data.disambiguator += 1;
         }
 
+        let parent_hash = self.table.def_path_hash(parent);
+        let def_path_hash = key.compute_stable_hash(parent_hash);
+
         debug!("create_def_with_parent: after disambiguation, key = {:?}", key);
 
         // Create the definition.
-        let index = self.table.allocate(key, address_space);
+        let index = self.table.allocate(key, def_path_hash, address_space);
         assert_eq!(index.as_array_index(),
                    self.def_index_to_node[address_space.index()].len());
         self.def_index_to_node[address_space.index()].push(node_id);

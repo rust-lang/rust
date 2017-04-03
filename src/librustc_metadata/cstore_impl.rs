@@ -73,7 +73,7 @@ provide! { <'tcx> tcx, def_id, cdata
     predicates => { cdata.get_predicates(def_id.index, tcx) }
     super_predicates => { cdata.get_super_predicates(def_id.index, tcx) }
     trait_def => {
-        tcx.alloc_trait_def(cdata.get_trait_def(def_id.index, tcx))
+        tcx.alloc_trait_def(cdata.get_trait_def(def_id.index))
     }
     adt_def => { cdata.get_adt_def(def_id.index, tcx) }
     adt_destructor => {
@@ -368,6 +368,10 @@ impl CrateStore for cstore::CStore {
         //
         // self.dep_graph.read(DepNode::MetaData(def));
         self.get_crate_data(def.krate).def_path(def.index)
+    }
+
+    fn def_path_hash(&self, def: DefId) -> u64 {
+        self.get_crate_data(def.krate).def_path_hash(def.index)
     }
 
     fn struct_field_names(&self, def: DefId) -> Vec<ast::Name>
