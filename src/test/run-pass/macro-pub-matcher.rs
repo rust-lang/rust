@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![allow(dead_code, unused_imports)]
+#![feature(macro_vis_matcher)]
 
 /**
 Ensure that `:vis` matches can be captured in existing positions, and passed

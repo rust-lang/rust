@@ -352,6 +352,9 @@ declare_features! (
 
     // Allows overlapping impls of marker traits
     (active, overlapping_marker_traits, "1.18.0", Some(29864)),
+    
+    // Allows use of the :vis macro fragment specifier
+    (active, macro_vis_matcher, "1.18.0", Some(41022)),
 );
 
 declare_features! (
@@ -1011,6 +1014,9 @@ pub const EXPLAIN_DEPR_CUSTOM_DERIVE: &'static str =
 
 pub const EXPLAIN_DERIVE_UNDERSCORE: &'static str =
     "attributes of the form `#[derive_*]` are reserved for the compiler";
+
+pub const EXPLAIN_VIS_MATCHER: &'static str =
+    ":vis fragment specifier is experimental and subject to change";
 
 pub const EXPLAIN_PLACEMENT_IN: &'static str =
     "placement-in expression syntax is experimental and subject to change.";

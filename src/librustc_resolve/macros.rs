@@ -671,7 +671,9 @@ impl<'a> Resolver<'a> {
         }
 
         let def_id = self.definitions.local_def_id(item.id);
-        let ext = Rc::new(macro_rules::compile(&self.session.parse_sess, item));
+        let ext = Rc::new(macro_rules::compile(&self.session.parse_sess,
+                                               &self.session.features,
+                                               item));
         self.macro_map.insert(def_id, ext);
         *legacy_scope = LegacyScope::Binding(self.arenas.alloc_legacy_binding(LegacyBinding {
             parent: Cell::new(*legacy_scope), name: ident.name, def_id: def_id, span: item.span,
