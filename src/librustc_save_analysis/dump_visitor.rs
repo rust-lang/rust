@@ -1149,8 +1149,32 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                                     &trait_item.attrs,
                                     trait_item.span);
             }
-            ast::TraitItemKind::Const(_, None) |
-            ast::TraitItemKind::Type(..) |
+            ast::TraitItemKind::Type(ref _bounds, ref default_ty) => {
+                // FIXME do something with _bounds (for type refs)
+                let name = trait_item.ident.name.to_string();
+                let qualname = format!("::{}", self.tcx.node_path_str(trait_item.id));
+                let sub_span = self.span.sub_span_after_keyword(trait_item.span, keywords::Type);
+
+                if !self.span.filter_generated(sub_span, trait_item.span) {
+                    self.dumper.typedef(TypeDefData {
+                        span: sub_span.expect("No span found for assoc type"),
+                        name: name,
+                        id: trait_item.id,
+                        qualname: qualname,
+                        value: self.span.snippet(trait_item.span),
+                        visibility: Visibility::Public,
+                        parent: Some(trait_id),
+                        docs: docs_for_attrs(&trait_item.attrs),
+                        sig: None,
+                        attributes: trait_item.attrs.clone(),
+                    }.lower(self.tcx));
+                }
+
+                if let &Some(ref default_ty) = default_ty {
+                    self.visit_ty(default_ty)
+                }
+            }
+            ast::TraitItemKind::Const(ref ty, None) => self.visit_ty(ty),
             ast::TraitItemKind::Macro(_) => {}
         }
     }
@@ -1177,7 +1201,7 @@ impl<'l, 'tcx: 'l, 'll, D: Dump + 'll> DumpVisitor<'l, 'tcx, 'll, D> {
                                     &impl_item.attrs,
                                     impl_item.span);
             }
-            ast::ImplItemKind::Type(_) |
+            ast::ImplItemKind::Type(ref ty) => self.visit_ty(ty),
             ast::ImplItemKind::Macro(_) => {}
         }
     }
