@@ -71,7 +71,7 @@ fn format_expr(expr: &ast::Expr,
         }
         ast::ExprKind::Call(ref callee, ref args) => {
             let inner_span = mk_sp(callee.span.hi, expr.span.hi);
-            rewrite_call(context, &**callee, args, inner_span, shape)
+            rewrite_call(context, &**callee, args, inner_span, shape, false)
         }
         ast::ExprKind::Paren(ref subexpr) => rewrite_paren(context, subexpr, shape),
         ast::ExprKind::Binary(ref op, ref lhs, ref rhs) => {
@@ -1597,12 +1597,20 @@ pub fn rewrite_call<R>(context: &RewriteContext,
                        callee: &R,
                        args: &[ptr::P<ast::Expr>],
                        span: Span,
-                       shape: Shape)
+                       shape: Shape,
+                       force_no_trailing_comma: bool)
                        -> Option<String>
     where R: Rewrite
 {
-    let closure =
-        |callee_max_width| rewrite_call_inner(context, callee, callee_max_width, args, span, shape);
+    let closure = |callee_max_width| {
+        rewrite_call_inner(context,
+                           callee,
+                           callee_max_width,
+                           args,
+                           span,
+                           shape,
+                           force_no_trailing_comma)
+    };
 
     // 2 is for parens
     let max_width = try_opt!(shape.width.checked_sub(2));
@@ -1614,7 +1622,8 @@ fn rewrite_call_inner<R>(context: &RewriteContext,
                          max_callee_width: usize,
                          args: &[ptr::P<ast::Expr>],
                          span: Span,
-                         shape: Shape)
+                         shape: Shape,
+                         force_no_trailing_comma: bool)
                          -> Result<String, Ordering>
     where R: Rewrite
 {
@@ -1721,9 +1730,13 @@ fn rewrite_call_inner<R>(context: &RewriteContext,
     let fmt = ListFormatting {
         tactic: tactic,
         separator: ",",
-        trailing_separator: match context.config.fn_call_style {
-            IndentStyle::Visual => SeparatorTactic::Never,
-            IndentStyle::Block => context.config.trailing_comma,
+        trailing_separator: if force_no_trailing_comma {
+            SeparatorTactic::Never
+        } else {
+            match context.config.fn_call_style {
+                IndentStyle::Visual => SeparatorTactic::Never,
+                IndentStyle::Block => context.config.trailing_comma,
+            }
         },
         shape: nested_shape,
         ends_with_newline: false,
