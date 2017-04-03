@@ -2273,15 +2273,17 @@ impl<'a> Resolver<'a> {
                 show_candidates(&mut err, &candidates, def.is_some());
             } else if is_expected(Def::Enum(DefId::local(CRATE_DEF_INDEX))) {
                 let enum_candidates = this.lookup_import_candidates(name, ns, is_enum_variant);
-                for suggestion in enum_candidates {
-                    let (variant_path, enum_path) = import_candidate_to_paths(&suggestion);
+                let mut enum_candidates = enum_candidates.iter()
+                    .map(|suggestion| import_candidate_to_paths(&suggestion)).collect::<Vec<_>>();
+                enum_candidates.sort();
+                for (sp, variant_path, enum_path) in enum_candidates {
                     let msg = format!("there is an enum variant `{}`, did you mean to use `{}`?",
                                       variant_path,
                                       enum_path);
-                    if suggestion.path.span == DUMMY_SP {
+                    if sp == DUMMY_SP {
                         err.help(&msg);
                     } else {
-                        err.span_help(suggestion.path.span, &msg);
+                        err.span_help(sp, &msg);
                     }
                 }
             }
@@ -3437,7 +3439,7 @@ fn path_names_to_string(path: &Path) -> String {
 }
 
 /// Get the path for an enum and the variant from an `ImportSuggestion` for an enum variant.
-fn import_candidate_to_paths(suggestion: &ImportSuggestion) -> (String, String) {
+fn import_candidate_to_paths(suggestion: &ImportSuggestion) -> (Span, String, String) {
     let variant_path = &suggestion.path;
     let variant_path_string = path_names_to_string(variant_path);
 
@@ -3448,7 +3450,7 @@ fn import_candidate_to_paths(suggestion: &ImportSuggestion) -> (String, String) 
     };
     let enum_path_string = path_names_to_string(&enum_path);
 
-    (variant_path_string, enum_path_string)
+    (suggestion.path.span, variant_path_string, enum_path_string)
 }
 
 
