@@ -258,22 +258,11 @@ pub fn encode_metadata_hashes(tcx: TyCtxt,
         index_map: FxHashMap()
     };
 
-    let mut def_id_hashes = FxHashMap();
-
     for (index, target) in preds.reduced_graph.all_nodes().iter().enumerate() {
         let index = NodeIndex(index);
         let def_id = match *target.data {
             DepNode::MetaData(def_id) if def_id.is_local() => def_id,
             _ => continue,
-        };
-
-        let mut def_id_hash = |def_id: DefId| -> u64 {
-            *def_id_hashes.entry(def_id)
-                .or_insert_with(|| {
-                    let index = builder.add(def_id);
-                    let path = builder.lookup_def_path(index);
-                    path.deterministic_hash(tcx)
-                })
         };
 
         // To create the hash for each item `X`, we don't hash the raw
@@ -295,7 +284,7 @@ pub fn encode_metadata_hashes(tcx: TyCtxt,
                  .map(|index| preds.reduced_graph.node_data(index))
                  .filter(|dep_node| HashContext::is_hashable(dep_node))
                  .map(|dep_node| {
-                     let hash_dep_node = dep_node.map_def(|&def_id| Some(def_id_hash(def_id)))
+                     let hash_dep_node = dep_node.map_def(|&def_id| Some(tcx.def_path_hash(def_id)))
                                                  .unwrap();
                      let hash = preds.hashes[dep_node];
                      (hash_dep_node, hash)

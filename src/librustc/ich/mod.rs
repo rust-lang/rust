@@ -11,12 +11,10 @@
 //! ICH - Incremental Compilation Hash
 
 pub use self::fingerprint::Fingerprint;
-pub use self::def_path_hash::DefPathHashes;
 pub use self::caching_codemap_view::CachingCodemapView;
 pub use self::hcx::{StableHashingContext, NodeIdHashingMode};
 
 mod fingerprint;
-mod def_path_hash;
 mod caching_codemap_view;
 mod hcx;
 
