@@ -29,7 +29,7 @@ RUN curl -OL https://github.com/Yelp/dumb-init/releases/download/v1.2.0/dumb-ini
 ENTRYPOINT ["/usr/bin/dumb-init", "--"]
 
 RUN curl -o /usr/local/bin/sccache \
-      https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-02-25-sccache-x86_64-unknown-linux-musl && \
+      https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-03-24-sccache-x86_64-unknown-linux-musl && \
       chmod +x /usr/local/bin/sccache
 
 ENV \
