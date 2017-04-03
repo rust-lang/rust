@@ -315,8 +315,7 @@ impl<T> SliceExt for [T] {
         SplitN {
             inner: GenericSplitN {
                 iter: self.split(pred),
-                count: n,
-                invert: false
+                count: n
             }
         }
     }
@@ -327,9 +326,8 @@ impl<T> SliceExt for [T] {
     {
         RSplitN {
             inner: GenericSplitN {
-                iter: self.split(pred),
-                count: n,
-                invert: true
+                iter: self.rsplit(pred),
+                count: n
             }
         }
     }
@@ -504,8 +502,7 @@ impl<T> SliceExt for [T] {
         SplitNMut {
             inner: GenericSplitN {
                 iter: self.split_mut(pred),
-                count: n,
-                invert: false
+                count: n
             }
         }
     }
@@ -516,9 +513,8 @@ impl<T> SliceExt for [T] {
     {
         RSplitNMut {
             inner: GenericSplitN {
-                iter: self.split_mut(pred),
-                count: n,
-                invert: true
+                iter: self.rsplit_mut(pred),
+                count: n
             }
         }
     }
@@ -1881,7 +1877,6 @@ impl<'a, T, P> FusedIterator for RSplitMut<'a, T, P> where P: FnMut(&T) -> bool 
 struct GenericSplitN<I> {
     iter: I,
     count: usize,
-    invert: bool
 }
 
 impl<T, I: SplitIter<Item=T>> Iterator for GenericSplitN<I> {
@@ -1892,10 +1887,7 @@ impl<T, I: SplitIter<Item=T>> Iterator for GenericSplitN<I> {
         match self.count {
             0 => None,
             1 => { self.count -= 1; self.iter.finish() }
-            _ => {
-                self.count -= 1;
-                if self.invert {self.iter.next_back()} else {self.iter.next()}
-            }
+            _ => { self.count -= 1; self.iter.next() }
         }
     }
 
@@ -1937,7 +1929,7 @@ impl<'a, T: 'a + fmt::Debug, P> fmt::Debug for SplitN<'a, T, P> where P: FnMut(&
 /// [slices]: ../../std/primitive.slice.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RSplitN<'a, T: 'a, P> where P: FnMut(&T) -> bool {
-    inner: GenericSplitN<Split<'a, T, P>>
+    inner: GenericSplitN<RSplit<'a, T, P>>
 }
 
 #[stable(feature = "core_impl_debug", since = "1.9.0")]
@@ -1980,7 +1972,7 @@ impl<'a, T: 'a + fmt::Debug, P> fmt::Debug for SplitNMut<'a, T, P> where P: FnMu
 /// [slices]: ../../std/primitive.slice.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RSplitNMut<'a, T: 'a, P> where P: FnMut(&T) -> bool {
-    inner: GenericSplitN<SplitMut<'a, T, P>>
+    inner: GenericSplitN<RSplitMut<'a, T, P>>
 }
 
 #[stable(feature = "core_impl_debug", since = "1.9.0")]
