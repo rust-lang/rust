@@ -697,8 +697,8 @@ impl<T> LinkedList<T> {
 
     /// Returns a place for insertion at the front of the list.
     ///
-    /// Using this method with placement syntax is equivalent to [`push_front`]
-    /// (#method.push_front), but may be more efficient.
+    /// Using this method with placement syntax is equivalent to
+    /// [`push_front`](#method.push_front), but may be more efficient.
     ///
     /// # Examples
     ///
