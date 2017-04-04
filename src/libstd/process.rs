@@ -233,9 +233,9 @@ impl fmt::Debug for ChildStdout {
     }
 }
 
-/// A handle to a child process's stderr. It can be used to
-/// read any errors that the child process has output while
-/// running.
+/// A handle to a child process's stderr.
+///
+/// This struct is used in the [`stderr`] field on [`Child`].
 ///
 /// [`Child`]: struct.Child.html
 /// [`stderr`]: struct.Child.html#structfield.stderr
