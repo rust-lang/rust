@@ -152,6 +152,7 @@ fn maybe_append(mut lhs: Vec<Attribute>, rhs: Option<Vec<Attribute>>)
 enum PrevTokenKind {
     DocComment,
     Comma,
+    Plus,
     Interpolated,
     Eof,
     Other,
@@ -1061,6 +1062,7 @@ impl<'a> Parser<'a> {
         self.prev_token_kind = match self.token {
             token::DocComment(..) => PrevTokenKind::DocComment,
             token::Comma => PrevTokenKind::Comma,
+            token::BinOp(token::Plus) => PrevTokenKind::Plus,
             token::Interpolated(..) => PrevTokenKind::Interpolated,
             token::Eof => PrevTokenKind::Eof,
             _ => PrevTokenKind::Other,
@@ -1354,20 +1356,29 @@ impl<'a> Parser<'a> {
                     break;
                 }
             }
+            let trailing_plus = self.prev_token_kind == PrevTokenKind::Plus;
             self.expect(&token::CloseDelim(token::Paren))?;
 
             if ts.len() == 1 && !last_comma {
                 let ty = ts.into_iter().nth(0).unwrap().unwrap();
+                let maybe_bounds = allow_plus && self.token == token::BinOp(token::Plus);
                 match ty.node {
-                    // Accept `(Trait1) + Trait2 + 'a` for backward compatibility (#39318).
-                    TyKind::Path(None, ref path)
-                            if allow_plus && self.token == token::BinOp(token::Plus) => {
+                    // `(TY_BOUND_NOPAREN) + BOUND + ...`.
+                    TyKind::Path(None, ref path) if maybe_bounds => {
                         self.bump(); // `+`
                         let pt = PolyTraitRef::new(Vec::new(), path.clone(), lo.to(self.prev_span));
                         let mut bounds = vec![TraitTyParamBound(pt, TraitBoundModifier::None)];
                         bounds.append(&mut self.parse_ty_param_bounds()?);
                         TyKind::TraitObject(bounds)
                     }
+                    TyKind::TraitObject(ref bounds)
+                            if maybe_bounds && bounds.len() == 1 && !trailing_plus => {
+                        self.bump(); // `+`
+                        let mut bounds = bounds.clone();
+                        bounds.append(&mut self.parse_ty_param_bounds()?);
+                        TyKind::TraitObject(bounds)
+                    }
+                    // `(TYPE)`
                     _ => TyKind::Paren(P(ty))
                 }
             } else {
@@ -4070,10 +4081,12 @@ impl<'a> Parser<'a> {
     // Parse bounds of a type parameter `BOUND + BOUND + BOUND`, possibly with trailing `+`.
     // BOUND = TY_BOUND | LT_BOUND
     // LT_BOUND = LIFETIME (e.g. `'a`)
-    // TY_BOUND = [?] [for<LT_PARAM_DEFS>] SIMPLE_PATH (e.g. `?for<'a: 'b> m::Trait<'a>`)
+    // TY_BOUND = TY_BOUND_NOPAREN | (TY_BOUND_NOPAREN)
+    // TY_BOUND_NOPAREN = [?] [for<LT_PARAM_DEFS>] SIMPLE_PATH (e.g. `?for<'a: 'b> m::Trait<'a>`)
     fn parse_ty_param_bounds_common(&mut self, allow_plus: bool) -> PResult<'a, TyParamBounds> {
         let mut bounds = Vec::new();
         loop {
+            let has_parens = self.eat(&token::OpenDelim(token::Paren));
             let question = if self.eat(&token::Question) { Some(self.prev_span) } else { None };
             if self.check_lifetime() {
                 if let Some(question_span) = question {
@@ -4081,6 +4094,11 @@ impl<'a> Parser<'a> {
                                   "`?` may only modify trait bounds, not lifetime bounds");
                 }
                 bounds.push(RegionTyParamBound(self.expect_lifetime()));
+                if has_parens {
+                    self.expect(&token::CloseDelim(token::Paren))?;
+                    self.span_err(self.prev_span,
+                                  "parenthesized lifetime bounds are not supported");
+                }
             } else if self.check_keyword(keywords::For) || self.check_path() {
                 let lo = self.span;
                 let lifetime_defs = self.parse_late_bound_lifetime_defs()?;
@@ -4092,6 +4110,9 @@ impl<'a> Parser<'a> {
                     TraitBoundModifier::None
                 };
                 bounds.push(TraitTyParamBound(poly_trait, modifier));
+                if has_parens {
+                    self.expect(&token::CloseDelim(token::Paren))?;
+                }
             } else {
                 break
             }
