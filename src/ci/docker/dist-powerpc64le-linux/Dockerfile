@@ -63,7 +63,7 @@ COPY shared.sh build-powerpc64le-toolchain.sh /tmp/
 RUN ./build-powerpc64le-toolchain.sh
 
 RUN curl -o /usr/local/bin/sccache \
-      https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-03-24-sccache-x86_64-unknown-linux-musl && \
+      https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-04-04-sccache-x86_64-unknown-linux-musl && \
       chmod +x /usr/local/bin/sccache
 
 ENV \
