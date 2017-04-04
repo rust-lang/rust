@@ -2045,13 +2045,18 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     // Output the trait definition
     write!(w, "<pre class='rust trait'>")?;
     render_attributes(w, it)?;
-    write!(w, "{}{}trait {}{}{}{} ",
+    write!(w, "{}{}trait {}{}{}",
            VisSpace(&it.visibility),
            UnsafetySpace(t.unsafety),
            it.name.as_ref().unwrap(),
            t.generics,
-           bounds,
-           WhereClause { gens: &t.generics, indent: 0, end_newline: true })?;
+           bounds)?;
+
+    if !t.generics.where_predicates.is_empty() {
+        write!(w, "{}", WhereClause { gens: &t.generics, indent: 0, end_newline: true })?;
+    } else {
+        write!(w, " ")?;
+    }
 
     let types = t.items.iter().filter(|m| m.is_associated_type()).collect::<Vec<_>>();
     let consts = t.items.iter().filter(|m| m.is_associated_const()).collect::<Vec<_>>();
