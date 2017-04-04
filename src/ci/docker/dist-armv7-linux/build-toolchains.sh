@@ -35,11 +35,3 @@ ct-ng oldconfig
 hide_output ct-ng build
 cd ..
 rm -rf build
-
-mkdir build
-cd build
-cp ../aarch64-linux-gnu.config .config
-ct-ng oldconfig
-hide_output ct-ng build
-cd ..
-rm -rf build
