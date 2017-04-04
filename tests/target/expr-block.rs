@@ -149,3 +149,38 @@ fn function_calls() {
         span.hi,
     )
 }
+
+fn macros() {
+    baz!(
+        do_not,
+        add,
+        trailing,
+        commas,
+        inside,
+        of,
+        function,
+        like,
+        macros,
+        even,
+        if_they,
+        are,
+        long
+    );
+
+    baz!(one_item_macro_which_is_also_loooooooooooooooooooooooooooooooooooooooooooooooong);
+
+    let _ = match option {
+        None => {
+            baz!(
+                function,
+                like,
+                macro_as,
+                expression,
+                which,
+                is,
+                loooooooooooooooong
+            )
+        }
+        Some(p) => baz!(one_item_macro_as_expression_which_is_also_loooooooooooooooong),
+    };
+}
