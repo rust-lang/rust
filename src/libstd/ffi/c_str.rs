@@ -266,10 +266,14 @@ impl CString {
 
     /// Transfers ownership of the string to a C caller.
     ///
-    /// The pointer must be returned to Rust and reconstituted using
-    /// `from_raw` to be properly deallocated. Specifically, one
+    /// Unless the same memory allocator is used for both Rust and C,
+    /// the acquired pointer must be returned to Rust and reconstituted
+    /// using `from_raw` to be properly deallocated. Specifically, one
     /// should *not* use the standard C `free` function to deallocate
     /// this string.
+    ///
+    /// More details about custom memory allocators can be found in
+    /// [the book](../../unstable-book/allocator.html).
     ///
     /// Failure to call `from_raw` will lead to a memory leak.
     #[stable(feature = "cstr_memory", since = "1.4.0")]
