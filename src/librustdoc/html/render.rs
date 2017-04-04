@@ -1995,13 +1995,13 @@ fn item_function(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         UnstableFeatures::Allow => f.constness,
         _ => hir::Constness::NotConst
     };
-    let indent = format!("{}{}{}{:#}fn {}{:#}",
-                         VisSpace(&it.visibility),
-                         ConstnessSpace(vis_constness),
-                         UnsafetySpace(f.unsafety),
-                         AbiSpace(f.abi),
-                         it.name.as_ref().unwrap(),
-                         f.generics).len();
+    let name_len = format!("{}{}{}{:#}fn {}{:#}",
+                           VisSpace(&it.visibility),
+                           ConstnessSpace(vis_constness),
+                           UnsafetySpace(f.unsafety),
+                           AbiSpace(f.abi),
+                           it.name.as_ref().unwrap(),
+                           f.generics).len();
     write!(w, "<pre class='rust fn'>")?;
     render_attributes(w, it)?;
     write!(w, "{vis}{constness}{unsafety}{abi}fn \
@@ -2013,7 +2013,11 @@ fn item_function(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
            name = it.name.as_ref().unwrap(),
            generics = f.generics,
            where_clause = WhereClause { gens: &f.generics, indent: 0, end_newline: true },
-           decl = Method(&f.decl, indent))?;
+           decl = Method {
+               decl: &f.decl,
+               name_len: name_len,
+               indent: 0,
+           })?;
     document(w, cx, it)
 }
 
@@ -2326,21 +2330,17 @@ fn render_assoc_item(w: &mut fmt::Formatter,
             UnstableFeatures::Allow => constness,
             _ => hir::Constness::NotConst
         };
-        let prefix = format!("{}{}{:#}fn {}{:#}",
-                             ConstnessSpace(vis_constness),
-                             UnsafetySpace(unsafety),
-                             AbiSpace(abi),
-                             name,
-                             *g);
-        let mut indent = prefix.len();
-        let (where_indent, end_newline) = if parent == ItemType::Trait {
-            indent += 4;
+        let mut head_len = format!("{}{}{:#}fn {}{:#}",
+                                   ConstnessSpace(vis_constness),
+                                   UnsafetySpace(unsafety),
+                                   AbiSpace(abi),
+                                   name,
+                                   *g).len();
+        let (indent, end_newline) = if parent == ItemType::Trait {
+            head_len += 4;
             (4, false)
-        } else if parent == ItemType::Impl {
-            (0, true)
         } else {
-            let prefix = prefix + &format!("{:#}", Method(d, indent));
-            (prefix.lines().last().unwrap().len() + 1, true)
+            (0, true)
         };
         write!(w, "{}{}{}fn <a href='{href}' class='fnname'>{name}</a>\
                    {generics}{decl}{where_clause}",
@@ -2350,10 +2350,14 @@ fn render_assoc_item(w: &mut fmt::Formatter,
                href = href,
                name = name,
                generics = *g,
-               decl = Method(d, indent),
+               decl = Method {
+                   decl: d,
+                   name_len: head_len,
+                   indent: indent,
+               },
                where_clause = WhereClause {
                    gens: g,
-                   indent: where_indent,
+                   indent: indent,
                    end_newline: end_newline,
                })
     }
