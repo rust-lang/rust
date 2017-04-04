@@ -215,11 +215,15 @@ impl Utf8Error {
 
 /// Converts a slice of bytes to a string slice.
 ///
-/// A string slice (`&str`) is made of bytes (`u8`), and a byte slice (`&[u8]`)
-/// is made of bytes, so this function converts between the two. Not all byte
-/// slices are valid string slices, however: `&str` requires that it is valid
-/// UTF-8. `from_utf8()` checks to ensure that the bytes are valid UTF-8, and
-/// then does the conversion.
+/// A string slice ([`&str`]) is made of bytes ([`u8`]), and a byte slice
+/// ([`&[u8]`][byteslice]) is made of bytes, so this function converts between
+/// the two. Not all byte slices are valid string slices, however: [`&str`] requires
+/// that it is valid UTF-8. `from_utf8()` checks to ensure that the bytes are valid
+/// UTF-8, and then does the conversion.
+///
+/// [`&str`]: ../../std/primitive.str.html
+/// [`u8`]: ../../std/primitive.u8.html
+/// [byteslice]: ../../std/primitive.slice.html
 ///
 /// If you are sure that the byte slice is valid UTF-8, and you don't want to
 /// incur the overhead of the validity check, there is an unsafe version of
@@ -233,9 +237,12 @@ impl Utf8Error {
 ///
 /// [string]: ../../std/string/struct.String.html#method.from_utf8
 ///
-/// Because you can stack-allocate a `[u8; N]`, and you can take a `&[u8]` of
-/// it, this function is one way to have a stack-allocated string. There is
-/// an example of this in the examples section below.
+/// Because you can stack-allocate a `[u8; N]`, and you can take a
+/// [`&[u8]`][byteslice] of it, this function is one way to have a
+/// stack-allocated string. There is an example of this in the
+/// examples section below.
+///
+/// [byteslice]: ../../std/primitive.slice.html
 ///
 /// # Errors
 ///
