@@ -209,5 +209,4 @@
 - [windows_handle](windows-handle.md)
 - [windows_net](windows-net.md)
 - [windows_stdio](windows-stdio.md)
-- [windows_subsystem](windows-subsystem.md)
 - [zero_one](zero-one.md)
