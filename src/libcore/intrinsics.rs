@@ -61,16 +61,18 @@ extern "rust-intrinsic" {
     /// `std::sync::atomic` types via the `compare_exchange` method by passing
     /// [`Ordering::SeqCst`](../../std/sync/atomic/enum.Ordering.html)
     /// as both the `success` and `failure` parameters. For example,
-    /// [`AtomicBool::compare_exchange`]
-    /// (../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange).
+    /// [`AtomicBool::compare_exchange`][compare_exchange].
+    ///
+    /// [compare_exchange]: ../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange
     pub fn atomic_cxchg<T>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `compare_exchange` method by passing
     /// [`Ordering::Acquire`](../../std/sync/atomic/enum.Ordering.html)
     /// as both the `success` and `failure` parameters. For example,
-    /// [`AtomicBool::compare_exchange`]
-    /// (../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange).
+    /// [`AtomicBool::compare_exchange`][compare_exchange].
+    ///
+    /// [compare_exchange]: ../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange
     pub fn atomic_cxchg_acq<T>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     /// The stabilized version of this intrinsic is available on the
@@ -79,8 +81,9 @@ extern "rust-intrinsic" {
     /// as the `success` and
     /// [`Ordering::Relaxed`](../../std/sync/atomic/enum.Ordering.html)
     /// as the `failure` parameters. For example,
-    /// [`AtomicBool::compare_exchange`]
-    /// (../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange).
+    /// [`AtomicBool::compare_exchange`][compare_exchange].
+    ///
+    /// [compare_exchange]: ../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange
     pub fn atomic_cxchg_rel<T>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     /// The stabilized version of this intrinsic is available on the
@@ -89,16 +92,18 @@ extern "rust-intrinsic" {
     /// as the `success` and
     /// [`Ordering::Acquire`](../../std/sync/atomic/enum.Ordering.html)
     /// as the `failure` parameters. For example,
-    /// [`AtomicBool::compare_exchange`]
-    /// (../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange).
+    /// [`AtomicBool::compare_exchange`][compare_exchange].
+    ///
+    /// [compare_exchange]: ../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange
     pub fn atomic_cxchg_acqrel<T>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `compare_exchange` method by passing
     /// [`Ordering::Relaxed`](../../std/sync/atomic/enum.Ordering.html)
     /// as both the `success` and `failure` parameters. For example,
-    /// [`AtomicBool::compare_exchange`]
-    /// (../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange).
+    /// [`AtomicBool::compare_exchange`][compare_exchange].
+    ///
+    /// [compare_exchange]: ../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange
     pub fn atomic_cxchg_relaxed<T>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     /// The stabilized version of this intrinsic is available on the
@@ -107,8 +112,9 @@ extern "rust-intrinsic" {
     /// as the `success` and
     /// [`Ordering::Relaxed`](../../std/sync/atomic/enum.Ordering.html)
     /// as the `failure` parameters. For example,
-    /// [`AtomicBool::compare_exchange`]
-    /// (../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange).
+    /// [`AtomicBool::compare_exchange`][compare_exchange].
+    ///
+    /// [compare_exchange]: ../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange
     pub fn atomic_cxchg_failrelaxed<T>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     /// The stabilized version of this intrinsic is available on the
@@ -117,8 +123,9 @@ extern "rust-intrinsic" {
     /// as the `success` and
     /// [`Ordering::Acquire`](../../std/sync/atomic/enum.Ordering.html)
     /// as the `failure` parameters. For example,
-    /// [`AtomicBool::compare_exchange`]
-    /// (../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange).
+    /// [`AtomicBool::compare_exchange`][compare_exchange].
+    ///
+    /// [compare_exchange]: ../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange
     pub fn atomic_cxchg_failacq<T>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     /// The stabilized version of this intrinsic is available on the
@@ -127,8 +134,9 @@ extern "rust-intrinsic" {
     /// as the `success` and
     /// [`Ordering::Relaxed`](../../std/sync/atomic/enum.Ordering.html)
     /// as the `failure` parameters. For example,
-    /// [`AtomicBool::compare_exchange`]
-    /// (../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange).
+    /// [`AtomicBool::compare_exchange`][compare_exchange].
+    ///
+    /// [compare_exchange]: ../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange
     pub fn atomic_cxchg_acq_failrelaxed<T>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     /// The stabilized version of this intrinsic is available on the
@@ -137,8 +145,9 @@ extern "rust-intrinsic" {
     /// as the `success` and
     /// [`Ordering::Relaxed`](../../std/sync/atomic/enum.Ordering.html)
     /// as the `failure` parameters. For example,
-    /// [`AtomicBool::compare_exchange`]
-    /// (../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange).
+    /// [`AtomicBool::compare_exchange`][compare_exchange].
+    ///
+    /// [compare_exchange]: ../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange
     pub fn atomic_cxchg_acqrel_failrelaxed<T>(dst: *mut T, old: T, src: T) -> (T, bool);
 
     /// Stores a value if the current value is the same as the `old` value.
@@ -146,16 +155,18 @@ extern "rust-intrinsic" {
     /// `std::sync::atomic` types via the `compare_exchange_weak` method by passing
     /// [`Ordering::SeqCst`](../../std/sync/atomic/enum.Ordering.html)
     /// as both the `success` and `failure` parameters. For example,
-    /// [`AtomicBool::compare_exchange_weak`]
-    /// (../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange_weak).
+    /// [`AtomicBool::compare_exchange`][compare_exchange_weak].
+    ///
+    /// [compare_exchange_weak]: ../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange_weak
     pub fn atomic_cxchgweak<T>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `compare_exchange_weak` method by passing
     /// [`Ordering::Acquire`](../../std/sync/atomic/enum.Ordering.html)
     /// as both the `success` and `failure` parameters. For example,
-    /// [`AtomicBool::compare_exchange_weak`]
-    /// (../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange_weak).
+    /// [`AtomicBool::compare_exchange`][compare_exchange_weak].
+    ///
+    /// [compare_exchange_weak]: ../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange_weak
     pub fn atomic_cxchgweak_acq<T>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     /// The stabilized version of this intrinsic is available on the
@@ -164,8 +175,9 @@ extern "rust-intrinsic" {
     /// as the `success` and
     /// [`Ordering::Relaxed`](../../std/sync/atomic/enum.Ordering.html)
     /// as the `failure` parameters. For example,
-    /// [`AtomicBool::compare_exchange_weak`]
-    /// (../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange_weak).
+    /// [`AtomicBool::compare_exchange`][compare_exchange_weak].
+    ///
+    /// [compare_exchange_weak]: ../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange_weak
     pub fn atomic_cxchgweak_rel<T>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     /// The stabilized version of this intrinsic is available on the
@@ -174,16 +186,18 @@ extern "rust-intrinsic" {
     /// as the `success` and
     /// [`Ordering::Acquire`](../../std/sync/atomic/enum.Ordering.html)
     /// as the `failure` parameters. For example,
-    /// [`AtomicBool::compare_exchange_weak`]
-    /// (../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange_weak).
+    /// [`AtomicBool::compare_exchange`][compare_exchange_weak].
+    ///
+    /// [compare_exchange_weak]: ../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange_weak
     pub fn atomic_cxchgweak_acqrel<T>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     /// The stabilized version of this intrinsic is available on the
     /// `std::sync::atomic` types via the `compare_exchange_weak` method by passing
     /// [`Ordering::Relaxed`](../../std/sync/atomic/enum.Ordering.html)
     /// as both the `success` and `failure` parameters. For example,
-    /// [`AtomicBool::compare_exchange_weak`]
-    /// (../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange_weak).
+    /// [`AtomicBool::compare_exchange`][compare_exchange_weak].
+    ///
+    /// [compare_exchange_weak]: ../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange_weak
     pub fn atomic_cxchgweak_relaxed<T>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     /// The stabilized version of this intrinsic is available on the
@@ -192,8 +206,9 @@ extern "rust-intrinsic" {
     /// as the `success` and
     /// [`Ordering::Relaxed`](../../std/sync/atomic/enum.Ordering.html)
     /// as the `failure` parameters. For example,
-    /// [`AtomicBool::compare_exchange_weak`]
-    /// (../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange_weak).
+    /// [`AtomicBool::compare_exchange`][compare_exchange_weak].
+    ///
+    /// [compare_exchange_weak]: ../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange_weak
     pub fn atomic_cxchgweak_failrelaxed<T>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     /// The stabilized version of this intrinsic is available on the
@@ -202,8 +217,9 @@ extern "rust-intrinsic" {
     /// as the `success` and
     /// [`Ordering::Acquire`](../../std/sync/atomic/enum.Ordering.html)
     /// as the `failure` parameters. For example,
-    /// [`AtomicBool::compare_exchange_weak`]
-    /// (../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange_weak).
+    /// [`AtomicBool::compare_exchange`][compare_exchange_weak].
+    ///
+    /// [compare_exchange_weak]: ../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange_weak
     pub fn atomic_cxchgweak_failacq<T>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     /// The stabilized version of this intrinsic is available on the
@@ -212,8 +228,9 @@ extern "rust-intrinsic" {
     /// as the `success` and
     /// [`Ordering::Relaxed`](../../std/sync/atomic/enum.Ordering.html)
     /// as the `failure` parameters. For example,
-    /// [`AtomicBool::compare_exchange_weak`]
-    /// (../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange_weak).
+    /// [`AtomicBool::compare_exchange`][compare_exchange_weak].
+    ///
+    /// [compare_exchange_weak]: ../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange_weak
     pub fn atomic_cxchgweak_acq_failrelaxed<T>(dst: *mut T, old: T, src: T) -> (T, bool);
     /// Stores a value if the current value is the same as the `old` value.
     /// The stabilized version of this intrinsic is available on the
@@ -222,8 +239,9 @@ extern "rust-intrinsic" {
     /// as the `success` and
     /// [`Ordering::Relaxed`](../../std/sync/atomic/enum.Ordering.html)
     /// as the `failure` parameters. For example,
-    /// [`AtomicBool::compare_exchange_weak`]
-    /// (../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange_weak).
+    /// [`AtomicBool::compare_exchange`][compare_exchange_weak].
+    ///
+    /// [compare_exchange_weak]: ../../std/sync/atomic/struct.AtomicBool.html#method.compare_exchange_weak
     pub fn atomic_cxchgweak_acqrel_failrelaxed<T>(dst: *mut T, old: T, src: T) -> (T, bool);
 
     /// Loads the current value of the pointer.
