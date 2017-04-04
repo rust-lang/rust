@@ -217,7 +217,7 @@ pub fn rewrite_chain(expr: &ast::Expr, context: &RewriteContext, shape: Shape) -
 
     let first_connector = if extend || subexpr_list.is_empty() {
         ""
-    } else if let ast::ExprKind::Try(_) = subexpr_list[0].node {
+    } else if let ast::ExprKind::Try(_) = subexpr_list.last().unwrap().node {
         ""
     } else {
         &*connector
