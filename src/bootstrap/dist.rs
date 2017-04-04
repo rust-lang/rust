@@ -315,15 +315,12 @@ pub fn rust_src_location(build: &Build) -> PathBuf {
 
 /// Creates a tarball of save-analysis metadata, if available.
 pub fn analysis(build: &Build, compiler: &Compiler, target: &str) {
-    if !build.config.rust_save_analysis {
-        return
-    }
-
+    assert!(build.config.extended);
     println!("Dist analysis");
 
     if compiler.host != build.config.build {
         println!("\tskipping, not a build host");
-        return
+        return;
     }
 
     // Package save-analysis from stage1 if not doing a full bootstrap, as the
@@ -595,6 +592,7 @@ pub fn cargo(build: &Build, stage: u32, target: &str) {
 }
 
 pub fn rls(build: &Build, stage: u32, target: &str) {
+    assert!(build.config.extended);
     println!("Dist RLS stage{} ({})", stage, target);
     let compiler = Compiler::new(stage, &build.config.build);
 
