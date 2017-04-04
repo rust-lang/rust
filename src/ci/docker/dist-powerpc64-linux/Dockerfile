@@ -25,11 +25,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   wget \
   xz-utils \
   libssl-dev \
-  pkg-config
-
-RUN curl -o /usr/local/bin/sccache \
-      https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-03-16-sccache-x86_64-unknown-linux-musl && \
-      chmod +x /usr/local/bin/sccache
+ pkg-config
 
 RUN curl -OL https://github.com/Yelp/dumb-init/releases/download/v1.2.0/dumb-init_1.2.0_amd64.deb && \
     dpkg -i dumb-init_*.deb && \
@@ -69,6 +65,10 @@ USER root
 RUN apt-get install -y --no-install-recommends rpm2cpio cpio
 COPY build-powerpc64le-toolchain.sh /tmp/
 RUN ./build-powerpc64le-toolchain.sh
+
+RUN curl -o /usr/local/bin/sccache \
+      https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-03-24-sccache-x86_64-unknown-linux-musl && \
+      chmod +x /usr/local/bin/sccache
 
 ENV PATH=$PATH:/x-tools/powerpc64-unknown-linux-gnu/bin
 

@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// exec-env:RUST_LOG=conditional-debug-macro-on=4
-
 pub fn main() {
     // exits early if println! evaluates its arguments, otherwise it
     // will hit the panic.

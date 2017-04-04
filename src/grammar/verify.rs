@@ -196,7 +196,7 @@ fn parse_antlr_token(s: &str, tokens: &HashMap<String, token::Token>, surrogate_
     let toknum = &s[content_end + 3 .. toknum_end];
 
     let not_found = format!("didn't find token {:?} in the map", toknum);
-    let proto_tok = tokens.get(toknum).expect(&not_found[..]);
+    let proto_tok = tokens.get(toknum).expect(&not_found);
 
     let nm = Symbol::intern(content);
 
@@ -304,14 +304,14 @@ fn main() {
     let mut token_file = File::open(&Path::new(&args.next().unwrap())).unwrap();
     let mut token_list = String::new();
     token_file.read_to_string(&mut token_list).unwrap();
-    let token_map = parse_token_list(&token_list[..]);
+    let token_map = parse_token_list(&token_list);
 
     let stdin = std::io::stdin();
     let lock = stdin.lock();
     let lines = lock.lines();
     let antlr_tokens = lines.map(|l| parse_antlr_token(l.unwrap().trim(),
                                                        &token_map,
-                                                       &surrogate_pairs_pos[..],
+                                                       &surrogate_pairs_pos,
                                                        has_bom));
 
     for antlr_tok in antlr_tokens {

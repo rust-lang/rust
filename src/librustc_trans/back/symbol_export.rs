@@ -154,7 +154,7 @@ impl ExportedSymbols {
                             cnum: CrateNum)
                             -> &[(String, SymbolExportLevel)] {
         match self.exports.get(&cnum) {
-            Some(exports) => &exports[..],
+            Some(exports) => exports,
             None => &[]
         }
     }
@@ -167,7 +167,7 @@ impl ExportedSymbols {
     {
         for &(ref name, export_level) in self.exported_symbols(cnum) {
             if is_below_threshold(export_level, export_threshold) {
-                f(&name[..], export_level)
+                f(&name, export_level)
             }
         }
     }

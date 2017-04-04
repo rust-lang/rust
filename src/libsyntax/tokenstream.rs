@@ -56,18 +56,20 @@ impl Delimited {
 
     /// Returns the opening delimiter as a token tree.
     pub fn open_tt(&self, span: Span) -> TokenTree {
-        let open_span = match span {
-            DUMMY_SP => DUMMY_SP,
-            _ => Span { hi: span.lo + BytePos(self.delim.len() as u32), ..span },
+        let open_span = if span == DUMMY_SP {
+            DUMMY_SP
+        } else {
+            Span { hi: span.lo + BytePos(self.delim.len() as u32), ..span }
         };
         TokenTree::Token(open_span, self.open_token())
     }
 
     /// Returns the closing delimiter as a token tree.
     pub fn close_tt(&self, span: Span) -> TokenTree {
-        let close_span = match span {
-            DUMMY_SP => DUMMY_SP,
-            _ => Span { lo: span.hi - BytePos(self.delim.len() as u32), ..span },
+        let close_span = if span == DUMMY_SP {
+            DUMMY_SP
+        } else {
+            Span { lo: span.hi - BytePos(self.delim.len() as u32), ..span }
         };
         TokenTree::Token(close_span, self.close_token())
     }
@@ -425,7 +427,7 @@ mod tests {
         Span {
             lo: BytePos(a),
             hi: BytePos(b),
-            expn_id: NO_EXPANSION,
+            ctxt: NO_EXPANSION,
         }
     }
 

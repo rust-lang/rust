@@ -25,23 +25,25 @@ use externalfiles::{ExternalHtml, LoadStringError, load_string};
 use html::render::reset_ids;
 use html::escape::Escape;
 use html::markdown;
-use html::markdown::{Markdown, MarkdownWithToc, find_testable_code};
+use html::markdown::{Markdown, MarkdownWithToc, MarkdownOutputStyle, find_testable_code};
 use test::{TestOptions, Collector};
 
-/// Separate any lines at the start of the file that begin with `%`.
+/// Separate any lines at the start of the file that begin with `# ` or `%`.
 fn extract_leading_metadata<'a>(s: &'a str) -> (Vec<&'a str>, &'a str) {
     let mut metadata = Vec::new();
     let mut count = 0;
+
     for line in s.lines() {
-        if line.starts_with("%") {
-            // remove %<whitespace>
+        if line.starts_with("# ") || line.starts_with("%") {
+            // trim the whitespace after the symbol
             metadata.push(line[1..].trim_left());
             count += line.len() + 1;
         } else {
             return (metadata, &s[count..]);
         }
     }
-    // if we're here, then all lines were metadata % lines.
+
+    // if we're here, then all lines were metadata `# ` or `%` lines.
     (metadata, "")
 }
 
@@ -83,7 +85,7 @@ pub fn render(input: &str, mut output: PathBuf, matches: &getopts::Matches,
     if metadata.is_empty() {
         let _ = writeln!(
             &mut io::stderr(),
-            "rustdoc: invalid markdown file: expecting initial line with `% ...TITLE...`"
+            "rustdoc: invalid markdown file: no initial lines starting with `# ` or `%`"
         );
         return 5;
     }
@@ -94,7 +96,7 @@ pub fn render(input: &str, mut output: PathBuf, matches: &getopts::Matches,
     let rendered = if include_toc {
         format!("{}", MarkdownWithToc(text))
     } else {
-        format!("{}", Markdown(text))
+        format!("{}", Markdown(text, MarkdownOutputStyle::Fancy))
     };
 
     let err = write!(

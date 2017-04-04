@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast;
+use ast::{self, NodeId};
 use codemap::{DUMMY_SP, dummy_spanned};
 use ext::base::ExtCtxt;
 use ext::expand::{Expansion, ExpansionKind};
@@ -88,7 +88,7 @@ impl<'a, 'b> PlaceholderExpander<'a, 'b> {
         let mut expansion = expansion.fold_with(self);
         if let Expansion::Items(mut items) = expansion {
             for derive in derives {
-                match self.remove(derive.as_placeholder_id()) {
+                match self.remove(NodeId::placeholder_from_mark(derive)) {
                     Expansion::Items(derived_items) => items.extend(derived_items),
                     _ => unreachable!(),
                 }
@@ -106,8 +106,8 @@ impl<'a, 'b> PlaceholderExpander<'a, 'b> {
 impl<'a, 'b> Folder for PlaceholderExpander<'a, 'b> {
     fn fold_item(&mut self, item: P<ast::Item>) -> SmallVector<P<ast::Item>> {
         match item.node {
-            ast::ItemKind::Mac(ref mac) if !mac.node.path.segments.is_empty() => {}
             ast::ItemKind::Mac(_) => return self.remove(item.id).make_items(),
+            ast::ItemKind::MacroDef(_) => return SmallVector::one(item),
             _ => {}
         }
 
@@ -178,17 +178,9 @@ impl<'a, 'b> Folder for PlaceholderExpander<'a, 'b> {
             block.stmts = block.stmts.move_flat_map(|mut stmt| {
                 remaining_stmts -= 1;
 
-                match stmt.node {
-                    // Avoid wasting a node id on a trailing expression statement,
-                    // which shares a HIR node with the expression itself.
-                    ast::StmtKind::Expr(ref expr) if remaining_stmts == 0 => stmt.id = expr.id,
-
-                    _ if self.monotonic => {
-                        assert_eq!(stmt.id, ast::DUMMY_NODE_ID);
-                        stmt.id = self.cx.resolver.next_node_id();
-                    }
-
-                    _ => {}
+                if self.monotonic {
+                    assert_eq!(stmt.id, ast::DUMMY_NODE_ID);
+                    stmt.id = self.cx.resolver.next_node_id();
                 }
 
                 Some(stmt)

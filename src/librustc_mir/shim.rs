@@ -12,6 +12,7 @@ use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::infer;
 use rustc::middle::region::ROOT_CODE_EXTENT;
+use rustc::middle::const_val::ConstVal;
 use rustc::mir::*;
 use rustc::mir::transform::MirSource;
 use rustc::ty::{self, Ty};
@@ -335,7 +336,9 @@ fn build_call_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
             Operand::Constant(Constant {
                 span: span,
                 ty: tcx.item_type(def_id).subst(tcx, param_env.free_substs),
-                literal: Literal::Item { def_id, substs: param_env.free_substs },
+                literal: Literal::Value {
+                    value: ConstVal::Function(def_id, param_env.free_substs),
+                },
             }),
             vec![rcvr]
         )

@@ -305,10 +305,10 @@ impl<'a> SpanUtils<'a> {
                 continue;
             }
             if let TokenTree::Token(_, token::Semi) = tok {
-                return self.snippet(mk_sp(first_span.lo, prev.span().hi));
+                return self.snippet(first_span.to(prev.span()));
             } else if let TokenTree::Delimited(_, ref d) = tok {
                 if d.delim == token::Brace {
-                    return self.snippet(mk_sp(first_span.lo, prev.span().hi));
+                    return self.snippet(first_span.to(prev.span()));
                 }
             }
             prev = tok;
@@ -462,8 +462,7 @@ impl<'a> SpanUtils<'a> {
 
         // Otherwise, a generated span is deemed invalid if it is not a sub-span of the root
         // callsite. This filters out macro internal variables and most malformed spans.
-        let span = self.sess.codemap().source_callsite(parent);
-        !(span.contains(parent))
+        !parent.source_callsite().contains(parent)
     }
 }
 

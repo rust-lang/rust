@@ -36,7 +36,7 @@ use syntax::ast;
 use syntax::attr;
 use syntax::parse::filemap_to_stream;
 use syntax::symbol::Symbol;
-use syntax_pos::{mk_sp, Span};
+use syntax_pos::{Span, NO_EXPANSION};
 use rustc::hir::svh::Svh;
 use rustc_back::target::Target;
 use rustc::hir;
@@ -88,9 +88,9 @@ provide! { <'tcx> tcx, def_id, cdata
     }
     associated_item => { cdata.get_associated_item(def_id.index) }
     impl_trait_ref => { cdata.get_impl_trait(def_id.index, tcx) }
-    custom_coerce_unsized_kind => {
-        cdata.get_custom_coerce_unsized_kind(def_id.index).unwrap_or_else(|| {
-            bug!("custom_coerce_unsized_kind: `{:?}` is missing its kind", def_id);
+    coerce_unsized_info => {
+        cdata.get_coerce_unsized_info(def_id.index).unwrap_or_else(|| {
+            bug!("coerce_unsized_info: `{:?}` is missing its info", def_id);
         })
     }
     mir => {
@@ -109,6 +109,7 @@ provide! { <'tcx> tcx, def_id, cdata
     typeck_tables => { cdata.item_body_tables(def_id.index, tcx) }
     closure_kind => { cdata.closure_kind(def_id.index) }
     closure_type => { cdata.closure_ty(def_id.index, tcx) }
+    inherent_impls => { Rc::new(cdata.get_inherent_implementations_for_type(def_id.index)) }
 }
 
 impl CrateStore for cstore::CStore {
@@ -160,12 +161,6 @@ impl CrateStore for cstore::CStore {
         // incremental recompilation ever enabled.
         assert!(!self.dep_graph.is_fully_enabled());
         self.get_crate_data(did.krate).get_fn_arg_names(did.index)
-    }
-
-    fn inherent_implementations_for_type(&self, def_id: DefId) -> Vec<DefId>
-    {
-        self.dep_graph.read(DepNode::MetaData(def_id));
-        self.get_crate_data(def_id.krate).get_inherent_implementations_for_type(def_id.index)
     }
 
     fn implementations_of_trait(&self, filter: Option<DefId>) -> Vec<DefId>
@@ -400,7 +395,7 @@ impl CrateStore for cstore::CStore {
         let source_name = format!("<{} macros>", name);
 
         let filemap = sess.parse_sess.codemap().new_filemap(source_name, None, def.body);
-        let local_span = mk_sp(filemap.start_pos, filemap.end_pos);
+        let local_span = Span { lo: filemap.start_pos, hi: filemap.end_pos, ctxt: NO_EXPANSION };
         let body = filemap_to_stream(&sess.parse_sess, filemap);
 
         // Mark the attrs as used
@@ -496,12 +491,12 @@ impl CrateStore for cstore::CStore {
         self.do_extern_mod_stmt_cnum(emod_id)
     }
 
-    fn encode_metadata<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                 reexports: &def::ExportMap,
+    fn encode_metadata<'a, 'tcx>(&self,
+                                 tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                  link_meta: &LinkMeta,
                                  reachable: &NodeSet) -> Vec<u8>
     {
-        encoder::encode_metadata(tcx, self, reexports, link_meta, reachable)
+        encoder::encode_metadata(tcx, self, link_meta, reachable)
     }
 
     fn metadata_encoding_version(&self) -> &[u8]

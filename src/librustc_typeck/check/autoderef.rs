@@ -12,6 +12,7 @@ use astconv::AstConv;
 
 use super::FnCtxt;
 
+use check::coercion::AsCoercionSite;
 use rustc::infer::InferOk;
 use rustc::traits;
 use rustc::ty::{self, Ty, TraitRef};
@@ -148,16 +149,16 @@ impl<'a, 'gcx, 'tcx> Autoderef<'a, 'gcx, 'tcx> {
         self.fcx.resolve_type_vars_if_possible(&self.cur_ty)
     }
 
-    pub fn finalize<'b, I>(self, pref: LvaluePreference, exprs: I)
-        where I: IntoIterator<Item = &'b hir::Expr>
+    pub fn finalize<E>(self, pref: LvaluePreference, exprs: &[E])
+        where E: AsCoercionSite
     {
         let fcx = self.fcx;
         fcx.register_infer_ok_obligations(self.finalize_as_infer_ok(pref, exprs));
     }
 
-    pub fn finalize_as_infer_ok<'b, I>(self, pref: LvaluePreference, exprs: I)
-                                       -> InferOk<'tcx, ()>
-        where I: IntoIterator<Item = &'b hir::Expr>
+    pub fn finalize_as_infer_ok<E>(self, pref: LvaluePreference, exprs: &[E])
+                                   -> InferOk<'tcx, ()>
+        where E: AsCoercionSite
     {
         let methods: Vec<_> = self.steps
             .iter()
@@ -176,6 +177,7 @@ impl<'a, 'gcx, 'tcx> Autoderef<'a, 'gcx, 'tcx> {
                self.obligations);
 
         for expr in exprs {
+            let expr = expr.as_coercion_site();
             debug!("finalize - finalizing #{} - {:?}", expr.id, expr);
             for (n, method) in methods.iter().enumerate() {
                 if let &Some(method) = method {

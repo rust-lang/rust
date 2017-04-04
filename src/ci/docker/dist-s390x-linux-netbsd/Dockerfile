@@ -27,10 +27,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   libssl-dev \
   pkg-config
 
-RUN curl -o /usr/local/bin/sccache \
-      https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-03-16-sccache-x86_64-unknown-linux-musl && \
-      chmod +x /usr/local/bin/sccache
-
 RUN curl -OL https://github.com/Yelp/dumb-init/releases/download/v1.2.0/dumb-init_1.2.0_amd64.deb && \
     dpkg -i dumb-init_*.deb && \
     rm dumb-init_*.deb
@@ -64,17 +60,21 @@ COPY patches/ /tmp/patches/
 COPY s390x-linux-gnu.config build-s390x-toolchain.sh /tmp/
 RUN ./build-s390x-toolchain.sh
 
-USER root
-
 COPY build-netbsd-toolchain.sh /tmp/
 RUN ./build-netbsd-toolchain.sh
 
-ENV PATH=$PATH:/x-tools/s390x-ibm-linux-gnu/bin
+USER root
+
+RUN curl -o /usr/local/bin/sccache \
+      https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-03-24-sccache-x86_64-unknown-linux-musl && \
+      chmod +x /usr/local/bin/sccache
+
+ENV PATH=$PATH:/x-tools/s390x-ibm-linux-gnu/bin:/x-tools/x86_64-unknown-netbsd/bin
 
 ENV \
-    AR_x86_64_unknown_netbsd=x86_64-unknown-netbsd-ar \
-    CC_x86_64_unknown_netbsd=x86_64-unknown-netbsd-gcc \
-    CXX_x86_64_unknown_netbsd=x86_64-unknown-netbsd-g++ \
+    AR_x86_64_unknown_netbsd=x86_64--netbsd-ar \
+    CC_x86_64_unknown_netbsd=x86_64--netbsd-gcc-sysroot \
+    CXX_x86_64_unknown_netbsd=x86_64--netbsd-g++-sysroot \
     CC_s390x_unknown_linux_gnu=s390x-ibm-linux-gnu-gcc \
     AR_s390x_unknown_linux_gnu=s390x-ibm-linux-gnu-ar \
     CXX_s390x_unknown_linux_gnu=s390x-ibm-linux-gnu-g++

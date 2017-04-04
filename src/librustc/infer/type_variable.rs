@@ -30,6 +30,7 @@ pub struct TypeVariableTable<'tcx> {
 }
 
 /// Reasons to create a type inference variable
+#[derive(Debug)]
 pub enum TypeVariableOrigin {
     MiscVariable(Span),
     NormalizeProjectionType(Span),
@@ -41,6 +42,7 @@ pub enum TypeVariableOrigin {
     AdjustmentType(Span),
     DivergingStmt(Span),
     DivergingBlockExpr(Span),
+    DivergingFn(Span),
     LatticeVariable(Span),
 }
 
@@ -196,6 +198,7 @@ impl<'tcx> TypeVariableTable<'tcx> {
                    diverging: bool,
                    origin: TypeVariableOrigin,
                    default: Option<Default<'tcx>>,) -> ty::TyVid {
+        debug!("new_var(diverging={:?}, origin={:?})", diverging, origin);
         self.eq_relations.new_key(());
         let index = self.values.push(TypeVariableData {
             value: Bounded { relations: vec![], default: default },
@@ -203,7 +206,7 @@ impl<'tcx> TypeVariableTable<'tcx> {
             diverging: diverging
         });
         let v = ty::TyVid { index: index as u32 };
-        debug!("new_var() -> {:?}", v);
+        debug!("new_var: diverging={:?} index={:?}", diverging, v);
         v
     }
 

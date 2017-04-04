@@ -25,7 +25,6 @@ fn f() {
     bar::m! { //~ ERROR ambiguous
               //~| NOTE macro-expanded items do not shadow when used in a macro invocation path
         mod bar { pub use two_macros::m; } //~ NOTE could refer to the name defined here
-                                           //~^^^ NOTE in this expansion
     }
 }
 
@@ -37,6 +36,5 @@ fn g() {
     baz::m! { //~ ERROR ambiguous
               //~| NOTE macro-expanded items do not shadow when used in a macro invocation path
         mod baz { pub use two_macros::m; } //~ NOTE could refer to the name defined here
-                                           //~^^^ NOTE in this expansion
     }
 }

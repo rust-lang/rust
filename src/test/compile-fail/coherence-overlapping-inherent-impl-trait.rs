@@ -9,10 +9,8 @@
 // except according to those terms.
 
 #![allow(dead_code)]
-#![deny(overlapping_inherent_impls)]
 
 trait C {}
 impl C { fn f() {} } //~ ERROR duplicate definitions with name `f`
-//~^ WARN: this was previously accepted
 impl C { fn f() {} }
 fn main() { }
