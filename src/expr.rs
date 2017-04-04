@@ -1730,13 +1730,11 @@ fn rewrite_call_inner<R>(context: &RewriteContext,
     let fmt = ListFormatting {
         tactic: tactic,
         separator: ",",
-        trailing_separator: if force_no_trailing_comma {
+        trailing_separator: if force_no_trailing_comma ||
+                               context.config.fn_call_style == IndentStyle::Visual {
             SeparatorTactic::Never
         } else {
-            match context.config.fn_call_style {
-                IndentStyle::Visual => SeparatorTactic::Never,
-                IndentStyle::Block => context.config.trailing_comma,
-            }
+            context.config.trailing_comma
         },
         shape: nested_shape,
         ends_with_newline: false,
