@@ -60,27 +60,20 @@ COPY patches/ /tmp/patches/
 COPY s390x-linux-gnu.config build-s390x-toolchain.sh /tmp/
 RUN ./build-s390x-toolchain.sh
 
-COPY build-netbsd-toolchain.sh /tmp/
-RUN ./build-netbsd-toolchain.sh
-
 USER root
 
 RUN curl -o /usr/local/bin/sccache \
       https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-03-24-sccache-x86_64-unknown-linux-musl && \
       chmod +x /usr/local/bin/sccache
 
-ENV PATH=$PATH:/x-tools/s390x-ibm-linux-gnu/bin:/x-tools/x86_64-unknown-netbsd/bin
+ENV PATH=$PATH:/x-tools/s390x-ibm-linux-gnu/bin
 
 ENV \
-    AR_x86_64_unknown_netbsd=x86_64--netbsd-ar \
-    CC_x86_64_unknown_netbsd=x86_64--netbsd-gcc-sysroot \
-    CXX_x86_64_unknown_netbsd=x86_64--netbsd-g++-sysroot \
     CC_s390x_unknown_linux_gnu=s390x-ibm-linux-gnu-gcc \
     AR_s390x_unknown_linux_gnu=s390x-ibm-linux-gnu-ar \
     CXX_s390x_unknown_linux_gnu=s390x-ibm-linux-gnu-g++
 
-ENV HOSTS=x86_64-unknown-netbsd
-ENV HOSTS=$HOSTS,s390x-unknown-linux-gnu
+ENV HOSTS=s390x-unknown-linux-gnu
 
 ENV RUST_CONFIGURE_ARGS --host=$HOSTS --enable-extended
 ENV SCRIPT python2.7 ../x.py dist --host $HOSTS --target $HOSTS

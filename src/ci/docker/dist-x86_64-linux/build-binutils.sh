@@ -11,27 +11,16 @@
 
 set -ex
 
-hide_output() {
-  set +x
-  on_err="
-echo ERROR: An error was encountered with the build.
-cat /tmp/build.log
-exit 1
-"
-  trap "$on_err" ERR
-  bash -c "while true; do sleep 30; echo \$(date) - building ...; done" &
-  PING_LOOP_PID=$!
-  $@ &> /tmp/build.log
-  rm /tmp/build.log
-  trap - ERR
-  kill $PING_LOOP_PID
-  set -x
-}
+source shared.sh
 
-mkdir build
-cd build
-cp ../arm-linux-gnueabi.config .config
-ct-ng oldconfig
-hide_output ct-ng build
+curl https://ftp.gnu.org/gnu/binutils/binutils-2.25.1.tar.bz2 | tar xfj -
+
+mkdir binutils-build
+cd binutils-build
+hide_output ../binutils-2.25.1/configure --prefix=/rustroot
+hide_output make -j10
+hide_output make install
+
 cd ..
-rm -rf build
+rm -rf binutils-build
+rm -rf binutils-2.25.1
