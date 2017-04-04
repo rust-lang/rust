@@ -73,7 +73,7 @@ This is written in a bit of a confusing way, so here's a simplified summary of w
 
 Part of the historical argument for signed offset in Rust has been a *warning* against these overflow concerns, but upon inspection that doesn't really make sense. 
 
-* If you offset a `*const i16` by `isize::MAX * 3 / 2` (which fits into a signed integer), then you'll still overflow a signed integer in the implicit `offset` computation. 
+* If you offset a `*const i16` by `isize::MAX / 3 * 2` (which fits into a signed integer), then you'll still overflow a signed integer in the implicit `offset` computation. 
 * There's no indication that unsigned overflow should be a concern at all.
 * The location of the offset *isn't even* the place to handle this issue. The ultimate consequence of `offset` being signed is that LLVM can't support allocations larger than `isize::MAX` bytes. Therefore this issue should be handled at the level of memory allocation code.
 * The fact that `offset` is `unsafe` is already surprising to anyone with the "it's just addition" mental model, pushing them to read the documentation and learn the actual rules.
