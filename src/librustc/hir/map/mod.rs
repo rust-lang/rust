@@ -442,6 +442,27 @@ impl<'hir> Map<'hir> {
         self.local_def_id(self.body_owner(id))
     }
 
+    /// Given a body owner's id, returns the `BodyId` associated with it.
+    pub fn body_owned_by(&self, id: NodeId) -> BodyId {
+        if let Some(entry) = self.find_entry(id) {
+            if let Some(body_id) = entry.associated_body() {
+                // For item-like things and closures, the associated
+                // body has its own distinct id, and that is returned
+                // by `associated_body`.
+                body_id
+            } else {
+                // For some expressions, the expression is its own body.
+                if let EntryExpr(_, expr) = entry {
+                    BodyId { node_id: expr.id }
+                } else {
+                    span_bug!(self.span(id), "id `{}` has no associated body", id);
+                }
+            }
+        } else {
+            bug!("no entry for id `{}`", id)
+        }
+    }
+
     pub fn ty_param_owner(&self, id: NodeId) -> NodeId {
         match self.get(id) {
             NodeItem(&Item { node: ItemTrait(..), .. }) => id,
