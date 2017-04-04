@@ -57,7 +57,6 @@ pub enum DepNode<D: Clone + Debug> {
 
     // Represents different phases in the compiler.
     CollectLanguageItems,
-    CheckStaticRecursion,
     ResolveLifetimes,
     RegionResolveCrate,
     PluginRegistrar,
@@ -215,7 +214,6 @@ impl<D: Clone + Debug> DepNode<D> {
             MirKrate => Some(MirKrate),
             TypeckBodiesKrate => Some(TypeckBodiesKrate),
             CollectLanguageItems => Some(CollectLanguageItems),
-            CheckStaticRecursion => Some(CheckStaticRecursion),
             ResolveLifetimes => Some(ResolveLifetimes),
             RegionResolveCrate => Some(RegionResolveCrate),
             PluginRegistrar => Some(PluginRegistrar),
