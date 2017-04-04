@@ -65,7 +65,7 @@ pub fn check(build: &mut Build) {
 
     // If we've got a git directory we're gona need git to update
     // submodules and learn about various other aspects.
-    if fs::metadata(build.src.join(".git")).is_ok() {
+    if build.src_is_git {
         need_cmd("git".as_ref());
     }
 
