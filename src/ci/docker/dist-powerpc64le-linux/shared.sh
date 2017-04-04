@@ -1,4 +1,3 @@
-#!/bin/bash
 # Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 # file at the top-level directory of this distribution and at
 # http://rust-lang.org/COPYRIGHT.
@@ -8,8 +7,6 @@
 # <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 # option. This file may not be copied, modified, or distributed
 # except according to those terms.
-
-set -ex
 
 hide_output() {
   set +x
@@ -22,16 +19,7 @@ exit 1
   bash -c "while true; do sleep 30; echo \$(date) - building ...; done" &
   PING_LOOP_PID=$!
   $@ &> /tmp/build.log
-  rm /tmp/build.log
   trap - ERR
   kill $PING_LOOP_PID
   set -x
 }
-
-mkdir build
-cd build
-cp ../arm-linux-gnueabi.config .config
-ct-ng oldconfig
-hide_output ct-ng build
-cd ..
-rm -rf build

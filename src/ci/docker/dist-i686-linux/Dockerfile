@@ -2,6 +2,12 @@ FROM centos:5
 
 WORKDIR /build
 
+# Centos 5 is EOL and is no longer available from the usual mirrors, so switch
+# to http://vault.centos.org/
+RUN sed -i 's/enabled=1/enabled=0/' /etc/yum/pluginconf.d/fastestmirror.conf
+RUN sed -i 's/mirrorlist/#mirrorlist/' /etc/yum.repos.d/*.repo
+RUN sed -i 's/#\(baseurl.*\)mirror.centos.org/\1107.158.252.35/' /etc/yum.repos.d/*.repo
+
 RUN yum upgrade -y && yum install -y \
       curl \
       bzip2 \
@@ -80,7 +86,6 @@ RUN curl -o /usr/local/bin/sccache \
       chmod +x /usr/local/bin/sccache
 
 ENV HOSTS=i686-unknown-linux-gnu
-ENV HOSTS=$HOSTS,x86_64-unknown-linux-gnu
 
 ENV RUST_CONFIGURE_ARGS \
       --host=$HOSTS \
