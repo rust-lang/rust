@@ -11,6 +11,6 @@
 #![allow(dead_code)]
 
 trait C {}
-impl C { fn f() {} } //~ ERROR duplicate definitions with name `f`
+impl C { fn f() {} }
 impl C { fn f() {} }
 fn main() { }
