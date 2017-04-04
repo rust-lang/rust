@@ -119,7 +119,13 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`");
         // complete the definition of the options.  Then we can use the getopt::Matches object from
         // there on out.
         let mut possible_subcommands = args.iter().collect::<Vec<_>>();
-        possible_subcommands.retain(|&s| !s.starts_with('-'));
+        possible_subcommands.retain(|&s|
+                                           (s == "build")
+                                        || (s == "test")
+                                        || (s == "bench")
+                                        || (s == "doc")
+                                        || (s == "clean")
+                                        || (s == "dist"));
         let subcommand = match possible_subcommands.first() {
             Some(s) => s,
             None => {
@@ -129,7 +135,43 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`");
             }
         };
 
-        // Some subcommands have specific arguments help text
+        // Some subcommands get extra options
+        match subcommand.as_str() {
+            "test"  => opts.optmulti("", "test-args", "extra arguments", "ARGS"),
+            "bench" => opts.optmulti("", "test-args", "extra arguments", "ARGS"),
+            "dist"  => opts.optflag("", "install", "run installer as well"),
+            _ => { }
+        };
+
+        // Done specifying what options are possible, so do the getopts parsing
+        let matches = opts.parse(&args[..]).unwrap_or_else(|e| {
+            // Invalid argument/option format
+            println!("\n{}\n", e);
+            usage(1, &opts, &subcommand_help, &extra_help);
+        });
+        // Extra sanity check to make sure we didn't hit this crazy corner case:
+        //
+        //     ./x.py --frobulate clean build
+        //            ^-- option  ^     ^- actual subcommand
+        //                        \_ arg to option could be mistaken as subcommand
+        let mut pass_sanity_check = true;
+        match matches.free.get(0) {
+            Some(check_subcommand) => {
+                if &check_subcommand != subcommand {
+                    pass_sanity_check = false;
+                }
+            },
+            None => {
+                pass_sanity_check = false;
+            }
+        }
+        if !pass_sanity_check {
+            println!("{}\n", subcommand_help);
+            println!("Sorry, I couldn't figure out which subcommand you were trying to specify.\n\
+                      You may need to move some options to after the subcommand.\n");
+            process::exit(1);
+        }
+        // Extra help text for some commands
         match subcommand.as_str() {
             "build" => {
                 subcommand_help.push_str("\n
@@ -152,7 +194,6 @@ Arguments:
         ./x.py build --stage 1 src/libtest");
             }
             "test" => {
-                opts.optmulti("", "test-args", "extra arguments", "ARGS");
                 subcommand_help.push_str("\n
 Arguments:
     This subcommand accepts a number of paths to directories to tests that
@@ -167,9 +208,6 @@ Arguments:
 
         ./x.py test
         ./x.py test --stage 1");
-            }
-            "bench" => {
-                opts.optmulti("", "test-args", "extra arguments", "ARGS");
             }
             "doc" => {
                 subcommand_help.push_str("\n
@@ -186,18 +224,8 @@ Arguments:
         ./x.py doc
         ./x.py doc --stage 1");
             }
-            "dist" => {
-                opts.optflag("", "install", "run installer as well");
-            }
             _ => { }
         };
-
-        // Done specifying what options are possible, so do the getopts parsing
-        let matches = opts.parse(&args[..]).unwrap_or_else(|e| {
-            // Invalid argument/option format
-            println!("\n{}\n", e);
-            usage(1, &opts, &subcommand_help, &extra_help);
-        });
         // Get any optional paths which occur after the subcommand
         let cwd = t!(env::current_dir());
         let paths = matches.free[1..].iter().map(|p| cwd.join(p)).collect::<Vec<_>>();
