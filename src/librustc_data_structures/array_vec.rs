@@ -255,7 +255,7 @@ impl<'a, A: Array> Drop for Drain<'a, A> {
 
         if self.tail_len > 0 {
             unsafe {
-                let source_array_vec = &mut *self.array_vec.as_mut_ptr();
+                let source_array_vec = self.array_vec.as_mut();
                 // memmove back untouched tail, update to new length
                 let start = source_array_vec.len();
                 let tail = self.tail_start;

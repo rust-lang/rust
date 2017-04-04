@@ -151,7 +151,7 @@ impl<T> RawVec<T> {
     /// heap::EMPTY if `cap = 0` or T is zero-sized. In the former case, you must
     /// be careful.
     pub fn ptr(&self) -> *mut T {
-        *self.ptr
+        self.ptr.ptr()
     }
 
     /// Gets the capacity of the allocation.
@@ -563,7 +563,7 @@ unsafe impl<#[may_dangle] T> Drop for RawVec<T> {
 
             let num_bytes = elem_size * self.cap;
             unsafe {
-                heap::deallocate(*self.ptr as *mut _, num_bytes, align);
+                heap::deallocate(self.ptr() as *mut u8, num_bytes, align);
             }
         }
     }
