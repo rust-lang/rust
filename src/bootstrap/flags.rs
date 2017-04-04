@@ -137,10 +137,10 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`");
 
         // Some subcommands get extra options
         match subcommand.as_str() {
-            "test"  => opts.optmulti("", "test-args", "extra arguments", "ARGS"),
-            "bench" => opts.optmulti("", "test-args", "extra arguments", "ARGS"),
-            "dist"  => opts.optflag("", "install", "run installer as well"),
-            _ => { }
+            "test"  => { opts.optmulti("", "test-args", "extra arguments", "ARGS"); },
+            "bench" => { opts.optmulti("", "test-args", "extra arguments", "ARGS"); },
+            "dist"  => { opts.optflag("", "install", "run installer as well"); },
+            _ => { },
         };
 
         // Done specifying what options are possible, so do the getopts parsing
