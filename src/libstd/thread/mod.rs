@@ -670,7 +670,7 @@ pub fn park_timeout(dur: Duration) {
 /// assert!(thread::current().id() != other_thread_id);
 /// ```
 #[unstable(feature = "thread_id", issue = "21507")]
-#[derive(Clone, Copy, Eq, PartialEq, Hash)]
+#[derive(Eq, PartialEq, Clone, Copy, Hash, Debug)]
 pub struct ThreadId(u64);
 
 impl ThreadId {
@@ -696,13 +696,6 @@ impl ThreadId {
 
             ThreadId(id)
         }
-    }
-}
-
-#[unstable(feature = "thread_id", issue = "21507")]
-impl fmt::Debug for ThreadId {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.pad("ThreadId { .. }")
     }
 }
 
