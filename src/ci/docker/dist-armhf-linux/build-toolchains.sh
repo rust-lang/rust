@@ -30,7 +30,7 @@ exit 1
 
 mkdir build
 cd build
-cp ../arm-linux-gnueabi.config .config
+cp ../arm-linux-gnueabihf.config .config
 ct-ng oldconfig
 hide_output ct-ng build
 cd ..

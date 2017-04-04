@@ -56,9 +56,8 @@ RUN mkdir /x-tools && chown rustbuild:rustbuild /x-tools
 USER rustbuild
 WORKDIR /tmp
 
-COPY armv7-linux-gnueabihf.config /tmp/
-COPY armv7-linux-gnueabihf.config aarch64-linux-gnu.config build-toolchains.sh /tmp/
-RUN ./build-toolchains.sh
+COPY build-netbsd-toolchain.sh /tmp/
+RUN ./build-netbsd-toolchain.sh
 
 USER root
 
@@ -66,18 +65,14 @@ RUN curl -o /usr/local/bin/sccache \
       https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-03-24-sccache-x86_64-unknown-linux-musl && \
       chmod +x /usr/local/bin/sccache
 
-ENV PATH=$PATH:/x-tools/aarch64-unknown-linux-gnueabi/bin
-ENV PATH=$PATH:/x-tools/armv7-unknown-linux-gnueabihf/bin
+ENV PATH=$PATH:/x-tools/x86_64-unknown-netbsd/bin
 
-ENV CC_aarch64_unknown_linux_gnu=aarch64-unknown-linux-gnueabi-gcc \
-    AR_aarch64_unknown_linux_gnu=aarch64-unknown-linux-gnueabi-ar \
-    CXX_aarch64_unknown_linux_gnu=aarch64-unknown-linux-gnueabi-g++ \
-    CC_armv7_unknown_linux_gnueabihf=armv7-unknown-linux-gnueabihf-gcc \
-    AR_armv7_unknown_linux_gnueabihf=armv7-unknown-linux-gnueabihf-ar \
-    CXX_armv7_unknown_linux_gnueabihf=armv7-unknown-linux-gnueabihf-g++
+ENV \
+    AR_x86_64_unknown_netbsd=x86_64--netbsd-ar \
+    CC_x86_64_unknown_netbsd=x86_64--netbsd-gcc-sysroot \
+    CXX_x86_64_unknown_netbsd=x86_64--netbsd-g++-sysroot
 
-ENV HOSTS=armv7-unknown-linux-gnueabihf
-ENV HOSTS=$HOSTS,aarch64-unknown-linux-gnu
+ENV HOSTS=x86_64-unknown-netbsd
 
 ENV RUST_CONFIGURE_ARGS --host=$HOSTS --enable-extended
 ENV SCRIPT python2.7 ../x.py dist --host $HOSTS --target $HOSTS
