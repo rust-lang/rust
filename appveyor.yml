@@ -45,14 +45,14 @@ environment:
   - MSYS_BITS: 32
     RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu --enable-ninja
     SCRIPT: python x.py test
-    MINGW_URL: https://s3.amazonaws.com/rust-lang-ci
-    MINGW_ARCHIVE: i686-4.9.2-release-win32-dwarf-rt_v4-rev4.7z
+    MINGW_URL: https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror
+    MINGW_ARCHIVE: i686-6.2.0-release-win32-dwarf-rt_v5-rev1.7z
     MINGW_DIR: mingw32
   - MSYS_BITS: 64
     SCRIPT: python x.py test
     RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu --enable-ninja
-    MINGW_URL: https://s3.amazonaws.com/rust-lang-ci
-    MINGW_ARCHIVE: x86_64-4.9.2-release-win32-seh-rt_v4-rev4.7z
+    MINGW_URL: https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror
+    MINGW_ARCHIVE: x86_64-6.2.0-release-win32-seh-rt_v5-rev1.7z
     MINGW_DIR: mingw64
 
   # 32/64 bit MSVC and GNU deployment
@@ -70,15 +70,15 @@ environment:
   - MSYS_BITS: 32
     RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu --enable-extended --enable-ninja
     SCRIPT: python x.py dist
-    MINGW_URL: https://s3.amazonaws.com/rust-lang-ci
-    MINGW_ARCHIVE: i686-4.9.2-release-win32-dwarf-rt_v4-rev4.7z
+    MINGW_URL: https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror
+    MINGW_ARCHIVE: i686-6.2.0-release-win32-dwarf-rt_v5-rev1.7z
     MINGW_DIR: mingw32
     DEPLOY: 1
   - MSYS_BITS: 64
     SCRIPT: python x.py dist
     RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu --enable-extended --enable-ninja
-    MINGW_URL: https://s3.amazonaws.com/rust-lang-ci
-    MINGW_ARCHIVE: x86_64-4.9.2-release-win32-seh-rt_v4-rev4.7z
+    MINGW_URL: https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror
+    MINGW_ARCHIVE: x86_64-6.2.0-release-win32-seh-rt_v5-rev1.7z
     MINGW_DIR: mingw64
     DEPLOY: 1
 
@@ -115,8 +115,8 @@ install:
   - set PATH=C:\Python27;%PATH%
 
   # Download and install sccache
-  - appveyor-retry appveyor DownloadFile https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-03-16-sccache-x86_64-pc-windows-msvc
-  - mv 2017-03-16-sccache-x86_64-pc-windows-msvc sccache.exe
+  - appveyor-retry appveyor DownloadFile https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-03-24-sccache-x86_64-pc-windows-msvc
+  - mv 2017-03-24-sccache-x86_64-pc-windows-msvc sccache.exe
   - set PATH=%PATH%;%CD%
 
   # Download and install ninja
@@ -182,6 +182,7 @@ deploy:
     on:
       branch: auto
       DEPLOY: 1
+    max_error_retry: 5
 
   # This provider is the same as the one above except that it has a slightly
   # different upload directory and a slightly different trigger
@@ -198,6 +199,7 @@ deploy:
     on:
       branch: auto
       DEPLOY_ALT: 1
+    max_error_retry: 5
 
 # init:
 #   - ps: iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))

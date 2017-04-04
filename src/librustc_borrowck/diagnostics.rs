@@ -198,7 +198,7 @@ fn main() {
 ```
 "##,
 
-E0386: r##"
+/*E0386: r##"
 This error occurs when an attempt is made to mutate the target of a mutable
 reference stored inside an immutable container.
 
@@ -228,7 +228,7 @@ let x: i64 = 1;
 let y: Box<Cell<_>> = Box::new(Cell::new(x));
 y.set(2);
 ```
-"##,
+"##,*/
 
 E0387: r##"
 This error occurs when an attempt is made to mutate or mutably reference data
@@ -1117,6 +1117,6 @@ fn main() {
 }
 
 register_diagnostics! {
-    E0385, // {} in an aliasable location
+//    E0385, // {} in an aliasable location
     E0524, // two closures require unique access to `..` at the same time
 }

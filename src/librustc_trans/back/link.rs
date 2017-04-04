@@ -91,7 +91,7 @@ pub fn find_crate_name(sess: Option<&Session>,
                        attrs: &[ast::Attribute],
                        input: &Input) -> String {
     let validate = |s: String, span: Option<Span>| {
-        cstore::validate_crate_name(sess, &s[..], span);
+        cstore::validate_crate_name(sess, &s, span);
         s
     };
 
@@ -109,7 +109,7 @@ pub fn find_crate_name(sess: Option<&Session>,
                     let msg = format!("--crate-name and #[crate_name] are \
                                        required to match, but `{}` != `{}`",
                                       s, name);
-                    sess.span_err(attr.span, &msg[..]);
+                    sess.span_err(attr.span, &msg);
                 }
             }
             return validate(s.clone(), None);
@@ -417,7 +417,7 @@ fn object_filenames(trans: &CrateTranslation,
                     outputs: &OutputFilenames)
                     -> Vec<PathBuf> {
     trans.modules.iter().map(|module| {
-        outputs.temp_path(OutputType::Object, Some(&module.name[..]))
+        outputs.temp_path(OutputType::Object, Some(&module.name))
     }).collect()
 }
 
@@ -551,7 +551,7 @@ fn link_rlib<'a>(sess: &'a Session,
                                                  e))
                 }
 
-                let bc_data_deflated = flate::deflate_bytes(&bc_data[..]);
+                let bc_data_deflated = flate::deflate_bytes(&bc_data);
 
                 let mut bc_file_deflated = match fs::File::create(&bc_deflated_filename) {
                     Ok(file) => file,
@@ -819,12 +819,12 @@ fn link_natively(sess: &Session,
                                          pname,
                                          prog.status))
                     .note(&format!("{:?}", &cmd))
-                    .note(&escape_string(&output[..]))
+                    .note(&escape_string(&output))
                     .emit();
                 sess.abort_if_errors();
             }
-            info!("linker stderr:\n{}", escape_string(&prog.stderr[..]));
-            info!("linker stdout:\n{}", escape_string(&prog.stdout[..]));
+            info!("linker stderr:\n{}", escape_string(&prog.stderr));
+            info!("linker stdout:\n{}", escape_string(&prog.stdout));
         },
         Err(e) => {
             sess.struct_err(&format!("could not exec the linker `{}`: {}", pname, e))

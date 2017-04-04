@@ -229,11 +229,11 @@ fn generic_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                  variant_fill].iter().cloned().collect();
             match name {
                 None => {
-                    Type::struct_(cx, &fields[..], false)
+                    Type::struct_(cx, &fields, false)
                 }
                 Some(name) => {
                     let mut llty = Type::named_struct(cx, name);
-                    llty.set_struct_body(&fields[..], false);
+                    llty.set_struct_body(&fields, false);
                     llty
                 }
             }
@@ -330,7 +330,7 @@ fn struct_wrapped_nullable_bitdiscr(
     alignment: Alignment,
 ) -> ValueRef {
     let llptrptr = bcx.gepi(scrutinee,
-        &discrfield.iter().map(|f| *f as usize).collect::<Vec<_>>()[..]);
+        &discrfield.iter().map(|f| *f as usize).collect::<Vec<_>>());
     let llptr = bcx.load(llptrptr, alignment.to_align());
     let cmp = if nndiscr == 0 { IntEQ } else { IntNE };
     bcx.icmp(cmp, llptr, C_null(val_ty(llptr)))
@@ -402,7 +402,7 @@ pub fn trans_set_discr<'a, 'tcx>(bcx: &Builder<'a, 'tcx>, t: Ty<'tcx>, val: Valu
                     base::call_memset(bcx, llptr, fill_byte, size, align, false);
                 } else {
                     let path = discrfield.iter().map(|&i| i as usize).collect::<Vec<_>>();
-                    let llptrptr = bcx.gepi(val, &path[..]);
+                    let llptrptr = bcx.gepi(val, &path);
                     let llptrty = val_ty(llptrptr).element_type();
                     bcx.store(C_null(llptrty), llptrptr, None);
                 }

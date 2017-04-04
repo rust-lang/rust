@@ -29,7 +29,6 @@
 #![feature(conservative_impl_trait)]
 #![feature(const_fn)]
 #![feature(core_intrinsics)]
-#![cfg_attr(stage0,feature(field_init_shorthand))]
 #![feature(i128_type)]
 #![feature(libc)]
 #![feature(loop_break_value)]
@@ -72,6 +71,7 @@ pub mod diagnostics;
 pub mod cfg;
 pub mod dep_graph;
 pub mod hir;
+pub mod ich;
 pub mod infer;
 pub mod lint;
 

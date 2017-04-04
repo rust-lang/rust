@@ -28,7 +28,7 @@ use self::AttributeGate::*;
 use abi::Abi;
 use ast::{self, NodeId, PatKind, RangeEnd};
 use attr;
-use codemap::{CodeMap, Spanned};
+use codemap::Spanned;
 use syntax_pos::Span;
 use errors::{DiagnosticBuilder, Handler, FatalError};
 use visit::{self, FnKind, Visitor};
@@ -818,7 +818,7 @@ pub struct GatedCfg {
 
 impl GatedCfg {
     pub fn gate(cfg: &ast::MetaItem) -> Option<GatedCfg> {
-        let name = &*cfg.name().as_str();
+        let name = cfg.name().as_str();
         GATED_CFGS.iter()
                   .position(|info| info.0 == name)
                   .map(|idx| {
@@ -831,7 +831,7 @@ impl GatedCfg {
 
     pub fn check_and_emit(&self, sess: &ParseSess, features: &Features) {
         let (cfg, feature, has_feature) = GATED_CFGS[self.index];
-        if !has_feature(features) && !sess.codemap().span_allows_unstable(self.span) {
+        if !has_feature(features) && !self.span.allows_unstable() {
             let explain = format!("`cfg({})` is experimental and subject to change", cfg);
             emit_feature_err(sess, feature, self.span, GateIssue::Language, &explain);
         }
@@ -841,7 +841,6 @@ impl GatedCfg {
 struct Context<'a> {
     features: &'a Features,
     parse_sess: &'a ParseSess,
-    cm: &'a CodeMap,
     plugin_attributes: &'a [(String, AttributeType)],
 }
 
@@ -850,7 +849,7 @@ macro_rules! gate_feature_fn {
         let (cx, has_feature, span, name, explain) = ($cx, $has_feature, $span, $name, $explain);
         let has_feature: bool = has_feature(&$cx.features);
         debug!("gate_feature(feature = {:?}, span = {:?}); has? {}", name, span, has_feature);
-        if !has_feature && !cx.cm.span_allows_unstable(span) {
+        if !has_feature && !span.allows_unstable() {
             emit_feature_err(cx.parse_sess, name, span, GateIssue::Language, explain);
         }
     }}
@@ -865,8 +864,7 @@ macro_rules! gate_feature {
 impl<'a> Context<'a> {
     fn check_attribute(&self, attr: &ast::Attribute, is_macro: bool) {
         debug!("check_attribute(attr = {:?})", attr);
-        let name = unwrap_or!(attr.name(), return);
-
+        let name = unwrap_or!(attr.name(), return).as_str();
         for &(n, ty, ref gateage) in BUILTIN_ATTRIBUTES {
             if name == n {
                 if let &Gated(_, ref name, ref desc, ref has_feature) = gateage {
@@ -885,12 +883,12 @@ impl<'a> Context<'a> {
                 return;
             }
         }
-        if name.as_str().starts_with("rustc_") {
+        if name.starts_with("rustc_") {
             gate_feature!(self, rustc_attrs, attr.span,
                           "unless otherwise specified, attributes \
                            with the prefix `rustc_` \
                            are reserved for internal compiler diagnostics");
-        } else if name.as_str().starts_with("derive_") {
+        } else if name.starts_with("derive_") {
             gate_feature!(self, custom_derive, attr.span, EXPLAIN_DERIVE_UNDERSCORE);
         } else if !attr::is_known(attr) {
             // Only run the custom attribute lint during regular
@@ -909,12 +907,8 @@ impl<'a> Context<'a> {
     }
 }
 
-pub fn check_attribute(attr: &ast::Attribute, parse_sess: &ParseSess,
-                       cm: &CodeMap, features: &Features) {
-    let cx = Context {
-        features: features, parse_sess: parse_sess,
-        cm: cm, plugin_attributes: &[]
-    };
+pub fn check_attribute(attr: &ast::Attribute, parse_sess: &ParseSess, features: &Features) {
+    let cx = Context { features: features, parse_sess: parse_sess, plugin_attributes: &[] };
     cx.check_attribute(attr, true);
 }
 
@@ -1017,7 +1011,7 @@ struct PostExpansionVisitor<'a> {
 macro_rules! gate_feature_post {
     ($cx: expr, $feature: ident, $span: expr, $explain: expr) => {{
         let (cx, span) = ($cx, $span);
-        if !cx.context.cm.span_allows_unstable(span) {
+        if !span.allows_unstable() {
             gate_feature!(cx.context, $feature, span, $explain)
         }
     }}
@@ -1097,7 +1091,7 @@ fn starts_with_digit(s: &str) -> bool {
 
 impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     fn visit_attribute(&mut self, attr: &ast::Attribute) {
-        if !self.context.cm.span_allows_unstable(attr.span) {
+        if !attr.span.allows_unstable() {
             // check for gated attributes
             self.context.check_attribute(attr, false);
         }
@@ -1531,7 +1525,6 @@ pub fn check_crate(krate: &ast::Crate,
     let ctx = Context {
         features: features,
         parse_sess: sess,
-        cm: sess.codemap(),
         plugin_attributes: plugin_attributes,
     };
     visit::walk_crate(&mut PostExpansionVisitor { context: &ctx }, krate);

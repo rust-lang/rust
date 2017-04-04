@@ -40,6 +40,14 @@ fn main() {
         .arg(sysroot)
         .env(bootstrap::util::dylib_path_var(),
              env::join_paths(&dylib_path).unwrap());
+
+    // Pass the `rustbuild` feature flag to crates which rustbuild is
+    // building. See the comment in bootstrap/lib.rs where this env var is
+    // set for more details.
+    if env::var_os("RUSTBUILD_UNSTABLE").is_some() {
+        cmd.arg("--cfg").arg("rustbuild");
+    }
+
     std::process::exit(match cmd.status() {
         Ok(s) => s.code().unwrap_or(1),
         Err(e) => panic!("\n\nfailed to run {:?}: {}\n\n", cmd, e),

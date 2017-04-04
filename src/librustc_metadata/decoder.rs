@@ -39,7 +39,7 @@ use syntax::attr;
 use syntax::ast;
 use syntax::codemap;
 use syntax::ext::base::MacroKind;
-use syntax_pos::{self, Span, BytePos, Pos, DUMMY_SP};
+use syntax_pos::{self, Span, BytePos, Pos, DUMMY_SP, NO_EXPANSION};
 
 pub struct DecodeContext<'a, 'tcx: 'a> {
     opaque: opaque::Decoder<'a>,
@@ -243,7 +243,7 @@ impl<'a, 'tcx> SpecializedDecoder<Span> for DecodeContext<'a, 'tcx> {
         let sess = if let Some(sess) = self.sess {
             sess
         } else {
-            return Ok(syntax_pos::mk_sp(lo, hi));
+            return Ok(Span { lo: lo, hi: hi, ctxt: NO_EXPANSION });
         };
 
         let (lo, hi) = if lo > hi {
@@ -290,7 +290,7 @@ impl<'a, 'tcx> SpecializedDecoder<Span> for DecodeContext<'a, 'tcx> {
         let lo = (lo - filemap.original_start_pos) + filemap.translated_filemap.start_pos;
         let hi = (hi - filemap.original_start_pos) + filemap.translated_filemap.start_pos;
 
-        Ok(syntax_pos::mk_sp(lo, hi))
+        Ok(Span { lo: lo, hi: hi, ctxt: NO_EXPANSION })
     }
 }
 
@@ -558,7 +558,6 @@ impl<'a, 'tcx> CrateMetadata {
             EntryKind::Union(_, _) => ty::AdtKind::Union,
             _ => bug!("get_adt_def called on a non-ADT {:?}", did),
         };
-        let mut ctor_index = None;
         let variants = if let ty::AdtKind::Enum = kind {
             item.children
                 .decode(self)
@@ -570,8 +569,7 @@ impl<'a, 'tcx> CrateMetadata {
                 })
                 .collect()
         } else {
-            let (variant, struct_ctor) = self.get_variant(&item, item_id, tcx);
-            ctor_index = struct_ctor;
+            let (variant, _struct_ctor) = self.get_variant(&item, item_id, tcx);
             vec![variant]
         };
         let (kind, repr) = match item.kind {
@@ -581,13 +579,7 @@ impl<'a, 'tcx> CrateMetadata {
             _ => bug!("get_adt_def called on a non-ADT {:?}", did),
         };
 
-        let adt = tcx.alloc_adt_def(did, kind, variants, repr);
-        if let Some(ctor_index) = ctor_index {
-            // Make adt definition available through constructor id as well.
-            tcx.maps.adt_def.borrow_mut().insert(self.local_def_id(ctor_index), adt);
-        }
-
-        adt
+        tcx.alloc_adt_def(did, kind, variants, repr)
     }
 
     pub fn get_predicates(&self,
@@ -651,10 +643,10 @@ impl<'a, 'tcx> CrateMetadata {
         self.get_impl_data(id).polarity
     }
 
-    pub fn get_custom_coerce_unsized_kind(&self,
-                                          id: DefIndex)
-                                          -> Option<ty::adjustment::CustomCoerceUnsized> {
-        self.get_impl_data(id).coerce_unsized_kind
+    pub fn get_coerce_unsized_info(&self,
+                                   id: DefIndex)
+                                   -> Option<ty::adjustment::CoerceUnsizedInfo> {
+        self.get_impl_data(id).coerce_unsized_info
     }
 
     pub fn get_impl_trait(&self,

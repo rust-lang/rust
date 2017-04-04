@@ -119,9 +119,9 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
                 };
                 let mut p = Parser::new(cx.parse_sess(), tts, Some(directory), false);
                 p.root_module_name = cx.current_expansion.module.mod_path.last()
-                    .map(|id| (*id.name.as_str()).to_owned());
+                    .map(|id| id.name.as_str().to_string());
 
-                p.check_unknown_macro_variable();
+                p.process_potential_macro_variable();
                 // Let the context choose how to interpret the result.
                 // Weird, but useful for X-macros.
                 return Box::new(ParserAnyMacro {

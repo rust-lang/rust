@@ -896,15 +896,23 @@ impl<K, V> RawTable<K, V> {
         }
     }
 
-    /// Returns an iterator that copies out each entry. Used while the table
-    /// is being dropped.
-    unsafe fn rev_move_buckets(&mut self) -> RevMoveBuckets<K, V> {
-        let raw_bucket = self.first_bucket_raw();
-        RevMoveBuckets {
-            raw: raw_bucket.offset(self.capacity as isize),
-            hashes_end: raw_bucket.hash,
-            elems_left: self.size,
-            marker: marker::PhantomData,
+    /// Drops buckets in reverse order. It leaves the table in an inconsistent
+    /// state and should only be used for dropping the table's remaining
+    /// entries. It's used in the implementation of Drop.
+    unsafe fn rev_drop_buckets(&mut self) {
+        let first_raw = self.first_bucket_raw();
+        let mut raw = first_raw.offset(self.capacity as isize);
+        let mut elems_left = self.size;
+
+        while elems_left != 0 {
+            debug_assert!(raw.hash != first_raw.hash);
+
+            raw = raw.offset(-1);
+
+            if *raw.hash != EMPTY_BUCKET {
+                elems_left -= 1;
+                ptr::drop_in_place(raw.pair as *mut (K, V));
+            }
         }
     }
 
@@ -961,43 +969,6 @@ impl<'a, K, V> Iterator for RawBuckets<'a, K, V> {
         }
 
         None
-    }
-}
-
-/// An iterator that moves out buckets in reverse order. It leaves the table
-/// in an inconsistent state and should only be used for dropping
-/// the table's remaining entries. It's used in the implementation of Drop.
-struct RevMoveBuckets<'a, K, V> {
-    raw: RawBucket<K, V>,
-    hashes_end: *mut HashUint,
-    elems_left: usize,
-
-    // As above, `&'a (K,V)` would seem better, but we often use
-    // 'static for the lifetime, and this is not a publicly exposed
-    // type.
-    marker: marker::PhantomData<&'a ()>,
-}
-
-impl<'a, K, V> Iterator for RevMoveBuckets<'a, K, V> {
-    type Item = (K, V);
-
-    fn next(&mut self) -> Option<(K, V)> {
-        if self.elems_left == 0 {
-            return None;
-        }
-
-        loop {
-            debug_assert!(self.raw.hash != self.hashes_end);
-
-            unsafe {
-                self.raw = self.raw.offset(-1);
-
-                if *self.raw.hash != EMPTY_BUCKET {
-                    self.elems_left -= 1;
-                    return Some(ptr::read(self.raw.pair));
-                }
-            }
-        }
     }
 }
 
@@ -1227,7 +1198,7 @@ unsafe impl<#[may_dangle] K, #[may_dangle] V> Drop for RawTable<K, V> {
         unsafe {
             if needs_drop::<(K, V)>() {
                 // avoid linear runtime for types that don't need drop
-                for _ in self.rev_move_buckets() {}
+                self.rev_drop_buckets();
             }
         }
 

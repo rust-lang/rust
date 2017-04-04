@@ -110,6 +110,7 @@ pub fn check(path: &Path, bad: &mut bool) {
         let skip_cr = contents.contains("ignore-tidy-cr");
         let skip_tab = contents.contains("ignore-tidy-tab");
         let skip_length = contents.contains("ignore-tidy-linelength");
+        let skip_end_whitespace = contents.contains("ignore-tidy-end-whitespace");
         for (i, line) in contents.split("\n").enumerate() {
             let mut err = |msg: &str| {
                 println!("{}:{}: {}", file.display(), i + 1, msg);
@@ -122,7 +123,7 @@ pub fn check(path: &Path, bad: &mut bool) {
             if line.contains("\t") && !skip_tab {
                 err("tab character");
             }
-            if line.ends_with(" ") || line.ends_with("\t") {
+            if !skip_end_whitespace && (line.ends_with(" ") || line.ends_with("\t")) {
                 err("trailing whitespace");
             }
             if line.contains("\r") && !skip_cr {
