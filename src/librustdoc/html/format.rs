@@ -41,8 +41,6 @@ pub struct UnsafetySpace(pub hir::Unsafety);
 /// with a space after it.
 #[derive(Copy, Clone)]
 pub struct ConstnessSpace(pub hir::Constness);
-/// Wrapper struct for properly emitting a method declaration.
-pub struct Method<'a>(pub &'a clean::FnDecl, pub usize);
 /// Similar to VisSpace, but used for mutability
 #[derive(Copy, Clone)]
 pub struct MutableSpace(pub clean::Mutability);
@@ -55,10 +53,23 @@ pub struct TyParamBounds<'a>(pub &'a [clean::TyParamBound]);
 pub struct CommaSep<'a, T: 'a>(pub &'a [T]);
 pub struct AbiSpace(pub Abi);
 
+/// Wrapper struct for properly emitting a method declaration.
+pub struct Method<'a> {
+    /// The declaration to emit.
+    pub decl: &'a clean::FnDecl,
+    /// The length of the function's "name", used to determine line-wrapping.
+    pub name_len: usize,
+    /// The number of spaces to indent each successive line with, if line-wrapping is necessary.
+    pub indent: usize,
+}
+
 /// Wrapper struct for emitting a where clause from Generics.
 pub struct WhereClause<'a>{
+    /// The Generics from which to emit a where clause.
     pub gens: &'a clean::Generics,
+    /// The number of spaces to indent each line with.
     pub indent: usize,
+    /// Whether the where clause needs to add a comma and newline after the last bound.
     pub end_newline: bool,
 }
 
@@ -936,8 +947,7 @@ impl fmt::Display for clean::FnDecl {
 
 impl<'a> fmt::Display for Method<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let decl = self.0;
-        let indent = self.1;
+        let &Method { decl, name_len, indent } = self;
         let amp = if f.alternate() { "&" } else { "&amp;" };
         let mut args = String::new();
         let mut args_plain = String::new();
@@ -1004,15 +1014,19 @@ impl<'a> fmt::Display for Method<'a> {
             format!("{}", decl.output)
         };
 
-        let pad = repeat(" ").take(indent).collect::<String>();
+        let pad = repeat(" ").take(name_len).collect::<String>();
         let plain = format!("{pad}({args}){arrow}",
                         pad = pad,
                         args = args_plain,
                         arrow = arrow_plain);
 
         let output = if plain.len() > 80 {
-            let pad = "<br>&nbsp;&nbsp;&nbsp;&nbsp;";
-            format!("({args}<br>){arrow}", args = args.replace("<br>", pad), arrow = arrow)
+            let full_pad = format!("<br>{}", repeat("&nbsp;").take(indent + 4).collect::<String>());
+            let close_pad = format!("<br>{}", repeat("&nbsp;").take(indent).collect::<String>());
+            format!("({args}{close}){arrow}",
+                    args = args.replace("<br>", &full_pad),
+                    close = close_pad,
+                    arrow = arrow)
         } else {
             format!("({args}){arrow}", args = args.replace("<br>", ""), arrow = arrow)
         };
