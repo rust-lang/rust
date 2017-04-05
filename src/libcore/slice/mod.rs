@@ -1498,9 +1498,10 @@ unsafe impl<'a, T> TrustedLen for IterMut<'a, T> {}
 // Return the arithmetic difference if `T` is zero size.
 #[inline(always)]
 fn ptrdistance<T>(start: *const T, end: *const T) -> usize {
-    let diff = (end as usize).wrapping_sub(start as usize);
-    let size = mem::size_of::<T>();
-    diff / (if size == 0 { 1 } else { size })
+    match start.offset_to(end) {
+        Some(x) => x as usize,
+        None => (end as usize).wrapping_sub(start as usize),
+    }
 }
 
 // Extension methods for raw pointers, used by the iterators

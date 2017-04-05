@@ -123,6 +123,7 @@
 - [no_debug](no-debug.md)
 - [non_ascii_idents](non-ascii-idents.md)
 - [nonzero](nonzero.md)
+- [offset_to](offset-to.md)
 - [omit_gdb_pretty_printer_section](omit-gdb-pretty-printer-section.md)
 - [on_unimplemented](on-unimplemented.md)
 - [once_poison](once-poison.md)
