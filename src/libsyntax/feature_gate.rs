@@ -292,9 +292,6 @@ declare_features! (
     // Allows attributes on lifetime/type formal parameters in generics (RFC 1327)
     (active, generic_param_attrs, "1.11.0", Some(34761)),
 
-    // The #![windows_subsystem] attribute
-    (active, windows_subsystem, "1.14.0", Some(37499)),
-
     // Allows #[link(..., cfg(..))]
     (active, link_cfg, "1.14.0", Some(37406)),
 
@@ -408,7 +405,8 @@ declare_features! (
     (accepted, static_recursion, "1.17.0", Some(29719)),
     // pub(restricted) visibilities (RFC 1422)
     (accepted, pub_restricted, "1.17.0", Some(32409)),
-
+    // The #![windows_subsystem] attribute
+    (accepted, windows_subsystem, "1.18.0", Some(37499)),
 );
 // If you change this, please modify src/doc/unstable-book as well. You must
 // move that documentation into the relevant place in the other docs, and
@@ -768,11 +766,7 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
                                         "unboxed_closures are still evolving",
                                         cfg_fn!(unboxed_closures))),
 
-    ("windows_subsystem", Whitelisted, Gated(Stability::Unstable,
-                                             "windows_subsystem",
-                                             "the windows subsystem attribute \
-                                              is currently unstable",
-                                             cfg_fn!(windows_subsystem))),
+    ("windows_subsystem", Whitelisted, Ungated),
 
     ("proc_macro_attribute", Normal, Gated(Stability::Unstable,
                                            "proc_macro",
