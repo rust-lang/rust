@@ -11,31 +11,37 @@
 //! This module contains `HashStable` implementations for various data types
 //! from rustc::ty in no particular order.
 
-use ich::StableHashingContext;
+use ich::{self, StableHashingContext, NodeIdHashingMode};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
                                            StableHasherResult};
 use std::hash as std_hash;
 use std::mem;
 use ty;
 
-
-impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for ty::Ty<'tcx> {
+impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for ty::TyS<'tcx> {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a, 'tcx>,
                                           hasher: &mut StableHasher<W>) {
-        let type_hash = hcx.tcx().type_id_hash(*self);
-        type_hash.hash_stable(hcx, hasher);
+        let ty::TyS {
+            ref sty,
+
+            // The other fields just provide fast access to information that is
+            // also contained in `sty`, so no need to hash them.
+            ..
+        } = *self;
+
+        sty.hash_stable(hcx, hasher);
     }
 }
 
 impl_stable_hash_for!(struct ty::ItemSubsts<'tcx> { substs });
 
-impl<'a, 'tcx, T> HashStable<StableHashingContext<'a, 'tcx>> for ty::Slice<T>
+impl<'a, 'tcx, T> HashStable<StableHashingContext<'a, 'tcx>> for &'tcx ty::Slice<T>
     where T: HashStable<StableHashingContext<'a, 'tcx>> {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a, 'tcx>,
                                           hasher: &mut StableHasher<W>) {
-        (&**self).hash_stable(hcx, hasher);
+        (&self[..]).hash_stable(hcx, hasher);
     }
 }
 
@@ -67,9 +73,13 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for ty::Region {
                 index.hash_stable(hcx, hasher);
                 name.hash_stable(hcx, hasher);
             }
+            ty::ReScope(code_extent) => {
+                code_extent.hash_stable(hcx, hasher);
+            }
+            ty::ReFree(ref free_region) => {
+                free_region.hash_stable(hcx, hasher);
+            }
             ty::ReLateBound(..) |
-            ty::ReFree(..) |
-            ty::ReScope(..) |
             ty::ReVar(..) |
             ty::ReSkolemized(..) => {
                 bug!("TypeIdHasher: unexpected region {:?}", *self)
@@ -126,7 +136,6 @@ impl_stable_hash_for!(enum ty::BorrowKind {
     UniqueImmBorrow,
     MutBorrow
 });
-
 
 impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for ty::UpvarCapture<'tcx> {
     fn hash_stable<W: StableHasherResult>(&self,
@@ -223,7 +232,6 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for ty::Predicate<'tcx
     }
 }
 
-
 impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for ty::AdtFlags {
     fn hash_stable<W: StableHasherResult>(&self,
                                           _: &mut StableHashingContext<'a, 'tcx>,
@@ -302,7 +310,6 @@ for ::middle::const_val::ConstVal<'tcx> {
 }
 
 impl_stable_hash_for!(struct ty::ClosureSubsts<'tcx> { substs });
-
 
 impl_stable_hash_for!(struct ty::GenericPredicates<'tcx> {
     parent,
@@ -413,3 +420,263 @@ impl_stable_hash_for!(struct ::middle::region::CallSiteScopeData {
 impl_stable_hash_for!(struct ty::DebruijnIndex {
     depth
 });
+
+impl_stable_hash_for!(enum ty::cast::CastKind {
+    CoercionCast,
+    PtrPtrCast,
+    PtrAddrCast,
+    AddrPtrCast,
+    NumericCast,
+    EnumCast,
+    PrimIntCast,
+    U8CharCast,
+    ArrayPtrCast,
+    FnPtrPtrCast,
+    FnPtrAddrCast
+});
+
+impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for ::middle::region::CodeExtent
+{
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a, 'tcx>,
+                                          hasher: &mut StableHasher<W>) {
+        hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
+            hcx.tcx().region_maps.code_extent_data(*self).hash_stable(hcx, hasher);
+        });
+    }
+}
+
+impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for ::middle::region::CodeExtentData
+{
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a, 'tcx>,
+                                          hasher: &mut StableHasher<W>) {
+        use middle::region::CodeExtentData;
+
+        mem::discriminant(self).hash_stable(hcx, hasher);
+        match *self {
+            CodeExtentData::Misc(node_id) |
+            CodeExtentData::DestructionScope(node_id) => {
+                node_id.hash_stable(hcx, hasher);
+            }
+            CodeExtentData::CallSiteScope { fn_id, body_id } |
+            CodeExtentData::ParameterScope { fn_id, body_id } => {
+                fn_id.hash_stable(hcx, hasher);
+                body_id.hash_stable(hcx, hasher);
+            }
+            CodeExtentData::Remainder(block_remainder) => {
+                block_remainder.hash_stable(hcx, hasher);
+            }
+        }
+    }
+}
+
+impl_stable_hash_for!(struct ::middle::region::BlockRemainder {
+    block,
+    first_statement_index
+});
+
+impl_stable_hash_for!(struct ty::adjustment::CoerceUnsizedInfo {
+    custom_kind
+});
+
+impl_stable_hash_for!(struct ty::FreeRegion {
+    scope,
+    bound_region
+});
+
+impl_stable_hash_for!(enum ty::BoundRegion {
+    BrAnon(index),
+    BrNamed(def_id, name),
+    BrFresh(index),
+    BrEnv
+});
+
+impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for ty::TypeVariants<'tcx>
+{
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a, 'tcx>,
+                                          hasher: &mut StableHasher<W>) {
+        use ty::TypeVariants::*;
+
+        mem::discriminant(self).hash_stable(hcx, hasher);
+        match *self {
+            TyBool  |
+            TyChar  |
+            TyStr   |
+            TyNever => {
+                // Nothing more to hash.
+            }
+            TyInt(int_ty) => {
+                int_ty.hash_stable(hcx, hasher);
+            }
+            TyUint(uint_ty) => {
+                uint_ty.hash_stable(hcx, hasher);
+            }
+            TyFloat(float_ty)  => {
+                float_ty.hash_stable(hcx, hasher);
+            }
+            TyAdt(adt_def, substs) => {
+                adt_def.hash_stable(hcx, hasher);
+                substs.hash_stable(hcx, hasher);
+            }
+            TyArray(inner_ty, len) => {
+                inner_ty.hash_stable(hcx, hasher);
+                len.hash_stable(hcx, hasher);
+            }
+            TySlice(inner_ty) => {
+                inner_ty.hash_stable(hcx, hasher);
+            }
+            TyRawPtr(pointee_ty) => {
+                pointee_ty.hash_stable(hcx, hasher);
+            }
+            TyRef(region, pointee_ty) => {
+                region.hash_stable(hcx, hasher);
+                pointee_ty.hash_stable(hcx, hasher);
+            }
+            TyFnDef(def_id, substs, ref sig) => {
+                def_id.hash_stable(hcx, hasher);
+                substs.hash_stable(hcx, hasher);
+                sig.hash_stable(hcx, hasher);
+            }
+            TyFnPtr(ref sig) => {
+                sig.hash_stable(hcx, hasher);
+            }
+            TyDynamic(ref existential_predicates, region) => {
+                existential_predicates.hash_stable(hcx, hasher);
+                region.hash_stable(hcx, hasher);
+            }
+            TyClosure(def_id, closure_substs) => {
+                def_id.hash_stable(hcx, hasher);
+                closure_substs.hash_stable(hcx, hasher);
+            }
+            TyTuple(inner_tys, from_diverging_type_var) => {
+                inner_tys.hash_stable(hcx, hasher);
+                from_diverging_type_var.hash_stable(hcx, hasher);
+            }
+            TyProjection(ref projection_ty) => {
+                projection_ty.hash_stable(hcx, hasher);
+            }
+            TyAnon(def_id, substs) => {
+                def_id.hash_stable(hcx, hasher);
+                substs.hash_stable(hcx, hasher);
+            }
+            TyParam(param_ty) => {
+                param_ty.hash_stable(hcx, hasher);
+            }
+
+            TyError     |
+            TyInfer(..) => {
+                bug!("ty::TypeVariants::hash_stable() - Unexpected variant.")
+            }
+        }
+    }
+}
+
+impl_stable_hash_for!(struct ty::ParamTy {
+    idx,
+    name
+});
+
+impl_stable_hash_for!(struct ty::TypeAndMut<'tcx> {
+    ty,
+    mutbl
+});
+
+impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for ty::ExistentialPredicate<'tcx>
+{
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a, 'tcx>,
+                                          hasher: &mut StableHasher<W>) {
+        mem::discriminant(self).hash_stable(hcx, hasher);
+        match *self {
+            ty::ExistentialPredicate::Trait(ref trait_ref) => {
+                trait_ref.hash_stable(hcx, hasher);
+            }
+            ty::ExistentialPredicate::Projection(ref projection) => {
+                projection.hash_stable(hcx, hasher);
+            }
+            ty::ExistentialPredicate::AutoTrait(def_id) => {
+                def_id.hash_stable(hcx, hasher);
+            }
+        }
+    }
+}
+
+impl_stable_hash_for!(struct ty::ExistentialTraitRef<'tcx> {
+    def_id,
+    substs
+});
+
+impl_stable_hash_for!(struct ty::ExistentialProjection<'tcx> {
+    trait_ref,
+    item_name,
+    ty
+});
+
+
+impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for ty::TypeckTables<'tcx> {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a, 'tcx>,
+                                          hasher: &mut StableHasher<W>) {
+        let ty::TypeckTables {
+            ref type_relative_path_defs,
+            ref node_types,
+            ref item_substs,
+            ref adjustments,
+            ref method_map,
+            ref upvar_capture_map,
+            ref closure_tys,
+            ref closure_kinds,
+            ref liberated_fn_sigs,
+            ref fru_field_types,
+
+            ref cast_kinds,
+            lints: _,
+            ref used_trait_imports,
+            tainted_by_errors,
+            ref free_region_map,
+        } = *self;
+
+        hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
+            ich::hash_stable_nodemap(hcx, hasher, type_relative_path_defs);
+            ich::hash_stable_nodemap(hcx, hasher, node_types);
+            ich::hash_stable_nodemap(hcx, hasher, item_substs);
+            ich::hash_stable_nodemap(hcx, hasher, adjustments);
+
+            ich::hash_stable_hashmap(hcx, hasher, method_map, |hcx, method_call| {
+                let ty::MethodCall {
+                    expr_id,
+                    autoderef
+                } = *method_call;
+
+                let def_id = hcx.tcx().hir.local_def_id(expr_id);
+                (hcx.def_path_hash(def_id), autoderef)
+            });
+
+            ich::hash_stable_hashmap(hcx, hasher, upvar_capture_map, |hcx, up_var_id| {
+                let ty::UpvarId {
+                    var_id,
+                    closure_expr_id
+                } = *up_var_id;
+
+                let var_def_id = hcx.tcx().hir.local_def_id(var_id);
+                let closure_def_id = hcx.tcx().hir.local_def_id(closure_expr_id);
+                (hcx.def_path_hash(var_def_id), hcx.def_path_hash(closure_def_id))
+            });
+
+            ich::hash_stable_nodemap(hcx, hasher, closure_tys);
+            ich::hash_stable_nodemap(hcx, hasher, closure_kinds);
+            ich::hash_stable_nodemap(hcx, hasher, liberated_fn_sigs);
+            ich::hash_stable_nodemap(hcx, hasher, fru_field_types);
+            ich::hash_stable_nodemap(hcx, hasher, cast_kinds);
+
+            ich::hash_stable_hashset(hcx, hasher, used_trait_imports, |hcx, def_id| {
+                hcx.tcx().def_path_hash(*def_id)
+            });
+
+            tainted_by_errors.hash_stable(hcx, hasher);
+            free_region_map.hash_stable(hcx, hasher);
+        })
+    }
+}

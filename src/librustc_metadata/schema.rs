@@ -28,6 +28,9 @@ use syntax_pos::{self, Span};
 
 use std::marker::PhantomData;
 
+use rustc_data_structures::stable_hasher::{StableHasher, HashStable,
+                                           StableHasherResult};
+
 pub fn rustc_version() -> String {
     format!("rustc {}",
             option_env!("CFG_VERSION").unwrap_or("unknown version"))
@@ -100,6 +103,15 @@ impl<T> Clone for Lazy<T> {
 impl<T> serialize::UseSpecializedEncodable for Lazy<T> {}
 impl<T> serialize::UseSpecializedDecodable for Lazy<T> {}
 
+impl<CTX, T> HashStable<CTX> for Lazy<T> {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          _: &mut CTX,
+                                          _: &mut StableHasher<W>) {
+            // There's nothing to do. Whatever got encoded within this Lazy<>
+            // wrapper has already been hashed.
+    }
+}
+
 /// A sequence of type T referred to by its absolute position
 /// in the metadata and length, and which can be decoded lazily.
 /// The sequence is a single node for the purposes of `Lazy`.
@@ -147,6 +159,15 @@ impl<T> Clone for LazySeq<T> {
 
 impl<T> serialize::UseSpecializedEncodable for LazySeq<T> {}
 impl<T> serialize::UseSpecializedDecodable for LazySeq<T> {}
+
+impl<CTX, T> HashStable<CTX> for LazySeq<T> {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          _: &mut CTX,
+                                          _: &mut StableHasher<W>) {
+            // There's nothing to do. Whatever got encoded within this Lazy<>
+            // wrapper has already been hashed.
+    }
+}
 
 /// Encoding / decoding state for `Lazy` and `LazySeq`.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
@@ -251,16 +272,22 @@ pub struct ModData {
     pub reexports: LazySeq<def::Export>,
 }
 
+impl_stable_hash_for!(struct ModData { reexports });
+
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct MacroDef {
     pub body: String,
 }
+
+impl_stable_hash_for!(struct MacroDef { body });
 
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct FnData {
     pub constness: hir::Constness,
     pub arg_names: LazySeq<ast::Name>,
 }
+
+impl_stable_hash_for!(struct FnData { constness, arg_names });
 
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct VariantData<'tcx> {
@@ -273,6 +300,13 @@ pub struct VariantData<'tcx> {
     pub struct_ctor: Option<DefIndex>,
 }
 
+impl_stable_hash_for!(struct VariantData<'tcx> {
+    ctor_kind,
+    discr,
+    evaluated_discr,
+    struct_ctor
+});
+
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct TraitData<'tcx> {
     pub unsafety: hir::Unsafety,
@@ -280,6 +314,13 @@ pub struct TraitData<'tcx> {
     pub has_default_impl: bool,
     pub super_predicates: Lazy<ty::GenericPredicates<'tcx>>,
 }
+
+impl_stable_hash_for!(struct TraitData<'tcx> {
+    unsafety,
+    paren_sugar,
+    has_default_impl,
+    super_predicates
+});
 
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct ImplData<'tcx> {
@@ -291,6 +332,14 @@ pub struct ImplData<'tcx> {
     pub trait_ref: Option<Lazy<ty::TraitRef<'tcx>>>,
 }
 
+impl_stable_hash_for!(struct ImplData<'tcx> {
+    polarity,
+    parent_impl,
+    coerce_unsized_info,
+    trait_ref
+});
+
+
 /// Describes whether the container of an associated item
 /// is a trait or an impl and whether, in a trait, it has
 /// a default, or an in impl, whether it's marked "default".
@@ -301,6 +350,13 @@ pub enum AssociatedContainer {
     ImplDefault,
     ImplFinal,
 }
+
+impl_stable_hash_for!(enum ::schema::AssociatedContainer {
+    TraitRequired,
+    TraitWithDefault,
+    ImplDefault,
+    ImplFinal
+});
 
 impl AssociatedContainer {
     pub fn with_def_id(&self, def_id: DefId) -> ty::AssociatedItemContainer {
@@ -335,9 +391,11 @@ pub struct MethodData {
     pub container: AssociatedContainer,
     pub has_self: bool,
 }
+impl_stable_hash_for!(struct MethodData { fn_data, container, has_self });
 
 #[derive(RustcEncodable, RustcDecodable)]
 pub struct ClosureData<'tcx> {
     pub kind: ty::ClosureKind,
     pub ty: Lazy<ty::PolyFnSig<'tcx>>,
 }
+impl_stable_hash_for!(struct ClosureData<'tcx> { kind, ty });

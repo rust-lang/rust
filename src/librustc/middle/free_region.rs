@@ -180,3 +180,7 @@ fn lub() {
     map.relate_free_regions(frs[1], frs[2]);
     assert_eq!(map.lub_free_regions(frs[0], frs[1]), ty::ReFree(frs[2]));
 }
+
+impl_stable_hash_for!(struct FreeRegionMap {
+    relation
+});
