@@ -1021,38 +1021,23 @@ fn add_local_native_libraries(cmd: &mut Linker, sess: &Session) {
         }
     });
 
-    let pair = sess.cstore.used_libraries().into_iter().filter(|l| {
+    let libs = sess.cstore.used_libraries().into_iter().filter(|l| {
         relevant_lib(sess, l)
-    }).partition(|lib| {
-        lib.kind == NativeLibraryKind::NativeStatic
     });
-    let (staticlibs, others): (Vec<_>, Vec<_>) = pair;
 
-    // Some platforms take hints about whether a library is static or dynamic.
-    // For those that support this, we ensure we pass the option if the library
-    // was flagged "static" (most defaults are dynamic) to ensure that if
-    // libfoo.a and libfoo.so both exist that the right one is chosen.
-    cmd.hint_static();
-
-    let search_path = archive_search_paths(sess);
-    for l in staticlibs {
-        // Here we explicitly ask that the entire archive is included into the
-        // result artifact. For more details see #15460, but the gist is that
-        // the linker will strip away any unused objects in the archive if we
-        // don't otherwise explicitly reference them. This can occur for
-        // libraries which are just providing bindings, libraries with generic
-        // functions, etc.
-        cmd.link_whole_staticlib(&l.name.as_str(), &search_path);
-    }
-
-    cmd.hint_dynamic();
-
-    for lib in others {
+    for lib in libs {
         match lib.kind {
             NativeLibraryKind::NativeUnknown => cmd.link_dylib(&lib.name.as_str()),
             NativeLibraryKind::NativeFramework => cmd.link_framework(&lib.name.as_str()),
-            NativeLibraryKind::NativeStaticNobundle => cmd.link_staticlib(&lib.name.as_str()),
-            NativeLibraryKind::NativeStatic => bug!(),
+            NativeLibraryKind::NativeStaticNobundle | NativeLibraryKind::NativeStatic => {
+                // Some platforms take hints about whether a library is static or dynamic.
+                // For those that support this, we ensure we pass the option if the library
+                // was flagged "static" (most defaults are dynamic) to ensure that if
+                // libfoo.a and libfoo.so both exist that the right one is chosen.
+                cmd.hint_static();
+                cmd.link_staticlib(&lib.name.as_str());
+                cmd.hint_dynamic();
+            }
         }
     }
 }
@@ -1338,7 +1323,9 @@ fn add_upstream_native_libraries(cmd: &mut Linker, sess: &Session, crate_type: c
                     // or is an rlib already included via some other dylib crate, the symbols from
                     // native libs will have already been included in that dylib.
                     if data[cnum.as_usize() - 1] == Linkage::Static {
-                        cmd.link_staticlib(&lib.name.as_str())
+                        cmd.hint_static();
+                        cmd.link_staticlib(&lib.name.as_str());
+                        cmd.hint_dynamic();
                     }
                 },
                 // ignore statically included native libraries here as we've
