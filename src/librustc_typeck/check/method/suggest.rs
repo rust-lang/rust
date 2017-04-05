@@ -196,19 +196,23 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
                                     let field_ty = field.ty(tcx, substs);
 
-                                    if self.is_fn_ty(&field_ty, span) {
-                                        err.help(&format!("use `({0}.{1})(...)` if you \
-                                                           meant to call the function \
-                                                           stored in the `{1}` field",
-                                                          expr_string,
-                                                          item_name));
+                                    if tcx.vis_is_accessible_from(field.vis, self.body_id) {
+                                        if self.is_fn_ty(&field_ty, span) {
+                                            err.help(&format!("use `({0}.{1})(...)` if you \
+                                                               meant to call the function \
+                                                               stored in the `{1}` field",
+                                                              expr_string,
+                                                              item_name));
+                                        } else {
+                                            err.help(&format!("did you mean to write `{0}.{1}` \
+                                                               instead of `{0}.{1}(...)`?",
+                                                              expr_string,
+                                                              item_name));
+                                        }
+                                        err.span_label(span, &"field, not a method");
                                     } else {
-                                        err.help(&format!("did you mean to write `{0}.{1}` \
-                                                           instead of `{0}.{1}(...)`?",
-                                                          expr_string,
-                                                          item_name));
+                                        err.span_label(span, &"private field, not a method");
                                     }
-                                    err.span_label(span, &"field, not a method");
                                     break;
                                 }
                             }
