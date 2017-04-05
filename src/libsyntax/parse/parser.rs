@@ -4657,25 +4657,30 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn complain_if_pub_macro(&mut self, visa: &Visibility, span: Span) {
-        match *visa {
-            Visibility::Inherited => (),
+    fn complain_if_pub_macro(&mut self, vis: &Visibility, sp: Span) {
+        if let Err(mut err) = self.complain_if_pub_macro_diag(vis, sp) {
+            err.emit();
+        }
+    }
+
+    fn complain_if_pub_macro_diag(&mut self, vis: &Visibility, sp: Span) -> PResult<'a, ()> {
+        match *vis {
+            Visibility::Inherited => Ok(()),
             _ => {
                 let is_macro_rules: bool = match self.token {
                     token::Ident(sid) => sid.name == Symbol::intern("macro_rules"),
                     _ => false,
                 };
                 if is_macro_rules {
-                    self.diagnostic().struct_span_err(span, "can't qualify macro_rules \
-                                                             invocation with `pub`")
-                                     .help("did you mean #[macro_export]?")
-                                     .emit();
+                    let mut err = self.diagnostic()
+                        .struct_span_err(sp, "can't qualify macro_rules invocation with `pub`");
+                    err.help("did you mean #[macro_export]?");
+                    Err(err)
                 } else {
-                    self.diagnostic().struct_span_err(span, "can't qualify macro \
-                                                             invocation with `pub`")
-                                     .help("try adjusting the macro to put `pub` \
-                                            inside the invocation")
-                                     .emit();
+                    let mut err = self.diagnostic()
+                        .struct_span_err(sp, "can't qualify macro invocation with `pub`");
+                    err.help("try adjusting the macro to put `pub` inside the invocation");
+                    Err(err)
                 }
             }
         }
@@ -4686,14 +4691,36 @@ impl<'a> Parser<'a> {
                          -> PResult<'a, (Ident, Vec<ast::Attribute>, ast::ImplItemKind)> {
         // code copied from parse_macro_use_or_failure... abstraction!
         if self.token.is_path_start() {
-            // method macro.
+            // Method macro.
 
             let prev_span = self.prev_span;
-            self.complain_if_pub_macro(&vis, prev_span);
+            // Before complaining about trying to set a macro as `pub`,
+            // check if `!` comes after the path.
+            let err = self.complain_if_pub_macro_diag(&vis, prev_span);
 
             let lo = self.span;
             let pth = self.parse_path(PathStyle::Mod)?;
-            self.expect(&token::Not)?;
+            let bang_err = self.expect(&token::Not);
+            if let Err(mut err) = err {
+                if let Err(mut bang_err) = bang_err {
+                    // Given this code `pub path(`, it seems like this is not setting the
+                    // visibility of a macro invocation, but rather a mistyped method declaration.
+                    // Create a diagnostic pointing out that `fn` is missing.
+                    //
+                    // x |     pub path(&self) {
+                    //   |        ^ missing `fn` for method declaration
+
+                    err.cancel();
+                    bang_err.cancel();
+                    //     pub  path(
+                    //        ^^ `sp` below will point to this
+                    let sp = prev_span.between(self.prev_span);
+                    err = self.diagnostic()
+                        .struct_span_err(sp, "missing `fn` for method declaration");
+                    err.span_label(sp, &"missing `fn`");
+                }
+                return Err(err);
+            }
 
             // eat a matched-delimiter token tree:
             let (delim, tts) = self.expect_delimited_token_tree()?;
