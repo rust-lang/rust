@@ -172,6 +172,7 @@
 - [slice_concat_ext](slice-concat-ext.md)
 - [slice_get_slice](slice-get-slice.md)
 - [slice_patterns](slice-patterns.md)
+- [slice_rsplit](slice-rsplit.md)
 - [sort_internals](sort-internals.md)
 - [sort_unstable](sort-unstable.md)
 - [specialization](specialization.md)
