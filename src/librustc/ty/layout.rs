@@ -267,7 +267,7 @@ impl Size {
 
 /// Alignment of a type in bytes, both ABI-mandated and preferred.
 /// Since alignments are always powers of 2, we can pack both in one byte,
-/// giving each a nibble (4 bits) for a maximum alignment of 2^15 = 32768.
+/// giving each a nibble (4 bits) for a maximum alignment of 2<sup>15</sup> = 32768.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct Align {
     raw: u8
