@@ -149,7 +149,10 @@ fn resolve_config(dir: &Path) -> FmtResult<(Config, Option<PathBuf>)> {
     let mut file = try!(File::open(&path));
     let mut toml = String::new();
     try!(file.read_to_string(&mut toml));
-    Ok((Config::from_toml(&toml), Some(path)))
+    match Config::from_toml(&toml) {
+        Ok(cfg) => Ok((cfg, Some(path))),
+        Err(err) => Err(FmtError::from(err)),
+    }
 }
 
 /// read the given config file path recursively if present else read the project file path
@@ -211,8 +214,8 @@ fn execute(opts: &Options) -> FmtResult<Summary> {
         }
         Operation::Stdin { input, config_path } => {
             // try to read config from local directory
-            let (mut config, _) = match_cli_path_or_file(config_path, &env::current_dir().unwrap())
-                .expect("Error resolving config");
+            let (mut config, _) = match_cli_path_or_file(config_path,
+                                                         &env::current_dir().unwrap())?;
 
             // write_mode is always Plain for Stdin.
             config.write_mode = WriteMode::Plain;
@@ -242,8 +245,7 @@ fn execute(opts: &Options) -> FmtResult<Summary> {
             let mut path = None;
             // Load the config path file if provided
             if let Some(config_file) = config_path {
-                let (cfg_tmp, path_tmp) = resolve_config(config_file.as_ref())
-                    .expect(&format!("Error resolving config for {:?}", config_file));
+                let (cfg_tmp, path_tmp) = resolve_config(config_file.as_ref())?;
                 config = cfg_tmp;
                 path = path_tmp;
             };
@@ -258,8 +260,7 @@ fn execute(opts: &Options) -> FmtResult<Summary> {
             for file in files {
                 // Check the file directory if the config-path could not be read or not provided
                 if path.is_none() {
-                    let (config_tmp, path_tmp) = resolve_config(file.parent().unwrap())
-                        .expect(&format!("Error resolving config for {}", file.display()));
+                    let (config_tmp, path_tmp) = resolve_config(file.parent().unwrap())?;
                     if options.verbose {
                         if let Some(path) = path_tmp.as_ref() {
                             println!("Using rustfmt config file {} for {}",
