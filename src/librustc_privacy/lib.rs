@@ -160,7 +160,10 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
                 self.prev_level
             }
             // Other `pub` items inherit levels from parents
-            _ => {
+            hir::ItemConst(..) | hir::ItemEnum(..) | hir::ItemExternCrate(..) |
+            hir::ItemGlobalAsm(..) | hir::ItemFn(..) | hir::ItemMod(..) |
+            hir::ItemStatic(..) | hir::ItemStruct(..) | hir::ItemTrait(..) |
+            hir::ItemTy(..) | hir::ItemUnion(..) | hir::ItemUse(..) => {
                 if item.vis == hir::Public { self.prev_level } else { None }
             }
         };
@@ -212,7 +215,9 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
                     }
                 }
             }
-            _ => {}
+            hir::ItemUse(..) | hir::ItemStatic(..) | hir::ItemConst(..) |
+            hir::ItemGlobalAsm(..) | hir::ItemTy(..) | hir::ItemMod(..) |
+            hir::ItemFn(..) | hir::ItemExternCrate(..) | hir::ItemDefaultImpl(..) => {}
         }
 
         // Mark all items in interfaces of reachable items as reachable
@@ -225,6 +230,8 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
             hir::ItemUse(..) => {}
             // The interface is empty
             hir::ItemDefaultImpl(..) => {}
+            // The interface is empty
+            hir::ItemGlobalAsm(..) => {}
             // Visit everything
             hir::ItemConst(..) | hir::ItemStatic(..) |
             hir::ItemFn(..) | hir::ItemTy(..) => {
@@ -1092,6 +1099,8 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
             hir::ItemMod(..) => {}
             // Checked in resolve
             hir::ItemUse(..) => {}
+            // No subitems
+            hir::ItemGlobalAsm(..) => {}
             // Subitems of these items have inherited publicity
             hir::ItemConst(..) | hir::ItemStatic(..) | hir::ItemFn(..) |
             hir::ItemTy(..) => {

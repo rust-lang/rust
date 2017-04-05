@@ -185,15 +185,16 @@ impl<'tcx> CodegenUnit<'tcx> {
             symbol_name.len().hash(&mut state);
             symbol_name.hash(&mut state);
             let exported = match item {
-               TransItem::Fn(ref instance) => {
-                   let node_id =
-                       scx.tcx().hir.as_local_node_id(instance.def_id());
+                TransItem::Fn(ref instance) => {
+                    let node_id =
+                        scx.tcx().hir.as_local_node_id(instance.def_id());
                     node_id.map(|node_id| exported_symbols.contains(&node_id))
-                           .unwrap_or(false)
-               }
-               TransItem::Static(node_id) => {
+                        .unwrap_or(false)
+                }
+                TransItem::Static(node_id) => {
                     exported_symbols.contains(&node_id)
-               }
+                }
+                TransItem::GlobalAsm(..) => true,
             };
             exported.hash(&mut state);
         }
@@ -243,7 +244,9 @@ impl<'tcx> CodegenUnit<'tcx> {
                 TransItem::Fn(instance) => {
                     tcx.hir.as_local_node_id(instance.def_id())
                 }
-                TransItem::Static(node_id) => Some(node_id),
+                TransItem::Static(node_id) | TransItem::GlobalAsm(node_id) => {
+                    Some(node_id)
+                }
             }
         }
     }
@@ -338,7 +341,8 @@ fn place_root_translation_items<'a, 'tcx, I>(scx: &SharedCrateContext<'a, 'tcx>,
                 None => {
                     match trans_item {
                         TransItem::Fn(..) |
-                        TransItem::Static(..) => llvm::ExternalLinkage,
+                        TransItem::Static(..) |
+                        TransItem::GlobalAsm(..) => llvm::ExternalLinkage,
                     }
                 }
             };
@@ -483,7 +487,8 @@ fn characteristic_def_id_of_trans_item<'a, 'tcx>(scx: &SharedCrateContext<'a, 't
 
             Some(def_id)
         }
-        TransItem::Static(node_id) => Some(tcx.hir.local_def_id(node_id)),
+        TransItem::Static(node_id) |
+        TransItem::GlobalAsm(node_id) => Some(tcx.hir.local_def_id(node_id)),
     }
 }
 

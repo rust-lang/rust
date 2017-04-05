@@ -38,6 +38,7 @@ mod concat_idents;
 mod env;
 mod format;
 mod format_foreign;
+mod global_asm;
 mod log_syntax;
 mod trace_macros;
 
@@ -99,6 +100,7 @@ pub fn register_builtins(resolver: &mut syntax::ext::base::Resolver,
         module_path: expand_mod,
 
         asm: asm::expand_asm,
+        global_asm: global_asm::expand_global_asm,
         cfg: cfg::expand_cfg,
         concat: concat::expand_syntax_ext,
         concat_idents: concat_idents::expand_syntax_ext,
