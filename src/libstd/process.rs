@@ -1070,6 +1070,28 @@ pub fn exit(code: i32) -> ! {
 ///     // execution never gets here
 /// }
 /// ```
+///
+/// The abort function terminates the process, so the destructor will not get 
+/// run on the example below:
+///
+/// ```no_run
+/// use std::process;
+///
+/// struct HasDrop;
+///
+/// impl Drop for HasDrop {
+///     fn drop(&mut self) {
+///         println!("This will never be printed!");
+///     }
+/// }
+///
+/// fn main() {
+///     let _x = HasDrop;
+///     process::abort();
+///     // the destructor implemented for HasDrop will never get run
+/// }
+/// ```
+///
 #[stable(feature = "process_abort", since = "1.17.0")]
 pub fn abort() -> ! {
     unsafe { ::sys::abort_internal() };
