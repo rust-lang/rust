@@ -11,7 +11,6 @@
 from __future__ import print_function
 import argparse
 import contextlib
-import datetime
 import hashlib
 import os
 import shutil
@@ -22,6 +21,7 @@ import tempfile
 
 from time import time
 
+from notification import format_build_time, notify_build_done
 
 def get(url, path, verbose=False):
     sha_url = url + ".sha256"
@@ -151,9 +151,6 @@ def stage0_data(rust_root):
             a, b = line.split(": ", 1)
             data[a] = b
     return data
-
-def format_build_time(duration):
-    return str(datetime.timedelta(seconds=int(duration)))
 
 
 class RustBuild(object):
@@ -512,6 +509,7 @@ class RustBuild(object):
         return "{}-{}".format(cputype, ostype)
 
 def bootstrap():
+    start_time = time()
     parser = argparse.ArgumentParser(description='Build rust')
     parser.add_argument('--config')
     parser.add_argument('--clean', action='store_true')
@@ -539,61 +537,60 @@ def bootstrap():
     except:
         pass
 
-    rb.use_vendored_sources = '\nvendor = true' in rb.config_toml or \
-                              'CFG_ENABLE_VENDOR' in rb.config_mk
-
-    rb.use_locked_deps = '\nlocked-deps = true' in rb.config_toml or \
-                         'CFG_ENABLE_LOCKED_DEPS' in rb.config_mk
-
-    if 'SUDO_USER' in os.environ and not rb.use_vendored_sources:
-        if os.environ.get('USER') != os.environ['SUDO_USER']:
-            rb.use_vendored_sources = True
-            print('info: looks like you are running this command under `sudo`')
-            print('      and so in order to preserve your $HOME this will now')
-            print('      use vendored sources by default. Note that if this')
-            print('      does not work you should run a normal build first')
-            print('      before running a command like `sudo make install`')
-
-    if rb.use_vendored_sources:
-        if not os.path.exists('.cargo'):
-            os.makedirs('.cargo')
-        with open('.cargo/config','w') as f:
-            f.write("""
-                [source.crates-io]
-                replace-with = 'vendored-sources'
-                registry = 'https://example.com'
-
-                [source.vendored-sources]
-                directory = '{}/src/vendor'
-            """.format(rb.rust_root))
-    else:
-        if os.path.exists('.cargo'):
-            shutil.rmtree('.cargo')
-
-    data = stage0_data(rb.rust_root)
-    rb._rustc_channel, rb._rustc_date = data['rustc'].split('-', 1)
-
-    # Fetch/build the bootstrap
-    rb.build = rb.build_triple()
-    rb.download_stage0()
-    sys.stdout.flush()
-    rb.build_bootstrap()
-    sys.stdout.flush()
-
-    # Run the bootstrap
-    args = [rb.bootstrap_binary()]
-    args.extend(sys.argv[1:])
-    env = os.environ.copy()
-    env["BUILD"] = rb.build
-    env["SRC"] = rb.rust_root
-    env["BOOTSTRAP_PARENT_ID"] = str(os.getpid())
-    rb.run(args, env)
-
-def main():
-    start_time = time()
     try:
-        bootstrap()
+        rb.use_vendored_sources = '\nvendor = true' in rb.config_toml or \
+                                  'CFG_ENABLE_VENDOR' in rb.config_mk
+
+        rb.use_locked_deps = '\nlocked-deps = true' in rb.config_toml or \
+                             'CFG_ENABLE_LOCKED_DEPS' in rb.config_mk
+
+        if 'SUDO_USER' in os.environ and not rb.use_vendored_sources:
+            if os.environ.get('USER') != os.environ['SUDO_USER']:
+                rb.use_vendored_sources = True
+                print('info: looks like you are running this command under `sudo`')
+                print('      and so in order to preserve your $HOME this will now')
+                print('      use vendored sources by default. Note that if this')
+                print('      does not work you should run a normal build first')
+                print('      before running a command like `sudo make install`')
+
+        if rb.use_vendored_sources:
+            if not os.path.exists('.cargo'):
+                os.makedirs('.cargo')
+            with open('.cargo/config','w') as f:
+                f.write("""
+                    [source.crates-io]
+                    replace-with = 'vendored-sources'
+                    registry = 'https://example.com'
+
+                    [source.vendored-sources]
+                    directory = '{}/src/vendor'
+                """.format(rb.rust_root))
+        else:
+            if os.path.exists('.cargo'):
+                shutil.rmtree('.cargo')
+
+        data = stage0_data(rb.rust_root)
+        rb._rustc_channel, rb._rustc_date = data['rustc'].split('-', 1)
+
+        # Fetch/build the bootstrap
+        rb.build = rb.build_triple()
+        rb.download_stage0()
+        sys.stdout.flush()
+        rb.build_bootstrap()
+        sys.stdout.flush()
+
+        # Run the bootstrap
+        args = [rb.bootstrap_binary()]
+        args.extend(sys.argv[1:])
+        env = os.environ.copy()
+        env["BUILD"] = rb.build
+        env["SRC"] = rb.rust_root
+        env["BOOTSTRAP_PARENT_ID"] = str(os.getpid())
+        rb.run(args, env)
         print("Build completed successfully in %s" % format_build_time(time() - start_time))
+        if ('notification = false' not in rb.config_toml and
+            ('--notification' in sys.argv or 'notification = true' in rb.config_toml)):
+            notify_build_done(time() - start_time, success=True)
     except (SystemExit, KeyboardInterrupt) as e:
         if hasattr(e, 'code') and isinstance(e.code, int):
             exit_code = e.code
@@ -601,7 +598,14 @@ def main():
             exit_code = 1
             print(e)
         print("Build completed unsuccessfully in %s" % format_build_time(time() - start_time))
+        if ('notification = false' not in rb.config_toml and
+            ('--notification' in sys.argv or 'notification = true' in rb.config_toml)):
+            notify_build_done(time() - start_time, success=False)
         sys.exit(exit_code)
+
+
+def main():
+    bootstrap()
 
 if __name__ == '__main__':
     main()
