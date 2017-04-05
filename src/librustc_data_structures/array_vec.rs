@@ -40,6 +40,12 @@ unsafe impl<T> Array for [T; 8] {
     const LEN: usize = 8;
 }
 
+unsafe impl<T> Array for [T; 32] {
+    type Element = T;
+    type PartialStorage = [ManuallyDrop<T>; 32];
+    const LEN: usize = 32;
+}
+
 pub struct ArrayVec<A: Array> {
     count: usize,
     values: A::PartialStorage

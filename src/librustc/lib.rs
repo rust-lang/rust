@@ -42,6 +42,7 @@
 #![feature(staged_api)]
 #![feature(unboxed_closures)]
 #![feature(discriminant_value)]
+#![feature(sort_unstable)]
 
 extern crate arena;
 extern crate core;

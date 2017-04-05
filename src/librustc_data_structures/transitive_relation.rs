@@ -9,10 +9,13 @@
 // except according to those terms.
 
 use bitvec::BitMatrix;
+use stable_hasher::{HashStable, StableHasher, StableHasherResult};
 use rustc_serialize::{Encodable, Encoder, Decodable, Decoder};
 use std::cell::RefCell;
 use std::fmt::Debug;
 use std::mem;
+
+
 
 #[derive(Clone)]
 pub struct TransitiveRelation<T: Debug + PartialEq> {
@@ -331,6 +334,49 @@ impl<T> Decodable for TransitiveRelation<T>
             let edges = d.read_struct_field("edges", 1, |d| Decodable::decode(d))?;
             Ok(TransitiveRelation { elements, edges, closure: RefCell::new(None) })
         })
+    }
+}
+
+impl<CTX, T> HashStable<CTX> for TransitiveRelation<T>
+    where T: HashStable<CTX> + PartialEq + Debug
+{
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut CTX,
+                                          hasher: &mut StableHasher<W>) {
+        // We are assuming here that the relation graph has been built in a
+        // deterministic way and we can just hash it the way it is.
+        let TransitiveRelation {
+            ref elements,
+            ref edges,
+            // "closure" is just a copy of the data above
+            closure: _
+        } = *self;
+
+        elements.hash_stable(hcx, hasher);
+        edges.hash_stable(hcx, hasher);
+    }
+}
+
+impl<CTX> HashStable<CTX> for Edge {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut CTX,
+                                          hasher: &mut StableHasher<W>) {
+        let Edge {
+            ref source,
+            ref target,
+        } = *self;
+
+        source.hash_stable(hcx, hasher);
+        target.hash_stable(hcx, hasher);
+    }
+}
+
+impl<CTX> HashStable<CTX> for Index {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut CTX,
+                                          hasher: &mut StableHasher<W>) {
+        let Index(idx) = *self;
+        idx.hash_stable(hcx, hasher);
     }
 }
 

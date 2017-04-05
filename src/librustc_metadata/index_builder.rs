@@ -59,13 +59,18 @@ use encoder::EncodeContext;
 use index::Index;
 use schema::*;
 
-use rustc::dep_graph::DepNode;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
+use rustc::ich::{StableHashingContext, Fingerprint};
 use rustc::ty::TyCtxt;
 use syntax::ast;
 
 use std::ops::{Deref, DerefMut};
+
+use rustc_data_structures::stable_hasher::{StableHasher, HashStable};
+use rustc_serialize::Encodable;
+
+use rustc::dep_graph::DepNode;
 
 /// Builder that can encode new items, adding them into the index.
 /// Item encoding cannot be nested.
@@ -112,16 +117,29 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
     /// holds, and that it is therefore not gaining "secret" access to
     /// bits of HIR or other state that would not be trackd by the
     /// content system.
-    pub fn record<DATA>(&mut self,
-                        id: DefId,
-                        op: fn(&mut EncodeContext<'b, 'tcx>, DATA) -> Entry<'tcx>,
-                        data: DATA)
+    pub fn record<'x, DATA>(&'x mut self,
+                            id: DefId,
+                            op: fn(&mut EntryBuilder<'x, 'b, 'tcx>, DATA) -> Entry<'tcx>,
+                            data: DATA)
         where DATA: DepGraphRead
     {
         let _task = self.tcx.dep_graph.in_task(DepNode::MetaData(id));
         data.read(self.tcx);
-        let entry = op(&mut self.ecx, data);
-        self.items.record(id, self.ecx.lazy(&entry));
+
+        assert!(id.is_local());
+        let tcx: TyCtxt<'b, 'tcx, 'tcx> = self.ecx.tcx;
+        let ecx: &'x mut EncodeContext<'b, 'tcx> = &mut *self.ecx;
+        let mut entry_builder = EntryBuilder {
+            tcx: tcx,
+            ecx: ecx,
+            hasher: StableHasher::new(),
+            hcx: StableHashingContext::new(tcx),
+        };
+
+        let entry = op(&mut entry_builder, data);
+        let entry = entry_builder.ecx.lazy(&entry);
+        entry_builder.finish(id);
+        self.items.record(id, entry);
     }
 
     pub fn into_items(self) -> Index {
@@ -221,5 +239,50 @@ pub struct FromId<T>(pub ast::NodeId, pub T);
 impl<T> DepGraphRead for FromId<T> {
     fn read(&self, tcx: TyCtxt) {
         tcx.hir.read(self.0);
+    }
+}
+
+pub struct EntryBuilder<'a, 'b: 'a, 'tcx: 'b> {
+    pub tcx: TyCtxt<'b, 'tcx, 'tcx>,
+    ecx: &'a mut EncodeContext<'b, 'tcx>,
+    hasher: StableHasher<Fingerprint>,
+    hcx: StableHashingContext<'b, 'tcx>,
+}
+
+impl<'a, 'b: 'a, 'tcx: 'b> EntryBuilder<'a, 'b, 'tcx> {
+
+    pub fn finish(self, def_id: DefId) {
+        let hash = self.hasher.finish();
+        self.ecx.metadata_hashes.push((def_id.index, hash));
+    }
+
+    pub fn lazy<T>(&mut self, value: &T) -> Lazy<T>
+        where T: Encodable + HashStable<StableHashingContext<'b, 'tcx>>
+    {
+        value.hash_stable(&mut self.hcx, &mut self.hasher);
+        self.ecx.lazy(value)
+    }
+
+    pub fn lazy_seq<I, T>(&mut self, iter: I) -> LazySeq<T>
+        where I: IntoIterator<Item = T>,
+              T: Encodable + HashStable<StableHashingContext<'b, 'tcx>>
+    {
+        let items: Vec<T> = iter.into_iter().collect();
+        items.hash_stable(&mut self.hcx, &mut self.hasher);
+        self.ecx.lazy_seq(items)
+    }
+
+    pub fn lazy_seq_from_slice<T>(&mut self, slice: &[T]) -> LazySeq<T>
+        where T: Encodable + HashStable<StableHashingContext<'b, 'tcx>>
+    {
+        slice.hash_stable(&mut self.hcx, &mut self.hasher);
+        self.ecx.lazy_seq_ref(slice.iter())
+    }
+
+    pub fn lazy_seq_ref_from_slice<T>(&mut self, slice: &[&T]) -> LazySeq<T>
+        where T: Encodable + HashStable<StableHashingContext<'b, 'tcx>>
+    {
+        slice.hash_stable(&mut self.hcx, &mut self.hasher);
+        self.ecx.lazy_seq_ref(slice.iter().map(|x| *x))
     }
 }
