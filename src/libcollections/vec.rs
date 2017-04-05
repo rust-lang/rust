@@ -2074,14 +2074,10 @@ impl<T> Iterator for IntoIter<T> {
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let diff = (self.end as usize) - (self.ptr as usize);
-        let size = mem::size_of::<T>();
-        let exact = diff /
-                    (if size == 0 {
-                         1
-                     } else {
-                         size
-                     });
+        let exact = match self.ptr.offset_to(self.end) {
+            Some(x) => x as usize,
+            None => (self.end as usize).wrapping_sub(self.ptr as usize),
+        };
         (exact, Some(exact))
     }
 
