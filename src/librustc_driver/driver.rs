@@ -1083,6 +1083,7 @@ pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
          "serialize dep graph",
          || rustc_incremental::save_dep_graph(tcx,
                                               &incremental_hashes_map,
+                                              &translation.metadata.hashes,
                                               translation.link.crate_hash));
     translation
 }

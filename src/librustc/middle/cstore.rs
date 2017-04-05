@@ -27,6 +27,7 @@ use hir::def_id::{CrateNum, DefId, DefIndex};
 use hir::map as hir_map;
 use hir::map::definitions::{Definitions, DefKey, DisambiguatedDefPathData};
 use hir::svh::Svh;
+use ich;
 use middle::lang_items;
 use ty::{self, TyCtxt};
 use session::Session;
@@ -161,6 +162,20 @@ pub struct ExternCrate {
     pub path_len: usize,
 }
 
+pub struct EncodedMetadata {
+    pub raw_data: Vec<u8>,
+    pub hashes: Vec<EncodedMetadataHash>,
+}
+
+/// The hash for some metadata that (when saving) will be exported
+/// from this crate, or which (when importing) was exported by an
+/// upstream crate.
+#[derive(Debug, RustcEncodable, RustcDecodable, Copy, Clone)]
+pub struct EncodedMetadataHash {
+    pub def_index: DefIndex,
+    pub hash: ich::Fingerprint,
+}
+
 /// A store of Rust crates, through with their metadata
 /// can be accessed.
 pub trait CrateStore {
@@ -258,7 +273,8 @@ pub trait CrateStore {
     fn encode_metadata<'a, 'tcx>(&self,
                                  tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                  link_meta: &LinkMeta,
-                                 reachable: &NodeSet) -> Vec<u8>;
+                                 reachable: &NodeSet)
+                                 -> EncodedMetadata;
     fn metadata_encoding_version(&self) -> &[u8];
 }
 
@@ -417,7 +433,10 @@ impl CrateStore for DummyCrateStore {
     fn encode_metadata<'a, 'tcx>(&self,
                                  tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                  link_meta: &LinkMeta,
-                                 reachable: &NodeSet) -> Vec<u8> { vec![] }
+                                 reachable: &NodeSet)
+                                 -> EncodedMetadata {
+        bug!("encode_metadata")
+    }
     fn metadata_encoding_version(&self) -> &[u8] { bug!("metadata_encoding_version") }
 }
 

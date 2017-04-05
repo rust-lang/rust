@@ -14,8 +14,9 @@ use locator;
 use schema;
 
 use rustc::dep_graph::DepTrackingMapConfig;
-use rustc::middle::cstore::{CrateStore, CrateSource, LibSource, DepKind, ExternCrate};
-use rustc::middle::cstore::{NativeLibrary, LinkMeta, LinkagePreference, LoadedMacro};
+use rustc::middle::cstore::{CrateStore, CrateSource, LibSource, DepKind,
+                            ExternCrate, NativeLibrary, LinkMeta,
+                            LinkagePreference, LoadedMacro, EncodedMetadata};
 use rustc::hir::def::{self, Def};
 use rustc::middle::lang_items;
 use rustc::session::Session;
@@ -498,7 +499,8 @@ impl CrateStore for cstore::CStore {
     fn encode_metadata<'a, 'tcx>(&self,
                                  tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                  link_meta: &LinkMeta,
-                                 reachable: &NodeSet) -> Vec<u8>
+                                 reachable: &NodeSet)
+                                 -> EncodedMetadata
     {
         encoder::encode_metadata(tcx, self, link_meta, reachable)
     }

@@ -40,6 +40,7 @@
 #![feature(discriminant_value)]
 #![feature(specialization)]
 #![feature(manually_drop)]
+#![feature(struct_field_attributes)]
 
 #![cfg_attr(unix, feature(libc))]
 #![cfg_attr(test, feature(test))]

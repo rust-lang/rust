@@ -107,7 +107,7 @@ impl Foo {
 #[cfg(not(cfail1))]
 #[rustc_dirty(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 impl Foo {
     #[rustc_dirty(label="Hir", cfg="cfail2")]
@@ -126,7 +126,7 @@ impl Foo {
 #[cfg(not(cfail1))]
 #[rustc_dirty(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 impl Foo {
     #[rustc_dirty(label="Hir", cfg="cfail2")]
@@ -171,7 +171,7 @@ impl Foo {
 impl Foo {
     #[rustc_clean(label="Hir", cfg="cfail2")]
     #[rustc_clean(label="Hir", cfg="cfail3")]
-    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail2")]
     #[rustc_metadata_clean(cfg="cfail3")]
     pub fn add_method_to_impl1(&self) { }
 
@@ -219,9 +219,7 @@ impl Foo {
     #[rustc_clean(label="Hir", cfg="cfail3")]
     #[rustc_dirty(label="HirBody", cfg="cfail2")]
     #[rustc_clean(label="HirBody", cfg="cfail3")]
-    // At the moment we explicitly ignore argument names in metadata, since they
-    // are not used in downstream crates (except in rustdoc)
-    #[rustc_metadata_clean(cfg="cfail2")]
+    #[rustc_metadata_dirty(cfg="cfail2")]
     #[rustc_metadata_clean(cfg="cfail3")]
     pub fn change_method_parameter_name(&self, b: i64) { }
 }
@@ -287,9 +285,7 @@ impl Foo {
     #[rustc_clean(label="Hir", cfg="cfail3")]
     #[rustc_dirty(label="HirBody", cfg="cfail2")]
     #[rustc_clean(label="HirBody", cfg="cfail3")]
-    // At the moment we explicitly ignore argument names in metadata, since they
-    // are not used in downstream crates (except in rustdoc)
-    #[rustc_metadata_clean(cfg="cfail2")]
+    #[rustc_metadata_dirty(cfg="cfail2")]
     #[rustc_metadata_clean(cfg="cfail3")]
     pub fn change_method_parameter_order(&self, b: i64, a: i64) { }
 }
@@ -373,7 +369,7 @@ impl Foo {
 impl Foo {
     #[rustc_dirty(label="Hir", cfg="cfail2")]
     #[rustc_clean(label="Hir", cfg="cfail3")]
-    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail2")] // Apparently unused lifetimes don't show up in the type.
     #[rustc_metadata_clean(cfg="cfail3")]
     pub fn add_lifetime_parameter_to_method<'a>(&self) { }
 }
@@ -544,7 +540,7 @@ impl<T> Bar<T> {
 impl<T: 'static> Bar<T> {
     #[rustc_clean(label="Hir", cfg="cfail2")]
     #[rustc_clean(label="Hir", cfg="cfail3")]
-    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail2")]
     #[rustc_metadata_clean(cfg="cfail3")]
     pub fn add_lifetime_bound_to_impl_parameter(&self) { }
 }
@@ -565,7 +561,7 @@ impl<T> Bar<T> {
 impl<T: Clone> Bar<T> {
     #[rustc_clean(label="Hir", cfg="cfail2")]
     #[rustc_clean(label="Hir", cfg="cfail3")]
-    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail2")]
     #[rustc_metadata_clean(cfg="cfail3")]
     pub fn add_trait_bound_to_impl_parameter(&self) { }
 }

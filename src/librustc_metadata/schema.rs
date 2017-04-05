@@ -14,6 +14,7 @@ use index;
 use rustc::hir;
 use rustc::hir::def::{self, CtorKind};
 use rustc::hir::def_id::{DefIndex, DefId};
+use rustc::ich::StableHashingContext;
 use rustc::middle::const_val::ConstVal;
 use rustc::middle::cstore::{DepKind, LinkagePreference, NativeLibrary};
 use rustc::middle::lang_items;
@@ -27,6 +28,7 @@ use syntax::symbol::Symbol;
 use syntax_pos::{self, Span};
 
 use std::marker::PhantomData;
+use std::mem;
 
 use rustc_data_structures::stable_hasher::{StableHasher, HashStable,
                                            StableHasherResult};
@@ -107,8 +109,8 @@ impl<CTX, T> HashStable<CTX> for Lazy<T> {
     fn hash_stable<W: StableHasherResult>(&self,
                                           _: &mut CTX,
                                           _: &mut StableHasher<W>) {
-            // There's nothing to do. Whatever got encoded within this Lazy<>
-            // wrapper has already been hashed.
+        // There's nothing to do. Whatever got encoded within this Lazy<>
+        // wrapper has already been hashed.
     }
 }
 
@@ -164,8 +166,8 @@ impl<CTX, T> HashStable<CTX> for LazySeq<T> {
     fn hash_stable<W: StableHasherResult>(&self,
                                           _: &mut CTX,
                                           _: &mut StableHasher<W>) {
-            // There's nothing to do. Whatever got encoded within this Lazy<>
-            // wrapper has already been hashed.
+        // There's nothing to do. Whatever got encoded within this Lazy<>
+        // wrapper has already been hashed.
     }
 }
 
@@ -240,6 +242,23 @@ pub struct Entry<'tcx> {
     pub mir: Option<Lazy<mir::Mir<'tcx>>>,
 }
 
+impl_stable_hash_for!(struct Entry<'tcx> {
+    kind,
+    visibility,
+    span,
+    attributes,
+    children,
+    stability,
+    deprecation,
+    ty,
+    inherent_impls,
+    variances,
+    generics,
+    predicates,
+    ast,
+    mir
+});
+
 #[derive(Copy, Clone, RustcEncodable, RustcDecodable)]
 pub enum EntryKind<'tcx> {
     Const(u8),
@@ -265,6 +284,69 @@ pub enum EntryKind<'tcx> {
     Method(Lazy<MethodData>),
     AssociatedType(AssociatedContainer),
     AssociatedConst(AssociatedContainer, u8),
+}
+
+impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for EntryKind<'tcx> {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a, 'tcx>,
+                                          hasher: &mut StableHasher<W>) {
+        mem::discriminant(self).hash_stable(hcx, hasher);
+        match *self {
+            EntryKind::ImmStatic        |
+            EntryKind::MutStatic        |
+            EntryKind::ForeignImmStatic |
+            EntryKind::ForeignMutStatic |
+            EntryKind::ForeignMod       |
+            EntryKind::Field |
+            EntryKind::Type => {
+                // Nothing else to hash here.
+            }
+            EntryKind::Const(qualif) => {
+                qualif.hash_stable(hcx, hasher);
+            }
+            EntryKind::Enum(ref repr_options) => {
+                repr_options.hash_stable(hcx, hasher);
+            }
+            EntryKind::Variant(ref variant_data) => {
+                variant_data.hash_stable(hcx, hasher);
+            }
+            EntryKind::Struct(ref variant_data, ref repr_options) |
+            EntryKind::Union(ref variant_data, ref repr_options)  => {
+                variant_data.hash_stable(hcx, hasher);
+                repr_options.hash_stable(hcx, hasher);
+            }
+            EntryKind::Fn(ref fn_data) |
+            EntryKind::ForeignFn(ref fn_data) => {
+                fn_data.hash_stable(hcx, hasher);
+            }
+            EntryKind::Mod(ref mod_data) => {
+                mod_data.hash_stable(hcx, hasher);
+            }
+            EntryKind::MacroDef(ref macro_def) => {
+                macro_def.hash_stable(hcx, hasher);
+            }
+            EntryKind::Closure(closure_data) => {
+                closure_data.hash_stable(hcx, hasher);
+            }
+            EntryKind::Trait(ref trait_data) => {
+                trait_data.hash_stable(hcx, hasher);
+            }
+            EntryKind::DefaultImpl(ref impl_data) |
+            EntryKind::Impl(ref impl_data) => {
+                impl_data.hash_stable(hcx, hasher);
+            }
+            EntryKind::Method(ref method_data) => {
+                method_data.hash_stable(hcx, hasher);
+            }
+            EntryKind::AssociatedType(associated_container) => {
+                associated_container.hash_stable(hcx, hasher);
+            }
+            EntryKind::AssociatedConst(associated_container, qualif) => {
+                associated_container.hash_stable(hcx, hasher);
+                qualif.hash_stable(hcx, hasher);
+            }
+        }
+    }
 }
 
 #[derive(RustcEncodable, RustcDecodable)]

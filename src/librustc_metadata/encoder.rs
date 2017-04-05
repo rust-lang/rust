@@ -12,10 +12,10 @@ use cstore;
 use index::Index;
 use schema::*;
 
-use rustc::middle::cstore::{LinkMeta, LinkagePreference, NativeLibrary};
+use rustc::middle::cstore::{LinkMeta, LinkagePreference, NativeLibrary,
+                            EncodedMetadata, EncodedMetadataHash};
 use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefIndex, DefId};
 use rustc::hir::map::definitions::DefPathTable;
-use rustc::ich;
 use rustc::middle::dependency_format::Linkage;
 use rustc::middle::lang_items;
 use rustc::mir;
@@ -56,7 +56,7 @@ pub struct EncodeContext<'a, 'tcx: 'a> {
     type_shorthands: FxHashMap<Ty<'tcx>, usize>,
     predicate_shorthands: FxHashMap<ty::Predicate<'tcx>, usize>,
 
-    pub metadata_hashes: Vec<(DefIndex, ich::Fingerprint)>,
+    pub metadata_hashes: Vec<EncodedMetadataHash>,
 }
 
 macro_rules! encoder_methods {
@@ -240,13 +240,16 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
 impl<'a, 'b: 'a, 'tcx: 'b> EntryBuilder<'a, 'b, 'tcx> {
     fn encode_item_variances(&mut self, def_id: DefId) -> LazySeq<ty::Variance> {
+        debug!("EntryBuilder::encode_item_variances({:?})", def_id);
         let tcx = self.tcx;
         self.lazy_seq_from_slice(&tcx.item_variances(def_id))
     }
 
     fn encode_item_type(&mut self, def_id: DefId) -> Lazy<Ty<'tcx>> {
         let tcx = self.tcx;
-        self.lazy(&tcx.item_type(def_id))
+        let ty = tcx.item_type(def_id);
+        debug!("EntryBuilder::encode_item_type({:?}) => {:?}", def_id, ty);
+        self.lazy(&ty)
     }
 
     /// Encode data for the given variant of the given ADT. The
@@ -261,6 +264,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> EntryBuilder<'a, 'b, 'tcx> {
         let def = tcx.lookup_adt_def(enum_did);
         let variant = &def.variants[index];
         let def_id = variant.did;
+        debug!("EntryBuilder::encode_enum_variant_info({:?})", def_id);
 
         let data = VariantData {
             ctor_kind: variant.ctor_kind,
@@ -307,6 +311,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> EntryBuilder<'a, 'b, 'tcx> {
                            -> Entry<'tcx> {
         let tcx = self.tcx;
         let def_id = tcx.hir.local_def_id(id);
+        debug!("EntryBuilder::encode_info_for_mod({:?})", def_id);
 
         let data = ModData {
             reexports: match tcx.export_map.get(&id) {
@@ -370,6 +375,8 @@ impl<'a, 'b: 'a, 'tcx: 'b> EntryBuilder<'a, 'b, 'tcx> {
         let field = &variant.fields[field_index];
 
         let def_id = field.did;
+        debug!("EntryBuilder::encode_field({:?})", def_id);
+
         let variant_id = tcx.hir.as_local_node_id(variant.did).unwrap();
         let variant_data = tcx.hir.expect_variant_data(variant_id);
 
@@ -394,6 +401,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> EntryBuilder<'a, 'b, 'tcx> {
     }
 
     fn encode_struct_ctor(&mut self, (adt_def_id, def_id): (DefId, DefId)) -> Entry<'tcx> {
+        debug!("EntryBuilder::encode_struct_ctor({:?})", def_id);
         let tcx = self.tcx;
         let variant = tcx.lookup_adt_def(adt_def_id).struct_variant();
 
@@ -436,16 +444,19 @@ impl<'a, 'b: 'a, 'tcx: 'b> EntryBuilder<'a, 'b, 'tcx> {
     }
 
     fn encode_generics(&mut self, def_id: DefId) -> Lazy<ty::Generics> {
+        debug!("EntryBuilder::encode_generics({:?})", def_id);
         let tcx = self.tcx;
         self.lazy(tcx.item_generics(def_id))
     }
 
     fn encode_predicates(&mut self, def_id: DefId) -> Lazy<ty::GenericPredicates<'tcx>> {
+        debug!("EntryBuilder::encode_predicates({:?})", def_id);
         let tcx = self.tcx;
         self.lazy(&tcx.item_predicates(def_id))
     }
 
     fn encode_info_for_trait_item(&mut self, def_id: DefId) -> Entry<'tcx> {
+        debug!("EntryBuilder::encode_info_for_trait_item({:?})", def_id);
         let tcx = self.tcx;
 
         let node_id = tcx.hir.as_local_node_id(def_id).unwrap();
@@ -528,6 +539,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> EntryBuilder<'a, 'b, 'tcx> {
     }
 
     fn encode_info_for_impl_item(&mut self, def_id: DefId) -> Entry<'tcx> {
+        debug!("EntryBuilder::encode_info_for_impl_item({:?})", def_id);
         let node_id = self.tcx.hir.as_local_node_id(def_id).unwrap();
         let ast_item = self.tcx.hir.expect_impl_item(node_id);
         let impl_item = self.tcx.associated_item(def_id);
@@ -614,11 +626,13 @@ impl<'a, 'b: 'a, 'tcx: 'b> EntryBuilder<'a, 'b, 'tcx> {
     }
 
     fn encode_mir(&mut self, def_id: DefId) -> Option<Lazy<mir::Mir<'tcx>>> {
+        debug!("EntryBuilder::encode_mir({:?})", def_id);
         self.tcx.maps.mir.borrow().get(&def_id).map(|mir| self.lazy(&*mir.borrow()))
     }
 
     // Encodes the inherent implementations of a structure, enumeration, or trait.
     fn encode_inherent_implementations(&mut self, def_id: DefId) -> LazySeq<DefIndex> {
+        debug!("EntryBuilder::encode_inherent_implementations({:?})", def_id);
         match self.tcx.maps.inherent_impls.borrow().get(&def_id) {
             None => LazySeq::empty(),
             Some(implementations) => {
@@ -631,18 +645,19 @@ impl<'a, 'b: 'a, 'tcx: 'b> EntryBuilder<'a, 'b, 'tcx> {
     }
 
     fn encode_stability(&mut self, def_id: DefId) -> Option<Lazy<attr::Stability>> {
+        debug!("EntryBuilder::encode_stability({:?})", def_id);
         self.tcx.lookup_stability(def_id).map(|stab| self.lazy(stab))
     }
 
     fn encode_deprecation(&mut self, def_id: DefId) -> Option<Lazy<attr::Deprecation>> {
+        debug!("EntryBuilder::encode_deprecation({:?})", def_id);
         self.tcx.lookup_deprecation(def_id).map(|depr| self.lazy(&depr))
     }
 
     fn encode_info_for_item(&mut self, (def_id, item): (DefId, &'tcx hir::Item)) -> Entry<'tcx> {
         let tcx = self.tcx;
 
-        debug!("encoding info for item at {}",
-               tcx.sess.codemap().span_to_string(item.span));
+        debug!("EntryBuilder::encode_info_for_item({:?})", def_id);
 
         let kind = match item.node {
             hir::ItemStatic(_, hir::MutMutable, _) => EntryKind::MutStatic,
@@ -956,7 +971,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> EntryBuilder<'a, 'b, 'tcx> {
                                     -> Entry<'tcx> {
         let tcx = self.tcx;
 
-        debug!("writing foreign item {}", tcx.node_path_str(nitem.id));
+        debug!("EntryBuilder::encode_info_for_foreign_item({:?})", def_id);
 
         let kind = match nitem.node {
             hir::ForeignItemFn(_, ref names, _) => {
@@ -1065,6 +1080,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> EntryBuilder<'a, 'b, 'tcx> {
     fn encode_info_for_ty_param(&mut self,
                                 (def_id, Untracked(has_default)): (DefId, Untracked<bool>))
                                 -> Entry<'tcx> {
+        debug!("EntryBuilder::encode_info_for_ty_param({:?})", def_id);
         let tcx = self.tcx;
         Entry {
             kind: EntryKind::Type,
@@ -1091,6 +1107,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> EntryBuilder<'a, 'b, 'tcx> {
     }
 
     fn encode_info_for_anon_ty(&mut self, def_id: DefId) -> Entry<'tcx> {
+        debug!("EntryBuilder::encode_info_for_anon_ty({:?})", def_id);
         let tcx = self.tcx;
         Entry {
             kind: EntryKind::Type,
@@ -1113,6 +1130,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> EntryBuilder<'a, 'b, 'tcx> {
     }
 
     fn encode_info_for_closure(&mut self, def_id: DefId) -> Entry<'tcx> {
+        debug!("EntryBuilder::encode_info_for_closure({:?})", def_id);
         let tcx = self.tcx;
 
         let data = ClosureData {
@@ -1141,6 +1159,9 @@ impl<'a, 'b: 'a, 'tcx: 'b> EntryBuilder<'a, 'b, 'tcx> {
     }
 
     fn encode_attributes(&mut self, attrs: &[ast::Attribute]) -> LazySeq<ast::Attribute> {
+        // NOTE: This must use lazy_seq_from_slice(), not lazy_seq() because
+        //       we really on the HashStable specialization for [Attribute]
+        //       to properly filter things out.
         self.lazy_seq_from_slice(attrs)
     }
 }
@@ -1442,14 +1463,15 @@ pub fn encode_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                  cstore: &cstore::CStore,
                                  link_meta: &LinkMeta,
                                  exported_symbols: &NodeSet)
-                                 -> Vec<u8> {
+                                 -> EncodedMetadata
+{
     let mut cursor = Cursor::new(vec![]);
     cursor.write_all(METADATA_HEADER).unwrap();
 
     // Will be filed with the root position after encoding everything.
     cursor.write_all(&[0, 0, 0, 0]).unwrap();
 
-    let root = {
+    let (root, metadata_hashes) = {
         let mut ecx = EncodeContext {
             opaque: opaque::Encoder::new(&mut cursor),
             tcx: tcx,
@@ -1467,7 +1489,8 @@ pub fn encode_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         // Encode all the entries and extra information in the crate,
         // culminating in the `CrateRoot` which points to all of it.
-        ecx.encode_crate_root()
+        let root = ecx.encode_crate_root();
+        (root, ecx.metadata_hashes)
     };
     let mut result = cursor.into_inner();
 
@@ -1479,7 +1502,10 @@ pub fn encode_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     result[header + 2] = (pos >> 8) as u8;
     result[header + 3] = (pos >> 0) as u8;
 
-    result
+    EncodedMetadata {
+        raw_data: result,
+        hashes: metadata_hashes,
+    }
 }
 
 pub fn get_repr_options<'a, 'tcx, 'gcx>(tcx: &TyCtxt<'a, 'tcx, 'gcx>, did: DefId) -> ReprOptions {
