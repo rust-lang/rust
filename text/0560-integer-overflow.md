@@ -130,10 +130,10 @@ defined results today. The only change is that now a panic may result.
   wrap.
 - The operations `/`, `%` for the arguments `INT_MIN` and `-1`
   will unconditionally panic. This is unconditional for legacy reasons.
-- Shift operations (`<<`, `>>`) on a value of with `N` can be passed a shift value
-  >= `N`. It is unclear what behaviour should result from this, so the shift value 
-  is unconditionally masked to be modulo `N` to ensure that the argument is always 
-  in range.
+- Shift operations (`<<`, `>>`) on a value of with `N` can be passed a shift
+  value >= `N`. It is unclear what behaviour should result from this, so the
+  shift value is unconditionally masked to be modulo `N` to ensure that the
+  argument is always in range.
 
 ## Enabling overflow checking
 
