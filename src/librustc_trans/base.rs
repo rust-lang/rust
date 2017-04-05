@@ -36,6 +36,7 @@ use llvm::{Linkage, ValueRef, Vector, get_param};
 use llvm;
 use rustc::hir::def_id::LOCAL_CRATE;
 use middle::lang_items::StartFnLangItem;
+use middle::cstore::EncodedMetadata;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::dep_graph::{AssertDepGraphSafe, DepNode, WorkProduct};
 use rustc::hir::map as hir_map;
@@ -724,7 +725,8 @@ fn contains_null(s: &str) -> bool {
 }
 
 fn write_metadata(cx: &SharedCrateContext,
-                  exported_symbols: &NodeSet) -> Vec<u8> {
+                  exported_symbols: &NodeSet)
+                  -> EncodedMetadata {
     use flate;
 
     #[derive(PartialEq, Eq, PartialOrd, Ord)]
@@ -748,7 +750,10 @@ fn write_metadata(cx: &SharedCrateContext,
     }).max().unwrap();
 
     if kind == MetadataKind::None {
-        return Vec::new();
+        return EncodedMetadata {
+            raw_data: vec![],
+            hashes: vec![],
+        };
     }
 
     let cstore = &cx.tcx().sess.cstore;
@@ -761,7 +766,7 @@ fn write_metadata(cx: &SharedCrateContext,
 
     assert!(kind == MetadataKind::Compressed);
     let mut compressed = cstore.metadata_encoding_version().to_vec();
-    compressed.extend_from_slice(&flate::deflate_bytes(&metadata));
+    compressed.extend_from_slice(&flate::deflate_bytes(&metadata.raw_data));
 
     let llmeta = C_bytes_in_context(cx.metadata_llcx(), &compressed);
     let llconst = C_struct_in_context(cx.metadata_llcx(), &[llmeta], false);

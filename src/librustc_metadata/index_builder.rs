@@ -62,15 +62,15 @@ use schema::*;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::ich::{StableHashingContext, Fingerprint};
+use rustc::middle::cstore::EncodedMetadataHash;
 use rustc::ty::TyCtxt;
 use syntax::ast;
 
 use std::ops::{Deref, DerefMut};
 
+use rustc_data_structures::accumulate_vec::AccumulateVec;
 use rustc_data_structures::stable_hasher::{StableHasher, HashStable};
 use rustc_serialize::Encodable;
-
-use rustc::dep_graph::DepNode;
 
 /// Builder that can encode new items, adding them into the index.
 /// Item encoding cannot be nested.
@@ -123,20 +123,36 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
                             data: DATA)
         where DATA: DepGraphRead
     {
-        let _task = self.tcx.dep_graph.in_task(DepNode::MetaData(id));
-        data.read(self.tcx);
-
         assert!(id.is_local());
         let tcx: TyCtxt<'b, 'tcx, 'tcx> = self.ecx.tcx;
+
+        // We don't track this since we are explicitly computing the incr. comp.
+        // hashes anyway. In theory we could do some tracking here and use it to
+        // avoid rehashing things (and instead cache the hashes) but it's
+        // unclear whether that would be a win since hashing is cheap enough.
+        let _task = tcx.dep_graph.in_ignore();
+
+        let compute_ich = (tcx.sess.opts.debugging_opts.query_dep_graph ||
+                           tcx.sess.opts.debugging_opts.incremental_cc) &&
+                           tcx.sess.opts.build_dep_graph();
+
         let ecx: &'x mut EncodeContext<'b, 'tcx> = &mut *self.ecx;
         let mut entry_builder = EntryBuilder {
             tcx: tcx,
             ecx: ecx,
-            hasher: StableHasher::new(),
-            hcx: StableHashingContext::new(tcx),
+            hcx: if compute_ich {
+                Some((StableHashingContext::new(tcx), StableHasher::new()))
+            } else {
+                None
+            }
         };
 
         let entry = op(&mut entry_builder, data);
+
+        if let Some((ref mut hcx, ref mut hasher)) = entry_builder.hcx {
+            entry.hash_stable(hcx, hasher);
+        }
+
         let entry = entry_builder.ecx.lazy(&entry);
         entry_builder.finish(id);
         self.items.record(id, entry);
@@ -245,21 +261,28 @@ impl<T> DepGraphRead for FromId<T> {
 pub struct EntryBuilder<'a, 'b: 'a, 'tcx: 'b> {
     pub tcx: TyCtxt<'b, 'tcx, 'tcx>,
     ecx: &'a mut EncodeContext<'b, 'tcx>,
-    hasher: StableHasher<Fingerprint>,
-    hcx: StableHashingContext<'b, 'tcx>,
+    hcx: Option<(StableHashingContext<'b, 'tcx>, StableHasher<Fingerprint>)>,
 }
 
 impl<'a, 'b: 'a, 'tcx: 'b> EntryBuilder<'a, 'b, 'tcx> {
 
     pub fn finish(self, def_id: DefId) {
-        let hash = self.hasher.finish();
-        self.ecx.metadata_hashes.push((def_id.index, hash));
+        if let Some((_, hasher)) = self.hcx {
+            let hash = hasher.finish();
+            self.ecx.metadata_hashes.push(EncodedMetadataHash {
+                def_index: def_id.index,
+                hash: hash,
+            });
+        }
     }
 
     pub fn lazy<T>(&mut self, value: &T) -> Lazy<T>
         where T: Encodable + HashStable<StableHashingContext<'b, 'tcx>>
     {
-        value.hash_stable(&mut self.hcx, &mut self.hasher);
+        if let Some((ref mut hcx, ref mut hasher)) = self.hcx {
+            value.hash_stable(hcx, hasher);
+            debug!("metadata-hash: {:?}", hasher);
+        }
         self.ecx.lazy(value)
     }
 
@@ -267,22 +290,58 @@ impl<'a, 'b: 'a, 'tcx: 'b> EntryBuilder<'a, 'b, 'tcx> {
         where I: IntoIterator<Item = T>,
               T: Encodable + HashStable<StableHashingContext<'b, 'tcx>>
     {
-        let items: Vec<T> = iter.into_iter().collect();
-        items.hash_stable(&mut self.hcx, &mut self.hasher);
-        self.ecx.lazy_seq(items)
+        if let Some((ref mut hcx, ref mut hasher)) = self.hcx {
+            let iter = iter.into_iter();
+            let (lower_bound, upper_bound) = iter.size_hint();
+
+            if upper_bound == Some(lower_bound) {
+                lower_bound.hash_stable(hcx, hasher);
+                let mut num_items_hashed = 0;
+                let ret = self.ecx.lazy_seq(iter.inspect(|item| {
+                    item.hash_stable(hcx, hasher);
+                    num_items_hashed += 1;
+                }));
+
+                // Sometimes items in a sequence are filtered out without being
+                // hashed (e.g. for &[ast::Attribute]) and this code path cannot
+                // handle that correctly, so we want to make sure we didn't hit
+                // it by accident.
+                if lower_bound != num_items_hashed {
+                    bug!("Hashed a different number of items ({}) than expected ({})",
+                         num_items_hashed,
+                         lower_bound);
+                }
+                debug!("metadata-hash: {:?}", hasher);
+                ret
+            } else {
+                // Collect into a vec so we know the length of the sequence
+                let items: AccumulateVec<[T; 32]> = iter.collect();
+                items.hash_stable(hcx, hasher);
+                debug!("metadata-hash: {:?}", hasher);
+                self.ecx.lazy_seq(items)
+            }
+        } else {
+            self.ecx.lazy_seq(iter)
+        }
     }
 
     pub fn lazy_seq_from_slice<T>(&mut self, slice: &[T]) -> LazySeq<T>
         where T: Encodable + HashStable<StableHashingContext<'b, 'tcx>>
     {
-        slice.hash_stable(&mut self.hcx, &mut self.hasher);
+        if let Some((ref mut hcx, ref mut hasher)) = self.hcx {
+            slice.hash_stable(hcx, hasher);
+            debug!("metadata-hash: {:?}", hasher);
+        }
         self.ecx.lazy_seq_ref(slice.iter())
     }
 
     pub fn lazy_seq_ref_from_slice<T>(&mut self, slice: &[&T]) -> LazySeq<T>
         where T: Encodable + HashStable<StableHashingContext<'b, 'tcx>>
     {
-        slice.hash_stable(&mut self.hcx, &mut self.hasher);
+        if let Some((ref mut hcx, ref mut hasher)) = self.hcx {
+            slice.hash_stable(hcx, hasher);
+            debug!("metadata-hash: {:?}", hasher);
+        }
         self.ecx.lazy_seq_ref(slice.iter().map(|x| *x))
     }
 }

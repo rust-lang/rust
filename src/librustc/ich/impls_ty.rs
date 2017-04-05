@@ -16,23 +16,8 @@ use rustc_data_structures::stable_hasher::{HashStable, StableHasher,
                                            StableHasherResult};
 use std::hash as std_hash;
 use std::mem;
+use syntax_pos::symbol::InternedString;
 use ty;
-
-impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for ty::TyS<'tcx> {
-    fn hash_stable<W: StableHasherResult>(&self,
-                                          hcx: &mut StableHashingContext<'a, 'tcx>,
-                                          hasher: &mut StableHasher<W>) {
-        let ty::TyS {
-            ref sty,
-
-            // The other fields just provide fast access to information that is
-            // also contained in `sty`, so no need to hash them.
-            ..
-        } = *self;
-
-        sty.hash_stable(hcx, hasher);
-    }
-}
 
 impl_stable_hash_for!(struct ty::ItemSubsts<'tcx> { substs });
 
@@ -288,9 +273,14 @@ for ::middle::const_val::ConstVal<'tcx> {
                 def_id.hash_stable(hcx, hasher);
                 substs.hash_stable(hcx, hasher);
             }
-            ConstVal::Struct(ref _name_value_map) => {
-                // BTreeMap<ast::Name, ConstVal<'tcx>>),
-                panic!("Ordering still unstable")
+            ConstVal::Struct(ref name_value_map) => {
+                let mut values: Vec<(InternedString, &ConstVal)> =
+                    name_value_map.iter()
+                                  .map(|(name, val)| (name.as_str(), val))
+                                  .collect();
+
+                values.sort_unstable_by_key(|&(ref name, _)| name.clone());
+                values.hash_stable(hcx, hasher);
             }
             ConstVal::Tuple(ref value) => {
                 value.hash_stable(hcx, hasher);
@@ -632,6 +622,8 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for ty::TypeckTables<'
             ref fru_field_types,
 
             ref cast_kinds,
+
+            // FIXME(#41184): This is still ignored at the moment.
             lints: _,
             ref used_trait_imports,
             tainted_by_errors,
@@ -672,7 +664,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for ty::TypeckTables<'
             ich::hash_stable_nodemap(hcx, hasher, cast_kinds);
 
             ich::hash_stable_hashset(hcx, hasher, used_trait_imports, |hcx, def_id| {
-                hcx.tcx().def_path_hash(*def_id)
+                hcx.def_path_hash(*def_id)
             });
 
             tainted_by_errors.hash_stable(hcx, hasher);
