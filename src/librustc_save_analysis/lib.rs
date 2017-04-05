@@ -120,6 +120,50 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
         result
     }
 
+    pub fn get_extern_item_data(&self, item: &ast::ForeignItem) -> Option<Data> {
+        let qualname = format!("::{}", self.tcx.node_path_str(item.id));
+        match item.node {
+            ast::ForeignItemKind::Fn(ref decl, ref generics) => {
+                let sub_span = self.span_utils.sub_span_after_keyword(item.span, keywords::Fn);
+                filter!(self.span_utils, sub_span, item.span, None);
+                Some(Data::FunctionData(FunctionData {
+                    id: item.id,
+                    name: item.ident.to_string(),
+                    qualname: qualname,
+                    declaration: None,
+                    span: sub_span.unwrap(),
+                    scope: self.enclosing_scope(item.id),
+                    value: make_signature(decl, generics),
+                    visibility: From::from(&item.vis),
+                    parent: None,
+                    docs: docs_for_attrs(&item.attrs),
+                    sig: self.sig_base_extern(item),
+                    attributes: item.attrs.clone(),
+                }))
+            }
+            ast::ForeignItemKind::Static(ref ty, m) => {
+                let keyword = if m { keywords::Mut } else { keywords::Static };
+                let sub_span = self.span_utils.sub_span_after_keyword(item.span, keyword);
+                filter!(self.span_utils, sub_span, item.span, None);
+                Some(Data::VariableData(VariableData {
+                    id: item.id,
+                    kind: VariableKind::Static,
+                    name: item.ident.to_string(),
+                    qualname: qualname,
+                    span: sub_span.unwrap(),
+                    scope: self.enclosing_scope(item.id),
+                    parent: None,
+                    value: String::new(),
+                    type_value: ty_to_string(ty),
+                    visibility: From::from(&item.vis),
+                    docs: docs_for_attrs(&item.attrs),
+                    sig: Some(self.sig_base_extern(item)),
+                    attributes: item.attrs.clone(),
+                }))
+            }
+        }
+    }
+
     pub fn get_item_data(&self, item: &ast::Item) -> Option<Data> {
         match item.node {
             ast::ItemKind::Fn(ref decl, .., ref generics, _) => {
@@ -737,6 +781,21 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
     }
 
     fn sig_base(&self, item: &ast::Item) -> Signature {
+        let text = self.span_utils.signature_string_for_span(item.span);
+        let name = item.ident.to_string();
+        let ident_start = text.find(&name).expect("Name not in signature?");
+        let ident_end = ident_start + name.len();
+        Signature {
+            span: Span { hi: item.span.lo + BytePos(text.len() as u32), ..item.span },
+            text: text,
+            ident_start: ident_start,
+            ident_end: ident_end,
+            defs: vec![],
+            refs: vec![],
+        }
+    }
+
+    fn sig_base_extern(&self, item: &ast::ForeignItem) -> Signature {
         let text = self.span_utils.signature_string_for_span(item.span);
         let name = item.ident.to_string();
         let ident_start = text.find(&name).expect("Name not in signature?");
