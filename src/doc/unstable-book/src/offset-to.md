@@ -1,7 +1,7 @@
 # `offset_to`
 
-The tracking issue for this feature is: [#0]
+The tracking issue for this feature is: [#41079]
 
-[#0]: https://github.com/rust-lang/rust/issues/0
+[#41079]: https://github.com/rust-lang/rust/issues/41079
 
 ------------------------
