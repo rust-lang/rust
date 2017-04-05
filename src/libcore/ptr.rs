@@ -500,6 +500,44 @@ impl<T: ?Sized> *const T {
             intrinsics::arith_offset(self, count)
         }
     }
+
+    /// Calculates the distance between two pointers. The returned value is in
+    /// units of T: the distance in bytes is divided by `mem::size_of::<T>()`.
+    ///
+    /// If the address different between the two pointers ia not a multiple of
+    /// `mem::size_of::<T>()` then the result of the division is rounded towards
+    /// zero.
+    ///
+    /// This function returns `None` if `T` is a zero-sized typed.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(offset_to)]
+    ///
+    /// fn main() {
+    ///     let a = [0; 5];
+    ///     let ptr1: *const i32 = &a[1];
+    ///     let ptr2: *const i32 = &a[3];
+    ///     assert_eq!(ptr1.offset_to(ptr2), Some(2));
+    ///     assert_eq!(ptr2.offset_to(ptr1), Some(-2));
+    ///     assert_eq!(unsafe { ptr1.offset(2) }, ptr2);
+    ///     assert_eq!(unsafe { ptr2.offset(-2) }, ptr1);
+    /// }
+    /// ```
+    #[unstable(feature = "offset_to", issue = "41079")]
+    #[inline]
+    pub fn offset_to(self, other: *const T) -> Option<isize> where T: Sized {
+        let size = mem::size_of::<T>();
+        if size == 0 {
+            None
+        } else {
+            let diff = (other as isize).wrapping_sub(self as isize);
+            Some(diff / size as isize)
+        }
+    }
 }
 
 #[lang = "mut_ptr"]
@@ -651,6 +689,44 @@ impl<T: ?Sized> *mut T {
             None
         } else {
             Some(&mut *self)
+        }
+    }
+
+    /// Calculates the distance between two pointers. The returned value is in
+    /// units of T: the distance in bytes is divided by `mem::size_of::<T>()`.
+    ///
+    /// If the address different between the two pointers ia not a multiple of
+    /// `mem::size_of::<T>()` then the result of the division is rounded towards
+    /// zero.
+    ///
+    /// This function returns `None` if `T` is a zero-sized typed.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(offset_to)]
+    ///
+    /// fn main() {
+    ///     let mut a = [0; 5];
+    ///     let ptr1: *mut i32 = &mut a[1];
+    ///     let ptr2: *mut i32 = &mut a[3];
+    ///     assert_eq!(ptr1.offset_to(ptr2), Some(2));
+    ///     assert_eq!(ptr2.offset_to(ptr1), Some(-2));
+    ///     assert_eq!(unsafe { ptr1.offset(2) }, ptr2);
+    ///     assert_eq!(unsafe { ptr2.offset(-2) }, ptr1);
+    /// }
+    /// ```
+    #[unstable(feature = "offset_to", issue = "41079")]
+    #[inline]
+    pub fn offset_to(self, other: *const T) -> Option<isize> where T: Sized {
+        let size = mem::size_of::<T>();
+        if size == 0 {
+            None
+        } else {
+            let diff = (other as isize).wrapping_sub(self as isize);
+            Some(diff / size as isize)
         }
     }
 }
