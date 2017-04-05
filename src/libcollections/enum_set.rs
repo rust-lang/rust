@@ -215,7 +215,7 @@ impl<E: CLike> BitXor for EnumSet<E> {
     }
 }
 
-/// An iterator over an EnumSet
+/// An iterator over an `EnumSet`
 pub struct Iter<E> {
     index: usize,
     bits: usize,

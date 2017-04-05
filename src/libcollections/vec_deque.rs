@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! VecDeque is a double-ended queue, which is implemented with the help of a
+//! `VecDeque` is a double-ended queue, which is implemented with the help of a
 //! growing ring buffer.
 //!
 //! This queue has `O(1)` amortized inserts and removals from both ends of the
@@ -357,7 +357,7 @@ impl<T> VecDeque<T> {
         }
         debug_assert!(self.head < self.cap());
         debug_assert!(self.tail < self.cap());
-        debug_assert!(self.cap().count_ones() == 1);
+        debug_assert_eq!(self.cap().count_ones(), 1);
     }
 }
 
@@ -631,7 +631,7 @@ impl<T> VecDeque<T> {
 
             debug_assert!(self.head < self.cap());
             debug_assert!(self.tail < self.cap());
-            debug_assert!(self.cap().count_ones() == 1);
+            debug_assert_eq!(self.cap().count_ones(), 1);
         }
     }
 
@@ -1614,7 +1614,7 @@ impl<T> VecDeque<T> {
             }
         }
 
-        return elem;
+        elem
     }
 
     /// Splits the collection into two at the given index.
@@ -1847,7 +1847,7 @@ fn wrap_index(index: usize, size: usize) -> usize {
     index & (size - 1)
 }
 
-/// Returns the two slices that cover the VecDeque's valid range
+/// Returns the two slices that cover the `VecDeque`'s valid range
 trait RingSlices: Sized {
     fn slice(self, from: usize, to: usize) -> Self;
     fn split_at(self, i: usize) -> (Self, Self);
@@ -1983,7 +1983,7 @@ pub struct IterMut<'a, T: 'a> {
 impl<'a, T: 'a + fmt::Debug> fmt::Debug for IterMut<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("IterMut")
-         .field(&self.clone())
+         .field(&self)
          .finish()
     }
 }
@@ -2047,7 +2047,7 @@ impl<'a, T> ExactSizeIterator for IterMut<'a, T> {
 #[unstable(feature = "fused", issue = "35602")]
 impl<'a, T> FusedIterator for IterMut<'a, T> {}
 
-/// A by-value VecDeque iterator
+/// A by-value `VecDeque` iterator
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<T> {
@@ -2058,7 +2058,7 @@ pub struct IntoIter<T> {
 impl<T: fmt::Debug> fmt::Debug for IntoIter<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("IntoIter")
-         .field(&self.clone())
+         .field(&self)
          .finish()
     }
 }
@@ -2097,7 +2097,7 @@ impl<T> ExactSizeIterator for IntoIter<T> {
 #[unstable(feature = "fused", issue = "35602")]
 impl<T> FusedIterator for IntoIter<T> {}
 
-/// A draining VecDeque iterator
+/// A draining `VecDeque` iterator
 #[stable(feature = "drain", since = "1.6.0")]
 pub struct Drain<'a, T: 'a> {
     after_tail: usize,
@@ -2110,7 +2110,7 @@ pub struct Drain<'a, T: 'a> {
 impl<'a, T: 'a + fmt::Debug> fmt::Debug for Drain<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("Drain")
-         .field(&self.clone())
+         .field(&self)
          .finish()
     }
 }
@@ -2426,57 +2426,54 @@ impl<T> From<VecDeque<T>> for Vec<T> {
             // Need to move the ring to the front of the buffer, as vec will expect this.
             if other.is_contiguous() {
                 ptr::copy(buf.offset(tail as isize), buf, len);
-            } else {
-                if (tail - head) >= cmp::min((cap - tail), head) {
-                    // There is enough free space in the centre for the shortest block so we can
-                    // do this in at most three copy moves.
-                    if (cap - tail) > head {
-                        // right hand block is the long one; move that enough for the left
-                        ptr::copy(buf.offset(tail as isize),
-                                  buf.offset((tail - head) as isize),
-                                  cap - tail);
-                        // copy left in the end
-                        ptr::copy(buf, buf.offset((cap - head) as isize), head);
-                        // shift the new thing to the start
-                        ptr::copy(buf.offset((tail - head) as isize), buf, len);
-                    } else {
-                        // left hand block is the long one, we can do it in two!
-                        ptr::copy(buf, buf.offset((cap - tail) as isize), head);
-                        ptr::copy(buf.offset(tail as isize), buf, cap - tail);
-                    }
+            } else if (tail - head) >= cmp::min((cap - tail), head) {
+                // There is enough free space in the centre for the shortest block so we can
+                // do this in at most three copy moves.
+                if (cap - tail) > head {
+                    // right hand block is the long one; move that enough for the left
+                    ptr::copy(buf.offset(tail as isize),
+                              buf.offset((tail - head) as isize),
+                              cap - tail);
+                    // copy left in the end
+                    ptr::copy(buf, buf.offset((cap - head) as isize), head);
+                    // shift the new thing to the start
+                    ptr::copy(buf.offset((tail - head) as isize), buf, len);
                 } else {
-                    // Need to use N swaps to move the ring
-                    // We can use the space at the end of the ring as a temp store
-
-                    let mut left_edge: usize = 0;
-                    let mut right_edge: usize = tail;
-
-                    // The general problem looks like this
-                    // GHIJKLM...ABCDEF - before any swaps
-                    // ABCDEFM...GHIJKL - after 1 pass of swaps
-                    // ABCDEFGHIJM...KL - swap until the left edge reaches the temp store
-                    //                  - then restart the algorithm with a new (smaller) store
-                    // Sometimes the temp store is reached when the right edge is at the end
-                    // of the buffer - this means we've hit the right order with fewer swaps!
-                    // E.g
-                    // EF..ABCD
-                    // ABCDEF.. - after four only swaps we've finished
-
-                    while left_edge < len && right_edge != cap {
-                        let mut right_offset = 0;
-                        for i in left_edge..right_edge {
-                            right_offset = (i - left_edge) % (cap - right_edge);
-                            let src: isize = (right_edge + right_offset) as isize;
-                            ptr::swap(buf.offset(i as isize), buf.offset(src));
-                        }
-                        let n_ops = right_edge - left_edge;
-                        left_edge += n_ops;
-                        right_edge += right_offset + 1;
-
-                    }
+                    // left hand block is the long one, we can do it in two!
+                    ptr::copy(buf, buf.offset((cap - tail) as isize), head);
+                    ptr::copy(buf.offset(tail as isize), buf, cap - tail);
                 }
+            } else {
+                // Need to use N swaps to move the ring
+                // We can use the space at the end of the ring as a temp store
 
+                let mut left_edge: usize = 0;
+                let mut right_edge: usize = tail;
+
+                // The general problem looks like this
+                // GHIJKLM...ABCDEF - before any swaps
+                // ABCDEFM...GHIJKL - after 1 pass of swaps
+                // ABCDEFGHIJM...KL - swap until the left edge reaches the temp store
+                //                  - then restart the algorithm with a new (smaller) store
+                // Sometimes the temp store is reached when the right edge is at the end
+                // of the buffer - this means we've hit the right order with fewer swaps!
+                // E.g
+                // EF..ABCD
+                // ABCDEF.. - after four only swaps we've finished
+
+                while left_edge < len && right_edge != cap {
+                    let mut right_offset = 0;
+                    for i in left_edge..right_edge {
+                        right_offset = (i - left_edge) % (cap - right_edge);
+                        let src: isize = (right_edge + right_offset) as isize;
+                        ptr::swap(buf.offset(i as isize), buf.offset(src));
+                    }
+                    let n_ops = right_edge - left_edge;
+                    left_edge += n_ops;
+                    right_edge += right_offset + 1;
+                }
             }
+
             let out = Vec::from_raw_parts(buf, len, cap);
             mem::forget(other);
             out
