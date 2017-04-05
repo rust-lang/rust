@@ -183,7 +183,7 @@ impl fmt::Display for clean::Generics {
 
 impl<'a> fmt::Display for WhereClause<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let &WhereClause{ gens, indent, end_newline } = self;
+        let &WhereClause { gens, indent, end_newline } = self;
         if gens.where_predicates.is_empty() {
             return Ok(());
         }
@@ -882,7 +882,7 @@ fn fmt_impl(i: &clean::Impl,
 
     fmt_type(&i.for_, f, use_absolute, true)?;
 
-    fmt::Display::fmt(&WhereClause{ gens: &i.generics, indent: 0, end_newline: true }, f)?;
+    fmt::Display::fmt(&WhereClause { gens: &i.generics, indent: 0, end_newline: true }, f)?;
     Ok(())
 }
 
