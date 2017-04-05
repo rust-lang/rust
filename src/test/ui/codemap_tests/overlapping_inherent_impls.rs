@@ -8,9 +8,39 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(dead_code)]
+// Test that you cannot define items with the same name in overlapping inherent
+// impl blocks.
 
-trait C {}
-impl C { fn f() {} } //~ ERROR duplicate definitions with name `f`
-impl C { fn f() {} }
-fn main() { }
+#![allow(unused)]
+
+struct Foo;
+
+impl Foo {
+    fn id() {}
+}
+
+impl Foo {
+    fn id() {}
+}
+
+struct Bar<T>(T);
+
+impl<T> Bar<T> {
+    fn bar(&self) {}
+}
+
+impl Bar<u32> {
+    fn bar(&self) {}
+}
+
+struct Baz<T>(T);
+
+impl<T: Copy> Baz<T> {
+    fn baz(&self) {}
+}
+
+impl<T> Baz<Vec<T>> {
+    fn baz(&self) {}
+}
+
+fn main() {}
