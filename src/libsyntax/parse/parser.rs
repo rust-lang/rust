@@ -551,20 +551,33 @@ impl<'a> Parser<'a> {
             expected.dedup();
             let expect = tokens_to_string(&expected[..]);
             let actual = self.this_token_to_string();
-            Err(self.fatal(
-                &(if expected.len() > 1 {
-                    (format!("expected one of {}, found `{}`",
-                             expect,
-                             actual))
-                } else if expected.is_empty() {
-                    (format!("unexpected token: `{}`",
-                             actual))
+            let (msg_exp, (label_sp, label_exp)) = if expected.len() > 1 {
+                let short_expect = if expected.len() > 6 {
+                    format!("{} possible tokens", expected.len())
                 } else {
-                    (format!("expected {}, found `{}`",
-                             expect,
-                             actual))
-                })[..]
-            ))
+                    expect.clone()
+                };
+                (format!("expected one of {}, found `{}`", expect, actual),
+                 (self.prev_span.next_point(), format!("expected one of {} here", short_expect)))
+            } else if expected.is_empty() {
+                (format!("unexpected token: `{}`", actual),
+                 (self.prev_span, "unexpected token after this".to_string()))
+            } else {
+                (format!("expected {}, found `{}`", expect, actual),
+                 (self.prev_span.next_point(), format!("expected {} here", expect)))
+            };
+            let mut err = self.fatal(&msg_exp);
+            let sp = if self.token == token::Token::Eof {
+                // This is EOF, don't want to point at the following char, but rather the last token
+                self.prev_span
+            } else {
+                label_sp
+            };
+            err.span_label(sp, &label_exp);
+            if !sp.source_equal(&self.span) {
+                err.span_label(self.span, &"unexpected token");
+            }
+            Err(err)
         }
     }
 
