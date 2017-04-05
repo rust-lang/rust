@@ -527,7 +527,7 @@ impl<T: ?Sized> *const T {
     ///     assert_eq!(unsafe { ptr2.offset(-2) }, ptr1);
     /// }
     /// ```
-    #[unstable(feature = "offset_to", issue = "0")]
+    #[unstable(feature = "offset_to", issue = "41079")]
     #[inline]
     pub fn offset_to(self, other: *const T) -> Option<isize> where T: Sized {
         let size = mem::size_of::<T>();
@@ -718,7 +718,7 @@ impl<T: ?Sized> *mut T {
     ///     assert_eq!(unsafe { ptr2.offset(-2) }, ptr1);
     /// }
     /// ```
-    #[unstable(feature = "offset_to", issue = "0")]
+    #[unstable(feature = "offset_to", issue = "41079")]
     #[inline]
     pub fn offset_to(self, other: *const T) -> Option<isize> where T: Sized {
         let size = mem::size_of::<T>();
