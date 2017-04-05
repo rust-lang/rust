@@ -262,7 +262,7 @@ impl<K, Q: ?Sized> super::Recover<Q> for BTreeMap<K, ()>
     }
 }
 
-/// An iterator over a BTreeMap's entries.
+/// An iterator over a `BTreeMap`'s entries.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Iter<'a, K: 'a, V: 'a> {
     range: Range<'a, K, V>,
@@ -276,7 +276,7 @@ impl<'a, K: 'a + fmt::Debug, V: 'a + fmt::Debug> fmt::Debug for Iter<'a, K, V> {
     }
 }
 
-/// A mutable iterator over a BTreeMap's entries.
+/// A mutable iterator over a `BTreeMap`'s entries.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
 pub struct IterMut<'a, K: 'a, V: 'a> {
@@ -284,7 +284,7 @@ pub struct IterMut<'a, K: 'a, V: 'a> {
     length: usize,
 }
 
-/// An owning iterator over a BTreeMap's entries.
+/// An owning iterator over a `BTreeMap`'s entries.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<K, V> {
     front: Handle<NodeRef<marker::Owned, K, V, marker::Leaf>, marker::Edge>,
@@ -303,7 +303,7 @@ impl<K: fmt::Debug, V: fmt::Debug> fmt::Debug for IntoIter<K, V> {
     }
 }
 
-/// An iterator over a BTreeMap's keys.
+/// An iterator over a `BTreeMap`'s keys.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Keys<'a, K: 'a, V: 'a> {
     inner: Iter<'a, K, V>,
@@ -316,7 +316,7 @@ impl<'a, K: 'a + fmt::Debug, V: 'a + fmt::Debug> fmt::Debug for Keys<'a, K, V> {
     }
 }
 
-/// An iterator over a BTreeMap's values.
+/// An iterator over a `BTreeMap`'s values.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Values<'a, K: 'a, V: 'a> {
     inner: Iter<'a, K, V>,
@@ -329,14 +329,14 @@ impl<'a, K: 'a + fmt::Debug, V: 'a + fmt::Debug> fmt::Debug for Values<'a, K, V>
     }
 }
 
-/// A mutable iterator over a BTreeMap's values.
+/// A mutable iterator over a `BTreeMap`'s values.
 #[stable(feature = "map_values_mut", since = "1.10.0")]
 #[derive(Debug)]
 pub struct ValuesMut<'a, K: 'a, V: 'a> {
     inner: IterMut<'a, K, V>,
 }
 
-/// An iterator over a sub-range of BTreeMap's entries.
+/// An iterator over a sub-range of `BTreeMap`'s entries.
 #[stable(feature = "btree_range", since = "1.17.0")]
 pub struct Range<'a, K: 'a, V: 'a> {
     front: Handle<NodeRef<marker::Immut<'a>, K, V, marker::Leaf>, marker::Edge>,
@@ -350,7 +350,7 @@ impl<'a, K: 'a + fmt::Debug, V: 'a + fmt::Debug> fmt::Debug for Range<'a, K, V> 
     }
 }
 
-/// A mutable iterator over a sub-range of BTreeMap's entries.
+/// A mutable iterator over a sub-range of `BTreeMap`'s entries.
 #[stable(feature = "btree_range", since = "1.17.0")]
 pub struct RangeMut<'a, K: 'a, V: 'a> {
     front: Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>,
@@ -685,12 +685,12 @@ impl<K: Ord, V> BTreeMap<K, V> {
     #[stable(feature = "btree_append", since = "1.11.0")]
     pub fn append(&mut self, other: &mut Self) {
         // Do we have to append anything at all?
-        if other.len() == 0 {
+        if other.is_empty() {
             return;
         }
 
         // We can just swap `self` and `other` if `self` is empty.
-        if self.len() == 0 {
+        if self.is_empty() {
             mem::swap(self, other);
             return;
         }
@@ -1894,7 +1894,7 @@ impl<K, V> BTreeMap<K, V> {
     /// assert_eq!(keys, [1, 2]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn keys<'a>(&'a self) -> Keys<'a, K, V> {
+    pub fn keys(&self) -> Keys<K, V> {
         Keys { inner: self.iter() }
     }
 
@@ -1915,7 +1915,7 @@ impl<K, V> BTreeMap<K, V> {
     /// assert_eq!(values, ["hello", "goodbye"]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn values<'a>(&'a self) -> Values<'a, K, V> {
+    pub fn values(&self) -> Values<K, V> {
         Values { inner: self.iter() }
     }
 
@@ -2354,8 +2354,8 @@ enum UnderflowResult<'a, K, V> {
     Stole(NodeRef<marker::Mut<'a>, K, V, marker::Internal>),
 }
 
-fn handle_underfull_node<'a, K, V>(node: NodeRef<marker::Mut<'a>, K, V, marker::LeafOrInternal>)
-                                   -> UnderflowResult<'a, K, V> {
+fn handle_underfull_node<K, V>(node: NodeRef<marker::Mut, K, V, marker::LeafOrInternal>)
+                               -> UnderflowResult<K, V> {
     let parent = if let Ok(parent) = node.ascend() {
         parent
     } else {
