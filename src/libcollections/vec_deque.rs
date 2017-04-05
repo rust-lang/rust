@@ -635,7 +635,7 @@ impl<T> VecDeque<T> {
         }
     }
 
-    /// Shortens a `VecDeque`, dropping excess elements from the back.
+    /// Shortens the `VecDeque`, dropping excess elements from the back.
     ///
     /// If `len` is greater than the `VecDeque`'s current length, this has no
     /// effect.
@@ -941,7 +941,7 @@ impl<T> VecDeque<T> {
         a.contains(x) || b.contains(x)
     }
 
-    /// Provides a reference to the front element, or `None` if the sequence is
+    /// Provides a reference to the front element, or `None` if the `VecDeque` is
     /// empty.
     ///
     /// # Examples
@@ -966,7 +966,7 @@ impl<T> VecDeque<T> {
     }
 
     /// Provides a mutable reference to the front element, or `None` if the
-    /// sequence is empty.
+    /// `VecDeque` is empty.
     ///
     /// # Examples
     ///
@@ -993,7 +993,7 @@ impl<T> VecDeque<T> {
         }
     }
 
-    /// Provides a reference to the back element, or `None` if the sequence is
+    /// Provides a reference to the back element, or `None` if the `VecDeque` is
     /// empty.
     ///
     /// # Examples
@@ -1018,7 +1018,7 @@ impl<T> VecDeque<T> {
     }
 
     /// Provides a mutable reference to the back element, or `None` if the
-    /// sequence is empty.
+    /// `VecDeque` is empty.
     ///
     /// # Examples
     ///
@@ -1046,7 +1046,7 @@ impl<T> VecDeque<T> {
         }
     }
 
-    /// Removes the first element and returns it, or `None` if the sequence is
+    /// Removes the first element and returns it, or `None` if the `VecDeque` is
     /// empty.
     ///
     /// # Examples
@@ -1073,7 +1073,7 @@ impl<T> VecDeque<T> {
         }
     }
 
-    /// Inserts an element first in the sequence.
+    /// Prepends an element to the `VecDeque`.
     ///
     /// # Examples
     ///
@@ -1096,7 +1096,7 @@ impl<T> VecDeque<T> {
         }
     }
 
-    /// Appends an element to the back of a buffer
+    /// Appends an element to the back of the `VecDeque`.
     ///
     /// # Examples
     ///
@@ -1117,7 +1117,7 @@ impl<T> VecDeque<T> {
         unsafe { self.buffer_write(head, value) }
     }
 
-    /// Removes the last element from a buffer and returns it, or `None` if
+    /// Removes the last element from the `VecDeque` and returns it, or `None` if
     /// it is empty.
     ///
     /// # Examples

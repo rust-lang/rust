@@ -427,12 +427,15 @@ pub fn render(w: &mut fmt::Formatter,
                     looper(parser, &mut content, Some(x), toc_builder, shorter, &mut None);
                 }
             }
+            if shorter.is_compact() {
+                break
+            }
         }
         buffer.push_str(&format!("<li>{}</li>", content));
     }
 
     fn list(parser: &mut ParserWrapper, buffer: &mut String, toc_builder: &mut Option<TocBuilder>,
-            shorter: MarkdownOutputStyle) {
+            shorter: MarkdownOutputStyle, is_sorted_list: bool) {
         debug!("List");
         let mut content = String::new();
         while let Some(event) = parser.next() {
@@ -445,8 +448,13 @@ pub fn render(w: &mut fmt::Formatter,
                     looper(parser, &mut content, Some(x), toc_builder, shorter, &mut None);
                 }
             }
+            if shorter.is_compact() {
+                break
+            }
         }
-        buffer.push_str(&format!("<ul>{}</ul>", content));
+        buffer.push_str(&format!("<{0}>{1}</{0}>",
+                                 if is_sorted_list { "ol" } else { "ul" },
+                                 content));
     }
 
     fn emphasis(parser: &mut ParserWrapper, buffer: &mut String,
@@ -516,8 +524,8 @@ pub fn render(w: &mut fmt::Formatter,
                 Event::Start(Tag::BlockQuote) => {
                     blockquote(parser, buffer, toc_builder, shorter);
                 }
-                Event::Start(Tag::List(_)) => {
-                    list(parser, buffer, toc_builder, shorter);
+                Event::Start(Tag::List(x)) => {
+                    list(parser, buffer, toc_builder, shorter, x.is_some());
                 }
                 Event::Start(Tag::Emphasis) => {
                     emphasis(parser, buffer, toc_builder, shorter, id);
