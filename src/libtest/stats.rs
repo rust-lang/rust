@@ -39,8 +39,10 @@ pub trait Stats {
     ///
     /// Note: this method sacrifices performance at the altar of accuracy
     /// Depends on IEEE-754 arithmetic guarantees. See proof of correctness at:
-    /// ["Adaptive Precision Floating-Point Arithmetic and Fast Robust Geometric Predicates"]
-    /// (http://www.cs.cmu.edu/~quake-papers/robust-arithmetic.ps)
+    /// ["Adaptive Precision Floating-Point Arithmetic and Fast Robust Geometric
+    /// Predicates"][paper]
+    ///
+    /// [paper]: http://www.cs.cmu.edu/~quake-papers/robust-arithmetic.ps
     fn sum(&self) -> f64;
 
     /// Minimum value of the samples.
