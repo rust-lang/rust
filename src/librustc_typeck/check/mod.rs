@@ -3884,7 +3884,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                           element_ty
                       }
                       None => {
-                          self.check_expr_has_type(&idx, self.tcx.types.err);
                           let mut err = self.type_error_struct(
                               expr.span,
                               |actual| {
