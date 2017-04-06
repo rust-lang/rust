@@ -1,8 +1,8 @@
 # `compiler_barriers`
 
-The tracking issue for this feature is: [#41092]
+The tracking issue for this feature is: [#41091]
 
-[#41092]: https://github.com/rust-lang/rust/issues/41092
+[#41091]: https://github.com/rust-lang/rust/issues/41091
 
 ------------------------
 
