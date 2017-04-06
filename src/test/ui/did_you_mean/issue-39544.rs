@@ -51,3 +51,9 @@ pub fn with_arg(z: Z, w: &Z) {
     let _ = &mut z.x;
     let _ = &mut w.x;
 }
+
+pub fn with_tuple() {
+    let mut y = 0;
+    let x = (&y,);
+    *x.0 = 1;
+}
