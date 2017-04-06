@@ -58,7 +58,7 @@ pub struct TcpStream(net_imp::TcpStream);
 ///
 /// After creating a `TcpListener` by [`bind`]ing it to a socket address, it listens
 /// for incoming TCP connections. These can be accepted by calling [`accept`] or by
-/// iterating over the [`Incoming`] iterator returned by [`incoming`].
+/// iterating over the [`Incoming`] iterator returned by [`incoming`][`TcpListener::incoming`].
 ///
 /// The socket will be closed when the value is dropped.
 ///
@@ -68,7 +68,7 @@ pub struct TcpStream(net_imp::TcpStream);
 /// [`bind`]: #method.bind
 /// [IETF RFC 793]: https://tools.ietf.org/html/rfc793
 /// [`Incoming`]: ../../std/net/struct.Incoming.html
-/// [`incoming`]: #method.incoming
+/// [`TcpListener::incoming`]: #method.incoming
 ///
 /// # Examples
 ///
