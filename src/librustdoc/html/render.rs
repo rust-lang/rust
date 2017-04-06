@@ -2710,14 +2710,14 @@ fn render_struct(w: &mut fmt::Formatter, it: &clean::Item,
             }
             write!(w, ")")?;
             if let Some(g) = g {
-                write!(w, "{}", WhereClause { gens: g, indent: 0, end_newline: true })?
+                write!(w, "{}", WhereClause { gens: g, indent: 0, end_newline: false })?
             }
             write!(w, ";")?;
         }
         doctree::Unit => {
             // Needed for PhantomData.
             if let Some(g) = g {
-                write!(w, "{}", WhereClause { gens: g, indent: 0, end_newline: true })?
+                write!(w, "{}", WhereClause { gens: g, indent: 0, end_newline: false })?
             }
             write!(w, ";")?;
         }
