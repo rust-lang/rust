@@ -1187,7 +1187,8 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 }
             }
 
-            // Create llvm.used variable
+            // Create the llvm.used variable
+            // This variable has type [N x i8*] and is stored in the llvm.metadata section
             if !ccx.used_statics().borrow().is_empty() {
                 let name = CString::new("llvm.used").unwrap();
                 let section = CString::new("llvm.metadata").unwrap();

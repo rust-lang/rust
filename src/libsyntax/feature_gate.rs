@@ -344,8 +344,8 @@ declare_features! (
     // See rust-lang/rfcs#1414. Allows code like `let x: &'static u32 = &42` to work.
     (active, rvalue_static_promotion, "1.15.1", Some(38865)),
 
-    // Used to preserve symbols
-    (active, used, "1.18.0", None),
+    // Used to preserve symbols (see llvm.used)
+    (active, used, "1.18.0", Some(40289)),
 );
 
 declare_features! (

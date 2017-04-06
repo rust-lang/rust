@@ -132,6 +132,8 @@ pub struct LocalCrateContext<'tcx> {
     /// to constants.)
     statics_to_rauw: RefCell<Vec<(ValueRef, ValueRef)>>,
 
+    /// Statics that will be placed in the llvm.used variable
+    /// See http://llvm.org/docs/LangRef.html#the-llvm-used-global-variable for details
     used_statics: RefCell<Vec<ValueRef>>,
 
     lltypes: RefCell<FxHashMap<Ty<'tcx>, Type>>,
