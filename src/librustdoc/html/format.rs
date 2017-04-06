@@ -237,15 +237,23 @@ impl<'a> fmt::Display for WhereClause<'a> {
                 clause.push(',');
             }
         }
+
+        if end_newline {
+            //add a space so stripping <br> tags and breaking spaces still renders properly
+            if f.alternate() {
+                clause.push(' ');
+            } else {
+                clause.push_str("&nbsp;");
+            }
+        }
+
         if !f.alternate() {
             clause.push_str("</span>");
             let padding = repeat("&nbsp;").take(indent + 4).collect::<String>();
             clause = clause.replace("<br>", &format!("<br>{}", padding));
             clause.insert_str(0, &repeat("&nbsp;").take(indent.saturating_sub(1))
                                                   .collect::<String>());
-            if end_newline {
-                clause.push(' ');
-            } else {
+            if !end_newline {
                 clause.insert_str(0, "<br>");
             }
         }
