@@ -15,11 +15,14 @@ set -ex
 export CFLAGS="-fPIC -Wa,-mrelax-relocations=no"
 export CXXFLAGS="-Wa,-mrelax-relocations=no"
 
-MUSL=musl-1.1.14
+MUSL=musl-1.1.16
 curl https://www.musl-libc.org/releases/$MUSL.tar.gz | tar xzf -
 cd $MUSL
-CFLAGS="$CFLAGS -m32" ./configure --prefix=/musl-i686 --disable-shared --target=i686
-make -j10
+CC=gcc \
+  CFLAGS="$CFLAGS -m32" \
+  ./configure --prefix=/musl-i686 --disable-shared \
+    --target=i686
+make AR=ar RANLIB=ranlib -j10
 make install
 cd ..
 
