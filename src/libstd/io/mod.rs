@@ -21,7 +21,8 @@
 //! of other types, and you can implement them for your types too. As such,
 //! you'll see a few different types of I/O throughout the documentation in
 //! this module: [`File`]s, [`TcpStream`]s, and sometimes even [`Vec<T>`]s. For
-//! example, [`Read`] adds a [`read`] method, which we can use on `File`s:
+//! example, [`Read`] adds a [`read`][`Read::read`] method, which we can use on
+//! `File`s:
 //!
 //! ```
 //! use std::io;
@@ -106,7 +107,7 @@
 //! ```
 //!
 //! [`BufWriter`] doesn't add any new ways of writing; it just buffers every call
-//! to [`write`]:
+//! to [`write`][`Write::write`]:
 //!
 //! ```
 //! use std::io;
@@ -257,13 +258,13 @@
 //! [`Vec<T>`]: ../vec/struct.Vec.html
 //! [`BufReader`]: struct.BufReader.html
 //! [`BufWriter`]: struct.BufWriter.html
-//! [`write`]: trait.Write.html#tymethod.write
+//! [`Write::write`]: trait.Write.html#tymethod.write
 //! [`io::stdout`]: fn.stdout.html
 //! [`println!`]: ../macro.println.html
 //! [`Lines`]: struct.Lines.html
 //! [`io::Result`]: type.Result.html
 //! [`?` operator]: ../../book/syntax-index.html
-//! [`read`]: trait.Read.html#tymethod.read
+//! [`Read::read`]: trait.Read.html#tymethod.read
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
