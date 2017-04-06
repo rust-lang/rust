@@ -357,6 +357,9 @@ pub fn method_chain_args<'a>(expr: &'a Expr, methods: &[&str]) -> Option<Vec<&'a
         // method chains are stored last -> first
         if let ExprMethodCall(ref name, _, ref args) = current.node {
             if name.node == *method_name {
+                if args.iter().any(|e| in_macro(e.span)) {
+                    return None;
+                }
                 matched.push(&**args); // build up `matched` backwards
                 current = &args[0] // go to parent expression
             } else {

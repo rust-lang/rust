@@ -20,13 +20,12 @@ fn main() {
     lazy_static! {
         static ref MUT_MAP : HashMap<usize, &'static str> = {
             let mut m = HashMap::new();
-            let mut zero = &mut &mut "zero";
             m.insert(0, "zero");
             m
         };
         static ref MUT_COUNT : usize = MUT_MAP.len();
     }
-    assert!(*MUT_COUNT == 1);
+    assert_eq!(*MUT_COUNT, 1);
     // FIXME: don't lint in array length, requires `check_body`
     //let _ = [""; (42.0 < std::f32::NAN) as usize];
 }

@@ -108,7 +108,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LetIfSeq {
                     cond=snippet(cx, cond.span, "_"),
                     then=if then.stmts.len() > 1 { " ..;" } else { "" },
                     else=if default_multi_stmts { " ..;" } else { "" },
-                    value=snippet(cx, then.span, "<value>"),
+                    value=snippet(cx, value.span, "<value>"),
                     default=snippet(cx, default.span, "<default>"),
                 );
                 span_lint_and_then(cx,
