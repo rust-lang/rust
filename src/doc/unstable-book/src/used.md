@@ -1,6 +1,7 @@
 # `used`
 
-The tracking issue for this feature is: 40289.
+The tracking issue for this feature
+is: [40289](https://github.com/rust-lang/rust/issues/40289).
 
 ------------------------
 
@@ -85,7 +86,7 @@ turned on, to be placed near the start of their FLASH memory to boot properly.
 This condition can be met using `#[used]` and `#[link_section]` plus a linker
 script.
 
-``` rust
+``` rust,ignore
 #![feature(lang_items)]
 #![feature(used)]
 #![no_main]
