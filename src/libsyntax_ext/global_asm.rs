@@ -21,7 +21,6 @@
 use syntax::ast;
 use syntax::ext::base;
 use syntax::ext::base::*;
-use syntax::codemap;
 use syntax::feature_gate;
 use syntax::ptr::P;
 use syntax::symbol::Symbol;
