@@ -189,6 +189,30 @@ impl Span {
             Span { hi: end.hi, ..self }
         }
     }
+
+    pub fn between(self, end: Span) -> Span {
+        Span {
+            lo: self.hi,
+            hi: end.lo,
+            ctxt: if end.ctxt == SyntaxContext::empty() {
+                end.ctxt
+            } else {
+                self.ctxt
+            }
+        }
+    }
+
+    pub fn until(self, end: Span) -> Span {
+        Span {
+            lo: self.lo,
+            hi: end.lo,
+            ctxt: if end.ctxt == SyntaxContext::empty() {
+                end.ctxt
+            } else {
+                self.ctxt
+            }
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
