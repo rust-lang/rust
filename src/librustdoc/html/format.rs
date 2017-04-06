@@ -192,9 +192,9 @@ impl<'a> fmt::Display for WhereClause<'a> {
             clause.push_str(" where");
         } else {
             if end_newline {
-                clause.push_str("<span class=\"where fmt-newline\">where");
+                clause.push_str(" <span class=\"where fmt-newline\">where");
             } else {
-                clause.push_str("<span class=\"where\">where");
+                clause.push_str(" <span class=\"where\">where");
             }
         }
         for (i, pred) in gens.where_predicates.iter().enumerate() {
@@ -241,8 +241,11 @@ impl<'a> fmt::Display for WhereClause<'a> {
             clause.push_str("</span>");
             let padding = repeat("&nbsp;").take(indent + 4).collect::<String>();
             clause = clause.replace("<br>", &format!("<br>{}", padding));
-            clause.insert_str(0, &repeat("&nbsp;").take(indent).collect::<String>());
-            if !end_newline {
+            clause.insert_str(0, &repeat("&nbsp;").take(indent.saturating_sub(1))
+                                                  .collect::<String>());
+            if end_newline {
+                clause.push(' ');
+            } else {
                 clause.insert_str(0, "<br>");
             }
         }
