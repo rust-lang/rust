@@ -55,7 +55,7 @@ The ELF standard defines two special sections, `.init_array` and
 in these sections (at least when linking programs that target the `*-*-linux-*`
 targets).
 
-``` rust
+``` rust,ignore
 #![feature(used)]
 
 extern "C" fn before_main() {
