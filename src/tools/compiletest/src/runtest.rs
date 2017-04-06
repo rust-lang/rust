@@ -1589,8 +1589,14 @@ actual:\n\
     }
 
     fn dump_output(&self, out: &str, err: &str) {
-        self.dump_output_file(out, "out");
-        self.dump_output_file(err, "err");
+        let revision = if let Some(r) = self.revision {
+            format!("{}.", r)
+        } else {
+            String::new()
+        };
+
+        self.dump_output_file(out, &format!("{}out", revision));
+        self.dump_output_file(err, &format!("{}err", revision));
         self.maybe_dump_to_stdout(out, err);
     }
 
