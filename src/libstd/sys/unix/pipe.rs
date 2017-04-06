@@ -8,11 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use cmp;
 use io;
 use libc::{self, c_int};
 use mem;
-use ptr;
 use sys::{cvt, cvt_r};
 use sys::fd::FileDesc;
 
@@ -80,16 +78,14 @@ pub fn read2(p1: AnonPipe,
     p1.set_nonblocking(true)?;
     p2.set_nonblocking(true)?;
 
-    let max = cmp::max(p1.raw(), p2.raw());
+    let mut fds: [libc::pollfd; 2] = unsafe { mem::zeroed() };
+    fds[0].fd = p1.raw();
+    fds[0].events = libc::POLLIN;
+    fds[1].fd = p2.raw();
+    fds[1].events = libc::POLLIN;
     loop {
-        // wait for either pipe to become readable using `select`
-        cvt_r(|| unsafe {
-            let mut read: libc::fd_set = mem::zeroed();
-            libc::FD_SET(p1.raw(), &mut read);
-            libc::FD_SET(p2.raw(), &mut read);
-            libc::select(max + 1, &mut read, ptr::null_mut(), ptr::null_mut(),
-                         ptr::null_mut())
-        })?;
+        // wait for either pipe to become readable using `poll`
+        cvt_r(|| unsafe { libc::poll(fds.as_mut_ptr(), 2, -1) })?;
 
         // Read as much as we can from each pipe, ignoring EWOULDBLOCK or
         // EAGAIN. If we hit EOF, then this will happen because the underlying
@@ -109,11 +105,11 @@ pub fn read2(p1: AnonPipe,
                 }
             }
         };
-        if read(&p1, v1)? {
+        if fds[0].revents != 0 && read(&p1, v1)? {
             p2.set_nonblocking(false)?;
             return p2.read_to_end(v2).map(|_| ());
         }
-        if read(&p2, v2)? {
+        if fds[1].revents != 0 && read(&p2, v2)? {
             p1.set_nonblocking(false)?;
             return p1.read_to_end(v1).map(|_| ());
         }
