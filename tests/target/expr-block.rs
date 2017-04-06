@@ -6,7 +6,7 @@ fn arrays() {
     [];
     let empty = [];
 
-    let foo = [a_long_name, a_very_lng_name, a_long_name, a_very_lng_name, a_long_name];
+    let foo = [a_long_name, a_very_lng_name, a_long_name];
 
     let foo = [
         a_long_name,
@@ -104,8 +104,12 @@ fn arrays() {
         ],
     );
 
-    let z =
-        [xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx, yyyyyyyyyyyyyyyyyyyyyyyyyyy, zzzzzzzzzzzzzzzzz, q];
+    let z = [
+        xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx,
+        yyyyyyyyyyyyyyyyyyyyyyyyyyy,
+        zzzzzzzzzzzzzzzzz,
+        q,
+    ];
 
     [1 + 3, 4, 5, 6, 7, 7, fncall::<Vec<_>>(3 - 1)]
 }

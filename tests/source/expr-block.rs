@@ -6,7 +6,7 @@ fn arrays() {
     [      ];
     let empty = [];
 
-    let foo = [a_long_name, a_very_lng_name, a_long_name, a_very_lng_name, a_long_name];
+    let foo = [a_long_name, a_very_lng_name, a_long_name];
 
     let foo = [a_long_name, a_very_lng_name, a_long_name, a_very_lng_name, a_long_name, a_very_lng_name, a_long_name, a_very_lng_name];
 

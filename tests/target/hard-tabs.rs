@@ -57,8 +57,10 @@ fn main() {
 		.go_to_next_line_with_tab()
 		.go_to_next_line_with_tab();
 
-	let z =
-		[xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx, yyyyyyyyyyyyyyyyyyyyyyyyyyy, zzzzzzzzzzzzzzzzzz, q];
+	let z = [xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx,
+	         yyyyyyyyyyyyyyyyyyyyyyyyyyy,
+	         zzzzzzzzzzzzzzzzzz,
+	         q];
 
 	fn generic<T>(arg: T) -> &SomeType
 		where T: Fn(// First arg
