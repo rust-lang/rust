@@ -113,6 +113,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for ConstraintContext<'a, 'tcx> {
             hir::ItemFn(..) |
             hir::ItemMod(..) |
             hir::ItemForeignMod(..) |
+            hir::ItemGlobalAsm(..) |
             hir::ItemTy(..) |
             hir::ItemImpl(..) |
             hir::ItemDefaultImpl(..) => {}

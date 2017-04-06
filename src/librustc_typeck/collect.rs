@@ -490,8 +490,10 @@ fn convert_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item_id: ast::NodeId) {
     let def_id = tcx.hir.local_def_id(item_id);
     match it.node {
         // These don't define types.
-        hir::ItemExternCrate(_) | hir::ItemUse(..) | hir::ItemMod(_) => {
-        }
+        hir::ItemExternCrate(_) |
+        hir::ItemUse(..) |
+        hir::ItemMod(_) |
+        hir::ItemGlobalAsm(_) => {}
         hir::ItemForeignMod(ref foreign_mod) => {
             for item in &foreign_mod.items {
                 let def_id = tcx.hir.local_def_id(item.id);
@@ -543,12 +545,12 @@ fn convert_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item_id: ast::NodeId) {
             tcx.item_generics(def_id);
             tcx.item_type(def_id);
             tcx.item_predicates(def_id);
-        },
-        _ => {
+        }
+        hir::ItemStatic(..) | hir::ItemConst(..) | hir::ItemFn(..) => {
             tcx.item_generics(def_id);
             tcx.item_type(def_id);
             tcx.item_predicates(def_id);
-        },
+        }
     }
 }
 
@@ -1074,6 +1076,7 @@ fn ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 ItemTrait(..) |
                 ItemMod(..) |
                 ItemForeignMod(..) |
+                ItemGlobalAsm(..) |
                 ItemExternCrate(..) |
                 ItemUse(..) => {
                     span_bug!(
