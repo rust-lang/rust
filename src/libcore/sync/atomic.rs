@@ -1598,7 +1598,7 @@ pub fn fence(order: Ordering) {
 /// [`AcqRel`]: enum.Ordering.html#variant.AcqRel
 /// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
 #[inline]
-#[unstable(feature = "std_compiler_fences", issue = "41091")]
+#[unstable(feature = "compiler_barriers", issue = "41091")]
 pub fn compiler_barrier(order: Ordering) {
     unsafe {
         match order {
