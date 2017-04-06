@@ -243,6 +243,19 @@ impl<'tcx> Mir<'tcx> {
     }
 }
 
+impl_stable_hash_for!(struct Mir<'tcx> {
+    basic_blocks,
+    visibility_scopes,
+    promoted,
+    return_ty,
+    local_decls,
+    arg_count,
+    upvar_decls,
+    spread_arg,
+    span,
+    cache
+});
+
 impl<'tcx> Index<BasicBlock> for Mir<'tcx> {
     type Output = BasicBlockData<'tcx>;
 
@@ -829,6 +842,11 @@ pub struct Static<'tcx> {
     pub def_id: DefId,
     pub ty: Ty<'tcx>,
 }
+
+impl_stable_hash_for!(struct Static<'tcx> {
+    def_id,
+    ty
+});
 
 /// The `Projection` data structure defines things of the form `B.x`
 /// or `*B` or `B[index]`. Note that it is parameterized because it is
