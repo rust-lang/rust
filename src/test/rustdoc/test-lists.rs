@@ -10,10 +10,11 @@
 
 #![crate_name = "foo"]
 
-// ignore-tidy-linelength
-
 // @has foo/fn.f.html
-// @has - "<pre class='rust fn'>pub fn f()</pre><div class='docblock'><ol><li>list<ol><li>fooooo</li><li>x</li></ol></li><li>foo</li></ol>"
+// @has - //ol/li "list"
+// @has - //ol/li/ol/li "fooooo"
+// @has - //ol/li/ol/li "x"
+// @has - //ol/li "foo"
 /// 1. list
 ///     1. fooooo
 ///     2. x
@@ -21,7 +22,10 @@
 pub fn f() {}
 
 // @has foo/fn.foo2.html
-// @has - "<pre class='rust fn'>pub fn foo2()</pre><div class='docblock'><ul><li>normal list<ul><li><p>sub list</p></li><li><p>new elem still same elem</p><p>and again same elem!</p></li></ul></li><li>new big elem</li></ul>"
+// @has - //ul/li "normal list"
+// @has - //ul/li/ul/li "sub list"
+// @has - //ul/li/ul/li "new elem still same elem and again same elem!"
+// @has - //ul/li "new big elem"
 /// * normal list
 ///     * sub list
 ///     * new elem
