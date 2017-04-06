@@ -11,7 +11,6 @@
 use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::hir;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
-use rustc::lint;
 use rustc::traits::{self, Reveal};
 use rustc::ty::{self, TyCtxt};
 
@@ -53,12 +52,16 @@ impl<'a, 'tcx> InherentOverlapChecker<'a, 'tcx> {
 
             for &item2 in &impl_items2[..] {
                 if (name, namespace) == name_and_namespace(item2) {
-                    let msg = format!("duplicate definitions with name `{}`", name);
-                    let node_id = self.tcx.hir.as_local_node_id(item1).unwrap();
-                    self.tcx.sess.add_lint(lint::builtin::OVERLAPPING_INHERENT_IMPLS,
-                                           node_id,
-                                           self.tcx.span_of_impl(item1).unwrap(),
-                                           msg);
+                    struct_span_err!(self.tcx.sess,
+                                     self.tcx.span_of_impl(item1).unwrap(),
+                                     E0592,
+                                     "duplicate definitions with name `{}`",
+                                     name)
+                        .span_label(self.tcx.span_of_impl(item1).unwrap(),
+                                    &format!("duplicate definitions for `{}`", name))
+                        .span_label(self.tcx.span_of_impl(item2).unwrap(),
+                                    &format!("other definition for `{}`", name))
+                        .emit();
                 }
             }
         }
