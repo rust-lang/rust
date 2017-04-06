@@ -762,7 +762,6 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             let llretty = Type::struct_(ccx, &[Type::i8p(ccx), Type::i32(ccx)], false);
             let slot = bcx.alloca(llretty, "personalityslot");
             self.llpersonalityslot = Some(slot);
-            Lifetime::Start.call(bcx, slot);
             slot
         }
     }
@@ -794,6 +793,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         let llretval = bcx.landing_pad(llretty, llpersonality, 1, self.llfn);
         bcx.set_cleanup(llretval);
         let slot = self.get_personality_slot(&bcx);
+        Lifetime::Start.call(&bcx, slot);
         bcx.store(llretval, slot, None);
         bcx.br(target_bb);
         bcx.llbb()

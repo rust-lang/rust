@@ -600,16 +600,19 @@ def bootstrap():
 
 def main():
     start_time = time()
+    help_triggered = ('-h' in sys.argv) or ('--help' in sys.argv) or (len(sys.argv) == 1)
     try:
         bootstrap()
-        print("Build completed successfully in %s" % format_build_time(time() - start_time))
+        if not help_triggered:
+            print("Build completed successfully in %s" % format_build_time(time() - start_time))
     except (SystemExit, KeyboardInterrupt) as e:
         if hasattr(e, 'code') and isinstance(e.code, int):
             exit_code = e.code
         else:
             exit_code = 1
             print(e)
-        print("Build completed unsuccessfully in %s" % format_build_time(time() - start_time))
+        if not help_triggered:
+            print("Build completed unsuccessfully in %s" % format_build_time(time() - start_time))
         sys.exit(exit_code)
 
 if __name__ == '__main__':
