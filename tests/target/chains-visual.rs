@@ -134,3 +134,37 @@ fn issue587() {
 
     std::mem::transmute(dl.symbol::<()>("init").unwrap())
 }
+
+fn issue_1389() {
+    let names = String::from_utf8(names)?
+        .split('|')
+        .map(str::to_owned)
+        .collect();
+}
+
+fn issue1217() -> Result<Mnemonic, Error> {
+    let random_chars: String = OsRng::new()?
+        .gen_ascii_chars()
+        .take(self.bit_length)
+        .collect();
+
+    Ok(Mnemonic::new(&random_chars))
+}
+
+fn issue1236(options: Vec<String>) -> Result<Option<String>> {
+    let process = Command::new("dmenu")
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .chain_err(|| "failed to spawn dmenu")?;
+}
+
+fn issue1434() {
+    for _ in 0..100 {
+        let prototype_id = PrototypeIdData::from_reader::<_, B>(&mut self.file_cursor)
+            .chain_err(|| {
+                           format!("could not read prototype ID at offset {:#010x}",
+                                   current_offset)
+                       })?;
+    }
+}

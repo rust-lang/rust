@@ -199,7 +199,8 @@ fn get_targets(workspace_hitlist: WorkspaceHitlist) -> Result<Vec<Target>, std::
     // is used inside a workspace.
     // To ensure backward compatability, we only use `cargo metadata` for workspaces.
     // TODO: Is it possible only use metadata or read-manifest
-    let output = Command::new("cargo").arg("metadata")
+    let output = Command::new("cargo")
+        .arg("metadata")
         .arg("--no-deps")
         .output()?;
     if output.status.success() {
