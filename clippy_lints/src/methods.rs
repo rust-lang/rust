@@ -649,7 +649,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                 if name == method_name &&
                    sig.decl.inputs.len() == n_args &&
                    out_type.matches(&sig.decl.output) &&
-                   self_kind.matches(&first_arg_ty, &first_arg, &self_ty, false) {
+                   self_kind.matches(first_arg_ty, first_arg, self_ty, false) {
                     span_lint(cx, SHOULD_IMPLEMENT_TRAIT, implitem.span, &format!(
                         "defining a method called `{}` on this type; consider implementing \
                          the `{}` trait or choosing a less ambiguous name", name, trait_name));
@@ -662,7 +662,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             for &(ref conv, self_kinds) in &CONVENTIONS {
                 if_let_chain! {[
                     conv.check(&name.as_str()),
-                    !self_kinds.iter().any(|k| k.matches(&first_arg_ty, &first_arg, &self_ty, is_copy)),
+                    !self_kinds.iter().any(|k| k.matches(first_arg_ty, first_arg, self_ty, is_copy)),
                 ], {
                     let lint = if item.vis == hir::Visibility::Public {
                         WRONG_PUB_SELF_CONVENTION

@@ -118,7 +118,7 @@ fn check_ty(cx: &LateContext, ast_ty: &Ty) {
                     let last = last_path_segment(qpath);
                     if_let_chain! {[
                         let PathParameters::AngleBracketedParameters(ref ag) = last.parameters,
-                        let Some(ref vec) = ag.types.get(0),
+                        let Some(vec) = ag.types.get(0),
                         let TyPath(ref qpath) = vec.node,
                         let def::Def::Struct(..) = cx.tables.qpath_def(qpath, vec.id),
                         let Some(did) = opt_def_id(cx.tables.qpath_def(qpath, vec.id)),

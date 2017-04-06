@@ -115,13 +115,11 @@ fn check_manual_swap(cx: &LateContext, block: &Block) {
                 } else {
                     (false, "".to_owned(), "".to_owned())
                 }
+            } else if let (Some(first), Some(second)) = (Sugg::hir_opt(cx, lhs1), Sugg::hir_opt(cx, rhs1)) {
+                (true, format!(" `{}` and `{}`", first, second),
+                    format!("std::mem::swap({}, {})", first.mut_addr(), second.mut_addr()))
             } else {
-                 if let (Some(first), Some(second)) = (Sugg::hir_opt(cx, lhs1), Sugg::hir_opt(cx, rhs1)) {
-                    (true, format!(" `{}` and `{}`", first, second),
-                     format!("std::mem::swap({}, {})", first.mut_addr(), second.mut_addr()))
-                } else {
-                    (true, "".to_owned(), "".to_owned())
-                }
+                (true, "".to_owned(), "".to_owned())
             };
 
             let span = Span { lo: w[0].span.lo, hi: second.span.hi, ctxt: NO_EXPANSION};

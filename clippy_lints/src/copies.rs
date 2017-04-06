@@ -228,7 +228,7 @@ fn if_sequence(mut expr: &Expr) -> (SmallVector<&Expr>, SmallVector<&Block>) {
     while let ExprIf(ref cond, ref then_expr, ref else_expr) = expr.node {
         conds.push(&**cond);
         if let ExprBlock(ref block) = then_expr.node {
-            blocks.push(&block);
+            blocks.push(block);
         } else {
             panic!("ExprIf node is not an ExprBlock");
         }

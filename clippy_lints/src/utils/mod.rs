@@ -112,12 +112,12 @@ pub fn in_constant(cx: &LateContext, id: NodeId) -> bool {
 
 /// Returns true if this `expn_info` was expanded by any macro.
 pub fn in_macro(span: Span) -> bool {
-    span.ctxt.outer().expn_info().map(|info| {
+    span.ctxt.outer().expn_info().map_or(false, |info| {
         match info.callee.format {// don't treat range expressions desugared to structs as "in_macro"
             ExpnFormat::CompilerDesugaring(name) => name != "...",
             _ => true,
         }
-    }).unwrap_or(false)
+    })
 }
 
 /// Returns true if the macro that expanded the crate was outside of the current crate or was a
@@ -138,7 +138,7 @@ pub fn in_external_macro<'a, T: LintContext<'a>>(cx: &T, span: Span) -> bool {
         })
     }
 
-    span.ctxt.outer().expn_info().map(|info| in_macro_ext(cx, &info)).unwrap_or(false)
+    span.ctxt.outer().expn_info().map_or(false, |info| in_macro_ext(cx, &info))
 }
 
 /// Check if a `DefId`'s path matches the given absolute type path usage.
