@@ -1176,6 +1176,7 @@ impl AsInner<fs_imp::DirEntry> for DirEntry {
 /// This function currently corresponds to the `unlink` function on Unix
 /// and the `DeleteFile` function on Windows.
 /// Note that, this [may change in the future][changes].
+///
 /// [changes]: ../io/index.html#platform-specific-behavior
 ///
 /// # Errors
@@ -1212,6 +1213,7 @@ pub fn remove_file<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// This function currently corresponds to the `stat` function on Unix
 /// and the `GetFileAttributesEx` function on Windows.
 /// Note that, this [may change in the future][changes].
+///
 /// [changes]: ../io/index.html#platform-specific-behavior
 ///
 /// # Errors
@@ -1245,6 +1247,7 @@ pub fn metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
 /// This function currently corresponds to the `lstat` function on Unix
 /// and the `GetFileAttributesEx` function on Windows.
 /// Note that, this [may change in the future][changes].
+///
 /// [changes]: ../io/index.html#platform-specific-behavior
 ///
 /// # Errors
@@ -1287,6 +1290,7 @@ pub fn symlink_metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
 /// on Windows, `from` can be anything, but `to` must *not* be a directory.
 ///
 /// Note that, this [may change in the future][changes].
+///
 /// [changes]: ../io/index.html#platform-specific-behavior
 ///
 /// # Errors
@@ -1330,6 +1334,7 @@ pub fn rename<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<()> 
 /// `O_CLOEXEC` is set for returned file descriptors.
 /// On Windows, this function currently corresponds to `CopyFileEx`.
 /// Note that, this [may change in the future][changes].
+///
 /// [changes]: ../io/index.html#platform-specific-behavior
 ///
 /// # Errors
@@ -1366,6 +1371,7 @@ pub fn copy<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<u64> {
 /// This function currently corresponds to the `link` function on Unix
 /// and the `CreateHardLink` function on Windows.
 /// Note that, this [may change in the future][changes].
+///
 /// [changes]: ../io/index.html#platform-specific-behavior
 ///
 /// # Errors
@@ -1424,6 +1430,7 @@ pub fn soft_link<P: AsRef<Path>, Q: AsRef<Path>>(src: P, dst: Q) -> io::Result<(
 /// and the `CreateFile` function with `FILE_FLAG_OPEN_REPARSE_POINT` and
 /// `FILE_FLAG_BACKUP_SEMANTICS` flags on Windows.
 /// Note that, this [may change in the future][changes].
+///
 /// [changes]: ../io/index.html#platform-specific-behavior
 ///
 /// # Errors
@@ -1457,6 +1464,7 @@ pub fn read_link<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
 /// This function currently corresponds to the `realpath` function on Unix
 /// and the `CreateFile` and `GetFinalPathNameByHandle` functions on Windows.
 /// Note that, this [may change in the future][changes].
+///
 /// [changes]: ../io/index.html#platform-specific-behavior
 ///
 /// # Errors
@@ -1489,6 +1497,7 @@ pub fn canonicalize<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
 /// This function currently corresponds to the `mkdir` function on Unix
 /// and the `CreateDirectory` function on Windows.
 /// Note that, this [may change in the future][changes].
+///
 /// [changes]: ../io/index.html#platform-specific-behavior
 ///
 /// # Errors
@@ -1522,6 +1531,7 @@ pub fn create_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// This function currently corresponds to the `mkdir` function on Unix
 /// and the `CreateDirectory` function on Windows.
 /// Note that, this [may change in the future][changes].
+///
 /// [changes]: ../io/index.html#platform-specific-behavior
 ///
 /// # Errors
@@ -1562,6 +1572,7 @@ pub fn create_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// This function currently corresponds to the `rmdir` function on Unix
 /// and the `RemoveDirectory` function on Windows.
 /// Note that, this [may change in the future][changes].
+///
 /// [changes]: ../io/index.html#platform-specific-behavior
 ///
 /// # Errors
@@ -1599,6 +1610,7 @@ pub fn remove_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// and the `FindFirstFile`, `GetFileAttributesEx`, `DeleteFile`, and `RemoveDirectory` functions
 /// on Windows.
 /// Note that, this [may change in the future][changes].
+///
 /// [changes]: ../io/index.html#platform-specific-behavior
 ///
 /// # Errors
@@ -1633,6 +1645,7 @@ pub fn remove_dir_all<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// This function currently corresponds to the `opendir` function on Unix
 /// and the `FindFirstFile` function on Windows.
 /// Note that, this [may change in the future][changes].
+///
 /// [changes]: ../io/index.html#platform-specific-behavior
 ///
 /// # Errors
@@ -1679,6 +1692,7 @@ pub fn read_dir<P: AsRef<Path>>(path: P) -> io::Result<ReadDir> {
 /// This function currently corresponds to the `chmod` function on Unix
 /// and the `SetFileAttributes` function on Windows.
 /// Note that, this [may change in the future][changes].
+///
 /// [changes]: ../io/index.html#platform-specific-behavior
 ///
 /// # Errors
