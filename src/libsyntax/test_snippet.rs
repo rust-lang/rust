@@ -932,3 +932,137 @@ error: foo
 
 "#);
 }
+
+#[test]
+fn long_snippet() {
+    test_harness(r#"
+fn foo() {
+  X0 Y0 Z0
+  X1 Y1 Z1
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+  X2 Y2 Z2
+  X3 Y3 Z3
+}
+"#,
+    vec![
+        SpanLabel {
+            start: Position {
+                string: "Y0",
+                count: 1,
+            },
+            end: Position {
+                string: "X1",
+                count: 1,
+            },
+            label: "`X` is a good letter",
+        },
+        SpanLabel {
+            start: Position {
+                string: "Z1",
+                count: 1,
+            },
+            end: Position {
+                string: "Z3",
+                count: 1,
+            },
+            label: "`Y` is a good letter too",
+        },
+    ],
+    r#"
+error: foo
+  --> test.rs:3:6
+   |
+3  |      X0 Y0 Z0
+   |   ______^ starting here...
+4  |  |   X1 Y1 Z1
+   |  |____^____- starting here...
+   | ||____|
+   | |     ...ending here: `X` is a good letter
+5  | |  1
+6  | |  2
+7  | |  3
+...  |
+15 | |    X2 Y2 Z2
+16 | |    X3 Y3 Z3
+   | |___________- ...ending here: `Y` is a good letter too
+
+"#);
+}
+
+#[test]
+fn long_snippet_multiple_spans() {
+    test_harness(r#"
+fn foo() {
+  X0 Y0 Z0
+1
+2
+3
+  X1 Y1 Z1
+4
+5
+6
+  X2 Y2 Z2
+7
+8
+9
+10
+  X3 Y3 Z3
+}
+"#,
+    vec![
+        SpanLabel {
+            start: Position {
+                string: "Y0",
+                count: 1,
+            },
+            end: Position {
+                string: "Y3",
+                count: 1,
+            },
+            label: "`Y` is a good letter",
+        },
+        SpanLabel {
+            start: Position {
+                string: "Z1",
+                count: 1,
+            },
+            end: Position {
+                string: "Z2",
+                count: 1,
+            },
+            label: "`Z` is a good letter too",
+        },
+    ],
+    r#"
+error: foo
+  --> test.rs:3:6
+   |
+3  |      X0 Y0 Z0
+   |   ______^ starting here...
+4  |  | 1
+5  |  | 2
+6  |  | 3
+7  |  |   X1 Y1 Z1
+   |  |_________- starting here...
+8  | || 4
+9  | || 5
+10 | || 6
+11 | ||   X2 Y2 Z2
+   | ||__________- ...ending here: `Z` is a good letter too
+...   |
+15 |  | 10
+16 |  |   X3 Y3 Z3
+   |  |_______^ ...ending here: `Y` is a good letter
+
+"#);
+}
+

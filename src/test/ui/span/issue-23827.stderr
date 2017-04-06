@@ -6,8 +6,7 @@ error[E0046]: not all trait items implemented, missing: `Output`
 37 | |     //~^ ERROR E0046
 38 | |     //~| NOTE missing `Output` in implementation
 39 | |     //~| NOTE `Output` from trait: `type Output;`
-40 | |     extern "rust-call" fn call_once(self, (comp,): (C,)) -> Prototype {
-41 | |         Fn::call(&self, (comp,))
+...  |
 42 | |     }
 43 | | }
    | |_^ ...ending here: missing `Output` in implementation
