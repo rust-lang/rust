@@ -461,7 +461,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             self.tcx.sess.add_lint_diagnostic(EXTRA_REQUIREMENT_IN_IMPL,
                                               node_id,
                                               (*err).clone());
-            err.cancel();
+            let _ = err.cancel();
         }
 
         err

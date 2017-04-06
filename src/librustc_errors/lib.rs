@@ -50,20 +50,6 @@ mod lock;
 use syntax_pos::{BytePos, Loc, FileLinesResult, FileName, MultiSpan, Span, NO_EXPANSION};
 
 #[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
-pub enum RenderSpan {
-    /// A FullSpan renders with both with an initial line for the
-    /// message, prefixed by file:linenum, followed by a summary of
-    /// the source code covered by the span.
-    FullSpan(MultiSpan),
-
-    /// A suggestion renders with both with an initial line for the
-    /// message, prefixed by file:linenum, followed by a summary
-    /// of hypothetical source code, where each `String` is spliced
-    /// into the lines in place of the code covered by each span.
-    Suggestion(CodeSuggestion),
-}
-
-#[derive(Clone, Debug, PartialEq, RustcEncodable, RustcDecodable)]
 pub struct CodeSuggestion {
     pub msp: MultiSpan,
     pub substitutes: Vec<String>,
@@ -203,7 +189,7 @@ impl error::Error for ExplicitBug {
     }
 }
 
-pub use diagnostic::{Diagnostic, SubDiagnostic};
+pub use diagnostic::{Diagnostic, SubDiagnostic, DiagnosticCodeHint};
 pub use diagnostic_builder::DiagnosticBuilder;
 
 /// A handler deals with errors; certain errors
@@ -254,32 +240,34 @@ impl Handler {
                                                     sp: S,
                                                     msg: &str)
                                                     -> DiagnosticBuilder<'a> {
-        let mut result = DiagnosticBuilder::new(self, Level::Warning, msg);
-        result.set_span(sp);
-        if !self.can_emit_warnings {
-            result.cancel();
+        if self.can_emit_warnings {
+            let mut result = DiagnosticBuilder::new(self, Level::Warning, msg);
+            result.set_span(sp);
+            result
+        } else {
+            self.struct_dummy()
         }
-        result
     }
     pub fn struct_span_warn_with_code<'a, S: Into<MultiSpan>>(&'a self,
                                                               sp: S,
                                                               msg: &str,
                                                               code: &str)
                                                               -> DiagnosticBuilder<'a> {
-        let mut result = DiagnosticBuilder::new(self, Level::Warning, msg);
-        result.set_span(sp);
-        result.code(code.to_owned());
-        if !self.can_emit_warnings {
-            result.cancel();
+        if self.can_emit_warnings {
+            let mut result = DiagnosticBuilder::new(self, Level::Warning, msg);
+            result.set_span(sp);
+            result.code(code.to_owned());
+            result
+        } else {
+            self.struct_dummy()
         }
-        result
     }
     pub fn struct_warn<'a>(&'a self, msg: &str) -> DiagnosticBuilder<'a> {
-        let mut result = DiagnosticBuilder::new(self, Level::Warning, msg);
-        if !self.can_emit_warnings {
-            result.cancel();
+        if self.can_emit_warnings {
+            DiagnosticBuilder::new(self, Level::Warning, msg)
+        } else {
+            self.struct_dummy()
         }
-        result
     }
     pub fn struct_span_err<'a, S: Into<MultiSpan>>(&'a self,
                                                    sp: S,
@@ -325,7 +313,7 @@ impl Handler {
     }
 
     pub fn cancel(&self, err: &mut DiagnosticBuilder) {
-        err.cancel();
+        let _ = err.cancel();
     }
 
     fn panic_if_treat_err_as_bug(&self) {

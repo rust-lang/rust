@@ -34,7 +34,7 @@ use syntax::abi::Abi;
 use syntax::codemap::CodeMap;
 use errors;
 use errors::emitter::Emitter;
-use errors::{Level, DiagnosticBuilder};
+use errors::{Level, Diagnostic};
 use syntax::feature_gate::UnstableFeatures;
 use syntax::symbol::Symbol;
 use syntax_pos::DUMMY_SP;
@@ -78,7 +78,7 @@ fn remove_message(e: &mut ExpectErrorEmitter, msg: &str, lvl: Level) {
 }
 
 impl Emitter for ExpectErrorEmitter {
-    fn emit(&mut self, db: &DiagnosticBuilder) {
+    fn emit(&mut self, db: Diagnostic) {
         remove_message(self, &db.message(), db.level);
         for child in &db.children {
             remove_message(self, &child.message(), child.level);

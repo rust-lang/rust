@@ -22,7 +22,7 @@
 use codemap::CodeMap;
 use syntax_pos::{self, MacroBacktrace, Span, SpanLabel, MultiSpan};
 use errors::registry::Registry;
-use errors::{DiagnosticBuilder, SubDiagnostic, RenderSpan, CodeSuggestion, CodeMapper};
+use errors::{self, SubDiagnostic, DiagnosticCodeHint, CodeSuggestion, CodeMapper};
 use errors::emitter::Emitter;
 
 use std::rc::Rc;
@@ -63,8 +63,8 @@ impl JsonEmitter {
 }
 
 impl Emitter for JsonEmitter {
-    fn emit(&mut self, db: &DiagnosticBuilder) {
-        let data = Diagnostic::from_diagnostic_builder(db, self);
+    fn emit(&mut self, db: errors::Diagnostic) {
+        let data = Diagnostic::from_diagnostic(db, self);
         if let Err(e) = writeln!(&mut self.dst, "{}", as_json(&data)) {
             panic!("failed to print diagnostics: {:?}", e);
         }
@@ -149,32 +149,44 @@ struct DiagnosticCode {
 }
 
 impl Diagnostic {
-    fn from_diagnostic_builder(db: &DiagnosticBuilder,
-                               je: &JsonEmitter)
-                               -> Diagnostic {
+    fn from_diagnostic(db: errors::Diagnostic, je: &JsonEmitter) -> Diagnostic {
+        let suggestion = match db.code_hints {
+            Some(DiagnosticCodeHint::Suggestion{ref msg, ref sugg}) => {
+                use std::borrow::Borrow;
+                let sugg = Diagnostic {
+                    message: msg.clone(),
+                    code: None,
+                    level: "help",
+                    spans: DiagnosticSpan::from_suggestion(sugg, je),
+                    children: Vec::new(),
+                    rendered: Some(sugg.splice_lines(je.cm.borrow())),
+                };
+                Some(sugg)
+            },
+            Some(DiagnosticCodeHint::Guesses{..}) => unimplemented!(),
+            None => None,
+        };
         Diagnostic {
             message: db.message(),
-            code: DiagnosticCode::map_opt_string(db.code.clone(), je),
+            code: DiagnosticCode::map_opt_string(db.code, je),
             level: db.level.to_str(),
             spans: DiagnosticSpan::from_multispan(&db.span, je),
             children: db.children.iter().map(|c| {
                 Diagnostic::from_sub_diagnostic(c, je)
-            }).collect(),
+            }).chain(suggestion).collect(),
             rendered: None,
         }
     }
 
     fn from_sub_diagnostic(db: &SubDiagnostic, je: &JsonEmitter) -> Diagnostic {
+        let msp = db.render_span.as_ref().unwrap_or(&db.span);
         Diagnostic {
             message: db.message(),
             code: None,
             level: db.level.to_str(),
-            spans: db.render_span.as_ref()
-                     .map(|sp| DiagnosticSpan::from_render_span(sp, je))
-                     .unwrap_or_else(|| DiagnosticSpan::from_multispan(&db.span, je)),
+            spans: DiagnosticSpan::from_multispan(msp, je),
             children: vec![],
-            rendered: db.render_span.as_ref()
-                                    .and_then(|rsp| je.render(rsp)),
+            rendered: None,
         }
     }
 }
@@ -278,15 +290,6 @@ impl DiagnosticSpan {
                       })
                       .collect()
     }
-
-    fn from_render_span(rsp: &RenderSpan, je: &JsonEmitter) -> Vec<DiagnosticSpan> {
-        match *rsp {
-            RenderSpan::FullSpan(ref msp) =>
-                DiagnosticSpan::from_multispan(msp, je),
-            RenderSpan::Suggestion(ref suggestion) =>
-                DiagnosticSpan::from_suggestion(suggestion, je),
-        }
-    }
 }
 
 impl DiagnosticSpanLine {
@@ -338,19 +341,3 @@ impl DiagnosticCode {
         })
     }
 }
-
-impl JsonEmitter {
-    fn render(&self, render_span: &RenderSpan) -> Option<String> {
-        use std::borrow::Borrow;
-
-        match *render_span {
-            RenderSpan::FullSpan(_) => {
-                None
-            }
-            RenderSpan::Suggestion(ref suggestion) => {
-                Some(suggestion.splice_lines(self.cm.borrow()))
-            }
-        }
-    }
-}
-

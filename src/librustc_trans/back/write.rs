@@ -22,7 +22,7 @@ use {CrateTranslation, ModuleLlvm, ModuleSource, ModuleTranslation};
 use util::common::{time, time_depth, set_time_depth};
 use util::common::path2cstr;
 use util::fs::link_or_copy;
-use errors::{self, Handler, Level, DiagnosticBuilder};
+use errors::{self, Handler, Level};
 use errors::emitter::Emitter;
 use syntax_pos::MultiSpan;
 use context::{is_pie_binary, get_reloc_model};
@@ -120,7 +120,7 @@ impl SharedEmitter {
 }
 
 impl Emitter for SharedEmitter {
-    fn emit(&mut self, db: &DiagnosticBuilder) {
+    fn emit(&mut self, db: errors::Diagnostic) {
         self.buffer.lock().unwrap().push(Diagnostic {
             msg: db.message(),
             code: db.code.clone(),

@@ -12,8 +12,8 @@ use self::Destination::*;
 
 use syntax_pos::{DUMMY_SP, FileMap, Span, MultiSpan, CharPos};
 
-use {Level, CodeSuggestion, DiagnosticBuilder, SubDiagnostic, CodeMapper};
-use RenderSpan::*;
+use {Level, CodeSuggestion, SubDiagnostic, CodeMapper};
+use {Diagnostic, DiagnosticCodeHint};
 use snippet::{Annotation, AnnotationType, Line, MultilineAnnotation, StyledString, Style};
 use styled_buffer::StyledBuffer;
 
@@ -25,19 +25,13 @@ use term;
 /// Emitter trait for emitting errors.
 pub trait Emitter {
     /// Emit a structured diagnostic.
-    fn emit(&mut self, db: &DiagnosticBuilder);
+    fn emit(&mut self, db: Diagnostic);
 }
 
 impl Emitter for EmitterWriter {
-    fn emit(&mut self, db: &DiagnosticBuilder) {
-        let mut primary_span = db.span.clone();
-        let mut children = db.children.clone();
-        self.fix_multispans_in_std_macros(&mut primary_span, &mut children);
-        self.emit_messages_default(&db.level,
-                                   &db.styled_message(),
-                                   &db.code,
-                                   &primary_span,
-                                   &children);
+    fn emit(&mut self, mut db: Diagnostic) {
+        self.fix_multispans_in_std_macros(&mut db.span, &mut db.children);
+        self.emit_messages_default(db);
     }
 }
 
@@ -990,43 +984,34 @@ impl EmitterWriter {
         }
         Ok(())
     }
-    fn emit_messages_default(&mut self,
-                             level: &Level,
-                             message: &Vec<(String, Style)>,
-                             code: &Option<String>,
-                             span: &MultiSpan,
-                             children: &Vec<SubDiagnostic>) {
-        let max_line_num = self.get_max_line_num(span, children);
+    fn emit_messages_default(&mut self, db: Diagnostic) {
+        let max_line_num = self.get_max_line_num(&db.span, &db.children);
         let max_line_num_len = max_line_num.to_string().len();
 
-        match self.emit_message_default(span, message, code, level, max_line_num_len, false) {
+        match self.emit_message_default(&db.span,
+                                        &db.message,
+                                        &db.code,
+                                        &db.level,
+                                        max_line_num_len,
+                                        false) {
             Ok(()) => {
-                if !children.is_empty() {
+                if !db.children.is_empty() || db.code_hints.is_some() {
                     let mut buffer = StyledBuffer::new();
                     draw_col_separator_no_space(&mut buffer, 0, max_line_num_len + 1);
-                    match emit_to_destination(&buffer.render(), level, &mut self.dst) {
+                    match emit_to_destination(&buffer.render(), &db.level, &mut self.dst) {
                         Ok(()) => (),
                         Err(e) => panic!("failed to emit error: {}", e)
                     }
                 }
-                for child in children {
+                for child in db.children {
                     match child.render_span {
-                        Some(FullSpan(ref msp)) => {
+                        Some(ref msp) => {
                             match self.emit_message_default(msp,
                                                             &child.styled_message(),
                                                             &None,
                                                             &child.level,
                                                             max_line_num_len,
                                                             true) {
-                                Err(e) => panic!("failed to emit error: {}", e),
-                                _ => ()
-                            }
-                        },
-                        Some(Suggestion(ref cs)) => {
-                            match self.emit_suggestion_default(cs,
-                                                               &child.level,
-                                                               &child.styled_message(),
-                                                               max_line_num_len) {
                                 Err(e) => panic!("failed to emit error: {}", e),
                                 _ => ()
                             }
@@ -1043,6 +1028,19 @@ impl EmitterWriter {
                             }
                         }
                     }
+                }
+                match db.code_hints {
+                    Some(DiagnosticCodeHint::Suggestion { msg, sugg }) => {
+                        match self.emit_suggestion_default(&sugg,
+                                                           &Level::Help,
+                                                           &vec![(msg, Style::NoStyle)],
+                                                           max_line_num_len) {
+                            Err(e) => panic!("failed to emit error: {}", e),
+                            _ => ()
+                        }
+                    }
+                    Some(DiagnosticCodeHint::Guesses { .. }) => unimplemented!(),
+                    None => {}
                 }
             }
             Err(e) => panic!("failed to emit error: {}", e),

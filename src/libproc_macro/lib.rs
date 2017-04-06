@@ -172,7 +172,7 @@ pub mod __internal {
 }
 
 fn parse_to_lex_err(mut err: DiagnosticBuilder) -> LexError {
-    err.cancel();
+    let _ = err.cancel();
     LexError { _inner: () }
 }
 
