@@ -490,6 +490,17 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
               _ => span_bug!(e.span, "typeck error"),
              })
           }
+          (Char(a), Char(b)) => {
+            Bool(match op.node {
+              hir::BiEq => a == b,
+              hir::BiNe => a != b,
+              hir::BiLt => a < b,
+              hir::BiLe => a <= b,
+              hir::BiGe => a >= b,
+              hir::BiGt => a > b,
+              _ => span_bug!(e.span, "typeck error"),
+             })
+          }
 
           _ => signal!(e, MiscBinaryOp),
         }

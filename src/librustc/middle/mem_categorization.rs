@@ -202,11 +202,14 @@ pub enum ImmutabilityBlame<'tcx> {
 }
 
 impl<'tcx> cmt_<'tcx> {
-    fn resolve_field(&self, field_name: FieldName) -> (&'tcx ty::AdtDef, &'tcx ty::FieldDef)
+    fn resolve_field(&self, field_name: FieldName) -> Option<(&'tcx ty::AdtDef, &'tcx ty::FieldDef)>
     {
-        let adt_def = self.ty.ty_adt_def().unwrap_or_else(|| {
-            bug!("interior cmt {:?} is not an ADT", self)
-        });
+        let adt_def = match self.ty.sty {
+            ty::TyAdt(def, _) => def,
+            ty::TyTuple(..) => return None,
+            // closures get `Categorization::Upvar` rather than `Categorization::Interior`
+            _ =>  bug!("interior cmt {:?} is not an ADT", self)
+        };
         let variant_def = match self.cat {
             Categorization::Downcast(_, variant_did) => {
                 adt_def.variant_with_id(variant_did)
@@ -220,7 +223,7 @@ impl<'tcx> cmt_<'tcx> {
             NamedField(name) => variant_def.field_named(name),
             PositionalField(idx) => &variant_def.fields[idx]
         };
-        (adt_def, field_def)
+        Some((adt_def, field_def))
     }
 
     pub fn immutability_blame(&self) -> Option<ImmutabilityBlame<'tcx>> {
@@ -232,8 +235,9 @@ impl<'tcx> cmt_<'tcx> {
                     Categorization::Local(node_id) =>
                         Some(ImmutabilityBlame::LocalDeref(node_id)),
                     Categorization::Interior(ref base_cmt, InteriorField(field_name)) => {
-                        let (adt_def, field_def) = base_cmt.resolve_field(field_name);
-                        Some(ImmutabilityBlame::AdtFieldDeref(adt_def, field_def))
+                        base_cmt.resolve_field(field_name).map(|(adt_def, field_def)| {
+                            ImmutabilityBlame::AdtFieldDeref(adt_def, field_def)
+                        })
                     }
                     Categorization::Upvar(Upvar { id, .. }) => {
                         if let NoteClosureEnv(..) = self.note {

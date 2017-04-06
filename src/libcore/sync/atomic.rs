@@ -153,8 +153,9 @@ unsafe impl<T> Sync for AtomicPtr<T> {}
 /// Rust's memory orderings are [the same as
 /// LLVM's](http://llvm.org/docs/LangRef.html#memory-model-for-concurrent-operations).
 ///
-/// For more information see the [nomicon][1].
-/// [1]: ../../../nomicon/atomics.html
+/// For more information see the [nomicon].
+///
+/// [nomicon]: ../../../nomicon/atomics.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Copy, Clone, Debug)]
 pub enum Ordering {
