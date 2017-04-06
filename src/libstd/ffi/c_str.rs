@@ -356,7 +356,7 @@ impl ops::Deref for CString {
     type Target = CStr;
 
     fn deref(&self) -> &CStr {
-        unsafe { mem::transmute(self.as_bytes_with_nul()) }
+        unsafe { CStr::from_bytes_with_nul_unchecked(self.as_bytes_with_nul()) }
     }
 }
 
@@ -583,7 +583,8 @@ impl CStr {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub unsafe fn from_ptr<'a>(ptr: *const c_char) -> &'a CStr {
         let len = libc::strlen(ptr);
-        mem::transmute(slice::from_raw_parts(ptr, len as usize + 1))
+        let ptr = ptr as *const u8;
+        CStr::from_bytes_with_nul_unchecked(slice::from_raw_parts(ptr, len as usize + 1))
     }
 
     /// Creates a C string wrapper from a byte slice.
