@@ -38,9 +38,20 @@ fi
 
 # Wipe the cache if it's not valid, or mark it as invalid while we update it
 if [ ! -f "$cache_valid_file" ]; then
-    rm -rf "$CACHE_DIR" && mkdir "$CACHE_DIR"
+    rm -rf "$CACHE_DIR"
+    mkdir "$CACHE_DIR"
 else
-    rm "$cache_valid_file"
+    stat_lines=$(cd "$cache_src_dir" && git status --porcelain | wc -l)
+    stat_ec=$(cd "$cache_src_dir" && git status >/dev/null 2>&1 && echo $?)
+    if [ ! -d "$cache_src_dir/.git" -o $stat_lines != 0 -o $stat_ec != 0 ]; then
+        # Something is badly wrong - the cache valid file is here, but something
+        # about the git repo is fishy. Nuke it all, just in case
+        echo "WARNING: $cache_valid_file exists but bad repo: l:$stat_lines, ec:$stat_ec"
+        rm -rf "$CACHE_DIR"
+        mkdir "$CACHE_DIR"
+    else
+        rm "$cache_valid_file"
+    fi
 fi
 
 # Update the cache (a pristine copy of the rust source master)
