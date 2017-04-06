@@ -377,13 +377,18 @@ pub fn rewrite_array<'a, I>(expr_iter: I,
         IndentStyle::Block => {
             // FIXME wrong shape in one-line case
             match shape.width.checked_sub(2 * bracket_size) {
-                Some(width) => definitive_tactic(&items, ListTactic::HorizontalVertical, width),
+                Some(width) => {
+                    let tactic = ListTactic::LimitedHorizontalVertical(context.config.array_width);
+                    definitive_tactic(&items, tactic, width)
+                }
                 None => DefinitiveListTactic::Vertical,
             }
         }
         IndentStyle::Visual => {
             if has_long_item || items.iter().any(ListItem::is_multiline) {
-                definitive_tactic(&items, ListTactic::HorizontalVertical, nested_shape.width)
+                definitive_tactic(&items,
+                                  ListTactic::LimitedHorizontalVertical(context.config.array_width),
+                                  nested_shape.width)
             } else {
                 DefinitiveListTactic::Mixed
             }

@@ -352,6 +352,8 @@ create_config! {
     fn_args_layout: IndentStyle, IndentStyle::Visual,
         "Layout of function arguments and tuple structs";
     array_layout: IndentStyle, IndentStyle::Visual, "Indent on arrays";
+    array_width: usize, 60,
+        "Maximum width of an array literal before falling back to vertical formatting";
     type_punctuation_density: TypeDensity, TypeDensity::Wide,
         "Determines if '+' or '=' are wrapped in spaces in the punctuation of types";
     where_style: Style, Style::Default, "Overall strategy for where clauses";
