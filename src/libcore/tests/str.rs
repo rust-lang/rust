@@ -8,4 +8,4 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// All `str` tests live in libcollectiontest::str
+// All `str` tests live in collectionstests::str
