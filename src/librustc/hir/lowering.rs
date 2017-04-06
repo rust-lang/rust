@@ -648,7 +648,7 @@ impl<'a> LoweringContext<'a> {
     fn lower_global_asm(&mut self, ga: &GlobalAsm) -> P<hir::GlobalAsm> {
         P(hir::GlobalAsm {
             asm: ga.asm,
-            expn_id: ga.expn_id,
+            ctxt: ga.ctxt,
         })
     }
 

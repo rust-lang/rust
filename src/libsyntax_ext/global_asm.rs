@@ -21,7 +21,6 @@
 use syntax::ast;
 use syntax::ext::base;
 use syntax::ext::base::*;
-use syntax::codemap;
 use syntax::feature_gate;
 use syntax::ptr::P;
 use syntax::symbol::Symbol;
@@ -46,20 +45,11 @@ pub fn expand_global_asm<'cx>(cx: &'cx mut ExtCtxt,
 
     let mut p = cx.new_parser_from_tts(tts);
     let (asm, _) = match expr_to_string(cx,
-                                                    panictry!(p.parse_expr()),
-                                                    "inline assembly must be a string literal") {
+                                        panictry!(p.parse_expr()),
+                                        "inline assembly must be a string literal") {
         Some((s, st)) => (s, st),
         None => return DummyResult::any(sp),
     };
-
-    let expn_id = cx.codemap().record_expansion(codemap::ExpnInfo {
-        call_site: sp,
-        callee: codemap::NameAndSpan {
-            format: codemap::MacroBang(Symbol::intern(MACRO)),
-            allow_internal_unstable: false,
-            span: None,
-        },
-    });
 
     MacEager::items(SmallVector::one(P(ast::Item {
         ident: ast::Ident::with_empty_ctxt(Symbol::intern("")),
@@ -67,7 +57,7 @@ pub fn expand_global_asm<'cx>(cx: &'cx mut ExtCtxt,
         id: ast::DUMMY_NODE_ID,
         node: ast::ItemKind::GlobalAsm(P(ast::GlobalAsm {
             asm: asm,
-            expn_id: expn_id,
+            ctxt: cx.backtrace(),
         })),
         vis: ast::Visibility::Inherited,
         span: sp,
