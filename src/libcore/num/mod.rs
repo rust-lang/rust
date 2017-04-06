@@ -90,7 +90,7 @@ impl<T: fmt::UpperHex> fmt::UpperHex for Wrapping<T> {
 
 mod wrapping;
 
-// All these modules are technically private and only exposed for libcoretest:
+// All these modules are technically private and only exposed for coretests:
 pub mod flt2dec;
 pub mod dec2flt;
 pub mod bignum;
