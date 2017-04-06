@@ -13,7 +13,8 @@
 // ignore-tidy-end-whitespace
 
 // @has foo/fn.f.html
-// @has - '<p>hard break:<br>after hard break</p>'
+// @has - '<p>hard break:<br />'
+// @has - 'after hard break</p>'
 /// hard break:  
 /// after hard break
 pub fn f() {}
