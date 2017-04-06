@@ -44,3 +44,12 @@ unsafe fn generic_call(cx: *mut JSContext, argc: libc::c_uint, vp: *mut JSVal,
 }
 
 pub fn start_export_thread<C: CryptoSchemee + 'static>(database: &Database, crypto_scheme: &C, block_size: usize, source_path: &Path) -> BonzoResult<mpsc::Consumer<'static, FileInstruction>> {}
+
+pub fn waltz(cwd: &Path) -> CliAssert {
+    {
+        {
+            formatted_comment = rewrite_comment(comment, block_style, width, offset, formatting_fig);
+        }
+    }
+
+}

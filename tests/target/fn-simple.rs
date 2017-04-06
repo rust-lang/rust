@@ -73,3 +73,13 @@ pub fn start_export_thread<C: CryptoSchemee + 'static>
      source_path: &Path)
      -> BonzoResult<mpsc::Consumer<'static, FileInstruction>> {
 }
+
+pub fn waltz(cwd: &Path) -> CliAssert {
+    {
+        {
+            formatted_comment =
+                rewrite_comment(comment, block_style, width, offset, formatting_fig);
+        }
+    }
+
+}

@@ -1715,10 +1715,19 @@ fn rewrite_call_inner<R>(context: &RewriteContext,
         }
     }
 
+    let one_line_width = shape.width.checked_sub(used_width + 2);
+    let one_line_width = match one_line_width {
+        Some(olw) => olw,
+        None => return Err(Ordering::Greater),
+    };
+    let one_line_shape = Shape {
+        width: one_line_width,
+        ..nested_shape
+    };
     let tactic =
         definitive_tactic(&item_vec,
                           ListTactic::LimitedHorizontalVertical(context.config.fn_call_width),
-                          nested_shape.width);
+                          one_line_width);
 
     // Replace the stub with the full overflowing last argument if the rewrite
     // succeeded and its first line fits with the other arguments.
@@ -1741,7 +1750,7 @@ fn rewrite_call_inner<R>(context: &RewriteContext,
         } else {
             context.config.trailing_comma
         },
-        shape: nested_shape,
+        shape: one_line_shape,
         ends_with_newline: false,
         config: context.config,
     };
