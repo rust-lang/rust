@@ -8,7 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! The 32-bit floating point type.
+//! This module provides constants which are specific to the implementation
+//! of the `f32` floating point data type. Mathematically significant
+//! numbers are provided in the `consts` sub-module.
 //!
 //! *[See also the `f32` primitive type](../primitive.f32.html).*
 
