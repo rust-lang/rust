@@ -258,12 +258,35 @@ pub trait Hasher {
     }
 }
 
-/// A `BuildHasher` is typically used as a factory for instances of `Hasher`
-/// which a `HashMap` can then use to hash keys independently.
+/// A trait for creating instances of [`Hasher`].
 ///
-/// Note that for each instance of `BuildHasher`, the created hashers should be
-/// identical. That is, if the same stream of bytes is fed into each hasher, the
-/// same output will also be generated.
+/// A `BuildHasher` is typically used (e.g. by [`HashMap`]) to create
+/// [`Hasher`]s for each key such that they are hashed independently of one
+/// another, since [`Hasher`]s contain state.
+///
+/// For each instance of `BuildHasher`, the [`Hasher`]s created by
+/// [`build_hasher`] should be identical. That is, if the same stream of bytes
+/// is fed into each hasher, the same output will also be generated.
+///
+/// # Examples
+///
+/// ```
+/// use std::collections::hash_map::RandomState;
+/// use std::hash::{BuildHasher, Hasher};
+///
+/// let s = RandomState::new();
+/// let mut hasher_1 = s.build_hasher();
+/// let mut hasher_2 = s.build_hasher();
+///
+/// hasher_1.write_u32(8128);
+/// hasher_2.write_u32(8128);
+///
+/// assert_eq!(hasher_1.finish(), hasher_2.finish());
+/// ```
+///
+/// [`build_hasher`]: #method.build_hasher
+/// [`Hasher`]: trait.Hasher.html
+/// [`HashMap`]: ../../std/collections/struct.HashMap.html
 #[stable(since = "1.7.0", feature = "build_hasher")]
 pub trait BuildHasher {
     /// Type of the hasher that will be created.
@@ -271,6 +294,9 @@ pub trait BuildHasher {
     type Hasher: Hasher;
 
     /// Creates a new hasher.
+    ///
+    /// Each call to `build_hasher` on the same instance should produce identical
+    /// [`Hasher`]s.
     ///
     /// # Examples
     ///
@@ -281,6 +307,8 @@ pub trait BuildHasher {
     /// let s = RandomState::new();
     /// let new_s = s.build_hasher();
     /// ```
+    ///
+    /// [`Hasher`]: trait.Hasher.html
     #[stable(since = "1.7.0", feature = "build_hasher")]
     fn build_hasher(&self) -> Self::Hasher;
 }
