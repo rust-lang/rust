@@ -1662,10 +1662,3 @@ extern "C" {
     pub fn LLVMRustUnsetComdat(V: ValueRef);
     pub fn LLVMRustSetModulePIELevel(M: ModuleRef);
 }
-
-
-// LLVM requires symbols from this library, but apparently they're not printed
-// during llvm-config?
-#[cfg(windows)]
-#[link(name = "ole32")]
-extern "C" {}

@@ -35,7 +35,8 @@ fn main() {
     } else if target.contains("dragonfly") {
         println!("cargo:rustc-link-lib=gcc_pic");
     } else if target.contains("windows-gnu") {
-        println!("cargo:rustc-link-lib=gcc_eh");
+        println!("cargo:rustc-link-lib=static-nobundle=gcc_eh");
+        println!("cargo:rustc-link-lib=static-nobundle=pthread");
     } else if target.contains("fuchsia") {
         println!("cargo:rustc-link-lib=unwind");
     }
