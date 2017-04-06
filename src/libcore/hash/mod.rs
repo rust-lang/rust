@@ -285,11 +285,17 @@ pub trait BuildHasher {
     fn build_hasher(&self) -> Self::Hasher;
 }
 
-/// The `BuildHasherDefault` structure is used in scenarios where one has a
-/// type that implements [`Hasher`] and [`Default`], but needs that type to
-/// implement [`BuildHasher`].
+/// Used to create a default [`BuildHasher`] instance for types that implement
+/// [`Hasher`] and [`Default`].
 ///
-/// This structure is zero-sized and does not need construction.
+/// `BuildHasherDefault<H>` can be used when a type `H` implements [`Hasher`] and
+/// [`Default`], and you need a corresponding [`BuildHasher`] instance, but none is
+/// defined.
+///
+/// Any `BuildHasherDefault` is [zero-sized]. It can be created with
+/// [`default`][method.Default]. When using `BuildHasherDefault` with [`HashMap`] or
+/// [`HashSet`], this doesn't need to be done, since they implement appropriate
+/// [`Default`] instances themselves.
 ///
 /// # Examples
 ///
@@ -322,8 +328,11 @@ pub trait BuildHasher {
 ///
 /// [`BuildHasher`]: trait.BuildHasher.html
 /// [`Default`]: ../default/trait.Default.html
+/// [method.default]: #method.default
 /// [`Hasher`]: trait.Hasher.html
 /// [`HashMap`]: ../../std/collections/struct.HashMap.html
+/// [`HashSet`]: ../../std/collections/struct.HashSet.html
+/// [zero-sized]: https://doc.rust-lang.org/nomicon/exotic-sizes.html#zero-sized-types-zsts
 #[stable(since = "1.7.0", feature = "build_hasher")]
 pub struct BuildHasherDefault<H>(marker::PhantomData<H>);
 
