@@ -208,18 +208,73 @@ pub trait Hash {
     }
 }
 
-/// A trait which represents the ability to hash an arbitrary stream of bytes.
+/// A trait for hashing an arbitrary stream of bytes.
+///
+/// Instances of `Hasher` usually represent state that is changed while hashing
+/// data.
+///
+/// `Hasher` provides a fairly basic interface for retrieving the generated hash
+/// (with [`finish`]), and writing integers as well as slices of bytes into an
+/// instance (with [`write`] and [`write_u8`] etc.). Most of the time, `Hasher`
+/// instances are used in conjunction with the [`Hash`] trait.
+///
+/// # Examples
+///
+/// ```
+/// use std::collections::hash_map::DefaultHasher;
+/// use std::hash::Hasher;
+///
+/// let mut hasher = DefaultHasher::new();
+///
+/// hasher.write_u32(1989);
+/// hasher.write_u8(11);
+/// hasher.write_u8(9);
+/// hasher.write(b"Huh?");
+///
+/// println!("Hash is {:x}!", hasher.finish());
+/// ```
+///
+/// [`Hash`]: trait.Hash.html
+/// [`finish`]: #tymethod.finish
+/// [`write`]: #tymethod.write
+/// [`write_u8`]: #method.write_u8
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Hasher {
     /// Completes a round of hashing, producing the output hash generated.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::hash_map::DefaultHasher;
+    /// use std::hash::Hasher;
+    ///
+    /// let mut hasher = DefaultHasher::new();
+    /// hasher.write(b"Cool!");
+    ///
+    /// println!("Hash is {:x}!", hasher.finish());
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn finish(&self) -> u64;
 
     /// Writes some data into this `Hasher`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::hash_map::DefaultHasher;
+    /// use std::hash::Hasher;
+    ///
+    /// let mut hasher = DefaultHasher::new();
+    /// let data = [0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef];
+    ///
+    /// hasher.write(&data);
+    ///
+    /// println!("Hash is {:x}!", hasher.finish());
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn write(&mut self, bytes: &[u8]);
 
-    /// Write a single `u8` into this hasher.
+    /// Writes a single `u8` into this hasher.
     #[inline]
     #[stable(feature = "hasher_write", since = "1.3.0")]
     fn write_u8(&mut self, i: u8) {
