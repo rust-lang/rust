@@ -1189,8 +1189,6 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
             // Create llvm.used variable
             if !ccx.used_statics().borrow().is_empty() {
-                debug!("llvm.used");
-
                 let name = CString::new("llvm.used").unwrap();
                 let section = CString::new("llvm.metadata").unwrap();
                 let array = C_array(Type::i8(&ccx).ptr_to(), &*ccx.used_statics().borrow());
