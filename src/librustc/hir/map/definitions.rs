@@ -394,6 +394,10 @@ impl Definitions {
         }
     }
 
+    pub fn node_to_hir_id(&self, node_id: ast::NodeId) -> hir::HirId {
+        self.node_to_hir_id[node_id]
+    }
+
     /// Add a definition with a parent definition.
     pub fn create_def_with_parent(&mut self,
                                   parent: Option<DefIndex>,

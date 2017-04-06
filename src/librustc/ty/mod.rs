@@ -19,6 +19,7 @@ use dep_graph::{self, DepNode};
 use hir::{map as hir_map, FreevarMap, TraitMap};
 use hir::def::{Def, CtorKind, ExportMap};
 use hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
+use ich::StableHashingContext;
 use middle::const_val::ConstVal;
 use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem, FnOnceTraitLangItem};
 use middle::privacy::AccessLevels;
@@ -50,6 +51,8 @@ use syntax_pos::{DUMMY_SP, Span};
 use rustc_const_math::ConstInt;
 
 use rustc_data_structures::accumulate_vec::IntoIter as AccIntoIter;
+use rustc_data_structures::stable_hasher::{StableHasher, StableHasherResult,
+                                           HashStable};
 
 use hir;
 use hir::itemlikevisit::ItemLikeVisitor;
@@ -1379,6 +1382,25 @@ impl<'tcx> serialize::UseSpecializedEncodable for &'tcx AdtDef {
 
 impl<'tcx> serialize::UseSpecializedDecodable for &'tcx AdtDef {}
 
+
+impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for AdtDef {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a, 'tcx>,
+                                          hasher: &mut StableHasher<W>) {
+        let ty::AdtDef {
+            did,
+            ref variants,
+            ref flags,
+            ref repr,
+        } = *self;
+
+        did.hash_stable(hcx, hasher);
+        variants.hash_stable(hcx, hasher);
+        flags.hash_stable(hcx, hasher);
+        repr.hash_stable(hcx, hasher);
+    }
+}
+
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum AdtKind { Struct, Union, Enum }
 
@@ -1390,6 +1412,13 @@ pub struct ReprOptions {
     pub simd: bool,
     pub int: Option<attr::IntType>,
 }
+
+impl_stable_hash_for!(struct ReprOptions {
+    c,
+    packed,
+    simd,
+    int
+});
 
 impl ReprOptions {
     pub fn new(tcx: TyCtxt, did: DefId) -> ReprOptions {
