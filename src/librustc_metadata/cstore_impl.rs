@@ -511,12 +511,19 @@ impl CrateStore for cstore::CStore {
     /// Returns a map from a sufficiently visible external item (i.e. an external item that is
     /// visible from at least one local module) to a sufficiently visible parent (considering
     /// modules that re-export the external item to be parents).
-    fn visible_parent_map<'a>(&'a self) -> ::std::cell::RefMut<'a, DefIdMap<DefId>> {
-        let mut visible_parent_map = self.visible_parent_map.borrow_mut();
-        if !visible_parent_map.is_empty() { return visible_parent_map; }
+    fn visible_parent_map<'a>(&'a self) -> ::std::cell::Ref<'a, DefIdMap<DefId>> {
+        {
+            let visible_parent_map = self.visible_parent_map.borrow();
+            if !visible_parent_map.is_empty() {
+                return visible_parent_map;
+            }
+        }
 
         use std::collections::vec_deque::VecDeque;
         use std::collections::hash_map::Entry;
+
+        let mut visible_parent_map = self.visible_parent_map.borrow_mut();
+
         for cnum in (1 .. self.next_crate_num().as_usize()).map(CrateNum::new) {
             let cdata = self.get_crate_data(cnum);
 
@@ -560,6 +567,7 @@ impl CrateStore for cstore::CStore {
             }
         }
 
-        visible_parent_map
+        drop(visible_parent_map);
+        self.visible_parent_map.borrow()
     }
 }
