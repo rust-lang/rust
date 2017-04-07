@@ -433,28 +433,31 @@ pub fn rust_src(build: &Build) {
         copy(&build.src.join(item), &dst_src.join(item));
     }
 
-    // Get cargo-vendor installed, if it isn't already.
-    let mut has_cargo_vendor = false;
-    let mut cmd = Command::new(&build.cargo);
-    for line in output(cmd.arg("install").arg("--list")).lines() {
-        has_cargo_vendor |= line.starts_with("cargo-vendor ");
-    }
-    if !has_cargo_vendor {
+    // If we're building from git sources, we need to vendor a complete distribution.
+    if build.src_is_git {
+        // Get cargo-vendor installed, if it isn't already.
+        let mut has_cargo_vendor = false;
         let mut cmd = Command::new(&build.cargo);
-        cmd.arg("install")
-           .arg("--force")
-           .arg("--debug")
-           .arg("--vers").arg(CARGO_VENDOR_VERSION)
-           .arg("cargo-vendor")
-           .env("RUSTC", &build.rustc);
+        for line in output(cmd.arg("install").arg("--list")).lines() {
+            has_cargo_vendor |= line.starts_with("cargo-vendor ");
+        }
+        if !has_cargo_vendor {
+            let mut cmd = Command::new(&build.cargo);
+            cmd.arg("install")
+               .arg("--force")
+               .arg("--debug")
+               .arg("--vers").arg(CARGO_VENDOR_VERSION)
+               .arg("cargo-vendor")
+               .env("RUSTC", &build.rustc);
+            build.run(&mut cmd);
+        }
+
+        // Vendor all Cargo dependencies
+        let mut cmd = Command::new(&build.cargo);
+        cmd.arg("vendor")
+           .current_dir(&dst_src.join("src"));
         build.run(&mut cmd);
     }
-
-    // Vendor all Cargo dependencies
-    let mut cmd = Command::new(&build.cargo);
-    cmd.arg("vendor")
-       .current_dir(&dst_src.join("src"));
-    build.run(&mut cmd);
 
     // Create source tarball in rust-installer format
     let mut cmd = Command::new(SH_CMD);
