@@ -334,11 +334,15 @@ declare_features! (
     // `extern "x86-interrupt" fn()`
     (active, abi_x86_interrupt, "1.17.0", Some(40180)),
 
+
     // Allows the `catch {...}` expression
     (active, catch_expr, "1.17.0", Some(31436)),
 
     // See rust-lang/rfcs#1414. Allows code like `let x: &'static u32 = &42` to work.
     (active, rvalue_static_promotion, "1.15.1", Some(38865)),
+
+    // Used to preserve symbols (see llvm.used)
+    (active, used, "1.18.0", Some(40289)),
 );
 
 declare_features! (
@@ -746,6 +750,10 @@ pub const BUILTIN_ATTRIBUTES: &'static [(&'static str, AttributeType, AttributeG
                                   "unwind_attributes",
                                   "#[unwind] is experimental",
                                   cfg_fn!(unwind_attributes))),
+    ("used", Whitelisted, Gated(
+        Stability::Unstable, "used",
+        "the `#[used]` attribute is an experimental feature",
+        cfg_fn!(used))),
 
     // used in resolve
     ("prelude_import", Whitelisted, Gated(Stability::Unstable,
