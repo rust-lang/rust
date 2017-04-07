@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![feature(global_asm)]
+#![feature(naked_functions)]
 
 #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
 global_asm!(r#"
@@ -22,6 +23,7 @@ extern {
 }
 
 #[no_mangle]
+#[naked]
 pub extern fn baz() {}
 
-fn main() {}
+fn main() { unsafe { foo(); } }
