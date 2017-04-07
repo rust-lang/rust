@@ -10,7 +10,7 @@
 
 use hir;
 use hir::def_id::DefId;
-use ich::{self, CachingCodemapView, DefPathHashes};
+use ich::{self, CachingCodemapView};
 use session::config::DebugInfoLevel::NoDebugInfo;
 use ty;
 
@@ -32,7 +32,6 @@ use rustc_data_structures::accumulate_vec::AccumulateVec;
 /// things (e.g. each DefId/DefPath is only hashed once).
 pub struct StableHashingContext<'a, 'tcx: 'a> {
     tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
-    def_path_hashes: DefPathHashes<'a, 'tcx>,
     codemap: CachingCodemapView<'tcx>,
     hash_spans: bool,
     hash_bodies: bool,
@@ -64,7 +63,6 @@ impl<'a, 'tcx: 'a> StableHashingContext<'a, 'tcx> {
 
         StableHashingContext {
             tcx: tcx,
-            def_path_hashes: DefPathHashes::new(tcx),
             codemap: CachingCodemapView::new(tcx),
             hash_spans: hash_spans_initial,
             hash_bodies: true,
@@ -111,7 +109,7 @@ impl<'a, 'tcx: 'a> StableHashingContext<'a, 'tcx> {
 
     #[inline]
     pub fn def_path_hash(&mut self, def_id: DefId) -> u64 {
-        self.def_path_hashes.hash(def_id)
+        self.tcx.def_path_hash(def_id)
     }
 
     #[inline]
