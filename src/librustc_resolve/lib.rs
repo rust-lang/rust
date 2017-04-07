@@ -1289,6 +1289,7 @@ impl<'a> hir::lowering::Resolver for Resolver<'a> {
 impl<'a> Resolver<'a> {
     pub fn new(session: &'a Session,
                krate: &Crate,
+               crate_name: &str,
                make_glob_map: MakeGlobMap,
                crate_loader: &'a mut CrateLoader,
                arenas: &'a ResolverArenas<'a>)
@@ -1303,7 +1304,8 @@ impl<'a> Resolver<'a> {
         module_map.insert(DefId::local(CRATE_DEF_INDEX), graph_root);
 
         let mut definitions = Definitions::new();
-        DefCollector::new(&mut definitions).collect_root();
+        DefCollector::new(&mut definitions)
+            .collect_root(crate_name, &session.local_crate_disambiguator().as_str());
 
         let mut invocations = FxHashMap();
         invocations.insert(Mark::root(),

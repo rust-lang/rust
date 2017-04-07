@@ -806,7 +806,7 @@ fn trait_def<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         err.emit();
     }
 
-    let def_path_hash = tcx.def_path(def_id).deterministic_hash(tcx);
+    let def_path_hash = tcx.def_path_hash(def_id);
     let def = ty::TraitDef::new(def_id, unsafety, paren_sugar, def_path_hash);
 
     if tcx.hir.trait_is_auto(def_id) {

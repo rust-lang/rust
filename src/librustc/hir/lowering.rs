@@ -2697,7 +2697,7 @@ impl<'a> LoweringContext<'a> {
     fn pat_ident_binding_mode(&mut self, span: Span, name: Name, bm: hir::BindingMode)
                               -> P<hir::Pat> {
         let id = self.next_id();
-        let parent_def = self.parent_def;
+        let parent_def = self.parent_def.unwrap();
         let def_id = {
             let defs = self.resolver.definitions();
             let def_path_data = DefPathData::Binding(name.as_str());

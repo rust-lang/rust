@@ -13,7 +13,7 @@
 use hir::def_id::{DefId, LOCAL_CRATE};
 use hir::map::DefPathData;
 use infer::InferCtxt;
-use hir::map as hir_map;
+// use hir::map as hir_map;
 use traits::{self, Reveal};
 use ty::{self, Ty, TyCtxt, TypeAndMut, TypeFlags, TypeFoldable};
 use ty::ParameterEnvironment;
@@ -441,13 +441,11 @@ impl<'a, 'gcx, 'tcx, W> TypeIdHasher<'a, 'gcx, 'tcx, W>
 
     fn def_id(&mut self, did: DefId) {
         // Hash the DefPath corresponding to the DefId, which is independent
-        // of compiler internal state.
-        let path = self.tcx.def_path(did);
-        self.def_path(&path)
-    }
-
-    pub fn def_path(&mut self, def_path: &hir_map::DefPath) {
-        def_path.deterministic_hash_to(self.tcx, &mut self.state);
+        // of compiler internal state. We already have a stable hash value of
+        // all DefPaths available via tcx.def_path_hash(), so we just feed that
+        // into the hasher.
+        let hash = self.tcx.def_path_hash(did);
+        self.hash(hash);
     }
 }
 
