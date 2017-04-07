@@ -106,6 +106,7 @@
 - [link_llvm_intrinsics](link-llvm-intrinsics.md)
 - [linkage](linkage.md)
 - [linked_list_extras](linked-list-extras.md)
+- [linker-flavor](linker-flavor.md)
 - [log_syntax](log-syntax.md)
 - [lookup_host](lookup-host.md)
 - [loop_break_value](loop-break-value.md)
