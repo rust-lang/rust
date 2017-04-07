@@ -951,14 +951,21 @@
         if (relatedDoc.is(".docblock")) {
             if (relatedDoc.is(":visible")) {
                 if (animate === true) {
-                    relatedDoc.slideUp({duration: 'fast', easing: 'linear'});
-                    toggle.children(".toggle-label").fadeIn();
+                    relatedDoc.slideUp({
+                        duration: 'fast',
+                        easing: 'linear',
+                        complete: function() {
+                            toggle.children(".toggle-label").fadeIn();
+                            toggle.parent(".toggle-wrapper").addClass("collapsed");
+                            toggle.children(".inner").text(labelForToggleButton(true));
+                        },
+                    });
                 } else {
                     relatedDoc.hide();
                     toggle.children(".toggle-label").show();
+                    toggle.parent(".toggle-wrapper").addClass("collapsed");
+                    toggle.children(".inner").text(labelForToggleButton(true));
                 }
-                toggle.parent(".toggle-wrapper").addClass("collapsed");
-                toggle.children(".inner").text(labelForToggleButton(true));
             } else {
                 relatedDoc.slideDown({duration: 'fast', easing: 'linear'});
                 toggle.parent(".toggle-wrapper").removeClass("collapsed");
