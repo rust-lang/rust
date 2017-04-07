@@ -50,7 +50,7 @@ use builder::Builder;
 use callee;
 use common::{C_bool, C_bytes_in_context, C_i32, C_uint};
 use collector::{self, TransItemCollectionMode};
-use common::{C_struct_in_context, C_u64, C_undef};
+use common::{C_struct_in_context, C_u64, C_undef, C_array};
 use common::CrateContext;
 use common::{type_is_zero_size, val_ty};
 use common;
@@ -1184,6 +1184,23 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     let bitcast = llvm::LLVMConstPointerCast(new_g, llvm::LLVMTypeOf(old_g));
                     llvm::LLVMReplaceAllUsesWith(old_g, bitcast);
                     llvm::LLVMDeleteGlobal(old_g);
+                }
+            }
+
+            // Create the llvm.used variable
+            // This variable has type [N x i8*] and is stored in the llvm.metadata section
+            if !ccx.used_statics().borrow().is_empty() {
+                let name = CString::new("llvm.used").unwrap();
+                let section = CString::new("llvm.metadata").unwrap();
+                let array = C_array(Type::i8(&ccx).ptr_to(), &*ccx.used_statics().borrow());
+
+                unsafe {
+                    let g = llvm::LLVMAddGlobal(ccx.llmod(),
+                                                val_ty(array).to_ref(),
+                                                name.as_ptr());
+                    llvm::LLVMSetInitializer(g, array);
+                    llvm::LLVMRustSetLinkage(g, llvm::Linkage::AppendingLinkage);
+                    llvm::LLVMSetSection(g, section.as_ptr());
                 }
             }
 
