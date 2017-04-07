@@ -99,6 +99,13 @@ impl<'a, 'tcx: 'a> ComputeItemHashesVisitor<'a, 'tcx> {
                                               item_like: T)
         where T: HashStable<StableHashingContext<'a, 'tcx>>
     {
+        if !hash_bodies && !self.hcx.tcx().sess.opts.build_dep_graph() {
+            // If we just need the hashes in order to compute the SVH, we don't
+            // need have two hashes per item. Just the one containing also the
+            // item's body is sufficient.
+            return
+        }
+
         let mut hasher = IchHasher::new();
         self.hcx.while_hashing_hir_bodies(hash_bodies, |hcx| {
             item_like.hash_stable(hcx, &mut hasher);
@@ -143,7 +150,7 @@ impl<'a, 'tcx: 'a> ComputeItemHashesVisitor<'a, 'tcx> {
                                (item_dep_node, item_hash)
                            })
                            .collect();
-            item_hashes.sort(); // avoid artificial dependencies on item ordering
+            item_hashes.sort_unstable(); // avoid artificial dependencies on item ordering
             item_hashes.hash(&mut crate_state);
         }
 

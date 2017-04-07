@@ -2227,6 +2227,15 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
+    #[inline]
+    pub fn def_path_hash(self, def_id: DefId) -> u64 {
+        if def_id.is_local() {
+            self.hir.definitions().def_path_hash(def_id.index)
+        } else {
+            self.sess.cstore.def_path_hash(def_id)
+        }
+    }
+
     pub fn def_span(self, def_id: DefId) -> Span {
         if let Some(id) = self.hir.as_local_node_id(def_id) {
             self.hir.span(id)

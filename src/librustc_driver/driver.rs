@@ -647,8 +647,12 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
     let mut crate_loader = CrateLoader::new(sess, &cstore, crate_name);
     crate_loader.preprocess(&krate);
     let resolver_arenas = Resolver::arenas();
-    let mut resolver =
-        Resolver::new(sess, &krate, make_glob_map, &mut crate_loader, &resolver_arenas);
+    let mut resolver = Resolver::new(sess,
+                                     &krate,
+                                     crate_name,
+                                     make_glob_map,
+                                     &mut crate_loader,
+                                     &resolver_arenas);
     resolver.whitelisted_legacy_custom_derives = whitelisted_legacy_custom_derives;
     syntax_ext::register_builtins(&mut resolver, syntax_exts, sess.features.borrow().quote);
 

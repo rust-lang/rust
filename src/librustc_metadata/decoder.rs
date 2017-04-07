@@ -492,10 +492,7 @@ impl<'a, 'tcx> CrateMetadata {
         }
     }
 
-    pub fn get_trait_def(&self,
-                         item_id: DefIndex,
-                         tcx: TyCtxt<'a, 'tcx, 'tcx>)
-                         -> ty::TraitDef {
+    pub fn get_trait_def(&self, item_id: DefIndex) -> ty::TraitDef {
         let data = match self.entry(item_id).kind {
             EntryKind::Trait(data) => data.decode(self),
             _ => bug!(),
@@ -504,7 +501,7 @@ impl<'a, 'tcx> CrateMetadata {
         let def = ty::TraitDef::new(self.local_def_id(item_id),
                                     data.unsafety,
                                     data.paren_sugar,
-                                    self.def_path(item_id).deterministic_hash(tcx));
+                                    self.def_path_table.def_path_hash(item_id));
 
         if data.has_default_impl {
             def.record_has_default_impl();
@@ -1053,6 +1050,7 @@ impl<'a, 'tcx> CrateMetadata {
         }
     }
 
+    #[inline]
     pub fn def_key(&self, index: DefIndex) -> DefKey {
         self.def_path_table.def_key(index)
     }
@@ -1061,6 +1059,11 @@ impl<'a, 'tcx> CrateMetadata {
     pub fn def_path(&self, id: DefIndex) -> DefPath {
         debug!("def_path(id={:?})", id);
         DefPath::make(self.cnum, id, |parent| self.def_path_table.def_key(parent))
+    }
+
+    #[inline]
+    pub fn def_path_hash(&self, index: DefIndex) -> u64 {
+        self.def_path_table.def_path_hash(index)
     }
 
     /// Imports the codemap from an external crate into the codemap of the crate
