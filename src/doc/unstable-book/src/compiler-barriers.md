@@ -35,9 +35,9 @@ core). In traditional programs, this can only occur when a signal
 handler is registered. Consider the following code:
 
 ```rust
-#use std::sync::atomic::{AtomicBool, AtomicUsize};
-#use std::sync::atomic::{ATOMIC_BOOL_INIT, ATOMIC_USIZE_INIT};
-#use std::sync::atomic::Ordering;
+# use std::sync::atomic::{AtomicBool, AtomicUsize};
+# use std::sync::atomic::{ATOMIC_BOOL_INIT, ATOMIC_USIZE_INIT};
+# use std::sync::atomic::Ordering;
 static IMPORTANT_VARIABLE: AtomicUsize = ATOMIC_USIZE_INIT;
 static IS_READY: AtomicBool = ATOMIC_BOOL_INIT;
 
@@ -65,9 +65,9 @@ Using a `compiler_barrier`, we can remedy this situation:
 
 ```rust
 #![feature(compiler_barriers)]
-#use std::sync::atomic::{AtomicBool, AtomicUsize};
-#use std::sync::atomic::{ATOMIC_BOOL_INIT, ATOMIC_USIZE_INIT};
-#use std::sync::atomic::Ordering;
+# use std::sync::atomic::{AtomicBool, AtomicUsize};
+# use std::sync::atomic::{ATOMIC_BOOL_INIT, ATOMIC_USIZE_INIT};
+# use std::sync::atomic::Ordering;
 use std::sync::atomic::compiler_barrier;
 
 static IMPORTANT_VARIABLE: AtomicUsize = ATOMIC_USIZE_INIT;
