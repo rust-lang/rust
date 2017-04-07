@@ -9,19 +9,21 @@
 // except according to those terms.
 
 #![feature(global_asm)]
+#![feature(naked_functions)]
 
 #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
 global_asm!(r#"
     .global foo
 foo:
-    jmp baz
+    ret
 "#);
 
 extern {
     fn foo();
 }
 
-#[no_mangle]
-pub extern fn baz() {}
+#[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
+fn main() { unsafe { foo(); } }
 
+#[cfg(not(any(target_arch = "x86_64", target_arch = "x86")))]
 fn main() {}
