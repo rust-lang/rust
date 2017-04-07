@@ -42,7 +42,7 @@ impl LintPass for ItemsAfterStatements {
 
 impl EarlyLintPass for ItemsAfterStatements {
     fn check_block(&mut self, cx: &EarlyContext, item: &Block) {
-        if in_macro(cx, item.span) {
+        if in_macro(item.span) {
             return;
         }
 
@@ -55,7 +55,7 @@ impl EarlyLintPass for ItemsAfterStatements {
         // lint on all further items
         for stmt in stmts {
             if let StmtKind::Item(ref it) = *stmt {
-                if in_macro(cx, it.span) {
+                if in_macro(it.span) {
                     return;
                 }
                 if let ItemKind::MacroDef(..) = it.node {

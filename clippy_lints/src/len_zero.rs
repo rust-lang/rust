@@ -61,7 +61,7 @@ impl LintPass for LenZero {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LenZero {
     fn check_item(&mut self, cx: &LateContext<'a, 'tcx>, item: &'tcx Item) {
-        if in_macro(cx, item.span) {
+        if in_macro(item.span) {
             return;
         }
 
@@ -73,7 +73,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for LenZero {
     }
 
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
-        if in_macro(cx, expr.span) {
+        if in_macro(expr.span) {
             return;
         }
 

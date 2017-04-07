@@ -84,7 +84,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BlockInIfCondition {
                         if let Some(ref ex) = block.expr {
                             // don't dig into the expression here, just suggest that they remove
                             // the block
-                            if in_macro(cx, expr.span) || differing_macro_contexts(expr.span, ex.span) {
+                            if in_macro(expr.span) || differing_macro_contexts(expr.span, ex.span) {
                                 return;
                             }
                             span_help_and_lint(cx,
@@ -97,7 +97,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for BlockInIfCondition {
                         }
                     } else {
                         let span = block.expr.as_ref().map_or_else(|| block.stmts[0].span, |e| e.span);
-                        if in_macro(cx, span) || differing_macro_contexts(expr.span, span) {
+                        if in_macro(span) || differing_macro_contexts(expr.span, span) {
                             return;
                         }
                         // move block higher

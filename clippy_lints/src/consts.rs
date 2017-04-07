@@ -313,10 +313,10 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
         }
     }
 
-    fn ifthenelse(&mut self, cond: &Expr, then: &Block, otherwise: &Option<P<Expr>>) -> Option<Constant> {
+    fn ifthenelse(&mut self, cond: &Expr, then: &P<Expr>, otherwise: &Option<P<Expr>>) -> Option<Constant> {
         if let Some(Constant::Bool(b)) = self.expr(cond) {
             if b {
-                self.block(then)
+                self.expr(&**then)
             } else {
                 otherwise.as_ref().and_then(|expr| self.expr(expr))
             }

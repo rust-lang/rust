@@ -50,7 +50,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedLabel {
         span: Span,
         fn_id: ast::NodeId
     ) {
-        if in_macro(cx, span) {
+        if in_macro(span) {
             return;
         }
 

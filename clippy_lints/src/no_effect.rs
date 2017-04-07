@@ -41,7 +41,7 @@ declare_lint! {
 }
 
 fn has_no_effect(cx: &LateContext, expr: &Expr) -> bool {
-    if in_macro(cx, expr.span) {
+    if in_macro(expr.span) {
         return false;
     }
     match expr.node {
@@ -110,7 +110,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             } else if let Some(reduced) = reduce_expression(cx, expr) {
                 let mut snippet = String::new();
                 for e in reduced {
-                    if in_macro(cx, e.span) {
+                    if in_macro(e.span) {
                         return;
                     }
                     if let Some(snip) = snippet_opt(cx, e.span) {
@@ -132,7 +132,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
 
 
 fn reduce_expression<'a>(cx: &LateContext, expr: &'a Expr) -> Option<Vec<&'a Expr>> {
-    if in_macro(cx, expr.span) {
+    if in_macro(expr.span) {
         return None;
     }
     match expr.node {

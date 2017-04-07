@@ -146,7 +146,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for StringLitAsBytes {
             if name.node == "as_bytes" {
                 if let ExprLit(ref lit) = args[0].node {
                     if let LitKind::Str(ref lit_content, _) = lit.node {
-                        if lit_content.as_str().chars().all(|c| c.is_ascii()) && !in_macro(cx, args[0].span) {
+                        if lit_content.as_str().chars().all(|c| c.is_ascii()) && !in_macro(args[0].span) {
                             span_lint_and_then(cx,
                                                STRING_LIT_AS_BYTES,
                                                e.span,

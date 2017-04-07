@@ -894,7 +894,7 @@ impl<'a, 'tcx> Visitor<'tcx> for VarVisitor<'a, 'tcx> {
                         match def {
                             Def::Local(..) | Def::Upvar(..) => {
                                 let def_id = def.def_id();
-                                let node_id = self.cx.tcx.hir.as_local_node_id(def_id).unwrap();
+                                let node_id = self.cx.tcx.hir.as_local_node_id(def_id).expect("local/upvar are local nodes");
 
                                 let extent = self.cx.tcx.region_maps.var_scope(node_id);
                                 self.indexed.insert(seqvar.segments[0].name, Some(extent));

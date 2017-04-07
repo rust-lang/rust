@@ -93,7 +93,7 @@ impl<'a, 'tcx, 'v> Hir2Qmm<'a, 'tcx, 'v> {
 
     fn run(&mut self, e: &'v Expr) -> Result<Bool, String> {
         // prevent folding of `cfg!` macros and the like
-        if !in_macro(self.cx, e.span) {
+        if !in_macro(e.span) {
             match e.node {
                 ExprUnary(UnNot, ref inner) => return Ok(Bool::Not(box self.run(inner)?)),
                 ExprBinary(binop, ref lhs, ref rhs) => {
@@ -394,7 +394,7 @@ impl<'a, 'tcx> NonminimalBoolVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx> Visitor<'tcx> for NonminimalBoolVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, e: &'tcx Expr) {
-        if in_macro(self.cx, e.span) {
+        if in_macro(e.span) {
             return;
         }
         match e.node {

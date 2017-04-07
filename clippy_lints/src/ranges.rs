@@ -66,7 +66,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for StepByZero {
                     let ExprMethodCall( Spanned { node: iter_name, .. }, _, ref iter_args ) = *iter,
                     iter_name == "iter",
                     // range expression in .zip() call: 0..x.len()
-                    let Some(higher::Range { start: Some(ref start), end: Some(ref end), .. }) = higher::range(zip_arg),
+                    let Some(higher::Range { start: Some(start), end: Some(end), .. }) = higher::range(zip_arg),
                     is_integer_literal(start, 0),
                     // .len() call
                     let ExprMethodCall(Spanned { node: len_name, .. }, _, ref len_args) = end.node,

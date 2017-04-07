@@ -215,7 +215,7 @@ fn is_relevant_expr(tcx: ty::TyCtxt, tables: &ty::TypeckTables, expr: &Expr) -> 
 }
 
 fn check_attrs(cx: &LateContext, span: Span, name: &Name, attrs: &[Attribute]) {
-    if in_macro(cx, span) {
+    if in_macro(span) {
         return;
     }
 

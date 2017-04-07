@@ -107,7 +107,7 @@ impl ReturnPass {
 
         // we need both a let-binding stmt and an expr
         if_let_chain! {[
-            let Some(ref retexpr) = it.next_back(),
+            let Some(retexpr) = it.next_back(),
             let ast::StmtKind::Expr(ref retexpr) = retexpr.node,
             let Some(stmt) = it.next_back(),
             let ast::StmtKind::Local(ref local) = stmt.node,

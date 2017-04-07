@@ -111,7 +111,7 @@ impl LintPass for CopyAndPaste {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for CopyAndPaste {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
-        if !in_macro(cx, expr.span) {
+        if !in_macro(expr.span) {
             // skip ifs directly in else, it will be checked in the parent if
             if let Some(&Expr { node: ExprIf(_, _, Some(ref else_expr)), .. }) = get_parent_expr(cx, expr) {
                 if else_expr.id == expr.id {
@@ -223,11 +223,15 @@ fn lint_match_arms(cx: &LateContext, expr: &Expr) {
 /// `if a { c } else if b { d } else { e }`.
 fn if_sequence(mut expr: &Expr) -> (SmallVector<&Expr>, SmallVector<&Block>) {
     let mut conds = SmallVector::new();
-    let mut blocks = SmallVector::new();
+    let mut blocks : SmallVector<&Block> = SmallVector::new();
 
-    while let ExprIf(ref cond, ref then_block, ref else_expr) = expr.node {
+    while let ExprIf(ref cond, ref then_expr, ref else_expr) = expr.node {
         conds.push(&**cond);
-        blocks.push(&**then_block);
+        if let ExprBlock(ref block) = then_expr.node {
+            blocks.push(block);
+        } else {
+            panic!("ExprIf node is not an ExprBlock");
+        }
 
         if let Some(ref else_expr) = *else_expr {
             expr = else_expr;
@@ -311,10 +315,10 @@ fn search_same<T, Hash, Eq>(exprs: &[T], hash: Hash, eq: Eq) -> Option<(&T, &T)>
         return None;
     } else if exprs.len() == 2 {
         return if eq(&exprs[0], &exprs[1]) {
-            Some((&exprs[0], &exprs[1]))
-        } else {
-            None
-        };
+                   Some((&exprs[0], &exprs[1]))
+               } else {
+                   None
+               };
     }
 
     let mut map: HashMap<_, Vec<&_>> = HashMap::with_capacity(exprs.len());

@@ -1,6 +1,6 @@
 use rustc::lint::*;
-use syntax::codemap::mk_sp;
 use syntax::ast;
+use syntax_pos::{Span, NO_EXPANSION};
 use utils::{differing_macro_contexts, in_macro, snippet_opt, span_note_and_lint};
 use syntax::ptr::P;
 
@@ -99,13 +99,12 @@ impl EarlyLintPass for Formatting {
 /// Implementation of the `SUSPICIOUS_ASSIGNMENT_FORMATTING` lint.
 fn check_assign(cx: &EarlyContext, expr: &ast::Expr) {
     if let ast::ExprKind::Assign(ref lhs, ref rhs) = expr.node {
-        if !differing_macro_contexts(lhs.span, rhs.span) && !in_macro(cx, lhs.span) {
-            let eq_span = mk_sp(lhs.span.hi, rhs.span.lo);
-
+        if !differing_macro_contexts(lhs.span, rhs.span) && !in_macro(lhs.span) {
+            let eq_span = Span { lo: lhs.span.hi, hi: rhs.span.lo, ctxt: NO_EXPANSION };
             if let ast::ExprKind::Unary(op, ref sub_rhs) = rhs.node {
                 if let Some(eq_snippet) = snippet_opt(cx, eq_span) {
                     let op = ast::UnOp::to_string(op);
-                    let eqop_span = mk_sp(lhs.span.hi, sub_rhs.span.lo);
+                    let eqop_span= Span { lo: lhs.span.hi, hi: sub_rhs.span.lo, ctxt: NO_EXPANSION };
                     if eq_snippet.ends_with('=') {
                         span_note_and_lint(cx,
                                            SUSPICIOUS_ASSIGNMENT_FORMATTING,
@@ -125,10 +124,10 @@ fn check_assign(cx: &EarlyContext, expr: &ast::Expr) {
 /// Implementation of the `SUSPICIOUS_ELSE_FORMATTING` lint for weird `else if`.
 fn check_else_if(cx: &EarlyContext, expr: &ast::Expr) {
     if let Some((then, &Some(ref else_))) = unsugar_if(expr) {
-        if unsugar_if(else_).is_some() && !differing_macro_contexts(then.span, else_.span) && !in_macro(cx, then.span) {
+        if unsugar_if(else_).is_some() && !differing_macro_contexts(then.span, else_.span) && !in_macro(then.span) {
             // this will be a span from the closing ‘}’ of the “then” block (excluding) to the
             // “if” of the “else if” block (excluding)
-            let else_span = mk_sp(then.span.hi, else_.span.lo);
+            let else_span = Span { lo: then.span.hi, hi: else_.span.lo, ctxt: NO_EXPANSION };
 
             // the snippet should look like " else \n    " with maybe comments anywhere
             // it’s bad when there is a ‘\n’ after the “else”
@@ -155,9 +154,9 @@ fn check_array(cx: &EarlyContext, expr: &ast::Expr) {
         for element in array {
             if let ast::ExprKind::Binary(ref op, ref lhs, _) = element.node {
                 if !differing_macro_contexts(lhs.span, op.span) {
-                    let space_span = mk_sp(lhs.span.hi, op.span.lo);
+                    let space_span = Span { lo: lhs.span.hi, hi: op.span.lo, ctxt: NO_EXPANSION };
                     if let Some(space_snippet) = snippet_opt(cx, space_span) {
-                        let lint_span = mk_sp(lhs.span.hi, lhs.span.hi);
+                        let lint_span = Span { lo: lhs.span.hi, hi: lhs.span.hi, ctxt: NO_EXPANSION };
                         if space_snippet.contains('\n') {
                             span_note_and_lint(cx,
                                                POSSIBLE_MISSING_COMMA,
@@ -175,10 +174,10 @@ fn check_array(cx: &EarlyContext, expr: &ast::Expr) {
 
 /// Implementation of the `SUSPICIOUS_ELSE_FORMATTING` lint for consecutive ifs.
 fn check_consecutive_ifs(cx: &EarlyContext, first: &ast::Expr, second: &ast::Expr) {
-    if !differing_macro_contexts(first.span, second.span) && !in_macro(cx, first.span) &&
+    if !differing_macro_contexts(first.span, second.span) && !in_macro(first.span) &&
        unsugar_if(first).is_some() && unsugar_if(second).is_some() {
         // where the else would be
-        let else_span = mk_sp(first.span.hi, second.span.lo);
+        let else_span = Span { lo: first.span.hi, hi: second.span.lo, ctxt: NO_EXPANSION };
 
         if let Some(else_snippet) = snippet_opt(cx, else_span) {
             if !else_snippet.contains('\n') {

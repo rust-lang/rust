@@ -554,7 +554,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     // ^ required because `cyclomatic_complexity` attribute shows up as unused
     #[cyclomatic_complexity = "30"]
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx hir::Expr) {
-        if in_macro(cx, expr.span) {
+        if in_macro(expr.span) {
             return;
         }
 
@@ -649,7 +649,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
                 if name == method_name &&
                    sig.decl.inputs.len() == n_args &&
                    out_type.matches(&sig.decl.output) &&
-                   self_kind.matches(&first_arg_ty, &first_arg, &self_ty, false) {
+                   self_kind.matches(first_arg_ty, first_arg, self_ty, false) {
                     span_lint(cx, SHOULD_IMPLEMENT_TRAIT, implitem.span, &format!(
                         "defining a method called `{}` on this type; consider implementing \
                          the `{}` trait or choosing a less ambiguous name", name, trait_name));
@@ -662,7 +662,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             for &(ref conv, self_kinds) in &CONVENTIONS {
                 if_let_chain! {[
                     conv.check(&name.as_str()),
-                    !self_kinds.iter().any(|k| k.matches(&first_arg_ty, &first_arg, &self_ty, is_copy)),
+                    !self_kinds.iter().any(|k| k.matches(first_arg_ty, first_arg, self_ty, is_copy)),
                 ], {
                     let lint = if item.vis == hir::Visibility::Public {
                         WRONG_PUB_SELF_CONVENTION
@@ -1065,7 +1065,7 @@ fn lint_map_unwrap_or(cx: &LateContext, expr: &hir::Expr, map_args: &[hir::Expr]
         // lint, with note if neither arg is > 1 line and both map() and
         // unwrap_or() have the same span
         let multiline = map_snippet.lines().count() > 1 || unwrap_snippet.lines().count() > 1;
-        let same_span = map_args[1].span.expn_id == unwrap_args[1].span.expn_id;
+        let same_span = map_args[1].span.ctxt == unwrap_args[1].span.ctxt;
         if same_span && !multiline {
             span_note_and_lint(cx,
                                OPTION_MAP_UNWRAP_OR,
@@ -1094,7 +1094,7 @@ fn lint_map_unwrap_or_else(cx: &LateContext, expr: &hir::Expr, map_args: &[hir::
         // lint, with note if neither arg is > 1 line and both map() and
         // unwrap_or_else() have the same span
         let multiline = map_snippet.lines().count() > 1 || unwrap_snippet.lines().count() > 1;
-        let same_span = map_args[1].span.expn_id == unwrap_args[1].span.expn_id;
+        let same_span = map_args[1].span.ctxt == unwrap_args[1].span.ctxt;
         if same_span && !multiline {
             span_note_and_lint(cx,
                                OPTION_MAP_UNWRAP_OR_ELSE,

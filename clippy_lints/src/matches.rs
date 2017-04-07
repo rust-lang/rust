@@ -342,7 +342,7 @@ fn check_wild_err_arm(cx: &LateContext, ex: &Expr, arms: &[Arm]) {
                     path_str == "Err",
                     inner.iter().any(|pat| pat.node == PatKind::Wild),
                     let ExprBlock(ref block) = arm.body.node,
-                    is_panic_block(cx, block)
+                    is_panic_block(block)
                 ], {
                     // `Err(_)` arm with `panic!` found
                     span_note_and_lint(cx,
@@ -359,13 +359,13 @@ fn check_wild_err_arm(cx: &LateContext, ex: &Expr, arms: &[Arm]) {
 }
 
 // If the block contains only a `panic!` macro (as expression or statement)
-fn is_panic_block(cx: &LateContext, block: &Block) -> bool {
+fn is_panic_block(block: &Block) -> bool {
     match (&block.expr, block.stmts.len(), block.stmts.first()) {
         (&Some(ref exp), 0, _) => {
-            is_expn_of(cx, exp.span, "panic").is_some() && is_expn_of(cx, exp.span, "unreachable").is_none()
+            is_expn_of(exp.span, "panic").is_some() && is_expn_of(exp.span, "unreachable").is_none()
         },
         (&None, 1, Some(stmt)) => {
-            is_expn_of(cx, stmt.span, "panic").is_some() && is_expn_of(cx, stmt.span, "unreachable").is_none()
+            is_expn_of(stmt.span, "panic").is_some() && is_expn_of(stmt.span, "unreachable").is_none()
         },
         _ => false,
     }

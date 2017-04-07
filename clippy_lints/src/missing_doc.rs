@@ -73,7 +73,7 @@ impl MissingDoc {
             return;
         }
 
-        if in_macro(cx, sp) {
+        if in_macro(sp) {
             return;
         }
 

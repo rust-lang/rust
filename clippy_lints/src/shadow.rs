@@ -305,7 +305,7 @@ fn check_expr<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr, bindings: 
         },
         ExprIf(ref cond, ref then, ref otherwise) => {
             check_expr(cx, cond, bindings);
-            check_block(cx, then, bindings);
+            check_expr(cx, &**then, bindings);
             if let Some(ref o) = *otherwise {
                 check_expr(cx, o, bindings);
             }

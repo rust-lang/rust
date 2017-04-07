@@ -40,7 +40,7 @@ impl LintPass for Pass {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, expr: &'tcx Expr) {
-        if let Some(span) = is_expn_of(cx, expr.span, "format") {
+        if let Some(span) = is_expn_of(expr.span, "format") {
             match expr.node {
                 // `format!("{}", foo)` expansion
                 ExprCall(ref fun, ref args) => {

@@ -91,7 +91,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
             self.last.is_none(),
             let Some(ref expr) = block.expr,
             match_type(cx, cx.tables.expr_ty(expr), &paths::REGEX),
-            let Some(span) = is_expn_of(cx, expr.span, "regex"),
+            let Some(span) = is_expn_of(expr.span, "regex"),
         ], {
             if !self.spans.contains(&span) {
                 span_lint(cx,

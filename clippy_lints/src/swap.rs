@@ -1,9 +1,9 @@
 use rustc::hir::*;
 use rustc::lint::*;
 use rustc::ty;
-use syntax::codemap::mk_sp;
 use utils::{differing_macro_contexts, match_type, paths, snippet, span_lint_and_then, walk_ptrs_ty, SpanlessEq};
 use utils::sugg::Sugg;
+use syntax_pos::{Span, NO_EXPANSION};
 
 /// **What it does:** Checks for manual swapping.
 ///
@@ -115,16 +115,14 @@ fn check_manual_swap(cx: &LateContext, block: &Block) {
                 } else {
                     (false, "".to_owned(), "".to_owned())
                 }
+            } else if let (Some(first), Some(second)) = (Sugg::hir_opt(cx, lhs1), Sugg::hir_opt(cx, rhs1)) {
+                (true, format!(" `{}` and `{}`", first, second),
+                    format!("std::mem::swap({}, {})", first.mut_addr(), second.mut_addr()))
             } else {
-                 if let (Some(first), Some(second)) = (Sugg::hir_opt(cx, lhs1), Sugg::hir_opt(cx, rhs1)) {
-                    (true, format!(" `{}` and `{}`", first, second),
-                     format!("std::mem::swap({}, {})", first.mut_addr(), second.mut_addr()))
-                } else {
-                    (true, "".to_owned(), "".to_owned())
-                }
+                (true, "".to_owned(), "".to_owned())
             };
 
-            let span = mk_sp(w[0].span.lo, second.span.hi);
+            let span = Span { lo: w[0].span.lo, hi: second.span.hi, ctxt: NO_EXPANSION};
 
             span_lint_and_then(cx,
                                MANUAL_SWAP,
@@ -163,7 +161,7 @@ fn check_suspicious_swap(cx: &LateContext, block: &Block) {
                 ("".to_owned(), "".to_owned(), "".to_owned())
             };
 
-            let span = mk_sp(first.span.lo, second.span.hi);
+            let span = Span{ lo: first.span.lo, hi: second.span.hi, ctxt: NO_EXPANSION};
 
             span_lint_and_then(cx,
                                ALMOST_SWAPPED,

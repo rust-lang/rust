@@ -33,7 +33,7 @@ impl LintPass for IdentityOp {
 
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for IdentityOp {
     fn check_expr(&mut self, cx: &LateContext<'a, 'tcx>, e: &'tcx Expr) {
-        if in_macro(cx, e.span) {
+        if in_macro(e.span) {
             return;
         }
         if let ExprBinary(ref cmp, ref left, ref right) = e.node {
