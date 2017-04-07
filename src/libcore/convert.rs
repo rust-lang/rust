@@ -86,19 +86,6 @@ use str::FromStr;
 /// `&mut Foo` or `&&mut Foo`)
 ///
 /// # Examples
-/// An example implementation of the trait is [`Path`].
-///
-/// [`Path`]: ../../std/path/struct.Path.html
-///
-/// ```
-/// use std::path::Path;
-///
-/// impl AsRef<Path> for str {
-///     fn as_ref(&self) -> &Path {
-///         Path::new(self)
-///     }
-/// }
-/// ```
 ///
 /// Both [`String`] and `&str` implement `AsRef<str>`:
 ///
@@ -156,15 +143,6 @@ pub trait AsRef<T: ?Sized> {
 /// assert_eq!(*boxed_num, 1);
 /// ```
 ///
-/// `Vec` implements `AsMut` for converting between itself and a primitive array:
-///
-/// ```
-/// impl<T> AsMut<[T]> for Vec<T> {
-///   fn as_mut(&mut self) -> &mut [T] {
-///     self
-///   }
-/// }
-/// ```
 ///
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait AsMut<T: ?Sized> {
@@ -275,11 +253,12 @@ pub trait Into<T>: Sized {
 ///     }
 /// }
 ///
-/// fn open_and_parse_file(file_name: &str) -> Result<i32, MyError> {
-///     let file = std::fs::File::open("test")?;
+/// fn open_and_parse_file(file_name: &str) -> Result<i32, CliError> {
+///     let mut file = std::fs::File::open("test")?;
 ///     let mut contents = String::new();
 ///     file.read_to_string(&mut contents)?;
 ///     let num: i32 = contents.trim().parse()?;
+///     Ok(num)
 /// }
 /// ```
 ///
