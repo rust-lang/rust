@@ -52,6 +52,7 @@
 #![feature(shared)]
 #![feature(slice_get_slice)]
 #![feature(slice_patterns)]
+#![feature(slice_rsplit)]
 #![cfg_attr(not(test), feature(sort_unstable))]
 #![feature(specialization)]
 #![feature(staged_api)]
@@ -62,6 +63,7 @@
 #![feature(untagged_unions)]
 #![cfg_attr(not(test), feature(str_checked_slicing))]
 #![cfg_attr(test, feature(rand, test))]
+#![feature(offset_to)]
 
 #![no_std]
 

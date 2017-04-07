@@ -83,7 +83,13 @@ impl Span {
     /// Returns a new span representing just the end-point of this span
     pub fn end_point(self) -> Span {
         let lo = cmp::max(self.hi.0 - 1, self.lo.0);
-        Span { lo: BytePos(lo), hi: self.hi, ctxt: self.ctxt }
+        Span { lo: BytePos(lo), ..self }
+    }
+
+    /// Returns a new span representing the next character after the end-point of this span
+    pub fn next_point(self) -> Span {
+        let lo = cmp::max(self.hi.0, self.lo.0 + 1);
+        Span { lo: BytePos(lo), hi: BytePos(lo + 1), ..self }
     }
 
     /// Returns `self` if `self` is not the dummy span, and `other` otherwise.
@@ -181,6 +187,30 @@ impl Span {
             Span { lo: self.lo, ..end }
         } else {
             Span { hi: end.hi, ..self }
+        }
+    }
+
+    pub fn between(self, end: Span) -> Span {
+        Span {
+            lo: self.hi,
+            hi: end.lo,
+            ctxt: if end.ctxt == SyntaxContext::empty() {
+                end.ctxt
+            } else {
+                self.ctxt
+            }
+        }
+    }
+
+    pub fn until(self, end: Span) -> Span {
+        Span {
+            lo: self.lo,
+            hi: end.lo,
+            ctxt: if end.ctxt == SyntaxContext::empty() {
+                end.ctxt
+            } else {
+                self.ctxt
+            }
         }
     }
 }

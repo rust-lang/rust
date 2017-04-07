@@ -889,6 +889,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
     rustc_privacy::provide(&mut local_providers);
     typeck::provide(&mut local_providers);
     ty::provide(&mut local_providers);
+    reachable::provide(&mut local_providers);
 
     let mut extern_providers = ty::maps::Providers::default();
     cstore::provide(&mut extern_providers);
@@ -1358,10 +1359,9 @@ pub fn build_output_filenames(input: &Input,
                                            .values()
                                            .filter(|a| a.is_none())
                                            .count();
-            let ofile = if unnamed_output_types > 1 &&
-                            sess.opts.output_types.contains_key(&OutputType::Exe) {
-                sess.warn("ignoring specified output filename for 'link' output because multiple \
-                           outputs were requested");
+            let ofile = if unnamed_output_types > 1 {
+                sess.warn("due to multiple output types requested, the explicitly specified \
+                           output file name will be adapted for each output type");
                 None
             } else {
                 Some(out_file.clone())

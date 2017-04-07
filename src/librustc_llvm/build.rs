@@ -259,4 +259,10 @@ fn main() {
             println!("cargo:rustc-link-lib={}", stdcppname);
         }
     }
+
+    // LLVM requires symbols from this library, but apparently they're not printeds
+    // during llvm-config?
+    if target.contains("windows") {
+        println!("cargo:rustc-link-lib=ole32");
+    }
 }

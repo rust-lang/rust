@@ -19,7 +19,7 @@
 //! inputs, but we don't do so to avoid the code bloat. Each bignum is still
 //! tracked for the actual usages, so it normally doesn't matter.
 
-// This module is only for dec2flt and flt2dec, and only public because of libcoretest.
+// This module is only for dec2flt and flt2dec, and only public because of coretests.
 // It is not intended to ever be stabilized.
 #![doc(hidden)]
 #![unstable(feature = "core_private_bignum",

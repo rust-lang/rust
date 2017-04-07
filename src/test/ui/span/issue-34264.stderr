@@ -2,19 +2,19 @@ error: expected one of `:` or `@`, found `<`
   --> $DIR/issue-34264.rs:11:14
    |
 11 | fn foo(Option<i32>, String) {}
-   |              ^
+   |              ^ expected one of `:` or `@` here
 
 error: expected one of `:` or `@`, found `)`
   --> $DIR/issue-34264.rs:11:27
    |
 11 | fn foo(Option<i32>, String) {}
-   |                           ^
+   |                           ^ expected one of `:` or `@` here
 
 error: expected one of `:` or `@`, found `,`
   --> $DIR/issue-34264.rs:12:9
    |
 12 | fn bar(x, y: usize) {}
-   |         ^
+   |         ^ expected one of `:` or `@` here
 
 error[E0061]: this function takes 2 parameters but 3 parameters were supplied
   --> $DIR/issue-34264.rs:16:9

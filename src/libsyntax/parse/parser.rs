@@ -570,20 +570,33 @@ impl<'a> Parser<'a> {
             expected.dedup();
             let expect = tokens_to_string(&expected[..]);
             let actual = self.this_token_to_string();
-            Err(self.fatal(
-                &(if expected.len() > 1 {
-                    (format!("expected one of {}, found `{}`",
-                             expect,
-                             actual))
-                } else if expected.is_empty() {
-                    (format!("unexpected token: `{}`",
-                             actual))
+            let (msg_exp, (label_sp, label_exp)) = if expected.len() > 1 {
+                let short_expect = if expected.len() > 6 {
+                    format!("{} possible tokens", expected.len())
                 } else {
-                    (format!("expected {}, found `{}`",
-                             expect,
-                             actual))
-                })[..]
-            ))
+                    expect.clone()
+                };
+                (format!("expected one of {}, found `{}`", expect, actual),
+                 (self.prev_span.next_point(), format!("expected one of {} here", short_expect)))
+            } else if expected.is_empty() {
+                (format!("unexpected token: `{}`", actual),
+                 (self.prev_span, "unexpected token after this".to_string()))
+            } else {
+                (format!("expected {}, found `{}`", expect, actual),
+                 (self.prev_span.next_point(), format!("expected {} here", expect)))
+            };
+            let mut err = self.fatal(&msg_exp);
+            let sp = if self.token == token::Token::Eof {
+                // This is EOF, don't want to point at the following char, but rather the last token
+                self.prev_span
+            } else {
+                label_sp
+            };
+            err.span_label(sp, &label_exp);
+            if !sp.source_equal(&self.span) {
+                err.span_label(self.span, &"unexpected token");
+            }
+            Err(err)
         }
     }
 
@@ -1771,6 +1784,26 @@ impl<'a> Parser<'a> {
             span: lo.to(self.prev_span),
             segments: segments,
         })
+    }
+
+    /// Like `parse_path`, but also supports parsing `Word` meta items into paths for back-compat.
+    /// This is used when parsing derive macro paths in `#[derive]` attributes.
+    pub fn parse_path_allowing_meta(&mut self, mode: PathStyle) -> PResult<'a, ast::Path> {
+        let meta_ident = match self.token {
+            token::Interpolated(ref nt) => match **nt {
+                token::NtMeta(ref meta) => match meta.node {
+                    ast::MetaItemKind::Word => Some(ast::Ident::with_empty_ctxt(meta.name)),
+                    _ => None,
+                },
+                _ => None,
+            },
+            _ => None,
+        };
+        if let Some(ident) = meta_ident {
+            self.bump();
+            return Ok(ast::Path::from_ident(self.prev_span, ident));
+        }
+        self.parse_path(mode)
     }
 
     /// Examples:
@@ -4667,25 +4700,30 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn complain_if_pub_macro(&mut self, visa: &Visibility, span: Span) {
-        match *visa {
-            Visibility::Inherited => (),
+    fn complain_if_pub_macro(&mut self, vis: &Visibility, sp: Span) {
+        if let Err(mut err) = self.complain_if_pub_macro_diag(vis, sp) {
+            err.emit();
+        }
+    }
+
+    fn complain_if_pub_macro_diag(&mut self, vis: &Visibility, sp: Span) -> PResult<'a, ()> {
+        match *vis {
+            Visibility::Inherited => Ok(()),
             _ => {
                 let is_macro_rules: bool = match self.token {
                     token::Ident(sid) => sid.name == Symbol::intern("macro_rules"),
                     _ => false,
                 };
                 if is_macro_rules {
-                    self.diagnostic().struct_span_err(span, "can't qualify macro_rules \
-                                                             invocation with `pub`")
-                                     .help("did you mean #[macro_export]?")
-                                     .emit();
+                    let mut err = self.diagnostic()
+                        .struct_span_err(sp, "can't qualify macro_rules invocation with `pub`");
+                    err.help("did you mean #[macro_export]?");
+                    Err(err)
                 } else {
-                    self.diagnostic().struct_span_err(span, "can't qualify macro \
-                                                             invocation with `pub`")
-                                     .help("try adjusting the macro to put `pub` \
-                                            inside the invocation")
-                                     .emit();
+                    let mut err = self.diagnostic()
+                        .struct_span_err(sp, "can't qualify macro invocation with `pub`");
+                    err.help("try adjusting the macro to put `pub` inside the invocation");
+                    Err(err)
                 }
             }
         }
@@ -4696,14 +4734,36 @@ impl<'a> Parser<'a> {
                          -> PResult<'a, (Ident, Vec<ast::Attribute>, ast::ImplItemKind)> {
         // code copied from parse_macro_use_or_failure... abstraction!
         if self.token.is_path_start() {
-            // method macro.
+            // Method macro.
 
             let prev_span = self.prev_span;
-            self.complain_if_pub_macro(&vis, prev_span);
+            // Before complaining about trying to set a macro as `pub`,
+            // check if `!` comes after the path.
+            let err = self.complain_if_pub_macro_diag(&vis, prev_span);
 
             let lo = self.span;
             let pth = self.parse_path(PathStyle::Mod)?;
-            self.expect(&token::Not)?;
+            let bang_err = self.expect(&token::Not);
+            if let Err(mut err) = err {
+                if let Err(mut bang_err) = bang_err {
+                    // Given this code `pub path(`, it seems like this is not setting the
+                    // visibility of a macro invocation, but rather a mistyped method declaration.
+                    // Create a diagnostic pointing out that `fn` is missing.
+                    //
+                    // x |     pub path(&self) {
+                    //   |        ^ missing `fn` for method declaration
+
+                    err.cancel();
+                    bang_err.cancel();
+                    //     pub  path(
+                    //        ^^ `sp` below will point to this
+                    let sp = prev_span.between(self.prev_span);
+                    err = self.diagnostic()
+                        .struct_span_err(sp, "missing `fn` for method declaration");
+                    err.span_label(sp, &"missing `fn`");
+                }
+                return Err(err);
+            }
 
             // eat a matched-delimiter token tree:
             let (delim, tts) = self.expect_delimited_token_tree()?;

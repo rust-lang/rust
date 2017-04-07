@@ -678,8 +678,9 @@ impl<T> Vec<T> {
         self.len = len;
     }
 
-    /// Removes an element from anywhere in the vector and return it, replacing
-    /// it with the last element.
+    /// Removes an element from the vector and returns it.
+    ///
+    /// The removed element is replaced by the last element of the vector.
     ///
     /// This does not preserve ordering, but is O(1).
     ///
@@ -970,6 +971,29 @@ impl<T> Vec<T> {
             ptr::write(end, value);
             self.len += 1;
         }
+    }
+
+    /// Returns a place for insertion at the back of the `Vec`.
+    ///
+    /// Using this method with placement syntax is equivalent to [`push`](#method.push),
+    /// but may be more efficient.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(collection_placement)]
+    /// #![feature(placement_in_syntax)]
+    ///
+    /// let mut vec = vec![1, 2];
+    /// vec.place_back() <- 3;
+    /// vec.place_back() <- 4;
+    /// assert_eq!(&vec, &[1, 2, 3, 4]);
+    /// ```
+    #[unstable(feature = "collection_placement",
+               reason = "placement protocol is subject to change",
+               issue = "30172")]
+    pub fn place_back(&mut self) -> PlaceBack<T> {
+        PlaceBack { vec: self }
     }
 
     /// Removes the last element from a vector and returns it, or [`None`] if it
@@ -1266,29 +1290,6 @@ impl<T: Clone> Vec<T> {
     pub fn extend_from_slice(&mut self, other: &[T]) {
         self.spec_extend(other.iter())
     }
-
-    /// Returns a place for insertion at the back of the `Vec`.
-    ///
-    /// Using this method with placement syntax is equivalent to [`push`](#method.push),
-    /// but may be more efficient.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(collection_placement)]
-    /// #![feature(placement_in_syntax)]
-    ///
-    /// let mut vec = vec![1, 2];
-    /// vec.place_back() <- 3;
-    /// vec.place_back() <- 4;
-    /// assert_eq!(&vec, &[1, 2, 3, 4]);
-    /// ```
-    #[unstable(feature = "collection_placement",
-               reason = "placement protocol is subject to change",
-               issue = "30172")]
-    pub fn place_back(&mut self) -> PlaceBack<T> {
-        PlaceBack { vec: self }
-    }
 }
 
 // Set the length of the vec when the `SetLenOnDrop` value goes out of scope.
@@ -1345,7 +1346,7 @@ impl<T: PartialEq> Vec<T> {
     /// # Examples
     ///
     /// ```
-    ///# #![feature(vec_remove_item)]
+    /// # #![feature(vec_remove_item)]
     /// let mut vec = vec![1, 2, 3, 1];
     ///
     /// vec.remove_item(&1);
@@ -2073,14 +2074,10 @@ impl<T> Iterator for IntoIter<T> {
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let diff = (self.end as usize) - (self.ptr as usize);
-        let size = mem::size_of::<T>();
-        let exact = diff /
-                    (if size == 0 {
-                         1
-                     } else {
-                         size
-                     });
+        let exact = match self.ptr.offset_to(self.end) {
+            Some(x) => x as usize,
+            None => (self.end as usize).wrapping_sub(self.ptr as usize),
+        };
         (exact, Some(exact))
     }
 

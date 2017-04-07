@@ -10,8 +10,8 @@ test = false
 bench = false
 
 [[test]]
-name = "coretest"
-path = "../libcoretest/lib.rs"
+name = "coretests"
+path = "../libcore/tests/lib.rs"
 
 [[bench]]
 name = "corebenches"
