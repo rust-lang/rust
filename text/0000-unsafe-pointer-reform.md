@@ -38,18 +38,22 @@ And we want to be cool like Swift, right?
 
 
 
-## Static Functions Stink
+## Static Functions
 
-`ptr::foo(ptr)` is unnecessarily annoying, and requires imports. That's it.
+`ptr::foo(ptr)` is an odd interface. Rust developers generally favour the type-directed dispatch provided by methods; `ptr.foo()`. Generally the only reason we've ever shied away from methods is when they would be added to a type that implements Deref generically, as the `.` operator will follow Deref impls to try to find a matching function. This can lead to really confusing compiler errors, or code "spuriously compiling" but doing something unexpected because there was an unexpected match somewhere in the Deref chain. This is why many of Rc's operations are static functions that need to be called as `Rc::foo(&the_rc)`.
 
-The static functions are slightly useful because they can be more convenient in cases where you have a safe pointer. Specifically, they act as a coercion site so `ptr::read(&my_val)` works, and is nicer than `(&my_val as *const _).read()`. But if you already have unsafe pointers, which is the common case, it's a worse interface.
+This reasoning doesn't apply to the raw pointer types, as they don't provide a Deref impl. Although there are coercions involving the raw pointer types, these coercions aren't performed by the dot operator. This is why it has long been considered fine for raw pointers to have the `deref` and `as_ref` methods.
+
+In fact, the static functions are sometimes useful precisely because they *do* perform raw pointer coercions, so it's possible to do `ptr::read(&val)`, rather than `ptr::read(&val as *const _)`.
+
+However these static functions are fairly cumbersome in the common case, where you already have a raw pointer.
 
 
 
 
-## Signed Offset Stinks
+## Signed Offset
 
-The cast in `ptr.offset(idx as isize)` is unnecessarily annoying. Idiomatic Rust code uses unsigned offsets, but the low level code has to constantly cast those offsets  This one requires more detail to explain. 
+The cast in `ptr.offset(idx as isize)` is unnecessarily annoying. Idiomatic Rust code uses unsigned offsets, but the low level code has to constantly cast those offsets. To understand why this interface is designed as it is, some background is neeeded.
 
 `offset` is directly exposing LLVM's `getelementptr` instruction, with the `inbounds` keyword. `wrapping_offset` removes the `inbounds` keyword. `offset` takes a signed integer, because that's what GEP exposes. It's understandable that we've been conservative here; GEP is so confusing that it has an [entire FAQ](http://llvm.org/docs/GetElementPtr.html).
 
@@ -78,7 +82,7 @@ Part of the historical argument for signed offset in Rust has been a *warning* a
 * The location of the offset *isn't even* the place to handle this issue. The ultimate consequence of `offset` being signed is that LLVM can't support allocations larger than `isize::MAX` bytes. Therefore this issue should be handled at the level of memory allocation code.
 * The fact that `offset` is `unsafe` is already surprising to anyone with the "it's just addition" mental model, pushing them to read the documentation and learn the actual rules.
 
-In conclusion: `as isize` sucks and isn't helpful; let's just get some unsigned versions of offset!
+In conclusion: `as isize` doesn't actually help our developers write better code.
 
 
 
@@ -92,27 +96,34 @@ In conclusion: `as isize` sucks and isn't helpful; let's just get some unsigned 
 Add the following method equivalents for the static `ptr` functions on `*const T` and `*mut T`:
 
 ```rust
-ptr.copy(dst: *mut T, count: usize)
-ptr.copy_nonoverlapping(dst: *mut T, count: usize)
-ptr.read() -> T
-ptr.read_volatile() -> T
-ptr.read_unaligned() -> T
+impl<T> *(const|mut) T {
+  unsafe fn read(self) -> T;
+  unsafe fn read_volatile(self) -> T;
+  unsafe fn read_unaligned(self) -> T;
+
+  // NOTE: name changed from the original static fn to make it 
+  // easier to remember argument order
+  unsafe fn copy_to(self, dest: *mut T, count: usize);
+  unsafe fn copy_to_nonoverlapping(self, src: *mut T, count: usize);
+}
 ```
 
 And these only on `*mut T`:
 
 ```rust
-ptr.drop_in_place()
-ptr.write(val: T)
-ptr.write_bytes(val: u8, count: usize)
-ptr.write_volatile(val: T)
-ptr.write_unaligned()
-ptr.replace(val: T) -> T
+impl<T> *mut T {
+  // note that I've moved these from both to just `*mut T`, to go along with `copy_from`
+  unsafe fn drop_in_place(self);
+  unsafe fn write(self, val: T);
+  unsafe fn write_bytes(self, val: u8, count: usize);
+  unsafe fn write_volatile(self, val: T);
+  unsafe fn write_unaligned(self, val: T);
+  unsafe fn replace(self, val: T) -> T;
+  unsafe fn swap(self, with: *mut T);
+}
 ```
 
-`ptr.swap` has been excluded from this proposal because it's a symmetric operation, and is consequently a bit weird to methodize.
-
-The static functions should remain undeprecated, as they are more ergonomic in the cases explained in the motivation.
+Note that this proposal doesn't deprecate the static functions, as they still make some code more ergonomic than methods, and we'd like to avoid regressing the ergonomics of any usecase. (More discussion can be found in the alternatives.)
 
 
 
@@ -122,13 +133,15 @@ The static functions should remain undeprecated, as they are more ergonomic in t
 Add the following conveniences to both `*const T` and `*mut T`: 
 
 ```rust
-ptr.add(offset: usize) -> Self
-ptr.sub(offset: usize) -> Self
-ptr.wrapping_add(offset: usize) -> Self
-ptr.wrapping_sub(offset: usize) -> Self
+impl<T> *(const|mut) T {
+  unsafe fn add(self, offset: usize) -> Self;
+  unsafe fn sub(self, offset: usize) -> Self;
+  fn wrapping_add(self, offset: usize) -> Self;
+  fn wrapping_sub(self, offset: usize) -> Self;
+}
 ```
 
-I expect `ptr.add` to replace ~95% of all uses of `ptr.offset`, and `ptr.sub` to replace ~95% of the remaining 5%. It's just very weird to have an offset that you don't know the sign of.
+I expect `ptr.add` to replace ~95% of all uses of `ptr.offset`, and `ptr.sub` to replace ~95% of the remaining 5%. It's just very rare to have an offset that you don't know the sign of, and don't need special handling for.
 
 
 
@@ -149,7 +162,7 @@ functions they're wrapping, with minor tweaks.
 # Drawbacks
 [drawbacks]: #drawbacks
 
-This proposal bloats the stdlib and introduces a schism between the old and new style. That said, the new style is way better, and the bloat is minor, so that's nothing worth worrying about.
+The only drawback I can think of is that this introduces a "what is idiomatic" schism between the old functions and the new ones.
 
 
 
@@ -161,18 +174,48 @@ This proposal bloats the stdlib and introduces a schism between the old and new 
 
 ## Overload operators for more ergonomic offsets
 
-Rust doesn't support "unsafe operators", and `offset` is an unsafe function because of the semantics of GetElementPointer. We don't want `wrapping_add` to get the operator, because `add` is the one we want developers to use. Beyond that, `(ptr + idx).read_volatile()` is a bit wonky to write.
+Rust doesn't support "unsafe operators", and `offset` is an unsafe function because of the semantics of GetElementPointer. We could make `wrapping_add` be the implementation of `+`, but almost no code should actually be using wrapping offsets, so we shouldn't do anything to make it seem "preferred" over non-wrapping offsets. 
+
+Beyond that, `(ptr + idx).read_volatile()` is a bit wonky to write -- methods chain better than operators.
+
 
 
 
 ## Make `offset` generic 
 
-You could make `offset` generic so it accepts `usize` and `isize`. However you would still want the `sub` method, and at that point you might as well have `add` for symmetry. Also `add` is shorter which, as we all know, is better.
+You could make `offset` generic so it accepts `usize` and `isize`. However you would still want the `sub` method, and at that point you might as well have `add` for symmetry. Also `add` is shorter which is a nice carrot for users to migrate to it.
 
 
+
+
+## `copy_from`
+
+`copy` is the only mutating `ptr` operation that doesn't write to the *first* argument. In fact, it's clearly backwards compared to C's memcpy. Instead it's ordered in analogy to `fs::copy`. 
+
+Methodization could be an opportunity to "fix" this, and reorder the arguments. I don't have any strong feelings for which order is better, but I am concerned that doing this reordering will lead to developer errors. Either in translating to the new methods, or in using the method order when deciding to use the old functions.
+
+This option should only be considered in tandem with a deprecation of `ptr::copy`. But as discussed in the following section, immediately deprecating an API along with the introduction of its replacement tends to cause a mess in the broader ecosystem.
+
+
+
+
+## Deprecate the Static Functions
+
+To avoid any issues with the methods and static functions coexisting, we could deprecate the static functions. As noted in the motivation, these functions are currently useful for their ability to perform coercions on the first argument. However those who were taking advantage of this property can easily rewrite their code to either of the following:
+
+```
+(ptr as *mut _).foo();
+<*mut _>::foo(ptr);
+```
+
+I personally consider this a minor ergonomic and readability regression from `ptr::foo(ptr)`, and so would rather not do this. 
+
+More importantly, this would cause needless churn for old code which is still perfectly *fine*, if a bit less ergonomic than it could be. More ergonomic interfaces should be adopted based on their own merits; not because This Is The New Way, And Everyone Should Do It The New Way. 
+
+In fact, even if we decide we should deprecate these functions, we should still stagger the deprecation out several releases to minimize ecosystem churn. When a deprecation occurs, users of the latest compiler will be pressured by diagnostics to update their code to the new APIs. If those APIs were introduced in the same release, then they'll be making their library only compile on the latest release, effectively breaking the library for anyone who hasn't had a chance to upgrade yet. If the deprecation were instead done several releases later, then by the time users are pressured to use the new APIs there will be a buffer of several stable releases that can compile code using the new APIs.
 
 
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
-Should `ptr::swap` be made into a method? I am personally ambivalent.
+None.
