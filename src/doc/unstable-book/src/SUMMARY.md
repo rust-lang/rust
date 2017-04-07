@@ -205,6 +205,7 @@
 - [unwind_attributes](unwind-attributes.md)
 - [update_panic_count](update-panic-count.md)
 - [use_extern_macros](use-extern-macros.md)
+- [used](used.md)
 - [utf8_error_error_len](utf8-error-error-len.md)
 - [vec_remove_item](vec-remove-item.md)
 - [windows_c](windows-c.md)
