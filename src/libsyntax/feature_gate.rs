@@ -408,7 +408,7 @@ declare_features! (
     // Allows the definition recursive static items.
     (accepted, static_recursion, "1.17.0", Some(29719)),
     // pub(restricted) visibilities (RFC 1422)
-    (accepted, pub_restricted, "1.17.0", Some(32409)),
+    (accepted, pub_restricted, "1.18.0", Some(32409)),
     // The #![windows_subsystem] attribute
     (accepted, windows_subsystem, "1.18.0", Some(37499)),
 );
