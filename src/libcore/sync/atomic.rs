@@ -539,17 +539,21 @@ impl AtomicBool {
         // We can't use atomic_nand here because it can result in a bool with
         // an invalid value. This happens because the atomic operation is done
         // with an 8-bit integer internally, which would set the upper 7 bits.
-        // So we just use a compare-exchange loop instead, which is what the
-        // intrinsic actually expands to anyways on many platforms.
-        let mut old = self.load(Relaxed);
-        loop {
-            let new = !(old && val);
-            match self.compare_exchange_weak(old, new, order, Relaxed) {
-                Ok(_) => break,
-                Err(x) => old = x,
+        // So we just use fetch_xor or compare_exchange instead.
+        if val {
+            // !(x & true) == !x
+            // We must invert the bool.
+            self.fetch_xor(true, order)
+        } else {
+            // !(x & false) == true
+            // We must set the bool to true. Instead of delegating to swap or fetch_or, use
+            // compare_exchange instead in order to avoid unnecessary writes to memory, which
+            // might minimize cache-coherence traffic.
+            match self.compare_exchange(false, true, order, Ordering::Relaxed) {
+                Ok(_) => false,
+                Err(_) => true,
             }
         }
-        old
     }
 
     /// Logical "or" with a boolean value.
