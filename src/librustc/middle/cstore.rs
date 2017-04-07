@@ -172,7 +172,7 @@ pub trait CrateStore {
     fn stability(&self, def: DefId) -> Option<attr::Stability>;
     fn deprecation(&self, def: DefId) -> Option<attr::Deprecation>;
     fn visibility(&self, def: DefId) -> ty::Visibility;
-    fn visible_parent_map<'a>(&'a self) -> ::std::cell::RefMut<'a, DefIdMap<DefId>>;
+    fn visible_parent_map<'a>(&'a self) -> ::std::cell::Ref<'a, DefIdMap<DefId>>;
     fn item_generics_cloned(&self, def: DefId) -> ty::Generics;
     fn item_attrs(&self, def_id: DefId) -> Vec<ast::Attribute>;
     fn fn_arg_names(&self, did: DefId) -> Vec<ast::Name>;
@@ -302,7 +302,7 @@ impl CrateStore for DummyCrateStore {
     fn stability(&self, def: DefId) -> Option<attr::Stability> { bug!("stability") }
     fn deprecation(&self, def: DefId) -> Option<attr::Deprecation> { bug!("deprecation") }
     fn visibility(&self, def: DefId) -> ty::Visibility { bug!("visibility") }
-    fn visible_parent_map<'a>(&'a self) -> ::std::cell::RefMut<'a, DefIdMap<DefId>> {
+    fn visible_parent_map<'a>(&'a self) -> ::std::cell::Ref<'a, DefIdMap<DefId>> {
         bug!("visible_parent_map")
     }
     fn item_generics_cloned(&self, def: DefId) -> ty::Generics
