@@ -96,11 +96,12 @@
 //!
 //! # Contributing changes to the documentation
 //!
-//! Check out the rust contribution guidelines [here](https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.md).
+//! Check out the rust contribution guidelines [here](
+//! https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.md).
 //! The source for this documentation can be found on [Github](https://github.com/rust-lang).
 //! To contribute changes, make sure you read the guidelines first, then submit
 //! pull-requests for your suggested changes.
-//! 
+//!
 //! Contributions are appreciated! If you see a part of the docs that can be
 //! improved, submit a PR, or chat with us first on irc.mozilla.org #rust-docs.
 //!
