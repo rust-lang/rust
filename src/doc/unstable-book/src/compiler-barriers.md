@@ -21,78 +21,86 @@ A `compiler_barrier` restricts the kinds of memory re-ordering the
 compiler is allowed to do. Specifically, depending on the given ordering
 semantics, the compiler may be disallowed from moving reads or writes
 from before or after the call to the other side of the call to
-`compiler_barrier`.
+`compiler_barrier`. Note that it does **not** prevent the *hardware*
+from doing such re-orderings -- for that, the `volatile_*` class of
+functions, or full memory fences, need to be used.
 
 ## Examples
 
-The need to prevent re-ordering of reads and writes often arises when
-working with low-level devices. Consider a piece of code that interacts
-with an ethernet card with a set of internal registers that are accessed
-through an address port register (`a: &mut usize`) and a data port
-register (`d: &usize`). To read internal register 5, the following code
-might then be used:
+`compiler_barrier` is generally only useful for preventing a thread from
+racing *with itself*. That is, if a given thread is executing one piece
+of code, and is then interrupted, and starts executing code elsewhere
+(while still in the same thread, and conceptually still on the same
+core). In traditional programs, this can only occur when a signal
+handler is registered. Consider the following code:
 
 ```rust
-fn read_fifth(a: &mut usize, d: &usize) -> usize {
-    *a = 5;
-    *d
+#use std::sync::atomic::{AtomicBool, AtomicUsize};
+#use std::sync::atomic::{ATOMIC_BOOL_INIT, ATOMIC_USIZE_INIT};
+#use std::sync::atomic::Ordering;
+static IMPORTANT_VARIABLE: AtomicUsize = ATOMIC_USIZE_INIT;
+static IS_READY: AtomicBool = ATOMIC_BOOL_INIT;
+
+fn main() {
+    IMPORTANT_VARIABLE.store(42, Ordering::Relaxed);
+    IS_READY.store(true, Ordering::Relaxed);
+}
+
+fn signal_handler() {
+    if IS_READY.load(Ordering::Relaxed) {
+        assert_eq!(IMPORTANT_VARIABLE.load(Ordering::Relaxed), 42);
+    }
 }
 ```
 
-In this case, the compiler is free to re-order these two statements if
-it thinks doing so might result in better performance, register use, or
-anything else compilers care about. However, in doing so, it would break
-the code, as `x` would be set to the value of some other device
-register!
+The way it is currently written, the `assert_eq!` is *not* guaranteed to
+succeed, despite everything happening in a single thread. To see why,
+remember that the compiler is free to swap the stores to
+`IMPORTANT_VARIABLE` and `IS_READ` since they are both
+`Ordering::Relaxed`. If it does, and the signal handler is invoked right
+after `IS_READY` is updated, then the signal handler will see
+`IS_READY=1`, but `IMPORTANT_VARIABLE=0`.
 
-By inserting a compiler barrier, we can force the compiler to not
-re-arrange these two statements, making the code function correctly
-again:
+Using a `compiler_barrier`, we can remedy this situation:
 
 ```rust
 #![feature(compiler_barriers)]
-use std::sync::atomic;
+#use std::sync::atomic::{AtomicBool, AtomicUsize};
+#use std::sync::atomic::{ATOMIC_BOOL_INIT, ATOMIC_USIZE_INIT};
+#use std::sync::atomic::Ordering;
+use std::sync::atomic::compiler_barrier;
 
-fn read_fifth(a: &mut usize, d: &usize) -> usize {
-    *a = 5;
-    atomic::compiler_barrier(atomic::Ordering::SeqCst);
-    *d
+static IMPORTANT_VARIABLE: AtomicUsize = ATOMIC_USIZE_INIT;
+static IS_READY: AtomicBool = ATOMIC_BOOL_INIT;
+
+fn main() {
+    IMPORTANT_VARIABLE.store(42, Ordering::Relaxed);
+    // prevent earlier writes from being moved beyond this point
+    compiler_barrier(Ordering::Release);
+    IS_READY.store(true, Ordering::Relaxed);
+}
+
+fn signal_handler() {
+    if IS_READY.load(Ordering::Relaxed) {
+        assert_eq!(IMPORTANT_VARIABLE.load(Ordering::Relaxed), 42);
+    }
 }
 ```
 
-Compiler barriers are also useful in code that implements low-level
-synchronization primitives. Consider a structure with two different
-atomic variables, with a dependency chain between them:
+In more advanced cases (for example, if `IMPORTANT_VARIABLE` was an
+`AtomicPtr` that starts as `NULL`), it may also be unsafe for the
+compiler to hoist code using `IMPORTANT_VARIABLE` above the
+`IS_READY.load`. In that case, a `compiler_barrier(Ordering::Acquire)`
+should be placed at the top of the `if` to prevent this optimizations.
 
-```rust
-use std::sync::atomic;
-
-fn thread1(x: &atomic::AtomicUsize, y: &atomic::AtomicUsize) {
-    x.store(1, atomic::Ordering::Release);
-    let v1 = y.load(atomic::Ordering::Acquire);
-}
-fn thread2(x: &atomic::AtomicUsize, y: &atomic::AtomicUsize) {
-    y.store(1, atomic::Ordering::Release);
-    let v2 = x.load(atomic::Ordering::Acquire);
-}
-```
-
-This code will guarantee that `thread1` sees any writes to `y` made by
-`thread2`, and that `thread2` sees any writes to `x`. Intuitively, one
-might also expect that if `thread2` sees `v2 == 0`, `thread1` must see
-`v1 == 1` (since `thread2`'s store happened before its `load`, and its
-load did not see `thread1`'s store). However, the code as written does
-*not* guarantee this, because the compiler is allowed to re-order the
-store and load within each thread. To enforce this particular behavior,
-a call to `compiler_barrier(Ordering::SeqCst)` would need to be inserted
-between the `store` and `load` in both functions.
-
-Compiler barriers with weaker re-ordering semantics (such as
-`Ordering::Acquire`) can also be useful, but are beyond the scope of
-this text. Curious readers are encouraged to read the Linux kernel's
-discussion of [memory barriers][1], as well as C++ references on
-[`std::memory_order`][2] and [`atomic_signal_fence`][3].
+A deeper discussion of compiler barriers with various re-ordering
+semantics (such as `Ordering::SeqCst`) is beyond the scope of this text.
+Curious readers are encouraged to read the Linux kernel's discussion of
+[memory barriers][1], the C++ references on [`std::memory_order`][2] and
+[`atomic_signal_fence`][3], and [this StackOverflow answer][4] for
+further details.
 
 [1]: https://www.kernel.org/doc/Documentation/memory-barriers.txt
 [2]: http://en.cppreference.com/w/cpp/atomic/memory_order
 [3]: http://www.cplusplus.com/reference/atomic/atomic_signal_fence/
+[4]: http://stackoverflow.com/a/18454971/472927
