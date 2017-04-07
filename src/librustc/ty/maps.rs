@@ -15,6 +15,7 @@ use middle::privacy::AccessLevels;
 use mir;
 use session::CompileResult;
 use ty::{self, CrateInherentImpls, Ty, TyCtxt};
+use util::nodemap::NodeSet;
 
 use rustc_data_structures::indexed_vec::IndexVec;
 use std::cell::{RefCell, RefMut};
@@ -209,6 +210,11 @@ impl<'tcx> QueryDescription for queries::typeck_item_bodies<'tcx> {
     }
 }
 
+impl<'tcx> QueryDescription for queries::reachable_set<'tcx> {
+    fn describe(_: TyCtxt, _: CrateNum) -> String {
+        format!("reachability")
+    }
+}
 
 macro_rules! define_maps {
     (<$tcx:tt>
@@ -440,6 +446,8 @@ define_maps! { <'tcx>
     /// Performs the privacy check and computes "access levels".
     pub privacy_access_levels: PrivacyAccessLevels(CrateNum) -> Rc<AccessLevels>,
 
+    pub reachable_set: reachability_dep_node(CrateNum) -> NodeSet,
+
     pub mir_shims: mir_shim(ty::InstanceDef<'tcx>) -> &'tcx RefCell<mir::Mir<'tcx>>
 }
 
@@ -449,6 +457,10 @@ fn coherent_trait_dep_node((_, def_id): (CrateNum, DefId)) -> DepNode<DefId> {
 
 fn crate_inherent_impls_dep_node(_: CrateNum) -> DepNode<DefId> {
     DepNode::Coherence
+}
+
+fn reachability_dep_node(_: CrateNum) -> DepNode<DefId> {
+    DepNode::Reachability
 }
 
 fn mir_shim(instance: ty::InstanceDef) -> DepNode<DefId> {
