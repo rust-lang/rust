@@ -474,6 +474,9 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item) {
             visitor.visit_id(item.id);
             walk_list!(visitor, visit_foreign_item, &foreign_module.items);
         }
+        ItemGlobalAsm(_) => {
+            visitor.visit_id(item.id);
+        }
         ItemTy(ref typ, ref type_parameters) => {
             visitor.visit_id(item.id);
             visitor.visit_ty(typ);
