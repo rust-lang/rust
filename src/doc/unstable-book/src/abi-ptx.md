@@ -1,7 +1,8 @@
 # `abi_ptx`
 
-The tracking issue for this feature
-is: [38788](https://github.com/rust-lang/rust/issues/38788)
+The tracking issue for this feature is: [#38788]
+
+[#38788]: https://github.com/rust-lang/rust/issues/38788
 
 ------------------------
 
