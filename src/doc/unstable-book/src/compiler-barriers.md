@@ -32,7 +32,12 @@ racing *with itself*. That is, if a given thread is executing one piece
 of code, and is then interrupted, and starts executing code elsewhere
 (while still in the same thread, and conceptually still on the same
 core). In traditional programs, this can only occur when a signal
-handler is registered. Consider the following code:
+handler is registered. In more low-level code, such situations can also
+arise when handling interrupts, when implementing green threads with
+pre-emption, etc.
+
+To give a straightforward example of when a `compiler_barrier` is
+necessary, consider the following example:
 
 ```rust
 # use std::sync::atomic::{AtomicBool, AtomicUsize};
