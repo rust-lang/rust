@@ -41,8 +41,10 @@ if [ ! -f "$cache_valid_file" ]; then
     rm -rf "$CACHE_DIR"
     mkdir "$CACHE_DIR"
 else
+    set +o errexit
     stat_lines=$(cd "$cache_src_dir" && git status --porcelain | wc -l)
-    stat_ec=$(cd "$cache_src_dir" && git status >/dev/null 2>&1 && echo $?)
+    stat_ec=$(cd "$cache_src_dir" && git status >/dev/null 2>&1; echo $?)
+    set -o errexit
     if [ ! -d "$cache_src_dir/.git" -o $stat_lines != 0 -o $stat_ec != 0 ]; then
         # Something is badly wrong - the cache valid file is here, but something
         # about the git repo is fishy. Nuke it all, just in case
