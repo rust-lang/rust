@@ -603,7 +603,8 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
             Rvalue::Cast(CastKind::ReifyFnPointer, ..) |
             Rvalue::Cast(CastKind::UnsafeFnPointer, ..) |
             Rvalue::Cast(CastKind::ClosureFnPointer, ..) |
-            Rvalue::Cast(CastKind::Unsize, ..) => {}
+            Rvalue::Cast(CastKind::Unsize, ..) |
+            Rvalue::Discriminant(..) => {}
 
             Rvalue::Len(_) => {
                 // Static lvalues in consts would have errored already,
@@ -719,12 +720,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                         .emit();
                     }
                 }
-            }
-
-            Rvalue::Discriminant(..) => {
-                // FIXME implement discriminant const qualify
-                self.add(Qualif::NOT_CONST);
-                // Discriminants in consts will error elsewhere as an unimplemented expression type
             }
 
             Rvalue::Box(_) => {
