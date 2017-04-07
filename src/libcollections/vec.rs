@@ -2053,21 +2053,19 @@ impl<T> Iterator for IntoIter<T> {
         unsafe {
             if self.ptr as *const _ == self.end {
                 None
+            } else if mem::size_of::<T>() == 0 {
+                // purposefully don't use 'ptr.offset' because for
+                // vectors with 0-size elements this would return the
+                // same pointer.
+                self.ptr = arith_offset(self.ptr as *const i8, 1) as *mut T;
+
+                // Use a non-null pointer value
+                Some(ptr::read(EMPTY as *mut T))
             } else {
-                if mem::size_of::<T>() == 0 {
-                    // purposefully don't use 'ptr.offset' because for
-                    // vectors with 0-size elements this would return the
-                    // same pointer.
-                    self.ptr = arith_offset(self.ptr as *const i8, 1) as *mut T;
+                let old = self.ptr;
+                self.ptr = self.ptr.offset(1);
 
-                    // Use a non-null pointer value
-                    Some(ptr::read(EMPTY as *mut T))
-                } else {
-                    let old = self.ptr;
-                    self.ptr = self.ptr.offset(1);
-
-                    Some(ptr::read(old))
-                }
+                Some(ptr::read(old))
             }
         }
     }
@@ -2094,18 +2092,16 @@ impl<T> DoubleEndedIterator for IntoIter<T> {
         unsafe {
             if self.end == self.ptr {
                 None
+            } else if mem::size_of::<T>() == 0 {
+                // See above for why 'ptr.offset' isn't used
+                self.end = arith_offset(self.end as *const i8, -1) as *mut T;
+
+                // Use a non-null pointer value
+                Some(ptr::read(EMPTY as *mut T))
             } else {
-                if mem::size_of::<T>() == 0 {
-                    // See above for why 'ptr.offset' isn't used
-                    self.end = arith_offset(self.end as *const i8, -1) as *mut T;
+                self.end = self.end.offset(-1);
 
-                    // Use a non-null pointer value
-                    Some(ptr::read(EMPTY as *mut T))
-                } else {
-                    self.end = self.end.offset(-1);
-
-                    Some(ptr::read(self.end))
-                }
+                Some(ptr::read(self.end))
             }
         }
     }

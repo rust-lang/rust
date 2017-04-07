@@ -339,6 +339,9 @@ declare_features! (
 
     // See rust-lang/rfcs#1414. Allows code like `let x: &'static u32 = &42` to work.
     (active, rvalue_static_promotion, "1.15.1", Some(38865)),
+
+    // Allows overlapping impls of marker traits
+    (active, overlapping_marker_traits, "1.18.0", Some(29864)),
 );
 
 declare_features! (
