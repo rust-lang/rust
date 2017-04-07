@@ -27,10 +27,10 @@ WORKDIR /tmp
 COPY build-emscripten.sh /tmp/
 RUN ./build-emscripten.sh
 ENV PATH=$PATH:/tmp/emsdk_portable
-ENV PATH=$PATH:/tmp/emsdk_portable/clang/tag-e1.37.8/build_tag-e1.37.8_32/bin
+ENV PATH=$PATH:/tmp/emsdk_portable/clang/fastcomp/build_incoming_32/bin
 ENV PATH=$PATH:/tmp/emsdk_portable/node/4.1.1_32bit/bin
-ENV PATH=$PATH:/tmp/emsdk_portable/emscripten/tag-1.37.8
-ENV EMSCRIPTEN=/tmp/emsdk_portable/emscripten/tag-1.37.8
+ENV PATH=$PATH:/tmp/emsdk_portable/emscripten/incoming
+ENV EMSCRIPTEN=/tmp/emsdk_portable/emscripten/incoming
 
 ENV RUST_CONFIGURE_ARGS --target=asmjs-unknown-emscripten
 
