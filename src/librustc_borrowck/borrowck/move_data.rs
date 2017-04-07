@@ -362,31 +362,31 @@ impl<'a, 'tcx> MoveData<'tcx> {
 
     /// Adds a new move entry for a move of `lp` that occurs at location `id` with kind `kind`.
     pub fn add_move(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                    lp: Rc<LoanPath<'tcx>>,
+                    orig_lp: Rc<LoanPath<'tcx>>,
                     id: ast::NodeId,
                     kind: MoveKind) {
-        // Moving one union field automatically moves all its fields.
-        if let LpExtend(ref base_lp, mutbl, LpInterior(opt_variant_id, interior)) = lp.kind {
-            if let ty::TyAdt(adt_def, _) = base_lp.ty.sty {
+        // Moving one union field automatically moves all its fields. Also move siblings of
+        // all parent union fields, moves do not propagate upwards automatically.
+        let mut lp = orig_lp.clone();
+        while let LpExtend(ref base_lp, mutbl, lp_elem) = lp.clone().kind {
+            if let (&ty::TyAdt(adt_def, _), LpInterior(opt_variant_id, interior))
+                    = (&base_lp.ty.sty, lp_elem) {
                 if adt_def.is_union() {
                     for field in &adt_def.struct_variant().fields {
                         let field = InteriorKind::InteriorField(mc::NamedField(field.name));
-                        let field_ty = if field == interior {
-                            lp.ty
-                        } else {
-                            tcx.types.err // Doesn't matter
-                        };
-                        let sibling_lp_kind = LpExtend(base_lp.clone(), mutbl,
-                                                    LpInterior(opt_variant_id, field));
-                        let sibling_lp = Rc::new(LoanPath::new(sibling_lp_kind, field_ty));
-                        self.add_move_helper(tcx, sibling_lp, id, kind);
+                        if field != interior {
+                            let sibling_lp_kind =
+                                LpExtend(base_lp.clone(), mutbl, LpInterior(opt_variant_id, field));
+                            let sibling_lp = Rc::new(LoanPath::new(sibling_lp_kind, tcx.types.err));
+                            self.add_move_helper(tcx, sibling_lp, id, kind);
+                        }
                     }
-                    return;
                 }
             }
+            lp = base_lp.clone();
         }
 
-        self.add_move_helper(tcx, lp.clone(), id, kind);
+        self.add_move_helper(tcx, orig_lp.clone(), id, kind);
     }
 
     fn add_move_helper(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
