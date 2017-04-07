@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Coherence error results because we do not know whether `T: Foo<P>` or not
-// for the second impl.
+#![feature(overlapping_marker_traits)]
+#![feature(specialization)]
 
-use std::marker::PhantomData;
+trait MyMarker {}
 
-pub trait Foo<P> { fn foo() {} }
+impl<T> MyMarker for T {}
+impl<T> MyMarker for Vec<T> {}
 
-impl <P, T: Foo<P>> Foo<P> for Option<T> {}
+fn foo<T: MyMarker>(t: T) -> T {
+    t
+}
 
-impl<T, U> Foo<T> for Option<U> { } //~ ERROR E0119
-
-fn main() {}
+fn main() {
+    assert_eq!(1, foo(1));
+    assert_eq!(2.0, foo(2.0));
+    assert_eq!(vec![1], foo(vec![1]));
+}
