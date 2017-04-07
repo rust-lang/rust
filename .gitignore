@@ -29,3 +29,7 @@ util/gh-pages/lints.json
 *.rs.bk
 
 helper.txt
+
+*.stdout
+
+.vscode

@@ -180,7 +180,7 @@ transparently:
 
 ## Lints
 
-There are 196 lints included in this crate:
+There are 197 lints included in this crate:
 
 name                                                                                                                   | default | triggers on
 -----------------------------------------------------------------------------------------------------------------------|---------|----------------------------------------------------------------------------------------------------------------------------------
@@ -304,6 +304,7 @@ name                                                                            
 [nonsensical_open_options](https://github.com/Manishearth/rust-clippy/wiki#nonsensical_open_options)                   | warn    | nonsensical combination of options for opening a file
 [not_unsafe_ptr_arg_deref](https://github.com/Manishearth/rust-clippy/wiki#not_unsafe_ptr_arg_deref)                   | warn    | public functions dereferencing raw pointer arguments but not marked `unsafe`
 [ok_expect](https://github.com/Manishearth/rust-clippy/wiki#ok_expect)                                                 | warn    | using `ok().expect()`, which gives worse error messages than calling `expect` directly on the Result
+[op_ref](https://github.com/Manishearth/rust-clippy/wiki#op_ref)                                                       | warn    | taking a reference to satisfy the type constraints on `==`
 [option_map_unwrap_or](https://github.com/Manishearth/rust-clippy/wiki#option_map_unwrap_or)                           | allow   | using `Option.map(f).unwrap_or(a)`, which is more succinctly expressed as `map_or(a, f)`
 [option_map_unwrap_or_else](https://github.com/Manishearth/rust-clippy/wiki#option_map_unwrap_or_else)                 | allow   | using `Option.map(f).unwrap_or_else(g)`, which is more succinctly expressed as `map_or_else(g, f)`
 [option_unwrap_used](https://github.com/Manishearth/rust-clippy/wiki#option_unwrap_used)                               | allow   | using `Option.unwrap()`, which should at least get a better message using `expect()`

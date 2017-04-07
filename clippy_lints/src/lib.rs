@@ -383,6 +383,7 @@ pub fn register_plugins(reg: &mut rustc_plugin::Registry) {
         enum_variants::ENUM_VARIANT_NAMES,
         enum_variants::MODULE_INCEPTION,
         eq_op::EQ_OP,
+        eq_op::OP_REF,
         escape::BOXED_LOCAL,
         eta_reduction::REDUNDANT_CLOSURE,
         eval_order_dependence::DIVERGING_SUB_EXPRESSION,

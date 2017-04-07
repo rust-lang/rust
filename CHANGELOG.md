@@ -1,6 +1,10 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.122 — 2017-04-07
+* Rustup to *rustc 1.18.0-nightly (91ae22a01 2017-04-05)*
+* New lint: [`op_ref`]
+
 ## 0.0.121 — 2017-03-21
 * Rustup to *rustc 1.17.0-nightly (134c4a0f0 2017-03-20)*
 
@@ -417,6 +421,7 @@ All notable changes to this project will be documented in this file.
 [`nonsensical_open_options`]: https://github.com/Manishearth/rust-clippy/wiki#nonsensical_open_options
 [`not_unsafe_ptr_arg_deref`]: https://github.com/Manishearth/rust-clippy/wiki#not_unsafe_ptr_arg_deref
 [`ok_expect`]: https://github.com/Manishearth/rust-clippy/wiki#ok_expect
+[`op_ref`]: https://github.com/Manishearth/rust-clippy/wiki#op_ref
 [`option_map_unwrap_or`]: https://github.com/Manishearth/rust-clippy/wiki#option_map_unwrap_or
 [`option_map_unwrap_or_else`]: https://github.com/Manishearth/rust-clippy/wiki#option_map_unwrap_or_else
 [`option_unwrap_used`]: https://github.com/Manishearth/rust-clippy/wiki#option_unwrap_used
