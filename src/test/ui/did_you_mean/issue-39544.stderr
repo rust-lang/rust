@@ -90,5 +90,11 @@ error: cannot borrow immutable field `w.x` as mutable
 52 |     let _ = &mut w.x;
    |                  ^^^ cannot mutably borrow immutable field
 
-error: aborting due to 11 previous errors
+error: cannot assign to immutable borrowed content `*x.0`
+  --> $DIR/issue-39544.rs:58:5
+   |
+58 |     *x.0 = 1;
+   |     ^^^^^^^^ cannot borrow as mutable
+
+error: aborting due to 12 previous errors
 

@@ -16,10 +16,10 @@
 //! of `fmt::Display`. Example usage:
 //!
 //! ```rust,ignore
-//! use rustdoc::html::markdown::{Markdown, MarkdownOutputStyle};
+//! use rustdoc::html::markdown::Markdown;
 //!
 //! let s = "My *markdown* _text_";
-//! let html = format!("{}", Markdown(s, MarkdownOutputStyle::Fancy));
+//! let html = format!("{}", Markdown(s));
 //! // ... something using html
 //! ```
 
@@ -27,6 +27,7 @@
 
 use std::ascii::AsciiExt;
 use std::cell::RefCell;
+use std::collections::{HashMap, VecDeque};
 use std::default::Default;
 use std::fmt::{self, Write};
 use std::str;
@@ -36,43 +37,23 @@ use syntax::codemap::Span;
 use html::render::derive_id;
 use html::toc::TocBuilder;
 use html::highlight;
-use html::escape::Escape;
 use test;
 
-use pulldown_cmark::{self, Event, Parser, Tag};
-
-#[derive(Copy, Clone)]
-pub enum MarkdownOutputStyle {
-    Compact,
-    Fancy,
-}
-
-impl MarkdownOutputStyle {
-    pub fn is_compact(&self) -> bool {
-        match *self {
-            MarkdownOutputStyle::Compact => true,
-            _ => false,
-        }
-    }
-
-    pub fn is_fancy(&self) -> bool {
-        match *self {
-            MarkdownOutputStyle::Fancy => true,
-            _ => false,
-        }
-    }
-}
+use pulldown_cmark::{html, Event, Tag, Parser};
+use pulldown_cmark::{Options, OPTION_ENABLE_FOOTNOTES, OPTION_ENABLE_TABLES};
 
 /// A unit struct which has the `fmt::Display` trait implemented. When
 /// formatted, this struct will emit the HTML corresponding to the rendered
 /// version of the contained markdown string.
 // The second parameter is whether we need a shorter version or not.
-pub struct Markdown<'a>(pub &'a str, pub MarkdownOutputStyle);
+pub struct Markdown<'a>(pub &'a str);
 /// A unit struct like `Markdown`, that renders the markdown with a
 /// table of contents.
 pub struct MarkdownWithToc<'a>(pub &'a str);
 /// A unit struct like `Markdown`, that renders the markdown escaping HTML tags.
 pub struct MarkdownHtml<'a>(pub &'a str);
+/// A unit struct like `Markdown`, that renders only the first paragraph.
+pub struct MarkdownSummaryLine<'a>(pub &'a str);
 
 /// Returns Some(code) if `s` is a line that should be stripped from
 /// documentation but used in example code. `code` is the portion of
@@ -89,12 +70,21 @@ fn stripped_filtered_line<'a>(s: &'a str) -> Option<&'a str> {
     }
 }
 
-/// Returns a new string with all consecutive whitespace collapsed into
-/// single spaces.
+/// Convert chars from a title for an id.
 ///
-/// Any leading or trailing whitespace will be trimmed.
-fn collapse_whitespace(s: &str) -> String {
-    s.split_whitespace().collect::<Vec<_>>().join(" ")
+/// "Hello, world!" -> "hello-world"
+fn slugify(c: char) -> Option<char> {
+    if c.is_alphanumeric() || c == '-' || c == '_' {
+        if c.is_ascii() {
+            Some(c.to_ascii_lowercase())
+        } else {
+            Some(c)
+        }
+    } else if c.is_whitespace() && c.is_ascii() {
+        Some('-')
+    } else {
+        None
+    }
 }
 
 // Information about the playground if a URL has been specified, containing an
@@ -103,72 +93,50 @@ thread_local!(pub static PLAYGROUND: RefCell<Option<(Option<String>, String)>> =
     RefCell::new(None)
 });
 
-macro_rules! event_loop_break {
-    ($parser:expr, $toc_builder:expr, $shorter:expr, $buf:expr, $escape:expr, $id:expr,
-     $($end_event:pat)|*) => {{
-        fn inner(id: &mut Option<&mut String>, s: &str) {
-            if let Some(ref mut id) = *id {
-                id.push_str(s);
-            }
-        }
-        while let Some(event) = $parser.next() {
-            match event {
-                $($end_event)|* => break,
-                Event::Text(ref s) => {
-                    inner($id, s);
-                    if $escape {
-                        $buf.push_str(&format!("{}", Escape(s)));
-                    } else {
-                        $buf.push_str(s);
-                    }
-                }
-                Event::SoftBreak | Event::HardBreak if !$buf.is_empty() => {
-                    $buf.push(' ');
-                }
-                x => {
-                    looper($parser, &mut $buf, Some(x), $toc_builder, $shorter, $id);
-                }
-            }
-        }
-    }}
+/// Adds syntax highlighting and playground Run buttons to rust code blocks.
+struct CodeBlocks<'a, I: Iterator<Item = Event<'a>>> {
+    inner: I,
 }
 
-pub fn render(w: &mut fmt::Formatter,
-              s: &str,
-              print_toc: bool,
-              shorter: MarkdownOutputStyle) -> fmt::Result {
-    fn code_block(parser: &mut Parser, buffer: &mut String, lang: &str) {
+impl<'a, I: Iterator<Item = Event<'a>>> CodeBlocks<'a, I> {
+    fn new(iter: I) -> Self {
+        CodeBlocks {
+            inner: iter,
+        }
+    }
+}
+
+impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'a, I> {
+    type Item = Event<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let event = self.inner.next();
+        if let Some(Event::Start(Tag::CodeBlock(lang))) = event {
+            if !LangString::parse(&lang).rust {
+                return Some(Event::Start(Tag::CodeBlock(lang)));
+            }
+        } else {
+            return event;
+        }
+
         let mut origtext = String::new();
-        while let Some(event) = parser.next() {
+        for event in &mut self.inner {
             match event {
-                Event::End(Tag::CodeBlock(_)) => break,
+                Event::End(Tag::CodeBlock(..)) => break,
                 Event::Text(ref s) => {
                     origtext.push_str(s);
                 }
                 _ => {}
             }
         }
-        let origtext = origtext.trim_left();
-        debug!("docblock: ==============\n{:?}\n=======", origtext);
-
         let lines = origtext.lines().filter(|l| {
             stripped_filtered_line(*l).is_none()
         });
         let text = lines.collect::<Vec<&str>>().join("\n");
-        let block_info = if lang.is_empty() {
-            LangString::all_false()
-        } else {
-            LangString::parse(lang)
-        };
-        if !block_info.rust {
-            buffer.push_str(&format!("<pre><code class=\"language-{}\">{}</code></pre>",
-                            lang, text));
-            return
-        }
         PLAYGROUND.with(|play| {
             // insert newline to clearly separate it from the
             // previous block so we can shorten the html output
-            buffer.push('\n');
+            let mut s = String::from("\n");
             let playground_button = play.borrow().as_ref().and_then(|&(ref krate, ref url)| {
                 if url.is_empty() {
                     return None;
@@ -178,7 +146,7 @@ pub fn render(w: &mut fmt::Formatter,
                 }).collect::<Vec<&str>>().join("\n");
                 let krate = krate.as_ref().map(|s| &**s);
                 let test = test::maketest(&test, krate, false,
-                                          &Default::default());
+                                        &Default::default());
                 let channel = if test.contains("#![feature(") {
                     "&amp;version=nightly"
                 } else {
@@ -207,271 +175,186 @@ pub fn render(w: &mut fmt::Formatter,
                     url, test_escaped, channel
                 ))
             });
-            buffer.push_str(&highlight::render_with_highlighting(
-                            &text,
-                            Some("rust-example-rendered"),
-                            None,
-                            playground_button.as_ref().map(String::as_str)));
-        });
+            s.push_str(&highlight::render_with_highlighting(
+                        &text,
+                        Some("rust-example-rendered"),
+                        None,
+                        playground_button.as_ref().map(String::as_str)));
+            Some(Event::Html(s.into()))
+        })
     }
+}
 
-    fn heading(parser: &mut Parser, buffer: &mut String, toc_builder: &mut Option<TocBuilder>,
-               shorter: MarkdownOutputStyle, level: i32) {
-        let mut ret = String::new();
-        let mut id = String::new();
-        event_loop_break!(parser, toc_builder, shorter, ret, true, &mut Some(&mut id),
-                          Event::End(Tag::Header(_)));
-        ret = ret.trim_right().to_owned();
+/// Make headings links with anchor ids and build up TOC.
+struct HeadingLinks<'a, 'b, I: Iterator<Item = Event<'a>>> {
+    inner: I,
+    toc: Option<&'b mut TocBuilder>,
+    buf: VecDeque<Event<'a>>,
+}
 
-        let id = id.chars().filter_map(|c| {
-            if c.is_alphanumeric() || c == '-' || c == '_' {
-                if c.is_ascii() {
-                    Some(c.to_ascii_lowercase())
-                } else {
-                    Some(c)
+impl<'a, 'b, I: Iterator<Item = Event<'a>>> HeadingLinks<'a, 'b, I> {
+    fn new(iter: I, toc: Option<&'b mut TocBuilder>) -> Self {
+        HeadingLinks {
+            inner: iter,
+            toc: toc,
+            buf: VecDeque::new(),
+        }
+    }
+}
+
+impl<'a, 'b, I: Iterator<Item = Event<'a>>> Iterator for HeadingLinks<'a, 'b, I> {
+    type Item = Event<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(e) = self.buf.pop_front() {
+            return Some(e);
+        }
+
+        let event = self.inner.next();
+        if let Some(Event::Start(Tag::Header(level))) = event {
+            let mut id = String::new();
+            for event in &mut self.inner {
+                match event {
+                    Event::End(Tag::Header(..)) => break,
+                    Event::Text(ref text) => id.extend(text.chars().filter_map(slugify)),
+                    _ => {},
                 }
-            } else if c.is_whitespace() && c.is_ascii() {
-                Some('-')
-            } else {
-                None
+                self.buf.push_back(event);
             }
-        }).collect::<String>();
+            let id = derive_id(id);
 
-        let id = derive_id(id);
+            if let Some(ref mut builder) = self.toc {
+                let mut html_header = String::new();
+                html::push_html(&mut html_header, self.buf.iter().cloned());
+                let sec = builder.push(level as u32, html_header, id.clone());
+                self.buf.push_front(Event::InlineHtml(format!("{} ", sec).into()));
+            }
 
-        let sec = toc_builder.as_mut().map_or("".to_owned(), |builder| {
-            format!("{} ", builder.push(level as u32, ret.clone(), id.clone()))
-        });
+            self.buf.push_back(Event::InlineHtml(format!("</a></h{}>", level).into()));
 
-        // Render the HTML
-        buffer.push_str(&format!("<h{lvl} id=\"{id}\" class=\"section-header\">\
-                                  <a href=\"#{id}\">{sec}{}</a></h{lvl}>",
-                                 ret, lvl = level, id = id, sec = sec));
+            let start_tags = format!("<h{level} id=\"{id}\" class=\"section-header\">\
+                                      <a href=\"#{id}\">",
+                                     id = id,
+                                     level = level);
+            return Some(Event::InlineHtml(start_tags.into()));
+        }
+        event
     }
+}
 
-    fn inline_code(parser: &mut Parser, buffer: &mut String, toc_builder: &mut Option<TocBuilder>,
-                   shorter: MarkdownOutputStyle, id: &mut Option<&mut String>) {
-        let mut content = String::new();
-        event_loop_break!(parser, toc_builder, shorter, content, false, id, Event::End(Tag::Code));
-        buffer.push_str(&format!("<code>{}</code>",
-                                 Escape(&collapse_whitespace(content.trim_right()))));
+/// Extracts just the first paragraph.
+struct SummaryLine<'a, I: Iterator<Item = Event<'a>>> {
+    inner: I,
+    started: bool,
+    depth: u32,
+}
+
+impl<'a, I: Iterator<Item = Event<'a>>> SummaryLine<'a, I> {
+    fn new(iter: I) -> Self {
+        SummaryLine {
+            inner: iter,
+            started: false,
+            depth: 0,
+        }
     }
+}
 
-    fn link(parser: &mut Parser, buffer: &mut String, toc_builder: &mut Option<TocBuilder>,
-            shorter: MarkdownOutputStyle, url: &str, mut title: String,
-            id: &mut Option<&mut String>) {
-        event_loop_break!(parser, toc_builder, shorter, title, true, id,
-                          Event::End(Tag::Link(_, _)));
-        buffer.push_str(&format!("<a href=\"{}\">{}</a>", url, title));
+impl<'a, I: Iterator<Item = Event<'a>>> Iterator for SummaryLine<'a, I> {
+    type Item = Event<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.started && self.depth == 0 {
+            return None;
+        }
+        if !self.started {
+            self.started = true;
+        }
+        let event = self.inner.next();
+        match event {
+            Some(Event::Start(..)) => self.depth += 1,
+            Some(Event::End(..)) => self.depth -= 1,
+            _ => {}
+        }
+        event
     }
+}
 
-    fn paragraph(parser: &mut Parser, buffer: &mut String, toc_builder: &mut Option<TocBuilder>,
-                 shorter: MarkdownOutputStyle, id: &mut Option<&mut String>) {
-        let mut content = String::new();
-        event_loop_break!(parser, toc_builder, shorter, content, true, id,
-                          Event::End(Tag::Paragraph));
-        buffer.push_str(&format!("<p>{}</p>", content.trim_right()));
+/// Moves all footnote definitions to the end and add back links to the
+/// references.
+struct Footnotes<'a, I: Iterator<Item = Event<'a>>> {
+    inner: I,
+    footnotes: HashMap<String, (Vec<Event<'a>>, u16)>,
+}
+
+impl<'a, I: Iterator<Item = Event<'a>>> Footnotes<'a, I> {
+    fn new(iter: I) -> Self {
+        Footnotes {
+            inner: iter,
+            footnotes: HashMap::new(),
+        }
     }
-
-    fn table_cell(parser: &mut Parser, buffer: &mut String, toc_builder: &mut Option<TocBuilder>,
-                  shorter: MarkdownOutputStyle) {
-        let mut content = String::new();
-        event_loop_break!(parser, toc_builder, shorter, content, true, &mut None,
-                          Event::End(Tag::TableHead) |
-                              Event::End(Tag::Table(_)) |
-                              Event::End(Tag::TableRow) |
-                              Event::End(Tag::TableCell));
-        buffer.push_str(&format!("<td>{}</td>", content.trim()));
+    fn get_entry(&mut self, key: &str) -> &mut (Vec<Event<'a>>, u16) {
+        let new_id = self.footnotes.keys().count() + 1;
+        let key = key.to_owned();
+        self.footnotes.entry(key).or_insert((Vec::new(), new_id as u16))
     }
+}
 
-    fn table_row(parser: &mut Parser, buffer: &mut String, toc_builder: &mut Option<TocBuilder>,
-                 shorter: MarkdownOutputStyle) {
-        let mut content = String::new();
-        while let Some(event) = parser.next() {
-            match event {
-                Event::End(Tag::TableHead) |
-                    Event::End(Tag::Table(_)) |
-                    Event::End(Tag::TableRow) => break,
-                Event::Start(Tag::TableCell) => {
-                    table_cell(parser, &mut content, toc_builder, shorter);
+impl<'a, I: Iterator<Item = Event<'a>>> Iterator for Footnotes<'a, I> {
+    type Item = Event<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            match self.inner.next() {
+                Some(Event::FootnoteReference(ref reference)) => {
+                    let entry = self.get_entry(&reference);
+                    let reference = format!("<sup id=\"supref{0}\"><a href=\"#ref{0}\">{0}\
+                                             </a></sup>",
+                                            (*entry).1);
+                    return Some(Event::Html(reference.into()));
                 }
-                x => {
-                    looper(parser, &mut content, Some(x), toc_builder, shorter, &mut None);
+                Some(Event::Start(Tag::FootnoteDefinition(def))) => {
+                    let mut content = Vec::new();
+                    for event in &mut self.inner {
+                        if let Event::End(Tag::FootnoteDefinition(..)) = event {
+                            break;
+                        }
+                        content.push(event);
+                    }
+                    let entry = self.get_entry(&def);
+                    (*entry).0 = content;
+                }
+                Some(e) => return Some(e),
+                None => {
+                    if !self.footnotes.is_empty() {
+                        let mut v: Vec<_> = self.footnotes.drain().map(|(_, x)| x).collect();
+                        v.sort_by(|a, b| a.1.cmp(&b.1));
+                        let mut ret = String::from("<div class=\"footnotes\"><hr><ol>");
+                        for (mut content, id) in v {
+                            write!(ret, "<li id=\"ref{}\">", id).unwrap();
+                            let mut is_paragraph = false;
+                            if let Some(&Event::End(Tag::Paragraph)) = content.last() {
+                                content.pop();
+                                is_paragraph = true;
+                            }
+                            html::push_html(&mut ret, content.into_iter());
+                            write!(ret,
+                                   "&nbsp;<a href=\"#supref{}\" rev=\"footnote\">↩</a>",
+                                   id).unwrap();
+                            if is_paragraph {
+                                ret.push_str("</p>");
+                            }
+                            ret.push_str("</li>");
+                        }
+                        ret.push_str("</ol></div>");
+                        return Some(Event::Html(ret.into()));
+                    } else {
+                        return None;
+                    }
                 }
             }
         }
-        buffer.push_str(&format!("<tr>{}</tr>", content));
     }
-
-    fn table_head(parser: &mut Parser, buffer: &mut String, toc_builder: &mut Option<TocBuilder>,
-                  shorter: MarkdownOutputStyle) {
-        let mut content = String::new();
-        while let Some(event) = parser.next() {
-            match event {
-                Event::End(Tag::TableHead) | Event::End(Tag::Table(_)) => break,
-                Event::Start(Tag::TableCell) => {
-                    table_cell(parser, &mut content, toc_builder, shorter);
-                }
-                x => {
-                    looper(parser, &mut content, Some(x), toc_builder, shorter, &mut None);
-                }
-            }
-        }
-        if !content.is_empty() {
-            buffer.push_str(&format!("<thead><tr>{}</tr></thead>", content.replace("td>", "th>")));
-        }
-    }
-
-    fn table(parser: &mut Parser, buffer: &mut String, toc_builder: &mut Option<TocBuilder>,
-             shorter: MarkdownOutputStyle) {
-        let mut content = String::new();
-        let mut rows = String::new();
-        while let Some(event) = parser.next() {
-            match event {
-                Event::End(Tag::Table(_)) => break,
-                Event::Start(Tag::TableHead) => {
-                    table_head(parser, &mut content, toc_builder, shorter);
-                }
-                Event::Start(Tag::TableRow) => {
-                    table_row(parser, &mut rows, toc_builder, shorter);
-                }
-                _ => {}
-            }
-        }
-        buffer.push_str(&format!("<table>{}{}</table>",
-                                 content,
-                                 if shorter.is_compact() || rows.is_empty() {
-                                     String::new()
-                                 } else {
-                                     format!("<tbody>{}</tbody>", rows)
-                                 }));
-    }
-
-    fn blockquote(parser: &mut Parser, buffer: &mut String, toc_builder: &mut Option<TocBuilder>,
-                  shorter: MarkdownOutputStyle) {
-        let mut content = String::new();
-        event_loop_break!(parser, toc_builder, shorter, content, true, &mut None,
-                          Event::End(Tag::BlockQuote));
-        buffer.push_str(&format!("<blockquote>{}</blockquote>", content.trim_right()));
-    }
-
-    fn list_item(parser: &mut Parser, buffer: &mut String, toc_builder: &mut Option<TocBuilder>,
-                 shorter: MarkdownOutputStyle) {
-        let mut content = String::new();
-        while let Some(event) = parser.next() {
-            match event {
-                Event::End(Tag::Item) => break,
-                Event::Text(ref s) => {
-                    content.push_str(&format!("{}", Escape(s)));
-                }
-                x => {
-                    looper(parser, &mut content, Some(x), toc_builder, shorter, &mut None);
-                }
-            }
-        }
-        buffer.push_str(&format!("<li>{}</li>", content));
-    }
-
-    fn list(parser: &mut Parser, buffer: &mut String, toc_builder: &mut Option<TocBuilder>,
-            shorter: MarkdownOutputStyle) {
-        let mut content = String::new();
-        while let Some(event) = parser.next() {
-            match event {
-                Event::End(Tag::List(_)) => break,
-                Event::Start(Tag::Item) => {
-                    list_item(parser, &mut content, toc_builder, shorter);
-                }
-                x => {
-                    looper(parser, &mut content, Some(x), toc_builder, shorter, &mut None);
-                }
-            }
-        }
-        buffer.push_str(&format!("<ul>{}</ul>", content));
-    }
-
-    fn emphasis(parser: &mut Parser, buffer: &mut String, toc_builder: &mut Option<TocBuilder>,
-                shorter: MarkdownOutputStyle, id: &mut Option<&mut String>) {
-        let mut content = String::new();
-        event_loop_break!(parser, toc_builder, shorter, content, false, id,
-                          Event::End(Tag::Emphasis));
-        buffer.push_str(&format!("<em>{}</em>", content));
-    }
-
-    fn strong(parser: &mut Parser, buffer: &mut String, toc_builder: &mut Option<TocBuilder>,
-              shorter: MarkdownOutputStyle, id: &mut Option<&mut String>) {
-        let mut content = String::new();
-        event_loop_break!(parser, toc_builder, shorter, content, false, id,
-                          Event::End(Tag::Strong));
-        buffer.push_str(&format!("<strong>{}</strong>", content));
-    }
-
-    fn looper<'a>(parser: &'a mut Parser, buffer: &mut String, next_event: Option<Event<'a>>,
-                  toc_builder: &mut Option<TocBuilder>, shorter: MarkdownOutputStyle,
-                  id: &mut Option<&mut String>) -> bool {
-        if let Some(event) = next_event {
-            match event {
-                Event::Start(Tag::CodeBlock(lang)) => {
-                    code_block(parser, buffer, &*lang);
-                }
-                Event::Start(Tag::Header(level)) => {
-                    heading(parser, buffer, toc_builder, shorter, level);
-                }
-                Event::Start(Tag::Code) => {
-                    inline_code(parser, buffer, toc_builder, shorter, id);
-                }
-                Event::Start(Tag::Paragraph) => {
-                    paragraph(parser, buffer, toc_builder, shorter, id);
-                }
-                Event::Start(Tag::Link(ref url, ref t)) => {
-                    link(parser, buffer, toc_builder, shorter, url, t.as_ref().to_owned(), id);
-                }
-                Event::Start(Tag::Table(_)) => {
-                    table(parser, buffer, toc_builder, shorter);
-                }
-                Event::Start(Tag::BlockQuote) => {
-                    blockquote(parser, buffer, toc_builder, shorter);
-                }
-                Event::Start(Tag::List(_)) => {
-                    list(parser, buffer, toc_builder, shorter);
-                }
-                Event::Start(Tag::Emphasis) => {
-                    emphasis(parser, buffer, toc_builder, shorter, id);
-                }
-                Event::Start(Tag::Strong) => {
-                    strong(parser, buffer, toc_builder, shorter, id);
-                }
-                Event::Html(h) | Event::InlineHtml(h) => {
-                    buffer.push_str(&*h);
-                }
-                _ => {}
-            }
-            shorter.is_fancy()
-        } else {
-            false
-        }
-    }
-
-    let mut toc_builder = if print_toc {
-        Some(TocBuilder::new())
-    } else {
-        None
-    };
-    let mut buffer = String::new();
-    let mut parser = Parser::new_ext(s, pulldown_cmark::OPTION_ENABLE_TABLES);
-    loop {
-        let next_event = parser.next();
-        if !looper(&mut parser, &mut buffer, next_event, &mut toc_builder, shorter, &mut None) {
-            break
-        }
-    }
-    let mut ret = toc_builder.map_or(Ok(()), |builder| {
-        write!(w, "<nav id=\"TOC\">{}</nav>", builder.into_toc())
-    });
-
-    if ret.is_ok() {
-        ret = w.write_str(&buffer);
-    }
-    ret
 }
 
 pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector, position: Span) {
@@ -618,17 +501,45 @@ impl LangString {
 
 impl<'a> fmt::Display for Markdown<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        let Markdown(md, shorter) = *self;
+        let Markdown(md) = *self;
         // This is actually common enough to special-case
         if md.is_empty() { return Ok(()) }
-        render(fmt, md, false, shorter)
+
+        let mut opts = Options::empty();
+        opts.insert(OPTION_ENABLE_TABLES);
+        opts.insert(OPTION_ENABLE_FOOTNOTES);
+
+        let p = Parser::new_ext(md, opts);
+
+        let mut s = String::with_capacity(md.len() * 3 / 2);
+
+        html::push_html(&mut s,
+                        Footnotes::new(CodeBlocks::new(HeadingLinks::new(p, None))));
+
+        fmt.write_str(&s)
     }
 }
 
 impl<'a> fmt::Display for MarkdownWithToc<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         let MarkdownWithToc(md) = *self;
-        render(fmt, md, true, MarkdownOutputStyle::Fancy)
+
+        let mut opts = Options::empty();
+        opts.insert(OPTION_ENABLE_TABLES);
+        opts.insert(OPTION_ENABLE_FOOTNOTES);
+
+        let p = Parser::new_ext(md, opts);
+
+        let mut s = String::with_capacity(md.len() * 3 / 2);
+
+        let mut toc = TocBuilder::new();
+
+        html::push_html(&mut s,
+                        Footnotes::new(CodeBlocks::new(HeadingLinks::new(p, Some(&mut toc)))));
+
+        write!(fmt, "<nav id=\"TOC\">{}</nav>", toc.into_toc())?;
+
+        fmt.write_str(&s)
     }
 }
 
@@ -637,7 +548,41 @@ impl<'a> fmt::Display for MarkdownHtml<'a> {
         let MarkdownHtml(md) = *self;
         // This is actually common enough to special-case
         if md.is_empty() { return Ok(()) }
-        render(fmt, md, false, MarkdownOutputStyle::Fancy)
+
+        let mut opts = Options::empty();
+        opts.insert(OPTION_ENABLE_TABLES);
+        opts.insert(OPTION_ENABLE_FOOTNOTES);
+
+        let p = Parser::new_ext(md, opts);
+
+        // Treat inline HTML as plain text.
+        let p = p.map(|event| match event {
+            Event::Html(text) | Event::InlineHtml(text) => Event::Text(text),
+            _ => event
+        });
+
+        let mut s = String::with_capacity(md.len() * 3 / 2);
+
+        html::push_html(&mut s,
+                        Footnotes::new(CodeBlocks::new(HeadingLinks::new(p, None))));
+
+        fmt.write_str(&s)
+    }
+}
+
+impl<'a> fmt::Display for MarkdownSummaryLine<'a> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        let MarkdownSummaryLine(md) = *self;
+        // This is actually common enough to special-case
+        if md.is_empty() { return Ok(()) }
+
+        let p = Parser::new(md);
+
+        let mut s = String::new();
+
+        html::push_html(&mut s, SummaryLine::new(p));
+
+        fmt.write_str(&s)
     }
 }
 
@@ -659,14 +604,10 @@ pub fn plain_summary_line(md: &str) -> String {
             let next_event = next_event.unwrap();
             let (ret, is_in) = match next_event {
                 Event::Start(Tag::Paragraph) => (None, 1),
-                Event::Start(Tag::Link(_, ref t)) if !self.is_first => {
-                    (Some(t.as_ref().to_owned()), 1)
-                }
                 Event::Start(Tag::Code) => (Some("`".to_owned()), 1),
                 Event::End(Tag::Code) => (Some("`".to_owned()), -1),
                 Event::Start(Tag::Header(_)) => (None, 1),
                 Event::Text(ref s) if self.is_in > 0 => (Some(s.as_ref().to_owned()), 0),
-                Event::End(Tag::Link(_, ref t)) => (Some(t.as_ref().to_owned()), -1),
                 Event::End(Tag::Paragraph) | Event::End(Tag::Header(_)) => (None, -1),
                 _ => (None, 0),
             };
@@ -697,7 +638,7 @@ pub fn plain_summary_line(md: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{LangString, Markdown, MarkdownHtml, MarkdownOutputStyle};
+    use super::{LangString, Markdown, MarkdownHtml};
     use super::plain_summary_line;
     use html::render::reset_ids;
 
@@ -737,14 +678,14 @@ mod tests {
     #[test]
     fn issue_17736() {
         let markdown = "# title";
-        format!("{}", Markdown(markdown, MarkdownOutputStyle::Fancy));
+        format!("{}", Markdown(markdown));
         reset_ids(true);
     }
 
     #[test]
     fn test_header() {
         fn t(input: &str, expect: &str) {
-            let output = format!("{}", Markdown(input, MarkdownOutputStyle::Fancy));
+            let output = format!("{}", Markdown(input));
             assert_eq!(output, expect, "original: {}", input);
             reset_ids(true);
         }
@@ -766,7 +707,7 @@ mod tests {
     #[test]
     fn test_header_ids_multiple_blocks() {
         fn t(input: &str, expect: &str) {
-            let output = format!("{}", Markdown(input, MarkdownOutputStyle::Fancy));
+            let output = format!("{}", Markdown(input));
             assert_eq!(output, expect, "original: {}", input);
         }
 
@@ -797,6 +738,7 @@ mod tests {
         }
 
         t("hello [Rust](https://www.rust-lang.org) :)", "hello Rust :)");
+        t("hello [Rust](https://www.rust-lang.org \"Rust\") :)", "hello Rust :)");
         t("code `let x = i32;` ...", "code `let x = i32;` ...");
         t("type `Type<'static>` ...", "type `Type<'static>` ...");
         t("# top header", "top header");
@@ -810,7 +752,8 @@ mod tests {
             assert_eq!(output, expect, "original: {}", input);
         }
 
-        t("`Struct<'a, T>`", "<p><code>Struct&lt;&#39;a, T&gt;</code></p>");
-        t("Struct<'a, T>", "<p>Struct&lt;&#39;a, T&gt;</p>");
+        t("`Struct<'a, T>`", "<p><code>Struct&lt;'a, T&gt;</code></p>\n");
+        t("Struct<'a, T>", "<p>Struct&lt;'a, T&gt;</p>\n");
+        t("Struct<br>", "<p>Struct&lt;br&gt;</p>\n");
     }
 }

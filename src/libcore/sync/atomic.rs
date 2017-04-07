@@ -153,8 +153,9 @@ unsafe impl<T> Sync for AtomicPtr<T> {}
 /// Rust's memory orderings are [the same as
 /// LLVM's](http://llvm.org/docs/LangRef.html#memory-model-for-concurrent-operations).
 ///
-/// For more information see the [nomicon][1].
-/// [1]: ../../../nomicon/atomics.html
+/// For more information see the [nomicon].
+///
+/// [nomicon]: ../../../nomicon/atomics.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Copy, Clone, Debug)]
 pub enum Ordering {
@@ -321,7 +322,7 @@ impl AtomicBool {
         }
     }
 
-    /// Stores a value into the bool, returning the old value.
+    /// Stores a value into the bool, returning the previous value.
     ///
     /// `swap` takes an [`Ordering`] argument which describes the memory ordering
     /// of this operation.
@@ -732,7 +733,7 @@ impl<T> AtomicPtr<T> {
         }
     }
 
-    /// Stores a value into the pointer, returning the old value.
+    /// Stores a value into the pointer, returning the previous value.
     ///
     /// `swap` takes an [`Ordering`] argument which describes the memory ordering
     /// of this operation.
@@ -1047,7 +1048,7 @@ macro_rules! atomic_int {
                 unsafe { atomic_store(self.v.get(), val, order); }
             }
 
-            /// Stores a value into the atomic integer, returning the old value.
+            /// Stores a value into the atomic integer, returning the previous value.
             ///
             /// `swap` takes an [`Ordering`] argument which describes the memory ordering of this
             /// operation.
@@ -1201,7 +1202,9 @@ macro_rules! atomic_int {
                 }
             }
 
-            /// Add to the current value, returning the previous value.
+            /// Adds to the current value, returning the previous value.
+            ///
+            /// This operation wraps around on overflow.
             ///
             /// # Examples
             ///
@@ -1218,7 +1221,9 @@ macro_rules! atomic_int {
                 unsafe { atomic_add(self.v.get(), val, order) }
             }
 
-            /// Subtract from the current value, returning the previous value.
+            /// Subtracts from the current value, returning the previous value.
+            ///
+            /// This operation wraps around on overflow.
             ///
             /// # Examples
             ///
@@ -1235,7 +1240,12 @@ macro_rules! atomic_int {
                 unsafe { atomic_sub(self.v.get(), val, order) }
             }
 
-            /// Bitwise and with the current value, returning the previous value.
+            /// Bitwise "and" with the current value.
+            ///
+            /// Performs a bitwise "and" operation on the current value and the argument `val`, and
+            /// sets the new value to the result.
+            ///
+            /// Returns the previous value.
             ///
             /// # Examples
             ///
@@ -1251,7 +1261,12 @@ macro_rules! atomic_int {
                 unsafe { atomic_and(self.v.get(), val, order) }
             }
 
-            /// Bitwise or with the current value, returning the previous value.
+            /// Bitwise "or" with the current value.
+            ///
+            /// Performs a bitwise "or" operation on the current value and the argument `val`, and
+            /// sets the new value to the result.
+            ///
+            /// Returns the previous value.
             ///
             /// # Examples
             ///
@@ -1267,7 +1282,12 @@ macro_rules! atomic_int {
                 unsafe { atomic_or(self.v.get(), val, order) }
             }
 
-            /// Bitwise xor with the current value, returning the previous value.
+            /// Bitwise "xor" with the current value.
+            ///
+            /// Performs a bitwise "xor" operation on the current value and the argument `val`, and
+            /// sets the new value to the result.
+            ///
+            /// Returns the previous value.
             ///
             /// # Examples
             ///
@@ -1415,7 +1435,7 @@ unsafe fn atomic_swap<T>(dst: *mut T, val: T, order: Ordering) -> T {
     }
 }
 
-/// Returns the old value (like __sync_fetch_and_add).
+/// Returns the previous value (like __sync_fetch_and_add).
 #[inline]
 unsafe fn atomic_add<T>(dst: *mut T, val: T, order: Ordering) -> T {
     match order {
@@ -1428,7 +1448,7 @@ unsafe fn atomic_add<T>(dst: *mut T, val: T, order: Ordering) -> T {
     }
 }
 
-/// Returns the old value (like __sync_fetch_and_sub).
+/// Returns the previous value (like __sync_fetch_and_sub).
 #[inline]
 unsafe fn atomic_sub<T>(dst: *mut T, val: T, order: Ordering) -> T {
     match order {

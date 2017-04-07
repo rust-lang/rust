@@ -1,0 +1,8 @@
+error: missing `fn` for method declaration
+  --> $DIR/issue-40006.rs:14:8
+   |
+14 |     pub hello_method(&self) {
+   |        ^ missing `fn`
+
+error: aborting due to previous error
+

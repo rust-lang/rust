@@ -222,8 +222,10 @@ impl<'a> base::Resolver for Resolver<'a> {
             let name = unwrap_or!(attrs[i].name(), continue);
 
             if name == "derive" {
-                let result = attrs[i].parse_list(&self.session.parse_sess,
-                                                 |parser| parser.parse_path(PathStyle::Mod));
+                let result = attrs[i].parse_list(&self.session.parse_sess, |parser| {
+                    parser.parse_path_allowing_meta(PathStyle::Mod)
+                });
+
                 let mut traits = match result {
                     Ok(traits) => traits,
                     Err(mut e) => {

@@ -75,7 +75,7 @@ const EXCEPTION_PATHS: &'static [&'static str] = &[
     "src/libtest", // Probably should defer to unstable std::sys APIs
 
     // std testing crates, ok for now at least
-    "src/libcoretest",
+    "src/libcore/tests",
 
     // non-std crates
     "src/test",

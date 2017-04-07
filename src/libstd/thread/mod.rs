@@ -90,7 +90,7 @@
 //! two ways:
 //!
 //! * By spawning a new thread, e.g. using the [`thread::spawn`][`spawn`]
-//!   function, and calling [`thread`] on the [`JoinHandle`].
+//!   function, and calling [`thread`][`JoinHandle::thread`] on the [`JoinHandle`].
 //! * By requesting the current thread, using the [`thread::current`] function.
 //!
 //! The [`thread::current`] function is available even for threads not spawned
@@ -151,14 +151,14 @@
 //! [`Arc`]: ../../std/sync/struct.Arc.html
 //! [`spawn`]: ../../std/thread/fn.spawn.html
 //! [`JoinHandle`]: ../../std/thread/struct.JoinHandle.html
-//! [`thread`]: ../../std/thread/struct.JoinHandle.html#method.thread
+//! [`JoinHandle::thread`]: ../../std/thread/struct.JoinHandle.html#method.thread
 //! [`join`]: ../../std/thread/struct.JoinHandle.html#method.join
 //! [`Result`]: ../../std/result/enum.Result.html
 //! [`Ok`]: ../../std/result/enum.Result.html#variant.Ok
 //! [`Err`]: ../../std/result/enum.Result.html#variant.Err
 //! [`panic!`]: ../../std/macro.panic.html
 //! [`Builder`]: ../../std/thread/struct.Builder.html
-//! [`thread::current`]: ../../std/thread/fn.spawn.html
+//! [`thread::current`]: ../../std/thread/fn.current.html
 //! [`Thread`]: ../../std/thread/struct.Thread.html
 //! [`park`]: ../../std/thread/fn.park.html
 //! [`unpark`]: ../../std/thread/struct.Thread.html#method.unpark

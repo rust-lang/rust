@@ -15,7 +15,7 @@ set -ex
 export CFLAGS="-fPIC -Wa,-mrelax-relocations=no"
 export CXXFLAGS="-Wa,-mrelax-relocations=no"
 
-MUSL=musl-1.1.14
+MUSL=musl-1.1.16
 curl https://www.musl-libc.org/releases/$MUSL.tar.gz | tar xzf -
 cd $MUSL
 ./configure --prefix=/musl-x86_64 --disable-shared
