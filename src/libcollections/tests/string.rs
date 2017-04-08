@@ -420,6 +420,14 @@ fn test_drain() {
 }
 
 #[test]
+fn test_splice() {
+    let mut s = "Hello, world!".to_owned();
+    let t: String = s.splice(7..12, "世界").collect();
+    assert_eq!(s, "Hello, 世界!");
+    assert_eq!(t, "world");
+}
+
+#[test]
 fn test_extend_ref() {
     let mut a = "foo".to_string();
     a.extend(&['b', 'a', 'r']);
