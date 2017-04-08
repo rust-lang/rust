@@ -137,7 +137,9 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
         while let Some(krate) = list.pop() {
             let default = krate == name;
             let krate = &build.crates[krate];
-            let path = krate.path.strip_prefix(&build.src).unwrap();
+            let path = krate.path.strip_prefix(&build.src)
+                // This handles out of tree paths
+                .unwrap_or(&krate.path);
             ret.push((krate, path.to_str().unwrap(), default));
             for dep in krate.deps.iter() {
                 if visited.insert(dep) && dep != "build_helper" {
