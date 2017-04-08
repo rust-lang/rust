@@ -1519,13 +1519,9 @@ impl<T: Clone> ToOwned for [T] {
         self.to_vec()
     }
 
-    // HACK(japaric): with cfg(test) the inherent `[T]::to_vec`, which is required for this method
-    // definition, is not available. Since we don't require this method for testing purposes, I'll
-    // just stub it
-    // NB see the slice::hack module in slice.rs for more information
     #[cfg(test)]
     fn to_owned(&self) -> Vec<T> {
-        panic!("not available with cfg(test)")
+        hack::to_vec(self)
     }
 
     fn clone_into(&self, target: &mut Vec<T>) {

@@ -580,6 +580,16 @@ fn test_drain_inclusive_out_of_bounds() {
 }
 
 #[test]
+fn splice() {
+    let mut v = vec![1, 2, 3, 4, 5];
+    let a = [10, 11, 12];
+    v.splice(2..4, a.iter().cloned());
+    assert_eq!(v, &[1, 2, 10, 11, 12, 5]);
+    v.splice(1..3, Some(20));
+    assert_eq!(v, &[1, 20, 11, 12, 5]);
+}
+
+#[test]
 fn test_into_boxed_slice() {
     let xs = vec![1, 2, 3];
     let ys = xs.into_boxed_slice();
