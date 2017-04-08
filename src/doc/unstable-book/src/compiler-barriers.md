@@ -22,8 +22,9 @@ compiler is allowed to do. Specifically, depending on the given ordering
 semantics, the compiler may be disallowed from moving reads or writes
 from before or after the call to the other side of the call to
 `compiler_barrier`. Note that it does **not** prevent the *hardware*
-from doing such re-orderings -- for that, the `volatile_*` class of
-functions, or full memory fences, need to be used.
+from doing such re-ordering. This is not a problem in a single-threaded,
+execution context, but when other threads may modify memory at the same
+time, stronger synchronization primitives are required.
 
 ## Examples
 
@@ -91,12 +92,6 @@ fn signal_handler() {
     }
 }
 ```
-
-In more advanced cases (for example, if `IMPORTANT_VARIABLE` was an
-`AtomicPtr` that starts as `NULL`), it may also be unsafe for the
-compiler to hoist code using `IMPORTANT_VARIABLE` above the
-`IS_READY.load`. In that case, a `compiler_barrier(Ordering::Acquire)`
-should be placed at the top of the `if` to prevent this optimizations.
 
 A deeper discussion of compiler barriers with various re-ordering
 semantics (such as `Ordering::SeqCst`) is beyond the scope of this text.
