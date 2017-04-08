@@ -2222,6 +2222,7 @@ impl<'a> Resolver<'a> {
                                    -> PathResolution {
         let ns = source.namespace();
         let is_expected = &|def| source.is_expected(def);
+        let is_enum_variant = &|def| if let Def::Variant(..) = def { true } else { false };
 
         // Base error is amended with one short label and possibly some longer helps/notes.
         let report_errors = |this: &mut Self, def: Option<Def>| {
@@ -2272,6 +2273,21 @@ impl<'a> Resolver<'a> {
             if !candidates.is_empty() {
                 // Report import candidates as help and proceed searching for labels.
                 show_candidates(&mut err, &candidates, def.is_some());
+            } else if is_expected(Def::Enum(DefId::local(CRATE_DEF_INDEX))) {
+                let enum_candidates = this.lookup_import_candidates(name, ns, is_enum_variant);
+                let mut enum_candidates = enum_candidates.iter()
+                    .map(|suggestion| import_candidate_to_paths(&suggestion)).collect::<Vec<_>>();
+                enum_candidates.sort();
+                for (sp, variant_path, enum_path) in enum_candidates {
+                    let msg = format!("there is an enum variant `{}`, did you mean to use `{}`?",
+                                      variant_path,
+                                      enum_path);
+                    if sp == DUMMY_SP {
+                        err.help(&msg);
+                    } else {
+                        err.span_help(sp, &msg);
+                    }
+                }
             }
             if path.len() == 1 && this.self_type_is_available() {
                 if let Some(candidate) = this.lookup_assoc_candidate(name, ns, is_expected) {
@@ -3423,6 +3439,22 @@ fn names_to_string(idents: &[Ident]) -> String {
 fn path_names_to_string(path: &Path) -> String {
     names_to_string(&path.segments.iter().map(|seg| seg.identifier).collect::<Vec<_>>())
 }
+
+/// Get the path for an enum and the variant from an `ImportSuggestion` for an enum variant.
+fn import_candidate_to_paths(suggestion: &ImportSuggestion) -> (Span, String, String) {
+    let variant_path = &suggestion.path;
+    let variant_path_string = path_names_to_string(variant_path);
+
+    let path_len = suggestion.path.segments.len();
+    let enum_path = ast::Path {
+        span: suggestion.path.span,
+        segments: suggestion.path.segments[0..path_len - 1].to_vec(),
+    };
+    let enum_path_string = path_names_to_string(&enum_path);
+
+    (suggestion.path.span, variant_path_string, enum_path_string)
+}
+
 
 /// When an entity with a given name is not available in scope, we search for
 /// entities with that name in all crates. This method allows outputting the
