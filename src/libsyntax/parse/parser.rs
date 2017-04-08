@@ -407,6 +407,25 @@ impl From<P<Expr>> for LhsExpr {
     }
 }
 
+/// Create a placeholder argument.
+fn dummy_arg(span: Span) -> Arg {
+    let spanned = Spanned {
+        span: span,
+        node: keywords::Invalid.ident()
+    };
+    let pat = P(Pat {
+        id: ast::DUMMY_NODE_ID,
+        node: PatKind::Ident(BindingMode::ByValue(Mutability::Immutable), spanned, None),
+        span: span
+    });
+    let ty = Ty {
+        node: TyKind::Err,
+        span: span,
+        id: ast::DUMMY_NODE_ID
+    };
+    Arg { ty: P(ty), pat: pat, id: ast::DUMMY_NODE_ID }
+}
+
 impl<'a> Parser<'a> {
     pub fn new(sess: &'a ParseSess,
                tokens: TokenStream,
@@ -4376,8 +4395,12 @@ impl<'a> Parser<'a> {
                             Ok(arg) => Ok(Some(arg)),
                             Err(mut e) => {
                                 e.emit();
+                                let lo = p.prev_span;
+                                // Skip every token until next possible arg or end.
                                 p.eat_to_tokens(&[&token::Comma, &token::CloseDelim(token::Paren)]);
-                                Ok(None)
+                                // Create a placeholder argument for proper arg count (#34264).
+                                let span = lo.to(p.prev_span);
+                                Ok(Some(dummy_arg(span)))
                             }
                         }
                     }

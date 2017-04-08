@@ -1229,6 +1229,9 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 // handled specially and will not descend into this routine.
                 self.ty_infer(ast_ty.span)
             }
+            hir::TyErr => {
+                tcx.types.err
+            }
         };
 
         cache.borrow_mut().insert(ast_ty.id, result_ty);

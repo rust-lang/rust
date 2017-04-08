@@ -230,6 +230,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for hir::Ty {
             hir::TyTraitObject(..) |
             hir::TyImplTrait(..)   |
             hir::TyTypeof(..)      |
+            hir::TyErr             |
             hir::TyInfer           => {
                 NodeIdHashingMode::Ignore
             }
@@ -282,6 +283,7 @@ impl_stable_hash_for!(enum hir::Ty_ {
     TyTraitObject(trait_refs, lifetime),
     TyImplTrait(bounds),
     TyTypeof(body_id),
+    TyErr,
     TyInfer
 });
 
