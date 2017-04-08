@@ -1591,6 +1591,47 @@ pub fn fence(order: Ordering) {
 }
 
 
+/// A compiler memory barrier.
+///
+/// `compiler_barrier` does not emit any machine code, but prevents the compiler from re-ordering
+/// memory operations across this point. Which reorderings are disallowed is dictated by the given
+/// [`Ordering`]. Note that `compiler_barrier` does *not* introduce inter-thread memory
+/// synchronization; for that, a [`fence`] is needed.
+///
+/// The re-ordering prevented by the different ordering semantics are:
+///
+///  - with [`SeqCst`], no re-ordering of reads and writes across this point is allowed.
+///  - with [`Release`], preceding reads and writes cannot be moved past subsequent writes.
+///  - with [`Acquire`], subsequent reads and writes cannot be moved ahead of preceding reads.
+///  - with [`AcqRel`], both of the above rules are enforced.
+///
+/// # Panics
+///
+/// Panics if `order` is [`Relaxed`].
+///
+/// [`fence`]: fn.fence.html
+/// [`Ordering`]: enum.Ordering.html
+/// [`Acquire`]: enum.Ordering.html#variant.Acquire
+/// [`SeqCst`]: enum.Ordering.html#variant.SeqCst
+/// [`Release`]: enum.Ordering.html#variant.Release
+/// [`AcqRel`]: enum.Ordering.html#variant.AcqRel
+/// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
+#[inline]
+#[unstable(feature = "compiler_barriers", issue = "41091")]
+pub fn compiler_barrier(order: Ordering) {
+    unsafe {
+        match order {
+            Acquire => intrinsics::atomic_singlethreadfence_acq(),
+            Release => intrinsics::atomic_singlethreadfence_rel(),
+            AcqRel => intrinsics::atomic_singlethreadfence_acqrel(),
+            SeqCst => intrinsics::atomic_singlethreadfence(),
+            Relaxed => panic!("there is no such thing as a relaxed barrier"),
+            __Nonexhaustive => panic!("invalid memory ordering"),
+        }
+    }
+}
+
+
 #[cfg(target_has_atomic = "8")]
 #[stable(feature = "atomic_debug", since = "1.3.0")]
 impl fmt::Debug for AtomicBool {
