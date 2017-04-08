@@ -366,13 +366,6 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
                 let lv_ty = lv.ty(mir, tcx).to_ty(tcx);
                 let rv_ty = rv.ty(mir, tcx);
                 if let Err(terr) = self.sub_types(rv_ty, lv_ty) {
-                    for (bb, bb_data) in mir.basic_blocks().iter_enumerated() {
-                        for stmt2 in &bb_data.statements {
-                            if stmt2.source_info == stmt.source_info {
-                                println!("for {:?} / {:#?}", bb, bb_data);
-                            }
-                        }
-                    }
                     span_mirbug!(self, stmt, "bad assignment ({:?} = {:?}): {:?}",
                                  lv_ty, rv_ty, terr);
                 }
@@ -582,17 +575,17 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     {
         let is_cleanup = block.is_cleanup;
 
-        for stmt in &block.statements {
-            match stmt.kind {
-                StatementKind::Call { cleanup, .. } => {
-                    if let Some(cleanup) = cleanup {
-                        if is_cleanup {
-                            span_mirbug!(self, block, "cleanup on cleanup block")
-                        }
-                        self.assert_iscleanup(mir, block, cleanup, true);
-                    }
+        // FIXME(simulacrum): Handle calls in EBBs
+        if let Some(&StatementKind::Call { cleanup, .. }) =
+            block.statements.last().map(|s| &s.kind) {
+            if let TerminatorKind::Goto { target } = block.terminator().kind {
+                self.assert_iscleanup(mir, block, target, is_cleanup);
+            }
+            if let Some(cleanup) = cleanup {
+                if is_cleanup {
+                    span_mirbug!(self, block, "cleanup on cleanup block")
                 }
-                _ => {}
+                self.assert_iscleanup(mir, block, cleanup, true);
             }
         }
 

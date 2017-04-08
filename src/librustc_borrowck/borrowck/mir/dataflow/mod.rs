@@ -434,30 +434,17 @@ impl<'a, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D>
         (bb, bb_data): (mir::Block, &mir::BlockData))
     {
         for succ in self.mir.successors_for(bb).iter() {
-            debug!("successor for {:?}: {:?}", bb, succ);
             self.propagate_bits_into_entry_set_for(in_out, changed, succ);
         }
 
-        let mut seen_call = false;
-        for stmt in bb_data.statements.iter() {
-            match stmt.kind {
-                mir::StatementKind::Assign(..) |
-                mir::StatementKind::SetDiscriminant { .. } |
-                mir::StatementKind::StorageLive(..) |
-                mir::StatementKind::StorageDead(..) |
-                mir::StatementKind::InlineAsm { .. } |
-                mir::StatementKind::Assert { .. } |
-                mir::StatementKind::Nop => {},
-                mir::StatementKind::Call { ref destination, .. } => {
-                    // N.B.: This must be done *last*, after all other
-                    // propagation, as documented in comment above.
-                    // XXX: Do this after all other calls?
-                    debug!("bck: {:?}: looking at call {:?} in {:?}", bb, stmt, bb_data.statements);
-                    assert!(seen_call == false);
-                    seen_call = true;
-                    self.flow_state.operator.propagate_call_return(in_out, bb, destination);
-                }
-            }
+        // FIXME(simulacrum): Handle calls in EBBs
+        if let (
+            Some(&mir::StatementKind::Call { ref destination, .. }),
+            &mir::TerminatorKind::Goto { .. }
+        ) = (bb_data.statements.last().map(|s| &s.kind), &bb_data.terminator().kind) {
+            // N.B.: This must be done *last*, after all other
+            // propagation, as documented in comment above.
+            self.flow_state.operator.propagate_call_return(in_out, bb, destination);
         }
     }
 
