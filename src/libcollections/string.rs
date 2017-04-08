@@ -1386,8 +1386,8 @@ impl String {
     /// replaces with the given string, and yields the removed chars.
     /// The given string doesn’t need to be the same length as the range.
     ///
-    /// Note: The element range is removed even if the iterator is not
-    /// consumed until the end.
+    /// Note: The element range is removed when the `Splice` is dropped,
+    /// even if the iterator is not consumed until the end.
     ///
     /// # Panics
     ///

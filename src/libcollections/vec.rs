@@ -1063,7 +1063,7 @@ impl<T> Vec<T> {
     /// Note 1: The element range is removed even if the iterator is only
     /// partially consumed or not consumed at all.
     ///
-    /// Note 2: It is unspecified how many elements are removed from the vector,
+    /// Note 2: It is unspecified how many elements are removed from the vector
     /// if the `Drain` value is leaked.
     ///
     /// # Panics
