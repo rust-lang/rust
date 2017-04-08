@@ -36,7 +36,7 @@ $ xargo rustc --target thumbv7m-none-eabi -- \
 
 Whereas the default is:
 
-```
+``` text
 $ xargo rustc --target thumbv7m-none-eabi -- \
     -C link-arg=-nostartfiles \
     -Z print-link-args | tr ' ' '\n'
