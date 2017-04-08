@@ -1410,6 +1410,7 @@ impl FromUtf8Error {
     /// Basic usage:
     ///
     /// ```
+    /// #![feature(from_utf8_error_as_bytes)]
     /// // some invalid bytes, in a vector
     /// let bytes = vec![0, 159];
     ///
