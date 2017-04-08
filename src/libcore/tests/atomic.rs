@@ -24,8 +24,21 @@ fn bool_() {
 #[test]
 fn bool_and() {
     let a = AtomicBool::new(true);
-    assert_eq!(a.fetch_and(false, SeqCst),true);
+    assert_eq!(a.fetch_and(false, SeqCst), true);
     assert_eq!(a.load(SeqCst),false);
+}
+
+#[test]
+fn bool_nand() {
+    let a = AtomicBool::new(false);
+    assert_eq!(a.fetch_nand(false, SeqCst), false);
+    assert_eq!(a.load(SeqCst), true);
+    assert_eq!(a.fetch_nand(false, SeqCst), true);
+    assert_eq!(a.load(SeqCst), true);
+    assert_eq!(a.fetch_nand(true, SeqCst), true);
+    assert_eq!(a.load(SeqCst), false);
+    assert_eq!(a.fetch_nand(true, SeqCst), false);
+    assert_eq!(a.load(SeqCst), true);
 }
 
 #[test]
