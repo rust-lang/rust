@@ -2394,7 +2394,14 @@ impl<'a, T> InPlace<T> for PlaceBack<'a, T> {
 }
 
 
-/// A splicing iterator for `Vec<T>`. See the [`Vec::splice`](struct.Vec.html#method.splice) method.
+/// A splicing iterator for `Vec`.
+///
+/// This struct is created by the [`splice()`] method on [`Vec`]. See its
+/// documentation for more.
+///
+/// [`splice()`]: struct.Vec.html#method.splice
+/// [`Vec`]: struct.Vec.html
+#[derive(Debug)]
 #[unstable(feature = "splice", reason = "recently added", issue = "32310")]
 pub struct Splice<'a, I: Iterator + 'a> {
     drain: Drain<'a, I::Item>,
@@ -2434,7 +2441,7 @@ impl<'a, I: Iterator> Drop for Splice<'a, I> {
 
         unsafe {
             if self.drain.tail_len == 0 {
-                let vec = &mut *self.drain.vec;
+                let vec = &mut *self.drain.vec.as_mut_ptr();
                 vec.extend(self.replace_with.by_ref());
                 return
             }
@@ -2476,7 +2483,7 @@ impl<'a, T> Drain<'a, T> {
     /// Fill that range as much as possible with new elements from the `replace_with` iterator.
     /// Return whether we filled the entire range. (`replace_with.next()` didn’t return `None`.)
     unsafe fn fill<I: Iterator<Item=T>>(&mut self, replace_with: &mut I) -> bool {
-        let vec = &mut *self.vec;
+        let vec = &mut *self.vec.as_mut_ptr();
         let range_start = vec.len;
         let range_end = self.tail_start;
         let range_slice = slice::from_raw_parts_mut(
@@ -2496,7 +2503,7 @@ impl<'a, T> Drain<'a, T> {
 
     /// Make room for inserting more elements before the tail.
     unsafe fn move_tail(&mut self, extra_capacity: usize) {
-        let vec = &mut *self.vec;
+        let vec = &mut *self.vec.as_mut_ptr();
         let used_capacity = self.tail_start + self.tail_len;
         vec.buf.reserve(used_capacity, extra_capacity);
 

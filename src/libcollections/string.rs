@@ -1421,8 +1421,16 @@ impl String {
         // Because the range removal happens in Drop, if the Splice iterator is leaked,
         // the removal will not happen.
         let len = self.len();
-        let start = *range.start().unwrap_or(&0);
-        let end = *range.end().unwrap_or(&len);
+        let start = match range.start() {
+             Included(&n) => n,
+             Excluded(&n) => n + 1,
+             Unbounded => 0,
+        };
+        let end = match range.end() {
+             Included(&n) => n + 1,
+             Excluded(&n) => n,
+             Unbounded => len,
+        };
 
         // Take out two simultaneous borrows. The &mut String won't be accessed
         // until iteration is over, in Drop.
@@ -2210,6 +2218,7 @@ impl<'a> FusedIterator for Drain<'a> {}
 ///
 /// [`splice()`]: struct.String.html#method.splice
 /// [`String`]: struct.String.html
+#[derive(Debug)]
 #[unstable(feature = "splice", reason = "recently added", issue = "32310")]
 pub struct Splice<'a, 'b> {
     /// Will be used as &'a mut String in the destructor
