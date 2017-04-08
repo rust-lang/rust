@@ -1418,7 +1418,7 @@ impl FromUtf8Error {
     ///
     /// assert_eq!(&[0, 159], value.unwrap_err().as_bytes());
     /// ```
-    #[unstable(feature = "from_utf8_error_as_bytes", issue = "40895")]
+    #[unstable(feature = "from_utf8_error_as_bytes", reason = "recently added", issue = "40895")]
     pub fn as_bytes(&self) -> &[u8] {
         &self.bytes[..]
     }
