@@ -2242,21 +2242,7 @@ impl<'a, 'b> Drop for Splice<'a, 'b> {
     fn drop(&mut self) {
         unsafe {
             let vec = (*self.string).as_mut_vec();
-            let range_len = self.end - self.start;
-            let replacement_len = self.replace_with.len();
-            let tail_len = vec.len() - self.end;
-            if replacement_len > range_len {
-                vec.reserve(replacement_len - range_len);
-            }
-            if replacement_len != range_len {
-                let src = vec.as_ptr().offset(self.end as isize);
-                let dst = vec.as_mut_ptr().offset((self.start + replacement_len) as isize);
-                ptr::copy(src, dst, tail_len);
-            }
-            let src = self.replace_with.as_ptr();
-            let dst = vec.as_mut_ptr().offset(self.start as isize);
-            ptr::copy(src, dst, replacement_len);
-            vec.set_len(self.start + replacement_len + tail_len);
+            vec.splice(self.start..self.end, self.replace_with.bytes());
         }
     }
 }
