@@ -217,6 +217,9 @@ fn main() {
     // hack around this by replacing the host triple with the target and pray
     // that those -L directories are the same!
     let mut cmd = Command::new(&llvm_config);
+    if let Some(link_arg) = llvm_link_arg {
+        cmd.arg(link_arg);
+    }
     cmd.arg("--ldflags");
     for lib in output(&mut cmd).split_whitespace() {
         if lib.starts_with("-LIBPATH:") {
