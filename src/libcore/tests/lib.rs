@@ -20,6 +20,7 @@
 #![feature(fixed_size_array)]
 #![feature(flt2dec)]
 #![feature(fmt_internals)]
+#![feature(iter_rfind)]
 #![feature(libc)]
 #![feature(nonzero)]
 #![feature(rand)]
