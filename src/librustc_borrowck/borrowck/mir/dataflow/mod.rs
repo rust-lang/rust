@@ -442,6 +442,7 @@ impl<'a, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D>
             Some(&mir::StatementKind::Call { ref destination, .. }),
             &mir::TerminatorKind::Goto { .. }
         ) = (bb_data.statements.last().map(|s| &s.kind), &bb_data.terminator().kind) {
+            // FIXME(simulacrum): This NB is potentially needless.
             // N.B.: This must be done *last*, after all other
             // propagation, as documented in comment above.
             self.flow_state.operator.propagate_call_return(in_out, bb, destination);

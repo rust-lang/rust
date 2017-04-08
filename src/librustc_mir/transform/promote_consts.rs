@@ -203,65 +203,42 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
 
         // First, take the Rvalue or Call out of the source MIR,
         // or duplicate it, depending on keep_original.
-        #[derive(Debug)]
-        enum StmtKind {
-            Assign,
-            Call,
-        }
-
-        let stmt_kind = match self.source[loc.block].statements[loc.statement_index].kind {
-            StatementKind::Call { .. } => StmtKind::Call,
-            StatementKind::Assign(..) => StmtKind::Assign,
+        let kind = match self.source[loc.block].statements[loc.statement_index].kind {
+            StatementKind::Call { .. } |
+            StatementKind::Assign(..) => {
+                if self.keep_original {
+                    self.source[loc.block].statements[loc.statement_index].kind.clone()
+                } else {
+                    mem::replace(&mut self.source[loc.block].statements[loc.statement_index].kind,
+                        StatementKind::Nop)
+                }
+            }
             _ => {
                 let statement = &self.source[loc.block].statements[loc.statement_index];
                 span_bug!(statement.source_info.span, "{:?} not promotable", statement.kind);
             }
         };
 
-        let kind = match stmt_kind {
-            StmtKind::Assign => {
-                let mut rvalue = {
-                    let statement = &mut self.source[loc.block].statements[loc.statement_index];
-                    let rhs = if let StatementKind::Assign(_, ref mut rhs) = statement.kind {
-                        rhs
-                    } else {
-                        bug!()
-                    };
 
-                    if self.keep_original {
-                        rhs.clone()
-                    } else {
-                        let unit = Rvalue::Aggregate(AggregateKind::Tuple, vec![]);
-                        mem::replace(rhs, unit)
-                    }
-                };
-                self.visit_rvalue(&mut rvalue, loc);
-                StatementKind::Assign(Lvalue::Local(new_temp), rvalue)
+        let kind = match kind {
+            StatementKind::Assign(_, mut rhs) => {
+                self.visit_rvalue(&mut rhs, loc);
+                StatementKind::Assign(Lvalue::Local(new_temp), rhs)
             }
-            StmtKind::Call => {
-                let kind = if self.keep_original {
-                    self.source[loc.block].statements[loc.statement_index].kind.clone()
-                } else {
-                    mem::replace(&mut self.source[loc.block].statements[loc.statement_index].kind,
-                        StatementKind::Nop)
-                };
-
-                if let StatementKind::Call { mut func, mut args, .. } = kind {
-                    self.visit_operand(&mut func, loc);
-                    for arg in &mut args {
-                        self.visit_operand(arg, loc);
-                    }
-
-                    StatementKind::Call {
-                        func: func,
-                        args: args,
-                        cleanup: None,
-                        destination: Lvalue::Local(new_temp),
-                    }
-                } else {
-                    bug!()
+            StatementKind::Call { mut func, mut args, .. } => {
+                self.visit_operand(&mut func, loc);
+                for arg in &mut args {
+                    self.visit_operand(arg, loc);
                 }
-            },
+
+                StatementKind::Call {
+                    func: func,
+                    args: args,
+                    cleanup: None,
+                    destination: Lvalue::Local(new_temp),
+                }
+            }
+            _ => bug!()
         };
 
         let last = self.promoted.basic_blocks().last().unwrap();

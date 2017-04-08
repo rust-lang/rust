@@ -575,17 +575,18 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
     {
         let is_cleanup = block.is_cleanup;
 
-        // FIXME(simulacrum): Handle calls in EBBs
-        if let Some(&StatementKind::Call { cleanup, .. }) =
-            block.statements.last().map(|s| &s.kind) {
-            if let TerminatorKind::Goto { target } = block.terminator().kind {
-                self.assert_iscleanup(mir, block, target, is_cleanup);
-            }
-            if let Some(cleanup) = cleanup {
-                if is_cleanup {
-                    span_mirbug!(self, block, "cleanup on cleanup block")
+        for stmt in &block.statements {
+            match stmt.kind {
+                StatementKind::Assert { cleanup, .. } |
+                StatementKind::Call { cleanup, .. } => {
+                    if let Some(cleanup) = cleanup {
+                        if is_cleanup {
+                            span_mirbug!(self, block, "unwind on cleanup block");
+                        }
+                        self.assert_iscleanup(mir, block, cleanup, true);
+                    }
                 }
-                self.assert_iscleanup(mir, block, cleanup, true);
+                _ => {}
             }
         }
 
