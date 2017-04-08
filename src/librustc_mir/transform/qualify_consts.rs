@@ -603,7 +603,8 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
             Rvalue::Cast(CastKind::ReifyFnPointer, ..) |
             Rvalue::Cast(CastKind::UnsafeFnPointer, ..) |
             Rvalue::Cast(CastKind::ClosureFnPointer, ..) |
-            Rvalue::Cast(CastKind::Unsize, ..) => {}
+            Rvalue::Cast(CastKind::Unsize, ..) |
+            Rvalue::Discriminant(..) => {}
 
             Rvalue::Len(_) => {
                 // Static lvalues in consts would have errored already,
@@ -718,14 +719,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                             &format!("comparing raw pointers in static"))
                         .emit();
                     }
-                }
-            }
-
-            Rvalue::Discriminant(..) => {
-                // FIXME discriminant
-                self.add(Qualif::NOT_CONST);
-                if self.mode != Mode::Fn {
-                    bug!("implement discriminant const qualify");
                 }
             }
 
