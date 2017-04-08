@@ -1,5 +1,6 @@
 use core::mem;
 
+pub mod conv;
 pub mod add;
 pub mod pow;
 pub mod sub;
@@ -19,12 +20,24 @@ pub trait Float: Sized + Copy {
     fn exponent_bits() -> u32 {
         Self::bits() - Self::significand_bits() - 1
     }
+    /// Returns the maximum value of the exponent
+    fn exponent_max() -> u32 {
+        (1 << Self::exponent_bits()) - 1
+    }
+
+    /// Returns the exponent bias value
+    fn exponent_bias() -> u32 {
+        Self::exponent_max() >> 1
+    }
 
     /// Returns a mask for the sign bit
     fn sign_mask() -> Self::Int;
 
     /// Returns a mask for the significand
     fn significand_mask() -> Self::Int;
+
+    // Returns the implicit bit of the float format
+    fn implicit_bit() -> Self::Int;
 
     /// Returns a mask for the exponent
     fn exponent_mask() -> Self::Int;
@@ -57,6 +70,9 @@ impl Float for f32 {
     }
     fn significand_bits() -> u32 {
         23
+    }
+    fn implicit_bit() -> Self::Int {
+        1 << Self::significand_bits()
     }
     fn sign_mask() -> Self::Int {
         1 << (Self::bits() - 1)
@@ -99,6 +115,10 @@ impl Float for f64 {
     }
     fn significand_bits() -> u32 {
         52
+    }
+    // Returns the implicit bit of the float format
+    fn implicit_bit() -> Self::Int {
+        1 << Self::significand_bits()
     }
     fn sign_mask() -> Self::Int {
         1 << (Self::bits() - 1)

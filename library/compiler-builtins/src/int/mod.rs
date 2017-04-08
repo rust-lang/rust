@@ -19,22 +19,54 @@ pub mod udiv;
 pub trait Int {
     /// Type with the same width but other signedness
     type OtherSign;
+    /// Unsigned version of Self
+    type UnsignedInt;
+
     /// Returns the bitwidth of the int type
     fn bits() -> u32;
+
+    /// Extracts the sign from self and returns a tuple.
+    ///
+    /// # Examples
+    ///
+    /// ```rust,ignore
+    /// let i = -25_i32;
+    /// let (sign, u) = i.extract_sign();
+    /// assert_eq!(sign, true);
+    /// assert_eq!(u, 25_u32);
+    /// ```
+    fn extract_sign(self) -> (bool, Self::UnsignedInt);
 }
 
 macro_rules! int_impl {
-    ($ity:ty, $sty:ty, $bits:expr) => {
-        impl Int for $ity {
-            type OtherSign = $sty;
+    ($ity:ty, $uty:ty, $bits:expr) => {
+        impl Int for $uty {
+            type OtherSign = $ity;
+            type UnsignedInt = $uty;
+
             fn bits() -> u32 {
                 $bits
             }
+
+            fn extract_sign(self) -> (bool, $uty) {
+                (false, self)
+            }
         }
-        impl Int for $sty {
-            type OtherSign = $ity;
+
+        impl Int for $ity {
+            type OtherSign = $uty;
+            type UnsignedInt = $uty;
+
             fn bits() -> u32 {
                 $bits
+            }
+
+            fn extract_sign(self) -> (bool, $uty) {
+                if self < 0 {
+                    (true, !(self as $uty) + 1)
+                } else {
+                    (false, self as $uty)
+                }
             }
         }
     }

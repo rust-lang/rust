@@ -15,7 +15,7 @@ use float::Float;
 // Generates values in the full range of the integer type
 macro_rules! arbitrary {
     ($TY:ident : $ty:ident) => {
-        #[derive(Clone, Copy)]
+        #[derive(Clone, Copy, PartialEq)]
         pub struct $TY(pub $ty);
 
         impl Arbitrary for $TY {
@@ -82,7 +82,7 @@ arbitrary!(U32: u32);
 // intrinsics.
 macro_rules! arbitrary_large {
     ($TY:ident : $ty:ident) => {
-        #[derive(Clone, Copy)]
+        #[derive(Clone, Copy, PartialEq)]
         pub struct $TY(pub $ty);
 
         impl Arbitrary for $TY {
