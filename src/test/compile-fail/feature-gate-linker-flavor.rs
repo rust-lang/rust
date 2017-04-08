@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![linker_flavor] //~ ERROR the `#[linker_flavor]` attribute is
+#[used]
+fn foo() {}
+//~^^ ERROR the `#[used]` attribute is an experimental feature
 
 fn main() {}
