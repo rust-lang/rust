@@ -203,23 +203,12 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
 
         // First, take the Rvalue or Call out of the source MIR,
         // or duplicate it, depending on keep_original.
-        let kind = match self.source[loc.block].statements[loc.statement_index].kind {
-            StatementKind::Call { .. } |
-            StatementKind::Assign(..) => {
-                if self.keep_original {
-                    self.source[loc.block].statements[loc.statement_index].kind.clone()
-                } else {
-                    mem::replace(&mut self.source[loc.block].statements[loc.statement_index].kind,
-                        StatementKind::Nop)
-                }
-            }
-            _ => {
-                let statement = &self.source[loc.block].statements[loc.statement_index];
-                span_bug!(statement.source_info.span, "{:?} not promotable", statement.kind);
-            }
+        let kind = if self.keep_original {
+            self.source[loc.block].statements[loc.statement_index].kind.clone()
+        } else {
+            mem::replace(&mut self.source[loc.block].statements[loc.statement_index].kind,
+                StatementKind::Nop)
         };
-
-
         let kind = match kind {
             StatementKind::Assign(_, mut rhs) => {
                 self.visit_rvalue(&mut rhs, loc);
@@ -238,7 +227,10 @@ impl<'a, 'tcx> Promoter<'a, 'tcx> {
                     destination: Lvalue::Local(new_temp),
                 }
             }
-            _ => bug!()
+            _ => {
+                let statement = &self.source[loc.block].statements[loc.statement_index];
+                span_bug!(statement.source_info.span, "{:?} not promotable", statement.kind);
+            }
         };
 
         let last = self.promoted.basic_blocks().last().unwrap();
@@ -327,17 +319,15 @@ pub fn promote_candidates<'a, 'tcx>(mir: &mut Mir<'tcx>,
                 let statement = &mir[bb].statements[stmt_idx];
                 let dest = match statement.kind {
                     StatementKind::Assign(ref dest, _) => dest,
+                    StatementKind::Nop => {
+                        // Already promoted.
+                        continue;
+                    }
                     _ => {
                         span_bug!(statement.source_info.span,
                                   "expected assignment to promote");
                     }
                 };
-                if let Lvalue::Local(index) = *dest {
-                    if temps[index] == TempState::PromotedOut {
-                        // Already promoted.
-                        continue;
-                    }
-                }
                 (statement.source_info.span, dest.ty(mir, tcx).to_ty(tcx))
             }
             Candidate::ShuffleIndices(Location { block: bb, statement_index: stmt_idx }) => {
@@ -380,16 +370,17 @@ pub fn promote_candidates<'a, 'tcx>(mir: &mut Mir<'tcx>,
     // Eliminate assignments to, and drops of promoted temps.
     let promoted = |index: Local| temps[index] == TempState::PromotedOut;
     for block in mir.basic_blocks_mut() {
-        block.statements.retain(|statement| {
+        for statement in &mut block.statements {
             match statement.kind {
-                StatementKind::Assign(Lvalue::Local(index), _) |
                 StatementKind::StorageLive(Lvalue::Local(index)) |
                 StatementKind::StorageDead(Lvalue::Local(index)) => {
-                    !promoted(index)
+                    if promoted(index) {
+                        statement.kind = StatementKind::Nop;
+                    }
                 }
-                _ => true
+                _ => {}
             }
-        });
+        }
         let terminator = block.terminator_mut();
         match terminator.kind {
             TerminatorKind::Drop { location: Lvalue::Local(index), target, .. } => {
