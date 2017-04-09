@@ -188,6 +188,16 @@ impl OsString {
     /// in the given `OsString`.
     ///
     /// The collection may reserve more space to avoid frequent reallocations.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ffi::OsString;
+    ///
+    /// let mut s = OsString::new();
+    /// s.reserve(10);
+    /// assert!(s.capacity() >= 10);
+    /// ```
     #[stable(feature = "osstring_simple_functions", since = "1.9.0")]
     pub fn reserve(&mut self, additional: usize) {
         self.inner.reserve(additional)
@@ -200,18 +210,56 @@ impl OsString {
     /// Note that the allocator may give the collection more space than it
     /// requests. Therefore capacity can not be relied upon to be precisely
     /// minimal. Prefer reserve if future insertions are expected.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ffi::OsString;
+    ///
+    /// let mut s = OsString::new();
+    /// s.reserve_exact(10);
+    /// assert!(s.capacity() >= 10);
+    /// ```
     #[stable(feature = "osstring_simple_functions", since = "1.9.0")]
     pub fn reserve_exact(&mut self, additional: usize) {
         self.inner.reserve_exact(additional)
     }
 
     /// Shrinks the capacity of the `OsString` to match its length.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(osstring_shrink_to_fit)]
+    ///
+    /// use std::ffi::OsString;
+    ///
+    /// let mut s = OsString::from("foo");
+    ///
+    /// s.reserve(100);
+    /// assert!(s.capacity() >= 100);
+    ///
+    /// s.shrink_to_fit();
+    /// assert_eq!(3, s.capacity());
+    /// ```
     #[unstable(feature = "osstring_shrink_to_fit", issue = "40421")]
     pub fn shrink_to_fit(&mut self) {
         self.inner.shrink_to_fit()
     }
 
     /// Converts this `OsString` into a boxed `OsStr`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(into_boxed_os_str)]
+    ///
+    /// use std::ffi::{OsString, OsStr};
+    ///
+    /// let s = OsString::from("hello");
+    ///
+    /// let b: Box<OsStr> = s.into_boxed_os_str();
+    /// ```
     #[unstable(feature = "into_boxed_os_str", issue = "40380")]
     pub fn into_boxed_os_str(self) -> Box<OsStr> {
         unsafe { mem::transmute(self.inner.into_box()) }
@@ -398,6 +446,16 @@ impl OsStr {
     /// Copies the slice into an owned [`OsString`].
     ///
     /// [`OsString`]: struct.OsString.html
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ffi::{OsStr, OsString};
+    ///
+    /// let os_str = OsStr::new("foo");
+    /// let os_string = os_str.to_os_string();
+    /// assert_eq!(os_string, OsString::from("foo"));
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn to_os_string(&self) -> OsString {
         OsString { inner: self.inner.to_owned() }

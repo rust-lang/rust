@@ -176,7 +176,7 @@ pub fn compiletest(build: &Build,
     cmd.arg("--docck-python").arg(build.python());
 
     if build.config.build.ends_with("apple-darwin") {
-        // Force /usr/bin/python on OSX for LLDB tests because we're loading the
+        // Force /usr/bin/python on macOS for LLDB tests because we're loading the
         // LLDB plugin's compiled module which only works with the system python
         // (namely not Homebrew-installed python)
         cmd.arg("--lldb-python").arg("/usr/bin/python");
@@ -283,6 +283,16 @@ pub fn docs(build: &Build, compiler: &Compiler) {
 
         if p.extension().and_then(|s| s.to_str()) != Some("md") {
             continue
+        }
+
+        // The nostarch directory in the book is for no starch, and so isn't guaranteed to build.
+        // we don't care if it doesn't build, so skip it.
+        use std::ffi::OsStr;
+        let path: &OsStr = p.as_ref();
+        if let Some(path) = path.to_str() {
+            if path.contains("nostarch") {
+                continue;
+            }
         }
 
         println!("doc tests for: {}", p.display());
@@ -576,7 +586,7 @@ fn android_copy_libs(build: &Build, compiler: &Compiler, target: &str) {
                       .arg(ADB_TEST_DIR));
 
     let target_dir = format!("{}/{}", ADB_TEST_DIR, target);
-    build.run(Command::new("adb").args(&["shell", "mkdir", &target_dir[..]]));
+    build.run(Command::new("adb").args(&["shell", "mkdir", &target_dir]));
 
     for f in t!(build.sysroot_libdir(compiler, target).read_dir()) {
         let f = t!(f);

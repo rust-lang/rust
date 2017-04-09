@@ -94,6 +94,13 @@ fn main() {
             cmd.arg("-Cprefer-dynamic");
         }
 
+        // Pass the `rustbuild` feature flag to crates which rustbuild is
+        // building. See the comment in bootstrap/lib.rs where this env var is
+        // set for more details.
+        if env::var_os("RUSTBUILD_UNSTABLE").is_some() {
+            cmd.arg("--cfg").arg("rustbuild");
+        }
+
         // Help the libc crate compile by assisting it in finding the MUSL
         // native libraries.
         if let Some(s) = env::var_os("MUSL_ROOT") {
@@ -182,7 +189,7 @@ fn main() {
         if env::var("RUSTC_RPATH") == Ok("true".to_string()) {
             let rpath = if target.contains("apple") {
 
-                // Note that we need to take one extra step on OSX to also pass
+                // Note that we need to take one extra step on macOS to also pass
                 // `-Wl,-instal_name,@rpath/...` to get things to work right. To
                 // do that we pass a weird flag to the compiler to get it to do
                 // so. Note that this is definitely a hack, and we should likely

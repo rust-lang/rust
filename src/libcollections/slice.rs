@@ -73,10 +73,10 @@
 //! the element type of the slice is `i32`, the element type of the iterator is
 //! `&mut i32`.
 //!
-//! * [`.iter()`] and [`.iter_mut()`] are the explicit methods to return the default
+//! * [`.iter`] and [`.iter_mut`] are the explicit methods to return the default
 //!   iterators.
-//! * Further methods that return iterators are [`.split()`], [`.splitn()`],
-//!   [`.chunks()`], [`.windows()`] and more.
+//! * Further methods that return iterators are [`.split`], [`.splitn`],
+//!   [`.chunks`], [`.windows`] and more.
 //!
 //! *[See also the slice primitive type](../../std/primitive.slice.html).*
 //!
@@ -85,12 +85,12 @@
 //! [`Ord`]: ../../std/cmp/trait.Ord.html
 //! [`Iter`]: struct.Iter.html
 //! [`Hash`]: ../../std/hash/trait.Hash.html
-//! [`.iter()`]: ../../std/primitive.slice.html#method.iter
-//! [`.iter_mut()`]: ../../std/primitive.slice.html#method.iter_mut
-//! [`.split()`]: ../../std/primitive.slice.html#method.split
-//! [`.splitn()`]: ../../std/primitive.slice.html#method.splitn
-//! [`.chunks()`]: ../../std/primitive.slice.html#method.chunks
-//! [`.windows()`]: ../../std/primitive.slice.html#method.windows
+//! [`.iter`]: ../../std/primitive.slice.html#method.iter
+//! [`.iter_mut`]: ../../std/primitive.slice.html#method.iter_mut
+//! [`.split`]: ../../std/primitive.slice.html#method.split
+//! [`.splitn`]: ../../std/primitive.slice.html#method.splitn
+//! [`.chunks`]: ../../std/primitive.slice.html#method.chunks
+//! [`.windows`]: ../../std/primitive.slice.html#method.windows
 #![stable(feature = "rust1", since = "1.0.0")]
 
 // Many of the usings in this module are only used in the test configuration.
@@ -115,6 +115,8 @@ pub use core::slice::{Iter, IterMut};
 pub use core::slice::{SplitMut, ChunksMut, Split};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::slice::{SplitN, RSplitN, SplitNMut, RSplitNMut};
+#[unstable(feature = "slice_rsplit", issue = "41020")]
+pub use core::slice::{RSplit, RSplitMut};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::slice::{from_raw_parts, from_raw_parts_mut};
 #[unstable(feature = "slice_get_slice", issue = "35729")]
@@ -195,7 +197,7 @@ impl<T> [T] {
         core_slice::SliceExt::is_empty(self)
     }
 
-    /// Returns the first element of a slice, or `None` if it is empty.
+    /// Returns the first element of the slice, or `None` if it is empty.
     ///
     /// # Examples
     ///
@@ -212,7 +214,7 @@ impl<T> [T] {
         core_slice::SliceExt::first(self)
     }
 
-    /// Returns a mutable pointer to the first element of a slice, or `None` if it is empty.
+    /// Returns a mutable pointer to the first element of the slice, or `None` if it is empty.
     ///
     /// # Examples
     ///
@@ -230,7 +232,7 @@ impl<T> [T] {
         core_slice::SliceExt::first_mut(self)
     }
 
-    /// Returns the first and all the rest of the elements of a slice.
+    /// Returns the first and all the rest of the elements of the slice, or `None` if it is empty.
     ///
     /// # Examples
     ///
@@ -248,7 +250,7 @@ impl<T> [T] {
         core_slice::SliceExt::split_first(self)
     }
 
-    /// Returns the first and all the rest of the elements of a slice.
+    /// Returns the first and all the rest of the elements of the slice, or `None` if it is empty.
     ///
     /// # Examples
     ///
@@ -268,7 +270,7 @@ impl<T> [T] {
         core_slice::SliceExt::split_first_mut(self)
     }
 
-    /// Returns the last and all the rest of the elements of a slice.
+    /// Returns the last and all the rest of the elements of the slice, or `None` if it is empty.
     ///
     /// # Examples
     ///
@@ -287,7 +289,7 @@ impl<T> [T] {
 
     }
 
-    /// Returns the last and all the rest of the elements of a slice.
+    /// Returns the last and all the rest of the elements of the slice, or `None` if it is empty.
     ///
     /// # Examples
     ///
@@ -307,7 +309,7 @@ impl<T> [T] {
         core_slice::SliceExt::split_last_mut(self)
     }
 
-    /// Returns the last element of a slice, or `None` if it is empty.
+    /// Returns the last element of the slice, or `None` if it is empty.
     ///
     /// # Examples
     ///
@@ -362,15 +364,15 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn get<I>(&self, index: I) -> Option<&I::Output>
-        where I: SliceIndex<T>
+        where I: SliceIndex<Self>
     {
         core_slice::SliceExt::get(self, index)
     }
 
     /// Returns a mutable reference to an element or subslice depending on the
-    /// type of index (see [`get()`]) or `None` if the index is out of bounds.
+    /// type of index (see [`get`]) or `None` if the index is out of bounds.
     ///
-    /// [`get()`]: #method.get
+    /// [`get`]: #method.get
     ///
     /// # Examples
     ///
@@ -385,7 +387,7 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn get_mut<I>(&mut self, index: I) -> Option<&mut I::Output>
-        where I: SliceIndex<T>
+        where I: SliceIndex<Self>
     {
         core_slice::SliceExt::get_mut(self, index)
     }
@@ -405,7 +407,7 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub unsafe fn get_unchecked<I>(&self, index: I) -> &I::Output
-        where I: SliceIndex<T>
+        where I: SliceIndex<Self>
     {
         core_slice::SliceExt::get_unchecked(self, index)
     }
@@ -427,7 +429,7 @@ impl<T> [T] {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub unsafe fn get_unchecked_mut<I>(&mut self, index: I) -> &mut I::Output
-        where I: SliceIndex<T>
+        where I: SliceIndex<Self>
     {
         core_slice::SliceExt::get_unchecked_mut(self, index)
     }
@@ -437,8 +439,8 @@ impl<T> [T] {
     /// The caller must ensure that the slice outlives the pointer this
     /// function returns, or else it will end up pointing to garbage.
     ///
-    /// Modifying the slice may cause its buffer to be reallocated, which
-    /// would also make any pointers to it invalid.
+    /// Modifying the container referenced by this slice may cause its buffer
+    /// to be reallocated, which would also make any pointers to it invalid.
     ///
     /// # Examples
     ///
@@ -463,8 +465,8 @@ impl<T> [T] {
     /// The caller must ensure that the slice outlives the pointer this
     /// function returns, or else it will end up pointing to garbage.
     ///
-    /// Modifying the slice may cause its buffer to be reallocated, which
-    /// would also make any pointers to it invalid.
+    /// Modifying the container referenced by this slice may cause its buffer
+    /// to be reallocated, which would also make any pointers to it invalid.
     ///
     /// # Examples
     ///
@@ -485,7 +487,7 @@ impl<T> [T] {
         core_slice::SliceExt::as_mut_ptr(self)
     }
 
-    /// Swaps two elements in a slice.
+    /// Swaps two elements in the slice.
     ///
     /// # Arguments
     ///
@@ -509,7 +511,7 @@ impl<T> [T] {
         core_slice::SliceExt::swap(self, a, b)
     }
 
-    /// Reverses the order of elements in a slice, in place.
+    /// Reverses the order of elements in the slice, in place.
     ///
     /// # Example
     ///
@@ -780,6 +782,72 @@ impl<T> [T] {
     }
 
     /// Returns an iterator over subslices separated by elements that match
+    /// `pred`, starting at the end of the slice and working backwards.
+    /// The matched element is not contained in the subslices.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_rsplit)]
+    ///
+    /// let slice = [11, 22, 33, 0, 44, 55];
+    /// let mut iter = slice.rsplit(|num| *num == 0);
+    ///
+    /// assert_eq!(iter.next().unwrap(), &[44, 55]);
+    /// assert_eq!(iter.next().unwrap(), &[11, 22, 33]);
+    /// assert_eq!(iter.next(), None);
+    /// ```
+    ///
+    /// As with `split()`, if the first or last element is matched, an empty
+    /// slice will be the first (or last) item returned by the iterator.
+    ///
+    /// ```
+    /// #![feature(slice_rsplit)]
+    ///
+    /// let v = &[0, 1, 1, 2, 3, 5, 8];
+    /// let mut it = v.rsplit(|n| *n % 2 == 0);
+    /// assert_eq!(it.next().unwrap(), &[]);
+    /// assert_eq!(it.next().unwrap(), &[3, 5]);
+    /// assert_eq!(it.next().unwrap(), &[1, 1]);
+    /// assert_eq!(it.next().unwrap(), &[]);
+    /// assert_eq!(it.next(), None);
+    /// ```
+    #[unstable(feature = "slice_rsplit", issue = "41020")]
+    #[inline]
+    pub fn rsplit<F>(&self, pred: F) -> RSplit<T, F>
+        where F: FnMut(&T) -> bool
+    {
+        core_slice::SliceExt::rsplit(self, pred)
+    }
+
+    /// Returns an iterator over mutable subslices separated by elements that
+    /// match `pred`, starting at the end of the slice and working
+    /// backwards. The matched element is not contained in the subslices.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(slice_rsplit)]
+    ///
+    /// let mut v = [100, 400, 300, 200, 600, 500];
+    ///
+    /// let mut count = 0;
+    /// for group in v.rsplit_mut(|num| *num % 3 == 0) {
+    ///     count += 1;
+    ///     group[0] = count;
+    /// }
+    /// assert_eq!(v, [3, 400, 300, 2, 600, 1]);
+    /// ```
+    ///
+    #[unstable(feature = "slice_rsplit", issue = "41020")]
+    #[inline]
+    pub fn rsplit_mut<F>(&mut self, pred: F) -> RSplitMut<T, F>
+        where F: FnMut(&T) -> bool
+    {
+        core_slice::SliceExt::rsplit_mut(self, pred)
+    }
+
+    /// Returns an iterator over subslices separated by elements that match
     /// `pred`, limited to returning at most `n` items. The matched element is
     /// not contained in the subslices.
     ///
@@ -955,7 +1023,7 @@ impl<T> [T] {
         core_slice::SliceExt::ends_with(self, needle)
     }
 
-    /// Binary search a sorted slice for a given element.
+    /// Binary searches this sorted slice for a given element.
     ///
     /// If the value is found then `Ok` is returned, containing the
     /// index of the matching element; if the value is not found then
@@ -984,7 +1052,7 @@ impl<T> [T] {
         core_slice::SliceExt::binary_search(self, x)
     }
 
-    /// Binary search a sorted slice with a comparator function.
+    /// Binary searches this sorted slice with a comparator function.
     ///
     /// The comparator function should implement an order consistent
     /// with the sort order of the underlying slice, returning an
@@ -1023,7 +1091,7 @@ impl<T> [T] {
         core_slice::SliceExt::binary_search_by(self, f)
     }
 
-    /// Binary search a sorted slice with a key extraction function.
+    /// Binary searches this sorted slice with a key extraction function.
     ///
     /// Assumes that the slice is sorted by the key, for instance with
     /// [`sort_by_key`] using the same key extraction function.
@@ -1092,37 +1160,7 @@ impl<T> [T] {
         merge_sort(self, |a, b| a.lt(b));
     }
 
-    /// Sorts the slice using `f` to extract a key to compare elements by.
-    ///
-    /// This sort is stable (i.e. does not reorder equal elements) and `O(n log n)` worst-case.
-    ///
-    /// # Current implementation
-    ///
-    /// The current algorithm is an adaptive, iterative merge sort inspired by
-    /// [timsort](https://en.wikipedia.org/wiki/Timsort).
-    /// It is designed to be very fast in cases where the slice is nearly sorted, or consists of
-    /// two or more sorted sequences concatenated one after another.
-    ///
-    /// Also, it allocates temporary storage half the size of `self`, but for short slices a
-    /// non-allocating insertion sort is used instead.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let mut v = [-5i32, 4, 1, -3, 2];
-    ///
-    /// v.sort_by_key(|k| k.abs());
-    /// assert!(v == [1, 2, -3, 4, -5]);
-    /// ```
-    #[stable(feature = "slice_sort_by_key", since = "1.7.0")]
-    #[inline]
-    pub fn sort_by_key<B, F>(&mut self, mut f: F)
-        where F: FnMut(&T) -> B, B: Ord
-    {
-        merge_sort(self, |a, b| f(a).lt(&f(b)));
-    }
-
-    /// Sorts the slice using `compare` to compare elements.
+    /// Sorts the slice with a comparator function.
     ///
     /// This sort is stable (i.e. does not reorder equal elements) and `O(n log n)` worst-case.
     ///
@@ -1153,6 +1191,150 @@ impl<T> [T] {
         where F: FnMut(&T, &T) -> Ordering
     {
         merge_sort(self, |a, b| compare(a, b) == Less);
+    }
+
+    /// Sorts the slice with a key extraction function.
+    ///
+    /// This sort is stable (i.e. does not reorder equal elements) and `O(n log n)` worst-case.
+    ///
+    /// # Current implementation
+    ///
+    /// The current algorithm is an adaptive, iterative merge sort inspired by
+    /// [timsort](https://en.wikipedia.org/wiki/Timsort).
+    /// It is designed to be very fast in cases where the slice is nearly sorted, or consists of
+    /// two or more sorted sequences concatenated one after another.
+    ///
+    /// Also, it allocates temporary storage half the size of `self`, but for short slices a
+    /// non-allocating insertion sort is used instead.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut v = [-5i32, 4, 1, -3, 2];
+    ///
+    /// v.sort_by_key(|k| k.abs());
+    /// assert!(v == [1, 2, -3, 4, -5]);
+    /// ```
+    #[stable(feature = "slice_sort_by_key", since = "1.7.0")]
+    #[inline]
+    pub fn sort_by_key<B, F>(&mut self, mut f: F)
+        where F: FnMut(&T) -> B, B: Ord
+    {
+        merge_sort(self, |a, b| f(a).lt(&f(b)));
+    }
+
+    /// Sorts the slice, but may not preserve the order of equal elements.
+    ///
+    /// This sort is unstable (i.e. may reorder equal elements), in-place (i.e. does not allocate),
+    /// and `O(n log n)` worst-case.
+    ///
+    /// # Current implementation
+    ///
+    /// The current algorithm is based on Orson Peters' [pattern-defeating quicksort][pdqsort],
+    /// which is a quicksort variant designed to be very fast on certain kinds of patterns,
+    /// sometimes achieving linear time. It is randomized but deterministic, and falls back to
+    /// heapsort on degenerate inputs.
+    ///
+    /// It is generally faster than stable sorting, except in a few special cases, e.g. when the
+    /// slice consists of several concatenated sorted sequences.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(sort_unstable)]
+    ///
+    /// let mut v = [-5, 4, 1, -3, 2];
+    ///
+    /// v.sort_unstable();
+    /// assert!(v == [-5, -3, 1, 2, 4]);
+    /// ```
+    ///
+    /// [pdqsort]: https://github.com/orlp/pdqsort
+    // FIXME #40585: Mention `sort_unstable` in the documentation for `sort`.
+    #[unstable(feature = "sort_unstable", issue = "40585")]
+    #[inline]
+    pub fn sort_unstable(&mut self)
+        where T: Ord
+    {
+        core_slice::SliceExt::sort_unstable(self);
+    }
+
+    /// Sorts the slice with a comparator function, but may not preserve the order of equal
+    /// elements.
+    ///
+    /// This sort is unstable (i.e. may reorder equal elements), in-place (i.e. does not allocate),
+    /// and `O(n log n)` worst-case.
+    ///
+    /// # Current implementation
+    ///
+    /// The current algorithm is based on Orson Peters' [pattern-defeating quicksort][pdqsort],
+    /// which is a quicksort variant designed to be very fast on certain kinds of patterns,
+    /// sometimes achieving linear time. It is randomized but deterministic, and falls back to
+    /// heapsort on degenerate inputs.
+    ///
+    /// It is generally faster than stable sorting, except in a few special cases, e.g. when the
+    /// slice consists of several concatenated sorted sequences.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(sort_unstable)]
+    ///
+    /// let mut v = [5, 4, 1, 3, 2];
+    /// v.sort_unstable_by(|a, b| a.cmp(b));
+    /// assert!(v == [1, 2, 3, 4, 5]);
+    ///
+    /// // reverse sorting
+    /// v.sort_unstable_by(|a, b| b.cmp(a));
+    /// assert!(v == [5, 4, 3, 2, 1]);
+    /// ```
+    ///
+    /// [pdqsort]: https://github.com/orlp/pdqsort
+    // FIXME #40585: Mention `sort_unstable_by` in the documentation for `sort_by`.
+    #[unstable(feature = "sort_unstable", issue = "40585")]
+    #[inline]
+    pub fn sort_unstable_by<F>(&mut self, compare: F)
+        where F: FnMut(&T, &T) -> Ordering
+    {
+        core_slice::SliceExt::sort_unstable_by(self, compare);
+    }
+
+    /// Sorts the slice with a key extraction function, but may not preserve the order of equal
+    /// elements.
+    ///
+    /// This sort is unstable (i.e. may reorder equal elements), in-place (i.e. does not allocate),
+    /// and `O(n log n)` worst-case.
+    ///
+    /// # Current implementation
+    ///
+    /// The current algorithm is based on Orson Peters' [pattern-defeating quicksort][pdqsort],
+    /// which is a quicksort variant designed to be very fast on certain kinds of patterns,
+    /// sometimes achieving linear time. It is randomized but deterministic, and falls back to
+    /// heapsort on degenerate inputs.
+    ///
+    /// It is generally faster than stable sorting, except in a few special cases, e.g. when the
+    /// slice consists of several concatenated sorted sequences.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(sort_unstable)]
+    ///
+    /// let mut v = [-5i32, 4, 1, -3, 2];
+    ///
+    /// v.sort_unstable_by_key(|k| k.abs());
+    /// assert!(v == [1, 2, -3, 4, -5]);
+    /// ```
+    ///
+    /// [pdqsort]: https://github.com/orlp/pdqsort
+    // FIXME #40585: Mention `sort_unstable_by_key` in the documentation for `sort_by_key`.
+    #[unstable(feature = "sort_unstable", issue = "40585")]
+    #[inline]
+    pub fn sort_unstable_by_key<B, F>(&mut self, f: F)
+        where F: FnMut(&T) -> B,
+              B: Ord
+    {
+        core_slice::SliceExt::sort_unstable_by_key(self, f);
     }
 
     /// Copies the elements from `src` into `self`.
@@ -1198,7 +1380,6 @@ impl<T> [T] {
     pub fn copy_from_slice(&mut self, src: &[T]) where T: Copy {
         core_slice::SliceExt::copy_from_slice(self, src)
     }
-
 
     /// Copies `self` into a new `Vec`.
     ///
@@ -1553,28 +1734,20 @@ unsafe fn merge<T, F>(v: &mut [T], mid: usize, buf: *mut T, is_less: &mut F)
 fn merge_sort<T, F>(v: &mut [T], mut is_less: F)
     where F: FnMut(&T, &T) -> bool
 {
+    // Slices of up to this length get sorted using insertion sort.
+    const MAX_INSERTION: usize = 20;
+    // Very short runs are extended using insertion sort to span at least this many elements.
+    const MIN_RUN: usize = 10;
+
     // Sorting has no meaningful behavior on zero-sized types.
     if size_of::<T>() == 0 {
         return;
     }
 
-    // FIXME #12092: These numbers are platform-specific and need more extensive testing/tuning.
-    //
-    // If `v` has length up to `max_insertion`, simply switch to insertion sort because it is going
-    // to perform better than merge sort. For bigger types `T`, the threshold is smaller.
-    //
-    // Short runs are extended using insertion sort to span at least `min_run` elements, in order
-    // to improve performance.
-    let (max_insertion, min_run) = if size_of::<T>() <= 2 * mem::size_of::<usize>() {
-        (64, 32)
-    } else {
-        (32, 16)
-    };
-
     let len = v.len();
 
     // Short arrays get sorted in-place via insertion sort to avoid allocations.
-    if len <= max_insertion {
+    if len <= MAX_INSERTION {
         if len >= 2 {
             for i in (0..len-1).rev() {
                 insert_head(&mut v[i..], &mut is_less);
@@ -1618,7 +1791,7 @@ fn merge_sort<T, F>(v: &mut [T], mut is_less: F)
 
         // Insert some more elements into the run if it's too short. Insertion sort is faster than
         // merge sort on short sequences, so this significantly improves performance.
-        while start > 0 && end - start < min_run {
+        while start > 0 && end - start < MIN_RUN {
             start -= 1;
             insert_head(&mut v[start..end], &mut is_less);
         }

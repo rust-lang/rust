@@ -202,7 +202,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         } else {
             // for local crates, check whether type info is
             // available; typeck might not have completed yet
-            self.maps.impl_trait_ref.borrow().contains_key(&impl_def_id)
+            self.maps.impl_trait_ref.borrow().contains_key(&impl_def_id) &&
+                self.maps.ty.borrow().contains_key(&impl_def_id)
         };
 
         if !use_types {
@@ -374,14 +375,13 @@ impl LocalPathBuffer {
     fn new(root_mode: RootMode) -> LocalPathBuffer {
         LocalPathBuffer {
             root_mode: root_mode,
-            str: String::new()
+            str: String::new(),
         }
     }
 
     fn into_string(self) -> String {
         self.str
     }
-
 }
 
 impl ItemPathBuffer for LocalPathBuffer {

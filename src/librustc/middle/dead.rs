@@ -21,12 +21,13 @@ use hir::itemlikevisit::ItemLikeVisitor;
 use middle::privacy;
 use ty::{self, TyCtxt};
 use hir::def::Def;
-use hir::def_id::{DefId};
+use hir::def_id::{DefId, LOCAL_CRATE};
 use lint;
 use util::nodemap::FxHashSet;
 
 use syntax::{ast, codemap};
 use syntax::attr;
+use syntax::codemap::DUMMY_SP;
 use syntax_pos;
 
 // Any local node that may call something in its body block should be
@@ -592,9 +593,9 @@ impl<'a, 'tcx> Visitor<'tcx> for DeadVisitor<'a, 'tcx> {
     }
 }
 
-pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                             access_levels: &privacy::AccessLevels) {
+pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let _task = tcx.dep_graph.in_task(DepNode::DeadCheck);
+    let access_levels = &ty::queries::privacy_access_levels::get(tcx, DUMMY_SP, LOCAL_CRATE);
     let krate = tcx.hir.krate();
     let live_symbols = find_live(tcx, access_levels, krate);
     let mut visitor = DeadVisitor { tcx: tcx, live_symbols: live_symbols };

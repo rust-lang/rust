@@ -75,7 +75,7 @@ use std::mem::replace;
 use std::rc::Rc;
 
 use resolve_imports::{ImportDirective, ImportDirectiveSubclass, NameResolution, ImportResolver};
-use macros::{InvocationData, LegacyBinding, LegacyScope};
+use macros::{InvocationData, LegacyBinding, LegacyScope, MacroBinding};
 
 // NB: This module needs to be declared first so diagnostics are
 // registered before they are used.
@@ -922,6 +922,10 @@ impl<'a> ModuleData<'a> {
     fn is_local(&self) -> bool {
         self.normal_ancestor_id.is_local()
     }
+
+    fn nearest_item_scope(&'a self) -> Module<'a> {
+        if self.is_trait() { self.parent.unwrap() } else { self }
+    }
 }
 
 impl<'a> fmt::Debug for ModuleData<'a> {
@@ -1165,6 +1169,7 @@ pub struct Resolver<'a> {
 
     privacy_errors: Vec<PrivacyError<'a>>,
     ambiguity_errors: Vec<AmbiguityError<'a>>,
+    gated_errors: FxHashSet<Span>,
     disallowed_shadowing: Vec<&'a LegacyBinding<'a>>,
 
     arenas: &'a ResolverArenas<'a>,
@@ -1173,7 +1178,7 @@ pub struct Resolver<'a> {
 
     crate_loader: &'a mut CrateLoader,
     macro_names: FxHashSet<Name>,
-    builtin_macros: FxHashMap<Name, &'a NameBinding<'a>>,
+    global_macros: FxHashMap<Name, &'a NameBinding<'a>>,
     lexical_macro_resolutions: Vec<(Name, &'a Cell<LegacyScope<'a>>)>,
     macro_map: FxHashMap<DefId, Rc<SyntaxExtension>>,
     macro_defs: FxHashMap<Mark, DefId>,
@@ -1284,6 +1289,7 @@ impl<'a> hir::lowering::Resolver for Resolver<'a> {
 impl<'a> Resolver<'a> {
     pub fn new(session: &'a Session,
                krate: &Crate,
+               crate_name: &str,
                make_glob_map: MakeGlobMap,
                crate_loader: &'a mut CrateLoader,
                arenas: &'a ResolverArenas<'a>)
@@ -1298,7 +1304,8 @@ impl<'a> Resolver<'a> {
         module_map.insert(DefId::local(CRATE_DEF_INDEX), graph_root);
 
         let mut definitions = Definitions::new();
-        DefCollector::new(&mut definitions).collect_root();
+        DefCollector::new(&mut definitions)
+            .collect_root(crate_name, &session.local_crate_disambiguator().as_str());
 
         let mut invocations = FxHashMap();
         invocations.insert(Mark::root(),
@@ -1355,6 +1362,7 @@ impl<'a> Resolver<'a> {
 
             privacy_errors: Vec::new(),
             ambiguity_errors: Vec::new(),
+            gated_errors: FxHashSet(),
             disallowed_shadowing: Vec::new(),
 
             arenas: arenas,
@@ -1370,7 +1378,7 @@ impl<'a> Resolver<'a> {
 
             crate_loader: crate_loader,
             macro_names: FxHashSet(),
-            builtin_macros: FxHashMap(),
+            global_macros: FxHashMap(),
             lexical_macro_resolutions: Vec::new(),
             macro_map: FxHashMap(),
             macro_exports: Vec::new(),
@@ -2214,6 +2222,7 @@ impl<'a> Resolver<'a> {
                                    -> PathResolution {
         let ns = source.namespace();
         let is_expected = &|def| source.is_expected(def);
+        let is_enum_variant = &|def| if let Def::Variant(..) = def { true } else { false };
 
         // Base error is amended with one short label and possibly some longer helps/notes.
         let report_errors = |this: &mut Self, def: Option<Def>| {
@@ -2264,6 +2273,21 @@ impl<'a> Resolver<'a> {
             if !candidates.is_empty() {
                 // Report import candidates as help and proceed searching for labels.
                 show_candidates(&mut err, &candidates, def.is_some());
+            } else if is_expected(Def::Enum(DefId::local(CRATE_DEF_INDEX))) {
+                let enum_candidates = this.lookup_import_candidates(name, ns, is_enum_variant);
+                let mut enum_candidates = enum_candidates.iter()
+                    .map(|suggestion| import_candidate_to_paths(&suggestion)).collect::<Vec<_>>();
+                enum_candidates.sort();
+                for (sp, variant_path, enum_path) in enum_candidates {
+                    let msg = format!("there is an enum variant `{}`, did you mean to use `{}`?",
+                                      variant_path,
+                                      enum_path);
+                    if sp == DUMMY_SP {
+                        err.help(&msg);
+                    } else {
+                        err.span_help(sp, &msg);
+                    }
+                }
             }
             if path.len() == 1 && this.self_type_is_available() {
                 if let Some(candidate) = this.lookup_assoc_candidate(name, ns, is_expected) {
@@ -2427,9 +2451,9 @@ impl<'a> Resolver<'a> {
                 };
             }
         }
-        let is_builtin = self.builtin_macros.get(&path[0].name).cloned()
+        let is_global = self.global_macros.get(&path[0].name).cloned()
             .map(|binding| binding.get_macro(self).kind() == MacroKind::Bang).unwrap_or(false);
-        if primary_ns != MacroNS && (is_builtin || self.macro_names.contains(&path[0].name)) {
+        if primary_ns != MacroNS && (is_global || self.macro_names.contains(&path[0].name)) {
             // Return some dummy definition, it's enough for error reporting.
             return Some(
                 PathResolution::new(Def::Macro(DefId::local(CRATE_DEF_INDEX), MacroKind::Bang))
@@ -2564,6 +2588,7 @@ impl<'a> Resolver<'a> {
                 self.resolve_ident_in_module(module, ident, ns, false, record_used)
             } else if opt_ns == Some(MacroNS) {
                 self.resolve_lexical_macro_path_segment(ident, ns, record_used)
+                    .map(MacroBinding::binding)
             } else {
                 match self.resolve_ident_in_lexical_scope(ident, ns, record_used) {
                     Some(LexicalScopeBinding::Item(binding)) => Ok(binding),
@@ -3221,7 +3246,7 @@ impl<'a> Resolver<'a> {
             };
             let msg1 = format!("`{}` could refer to the name {} here", name, participle(b1));
             let msg2 = format!("`{}` could also refer to the name {} here", name, participle(b2));
-            let note = if !lexical && b1.is_glob_import() {
+            let note = if b1.expansion == Mark::root() || !lexical && b1.is_glob_import() {
                 format!("consider adding an explicit import of `{}` to disambiguate", name)
             } else if let Def::Macro(..) = b1.def() {
                 format!("macro-expanded {} do not shadow",
@@ -3241,11 +3266,15 @@ impl<'a> Resolver<'a> {
                 let msg = format!("`{}` is ambiguous", name);
                 self.session.add_lint(lint::builtin::LEGACY_IMPORTS, id, span, msg);
             } else {
-                self.session.struct_span_err(span, &format!("`{}` is ambiguous", name))
-                    .span_note(b1.span, &msg1)
-                    .span_note(b2.span, &msg2)
-                    .note(&note)
-                    .emit();
+                let mut err =
+                    self.session.struct_span_err(span, &format!("`{}` is ambiguous", name));
+                err.span_note(b1.span, &msg1);
+                match b2.def() {
+                    Def::Macro(..) if b2.span == DUMMY_SP =>
+                        err.note(&format!("`{}` is also a builtin macro", name)),
+                    _ => err.span_note(b2.span, &msg2),
+                };
+                err.note(&note).emit();
             }
         }
 
@@ -3359,13 +3388,13 @@ impl<'a> Resolver<'a> {
         if self.proc_macro_enabled { return; }
 
         for attr in attrs {
-            let maybe_binding = self.builtin_macros.get(&attr.name()).cloned().or_else(|| {
-                let ident = Ident::with_empty_ctxt(attr.name());
-                self.resolve_lexical_macro_path_segment(ident, MacroNS, None).ok()
-            });
-
-            if let Some(binding) = maybe_binding {
-                if let SyntaxExtension::AttrProcMacro(..) = *binding.get_macro(self) {
+            if attr.path.segments.len() > 1 {
+                continue
+            }
+            let ident = attr.path.segments[0].identifier;
+            let result = self.resolve_lexical_macro_path_segment(ident, MacroNS, None);
+            if let Ok(binding) = result {
+                if let SyntaxExtension::AttrProcMacro(..) = *binding.binding().get_macro(self) {
                     attr::mark_known(attr);
 
                     let msg = "attribute procedural macros are experimental";
@@ -3373,7 +3402,7 @@ impl<'a> Resolver<'a> {
 
                     feature_err(&self.session.parse_sess, feature,
                                 attr.span, GateIssue::Language, msg)
-                        .span_note(binding.span, "procedural macro imported here")
+                        .span_note(binding.span(), "procedural macro imported here")
                         .emit();
                 }
             }
@@ -3410,6 +3439,22 @@ fn names_to_string(idents: &[Ident]) -> String {
 fn path_names_to_string(path: &Path) -> String {
     names_to_string(&path.segments.iter().map(|seg| seg.identifier).collect::<Vec<_>>())
 }
+
+/// Get the path for an enum and the variant from an `ImportSuggestion` for an enum variant.
+fn import_candidate_to_paths(suggestion: &ImportSuggestion) -> (Span, String, String) {
+    let variant_path = &suggestion.path;
+    let variant_path_string = path_names_to_string(variant_path);
+
+    let path_len = suggestion.path.segments.len();
+    let enum_path = ast::Path {
+        span: suggestion.path.span,
+        segments: suggestion.path.segments[0..path_len - 1].to_vec(),
+    };
+    let enum_path_string = path_names_to_string(&enum_path);
+
+    (suggestion.path.span, variant_path_string, enum_path_string)
+}
+
 
 /// When an entity with a given name is not available in scope, we search for
 /// entities with that name in all crates. This method allows outputting the

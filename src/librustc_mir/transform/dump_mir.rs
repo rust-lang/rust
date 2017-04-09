@@ -11,11 +11,14 @@
 //! This pass just dumps MIR at a specified point.
 
 use std::fmt;
+use std::fs::File;
+use std::io;
 
+use rustc::session::config::{OutputFilenames, OutputType};
 use rustc::ty::TyCtxt;
 use rustc::mir::*;
 use rustc::mir::transform::{Pass, MirPass, MirPassHook, MirSource};
-use pretty;
+use util as mir_util;
 
 pub struct Marker<'a>(pub &'a str);
 
@@ -56,7 +59,7 @@ impl<'tcx> MirPassHook<'tcx> for DumpMir {
         pass: &Pass,
         is_after: bool)
     {
-        pretty::dump_mir(
+        mir_util::dump_mir(
             tcx,
             &*pass.name(),
             &Disambiguator {
@@ -70,3 +73,14 @@ impl<'tcx> MirPassHook<'tcx> for DumpMir {
 }
 
 impl<'b> Pass for DumpMir {}
+
+pub fn emit_mir<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    outputs: &OutputFilenames)
+    -> io::Result<()>
+{
+    let path = outputs.path(OutputType::Mir);
+    let mut f = File::create(&path)?;
+    mir_util::write_mir_pretty(tcx, tcx.maps.mir.borrow().keys().into_iter(), &mut f)?;
+    Ok(())
+}

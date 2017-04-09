@@ -35,7 +35,8 @@ use rustc_data_structures::ToHex;
 use {type_of, machine, monomorphize};
 use common::{self, CrateContext};
 use type_::Type;
-use rustc::ty::{self, AdtKind, Ty, layout};
+use rustc::ty::{self, AdtKind, Ty};
+use rustc::ty::layout::{self, LayoutTyper};
 use session::config;
 use util::nodemap::FxHashMap;
 use util::common::path2cstr;
@@ -900,7 +901,7 @@ impl<'tcx> StructMemberDescriptionFactory<'tcx> {
         let offsets = match *layout {
             layout::Univariant { ref variant, .. } => &variant.offsets,
             layout::Vector { element, count } => {
-                let element_size = element.size(&cx.tcx().data_layout).bytes();
+                let element_size = element.size(cx).bytes();
                 tmp = (0..count).
                   map(|i| layout::Size::from_bytes(i*element_size))
                   .collect::<Vec<layout::Size>>();
@@ -1564,7 +1565,7 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         enum_llvm_type,
         EnumMDF(EnumMemberDescriptionFactory {
             enum_type: enum_type,
-            type_rep: type_rep,
+            type_rep: type_rep.layout,
             discriminant_type_metadata: discriminant_type_metadata,
             containing_scope: containing_scope,
             file_metadata: file_metadata,
@@ -1772,7 +1773,7 @@ pub fn create_global_var_metadata(cx: &CrateContext,
     let var_name = CString::new(var_name).unwrap();
     let linkage_name = CString::new(linkage_name).unwrap();
 
-    let global_align = type_of::align_of(cx, variable_type);
+    let global_align = cx.align_of(variable_type);
 
     unsafe {
         llvm::LLVMRustDIBuilderCreateStaticVariable(DIB(cx),

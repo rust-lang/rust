@@ -10,7 +10,6 @@
 
 // aux-build:pub_restricted.rs
 
-#![feature(pub_restricted)]
 #![deny(private_in_public)]
 #![allow(warnings)]
 extern crate pub_restricted;

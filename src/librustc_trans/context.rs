@@ -14,14 +14,12 @@ use rustc::dep_graph::{DepGraph, DepGraphSafe, DepNode, DepTrackingMap,
                        DepTrackingMapConfig, WorkProduct};
 use middle::cstore::LinkMeta;
 use rustc::hir;
-use rustc::hir::def::ExportMap;
 use rustc::hir::def_id::DefId;
 use rustc::traits;
 use debuginfo;
-use callee::Callee;
+use callee;
 use base;
 use declare;
-use glue::DropGlueKind;
 use monomorphize::Instance;
 
 use partitioning::CodegenUnit;
@@ -30,6 +28,7 @@ use type_::Type;
 use rustc_data_structures::base_n;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::layout::{LayoutTyper, TyLayout};
 use session::config::NoDebugInfo;
 use session::Session;
 use session::config;
@@ -46,7 +45,7 @@ use std::str;
 use syntax::ast;
 use syntax::symbol::InternedString;
 use syntax_pos::DUMMY_SP;
-use abi::{Abi, FnType};
+use abi::Abi;
 
 pub struct Stats {
     pub n_glues_created: Cell<usize>,
@@ -69,7 +68,6 @@ pub struct SharedCrateContext<'a, 'tcx: 'a> {
     metadata_llmod: ModuleRef,
     metadata_llcx: ContextRef,
 
-    export_map: ExportMap,
     exported_symbols: NodeSet,
     link_meta: LinkMeta,
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -94,8 +92,6 @@ pub struct LocalCrateContext<'tcx> {
     previous_work_product: Option<WorkProduct>,
     codegen_unit: CodegenUnit<'tcx>,
     needs_unwind_cleanup_cache: RefCell<FxHashMap<Ty<'tcx>, bool>>,
-    fn_pointer_shims: RefCell<FxHashMap<Ty<'tcx>, ValueRef>>,
-    drop_glues: RefCell<FxHashMap<DropGlueKind<'tcx>, (ValueRef, FnType)>>,
     /// Cache instances of monomorphic and polymorphic items
     instances: RefCell<FxHashMap<Instance<'tcx>, ValueRef>>,
     /// Cache generated vtables
@@ -136,6 +132,10 @@ pub struct LocalCrateContext<'tcx> {
     /// (We have to make sure we don't invalidate any ValueRefs referring
     /// to constants.)
     statics_to_rauw: RefCell<Vec<(ValueRef, ValueRef)>>,
+
+    /// Statics that will be placed in the llvm.used variable
+    /// See http://llvm.org/docs/LangRef.html#the-llvm-used-global-variable for details
+    used_statics: RefCell<Vec<ValueRef>>,
 
     lltypes: RefCell<FxHashMap<Ty<'tcx>, Type>>,
     llsizingtypes: RefCell<FxHashMap<Ty<'tcx>, Type>>,
@@ -405,7 +405,6 @@ unsafe fn create_context_and_module(sess: &Session, mod_name: &str) -> (ContextR
 
 impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
     pub fn new(tcx: TyCtxt<'b, 'tcx, 'tcx>,
-               export_map: ExportMap,
                link_meta: LinkMeta,
                exported_symbols: NodeSet,
                check_overflow: bool)
@@ -462,7 +461,6 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
         SharedCrateContext {
             metadata_llmod: metadata_llmod,
             metadata_llcx: metadata_llcx,
-            export_map: export_map,
             exported_symbols: exported_symbols,
             link_meta: link_meta,
             empty_param_env: tcx.empty_parameter_environment(),
@@ -500,10 +498,6 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
 
     pub fn metadata_llcx(&self) -> ContextRef {
         self.metadata_llcx
-    }
-
-    pub fn export_map<'a>(&'a self) -> &'a ExportMap {
-        &self.export_map
     }
 
     pub fn exported_symbols<'a>(&'a self) -> &'a NodeSet {
@@ -544,16 +538,6 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
 
     pub fn translation_items(&self) -> &RefCell<FxHashSet<TransItem<'tcx>>> {
         &self.translation_items
-    }
-
-    /// Given the def-id of some item that has no type parameters, make
-    /// a suitable "empty substs" for it.
-    pub fn empty_substs_for_def_id(&self, item_def_id: DefId) -> &'tcx Substs<'tcx> {
-        Substs::for_item(self.tcx(), item_def_id,
-                         |_, _| self.tcx().mk_region(ty::ReErased),
-                         |_, _| {
-            bug!("empty_substs_for_def_id: {:?} has type parameters", item_def_id)
-        })
     }
 
     pub fn metadata_symbol_name(&self) -> String {
@@ -597,8 +581,6 @@ impl<'tcx> LocalCrateContext<'tcx> {
                 previous_work_product: previous_work_product,
                 codegen_unit: codegen_unit,
                 needs_unwind_cleanup_cache: RefCell::new(FxHashMap()),
-                fn_pointer_shims: RefCell::new(FxHashMap()),
-                drop_glues: RefCell::new(FxHashMap()),
                 instances: RefCell::new(FxHashMap()),
                 vtables: RefCell::new(FxHashMap()),
                 const_cstr_cache: RefCell::new(FxHashMap()),
@@ -610,6 +592,7 @@ impl<'tcx> LocalCrateContext<'tcx> {
                 impl_method_cache: RefCell::new(FxHashMap()),
                 closure_bare_wrapper_cache: RefCell::new(FxHashMap()),
                 statics_to_rauw: RefCell::new(Vec::new()),
+                used_statics: RefCell::new(Vec::new()),
                 lltypes: RefCell::new(FxHashMap()),
                 llsizingtypes: RefCell::new(FxHashMap()),
                 type_hashcodes: RefCell::new(FxHashMap()),
@@ -717,10 +700,6 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         unsafe { llvm::LLVMRustGetModuleDataLayout(self.llmod()) }
     }
 
-    pub fn export_map<'a>(&'a self) -> &'a ExportMap {
-        &self.shared.export_map
-    }
-
     pub fn exported_symbols<'a>(&'a self) -> &'a NodeSet {
         &self.shared.exported_symbols
     }
@@ -731,15 +710,6 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
 
     pub fn needs_unwind_cleanup_cache(&self) -> &RefCell<FxHashMap<Ty<'tcx>, bool>> {
         &self.local().needs_unwind_cleanup_cache
-    }
-
-    pub fn fn_pointer_shims(&self) -> &RefCell<FxHashMap<Ty<'tcx>, ValueRef>> {
-        &self.local().fn_pointer_shims
-    }
-
-    pub fn drop_glues<'a>(&'a self)
-                          -> &'a RefCell<FxHashMap<DropGlueKind<'tcx>, (ValueRef, FnType)>> {
-        &self.local().drop_glues
     }
 
     pub fn instances<'a>(&'a self) -> &'a RefCell<FxHashMap<Instance<'tcx>, ValueRef>> {
@@ -788,6 +758,10 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
 
     pub fn statics_to_rauw<'a>(&'a self) -> &'a RefCell<Vec<(ValueRef, ValueRef)>> {
         &self.local().statics_to_rauw
+    }
+
+    pub fn used_statics<'a>(&'a self) -> &'a RefCell<Vec<ValueRef>> {
+        &self.local().used_statics
     }
 
     pub fn lltypes<'a>(&'a self) -> &'a RefCell<FxHashMap<Ty<'tcx>, Type>> {
@@ -855,18 +829,6 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         TypeOfDepthLock(self.local())
     }
 
-    pub fn layout_of(&self, ty: Ty<'tcx>) -> &'tcx ty::layout::Layout {
-        self.tcx().infer_ctxt((), traits::Reveal::All).enter(|infcx| {
-            ty.layout(&infcx).unwrap_or_else(|e| {
-                match e {
-                    ty::layout::LayoutError::SizeOverflow(_) =>
-                        self.sess().fatal(&e.to_string()),
-                    _ => bug!("failed to get layout for `{}`: {}", ty, e)
-                }
-            })
-        })
-    }
-
     pub fn check_overflow(&self) -> bool {
         self.shared.check_overflow
     }
@@ -886,7 +848,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
     /// Given the def-id of some item that has no type parameters, make
     /// a suitable "empty substs" for it.
     pub fn empty_substs_for_def_id(&self, item_def_id: DefId) -> &'tcx Substs<'tcx> {
-        self.shared().empty_substs_for_def_id(item_def_id)
+        self.tcx().empty_substs_for_def_id(item_def_id)
     }
 
     /// Generate a new symbol name with the given prefix. This symbol name must
@@ -930,7 +892,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         let tcx = self.tcx();
         let llfn = match tcx.lang_items.eh_personality() {
             Some(def_id) if !base::wants_msvc_seh(self.sess()) => {
-                Callee::def(self, def_id, tcx.intern_substs(&[])).reify(self)
+                callee::resolve_and_get_fn(self, def_id, tcx.intern_substs(&[]))
             }
             _ => {
                 let name = if base::wants_msvc_seh(self.sess()) {
@@ -958,7 +920,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         let tcx = self.tcx();
         assert!(self.sess().target.target.options.custom_unwind_resume);
         if let Some(def_id) = tcx.lang_items.eh_unwind_resume() {
-            let llfn = Callee::def(self, def_id, tcx.intern_substs(&[])).reify(self);
+            let llfn = callee::resolve_and_get_fn(self, def_id, tcx.intern_substs(&[]));
             unwresume.set(Some(llfn));
             return llfn;
         }
@@ -975,6 +937,54 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         attributes::unwind(llfn, true);
         unwresume.set(Some(llfn));
         llfn
+    }
+}
+
+impl<'a, 'tcx> ty::layout::HasDataLayout for &'a SharedCrateContext<'a, 'tcx> {
+    fn data_layout(&self) -> &ty::layout::TargetDataLayout {
+        &self.tcx.data_layout
+    }
+}
+
+impl<'a, 'tcx> ty::layout::HasTyCtxt<'tcx> for &'a SharedCrateContext<'a, 'tcx> {
+    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'tcx, 'tcx> {
+        self.tcx
+    }
+}
+
+impl<'a, 'tcx> ty::layout::HasDataLayout for &'a CrateContext<'a, 'tcx> {
+    fn data_layout(&self) -> &ty::layout::TargetDataLayout {
+        &self.shared.tcx.data_layout
+    }
+}
+
+impl<'a, 'tcx> ty::layout::HasTyCtxt<'tcx> for &'a CrateContext<'a, 'tcx> {
+    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'tcx, 'tcx> {
+        self.shared.tcx
+    }
+}
+
+impl<'a, 'tcx> LayoutTyper<'tcx> for &'a SharedCrateContext<'a, 'tcx> {
+    type TyLayout = TyLayout<'tcx>;
+
+    fn layout_of(self, ty: Ty<'tcx>) -> Self::TyLayout {
+        self.tcx().infer_ctxt((), traits::Reveal::All).enter(|infcx| {
+            infcx.layout_of(ty).unwrap_or_else(|e| {
+                match e {
+                    ty::layout::LayoutError::SizeOverflow(_) =>
+                        self.sess().fatal(&e.to_string()),
+                    _ => bug!("failed to get layout for `{}`: {}", ty, e)
+                }
+            })
+        })
+    }
+}
+
+impl<'a, 'tcx> LayoutTyper<'tcx> for &'a CrateContext<'a, 'tcx> {
+    type TyLayout = TyLayout<'tcx>;
+
+    fn layout_of(self, ty: Ty<'tcx>) -> Self::TyLayout {
+        self.shared.layout_of(ty)
     }
 }
 

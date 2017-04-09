@@ -65,10 +65,10 @@ pub fn find_library(name: &str, search_paths: &[PathBuf], sess: &Session)
 
     for path in search_paths {
         debug!("looking for {} inside {:?}", name, path);
-        let test = path.join(&oslibname[..]);
+        let test = path.join(&oslibname);
         if test.exists() { return test }
         if oslibname != unixlibname {
-            let test = path.join(&unixlibname[..]);
+            let test = path.join(&unixlibname);
             if test.exists() { return test }
         }
     }

@@ -10,12 +10,12 @@
 
 //! Bit fiddling on positive IEEE 754 floats. Negative numbers aren't and needn't be handled.
 //! Normal floating point numbers have a canonical representation as (frac, exp) such that the
-//! value is 2^exp * (1 + sum(frac[N-i] / 2^i)) where N is the number of bits. Subnormals are
-//! slightly different and weird, but the same principle applies.
+//! value is 2<sup>exp</sup> * (1 + sum(frac[N-i] / 2<sup>i</sup>)) where N is the number of bits.
+//! Subnormals are slightly different and weird, but the same principle applies.
 //!
-//! Here, however, we represent them as (sig, k) with f positive, such that the value is f * 2^e.
-//! Besides making the "hidden bit" explicit, this changes the exponent by the so-called
-//! mantissa shift.
+//! Here, however, we represent them as (sig, k) with f positive, such that the value is f *
+//! 2<sup>e</sup>. Besides making the "hidden bit" explicit, this changes the exponent by the
+//! so-called mantissa shift.
 //!
 //! Put another way, normally floats are written as (1) but here they are written as (2):
 //!
@@ -94,7 +94,8 @@ pub trait RawFloat : Float + Copy + Debug + LowerExp
     /// represented, the other code in this module makes sure to never let that happen.
     fn from_int(x: u64) -> Self;
 
-    /// Get the value 10^e from a pre-computed table. Panics for e >= ceil_log5_of_max_sig().
+    /// Get the value 10<sup>e</sup> from a pre-computed table. Panics for e >=
+    /// ceil_log5_of_max_sig().
     fn short_fast_pow10(e: usize) -> Self;
 
     // FIXME Everything that follows should be associated constants, but taking the value of an

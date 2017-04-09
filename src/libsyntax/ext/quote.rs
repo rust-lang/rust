@@ -220,16 +220,24 @@ pub mod rt {
     }
 
     impl ToTokens for ast::Attribute {
-        fn to_tokens(&self, cx: &ExtCtxt) -> Vec<TokenTree> {
+        fn to_tokens(&self, _cx: &ExtCtxt) -> Vec<TokenTree> {
             let mut r = vec![];
             // FIXME: The spans could be better
             r.push(TokenTree::Token(self.span, token::Pound));
             if self.style == ast::AttrStyle::Inner {
                 r.push(TokenTree::Token(self.span, token::Not));
             }
+            let mut inner = Vec::new();
+            for (i, segment) in self.path.segments.iter().enumerate() {
+                if i > 0 {
+                    inner.push(TokenTree::Token(self.span, token::Colon).into());
+                }
+                inner.push(TokenTree::Token(self.span, token::Ident(segment.identifier)).into());
+            }
+            inner.push(self.tokens.clone());
+
             r.push(TokenTree::Delimited(self.span, tokenstream::Delimited {
-                delim: token::Bracket,
-                tts: self.value.to_tokens(cx).into_iter().collect::<TokenStream>().into(),
+                delim: token::Bracket, tts: TokenStream::concat(inner).into()
             }));
             r
         }
@@ -406,7 +414,7 @@ pub fn parse_arm_panic(parser: &mut Parser) -> Arm {
 }
 
 pub fn parse_ty_panic(parser: &mut Parser) -> P<Ty> {
-    panictry!(parser.parse_ty_no_plus())
+    panictry!(parser.parse_ty())
 }
 
 pub fn parse_stmt_panic(parser: &mut Parser) -> Option<Stmt> {

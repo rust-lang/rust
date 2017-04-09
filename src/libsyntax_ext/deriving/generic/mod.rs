@@ -375,7 +375,7 @@ fn find_type_parameters(ty: &ast::Ty,
         }
 
         fn visit_mac(&mut self, mac: &ast::Mac) {
-            let span = Span { expn_id: self.span.expn_id, ..mac.span };
+            let span = Span { ctxt: self.span.ctxt, ..mac.span };
             self.cx.span_err(span, "`derive` cannot be used on items with type macros");
         }
     }
@@ -439,7 +439,7 @@ impl<'a> TraitDef<'a> {
                 attrs.extend(item.attrs
                     .iter()
                     .filter(|a| {
-                        match &*a.name().as_str() {
+                        a.name().is_some() && match &*a.name().unwrap().as_str() {
                             "allow" | "warn" | "deny" | "forbid" | "stable" | "unstable" => true,
                             _ => false,
                         }
@@ -1458,7 +1458,7 @@ impl<'a> MethodDef<'a> {
             .iter()
             .map(|v| {
                 let ident = v.node.name;
-                let sp = Span { expn_id: trait_.span.expn_id, ..v.span };
+                let sp = Span { ctxt: trait_.span.ctxt, ..v.span };
                 let summary = trait_.summarise_struct(cx, &v.node.data);
                 (ident, sp, summary)
             })
@@ -1478,7 +1478,7 @@ impl<'a> TraitDef<'a> {
         let mut named_idents = Vec::new();
         let mut just_spans = Vec::new();
         for field in struct_def.fields() {
-            let sp = Span { expn_id: self.span.expn_id, ..field.span };
+            let sp = Span { ctxt: self.span.ctxt, ..field.span };
             match field.ident {
                 Some(ident) => named_idents.push((ident, sp)),
                 _ => just_spans.push(sp),
@@ -1523,7 +1523,7 @@ impl<'a> TraitDef<'a> {
         let mut paths = Vec::new();
         let mut ident_exprs = Vec::new();
         for (i, struct_field) in struct_def.fields().iter().enumerate() {
-            let sp = Span { expn_id: self.span.expn_id, ..struct_field.span };
+            let sp = Span { ctxt: self.span.ctxt, ..struct_field.span };
             let ident = cx.ident_of(&format!("{}_{}", prefix, i));
             paths.push(codemap::Spanned {
                 span: sp,
@@ -1544,7 +1544,7 @@ impl<'a> TraitDef<'a> {
                             cx.span_bug(sp, "a braced struct with unnamed fields in `derive`");
                         }
                         codemap::Spanned {
-                            span: Span { expn_id: self.span.expn_id, ..pat.span },
+                            span: Span { ctxt: self.span.ctxt, ..pat.span },
                             node: ast::FieldPat {
                                 ident: ident.unwrap(),
                                 pat: pat,
@@ -1576,7 +1576,7 @@ impl<'a> TraitDef<'a> {
          mutbl: ast::Mutability)
          -> (P<ast::Pat>, Vec<(Span, Option<Ident>, P<Expr>, &'a [ast::Attribute])>) {
         let variant_ident = variant.node.name;
-        let sp = Span { expn_id: self.span.expn_id, ..variant.span };
+        let sp = Span { ctxt: self.span.ctxt, ..variant.span };
         let variant_path = cx.path(sp, vec![enum_ident, variant_ident]);
         self.create_struct_pattern(cx, variant_path, &variant.node.data, prefix, mutbl)
     }

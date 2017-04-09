@@ -218,10 +218,10 @@ pub struct BinaryHeap<T> {
     data: Vec<T>,
 }
 
-/// A container object that represents the result of the [`peek_mut()`] method
+/// A container object that represents the result of the [`peek_mut`] method
 /// on `BinaryHeap`. See its documentation for details.
 ///
-/// [`peek_mut()`]: struct.BinaryHeap.html#method.peek_mut
+/// [`peek_mut`]: struct.BinaryHeap.html#method.peek_mut
 #[stable(feature = "binary_heap_peek_mut", since = "1.12.0")]
 pub struct PeekMut<'a, T: 'a + Ord> {
     heap: &'a mut BinaryHeap<T>,
@@ -930,13 +930,13 @@ impl<'a, T> Hole<'a, T> {
         self.pos
     }
 
-    /// Return a reference to the element removed
+    /// Returns a reference to the element removed.
     #[inline]
     fn element(&self) -> &T {
         self.elt.as_ref().unwrap()
     }
 
-    /// Return a reference to the element at `index`.
+    /// Returns a reference to the element at `index`.
     ///
     /// Unsafe because index must be within the data slice and not equal to pos.
     #[inline]

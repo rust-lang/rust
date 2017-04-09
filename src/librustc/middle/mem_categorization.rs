@@ -194,61 +194,79 @@ pub struct cmt_<'tcx> {
 
 pub type cmt<'tcx> = Rc<cmt_<'tcx>>;
 
+pub enum ImmutabilityBlame<'tcx> {
+    ImmLocal(ast::NodeId),
+    ClosureEnv(ast::NodeId),
+    LocalDeref(ast::NodeId),
+    AdtFieldDeref(&'tcx ty::AdtDef, &'tcx ty::FieldDef)
+}
+
 impl<'tcx> cmt_<'tcx> {
-    pub fn get_field(&self, name: ast::Name) -> Option<DefId> {
-        match self.cat {
-            Categorization::Deref(ref cmt, ..) |
-            Categorization::Interior(ref cmt, _) |
-            Categorization::Downcast(ref cmt, _) => {
-                if let Categorization::Local(_) = cmt.cat {
-                    if let ty::TyAdt(def, _) = self.ty.sty {
-                        if def.is_struct() {
-                            return def.struct_variant().find_field_named(name).map(|x| x.did);
-                        }
-                    }
-                    None
-                } else {
-                    cmt.get_field(name)
-                }
+    fn resolve_field(&self, field_name: FieldName) -> Option<(&'tcx ty::AdtDef, &'tcx ty::FieldDef)>
+    {
+        let adt_def = match self.ty.sty {
+            ty::TyAdt(def, _) => def,
+            ty::TyTuple(..) => return None,
+            // closures get `Categorization::Upvar` rather than `Categorization::Interior`
+            _ =>  bug!("interior cmt {:?} is not an ADT", self)
+        };
+        let variant_def = match self.cat {
+            Categorization::Downcast(_, variant_did) => {
+                adt_def.variant_with_id(variant_did)
             }
-            _ => None
-        }
+            _ => {
+                assert!(adt_def.is_univariant());
+                &adt_def.variants[0]
+            }
+        };
+        let field_def = match field_name {
+            NamedField(name) => variant_def.field_named(name),
+            PositionalField(idx) => &variant_def.fields[idx]
+        };
+        Some((adt_def, field_def))
     }
 
-    pub fn get_field_name(&self) -> Option<ast::Name> {
+    pub fn immutability_blame(&self) -> Option<ImmutabilityBlame<'tcx>> {
         match self.cat {
-            Categorization::Interior(_, ref ik) => {
-                if let InteriorKind::InteriorField(FieldName::NamedField(name)) = *ik {
-                    Some(name)
-                } else {
-                    None
-                }
-            }
-            Categorization::Deref(ref cmt, ..) |
-            Categorization::Downcast(ref cmt, _) => {
-                cmt.get_field_name()
-            }
-            _ => None,
-        }
-    }
-
-    pub fn get_arg_if_immutable(&self, map: &hir_map::Map) -> Option<ast::NodeId> {
-        match self.cat {
-            Categorization::Deref(ref cmt, ..) |
-            Categorization::Interior(ref cmt, _) |
-            Categorization::Downcast(ref cmt, _) => {
-                if let Categorization::Local(nid) = cmt.cat {
-                    if let ty::TyAdt(_, _) = self.ty.sty {
-                        if let ty::TyRef(_, ty::TypeAndMut{mutbl: MutImmutable, ..}) = cmt.ty.sty {
-                            return Some(nid);
+            Categorization::Deref(ref base_cmt, _, BorrowedPtr(ty::ImmBorrow, _)) |
+            Categorization::Deref(ref base_cmt, _, Implicit(ty::ImmBorrow, _)) => {
+                // try to figure out where the immutable reference came from
+                match base_cmt.cat {
+                    Categorization::Local(node_id) =>
+                        Some(ImmutabilityBlame::LocalDeref(node_id)),
+                    Categorization::Interior(ref base_cmt, InteriorField(field_name)) => {
+                        base_cmt.resolve_field(field_name).map(|(adt_def, field_def)| {
+                            ImmutabilityBlame::AdtFieldDeref(adt_def, field_def)
+                        })
+                    }
+                    Categorization::Upvar(Upvar { id, .. }) => {
+                        if let NoteClosureEnv(..) = self.note {
+                            Some(ImmutabilityBlame::ClosureEnv(id.closure_expr_id))
+                        } else {
+                            None
                         }
                     }
-                    None
-                } else {
-                    cmt.get_arg_if_immutable(map)
+                    _ => None
                 }
             }
-            _ => None
+            Categorization::Local(node_id) => {
+                Some(ImmutabilityBlame::ImmLocal(node_id))
+            }
+            Categorization::Rvalue(..) |
+            Categorization::Upvar(..) |
+            Categorization::Deref(.., UnsafePtr(..)) => {
+                // This should not be reachable up to inference limitations.
+                None
+            }
+            Categorization::Interior(ref base_cmt, _) |
+            Categorization::Downcast(ref base_cmt, _) |
+            Categorization::Deref(ref base_cmt, _, _) => {
+                base_cmt.immutability_blame()
+            }
+            Categorization::StaticItem => {
+                // Do we want to do something here?
+                None
+            }
         }
     }
 }
@@ -843,11 +861,10 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         let promotable = self.tcx().rvalue_promotable_to_static.borrow().get(&id).cloned()
                                    .unwrap_or(false);
 
-        // Only promote `[T; 0]` before an RFC for rvalue promotions
-        // is accepted.
+        // When the corresponding feature isn't toggled, only promote `[T; 0]`.
         let promotable = match expr_ty.sty {
             ty::TyArray(_, 0) => true,
-            _ => promotable & false
+            _ => promotable && self.tcx().sess.features.borrow().rvalue_static_promotion,
         };
 
         // Compute maximum lifetime of this rvalue. This is 'static if
@@ -1268,9 +1285,6 @@ pub enum Aliasability {
 #[derive(Copy, Clone, Debug)]
 pub enum AliasableReason {
     AliasableBorrowed,
-    AliasableClosure(ast::NodeId), // Aliasable due to capture Fn closure env
-    AliasableOther,
-    UnaliasableImmutable, // Created as needed upon seeing ImmutableUnique
     AliasableStatic,
     AliasableStaticMut,
 }
@@ -1310,21 +1324,11 @@ impl<'tcx> cmt_<'tcx> {
             Categorization::Deref(ref b, _, Implicit(ty::MutBorrow, _)) |
             Categorization::Deref(ref b, _, BorrowedPtr(ty::UniqueImmBorrow, _)) |
             Categorization::Deref(ref b, _, Implicit(ty::UniqueImmBorrow, _)) |
+            Categorization::Deref(ref b, _, Unique) |
             Categorization::Downcast(ref b, _) |
             Categorization::Interior(ref b, _) => {
                 // Aliasability depends on base cmt
                 b.freely_aliasable()
-            }
-
-            Categorization::Deref(ref b, _, Unique) => {
-                let sub = b.freely_aliasable();
-                if b.mutbl.is_mutable() {
-                    // Aliasability depends on base cmt alone
-                    sub
-                } else {
-                    // Do not allow mutation through an immutable box.
-                    ImmutableUnique(Box::new(sub))
-                }
             }
 
             Categorization::Rvalue(..) |
@@ -1342,13 +1346,9 @@ impl<'tcx> cmt_<'tcx> {
                 }
             }
 
-            Categorization::Deref(ref base, _, BorrowedPtr(ty::ImmBorrow, _)) |
-            Categorization::Deref(ref base, _, Implicit(ty::ImmBorrow, _)) => {
-                match base.cat {
-                    Categorization::Upvar(Upvar{ id, .. }) =>
-                        FreelyAliasable(AliasableClosure(id.closure_expr_id)),
-                    _ => FreelyAliasable(AliasableBorrowed)
-                }
+            Categorization::Deref(_, _, BorrowedPtr(ty::ImmBorrow, _)) |
+            Categorization::Deref(_, _, Implicit(ty::ImmBorrow, _)) => {
+                FreelyAliasable(AliasableBorrowed)
             }
         }
     }

@@ -13,7 +13,6 @@ use index::Index;
 use schema::*;
 
 use rustc::middle::cstore::{LinkMeta, LinkagePreference, NativeLibrary};
-use rustc::hir::def;
 use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefIndex, DefId};
 use rustc::hir::map::definitions::DefPathTable;
 use rustc::middle::dependency_format::Linkage;
@@ -48,7 +47,6 @@ use super::index_builder::{FromId, IndexBuilder, Untracked};
 pub struct EncodeContext<'a, 'tcx: 'a> {
     opaque: opaque::Encoder<'a>,
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    reexports: &'a def::ExportMap,
     link_meta: &'a LinkMeta,
     cstore: &'a cstore::CStore,
     exported_symbols: &'a NodeSet,
@@ -293,7 +291,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             predicates: Some(self.encode_predicates(def_id)),
 
             ast: None,
-            mir: None,
+            mir: self.encode_mir(def_id),
         }
     }
 
@@ -306,7 +304,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let def_id = tcx.hir.local_def_id(id);
 
         let data = ModData {
-            reexports: match self.reexports.get(&id) {
+            reexports: match tcx.export_map.get(&id) {
                 Some(exports) if *vis == hir::Public => self.lazy_seq_ref(exports),
                 _ => LazySeq::empty(),
             },
@@ -426,7 +424,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             predicates: Some(self.encode_predicates(def_id)),
 
             ast: None,
-            mir: None,
+            mir: self.encode_mir(def_id),
         }
     }
 
@@ -695,7 +693,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 let data = ImplData {
                     polarity: hir::ImplPolarity::Positive,
                     parent_impl: None,
-                    coerce_unsized_kind: None,
+                    coerce_unsized_info: None,
                     trait_ref: tcx.impl_trait_ref(def_id).map(|trait_ref| self.lazy(&trait_ref)),
                 };
 
@@ -715,13 +713,21 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     None
                 };
 
+                // if this is an impl of `CoerceUnsized`, create its
+                // "unsized info", else just store None
+                let coerce_unsized_info =
+                    trait_ref.and_then(|t| {
+                        if Some(t.def_id) == tcx.lang_items.coerce_unsized_trait() {
+                            Some(ty::queries::coerce_unsized_info::get(tcx, item.span, def_id))
+                        } else {
+                            None
+                        }
+                    });
+
                 let data = ImplData {
                     polarity: polarity,
                     parent_impl: parent,
-                    coerce_unsized_kind: tcx.maps.custom_coerce_unsized_kind
-                        .borrow()
-                        .get(&def_id)
-                        .cloned(),
+                    coerce_unsized_info: coerce_unsized_info,
                     trait_ref: trait_ref.map(|trait_ref| self.lazy(&trait_ref)),
                 };
 
@@ -920,14 +926,14 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
                 self.encode_fields(def_id);
             }
             hir::ItemImpl(..) => {
-                for &trait_item_def_id in &self.tcx.associated_item_def_ids(def_id)[..] {
+                for &trait_item_def_id in self.tcx.associated_item_def_ids(def_id).iter() {
                     self.record(trait_item_def_id,
                                 EncodeContext::encode_info_for_impl_item,
                                 trait_item_def_id);
                 }
             }
             hir::ItemTrait(..) => {
-                for &item_def_id in &self.tcx.associated_item_def_ids(def_id)[..] {
+                for &item_def_id in self.tcx.associated_item_def_ids(def_id).iter() {
                     self.record(item_def_id,
                                 EncodeContext::encode_info_for_trait_item,
                                 item_def_id);
@@ -1404,7 +1410,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 //
 // And here we run into yet another obscure archive bug: in which metadata
 // loaded from archives may have trailing garbage bytes. Awhile back one of
-// our tests was failing sporadically on the OSX 64-bit builders (both nopt
+// our tests was failing sporadically on the macOS 64-bit builders (both nopt
 // and opt) by having ebml generate an out-of-bounds panic when looking at
 // metadata.
 //
@@ -1423,7 +1429,6 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
 pub fn encode_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                  cstore: &cstore::CStore,
-                                 reexports: &def::ExportMap,
                                  link_meta: &LinkMeta,
                                  exported_symbols: &NodeSet)
                                  -> Vec<u8> {
@@ -1437,7 +1442,6 @@ pub fn encode_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let mut ecx = EncodeContext {
             opaque: opaque::Encoder::new(&mut cursor),
             tcx: tcx,
-            reexports: reexports,
             link_meta: link_meta,
             cstore: cstore,
             exported_symbols: exported_symbols,

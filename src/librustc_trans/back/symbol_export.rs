@@ -11,6 +11,7 @@
 use context::SharedCrateContext;
 use monomorphize::Instance;
 use symbol_map::SymbolMap;
+use back::symbol_names::symbol_name;
 use util::nodemap::FxHashMap;
 use rustc::hir::def_id::{DefId, CrateNum, LOCAL_CRATE};
 use rustc::session::config;
@@ -106,7 +107,7 @@ impl ExportedSymbols {
                 .exported_symbols(cnum)
                 .iter()
                 .map(|&def_id| {
-                    let name = Instance::mono(scx, def_id).symbol_name(scx);
+                    let name = symbol_name(Instance::mono(scx.tcx(), def_id), scx);
                     let export_level = if special_runtime_crate {
                         // We can probably do better here by just ensuring that
                         // it has hidden visibility rather than public
@@ -153,7 +154,7 @@ impl ExportedSymbols {
                             cnum: CrateNum)
                             -> &[(String, SymbolExportLevel)] {
         match self.exports.get(&cnum) {
-            Some(exports) => &exports[..],
+            Some(exports) => exports,
             None => &[]
         }
     }
@@ -166,7 +167,7 @@ impl ExportedSymbols {
     {
         for &(ref name, export_level) in self.exported_symbols(cnum) {
             if is_below_threshold(export_level, export_threshold) {
-                f(&name[..], export_level)
+                f(&name, export_level)
             }
         }
     }
@@ -218,9 +219,9 @@ fn symbol_for_def_id<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
         }
     }
 
-    let instance = Instance::mono(scx, def_id);
+    let instance = Instance::mono(scx.tcx(), def_id);
 
     symbol_map.get(TransItem::Fn(instance))
               .map(str::to_owned)
-              .unwrap_or_else(|| instance.symbol_name(scx))
+              .unwrap_or_else(|| symbol_name(instance, scx))
 }

@@ -23,7 +23,7 @@ use hir;
 #[derive(Clone, Copy, Debug)]
 pub struct ExpectedFound<T> {
     pub expected: T,
-    pub found: T
+    pub found: T,
 }
 
 // Data structures used in type unification
@@ -39,8 +39,8 @@ pub enum TypeError<'tcx> {
     RegionsDoesNotOutlive(&'tcx Region, &'tcx Region),
     RegionsNotSame(&'tcx Region, &'tcx Region),
     RegionsNoOverlap(&'tcx Region, &'tcx Region),
-    RegionsInsufficientlyPolymorphic(BoundRegion, &'tcx Region),
-    RegionsOverlyPolymorphic(BoundRegion, &'tcx Region),
+    RegionsInsufficientlyPolymorphic(BoundRegion, &'tcx Region, Option<Box<ty::Issue32330>>),
+    RegionsOverlyPolymorphic(BoundRegion, &'tcx Region, Option<Box<ty::Issue32330>>),
     Sorts(ExpectedFound<Ty<'tcx>>),
     IntMismatch(ExpectedFound<ty::IntVarValue>),
     FloatMismatch(ExpectedFound<ast::FloatTy>),
@@ -116,11 +116,11 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
             RegionsNoOverlap(..) => {
                 write!(f, "lifetimes do not intersect")
             }
-            RegionsInsufficientlyPolymorphic(br, _) => {
+            RegionsInsufficientlyPolymorphic(br, _, _) => {
                 write!(f, "expected bound lifetime parameter {}, \
                            found concrete lifetime", br)
             }
-            RegionsOverlyPolymorphic(br, _) => {
+            RegionsOverlyPolymorphic(br, _, _) => {
                 write!(f, "expected concrete lifetime, \
                            found bound lifetime parameter {}", br)
             }
@@ -253,15 +253,15 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 self.note_and_explain_region(db, "...does not overlap ",
                                            region2, "");
             }
-            RegionsInsufficientlyPolymorphic(_, conc_region) => {
+            RegionsInsufficientlyPolymorphic(_, conc_region, _) => {
                 self.note_and_explain_region(db, "concrete lifetime that was found is ",
                                            conc_region, "");
             }
-            RegionsOverlyPolymorphic(_, &ty::ReVar(_)) => {
+            RegionsOverlyPolymorphic(_, &ty::ReVar(_), _) => {
                 // don't bother to print out the message below for
                 // inference variables, it's not very illuminating.
             }
-            RegionsOverlyPolymorphic(_, conc_region) => {
+            RegionsOverlyPolymorphic(_, conc_region, _) => {
                 self.note_and_explain_region(db, "expected concrete lifetime is ",
                                            conc_region, "");
             }

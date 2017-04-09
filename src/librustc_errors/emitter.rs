@@ -10,7 +10,7 @@
 
 use self::Destination::*;
 
-use syntax_pos::{COMMAND_LINE_SP, DUMMY_SP, FileMap, Span, MultiSpan, CharPos};
+use syntax_pos::{DUMMY_SP, FileMap, Span, MultiSpan, CharPos};
 
 use {Level, CodeSuggestion, DiagnosticBuilder, SubDiagnostic, CodeMapper};
 use RenderSpan::*;
@@ -151,7 +151,7 @@ impl EmitterWriter {
 
         if let Some(ref cm) = self.cm {
             for span_label in msp.span_labels() {
-                if span_label.span == DUMMY_SP || span_label.span == COMMAND_LINE_SP {
+                if span_label.span == DUMMY_SP {
                     continue;
                 }
                 let lo = cm.lookup_char_pos(span_label.span.lo);
@@ -615,7 +615,7 @@ impl EmitterWriter {
         let mut max = 0;
         if let Some(ref cm) = self.cm {
             for primary_span in msp.primary_spans() {
-                if primary_span != &DUMMY_SP && primary_span != &COMMAND_LINE_SP {
+                if primary_span != &DUMMY_SP {
                     let hi = cm.lookup_char_pos(primary_span.hi);
                     if hi.line > max {
                         max = hi.line;
@@ -623,7 +623,7 @@ impl EmitterWriter {
                 }
             }
             for span_label in msp.span_labels() {
-                if span_label.span != DUMMY_SP && span_label.span != COMMAND_LINE_SP {
+                if span_label.span != DUMMY_SP {
                     let hi = cm.lookup_char_pos(span_label.span.hi);
                     if hi.line > max {
                         max = hi.line;
@@ -659,20 +659,20 @@ impl EmitterWriter {
 
             // First, find all the spans in <*macros> and point instead at their use site
             for sp in span.primary_spans() {
-                if (*sp == COMMAND_LINE_SP) || (*sp == DUMMY_SP) {
+                if *sp == DUMMY_SP {
                     continue;
                 }
                 if cm.span_to_filename(sp.clone()).contains("macros>") {
-                    let v = cm.macro_backtrace(sp.clone());
+                    let v = sp.macro_backtrace();
                     if let Some(use_site) = v.last() {
                         before_after.push((sp.clone(), use_site.call_site.clone()));
                     }
                 }
-                for trace in cm.macro_backtrace(sp.clone()).iter().rev() {
+                for trace in sp.macro_backtrace().iter().rev() {
                     // Only show macro locations that are local
                     // and display them like a span_note
                     if let Some(def_site) = trace.def_site_span {
-                        if (def_site == COMMAND_LINE_SP) || (def_site == DUMMY_SP) {
+                        if def_site == DUMMY_SP {
                             continue;
                         }
                         // Check to make sure we're not in any <*macros>
@@ -689,11 +689,11 @@ impl EmitterWriter {
                 span.push_span_label(label_span, label_text);
             }
             for sp_label in span.span_labels() {
-                if (sp_label.span == COMMAND_LINE_SP) || (sp_label.span == DUMMY_SP) {
+                if sp_label.span == DUMMY_SP {
                     continue;
                 }
                 if cm.span_to_filename(sp_label.span.clone()).contains("macros>") {
-                    let v = cm.macro_backtrace(sp_label.span.clone());
+                    let v = sp_label.span.macro_backtrace();
                     if let Some(use_site) = v.last() {
                         before_after.push((sp_label.span.clone(), use_site.call_site.clone()));
                     }
@@ -848,7 +848,7 @@ impl EmitterWriter {
         // Make sure our primary file comes first
         let primary_lo = if let (Some(ref cm), Some(ref primary_span)) =
             (self.cm.as_ref(), msp.primary_span().as_ref()) {
-            if primary_span != &&DUMMY_SP && primary_span != &&COMMAND_LINE_SP {
+            if primary_span != &&DUMMY_SP {
                 cm.lookup_char_pos(primary_span.lo)
             } else {
                 emit_to_destination(&buffer.render(), level, &mut self.dst)?;

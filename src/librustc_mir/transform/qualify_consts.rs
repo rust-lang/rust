@@ -223,7 +223,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
             }
 
             // This comes from a macro that has #[allow_internal_unstable].
-            if self.tcx.sess.codemap().span_allows_unstable(self.span) {
+            if self.span.allows_unstable() {
                 return;
             }
 
@@ -568,11 +568,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                 });
             }
             Operand::Constant(ref constant) => {
-                // Only functions and methods can have these types.
-                if let ty::TyFnDef(..) = constant.ty.sty {
-                    return;
-                }
-
                 if let Literal::Item { def_id, substs } = constant.literal {
                     // Don't peek inside generic (associated) constants.
                     if substs.types().next().is_some() {
@@ -608,7 +603,8 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
             Rvalue::Cast(CastKind::ReifyFnPointer, ..) |
             Rvalue::Cast(CastKind::UnsafeFnPointer, ..) |
             Rvalue::Cast(CastKind::ClosureFnPointer, ..) |
-            Rvalue::Cast(CastKind::Unsize, ..) => {}
+            Rvalue::Cast(CastKind::Unsize, ..) |
+            Rvalue::Discriminant(..) => {}
 
             Rvalue::Len(_) => {
                 // Static lvalues in consts would have errored already,
@@ -726,14 +722,6 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                 }
             }
 
-            Rvalue::Discriminant(..) => {
-                // FIXME discriminant
-                self.add(Qualif::NOT_CONST);
-                if self.mode != Mode::Fn {
-                    bug!("implement discriminant const qualify");
-                }
-            }
-
             Rvalue::Box(_) => {
                 self.add(Qualif::NOT_CONST);
                 if self.mode != Mode::Fn {
@@ -810,7 +798,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     self.def_id.is_local() &&
 
                     // this doesn't come from a macro that has #[allow_internal_unstable]
-                    !self.tcx.sess.codemap().span_allows_unstable(self.span)
+                    !self.span.allows_unstable()
                 {
                     let mut err = self.tcx.sess.struct_span_err(self.span,
                         "const fns are an unstable feature");

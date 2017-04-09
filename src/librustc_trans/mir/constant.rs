@@ -18,19 +18,20 @@ use rustc::hir::def_id::DefId;
 use rustc::infer::TransNormalize;
 use rustc::mir;
 use rustc::mir::tcx::LvalueTy;
-use rustc::ty::{self, layout, Ty, TyCtxt, TypeFoldable};
+use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
+use rustc::ty::layout::{self, LayoutTyper};
 use rustc::ty::cast::{CastTy, IntTy};
 use rustc::ty::subst::{Kind, Substs, Subst};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
 use {abi, adt, base, Disr, machine};
-use callee::Callee;
+use callee;
 use builder::Builder;
 use common::{self, CrateContext, const_get_elt, val_ty};
 use common::{C_array, C_bool, C_bytes, C_floating_f64, C_integral, C_big_integral};
 use common::{C_null, C_struct, C_str_slice, C_undef, C_uint, C_vector, is_undef};
 use common::const_to_opt_u128;
 use consts;
-use monomorphize::{self, Instance};
+use monomorphize;
 use type_of;
 use type_::Type;
 use value::Value;
@@ -101,9 +102,12 @@ impl<'tcx> Const<'tcx> {
             ConstVal::Str(ref v) => C_str_slice(ccx, v.clone()),
             ConstVal::ByteStr(ref v) => consts::addr_of(ccx, C_bytes(ccx, v), 1, "byte_str"),
             ConstVal::Struct(_) | ConstVal::Tuple(_) |
-            ConstVal::Array(..) | ConstVal::Repeat(..) |
+            ConstVal::Array(..) | ConstVal::Repeat(..) => {
+                bug!("MIR must not use `{:?}` (aggregates are expanded to MIR rvalues)", cv)
+            }
             ConstVal::Function(..) => {
-                bug!("MIR must not use `{:?}` (which refers to a local ID)", cv)
+                let llty = type_of::type_of(ccx, ty);
+                return Const::new(C_null(llty), ty);
             }
             ConstVal::Char(c) => C_integral(Type::char(ccx), c as u64, false),
         };
@@ -145,7 +149,7 @@ impl<'tcx> Const<'tcx> {
         } else {
             // Otherwise, or if the value is not immediate, we create
             // a constant LLVM global and cast its address if necessary.
-            let align = type_of::align_of(ccx, self.ty);
+            let align = ccx.align_of(self.ty);
             let ptr = consts::addr_of(ccx, self.llval, align, "const");
             OperandValue::Ref(consts::ptrcast(ptr, llty.ptr_to()), Alignment::AbiAligned)
         };
@@ -245,11 +249,12 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
     }
 
     fn trans_def(ccx: &'a CrateContext<'a, 'tcx>,
-                 instance: Instance<'tcx>,
+                 def_id: DefId,
+                 substs: &'tcx Substs<'tcx>,
                  args: IndexVec<mir::Local, Const<'tcx>>)
                  -> Result<Const<'tcx>, ConstEvalErr<'tcx>> {
-        let instance = instance.resolve_const(ccx.shared());
-        let mir = ccx.tcx().item_mir(instance.def);
+        let instance = monomorphize::resolve(ccx.shared(), def_id, substs);
+        let mir = ccx.tcx().instance_mir(instance.def);
         MirConstContext::new(ccx, &mir, instance.substs, args).trans()
     }
 
@@ -332,10 +337,8 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                 mir::TerminatorKind::Call { ref func, ref args, ref destination, .. } => {
                     let fn_ty = func.ty(self.mir, tcx);
                     let fn_ty = self.monomorphize(&fn_ty);
-                    let instance = match fn_ty.sty {
-                        ty::TyFnDef(def_id, substs, _) => {
-                            Instance::new(def_id, substs)
-                        }
+                    let (def_id, substs) = match fn_ty.sty {
+                        ty::TyFnDef(def_id, substs, _) => (def_id, substs),
                         _ => span_bug!(span, "calling {:?} (of type {}) in constant",
                                        func, fn_ty)
                     };
@@ -348,7 +351,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                         }
                     }
                     if let Some((ref dest, target)) = *destination {
-                        match MirConstContext::trans_def(self.ccx, instance, const_args) {
+                        match MirConstContext::trans_def(self.ccx, def_id, substs, const_args) {
                             Ok(value) => self.store(dest, value, span),
                             Err(err) => if failure.is_ok() { failure = Err(err); }
                         }
@@ -477,16 +480,8 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                 let ty = self.monomorphize(&constant.ty);
                 match constant.literal.clone() {
                     mir::Literal::Item { def_id, substs } => {
-                        // Shortcut for zero-sized types, including function item
-                        // types, which would not work with MirConstContext.
-                        if common::type_is_zero_size(self.ccx, ty) {
-                            let llty = type_of::type_of(self.ccx, ty);
-                            return Ok(Const::new(C_null(llty), ty));
-                        }
-
                         let substs = self.monomorphize(&substs);
-                        let instance = Instance::new(def_id, substs);
-                        MirConstContext::trans_def(self.ccx, instance, IndexVec::new())
+                        MirConstContext::trans_def(self.ccx, def_id, substs, IndexVec::new())
                     }
                     mir::Literal::Promoted { index } => {
                         let mir = &self.mir.promoted[index];
@@ -567,8 +562,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                     mir::CastKind::ReifyFnPointer => {
                         match operand.ty.sty {
                             ty::TyFnDef(def_id, substs, _) => {
-                                Callee::def(self.ccx, def_id, substs)
-                                    .reify(self.ccx)
+                                callee::resolve_and_get_fn(self.ccx, def_id, substs)
                             }
                             _ => {
                                 span_bug!(span, "{} cannot be reified to a fn ptr",
@@ -588,10 +582,10 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                                 // Now create its substs [Closure, Tuple]
                                 let input = tcx.closure_type(def_id)
                                     .subst(tcx, substs.substs).input(0);
-                                let substs = tcx.mk_substs([operand.ty, input.skip_binder()]
+                                let input = tcx.erase_late_bound_regions_and_normalize(&input);
+                                let substs = tcx.mk_substs([operand.ty, input]
                                     .iter().cloned().map(Kind::from));
-                                Callee::def(self.ccx, call_once, substs)
-                                    .reify(self.ccx)
+                                callee::resolve_and_get_fn(self.ccx, call_once, substs)
                             }
                             _ => {
                                 bug!("{} cannot be cast to a fn ptr", operand.ty)
@@ -724,7 +718,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                     Base::Value(llval) => {
                         // FIXME: may be wrong for &*(&simd_vec as &fmt::Debug)
                         let align = if self.ccx.shared().type_is_sized(ty) {
-                            type_of::align_of(self.ccx, ty)
+                            self.ccx.align_of(ty)
                         } else {
                             self.ccx.tcx().data_layout.pointer_align.abi() as machine::llalign
                         };
@@ -927,16 +921,8 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         let ty = self.monomorphize(&constant.ty);
         let result = match constant.literal.clone() {
             mir::Literal::Item { def_id, substs } => {
-                // Shortcut for zero-sized types, including function item
-                // types, which would not work with MirConstContext.
-                if common::type_is_zero_size(bcx.ccx, ty) {
-                    let llty = type_of::type_of(bcx.ccx, ty);
-                    return Const::new(C_null(llty), ty);
-                }
-
                 let substs = self.monomorphize(&substs);
-                let instance = Instance::new(def_id, substs);
-                MirConstContext::trans_def(bcx.ccx, instance, IndexVec::new())
+                MirConstContext::trans_def(bcx.ccx, def_id, substs, IndexVec::new())
             }
             mir::Literal::Promoted { index } => {
                 let mir = &self.mir.promoted[index];
@@ -964,8 +950,8 @@ pub fn trans_static_initializer<'a, 'tcx>(
     def_id: DefId)
     -> Result<ValueRef, ConstEvalErr<'tcx>>
 {
-    let instance = Instance::mono(ccx.shared(), def_id);
-    MirConstContext::trans_def(ccx, instance, IndexVec::new()).map(|c| c.llval)
+    MirConstContext::trans_def(ccx, def_id, Substs::empty(), IndexVec::new())
+        .map(|c| c.llval)
 }
 
 /// Construct a constant value, suitable for initializing a
@@ -994,7 +980,6 @@ fn trans_const<'a, 'tcx>(
     vals: &[ValueRef]
 ) -> ValueRef {
     let l = ccx.layout_of(t);
-    let dl = &ccx.tcx().data_layout;
     let variant_index = match *kind {
         mir::AggregateKind::Adt(_, index, _, _) => index,
         _ => 0,
@@ -1017,7 +1002,7 @@ fn trans_const<'a, 'tcx>(
             let mut vals_with_discr = vec![lldiscr];
             vals_with_discr.extend_from_slice(vals);
             let mut contents = build_const_struct(ccx, &variant, &vals_with_discr[..]);
-            let needed_padding = l.size(dl).bytes() - variant.stride().bytes();
+            let needed_padding = l.size(ccx).bytes() - variant.stride().bytes();
             if needed_padding > 0 {
                 contents.push(padding(ccx, needed_padding));
             }
@@ -1037,25 +1022,20 @@ fn trans_const<'a, 'tcx>(
             C_vector(vals)
         }
         layout::RawNullablePointer { nndiscr, .. } => {
-            let nnty = adt::compute_fields(ccx, t, nndiscr as usize, false)[0];
             if variant_index as u64 == nndiscr {
                 assert_eq!(vals.len(), 1);
                 vals[0]
             } else {
-                C_null(type_of::sizing_type_of(ccx, nnty))
+                C_null(type_of::type_of(ccx, t))
             }
         }
         layout::StructWrappedNullablePointer { ref nonnull, nndiscr, .. } => {
             if variant_index as u64 == nndiscr {
                 C_struct(ccx, &build_const_struct(ccx, &nonnull, vals), false)
             } else {
-                let fields = adt::compute_fields(ccx, t, nndiscr as usize, false);
-                let vals = fields.iter().map(|&ty| {
-                    // Always use null even if it's not the `discrfield`th
-                    // field; see #8506.
-                    C_null(type_of::sizing_type_of(ccx, ty))
-                }).collect::<Vec<ValueRef>>();
-                C_struct(ccx, &build_const_struct(ccx, &nonnull, &vals[..]), false)
+                // Always use null even if it's not the `discrfield`th
+                // field; see #8506.
+                C_null(type_of::type_of(ccx, t))
             }
         }
         _ => bug!("trans_const: cannot handle type {} repreented as {:#?}", t, l)

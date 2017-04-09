@@ -285,7 +285,9 @@ pub struct TraitData<'tcx> {
 pub struct ImplData<'tcx> {
     pub polarity: hir::ImplPolarity,
     pub parent_impl: Option<DefId>,
-    pub coerce_unsized_kind: Option<ty::adjustment::CustomCoerceUnsized>,
+
+    /// This is `Some` only for impls of `CoerceUnsized`.
+    pub coerce_unsized_info: Option<ty::adjustment::CoerceUnsizedInfo>,
     pub trait_ref: Option<Lazy<ty::TraitRef<'tcx>>>,
 }
 

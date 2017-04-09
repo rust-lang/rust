@@ -581,7 +581,7 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
               .stage(0)
          })
          .default(build.config.docs)
-         .run(move |s| doc::rustbook(build, s.target, "book"));
+         .run(move |s| doc::book(build, s.target, "book"));
     rules.doc("doc-nomicon", "src/doc/nomicon")
          .dep(move |s| {
              s.name("tool-rustbook")
@@ -978,26 +978,25 @@ invalid rule dependency graph detected, was a rule added and maybe typo'd?
         }
     }
 
-    pub fn print_help(&self, command: &str) {
+    pub fn get_help(&self, command: &str) -> Option<String> {
         let kind = match command {
             "build" => Kind::Build,
             "doc" => Kind::Doc,
             "test" => Kind::Test,
             "bench" => Kind::Bench,
             "dist" => Kind::Dist,
-            _ => return,
+            _ => return None,
         };
         let rules = self.rules.values().filter(|r| r.kind == kind);
         let rules = rules.filter(|r| !r.path.contains("nowhere"));
         let mut rules = rules.collect::<Vec<_>>();
         rules.sort_by_key(|r| r.path);
 
-        println!("Available paths:\n");
+        let mut help_string = String::from("Available paths:\n");
         for rule in rules {
-            print!("    ./x.py {} {}", command, rule.path);
-
-            println!("");
+            help_string.push_str(format!("    ./x.py {} {}\n", command, rule.path).as_str());
         }
+        Some(help_string)
     }
 
     /// Construct the top-level build steps that we're going to be executing,

@@ -90,7 +90,7 @@ impl<T: fmt::UpperHex> fmt::UpperHex for Wrapping<T> {
 
 mod wrapping;
 
-// All these modules are technically private and only exposed for libcoretest:
+// All these modules are technically private and only exposed for coretests:
 pub mod flt2dec;
 pub mod dec2flt;
 pub mod bignum;
@@ -177,7 +177,7 @@ macro_rules! checked_op {
 
 // `Int` + `SignedInt` implemented for signed integers
 macro_rules! int_impl {
-    ($ActualT:ident, $UnsignedT:ty, $BITS:expr,
+    ($SelfT:ty, $ActualT:ident, $UnsignedT:ty, $BITS:expr,
      $add_with_overflow:path,
      $sub_with_overflow:path,
      $mul_with_overflow:path) => {
@@ -850,6 +850,17 @@ macro_rules! int_impl {
         /// ```
         #[stable(feature = "num_wrapping", since = "1.2.0")]
         #[inline(always)]
+        #[cfg(not(stage0))]
+        pub fn wrapping_shl(self, rhs: u32) -> Self {
+            unsafe {
+                intrinsics::unchecked_shl(self, (rhs & ($BITS - 1)) as $SelfT)
+            }
+        }
+
+        /// Stage 0
+        #[stable(feature = "num_wrapping", since = "1.2.0")]
+        #[inline(always)]
+        #[cfg(stage0)]
         pub fn wrapping_shl(self, rhs: u32) -> Self {
             self.overflowing_shl(rhs).0
         }
@@ -875,6 +886,17 @@ macro_rules! int_impl {
         /// ```
         #[stable(feature = "num_wrapping", since = "1.2.0")]
         #[inline(always)]
+        #[cfg(not(stage0))]
+        pub fn wrapping_shr(self, rhs: u32) -> Self {
+            unsafe {
+                intrinsics::unchecked_shr(self, (rhs & ($BITS - 1)) as $SelfT)
+            }
+        }
+
+        /// Stage 0
+        #[stable(feature = "num_wrapping", since = "1.2.0")]
+        #[inline(always)]
+        #[cfg(stage0)]
         pub fn wrapping_shr(self, rhs: u32) -> Self {
             self.overflowing_shr(rhs).0
         }
@@ -1089,6 +1111,15 @@ macro_rules! int_impl {
         /// ```
         #[inline]
         #[stable(feature = "wrapping", since = "1.7.0")]
+        #[cfg(not(stage0))]
+        pub fn overflowing_shl(self, rhs: u32) -> (Self, bool) {
+            (self.wrapping_shl(rhs), (rhs > ($BITS - 1)))
+        }
+
+        /// Stage 0
+        #[inline]
+        #[stable(feature = "wrapping", since = "1.7.0")]
+        #[cfg(stage0)]
         pub fn overflowing_shl(self, rhs: u32) -> (Self, bool) {
             (self << (rhs & ($BITS - 1)), (rhs > ($BITS - 1)))
         }
@@ -1111,6 +1142,15 @@ macro_rules! int_impl {
         /// ```
         #[inline]
         #[stable(feature = "wrapping", since = "1.7.0")]
+        #[cfg(not(stage0))]
+        pub fn overflowing_shr(self, rhs: u32) -> (Self, bool) {
+            (self.wrapping_shr(rhs), (rhs > ($BITS - 1)))
+        }
+
+        /// Stage 0
+        #[inline]
+        #[stable(feature = "wrapping", since = "1.7.0")]
+        #[cfg(stage0)]
         pub fn overflowing_shr(self, rhs: u32) -> (Self, bool) {
             (self >> (rhs & ($BITS - 1)), (rhs > ($BITS - 1)))
         }
@@ -1268,7 +1308,7 @@ macro_rules! int_impl {
 
 #[lang = "i8"]
 impl i8 {
-    int_impl! { i8, u8, 8,
+    int_impl! { i8, i8, u8, 8,
         intrinsics::add_with_overflow,
         intrinsics::sub_with_overflow,
         intrinsics::mul_with_overflow }
@@ -1276,7 +1316,7 @@ impl i8 {
 
 #[lang = "i16"]
 impl i16 {
-    int_impl! { i16, u16, 16,
+    int_impl! { i16, i16, u16, 16,
         intrinsics::add_with_overflow,
         intrinsics::sub_with_overflow,
         intrinsics::mul_with_overflow }
@@ -1284,7 +1324,7 @@ impl i16 {
 
 #[lang = "i32"]
 impl i32 {
-    int_impl! { i32, u32, 32,
+    int_impl! { i32, i32, u32, 32,
         intrinsics::add_with_overflow,
         intrinsics::sub_with_overflow,
         intrinsics::mul_with_overflow }
@@ -1292,7 +1332,7 @@ impl i32 {
 
 #[lang = "i64"]
 impl i64 {
-    int_impl! { i64, u64, 64,
+    int_impl! { i64, i64, u64, 64,
         intrinsics::add_with_overflow,
         intrinsics::sub_with_overflow,
         intrinsics::mul_with_overflow }
@@ -1300,7 +1340,7 @@ impl i64 {
 
 #[lang = "i128"]
 impl i128 {
-    int_impl! { i128, u128, 128,
+    int_impl! { i128, i128, u128, 128,
         intrinsics::add_with_overflow,
         intrinsics::sub_with_overflow,
         intrinsics::mul_with_overflow }
@@ -1309,7 +1349,7 @@ impl i128 {
 #[cfg(target_pointer_width = "16")]
 #[lang = "isize"]
 impl isize {
-    int_impl! { i16, u16, 16,
+    int_impl! { isize, i16, u16, 16,
         intrinsics::add_with_overflow,
         intrinsics::sub_with_overflow,
         intrinsics::mul_with_overflow }
@@ -1318,7 +1358,7 @@ impl isize {
 #[cfg(target_pointer_width = "32")]
 #[lang = "isize"]
 impl isize {
-    int_impl! { i32, u32, 32,
+    int_impl! { isize, i32, u32, 32,
         intrinsics::add_with_overflow,
         intrinsics::sub_with_overflow,
         intrinsics::mul_with_overflow }
@@ -1327,7 +1367,7 @@ impl isize {
 #[cfg(target_pointer_width = "64")]
 #[lang = "isize"]
 impl isize {
-    int_impl! { i64, u64, 64,
+    int_impl! { isize, i64, u64, 64,
         intrinsics::add_with_overflow,
         intrinsics::sub_with_overflow,
         intrinsics::mul_with_overflow }
@@ -1335,7 +1375,7 @@ impl isize {
 
 // `Int` + `UnsignedInt` implemented for unsigned integers
 macro_rules! uint_impl {
-    ($ActualT:ty, $BITS:expr,
+    ($SelfT:ty, $ActualT:ty, $BITS:expr,
      $ctpop:path,
      $ctlz:path,
      $cttz:path,
@@ -1978,6 +2018,17 @@ macro_rules! uint_impl {
         /// ```
         #[stable(feature = "num_wrapping", since = "1.2.0")]
         #[inline(always)]
+        #[cfg(not(stage0))]
+        pub fn wrapping_shl(self, rhs: u32) -> Self {
+            unsafe {
+                intrinsics::unchecked_shl(self, (rhs & ($BITS - 1)) as $SelfT)
+            }
+        }
+
+        /// Stage 0
+        #[stable(feature = "num_wrapping", since = "1.2.0")]
+        #[inline(always)]
+        #[cfg(stage0)]
         pub fn wrapping_shl(self, rhs: u32) -> Self {
             self.overflowing_shl(rhs).0
         }
@@ -2003,6 +2054,17 @@ macro_rules! uint_impl {
         /// ```
         #[stable(feature = "num_wrapping", since = "1.2.0")]
         #[inline(always)]
+        #[cfg(not(stage0))]
+        pub fn wrapping_shr(self, rhs: u32) -> Self {
+            unsafe {
+                intrinsics::unchecked_shr(self, (rhs & ($BITS - 1)) as $SelfT)
+            }
+        }
+
+        /// Stage 0
+        #[stable(feature = "num_wrapping", since = "1.2.0")]
+        #[inline(always)]
+        #[cfg(stage0)]
         pub fn wrapping_shr(self, rhs: u32) -> Self {
             self.overflowing_shr(rhs).0
         }
@@ -2170,6 +2232,15 @@ macro_rules! uint_impl {
         /// ```
         #[inline]
         #[stable(feature = "wrapping", since = "1.7.0")]
+        #[cfg(not(stage0))]
+        pub fn overflowing_shl(self, rhs: u32) -> (Self, bool) {
+            (self.wrapping_shl(rhs), (rhs > ($BITS - 1)))
+        }
+
+        /// Stage 0
+        #[inline]
+        #[stable(feature = "wrapping", since = "1.7.0")]
+        #[cfg(stage0)]
         pub fn overflowing_shl(self, rhs: u32) -> (Self, bool) {
             (self << (rhs & ($BITS - 1)), (rhs > ($BITS - 1)))
         }
@@ -2192,6 +2263,16 @@ macro_rules! uint_impl {
         /// ```
         #[inline]
         #[stable(feature = "wrapping", since = "1.7.0")]
+        #[cfg(not(stage0))]
+        pub fn overflowing_shr(self, rhs: u32) -> (Self, bool) {
+            (self.wrapping_shr(rhs), (rhs > ($BITS - 1)))
+
+        }
+
+        /// Stage 0
+        #[inline]
+        #[stable(feature = "wrapping", since = "1.7.0")]
+        #[cfg(stage0)]
         pub fn overflowing_shr(self, rhs: u32) -> (Self, bool) {
             (self >> (rhs & ($BITS - 1)), (rhs > ($BITS - 1)))
         }
@@ -2292,7 +2373,7 @@ macro_rules! uint_impl {
 
 #[lang = "u8"]
 impl u8 {
-    uint_impl! { u8, 8,
+    uint_impl! { u8, u8, 8,
         intrinsics::ctpop,
         intrinsics::ctlz,
         intrinsics::cttz,
@@ -2304,7 +2385,7 @@ impl u8 {
 
 #[lang = "u16"]
 impl u16 {
-    uint_impl! { u16, 16,
+    uint_impl! { u16, u16, 16,
         intrinsics::ctpop,
         intrinsics::ctlz,
         intrinsics::cttz,
@@ -2316,7 +2397,7 @@ impl u16 {
 
 #[lang = "u32"]
 impl u32 {
-    uint_impl! { u32, 32,
+    uint_impl! { u32, u32, 32,
         intrinsics::ctpop,
         intrinsics::ctlz,
         intrinsics::cttz,
@@ -2328,7 +2409,7 @@ impl u32 {
 
 #[lang = "u64"]
 impl u64 {
-    uint_impl! { u64, 64,
+    uint_impl! { u64, u64, 64,
         intrinsics::ctpop,
         intrinsics::ctlz,
         intrinsics::cttz,
@@ -2340,7 +2421,7 @@ impl u64 {
 
 #[lang = "u128"]
 impl u128 {
-    uint_impl! { u128, 128,
+    uint_impl! { u128, u128, 128,
         intrinsics::ctpop,
         intrinsics::ctlz,
         intrinsics::cttz,
@@ -2353,7 +2434,7 @@ impl u128 {
 #[cfg(target_pointer_width = "16")]
 #[lang = "usize"]
 impl usize {
-    uint_impl! { u16, 16,
+    uint_impl! { usize, u16, 16,
         intrinsics::ctpop,
         intrinsics::ctlz,
         intrinsics::cttz,
@@ -2365,7 +2446,7 @@ impl usize {
 #[cfg(target_pointer_width = "32")]
 #[lang = "usize"]
 impl usize {
-    uint_impl! { u32, 32,
+    uint_impl! { usize, u32, 32,
         intrinsics::ctpop,
         intrinsics::ctlz,
         intrinsics::cttz,
@@ -2378,7 +2459,7 @@ impl usize {
 #[cfg(target_pointer_width = "64")]
 #[lang = "usize"]
 impl usize {
-    uint_impl! { u64, 64,
+    uint_impl! { usize, u64, 64,
         intrinsics::ctpop,
         intrinsics::ctlz,
         intrinsics::cttz,
@@ -2390,11 +2471,11 @@ impl usize {
 
 /// A classification of floating point numbers.
 ///
-/// This `enum` is used as the return type for [`f32::classify()`] and [`f64::classify()`]. See
+/// This `enum` is used as the return type for [`f32::classify`] and [`f64::classify`]. See
 /// their documentation for more.
 ///
-/// [`f32::classify()`]: ../../std/primitive.f32.html#method.classify
-/// [`f64::classify()`]: ../../std/primitive.f64.html#method.classify
+/// [`f32::classify`]: ../../std/primitive.f32.html#method.classify
+/// [`f64::classify`]: ../../std/primitive.f64.html#method.classify
 ///
 /// # Examples
 ///
@@ -2487,17 +2568,17 @@ pub trait Float: Sized {
                                  implementable outside the standard library")]
     fn one() -> Self;
 
-    /// Returns true if this value is NaN and false otherwise.
+    /// Returns `true` if this value is NaN and false otherwise.
     #[stable(feature = "core", since = "1.6.0")]
     fn is_nan(self) -> bool;
-    /// Returns true if this value is positive infinity or negative infinity and
+    /// Returns `true` if this value is positive infinity or negative infinity and
     /// false otherwise.
     #[stable(feature = "core", since = "1.6.0")]
     fn is_infinite(self) -> bool;
-    /// Returns true if this number is neither infinite nor NaN.
+    /// Returns `true` if this number is neither infinite nor NaN.
     #[stable(feature = "core", since = "1.6.0")]
     fn is_finite(self) -> bool;
-    /// Returns true if this number is neither zero, infinite, denormal, or NaN.
+    /// Returns `true` if this number is neither zero, infinite, denormal, or NaN.
     #[stable(feature = "core", since = "1.6.0")]
     fn is_normal(self) -> bool;
     /// Returns the category that this number falls into.
@@ -2591,7 +2672,7 @@ macro_rules! same_sign_try_from_int_impl {
     ($storage:ty, $target:ty, $($source:ty),*) => {$(
         #[unstable(feature = "try_from", issue = "33417")]
         impl TryFrom<$source> for $target {
-            type Err = TryFromIntError;
+            type Error = TryFromIntError;
 
             fn try_from(u: $source) -> Result<$target, TryFromIntError> {
                 let min = <$target as FromStrRadixHelper>::min_value() as $storage;
@@ -2623,7 +2704,7 @@ macro_rules! cross_sign_from_int_impl {
     ($unsigned:ty, $($signed:ty),*) => {$(
         #[unstable(feature = "try_from", issue = "33417")]
         impl TryFrom<$unsigned> for $signed {
-            type Err = TryFromIntError;
+            type Error = TryFromIntError;
 
             fn try_from(u: $unsigned) -> Result<$signed, TryFromIntError> {
                 let max = <$signed as FromStrRadixHelper>::max_value() as u128;
@@ -2637,7 +2718,7 @@ macro_rules! cross_sign_from_int_impl {
 
         #[unstable(feature = "try_from", issue = "33417")]
         impl TryFrom<$signed> for $unsigned {
-            type Err = TryFromIntError;
+            type Error = TryFromIntError;
 
             fn try_from(u: $signed) -> Result<$unsigned, TryFromIntError> {
                 let max = <$unsigned as FromStrRadixHelper>::max_value() as u128;
@@ -2756,9 +2837,9 @@ fn from_str_radix<T: FromStrRadixHelper>(src: &str, radix: u32) -> Result<T, Par
 /// An error which can be returned when parsing an integer.
 ///
 /// This error is used as the error type for the `from_str_radix()` functions
-/// on the primitive integer types, such as [`i8::from_str_radix()`].
+/// on the primitive integer types, such as [`i8::from_str_radix`].
 ///
-/// [`i8::from_str_radix()`]: ../../std/primitive.i8.html#method.from_str_radix
+/// [`i8::from_str_radix`]: ../../std/primitive.i8.html#method.from_str_radix
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct ParseIntError {

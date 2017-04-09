@@ -39,12 +39,11 @@ use rustc::util::nodemap::{FxHashMap, FxHashSet};
 
 use rustc::hir;
 
+use std::{mem, slice, vec};
 use std::path::PathBuf;
 use std::rc::Rc;
-use std::slice;
 use std::sync::Arc;
 use std::u32;
-use std::mem;
 
 use core::DocContext;
 use doctree;
@@ -472,12 +471,12 @@ impl Clean<Item> for doctree::Module {
 
 pub struct ListAttributesIter<'a> {
     attrs: slice::Iter<'a, ast::Attribute>,
-    current_list: slice::Iter<'a, ast::NestedMetaItem>,
+    current_list: vec::IntoIter<ast::NestedMetaItem>,
     name: &'a str
 }
 
 impl<'a> Iterator for ListAttributesIter<'a> {
-    type Item = &'a ast::NestedMetaItem;
+    type Item = ast::NestedMetaItem;
 
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(nested) = self.current_list.next() {
@@ -485,9 +484,9 @@ impl<'a> Iterator for ListAttributesIter<'a> {
         }
 
         for attr in &mut self.attrs {
-            if let Some(ref list) = attr.meta_item_list() {
+            if let Some(list) = attr.meta_item_list() {
                 if attr.check_name(self.name) {
-                    self.current_list = list.iter();
+                    self.current_list = list.into_iter();
                     if let Some(nested) = self.current_list.next() {
                         return Some(nested);
                     }
@@ -508,7 +507,7 @@ impl AttributesExt for [ast::Attribute] {
     fn lists<'a>(&'a self, name: &'a str) -> ListAttributesIter<'a> {
         ListAttributesIter {
             attrs: self.iter(),
-            current_list: [].iter(),
+            current_list: Vec::new().into_iter(),
             name: name
         }
     }
@@ -519,7 +518,7 @@ pub trait NestedAttributesExt {
     fn has_word(self, &str) -> bool;
 }
 
-impl<'a, I: IntoIterator<Item=&'a ast::NestedMetaItem>> NestedAttributesExt for I {
+impl<I: IntoIterator<Item=ast::NestedMetaItem>> NestedAttributesExt for I {
     fn has_word(self, word: &str) -> bool {
         self.into_iter().any(|attr| attr.is_word() && attr.check_name(word))
     }
@@ -1388,7 +1387,7 @@ impl<'tcx> Clean<Item> for ty::AssociatedItem {
                         decl: decl,
                         abi: sig.abi(),
 
-                        // trait methods canot (currently, at least) be const
+                        // trait methods cannot (currently, at least) be const
                         constness: hir::Constness::NotConst,
                     })
                 } else {
@@ -1806,7 +1805,7 @@ impl Clean<Type> for hir::Ty {
             }
             TyBareFn(ref barefn) => BareFunction(box barefn.clean(cx)),
             TyImplTrait(ref bounds) => ImplTrait(bounds.clean(cx)),
-            TyInfer => Infer,
+            TyInfer | TyErr => Infer,
             TyTypeof(..) => panic!("Unimplemented type {:?}", self.node),
         }
     }
@@ -2242,11 +2241,11 @@ pub enum PathParameters {
     AngleBracketed {
         lifetimes: Vec<Lifetime>,
         types: Vec<Type>,
-        bindings: Vec<TypeBinding>
+        bindings: Vec<TypeBinding>,
     },
     Parenthesized {
         inputs: Vec<Type>,
-        output: Option<Type>
+        output: Option<Type>,
     }
 }
 
@@ -2261,14 +2260,14 @@ impl Clean<PathParameters> for hir::PathParameters {
                         data.lifetimes.clean(cx)
                     },
                     types: data.types.clean(cx),
-                    bindings: data.bindings.clean(cx)
+                    bindings: data.bindings.clean(cx),
                 }
             }
 
             hir::ParenthesizedParameters(ref data) => {
                 PathParameters::Parenthesized {
                     inputs: data.inputs.clean(cx),
-                    output: data.output.clean(cx)
+                    output: data.output.clean(cx),
                 }
             }
         }
@@ -2596,9 +2595,9 @@ impl Clean<Vec<Item>> for doctree::Import {
         // #[doc(no_inline)] attribute is present.
         // Don't inline doc(hidden) imports so they can be stripped at a later stage.
         let denied = self.vis != hir::Public || self.attrs.iter().any(|a| {
-            a.name() == "doc" && match a.meta_item_list() {
-                Some(l) => attr::list_contains_name(l, "no_inline") ||
-                           attr::list_contains_name(l, "hidden"),
+            a.name().unwrap() == "doc" && match a.meta_item_list() {
+                Some(l) => attr::list_contains_name(&l, "no_inline") ||
+                           attr::list_contains_name(&l, "hidden"),
                 None => false,
             }
         });

@@ -29,15 +29,13 @@ use traits::{self, Reveal, ObligationCause};
 use ty::{self, TyCtxt, TypeFoldable};
 use syntax_pos::DUMMY_SP;
 
-use syntax::ast;
-
 pub mod specialization_graph;
 
 /// Information pertinent to an overlapping impl error.
 pub struct OverlapError {
     pub with_impl: DefId,
     pub trait_desc: String,
-    pub self_desc: Option<String>
+    pub self_desc: Option<String>,
 }
 
 /// Given a subst for the requested impl, translate it to a subst
@@ -106,22 +104,23 @@ pub fn translate_substs<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
 }
 
 /// Given a selected impl described by `impl_data`, returns the
-/// definition and substitions for the method with the name `name`,
-/// and trait method substitutions `substs`, in that impl, a less
-/// specialized impl, or the trait default, whichever applies.
-pub fn find_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                             name: ast::Name,
-                             substs: &'tcx Substs<'tcx>,
-                             impl_data: &super::VtableImplData<'tcx, ()>)
-                             -> (DefId, &'tcx Substs<'tcx>)
-{
+/// definition and substitions for the method with the name `name`
+/// the kind `kind`, and trait method substitutions `substs`, in
+/// that impl, a less specialized impl, or the trait default,
+/// whichever applies.
+pub fn find_associated_item<'a, 'tcx>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    item: &ty::AssociatedItem,
+    substs: &'tcx Substs<'tcx>,
+    impl_data: &super::VtableImplData<'tcx, ()>,
+) -> (DefId, &'tcx Substs<'tcx>) {
     assert!(!substs.needs_infer());
 
     let trait_def_id = tcx.trait_id_of_impl(impl_data.impl_def_id).unwrap();
     let trait_def = tcx.lookup_trait_def(trait_def_id);
 
     let ancestors = trait_def.ancestors(impl_data.impl_def_id);
-    match ancestors.defs(tcx, name, ty::AssociatedKind::Method).next() {
+    match ancestors.defs(tcx, item.name, item.kind).next() {
         Some(node_item) => {
             let substs = tcx.infer_ctxt((), Reveal::All).enter(|infcx| {
                 let substs = substs.rebase_onto(tcx, trait_def_id, impl_data.substs);
@@ -137,7 +136,7 @@ pub fn find_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             (node_item.item.def_id, substs)
         }
         None => {
-            bug!("method {:?} not found in {:?}", name, impl_data.impl_def_id)
+            bug!("{:?} not found in {:?}", item, impl_data.impl_def_id)
         }
     }
 }
@@ -274,7 +273,7 @@ fn fulfill_implication<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
 }
 
 pub struct SpecializesCache {
-    map: FxHashMap<(DefId, DefId), bool>
+    map: FxHashMap<(DefId, DefId), bool>,
 }
 
 impl SpecializesCache {

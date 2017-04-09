@@ -43,7 +43,7 @@ impl<'a, 'tcx> LinkerInfo {
     }
 
     pub fn to_linker(&'a self,
-                     cmd: &'a mut Command,
+                     cmd: Command,
                      sess: &'a Session) -> Box<Linker+'a> {
         if sess.target.target.options.is_like_msvc {
             Box::new(MsvcLinker {
@@ -61,7 +61,8 @@ impl<'a, 'tcx> LinkerInfo {
             Box::new(GnuLinker {
                 cmd: cmd,
                 sess: sess,
-                info: self
+                info: self,
+                hinted_static: false,
             }) as Box<Linker>
         }
     }
@@ -93,30 +94,49 @@ pub trait Linker {
     fn no_default_libraries(&mut self);
     fn build_dylib(&mut self, out_filename: &Path);
     fn args(&mut self, args: &[String]);
-    fn hint_static(&mut self);
-    fn hint_dynamic(&mut self);
-    fn whole_archives(&mut self);
-    fn no_whole_archives(&mut self);
     fn export_symbols(&mut self, tmpdir: &Path, crate_type: CrateType);
     fn subsystem(&mut self, subsystem: &str);
+    // Should have been finalize(self), but we don't support self-by-value on trait objects (yet?).
+    fn finalize(&mut self) -> Command;
 }
 
 pub struct GnuLinker<'a> {
-    cmd: &'a mut Command,
+    cmd: Command,
     sess: &'a Session,
-    info: &'a LinkerInfo
+    info: &'a LinkerInfo,
+    hinted_static: bool, // Keeps track of the current hinting mode.
 }
 
 impl<'a> GnuLinker<'a> {
     fn takes_hints(&self) -> bool {
         !self.sess.target.target.options.is_like_osx
     }
+
+    // Some platforms take hints about whether a library is static or dynamic.
+    // For those that support this, we ensure we pass the option if the library
+    // was flagged "static" (most defaults are dynamic) to ensure that if
+    // libfoo.a and libfoo.so both exist that the right one is chosen.
+    fn hint_static(&mut self) {
+        if !self.takes_hints() { return }
+        if !self.hinted_static {
+            self.cmd.arg("-Wl,-Bstatic");
+            self.hinted_static = true;
+        }
+    }
+
+    fn hint_dynamic(&mut self) {
+        if !self.takes_hints() { return }
+        if self.hinted_static {
+            self.cmd.arg("-Wl,-Bdynamic");
+            self.hinted_static = false;
+        }
+    }
 }
 
 impl<'a> Linker for GnuLinker<'a> {
-    fn link_dylib(&mut self, lib: &str) { self.cmd.arg("-l").arg(lib); }
-    fn link_staticlib(&mut self, lib: &str) { self.cmd.arg("-l").arg(lib); }
-    fn link_rlib(&mut self, lib: &Path) { self.cmd.arg(lib); }
+    fn link_dylib(&mut self, lib: &str) { self.hint_dynamic(); self.cmd.arg("-l").arg(lib); }
+    fn link_staticlib(&mut self, lib: &str) { self.hint_static(); self.cmd.arg("-l").arg(lib); }
+    fn link_rlib(&mut self, lib: &Path) { self.hint_static(); self.cmd.arg(lib); }
     fn include_path(&mut self, path: &Path) { self.cmd.arg("-L").arg(path); }
     fn framework_path(&mut self, path: &Path) { self.cmd.arg("-F").arg(path); }
     fn output_filename(&mut self, path: &Path) { self.cmd.arg("-o").arg(path); }
@@ -125,21 +145,30 @@ impl<'a> Linker for GnuLinker<'a> {
     fn args(&mut self, args: &[String]) { self.cmd.args(args); }
 
     fn link_rust_dylib(&mut self, lib: &str, _path: &Path) {
+        self.hint_dynamic();
         self.cmd.arg("-l").arg(lib);
     }
 
     fn link_framework(&mut self, framework: &str) {
+        self.hint_dynamic();
         self.cmd.arg("-framework").arg(framework);
     }
 
+    // Here we explicitly ask that the entire archive is included into the
+    // result artifact. For more details see #15460, but the gist is that
+    // the linker will strip away any unused objects in the archive if we
+    // don't otherwise explicitly reference them. This can occur for
+    // libraries which are just providing bindings, libraries with generic
+    // functions, etc.
     fn link_whole_staticlib(&mut self, lib: &str, search_path: &[PathBuf]) {
+        self.hint_static();
         let target = &self.sess.target.target;
         if !target.options.is_like_osx {
             self.cmd.arg("-Wl,--whole-archive")
                     .arg("-l").arg(lib)
                     .arg("-Wl,--no-whole-archive");
         } else {
-            // -force_load is the OSX equivalent of --whole-archive, but it
+            // -force_load is the macOS equivalent of --whole-archive, but it
             // involves passing the full path to the library to link.
             let mut v = OsString::from("-Wl,-force_load,");
             v.push(&archive::find_library(lib, search_path, &self.sess));
@@ -148,6 +177,7 @@ impl<'a> Linker for GnuLinker<'a> {
     }
 
     fn link_whole_rlib(&mut self, lib: &Path) {
+        self.hint_static();
         if self.sess.target.target.options.is_like_osx {
             let mut v = OsString::from("-Wl,-force_load,");
             v.push(lib);
@@ -228,26 +258,6 @@ impl<'a> Linker for GnuLinker<'a> {
         }
     }
 
-    fn whole_archives(&mut self) {
-        if !self.takes_hints() { return }
-        self.cmd.arg("-Wl,--whole-archive");
-    }
-
-    fn no_whole_archives(&mut self) {
-        if !self.takes_hints() { return }
-        self.cmd.arg("-Wl,--no-whole-archive");
-    }
-
-    fn hint_static(&mut self) {
-        if !self.takes_hints() { return }
-        self.cmd.arg("-Wl,-Bstatic");
-    }
-
-    fn hint_dynamic(&mut self) {
-        if !self.takes_hints() { return }
-        self.cmd.arg("-Wl,-Bdynamic");
-    }
-
     fn export_symbols(&mut self, tmpdir: &Path, crate_type: CrateType) {
         // If we're compiling a dylib, then we let symbol visibility in object
         // files to take care of whether they're exported or not.
@@ -311,10 +321,17 @@ impl<'a> Linker for GnuLinker<'a> {
     fn subsystem(&mut self, subsystem: &str) {
         self.cmd.arg(&format!("-Wl,--subsystem,{}", subsystem));
     }
+
+    fn finalize(&mut self) -> Command {
+        self.hint_dynamic(); // Reset to default before returning the composed command line.
+        let mut cmd = Command::new("");
+        ::std::mem::swap(&mut cmd, &mut self.cmd);
+        cmd
+    }
 }
 
 pub struct MsvcLinker<'a> {
-    cmd: &'a mut Command,
+    cmd: Command,
     sess: &'a Session,
     info: &'a LinkerInfo
 }
@@ -416,22 +433,6 @@ impl<'a> Linker for MsvcLinker<'a> {
         self.cmd.arg("/DEBUG");
     }
 
-    fn whole_archives(&mut self) {
-        // hints not supported?
-    }
-    fn no_whole_archives(&mut self) {
-        // hints not supported?
-    }
-
-    // On windows static libraries are of the form `foo.lib` and dynamic
-    // libraries are not linked against directly, but rather through their
-    // import libraries also called `foo.lib`. As a result there's no
-    // possibility for a native library to appear both dynamically and
-    // statically in the same folder so we don't have to worry about hints like
-    // we do on Unix platforms.
-    fn hint_static(&mut self) {}
-    fn hint_dynamic(&mut self) {}
-
     // Currently the compiler doesn't use `dllexport` (an LLVM attribute) to
     // export symbols from a dynamic library. When building a dynamic library,
     // however, we're going to want some symbols exported, so this function
@@ -492,10 +493,16 @@ impl<'a> Linker for MsvcLinker<'a> {
             self.cmd.arg("/ENTRY:mainCRTStartup");
         }
     }
+
+    fn finalize(&mut self) -> Command {
+        let mut cmd = Command::new("");
+        ::std::mem::swap(&mut cmd, &mut self.cmd);
+        cmd
+    }
 }
 
 pub struct EmLinker<'a> {
-    cmd: &'a mut Command,
+    cmd: Command,
     sess: &'a Session,
     info: &'a LinkerInfo
 }
@@ -591,22 +598,6 @@ impl<'a> Linker for EmLinker<'a> {
         bug!("building dynamic library is unsupported on Emscripten")
     }
 
-    fn whole_archives(&mut self) {
-        // noop
-    }
-
-    fn no_whole_archives(&mut self) {
-        // noop
-    }
-
-    fn hint_static(&mut self) {
-        // noop
-    }
-
-    fn hint_dynamic(&mut self) {
-        // noop
-    }
-
     fn export_symbols(&mut self, _tmpdir: &Path, crate_type: CrateType) {
         let symbols = &self.info.exports[&crate_type];
 
@@ -639,6 +630,12 @@ impl<'a> Linker for EmLinker<'a> {
 
     fn subsystem(&mut self, _subsystem: &str) {
         // noop
+    }
+
+    fn finalize(&mut self) -> Command {
+        let mut cmd = Command::new("");
+        ::std::mem::swap(&mut cmd, &mut self.cmd);
+        cmd
     }
 }
 

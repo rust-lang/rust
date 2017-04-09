@@ -66,5 +66,3 @@ fn main() {
     //~ TRANS_ITEM fn trait_method_default_impl::SomeGenericTrait[0]::bar[0]<u32, i16, ()>
     0u32.bar(0i16, ());
 }
-
-//~ TRANS_ITEM drop-glue i8

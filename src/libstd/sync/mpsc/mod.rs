@@ -13,40 +13,50 @@
 //! This module provides message-based communication over channels, concretely
 //! defined among three types:
 //!
-//! * `Sender`
-//! * `SyncSender`
-//! * `Receiver`
+//! * [`Sender`]
+//! * [`SyncSender`]
+//! * [`Receiver`]
 //!
-//! A `Sender` or `SyncSender` is used to send data to a `Receiver`. Both
+//! A [`Sender`] or [`SyncSender`] is used to send data to a [`Receiver`]. Both
 //! senders are clone-able (multi-producer) such that many threads can send
 //! simultaneously to one receiver (single-consumer).
 //!
 //! These channels come in two flavors:
 //!
-//! 1. An asynchronous, infinitely buffered channel. The `channel()` function
+//! 1. An asynchronous, infinitely buffered channel. The [`channel`] function
 //!    will return a `(Sender, Receiver)` tuple where all sends will be
 //!    **asynchronous** (they never block). The channel conceptually has an
 //!    infinite buffer.
 //!
-//! 2. A synchronous, bounded channel. The `sync_channel()` function will return
-//!    a `(SyncSender, Receiver)` tuple where the storage for pending messages
-//!    is a pre-allocated buffer of a fixed size. All sends will be
+//! 2. A synchronous, bounded channel. The [`sync_channel`] function will
+//!    return a `(SyncSender, Receiver)` tuple where the storage for pending
+//!    messages is a pre-allocated buffer of a fixed size. All sends will be
 //!    **synchronous** by blocking until there is buffer space available. Note
-//!    that a bound of 0 is allowed, causing the channel to become a
-//!    "rendezvous" channel where each sender atomically hands off a message to
-//!    a receiver.
+//!    that a bound of 0 is allowed, causing the channel to become a "rendezvous"
+//!    channel where each sender atomically hands off a message to a receiver.
+//!
+//! [`Sender`]: ../../../std/sync/mpsc/struct.Sender.html
+//! [`SyncSender`]: ../../../std/sync/mpsc/struct.SyncSender.html
+//! [`Receiver`]: ../../../std/sync/mpsc/struct.Receiver.html
+//! [`send`]: ../../../std/sync/mpsc/struct.Sender.html#method.send
+//! [`channel`]: ../../../std/sync/mpsc/fn.channel.html
+//! [`sync_channel`]: ../../../std/sync/mpsc/fn.sync_channel.html
 //!
 //! ## Disconnection
 //!
-//! The send and receive operations on channels will all return a `Result`
+//! The send and receive operations on channels will all return a [`Result`]
 //! indicating whether the operation succeeded or not. An unsuccessful operation
 //! is normally indicative of the other half of a channel having "hung up" by
 //! being dropped in its corresponding thread.
 //!
 //! Once half of a channel has been deallocated, most operations can no longer
-//! continue to make progress, so `Err` will be returned. Many applications will
-//! continue to `unwrap()` the results returned from this module, instigating a
-//! propagation of failure among threads if one unexpectedly dies.
+//! continue to make progress, so [`Err`] will be returned. Many applications
+//! will continue to [`unwrap`] the results returned from this module,
+//! instigating a propagation of failure among threads if one unexpectedly dies.
+//!
+//! [`Result`]: ../../../std/result/enum.Result.html
+//! [`Err`]: ../../../std/result/enum.Result.html#variant.Err
+//! [`unwrap`]: ../../../std/result/enum.Result.html#method.unwrap
 //!
 //! # Examples
 //!
@@ -288,7 +298,31 @@ mod mpsc_queue;
 mod spsc_queue;
 
 /// The receiving-half of Rust's channel type. This half can only be owned by
-/// one thread
+/// one thread.
+///
+/// Messages sent to the channel can be retrieved using [`recv`].
+///
+/// [`recv`]: ../../../std/sync/mpsc/struct.Receiver.html#method.recv
+///
+/// # Examples
+///
+/// ```rust
+/// use std::sync::mpsc::channel;
+/// use std::thread;
+/// use std::time::Duration;
+///
+/// let (send, recv) = channel();
+///
+/// thread::spawn(move || {
+///     send.send("Hello world!").unwrap();
+///     thread::sleep(Duration::from_secs(2)); // block for two seconds
+///     send.send("Delayed for 2 seconds").unwrap();
+/// });
+///
+/// println!("{}", recv.recv().unwrap()); // Received immediately
+/// println!("Waiting...");
+/// println!("{}", recv.recv().unwrap()); // Received after 2 seconds
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Receiver<T> {
     inner: UnsafeCell<Flavor<T>>,
@@ -302,9 +336,12 @@ unsafe impl<T: Send> Send for Receiver<T> { }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> !Sync for Receiver<T> { }
 
-/// An iterator over messages on a receiver, this iterator will block
-/// whenever `next` is called, waiting for a new message, and `None` will be
-/// returned when the corresponding channel has hung up.
+/// An iterator over messages on a receiver, this iterator will block whenever
+/// [`next`] is called, waiting for a new message, and [`None`] will be returned
+/// when the corresponding channel has hung up.
+///
+/// [`next`]: ../../../std/iter/trait.Iterator.html#tymethod.next
+/// [`None`]: ../../../std/option/enum.Option.html#variant.None
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
 pub struct Iter<'a, T: 'a> {
@@ -312,11 +349,13 @@ pub struct Iter<'a, T: 'a> {
 }
 
 /// An iterator that attempts to yield all pending values for a receiver.
-/// `None` will be returned when there are no pending values remaining or
-/// if the corresponding channel has hung up.
+/// [`None`] will be returned when there are no pending values remaining or if
+/// the corresponding channel has hung up.
 ///
 /// This Iterator will never block the caller in order to wait for data to
-/// become available. Instead, it will return `None`.
+/// become available. Instead, it will return [`None`].
+///
+/// [`None`]: ../../../std/option/enum.Option.html#variant.None
 #[stable(feature = "receiver_try_iter", since = "1.15.0")]
 #[derive(Debug)]
 pub struct TryIter<'a, T: 'a> {
@@ -324,8 +363,12 @@ pub struct TryIter<'a, T: 'a> {
 }
 
 /// An owning iterator over messages on a receiver, this iterator will block
-/// whenever `next` is called, waiting for a new message, and `None` will be
+/// whenever [`next`] is called, waiting for a new message, and [`None`] will be
 /// returned when the corresponding channel has hung up.
+///
+/// [`next`]: ../../../std/iter/trait.Iterator.html#tymethod.next
+/// [`None`]: ../../../std/option/enum.Option.html#variant.None
+///
 #[stable(feature = "receiver_into_iter", since = "1.1.0")]
 #[derive(Debug)]
 pub struct IntoIter<T> {
@@ -334,6 +377,35 @@ pub struct IntoIter<T> {
 
 /// The sending-half of Rust's asynchronous channel type. This half can only be
 /// owned by one thread, but it can be cloned to send to other threads.
+///
+/// Messages can be sent through this channel with [`send`].
+///
+/// [`send`]: ../../../std/sync/mpsc/struct.Sender.html#method.send
+///
+/// # Examples
+///
+/// ```rust
+/// use std::sync::mpsc::channel;
+/// use std::thread;
+///
+/// let (sender, receiver) = channel();
+/// let sender2 = sender.clone();
+///
+/// // First thread owns sender
+/// thread::spawn(move || {
+///     sender.send(1).unwrap();
+/// });
+///
+/// // Second thread owns sender2
+/// thread::spawn(move || {
+///     sender2.send(2).unwrap();
+/// });
+///
+/// let msg = receiver.recv().unwrap();
+/// let msg2 = receiver.recv().unwrap();
+///
+/// assert_eq!(3, msg + msg2);
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Sender<T> {
     inner: UnsafeCell<Flavor<T>>,
@@ -349,6 +421,10 @@ impl<T> !Sync for Sender<T> { }
 
 /// The sending-half of Rust's synchronous channel type. This half can only be
 /// owned by one thread, but it can be cloned to send to other threads.
+///
+/// [`send`]: ../../../std/sync/mpsc/struct.Sender.html#method.send
+/// [`SyncSender::send`]: ../../../std/sync/mpsc/struct.SyncSender.html#method.send
+///
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct SyncSender<T> {
     inner: Arc<sync::Packet<T>>,
@@ -360,25 +436,32 @@ unsafe impl<T: Send> Send for SyncSender<T> {}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> !Sync for SyncSender<T> {}
 
-/// An error returned from the `send` function on channels.
+/// An error returned from the [`send`] function on channels.
 ///
-/// A `send` operation can only fail if the receiving end of a channel is
+/// A [`send`] operation can only fail if the receiving end of a channel is
 /// disconnected, implying that the data could never be received. The error
 /// contains the data being sent as a payload so it can be recovered.
+///
+/// [`send`]: ../../../std/sync/mpsc/struct.Sender.html#method.send
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(PartialEq, Eq, Clone, Copy)]
 pub struct SendError<T>(#[stable(feature = "rust1", since = "1.0.0")] pub T);
 
-/// An error returned from the `recv` function on a `Receiver`.
+/// An error returned from the [`recv`] function on a [`Receiver`].
 ///
-/// The `recv` operation can only fail if the sending half of a channel is
+/// The [`recv`] operation can only fail if the sending half of a channel is
 /// disconnected, implying that no further messages will ever be received.
+///
+/// [`recv`]: ../../../std/sync/mpsc/struct.Receiver.html#method.recv
+/// [`Receiver`]: ../../../std/sync/mpsc/struct.Receiver.html
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RecvError;
 
-/// This enumeration is the list of the possible reasons that `try_recv` could
+/// This enumeration is the list of the possible reasons that [`try_recv`] could
 /// not return data when called.
+///
+/// [`try_recv`]: ../../../std/sync/mpsc/struct.Receiver.html#method.try_recv
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum TryRecvError {
@@ -393,8 +476,10 @@ pub enum TryRecvError {
     Disconnected,
 }
 
-/// This enumeration is the list of possible errors that `recv_timeout` could
+/// This enumeration is the list of possible errors that [`recv_timeout`] could
 /// not return data when called.
+///
+/// [`recv_timeout`]: ../../../std/sync/mpsc/struct.Receiver.html#method.recv_timeout
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 #[stable(feature = "mpsc_recv_timeout", since = "1.12.0")]
 pub enum RecvTimeoutError {
@@ -409,7 +494,9 @@ pub enum RecvTimeoutError {
 }
 
 /// This enumeration is the list of the possible error outcomes for the
-/// `SyncSender::try_send` method.
+/// [`SyncSender::try_send`] method.
+///
+/// [`SyncSender::try_send`]: ../../../std/sync/mpsc/struct.SyncSender.html#method.try_send
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(PartialEq, Eq, Clone, Copy)]
 pub enum TrySendError<T> {
@@ -460,10 +547,10 @@ impl<T> UnsafeFlavor<T> for Receiver<T> {
 /// All data sent on the sender will become available on the receiver, and no
 /// send will block the calling thread (this channel has an "infinite buffer").
 ///
-/// If the [`Receiver`] is disconnected while trying to [`send()`] with the
-/// [`Sender`], the [`send()`] method will return an error.
+/// If the [`Receiver`] is disconnected while trying to [`send`] with the
+/// [`Sender`], the [`send`] method will return an error.
 ///
-/// [`send()`]: ../../../std/sync/mpsc/struct.Sender.html#method.send
+/// [`send`]: ../../../std/sync/mpsc/struct.Sender.html#method.send
 /// [`Sender`]: ../../../std/sync/mpsc/struct.Sender.html
 /// [`Receiver`]: ../../../std/sync/mpsc/struct.Receiver.html
 ///
@@ -504,13 +591,13 @@ pub fn channel<T>() -> (Sender<T>, Receiver<T>) {
 /// `bound` specifies the buffer size. When the internal buffer becomes full,
 /// future sends will *block* waiting for the buffer to open up. Note that a
 /// buffer size of 0 is valid, in which case this becomes "rendezvous channel"
-/// where each [`send()`] will not return until a recv is paired with it.
+/// where each [`send`] will not return until a recv is paired with it.
 ///
 /// Like asynchronous channels, if the [`Receiver`] is disconnected while
-/// trying to [`send()`] with the [`SyncSender`], the [`send()`] method will
+/// trying to [`send`] with the [`SyncSender`], the [`send`] method will
 /// return an error.
 ///
-/// [`send()`]: ../../../std/sync/mpsc/struct.SyncSender.html#method.send
+/// [`send`]: ../../../std/sync/mpsc/struct.SyncSender.html#method.send
 /// [`SyncSender`]: ../../../std/sync/mpsc/struct.SyncSender.html
 /// [`Receiver`]: ../../../std/sync/mpsc/struct.Receiver.html
 ///
@@ -556,10 +643,13 @@ impl<T> Sender<T> {
     /// A successful send occurs when it is determined that the other end of
     /// the channel has not hung up already. An unsuccessful send would be one
     /// where the corresponding receiver has already been deallocated. Note
-    /// that a return value of `Err` means that the data will never be
-    /// received, but a return value of `Ok` does *not* mean that the data
+    /// that a return value of [`Err`] means that the data will never be
+    /// received, but a return value of [`Ok`] does *not* mean that the data
     /// will be received.  It is possible for the corresponding receiver to
-    /// hang up immediately after this function returns `Ok`.
+    /// hang up immediately after this function returns [`Ok`].
+    ///
+    /// [`Err`]: ../../../std/result/enum.Result.html#variant.Err
+    /// [`Ok`]: ../../../std/result/enum.Result.html#variant.Ok
     ///
     /// This method will never block the current thread.
     ///
@@ -702,9 +792,12 @@ impl<T> SyncSender<T> {
     /// time. If the buffer size is 0, however, it can be guaranteed that the
     /// receiver has indeed received the data if this function returns success.
     ///
-    /// This function will never panic, but it may return `Err` if the
-    /// `Receiver` has disconnected and is no longer able to receive
+    /// This function will never panic, but it may return [`Err`] if the
+    /// [`Receiver`] has disconnected and is no longer able to receive
     /// information.
+    ///
+    /// [`Err`]: ../../../std/result/enum.Result.html#variant.Err
+    /// [`Receiver`]: ../../../std/sync/mpsc/struct.Receiver.html
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn send(&self, t: T) -> Result<(), SendError<T>> {
         self.inner.send(t).map_err(SendError)
@@ -712,13 +805,16 @@ impl<T> SyncSender<T> {
 
     /// Attempts to send a value on this channel without blocking.
     ///
-    /// This method differs from `send` by returning immediately if the
+    /// This method differs from [`send`] by returning immediately if the
     /// channel's buffer is full or no receiver is waiting to acquire some
-    /// data. Compared with `send`, this function has two failure cases
+    /// data. Compared with [`send`], this function has two failure cases
     /// instead of one (one for disconnection, one for a full buffer).
     ///
-    /// See `SyncSender::send` for notes about guarantees of whether the
+    /// See [`SyncSender::send`] for notes about guarantees of whether the
     /// receiver has received the data or not if this function is successful.
+    ///
+    /// [`send`]: ../../../std/sync/mpsc/struct.Sender.html#method.send
+    /// [`SyncSender::send`]: ../../../std/sync/mpsc/struct.SyncSender.html#method.send
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn try_send(&self, t: T) -> Result<(), TrySendError<T>> {
         self.inner.try_send(t)
@@ -819,14 +915,17 @@ impl<T> Receiver<T> {
     ///
     /// This function will always block the current thread if there is no data
     /// available and it's possible for more data to be sent. Once a message is
-    /// sent to the corresponding `Sender`, then this receiver will wake up and
+    /// sent to the corresponding [`Sender`], then this receiver will wake up and
     /// return that message.
     ///
-    /// If the corresponding `Sender` has disconnected, or it disconnects while
-    /// this call is blocking, this call will wake up and return `Err` to
+    /// If the corresponding [`Sender`] has disconnected, or it disconnects while
+    /// this call is blocking, this call will wake up and return [`Err`] to
     /// indicate that no more messages can ever be received on this channel.
     /// However, since channels are buffered, messages sent before the disconnect
     /// will still be properly received.
+    ///
+    /// [`Sender`]: ../../../std/sync/mpsc/struct.Sender.html
+    /// [`Err`]: ../../../std/result/enum.Result.html#variant.Err
     ///
     /// # Examples
     ///
@@ -907,14 +1006,17 @@ impl<T> Receiver<T> {
     ///
     /// This function will always block the current thread if there is no data
     /// available and it's possible for more data to be sent. Once a message is
-    /// sent to the corresponding `Sender`, then this receiver will wake up and
+    /// sent to the corresponding [`Sender`], then this receiver will wake up and
     /// return that message.
     ///
-    /// If the corresponding `Sender` has disconnected, or it disconnects while
-    /// this call is blocking, this call will wake up and return `Err` to
+    /// If the corresponding [`Sender`] has disconnected, or it disconnects while
+    /// this call is blocking, this call will wake up and return [`Err`] to
     /// indicate that no more messages can ever be received on this channel.
     /// However, since channels are buffered, messages sent before the disconnect
     /// will still be properly received.
+    ///
+    /// [`Sender`]: ../../../std/sync/mpsc/struct.Sender.html
+    /// [`Err`]: ../../../std/result/enum.Result.html#variant.Err
     ///
     /// # Examples
     ///
@@ -993,7 +1095,29 @@ impl<T> Receiver<T> {
     }
 
     /// Returns an iterator that will block waiting for messages, but never
-    /// `panic!`. It will return `None` when the channel has hung up.
+    /// [`panic!`]. It will return [`None`] when the channel has hung up.
+    ///
+    /// [`panic!`]: ../../../std/macro.panic.html
+    /// [`None`]: ../../../std/option/enum.Option.html#variant.None
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use std::sync::mpsc::channel;
+    /// use std::thread;
+    ///
+    /// let (send, recv) = channel();
+    ///
+    /// thread::spawn(move || {
+    ///     send.send(1u8).unwrap();
+    ///     send.send(2u8).unwrap();
+    ///     send.send(3u8).unwrap();
+    /// });
+    ///
+    /// for x in recv.iter() {
+    ///     println!("Got: {}", x);
+    /// }
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter(&self) -> Iter<T> {
         Iter { rx: self }
@@ -1001,8 +1125,10 @@ impl<T> Receiver<T> {
 
     /// Returns an iterator that will attempt to yield all pending values.
     /// It will return `None` if there are no more pending values or if the
-    /// channel has hung up. The iterator will never `panic!` or block the
+    /// channel has hung up. The iterator will never [`panic!`] or block the
     /// user by waiting for values.
+    ///
+    /// [`panic!`]: ../../../std/macro.panic.html
     #[stable(feature = "receiver_try_iter", since = "1.15.0")]
     pub fn try_iter(&self) -> TryIter<T> {
         TryIter { rx: self }

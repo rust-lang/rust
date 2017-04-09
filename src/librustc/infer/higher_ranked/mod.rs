@@ -15,6 +15,7 @@ use super::{CombinedSnapshot,
             InferCtxt,
             LateBoundRegion,
             HigherRankedType,
+            RegionVariableOrigin,
             SubregionOrigin,
             SkolemizationMap};
 use super::combine::CombineFields;
@@ -656,14 +657,27 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                        skol_br,
                        tainted_region);
 
+                let issue_32330 = if let &ty::ReVar(vid) = tainted_region {
+                    match self.region_vars.var_origin(vid) {
+                        RegionVariableOrigin::EarlyBoundRegion(_, _, issue_32330) => {
+                            issue_32330.map(Box::new)
+                        }
+                        _ => None
+                    }
+                } else {
+                    None
+                };
+
                 if overly_polymorphic {
                     debug!("Overly polymorphic!");
                     return Err(TypeError::RegionsOverlyPolymorphic(skol_br,
-                                                                   tainted_region));
+                                                                   tainted_region,
+                                                                   issue_32330));
                 } else {
                     debug!("Not as polymorphic!");
                     return Err(TypeError::RegionsInsufficientlyPolymorphic(skol_br,
-                                                                           tainted_region));
+                                                                           tainted_region,
+                                                                           issue_32330));
                 }
             }
         }

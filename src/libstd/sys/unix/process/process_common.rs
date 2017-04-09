@@ -417,10 +417,24 @@ mod tests {
         }
     }
 
+    // Android with api less than 21 define sig* functions inline, so it is not
+    // available for dynamic link. Implementing sigemptyset and sigaddset allow us
+    // to support older Android version (independent of libc version).
+    // The following implementations are based on https://git.io/vSkNf
+
     #[cfg(not(target_os = "android"))]
     extern {
+        #[cfg_attr(target_os = "netbsd", link_name = "__sigemptyset14")]
+        fn sigemptyset(set: *mut libc::sigset_t) -> libc::c_int;
+
         #[cfg_attr(target_os = "netbsd", link_name = "__sigaddset14")]
         fn sigaddset(set: *mut libc::sigset_t, signum: libc::c_int) -> libc::c_int;
+    }
+
+    #[cfg(target_os = "android")]
+    unsafe fn sigemptyset(set: *mut libc::sigset_t) -> libc::c_int {
+        libc::memset(set as *mut _, 0, mem::size_of::<libc::sigset_t>());
+        return 0;
     }
 
     #[cfg(target_os = "android")]
@@ -434,8 +448,8 @@ mod tests {
     }
 
     // See #14232 for more information, but it appears that signal delivery to a
-    // newly spawned process may just be raced in the OSX, so to prevent this
-    // test from being flaky we ignore it on OSX.
+    // newly spawned process may just be raced in the macOS, so to prevent this
+    // test from being flaky we ignore it on macOS.
     #[test]
     #[cfg_attr(target_os = "macos", ignore)]
     #[cfg_attr(target_os = "nacl", ignore)] // no signals on NaCl.
@@ -450,7 +464,7 @@ mod tests {
 
             let mut set: libc::sigset_t = mem::uninitialized();
             let mut old_set: libc::sigset_t = mem::uninitialized();
-            t!(cvt(libc::sigemptyset(&mut set)));
+            t!(cvt(sigemptyset(&mut set)));
             t!(cvt(sigaddset(&mut set, libc::SIGINT)));
             t!(cvt(libc::pthread_sigmask(libc::SIG_SETMASK, &set, &mut old_set)));
 

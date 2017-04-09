@@ -43,16 +43,16 @@ environment:
   # *not* use debug assertions and llvm assertions. This is because they take
   # too long on appveyor and this is tested by rustbuild below.
   - MSYS_BITS: 32
-    RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu
+    RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu --enable-ninja
     SCRIPT: python x.py test
-    MINGW_URL: https://s3.amazonaws.com/rust-lang-ci
-    MINGW_ARCHIVE: i686-4.9.2-release-win32-dwarf-rt_v4-rev4.7z
+    MINGW_URL: https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror
+    MINGW_ARCHIVE: i686-6.2.0-release-win32-dwarf-rt_v5-rev1.7z
     MINGW_DIR: mingw32
   - MSYS_BITS: 64
     SCRIPT: python x.py test
-    RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu
-    MINGW_URL: https://s3.amazonaws.com/rust-lang-ci
-    MINGW_ARCHIVE: x86_64-4.9.2-release-win32-seh-rt_v4-rev4.7z
+    RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu --enable-ninja
+    MINGW_URL: https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror
+    MINGW_ARCHIVE: x86_64-6.2.0-release-win32-seh-rt_v5-rev1.7z
     MINGW_DIR: mingw64
 
   # 32/64 bit MSVC and GNU deployment
@@ -68,17 +68,17 @@ environment:
     SCRIPT: python x.py dist
     DEPLOY: 1
   - MSYS_BITS: 32
-    RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu --enable-extended
+    RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu --enable-extended --enable-ninja
     SCRIPT: python x.py dist
-    MINGW_URL: https://s3.amazonaws.com/rust-lang-ci
-    MINGW_ARCHIVE: i686-4.9.2-release-win32-dwarf-rt_v4-rev4.7z
+    MINGW_URL: https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror
+    MINGW_ARCHIVE: i686-6.2.0-release-win32-dwarf-rt_v5-rev1.7z
     MINGW_DIR: mingw32
     DEPLOY: 1
   - MSYS_BITS: 64
     SCRIPT: python x.py dist
-    RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu --enable-extended
-    MINGW_URL: https://s3.amazonaws.com/rust-lang-ci
-    MINGW_ARCHIVE: x86_64-4.9.2-release-win32-seh-rt_v4-rev4.7z
+    RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu --enable-extended --enable-ninja
+    MINGW_URL: https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror
+    MINGW_ARCHIVE: x86_64-6.2.0-release-win32-seh-rt_v5-rev1.7z
     MINGW_DIR: mingw64
     DEPLOY: 1
 
@@ -115,9 +115,16 @@ install:
   - set PATH=C:\Python27;%PATH%
 
   # Download and install sccache
-  - appveyor-retry appveyor DownloadFile https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-02-25-sccache-x86_64-pc-windows-msvc
-  - mv 2017-02-25-sccache-x86_64-pc-windows-msvc sccache
+  - appveyor-retry appveyor DownloadFile https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-04-04-sccache-x86_64-pc-windows-msvc
+  - mv 2017-04-04-sccache-x86_64-pc-windows-msvc sccache.exe
   - set PATH=%PATH%;%CD%
+
+  # Download and install ninja
+  #
+  # Note that this is originally from the github releases patch of Ninja
+  - appveyor-retry appveyor DownloadFile https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-03-15-ninja-win.zip
+  - 7z x 2017-03-15-ninja-win.zip
+  # - set PATH=%PATH%;%CD% -- this already happens above for sccache
 
   # Install InnoSetup to get `iscc` used to produce installers
   - appveyor-retry choco install -y InnoSetup
@@ -131,19 +138,21 @@ install:
   - handle.exe -accepteula -help
 
   # Attempt to debug sccache failures
-  - set RUST_LOG=sccache=debug
   - set SCCACHE_ERROR_LOG=%CD%/sccache.log
 
 test_script:
-  - appveyor-retry sh -c 'git submodule deinit -f . && git submodule update --init'
+  - if not exist C:\cache\rustsrc\NUL mkdir C:\cache\rustsrc
+  - sh src/ci/init_repo.sh . /c/cache/rustsrc
   - set SRC=.
   - set NO_CCACHE=1
   - sh src/ci/run.sh
 
 on_failure:
-  - cat %CD%/sccache.log
+  - cat %CD%\sccache.log
+  - cat C:\Users\appveyor\AppData\Local\Temp\1\build-cache-logs\*.log
 
 cache:
+  - C:\cache\rustsrc
   - "build/i686-pc-windows-msvc/llvm -> src/rustllvm/llvm-rebuild-trigger"
   - "build/x86_64-pc-windows-msvc/llvm -> src/rustllvm/llvm-rebuild-trigger"
   - "i686-pc-windows-msvc/llvm -> src/rustllvm/llvm-rebuild-trigger"
@@ -176,6 +185,7 @@ deploy:
     on:
       branch: auto
       DEPLOY: 1
+    max_error_retry: 5
 
   # This provider is the same as the one above except that it has a slightly
   # different upload directory and a slightly different trigger
@@ -192,6 +202,7 @@ deploy:
     on:
       branch: auto
       DEPLOY_ALT: 1
+    max_error_retry: 5
 
 # init:
 #   - ps: iex ((new-object net.webclient).DownloadString('https://raw.githubusercontent.com/appveyor/ci/master/scripts/enable-rdp.ps1'))

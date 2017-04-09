@@ -162,6 +162,7 @@ pub struct Build {
     cxx: HashMap<String, gcc::Tool>,
     crates: HashMap<String, Crate>,
     is_sudo: bool,
+    src_is_git: bool,
 }
 
 #[derive(Debug)]
@@ -180,7 +181,7 @@ struct Crate {
 ///
 /// These entries currently correspond to the various output directories of the
 /// build system, with each mod generating output in a different directory.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Mode {
     /// This cargo is going to build the standard library, placing output in the
     /// "stageN-std" directory.
@@ -233,6 +234,7 @@ impl Build {
         };
         let rust_info = channel::GitInfo::new(&src);
         let cargo_info = channel::GitInfo::new(&src.join("cargo"));
+        let src_is_git = src.join(".git").exists();
 
         Build {
             flags: flags,
@@ -251,6 +253,7 @@ impl Build {
             lldb_version: None,
             lldb_python_dir: None,
             is_sudo: is_sudo,
+            src_is_git: src_is_git,
         }
     }
 
@@ -307,10 +310,7 @@ impl Build {
             OutOfSync,
         }
 
-        if !self.config.submodules {
-            return
-        }
-        if fs::metadata(self.src.join(".git")).is_err() {
+        if !self.src_is_git || !self.config.submodules {
             return
         }
         let git = || {
@@ -491,12 +491,33 @@ impl Build {
         // For other crates, however, we know that we've already got a standard
         // library up and running, so we can use the normal compiler to compile
         // build scripts in that situation.
-        if let Mode::Libstd = mode {
+        if mode == Mode::Libstd {
             cargo.env("RUSTC_SNAPSHOT", &self.rustc)
                  .env("RUSTC_SNAPSHOT_LIBDIR", self.rustc_snapshot_libdir());
         } else {
             cargo.env("RUSTC_SNAPSHOT", self.compiler_path(compiler))
                  .env("RUSTC_SNAPSHOT_LIBDIR", self.rustc_libdir(compiler));
+        }
+
+        // There are two invariants we try must maintain:
+        // * stable crates cannot depend on unstable crates (general Rust rule),
+        // * crates that end up in the sysroot must be unstable (rustbuild rule).
+        //
+        // In order to do enforce the latter, we pass the env var
+        // `RUSTBUILD_UNSTABLE` down the line for any crates which will end up
+        // in the sysroot. We read this in bootstrap/bin/rustc.rs and if it is
+        // set, then we pass the `rustbuild` feature to rustc when building the
+        // the crate.
+        //
+        // In turn, crates that can be used here should recognise the `rustbuild`
+        // feature and opt-in to `rustc_private`.
+        //
+        // We can't always pass `rustbuild` because crates which are outside of
+        // the comipiler, libs, and tests are stable and we don't want to make
+        // their deps unstable (since this would break the first invariant
+        // above).
+        if mode != Mode::Tool {
+            cargo.env("RUSTBUILD_UNSTABLE", "1");
         }
 
         // Ignore incremental modes except for stage0, since we're
@@ -846,7 +867,7 @@ impl Build {
                            .filter(|s| !s.starts_with("-O") && !s.starts_with("/O"))
                            .collect::<Vec<_>>();
 
-        // If we're compiling on OSX then we add a few unconditional flags
+        // If we're compiling on macOS then we add a few unconditional flags
         // indicating that we want libc++ (more filled out than libstdc++) and
         // we want to compile for 10.7. This way we can ensure that
         // LLVM/jemalloc/etc are all properly compiled.
@@ -992,6 +1013,11 @@ impl Build {
     /// Returns the value of `package_vers` above for Rust itself.
     fn rust_package_vers(&self) -> String {
         self.package_vers(channel::CFG_RELEASE_NUM)
+    }
+
+    /// Returns the value of `package_vers` above for Cargo
+    fn cargo_package_vers(&self) -> String {
+        self.package_vers(&self.cargo_release_num())
     }
 
     /// Returns the `version` string associated with this compiler for Rust

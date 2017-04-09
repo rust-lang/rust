@@ -5,10 +5,6 @@
 [submodule "src/compiler-rt"]
 	path = src/compiler-rt
 	url = https://github.com/rust-lang/compiler-rt.git
-[submodule "src/rt/hoedown"]
-	path = src/rt/hoedown
-	url = https://github.com/rust-lang/hoedown.git
-	branch = rust-2015-09-21-do-not-delete
 [submodule "src/jemalloc"]
 	path = src/jemalloc
 	url = https://github.com/rust-lang/jemalloc.git
@@ -20,10 +16,13 @@
 	url = https://github.com/rust-lang/libc.git
 [submodule "src/doc/nomicon"]
 	path = src/doc/nomicon
-	url = https://github.com/rust-lang-nursery/nomicon
+	url = https://github.com/rust-lang-nursery/nomicon.git
 [submodule "src/tools/cargo"]
 	path = cargo
-	url = https://github.com/rust-lang/cargo
+	url = https://github.com/rust-lang/cargo.git
 [submodule "reference"]
 	path = src/doc/reference
 	url = https://github.com/rust-lang-nursery/reference.git
+[submodule "book"]
+	path = src/doc/book
+	url = https://github.com/rust-lang/book.git

@@ -51,7 +51,8 @@ impl<'a> ParserAnyMacro<'a> {
         }
 
         // Make sure we don't have any tokens left to parse so we don't silently drop anything.
-        parser.ensure_complete_parse(macro_ident.name, kind.name(), site_span);
+        let path = ast::Path::from_ident(site_span, macro_ident);
+        parser.ensure_complete_parse(&path, kind.name(), site_span);
         expansion
     }
 }
@@ -118,9 +119,9 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
                 };
                 let mut p = Parser::new(cx.parse_sess(), tts, Some(directory), false);
                 p.root_module_name = cx.current_expansion.module.mod_path.last()
-                    .map(|id| (*id.name.as_str()).to_owned());
+                    .map(|id| id.name.as_str().to_string());
 
-                p.check_unknown_macro_variable();
+                p.process_potential_macro_variable();
                 // Let the context choose how to interpret the result.
                 // Weird, but useful for X-macros.
                 return Box::new(ParserAnyMacro {

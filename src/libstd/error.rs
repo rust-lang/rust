@@ -216,6 +216,11 @@ impl<'a> From<&'a str> for Box<Error> {
     }
 }
 
+#[stable(feature = "never_error", since = "1.18.0")]
+impl Error for ! {
+    fn description(&self) -> &str { *self }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Error for str::ParseBoolError {
     fn description(&self) -> &str { "failed to parse bool" }

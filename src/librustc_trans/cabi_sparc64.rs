@@ -10,170 +10,89 @@
 
 // FIXME: This needs an audit for correctness and completeness.
 
-use llvm::{Integer, Pointer, Float, Double, Struct, Vector, Array};
-use abi::{self, FnType, ArgType};
+use abi::{FnType, ArgType, LayoutExt, Reg, RegKind, Uniform};
 use context::CrateContext;
-use type_::Type;
 
-fn ty_size(ty: Type) -> usize {
-    if ty.kind() == Vector {
-        bug!("ty_size: unhandled type")
-    } else {
-        abi::ty_size(ty, 8)
-    }
-}
+fn is_homogenous_aggregate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &mut ArgType<'tcx>)
+                                     -> Option<Uniform> {
+    arg.layout.homogenous_aggregate(ccx).and_then(|unit| {
+        let size = arg.layout.size(ccx);
 
-fn is_homogenous_aggregate_ty(ty: Type) -> Option<(Type, u64)> {
-    fn check_array(ty: Type) -> Option<(Type, u64)> {
-        let len = ty.array_length() as u64;
-        if len == 0 {
-            return None
-        }
-        let elt = ty.element_type();
-
-        // if our element is an HFA/HVA, so are we; multiply members by our len
-        is_homogenous_aggregate_ty(elt).map(|(base_ty, members)| (base_ty, len * members))
-    }
-
-    fn check_struct(ty: Type) -> Option<(Type, u64)> {
-        let str_tys = ty.field_types();
-        if str_tys.len() == 0 {
-            return None
+        // Ensure we have at most eight uniquely addressable members.
+        if size > unit.size.checked_mul(8, ccx).unwrap() {
+            return None;
         }
 
-        let mut prev_base_ty = None;
-        let mut members = 0;
-        for opt_homog_agg in str_tys.iter().map(|t| is_homogenous_aggregate_ty(*t)) {
-            match (prev_base_ty, opt_homog_agg) {
-                // field isn't itself an HFA, so we aren't either
-                (_, None) => return None,
+        let valid_unit = match unit.kind {
+            RegKind::Integer => false,
+            RegKind::Float => true,
+            RegKind::Vector => size.bits() == 128
+        };
 
-                // first field - store its type and number of members
-                (None, Some((field_ty, field_members))) => {
-                    prev_base_ty = Some(field_ty);
-                    members = field_members;
-                },
-
-                // 2nd or later field - give up if it's a different type; otherwise incr. members
-                (Some(prev_ty), Some((field_ty, field_members))) => {
-                    if prev_ty != field_ty {
-                        return None;
-                    }
-                    members += field_members;
-                }
-            }
-        }
-
-        // Because of previous checks, we know prev_base_ty is Some(...) because
-        //   1. str_tys has at least one element; and
-        //   2. prev_base_ty was filled in (or we would've returned early)
-        let (base_ty, members) = (prev_base_ty.unwrap(), members);
-
-        // Ensure there is no padding.
-        if ty_size(ty) == ty_size(base_ty) * (members as usize) {
-            Some((base_ty, members))
-        } else {
-            None
-        }
-    }
-
-    let homog_agg = match ty.kind() {
-        Float  => Some((ty, 1)),
-        Double => Some((ty, 1)),
-        Array  => check_array(ty),
-        Struct => check_struct(ty),
-        _ => None
-    };
-
-    // Ensure we have at most eight uniquely addressable members
-    homog_agg.and_then(|(base_ty, members)| {
-        if members > 0 && members <= 8 {
-            Some((base_ty, members))
+        if valid_unit {
+            Some(Uniform {
+                unit,
+                total: size
+            })
         } else {
             None
         }
     })
 }
 
-fn classify_ret_ty(ccx: &CrateContext, ret: &mut ArgType) {
-    if is_reg_ty(ret.ty) {
+fn classify_ret_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ret: &mut ArgType<'tcx>) {
+    if !ret.layout.is_aggregate() {
         ret.extend_integer_width_to(64);
+        return;
+    }
+
+    if let Some(uniform) = is_homogenous_aggregate(ccx, ret) {
+        ret.cast_to(ccx, uniform);
+        return;
+    }
+    let size = ret.layout.size(ccx);
+    let bits = size.bits();
+    if bits <= 128 {
+        let unit = if bits <= 8 {
+            Reg::i8()
+        } else if bits <= 16 {
+            Reg::i16()
+        } else if bits <= 32 {
+            Reg::i32()
+        } else {
+            Reg::i64()
+        };
+
+        ret.cast_to(ccx, Uniform {
+            unit,
+            total: size
+        });
         return;
     }
 
     // don't return aggregates in registers
     ret.make_indirect(ccx);
-
-    if let Some((base_ty, members)) = is_homogenous_aggregate_ty(ret.ty) {
-        ret.cast = Some(Type::array(&base_ty, members));
-        return;
-    }
-    let size = ty_size(ret.ty);
-    if size <= 16 {
-        let llty = if size <= 1 {
-            Type::i8(ccx)
-        } else if size <= 2 {
-            Type::i16(ccx)
-        } else if size <= 4 {
-            Type::i32(ccx)
-        } else if size <= 8 {
-            Type::i64(ccx)
-        } else {
-            Type::array(&Type::i64(ccx), ((size + 7 ) / 8 ) as u64)
-        };
-        ret.cast = Some(llty);
-        return;
-    }
 }
 
-fn classify_arg_ty(ccx: &CrateContext, arg: &mut ArgType) {
-    if is_reg_ty(arg.ty) {
+fn classify_arg_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &mut ArgType<'tcx>) {
+    if !arg.layout.is_aggregate() {
         arg.extend_integer_width_to(64);
         return;
     }
 
-    if let Some((base_ty, members)) = is_homogenous_aggregate_ty(arg.ty) {
-        arg.cast = Some(Type::array(&base_ty, members));
+    if let Some(uniform) = is_homogenous_aggregate(ccx, arg) {
+        arg.cast_to(ccx, uniform);
         return;
     }
 
-    arg.cast = Some(struct_ty(ccx, arg.ty));
+    let total = arg.layout.size(ccx);
+    arg.cast_to(ccx, Uniform {
+        unit: Reg::i64(),
+        total
+    });
 }
 
-fn is_reg_ty(ty: Type) -> bool {
-    match ty.kind() {
-        Integer
-        | Pointer
-        | Float
-        | Double => true,
-        _ => false
-    }
-}
-
-fn coerce_to_long(ccx: &CrateContext, size: usize) -> Vec<Type> {
-    let long_ty = Type::i64(ccx);
-    let mut args = Vec::new();
-
-    let mut n = size / 64;
-    while n > 0 {
-        args.push(long_ty);
-        n -= 1;
-    }
-
-    let r = size % 64;
-    if r > 0 {
-        args.push(Type::ix(ccx, r as u64));
-    }
-
-    args
-}
-
-fn struct_ty(ccx: &CrateContext, ty: Type) -> Type {
-    let size = ty_size(ty) * 8;
-    Type::struct_(ccx, &coerce_to_long(ccx, size), false)
-}
-
-pub fn compute_abi_info(ccx: &CrateContext, fty: &mut FnType) {
+pub fn compute_abi_info<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fty: &mut FnType<'tcx>) {
     if !fty.ret.is_ignore() {
         classify_ret_ty(ccx, &mut fty.ret);
     }

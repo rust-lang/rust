@@ -29,7 +29,7 @@ fn max_len() -> usize {
     // with the man page quoting that if the count of bytes to read is
     // greater than `SSIZE_MAX` the result is "unspecified".
     //
-    // On OSX, however, apparently the 64-bit libc is either buggy or
+    // On macOS, however, apparently the 64-bit libc is either buggy or
     // intentionally showing odd behavior by rejecting any read with a size
     // larger than or equal to INT_MAX. To handle both of these the read
     // size is capped on both platforms.

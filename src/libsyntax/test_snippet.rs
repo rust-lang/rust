@@ -83,7 +83,7 @@ fn make_span(file_text: &str, start: &Position, end: &Position) -> Span {
     Span {
         lo: BytePos(start as u32),
         hi: BytePos(end as u32),
-        expn_id: NO_EXPANSION,
+        ctxt: NO_EXPANSION,
     }
 }
 

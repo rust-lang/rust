@@ -122,6 +122,12 @@ fn check(cache: &mut Cache,
         return None;
     }
 
+    // ignore handlebars files as they use {{}} to build links, we only
+    // want to test the generated files
+    if file.extension().and_then(|s| s.to_str()) == Some("hbs") {
+        return None;
+    }
+
     // Unfortunately we're not 100% full of valid links today to we need a few
     // whitelists to get this past `make check` today.
     // FIXME(#32129)

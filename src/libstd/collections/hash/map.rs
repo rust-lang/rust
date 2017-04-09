@@ -222,8 +222,8 @@ const DISPLACEMENT_THRESHOLD: usize = 128;
 /// resistance against HashDoS attacks. The algorithm is randomly seeded, and a
 /// reasonable best-effort is made to generate this seed from a high quality,
 /// secure source of randomness provided by the host without blocking the
-/// program. Because of this, the randomness of the seed is dependant on the
-/// quality of the system's random number generator at the time it is created.
+/// program. Because of this, the randomness of the seed depends on the output
+/// quality of the system's random number generator when the seed is created.
 /// In particular, seeds generated when the system's entropy pool is abnormally
 /// low such as during system boot may be of a lower quality.
 ///
@@ -472,7 +472,7 @@ fn pop_internal<K, V>(starting_bucket: FullBucketMut<K, V>)
     }
 
     // Now we've done all our shifting. Return the value we grabbed earlier.
-    (retkey, retval, gap.into_bucket().into_table())
+    (retkey, retval, gap.into_table())
 }
 
 /// Perform robin hood bucket stealing at the given `bucket`. You must
@@ -485,14 +485,14 @@ fn robin_hood<'a, K: 'a, V: 'a>(bucket: FullBucketMut<'a, K, V>,
                                 mut key: K,
                                 mut val: V)
                                 -> FullBucketMut<'a, K, V> {
-    let start_index = bucket.index();
     let size = bucket.table().size();
-    // Save the *starting point*.
-    let mut bucket = bucket.stash();
+    let raw_capacity = bucket.table().capacity();
     // There can be at most `size - dib` buckets to displace, because
     // in the worst case, there are `size` elements and we already are
     // `displacement` buckets away from the initial one.
-    let idx_end = start_index + size - bucket.displacement();
+    let idx_end = (bucket.index() + size - bucket.displacement()) % raw_capacity;
+    // Save the *starting point*.
+    let mut bucket = bucket.stash();
 
     loop {
         let (old_hash, old_key, old_val) = bucket.replace(hash, key, val);
@@ -568,11 +568,8 @@ impl<K, V, S> HashMap<K, V, S>
     // The caller should ensure that invariants by Robin Hood Hashing hold
     // and that there's space in the underlying table.
     fn insert_hashed_ordered(&mut self, hash: SafeHash, k: K, v: V) {
-        let raw_cap = self.raw_capacity();
         let mut buckets = Bucket::new(&mut self.table, hash);
-        // note that buckets.index() keeps increasing
-        // even if the pointer wraps back to the first bucket.
-        let limit_bucket = buckets.index() + raw_cap;
+        let start_index = buckets.index();
 
         loop {
             // We don't need to compare hashes for value swap.
@@ -585,7 +582,7 @@ impl<K, V, S> HashMap<K, V, S>
                 Full(b) => b.into_bucket(),
             };
             buckets.next();
-            debug_assert!(buckets.index() < limit_bucket);
+            debug_assert!(buckets.index() != start_index);
         }
     }
 }
@@ -1244,24 +1241,25 @@ impl<K, V, S> HashMap<K, V, S>
     pub fn retain<F>(&mut self, mut f: F)
         where F: FnMut(&K, &mut V) -> bool
     {
-        if self.table.capacity() == 0 || self.table.size() == 0 {
+        if self.table.size() == 0 {
             return;
         }
+        let mut elems_left = self.table.size();
         let mut bucket = Bucket::head_bucket(&mut self.table);
         bucket.prev();
-        let tail = bucket.index();
-        loop {
+        let start_index = bucket.index();
+        while elems_left != 0 {
             bucket = match bucket.peek() {
                 Full(mut full) => {
+                    elems_left -= 1;
                     let should_remove = {
                         let (k, v) = full.read_mut();
                         !f(k, v)
                     };
                     if should_remove {
-                        let prev_idx = full.index();
                         let prev_raw = full.raw();
                         let (_, _, t) = pop_internal(full);
-                        Bucket::new_from(prev_raw, prev_idx, t)
+                        Bucket::new_from(prev_raw, t)
                     } else {
                         full.into_bucket()
                     }
@@ -1271,9 +1269,7 @@ impl<K, V, S> HashMap<K, V, S>
                 }
             };
             bucket.prev();  // reverse iteration
-            if bucket.index() == tail {
-                break;
-            }
+            debug_assert!(elems_left == 0 || bucket.index() != start_index);
         }
     }
 }

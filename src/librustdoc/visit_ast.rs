@@ -21,7 +21,7 @@ use syntax_pos::Span;
 
 use rustc::hir::map as hir_map;
 use rustc::hir::def::Def;
-use rustc::hir::def_id::LOCAL_CRATE;
+use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::middle::cstore::LoadedMacro;
 use rustc::middle::privacy::AccessLevel;
 use rustc::util::nodemap::FxHashSet;
@@ -48,6 +48,7 @@ pub struct RustdocVisitor<'a, 'tcx: 'a> {
     inlining: bool,
     /// Is the current module and all of its parents public?
     inside_public_path: bool,
+    reexported_macros: FxHashSet<DefId>,
 }
 
 impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
@@ -62,6 +63,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             view_item_stack: stack,
             inlining: false,
             inside_public_path: true,
+            reexported_macros: FxHashSet(),
         }
     }
 
@@ -198,12 +200,13 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             self.visit_item(item, None, &mut om);
         }
         self.inside_public_path = orig_inside_public_path;
-        if let Some(exports) = self.cx.export_map.get(&id) {
+        if let Some(exports) = self.cx.tcx.export_map.get(&id) {
             for export in exports {
                 if let Def::Macro(def_id, ..) = export.def {
-                    if def_id.krate == LOCAL_CRATE {
+                    if def_id.krate == LOCAL_CRATE || self.reexported_macros.contains(&def_id) {
                         continue // These are `krate.exported_macros`, handled in `self.visit()`.
                     }
+
                     let imported_from = self.cx.sess().cstore.original_crate_name(def_id.krate);
                     let def = match self.cx.sess().cstore.load_macro(def_id, self.cx.sess()) {
                         LoadedMacro::MacroDef(macro_def) => macro_def,
@@ -217,6 +220,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     } else {
                         unreachable!()
                     };
+
                     om.macros.push(Macro {
                         def_id: def_id,
                         attrs: def.attrs.clone().into(),
@@ -263,6 +267,8 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             false
         }
 
+        debug!("maybe_inline_local def: {:?}", def);
+
         let tcx = self.cx.tcx;
         if def == Def::Err {
             return false;
@@ -273,6 +279,17 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         // Don't inline doc(hidden) imports so they can be stripped at a later stage.
         let is_no_inline = use_attrs.lists("doc").has_word("no_inline") ||
                            use_attrs.lists("doc").has_word("hidden");
+
+        // Memoize the non-inlined `pub use`'d macros so we don't push an extra
+        // declaration in `visit_mod_contents()`
+        if !def_did.is_local() {
+            if let Def::Macro(did, _) = def {
+                if please_inline { return true }
+                debug!("memoizing non-inlined macro export: {:?}", def);
+                self.reexported_macros.insert(did);
+                return false;
+            }
+        }
 
         // For cross-crate impl inlining we need to know whether items are
         // reachable in documentation - a previously nonreachable item can be
@@ -294,6 +311,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 },
                 _ => {},
             }
+
             return false
         }
 
@@ -376,7 +394,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 if item.vis == hir::Public && self.inside_public_path {
                     let please_inline = item.attrs.iter().any(|item| {
                         match item.meta_item_list() {
-                            Some(list) if item.check_name("doc") => {
+                            Some(ref list) if item.check_name("doc") => {
                                 list.iter().any(|i| i.check_name("inline"))
                             }
                             _ => false,

@@ -91,7 +91,7 @@ pub fn find_crate_name(sess: Option<&Session>,
                        attrs: &[ast::Attribute],
                        input: &Input) -> String {
     let validate = |s: String, span: Option<Span>| {
-        cstore::validate_crate_name(sess, &s[..], span);
+        cstore::validate_crate_name(sess, &s, span);
         s
     };
 
@@ -109,7 +109,7 @@ pub fn find_crate_name(sess: Option<&Session>,
                     let msg = format!("--crate-name and #[crate_name] are \
                                        required to match, but `{}` != `{}`",
                                       s, name);
-                    sess.span_err(attr.span, &msg[..]);
+                    sess.span_err(attr.span, &msg);
                 }
             }
             return validate(s.clone(), None);
@@ -417,7 +417,7 @@ fn object_filenames(trans: &CrateTranslation,
                     outputs: &OutputFilenames)
                     -> Vec<PathBuf> {
     trans.modules.iter().map(|module| {
-        outputs.temp_path(OutputType::Object, Some(&module.name[..]))
+        outputs.temp_path(OutputType::Object, Some(&module.name))
     }).collect()
 }
 
@@ -551,7 +551,7 @@ fn link_rlib<'a>(sess: &'a Session,
                                                  e))
                 }
 
-                let bc_data_deflated = flate::deflate_bytes(&bc_data[..]);
+                let bc_data_deflated = flate::deflate_bytes(&bc_data);
 
                 let mut bc_file_deflated = match fs::File::create(&bc_deflated_filename) {
                     Ok(file) => file,
@@ -583,7 +583,7 @@ fn link_rlib<'a>(sess: &'a Session,
             }
 
             // After adding all files to the archive, we need to update the
-            // symbol table of the archive. This currently dies on OSX (see
+            // symbol table of the archive. This currently dies on macOS (see
             // #11162), and isn't necessary there anyway
             if !sess.target.target.options.is_like_osx {
                 ab.update_symbols();
@@ -734,9 +734,10 @@ fn link_natively(sess: &Session,
     }
 
     {
-        let mut linker = trans.linker_info.to_linker(&mut cmd, &sess);
+        let mut linker = trans.linker_info.to_linker(cmd, &sess);
         link_args(&mut *linker, sess, crate_type, tmpdir,
                   objects, out_filename, outputs, trans);
+        cmd = linker.finalize();
     }
     cmd.args(&sess.target.target.options.late_link_args);
     for obj in &sess.target.target.options.post_link_objects {
@@ -764,7 +765,7 @@ fn link_natively(sess: &Session,
     // pain to land PRs when they spuriously fail due to a segfault.
     //
     // The issue #38878 has some more debugging information on it as well, but
-    // this unfortunately looks like it's just a race condition in OSX's linker
+    // this unfortunately looks like it's just a race condition in macOS's linker
     // with some thread pool working in the background. It seems that no one
     // currently knows a fix for this so in the meantime we're left with this...
     info!("{:?}", &cmd);
@@ -819,12 +820,12 @@ fn link_natively(sess: &Session,
                                          pname,
                                          prog.status))
                     .note(&format!("{:?}", &cmd))
-                    .note(&escape_string(&output[..]))
+                    .note(&escape_string(&output))
                     .emit();
                 sess.abort_if_errors();
             }
-            info!("linker stderr:\n{}", escape_string(&prog.stderr[..]));
-            info!("linker stdout:\n{}", escape_string(&prog.stdout[..]));
+            info!("linker stderr:\n{}", escape_string(&prog.stderr));
+            info!("linker stdout:\n{}", escape_string(&prog.stdout));
         },
         Err(e) => {
             sess.struct_err(&format!("could not exec the linker `{}`: {}", pname, e))
@@ -841,7 +842,7 @@ fn link_natively(sess: &Session,
     }
 
 
-    // On OSX, debuggers need this utility to get run to do some munging of
+    // On macOS, debuggers need this utility to get run to do some munging of
     // the symbols
     if sess.target.target.options.is_like_osx && sess.opts.debuginfo != NoDebugInfo {
         match Command::new("dsymutil").arg(out_filename).output() {
@@ -1021,38 +1022,18 @@ fn add_local_native_libraries(cmd: &mut Linker, sess: &Session) {
         }
     });
 
-    let pair = sess.cstore.used_libraries().into_iter().filter(|l| {
+    let relevant_libs = sess.cstore.used_libraries().into_iter().filter(|l| {
         relevant_lib(sess, l)
-    }).partition(|lib| {
-        lib.kind == NativeLibraryKind::NativeStatic
     });
-    let (staticlibs, others): (Vec<_>, Vec<_>) = pair;
-
-    // Some platforms take hints about whether a library is static or dynamic.
-    // For those that support this, we ensure we pass the option if the library
-    // was flagged "static" (most defaults are dynamic) to ensure that if
-    // libfoo.a and libfoo.so both exist that the right one is chosen.
-    cmd.hint_static();
 
     let search_path = archive_search_paths(sess);
-    for l in staticlibs {
-        // Here we explicitly ask that the entire archive is included into the
-        // result artifact. For more details see #15460, but the gist is that
-        // the linker will strip away any unused objects in the archive if we
-        // don't otherwise explicitly reference them. This can occur for
-        // libraries which are just providing bindings, libraries with generic
-        // functions, etc.
-        cmd.link_whole_staticlib(&l.name.as_str(), &search_path);
-    }
-
-    cmd.hint_dynamic();
-
-    for lib in others {
+    for lib in relevant_libs {
         match lib.kind {
             NativeLibraryKind::NativeUnknown => cmd.link_dylib(&lib.name.as_str()),
             NativeLibraryKind::NativeFramework => cmd.link_framework(&lib.name.as_str()),
             NativeLibraryKind::NativeStaticNobundle => cmd.link_staticlib(&lib.name.as_str()),
-            NativeLibraryKind::NativeStatic => bug!(),
+            NativeLibraryKind::NativeStatic => cmd.link_whole_staticlib(&lib.name.as_str(),
+                                                                        &search_path)
         }
     }
 }
