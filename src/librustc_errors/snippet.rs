@@ -97,9 +97,6 @@ pub enum AnnotationType {
     /// Annotation under a single line of code
     Singleline,
 
-    /// Annotation under the first character of a multiline span
-    Minimized,
-
     /// Annotation enclosing the first and last character of a multiline span
     Multiline(MultilineAnnotation),
 
@@ -118,6 +115,9 @@ pub enum AnnotationType {
     /// Annotation marking the last character of a fully shown multiline span
     MultilineEnd(usize),
     /// Line at the left enclosing the lines of a fully shown multiline span
+    // Just a placeholder for the drawing algorithm, to know that it shouldn't skip the first 4
+    // and last 2 lines of code. The actual line is drawn in `emit_message_default` and not in
+    // `draw_multiline_line`.
     MultilineLine(usize),
 }
 
@@ -144,13 +144,6 @@ pub struct Annotation {
 }
 
 impl Annotation {
-    pub fn is_minimized(&self) -> bool {
-        match self.annotation_type {
-            AnnotationType::Minimized => true,
-            _ => false,
-        }
-    }
-
     /// Wether this annotation is a vertical line placeholder.
     pub fn is_line(&self) -> bool {
         if let AnnotationType::MultilineLine(_) = self.annotation_type {
