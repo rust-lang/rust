@@ -367,7 +367,16 @@ fn determine_operation(matches: &Matches) -> FmtResult<Operation> {
                   });
     }
 
-    let files: Vec<_> = matches.free.iter().map(PathBuf::from).collect();
+    let files: Vec<_> = matches
+        .free
+        .iter()
+        .map(|s| {
+                 let p = PathBuf::from(s);
+                 // we will do comparison later, so here tries to canonicalize first
+                 // to get the expected behavior.
+                 p.canonicalize().unwrap_or(p)
+             })
+        .collect();
 
     Ok(Operation::Format {
            files: files,
