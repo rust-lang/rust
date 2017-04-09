@@ -226,6 +226,19 @@ fn get_unchecked_mut_range() {
 }
 
 #[test]
+fn test_find_rfind() {
+    let v = [0, 1, 2, 3, 4, 5];
+    let mut iter = v.iter();
+    let mut i = v.len();
+    while let Some(&elt) = iter.rfind(|_| true) {
+        i -= 1;
+        assert_eq!(elt, v[i]);
+    }
+    assert_eq!(i, 0);
+    assert_eq!(v.iter().rfind(|&&x| x <= 3), Some(&3));
+}
+
+#[test]
 fn sort_unstable() {
     let mut v = [0; 600];
     let mut tmp = [0; 600];
