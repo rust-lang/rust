@@ -22,6 +22,7 @@ use syntax::codemap::{ExpnFormat, ExpnInfo, MultiSpan, Span, DUMMY_SP};
 use syntax::errors::DiagnosticBuilder;
 use syntax::ptr::P;
 use syntax::symbol::keywords;
+use std::iter;
 
 pub mod comparisons;
 pub mod conf;
@@ -977,4 +978,191 @@ pub fn type_size<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: ty::Ty<'tcx>) -> Opti
     cx.tcx
         .infer_ctxt((), Reveal::All)
         .enter(|infcx| ty.layout(&infcx).ok().map(|lay| lay.size(&TargetDataLayout::parse(cx.sess())).bytes()))
+}
+
+/// Add `n` spaces to the left of `s`.
+pub fn left_pad_with_spaces(s: &str, n: usize) -> String {
+    let mut new_s = iter::repeat(' ').take(n).collect::<String>();
+    new_s.push_str(s);
+    new_s
+}
+
+/// Add `n` spaces to the left of each line in `s` and return the result
+/// in a new String.
+/// e.g., when n = 2, the string
+///
+///     "   fn foo() {
+///             bar()
+///         }"
+///
+/// becomes
+///
+///     "     fn foo() {
+///               bar()
+///           }"
+///
+/// # Example
+///
+/// ```
+/// use clippy_lints::utils::left_pad_with_spaces;
+///
+/// let input = "\
+/// fn main() {
+///     println!("hello world!");
+/// }";
+///
+/// let expected =
+/// "    fn main() {
+///         println!("hello world!");
+///      }";
+///
+/// assert_eq!(expected, input);
+/// ```
+pub fn left_pad_lines_with_spaces(s: &str, n: usize) -> String {
+    s.lines()
+     .map(|line| left_pad_with_spaces(line, n))
+     .collect::<Vec<_>>()
+     .join("\n")
+}
+
+/// Remove upto `n` whitespace characters from the beginning of `s`.
+///
+/// # Examples
+///
+/// ```
+/// let s = "    foobar  ";
+/// assert_eq!("foobar ", remove_whitespace_from_left(s, 100));
+/// assert_eq!("  foobar ", remove_whitespace_from_left(s, 2));
+/// assert_eq("", remove_whitespace_from_left("   ", 50));
+/// ```
+pub fn remove_whitespace_from_left(s: &str, n: usize) -> String {
+    s.chars()
+     .enumerate()
+     .skip_while(|&(i, c)| i < n && c.is_whitespace())
+     .map(|(_, c)| c)
+     .collect::<String>()
+}
+
+/// Aligns two snippets such that the indentation level of the last non-empty,
+/// non-space line of the first snippet matches the first non-empty, non-space
+/// line of the second.
+pub fn align_two_snippets(s: &str, t: &str) -> String {
+    // indent level of the last nonempty, non-whitespace line of s.
+    let target_ilevel = s.lines()
+                         .rev()
+                         .skip_while(|line| line.is_empty() || is_all_whitespace(line))
+                         .next()
+                         .map_or(0_usize, indent_level);
+
+    // We want to align the first nonempty, non-all-whitespace line of t to
+    // have the same indent level as target_ilevel
+    let level = t.lines()
+                 .skip_while(|line| line.is_empty() || is_all_whitespace(line))
+                 .next()
+                 .map_or(0_usize, indent_level);
+
+    // When add_spaces=true, we add spaces, otherwise eat.
+    let add_spaces = target_ilevel > level;
+
+    let delta = if add_spaces {
+        target_ilevel - level
+    } else {
+        level - target_ilevel
+    };
+
+    let new_t = t.lines()
+                 .map(|line| {
+                     if is_null(line) {
+                         // leave empty lines alone
+                         String::from(line)
+                     } else if add_spaces {
+                         left_pad_with_spaces(line, delta)
+                     } else {
+                         remove_whitespace_from_left(line, delta)
+                     }
+                 })
+                 .collect::<Vec<_>>().join("\n");
+
+    format!("{}\n{}", s, new_t)
+}
+
+/// Aligns strings in `xs` pairwise from the start, such that for any pair of
+/// strings, the first string's last line is aligned with the first line of
+/// the second string. See `align_two_snippets`. Use this to merge code regions
+/// into a reasonably aligned chunk of code.
+///
+/// For example, consider
+///
+///         let s1 = "\
+///     if (condition()) {
+///         do_something()";
+///
+///         let s2 = "\
+///             code_from_somewhere_else();"
+///
+///         let s3 = "\
+///     another_piece_of_code();
+///         indented_here();";
+///
+///
+///
+///
+/// Now calling `align_snippets(&[s1, s2, s3])` will yield the following:
+///
+///     "\
+///     if (condition()) {
+///         do_something();
+///         code_from_somewhere_else();
+///         another_piece_of_code();
+///             indented_here();"
+pub fn align_snippets(xs: &[&str]) -> String {
+    if xs.is_empty() {
+        String::from("")
+    } else {
+        let mut ret = xs[0].to_string();
+        for x in xs.iter().skip(1_usize) {
+            ret = align_two_snippets(&ret, x);
+        }
+        ret
+    }
+}
+
+
+/// # Examples
+/// ```
+/// use clippy_lints::utils::is_all_whitespace;
+///
+/// assert_eq!(true, "   \n\t  ");
+/// assert_eq!(false, "");
+/// assert_eq!(false, "hello world!\n");
+/// ```
+pub fn is_all_whitespace(s: &str) -> bool {
+    s.chars().all(|c| c.is_whitespace())
+}
+
+/// Returns true if a string is empty or just spaces.
+pub fn is_null(s: &str) -> bool {
+    s.is_empty() || is_all_whitespace(s)
+}
+
+/// Returns the indentation level of a string. It just returns the count of
+/// whitespace characters in the string before a non-whitespace character
+/// is encountered.
+///
+/// # Examples
+///
+/// ```
+/// use clippy_lints::utils::indent_level;
+///
+/// let s = "    fn foo() { ";
+/// assert_eq!(4, indent_level(s));
+///
+/// let s = "fn foo() { ";
+/// assert_eq!(0, indent_level(s));
+/// ```
+pub fn indent_level(s: &str) -> usize {
+    s.chars()
+     .enumerate()
+     .find(|&(_, c)| !c.is_whitespace())
+     .map_or(0_usize, |(i, _)| i)
 }

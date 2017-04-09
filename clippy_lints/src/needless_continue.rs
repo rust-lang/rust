@@ -27,12 +27,13 @@
 //! ```
 //!
 //! This lint is **warn** by default.
-use std;
 use rustc::lint::*;
 use syntax::ast;
 use syntax::codemap::{original_sp,DUMMY_SP};
+use std::borrow::Cow;
 
-use utils::{in_macro, span_help_and_lint, snippet_block, snippet};
+use utils::{in_macro, span_help_and_lint, snippet_block, snippet, trim_multiline,
+            left_pad_lines_with_spaces, align_snippets};
 
 /// **What it does:** The lint checks for `if`-statements appearing in loops
 /// that contain a `continue` statement in either their main blocks or their
@@ -110,7 +111,7 @@ impl LintPass for NeedlessContinue {
 
 impl EarlyLintPass for NeedlessContinue {
     fn check_expr(&mut self, ctx: &EarlyContext, expr: &ast::Expr) {
-        if !in_macro(ctx, expr.span) {
+        if !in_macro(expr.span) {
             check_and_warn(ctx, expr);
         }
     }
@@ -290,7 +291,7 @@ fn suggestion_snippet_for_continue_inside_if<'a>(ctx: &EarlyContext,
     // region B
     let else_code = snippet(ctx, data.else_expr.span, "..").into_owned();
     let else_code = erode_block(&else_code);
-    let else_code = trim_indent(&else_code, false);
+    let else_code = trim_multiline(Cow::from(else_code), false);
 
     let mut ret = String::from(header);
     ret.push_str(&if_code);
@@ -309,7 +310,7 @@ fn suggestion_snippet_for_continue_inside_else<'a>(ctx: &EarlyContext,
     // Region B
     let block_code = &snippet(ctx, data.if_block.span, "..").into_owned();
     let block_code = erode_block(block_code);
-    let block_code = trim_indent(&block_code, false);
+    let block_code = trim_multiline(Cow::from(block_code), false);
     let block_code = left_pad_lines_with_spaces(&block_code, 4_usize);
 
     if_code.push_str(&block_code);
@@ -321,7 +322,7 @@ fn suggestion_snippet_for_continue_inside_else<'a>(ctx: &EarlyContext,
     let to_annex = data.block_stmts[data.stmt_idx+1..]
                    .iter()
                    .map(|stmt| {
-                        original_sp(ctx.sess().codemap(), stmt.span, DUMMY_SP)
+                        original_sp(stmt.span, DUMMY_SP)
                     })
                    .map(|span| snippet_block(ctx, span, "..").into_owned())
                    .collect::<Vec<_>>().join("\n");
@@ -360,19 +361,21 @@ fn check_and_warn<'a>(ctx: &EarlyContext, expr: &'a ast::Expr) {
 /// continues eating till a non-whitespace character is found.
 /// e.g., the string
 ///
-/// "
-/// {
-///     let x = 5;
-/// }
-/// "
+///     "
+///     {
+///         let x = 5;
+///     }
+///     "
 ///
 /// is transformed to
 ///
-/// "
-/// {
-///     let x = 5;"
+///     "
+///     {
+///         let x = 5;"
 ///
-fn erode_from_back(s: &str) -> String {
+/// NOTE: when there is no closing brace in `s`, `s` is _not_ preserved, i.e.,
+/// an empty string will be returned in that case.
+pub fn erode_from_back(s: &str) -> String {
     let mut ret = String::from(s);
     while ret.pop().map_or(false, |c| c != '}') { }
     while let Some(c) = ret.pop() {
@@ -384,7 +387,25 @@ fn erode_from_back(s: &str) -> String {
     ret
 }
 
-fn erode_from_front(s: &str) -> String {
+/// Eats at `s` from the front by first skipping all leading whitespace. Then,
+/// any number of opening braces are eaten, followed by any number of newlines.
+/// e.g.,  the string
+///
+///     "
+///         {
+///             something();
+///             inside_a_block();
+///         }
+///     "
+///
+/// is transformed to
+///
+///     "        something();
+///             inside_a_block();
+///         }
+///     "
+///
+pub fn erode_from_front(s: &str) -> String {
     s.chars()
      .skip_while(|c| c.is_whitespace())
      .skip_while(|c| *c == '{')
@@ -392,124 +413,9 @@ fn erode_from_front(s: &str) -> String {
      .collect::<String>()
 }
 
-fn erode_block(s: &str) -> String {
+/// If `s` contains the code for a block, delimited by braces, this function
+/// tries to get the contents of the block. If there is no closing brace present,
+/// an empty string is returned.
+pub fn erode_block(s: &str) -> String {
     erode_from_back(&erode_from_front(s))
 }
-
-fn is_all_whitespace(s: &str) -> bool { s.chars().all(|c| c.is_whitespace()) }
-
-/// Returns true if a string is empty or just spaces.
-fn is_null(s: &str) -> bool { s.is_empty() || is_all_whitespace(s) }
-
-/// Returns the indentation level of a string. It just returns the count of
-/// whitespace characters in the string before a non-whitespace character
-/// is encountered.
-fn indent_level(s: &str) -> usize {
-    s.chars()
-     .enumerate()
-     .find(|&(_, c)| !c.is_whitespace())
-     .map_or(0_usize, |(i, _)| i)
-}
-
-/// Trims indentation from a snippet such that the line with the minimum
-/// indentation has no indentation after the trasformation.
-fn trim_indent(s: &str, skip_first_line: bool) -> String {
-    let min_indent_level = s.lines()
-                            .filter(|line| !is_null(line))
-                            .skip(skip_first_line as usize)
-                            .map(indent_level)
-                            .min()
-                            .unwrap_or(0_usize);
-    let ret = s.lines().map(|line| {
-        if is_null(line) {
-            String::from(line)
-        } else {
-            line.chars()
-                .enumerate()
-                .skip_while(|&(i, c)| c.is_whitespace() && i < min_indent_level)
-                .map(|pair| pair.1)
-                .collect::<String>()
-        }
-    }).collect::<Vec<String>>();
-    ret.join("\n")
-}
-
-/// Add `n` spaces to the left of `s`.
-fn left_pad_with_spaces(s: &str, n: usize) -> String {
-    let mut new_s = std::iter::repeat(' '/* <-space */).take(n).collect::<String>();
-    new_s.push_str(s);
-    new_s
-}
-
-/// Add `n` spaces to the left of each line in `s` and return the result
-/// in a new String.
-fn left_pad_lines_with_spaces(s: &str, n: usize) -> String {
-    s.lines()
-     .map(|line| left_pad_with_spaces(line, n))
-     .collect::<Vec<_>>()
-     .join("\n")
-}
-
-/// Remove upto `n` whitespace characters from the beginning of `s`.
-fn remove_whitespace_from_left(s: &str, n: usize) -> String {
-    s.chars()
-     .enumerate()
-     .skip_while(|&(i, c)| i < n && c.is_whitespace())
-     .map(|(_, c)| c)
-     .collect::<String>()
-}
-
-/// Aligns two snippets such that the indentation level of the last non-empty,
-/// non-space line of the first snippet matches the first non-empty, non-space
-/// line of the second.
-fn align_two_snippets(s: &str, t: &str) -> String {
-    // indent level of the last nonempty, non-whitespace line of s.
-    let target_ilevel = s.lines()
-                         .rev()
-                         .skip_while(|line| line.is_empty() || is_all_whitespace(line))
-                         .next()
-                         .map_or(0_usize, indent_level);
-
-    // We want to align the first nonempty, non-all-whitespace line of t to
-    // have the same indent level as target_ilevel
-    let level = t.lines()
-                 .skip_while(|line| line.is_empty() || is_all_whitespace(line))
-                 .next()
-                 .map_or(0_usize, indent_level);
-
-    let add_or_not_remove = target_ilevel > level; /* when true, we add spaces,
-                                                      otherwise eat. */
-
-    let delta = if add_or_not_remove {
-        target_ilevel - level
-    } else {
-        level - target_ilevel
-    };
-
-    let new_t = t.lines()
-                 .filter_map(|line| {
-                     if is_null(line) {
-                         None
-                     } else if add_or_not_remove {
-                         Some(left_pad_with_spaces(line, delta))
-                     } else {
-                         Some(remove_whitespace_from_left(line, delta))
-                     }
-                 })
-                 .collect::<Vec<_>>().join("\n");
-
-    format!("{}\n{}", s, new_t)
-}
-
-fn align_snippets(xs: &[&str]) -> String {
-    if xs.is_empty() {
-        String::from("")
-    } else {
-        let mut ret = xs[0].to_string();
-        for x in xs.iter().skip(1_usize) {
-            ret = align_two_snippets(&ret, x);
-        }
-        ret
-    }
-}
-
