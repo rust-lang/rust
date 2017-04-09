@@ -27,7 +27,7 @@ use monomorphize;
 use type_::Type;
 use value::Value;
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::ty::layout::Layout;
+use rustc::ty::layout::{Layout, LayoutTyper};
 use rustc::ty::subst::{Subst, Substs};
 use rustc::hir;
 
@@ -63,7 +63,7 @@ pub fn type_is_immediate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -
         Layout::UntaggedUnion { .. } |
         Layout::RawNullablePointer { .. } |
         Layout::StructWrappedNullablePointer { .. } => {
-            !layout.is_unsized() && layout.size(&ccx.tcx().data_layout).bytes() == 0
+            !layout.is_unsized() && layout.size(ccx).bytes() == 0
         }
     }
 }
@@ -125,10 +125,8 @@ pub fn type_is_imm_pair<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>)
 
 /// Identify types which have size zero at runtime.
 pub fn type_is_zero_size<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
-    use machine::llsize_of_alloc;
-    use type_of::sizing_type_of;
-    let llty = sizing_type_of(ccx, ty);
-    llsize_of_alloc(ccx, llty) == 0
+    let layout = ccx.layout_of(ty);
+    !layout.is_unsized() && layout.size(ccx).bytes() == 0
 }
 
 /*

@@ -8,156 +8,53 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use llvm::{Integer, Pointer, Float, Double, Struct, Array, Vector};
-use abi::{self, align_up_to, FnType, ArgType};
+use abi::{FnType, ArgType, LayoutExt, Reg, Uniform};
 use context::CrateContext;
-use type_::Type;
 
-use std::cmp;
-
-pub enum Flavor {
-    General,
-    Ios
-}
-
-type TyAlignFn = fn(ty: Type) -> usize;
-
-fn align(off: usize, ty: Type, align_fn: TyAlignFn) -> usize {
-    let a = align_fn(ty);
-    return align_up_to(off, a);
-}
-
-fn general_ty_align(ty: Type) -> usize {
-    abi::ty_align(ty, 4)
-}
-
-// For more information see:
-// ARMv7
-// https://developer.apple.com/library/ios/documentation/Xcode/Conceptual
-//    /iPhoneOSABIReference/Articles/ARMv7FunctionCallingConventions.html
-// ARMv6
-// https://developer.apple.com/library/ios/documentation/Xcode/Conceptual
-//    /iPhoneOSABIReference/Articles/ARMv6FunctionCallingConventions.html
-fn ios_ty_align(ty: Type) -> usize {
-    match ty.kind() {
-        Integer => cmp::min(4, ((ty.int_width() as usize) + 7) / 8),
-        Pointer => 4,
-        Float => 4,
-        Double => 4,
-        Struct => {
-            if ty.is_packed() {
-                1
-            } else {
-                let str_tys = ty.field_types();
-                str_tys.iter().fold(1, |a, t| cmp::max(a, ios_ty_align(*t)))
-            }
-        }
-        Array => {
-            let elt = ty.element_type();
-            ios_ty_align(elt)
-        }
-        Vector => {
-            let len = ty.vector_length();
-            let elt = ty.element_type();
-            ios_ty_align(elt) * len
-        }
-        _ => bug!("ty_align: unhandled type")
-    }
-}
-
-fn ty_size(ty: Type, align_fn: TyAlignFn) -> usize {
-    match ty.kind() {
-        Integer => ((ty.int_width() as usize) + 7) / 8,
-        Pointer => 4,
-        Float => 4,
-        Double => 8,
-        Struct => {
-            if ty.is_packed() {
-                let str_tys = ty.field_types();
-                str_tys.iter().fold(0, |s, t| s + ty_size(*t, align_fn))
-            } else {
-                let str_tys = ty.field_types();
-                let size = str_tys.iter()
-                                  .fold(0, |s, t| {
-                                      align(s, *t, align_fn) + ty_size(*t, align_fn)
-                                  });
-                align(size, ty, align_fn)
-            }
-        }
-        Array => {
-            let len = ty.array_length();
-            let elt = ty.element_type();
-            let eltsz = ty_size(elt, align_fn);
-            len * eltsz
-        }
-        Vector => {
-            let len = ty.vector_length();
-            let elt = ty.element_type();
-            let eltsz = ty_size(elt, align_fn);
-            len * eltsz
-        }
-        _ => bug!("ty_size: unhandled type")
-    }
-}
-
-fn classify_ret_ty(ccx: &CrateContext, ret: &mut ArgType, align_fn: TyAlignFn) {
-    if is_reg_ty(ret.ty) {
+fn classify_ret_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ret: &mut ArgType<'tcx>) {
+    if !ret.layout.is_aggregate() {
         ret.extend_integer_width_to(32);
         return;
     }
-    let size = ty_size(ret.ty, align_fn);
-    if size <= 4 {
-        let llty = if size <= 1 {
-            Type::i8(ccx)
-        } else if size <= 2 {
-            Type::i16(ccx)
+    let size = ret.layout.size(ccx);
+    let bits = size.bits();
+    if bits <= 32 {
+        let unit = if bits <= 8 {
+            Reg::i8()
+        } else if bits <= 16 {
+            Reg::i16()
         } else {
-            Type::i32(ccx)
+            Reg::i32()
         };
-        ret.cast = Some(llty);
+        ret.cast_to(ccx, Uniform {
+            unit,
+            total: size
+        });
         return;
     }
     ret.make_indirect(ccx);
 }
 
-fn classify_arg_ty(ccx: &CrateContext, arg: &mut ArgType, align_fn: TyAlignFn) {
-    if is_reg_ty(arg.ty) {
+fn classify_arg_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &mut ArgType<'tcx>) {
+    if !arg.layout.is_aggregate() {
         arg.extend_integer_width_to(32);
         return;
     }
-    let align = align_fn(arg.ty);
-    let size = ty_size(arg.ty, align_fn);
-    let llty = if align <= 4 {
-        Type::array(&Type::i32(ccx), ((size + 3) / 4) as u64)
-    } else {
-        Type::array(&Type::i64(ccx), ((size + 7) / 8) as u64)
-    };
-    arg.cast = Some(llty);
+    let align = arg.layout.align(ccx).abi();
+    let total = arg.layout.size(ccx);
+    arg.cast_to(ccx, Uniform {
+        unit: if align <= 4 { Reg::i32() } else { Reg::i64() },
+        total
+    });
 }
 
-fn is_reg_ty(ty: Type) -> bool {
-    match ty.kind() {
-        Integer
-        | Pointer
-        | Float
-        | Double
-        | Vector => true,
-        _ => false
-    }
-}
-
-pub fn compute_abi_info(ccx: &CrateContext, fty: &mut FnType, flavor: Flavor) {
-    let align_fn = match flavor {
-        Flavor::General => general_ty_align as TyAlignFn,
-        Flavor::Ios => ios_ty_align as TyAlignFn,
-    };
-
+pub fn compute_abi_info<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fty: &mut FnType<'tcx>) {
     if !fty.ret.is_ignore() {
-        classify_ret_ty(ccx, &mut fty.ret, align_fn);
+        classify_ret_ty(ccx, &mut fty.ret);
     }
 
     for arg in &mut fty.args {
         if arg.is_ignore() { continue; }
-        classify_arg_ty(ccx, arg, align_fn);
+        classify_arg_ty(ccx, arg);
     }
 }
