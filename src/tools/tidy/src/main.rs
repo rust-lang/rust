@@ -16,9 +16,11 @@
 
 extern crate regex;
 
-use std::fs;
-use std::path::{PathBuf, Path};
 use std::env;
+use std::fs;
+use std::io::{self, Write};
+use std::path::{PathBuf, Path};
+use std::process;
 
 macro_rules! t {
     ($e:expr, $p:expr) => (match $e {
@@ -30,6 +32,15 @@ macro_rules! t {
         Ok(e) => e,
         Err(e) => panic!("{} failed with {}", stringify!($e), e),
     })
+}
+
+macro_rules! tidy_error {
+    ($bad:expr, $fmt:expr, $($arg:tt)*) => ({
+        use std::io::Write;
+        *$bad = true;
+        write!(::std::io::stderr(), "tidy error: ").expect("could not write to stderr");
+        writeln!(::std::io::stderr(), $fmt, $($arg)*).expect("could not write to stderr");
+    });
 }
 
 mod bins;
@@ -60,7 +71,8 @@ fn main() {
     }
 
     if bad {
-        panic!("some tidy checks failed");
+        writeln!(io::stderr(), "some tidy checks failed").expect("could not write to stderr");
+        process::exit(1);
     }
 }
 

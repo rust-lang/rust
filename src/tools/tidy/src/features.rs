@@ -77,8 +77,7 @@ pub fn check(path: &Path, bad: &mut bool) {
 
         for (i, line) in contents.lines().enumerate() {
             let mut err = |msg: &str| {
-                println!("{}:{}: {}", file.display(), i + 1, msg);
-                *bad = true;
+                tidy_error!(bad, "{}:{}: {}", file.display(), i + 1, msg);
             };
 
             let gate_test_str = "gate-test-";
@@ -126,8 +125,7 @@ pub fn check(path: &Path, bad: &mut bool) {
     }
 
     if gate_untested.len() > 0 {
-        println!("Found {} features without a gate test.", gate_untested.len());
-        *bad = true;
+        tidy_error!(bad, "Found {} features without a gate test.", gate_untested.len());
     }
 
     if *bad {
@@ -221,8 +219,7 @@ pub fn collect_lib_features(base_src_path: &Path,
 
         for (i, line) in contents.lines().enumerate() {
             let mut err = |msg: &str| {
-                println!("{}:{}: {}", file.display(), i + 1, msg);
-                *bad = true;
+                tidy_error!(bad, "{}:{}: {}", file.display(), i + 1, msg);
             };
             let level = if line.contains("[unstable(") {
                 Status::Unstable

@@ -10,7 +10,7 @@
 
 use std::collections::HashSet;
 use std::fs;
-use std::io::{self, BufRead, Write};
+use std::io::{self, BufRead};
 use std::path;
 use features::{collect_lang_features, collect_lib_features, Status};
 
@@ -110,29 +110,26 @@ pub fn check(path: &path::Path, bad: &mut bool) {
 
     // Check for Unstable Book section names with no corresponding SUMMARY.md link
     for feature_name in &unstable_book_section_file_names - &unstable_book_links {
-        *bad = true;
-        writeln!(io::stderr(),
-                 "The Unstable Book section '{}' needs to have a link in SUMMARY.md",
-                 feature_name)
-                .expect("could not write to stderr")
+        tidy_error!(
+            bad,
+            "The Unstable Book section '{}' needs to have a link in SUMMARY.md",
+            feature_name);
     }
 
     // Check for unstable features that don't have Unstable Book sections
     for feature_name in &unstable_feature_names - &unstable_book_section_file_names {
-        *bad = true;
-        writeln!(io::stderr(),
-                 "Unstable feature '{}' needs to have a section in The Unstable Book",
-                 feature_name)
-                .expect("could not write to stderr")
+        tidy_error!(
+            bad,
+            "Unstable feature '{}' needs to have a section in The Unstable Book",
+            feature_name);
     }
 
     // Check for Unstable Book sections that don't have a corresponding unstable feature
     for feature_name in &unstable_book_section_file_names - &unstable_feature_names {
-        *bad = true;
-        writeln!(io::stderr(),
-                 "The Unstable Book has a section '{}' which doesn't correspond \
-                  to an unstable feature",
-                 feature_name)
-                .expect("could not write to stderr")
+        tidy_error!(
+            bad,
+            "The Unstable Book has a section '{}' which doesn't correspond \
+            to an unstable feature",
+            feature_name)
     }
 }
