@@ -324,6 +324,12 @@ impl CString {
         &self.inner
     }
 
+    /// Extracts a `CStr` slice containing the entire string.
+    #[unstable(feature = "as_c_str", issue = "40380")]
+    pub fn as_c_str(&self) -> &CStr {
+        &*self
+    }
+
     /// Converts this `CString` into a boxed `CStr`.
     #[unstable(feature = "into_boxed_c_str", issue = "40380")]
     pub fn into_boxed_c_str(self) -> Box<CStr> {
