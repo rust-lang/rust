@@ -10,6 +10,8 @@
 
 use super::external_data::*;
 
+use rls_data::CratePreludeData;
+
 pub trait Dump {
     fn crate_prelude(&mut self, CratePreludeData) {}
     fn enum_data(&mut self, EnumData) {}

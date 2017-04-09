@@ -89,6 +89,7 @@ should go to.
 use build::{BlockAnd, BlockAndExtension, Builder, CFG};
 use rustc::middle::region::{CodeExtent, CodeExtentData};
 use rustc::middle::lang_items;
+use rustc::middle::const_val::ConstVal;
 use rustc::ty::subst::{Kind, Subst};
 use rustc::ty::{Ty, TyCtxt};
 use rustc::mir::*;
@@ -177,16 +178,16 @@ struct FreeData<'tcx> {
 }
 
 #[derive(Clone, Debug)]
-pub struct LoopScope<'tcx> {
+pub struct BreakableScope<'tcx> {
     /// Extent of the loop
     pub extent: CodeExtent,
-    /// Where the body of the loop begins
-    pub continue_block: BasicBlock,
-    /// Block to branch into when the loop terminates (either by being `break`-en out from, or by
-    /// having its condition to become false)
+    /// Where the body of the loop begins. `None` if block
+    pub continue_block: Option<BasicBlock>,
+    /// Block to branch into when the loop or block terminates (either by being `break`-en out
+    /// from, or by having its condition to become false)
     pub break_block: BasicBlock,
-    /// The destination of the loop expression itself (i.e. where to put the result of a `break`
-    /// expression)
+    /// The destination of the loop/block expression itself (i.e. where to put the result of a
+    /// `break` expression)
     pub break_destination: Lvalue<'tcx>,
 }
 
@@ -242,28 +243,29 @@ impl<'tcx> Scope<'tcx> {
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     // Adding and removing scopes
     // ==========================
-    /// Start a loop scope, which tracks where `continue` and `break`
+    /// Start a breakable scope, which tracks where `continue` and `break`
     /// should branch to. See module comment for more details.
     ///
-    /// Returns the might_break attribute of the LoopScope used.
-    pub fn in_loop_scope<F>(&mut self,
-                            loop_block: BasicBlock,
+    /// Returns the might_break attribute of the BreakableScope used.
+    pub fn in_breakable_scope<F, R>(&mut self,
+                            loop_block: Option<BasicBlock>,
                             break_block: BasicBlock,
                             break_destination: Lvalue<'tcx>,
-                            f: F)
-        where F: FnOnce(&mut Builder<'a, 'gcx, 'tcx>)
+                            f: F) -> R
+        where F: FnOnce(&mut Builder<'a, 'gcx, 'tcx>) -> R
     {
         let extent = self.topmost_scope();
-        let loop_scope = LoopScope {
+        let scope = BreakableScope {
             extent: extent,
             continue_block: loop_block,
             break_block: break_block,
             break_destination: break_destination,
         };
-        self.loop_scopes.push(loop_scope);
-        f(self);
-        let loop_scope = self.loop_scopes.pop().unwrap();
-        assert!(loop_scope.extent == extent);
+        self.breakable_scopes.push(scope);
+        let res = f(self);
+        let breakable_scope = self.breakable_scopes.pop().unwrap();
+        assert!(breakable_scope.extent == extent);
+        res
     }
 
     /// Convenience wrapper that pushes a scope and then executes `f`
@@ -381,18 +383,18 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
 
     // Finding scopes
     // ==============
-    /// Finds the loop scope for a given label. This is used for
+    /// Finds the breakable scope for a given label. This is used for
     /// resolving `break` and `continue`.
-    pub fn find_loop_scope(&mut self,
+    pub fn find_breakable_scope(&mut self,
                            span: Span,
                            label: CodeExtent)
-                           -> &mut LoopScope<'tcx> {
+                           -> &mut BreakableScope<'tcx> {
         // find the loop-scope with the correct id
-        self.loop_scopes.iter_mut()
+        self.breakable_scopes.iter_mut()
             .rev()
-            .filter(|loop_scope| loop_scope.extent == label)
+            .filter(|breakable_scope| breakable_scope.extent == label)
             .next()
-            .unwrap_or_else(|| span_bug!(span, "no enclosing loop scope found?"))
+            .unwrap_or_else(|| span_bug!(span, "no enclosing breakable scope found"))
     }
 
     /// Given a span and the current visibility scope, make a SourceInfo.
@@ -783,9 +785,8 @@ fn build_free<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
         func: Operand::Constant(Constant {
             span: data.span,
             ty: tcx.item_type(free_func).subst(tcx, substs),
-            literal: Literal::Item {
-                def_id: free_func,
-                substs: substs
+            literal: Literal::Value {
+                value: ConstVal::Function(free_func, substs),
             }
         }),
         args: vec![Operand::Consume(data.value.clone())],

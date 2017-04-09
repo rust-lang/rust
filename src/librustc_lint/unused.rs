@@ -146,7 +146,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedResults {
             ty::TyBool => return,
             ty::TyAdt(def, _) => {
                 let attrs = cx.tcx.get_attrs(def.did);
-                check_must_use(cx, &attrs[..], s.span)
+                check_must_use(cx, &attrs, s.span)
             }
             _ => false,
         };
@@ -269,6 +269,7 @@ impl LintPass for UnusedAttributes {
 impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedAttributes {
     fn check_attribute(&mut self, cx: &LateContext, attr: &ast::Attribute) {
         debug!("checking attribute: {:?}", attr);
+        let name = unwrap_or!(attr.name(), return);
 
         // Note that check_name() marks the attribute as used if it matches.
         for &(ref name, ty, _) in BUILTIN_ATTRIBUTES {
@@ -294,13 +295,13 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnusedAttributes {
             cx.span_lint(UNUSED_ATTRIBUTES, attr.span, "unused attribute");
             // Is it a builtin attribute that must be used at the crate level?
             let known_crate = BUILTIN_ATTRIBUTES.iter()
-                .find(|&&(name, ty, _)| attr.name() == name && ty == AttributeType::CrateLevel)
+                .find(|&&(builtin, ty, _)| name == builtin && ty == AttributeType::CrateLevel)
                 .is_some();
 
             // Has a plugin registered this attribute as one which must be used at
             // the crate level?
             let plugin_crate = plugin_attributes.iter()
-                .find(|&&(ref x, t)| attr.name() == &**x && AttributeType::CrateLevel == t)
+                .find(|&&(ref x, t)| name == &**x && AttributeType::CrateLevel == t)
                 .is_some();
             if known_crate || plugin_crate {
                 let msg = match attr.style {

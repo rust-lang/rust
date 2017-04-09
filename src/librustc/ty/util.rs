@@ -13,10 +13,10 @@
 use hir::def_id::{DefId, LOCAL_CRATE};
 use hir::map::DefPathData;
 use infer::InferCtxt;
-use hir::map as hir_map;
+// use hir::map as hir_map;
 use traits::{self, Reveal};
 use ty::{self, Ty, TyCtxt, TypeAndMut, TypeFlags, TypeFoldable};
-use ty::{ParameterEnvironment};
+use ty::ParameterEnvironment;
 use ty::fold::TypeVisitor;
 use ty::layout::{Layout, LayoutError};
 use ty::TypeVariants::*;
@@ -39,13 +39,13 @@ use hir;
 
 type Disr = ConstInt;
 
- pub trait IntTypeExt {
+pub trait IntTypeExt {
     fn to_ty<'a, 'gcx, 'tcx>(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx>;
     fn disr_incr<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, val: Option<Disr>)
                            -> Option<Disr>;
     fn assert_ty_matches(&self, val: Disr);
     fn initial_discriminant<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Disr;
- }
+}
 
 
 macro_rules! typed_literal {
@@ -133,7 +133,7 @@ impl IntTypeExt for attr::IntType {
 pub enum CopyImplementationError<'tcx> {
     InfrigingField(&'tcx ty::FieldDef),
     NotAnAdt,
-    HasDestructor
+    HasDestructor,
 }
 
 /// Describes whether a type is representable. For types that are not
@@ -159,14 +159,14 @@ impl<'tcx> ParameterEnvironment<'tcx> {
         tcx.infer_ctxt(self.clone(), Reveal::UserFacing).enter(|infcx| {
             let (adt, substs) = match self_type.sty {
                 ty::TyAdt(adt, substs) => (adt, substs),
-                _ => return Err(CopyImplementationError::NotAnAdt)
+                _ => return Err(CopyImplementationError::NotAnAdt),
             };
 
             let field_implements_copy = |field: &ty::FieldDef| {
                 let cause = traits::ObligationCause::dummy();
                 match traits::fully_normalize(&infcx, cause, &field.ty(tcx, substs)) {
                     Ok(ty) => !infcx.type_moves_by_default(ty, span),
-                    Err(..) => false
+                    Err(..) => false,
                 }
             };
 
@@ -198,7 +198,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     }
                 }
             }
-            _ => ()
+            _ => (),
         }
         false
     }
@@ -218,7 +218,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 adt.variants[0].fields.get(i).map(|f| f.ty(self, substs))
             }
             (&TyTuple(ref v, _), None) => v.get(i).cloned(),
-            _ => None
+            _ => None,
         }
     }
 
@@ -245,11 +245,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn struct_tail(self, mut ty: Ty<'tcx>) -> Ty<'tcx> {
         while let TyAdt(def, substs) = ty.sty {
             if !def.is_struct() {
-                break
+                break;
             }
             match def.struct_variant().fields.last() {
                 Some(f) => ty = f.ty(self, substs),
-                None => break
+                None => break,
             }
         }
         ty
@@ -267,14 +267,14 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         let (mut a, mut b) = (source, target);
         while let (&TyAdt(a_def, a_substs), &TyAdt(b_def, b_substs)) = (&a.sty, &b.sty) {
             if a_def != b_def || !a_def.is_struct() {
-                break
+                break;
             }
             match a_def.struct_variant().fields.last() {
                 Some(f) => {
                     a = f.ty(self, a_substs);
                     b = f.ty(self, b_substs);
                 }
-                _ => break
+                _ => break,
             }
         }
         (a, b)
@@ -373,7 +373,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
         let dtor_did = match dtor_did {
             Some(dtor) => dtor,
-            None => return None
+            None => return None,
         };
 
         // RFC 1238: if the destructor method is tagged with the
@@ -397,6 +397,16 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             });
         }
         def_id
+    }
+
+    /// Given the def-id of some item that has no type parameters, make
+    /// a suitable "empty substs" for it.
+    pub fn empty_substs_for_def_id(self, item_def_id: DefId) -> &'tcx ty::Substs<'tcx> {
+        ty::Substs::for_item(self, item_def_id,
+                             |_, _| self.mk_region(ty::ReErased),
+                             |_, _| {
+            bug!("empty_substs_for_def_id: {:?} has type parameters", item_def_id)
+        })
     }
 }
 
@@ -431,13 +441,11 @@ impl<'a, 'gcx, 'tcx, W> TypeIdHasher<'a, 'gcx, 'tcx, W>
 
     fn def_id(&mut self, did: DefId) {
         // Hash the DefPath corresponding to the DefId, which is independent
-        // of compiler internal state.
-        let path = self.tcx.def_path(did);
-        self.def_path(&path)
-    }
-
-    pub fn def_path(&mut self, def_path: &hir_map::DefPath) {
-        def_path.deterministic_hash_to(self.tcx, &mut self.state);
+        // of compiler internal state. We already have a stable hash value of
+        // all DefPaths available via tcx.def_path_hash(), so we just feed that
+        // into the hasher.
+        let hash = self.tcx.def_path_hash(did);
+        self.hash(hash);
     }
 }
 
@@ -499,18 +507,21 @@ impl<'a, 'gcx, 'tcx, W> TypeVisitor<'tcx> for TypeIdHasher<'a, 'gcx, 'tcx, W>
     }
 
     fn visit_region(&mut self, r: &'tcx ty::Region) -> bool {
+        self.hash_discriminant_u8(r);
         match *r {
-            ty::ReErased => {
-                self.hash::<u32>(0);
+            ty::ReErased |
+            ty::ReStatic |
+            ty::ReEmpty => {
+                // No variant fields to hash for these ...
             }
             ty::ReLateBound(db, ty::BrAnon(i)) => {
-                assert!(db.depth > 0);
-                self.hash::<u32>(db.depth);
+                self.hash(db.depth);
                 self.hash(i);
             }
-            ty::ReStatic |
-            ty::ReEmpty |
-            ty::ReEarlyBound(..) |
+            ty::ReEarlyBound(ty::EarlyBoundRegion { index, name }) => {
+                self.hash(index);
+                self.hash(name.as_str());
+            }
             ty::ReLateBound(..) |
             ty::ReFree(..) |
             ty::ReScope(..) |
@@ -725,9 +736,7 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
 
                     substs_a.types().zip(substs_b.types()).all(|(a, b)| same_type(a, b))
                 }
-                _ => {
-                    a == b
-                }
+                _ => a == b,
             }
         }
 

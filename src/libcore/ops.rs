@@ -30,7 +30,7 @@
 //! contexts involving built-in types, this is usually not a problem.
 //! However, using these operators in generic code, requires some
 //! attention if values have to be reused as opposed to letting the operators
-//! consume them. One option is to occasionally use [`clone()`].
+//! consume them. One option is to occasionally use [`clone`].
 //! Another option is to rely on the types involved providing additional
 //! operator implementations for references. For example, for a user-defined
 //! type `T` which is supposed to support addition, it is probably a good
@@ -143,7 +143,7 @@
 //! [`FnOnce`]: trait.FnOnce.html
 //! [`Add`]: trait.Add.html
 //! [`Sub`]: trait.Sub.html
-//! [`clone()`]: ../clone/trait.Clone.html#tymethod.clone
+//! [`clone`]: ../clone/trait.Clone.html#tymethod.clone
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -196,7 +196,7 @@ pub trait Drop {
     fn drop(&mut self);
 }
 
-/// The `Add` trait is used to specify the functionality of `+`.
+/// The addition operator `+`.
 ///
 /// # Examples
 ///
@@ -269,7 +269,7 @@ macro_rules! add_impl {
 
 add_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 
-/// The `Sub` trait is used to specify the functionality of `-`.
+/// The subtraction operator `-`.
 ///
 /// # Examples
 ///
@@ -342,7 +342,7 @@ macro_rules! sub_impl {
 
 sub_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 
-/// The `Mul` trait is used to specify the functionality of `*`.
+/// The multiplication operator `*`.
 ///
 /// # Examples
 ///
@@ -464,7 +464,7 @@ macro_rules! mul_impl {
 
 mul_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 
-/// The `Div` trait is used to specify the functionality of `/`.
+/// The division operator `/`.
 ///
 /// # Examples
 ///
@@ -609,7 +609,7 @@ macro_rules! div_impl_float {
 
 div_impl_float! { f32 f64 }
 
-/// The `Rem` trait is used to specify the functionality of `%`.
+/// The remainder operator `%`.
 ///
 /// # Examples
 ///
@@ -689,7 +689,7 @@ macro_rules! rem_impl_float {
 
 rem_impl_float! { f32 f64 }
 
-/// The `Neg` trait is used to specify the functionality of unary `-`.
+/// The unary negation operator `-`.
 ///
 /// # Examples
 ///
@@ -768,7 +768,7 @@ macro_rules! neg_impl_unsigned {
 // neg_impl_unsigned! { usize u8 u16 u32 u64 }
 neg_impl_numeric! { isize i8 i16 i32 i64 i128 f32 f64 }
 
-/// The `Not` trait is used to specify the functionality of unary `!`.
+/// The unary logical negation operator `!`.
 ///
 /// # Examples
 ///
@@ -826,7 +826,7 @@ macro_rules! not_impl {
 
 not_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 
-/// The `BitAnd` trait is used to specify the functionality of `&`.
+/// The bitwise AND operator `&`.
 ///
 /// # Examples
 ///
@@ -909,7 +909,7 @@ macro_rules! bitand_impl {
 
 bitand_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 
-/// The `BitOr` trait is used to specify the functionality of `|`.
+/// The bitwise OR operator `|`.
 ///
 /// # Examples
 ///
@@ -992,7 +992,7 @@ macro_rules! bitor_impl {
 
 bitor_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 
-/// The `BitXor` trait is used to specify the functionality of `^`.
+/// The bitwise XOR operator `^`.
 ///
 /// # Examples
 ///
@@ -1078,7 +1078,7 @@ macro_rules! bitxor_impl {
 
 bitxor_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 
-/// The `Shl` trait is used to specify the functionality of `<<`.
+/// The left shift operator `<<`.
 ///
 /// # Examples
 ///
@@ -1181,7 +1181,7 @@ macro_rules! shl_impl_all {
 
 shl_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 isize i128 }
 
-/// The `Shr` trait is used to specify the functionality of `>>`.
+/// The right shift operator `>>`.
 ///
 /// # Examples
 ///
@@ -1284,7 +1284,7 @@ macro_rules! shr_impl_all {
 
 shr_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize }
 
-/// The `AddAssign` trait is used to specify the functionality of `+=`.
+/// The addition assignment operator `+=`.
 ///
 /// # Examples
 ///
@@ -1340,7 +1340,7 @@ macro_rules! add_assign_impl {
 
 add_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 
-/// The `SubAssign` trait is used to specify the functionality of `-=`.
+/// The subtraction assignment operator `-=`.
 ///
 /// # Examples
 ///
@@ -1396,7 +1396,7 @@ macro_rules! sub_assign_impl {
 
 sub_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 
-/// The `MulAssign` trait is used to specify the functionality of `*=`.
+/// The multiplication assignment operator `*=`.
 ///
 /// # Examples
 ///
@@ -1441,7 +1441,7 @@ macro_rules! mul_assign_impl {
 
 mul_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 
-/// The `DivAssign` trait is used to specify the functionality of `/=`.
+/// The division assignment operator `/=`.
 ///
 /// # Examples
 ///
@@ -1485,7 +1485,7 @@ macro_rules! div_assign_impl {
 
 div_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 
-/// The `RemAssign` trait is used to specify the functionality of `%=`.
+/// The remainder assignment operator `%=`.
 ///
 /// # Examples
 ///
@@ -1529,7 +1529,7 @@ macro_rules! rem_assign_impl {
 
 rem_assign_impl! { usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 f32 f64 }
 
-/// The `BitAndAssign` trait is used to specify the functionality of `&=`.
+/// The bitwise AND assignment operator `&=`.
 ///
 /// # Examples
 ///
@@ -1615,7 +1615,7 @@ macro_rules! bitand_assign_impl {
 
 bitand_assign_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 
-/// The `BitOrAssign` trait is used to specify the functionality of `|=`.
+/// The bitwise OR assignment operator `|=`.
 ///
 /// # Examples
 ///
@@ -1659,7 +1659,7 @@ macro_rules! bitor_assign_impl {
 
 bitor_assign_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 
-/// The `BitXorAssign` trait is used to specify the functionality of `^=`.
+/// The bitwise XOR assignment operator `^=`.
 ///
 /// # Examples
 ///
@@ -1703,7 +1703,7 @@ macro_rules! bitxor_assign_impl {
 
 bitxor_assign_impl! { bool usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 
-/// The `ShlAssign` trait is used to specify the functionality of `<<=`.
+/// The left shift assignment operator `<<=`.
 ///
 /// # Examples
 ///
@@ -1768,7 +1768,7 @@ macro_rules! shl_assign_impl_all {
 
 shl_assign_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize }
 
-/// The `ShrAssign` trait is used to specify the functionality of `>>=`.
+/// The right shift assignment operator `>>=`.
 ///
 /// # Examples
 ///
@@ -2027,7 +2027,7 @@ impl fmt::Debug for RangeFull {
 /// A (half-open) range which is bounded at both ends: { x | start <= x < end }.
 /// Use `start..end` (two dots) for its shorthand.
 ///
-/// See the [`contains()`](#method.contains) method for its characterization.
+/// See the [`contains`](#method.contains) method for its characterization.
 ///
 /// # Examples
 ///
@@ -2085,7 +2085,7 @@ impl<Idx: PartialOrd<Idx>> Range<Idx> {
 /// A range which is only bounded below: { x | start <= x }.
 /// Use `start..` for its shorthand.
 ///
-/// See the [`contains()`](#method.contains) method for its characterization.
+/// See the [`contains`](#method.contains) method for its characterization.
 ///
 /// Note: Currently, no overflow checking is done for the iterator
 /// implementation; if you use an integer range and the integer overflows, it
@@ -2141,7 +2141,7 @@ impl<Idx: PartialOrd<Idx>> RangeFrom<Idx> {
 /// A range which is only bounded above: { x | x < end }.
 /// Use `..end` (two dots) for its shorthand.
 ///
-/// See the [`contains()`](#method.contains) method for its characterization.
+/// See the [`contains`](#method.contains) method for its characterization.
 ///
 /// It cannot serve as an iterator because it doesn't have a starting point.
 ///
@@ -2207,7 +2207,7 @@ impl<Idx: PartialOrd<Idx>> RangeTo<Idx> {
 /// An inclusive range which is bounded at both ends: { x | start <= x <= end }.
 /// Use `start...end` (three dots) for its shorthand.
 ///
-/// See the [`contains()`](#method.contains) method for its characterization.
+/// See the [`contains`](#method.contains) method for its characterization.
 ///
 /// # Examples
 ///
@@ -2293,7 +2293,7 @@ impl<Idx: PartialOrd<Idx>> RangeInclusive<Idx> {
 /// An inclusive range which is only bounded above: { x | x <= end }.
 /// Use `...end` (three dots) for its shorthand.
 ///
-/// See the [`contains()`](#method.contains) method for its characterization.
+/// See the [`contains`](#method.contains) method for its characterization.
 ///
 /// It cannot serve as an iterator because it doesn't have a starting point.
 ///

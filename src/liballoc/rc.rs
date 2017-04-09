@@ -13,7 +13,7 @@
 //! Single-threaded reference-counting pointers.
 //!
 //! The type [`Rc<T>`][`Rc`] provides shared ownership of a value of type `T`,
-//! allocated in the heap. Invoking [`clone()`][clone] on [`Rc`] produces a new
+//! allocated in the heap. Invoking [`clone`][clone] on [`Rc`] produces a new
 //! pointer to the same value in the heap. When the last [`Rc`] pointer to a
 //! given value is destroyed, the pointed-to value is also destroyed.
 //!
@@ -30,7 +30,7 @@
 //! threads. If you need multi-threaded, atomic reference counting, use
 //! [`sync::Arc`][arc].
 //!
-//! The [`downgrade()`][downgrade] method can be used to create a non-owning
+//! The [`downgrade`][downgrade] method can be used to create a non-owning
 //! [`Weak`] pointer. A [`Weak`] pointer can be [`upgrade`][upgrade]d
 //! to an [`Rc`], but this will return [`None`] if the value has
 //! already been dropped.
@@ -215,7 +215,7 @@
 //! [downgrade]: struct.Rc.html#method.downgrade
 //! [upgrade]: struct.Weak.html#method.upgrade
 //! [`None`]: ../../std/option/enum.Option.html#variant.None
-//! [assoc]: ../../book/method-syntax.html#associated-functions
+//! [assoc]: ../../book/first-edition/method-syntax.html#associated-functions
 //! [mutability]: ../../std/cell/index.html#introducing-mutability-inside-of-something-immutable
 
 #![stable(feature = "rust1", since = "1.0.0")]
@@ -364,17 +364,15 @@ impl<T> Rc<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(rc_raw)]
-    ///
     /// use std::rc::Rc;
     ///
     /// let x = Rc::new(10);
     /// let x_ptr = Rc::into_raw(x);
     /// assert_eq!(unsafe { *x_ptr }, 10);
     /// ```
-    #[unstable(feature = "rc_raw", issue = "37197")]
-    pub fn into_raw(this: Self) -> *mut T {
-        let ptr = unsafe { &mut (**this.ptr).value as *mut _ };
+    #[stable(feature = "rc_raw", since = "1.17.0")]
+    pub fn into_raw(this: Self) -> *const T {
+        let ptr = unsafe { &mut (*this.ptr.as_mut_ptr()).value as *const _ };
         mem::forget(this);
         ptr
     }
@@ -392,8 +390,6 @@ impl<T> Rc<T> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(rc_raw)]
-    ///
     /// use std::rc::Rc;
     ///
     /// let x = Rc::new(10);
@@ -409,11 +405,11 @@ impl<T> Rc<T> {
     ///
     /// // The memory was freed when `x` went out of scope above, so `x_ptr` is now dangling!
     /// ```
-    #[unstable(feature = "rc_raw", issue = "37197")]
-    pub unsafe fn from_raw(ptr: *mut T) -> Self {
+    #[stable(feature = "rc_raw", since = "1.17.0")]
+    pub unsafe fn from_raw(ptr: *const T) -> Self {
         // To find the corresponding pointer to the `RcBox` we need to subtract the offset of the
         // `value` field from the pointer.
-        Rc { ptr: Shared::new((ptr as *mut u8).offset(-offset_of!(RcBox<T>, value)) as *mut _) }
+        Rc { ptr: Shared::new((ptr as *const u8).offset(-offset_of!(RcBox<T>, value)) as *const _) }
     }
 }
 
@@ -543,7 +539,7 @@ impl<T: ?Sized> Rc<T> {
     #[stable(feature = "rc_unique", since = "1.4.0")]
     pub fn get_mut(this: &mut Self) -> Option<&mut T> {
         if Rc::is_unique(this) {
-            let inner = unsafe { &mut **this.ptr };
+            let inner = unsafe { &mut *this.ptr.as_mut_ptr() };
             Some(&mut inner.value)
         } else {
             None
@@ -551,17 +547,13 @@ impl<T: ?Sized> Rc<T> {
     }
 
     #[inline]
-    #[unstable(feature = "ptr_eq",
-               reason = "newly added",
-               issue = "36497")]
+    #[stable(feature = "ptr_eq", since = "1.17.0")]
     /// Returns true if the two `Rc`s point to the same value (not
     /// just values that compare as equal).
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(ptr_eq)]
-    ///
     /// use std::rc::Rc;
     ///
     /// let five = Rc::new(5);
@@ -631,7 +623,7 @@ impl<T: Clone> Rc<T> {
         // reference count is guaranteed to be 1 at this point, and we required
         // the `Rc<T>` itself to be `mut`, so we're returning the only possible
         // reference to the inner value.
-        let inner = unsafe { &mut **this.ptr };
+        let inner = unsafe { &mut *this.ptr.as_mut_ptr() };
         &mut inner.value
     }
 }
@@ -677,7 +669,7 @@ unsafe impl<#[may_dangle] T: ?Sized> Drop for Rc<T> {
     /// ```
     fn drop(&mut self) {
         unsafe {
-            let ptr = *self.ptr;
+            let ptr = self.ptr.as_mut_ptr();
 
             self.dec_strong();
             if self.strong() == 0 {

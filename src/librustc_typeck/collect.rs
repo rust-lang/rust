@@ -689,12 +689,6 @@ fn adt_def<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let node_id = tcx.hir.as_local_node_id(def_id).unwrap();
     let item = match tcx.hir.get(node_id) {
         NodeItem(item) => item,
-
-        // Make adt definition available through constructor id as well.
-        NodeStructCtor(_) => {
-            return tcx.lookup_adt_def(tcx.hir.get_parent_did(node_id));
-        }
-
         _ => bug!()
     };
 
@@ -812,7 +806,7 @@ fn trait_def<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         err.emit();
     }
 
-    let def_path_hash = tcx.def_path(def_id).deterministic_hash(tcx);
+    let def_path_hash = tcx.def_path_hash(def_id);
     let def = ty::TraitDef::new(def_id, unsafety, paren_sugar, def_path_hash);
 
     if tcx.hir.trait_is_auto(def_id) {

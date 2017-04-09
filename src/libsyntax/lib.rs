@@ -65,6 +65,16 @@ macro_rules! panictry {
     })
 }
 
+#[macro_export]
+macro_rules! unwrap_or {
+    ($opt:expr, $default:expr) => {
+        match $opt {
+            Some(x) => x,
+            None => $default,
+        }
+    }
+}
+
 #[macro_use]
 pub mod diagnostics {
     #[macro_use]
@@ -115,7 +125,7 @@ pub mod ptr;
 pub mod show_span;
 pub mod std_inject;
 pub mod str;
-pub mod symbol;
+pub use syntax_pos::symbol;
 pub mod test;
 pub mod tokenstream;
 pub mod visit;
@@ -126,12 +136,12 @@ pub mod print {
 }
 
 pub mod ext {
+    pub use syntax_pos::hygiene;
     pub mod base;
     pub mod build;
     pub mod derive;
     pub mod expand;
     pub mod placeholders;
-    pub mod hygiene;
     pub mod quote;
     pub mod source_util;
 

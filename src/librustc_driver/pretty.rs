@@ -26,8 +26,7 @@ use rustc::session::config::Input;
 use rustc_borrowck as borrowck;
 use rustc_borrowck::graphviz as borrowck_dot;
 
-use rustc_mir::pretty::write_mir_pretty;
-use rustc_mir::graphviz::write_mir_graphviz;
+use rustc_mir::util::{write_mir_pretty, write_mir_graphviz};
 
 use syntax::ast::{self, BlockCheckMode};
 use syntax::fold::{self, Folder};
@@ -590,7 +589,7 @@ impl UserIdentifiedItem {
                                        -> NodesMatchingUII<'a, 'hir> {
         match *self {
             ItemViaNode(node_id) => NodesMatchingDirect(Some(node_id).into_iter()),
-            ItemViaPath(ref parts) => NodesMatchingSuffix(map.nodes_matching_suffix(&parts[..])),
+            ItemViaPath(ref parts) => NodesMatchingSuffix(map.nodes_matching_suffix(&parts)),
         }
     }
 
@@ -601,7 +600,7 @@ impl UserIdentifiedItem {
                                   user_option,
                                   self.reconstructed_input(),
                                   is_wrong_because);
-            sess.fatal(&message[..])
+            sess.fatal(&message)
         };
 
         let mut saw_node = ast::DUMMY_NODE_ID;
@@ -772,7 +771,7 @@ fn print_flowgraph<'a, 'tcx, W: Write>(variants: Vec<borrowck_dot::Variant>,
     fn expand_err_details(r: io::Result<()>) -> io::Result<()> {
         r.map_err(|ioerr| {
             io::Error::new(io::ErrorKind::Other,
-                           &format!("graphviz::render failed: {}", ioerr)[..])
+                           format!("graphviz::render failed: {}", ioerr))
         })
     }
 }

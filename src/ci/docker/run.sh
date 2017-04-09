@@ -39,7 +39,6 @@ if [ "$SCCACHE_BUCKET" != "" ]; then
     args="$args --env AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY"
     args="$args --env SCCACHE_ERROR_LOG=/tmp/sccache/sccache.log"
     args="$args --env SCCACHE_LOG_LEVEL=debug"
-    args="$args --env RUST_LOG=sccache=debug"
     args="$args --volume $objdir/tmp:/tmp/sccache"
 else
     mkdir -p $HOME/.cache/sccache
@@ -58,6 +57,7 @@ exec docker \
   --env DEPLOY_ALT=$DEPLOY_ALT \
   --env LOCAL_USER_ID=`id -u` \
   --volume "$HOME/.cargo:/cargo" \
+  --volume "$HOME/rustsrc:$HOME/rustsrc" \
   --privileged \
   --rm \
   rust-ci \

@@ -27,8 +27,6 @@
 
 #![feature(shared)]
 #![feature(collections_range)]
-#![feature(collections_bound)]
-#![cfg_attr(stage0,feature(field_init_shorthand))]
 #![feature(nonzero)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
@@ -39,6 +37,8 @@
 #![feature(unsize)]
 #![feature(i128_type)]
 #![feature(conservative_impl_trait)]
+#![feature(discriminant_value)]
+#![feature(specialization)]
 
 #![cfg_attr(unix, feature(libc))]
 #![cfg_attr(test, feature(test))]

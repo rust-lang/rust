@@ -38,6 +38,7 @@
 #![feature(slice_patterns)]
 #![feature(staged_api)]
 
+#[macro_use]
 extern crate syntax;
 #[macro_use]
 extern crate rustc;
@@ -196,10 +197,6 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
             reference: "issue #36888 <https://github.com/rust-lang/rust/issues/36888>",
         },
         FutureIncompatibleInfo {
-            id: LintId::of(OVERLAPPING_INHERENT_IMPLS),
-            reference: "issue #36889 <https://github.com/rust-lang/rust/issues/36889>",
-        },
-        FutureIncompatibleInfo {
             id: LintId::of(ILLEGAL_FLOATING_POINT_CONSTANT_PATTERN),
             reference: "issue #36890 <https://github.com/rust-lang/rust/issues/36890>",
         },
@@ -262,4 +259,5 @@ pub fn register_builtins(store: &mut lint::LintStore, sess: Option<&Session>) {
     store.register_removed("drop_with_repr_extern", "drop flags have been removed");
     store.register_removed("transmute_from_fn_item_types",
         "always cast functions before transmuting them");
+    store.register_removed("overlapping_inherent_impls", "converted into hard error, see #36889");
 }

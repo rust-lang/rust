@@ -11,7 +11,8 @@
 use libc::c_uint;
 use llvm::{self, ValueRef, BasicBlockRef};
 use llvm::debuginfo::DIScope;
-use rustc::ty::{self, layout};
+use rustc::ty;
+use rustc::ty::layout::{self, LayoutTyper};
 use rustc::mir::{self, Mir};
 use rustc::mir::tcx::LvalueTy;
 use rustc::ty::subst::Substs;
@@ -26,7 +27,7 @@ use monomorphize::{self, Instance};
 use abi::FnType;
 use type_of;
 
-use syntax_pos::{DUMMY_SP, NO_EXPANSION, COMMAND_LINE_EXPN, BytePos, Span};
+use syntax_pos::{DUMMY_SP, NO_EXPANSION, BytePos, Span};
 use syntax::symbol::keywords;
 
 use std::iter;
@@ -52,7 +53,7 @@ pub struct MirContext<'a, 'tcx:'a> {
 
     ccx: &'a CrateContext<'a, 'tcx>,
 
-    fn_ty: FnType,
+    fn_ty: FnType<'tcx>,
 
     /// When unwinding is initiated, we have to store this personality
     /// value somewhere so that we can load it and re-use it in the
@@ -124,24 +125,18 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         // In order to have a good line stepping behavior in debugger, we overwrite debug
         // locations of macro expansions with that of the outermost expansion site
         // (unless the crate is being compiled with `-Z debug-macros`).
-        if source_info.span.expn_id == NO_EXPANSION ||
-            source_info.span.expn_id == COMMAND_LINE_EXPN ||
-            self.ccx.sess().opts.debugging_opts.debug_macros {
-
+        if source_info.span.ctxt == NO_EXPANSION ||
+           self.ccx.sess().opts.debugging_opts.debug_macros {
             let scope = self.scope_metadata_for_loc(source_info.scope, source_info.span.lo);
             (scope, source_info.span)
         } else {
-            let cm = self.ccx.sess().codemap();
             // Walk up the macro expansion chain until we reach a non-expanded span.
             // We also stop at the function body level because no line stepping can occurr
             // at the level above that.
             let mut span = source_info.span;
-            while span.expn_id != NO_EXPANSION &&
-                  span.expn_id != COMMAND_LINE_EXPN &&
-                  span.expn_id != self.mir.span.expn_id {
-                if let Some(callsite_span) = cm.with_expn_info(span.expn_id,
-                                                    |ei| ei.map(|ei| ei.call_site.clone())) {
-                    span = callsite_span;
+            while span.ctxt != NO_EXPANSION && span.ctxt != self.mir.span.ctxt {
+                if let Some(info) = span.ctxt.outer().expn_info() {
+                    span = info.call_site;
                 } else {
                     break;
                 }
@@ -460,6 +455,23 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                 assert_eq!((meta.cast, meta.pad), (None, None));
                 let llmeta = llvm::get_param(bcx.llfn(), llarg_idx as c_uint);
                 llarg_idx += 1;
+
+                // FIXME(eddyb) As we can't perfectly represent the data and/or
+                // vtable pointer in a fat pointers in Rust's typesystem, and
+                // because we split fat pointers into two ArgType's, they're
+                // not the right type so we have to cast them for now.
+                let pointee = match arg_ty.sty {
+                    ty::TyRef(_, ty::TypeAndMut{ty, ..}) |
+                    ty::TyRawPtr(ty::TypeAndMut{ty, ..}) => ty,
+                    ty::TyAdt(def, _) if def.is_box() => arg_ty.boxed_ty(),
+                    _ => bug!()
+                };
+                let data_llty = type_of::in_memory_type_of(bcx.ccx, pointee);
+                let meta_llty = type_of::unsized_info_ty(bcx.ccx, pointee);
+
+                let llarg = bcx.pointercast(llarg, data_llty.ptr_to());
+                let llmeta = bcx.pointercast(llmeta, meta_llty);
+
                 OperandValue::Pair(llarg, llmeta)
             } else {
                 OperandValue::Immediate(llarg)

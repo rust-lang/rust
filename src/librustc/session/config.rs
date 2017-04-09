@@ -82,6 +82,7 @@ pub enum OutputType {
     Bitcode,
     Assembly,
     LlvmAssembly,
+    Mir,
     Metadata,
     Object,
     Exe,
@@ -96,6 +97,7 @@ impl OutputType {
             OutputType::Bitcode |
             OutputType::Assembly |
             OutputType::LlvmAssembly |
+            OutputType::Mir |
             OutputType::Object |
             OutputType::Metadata => false,
         }
@@ -106,6 +108,7 @@ impl OutputType {
             OutputType::Bitcode => "llvm-bc",
             OutputType::Assembly => "asm",
             OutputType::LlvmAssembly => "llvm-ir",
+            OutputType::Mir => "mir",
             OutputType::Object => "obj",
             OutputType::Metadata => "metadata",
             OutputType::Exe => "link",
@@ -118,6 +121,7 @@ impl OutputType {
             OutputType::Bitcode => "bc",
             OutputType::Assembly => "s",
             OutputType::LlvmAssembly => "ll",
+            OutputType::Mir => "mir",
             OutputType::Object => "o",
             OutputType::Metadata => "rmeta",
             OutputType::DepInfo => "d",
@@ -172,6 +176,7 @@ impl OutputTypes {
             OutputType::Bitcode |
             OutputType::Assembly |
             OutputType::LlvmAssembly |
+            OutputType::Mir |
             OutputType::Object |
             OutputType::Exe => true,
             OutputType::Metadata |
@@ -971,7 +976,7 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
     always_encode_mir: bool = (false, parse_bool, [TRACKED],
           "encode MIR of all functions into the crate metadata"),
     osx_rpath_install_name: bool = (false, parse_bool, [TRACKED],
-          "pass `-install_name @rpath/...` to the OSX linker"),
+          "pass `-install_name @rpath/...` to the macOS linker"),
     sanitizer: Option<Sanitizer> = (None, parse_sanitizer, [TRACKED],
                                    "Use a sanitizer"),
 }
@@ -1370,6 +1375,7 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
                 let output_type = match parts.next().unwrap() {
                     "asm" => OutputType::Assembly,
                     "llvm-ir" => OutputType::LlvmAssembly,
+                    "mir" => OutputType::Mir,
                     "llvm-bc" => OutputType::Bitcode,
                     "obj" => OutputType::Object,
                     "metadata" => OutputType::Metadata,

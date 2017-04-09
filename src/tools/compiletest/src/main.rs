@@ -12,7 +12,6 @@
 
 #![feature(box_syntax)]
 #![feature(rustc_private)]
-#![feature(static_in_const)]
 #![feature(test)]
 #![feature(libc)]
 
@@ -486,11 +485,9 @@ pub fn make_test(config: &Config, testpaths: &TestPaths) -> test::TestDescAndFn 
 }
 
 fn stamp(config: &Config, testpaths: &TestPaths) -> PathBuf {
-    let stamp_name = format!("{}-H-{}-T-{}-S-{}.stamp",
+    let stamp_name = format!("{}-{}.stamp",
                              testpaths.file.file_name().unwrap()
                                            .to_str().unwrap(),
-                             config.host,
-                             config.target,
                              config.stage_id);
     config.build_base.canonicalize()
           .unwrap_or(config.build_base.clone())

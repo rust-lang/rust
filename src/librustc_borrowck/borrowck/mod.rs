@@ -34,6 +34,7 @@ use rustc::hir::def_id::DefId;
 use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::mem_categorization as mc;
 use rustc::middle::mem_categorization::Categorization;
+use rustc::middle::mem_categorization::ImmutabilityBlame;
 use rustc::middle::region;
 use rustc::ty::{self, TyCtxt};
 
@@ -112,7 +113,7 @@ fn borrowck_fn<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, body_id: hir::BodyId) {
                                                  &flowed_moves.move_data,
                                                  owner_id);
 
-    check_loans::check_loans(bccx, &loan_dfcx, &flowed_moves, &all_loans[..], body);
+    check_loans::check_loans(bccx, &loan_dfcx, &flowed_moves, &all_loans, body);
 }
 
 fn build_borrowck_dataflow_data<'a, 'tcx>(this: &mut BorrowckCtxt<'a, 'tcx>,
@@ -659,11 +660,10 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
         self.tcx.sess.span_err_with_code(s, msg, code);
     }
 
-    pub fn bckerr_to_diag(&self, err: &BckError<'tcx>) -> DiagnosticBuilder<'a> {
+    fn bckerr_to_diag(&self, err: &BckError<'tcx>) -> DiagnosticBuilder<'a> {
         let span = err.span.clone();
-        let mut immutable_field = None;
 
-        let msg = &match err.code {
+        let msg = match err.code {
             err_mutbl => {
                 let descr = match err.cmt.note {
                     mc::NoteClosureEnv(_) | mc::NoteUpvarRef(_) => {
@@ -699,19 +699,6 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                     BorrowViolation(euv::AutoUnsafe) |
                     BorrowViolation(euv::ForLoop) |
                     BorrowViolation(euv::MatchDiscriminant) => {
-                        // Check for this field's definition to see if it is an immutable reference
-                        // and suggest making it mutable if that is the case.
-                        immutable_field = err.cmt.get_field_name()
-                            .and_then(|name| err.cmt.get_field(name))
-                            .and_then(|did| self.tcx.hir.as_local_node_id(did))
-                            .and_then(|nid| {
-                                if let hir_map::Node::NodeField(ref field) = self.tcx.hir.get(nid) {
-                                    return self.suggest_mut_for_immutable(&field.ty)
-                                        .map(|msg| (self.tcx.hir.span(nid), msg));
-                                }
-                                None
-                            });
-
                         format!("cannot borrow {} as mutable", descr)
                     }
                     BorrowViolation(euv::ClosureInvocation) => {
@@ -737,11 +724,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             }
         };
 
-        let mut db = self.struct_span_err(span, msg);
-        if let Some((span, msg)) = immutable_field {
-            db.span_label(span, &msg);
-        }
-        db
+        self.struct_span_err(span, &msg)
     }
 
     pub fn report_aliasability_violation(&self,
@@ -774,34 +757,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             }
         };
 
-        let mut err = match cause {
-            mc::AliasableOther => {
-                struct_span_err!(
-                    self.tcx.sess, span, E0385,
-                    "{} in an aliasable location", prefix)
-            }
-            mc::AliasableReason::UnaliasableImmutable => {
-                struct_span_err!(
-                    self.tcx.sess, span, E0386,
-                    "{} in an immutable container", prefix)
-            }
-            mc::AliasableClosure(id) => {
-                let mut err = struct_span_err!(
-                    self.tcx.sess, span, E0387,
-                    "{} in a captured outer variable in an `Fn` closure", prefix);
-                if let BorrowViolation(euv::ClosureCapture(_)) = kind {
-                    // The aliasability violation with closure captures can
-                    // happen for nested closures, so we know the enclosing
-                    // closure incorrectly accepts an `Fn` while it needs to
-                    // be `FnMut`.
-                    span_help!(&mut err, self.tcx.hir.span(id),
-                           "consider changing this to accept closures that implement `FnMut`");
-                } else {
-                    span_help!(&mut err, self.tcx.hir.span(id),
-                           "consider changing this closure to take self by mutable reference");
-                }
-                err
-            }
+        match cause {
             mc::AliasableStatic |
             mc::AliasableStaticMut => {
                 // This path cannot occur. It happens when we have an
@@ -812,17 +768,38 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 // ignored.
                 span_bug!(span, "aliasability violation for static `{}`", prefix)
             }
-            mc::AliasableBorrowed => {
-                let mut e = struct_span_err!(
+            mc::AliasableBorrowed => {}
+        };
+        let blame = cmt.immutability_blame();
+        let mut err = match blame {
+            Some(ImmutabilityBlame::ClosureEnv(id)) => {
+                let mut err = struct_span_err!(
+                    self.tcx.sess, span, E0387,
+                    "{} in a captured outer variable in an `Fn` closure", prefix);
+
+                // FIXME: the distinction between these 2 messages looks wrong.
+                let help = if let BorrowViolation(euv::ClosureCapture(_)) = kind {
+                    // The aliasability violation with closure captures can
+                    // happen for nested closures, so we know the enclosing
+                    // closure incorrectly accepts an `Fn` while it needs to
+                    // be `FnMut`.
+                    "consider changing this to accept closures that implement `FnMut`"
+
+                } else {
+                    "consider changing this closure to take self by mutable reference"
+                };
+                err.span_help(self.tcx.hir.span(id), help);
+                err
+            }
+            _ =>  {
+                let mut err = struct_span_err!(
                     self.tcx.sess, span, E0389,
                     "{} in a `&` reference", prefix);
-                e.span_label(span, &"assignment into an immutable reference");
-                if let Some(nid) = cmt.get_arg_if_immutable(&self.tcx.hir) {
-                    self.immutable_argument_should_be_mut(nid, &mut e);
-                }
-                e
+                err.span_label(span, &"assignment into an immutable reference");
+                err
             }
         };
+        self.note_immutability_blame(&mut err, blame);
 
         if is_closure {
             err.help("closures behind references must be called via `&mut`");
@@ -831,49 +808,124 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
     }
 
     /// Given a type, if it is an immutable reference, return a suggestion to make it mutable
-    fn suggest_mut_for_immutable(&self, pty: &hir::Ty) -> Option<String> {
+    fn suggest_mut_for_immutable(&self, pty: &hir::Ty, is_implicit_self: bool) -> Option<String> {
         // Check wether the argument is an immutable reference
+        debug!("suggest_mut_for_immutable({:?}, {:?})", pty, is_implicit_self);
         if let hir::TyRptr(lifetime, hir::MutTy {
             mutbl: hir::Mutability::MutImmutable,
             ref ty
         }) = pty.node {
             // Account for existing lifetimes when generating the message
-            if !lifetime.is_elided() {
-                if let Ok(snippet) = self.tcx.sess.codemap().span_to_snippet(ty.span) {
-                    if let Ok(lifetime_snippet) = self.tcx.sess.codemap()
-                        .span_to_snippet(lifetime.span) {
-                            return Some(format!("use `&{} mut {}` here to make mutable",
-                                                lifetime_snippet,
-                                                snippet));
-                    }
-                }
-            } else if let Ok(snippet) = self.tcx.sess.codemap().span_to_snippet(pty.span) {
-                if snippet.starts_with("&") {
-                    return Some(format!("use `{}` here to make mutable",
-                                        snippet.replace("&", "&mut ")));
-                }
+            let pointee_snippet = match self.tcx.sess.codemap().span_to_snippet(ty.span) {
+                Ok(snippet) => snippet,
+                _ => return None
+            };
+
+            let lifetime_snippet = if !lifetime.is_elided() {
+                format!("{} ", match self.tcx.sess.codemap().span_to_snippet(lifetime.span) {
+                    Ok(lifetime_snippet) => lifetime_snippet,
+                    _ => return None
+                })
             } else {
-                bug!("couldn't find a snippet for span: {:?}", pty.span);
-            }
+                String::new()
+            };
+            Some(format!("use `&{}mut {}` here to make mutable",
+                         lifetime_snippet,
+                         if is_implicit_self { "self" } else { &*pointee_snippet }))
+        } else {
+            None
         }
-        None
     }
 
-    fn immutable_argument_should_be_mut(&self, nid: ast::NodeId, db: &mut DiagnosticBuilder) {
-        let parent = self.tcx.hir.get_parent_node(nid);
+    fn local_binding_mode(&self, node_id: ast::NodeId) -> hir::BindingMode {
+        let pat = match self.tcx.hir.get(node_id) {
+            hir_map::Node::NodeLocal(pat) => pat,
+            node => bug!("bad node for local: {:?}", node)
+        };
+
+        match pat.node {
+            hir::PatKind::Binding(mode, ..) => mode,
+            _ => bug!("local is not a binding: {:?}", pat)
+        }
+    }
+
+    fn local_ty(&self, node_id: ast::NodeId) -> (Option<&hir::Ty>, bool) {
+        let parent = self.tcx.hir.get_parent_node(node_id);
         let parent_node = self.tcx.hir.get(parent);
 
         // The parent node is like a fn
         if let Some(fn_like) = FnLikeNode::from_node(parent_node) {
             // `nid`'s parent's `Body`
             let fn_body = self.tcx.hir.body(fn_like.body());
-            // Get the position of `nid` in the arguments list
-            let arg_pos = fn_body.arguments.iter().position(|arg| arg.pat.id == nid);
+            // Get the position of `node_id` in the arguments list
+            let arg_pos = fn_body.arguments.iter().position(|arg| arg.pat.id == node_id);
             if let Some(i) = arg_pos {
                 // The argument's `Ty`
-                let arg_ty = &fn_like.decl().inputs[i];
-                if let Some(msg) = self.suggest_mut_for_immutable(&arg_ty) {
-                    db.span_label(arg_ty.span, &msg);
+                (Some(&fn_like.decl().inputs[i]),
+                 i == 0 && fn_like.decl().has_implicit_self)
+            } else {
+                (None, false)
+            }
+        } else {
+            (None, false)
+        }
+    }
+
+    fn note_immutability_blame(&self,
+                               db: &mut DiagnosticBuilder,
+                               blame: Option<ImmutabilityBlame>) {
+        match blame {
+            None => {}
+            Some(ImmutabilityBlame::ClosureEnv(_)) => {}
+            Some(ImmutabilityBlame::ImmLocal(node_id)) => {
+                let let_span = self.tcx.hir.span(node_id);
+                if let hir::BindingMode::BindByValue(..) = self.local_binding_mode(node_id) {
+                    if let Ok(snippet) = self.tcx.sess.codemap().span_to_snippet(let_span) {
+                        let (_, is_implicit_self) = self.local_ty(node_id);
+                        if is_implicit_self && snippet != "self" {
+                            // avoid suggesting `mut &self`.
+                            return
+                        }
+                        db.span_label(
+                            let_span,
+                            &format!("consider changing this to `mut {}`", snippet)
+                        );
+                    }
+                }
+            }
+            Some(ImmutabilityBlame::LocalDeref(node_id)) => {
+                let let_span = self.tcx.hir.span(node_id);
+                match self.local_binding_mode(node_id) {
+                    hir::BindingMode::BindByRef(..) => {
+                        let snippet = self.tcx.sess.codemap().span_to_snippet(let_span);
+                        if let Ok(snippet) = snippet {
+                            db.span_label(
+                                let_span,
+                                &format!("consider changing this to `{}`",
+                                         snippet.replace("ref ", "ref mut "))
+                            );
+                        }
+                    }
+                    hir::BindingMode::BindByValue(..) => {
+                        if let (Some(local_ty), is_implicit_self) = self.local_ty(node_id) {
+                            if let Some(msg) =
+                                 self.suggest_mut_for_immutable(local_ty, is_implicit_self) {
+                                db.span_label(local_ty.span, &msg);
+                            }
+                        }
+                    }
+                }
+            }
+            Some(ImmutabilityBlame::AdtFieldDeref(_, field)) => {
+                let node_id = match self.tcx.hir.as_local_node_id(field.did) {
+                    Some(node_id) => node_id,
+                    None => return
+                };
+
+                if let hir_map::Node::NodeField(ref field) = self.tcx.hir.get(node_id) {
+                    if let Some(msg) = self.suggest_mut_for_immutable(&field.ty, false) {
+                        db.span_label(field.ty.span, &msg);
+                    }
                 }
             }
         }
@@ -927,10 +979,13 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
         }
     }
 
-    pub fn note_and_explain_bckerr(&self, db: &mut DiagnosticBuilder, err: BckError<'tcx>) {
+    fn note_and_explain_bckerr(&self, db: &mut DiagnosticBuilder, err: BckError<'tcx>) {
         let error_span = err.span.clone();
         match err.code {
-            err_mutbl => self.note_and_explain_mutbl_error(db, &err, &error_span),
+            err_mutbl => {
+                self.note_and_explain_mutbl_error(db, &err, &error_span);
+                self.note_immutability_blame(db, err.cmt.immutability_blame());
+            }
             err_out_of_scope(super_scope, sub_scope, cause) => {
                 let (value_kind, value_msg) = match err.cmt.cat {
                     mc::Categorization::Rvalue(..) =>
@@ -1082,13 +1137,6 @@ before rustc 1.16, this temporary lived longer - see issue #39283 \
             _ => {
                 if let Categorization::Deref(..) = err.cmt.cat {
                     db.span_label(*error_span, &"cannot borrow as mutable");
-                    if let Some(local_id) = err.cmt.get_arg_if_immutable(&self.tcx.hir) {
-                        self.immutable_argument_should_be_mut(local_id, db);
-                    } else if let Categorization::Deref(ref inner_cmt, ..) = err.cmt.cat {
-                        if let Categorization::Local(local_id) = inner_cmt.cat {
-                            self.immutable_argument_should_be_mut(local_id, db);
-                        }
-                    }
                 } else if let Categorization::Local(local_id) = err.cmt.cat {
                     let span = self.tcx.hir.span(local_id);
                     if let Ok(snippet) = self.tcx.sess.codemap().span_to_snippet(span) {
@@ -1096,18 +1144,15 @@ before rustc 1.16, this temporary lived longer - see issue #39283 \
                             db.span_label(*error_span, &format!("cannot reborrow mutably"));
                             db.span_label(*error_span, &format!("try removing `&mut` here"));
                         } else {
-                            if snippet.starts_with("ref ") {
-                                db.span_label(span, &format!("use `{}` here to make mutable",
-                                                             snippet.replace("ref ", "ref mut ")));
-                            } else if snippet != "self" {
-                                db.span_label(span,
-                                              &format!("use `mut {}` here to make mutable",
-                                                       snippet));
-                            }
                             db.span_label(*error_span, &format!("cannot borrow mutably"));
                         }
                     } else {
                         db.span_label(*error_span, &format!("cannot borrow mutably"));
+                    }
+                } else if let Categorization::Interior(ref cmt, _) = err.cmt.cat {
+                    if let mc::MutabilityCategory::McImmutable = cmt.mutbl {
+                        db.span_label(*error_span,
+                                      &"cannot mutably borrow immutable field");
                     }
                 }
             }

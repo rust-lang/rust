@@ -274,7 +274,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             .filter(|a| a.check_name("rustc_on_unimplemented"))
             .next()
         {
-            let err_sp = item.meta().span.substitute_dummy(span);
+            let err_sp = item.span.substitute_dummy(span);
             let trait_str = self.tcx.item_path_str(trait_ref.def_id);
             if let Some(istring) = item.value_str() {
                 let istring = &*istring.as_str();
@@ -904,6 +904,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             ObligationCauseCode::StartFunctionType |
             ObligationCauseCode::IntrinsicType |
             ObligationCauseCode::MethodReceiver |
+            ObligationCauseCode::ReturnNoExpression |
             ObligationCauseCode::MiscObligation => {
             }
             ObligationCauseCode::SliceOrArrayElem => {

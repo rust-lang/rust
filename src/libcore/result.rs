@@ -268,7 +268,7 @@ impl<T, E> Result<T, E> {
     // Querying the contained values
     /////////////////////////////////////////////////////////////////////////
 
-    /// Returns true if the result is `Ok`.
+    /// Returns `true` if the result is `Ok`.
     ///
     /// # Examples
     ///
@@ -290,7 +290,7 @@ impl<T, E> Result<T, E> {
         }
     }
 
-    /// Returns true if the result is `Err`.
+    /// Returns `true` if the result is `Err`.
     ///
     /// # Examples
     ///
@@ -803,12 +803,11 @@ impl<T: fmt::Debug, E> Result<T, E> {
     /// Basic usage:
     ///
     /// ```{.should_panic}
-    /// # #![feature(result_expect_err)]
     /// let x: Result<u32, &str> = Ok(10);
     /// x.expect_err("Testing expect_err"); // panics with `Testing expect_err: 10`
     /// ```
     #[inline]
-    #[unstable(feature = "result_expect_err", issue = "39041")]
+    #[stable(feature = "result_expect_err", since = "1.17.0")]
     pub fn expect_err(self, msg: &str) -> E {
         match self {
             Ok(t) => unwrap_failed(msg, t),
@@ -839,10 +838,10 @@ impl<T: Default, E> Result<T, E> {
     ///
     /// assert_eq!(1909, good_year);
     /// assert_eq!(0, bad_year);
+    /// ```
     ///
     /// [`parse`]: ../../std/primitive.str.html#method.parse
     /// [`FromStr`]: ../../std/str/trait.FromStr.html
-    /// ```
     #[inline]
     #[stable(feature = "result_unwrap_or_default", since = "1.16.0")]
     pub fn unwrap_or_default(self) -> T {

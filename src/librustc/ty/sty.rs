@@ -45,7 +45,7 @@ pub struct TypeAndMut<'tcx> {
 /// at least as big as the scope `fr.scope`".
 pub struct FreeRegion {
     pub scope: region::CodeExtent,
-    pub bound_region: BoundRegion
+    pub bound_region: BoundRegion,
 }
 
 #[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash,
@@ -65,7 +65,7 @@ pub enum BoundRegion {
 
     // Anonymous region for the implicit env pointer parameter
     // to a closure
-    BrEnv
+    BrEnv,
 }
 
 /// When a region changed from late-bound to early-bound when #32330
@@ -320,7 +320,7 @@ impl<'tcx> Slice<ExistentialPredicate<'tcx>> {
     pub fn principal(&self) -> Option<ExistentialTraitRef<'tcx>> {
         match self.get(0) {
             Some(&ExistentialPredicate::Trait(tr)) => Some(tr),
-            _ => None
+            _ => None,
         }
     }
 
@@ -520,13 +520,13 @@ impl<T> Binder<T> {
         ty::Binder(&self.0)
     }
 
-    pub fn map_bound_ref<F,U>(&self, f: F) -> Binder<U>
+    pub fn map_bound_ref<F, U>(&self, f: F) -> Binder<U>
         where F: FnOnce(&T) -> U
     {
         self.as_ref().map_bound(f)
     }
 
-    pub fn map_bound<F,U>(self, f: F) -> Binder<U>
+    pub fn map_bound<F, U>(self, f: F) -> Binder<U>
         where F: FnOnce(T) -> U
     {
         ty::Binder(f(self.0))
@@ -790,22 +790,22 @@ pub struct TyVid {
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub struct IntVid {
-    pub index: u32
+    pub index: u32,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub struct FloatVid {
-    pub index: u32
+    pub index: u32,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy)]
 pub struct RegionVid {
-    pub index: u32
+    pub index: u32,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
 pub struct SkolemizedRegionVid {
-    pub index: u32
+    pub index: u32,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable)]
@@ -819,7 +819,7 @@ pub enum InferTy {
     /// `infer::freshen` for more details.
     FreshTy(u32),
     FreshIntTy(u32),
-    FreshFloatTy(u32)
+    FreshFloatTy(u32),
 }
 
 /// A `ProjectionPredicate` for an `ExistentialTraitRef`.
@@ -827,7 +827,7 @@ pub enum InferTy {
 pub struct ExistentialProjection<'tcx> {
     pub trait_ref: ExistentialTraitRef<'tcx>,
     pub item_name: Name,
-    pub ty: Ty<'tcx>
+    pub ty: Ty<'tcx>,
 }
 
 pub type PolyExistentialProjection<'tcx> = Binder<ExistentialProjection<'tcx>>;
@@ -860,9 +860,9 @@ impl<'a, 'tcx, 'gcx> ExistentialProjection<'tcx> {
         ty::ProjectionPredicate {
             projection_ty: ty::ProjectionTy {
                 trait_ref: self.trait_ref.with_self_ty(tcx, self_ty),
-                item_name: self.item_name
+                item_name: self.item_name,
             },
-            ty: self.ty
+            ty: self.ty,
         }
     }
 }
@@ -899,7 +899,7 @@ impl Region {
         match *self {
             ty::ReEarlyBound(..) => true,
             ty::ReLateBound(..) => true,
-            _ => false
+            _ => false,
         }
     }
 
@@ -969,7 +969,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
     pub fn is_nil(&self) -> bool {
         match self.sty {
             TyTuple(ref tys, _) => tys.is_empty(),
-            _ => false
+            _ => false,
         }
     }
 
@@ -1047,7 +1047,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
     pub fn is_ty_var(&self) -> bool {
         match self.sty {
             TyInfer(TyVar(_)) => true,
-            _ => false
+            _ => false,
         }
     }
 
@@ -1071,7 +1071,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
     pub fn is_self(&self) -> bool {
         match self.sty {
             TyParam(ref p) => p.is_self(),
-            _ => false
+            _ => false,
         }
     }
 
@@ -1088,7 +1088,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
     pub fn is_structural(&self) -> bool {
         match self.sty {
             TyAdt(..) | TyTuple(..) | TyArray(..) | TyClosure(..) => true,
-            _ => self.is_slice() | self.is_trait()
+            _ => self.is_slice() | self.is_trait(),
         }
     }
 
@@ -1096,7 +1096,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
     pub fn is_simd(&self) -> bool {
         match self.sty {
             TyAdt(def, _) => def.repr.simd,
-            _ => false
+            _ => false,
         }
     }
 
@@ -1127,7 +1127,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
     pub fn is_region_ptr(&self) -> bool {
         match self.sty {
             TyRef(..) => true,
-            _ => false
+            _ => false,
         }
     }
 
@@ -1145,7 +1145,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
     pub fn is_unsafe_ptr(&self) -> bool {
         match self.sty {
             TyRawPtr(_) => return true,
-            _ => return false
+            _ => return false,
         }
     }
 
@@ -1189,7 +1189,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
     pub fn is_trait(&self) -> bool {
         match self.sty {
             TyDynamic(..) => true,
-            _ => false
+            _ => false,
         }
     }
 
@@ -1205,7 +1205,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
             TyInfer(FreshTy(_)) => true,
             TyInfer(FreshIntTy(_)) => true,
             TyInfer(FreshFloatTy(_)) => true,
-            _ => false
+            _ => false,
         }
     }
 
@@ -1219,7 +1219,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
     pub fn is_char(&self) -> bool {
         match self.sty {
             TyChar => true,
-            _ => false
+            _ => false,
         }
     }
 
@@ -1237,7 +1237,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
     pub fn is_signed(&self) -> bool {
         match self.sty {
             TyInt(_) => true,
-            _ => false
+            _ => false,
         }
     }
 
@@ -1245,7 +1245,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
         match self.sty {
             TyInt(ast::IntTy::Is) | TyUint(ast::UintTy::Us) => false,
             TyInt(..) | TyUint(..) | TyFloat(..) => true,
-            _ => false
+            _ => false,
         }
     }
 
@@ -1276,7 +1276,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
             },
             TyRef(_, mt) => Some(mt),
             TyRawPtr(mt) if explicit => Some(mt),
-            _ => None
+            _ => None,
         }
     }
 
@@ -1284,7 +1284,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
     pub fn builtin_index(&self) -> Option<Ty<'tcx>> {
         match self.sty {
             TyArray(ty, _) | TySlice(ty) => Some(ty),
-            _ => None
+            _ => None,
         }
     }
 
@@ -1307,7 +1307,7 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
     pub fn is_fn(&self) -> bool {
         match self.sty {
             TyFnDef(..) | TyFnPtr(_) => true,
-            _ => false
+            _ => false,
         }
     }
 
@@ -1316,14 +1316,14 @@ impl<'a, 'gcx, 'tcx> TyS<'tcx> {
             TyDynamic(ref tt, ..) => tt.principal().map(|p| p.def_id()),
             TyAdt(def, _) => Some(def.did),
             TyClosure(id, _) => Some(id),
-            _ => None
+            _ => None,
         }
     }
 
     pub fn ty_adt_def(&self) -> Option<&'tcx AdtDef> {
         match self.sty {
             TyAdt(adt, _) => Some(adt),
-            _ => None
+            _ => None,
         }
     }
 

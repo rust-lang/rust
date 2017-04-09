@@ -17,11 +17,12 @@ pub use self::fold::TypeFoldable;
 
 use dep_graph::{self, DepNode};
 use hir::{map as hir_map, FreevarMap, TraitMap};
-use middle;
 use hir::def::{Def, CtorKind, ExportMap};
 use hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
+use ich::StableHashingContext;
 use middle::const_val::ConstVal;
 use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem, FnOnceTraitLangItem};
+use middle::privacy::AccessLevels;
 use middle::region::{CodeExtent, ROOT_CODE_EXTENT};
 use middle::resolve_lifetime::ObjectLifetimeDefault;
 use mir::Mir;
@@ -31,7 +32,7 @@ use ty::subst::{Subst, Substs};
 use ty::util::IntTypeExt;
 use ty::walk::TypeWalker;
 use util::common::MemoizationMap;
-use util::nodemap::{NodeSet, FxHashMap};
+use util::nodemap::{NodeSet, DefIdMap, FxHashMap};
 
 use serialize::{self, Encodable, Encoder};
 use std::borrow::Cow;
@@ -50,6 +51,8 @@ use syntax_pos::{DUMMY_SP, Span};
 use rustc_const_math::ConstInt;
 
 use rustc_data_structures::accumulate_vec::IntoIter as AccIntoIter;
+use rustc_data_structures::stable_hasher::{StableHasher, StableHasherResult,
+                                           HashStable};
 
 use hir;
 use hir::itemlikevisit::ItemLikeVisitor;
@@ -72,6 +75,8 @@ pub use self::sty::TypeVariants::*;
 pub use self::contents::TypeContents;
 pub use self::context::{TyCtxt, GlobalArenas, tls};
 pub use self::context::{Lift, TypeckTables};
+
+pub use self::instance::{Instance, InstanceDef};
 
 pub use self::trait_def::{TraitDef, TraitFlags};
 
@@ -98,6 +103,7 @@ pub mod util;
 mod contents;
 mod context;
 mod flags;
+mod instance;
 mod structural_impls;
 mod sty;
 
@@ -105,10 +111,12 @@ mod sty;
 
 /// The complete set of all analyses described in this module. This is
 /// produced by the driver and fed to trans and later passes.
+///
+/// NB: These contents are being migrated into queries using the
+/// *on-demand* infrastructure.
 #[derive(Clone)]
 pub struct CrateAnalysis {
-    pub export_map: ExportMap,
-    pub access_levels: middle::privacy::AccessLevels,
+    pub access_levels: Rc<AccessLevels>,
     pub reachable: NodeSet,
     pub name: String,
     pub glob_map: Option<hir::GlobMap>,
@@ -119,6 +127,7 @@ pub struct Resolutions {
     pub freevars: FreevarMap,
     pub trait_map: TraitMap,
     pub maybe_unused_trait_imports: NodeSet,
+    pub export_map: ExportMap,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -1264,10 +1273,17 @@ impl<'a, 'tcx> ParameterEnvironment<'tcx> {
                                                     def_id,
                                                     ROOT_CODE_EXTENT)
             }
-            _ => {
+            Some(hir_map::NodeStructCtor(..)) |
+            Some(hir_map::NodeVariant(..)) => {
+                let def_id = tcx.hir.local_def_id(id);
+                tcx.construct_parameter_environment(tcx.hir.span(id),
+                                                    def_id,
+                                                    ROOT_CODE_EXTENT)
+            }
+            it => {
                 bug!("ParameterEnvironment::from_item(): \
-                      `{}` is not an item",
-                     tcx.hir.node_to_string(id))
+                      `{}` = {:?} is unsupported",
+                     tcx.hir.node_to_string(id), it)
             }
         }
     }
@@ -1366,6 +1382,25 @@ impl<'tcx> serialize::UseSpecializedEncodable for &'tcx AdtDef {
 
 impl<'tcx> serialize::UseSpecializedDecodable for &'tcx AdtDef {}
 
+
+impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for AdtDef {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a, 'tcx>,
+                                          hasher: &mut StableHasher<W>) {
+        let ty::AdtDef {
+            did,
+            ref variants,
+            ref flags,
+            ref repr,
+        } = *self;
+
+        did.hash_stable(hcx, hasher);
+        variants.hash_stable(hcx, hasher);
+        flags.hash_stable(hcx, hasher);
+        repr.hash_stable(hcx, hasher);
+    }
+}
+
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum AdtKind { Struct, Union, Enum }
 
@@ -1377,6 +1412,13 @@ pub struct ReprOptions {
     pub simd: bool,
     pub int: Option<attr::IntType>,
 }
+
+impl_stable_hash_for!(struct ReprOptions {
+    c,
+    packed,
+    simd,
+    int
+});
 
 impl ReprOptions {
     pub fn new(tcx: TyCtxt, did: DefId) -> ReprOptions {
@@ -2044,60 +2086,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         })
     }
 
-    pub fn custom_coerce_unsized_kind(self, did: DefId) -> adjustment::CustomCoerceUnsized {
-        queries::custom_coerce_unsized_kind::get(self, DUMMY_SP, did)
+    pub fn coerce_unsized_info(self, did: DefId) -> adjustment::CoerceUnsizedInfo {
+        queries::coerce_unsized_info::get(self, DUMMY_SP, did)
     }
 
     pub fn associated_item(self, def_id: DefId) -> AssociatedItem {
-        if !def_id.is_local() {
-            return queries::associated_item::get(self, DUMMY_SP, def_id);
-        }
-
-        self.maps.associated_item.memoize(def_id, || {
-            // When the user asks for a given associated item, we
-            // always go ahead and convert all the associated items in
-            // the container. Note that we are also careful only to
-            // ever register a read on the *container* of the assoc
-            // item, not the assoc item itself. This prevents changes
-            // in the details of an item (for example, the type to
-            // which an associated type is bound) from contaminating
-            // those tasks that just need to scan the names of items
-            // and so forth.
-
-            let id = self.hir.as_local_node_id(def_id).unwrap();
-            let parent_id = self.hir.get_parent(id);
-            let parent_def_id = self.hir.local_def_id(parent_id);
-            let parent_item = self.hir.expect_item(parent_id);
-            match parent_item.node {
-                hir::ItemImpl(.., ref impl_trait_ref, _, ref impl_item_refs) => {
-                    for impl_item_ref in impl_item_refs {
-                        let assoc_item =
-                            self.associated_item_from_impl_item_ref(parent_def_id,
-                                                                    impl_trait_ref.is_some(),
-                                                                    impl_item_ref);
-                        self.maps.associated_item.borrow_mut()
-                            .insert(assoc_item.def_id, assoc_item);
-                    }
-                }
-
-                hir::ItemTrait(.., ref trait_item_refs) => {
-                    for trait_item_ref in trait_item_refs {
-                        let assoc_item =
-                            self.associated_item_from_trait_item_ref(parent_def_id, trait_item_ref);
-                        self.maps.associated_item.borrow_mut()
-                            .insert(assoc_item.def_id, assoc_item);
-                    }
-                }
-
-                ref r => {
-                    panic!("unexpected container of associated items: {:?}", r)
-                }
-            }
-
-            // memoize wants us to return something, so return
-            // the one we generated for this def-id
-            *self.maps.associated_item.borrow().get(&def_id).unwrap()
-        })
+        queries::associated_item::get(self, DUMMY_SP, def_id)
     }
 
     fn associated_item_from_trait_item_ref(self,
@@ -2233,6 +2227,15 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
+    #[inline]
+    pub fn def_path_hash(self, def_id: DefId) -> u64 {
+        if def_id.is_local() {
+            self.hir.definitions().def_path_hash(def_id.index)
+        } else {
+            self.sess.cstore.def_path_hash(def_id)
+        }
+    }
+
     pub fn def_span(self, def_id: DefId) -> Span {
         if let Some(id) = self.hir.as_local_node_id(def_id) {
             self.hir.span(id)
@@ -2300,6 +2303,16 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// Given the did of an item, returns its MIR, borrowed immutably.
     pub fn item_mir(self, did: DefId) -> Ref<'gcx, Mir<'gcx>> {
         queries::mir::get(self, DUMMY_SP, did).borrow()
+    }
+
+    /// Return the possibly-auto-generated MIR of a (DefId, Subst) pair.
+    pub fn instance_mir(self, instance: ty::InstanceDef<'gcx>)
+                        -> Ref<'gcx, Mir<'gcx>>
+    {
+        match instance {
+            ty::InstanceDef::Item(did) if true => self.item_mir(did),
+            _ => queries::mir_shims::get(self, DUMMY_SP, instance).borrow(),
+        }
     }
 
     /// Given the DefId of an item, returns its MIR, borrowed immutably.
@@ -2371,34 +2384,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn trait_has_default_impl(self, trait_def_id: DefId) -> bool {
         let def = self.lookup_trait_def(trait_def_id);
         def.flags.get().intersects(TraitFlags::HAS_DEFAULT_IMPL)
-    }
-
-    /// Populates the type context with all the inherent implementations for
-    /// the given type if necessary.
-    pub fn populate_inherent_implementations_for_type_if_necessary(self,
-                                                                   span: Span,
-                                                                   type_id: DefId) {
-        if type_id.is_local() {
-            // Make sure coherence of inherent impls ran already.
-            ty::queries::coherent_inherent_impls::force(self, span, LOCAL_CRATE);
-            return
-        }
-
-        // The type is not local, hence we are reading this out of
-        // metadata and don't need to track edges.
-        let _ignore = self.dep_graph.in_ignore();
-
-        if self.populated_external_types.borrow().contains(&type_id) {
-            return
-        }
-
-        debug!("populate_inherent_implementations_for_type_if_necessary: searching for {:?}",
-               type_id);
-
-        let inherent_impls = self.sess.cstore.inherent_implementations_for_type(type_id);
-
-        self.maps.inherent_impls.borrow_mut().insert(type_id, inherent_impls);
-        self.populated_external_types.borrow_mut().insert(type_id);
     }
 
     /// Populates the type context with all the implementations for the given
@@ -2623,3 +2608,58 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 }
+
+fn associated_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
+    -> AssociatedItem
+{
+    let id = tcx.hir.as_local_node_id(def_id).unwrap();
+    let parent_id = tcx.hir.get_parent(id);
+    let parent_def_id = tcx.hir.local_def_id(parent_id);
+    let parent_item = tcx.hir.expect_item(parent_id);
+    match parent_item.node {
+        hir::ItemImpl(.., ref impl_trait_ref, _, ref impl_item_refs) => {
+            if let Some(impl_item_ref) = impl_item_refs.iter().find(|i| i.id.node_id == id) {
+                let assoc_item =
+                    tcx.associated_item_from_impl_item_ref(parent_def_id,
+                                                            impl_trait_ref.is_some(),
+                                                            impl_item_ref);
+                debug_assert_eq!(assoc_item.def_id, def_id);
+                return assoc_item;
+            }
+        }
+
+        hir::ItemTrait(.., ref trait_item_refs) => {
+            if let Some(trait_item_ref) = trait_item_refs.iter().find(|i| i.id.node_id == id) {
+                let assoc_item =
+                    tcx.associated_item_from_trait_item_ref(parent_def_id, trait_item_ref);
+                debug_assert_eq!(assoc_item.def_id, def_id);
+                return assoc_item;
+            }
+        }
+
+        ref r => {
+            panic!("unexpected container of associated items: {:?}", r)
+        }
+    }
+    panic!("associated item not found for def_id: {:?}", def_id);
+}
+
+pub fn provide(providers: &mut ty::maps::Providers) {
+    *providers = ty::maps::Providers {
+        associated_item,
+        ..*providers
+    };
+}
+
+
+/// A map for the local crate mapping each type to a vector of its
+/// inherent impls. This is not meant to be used outside of coherence;
+/// rather, you should request the vector for a specific type via
+/// `ty::queries::inherent_impls::get(def_id)` so as to minimize your
+/// dependencies (constructing this map requires touching the entire
+/// crate).
+#[derive(Clone, Debug)]
+pub struct CrateInherentImpls {
+    pub inherent_impls: DefIdMap<Rc<Vec<DefId>>>,
+}
+

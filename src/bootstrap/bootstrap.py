@@ -160,18 +160,16 @@ class RustBuild(object):
     def download_stage0(self):
         cache_dst = os.path.join(self.build_dir, "cache")
         rustc_cache = os.path.join(cache_dst, self.stage0_rustc_date())
-        cargo_cache = os.path.join(cache_dst, self.stage0_cargo_rev())
         if not os.path.exists(rustc_cache):
             os.makedirs(rustc_cache)
-        if not os.path.exists(cargo_cache):
-            os.makedirs(cargo_cache)
+
+        channel = self.stage0_rustc_channel()
 
         if self.rustc().startswith(self.bin_root()) and \
                 (not os.path.exists(self.rustc()) or self.rustc_out_of_date()):
             self.print_what_it_means_to_bootstrap()
             if os.path.exists(self.bin_root()):
                 shutil.rmtree(self.bin_root())
-            channel = self.stage0_rustc_channel()
             filename = "rust-std-{}-{}.tar.gz".format(channel, self.build)
             url = "https://static.rust-lang.org/dist/" + self.stage0_rustc_date()
             tarball = os.path.join(rustc_cache, filename)
@@ -192,18 +190,26 @@ class RustBuild(object):
             with open(self.rustc_stamp(), 'w') as f:
                 f.write(self.stage0_rustc_date())
 
+            if "pc-windows-gnu" in self.build:
+                filename = "rust-mingw-{}-{}.tar.gz".format(channel, self.build)
+                url = "https://static.rust-lang.org/dist/" + self.stage0_rustc_date()
+                tarball = os.path.join(rustc_cache, filename)
+                if not os.path.exists(tarball):
+                    get("{}/{}".format(url, filename), tarball, verbose=self.verbose)
+                unpack(tarball, self.bin_root(), match="rust-mingw", verbose=self.verbose)
+
         if self.cargo().startswith(self.bin_root()) and \
                 (not os.path.exists(self.cargo()) or self.cargo_out_of_date()):
             self.print_what_it_means_to_bootstrap()
-            filename = "cargo-nightly-{}.tar.gz".format(self.build)
-            url = "https://s3.amazonaws.com/rust-lang-ci/cargo-builds/" + self.stage0_cargo_rev()
-            tarball = os.path.join(cargo_cache, filename)
+            filename = "cargo-{}-{}.tar.gz".format(channel, self.build)
+            url = "https://static.rust-lang.org/dist/" + self.stage0_rustc_date()
+            tarball = os.path.join(rustc_cache, filename)
             if not os.path.exists(tarball):
                 get("{}/{}".format(url, filename), tarball, verbose=self.verbose)
             unpack(tarball, self.bin_root(), match="cargo", verbose=self.verbose)
             self.fix_executable(self.bin_root() + "/bin/cargo")
             with open(self.cargo_stamp(), 'w') as f:
-                f.write(self.stage0_cargo_rev())
+                f.write(self.stage0_rustc_date())
 
     def fix_executable(self, fname):
         # If we're on NixOS we need to change the path to the dynamic loader
@@ -258,9 +264,6 @@ class RustBuild(object):
             print("warning: failed to call patchelf: %s" % e)
             return
 
-    def stage0_cargo_rev(self):
-        return self._cargo_rev
-
     def stage0_rustc_date(self):
         return self._rustc_date
 
@@ -283,7 +286,7 @@ class RustBuild(object):
         if not os.path.exists(self.cargo_stamp()) or self.clean:
             return True
         with open(self.cargo_stamp(), 'r') as f:
-            return self.stage0_cargo_rev() != f.read()
+            return self.stage0_rustc_date() != f.read()
 
     def bin_root(self):
         return os.path.join(self.build_dir, self.build, "stage0")
@@ -469,10 +472,10 @@ class RustBuild(object):
             cputype = 'i686'
         elif cputype in {'xscale', 'arm'}:
             cputype = 'arm'
-        elif cputype in {'armv6l', 'armv7l', 'armv8l'}:
+        elif cputype == 'armv6l':
             cputype = 'arm'
             ostype += 'eabihf'
-        elif cputype == 'armv7l':
+        elif cputype in {'armv7l', 'armv8l'}:
             cputype = 'armv7'
             ostype += 'eabihf'
         elif cputype == 'aarch64':
@@ -578,7 +581,6 @@ def bootstrap():
 
     data = stage0_data(rb.rust_root)
     rb._rustc_channel, rb._rustc_date = data['rustc'].split('-', 1)
-    rb._cargo_rev = data['cargo']
 
     # Fetch/build the bootstrap
     rb.build = rb.build_triple()
@@ -598,16 +600,19 @@ def bootstrap():
 
 def main():
     start_time = time()
+    help_triggered = ('-h' in sys.argv) or ('--help' in sys.argv) or (len(sys.argv) == 1)
     try:
         bootstrap()
-        print("Build completed successfully in %s" % format_build_time(time() - start_time))
+        if not help_triggered:
+            print("Build completed successfully in %s" % format_build_time(time() - start_time))
     except (SystemExit, KeyboardInterrupt) as e:
         if hasattr(e, 'code') and isinstance(e.code, int):
             exit_code = e.code
         else:
             exit_code = 1
             print(e)
-        print("Build completed unsuccessfully in %s" % format_build_time(time() - start_time))
+        if not help_triggered:
+            print("Build completed unsuccessfully in %s" % format_build_time(time() - start_time))
         sys.exit(exit_code)
 
 if __name__ == '__main__':

@@ -335,7 +335,7 @@ language_item_table! {
 
     ExchangeMallocFnLangItem,        "exchange_malloc",         exchange_malloc_fn;
     BoxFreeFnLangItem,               "box_free",                box_free_fn;
-    StrDupUniqFnLangItem,            "strdup_uniq",             strdup_uniq_fn;
+    DropInPlaceFnLangItem,             "drop_in_place",           drop_in_place_fn;
 
     StartFnLangItem,                 "start",                   start_fn;
 
@@ -354,8 +354,6 @@ language_item_table! {
     CovariantLifetimeItem,           "covariant_lifetime",      covariant_lifetime;
     ContravariantLifetimeItem,       "contravariant_lifetime",  contravariant_lifetime;
     InvariantLifetimeItem,           "invariant_lifetime",      invariant_lifetime;
-
-    NoCopyItem,                      "no_copy_bound",           no_copy_bound;
 
     NonZeroItem,                     "non_zero",                non_zero;
 

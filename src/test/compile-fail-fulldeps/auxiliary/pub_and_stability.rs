@@ -35,7 +35,6 @@
 // non-pub fields, marked with SILLY below)
 
 #![feature(staged_api)]
-#![feature(pub_restricted)]
 
 #![stable(feature = "unit_test", since = "0.0.0")]
 

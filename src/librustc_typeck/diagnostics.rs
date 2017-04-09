@@ -790,7 +790,7 @@ Furthermore, the syntax is changing to use `in` instead of `box`. See [RFC 470]
 and [RFC 809] for more details.
 
 [RFC 470]: https://github.com/rust-lang/rfcs/pull/470
-[RFC 809]: https://github.com/rust-lang/rfcs/pull/809
+[RFC 809]: https://github.com/rust-lang/rfcs/blob/master/text/0809-box-and-in-for-stdlib.md
 "##,
 
 E0067: r##"
@@ -1223,6 +1223,28 @@ fn main() {
 ```
 "##,
 
+E0090: r##"
+You gave too few lifetime parameters. Example:
+
+```compile_fail,E0090
+fn foo<'a: 'b, 'b: 'a>() {}
+
+fn main() {
+    foo::<'static>(); // error, expected 2 lifetime parameters
+}
+```
+
+Please check you give the right number of lifetime parameters. Example:
+
+```
+fn foo<'a: 'b, 'b: 'a>() {}
+
+fn main() {
+    foo::<'static, 'static>();
+}
+```
+"##,
+
 E0091: r##"
 You gave an unnecessary type parameter in a type alias. Erroneous code
 example:
@@ -1406,7 +1428,7 @@ type X = u32; // this compiles
 ```
 
 Note that type parameters for enum-variant constructors go after the variant,
-not after the enum (Option::None::<u32>, not Option::<u32>::None).
+not after the enum (`Option::None::<u32>`, not `Option::<u32>::None`).
 "##,
 
 E0110: r##"
@@ -1499,7 +1521,7 @@ impl Bar for u32 {
 
 For information on the design of the orphan rules, see [RFC 1023].
 
-[RFC 1023]: https://github.com/rust-lang/rfcs/pull/1023
+[RFC 1023]: https://github.com/rust-lang/rfcs/blob/master/text/1023-rebalancing-coherence.md
 "##,
 
 E0118: r##"
@@ -1889,8 +1911,9 @@ type Foo = Trait<Bar=i32>; // ok!
 
 E0192: r##"
 Negative impls are only allowed for traits with default impls. For more
-information see the [opt-in builtin traits RFC](https://github.com/rust-lang/
-rfcs/blob/master/text/0019-opt-in-builtin-traits.md).
+information see the [opt-in builtin traits RFC][RFC 19].
+
+[RFC 19]: https://github.com/rust-lang/rfcs/blob/master/text/0019-opt-in-builtin-traits.md
 "##,
 
 E0193: r##"
@@ -2125,7 +2148,7 @@ E0202: r##"
 Inherent associated types were part of [RFC 195] but are not yet implemented.
 See [the tracking issue][iss8995] for the status of this implementation.
 
-[RFC 195]: https://github.com/rust-lang/rfcs/pull/195
+[RFC 195]: https://github.com/rust-lang/rfcs/blob/master/text/0195-associated-items.md
 [iss8995]: https://github.com/rust-lang/rust/issues/8995
 "##,
 
@@ -2402,7 +2425,7 @@ such that `Ti` is a local type. Then no type parameter can appear in any of the
 
 For information on the design of the orphan rules, see [RFC 1023].
 
-[RFC 1023]: https://github.com/rust-lang/rfcs/pull/1023
+[RFC 1023]: https://github.com/rust-lang/rfcs/blob/master/text/1023-rebalancing-coherence.md
 "##,
 
 /*
@@ -2777,8 +2800,9 @@ verify this assertion; therefore we must tag this `impl` as unsafe.
 
 E0318: r##"
 Default impls for a trait must be located in the same crate where the trait was
-defined. For more information see the [opt-in builtin traits RFC](https://github
-.com/rust-lang/rfcs/blob/master/text/0019-opt-in-builtin-traits.md).
+defined. For more information see the [opt-in builtin traits RFC][RFC 19].
+
+[RFC 19]: https://github.com/rust-lang/rfcs/blob/master/text/0019-opt-in-builtin-traits.md
 "##,
 
 E0321: r##"
@@ -2996,10 +3020,8 @@ impl<T> Unsize<T> for MyType {}
 ```
 
 If you are defining your own smart pointer type and would like to enable
-conversion from a sized to an unsized type with the [DST coercion system]
-(https://github.com/rust-lang/rfcs/blob/master/text/0982-dst-coercion.md), use
-[`CoerceUnsized`](https://doc.rust-lang.org/std/ops/trait.CoerceUnsized.html)
-instead.
+conversion from a sized to an unsized type with the
+[DST coercion system][RFC 982], use [`CoerceUnsized`] instead.
 
 ```
 #![feature(coerce_unsized)]
@@ -3013,6 +3035,9 @@ pub struct MyType<T: ?Sized> {
 impl<T, U> CoerceUnsized<MyType<U>> for MyType<T>
     where T: CoerceUnsized<U> {}
 ```
+
+[RFC 982]: https://github.com/rust-lang/rfcs/blob/master/text/0982-dst-coercion.md
+[`CoerceUnsized`]: https://doc.rust-lang.org/std/ops/trait.CoerceUnsized.html
 "##,
 
 E0329: r##"
@@ -3416,8 +3441,9 @@ struct.
 
 E0380: r##"
 Default impls are only allowed for traits with no methods or associated items.
-For more information see the [opt-in builtin traits RFC](https://github.com/rust
--lang/rfcs/blob/master/text/0019-opt-in-builtin-traits.md).
+For more information see the [opt-in builtin traits RFC][RFC 19].
+
+[RFC 19]: https://github.com/rust-lang/rfcs/blob/master/text/0019-opt-in-builtin-traits.md
 "##,
 
 E0390: r##"
@@ -4120,7 +4146,6 @@ register_diagnostics! {
 //  E0068,
 //  E0085,
 //  E0086,
-    E0090,
     E0103, // @GuillaumeGomez: I was unable to get this error, try your best!
     E0104,
 //  E0123,
@@ -4187,4 +4212,5 @@ register_diagnostics! {
            // but `{}` was found in the type `{}`
     E0567, // auto traits can not have type parameters
     E0568, // auto-traits can not have predicates,
+    E0592, // duplicate definitions with name `{}`
 }

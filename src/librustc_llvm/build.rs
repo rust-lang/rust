@@ -131,10 +131,16 @@ fn main() {
         if is_crossed && flag.starts_with("-m") {
             continue;
         }
+
+        // -Wdate-time is not supported by the netbsd cross compiler
+        if is_crossed && target.contains("netbsd") && flag.contains("date-time") {
+            continue;
+        }
+
         cfg.flag(flag);
     }
 
-    for component in &components[..] {
+    for component in &components {
         let mut flag = String::from("-DLLVM_COMPONENT_");
         flag.push_str(&component.to_uppercase());
         cfg.flag(&flag);
@@ -167,7 +173,7 @@ fn main() {
     if !is_crossed {
         cmd.arg("--system-libs");
     }
-    cmd.args(&components[..]);
+    cmd.args(&components);
 
     for lib in output(&mut cmd).split_whitespace() {
         let name = if lib.starts_with("-l") {
@@ -211,6 +217,9 @@ fn main() {
     // hack around this by replacing the host triple with the target and pray
     // that those -L directories are the same!
     let mut cmd = Command::new(&llvm_config);
+    if let Some(link_arg) = llvm_link_arg {
+        cmd.arg(link_arg);
+    }
     cmd.arg("--ldflags");
     for lib in output(&mut cmd).split_whitespace() {
         if lib.starts_with("-LIBPATH:") {
@@ -227,16 +236,21 @@ fn main() {
         }
     }
 
-    // OpenBSD has a particular C++ runtime library name
+    let llvm_static_stdcpp = env::var_os("LLVM_STATIC_STDCPP");
+
     let stdcppname = if target.contains("openbsd") {
+        // OpenBSD has a particular C++ runtime library name
         "estdc++"
+    } else if target.contains("netbsd") && llvm_static_stdcpp.is_some() {
+        // NetBSD uses a separate library when relocation is required
+        "stdc++_pic"
     } else {
         "stdc++"
     };
 
     // C++ runtime library
     if !target.contains("msvc") {
-        if let Some(s) = env::var_os("LLVM_STATIC_STDCPP") {
+        if let Some(s) = llvm_static_stdcpp {
             assert!(!cxxflags.contains("stdlib=libc++"));
             let path = PathBuf::from(s);
             println!("cargo:rustc-link-search=native={}",
@@ -247,5 +261,11 @@ fn main() {
         } else {
             println!("cargo:rustc-link-lib={}", stdcppname);
         }
+    }
+
+    // LLVM requires symbols from this library, but apparently they're not printeds
+    // during llvm-config?
+    if target.contains("windows") {
+        println!("cargo:rustc-link-lib=ole32");
     }
 }

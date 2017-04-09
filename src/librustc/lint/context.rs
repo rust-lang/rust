@@ -40,13 +40,13 @@ use std::cmp;
 use std::default::Default as StdDefault;
 use std::mem;
 use std::fmt;
-use std::ops::Deref;
 use syntax::attr;
 use syntax::ast;
 use syntax::symbol::Symbol;
-use syntax_pos::{MultiSpan, Span};
+use syntax_pos::{DUMMY_SP, MultiSpan, Span};
 use errors::{self, Diagnostic, DiagnosticBuilder};
 use hir;
+use hir::def_id::LOCAL_CRATE;
 use hir::intravisit as hir_visit;
 use syntax::visit as ast_visit;
 
@@ -113,13 +113,19 @@ impl<'a, S: Into<MultiSpan>> IntoEarlyLint for (S, &'a str) {
         let (span, msg) = self;
         let mut diagnostic = Diagnostic::new(errors::Level::Warning, msg);
         diagnostic.set_span(span);
-        EarlyLint { id: id, diagnostic: diagnostic }
+        EarlyLint {
+            id: id,
+            diagnostic: diagnostic,
+        }
     }
 }
 
 impl IntoEarlyLint for Diagnostic {
     fn into_early_lint(self, id: LintId) -> EarlyLint {
-        EarlyLint { id: id, diagnostic: self }
+        EarlyLint {
+            id: id,
+            diagnostic: self,
+        }
     }
 }
 
@@ -146,7 +152,7 @@ enum TargetLint {
 
 enum FindLintError {
     NotFound,
-    Removed
+    Removed,
 }
 
 impl LintStore {
@@ -402,14 +408,14 @@ pub fn gather_attrs(attrs: &[ast::Attribute]) -> Vec<Result<(ast::Name, Level, S
 pub fn gather_attr(attr: &ast::Attribute) -> Vec<Result<(ast::Name, Level, Span), Span>> {
     let mut out = vec![];
 
-    let level = match Level::from_str(&attr.name().as_str()) {
+    let level = match attr.name().and_then(|name| Level::from_str(&name.as_str())) {
         None => return out,
         Some(lvl) => lvl,
     };
 
+    let meta = unwrap_or!(attr.meta(), return out);
     attr::mark_used(attr);
 
-    let meta = &attr.value;
     let metas = if let Some(metas) = meta.meta_item_list() {
         metas
     } else {
@@ -478,7 +484,7 @@ pub fn raw_struct_lint<'a, S>(sess: &'a Session,
                 Allow => bug!("earlier conditional return should handle Allow case")
             };
             let hyphen_case_lint_name = name.replace("_", "-");
-            if lint_flag_val.as_str().deref() == name {
+            if lint_flag_val.as_str() == name {
                 err.note(&format!("requested on the command line with `{} {}`",
                                   flag, hyphen_case_lint_name));
             } else {
@@ -489,7 +495,7 @@ pub fn raw_struct_lint<'a, S>(sess: &'a Session,
         },
         Node(lint_attr_name, src) => {
             def = Some(src);
-            if lint_attr_name.as_str().deref() != name {
+            if lint_attr_name.as_str() != name {
                 let level_str = level.as_str();
                 err.note(&format!("#[{}({})] implied by #[{}({})]",
                                   level_str, name, level_str, lint_attr_name));
@@ -1127,7 +1133,7 @@ enum CheckLintNameResult {
     NoLint,
     // The lint is either renamed or removed. This is the warning
     // message.
-    Warning(String)
+    Warning(String),
 }
 
 /// Checks the name of a lint for its existence, and whether it was
@@ -1225,9 +1231,10 @@ fn check_lint_name_cmdline(sess: &Session, lint_cx: &LintStore,
 /// Perform lint checking on a crate.
 ///
 /// Consumes the `lint_store` field of the `Session`.
-pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                             access_levels: &AccessLevels) {
+pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let _task = tcx.dep_graph.in_task(DepNode::LateLintCheck);
+
+    let access_levels = &ty::queries::privacy_access_levels::get(tcx, DUMMY_SP, LOCAL_CRATE);
 
     let krate = tcx.hir.krate();
 

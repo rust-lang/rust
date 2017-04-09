@@ -129,7 +129,7 @@ impl Command {
     // mutex, and then after the fork they unlock it.
     //
     // Despite this information, libnative's spawn has been witnessed to
-    // deadlock on both OSX and FreeBSD. I'm not entirely sure why, but
+    // deadlock on both macOS and FreeBSD. I'm not entirely sure why, but
     // all collected backtraces point at malloc/free traffic in the
     // child spawned process.
     //
@@ -193,7 +193,16 @@ impl Command {
             // need to clean things up now to avoid confusing the program
             // we're about to run.
             let mut set: libc::sigset_t = mem::uninitialized();
-            t!(cvt(libc::sigemptyset(&mut set)));
+            if cfg!(target_os = "android") {
+                // Implementing sigemptyset allow us to support older Android
+                // versions. See the comment about Android and sig* functions in
+                // process_common.rs
+                libc::memset(&mut set as *mut _ as *mut _,
+                             0,
+                             mem::size_of::<libc::sigset_t>());
+            } else {
+                t!(cvt(libc::sigemptyset(&mut set)));
+            }
             t!(cvt(libc::pthread_sigmask(libc::SIG_SETMASK, &set,
                                          ptr::null_mut())));
             let ret = sys::signal(libc::SIGPIPE, libc::SIG_DFL);

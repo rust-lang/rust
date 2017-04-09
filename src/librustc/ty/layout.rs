@@ -25,6 +25,7 @@ use std::cmp;
 use std::fmt;
 use std::i64;
 use std::iter;
+use std::ops::Deref;
 
 /// Parsed [Data layout](http://llvm.org/docs/LangRef.html#data-layout)
 /// for a target, which contains everything needed to compute layouts.
@@ -201,6 +202,16 @@ impl TargetDataLayout {
     }
 }
 
+pub trait HasDataLayout: Copy {
+    fn data_layout(&self) -> &TargetDataLayout;
+}
+
+impl<'a> HasDataLayout for &'a TargetDataLayout {
+    fn data_layout(&self) -> &TargetDataLayout {
+        self
+    }
+}
+
 /// Endianness of the target, which must match cfg(target-endian).
 #[derive(Copy, Clone)]
 pub enum Endian {
@@ -241,7 +252,9 @@ impl Size {
         Size::from_bytes((self.bytes() + mask) & !mask)
     }
 
-    pub fn checked_add(self, offset: Size, dl: &TargetDataLayout) -> Option<Size> {
+    pub fn checked_add<C: HasDataLayout>(self, offset: Size, cx: C) -> Option<Size> {
+        let dl = cx.data_layout();
+
         // Each Size is less than dl.obj_size_bound(), so the sum is
         // also less than 1 << 62 (and therefore can't overflow).
         let bytes = self.bytes() + offset.bytes();
@@ -253,7 +266,9 @@ impl Size {
         }
     }
 
-    pub fn checked_mul(self, count: u64, dl: &TargetDataLayout) -> Option<Size> {
+    pub fn checked_mul<C: HasDataLayout>(self, count: u64, cx: C) -> Option<Size> {
+        let dl = cx.data_layout();
+
         // Each Size is less than dl.obj_size_bound(), so the sum is
         // also less than 1 << 62 (and therefore can't overflow).
         match self.bytes().checked_mul(count) {
@@ -267,7 +282,7 @@ impl Size {
 
 /// Alignment of a type in bytes, both ABI-mandated and preferred.
 /// Since alignments are always powers of 2, we can pack both in one byte,
-/// giving each a nibble (4 bits) for a maximum alignment of 2^15 = 32768.
+/// giving each a nibble (4 bits) for a maximum alignment of 2<sup>15</sup> = 32768.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct Align {
     raw: u8
@@ -353,7 +368,9 @@ impl Integer {
         }
     }
 
-    pub fn align(&self, dl: &TargetDataLayout)-> Align {
+    pub fn align<C: HasDataLayout>(&self, cx: C) -> Align {
+        let dl = cx.data_layout();
+
         match *self {
             I1 => dl.i1_align,
             I8 => dl.i8_align,
@@ -407,7 +424,9 @@ impl Integer {
     }
 
     /// Find the smallest integer with the given alignment.
-    pub fn for_abi_align(dl: &TargetDataLayout, align: Align) -> Option<Integer> {
+    pub fn for_abi_align<C: HasDataLayout>(cx: C, align: Align) -> Option<Integer> {
+        let dl = cx.data_layout();
+
         let wanted = align.abi();
         for &candidate in &[I8, I16, I32, I64] {
             let ty = Int(candidate);
@@ -419,7 +438,9 @@ impl Integer {
     }
 
     /// Get the Integer type from an attr::IntType.
-    pub fn from_attr(dl: &TargetDataLayout, ity: attr::IntType) -> Integer {
+    pub fn from_attr<C: HasDataLayout>(cx: C, ity: attr::IntType) -> Integer {
+        let dl = cx.data_layout();
+
         match ity {
             attr::SignedInt(IntTy::I8) | attr::UnsignedInt(UintTy::U8) => I8,
             attr::SignedInt(IntTy::I16) | attr::UnsignedInt(UintTy::U16) => I16,
@@ -449,7 +470,7 @@ impl Integer {
         let min_default = I8;
 
         if let Some(ity) = repr.int {
-            let discr = Integer::from_attr(&tcx.data_layout, ity);
+            let discr = Integer::from_attr(tcx, ity);
             let fit = if ity.is_signed() { signed_fit } else { unsigned_fit };
             if discr < fit {
                 bug!("Integer::repr_discr: `#[repr]` hint too small for \
@@ -490,7 +511,9 @@ pub enum Primitive {
 }
 
 impl Primitive {
-    pub fn size(self, dl: &TargetDataLayout) -> Size {
+    pub fn size<C: HasDataLayout>(self, cx: C) -> Size {
+        let dl = cx.data_layout();
+
         match self {
             Int(I1) | Int(I8) => Size::from_bits(8),
             Int(I16) => Size::from_bits(16),
@@ -501,7 +524,9 @@ impl Primitive {
         }
     }
 
-    pub fn align(self, dl: &TargetDataLayout) -> Align {
+    pub fn align<C: HasDataLayout>(self, cx: C) -> Align {
+        let dl = cx.data_layout();
+
         match self {
             Int(I1) => dl.i1_align,
             Int(I8) => dl.i8_align,
@@ -681,8 +706,8 @@ impl<'a, 'gcx, 'tcx> Struct {
     }
 
     /// Determine whether a structure would be zero-sized, given its fields.
-    pub fn would_be_zero_sized<I>(dl: &TargetDataLayout, fields: I)
-                                  -> Result<bool, LayoutError<'gcx>>
+    fn would_be_zero_sized<I>(dl: &TargetDataLayout, fields: I)
+                              -> Result<bool, LayoutError<'gcx>>
     where I: Iterator<Item=Result<&'a Layout, LayoutError<'gcx>>> {
         for field in fields {
             let field = field?;
@@ -830,7 +855,7 @@ pub struct Union {
 }
 
 impl<'a, 'gcx, 'tcx> Union {
-    pub fn new(dl: &TargetDataLayout, packed: bool) -> Union {
+    fn new(dl: &TargetDataLayout, packed: bool) -> Union {
         Union {
             align: if packed { dl.i8_align } else { dl.aggregate_align },
             min_size: Size::from_bytes(0),
@@ -839,10 +864,10 @@ impl<'a, 'gcx, 'tcx> Union {
     }
 
     /// Extend the Struct with more fields.
-    pub fn extend<I>(&mut self, dl: &TargetDataLayout,
-                     fields: I,
-                     scapegoat: Ty<'gcx>)
-                     -> Result<(), LayoutError<'gcx>>
+    fn extend<I>(&mut self, dl: &TargetDataLayout,
+                 fields: I,
+                 scapegoat: Ty<'gcx>)
+                 -> Result<(), LayoutError<'gcx>>
     where I: Iterator<Item=Result<&'a Layout, LayoutError<'gcx>>> {
         for (index, field) in fields.enumerate() {
             let field = field?;
@@ -904,7 +929,8 @@ pub enum Layout {
         /// If true, the size is exact, otherwise it's only a lower bound.
         sized: bool,
         align: Align,
-        size: Size
+        element_size: Size,
+        count: u64
     },
 
     /// TyRawPtr or TyRef with a !Sized pointee.
@@ -1087,25 +1113,35 @@ impl<'a, 'gcx, 'tcx> Layout {
             // Arrays and slices.
             ty::TyArray(element, count) => {
                 let element = element.layout(infcx)?;
+                let element_size = element.size(dl);
+                // FIXME(eddyb) Don't use host `usize` for array lengths.
+                let usize_count: usize = count;
+                let count = usize_count as u64;
+                if element_size.checked_mul(count, dl).is_none() {
+                    return Err(LayoutError::SizeOverflow(ty));
+                }
                 Array {
                     sized: true,
                     align: element.align(dl),
-                    size: element.size(dl).checked_mul(count as u64, dl)
-                                 .map_or(Err(LayoutError::SizeOverflow(ty)), Ok)?
+                    element_size: element_size,
+                    count: count
                 }
             }
             ty::TySlice(element) => {
+                let element = element.layout(infcx)?;
                 Array {
                     sized: false,
-                    align: element.layout(infcx)?.align(dl),
-                    size: Size::from_bytes(0)
+                    align: element.align(dl),
+                    element_size: element.size(dl),
+                    count: 0
                 }
             }
             ty::TyStr => {
                 Array {
                     sized: false,
                     align: dl.i8_align,
-                    size: Size::from_bytes(0)
+                    element_size: Size::from_bytes(1),
+                    count: 0
                 }
             }
 
@@ -1440,20 +1476,30 @@ impl<'a, 'gcx, 'tcx> Layout {
         }
     }
 
-    pub fn size(&self, dl: &TargetDataLayout) -> Size {
+    pub fn size<C: HasDataLayout>(&self, cx: C) -> Size {
+        let dl = cx.data_layout();
+
         match *self {
             Scalar { value, .. } | RawNullablePointer { value, .. } => {
                 value.size(dl)
             }
 
             Vector { element, count } => {
-                let elem_size = element.size(dl);
-                let vec_size = match elem_size.checked_mul(count, dl) {
+                let element_size = element.size(dl);
+                let vec_size = match element_size.checked_mul(count, dl) {
                     Some(size) => size,
                     None => bug!("Layout::size({:?}): {} * {} overflowed",
-                                 self, elem_size.bytes(), count)
+                                 self, element_size.bytes(), count)
                 };
                 vec_size.abi_align(self.align(dl))
+            }
+
+            Array { element_size, count, .. } => {
+                match element_size.checked_mul(count, dl) {
+                    Some(size) => size,
+                    None => bug!("Layout::size({:?}): {} * {} overflowed",
+                                 self, element_size.bytes(), count)
+                }
             }
 
             FatPointer { metadata, .. } => {
@@ -1464,7 +1510,7 @@ impl<'a, 'gcx, 'tcx> Layout {
             }
 
             CEnum { discr, .. } => Int(discr).size(dl),
-            Array { size, .. } | General { size, .. } => size,
+            General { size, .. } => size,
             UntaggedUnion { ref variants } => variants.stride(),
 
             Univariant { ref variant, .. } |
@@ -1474,7 +1520,9 @@ impl<'a, 'gcx, 'tcx> Layout {
         }
     }
 
-    pub fn align(&self, dl: &TargetDataLayout) -> Align {
+    pub fn align<C: HasDataLayout>(&self, cx: C) -> Align {
+        let dl = cx.data_layout();
+
         match *self {
             Scalar { value, .. } | RawNullablePointer { value, .. } => {
                 value.align(dl)
@@ -1513,6 +1561,61 @@ impl<'a, 'gcx, 'tcx> Layout {
             }
         }
     }
+
+    pub fn field_offset<C: HasDataLayout>(&self,
+                                          cx: C,
+                                          i: usize,
+                                          variant_index: Option<usize>)
+                                          -> Size {
+        let dl = cx.data_layout();
+
+        match *self {
+            Scalar { .. } |
+            CEnum { .. } |
+            UntaggedUnion { .. } |
+            RawNullablePointer { .. } => {
+                Size::from_bytes(0)
+            }
+
+            Vector { element, count } => {
+                let element_size = element.size(dl);
+                let i = i as u64;
+                assert!(i < count);
+                Size::from_bytes(element_size.bytes() * count)
+            }
+
+            Array { element_size, count, .. } => {
+                let i = i as u64;
+                assert!(i < count);
+                Size::from_bytes(element_size.bytes() * count)
+            }
+
+            FatPointer { metadata, .. } => {
+                // Effectively a (ptr, meta) tuple.
+                assert!(i < 2);
+                if i == 0 {
+                    Size::from_bytes(0)
+                } else {
+                    Pointer.size(dl).abi_align(metadata.align(dl))
+                }
+            }
+
+            Univariant { ref variant, .. } => variant.offsets[i],
+
+            General { ref variants, .. } => {
+                let v = variant_index.expect("variant index required");
+                variants[v].offsets[i + 1]
+            }
+
+            StructWrappedNullablePointer { nndiscr, ref nonnull, .. } => {
+                if Some(nndiscr as usize) == variant_index {
+                    nonnull.offsets[i]
+                } else {
+                    Size::from_bytes(0)
+                }
+            }
+        }
+    }
 }
 
 /// Type size "skeleton", i.e. the only information determining a type's size.
@@ -1544,7 +1647,7 @@ impl<'a, 'gcx, 'tcx> SizeSkeleton<'gcx> {
         // First try computing a static layout.
         let err = match ty.layout(infcx) {
             Ok(layout) => {
-                return Ok(SizeSkeleton::Known(layout.size(&tcx.data_layout)));
+                return Ok(SizeSkeleton::Known(layout.size(tcx)));
             }
             Err(err) => err
         };
@@ -1656,5 +1759,194 @@ impl<'a, 'gcx, 'tcx> SizeSkeleton<'gcx> {
              SizeSkeleton::Pointer { tail: b, .. }) => a == b,
             _ => false
         }
+    }
+}
+
+/// A pair of a type and its layout. Implements various
+/// type traversal APIs (e.g. recursing into fields).
+#[derive(Copy, Clone, Debug)]
+pub struct TyLayout<'tcx> {
+    pub ty: Ty<'tcx>,
+    pub layout: &'tcx Layout,
+    pub variant_index: Option<usize>,
+}
+
+impl<'tcx> Deref for TyLayout<'tcx> {
+    type Target = Layout;
+    fn deref(&self) -> &Layout {
+        self.layout
+    }
+}
+
+pub trait HasTyCtxt<'tcx>: HasDataLayout {
+    fn tcx<'a>(&'a self) -> TyCtxt<'a, 'tcx, 'tcx>;
+}
+
+impl<'a, 'gcx, 'tcx> HasDataLayout for TyCtxt<'a, 'gcx, 'tcx> {
+    fn data_layout(&self) -> &TargetDataLayout {
+        &self.data_layout
+    }
+}
+
+impl<'a, 'gcx, 'tcx> HasTyCtxt<'gcx> for TyCtxt<'a, 'gcx, 'tcx> {
+    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'gcx> {
+        self.global_tcx()
+    }
+}
+
+impl<'a, 'gcx, 'tcx> HasDataLayout for &'a InferCtxt<'a, 'gcx, 'tcx> {
+    fn data_layout(&self) -> &TargetDataLayout {
+        &self.tcx.data_layout
+    }
+}
+
+impl<'a, 'gcx, 'tcx> HasTyCtxt<'gcx> for &'a InferCtxt<'a, 'gcx, 'tcx> {
+    fn tcx<'b>(&'b self) -> TyCtxt<'b, 'gcx, 'gcx> {
+        self.tcx.global_tcx()
+    }
+}
+
+pub trait LayoutTyper<'tcx>: HasTyCtxt<'tcx> {
+    type TyLayout;
+
+    fn layout_of(self, ty: Ty<'tcx>) -> Self::TyLayout;
+}
+
+impl<'a, 'gcx, 'tcx> LayoutTyper<'gcx> for &'a InferCtxt<'a, 'gcx, 'tcx> {
+    type TyLayout = Result<TyLayout<'gcx>, LayoutError<'gcx>>;
+
+    fn layout_of(self, ty: Ty<'gcx>) -> Self::TyLayout {
+        let ty = normalize_associated_type(self, ty);
+
+        Ok(TyLayout {
+            ty: ty,
+            layout: ty.layout(self)?,
+            variant_index: None
+        })
+    }
+}
+
+impl<'a, 'tcx> TyLayout<'tcx> {
+    pub fn for_variant(&self, variant_index: usize) -> Self {
+        TyLayout {
+            variant_index: Some(variant_index),
+            ..*self
+        }
+    }
+
+    pub fn field_offset<C: HasDataLayout>(&self, cx: C, i: usize) -> Size {
+        self.layout.field_offset(cx, i, self.variant_index)
+    }
+
+    pub fn field_count(&self) -> usize {
+        // Handle enum/union through the type rather than Layout.
+        if let ty::TyAdt(def, _) = self.ty.sty {
+            let v = self.variant_index.unwrap_or(0);
+            if def.variants.is_empty() {
+                assert_eq!(v, 0);
+                return 0;
+            } else {
+                return def.variants[v].fields.len();
+            }
+        }
+
+        match *self.layout {
+            Scalar { .. } => {
+                bug!("TyLayout::field_count({:?}): not applicable", self)
+            }
+
+            // Handled above (the TyAdt case).
+            CEnum { .. } |
+            General { .. } |
+            UntaggedUnion { .. } |
+            RawNullablePointer { .. } |
+            StructWrappedNullablePointer { .. } => bug!(),
+
+            FatPointer { .. } => 2,
+
+            Vector { count, .. } |
+            Array { count, .. } => {
+                let usize_count = count as usize;
+                assert_eq!(usize_count as u64, count);
+                usize_count
+            }
+
+            Univariant { ref variant, .. } => variant.offsets.len(),
+        }
+    }
+
+    pub fn field_type<C: HasTyCtxt<'tcx>>(&self, cx: C, i: usize) -> Ty<'tcx> {
+        let tcx = cx.tcx();
+
+        let ptr_field_type = |pointee: Ty<'tcx>| {
+            let slice = |element: Ty<'tcx>| {
+                assert!(i < 2);
+                if i == 0 {
+                    tcx.mk_mut_ptr(element)
+                } else {
+                    tcx.types.usize
+                }
+            };
+            match tcx.struct_tail(pointee).sty {
+                ty::TySlice(element) => slice(element),
+                ty::TyStr => slice(tcx.types.u8),
+                ty::TyDynamic(..) => tcx.mk_mut_ptr(tcx.mk_nil()),
+                _ => bug!("TyLayout::field_type({:?}): not applicable", self)
+            }
+        };
+
+        match self.ty.sty {
+            ty::TyBool |
+            ty::TyChar |
+            ty::TyInt(_) |
+            ty::TyUint(_) |
+            ty::TyFloat(_) |
+            ty::TyFnPtr(_) |
+            ty::TyNever |
+            ty::TyFnDef(..) |
+            ty::TyDynamic(..) => {
+                bug!("TyLayout::field_type({:?}): not applicable", self)
+            }
+
+            // Potentially-fat pointers.
+            ty::TyRef(_, ty::TypeAndMut { ty: pointee, .. }) |
+            ty::TyRawPtr(ty::TypeAndMut { ty: pointee, .. }) => {
+                ptr_field_type(pointee)
+            }
+            ty::TyAdt(def, _) if def.is_box() => {
+                ptr_field_type(self.ty.boxed_ty())
+            }
+
+            // Arrays and slices.
+            ty::TyArray(element, _) |
+            ty::TySlice(element) => element,
+            ty::TyStr => tcx.types.u8,
+
+            // Tuples and closures.
+            ty::TyClosure(def_id, ref substs) => {
+                substs.upvar_tys(def_id, tcx).nth(i).unwrap()
+            }
+
+            ty::TyTuple(tys, _) => tys[i],
+
+            // SIMD vector types.
+            ty::TyAdt(def, ..) if def.repr.simd => {
+                self.ty.simd_type(tcx)
+            }
+
+            // ADTs.
+            ty::TyAdt(def, substs) => {
+                def.variants[self.variant_index.unwrap_or(0)].fields[i].ty(tcx, substs)
+            }
+
+            ty::TyProjection(_) | ty::TyAnon(..) | ty::TyParam(_) |
+            ty::TyInfer(_) | ty::TyError => {
+                bug!("TyLayout::field_type: unexpected type `{}`", self.ty)
+            }
+        }
+    }
+
+    pub fn field<C: LayoutTyper<'tcx>>(&self, cx: C, i: usize) -> C::TyLayout {
+        cx.layout_of(self.field_type(cx, i))
     }
 }

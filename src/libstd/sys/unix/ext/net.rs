@@ -204,7 +204,7 @@ impl SocketAddr {
         let len = self.len as usize - sun_path_offset();
         let path = unsafe { mem::transmute::<&[libc::c_char], &[u8]>(&self.addr.sun_path) };
 
-        // OSX seems to return a len of 16 and a zeroed sun_path for unnamed addresses
+        // macOS seems to return a len of 16 and a zeroed sun_path for unnamed addresses
         if len == 0 || (cfg!(not(target_os = "linux")) && self.addr.sun_path[0] == 0) {
             AddressKind::Unnamed
         } else if self.addr.sun_path[0] == 0 {
@@ -375,12 +375,12 @@ impl UnixStream {
 
     /// Sets the read timeout for the socket.
     ///
-    /// If the provided value is [`None`], then [`read()`] calls will block
+    /// If the provided value is [`None`], then [`read`] calls will block
     /// indefinitely. It is an error to pass the zero [`Duration`] to this
     /// method.
     ///
     /// [`None`]: ../../../../std/option/enum.Option.html#variant.None
-    /// [`read()`]: ../../../../std/io/trait.Read.html#tymethod.read
+    /// [`read`]: ../../../../std/io/trait.Read.html#tymethod.read
     /// [`Duration`]: ../../../../std/time/struct.Duration.html
     ///
     /// # Examples
@@ -399,12 +399,12 @@ impl UnixStream {
 
     /// Sets the write timeout for the socket.
     ///
-    /// If the provided value is [`None`], then [`write()`] calls will block
+    /// If the provided value is [`None`], then [`write`] calls will block
     /// indefinitely. It is an error to pass the zero [`Duration`] to this
     /// method.
     ///
     /// [`None`]: ../../../../std/option/enum.Option.html#variant.None
-    /// [`read()`]: ../../../../std/io/trait.Write.html#tymethod.write
+    /// [`read`]: ../../../../std/io/trait.Write.html#tymethod.write
     /// [`Duration`]: ../../../../std/time/struct.Duration.html
     ///
     /// # Examples
@@ -641,7 +641,7 @@ impl UnixListener {
                 let inner = Socket::new_raw(libc::AF_UNIX, libc::SOCK_STREAM)?;
                 let (addr, len) = sockaddr_un(path)?;
 
-                cvt(libc::bind(*inner.as_inner(), &addr as *const _ as *const _, len))?;
+                cvt(libc::bind(*inner.as_inner(), &addr as *const _ as *const _, len as _))?;
                 cvt(libc::listen(*inner.as_inner(), 128))?;
 
                 Ok(UnixListener(inner))
@@ -920,7 +920,7 @@ impl UnixDatagram {
                 let socket = UnixDatagram::unbound()?;
                 let (addr, len) = sockaddr_un(path)?;
 
-                cvt(libc::bind(*socket.0.as_inner(), &addr as *const _ as *const _, len))?;
+                cvt(libc::bind(*socket.0.as_inner(), &addr as *const _ as *const _, len as _))?;
 
                 Ok(socket)
             }
@@ -974,12 +974,12 @@ impl UnixDatagram {
 
     /// Connects the socket to the specified address.
     ///
-    /// The [`send()`] method may be used to send data to the specified address.
-    /// [`recv()`] and [`recv_from()`] will only receive data from that address.
+    /// The [`send`] method may be used to send data to the specified address.
+    /// [`recv`] and [`recv_from`] will only receive data from that address.
     ///
-    /// [`send()`]: #method.send
-    /// [`recv()`]: #method.recv
-    /// [`recv_from()`]: #method.recv_from
+    /// [`send`]: #method.send
+    /// [`recv`]: #method.recv
+    /// [`recv_from`]: #method.recv_from
     ///
     /// # Examples
     ///
@@ -1047,9 +1047,9 @@ impl UnixDatagram {
 
     /// Returns the address of this socket's peer.
     ///
-    /// The [`connect()`] method will connect the socket to a peer.
+    /// The [`connect`] method will connect the socket to a peer.
     ///
-    /// [`connect()`]: #method.connect
+    /// [`connect`]: #method.connect
     ///
     /// # Examples
     ///
@@ -1178,13 +1178,13 @@ impl UnixDatagram {
 
     /// Sets the read timeout for the socket.
     ///
-    /// If the provided value is [`None`], then [`recv()`] and [`recv_from()`] calls will
+    /// If the provided value is [`None`], then [`recv`] and [`recv_from`] calls will
     /// block indefinitely. It is an error to pass the zero [`Duration`] to this
     /// method.
     ///
     /// [`None`]: ../../../../std/option/enum.Option.html#variant.None
-    /// [`recv()`]: #method.recv
-    /// [`recv_from()`]: #method.recv_from
+    /// [`recv`]: #method.recv
+    /// [`recv_from`]: #method.recv_from
     /// [`Duration`]: ../../../../std/time/struct.Duration.html
     ///
     /// # Examples
@@ -1203,13 +1203,13 @@ impl UnixDatagram {
 
     /// Sets the write timeout for the socket.
     ///
-    /// If the provided value is [`None`], then [`send()`] and [`send_to()`] calls will
+    /// If the provided value is [`None`], then [`send`] and [`send_to`] calls will
     /// block indefinitely. It is an error to pass the zero [`Duration`] to this
     /// method.
     ///
     /// [`None`]: ../../../../std/option/enum.Option.html#variant.None
-    /// [`send()`]: #method.send
-    /// [`send_to()`]: #method.send_to
+    /// [`send`]: #method.send
+    /// [`send_to`]: #method.send_to
     /// [`Duration`]: ../../../../std/time/struct.Duration.html
     ///
     /// # Examples

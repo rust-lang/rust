@@ -39,7 +39,7 @@ impl<M: DepTrackingMapConfig> DepTrackingMap<M> {
         DepTrackingMap {
             phantom: PhantomData,
             graph: graph,
-            map: FxHashMap()
+            map: FxHashMap(),
         }
     }
 
@@ -80,21 +80,6 @@ impl<M: DepTrackingMapConfig> DepTrackingMap<M> {
 
     pub fn keys(&self) -> Vec<M::Key> {
         self.map.keys().cloned().collect()
-    }
-
-    /// Append `elem` to the vector stored for `k`, creating a new vector if needed.
-    /// This is considered a write to `k`.
-    ///
-    /// NOTE: Caution is required when using this method. You should
-    /// be sure that nobody is **reading from the vector** while you
-    /// are writing to it. Eventually, it'd be nice to remove this.
-    pub fn push<E: Clone>(&mut self, k: M::Key, elem: E)
-        where M: DepTrackingMapConfig<Value=Vec<E>>
-    {
-        self.write(&k);
-        self.map.entry(k)
-                .or_insert(Vec::new())
-                .push(elem);
     }
 }
 

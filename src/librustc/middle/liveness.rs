@@ -516,14 +516,15 @@ struct Liveness<'a, 'tcx: 'a> {
     s: Specials,
     successors: Vec<LiveNode>,
     users: Vec<Users>,
-    // The list of node IDs for the nested loop scopes
-    // we're in.
-    loop_scope: Vec<NodeId>,
+
     // mappings from loop node ID to LiveNode
     // ("break" label should map to loop node ID,
     // it probably doesn't now)
     break_ln: NodeMap<LiveNode>,
-    cont_ln: NodeMap<LiveNode>
+    cont_ln: NodeMap<LiveNode>,
+
+    // mappings from node ID to LiveNode for "breakable" blocks-- currently only `catch {...}`
+    breakable_block_ln: NodeMap<LiveNode>,
 }
 
 impl<'a, 'tcx> Liveness<'a, 'tcx> {
@@ -550,9 +551,9 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             s: specials,
             successors: vec![invalid_node(); num_live_nodes],
             users: vec![invalid_users(); num_live_nodes * num_vars],
-            loop_scope: Vec::new(),
             break_ln: NodeMap(),
             cont_ln: NodeMap(),
+            breakable_block_ln: NodeMap(),
         }
     }
 
@@ -793,15 +794,17 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         debug!("compute: using id for body, {}", self.ir.tcx.hir.node_to_pretty_string(body.id));
 
         let exit_ln = self.s.exit_ln;
-        let entry_ln: LiveNode = self.with_loop_nodes(body.id, exit_ln, exit_ln, |this| {
-            // the fallthrough exit is only for those cases where we do not
-            // explicitly return:
-            let s = this.s;
-            this.init_from_succ(s.fallthrough_ln, s.exit_ln);
-            this.acc(s.fallthrough_ln, s.clean_exit_var, ACC_READ);
 
-            this.propagate_through_expr(body, s.fallthrough_ln)
-        });
+        self.break_ln.insert(body.id, exit_ln);
+        self.cont_ln.insert(body.id, exit_ln);
+
+        // the fallthrough exit is only for those cases where we do not
+        // explicitly return:
+        let s = self.s;
+        self.init_from_succ(s.fallthrough_ln, s.exit_ln);
+        self.acc(s.fallthrough_ln, s.clean_exit_var, ACC_READ);
+
+        let entry_ln = self.propagate_through_expr(body, s.fallthrough_ln);
 
         // hack to skip the loop unless debug! is enabled:
         debug!("^^ liveness computation results for body {} (entry={:?})",
@@ -818,6 +821,9 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
     fn propagate_through_block(&mut self, blk: &hir::Block, succ: LiveNode)
                                -> LiveNode {
+        if blk.targeted_by_break {
+            self.breakable_block_ln.insert(blk.id, succ);
+        }
         let succ = self.propagate_through_opt_expr(blk.expr.as_ref().map(|e| &**e), succ);
         blk.stmts.iter().rev().fold(succ, |succ, stmt| {
             self.propagate_through_stmt(stmt, succ)
@@ -901,30 +907,32 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
           }
 
           hir::ExprClosure(.., blk_id, _) => {
-              debug!("{} is an ExprClosure",
-                     self.ir.tcx.hir.node_to_pretty_string(expr.id));
+              debug!("{} is an ExprClosure", self.ir.tcx.hir.node_to_pretty_string(expr.id));
 
               /*
               The next-node for a break is the successor of the entire
               loop. The next-node for a continue is the top of this loop.
               */
               let node = self.live_node(expr.id, expr.span);
-              self.with_loop_nodes(blk_id.node_id, succ, node, |this| {
 
-                 // the construction of a closure itself is not important,
-                 // but we have to consider the closed over variables.
-                 let caps = match this.ir.capture_info_map.get(&expr.id) {
-                    Some(caps) => caps.clone(),
-                    None => {
-                        span_bug!(expr.span, "no registered caps");
-                     }
-                 };
-                 caps.iter().rev().fold(succ, |succ, cap| {
-                     this.init_from_succ(cap.ln, succ);
-                     let var = this.variable(cap.var_nid, expr.span);
-                     this.acc(cap.ln, var, ACC_READ | ACC_USE);
-                     cap.ln
-                 })
+              let break_ln = succ;
+              let cont_ln = node;
+              self.break_ln.insert(blk_id.node_id, break_ln);
+              self.cont_ln.insert(blk_id.node_id, cont_ln);
+
+              // the construction of a closure itself is not important,
+              // but we have to consider the closed over variables.
+              let caps = match self.ir.capture_info_map.get(&expr.id) {
+                  Some(caps) => caps.clone(),
+                  None => {
+                      span_bug!(expr.span, "no registered caps");
+                  }
+              };
+              caps.iter().rev().fold(succ, |succ, cap| {
+                  self.init_from_succ(cap.ln, succ);
+                  let var = self.variable(cap.var_nid, expr.span);
+                  self.acc(cap.ln, var, ACC_READ | ACC_USE);
+                  cap.ln
               })
           }
 
@@ -943,7 +951,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             //   (  succ  )
             //
             let else_ln = self.propagate_through_opt_expr(els.as_ref().map(|e| &**e), succ);
-            let then_ln = self.propagate_through_block(&then, succ);
+            let then_ln = self.propagate_through_expr(&then, succ);
             let ln = self.live_node(expr.id, expr.span);
             self.init_from_succ(ln, else_ln);
             self.merge_from_succ(ln, then_ln, false);
@@ -1003,27 +1011,32 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
           hir::ExprBreak(label, ref opt_expr) => {
               // Find which label this break jumps to
-              let sc = match label.loop_id.into() {
-                  Ok(loop_id) => loop_id,
-                  Err(err) => span_bug!(expr.span, "loop scope error: {}", err),
-              };
+              let target = match label.target_id {
+                    hir::ScopeTarget::Block(node_id) =>
+                        self.breakable_block_ln.get(&node_id),
+                    hir::ScopeTarget::Loop(hir::LoopIdResult::Ok(node_id)) =>
+                        self.break_ln.get(&node_id),
+                    hir::ScopeTarget::Loop(hir::LoopIdResult::Err(err)) =>
+                        span_bug!(expr.span, "loop scope error: {}", err),
+              }.map(|x| *x);
 
               // Now that we know the label we're going to,
               // look it up in the break loop nodes table
 
-              match self.break_ln.get(&sc) {
-                  Some(&b) => self.propagate_through_opt_expr(opt_expr.as_ref().map(|e| &**e), b),
+              match target {
+                  Some(b) => self.propagate_through_opt_expr(opt_expr.as_ref().map(|e| &**e), b),
                   None => span_bug!(expr.span, "break to unknown label")
               }
           }
 
           hir::ExprAgain(label) => {
               // Find which label this expr continues to
-              let sc = match label.loop_id.into() {
-                  Ok(loop_id) => loop_id,
-                  Err(err) => span_bug!(expr.span, "loop scope error: {}", err),
+              let sc = match label.target_id {
+                    hir::ScopeTarget::Block(_) => bug!("can't `continue` to a non-loop block"),
+                    hir::ScopeTarget::Loop(hir::LoopIdResult::Ok(node_id)) => node_id,
+                    hir::ScopeTarget::Loop(hir::LoopIdResult::Err(err)) =>
+                        span_bug!(expr.span, "loop scope error: {}", err),
               };
-
 
               // Now that we know the label we're going to,
               // look it up in the continue loop nodes table
@@ -1287,14 +1300,16 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         debug!("propagate_through_loop: using id for loop body {} {}",
                expr.id, self.ir.tcx.hir.node_to_pretty_string(body.id));
 
-        let (cond_ln, body_ln) = self.with_loop_nodes(expr.id, succ, ln, |this| {
-            let cond_ln = match kind {
-                LoopLoop => ln,
-                WhileLoop(ref cond) => this.propagate_through_expr(&cond, ln),
-            };
-            let body_ln = this.propagate_through_block(body, cond_ln);
-            (cond_ln, body_ln)
-        });
+        let break_ln = succ;
+        let cont_ln = ln;
+        self.break_ln.insert(expr.id, break_ln);
+        self.cont_ln.insert(expr.id, cont_ln);
+
+        let cond_ln = match kind {
+            LoopLoop => ln,
+            WhileLoop(ref cond) => self.propagate_through_expr(&cond, ln),
+        };
+        let body_ln = self.propagate_through_block(body, cond_ln);
 
         // repeat until fixed point is reached:
         while self.merge_from_succ(ln, body_ln, first_merge) {
@@ -1307,28 +1322,10 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                 }
             };
             assert!(cond_ln == new_cond_ln);
-            assert!(body_ln == self.with_loop_nodes(expr.id, succ, ln,
-            |this| this.propagate_through_block(body, cond_ln)));
+            assert!(body_ln == self.propagate_through_block(body, cond_ln));
         }
 
         cond_ln
-    }
-
-    fn with_loop_nodes<R, F>(&mut self,
-                             loop_node_id: NodeId,
-                             break_ln: LiveNode,
-                             cont_ln: LiveNode,
-                             f: F)
-                             -> R where
-        F: FnOnce(&mut Liveness<'a, 'tcx>) -> R,
-    {
-        debug!("with_loop_nodes: {} {}", loop_node_id, break_ln.get());
-        self.loop_scope.push(loop_node_id);
-        self.break_ln.insert(loop_node_id, break_ln);
-        self.cont_ln.insert(loop_node_id, cont_ln);
-        let r = f(self);
-        self.loop_scope.pop();
-        r
     }
 }
 

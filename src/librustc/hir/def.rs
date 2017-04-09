@@ -12,6 +12,7 @@ use hir::def_id::DefId;
 use util::nodemap::NodeMap;
 use syntax::ast;
 use syntax::ext::base::MacroKind;
+use syntax_pos::Span;
 use hir;
 
 #[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
@@ -116,6 +117,7 @@ pub type ExportMap = NodeMap<Vec<Export>>;
 pub struct Export {
     pub name: ast::Name, // The name of the target.
     pub def: Def, // The definition of the target.
+    pub span: Span, // The span of the target definition.
 }
 
 impl CtorKind {

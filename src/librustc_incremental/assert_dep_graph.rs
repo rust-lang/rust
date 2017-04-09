@@ -52,13 +52,13 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::{Direction, INCOMING, OUTGOING, NodeIndex};
 use rustc::hir;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
+use rustc::ich::{ATTR_IF_THIS_CHANGED, ATTR_THEN_THIS_WOULD_NEED};
 use graphviz::IntoCow;
 use std::env;
 use std::fs::File;
 use std::io::Write;
 use syntax::ast;
 use syntax_pos::Span;
-use {ATTR_IF_THIS_CHANGED, ATTR_THEN_THIS_WOULD_NEED};
 
 pub fn assert_dep_graph<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let _ignore = tcx.dep_graph.in_ignore();

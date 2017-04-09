@@ -202,7 +202,7 @@ impl DiagnosticSpan {
         // backtrace ourselves, but the `macro_backtrace` helper makes
         // some decision, such as dropping some frames, and I don't
         // want to duplicate that logic here.
-        let backtrace = je.cm.macro_backtrace(span).into_iter();
+        let backtrace = span.macro_backtrace().into_iter();
         DiagnosticSpan::from_span_full(span,
                                        is_primary,
                                        label,

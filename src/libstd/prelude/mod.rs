@@ -56,14 +56,14 @@
 //!   traits indicate fundamental properties of types.
 //! * [`std::ops`]::{[`Drop`], [`Fn`], [`FnMut`], [`FnOnce`]}. Various
 //!   operations for both destructors and overloading `()`.
-//! * [`std::mem`]::[`drop`], a convenience function for explicitly dropping a
-//!   value.
+//! * [`std::mem`]::[`drop`][`mem::drop`], a convenience function for explicitly
+//!   dropping a value.
 //! * [`std::boxed`]::[`Box`], a way to allocate values on the heap.
 //! * [`std::borrow`]::[`ToOwned`], The conversion trait that defines
-//!   [`to_owned()`], the generic method for creating an owned type from a
+//!   [`to_owned`], the generic method for creating an owned type from a
 //!   borrowed type.
-//! * [`std::clone`]::[`Clone`], the ubiquitous trait that defines [`clone()`],
-//!   the method for producing a copy of a value.
+//! * [`std::clone`]::[`Clone`], the ubiquitous trait that defines
+//!   [`clone`][`Clone::clone`], the method for producing a copy of a value.
 //! * [`std::cmp`]::{[`PartialEq`], [`PartialOrd`], [`Eq`], [`Ord`] }. The
 //!   comparison traits, which implement the comparison operators and are often
 //!   seen in trait bounds.
@@ -117,8 +117,8 @@
 //! [`ToOwned`]: ../borrow/trait.ToOwned.html
 //! [`ToString`]: ../string/trait.ToString.html
 //! [`Vec`]: ../vec/struct.Vec.html
-//! [`clone()`]: ../clone/trait.Clone.html#tymethod.clone
-//! [`drop`]: ../mem/fn.drop.html
+//! [`Clone::clone`]: ../clone/trait.Clone.html#tymethod.clone
+//! [`mem::drop`]: ../mem/fn.drop.html
 //! [`std::borrow`]: ../borrow/index.html
 //! [`std::boxed`]: ../boxed/index.html
 //! [`std::clone`]: ../clone/index.html
@@ -135,7 +135,7 @@
 //! [`std::slice`]: ../slice/index.html
 //! [`std::string`]: ../string/index.html
 //! [`std::vec`]: ../vec/index.html
-//! [`to_owned()`]: ../borrow/trait.ToOwned.html#tymethod.to_owned
+//! [`to_owned`]: ../borrow/trait.ToOwned.html#tymethod.to_owned
 //! [book-closures]: ../../book/closures.html
 //! [book-dtor]: ../../book/drop.html
 //! [book-enums]: ../../book/enums.html

@@ -65,7 +65,7 @@ pub fn check(build: &mut Build) {
 
     // If we've got a git directory we're gona need git to update
     // submodules and learn about various other aspects.
-    if fs::metadata(build.src.join(".git")).is_ok() {
+    if build.src_is_git {
         need_cmd("git".as_ref());
     }
 
@@ -151,10 +151,10 @@ pub fn check(build: &mut Build) {
     }
 
     for target in build.config.target.iter() {
-        // Can't compile for iOS unless we're on OSX
+        // Can't compile for iOS unless we're on macOS
         if target.contains("apple-ios") &&
            !build.config.build.contains("apple-darwin") {
-            panic!("the iOS target is only supported on OSX");
+            panic!("the iOS target is only supported on macOS");
         }
 
         // Make sure musl-root is valid if specified

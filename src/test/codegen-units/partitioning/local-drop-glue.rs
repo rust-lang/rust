@@ -16,8 +16,7 @@
 #![allow(dead_code)]
 #![crate_type="lib"]
 
-//~ TRANS_ITEM drop-glue local_drop_glue::Struct[0] @@ local_drop_glue[Internal] local_drop_glue-mod1[Internal]
-//~ TRANS_ITEM drop-glue-contents local_drop_glue::Struct[0] @@ local_drop_glue[Internal] local_drop_glue-mod1[Internal]
+//~ TRANS_ITEM fn core::ptr[0]::drop_in_place[0]<local_drop_glue::Struct[0]> @@ local_drop_glue[Internal] local_drop_glue-mod1[Internal]
 struct Struct {
     _a: u32
 }
@@ -27,7 +26,7 @@ impl Drop for Struct {
     fn drop(&mut self) {}
 }
 
-//~ TRANS_ITEM drop-glue local_drop_glue::Outer[0] @@ local_drop_glue[Internal]
+//~ TRANS_ITEM fn core::ptr[0]::drop_in_place[0]<local_drop_glue::Outer[0]> @@ local_drop_glue[Internal]
 struct Outer {
     _a: Struct
 }
@@ -46,10 +45,10 @@ mod mod1
 {
     use super::Struct;
 
-    //~ TRANS_ITEM drop-glue local_drop_glue::mod1[0]::Struct2[0] @@ local_drop_glue-mod1[Internal]
+    //~ TRANS_ITEM fn core::ptr[0]::drop_in_place[0]<local_drop_glue::mod1[0]::Struct2[0]> @@ local_drop_glue-mod1[Internal]
     struct Struct2 {
         _a: Struct,
-        //~ TRANS_ITEM drop-glue (u32, local_drop_glue::Struct[0]) @@ local_drop_glue-mod1[Internal]
+        //~ TRANS_ITEM fn core::ptr[0]::drop_in_place[0]<(u32, local_drop_glue::Struct[0])> @@ local_drop_glue-mod1[Internal]
         _b: (u32, Struct),
     }
 

@@ -47,13 +47,12 @@ use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir::intravisit;
+use rustc::ich::{Fingerprint, ATTR_DIRTY, ATTR_CLEAN, ATTR_DIRTY_METADATA,
+                 ATTR_CLEAN_METADATA};
 use syntax::ast::{self, Attribute, NestedMetaItem};
 use rustc_data_structures::fx::{FxHashSet, FxHashMap};
 use syntax_pos::Span;
 use rustc::ty::TyCtxt;
-use ich::Fingerprint;
-
-use {ATTR_DIRTY, ATTR_CLEAN, ATTR_DIRTY_METADATA, ATTR_CLEAN_METADATA};
 
 const LABEL: &'static str = "label";
 const CFG: &'static str = "cfg";
@@ -104,9 +103,9 @@ pub struct DirtyCleanVisitor<'a, 'tcx:'a> {
 
 impl<'a, 'tcx> DirtyCleanVisitor<'a, 'tcx> {
     fn dep_node(&self, attr: &Attribute, def_id: DefId) -> DepNode<DefId> {
-        for item in attr.meta_item_list().unwrap_or(&[]) {
+        for item in attr.meta_item_list().unwrap_or_else(Vec::new) {
             if item.check_name(LABEL) {
-                let value = expect_associated_value(self.tcx, item);
+                let value = expect_associated_value(self.tcx, &item);
                 match DepNode::from_label_string(&value.as_str(), def_id) {
                     Ok(def_id) => return def_id,
                     Err(()) => {
@@ -331,9 +330,9 @@ fn check_config(tcx: TyCtxt, attr: &Attribute) -> bool {
     debug!("check_config(attr={:?})", attr);
     let config = &tcx.sess.parse_sess.config;
     debug!("check_config: config={:?}", config);
-    for item in attr.meta_item_list().unwrap_or(&[]) {
+    for item in attr.meta_item_list().unwrap_or_else(Vec::new) {
         if item.check_name(CFG) {
-            let value = expect_associated_value(tcx, item);
+            let value = expect_associated_value(tcx, &item);
             debug!("check_config: searching for cfg {:?}", value);
             return config.contains(&(value, None));
         }

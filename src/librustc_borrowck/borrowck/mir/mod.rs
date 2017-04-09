@@ -16,12 +16,13 @@ use syntax_pos::DUMMY_SP;
 use rustc::mir::{self, BasicBlock, BasicBlockData, Mir, Statement, Terminator, Location};
 use rustc::session::Session;
 use rustc::ty::{self, TyCtxt};
+use rustc_mir::util::elaborate_drops::DropFlagState;
+use rustc_data_structures::indexed_set::{IdxSet, IdxSetBuf};
 
 mod abs_domain;
 pub mod elaborate_drops;
 mod dataflow;
 mod gather_moves;
-mod patch;
 // mod graphviz;
 
 use self::dataflow::{BitDenotation};
@@ -64,14 +65,18 @@ pub fn borrowck_mir(bcx: &mut BorrowckCtxt,
     let param_env = ty::ParameterEnvironment::for_item(tcx, id);
     let move_data = MoveData::gather_moves(mir, tcx, &param_env);
     let mdpe = MoveDataParamEnv { move_data: move_data, param_env: param_env };
+    let dead_unwinds = IdxSetBuf::new_empty(mir.basic_blocks().len());
     let flow_inits =
-        do_dataflow(tcx, mir, id, attributes, MaybeInitializedLvals::new(tcx, mir, &mdpe),
+        do_dataflow(tcx, mir, id, attributes, &dead_unwinds,
+                    MaybeInitializedLvals::new(tcx, mir, &mdpe),
                     |bd, i| &bd.move_data().move_paths[i]);
     let flow_uninits =
-        do_dataflow(tcx, mir, id, attributes, MaybeUninitializedLvals::new(tcx, mir, &mdpe),
+        do_dataflow(tcx, mir, id, attributes, &dead_unwinds,
+                    MaybeUninitializedLvals::new(tcx, mir, &mdpe),
                     |bd, i| &bd.move_data().move_paths[i]);
     let flow_def_inits =
-        do_dataflow(tcx, mir, id, attributes, DefinitelyInitializedLvals::new(tcx, mir, &mdpe),
+        do_dataflow(tcx, mir, id, attributes, &dead_unwinds,
+                    DefinitelyInitializedLvals::new(tcx, mir, &mdpe),
                     |bd, i| &bd.move_data().move_paths[i]);
 
     if has_rustc_mir_with(attributes, "rustc_peek_maybe_init").is_some() {
@@ -108,6 +113,7 @@ fn do_dataflow<'a, 'tcx, BD, P>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                 mir: &Mir<'tcx>,
                                 node_id: ast::NodeId,
                                 attributes: &[ast::Attribute],
+                                dead_unwinds: &IdxSet<BasicBlock>,
                                 bd: BD,
                                 p: P)
                                 -> DataflowResults<BD>
@@ -137,7 +143,7 @@ fn do_dataflow<'a, 'tcx, BD, P>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         node_id: node_id,
         print_preflow_to: print_preflow_to,
         print_postflow_to: print_postflow_to,
-        flow_state: DataflowAnalysis::new(tcx, mir, bd),
+        flow_state: DataflowAnalysis::new(tcx, mir, dead_unwinds, bd),
     };
 
     mbcx.dataflow(p);
@@ -180,21 +186,6 @@ impl<'b, 'a: 'b, 'tcx: 'a> MirBorrowckCtxt<'b, 'a, 'tcx> {
 
     fn process_terminator(&mut self, bb: BasicBlock, term: &Option<Terminator<'tcx>>) {
         debug!("MirBorrowckCtxt::process_terminator({:?}, {:?})", bb, term);
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, Copy, Clone)]
-enum DropFlagState {
-    Present, // i.e. initialized
-    Absent, // i.e. deinitialized or "moved"
-}
-
-impl DropFlagState {
-    fn value(self) -> bool {
-        match self {
-            DropFlagState::Present => true,
-            DropFlagState::Absent => false
-        }
     }
 }
 
@@ -316,6 +307,27 @@ fn on_all_children_bits<'a, 'tcx, F>(
         }
     }
     on_all_children_bits(tcx, mir, move_data, move_path_index, &mut each_child);
+}
+
+fn on_all_drop_children_bits<'a, 'tcx, F>(
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    mir: &Mir<'tcx>,
+    ctxt: &MoveDataParamEnv<'tcx>,
+    path: MovePathIndex,
+    mut each_child: F)
+    where F: FnMut(MovePathIndex)
+{
+    on_all_children_bits(tcx, mir, &ctxt.move_data, path, |child| {
+        let lvalue = &ctxt.move_data.move_paths[path].lvalue;
+        let ty = lvalue.ty(mir, tcx).to_ty(tcx);
+        debug!("on_all_drop_children_bits({:?}, {:?} : {:?})", path, lvalue, ty);
+
+        if tcx.type_needs_drop_given_env(ty, &ctxt.param_env) {
+            each_child(child);
+        } else {
+            debug!("on_all_drop_children_bits - skipping")
+        }
+    })
 }
 
 fn drop_flag_effects_for_function_entry<'a, 'tcx, F>(

@@ -29,12 +29,11 @@
 #![feature(conservative_impl_trait)]
 #![feature(const_fn)]
 #![feature(core_intrinsics)]
-#![cfg_attr(stage0,feature(field_init_shorthand))]
 #![feature(i128_type)]
 #![feature(libc)]
 #![feature(loop_break_value)]
 #![feature(nonzero)]
-#![feature(pub_restricted)]
+#![cfg_attr(stage0, feature(pub_restricted))]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
@@ -42,6 +41,7 @@
 #![feature(specialization)]
 #![feature(staged_api)]
 #![feature(unboxed_closures)]
+#![feature(discriminant_value)]
 
 extern crate arena;
 extern crate core;
@@ -72,6 +72,7 @@ pub mod diagnostics;
 pub mod cfg;
 pub mod dep_graph;
 pub mod hir;
+pub mod ich;
 pub mod infer;
 pub mod lint;
 
