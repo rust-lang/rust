@@ -89,7 +89,7 @@ impl Span {
     /// Returns a new span representing the next character after the end-point of this span
     pub fn next_point(self) -> Span {
         let lo = cmp::max(self.hi.0, self.lo.0 + 1);
-        Span { lo: BytePos(lo), hi: BytePos(lo + 1), ..self }
+        Span { lo: BytePos(lo), hi: BytePos(lo), ..self }
     }
 
     /// Returns `self` if `self` is not the dummy span, and `other` otherwise.
