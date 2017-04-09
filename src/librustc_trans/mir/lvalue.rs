@@ -9,7 +9,8 @@
 // except according to those terms.
 
 use llvm::ValueRef;
-use rustc::ty::{self, layout, Ty, TypeFoldable};
+use rustc::ty::{self, Ty, TypeFoldable};
+use rustc::ty::layout::{self, LayoutTyper};
 use rustc::mir;
 use rustc::mir::tcx::LvalueTy;
 use rustc_data_structures::indexed_vec::Idx;
