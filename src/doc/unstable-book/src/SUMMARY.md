@@ -12,6 +12,7 @@
 - [alloc_system](alloc-system.md)
 - [allocator](allocator.md)
 - [allow_internal_unstable](allow-internal-unstable.md)
+- [as_c_str](as-c-str.md)
 - [as_unsafe_cell](as-unsafe-cell.md)
 - [ascii_ctype](ascii-ctype.md)
 - [asm](asm.md)
