@@ -345,30 +345,6 @@ pub trait BitDenotation {
                          sets: &mut BlockSets<Self::Idx>,
                          bb: mir::Block,
                          idx_term: usize);
-
-    /// Mutates the block-sets according to the (flow-dependent)
-    /// effect of a successful return from a Call terminator.
-    ///
-    /// If basic-block BB_x ends with a call-instruction that, upon
-    /// successful return, flows to BB_y, then this method will be
-    /// called on the exit flow-state of BB_x in order to set up the
-    /// entry flow-state of BB_y.
-    ///
-    /// This is used, in particular, as a special case during the
-    /// "propagate" loop where all of the basic blocks are repeatedly
-    /// visited. Since the effects of a Call terminator are
-    /// flow-dependent, the current MIR cannot encode them via just
-    /// GEN and KILL sets attached to the block, and so instead we add
-    /// this extra machinery to represent the flow-dependent effect.
-    ///
-    /// FIXME: Right now this is a bit of a wart in the API. It might
-    /// be better to represent this as an additional gen- and
-    /// kill-sets associated with each edge coming out of the basic
-    /// block.
-    fn propagate_call_return(&self,
-                             in_out: &mut IdxSet<Self::Idx>,
-                             call_bb: mir::Block,
-                             dest_lval: &mir::Lvalue);
 }
 
 impl<'a, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D>
@@ -431,21 +407,66 @@ impl<'a, 'tcx: 'a, D> DataflowAnalysis<'a, 'tcx, D>
         &mut self,
         in_out: &mut IdxSet<D::Idx>,
         changed: &mut bool,
-        (bb, bb_data): (mir::Block, &mir::BlockData))
+        (_, bb_data): (mir::Block, &mir::BlockData))
     {
-        for succ in self.mir.successors_for(bb).iter() {
-            self.propagate_bits_into_entry_set_for(in_out, changed, succ);
+        match bb_data.terminator().kind {
+            mir::TerminatorKind::Return |
+            mir::TerminatorKind::Resume |
+            mir::TerminatorKind::Unreachable => {}
+            mir::TerminatorKind::Goto { ref target } |
+            mir::TerminatorKind::Drop { ref target, location: _, unwind: None } |
+            mir::TerminatorKind::DropAndReplace {
+                ref target, value: _, location: _, unwind: None
+            } => {
+                self.propagate_bits_into_entry_set_for(in_out, changed, target);
+            }
+            mir::TerminatorKind::Drop { ref target, location: _, unwind: Some(ref unwind) } |
+            mir::TerminatorKind::DropAndReplace {
+                ref target, value: _, location: _, unwind: Some(ref unwind)
+            } => {
+                self.propagate_bits_into_entry_set_for(in_out, changed, target);
+                self.propagate_bits_into_entry_set_for(in_out, changed, unwind);
+            }
+            mir::TerminatorKind::SwitchInt { ref targets, .. } => {
+                for target in targets {
+                    self.propagate_bits_into_entry_set_for(in_out, changed, target);
+                }
+            }
+        }
+
+        for stmt in &bb_data.statements {
+            match stmt.kind {
+                mir::StatementKind::Assert { ref cleanup, .. } => {
+                    if let Some(ref unwind) = *cleanup {
+                        self.propagate_bits_into_entry_set_for(in_out, changed, unwind);
+                    }
+                }
+                _ => {}
+            }
         }
 
         // FIXME(simulacrum): Handle calls in EBBs
-        if let (
-            Some(&mir::StatementKind::Call { ref destination, .. }),
-            &mir::TerminatorKind::Goto { .. }
-        ) = (bb_data.statements.last().map(|s| &s.kind), &bb_data.terminator().kind) {
-            // FIXME(simulacrum): This NB is potentially needless.
-            // N.B.: This must be done *last*, after all other
-            // propagation, as documented in comment above.
-            self.flow_state.operator.propagate_call_return(in_out, bb, destination);
+        let count = bb_data.statements.iter().filter(|s| match s.kind {
+            mir::StatementKind::Call { .. } => true,
+            _ => false,
+        }).count();
+        if let Some(&mir::StatementKind::Call { .. }) = bb_data.statements.last().map(|s| &s.kind) {
+            assert_eq!(count, 1);
+        } else {
+            assert_eq!(count, 0);
+        }
+        if let
+            Some(&mir::StatementKind::Call { destination: _, ref cleanup, func: _, args: _ })
+        = bb_data.statements.last().map(|s| &s.kind) {
+            if let Some(ref unwind) = *cleanup {
+                    self.propagate_bits_into_entry_set_for(in_out, changed, unwind);
+            }
+            if let mir::TerminatorKind::Goto { .. } = bb_data.terminator().kind {
+                // FIXME(simulacrum): This NB is potentially needless.
+                // N.B.: This must be done *last*, after all other
+                // propagation, as documented in comment above.
+                //self.flow_state.operator.propagate_call_return(in_out, bb, destination);
+            }
         }
     }
 

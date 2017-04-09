@@ -355,6 +355,7 @@ fn drop_flag_effects_for_location<'a, 'tcx, F>(
             mir::StatementKind::SetDiscriminant{ .. } => {
                 span_bug!(stmt.source_info.span, "SetDiscrimant should not exist during borrowck");
             }
+            mir::StatementKind::Call { destination: ref lvalue, .. } |
             mir::StatementKind::Assign(ref lvalue, _) => {
                 debug!("drop_flag_effects: assignment {:?}", stmt);
                  on_lookup_result_bits(tcx, mir, move_data,
@@ -365,7 +366,6 @@ fn drop_flag_effects_for_location<'a, 'tcx, F>(
             mir::StatementKind::StorageDead(_) |
             mir::StatementKind::InlineAsm { .. } |
             mir::StatementKind::Assert { .. } |
-            mir::StatementKind::Call { .. } |
             mir::StatementKind::Nop => {}
         },
         None => {

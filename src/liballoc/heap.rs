@@ -130,7 +130,7 @@ pub const EMPTY: *mut () = 0x1 as *mut ();
 // This function must not unwind. If it does, MIR trans will fail.
 #[cfg(not(test))]
 #[lang = "exchange_malloc"]
-#[inline]
+#[inline(never)]
 unsafe fn exchange_malloc(size: usize, align: usize) -> *mut u8 {
     if size == 0 {
         EMPTY as *mut u8
