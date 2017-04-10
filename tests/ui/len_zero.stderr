@@ -32,9 +32,7 @@ error: item `HasIsEmpty` has a public `len` method but a private `is_empty` meth
 90 | |     pub fn len(self: &Self) -> isize {
 91 | |         1
 92 | |     }
-93 | |
-94 | |     fn is_empty(self: &Self) -> bool {
-95 | |         false
+...  |
 96 | |     }
 97 | | }
    | |_^ ...ending here
@@ -47,9 +45,7 @@ error: item `HasWrongIsEmpty` has a public `len` method but no corresponding `is
 119 | |     pub fn len(self: &Self) -> isize {
 120 | |         1
 121 | |     }
-122 | |
-123 | |     pub fn is_empty(self: &Self, x : u32) -> bool {
-124 | |         false
+...   |
 125 | |     }
 126 | | }
     | |_^ ...ending here
