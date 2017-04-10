@@ -18,6 +18,7 @@ fn main() {
     let llvm_target = target.split('-').collect::<Vec<_>>();
 
     // Build test files
+    #[cfg(feature = "gen-tests")]
     tests::generate();
 
     // Build missing intrinsics from compiler-rt C source code
@@ -36,6 +37,7 @@ fn main() {
     }
 }
 
+#[cfg(feature = "gen-tests")]
 mod tests {
     extern crate cast;
     extern crate rand;

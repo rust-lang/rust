@@ -25,16 +25,16 @@ case $1 in
                 ;;
             esac
 
-            xargo test --test $t --target $1 --features mem --no-run
+            xargo test --test $t --target $1 --features 'mem gen-tests' --no-run
             qemu-arm-static target/${1}/debug/$t-*
 
-            xargo test --test $t --target $1 --features mem --no-run --release
+            xargo test --test $t --target $1 --features 'mem gen-tests' --no-run --release
             qemu-arm-static target/${1}/release/$t-*
         done
         ;;
     *)
-        cargo test --no-default-features --target $1
-        cargo test --no-default-features --target $1 --release
+        cargo test --no-default-features --features gen-tests --target $1
+        cargo test --no-default-features --features gen-tests --target $1 --release
         ;;
 esac
 
