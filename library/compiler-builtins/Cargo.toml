@@ -4,9 +4,6 @@ build = "build.rs"
 name = "compiler_builtins"
 version = "0.1.0"
 
-[build-dependencies]
-rustc-cfg = "0.3.0"
-
 [build-dependencies.gcc]
 optional = true
 version = "0.3.36"
