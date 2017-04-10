@@ -34,7 +34,8 @@ use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::mem_categorization as mc;
 use rustc::middle::mem_categorization::Categorization;
 use rustc::middle::mem_categorization::ImmutabilityBlame;
-use rustc::middle::region;
+use rustc::middle::region::{self, RegionMaps};
+use rustc::middle::free_region::RegionRelations;
 use rustc::ty::{self, TyCtxt};
 use rustc::ty::maps::Providers;
 
@@ -88,11 +89,8 @@ fn borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, owner_def_id: DefId) {
     let body_id = tcx.hir.body_owned_by(owner_id);
     let attributes = tcx.get_attrs(owner_def_id);
     let tables = tcx.typeck_tables_of(owner_def_id);
-
-    let mut bccx = &mut BorrowckCtxt {
-        tcx: tcx,
-        tables: tables,
-    };
+    let region_maps = tcx.region_maps(owner_def_id);
+    let mut bccx = &mut BorrowckCtxt { tcx, tables, region_maps, owner_def_id };
 
     let body = bccx.tcx.hir.body(body_id);
 
@@ -149,7 +147,7 @@ fn build_borrowck_dataflow_data<'a, 'tcx>(this: &mut BorrowckCtxt<'a, 'tcx>,
     loan_dfcx.propagate(cfg, body);
 
     let flowed_moves = move_data::FlowedMoveData::new(move_data,
-                                                      this.tcx,
+                                                      this,
                                                       cfg,
                                                       id_range,
                                                       body);
@@ -170,11 +168,8 @@ pub fn build_borrowck_dataflow_data_for_fn<'a, 'tcx>(
     let owner_id = tcx.hir.body_owner(body_id);
     let owner_def_id = tcx.hir.local_def_id(owner_id);
     let tables = tcx.typeck_tables_of(owner_def_id);
-
-    let mut bccx = BorrowckCtxt {
-        tcx: tcx,
-        tables: tables,
-    };
+    let region_maps = tcx.region_maps(owner_def_id);
+    let mut bccx = BorrowckCtxt { tcx, tables, region_maps, owner_def_id };
 
     let dataflow_data = build_borrowck_dataflow_data(&mut bccx, cfg, body_id);
     (bccx, dataflow_data)
@@ -189,6 +184,10 @@ pub struct BorrowckCtxt<'a, 'tcx: 'a> {
     // tables for the current thing we are checking; set to
     // Some in `borrowck_fn` and cleared later
     tables: &'a ty::TypeckTables<'tcx>,
+
+    region_maps: Rc<RegionMaps<'tcx>>,
+
+    owner_def_id: DefId,
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -312,15 +311,15 @@ pub fn closure_to_block(closure_id: ast::NodeId,
 }
 
 impl<'a, 'tcx> LoanPath<'tcx> {
-    pub fn kill_scope(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> region::CodeExtent<'tcx> {
+    pub fn kill_scope(&self, bccx: &BorrowckCtxt<'a, 'tcx>) -> region::CodeExtent<'tcx> {
         match self.kind {
-            LpVar(local_id) => tcx.region_maps().var_scope(local_id),
+            LpVar(local_id) => bccx.region_maps.var_scope(local_id),
             LpUpvar(upvar_id) => {
-                let block_id = closure_to_block(upvar_id.closure_expr_id, tcx);
-                tcx.node_extent(block_id)
+                let block_id = closure_to_block(upvar_id.closure_expr_id, bccx.tcx);
+                bccx.tcx.node_extent(block_id)
             }
             LpDowncast(ref base, _) |
-            LpExtend(ref base, ..) => base.kill_scope(tcx),
+            LpExtend(ref base, ..) => base.kill_scope(bccx),
         }
     }
 
@@ -479,7 +478,11 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                            r_sup: ty::Region<'tcx>)
                            -> bool
     {
-        self.tables.free_region_map.is_subregion_of(self.tcx, r_sub, r_sup)
+        let region_rels = RegionRelations::new(self.tcx,
+                                               self.owner_def_id,
+                                               &self.region_maps,
+                                               &self.tables.free_region_map);
+        region_rels.is_subregion_of(r_sub, r_sup)
     }
 
     pub fn report(&self, err: BckError<'tcx>) {

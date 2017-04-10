@@ -21,7 +21,7 @@ use hir::map as hir_map;
 use hir::map::DisambiguatedDefPathData;
 use middle::free_region::FreeRegionMap;
 use middle::lang_items;
-use middle::region::{CodeExtent, CodeExtentData, RegionMaps};
+use middle::region::{CodeExtent, CodeExtentData};
 use middle::resolve_lifetime;
 use middle::stability;
 use mir::Mir;
@@ -52,7 +52,6 @@ use std::mem;
 use std::ops::Deref;
 use std::iter;
 use std::cmp::Ordering;
-use std::rc::Rc;
 use syntax::abi;
 use syntax::ast::{self, Name, NodeId};
 use syntax::attr;
@@ -656,12 +655,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.intern_code_extent(CodeExtentData::Misc(n))
     }
 
-    // TODO this is revealing side-effects of query, bad
-    pub fn opt_destruction_extent(self, n: ast::NodeId) -> Option<CodeExtent<'gcx>> {
-        let s = CodeExtentData::DestructionScope(n);
-        self.code_extent_interner.borrow().get(&s).cloned()
-    }
-
     // Returns the code extent for an item - the destruction scope.
     pub fn item_extent(self, n: ast::NodeId) -> CodeExtent<'gcx> {
         self.intern_code_extent(CodeExtentData::DestructionScope(n))
@@ -710,10 +703,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         let local = self.interners as *const _;
         let global = &self.global_interners as *const _;
         local as usize == global as usize
-    }
-
-    pub fn region_maps(self) -> Rc<RegionMaps<'tcx>> {
-        self.region_resolve_crate(LOCAL_CRATE)
     }
 
     /// Create a type context and call the closure with a `TyCtxt` reference

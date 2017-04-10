@@ -2526,7 +2526,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         let body_id = free_id_outlive.map(|f| f.node_id())
                                      .unwrap_or(DUMMY_NODE_ID);
         let cause = traits::ObligationCause::misc(span, body_id);
-        traits::normalize_param_env_or_error(tcx, unnormalized_env, cause)
+        traits::normalize_param_env_or_error(tcx, def_id, unnormalized_env, cause)
     }
 
     pub fn node_scope_region(self, id: NodeId) -> Region<'tcx> {

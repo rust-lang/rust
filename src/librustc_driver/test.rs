@@ -155,7 +155,8 @@ fn test_env<F>(source_string: &str,
 
             body(Env { infcx: &infcx });
             let free_regions = FreeRegionMap::new();
-            infcx.resolve_regions_and_report_errors(&free_regions, ast::CRATE_NODE_ID);
+            let def_id = tcx.hir.map.local_def_id(ast::CRATE_NODE_ID);
+            infcx.resolve_regions_and_report_errors(def_id, &region_map, &free_regions);
             assert_eq!(tcx.sess.err_count(), expected_err_count);
         });
     });

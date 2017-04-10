@@ -924,10 +924,6 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
              "load_dep_graph",
              || rustc_incremental::load_dep_graph(tcx, &incremental_hashes_map));
 
-        time(time_passes,
-             "region resolution",
-             || middle::region::resolve_crate(tcx));
-
         time(time_passes, "stability index", || {
             tcx.stability.borrow_mut().build(tcx)
         });

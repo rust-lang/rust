@@ -199,7 +199,7 @@ pub fn check_loans<'a, 'b, 'c, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
         all_loans: all_loans,
         param_env: &infcx.parameter_environment
     };
-    euv::ExprUseVisitor::new(&mut clcx, &infcx).consume_body(body);
+    euv::ExprUseVisitor::new(&mut clcx, bccx.owner_def_id, &infcx).consume_body(body);
 }
 
 #[derive(PartialEq)]
@@ -238,9 +238,8 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
         //! Like `each_issued_loan()`, but only considers loans that are
         //! currently in scope.
 
-        let tcx = self.tcx();
         self.each_issued_loan(scope.node_id(), |loan| {
-            if tcx.region_maps().is_subscope_of(scope, loan.kill_scope) {
+            if self.bccx.region_maps.is_subscope_of(scope, loan.kill_scope) {
                 op(loan)
             } else {
                 true
@@ -379,8 +378,8 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                new_loan);
 
         // Should only be called for loans that are in scope at the same time.
-        assert!(self.tcx().region_maps().scopes_intersect(old_loan.kill_scope,
-                                                        new_loan.kill_scope));
+        assert!(self.bccx.region_maps.scopes_intersect(old_loan.kill_scope,
+                                                       new_loan.kill_scope));
 
         self.report_error_if_loan_conflicts_with_restriction(
             old_loan, new_loan, old_loan, new_loan) &&

@@ -130,7 +130,8 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
         };
 
         let outer_tables = self.tables;
-        self.tables = self.tcx.typeck_tables_of(self.tcx.hir.local_def_id(item_id));
+        let item_def_id = self.tcx.hir.local_def_id(item_id);
+        self.tables = self.tcx.typeck_tables_of(item_def_id);
 
         let body = self.tcx.hir.body(body_id);
         if !self.in_fn {
@@ -140,7 +141,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
         let outer_penv = self.tcx.infer_ctxt(body_id, Reveal::UserFacing).enter(|infcx| {
             let param_env = infcx.parameter_environment.clone();
             let outer_penv = mem::replace(&mut self.param_env, param_env);
-            euv::ExprUseVisitor::new(self, &infcx).consume_body(body);
+            euv::ExprUseVisitor::new(self, item_def_id, &infcx).consume_body(body);
             outer_penv
         });
 

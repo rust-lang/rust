@@ -70,6 +70,7 @@ pub use self::Note::*;
 
 use self::Aliasability::*;
 
+use middle::region::RegionMaps;
 use hir::def_id::DefId;
 use hir::map as hir_map;
 use infer::InferCtxt;
@@ -286,9 +287,10 @@ impl ast_node for hir::Pat {
     fn span(&self) -> Span { self.span }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Clone)]
 pub struct MemCategorizationContext<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     pub infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+    pub region_maps: Rc<RegionMaps<'tcx>>,
     options: MemCategorizationOptions,
 }
 
@@ -402,16 +404,21 @@ impl MutabilityCategory {
 }
 
 impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
-    pub fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>)
+    /// Context should be the `DefId` we use to fetch region-maps.
+    pub fn new(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+               context: DefId)
                -> MemCategorizationContext<'a, 'gcx, 'tcx> {
-        MemCategorizationContext::with_options(infcx, MemCategorizationOptions::default())
+        MemCategorizationContext::with_options(infcx, context, MemCategorizationOptions::default())
     }
 
     pub fn with_options(infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+                        context: DefId,
                         options: MemCategorizationOptions)
                         -> MemCategorizationContext<'a, 'gcx, 'tcx> {
+        let region_maps = infcx.tcx.region_maps(context);
         MemCategorizationContext {
             infcx: infcx,
+            region_maps: region_maps,
             options: options,
         }
     }
@@ -786,7 +793,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             };
 
             match fn_expr.node {
-                hir::ExprClosure(.., body_id, _) => body_id.node_id,
+                hir::ExprClosure(.., body_id, _) => body_id,
                 _ => bug!()
             }
         };
@@ -796,7 +803,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             // The environment of a closure is guaranteed to
             // outlive any bindings introduced in the body of the
             // closure itself.
-            scope: Some(self.tcx().item_extent(fn_body_id)),
+            scope: Some(self.tcx().item_extent(fn_body_id.node_id)),
             bound_region: ty::BrEnv
         }));
 
@@ -845,7 +852,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
     pub fn temporary_scope(&self, id: ast::NodeId) -> (ty::Region<'tcx>, ty::Region<'tcx>)
     {
         let (scope, old_scope) =
-            self.tcx().region_maps().old_and_new_temporary_scope(self.tcx(), id);
+            self.region_maps.old_and_new_temporary_scope(self.tcx(), id);
         (self.tcx().mk_region(match scope {
             Some(scope) => ty::ReScope(scope),
             None => ty::ReStatic

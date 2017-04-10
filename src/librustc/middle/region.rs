@@ -29,8 +29,7 @@ use syntax_pos::Span;
 use ty::TyCtxt;
 use ty::maps::Providers;
 
-use hir;
-use hir::def_id::{CrateNum, LOCAL_CRATE};
+use hir; use hir::def_id::DefId;
 use hir::intravisit::{self, Visitor, FnKind, NestedVisitorMap};
 use hir::{Block, Item, FnDecl, Arm, Pat, PatKind, Stmt, Expr, Local};
 
@@ -226,6 +225,9 @@ pub struct RegionMaps<'tcx> {
     /// which that variable is declared.
     var_map: NodeMap<CodeExtent<'tcx>>,
 
+    /// maps from a node-id to the associated destruction scope (if any)
+    destruction_scopes: NodeMap<CodeExtent<'tcx>>,
+
     /// `rvalue_scopes` includes entries for those expressions whose cleanup scope is
     /// larger than the default. The map goes from the expression id
     /// to the cleanup scope id. For rvalues not present in this
@@ -301,11 +303,22 @@ struct RegionResolutionVisitor<'a, 'tcx: 'a> {
     /// arbitrary amounts of stack space. Terminating scopes end
     /// up being contained in a DestructionScope that contains the
     /// destructor's execution.
-    terminating_scopes: NodeSet
+    terminating_scopes: NodeSet,
 }
 
 
 impl<'tcx> RegionMaps<'tcx> {
+    pub fn new() -> Self {
+        RegionMaps {
+            scope_map: FxHashMap(),
+            destruction_scopes: FxHashMap(),
+            var_map: NodeMap(),
+            rvalue_scopes: NodeMap(),
+            shrunk_rvalue_scopes: NodeMap(),
+            fn_tree: NodeMap(),
+        }
+    }
+
     pub fn each_encl_scope<E>(&self, mut e:E) where E: FnMut(CodeExtent<'tcx>, CodeExtent<'tcx>) {
         for (&child, &parent) in &self.scope_map {
             e(child, parent)
@@ -315,6 +328,10 @@ impl<'tcx> RegionMaps<'tcx> {
         for (child, parent) in self.var_map.iter() {
             e(child, parent)
         }
+    }
+
+    pub fn opt_destruction_extent(&self, n: ast::NodeId) -> Option<CodeExtent<'tcx>> {
+        self.destruction_scopes.get(&n).cloned()
     }
 
     /// Records that `sub_fn` is defined within `sup_fn`. These ids
@@ -1029,17 +1046,17 @@ fn resolve_fn<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>,
                         body_id: hir::BodyId,
                         sp: Span,
                         id: ast::NodeId) {
+    visitor.cx.parent = Some(visitor.new_code_extent(
+        CodeExtentData::CallSiteScope { fn_id: id, body_id: body_id.node_id }));
+
     debug!("region::resolve_fn(id={:?}, \
-                               span={:?}, \
-                               body.id={:?}, \
-                               cx.parent={:?})",
+            span={:?}, \
+            body.id={:?}, \
+            cx.parent={:?})",
            id,
            visitor.tcx.sess.codemap().span_to_string(sp),
            body_id,
            visitor.cx.parent);
-
-    visitor.cx.parent = Some(visitor.new_code_extent(
-        CodeExtentData::CallSiteScope { fn_id: id, body_id: body_id.node_id }));
 
     let fn_decl_scope = visitor.new_code_extent(
         CodeExtentData::ParameterScope { fn_id: id, body_id: body_id.node_id });
@@ -1086,6 +1103,12 @@ impl<'a, 'tcx> RegionResolutionVisitor<'a, 'tcx> {
             let prev = self.region_maps.scope_map.insert(code_extent, p);
             assert!(prev.is_none());
         }
+
+        // record the destruction scopes for later so we can query them
+        if let &CodeExtentData::DestructionScope(n) = code_extent {
+            self.region_maps.destruction_scopes.insert(n, code_extent);
+        }
+
         code_extent
     }
 
@@ -1162,47 +1185,44 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionResolutionVisitor<'a, 'tcx> {
     }
 }
 
-pub fn resolve_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Rc<RegionMaps<'tcx>> {
-    tcx.region_resolve_crate(LOCAL_CRATE)
-}
-
-fn region_resolve_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, crate_num: CrateNum)
+fn region_maps<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, fn_id: DefId)
     -> Rc<RegionMaps<'tcx>>
 {
-    debug_assert!(crate_num == LOCAL_CRATE);
+    let fn_node_id = tcx.hir.as_local_node_id(fn_id)
+                            .expect("fn DefId should be for LOCAL_CRATE");
+    let node = tcx.hir.get(fn_node_id);
+    match node {
+        hir_map::NodeItem(_) | hir_map::NodeTraitItem(_) | hir_map::NodeImplItem(_) => { }
+        _ => {
+            let parent_id = tcx.hir.get_parent(fn_node_id);
+            let parent_def_id = tcx.hir.local_def_id(parent_id);
+            return tcx.region_maps(parent_def_id);
+        }
+    }
 
-    let hir_map = &tcx.hir;
-
-    let krate = hir_map.krate();
-
-    let mut maps = RegionMaps {
-        scope_map: FxHashMap(),
-        var_map: NodeMap(),
-        rvalue_scopes: NodeMap(),
-        shrunk_rvalue_scopes: NodeMap(),
-        fn_tree: NodeMap(),
-    };
+    let mut maps = RegionMaps::new();
 
     {
         let mut visitor = RegionResolutionVisitor {
             tcx: tcx,
             region_maps: &mut maps,
-            map: hir_map,
+            map: &tcx.hir,
             cx: Context {
                 root_id: None,
                 parent: None,
                 var_parent: None,
             },
-            terminating_scopes: NodeSet()
+            terminating_scopes: NodeSet(),
         };
-        krate.visit_all_item_likes(&mut visitor.as_deep_visitor());
+        visitor.visit_hir_map_node(node);
     }
+
     Rc::new(maps)
 }
 
 pub fn provide(providers: &mut Providers) {
     *providers = Providers {
-        region_resolve_crate,
+        region_maps,
         ..*providers
     };
 }

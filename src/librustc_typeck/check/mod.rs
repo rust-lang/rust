@@ -1237,14 +1237,13 @@ fn check_impl_items_against_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                          err.emit()
                     }
                 }
-                hir::ImplItemKind::Method(_, body_id) => {
+                hir::ImplItemKind::Method(..) => {
                     let trait_span = tcx.hir.span_if_local(ty_trait_item.def_id);
                     if ty_trait_item.kind == ty::AssociatedKind::Method {
                         let err_count = tcx.sess.err_count();
                         compare_impl_method(tcx,
                                             &ty_impl_item,
                                             impl_item.span,
-                                            body_id.node_id,
                                             &ty_trait_item,
                                             impl_trait_ref,
                                             trait_span,
@@ -1254,7 +1253,6 @@ fn check_impl_items_against_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             compare_impl_method(tcx,
                                                 &ty_impl_item,
                                                 impl_item.span,
-                                                body_id.node_id,
                                                 &ty_trait_item,
                                                 impl_trait_ref,
                                                 trait_span,

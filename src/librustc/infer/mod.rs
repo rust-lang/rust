@@ -20,7 +20,8 @@ pub use self::region_inference::{GenericKind, VerifyBound};
 
 use hir::def_id::DefId;
 use hir;
-use middle::free_region::FreeRegionMap;
+use middle::free_region::{FreeRegionMap, RegionRelations};
+use middle::region::RegionMaps;
 use middle::mem_categorization as mc;
 use middle::mem_categorization::McResult;
 use middle::lang_items;
@@ -1322,9 +1323,14 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn resolve_regions_and_report_errors(&self,
-                                             free_regions: &FreeRegionMap<'tcx>,
-                                             subject_node_id: ast::NodeId) {
-        let errors = self.region_vars.resolve_regions(free_regions, subject_node_id);
+                                             region_context: DefId,
+                                             region_map: &RegionMaps<'tcx>,
+                                             free_regions: &FreeRegionMap<'tcx>) {
+        let region_rels = RegionRelations::new(self.tcx,
+                                               region_context,
+                                               region_map,
+                                               free_regions);
+        let errors = self.region_vars.resolve_regions(&region_rels);
         if !self.is_tainted_by_errors() {
             // As a heuristic, just skip reporting region errors
             // altogether if other errors have been reported while
