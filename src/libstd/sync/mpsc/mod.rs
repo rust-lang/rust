@@ -436,81 +436,97 @@ unsafe impl<T: Send> Send for SyncSender<T> {}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> !Sync for SyncSender<T> {}
 
-/// An error returned from the [`send`] function on channels.
+/// An error returned from the [`Sender::send`] or [`SyncSender::send`]
+/// function on **channel**s.
 ///
-/// A [`send`] operation can only fail if the receiving end of a channel is
+/// A **send** operation can only fail if the receiving end of a channel is
 /// disconnected, implying that the data could never be received. The error
 /// contains the data being sent as a payload so it can be recovered.
 ///
-/// [`send`]: ../../../std/sync/mpsc/struct.Sender.html#method.send
+/// [`Sender::send`]: struct.Sender.html#method.send
+/// [`SyncSender::send`]: struct.SyncSender.html#method.send
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(PartialEq, Eq, Clone, Copy)]
 pub struct SendError<T>(#[stable(feature = "rust1", since = "1.0.0")] pub T);
 
 /// An error returned from the [`recv`] function on a [`Receiver`].
 ///
-/// The [`recv`] operation can only fail if the sending half of a channel is
-/// disconnected, implying that no further messages will ever be received.
+/// The [`recv`] operation can only fail if the sending half of a
+/// [`channel`] (or [`sync_channel`]) is disconnected, implying that no further
+/// messages will ever be received.
 ///
-/// [`recv`]: ../../../std/sync/mpsc/struct.Receiver.html#method.recv
-/// [`Receiver`]: ../../../std/sync/mpsc/struct.Receiver.html
+/// [`recv`]: struct.Receiver.html#method.recv
+/// [`Receiver`]: struct.Receiver.html
+/// [`channel`]: fn.channel.html
+/// [`sync_channel`]: fn.sync_channel.html
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RecvError;
 
 /// This enumeration is the list of the possible reasons that [`try_recv`] could
-/// not return data when called.
+/// not return data when called. This can occur with both a [`channel`] and
+/// a [`sync_channel`].
 ///
-/// [`try_recv`]: ../../../std/sync/mpsc/struct.Receiver.html#method.try_recv
+/// [`try_recv`]: struct.Receiver.html#method.try_recv
+/// [`channel`]: fn.channel.html
+/// [`sync_channel`]: fn.sync_channel.html
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum TryRecvError {
-    /// This channel is currently empty, but the sender(s) have not yet
+    /// This **channel** is currently empty, but the **Sender**(s) have not yet
     /// disconnected, so data may yet become available.
     #[stable(feature = "rust1", since = "1.0.0")]
     Empty,
 
-    /// This channel's sending half has become disconnected, and there will
-    /// never be any more data received on this channel
+    /// The **channel**'s sending half has become disconnected, and there will
+    /// never be any more data received on it.
     #[stable(feature = "rust1", since = "1.0.0")]
     Disconnected,
 }
 
-/// This enumeration is the list of possible errors that [`recv_timeout`] could
-/// not return data when called.
+/// This enumeration is the list of possible errors that made [`recv_timeout`]
+/// unable to return data when called. This can occur with both a [`channel`] and
+/// a [`sync_channel`].
 ///
-/// [`recv_timeout`]: ../../../std/sync/mpsc/struct.Receiver.html#method.recv_timeout
+/// [`recv_timeout`]: struct.Receiver.html#method.recv_timeout
+/// [`channel`]: fn.channel.html
+/// [`sync_channel`]: fn.sync_channel.html
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
 #[stable(feature = "mpsc_recv_timeout", since = "1.12.0")]
 pub enum RecvTimeoutError {
-    /// This channel is currently empty, but the sender(s) have not yet
+    /// This **channel** is currently empty, but the **Sender**(s) have not yet
     /// disconnected, so data may yet become available.
     #[stable(feature = "mpsc_recv_timeout", since = "1.12.0")]
     Timeout,
-    /// This channel's sending half has become disconnected, and there will
-    /// never be any more data received on this channel
+    /// The **channel**'s sending half has become disconnected, and there will
+    /// never be any more data received on it.
     #[stable(feature = "mpsc_recv_timeout", since = "1.12.0")]
     Disconnected,
 }
 
 /// This enumeration is the list of the possible error outcomes for the
-/// [`SyncSender::try_send`] method.
+/// [`try_send`] method.
 ///
-/// [`SyncSender::try_send`]: ../../../std/sync/mpsc/struct.SyncSender.html#method.try_send
+/// [`try_send`]: struct.SyncSender.html#method.try_send
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(PartialEq, Eq, Clone, Copy)]
 pub enum TrySendError<T> {
-    /// The data could not be sent on the channel because it would require that
+    /// The data could not be sent on the [`sync_channel`] because it would require that
     /// the callee block to send the data.
     ///
     /// If this is a buffered channel, then the buffer is full at this time. If
-    /// this is not a buffered channel, then there is no receiver available to
+    /// this is not a buffered channel, then there is no [`Receiver`] available to
     /// acquire the data.
+    ///
+    /// [`sync_channel`]: fn.sync_channel.html
+    /// [`Receiver`]: struct.Receiver.html
     #[stable(feature = "rust1", since = "1.0.0")]
     Full(#[stable(feature = "rust1", since = "1.0.0")] T),
 
-    /// This channel's receiving half has disconnected, so the data could not be
+    /// This [`sync_channel`]'s receiving half has disconnected, so the data could not be
     /// sent. The data is returned back to the callee in this case.
+    ///
+    /// [`sync_channel`]: fn.sync_channel.html
     #[stable(feature = "rust1", since = "1.0.0")]
     Disconnected(#[stable(feature = "rust1", since = "1.0.0")] T),
 }
@@ -544,15 +560,27 @@ impl<T> UnsafeFlavor<T> for Receiver<T> {
 }
 
 /// Creates a new asynchronous channel, returning the sender/receiver halves.
-/// All data sent on the sender will become available on the receiver, and no
-/// send will block the calling thread (this channel has an "infinite buffer").
+/// All data sent on the [`Sender`] will become available on the [`Receiver`] in
+/// the same order as it was sent, and no [`send`] will block the calling thread
+/// (this channel has an "infinite buffer", unlike [`sync_channel`], which will
+/// block after its buffer limit is reached). [`recv`] will block until a message
+/// is available.
+///
+/// The [`Sender`] can be cloned to [`send`] to the same channel multiple times, but
+/// only one [`Receiver`] is supported.
 ///
 /// If the [`Receiver`] is disconnected while trying to [`send`] with the
-/// [`Sender`], the [`send`] method will return an error.
+/// [`Sender`], the [`send`] method will return a [`SendError`]. Similarly, If the
+/// [`Sender`] is disconnected while trying to [`recv`], the [`recv`] method will
+/// return a [`RecvError`].
 ///
-/// [`send`]: ../../../std/sync/mpsc/struct.Sender.html#method.send
-/// [`Sender`]: ../../../std/sync/mpsc/struct.Sender.html
-/// [`Receiver`]: ../../../std/sync/mpsc/struct.Receiver.html
+/// [`send`]: struct.Sender.html#method.send
+/// [`recv`]: struct.Receiver.html#method.recv
+/// [`Sender`]: struct.Sender.html
+/// [`Receiver`]: struct.Receiver.html
+/// [`sync_channel`]: fn.sync_channel.html
+/// [`SendError`]: struct.SendError.html
+/// [`RecvError`]: struct.RecvError.html
 ///
 /// # Examples
 ///
@@ -560,20 +588,18 @@ impl<T> UnsafeFlavor<T> for Receiver<T> {
 /// use std::sync::mpsc::channel;
 /// use std::thread;
 ///
-/// // tx is the sending half (tx for transmission), and rx is the receiving
-/// // half (rx for receiving).
-/// let (tx, rx) = channel();
+/// let (sender, receiver) = channel();
 ///
 /// // Spawn off an expensive computation
 /// thread::spawn(move|| {
 /// #   fn expensive_computation() {}
-///     tx.send(expensive_computation()).unwrap();
+///     sender.send(expensive_computation()).unwrap();
 /// });
 ///
 /// // Do some useful work for awhile
 ///
 /// // Let's see what that answer was
-/// println!("{:?}", rx.recv().unwrap());
+/// println!("{:?}", receiver.recv().unwrap());
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn channel<T>() -> (Sender<T>, Receiver<T>) {
@@ -582,24 +608,32 @@ pub fn channel<T>() -> (Sender<T>, Receiver<T>) {
 }
 
 /// Creates a new synchronous, bounded channel.
-///
-/// Like asynchronous channels, the [`Receiver`] will block until a message
-/// becomes available. These channels differ greatly in the semantics of the
-/// sender from asynchronous channels, however.
+/// All data sent on the [`SyncSender`] will become available on the [`Receiver`]
+/// in the same order as it was sent. Like asynchronous [`channel`]s, the
+/// [`Receiver`] will block until a message becomes available. `sync_channel`
+/// differs greatly in the semantics of the sender, however.
 ///
 /// This channel has an internal buffer on which messages will be queued.
 /// `bound` specifies the buffer size. When the internal buffer becomes full,
 /// future sends will *block* waiting for the buffer to open up. Note that a
 /// buffer size of 0 is valid, in which case this becomes "rendezvous channel"
-/// where each [`send`] will not return until a recv is paired with it.
+/// where each [`send`] will not return until a [`recv`] is paired with it.
 ///
-/// Like asynchronous channels, if the [`Receiver`] is disconnected while
-/// trying to [`send`] with the [`SyncSender`], the [`send`] method will
-/// return an error.
+/// The [`SyncSender`] can be cloned to [`send`] to the same channel multiple
+/// times, but only one [`Receiver`] is supported.
 ///
-/// [`send`]: ../../../std/sync/mpsc/struct.SyncSender.html#method.send
-/// [`SyncSender`]: ../../../std/sync/mpsc/struct.SyncSender.html
-/// [`Receiver`]: ../../../std/sync/mpsc/struct.Receiver.html
+/// Like asynchronous channels, if the [`Receiver`] is disconnected while trying
+/// to [`send`] with the [`SyncSender`], the [`send`] method will return a
+/// [`SendError`]. Similarly, If the [`SyncSender`] is disconnected while trying
+/// to [`recv`], the [`recv`] method will return a [`RecvError`].
+///
+/// [`channel`]: fn.channel.html
+/// [`send`]: struct.SyncSender.html#method.send
+/// [`recv`]: struct.Receiver.html#method.recv
+/// [`SyncSender`]: struct.SyncSender.html
+/// [`Receiver`]: struct.Receiver.html
+/// [`SendError`]: struct.SendError.html
+/// [`RecvError`]: struct.RecvError.html
 ///
 /// # Examples
 ///
@@ -607,18 +641,18 @@ pub fn channel<T>() -> (Sender<T>, Receiver<T>) {
 /// use std::sync::mpsc::sync_channel;
 /// use std::thread;
 ///
-/// let (tx, rx) = sync_channel(1);
+/// let (sender, receiver) = sync_channel(1);
 ///
 /// // this returns immediately
-/// tx.send(1).unwrap();
+/// sender.send(1).unwrap();
 ///
 /// thread::spawn(move|| {
 ///     // this will block until the previous message has been received
-///     tx.send(2).unwrap();
+///     sender.send(2).unwrap();
 /// });
 ///
-/// assert_eq!(rx.recv().unwrap(), 1);
-/// assert_eq!(rx.recv().unwrap(), 2);
+/// assert_eq!(receiver.recv().unwrap(), 1);
+/// assert_eq!(receiver.recv().unwrap(), 2);
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn sync_channel<T>(bound: usize) -> (SyncSender<T>, Receiver<T>) {
