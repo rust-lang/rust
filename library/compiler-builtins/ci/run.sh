@@ -3,8 +3,34 @@ set -ex
 # Test our implementation
 case $1 in
     thumb*)
-        xargo build --target $1
-        xargo build --target $1 --release
+        for t in $(ls tests); do
+            t=${t%.rs}
+
+            # TODO(#154) enable these tests when aeabi_*mul are implemented
+            case $t in
+                powi*f2)
+                    continue
+                    ;;
+            esac
+
+            # FIXME(#150) debug assertion in divmoddi4
+            case $1 in
+                thumbv6m-*)
+                    case $t in
+                        divdi3 | divmoddi4 | moddi3 | modsi3 | udivmoddi4 | udivmodsi4 | umoddi3 | \
+                            umodsi3)
+                            continue
+                            ;;
+                    esac
+                ;;
+            esac
+
+            xargo test --test $t --target $1 --features mem --no-run
+            qemu-arm-static target/${1}/debug/$t-*
+
+            xargo test --test $t --target $1 --features mem --no-run --release
+            qemu-arm-static target/${1}/release/$t-*
+        done
         ;;
     *)
         cargo test --no-default-features --target $1
