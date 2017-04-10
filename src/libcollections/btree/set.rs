@@ -1053,7 +1053,7 @@ impl<'a, T: Ord> Iterator for Intersection<'a, T> {
     fn next(&mut self) -> Option<&'a T> {
         loop {
             let o_cmp = match (self.a.peek(), self.b.peek()) {
-                (None, _) => None,
+                (None, _) |
                 (_, None) => None,
                 (Some(a1), Some(b1)) => Some(a1.cmp(b1)),
             };
