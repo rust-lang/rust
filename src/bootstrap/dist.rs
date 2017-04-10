@@ -39,8 +39,10 @@ use util::{cp_r, libdir, is_dylib, cp_filtered, copy, exe};
 fn pkgname(build: &Build, component: &str) -> String {
     if component == "cargo" {
         format!("{}-{}", component, build.cargo_package_vers())
+    } else if component == "rls" {
+        format!("{}-{}", component, build.package_vers(&build.release_num("rls")))
     } else {
-        assert!(component.starts_with("rust") || component == "rls");
+        assert!(component.starts_with("rust"));
         format!("{}-{}", component, build.rust_package_vers())
     }
 }
@@ -598,7 +600,8 @@ pub fn rls(build: &Build, stage: u32, target: &str) {
 
     let src = build.src.join("rls");
     let release_num = build.release_num("rls");
-    let name = format!("rls-{}", build.package_vers(&release_num));
+    let name = pkgname(build, "rls");
+    let version = build.rls_info.version(build, &release_num);
 
     let tmp = tmpdir(build);
     let image = tmp.join("rls-image");
@@ -614,6 +617,15 @@ pub fn rls(build: &Build, stage: u32, target: &str) {
     install(&src.join("LICENSE-MIT"), &doc, 0o644);
     install(&src.join("LICENSE-APACHE"), &doc, 0o644);
 
+    // Prepare the overlay
+    let overlay = tmp.join("rls-overlay");
+    drop(fs::remove_dir_all(&overlay));
+    t!(fs::create_dir_all(&overlay));
+    install(&src.join("README.md"), &overlay, 0o644);
+    install(&src.join("LICENSE-MIT"), &overlay, 0o644);
+    install(&src.join("LICENSE-APACHE"), &overlay, 0o644);
+    t!(t!(File::create(overlay.join("version"))).write_all(version.as_bytes()));
+
     // Generate the installer tarball
     let mut cmd = Command::new("sh");
     cmd.arg(sanitize_sh(&build.src.join("src/rust-installer/gen-installer.sh")))
@@ -623,6 +635,7 @@ pub fn rls(build: &Build, stage: u32, target: &str) {
        .arg(format!("--image-dir={}", sanitize_sh(&image)))
        .arg(format!("--work-dir={}", sanitize_sh(&tmpdir(build))))
        .arg(format!("--output-dir={}", sanitize_sh(&distdir(build))))
+       .arg(format!("--non-installed-overlay={}", sanitize_sh(&overlay)))
        .arg(format!("--package-name={}-{}", name, target))
        .arg("--component-name=rls")
        .arg("--legacy-manifest-dirs=rustlib,cargo");
@@ -991,6 +1004,7 @@ pub fn hash_and_sign(build: &Build) {
     cmd.arg(today.trim());
     cmd.arg(build.rust_package_vers());
     cmd.arg(build.package_vers(&build.release_num("cargo")));
+    cmd.arg(build.package_vers(&build.release_num("rls")));
     cmd.arg(addr);
 
     t!(fs::create_dir_all(distdir(build)));

@@ -151,6 +151,7 @@ pub struct Build {
     out: PathBuf,
     rust_info: channel::GitInfo,
     cargo_info: channel::GitInfo,
+    rls_info: channel::GitInfo,
     local_rebuild: bool,
 
     // Probed tools at runtime
@@ -234,6 +235,7 @@ impl Build {
         };
         let rust_info = channel::GitInfo::new(&src);
         let cargo_info = channel::GitInfo::new(&src.join("cargo"));
+        let rls_info = channel::GitInfo::new(&src.join("rls"));
         let src_is_git = src.join(".git").exists();
 
         Build {
@@ -246,6 +248,7 @@ impl Build {
 
             rust_info: rust_info,
             cargo_info: cargo_info,
+            rls_info: rls_info,
             local_rebuild: local_rebuild,
             cc: HashMap::new(),
             cxx: HashMap::new(),
