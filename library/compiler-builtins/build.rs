@@ -37,7 +37,6 @@ mod c {
 
     use std::collections::BTreeMap;
     use std::env;
-    use std::io::Write;
     use std::path::Path;
 
     struct Sources {
@@ -413,7 +412,7 @@ mod c {
             Path::new(".")
         };
 
-        let src_dir = root.join("c/compiler-rt/lib/builtins");
+        let src_dir = root.join("compiler-rt/lib/builtins");
         for src in sources.map.values() {
             let src = src_dir.join(src);
             cfg.file(&src);
