@@ -5,16 +5,12 @@ name = "compiler_builtins"
 version = "0.1.0"
 
 [build-dependencies]
+cast = "0.2.0"
 rand = "0.3.15"
 
 [build-dependencies.gcc]
 optional = true
 version = "0.3.36"
-
-[target.'cfg(all(target_arch = "arm", not(any(target_env = "gnu", target_env = "musl")), target_os = "linux"))'.dev-dependencies]
-test = { git = "https://github.com/japaric/utest" }
-utest-cortex-m-qemu = { git = "https://github.com/japaric/utest", default-features = false }
-utest-macros = { git = "https://github.com/japaric/utest" }
 
 [features]
 c = ["gcc"]
@@ -22,5 +18,21 @@ compiler-builtins = []
 default = ["compiler-builtins"]
 mem = []
 rustbuild = ["compiler-builtins"]
+
+[target]
+
+[target."cfg(all(target_arch = \"arm\", not(any(target_env = \"gnu\", target_env = \"musl\")), target_os = \"linux\"))"]
+
+[target."cfg(all(target_arch = \"arm\", not(any(target_env = \"gnu\", target_env = \"musl\")), target_os = \"linux\"))".dev-dependencies]
+
+[target."cfg(all(target_arch = \"arm\", not(any(target_env = \"gnu\", target_env = \"musl\")), target_os = \"linux\"))".dev-dependencies.test]
+git = "https://github.com/japaric/utest"
+
+[target."cfg(all(target_arch = \"arm\", not(any(target_env = \"gnu\", target_env = \"musl\")), target_os = \"linux\"))".dev-dependencies.utest-cortex-m-qemu]
+default-features = false
+git = "https://github.com/japaric/utest"
+
+[target."cfg(all(target_arch = \"arm\", not(any(target_env = \"gnu\", target_env = \"musl\")), target_os = \"linux\"))".dev-dependencies.utest-macros]
+git = "https://github.com/japaric/utest"
 
 [workspace]

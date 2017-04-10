@@ -37,6 +37,7 @@ fn main() {
 }
 
 mod tests {
+    extern crate cast;
     extern crate rand;
 
     use std::collections::HashSet;
@@ -46,6 +47,7 @@ mod tests {
     use std::path::PathBuf;
     use std::{env, mem};
 
+    use self::cast::{f32, f64, u32, u64, i32, i64};
     use self::rand::Rng;
 
     const NTESTS: usize = 10_000;
@@ -66,20 +68,20 @@ mod tests {
             Addsf3,
 
             // float/conv.rs
-            // Fixdfdi,
-            // Fixdfsi,
-            // Fixsfdi,
-            // Fixsfsi,
-            // Fixunsdfdi,
-            // Fixunsdfsi,
-            // Fixunssfdi,
-            // Fixunssfsi,
-            // Floatdidf,
-            // Floatsidf,
-            // Floatsisf,
-            // Floatundidf,
-            // Floatunsidf,
-            // Floatunsisf,
+            Fixdfdi,
+            Fixdfsi,
+            Fixsfdi,
+            Fixsfsi,
+            Fixunsdfdi,
+            Fixunsdfsi,
+            Fixunssfdi,
+            Fixunssfsi,
+            Floatdidf,
+            Floatsidf,
+            Floatsisf,
+            Floatundidf,
+            Floatunsidf,
+            Floatunsisf,
 
             // float/pow.rs
             Powidf2,
@@ -129,9 +131,9 @@ mod tests {
 
     #[derive(Eq, Hash, PartialEq)]
     pub struct Adddf3 {
-        a: u64,
-        b: u64,
-        c: u64,
+        a: u64,  // f64
+        b: u64,  // f64
+        c: u64,  // f64
     }
 
     impl TestCase for Adddf3 {
@@ -216,9 +218,9 @@ fn adddf3() {
 
     #[derive(Eq, Hash, PartialEq)]
     pub struct Addsf3 {
-        a: u32,
-        b: u32,
-        c: u32,
+        a: u32,  // f32
+        b: u32,  // f32
+        c: u32,  // f32
     }
 
     impl TestCase for Addsf3 {
@@ -847,6 +849,890 @@ fn divti3() {
     }
 
     #[derive(Eq, Hash, PartialEq)]
+    pub struct Fixdfdi {
+        a: u64,  // f64
+        b: i64,
+    }
+
+    impl TestCase for Fixdfdi {
+        fn name() -> &'static str {
+            "fixdfdi"
+        }
+
+        fn generate<R>(rng: &mut R) -> Option<Self>
+        where
+            R: Rng,
+            Self: Sized,
+        {
+            let a = gen_f64(rng);
+            i64(a).ok().map(|b| Fixdfdi { a: to_u64(a), b })
+        }
+
+        fn to_string(&self, buffer: &mut String) {
+            writeln!(buffer, "(({a},), {b}),", a = self.a, b = self.b).unwrap();
+        }
+
+        fn prologue() -> &'static str {
+            r#"
+#[cfg(all(target_arch = "arm",
+          not(any(target_env = "gnu", target_env = "musl")),
+          target_os = "linux",
+          test))]
+use core::mem;
+#[cfg(not(all(target_arch = "arm",
+              not(any(target_env = "gnu", target_env = "musl")),
+              target_os = "linux",
+              test)))]
+use std::mem;
+use compiler_builtins::float::conv::__fixdfdi;
+
+fn mk_f64(x: u64) -> f64 {
+    unsafe { mem::transmute(x) }
+}
+
+static TEST_CASES: &[((u64,), i64)] = &[
+"#
+        }
+
+        fn epilogue() -> &'static str {
+            "
+];
+
+#[test]
+fn fixdfdi() {
+    for &((a,), b) in TEST_CASES {
+        let b_ = __fixdfdi(mk_f64(a));
+        assert_eq!(((a,), b), ((a,), b_));
+    }
+}
+"
+        }
+    }
+
+    #[derive(Eq, Hash, PartialEq)]
+    pub struct Fixdfsi {
+        a: u64,  // f64
+        b: i32,
+    }
+
+    impl TestCase for Fixdfsi {
+        fn name() -> &'static str {
+            "fixdfsi"
+        }
+
+        fn generate<R>(rng: &mut R) -> Option<Self>
+        where
+            R: Rng,
+            Self: Sized,
+        {
+            let a = gen_f64(rng);
+            i32(a).ok().map(|b| Fixdfsi { a: to_u64(a), b })
+        }
+
+        fn to_string(&self, buffer: &mut String) {
+            writeln!(buffer, "(({a},), {b}),", a = self.a, b = self.b).unwrap();
+        }
+
+        fn prologue() -> &'static str {
+            r#"
+#[cfg(all(target_arch = "arm",
+          not(any(target_env = "gnu", target_env = "musl")),
+          target_os = "linux",
+          test))]
+use core::mem;
+#[cfg(not(all(target_arch = "arm",
+              not(any(target_env = "gnu", target_env = "musl")),
+              target_os = "linux",
+              test)))]
+use std::mem;
+use compiler_builtins::float::conv::__fixdfsi;
+
+fn mk_f64(x: u64) -> f64 {
+    unsafe { mem::transmute(x) }
+}
+
+static TEST_CASES: &[((u64,), i32)] = &[
+"#
+        }
+
+        fn epilogue() -> &'static str {
+            "
+];
+
+#[test]
+fn fixdfdi() {
+    for &((a,), b) in TEST_CASES {
+        let b_ = __fixdfsi(mk_f64(a));
+        assert_eq!(((a,), b), ((a,), b_));
+    }
+}
+"
+        }
+    }
+
+    #[derive(Eq, Hash, PartialEq)]
+    pub struct Fixsfdi {
+        a: u32,  // f32
+        b: i64,
+    }
+
+    impl TestCase for Fixsfdi {
+        fn name() -> &'static str {
+            "fixsfdi"
+        }
+
+        fn generate<R>(rng: &mut R) -> Option<Self>
+        where
+            R: Rng,
+            Self: Sized,
+        {
+            let a = gen_f32(rng);
+            i64(a).ok().map(|b| Fixsfdi { a: to_u32(a), b })
+        }
+
+        fn to_string(&self, buffer: &mut String) {
+            writeln!(buffer, "(({a},), {b}),", a = self.a, b = self.b).unwrap();
+        }
+
+        fn prologue() -> &'static str {
+            r#"
+#[cfg(all(target_arch = "arm",
+          not(any(target_env = "gnu", target_env = "musl")),
+          target_os = "linux",
+          test))]
+use core::mem;
+#[cfg(not(all(target_arch = "arm",
+              not(any(target_env = "gnu", target_env = "musl")),
+              target_os = "linux",
+              test)))]
+use std::mem;
+use compiler_builtins::float::conv::__fixsfdi;
+
+fn mk_f32(x: u32) -> f32 {
+    unsafe { mem::transmute(x) }
+}
+
+static TEST_CASES: &[((u32,), i64)] = &[
+"#
+        }
+
+        fn epilogue() -> &'static str {
+            "
+];
+
+#[test]
+fn fixsfdi() {
+    for &((a,), b) in TEST_CASES {
+        let b_ = __fixsfdi(mk_f32(a));
+        assert_eq!(((a,), b), ((a,), b_));
+    }
+}
+"
+        }
+    }
+
+    #[derive(Eq, Hash, PartialEq)]
+    pub struct Fixsfsi {
+        a: u32,  // f32
+        b: i32,
+    }
+
+    impl TestCase for Fixsfsi {
+        fn name() -> &'static str {
+            "fixsfsi"
+        }
+
+        fn generate<R>(rng: &mut R) -> Option<Self>
+        where
+            R: Rng,
+            Self: Sized,
+        {
+            let a = gen_f32(rng);
+            i32(a).ok().map(|b| Fixsfsi { a: to_u32(a), b })
+        }
+
+        fn to_string(&self, buffer: &mut String) {
+            writeln!(buffer, "(({a},), {b}),", a = self.a, b = self.b).unwrap();
+        }
+
+        fn prologue() -> &'static str {
+            r#"
+#[cfg(all(target_arch = "arm",
+          not(any(target_env = "gnu", target_env = "musl")),
+          target_os = "linux",
+          test))]
+use core::mem;
+#[cfg(not(all(target_arch = "arm",
+              not(any(target_env = "gnu", target_env = "musl")),
+              target_os = "linux",
+              test)))]
+use std::mem;
+use compiler_builtins::float::conv::__fixsfsi;
+
+fn mk_f32(x: u32) -> f32 {
+    unsafe { mem::transmute(x) }
+}
+
+static TEST_CASES: &[((u32,), i32)] = &[
+"#
+        }
+
+        fn epilogue() -> &'static str {
+            "
+];
+
+#[test]
+fn fixsfdi() {
+    for &((a,), b) in TEST_CASES {
+        let b_ = __fixsfsi(mk_f32(a));
+        assert_eq!(((a,), b), ((a,), b_));
+    }
+}
+"
+        }
+    }
+
+    #[derive(Eq, Hash, PartialEq)]
+    pub struct Fixunsdfdi {
+        a: u64,  // f64
+        b: u64,
+    }
+
+    impl TestCase for Fixunsdfdi {
+        fn name() -> &'static str {
+            "fixunsdfdi"
+        }
+
+        fn generate<R>(rng: &mut R) -> Option<Self>
+        where
+            R: Rng,
+            Self: Sized,
+        {
+            let a = gen_f64(rng);
+            u64(a).ok().map(|b| Fixunsdfdi { a: to_u64(a), b })
+        }
+
+        fn to_string(&self, buffer: &mut String) {
+            writeln!(buffer, "(({a},), {b}),", a = self.a, b = self.b).unwrap();
+        }
+
+        fn prologue() -> &'static str {
+            r#"
+#[cfg(all(target_arch = "arm",
+          not(any(target_env = "gnu", target_env = "musl")),
+          target_os = "linux",
+          test))]
+use core::mem;
+#[cfg(not(all(target_arch = "arm",
+              not(any(target_env = "gnu", target_env = "musl")),
+              target_os = "linux",
+              test)))]
+use std::mem;
+use compiler_builtins::float::conv::__fixunsdfdi;
+
+fn mk_f64(x: u64) -> f64 {
+    unsafe { mem::transmute(x) }
+}
+
+static TEST_CASES: &[((u64,), u64)] = &[
+"#
+        }
+
+        fn epilogue() -> &'static str {
+            "
+];
+
+#[test]
+fn fixunsdfdi() {
+    for &((a,), b) in TEST_CASES {
+        let b_ = __fixunsdfdi(mk_f64(a));
+        assert_eq!(((a,), b), ((a,), b_));
+    }
+}
+"
+        }
+    }
+
+    #[derive(Eq, Hash, PartialEq)]
+    pub struct Fixunsdfsi {
+        a: u64,  // f64
+        b: u32,
+    }
+
+    impl TestCase for Fixunsdfsi {
+        fn name() -> &'static str {
+            "fixunsdfsi"
+        }
+
+        fn generate<R>(rng: &mut R) -> Option<Self>
+        where
+            R: Rng,
+            Self: Sized,
+        {
+            let a = gen_f64(rng);
+            u32(a).ok().map(|b| Fixunsdfsi { a: to_u64(a), b })
+        }
+
+        fn to_string(&self, buffer: &mut String) {
+            writeln!(buffer, "(({a},), {b}),", a = self.a, b = self.b).unwrap();
+        }
+
+        fn prologue() -> &'static str {
+            r#"
+#[cfg(all(target_arch = "arm",
+          not(any(target_env = "gnu", target_env = "musl")),
+          target_os = "linux",
+          test))]
+use core::mem;
+#[cfg(not(all(target_arch = "arm",
+              not(any(target_env = "gnu", target_env = "musl")),
+              target_os = "linux",
+              test)))]
+use std::mem;
+use compiler_builtins::float::conv::__fixunsdfsi;
+
+fn mk_f64(x: u64) -> f64 {
+    unsafe { mem::transmute(x) }
+}
+
+static TEST_CASES: &[((u64,), u32)] = &[
+"#
+        }
+
+        fn epilogue() -> &'static str {
+            "
+];
+
+#[test]
+fn fixunsdfdi() {
+    for &((a,), b) in TEST_CASES {
+        let b_ = __fixunsdfsi(mk_f64(a));
+        assert_eq!(((a,), b), ((a,), b_));
+    }
+}
+"
+        }
+    }
+
+    #[derive(Eq, Hash, PartialEq)]
+    pub struct Fixunssfdi {
+        a: u32,  // f32
+        b: u64,
+    }
+
+    impl TestCase for Fixunssfdi {
+        fn name() -> &'static str {
+            "fixunssfdi"
+        }
+
+        fn generate<R>(rng: &mut R) -> Option<Self>
+        where
+            R: Rng,
+            Self: Sized,
+        {
+            let a = gen_f32(rng);
+            u64(a).ok().map(|b| Fixunssfdi { a: to_u32(a), b })
+        }
+
+        fn to_string(&self, buffer: &mut String) {
+            writeln!(buffer, "(({a},), {b}),", a = self.a, b = self.b).unwrap();
+        }
+
+        fn prologue() -> &'static str {
+            r#"
+#[cfg(all(target_arch = "arm",
+          not(any(target_env = "gnu", target_env = "musl")),
+          target_os = "linux",
+          test))]
+use core::mem;
+#[cfg(not(all(target_arch = "arm",
+              not(any(target_env = "gnu", target_env = "musl")),
+              target_os = "linux",
+              test)))]
+use std::mem;
+use compiler_builtins::float::conv::__fixunssfdi;
+
+fn mk_f32(x: u32) -> f32 {
+    unsafe { mem::transmute(x) }
+}
+
+static TEST_CASES: &[((u32,), u64)] = &[
+"#
+        }
+
+        fn epilogue() -> &'static str {
+            "
+];
+
+#[test]
+fn fixunssfdi() {
+    for &((a,), b) in TEST_CASES {
+        let b_ = __fixunssfdi(mk_f32(a));
+        assert_eq!(((a,), b), ((a,), b_));
+    }
+}
+"
+        }
+    }
+
+    #[derive(Eq, Hash, PartialEq)]
+    pub struct Fixunssfsi {
+        a: u32,  // f32
+        b: u32,
+    }
+
+    impl TestCase for Fixunssfsi {
+        fn name() -> &'static str {
+            "fixunssfsi"
+        }
+
+        fn generate<R>(rng: &mut R) -> Option<Self>
+        where
+            R: Rng,
+            Self: Sized,
+        {
+            let a = gen_f32(rng);
+            u32(a).ok().map(|b| Fixunssfsi { a: to_u32(a), b })
+        }
+
+        fn to_string(&self, buffer: &mut String) {
+            writeln!(buffer, "(({a},), {b}),", a = self.a, b = self.b).unwrap();
+        }
+
+        fn prologue() -> &'static str {
+            r#"
+#[cfg(all(target_arch = "arm",
+          not(any(target_env = "gnu", target_env = "musl")),
+          target_os = "linux",
+          test))]
+use core::mem;
+#[cfg(not(all(target_arch = "arm",
+              not(any(target_env = "gnu", target_env = "musl")),
+              target_os = "linux",
+              test)))]
+use std::mem;
+use compiler_builtins::float::conv::__fixunssfsi;
+
+fn mk_f32(x: u32) -> f32 {
+    unsafe { mem::transmute(x) }
+}
+
+static TEST_CASES: &[((u32,), u32)] = &[
+"#
+        }
+
+        fn epilogue() -> &'static str {
+            "
+];
+
+#[test]
+fn fixunssfsi() {
+    for &((a,), b) in TEST_CASES {
+        let b_ = __fixunssfsi(mk_f32(a));
+        assert_eq!(((a,), b), ((a,), b_));
+    }
+}
+"
+        }
+    }
+
+    #[derive(Eq, Hash, PartialEq)]
+    pub struct Floatdidf {
+        a: i64,
+        b: u64, // f64
+    }
+
+    impl TestCase for Floatdidf {
+        fn name() -> &'static str {
+            "floatdidf"
+        }
+
+        fn generate<R>(rng: &mut R) -> Option<Self>
+        where
+            R: Rng,
+            Self: Sized,
+        {
+            let a = gen_i64(rng);
+            Some(
+                Floatdidf {
+                    a,
+                    b: to_u64(f64(a)),
+                },
+            )
+        }
+
+        fn to_string(&self, buffer: &mut String) {
+            writeln!(buffer, "(({a},), {b}),", a = self.a, b = self.b).unwrap();
+        }
+
+        fn prologue() -> &'static str {
+            r#"
+#[cfg(all(target_arch = "arm",
+          not(any(target_env = "gnu", target_env = "musl")),
+          target_os = "linux",
+          test))]
+use core::mem;
+#[cfg(not(all(target_arch = "arm",
+              not(any(target_env = "gnu", target_env = "musl")),
+              target_os = "linux",
+              test)))]
+use std::mem;
+use compiler_builtins::float::conv::__floatdidf;
+
+fn mk_f64(x: u64) -> f64 {
+    unsafe { mem::transmute(x) }
+}
+
+static TEST_CASES: &[((i64,), u64)] = &[
+"#
+        }
+
+        fn epilogue() -> &'static str {
+            "
+];
+
+#[test]
+fn floatdidf() {
+    for &((a,), b) in TEST_CASES {
+        let b_ = __floatdidf(a);
+        assert_eq!(((a,), mk_f64(b)), ((a,), b_));
+    }
+}
+"
+        }
+    }
+
+    #[derive(Eq, Hash, PartialEq)]
+    pub struct Floatsidf {
+        a: i32,
+        b: u64, // f64
+    }
+
+    impl TestCase for Floatsidf {
+        fn name() -> &'static str {
+            "floatsidf"
+        }
+
+        fn generate<R>(rng: &mut R) -> Option<Self>
+        where
+            R: Rng,
+            Self: Sized,
+        {
+            let a = gen_i32(rng);
+            Some(
+                Floatsidf {
+                    a,
+                    b: to_u64(f64(a)),
+                },
+            )
+        }
+
+        fn to_string(&self, buffer: &mut String) {
+            writeln!(buffer, "(({a},), {b}),", a = self.a, b = self.b).unwrap();
+        }
+
+        fn prologue() -> &'static str {
+            r#"
+#[cfg(all(target_arch = "arm",
+          not(any(target_env = "gnu", target_env = "musl")),
+          target_os = "linux",
+          test))]
+use core::mem;
+#[cfg(not(all(target_arch = "arm",
+              not(any(target_env = "gnu", target_env = "musl")),
+              target_os = "linux",
+              test)))]
+use std::mem;
+use compiler_builtins::float::conv::__floatsidf;
+
+fn mk_f64(x: u64) -> f64 {
+    unsafe { mem::transmute(x) }
+}
+
+static TEST_CASES: &[((i32,), u64)] = &[
+"#
+        }
+
+        fn epilogue() -> &'static str {
+            "
+];
+
+#[test]
+fn floatsidf() {
+    for &((a,), b) in TEST_CASES {
+        let b_ = __floatsidf(a);
+        assert_eq!(((a,), mk_f64(b)), ((a,), b_));
+    }
+}
+"
+        }
+    }
+
+    #[derive(Eq, Hash, PartialEq)]
+    pub struct Floatsisf {
+        a: i32,
+        b: u32, // f32
+    }
+
+    impl TestCase for Floatsisf {
+        fn name() -> &'static str {
+            "floatsisf"
+        }
+
+        fn generate<R>(rng: &mut R) -> Option<Self>
+        where
+            R: Rng,
+            Self: Sized,
+        {
+            let a = gen_i32(rng);
+            Some(
+                Floatsisf {
+                    a,
+                    b: to_u32(f32(a)),
+                },
+            )
+        }
+
+        fn to_string(&self, buffer: &mut String) {
+            writeln!(buffer, "(({a},), {b}),", a = self.a, b = self.b).unwrap();
+        }
+
+        fn prologue() -> &'static str {
+            r#"
+#[cfg(all(target_arch = "arm",
+          not(any(target_env = "gnu", target_env = "musl")),
+          target_os = "linux",
+          test))]
+use core::mem;
+#[cfg(not(all(target_arch = "arm",
+              not(any(target_env = "gnu", target_env = "musl")),
+              target_os = "linux",
+              test)))]
+use std::mem;
+use compiler_builtins::float::conv::__floatsisf;
+
+fn mk_f32(x: u32) -> f32 {
+    unsafe { mem::transmute(x) }
+}
+
+static TEST_CASES: &[((i32,), u32)] = &[
+"#
+        }
+
+        fn epilogue() -> &'static str {
+            "
+];
+
+#[test]
+fn floatsisf() {
+    for &((a,), b) in TEST_CASES {
+        let b_ = __floatsisf(a);
+        assert_eq!(((a,), mk_f32(b)), ((a,), b_));
+    }
+}
+"
+        }
+    }
+
+    #[derive(Eq, Hash, PartialEq)]
+    pub struct Floatundidf {
+        a: u64,
+        b: u64, // f64
+    }
+
+    impl TestCase for Floatundidf {
+        fn name() -> &'static str {
+            "floatundidf"
+        }
+
+        fn generate<R>(rng: &mut R) -> Option<Self>
+        where
+            R: Rng,
+            Self: Sized,
+        {
+            let a = gen_u64(rng);
+            Some(
+                Floatundidf {
+                    a,
+                    b: to_u64(f64(a)),
+                },
+            )
+        }
+
+        fn to_string(&self, buffer: &mut String) {
+            writeln!(buffer, "(({a},), {b}),", a = self.a, b = self.b).unwrap();
+        }
+
+        fn prologue() -> &'static str {
+            r#"
+#[cfg(all(target_arch = "arm",
+          not(any(target_env = "gnu", target_env = "musl")),
+          target_os = "linux",
+          test))]
+use core::mem;
+#[cfg(not(all(target_arch = "arm",
+              not(any(target_env = "gnu", target_env = "musl")),
+              target_os = "linux",
+              test)))]
+use std::mem;
+use compiler_builtins::float::conv::__floatundidf;
+
+fn mk_f64(x: u64) -> f64 {
+    unsafe { mem::transmute(x) }
+}
+
+static TEST_CASES: &[((u64,), u64)] = &[
+"#
+        }
+
+        fn epilogue() -> &'static str {
+            "
+];
+
+#[test]
+fn floatundidf() {
+    for &((a,), b) in TEST_CASES {
+        let b_ = __floatundidf(a);
+        assert_eq!(((a,), mk_f64(b)), ((a,), b_));
+    }
+}
+"
+        }
+    }
+
+    #[derive(Eq, Hash, PartialEq)]
+    pub struct Floatunsidf {
+        a: u32,
+        b: u64, // f64
+    }
+
+    impl TestCase for Floatunsidf {
+        fn name() -> &'static str {
+            "floatunsidf"
+        }
+
+        fn generate<R>(rng: &mut R) -> Option<Self>
+        where
+            R: Rng,
+            Self: Sized,
+        {
+            let a = gen_u32(rng);
+            Some(
+                Floatunsidf {
+                    a,
+                    b: to_u64(f64(a)),
+                },
+            )
+        }
+
+        fn to_string(&self, buffer: &mut String) {
+            writeln!(buffer, "(({a},), {b}),", a = self.a, b = self.b).unwrap();
+        }
+
+        fn prologue() -> &'static str {
+            r#"
+#[cfg(all(target_arch = "arm",
+          not(any(target_env = "gnu", target_env = "musl")),
+          target_os = "linux",
+          test))]
+use core::mem;
+#[cfg(not(all(target_arch = "arm",
+              not(any(target_env = "gnu", target_env = "musl")),
+              target_os = "linux",
+              test)))]
+use std::mem;
+use compiler_builtins::float::conv::__floatunsidf;
+
+fn mk_f64(x: u64) -> f64 {
+    unsafe { mem::transmute(x) }
+}
+
+static TEST_CASES: &[((u32,), u64)] = &[
+"#
+        }
+
+        fn epilogue() -> &'static str {
+            "
+];
+
+#[test]
+fn floatunsidf() {
+    for &((a,), b) in TEST_CASES {
+        let b_ = __floatunsidf(a);
+        assert_eq!(((a,), mk_f64(b)), ((a,), b_));
+    }
+}
+"
+        }
+    }
+
+    #[derive(Eq, Hash, PartialEq)]
+    pub struct Floatunsisf {
+        a: u32,
+        b: u32, // f32
+    }
+
+    impl TestCase for Floatunsisf {
+        fn name() -> &'static str {
+            "floatunsisf"
+        }
+
+        fn generate<R>(rng: &mut R) -> Option<Self>
+        where
+            R: Rng,
+            Self: Sized,
+        {
+            let a = gen_u32(rng);
+            Some(
+                Floatunsisf {
+                    a,
+                    b: to_u32(f32(a)),
+                },
+            )
+        }
+
+        fn to_string(&self, buffer: &mut String) {
+            writeln!(buffer, "(({a},), {b}),", a = self.a, b = self.b).unwrap();
+        }
+
+        fn prologue() -> &'static str {
+            r#"
+#[cfg(all(target_arch = "arm",
+          not(any(target_env = "gnu", target_env = "musl")),
+          target_os = "linux",
+          test))]
+use core::mem;
+#[cfg(not(all(target_arch = "arm",
+              not(any(target_env = "gnu", target_env = "musl")),
+              target_os = "linux",
+              test)))]
+use std::mem;
+use compiler_builtins::float::conv::__floatunsisf;
+
+fn mk_f32(x: u32) -> f32 {
+    unsafe { mem::transmute(x) }
+}
+
+static TEST_CASES: &[((u32,), u32)] = &[
+"#
+        }
+
+        fn epilogue() -> &'static str {
+            "
+];
+
+#[test]
+fn floatunsisf() {
+    for &((a,), b) in TEST_CASES {
+        let b_ = __floatunsisf(a);
+        assert_eq!(((a,), mk_f32(b)), ((a,), b_));
+    }
+}
+"
+        }
+    }
+
+    #[derive(Eq, Hash, PartialEq)]
     pub struct Moddi3 {
         a: i64,
         b: i64,
@@ -1330,9 +2216,9 @@ fn multi3() {
 
     #[derive(Eq, Hash, PartialEq)]
     pub struct Powidf2 {
-        a: u64,
+        a: u64,  // f64
         b: i32,
-        c: u64,
+        c: u64,  // f64
     }
 
     impl TestCase for Powidf2 {
@@ -1417,9 +2303,9 @@ fn powidf2() {
 
     #[derive(Eq, Hash, PartialEq)]
     pub struct Powisf2 {
-        a: u32,
+        a: u32,  // f32
         b: i32,
-        c: u32,
+        c: u32,  // f32
     }
 
     impl TestCase for Powisf2 {
@@ -1620,9 +2506,9 @@ fn lshrti3() {
 
     #[derive(Eq, Hash, PartialEq)]
     pub struct Subdf3 {
-        a: u64,
-        b: u64,
-        c: u64,
+        a: u64,  // f64
+        b: u64,  // f64
+        c: u64,  // f64
     }
 
     impl TestCase for Subdf3 {
@@ -1707,9 +2593,9 @@ fn subdf3() {
 
     #[derive(Eq, Hash, PartialEq)]
     pub struct Subsf3 {
-        a: u32,
-        b: u32,
-        c: u32,
+        a: u32,  // f32
+        b: u32,  // f32
+        c: u32,  // f32
     }
 
     impl TestCase for Subsf3 {
