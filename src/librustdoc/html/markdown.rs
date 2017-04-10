@@ -469,28 +469,28 @@ impl LangString {
         );
 
         for token in tokens {
-            match token {
+            match token.trim() {
                 "" => {},
                 "should_panic" => {
                     data.should_panic = true;
                     seen_rust_tags = seen_other_tags == false;
                 }
-                "no_run" => { data.no_run = true; seen_rust_tags = seen_other_tags == false; }
-                "ignore" => { data.ignore = true; seen_rust_tags = seen_other_tags == false; }
+                "no_run" => { data.no_run = true; seen_rust_tags = !seen_other_tags; }
+                "ignore" => { data.ignore = true; seen_rust_tags = !seen_other_tags; }
                 "rust" => { data.rust = true; seen_rust_tags = true; }
                 "test_harness" => {
                     data.test_harness = true;
-                    seen_rust_tags = seen_other_tags == false || seen_rust_tags == true;
+                    seen_rust_tags = !seen_other_tags || seen_rust_tags;
                 }
                 "compile_fail" if allow_compile_fail => {
                     data.compile_fail = true;
-                    seen_rust_tags = seen_other_tags == false || seen_rust_tags == true;
+                    seen_rust_tags = !seen_other_tags || seen_rust_tags;
                     data.no_run = true;
                 }
                 x if allow_error_code_check && x.starts_with("E") && x.len() == 5 => {
                     if let Ok(_) = x[1..].parse::<u32>() {
                         data.error_codes.push(x.to_owned());
-                        seen_rust_tags = seen_other_tags == false || seen_rust_tags == true;
+                        seen_rust_tags = !seen_other_tags || seen_rust_tags;
                     } else {
                         seen_other_tags = true;
                     }
@@ -680,6 +680,7 @@ mod tests {
         t("{.example .rust}",      false,        false,  false,  true,  false, false, Vec::new());
         t("{.test_harness .rust}", false,        false,  false,  true,  true,  false, Vec::new());
         t("text, no_run",          false,        true,   false,  false, false, false, Vec::new());
+        t("text,no_run",           false,        true,   false,  false, false, false, Vec::new());
     }
 
     #[test]
