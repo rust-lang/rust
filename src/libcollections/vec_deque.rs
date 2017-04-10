@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! VecDeque is a double-ended queue, which is implemented with the help of a
+//! `VecDeque` is a double-ended queue, which is implemented with the help of a
 //! growing ring buffer.
 //!
 //! This queue has `O(1)` amortized inserts and removals from both ends of the
@@ -1847,7 +1847,7 @@ fn wrap_index(index: usize, size: usize) -> usize {
     index & (size - 1)
 }
 
-/// Returns the two slices that cover the VecDeque's valid range
+/// Returns the two slices that cover the `VecDeque`'s valid range
 trait RingSlices: Sized {
     fn slice(self, from: usize, to: usize) -> Self;
     fn split_at(self, i: usize) -> (Self, Self);
@@ -2047,7 +2047,7 @@ impl<'a, T> ExactSizeIterator for IterMut<'a, T> {
 #[unstable(feature = "fused", issue = "35602")]
 impl<'a, T> FusedIterator for IterMut<'a, T> {}
 
-/// A by-value VecDeque iterator
+/// A by-value `VecDeque` iterator
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<T> {
@@ -2097,7 +2097,7 @@ impl<T> ExactSizeIterator for IntoIter<T> {
 #[unstable(feature = "fused", issue = "35602")]
 impl<T> FusedIterator for IntoIter<T> {}
 
-/// A draining VecDeque iterator
+/// A draining `VecDeque` iterator
 #[stable(feature = "drain", since = "1.6.0")]
 pub struct Drain<'a, T: 'a> {
     after_tail: usize,

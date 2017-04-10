@@ -10,8 +10,8 @@
 
 //! Collection types.
 //!
-//! See [std::collections](../std/collections/index.html) for a detailed discussion of
-//! collections in Rust.
+//! See [`std::collections`](../std/collections/index.html) for a detailed
+//! discussion of collections in Rust.
 
 #![crate_name = "collections"]
 #![crate_type = "rlib"]
