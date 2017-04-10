@@ -8,12 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use LinkerFlavor;
 use target::{Target, TargetResult};
 
 pub fn target() -> TargetResult {
     let mut base = super::netbsd_base::opts();
     base.cpu = "v9".to_string();
-    base.pre_link_args.push("-m64".to_string());
+    base.pre_link_args.get_mut(&LinkerFlavor::Gcc).unwrap().push("-m64".to_string());
     base.max_atomic_width = Some(64);
 
     Ok(Target {
@@ -25,6 +26,7 @@ pub fn target() -> TargetResult {
         target_os: "netbsd".to_string(),
         target_env: "".to_string(),
         target_vendor: "unknown".to_string(),
+        linker_flavor: LinkerFlavor::Gcc,
         options: base,
     })
 }

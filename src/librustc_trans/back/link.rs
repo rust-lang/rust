@@ -707,13 +707,16 @@ fn link_natively(sess: &Session,
                  outputs: &OutputFilenames,
                  tmpdir: &Path) {
     info!("preparing {:?} from {:?} to {:?}", crate_type, objects, out_filename);
+    let flavor = sess.linker_flavor();
 
     // The invocations of cc share some flags across platforms
     let (pname, mut cmd, extra) = get_linker(sess);
     cmd.env("PATH", command_path(sess, extra));
 
     let root = sess.target_filesearch(PathKind::Native).get_lib_path();
-    cmd.args(&sess.target.target.options.pre_link_args);
+    if let Some(args) = sess.target.target.options.pre_link_args.get(&flavor) {
+        cmd.args(args);
+    }
 
     let pre_link_objects = if crate_type == config::CrateTypeExecutable {
         &sess.target.target.options.pre_link_objects_exe
@@ -739,11 +742,15 @@ fn link_natively(sess: &Session,
                   objects, out_filename, outputs, trans);
         cmd = linker.finalize();
     }
-    cmd.args(&sess.target.target.options.late_link_args);
+    if let Some(args) = sess.target.target.options.late_link_args.get(&flavor) {
+        cmd.args(args);
+    }
     for obj in &sess.target.target.options.post_link_objects {
         cmd.arg(root.join(obj));
     }
-    cmd.args(&sess.target.target.options.post_link_args);
+    if let Some(args) = sess.target.target.options.post_link_args.get(&flavor) {
+        cmd.args(args);
+    }
 
     if sess.opts.debugging_opts.print_link_args {
         println!("{:?}", &cmd);

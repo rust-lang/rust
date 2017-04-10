@@ -19,7 +19,7 @@ pub use self::DebugInfoLevel::*;
 use session::{early_error, early_warn, Session};
 use session::search_paths::SearchPaths;
 
-use rustc_back::PanicStrategy;
+use rustc_back::{LinkerFlavor, PanicStrategy};
 use rustc_back::target::Target;
 use lint;
 use middle::cstore;
@@ -641,12 +641,14 @@ macro_rules! options {
             Some("either `panic` or `abort`");
         pub const parse_sanitizer: Option<&'static str> =
             Some("one of: `address`, `leak`, `memory` or `thread`");
+        pub const parse_linker_flavor: Option<&'static str> =
+            Some(::rustc_back::LinkerFlavor::one_of());
     }
 
     #[allow(dead_code)]
     mod $mod_set {
         use super::{$struct_name, Passes, SomePasses, AllPasses, Sanitizer};
-        use rustc_back::PanicStrategy;
+        use rustc_back::{LinkerFlavor, PanicStrategy};
 
         $(
             pub fn $opt(cg: &mut $struct_name, v: Option<&str>) -> bool {
@@ -773,6 +775,14 @@ macro_rules! options {
                 Some("leak") => *slote = Some(Sanitizer::Leak),
                 Some("memory") => *slote = Some(Sanitizer::Memory),
                 Some("thread") => *slote = Some(Sanitizer::Thread),
+                _ => return false,
+            }
+            true
+        }
+
+        fn parse_linker_flavor(slote: &mut Option<LinkerFlavor>, v: Option<&str>) -> bool {
+            match v.and_then(LinkerFlavor::from_str) {
+                Some(lf) => *slote = Some(lf),
                 _ => return false,
             }
             true
@@ -979,6 +989,8 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
           "pass `-install_name @rpath/...` to the macOS linker"),
     sanitizer: Option<Sanitizer> = (None, parse_sanitizer, [TRACKED],
                                    "Use a sanitizer"),
+    linker_flavor: Option<LinkerFlavor> = (None, parse_linker_flavor, [UNTRACKED],
+                                           "Linker flavor"),
 }
 
 pub fn default_lib_output() -> CrateType {
