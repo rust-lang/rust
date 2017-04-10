@@ -262,7 +262,7 @@ impl<K, Q: ?Sized> super::Recover<Q> for BTreeMap<K, ()>
     }
 }
 
-/// An iterator over a BTreeMap's entries.
+/// An iterator over a `BTreeMap`'s entries.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Iter<'a, K: 'a, V: 'a> {
     range: Range<'a, K, V>,
@@ -276,7 +276,7 @@ impl<'a, K: 'a + fmt::Debug, V: 'a + fmt::Debug> fmt::Debug for Iter<'a, K, V> {
     }
 }
 
-/// A mutable iterator over a BTreeMap's entries.
+/// A mutable iterator over a `BTreeMap`'s entries.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
 pub struct IterMut<'a, K: 'a, V: 'a> {
@@ -284,7 +284,7 @@ pub struct IterMut<'a, K: 'a, V: 'a> {
     length: usize,
 }
 
-/// An owning iterator over a BTreeMap's entries.
+/// An owning iterator over a `BTreeMap`'s entries.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<K, V> {
     front: Handle<NodeRef<marker::Owned, K, V, marker::Leaf>, marker::Edge>,
@@ -303,7 +303,7 @@ impl<K: fmt::Debug, V: fmt::Debug> fmt::Debug for IntoIter<K, V> {
     }
 }
 
-/// An iterator over a BTreeMap's keys.
+/// An iterator over a `BTreeMap`'s keys.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Keys<'a, K: 'a, V: 'a> {
     inner: Iter<'a, K, V>,
@@ -316,7 +316,7 @@ impl<'a, K: 'a + fmt::Debug, V: 'a + fmt::Debug> fmt::Debug for Keys<'a, K, V> {
     }
 }
 
-/// An iterator over a BTreeMap's values.
+/// An iterator over a `BTreeMap`'s values.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Values<'a, K: 'a, V: 'a> {
     inner: Iter<'a, K, V>,
@@ -329,14 +329,14 @@ impl<'a, K: 'a + fmt::Debug, V: 'a + fmt::Debug> fmt::Debug for Values<'a, K, V>
     }
 }
 
-/// A mutable iterator over a BTreeMap's values.
+/// A mutable iterator over a `BTreeMap`'s values.
 #[stable(feature = "map_values_mut", since = "1.10.0")]
 #[derive(Debug)]
 pub struct ValuesMut<'a, K: 'a, V: 'a> {
     inner: IterMut<'a, K, V>,
 }
 
-/// An iterator over a sub-range of BTreeMap's entries.
+/// An iterator over a sub-range of `BTreeMap`'s entries.
 #[stable(feature = "btree_range", since = "1.17.0")]
 pub struct Range<'a, K: 'a, V: 'a> {
     front: Handle<NodeRef<marker::Immut<'a>, K, V, marker::Leaf>, marker::Edge>,
@@ -350,7 +350,7 @@ impl<'a, K: 'a + fmt::Debug, V: 'a + fmt::Debug> fmt::Debug for Range<'a, K, V> 
     }
 }
 
-/// A mutable iterator over a sub-range of BTreeMap's entries.
+/// A mutable iterator over a sub-range of `BTreeMap`'s entries.
 #[stable(feature = "btree_range", since = "1.17.0")]
 pub struct RangeMut<'a, K: 'a, V: 'a> {
     front: Handle<NodeRef<marker::Mut<'a>, K, V, marker::Leaf>, marker::Edge>,
@@ -378,12 +378,12 @@ impl<'a, K: 'a + fmt::Debug, V: 'a + fmt::Debug> fmt::Debug for RangeMut<'a, K, 
 /// [`entry`]: struct.BTreeMap.html#method.entry
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum Entry<'a, K: 'a, V: 'a> {
-    /// A vacant Entry
+    /// A vacant `Entry`
     #[stable(feature = "rust1", since = "1.0.0")]
     Vacant(#[stable(feature = "rust1", since = "1.0.0")]
            VacantEntry<'a, K, V>),
 
-    /// An occupied Entry
+    /// An occupied `Entry`
     #[stable(feature = "rust1", since = "1.0.0")]
     Occupied(#[stable(feature = "rust1", since = "1.0.0")]
              OccupiedEntry<'a, K, V>),
@@ -403,7 +403,7 @@ impl<'a, K: 'a + Debug + Ord, V: 'a + Debug> Debug for Entry<'a, K, V> {
     }
 }
 
-/// A vacant Entry. It is part of the [`Entry`] enum.
+/// A vacant `Entry`. It is part of the [`Entry`] enum.
 ///
 /// [`Entry`]: enum.Entry.html
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -425,7 +425,7 @@ impl<'a, K: 'a + Debug + Ord, V: 'a> Debug for VacantEntry<'a, K, V> {
     }
 }
 
-/// An occupied Entry. It is part of the [`Entry`] enum.
+/// An occupied `Entry`. It is part of the [`Entry`] enum.
 ///
 /// [`Entry`]: enum.Entry.html
 #[stable(feature = "rust1", since = "1.0.0")]
