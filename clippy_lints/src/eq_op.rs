@@ -66,7 +66,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
                         BiMul => cx.tcx.lang_items.mul_trait(),
                         BiDiv => cx.tcx.lang_items.div_trait(),
                         BiRem => cx.tcx.lang_items.rem_trait(),
-                        BiAnd => None,
+                        BiAnd |
                         BiOr => None,
                         BiBitXor => cx.tcx.lang_items.bitxor_trait(),
                         BiBitAnd => cx.tcx.lang_items.bitand_trait(),
@@ -81,6 +81,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for EqOp {
                         BiGt => cx.tcx.lang_items.ord_trait(),
                     };
                     if let Some(trait_id) = trait_id {
+                        #[allow(match_same_arms)]
                         match (&left.node, &right.node) {
                             // do not suggest to dereference literals
                             (&ExprLit(..), _) |
