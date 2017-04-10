@@ -132,7 +132,7 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
 
         let alignment = self.alignment | Alignment::from_packed(st.packed);
 
-        let llfields = adt::struct_llfields(ccx, fields, st, false);
+        let llfields = adt::struct_llfields(ccx, fields, st);
         let ptr_val = if needs_cast {
             let real_ty = Type::struct_(ccx, &llfields[..], st.packed);
             bcx.pointercast(self.llval, real_ty.ptr_to())

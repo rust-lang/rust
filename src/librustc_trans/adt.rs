@@ -90,12 +90,12 @@ pub fn compute_fields<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>,
 /// and fill in the actual contents in a second pass to prevent
 /// unbounded recursion; see also the comments in `trans::type_of`.
 pub fn type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
-    generic_type_of(cx, t, None, false)
+    generic_type_of(cx, t, None)
 }
 
 pub fn incomplete_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                     t: Ty<'tcx>, name: &str) -> Type {
-    generic_type_of(cx, t, Some(name), false)
+    generic_type_of(cx, t, Some(name))
 }
 
 pub fn finish_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
@@ -114,7 +114,7 @@ pub fn finish_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 _ => unreachable!()
             };
             let fields = compute_fields(cx, t, nonnull_variant_index as usize, true);
-            llty.set_struct_body(&struct_llfields(cx, &fields, nonnull_variant, false),
+            llty.set_struct_body(&struct_llfields(cx, &fields, nonnull_variant),
                                  packed)
         },
         _ => bug!("This function cannot handle {} with layout {:#?}", t, l)
@@ -123,10 +123,9 @@ pub fn finish_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
 fn generic_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                              t: Ty<'tcx>,
-                             name: Option<&str>,
-                             sizing: bool) -> Type {
+                             name: Option<&str>) -> Type {
     let l = cx.layout_of(t);
-    debug!("adt::generic_type_of t: {:?} name: {:?} sizing: {}", t, name, sizing);
+    debug!("adt::generic_type_of t: {:?} name: {:?}", t, name);
     match *l {
         layout::CEnum { discr, .. } => Type::from_integer(cx, discr),
         layout::RawNullablePointer { nndiscr, .. } => {
@@ -146,11 +145,10 @@ fn generic_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             let fields = compute_fields(cx, t, nndiscr as usize, false);
             match name {
                 None => {
-                    Type::struct_(cx, &struct_llfields(cx, &fields, nonnull, sizing),
+                    Type::struct_(cx, &struct_llfields(cx, &fields, nonnull),
                                   nonnull.packed)
                 }
                 Some(name) => {
-                    assert_eq!(sizing, false);
                     Type::named_struct(cx, name)
                 }
             }
@@ -161,13 +159,12 @@ fn generic_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             let fields = compute_fields(cx, t, 0, true);
             match name {
                 None => {
-                    let fields = struct_llfields(cx, &fields, &variant, sizing);
+                    let fields = struct_llfields(cx, &fields, &variant);
                     Type::struct_(cx, &fields, variant.packed)
                 }
                 Some(name) => {
                     // Hypothesis: named_struct's can never need a
                     // drop flag. (... needs validation.)
-                    assert_eq!(sizing, false);
                     Type::named_struct(cx, name)
                 }
             }
@@ -256,19 +253,14 @@ pub fn struct_llfields_index(variant: &layout::Struct, index: usize) -> usize {
 
 
 pub fn struct_llfields<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, field_tys: &Vec<Ty<'tcx>>,
-                             variant: &layout::Struct,
-                             sizing: bool) -> Vec<Type> {
-    if sizing {
-        bug!();
-    }
+                             variant: &layout::Struct) -> Vec<Type> {
     debug!("struct_llfields: variant: {:?}", variant);
     let mut first_field = true;
     let mut min_offset = 0;
     let mut result: Vec<Type> = Vec::with_capacity(field_tys.len() * 2);
     let field_iter = variant.field_index_by_increasing_offset().map(|i| {
         (i, field_tys[i as usize], variant.offsets[i as usize].bytes()) });
-    for (index, ty, target_offset) in field_iter.filter(
-        |&(_, ty, _)| !sizing || cx.shared().type_is_sized(ty)) {
+    for (index, ty, target_offset) in field_iter {
         if first_field {
             debug!("struct_llfields: {} ty: {} min_offset: {} target_offset: {}",
                 index, ty, min_offset, target_offset);
