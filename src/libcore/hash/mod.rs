@@ -119,12 +119,12 @@ mod sip;
 /// ```
 /// #[derive(Hash)]
 /// struct Rustacean {
-///    name: String,
-///    country: String,
+///     name: String,
+///     country: String,
 /// }
 /// ```
 ///
-/// If you need more control over how a value is hash, you can of course
+/// If you need more control over how a value is hashed, you can of course
 /// implement the `Hash` trait yourself:
 ///
 /// ```
@@ -378,7 +378,7 @@ pub trait Hasher {
 /// assert_eq!(hasher_1.finish(), hasher_2.finish());
 /// ```
 ///
-/// [`build_hasher`]: #method.build_hasher
+/// [`build_hasher`]: #tymethod.build_hasher
 /// [`Hasher`]: trait.Hasher.html
 /// [`HashMap`]: ../../std/collections/struct.HashMap.html
 #[stable(since = "1.7.0", feature = "build_hasher")]
