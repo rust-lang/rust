@@ -292,12 +292,6 @@ impl<'tcx> QueryDescription for queries::def_span<'tcx> {
     }
 }
 
-impl<'tcx> QueryDescription for queries::region_resolve_crate<'tcx> {
-    fn describe(_: TyCtxt, _: CrateNum) -> String {
-        format!("resolve crate")
-    }
-}
-
 macro_rules! define_maps {
     (<$tcx:tt>
      $($(#[$attr:meta])*
@@ -578,7 +572,10 @@ define_maps! { <'tcx>
 
     [] reachable_set: reachability_dep_node(CrateNum) -> Rc<NodeSet>,
 
-    [] region_resolve_crate: region_resolve_crate_dep_node(CrateNum) -> Rc<RegionMaps<'tcx>>,
+    /// Per-function `RegionMaps`. The `DefId` should be the owner-def-id for the fn body;
+    /// in the case of closures or "inline" expressions, this will be redirected to the enclosing
+    /// fn item.
+    [] region_maps: RegionMaps(DefId) -> Rc<RegionMaps<'tcx>>,
 
     [] mir_shims: mir_shim_dep_node(ty::InstanceDef<'tcx>) -> &'tcx RefCell<mir::Mir<'tcx>>,
 
@@ -599,10 +596,6 @@ fn crate_inherent_impls_dep_node(_: CrateNum) -> DepNode<DefId> {
 
 fn reachability_dep_node(_: CrateNum) -> DepNode<DefId> {
     DepNode::Reachability
-}
-
-fn region_resolve_crate_dep_node(_: CrateNum) -> DepNode<DefId> {
-    DepNode::RegionResolveCrate
 }
 
 fn mir_shim_dep_node(instance: ty::InstanceDef) -> DepNode<DefId> {

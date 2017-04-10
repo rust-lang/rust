@@ -11,13 +11,13 @@
 use rustc::hir::{self, ImplItemKind, TraitItemKind};
 use rustc::infer::{self, InferOk};
 use rustc::middle::free_region::FreeRegionMap;
+use rustc::middle::region::RegionMaps;
 use rustc::ty::{self, TyCtxt};
 use rustc::traits::{self, ObligationCause, ObligationCauseCode, Reveal};
 use rustc::ty::error::{ExpectedFound, TypeError};
 use rustc::ty::subst::{Subst, Substs};
 use rustc::util::common::ErrorReported;
 
-use syntax::ast;
 use syntax_pos::Span;
 
 use super::{Inherited, FnCtxt};
@@ -30,14 +30,12 @@ use astconv::ExplicitSelf;
 ///
 /// - impl_m: type of the method we are checking
 /// - impl_m_span: span to use for reporting errors
-/// - impl_m_body_id: id of the method body
 /// - trait_m: the method in the trait
 /// - impl_trait_ref: the TraitRef corresponding to the trait implementation
 
 pub fn compare_impl_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                      impl_m: &ty::AssociatedItem,
                                      impl_m_span: Span,
-                                     impl_m_body_id: ast::NodeId,
                                      trait_m: &ty::AssociatedItem,
                                      impl_trait_ref: ty::TraitRef<'tcx>,
                                      trait_item_span: Option<Span>,
@@ -72,7 +70,6 @@ pub fn compare_impl_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     if let Err(ErrorReported) = compare_predicate_entailment(tcx,
                                                              impl_m,
                                                              impl_m_span,
-                                                             impl_m_body_id,
                                                              trait_m,
                                                              impl_trait_ref,
                                                              old_broken_mode) {
@@ -83,21 +80,25 @@ pub fn compare_impl_method<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                           impl_m: &ty::AssociatedItem,
                                           impl_m_span: Span,
-                                          impl_m_body_id: ast::NodeId,
                                           trait_m: &ty::AssociatedItem,
                                           impl_trait_ref: ty::TraitRef<'tcx>,
                                           old_broken_mode: bool)
                                           -> Result<(), ErrorReported> {
     let trait_to_impl_substs = impl_trait_ref.substs;
 
+    // This node-id should be used for the `body_id` field on each
+    // `ObligationCause` (and the `FnCtxt`). This is what
+    // `regionck_item` expects.
+    let impl_m_node_id = tcx.hir.as_local_node_id(impl_m.def_id).unwrap();
+
     let cause = ObligationCause {
         span: impl_m_span,
-        body_id: impl_m_body_id,
+        body_id: impl_m_node_id,
         code: ObligationCauseCode::CompareImplMethodObligation {
             item_name: impl_m.name,
             impl_item_def_id: impl_m.def_id,
             trait_item_def_id: trait_m.def_id,
-            lint_id: if !old_broken_mode { Some(impl_m_body_id) } else { None },
+            lint_id: if !old_broken_mode { Some(impl_m_node_id) } else { None },
         },
     };
 
@@ -166,7 +167,6 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     // Create a parameter environment that represents the implementation's
     // method.
-    let impl_m_node_id = tcx.hir.as_local_node_id(impl_m.def_id).unwrap();
     let impl_param_env = ty::ParameterEnvironment::for_item(tcx, impl_m_node_id);
 
     // Create mapping from impl to skolemized.
@@ -217,9 +217,10 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // Construct trait parameter environment and then shift it into the skolemized viewpoint.
     // The key step here is to update the caller_bounds's predicates to be
     // the new hybrid bounds we computed.
-    let normalize_cause = traits::ObligationCause::misc(impl_m_span, impl_m_body_id);
+    let normalize_cause = traits::ObligationCause::misc(impl_m_span, impl_m_node_id);
     let trait_param_env = impl_param_env.with_caller_bounds(hybrid_preds.predicates);
     let trait_param_env = traits::normalize_param_env_or_error(tcx,
+                                                               impl_m.def_id,
                                                                trait_param_env,
                                                                normalize_cause.clone());
 
@@ -275,7 +276,7 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             impl_sig.subst(tcx, impl_to_skol_substs);
         let impl_sig =
             inh.normalize_associated_types_in(impl_m_span,
-                                              impl_m_body_id,
+                                              impl_m_node_id,
                                               &impl_sig);
         let impl_fty = tcx.mk_fn_ptr(ty::Binder(impl_sig));
         debug!("compare_impl_method: impl_fty={:?}", impl_fty);
@@ -287,7 +288,7 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             trait_sig.subst(tcx, trait_to_skol_substs);
         let trait_sig =
             inh.normalize_associated_types_in(impl_m_span,
-                                              impl_m_body_id,
+                                              impl_m_node_id,
                                               &trait_sig);
         let trait_fty = tcx.mk_fn_ptr(ty::Binder(trait_sig));
 
@@ -349,13 +350,14 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             // region obligations that get overlooked.  The right
             // thing to do is the code below. But we keep this old
             // pass around temporarily.
+            let region_maps = RegionMaps::new();
             let mut free_regions = FreeRegionMap::new();
             free_regions.relate_free_regions_from_predicates(
                 &infcx.parameter_environment.caller_bounds);
-            infcx.resolve_regions_and_report_errors(&free_regions, impl_m_body_id);
+            infcx.resolve_regions_and_report_errors(impl_m.def_id, &region_maps, &free_regions);
         } else {
-            let fcx = FnCtxt::new(&inh, impl_m_body_id);
-            fcx.regionck_item(impl_m_body_id, impl_m_span, &[]);
+            let fcx = FnCtxt::new(&inh, impl_m_node_id);
+            fcx.regionck_item(impl_m_node_id, impl_m_span, &[]);
         }
 
         Ok(())
