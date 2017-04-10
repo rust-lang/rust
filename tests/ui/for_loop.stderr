@@ -579,9 +579,7 @@ error: you seem to want to iterate on a map's values
 454 | |
 455 | |
 456 | |
-457 | |
-458 | |         let _v = v;
-459 | |         // Here the `*` is not actually necesarry, but the test tests that we don't suggest
+...   |
 460 | |         // `in *m.values()` as we used to
 461 | |     }
     | |_____^ ...ending here

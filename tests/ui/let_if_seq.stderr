@@ -23,8 +23,15 @@ help: it is more idiomatic to write
 error: `if _ { .. } else { .. }` is an expression
   --> $DIR/let_if_seq.rs:65:5
    |
-65 |     let mut bar = 0;
-   |     ^
+65 |       let mut bar = 0;
+   |  _____^ starting here...
+66 | |
+67 | |
+68 | |
+...  |
+74 | |         f();
+75 | |     }
+   | |_____^ ...ending here
    |
 help: it is more idiomatic to write
    |     let <mut> bar = if f() { ..; 42 } else { ..; 0 };
@@ -33,8 +40,15 @@ help: it is more idiomatic to write
 error: `if _ { .. } else { .. }` is an expression
   --> $DIR/let_if_seq.rs:77:5
    |
-77 |     let quz;
-   |     ^
+77 |       let quz;
+   |  _____^ starting here...
+78 | |
+79 | |
+80 | |
+...  |
+85 | |         quz = 0;
+86 | |     }
+   | |_____^ ...ending here
    |
 help: it is more idiomatic to write
    |     let quz = if f() { 42 } else { 0 };

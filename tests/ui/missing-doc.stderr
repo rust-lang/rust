@@ -236,8 +236,15 @@ error: missing documentation for a static
 error: missing documentation for a module
    --> $DIR/missing-doc.rs:180:1
     |
-180 | mod internal_impl {
-    | ^
+180 |   mod internal_impl {
+    |  _^ starting here...
+181 | |     /// dox
+182 | |     pub fn documented() {}
+183 | |     pub fn undocumented1() {}
+...   |
+192 | |     }
+193 | | }
+    | |_^ ...ending here
 
 error: missing documentation for a function
    --> $DIR/missing-doc.rs:183:5

@@ -6,9 +6,7 @@ error: this `if` has identical blocks
 41 | |         Foo { bar: 42 };
 42 | |         0..10;
 43 | |         ..;
-44 | |         0..;
-45 | |         ..10;
-46 | |         0...10;
+...  |
 47 | |         foo();
 48 | |     }
    | |_____^ ...ending here
@@ -21,8 +19,15 @@ note: lint level defined here
 note: same as this
   --> $DIR/copies.rs:30:13
    |
-30 |     if true {
-   |             ^
+30 |       if true {
+   |  _____________^ starting here...
+31 | |
+32 | |         Foo { bar: 42 };
+33 | |         0..10;
+...  |
+38 | |         foo();
+39 | |     }
+   | |_____^ ...ending here
 
 error: this `match` has identical arm bodies
   --> $DIR/copies.rs:91:14
@@ -32,9 +37,7 @@ error: this `match` has identical arm bodies
 92 | |             foo();
 93 | |             let mut a = 42 + [23].len() as i32;
 94 | |             if true {
-95 | |                 a += 7;
-96 | |             }
-97 | |             a = -31-a;
+...  |
 98 | |             a
 99 | |         }
    | |_________^ ...ending here
@@ -47,13 +50,27 @@ note: lint level defined here
 note: same as this
   --> $DIR/copies.rs:80:15
    |
-80 |         42 => {
-   |               ^
+80 |           42 => {
+   |  _______________^ starting here...
+81 | |
+82 | |
+83 | |             foo();
+...  |
+89 | |             a
+90 | |         }
+   | |_________^ ...ending here
 note: `42` has the same arm body as the `_` wildcard, consider removing it`
   --> $DIR/copies.rs:80:15
    |
-80 |         42 => {
-   |               ^
+80 |           42 => {
+   |  _______________^ starting here...
+81 | |
+82 | |
+83 | |             foo();
+...  |
+89 | |             a
+90 | |         }
+   | |_________^ ...ending here
 
 error: this `match` has identical arm bodies
    --> $DIR/copies.rs:107:14
@@ -94,26 +111,54 @@ note: same as this
 error: this `if` has identical blocks
    --> $DIR/copies.rs:133:10
     |
-133 |     else {
-    |          ^
+133 |       else {
+    |  __________^ starting here...
+134 | |         for _ in &[42] {
+135 | |             let foo: &Option<_> = &Some::<u8>(42);
+136 | |             if true {
+...   |
+141 | |         }
+142 | |     }
+    | |_____^ ...ending here
     |
 note: same as this
    --> $DIR/copies.rs:122:13
     |
-122 |     if true {
-    |             ^
+122 |       if true {
+    |  _____________^ starting here...
+123 | |
+124 | |         for _ in &[42] {
+125 | |             let foo: &Option<_> = &Some::<u8>(42);
+...   |
+131 | |         }
+132 | |     }
+    | |_____^ ...ending here
 
 error: this `if` has identical blocks
    --> $DIR/copies.rs:156:10
     |
-156 |     else {
-    |          ^
+156 |       else {
+    |  __________^ starting here...
+157 | |         let bar = if true {
+158 | |             42
+159 | |         }
+...   |
+165 | |         bar + 1;
+166 | |     }
+    | |_____^ ...ending here
     |
 note: same as this
    --> $DIR/copies.rs:144:13
     |
-144 |     if true {
-    |             ^
+144 |       if true {
+    |  _____________^ starting here...
+145 | |
+146 | |         let bar = if true {
+147 | |             42
+...   |
+154 | |         bar + 1;
+155 | |     }
+    | |_____^ ...ending here
 
 error: this `if` has identical blocks
    --> $DIR/copies.rs:180:19
@@ -123,8 +168,7 @@ error: this `if` has identical blocks
 181 | |         let _ = match 42 {
 182 | |             42 => 1,
 183 | |             a if a > 0 => 2,
-184 | |             10...15 => 3,
-185 | |             _ => 4,
+...   |
 186 | |         };
 187 | |     }
     | |_____^ ...ending here
@@ -137,9 +181,7 @@ note: same as this
 169 | |
 170 | |         let _ = match 42 {
 171 | |             42 => 1,
-172 | |             a if a > 0 => 2,
-173 | |             10...15 => 3,
-174 | |             _ => 4,
+...   |
 175 | |         };
 176 | |     }
     | |_____^ ...ending here
