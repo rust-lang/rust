@@ -1379,7 +1379,7 @@ use core::mem;
 use std::mem;
 use compiler_builtins::float::conv::__floatdidf;
 
-fn mk_f64(x: u64) -> f64 {
+fn to_u64(x: f64) -> u64 {
     unsafe { mem::transmute(x) }
 }
 
@@ -1395,7 +1395,7 @@ static TEST_CASES: &[((i64,), u64)] = &[
 fn floatdidf() {
     for &((a,), b) in TEST_CASES {
         let b_ = __floatdidf(a);
-        assert_eq!(((a,), mk_f64(b)), ((a,), b_));
+        assert_eq!(((a,), b), ((a,), to_u64(b_)));
     }
 }
 "
@@ -1445,7 +1445,7 @@ use core::mem;
 use std::mem;
 use compiler_builtins::float::conv::__floatsidf;
 
-fn mk_f64(x: u64) -> f64 {
+fn to_u64(x: f64) -> u64 {
     unsafe { mem::transmute(x) }
 }
 
@@ -1461,7 +1461,7 @@ static TEST_CASES: &[((i32,), u64)] = &[
 fn floatsidf() {
     for &((a,), b) in TEST_CASES {
         let b_ = __floatsidf(a);
-        assert_eq!(((a,), mk_f64(b)), ((a,), b_));
+        assert_eq!(((a,), b), ((a,), to_u64(b_)));
     }
 }
 "
@@ -1511,7 +1511,7 @@ use core::mem;
 use std::mem;
 use compiler_builtins::float::conv::__floatsisf;
 
-fn mk_f32(x: u32) -> f32 {
+fn to_u32(x: f32) -> u32 {
     unsafe { mem::transmute(x) }
 }
 
@@ -1527,7 +1527,7 @@ static TEST_CASES: &[((i32,), u32)] = &[
 fn floatsisf() {
     for &((a,), b) in TEST_CASES {
         let b_ = __floatsisf(a);
-        assert_eq!(((a,), mk_f32(b)), ((a,), b_));
+        assert_eq!(((a,), b), ((a,), to_u32(b_)));
     }
 }
 "
@@ -1577,7 +1577,7 @@ use core::mem;
 use std::mem;
 use compiler_builtins::float::conv::__floatundidf;
 
-fn mk_f64(x: u64) -> f64 {
+fn to_u64(x: f64) -> u64 {
     unsafe { mem::transmute(x) }
 }
 
@@ -1593,7 +1593,7 @@ static TEST_CASES: &[((u64,), u64)] = &[
 fn floatundidf() {
     for &((a,), b) in TEST_CASES {
         let b_ = __floatundidf(a);
-        assert_eq!(((a,), mk_f64(b)), ((a,), b_));
+        assert_eq!(((a,), b), ((a,), to_u64(b_)));
     }
 }
 "
@@ -1643,7 +1643,7 @@ use core::mem;
 use std::mem;
 use compiler_builtins::float::conv::__floatunsidf;
 
-fn mk_f64(x: u64) -> f64 {
+fn to_u64(x: f64) -> u64 {
     unsafe { mem::transmute(x) }
 }
 
@@ -1659,7 +1659,7 @@ static TEST_CASES: &[((u32,), u64)] = &[
 fn floatunsidf() {
     for &((a,), b) in TEST_CASES {
         let b_ = __floatunsidf(a);
-        assert_eq!(((a,), mk_f64(b)), ((a,), b_));
+        assert_eq!(((a,), b), ((a,), to_u64(b_)));
     }
 }
 "
@@ -1709,7 +1709,7 @@ use core::mem;
 use std::mem;
 use compiler_builtins::float::conv::__floatunsisf;
 
-fn mk_f32(x: u32) -> f32 {
+fn to_u32(x: f32) -> u32 {
     unsafe { mem::transmute(x) }
 }
 
@@ -1725,7 +1725,7 @@ static TEST_CASES: &[((u32,), u32)] = &[
 fn floatunsisf() {
     for &((a,), b) in TEST_CASES {
         let b_ = __floatunsisf(a);
-        assert_eq!(((a,), mk_f32(b)), ((a,), b_));
+        assert_eq!(((a,), b), ((a,), to_u32(b_)));
     }
 }
 "
