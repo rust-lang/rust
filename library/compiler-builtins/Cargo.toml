@@ -11,12 +11,6 @@ rustc-cfg = "0.3.0"
 optional = true
 version = "0.3.36"
 
-[dev-dependencies]
-quickcheck = "0.3.1"
-rand = "0.3.14"
-gcc_s = { path = "gcc_s" }
-compiler-rt = { path = "compiler-rt" }
-
 [features]
 # Build the missing intrinsics from compiler-rt C source code
 c = ["gcc"]

@@ -112,24 +112,7 @@ fn sconv(i: i128) -> U64x2 {
 }
 
 #[cfg(test)]
-#[cfg_attr(target_arch = "arm", macro_use)]
-extern crate quickcheck;
-
-#[cfg(test)]
 extern crate core;
-
-#[cfg(test)]
-extern crate gcc_s;
-
-#[cfg(test)]
-extern crate compiler_rt;
-
-#[cfg(test)]
-extern crate rand;
-
-#[cfg(test)]
-#[macro_use]
-mod qc;
 
 pub mod int;
 pub mod float;
