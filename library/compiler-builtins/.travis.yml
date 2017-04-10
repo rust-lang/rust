@@ -22,10 +22,10 @@ matrix:
     - env: TARGET=powerpc-unknown-linux-gnu
     - env: TARGET=powerpc64-unknown-linux-gnu
     - env: TARGET=powerpc64le-unknown-linux-gnu
-    - env: TARGET=thumbv6m-none-eabi
-    - env: TARGET=thumbv7em-none-eabi
-    - env: TARGET=thumbv7em-none-eabihf
-    - env: TARGET=thumbv7m-none-eabi
+    - env: TARGET=thumbv6m-linux-eabi
+    - env: TARGET=thumbv7em-linux-eabi
+    - env: TARGET=thumbv7em-linux-eabihf
+    - env: TARGET=thumbv7m-linux-eabi
     - env: TARGET=x86_64-apple-darwin
       os: osx
 env: TARGET=x86_64-unknown-linux-gnu
@@ -38,7 +38,7 @@ install:
   - source ~/.cargo/env
   - case $TARGET in
       x86_64-apple-darwin | x86_64-unknown-linux-gnu) ;;
-      thumbv*-none-eabi*) rustup component add rust-src ;;
+      thumbv*eabi*) rustup component add rust-src ;;
       *) rustup target add $TARGET;;
     esac
 
