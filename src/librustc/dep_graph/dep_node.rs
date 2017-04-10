@@ -58,7 +58,8 @@ pub enum DepNode<D: Clone + Debug> {
     // Represents different phases in the compiler.
     CollectLanguageItems,
     ResolveLifetimes,
-    RegionResolveCrate,
+    RegionResolveFn(D),
+    CheckLoops,
     PluginRegistrar,
     StabilityIndex,
     CollectItem(D),
@@ -213,7 +214,7 @@ impl<D: Clone + Debug> DepNode<D> {
             TypeckBodiesKrate => Some(TypeckBodiesKrate),
             CollectLanguageItems => Some(CollectLanguageItems),
             ResolveLifetimes => Some(ResolveLifetimes),
-            RegionResolveCrate => Some(RegionResolveCrate),
+            CheckLoops => Some(CheckLoops),
             PluginRegistrar => Some(PluginRegistrar),
             StabilityIndex => Some(StabilityIndex),
             Coherence => Some(Coherence),
@@ -255,6 +256,7 @@ impl<D: Clone + Debug> DepNode<D> {
                 def_ids.map(MirShim)
             }
             BorrowCheck(ref d) => op(d).map(BorrowCheck),
+            RegionResolveFn(ref d) => op(d).map(RegionResolveFn),
             RvalueCheck(ref d) => op(d).map(RvalueCheck),
             StabilityCheck(ref d) => op(d).map(StabilityCheck),
             TransCrateItem(ref d) => op(d).map(TransCrateItem),
