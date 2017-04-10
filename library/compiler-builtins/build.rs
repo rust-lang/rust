@@ -1,3 +1,5 @@
+#![feature(i128_type)]
+
 use std::env;
 
 fn main() {
@@ -15,6 +17,9 @@ fn main() {
     // custom targets, which can have arbitrary names.
     let llvm_target = target.split('-').collect::<Vec<_>>();
 
+    // Build test files
+    tests::generate();
+
     // Build missing intrinsics from compiler-rt C source code
     #[cfg(feature = "c")]
     c::compile(&llvm_target);
@@ -28,6 +33,2509 @@ fn main() {
     // THUMBv2 support. We have to cfg our code accordingly.
     if llvm_target[0] == "thumbv6m" {
         println!("cargo:rustc-cfg=thumbv6m")
+    }
+}
+
+mod tests {
+    extern crate rand;
+
+    use std::collections::HashSet;
+    use std::fmt::Write;
+    use std::fs::File;
+    use std::hash::Hash;
+    use std::path::PathBuf;
+    use std::{env, mem};
+
+    use self::rand::Rng;
+
+    const NTESTS: usize = 10_000;
+
+    macro_rules! test {
+        ($($intrinsic:ident,)+) => {
+            $(
+                mk_file::<$intrinsic>();
+            )+
+        }
+    }
+
+    pub fn generate() {
+        // TODO move to main
+        test! {
+            // float/add.rs
+            Adddf3,
+            Addsf3,
+
+            // float/conv.rs
+            // Fixdfdi,
+            // Fixdfsi,
+            // Fixsfdi,
+            // Fixsfsi,
+            // Fixunsdfdi,
+            // Fixunsdfsi,
+            // Fixunssfdi,
+            // Fixunssfsi,
+            // Floatdidf,
+            // Floatsidf,
+            // Floatsisf,
+            // Floatundidf,
+            // Floatunsidf,
+            // Floatunsisf,
+
+            // float/pow.rs
+            Powidf2,
+            Powisf2,
+
+            // float/sub.rs
+            Subdf3,
+            Subsf3,
+
+            // int/mul.rs
+            Muldi3,
+            Mulodi4,
+            Mulosi4,
+            Muloti4,
+            Multi3,
+
+            // int/sdiv.rs
+            Divdi3,
+            Divmoddi4,
+            Divmodsi4,
+            Divsi3,
+            Divti3,
+            Moddi3,
+            Modsi3,
+            Modti3,
+
+            // int/shift.rs
+            Ashldi3,
+            Ashlti3,
+            Ashrdi3,
+            Ashrti3,
+            Lshrdi3,
+            Lshrti3,
+
+            // int/udiv.rs
+            Udivdi3,
+            Udivmoddi4,
+            Udivmodsi4,
+            Udivmodti4,
+            Udivsi3,
+            Udivti3,
+            Umoddi3,
+            Umodsi3,
+            Umodti3,
+        }
+    }
+
+    #[derive(Eq, Hash, PartialEq)]
+    pub struct Adddf3 {
+        a: u64,
+        b: u64,
+        c: u64,
+    }
+
+    impl TestCase for Adddf3 {
+        fn name() -> &'static str {
+            "adddf3"
+        }
+
+        fn generate<R>(rng: &mut R) -> Option<Self>
+        where
+            R: Rng,
+            Self: Sized,
+        {
+            let a = gen_f64(rng);
+            let b = gen_f64(rng);
+            let c = a + b;
+            // TODO accept NaNs. We don't do that right now because we can't check
+            // for NaN-ness on the thumb targets (due to missing intrinsics)
+            if a.is_nan() || b.is_nan() || c.is_nan() {
+                return None;
+            }
+
+            Some(
+                Adddf3 {
+                    a: to_u64(a),
+                    b: to_u64(b),
+                    c: to_u64(c),
+                },
+            )
+        }
+
+        fn to_string(&self, buffer: &mut String) {
+            writeln!(
+                buffer,
+                "(({a}, {b}), {c}),",
+                a = self.a,
+                b = self.b,
+                c = self.c
+            )
+                    .unwrap();
+        }
+
+        fn prologue() -> &'static str {
+            r#"
+#[cfg(all(target_arch = "arm",
+          not(any(target_env = "gnu", target_env = "musl")),
+          target_os = "linux",
+          test))]
+use core::mem;
+#[cfg(not(all(target_arch = "arm",
+              not(any(target_env = "gnu", target_env = "musl")),
+              target_os = "linux",
+              test)))]
+use std::mem;
+use compiler_builtins::float::add::__adddf3;
+
+fn mk_f64(x: u64) -> f64 {
+    unsafe { mem::transmute(x) }
+}
+
+fn to_u64(x: f64) -> u64 {
+    unsafe { mem::transmute(x) }
+}
+
+static TEST_CASES: &[((u64, u64), u64)] = &[
+"#
+        }
+
+        fn epilogue() -> &'static str {
+            "
+];
+
+#[test]
+fn adddf3() {
+    for &((a, b), c) in TEST_CASES {
+        let c_ = __adddf3(mk_f64(a), mk_f64(b));
+        assert_eq!(((a, b), c), ((a, b), to_u64(c_)));
+    }
+}
+"
+        }
+    }
+
+    #[derive(Eq, Hash, PartialEq)]
+    pub struct Addsf3 {
+        a: u32,
+        b: u32,
+        c: u32,
+    }
+
+    impl TestCase for Addsf3 {
+        fn name() -> &'static str {
+            "addsf3"
+        }
+
+        fn generate<R>(rng: &mut R) -> Option<Self>
+        where
+            R: Rng,
+            Self: Sized,
+        {
+            let a = gen_f32(rng);
+            let b = gen_f32(rng);
+            let c = a + b;
+            // TODO accept NaNs. We don't do that right now because we can't check
+            // for NaN-ness on the thumb targets (due to missing intrinsics)
+            if a.is_nan() || b.is_nan() || c.is_nan() {
+                return None;
+            }
+
+            Some(
+                Addsf3 {
+                    a: to_u32(a),
+                    b: to_u32(b),
+                    c: to_u32(c),
+                },
+            )
+        }
+
+        fn to_string(&self, buffer: &mut String) {
+            writeln!(
+                buffer,
+                "(({a}, {b}), {c}),",
+                a = self.a,
+                b = self.b,
+                c = self.c
+            )
+                    .unwrap();
+        }
+
+        fn prologue() -> &'static str {
+            r#"
+#[cfg(all(target_arch = "arm",
+          not(any(target_env = "gnu", target_env = "musl")),
+          target_os = "linux",
+          test))]
+use core::mem;
+#[cfg(not(all(target_arch = "arm",
+              not(any(target_env = "gnu", target_env = "musl")),
+              target_os = "linux",
+              test)))]
+use std::mem;
+use compiler_builtins::float::add::__addsf3;
+
+fn mk_f32(x: u32) -> f32 {
+    unsafe { mem::transmute(x) }
+}
+
+fn to_u32(x: f32) -> u32 {
+    unsafe { mem::transmute(x) }
+}
+
+static TEST_CASES: &[((u32, u32), u32)] = &[
+"#
+        }
+
+        fn epilogue() -> &'static str {
+            "
+];
+
+#[test]
+fn addsf3() {
+    for &((a, b), c) in TEST_CASES {
+        let c_ = __addsf3(mk_f32(a), mk_f32(b));
+        assert_eq!(((a, b), c), ((a, b), to_u32(c_)));
+    }
+}
+"
+        }
+    }
+
+    #[derive(Eq, Hash, PartialEq)]
+    pub struct Ashldi3 {
+        a: u64,
+        b: u32,
+        c: u64,
+    }
+
+    impl TestCase for Ashldi3 {
+        fn name() -> &'static str {
+            "ashldi3"
+        }
+
+        fn generate<R>(rng: &mut R) -> Option<Self>
+        where
+            R: Rng,
+            Self: Sized,
+        {
+            let a = gen_u64(rng);
+            let b = (rng.gen::<u8>() % 64) as u32;
+            let c = a << b;
+
+            Some(Ashldi3 { a, b, c })
+        }
+
+        fn to_string(&self, buffer: &mut String) {
+            writeln!(
+                buffer,
+                "(({a}, {b}), {c}),",
+                a = self.a,
+                b = self.b,
+                c = self.c
+            )
+                    .unwrap();
+        }
+
+        fn prologue() -> &'static str {
+            "
+use compiler_builtins::int::shift::__ashldi3;
+
+static TEST_CASES: &[((u64, u32), u64)] = &[
+"
+        }
+
+        fn epilogue() -> &'static str {
+            "
+];
+
+#[test]
+fn ashldi3() {
+    for &((a, b), c) in TEST_CASES {
+        let c_ = __ashldi3(a, b);
+        assert_eq!(((a, b), c), ((a, b), c_));
+    }
+}
+"
+        }
+    }
+
+    #[derive(Eq, Hash, PartialEq)]
+    pub struct Ashlti3 {
+        a: u128,
+        b: u32,
+        c: u128,
+    }
+
+    impl TestCase for Ashlti3 {
+        fn name() -> &'static str {
+            "ashlti3"
+        }
+
+        fn generate<R>(rng: &mut R) -> Option<Self>
+        where
+            R: Rng,
+            Self: Sized,
+        {
+            let a = gen_u128(rng);
+            let b = (rng.gen::<u8>() % 128) as u32;
+            let c = a << b;
+
+            Some(Ashlti3 { a, b, c })
+        }
+
+        fn to_string(&self, buffer: &mut String) {
+            writeln!(
+                buffer,
+                "(({a}, {b}), {c}),",
+                a = self.a,
+                b = self.b,
+                c = self.c
+            )
+                    .unwrap();
+        }
+
+        fn prologue() -> &'static str {
+            "
+use compiler_builtins::int::shift::__ashlti3;
+
+static TEST_CASES: &[((u128, u32), u128)] = &[
+"
+        }
+
+        fn epilogue() -> &'static str {
+            "
+];
+
+#[test]
+fn ashlti3() {
+    for &((a, b), c) in TEST_CASES {
+        let c_ = __ashlti3(a, b);
+        assert_eq!(((a, b), c), ((a, b), c_));
+    }
+}
+"
+        }
+    }
+
+    #[derive(Eq, Hash, PartialEq)]
+    pub struct Ashrdi3 {
+        a: i64,
+        b: u32,
+        c: i64,
+    }
+
+    impl TestCase for Ashrdi3 {
+        fn name() -> &'static str {
+            "ashrdi3"
+        }
+
+        fn generate<R>(rng: &mut R) -> Option<Self>
+        where
+            R: Rng,
+            Self: Sized,
+        {
+            let a = gen_i64(rng);
+            let b = (rng.gen::<u8>() % 64) as u32;
+            let c = a >> b;
+
+            Some(Ashrdi3 { a, b, c })
+        }
+
+        fn to_string(&self, buffer: &mut String) {
+            writeln!(
+                buffer,
+                "(({a}, {b}), {c}),",
+                a = self.a,
+                b = self.b,
+                c = self.c
+            )
+                    .unwrap();
+        }
+
+        fn prologue() -> &'static str {
+            "
+use compiler_builtins::int::shift::__ashrdi3;
+
+static TEST_CASES: &[((i64, u32), i64)] = &[
+"
+        }
+
+        fn epilogue() -> &'static str {
+            "
+];
+
+#[test]
+fn ashrdi3() {
+    for &((a, b), c) in TEST_CASES {
+        let c_ = __ashrdi3(a, b);
+        assert_eq!(((a, b), c), ((a, b), c_));
+    }
+}
+"
+        }
+    }
+
+    #[derive(Eq, Hash, PartialEq)]
+    pub struct Ashrti3 {
+        a: i128,
+        b: u32,
+        c: i128,
+    }
+
+    impl TestCase for Ashrti3 {
+        fn name() -> &'static str {
+            "ashrti3"
+        }
+
+        fn generate<R>(rng: &mut R) -> Option<Self>
+        where
+            R: Rng,
+            Self: Sized,
+        {
+            let a = gen_i128(rng);
+            let b = (rng.gen::<u8>() % 128) as u32;
+            let c = a >> b;
+
+            Some(Ashrti3 { a, b, c })
+        }
+
+        fn to_string(&self, buffer: &mut String) {
+            writeln!(
+                buffer,
+                "(({a}, {b}), {c}),",
+                a = self.a,
+                b = self.b,
+                c = self.c
+            )
+                    .unwrap();
+        }
+
+        fn prologue() -> &'static str {
+            "
+use compiler_builtins::int::shift::__ashrti3;
+
+static TEST_CASES: &[((i128, u32), i128)] = &[
+"
+        }
+
+        fn epilogue() -> &'static str {
+            "
+];
+
+#[test]
+fn ashrti3() {
+    for &((a, b), c) in TEST_CASES {
+        let c_ = __ashrti3(a, b);
+        assert_eq!(((a, b), c), ((a, b), c_));
+    }
+}
+"
+        }
+    }
+
+    #[derive(Eq, Hash, PartialEq)]
+    pub struct Divmoddi4 {
+        a: i64,
+        b: i64,
+        c: i64,
+        rem: i64,
+    }
+
+    impl TestCase for Divmoddi4 {
+        fn name() -> &'static str {
+            "divmoddi4"
+        }
+
+        fn generate<R>(rng: &mut R) -> Option<Self>
+        where
+            R: Rng,
+            Self: Sized,
+        {
+            let a = gen_i64(rng);
+            let b = gen_i64(rng);
+            if b == 0 {
+                return None;
+            }
+            let c = a / b;
+            let rem = a % b;
+
+            Some(Divmoddi4 { a, b, c, rem })
+        }
+
+        fn to_string(&self, buffer: &mut String) {
+            writeln!(
+                buffer,
+                "(({a}, {b}), ({c}, {rem})),",
+                a = self.a,
+                b = self.b,
+                c = self.c,
+                rem = self.rem
+            )
+                    .unwrap();
+        }
+
+        fn prologue() -> &'static str {
+            "
+use compiler_builtins::int::sdiv::__divmoddi4;
+
+static TEST_CASES: &[((i64, i64), (i64, i64))] = &[
+"
+        }
+
+        fn epilogue() -> &'static str {
+            "
+];
+
+#[test]
+fn divmoddi4() {
+    for &((a, b), (c, rem)) in TEST_CASES {
+        let mut rem_ = 0;
+        let c_ = __divmoddi4(a, b, &mut rem_);
+        assert_eq!(((a, b), (c, rem)), ((a, b), (c_, rem_)));
+    }
+}
+"
+        }
+    }
+
+    #[derive(Eq, Hash, PartialEq)]
+    pub struct Divdi3 {
+        a: i64,
+        b: i64,
+        c: i64,
+    }
+
+    impl TestCase for Divdi3 {
+        fn name() -> &'static str {
+            "divdi3"
+        }
+
+        fn generate<R>(rng: &mut R) -> Option<Self>
+        where
+            R: Rng,
+            Self: Sized,
+        {
+            let a = gen_i64(rng);
+            let b = gen_i64(rng);
+            if b == 0 {
+                return None;
+            }
+            let c = a / b;
+
+            Some(Divdi3 { a, b, c })
+        }
+
+        fn to_string(&self, buffer: &mut String) {
+            writeln!(
+                buffer,
+                "(({a}, {b}), {c}),",
+                a = self.a,
+                b = self.b,
+                c = self.c
+            )
+                    .unwrap();
+        }
+
+        fn prologue() -> &'static str {
+            "
+use compiler_builtins::int::sdiv::__divdi3;
+
+static TEST_CASES: &[((i64, i64), i64)] = &[
+"
+        }
+
+        fn epilogue() -> &'static str {
+            "
+];
+
+#[test]
+fn divdi3() {
+    for &((a, b), c) in TEST_CASES {
+        let c_ = __divdi3(a, b);
+        assert_eq!(((a, b), c), ((a, b), c_));
+    }
+}
+"
+        }
+    }
+
+    #[derive(Eq, Hash, PartialEq)]
+    pub struct Divmodsi4 {
+        a: i32,
+        b: i32,
+        c: i32,
+        rem: i32,
+    }
+
+    impl TestCase for Divmodsi4 {
+        fn name() -> &'static str {
+            "divmodsi4"
+        }
+
+        fn generate<R>(rng: &mut R) -> Option<Self>
+        where
+            R: Rng,
+            Self: Sized,
+        {
+            let a = gen_i32(rng);
+            let b = gen_i32(rng);
+            if b == 0 {
+                return None;
+            }
+            let c = a / b;
+            let rem = a % b;
+
+            Some(Divmodsi4 { a, b, c, rem })
+        }
+
+        fn to_string(&self, buffer: &mut String) {
+            writeln!(
+                buffer,
+                "(({a}, {b}), ({c}, {rem})),",
+                a = self.a,
+                b = self.b,
+                c = self.c,
+                rem = self.rem
+            )
+                    .unwrap();
+        }
+
+        fn prologue() -> &'static str {
+            "
+use compiler_builtins::int::sdiv::__divmodsi4;
+
+static TEST_CASES: &[((i32, i32), (i32, i32))] = &[
+"
+        }
+
+        fn epilogue() -> &'static str {
+            "
+];
+
+#[test]
+fn divmodsi4() {
+    for &((a, b), (c, rem)) in TEST_CASES {
+        let mut rem_ = 0;
+        let c_ = __divmodsi4(a, b, &mut rem_);
+        assert_eq!(((a, b), (c, rem)), ((a, b), (c_, rem_)));
+    }
+}
+"
+        }
+    }
+
+    #[derive(Eq, Hash, PartialEq)]
+    pub struct Divsi3 {
+        a: i32,
+        b: i32,
+        c: i32,
+    }
+
+    impl TestCase for Divsi3 {
+        fn name() -> &'static str {
+            "divsi3"
+        }
+
+        fn generate<R>(rng: &mut R) -> Option<Self>
+        where
+            R: Rng,
+            Self: Sized,
+        {
+            let a = gen_i32(rng);
+            let b = gen_i32(rng);
+            if b == 0 {
+                return None;
+            }
+            let c = a / b;
+
+            Some(Divsi3 { a, b, c })
+        }
+
+        fn to_string(&self, buffer: &mut String) {
+            writeln!(
+                buffer,
+                "(({a}, {b}), {c}),",
+                a = self.a,
+                b = self.b,
+                c = self.c
+            )
+                    .unwrap();
+        }
+
+        fn prologue() -> &'static str {
+            "
+use compiler_builtins::int::sdiv::__divsi3;
+
+static TEST_CASES: &[((i32, i32), i32)] = &[
+"
+        }
+
+        fn epilogue() -> &'static str {
+            "
+];
+
+#[test]
+fn divsi3() {
+    for &((a, b), c) in TEST_CASES {
+        let c_ = __divsi3(a, b);
+        assert_eq!(((a, b), c), ((a, b), c_));
+    }
+}
+"
+        }
+    }
+
+    #[derive(Eq, Hash, PartialEq)]
+    pub struct Divti3 {
+        a: i128,
+        b: i128,
+        c: i128,
+    }
+
+    impl TestCase for Divti3 {
+        fn name() -> &'static str {
+            "divti3"
+        }
+
+        fn generate<R>(rng: &mut R) -> Option<Self>
+        where
+            R: Rng,
+            Self: Sized,
+        {
+            let a = gen_i128(rng);
+            let b = gen_i128(rng);
+            if b == 0 {
+                return None;
+            }
+            let c = a / b;
+
+            Some(Divti3 { a, b, c })
+        }
+
+        fn to_string(&self, buffer: &mut String) {
+            writeln!(
+                buffer,
+                "(({a}, {b}), {c}),",
+                a = self.a,
+                b = self.b,
+                c = self.c
+            )
+                    .unwrap();
+        }
+
+        fn prologue() -> &'static str {
+            "
+use compiler_builtins::int::sdiv::__divti3;
+
+static TEST_CASES: &[((i128, i128), i128)] = &[
+"
+        }
+
+        fn epilogue() -> &'static str {
+            "
+];
+
+#[test]
+fn divti3() {
+    for &((a, b), c) in TEST_CASES {
+        let c_ = __divti3(a, b);
+        assert_eq!(((a, b), c), ((a, b), c_));
+    }
+}
+"
+        }
+    }
+
+    #[derive(Eq, Hash, PartialEq)]
+    pub struct Moddi3 {
+        a: i64,
+        b: i64,
+        c: i64,
+    }
+
+    impl TestCase for Moddi3 {
+        fn name() -> &'static str {
+            "moddi3"
+        }
+
+        fn generate<R>(rng: &mut R) -> Option<Self>
+        where
+            R: Rng,
+            Self: Sized,
+        {
+            let a = gen_i64(rng);
+            let b = gen_i64(rng);
+            if b == 0 {
+                return None;
+            }
+            let c = a % b;
+
+            Some(Moddi3 { a, b, c })
+        }
+
+        fn to_string(&self, buffer: &mut String) {
+            writeln!(
+                buffer,
+                "(({a}, {b}), {c}),",
+                a = self.a,
+                b = self.b,
+                c = self.c
+            )
+                    .unwrap();
+        }
+
+        fn prologue() -> &'static str {
+            "
+use compiler_builtins::int::sdiv::__moddi3;
+
+static TEST_CASES: &[((i64, i64), i64)] = &[
+"
+        }
+
+        fn epilogue() -> &'static str {
+            "
+];
+
+#[test]
+fn moddi3() {
+    for &((a, b), c) in TEST_CASES {
+        let c_ = __moddi3(a, b);
+        assert_eq!(((a, b), c), ((a, b), c_));
+    }
+}
+"
+        }
+    }
+
+    #[derive(Eq, Hash, PartialEq)]
+    pub struct Modsi3 {
+        a: i32,
+        b: i32,
+        c: i32,
+    }
+
+    impl TestCase for Modsi3 {
+        fn name() -> &'static str {
+            "modsi3"
+        }
+
+        fn generate<R>(rng: &mut R) -> Option<Self>
+        where
+            R: Rng,
+            Self: Sized,
+        {
+            let a = gen_i32(rng);
+            let b = gen_i32(rng);
+            if b == 0 {
+                return None;
+            }
+            let c = a % b;
+
+            Some(Modsi3 { a, b, c })
+        }
+
+        fn to_string(&self, buffer: &mut String) {
+            writeln!(
+                buffer,
+                "(({a}, {b}), {c}),",
+                a = self.a,
+                b = self.b,
+                c = self.c
+            )
+                    .unwrap();
+        }
+
+        fn prologue() -> &'static str {
+            "
+use compiler_builtins::int::sdiv::__modsi3;
+
+static TEST_CASES: &[((i32, i32), i32)] = &[
+"
+        }
+
+        fn epilogue() -> &'static str {
+            "
+];
+
+#[test]
+fn modsi3() {
+    for &((a, b), c) in TEST_CASES {
+        let c_ = __modsi3(a, b);
+        assert_eq!(((a, b), c), ((a, b), c_));
+    }
+}
+"
+        }
+    }
+
+    #[derive(Eq, Hash, PartialEq)]
+    pub struct Modti3 {
+        a: i128,
+        b: i128,
+        c: i128,
+    }
+
+    impl TestCase for Modti3 {
+        fn name() -> &'static str {
+            "modti3"
+        }
+
+        fn generate<R>(rng: &mut R) -> Option<Self>
+        where
+            R: Rng,
+            Self: Sized,
+        {
+            let a = gen_i128(rng);
+            let b = gen_i128(rng);
+            if b == 0 {
+                return None;
+            }
+            let c = a % b;
+
+            Some(Modti3 { a, b, c })
+        }
+
+        fn to_string(&self, buffer: &mut String) {
+            writeln!(
+                buffer,
+                "(({a}, {b}), {c}),",
+                a = self.a,
+                b = self.b,
+                c = self.c
+            )
+                    .unwrap();
+        }
+
+        fn prologue() -> &'static str {
+            "
+use compiler_builtins::int::sdiv::__modti3;
+
+static TEST_CASES: &[((i128, i128), i128)] = &[
+"
+        }
+
+        fn epilogue() -> &'static str {
+            "
+];
+
+#[test]
+fn modti3() {
+    for &((a, b), c) in TEST_CASES {
+        let c_ = __modti3(a, b);
+        assert_eq!(((a, b), c), ((a, b), c_));
+    }
+}
+"
+        }
+    }
+
+    #[derive(Eq, Hash, PartialEq)]
+    struct Muldi3 {
+        a: u64,
+        b: u64,
+        c: u64,
+    }
+
+    impl TestCase for Muldi3 {
+        fn name() -> &'static str {
+            "muldi3"
+        }
+
+        fn generate<R>(rng: &mut R) -> Option<Self>
+        where
+            R: Rng,
+            Self: Sized,
+        {
+            let a = gen_u64(rng);
+            let b = gen_u64(rng);
+            let c = a.wrapping_mul(b);
+
+            Some(Muldi3 { a, b, c })
+        }
+
+        fn to_string(&self, buffer: &mut String) {
+            writeln!(
+                buffer,
+                "(({a}, {b}), {c}),",
+                a = self.a,
+                b = self.b,
+                c = self.c
+            )
+                    .unwrap();
+        }
+
+        fn prologue() -> &'static str {
+            "
+use compiler_builtins::int::mul::__muldi3;
+
+static TEST_CASES: &[((u64, u64), u64)] = &[
+"
+        }
+
+        fn epilogue() -> &'static str {
+            "
+];
+
+#[test]
+fn muldi3() {
+    for &((a, b), c) in TEST_CASES {
+        let c_ = __muldi3(a, b);
+        assert_eq!(((a, b), c), ((a, b), c_));
+    }
+}
+"
+        }
+    }
+
+    #[derive(Eq, Hash, PartialEq)]
+    pub struct Mulodi4 {
+        a: i64,
+        b: i64,
+        c: i64,
+        overflow: u32,
+    }
+
+    impl TestCase for Mulodi4 {
+        fn name() -> &'static str {
+            "mulodi4"
+        }
+
+        fn generate<R>(rng: &mut R) -> Option<Self>
+        where
+            R: Rng,
+        {
+            let a = gen_i64(rng);
+            let b = gen_i64(rng);
+            let c = a.wrapping_mul(b);
+            let overflow = if a.checked_mul(b).is_some() { 0 } else { 1 };
+
+            Some(Mulodi4 { a, b, c, overflow })
+        }
+
+        fn to_string(&self, buffer: &mut String) {
+            writeln!(
+                buffer,
+                "(({a}, {b}), ({c}, {overflow})),",
+                a = self.a,
+                b = self.b,
+                c = self.c,
+                overflow = self.overflow
+            )
+                    .unwrap();
+        }
+
+        fn prologue() -> &'static str {
+            "
+use compiler_builtins::int::mul::__mulodi4;
+
+static TEST_CASES: &[((i64, i64), (i64, i32))] = &[
+"
+        }
+
+        fn epilogue() -> &'static str {
+            "
+];
+
+#[test]
+fn mulodi4() {
+    let mut overflow_ = 2;
+    for &((a, b), (c, overflow)) in TEST_CASES {
+        let c_ = __mulodi4(a, b, &mut overflow_);
+        assert_eq!(((a, b), (c, overflow)), ((a, b), (c_, overflow_)));
+    }
+}
+"
+        }
+    }
+
+    #[derive(Eq, Hash, PartialEq)]
+    pub struct Mulosi4 {
+        a: i32,
+        b: i32,
+        c: i32,
+        overflow: u32,
+    }
+
+    impl TestCase for Mulosi4 {
+        fn name() -> &'static str {
+            "mulosi4"
+        }
+
+        fn generate<R>(rng: &mut R) -> Option<Self>
+        where
+            R: Rng,
+        {
+            let a = gen_i32(rng);
+            let b = gen_i32(rng);
+            let c = a.wrapping_mul(b);
+            let overflow = if a.checked_mul(b).is_some() { 0 } else { 1 };
+
+            Some(Mulosi4 { a, b, c, overflow })
+        }
+
+        fn prologue() -> &'static str {
+            "
+use compiler_builtins::int::mul::__mulosi4;
+
+static TEST_CASES: &[((i32, i32), (i32, i32))] = &[
+"
+        }
+
+        fn epilogue() -> &'static str {
+            "
+];
+
+#[test]
+fn mulosi4() {
+    let mut overflow_ = 2;
+    for &((a, b), (c, overflow)) in TEST_CASES {
+        let c_ = __mulosi4(a, b, &mut overflow_);
+        assert_eq!(((a, b), (c, overflow)), ((a, b), (c_, overflow_)));
+    }
+}
+"
+        }
+
+        fn to_string(&self, buffer: &mut String) {
+            writeln!(
+                buffer,
+                "(({a}, {b}), ({c}, {overflow})),",
+                a = self.a,
+                b = self.b,
+                c = self.c,
+                overflow = self.overflow
+            )
+                    .unwrap();
+        }
+    }
+
+    #[derive(Eq, Hash, PartialEq)]
+    pub struct Muloti4 {
+        a: i128,
+        b: i128,
+        c: i128,
+        overflow: u32,
+    }
+
+    impl TestCase for Muloti4 {
+        fn name() -> &'static str {
+            "muloti4"
+        }
+
+        fn generate<R>(rng: &mut R) -> Option<Self>
+        where
+            R: Rng,
+        {
+            let a = gen_i128(rng);
+            let b = gen_i128(rng);
+            let c = a.wrapping_mul(b);
+            let overflow = if a.checked_mul(b).is_some() { 0 } else { 1 };
+
+            Some(Muloti4 { a, b, c, overflow })
+        }
+
+        fn prologue() -> &'static str {
+            "
+use compiler_builtins::int::mul::__muloti4;
+
+static TEST_CASES: &[((i128, i128), (i128, i32))] = &[
+"
+        }
+
+        fn epilogue() -> &'static str {
+            "
+];
+
+#[test]
+fn muloti4() {
+    let mut overflow_ = 2;
+    for &((a, b), (c, overflow)) in TEST_CASES {
+        let c_ = __muloti4(a, b, &mut overflow_);
+        assert_eq!(((a, b), (c, overflow)), ((a, b), (c_, overflow_)));
+    }
+}
+"
+        }
+
+        fn to_string(&self, buffer: &mut String) {
+            writeln!(
+                buffer,
+                "(({a}, {b}), ({c}, {overflow})),",
+                a = self.a,
+                b = self.b,
+                c = self.c,
+                overflow = self.overflow
+            )
+                    .unwrap();
+        }
+    }
+
+    #[derive(Eq, Hash, PartialEq)]
+    pub struct Multi3 {
+        a: i128,
+        b: i128,
+        c: i128,
+    }
+
+    impl TestCase for Multi3 {
+        fn name() -> &'static str {
+            "multi3"
+        }
+
+        fn generate<R>(rng: &mut R) -> Option<Self>
+        where
+            R: Rng,
+            Self: Sized,
+        {
+            let a = gen_i128(rng);
+            let b = gen_i128(rng);
+            let c = a.wrapping_mul(b);
+
+            Some(Multi3 { a, b, c })
+        }
+
+        fn to_string(&self, buffer: &mut String) {
+            writeln!(
+                buffer,
+                "(({a}, {b}), {c}),",
+                a = self.a,
+                b = self.b,
+                c = self.c
+            )
+                    .unwrap();
+        }
+
+        fn prologue() -> &'static str {
+            "
+use compiler_builtins::int::mul::__multi3;
+
+static TEST_CASES: &[((i128, i128), i128)] = &[
+"
+        }
+
+        fn epilogue() -> &'static str {
+            "
+];
+
+#[test]
+fn multi3() {
+    for &((a, b), c) in TEST_CASES {
+        let c_ = __multi3(a, b);
+        assert_eq!(((a, b), c), ((a, b), c_));
+    }
+}
+"
+        }
+    }
+
+    #[derive(Eq, Hash, PartialEq)]
+    pub struct Powidf2 {
+        a: u64,
+        b: i32,
+        c: u64,
+    }
+
+    impl TestCase for Powidf2 {
+        fn name() -> &'static str {
+            "powidf2"
+        }
+
+        fn generate<R>(rng: &mut R) -> Option<Self>
+        where
+            R: Rng,
+            Self: Sized,
+        {
+            let a = gen_f64(rng);
+            let b = gen_i32(rng);
+            let c = a.powi(b);
+            // TODO accept NaNs. We don't do that right now because we can't check
+            // for NaN-ness on the thumb targets
+            if a.is_nan() || c.is_nan() {
+                return None;
+            }
+
+            Some(
+                Powidf2 {
+                    a: to_u64(a),
+                    b,
+                    c: to_u64(c),
+                },
+            )
+        }
+
+        fn to_string(&self, buffer: &mut String) {
+            writeln!(
+                buffer,
+                "(({a}, {b}), {c}),",
+                a = self.a,
+                b = self.b,
+                c = self.c
+            )
+                    .unwrap();
+        }
+
+        fn prologue() -> &'static str {
+            r#"
+#[cfg(all(target_arch = "arm",
+          not(any(target_env = "gnu", target_env = "musl")),
+          target_os = "linux",
+          test))]
+use core::mem;
+#[cfg(not(all(target_arch = "arm",
+              not(any(target_env = "gnu", target_env = "musl")),
+              target_os = "linux",
+              test)))]
+use std::mem;
+use compiler_builtins::float::pow::__powidf2;
+
+fn mk_f64(x: u64) -> f64 {
+    unsafe { mem::transmute(x) }
+}
+
+fn to_u64(x: f64) -> u64 {
+    unsafe { mem::transmute(x) }
+}
+
+static TEST_CASES: &[((u64, i32), u64)] = &[
+"#
+        }
+
+        fn epilogue() -> &'static str {
+            "
+];
+
+#[test]
+fn powidf2() {
+    for &((a, b), c) in TEST_CASES {
+        let c_ = __powidf2(mk_f64(a), b);
+        assert_eq!(((a, b), c), ((a, b), to_u64(c_)));
+    }
+}
+"
+        }
+    }
+
+    #[derive(Eq, Hash, PartialEq)]
+    pub struct Powisf2 {
+        a: u32,
+        b: i32,
+        c: u32,
+    }
+
+    impl TestCase for Powisf2 {
+        fn name() -> &'static str {
+            "powisf2"
+        }
+
+        fn generate<R>(rng: &mut R) -> Option<Self>
+        where
+            R: Rng,
+            Self: Sized,
+        {
+            let a = gen_f32(rng);
+            let b = gen_i32(rng);
+            let c = a.powi(b);
+            // TODO accept NaNs. We don't do that right now because we can't check
+            // for NaN-ness on the thumb targets
+            if a.is_nan() || c.is_nan() {
+                return None;
+            }
+
+            Some(
+                Powisf2 {
+                    a: to_u32(a),
+                    b,
+                    c: to_u32(c),
+                },
+            )
+        }
+
+        fn to_string(&self, buffer: &mut String) {
+            writeln!(
+                buffer,
+                "(({a}, {b}), {c}),",
+                a = self.a,
+                b = self.b,
+                c = self.c
+            )
+                    .unwrap();
+        }
+
+        fn prologue() -> &'static str {
+            r#"
+#[cfg(all(target_arch = "arm",
+          not(any(target_env = "gnu", target_env = "musl")),
+          target_os = "linux",
+          test))]
+use core::mem;
+#[cfg(not(all(target_arch = "arm",
+              not(any(target_env = "gnu", target_env = "musl")),
+              target_os = "linux",
+              test)))]
+use std::mem;
+use compiler_builtins::float::pow::__powisf2;
+
+fn mk_f32(x: u32) -> f32 {
+    unsafe { mem::transmute(x) }
+}
+
+fn to_u32(x: f32) -> u32 {
+    unsafe { mem::transmute(x) }
+}
+
+static TEST_CASES: &[((u32, i32), u32)] = &[
+"#
+        }
+
+        fn epilogue() -> &'static str {
+            "
+];
+
+#[test]
+fn powisf2() {
+    for &((a, b), c) in TEST_CASES {
+        let c_ = __powisf2(mk_f32(a), b);
+        assert_eq!(((a, b), c), ((a, b), to_u32(c_)));
+    }
+}
+"
+        }
+    }
+
+    #[derive(Eq, Hash, PartialEq)]
+    pub struct Lshrdi3 {
+        a: u64,
+        b: u32,
+        c: u64,
+    }
+
+    impl TestCase for Lshrdi3 {
+        fn name() -> &'static str {
+            "lshrdi3"
+        }
+
+        fn generate<R>(rng: &mut R) -> Option<Self>
+        where
+            R: Rng,
+            Self: Sized,
+        {
+            let a = gen_u64(rng);
+            let b = (rng.gen::<u8>() % 64) as u32;
+            let c = a >> b;
+
+            Some(Lshrdi3 { a, b, c })
+        }
+
+        fn to_string(&self, buffer: &mut String) {
+            writeln!(
+                buffer,
+                "(({a}, {b}), {c}),",
+                a = self.a,
+                b = self.b,
+                c = self.c
+            )
+                    .unwrap();
+        }
+
+        fn prologue() -> &'static str {
+            "
+use compiler_builtins::int::shift::__lshrdi3;
+
+static TEST_CASES: &[((u64, u32), u64)] = &[
+"
+        }
+
+        fn epilogue() -> &'static str {
+            "
+];
+
+#[test]
+fn lshrdi3() {
+    for &((a, b), c) in TEST_CASES {
+        let c_ = __lshrdi3(a, b);
+        assert_eq!(((a, b), c), ((a, b), c_));
+    }
+}
+"
+        }
+    }
+
+    #[derive(Eq, Hash, PartialEq)]
+    pub struct Lshrti3 {
+        a: u128,
+        b: u32,
+        c: u128,
+    }
+
+    impl TestCase for Lshrti3 {
+        fn name() -> &'static str {
+            "lshrti3"
+        }
+
+        fn generate<R>(rng: &mut R) -> Option<Self>
+        where
+            R: Rng,
+            Self: Sized,
+        {
+            let a = gen_u128(rng);
+            let b = (rng.gen::<u8>() % 128) as u32;
+            let c = a >> b;
+
+            Some(Lshrti3 { a, b, c })
+        }
+
+        fn to_string(&self, buffer: &mut String) {
+            writeln!(
+                buffer,
+                "(({a}, {b}), {c}),",
+                a = self.a,
+                b = self.b,
+                c = self.c
+            )
+                    .unwrap();
+        }
+
+        fn prologue() -> &'static str {
+            "
+use compiler_builtins::int::shift::__lshrti3;
+
+static TEST_CASES: &[((u128, u32), u128)] = &[
+"
+        }
+
+        fn epilogue() -> &'static str {
+            "
+];
+
+#[test]
+fn lshrti3() {
+    for &((a, b), c) in TEST_CASES {
+        let c_ = __lshrti3(a, b);
+        assert_eq!(((a, b), c), ((a, b), c_));
+    }
+}
+"
+        }
+    }
+
+    #[derive(Eq, Hash, PartialEq)]
+    pub struct Subdf3 {
+        a: u64,
+        b: u64,
+        c: u64,
+    }
+
+    impl TestCase for Subdf3 {
+        fn name() -> &'static str {
+            "subdf3"
+        }
+
+        fn generate<R>(rng: &mut R) -> Option<Self>
+        where
+            R: Rng,
+            Self: Sized,
+        {
+            let a = gen_f64(rng);
+            let b = gen_f64(rng);
+            let c = a - b;
+            // TODO accept NaNs. We don't do that right now because we can't check
+            // for NaN-ness on the thumb targets (due to missing intrinsics)
+            if a.is_nan() || b.is_nan() || c.is_nan() {
+                return None;
+            }
+
+            Some(
+                Subdf3 {
+                    a: to_u64(a),
+                    b: to_u64(b),
+                    c: to_u64(c),
+                },
+            )
+        }
+
+        fn to_string(&self, buffer: &mut String) {
+            writeln!(
+                buffer,
+                "(({a}, {b}), {c}),",
+                a = self.a,
+                b = self.b,
+                c = self.c
+            )
+                    .unwrap();
+        }
+
+        fn prologue() -> &'static str {
+            r#"
+#[cfg(all(target_arch = "arm",
+          not(any(target_env = "gnu", target_env = "musl")),
+          target_os = "linux",
+          test))]
+use core::mem;
+#[cfg(not(all(target_arch = "arm",
+              not(any(target_env = "gnu", target_env = "musl")),
+              target_os = "linux",
+              test)))]
+use std::mem;
+use compiler_builtins::float::sub::__subdf3;
+
+fn mk_f64(x: u64) -> f64 {
+    unsafe { mem::transmute(x) }
+}
+
+fn to_u64(x: f64) -> u64 {
+    unsafe { mem::transmute(x) }
+}
+
+static TEST_CASES: &[((u64, u64), u64)] = &[
+"#
+        }
+
+        fn epilogue() -> &'static str {
+            "
+];
+
+#[test]
+fn subdf3() {
+    for &((a, b), c) in TEST_CASES {
+        let c_ = __subdf3(mk_f64(a), mk_f64(b));
+        assert_eq!(((a, b), c), ((a, b), to_u64(c_)));
+    }
+}
+"
+        }
+    }
+
+    #[derive(Eq, Hash, PartialEq)]
+    pub struct Subsf3 {
+        a: u32,
+        b: u32,
+        c: u32,
+    }
+
+    impl TestCase for Subsf3 {
+        fn name() -> &'static str {
+            "subsf3"
+        }
+
+        fn generate<R>(rng: &mut R) -> Option<Self>
+        where
+            R: Rng,
+            Self: Sized,
+        {
+            let a = gen_f32(rng);
+            let b = gen_f32(rng);
+            let c = a - b;
+            // TODO accept NaNs. We don't do that right now because we can't check
+            // for NaN-ness on the thumb targets (due to missing intrinsics)
+            if a.is_nan() || b.is_nan() || c.is_nan() {
+                return None;
+            }
+
+            Some(
+                Subsf3 {
+                    a: to_u32(a),
+                    b: to_u32(b),
+                    c: to_u32(c),
+                },
+            )
+        }
+
+        fn to_string(&self, buffer: &mut String) {
+            writeln!(
+                buffer,
+                "(({a}, {b}), {c}),",
+                a = self.a,
+                b = self.b,
+                c = self.c
+            )
+                    .unwrap();
+        }
+
+        fn prologue() -> &'static str {
+            r#"
+#[cfg(all(target_arch = "arm",
+          not(any(target_env = "gnu", target_env = "musl")),
+          target_os = "linux",
+          test))]
+use core::mem;
+#[cfg(not(all(target_arch = "arm",
+              not(any(target_env = "gnu", target_env = "musl")),
+              target_os = "linux",
+              test)))]
+use std::mem;
+use compiler_builtins::float::sub::__subsf3;
+
+fn mk_f32(x: u32) -> f32 {
+    unsafe { mem::transmute(x) }
+}
+
+fn to_u32(x: f32) -> u32 {
+    unsafe { mem::transmute(x) }
+}
+
+static TEST_CASES: &[((u32, u32), u32)] = &[
+"#
+        }
+
+        fn epilogue() -> &'static str {
+            "
+];
+
+#[test]
+fn subsf3() {
+    for &((a, b), c) in TEST_CASES {
+        let c_ = __subsf3(mk_f32(a), mk_f32(b));
+        assert_eq!(((a, b), c), ((a, b), to_u32(c_)));
+    }
+}
+"
+        }
+    }
+
+    #[derive(Eq, Hash, PartialEq)]
+    pub struct Udivdi3 {
+        a: u64,
+        b: u64,
+        c: u64,
+    }
+
+    impl TestCase for Udivdi3 {
+        fn name() -> &'static str {
+            "udivdi3"
+        }
+
+        fn generate<R>(rng: &mut R) -> Option<Self>
+        where
+            R: Rng,
+            Self: Sized,
+        {
+            let a = gen_u64(rng);
+            let b = gen_u64(rng);
+            if b == 0 {
+                return None;
+            }
+            let c = a / b;
+
+            Some(Udivdi3 { a, b, c })
+        }
+
+        fn to_string(&self, buffer: &mut String) {
+            writeln!(
+                buffer,
+                "(({a}, {b}), {c}),",
+                a = self.a,
+                b = self.b,
+                c = self.c
+            )
+                    .unwrap();
+        }
+
+        fn prologue() -> &'static str {
+            "
+use compiler_builtins::int::udiv::__udivdi3;
+
+static TEST_CASES: &[((u64, u64), u64)] = &[
+"
+        }
+
+        fn epilogue() -> &'static str {
+            "
+];
+
+#[test]
+fn udivdi3() {
+    for &((a, b), c) in TEST_CASES {
+        let c_ = __udivdi3(a, b);
+        assert_eq!(((a, b), c), ((a, b), c_));
+    }
+}
+"
+        }
+    }
+
+    #[derive(Eq, Hash, PartialEq)]
+    pub struct Udivmoddi4 {
+        a: u64,
+        b: u64,
+        c: u64,
+        rem: u64,
+    }
+
+    impl TestCase for Udivmoddi4 {
+        fn name() -> &'static str {
+            "udivmoddi4"
+        }
+
+        fn generate<R>(rng: &mut R) -> Option<Self>
+        where
+            R: Rng,
+            Self: Sized,
+        {
+            let a = gen_u64(rng);
+            let b = gen_u64(rng);
+            if b == 0 {
+                return None;
+            }
+            let c = a / b;
+            let rem = a % b;
+
+            Some(Udivmoddi4 { a, b, c, rem })
+        }
+
+        fn to_string(&self, buffer: &mut String) {
+            writeln!(
+                buffer,
+                "(({a}, {b}), ({c}, {rem})),",
+                a = self.a,
+                b = self.b,
+                c = self.c,
+                rem = self.rem
+            )
+                    .unwrap();
+        }
+
+        fn prologue() -> &'static str {
+            "
+use compiler_builtins::int::udiv::__udivmoddi4;
+
+static TEST_CASES: &[((u64, u64), (u64, u64))] = &[
+"
+        }
+
+        fn epilogue() -> &'static str {
+            "
+];
+
+#[test]
+fn udivmoddi4() {
+    for &((a, b), (c, rem)) in TEST_CASES {
+        let mut rem_ = 0;
+        let c_ = __udivmoddi4(a, b, Some(&mut rem_));
+        assert_eq!(((a, b), (c, rem)), ((a, b), (c_, rem_)));
+    }
+}
+"
+        }
+    }
+
+    #[derive(Eq, Hash, PartialEq)]
+    pub struct Udivmodsi4 {
+        a: u32,
+        b: u32,
+        c: u32,
+        rem: u32,
+    }
+
+    impl TestCase for Udivmodsi4 {
+        fn name() -> &'static str {
+            "udivmodsi4"
+        }
+
+        fn generate<R>(rng: &mut R) -> Option<Self>
+        where
+            R: Rng,
+            Self: Sized,
+        {
+            let a = gen_u32(rng);
+            let b = gen_u32(rng);
+            if b == 0 {
+                return None;
+            }
+            let c = a / b;
+            let rem = a % b;
+
+            Some(Udivmodsi4 { a, b, c, rem })
+        }
+
+        fn to_string(&self, buffer: &mut String) {
+            writeln!(
+                buffer,
+                "(({a}, {b}), ({c}, {rem})),",
+                a = self.a,
+                b = self.b,
+                c = self.c,
+                rem = self.rem
+            )
+                    .unwrap();
+        }
+
+        fn prologue() -> &'static str {
+            "
+use compiler_builtins::int::udiv::__udivmodsi4;
+
+static TEST_CASES: &[((u32, u32), (u32, u32))] = &[
+"
+        }
+
+        fn epilogue() -> &'static str {
+            "
+];
+
+#[test]
+fn udivmodsi4() {
+    for &((a, b), (c, rem)) in TEST_CASES {
+        let mut rem_ = 0;
+        let c_ = __udivmodsi4(a, b, Some(&mut rem_));
+        assert_eq!(((a, b), (c, rem)), ((a, b), (c_, rem_)));
+    }
+}
+"
+        }
+    }
+
+    #[derive(Eq, Hash, PartialEq)]
+    pub struct Udivmodti4 {
+        a: u128,
+        b: u128,
+        c: u128,
+        rem: u128,
+    }
+
+    impl TestCase for Udivmodti4 {
+        fn name() -> &'static str {
+            "udivmodti4"
+        }
+
+        fn generate<R>(rng: &mut R) -> Option<Self>
+        where
+            R: Rng,
+            Self: Sized,
+        {
+            let a = gen_u128(rng);
+            let b = gen_u128(rng);
+            if b == 0 {
+                return None;
+            }
+            let c = a / b;
+            let rem = a % b;
+
+            Some(Udivmodti4 { a, b, c, rem })
+        }
+
+        fn to_string(&self, buffer: &mut String) {
+            writeln!(
+                buffer,
+                "(({a}, {b}), ({c}, {rem})),",
+                a = self.a,
+                b = self.b,
+                c = self.c,
+                rem = self.rem
+            )
+                    .unwrap();
+        }
+
+        fn prologue() -> &'static str {
+            "
+use compiler_builtins::int::udiv::__udivmodti4;
+
+static TEST_CASES: &[((u128, u128), (u128, u128))] = &[
+"
+        }
+
+        fn epilogue() -> &'static str {
+            "
+];
+
+#[test]
+fn udivmodti4() {
+    for &((a, b), (c, rem)) in TEST_CASES {
+        let mut rem_ = 0;
+        let c_ = __udivmodti4(a, b, Some(&mut rem_));
+        assert_eq!(((a, b), (c, rem)), ((a, b), (c_, rem_)));
+    }
+}
+"
+        }
+    }
+
+    #[derive(Eq, Hash, PartialEq)]
+    pub struct Udivsi3 {
+        a: u32,
+        b: u32,
+        c: u32,
+    }
+
+    impl TestCase for Udivsi3 {
+        fn name() -> &'static str {
+            "udivsi3"
+        }
+
+        fn generate<R>(rng: &mut R) -> Option<Self>
+        where
+            R: Rng,
+            Self: Sized,
+        {
+            let a = gen_u32(rng);
+            let b = gen_u32(rng);
+            if b == 0 {
+                return None;
+            }
+            let c = a / b;
+
+            Some(Udivsi3 { a, b, c })
+        }
+
+        fn to_string(&self, buffer: &mut String) {
+            writeln!(
+                buffer,
+                "(({a}, {b}), {c}),",
+                a = self.a,
+                b = self.b,
+                c = self.c
+            )
+                    .unwrap();
+        }
+
+        fn prologue() -> &'static str {
+            "
+use compiler_builtins::int::udiv::__udivsi3;
+
+static TEST_CASES: &[((u32, u32), u32)] = &[
+"
+        }
+
+        fn epilogue() -> &'static str {
+            "
+];
+
+#[test]
+fn udivsi3() {
+    for &((a, b), c) in TEST_CASES {
+        let c_ = __udivsi3(a, b);
+        assert_eq!(((a, b), c), ((a, b), c_));
+    }
+}
+"
+        }
+    }
+
+    #[derive(Eq, Hash, PartialEq)]
+    pub struct Udivti3 {
+        a: u128,
+        b: u128,
+        c: u128,
+    }
+
+    impl TestCase for Udivti3 {
+        fn name() -> &'static str {
+            "udivti3"
+        }
+
+        fn generate<R>(rng: &mut R) -> Option<Self>
+        where
+            R: Rng,
+            Self: Sized,
+        {
+            let a = gen_u128(rng);
+            let b = gen_u128(rng);
+            if b == 0 {
+                return None;
+            }
+            let c = a / b;
+
+            Some(Udivti3 { a, b, c })
+        }
+
+        fn to_string(&self, buffer: &mut String) {
+            writeln!(
+                buffer,
+                "(({a}, {b}), {c}),",
+                a = self.a,
+                b = self.b,
+                c = self.c
+            )
+                    .unwrap();
+        }
+
+        fn prologue() -> &'static str {
+            "
+use compiler_builtins::int::udiv::__udivti3;
+
+static TEST_CASES: &[((u128, u128), u128)] = &[
+"
+        }
+
+        fn epilogue() -> &'static str {
+            "
+];
+
+#[test]
+fn udivti3() {
+    for &((a, b), c) in TEST_CASES {
+        let c_ = __udivti3(a, b);
+        assert_eq!(((a, b), c), ((a, b), c_));
+    }
+}
+"
+        }
+    }
+
+    #[derive(Eq, Hash, PartialEq)]
+    pub struct Umoddi3 {
+        a: u64,
+        b: u64,
+        c: u64,
+    }
+
+    impl TestCase for Umoddi3 {
+        fn name() -> &'static str {
+            "umoddi3"
+        }
+
+        fn generate<R>(rng: &mut R) -> Option<Self>
+        where
+            R: Rng,
+            Self: Sized,
+        {
+            let a = gen_u64(rng);
+            let b = gen_u64(rng);
+            if b == 0 {
+                return None;
+            }
+            let c = a % b;
+
+            Some(Umoddi3 { a, b, c })
+        }
+
+        fn to_string(&self, buffer: &mut String) {
+            writeln!(
+                buffer,
+                "(({a}, {b}), {c}),",
+                a = self.a,
+                b = self.b,
+                c = self.c
+            )
+                    .unwrap();
+        }
+
+        fn prologue() -> &'static str {
+            "
+use compiler_builtins::int::udiv::__umoddi3;
+
+static TEST_CASES: &[((u64, u64), u64)] = &[
+"
+        }
+
+        fn epilogue() -> &'static str {
+            "
+];
+
+#[test]
+fn umoddi3() {
+    for &((a, b), c) in TEST_CASES {
+        let c_ = __umoddi3(a, b);
+        assert_eq!(((a, b), c), ((a, b), c_));
+    }
+}
+"
+        }
+    }
+
+    #[derive(Eq, Hash, PartialEq)]
+    pub struct Umodsi3 {
+        a: u32,
+        b: u32,
+        c: u32,
+    }
+
+    impl TestCase for Umodsi3 {
+        fn name() -> &'static str {
+            "umodsi3"
+        }
+
+        fn generate<R>(rng: &mut R) -> Option<Self>
+        where
+            R: Rng,
+            Self: Sized,
+        {
+            let a = gen_u32(rng);
+            let b = gen_u32(rng);
+            if b == 0 {
+                return None;
+            }
+            let c = a % b;
+
+            Some(Umodsi3 { a, b, c })
+        }
+
+        fn to_string(&self, buffer: &mut String) {
+            writeln!(
+                buffer,
+                "(({a}, {b}), {c}),",
+                a = self.a,
+                b = self.b,
+                c = self.c
+            )
+                    .unwrap();
+        }
+
+        fn prologue() -> &'static str {
+            "
+use compiler_builtins::int::udiv::__umodsi3;
+
+static TEST_CASES: &[((u32, u32), u32)] = &[
+"
+        }
+
+        fn epilogue() -> &'static str {
+            "
+];
+
+#[test]
+fn umodsi3() {
+    for &((a, b), c) in TEST_CASES {
+        let c_ = __umodsi3(a, b);
+        assert_eq!(((a, b), c), ((a, b), c_));
+    }
+}
+"
+        }
+    }
+
+    #[derive(Eq, Hash, PartialEq)]
+    pub struct Umodti3 {
+        a: u128,
+        b: u128,
+        c: u128,
+    }
+
+    impl TestCase for Umodti3 {
+        fn name() -> &'static str {
+            "umodti3"
+        }
+
+        fn generate<R>(rng: &mut R) -> Option<Self>
+        where
+            R: Rng,
+            Self: Sized,
+        {
+            let a = gen_u128(rng);
+            let b = gen_u128(rng);
+            if b == 0 {
+                return None;
+            }
+            let c = a % b;
+
+            Some(Umodti3 { a, b, c })
+        }
+
+        fn to_string(&self, buffer: &mut String) {
+            writeln!(
+                buffer,
+                "(({a}, {b}), {c}),",
+                a = self.a,
+                b = self.b,
+                c = self.c
+            )
+                    .unwrap();
+        }
+
+        fn prologue() -> &'static str {
+            "
+use compiler_builtins::int::udiv::__umodti3;
+
+static TEST_CASES: &[((u128, u128), u128)] = &[
+"
+        }
+
+        fn epilogue() -> &'static str {
+            "
+];
+
+#[test]
+fn umodti3() {
+    for &((a, b), c) in TEST_CASES {
+        let c_ = __umodti3(a, b);
+        assert_eq!(((a, b), c), ((a, b), c_));
+    }
+}
+"
+        }
+    }
+
+    trait TestCase {
+        /// Name of the intrinsic to test
+        fn name() -> &'static str;
+        /// Generates a valid test case
+        fn generate<R>(rng: &mut R) -> Option<Self>
+        where
+            R: Rng,
+            Self: Sized;
+        /// Stringifies a test case
+        fn to_string(&self, buffer: &mut String);
+        /// Prologue of the test file
+        fn prologue() -> &'static str;
+        /// Epilogue of the test file
+        fn epilogue() -> &'static str;
+    }
+
+    const PROLOGUE: &'static str = r#"
+extern crate compiler_builtins;
+
+// test runner
+#[cfg(all(target_arch = "arm",
+          not(any(target_env = "gnu", target_env = "musl")),
+          target_os = "linux",
+          test))]
+extern crate utest_cortex_m_qemu;
+
+// overrides `panic!`
+#[cfg(all(target_arch = "arm",
+          not(any(target_env = "gnu", target_env = "musl")),
+          target_os = "linux",
+          test))]
+#[macro_use]
+extern crate utest_macros;
+
+#[cfg(all(target_arch = "arm",
+          not(any(target_env = "gnu", target_env = "musl")),
+          target_os = "linux",
+          test))]
+macro_rules! panic {
+    ($($tt:tt)*) => {
+        upanic!($($tt)*);
+    };
+}
+"#;
+
+    macro_rules! gen_int {
+        ($name:ident, $ity:ident, $hty:ident) => {
+            fn $name<R>(rng: &mut R) -> $ity
+                where
+                R: Rng,
+            {
+                let mut mk = || if rng.gen_weighted_bool(10) {
+                    *rng.choose(&[::std::$hty::MAX, 0, ::std::$hty::MIN]).unwrap()
+                } else {
+                    rng.gen::<$hty>()
+                };
+                unsafe { mem::transmute([mk(), mk()]) }
+            }
+
+        }
+    }
+
+    gen_int!(gen_i32, i32, i16);
+    gen_int!(gen_i64, i64, i32);
+    gen_int!(gen_i128, i128, i64);
+
+    macro_rules! gen_float {
+        ($name:ident,
+         $fty:ident,
+         $uty:ident,
+         $bits:expr,
+         $significand_bits:expr) => {
+            pub fn $name<R>(rng: &mut R) -> $fty
+            where
+                R: Rng,
+            {
+                const BITS: u8 = $bits;
+                const SIGNIFICAND_BITS: u8 = $significand_bits;
+
+                const SIGNIFICAND_MASK: $uty = (1 << SIGNIFICAND_BITS) - 1;
+                const SIGN_MASK: $uty = (1 << (BITS - 1));
+                const EXPONENT_MASK: $uty = !(SIGN_MASK | SIGNIFICAND_MASK);
+
+                fn mk_f32(sign: bool, exponent: $uty, significand: $uty) -> $fty {
+                    unsafe {
+                        mem::transmute(((sign as $uty) << (BITS - 1)) |
+                                       ((exponent & EXPONENT_MASK) <<
+                                        SIGNIFICAND_BITS) |
+                                       (significand & SIGNIFICAND_MASK))
+                    }
+                }
+
+                if rng.gen_weighted_bool(10) {
+                    // Special values
+                    *rng.choose(&[-0.0,
+                                  0.0,
+                                  ::std::$fty::NAN,
+                                  ::std::$fty::INFINITY,
+                                  -::std::$fty::INFINITY])
+                        .unwrap()
+                } else if rng.gen_weighted_bool(10) {
+                    // NaN patterns
+                    mk_f32(rng.gen(), rng.gen(), 0)
+                } else if rng.gen() {
+                    // Denormalized
+                    mk_f32(rng.gen(), 0, rng.gen())
+                } else {
+                    // Random anything
+                    mk_f32(rng.gen(), rng.gen(), rng.gen())
+                }
+            }
+        }
+    }
+
+    gen_float!(gen_f32, f32, u32, 32, 23);
+    gen_float!(gen_f64, f64, u64, 64, 52);
+
+    pub fn gen_u128<R>(rng: &mut R) -> u128
+    where
+        R: Rng,
+    {
+        gen_i128(rng) as u128
+    }
+
+    pub fn gen_u32<R>(rng: &mut R) -> u32
+    where
+        R: Rng,
+    {
+        gen_i32(rng) as u32
+    }
+
+    fn gen_u64<R>(rng: &mut R) -> u64
+    where
+        R: Rng,
+    {
+        gen_i64(rng) as u64
+    }
+
+    pub fn to_u32(x: f32) -> u32 {
+        unsafe { mem::transmute(x) }
+    }
+
+    pub fn to_u64(x: f64) -> u64 {
+        unsafe { mem::transmute(x) }
+    }
+
+    fn mk_tests<T, R>(mut n: usize, rng: &mut R) -> String
+    where
+        T: Eq + Hash + TestCase,
+        R: Rng,
+    {
+        let mut buffer = PROLOGUE.to_owned();
+        buffer.push_str(T::prologue());
+        let mut cases = HashSet::new();
+        while n != 0 {
+            if let Some(case) = T::generate(rng) {
+                if cases.contains(&case) {
+                    continue;
+                }
+                case.to_string(&mut buffer);
+                n -= 1;
+                cases.insert(case);
+            }
+        }
+        buffer.push_str(T::epilogue());
+        buffer
+    }
+
+    fn mk_file<T>()
+    where
+        T: Eq + Hash + TestCase,
+    {
+        use std::io::Write;
+
+        let rng = &mut rand::thread_rng();
+        let out_dir = PathBuf::from(env::var_os("OUT_DIR").unwrap());
+        let out_file = out_dir.join(format!("{}.rs", T::name()));
+        let contents = mk_tests::<T, _>(NTESTS, rng);
+
+        File::create(out_file)
+            .unwrap()
+            .write_all(contents.as_bytes())
+            .unwrap();
     }
 }
 

@@ -94,6 +94,7 @@ enum Sign {
     Positive,
     Negative
 }
+
 macro_rules! fp_fix {
     ($intrinsic:ident: $fty:ty, $ity:ty) => {
         pub extern "C" fn $intrinsic(f: $fty) -> $ity {

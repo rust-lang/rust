@@ -4,17 +4,22 @@ build = "build.rs"
 name = "compiler_builtins"
 version = "0.1.0"
 
+[build-dependencies]
+rand = "0.3.15"
+
 [build-dependencies.gcc]
 optional = true
 version = "0.3.36"
 
+[target.'cfg(all(target_arch = "arm", not(any(target_env = "gnu", target_env = "musl")), target_os = "linux"))'.dev-dependencies]
+test = { git = "https://github.com/japaric/utest" }
+utest-cortex-m-qemu = { git = "https://github.com/japaric/utest", default-features = false }
+utest-macros = { git = "https://github.com/japaric/utest" }
+
 [features]
-# Build the missing intrinsics from compiler-rt C source code
 c = ["gcc"]
-# Mark this crate as the #![compiler_builtins] crate
 compiler-builtins = []
 default = ["compiler-builtins"]
-# Include implementations of memory operations like memcpy
 mem = []
 rustbuild = ["compiler-builtins"]
 
