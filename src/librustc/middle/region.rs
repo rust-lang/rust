@@ -30,8 +30,7 @@ use syntax::codemap::DUMMY_SP;
 use ty::TyCtxt;
 use ty::maps::Providers;
 
-use hir;
-use hir::def_id::{CrateNum, LOCAL_CRATE};
+use hir; use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use hir::intravisit::{self, Visitor, FnKind, NestedVisitorMap};
 use hir::{Block, Item, FnDecl, Arm, Pat, PatKind, Stmt, Expr, Local};
 
@@ -302,7 +301,11 @@ struct RegionResolutionVisitor<'a, 'tcx: 'a> {
     /// arbitrary amounts of stack space. Terminating scopes end
     /// up being contained in a DestructionScope that contains the
     /// destructor's execution.
-    terminating_scopes: NodeSet
+    terminating_scopes: NodeSet,
+
+    target_fn_id: DefId,
+
+    found_target_fn: bool,
 }
 
 
@@ -1030,50 +1033,54 @@ fn resolve_fn<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>,
                         body_id: hir::BodyId,
                         sp: Span,
                         id: ast::NodeId) {
-    debug!("region::resolve_fn(id={:?}, \
-                               span={:?}, \
-                               body.id={:?}, \
-                               cx.parent={:?})",
-           id,
-           visitor.tcx.sess.codemap().span_to_string(sp),
-           body_id,
-           visitor.cx.parent);
 
     visitor.cx.parent = Some(visitor.new_code_extent(
         CodeExtentData::CallSiteScope { fn_id: id, body_id: body_id.node_id }));
 
-    let fn_decl_scope = visitor.new_code_extent(
-        CodeExtentData::ParameterScope { fn_id: id, body_id: body_id.node_id });
-
-    if let Some(root_id) = visitor.cx.root_id {
-        visitor.region_maps.record_fn_parent(body_id.node_id, root_id);
+    if body_id == visitor.target_fn_id {
+        // We've found the top level `fn`. Store it and its children in the `RegionMaps`
+        visitor.found_target_fn = true;
     }
 
-    let outer_cx = visitor.cx;
-    let outer_ts = mem::replace(&mut visitor.terminating_scopes, NodeSet());
-    visitor.terminating_scopes.insert(body_id.node_id);
+    if visitor.found_target_fn {
+        debug!("region::resolve_fn(id={:?}, \
+                                   span={:?}, \
+                                   body.id={:?}, \
+                                   cx.parent={:?})",
+            id,
+            visitor.sess.codemap().span_to_string(sp),
+            body_id,
+            visitor.cx.parent);
 
-    // The arguments and `self` are parented to the fn.
-    visitor.cx = Context {
-        root_id: Some(body_id.node_id),
-        parent: None,
-        var_parent: Some(fn_decl_scope),
-    };
+        let fn_decl_scope = visitor.new_code_extent(
+            CodeExtentData::ParameterScope { fn_id: id, body_id: body_id.node_id });
 
-    intravisit::walk_fn_decl(visitor, decl);
-    intravisit::walk_fn_kind(visitor, kind);
+        let outer_cx = visitor.cx;
+        let outer_ts = mem::replace(&mut visitor.terminating_scopes, NodeSet());
+        visitor.terminating_scopes.insert(body_id.node_id);
 
-    // The body of the every fn is a root scope.
-    visitor.cx = Context {
-        root_id: Some(body_id.node_id),
-        parent: Some(fn_decl_scope),
-        var_parent: Some(fn_decl_scope),
-    };
-    visitor.visit_nested_body(body_id);
+        // The arguments and `self` are parented to the fn.
+        visitor.cx = Context {
+            root_id: Some(body_id.node_id),
+            parent: None,
+            var_parent: Some(fn_decl_scope),
+        };
 
-    // Restore context we had at the start.
-    visitor.cx = outer_cx;
-    visitor.terminating_scopes = outer_ts;
+        intravisit::walk_fn_decl(visitor, decl);
+        intravisit::walk_fn_kind(visitor, kind);
+
+        // The body of the every fn is a root scope.
+        visitor.cx = Context {
+            root_id: Some(body_id.node_id),
+            parent: Some(fn_decl_scope),
+            var_parent: Some(fn_decl_scope),
+        };
+        visitor.visit_nested_body(body_id);
+
+        // Restore context we had at the start.
+        visitor.cx = outer_cx;
+        visitor.terminating_scopes = outer_ts;
+    }
 }
 
 impl<'a, 'tcx> RegionResolutionVisitor<'a, 'tcx> {
@@ -1164,10 +1171,10 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionResolutionVisitor<'a, 'tcx> {
 }
 
 pub fn resolve_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Rc<RegionMaps<'tcx>> {
-    ty::queries::region_resolve_crate::get(tcx, DUMMY_SP, LOCAL_CRATE)
+    ty::queries::region_resolve_fn::get(tcx, DUMMY_SP, LOCAL_CRATE)
 }
 
-fn region_resolve_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, crate_num: CrateNum)
+fn region_resolve_fn<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, fn_id: DefId)
     -> Rc<RegionMaps<'tcx>>
 {
     debug_assert!(crate_num == LOCAL_CRATE);
@@ -1194,16 +1201,19 @@ fn region_resolve_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, crate_num: CrateN
                 parent: None,
                 var_parent: None,
             },
-            terminating_scopes: NodeSet()
+            terminating_scopes: NodeSet(),
+            target_fn_id: fn_id,
+            found_target_fn: false,
         };
         krate.visit_all_item_likes(&mut visitor.as_deep_visitor());
+        debug_assert!(visitor.found_target_fn);
     }
     Rc::new(maps)
 }
 
 pub fn provide(providers: &mut Providers) {
     *providers = Providers {
-        region_resolve_crate,
+        region_resolve_fn,
         ..*providers
     };
 }
