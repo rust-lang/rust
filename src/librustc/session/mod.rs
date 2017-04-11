@@ -530,11 +530,10 @@ impl Session {
             Some(ref c) if c == crate_name => {
                 let fuel = self.optimization_fuel_limit.get();
                 ret = fuel != 0;
-                if fuel == 0 && !self.out_of_fuel.get(){
+                if fuel == 0 && !self.out_of_fuel.get() {
                     println!("optimization-fuel-exhausted: {}", msg());
                     self.out_of_fuel.set(true);
-                }
-                else if fuel > 0{
+                } else if fuel > 0 {
                     self.optimization_fuel_limit.set(fuel-1);
                 }
             }

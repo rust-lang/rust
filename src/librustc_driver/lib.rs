@@ -518,7 +518,9 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
         }
 
         if sess.print_fuel_crate.is_some() {
-            control.compilation_done.callback = box |state| {
+            let old_callback = control.compilation_done.callback;
+            control.compilation_done.callback = box move |state| {
+                old_callback(state);
                 let sess = state.session;
                 println!("Fuel used by {}: {}",
                     sess.print_fuel_crate.as_ref().unwrap(),
