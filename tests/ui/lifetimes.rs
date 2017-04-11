@@ -145,7 +145,7 @@ impl Test {
 
 trait LintContext<'a> {}
 
-fn f<'a, T: LintContext<'a>>(cx: &T) {}
+fn f<'a, T: LintContext<'a>>(_: &T) {}
 
 fn test<'a>(x: &'a [u8]) -> u8 {
     let y: &'a u8 = &x[5];

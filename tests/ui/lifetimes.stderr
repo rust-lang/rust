@@ -97,13 +97,5 @@ error: explicit lifetimes given in parameter types where they could be elided
 132 | fn trait_bound_bug<'a, T: WithLifetime<'a>>() { unimplemented!() }
     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-warning: unused variable: `cx`
-   --> $DIR/lifetimes.rs:148:30
-    |
-148 | fn f<'a, T: LintContext<'a>>(cx: &T) {}
-    |                              ^^
-    |
-    = note: #[warn(unused_variables)] on by default
-
 error: aborting due to 15 previous errors
 
