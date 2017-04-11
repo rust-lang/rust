@@ -128,5 +128,29 @@ fn elided_input_named_output<'a>(_arg: &str) -> &'a str { unimplemented!() }
 fn trait_bound_ok<'a, T: WithLifetime<'static>>(_: &'a u8, _: T) { unimplemented!() }
 fn trait_bound<'a, T: WithLifetime<'a>>(_: &'a u8, _: T) { unimplemented!() }
 
+// don't warn on these, see #292
+fn trait_bound_bug<'a, T: WithLifetime<'a>>() { unimplemented!() }
+
+// #740
+struct Test {
+    vec: Vec<usize>,
+}
+
+impl Test {
+    fn iter<'a>(&'a self) -> Box<Iterator<Item = usize> + 'a> {
+        unimplemented!()
+    }
+}
+
+
+trait LintContext<'a> {}
+
+fn f<'a, T: LintContext<'a>>(cx: &T) {}
+
+fn test<'a>(x: &'a [u8]) -> u8 {
+    let y: &'a u8 = &x[5];
+    *y
+}
+
 fn main() {
 }
