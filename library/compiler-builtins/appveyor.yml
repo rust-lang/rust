@@ -16,5 +16,5 @@ build: false
 test_script:
   - cargo build --target %TARGET%
   - cargo build --release --target %TARGET%
-  - cargo test --no-default-features --feature gen-tests --target %TARGET%
-  - cargo test --no-default-features --feature gen-tests --release --target %TARGET%
+  - cargo test --no-default-features --features gen-tests --target %TARGET%
+  - cargo test --no-default-features --features gen-tests --release --target %TARGET%
