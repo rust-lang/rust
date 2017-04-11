@@ -1036,9 +1036,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         self.probe(|_| {
             let origin = &ObligationCause::dummy();
             let trace = TypeTrace::types(origin, true, a, b);
-            self.sub(true, trace, &a, &b).map(|InferOk { obligations, .. }| {
-                // FIXME(#32730) propagate obligations
-                assert!(obligations.is_empty());
+            self.sub(true, trace, &a, &b).map(|InferOk { obligations: _, .. }| {
+                // Ignore obligations, since we are unrolling
+                // everything anyway.
             })
         })
     }
