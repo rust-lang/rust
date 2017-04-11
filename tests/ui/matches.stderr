@@ -190,8 +190,7 @@ error: you seem to be trying to match on a boolean expression
 148 | |
 149 | |
 150 | |
-151 | |
-152 | |         false => { println!("Noooo!"); }
+...   |
 153 | |         _ => (),
 154 | |     };
     | |_____^ ...ending here

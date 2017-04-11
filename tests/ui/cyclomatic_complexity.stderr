@@ -1,8 +1,15 @@
 error: the function has a cyclomatic complexity of 28
   --> $DIR/cyclomatic_complexity.rs:7:1
    |
-7  | fn main() {
-   | ^
+7  |   fn main() {
+   |  _^ starting here...
+8  | |     if true {
+9  | |         println!("a");
+10 | |     }
+...  |
+88 | |     }
+89 | | }
+   | |_^ ...ending here
    |
 note: lint level defined here
   --> $DIR/cyclomatic_complexity.rs:4:9
@@ -14,8 +21,15 @@ note: lint level defined here
 error: the function has a cyclomatic complexity of 7
    --> $DIR/cyclomatic_complexity.rs:92:1
     |
-92  | fn kaboom() {
-    | ^
+92  |   fn kaboom() {
+    |  _^ starting here...
+93  | |     let n = 0;
+94  | |     'a: for i in 0..20 {
+95  | |         'b: for j in i..20 {
+...   |
+110 | |     }
+111 | | }
+    | |_^ ...ending here
     |
     = help: you could split it up into multiple smaller functions
 
@@ -44,8 +58,15 @@ error: the function has a cyclomatic complexity of 1
 error: the function has a cyclomatic complexity of 2
    --> $DIR/cyclomatic_complexity.rs:148:1
     |
-148 | fn baa() {
-    | ^
+148 |   fn baa() {
+    |  _^ starting here...
+149 | |     let x = || match 99 {
+150 | |         0 => 0,
+151 | |         1 => 1,
+...   |
+162 | |     }
+163 | | }
+    | |_^ ...ending here
     |
     = help: you could split it up into multiple smaller functions
 
@@ -57,9 +78,7 @@ error: the function has a cyclomatic complexity of 2
 150 | |         0 => 0,
 151 | |         1 => 1,
 152 | |         2 => 2,
-153 | |         4 => 4,
-154 | |         6 => 6,
-155 | |         9 => 9,
+...   |
 156 | |         _ => 42,
 157 | |     };
     | |_____^ ...ending here
@@ -88,8 +107,7 @@ error: the function has a cyclomatic complexity of 2
 186 | |     match 99 {
 187 | |         0 => println!("hi"),
 188 | |         1 => println!("bla"),
-189 | |         2 | 3 => println!("blub"),
-190 | |         _ => println!("bye"),
+...   |
 191 | |     }
 192 | | }
     | |_^ ...ending here
@@ -99,8 +117,15 @@ error: the function has a cyclomatic complexity of 2
 error: the function has a cyclomatic complexity of 3
    --> $DIR/cyclomatic_complexity.rs:195:1
     |
-195 | fn barr2() {
-    | ^
+195 |   fn barr2() {
+    |  _^ starting here...
+196 | |     match 99 {
+197 | |         0 => println!("hi"),
+198 | |         1 => println!("bla"),
+...   |
+207 | |     }
+208 | | }
+    | |_^ ...ending here
     |
     = help: you could split it up into multiple smaller functions
 
@@ -112,8 +137,7 @@ error: the function has a cyclomatic complexity of 2
 212 | |     match 99 {
 213 | |         0 => println!("hi"),
 214 | |         1 => panic!("bla"),
-215 | |         2 | 3 => println!("blub"),
-216 | |         _ => println!("bye"),
+...   |
 217 | |     }
 218 | | }
     | |_^ ...ending here
@@ -123,8 +147,15 @@ error: the function has a cyclomatic complexity of 2
 error: the function has a cyclomatic complexity of 3
    --> $DIR/cyclomatic_complexity.rs:221:1
     |
-221 | fn barrr2() {
-    | ^
+221 |   fn barrr2() {
+    |  _^ starting here...
+222 | |     match 99 {
+223 | |         0 => println!("hi"),
+224 | |         1 => panic!("bla"),
+...   |
+233 | |     }
+234 | | }
+    | |_^ ...ending here
     |
     = help: you could split it up into multiple smaller functions
 
@@ -136,8 +167,7 @@ error: the function has a cyclomatic complexity of 2
 238 | |     match 99 {
 239 | |         0 => println!("hi"),
 240 | |         1 => println!("bla"),
-241 | |         2 | 3 => panic!("blub"),
-242 | |         _ => println!("bye"),
+...   |
 243 | |     }
 244 | | }
     | |_^ ...ending here
@@ -147,8 +177,15 @@ error: the function has a cyclomatic complexity of 2
 error: the function has a cyclomatic complexity of 3
    --> $DIR/cyclomatic_complexity.rs:247:1
     |
-247 | fn barrrr2() {
-    | ^
+247 |   fn barrrr2() {
+    |  _^ starting here...
+248 | |     match 99 {
+249 | |         0 => println!("hi"),
+250 | |         1 => println!("bla"),
+...   |
+259 | |     }
+260 | | }
+    | |_^ ...ending here
     |
     = help: you could split it up into multiple smaller functions
 
@@ -160,8 +197,7 @@ error: the function has a cyclomatic complexity of 2
 264 | |     if 4 == 5 {
 265 | |         println!("yea");
 266 | |     } else {
-267 | |         panic!("meh");
-268 | |     }
+...   |
 269 | |     println!("whee");
 270 | | }
     | |_^ ...ending here
@@ -171,8 +207,15 @@ error: the function has a cyclomatic complexity of 2
 error: the function has a cyclomatic complexity of 4
    --> $DIR/cyclomatic_complexity.rs:274:1
     |
-274 | pub fn read_file(input_path: &str) -> String {
-    | ^
+274 |   pub fn read_file(input_path: &str) -> String {
+    |  _^ starting here...
+275 | |     use std::fs::File;
+276 | |     use std::io::{Read, Write};
+277 | |     use std::path::Path;
+...   |
+299 | |     }
+300 | | }
+    | |_^ ...ending here
     |
     = help: you could split it up into multiple smaller functions
 
@@ -207,24 +250,45 @@ error: the function has a cyclomatic complexity of 1
 error: the function has a cyclomatic complexity of 1
    --> $DIR/cyclomatic_complexity.rs:327:1
     |
-327 | fn try_again() -> Result<i32, &'static str> {
-    | ^
+327 |   fn try_again() -> Result<i32, &'static str> {
+    |  _^ starting here...
+328 | |     let _ = try!(Ok(42));
+329 | |     let _ = try!(Ok(43));
+330 | |     let _ = try!(Ok(44));
+...   |
+339 | |     }
+340 | | }
+    | |_^ ...ending here
     |
     = help: you could split it up into multiple smaller functions
 
 error: the function has a cyclomatic complexity of 1
    --> $DIR/cyclomatic_complexity.rs:343:1
     |
-343 | fn early() -> Result<i32, &'static str> {
-    | ^
+343 |   fn early() -> Result<i32, &'static str> {
+    |  _^ starting here...
+344 | |     return Ok(5);
+345 | |     return Ok(5);
+346 | |     return Ok(5);
+...   |
+352 | |     return Ok(5);
+353 | | }
+    | |_^ ...ending here
     |
     = help: you could split it up into multiple smaller functions
 
 error: the function has a cyclomatic complexity of 8
    --> $DIR/cyclomatic_complexity.rs:356:1
     |
-356 | fn early_ret() -> i32 {
-    | ^
+356 |   fn early_ret() -> i32 {
+    |  _^ starting here...
+357 | |     let a = if true { 42 } else { return 0; };
+358 | |     let a = if a < 99 { 42 } else { return 0; };
+359 | |     let a = if a < 99 { 42 } else { return 0; };
+...   |
+372 | |     }
+373 | | }
+    | |_^ ...ending here
     |
     = help: you could split it up into multiple smaller functions
 

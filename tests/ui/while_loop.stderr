@@ -1,8 +1,15 @@
 error: this loop could be written as a `while let` loop
   --> $DIR/while_loop.rs:9:5
    |
-9  |     loop {
-   |     ^
+9  |       loop {
+   |  _____^ starting here...
+10 | |
+11 | |
+12 | |
+...  |
+17 | |         }
+18 | |     }
+   | |_____^ ...ending here
    |
 note: lint level defined here
   --> $DIR/while_loop.rs:4:9
@@ -20,9 +27,7 @@ error: this loop could be written as a `while let` loop
 26 | |
 27 | |
 28 | |
-29 | |         match y {
-30 | |             Some(_x) => true,
-31 | |             None => break
+...  |
 32 | |         };
 33 | |     }
    | |_____^ ...ending here
@@ -33,8 +38,15 @@ help: try
 error: this loop could be written as a `while let` loop
   --> $DIR/while_loop.rs:34:5
    |
-34 |     loop {
-   |     ^
+34 |       loop {
+   |  _____^ starting here...
+35 | |
+36 | |
+37 | |
+...  |
+43 | |         let _str = "foo";
+44 | |     }
+   | |_____^ ...ending here
    |
 help: try
    |     while let Some(x) = y { .. }
@@ -42,8 +54,15 @@ help: try
 error: this loop could be written as a `while let` loop
   --> $DIR/while_loop.rs:45:5
    |
-45 |     loop {
-   |     ^
+45 |       loop {
+   |  _____^ starting here...
+46 | |
+47 | |
+48 | |
+...  |
+54 | |         { let _b = "foobar"; }
+55 | |     }
+   | |_____^ ...ending here
    |
 help: try
    |     while let Some(x) = y { .. }
@@ -51,8 +70,15 @@ help: try
 error: this loop could be written as a `while let` loop
   --> $DIR/while_loop.rs:70:5
    |
-70 |     loop {
-   |     ^
+70 |       loop {
+   |  _____^ starting here...
+71 | |
+72 | |
+73 | |
+...  |
+79 | |         let _ = (e, l);
+80 | |     }
+   | |_____^ ...ending here
    |
 help: try
    |     while let Some(word) = "".split_whitespace().next() { .. }
@@ -104,8 +130,15 @@ help: try
 error: this loop could be written as a `while let` loop
    --> $DIR/while_loop.rs:142:5
     |
-142 |     loop {
-    |     ^
+142 |       loop {
+    |  _____^ starting here...
+143 | |
+144 | |
+145 | |
+...   |
+150 | |         loop {}
+151 | |     }
+    | |_____^ ...ending here
     |
 help: try
     |     while let Some(ele) = iter.next() { .. }
