@@ -47,5 +47,4 @@ pub mod hir_stats;
 pub mod loops;
 pub mod mir_stats;
 pub mod no_asm;
-pub mod rvalues;
 pub mod static_recursion;

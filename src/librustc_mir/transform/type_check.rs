@@ -24,6 +24,7 @@ use std::fmt;
 use syntax::ast;
 use syntax_pos::{Span, DUMMY_SP};
 
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::indexed_vec::Idx;
 
 fn mirbug(tcx: TyCtxt, span: Span, msg: &str) {
@@ -85,6 +86,11 @@ impl<'a, 'b, 'gcx, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'gcx, 'tcx> {
         self.super_rvalue(rvalue, location);
         let rval_ty = rvalue.ty(self.mir, self.tcx());
         self.sanitize_type(rvalue, rval_ty);
+    }
+
+    fn visit_local_decl(&mut self, local_decl: &LocalDecl<'tcx>) {
+        self.super_local_decl(local_decl);
+        self.sanitize_type(local_decl, local_decl.ty);
     }
 
     fn visit_mir(&mut self, mir: &Mir<'tcx>) {
@@ -317,6 +323,7 @@ pub struct TypeChecker<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     fulfillment_cx: traits::FulfillmentContext<'tcx>,
     last_span: Span,
     body_id: ast::NodeId,
+    reported_errors: FxHashSet<(Ty<'tcx>, Span)>,
 }
 
 impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
@@ -326,6 +333,7 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
             fulfillment_cx: traits::FulfillmentContext::new(),
             last_span: DUMMY_SP,
             body_id: body_id,
+            reported_errors: FxHashSet(),
         }
     }
 
@@ -641,9 +649,39 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn typeck_mir(&mut self, mir: &Mir<'tcx>) {
+    fn check_local(&mut self, mir: &Mir<'gcx>, local: Local, local_decl: &LocalDecl<'gcx>) {
+        match mir.local_kind(local) {
+            LocalKind::ReturnPointer | LocalKind::Arg => {
+                // return values of normal functions are required to be
+                // sized by typeck, but return values of ADT constructors are
+                // not because we don't include a `Self: Sized` bounds on them.
+                //
+                // Unbound parts of arguments were never required to be Sized
+                // - maybe we should make that a warning.
+                return
+            }
+            LocalKind::Var | LocalKind::Temp => {}
+        }
+
+        let span = local_decl.source_info.span;
+        let ty = local_decl.ty;
+        if !ty.is_sized(self.tcx().global_tcx(), self.infcx.param_env(), span) {
+            if let None = self.reported_errors.replace((ty, span)) {
+                span_err!(self.tcx().sess, span, E0161,
+                          "cannot move a value of type {0}: the size of {0} \
+                           cannot be statically determined", ty);
+            }
+        }
+    }
+
+    fn typeck_mir(&mut self, mir: &Mir<'gcx>) {
         self.last_span = mir.span;
         debug!("run_on_mir: {:?}", mir.span);
+
+        for (local, local_decl) in mir.local_decls.iter_enumerated() {
+            self.check_local(mir, local, local_decl);
+        }
+
         for block in mir.basic_blocks() {
             for stmt in &block.statements {
                 if stmt.source_info.span != DUMMY_SP {
@@ -698,16 +736,18 @@ impl TypeckMir {
 impl<'tcx> MirPass<'tcx> for TypeckMir {
     fn run_pass<'a>(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     src: MirSource, mir: &mut Mir<'tcx>) {
-        debug!("run_pass: {}", tcx.node_path_str(src.item_id()));
+        let item_id = src.item_id();
+        let def_id = tcx.hir.local_def_id(item_id);
+        debug!("run_pass: {}", tcx.item_path_str(def_id));
 
         if tcx.sess.err_count() > 0 {
             // compiling a broken program can obviously result in a
             // broken MIR, so try not to report duplicate errors.
             return;
         }
-        let param_env = ty::ParameterEnvironment::for_item(tcx, src.item_id());
+        let param_env = ty::ParameterEnvironment::for_item(tcx, item_id);
         tcx.infer_ctxt(param_env, Reveal::UserFacing).enter(|infcx| {
-            let mut checker = TypeChecker::new(&infcx, src.item_id());
+            let mut checker = TypeChecker::new(&infcx, item_id);
             {
                 let mut verifier = TypeVerifier::new(&mut checker, mir);
                 verifier.visit_mir(mir);
