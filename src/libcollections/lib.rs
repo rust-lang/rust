@@ -57,6 +57,7 @@
 #![feature(specialization)]
 #![feature(staged_api)]
 #![feature(str_internals)]
+#![feature(str_mut_extras)]
 #![feature(trusted_len)]
 #![feature(unicode)]
 #![feature(unique)]
