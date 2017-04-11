@@ -1532,14 +1532,18 @@ pub trait Iterator {
     /// Stopping at the first `true`:
     ///
     /// ```
-    /// let a = [1, 2, 3];
+    /// let a = [1, 2, 3, 4];
     ///
     /// let mut iter = a.iter();
     ///
-    /// assert_eq!(iter.position(|&x| x == 2), Some(1));
+    /// assert_eq!(iter.position(|&x| x >= 2), Some(1));
     ///
     /// // we can still use `iter`, as there are more elements.
     /// assert_eq!(iter.next(), Some(&3));
+    ///
+    /// // The returned index depends on iterator state
+    /// assert_eq!(iter.position(|&x| x == 4), Some(0));
+    ///
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
