@@ -7,5 +7,5 @@
 
 // FIXME(#137)
 // FIXME(#158)
-#[cfg(not(any(target_arch = "mips"), windows))]
+#[cfg(not(any(target_arch = "mips", windows)))]
 include!(concat!(env!("OUT_DIR"), "/divti3.rs"));
