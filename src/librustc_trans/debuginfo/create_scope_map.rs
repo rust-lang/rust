@@ -65,7 +65,7 @@ pub fn create_mir_scopes(ccx: &CrateContext, mir: &Mir, debug_context: &Function
     let mut has_variables = BitVector::new(mir.visibility_scopes.len());
     for var in mir.vars_iter() {
         let decl = &mir.local_decls[var];
-        has_variables.insert(decl.source_info.unwrap().scope.index());
+        has_variables.insert(decl.source_info.scope.index());
     }
 
     // Instantiate all scopes.

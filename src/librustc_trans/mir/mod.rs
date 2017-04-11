@@ -255,8 +255,7 @@ pub fn trans_mir<'a, 'tcx: 'a>(
 
             if let Some(name) = decl.name {
                 // User variable
-                let source_info = decl.source_info.unwrap();
-                let debug_scope = mircx.scopes[source_info.scope];
+                let debug_scope = mircx.scopes[decl.source_info.scope];
                 let dbg = debug_scope.is_valid() && bcx.sess().opts.debuginfo == FullDebugInfo;
 
                 if !lvalue_locals.contains(local.index()) && !dbg {
@@ -268,7 +267,7 @@ pub fn trans_mir<'a, 'tcx: 'a>(
                 assert!(!ty.has_erasable_regions());
                 let lvalue = LvalueRef::alloca(&bcx, ty, &name.as_str());
                 if dbg {
-                    let (scope, span) = mircx.debug_loc(source_info);
+                    let (scope, span) = mircx.debug_loc(decl.source_info);
                     declare_local(&bcx, &mircx.debug_context, name, ty, scope,
                         VariableAccess::DirectVariable { alloca: lvalue.llval },
                         VariableKind::LocalVariable, span);
