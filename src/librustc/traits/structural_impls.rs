@@ -130,7 +130,8 @@ impl<'tcx> fmt::Debug for traits::FulfillmentErrorCode<'tcx> {
         match *self {
             super::CodeSelectionError(ref e) => write!(f, "{:?}", e),
             super::CodeProjectionError(ref e) => write!(f, "{:?}", e),
-            super::CodeSubtypeError(ref a, ref b) => write!(f, "CodeSubtypeError({:?}, {:?})", a, b),
+            super::CodeSubtypeError(ref a, ref b) =>
+                write!(f, "CodeSubtypeError({:?}, {:?})", a, b),
             super::CodeAmbiguity => write!(f, "Ambiguity")
         }
     }
