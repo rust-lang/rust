@@ -16,7 +16,7 @@ use llvm;
 use llvm::{ValueRef};
 use abi::{Abi, FnType};
 use adt;
-use mir::lvalue::LvalueRef;
+use mir::lvalue::{LvalueRef, Alignment};
 use base::*;
 use common::*;
 use declare;
@@ -35,8 +35,6 @@ use syntax_pos::Span;
 
 use std::cmp::Ordering;
 use std::iter;
-
-use mir::lvalue::Alignment;
 
 fn get_simple_intrinsic(ccx: &CrateContext, name: &str) -> Option<ValueRef> {
     let llvm_name = match name {
@@ -622,7 +620,10 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
 
                     for i in 0..elems.len() {
                         let val = bcx.extract_value(val, i);
-                        bcx.store(val, bcx.struct_gep(llresult, i), None);
+                        let lval = LvalueRef::new_sized_ty(llresult, ret_ty,
+                                                           Alignment::AbiAligned);
+                        let (dest, _) = lval.trans_field_ptr(bcx, i);
+                        bcx.store(val, dest, None);
                     }
                     C_nil(ccx)
                 }
