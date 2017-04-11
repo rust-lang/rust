@@ -35,7 +35,7 @@ use rustc_typeck as typeck;
 use rustc_privacy;
 use rustc_plugin::registry::Registry;
 use rustc_plugin as plugin;
-use rustc_passes::{ast_validation, no_asm, loops, consts, rvalues,
+use rustc_passes::{ast_validation, no_asm, loops, consts,
                    static_recursion, hir_stats, mir_stats};
 use rustc_const_eval::check_match;
 use super::Compilation;
@@ -958,10 +958,6 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
              || middle::liveness::check_crate(tcx));
 
         time(time_passes,
-             "rvalue checking",
-             || rvalues::check_crate(tcx));
-
-        time(time_passes,
              "MIR dump",
              || mir::mir_map::build_mir_for_crate(tcx));
 
@@ -976,8 +972,8 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
             // in stage 4 below.
             passes.push_hook(box mir::transform::dump_mir::DumpMir);
             passes.push_pass(box mir::transform::simplify::SimplifyCfg::new("initial"));
-            passes.push_pass(box mir::transform::qualify_consts::QualifyAndPromoteConstants);
             passes.push_pass(box mir::transform::type_check::TypeckMir);
+            passes.push_pass(box mir::transform::qualify_consts::QualifyAndPromoteConstants);
             passes.push_pass(
                 box mir::transform::simplify_branches::SimplifyBranches::new("initial"));
             passes.push_pass(box mir::transform::simplify::SimplifyCfg::new("qualify-consts"));
