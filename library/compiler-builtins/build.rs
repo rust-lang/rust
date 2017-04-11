@@ -189,7 +189,6 @@ use core::mem;
               target_os = "linux",
               test)))]
 use std::mem;
-
 use compiler_builtins::float::add::__adddf3;
 
 fn mk_f64(x: u64) -> f64 {
@@ -829,22 +828,11 @@ fn divsi3() {
         }
 
         fn prologue() -> &'static str {
-            r#"
-#[cfg(all(target_arch = "arm",
-          not(any(target_env = "gnu", target_env = "musl")),
-          target_os = "linux",
-          test))]
-use core::mem;
-#[cfg(not(all(target_arch = "arm",
-              not(any(target_env = "gnu", target_env = "musl")),
-              target_os = "linux",
-              test)))]
-use std::mem;
-
+            "
 use compiler_builtins::int::sdiv::__divti3;
 
 static TEST_CASES: &[((i128, i128), i128)] = &[
-"#
+"
         }
 
         fn epilogue() -> &'static str {
@@ -854,7 +842,7 @@ static TEST_CASES: &[((i128, i128), i128)] = &[
 #[test]
 fn divti3() {
     for &((a, b), c) in TEST_CASES {
-        let c_: i128 = unsafe { mem::transmute(__divti3(a, b)) };
+        let c_ = __divti3(a, b);
         assert_eq!(((a, b), c), ((a, b), c_));
     }
 }
@@ -1907,22 +1895,11 @@ fn modsi3() {
         }
 
         fn prologue() -> &'static str {
-            r#"
-#[cfg(all(target_arch = "arm",
-          not(any(target_env = "gnu", target_env = "musl")),
-          target_os = "linux",
-          test))]
-use core::mem;
-#[cfg(not(all(target_arch = "arm",
-              not(any(target_env = "gnu", target_env = "musl")),
-              target_os = "linux",
-              test)))]
-use std::mem;
-
+            "
 use compiler_builtins::int::sdiv::__modti3;
 
 static TEST_CASES: &[((i128, i128), i128)] = &[
-"#
+"
         }
 
         fn epilogue() -> &'static str {
@@ -1932,7 +1909,7 @@ static TEST_CASES: &[((i128, i128), i128)] = &[
 #[test]
 fn modti3() {
     for &((a, b), c) in TEST_CASES {
-        let c_: i128  = unsafe { mem::transmute(__modti3(a, b)) };
+        let c_ = __modti3(a, b);
         assert_eq!(((a, b), c), ((a, b), c_));
     }
 }
@@ -2936,22 +2913,11 @@ fn udivmodsi4() {
         }
 
         fn prologue() -> &'static str {
-            r#"
-#[cfg(all(target_arch = "arm",
-          not(any(target_env = "gnu", target_env = "musl")),
-          target_os = "linux",
-          test))]
-use core::mem;
-#[cfg(not(all(target_arch = "arm",
-              not(any(target_env = "gnu", target_env = "musl")),
-              target_os = "linux",
-              test)))]
-use std::mem;
-
+            "
 use compiler_builtins::int::udiv::__udivmodti4;
 
 static TEST_CASES: &[((u128, u128), (u128, u128))] = &[
-"#
+"
         }
 
         fn epilogue() -> &'static str {
@@ -2962,7 +2928,7 @@ static TEST_CASES: &[((u128, u128), (u128, u128))] = &[
 fn udivmodti4() {
     for &((a, b), (c, rem)) in TEST_CASES {
         let mut rem_ = 0;
-        let c_: u128  = unsafe { mem::transmute(__udivmodti4(a, b, Some(&mut rem_))) };
+        let c_ = __udivmodti4(a, b, Some(&mut rem_));
         assert_eq!(((a, b), (c, rem)), ((a, b), (c_, rem_)));
     }
 }
@@ -3070,22 +3036,11 @@ fn udivsi3() {
         }
 
         fn prologue() -> &'static str {
-            r#"
-#[cfg(all(target_arch = "arm",
-          not(any(target_env = "gnu", target_env = "musl")),
-          target_os = "linux",
-          test))]
-use core::mem;
-#[cfg(not(all(target_arch = "arm",
-              not(any(target_env = "gnu", target_env = "musl")),
-              target_os = "linux",
-              test)))]
-use std::mem;
-
+            "
 use compiler_builtins::int::udiv::__udivti3;
 
 static TEST_CASES: &[((u128, u128), u128)] = &[
-"#
+"
         }
 
         fn epilogue() -> &'static str {
@@ -3095,7 +3050,7 @@ static TEST_CASES: &[((u128, u128), u128)] = &[
 #[test]
 fn udivti3() {
     for &((a, b), c) in TEST_CASES {
-        let c_: u128 = unsafe { mem::transmute(__udivti3(a, b)) };
+        let c_ = __udivti3(a, b);
         assert_eq!(((a, b), c), ((a, b), c_));
     }
 }
@@ -3264,22 +3219,11 @@ fn umodsi3() {
         }
 
         fn prologue() -> &'static str {
-            r#"
-#[cfg(all(target_arch = "arm",
-          not(any(target_env = "gnu", target_env = "musl")),
-          target_os = "linux",
-          test))]
-use core::mem;
-#[cfg(not(all(target_arch = "arm",
-              not(any(target_env = "gnu", target_env = "musl")),
-              target_os = "linux",
-              test)))]
-use std::mem;
-
+            "
 use compiler_builtins::int::udiv::__umodti3;
 
 static TEST_CASES: &[((u128, u128), u128)] = &[
-"#
+"
         }
 
         fn epilogue() -> &'static str {
@@ -3289,7 +3233,7 @@ static TEST_CASES: &[((u128, u128), u128)] = &[
 #[test]
 fn umodti3() {
     for &((a, b), c) in TEST_CASES {
-        let c_: u128 = unsafe { mem::transmute(__umodti3(a, b)) };
+        let c_ = __umodti3(a, b);
         assert_eq!(((a, b), c), ((a, b), c_));
     }
 }
