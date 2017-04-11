@@ -303,7 +303,7 @@ struct RegionResolutionVisitor<'a, 'tcx: 'a> {
     /// destructor's execution.
     terminating_scopes: NodeSet,
 
-    target_fn_id: DefId,
+    target_fn_node_id: NodeId,
 
     found_target_fn: bool,
 }
@@ -1037,7 +1037,7 @@ fn resolve_fn<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>,
     visitor.cx.parent = Some(visitor.new_code_extent(
         CodeExtentData::CallSiteScope { fn_id: id, body_id: body_id.node_id }));
 
-    if body_id == visitor.target_fn_id {
+    if id == visitor.target_fn_node_id {
         // We've found the top level `fn`. Store it and its children in the `RegionMaps`
         visitor.found_target_fn = true;
     }
@@ -1170,8 +1170,23 @@ impl<'a, 'tcx> Visitor<'tcx> for RegionResolutionVisitor<'a, 'tcx> {
     }
 }
 
-pub fn resolve_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Rc<RegionMaps<'tcx>> {
-    ty::queries::region_resolve_fn::get(tcx, DUMMY_SP, LOCAL_CRATE)
+pub fn resolve_crate<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
+
+    struct CrateResolutionVisitor<'a, 'tcx: 'a>(TyCtxt<'a, 'tcx, 'tcx>);
+
+    impl<'a, 'hir: 'a> Visitor<'hir> for CrateResolutionVisitor<'a, 'hir> {
+        fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'hir> {
+            NestedVisitorMap::OnlyBodies(&self.0.hir)
+        }
+        fn visit_fn(&mut self, _fk: FnKind<'hir>, _fd: &'hir FnDecl,
+                    _b: hir::BodyId, _s: Span, fn_id: NodeId)
+        {
+            let fn_def_id = self.0.hir.local_def_id(fn_id);
+            ty::queries::region_resolve_fn::get(self.0, DUMMY_SP, fn_def_id);
+        }
+    }
+
+    tcx.hir.krate().visit_all_item_likes(&mut CrateResolutionVisitor(tcx).as_deep_visitor());
 }
 
 fn region_resolve_fn<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, fn_id: DefId)
@@ -1202,7 +1217,8 @@ fn region_resolve_fn<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, fn_id: DefId)
                 var_parent: None,
             },
             terminating_scopes: NodeSet(),
-            target_fn_id: fn_id,
+            target_fn_node_id: hir_map.as_local_node_id(fn_id)
+                                      .expect("fn DefId should be for LOCAL_CRATE"),
             found_target_fn: false,
         };
         krate.visit_all_item_likes(&mut visitor.as_deep_visitor());
