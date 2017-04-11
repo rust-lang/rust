@@ -80,7 +80,7 @@ impl<'combine, 'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx>
         let a = infcx.type_variables.borrow_mut().replace_if_possible(a);
         let b = infcx.type_variables.borrow_mut().replace_if_possible(b);
         match (&a.sty, &b.sty) {
-            (&ty::TyInfer(TyVar(_)), &ty::TyInfer(TyVar(_))) => {
+            (&ty::TyInfer(TyVar(a_vid)), &ty::TyInfer(TyVar(b_vid))) => {
                 // Shouldn't have any LBR here, so we can safely put
                 // this under a binder below without fear of accidental
                 // capture.
@@ -88,7 +88,11 @@ impl<'combine, 'infcx, 'gcx, 'tcx> TypeRelation<'infcx, 'gcx, 'tcx>
                 assert!(!b.has_escaping_regions());
 
                 // can't make progress on `A <: B` if both A and B are
-                // type variables, so record an obligation.
+                // type variables, so record an obligation. We also
+                // have to record in the `type_variables` tracker that
+                // the two variables are equal modulo subtyping, which
+                // is important to the occurs check later on.
+                infcx.type_variables.borrow_mut().sub(a_vid, b_vid);
                 self.fields.obligations.push(
                     Obligation::new(
                         self.fields.trace.cause.clone(),

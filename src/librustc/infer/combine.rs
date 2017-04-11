@@ -264,20 +264,27 @@ impl<'infcx, 'gcx, 'tcx> CombineFields<'infcx, 'gcx, 'tcx> {
         Ok(())
     }
 
-    /// Attempts to generalize `ty` for the type variable `for_vid`.  This checks for cycle -- that
-    /// is, whether the type `ty` references `for_vid`. If `make_region_vars` is true, it will also
-    /// replace all regions with fresh variables. Returns `TyError` in the case of a cycle, `Ok`
-    /// otherwise.
+    /// Attempts to generalize `ty` for the type variable `for_vid`.
+    /// This checks for cycle -- that is, whether the type `ty`
+    /// references `for_vid`. If `make_region_vars` is true, it will
+    /// also replace all regions with fresh variables. Returns
+    /// `TyError` in the case of a cycle, `Ok` otherwise.
+    ///
+    /// Preconditions:
+    ///
+    /// - `for_vid` is a "root vid"
     fn generalize(&self,
                   ty: Ty<'tcx>,
                   for_vid: ty::TyVid,
                   make_region_vars: bool)
                   -> RelateResult<'tcx, Ty<'tcx>>
     {
+        debug_assert!(self.infcx.type_variables.borrow_mut().root_var(for_vid) == for_vid);
+
         let mut generalize = Generalizer {
             infcx: self.infcx,
             span: self.trace.cause.span,
-            for_vid: for_vid,
+            for_vid_sub_root: self.infcx.type_variables.borrow_mut().sub_root_var(for_vid),
             make_region_vars: make_region_vars,
             cycle_detected: false
         };
@@ -293,7 +300,7 @@ impl<'infcx, 'gcx, 'tcx> CombineFields<'infcx, 'gcx, 'tcx> {
 struct Generalizer<'cx, 'gcx: 'cx+'tcx, 'tcx: 'cx> {
     infcx: &'cx InferCtxt<'cx, 'gcx, 'tcx>,
     span: Span,
-    for_vid: ty::TyVid,
+    for_vid_sub_root: ty::TyVid,
     make_region_vars: bool,
     cycle_detected: bool,
 }
@@ -305,17 +312,17 @@ impl<'cx, 'gcx, 'tcx> ty::fold::TypeFolder<'gcx, 'tcx> for Generalizer<'cx, 'gcx
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
         // Check to see whether the type we are genealizing references
-        // `vid`. At the same time, also update any type variables to
-        // the values that they are bound to. This is needed to truly
-        // check for cycles, but also just makes things readable.
-        //
-        // (In particular, you could have something like `$0 = Box<$1>`
-        //  where `$1` has already been instantiated with `Box<$0>`)
+        // any other type variable related to `vid` via
+        // subtyping. This is basically our "occurs check", preventing
+        // us from creating infinitely sized types.
         match t.sty {
             ty::TyInfer(ty::TyVar(vid)) => {
                 let mut variables = self.infcx.type_variables.borrow_mut();
                 let vid = variables.root_var(vid);
-                if vid == self.for_vid {
+                let sub_vid = variables.sub_root_var(vid);
+                if sub_vid == self.for_vid_sub_root {
+                    // If sub-roots are equal, then `for_vid` and
+                    // `vid` are related via subtyping.
                     self.cycle_detected = true;
                     self.tcx().types.err
                 } else {
@@ -324,7 +331,18 @@ impl<'cx, 'gcx, 'tcx> ty::fold::TypeFolder<'gcx, 'tcx> for Generalizer<'cx, 'gcx
                             drop(variables);
                             self.fold_ty(u)
                         }
-                        None => t,
+                        None => {
+                            if self.make_region_vars {
+                                let origin = variables.origin(vid);
+                                let new_var_id = variables.new_var(false, origin, None);
+                                let u = self.tcx().mk_var(new_var_id);
+                                debug!("generalize: replacing original vid={:?} with new={:?}",
+                                       vid, u);
+                                u
+                            } else {
+                                t
+                            }
+                        }
                     }
                 }
             }

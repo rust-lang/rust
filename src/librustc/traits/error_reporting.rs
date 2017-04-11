@@ -69,6 +69,19 @@ struct FindLocalByTypeVisitor<'a, 'gcx: 'a + 'tcx, 'tcx: 'a> {
     found_pattern: Option<&'a Pat>,
 }
 
+impl<'a, 'gcx, 'tcx> FindLocalByTypeVisitor<'a, 'gcx, 'tcx> {
+    fn is_match(&self, ty: Ty<'tcx>) -> bool {
+        ty == *self.target_ty || match (&ty.sty, &self.target_ty.sty) {
+            (&ty::TyInfer(ty::TyVar(a_vid)), &ty::TyInfer(ty::TyVar(b_vid))) =>
+                self.infcx.type_variables
+                          .borrow_mut()
+                          .sub_unified(a_vid, b_vid),
+
+            _ => false,
+        }
+    }
+}
+
 impl<'a, 'gcx, 'tcx> Visitor<'a> for FindLocalByTypeVisitor<'a, 'gcx, 'tcx> {
     fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'a> {
         NestedVisitorMap::None
@@ -77,7 +90,7 @@ impl<'a, 'gcx, 'tcx> Visitor<'a> for FindLocalByTypeVisitor<'a, 'gcx, 'tcx> {
     fn visit_local(&mut self, local: &'a Local) {
         if let Some(&ty) = self.infcx.tables.borrow().node_types.get(&local.id) {
             let ty = self.infcx.resolve_type_vars_if_possible(&ty);
-            let is_match = ty.walk().any(|t| t == *self.target_ty);
+            let is_match = ty.walk().any(|t| self.is_match(t));
 
             if is_match && self.found_pattern.is_none() {
                 self.found_pattern = Some(&*local.pat);
@@ -564,8 +577,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     }
 
                     ty::Predicate::Subtype(ref predicate) => {
-                        // TODO
-                        panic!("subtype requirement not satisfied {:?}", predicate)
+                        // Errors for Subtype predicates show up as
+                        // `FulfillmentErrorCode::CodeSubtypeError`,
+                        // not selection error.
+                        span_bug!(span, "subtype requirement gave wrong error: `{:?}`", predicate)
                     }
 
                     ty::Predicate::Equate(ref predicate) => {
@@ -779,7 +794,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     // no need to overload user in such cases
                 } else {
                     let &SubtypePredicate { a_is_expected: _, a, b } = data.skip_binder();
-                    assert!(a.is_ty_var() && b.is_ty_var()); // else other would've been instantiated
+                    // both must be type variables, or the other would've been instantiated
+                    assert!(a.is_ty_var() && b.is_ty_var());
                     self.need_type_info(obligation, a);
                 }
             }
