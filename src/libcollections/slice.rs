@@ -1558,7 +1558,7 @@ fn insert_head<T, F>(v: &mut [T], is_less: &mut F)
             //    performance than with the 2nd method.
             //
             // All methods were benchmarked, and the 3rd showed best results. So we chose that one.
-            let mut tmp = NoDrop { value: ptr::read(&v[0]) };
+            let mut tmp = mem::ManuallyDrop::new(ptr::read(&v[0]));
 
             // Intermediate state of the insertion process is always tracked by `hole`, which
             // serves two purposes:
@@ -1571,13 +1571,13 @@ fn insert_head<T, F>(v: &mut [T], is_less: &mut F)
             // fill the hole in `v` with `tmp`, thus ensuring that `v` still holds every object it
             // initially held exactly once.
             let mut hole = InsertionHole {
-                src: &mut tmp.value,
+                src: &mut *tmp,
                 dest: &mut v[1],
             };
             ptr::copy_nonoverlapping(&v[1], &mut v[0], 1);
 
             for i in 2..v.len() {
-                if !is_less(&v[i], &tmp.value) {
+                if !is_less(&v[i], &*tmp) {
                     break;
                 }
                 ptr::copy_nonoverlapping(&v[i], &mut v[i - 1], 1);
@@ -1585,12 +1585,6 @@ fn insert_head<T, F>(v: &mut [T], is_less: &mut F)
             }
             // `hole` gets dropped and thus copies `tmp` into the remaining hole in `v`.
         }
-    }
-
-    // Holds a value, but never drops it.
-    #[allow(unions_with_drop_fields)]
-    union NoDrop<T> {
-        value: T
     }
 
     // When dropped, copies from `src` into `dest`.
