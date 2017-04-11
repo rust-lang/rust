@@ -10,6 +10,7 @@
 
 fn main() {
     let x = [];
-    //~^ ERROR E0102
-    //~| NOTE cannot resolve type of variable
+    //~^ ERROR type annotations needed
+    //~| NOTE consider giving `x` a type
+    //~| NOTE cannot infer type for `_`
 }
