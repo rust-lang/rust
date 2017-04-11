@@ -838,7 +838,7 @@ impl Clean<Option<Lifetime>> for ty::Region {
 pub enum WherePredicate {
     BoundPredicate { ty: Type, bounds: Vec<TyParamBound> },
     RegionPredicate { lifetime: Lifetime, bounds: Vec<Lifetime>},
-    EqPredicate { lhs: Type, rhs: Type }
+    EqPredicate { lhs: Type, rhs: Type },
 }
 
 impl Clean<WherePredicate> for hir::WherePredicate {
@@ -906,12 +906,9 @@ impl<'tcx> Clean<WherePredicate> for ty::EquatePredicate<'tcx> {
 }
 
 impl<'tcx> Clean<WherePredicate> for ty::SubtypePredicate<'tcx> {
-    fn clean(&self, cx: &DocContext) -> WherePredicate {
-        let ty::SubtypePredicate { a_is_expected: _, a, b } = *self;
-        WherePredicate::EqPredicate { // TODO This is obviously wrong :P
-            lhs: a.clean(cx),
-            rhs: b.clean(cx)
-        }
+    fn clean(&self, _cx: &DocContext) -> WherePredicate {
+        panic!("subtype predicates are an internal rustc artifact \
+                and should not be seen by rustdoc")
     }
 }
 
