@@ -1,8 +1,0 @@
-[package]
-name = "compiler-rt"
-version = "0.1.0"
-authors = ["Alex Crichton <alex@alexcrichton.com>"]
-
-[dependencies]
-compiler-rt-cdylib = { path = "compiler-rt-cdylib" }
-libloading = "0.3"
