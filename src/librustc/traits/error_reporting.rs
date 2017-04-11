@@ -524,15 +524,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                             "the trait bound `{}` is not satisfied{}",
                             trait_ref.to_predicate(),
                             post_message);
-                        err.span_label(span,
-                                        &format!("{}the trait `{}` is not \
-                                                    implemented for `{}`",
-                                                pre_message,
-                                                trait_ref,
-                                                trait_ref.self_ty()));
 
                         // Try to report a help message
-
                         if !trait_ref.has_infer_types() &&
                             self.predicate_can_apply(trait_ref) {
                             // If a where-clause may be useful, remind the
@@ -544,17 +537,21 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                             // which is somewhat confusing.
                             err.help(&format!("consider adding a `where {}` bound",
                                                 trait_ref.to_predicate()));
-                        } else if let Some(s) = self.on_unimplemented_note(trait_ref,
-                                                                            obligation) {
+                        } else if let Some(s) = self.on_unimplemented_note(trait_ref, obligation) {
                             // If it has a custom "#[rustc_on_unimplemented]"
                             // error message, let's display it!
                             err.note(&s);
                         } else {
-                            // If we can't show anything useful, try to find
-                            // similar impls.
+                            // Can't show anything else useful, try to find similar impls.
                             let impl_candidates = self.find_similar_impl_candidates(trait_ref);
                             self.report_similar_impl_candidates(impl_candidates, &mut err);
                         }
+
+                        err.span_label(span,
+                                       &format!("{}the trait `{}` is not implemented for `{}`",
+                                                pre_message,
+                                                trait_ref,
+                                                trait_ref.self_ty()));
                         err
                     }
 
@@ -997,3 +994,4 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                           suggested_limit));
     }
 }
+

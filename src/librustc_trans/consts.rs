@@ -255,7 +255,7 @@ pub fn trans_static<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             ccx.statics_to_rauw().borrow_mut().push((g, new_g));
             new_g
         };
-        llvm::LLVMSetAlignment(g, type_of::align_of(ccx, ty));
+        llvm::LLVMSetAlignment(g, ccx.align_of(ty));
         llvm::LLVMSetInitializer(g, v);
 
         // As an optimization, all shared statics which do not have interior

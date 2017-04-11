@@ -102,6 +102,7 @@ use self::Ordering::*;
 /// ```
 #[lang = "eq"]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_on_unimplemented = "can't compare `{Self}` with `{Rhs}`"]
 pub trait PartialEq<Rhs: ?Sized = Self> {
     /// This method tests for `self` and `other` values to be equal, and is used
     /// by `==`.
@@ -550,6 +551,7 @@ impl PartialOrd for Ordering {
 /// ```
 #[lang = "ord"]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[rustc_on_unimplemented = "can't compare `{Self}` with `{Rhs}`"]
 pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
     /// This method returns an ordering between `self` and `other` values if one exists.
     ///

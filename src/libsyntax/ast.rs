@@ -1361,6 +1361,8 @@ pub enum TyKind {
     ImplicitSelf,
     // A macro in the type position.
     Mac(Mac),
+    /// Placeholder for a kind that has failed to be defined.
+    Err,
 }
 
 /// Inline assembly dialect.

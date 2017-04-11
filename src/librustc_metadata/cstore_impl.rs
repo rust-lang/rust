@@ -73,7 +73,7 @@ provide! { <'tcx> tcx, def_id, cdata
     predicates => { cdata.get_predicates(def_id.index, tcx) }
     super_predicates => { cdata.get_super_predicates(def_id.index, tcx) }
     trait_def => {
-        tcx.alloc_trait_def(cdata.get_trait_def(def_id.index, tcx))
+        tcx.alloc_trait_def(cdata.get_trait_def(def_id.index))
     }
     adt_def => { cdata.get_adt_def(def_id.index, tcx) }
     adt_destructor => {
@@ -370,6 +370,10 @@ impl CrateStore for cstore::CStore {
         self.get_crate_data(def.krate).def_path(def.index)
     }
 
+    fn def_path_hash(&self, def: DefId) -> u64 {
+        self.get_crate_data(def.krate).def_path_hash(def.index)
+    }
+
     fn struct_field_names(&self, def: DefId) -> Vec<ast::Name>
     {
         self.dep_graph.read(DepNode::MetaData(def));
@@ -507,12 +511,19 @@ impl CrateStore for cstore::CStore {
     /// Returns a map from a sufficiently visible external item (i.e. an external item that is
     /// visible from at least one local module) to a sufficiently visible parent (considering
     /// modules that re-export the external item to be parents).
-    fn visible_parent_map<'a>(&'a self) -> ::std::cell::RefMut<'a, DefIdMap<DefId>> {
-        let mut visible_parent_map = self.visible_parent_map.borrow_mut();
-        if !visible_parent_map.is_empty() { return visible_parent_map; }
+    fn visible_parent_map<'a>(&'a self) -> ::std::cell::Ref<'a, DefIdMap<DefId>> {
+        {
+            let visible_parent_map = self.visible_parent_map.borrow();
+            if !visible_parent_map.is_empty() {
+                return visible_parent_map;
+            }
+        }
 
         use std::collections::vec_deque::VecDeque;
         use std::collections::hash_map::Entry;
+
+        let mut visible_parent_map = self.visible_parent_map.borrow_mut();
+
         for cnum in (1 .. self.next_crate_num().as_usize()).map(CrateNum::new) {
             let cdata = self.get_crate_data(cnum);
 
@@ -556,6 +567,7 @@ impl CrateStore for cstore::CStore {
             }
         }
 
-        visible_parent_map
+        drop(visible_parent_map);
+        self.visible_parent_map.borrow()
     }
 }

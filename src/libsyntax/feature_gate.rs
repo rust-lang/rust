@@ -346,6 +346,9 @@ declare_features! (
 
     // Allows module-level inline assembly by way of global_asm!()
     (active, global_asm, "1.18.0", Some(35119)),
+
+    // Hack to document `-Z linker-flavor` in The Unstable Book
+    (active, linker_flavor, "1.18.0", Some(41142)),
 );
 
 declare_features! (
@@ -411,7 +414,7 @@ declare_features! (
     // Allows the definition recursive static items.
     (accepted, static_recursion, "1.17.0", Some(29719)),
     // pub(restricted) visibilities (RFC 1422)
-    (accepted, pub_restricted, "1.17.0", Some(32409)),
+    (accepted, pub_restricted, "1.18.0", Some(32409)),
     // The #![windows_subsystem] attribute
     (accepted, windows_subsystem, "1.18.0", Some(37499)),
 );

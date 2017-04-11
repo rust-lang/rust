@@ -1095,6 +1095,9 @@ impl<'a> State<'a> {
             ast::TyKind::Infer => {
                 word(&mut self.s, "_")?;
             }
+            ast::TyKind::Err => {
+                word(&mut self.s, "?")?;
+            }
             ast::TyKind::ImplicitSelf => {
                 word(&mut self.s, "Self")?;
             }

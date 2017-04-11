@@ -1190,6 +1190,19 @@ macro_rules! iterator {
                     }
                 }
             }
+
+            fn rfind<F>(&mut self, mut predicate: F) -> Option<Self::Item>
+                where F: FnMut(&Self::Item) -> bool,
+            {
+                self.rsearch_while(None, move |elt| {
+                    if predicate(&elt) {
+                        SearchWhile::Done(Some(elt))
+                    } else {
+                        SearchWhile::Continue
+                    }
+                })
+            }
+
         }
 
         // search_while is a generalization of the internal iteration methods.

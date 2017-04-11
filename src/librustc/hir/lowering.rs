@@ -555,6 +555,7 @@ impl<'a> LoweringContext<'a> {
     fn lower_ty(&mut self, t: &Ty) -> P<hir::Ty> {
         let kind = match t.node {
             TyKind::Infer => hir::TyInfer,
+            TyKind::Err => hir::TyErr,
             TyKind::Slice(ref ty) => hir::TySlice(self.lower_ty(ty)),
             TyKind::Ptr(ref mt) => hir::TyPtr(self.lower_mt(mt)),
             TyKind::Rptr(ref region, ref mt) => {
@@ -2705,7 +2706,7 @@ impl<'a> LoweringContext<'a> {
     fn pat_ident_binding_mode(&mut self, span: Span, name: Name, bm: hir::BindingMode)
                               -> P<hir::Pat> {
         let id = self.next_id();
-        let parent_def = self.parent_def;
+        let parent_def = self.parent_def.unwrap();
         let def_id = {
             let defs = self.resolver.definitions();
             let def_path_data = DefPathData::Binding(name.as_str());

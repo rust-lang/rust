@@ -101,13 +101,13 @@ use common::SharedCrateContext;
 use monomorphize::Instance;
 
 use rustc::middle::weak_lang_items;
-use rustc::hir::def_id::LOCAL_CRATE;
+use rustc::hir::def_id::DefId;
 use rustc::hir::map as hir_map;
 use rustc::ty::{self, Ty, TypeFoldable};
 use rustc::ty::fold::TypeVisitor;
 use rustc::ty::item_path::{self, ItemPathBuffer, RootMode};
 use rustc::ty::subst::Substs;
-use rustc::hir::map::definitions::{DefPath, DefPathData};
+use rustc::hir::map::definitions::DefPathData;
 use rustc::util::common::record_time;
 
 use syntax::attr;
@@ -115,8 +115,8 @@ use syntax::symbol::{Symbol, InternedString};
 
 fn get_symbol_hash<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
 
-                             // path to the item this name is for
-                             def_path: &DefPath,
+                             // the DefId of the item this name is for
+                             def_id: Option<DefId>,
 
                              // type of the item, without any generic
                              // parameters substituted; this is
@@ -128,8 +128,7 @@ fn get_symbol_hash<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
                              // if any.
                              substs: Option<&'tcx Substs<'tcx>>)
                              -> String {
-    debug!("get_symbol_hash(def_path={:?}, parameters={:?})",
-           def_path, substs);
+    debug!("get_symbol_hash(def_id={:?}, parameters={:?})", def_id, substs);
 
     let tcx = scx.tcx();
 
@@ -139,7 +138,7 @@ fn get_symbol_hash<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
         // the main symbol name is not necessarily unique; hash in the
         // compiler's internal def-path, guaranteeing each symbol has a
         // truly unique path
-        hasher.def_path(def_path);
+        hasher.hash(def_id.map(|def_id| tcx.def_path_hash(def_id)));
 
         // Include the main item-type. Note that, in this case, the
         // assertions about `needs_subst` may not hold, but this item-type
@@ -224,8 +223,6 @@ pub fn symbol_name<'a, 'tcx>(instance: Instance<'tcx>,
         return scx.tcx().item_name(def_id).as_str().to_string();
     }
 
-    let def_path = scx.tcx().def_path(def_id);
-
     // We want to compute the "type" of this item. Unfortunately, some
     // kinds of items (e.g., closures) don't have an entry in the
     // item-type array. So walk back up the find the closest parent
@@ -256,10 +253,10 @@ pub fn symbol_name<'a, 'tcx>(instance: Instance<'tcx>,
     // and should not matter anyhow.
     let instance_ty = scx.tcx().erase_regions(&instance_ty);
 
-    let hash = get_symbol_hash(scx, &def_path, instance_ty, Some(substs));
+    let hash = get_symbol_hash(scx, Some(def_id), instance_ty, Some(substs));
 
     let mut buffer = SymbolPathBuffer {
-        names: Vec::with_capacity(def_path.data.len())
+        names: Vec::new()
     };
 
     item_path::with_forced_absolute_paths(|| {
@@ -288,11 +285,7 @@ pub fn exported_name_from_type_and_prefix<'a, 'tcx>(scx: &SharedCrateContext<'a,
                                                     t: Ty<'tcx>,
                                                     prefix: &str)
                                                     -> String {
-    let empty_def_path = DefPath {
-        data: vec![],
-        krate: LOCAL_CRATE,
-    };
-    let hash = get_symbol_hash(scx, &empty_def_path, t, None);
+    let hash = get_symbol_hash(scx, None, t, None);
     let path = [Symbol::intern(prefix).as_str()];
     mangle(path.iter().cloned(), &hash)
 }

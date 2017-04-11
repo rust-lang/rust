@@ -89,7 +89,7 @@ impl<'a, 'gcx, 'tcx> ExprVisitor<'a, 'gcx, 'tcx> {
             let from = unpack_option_like(self.infcx.tcx.global_tcx(), from);
             match (&from.sty, sk_to) {
                 (&ty::TyFnDef(..), SizeSkeleton::Known(size_to))
-                        if size_to == Pointer.size(&self.infcx.tcx.data_layout) => {
+                        if size_to == Pointer.size(self.infcx) => {
                     struct_span_err!(self.infcx.tcx.sess, span, E0591,
                                      "`{}` is zero-sized and can't be transmuted to `{}`",
                                      from, to)

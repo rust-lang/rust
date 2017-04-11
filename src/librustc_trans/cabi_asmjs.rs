@@ -8,10 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(non_upper_case_globals)]
-
-use llvm::{Struct, Array};
-use abi::{FnType, ArgType, ArgAttribute};
+use abi::{FnType, ArgType, ArgAttribute, LayoutExt, Uniform};
 use context::CrateContext;
 
 // Data layout: e-p:32:32-i64:64-v128:32:128-n32-S128
@@ -19,31 +16,31 @@ use context::CrateContext;
 // See the https://github.com/kripken/emscripten-fastcomp-clang repository.
 // The class `EmscriptenABIInfo` in `/lib/CodeGen/TargetInfo.cpp` contains the ABI definitions.
 
-fn classify_ret_ty(ccx: &CrateContext, ret: &mut ArgType) {
-    match ret.ty.kind() {
-        Struct => {
-            let field_types = ret.ty.field_types();
-            if field_types.len() == 1 {
-                ret.cast = Some(field_types[0]);
-            } else {
-                ret.make_indirect(ccx);
+fn classify_ret_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ret: &mut ArgType<'tcx>) {
+    if ret.layout.is_aggregate() {
+        if let Some(unit) = ret.layout.homogenous_aggregate(ccx) {
+            let size = ret.layout.size(ccx);
+            if unit.size == size {
+                ret.cast_to(ccx, Uniform {
+                    unit,
+                    total: size
+                });
+                return;
             }
         }
-        Array => {
-            ret.make_indirect(ccx);
-        }
-        _ => {}
+
+        ret.make_indirect(ccx);
     }
 }
 
-fn classify_arg_ty(ccx: &CrateContext, arg: &mut ArgType) {
-    if arg.ty.is_aggregate() {
+fn classify_arg_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, arg: &mut ArgType<'tcx>) {
+    if arg.layout.is_aggregate() {
         arg.make_indirect(ccx);
         arg.attrs.set(ArgAttribute::ByVal);
     }
 }
 
-pub fn compute_abi_info(ccx: &CrateContext, fty: &mut FnType) {
+pub fn compute_abi_info<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fty: &mut FnType<'tcx>) {
     if !fty.ret.is_ignore() {
         classify_ret_ty(ccx, &mut fty.ret);
     }

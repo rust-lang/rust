@@ -59,7 +59,6 @@ use context::{SharedCrateContext, CrateContextList};
 use debuginfo;
 use declare;
 use machine;
-use machine::llsize_of;
 use meth;
 use mir;
 use monomorphize::{self, Instance};
@@ -534,14 +533,13 @@ pub fn memcpy_ty<'a, 'tcx>(
 ) {
     let ccx = bcx.ccx;
 
-    if type_is_zero_size(ccx, t) {
+    let size = ccx.size_of(t);
+    if size == 0 {
         return;
     }
 
-    let llty = type_of::type_of(ccx, t);
-    let llsz = llsize_of(ccx, llty);
-    let llalign = align.unwrap_or_else(|| type_of::align_of(ccx, t));
-    call_memcpy(bcx, dst, src, llsz, llalign as u32);
+    let align = align.unwrap_or_else(|| ccx.align_of(t));
+    call_memcpy(bcx, dst, src, C_uint(ccx, size), align);
 }
 
 pub fn call_memset<'a, 'tcx>(b: &Builder<'a, 'tcx>,
@@ -1297,8 +1295,8 @@ fn gather_type_sizes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
         // (delay format until we actually need it)
         let record = |kind, opt_discr_size, variants| {
             let type_desc = format!("{:?}", ty);
-            let overall_size = layout.size(&tcx.data_layout);
-            let align = layout.align(&tcx.data_layout);
+            let overall_size = layout.size(tcx);
+            let align = layout.align(tcx);
             tcx.sess.code_stats.borrow_mut().record_type_size(kind,
                                                               type_desc,
                                                               align,
@@ -1334,8 +1332,8 @@ fn gather_type_sizes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
                     session::FieldInfo {
                         name: field_name.to_string(),
                         offset: offset.bytes(),
-                        size: field_layout.size(&tcx.data_layout).bytes(),
-                        align: field_layout.align(&tcx.data_layout).abi(),
+                        size: field_layout.size(tcx).bytes(),
+                        align: field_layout.align(tcx).abi(),
                     }
                 }
             }
@@ -1345,8 +1343,8 @@ fn gather_type_sizes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
             session::VariantInfo {
                 name: Some(name.to_string()),
                 kind: session::SizeKind::Exact,
-                align: value.align(&tcx.data_layout).abi(),
-                size: value.size(&tcx.data_layout).bytes(),
+                align: value.align(tcx).abi(),
+                size: value.size(tcx).bytes(),
                 fields: vec![],
             }
         };

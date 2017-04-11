@@ -539,17 +539,16 @@ impl AtomicBool {
         // We can't use atomic_nand here because it can result in a bool with
         // an invalid value. This happens because the atomic operation is done
         // with an 8-bit integer internally, which would set the upper 7 bits.
-        // So we just use a compare-exchange loop instead, which is what the
-        // intrinsic actually expands to anyways on many platforms.
-        let mut old = self.load(Relaxed);
-        loop {
-            let new = !(old && val);
-            match self.compare_exchange_weak(old, new, order, Relaxed) {
-                Ok(_) => break,
-                Err(x) => old = x,
-            }
+        // So we just use fetch_xor or swap instead.
+        if val {
+            // !(x & true) == !x
+            // We must invert the bool.
+            self.fetch_xor(true, order)
+        } else {
+            // !(x & false) == true
+            // We must set the bool to true.
+            self.swap(true, order)
         }
-        old
     }
 
     /// Logical "or" with a boolean value.
@@ -1586,6 +1585,47 @@ pub fn fence(order: Ordering) {
             AcqRel => intrinsics::atomic_fence_acqrel(),
             SeqCst => intrinsics::atomic_fence(),
             Relaxed => panic!("there is no such thing as a relaxed fence"),
+            __Nonexhaustive => panic!("invalid memory ordering"),
+        }
+    }
+}
+
+
+/// A compiler memory barrier.
+///
+/// `compiler_barrier` does not emit any machine code, but prevents the compiler from re-ordering
+/// memory operations across this point. Which reorderings are disallowed is dictated by the given
+/// [`Ordering`]. Note that `compiler_barrier` does *not* introduce inter-thread memory
+/// synchronization; for that, a [`fence`] is needed.
+///
+/// The re-ordering prevented by the different ordering semantics are:
+///
+///  - with [`SeqCst`], no re-ordering of reads and writes across this point is allowed.
+///  - with [`Release`], preceding reads and writes cannot be moved past subsequent writes.
+///  - with [`Acquire`], subsequent reads and writes cannot be moved ahead of preceding reads.
+///  - with [`AcqRel`], both of the above rules are enforced.
+///
+/// # Panics
+///
+/// Panics if `order` is [`Relaxed`].
+///
+/// [`fence`]: fn.fence.html
+/// [`Ordering`]: enum.Ordering.html
+/// [`Acquire`]: enum.Ordering.html#variant.Acquire
+/// [`SeqCst`]: enum.Ordering.html#variant.SeqCst
+/// [`Release`]: enum.Ordering.html#variant.Release
+/// [`AcqRel`]: enum.Ordering.html#variant.AcqRel
+/// [`Relaxed`]: enum.Ordering.html#variant.Relaxed
+#[inline]
+#[unstable(feature = "compiler_barriers", issue = "41091")]
+pub fn compiler_barrier(order: Ordering) {
+    unsafe {
+        match order {
+            Acquire => intrinsics::atomic_singlethreadfence_acq(),
+            Release => intrinsics::atomic_singlethreadfence_rel(),
+            AcqRel => intrinsics::atomic_singlethreadfence_acqrel(),
+            SeqCst => intrinsics::atomic_singlethreadfence(),
+            Relaxed => panic!("there is no such thing as a relaxed barrier"),
             __Nonexhaustive => panic!("invalid memory ordering"),
         }
     }
