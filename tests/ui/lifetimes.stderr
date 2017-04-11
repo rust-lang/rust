@@ -97,15 +97,6 @@ error: explicit lifetimes given in parameter types where they could be elided
 132 | fn trait_bound_bug<'a, T: WithLifetime<'a>>() { unimplemented!() }
     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: explicit lifetimes given in parameter types where they could be elided
-   --> $DIR/lifetimes.rs:140:5
-    |
-140 |       fn iter<'a>(&'a self) -> Box<Iterator<Item = usize> + 'a> {
-    |  _____^ starting here...
-141 | |         unimplemented!()
-142 | |     }
-    | |_____^ ...ending here
-
 warning: unused variable: `cx`
    --> $DIR/lifetimes.rs:148:30
     |
@@ -114,5 +105,5 @@ warning: unused variable: `cx`
     |
     = note: #[warn(unused_variables)] on by default
 
-error: aborting due to 16 previous errors
+error: aborting due to 15 previous errors
 

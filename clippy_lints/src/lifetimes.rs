@@ -150,8 +150,14 @@ fn could_use_elision<'a, 'tcx: 'a, T: Iterator<Item = &'tcx Lifetime>>(
         output_visitor.visit_ty(ty);
     }
 
-    let input_lts = lts_from_bounds(input_visitor.into_vec(), bounds_lts);
-    let output_lts = output_visitor.into_vec();
+    let input_lts = match input_visitor.into_vec() {
+        Some(lts) => lts_from_bounds(lts, bounds_lts),
+        None => return false,
+    };
+    let output_lts = match output_visitor.into_vec() {
+        Some(val) => val,
+        None => return false,
+    };
 
     if let Some(body_id) = body {
         let mut checker = BodyLifetimeChecker { lifetimes_used_in_body: false };
@@ -230,6 +236,7 @@ fn unique_lifetimes(lts: &[RefLt]) -> usize {
 struct RefVisitor<'a, 'tcx: 'a> {
     cx: &'a LateContext<'a, 'tcx>,
     lts: Vec<RefLt>,
+    abort: bool,
 }
 
 impl<'v, 't> RefVisitor<'v, 't> {
@@ -237,6 +244,7 @@ impl<'v, 't> RefVisitor<'v, 't> {
         RefVisitor {
             cx: cx,
             lts: Vec::new(),
+            abort: false,
         }
     }
 
@@ -254,8 +262,12 @@ impl<'v, 't> RefVisitor<'v, 't> {
         }
     }
 
-    fn into_vec(self) -> Vec<RefLt> {
-        self.lts
+    fn into_vec(self) -> Option<Vec<RefLt>> {
+        if self.abort {
+            None
+        } else {
+            Some(self.lts)
+        }
     }
 
     fn collect_anonymous_lifetimes(&mut self, qpath: &QPath, ty: &Ty) {
@@ -306,7 +318,7 @@ impl<'a, 'tcx> Visitor<'tcx> for RefVisitor<'a, 'tcx> {
             },
             TyTraitObject(ref bounds, ref lt) => {
                 if !lt.is_elided() {
-                    self.record(&Some(*lt));
+                    self.abort = true;
                 }
                 for bound in bounds {
                     self.visit_poly_trait_ref(bound, TraitBoundModifier::None);
@@ -343,10 +355,13 @@ fn has_where_lifetimes<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, where_clause: &
                     walk_ty_param_bound(&mut visitor, bound);
                 }
                 // and check that all lifetimes are allowed
-                for lt in visitor.into_vec() {
-                    if !allowed_lts.contains(&lt) {
-                        return true;
-                    }
+                match visitor.into_vec() {
+                    None => return false,
+                    Some(lts) => for lt in lts {
+                        if !allowed_lts.contains(&lt) {
+                            return true;
+                        }
+                    },
                 }
             },
             WherePredicate::EqPredicate(ref pred) => {
