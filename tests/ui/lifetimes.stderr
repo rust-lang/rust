@@ -91,11 +91,5 @@ error: explicit lifetimes given in parameter types where they could be elided
 128 | fn trait_bound_ok<'a, T: WithLifetime<'static>>(_: &'a u8, _: T) { unimplemented!() }
     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: explicit lifetimes given in parameter types where they could be elided
-   --> $DIR/lifetimes.rs:132:1
-    |
-132 | fn trait_bound_bug<'a, T: WithLifetime<'a>>() { unimplemented!() }
-    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: aborting due to 15 previous errors
+error: aborting due to 14 previous errors
 

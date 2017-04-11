@@ -89,29 +89,31 @@ enum RefLt {
     Named(Name),
 }
 
-fn bound_lifetimes(bound: &TyParamBound) -> HirVec<&Lifetime> {
-    if let TraitTyParamBound(ref trait_ref, _) = *bound {
-        trait_ref.trait_ref
-            .path
-            .segments
-            .last()
-            .expect("a path must have at least one segment")
-            .parameters
-            .lifetimes()
-    } else {
-        HirVec::new()
-    }
-}
-
 fn check_fn_inner<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, decl: &'tcx FnDecl, body: Option<BodyId>, generics: &'tcx Generics, span: Span) {
     if in_external_macro(cx, span) || has_where_lifetimes(cx, &generics.where_clause) {
         return;
     }
 
-    let bounds_lts = generics.ty_params
-        .iter()
-        .flat_map(|typ| typ.bounds.iter().flat_map(bound_lifetimes));
-
+    let mut bounds_lts = Vec::new();
+    for typ in &generics.ty_params {
+        for bound in &typ.bounds {
+            if let TraitTyParamBound(ref trait_ref, _) = *bound {
+                let bounds = trait_ref.trait_ref
+                    .path
+                    .segments
+                    .last()
+                    .expect("a path must have at least one segment")
+                    .parameters
+                    .lifetimes();
+                for bound in bounds {
+                    if bound.name != "'static" && !bound.is_elided() {
+                        return;
+                    }
+                    bounds_lts.push(bound);
+                }
+            }
+        }
+    }
     if could_use_elision(cx, decl, body, &generics.lifetimes, bounds_lts) {
         span_lint(cx,
                   NEEDLESS_LIFETIMES,
@@ -121,12 +123,12 @@ fn check_fn_inner<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, decl: &'tcx FnDecl, body
     report_extra_lifetimes(cx, decl, generics);
 }
 
-fn could_use_elision<'a, 'tcx: 'a, T: Iterator<Item = &'tcx Lifetime>>(
+fn could_use_elision<'a, 'tcx: 'a>(
     cx: &LateContext<'a, 'tcx>,
     func: &'tcx FnDecl,
     body: Option<BodyId>,
     named_lts: &'tcx [LifetimeDef],
-    bounds_lts: T
+    bounds_lts: Vec<&'tcx Lifetime>,
 ) -> bool {
     // There are two scenarios where elision works:
     // * no output references, all input references have different LT
@@ -151,7 +153,7 @@ fn could_use_elision<'a, 'tcx: 'a, T: Iterator<Item = &'tcx Lifetime>>(
     }
 
     let input_lts = match input_visitor.into_vec() {
-        Some(lts) => lts_from_bounds(lts, bounds_lts),
+        Some(lts) => lts_from_bounds(lts, bounds_lts.into_iter()),
         None => return false,
     };
     let output_lts = match output_visitor.into_vec() {
