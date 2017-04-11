@@ -5,4 +5,6 @@
                 target_os = "linux",
                 test), no_std)]
 
+// FIXME(#137)
+#[cfg(not(target_arch = "mips"))]
 include!(concat!(env!("OUT_DIR"), "/modti3.rs"));
