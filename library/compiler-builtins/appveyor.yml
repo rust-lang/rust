@@ -6,8 +6,12 @@ environment:
 install:
   - git submodule update --init
   - curl -sSf -o rustup-init.exe https://win.rustup.rs
-  - rustup-init.exe --default-host %TARGET% --default-toolchain nightly -y
+  - rustup-init.exe --default-host x86_64-pc-windows-msvc --default-toolchain nightly -y
   - set PATH=%PATH%;C:\Users\appveyor\.cargo\bin
+  - ps: >-
+      If ($Env:TARGET -eq 'i686-pc-windows-msvc') {
+        rustup target add $Env:TARGET
+      }
   - rustc -Vv
   - cargo -V
 
