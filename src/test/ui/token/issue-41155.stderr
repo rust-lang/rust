@@ -1,0 +1,10 @@
+error: expected one of `(`, `const`, `default`, `extern`, `fn`, `type`, or `unsafe`, found `}`
+  --> $DIR/issue-41155.rs:13:1
+   |
+12 |     pub
+   |        - expected one of 7 possible tokens here
+13 | }
+   | ^ unexpected token
+
+error: aborting due to previous error
+
