@@ -9,5 +9,5 @@
 // except according to those terms.
 
 fn main() {
-    let (x,) = (vec![],);
+    let (x, ) = (vec![], );
 }

@@ -1807,6 +1807,58 @@ makes a difference in practice.)
 [rfc401]: https://github.com/rust-lang/rfcs/blob/master/text/0401-coercions.md
 "##,
 
+/*
+
+E0101: r##"
+#### Note: this error code is no longer emitted by the compiler.
+
+You hit this error because the compiler lacks the information to
+determine a type for this expression. Erroneous code example:
+
+```ignore
+let x = |_| {}; // error: cannot determine a type for this expression
+```
+
+You have two possibilities to solve this situation:
+
+* Give an explicit definition of the expression
+* Infer the expression
+
+Examples:
+
+```
+let x = |_ : u32| {}; // ok!
+// or:
+let x = |_| {};
+x(0u32);
+```
+"##,
+
+E0102: r##"
+#### Note: this error code is no longer emitted by the compiler.
+
+You hit this error because the compiler lacks the information to
+determine the type of this variable. Erroneous code example:
+
+```ignore
+// could be an array of anything
+let x = []; // error: cannot determine a type for this local variable
+```
+
+To solve this situation, constrain the type of the variable.
+Examples:
+
+```
+#![allow(unused_variables)]
+
+fn main() {
+    let x: [u8; 0] = [];
+}
+```
+"##,
+
+*/
+
 }
 
 
