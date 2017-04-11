@@ -17,7 +17,6 @@ fn causes_ice(mut l: &mut Sexpression) {
     loop { match l {
         &mut Sexpression::Num(ref mut n) => {},
         &mut Sexpression::Cons(ref mut expr) => { //~ ERROR cannot borrow `l.0`
-            //~| ERROR cannot borrow `l.0`
             l = &mut **expr; //~ ERROR cannot assign to `l`
         }
     }}
