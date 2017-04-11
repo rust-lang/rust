@@ -511,6 +511,18 @@ impl Config {
                                      .or_insert(Target::default());
                     target.musl_root = Some(parse_configure_path(value));
                 }
+                "CFG_MUSL_ROOT_MIPS" if value.len() > 0 => {
+                    let target = "mips-unknown-linux-musl".to_string();
+                    let target = self.target_config.entry(target)
+                                     .or_insert(Target::default());
+                    target.musl_root = Some(parse_configure_path(value));
+                }
+                "CFG_MUSL_ROOT_MIPSEL" if value.len() > 0 => {
+                    let target = "mipsel-unknown-linux-musl".to_string();
+                    let target = self.target_config.entry(target)
+                                     .or_insert(Target::default());
+                    target.musl_root = Some(parse_configure_path(value));
+                }
                 "CFG_DEFAULT_AR" if value.len() > 0 => {
                     self.rustc_default_ar = Some(value.to_string());
                 }
