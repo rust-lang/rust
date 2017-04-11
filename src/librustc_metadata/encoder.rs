@@ -20,6 +20,7 @@ use rustc::middle::lang_items;
 use rustc::mir;
 use rustc::traits::specialization_graph;
 use rustc::ty::{self, Ty, TyCtxt, ReprOptions};
+use rustc::ty::util::IntTypeExt;
 
 use rustc::session::config::{self, CrateTypeProcMacro};
 use rustc::util::nodemap::{FxHashMap, NodeSet};
@@ -257,15 +258,12 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let variant = &def.variants[index];
         let def_id = variant.did;
 
+        let discriminants = ty::queries::discriminants::get(tcx, DUMMY_SP, enum_did);
+
         let data = VariantData {
             ctor_kind: variant.ctor_kind,
             discr: variant.discr,
-            evaluated_discr: match variant.discr {
-                ty::VariantDiscr::Explicit(def_id) => {
-                    ty::queries::monomorphic_const_eval::get(tcx, DUMMY_SP, def_id).ok()
-                }
-                ty::VariantDiscr::Relative(_) => None
-            },
+            evaluated_discr: discriminants[index],
             struct_ctor: None,
         };
 
@@ -388,12 +386,15 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
 
     fn encode_struct_ctor(&mut self, (adt_def_id, def_id): (DefId, DefId)) -> Entry<'tcx> {
         let tcx = self.tcx;
-        let variant = tcx.lookup_adt_def(adt_def_id).struct_variant();
+        let adt_def = tcx.lookup_adt_def(adt_def_id);
+        let variant = adt_def.struct_variant();
+
+        let evaluated_discr = adt_def.repr.discr_type().initial_discriminant(tcx);
 
         let data = VariantData {
             ctor_kind: variant.ctor_kind,
             discr: variant.discr,
-            evaluated_discr: None,
+            evaluated_discr: evaluated_discr,
             struct_ctor: Some(def_id.index),
         };
 
@@ -658,7 +659,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             hir::ItemTy(..) => EntryKind::Type,
             hir::ItemEnum(..) => EntryKind::Enum(get_repr_options(&tcx, def_id)),
             hir::ItemStruct(ref struct_def, _) => {
-                let variant = tcx.lookup_adt_def(def_id).struct_variant();
+                let adt_def = tcx.lookup_adt_def(def_id);
+                let variant = adt_def.struct_variant();
 
                 // Encode def_ids for each field and method
                 // for methods, write all the stuff get_trait_method
@@ -674,18 +676,19 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 EntryKind::Struct(self.lazy(&VariantData {
                     ctor_kind: variant.ctor_kind,
                     discr: variant.discr,
-                    evaluated_discr: None,
+                    evaluated_discr: adt_def.repr.discr_type().initial_discriminant(tcx),
                     struct_ctor: struct_ctor,
                 }), repr_options)
             }
             hir::ItemUnion(..) => {
+                let adt_def = tcx.lookup_adt_def(def_id);
                 let variant = tcx.lookup_adt_def(def_id).struct_variant();
                 let repr_options = get_repr_options(&tcx, def_id);
 
                 EntryKind::Union(self.lazy(&VariantData {
                     ctor_kind: variant.ctor_kind,
                     discr: variant.discr,
-                    evaluated_discr: None,
+                    evaluated_discr: adt_def.repr.discr_type().initial_discriminant(tcx),
                     struct_ctor: None,
                 }), repr_options)
             }

@@ -1217,7 +1217,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                     let (mut min, mut max, mut non_zero) = (i64::max_value(),
                                                             i64::min_value(),
                                                             true);
-                    for discr in def.discriminants(tcx) {
+                    for &discr in &def.discriminants(tcx)[..] {
                         let x = discr.to_u128_unchecked() as i64;
                         if x == 0 { non_zero = false; }
                         if x < min { min = x; }

@@ -1468,6 +1468,7 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
     let def = enum_type.ty_adt_def().unwrap();
     let enumerators_metadata: Vec<DIDescriptor> = def.discriminants(cx.tcx())
+        .iter()
         .zip(&def.variants)
         .map(|(discr, v)| {
             let token = v.name.as_str();

@@ -20,7 +20,6 @@ use hir::{map as hir_map, FreevarMap, TraitMap};
 use hir::def::{Def, CtorKind, ExportMap};
 use hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
 use ich::StableHashingContext;
-use middle::const_val::ConstVal;
 use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem, FnOnceTraitLangItem};
 use middle::privacy::AccessLevels;
 use middle::region::{CodeExtent, ROOT_CODE_EXTENT};
@@ -29,7 +28,6 @@ use mir::Mir;
 use traits;
 use ty;
 use ty::subst::{Subst, Substs};
-use ty::util::IntTypeExt;
 use ty::walk::TypeWalker;
 use util::common::MemoizationMap;
 use util::nodemap::{NodeSet, DefIdMap, FxHashMap};
@@ -1612,25 +1610,9 @@ impl<'a, 'gcx, 'tcx> AdtDef {
         }
     }
 
-    pub fn discriminants(&'a self, tcx: TyCtxt<'a, 'gcx, 'tcx>)
-                         -> impl Iterator<Item=ConstInt> + 'a {
-        let repr_type = self.repr.discr_type();
-        let initial = repr_type.initial_discriminant(tcx.global_tcx());
-        let mut prev_discr = None::<ConstInt>;
-        self.variants.iter().map(move |v| {
-            let mut discr = prev_discr.map_or(initial, |d| d.wrap_incr());
-            if let VariantDiscr::Explicit(expr_did) = v.discr {
-                match tcx.maps.monomorphic_const_eval.borrow()[&expr_did] {
-                    Ok(ConstVal::Integral(v)) => {
-                        discr = v;
-                    }
-                    _ => {}
-                }
-            }
-            prev_discr = Some(discr);
-
-            discr
-        })
+    pub fn discriminants(&'a self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Rc<Vec<ConstInt>> {
+        assert!(self.is_enum(), "should not call `discriminants` except for enums");
+        queries::discriminants::get(tcx, DUMMY_SP, self.did)
     }
 
     pub fn destructor(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Option<Destructor> {

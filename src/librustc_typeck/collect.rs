@@ -66,13 +66,13 @@ use rustc::ty::{self, AdtKind, ToPolyTraitRef, Ty, TyCtxt};
 use rustc::ty::maps::Providers;
 use rustc::ty::util::IntTypeExt;
 use rustc::dep_graph::DepNode;
-use util::common::MemoizationMap;
 use util::nodemap::{NodeMap, FxHashMap};
 
 use rustc_const_math::ConstInt;
 
 use std::cell::RefCell;
 use std::collections::BTreeMap;
+use std::rc::Rc;
 
 use syntax::{abi, ast};
 use syntax::codemap::Spanned;
@@ -102,6 +102,7 @@ pub fn provide(providers: &mut Providers) {
         trait_def,
         adt_def,
         impl_trait_ref,
+        discriminants,
         ..*providers
     };
 }
@@ -504,7 +505,8 @@ fn convert_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item_id: ast::NodeId) {
             tcx.item_generics(def_id);
             tcx.item_type(def_id);
             tcx.item_predicates(def_id);
-            convert_enum_variant_types(tcx, def_id, &enum_definition.variants);
+            ty::queries::discriminants::get(tcx, it.span, def_id);
+            convert_enum_variant_types(tcx, &enum_definition.variants);
         },
         hir::ItemDefaultImpl(..) => {
             tcx.impl_trait_ref(def_id);
@@ -585,35 +587,35 @@ fn convert_variant_ctor<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     tcx.item_predicates(def_id);
 }
 
-fn evaluate_disr_expr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                body: hir::BodyId)
-                                -> Result<ConstVal<'tcx>, ()> {
-    let e = &tcx.hir.body(body).value;
-    ConstContext::new(tcx, body).eval(e).map_err(|err| {
-        // enum variant evaluation happens before the global constant check
-        // so we need to report the real error
-        report_const_eval_err(tcx, &err, e.span, "enum discriminant");
-    })
-}
+fn discriminants<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                           enum_def_id: DefId)
+                           -> Rc<Vec<ConstInt>>
+{
+    let enum_node_id = tcx.hir.as_local_node_id(enum_def_id).expect("non-local def-id");
+    let item = tcx.hir.expect_item(enum_node_id);
+    let variants = match item.node {
+        hir::ItemEnum(ref def, _) => &def.variants,
+        _ => span_bug!(item.span, "expected an enum but found {:?}", item),
+    };
 
-fn convert_enum_variant_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                        def_id: DefId,
-                                        variants: &[hir::Variant]) {
-    let def = tcx.lookup_adt_def(def_id);
+    let def = tcx.lookup_adt_def(enum_def_id);
     let repr_type = def.repr.discr_type();
-    let initial = repr_type.initial_discriminant(tcx);
-    let mut prev_discr = None::<ConstInt>;
+    let initial = repr_type.initial_discriminant(tcx.global_tcx());
+    let mut prev_discr: Option<ConstInt> = None;
 
-    // fill the discriminant values and field types
-    for variant in variants {
+    // Compute all discriminants. This is complex because we have to
+    // add 1 to the previous cases, accounting for overflow, and
+    // allowing user to inject their own expressions if they want.
+    let discrs: Vec<_> = variants.iter().map(|variant| {
+        // Just in case, compute the discriminant with a wrapped incr.
+        // We'll be using this as a fallback, but we compute it early
+        // because it's useful also for the error message below.
         let wrapped_discr = prev_discr.map_or(initial, |d| d.wrap_incr());
-        prev_discr = Some(if let Some(e) = variant.node.disr_expr {
-            let expr_did = tcx.hir.local_def_id(e.node_id);
-            let result = tcx.maps.monomorphic_const_eval.memoize(expr_did, || {
-                evaluate_disr_expr(tcx, e)
-            });
 
-            match result {
+        // Compute the discriminant of this element; use `None` if some
+        // errors occurs.
+        let this_discr = if let Some(e) = variant.node.disr_expr {
+            match evaluate_disr_expr(tcx, e) {
                 Ok(ConstVal::Integral(x)) => Some(x),
                 _ => None
             }
@@ -628,8 +630,32 @@ fn convert_enum_variant_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                variant.node.name, wrapped_discr))
                 .emit();
             None
-        }.unwrap_or(wrapped_discr));
+        };
 
+        // Fallback to `wrapped_discr`
+        let this_discr = this_discr.unwrap_or(wrapped_discr);
+
+        prev_discr = Some(this_discr);
+        this_discr
+    }).collect();
+
+    Rc::new(discrs)
+}
+
+fn evaluate_disr_expr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                body: hir::BodyId)
+                                -> Result<ConstVal<'tcx>, ()> {
+    let e = &tcx.hir.body(body).value;
+    ConstContext::new(tcx, body).eval(e).map_err(|err| {
+        // enum variant evaluation happens before the global constant check
+        // so we need to report the real error
+        report_const_eval_err(tcx, &err, e.span, "enum discriminant");
+    })
+}
+
+fn convert_enum_variant_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, variants: &[hir::Variant]) {
+    // fill the discriminant values and field types
+    for variant in variants {
         for f in variant.node.data.fields() {
             let def_id = tcx.hir.local_def_id(f.id);
             tcx.item_generics(def_id);

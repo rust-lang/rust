@@ -384,7 +384,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
                 };
                 let mut otherwise = None;
                 let mut unwind_otherwise = None;
-                for (variant_index, discr) in adt.discriminants(self.tcx()).enumerate() {
+                for (variant_index, &discr) in adt.discriminants(self.tcx()).iter().enumerate() {
                     let subpath = self.elaborator.downcast_subpath(
                         self.path, variant_index);
                     if let Some(variant_path) = subpath {
