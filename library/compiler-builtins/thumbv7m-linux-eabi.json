@@ -11,11 +11,14 @@
     "env": "",
     "executables": true,
     "linker": "arm-none-eabi-gcc",
+    "linker-flavor": "gcc",
     "llvm-target": "thumbv7m-none-eabi",
     "max-atomic-width": 32,
     "os": "linux",
     "panic-strategy": "abort",
-    "pre-link-args": ["-nostartfiles"],
+    "pre-link-args": {
+        "gcc": ["-nostartfiles"]
+    },
     "relocation-model": "static",
     "target-endian": "little",
     "target-pointer-width": "32",
