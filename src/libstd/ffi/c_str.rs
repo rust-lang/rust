@@ -273,7 +273,9 @@ impl CString {
     /// this string.
     ///
     /// More details about custom memory allocators can be found in
-    /// [the book](../../unstable-book/allocator.html).
+    /// [the book](../../unstable-book/allocator.html). The alignment
+    /// used for allocation is guaranteed to always be the same as the
+    /// alignment for `u8`.
     ///
     /// Failure to call `from_raw` will lead to a memory leak.
     #[stable(feature = "cstr_memory", since = "1.4.0")]
