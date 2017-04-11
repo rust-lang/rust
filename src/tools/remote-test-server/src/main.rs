@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-/// This is a small server which is intended to run inside of an emulator. This
-/// server pairs with the `remote-test-client` program in this repository. The
-/// `remote-test-client` connects to this server over a TCP socket and performs
-/// work such as:
+/// This is a small server which is intended to run inside of an emulator or
+/// on a remote test device. This server pairs with the `remote-test-client`
+/// program in this repository. The `remote-test-client` connects to this
+/// server over a TCP socket and performs work such as:
 ///
 /// 1. Pushing shared libraries to the server
 /// 2. Running tests through the server
@@ -21,6 +21,7 @@
 /// basically custom format suiting our needs.
 
 use std::cmp;
+use std::env;
 use std::fs::{self, File, Permissions};
 use std::io::prelude::*;
 use std::io::{self, BufReader};
@@ -42,12 +43,54 @@ macro_rules! t {
 
 static TEST: AtomicUsize = ATOMIC_USIZE_INIT;
 
+struct Config {
+    pub remote: bool,
+    pub verbose: bool,
+}
+
+impl Config {
+    pub fn default() -> Config {
+        Config {
+            remote: false,
+            verbose: false,
+        }
+    }
+
+    pub fn parse_args() -> Config {
+        let mut config = Config::default();
+
+        let args = env::args().skip(1);
+        for argument in args {
+            match &argument[..] {
+                "remote" => {
+                    config.remote = true;
+                },
+                "verbose" | "-v" => {
+                    config.verbose = true;
+                }
+                arg => panic!("unknown argument: {}", arg),
+            }
+        }
+
+        config
+    }
+}
+
 fn main() {
     println!("starting test server");
-    let (listener, work) = if cfg!(target_os = "android") {
-        (t!(TcpListener::bind("0.0.0.0:12345")), "/data/tmp/work")
+
+    let config = Config::parse_args();
+
+    let bind_addr = if cfg!(target_os = "android") || config.remote {
+        "0.0.0.0:12345"
     } else {
-        (t!(TcpListener::bind("10.0.2.15:12345")), "/tmp/work")
+        "10.0.2.15:12345"
+    };
+
+    let (listener, work) = if cfg!(target_os = "android") {
+        (t!(TcpListener::bind(bind_addr)), "/data/tmp/work")
+    } else {
+        (t!(TcpListener::bind(bind_addr)), "/tmp/work")
     };
     println!("listening!");
 

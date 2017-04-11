@@ -529,7 +529,7 @@ fn find_tests(dir: &Path,
     }
 }
 
-pub fn emulator_copy_libs(build: &Build, compiler: &Compiler, target: &str) {
+pub fn remote_copy_libs(build: &Build, compiler: &Compiler, target: &str) {
     if !build.remote_tested(target) {
         return
     }
