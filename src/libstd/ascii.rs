@@ -27,7 +27,6 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use fmt;
-use mem;
 use ops::Range;
 use iter::FusedIterator;
 
@@ -599,12 +598,12 @@ impl AsciiExt for str {
     }
 
     fn make_ascii_uppercase(&mut self) {
-        let me: &mut [u8] = unsafe { mem::transmute(self) };
+        let me = unsafe { self.as_bytes_mut() };
         me.make_ascii_uppercase()
     }
 
     fn make_ascii_lowercase(&mut self) {
-        let me: &mut [u8] = unsafe { mem::transmute(self) };
+        let me = unsafe { self.as_bytes_mut() };
         me.make_ascii_lowercase()
     }
 
