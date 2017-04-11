@@ -598,7 +598,7 @@ impl<'a, 'gcx, 'tcx> Struct {
         // In addition, code in trans assume that 2-element structs can become pairs.
         // It's easier to just short-circuit here.
         let can_optimize = (fields.len() > 2 || StructKind::EnumVariant == kind)
-            && ! (repr.c || repr.packed || repr.linear || repr.simd);
+            && !(repr.c || repr.packed || repr.linear || repr.simd);
 
         let (optimize, sort_ascending) = match kind {
             StructKind::AlwaysSizedUnivariant => (can_optimize, false),

@@ -1419,7 +1419,8 @@ impl_stable_hash_for!(struct ReprOptions {
     c,
     packed,
     simd,
-    int
+    int,
+    linear
 });
 
 impl ReprOptions {
