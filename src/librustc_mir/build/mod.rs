@@ -249,7 +249,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             visibility_scopes: IndexVec::new(),
             visibility_scope: ARGUMENT_VISIBILITY_SCOPE,
             breakable_scopes: vec![],
-            local_decls: IndexVec::from_elem_n(LocalDecl::new_return_pointer(return_ty), 1),
+            local_decls: IndexVec::from_elem_n(LocalDecl::new_return_pointer(return_ty,
+                                                                             span), 1),
             var_indices: NodeMap(),
             unit_temp: None,
             cached_resume_block: None,
@@ -304,8 +305,12 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             self.local_decls.push(LocalDecl {
                 mutability: Mutability::Not,
                 ty: ty,
-                source_info: None,
+                source_info: SourceInfo {
+                    scope: ARGUMENT_VISIBILITY_SCOPE,
+                    span: pattern.map_or(self.fn_span, |pat| pat.span)
+                },
                 name: name,
+                is_user_variable: false,
             });
         }
 
@@ -341,7 +346,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             Some(ref tmp) => tmp.clone(),
             None => {
                 let ty = self.hir.unit_ty();
-                let tmp = self.temp(ty);
+                let fn_span = self.fn_span;
+                let tmp = self.temp(ty, fn_span);
                 self.unit_temp = Some(tmp.clone());
                 tmp
             }

@@ -686,7 +686,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
     }
 
     fn new_temp(&mut self, ty: Ty<'tcx>) -> Local {
-        self.elaborator.patch().new_temp(ty)
+        self.elaborator.patch().new_temp(ty, self.source_info.span)
     }
 
     fn terminator_loc(&mut self, bb: BasicBlock) -> Location {
