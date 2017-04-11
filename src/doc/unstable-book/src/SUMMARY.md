@@ -207,6 +207,7 @@
     - [str_checked_slicing](library-features/str-checked-slicing.md)
     - [str_escape](library-features/str-escape.md)
     - [str_internals](library-features/str-internals.md)
+    - [str_box_extras](library-features/str-box-extras.md)
     - [str_mut_extras](library-features/str-mut-extras.md)
     - [test](library-features/test.md)
     - [thread_id](library-features/thread-id.md)

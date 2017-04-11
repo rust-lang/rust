@@ -70,13 +70,16 @@ pub use core::str::{Matches, RMatches};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::{MatchIndices, RMatchIndices};
 #[stable(feature = "rust1", since = "1.0.0")]
-pub use core::str::{from_utf8, Chars, CharIndices, Bytes};
+pub use core::str::{from_utf8, from_utf8_mut, Chars, CharIndices, Bytes};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::{from_utf8_unchecked, from_utf8_unchecked_mut, ParseBoolError};
+#[unstable(feature = "str_box_extras", issue = "41119")]
+pub use alloc::str::from_boxed_utf8_unchecked;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use std_unicode::str::SplitWhitespace;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::str::pattern;
+
 
 #[unstable(feature = "slice_concat_ext",
            reason = "trait should not have to exist",
@@ -1713,6 +1716,12 @@ impl str {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn parse<F: FromStr>(&self) -> Result<F, F::Err> {
         core_str::StrExt::parse(self)
+    }
+
+    /// Converts a `Box<str>` into a `Box<[u8]>` without copying or allocating.
+    #[unstable(feature = "str_box_extras", issue = "41119")]
+    pub fn into_boxed_bytes(self: Box<str>) -> Box<[u8]> {
+        self.into()
     }
 
     /// Replaces all matches of a pattern with another string.
