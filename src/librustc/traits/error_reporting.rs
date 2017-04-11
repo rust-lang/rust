@@ -293,22 +293,20 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                 Some(val) => Some(val),
                                 None => {
                                     span_err!(self.tcx.sess, err_sp, E0272,
-                                                    "the #[rustc_on_unimplemented] \
-                                                            attribute on \
-                                                            trait definition for {} refers to \
-                                                            non-existent type parameter {}",
-                                                            trait_str, s);
+                                              "the #[rustc_on_unimplemented] attribute on trait \
+                                               definition for {} refers to non-existent type \
+                                               parameter {}",
+                                              trait_str, s);
                                     errored = true;
                                     None
                                 }
                             },
                             _ => {
                                 span_err!(self.tcx.sess, err_sp, E0273,
-                                            "the #[rustc_on_unimplemented] attribute \
-                                            on trait definition for {} must have \
-                                            named format arguments, eg \
-                                            `#[rustc_on_unimplemented = \
-                                            \"foo {{T}}\"]`", trait_str);
+                                          "the #[rustc_on_unimplemented] attribute on trait \
+                                           definition for {} must have named format arguments, eg \
+                                           `#[rustc_on_unimplemented = \"foo {{T}}\"]`",
+                                          trait_str);
                                 errored = true;
                                 None
                             }
@@ -449,8 +447,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                              "impl has stricter requirements than trait");
 
         if let Some(trait_item_span) = self.tcx.hir.span_if_local(trait_item_def_id) {
-            err.span_label(trait_item_span,
-                           &format!("definition of `{}` from trait", item_name));
+            let span = self.tcx.sess.codemap().def_span(trait_item_span);
+            err.span_label(span, &format!("definition of `{}` from trait", item_name));
         }
 
         err.span_label(
@@ -652,6 +650,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     {
         assert!(type_def_id.is_local());
         let span = self.hir.span_if_local(type_def_id).unwrap();
+        let span = self.sess.codemap().def_span(span);
         let mut err = struct_span_err!(self.sess, span, E0072,
                                        "recursive type `{}` has infinite size",
                                        self.item_path_str(type_def_id));
@@ -669,13 +668,12 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                       -> DiagnosticBuilder<'tcx>
     {
         let trait_str = self.item_path_str(trait_def_id);
+        let span = self.sess.codemap().def_span(span);
         let mut err = struct_span_err!(
             self.sess, span, E0038,
             "the trait `{}` cannot be made into an object",
             trait_str);
-        err.span_label(span, &format!(
-            "the trait `{}` cannot be made into an object", trait_str
-        ));
+        err.span_label(span, &format!("the trait `{}` cannot be made into an object", trait_str));
 
         let mut reported_violations = FxHashSet();
         for violation in violations {
