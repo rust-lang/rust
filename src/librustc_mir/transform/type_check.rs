@@ -666,6 +666,10 @@ impl<'a, 'gcx, 'tcx> TypeChecker<'a, 'gcx, 'tcx> {
         let span = local_decl.source_info.span;
         let ty = local_decl.ty;
         if !ty.is_sized(self.tcx().global_tcx(), self.infcx.param_env(), span) {
+            // in current MIR construction, all non-control-flow rvalue
+            // expressions evaluate through `as_temp` or `into` a return
+            // slot or local, so to find all unsized rvalues it is enough
+            // to check all temps, return slots and locals.
             if let None = self.reported_errors.replace((ty, span)) {
                 span_err!(self.tcx().sess, span, E0161,
                           "cannot move a value of type {0}: the size of {0} \
