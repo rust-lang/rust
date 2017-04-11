@@ -622,8 +622,8 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                         let val = bcx.extract_value(val, i);
                         let lval = LvalueRef::new_sized_ty(llresult, ret_ty,
                                                            Alignment::AbiAligned);
-                        let (dest, _) = lval.trans_field_ptr(bcx, i);
-                        bcx.store(val, dest, None);
+                        let (dest, align) = lval.trans_field_ptr(bcx, i);
+                        bcx.store(val, dest, align.to_align());
                     }
                     C_nil(ccx)
                 }
