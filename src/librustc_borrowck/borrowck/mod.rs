@@ -69,7 +69,7 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
 
 pub fn provide(providers: &mut Providers) {
     *providers = Providers {
-        borrowck: borrowck,
+        borrowck,
         ..*providers
     };
 }
