@@ -11,7 +11,7 @@ community and the [sub-team]s.
 The "RFC" (request for comments) process is intended to provide a
 consistent and controlled path for new features to enter the language
 and standard libraries, so that all stakeholders can be confident about
-the direction the language is evolving in.
+the direction the language is evolving in.dis
 
 ## Table of Contents
 [Table of Contents]: #table-of-contents
@@ -82,7 +82,7 @@ having a consistent impact on the project requires concerted effort
 toward consensus-building.
 
 The most common preparations for writing and submitting an RFC include
-talking the idea over on #rust-internals, filing and discusssing ideas
+talking the idea over on #rust-internals, filing and discussing ideas
 on the [RFC issue tracker][issues], and occasionally posting
 'pre-RFCs' on [the developer discussion forum][discuss] for early
 review.
