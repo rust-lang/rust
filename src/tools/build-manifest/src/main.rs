@@ -11,7 +11,7 @@
 extern crate toml;
 extern crate rustc_serialize;
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 use std::env;
 use std::fs::File;
 use std::io::{self, Read, Write};
@@ -101,13 +101,13 @@ static MINGW: &'static [&'static str] = &[
 struct Manifest {
     manifest_version: String,
     date: String,
-    pkg: HashMap<String, Package>,
+    pkg: BTreeMap<String, Package>,
 }
 
 #[derive(RustcEncodable)]
 struct Package {
     version: String,
-    target: HashMap<String, Target>,
+    target: BTreeMap<String, Target>,
 }
 
 #[derive(RustcEncodable)]
@@ -138,7 +138,7 @@ struct Builder {
     input: PathBuf,
     output: PathBuf,
     gpg_passphrase: String,
-    digests: HashMap<String, String>,
+    digests: BTreeMap<String, String>,
     s3_address: String,
     date: String,
     rust_version: String,
@@ -162,7 +162,7 @@ fn main() {
         input: input,
         output: output,
         gpg_passphrase: passphrase,
-        digests: HashMap::new(),
+        digests: BTreeMap::new(),
         s3_address: s3_address,
         date: date,
         rust_version: String::new(),
@@ -214,7 +214,7 @@ impl Builder {
         let mut manifest = Manifest {
             manifest_version: "2".to_string(),
             date: self.date.to_string(),
-            pkg: HashMap::new(),
+            pkg: BTreeMap::new(),
         };
 
         self.package("rustc", &mut manifest.pkg, HOSTS);
@@ -230,7 +230,7 @@ impl Builder {
 
         let mut pkg = Package {
             version: self.cached_version("rust").to_string(),
-            target: HashMap::new(),
+            target: BTreeMap::new(),
         };
         for host in HOSTS {
             let filename = self.filename("rust", host);
@@ -299,7 +299,7 @@ impl Builder {
 
     fn package(&mut self,
                pkgname: &str,
-               dst: &mut HashMap<String, Package>,
+               dst: &mut BTreeMap<String, Package>,
                targets: &[&str]) {
         let targets = targets.iter().map(|name| {
             let filename = self.filename(pkgname, name);
