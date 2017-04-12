@@ -98,8 +98,8 @@ pub fn get_argument_fmtstr_parts<'a, 'b>(cx: &LateContext<'a, 'b>, expr: &'a Exp
 }
 
 /// Checks if the expressions matches
-/// ```rust
-/// { static __STATIC_FMTSTR: s = &["a", "b", c]; __STATIC_FMTSTR }
+/// ```rust, ignore
+/// { static __STATIC_FMTSTR: &'static[&'static str] = &["a", "b", c]; __STATIC_FMTSTR }
 /// ```
 fn check_static_str(cx: &LateContext, expr: &Expr) -> bool {
     if let Some(expr) = get_argument_fmtstr_parts(cx, expr) {
