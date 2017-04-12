@@ -38,7 +38,7 @@
 - [collections](collections.md)
 - [collections_range](collections-range.md)
 - [command_envs](command-envs.md)
-- [compiler_barriers](compiler-barriers.md)
+- [compiler_fences](compiler-fences.md)
 - [compiler_builtins](compiler-builtins.md)
 - [compiler_builtins_lib](compiler-builtins-lib.md)
 - [concat_idents](concat-idents.md)
