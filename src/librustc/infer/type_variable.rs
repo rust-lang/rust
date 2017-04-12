@@ -21,15 +21,39 @@ use std::cmp::min;
 use std::marker::PhantomData;
 use std::mem;
 use std::u32;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::snapshot_vec as sv;
 use rustc_data_structures::unify as ut;
 
 pub struct TypeVariableTable<'tcx> {
     values: sv::SnapshotVec<Delegate<'tcx>>,
+
+    /// Two variables are unified in `eq_relations` when we have a
+    /// constraint `?X == ?Y`.
     eq_relations: ut::UnificationTable<ty::TyVid>,
+
+    /// Two variables are unified in `eq_relations` when we have a
+    /// constraint `?X <: ?Y` *or* a constraint `?Y <: ?X`. This second
+    /// table exists only to help with the occurs check. In particular,
+    /// we want to report constraints like these as an occurs check
+    /// violation:
+    ///
+    ///     ?1 <: ?3
+    ///     Box<?3> <: ?1
+    ///
+    /// This works because `?1` and `?3` are unified in the
+    /// `sub_relations` relation (not in `eq_relations`). Then when we
+    /// process the `Box<?3> <: ?1` constraint, we do an occurs check
+    /// on `Box<?3>` and find a potential cycle.
+    ///
+    /// This is reasonable because, in Rust, subtypes have the same
+    /// "skeleton" and hence there is no possible type such that
+    /// (e.g.)  `Box<?3> <: ?3` for any `?3`.
+    sub_relations: ut::UnificationTable<ty::TyVid>,
 }
 
 /// Reasons to create a type inference variable
+#[derive(Copy, Clone)]
 pub enum TypeVariableOrigin {
     MiscVariable(Span),
     NormalizeProjectionType(Span),
@@ -42,7 +66,10 @@ pub enum TypeVariableOrigin {
     DivergingStmt(Span),
     DivergingBlockExpr(Span),
     LatticeVariable(Span),
+    Generalized(ty::TyVid),
 }
+
+pub type TypeVariableMap = FxHashMap<ty::TyVid, TypeVariableOrigin>;
 
 struct TypeVariableData<'tcx> {
     value: TypeVariableValue<'tcx>,
@@ -72,6 +99,7 @@ pub struct Default<'tcx> {
 pub struct Snapshot {
     snapshot: sv::Snapshot,
     eq_snapshot: ut::Snapshot<ty::TyVid>,
+    sub_snapshot: ut::Snapshot<ty::TyVid>,
 }
 
 enum UndoEntry<'tcx> {
@@ -106,6 +134,7 @@ impl<'tcx> TypeVariableTable<'tcx> {
         TypeVariableTable {
             values: sv::SnapshotVec::new(),
             eq_relations: ut::UnificationTable::new(),
+            sub_relations: ut::UnificationTable::new(),
         }
     }
 
@@ -135,6 +164,7 @@ impl<'tcx> TypeVariableTable<'tcx> {
         let a = self.root_var(a);
         let b = self.root_var(b);
         if a != b {
+            self.sub_relations.union(a, b);
             if dir == EqTo {
                 // a and b must be equal which we mark in the unification table
                 let root = self.eq_relations.union(a, b);
@@ -197,6 +227,7 @@ impl<'tcx> TypeVariableTable<'tcx> {
                    origin: TypeVariableOrigin,
                    default: Option<Default<'tcx>>,) -> ty::TyVid {
         self.eq_relations.new_key(());
+        self.sub_relations.new_key(());
         let index = self.values.push(TypeVariableData {
             value: Bounded { relations: vec![], default: default },
             origin: origin,
@@ -211,13 +242,39 @@ impl<'tcx> TypeVariableTable<'tcx> {
         self.values.len()
     }
 
+    /// Returns the "root" variable of `vid` in the `eq_relations`
+    /// equivalence table. All type variables that have been equated
+    /// will yield the same root variable (per the union-find
+    /// algorithm), so `root_var(a) == root_var(b)` implies that `a ==
+    /// b` (transitively).
     pub fn root_var(&mut self, vid: ty::TyVid) -> ty::TyVid {
         self.eq_relations.find(vid)
+    }
+
+    /// Returns the "root" variable of `vid` in the `sub_relations`
+    /// equivalence table. All type variables that have been are
+    /// related via equality or subtyping will yield the same root
+    /// variable (per the union-find algorithm), so `sub_root_var(a)
+    /// == sub_root_var(b)` implies that:
+    ///
+    ///     exists X. (a <: X || X <: a) && (b <: X || X <: b)
+    pub fn sub_root_var(&mut self, vid: ty::TyVid) -> ty::TyVid {
+        self.sub_relations.find(vid)
+    }
+
+    /// True if `a` and `b` have same "sub-root" (i.e., exists some
+    /// type X such that `forall i in {a, b}. (i <: X || X <: i)`.
+    pub fn sub_unified(&mut self, a: ty::TyVid, b: ty::TyVid) -> bool {
+        self.sub_root_var(a) == self.sub_root_var(b)
     }
 
     pub fn probe(&mut self, vid: ty::TyVid) -> Option<Ty<'tcx>> {
         let vid = self.root_var(vid);
         self.probe_root(vid)
+    }
+
+    pub fn origin(&self, vid: ty::TyVid) -> TypeVariableOrigin {
+        self.values.get(vid.index as usize).origin.clone()
     }
 
     /// Retrieves the type of `vid` given that it is currently a root in the unification table
@@ -245,6 +302,7 @@ impl<'tcx> TypeVariableTable<'tcx> {
         Snapshot {
             snapshot: self.values.start_snapshot(),
             eq_snapshot: self.eq_relations.snapshot(),
+            sub_snapshot: self.sub_relations.snapshot(),
         }
     }
 
@@ -260,13 +318,37 @@ impl<'tcx> TypeVariableTable<'tcx> {
             }
         });
 
-        self.values.rollback_to(s.snapshot);
-        self.eq_relations.rollback_to(s.eq_snapshot);
+        let Snapshot { snapshot, eq_snapshot, sub_snapshot } = s;
+        self.values.rollback_to(snapshot);
+        self.eq_relations.rollback_to(eq_snapshot);
+        self.sub_relations.rollback_to(sub_snapshot);
     }
 
     pub fn commit(&mut self, s: Snapshot) {
-        self.values.commit(s.snapshot);
-        self.eq_relations.commit(s.eq_snapshot);
+        let Snapshot { snapshot, eq_snapshot, sub_snapshot } = s;
+        self.values.commit(snapshot);
+        self.eq_relations.commit(eq_snapshot);
+        self.sub_relations.commit(sub_snapshot);
+    }
+
+    /// Returns a map `{V1 -> V2}`, where the keys `{V1}` are
+    /// ty-variables created during the snapshot, and the values
+    /// `{V2}` are the root variables that they were unified with,
+    /// along with their origin.
+    pub fn types_created_since_snapshot(&mut self, s: &Snapshot) -> TypeVariableMap {
+        let actions_since_snapshot = self.values.actions_since_snapshot(&s.snapshot);
+
+        actions_since_snapshot
+            .iter()
+            .filter_map(|action| match action {
+                &sv::UndoLog::NewElem(index) => Some(ty::TyVid { index: index as u32 }),
+                _ => None,
+            })
+            .map(|vid| {
+                let origin = self.values.get(vid.index as usize).origin.clone();
+                (vid, origin)
+            })
+            .collect()
     }
 
     pub fn types_escaping_snapshot(&mut self, s: &Snapshot) -> Vec<Ty<'tcx>> {
