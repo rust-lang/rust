@@ -76,6 +76,7 @@ provide! { <'tcx> tcx, def_id, cdata
         tcx.alloc_trait_def(cdata.get_trait_def(def_id.index))
     }
     adt_def => { cdata.get_adt_def(def_id.index, tcx) }
+    discriminants => { Rc::new(cdata.get_discriminants(def_id.index)) }
     adt_destructor => {
         let _ = cdata;
         tcx.calculate_dtor(def_id, &mut |_,_| Ok(()))

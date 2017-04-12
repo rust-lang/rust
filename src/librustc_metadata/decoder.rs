@@ -16,6 +16,7 @@ use schema::*;
 use rustc::hir::map::{DefKey, DefPath, DefPathData};
 use rustc::hir;
 
+use rustc::middle::const_val::ConstInt;
 use rustc::middle::cstore::LinkagePreference;
 use rustc::hir::def::{self, Def, CtorKind};
 use rustc::hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
@@ -512,8 +513,7 @@ impl<'a, 'tcx> CrateMetadata {
 
     fn get_variant(&self,
                    item: &Entry<'tcx>,
-                   index: DefIndex,
-                   tcx: TyCtxt<'a, 'tcx, 'tcx>)
+                   index: DefIndex)
                    -> (ty::VariantDef, Option<DefIndex>) {
         let data = match item.kind {
             EntryKind::Variant(data) |
@@ -522,13 +522,10 @@ impl<'a, 'tcx> CrateMetadata {
             _ => bug!(),
         };
 
-        if let ty::VariantDiscr::Explicit(def_id) = data.discr {
-            let result = data.evaluated_discr.map_or(Err(()), Ok);
-            tcx.maps.monomorphic_const_eval.borrow_mut().insert(def_id, result);
-        }
+        let variant_did = self.local_def_id(data.struct_ctor.unwrap_or(index));
 
         (ty::VariantDef {
-            did: self.local_def_id(data.struct_ctor.unwrap_or(index)),
+            did: variant_did,
             name: self.item_name(index),
             fields: item.children.decode(self).map(|index| {
                 let f = self.entry(index);
@@ -560,13 +557,13 @@ impl<'a, 'tcx> CrateMetadata {
                 .decode(self)
                 .map(|index| {
                     let (variant, struct_ctor) =
-                        self.get_variant(&self.entry(index), index, tcx);
+                        self.get_variant(&self.entry(index), index);
                     assert_eq!(struct_ctor, None);
                     variant
                 })
                 .collect()
         } else {
-            let (variant, _struct_ctor) = self.get_variant(&item, item_id, tcx);
+            let (variant, _struct_ctor) = self.get_variant(&item, item_id);
             vec![variant]
         };
         let (kind, repr) = match item.kind {
@@ -577,6 +574,31 @@ impl<'a, 'tcx> CrateMetadata {
         };
 
         tcx.alloc_adt_def(did, kind, variants, repr)
+    }
+
+    pub fn get_discriminants(&self,
+                             item_id: DefIndex)
+                             -> Vec<ConstInt>
+    {
+        let item = self.entry(item_id);
+        let did = self.local_def_id(item_id);
+        match item.kind {
+            EntryKind::Enum(_) => (),
+            _ => bug!("get_discriminants called on a non-enum {:?}", did),
+        }
+        let discriminants =
+            item.children
+                .decode(self)
+                .map(|variant_index| {
+                    let variant_entry = self.entry(variant_index);
+                    let variant_data = match variant_entry.kind {
+                        EntryKind::Variant(data) => data.decode(self),
+                        _ => bug!("expected variant as child of enum {:?}", did),
+                    };
+                    variant_data.evaluated_discr
+                })
+                .collect();
+        discriminants
     }
 
     pub fn get_predicates(&self,

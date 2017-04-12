@@ -1370,7 +1370,7 @@ pub fn check_enum<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 
     let mut disr_vals: Vec<ConstInt> = Vec::new();
-    for (discr, v) in def.discriminants(tcx).zip(vs) {
+    for (&discr, v) in def.discriminants(tcx).iter().zip(vs) {
         // Check for duplicate discriminant values
         if let Some(i) = disr_vals.iter().position(|&x| x == discr) {
             let variant_i_node_id = tcx.hir.as_local_node_id(def.variants[i].did).unwrap();

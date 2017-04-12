@@ -10,7 +10,7 @@
 
 use dep_graph::{DepGraph, DepNode, DepTrackingMap, DepTrackingMapConfig};
 use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
-use middle::const_val::ConstVal;
+use middle::const_val::ConstInt;
 use middle::privacy::AccessLevels;
 use mir;
 use session::CompileResult;
@@ -439,9 +439,8 @@ define_maps! { <'tcx>
     /// (Defined only for LOCAL_CRATE)
     pub crate_inherent_impls_overlap_check: crate_inherent_impls_dep_node(CrateNum) -> (),
 
-    /// Results of evaluating monomorphic constants embedded in
-    /// other items, such as enum variant explicit discriminants.
-    pub monomorphic_const_eval: MonomorphicConstEval(DefId) -> Result<ConstVal<'tcx>, ()>,
+    /// Computes the final discriminant for each variant of an enum.
+    pub discriminants: Discriminants(DefId) -> Rc<Vec<ConstInt>>,
 
     /// Performs the privacy check and computes "access levels".
     pub privacy_access_levels: PrivacyAccessLevels(CrateNum) -> Rc<AccessLevels>,
