@@ -135,19 +135,11 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for RegionFudger<'a, 'gcx, 'tcx> {
                         ty
                     }
 
-                    Some(info) => {
+                    Some(&origin) => {
                         // This variable was created during the
-                        // fudging; it was mapped the root
-                        // `root_vid`. There are now two
-                        // possibilities: either the root was creating
-                        // during the fudging too, in which case we
-                        // want a fresh variable, or it was not, in
-                        // which case we can return it.
-                        if self.type_variables.contains_key(&info.root_vid) {
-                            self.infcx.next_ty_var(info.root_origin)
-                        } else {
-                            self.infcx.tcx.mk_var(info.root_vid)
-                        }
+                        // fudging. Recreate it with a fresh variable
+                        // here.
+                        self.infcx.next_ty_var(origin)
                     }
                 }
             }
