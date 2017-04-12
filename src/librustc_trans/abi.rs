@@ -283,7 +283,7 @@ impl<'tcx> LayoutExt<'tcx> for TyLayout<'tcx> {
 
             Layout::Vector { .. } => {
                 Some(Reg {
-                    kind: RegKind::Integer,
+                    kind: RegKind::Vector,
                     size: self.size(ccx)
                 })
             }
