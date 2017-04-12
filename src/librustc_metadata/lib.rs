@@ -27,6 +27,7 @@
 #![feature(rustc_private)]
 #![feature(specialization)]
 #![feature(staged_api)]
+#![feature(discriminant_value)]
 
 #[macro_use]
 extern crate log;

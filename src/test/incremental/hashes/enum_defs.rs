@@ -38,8 +38,13 @@ enum EnumVisibility { A }
 #[cfg(not(cfail1))]
 #[rustc_dirty(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
+#[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
-pub enum EnumVisibility { A }
+pub enum EnumVisibility {
+    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
+    A
+}
 
 
 
@@ -56,7 +61,10 @@ enum EnumChangeNameCStyleVariant {
 #[rustc_metadata_dirty(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 enum EnumChangeNameCStyleVariant {
+    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
     Variant1,
+    #[rustc_metadata_clean(cfg="cfail3")]
     Variant2Changed,
 }
 
@@ -259,10 +267,13 @@ enum EnumChangeFieldTypeTupleStyleVariant {
 #[cfg(not(cfail1))]
 #[rustc_dirty(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 enum EnumChangeFieldTypeTupleStyleVariant {
-    Variant1(u32, u64),
+    Variant1(u32,
+        #[rustc_metadata_dirty(cfg="cfail2")]
+        #[rustc_metadata_clean(cfg="cfail3")]
+        u64),
 }
 
 
@@ -277,11 +288,16 @@ enum EnumChangeFieldTypeStructStyleVariant {
 #[cfg(not(cfail1))]
 #[rustc_dirty(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 enum EnumChangeFieldTypeStructStyleVariant {
     Variant1,
-    Variant2 { a: u32, b: u64 },
+    Variant2 {
+        a: u32,
+        #[rustc_metadata_dirty(cfg="cfail2")]
+        #[rustc_metadata_clean(cfg="cfail3")]
+        b: u64
+    },
 }
 
 
@@ -312,10 +328,16 @@ enum EnumChangeOrderTupleStyleVariant {
 #[cfg(not(cfail1))]
 #[rustc_dirty(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 enum EnumChangeOrderTupleStyleVariant {
-    Variant1(u64, u32),
+    Variant1(
+        #[rustc_metadata_dirty(cfg="cfail2")]
+        #[rustc_metadata_clean(cfg="cfail3")]
+        u64,
+        #[rustc_metadata_dirty(cfg="cfail2")]
+        #[rustc_metadata_clean(cfg="cfail3")]
+        u32),
 }
 
 
@@ -611,11 +633,23 @@ enum EnumSwapUsageTypeParameters<A, B> {
 #[cfg(not(cfail1))]
 #[rustc_dirty(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 enum EnumSwapUsageTypeParameters<A, B> {
-    Variant1 { a: B },
-    Variant2 { a: A },
+    #[rustc_metadata_clean(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
+    Variant1 {
+        #[rustc_metadata_dirty(cfg="cfail2")]
+        #[rustc_metadata_clean(cfg="cfail3")]
+        a: B
+    },
+    #[rustc_metadata_clean(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
+    Variant2 {
+        #[rustc_metadata_dirty(cfg="cfail2")]
+        #[rustc_metadata_clean(cfg="cfail3")]
+        a: A
+    },
 }
 
 
@@ -630,11 +664,23 @@ enum EnumSwapUsageLifetimeParameters<'a, 'b> {
 #[cfg(not(cfail1))]
 #[rustc_dirty(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail2")]
 #[rustc_metadata_clean(cfg="cfail3")]
 enum EnumSwapUsageLifetimeParameters<'a, 'b> {
-    Variant1 { a: &'b u32 },
-    Variant2 { b: &'a u32 },
+    #[rustc_metadata_clean(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
+    Variant1 {
+        #[rustc_metadata_dirty(cfg="cfail2")]
+        #[rustc_metadata_clean(cfg="cfail3")]
+        a: &'b u32
+    },
+    #[rustc_metadata_clean(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail3")]
+    Variant2 {
+        #[rustc_metadata_dirty(cfg="cfail2")]
+        #[rustc_metadata_clean(cfg="cfail3")]
+        b: &'a u32
+    },
 }
 
 
@@ -653,10 +699,16 @@ mod change_field_type_indirectly_tuple_style {
 
     #[rustc_dirty(label="Hir", cfg="cfail2")]
     #[rustc_clean(label="Hir", cfg="cfail3")]
-    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail2")]
     #[rustc_metadata_clean(cfg="cfail3")]
     enum TupleStyle {
-        Variant1(FieldType)
+        #[rustc_metadata_dirty(cfg="cfail2")]
+        #[rustc_metadata_clean(cfg="cfail3")]
+        Variant1(
+            #[rustc_metadata_dirty(cfg="cfail2")]
+            #[rustc_metadata_clean(cfg="cfail3")]
+            FieldType
+        )
     }
 }
 
@@ -671,10 +723,16 @@ mod change_field_type_indirectly_struct_style {
 
     #[rustc_dirty(label="Hir", cfg="cfail2")]
     #[rustc_clean(label="Hir", cfg="cfail3")]
-    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail2")]
     #[rustc_metadata_clean(cfg="cfail3")]
     enum StructStyle {
-        Variant1 { a: FieldType }
+        #[rustc_metadata_clean(cfg="cfail2")]
+        #[rustc_metadata_clean(cfg="cfail3")]
+        Variant1 {
+            #[rustc_metadata_dirty(cfg="cfail2")]
+            #[rustc_metadata_clean(cfg="cfail3")]
+            a: FieldType
+        }
     }
 }
 

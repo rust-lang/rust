@@ -35,6 +35,46 @@ pub struct SubDiagnostic {
     pub render_span: Option<RenderSpan>,
 }
 
+#[derive(PartialEq, Eq)]
+pub struct DiagnosticStyledString(pub Vec<StringPart>);
+
+impl DiagnosticStyledString {
+    pub fn new() -> DiagnosticStyledString {
+        DiagnosticStyledString(vec![])
+    }
+    pub fn push_normal<S: Into<String>>(&mut self, t: S) {
+        self.0.push(StringPart::Normal(t.into()));
+    }
+    pub fn push_highlighted<S: Into<String>>(&mut self, t: S) {
+        self.0.push(StringPart::Highlighted(t.into()));
+    }
+    pub fn normal<S: Into<String>>(t: S) -> DiagnosticStyledString {
+        DiagnosticStyledString(vec![StringPart::Normal(t.into())])
+    }
+
+    pub fn highlighted<S: Into<String>>(t: S) -> DiagnosticStyledString {
+        DiagnosticStyledString(vec![StringPart::Highlighted(t.into())])
+    }
+
+    pub fn content(&self) -> String {
+        self.0.iter().map(|x| x.content()).collect::<String>()
+    }
+}
+
+#[derive(PartialEq, Eq)]
+pub enum StringPart {
+    Normal(String),
+    Highlighted(String),
+}
+
+impl StringPart {
+    pub fn content(&self) -> String {
+        match self {
+            &StringPart::Normal(ref s) | & StringPart::Highlighted(ref s) => s.to_owned()
+        }
+    }
+}
+
 impl Diagnostic {
     pub fn new(level: Level, message: &str) -> Self {
         Diagnostic::new_with_code(level, None, message)
@@ -81,8 +121,8 @@ impl Diagnostic {
 
     pub fn note_expected_found(&mut self,
                                label: &fmt::Display,
-                               expected: &fmt::Display,
-                               found: &fmt::Display)
+                               expected: DiagnosticStyledString,
+                               found: DiagnosticStyledString)
                                -> &mut Self
     {
         self.note_expected_found_extra(label, expected, found, &"", &"")
@@ -90,21 +130,29 @@ impl Diagnostic {
 
     pub fn note_expected_found_extra(&mut self,
                                      label: &fmt::Display,
-                                     expected: &fmt::Display,
-                                     found: &fmt::Display,
+                                     expected: DiagnosticStyledString,
+                                     found: DiagnosticStyledString,
                                      expected_extra: &fmt::Display,
                                      found_extra: &fmt::Display)
                                      -> &mut Self
     {
+        let mut msg: Vec<_> = vec![(format!("expected {} `", label), Style::NoStyle)];
+        msg.extend(expected.0.iter()
+                   .map(|x| match *x {
+                       StringPart::Normal(ref s) => (s.to_owned(), Style::NoStyle),
+                       StringPart::Highlighted(ref s) => (s.to_owned(), Style::Highlight),
+                   }));
+        msg.push((format!("`{}\n", expected_extra), Style::NoStyle));
+        msg.push((format!("   found {} `", label), Style::NoStyle));
+        msg.extend(found.0.iter()
+                   .map(|x| match *x {
+                       StringPart::Normal(ref s) => (s.to_owned(), Style::NoStyle),
+                       StringPart::Highlighted(ref s) => (s.to_owned(), Style::Highlight),
+                   }));
+        msg.push((format!("`{}", found_extra), Style::NoStyle));
+
         // For now, just attach these as notes
-        self.highlighted_note(vec![
-            (format!("expected {} `", label), Style::NoStyle),
-            (format!("{}", expected), Style::Highlight),
-            (format!("`{}\n", expected_extra), Style::NoStyle),
-            (format!("   found {} `", label), Style::NoStyle),
-            (format!("{}", found), Style::Highlight),
-            (format!("`{}", found_extra), Style::NoStyle),
-        ]);
+        self.highlighted_note(msg);
         self
     }
 

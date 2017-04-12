@@ -452,6 +452,23 @@ impl<'tcx> Hash for TyS<'tcx> {
     }
 }
 
+impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for ty::TyS<'tcx> {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a, 'tcx>,
+                                          hasher: &mut StableHasher<W>) {
+        let ty::TyS {
+            ref sty,
+
+            // The other fields just provide fast access to information that is
+            // also contained in `sty`, so no need to hash them.
+            flags: _,
+            region_depth: _,
+        } = *self;
+
+        sty.hash_stable(hcx, hasher);
+    }
+}
+
 pub type Ty<'tcx> = &'tcx TyS<'tcx>;
 
 impl<'tcx> serialize::UseSpecializedEncodable for Ty<'tcx> {}
@@ -2224,7 +2241,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// `DefId` is really just an interned def-path).
     ///
     /// Note that if `id` is not local to this crate, the result will
-    //  be a non-local `DefPath`.
+    ///  be a non-local `DefPath`.
     pub fn def_path(self, id: DefId) -> hir_map::DefPath {
         if id.is_local() {
             self.hir.def_path(id)

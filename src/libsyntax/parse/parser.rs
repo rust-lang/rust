@@ -2552,10 +2552,10 @@ impl<'a> Parser<'a> {
                   }
                   token::Literal(token::Float(n), _suf) => {
                     self.bump();
-                    let prev_span = self.prev_span;
                     let fstr = n.as_str();
-                    let mut err = self.diagnostic().struct_span_err(prev_span,
+                    let mut err = self.diagnostic().struct_span_err(self.prev_span,
                         &format!("unexpected token: `{}`", n));
+                    err.span_label(self.prev_span, &"unexpected token");
                     if fstr.chars().all(|x| "0123456789.".contains(x)) {
                         let float = match fstr.parse::<f64>().ok() {
                             Some(f) => f,
@@ -2573,7 +2573,7 @@ impl<'a> Parser<'a> {
                             word(&mut s.s, fstr.splitn(2, ".").last().unwrap())
                         });
                         err.span_suggestion(
-                            prev_span,
+                            lo.to(self.prev_span),
                             "try parenthesizing the first index",
                             sugg);
                     }

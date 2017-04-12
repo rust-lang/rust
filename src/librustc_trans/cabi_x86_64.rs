@@ -173,14 +173,15 @@ fn reg_component(cls: &[Class], i: &mut usize, size: u64) -> Option<Reg> {
         Class::Sse => {
             let vec_len = 1 + cls[*i+1..].iter().take_while(|&&c| c == Class::SseUp).count();
             *i += vec_len;
-            Some(match size {
-                4 => Reg::f32(),
-                8 => Reg::f64(),
-                _ => {
-                    Reg {
-                        kind: RegKind::Vector,
-                        size: Size::from_bytes(vec_len as u64 * 8)
-                    }
+            Some(if vec_len == 1 {
+                match size {
+                    4 => Reg::f32(),
+                    _ => Reg::f64()
+                }
+            } else {
+                Reg {
+                    kind: RegKind::Vector,
+                    size: Size::from_bytes(vec_len as u64 * 8)
                 }
             })
         }

@@ -203,7 +203,7 @@ impl error::Error for ExplicitBug {
     }
 }
 
-pub use diagnostic::{Diagnostic, SubDiagnostic};
+pub use diagnostic::{Diagnostic, SubDiagnostic, DiagnosticStyledString, StringPart};
 pub use diagnostic_builder::DiagnosticBuilder;
 
 /// A handler deals with errors; certain errors

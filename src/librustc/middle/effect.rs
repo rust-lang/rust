@@ -12,7 +12,6 @@
 //! `unsafe`.
 use self::RootUnsafeContext::*;
 
-use dep_graph::DepNode;
 use ty::{self, Ty, TyCtxt};
 use ty::MethodCall;
 use lint;
@@ -241,8 +240,6 @@ impl<'a, 'tcx> Visitor<'tcx> for EffectCheckVisitor<'a, 'tcx> {
 }
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    let _task = tcx.dep_graph.in_task(DepNode::EffectCheck);
-
     let mut visitor = EffectCheckVisitor {
         tcx: tcx,
         tables: &ty::TypeckTables::empty(),

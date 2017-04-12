@@ -630,12 +630,11 @@ macro_rules! make_mir_visitor {
                     ref $($mutability)* ty,
                     name: _,
                     ref $($mutability)* source_info,
+                    is_user_variable: _,
                 } = *local_decl;
 
                 self.visit_ty(ty);
-                if let Some(ref $($mutability)* info) = *source_info {
-                    self.visit_source_info(info);
-                }
+                self.visit_source_info(source_info);
             }
 
             fn super_visibility_scope(&mut self,
