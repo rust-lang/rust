@@ -22,7 +22,6 @@ pub use self::mir::elaborate_drops::ElaborateDrops;
 
 use self::InteriorKind::*;
 
-use rustc::dep_graph::DepNode;
 use rustc::hir::map as hir_map;
 use rustc::hir::map::blocks::FnLikeNode;
 use rustc::cfg;
@@ -37,12 +36,13 @@ use rustc::middle::mem_categorization::Categorization;
 use rustc::middle::mem_categorization::ImmutabilityBlame;
 use rustc::middle::region;
 use rustc::ty::{self, TyCtxt};
+use rustc::ty::maps::Providers;
 
 use std::fmt;
 use std::rc::Rc;
 use std::hash::{Hash, Hasher};
 use syntax::ast;
-use syntax_pos::{MultiSpan, Span};
+use syntax_pos::{DUMMY_SP, MultiSpan, Span};
 use errors::DiagnosticBuilder;
 
 use rustc::hir;
@@ -62,16 +62,16 @@ pub struct LoanDataFlowOperator;
 pub type LoanDataFlow<'a, 'tcx> = DataFlowContext<'a, 'tcx, LoanDataFlowOperator>;
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    tcx.dep_graph.with_task(DepNode::BorrowCheckKrate, tcx, (), check_crate_task);
+    tcx.visit_all_bodies_in_krate(|body_owner_def_id, _body_id| {
+        ty::queries::borrowck::get(tcx, DUMMY_SP, body_owner_def_id);
+    });
+}
 
-    fn check_crate_task<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, (): ()) {
-        tcx.visit_all_bodies_in_krate(|body_owner_def_id, body_id| {
-            tcx.dep_graph.with_task(DepNode::BorrowCheck(body_owner_def_id),
-                                    tcx,
-                                    body_id,
-                                    borrowck_fn);
-        });
-    }
+pub fn provide(providers: &mut Providers) {
+    *providers = Providers {
+        borrowck,
+        ..*providers
+    };
 }
 
 /// Collection of conclusions determined via borrow checker analyses.
@@ -81,11 +81,11 @@ pub struct AnalysisData<'a, 'tcx: 'a> {
     pub move_data: move_data::FlowedMoveData<'a, 'tcx>,
 }
 
-fn borrowck_fn<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, body_id: hir::BodyId) {
-    debug!("borrowck_fn(body_id={:?})", body_id);
+fn borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, owner_def_id: DefId) {
+    debug!("borrowck(body_owner_def_id={:?})", owner_def_id);
 
-    let owner_id = tcx.hir.body_owner(body_id);
-    let owner_def_id = tcx.hir.local_def_id(owner_id);
+    let owner_id = tcx.hir.as_local_node_id(owner_def_id).unwrap();
+    let body_id = tcx.hir.body_owned_by(owner_id);
     let attributes = tcx.get_attrs(owner_def_id);
     let tables = tcx.item_tables(owner_def_id);
 
