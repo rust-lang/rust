@@ -386,7 +386,7 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
 
             let lvalue = LvalueRef::alloca(bcx, arg_ty, &format!("arg{}", arg_index));
             for (i, &tupled_arg_ty) in tupled_arg_tys.iter().enumerate() {
-                let dst = bcx.struct_gep(lvalue.llval, i);
+                let (dst, _) = lvalue.trans_field_ptr(bcx, i);
                 let arg = &mircx.fn_ty.args[idx];
                 idx += 1;
                 if common::type_is_fat_ptr(bcx.ccx, tupled_arg_ty) {

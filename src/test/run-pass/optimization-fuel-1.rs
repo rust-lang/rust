@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,11 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(core_intrinsics)]
+#![crate_name="foo"]
 
-use std::intrinsics::{init};
+use std::mem::size_of;
 
-// Test that the `forget` and `init` intrinsics are really unsafe
-pub fn main() {
-    let stuff = init::<isize>(); //~ ERROR call to unsafe function requires unsafe
+// compile-flags: -Z fuel=foo=1
+
+struct S1(u8, u16, u8);
+struct S2(u8, u16, u8);
+
+fn main() {
+    let optimized = (size_of::<S1>() == 4) as usize
+        +(size_of::<S2>() == 4) as usize;
+    assert_eq!(optimized, 1);
 }
+
+
