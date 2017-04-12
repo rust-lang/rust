@@ -39,6 +39,8 @@ use util::{cp_r, libdir, is_dylib, cp_filtered, copy, exe};
 fn pkgname(build: &Build, component: &str) -> String {
     if component == "cargo" {
         format!("{}-{}", component, build.cargo_package_vers())
+    } else if component == "rls" {
+        format!("{}-{}", component, build.package_vers(&build.release_num("rls")))
     } else {
         assert!(component.starts_with("rust"));
         format!("{}-{}", component, build.rust_package_vers())
@@ -315,15 +317,12 @@ pub fn rust_src_location(build: &Build) -> PathBuf {
 
 /// Creates a tarball of save-analysis metadata, if available.
 pub fn analysis(build: &Build, compiler: &Compiler, target: &str) {
-    if !build.config.rust_save_analysis {
-        return
-    }
-
+    assert!(build.config.extended);
     println!("Dist analysis");
 
     if compiler.host != build.config.build {
         println!("\tskipping, not a build host");
-        return
+        return;
     }
 
     // Package save-analysis from stage1 if not doing a full bootstrap, as the
@@ -393,6 +392,7 @@ pub fn rust_src(build: &Build) {
         "man",
         "src",
         "cargo",
+        "rls",
     ];
 
     let filter_fn = move |path: &Path| {
@@ -539,7 +539,7 @@ pub fn cargo(build: &Build, stage: u32, target: &str) {
 
     let src = build.src.join("cargo");
     let etc = src.join("src/etc");
-    let release_num = build.cargo_release_num();
+    let release_num = build.release_num("cargo");
     let name = pkgname(build, "cargo");
     let version = build.cargo_info.version(build, &release_num);
 
@@ -593,6 +593,55 @@ pub fn cargo(build: &Build, stage: u32, target: &str) {
     build.run(&mut cmd);
 }
 
+pub fn rls(build: &Build, stage: u32, target: &str) {
+    assert!(build.config.extended);
+    println!("Dist RLS stage{} ({})", stage, target);
+    let compiler = Compiler::new(stage, &build.config.build);
+
+    let src = build.src.join("rls");
+    let release_num = build.release_num("rls");
+    let name = pkgname(build, "rls");
+    let version = build.rls_info.version(build, &release_num);
+
+    let tmp = tmpdir(build);
+    let image = tmp.join("rls-image");
+    drop(fs::remove_dir_all(&image));
+    t!(fs::create_dir_all(&image));
+
+    // Prepare the image directory
+    let rls = build.cargo_out(&compiler, Mode::Tool, target)
+                     .join(exe("rls", target));
+    install(&rls, &image.join("bin"), 0o755);
+    let doc = image.join("share/doc/rls");
+    install(&src.join("README.md"), &doc, 0o644);
+    install(&src.join("LICENSE-MIT"), &doc, 0o644);
+    install(&src.join("LICENSE-APACHE"), &doc, 0o644);
+
+    // Prepare the overlay
+    let overlay = tmp.join("rls-overlay");
+    drop(fs::remove_dir_all(&overlay));
+    t!(fs::create_dir_all(&overlay));
+    install(&src.join("README.md"), &overlay, 0o644);
+    install(&src.join("LICENSE-MIT"), &overlay, 0o644);
+    install(&src.join("LICENSE-APACHE"), &overlay, 0o644);
+    t!(t!(File::create(overlay.join("version"))).write_all(version.as_bytes()));
+
+    // Generate the installer tarball
+    let mut cmd = Command::new("sh");
+    cmd.arg(sanitize_sh(&build.src.join("src/rust-installer/gen-installer.sh")))
+       .arg("--product-name=Rust")
+       .arg("--rel-manifest-dir=rustlib")
+       .arg("--success-message=RLS-ready-to-serve.")
+       .arg(format!("--image-dir={}", sanitize_sh(&image)))
+       .arg(format!("--work-dir={}", sanitize_sh(&tmpdir(build))))
+       .arg(format!("--output-dir={}", sanitize_sh(&distdir(build))))
+       .arg(format!("--non-installed-overlay={}", sanitize_sh(&overlay)))
+       .arg(format!("--package-name={}-{}", name, target))
+       .arg("--component-name=rls")
+       .arg("--legacy-manifest-dirs=rustlib,cargo");
+    build.run(&mut cmd);
+}
+
 /// Creates a combined installer for the specified target in the provided stage.
 pub fn extended(build: &Build, stage: u32, target: &str) {
     println!("Dist extended stage{} ({})", stage, target);
@@ -604,6 +653,12 @@ pub fn extended(build: &Build, stage: u32, target: &str) {
     let cargo_installer = dist.join(format!("{}-{}.tar.gz",
                                             pkgname(build, "cargo"),
                                             target));
+    let rls_installer = dist.join(format!("{}-{}.tar.gz",
+                                          pkgname(build, "rls"),
+                                          target));
+    let analysis_installer = dist.join(format!("{}-{}.tar.gz",
+                                               pkgname(build, "rust-analysis"),
+                                               target));
     let docs_installer = dist.join(format!("{}-{}.tar.gz",
                                            pkgname(build, "rust-docs"),
                                            target));
@@ -631,9 +686,11 @@ pub fn extended(build: &Build, stage: u32, target: &str) {
     // upgrades rustc was upgraded before rust-std. To avoid rustc clobbering
     // the std files during uninstall. To do this ensure that rustc comes
     // before rust-std in the list below.
-    let mut input_tarballs = format!("{},{},{},{}",
+    let mut input_tarballs = format!("{},{},{},{},{},{}",
                                      sanitize_sh(&rustc_installer),
                                      sanitize_sh(&cargo_installer),
+                                     sanitize_sh(&rls_installer),
+                                     sanitize_sh(&analysis_installer),
                                      sanitize_sh(&docs_installer),
                                      sanitize_sh(&std_installer));
     if target.contains("pc-windows-gnu") {
@@ -946,7 +1003,8 @@ pub fn hash_and_sign(build: &Build) {
     cmd.arg(distdir(build));
     cmd.arg(today.trim());
     cmd.arg(build.rust_package_vers());
-    cmd.arg(build.package_vers(&build.cargo_release_num()));
+    cmd.arg(build.package_vers(&build.release_num("cargo")));
+    cmd.arg(build.package_vers(&build.release_num("rls")));
     cmd.arg(addr);
 
     t!(fs::create_dir_all(distdir(build)));
