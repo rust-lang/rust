@@ -67,12 +67,7 @@ pub enum TypeVariableOrigin {
     Generalized(ty::TyVid),
 }
 
-pub type TypeVariableMap = FxHashMap<ty::TyVid, TypeVariableInfo>;
-
-pub struct TypeVariableInfo {
-    pub root_vid: ty::TyVid,
-    pub root_origin: TypeVariableOrigin,
-}
+pub type TypeVariableMap = FxHashMap<ty::TyVid, TypeVariableOrigin>;
 
 struct TypeVariableData<'tcx> {
     value: TypeVariableValue<'tcx>,
@@ -294,8 +289,6 @@ impl<'tcx> TypeVariableTable<'tcx> {
     /// along with their origin.
     pub fn types_created_since_snapshot(&mut self, s: &Snapshot) -> TypeVariableMap {
         let actions_since_snapshot = self.values.actions_since_snapshot(&s.snapshot);
-        let eq_relations = &mut self.eq_relations;
-        let values = &self.values;
 
         actions_since_snapshot
             .iter()
@@ -304,9 +297,8 @@ impl<'tcx> TypeVariableTable<'tcx> {
                 _ => None,
             })
             .map(|vid| {
-                let root_vid = eq_relations.find(vid);
-                let root_origin = values.get(vid.index as usize).origin.clone();
-                (vid, TypeVariableInfo { root_vid, root_origin })
+                let origin = self.values.get(vid.index as usize).origin.clone();
+                (vid, origin)
             })
             .collect()
     }
