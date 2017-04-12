@@ -137,16 +137,20 @@ enum CallKind {
     Direct(DefId),
 }
 
-fn temp_decl(mutability: Mutability, ty: Ty) -> LocalDecl {
-    LocalDecl { mutability, ty, name: None, source_info: None }
+fn temp_decl(mutability: Mutability, ty: Ty, span: Span) -> LocalDecl {
+    LocalDecl {
+        mutability, ty, name: None,
+        source_info: SourceInfo { scope: ARGUMENT_VISIBILITY_SCOPE, span },
+        is_user_variable: false
+    }
 }
 
-fn local_decls_for_sig<'tcx>(sig: &ty::FnSig<'tcx>)
+fn local_decls_for_sig<'tcx>(sig: &ty::FnSig<'tcx>, span: Span)
     -> IndexVec<Local, LocalDecl<'tcx>>
 {
-    iter::once(temp_decl(Mutability::Mut, sig.output()))
+    iter::once(temp_decl(Mutability::Mut, sig.output(), span))
         .chain(sig.inputs().iter().map(
-            |ity| temp_decl(Mutability::Not, ity)))
+            |ity| temp_decl(Mutability::Not, ity, span)))
         .collect()
 }
 
@@ -188,7 +192,7 @@ fn build_drop_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
         ),
         IndexVec::new(),
         sig.output(),
-        local_decls_for_sig(&sig),
+        local_decls_for_sig(&sig, span),
         sig.inputs().len(),
         vec![],
         span
@@ -297,7 +301,7 @@ fn build_call_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
 
     debug!("build_call_shim: sig={:?}", sig);
 
-    let mut local_decls = local_decls_for_sig(&sig);
+    let mut local_decls = local_decls_for_sig(&sig, span);
     let source_info = SourceInfo { span, scope: ARGUMENT_VISIBILITY_SCOPE };
 
     let rcvr_arg = Local::new(1+0);
@@ -317,7 +321,8 @@ fn build_call_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
                 tcx.mk_ref(re_erased, ty::TypeAndMut {
                     ty: sig.inputs()[0],
                     mutbl: hir::Mutability::MutMutable
-                })
+                }),
+                span
             ));
             statements.push(Statement {
                 source_info: source_info,
@@ -442,7 +447,7 @@ pub fn build_adt_ctor<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a, 'gcx, 'tcx>,
 
     debug!("build_ctor: def_id={:?} sig={:?} fields={:?}", def_id, sig, fields);
 
-    let local_decls = local_decls_for_sig(&sig);
+    let local_decls = local_decls_for_sig(&sig, span);
 
     let source_info = SourceInfo {
         span: span,

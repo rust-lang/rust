@@ -46,6 +46,13 @@ struct Huge {
     e: i32
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+#[repr(C)]
+struct FloatPoint {
+    x: f64,
+    y: f64
+}
+
 #[link(name = "test", kind = "static")]
 extern {
     fn byval_rect(a: i32, b: i32, c: i32, d: i32, e: i32, s: Rect);
@@ -72,6 +79,8 @@ extern {
     fn sret_split_struct(a: i32, b: i32, s: Rect) -> BiggerRect;
 
     fn huge_struct(s: Huge) -> Huge;
+
+    fn float_point(p: FloatPoint) -> FloatPoint;
 }
 
 fn main() {
@@ -79,6 +88,7 @@ fn main() {
     let t = BiggerRect { s: s, a: 27834, b: 7657 };
     let u = FloatRect { a: 3489, b: 3490, c: 8. };
     let v = Huge { a: 5647, b: 5648, c: 5649, d: 5650, e: 5651 };
+    let p = FloatPoint { x: 5., y: -3. };
 
     unsafe {
         byval_rect(1, 2, 3, 4, 5, s);
@@ -94,5 +104,6 @@ fn main() {
         assert_eq!(split_ret_byval_struct(1, 2, s), s);
         assert_eq!(sret_byval_struct(1, 2, 3, 4, s), t);
         assert_eq!(sret_split_struct(1, 2, s), t);
+        assert_eq!(float_point(p), p);
     }
 }

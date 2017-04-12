@@ -62,7 +62,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 let idx = unpack!(block = this.as_operand(block, None, index));
 
                 // bounds check:
-                let (len, lt) = (this.temp(usize_ty.clone()), this.temp(bool_ty));
+                let (len, lt) = (this.temp(usize_ty.clone(), expr_span),
+                                 this.temp(bool_ty, expr_span));
                 this.cfg.push_assign(block, source_info, // len = len(slice)
                                      &len, Rvalue::Len(slice.clone()));
                 this.cfg.push_assign(block, source_info, // lt = idx < len

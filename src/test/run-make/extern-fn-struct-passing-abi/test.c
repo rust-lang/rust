@@ -38,6 +38,11 @@ struct Huge {
     int32_t e;
 };
 
+struct FloatPoint {
+    double x;
+    double y;
+};
+
 // System V x86_64 ABI:
 // a, b, c, d, e should be in registers
 // s should be byval pointer
@@ -257,4 +262,18 @@ struct Huge huge_struct(struct Huge s) {
     assert(s.e == 5651);
 
     return s;
+}
+
+// System V x86_64 ABI:
+// p should be in registers
+// return should be in registers
+//
+// Win64 ABI:
+// p should be a byval pointer
+// return should be in a hidden sret pointer
+struct FloatPoint float_point(struct FloatPoint p) {
+    assert(p.x == 5.);
+    assert(p.y == -3.);
+
+    return p;
 }

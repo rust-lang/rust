@@ -881,7 +881,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                 // Avoid a generic error for other uses of arguments.
                 if self.qualif.intersects(Qualif::FN_ARGUMENT) {
                     let decl = &self.mir.local_decls[index];
-                    span_err!(self.tcx.sess, decl.source_info.unwrap().span, E0022,
+                    span_err!(self.tcx.sess, decl.source_info.span, E0022,
                               "arguments of constant functions can only \
                                be immutable by-value bindings");
                     return;

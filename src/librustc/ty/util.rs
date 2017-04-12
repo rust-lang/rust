@@ -13,7 +13,7 @@
 use hir::def_id::{DefId, LOCAL_CRATE};
 use hir::map::DefPathData;
 use infer::InferCtxt;
-// use hir::map as hir_map;
+use ich::{StableHashingContext, NodeIdHashingMode};
 use traits::{self, Reveal};
 use ty::{self, Ty, TyCtxt, TypeAndMut, TypeFlags, TypeFoldable};
 use ty::ParameterEnvironment;
@@ -25,8 +25,8 @@ use util::nodemap::FxHashMap;
 use middle::lang_items;
 
 use rustc_const_math::{ConstInt, ConstIsize, ConstUsize};
-use rustc_data_structures::stable_hasher::{StableHasher, StableHasherResult};
-
+use rustc_data_structures::stable_hasher::{StableHasher, StableHasherResult,
+                                           HashStable};
 use std::cell::RefCell;
 use std::cmp;
 use std::hash::Hash;
@@ -187,6 +187,22 @@ impl<'tcx> ParameterEnvironment<'tcx> {
     }
 }
 
+impl<'a, 'tcx> TyCtxt<'a, 'tcx, 'tcx> {
+    /// Creates a hash of the type `Ty` which will be the same no matter what crate
+    /// context it's calculated within. This is used by the `type_id` intrinsic.
+    pub fn type_id_hash(self, ty: Ty<'tcx>) -> u64 {
+        let mut hasher = StableHasher::new();
+        let mut hcx = StableHashingContext::new(self);
+
+        hcx.while_hashing_spans(false, |hcx| {
+            hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
+                ty.hash_stable(hcx, &mut hasher);
+            });
+        });
+        hasher.finish()
+    }
+}
+
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn has_error_field(self, ty: Ty<'tcx>) -> bool {
         match ty.sty {
@@ -337,14 +353,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 }
             })
             .collect()
-    }
-
-    /// Creates a hash of the type `Ty` which will be the same no matter what crate
-    /// context it's calculated within. This is used by the `type_id` intrinsic.
-    pub fn type_id_hash(self, ty: Ty<'tcx>) -> u64 {
-        let mut hasher = TypeIdHasher::new(self);
-        hasher.visit_ty(ty);
-        hasher.finish()
     }
 
     /// Calculate the destructor of a given type.

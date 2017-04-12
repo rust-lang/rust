@@ -35,7 +35,7 @@ use rustc_typeck as typeck;
 use rustc_privacy;
 use rustc_plugin::registry::Registry;
 use rustc_plugin as plugin;
-use rustc_passes::{ast_validation, no_asm, loops, consts, rvalues,
+use rustc_passes::{ast_validation, no_asm, loops, consts,
                    static_recursion, hir_stats, mir_stats};
 use rustc_const_eval::check_match;
 use super::Compilation;
@@ -891,6 +891,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
     let mut local_providers = ty::maps::Providers::default();
     mir::provide(&mut local_providers);
     rustc_privacy::provide(&mut local_providers);
+    borrowck::provide(&mut local_providers);
     typeck::provide(&mut local_providers);
     ty::provide(&mut local_providers);
     reachable::provide(&mut local_providers);
@@ -958,10 +959,6 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
              || middle::liveness::check_crate(tcx));
 
         time(time_passes,
-             "rvalue checking",
-             || rvalues::check_crate(tcx));
-
-        time(time_passes,
              "MIR dump",
              || mir::mir_map::build_mir_for_crate(tcx));
 
@@ -976,8 +973,8 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
             // in stage 4 below.
             passes.push_hook(box mir::transform::dump_mir::DumpMir);
             passes.push_pass(box mir::transform::simplify::SimplifyCfg::new("initial"));
-            passes.push_pass(box mir::transform::qualify_consts::QualifyAndPromoteConstants);
             passes.push_pass(box mir::transform::type_check::TypeckMir);
+            passes.push_pass(box mir::transform::qualify_consts::QualifyAndPromoteConstants);
             passes.push_pass(
                 box mir::transform::simplify_branches::SimplifyBranches::new("initial"));
             passes.push_pass(box mir::transform::simplify::SimplifyCfg::new("qualify-consts"));
@@ -1083,6 +1080,7 @@ pub fn phase_4_translate_to_llvm<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
          "serialize dep graph",
          || rustc_incremental::save_dep_graph(tcx,
                                               &incremental_hashes_map,
+                                              &translation.metadata.hashes,
                                               translation.link.crate_hash));
     translation
 }

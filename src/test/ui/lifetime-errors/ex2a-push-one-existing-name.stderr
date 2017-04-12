@@ -4,8 +4,8 @@ error[E0308]: mismatched types
 16 |     x.push(y);
    |            ^ lifetime mismatch
    |
-   = note: expected type `Ref<'a, i32>`
-              found type `Ref<'_, i32>`
+   = note: expected type `Ref<'a, _>`
+              found type `Ref<'_, _>`
 note: the anonymous lifetime #2 defined on the body at 15:51...
   --> $DIR/ex2a-push-one-existing-name.rs:15:52
    |
