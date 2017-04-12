@@ -151,11 +151,10 @@ impl<'tcx> TypeVariableTable<'tcx> {
 
     /// Instantiates `vid` with the type `ty`.
     ///
-    /// Precondition: `vid` must be a root in the unification table
-    /// and has not previously been instantiated.
+    /// Precondition: `vid` must not have been previously instantiated.
     pub fn instantiate(&mut self, vid: ty::TyVid, ty: Ty<'tcx>) {
-        debug_assert!(self.root_var(vid) == vid);
-        debug_assert!(self.probe(vid).is_none());
+        let vid = self.root_var(vid);
+        debug_assert!(self.probe_root(vid).is_none());
 
         let old_value = {
             let vid_data = &mut self.values[vid.index as usize];
