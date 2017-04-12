@@ -443,7 +443,10 @@ fn archive_config<'a>(sess: &'a Session,
 }
 
 fn emit_metadata<'a>(sess: &'a Session, trans: &CrateTranslation, out_filename: &Path) {
-    let result = fs::File::create(out_filename).and_then(|mut f| f.write_all(&trans.metadata));
+    let result = fs::File::create(out_filename).and_then(|mut f| {
+        f.write_all(&trans.metadata.raw_data)
+    });
+
     if let Err(e) = result {
         sess.fatal(&format!("failed to write {}: {}", out_filename.display(), e));
     }

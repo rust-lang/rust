@@ -50,7 +50,7 @@ fn add_return_type() {}
 #[cfg(not(cfail1))]
 #[rustc_dirty(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail2")] // The type doesn't change, so metadata is the same
 #[rustc_metadata_clean(cfg="cfail3")]
 fn add_return_type() -> () {}
 
@@ -154,7 +154,7 @@ fn lifetime_parameter() {}
 #[cfg(not(cfail1))]
 #[rustc_dirty(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+// #[rustc_metadata_dirty(cfg="cfail2")] -- Unused lifetime params don't show up in the type?
 #[rustc_metadata_clean(cfg="cfail3")]
 fn lifetime_parameter<'a>() {}
 
@@ -315,16 +315,16 @@ fn return_impl_trait() -> impl Clone {
 
 #[cfg(cfail1)]
 fn change_return_impl_trait() -> impl Clone {
-    0
+    0u32
 }
 
 #[cfg(not(cfail1))]
 #[rustc_dirty(label="Hir", cfg="cfail2")]
 #[rustc_clean(label="Hir", cfg="cfail3")]
-#[rustc_metadata_dirty(cfg="cfail2")]
+#[rustc_metadata_clean(cfg="cfail2")] // The actual type is the same, so: clean
 #[rustc_metadata_clean(cfg="cfail3")]
 fn change_return_impl_trait() -> impl Copy {
-    0
+    0u32
 }
 
 
