@@ -318,8 +318,10 @@ impl str {
 
     /// Returns a subslice of `str`.
     ///
-    /// This is the non-panicking alternative to indexing the `str`. Returns `None` whenever
-    /// equivalent indexing operation would panic.
+    /// This is the non-panicking alternative to indexing the `str`. Returns
+    /// [`None`] whenever equivalent indexing operation would panic.
+    ///
+    /// [`None`]: option/enum.Option.html#variant.None
     ///
     /// # Examples
     ///
@@ -339,8 +341,10 @@ impl str {
 
     /// Returns a mutable subslice of `str`.
     ///
-    /// This is the non-panicking alternative to indexing the `str`. Returns `None` whenever
-    /// equivalent indexing operation would panic.
+    /// This is the non-panicking alternative to indexing the `str`. Returns
+    /// [`None`] whenever equivalent indexing operation would panic.
+    ///
+    /// [`None`]: option/enum.Option.html#variant.None
     ///
     /// # Examples
     ///
@@ -563,7 +567,7 @@ impl str {
         core_str::StrExt::split_at_mut(self, mid)
     }
 
-    /// Returns an iterator over the `char`s of a string slice.
+    /// Returns an iterator over the [`char`]s of a string slice.
     ///
     /// As a string slice consists of valid UTF-8, we can iterate through a
     /// string slice by [`char`]. This method returns such an iterator.
@@ -1650,13 +1654,13 @@ impl str {
 
     /// Parses this string slice into another type.
     ///
-    /// Because `parse()` is so general, it can cause problems with type
-    /// inference. As such, `parse()` is one of the few times you'll see
+    /// Because `parse` is so general, it can cause problems with type
+    /// inference. As such, `parse` is one of the few times you'll see
     /// the syntax affectionately known as the 'turbofish': `::<>`. This
     /// helps the inference algorithm understand specifically which type
     /// you're trying to parse into.
     ///
-    /// `parse()` can parse any type that implements the [`FromStr`] trait.
+    /// `parse` can parse any type that implements the [`FromStr`] trait.
     ///
     /// [`FromStr`]: str/trait.FromStr.html
     ///
@@ -1739,7 +1743,7 @@ impl str {
     ///
     /// `replacen` creates a new [`String`], and copies the data from this string slice into it.
     /// While doing so, it attempts to find matches of a pattern. If it finds any, it
-    /// replaces them with the replacement string slice at most `N` times.
+    /// replaces them with the replacement string slice at most `count` times.
     ///
     /// [`String`]: string/struct.String.html
     ///
@@ -1885,7 +1889,9 @@ impl str {
         return s;
     }
 
-    /// Escapes each char in `s` with `char::escape_debug`.
+    /// Escapes each char in `s` with [`char::escape_debug`].
+    ///
+    /// [`char::escape_debug`]: primitive.char.html#method.escape_debug
     #[unstable(feature = "str_escape",
                reason = "return type may change to be an iterator",
                issue = "27791")]
@@ -1893,7 +1899,9 @@ impl str {
         self.chars().flat_map(|c| c.escape_debug()).collect()
     }
 
-    /// Escapes each char in `s` with `char::escape_default`.
+    /// Escapes each char in `s` with [`char::escape_default`].
+    ///
+    /// [`char::escape_default`]: primitive.char.html#method.escape_default
     #[unstable(feature = "str_escape",
                reason = "return type may change to be an iterator",
                issue = "27791")]
@@ -1901,7 +1909,9 @@ impl str {
         self.chars().flat_map(|c| c.escape_default()).collect()
     }
 
-    /// Escapes each char in `s` with `char::escape_unicode`.
+    /// Escapes each char in `s` with [`char::escape_unicode`].
+    ///
+    /// [`char::escape_unicode`]: primitive.char.html#method.escape_unicode
     #[unstable(feature = "str_escape",
                reason = "return type may change to be an iterator",
                issue = "27791")]
@@ -1909,9 +1919,10 @@ impl str {
         self.chars().flat_map(|c| c.escape_unicode()).collect()
     }
 
-    /// Converts a `Box<str>` into a [`String`] without copying or allocating.
+    /// Converts a [`Box<str>`] into a [`String`] without copying or allocating.
     ///
     /// [`String`]: string/struct.String.html
+    /// [`Box<str>`]: boxed/struct.Box.html
     ///
     /// # Examples
     ///
