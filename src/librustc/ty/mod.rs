@@ -452,6 +452,23 @@ impl<'tcx> Hash for TyS<'tcx> {
     }
 }
 
+impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for ty::TyS<'tcx> {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a, 'tcx>,
+                                          hasher: &mut StableHasher<W>) {
+        let ty::TyS {
+            ref sty,
+
+            // The other fields just provide fast access to information that is
+            // also contained in `sty`, so no need to hash them.
+            flags: _,
+            region_depth: _,
+        } = *self;
+
+        sty.hash_stable(hcx, hasher);
+    }
+}
+
 pub type Ty<'tcx> = &'tcx TyS<'tcx>;
 
 impl<'tcx> serialize::UseSpecializedEncodable for Ty<'tcx> {}

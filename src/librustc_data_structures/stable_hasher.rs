@@ -40,11 +40,16 @@ fn write_signed_leb128_to_buf(buf: &mut [u8; 16], value: i64) -> usize {
 /// This hasher currently always uses the stable Blake2b algorithm
 /// and allows for variable output lengths through its type
 /// parameter.
-#[derive(Debug)]
 pub struct StableHasher<W> {
     state: Blake2bHasher,
     bytes_hashed: u64,
     width: PhantomData<W>,
+}
+
+impl<W: StableHasherResult> ::std::fmt::Debug for StableHasher<W> {
+    fn fmt(&self, f: &mut ::std::fmt::Formatter) -> ::std::fmt::Result {
+        write!(f, "{:?}", self.state)
+    }
 }
 
 pub trait StableHasherResult: Sized {
