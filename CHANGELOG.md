@@ -1,6 +1,9 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.123 — 2017-04-07
+* Fix various false positives
+
 ## 0.0.122 — 2017-04-07
 * Rustup to *rustc 1.18.0-nightly (91ae22a01 2017-04-05)*
 * New lint: [`op_ref`]
