@@ -663,17 +663,18 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         local as usize == global as usize
     }
 
-    pub fn region_maps(self, fn_id: NodeId) -> Rc<RegionMaps> {
-        // Find the `NodeId` of the outermost function that wraps the function pointed to by fn_id
-        let mut outermost_fn_id = fn_id;
+    pub fn region_maps(self, node_id: NodeId) -> Rc<RegionMaps> {
+        // Find the `NodeId` of the outermost function that wraps the node pointed to by node_id
+        let mut outermost_fn_id_opt = None;
         let mut outermost_id = fn_id;
         loop {
+            if self.hir.is_fn(outermost_id) {
+                outermost_fn_id_opt = Some(outermost_id);
+            }
             let next_id = self.hir.get_parent(outermost_id);
             if outermost_id == next_id { break; }
-            if self.hir.is_fn(outermost_id) {
-                outermost_fn_id = outermost_id;
-            }
         }
+        let outermost_fn_id = outermost_fn_id_opt.expect("node_id should point inside a fn");
 
         ty::queries::region_resolve_fn::get(self, DUMMY_SP, self.hir.local_def_id(outermost_fn_id))
     }
