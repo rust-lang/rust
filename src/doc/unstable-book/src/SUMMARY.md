@@ -83,6 +83,7 @@
 - [future_atomic_orderings](future-atomic-orderings.md)
 - [generic_param_attrs](generic-param-attrs.md)
 - [get_type_id](get-type-id.md)
+- [global_asm](global_asm.md)
 - [heap_api](heap-api.md)
 - [i128](i128.md)
 - [i128_type](i128-type.md)
