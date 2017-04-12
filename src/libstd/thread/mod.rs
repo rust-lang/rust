@@ -652,8 +652,8 @@ pub fn park_timeout(dur: Duration) {
 /// A unique identifier for a running thread.
 ///
 /// A `ThreadId` is an opaque object that has a unique value for each thread
-/// that creates one. `ThreadId`s do not correspond to a thread's system-
-/// designated identifier.
+/// that creates one. `ThreadId`s are not guaranteed to correspond to a thread's
+/// system-designated identifier.
 ///
 /// # Examples
 ///
@@ -662,17 +662,15 @@ pub fn park_timeout(dur: Duration) {
 ///
 /// use std::thread;
 ///
-/// let handler = thread::Builder::new()
-///     .spawn(|| {
-///         let thread = thread::current();
-///         let thread_id = thread.id();
-///     })
-///     .unwrap();
+/// let other_thread = thread::spawn(|| {
+///     thread::current().id()
+/// });
 ///
-/// handler.join().unwrap();
+/// let other_thread_id = other_thread.join().unwrap();
+/// assert!(thread::current().id() != other_thread_id);
 /// ```
 #[unstable(feature = "thread_id", issue = "21507")]
-#[derive(Eq, PartialEq, Copy, Clone)]
+#[derive(Eq, PartialEq, Clone, Copy, Hash, Debug)]
 pub struct ThreadId(u64);
 
 impl ThreadId {
@@ -698,13 +696,6 @@ impl ThreadId {
 
             ThreadId(id)
         }
-    }
-}
-
-#[unstable(feature = "thread_id", issue = "21507")]
-impl fmt::Debug for ThreadId {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.pad("ThreadId { .. }")
     }
 }
 
@@ -795,14 +786,12 @@ impl Thread {
     ///
     /// use std::thread;
     ///
-    /// let handler = thread::Builder::new()
-    ///     .spawn(|| {
-    ///         let thread = thread::current();
-    ///         println!("thread id: {:?}", thread.id());
-    ///     })
-    ///     .unwrap();
+    /// let other_thread = thread::spawn(|| {
+    ///     thread::current().id()
+    /// });
     ///
-    /// handler.join().unwrap();
+    /// let other_thread_id = other_thread.join().unwrap();
+    /// assert!(thread::current().id() != other_thread_id);
     /// ```
     #[unstable(feature = "thread_id", issue = "21507")]
     pub fn id(&self) -> ThreadId {
