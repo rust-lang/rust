@@ -10,6 +10,13 @@
 
 fn main() {
     println!("%.*3$s %s!\n", "Hello,", "World", 4);
+    println!(
+        "%.*3$s %s!\n",
+        "Hello,",
+        "World",
+        4
+    );
+
     println!("%1$*2$.*3$f", 123.456);
 
     // This should *not* produce hints, on the basis that there's equally as
