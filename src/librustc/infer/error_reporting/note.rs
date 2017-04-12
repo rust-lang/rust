@@ -20,6 +20,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         match *origin {
             infer::Subtype(ref trace) => {
                 if let Some((expected, found)) = self.values_str(&trace.values) {
+                    let expected = expected.content();
+                    let found = found.content();
                     // FIXME: do we want a "the" here?
                     err.span_note(trace.cause.span,
                                   &format!("...so that {} (expected {}, found {})",
