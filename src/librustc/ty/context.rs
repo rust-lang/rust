@@ -701,7 +701,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn region_maps(self, node_id: NodeId) -> Rc<RegionMaps<'tcx>> {
         // Find the `NodeId` of the outermost function that wraps the node pointed to by node_id
         let mut outermost_fn_id_opt = None;
-        let mut outermost_id = fn_id;
+        let mut outermost_id = node_id;
         loop {
             if self.hir.is_fn(outermost_id) {
                 outermost_fn_id_opt = Some(outermost_id);
