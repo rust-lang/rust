@@ -373,6 +373,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             }
             // If we're inlining, skip private items.
             _ if self.inlining && item.vis != hir::Public => {}
+            hir::ItemGlobalAsm(..) => {}
             hir::ItemExternCrate(ref p) => {
                 let cstore = &self.cx.sess().cstore;
                 om.extern_crates.push(ExternCrate {

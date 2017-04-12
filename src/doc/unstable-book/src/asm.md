@@ -189,3 +189,5 @@ constraints, etc.
 
 [llvm-docs]: http://llvm.org/docs/LangRef.html#inline-assembler-expressions
 
+If you need more power and don't mind losing some of the niceties of
+`asm!`, check out [global_asm](global_asm.html).
