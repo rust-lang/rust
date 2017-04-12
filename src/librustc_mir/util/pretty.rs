@@ -196,8 +196,8 @@ fn write_scope_tree(tcx: TyCtxt,
         // User variable types (including the user's name in a comment).
         for local in mir.vars_iter() {
             let var = &mir.local_decls[local];
-            let (name, source_info) = if var.source_info.unwrap().scope == child {
-                (var.name.unwrap(), var.source_info.unwrap())
+            let (name, source_info) = if var.source_info.scope == child {
+                (var.name.unwrap(), var.source_info)
             } else {
                 // Not a variable or not declared in this scope.
                 continue;

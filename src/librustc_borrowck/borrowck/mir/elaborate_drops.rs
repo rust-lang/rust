@@ -307,12 +307,12 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
         data
     }
 
-    fn create_drop_flag(&mut self, index: MovePathIndex) {
+    fn create_drop_flag(&mut self, index: MovePathIndex, span: Span) {
         let tcx = self.tcx;
         let patch = &mut self.patch;
         debug!("create_drop_flag({:?})", self.mir.span);
         self.drop_flags.entry(index).or_insert_with(|| {
-            patch.new_temp(tcx.types.bool)
+            patch.new_temp(tcx.types.bool, span)
         });
     }
 
@@ -374,7 +374,7 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                 debug!("collect_drop_flags: collecting {:?} from {:?}@{:?} - {:?}",
                        child, location, path, (maybe_live, maybe_dead));
                 if maybe_live && maybe_dead {
-                    self.create_drop_flag(child)
+                    self.create_drop_flag(child, terminator.source_info.span)
                 }
             });
         }

@@ -710,7 +710,8 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             mutability: mutability,
             ty: var_ty.clone(),
             name: Some(name),
-            source_info: Some(source_info),
+            source_info: source_info,
+            is_user_variable: true,
         });
         self.var_indices.insert(var_id, var);
 
