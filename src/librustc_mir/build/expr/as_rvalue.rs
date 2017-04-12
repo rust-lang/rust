@@ -82,7 +82,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     let bool_ty = this.hir.bool_ty();
 
                     let minval = this.minval_literal(expr_span, expr.ty);
-                    let is_min = this.temp(bool_ty);
+                    let is_min = this.temp(bool_ty, expr_span);
 
                     this.cfg.push_assign(block, source_info, &is_min,
                                          Rvalue::BinaryOp(BinOp::Eq, arg.clone(), minval));
@@ -95,7 +95,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
             }
             ExprKind::Box { value, value_extents } => {
                 let value = this.hir.mirror(value);
-                let result = this.temp(expr.ty);
+                let result = this.temp(expr.ty, expr_span);
                 // to start, malloc some memory of suitable type (thus far, uninitialized):
                 this.cfg.push_assign(block, source_info, &result, Rvalue::Box(value.ty));
                 this.in_scope(value_extents, block, |this| {
@@ -260,7 +260,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         let bool_ty = self.hir.bool_ty();
         if self.hir.check_overflow() && op.is_checkable() && ty.is_integral() {
             let result_tup = self.hir.tcx().intern_tup(&[ty, bool_ty], false);
-            let result_value = self.temp(result_tup);
+            let result_value = self.temp(result_tup, span);
 
             self.cfg.push_assign(block, source_info,
                                  &result_value, Rvalue::CheckedBinaryOp(op,
@@ -301,7 +301,7 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                 };
 
                 // Check for / 0
-                let is_zero = self.temp(bool_ty);
+                let is_zero = self.temp(bool_ty, span);
                 let zero = self.zero_literal(span, ty);
                 self.cfg.push_assign(block, source_info, &is_zero,
                                      Rvalue::BinaryOp(BinOp::Eq, rhs.clone(), zero));
@@ -315,9 +315,9 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     let neg_1 = self.neg_1_literal(span, ty);
                     let min = self.minval_literal(span, ty);
 
-                    let is_neg_1 = self.temp(bool_ty);
-                    let is_min   = self.temp(bool_ty);
-                    let of       = self.temp(bool_ty);
+                    let is_neg_1 = self.temp(bool_ty, span);
+                    let is_min   = self.temp(bool_ty, span);
+                    let of       = self.temp(bool_ty, span);
 
                     // this does (rhs == -1) & (lhs == MIN). It could short-circuit instead
 

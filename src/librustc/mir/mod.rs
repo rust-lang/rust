@@ -197,10 +197,10 @@ impl<'tcx> Mir<'tcx> {
     pub fn temps_iter<'a>(&'a self) -> impl Iterator<Item=Local> + 'a {
         (self.arg_count+1..self.local_decls.len()).filter_map(move |index| {
             let local = Local::new(index);
-            if self.local_decls[local].source_info.is_none() {
-                Some(local)
-            } else {
+            if self.local_decls[local].is_user_variable {
                 None
+            } else {
+                Some(local)
             }
         })
     }
@@ -210,10 +210,10 @@ impl<'tcx> Mir<'tcx> {
     pub fn vars_iter<'a>(&'a self) -> impl Iterator<Item=Local> + 'a {
         (self.arg_count+1..self.local_decls.len()).filter_map(move |index| {
             let local = Local::new(index);
-            if self.local_decls[local].source_info.is_none() {
-                None
-            } else {
+            if self.local_decls[local].is_user_variable {
                 Some(local)
+            } else {
+                None
             }
         })
     }
@@ -370,6 +370,9 @@ pub struct LocalDecl<'tcx> {
     /// Temporaries and the return pointer are always mutable.
     pub mutability: Mutability,
 
+    /// True if this corresponds to a user-declared local variable.
+    pub is_user_variable: bool,
+
     /// Type of this local.
     pub ty: Ty<'tcx>,
 
@@ -379,24 +382,23 @@ pub struct LocalDecl<'tcx> {
     /// to generate better debuginfo.
     pub name: Option<Name>,
 
-    /// For user-declared variables, stores their source information.
-    ///
-    /// For temporaries, this is `None`.
-    ///
-    /// This is the primary way to differentiate between user-declared
-    /// variables and compiler-generated temporaries.
-    pub source_info: Option<SourceInfo>,
+    /// Source info of the local.
+    pub source_info: SourceInfo,
 }
 
 impl<'tcx> LocalDecl<'tcx> {
     /// Create a new `LocalDecl` for a temporary.
     #[inline]
-    pub fn new_temp(ty: Ty<'tcx>) -> Self {
+    pub fn new_temp(ty: Ty<'tcx>, span: Span) -> Self {
         LocalDecl {
             mutability: Mutability::Mut,
             ty: ty,
             name: None,
-            source_info: None,
+            source_info: SourceInfo {
+                span: span,
+                scope: ARGUMENT_VISIBILITY_SCOPE
+            },
+            is_user_variable: false
         }
     }
 
@@ -404,12 +406,16 @@ impl<'tcx> LocalDecl<'tcx> {
     ///
     /// This must be inserted into the `local_decls` list as the first local.
     #[inline]
-    pub fn new_return_pointer(return_ty: Ty) -> LocalDecl {
+    pub fn new_return_pointer(return_ty: Ty, span: Span) -> LocalDecl {
         LocalDecl {
             mutability: Mutability::Mut,
             ty: return_ty,
-            source_info: None,
+            source_info: SourceInfo {
+                span: span,
+                scope: ARGUMENT_VISIBILITY_SCOPE
+            },
             name: None,     // FIXME maybe we do want some name here?
+            is_user_variable: false
         }
     }
 }
