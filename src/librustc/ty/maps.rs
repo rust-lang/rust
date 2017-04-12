@@ -429,6 +429,8 @@ define_maps! { <'tcx>
 
     pub coherent_trait: coherent_trait_dep_node((CrateNum, DefId)) -> (),
 
+    pub borrowck: BorrowCheck(DefId) -> (),
+
     /// Gets a complete map from all types to their inherent impls.
     /// Not meant to be used directly outside of coherence.
     /// (Defined only for LOCAL_CRATE)

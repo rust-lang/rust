@@ -891,6 +891,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
     let mut local_providers = ty::maps::Providers::default();
     mir::provide(&mut local_providers);
     rustc_privacy::provide(&mut local_providers);
+    borrowck::provide(&mut local_providers);
     typeck::provide(&mut local_providers);
     ty::provide(&mut local_providers);
     reachable::provide(&mut local_providers);
