@@ -4,7 +4,8 @@
 #[macro_use]
 extern crate serde_derive;
 
-/// Test that we do not lint for unused underscores in a `MacroAttribute` expansion
+/// Test that we do not lint for unused underscores in a `MacroAttribute`
+/// expansion
 #[deny(used_underscore_binding)]
 #[derive(Deserialize)]
 struct MacroAttributesTest {

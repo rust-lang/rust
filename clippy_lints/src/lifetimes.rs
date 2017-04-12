@@ -89,7 +89,13 @@ enum RefLt {
     Named(Name),
 }
 
-fn check_fn_inner<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, decl: &'tcx FnDecl, body: Option<BodyId>, generics: &'tcx Generics, span: Span) {
+fn check_fn_inner<'a, 'tcx>(
+    cx: &LateContext<'a, 'tcx>,
+    decl: &'tcx FnDecl,
+    body: Option<BodyId>,
+    generics: &'tcx Generics,
+    span: Span
+) {
     if in_external_macro(cx, span) || has_where_lifetimes(cx, &generics.where_clause) {
         return;
     }
@@ -128,7 +134,7 @@ fn could_use_elision<'a, 'tcx: 'a>(
     func: &'tcx FnDecl,
     body: Option<BodyId>,
     named_lts: &'tcx [LifetimeDef],
-    bounds_lts: Vec<&'tcx Lifetime>,
+    bounds_lts: Vec<&'tcx Lifetime>
 ) -> bool {
     // There are two scenarios where elision works:
     // * no output references, all input references have different LT
@@ -265,11 +271,7 @@ impl<'v, 't> RefVisitor<'v, 't> {
     }
 
     fn into_vec(self) -> Option<Vec<RefLt>> {
-        if self.abort {
-            None
-        } else {
-            Some(self.lts)
-        }
+        if self.abort { None } else { Some(self.lts) }
     }
 
     fn collect_anonymous_lifetimes(&mut self, qpath: &QPath, ty: &Ty) {
@@ -359,9 +361,11 @@ fn has_where_lifetimes<'a, 'tcx: 'a>(cx: &LateContext<'a, 'tcx>, where_clause: &
                 // and check that all lifetimes are allowed
                 match visitor.into_vec() {
                     None => return false,
-                    Some(lts) => for lt in lts {
-                        if !allowed_lts.contains(&lt) {
-                            return true;
+                    Some(lts) => {
+                        for lt in lts {
+                            if !allowed_lts.contains(&lt) {
+                                return true;
+                            }
                         }
                     },
                 }

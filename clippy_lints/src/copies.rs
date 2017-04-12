@@ -223,7 +223,7 @@ fn lint_match_arms(cx: &LateContext, expr: &Expr) {
 /// `if a { c } else if b { d } else { e }`.
 fn if_sequence(mut expr: &Expr) -> (SmallVector<&Expr>, SmallVector<&Block>) {
     let mut conds = SmallVector::new();
-    let mut blocks : SmallVector<&Block> = SmallVector::new();
+    let mut blocks: SmallVector<&Block> = SmallVector::new();
 
     while let ExprIf(ref cond, ref then_expr, ref else_expr) = expr.node {
         conds.push(&**cond);
@@ -315,10 +315,10 @@ fn search_same<T, Hash, Eq>(exprs: &[T], hash: Hash, eq: Eq) -> Option<(&T, &T)>
         return None;
     } else if exprs.len() == 2 {
         return if eq(&exprs[0], &exprs[1]) {
-                   Some((&exprs[0], &exprs[1]))
-               } else {
-                   None
-               };
+            Some((&exprs[0], &exprs[1]))
+        } else {
+            None
+        };
     }
 
     let mut map: HashMap<_, Vec<&_>> = HashMap::with_capacity(exprs.len());
