@@ -406,7 +406,7 @@ mod prim_slice { }
 ///
 /// This documentation describes a number of methods and trait implementations
 /// on the `str` type. For technical reasons, there is additional, separate
-/// documentation in [the `std::str` module](str/index.html) as well.
+/// documentation in the [`std::str`](str/index.html) module as well.
 ///
 /// # Examples
 ///
@@ -425,7 +425,7 @@ mod prim_slice { }
 /// # Representation
 ///
 /// A `&str` is made up of two components: a pointer to some bytes, and a
-/// length. You can look at these with the [`.as_ptr`] and [`len`] methods:
+/// length. You can look at these with the [`as_ptr`] and [`len`] methods:
 ///
 /// ```
 /// use std::slice;
@@ -452,11 +452,11 @@ mod prim_slice { }
 /// assert_eq!(s, Ok(story));
 /// ```
 ///
-/// [`.as_ptr`]: #method.as_ptr
+/// [`as_ptr`]: #method.as_ptr
 /// [`len`]: #method.len
 ///
 /// Note: This example shows the internals of `&str`. `unsafe` should not be
-/// used to get a string slice under normal circumstances. Use `.as_slice()`
+/// used to get a string slice under normal circumstances. Use `as_slice`
 /// instead.
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_str { }
