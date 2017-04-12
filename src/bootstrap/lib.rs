@@ -151,6 +151,7 @@ pub struct Build {
     out: PathBuf,
     rust_info: channel::GitInfo,
     cargo_info: channel::GitInfo,
+    rls_info: channel::GitInfo,
     local_rebuild: bool,
 
     // Probed tools at runtime
@@ -234,6 +235,7 @@ impl Build {
         };
         let rust_info = channel::GitInfo::new(&src);
         let cargo_info = channel::GitInfo::new(&src.join("cargo"));
+        let rls_info = channel::GitInfo::new(&src.join("rls"));
         let src_is_git = src.join(".git").exists();
 
         Build {
@@ -246,6 +248,7 @@ impl Build {
 
             rust_info: rust_info,
             cargo_info: cargo_info,
+            rls_info: rls_info,
             local_rebuild: local_rebuild,
             cc: HashMap::new(),
             cxx: HashMap::new(),
@@ -545,7 +548,7 @@ impl Build {
                  .env(format!("CFLAGS_{}", target), self.cflags(target).join(" "));
         }
 
-        if self.config.rust_save_analysis && compiler.is_final_stage(self) {
+        if self.config.extended && compiler.is_final_stage(self) {
             cargo.env("RUSTC_SAVE_ANALYSIS", "api".to_string());
         }
 
@@ -1017,7 +1020,7 @@ impl Build {
 
     /// Returns the value of `package_vers` above for Cargo
     fn cargo_package_vers(&self) -> String {
-        self.package_vers(&self.cargo_release_num())
+        self.package_vers(&self.release_num("cargo"))
     }
 
     /// Returns the `version` string associated with this compiler for Rust
@@ -1029,10 +1032,11 @@ impl Build {
         self.rust_info.version(self, channel::CFG_RELEASE_NUM)
     }
 
-    /// Returns the `a.b.c` version that Cargo is at.
-    fn cargo_release_num(&self) -> String {
+    /// Returns the `a.b.c` version that the given package is at.
+    fn release_num(&self, package: &str) -> String {
         let mut toml = String::new();
-        t!(t!(File::open(self.src.join("cargo/Cargo.toml"))).read_to_string(&mut toml));
+        let toml_file_name = self.src.join(&format!("{}/Cargo.toml", package));
+        t!(t!(File::open(toml_file_name)).read_to_string(&mut toml));
         for line in toml.lines() {
             let prefix = "version = \"";
             let suffix = "\"";
@@ -1041,7 +1045,7 @@ impl Build {
             }
         }
 
-        panic!("failed to find version in cargo's Cargo.toml")
+        panic!("failed to find version in {}'s Cargo.toml", package)
     }
 
     /// Returns whether unstable features should be enabled for the compiler

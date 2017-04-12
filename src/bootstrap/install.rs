@@ -55,11 +55,6 @@ pub fn install(build: &Build, stage: u32, host: &str) {
                    &docdir, &libdir, &mandir, &empty_dir);
     }
 
-    if build.config.rust_save_analysis {
-        install_sh(&build, "analysis", "rust-analysis", stage, host, &prefix,
-                   &docdir, &libdir, &mandir, &empty_dir);
-    }
-
     install_sh(&build, "rustc", "rustc", stage, host, &prefix,
                &docdir, &libdir, &mandir, &empty_dir);
     t!(fs::remove_dir_all(&empty_dir));
