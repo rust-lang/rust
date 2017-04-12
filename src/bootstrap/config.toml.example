@@ -234,9 +234,6 @@
 # saying that the FileCheck executable is missing, you may want to disable this.
 #codegen-tests = true
 
-# Flag indicating whether the API analysis data should be saved.
-#save-analysis = false
-
 # =============================================================================
 # Options for specific targets
 #
