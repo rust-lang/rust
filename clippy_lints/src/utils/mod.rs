@@ -1093,6 +1093,7 @@ pub fn align_two_snippets(s: &str, t: &str) -> String {
 ///
 /// For example, consider
 ///
+/// ```
 ///         let s1 = "\
 ///     if (condition()) {
 ///         do_something()";
@@ -1103,18 +1104,19 @@ pub fn align_two_snippets(s: &str, t: &str) -> String {
 ///         let s3 = "\
 ///     another_piece_of_code();
 ///         indented_here();";
-///
+/// ```
 ///
 ///
 ///
 /// Now calling `align_snippets(&[s1, s2, s3])` will yield the following:
 ///
-///     "\
+/// ```
 ///     if (condition()) {
 ///         do_something();
 ///         code_from_somewhere_else();
 ///         another_piece_of_code();
-///             indented_here();"
+///             indented_here();
+/// ```
 pub fn align_snippets(xs: &[&str]) -> String {
     if xs.is_empty() {
         String::from("")

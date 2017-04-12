@@ -225,6 +225,7 @@ fn with_if_expr<F>(stmt: &ast::Stmt, mut func: F)
 }
 
 /// A type to distinguish between the two distinct cases this lint handles.
+#[derive(Copy, Clone, Debug)]
 enum LintType {
     ContinueInsideElseBlock,
     ContinueInsideThenBlock,
@@ -361,17 +362,18 @@ fn check_and_warn<'a>(ctx: &EarlyContext, expr: &'a ast::Expr) {
 /// continues eating till a non-whitespace character is found.
 /// e.g., the string
 ///
-///     "
+/// ```
 ///     {
 ///         let x = 5;
 ///     }
-///     "
+/// ```
 ///
 /// is transformed to
 ///
-///     "
+/// ```
 ///     {
 ///         let x = 5;"
+/// ```
 ///
 /// NOTE: when there is no closing brace in `s`, `s` is _not_ preserved, i.e.,
 /// an empty string will be returned in that case.
@@ -391,19 +393,21 @@ pub fn erode_from_back(s: &str) -> String {
 /// any number of opening braces are eaten, followed by any number of newlines.
 /// e.g.,  the string
 ///
-///     "
+/// ```
 ///         {
 ///             something();
 ///             inside_a_block();
 ///         }
-///     "
+/// ```
 ///
 /// is transformed to
 ///
-///     "        something();
+/// ```
+///             something();
 ///             inside_a_block();
 ///         }
-///     "
+///     
+/// ```
 ///
 pub fn erode_from_front(s: &str) -> String {
     s.chars()
