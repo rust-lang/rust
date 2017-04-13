@@ -784,7 +784,8 @@ pub fn compile_unit_metadata(scc: &SharedCrateContext,
     };
 
     debug!("compile_unit_metadata: {:?}", compile_unit_name);
-    let producer = format!("rustc version {}",
+    // FIXME(#41252) Remove "clang LLVM" if we can get GDB and LLVM to play nice.
+    let producer = format!("clang LLVM (rustc version {})",
                            (option_env!("CFG_VERSION")).expect("CFG_VERSION"));
 
     let compile_unit_name = compile_unit_name.as_ptr();
