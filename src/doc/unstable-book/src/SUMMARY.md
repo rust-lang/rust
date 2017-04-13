@@ -198,6 +198,7 @@
 - [thread_local](thread-local.md)
 - [thread_local_internals](thread-local-internals.md)
 - [thread_local_state](thread-local-state.md)
+- [toowned_clone_into](toowned-clone-into.md)
 - [trace_macros](trace-macros.md)
 - [trusted_len](trusted-len.md)
 - [try_from](try-from.md)

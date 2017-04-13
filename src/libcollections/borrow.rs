@@ -60,6 +60,29 @@ pub trait ToOwned {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn to_owned(&self) -> Self::Owned;
+
+    /// Uses borrowed data to replace owned data, usually by cloning.
+    ///
+    /// This is borrow-generalized version of `Clone::clone_from`.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// # #![feature(toowned_clone_into)]
+    /// let mut s: String = String::new();
+    /// "hello".clone_into(&mut s);
+    ///
+    /// let mut v: Vec<i32> = Vec::new();
+    /// [1, 2][..].clone_into(&mut v);
+    /// ```
+    #[unstable(feature = "toowned_clone_into",
+               reason = "recently added",
+               issue = "41263")]
+    fn clone_into(&self, target: &mut Self::Owned) {
+        *target = self.to_owned();
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -69,6 +92,10 @@ impl<T> ToOwned for T
     type Owned = T;
     fn to_owned(&self) -> T {
         self.clone()
+    }
+
+    fn clone_into(&self, target: &mut T) {
+        target.clone_from(self);
     }
 }
 
@@ -140,6 +167,17 @@ impl<'a, B: ?Sized> Clone for Cow<'a, B>
                 Owned(b.to_owned())
             }
         }
+    }
+
+    fn clone_from(&mut self, source: &Cow<'a, B>) {
+        if let Owned(ref mut dest) = *self {
+            if let Owned(ref o) = *source {
+                o.borrow().clone_into(dest);
+                return;
+            }
+        }
+
+        *self = source.clone();
     }
 }
 
