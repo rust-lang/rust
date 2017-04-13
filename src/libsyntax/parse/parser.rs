@@ -4066,7 +4066,7 @@ impl<'a> Parser<'a> {
         }).emit();
     }
 
-    // Parse bounds of a type parameter `BOUND + BOUND + BOUND`.
+    // Parse bounds of a lifetime parameter `BOUND + BOUND + BOUND`, possibly with trailing `+`.
     // BOUND = TY_BOUND | LT_BOUND
     // LT_BOUND = LIFETIME (e.g. `'a`)
     // TY_BOUND = [?] [for<LT_PARAM_DEFS>] SIMPLE_PATH (e.g. `?for<'a: 'b> m::Trait<'a>`)
@@ -4107,7 +4107,7 @@ impl<'a> Parser<'a> {
         self.parse_ty_param_bounds_common(true)
     }
 
-    // Parse bounds of a type parameter `BOUND + BOUND + BOUND`.
+    // Parse bounds of a lifetime parameter `BOUND + BOUND + BOUND`, possibly with trailing `+`.
     // BOUND = LT_BOUND (e.g. `'a`)
     fn parse_lt_param_bounds(&mut self) -> Vec<Lifetime> {
         let mut lifetimes = Vec::new();
