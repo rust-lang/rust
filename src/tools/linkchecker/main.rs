@@ -147,6 +147,12 @@ fn check(cache: &mut Cache,
         return None;
     }
 
+    // mdbook uses the HTML <base> tag to handle links for subdirectories, which
+    // linkchecker doesn't support
+    if file.to_str().unwrap().contains("unstable-book/") {
+        return None;
+    }
+
     let res = load_file(cache, root, PathBuf::from(file), SkipRedirect);
     let (pretty_file, contents) = match res {
         Ok(res) => res,
