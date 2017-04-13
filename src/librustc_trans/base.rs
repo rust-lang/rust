@@ -38,7 +38,7 @@ use rustc::hir::def_id::LOCAL_CRATE;
 use middle::lang_items::StartFnLangItem;
 use middle::cstore::EncodedMetadata;
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::dep_graph::{AssertDepGraphSafe, DepNode, WorkProduct};
+use rustc::dep_graph::{AssertDepGraphSafe, DepNode};
 use rustc::hir::map as hir_map;
 use rustc::util::common::time;
 use session::config::{self, NoDebugInfo};
@@ -56,7 +56,7 @@ use common::CrateContext;
 use common::{type_is_zero_size, val_ty};
 use common;
 use consts;
-use context::{self, SharedCrateContext, CrateContextList};
+use context::{self, LocalCrateContext, SharedCrateContext};
 use debuginfo;
 use declare;
 use machine;
@@ -1113,41 +1113,61 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let symbol_map = Rc::new(symbol_map);
 
-    let previous_work_products = trans_reuse_previous_work_products(&shared_ccx,
-                                                                    &codegen_units,
-                                                                    &symbol_map);
-
-    let crate_context_list = CrateContextList::new(&shared_ccx,
-                                                   codegen_units,
-                                                   previous_work_products,
-                                                   symbol_map.clone());
-
-    let modules: Vec<ModuleTranslation> = crate_context_list
-        .iter_all()
-        .map(|ccx| {
-            let dep_node = ccx.codegen_unit().work_product_dep_node();
+    let modules: Vec<ModuleTranslation> = codegen_units
+        .into_iter()
+        .map(|cgu| {
+            let dep_node = cgu.work_product_dep_node();
             tcx.dep_graph.with_task(dep_node,
-                                    ccx,
-                                    AssertDepGraphSafe(symbol_map.clone()),
+                                    AssertDepGraphSafe(&shared_ccx),
+                                    AssertDepGraphSafe((cgu, symbol_map.clone())),
                                     module_translation)
         })
         .collect();
 
-    fn module_translation<'a, 'tcx>(ccx: CrateContext<'a, 'tcx>,
-                                    symbol_map: AssertDepGraphSafe<Rc<SymbolMap<'tcx>>>)
-                                    -> ModuleTranslation {
-        // FIXME(#40304): Instead of this, the symbol-map should be an
-        // on-demand thing that we compute.
-        let AssertDepGraphSafe(symbol_map) = symbol_map;
+    fn module_translation<'a, 'tcx>(
+        scx: AssertDepGraphSafe<&SharedCrateContext<'a, 'tcx>>,
+        args: AssertDepGraphSafe<(CodegenUnit<'tcx>, Rc<SymbolMap<'tcx>>)>)
+        -> ModuleTranslation
+    {
+        // FIXME(#40304): We ought to be using the id as a key and some queries, I think.
+        let AssertDepGraphSafe(scx) = scx;
+        let AssertDepGraphSafe((cgu, symbol_map)) = args;
 
-        let source = if let Some(buf) = ccx.previous_work_product() {
+        let cgu_name = String::from(cgu.name());
+        let cgu_id = cgu.work_product_id();
+        let symbol_name_hash = cgu.compute_symbol_name_hash(scx, &symbol_map);
+
+        // Check whether there is a previous work-product we can
+        // re-use.  Not only must the file exist, and the inputs not
+        // be dirty, but the hash of the symbols we will generate must
+        // be the same.
+        let previous_work_product =
+            scx.dep_graph().previous_work_product(&cgu_id).and_then(|work_product| {
+                if work_product.input_hash == symbol_name_hash {
+                    debug!("trans_reuse_previous_work_products: reusing {:?}", work_product);
+                    Some(work_product)
+                } else {
+                    if scx.sess().opts.debugging_opts.incremental_info {
+                        println!("incremental: CGU `{}` invalidated because of \
+                                  changed partitioning hash.",
+                                 cgu.name());
+                    }
+                    debug!("trans_reuse_previous_work_products: \
+                            not reusing {:?} because hash changed to {:?}",
+                           work_product, symbol_name_hash);
+                    None
+                }
+            });
+
+        let source = if let Some(buf) = previous_work_product {
             // Don't need to translate this module.
             ModuleSource::Preexisting(buf.clone())
         } else {
             // Instantiate translation items without filling out definitions yet...
-
-            let cgu = ccx.codegen_unit();
-            let trans_items = cgu.items_in_deterministic_order(ccx.tcx(), &symbol_map);
+            let lcx = LocalCrateContext::new(scx, cgu, symbol_map.clone());
+            let ccx = CrateContext::new(scx, &lcx);
+            let trans_items = ccx.codegen_unit()
+                                 .items_in_deterministic_order(ccx.tcx(), &symbol_map);
             for &(trans_item, linkage) in &trans_items {
                 trans_item.predefine(&ccx, linkage);
             }
@@ -1199,11 +1219,9 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         };
 
         ModuleTranslation {
-            name: String::from(ccx.codegen_unit().name()),
-            symbol_name_hash: ccx.codegen_unit()
-                                 .compute_symbol_name_hash(ccx.shared(),
-                                                           &symbol_map),
-            source: source,
+            name: cgu_name,
+            symbol_name_hash,
+            source,
         }
     }
 
@@ -1485,43 +1503,6 @@ fn gather_type_sizes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
             }
         }
     }
-}
-
-/// For each CGU, identify if we can reuse an existing object file (or
-/// maybe other context).
-fn trans_reuse_previous_work_products(scx: &SharedCrateContext,
-                                      codegen_units: &[CodegenUnit],
-                                      symbol_map: &SymbolMap)
-                                      -> Vec<Option<WorkProduct>> {
-    debug!("trans_reuse_previous_work_products()");
-    codegen_units
-        .iter()
-        .map(|cgu| {
-            let id = cgu.work_product_id();
-
-            let hash = cgu.compute_symbol_name_hash(scx, symbol_map);
-
-            debug!("trans_reuse_previous_work_products: id={:?} hash={}", id, hash);
-
-            if let Some(work_product) = scx.dep_graph().previous_work_product(&id) {
-                if work_product.input_hash == hash {
-                    debug!("trans_reuse_previous_work_products: reusing {:?}", work_product);
-                    return Some(work_product);
-                } else {
-                    if scx.sess().opts.debugging_opts.incremental_info {
-                        println!("incremental: CGU `{}` invalidated because of \
-                                  changed partitioning hash.",
-                                  cgu.name());
-                    }
-                    debug!("trans_reuse_previous_work_products: \
-                            not reusing {:?} because hash changed to {:?}",
-                           work_product, hash);
-                }
-            }
-
-            None
-        })
-        .collect()
 }
 
 fn collect_and_partition_translation_items<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>)
