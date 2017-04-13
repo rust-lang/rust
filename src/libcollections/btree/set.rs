@@ -734,7 +734,7 @@ impl<T> IntoIterator for BTreeSet<T> {
     type Item = T;
     type IntoIter = IntoIter<T>;
 
-    /// Gets an iterator for moving out the BtreeSet's contents.
+    /// Gets an iterator for moving out the `BTreeSet`'s contents.
     ///
     /// # Examples
     ///

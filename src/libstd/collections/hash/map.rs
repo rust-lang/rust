@@ -235,9 +235,8 @@ const DISPLACEMENT_THRESHOLD: usize = 128;
 /// attacks such as HashDoS.
 ///
 /// The hashing algorithm can be replaced on a per-`HashMap` basis using the
-/// [`HashMap::default`], [`HashMap::with_hasher`], and
-/// [`HashMap::with_capacity_and_hasher`] methods. Many alternative algorithms
-/// are available on crates.io, such as the [`fnv`] crate.
+/// [`default`], [`with_hasher`], and [`with_capacity_and_hasher`] methods. Many
+/// alternative algorithms are available on crates.io, such as the [`fnv`] crate.
 ///
 /// It is required that the keys implement the [`Eq`] and [`Hash`] traits, although
 /// this can frequently be achieved by using `#[derive(PartialEq, Eq, Hash)]`.
@@ -339,9 +338,9 @@ const DISPLACEMENT_THRESHOLD: usize = 128;
 /// [`PartialEq`]: ../../std/cmp/trait.PartialEq.html
 /// [`RefCell`]: ../../std/cell/struct.RefCell.html
 /// [`Cell`]: ../../std/cell/struct.Cell.html
-/// [`HashMap::default`]: #method.default
-/// [`HashMap::with_hasher`]: #method.with_hasher
-/// [`HashMap::with_capacity_and_hasher`]: #method.with_capacity_and_hasher
+/// [`default`]: #method.default
+/// [`with_hasher`]: #method.with_hasher
+/// [`with_capacity_and_hasher`]: #method.with_capacity_and_hasher
 /// [`fnv`]: https://crates.io/crates/fnv
 ///
 /// ```
@@ -373,7 +372,7 @@ const DISPLACEMENT_THRESHOLD: usize = 128;
 /// }
 /// ```
 ///
-/// A HashMap with fixed list of elements can be initialized from an array:
+/// A `HashMap` with fixed list of elements can be initialized from an array:
 ///
 /// ```
 /// use std::collections::HashMap;
@@ -654,12 +653,13 @@ impl<K, V, S> HashMap<K, V, S>
         }
     }
 
-    /// Creates an empty `HashMap` with the specified capacity, using `hasher`
+    /// Creates an empty `HashMap` with the specified capacity, using `hash_builder`
     /// to hash the keys.
     ///
     /// The hash map will be able to hold at least `capacity` elements without
     /// reallocating. If `capacity` is 0, the hash map will not allocate.
-    /// Warning: `hasher` is normally randomly generated, and
+    ///
+    /// Warning: `hash_builder` is normally randomly generated, and
     /// is designed to allow HashMaps to be resistant to attacks that
     /// cause many collisions and very poor performance. Setting it
     /// manually using this function can expose a DoS attack vector.
@@ -686,7 +686,9 @@ impl<K, V, S> HashMap<K, V, S>
         }
     }
 
-    /// Returns a reference to the map's hasher.
+    /// Returns a reference to the map's [`BuildHasher`].
+    ///
+    /// [`BuildHasher`]: ../../std/hash/trait.BuildHasher.html
     #[stable(feature = "hashmap_public_hasher", since = "1.9.0")]
     pub fn hasher(&self) -> &S {
         &self.hash_builder
@@ -849,7 +851,7 @@ impl<K, V, S> HashMap<K, V, S>
     }
 
     /// An iterator visiting all keys in arbitrary order.
-    /// Iterator element type is `&'a K`.
+    /// The iterator element type is `&'a K`.
     ///
     /// # Examples
     ///
@@ -871,7 +873,7 @@ impl<K, V, S> HashMap<K, V, S>
     }
 
     /// An iterator visiting all values in arbitrary order.
-    /// Iterator element type is `&'a V`.
+    /// The iterator element type is `&'a V`.
     ///
     /// # Examples
     ///
@@ -893,7 +895,7 @@ impl<K, V, S> HashMap<K, V, S>
     }
 
     /// An iterator visiting all values mutably in arbitrary order.
-    /// Iterator element type is `&'a mut V`.
+    /// The iterator element type is `&'a mut V`.
     ///
     /// # Examples
     ///
@@ -920,7 +922,7 @@ impl<K, V, S> HashMap<K, V, S>
     }
 
     /// An iterator visiting all key-value pairs in arbitrary order.
-    /// Iterator element type is `(&'a K, &'a V)`.
+    /// The iterator element type is `(&'a K, &'a V)`.
     ///
     /// # Examples
     ///
@@ -943,7 +945,7 @@ impl<K, V, S> HashMap<K, V, S>
 
     /// An iterator visiting all key-value pairs in arbitrary order,
     /// with mutable references to the values.
-    /// Iterator element type is `(&'a K, &'a mut V)`.
+    /// The iterator element type is `(&'a K, &'a mut V)`.
     ///
     /// # Examples
     ///
@@ -2408,10 +2410,9 @@ impl DefaultHasher {
 
 #[stable(feature = "hashmap_default_hasher", since = "1.13.0")]
 impl Default for DefaultHasher {
-    /// Creates a new `DefaultHasher` using [`DefaultHasher::new`]. See
-    /// [`DefaultHasher::new`] documentation for more information.
+    /// Creates a new `DefaultHasher` using [`new`]. See its documentation for more.
     ///
-    /// [`DefaultHasher::new`]: #method.new
+    /// [`new`]: #method.new
     fn default() -> DefaultHasher {
         DefaultHasher::new()
     }

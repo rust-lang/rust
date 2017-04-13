@@ -20,11 +20,12 @@
 //!
 //! This is a larger example that implements [Dijkstra's algorithm][dijkstra]
 //! to solve the [shortest path problem][sssp] on a [directed graph][dir_graph].
-//! It shows how to use `BinaryHeap` with custom types.
+//! It shows how to use [`BinaryHeap`] with custom types.
 //!
 //! [dijkstra]: http://en.wikipedia.org/wiki/Dijkstra%27s_algorithm
 //! [sssp]: http://en.wikipedia.org/wiki/Shortest_path_problem
 //! [dir_graph]: http://en.wikipedia.org/wiki/Directed_graph
+//! [`BinaryHeap`]: struct.BinaryHeap.html
 //!
 //! ```
 //! use std::cmp::Ordering;
@@ -438,7 +439,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// given `BinaryHeap`. Does nothing if the capacity is already sufficient.
     ///
     /// Note that the allocator may give the collection more space than it requests. Therefore
-    /// capacity can not be relied upon to be precisely minimal. Prefer `reserve` if future
+    /// capacity can not be relied upon to be precisely minimal. Prefer [`reserve`] if future
     /// insertions are expected.
     ///
     /// # Panics
@@ -456,6 +457,8 @@ impl<T: Ord> BinaryHeap<T> {
     /// assert!(heap.capacity() >= 100);
     /// heap.push(4);
     /// ```
+    ///
+    /// [`reserve`]: #method.reserve
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn reserve_exact(&mut self, additional: usize) {
         self.data.reserve_exact(additional);
