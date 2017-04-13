@@ -215,8 +215,7 @@ const DISPLACEMENT_THRESHOLD: usize = 128;
 // 1. Alfredo Viola (2005). Distributional analysis of Robin Hood linear probing
 //    hashing with buckets.
 
-/// A hash map implementation which uses linear probing with Robin Hood bucket
-/// stealing.
+/// A hash map implemented with linear probing and Robin Hood bucket stealing.
 ///
 /// By default, `HashMap` uses a hashing algorithm selected to provide
 /// resistance against HashDoS attacks. The algorithm is randomly seeded, and a
@@ -1511,19 +1510,20 @@ impl<'a, K, V> InternalEntry<K, V, &'a mut RawTable<K, V>> {
     }
 }
 
-/// A view into a single location in a map, which may be vacant or occupied.
-/// This enum is constructed from the [`entry`] method on [`HashMap`].
+/// A view into a single entry in a map, which may either be vacant or occupied.
+///
+/// This `enum` is constructed from the [`entry`] method on [`HashMap`].
 ///
 /// [`HashMap`]: struct.HashMap.html
 /// [`entry`]: struct.HashMap.html#method.entry
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum Entry<'a, K: 'a, V: 'a> {
-    /// An occupied Entry.
+    /// An occupied entry.
     #[stable(feature = "rust1", since = "1.0.0")]
     Occupied(#[stable(feature = "rust1", since = "1.0.0")]
              OccupiedEntry<'a, K, V>),
 
-    /// A vacant Entry.
+    /// A vacant entry.
     #[stable(feature = "rust1", since = "1.0.0")]
     Vacant(#[stable(feature = "rust1", since = "1.0.0")]
            VacantEntry<'a, K, V>),
@@ -1547,7 +1547,7 @@ impl<'a, K: 'a + Debug, V: 'a + Debug> Debug for Entry<'a, K, V> {
     }
 }
 
-/// A view into a single occupied location in a HashMap.
+/// A view into an occupied entry in a `HashMap`.
 /// It is part of the [`Entry`] enum.
 ///
 /// [`Entry`]: enum.Entry.html
@@ -1567,7 +1567,7 @@ impl<'a, K: 'a + Debug, V: 'a + Debug> Debug for OccupiedEntry<'a, K, V> {
     }
 }
 
-/// A view into a single empty location in a HashMap.
+/// A view into a vacant entry in a `HashMap`.
 /// It is part of the [`Entry`] enum.
 ///
 /// [`Entry`]: enum.Entry.html
