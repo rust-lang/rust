@@ -26,7 +26,7 @@
 //! along with the actual implementation elsewhere. You can find more comments
 //! about how to define rules themselves below.
 
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, HashSet, HashMap};
 use std::mem;
 
 use check::{self, TestKind};
@@ -533,34 +533,44 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
     //
     // Tools used during the build system but not shipped
     rules.build("tool-rustbook", "src/tools/rustbook")
-         .dep(|s| s.name("librustc"))
+         .dep(|s| s.name("maybe-clean-tools"))
+         .dep(|s| s.name("librustc-tool"))
          .run(move |s| compile::tool(build, s.stage, s.target, "rustbook"));
     rules.build("tool-error-index", "src/tools/error_index_generator")
-         .dep(|s| s.name("librustc"))
+         .dep(|s| s.name("maybe-clean-tools"))
+         .dep(|s| s.name("librustc-tool"))
          .run(move |s| compile::tool(build, s.stage, s.target, "error_index_generator"));
     rules.build("tool-tidy", "src/tools/tidy")
-         .dep(|s| s.name("libstd"))
+         .dep(|s| s.name("maybe-clean-tools"))
+         .dep(|s| s.name("libstd-tool"))
          .run(move |s| compile::tool(build, s.stage, s.target, "tidy"));
     rules.build("tool-linkchecker", "src/tools/linkchecker")
-         .dep(|s| s.name("libstd"))
+         .dep(|s| s.name("maybe-clean-tools"))
+         .dep(|s| s.name("libstd-tool"))
          .run(move |s| compile::tool(build, s.stage, s.target, "linkchecker"));
     rules.build("tool-cargotest", "src/tools/cargotest")
-         .dep(|s| s.name("libstd"))
+         .dep(|s| s.name("maybe-clean-tools"))
+         .dep(|s| s.name("libstd-tool"))
          .run(move |s| compile::tool(build, s.stage, s.target, "cargotest"));
     rules.build("tool-compiletest", "src/tools/compiletest")
-         .dep(|s| s.name("libtest"))
+         .dep(|s| s.name("maybe-clean-tools"))
+         .dep(|s| s.name("libtest-tool"))
          .run(move |s| compile::tool(build, s.stage, s.target, "compiletest"));
     rules.build("tool-build-manifest", "src/tools/build-manifest")
-         .dep(|s| s.name("libstd"))
+         .dep(|s| s.name("maybe-clean-tools"))
+         .dep(|s| s.name("libstd-tool"))
          .run(move |s| compile::tool(build, s.stage, s.target, "build-manifest"));
     rules.build("tool-qemu-test-server", "src/tools/qemu-test-server")
-         .dep(|s| s.name("libstd"))
+         .dep(|s| s.name("maybe-clean-tools"))
+         .dep(|s| s.name("libstd-tool"))
          .run(move |s| compile::tool(build, s.stage, s.target, "qemu-test-server"));
     rules.build("tool-qemu-test-client", "src/tools/qemu-test-client")
-         .dep(|s| s.name("libstd"))
+         .dep(|s| s.name("maybe-clean-tools"))
+         .dep(|s| s.name("libstd-tool"))
          .run(move |s| compile::tool(build, s.stage, s.target, "qemu-test-client"));
     rules.build("tool-cargo", "cargo")
-         .dep(|s| s.name("libstd"))
+         .dep(|s| s.name("maybe-clean-tools"))
+         .dep(|s| s.name("libstd-tool"))
          .dep(|s| s.stage(0).host(s.target).name("openssl"))
          .dep(move |s| {
              // Cargo depends on procedural macros, which requires a full host
@@ -572,7 +582,8 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
          .run(move |s| compile::tool(build, s.stage, s.target, "cargo"));
     rules.build("tool-rls", "rls")
          .host(true)
-         .dep(|s| s.name("librustc"))
+         .dep(|s| s.name("librustc-tool"))
+         .dep(|s| s.stage(0).host(s.target).name("openssl"))
          .dep(move |s| {
              // rls, like cargo, uses procedural macros
              s.name("librustc-link")
@@ -580,6 +591,25 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
               .host(&build.config.build)
          })
          .run(move |s| compile::tool(build, s.stage, s.target, "rls"));
+
+    // "pseudo rule" which represents completely cleaning out the tools dir in
+    // one stage. This needs to happen whenever a dependency changes (e.g.
+    // libstd, libtest, librustc) and all of the tool compilations above will
+    // be sequenced after this rule.
+    rules.build("maybe-clean-tools", "path/to/nowhere")
+         .after("librustc-tool")
+         .after("libtest-tool")
+         .after("libstd-tool");
+
+    rules.build("librustc-tool", "path/to/nowhere")
+         .dep(|s| s.name("librustc"))
+         .run(move |s| compile::maybe_clean_tools(build, s.stage, s.target, Mode::Librustc));
+    rules.build("libtest-tool", "path/to/nowhere")
+         .dep(|s| s.name("libtest"))
+         .run(move |s| compile::maybe_clean_tools(build, s.stage, s.target, Mode::Libtest));
+    rules.build("libstd-tool", "path/to/nowhere")
+         .dep(|s| s.name("libstd"))
+         .run(move |s| compile::maybe_clean_tools(build, s.stage, s.target, Mode::Libstd));
 
     // ========================================================================
     // Documentation targets
@@ -828,6 +858,11 @@ struct Rule<'a> {
     /// Whether this rule is only for the build triple, not anything in hosts or
     /// targets.
     only_build: bool,
+
+    /// A list of "order only" dependencies. This rules does not actually
+    /// depend on these rules, but if they show up in the dependency graph then
+    /// this rule must be executed after all these rules.
+    after: Vec<&'a str>,
 }
 
 #[derive(PartialEq)]
@@ -851,6 +886,7 @@ impl<'a> Rule<'a> {
             host: false,
             only_host_build: false,
             only_build: false,
+            after: Vec::new(),
         }
     }
 }
@@ -867,6 +903,11 @@ impl<'a, 'b> RuleBuilder<'a, 'b> {
         where F: Fn(&Step<'a>) -> Step<'a> + 'a,
     {
         self.rule.deps.push(Box::new(f));
+        self
+    }
+
+    fn after(&mut self, step: &'a str) -> &mut Self {
+        self.rule.after.push(step);
         self
     }
 
@@ -1153,31 +1194,52 @@ invalid rule dependency graph detected, was a rule added and maybe typo'd?
     /// From the top level targets `steps` generate a topological ordering of
     /// all steps needed to run those steps.
     fn expand(&self, steps: &[Step<'a>]) -> Vec<Step<'a>> {
+        // First up build a graph of steps and their dependencies. The `nodes`
+        // map is a map from step to a unique number. The `edges` map is a
+        // map from these unique numbers to a list of other numbers,
+        // representing dependencies.
+        let mut nodes = HashMap::new();
+        nodes.insert(Step::noop(), 0);
+        let mut edges = HashMap::new();
+        edges.insert(0, HashSet::new());
+        for step in steps {
+            self.build_graph(step.clone(), &mut nodes, &mut edges);
+        }
+
+        // Now that we've built up the actual dependency graph, draw more
+        // dependency edges to satisfy the `after` dependencies field for each
+        // rule.
+        self.satisfy_after_deps(&nodes, &mut edges);
+
+        // And finally, perform a topological sort to return a list of steps to
+        // execute.
         let mut order = Vec::new();
-        let mut added = HashSet::new();
-        added.insert(Step::noop());
-        for step in steps.iter().cloned() {
-            self.fill(step, &mut order, &mut added);
+        let mut visited = HashSet::new();
+        visited.insert(0);
+        let idx_to_node = nodes.iter().map(|p| (*p.1, p.0)).collect::<HashMap<_, _>>();
+        for idx in nodes.values() {
+            self.topo_sort(*idx, &idx_to_node, &edges, &mut visited, &mut order);
         }
         return order
     }
 
-    /// Performs topological sort of dependencies rooted at the `step`
-    /// specified, pushing all results onto the `order` vector provided.
+    /// Builds the dependency graph rooted at `step`.
     ///
-    /// In other words, when this method returns, the `order` vector will
-    /// contain a list of steps which if executed in order will eventually
-    /// complete the `step` specified as well.
-    ///
-    /// The `added` set specified here is the set of steps that are already
-    /// present in `order` (and hence don't need to be added again).
-    fn fill(&self,
-            step: Step<'a>,
-            order: &mut Vec<Step<'a>>,
-            added: &mut HashSet<Step<'a>>) {
-        if !added.insert(step.clone()) {
-            return
+    /// The `nodes` and `edges` maps are filled out according to the rule
+    /// described by `step.name`.
+    fn build_graph(&self,
+                   step: Step<'a>,
+                   nodes: &mut HashMap<Step<'a>, usize>,
+                   edges: &mut HashMap<usize, HashSet<usize>>) -> usize {
+        use std::collections::hash_map::Entry;
+
+        let idx = nodes.len();
+        match nodes.entry(step.clone()) {
+            Entry::Vacant(e) => { e.insert(idx); }
+            Entry::Occupied(e) => return *e.get(),
         }
+
+        let mut deps = Vec::new();
         for dep in self.rules[step.name].deps.iter() {
             let dep = dep(&step);
             if dep.name.starts_with("default:") {
@@ -1189,13 +1251,61 @@ invalid rule dependency graph detected, was a rule added and maybe typo'd?
                 let host = self.build.config.host.iter().any(|h| h == dep.target);
                 let rules = self.rules.values().filter(|r| r.default);
                 for rule in rules.filter(|r| r.kind == kind && (!r.host || host)) {
-                    self.fill(dep.name(rule.name), order, added);
+                    deps.push(self.build_graph(dep.name(rule.name), nodes, edges));
                 }
             } else {
-                self.fill(dep, order, added);
+                deps.push(self.build_graph(dep, nodes, edges));
             }
         }
-        order.push(step);
+
+        edges.entry(idx).or_insert(HashSet::new()).extend(deps);
+        return idx
+    }
+
+    /// Given a dependency graph with a finished list of `nodes`, fill out more
+    /// dependency `edges`.
+    ///
+    /// This is the step which satisfies all `after` listed dependencies in
+    /// `Rule` above.
+    fn satisfy_after_deps(&self,
+                          nodes: &HashMap<Step<'a>, usize>,
+                          edges: &mut HashMap<usize, HashSet<usize>>) {
+        // Reverse map from the name of a step to the node indices that it
+        // appears at.
+        let mut name_to_idx = HashMap::new();
+        for (step, &idx) in nodes {
+            name_to_idx.entry(step.name).or_insert(Vec::new()).push(idx);
+        }
+
+        for (step, idx) in nodes {
+            if *step == Step::noop() {
+                continue
+            }
+            for after in self.rules[step.name].after.iter() {
+                // This is the critical piece of an `after` dependency. If the
+                // dependency isn't actually in our graph then no edge is drawn,
+                // only if it's already present do we draw the edges.
+                if let Some(idxs) = name_to_idx.get(after) {
+                    edges.get_mut(idx).unwrap()
+                         .extend(idxs.iter().cloned());
+                }
+            }
+        }
+    }
+
+    fn topo_sort(&self,
+                 cur: usize,
+                 nodes: &HashMap<usize, &Step<'a>>,
+                 edges: &HashMap<usize, HashSet<usize>>,
+                 visited: &mut HashSet<usize>,
+                 order: &mut Vec<Step<'a>>) {
+        if !visited.insert(cur) {
+            return
+        }
+        for dep in edges[&cur].iter() {
+            self.topo_sort(*dep, nodes, edges, visited, order);
+        }
+        order.push(nodes[&cur].clone());
     }
 }
 
