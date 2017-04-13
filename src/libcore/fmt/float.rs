@@ -19,7 +19,7 @@ fn float_to_decimal_common_exact<T>(fmt: &mut Formatter, num: &T,
     where T: flt2dec::DecodableFloat
 {
     let mut buf = [0; 1024]; // enough for f32 and f64
-    let mut parts = [flt2dec::Part::Zero(0); 16];
+    let mut parts = [flt2dec::Part::Zero(0); 5];
     let formatted = flt2dec::to_exact_fixed_str(flt2dec::strategy::grisu::format_exact,
                                                 *num, sign, precision,
                                                 false, &mut buf, &mut parts);
@@ -34,7 +34,7 @@ fn float_to_decimal_common_shortest<T>(fmt: &mut Formatter,
     where T: flt2dec::DecodableFloat
 {
     let mut buf = [0; flt2dec::MAX_SIG_DIGITS]; // enough for f32 and f64
-    let mut parts = [flt2dec::Part::Zero(0); 16];
+    let mut parts = [flt2dec::Part::Zero(0); 5];
     let formatted = flt2dec::to_shortest_str(flt2dec::strategy::grisu::format_shortest,
                                              *num, sign, 0, false, &mut buf, &mut parts);
     fmt.pad_formatted_parts(&formatted)
@@ -68,7 +68,7 @@ fn float_to_exponential_common_exact<T>(fmt: &mut Formatter, num: &T,
     where T: flt2dec::DecodableFloat
 {
     let mut buf = [0; 1024]; // enough for f32 and f64
-    let mut parts = [flt2dec::Part::Zero(0); 16];
+    let mut parts = [flt2dec::Part::Zero(0); 7];
     let formatted = flt2dec::to_exact_exp_str(flt2dec::strategy::grisu::format_exact,
                                               *num, sign, precision,
                                               upper, &mut buf, &mut parts);
@@ -84,7 +84,7 @@ fn float_to_exponential_common_shortest<T>(fmt: &mut Formatter,
     where T: flt2dec::DecodableFloat
 {
     let mut buf = [0; flt2dec::MAX_SIG_DIGITS]; // enough for f32 and f64
-    let mut parts = [flt2dec::Part::Zero(0); 16];
+    let mut parts = [flt2dec::Part::Zero(0); 7];
     let formatted = flt2dec::to_shortest_exp_str(flt2dec::strategy::grisu::format_shortest, *num,
                                                  sign, (0, 0), upper, &mut buf, &mut parts);
     fmt.pad_formatted_parts(&formatted)
