@@ -64,10 +64,10 @@ impl ExportedSymbols {
         }
 
         if let Some(id) = scx.sess().derive_registrar_fn.get() {
-            let svh = &scx.link_meta().crate_hash;
             let def_id = scx.tcx().hir.local_def_id(id);
             let idx = def_id.index;
-            let registrar = scx.sess().generate_derive_registrar_symbol(svh, idx);
+            let disambiguator = scx.sess().local_crate_disambiguator();
+            let registrar = scx.sess().generate_derive_registrar_symbol(disambiguator, idx);
             local_crate.push((registrar, SymbolExportLevel::C));
         }
 

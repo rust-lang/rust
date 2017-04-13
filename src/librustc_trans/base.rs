@@ -39,6 +39,7 @@ use middle::lang_items::StartFnLangItem;
 use middle::cstore::EncodedMetadata;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::dep_graph::{AssertDepGraphSafe, DepNode};
+use rustc::middle::cstore::LinkMeta;
 use rustc::hir::map as hir_map;
 use rustc::util::common::time;
 use session::config::{self, NoDebugInfo};
@@ -725,6 +726,7 @@ fn contains_null(s: &str) -> bool {
 }
 
 fn write_metadata(cx: &SharedCrateContext,
+                  link_meta: &LinkMeta,
                   exported_symbols: &NodeSet)
                   -> (ContextRef, ModuleRef, EncodedMetadata) {
     use flate;
@@ -762,7 +764,7 @@ fn write_metadata(cx: &SharedCrateContext,
 
     let cstore = &cx.tcx().sess.cstore;
     let metadata = cstore.encode_metadata(cx.tcx(),
-                                          cx.link_meta(),
+                                          &link_meta,
                                           exported_symbols);
     if kind == MetadataKind::Uncompressed {
         return (metadata_llcx, metadata_llmod, metadata);
@@ -1071,13 +1073,12 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let link_meta = link::build_link_meta(incremental_hashes_map);
 
     let shared_ccx = SharedCrateContext::new(tcx,
-                                             link_meta.clone(),
                                              exported_symbols,
                                              check_overflow);
     // Translate the metadata.
     let (metadata_llcx, metadata_llmod, metadata) =
         time(tcx.sess.time_passes(), "write metadata", || {
-            write_metadata(&shared_ccx, shared_ccx.exported_symbols())
+            write_metadata(&shared_ccx, &link_meta, shared_ccx.exported_symbols())
         });
 
     let metadata_module = ModuleTranslation {

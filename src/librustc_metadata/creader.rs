@@ -600,7 +600,7 @@ impl<'a> CrateLoader<'a> {
             Err(err) => self.sess.span_fatal(span, &err),
         };
 
-        let sym = self.sess.generate_derive_registrar_symbol(&root.hash,
+        let sym = self.sess.generate_derive_registrar_symbol(root.disambiguator,
                                                              root.macro_derive_registrar.unwrap());
         let registrar = unsafe {
             let sym = match lib.symbol(&sym) {
@@ -654,7 +654,7 @@ impl<'a> CrateLoader<'a> {
     /// Look for a plugin registrar. Returns library path, crate
     /// SVH and DefIndex of the registrar function.
     pub fn find_plugin_registrar(&mut self, span: Span, name: &str)
-                                 -> Option<(PathBuf, Svh, DefIndex)> {
+                                 -> Option<(PathBuf, Symbol, DefIndex)> {
         let ekrate = self.read_extension_crate(span, &ExternCrateInfo {
              name: Symbol::intern(name),
              ident: Symbol::intern(name),
@@ -675,7 +675,7 @@ impl<'a> CrateLoader<'a> {
         let root = ekrate.metadata.get_root();
         match (ekrate.dylib.as_ref(), root.plugin_registrar_fn) {
             (Some(dylib), Some(reg)) => {
-                Some((dylib.to_path_buf(), root.hash, reg))
+                Some((dylib.to_path_buf(), root.disambiguator, reg))
             }
             (None, Some(_)) => {
                 span_err!(self.sess, span, E0457,
