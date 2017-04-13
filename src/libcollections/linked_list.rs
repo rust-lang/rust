@@ -636,11 +636,11 @@ impl<T> LinkedList<T> {
     /// Splits the list into two at the given index. Returns everything after the given index,
     /// including the index.
     ///
+    /// This operation should compute in O(n) time.
+    ///
     /// # Panics
     ///
     /// Panics if `at > len`.
-    ///
-    /// This operation should compute in O(n) time.
     ///
     /// # Examples
     ///
