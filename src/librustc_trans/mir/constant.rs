@@ -9,8 +9,7 @@
 // except according to those terms.
 
 use llvm::{self, ValueRef};
-use rustc::middle::const_val::ConstVal;
-use rustc_const_eval::{ErrKind, ConstEvalErr, report_const_eval_err};
+use rustc::middle::const_val::{ConstEvalErr, ConstVal, ErrKind};
 use rustc_const_math::ConstInt::*;
 use rustc_const_math::ConstFloat::*;
 use rustc_const_math::{ConstInt, ConstMathErr};
@@ -327,8 +326,8 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                             }
                         };
 
-                        let err = ConstEvalErr{ span: span, kind: err };
-                        report_const_eval_err(tcx, &err, span, "expression");
+                        let err = ConstEvalErr { span: span, kind: err };
+                        err.report(tcx, span, "expression");
                         failure = Err(err);
                     }
                     target

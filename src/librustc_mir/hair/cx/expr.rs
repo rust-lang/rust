@@ -17,7 +17,7 @@ use hair::cx::to_ref::ToRef;
 use rustc::hir::map;
 use rustc::hir::def::{Def, CtorKind};
 use rustc::middle::const_val::ConstVal;
-use rustc_const_eval::{ConstContext, fatal_const_eval_err};
+use rustc_const_eval::ConstContext;
 use rustc::ty::{self, AdtKind, VariantDef, Ty};
 use rustc::ty::cast::CastKind as TyCastKind;
 use rustc::hir;
@@ -597,7 +597,7 @@ fn make_mirror_unadjusted<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             let count = match ConstContext::new(tcx, count).eval(c) {
                 Ok(ConstVal::Integral(ConstInt::Usize(u))) => u,
                 Ok(other) => bug!("constant evaluation of repeat count yielded {:?}", other),
-                Err(s) => fatal_const_eval_err(tcx, &s, c.span, "expression")
+                Err(s) => cx.fatal_const_eval_err(&s, c.span, "expression")
             };
 
             ExprKind::Repeat {
