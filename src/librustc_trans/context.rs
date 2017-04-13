@@ -11,7 +11,6 @@
 use llvm;
 use llvm::{ContextRef, ModuleRef, ValueRef};
 use rustc::dep_graph::{DepGraph, DepGraphSafe, DepNode, DepTrackingMap, DepTrackingMapConfig};
-use middle::cstore::LinkMeta;
 use rustc::hir;
 use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::traits;
@@ -65,7 +64,6 @@ pub struct Stats {
 /// (aside from metadata-related ones).
 pub struct SharedCrateContext<'a, 'tcx: 'a> {
     exported_symbols: NodeSet,
-    link_meta: LinkMeta,
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     empty_param_env: ty::ParameterEnvironment<'tcx>,
     stats: Stats,
@@ -316,7 +314,6 @@ pub unsafe fn create_context_and_module(sess: &Session, mod_name: &str) -> (Cont
 
 impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
     pub fn new(tcx: TyCtxt<'b, 'tcx, 'tcx>,
-               link_meta: LinkMeta,
                exported_symbols: NodeSet,
                check_overflow: bool)
                -> SharedCrateContext<'b, 'tcx> {
@@ -367,7 +364,6 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
 
         SharedCrateContext {
             exported_symbols: exported_symbols,
-            link_meta: link_meta,
             empty_param_env: tcx.empty_parameter_environment(),
             tcx: tcx,
             stats: Stats {
@@ -409,10 +405,6 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
         &self.project_cache
     }
 
-    pub fn link_meta<'a>(&'a self) -> &'a LinkMeta {
-        &self.link_meta
-    }
-
     pub fn tcx<'a>(&'a self) -> TyCtxt<'a, 'tcx, 'tcx> {
         self.tcx
     }
@@ -440,7 +432,7 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
     pub fn metadata_symbol_name(&self) -> String {
         format!("rust_metadata_{}_{}",
                 self.tcx().crate_name(LOCAL_CRATE),
-                self.link_meta().crate_hash)
+                self.tcx().crate_disambiguator(LOCAL_CRATE))
     }
 }
 
