@@ -1672,7 +1672,7 @@ impl<T, I> SpecExtend<T, I> for Vec<T>
         vector
     }
 
-    fn spec_extend(&mut self, iterator: I) {
+    default fn spec_extend(&mut self, iterator: I) {
         // This is the case for a TrustedLen iterator.
         let (low, high) = iterator.size_hint();
         if let Some(high_value) = high {
@@ -1716,6 +1716,14 @@ impl<T> SpecExtend<T, IntoIter<T>> for Vec<T> {
             vector.spec_extend(iterator);
             vector
         }
+    }
+}
+
+impl<T> SpecExtend<T, IntoIter<T>> for Vec<T>
+    where T: Copy,
+{
+    fn spec_extend(&mut self, iterator: IntoIter<T>) {
+        self.spec_extend(iterator.as_slice());
     }
 }
 

@@ -124,3 +124,11 @@ pub fn trans_inline_asm<'a, 'tcx>(
             llvm::LLVMMDNodeInContext(bcx.ccx.llcx(), &val, 1));
     }
 }
+
+pub fn trans_global_asm<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                                  ga: &hir::GlobalAsm) {
+    let asm = CString::new(ga.asm.as_str().as_bytes()).unwrap();
+    unsafe {
+        llvm::LLVMRustAppendModuleInlineAsm(ccx.llmod(), asm.as_ptr());
+    }
+}

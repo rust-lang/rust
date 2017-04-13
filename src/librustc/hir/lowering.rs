@@ -646,6 +646,13 @@ impl<'a> LoweringContext<'a> {
         }
     }
 
+    fn lower_global_asm(&mut self, ga: &GlobalAsm) -> P<hir::GlobalAsm> {
+        P(hir::GlobalAsm {
+            asm: ga.asm,
+            ctxt: ga.ctxt,
+        })
+    }
+
     fn lower_variant(&mut self, v: &Variant) -> hir::Variant {
         Spanned {
             node: hir::Variant_ {
@@ -1288,6 +1295,7 @@ impl<'a> LoweringContext<'a> {
             }
             ItemKind::Mod(ref m) => hir::ItemMod(self.lower_mod(m)),
             ItemKind::ForeignMod(ref nm) => hir::ItemForeignMod(self.lower_foreign_mod(nm)),
+            ItemKind::GlobalAsm(ref ga) => hir::ItemGlobalAsm(self.lower_global_asm(ga)),
             ItemKind::Ty(ref t, ref generics) => {
                 hir::ItemTy(self.lower_ty(t), self.lower_generics(generics))
             }

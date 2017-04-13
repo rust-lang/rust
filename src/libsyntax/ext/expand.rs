@@ -1039,6 +1039,7 @@ impl<'feat> ExpansionConfig<'feat> {
     feature_tests! {
         fn enable_quotes = quote,
         fn enable_asm = asm,
+        fn enable_global_asm = global_asm,
         fn enable_log_syntax = log_syntax,
         fn enable_concat_idents = concat_idents,
         fn enable_trace_macros = trace_macros,
