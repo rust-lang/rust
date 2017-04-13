@@ -13,7 +13,7 @@ use llvm::{ContextRef, ModuleRef, ValueRef};
 use rustc::dep_graph::{DepGraph, DepGraphSafe, DepNode, DepTrackingMap, DepTrackingMapConfig};
 use middle::cstore::LinkMeta;
 use rustc::hir;
-use rustc::hir::def_id::DefId;
+use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::traits;
 use debuginfo;
 use callee;
@@ -439,7 +439,7 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
 
     pub fn metadata_symbol_name(&self) -> String {
         format!("rust_metadata_{}_{}",
-                self.link_meta().crate_name,
+                self.tcx().crate_name(LOCAL_CRATE),
                 self.link_meta().crate_hash)
     }
 }

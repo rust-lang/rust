@@ -1140,7 +1140,7 @@ pub fn phase_6_link_output(sess: &Session,
                            outputs: &OutputFilenames) {
     time(sess.time_passes(),
          "linking",
-         || link::link_binary(sess, trans, outputs, &trans.link.crate_name.as_str()));
+         || link::link_binary(sess, trans, outputs, &trans.crate_name.as_str()));
 }
 
 fn escape_dep_filename(filename: &str) -> String {

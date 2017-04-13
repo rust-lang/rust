@@ -1063,12 +1063,12 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // particular items that will be processed.
     let krate = tcx.hir.krate();
 
-    let ty::CrateAnalysis { reachable, name, .. } = analysis;
+    let ty::CrateAnalysis { reachable, .. } = analysis;
     let exported_symbols = find_exported_symbols(tcx, reachable);
 
     let check_overflow = tcx.sess.overflow_checks();
 
-    let link_meta = link::build_link_meta(incremental_hashes_map, &name);
+    let link_meta = link::build_link_meta(incremental_hashes_map);
 
     let shared_ccx = SharedCrateContext::new(tcx,
                                              link_meta.clone(),
@@ -1096,6 +1096,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let empty_exported_symbols = ExportedSymbols::empty();
         let linker_info = LinkerInfo::new(&shared_ccx, &empty_exported_symbols);
         return CrateTranslation {
+            crate_name: tcx.crate_name(LOCAL_CRATE),
             modules: vec![],
             metadata_module: metadata_module,
             link: link_meta,
@@ -1307,6 +1308,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     });
 
     CrateTranslation {
+        crate_name: tcx.crate_name(LOCAL_CRATE),
         modules: modules,
         metadata_module: metadata_module,
         link: link_meta,

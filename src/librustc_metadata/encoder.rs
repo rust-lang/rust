@@ -14,7 +14,7 @@ use schema::*;
 
 use rustc::middle::cstore::{LinkMeta, LinkagePreference, NativeLibrary,
                             EncodedMetadata, EncodedMetadataHash};
-use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefIndex, DefId};
+use rustc::hir::def_id::{CrateNum, CRATE_DEF_INDEX, DefIndex, DefId, LOCAL_CRATE};
 use rustc::hir::map::definitions::DefPathTable;
 use rustc::middle::dependency_format::Linkage;
 use rustc::middle::lang_items;
@@ -1380,7 +1380,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let link_meta = self.link_meta;
         let is_proc_macro = tcx.sess.crate_types.borrow().contains(&CrateTypeProcMacro);
         let root = self.lazy(&CrateRoot {
-            name: link_meta.crate_name,
+            name: tcx.crate_name(LOCAL_CRATE),
             triple: tcx.sess.opts.target_triple.clone(),
             hash: link_meta.crate_hash,
             disambiguator: tcx.sess.local_crate_disambiguator(),
