@@ -32,7 +32,7 @@ use assert_module_sources;
 use back::link;
 use back::linker::LinkerInfo;
 use back::symbol_export::{self, ExportedSymbols};
-use llvm::{Linkage, ValueRef, Vector, get_param};
+use llvm::{ContextRef, Linkage, ModuleRef, ValueRef, Vector, get_param};
 use llvm;
 use rustc::hir::def_id::LOCAL_CRATE;
 use middle::lang_items::StartFnLangItem;
@@ -56,7 +56,7 @@ use common::CrateContext;
 use common::{type_is_zero_size, val_ty};
 use common;
 use consts;
-use context::{SharedCrateContext, CrateContextList};
+use context::{self, SharedCrateContext, CrateContextList};
 use debuginfo;
 use declare;
 use machine;
@@ -726,8 +726,12 @@ fn contains_null(s: &str) -> bool {
 
 fn write_metadata(cx: &SharedCrateContext,
                   exported_symbols: &NodeSet)
-                  -> EncodedMetadata {
+                  -> (ContextRef, ModuleRef, EncodedMetadata) {
     use flate;
+
+    let (metadata_llcx, metadata_llmod) = unsafe {
+        context::create_context_and_module(cx.sess(), "metadata")
+    };
 
     #[derive(PartialEq, Eq, PartialOrd, Ord)]
     enum MetadataKind {
@@ -750,10 +754,10 @@ fn write_metadata(cx: &SharedCrateContext,
     }).max().unwrap();
 
     if kind == MetadataKind::None {
-        return EncodedMetadata {
+        return (metadata_llcx, metadata_llmod, EncodedMetadata {
             raw_data: vec![],
             hashes: vec![],
-        };
+        });
     }
 
     let cstore = &cx.tcx().sess.cstore;
@@ -761,19 +765,19 @@ fn write_metadata(cx: &SharedCrateContext,
                                           cx.link_meta(),
                                           exported_symbols);
     if kind == MetadataKind::Uncompressed {
-        return metadata;
+        return (metadata_llcx, metadata_llmod, metadata);
     }
 
     assert!(kind == MetadataKind::Compressed);
     let mut compressed = cstore.metadata_encoding_version().to_vec();
     compressed.extend_from_slice(&flate::deflate_bytes(&metadata.raw_data));
 
-    let llmeta = C_bytes_in_context(cx.metadata_llcx(), &compressed);
-    let llconst = C_struct_in_context(cx.metadata_llcx(), &[llmeta], false);
+    let llmeta = C_bytes_in_context(metadata_llcx, &compressed);
+    let llconst = C_struct_in_context(metadata_llcx, &[llmeta], false);
     let name = cx.metadata_symbol_name();
     let buf = CString::new(name).unwrap();
     let llglobal = unsafe {
-        llvm::LLVMAddGlobal(cx.metadata_llmod(), val_ty(llconst).to_ref(), buf.as_ptr())
+        llvm::LLVMAddGlobal(metadata_llmod, val_ty(llconst).to_ref(), buf.as_ptr())
     };
     unsafe {
         llvm::LLVMSetInitializer(llglobal, llconst);
@@ -787,9 +791,9 @@ fn write_metadata(cx: &SharedCrateContext,
         // metadata doesn't get loaded into memory.
         let directive = format!(".section {}", section_name);
         let directive = CString::new(directive).unwrap();
-        llvm::LLVMSetModuleInlineAsm(cx.metadata_llmod(), directive.as_ptr())
+        llvm::LLVMSetModuleInlineAsm(metadata_llmod, directive.as_ptr())
     }
-    return metadata;
+    return (metadata_llcx, metadata_llmod, metadata);
 }
 
 /// Find any symbols that are defined in one compilation unit, but not declared
@@ -1070,16 +1074,17 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                              exported_symbols,
                                              check_overflow);
     // Translate the metadata.
-    let metadata = time(tcx.sess.time_passes(), "write metadata", || {
-        write_metadata(&shared_ccx, shared_ccx.exported_symbols())
-    });
+    let (metadata_llcx, metadata_llmod, metadata) =
+        time(tcx.sess.time_passes(), "write metadata", || {
+            write_metadata(&shared_ccx, shared_ccx.exported_symbols())
+        });
 
     let metadata_module = ModuleTranslation {
         name: link::METADATA_MODULE_NAME.to_string(),
         symbol_name_hash: 0, // we always rebuild metadata, at least for now
         source: ModuleSource::Translated(ModuleLlvm {
-            llcx: shared_ccx.metadata_llcx(),
-            llmod: shared_ccx.metadata_llmod(),
+            llcx: metadata_llcx,
+            llmod: metadata_llmod,
         }),
     };
     let no_builtins = attr::contains_name(&krate.attrs, "no_builtins");
