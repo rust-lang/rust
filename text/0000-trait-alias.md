@@ -189,6 +189,28 @@ fn bar4(x: Box<IntIterator + Sink + 'static>) { ... } // ok (*)
 The lines marked with `(*)` assume that [#24010](https://github.com/rust-lang/rust/issues/24010) is
 fixed.
 
+### Ambiguous constraints
+
+If there are multiple associated types with the same name in a trait alias,
+then it is a static error ("ambiguous associated type") to attempt to
+constrain that associated type via the trait alias. For example:
+
+```rust
+trait Foo { type Assoc; }
+trait Bar { type Assoc; } // same name!
+
+// This works:
+trait FooBar1 = Foo<Assoc = String> + Bar<Assoc = i32>;
+
+// This does not work:
+trait FooBar2 = Foo + Bar;
+fn badness<T: FooBar2<Assoc = String>>() { } // ERROR: ambiguous associated type
+
+// Here are ways to workaround the above error:
+fn better1<T: FooBar2 + Foo<Assoc = String>>() { } // (leaves Bar::Assoc unconstrained)
+fn better2<T: FooBar2 + Foo<Assoc = String> + Bar<Assoc = i32>>() { } // constrains both
+```
+
 # Teaching
 [teaching]: #teaching
 
