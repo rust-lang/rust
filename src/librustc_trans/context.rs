@@ -45,6 +45,7 @@ use syntax::symbol::InternedString;
 use syntax_pos::DUMMY_SP;
 use abi::Abi;
 
+#[derive(Clone, Default)]
 pub struct Stats {
     pub n_glues_created: Cell<usize>,
     pub n_null_glues: Cell<usize>,
@@ -58,6 +59,22 @@ pub struct Stats {
     pub fn_stats: RefCell<Vec<(String, usize)> >,
 }
 
+impl Stats {
+    pub fn extend(&mut self, stats: Stats) {
+        self.n_glues_created.set(self.n_glues_created.get() + stats.n_glues_created.get());
+        self.n_null_glues.set(self.n_null_glues.get() + stats.n_null_glues.get());
+        self.n_real_glues.set(self.n_real_glues.get() + stats.n_real_glues.get());
+        self.n_fns.set(self.n_fns.get() + stats.n_fns.get());
+        self.n_inlines.set(self.n_inlines.get() + stats.n_inlines.get());
+        self.n_closures.set(self.n_closures.get() + stats.n_closures.get());
+        self.n_llvm_insns.set(self.n_llvm_insns.get() + stats.n_llvm_insns.get());
+        self.llvm_insns.borrow_mut().extend(
+            stats.llvm_insns.borrow().iter()
+                                     .map(|(key, value)| (key.clone(), value.clone())));
+        self.fn_stats.borrow_mut().append(&mut *stats.fn_stats.borrow_mut());
+    }
+}
+
 /// The shared portion of a `CrateContext`.  There is one `SharedCrateContext`
 /// per crate.  The data here is shared between all compilation units of the
 /// crate, so it must not contain references to any LLVM data structures
@@ -66,7 +83,6 @@ pub struct SharedCrateContext<'a, 'tcx: 'a> {
     exported_symbols: NodeSet,
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
     empty_param_env: ty::ParameterEnvironment<'tcx>,
-    stats: Stats,
     check_overflow: bool,
 
     use_dll_storage_attrs: bool,
@@ -83,6 +99,7 @@ pub struct SharedCrateContext<'a, 'tcx: 'a> {
 pub struct LocalCrateContext<'tcx> {
     llmod: ModuleRef,
     llcx: ContextRef,
+    stats: Stats,
     codegen_unit: CodegenUnit<'tcx>,
     needs_unwind_cleanup_cache: RefCell<FxHashMap<Ty<'tcx>, bool>>,
     /// Cache instances of monomorphic and polymorphic items
@@ -366,17 +383,6 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
             exported_symbols: exported_symbols,
             empty_param_env: tcx.empty_parameter_environment(),
             tcx: tcx,
-            stats: Stats {
-                n_glues_created: Cell::new(0),
-                n_null_glues: Cell::new(0),
-                n_real_glues: Cell::new(0),
-                n_fns: Cell::new(0),
-                n_inlines: Cell::new(0),
-                n_closures: Cell::new(0),
-                n_llvm_insns: Cell::new(0),
-                llvm_insns: RefCell::new(FxHashMap()),
-                fn_stats: RefCell::new(Vec::new()),
-            },
             check_overflow: check_overflow,
             use_dll_storage_attrs: use_dll_storage_attrs,
             translation_items: RefCell::new(FxHashSet()),
@@ -415,10 +421,6 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
 
     pub fn dep_graph<'a>(&'a self) -> &'a DepGraph {
         &self.tcx.dep_graph
-    }
-
-    pub fn stats<'a>(&'a self) -> &'a Stats {
-        &self.stats
     }
 
     pub fn use_dll_storage_attrs(&self) -> bool {
@@ -466,6 +468,7 @@ impl<'tcx> LocalCrateContext<'tcx> {
             let local_ccx = LocalCrateContext {
                 llmod: llmod,
                 llcx: llcx,
+                stats: Stats::default(),
                 codegen_unit: codegen_unit,
                 needs_unwind_cleanup_cache: RefCell::new(FxHashMap()),
                 instances: RefCell::new(FxHashMap()),
@@ -536,6 +539,10 @@ impl<'tcx> LocalCrateContext<'tcx> {
             shared: shared,
             local_ccx: &local_ccxs[0]
         }
+    }
+
+    pub fn into_stats(self) -> Stats {
+        self.stats
     }
 }
 
@@ -651,7 +658,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
     }
 
     pub fn stats<'a>(&'a self) -> &'a Stats {
-        &self.shared.stats
+        &self.local().stats
     }
 
     pub fn int_type(&self) -> Type {
