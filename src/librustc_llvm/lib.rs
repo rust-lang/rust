@@ -29,6 +29,7 @@
 #![feature(link_args)]
 #![feature(staged_api)]
 #![feature(rustc_private)]
+#![feature(static_nobundle)]
 
 extern crate libc;
 #[macro_use]
