@@ -1140,8 +1140,6 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         })
         .collect();
 
-    assert_module_sources::assert_module_sources(tcx, &modules);
-
     for ccx in crate_context_list.iter_need_trans() {
         let dep_node = ccx.codegen_unit().work_product_dep_node();
         tcx.dep_graph.with_task(dep_node,
@@ -1204,6 +1202,8 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             }
         }
     }
+
+    assert_module_sources::assert_module_sources(tcx, &modules);
 
     symbol_names_test::report_symbol_names(&shared_ccx);
 
