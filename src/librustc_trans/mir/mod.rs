@@ -11,17 +11,16 @@
 use libc::c_uint;
 use llvm::{self, ValueRef, BasicBlockRef};
 use llvm::debuginfo::DIScope;
-use rustc::ty;
+use rustc::ty::{self, Ty, TypeFoldable};
 use rustc::ty::layout::{self, LayoutTyper};
 use rustc::mir::{self, Mir};
 use rustc::mir::tcx::LvalueTy;
 use rustc::ty::subst::Substs;
 use rustc::infer::TransNormalize;
-use rustc::ty::TypeFoldable;
 use session::config::FullDebugInfo;
 use base;
 use builder::Builder;
-use common::{self, CrateContext, C_null, Funclet};
+use common::{self, CrateContext, Funclet};
 use debuginfo::{self, declare_local, VariableAccess, VariableKind, FunctionDebugContext};
 use monomorphize::{self, Instance};
 use abi::FnType;
@@ -171,23 +170,12 @@ enum LocalRef<'tcx> {
 
 impl<'tcx> LocalRef<'tcx> {
     fn new_operand<'a>(ccx: &CrateContext<'a, 'tcx>,
-                         ty: ty::Ty<'tcx>) -> LocalRef<'tcx> {
+                       ty: Ty<'tcx>) -> LocalRef<'tcx> {
         if common::type_is_zero_size(ccx, ty) {
             // Zero-size temporaries aren't always initialized, which
             // doesn't matter because they don't contain data, but
             // we need something in the operand.
-            let llty = type_of::type_of(ccx, ty);
-            let val = if common::type_is_imm_pair(ccx, ty) {
-                let fields = llty.field_types();
-                OperandValue::Pair(C_null(fields[0]), C_null(fields[1]))
-            } else {
-                OperandValue::Immediate(C_null(llty))
-            };
-            let op = OperandRef {
-                val: val,
-                ty: ty
-            };
-            LocalRef::Operand(Some(op))
+            LocalRef::Operand(Some(OperandRef::new_zst(ccx, ty)))
         } else {
             LocalRef::Operand(None)
         }
@@ -207,15 +195,17 @@ pub fn trans_mir<'a, 'tcx: 'a>(
     debug!("fn_ty: {:?}", fn_ty);
     let debug_context =
         debuginfo::create_function_debug_context(ccx, instance, sig, llfn, mir);
-    let bcx = Builder::new_block(ccx, llfn, "entry-block");
+    let bcx = Builder::new_block(ccx, llfn, "start");
 
     let cleanup_kinds = analyze::cleanup_kinds(&mir);
 
-    // Allocate a `Block` for every basic block
+    // Allocate a `Block` for every basic block, except
+    // the start block, if nothing loops back to it.
+    let reentrant_start_block = !mir.predecessors_for(mir::START_BLOCK).is_empty();
     let block_bcxs: IndexVec<mir::BasicBlock, BasicBlockRef> =
         mir.basic_blocks().indices().map(|bb| {
-            if bb == mir::START_BLOCK {
-                bcx.build_sibling_block("start").llbb()
+            if bb == mir::START_BLOCK && !reentrant_start_block {
+                bcx.llbb()
             } else {
                 bcx.build_sibling_block(&format!("{:?}", bb)).llbb()
             }
@@ -301,9 +291,10 @@ pub fn trans_mir<'a, 'tcx: 'a>(
             .collect()
     };
 
-    // Branch to the START block
-    let start_bcx = mircx.blocks[mir::START_BLOCK];
-    bcx.br(start_bcx);
+    // Branch to the START block, if it's not the entry block.
+    if reentrant_start_block {
+        bcx.br(mircx.blocks[mir::START_BLOCK]);
+    }
 
     // Up until here, IR instructions for this function have explicitly not been annotated with
     // source code location, so we don't step into call setup code. From here on, source location
