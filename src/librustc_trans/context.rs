@@ -244,21 +244,6 @@ impl<'a, 'tcx: 'a> CrateContextList<'a, 'tcx> {
             filter_to_previous_work_product_unavail: false,
         }
     }
-
-    /// Iterator over all CCX that need translation (cannot reuse results from
-    /// previous incr. comp.).
-    pub fn iter_need_trans<'b>(&'b self) -> CrateContextIterator<'b, 'tcx> {
-        CrateContextIterator {
-            shared: self.shared,
-            index: 0,
-            local_ccxs: &self.local_ccxs[..],
-            filter_to_previous_work_product_unavail: true,
-        }
-    }
-
-    pub fn shared(&self) -> &'a SharedCrateContext<'a, 'tcx> {
-        self.shared
-    }
 }
 
 /// A CrateContext value binds together one LocalCrateContext with the
