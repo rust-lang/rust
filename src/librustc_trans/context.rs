@@ -65,9 +65,6 @@ pub struct Stats {
 /// crate, so it must not contain references to any LLVM data structures
 /// (aside from metadata-related ones).
 pub struct SharedCrateContext<'a, 'tcx: 'a> {
-    metadata_llmod: ModuleRef,
-    metadata_llcx: ContextRef,
-
     exported_symbols: NodeSet,
     link_meta: LinkMeta,
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -347,7 +344,7 @@ pub fn is_pie_binary(sess: &Session) -> bool {
     !is_any_library(sess) && get_reloc_model(sess) == llvm::RelocMode::PIC
 }
 
-unsafe fn create_context_and_module(sess: &Session, mod_name: &str) -> (ContextRef, ModuleRef) {
+pub unsafe fn create_context_and_module(sess: &Session, mod_name: &str) -> (ContextRef, ModuleRef) {
     let llcx = llvm::LLVMContextCreate();
     let mod_name = CString::new(mod_name).unwrap();
     let llmod = llvm::LLVMModuleCreateWithNameInContext(mod_name.as_ptr(), llcx);
@@ -409,10 +406,6 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
                exported_symbols: NodeSet,
                check_overflow: bool)
                -> SharedCrateContext<'b, 'tcx> {
-        let (metadata_llcx, metadata_llmod) = unsafe {
-            create_context_and_module(&tcx.sess, "metadata")
-        };
-
         // An interesting part of Windows which MSVC forces our hand on (and
         // apparently MinGW didn't) is the usage of `dllimport` and `dllexport`
         // attributes in LLVM IR as well as native dependencies (in C these
@@ -459,8 +452,6 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
         let use_dll_storage_attrs = tcx.sess.target.target.options.is_like_msvc;
 
         SharedCrateContext {
-            metadata_llmod: metadata_llmod,
-            metadata_llcx: metadata_llcx,
             exported_symbols: exported_symbols,
             link_meta: link_meta,
             empty_param_env: tcx.empty_parameter_environment(),
@@ -490,14 +481,6 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
 
     pub fn type_is_sized(&self, ty: Ty<'tcx>) -> bool {
         ty.is_sized(self.tcx, &self.empty_param_env, DUMMY_SP)
-    }
-
-    pub fn metadata_llmod(&self) -> ModuleRef {
-        self.metadata_llmod
-    }
-
-    pub fn metadata_llcx(&self) -> ContextRef {
-        self.metadata_llcx
     }
 
     pub fn exported_symbols<'a>(&'a self) -> &'a NodeSet {
