@@ -1322,6 +1322,9 @@ impl ToOwned for Path {
     fn to_owned(&self) -> PathBuf {
         self.to_path_buf()
     }
+    fn clone_into(&self, target: &mut PathBuf) {
+        self.inner.clone_into(&mut target.inner);
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -3721,5 +3724,14 @@ mod tests {
         assert_eq!(path, &*boxed);
         assert_eq!(&*boxed, &*path_buf);
         assert_eq!(&*path_buf, path);
+    }
+
+    #[test]
+    fn test_clone_into() {
+        let mut path_buf = PathBuf::from("supercalifragilisticexpialidocious");
+        let path = Path::new("short");
+        path.clone_into(&mut path_buf);
+        assert_eq!(path, path_buf);
+        assert!(path_buf.into_os_string().capacity() >= 15);
     }
 }

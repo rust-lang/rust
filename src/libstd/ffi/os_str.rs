@@ -677,7 +677,13 @@ impl Borrow<OsStr> for OsString {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl ToOwned for OsStr {
     type Owned = OsString;
-    fn to_owned(&self) -> OsString { self.to_os_string() }
+    fn to_owned(&self) -> OsString {
+        self.to_os_string()
+    }
+    fn clone_into(&self, target: &mut OsString) {
+        target.clear();
+        target.push(self);
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -862,5 +868,15 @@ mod tests {
     fn boxed_default() {
         let boxed = <Box<OsStr>>::default();
         assert!(boxed.is_empty());
+    }
+
+    #[test]
+    fn test_os_str_clone_into() {
+        let mut os_string = OsString::with_capacity(123);
+        os_string.push("hello");
+        let os_str = OsStr::new("bonjour");
+        os_str.clone_into(&mut os_string);
+        assert_eq!(os_str, os_string);
+        assert!(os_string.capacity() >= 123);
     }
 }
