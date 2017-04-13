@@ -712,13 +712,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         self.commit_if_ok(|_| {
             let ok = coerce.coerce(&[expr], source, target)?;
             let adjustment = self.register_infer_ok_obligations(ok);
-            if !adjustment.is_identity() {
-                debug!("Success, coerced with {:?}", adjustment);
-                if self.tables.borrow().adjustments.get(&expr.id).is_some() {
-                    bug!("expr already has an adjustment on it!");
-                }
-                self.write_adjustment(expr.id, adjustment);
-            }
+            self.apply_adjustment(expr.id, adjustment);
 
             // We should now have added sufficient adjustments etc to
             // ensure that the type of expression, post-adjustment, is
@@ -780,9 +774,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // Reify both sides and return the reified fn pointer type.
                 let fn_ptr = self.tcx.mk_fn_ptr(fty);
                 for expr in exprs.iter().map(|e| e.as_coercion_site()).chain(Some(new)) {
-                    // No adjustments can produce a fn item, so this should never trip.
-                    assert!(!self.tables.borrow().adjustments.contains_key(&expr.id));
-                    self.write_adjustment(expr.id, Adjustment {
+                    // The only adjustment that can produce an fn item is
+                    // `NeverToAny`, so this should always be valid.
+                    self.apply_adjustment(expr.id, Adjustment {
                         kind: Adjust::ReifyFnPointer,
                         target: fn_ptr
                     });
@@ -803,9 +797,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             match result {
                 Ok(ok) => {
                     let adjustment = self.register_infer_ok_obligations(ok);
-                    if !adjustment.is_identity() {
-                        self.write_adjustment(new.id, adjustment);
-                    }
+                    self.apply_adjustment(new.id, adjustment);
                     return Ok(adjustment.target);
                 }
                 Err(e) => first_error = Some(e),
@@ -825,7 +817,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }) => {
                     match self.node_ty(expr.id).sty {
                         ty::TyRef(_, mt_orig) => {
-                            // Reborrow that we can safely ignore.
+                            // Reborrow that we can safely ignore, because
+                            // the next adjustment can only be a DerefRef
+                            // which will be merged into it.
                             mutbl_adj == mt_orig.mutbl
                         }
                         _ => false,
@@ -858,19 +852,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             }
             Ok(ok) => {
                 let adjustment = self.register_infer_ok_obligations(ok);
-                if !adjustment.is_identity() {
-                    let mut tables = self.tables.borrow_mut();
-                    for expr in exprs {
-                        let expr = expr.as_coercion_site();
-                        if let Some(&mut Adjustment {
-                            kind: Adjust::NeverToAny,
-                            ref mut target
-                        }) = tables.adjustments.get_mut(&expr.id) {
-                            *target = adjustment.target;
-                            continue;
-                        }
-                        tables.adjustments.insert(expr.id, adjustment);
-                    }
+                for expr in exprs {
+                    let expr = expr.as_coercion_site();
+                    self.apply_adjustment(expr.id, adjustment);
                 }
                 Ok(adjustment.target)
             }
