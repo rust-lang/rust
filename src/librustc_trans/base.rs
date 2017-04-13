@@ -776,7 +776,7 @@ fn write_metadata(cx: &SharedCrateContext,
 
     let llmeta = C_bytes_in_context(metadata_llcx, &compressed);
     let llconst = C_struct_in_context(metadata_llcx, &[llmeta], false);
-    let name = cx.metadata_symbol_name();
+    let name = symbol_export::metadata_symbol_name(cx.tcx());
     let buf = CString::new(name).unwrap();
     let llglobal = unsafe {
         llvm::LLVMAddGlobal(metadata_llmod, val_ty(llconst).to_ref(), buf.as_ptr())
