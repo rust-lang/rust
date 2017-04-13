@@ -12,7 +12,7 @@ use llvm;
 use llvm::{ContextRef, ModuleRef, ValueRef};
 use rustc::dep_graph::{DepGraph, DepGraphSafe, DepNode, DepTrackingMap, DepTrackingMapConfig};
 use rustc::hir;
-use rustc::hir::def_id::{DefId, LOCAL_CRATE};
+use rustc::hir::def_id::DefId;
 use rustc::traits;
 use debuginfo;
 use callee;
@@ -429,12 +429,6 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
 
     pub fn translation_items(&self) -> &RefCell<FxHashSet<TransItem<'tcx>>> {
         &self.translation_items
-    }
-
-    pub fn metadata_symbol_name(&self) -> String {
-        format!("rust_metadata_{}_{}",
-                self.tcx().crate_name(LOCAL_CRATE),
-                self.tcx().crate_disambiguator(LOCAL_CRATE))
     }
 }
 
