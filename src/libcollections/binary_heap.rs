@@ -218,10 +218,14 @@ pub struct BinaryHeap<T> {
     data: Vec<T>,
 }
 
-/// A container object that represents the result of the [`peek_mut`] method
-/// on `BinaryHeap`. See its documentation for details.
+/// Object representing a mutable reference to the greatest item on a
+/// `BinaryHeap`.
+///
+/// This `struct` is created by the [`peek_mut`] method on [`BinaryHeap`]. See
+/// its documentation for more.
 ///
 /// [`peek_mut`]: struct.BinaryHeap.html#method.peek_mut
+/// [`BinaryHeap`]: struct.BinaryHeap.html
 #[stable(feature = "binary_heap_peek_mut", since = "1.12.0")]
 pub struct PeekMut<'a, T: 'a + Ord> {
     heap: &'a mut BinaryHeap<T>,
@@ -971,7 +975,13 @@ impl<'a, T> Drop for Hole<'a, T> {
     }
 }
 
-/// `BinaryHeap` iterator.
+/// An iterator over the elements of a `BinaryHeap`.
+///
+/// This `struct` is created by the [`iter`] method on [`BinaryHeap`]. See its
+/// documentation for more.
+///
+/// [`iter`]: struct.BinaryHeap.html#method.iter
+/// [`BinaryHeap`]: struct.BinaryHeap.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Iter<'a, T: 'a> {
     iter: slice::Iter<'a, T>,
@@ -1027,7 +1037,13 @@ impl<'a, T> ExactSizeIterator for Iter<'a, T> {
 #[unstable(feature = "fused", issue = "35602")]
 impl<'a, T> FusedIterator for Iter<'a, T> {}
 
-/// An iterator that moves out of a `BinaryHeap`.
+/// An owning iterator over the elements of a `BinaryHeap`.
+///
+/// This `struct` is created by the [`into_iter`] method on [`BinaryHeap`]
+/// (provided by the `IntoIterator` trait). See its documentation for more.
+///
+/// [`into_iter`]: struct.BinaryHeap.html#method.into_iter
+/// [`BinaryHeap`]: struct.BinaryHeap.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone)]
 pub struct IntoIter<T> {
@@ -1076,7 +1092,13 @@ impl<T> ExactSizeIterator for IntoIter<T> {
 #[unstable(feature = "fused", issue = "35602")]
 impl<T> FusedIterator for IntoIter<T> {}
 
-/// An iterator that drains a `BinaryHeap`.
+/// A draining iterator over the elements of a `BinaryHeap`.
+///
+/// This `struct` is created by the [`drain`] method on [`BinaryHeap`]. See its
+/// documentation for more.
+///
+/// [`drain`]: struct.BinaryHeap.html#method.drain
+/// [`BinaryHeap`]: struct.BinaryHeap.html
 #[stable(feature = "drain", since = "1.6.0")]
 #[derive(Debug)]
 pub struct Drain<'a, T: 'a> {
