@@ -1142,7 +1142,6 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     assert_module_sources::assert_module_sources(tcx, &modules);
 
-    // Instantiate translation items without filling out definitions yet...
     for ccx in crate_context_list.iter_need_trans() {
         let dep_node = ccx.codegen_unit().work_product_dep_node();
         tcx.dep_graph.with_task(dep_node,
@@ -1150,35 +1149,22 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                 AssertDepGraphSafe(symbol_map.clone()),
                                 trans_decl_task);
 
+
         fn trans_decl_task<'a, 'tcx>(ccx: CrateContext<'a, 'tcx>,
                                      symbol_map: AssertDepGraphSafe<Rc<SymbolMap<'tcx>>>) {
+            // Instantiate translation items without filling out definitions yet...
+
             // FIXME(#40304): Instead of this, the symbol-map should be an
             // on-demand thing that we compute.
             let AssertDepGraphSafe(symbol_map) = symbol_map;
             let cgu = ccx.codegen_unit();
             let trans_items = cgu.items_in_deterministic_order(ccx.tcx(), &symbol_map);
-            for (trans_item, linkage) in trans_items {
+            for &(trans_item, linkage) in &trans_items {
                 trans_item.predefine(&ccx, linkage);
             }
-        }
-    }
 
-    // ... and now that we have everything pre-defined, fill out those definitions.
-    for ccx in crate_context_list.iter_need_trans() {
-        let dep_node = ccx.codegen_unit().work_product_dep_node();
-        tcx.dep_graph.with_task(dep_node,
-                                ccx,
-                                AssertDepGraphSafe(symbol_map.clone()),
-                                trans_def_task);
-
-        fn trans_def_task<'a, 'tcx>(ccx: CrateContext<'a, 'tcx>,
-                                    symbol_map: AssertDepGraphSafe<Rc<SymbolMap<'tcx>>>) {
-            // FIXME(#40304): Instead of this, the symbol-map should be an
-            // on-demand thing that we compute.
-            let AssertDepGraphSafe(symbol_map) = symbol_map;
-            let cgu = ccx.codegen_unit();
-            let trans_items = cgu.items_in_deterministic_order(ccx.tcx(), &symbol_map);
-            for (trans_item, _) in trans_items {
+            // ... and now that we have everything pre-defined, fill out those definitions.
+            for &(trans_item, _) in &trans_items {
                 trans_item.define(&ccx);
             }
 
