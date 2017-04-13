@@ -143,7 +143,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         let target = target.adjust_for_autoref(self.tcx, autoref);
 
         // Write out the final adjustment.
-        self.write_adjustment(self.self_expr.id, Adjustment {
+        self.apply_adjustment(self.self_expr.id, Adjustment {
             kind: Adjust::DerefRef {
                 autoderefs: pick.autoderefs,
                 autoref: autoref,
@@ -433,7 +433,8 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         for (i, &expr) in exprs.iter().rev().enumerate() {
             debug!("convert_lvalue_derefs_to_mutable: i={} expr={:?}", i, expr);
 
-            // Count autoderefs.
+            // Count autoderefs. We don't need to fix up the autoref - the parent
+            // expression will fix them up for us.
             let adjustment = self.tables.borrow().adjustments.get(&expr.id).cloned();
             match adjustment {
                 Some(Adjustment { kind: Adjust::DerefRef { autoderefs, .. }, .. }) => {
@@ -464,7 +465,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
                     // expects. This is annoying and horrible. We
                     // ought to recode this routine so it doesn't
                     // (ab)use the normal type checking paths.
-                    let adj = self.tables.borrow().adjustments.get(&base_expr.id).cloned();
+                    let adj = self.tables.borrow_mut().adjustments.remove(&base_expr.id);
                     let (autoderefs, unsize, adjusted_base_ty) = match adj {
                         Some(Adjustment {
                             kind: Adjust::DerefRef { autoderefs, autoref, unsize },
@@ -537,6 +538,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
                     // a preference for mut
                     let method_call = ty::MethodCall::expr(expr.id);
                     if self.tables.borrow().method_map.contains_key(&method_call) {
+                        self.tables.borrow_mut().adjustments.remove(&base_expr.id);
                         let method = self.try_overloaded_deref(expr.span,
                                                                Some(&base_expr),
                                                                self.node_ty(base_expr.id),
