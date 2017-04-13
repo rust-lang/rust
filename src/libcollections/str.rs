@@ -199,6 +199,12 @@ impl ToOwned for str {
     fn to_owned(&self) -> String {
         unsafe { String::from_utf8_unchecked(self.as_bytes().to_owned()) }
     }
+
+    fn clone_into(&self, target: &mut String) {
+        let mut b = mem::replace(target, String::new()).into_bytes();
+        self.as_bytes().clone_into(&mut b);
+        *target = unsafe { String::from_utf8_unchecked(b) }
+    }
 }
 
 /// Methods for string slices.
