@@ -725,14 +725,14 @@ fn contains_null(s: &str) -> bool {
     s.bytes().any(|b| b == 0)
 }
 
-fn write_metadata(cx: &SharedCrateContext,
-                  link_meta: &LinkMeta,
-                  exported_symbols: &NodeSet)
-                  -> (ContextRef, ModuleRef, EncodedMetadata) {
+fn write_metadata<'a, 'gcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
+                            link_meta: &LinkMeta,
+                            exported_symbols: &NodeSet)
+                            -> (ContextRef, ModuleRef, EncodedMetadata) {
     use flate;
 
     let (metadata_llcx, metadata_llmod) = unsafe {
-        context::create_context_and_module(cx.sess(), "metadata")
+        context::create_context_and_module(tcx.sess, "metadata")
     };
 
     #[derive(PartialEq, Eq, PartialOrd, Ord)]
@@ -742,7 +742,7 @@ fn write_metadata(cx: &SharedCrateContext,
         Compressed
     }
 
-    let kind = cx.sess().crate_types.borrow().iter().map(|ty| {
+    let kind = tcx.sess.crate_types.borrow().iter().map(|ty| {
         match *ty {
             config::CrateTypeExecutable |
             config::CrateTypeStaticlib |
@@ -762,8 +762,8 @@ fn write_metadata(cx: &SharedCrateContext,
         });
     }
 
-    let cstore = &cx.tcx().sess.cstore;
-    let metadata = cstore.encode_metadata(cx.tcx(),
+    let cstore = &tcx.sess.cstore;
+    let metadata = cstore.encode_metadata(tcx,
                                           &link_meta,
                                           exported_symbols);
     if kind == MetadataKind::Uncompressed {
@@ -776,7 +776,7 @@ fn write_metadata(cx: &SharedCrateContext,
 
     let llmeta = C_bytes_in_context(metadata_llcx, &compressed);
     let llconst = C_struct_in_context(metadata_llcx, &[llmeta], false);
-    let name = symbol_export::metadata_symbol_name(cx.tcx());
+    let name = symbol_export::metadata_symbol_name(tcx);
     let buf = CString::new(name).unwrap();
     let llglobal = unsafe {
         llvm::LLVMAddGlobal(metadata_llmod, val_ty(llconst).to_ref(), buf.as_ptr())
@@ -784,7 +784,7 @@ fn write_metadata(cx: &SharedCrateContext,
     unsafe {
         llvm::LLVMSetInitializer(llglobal, llconst);
         let section_name =
-            cx.tcx().sess.cstore.metadata_section_name(&cx.sess().target.target);
+            tcx.sess.cstore.metadata_section_name(&tcx.sess.target.target);
         let name = CString::new(section_name).unwrap();
         llvm::LLVMSetSection(llglobal, name.as_ptr());
 
@@ -1078,7 +1078,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // Translate the metadata.
     let (metadata_llcx, metadata_llmod, metadata) =
         time(tcx.sess.time_passes(), "write metadata", || {
-            write_metadata(&shared_ccx, &link_meta, shared_ccx.exported_symbols())
+            write_metadata(tcx, &link_meta, shared_ccx.exported_symbols())
         });
 
     let metadata_module = ModuleTranslation {
