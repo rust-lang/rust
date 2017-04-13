@@ -266,10 +266,7 @@ impl<'a, 'tcx: 'a> CrateContextList<'a, 'tcx> {
 /// pass around (SharedCrateContext, LocalCrateContext) tuples all over trans.
 pub struct CrateContext<'a, 'tcx: 'a> {
     shared: &'a SharedCrateContext<'a, 'tcx>,
-    local_ccxs: &'a [LocalCrateContext<'tcx>],
-    /// The index of `local` in `local_ccxs`.  This is used in
-    /// `maybe_iter(true)` to identify the original `LocalCrateContext`.
-    index: usize,
+    local_ccx: &'a LocalCrateContext<'tcx>,
 }
 
 impl<'a, 'tcx> DepGraphSafe for CrateContext<'a, 'tcx> {
@@ -298,8 +295,7 @@ impl<'a, 'tcx> Iterator for CrateContextIterator<'a,'tcx> {
 
             let ccx = CrateContext {
                 shared: self.shared,
-                index: index,
-                local_ccxs: self.local_ccxs,
+                local_ccx: &self.local_ccxs[index],
             };
 
             if
@@ -630,8 +626,7 @@ impl<'tcx> LocalCrateContext<'tcx> {
         assert!(local_ccxs.len() == 1);
         CrateContext {
             shared: shared,
-            index: 0,
-            local_ccxs: local_ccxs
+            local_ccx: &local_ccxs[0]
         }
     }
 }
@@ -642,7 +637,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
     }
 
     fn local(&self) -> &'b LocalCrateContext<'tcx> {
-        &self.local_ccxs[self.index]
+        self.local_ccx
     }
 
     pub fn tcx<'a>(&'a self) -> TyCtxt<'a, 'tcx, 'tcx> {
