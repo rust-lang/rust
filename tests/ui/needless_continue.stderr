@@ -15,29 +15,27 @@ note: lint level defined here
    |        ^^^^^^^^^^^^^^^^^
    = help: Consider dropping the else clause and merging the code that follows (in the loop) with the if block, like so:
            if i % 2 == 0 && i % 3 == 0 {
-               println!("{}", i);
-               println!("{}", i+1);
-               if i % 5 == 0 {
-                   println!("{}", i+2);
-               }
-               let i = 0;
-               println!("bar {} ", i);
-           
-               // Merged code follows...
-               println!("bleh");
-               {
-                   println!("blah");
-               }
-               if !(!(i == 2) || !(i == 5)) {
-                   println!("lama");
-               }
-               if (zero!(i % 2) || nonzero!(i % 5)) && i % 3 != 0 {
-                   continue;
-               } else {
-                   println!("Blabber");
-                   println!("Jabber");
-               }
-               println!("bleh");
+           println!("{}", i);
+           println!("{}", i+1);
+           if i % 5 == 0 {
+               println!("{}", i+2);
+           }
+           let i = 0;
+           println!("bar {} ", i);
+           // Merged code follows...println!("bleh");
+           {
+               println!("blah");
+           }
+           if !(!(i == 2) || !(i == 5)) {
+               println!("lama");
+           }
+           if (zero!(i % 2) || nonzero!(i % 5)) && i % 3 != 0 {
+               continue;
+           } else {
+               println!("Blabber");
+               println!("Jabber");
+           }
+           println!("bleh");
            }
            
 

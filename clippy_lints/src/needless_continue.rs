@@ -32,8 +32,7 @@ use syntax::ast;
 use syntax::codemap::{original_sp,DUMMY_SP};
 use std::borrow::Cow;
 
-use utils::{in_macro, span_help_and_lint, snippet_block, snippet, trim_multiline,
-            left_pad_lines_with_spaces, align_snippets};
+use utils::{in_macro, span_help_and_lint, snippet_block, snippet, trim_multiline};
 
 /// **What it does:** The lint checks for `if`-statements appearing in loops
 /// that contain a `continue` statement in either their main blocks or their
@@ -312,7 +311,6 @@ fn suggestion_snippet_for_continue_inside_else<'a>(ctx: &EarlyContext,
     let block_code = &snippet(ctx, data.if_block.span, "..").into_owned();
     let block_code = erode_block(block_code);
     let block_code = trim_multiline(Cow::from(block_code), false);
-    let block_code = left_pad_lines_with_spaces(&block_code, 4_usize);
 
     if_code.push_str(&block_code);
 
@@ -329,9 +327,10 @@ fn suggestion_snippet_for_continue_inside_else<'a>(ctx: &EarlyContext,
                    .collect::<Vec<_>>().join("\n");
 
     let mut ret = String::from(header);
-    ret.push_str(&align_snippets(&[&if_code,
-                                   "\n// Merged code follows...",
-                                   &to_annex]));
+
+    ret.push_str(&if_code);
+    ret.push_str("\n// Merged code follows...");
+    ret.push_str(&to_annex);
     ret.push_str("\n}\n");
     ret
 }
