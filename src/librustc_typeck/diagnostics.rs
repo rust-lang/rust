@@ -1378,7 +1378,7 @@ E0102: r##"
 You hit this error because the compiler lacks the information to
 determine the type of this variable. Erroneous code example:
 
-```compile_fail,E0102
+```compile_fail,E0282
 // could be an array of anything
 let x = []; // error: cannot determine a type for this local variable
 ```

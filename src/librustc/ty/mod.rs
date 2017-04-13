@@ -772,6 +772,9 @@ pub enum Predicate<'tcx> {
     /// for some substitutions `...` and T being a closure type.
     /// Satisfied (or refuted) once we know the closure's kind.
     ClosureKind(DefId, ClosureKind),
+
+    /// `T1 <: T2`
+    Subtype(PolySubtypePredicate<'tcx>),
 }
 
 impl<'a, 'gcx, 'tcx> Predicate<'tcx> {
@@ -850,6 +853,8 @@ impl<'a, 'gcx, 'tcx> Predicate<'tcx> {
                 Predicate::Trait(ty::Binder(data.subst(tcx, substs))),
             Predicate::Equate(ty::Binder(ref data)) =>
                 Predicate::Equate(ty::Binder(data.subst(tcx, substs))),
+            Predicate::Subtype(ty::Binder(ref data)) =>
+                Predicate::Subtype(ty::Binder(data.subst(tcx, substs))),
             Predicate::RegionOutlives(ty::Binder(ref data)) =>
                 Predicate::RegionOutlives(ty::Binder(data.subst(tcx, substs))),
             Predicate::TypeOutlives(ty::Binder(ref data)) =>
@@ -928,6 +933,14 @@ pub type PolyOutlivesPredicate<A,B> = ty::Binder<OutlivesPredicate<A,B>>;
 pub type PolyRegionOutlivesPredicate<'tcx> = PolyOutlivesPredicate<&'tcx ty::Region,
                                                                    &'tcx ty::Region>;
 pub type PolyTypeOutlivesPredicate<'tcx> = PolyOutlivesPredicate<Ty<'tcx>, &'tcx ty::Region>;
+
+#[derive(Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable)]
+pub struct SubtypePredicate<'tcx> {
+    pub a_is_expected: bool,
+    pub a: Ty<'tcx>,
+    pub b: Ty<'tcx>
+}
+pub type PolySubtypePredicate<'tcx> = ty::Binder<SubtypePredicate<'tcx>>;
 
 /// This kind of predicate has no *direct* correspondent in the
 /// syntax, but it roughly corresponds to the syntactic forms:
@@ -1042,6 +1055,9 @@ impl<'tcx> Predicate<'tcx> {
             ty::Predicate::Equate(ty::Binder(ref data)) => {
                 vec![data.0, data.1]
             }
+            ty::Predicate::Subtype(ty::Binder(SubtypePredicate { a, b, a_is_expected: _ })) => {
+                vec![a, b]
+            }
             ty::Predicate::TypeOutlives(ty::Binder(ref data)) => {
                 vec![data.0]
             }
@@ -1078,6 +1094,7 @@ impl<'tcx> Predicate<'tcx> {
             }
             Predicate::Projection(..) |
             Predicate::Equate(..) |
+            Predicate::Subtype(..) |
             Predicate::RegionOutlives(..) |
             Predicate::WellFormed(..) |
             Predicate::ObjectSafe(..) |

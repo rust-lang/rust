@@ -11,6 +11,7 @@
 use dep_graph::DepGraph;
 use infer::{InferCtxt, InferOk};
 use ty::{self, Ty, TypeFoldable, ToPolyTraitRef, TyCtxt, ToPredicate};
+use ty::error::ExpectedFound;
 use rustc_data_structures::obligation_forest::{ObligationForest, Error};
 use rustc_data_structures::obligation_forest::{ForestObligation, ObligationProcessor};
 use std::marker::PhantomData;
@@ -494,6 +495,26 @@ fn process_predicate<'a, 'gcx, 'tcx>(
                     Ok(None)
                 }
                 s => Ok(s)
+            }
+        }
+
+        ty::Predicate::Subtype(ref subtype) => {
+            match selcx.infcx().subtype_predicate(&obligation.cause, subtype) {
+                None => {
+                    // none means that both are unresolved
+                    pending_obligation.stalled_on = vec![subtype.skip_binder().a,
+                                                         subtype.skip_binder().b];
+                    Ok(None)
+                }
+                Some(Ok(ok)) => {
+                    Ok(Some(ok.obligations))
+                }
+                Some(Err(err)) => {
+                    let expected_found = ExpectedFound::new(subtype.skip_binder().a_is_expected,
+                                                            subtype.skip_binder().a,
+                                                            subtype.skip_binder().b);
+                    Err(FulfillmentErrorCode::CodeSubtypeError(expected_found, err))
+                }
             }
         }
     }

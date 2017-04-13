@@ -32,6 +32,7 @@
 #![feature(i128_type)]
 #![feature(libc)]
 #![feature(loop_break_value)]
+#![feature(never_type)]
 #![feature(nonzero)]
 #![cfg_attr(stage0, feature(pub_restricted))]
 #![feature(quote)]

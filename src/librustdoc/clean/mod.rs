@@ -838,7 +838,7 @@ impl Clean<Option<Lifetime>> for ty::Region {
 pub enum WherePredicate {
     BoundPredicate { ty: Type, bounds: Vec<TyParamBound> },
     RegionPredicate { lifetime: Lifetime, bounds: Vec<Lifetime>},
-    EqPredicate { lhs: Type, rhs: Type }
+    EqPredicate { lhs: Type, rhs: Type },
 }
 
 impl Clean<WherePredicate> for hir::WherePredicate {
@@ -875,6 +875,7 @@ impl<'a> Clean<WherePredicate> for ty::Predicate<'a> {
         match *self {
             Predicate::Trait(ref pred) => pred.clean(cx),
             Predicate::Equate(ref pred) => pred.clean(cx),
+            Predicate::Subtype(ref pred) => pred.clean(cx),
             Predicate::RegionOutlives(ref pred) => pred.clean(cx),
             Predicate::TypeOutlives(ref pred) => pred.clean(cx),
             Predicate::Projection(ref pred) => pred.clean(cx),
@@ -901,6 +902,13 @@ impl<'tcx> Clean<WherePredicate> for ty::EquatePredicate<'tcx> {
             lhs: lhs.clean(cx),
             rhs: rhs.clean(cx)
         }
+    }
+}
+
+impl<'tcx> Clean<WherePredicate> for ty::SubtypePredicate<'tcx> {
+    fn clean(&self, _cx: &DocContext) -> WherePredicate {
+        panic!("subtype predicates are an internal rustc artifact \
+                and should not be seen by rustdoc")
     }
 }
 

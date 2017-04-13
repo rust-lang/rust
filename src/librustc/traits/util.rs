@@ -42,7 +42,10 @@ fn anonymize_predicate<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
             ty::Predicate::ObjectSafe(data),
 
         ty::Predicate::ClosureKind(closure_def_id, kind) =>
-            ty::Predicate::ClosureKind(closure_def_id, kind)
+            ty::Predicate::ClosureKind(closure_def_id, kind),
+
+        ty::Predicate::Subtype(ref data) =>
+            ty::Predicate::Subtype(tcx.anonymize_late_bound_regions(data)),
     }
 }
 
@@ -159,6 +162,10 @@ impl<'cx, 'gcx, 'tcx> Elaborator<'cx, 'gcx, 'tcx> {
                 // Currently, we do not "elaborate" predicates like
                 // `X == Y`, though conceivably we might. For example,
                 // `&X == &Y` implies that `X == Y`.
+            }
+            ty::Predicate::Subtype(..) => {
+                // Currently, we do not "elaborate" predicates like `X
+                // <: Y`, though conceivably we might.
             }
             ty::Predicate::Projection(..) => {
                 // Nothing to elaborate in a projection predicate.
