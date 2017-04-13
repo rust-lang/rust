@@ -180,7 +180,7 @@ pub mod reimpls {
             sr = sr.wrapping_add(1);
 
             // 1 <= sr <= u64::bits() - 1
-            q = n.wrapping_shl(64u32.wrapping_sub(sr));
+            q = n.wrapping_shl(128u32.wrapping_sub(sr));
             r = n.wrapping_shr(sr);
         } else {
             if d.high() == 0 {
