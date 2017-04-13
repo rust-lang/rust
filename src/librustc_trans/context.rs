@@ -10,8 +10,7 @@
 
 use llvm;
 use llvm::{ContextRef, ModuleRef, ValueRef};
-use rustc::dep_graph::{DepGraph, DepGraphSafe, DepNode, DepTrackingMap,
-                       DepTrackingMapConfig, WorkProduct};
+use rustc::dep_graph::{DepGraph, DepGraphSafe, DepNode, DepTrackingMap, DepTrackingMapConfig};
 use middle::cstore::LinkMeta;
 use rustc::hir;
 use rustc::hir::def_id::DefId;
@@ -86,7 +85,6 @@ pub struct SharedCrateContext<'a, 'tcx: 'a> {
 pub struct LocalCrateContext<'tcx> {
     llmod: ModuleRef,
     llcx: ContextRef,
-    previous_work_product: Option<WorkProduct>,
     codegen_unit: CodegenUnit<'tcx>,
     needs_unwind_cleanup_cache: RefCell<FxHashMap<Ty<'tcx>, bool>>,
     /// Cache instances of monomorphic and polymorphic items
@@ -211,41 +209,6 @@ impl<'gcx> DepTrackingMapConfig for ProjectionCache<'gcx> {
     }
 }
 
-/// This list owns a number of LocalCrateContexts and binds them to their common
-/// SharedCrateContext. This type just exists as a convenience, something to
-/// pass around all LocalCrateContexts with and get an iterator over them.
-pub struct CrateContextList<'a, 'tcx: 'a> {
-    shared: &'a SharedCrateContext<'a, 'tcx>,
-    local_ccxs: Vec<LocalCrateContext<'tcx>>,
-}
-
-impl<'a, 'tcx: 'a> CrateContextList<'a, 'tcx> {
-    pub fn new(shared_ccx: &'a SharedCrateContext<'a, 'tcx>,
-               codegen_units: Vec<CodegenUnit<'tcx>>,
-               previous_work_products: Vec<Option<WorkProduct>>,
-               symbol_map: Rc<SymbolMap<'tcx>>)
-               -> CrateContextList<'a, 'tcx> {
-        CrateContextList {
-            shared: shared_ccx,
-            local_ccxs: codegen_units.into_iter().zip(previous_work_products).map(|(cgu, wp)| {
-                LocalCrateContext::new(shared_ccx, cgu, wp, symbol_map.clone())
-            }).collect()
-        }
-    }
-
-    /// Iterate over all crate contexts, whether or not they need
-    /// translation.  That is, whether or not a `.o` file is available
-    /// for re-use from a previous incr. comp.).
-    pub fn iter_all<'b>(&'b self) -> CrateContextIterator<'b, 'tcx> {
-        CrateContextIterator {
-            shared: self.shared,
-            index: 0,
-            local_ccxs: &self.local_ccxs[..],
-            filter_to_previous_work_product_unavail: false,
-        }
-    }
-}
-
 /// A CrateContext value binds together one LocalCrateContext with the
 /// SharedCrateContext. It exists as a convenience wrapper, so we don't have to
 /// pass around (SharedCrateContext, LocalCrateContext) tuples all over trans.
@@ -254,45 +217,15 @@ pub struct CrateContext<'a, 'tcx: 'a> {
     local_ccx: &'a LocalCrateContext<'tcx>,
 }
 
-impl<'a, 'tcx> DepGraphSafe for CrateContext<'a, 'tcx> {
-}
-
-pub struct CrateContextIterator<'a, 'tcx: 'a> {
-    shared: &'a SharedCrateContext<'a, 'tcx>,
-    local_ccxs: &'a [LocalCrateContext<'tcx>],
-    index: usize,
-
-    /// if true, only return results where `previous_work_product` is none
-    filter_to_previous_work_product_unavail: bool,
-}
-
-impl<'a, 'tcx> Iterator for CrateContextIterator<'a,'tcx> {
-    type Item = CrateContext<'a, 'tcx>;
-
-    fn next(&mut self) -> Option<CrateContext<'a, 'tcx>> {
-        loop {
-            if self.index >= self.local_ccxs.len() {
-                return None;
-            }
-
-            let index = self.index;
-            self.index += 1;
-
-            let ccx = CrateContext {
-                shared: self.shared,
-                local_ccx: &self.local_ccxs[index],
-            };
-
-            if
-                self.filter_to_previous_work_product_unavail &&
-                ccx.previous_work_product().is_some()
-            {
-                continue;
-            }
-
-            return Some(ccx);
-        }
+impl<'a, 'tcx> CrateContext<'a, 'tcx> {
+    pub fn new(shared: &'a SharedCrateContext<'a, 'tcx>,
+               local_ccx: &'a LocalCrateContext<'tcx>)
+               -> Self {
+        CrateContext { shared, local_ccx }
     }
+}
+
+impl<'a, 'tcx> DepGraphSafe for CrateContext<'a, 'tcx> {
 }
 
 pub fn get_reloc_model(sess: &Session) -> llvm::RelocMode {
@@ -512,11 +445,10 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
 }
 
 impl<'tcx> LocalCrateContext<'tcx> {
-    fn new<'a>(shared: &SharedCrateContext<'a, 'tcx>,
-               codegen_unit: CodegenUnit<'tcx>,
-               previous_work_product: Option<WorkProduct>,
-               symbol_map: Rc<SymbolMap<'tcx>>)
-           -> LocalCrateContext<'tcx> {
+    pub fn new<'a>(shared: &SharedCrateContext<'a, 'tcx>,
+                   codegen_unit: CodegenUnit<'tcx>,
+                   symbol_map: Rc<SymbolMap<'tcx>>)
+                   -> LocalCrateContext<'tcx> {
         unsafe {
             // Append ".rs" to LLVM module identifier.
             //
@@ -542,7 +474,6 @@ impl<'tcx> LocalCrateContext<'tcx> {
             let local_ccx = LocalCrateContext {
                 llmod: llmod,
                 llcx: llcx,
-                previous_work_product: previous_work_product,
                 codegen_unit: codegen_unit,
                 needs_unwind_cleanup_cache: RefCell::new(FxHashMap()),
                 instances: RefCell::new(FxHashMap()),
@@ -649,10 +580,6 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
 
     pub fn llcx(&self) -> ContextRef {
         self.local().llcx
-    }
-
-    pub fn previous_work_product(&self) -> Option<&WorkProduct> {
-        self.local().previous_work_product.as_ref()
     }
 
     pub fn codegen_unit(&self) -> &CodegenUnit<'tcx> {
