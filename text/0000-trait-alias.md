@@ -150,6 +150,22 @@ more predicates, just like any other `where` clause.
 You cannot directly `impl` a trait alias, but you can have them as *bounds*, *trait objects* and
 *impl Trait*.
 
+----
+
+It is an error to attempt to override a previously specified
+equivalence constraint with a non-equivalent type. For example:
+
+```rust
+trait SharableIterator = Iterator + Sync;
+trait IntIterator = Iterator<Item=i32>;
+
+fn quux1<T: SharableIterator<Item=f64>>(...) { ... } // ok
+fn quux2<T: IntIterator<Item=i32>>(...) { ... } // ok (perhaps subject to lint warning)
+fn quux3<T: IntIterator<Item=f64>>(...) { ... } // ERROR: `Item` already constrained
+
+trait FloIterator = IntIterator<Item=f64>; // ERROR: `Item` already constrained
+```
+
 ---
 
 When using a trait alias as a trait object, it is subject to object safety restrictions *after*
