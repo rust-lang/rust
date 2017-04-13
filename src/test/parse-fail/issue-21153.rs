@@ -10,7 +10,6 @@
 
 // compile-flags: -Z parse-only
 
-trait MyTrait<T>: Iterator {
-    Item = T; //~ ERROR expected one of `!` or `::`, found `=`
-              //~| ERROR expected item, found `=`
+trait MyTrait<T>: Iterator { //~ ERROR missing `fn`, `type`, or `const`
+    Item = T;
 }
