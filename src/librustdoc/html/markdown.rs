@@ -25,6 +25,9 @@
 
 #![allow(non_camel_case_types)]
 
+use libc;
+use std::slice;
+
 use std::ascii::AsciiExt;
 use std::cell::RefCell;
 use std::collections::{HashMap, VecDeque};
@@ -354,6 +357,194 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for Footnotes<'a, I> {
                 }
             }
         }
+    }
+}
+
+const DEF_OUNIT: libc::size_t = 64;
+const HOEDOWN_EXT_NO_INTRA_EMPHASIS: libc::c_uint = 1 << 11;
+const HOEDOWN_EXT_TABLES: libc::c_uint = 1 << 0;
+const HOEDOWN_EXT_FENCED_CODE: libc::c_uint = 1 << 1;
+const HOEDOWN_EXT_AUTOLINK: libc::c_uint = 1 << 3;
+const HOEDOWN_EXT_STRIKETHROUGH: libc::c_uint = 1 << 4;
+const HOEDOWN_EXT_SUPERSCRIPT: libc::c_uint = 1 << 8;
+const HOEDOWN_EXT_FOOTNOTES: libc::c_uint = 1 << 2;
+
+const HOEDOWN_EXTENSIONS: libc::c_uint =
+    HOEDOWN_EXT_NO_INTRA_EMPHASIS | HOEDOWN_EXT_TABLES |
+    HOEDOWN_EXT_FENCED_CODE | HOEDOWN_EXT_AUTOLINK |
+    HOEDOWN_EXT_STRIKETHROUGH | HOEDOWN_EXT_SUPERSCRIPT |
+    HOEDOWN_EXT_FOOTNOTES;
+
+enum hoedown_document {}
+
+type blockcodefn = extern "C" fn(*mut hoedown_buffer, *const hoedown_buffer,
+                                 *const hoedown_buffer, *const hoedown_renderer_data,
+                                 libc::size_t);
+
+type blockquotefn = extern "C" fn(*mut hoedown_buffer, *const hoedown_buffer,
+                                  *const hoedown_renderer_data, libc::size_t);
+
+type headerfn = extern "C" fn(*mut hoedown_buffer, *const hoedown_buffer,
+                              libc::c_int, *const hoedown_renderer_data,
+                              libc::size_t);
+
+type blockhtmlfn = extern "C" fn(*mut hoedown_buffer, *const hoedown_buffer,
+                                 *const hoedown_renderer_data, libc::size_t);
+
+type codespanfn = extern "C" fn(*mut hoedown_buffer, *const hoedown_buffer,
+                                *const hoedown_renderer_data, libc::size_t) -> libc::c_int;
+
+type linkfn = extern "C" fn (*mut hoedown_buffer, *const hoedown_buffer,
+                             *const hoedown_buffer, *const hoedown_buffer,
+                             *const hoedown_renderer_data, libc::size_t) -> libc::c_int;
+
+type entityfn = extern "C" fn (*mut hoedown_buffer, *const hoedown_buffer,
+                               *const hoedown_renderer_data, libc::size_t);
+
+type normaltextfn = extern "C" fn(*mut hoedown_buffer, *const hoedown_buffer,
+                                  *const hoedown_renderer_data, libc::size_t);
+
+#[repr(C)]
+struct hoedown_renderer_data {
+    opaque: *mut libc::c_void,
+}
+
+#[repr(C)]
+struct hoedown_renderer {
+    opaque: *mut libc::c_void,
+
+    blockcode: Option<blockcodefn>,
+    blockquote: Option<blockquotefn>,
+    header: Option<headerfn>,
+
+    other_block_level_callbacks: [libc::size_t; 11],
+
+    blockhtml: Option<blockhtmlfn>,
+
+    /* span level callbacks - NULL or return 0 prints the span verbatim */
+    autolink: libc::size_t, // unused
+    codespan: Option<codespanfn>,
+    other_span_level_callbacks_1: [libc::size_t; 7],
+    link: Option<linkfn>,
+    other_span_level_callbacks_2: [libc::size_t; 6],
+
+    /* low level callbacks - NULL copies input directly into the output */
+    entity: Option<entityfn>,
+    normal_text: Option<normaltextfn>,
+
+    /* header and footer */
+    other_callbacks: [libc::size_t; 2],
+}
+
+#[repr(C)]
+struct hoedown_html_renderer_state {
+    opaque: *mut libc::c_void,
+    toc_data: html_toc_data,
+    flags: libc::c_uint,
+    link_attributes: Option<extern "C" fn(*mut hoedown_buffer,
+                                          *const hoedown_buffer,
+                                          *const hoedown_renderer_data)>,
+}
+
+#[repr(C)]
+struct html_toc_data {
+    header_count: libc::c_int,
+    current_level: libc::c_int,
+    level_offset: libc::c_int,
+    nesting_level: libc::c_int,
+}
+
+#[repr(C)]
+struct hoedown_buffer {
+    data: *const u8,
+    size: libc::size_t,
+    asize: libc::size_t,
+    unit: libc::size_t,
+}
+
+extern {
+    fn hoedown_html_renderer_new(render_flags: libc::c_uint,
+                                 nesting_level: libc::c_int)
+        -> *mut hoedown_renderer;
+    fn hoedown_html_renderer_free(renderer: *mut hoedown_renderer);
+
+    fn hoedown_document_new(rndr: *const hoedown_renderer,
+                            extensions: libc::c_uint,
+                            max_nesting: libc::size_t) -> *mut hoedown_document;
+    fn hoedown_document_render(doc: *mut hoedown_document,
+                               ob: *mut hoedown_buffer,
+                               document: *const u8,
+                               doc_size: libc::size_t);
+    fn hoedown_document_free(md: *mut hoedown_document);
+
+    fn hoedown_buffer_new(unit: libc::size_t) -> *mut hoedown_buffer;
+    fn hoedown_buffer_free(b: *mut hoedown_buffer);
+}
+
+impl hoedown_buffer {
+    fn as_bytes(&self) -> &[u8] {
+        unsafe { slice::from_raw_parts(self.data, self.size as usize) }
+    }
+}
+
+pub fn old_find_testable_code(doc: &str, tests: &mut ::test::Collector, position: Span) {
+    extern fn block(_ob: *mut hoedown_buffer,
+                    text: *const hoedown_buffer,
+                    lang: *const hoedown_buffer,
+                    data: *const hoedown_renderer_data,
+                    line: libc::size_t) {
+        unsafe {
+            if text.is_null() { return }
+            let block_info = if lang.is_null() {
+                LangString::all_false()
+            } else {
+                let lang = (*lang).as_bytes();
+                let s = str::from_utf8(lang).unwrap();
+                LangString::parse(s)
+            };
+            if !block_info.rust { return }
+            let opaque = (*data).opaque as *mut hoedown_html_renderer_state;
+            let tests = &mut *((*opaque).opaque as *mut ::test::Collector);
+            let line = tests.get_line() + line;
+            let filename = tests.get_filename();
+            tests.add_old_test(line, filename);
+        }
+    }
+
+    extern fn header(_ob: *mut hoedown_buffer,
+                     text: *const hoedown_buffer,
+                     level: libc::c_int, data: *const hoedown_renderer_data,
+                     _: libc::size_t) {
+        unsafe {
+            let opaque = (*data).opaque as *mut hoedown_html_renderer_state;
+            let tests = &mut *((*opaque).opaque as *mut ::test::Collector);
+            if text.is_null() {
+                tests.register_header("", level as u32);
+            } else {
+                let text = (*text).as_bytes();
+                let text = str::from_utf8(text).unwrap();
+                tests.register_header(text, level as u32);
+            }
+        }
+    }
+
+    tests.set_position(position);
+
+    unsafe {
+        let ob = hoedown_buffer_new(DEF_OUNIT);
+        let renderer = hoedown_html_renderer_new(0, 0);
+        (*renderer).blockcode = Some(block);
+        (*renderer).header = Some(header);
+        (*((*renderer).opaque as *mut hoedown_html_renderer_state)).opaque
+                = tests as *mut _ as *mut libc::c_void;
+
+        let document = hoedown_document_new(renderer, HOEDOWN_EXTENSIONS, 16);
+        hoedown_document_render(document, ob, doc.as_ptr(),
+                                doc.len() as libc::size_t);
+        hoedown_document_free(document);
+
+        hoedown_html_renderer_free(renderer);
+        hoedown_buffer_free(ob);
     }
 }
 
