@@ -88,9 +88,9 @@ use hir::def::{Def, CtorKind};
 use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc_back::slice::ref_slice;
 use rustc::infer::{self, InferCtxt, InferOk, RegionVariableOrigin};
-use rustc::infer::type_variable::{self, TypeVariableOrigin};
+use rustc::infer::type_variable::{TypeVariableOrigin};
 use rustc::ty::subst::{Kind, Subst, Substs};
-use rustc::traits::{self, ObligationCause, ObligationCauseCode, Reveal};
+use rustc::traits::{self, FulfillmentContext, ObligationCause, ObligationCauseCode, Reveal};
 use rustc::ty::{ParamTy, ParameterEnvironment};
 use rustc::ty::{LvaluePreference, NoPreference, PreferMutLvalue};
 use rustc::ty::{self, Ty, TyCtxt, Visibility};
@@ -105,7 +105,7 @@ use session::{Session, CompileResult};
 use TypeAndSubsts;
 use lint;
 use util::common::{ErrorReported, indenter};
-use util::nodemap::{DefIdMap, FxHashMap, FxHashSet, NodeMap};
+use util::nodemap::{DefIdMap, FxHashMap, NodeMap};
 
 use std::cell::{Cell, RefCell};
 use std::cmp;
@@ -1978,216 +1978,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
+    // Implements type inference fallback algorithm
     fn select_all_obligations_and_apply_defaults(&self) {
-        if self.tcx.sess.features.borrow().default_type_parameter_fallback {
-            self.new_select_all_obligations_and_apply_defaults();
-        } else {
-            self.old_select_all_obligations_and_apply_defaults();
-        }
-    }
-
-    // Implements old type inference fallback algorithm
-    fn old_select_all_obligations_and_apply_defaults(&self) {
         self.select_obligations_where_possible();
         self.default_type_parameters();
         self.select_obligations_where_possible();
-    }
-
-    fn new_select_all_obligations_and_apply_defaults(&self) {
-        use rustc::ty::error::UnconstrainedNumeric::Neither;
-        use rustc::ty::error::UnconstrainedNumeric::{UnconstrainedInt, UnconstrainedFloat};
-
-        // For the time being this errs on the side of being memory wasteful but provides better
-        // error reporting.
-        // let type_variables = self.type_variables.clone();
-
-        // There is a possibility that this algorithm will have to run an arbitrary number of times
-        // to terminate so we bound it by the compiler's recursion limit.
-        for _ in 0..self.tcx.sess.recursion_limit.get() {
-            // First we try to solve all obligations, it is possible that the last iteration
-            // has made it possible to make more progress.
-            self.select_obligations_where_possible();
-
-            let mut conflicts = Vec::new();
-
-            // Collect all unsolved type, integral and floating point variables.
-            let unsolved_variables = self.unsolved_variables();
-
-            // We must collect the defaults *before* we do any unification. Because we have
-            // directly attached defaults to the type variables any unification that occurs
-            // will erase defaults causing conflicting defaults to be completely ignored.
-            let default_map: FxHashMap<Ty<'tcx>, _> =
-                unsolved_variables
-                    .iter()
-                    .filter_map(|t| self.default(t).map(|d| (*t, d)))
-                    .collect();
-
-            let mut unbound_tyvars = FxHashSet();
-
-            debug!("select_all_obligations_and_apply_defaults: defaults={:?}", default_map);
-
-            // We loop over the unsolved variables, resolving them and if they are
-            // and unconstrainted numeric type we add them to the set of unbound
-            // variables. We do this so we only apply literal fallback to type
-            // variables without defaults.
-            for ty in &unsolved_variables {
-                let resolved = self.resolve_type_vars_if_possible(ty);
-                if self.type_var_diverges(resolved) {
-                    self.demand_eqtype(syntax_pos::DUMMY_SP, *ty,
-                                       self.tcx.mk_diverging_default());
-                } else {
-                    match self.type_is_unconstrained_numeric(resolved) {
-                        UnconstrainedInt | UnconstrainedFloat => {
-                            unbound_tyvars.insert(resolved);
-                        },
-                        Neither => {}
-                    }
-                }
-            }
-
-            // We now remove any numeric types that also have defaults, and instead insert
-            // the type variable with a defined fallback.
-            for ty in &unsolved_variables {
-                if let Some(_default) = default_map.get(ty) {
-                    let resolved = self.resolve_type_vars_if_possible(ty);
-
-                    debug!("select_all_obligations_and_apply_defaults: \
-                            ty: {:?} with default: {:?}",
-                             ty, _default);
-
-                    match resolved.sty {
-                        ty::TyInfer(ty::TyVar(_)) => {
-                            unbound_tyvars.insert(ty);
-                        }
-
-                        ty::TyInfer(ty::IntVar(_)) | ty::TyInfer(ty::FloatVar(_)) => {
-                            unbound_tyvars.insert(ty);
-                            if unbound_tyvars.contains(resolved) {
-                                unbound_tyvars.remove(resolved);
-                            }
-                        }
-
-                        _ => {}
-                    }
-                }
-            }
-
-            // If there are no more fallbacks to apply at this point we have applied all possible
-            // defaults and type inference will proceed as normal.
-            if unbound_tyvars.is_empty() {
-                break;
-            }
-
-            // Finally we go through each of the unbound type variables and unify them with
-            // the proper fallback, reporting a conflicting default error if any of the
-            // unifications fail. We know it must be a conflicting default because the
-            // variable would only be in `unbound_tyvars` and have a concrete value if
-            // it had been solved by previously applying a default.
-
-            // We wrap this in a transaction for error reporting, if we detect a conflict
-            // we will rollback the inference context to its prior state so we can probe
-            // for conflicts and correctly report them.
-
-            let _ = self.commit_if_ok(|_: &infer::CombinedSnapshot| {
-                conflicts.extend(
-                    self.apply_defaults_and_return_conflicts(&unbound_tyvars, &default_map, None)
-                );
-
-                // If there are conflicts we rollback, otherwise commit
-                if conflicts.len() > 0 {
-                    Err(())
-                } else {
-                    Ok(())
-                }
-            });
-
-            // Loop through each conflicting default, figuring out the default that caused
-            // a unification failure and then report an error for each.
-            for (conflict, default) in conflicts {
-                let conflicting_default =
-                    self.apply_defaults_and_return_conflicts(
-                            &unbound_tyvars,
-                            &default_map,
-                            Some(conflict)
-                        )
-                        .last()
-                        .map(|(_, tv)| tv)
-                        .unwrap_or(type_variable::Default {
-                            ty: self.next_ty_var(
-                                TypeVariableOrigin::MiscVariable(syntax_pos::DUMMY_SP)),
-                            origin_span: syntax_pos::DUMMY_SP,
-                            // what do I put here?
-                            def_id: self.tcx.hir.local_def_id(ast::CRATE_NODE_ID)
-                        });
-
-                // This is to ensure that we elimnate any non-determinism from the error
-                // reporting by fixing an order, it doesn't matter what order we choose
-                // just that it is consistent.
-                let (first_default, second_default) =
-                    if default.def_id < conflicting_default.def_id {
-                        (default, conflicting_default)
-                    } else {
-                        (conflicting_default, default)
-                    };
-
-
-                self.report_conflicting_default_types(
-                    first_default.origin_span,
-                    self.body_id,
-                    first_default,
-                    second_default)
-            }
-        }
-
-        self.select_obligations_where_possible();
-    }
-
-    // For use in error handling related to default type parameter fallback. We explicitly
-    // apply the default that caused conflict first to a local version of the type variable
-    // table then apply defaults until we find a conflict. That default must be the one
-    // that caused conflict earlier.
-    fn apply_defaults_and_return_conflicts<'b>(
-        &'b self,
-        unbound_vars: &'b FxHashSet<Ty<'tcx>>,
-        default_map: &'b FxHashMap<Ty<'tcx>, type_variable::Default<'tcx>>,
-        conflict: Option<Ty<'tcx>>,
-    ) -> impl Iterator<Item=(Ty<'tcx>, type_variable::Default<'tcx>)> + 'b {
-        use rustc::ty::error::UnconstrainedNumeric::Neither;
-        use rustc::ty::error::UnconstrainedNumeric::{UnconstrainedInt, UnconstrainedFloat};
-
-        conflict.into_iter().chain(unbound_vars.iter().cloned()).flat_map(move |ty| {
-            if self.type_var_diverges(ty) {
-                self.demand_eqtype(syntax_pos::DUMMY_SP, ty,
-                                   self.tcx.mk_diverging_default());
-            } else {
-                match self.type_is_unconstrained_numeric(ty) {
-                    UnconstrainedInt => {
-                        self.demand_eqtype(syntax_pos::DUMMY_SP, ty, self.tcx.types.i32)
-                    },
-                    UnconstrainedFloat => {
-                        self.demand_eqtype(syntax_pos::DUMMY_SP, ty, self.tcx.types.f64)
-                    },
-                    Neither => {
-                        if let Some(default) = default_map.get(ty) {
-                            let default = default.clone();
-                            let default_ty = self.normalize_associated_types_in(
-                                default.origin_span, &default.ty);
-                            match self.eq_types(false,
-                                                &self.misc(default.origin_span),
-                                                ty,
-                                                default_ty) {
-                                Ok(ok) => self.register_infer_ok_obligations(ok),
-                                Err(_) => {
-                                    return Some((ty, default));
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            None
-        })
     }
 
     fn select_all_obligations_or_error(&self) {
@@ -2757,11 +2552,30 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // No argument expectations are produced if unification fails.
                 let origin = self.misc(call_span);
                 let ures = self.sub_types(false, &origin, formal_ret, ret_ty);
+
                 // FIXME(#15760) can't use try! here, FromError doesn't default
                 // to identity so the resulting type is not constrained.
                 match ures {
-                    Ok(ok) => self.register_infer_ok_obligations(ok),
-                    Err(e) => return Err(e),
+                    Ok(ok) => {
+                        // Process any obligations locally as much as
+                        // we can.  We don't care if some things turn
+                        // out unconstrained or ambiguous, as we're
+                        // just trying to get hints here.
+                        let result = self.save_and_restore_obligations_in_snapshot_flag(|_| {
+                            let mut fulfill = FulfillmentContext::new();
+                            let ok = ok; // FIXME(#30046)
+                            for obligation in ok.obligations {
+                                fulfill.register_predicate_obligation(self, obligation);
+                            }
+                            fulfill.select_where_possible(self)
+                        });
+
+                        match result {
+                            Ok(()) => { }
+                            Err(_) => return Err(()),
+                        }
+                    }
+                    Err(_) => return Err(()),
                 }
 
                 // Record all the argument types, with the substitutions

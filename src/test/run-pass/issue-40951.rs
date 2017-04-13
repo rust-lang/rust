@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,19 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(default_type_parameter_fallback)]
+// Regression test for #40951.
 
-// An example from the RFC
-trait Foo { fn takes_foo(&self); }
-trait Bar { }
+const FOO: [&'static str; 1] = ["foo"];
 
-impl<T:Bar=usize> Foo for Vec<T> {
-    fn takes_foo(&self) {}
-}
-
-impl Bar for usize {}
+fn find<T: PartialEq>(t: &[T], element: &T) { }
 
 fn main() {
-    let x = Vec::new(); // x: Vec<$0>
-    x.takes_foo(); // adds oblig Vec<$0> : Foo
+    let x = format!("hi");
+    find(&FOO, &&*x);
 }

@@ -195,8 +195,10 @@ impl<'f, 'gcx, 'tcx> Coerce<'f, 'gcx, 'tcx> {
         // Consider coercing the subtype to a DST
         let unsize = self.coerce_unsized(a, b);
         if unsize.is_ok() {
+            debug!("coerce: unsize successful");
             return unsize;
         }
+        debug!("coerce: unsize failed");
 
         // Examine the supertype and consider auto-borrowing.
         //
@@ -745,7 +747,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     {
         let prev_ty = self.resolve_type_vars_with_obligations(prev_ty);
         let new_ty = self.resolve_type_vars_with_obligations(new_ty);
-        debug!("coercion::try_find_lub({:?}, {:?})", prev_ty, new_ty);
+        debug!("coercion::try_find_coercion_lub({:?}, {:?})", prev_ty, new_ty);
 
         // Special-ish case: we can coerce any type `T` into the `!`
         // type, but only if the source expression diverges.

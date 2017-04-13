@@ -48,7 +48,6 @@ use self::region_inference::{RegionVarBindings, RegionSnapshot};
 use self::type_variable::TypeVariableOrigin;
 use self::unify_key::ToType;
 
-mod bivariate;
 mod combine;
 mod equate;
 pub mod error_reporting;
@@ -552,7 +551,7 @@ impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
 }
 
 impl<T> ExpectedFound<T> {
-    fn new(a_is_expected: bool, a: T, b: T) -> Self {
+    pub fn new(a_is_expected: bool, a: T, b: T) -> Self {
         if a_is_expected {
             ExpectedFound {expected: a, found: b}
         } else {
@@ -1037,9 +1036,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         self.probe(|_| {
             let origin = &ObligationCause::dummy();
             let trace = TypeTrace::types(origin, true, a, b);
-            self.sub(true, trace, &a, &b).map(|InferOk { obligations, .. }| {
-                // FIXME(#32730) propagate obligations
-                assert!(obligations.is_empty());
+            self.sub(true, trace, &a, &b).map(|InferOk { obligations: _, .. }| {
+                // Ignore obligations, since we are unrolling
+                // everything anyway.
             })
         })
     }
@@ -1128,6 +1127,43 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             self.pop_skolemized(skol_map, snapshot);
             Ok(eqty_ok.unit())
         })
+    }
+
+    pub fn subtype_predicate(&self,
+                             cause: &ObligationCause<'tcx>,
+                             predicate: &ty::PolySubtypePredicate<'tcx>)
+        -> Option<InferResult<'tcx, ()>>
+    {
+        // Subtle: it's ok to skip the binder here and resolve because
+        // `shallow_resolve` just ignores anything that is not a type
+        // variable, and because type variable's can't (at present, at
+        // least) capture any of the things bound by this binder.
+        //
+        // Really, there is no *particular* reason to do this
+        // `shallow_resolve` here except as a
+        // micro-optimization. Naturally I could not
+        // resist. -nmatsakis
+        let two_unbound_type_vars = {
+            let a = self.shallow_resolve(predicate.skip_binder().a);
+            let b = self.shallow_resolve(predicate.skip_binder().b);
+            a.is_ty_var() && b.is_ty_var()
+        };
+
+        if two_unbound_type_vars {
+            // Two unbound type variables? Can't make progress.
+            return None;
+        }
+
+        Some(self.commit_if_ok(|snapshot| {
+            let (ty::SubtypePredicate { a_is_expected, a, b}, skol_map) =
+                self.skolemize_late_bound_regions(predicate, snapshot);
+
+            let cause_span = cause.span;
+            let ok = self.sub_types(a_is_expected, cause, a, b)?;
+            self.leak_check(false, cause_span, &skol_map, snapshot)?;
+            self.pop_skolemized(skol_map, snapshot);
+            Ok(ok.unit())
+        }))
     }
 
     pub fn region_outlives_predicate(&self,
