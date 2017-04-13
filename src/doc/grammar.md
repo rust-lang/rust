@@ -780,6 +780,14 @@ never_type : "!" ;
 
 **FIXME:** grammar?
 
+### Type parameter bounds
+
+```antlr
+bound := ty_bound | lt_bound
+lt_bound := lifetime
+ty_bound := [?] [ for<lt_param_defs> ] simple_path
+```
+
 ### Self types
 
 **FIXME:** grammar?
