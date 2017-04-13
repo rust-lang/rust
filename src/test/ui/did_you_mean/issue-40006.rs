@@ -8,7 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+impl X {
+    Y
+}
+
 struct S;
+
+trait X {
+    X() {}
+    fn xxx() { ### }
+    L = M;
+    Z = { 2 + 3 };
+    ::Y ();
+}
 
 impl S {
     pub hello_method(&self) {
