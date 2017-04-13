@@ -678,10 +678,6 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         unsafe { llvm::LLVMRustGetModuleDataLayout(self.llmod()) }
     }
 
-    pub fn exported_symbols<'a>(&'a self) -> &'a NodeSet {
-        &self.shared.exported_symbols
-    }
-
     pub fn needs_unwind_cleanup_cache(&self) -> &RefCell<FxHashMap<Ty<'tcx>, bool>> {
         &self.local().needs_unwind_cleanup_cache
     }
