@@ -1120,41 +1120,31 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                    codegen_units,
                                                    previous_work_products,
                                                    symbol_map.clone());
-    let modules: Vec<_> = crate_context_list.iter_all()
-        .map(|ccx| {
-            let source = match ccx.previous_work_product() {
-                Some(buf) => ModuleSource::Preexisting(buf.clone()),
-                None => ModuleSource::Translated(ModuleLlvm {
-                    llcx: ccx.llcx(),
-                    llmod: ccx.llmod(),
-                }),
-            };
 
-            ModuleTranslation {
-                name: String::from(ccx.codegen_unit().name()),
-                symbol_name_hash: ccx.codegen_unit()
-                                     .compute_symbol_name_hash(&shared_ccx,
-                                                               &symbol_map),
-                source: source,
-            }
+    let modules: Vec<ModuleTranslation> = crate_context_list
+        .iter_all()
+        .map(|ccx| {
+            let dep_node = ccx.codegen_unit().work_product_dep_node();
+            tcx.dep_graph.with_task(dep_node,
+                                    ccx,
+                                    AssertDepGraphSafe(symbol_map.clone()),
+                                    module_translation)
         })
         .collect();
 
-    for ccx in crate_context_list.iter_need_trans() {
-        let dep_node = ccx.codegen_unit().work_product_dep_node();
-        tcx.dep_graph.with_task(dep_node,
-                                ccx,
-                                AssertDepGraphSafe(symbol_map.clone()),
-                                trans_decl_task);
+    fn module_translation<'a, 'tcx>(ccx: CrateContext<'a, 'tcx>,
+                                    symbol_map: AssertDepGraphSafe<Rc<SymbolMap<'tcx>>>)
+                                    -> ModuleTranslation {
+        // FIXME(#40304): Instead of this, the symbol-map should be an
+        // on-demand thing that we compute.
+        let AssertDepGraphSafe(symbol_map) = symbol_map;
 
-
-        fn trans_decl_task<'a, 'tcx>(ccx: CrateContext<'a, 'tcx>,
-                                     symbol_map: AssertDepGraphSafe<Rc<SymbolMap<'tcx>>>) {
+        let source = if let Some(buf) = ccx.previous_work_product() {
+            // Don't need to translate this module.
+            ModuleSource::Preexisting(buf.clone())
+        } else {
             // Instantiate translation items without filling out definitions yet...
 
-            // FIXME(#40304): Instead of this, the symbol-map should be an
-            // on-demand thing that we compute.
-            let AssertDepGraphSafe(symbol_map) = symbol_map;
             let cgu = ccx.codegen_unit();
             let trans_items = cgu.items_in_deterministic_order(ccx.tcx(), &symbol_map);
             for &(trans_item, linkage) in &trans_items {
@@ -1200,6 +1190,19 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             if ccx.sess().opts.debuginfo != NoDebugInfo {
                 debuginfo::finalize(&ccx);
             }
+
+            ModuleSource::Translated(ModuleLlvm {
+                llcx: ccx.llcx(),
+                llmod: ccx.llmod(),
+            })
+        };
+
+        ModuleTranslation {
+            name: String::from(ccx.codegen_unit().name()),
+            symbol_name_hash: ccx.codegen_unit()
+                                 .compute_symbol_name_hash(ccx.shared(),
+                                                           &symbol_map),
+            source: source,
         }
     }
 
