@@ -57,7 +57,7 @@ use common::CrateContext;
 use common::{type_is_zero_size, val_ty};
 use common;
 use consts;
-use context::{self, LocalCrateContext, SharedCrateContext};
+use context::{self, LocalCrateContext, SharedCrateContext, Stats};
 use debuginfo;
 use declare;
 use machine;
@@ -1115,21 +1115,25 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let symbol_map = Rc::new(symbol_map);
 
+    let mut all_stats = Stats::default();
     let modules: Vec<ModuleTranslation> = codegen_units
         .into_iter()
         .map(|cgu| {
             let dep_node = cgu.work_product_dep_node();
-            tcx.dep_graph.with_task(dep_node,
-                                    AssertDepGraphSafe(&shared_ccx),
-                                    AssertDepGraphSafe((cgu, symbol_map.clone())),
-                                    module_translation)
+            let (stats, module) =
+                tcx.dep_graph.with_task(dep_node,
+                                        AssertDepGraphSafe(&shared_ccx),
+                                        AssertDepGraphSafe((cgu, symbol_map.clone())),
+                                        module_translation);
+            all_stats.extend(stats);
+            module
         })
         .collect();
 
     fn module_translation<'a, 'tcx>(
         scx: AssertDepGraphSafe<&SharedCrateContext<'a, 'tcx>>,
         args: AssertDepGraphSafe<(CodegenUnit<'tcx>, Rc<SymbolMap<'tcx>>)>)
-        -> ModuleTranslation
+        -> (Stats, ModuleTranslation)
     {
         // FIXME(#40304): We ought to be using the id as a key and some queries, I think.
         let AssertDepGraphSafe(scx) = scx;
@@ -1161,12 +1165,19 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 }
             });
 
-        let source = if let Some(buf) = previous_work_product {
+        if let Some(buf) = previous_work_product {
             // Don't need to translate this module.
-            ModuleSource::Preexisting(buf.clone())
-        } else {
-            // Instantiate translation items without filling out definitions yet...
-            let lcx = LocalCrateContext::new(scx, cgu, symbol_map.clone());
+            let module = ModuleTranslation {
+                name: cgu_name,
+                symbol_name_hash,
+                source: ModuleSource::Preexisting(buf.clone())
+            };
+            return (Stats::default(), module);
+        }
+
+        // Instantiate translation items without filling out definitions yet...
+        let lcx = LocalCrateContext::new(scx, cgu, symbol_map.clone());
+        let module = {
             let ccx = CrateContext::new(scx, &lcx);
             let trans_items = ccx.codegen_unit()
                                  .items_in_deterministic_order(ccx.tcx(), &symbol_map);
@@ -1214,17 +1225,17 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                 debuginfo::finalize(&ccx);
             }
 
-            ModuleSource::Translated(ModuleLlvm {
-                llcx: ccx.llcx(),
-                llmod: ccx.llmod(),
-            })
+            ModuleTranslation {
+                name: cgu_name,
+                symbol_name_hash,
+                source: ModuleSource::Translated(ModuleLlvm {
+                    llcx: ccx.llcx(),
+                    llmod: ccx.llmod(),
+                })
+            }
         };
 
-        ModuleTranslation {
-            name: cgu_name,
-            symbol_name_hash,
-            source,
-        }
+        (lcx.into_stats(), module)
     }
 
     assert_module_sources::assert_module_sources(tcx, &modules);
@@ -1232,20 +1243,19 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     symbol_names_test::report_symbol_names(&shared_ccx);
 
     if shared_ccx.sess().trans_stats() {
-        let stats = shared_ccx.stats();
         println!("--- trans stats ---");
-        println!("n_glues_created: {}", stats.n_glues_created.get());
-        println!("n_null_glues: {}", stats.n_null_glues.get());
-        println!("n_real_glues: {}", stats.n_real_glues.get());
+        println!("n_glues_created: {}", all_stats.n_glues_created.get());
+        println!("n_null_glues: {}", all_stats.n_null_glues.get());
+        println!("n_real_glues: {}", all_stats.n_real_glues.get());
 
-        println!("n_fns: {}", stats.n_fns.get());
-        println!("n_inlines: {}", stats.n_inlines.get());
-        println!("n_closures: {}", stats.n_closures.get());
+        println!("n_fns: {}", all_stats.n_fns.get());
+        println!("n_inlines: {}", all_stats.n_inlines.get());
+        println!("n_closures: {}", all_stats.n_closures.get());
         println!("fn stats:");
-        stats.fn_stats.borrow_mut().sort_by(|&(_, insns_a), &(_, insns_b)| {
+        all_stats.fn_stats.borrow_mut().sort_by(|&(_, insns_a), &(_, insns_b)| {
             insns_b.cmp(&insns_a)
         });
-        for tuple in stats.fn_stats.borrow().iter() {
+        for tuple in all_stats.fn_stats.borrow().iter() {
             match *tuple {
                 (ref name, insns) => {
                     println!("{} insns, {}", insns, *name);
@@ -1255,7 +1265,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 
     if shared_ccx.sess().count_llvm_insns() {
-        for (k, v) in shared_ccx.stats().llvm_insns.borrow().iter() {
+        for (k, v) in all_stats.llvm_insns.borrow().iter() {
             println!("{:7} {}", *v, *k);
         }
     }
