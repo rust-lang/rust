@@ -292,6 +292,20 @@ constraints, instead of creating an alias for a set of supertraits and predicate
 something like `constraint Foo<T> = T: Bar, Vec<T>: Baz;`, used as `fn quux<T>(...) where Foo<T> { ... }`
 (i.e. direct substitution). Trait object usage is unclear.
 
+## Syntax for sole `where` clause.
+
+The current RFC specifies that it is possible to use only the `where` clause by leaving the list of traits empty:
+
+```rust
+trait DebugDefault = where Self: Debug + Default;
+```
+
+This is one of many syntaxes that are available for this construct. Alternatives include:
+
+ * `trait DebugDefault where Self: Debug + Default;` (which has been [considered and discarded](https://github.com/rust-lang/rfcs/pull/1733#issuecomment-257993316) because [it might look](https://github.com/rust-lang/rfcs/pull/1733#issuecomment-258495468) too much like a new trait definition)
+ * `trait DebugDefault = _ where Self: Debug + Default;` (which was [considered and then removed](https://github.com/rust-lang/rfcs/pull/1733/commits/88d3074957276c7201147fc625f18e0ebcecc1b9#diff-ae27a1a8d977f731e67823349151bed5L116) because it is [technically unnecessary](https://github.com/rust-lang/rfcs/pull/1733#issuecomment-284252196))
+ * `trait DebugDefault = Self where Self: Debug + Default;` (analogous to previous case but not formally discussed)
+
 # Unresolved questions
 [unresolved]: #unresolved-questions
  
