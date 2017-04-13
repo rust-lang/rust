@@ -1333,7 +1333,13 @@ impl<'a, K, Q: ?Sized, V, S> Index<&'a Q> for HashMap<K, V, S>
     }
 }
 
-/// HashMap iterator.
+/// An iterator over the entries of a `HashMap`.
+///
+/// This `struct` is created by the [`iter`] method on [`HashMap`]. See its
+/// documentation for more.
+///
+/// [`iter`]: struct.HashMap.html#method.iter
+/// [`HashMap`]: struct.HashMap.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Iter<'a, K: 'a, V: 'a> {
     inner: table::Iter<'a, K, V>,
@@ -1356,19 +1362,37 @@ impl<'a, K: Debug, V: Debug> fmt::Debug for Iter<'a, K, V> {
     }
 }
 
-/// HashMap mutable values iterator.
+/// A mutable iterator over the entries of a `HashMap`.
+///
+/// This `struct` is created by the [`iter_mut`] method on [`HashMap`]. See its
+/// documentation for more.
+///
+/// [`iter_mut`]: struct.HashMap.html#method.iter_mut
+/// [`HashMap`]: struct.HashMap.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IterMut<'a, K: 'a, V: 'a> {
     inner: table::IterMut<'a, K, V>,
 }
 
-/// HashMap move iterator.
+/// An owning iterator over the entries of a `HashMap`.
+///
+/// This `struct` is created by the [`into_iter`] method on [`HashMap`]
+/// (provided by the `IntoIterator` trait). See its documentation for more.
+///
+/// [`into_iter`]: struct.HashMap.html#method.into_iter
+/// [`HashMap`]: struct.HashMap.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<K, V> {
     pub(super) inner: table::IntoIter<K, V>,
 }
 
-/// HashMap keys iterator.
+/// An iterator over the keys of a `HashMap`.
+///
+/// This `struct` is created by the [`keys`] method on [`HashMap`]. See its
+/// documentation for more.
+///
+/// [`keys`]: struct.HashMap.html#method.keys
+/// [`HashMap`]: struct.HashMap.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Keys<'a, K: 'a, V: 'a> {
     inner: Iter<'a, K, V>,
@@ -1391,7 +1415,13 @@ impl<'a, K: Debug, V: Debug> fmt::Debug for Keys<'a, K, V> {
     }
 }
 
-/// HashMap values iterator.
+/// An iterator over the values of a `HashMap`.
+///
+/// This `struct` is created by the [`values`] method on [`HashMap`]. See its
+/// documentation for more.
+///
+/// [`values`]: struct.HashMap.html#method.values
+/// [`HashMap`]: struct.HashMap.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Values<'a, K: 'a, V: 'a> {
     inner: Iter<'a, K, V>,
@@ -1414,13 +1444,25 @@ impl<'a, K: Debug, V: Debug> fmt::Debug for Values<'a, K, V> {
     }
 }
 
-/// HashMap drain iterator.
+/// A draining iterator over the entries of a `HashMap`.
+///
+/// This `struct` is created by the [`drain`] method on [`HashMap`]. See its
+/// documentation for more.
+///
+/// [`drain`]: struct.HashMap.html#method.drain
+/// [`HashMap`]: struct.HashMap.html
 #[stable(feature = "drain", since = "1.6.0")]
 pub struct Drain<'a, K: 'a, V: 'a> {
     pub(super) inner: table::Drain<'a, K, V>,
 }
 
-/// Mutable HashMap values iterator.
+/// A mutable iterator over the values of a `HashMap`.
+///
+/// This `struct` is created by the [`values_mut`] method on [`HashMap`]. See its
+/// documentation for more.
+///
+/// [`values_mut`]: struct.HashMap.html#method.values_mut
+/// [`HashMap`]: struct.HashMap.html
 #[stable(feature = "map_values_mut", since = "1.10.0")]
 pub struct ValuesMut<'a, K: 'a, V: 'a> {
     inner: IterMut<'a, K, V>,

@@ -1890,7 +1890,13 @@ fn count(tail: usize, head: usize, size: usize) -> usize {
     (head.wrapping_sub(tail)) & (size - 1)
 }
 
-/// `VecDeque` iterator.
+/// An iterator over the elements of a `VecDeque`.
+///
+/// This `struct` is created by the [`iter`] method on [`VecDeque`]. See its
+/// documentation for more.
+///
+/// [`iter`]: struct.VecDeque.html#method.iter
+/// [`VecDeque`]: struct.VecDeque.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Iter<'a, T: 'a> {
     ring: &'a [T],
@@ -1971,7 +1977,13 @@ impl<'a, T> ExactSizeIterator for Iter<'a, T> {
 impl<'a, T> FusedIterator for Iter<'a, T> {}
 
 
-/// `VecDeque` mutable iterator.
+/// A mutable iterator over the elements of a `VecDeque`.
+///
+/// This `struct` is created by the [`iter_mut`] method on [`VecDeque`]. See its
+/// documentation for more.
+///
+/// [`iter_mut`]: struct.VecDeque.html#method.iter_mut
+/// [`VecDeque`]: struct.VecDeque.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IterMut<'a, T: 'a> {
     ring: &'a mut [T],
@@ -2047,7 +2059,13 @@ impl<'a, T> ExactSizeIterator for IterMut<'a, T> {
 #[unstable(feature = "fused", issue = "35602")]
 impl<'a, T> FusedIterator for IterMut<'a, T> {}
 
-/// A by-value `VecDeque` iterator
+/// An owning iterator over the elements of a `VecDeque`.
+///
+/// This `struct` is created by the [`into_iter`] method on [`VecDeque`]
+/// (provided by the `IntoIterator` trait). See its documentation for more.
+///
+/// [`into_iter`]: struct.VecDeque.html#method.into_iter
+/// [`VecDeque`]: struct.VecDeque.html
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<T> {
@@ -2097,7 +2115,13 @@ impl<T> ExactSizeIterator for IntoIter<T> {
 #[unstable(feature = "fused", issue = "35602")]
 impl<T> FusedIterator for IntoIter<T> {}
 
-/// A draining `VecDeque` iterator
+/// A draining iterator over the elements of a `VecDeque`.
+///
+/// This `struct` is created by the [`drain`] method on [`VecDeque`]. See its
+/// documentation for more.
+///
+/// [`drain`]: struct.VecDeque.html#method.drain
+/// [`VecDeque`]: struct.VecDeque.html
 #[stable(feature = "drain", since = "1.6.0")]
 pub struct Drain<'a, T: 'a> {
     after_tail: usize,

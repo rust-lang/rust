@@ -856,25 +856,49 @@ impl<'a, 'b, T, S> Sub<&'b HashSet<T, S>> for &'a HashSet<T, S>
     }
 }
 
-/// HashSet iterator
+/// An iterator over the items of a `HashSet`.
+///
+/// This `struct` is created by the [`iter`] method on [`HashSet`].
+/// See its documentation for more.
+///
+/// [`HashSet`]: struct.HashSet.html
+/// [`iter`]: struct.HashSet.html#method.iter
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Iter<'a, K: 'a> {
     iter: Keys<'a, K, ()>,
 }
 
-/// HashSet move iterator
+/// An owning iterator over the items of a `HashSet`.
+///
+/// This `struct` is created by the [`into_iter`] method on [`HashSet`]
+/// (provided by the `IntoIterator` trait). See its documentation for more.
+///
+/// [`HashSet`]: struct.HashSet.html
+/// [`into_iter`]: struct.HashSet.html#method.into_iter
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<K> {
     iter: map::IntoIter<K, ()>,
 }
 
-/// HashSet drain iterator
+/// A draining iterator over the items of a `HashSet`.
+///
+/// This `struct` is created by the [`drain`] method on [`HashSet`].
+/// See its documentation for more.
+///
+/// [`HashSet`]: struct.HashSet.html
+/// [`drain`]: struct.HashSet.html#method.drain
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Drain<'a, K: 'a> {
     iter: map::Drain<'a, K, ()>,
 }
 
-/// Intersection iterator
+/// A lazy iterator producing elements in the intersection of `HashSet`s.
+///
+/// This `struct` is created by the [`intersection`] method on [`HashSet`].
+/// See its documentation for more.
+///
+/// [`HashSet`]: struct.HashSet.html
+/// [`intersection`]: struct.HashSet.html#method.intersection
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Intersection<'a, T: 'a, S: 'a> {
     // iterator of the first set
@@ -883,7 +907,13 @@ pub struct Intersection<'a, T: 'a, S: 'a> {
     other: &'a HashSet<T, S>,
 }
 
-/// Difference iterator
+/// A lazy iterator producing elements in the difference of `HashSet`s.
+///
+/// This `struct` is created by the [`difference`] method on [`HashSet`].
+/// See its documentation for more.
+///
+/// [`HashSet`]: struct.HashSet.html
+/// [`difference`]: struct.HashSet.html#method.difference
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Difference<'a, T: 'a, S: 'a> {
     // iterator of the first set
@@ -892,13 +922,25 @@ pub struct Difference<'a, T: 'a, S: 'a> {
     other: &'a HashSet<T, S>,
 }
 
-/// Symmetric difference iterator.
+/// A lazy iterator producing elements in the symmetric difference of `HashSet`s.
+///
+/// This `struct` is created by the [`symmetric_difference`] method on
+/// [`HashSet`]. See its documentation for more.
+///
+/// [`HashSet`]: struct.HashSet.html
+/// [`symmetric_difference`]: struct.HashSet.html#method.symmetric_difference
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct SymmetricDifference<'a, T: 'a, S: 'a> {
     iter: Chain<Difference<'a, T, S>, Difference<'a, T, S>>,
 }
 
-/// Set union iterator.
+/// A lazy iterator producing elements in the union of `HashSet`s.
+///
+/// This `struct` is created by the [`union`] method on [`HashSet`].
+/// See its documentation for more.
+///
+/// [`HashSet`]: struct.HashSet.html
+/// [`union`]: struct.HashSet.html#method.union
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Union<'a, T: 'a, S: 'a> {
     iter: Chain<Iter<'a, T>, Difference<'a, T, S>>,
