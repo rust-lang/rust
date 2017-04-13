@@ -133,6 +133,14 @@ the same way associated types are bound with regular traits:
 fn foo<I>(int_iter: I) where I: IntoIntIterator<IntoIter = std::slice::Iter<i32>> {}
 ```
 
+A trait alias can be parameterized over types and lifetimes, just like traits themselves:
+
+```rust
+trait LifetimeParametric<'a> = Iterator<Item=Cow<'a, [i32]>>;`
+
+trait TypeParametric<T> = Iterator<Item=Cow<'static, [T]>>;
+```
+
 ---
 
 Specifically, the grammar being added is, in informal notation:
@@ -144,6 +152,8 @@ ATTRIBUTE* VISIBILITY? trait IDENTIFIER(<GENERIC_PARAMS>)? = GENERIC_BOUNDS (whe
 `GENERIC_BOUNDS` is a list of zero or more traits and lifetimes separated by `+`, the same as the
 current syntax for bounds on a type parameter, and `PREDICATES` is a comma-separated list of zero or
 more predicates, just like any other `where` clause.
+`GENERIC_PARAMS` is a comma-separated list of zero or more lifetime and type parameters,
+with optional bounds, just like other generic definitions.
 
 ## Use semantics
 
