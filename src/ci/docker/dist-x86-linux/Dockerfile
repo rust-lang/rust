@@ -6,7 +6,7 @@ WORKDIR /build
 # to http://vault.centos.org/
 RUN sed -i 's/enabled=1/enabled=0/' /etc/yum/pluginconf.d/fastestmirror.conf
 RUN sed -i 's/mirrorlist/#mirrorlist/' /etc/yum.repos.d/*.repo
-RUN sed -i 's/#\(baseurl.*\)mirror.centos.org/\1107.158.252.35/' /etc/yum.repos.d/*.repo
+RUN sed -i 's|#\(baseurl.*\)mirror.centos.org/centos/$releasever|\1vault.centos.org/5.11|' /etc/yum.repos.d/*.repo
 
 RUN yum upgrade -y && yum install -y \
       curl \
