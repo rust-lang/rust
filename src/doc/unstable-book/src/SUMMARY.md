@@ -130,6 +130,8 @@
     - [derive_eq](library-features/derive-eq.md)
     - [discriminant_value](library-features/discriminant-value.md)
     - [error_type_id](library-features/error-type-id.md)
+    - [eprint](library-features/eprint.md)
+    - [eprint_internal](library-features/eprint-internal.md)
     - [exact_size_is_empty](library-features/exact-size-is-empty.md)
     - [fd](library-features/fd.md)
     - [fd_read](library-features/fd-read.md)
