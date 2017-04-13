@@ -10,35 +10,36 @@
 
 use std::collections::HashSet;
 use std::fs;
-use std::io::{self, BufRead};
 use std::path;
 use features::{collect_lang_features, collect_lib_features, Status};
 
 const PATH_STR: &'static str = "doc/unstable-book/src";
 
-const SUMMARY_FILE_NAME: &'static str = "SUMMARY.md";
+const LANG_FEATURES_DIR: &'static str = "language-features";
 
-static EXCLUDE: &'static [&'static str; 2] = &[SUMMARY_FILE_NAME, "the-unstable-book.md"];
+const LIB_FEATURES_DIR: &'static str = "library-features";
 
 /// Build the path to the Unstable Book source directory from the Rust 'src' directory
 fn unstable_book_path(base_src_path: &path::Path) -> path::PathBuf {
     base_src_path.join(PATH_STR)
 }
 
-/// Build the path to the Unstable Book SUMMARY file from the Rust 'src' directory
-fn unstable_book_summary_path(base_src_path: &path::Path) -> path::PathBuf {
-    unstable_book_path(base_src_path).join(SUMMARY_FILE_NAME)
+/// Directory where the features are documented within the Unstable Book source directory
+fn unstable_book_lang_features_path(base_src_path: &path::Path) -> path::PathBuf {
+    unstable_book_path(base_src_path).join(LANG_FEATURES_DIR)
 }
 
-/// Open the Unstable Book SUMMARY file
-fn open_unstable_book_summary_file(base_src_path: &path::Path) -> fs::File {
-    fs::File::open(unstable_book_summary_path(base_src_path))
-        .expect("could not open Unstable Book SUMMARY.md")
+/// Directory where the features are documented within the Unstable Book source directory
+fn unstable_book_lib_features_path(base_src_path: &path::Path) -> path::PathBuf {
+    unstable_book_path(base_src_path).join(LIB_FEATURES_DIR)
 }
 
 /// Test to determine if DirEntry is a file
 fn dir_entry_is_file(dir_entry: &fs::DirEntry) -> bool {
-    dir_entry.file_type().expect("could not determine file type of directory entry").is_file()
+    dir_entry
+        .file_type()
+        .expect("could not determine file type of directory entry")
+        .is_file()
 }
 
 /// Retrieve names of all lang-related unstable features
@@ -61,75 +62,81 @@ fn collect_unstable_lib_feature_names(base_src_path: &path::Path) -> HashSet<Str
         .collect()
 }
 
-/// Retrieve names of all unstable features
-fn collect_unstable_feature_names(base_src_path: &path::Path) -> HashSet<String> {
-    collect_unstable_lib_feature_names(base_src_path)
-        .union(&collect_unstable_lang_feature_names(base_src_path))
-        .map(|n| n.to_owned())
-        .collect::<HashSet<_, _>>()
-}
-
-/// Retrieve file names of all sections in the Unstable Book with:
-///
-/// * hyphens replaced by underscores
-/// * the markdown suffix ('.md') removed
-fn collect_unstable_book_section_file_names(base_src_path: &path::Path) -> HashSet<String> {
-    fs::read_dir(unstable_book_path(base_src_path))
+fn collect_unstable_book_section_file_names(dir: &path::Path) -> HashSet<String> {
+    fs::read_dir(dir)
         .expect("could not read directory")
         .into_iter()
         .map(|entry| entry.expect("could not read directory entry"))
         .filter(dir_entry_is_file)
         .map(|entry| entry.file_name().into_string().unwrap())
-        .filter(|n| EXCLUDE.iter().all(|e| n != e))
         .map(|n| n.trim_right_matches(".md").replace('-', "_"))
         .collect()
 }
 
-/// Retrieve unstable feature names that are in the Unstable Book SUMMARY file
-fn collect_unstable_book_summary_links(base_src_path: &path::Path) -> HashSet<String> {
-    let summary_link_regex =
-        ::regex::Regex::new(r"^- \[(\S+)\]\(\S+\.md\)").expect("invalid regex");
-    io::BufReader::new(open_unstable_book_summary_file(base_src_path))
-        .lines()
-        .map(|l| l.expect("could not read line from file"))
-        .filter_map(|line| {
-            summary_link_regex.captures(&line).map(|c| {
-                                                       c.get(1)
-                                                           .unwrap()
-                                                           .as_str()
-                                                           .to_owned()
-                                                   })
-        })
-        .collect()
+/// Retrieve file names of all library feature sections in the Unstable Book with:
+///
+/// * hyphens replaced by underscores
+/// * the markdown suffix ('.md') removed
+fn collect_unstable_book_lang_features_section_file_names(base_src_path: &path::Path)
+                                                          -> HashSet<String> {
+    collect_unstable_book_section_file_names(&unstable_book_lang_features_path(base_src_path))
+}
+
+/// Retrieve file names of all language feature sections in the Unstable Book with:
+///
+/// * hyphens replaced by underscores
+/// * the markdown suffix ('.md') removed
+fn collect_unstable_book_lib_features_section_file_names(base_src_path: &path::Path)
+                                                         -> HashSet<String> {
+    collect_unstable_book_section_file_names(&unstable_book_lib_features_path(base_src_path))
 }
 
 pub fn check(path: &path::Path, bad: &mut bool) {
-    let unstable_feature_names = collect_unstable_feature_names(path);
-    let unstable_book_section_file_names = collect_unstable_book_section_file_names(path);
-    let unstable_book_links = collect_unstable_book_summary_links(path);
 
-    // Check for Unstable Book section names with no corresponding SUMMARY.md link
-    for feature_name in &unstable_book_section_file_names - &unstable_book_links {
-        tidy_error!(
-            bad,
-            "The Unstable Book section '{}' needs to have a link in SUMMARY.md",
-            feature_name);
-    }
+    // Library features
+
+    let unstable_lib_feature_names = collect_unstable_lib_feature_names(path);
+    let unstable_book_lib_features_section_file_names =
+        collect_unstable_book_lib_features_section_file_names(path);
 
     // Check for unstable features that don't have Unstable Book sections
-    for feature_name in &unstable_feature_names - &unstable_book_section_file_names {
-        tidy_error!(
-            bad,
-            "Unstable feature '{}' needs to have a section in The Unstable Book",
-            feature_name);
+    for feature_name in &unstable_lib_feature_names -
+                        &unstable_book_lib_features_section_file_names {
+        tidy_error!(bad,
+                    "Unstable library feature '{}' needs to have a section within the \
+                     'library features' section of The Unstable Book",
+                    feature_name);
     }
 
     // Check for Unstable Book sections that don't have a corresponding unstable feature
-    for feature_name in &unstable_book_section_file_names - &unstable_feature_names {
-        tidy_error!(
-            bad,
-            "The Unstable Book has a section '{}' which doesn't correspond \
-            to an unstable feature",
-            feature_name)
+    for feature_name in &unstable_book_lib_features_section_file_names -
+                        &unstable_lib_feature_names {
+        tidy_error!(bad,
+                    "The Unstable Book has a 'library feature' section '{}' which doesn't \
+                     correspond to an unstable library feature",
+                    feature_name)
+    }
+
+    // Language features
+
+    let unstable_lang_feature_names = collect_unstable_lang_feature_names(path);
+    let unstable_book_lang_features_section_file_names =
+        collect_unstable_book_lang_features_section_file_names(path);
+
+    for feature_name in &unstable_lang_feature_names -
+                        &unstable_book_lang_features_section_file_names {
+        tidy_error!(bad,
+                    "Unstable language feature '{}' needs to have a section within the \
+                     'language features' section of The Unstable Book",
+                    feature_name);
+    }
+
+    // Check for Unstable Book sections that don't have a corresponding unstable feature
+    for feature_name in &unstable_book_lang_features_section_file_names -
+                        &unstable_lang_feature_names {
+        tidy_error!(bad,
+                    "The Unstable Book has a 'language feature' section '{}' which doesn't \
+                     correspond to an unstable language feature",
+                    feature_name)
     }
 }
