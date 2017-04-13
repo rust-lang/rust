@@ -51,7 +51,6 @@ extern crate rustc_incremental;
 pub extern crate rustc_llvm as llvm;
 extern crate rustc_platform_intrinsics as intrinsics;
 extern crate rustc_const_math;
-extern crate rustc_const_eval;
 #[macro_use]
 #[no_link]
 extern crate rustc_bitflags;

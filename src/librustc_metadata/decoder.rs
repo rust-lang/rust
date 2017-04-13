@@ -524,7 +524,8 @@ impl<'a, 'tcx> CrateMetadata {
         };
 
         if let ty::VariantDiscr::Explicit(def_id) = data.discr {
-            let result = data.evaluated_discr.map_or(Err(()), Ok);
+            // The original crate wouldn't have compiled if this is missing.
+            let result = Ok(data.evaluated_discr.unwrap());
             tcx.maps.monomorphic_const_eval.borrow_mut().insert(def_id, result);
         }
 
