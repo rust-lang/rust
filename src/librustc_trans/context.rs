@@ -682,10 +682,6 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         &self.shared.exported_symbols
     }
 
-    pub fn link_meta<'a>(&'a self) -> &'a LinkMeta {
-        &self.shared.link_meta
-    }
-
     pub fn needs_unwind_cleanup_cache(&self) -> &RefCell<FxHashMap<Ty<'tcx>, bool>> {
         &self.local().needs_unwind_cleanup_cache
     }
