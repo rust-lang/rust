@@ -799,7 +799,8 @@ fn write_metadata(cx: &SharedCrateContext,
 /// Find any symbols that are defined in one compilation unit, but not declared
 /// in any other compilation unit.  Give these symbols internal linkage.
 fn internalize_symbols<'a, 'tcx>(sess: &Session,
-                                 ccxs: &CrateContextList<'a, 'tcx>,
+                                 scx: &SharedCrateContext<'a, 'tcx>,
+                                 llvm_modules: &[ModuleLlvm],
                                  symbol_map: &SymbolMap<'tcx>,
                                  exported_symbols: &ExportedSymbols) {
     let export_threshold =
@@ -814,7 +815,6 @@ fn internalize_symbols<'a, 'tcx>(sess: &Session,
         .map(|&(ref name, _)| &name[..])
         .collect::<FxHashSet<&str>>();
 
-    let scx = ccxs.shared();
     let tcx = scx.tcx();
 
     let incr_comp = sess.opts.debugging_opts.incremental.is_some();
@@ -829,8 +829,8 @@ fn internalize_symbols<'a, 'tcx>(sess: &Session,
         // incremental compilation, we don't need to collect. See below for more
         // information.
         if !incr_comp {
-            for ccx in ccxs.iter_need_trans() {
-                for val in iter_globals(ccx.llmod()).chain(iter_functions(ccx.llmod())) {
+            for ll in llvm_modules {
+                for val in iter_globals(ll.llmod).chain(iter_functions(ll.llmod)) {
                     let linkage = llvm::LLVMRustGetLinkage(val);
                     // We only care about external declarations (not definitions)
                     // and available_externally definitions.
@@ -866,8 +866,8 @@ fn internalize_symbols<'a, 'tcx>(sess: &Session,
         // Examine each external definition.  If the definition is not used in
         // any other compilation unit, and is not reachable from other crates,
         // then give it internal linkage.
-        for ccx in ccxs.iter_need_trans() {
-            for val in iter_globals(ccx.llmod()).chain(iter_functions(ccx.llmod())) {
+        for ll in llvm_modules {
+            for val in iter_globals(ll.llmod).chain(iter_functions(ll.llmod)) {
                 let linkage = llvm::LLVMRustGetLinkage(val);
 
                 let is_externally_visible = (linkage == llvm::Linkage::ExternalLinkage) ||
@@ -926,19 +926,20 @@ fn internalize_symbols<'a, 'tcx>(sess: &Session,
 // when using MSVC linker.  We do this only for data, as linker can fix up
 // code references on its own.
 // See #26591, #27438
-fn create_imps(cx: &CrateContextList) {
+fn create_imps(sess: &Session,
+               llvm_modules: &[ModuleLlvm]) {
     // The x86 ABI seems to require that leading underscores are added to symbol
     // names, so we need an extra underscore on 32-bit. There's also a leading
     // '\x01' here which disables LLVM's symbol mangling (e.g. no extra
     // underscores added in front).
-    let prefix = if cx.shared().sess().target.target.target_pointer_width == "32" {
+    let prefix = if sess.target.target.target_pointer_width == "32" {
         "\x01__imp__"
     } else {
         "\x01__imp_"
     };
     unsafe {
-        for ccx in cx.iter_need_trans() {
-            let exported: Vec<_> = iter_globals(ccx.llmod())
+        for ll in llvm_modules {
+            let exported: Vec<_> = iter_globals(ll.llmod)
                                        .filter(|&val| {
                                            llvm::LLVMRustGetLinkage(val) ==
                                            llvm::Linkage::ExternalLinkage &&
@@ -946,13 +947,13 @@ fn create_imps(cx: &CrateContextList) {
                                        })
                                        .collect();
 
-            let i8p_ty = Type::i8p(&ccx);
+            let i8p_ty = Type::i8p_llcx(ll.llcx);
             for val in exported {
                 let name = CStr::from_ptr(llvm::LLVMGetValueName(val));
                 let mut imp_name = prefix.as_bytes().to_vec();
                 imp_name.extend(name.to_bytes());
                 let imp_name = CString::new(imp_name).unwrap();
-                let imp = llvm::LLVMAddGlobal(ccx.llmod(),
+                let imp = llvm::LLVMAddGlobal(ll.llmod,
                                               i8p_ty.to_ref(),
                                               imp_name.as_ptr() as *const _);
                 let init = llvm::LLVMConstBitCast(val, i8p_ty.to_ref());
@@ -1244,11 +1245,23 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let exported_symbols = ExportedSymbols::compute_from(&shared_ccx,
                                                          &symbol_map);
 
+    // Get the list of llvm modules we created. We'll do a few wacky
+    // transforms on them now.
+
+    let llvm_modules: Vec<_> =
+        modules.iter()
+               .filter_map(|module| match module.source {
+                   ModuleSource::Translated(llvm) => Some(llvm),
+                   _ => None,
+               })
+               .collect();
+
     // Now that we have all symbols that are exported from the CGUs of this
     // crate, we can run the `internalize_symbols` pass.
     time(shared_ccx.sess().time_passes(), "internalize symbols", || {
         internalize_symbols(sess,
-                            &crate_context_list,
+                            &shared_ccx,
+                            &llvm_modules,
                             &symbol_map,
                             &exported_symbols);
     });
@@ -1259,7 +1272,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     if sess.target.target.options.is_like_msvc &&
        sess.crate_types.borrow().iter().any(|ct| *ct == config::CrateTypeRlib) {
-        create_imps(&crate_context_list);
+        create_imps(sess, &llvm_modules);
     }
 
     let linker_info = LinkerInfo::new(&shared_ccx, &exported_symbols);
