@@ -8,8 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! `VecDeque` is a double-ended queue, which is implemented with the help of a
-//! growing ring buffer.
+//! A double-ended queue implemented with a growable ring buffer.
 //!
 //! This queue has `O(1)` amortized inserts and removals from both ends of the
 //! container. It also has `O(1)` indexing like a vector. The contained elements
@@ -43,8 +42,7 @@ const MAXIMUM_ZST_CAPACITY: usize = 1 << (32 - 1); // Largest possible power of 
 #[cfg(target_pointer_width = "64")]
 const MAXIMUM_ZST_CAPACITY: usize = 1 << (64 - 1); // Largest possible power of two
 
-/// `VecDeque` is a growable ring buffer, which can be used as a double-ended
-/// queue efficiently.
+/// A double-ended queue implemented with a growable ring buffer.
 ///
 /// The "default" usage of this type as a queue is to use [`push_back`] to add to
 /// the queue, and [`pop_front`] to remove from the queue. [`extend`] and [`append`]

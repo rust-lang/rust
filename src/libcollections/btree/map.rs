@@ -420,18 +420,19 @@ impl<'a, K: 'a + fmt::Debug, V: 'a + fmt::Debug> fmt::Debug for RangeMut<'a, K, 
 }
 
 /// A view into a single entry in a map, which may either be vacant or occupied.
-/// This enum is constructed from the [`entry`] method on [`BTreeMap`].
+///
+/// This `enum` is constructed from the [`entry`] method on [`BTreeMap`].
 ///
 /// [`BTreeMap`]: struct.BTreeMap.html
 /// [`entry`]: struct.BTreeMap.html#method.entry
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum Entry<'a, K: 'a, V: 'a> {
-    /// A vacant `Entry`
+    /// A vacant entry.
     #[stable(feature = "rust1", since = "1.0.0")]
     Vacant(#[stable(feature = "rust1", since = "1.0.0")]
            VacantEntry<'a, K, V>),
 
-    /// An occupied `Entry`
+    /// An occupied entry.
     #[stable(feature = "rust1", since = "1.0.0")]
     Occupied(#[stable(feature = "rust1", since = "1.0.0")]
              OccupiedEntry<'a, K, V>),
@@ -451,7 +452,8 @@ impl<'a, K: 'a + Debug + Ord, V: 'a + Debug> Debug for Entry<'a, K, V> {
     }
 }
 
-/// A vacant `Entry`. It is part of the [`Entry`] enum.
+/// A view into a vacant entry in a `BTreeMap`.
+/// It is part of the [`Entry`] enum.
 ///
 /// [`Entry`]: enum.Entry.html
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -473,7 +475,8 @@ impl<'a, K: 'a + Debug + Ord, V: 'a> Debug for VacantEntry<'a, K, V> {
     }
 }
 
-/// An occupied `Entry`. It is part of the [`Entry`] enum.
+/// A view into an occupied entry in a `BTreeMap`.
+/// It is part of the [`Entry`] enum.
 ///
 /// [`Entry`]: enum.Entry.html
 #[stable(feature = "rust1", since = "1.0.0")]

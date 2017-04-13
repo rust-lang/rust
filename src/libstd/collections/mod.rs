@@ -442,16 +442,14 @@ mod hash;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub mod hash_map {
-    //! A hash map implementation which uses linear probing with Robin
-    //! Hood bucket stealing.
+    //! A hash map implemented with linear probing and Robin Hood bucket stealing.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub use super::hash::map::*;
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub mod hash_set {
-    //! An implementation of a hash set using the underlying representation of a
-    //! `HashMap` where the value is ().
+    //! A hash set implemented as a `HashMap` where the value is `()`.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub use super::hash::set::*;
 }
