@@ -42,6 +42,7 @@ ENV TARGETS=$TARGETS,armv7-linux-androideabi
 
 ENV RUST_CONFIGURE_ARGS \
       --target=$TARGETS \
+      --enable-extended \
       --arm-linux-androideabi-ndk=/android/ndk-arm-9 \
       --armv7-linux-androideabi-ndk=/android/ndk-arm-9 \
       --i686-linux-android-ndk=/android/ndk-x86-9 \

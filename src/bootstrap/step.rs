@@ -700,6 +700,7 @@ pub fn build_rules<'a>(build: &'a Build) -> Rules {
          .dep(|s| s.name("default:doc"))
          .run(move |s| dist::docs(build, s.stage, s.target));
     rules.dist("dist-analysis", "analysis")
+         .default(build.config.extended)
          .dep(|s| s.name("dist-std"))
          .only_host_build(true)
          .run(move |s| dist::analysis(build, &s.compiler(), s.target));

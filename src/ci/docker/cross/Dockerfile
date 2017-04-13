@@ -74,6 +74,7 @@ ENV CC_mipsel_unknown_linux_musl=mipsel-openwrt-linux-gcc \
 ENV STAGING_DIR=/tmp
 
 ENV RUST_CONFIGURE_ARGS \
+      --enable-extended \
       --target=$TARGETS \
       --musl-root-arm=/usr/local/arm-linux-musleabi \
       --musl-root-armhf=/usr/local/arm-linux-musleabihf \
