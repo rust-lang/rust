@@ -1012,8 +1012,8 @@ fn iter_functions(llmod: llvm::ModuleRef) -> ValueIter {
 ///
 /// This list is later used by linkers to determine the set of symbols needed to
 /// be exposed from a dynamic library and it's also encoded into the metadata.
-pub fn find_exported_symbols(tcx: TyCtxt, reachable: NodeSet) -> NodeSet {
-    reachable.into_iter().filter(|&id| {
+pub fn find_exported_symbols(tcx: TyCtxt, reachable: &NodeSet) -> NodeSet {
+    reachable.iter().cloned().filter(|&id| {
         // Next, we want to ignore some FFI functions that are not exposed from
         // this crate. Reachable FFI functions can be lumped into two
         // categories:
@@ -1065,7 +1065,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let krate = tcx.hir.krate();
 
     let ty::CrateAnalysis { reachable, .. } = analysis;
-    let exported_symbols = find_exported_symbols(tcx, reachable);
+    let exported_symbols = find_exported_symbols(tcx, &reachable);
 
     let check_overflow = tcx.sess.overflow_checks();
 
