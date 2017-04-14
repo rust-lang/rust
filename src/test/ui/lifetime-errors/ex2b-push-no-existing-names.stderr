@@ -10,18 +10,18 @@ note: the anonymous lifetime #3 defined on the body at 15:43...
   --> $DIR/ex2b-push-no-existing-names.rs:15:44
    |
 15 |   fn foo(x: &mut Vec<Ref<i32>>, y: Ref<i32>) {
-   |  ____________________________________________^ starting here...
+   |  ____________________________________________^
 16 | |     x.push(y);
 17 | | }
-   | |_^ ...ending here
+   | |_^
 note: ...does not necessarily outlive the anonymous lifetime #2 defined on the body at 15:43
   --> $DIR/ex2b-push-no-existing-names.rs:15:44
    |
 15 |   fn foo(x: &mut Vec<Ref<i32>>, y: Ref<i32>) {
-   |  ____________________________________________^ starting here...
+   |  ____________________________________________^
 16 | |     x.push(y);
 17 | | }
-   | |_^ ...ending here
+   | |_^
 
 error: aborting due to previous error
 

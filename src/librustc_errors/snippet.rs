@@ -63,7 +63,7 @@ impl MultilineAnnotation {
             start_col: self.start_col,
             end_col: self.start_col + 1,
             is_primary: self.is_primary,
-            label: Some("starting here...".to_owned()),
+            label: None,
             annotation_type: AnnotationType::MultilineStart(self.depth)
         }
     }
@@ -73,10 +73,7 @@ impl MultilineAnnotation {
             start_col: self.end_col - 1,
             end_col: self.end_col,
             is_primary: self.is_primary,
-            label: match self.label {
-                Some(ref label) => Some(format!("...ending here: {}", label)),
-                None => Some("...ending here".to_owned()),
-            },
+            label: self.label.clone(),
             annotation_type: AnnotationType::MultilineEnd(self.depth)
         }
     }
@@ -106,9 +103,9 @@ pub enum AnnotationType {
     // Each of these corresponds to one part of the following diagram:
     //
     //     x |   foo(1 + bar(x,
-    //       |  _________^ starting here...           < MultilineStart
-    //     x | |             y),                      < MultilineLine
-    //       | |______________^ ...ending here: label < MultilineEnd
+    //       |  _________^              < MultilineStart
+    //     x | |             y),        < MultilineLine
+    //       | |______________^ label   < MultilineEnd
     //     x |       z);
     /// Annotation marking the first character of a fully shown multiline span
     MultilineStart(usize),
@@ -187,6 +184,15 @@ impl Annotation {
             label.len() > 0
         } else {
             false
+        }
+    }
+
+    pub fn takes_space(&self) -> bool {
+        // Multiline annotations always have to keep vertical space.
+        match self.annotation_type {
+            AnnotationType::MultilineStart(_) |
+            AnnotationType::MultilineEnd(_) => true,
+            _ => false,
         }
     }
 }
