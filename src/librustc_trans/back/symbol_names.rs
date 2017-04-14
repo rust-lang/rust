@@ -179,14 +179,14 @@ pub fn symbol_name<'a, 'tcx>(instance: Instance<'tcx>,
 
     if let Some(id) = node_id {
         if scx.sess().plugin_registrar_fn.get() == Some(id) {
-            let svh = &scx.link_meta().crate_hash;
             let idx = def_id.index;
-            return scx.sess().generate_plugin_registrar_symbol(svh, idx);
+            let disambiguator = scx.sess().local_crate_disambiguator();
+            return scx.sess().generate_plugin_registrar_symbol(disambiguator, idx);
         }
         if scx.sess().derive_registrar_fn.get() == Some(id) {
-            let svh = &scx.link_meta().crate_hash;
             let idx = def_id.index;
-            return scx.sess().generate_derive_registrar_symbol(svh, idx);
+            let disambiguator = scx.sess().local_crate_disambiguator();
+            return scx.sess().generate_derive_registrar_symbol(disambiguator, idx);
         }
     }
 
