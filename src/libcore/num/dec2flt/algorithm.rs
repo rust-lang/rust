@@ -106,17 +106,17 @@ mod fpu_precision {
 /// a bignum.
 pub fn fast_path<T: RawFloat>(integral: &[u8], fractional: &[u8], e: i64) -> Option<T> {
     let num_digits = integral.len() + fractional.len();
-    // log_10(f64::max_sig) ~ 15.95. We compare the exact value to max_sig near the end,
+    // log_10(f64::MAX_SIG) ~ 15.95. We compare the exact value to MAX_SIG near the end,
     // this is just a quick, cheap rejection (and also frees the rest of the code from
     // worrying about underflow).
     if num_digits > 16 {
         return None;
     }
-    if e.abs() >= T::ceil_log5_of_max_sig() as i64 {
+    if e.abs() >= T::CEIL_LOG5_OF_MAX_SIG as i64 {
         return None;
     }
     let f = num::from_str_unchecked(integral.iter().chain(fractional.iter()));
-    if f > T::max_sig() {
+    if f > T::MAX_SIG {
         return None;
     }
 
@@ -154,14 +154,14 @@ pub fn fast_path<T: RawFloat>(integral: &[u8], fractional: &[u8], e: i64) -> Opt
 /// > the best possible approximation that uses p bits of significand.)
 pub fn bellerophon<T: RawFloat>(f: &Big, e: i16) -> T {
     let slop;
-    if f <= &Big::from_u64(T::max_sig()) {
+    if f <= &Big::from_u64(T::MAX_SIG) {
         // The cases abs(e) < log5(2^N) are in fast_path()
         slop = if e >= 0 { 0 } else { 3 };
     } else {
         slop = if e >= 0 { 1 } else { 4 };
     }
     let z = rawfp::big_to_fp(f).mul(&power_of_ten(e)).normalize();
-    let exp_p_n = 1 << (P - T::sig_bits() as u32);
+    let exp_p_n = 1 << (P - T::SIG_BITS as u32);
     let lowbits: i64 = (z.f % exp_p_n) as i64;
     // Is the slop large enough to make a difference when
     // rounding to n bits?
@@ -210,14 +210,14 @@ fn algorithm_r<T: RawFloat>(f: &Big, e: i16, z0: T) -> T {
         if d2 < y {
             let mut d2_double = d2;
             d2_double.mul_pow2(1);
-            if m == T::min_sig() && d_negative && d2_double > y {
+            if m == T::MIN_SIG && d_negative && d2_double > y {
                 z = prev_float(z);
             } else {
                 return z;
             }
         } else if d2 == y {
             if m % 2 == 0 {
-                if m == T::min_sig() && d_negative {
+                if m == T::MIN_SIG && d_negative {
                     z = prev_float(z);
                 } else {
                     return z;
@@ -303,12 +303,12 @@ pub fn algorithm_m<T: RawFloat>(f: &Big, e: i16) -> T {
     quick_start::<T>(&mut u, &mut v, &mut k);
     let mut rem = Big::from_small(0);
     let mut x = Big::from_small(0);
-    let min_sig = Big::from_u64(T::min_sig());
-    let max_sig = Big::from_u64(T::max_sig());
+    let min_sig = Big::from_u64(T::MIN_SIG);
+    let max_sig = Big::from_u64(T::MAX_SIG);
     loop {
         u.div_rem(&v, &mut x, &mut rem);
-        if k == T::min_exp_int() {
-            // We have to stop at the minimum exponent, if we wait until `k < T::min_exp_int()`,
+        if k == T::MIN_EXP_INT {
+            // We have to stop at the minimum exponent, if we wait until `k < T::MIN_EXP_INT`,
             // then we'd be off by a factor of two. Unfortunately this means we have to special-
             // case normal numbers with the minimum exponent.
             // FIXME find a more elegant formulation, but run the `tiny-pow10` test to make sure
@@ -318,8 +318,8 @@ pub fn algorithm_m<T: RawFloat>(f: &Big, e: i16) -> T {
             }
             return underflow(x, v, rem);
         }
-        if k > T::max_exp_int() {
-            return T::infinity2();
+        if k > T::MAX_EXP_INT {
+            return T::INFINITY;
         }
         if x < min_sig {
             u.mul_pow2(1);
@@ -345,18 +345,18 @@ fn quick_start<T: RawFloat>(u: &mut Big, v: &mut Big, k: &mut i16) {
     // The target ratio is one where u/v is in an in-range significand. Thus our termination
     // condition is log2(u / v) being the significand bits, plus/minus one.
     // FIXME Looking at the second bit could improve the estimate and avoid some more divisions.
-    let target_ratio = T::sig_bits() as i16;
+    let target_ratio = T::SIG_BITS as i16;
     let log2_u = u.bit_length() as i16;
     let log2_v = v.bit_length() as i16;
     let mut u_shift: i16 = 0;
     let mut v_shift: i16 = 0;
     assert!(*k == 0);
     loop {
-        if *k == T::min_exp_int() {
+        if *k == T::MIN_EXP_INT {
             // Underflow or subnormal. Leave it to the main function.
             break;
         }
-        if *k == T::max_exp_int() {
+        if *k == T::MAX_EXP_INT {
             // Overflow. Leave it to the main function.
             break;
         }
@@ -376,7 +376,7 @@ fn quick_start<T: RawFloat>(u: &mut Big, v: &mut Big, k: &mut i16) {
 }
 
 fn underflow<T: RawFloat>(x: Big, v: Big, rem: Big) -> T {
-    if x < Big::from_u64(T::min_sig()) {
+    if x < Big::from_u64(T::MIN_SIG) {
         let q = num::to_u64(&x);
         let z = rawfp::encode_subnormal(q);
         return round_by_remainder(v, rem, q, z);
@@ -395,9 +395,9 @@ fn underflow<T: RawFloat>(x: Big, v: Big, rem: Big) -> T {
     // needs to be rounded up. Only when the rounded off bits are 1/2 and the remainder
     // is zero, we have a half-to-even situation.
     let bits = x.bit_length();
-    let lsb = bits - T::sig_bits() as usize;
+    let lsb = bits - T::SIG_BITS as usize;
     let q = num::get_bits(&x, lsb, bits);
-    let k = T::min_exp_int() + lsb as i16;
+    let k = T::MIN_EXP_INT + lsb as i16;
     let z = rawfp::encode_normal(Unpacked::new(q, k));
     let q_even = q % 2 == 0;
     match num::compare_with_half_ulp(&x, lsb) {

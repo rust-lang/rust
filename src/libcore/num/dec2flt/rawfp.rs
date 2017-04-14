@@ -56,24 +56,12 @@ impl Unpacked {
 ///
 /// Should **never ever** be implemented for other types or be used outside the dec2flt module.
 /// Inherits from `Float` because there is some overlap, but all the reused methods are trivial.
-/// The "methods" (pseudo-constants) with default implementation should not be overriden.
 pub trait RawFloat : Float + Copy + Debug + LowerExp
                     + Mul<Output=Self> + Div<Output=Self> + Neg<Output=Self>
 {
-    // suffix of "2" because Float::infinity is deprecated
-    #[allow(deprecated)]
-    fn infinity2() -> Self {
-        Float::infinity()
-    }
-
-    // suffix of "2" because Float::nan is deprecated
-    #[allow(deprecated)]
-    fn nan2() -> Self {
-        Float::nan()
-    }
-
-    // suffix of "2" because Float::zero is deprecated
-    fn zero2() -> Self;
+    const INFINITY: Self;
+    const NAN: Self;
+    const ZERO: Self;
 
     // suffix of "2" because Float::integer_decode is deprecated
     #[allow(deprecated)]
@@ -94,94 +82,83 @@ pub trait RawFloat : Float + Copy + Debug + LowerExp
     /// represented, the other code in this module makes sure to never let that happen.
     fn from_int(x: u64) -> Self;
 
-    /// Get the value 10<sup>e</sup> from a pre-computed table. Panics for e >=
-    /// ceil_log5_of_max_sig().
+    /// Get the value 10<sup>e</sup> from a pre-computed table.
+    /// Panics for `e >= CEIL_LOG5_OF_MAX_SIG`.
     fn short_fast_pow10(e: usize) -> Self;
-
-    // FIXME Everything that follows should be associated constants, but taking the value of an
-    // associated constant from a type parameter does not work (yet?)
-    // A possible workaround is having a `FloatInfo` struct for all the constants, but so far
-    // the methods aren't painful enough to rewrite.
 
     /// What the name says. It's easier to hard code than juggling intrinsics and
     /// hoping LLVM constant folds it.
-    fn ceil_log5_of_max_sig() -> i16;
+    const CEIL_LOG5_OF_MAX_SIG: i16;
 
     // A conservative bound on the decimal digits of inputs that can't produce overflow or zero or
     /// subnormals. Probably the decimal exponent of the maximum normal value, hence the name.
-    fn max_normal_digits() -> usize;
+    const MAX_NORMAL_DIGITS: usize;
 
     /// When the most significant decimal digit has a place value greater than this, the number
     /// is certainly rounded to infinity.
-    fn inf_cutoff() -> i64;
+    const INF_CUTOFF: i64;
 
     /// When the most significant decimal digit has a place value less than this, the number
     /// is certainly rounded to zero.
-    fn zero_cutoff() -> i64;
+    const ZERO_CUTOFF: i64;
 
     /// The number of bits in the exponent.
-    fn exp_bits() -> u8;
+    const EXP_BITS: u8;
 
     /// The number of bits in the singificand, *including* the hidden bit.
-    fn sig_bits() -> u8;
+    const SIG_BITS: u8;
 
     /// The number of bits in the singificand, *excluding* the hidden bit.
-    fn explicit_sig_bits() -> u8 {
-        Self::sig_bits() - 1
-    }
+    const EXPLICIT_SIG_BITS: u8;
 
     /// The maximum legal exponent in fractional representation.
-    fn max_exp() -> i16 {
-        (1 << (Self::exp_bits() - 1)) - 1
-    }
+    const MAX_EXP: i16;
 
     /// The minimum legal exponent in fractional representation, excluding subnormals.
-    fn min_exp() -> i16 {
-        -Self::max_exp() + 1
-    }
+    const MIN_EXP: i16;
 
     /// `MAX_EXP` for integral representation, i.e., with the shift applied.
-    fn max_exp_int() -> i16 {
-        Self::max_exp() - (Self::sig_bits() as i16 - 1)
-    }
+    const MAX_EXP_INT: i16;
 
     /// `MAX_EXP` encoded (i.e., with offset bias)
-    fn max_encoded_exp() -> i16 {
-        (1 << Self::exp_bits()) - 1
-    }
+    const MAX_ENCODED_EXP: i16;
 
     /// `MIN_EXP` for integral representation, i.e., with the shift applied.
-    fn min_exp_int() -> i16 {
-        Self::min_exp() - (Self::sig_bits() as i16 - 1)
-    }
+    const MIN_EXP_INT: i16;
 
     /// The maximum normalized singificand in integral representation.
-    fn max_sig() -> u64 {
-        (1 << Self::sig_bits()) - 1
-    }
+    const MAX_SIG: u64;
 
     /// The minimal normalized significand in integral representation.
-    fn min_sig() -> u64 {
-        1 << (Self::sig_bits() - 1)
+    const MIN_SIG: u64;
+}
+
+// Mostly a workaround for #34344.
+macro_rules! other_constants {
+    ($type: ident) => {
+        const EXPLICIT_SIG_BITS: u8 = Self::SIG_BITS - 1;
+        const MAX_EXP: i16 = (1 << (Self::EXP_BITS - 1)) - 1;
+        const MIN_EXP: i16 = -Self::MAX_EXP + 1;
+        const MAX_EXP_INT: i16 = Self::MAX_EXP - (Self::SIG_BITS as i16 - 1);
+        const MAX_ENCODED_EXP: i16 = (1 << Self::EXP_BITS) - 1;
+        const MIN_EXP_INT: i16 = Self::MIN_EXP - (Self::SIG_BITS as i16 - 1);
+        const MAX_SIG: u64 = (1 << Self::SIG_BITS) - 1;
+        const MIN_SIG: u64 = 1 << (Self::SIG_BITS - 1);
+
+        const INFINITY: Self = $crate::$type::INFINITY;
+        const NAN: Self = $crate::$type::NAN;
+        const ZERO: Self = 0.0;
     }
 }
 
 impl RawFloat for f32 {
-    fn zero2() -> Self {
-        0.0
-    }
-
-    fn sig_bits() -> u8 {
-        24
-    }
-
-    fn exp_bits() -> u8 {
-        8
-    }
-
-    fn ceil_log5_of_max_sig() -> i16 {
-        11
-    }
+    const SIG_BITS: u8 = 24;
+    const EXP_BITS: u8 = 8;
+    const CEIL_LOG5_OF_MAX_SIG: i16 = 11;
+    const MAX_NORMAL_DIGITS: usize = 35;
+    const INF_CUTOFF: i64 = 40;
+    const ZERO_CUTOFF: i64 = -48;
+    other_constants!(f32);
 
     fn transmute(self) -> u64 {
         let bits: u32 = unsafe { transmute(self) };
@@ -207,37 +184,17 @@ impl RawFloat for f32 {
     fn short_fast_pow10(e: usize) -> Self {
         table::F32_SHORT_POWERS[e]
     }
-
-    fn max_normal_digits() -> usize {
-        35
-    }
-
-    fn inf_cutoff() -> i64 {
-        40
-    }
-
-    fn zero_cutoff() -> i64 {
-        -48
-    }
 }
 
 
 impl RawFloat for f64 {
-    fn zero2() -> Self {
-        0.0
-    }
-
-    fn sig_bits() -> u8 {
-        53
-    }
-
-    fn exp_bits() -> u8 {
-        11
-    }
-
-    fn ceil_log5_of_max_sig() -> i16 {
-        23
-    }
+    const SIG_BITS: u8 = 53;
+    const EXP_BITS: u8 = 11;
+    const CEIL_LOG5_OF_MAX_SIG: i16 = 23;
+    const MAX_NORMAL_DIGITS: usize = 305;
+    const INF_CUTOFF: i64 = 310;
+    const ZERO_CUTOFF: i64 = -326;
+    other_constants!(f64);
 
     fn transmute(self) -> u64 {
         let bits: u64 = unsafe { transmute(self) };
@@ -262,38 +219,27 @@ impl RawFloat for f64 {
     fn short_fast_pow10(e: usize) -> Self {
         table::F64_SHORT_POWERS[e]
     }
-
-    fn max_normal_digits() -> usize {
-        305
-    }
-
-    fn inf_cutoff() -> i64 {
-        310
-    }
-
-    fn zero_cutoff() -> i64 {
-        -326
-    }
-
 }
 
-/// Convert an Fp to the closest f64. Only handles number that fit into a normalized f64.
+/// Convert an Fp to the closest machine float type.
+/// Does not handle subnormal results.
 pub fn fp_to_float<T: RawFloat>(x: Fp) -> T {
     let x = x.normalize();
     // x.f is 64 bit, so x.e has a mantissa shift of 63
     let e = x.e + 63;
-    if e > T::max_exp() {
+    if e > T::MAX_EXP {
         panic!("fp_to_float: exponent {} too large", e)
-    }  else if e > T::min_exp() {
+    }  else if e > T::MIN_EXP {
         encode_normal(round_normal::<T>(x))
     } else {
         panic!("fp_to_float: exponent {} too small", e)
     }
 }
 
-/// Round the 64-bit significand to 53 bit with half-to-even. Does not handle exponent overflow.
+/// Round the 64-bit significand to T::SIG_BITS bits with half-to-even.
+/// Does not handle exponent overflow.
 pub fn round_normal<T: RawFloat>(x: Fp) -> Unpacked {
-    let excess = 64 - T::sig_bits() as i16;
+    let excess = 64 - T::SIG_BITS as i16;
     let half: u64 = 1 << (excess - 1);
     let (q, rem) = (x.f >> excess, x.f & ((1 << excess) - 1));
     assert_eq!(q << excess | rem, x.f);
@@ -303,8 +249,8 @@ pub fn round_normal<T: RawFloat>(x: Fp) -> Unpacked {
         Unpacked::new(q, k)
     } else if rem == half && (q % 2) == 0 {
         Unpacked::new(q, k)
-    } else if q == T::max_sig() {
-        Unpacked::new(T::min_sig(), k + 1)
+    } else if q == T::MAX_SIG {
+        Unpacked::new(T::MIN_SIG, k + 1)
     } else {
         Unpacked::new(q + 1, k)
     }
@@ -313,22 +259,22 @@ pub fn round_normal<T: RawFloat>(x: Fp) -> Unpacked {
 /// Inverse of `RawFloat::unpack()` for normalized numbers.
 /// Panics if the significand or exponent are not valid for normalized numbers.
 pub fn encode_normal<T: RawFloat>(x: Unpacked) -> T {
-    debug_assert!(T::min_sig() <= x.sig && x.sig <= T::max_sig(),
+    debug_assert!(T::MIN_SIG <= x.sig && x.sig <= T::MAX_SIG,
         "encode_normal: significand not normalized");
     // Remove the hidden bit
-    let sig_enc = x.sig & !(1 << T::explicit_sig_bits());
+    let sig_enc = x.sig & !(1 << T::EXPLICIT_SIG_BITS);
     // Adjust the exponent for exponent bias and mantissa shift
-    let k_enc = x.k + T::max_exp() + T::explicit_sig_bits() as i16;
-    debug_assert!(k_enc != 0 && k_enc < T::max_encoded_exp(),
+    let k_enc = x.k + T::MAX_EXP + T::EXPLICIT_SIG_BITS as i16;
+    debug_assert!(k_enc != 0 && k_enc < T::MAX_ENCODED_EXP,
         "encode_normal: exponent out of range");
     // Leave sign bit at 0 ("+"), our numbers are all positive
-    let bits = (k_enc as u64) << T::explicit_sig_bits() | sig_enc;
+    let bits = (k_enc as u64) << T::EXPLICIT_SIG_BITS | sig_enc;
     T::from_bits(bits)
 }
 
-/// Construct the subnormal. A mantissa of 0 is allowed and constructs zero.
+/// Construct a subnormal. A mantissa of 0 is allowed and constructs zero.
 pub fn encode_subnormal<T: RawFloat>(significand: u64) -> T {
-    assert!(significand < T::min_sig(), "encode_subnormal: not actually subnormal");
+    assert!(significand < T::MIN_SIG, "encode_subnormal: not actually subnormal");
     // Encoded exponent is 0, the sign bit is 0, so we just have to reinterpret the bits.
     T::from_bits(significand)
 }
@@ -364,8 +310,8 @@ pub fn prev_float<T: RawFloat>(x: T) -> T {
         Zero => panic!("prev_float: argument is zero"),
         Normal => {
             let Unpacked { sig, k } = x.unpack();
-            if sig == T::min_sig() {
-                encode_normal(Unpacked::new(T::max_sig(), k - 1))
+            if sig == T::MIN_SIG {
+                encode_normal(Unpacked::new(T::MAX_SIG, k - 1))
             } else {
                 encode_normal(Unpacked::new(sig - 1, k))
             }
@@ -380,7 +326,7 @@ pub fn prev_float<T: RawFloat>(x: T) -> T {
 pub fn next_float<T: RawFloat>(x: T) -> T {
     match x.classify() {
         Nan => panic!("next_float: argument is NaN"),
-        Infinite => T::infinity2(),
+        Infinite => T::INFINITY,
         // This seems too good to be true, but it works.
         // 0.0 is encoded as the all-zero word. Subnormals are 0x000m...m where m is the mantissa.
         // In particular, the smallest subnormal is 0x0...01 and the largest is 0x000F...F.
