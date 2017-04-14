@@ -470,10 +470,22 @@ pub fn href(did: DefId) -> Option<(String, ItemType, Vec<String>)> {
 /// rendering function with the necessary arguments for linking to a local path.
 fn resolved_path(w: &mut fmt::Formatter, did: DefId, path: &clean::Path,
                  print_all: bool, use_absolute: bool, is_not_debug: bool) -> fmt::Result {
-    let last = path.segments.last().unwrap();
-    let rel_root = match &*path.segments[0].name {
-        "self" => Some("./".to_string()),
-        _ => None,
+    let empty = clean::PathSegment {
+                    name: String::new(),
+                    params: clean::PathParameters::Parenthesized {
+                        inputs: Vec::new(),
+                        output: None,
+                    }
+                };
+    let last = path.segments.last()
+                            .unwrap_or(&empty);
+    let rel_root = if path.segments.is_empty() {
+        None
+    } else {
+        match &*path.segments[0].name {
+            "self" => Some("./".to_string()),
+            _ => None,
+        }
     };
 
     if print_all {
@@ -487,10 +499,9 @@ fn resolved_path(w: &mut fmt::Formatter, did: DefId, path: &clean::Path,
                         root.push_str(&seg.name);
                         root.push_str("/");
                         if is_not_debug {
-                            write!(w, "<a class=\"mod\"
-                                           href=\"{}index.html\">{}</a>::",
-                                     root,
-                                     seg.name)?;
+                            write!(w, "<a class=\"mod\" href=\"{}index.html\">{}</a>::",
+                                   root,
+                                   seg.name)?;
                         } else {
                             write!(w, "{}::", seg.name)?;
                         }
@@ -516,7 +527,8 @@ fn resolved_path(w: &mut fmt::Formatter, did: DefId, path: &clean::Path,
                 match href(did) {
                     Some((_, _, fqp)) => format!("{}::{}",
                                                  fqp[..fqp.len()-1].join("::"),
-                                                 HRef::new(did, fqp.last().unwrap())),
+                                                 HRef::new(did, fqp.last()
+                                                                   .unwrap_or(&String::new()))),
                     None => format!("{}", HRef::new(did, &last.name)),
                 }
             } else {
@@ -528,7 +540,8 @@ fn resolved_path(w: &mut fmt::Formatter, did: DefId, path: &clean::Path,
                 match href(did) {
                     Some((_, _, fqp)) => format!("{:?}::{:?}",
                                                  fqp[..fqp.len()-1].join("::"),
-                                                 HRef::new(did, fqp.last().unwrap())),
+                                                 HRef::new(did, fqp.last()
+                                                                   .unwrap_or(&String::new()))),
                     None => format!("{:?}", HRef::new(did, &last.name)),
                 }
             } else {
@@ -801,45 +814,65 @@ fn fmt_type(t: &clean::Type, f: &mut fmt::Formatter, use_absolute: bool,
             }
             Ok(())
         }
-        // It's pretty unsightly to look at `<A as B>::C` in output, and
-        // we've got hyperlinking on our side, so try to avoid longer
-        // notation as much as possible by making `C` a hyperlink to trait
-        // `B` to disambiguate.
-        //
-        // FIXME: this is still a lossy conversion and there should probably
-        //        be a better way of representing this in general? Most of
-        //        the ugliness comes from inlining across crates where
-        //        everything comes in as a fully resolved QPath (hard to
-        //        look at).
-        clean::QPath {
-            ref name,
-            ref self_type,
-            trait_: box clean::ResolvedPath { did, ref typarams, .. },
-        } => {
-            if f.alternate() {
-                write!(f, "{:#}::", self_type)?;
-            } else {
-                write!(f, "{}::", self_type)?;
-            }
-            let path = clean::Path::singleton(name.clone());
-            resolved_path(f, did, &path, true, use_absolute, is_not_debug)?;
-
-            // FIXME: `typarams` are not rendered, and this seems bad?
-            drop(typarams);
-            Ok(())
-        }
         clean::QPath { ref name, ref self_type, ref trait_ } => {
+            let should_show_cast = match *trait_ {
+                box clean::ResolvedPath { .. } => {
+                    let path = clean::Path::singleton(name.clone());
+                    !path.segments.is_empty() && &format!("{:#}", trait_) != "()" &&
+                    &format!("{:#}", self_type) != "Self"
+                }
+                _ => true,
+            };
             if f.alternate() {
                 if is_not_debug {
-                    write!(f, "<{:#} as {:#}>::{}", self_type, trait_, name)
+                    if should_show_cast {
+                        write!(f, "<{:#} as {:#}>::", self_type, trait_)?
+                    } else {
+                        write!(f, "{:#}::", self_type)?
+                    }
                 } else {
-                    write!(f, "<{:#?} as {:#?}>::{}", self_type, trait_, name)
+                    if should_show_cast {
+                        write!(f, "<{:#?} as {:#?}>::", self_type, trait_)?
+                    } else {
+                        write!(f, "{:#?}::", self_type)?
+                    }
                 }
             } else {
                 if is_not_debug {
-                    write!(f, "&lt;{} as {}&gt;::{}", self_type, trait_, name)
+                    if should_show_cast {
+                        write!(f, "&lt;{} as {}&gt;::", self_type, trait_)?
+                    } else {
+                        write!(f, "{}::", self_type)?
+                    }
                 } else {
-                    write!(f, "<{:?} as {:?}>::{}", self_type, trait_, name)
+                    if should_show_cast {
+                        write!(f, "<{:?} as {:?}>::", self_type, trait_)?
+                    } else {
+                        write!(f, "{:?}::", self_type)?
+                    }
+                }
+            };
+            match *trait_ {
+                // It's pretty unsightly to look at `<A as B>::C` in output, and
+                // we've got hyperlinking on our side, so try to avoid longer
+                // notation as much as possible by making `C` a hyperlink to trait
+                // `B` to disambiguate.
+                //
+                // FIXME: this is still a lossy conversion and there should probably
+                //        be a better way of representing this in general? Most of
+                //        the ugliness comes from inlining across crates where
+                //        everything comes in as a fully resolved QPath (hard to
+                //        look at).
+                box clean::ResolvedPath { did, ref typarams, .. } => {
+                    let path = clean::Path::singleton(name.clone());
+                    resolved_path(f, did, &path, true, use_absolute, is_not_debug)?;
+
+                    // FIXME: `typarams` are not rendered, and this seems bad?
+                    drop(typarams);
+                    Ok(())
+                }
+                _ => {
+                    write!(f, "{}", name)
                 }
             }
         }
