@@ -100,7 +100,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // If the callee is a bare function or a closure, then we're all set.
         match self.structurally_resolved_type(callee_expr.span, adjusted_ty).sty {
             ty::TyFnDef(..) | ty::TyFnPtr(_) => {
-                self.write_autoderef_adjustment(callee_expr.id, autoderefs, adjusted_ty);
+                self.apply_autoderef_adjustment(callee_expr.id, autoderefs, adjusted_ty);
                 return Some(CallStep::Builtin);
             }
 

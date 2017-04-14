@@ -95,7 +95,7 @@ use rustc::ty::{ParamTy, ParameterEnvironment};
 use rustc::ty::{LvaluePreference, NoPreference, PreferMutLvalue};
 use rustc::ty::{self, Ty, TyCtxt, Visibility};
 use rustc::ty::{MethodCall, MethodCallee};
-use rustc::ty::adjustment;
+use rustc::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
 use rustc::ty::fold::{BottomUpFolder, TypeFoldable};
 use rustc::ty::maps::Providers;
 use rustc::ty::util::{Representability, IntTypeExt};
@@ -108,6 +108,7 @@ use util::common::{ErrorReported, indenter};
 use util::nodemap::{DefIdMap, FxHashMap, NodeMap};
 
 use std::cell::{Cell, RefCell};
+use std::collections::hash_map::Entry;
 use std::cmp;
 use std::mem::replace;
 use std::ops::{self, Deref};
@@ -1637,12 +1638,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn write_autoderef_adjustment(&self,
+    pub fn apply_autoderef_adjustment(&self,
                                       node_id: ast::NodeId,
                                       derefs: usize,
                                       adjusted_ty: Ty<'tcx>) {
-        self.write_adjustment(node_id, adjustment::Adjustment {
-            kind: adjustment::Adjust::DerefRef {
+        self.apply_adjustment(node_id, Adjustment {
+            kind: Adjust::DerefRef {
                 autoderefs: derefs,
                 autoref: None,
                 unsize: false
@@ -1651,16 +1652,42 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         });
     }
 
-    pub fn write_adjustment(&self,
-                            node_id: ast::NodeId,
-                            adj: adjustment::Adjustment<'tcx>) {
-        debug!("write_adjustment(node_id={}, adj={:?})", node_id, adj);
+    pub fn apply_adjustment(&self, node_id: ast::NodeId, adj: Adjustment<'tcx>) {
+        debug!("apply_adjustment(node_id={}, adj={:?})", node_id, adj);
 
         if adj.is_identity() {
             return;
         }
 
-        self.tables.borrow_mut().adjustments.insert(node_id, adj);
+        match self.tables.borrow_mut().adjustments.entry(node_id) {
+            Entry::Vacant(entry) => { entry.insert(adj); },
+            Entry::Occupied(mut entry) => {
+                debug!(" - composing on top of {:?}", entry.get());
+                let composed_kind = match (entry.get().kind, adj.kind) {
+                    // Applying any adjustment on top of a NeverToAny
+                    // is a valid NeverToAny adjustment, because it can't
+                    // be reached.
+                    (Adjust::NeverToAny, _) => Adjust::NeverToAny,
+                    (Adjust::DerefRef {
+                        autoderefs: 1,
+                        autoref: Some(AutoBorrow::Ref(..)),
+                        unsize: false
+                    }, Adjust::DerefRef { autoderefs, .. }) if autoderefs > 0 => {
+                        // A reborrow has no effect before a dereference.
+                        adj.kind
+                    }
+                    // FIXME: currently we never try to compose autoderefs
+                    // and ReifyFnPointer/UnsafeFnPointer, but we could.
+                    _ =>
+                        bug!("while adjusting {}, can't compose {:?} and {:?}",
+                             node_id, entry.get(), adj)
+                };
+                *entry.get_mut() = Adjustment {
+                    kind: composed_kind,
+                    target: adj.target
+                };
+            }
+        }
     }
 
     /// Basically whenever we are converting from a type scheme into
@@ -2097,7 +2124,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 debug!("try_index_step: success, using built-in indexing");
                 // If we had `[T; N]`, we should've caught it before unsizing to `[T]`.
                 assert!(!unsize);
-                self.write_autoderef_adjustment(base_expr.id, autoderefs, adjusted_ty);
+                self.apply_autoderef_adjustment(base_expr.id, autoderefs, adjusted_ty);
                 return Some((tcx.types.usize, ty));
             }
             _ => {}
@@ -2480,8 +2507,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     "expression with never type wound up being adjusted");
             let adj_ty = self.next_diverging_ty_var(
                 TypeVariableOrigin::AdjustmentType(expr.span));
-            self.write_adjustment(expr.id, adjustment::Adjustment {
-                kind: adjustment::Adjust::NeverToAny,
+            self.apply_adjustment(expr.id, Adjustment {
+                kind: Adjust::NeverToAny,
                 target: adj_ty
             });
             ty = adj_ty;
@@ -2731,7 +2758,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         let field_ty = self.field_ty(expr.span, field, substs);
                         if self.tcx.vis_is_accessible_from(field.vis, self.body_id) {
                             autoderef.finalize(lvalue_pref, &[base]);
-                            self.write_autoderef_adjustment(base.id, autoderefs, base_t);
+                            self.apply_autoderef_adjustment(base.id, autoderefs, base_t);
 
                             self.tcx.check_stability(field.did, expr.id, expr.span);
 
@@ -2855,7 +2882,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
             if let Some(field_ty) = field {
                 autoderef.finalize(lvalue_pref, &[base]);
-                self.write_autoderef_adjustment(base.id, autoderefs, base_t);
+                self.apply_autoderef_adjustment(base.id, autoderefs, base_t);
                 return field_ty;
             }
         }
