@@ -109,6 +109,7 @@ impl<'a> visit::Visitor<'a> for DefCollector<'a> {
                 DefPathData::ValueNs(i.ident.name.as_str()),
             ItemKind::MacroDef(..) => DefPathData::MacroDef(i.ident.name.as_str()),
             ItemKind::Mac(..) => return self.visit_macro_invoc(i.id, false),
+            ItemKind::GlobalAsm(..) => DefPathData::Misc,
             ItemKind::Use(ref view_path) => {
                 match view_path.node {
                     ViewPathGlob(..) => {}

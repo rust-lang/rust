@@ -1267,6 +1267,11 @@ impl<'a> State<'a> {
                 self.print_foreign_mod(nmod, &item.attrs)?;
                 self.bclose(item.span)?;
             }
+            ast::ItemKind::GlobalAsm(ref ga) => {
+                self.head(&visibility_qualified(&item.vis, "global_asm!"))?;
+                word(&mut self.s, &ga.asm.as_str())?;
+                self.end()?;
+            }
             ast::ItemKind::Ty(ref ty, ref params) => {
                 self.ibox(INDENT_UNIT)?;
                 self.ibox(0)?;
