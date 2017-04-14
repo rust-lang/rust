@@ -26,7 +26,7 @@ use llvm::debuginfo::{DIType, DIFile, DIScope, DIDescriptor,
                       DICompositeType, DILexicalBlock, DIFlags};
 
 use rustc::hir::def::CtorKind;
-use rustc::hir::def_id::DefId;
+use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::ty::fold::TypeVisitor;
 use rustc::ty::subst::Substs;
 use rustc::ty::util::TypeIdHasher;
@@ -810,7 +810,7 @@ pub fn compile_unit_metadata(scc: &SharedCrateContext,
     };
 
     fn fallback_path(scc: &SharedCrateContext) -> CString {
-        CString::new(scc.link_meta().crate_name.to_string()).unwrap()
+        CString::new(scc.tcx().crate_name(LOCAL_CRATE).to_string()).unwrap()
     }
 }
 

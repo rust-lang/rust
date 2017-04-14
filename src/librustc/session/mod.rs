@@ -13,7 +13,6 @@ pub use self::code_stats::{SizeKind, TypeSizeInfo, VariantInfo};
 
 use dep_graph::DepGraph;
 use hir::def_id::{CrateNum, DefIndex};
-use hir::svh::Svh;
 use lint;
 use middle::cstore::CrateStore;
 use middle::dependency_format;
@@ -402,15 +401,14 @@ impl Session {
 
     /// Returns the symbol name for the registrar function,
     /// given the crate Svh and the function DefIndex.
-    pub fn generate_plugin_registrar_symbol(&self, svh: &Svh, index: DefIndex)
+    pub fn generate_plugin_registrar_symbol(&self, disambiguator: Symbol, index: DefIndex)
                                             -> String {
-        format!("__rustc_plugin_registrar__{}_{}", svh, index.as_usize())
+        format!("__rustc_plugin_registrar__{}_{}", disambiguator, index.as_usize())
     }
 
-    pub fn generate_derive_registrar_symbol(&self,
-                                            svh: &Svh,
-                                            index: DefIndex) -> String {
-        format!("__rustc_derive_registrar__{}_{}", svh, index.as_usize())
+    pub fn generate_derive_registrar_symbol(&self, disambiguator: Symbol, index: DefIndex)
+                                            -> String {
+        format!("__rustc_derive_registrar__{}_{}", disambiguator, index.as_usize())
     }
 
     pub fn sysroot<'a>(&'a self) -> &'a Path {

@@ -299,7 +299,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
             };
 
-            self.write_adjustment(self_expr.id, Adjustment {
+            self.apply_adjustment(self_expr.id, Adjustment {
                 kind: Adjust::DerefRef {
                     autoderefs: autoderefs,
                     autoref: autoref,
