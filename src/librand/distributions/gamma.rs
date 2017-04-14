@@ -103,12 +103,14 @@ impl Gamma {
         assert!(shape > 0.0, "Gamma::new called with shape <= 0");
         assert!(scale > 0.0, "Gamma::new called with scale <= 0");
 
-        let repr = match shape {
-            1.0 => One(Exp::new(1.0 / scale)),
-            0.0...1.0 => Small(GammaSmallShape::new_raw(shape, scale)),
-            _ => Large(GammaLargeShape::new_raw(shape, scale)),
+        let repr = if shape == 1.0 {
+            One(Exp::new(1.0 / scale))
+        } else if 0.0 <= shape && shape < 1.0 {
+            Small(GammaSmallShape::new_raw(shape, scale))
+        } else {
+            Large(GammaLargeShape::new_raw(shape, scale))
         };
-        Gamma { repr: repr }
+        Gamma { repr }
     }
 }
 
