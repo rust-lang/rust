@@ -18,6 +18,7 @@ use rustc::traits;
 use rustc::hir::def::Def;
 use rustc::hir::def_id::DefId;
 use rustc::ty::{self, Ty, TyCtxt};
+use rustc::ty::maps::Providers;
 use rustc::ty::util::IntTypeExt;
 use rustc::ty::subst::{Substs, Subst};
 use rustc::traits::Reveal;
@@ -163,12 +164,6 @@ pub struct ConstContext<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> ConstContext<'a, 'tcx> {
-    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>, body: hir::BodyId) -> Self {
-        let def_id = tcx.hir.body_owner_def_id(body);
-        ty::queries::mir_const_qualif::get(tcx, DUMMY_SP, def_id);
-        ConstContext::with_tables(tcx, tcx.item_tables(def_id))
-    }
-
     pub fn with_tables(tcx: TyCtxt<'a, 'tcx, 'tcx>, tables: &'a ty::TypeckTables<'tcx>) -> Self {
         ConstContext {
             tcx: tcx,
@@ -799,34 +794,20 @@ impl<'a, 'tcx> ConstContext<'a, 'tcx> {
     }
 }
 
+pub fn provide(providers: &mut Providers) {
+    *providers = Providers {
+        monomorphic_const_eval,
+        ..*providers
+    };
+}
 
-/// Returns the value of the length-valued expression
-pub fn eval_length<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                             count: hir::BodyId,
-                             reason: &str)
-                             -> Result<usize, ErrorReported>
-{
-    let count_expr = &tcx.hir.body(count).value;
-    match ConstContext::new(tcx, count).eval(count_expr) {
-        Ok(Integral(Usize(count))) => {
-            let val = count.as_u64(tcx.sess.target.uint_type);
-            assert_eq!(val as usize as u64, val);
-            Ok(val as usize)
-        },
-        Ok(_) |
-        Err(ConstEvalErr { kind: TypeckError, .. }) => Err(ErrorReported),
-        Err(err) => {
-            let mut diag = err.struct_error(tcx, count_expr.span, reason);
+fn monomorphic_const_eval<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                    def_id: DefId)
+                                    -> EvalResult<'tcx> {
+    ty::queries::mir_const_qualif::get(tcx, DUMMY_SP, def_id);
+    let cx = ConstContext::with_tables(tcx, tcx.item_tables(def_id));
 
-            if let hir::ExprPath(hir::QPath::Resolved(None, ref path)) = count_expr.node {
-                if let Def::Local(..) = path.def {
-                    diag.note(&format!("`{}` is a variable",
-                                       tcx.hir.node_to_pretty_string(count_expr.id)));
-                }
-            }
-
-            diag.emit();
-            Err(ErrorReported)
-        }
-    }
+    let id = tcx.hir.as_local_node_id(def_id).unwrap();
+    let body = tcx.hir.body_owned_by(id);
+    cx.eval(&tcx.hir.body(body).value)
 }
