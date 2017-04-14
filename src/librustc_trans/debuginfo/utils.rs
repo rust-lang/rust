@@ -37,7 +37,7 @@ pub fn is_node_local_to_unit(cx: &CrateContext, node_id: ast::NodeId) -> bool
     // visible). It might better to use the `exported_items` set from
     // `driver::CrateAnalysis` in the future, but (atm) this set is not
     // available in the translation pass.
-    !cx.exported_symbols().contains(&node_id)
+    !cx.shared().exported_symbols().contains(&node_id)
 }
 
 #[allow(non_snake_case)]

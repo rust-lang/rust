@@ -40,6 +40,7 @@
 #![feature(conservative_impl_trait)]
 
 use rustc::dep_graph::WorkProduct;
+use syntax_pos::symbol::Symbol;
 
 extern crate flate;
 extern crate libc;
@@ -165,6 +166,7 @@ unsafe impl Send for ModuleTranslation { }
 unsafe impl Sync for ModuleTranslation { }
 
 pub struct CrateTranslation {
+    pub crate_name: Symbol,
     pub modules: Vec<ModuleTranslation>,
     pub metadata_module: ModuleTranslation,
     pub link: middle::cstore::LinkMeta,

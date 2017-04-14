@@ -15,6 +15,7 @@ use back::symbol_names::symbol_name;
 use util::nodemap::FxHashMap;
 use rustc::hir::def_id::{DefId, CrateNum, LOCAL_CRATE};
 use rustc::session::config;
+use rustc::ty::TyCtxt;
 use syntax::attr;
 use trans_item::TransItem;
 
@@ -64,15 +65,15 @@ impl ExportedSymbols {
         }
 
         if let Some(id) = scx.sess().derive_registrar_fn.get() {
-            let svh = &scx.link_meta().crate_hash;
             let def_id = scx.tcx().hir.local_def_id(id);
             let idx = def_id.index;
-            let registrar = scx.sess().generate_derive_registrar_symbol(svh, idx);
+            let disambiguator = scx.sess().local_crate_disambiguator();
+            let registrar = scx.sess().generate_derive_registrar_symbol(disambiguator, idx);
             local_crate.push((registrar, SymbolExportLevel::C));
         }
 
         if scx.sess().crate_types.borrow().contains(&config::CrateTypeDylib) {
-            local_crate.push((scx.metadata_symbol_name(),
+            local_crate.push((metadata_symbol_name(scx.tcx()),
                               SymbolExportLevel::Rust));
         }
 
@@ -171,6 +172,12 @@ impl ExportedSymbols {
             }
         }
     }
+}
+
+pub fn metadata_symbol_name(tcx: TyCtxt) -> String {
+    format!("rust_metadata_{}_{}",
+            tcx.crate_name(LOCAL_CRATE),
+            tcx.crate_disambiguator(LOCAL_CRATE))
 }
 
 pub fn crate_export_threshold(crate_type: config::CrateType)
