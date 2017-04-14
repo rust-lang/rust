@@ -59,14 +59,12 @@ use constrained_type_params as ctp;
 use middle::lang_items::SizedTraitLangItem;
 use middle::const_val::ConstVal;
 use middle::resolve_lifetime as rl;
-use rustc_const_eval::ConstContext;
 use rustc::ty::subst::Substs;
 use rustc::ty::{ToPredicate, ReprOptions};
 use rustc::ty::{self, AdtKind, ToPolyTraitRef, Ty, TyCtxt};
 use rustc::ty::maps::Providers;
 use rustc::ty::util::IntTypeExt;
 use rustc::dep_graph::DepNode;
-use util::common::MemoizationMap;
 use util::nodemap::{NodeMap, FxHashMap};
 
 use rustc_const_math::ConstInt;
@@ -600,9 +598,7 @@ fn convert_enum_variant_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let wrapped_discr = prev_discr.map_or(initial, |d| d.wrap_incr());
         prev_discr = Some(if let Some(e) = variant.node.disr_expr {
             let expr_did = tcx.hir.local_def_id(e.node_id);
-            let result = tcx.maps.monomorphic_const_eval.memoize(expr_did, || {
-                ConstContext::new(tcx, e).eval(&tcx.hir.body(e).value)
-            });
+            let result = ty::queries::monomorphic_const_eval::get(tcx, variant.span, expr_did);
 
             // enum variant evaluation happens before the global constant check
             // so we need to report the real error

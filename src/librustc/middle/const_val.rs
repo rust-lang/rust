@@ -11,9 +11,12 @@
 use self::ConstVal::*;
 pub use rustc_const_math::ConstInt;
 
+use hir;
+use hir::def::Def;
 use hir::def_id::DefId;
-use ty::TyCtxt;
+use ty::{self, TyCtxt};
 use ty::subst::Substs;
+use util::common::ErrorReported;
 use rustc_const_math::*;
 
 use graphviz::IntoCow;
@@ -213,5 +216,37 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
             return;
         }
         self.struct_error(tcx, primary_span, primary_kind).emit();
+    }
+}
+
+/// Returns the value of the length-valued expression
+pub fn eval_length(tcx: TyCtxt,
+                   count: hir::BodyId,
+                   reason: &str)
+                   -> Result<usize, ErrorReported>
+{
+    let count_expr = &tcx.hir.body(count).value;
+    let count_def_id = tcx.hir.body_owner_def_id(count);
+    match ty::queries::monomorphic_const_eval::get(tcx, count_expr.span, count_def_id) {
+        Ok(Integral(Usize(count))) => {
+            let val = count.as_u64(tcx.sess.target.uint_type);
+            assert_eq!(val as usize as u64, val);
+            Ok(val as usize)
+        },
+        Ok(_) |
+        Err(ConstEvalErr { kind: ErrKind::TypeckError, .. }) => Err(ErrorReported),
+        Err(err) => {
+            let mut diag = err.struct_error(tcx, count_expr.span, reason);
+
+            if let hir::ExprPath(hir::QPath::Resolved(None, ref path)) = count_expr.node {
+                if let Def::Local(..) = path.def {
+                    diag.note(&format!("`{}` is a variable",
+                                       tcx.hir.node_to_pretty_string(count_expr.id)));
+                }
+            }
+
+            diag.emit();
+            Err(ErrorReported)
+        }
     }
 }

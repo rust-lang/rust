@@ -37,7 +37,7 @@ use rustc_plugin::registry::Registry;
 use rustc_plugin as plugin;
 use rustc_passes::{ast_validation, no_asm, loops, consts,
                    static_recursion, hir_stats, mir_stats};
-use rustc_const_eval::check_match;
+use rustc_const_eval::{self, check_match};
 use super::Compilation;
 
 use serialize::json;
@@ -895,6 +895,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
     typeck::provide(&mut local_providers);
     ty::provide(&mut local_providers);
     reachable::provide(&mut local_providers);
+    rustc_const_eval::provide(&mut local_providers);
 
     let mut extern_providers = ty::maps::Providers::default();
     cstore::provide(&mut extern_providers);

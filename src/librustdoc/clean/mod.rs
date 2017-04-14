@@ -1715,7 +1715,7 @@ impl Clean<Type> for hir::Ty {
             }
             TySlice(ref ty) => Vector(box ty.clean(cx)),
             TyArray(ref ty, length) => {
-                use rustc_const_eval::eval_length;
+                use rustc::middle::const_val::eval_length;
                 let n = eval_length(cx.tcx, length, "array length").unwrap();
                 FixedVector(box ty.clean(cx), n.to_string())
             },
