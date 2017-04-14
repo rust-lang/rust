@@ -29,7 +29,7 @@ use rustc::ty::layout::{LayoutTyper, TyLayout};
 use session::config::NoDebugInfo;
 use session::Session;
 use session::config;
-use symbol_map::SymbolMap;
+use symbol_cache::SymbolCache;
 use util::nodemap::{NodeSet, DefIdMap, FxHashMap};
 
 use std::ffi::{CStr, CString};
@@ -37,7 +37,6 @@ use std::cell::{Cell, RefCell};
 use std::marker::PhantomData;
 use std::ptr;
 use std::iter;
-use std::rc::Rc;
 use std::str;
 use syntax::ast;
 use syntax::symbol::InternedString;
@@ -94,7 +93,7 @@ pub struct SharedCrateContext<'a, 'tcx: 'a> {
 /// per compilation unit.  Each one has its own LLVM `ContextRef` so that
 /// several compilation units may be optimized in parallel.  All other LLVM
 /// data structures in the `LocalCrateContext` are tied to that `ContextRef`.
-pub struct LocalCrateContext<'tcx> {
+pub struct LocalCrateContext<'a, 'tcx: 'a> {
     llmod: ModuleRef,
     llcx: ContextRef,
     stats: Stats,
@@ -166,10 +165,10 @@ pub struct LocalCrateContext<'tcx> {
     /// Depth of the current type-of computation - used to bail out
     type_of_depth: Cell<usize>,
 
-    symbol_map: Rc<SymbolMap<'tcx>>,
-
     /// A counter that is used for generating local symbol names
     local_gen_sym_counter: Cell<usize>,
+
+    symbol_cache: &'a SymbolCache<'a, 'tcx>,
 }
 
 // Implement DepTrackingMapConfig for `trait_cache`
@@ -227,12 +226,12 @@ impl<'gcx> DepTrackingMapConfig for ProjectionCache<'gcx> {
 /// pass around (SharedCrateContext, LocalCrateContext) tuples all over trans.
 pub struct CrateContext<'a, 'tcx: 'a> {
     shared: &'a SharedCrateContext<'a, 'tcx>,
-    local_ccx: &'a LocalCrateContext<'tcx>,
+    local_ccx: &'a LocalCrateContext<'a, 'tcx>,
 }
 
 impl<'a, 'tcx> CrateContext<'a, 'tcx> {
     pub fn new(shared: &'a SharedCrateContext<'a, 'tcx>,
-               local_ccx: &'a LocalCrateContext<'tcx>)
+               local_ccx: &'a LocalCrateContext<'a, 'tcx>)
                -> Self {
         CrateContext { shared, local_ccx }
     }
@@ -429,11 +428,11 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
     }
 }
 
-impl<'tcx> LocalCrateContext<'tcx> {
-    pub fn new<'a>(shared: &SharedCrateContext<'a, 'tcx>,
-                   codegen_unit: CodegenUnit<'tcx>,
-                   symbol_map: Rc<SymbolMap<'tcx>>)
-                   -> LocalCrateContext<'tcx> {
+impl<'a, 'tcx> LocalCrateContext<'a, 'tcx> {
+    pub fn new(shared: &SharedCrateContext<'a, 'tcx>,
+               codegen_unit: CodegenUnit<'tcx>,
+               symbol_cache: &'a SymbolCache<'a, 'tcx>)
+               -> LocalCrateContext<'a, 'tcx> {
         unsafe {
             // Append ".rs" to LLVM module identifier.
             //
@@ -487,8 +486,8 @@ impl<'tcx> LocalCrateContext<'tcx> {
                 rust_try_fn: Cell::new(None),
                 intrinsics: RefCell::new(FxHashMap()),
                 type_of_depth: Cell::new(0),
-                symbol_map: symbol_map,
                 local_gen_sym_counter: Cell::new(0),
+                symbol_cache: symbol_cache,
             };
 
             let (int_type, opaque_vec_type, str_slice_ty, mut local_ccx) = {
@@ -522,9 +521,9 @@ impl<'tcx> LocalCrateContext<'tcx> {
     /// This is used in the `LocalCrateContext` constructor to allow calling
     /// functions that expect a complete `CrateContext`, even before the local
     /// portion is fully initialized and attached to the `SharedCrateContext`.
-    fn dummy_ccx<'a>(shared: &'a SharedCrateContext<'a, 'tcx>,
-                     local_ccxs: &'a [LocalCrateContext<'tcx>])
-                     -> CrateContext<'a, 'tcx> {
+    fn dummy_ccx(shared: &'a SharedCrateContext<'a, 'tcx>,
+                 local_ccxs: &'a [LocalCrateContext<'a, 'tcx>])
+                 -> CrateContext<'a, 'tcx> {
         assert!(local_ccxs.len() == 1);
         CrateContext {
             shared: shared,
@@ -542,7 +541,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         self.shared
     }
 
-    fn local(&self) -> &'b LocalCrateContext<'tcx> {
+    fn local(&self) -> &'b LocalCrateContext<'b, 'tcx> {
         self.local_ccx
     }
 
@@ -709,8 +708,8 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         self.shared.use_dll_storage_attrs()
     }
 
-    pub fn symbol_map(&self) -> &SymbolMap<'tcx> {
-        &*self.local().symbol_map
+    pub fn symbol_cache(&self) -> &'b SymbolCache<'b, 'tcx> {
+        self.local().symbol_cache
     }
 
     /// Given the def-id of some item that has no type parameters, make
@@ -856,7 +855,7 @@ impl<'a, 'tcx> LayoutTyper<'tcx> for &'a CrateContext<'a, 'tcx> {
     }
 }
 
-pub struct TypeOfDepthLock<'a, 'tcx: 'a>(&'a LocalCrateContext<'tcx>);
+pub struct TypeOfDepthLock<'a, 'tcx: 'a>(&'a LocalCrateContext<'a, 'tcx>);
 
 impl<'a, 'tcx> Drop for TypeOfDepthLock<'a, 'tcx> {
     fn drop(&mut self) {

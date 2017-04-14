@@ -118,8 +118,7 @@ impl<'a, 'tcx> TransItem<'tcx> {
                self.to_raw_string(),
                ccx.codegen_unit().name());
 
-        let symbol_name = ccx.symbol_map()
-                             .get_or_compute(ccx.shared(), *self);
+        let symbol_name = ccx.symbol_cache().get(*self);
 
         debug!("symbol {}", &symbol_name);
 

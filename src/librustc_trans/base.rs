@@ -65,6 +65,7 @@ use meth;
 use mir;
 use monomorphize::{self, Instance};
 use partitioning::{self, PartitioningStrategy, CodegenUnit};
+use symbol_cache::SymbolCache;
 use symbol_map::SymbolMap;
 use symbol_names_test;
 use trans_item::{TransItem, DefPathBasedNames};
@@ -75,7 +76,6 @@ use util::nodemap::{NodeSet, FxHashMap, FxHashSet};
 
 use libc::c_uint;
 use std::ffi::{CStr, CString};
-use std::rc::Rc;
 use std::str;
 use std::i32;
 use syntax_pos::Span;
@@ -1113,8 +1113,6 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let (translation_items, codegen_units, symbol_map) =
         collect_and_partition_translation_items(&shared_ccx);
 
-    let symbol_map = Rc::new(symbol_map);
-
     let mut all_stats = Stats::default();
     let modules: Vec<ModuleTranslation> = codegen_units
         .into_iter()
@@ -1123,7 +1121,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             let (stats, module) =
                 tcx.dep_graph.with_task(dep_node,
                                         AssertDepGraphSafe(&shared_ccx),
-                                        AssertDepGraphSafe((cgu, symbol_map.clone())),
+                                        AssertDepGraphSafe(cgu),
                                         module_translation);
             all_stats.extend(stats);
             module
@@ -1132,16 +1130,17 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     fn module_translation<'a, 'tcx>(
         scx: AssertDepGraphSafe<&SharedCrateContext<'a, 'tcx>>,
-        args: AssertDepGraphSafe<(CodegenUnit<'tcx>, Rc<SymbolMap<'tcx>>)>)
+        args: AssertDepGraphSafe<CodegenUnit<'tcx>>)
         -> (Stats, ModuleTranslation)
     {
         // FIXME(#40304): We ought to be using the id as a key and some queries, I think.
         let AssertDepGraphSafe(scx) = scx;
-        let AssertDepGraphSafe((cgu, symbol_map)) = args;
+        let AssertDepGraphSafe(cgu) = args;
 
         let cgu_name = String::from(cgu.name());
         let cgu_id = cgu.work_product_id();
-        let symbol_name_hash = cgu.compute_symbol_name_hash(scx, &symbol_map);
+        let symbol_cache = SymbolCache::new(scx);
+        let symbol_name_hash = cgu.compute_symbol_name_hash(scx, &symbol_cache);
 
         // Check whether there is a previous work-product we can
         // re-use.  Not only must the file exist, and the inputs not
@@ -1176,11 +1175,11 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
 
         // Instantiate translation items without filling out definitions yet...
-        let lcx = LocalCrateContext::new(scx, cgu, symbol_map.clone());
+        let lcx = LocalCrateContext::new(scx, cgu, &symbol_cache);
         let module = {
             let ccx = CrateContext::new(scx, &lcx);
             let trans_items = ccx.codegen_unit()
-                                 .items_in_deterministic_order(ccx.tcx(), &symbol_map);
+                                 .items_in_deterministic_order(ccx.tcx(), &symbol_cache);
             for &(trans_item, linkage) in &trans_items {
                 trans_item.predefine(&ccx, linkage);
             }

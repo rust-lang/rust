@@ -51,8 +51,7 @@ pub fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         return llfn;
     }
 
-    let sym = ccx.symbol_map().get_or_compute(ccx.shared(),
-                                              TransItem::Fn(instance));
+    let sym = ccx.symbol_cache().get(TransItem::Fn(instance));
     debug!("get_fn({:?}: {:?}) => {}", instance, fn_ty, sym);
 
     // This is subtle and surprising, but sometimes we have to bitcast

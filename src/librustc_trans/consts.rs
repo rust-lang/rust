@@ -93,20 +93,19 @@ pub fn get_static(ccx: &CrateContext, def_id: DefId) -> ValueRef {
             hir_map::NodeItem(&hir::Item {
                 ref attrs, span, node: hir::ItemStatic(..), ..
             }) => {
-                let sym = ccx.symbol_map()
-                             .get(TransItem::Static(id))
-                             .expect("Local statics should always be in the SymbolMap");
+                let sym = ccx.symbol_cache()
+                             .get(TransItem::Static(id));
 
                 let defined_in_current_codegen_unit = ccx.codegen_unit()
                                                          .items()
                                                          .contains_key(&TransItem::Static(id));
                 assert!(!defined_in_current_codegen_unit);
 
-                if declare::get_declared_value(ccx, sym).is_some() {
+                if declare::get_declared_value(ccx, &sym[..]).is_some() {
                     span_bug!(span, "trans: Conflicting symbol names for static?");
                 }
 
-                let g = declare::define_global(ccx, sym, llty).unwrap();
+                let g = declare::define_global(ccx, &sym[..], llty).unwrap();
 
                 (g, attrs)
             }
