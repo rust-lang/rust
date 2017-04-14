@@ -1029,7 +1029,7 @@ fn format_tuple_struct(context: &RewriteContext,
         result.push('(');
         let snippet = context.snippet(mk_sp(body_lo, context.codemap.span_before(span, ")")));
         if snippet.is_empty() {
-            //
+            // `struct S ()`
         } else if snippet
                       .trim_right_matches(&[' ', '\t'][..])
                       .ends_with('\n') {
