@@ -214,11 +214,11 @@ fn dec2flt<T: RawFloat>(s: &str) -> Result<T, ParseFloatError> {
     let (sign, s) = extract_sign(s);
     let flt = match parse_decimal(s) {
         ParseResult::Valid(decimal) => convert(decimal)?,
-        ParseResult::ShortcutToInf => T::infinity2(),
-        ParseResult::ShortcutToZero => T::zero2(),
+        ParseResult::ShortcutToInf => T::INFINITY,
+        ParseResult::ShortcutToZero => T::ZERO,
         ParseResult::Invalid => match s {
-            "inf" => T::infinity2(),
-            "NaN" => T::nan2(),
+            "inf" => T::INFINITY,
+            "NaN" => T::NAN,
             _ => { return Err(pfe_invalid()); }
         }
     };
@@ -254,7 +254,7 @@ fn convert<T: RawFloat>(mut decimal: Decimal) -> Result<T, ParseFloatError> {
     // FIXME These bounds are rather conservative. A more careful analysis of the failure modes
     // of Bellerophon could allow using it in more cases for a massive speed up.
     let exponent_in_range = table::MIN_E <= e && e <= table::MAX_E;
-    let value_in_range = upper_bound <= T::max_normal_digits() as u64;
+    let value_in_range = upper_bound <= T::MAX_NORMAL_DIGITS as u64;
     if exponent_in_range && value_in_range {
         Ok(algorithm::bellerophon(&f, e))
     } else {
@@ -315,17 +315,17 @@ fn bound_intermediate_digits(decimal: &Decimal, e: i64) -> u64 {
 fn trivial_cases<T: RawFloat>(decimal: &Decimal) -> Option<T> {
     // There were zeros but they were stripped by simplify()
     if decimal.integral.is_empty() && decimal.fractional.is_empty() {
-        return Some(T::zero2());
+        return Some(T::ZERO);
     }
     // This is a crude approximation of ceil(log10(the real value)). We don't need to worry too
     // much about overflow here because the input length is tiny (at least compared to 2^64) and
     // the parser already handles exponents whose absolute value is greater than 10^18
     // (which is still 10^19 short of 2^64).
     let max_place = decimal.exp + decimal.integral.len() as i64;
-    if max_place > T::inf_cutoff() {
-        return Some(T::infinity2());
-    } else if max_place < T::zero_cutoff() {
-        return Some(T::zero2());
+    if max_place > T::INF_CUTOFF {
+        return Some(T::INFINITY);
+    } else if max_place < T::ZERO_CUTOFF {
+        return Some(T::ZERO);
     }
     None
 }
