@@ -451,7 +451,7 @@ define_maps! { <'tcx>
     /// Performs the privacy check and computes "access levels".
     pub privacy_access_levels: PrivacyAccessLevels(CrateNum) -> Rc<AccessLevels>,
 
-    pub reachable_set: reachability_dep_node(CrateNum) -> NodeSet,
+    pub reachable_set: reachability_dep_node(CrateNum) -> Rc<NodeSet>,
 
     pub mir_shims: mir_shim(ty::InstanceDef<'tcx>) -> &'tcx RefCell<mir::Mir<'tcx>>
 }

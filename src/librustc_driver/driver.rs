@@ -810,7 +810,7 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
         defs: resolver.definitions,
         analysis: ty::CrateAnalysis {
             access_levels: Rc::new(AccessLevels::default()),
-            reachable: NodeSet(),
+            reachable: Rc::new(NodeSet()),
             name: crate_name.to_string(),
             glob_map: if resolver.make_glob_map { Some(resolver.glob_map) } else { None },
         },
