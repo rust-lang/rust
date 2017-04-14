@@ -14,7 +14,9 @@
 #[cfg(any(target_arch = "x86_64", target_arch = "x86"))]
 global_asm!(r#"
     .global foo
+    .global _foo
 foo:
+_foo:
     ret
 "#);
 
