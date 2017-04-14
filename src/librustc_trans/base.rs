@@ -32,13 +32,14 @@ use assert_module_sources;
 use back::link;
 use back::linker::LinkerInfo;
 use back::symbol_export::{self, ExportedSymbols};
-use llvm::{Linkage, ValueRef, Vector, get_param};
+use llvm::{ContextRef, Linkage, ModuleRef, ValueRef, Vector, get_param};
 use llvm;
 use rustc::hir::def_id::LOCAL_CRATE;
 use middle::lang_items::StartFnLangItem;
 use middle::cstore::EncodedMetadata;
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::dep_graph::{AssertDepGraphSafe, DepNode, WorkProduct};
+use rustc::dep_graph::{AssertDepGraphSafe, DepNode};
+use rustc::middle::cstore::LinkMeta;
 use rustc::hir::map as hir_map;
 use rustc::util::common::time;
 use session::config::{self, NoDebugInfo};
@@ -56,7 +57,7 @@ use common::CrateContext;
 use common::{type_is_zero_size, val_ty};
 use common;
 use consts;
-use context::{SharedCrateContext, CrateContextList};
+use context::{self, LocalCrateContext, SharedCrateContext, Stats};
 use debuginfo;
 use declare;
 use machine;
@@ -724,10 +725,15 @@ fn contains_null(s: &str) -> bool {
     s.bytes().any(|b| b == 0)
 }
 
-fn write_metadata(cx: &SharedCrateContext,
-                  exported_symbols: &NodeSet)
-                  -> EncodedMetadata {
+fn write_metadata<'a, 'gcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
+                            link_meta: &LinkMeta,
+                            exported_symbols: &NodeSet)
+                            -> (ContextRef, ModuleRef, EncodedMetadata) {
     use flate;
+
+    let (metadata_llcx, metadata_llmod) = unsafe {
+        context::create_context_and_module(tcx.sess, "metadata")
+    };
 
     #[derive(PartialEq, Eq, PartialOrd, Ord)]
     enum MetadataKind {
@@ -736,7 +742,7 @@ fn write_metadata(cx: &SharedCrateContext,
         Compressed
     }
 
-    let kind = cx.sess().crate_types.borrow().iter().map(|ty| {
+    let kind = tcx.sess.crate_types.borrow().iter().map(|ty| {
         match *ty {
             config::CrateTypeExecutable |
             config::CrateTypeStaticlib |
@@ -750,35 +756,35 @@ fn write_metadata(cx: &SharedCrateContext,
     }).max().unwrap();
 
     if kind == MetadataKind::None {
-        return EncodedMetadata {
+        return (metadata_llcx, metadata_llmod, EncodedMetadata {
             raw_data: vec![],
             hashes: vec![],
-        };
+        });
     }
 
-    let cstore = &cx.tcx().sess.cstore;
-    let metadata = cstore.encode_metadata(cx.tcx(),
-                                          cx.link_meta(),
+    let cstore = &tcx.sess.cstore;
+    let metadata = cstore.encode_metadata(tcx,
+                                          &link_meta,
                                           exported_symbols);
     if kind == MetadataKind::Uncompressed {
-        return metadata;
+        return (metadata_llcx, metadata_llmod, metadata);
     }
 
     assert!(kind == MetadataKind::Compressed);
     let mut compressed = cstore.metadata_encoding_version().to_vec();
     compressed.extend_from_slice(&flate::deflate_bytes(&metadata.raw_data));
 
-    let llmeta = C_bytes_in_context(cx.metadata_llcx(), &compressed);
-    let llconst = C_struct_in_context(cx.metadata_llcx(), &[llmeta], false);
-    let name = cx.metadata_symbol_name();
+    let llmeta = C_bytes_in_context(metadata_llcx, &compressed);
+    let llconst = C_struct_in_context(metadata_llcx, &[llmeta], false);
+    let name = symbol_export::metadata_symbol_name(tcx);
     let buf = CString::new(name).unwrap();
     let llglobal = unsafe {
-        llvm::LLVMAddGlobal(cx.metadata_llmod(), val_ty(llconst).to_ref(), buf.as_ptr())
+        llvm::LLVMAddGlobal(metadata_llmod, val_ty(llconst).to_ref(), buf.as_ptr())
     };
     unsafe {
         llvm::LLVMSetInitializer(llglobal, llconst);
         let section_name =
-            cx.tcx().sess.cstore.metadata_section_name(&cx.sess().target.target);
+            tcx.sess.cstore.metadata_section_name(&tcx.sess.target.target);
         let name = CString::new(section_name).unwrap();
         llvm::LLVMSetSection(llglobal, name.as_ptr());
 
@@ -787,15 +793,16 @@ fn write_metadata(cx: &SharedCrateContext,
         // metadata doesn't get loaded into memory.
         let directive = format!(".section {}", section_name);
         let directive = CString::new(directive).unwrap();
-        llvm::LLVMSetModuleInlineAsm(cx.metadata_llmod(), directive.as_ptr())
+        llvm::LLVMSetModuleInlineAsm(metadata_llmod, directive.as_ptr())
     }
-    return metadata;
+    return (metadata_llcx, metadata_llmod, metadata);
 }
 
 /// Find any symbols that are defined in one compilation unit, but not declared
 /// in any other compilation unit.  Give these symbols internal linkage.
 fn internalize_symbols<'a, 'tcx>(sess: &Session,
-                                 ccxs: &CrateContextList<'a, 'tcx>,
+                                 scx: &SharedCrateContext<'a, 'tcx>,
+                                 llvm_modules: &[ModuleLlvm],
                                  symbol_map: &SymbolMap<'tcx>,
                                  exported_symbols: &ExportedSymbols) {
     let export_threshold =
@@ -810,7 +817,6 @@ fn internalize_symbols<'a, 'tcx>(sess: &Session,
         .map(|&(ref name, _)| &name[..])
         .collect::<FxHashSet<&str>>();
 
-    let scx = ccxs.shared();
     let tcx = scx.tcx();
 
     let incr_comp = sess.opts.debugging_opts.incremental.is_some();
@@ -825,8 +831,8 @@ fn internalize_symbols<'a, 'tcx>(sess: &Session,
         // incremental compilation, we don't need to collect. See below for more
         // information.
         if !incr_comp {
-            for ccx in ccxs.iter_need_trans() {
-                for val in iter_globals(ccx.llmod()).chain(iter_functions(ccx.llmod())) {
+            for ll in llvm_modules {
+                for val in iter_globals(ll.llmod).chain(iter_functions(ll.llmod)) {
                     let linkage = llvm::LLVMRustGetLinkage(val);
                     // We only care about external declarations (not definitions)
                     // and available_externally definitions.
@@ -862,8 +868,8 @@ fn internalize_symbols<'a, 'tcx>(sess: &Session,
         // Examine each external definition.  If the definition is not used in
         // any other compilation unit, and is not reachable from other crates,
         // then give it internal linkage.
-        for ccx in ccxs.iter_need_trans() {
-            for val in iter_globals(ccx.llmod()).chain(iter_functions(ccx.llmod())) {
+        for ll in llvm_modules {
+            for val in iter_globals(ll.llmod).chain(iter_functions(ll.llmod)) {
                 let linkage = llvm::LLVMRustGetLinkage(val);
 
                 let is_externally_visible = (linkage == llvm::Linkage::ExternalLinkage) ||
@@ -922,19 +928,20 @@ fn internalize_symbols<'a, 'tcx>(sess: &Session,
 // when using MSVC linker.  We do this only for data, as linker can fix up
 // code references on its own.
 // See #26591, #27438
-fn create_imps(cx: &CrateContextList) {
+fn create_imps(sess: &Session,
+               llvm_modules: &[ModuleLlvm]) {
     // The x86 ABI seems to require that leading underscores are added to symbol
     // names, so we need an extra underscore on 32-bit. There's also a leading
     // '\x01' here which disables LLVM's symbol mangling (e.g. no extra
     // underscores added in front).
-    let prefix = if cx.shared().sess().target.target.target_pointer_width == "32" {
+    let prefix = if sess.target.target.target_pointer_width == "32" {
         "\x01__imp__"
     } else {
         "\x01__imp_"
     };
     unsafe {
-        for ccx in cx.iter_need_trans() {
-            let exported: Vec<_> = iter_globals(ccx.llmod())
+        for ll in llvm_modules {
+            let exported: Vec<_> = iter_globals(ll.llmod)
                                        .filter(|&val| {
                                            llvm::LLVMRustGetLinkage(val) ==
                                            llvm::Linkage::ExternalLinkage &&
@@ -942,13 +949,13 @@ fn create_imps(cx: &CrateContextList) {
                                        })
                                        .collect();
 
-            let i8p_ty = Type::i8p(&ccx);
+            let i8p_ty = Type::i8p_llcx(ll.llcx);
             for val in exported {
                 let name = CStr::from_ptr(llvm::LLVMGetValueName(val));
                 let mut imp_name = prefix.as_bytes().to_vec();
                 imp_name.extend(name.to_bytes());
                 let imp_name = CString::new(imp_name).unwrap();
-                let imp = llvm::LLVMAddGlobal(ccx.llmod(),
+                let imp = llvm::LLVMAddGlobal(ll.llmod,
                                               i8p_ty.to_ref(),
                                               imp_name.as_ptr() as *const _);
                 let init = llvm::LLVMConstBitCast(val, i8p_ty.to_ref());
@@ -1058,28 +1065,28 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // particular items that will be processed.
     let krate = tcx.hir.krate();
 
-    let ty::CrateAnalysis { reachable, name, .. } = analysis;
+    let ty::CrateAnalysis { reachable, .. } = analysis;
     let exported_symbols = find_exported_symbols(tcx, reachable);
 
     let check_overflow = tcx.sess.overflow_checks();
 
-    let link_meta = link::build_link_meta(incremental_hashes_map, &name);
+    let link_meta = link::build_link_meta(incremental_hashes_map);
 
     let shared_ccx = SharedCrateContext::new(tcx,
-                                             link_meta.clone(),
                                              exported_symbols,
                                              check_overflow);
     // Translate the metadata.
-    let metadata = time(tcx.sess.time_passes(), "write metadata", || {
-        write_metadata(&shared_ccx, shared_ccx.exported_symbols())
-    });
+    let (metadata_llcx, metadata_llmod, metadata) =
+        time(tcx.sess.time_passes(), "write metadata", || {
+            write_metadata(tcx, &link_meta, shared_ccx.exported_symbols())
+        });
 
     let metadata_module = ModuleTranslation {
         name: link::METADATA_MODULE_NAME.to_string(),
         symbol_name_hash: 0, // we always rebuild metadata, at least for now
         source: ModuleSource::Translated(ModuleLlvm {
-            llcx: shared_ccx.metadata_llcx(),
-            llmod: shared_ccx.metadata_llmod(),
+            llcx: metadata_llcx,
+            llmod: metadata_llmod,
         }),
     };
     let no_builtins = attr::contains_name(&krate.attrs, "no_builtins");
@@ -1090,6 +1097,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let empty_exported_symbols = ExportedSymbols::empty();
         let linker_info = LinkerInfo::new(&shared_ccx, &empty_exported_symbols);
         return CrateTranslation {
+            crate_name: tcx.crate_name(LOCAL_CRATE),
             modules: vec![],
             metadata_module: metadata_module,
             link: link_meta,
@@ -1107,73 +1115,78 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let symbol_map = Rc::new(symbol_map);
 
-    let previous_work_products = trans_reuse_previous_work_products(&shared_ccx,
-                                                                    &codegen_units,
-                                                                    &symbol_map);
-
-    let crate_context_list = CrateContextList::new(&shared_ccx,
-                                                   codegen_units,
-                                                   previous_work_products,
-                                                   symbol_map.clone());
-    let modules: Vec<_> = crate_context_list.iter_all()
-        .map(|ccx| {
-            let source = match ccx.previous_work_product() {
-                Some(buf) => ModuleSource::Preexisting(buf.clone()),
-                None => ModuleSource::Translated(ModuleLlvm {
-                    llcx: ccx.llcx(),
-                    llmod: ccx.llmod(),
-                }),
-            };
-
-            ModuleTranslation {
-                name: String::from(ccx.codegen_unit().name()),
-                symbol_name_hash: ccx.codegen_unit()
-                                     .compute_symbol_name_hash(&shared_ccx,
-                                                               &symbol_map),
-                source: source,
-            }
+    let mut all_stats = Stats::default();
+    let modules: Vec<ModuleTranslation> = codegen_units
+        .into_iter()
+        .map(|cgu| {
+            let dep_node = cgu.work_product_dep_node();
+            let (stats, module) =
+                tcx.dep_graph.with_task(dep_node,
+                                        AssertDepGraphSafe(&shared_ccx),
+                                        AssertDepGraphSafe((cgu, symbol_map.clone())),
+                                        module_translation);
+            all_stats.extend(stats);
+            module
         })
         .collect();
 
-    assert_module_sources::assert_module_sources(tcx, &modules);
+    fn module_translation<'a, 'tcx>(
+        scx: AssertDepGraphSafe<&SharedCrateContext<'a, 'tcx>>,
+        args: AssertDepGraphSafe<(CodegenUnit<'tcx>, Rc<SymbolMap<'tcx>>)>)
+        -> (Stats, ModuleTranslation)
+    {
+        // FIXME(#40304): We ought to be using the id as a key and some queries, I think.
+        let AssertDepGraphSafe(scx) = scx;
+        let AssertDepGraphSafe((cgu, symbol_map)) = args;
 
-    // Instantiate translation items without filling out definitions yet...
-    for ccx in crate_context_list.iter_need_trans() {
-        let dep_node = ccx.codegen_unit().work_product_dep_node();
-        tcx.dep_graph.with_task(dep_node,
-                                ccx,
-                                AssertDepGraphSafe(symbol_map.clone()),
-                                trans_decl_task);
+        let cgu_name = String::from(cgu.name());
+        let cgu_id = cgu.work_product_id();
+        let symbol_name_hash = cgu.compute_symbol_name_hash(scx, &symbol_map);
 
-        fn trans_decl_task<'a, 'tcx>(ccx: CrateContext<'a, 'tcx>,
-                                     symbol_map: AssertDepGraphSafe<Rc<SymbolMap<'tcx>>>) {
-            // FIXME(#40304): Instead of this, the symbol-map should be an
-            // on-demand thing that we compute.
-            let AssertDepGraphSafe(symbol_map) = symbol_map;
-            let cgu = ccx.codegen_unit();
-            let trans_items = cgu.items_in_deterministic_order(ccx.tcx(), &symbol_map);
-            for (trans_item, linkage) in trans_items {
+        // Check whether there is a previous work-product we can
+        // re-use.  Not only must the file exist, and the inputs not
+        // be dirty, but the hash of the symbols we will generate must
+        // be the same.
+        let previous_work_product =
+            scx.dep_graph().previous_work_product(&cgu_id).and_then(|work_product| {
+                if work_product.input_hash == symbol_name_hash {
+                    debug!("trans_reuse_previous_work_products: reusing {:?}", work_product);
+                    Some(work_product)
+                } else {
+                    if scx.sess().opts.debugging_opts.incremental_info {
+                        println!("incremental: CGU `{}` invalidated because of \
+                                  changed partitioning hash.",
+                                 cgu.name());
+                    }
+                    debug!("trans_reuse_previous_work_products: \
+                            not reusing {:?} because hash changed to {:?}",
+                           work_product, symbol_name_hash);
+                    None
+                }
+            });
+
+        if let Some(buf) = previous_work_product {
+            // Don't need to translate this module.
+            let module = ModuleTranslation {
+                name: cgu_name,
+                symbol_name_hash,
+                source: ModuleSource::Preexisting(buf.clone())
+            };
+            return (Stats::default(), module);
+        }
+
+        // Instantiate translation items without filling out definitions yet...
+        let lcx = LocalCrateContext::new(scx, cgu, symbol_map.clone());
+        let module = {
+            let ccx = CrateContext::new(scx, &lcx);
+            let trans_items = ccx.codegen_unit()
+                                 .items_in_deterministic_order(ccx.tcx(), &symbol_map);
+            for &(trans_item, linkage) in &trans_items {
                 trans_item.predefine(&ccx, linkage);
             }
-        }
-    }
 
-    // ... and now that we have everything pre-defined, fill out those definitions.
-    for ccx in crate_context_list.iter_need_trans() {
-        let dep_node = ccx.codegen_unit().work_product_dep_node();
-        tcx.dep_graph.with_task(dep_node,
-                                ccx,
-                                AssertDepGraphSafe(symbol_map.clone()),
-                                trans_def_task);
-
-        fn trans_def_task<'a, 'tcx>(ccx: CrateContext<'a, 'tcx>,
-                                    symbol_map: AssertDepGraphSafe<Rc<SymbolMap<'tcx>>>) {
-            // FIXME(#40304): Instead of this, the symbol-map should be an
-            // on-demand thing that we compute.
-            let AssertDepGraphSafe(symbol_map) = symbol_map;
-            let cgu = ccx.codegen_unit();
-            let trans_items = cgu.items_in_deterministic_order(ccx.tcx(), &symbol_map);
-            for (trans_item, _) in trans_items {
+            // ... and now that we have everything pre-defined, fill out those definitions.
+            for &(trans_item, _) in &trans_items {
                 trans_item.define(&ccx);
             }
 
@@ -1211,26 +1224,38 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             if ccx.sess().opts.debuginfo != NoDebugInfo {
                 debuginfo::finalize(&ccx);
             }
-        }
+
+            ModuleTranslation {
+                name: cgu_name,
+                symbol_name_hash,
+                source: ModuleSource::Translated(ModuleLlvm {
+                    llcx: ccx.llcx(),
+                    llmod: ccx.llmod(),
+                })
+            }
+        };
+
+        (lcx.into_stats(), module)
     }
+
+    assert_module_sources::assert_module_sources(tcx, &modules);
 
     symbol_names_test::report_symbol_names(&shared_ccx);
 
     if shared_ccx.sess().trans_stats() {
-        let stats = shared_ccx.stats();
         println!("--- trans stats ---");
-        println!("n_glues_created: {}", stats.n_glues_created.get());
-        println!("n_null_glues: {}", stats.n_null_glues.get());
-        println!("n_real_glues: {}", stats.n_real_glues.get());
+        println!("n_glues_created: {}", all_stats.n_glues_created.get());
+        println!("n_null_glues: {}", all_stats.n_null_glues.get());
+        println!("n_real_glues: {}", all_stats.n_real_glues.get());
 
-        println!("n_fns: {}", stats.n_fns.get());
-        println!("n_inlines: {}", stats.n_inlines.get());
-        println!("n_closures: {}", stats.n_closures.get());
+        println!("n_fns: {}", all_stats.n_fns.get());
+        println!("n_inlines: {}", all_stats.n_inlines.get());
+        println!("n_closures: {}", all_stats.n_closures.get());
         println!("fn stats:");
-        stats.fn_stats.borrow_mut().sort_by(|&(_, insns_a), &(_, insns_b)| {
+        all_stats.fn_stats.borrow_mut().sort_by(|&(_, insns_a), &(_, insns_b)| {
             insns_b.cmp(&insns_a)
         });
-        for tuple in stats.fn_stats.borrow().iter() {
+        for tuple in all_stats.fn_stats.borrow().iter() {
             match *tuple {
                 (ref name, insns) => {
                     println!("{} insns, {}", insns, *name);
@@ -1240,7 +1265,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 
     if shared_ccx.sess().count_llvm_insns() {
-        for (k, v) in shared_ccx.stats().llvm_insns.borrow().iter() {
+        for (k, v) in all_stats.llvm_insns.borrow().iter() {
             println!("{:7} {}", *v, *k);
         }
     }
@@ -1250,11 +1275,23 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let exported_symbols = ExportedSymbols::compute_from(&shared_ccx,
                                                          &symbol_map);
 
+    // Get the list of llvm modules we created. We'll do a few wacky
+    // transforms on them now.
+
+    let llvm_modules: Vec<_> =
+        modules.iter()
+               .filter_map(|module| match module.source {
+                   ModuleSource::Translated(llvm) => Some(llvm),
+                   _ => None,
+               })
+               .collect();
+
     // Now that we have all symbols that are exported from the CGUs of this
     // crate, we can run the `internalize_symbols` pass.
     time(shared_ccx.sess().time_passes(), "internalize symbols", || {
         internalize_symbols(sess,
-                            &crate_context_list,
+                            &shared_ccx,
+                            &llvm_modules,
                             &symbol_map,
                             &exported_symbols);
     });
@@ -1265,7 +1302,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     if sess.target.target.options.is_like_msvc &&
        sess.crate_types.borrow().iter().any(|ct| *ct == config::CrateTypeRlib) {
-        create_imps(&crate_context_list);
+        create_imps(sess, &llvm_modules);
     }
 
     let linker_info = LinkerInfo::new(&shared_ccx, &exported_symbols);
@@ -1282,6 +1319,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     });
 
     CrateTranslation {
+        crate_name: tcx.crate_name(LOCAL_CRATE),
         modules: modules,
         metadata_module: metadata_module,
         link: link_meta,
@@ -1478,43 +1516,6 @@ fn gather_type_sizes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
             }
         }
     }
-}
-
-/// For each CGU, identify if we can reuse an existing object file (or
-/// maybe other context).
-fn trans_reuse_previous_work_products(scx: &SharedCrateContext,
-                                      codegen_units: &[CodegenUnit],
-                                      symbol_map: &SymbolMap)
-                                      -> Vec<Option<WorkProduct>> {
-    debug!("trans_reuse_previous_work_products()");
-    codegen_units
-        .iter()
-        .map(|cgu| {
-            let id = cgu.work_product_id();
-
-            let hash = cgu.compute_symbol_name_hash(scx, symbol_map);
-
-            debug!("trans_reuse_previous_work_products: id={:?} hash={}", id, hash);
-
-            if let Some(work_product) = scx.dep_graph().previous_work_product(&id) {
-                if work_product.input_hash == hash {
-                    debug!("trans_reuse_previous_work_products: reusing {:?}", work_product);
-                    return Some(work_product);
-                } else {
-                    if scx.sess().opts.debugging_opts.incremental_info {
-                        println!("incremental: CGU `{}` invalidated because of \
-                                  changed partitioning hash.",
-                                  cgu.name());
-                    }
-                    debug!("trans_reuse_previous_work_products: \
-                            not reusing {:?} because hash changed to {:?}",
-                           work_product, hash);
-                }
-            }
-
-            None
-        })
-        .collect()
 }
 
 fn collect_and_partition_translation_items<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>)

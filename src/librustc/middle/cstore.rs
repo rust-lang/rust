@@ -53,7 +53,6 @@ pub use self::NativeLibraryKind::*;
 
 #[derive(Clone, Debug)]
 pub struct LinkMeta {
-    pub crate_name: Symbol,
     pub crate_hash: Svh,
 }
 

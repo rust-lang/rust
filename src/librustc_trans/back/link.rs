@@ -47,7 +47,6 @@ use std::str;
 use flate;
 use syntax::ast;
 use syntax::attr;
-use syntax::symbol::Symbol;
 use syntax_pos::Span;
 
 /// The LLVM module name containing crate-metadata. This includes a `.` on
@@ -136,11 +135,8 @@ pub fn find_crate_name(sess: Option<&Session>,
     "rust_out".to_string()
 }
 
-pub fn build_link_meta(incremental_hashes_map: &IncrementalHashesMap,
-                       name: &str)
-                       -> LinkMeta {
+pub fn build_link_meta(incremental_hashes_map: &IncrementalHashesMap) -> LinkMeta {
     let r = LinkMeta {
-        crate_name: Symbol::intern(name),
         crate_hash: Svh::new(incremental_hashes_map[&DepNode::Krate].to_smaller_hash()),
     };
     info!("{:?}", r);
