@@ -1246,7 +1246,7 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
                "NAME"),
         opt::multi_s("", "emit", "Comma separated list of types of output for \
                               the compiler to emit",
-                 "[asm|llvm-bc|llvm-ir|obj|metadata|link|dep-info]"),
+                 "[asm|llvm-bc|llvm-ir|obj|metadata|link|dep-info|mir]"),
         opt::multi_s("", "print", "Comma separated list of compiler information to \
                                print on stdout", &format!("[{}]",
                                &print_opts.join("|"))),
