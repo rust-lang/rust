@@ -380,6 +380,9 @@ define_maps! { <'tcx>
     pub adt_destructor: AdtDestructor(DefId) -> Option<ty::Destructor>,
     pub adt_sized_constraint: SizedConstraint(DefId) -> Ty<'tcx>,
 
+    /// True if this is a foreign item (i.e., linked via `extern { ... }`).
+    pub is_foreign_item: IsForeignItem(DefId) -> bool,
+
     /// Maps from def-id of a type or region parameter to its
     /// (inferred) variance.
     pub variances: ItemSignature(DefId) -> Rc<Vec<ty::Variance>>,

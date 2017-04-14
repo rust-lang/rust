@@ -14,18 +14,18 @@
 //! and methods are represented as just a fn ptr and not a full
 //! closure.
 
-use llvm::{self, ValueRef};
-use rustc::hir::def_id::DefId;
-use rustc::ty::subst::Substs;
 use attributes;
 use common::{self, CrateContext};
-use monomorphize;
 use consts;
 use declare;
-use monomorphize::Instance;
+use llvm::{self, ValueRef};
+use monomorphize::{self, Instance};
+use rustc::hir::def_id::DefId;
+use rustc::ty::{self, TypeFoldable};
+use rustc::ty::subst::Substs;
+use syntax_pos::DUMMY_SP;
 use trans_item::TransItem;
 use type_of;
-use rustc::ty::TypeFoldable;
 
 /// Translates a reference to a fn/method item, monomorphizing and
 /// inlining as it goes.
@@ -102,15 +102,17 @@ pub fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         let attrs = instance.def.attrs(ccx.tcx());
         attributes::from_fn_attrs(ccx, &attrs, llfn);
 
-        let is_local_def = ccx.shared().translation_items().borrow()
-                              .contains(&TransItem::Fn(instance));
-        if is_local_def {
-            // FIXME(eddyb) Doubt all extern fn should allow unwinding.
+        // Perhaps questionable, but we assume that anything defined
+        // *in Rust code* may unwind. Foreign items like `extern "C" {
+        // fn foo(); }` are assumed not to unwind **unless** they have
+        // a `#[unwind]` attribute.
+        if !ty::queries::is_foreign_item::get(tcx, DUMMY_SP, instance.def_id()) {
             attributes::unwind(llfn, true);
             unsafe {
                 llvm::LLVMRustSetLinkage(llfn, llvm::Linkage::ExternalLinkage);
             }
         }
+
         if ccx.use_dll_storage_attrs() &&
             ccx.sess().cstore.is_dllimport_foreign_item(instance.def_id())
         {
