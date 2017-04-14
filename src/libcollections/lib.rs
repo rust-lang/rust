@@ -135,7 +135,24 @@ mod std {
 }
 
 /// An endpoint of a range of keys.
+///
 /// # Examples
+///
+/// `Bound`s are range endpoints:
+///
+/// ```
+/// #![feature(collections_range)]
+///
+/// use std::collections::range::RangeArgument;
+/// use std::collections::Bound::*;
+///
+/// assert_eq!((..100).start(), Unbounded);
+/// assert_eq!((1..12).start(), Included(&1));
+/// assert_eq!((1..12).end(), Excluded(&12));
+/// ```
+///
+/// Using a tuple of `Bound`s as an argument to [`BTreeMap::range`].
+/// Note that in most cases, it's better to use range syntax (`1..5`) instead.
 ///
 /// ```
 /// use std::collections::BTreeMap;
@@ -152,6 +169,8 @@ mod std {
 ///
 /// assert_eq!(Some((&3, &"a")), map.range((Unbounded, Included(5))).next());
 /// ```
+///
+/// [`BTreeMap::range`]: btree_map/struct.BTreeMap.html#method.range
 #[stable(feature = "collections_bound", since = "1.17.0")]
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
 pub enum Bound<T> {
