@@ -21,7 +21,6 @@ use declare;
 use monomorphize::Instance;
 
 use partitioning::CodegenUnit;
-use trans_item::TransItem;
 use type_::Type;
 use rustc_data_structures::base_n;
 use rustc::ty::subst::Substs;
@@ -31,7 +30,7 @@ use session::config::NoDebugInfo;
 use session::Session;
 use session::config;
 use symbol_map::SymbolMap;
-use util::nodemap::{NodeSet, DefIdMap, FxHashMap, FxHashSet};
+use util::nodemap::{NodeSet, DefIdMap, FxHashMap};
 
 use std::ffi::{CStr, CString};
 use std::cell::{Cell, RefCell};
@@ -87,7 +86,6 @@ pub struct SharedCrateContext<'a, 'tcx: 'a> {
 
     use_dll_storage_attrs: bool,
 
-    translation_items: RefCell<FxHashSet<TransItem<'tcx>>>,
     trait_cache: RefCell<DepTrackingMap<TraitSelectionCache<'tcx>>>,
     project_cache: RefCell<DepTrackingMap<ProjectionCache<'tcx>>>,
 }
@@ -385,7 +383,6 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
             tcx: tcx,
             check_overflow: check_overflow,
             use_dll_storage_attrs: use_dll_storage_attrs,
-            translation_items: RefCell::new(FxHashSet()),
             trait_cache: RefCell::new(DepTrackingMap::new(tcx.dep_graph.clone())),
             project_cache: RefCell::new(DepTrackingMap::new(tcx.dep_graph.clone())),
         }
@@ -429,10 +426,6 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
 
     pub fn use_dll_storage_attrs(&self) -> bool {
         self.use_dll_storage_attrs
-    }
-
-    pub fn translation_items(&self) -> &RefCell<FxHashSet<TransItem<'tcx>>> {
-        &self.translation_items
     }
 }
 
@@ -718,10 +711,6 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
 
     pub fn symbol_map(&self) -> &SymbolMap<'tcx> {
         &*self.local().symbol_map
-    }
-
-    pub fn translation_items(&self) -> &RefCell<FxHashSet<TransItem<'tcx>>> {
-        &self.shared.translation_items
     }
 
     /// Given the def-id of some item that has no type parameters, make

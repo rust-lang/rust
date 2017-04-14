@@ -802,6 +802,7 @@ fn write_metadata<'a, 'gcx>(tcx: TyCtxt<'a, 'gcx, 'gcx>,
 /// in any other compilation unit.  Give these symbols internal linkage.
 fn internalize_symbols<'a, 'tcx>(sess: &Session,
                                  scx: &SharedCrateContext<'a, 'tcx>,
+                                 translation_items: &FxHashSet<TransItem<'tcx>>,
                                  llvm_modules: &[ModuleLlvm],
                                  symbol_map: &SymbolMap<'tcx>,
                                  exported_symbols: &ExportedSymbols) {
@@ -854,7 +855,7 @@ fn internalize_symbols<'a, 'tcx>(sess: &Session,
             let mut locally_defined_symbols = FxHashSet();
             let mut linkage_fixed_explicitly = FxHashSet();
 
-            for trans_item in scx.translation_items().borrow().iter() {
+            for trans_item in translation_items {
                 let symbol_name = symbol_map.get_or_compute(scx, *trans_item);
                 if trans_item.explicit_linkage(tcx).is_some() {
                     linkage_fixed_explicitly.insert(symbol_name.clone());
@@ -1109,7 +1110,8 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     // Run the translation item collector and partition the collected items into
     // codegen units.
-    let (codegen_units, symbol_map) = collect_and_partition_translation_items(&shared_ccx);
+    let (translation_items, codegen_units, symbol_map) =
+        collect_and_partition_translation_items(&shared_ccx);
 
     let symbol_map = Rc::new(symbol_map);
 
@@ -1289,6 +1291,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     time(shared_ccx.sess().time_passes(), "internalize symbols", || {
         internalize_symbols(sess,
                             &shared_ccx,
+                            &translation_items,
                             &llvm_modules,
                             &symbol_map,
                             &exported_symbols);
@@ -1517,7 +1520,9 @@ fn gather_type_sizes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
 }
 
 fn collect_and_partition_translation_items<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>)
-                                                     -> (Vec<CodegenUnit<'tcx>>, SymbolMap<'tcx>) {
+                                                     -> (FxHashSet<TransItem<'tcx>>,
+                                                         Vec<CodegenUnit<'tcx>>,
+                                                         SymbolMap<'tcx>) {
     let time_passes = scx.sess().time_passes();
 
     let collection_mode = match scx.sess().opts.debugging_opts.print_trans_items {
@@ -1563,13 +1568,7 @@ fn collect_and_partition_translation_items<'a, 'tcx>(scx: &SharedCrateContext<'a
     assert!(scx.tcx().sess.opts.cg.codegen_units == codegen_units.len() ||
             scx.tcx().sess.opts.debugging_opts.incremental.is_some());
 
-    {
-        let mut ccx_map = scx.translation_items().borrow_mut();
-
-        for trans_item in items.iter().cloned() {
-            ccx_map.insert(trans_item);
-        }
-    }
+    let translation_items: FxHashSet<TransItem<'tcx>> = items.iter().cloned().collect();
 
     if scx.sess().opts.debugging_opts.print_trans_items.is_some() {
         let mut item_to_cgus = FxHashMap();
@@ -1624,5 +1623,5 @@ fn collect_and_partition_translation_items<'a, 'tcx>(scx: &SharedCrateContext<'a
         }
     }
 
-    (codegen_units, symbol_map)
+    (translation_items, codegen_units, symbol_map)
 }
