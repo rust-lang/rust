@@ -633,6 +633,11 @@ impl<'a> State<'a> {
                 self.print_foreign_mod(nmod, &item.attrs)?;
                 self.bclose(item.span)?;
             }
+            hir::ItemGlobalAsm(ref ga) => {
+                self.head(&visibility_qualified(&item.vis, "global asm"))?;
+                word(&mut self.s, &ga.asm.as_str())?;
+                self.end()?
+            }
             hir::ItemTy(ref ty, ref params) => {
                 self.ibox(indent_unit)?;
                 self.ibox(0)?;
