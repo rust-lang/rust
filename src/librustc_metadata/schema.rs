@@ -267,6 +267,7 @@ pub enum EntryKind<'tcx> {
     ForeignImmStatic,
     ForeignMutStatic,
     ForeignMod,
+    GlobalAsm,
     Type,
     Enum(ReprOptions),
     Field,
@@ -297,6 +298,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for EntryKind<'tcx> {
             EntryKind::ForeignImmStatic |
             EntryKind::ForeignMutStatic |
             EntryKind::ForeignMod       |
+            EntryKind::GlobalAsm        |
             EntryKind::Field |
             EntryKind::Type => {
                 // Nothing else to hash here.

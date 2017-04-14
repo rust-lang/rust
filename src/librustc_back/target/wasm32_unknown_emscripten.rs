@@ -14,7 +14,7 @@ use super::emscripten_base::{cmd};
 
 pub fn target() -> Result<Target, String> {
     let mut post_link_args = LinkArgs::new();
-    post_link_args.insert(LinkerFlavor::Gcc,
+    post_link_args.insert(LinkerFlavor::Em,
                           vec!["-s".to_string(),
                                "BINARYEN=1".to_string(),
                                "-s".to_string(),

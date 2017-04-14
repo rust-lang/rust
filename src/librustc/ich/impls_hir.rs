@@ -881,6 +881,7 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for hir::Item {
             hir::ItemFn(..)          |
             hir::ItemMod(..)         |
             hir::ItemForeignMod(..)  |
+            hir::ItemGlobalAsm(..)   |
             hir::ItemTy(..)          |
             hir::ItemEnum(..)        |
             hir::ItemStruct(..)      |
@@ -925,6 +926,7 @@ impl_stable_hash_for!(enum hir::Item_ {
     ItemFn(fn_decl, unsafety, constness, abi, generics, body_id),
     ItemMod(module),
     ItemForeignMod(foreign_mod),
+    ItemGlobalAsm(global_asm),
     ItemTy(ty, generics),
     ItemEnum(enum_def, generics),
     ItemStruct(variant_data, generics),
@@ -1014,6 +1016,19 @@ impl_stable_hash_for!(struct hir::InlineAsmOutput {
     is_indirect
 });
 
+impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for hir::GlobalAsm {
+    fn hash_stable<W: StableHasherResult>(&self,
+                                          hcx: &mut StableHashingContext<'a, 'tcx>,
+                                          hasher: &mut StableHasher<W>) {
+        let hir::GlobalAsm {
+            asm,
+            ctxt: _
+        } = *self;
+
+        asm.hash_stable(hcx, hasher);
+    }
+}
+
 impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for hir::InlineAsm {
     fn hash_stable<W: StableHasherResult>(&self,
                                           hcx: &mut StableHashingContext<'a, 'tcx>,
@@ -1070,6 +1085,7 @@ impl_stable_hash_for!(enum hir::def::Def {
     Upvar(def_id, index, expr_id),
     Label(node_id),
     Macro(def_id, macro_kind),
+    GlobalAsm(def_id),
     Err
 });
 

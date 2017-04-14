@@ -2285,7 +2285,7 @@ impl Clean<PathParameters> for hir::PathParameters {
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Debug)]
 pub struct PathSegment {
     pub name: String,
-    pub params: PathParameters
+    pub params: PathParameters,
 }
 
 impl Clean<PathSegment> for hir::PathSegment {
