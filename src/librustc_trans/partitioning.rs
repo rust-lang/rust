@@ -116,7 +116,7 @@ use rustc_incremental::IchHasher;
 use std::cmp::Ordering;
 use std::hash::Hash;
 use std::sync::Arc;
-use symbol_map::SymbolMap;
+use symbol_cache::SymbolCache;
 use syntax::ast::NodeId;
 use syntax::symbol::{Symbol, InternedString};
 use trans_item::{TransItem, InstantiationMode};
@@ -174,14 +174,15 @@ impl<'tcx> CodegenUnit<'tcx> {
         DepNode::WorkProduct(self.work_product_id())
     }
 
-    pub fn compute_symbol_name_hash(&self,
-                                    scx: &SharedCrateContext,
-                                    symbol_map: &SymbolMap) -> u64 {
+    pub fn compute_symbol_name_hash<'a>(&self,
+                                        scx: &SharedCrateContext<'a, 'tcx>,
+                                        symbol_cache: &SymbolCache<'a, 'tcx>)
+                                    -> u64 {
         let mut state = IchHasher::new();
         let exported_symbols = scx.exported_symbols();
-        let all_items = self.items_in_deterministic_order(scx.tcx(), symbol_map);
+        let all_items = self.items_in_deterministic_order(scx.tcx(), symbol_cache);
         for (item, _) in all_items {
-            let symbol_name = symbol_map.get(item).unwrap();
+            let symbol_name = symbol_cache.get(item);
             symbol_name.len().hash(&mut state);
             symbol_name.hash(&mut state);
             let exported = match item {
@@ -201,10 +202,10 @@ impl<'tcx> CodegenUnit<'tcx> {
         state.finish().to_smaller_hash()
     }
 
-    pub fn items_in_deterministic_order(&self,
-                                        tcx: TyCtxt,
-                                        symbol_map: &SymbolMap)
-                                        -> Vec<(TransItem<'tcx>, llvm::Linkage)> {
+    pub fn items_in_deterministic_order<'a>(&self,
+                                            tcx: TyCtxt,
+                                            symbol_cache: &SymbolCache<'a, 'tcx>)
+                                            -> Vec<(TransItem<'tcx>, llvm::Linkage)> {
         let mut items: Vec<(TransItem<'tcx>, llvm::Linkage)> =
             self.items.iter().map(|(item, linkage)| (*item, *linkage)).collect();
 
@@ -216,9 +217,9 @@ impl<'tcx> CodegenUnit<'tcx> {
 
             match (node_id1, node_id2) {
                 (None, None) => {
-                    let symbol_name1 = symbol_map.get(trans_item1).unwrap();
-                    let symbol_name2 = symbol_map.get(trans_item2).unwrap();
-                    symbol_name1.cmp(symbol_name2)
+                    let symbol_name1 = symbol_cache.get(trans_item1);
+                    let symbol_name2 = symbol_cache.get(trans_item2);
+                    symbol_name1.cmp(&symbol_name2)
                 }
                 // In the following two cases we can avoid looking up the symbol
                 (None, Some(_)) => Ordering::Less,
@@ -230,9 +231,9 @@ impl<'tcx> CodegenUnit<'tcx> {
                         return ordering;
                     }
 
-                    let symbol_name1 = symbol_map.get(trans_item1).unwrap();
-                    let symbol_name2 = symbol_map.get(trans_item2).unwrap();
-                    symbol_name1.cmp(symbol_name2)
+                    let symbol_name1 = symbol_cache.get(trans_item1);
+                    let symbol_name2 = symbol_cache.get(trans_item2);
+                    symbol_name1.cmp(&symbol_name2)
                 }
             }
         });
@@ -536,14 +537,12 @@ fn debug_dump<'a, 'b, 'tcx, I>(scx: &SharedCrateContext<'a, 'tcx>,
 {
     if cfg!(debug_assertions) {
         debug!("{}", label);
+        let symbol_cache = SymbolCache::new(scx);
         for cgu in cgus {
-            let symbol_map = SymbolMap::build(scx, cgu.items
-                                                      .iter()
-                                                      .map(|(&trans_item, _)| trans_item));
             debug!("CodegenUnit {}:", cgu.name);
 
             for (trans_item, linkage) in &cgu.items {
-                let symbol_name = symbol_map.get_or_compute(scx, *trans_item);
+                let symbol_name = symbol_cache.get(*trans_item);
                 let symbol_hash_start = symbol_name.rfind('h');
                 let symbol_hash = symbol_hash_start.map(|i| &symbol_name[i ..])
                                                    .unwrap_or("<no hash>");
