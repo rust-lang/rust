@@ -219,7 +219,7 @@ pub struct BinaryHeap<T> {
     data: Vec<T>,
 }
 
-/// Object representing a mutable reference to the greatest item on a
+/// Structure wrapping a mutable reference to the greatest item on a
 /// `BinaryHeap`.
 ///
 /// This `struct` is created by the [`peek_mut`] method on [`BinaryHeap`]. See
