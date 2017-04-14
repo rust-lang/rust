@@ -8,18 +8,18 @@ note: ...the reference is valid for the lifetime 'a as defined on the body at 11
   --> $DIR/ex1-return-one-existing-name-if-else.rs:11:44
    |
 11 |   fn foo<'a>(x: &'a i32, y: &i32) -> &'a i32 {
-   |  ____________________________________________^ starting here...
+   |  ____________________________________________^
 12 | |     if x > y { x } else { y }
 13 | | }
-   | |_^ ...ending here
+   | |_^
 note: ...but the borrowed content is only valid for the anonymous lifetime #1 defined on the body at 11:43
   --> $DIR/ex1-return-one-existing-name-if-else.rs:11:44
    |
 11 |   fn foo<'a>(x: &'a i32, y: &i32) -> &'a i32 {
-   |  ____________________________________________^ starting here...
+   |  ____________________________________________^
 12 | |     if x > y { x } else { y }
 13 | | }
-   | |_^ ...ending here
+   | |_^
 
 error: aborting due to previous error
 
