@@ -1139,7 +1139,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         let cgu_name = String::from(cgu.name());
         let cgu_id = cgu.work_product_id();
-        let symbol_cache = SymbolCache::new(scx);
+        let symbol_cache = SymbolCache::new(scx.tcx());
         let symbol_name_hash = cgu.compute_symbol_name_hash(scx, &symbol_cache);
 
         // Check whether there is a previous work-product we can
@@ -1239,7 +1239,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     assert_module_sources::assert_module_sources(tcx, &modules);
 
-    symbol_names_test::report_symbol_names(&shared_ccx);
+    symbol_names_test::report_symbol_names(tcx);
 
     if shared_ccx.sess().trans_stats() {
         println!("--- trans stats ---");

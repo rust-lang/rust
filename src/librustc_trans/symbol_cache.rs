@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use context::SharedCrateContext;
 use std::cell::RefCell;
 use std::rc::Rc;
+use rustc::ty::TyCtxt;
 use trans_item::TransItem;
 use util::nodemap::FxHashMap;
 
@@ -21,14 +21,14 @@ use util::nodemap::FxHashMap;
 // Thus they can always be recomputed if needed.
 
 pub struct SymbolCache<'a, 'tcx: 'a> {
-    scx: &'a SharedCrateContext<'a, 'tcx>,
+    tcx: TyCtxt<'a, 'tcx, 'tcx>,
     index: RefCell<FxHashMap<TransItem<'tcx>, Rc<String>>>,
 }
 
 impl<'a, 'tcx> SymbolCache<'a, 'tcx> {
-    pub fn new(scx: &'a SharedCrateContext<'a, 'tcx>) -> Self {
+    pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Self {
         SymbolCache {
-            scx,
+            tcx: tcx,
             index: RefCell::new(FxHashMap())
         }
     }
@@ -36,7 +36,7 @@ impl<'a, 'tcx> SymbolCache<'a, 'tcx> {
     pub fn get(&self, trans_item: TransItem<'tcx>) -> Rc<String> {
         let mut index = self.index.borrow_mut();
         index.entry(trans_item)
-             .or_insert_with(|| Rc::new(trans_item.compute_symbol_name(self.scx)))
+             .or_insert_with(|| Rc::new(trans_item.compute_symbol_name(self.tcx)))
              .clone()
     }
 }
