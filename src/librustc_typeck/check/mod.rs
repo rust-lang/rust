@@ -129,7 +129,6 @@ use rustc_back::slice;
 use rustc_const_eval::eval_length;
 use rustc_const_math::ConstInt;
 
-mod assoc;
 mod autoderef;
 pub mod dropck;
 pub mod _match;
@@ -537,7 +536,7 @@ impl<'a, 'gcx, 'tcx> InheritedBuilder<'a, 'gcx, 'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> Inherited<'a, 'gcx, 'tcx> {
-    pub fn new(infcx: InferCtxt<'a, 'gcx, 'tcx>) -> Self {
+    fn new(infcx: InferCtxt<'a, 'gcx, 'tcx>) -> Self {
         Inherited {
             infcx: infcx,
             fulfillment_cx: RefCell::new(traits::FulfillmentContext::new()),
@@ -548,20 +547,55 @@ impl<'a, 'gcx, 'tcx> Inherited<'a, 'gcx, 'tcx> {
         }
     }
 
+    fn register_predicate(&self, obligation: traits::PredicateObligation<'tcx>) {
+        debug!("register_predicate({:?})", obligation);
+        if obligation.has_escaping_regions() {
+            span_bug!(obligation.cause.span, "escaping regions in predicate {:?}",
+                      obligation);
+        }
+        self.fulfillment_cx
+            .borrow_mut()
+            .register_predicate_obligation(self, obligation);
+    }
+
+    fn register_predicates(&self, obligations: Vec<traits::PredicateObligation<'tcx>>) {
+        for obligation in obligations {
+            self.register_predicate(obligation);
+        }
+    }
+
+    fn register_infer_ok_obligations<T>(&self, infer_ok: InferOk<'tcx, T>) -> T {
+        self.register_predicates(infer_ok.obligations);
+        infer_ok.value
+    }
+
     fn normalize_associated_types_in<T>(&self,
                                         span: Span,
                                         body_id: ast::NodeId,
-                                        value: &T)
-                                        -> T
+                                        value: &T) -> T
         where T : TypeFoldable<'tcx>
     {
-        assoc::normalize_associated_types_in(self,
-                                             &mut self.fulfillment_cx.borrow_mut(),
-                                             span,
-                                             body_id,
-                                             value)
+        let ok = self.normalize_associated_types_in_as_infer_ok(span, body_id, value);
+        self.register_infer_ok_obligations(ok)
     }
 
+    fn normalize_associated_types_in_as_infer_ok<T>(&self,
+                                                    span: Span,
+                                                    body_id: ast::NodeId,
+                                                    value: &T)
+                                                    -> InferOk<'tcx, T>
+        where T : TypeFoldable<'tcx>
+    {
+        debug!("normalize_associated_types_in(value={:?})", value);
+        let mut selcx = traits::SelectionContext::new(self);
+        let cause = ObligationCause::misc(span, body_id);
+        let traits::Normalized { value, obligations } =
+            traits::normalize(&mut selcx, cause, value);
+        debug!("normalize_associated_types_in: result={:?} predicates={:?}",
+            value,
+            obligations);
+        InferOk { value, obligations }
+    }
 }
 
 struct CheckItemTypesVisitor<'a, 'tcx: 'a> { tcx: TyCtxt<'a, 'tcx, 'tcx> }
@@ -1804,32 +1838,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     {
         self.fulfillment_cx.borrow_mut()
             .register_bound(self, ty, def_id, cause);
-    }
-
-    pub fn register_predicate(&self,
-                              obligation: traits::PredicateObligation<'tcx>)
-    {
-        debug!("register_predicate({:?})", obligation);
-        if obligation.has_escaping_regions() {
-            span_bug!(obligation.cause.span, "escaping regions in predicate {:?}",
-                      obligation);
-        }
-        self.fulfillment_cx
-            .borrow_mut()
-            .register_predicate_obligation(self, obligation);
-    }
-
-    pub fn register_predicates(&self,
-                               obligations: Vec<traits::PredicateObligation<'tcx>>)
-    {
-        for obligation in obligations {
-            self.register_predicate(obligation);
-        }
-    }
-
-    pub fn register_infer_ok_obligations<T>(&self, infer_ok: InferOk<'tcx, T>) -> T {
-        self.register_predicates(infer_ok.obligations);
-        infer_ok.value
     }
 
     pub fn to_ty(&self, ast_t: &hir::Ty) -> Ty<'tcx> {
