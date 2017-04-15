@@ -23,7 +23,7 @@ use ich::StableHashingContext;
 use middle::const_val::ConstVal;
 use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem, FnOnceTraitLangItem};
 use middle::privacy::AccessLevels;
-use middle::region::{CodeExtent, ROOT_CODE_EXTENT};
+use middle::region::{CodeExtent, ROOT_CODE_EXTENT, DUMMY_CODE_EXTENT};
 use middle::resolve_lifetime::ObjectLifetimeDefault;
 use mir::Mir;
 use traits;
@@ -2474,7 +2474,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
         // for an empty parameter environment, there ARE no free
         // regions, so it shouldn't matter what we use for the free id
-        let free_id_outlive = self.region_maps().node_extent(ast::DUMMY_NODE_ID);
+        let free_id_outlive = DUMMY_CODE_EXTENT;
         ty::ParameterEnvironment {
             free_substs: self.intern_substs(&[]),
             caller_bounds: Vec::new(),
@@ -2556,8 +2556,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             is_sized_cache: RefCell::new(FxHashMap()),
         };
 
+        let node_id = tcx.hir.as_local_node_id(def_id).unwrap();
         let cause = traits::ObligationCause::misc(span,
-                                                  free_id_outlive.node_id(&self.region_maps()));
+                                                  free_id_outlive.node_id(
+                                                      &self.region_maps(node_id)));
         traits::normalize_param_env_or_error(tcx, unnormalized_env, cause)
     }
 

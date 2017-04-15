@@ -21,7 +21,7 @@ use hir::map as hir_map;
 use hir::map::DisambiguatedDefPathData;
 use middle::free_region::FreeRegionMap;
 use middle::lang_items;
-use middle::region::RegionMaps;
+use middle::region::{self, RegionMaps};
 use middle::resolve_lifetime;
 use middle::stability;
 use mir::Mir;
@@ -677,6 +677,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         let outermost_fn_id = outermost_fn_id_opt.expect("node_id should point inside a fn");
 
         ty::queries::region_resolve_fn::get(self, DUMMY_SP, self.hir.local_def_id(outermost_fn_id))
+    }
+
+    pub fn with_each_region_map<F>(self, f: F) where F: FnMut(DefId, Rc<RegionMaps>) -> ()
+    {
+        region::resolve_crate(self, f);
     }
 
     /// Create a type context and call the closure with a `TyCtxt` reference

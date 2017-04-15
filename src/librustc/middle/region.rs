@@ -1269,23 +1269,29 @@ impl<'hir, 'a> Visitor<'hir> for RegionResolutionVisitor<'hir, 'a> {
     }
 }
 
-pub fn resolve_crate<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
+pub fn resolve_crate<'a, 'gcx: 'a+'tcx, 'tcx: 'a, F>(tcx: TyCtxt<'a, 'gcx, 'tcx>, f: F)
+    where F: FnMut(DefId, Rc<RegionMaps>) -> ()
+{
+    struct CrateResolutionVisitor<'a, 'gcx: 'a+'tcx, 'tcx: 'a, F>(TyCtxt<'a, 'gcx, 'tcx>, F)
+        where F: FnMut(DefId, Rc<RegionMaps>) -> ();
 
-    struct CrateResolutionVisitor<'a, 'tcx: 'a>(TyCtxt<'a, 'tcx, 'tcx>);
-
-    impl<'a, 'hir: 'a> Visitor<'hir> for CrateResolutionVisitor<'a, 'hir> {
-        fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'hir> {
+    impl<'a, 'gcx: 'a+'tcx, 'tcx: 'a, F> Visitor<'gcx> for
+        CrateResolutionVisitor<'a, 'gcx, 'tcx, F>
+            where F: FnMut(DefId, Rc<RegionMaps>) -> ()
+    {
+        fn nested_visit_map<'this>(&'this mut self) -> NestedVisitorMap<'this, 'gcx> {
             NestedVisitorMap::OnlyBodies(&self.0.hir)
         }
-        fn visit_fn(&mut self, _fk: FnKind<'hir>, _fd: &'hir FnDecl,
+        fn visit_fn(&mut self, _fk: FnKind<'tcx>, _fd: &'tcx FnDecl,
                     _b: hir::BodyId, _s: Span, fn_id: NodeId)
         {
             let fn_def_id = self.0.hir.local_def_id(fn_id);
-            ty::queries::region_resolve_fn::get(self.0, DUMMY_SP, fn_def_id);
+            (self.1)(fn_def_id, ty::queries::region_resolve_fn::get(self.0, DUMMY_SP, fn_def_id));
         }
     }
 
-    tcx.hir.krate().visit_all_item_likes(&mut CrateResolutionVisitor(tcx).as_deep_visitor());
+    tcx.hir.krate().visit_all_item_likes(
+        &mut CrateResolutionVisitor(tcx, f).as_deep_visitor());
 }
 
 fn region_resolve_fn<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, fn_id: DefId)
