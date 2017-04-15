@@ -2164,16 +2164,16 @@ pub trait Iterator {
     }
 }
 
-/// Select an element from an iterator based on the given projection
+/// Select an element from an iterator based on the given "projection"
 /// and "comparison" function.
 ///
 /// This is an idiosyncratic helper to try to factor out the
 /// commonalities of {max,min}{,_by}. In particular, this avoids
 /// having to implement optimizations several times.
 #[inline]
-fn select_fold1<I,B, FProj, FCmp>(mut it: I,
-                                  mut f_proj: FProj,
-                                  mut f_cmp: FCmp) -> Option<(B, I::Item)>
+fn select_fold1<I, B, FProj, FCmp>(mut it: I,
+                                   mut f_proj: FProj,
+                                   mut f_cmp: FCmp) -> Option<(B, I::Item)>
     where I: Iterator,
           FProj: FnMut(&I::Item) -> B,
           FCmp: FnMut(&B, &I::Item, &B, &I::Item) -> bool
@@ -2186,7 +2186,7 @@ fn select_fold1<I,B, FProj, FCmp>(mut it: I,
 
         for x in it {
             let x_p = f_proj(&x);
-            if f_cmp(&sel_p,  &sel, &x_p, &x) {
+            if f_cmp(&sel_p, &sel, &x_p, &x) {
                 sel = x;
                 sel_p = x_p;
             }
