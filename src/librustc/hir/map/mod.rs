@@ -95,6 +95,14 @@ enum MapEntry<'hir> {
     RootCrate,
 }
 
+/// Represents the kind of pattern
+#[derive(Debug, Clone, Copy)]
+pub enum PatternSource<'hir> {
+    MatchExpr(&'hir Expr),
+    LetDecl(&'hir Local),
+    Other,
+}
+
 impl<'hir> Clone for MapEntry<'hir> {
     fn clone(&self) -> MapEntry<'hir> {
         *self
@@ -637,7 +645,7 @@ impl<'hir> Map<'hir> {
             Err(id) => id,
         }
     }
-
+    
     /// Returns the nearest enclosing scope. A scope is an item or block.
     /// FIXME it is not clear to me that all items qualify as scopes - statics
     /// and associated types probably shouldn't, for example. Behaviour in this
