@@ -543,7 +543,8 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
                                                                Some(&base_expr),
                                                                self.node_ty(base_expr.id),
                                                                PreferMutLvalue);
-                        let method = method.expect("re-trying deref failed");
+                        let ok = method.expect("re-trying deref failed");
+                        let method = self.register_infer_ok_obligations(ok);
                         self.tables.borrow_mut().method_map.insert(method_call, method);
                     }
                 }

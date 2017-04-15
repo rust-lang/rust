@@ -158,11 +158,16 @@ impl<'a, 'gcx, 'tcx> Autoderef<'a, 'gcx, 'tcx> {
                                    -> InferOk<'tcx, ()>
         where E: AsCoercionSite
     {
-        let methods: Vec<_> = self.steps
+        let Autoderef { fcx, span, mut obligations, steps, .. } = self;
+        let methods: Vec<_> = steps
             .iter()
             .map(|&(ty, kind)| {
                 if let AutoderefKind::Overloaded = kind {
-                    self.fcx.try_overloaded_deref(self.span, None, ty, pref)
+                    fcx.try_overloaded_deref(span, None, ty, pref)
+                        .map(|InferOk { value, obligations: o }| {
+                            obligations.extend(o);
+                            value
+                        })
                 } else {
                     None
                 }
@@ -172,7 +177,7 @@ impl<'a, 'gcx, 'tcx> Autoderef<'a, 'gcx, 'tcx> {
         debug!("finalize({:?}) - {:?},{:?}",
                pref,
                methods,
-               self.obligations);
+               obligations);
 
         for expr in exprs {
             let expr = expr.as_coercion_site();
@@ -180,14 +185,14 @@ impl<'a, 'gcx, 'tcx> Autoderef<'a, 'gcx, 'tcx> {
             for (n, method) in methods.iter().enumerate() {
                 if let &Some(method) = method {
                     let method_call = MethodCall::autoderef(expr.id, n as u32);
-                    self.fcx.tables.borrow_mut().method_map.insert(method_call, method);
+                    fcx.tables.borrow_mut().method_map.insert(method_call, method);
                 }
             }
         }
 
         InferOk {
             value: (),
-            obligations: self.obligations
+            obligations
         }
     }
 }
@@ -209,7 +214,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                 base_expr: Option<&hir::Expr>,
                                 base_ty: Ty<'tcx>,
                                 lvalue_pref: LvaluePreference)
-                                -> Option<MethodCallee<'tcx>> {
+                                -> Option<InferOk<'tcx, MethodCallee<'tcx>>> {
         debug!("try_overloaded_deref({:?},{:?},{:?},{:?})",
                span,
                base_expr,

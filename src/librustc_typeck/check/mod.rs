@@ -1749,14 +1749,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                           -> ty::InstantiatedPredicates<'tcx> {
         let bounds = self.tcx.item_predicates(def_id);
         let result = bounds.instantiate(self.tcx, substs);
-        let result = self.normalize_associated_types_in(span, &result.predicates);
+        let result = self.normalize_associated_types_in(span, &result);
         debug!("instantiate_bounds(bounds={:?}, substs={:?}) = {:?}",
                bounds,
                substs,
                result);
-        ty::InstantiatedPredicates {
-            predicates: result
-        }
+        result
     }
 
     /// Replace all anonymized types with fresh inference variables
@@ -1799,7 +1797,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     fn normalize_associated_types_in<T>(&self, span: Span, value: &T) -> T
         where T : TypeFoldable<'tcx>
     {
-        self.inh.normalize_associated_types_in(span, self.body_id, value)
+        let ok = self.normalize_associated_types_in_as_infer_ok(span, value);
+        self.register_infer_ok_obligations(ok)
+    }
+
+    fn normalize_associated_types_in_as_infer_ok<T>(&self, span: Span, value: &T)
+                                                    -> InferOk<'tcx, T>
+        where T : TypeFoldable<'tcx>
+    {
+        self.inh.normalize_associated_types_in_as_infer_ok(span, self.body_id, value)
     }
 
     pub fn write_nil(&self, node_id: ast::NodeId) {
@@ -2171,8 +2177,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // If some lookup succeeds, write callee into table and extract index/element
         // type from the method signature.
         // If some lookup succeeded, install method in table
-        method.map(|method| {
+        method.map(|ok| {
             debug!("try_index_step: success, using overloaded indexing");
+            let method = self.register_infer_ok_obligations(ok);
             self.tables.borrow_mut().method_map.insert(method_call, method);
             (input_ty, self.make_overloaded_lvalue_return_type(method).ty)
         })
@@ -3302,8 +3309,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
                         if let Some(mt) = oprnd_t.builtin_deref(true, NoPreference) {
                             oprnd_t = mt.ty;
-                        } else if let Some(method) = self.try_overloaded_deref(
+                        } else if let Some(ok) = self.try_overloaded_deref(
                                 expr.span, Some(&oprnd), oprnd_t, lvalue_pref) {
+                            let method = self.register_infer_ok_obligations(ok);
                             oprnd_t = self.make_overloaded_lvalue_return_type(method).ty;
                             self.tables.borrow_mut().method_map.insert(MethodCall::expr(expr.id),
                                                                            method);
