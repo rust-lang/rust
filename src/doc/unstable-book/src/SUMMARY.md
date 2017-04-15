@@ -136,6 +136,7 @@
 - [optin_builtin_traits](optin-builtin-traits.md)
 - [option_entry](option-entry.md)
 - [osstring_shrink_to_fit](osstring-shrink-to-fit.md)
+- [overlapping_marker_traits](overlapping-marker-traits.md)
 - [panic_abort](panic-abort.md)
 - [panic_runtime](panic-runtime.md)
 - [panic_unwind](panic-unwind.md)
