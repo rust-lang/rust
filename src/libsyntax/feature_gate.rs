@@ -352,7 +352,7 @@ declare_features! (
 
     // Allows overlapping impls of marker traits
     (active, overlapping_marker_traits, "1.18.0", Some(29864)),
-    
+
     // Allows use of the :vis macro fragment specifier
     (active, macro_vis_matcher, "1.18.0", Some(41022)),
 );
