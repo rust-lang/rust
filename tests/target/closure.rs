@@ -74,16 +74,16 @@ fn issue863() {
 
 fn issue934() {
     let hash: &Fn(&&Block) -> u64 = &|block| -> u64 {
-                                         let mut h = SpanlessHash::new(cx);
-                                         h.hash_block(block);
-                                         h.finish()
-                                     };
+        let mut h = SpanlessHash::new(cx);
+        h.hash_block(block);
+        h.finish()
+    };
 
     let hash: &Fn(&&Block) -> u64 = &|block| -> u64 {
-                                         let mut h = SpanlessHash::new(cx);
-                                         h.hash_block(block);
-                                         h.finish();
-                                     };
+        let mut h = SpanlessHash::new(cx);
+        h.hash_block(block);
+        h.finish();
+    };
 }
 
 impl<'a, 'tcx: 'a> SpanlessEq<'a, 'tcx> {

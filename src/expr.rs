@@ -1230,10 +1230,10 @@ fn rewrite_match(context: &RewriteContext,
 
 fn arm_start_pos(arm: &ast::Arm) -> BytePos {
     let &ast::Arm {
-             ref attrs,
-             ref pats,
-             ..
-         } = arm;
+        ref attrs,
+        ref pats,
+        ..
+    } = arm;
     if !attrs.is_empty() {
         return attrs[0].span.lo;
     }
@@ -1264,11 +1264,11 @@ impl Rewrite for ast::Arm {
     fn rewrite(&self, context: &RewriteContext, shape: Shape) -> Option<String> {
         debug!("Arm::rewrite {:?} {:?}", self, shape);
         let &ast::Arm {
-                 ref attrs,
-                 ref pats,
-                 ref guard,
-                 ref body,
-             } = self;
+            ref attrs,
+            ref pats,
+            ref guard,
+            ref body,
+        } = self;
 
         // FIXME this is all a bit grotty, would be nice to abstract out the
         // treatment of attributes.

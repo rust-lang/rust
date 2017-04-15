@@ -133,9 +133,9 @@ fn rewrite_view_path_prefix(path: &ast::Path,
     let path_str = if path.segments.last().unwrap().identifier.to_string() == "self" &&
                       path.segments.len() > 1 {
         let path = &ast::Path {
-                        span: path.span.clone(),
-                        segments: path.segments[..path.segments.len() - 1].to_owned(),
-                    };
+            span: path.span.clone(),
+            segments: path.segments[..path.segments.len() - 1].to_owned(),
+        };
         try_opt!(rewrite_path(context, PathContext::Import, None, path, shape))
     } else {
         try_opt!(rewrite_path(context, PathContext::Import, None, path, shape))
