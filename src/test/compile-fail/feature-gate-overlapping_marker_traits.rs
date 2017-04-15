@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Coherence error results because we do not know whether `T: Foo<P>` or not
-// for the second impl.
+use std::fmt::{Debug, Display};
 
-use std::marker::PhantomData;
+trait MyMarker {}
 
-pub trait Foo<P> { fn foo() {} }
-
-impl <P, T: Foo<P>> Foo<P> for Option<T> {}
-
-impl<T, U> Foo<T> for Option<U> { } //~ ERROR E0119
+impl<T: Display> MyMarker for T {}
+impl<T: Debug> MyMarker for T {}
+//~^ ERROR E0119
 
 fn main() {}
