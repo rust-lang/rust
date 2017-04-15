@@ -10,8 +10,6 @@
 
 //! See `README.md` for high-level documentation
 
-pub use self::MethodMatchResult::*;
-pub use self::MethodMatchedData::*;
 use self::SelectionCandidate::*;
 use self::EvaluationResult::*;
 
@@ -108,23 +106,6 @@ struct TraitObligationStack<'prev, 'tcx: 'prev> {
 pub struct SelectionCache<'tcx> {
     hashmap: RefCell<FxHashMap<ty::TraitRef<'tcx>,
                                SelectionResult<'tcx, SelectionCandidate<'tcx>>>>,
-}
-
-pub enum MethodMatchResult {
-    MethodMatched(MethodMatchedData),
-    MethodAmbiguous(/* list of impls that could apply */ Vec<DefId>),
-    MethodDidNotMatch,
-}
-
-#[derive(Copy, Clone, Debug)]
-pub enum MethodMatchedData {
-    // In the case of a precise match, we don't really need to store
-    // how the match was found. So don't.
-    PreciseMethodMatch,
-
-    // In the case of a coercion, we need to know the precise impl so
-    // that we can determine the type to which things were coerced.
-    CoerciveMethodMatch(/* impl we matched */ DefId)
 }
 
 /// The selection process begins by considering all impls, where
@@ -2979,16 +2960,6 @@ impl EvaluationResult {
             EvaluatedToUnknown => true,
 
             EvaluatedToErr => false
-        }
-    }
-}
-
-impl MethodMatchResult {
-    pub fn may_apply(&self) -> bool {
-        match *self {
-            MethodMatched(_) => true,
-            MethodAmbiguous(_) => true,
-            MethodDidNotMatch => false,
         }
     }
 }
