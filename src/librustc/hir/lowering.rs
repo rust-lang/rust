@@ -2033,7 +2033,6 @@ impl<'a> LoweringContext<'a> {
                 //
                 //   match <sub_expr> {
                 //     <pat> => <body>,
-                //     [_ if <else_opt_if_cond> => <else_opt_if_body>,]
                 //     _ => [<else_opt> | ()]
                 //   }
 
@@ -2047,93 +2046,17 @@ impl<'a> LoweringContext<'a> {
                     arms.push(self.arm(hir_vec![pat], body_expr));
                 }
 
-                // `[_ if <else_opt_if_cond> => <else_opt_if_body>,]`
-                // `_ => [<else_opt> | ()]`
+                // _ => [<else_opt>|()]
                 {
-                    let mut current: Option<&Expr> = else_opt.as_ref().map(|p| &**p);
-                    let mut else_exprs: Vec<Option<&Expr>> = vec![current];
-
-                    // First, we traverse the AST and recursively collect all
-                    // `else` branches into else_exprs, e.g.:
-                    //
-                    // if let Some(_) = x {
-                    //    ...
-                    // } else if ... {  // Expr1
-                    //    ...
-                    // } else if ... {  // Expr2
-                    //    ...
-                    // } else {         // Expr3
-                    //    ...
-                    // }
-                    //
-                    // ... results in else_exprs = [Some(&Expr1),
-                    //                              Some(&Expr2),
-                    //                              Some(&Expr3)]
-                    //
-                    // Because there also the case there is no `else`, these
-                    // entries can also be `None`, as in:
-                    //
-                    // if let Some(_) = x {
-                    //    ...
-                    // } else if ... {  // Expr1
-                    //    ...
-                    // } else if ... {  // Expr2
-                    //    ...
-                    // }
-                    //
-                    // ... results in else_exprs = [Some(&Expr1),
-                    //                              Some(&Expr2),
-                    //                              None]
-                    //
-                    // The last entry in this list is always translated into
-                    // the final "unguard" wildcard arm of the `match`. In the
-                    // case of a `None`, it becomes `_ => ()`.
-                    loop {
-                        if let Some(e) = current {
-                            // There is an else branch at this level
-                            if let ExprKind::If(_, _, ref else_opt) = e.node {
-                                // The else branch is again an if-expr
-                                current = else_opt.as_ref().map(|p| &**p);
-                                else_exprs.push(current);
-                            } else {
-                                // The last item in the list is not an if-expr,
-                                // stop here
-                                break
-                             }
-                        } else {
-                            // We have no more else branch
-                            break
-                         }
-                    }
-
-                    // Now translate the list of nested else-branches into the
-                    // arms of the match statement.
-                    for else_expr in else_exprs {
-                        if let Some(else_expr) = else_expr {
-                            let (guard, body) = if let ExprKind::If(ref cond,
-                                                                    ref then,
-                                                                    _) = else_expr.node {
-                                let then = self.lower_block(then, false);
-                                (Some(cond),
-                                 self.expr_block(then, ThinVec::new()))
-                            } else {
-                                (None,
-                                 self.lower_expr(else_expr))
-                            };
-
-                            arms.push(hir::Arm {
-                                attrs: hir_vec![],
-                                pats: hir_vec![self.pat_wild(e.span)],
-                                guard: guard.map(|e| P(self.lower_expr(e))),
-                                body: P(body),
-                            });
-                        } else {
-                            // There was no else-branch, push a noop
-                            let pat_under = self.pat_wild(e.span);
-                            let unit = self.expr_tuple(e.span, hir_vec![]);
-                            arms.push(self.arm(hir_vec![pat_under], unit));
-                        }
-                    }
+                	let wildcard_arm: Option<&Expr> = else_opt.as_ref().map(|p| &**p);
+					let wildcard_pattern = self.pat_wild(e.span);
+					let body = 
+						if let Some(else_expr) = wildcard_arm {
+							P(self.lower_expr(else_expr))
+						} else {
+							self.expr_tuple(e.span, hir_vec![])
+						};
+					arms.push(self.arm(hir_vec![wildcard_pattern], body));
                 }
 
                 let contains_else_clause = else_opt.is_some();
