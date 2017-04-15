@@ -898,6 +898,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
     let mut extern_providers = ty::maps::Providers::default();
     cstore::provide(&mut extern_providers);
+    ty::provide_extern(&mut extern_providers);
 
     TyCtxt::create_and_enter(sess,
                              local_providers,
