@@ -173,7 +173,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                        adjusted_ty,
                                                        None) {
                 None => continue,
-                Some(method_callee) => {
+                Some(ok) => {
+                    let method_callee = self.register_infer_ok_obligations(ok);
                     return Some(method_callee);
                 }
             }

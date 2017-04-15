@@ -17,7 +17,8 @@ use rustc::ty::subst::Substs;
 use rustc::traits;
 use rustc::ty::{self, ToPredicate, ToPolyTraitRef, TraitRef, TypeFoldable};
 use rustc::ty::adjustment::{Adjustment, Adjust, AutoBorrow};
-use rustc::infer;
+use rustc::ty::subst::Subst;
+use rustc::infer::{self, InferOk};
 
 use syntax::ast;
 use syntax_pos::Span;
@@ -159,7 +160,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                   trait_def_id: DefId,
                                   self_ty: ty::Ty<'tcx>,
                                   opt_input_types: Option<Vec<ty::Ty<'tcx>>>)
-                                  -> Option<ty::MethodCallee<'tcx>> {
+                                  -> Option<InferOk<'tcx, ty::MethodCallee<'tcx>>> {
         self.lookup_method_in_trait_adjusted(span,
                                              self_expr,
                                              m_name,
@@ -190,7 +191,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                            unsize: bool,
                                            self_ty: ty::Ty<'tcx>,
                                            opt_input_types: Option<Vec<ty::Ty<'tcx>>>)
-                                           -> Option<ty::MethodCallee<'tcx>> {
+                                           -> Option<InferOk<'tcx, ty::MethodCallee<'tcx>>> {
         debug!("lookup_in_trait_adjusted(self_ty={:?}, self_expr={:?}, \
                 m_name={}, trait_def_id={:?})",
                self_ty,
@@ -236,6 +237,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         assert_eq!(generics.regions.len(), 0);
 
         debug!("lookup_in_trait_adjusted: method_item={:?}", method_item);
+        let mut obligations = vec![];
 
         // Instantiate late-bound regions and substitute the trait
         // parameters into the method type to get the actual method type.
@@ -248,10 +250,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         let fn_sig = self.replace_late_bound_regions_with_fresh_var(span,
                                                                     infer::FnCall,
                                                                     &fn_sig).0;
-        let fn_sig = self.instantiate_type_scheme(span, trait_ref.substs, &fn_sig);
+        let fn_sig = fn_sig.subst(self.tcx, substs);
+        let fn_sig = match self.normalize_associated_types_in_as_infer_ok(span, &fn_sig) {
+            InferOk { value, obligations: o } => {
+                obligations.extend(o);
+                value
+            }
+        };
         let transformed_self_ty = fn_sig.inputs()[0];
-        let method_ty = tcx.mk_fn_def(def_id, trait_ref.substs,
-                                     ty::Binder(fn_sig));
+        let method_ty = tcx.mk_fn_def(def_id, substs, ty::Binder(fn_sig));
 
         debug!("lookup_in_trait_adjusted: matched method method_ty={:?} obligation={:?}",
                method_ty,
@@ -265,18 +272,20 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         //
         // Note that as the method comes from a trait, it should not have
         // any late-bound regions appearing in its bounds.
-        let method_bounds = self.instantiate_bounds(span, def_id, trait_ref.substs);
-        assert!(!method_bounds.has_escaping_regions());
-        self.add_obligations_for_parameters(traits::ObligationCause::misc(span, self.body_id),
-                                            &method_bounds);
+        let bounds = self.tcx.item_predicates(def_id).instantiate(self.tcx, substs);
+        let bounds = match self.normalize_associated_types_in_as_infer_ok(span, &bounds) {
+            InferOk { value, obligations: o } => {
+                obligations.extend(o);
+                value
+            }
+        };
+        assert!(!bounds.has_escaping_regions());
 
-        // Also register an obligation for the method type being well-formed.
-        self.register_wf_obligation(method_ty, span, traits::MiscObligation);
+        let cause = traits::ObligationCause::misc(span, self.body_id);
+        obligations.extend(traits::predicates_for_generics(cause.clone(), &bounds));
 
-        // FIXME(#18653) -- Try to resolve obligations, giving us more
-        // typing information, which can sometimes be needed to avoid
-        // pathological region inference failures.
-        self.select_obligations_where_possible();
+        // Also add an obligation for the method type being well-formed.
+        obligations.push(traits::Obligation::new(cause, ty::Predicate::WellFormed(method_ty)));
 
         // Insert any adjustments needed (always an autoref of some mutability).
         if let Some(self_expr) = self_expr {
@@ -317,7 +326,10 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         debug!("callee = {:?}", callee);
 
-        Some(callee)
+        Some(InferOk {
+            obligations,
+            value: callee
+        })
     }
 
     pub fn resolve_ufcs(&self,
