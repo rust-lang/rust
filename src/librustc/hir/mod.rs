@@ -1739,24 +1739,6 @@ impl Item_ {
             ItemDefaultImpl(..) => "item",
         }
     }
-
-    pub fn fields(&self) -> &[StructField] {
-        match *self {
-            ItemStruct(ref vd, _) => {
-                return vd.fields();
-            }
-            ItemEnum(EnumDef { ref variants }, _) => {
-                for variant in variants {
-                    let fields = variant.node.data.fields();
-                    if fields.len() > 0 {
-                        return fields;
-                    }
-                }
-            }
-            _ => (),
-        }
-        &[]
-    }
 }
 
 /// A reference from an trait to one of its associated items. This

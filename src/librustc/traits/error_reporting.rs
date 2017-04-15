@@ -27,7 +27,7 @@ use errors::DiagnosticBuilder;
 use fmt_macros::{Parser, Piece, Position};
 use hir::{self, intravisit, Local, Pat, Body};
 use hir::intravisit::{Visitor, NestedVisitorMap};
-use hir::map::{Node, NodeExpr};
+use hir::map::NodeExpr;
 use hir::def_id::DefId;
 use infer::{self, InferCtxt};
 use infer::type_variable::TypeVariableOrigin;
@@ -778,53 +778,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
     }
 }
 
-/// Get the `DefId` for a given struct or enum `Ty`.
-fn ty_def_id(ty: &hir::Ty) -> Option<DefId> {
-    match ty.node {
-        hir::TyPath(hir::QPath::Resolved(_, ref path)) => {
-            match path.def {
-                hir::def::Def::Struct(did) | hir::def::Def::Enum(did) => {
-                    Some(did)
-                }
-                _ => None,
-            }
-        },
-        _ => None,
-    }
-}
-
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
-    /// Add a span label to `err` pointing at `sp` if the field represented by `node_id` points
-    /// recursively at the type `ty` without indirection.
-    fn annotate_recursive_field_ty(&self,
-                                   node_id: ast::NodeId,
-                                   ty: &hir::Ty,
-                                   sp: Span,
-                                   err: &mut DiagnosticBuilder<'tcx>) -> bool {
-        if let Some(did) = ty_def_id(ty) {
-            return self.annotate_recursive_field_id(node_id, did, sp, err);
-        }
-        false
-    }
-
-    /// Add a span label to `err` pointing at `sp` if the field represented by `node_id` points
-    /// recursively at the type represented by `did` without indirection.
-    fn annotate_recursive_field_id(&self,
-                                   node_id:
-                                   ast::NodeId,
-                                   did: DefId,
-                                   sp: Span,
-                                   err: &mut DiagnosticBuilder<'tcx>) -> bool
-    {
-        if let Some(Node::NodeItem(item)) = self.hir.get_if_local(did) {
-            if self.is_node_id_referenced_in_item(item, node_id) {
-                err.span_label(sp, &"recursive without indirection");
-                return true;
-            }
-        }
-        false
-    }
-
     pub fn recursive_type_with_infinite_size_error(self,
                                                    type_def_id: DefId)
                                                    -> DiagnosticBuilder<'tcx>
@@ -839,65 +793,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         err.help(&format!("insert indirection (e.g., a `Box`, `Rc`, or `&`) \
                            at some point to make `{}` representable",
                           self.item_path_str(type_def_id)));
-
-        // Look at the type for the the recursive type's fields and label those that are causing it
-        // to be of infinite size.
-        if let Some(Node::NodeItem(self_item)) = self.hir.get_if_local(type_def_id) {
-            for field in self_item.node.fields() {
-                match field.ty.node {
-                    hir::TyPath(ref qpath) => {
-                        // Foo
-                        if let &hir::QPath::Resolved(_, ref path) = qpath {
-                            match path.def {
-                                hir::def::Def::Struct(did) |
-                                hir::def::Def::Enum(did) => {
-                                    self.annotate_recursive_field_id(self_item.id,
-                                                                     did,
-                                                                     field.span,
-                                                                     &mut err);
-                                }
-                                _ => (),
-                            }
-                        }
-                    }
-                    hir::TyArray(ref ty, _) => {
-                        // [Foo]
-                        self.annotate_recursive_field_ty(self_item.id, &ty, field.span, &mut err);
-                    }
-                    hir::TyTup(ref tys) => {
-                        // (Foo, Bar)
-                        for ty in tys {
-                            if self.annotate_recursive_field_ty(self_item.id,
-                                                                &ty,
-                                                                field.span,
-                                                                &mut err) {
-                                break;
-                            }
-                        }
-                    }
-                    _ => (),
-                }
-            }
-        }
         err
-    }
-
-    /// Given `item`, determine wether the node identified by `node_id` is referenced without any
-    /// indirection in any of `item`'s fields.
-    fn is_node_id_referenced_in_item(&self, item: &hir::Item, node_id: ast::NodeId) -> bool {
-        if item.id == node_id {
-            return true;
-        }
-        for field in item.node.fields() {
-            if let Some(Node::NodeItem(ref item)) = ty_def_id(&field.ty).and_then(|id| {
-                self.hir.get_if_local(id)
-            }) {
-                if self.is_node_id_referenced_in_item(item, node_id) {
-                    return true;
-                }
-            }
-        }
-        false
     }
 
     pub fn report_object_safety_error(self,
