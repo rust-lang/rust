@@ -1344,11 +1344,10 @@ impl Rewrite for ast::Arm {
         // 4 = ` => `.len()
         if shape.width > pat_width + comma.len() + 4 {
             let arm_shape = shape
-                .shrink_left(pat_width + 4)
+                .offset_left(pat_width + 4)
                 .unwrap()
                 .sub_width(comma.len())
-                .unwrap()
-                .block();
+                .unwrap();
             let rewrite = nop_block_collapse(body.rewrite(context, arm_shape), arm_shape.width);
             let is_block = if let ast::ExprKind::Block(..) = body.node {
                 true
