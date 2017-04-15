@@ -149,11 +149,9 @@ impl<'a, 'gcx, 'tcx> Autoderef<'a, 'gcx, 'tcx> {
         self.fcx.resolve_type_vars_if_possible(&self.cur_ty)
     }
 
-    pub fn finalize<E>(self, pref: LvaluePreference, exprs: &[E])
-        where E: AsCoercionSite
-    {
+    pub fn finalize(self, pref: LvaluePreference, expr: &hir::Expr) {
         let fcx = self.fcx;
-        fcx.register_infer_ok_obligations(self.finalize_as_infer_ok(pref, exprs));
+        fcx.register_infer_ok_obligations(self.finalize_as_infer_ok(pref, &[expr]));
     }
 
     pub fn finalize_as_infer_ok<E>(self, pref: LvaluePreference, exprs: &[E])

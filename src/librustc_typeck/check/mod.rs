@@ -2074,12 +2074,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 expr, base_expr, adj_ty, autoderefs,
                 false, lvalue_pref, idx_ty)
             {
-                autoderef.finalize(lvalue_pref, &[base_expr]);
+                autoderef.finalize(lvalue_pref, base_expr);
                 return Some(final_mt);
             }
 
             if let ty::TyArray(element_ty, _) = adj_ty.sty {
-                autoderef.finalize(lvalue_pref, &[base_expr]);
+                autoderef.finalize(lvalue_pref, base_expr);
                 let adjusted_ty = self.tcx.mk_slice(element_ty);
                 return self.try_index_step(
                     MethodCall::expr(expr.id), expr, base_expr,
@@ -2757,7 +2757,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     if let Some(field) = base_def.struct_variant().find_field_named(field.node) {
                         let field_ty = self.field_ty(expr.span, field, substs);
                         if self.tcx.vis_is_accessible_from(field.vis, self.body_id) {
-                            autoderef.finalize(lvalue_pref, &[base]);
+                            autoderef.finalize(lvalue_pref, base);
                             self.apply_autoderef_adjustment(base.id, autoderefs, base_t);
 
                             self.tcx.check_stability(field.did, expr.id, expr.span);
@@ -2881,7 +2881,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             };
 
             if let Some(field_ty) = field {
-                autoderef.finalize(lvalue_pref, &[base]);
+                autoderef.finalize(lvalue_pref, base);
                 self.apply_autoderef_adjustment(base.id, autoderefs, base_t);
                 return field_ty;
             }

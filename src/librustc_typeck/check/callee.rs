@@ -55,7 +55,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             })
             .next();
         let callee_ty = autoderef.unambiguous_final_ty();
-        autoderef.finalize(LvaluePreference::NoPreference, &[callee_expr]);
+        autoderef.finalize(LvaluePreference::NoPreference, callee_expr);
 
         let output = match result {
             None => {
