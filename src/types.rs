@@ -587,31 +587,34 @@ impl Rewrite for ast::Ty {
                 let mut_len = mut_str.len();
                 Some(match *lifetime {
                          Some(ref lifetime) => {
-                    let lt_budget = try_opt!(shape.width.checked_sub(2 + mut_len));
-                    let lt_str = try_opt!(lifetime.rewrite(context,
-                                                           Shape::legacy(lt_budget,
+                             let lt_budget = try_opt!(shape.width.checked_sub(2 + mut_len));
+                             let lt_str = try_opt!(lifetime.rewrite(context,
+                                                                    Shape::legacy(lt_budget,
+                                                                                  shape.indent +
+                                                                                  2 +
+                                                                                  mut_len)));
+                             let lt_len = lt_str.len();
+                             let budget = try_opt!(shape.width.checked_sub(2 + mut_len + lt_len));
+                             format!("&{} {}{}",
+                                     lt_str,
+                                     mut_str,
+                                     try_opt!(mt.ty
+                                                  .rewrite(context,
+                                                           Shape::legacy(budget,
                                                                          shape.indent + 2 +
-                                                                         mut_len)));
-                    let lt_len = lt_str.len();
-                    let budget = try_opt!(shape.width.checked_sub(2 + mut_len + lt_len));
-                    format!("&{} {}{}",
-                            lt_str,
-                            mut_str,
-                            try_opt!(mt.ty
-                                         .rewrite(context,
-                                                  Shape::legacy(budget,
-                                                                shape.indent + 2 + mut_len +
-                                                                lt_len))))
-                }
+                                                                         mut_len +
+                                                                         lt_len))))
+                         }
                          None => {
-                    let budget = try_opt!(shape.width.checked_sub(1 + mut_len));
-                    format!("&{}{}",
-                            mut_str,
-                            try_opt!(mt.ty
-                                         .rewrite(context,
-                                                  Shape::legacy(budget,
-                                                                shape.indent + 1 + mut_len))))
-                }
+                             let budget = try_opt!(shape.width.checked_sub(1 + mut_len));
+                             format!("&{}{}",
+                                     mut_str,
+                                     try_opt!(mt.ty
+                                                  .rewrite(context,
+                                                           Shape::legacy(budget,
+                                                                         shape.indent + 1 +
+                                                                         mut_len))))
+                         }
                      })
             }
             // FIXME: we drop any comments here, even though it's a silly place to put
