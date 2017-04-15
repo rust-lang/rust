@@ -17,6 +17,7 @@
 // Seems pretty basic, but then there was issue #24241. :)
 
 trait From<U> {
+    fn foo() {}
 }
 
 impl <T> From<T> for T {
