@@ -15,7 +15,6 @@ use rustc::hir;
 use rustc::hir::def::{self, CtorKind};
 use rustc::hir::def_id::{DefIndex, DefId};
 use rustc::ich::StableHashingContext;
-use rustc::middle::const_val::ConstVal;
 use rustc::middle::cstore::{DepKind, LinkagePreference, NativeLibrary};
 use rustc::middle::lang_items;
 use rustc::mir;
@@ -271,9 +270,9 @@ pub enum EntryKind<'tcx> {
     Type,
     Enum(ReprOptions),
     Field,
-    Variant(Lazy<VariantData<'tcx>>),
-    Struct(Lazy<VariantData<'tcx>>, ReprOptions),
-    Union(Lazy<VariantData<'tcx>>, ReprOptions),
+    Variant(Lazy<VariantData>),
+    Struct(Lazy<VariantData>, ReprOptions),
+    Union(Lazy<VariantData>, ReprOptions),
     Fn(Lazy<FnData>),
     ForeignFn(Lazy<FnData>),
     Mod(Lazy<ModData>),
@@ -374,20 +373,18 @@ pub struct FnData {
 impl_stable_hash_for!(struct FnData { constness, arg_names });
 
 #[derive(RustcEncodable, RustcDecodable)]
-pub struct VariantData<'tcx> {
+pub struct VariantData {
     pub ctor_kind: CtorKind,
     pub discr: ty::VariantDiscr,
-    pub evaluated_discr: Option<ConstVal<'tcx>>,
 
     /// If this is a struct's only variant, this
     /// is the index of the "struct ctor" item.
     pub struct_ctor: Option<DefIndex>,
 }
 
-impl_stable_hash_for!(struct VariantData<'tcx> {
+impl_stable_hash_for!(struct VariantData {
     ctor_kind,
     discr,
-    evaluated_discr,
     struct_ctor
 });
 

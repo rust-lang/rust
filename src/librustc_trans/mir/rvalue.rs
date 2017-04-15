@@ -28,7 +28,6 @@ use type_::Type;
 use type_of;
 use tvec;
 use value::Value;
-use Disr;
 
 use super::MirContext;
 use super::constant::const_scalar_checked_binop;
@@ -107,9 +106,10 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             mir::Rvalue::Aggregate(ref kind, ref operands) => {
                 match *kind {
                     mir::AggregateKind::Adt(adt_def, variant_index, substs, active_field_index) => {
-                        let disr = Disr::for_variant(bcx.tcx(), adt_def, variant_index);
+                        let discr = adt_def.discriminant_for_variant(bcx.tcx(), variant_index)
+                           .to_u128_unchecked() as u64;
                         let dest_ty = dest.ty.to_ty(bcx.tcx());
-                        adt::trans_set_discr(&bcx, dest_ty, dest.llval, disr);
+                        adt::trans_set_discr(&bcx, dest_ty, dest.llval, discr);
                         for (i, operand) in operands.iter().enumerate() {
                             let op = self.trans_operand(&bcx, operand);
                             // Do not generate stores and GEPis for zero-sized fields.
