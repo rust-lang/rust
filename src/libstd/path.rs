@@ -370,13 +370,15 @@ pub struct PrefixComponent<'a> {
 }
 
 impl<'a> PrefixComponent<'a> {
-    /// The parsed prefix data.
+    /// Returns the parsed prefix data.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn kind(&self) -> Prefix<'a> {
         self.parsed
     }
 
-    /// The raw `OsStr` slice for this prefix.
+    /// Returns the raw [`OsStr`] slice for this prefix.
+    ///
+    /// [`OsStr`]: ../../std/ffi/struct.OsStr.html
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn as_os_str(&self) -> &'a OsStr {
         self.raw
@@ -446,25 +448,25 @@ pub enum Component<'a> {
         #[stable(feature = "rust1", since = "1.0.0")] PrefixComponent<'a>
     ),
 
-    /// The root directory component, appears after any prefix and before anything else
+    /// The root directory component, appears after any prefix and before anything else.
     #[stable(feature = "rust1", since = "1.0.0")]
     RootDir,
 
-    /// A reference to the current directory, i.e. `.`
+    /// A reference to the current directory, i.e. `.`.
     #[stable(feature = "rust1", since = "1.0.0")]
     CurDir,
 
-    /// A reference to the parent directory, i.e. `..`
+    /// A reference to the parent directory, i.e. `..`.
     #[stable(feature = "rust1", since = "1.0.0")]
     ParentDir,
 
-    /// A normal component, i.e. `a` and `b` in `a/b`
+    /// A normal component, e.g. `a` and `b` in `a/b`.
     #[stable(feature = "rust1", since = "1.0.0")]
     Normal(#[stable(feature = "rust1", since = "1.0.0")] &'a OsStr),
 }
 
 impl<'a> Component<'a> {
-    /// Extracts the underlying `OsStr` slice.
+    /// Extracts the underlying [`OsStr`] slice.
     ///
     /// # Examples
     ///
@@ -475,6 +477,8 @@ impl<'a> Component<'a> {
     /// let components: Vec<_> = path.components().map(|comp| comp.as_os_str()).collect();
     /// assert_eq!(&components, &[".", "tmp", "foo", "bar.txt"]);
     /// ```
+    ///
+    /// [`OsStr`]: ../../std/ffi/struct.OsStr.html
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn as_os_str(self) -> &'a OsStr {
         match self {
@@ -494,12 +498,10 @@ impl<'a> AsRef<OsStr> for Component<'a> {
     }
 }
 
-/// The core iterator giving the components of a path.
+/// An interator over the [`Component`]s of a [`Path`].
 ///
-/// See the module documentation for an in-depth explanation of components and
-/// their role in the API.
-///
-/// This `struct` is created by the [`path::Path::components`] method.
+/// This `struct` is created by the [`components`] method on [`Path`].
+/// See its documentation for more.
 ///
 /// # Examples
 ///
@@ -513,7 +515,9 @@ impl<'a> AsRef<OsStr> for Component<'a> {
 /// }
 /// ```
 ///
-/// [`path::Path::components`]: struct.Path.html#method.components
+/// [`Component`]: enum.Component.html
+/// [`components`]: struct.Path.html#method.components
+/// [`Path`]: struct.Path.html
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Components<'a> {
@@ -534,9 +538,15 @@ pub struct Components<'a> {
     back: State,
 }
 
-/// An iterator over the components of a path, as [`OsStr`] slices.
+/// An iterator over the [`Component`]s of a [`Path`], as [`OsStr`] slices.
 ///
+/// This `struct` is created by the [`iter`] method on [`Path`].
+/// See its documentation for more.
+///
+/// [`Component`]: enum.Component.html
+/// [`iter`]: struct.Path.html#method.iter
 /// [`OsStr`]: ../../std/ffi/struct.OsStr.html
+/// [`Path`]: struct.Path.html
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Iter<'a> {
@@ -762,6 +772,18 @@ impl<'a> fmt::Debug for Iter<'a> {
 
 impl<'a> Iter<'a> {
     /// Extracts a slice corresponding to the portion of the path remaining for iteration.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::path::Path;
+    ///
+    /// let mut iter = Path::new("/tmp/foo/bar.txt").iter();
+    /// iter.next();
+    /// iter.next();
+    ///
+    /// assert_eq!(Path::new("foo/bar.txt"), iter.as_path());
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn as_path(&self) -> &'a Path {
         self.inner.as_path()
@@ -1067,9 +1089,10 @@ impl PathBuf {
 
     /// Truncate `self` to [`self.parent`].
     ///
-    /// Returns false and does nothing if [`self.file_name`] is `None`.
+    /// Returns `false` and does nothing if [`self.file_name`] is [`None`].
     /// Otherwise, returns `true`.
     ///
+    /// [`None`]: ../../std/option/enum.Option.html#variant.None
     /// [`self.parent`]: struct.PathBuf.html#method.parent
     /// [`self.file_name`]: struct.PathBuf.html#method.file_name
     ///
@@ -1132,10 +1155,11 @@ impl PathBuf {
 
     /// Updates [`self.extension`] to `extension`.
     ///
-    /// If [`self.file_name`] is `None`, does nothing and returns `false`.
+    /// Returns `false` and does nothing if [`self.file_name`] is [`None`],
+    /// returns `true` and updates the extension otherwise.
     ///
-    /// Otherwise, returns `true`; if [`self.extension`] is [`None`], the
-    /// extension is added; otherwise it is replaced.
+    /// If [`self.extension`] is [`None`], the extension is added; otherwise
+    /// it is replaced.
     ///
     /// [`self.file_name`]: struct.PathBuf.html#method.file_name
     /// [`self.extension`]: struct.PathBuf.html#method.extension
@@ -1195,7 +1219,10 @@ impl PathBuf {
         self.inner
     }
 
-    /// Converts this `PathBuf` into a boxed `Path`.
+    /// Converts this `PathBuf` into a [boxed][`Box`] [`Path`].
+    ///
+    /// [`Box`]: ../../std/boxed/struct.Box.html
+    /// [`Path`]: struct.Path.html
     #[unstable(feature = "into_boxed_path", issue = "40380")]
     pub fn into_boxed_path(self) -> Box<Path> {
         unsafe { mem::transmute(self.inner.into_boxed_os_str()) }
@@ -1402,10 +1429,14 @@ pub struct Path {
     inner: OsStr,
 }
 
-/// An error returned from the [`Path::strip_prefix`] method indicating that the
-/// prefix was not found in `self`.
+/// An error returned from [`Path::strip_prefix`][`strip_prefix`] if the prefix
+/// was not found.
 ///
-/// [`Path::strip_prefix`]: struct.Path.html#method.strip_prefix
+/// This `struct` is created by the [`strip_prefix`] method on [`Path`].
+/// See its documentation for more.
+///
+/// [`strip_prefix`]: struct.Path.html#method.strip_prefix
+/// [`Path`]: struct.Path.html
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[stable(since = "1.7.0", feature = "strip_prefix")]
 pub struct StripPrefixError(());
@@ -1421,7 +1452,7 @@ impl Path {
         os_str_as_u8_slice(&self.inner)
     }
 
-    /// Directly wrap a string slice as a `Path` slice.
+    /// Directly wraps a string slice as a `Path` slice.
     ///
     /// This is a cost-free conversion.
     ///
@@ -1525,10 +1556,11 @@ impl Path {
         PathBuf::from(self.inner.to_os_string())
     }
 
-    /// A path is *absolute* if it is independent of the current directory.
+    /// Returns `true` if the `Path` is absolute, i.e. if it is independent of
+    /// the current directory.
     ///
     /// * On Unix, a path is absolute if it starts with the root, so
-    /// `is_absolute` and `has_root` are equivalent.
+    /// `is_absolute` and [`has_root`] are equivalent.
     ///
     /// * On Windows, a path is absolute if it has a prefix and starts with the
     /// root: `c:\windows` is absolute, while `c:temp` and `\temp` are not.
@@ -1540,6 +1572,8 @@ impl Path {
     ///
     /// assert!(!Path::new("foo.txt").is_absolute());
     /// ```
+    ///
+    /// [`has_root`]: #method.has_root
     #[stable(feature = "rust1", since = "1.0.0")]
     #[allow(deprecated)]
     pub fn is_absolute(&self) -> bool {
@@ -1547,7 +1581,9 @@ impl Path {
         self.has_root() && (cfg!(unix) || cfg!(target_os = "redox") || self.prefix().is_some())
     }
 
-    /// A path is *relative* if it is not absolute.
+    /// Return `false` if the `Path` is relative, i.e. not absolute.
+    ///
+    /// See [`is_absolute`]'s documentation for more details.
     ///
     /// # Examples
     ///
@@ -1556,6 +1592,8 @@ impl Path {
     ///
     /// assert!(Path::new("foo.txt").is_relative());
     /// ```
+    ///
+    /// [`is_absolute`]: #method.is_absolute
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_relative(&self) -> bool {
         !self.is_absolute()
@@ -1565,7 +1603,7 @@ impl Path {
         self.components().prefix
     }
 
-    /// A path has a root if the body of the path begins with the directory separator.
+    /// Returns `true` if the `Path` has a root.
     ///
     /// * On Unix, a path has a root if it begins with `/`.
     ///
@@ -1586,7 +1624,7 @@ impl Path {
         self.components().has_root()
     }
 
-    /// The path without its final component, if any.
+    /// Returns the `Path` without its final component, if there is one.
     ///
     /// Returns [`None`] if the path terminates in a root or prefix.
     ///
@@ -1619,9 +1657,9 @@ impl Path {
         })
     }
 
-    /// The final component of the path, if it is a normal file.
+    /// Returns the final component of the `Path`, if it is a normal file.
     ///
-    /// If the path terminates in `..`, `file_name` will return [`None`].
+    /// Returns [`None`] If the path terminates in `..`.
     ///
     /// [`None`]: ../../std/option/enum.Option.html#variant.None
     ///
@@ -1631,18 +1669,7 @@ impl Path {
     /// use std::path::Path;
     /// use std::ffi::OsStr;
     ///
-    /// let path = Path::new("foo.txt");
-    /// let os_str = OsStr::new("foo.txt");
-    ///
-    /// assert_eq!(Some(os_str), path.file_name());
-    /// ```
-    ///
-    /// # Other examples
-    ///
-    /// ```
-    /// use std::path::Path;
-    /// use std::ffi::OsStr;
-    ///
+    /// assert_eq!(Some(OsStr::new("foo.txt")), Path::new("foo.txt").file_name());
     /// assert_eq!(Some(OsStr::new("foo.txt")), Path::new("foo.txt/.").file_name());
     /// assert_eq!(Some(OsStr::new("foo.txt")), Path::new("foo.txt/.//").file_name());
     /// assert_eq!(None, Path::new("foo.txt/..").file_name());
@@ -1869,7 +1896,7 @@ impl Path {
         buf
     }
 
-    /// Produce an iterator over the components of the path.
+    /// Produces an iterator over the components of the path.
     ///
     /// # Examples
     ///
@@ -1896,7 +1923,7 @@ impl Path {
         }
     }
 
-    /// Produce an iterator over the path's components viewed as [`OsStr`] slices.
+    /// Produces an iterator over the path's components viewed as [`OsStr`] slices.
     ///
     /// [`OsStr`]: ../ffi/struct.OsStr.html
     ///
@@ -1936,7 +1963,7 @@ impl Path {
         Display { path: self }
     }
 
-    /// Query the file system to get information about a file, directory, etc.
+    /// Queries the file system to get information about a file, directory, etc.
     ///
     /// This function will traverse symbolic links to query information about the
     /// destination file.
@@ -1959,7 +1986,7 @@ impl Path {
         fs::metadata(self)
     }
 
-    /// Query the metadata about a file without following symlinks.
+    /// Queries the metadata about a file without following symlinks.
     ///
     /// This is an alias to [`fs::symlink_metadata`].
     ///
@@ -2096,7 +2123,11 @@ impl Path {
         fs::metadata(self).map(|m| m.is_dir()).unwrap_or(false)
     }
 
-    /// Converts a `Box<Path>` into a `PathBuf` without copying or allocating.
+    /// Converts a [`Box<Path>`][`Box`] into a [`PathBuf`] without copying or
+    /// allocating.
+    ///
+    /// [`Box`]: ../../std/boxed/struct.Box.html
+    /// [`PathBuf`]: struct.PathBuf.html
     #[unstable(feature = "into_boxed_path", issue = "40380")]
     pub fn into_path_buf(self: Box<Path>) -> PathBuf {
         let inner: Box<OsStr> = unsafe { mem::transmute(self) };
