@@ -74,9 +74,10 @@ pub struct BTreeSet<T> {
     map: BTreeMap<T, ()>,
 }
 
-/// An iterator over a `BTreeSet`'s items.
+/// An iterator over the items of a `BTreeSet`.
 ///
-/// This structure is created by the [`iter`] method on [`BTreeSet`].
+/// This `struct` is created by the [`iter`] method on [`BTreeSet`].
+/// See its documentation for more.
 ///
 /// [`BTreeSet`]: struct.BTreeSet.html
 /// [`iter`]: struct.BTreeSet.html#method.iter
@@ -94,21 +95,23 @@ impl<'a, T: 'a + fmt::Debug> fmt::Debug for Iter<'a, T> {
     }
 }
 
-/// An owning iterator over a `BTreeSet`'s items.
+/// An owning iterator over the items of a `BTreeSet`.
 ///
-/// This structure is created by the `into_iter` method on [`BTreeSet`]
-/// [`BTreeSet`] (provided by the `IntoIterator` trait).
+/// This `struct` is created by the [`into_iter`] method on [`BTreeSet`]
+/// (provided by the `IntoIterator` trait). See its documentation for more.
 ///
 /// [`BTreeSet`]: struct.BTreeSet.html
+/// [`into_iter`]: struct.BTreeSet.html#method.into_iter
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Debug)]
 pub struct IntoIter<T> {
     iter: ::btree_map::IntoIter<T, ()>,
 }
 
-/// An iterator over a sub-range of `BTreeSet`'s items.
+/// An iterator over a sub-range of items in a `BTreeSet`.
 ///
-/// This structure is created by the [`range`] method on [`BTreeSet`].
+/// This `struct` is created by the [`range`] method on [`BTreeSet`].
+/// See its documentation for more.
 ///
 /// [`BTreeSet`]: struct.BTreeSet.html
 /// [`range`]: struct.BTreeSet.html#method.range
@@ -118,9 +121,10 @@ pub struct Range<'a, T: 'a> {
     iter: ::btree_map::Range<'a, T, ()>,
 }
 
-/// A lazy iterator producing elements in the set difference (in-order).
+/// A lazy iterator producing elements in the difference of `BTreeSet`s.
 ///
-/// This structure is created by the [`difference`] method on [`BTreeSet`].
+/// This `struct` is created by the [`difference`] method on [`BTreeSet`].
+/// See its documentation for more.
 ///
 /// [`BTreeSet`]: struct.BTreeSet.html
 /// [`difference`]: struct.BTreeSet.html#method.difference
@@ -139,10 +143,10 @@ impl<'a, T: 'a + fmt::Debug> fmt::Debug for Difference<'a, T> {
     }
 }
 
-/// A lazy iterator producing elements in the set symmetric difference (in-order).
+/// A lazy iterator producing elements in the symmetric difference of `BTreeSet`s.
 ///
-/// This structure is created by the [`symmetric_difference`] method on
-/// [`BTreeSet`].
+/// This `struct` is created by the [`symmetric_difference`] method on
+/// [`BTreeSet`]. See its documentation for more.
 ///
 /// [`BTreeSet`]: struct.BTreeSet.html
 /// [`symmetric_difference`]: struct.BTreeSet.html#method.symmetric_difference
@@ -161,9 +165,10 @@ impl<'a, T: 'a + fmt::Debug> fmt::Debug for SymmetricDifference<'a, T> {
     }
 }
 
-/// A lazy iterator producing elements in the set intersection (in-order).
+/// A lazy iterator producing elements in the intersection of `BTreeSet`s.
 ///
-/// This structure is created by the [`intersection`] method on [`BTreeSet`].
+/// This `struct` is created by the [`intersection`] method on [`BTreeSet`].
+/// See its documentation for more.
 ///
 /// [`BTreeSet`]: struct.BTreeSet.html
 /// [`intersection`]: struct.BTreeSet.html#method.intersection
@@ -182,9 +187,10 @@ impl<'a, T: 'a + fmt::Debug> fmt::Debug for Intersection<'a, T> {
     }
 }
 
-/// A lazy iterator producing elements in the set union (in-order).
+/// A lazy iterator producing elements in the union of `BTreeSet`s.
 ///
-/// This structure is created by the [`union`] method on [`BTreeSet`].
+/// This `struct` is created by the [`union`] method on [`BTreeSet`].
+/// See its documentation for more.
 ///
 /// [`BTreeSet`]: struct.BTreeSet.html
 /// [`union`]: struct.BTreeSet.html#method.union
@@ -728,7 +734,7 @@ impl<T> IntoIterator for BTreeSet<T> {
     type Item = T;
     type IntoIter = IntoIter<T>;
 
-    /// Gets an iterator for moving out the BtreeSet's contents.
+    /// Gets an iterator for moving out the `BTreeSet`'s contents.
     ///
     /// # Examples
     ///
