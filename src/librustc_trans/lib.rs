@@ -67,7 +67,6 @@ pub use rustc::lint;
 pub use rustc::util;
 
 pub use base::trans_crate;
-pub use disr::Disr;
 
 pub mod back {
     pub use rustc::hir::svh;
@@ -118,7 +117,6 @@ mod consts;
 mod context;
 mod debuginfo;
 mod declare;
-mod disr;
 mod glue;
 mod intrinsic;
 mod machine;

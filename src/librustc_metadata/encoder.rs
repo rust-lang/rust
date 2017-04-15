@@ -269,12 +269,6 @@ impl<'a, 'b: 'a, 'tcx: 'b> EntryBuilder<'a, 'b, 'tcx> {
         let data = VariantData {
             ctor_kind: variant.ctor_kind,
             discr: variant.discr,
-            evaluated_discr: match variant.discr {
-                ty::VariantDiscr::Explicit(def_id) => {
-                    ty::queries::monomorphic_const_eval::get(tcx, DUMMY_SP, def_id).ok()
-                }
-                ty::VariantDiscr::Relative(_) => None
-            },
             struct_ctor: None,
         };
 
@@ -408,7 +402,6 @@ impl<'a, 'b: 'a, 'tcx: 'b> EntryBuilder<'a, 'b, 'tcx> {
         let data = VariantData {
             ctor_kind: variant.ctor_kind,
             discr: variant.discr,
-            evaluated_discr: None,
             struct_ctor: Some(def_id.index),
         };
 
@@ -697,7 +690,6 @@ impl<'a, 'b: 'a, 'tcx: 'b> EntryBuilder<'a, 'b, 'tcx> {
                 EntryKind::Struct(self.lazy(&VariantData {
                     ctor_kind: variant.ctor_kind,
                     discr: variant.discr,
-                    evaluated_discr: None,
                     struct_ctor: struct_ctor,
                 }), repr_options)
             }
@@ -708,7 +700,6 @@ impl<'a, 'b: 'a, 'tcx: 'b> EntryBuilder<'a, 'b, 'tcx> {
                 EntryKind::Union(self.lazy(&VariantData {
                     ctor_kind: variant.ctor_kind,
                     discr: variant.discr,
-                    evaluated_discr: None,
                     struct_ctor: None,
                 }), repr_options)
             }
@@ -1037,6 +1028,17 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for EncodeVisitor<'a, 'b, 'tcx> {
                           EntryBuilder::encode_info_for_foreign_item,
                           (def_id, ni));
     }
+    fn visit_variant(&mut self,
+                     v: &'tcx hir::Variant,
+                     g: &'tcx hir::Generics,
+                     id: ast::NodeId) {
+        intravisit::walk_variant(self, v, g, id);
+
+        if let Some(discr) = v.node.disr_expr {
+            let def_id = self.index.tcx.hir.body_owner_def_id(discr);
+            self.index.record(def_id, EntryBuilder::encode_info_for_embedded_const, def_id);
+        }
+    }
     fn visit_generics(&mut self, generics: &'tcx hir::Generics) {
         intravisit::walk_generics(self, generics);
         self.index.encode_info_for_generics(generics);
@@ -1156,6 +1158,32 @@ impl<'a, 'b: 'a, 'tcx: 'b> EntryBuilder<'a, 'b, 'tcx> {
             predicates: None,
 
             ast: None,
+            mir: self.encode_mir(def_id),
+        }
+    }
+
+    fn encode_info_for_embedded_const(&mut self, def_id: DefId) -> Entry<'tcx> {
+        debug!("EntryBuilder::encode_info_for_embedded_const({:?})", def_id);
+        let tcx = self.tcx;
+        let id = tcx.hir.as_local_node_id(def_id).unwrap();
+        let body = tcx.hir.body_owned_by(id);
+
+        Entry {
+            kind: EntryKind::Const(ty::queries::mir_const_qualif::get(tcx, DUMMY_SP, def_id)),
+            visibility: self.lazy(&ty::Visibility::Public),
+            span: self.lazy(&tcx.def_span(def_id)),
+            attributes: LazySeq::empty(),
+            children: LazySeq::empty(),
+            stability: None,
+            deprecation: None,
+
+            ty: Some(self.encode_item_type(def_id)),
+            inherent_impls: LazySeq::empty(),
+            variances: LazySeq::empty(),
+            generics: Some(self.encode_generics(def_id)),
+            predicates: Some(self.encode_predicates(def_id)),
+
+            ast: Some(self.encode_body(body)),
             mir: self.encode_mir(def_id),
         }
     }

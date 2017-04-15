@@ -804,10 +804,13 @@ pub fn provide(providers: &mut Providers) {
 fn monomorphic_const_eval<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                     def_id: DefId)
                                     -> EvalResult<'tcx> {
-    ty::queries::mir_const_qualif::get(tcx, DUMMY_SP, def_id);
     let cx = ConstContext::with_tables(tcx, tcx.item_tables(def_id));
 
-    let id = tcx.hir.as_local_node_id(def_id).unwrap();
-    let body = tcx.hir.body_owned_by(id);
-    cx.eval(&tcx.hir.body(body).value)
+    let body = if let Some(id) = tcx.hir.as_local_node_id(def_id) {
+        ty::queries::mir_const_qualif::get(tcx, DUMMY_SP, def_id);
+        tcx.hir.body(tcx.hir.body_owned_by(id))
+    } else {
+        tcx.sess.cstore.maybe_get_item_body(tcx, def_id).unwrap()
+    };
+    cx.eval(&body.value)
 }

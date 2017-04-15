@@ -511,11 +511,7 @@ impl<'a, 'tcx> CrateMetadata {
         def
     }
 
-    fn get_variant(&self,
-                   item: &Entry<'tcx>,
-                   index: DefIndex,
-                   tcx: TyCtxt<'a, 'tcx, 'tcx>)
-                   -> (ty::VariantDef, Option<DefIndex>) {
+    fn get_variant(&self, item: &Entry, index: DefIndex) -> ty::VariantDef {
         let data = match item.kind {
             EntryKind::Variant(data) |
             EntryKind::Struct(data, _) |
@@ -523,13 +519,7 @@ impl<'a, 'tcx> CrateMetadata {
             _ => bug!(),
         };
 
-        if let ty::VariantDiscr::Explicit(def_id) = data.discr {
-            // The original crate wouldn't have compiled if this is missing.
-            let result = Ok(data.evaluated_discr.unwrap());
-            tcx.maps.monomorphic_const_eval.borrow_mut().insert(def_id, result);
-        }
-
-        (ty::VariantDef {
+        ty::VariantDef {
             did: self.local_def_id(data.struct_ctor.unwrap_or(index)),
             name: self.item_name(index),
             fields: item.children.decode(self).map(|index| {
@@ -542,7 +532,7 @@ impl<'a, 'tcx> CrateMetadata {
             }).collect(),
             discr: data.discr,
             ctor_kind: data.ctor_kind,
-        }, data.struct_ctor)
+        }
     }
 
     pub fn get_adt_def(&self,
@@ -561,15 +551,11 @@ impl<'a, 'tcx> CrateMetadata {
             item.children
                 .decode(self)
                 .map(|index| {
-                    let (variant, struct_ctor) =
-                        self.get_variant(&self.entry(index), index, tcx);
-                    assert_eq!(struct_ctor, None);
-                    variant
+                    self.get_variant(&self.entry(index), index)
                 })
                 .collect()
         } else {
-            let (variant, _struct_ctor) = self.get_variant(&item, item_id, tcx);
-            vec![variant]
+            vec![self.get_variant(&item, item_id)]
         };
         let (kind, repr) = match item.kind {
             EntryKind::Enum(repr) => (ty::AdtKind::Enum, repr),
