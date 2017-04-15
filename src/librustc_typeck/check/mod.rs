@@ -2588,7 +2588,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         // we can.  We don't care if some things turn
                         // out unconstrained or ambiguous, as we're
                         // just trying to get hints here.
-                        let result = self.save_and_restore_obligations_in_snapshot_flag(|_| {
+                        let result = self.save_and_restore_in_snapshot_flag(|_| {
                             let mut fulfill = FulfillmentContext::new();
                             let ok = ok; // FIXME(#30046)
                             for obligation in ok.obligations {
