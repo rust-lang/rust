@@ -1695,85 +1695,21 @@ impl<'a, 'gcx, 'tcx> AdtDef {
     /// Due to normalization being eager, this applies even if
     /// the associated type is behind a pointer, e.g. issue #31299.
     pub fn sized_constraint(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx> {
-        self.calculate_sized_constraint_inner(tcx.global_tcx(), &mut Vec::new())
-    }
-
-    /// Calculates the Sized-constraint.
-    ///
-    /// As the Sized-constraint of enums can be a *set* of types,
-    /// the Sized-constraint may need to be a set also. Because introducing
-    /// a new type of IVar is currently a complex affair, the Sized-constraint
-    /// may be a tuple.
-    ///
-    /// In fact, there are only a few options for the constraint:
-    ///     - `bool`, if the type is always Sized
-    ///     - an obviously-unsized type
-    ///     - a type parameter or projection whose Sizedness can't be known
-    ///     - a tuple of type parameters or projections, if there are multiple
-    ///       such.
-    ///     - a TyError, if a type contained itself. The representability
-    ///       check should catch this case.
-    fn calculate_sized_constraint_inner(&self,
-                                        tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                        stack: &mut Vec<DefId>)
-                                        -> Ty<'tcx>
-    {
-        if let Some(ty) = tcx.maps.adt_sized_constraint.borrow().get(&self.did) {
-            return ty;
-        }
-
-        // Follow the memoization pattern: push the computation of
-        // DepNode::SizedConstraint as our current task.
-        let _task = tcx.dep_graph.in_task(DepNode::SizedConstraint(self.did));
-
-        if stack.contains(&self.did) {
-            debug!("calculate_sized_constraint: {:?} is recursive", self);
-            // This should be reported as an error by `check_representable`.
-            //
-            // Consider the type as Sized in the meanwhile to avoid
-            // further errors.
-            tcx.maps.adt_sized_constraint.borrow_mut().insert(self.did, tcx.types.err);
-            return tcx.types.err;
-        }
-
-        stack.push(self.did);
-
-        let tys : Vec<_> =
-            self.variants.iter().flat_map(|v| {
-                v.fields.last()
-            }).flat_map(|f| {
-                let ty = tcx.item_type(f.did);
-                self.sized_constraint_for_ty(tcx, stack, ty)
-            }).collect();
-
-        let self_ = stack.pop().unwrap();
-        assert_eq!(self_, self.did);
-
-        let ty = match tys.len() {
-            _ if tys.references_error() => tcx.types.err,
-            0 => tcx.types.bool,
-            1 => tys[0],
-            _ => tcx.intern_tup(&tys[..], false)
-        };
-
-        let old = tcx.maps.adt_sized_constraint.borrow().get(&self.did).cloned();
-        match old {
-            Some(old_ty) => {
-                debug!("calculate_sized_constraint: {:?} recurred", self);
-                assert_eq!(old_ty, tcx.types.err);
-                old_ty
-            }
-            None => {
-                debug!("calculate_sized_constraint: {:?} => {:?}", self, ty);
-                tcx.maps.adt_sized_constraint.borrow_mut().insert(self.did, ty);
-                ty
+        match queries::adt_sized_constraint::try_get(tcx, DUMMY_SP, self.did) {
+            Ok(ty) => ty,
+            Err(_) => {
+                debug!("adt_sized_constraint: {:?} is recursive", self);
+                // This should be reported as an error by `check_representable`.
+                //
+                // Consider the type as Sized in the meanwhile to avoid
+                // further errors.
+                tcx.types.err
             }
         }
     }
 
     fn sized_constraint_for_ty(&self,
                                tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                               stack: &mut Vec<DefId>,
                                ty: Ty<'tcx>)
                                -> Vec<Ty<'tcx>> {
         let result = match ty.sty {
@@ -1791,23 +1727,23 @@ impl<'a, 'gcx, 'tcx> AdtDef {
             TyTuple(ref tys, _) => {
                 match tys.last() {
                     None => vec![],
-                    Some(ty) => self.sized_constraint_for_ty(tcx, stack, ty)
+                    Some(ty) => self.sized_constraint_for_ty(tcx, ty)
                 }
             }
 
             TyAdt(adt, substs) => {
                 // recursive case
                 let adt_ty =
-                    adt.calculate_sized_constraint_inner(tcx, stack)
+                    adt.sized_constraint(tcx)
                        .subst(tcx, substs);
                 debug!("sized_constraint_for_ty({:?}) intermediate = {:?}",
                        ty, adt_ty);
                 if let ty::TyTuple(ref tys, _) = adt_ty.sty {
                     tys.iter().flat_map(|ty| {
-                        self.sized_constraint_for_ty(tcx, stack, ty)
+                        self.sized_constraint_for_ty(tcx, ty)
                     }).collect()
                 } else {
-                    self.sized_constraint_for_ty(tcx, stack, adt_ty)
+                    self.sized_constraint_for_ty(tcx, adt_ty)
                 }
             }
 
@@ -2703,9 +2639,56 @@ fn associated_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
     panic!("associated item not found for def_id: {:?}", def_id);
 }
 
+/// Calculates the Sized-constraint.
+///
+/// As the Sized-constraint of enums can be a *set* of types,
+/// the Sized-constraint may need to be a set also. Because introducing
+/// a new type of IVar is currently a complex affair, the Sized-constraint
+/// may be a tuple.
+///
+/// In fact, there are only a few options for the constraint:
+///     - `bool`, if the type is always Sized
+///     - an obviously-unsized type
+///     - a type parameter or projection whose Sizedness can't be known
+///     - a tuple of type parameters or projections, if there are multiple
+///       such.
+///     - a TyError, if a type contained itself. The representability
+///       check should catch this case.
+fn adt_sized_constraint<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                  def_id: DefId)
+                                  -> Ty<'tcx> {
+    let def = tcx.lookup_adt_def(def_id);
+
+    let tys: Vec<_> = def.variants.iter().flat_map(|v| {
+        v.fields.last()
+    }).flat_map(|f| {
+        let ty = tcx.item_type(f.did);
+        def.sized_constraint_for_ty(tcx, ty)
+    }).collect();
+
+    let ty = match tys.len() {
+        _ if tys.references_error() => tcx.types.err,
+        0 => tcx.types.bool,
+        1 => tys[0],
+        _ => tcx.intern_tup(&tys[..], false)
+    };
+
+    debug!("adt_sized_constraint: {:?} => {:?}", def, ty);
+
+    ty
+}
+
 pub fn provide(providers: &mut ty::maps::Providers) {
     *providers = ty::maps::Providers {
         associated_item,
+        adt_sized_constraint,
+        ..*providers
+    };
+}
+
+pub fn provide_extern(providers: &mut ty::maps::Providers) {
+    *providers = ty::maps::Providers {
+        adt_sized_constraint,
         ..*providers
     };
 }
