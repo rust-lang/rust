@@ -18,6 +18,7 @@
 use ty::{self, Lift, TyCtxt, Region};
 use ty::wf::ImpliedBound;
 use rustc_data_structures::transitive_relation::TransitiveRelation;
+use syntax::ast::NodeId;
 
 #[derive(Clone, RustcEncodable, RustcDecodable)]
 pub struct FreeRegionMap<'tcx> {
@@ -131,7 +132,7 @@ impl<'tcx> FreeRegionMap<'tcx> {
                     true,
 
                 (&ty::ReScope(sub_scope), &ty::ReScope(super_scope)) =>
-                    tcx.region_maps().is_subscope_of(sub_scope, super_scope),
+                    tcx.region_maps(node_id).is_subscope_of(sub_scope, super_scope),
 
                 (&ty::ReScope(sub_scope), &ty::ReFree(fr)) => {
                     // 1. It is safe to unwrap `fr.scope` because we

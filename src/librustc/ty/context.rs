@@ -714,6 +714,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         ty::queries::region_resolve_fn::get(self, DUMMY_SP, self.hir.local_def_id(outermost_fn_id))
     }
 
+    pub fn with_each_region_map<F>(self, f: F) where F: FnMut(DefId, Rc<RegionMaps>) -> ()
+    {
+        region::resolve_crate(self, f);
+    }
+
     /// Create a type context and call the closure with a `TyCtxt` reference
     /// to the context. The closure enforces that the type context and any interned
     /// value (types, substs, etc.) can only be used while `ty::tls` has a valid
