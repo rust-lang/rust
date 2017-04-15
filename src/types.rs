@@ -580,7 +580,7 @@ impl Rewrite for ast::Ty {
                     Mutability::Immutable => "*const ",
                 };
 
-                rewrite_unary_prefix(context, prefix, &*mt.ty, shape)
+                rewrite_unary_prefix(context, prefix, &*mt.ty, shape, self.span)
             }
             ast::TyKind::Rptr(ref lifetime, ref mt) => {
                 let mut_str = format_mutability(mt.mutbl);
