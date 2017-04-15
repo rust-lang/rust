@@ -20,7 +20,6 @@ use rustc::util::common::ErrorReported;
 use syntax::ast;
 use syntax_pos::Span;
 
-use super::assoc;
 use super::{Inherited, FnCtxt};
 use astconv::ExplicitSelf;
 
@@ -227,7 +226,6 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     tcx.infer_ctxt(trait_param_env, Reveal::UserFacing).enter(|infcx| {
         let inh = Inherited::new(infcx);
         let infcx = &inh.infcx;
-        let fulfillment_cx = &inh.fulfillment_cx;
 
         debug!("compare_impl_method: caller_bounds={:?}",
                infcx.parameter_environment.caller_bounds);
@@ -239,12 +237,11 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                                        infer::HigherRankedType,
                                                        &ty::Binder(impl_m_own_bounds.predicates));
         for predicate in impl_m_own_bounds {
-            let traits::Normalized { value: predicate, .. } =
+            let traits::Normalized { value: predicate, obligations } =
                 traits::normalize(&mut selcx, normalize_cause.clone(), &predicate);
 
-            fulfillment_cx.borrow_mut().register_predicate_obligation(
-                &infcx,
-                traits::Obligation::new(cause.clone(), predicate));
+            inh.register_predicates(obligations);
+            inh.register_predicate(traits::Obligation::new(cause.clone(), predicate));
         }
 
         // We now need to check that the signature of the impl method is
@@ -277,11 +274,9 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let impl_sig =
             impl_sig.subst(tcx, impl_to_skol_substs);
         let impl_sig =
-            assoc::normalize_associated_types_in(&infcx,
-                                                 &mut fulfillment_cx.borrow_mut(),
-                                                 impl_m_span,
-                                                 impl_m_body_id,
-                                                 &impl_sig);
+            inh.normalize_associated_types_in(impl_m_span,
+                                              impl_m_body_id,
+                                              &impl_sig);
         let impl_fty = tcx.mk_fn_ptr(ty::Binder(impl_sig));
         debug!("compare_impl_method: impl_fty={:?}", impl_fty);
 
@@ -291,11 +286,9 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let trait_sig =
             trait_sig.subst(tcx, trait_to_skol_substs);
         let trait_sig =
-            assoc::normalize_associated_types_in(&infcx,
-                                                 &mut fulfillment_cx.borrow_mut(),
-                                                 impl_m_span,
-                                                 impl_m_body_id,
-                                                 &trait_sig);
+            inh.normalize_associated_types_in(impl_m_span,
+                                              impl_m_body_id,
+                                              &trait_sig);
         let trait_fty = tcx.mk_fn_ptr(ty::Binder(trait_sig));
 
         debug!("compare_impl_method: trait_fty={:?}", trait_fty);
@@ -344,7 +337,7 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         // Check that all obligations are satisfied by the implementation's
         // version.
-        if let Err(ref errors) = fulfillment_cx.borrow_mut().select_all_or_error(&infcx) {
+        if let Err(ref errors) = inh.fulfillment_cx.borrow_mut().select_all_or_error(&infcx) {
             infcx.report_fulfillment_errors(errors);
             return Err(ErrorReported);
         }
@@ -731,7 +724,8 @@ pub fn compare_const_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     debug!("compare_const_impl(impl_trait_ref={:?})", impl_trait_ref);
 
     tcx.infer_ctxt((), Reveal::UserFacing).enter(|infcx| {
-        let mut fulfillment_cx = traits::FulfillmentContext::new();
+        let inh = Inherited::new(infcx);
+        let infcx = &inh.infcx;
 
         // The below is for the most part highly similar to the procedure
         // for methods above. It is simpler in many respects, especially
@@ -761,31 +755,21 @@ pub fn compare_const_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let trait_ty = tcx.item_type(trait_c.def_id).subst(tcx, trait_to_skol_substs);
         let mut cause = ObligationCause::misc(impl_c_span, impl_c_node_id);
 
-        let err = infcx.commit_if_ok(|_| {
-            // There is no "body" here, so just pass dummy id.
-            let impl_ty = assoc::normalize_associated_types_in(&infcx,
-                                                               &mut fulfillment_cx,
-                                                               impl_c_span,
-                                                               ast::CRATE_NODE_ID,
-                                                               &impl_ty);
+        // There is no "body" here, so just pass dummy id.
+        let impl_ty = inh.normalize_associated_types_in(impl_c_span,
+                                                        impl_c_node_id,
+                                                        &impl_ty);
 
-            debug!("compare_const_impl: impl_ty={:?}", impl_ty);
+        debug!("compare_const_impl: impl_ty={:?}", impl_ty);
 
-            let trait_ty = assoc::normalize_associated_types_in(&infcx,
-                                                                &mut fulfillment_cx,
-                                                                impl_c_span,
-                                                                ast::CRATE_NODE_ID,
-                                                                &trait_ty);
+        let trait_ty = inh.normalize_associated_types_in(impl_c_span,
+                                                         impl_c_node_id,
+                                                         &trait_ty);
 
-            debug!("compare_const_impl: trait_ty={:?}", trait_ty);
+        debug!("compare_const_impl: trait_ty={:?}", trait_ty);
 
-            infcx.sub_types(false, &cause, impl_ty, trait_ty)
-                 .map(|InferOk { obligations, value: () }| {
-                     for obligation in obligations {
-                         fulfillment_cx.register_predicate_obligation(&infcx, obligation);
-                     }
-                 })
-        });
+        let err = infcx.sub_types(false, &cause, impl_ty, trait_ty)
+            .map(|ok| inh.register_infer_ok_obligations(ok));
 
         if let Err(terr) = err {
             debug!("checking associated const for compatibility: impl ty {:?}, trait ty {:?}",
@@ -822,5 +806,7 @@ pub fn compare_const_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                 &terr);
             diag.emit();
         }
+
+        // FIXME(#41323) Check the obligations in the fulfillment context.
     });
 }
