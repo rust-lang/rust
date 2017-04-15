@@ -17,7 +17,7 @@ extern crate coherence_copy_like_lib as lib;
 
 struct MyType { x: i32 }
 
-trait MyTrait { }
+trait MyTrait { fn foo() {} }
 impl<T: lib::MyCopy> MyTrait for T { }
 
 // `MyStruct` is not declared fundamental, therefore this would
