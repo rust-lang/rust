@@ -56,7 +56,13 @@ struct Node<T> {
     element: T,
 }
 
-/// An iterator over references to the elements of a `LinkedList`.
+/// An iterator over the elements of a `LinkedList`.
+///
+/// This `struct` is created by the [`iter`] method on [`LinkedList`]. See its
+/// documentation for more.
+///
+/// [`iter`]: struct.LinkedList.html#method.iter
+/// [`LinkedList`]: struct.LinkedList.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Iter<'a, T: 'a> {
     head: Option<Shared<Node<T>>>,
@@ -82,7 +88,13 @@ impl<'a, T> Clone for Iter<'a, T> {
     }
 }
 
-/// An iterator over mutable references to the elements of a `LinkedList`.
+/// A mutable iterator over the elements of a `LinkedList`.
+///
+/// This `struct` is created by the [`iter_mut`] method on [`LinkedList`]. See its
+/// documentation for more.
+///
+/// [`iter_mut`]: struct.LinkedList.html#method.iter_mut
+/// [`LinkedList`]: struct.LinkedList.html
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IterMut<'a, T: 'a> {
     list: &'a mut LinkedList<T>,
@@ -100,7 +112,13 @@ impl<'a, T: 'a + fmt::Debug> fmt::Debug for IterMut<'a, T> {
     }
 }
 
-/// An iterator over the elements of a `LinkedList`.
+/// An owning iterator over the elements of a `LinkedList`.
+///
+/// This `struct` is created by the [`into_iter`] method on [`LinkedList`]
+/// (provided by the `IntoIterator` trait). See its documentation for more.
+///
+/// [`into_iter`]: struct.LinkedList.html#method.into_iter
+/// [`LinkedList`]: struct.LinkedList.html
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<T> {
@@ -618,11 +636,11 @@ impl<T> LinkedList<T> {
     /// Splits the list into two at the given index. Returns everything after the given index,
     /// including the index.
     ///
+    /// This operation should compute in O(n) time.
+    ///
     /// # Panics
     ///
     /// Panics if `at > len`.
-    ///
-    /// This operation should compute in O(n) time.
     ///
     /// # Examples
     ///
