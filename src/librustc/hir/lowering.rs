@@ -2048,15 +2048,14 @@ impl<'a> LoweringContext<'a> {
 
                 // _ => [<else_opt>|()]
                 {
-                	let wildcard_arm: Option<&Expr> = else_opt.as_ref().map(|p| &**p);
-					let wildcard_pattern = self.pat_wild(e.span);
-					let body = 
-						if let Some(else_expr) = wildcard_arm {
-							P(self.lower_expr(else_expr))
-						} else {
-							self.expr_tuple(e.span, hir_vec![])
-						};
-					arms.push(self.arm(hir_vec![wildcard_pattern], body));
+                    let wildcard_arm: Option<&Expr> = else_opt.as_ref().map(|p| &**p);
+                    let wildcard_pattern = self.pat_wild(e.span);
+                    let body = if let Some(else_expr) = wildcard_arm {
+                            P(self.lower_expr(else_expr))
+                        } else {
+                            self.expr_tuple(e.span, hir_vec![])
+                        };
+                    arms.push(self.arm(hir_vec![wildcard_pattern], body));
                 }
 
                 let contains_else_clause = else_opt.is_some();
