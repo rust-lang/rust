@@ -1378,8 +1378,12 @@ fn check_representable<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // contain themselves. For case 2, there must be an inner type that will be
     // caught by case 1.
     match rty.is_representable(tcx, sp) {
-        Representability::SelfRecursive => {
-            tcx.recursive_type_with_infinite_size_error(item_def_id).emit();
+        Representability::SelfRecursive(spans) => {
+            let mut err = tcx.recursive_type_with_infinite_size_error(item_def_id);
+            for span in spans {
+                err.span_label(span, &"recursive without indirection");
+            }
+            err.emit();
             return false
         }
         Representability::Representable | Representability::ContainsRecursive => (),

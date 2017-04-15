@@ -1,34 +1,29 @@
 error[E0072]: recursive type `Foo` has infinite size
   --> $DIR/recursive-type-field.rs:13:1
    |
-13 |   struct Foo<'a> {
-   |  _^ starting here...
-14 | |     bar: Bar<'a>,
-   | |     ------------ recursive without indirection
-15 | |     b: Rc<Bar<'a>>,
-16 | | }
-   | |_^ ...ending here: recursive type has infinite size
+13 | struct Foo<'a> {
+   | ^^^^^^^^^^^^^^ recursive type has infinite size
+14 |     bar: Bar<'a>,
+   |     ------------ recursive without indirection
    |
    = help: insert indirection (e.g., a `Box`, `Rc`, or `&`) at some point to make `Foo` representable
 
 error[E0072]: recursive type `Bar` has infinite size
   --> $DIR/recursive-type-field.rs:18:1
    |
-18 |   struct Bar<'a> {
-   |  _^ starting here...
-19 | |     y: (Foo<'a>, Foo<'a>),
-   | |     --------------------- recursive without indirection
-20 | |     z: Option<Bar<'a>>,
-21 | |     a: &'a Foo<'a>,
-22 | |     c: &'a [Bar<'a>],
-23 | |     d: [Bar<'a>; 1],
-   | |     --------------- recursive without indirection
-24 | |     e: Foo<'a>,
-   | |     ---------- recursive without indirection
-25 | |     x: Bar<'a>,
-   | |     ---------- recursive without indirection
-26 | | }
-   | |_^ ...ending here: recursive type has infinite size
+18 | struct Bar<'a> {
+   | ^^^^^^^^^^^^^^ recursive type has infinite size
+19 |     y: (Foo<'a>, Foo<'a>),
+   |     --------------------- recursive without indirection
+20 |     z: Option<Bar<'a>>,
+   |     ------------------ recursive without indirection
+...
+23 |     d: [Bar<'a>; 1],
+   |     --------------- recursive without indirection
+24 |     e: Foo<'a>,
+   |     ---------- recursive without indirection
+25 |     x: Bar<'a>,
+   |     ---------- recursive without indirection
    |
    = help: insert indirection (e.g., a `Box`, `Rc`, or `&`) at some point to make `Bar` representable
 
