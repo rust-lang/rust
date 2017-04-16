@@ -148,8 +148,7 @@ test_script:
   - sh src/ci/run.sh
 
 on_failure:
-  - cat %CD%\sccache.log
-  - cat C:\Users\appveyor\AppData\Local\Temp\1\build-cache-logs\*.log
+  - cat %CD%\sccache.log || exit 0
 
 cache:
   - C:\cache\rustsrc
