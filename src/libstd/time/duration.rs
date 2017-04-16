@@ -141,7 +141,9 @@ impl Duration {
     /// ```
     #[unstable(feature = "duration_as_millis", issue = "0")]
     #[inline]
-    pub fn as_millis(&self) -> u64 { self.secs * 1000 + self.nanos as u64 / 1_000_000 }
+    pub fn as_millis(&self) -> u64 {
+        self.secs * MILLIS_PER_SEC + (self.nanos / NANOS_PER_MILLI) as u64
+    }
 
     /// Returns the nanosecond precision represented by this `Duration`.
     ///
