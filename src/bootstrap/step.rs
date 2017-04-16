@@ -1217,8 +1217,8 @@ invalid rule dependency graph detected, was a rule added and maybe typo'd?
         let mut visited = HashSet::new();
         visited.insert(0);
         let idx_to_node = nodes.iter().map(|p| (*p.1, p.0)).collect::<HashMap<_, _>>();
-        for idx in nodes.values() {
-            self.topo_sort(*idx, &idx_to_node, &edges, &mut visited, &mut order);
+        for idx in 0..nodes.len() {
+            self.topo_sort(idx, &idx_to_node, &edges, &mut visited, &mut order);
         }
         return order
     }
