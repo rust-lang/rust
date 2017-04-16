@@ -15,7 +15,7 @@ pub use self::Primitive::*;
 use infer::InferCtxt;
 use session::Session;
 use traits;
-use ty::{self, Ty, TyCtxt, TypeFoldable, ReprOptions};
+use ty::{self, Ty, TyCtxt, TypeFoldable, ReprOptions, ReprFlags};
 
 use syntax::ast::{FloatTy, IntTy, UintTy};
 use syntax::attr;
@@ -479,7 +479,7 @@ impl Integer {
             return (discr, ity.is_signed());
         }
 
-        if repr.c {
+        if repr.c() {
             match &tcx.sess.target.target.arch[..] {
                 // WARNING: the ARM EABI has two variants; the one corresponding
                 // to `at_least == I32` appears to be used on Linux and NetBSD,
@@ -583,7 +583,7 @@ impl<'a, 'gcx, 'tcx> Struct {
     fn new(dl: &TargetDataLayout, fields: &Vec<&'a Layout>,
                   repr: &ReprOptions, kind: StructKind,
                   scapegoat: Ty<'gcx>) -> Result<Struct, LayoutError<'gcx>> {
-        let packed = repr.packed;
+        let packed = repr.packed();
         let mut ret = Struct {
             align: if packed { dl.i8_align } else { dl.aggregate_align },
             packed: packed,
@@ -598,7 +598,7 @@ impl<'a, 'gcx, 'tcx> Struct {
         // In addition, code in trans assume that 2-element structs can become pairs.
         // It's easier to just short-circuit here.
         let can_optimize = (fields.len() > 2 || StructKind::EnumVariant == kind)
-            && !(repr.c || repr.packed || repr.linear || repr.simd);
+            && (repr.flags & ReprFlags::IS_UNOPTIMISABLE).is_empty();
 
         let (optimize, sort_ascending) = match kind {
             StructKind::AlwaysSizedUnivariant => (can_optimize, false),
@@ -1177,7 +1177,7 @@ impl<'a, 'gcx, 'tcx> Layout {
             }
 
             // SIMD vector types.
-            ty::TyAdt(def, ..) if def.repr.simd => {
+            ty::TyAdt(def, ..) if def.repr.simd() => {
                 let element = ty.simd_type(tcx);
                 match *element.layout(infcx)? {
                     Scalar { value, .. } => {
@@ -1255,7 +1255,7 @@ impl<'a, 'gcx, 'tcx> Layout {
                         field.ty(tcx, substs).layout(infcx)
                     }).collect::<Result<Vec<_>, _>>()?;
                     let layout = if def.is_union() {
-                        let mut un = Union::new(dl, def.repr.packed);
+                        let mut un = Union::new(dl, def.repr.packed());
                         un.extend(dl, fields.iter().map(|&f| Ok(f)), ty)?;
                         UntaggedUnion { variants: un }
                     } else {
@@ -1925,7 +1925,7 @@ impl<'a, 'tcx> TyLayout<'tcx> {
             ty::TyTuple(tys, _) => tys[i],
 
             // SIMD vector types.
-            ty::TyAdt(def, ..) if def.repr.simd => {
+            ty::TyAdt(def, ..) if def.repr.simd() => {
                 self.ty.simd_type(tcx)
             }
 

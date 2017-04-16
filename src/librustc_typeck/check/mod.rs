@@ -918,7 +918,7 @@ fn check_struct<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     def.destructor(tcx); // force the destructor to be evaluated
     check_representable(tcx, span, def_id);
 
-    if def.repr.simd {
+    if def.repr.simd() {
         check_simd(tcx, span, def_id);
     }
 }
