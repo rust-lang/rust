@@ -65,6 +65,7 @@
 - [drop_types_in_const](drop-types-in-const.md)
 - [dropck_eyepatch](dropck-eyepatch.md)
 - [dropck_parametricity](dropck-parametricity.md)
+- [duration_as_millis](duration-as-millis.md)
 - [enumset](enumset.md)
 - [error_type_id](error-type-id.md)
 - [exact_size_is_empty](exact-size-is-empty.md)
