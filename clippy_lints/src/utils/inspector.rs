@@ -372,6 +372,7 @@ fn print_item(cx: &LateContext, item: &hir::Item) {
         },
         hir::ItemMod(..) => println!("module"),
         hir::ItemForeignMod(ref fm) => println!("foreign module with abi: {}", fm.abi),
+        hir::ItemGlobalAsm(ref asm) => println!("global asm: {:?}", asm),
         hir::ItemTy(..) => {
             println!("type alias for {:?}", cx.tcx.item_type(did));
         },
