@@ -1346,6 +1346,8 @@ macro_rules! add_assign_impl {
             #[rustc_inherit_overflow_checks]
             fn add_assign(&mut self, other: $t) { *self += other }
         }
+
+        forward_ref_op_assign! { impl AddAssign, add_assign for $t, $t }
     )+)
 }
 
@@ -1403,6 +1405,8 @@ macro_rules! sub_assign_impl {
             #[rustc_inherit_overflow_checks]
             fn sub_assign(&mut self, other: $t) { *self -= other }
         }
+
+        forward_ref_op_assign! { impl SubAssign, sub_assign for $t, $t }
     )+)
 }
 
@@ -1449,6 +1453,8 @@ macro_rules! mul_assign_impl {
             #[rustc_inherit_overflow_checks]
             fn mul_assign(&mut self, other: $t) { *self *= other }
         }
+
+        forward_ref_op_assign! { impl MulAssign, mul_assign for $t, $t }
     )+)
 }
 
@@ -1494,6 +1500,8 @@ macro_rules! div_assign_impl {
             #[inline]
             fn div_assign(&mut self, other: $t) { *self /= other }
         }
+
+        forward_ref_op_assign! { impl DivAssign, div_assign for $t, $t }
     )+)
 }
 
@@ -1539,6 +1547,8 @@ macro_rules! rem_assign_impl {
             #[inline]
             fn rem_assign(&mut self, other: $t) { *self %= other }
         }
+
+        forward_ref_op_assign! { impl RemAssign, rem_assign for $t, $t }
     )+)
 }
 
@@ -1626,6 +1636,8 @@ macro_rules! bitand_assign_impl {
             #[inline]
             fn bitand_assign(&mut self, other: $t) { *self &= other }
         }
+
+        forward_ref_op_assign! { impl BitAndAssign, bitand_assign for $t, $t }
     )+)
 }
 
@@ -1671,6 +1683,8 @@ macro_rules! bitor_assign_impl {
             #[inline]
             fn bitor_assign(&mut self, other: $t) { *self |= other }
         }
+
+        forward_ref_op_assign! { impl BitOrAssign, bitor_assign for $t, $t }
     )+)
 }
 
@@ -1716,6 +1730,8 @@ macro_rules! bitxor_assign_impl {
             #[inline]
             fn bitxor_assign(&mut self, other: $t) { *self ^= other }
         }
+
+        forward_ref_op_assign! { impl BitXorAssign, bitxor_assign for $t, $t }
     )+)
 }
 
@@ -1764,6 +1780,8 @@ macro_rules! shl_assign_impl {
                 *self <<= other
             }
         }
+
+        forward_ref_op_assign! { impl ShlAssign, shl_assign for $t, $f }
     )
 }
 
@@ -1830,6 +1848,8 @@ macro_rules! shr_assign_impl {
                 *self >>= other
             }
         }
+
+        forward_ref_op_assign! { impl ShrAssign, shr_assign for $t, $f }
     )
 }
 
