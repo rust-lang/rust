@@ -77,6 +77,8 @@ use core::hash::{self, Hash};
 use core::intrinsics::{arith_offset, assume};
 use core::iter::{FromIterator, FusedIterator, TrustedLen};
 use core::mem;
+#[cfg(not(test))]
+use core::num::Float;
 use core::ops::{InPlace, Index, IndexMut, Place, Placer};
 use core::ops;
 use core::ptr;
@@ -1370,10 +1372,74 @@ impl<T: PartialEq> Vec<T> {
 #[doc(hidden)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn from_elem<T: Clone>(elem: T, n: usize) -> Vec<T> {
-    let mut v = Vec::with_capacity(n);
-    v.extend_with_element(n, elem);
-    v
+    <T as SpecFromElem>::from_elem(elem, n)
 }
+
+// Specialization trait used for Vec::from_elem
+trait SpecFromElem: Sized {
+    fn from_elem(elem: Self, n: usize) -> Vec<Self>;
+}
+
+impl<T: Clone> SpecFromElem for T {
+    default fn from_elem(elem: Self, n: usize) -> Vec<Self> {
+        let mut v = Vec::with_capacity(n);
+        v.extend_with_element(n, elem);
+        v
+    }
+}
+
+impl SpecFromElem for u8 {
+    #[inline]
+    fn from_elem(elem: u8, n: usize) -> Vec<u8> {
+        if elem == 0 {
+            return Vec {
+                buf: RawVec::with_capacity_zeroed(n),
+                len: n,
+            }
+        }
+        unsafe {
+            let mut v = Vec::with_capacity(n);
+            ptr::write_bytes(v.as_mut_ptr(), elem, n);
+            v.set_len(n);
+            v
+        }
+    }
+}
+
+macro_rules! impl_spec_from_elem {
+    ($t: ty, $is_zero: expr) => {
+        impl SpecFromElem for $t {
+            #[inline]
+            fn from_elem(elem: $t, n: usize) -> Vec<$t> {
+                if $is_zero(elem) {
+                    return Vec {
+                        buf: RawVec::with_capacity_zeroed(n),
+                        len: n,
+                    }
+                }
+                let mut v = Vec::with_capacity(n);
+                v.extend_with_element(n, elem);
+                v
+            }
+        }
+    };
+}
+
+impl_spec_from_elem!(i8, |x| x == 0);
+impl_spec_from_elem!(i16, |x| x == 0);
+impl_spec_from_elem!(i32, |x| x == 0);
+impl_spec_from_elem!(i64, |x| x == 0);
+impl_spec_from_elem!(i128, |x| x == 0);
+impl_spec_from_elem!(isize, |x| x == 0);
+
+impl_spec_from_elem!(u16, |x| x == 0);
+impl_spec_from_elem!(u32, |x| x == 0);
+impl_spec_from_elem!(u64, |x| x == 0);
+impl_spec_from_elem!(u128, |x| x == 0);
+impl_spec_from_elem!(usize, |x| x == 0);
+
+impl_spec_from_elem!(f32, |x: f32| x == 0. && x.is_sign_positive());
+impl_spec_from_elem!(f64, |x: f64| x == 0. && x.is_sign_positive());
 
 ////////////////////////////////////////////////////////////////////////////////
 // Common trait implementations for Vec
