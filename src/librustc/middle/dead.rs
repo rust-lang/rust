@@ -162,7 +162,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
                     hir::ItemStruct(..) | hir::ItemUnion(..) => {
                         let def_id = self.tcx.hir.local_def_id(item.id);
                         let def = self.tcx.lookup_adt_def(def_id);
-                        self.struct_has_extern_repr = def.repr.c;
+                        self.struct_has_extern_repr = def.repr.c();
 
                         intravisit::walk_item(self, &item);
                     }

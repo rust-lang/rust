@@ -1438,50 +1438,80 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a, 'tcx>> for AdtDef {
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum AdtKind { Struct, Union, Enum }
 
+bitflags! {
+    #[derive(RustcEncodable, RustcDecodable, Default)]
+    flags ReprFlags: u8 {
+        const IS_C               = 1 << 0,
+        const IS_PACKED          = 1 << 1,
+        const IS_SIMD            = 1 << 2,
+        // Internal only for now. If true, don't reorder fields.
+        const IS_LINEAR          = 1 << 3,
+
+        // Any of these flags being set prevent field reordering optimisation.
+        const IS_UNOPTIMISABLE   = ReprFlags::IS_C.bits |
+                                   ReprFlags::IS_PACKED.bits |
+                                   ReprFlags::IS_SIMD.bits |
+                                   ReprFlags::IS_LINEAR.bits,
+    }
+}
+
+impl_stable_hash_for!(struct ReprFlags {
+    bits
+});
+
+
+
 /// Represents the repr options provided by the user,
 #[derive(Copy, Clone, Eq, PartialEq, RustcEncodable, RustcDecodable, Default)]
 pub struct ReprOptions {
-    pub c: bool,
-    pub packed: bool,
-    pub simd: bool,
     pub int: Option<attr::IntType>,
-    // Internal only for now. If true, don't reorder fields.
-    pub linear: bool,
+    pub flags: ReprFlags,
 }
 
 impl_stable_hash_for!(struct ReprOptions {
-    c,
-    packed,
-    simd,
     int,
-    linear
+    flags
 });
 
 impl ReprOptions {
     pub fn new(tcx: TyCtxt, did: DefId) -> ReprOptions {
-        let mut ret = ReprOptions::default();
+        let mut flags = ReprFlags::empty();
+        let mut size = None;
 
         for attr in tcx.get_attrs(did).iter() {
             for r in attr::find_repr_attrs(tcx.sess.diagnostic(), attr) {
-                match r {
-                    attr::ReprExtern => ret.c = true,
-                    attr::ReprPacked => ret.packed = true,
-                    attr::ReprSimd => ret.simd = true,
-                    attr::ReprInt(i) => ret.int = Some(i),
-                }
+                flags.insert(match r {
+                    attr::ReprExtern => ReprFlags::IS_C,
+                    attr::ReprPacked => ReprFlags::IS_PACKED,
+                    attr::ReprSimd => ReprFlags::IS_SIMD,
+                    attr::ReprInt(i) => {
+                        size = Some(i);
+                        ReprFlags::empty()
+                    },
+                });
             }
         }
 
         // FIXME(eddyb) This is deprecated and should be removed.
         if tcx.has_attr(did, "simd") {
-            ret.simd = true;
+            flags.insert(ReprFlags::IS_SIMD);
         }
 
         // This is here instead of layout because the choice must make it into metadata.
-        ret.linear = !tcx.consider_optimizing(|| format!("Reorder fields of {:?}",
-            tcx.item_path_str(did)));
-        ret
+        if !tcx.consider_optimizing(|| format!("Reorder fields of {:?}", tcx.item_path_str(did))) {
+            flags.insert(ReprFlags::IS_LINEAR);
+        }
+        ReprOptions { int: size, flags: flags }
     }
+
+    #[inline]
+    pub fn simd(&self) -> bool { self.flags.contains(ReprFlags::IS_SIMD) }
+    #[inline]
+    pub fn c(&self) -> bool { self.flags.contains(ReprFlags::IS_C) }
+    #[inline]
+    pub fn packed(&self) -> bool { self.flags.contains(ReprFlags::IS_PACKED) }
+    #[inline]
+    pub fn linear(&self) -> bool { self.flags.contains(ReprFlags::IS_LINEAR) }
 
     pub fn discr_type(&self) -> attr::IntType {
         self.int.unwrap_or(attr::SignedInt(ast::IntTy::Is))
@@ -1491,7 +1521,7 @@ impl ReprOptions {
     /// layout" optimizations, such as representing `Foo<&T>` as a
     /// single pointer.
     pub fn inhibit_enum_layout_opt(&self) -> bool {
-        self.c || self.int.is_some()
+        self.c() || self.int.is_some()
     }
 }
 

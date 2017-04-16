@@ -416,7 +416,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                 }
                 match def.adt_kind() {
                     AdtKind::Struct => {
-                        if !def.repr.c {
+                        if !def.repr.c() {
                             return FfiUnsafe("found struct without foreign-function-safe \
                                               representation annotation in foreign module, \
                                               consider adding a #[repr(C)] attribute to the type");
@@ -450,7 +450,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                         if all_phantom { FfiPhantom } else { FfiSafe }
                     }
                     AdtKind::Union => {
-                        if !def.repr.c {
+                        if !def.repr.c() {
                             return FfiUnsafe("found union without foreign-function-safe \
                                               representation annotation in foreign module, \
                                               consider adding a #[repr(C)] attribute to the type");
@@ -489,7 +489,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
                         // Check for a repr() attribute to specify the size of the
                         // discriminant.
-                        if !def.repr.c && def.repr.int.is_none() {
+                        if !def.repr.c() && def.repr.int.is_none() {
                             // Special-case types like `Option<extern fn()>`.
                             if !is_repr_nullable_ptr(cx, def, substs) {
                                 return FfiUnsafe("found enum without foreign-function-safe \
