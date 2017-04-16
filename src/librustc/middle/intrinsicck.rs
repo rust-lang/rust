@@ -46,7 +46,7 @@ fn unpack_option_like<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         _ => return ty
     };
 
-    if def.variants.len() == 2 && !def.repr.c && def.repr.int.is_none() {
+    if def.variants.len() == 2 && !def.repr.c() && def.repr.int.is_none() {
         let data_idx;
 
         if def.variants[0].fields.is_empty() {
