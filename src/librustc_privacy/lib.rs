@@ -427,14 +427,6 @@ struct PrivacyVisitor<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
-    fn item_is_accessible(&self, did: DefId) -> bool {
-        match self.tcx.hir.as_local_node_id(did) {
-            Some(node_id) =>
-                ty::Visibility::from_hir(&self.tcx.hir.expect_item(node_id).vis, node_id, self.tcx),
-            None => self.tcx.sess.cstore.visibility(did),
-        }.is_accessible_from(self.curitem, self.tcx)
-    }
-
     // Checks that a field is in scope.
     fn check_field(&mut self, span: Span, def: &'tcx ty::AdtDef, field: &'tcx ty::FieldDef) {
         if !def.is_enum() && !field.vis.is_accessible_from(self.curitem, self.tcx) {
@@ -442,20 +434,6 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
                       field.name, def.variant_descr(), self.tcx.item_path_str(def.did))
                 .span_label(span, &format!("field `{}` is private", field.name))
                 .emit();
-        }
-    }
-
-    // Checks that a method is in scope.
-    fn check_method(&mut self, span: Span, method_def_id: DefId) {
-        match self.tcx.associated_item(method_def_id).container {
-            // Trait methods are always all public. The only controlling factor
-            // is whether the trait itself is accessible or not.
-            ty::TraitContainer(trait_def_id) if !self.item_is_accessible(trait_def_id) => {
-                let msg = format!("source trait `{}` is private",
-                                  self.tcx.item_path_str(trait_def_id));
-                self.tcx.sess.span_err(span, &msg);
-            }
-            _ => {}
         }
     }
 }
@@ -483,11 +461,6 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivacyVisitor<'a, 'tcx> {
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr) {
         match expr.node {
-            hir::ExprMethodCall(..) => {
-                let method_call = ty::MethodCall::expr(expr.id);
-                let method = self.tables.method_map[&method_call];
-                self.check_method(expr.span, method.def_id);
-            }
             hir::ExprStruct(ref qpath, ref expr_fields, _) => {
                 let def = self.tables.qpath_def(qpath, expr.id);
                 let adt = self.tables.expr_ty(expr).ty_adt_def().unwrap();
