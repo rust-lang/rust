@@ -145,34 +145,79 @@ use sys::path::{is_sep_byte, is_verbatim_sep, MAIN_SEP_STR, parse_prefix};
 
 /// Path prefixes (Windows only).
 ///
-/// Windows uses a variety of path styles, including references to drive
-/// volumes (like `C:`), network shared folders (like `\\server\share`) and
-/// others. In addition, some path prefixes are "verbatim", in which case
-/// `/` is *not* treated as a separator and essentially no normalization is
-/// performed.
+/// Windows uses a variety of path prefix styles, including references to drive
+/// volumes (like `C:`), network shared folders (like `\\server\share`), and
+/// others. In addition, some path prefixes are "verbatim" (i.e. prefixed with
+/// `\\?\`, in which case `/` is *not* treated as a separator and essentially no
+/// normalization is performed.
+///
+/// # Examples
+///
+/// ```
+/// use std::path::{Component, Path, Prefix};
+/// use std::path::Prefix::*;
+/// use std::ffi::OsStr;
+///
+/// fn get_path_prefix(s: &str) -> Prefix {
+///     let path = Path::new(s);
+///     match path.components().next().unwrap() {
+///         Component::Prefix(prefix_component) => prefix_component.kind(),
+///         _ => panic!(),
+///     }
+/// }
+///
+/// # if cfg!(windows) {
+/// assert_eq!(Verbatim(OsStr::new("pictures")),
+///            get_path_prefix(r"\\?\pictures\kittens"));
+/// assert_eq!(VerbatimUNC(OsStr::new("server"), OsStr::new("share")),
+///            get_path_prefix(r"\\?\UNC\server\share"));
+/// assert_eq!(VerbatimDisk('C' as u8), get_path_prefix(r"\\?\c:\"));
+/// assert_eq!(DeviceNS(OsStr::new("BrainInterface")),
+///            get_path_prefix(r"\\.\BrainInterface"));
+/// assert_eq!(UNC(OsStr::new("server"), OsStr::new("share")),
+///            get_path_prefix(r"\\server\share"));
+/// assert_eq!(Disk('C' as u8), get_path_prefix(r"C:\Users\Rust\Pictures\Ferris"));
+/// # }
+/// ```
 #[derive(Copy, Clone, Debug, Hash, PartialOrd, Ord, PartialEq, Eq)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum Prefix<'a> {
-    /// Prefix `\\?\`, together with the given component immediately following it.
+    /// Verbatim prefix, e.g. `\\?\cat_pics`.
+    ///
+    /// Verbatim prefixes consist of `\\?\` immediately followed by the given
+    /// component.
     #[stable(feature = "rust1", since = "1.0.0")]
     Verbatim(#[stable(feature = "rust1", since = "1.0.0")] &'a OsStr),
 
-    /// Prefix `\\?\UNC\`, with the "server" and "share" components following it.
+    /// Verbatim prefix using Windows' _**U**niform **N**aming **C**onvention_,
+    /// e.g. `\\?\UNC\server\share`.
+    ///
+    /// Verbatim UNC prefixes consist of `\\?\UNC\` immediately followed by the
+    /// server's hostname and a share name.
     #[stable(feature = "rust1", since = "1.0.0")]
     VerbatimUNC(
         #[stable(feature = "rust1", since = "1.0.0")] &'a OsStr,
         #[stable(feature = "rust1", since = "1.0.0")] &'a OsStr,
     ),
 
-    /// Prefix like `\\?\C:\`, for the given drive letter
+    /// Verbatim disk prefix, e.g. `\\?\C:\`.
+    ///
+    /// Verbatim disk prefixes consist of `\\?\` immediately followed by the
+    /// drive letter and `:\`.
     #[stable(feature = "rust1", since = "1.0.0")]
     VerbatimDisk(#[stable(feature = "rust1", since = "1.0.0")] u8),
 
-    /// Prefix `\\.\`, together with the given component immediately following it.
+    /// Device namespace prefix, e.g. `\\.\COM42`.
+    ///
+    /// Device namespace prefixes consist of `\\.\` immediately followed by the
+    /// device name.
     #[stable(feature = "rust1", since = "1.0.0")]
     DeviceNS(#[stable(feature = "rust1", since = "1.0.0")] &'a OsStr),
 
-    /// Prefix `\\server\share`, with the given "server" and "share" components.
+    /// Prefix using Windows' _**U**niform **N**aming **C**onvention_, e.g.
+    /// `\\server\share`.
+    ///
+    /// UNC prefixes consist of the server's hostname and a share name.
     #[stable(feature = "rust1", since = "1.0.0")]
     UNC(
         #[stable(feature = "rust1", since = "1.0.0")] &'a OsStr,
@@ -217,6 +262,20 @@ impl<'a> Prefix<'a> {
     }
 
     /// Determines if the prefix is verbatim, i.e. begins with `\\?\`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::path::Prefix::*;
+    /// use std::ffi::OsStr;
+    ///
+    /// assert!(Verbatim(OsStr::new("pictures")).is_verbatim());
+    /// assert!(VerbatimUNC(OsStr::new("server"), OsStr::new("share")).is_verbatim());
+    /// assert!(VerbatimDisk('C' as u8).is_verbatim());
+    /// assert!(!DeviceNS(OsStr::new("BrainInterface")).is_verbatim());
+    /// assert!(!UNC(OsStr::new("server"), OsStr::new("share")).is_verbatim());
+    /// assert!(!Disk('C' as u8).is_verbatim());
+    /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_verbatim(&self) -> bool {
@@ -358,7 +417,39 @@ enum State {
 
 /// A Windows path prefix, e.g. `C:` or `\\server\share`.
 ///
+/// In addition to the parsed [`Prefix`] information returned by [`kind`],
+/// `PrefixComponent` also holds the raw and unparsed [`OsStr`] slice,
+/// returned by [`as_os_str`].
+///
+/// Instances of this `struct` can be obtained by matching against the
+/// [`Prefix` variant] on [`Component`].
+///
 /// Does not occur on Unix.
+///
+/// # Examples
+///
+/// ```
+/// # if cfg!(windows) {
+/// use std::path::{Component, Path, Prefix};
+/// use std::ffi::OsStr;
+///
+/// let path = Path::new(r"c:\you\later\");
+/// match path.components().next().unwrap() {
+///     Component::Prefix(prefix_component) => {
+///         assert_eq!(Prefix::Disk('C' as u8), prefix_component.kind());
+///         assert_eq!(OsStr::new("c:"), prefix_component.as_os_str());
+///     }
+///     _ => unreachable!(),
+/// }
+/// # }
+/// ```
+///
+/// [`as_os_str`]: #method.as_os_str
+/// [`Component`]: enum.Component.html
+/// [`kind`]: #method.kind
+/// [`OsStr`]: ../../std/ffi/struct.OsStr.html
+/// [`Prefix` variant]: enum.Component.html#variant.Prefix
+/// [`Prefix`]: enum.Prefix.html
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Copy, Clone, Eq, Debug)]
 pub struct PrefixComponent<'a> {
@@ -371,6 +462,11 @@ pub struct PrefixComponent<'a> {
 
 impl<'a> PrefixComponent<'a> {
     /// Returns the parsed prefix data.
+    ///
+    /// See [`Prefix`]'s documentation for more information on the different
+    /// kinds of prefixes.
+    ///
+    /// [`Prefix`]: enum.Prefix.html
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn kind(&self) -> Prefix<'a> {
         self.parsed
