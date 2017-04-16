@@ -349,15 +349,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         }
 
         let def = pick.item.def();
-
         self.tcx.check_stability(def.def_id(), expr_id, span);
 
-        if let probe::InherentImplPick = pick.kind {
-            if !self.tcx.vis_is_accessible_from(pick.item.vis, self.body_id) {
-                let msg = format!("{} `{}` is private", def.kind_name(), method_name);
-                self.tcx.sess.span_err(span, &msg);
-            }
-        }
         Ok(def)
     }
 
