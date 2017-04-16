@@ -126,6 +126,23 @@ impl Duration {
     #[inline]
     pub fn as_secs(&self) -> u64 { self.secs }
 
+    /// Returns the number of whole milliseconds represented by this `Duration`.
+    ///
+    /// The extra precision represented by this duration is ignored (i.e. extra
+    /// nanoseconds are not represented in the returned value).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::time::Duration;
+    ///
+    /// let half_second = Duration::from_millis(500);
+    /// assert_eq!(half_second.as_millis(), 500);
+    /// ```
+    #[unstable(feature = "duration_as_millis", issue = "0")]
+    #[inline]
+    pub fn as_millis(&self) -> u64 { self.secs * 1000 + self.nanos as u64 / 1_000_000 }
+
     /// Returns the nanosecond precision represented by this `Duration`.
     ///
     /// This method does **not** return the length of the duration when
