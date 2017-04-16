@@ -270,19 +270,22 @@ impl Command {
         }
 
         if let Some(fd) = stdio.stderr.fd() {
-            let _ = syscall::close(2);
-            t!(cvt(syscall::dup(fd, &[])));
-            let _ = syscall::close(fd);
+            t!(cvt(syscall::dup2(fd, 2, &[])));
+            let mut flags = t!(cvt(syscall::fcntl(2, syscall::F_GETFL, 0)));
+            flags &= ! syscall::O_CLOEXEC;
+            t!(cvt(syscall::fcntl(2, syscall::F_SETFL, flags)));
         }
         if let Some(fd) = stdio.stdout.fd() {
-            let _ = syscall::close(1);
-            t!(cvt(syscall::dup(fd, &[])));
-            let _ = syscall::close(fd);
+            t!(cvt(syscall::dup2(fd, 1, &[])));
+            let mut flags = t!(cvt(syscall::fcntl(1, syscall::F_GETFL, 0)));
+            flags &= ! syscall::O_CLOEXEC;
+            t!(cvt(syscall::fcntl(1, syscall::F_SETFL, flags)));
         }
         if let Some(fd) = stdio.stdin.fd() {
-            let _ = syscall::close(0);
-            t!(cvt(syscall::dup(fd, &[])));
-            let _ = syscall::close(fd);
+            t!(cvt(syscall::dup2(fd, 0, &[])));
+            let mut flags = t!(cvt(syscall::fcntl(0, syscall::F_GETFL, 0)));
+            flags &= ! syscall::O_CLOEXEC;
+            t!(cvt(syscall::fcntl(0, syscall::F_SETFL, flags)));
         }
 
         if let Some(g) = self.gid {
