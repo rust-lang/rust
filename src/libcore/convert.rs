@@ -35,7 +35,7 @@
 //! - [`From`]`<U> for T` implies [`Into`]`<T> for U`
 //! - [`TryFrom`]`<U> for T` implies [`TryInto`]`<T> for U`
 //! - [`From`] and [`Into`] are reflexive, which means that all types can
-//!   `into()` themselves and `from()` themselves
+//!   `into` themselves and `from` themselves
 //!
 //! See each trait for usage examples.
 //!
@@ -59,14 +59,15 @@ use str::FromStr;
 /// `AsRef` is to be used when wishing to convert to a reference of another
 /// type.
 /// `Borrow` is more related to the notion of taking the reference. It is
-/// useful when wishing to abstract
-/// over the type of reference (`&T`, `&mut T`) or allow both the referenced
-/// and owned type to be treated in the same manner.
+/// useful when wishing to abstract over the type of reference
+/// (`&T`, `&mut T`) or allow both the referenced and owned type to be treated
+/// in the same manner.
+///
 /// The key difference between the two traits is the intention:
 ///
 /// - Use `AsRef` when goal is to simply convert into a reference
 /// - Use `Borrow` when goal is related to writing code that is agnostic to the
-/// type of borrow and if is reference or value
+///   type of borrow and if is reference or value
 ///
 /// See [the book][book] for a more detailed comparison.
 ///
@@ -82,8 +83,8 @@ use str::FromStr;
 /// # Generic Implementations
 ///
 /// - `AsRef` auto-dereferences if the inner type is a reference or a mutable
-/// reference (e.g.: `foo.as_ref()` will work the same if `foo` has type
-/// `&mut Foo` or `&&mut Foo`)
+///   reference (e.g.: `foo.as_ref()` will work the same if `foo` has type
+///   `&mut Foo` or `&&mut Foo`)
 ///
 /// # Examples
 ///
@@ -124,8 +125,8 @@ pub trait AsRef<T: ?Sized> {
 /// # Generic Implementations
 ///
 /// - `AsMut` auto-dereferences if the inner type is a reference or a mutable
-/// reference (e.g.: `foo.as_ref()` will work the same if `foo` has type
-/// `&mut Foo` or `&&mut Foo`)
+///   reference (e.g.: `foo.as_ref()` will work the same if `foo` has type
+///   `&mut Foo` or `&&mut Foo`)
 ///
 /// # Examples
 ///
@@ -203,9 +204,11 @@ pub trait Into<T>: Sized {
 ///
 /// When constructing a function that is capable of failing the return type
 /// will generally be of the form `Result<T, E>`.
+///
 /// The `From` trait allows for simplification of error handling by providing a
 /// means of returning a single error type that encapsulates numerous possible
 /// erroneous situations.
+///
 /// This trait is not limited to error handling, rather the general case for
 /// this trait would be in any type conversions to have an explicit definition
 /// of how they are performed.
@@ -310,8 +313,7 @@ pub trait TryFrom<T>: Sized {
 
 // As lifts over &
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T: ?Sized, U: ?Sized> AsRef<U> for &'a T
-    where T: AsRef<U>
+impl<'a, T: ?Sized, U: ?Sized> AsRef<U> for &'a T where T: AsRef<U>
 {
     fn as_ref(&self) -> &U {
         <T as AsRef<U>>::as_ref(*self)
@@ -320,8 +322,7 @@ impl<'a, T: ?Sized, U: ?Sized> AsRef<U> for &'a T
 
 // As lifts over &mut
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T: ?Sized, U: ?Sized> AsRef<U> for &'a mut T
-    where T: AsRef<U>
+impl<'a, T: ?Sized, U: ?Sized> AsRef<U> for &'a mut T where T: AsRef<U>
 {
     fn as_ref(&self) -> &U {
         <T as AsRef<U>>::as_ref(*self)
@@ -338,8 +339,7 @@ impl<'a, T: ?Sized, U: ?Sized> AsRef<U> for &'a mut T
 
 // AsMut lifts over &mut
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T: ?Sized, U: ?Sized> AsMut<U> for &'a mut T
-    where T: AsMut<U>
+impl<'a, T: ?Sized, U: ?Sized> AsMut<U> for &'a mut T where T: AsMut<U>
 {
     fn as_mut(&mut self) -> &mut U {
         (*self).as_mut()
@@ -356,8 +356,7 @@ impl<'a, T: ?Sized, U: ?Sized> AsMut<U> for &'a mut T
 
 // From implies Into
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, U> Into<U> for T
-    where U: From<T>
+impl<T, U> Into<U> for T where U: From<T>
 {
     fn into(self) -> U {
         U::from(self)
@@ -367,16 +366,13 @@ impl<T, U> Into<U> for T
 // From (and thus Into) is reflexive
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> From<T> for T {
-    fn from(t: T) -> T {
-        t
-    }
+    fn from(t: T) -> T { t }
 }
 
 
 // TryFrom implies TryInto
 #[unstable(feature = "try_from", issue = "33417")]
-impl<T, U> TryInto<U> for T
-    where U: TryFrom<T>
+impl<T, U> TryInto<U> for T where U: TryFrom<T>
 {
     type Error = U::Error;
 
@@ -413,8 +409,7 @@ impl AsRef<str> for str {
 
 // FromStr implies TryFrom<&str>
 #[unstable(feature = "try_from", issue = "33417")]
-impl<'a, T> TryFrom<&'a str> for T
-    where T: FromStr
+impl<'a, T> TryFrom<&'a str> for T where T: FromStr
 {
     type Error = <T as FromStr>::Err;
 
