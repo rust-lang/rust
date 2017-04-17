@@ -380,6 +380,8 @@ fn partition_source(s: &str) -> (String, String) {
 
 pub struct Collector {
     pub tests: Vec<testing::TestDescAndFn>,
+    // to be removed when hoedown will be definitely gone
+    pub old_tests: Vec<String>,
     names: Vec<String>,
     cfgs: Vec<String>,
     libs: SearchPaths,
@@ -401,6 +403,7 @@ impl Collector {
                codemap: Option<Rc<CodeMap>>, filename: Option<String>) -> Collector {
         Collector {
             tests: Vec::new(),
+            old_tests: Vec::new(),
             names: Vec::new(),
             cfgs: cfgs,
             libs: libs,
@@ -417,11 +420,8 @@ impl Collector {
         }
     }
 
-    pub fn add_test(&mut self, test: String,
-                    should_panic: bool, no_run: bool, should_ignore: bool,
-                    as_test_harness: bool, compile_fail: bool, error_codes: Vec<String>,
-                    line: usize, filename: String) {
-        let name = if self.use_headers {
+    fn generate_name(&self, line: usize, filename: &str) -> String {
+        if self.use_headers {
             if let Some(ref header) = self.current_header {
                 format!("{} - {} (line {})", filename, header, line)
             } else {
@@ -429,7 +429,27 @@ impl Collector {
             }
         } else {
             format!("{} - {} (line {})", filename, self.names.join("::"), line)
-        };
+        }
+    }
+
+    pub fn add_old_test(&mut self, line: usize, filename: String) {
+        let name = self.generate_name(line, &filename);
+        self.old_tests.push(name);
+    }
+
+    pub fn add_test(&mut self, test: String,
+                    should_panic: bool, no_run: bool, should_ignore: bool,
+                    as_test_harness: bool, compile_fail: bool, error_codes: Vec<String>,
+                    line: usize, filename: String) {
+        let name = self.generate_name(line, &filename);
+        if self.old_tests.iter().find(|&x| x == &name).is_none() {
+            let _ = writeln!(&mut io::stderr(),
+                             "WARNING: {} Code block is not currently run as a test, but will in \
+                              future versions of rustdoc. Please ensure this code block is a \
+                              runnable test, or use the `ignore` directive.",
+                             name);
+            return
+        }
         let cfgs = self.cfgs.clone();
         let libs = self.libs.clone();
         let externs = self.externs.clone();
@@ -544,6 +564,8 @@ impl<'a, 'hir> HirCollector<'a, 'hir> {
         attrs.unindent_doc_comments();
         if let Some(doc) = attrs.doc_value() {
             self.collector.cnt = 0;
+            markdown::old_find_testable_code(doc, self.collector,
+                                             attrs.span.unwrap_or(DUMMY_SP));
             markdown::find_testable_code(doc, self.collector,
                                          attrs.span.unwrap_or(DUMMY_SP));
         }
