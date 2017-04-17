@@ -31,7 +31,6 @@ use ty;
 use ty::subst::{Subst, Substs};
 use ty::util::IntTypeExt;
 use ty::walk::TypeWalker;
-use util::common::MemoizationMap;
 use util::nodemap::{NodeSet, DefIdMap, FxHashMap};
 
 use serialize::{self, Encodable, Encoder};
@@ -2154,30 +2153,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn associated_item_def_ids(self, def_id: DefId) -> Rc<Vec<DefId>> {
-        if !def_id.is_local() {
-            return queries::associated_item_def_ids::get(self, DUMMY_SP, def_id);
-        }
-
-        self.maps.associated_item_def_ids.memoize(def_id, || {
-            let id = self.hir.as_local_node_id(def_id).unwrap();
-            let item = self.hir.expect_item(id);
-            let vec: Vec<_> = match item.node {
-                hir::ItemTrait(.., ref trait_item_refs) => {
-                    trait_item_refs.iter()
-                                   .map(|trait_item_ref| trait_item_ref.id)
-                                   .map(|id| self.hir.local_def_id(id.node_id))
-                                   .collect()
-                }
-                hir::ItemImpl(.., ref impl_item_refs) => {
-                    impl_item_refs.iter()
-                                  .map(|impl_item_ref| impl_item_ref.id)
-                                  .map(|id| self.hir.local_def_id(id.node_id))
-                                  .collect()
-                }
-                _ => span_bug!(item.span, "associated_item_def_ids: not impl or trait")
-            };
-            Rc::new(vec)
-        })
+        queries::associated_item_def_ids::get(self, DUMMY_SP, def_id)
     }
 
     #[inline] // FIXME(#35870) Avoid closures being unexported due to impl Trait.
@@ -2708,9 +2684,33 @@ fn adt_sized_constraint<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     ty
 }
 
+fn associated_item_def_ids<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                     def_id: DefId)
+                                     -> Rc<Vec<DefId>> {
+    let id = tcx.hir.as_local_node_id(def_id).unwrap();
+    let item = tcx.hir.expect_item(id);
+    let vec: Vec<_> = match item.node {
+        hir::ItemTrait(.., ref trait_item_refs) => {
+            trait_item_refs.iter()
+                           .map(|trait_item_ref| trait_item_ref.id)
+                           .map(|id| tcx.hir.local_def_id(id.node_id))
+                           .collect()
+        }
+        hir::ItemImpl(.., ref impl_item_refs) => {
+            impl_item_refs.iter()
+                          .map(|impl_item_ref| impl_item_ref.id)
+                          .map(|id| tcx.hir.local_def_id(id.node_id))
+                          .collect()
+        }
+        _ => span_bug!(item.span, "associated_item_def_ids: not impl or trait")
+    };
+    Rc::new(vec)
+}
+
 pub fn provide(providers: &mut ty::maps::Providers) {
     *providers = ty::maps::Providers {
         associated_item,
+        associated_item_def_ids,
         adt_sized_constraint,
         ..*providers
     };
