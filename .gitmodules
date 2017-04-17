@@ -1,10 +1,10 @@
 [submodule "src/llvm"]
 	path = src/llvm
-	url = https://github.com/rust-lang/llvm.git
+	url = https://github.com/TimNN/llvm.git
 	branch = master
 [submodule "src/compiler-rt"]
 	path = src/compiler-rt
-	url = https://github.com/rust-lang/compiler-rt.git
+	url = https://github.com/llvm-mirror/compiler-rt.git
 [submodule "src/jemalloc"]
 	path = src/jemalloc
 	url = https://github.com/rust-lang/jemalloc.git
