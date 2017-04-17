@@ -425,6 +425,8 @@ bitflags! {
         const IS_SIZED          = 1 << 17,
         const MOVENESS_CACHED   = 1 << 18,
         const MOVES_BY_DEFAULT  = 1 << 19,
+        const FREEZENESS_CACHED = 1 << 20,
+        const IS_FREEZE         = 1 << 21,
     }
 }
 
@@ -1181,6 +1183,9 @@ pub struct ParameterEnvironment<'tcx> {
 
     /// A cache for `type_is_sized`
     pub is_sized_cache: RefCell<FxHashMap<Ty<'tcx>, bool>>,
+
+    /// A cache for `type_is_freeze`
+    pub is_freeze_cache: RefCell<FxHashMap<Ty<'tcx>, bool>>,
 }
 
 impl<'a, 'tcx> ParameterEnvironment<'tcx> {
@@ -1195,6 +1200,7 @@ impl<'a, 'tcx> ParameterEnvironment<'tcx> {
             free_id_outlive: self.free_id_outlive,
             is_copy_cache: RefCell::new(FxHashMap()),
             is_sized_cache: RefCell::new(FxHashMap()),
+            is_freeze_cache: RefCell::new(FxHashMap()),
         }
     }
 
@@ -2531,6 +2537,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             free_id_outlive: free_id_outlive,
             is_copy_cache: RefCell::new(FxHashMap()),
             is_sized_cache: RefCell::new(FxHashMap()),
+            is_freeze_cache: RefCell::new(FxHashMap()),
         }
     }
 
@@ -2603,6 +2610,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             free_id_outlive: free_id_outlive,
             is_copy_cache: RefCell::new(FxHashMap()),
             is_sized_cache: RefCell::new(FxHashMap()),
+            is_freeze_cache: RefCell::new(FxHashMap()),
         };
 
         let cause = traits::ObligationCause::misc(span, free_id_outlive.node_id(&self.region_maps));

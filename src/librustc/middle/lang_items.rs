@@ -274,6 +274,7 @@ language_item_table! {
     UnsizeTraitLangItem,             "unsize",                  unsize_trait;
     CopyTraitLangItem,               "copy",                    copy_trait;
     SyncTraitLangItem,               "sync",                    sync_trait;
+    FreezeTraitLangItem,             "freeze",                  freeze_trait;
 
     DropTraitLangItem,               "drop",                    drop_trait;
 

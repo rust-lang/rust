@@ -655,6 +655,50 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
         result
     }
 
+    /// Returns `true` if and only if there are no `UnsafeCell`s
+    /// nested within the type (ignoring `PhantomData` or pointers).
+    #[inline]
+    pub fn is_freeze(&'tcx self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                     param_env: &ParameterEnvironment<'tcx>,
+                     span: Span) -> bool
+    {
+        if self.flags.get().intersects(TypeFlags::FREEZENESS_CACHED) {
+            return self.flags.get().intersects(TypeFlags::IS_FREEZE);
+        }
+
+        self.is_freeze_uncached(tcx, param_env, span)
+    }
+
+    fn is_freeze_uncached(&'tcx self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                          param_env: &ParameterEnvironment<'tcx>,
+                          span: Span) -> bool {
+        assert!(!self.needs_infer());
+
+        // Fast-path for primitive types
+        let result = match self.sty {
+            TyBool | TyChar | TyInt(..) | TyUint(..) | TyFloat(..) |
+            TyRawPtr(..) | TyRef(..) | TyFnDef(..) | TyFnPtr(_) |
+            TyStr | TyNever => Some(true),
+
+            TyArray(..) | TySlice(_) |
+            TyTuple(..) | TyClosure(..) | TyAdt(..) |
+            TyDynamic(..) | TyProjection(..) | TyParam(..) |
+            TyInfer(..) | TyAnon(..) | TyError => None
+        }.unwrap_or_else(|| {
+            self.impls_bound(tcx, param_env, tcx.require_lang_item(lang_items::FreezeTraitLangItem),
+                              &param_env.is_freeze_cache, span) });
+
+        if !self.has_param_types() && !self.has_self_ty() {
+            self.flags.set(self.flags.get() | if result {
+                TypeFlags::FREEZENESS_CACHED | TypeFlags::IS_FREEZE
+            } else {
+                TypeFlags::FREEZENESS_CACHED
+            });
+        }
+
+        result
+    }
+
     #[inline]
     pub fn layout<'lcx>(&'tcx self, infcx: &InferCtxt<'a, 'tcx, 'lcx>)
                         -> Result<&'tcx Layout, LayoutError<'tcx>> {

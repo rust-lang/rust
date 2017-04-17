@@ -746,13 +746,13 @@ impl<'a, 'tcx> FnType<'tcx> {
                 // `&T` where `T` contains no `UnsafeCell<U>` is immutable, and can be marked as
                 // both `readonly` and `noalias`, as LLVM's definition of `noalias` is based solely
                 // on memory dependencies rather than pointer equality
-                let interior_unsafe = mt.ty.type_contents(ccx.tcx()).interior_unsafe();
+                let is_freeze = ccx.shared().type_is_freeze(mt.ty);
 
-                if mt.mutbl != hir::MutMutable && !interior_unsafe {
+                if mt.mutbl != hir::MutMutable && is_freeze {
                     arg.attrs.set(ArgAttribute::NoAlias);
                 }
 
-                if mt.mutbl == hir::MutImmutable && !interior_unsafe {
+                if mt.mutbl == hir::MutImmutable && is_freeze {
                     arg.attrs.set(ArgAttribute::ReadOnly);
                 }
 
