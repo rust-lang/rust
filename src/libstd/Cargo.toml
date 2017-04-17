@@ -23,6 +23,10 @@ compiler_builtins = { path = "../libcompiler_builtins" }
 std_unicode = { path = "../libstd_unicode" }
 unwind = { path = "../libunwind" }
 
+[target.x86_64-apple-darwin.dependencies]
+rustc_asan = { path = "../librustc_asan" }
+rustc_tsan = { path = "../librustc_tsan" }
+
 [target.x86_64-unknown-linux-gnu.dependencies]
 rustc_asan = { path = "../librustc_asan" }
 rustc_lsan = { path = "../librustc_lsan" }
