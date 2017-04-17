@@ -2430,7 +2430,7 @@ fn item_struct(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     }).peekable();
     if let doctree::Plain = s.struct_type {
         if fields.peek().is_some() {
-            write!(w, "<h2 class='fields'>Fields</h2>")?;
+            write!(w, "<h2 id='fields' class='fields'>Fields</h2>")?;
             for (field, ty) in fields {
                 let id = derive_id(format!("{}.{}",
                                            ItemType::StructField,
@@ -2478,7 +2478,7 @@ fn item_union(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         }
     }).peekable();
     if fields.peek().is_some() {
-        write!(w, "<h2 class='fields'>Fields</h2>")?;
+        write!(w, "<h2 id='fields' class='fields'>Fields</h2>")?;
         for (field, ty) in fields {
             write!(w, "<span id='{shortty}.{name}' class=\"{shortty}\"><code>{name}: {ty}</code>
                        </span>",
@@ -2550,7 +2550,7 @@ fn item_enum(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
 
     document(w, cx, it)?;
     if !e.variants.is_empty() {
-        write!(w, "<h2 class='variants'>Variants</h2>\n")?;
+        write!(w, "<h2 id='variants' class='variants'>Variants</h2>\n")?;
         for variant in &e.variants {
             let id = derive_id(format!("{}.{}",
                                        ItemType::Variant,
@@ -3074,6 +3074,37 @@ impl<'a> fmt::Display for Sidebar<'a> {
         let it = self.item;
         let parentlen = cx.current.len() - if it.is_mod() {1} else {0};
 
+        if it.is_struct() || it.is_trait() || it.is_primitive() || it.is_union()
+            || it.is_enum() || it.is_mod()
+        {
+            write!(fmt, "<p class='location'>")?;
+            match it.inner {
+                clean::StructItem(..) => write!(fmt, "Struct ")?,
+                clean::TraitItem(..) => write!(fmt, "Trait ")?,
+                clean::PrimitiveItem(..) => write!(fmt, "Primitive Type ")?,
+                clean::UnionItem(..) => write!(fmt, "Union ")?,
+                clean::EnumItem(..) => write!(fmt, "Enum ")?,
+                clean::ModuleItem(..) => if it.is_crate() {
+                    write!(fmt, "Crate ")?;
+                } else {
+                    write!(fmt, "Module ")?;
+                },
+                _ => (),
+            }
+            write!(fmt, "{}", it.name.as_ref().unwrap())?;
+            write!(fmt, "</p>")?;
+
+            match it.inner {
+                clean::StructItem(ref s) => sidebar_struct(fmt, it, s)?,
+                clean::TraitItem(ref t) => sidebar_trait(fmt, it, t)?,
+                clean::PrimitiveItem(ref p) => sidebar_primitive(fmt, it, p)?,
+                clean::UnionItem(ref u) => sidebar_union(fmt, it, u)?,
+                clean::EnumItem(ref e) => sidebar_enum(fmt, it, e)?,
+                clean::ModuleItem(ref m) => sidebar_module(fmt, it, &m.items)?,
+                _ => (),
+            }
+        }
+
         // The sidebar is designed to display sibling functions, modules and
         // other miscellaneous information. since there are lots of sibling
         // items (and that causes quadratic growth in large modules),
@@ -3114,6 +3145,193 @@ impl<'a> fmt::Display for Sidebar<'a> {
 
         Ok(())
     }
+}
+
+fn sidebar_assoc_items(it: &clean::Item) -> String {
+    let mut out = String::new();
+    let c = cache();
+    if let Some(v) = c.impls.get(&it.def_id) {
+        if v.iter().any(|i| i.inner_impl().trait_.is_none()) {
+            out.push_str("<li><a href=\"#methods\">Methods</a></li>");
+        }
+
+        if v.iter().any(|i| i.inner_impl().trait_.is_some()) {
+            if let Some(impl_) = v.iter()
+                                  .filter(|i| i.inner_impl().trait_.is_some())
+                                  .find(|i| i.inner_impl().trait_.def_id() == c.deref_trait_did) {
+                if let Some(target) = impl_.inner_impl().items.iter().filter_map(|item| {
+                    match item.inner {
+                        clean::TypedefItem(ref t, true) => Some(&t.type_),
+                        _ => None,
+                    }
+                }).next() {
+                    let inner_impl = target.def_id().or(target.primitive_type().and_then(|prim| {
+                        c.primitive_locations.get(&prim).cloned()
+                    })).and_then(|did| c.impls.get(&did));
+                    if inner_impl.is_some() {
+                        out.push_str("<li><a href=\"#deref-methods\">");
+                        out.push_str(&format!("Methods from {:#}&lt;Target={:#}&gt;",
+                                                  impl_.inner_impl().trait_.as_ref().unwrap(),
+                                                  target));
+                        out.push_str("</a></li>");
+                    }
+                }
+            }
+            out.push_str("<li><a href=\"#implementations\">Trait Implementations</a></li>");
+        }
+    }
+
+    out
+}
+
+fn sidebar_struct(fmt: &mut fmt::Formatter, it: &clean::Item,
+                  s: &clean::Struct) -> fmt::Result {
+    let mut sidebar = String::new();
+
+    if s.fields.iter()
+               .any(|f| if let clean::StructFieldItem(..) = f.inner { true } else { false }) {
+        if let doctree::Plain = s.struct_type {
+            sidebar.push_str("<li><a href=\"#fields\">Fields</a></li>");
+        }
+    }
+
+    sidebar.push_str(&sidebar_assoc_items(it));
+
+    if !sidebar.is_empty() {
+        write!(fmt, "<div class=\"block items\"><ul>{}</ul></div>", sidebar)?;
+    }
+    Ok(())
+}
+
+fn sidebar_trait(fmt: &mut fmt::Formatter, it: &clean::Item,
+                 t: &clean::Trait) -> fmt::Result {
+    let mut sidebar = String::new();
+
+    let has_types = t.items.iter().any(|m| m.is_associated_type());
+    let has_consts = t.items.iter().any(|m| m.is_associated_const());
+    let has_required = t.items.iter().any(|m| m.is_ty_method());
+    let has_provided = t.items.iter().any(|m| m.is_method());
+
+    if has_types {
+        sidebar.push_str("<li><a href=\"#associated-types\">Associated Types</a></li>");
+    }
+    if has_consts {
+        sidebar.push_str("<li><a href=\"#associated-const\">Associated Constants</a></li>");
+    }
+    if has_required {
+        sidebar.push_str("<li><a href=\"#required-methods\">Required Methods</a></li>");
+    }
+    if has_provided {
+        sidebar.push_str("<li><a href=\"#provided-methods\">Provided Methods</a></li>");
+    }
+
+    sidebar.push_str(&sidebar_assoc_items(it));
+
+    sidebar.push_str("<li><a href=\"#implementors\">Implementors</a></li>");
+
+    write!(fmt, "<div class=\"block items\"><ul>{}</ul></div>", sidebar)
+}
+
+fn sidebar_primitive(fmt: &mut fmt::Formatter, it: &clean::Item,
+                     _p: &clean::PrimitiveType) -> fmt::Result {
+    let sidebar = sidebar_assoc_items(it);
+
+    if !sidebar.is_empty() {
+        write!(fmt, "<div class=\"block items\"><ul>{}</ul></div>", sidebar)?;
+    }
+    Ok(())
+}
+
+fn sidebar_union(fmt: &mut fmt::Formatter, it: &clean::Item,
+                 u: &clean::Union) -> fmt::Result {
+    let mut sidebar = String::new();
+
+    if u.fields.iter()
+               .any(|f| if let clean::StructFieldItem(..) = f.inner { true } else { false }) {
+        sidebar.push_str("<li><a href=\"#fields\">Fields</a></li>");
+    }
+
+    sidebar.push_str(&sidebar_assoc_items(it));
+
+    if !sidebar.is_empty() {
+        write!(fmt, "<div class=\"block items\"><ul>{}</ul></div>", sidebar)?;
+    }
+    Ok(())
+}
+
+fn sidebar_enum(fmt: &mut fmt::Formatter, it: &clean::Item,
+                e: &clean::Enum) -> fmt::Result {
+    let mut sidebar = String::new();
+
+    if !e.variants.is_empty() {
+        sidebar.push_str("<li><a href=\"#variants\">Variants</a></li>");
+    }
+
+    sidebar.push_str(&sidebar_assoc_items(it));
+
+    if !sidebar.is_empty() {
+        write!(fmt, "<div class=\"block items\"><ul>{}</ul></div>", sidebar)?;
+    }
+    Ok(())
+}
+
+fn sidebar_module(fmt: &mut fmt::Formatter, _it: &clean::Item,
+                  items: &[clean::Item]) -> fmt::Result {
+    let mut sidebar = String::new();
+
+    if items.iter().any(|it| it.type_() == ItemType::ExternCrate ||
+                             it.type_() == ItemType::Import) {
+        sidebar.push_str(&format!("<li><a href=\"#{id}\">{name}</a></li>",
+                                  id = "reexports",
+                                  name = "Reexports"));
+    }
+
+    // ordering taken from item_module, reorder, where it prioritized elements in a certain order
+    // to print its headings
+    for &myty in &[ItemType::Primitive, ItemType::Module, ItemType::Macro, ItemType::Struct,
+                   ItemType::Enum, ItemType::Constant, ItemType::Static, ItemType::Trait,
+                   ItemType::Function, ItemType::Typedef, ItemType::Union, ItemType::Impl,
+                   ItemType::TyMethod, ItemType::Method, ItemType::StructField, ItemType::Variant,
+                   ItemType::AssociatedType, ItemType::AssociatedConst] {
+        if items.iter().any(|it| {
+            if let clean::DefaultImplItem(..) = it.inner {
+                false
+            } else {
+                !maybe_ignore_item(it) && !it.is_stripped() && it.type_() == myty
+            }
+        }) {
+            let (short, name) = match myty {
+                ItemType::ExternCrate |
+                ItemType::Import          => ("reexports", "Reexports"),
+                ItemType::Module          => ("modules", "Modules"),
+                ItemType::Struct          => ("structs", "Structs"),
+                ItemType::Union           => ("unions", "Unions"),
+                ItemType::Enum            => ("enums", "Enums"),
+                ItemType::Function        => ("functions", "Functions"),
+                ItemType::Typedef         => ("types", "Type Definitions"),
+                ItemType::Static          => ("statics", "Statics"),
+                ItemType::Constant        => ("constants", "Constants"),
+                ItemType::Trait           => ("traits", "Traits"),
+                ItemType::Impl            => ("impls", "Implementations"),
+                ItemType::TyMethod        => ("tymethods", "Type Methods"),
+                ItemType::Method          => ("methods", "Methods"),
+                ItemType::StructField     => ("fields", "Struct Fields"),
+                ItemType::Variant         => ("variants", "Variants"),
+                ItemType::Macro           => ("macros", "Macros"),
+                ItemType::Primitive       => ("primitives", "Primitive Types"),
+                ItemType::AssociatedType  => ("associated-types", "Associated Types"),
+                ItemType::AssociatedConst => ("associated-consts", "Associated Constants"),
+            };
+            sidebar.push_str(&format!("<li><a href=\"#{id}\">{name}</a></li>",
+                                      id = short,
+                                      name = name));
+        }
+    }
+
+    if !sidebar.is_empty() {
+        write!(fmt, "<div class=\"block items\"><ul>{}</ul></div>", sidebar)?;
+    }
+    Ok(())
 }
 
 impl<'a> fmt::Display for Source<'a> {
