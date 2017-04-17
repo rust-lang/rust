@@ -617,14 +617,14 @@ impl<'a> Parser<'a> {
             ExpansionKind::TraitItems => {
                 let mut items = SmallVector::new();
                 while self.token != token::Eof {
-                    items.push(self.parse_trait_item()?);
+                    items.push(self.parse_trait_item(&mut false)?);
                 }
                 Expansion::TraitItems(items)
             }
             ExpansionKind::ImplItems => {
                 let mut items = SmallVector::new();
                 while self.token != token::Eof {
-                    items.push(self.parse_impl_item()?);
+                    items.push(self.parse_impl_item(&mut false)?);
                 }
                 Expansion::ImplItems(items)
             }
