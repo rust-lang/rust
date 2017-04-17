@@ -24,18 +24,13 @@ bitflags! {
     /// easier for me (nmatsakis) to think about what is contained within
     /// a type than to think about what is *not* contained within a type.
     flags TypeContents: u8 {
-        const INTERIOR_UNSAFE   = 0b01,
-        const OWNS_DTOR         = 0b10,
+        const OWNS_DTOR         = 0b1,
     }
 }
 
 impl TypeContents {
     pub fn when(&self, cond: bool) -> TypeContents {
         if cond {*self} else {TypeContents::empty()}
-    }
-
-    pub fn interior_unsafe(&self) -> bool {
-        self.intersects(TypeContents::INTERIOR_UNSAFE)
     }
 
     pub fn needs_drop(&self, _: TyCtxt) -> bool {
@@ -124,17 +119,12 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
                     // unions don't have destructors regardless of the child types
                         - TypeContents::OWNS_DTOR.when(def.is_union())
                         | TypeContents::OWNS_DTOR.when(def.has_dtor(tcx))
-                        | TypeContents::INTERIOR_UNSAFE.when(
-                            Some(def.did) == tcx.lang_items.unsafe_cell_type())
                 }
-
 
                 ty::TyDynamic(..) |
                 ty::TyProjection(..) |
                 ty::TyParam(_) |
-                ty::TyAnon(..) => {
-                    TypeContents::INTERIOR_UNSAFE | TypeContents::OWNS_DTOR
-                }
+                ty::TyAnon(..) => TypeContents::OWNS_DTOR,
 
                 ty::TyInfer(_) |
                 ty::TyError => {

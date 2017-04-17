@@ -399,6 +399,10 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
         ty.is_sized(self.tcx, &self.empty_param_env, DUMMY_SP)
     }
 
+    pub fn type_is_freeze(&self, ty: Ty<'tcx>) -> bool {
+        ty.is_freeze(self.tcx, &self.empty_param_env, DUMMY_SP)
+    }
+
     pub fn exported_symbols<'a>(&'a self) -> &'a NodeSet {
         &self.exported_symbols
     }
