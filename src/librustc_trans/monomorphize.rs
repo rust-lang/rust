@@ -117,7 +117,7 @@ fn fulfill_obligation<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
     // Remove any references to regions; this helps improve caching.
     let trait_ref = tcx.erase_regions(&trait_ref);
 
-    scx.trait_cache().memoize(trait_ref, || {
+    tcx.trans_trait_caches.trait_cache.memoize(trait_ref, || {
         debug!("trans::fulfill_obligation(trait_ref={:?}, def_id={:?})",
                trait_ref, trait_ref.def_id());
 
@@ -307,7 +307,7 @@ pub fn apply_param_substs<'a, 'tcx, T>(scx: &SharedCrateContext<'a, 'tcx>,
     debug!("apply_param_substs(param_substs={:?}, value={:?})", param_substs, value);
     let substituted = value.subst(tcx, param_substs);
     let substituted = scx.tcx().erase_regions(&substituted);
-    AssociatedTypeNormalizer::new(scx).fold(&substituted)
+    AssociatedTypeNormalizer::new(tcx).fold(&substituted)
 }
 
 /// Returns the normalized type of a struct field
@@ -319,15 +319,13 @@ pub fn field_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     tcx.normalize_associated_type(&f.ty(tcx, param_substs))
 }
 
-struct AssociatedTypeNormalizer<'a, 'b: 'a, 'gcx: 'b> {
-    shared: &'a SharedCrateContext<'b, 'gcx>,
+struct AssociatedTypeNormalizer<'a, 'gcx: 'a> {
+    tcx: TyCtxt<'a, 'gcx, 'gcx>,
 }
 
-impl<'a, 'b, 'gcx> AssociatedTypeNormalizer<'a, 'b, 'gcx> {
-    fn new(shared: &'a SharedCrateContext<'b, 'gcx>) -> Self {
-        AssociatedTypeNormalizer {
-            shared: shared,
-        }
+impl<'a, 'gcx> AssociatedTypeNormalizer<'a, 'gcx> {
+    fn new(tcx: TyCtxt<'a, 'gcx, 'gcx>) -> Self {
+        AssociatedTypeNormalizer { tcx }
     }
 
     fn fold<T:TypeFoldable<'gcx>>(&mut self, value: &T) -> T {
@@ -339,18 +337,18 @@ impl<'a, 'b, 'gcx> AssociatedTypeNormalizer<'a, 'b, 'gcx> {
     }
 }
 
-impl<'a, 'b, 'gcx> TypeFolder<'gcx, 'gcx> for AssociatedTypeNormalizer<'a, 'b, 'gcx> {
+impl<'a, 'gcx> TypeFolder<'gcx, 'gcx> for AssociatedTypeNormalizer<'a, 'gcx> {
     fn tcx<'c>(&'c self) -> TyCtxt<'c, 'gcx, 'gcx> {
-        self.shared.tcx()
+        self.tcx
     }
 
     fn fold_ty(&mut self, ty: Ty<'gcx>) -> Ty<'gcx> {
         if !ty.has_projection_types() {
             ty
         } else {
-            self.shared.project_cache().memoize(ty, || {
+            self.tcx.trans_trait_caches.project_cache.memoize(ty, || {
                 debug!("AssociatedTypeNormalizer: ty={:?}", ty);
-                self.shared.tcx().normalize_associated_type(&ty)
+                self.tcx.normalize_associated_type(&ty)
             })
         }
     }
