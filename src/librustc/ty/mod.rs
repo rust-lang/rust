@@ -2405,7 +2405,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         // destructor (e.g. zero its memory on move).
 
         let contents = ty.type_contents(tcx);
-        debug!("type_needs_drop ty={:?} contents={:?}", ty, contents);
+        debug!("type_needs_drop ty={:?} contents={:?}", ty, contents.bits());
         contents.needs_drop(tcx)
     }
 
