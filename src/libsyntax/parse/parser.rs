@@ -85,8 +85,14 @@ pub enum PathStyle {
     Expr,
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum SemiColonMode {
+    Break,
+    Ignore,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum BlockMode {
     Break,
     Ignore,
 }
@@ -1204,7 +1210,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse the items in a trait declaration
-    pub fn parse_trait_item(&mut self) -> PResult<'a, TraitItem> {
+    pub fn parse_trait_item(&mut self, at_end: &mut bool) -> PResult<'a, TraitItem> {
         maybe_whole!(self, NtTraitItem, |x| x);
         let mut attrs = self.parse_outer_attributes()?;
         let lo = self.span;
@@ -1214,7 +1220,7 @@ impl<'a> Parser<'a> {
             self.expect(&token::Semi)?;
             (ident, TraitItemKind::Type(bounds, default))
         } else if self.is_const_item() {
-                self.expect_keyword(keywords::Const)?;
+            self.expect_keyword(keywords::Const)?;
             let ident = self.parse_ident()?;
             self.expect(&token::Colon)?;
             let ty = self.parse_ty()?;
@@ -1231,9 +1237,17 @@ impl<'a> Parser<'a> {
         } else if self.token.is_path_start() {
             // trait item macro.
             // code copied from parse_macro_use_or_failure... abstraction!
+            let prev_span = self.prev_span;
             let lo = self.span;
             let pth = self.parse_path(PathStyle::Mod)?;
-            self.expect(&token::Not)?;
+
+            if pth.segments.len() == 1 {
+                if !self.eat(&token::Not) {
+                    return Err(self.missing_assoc_item_kind_err("trait", prev_span));
+                }
+            } else {
+                self.expect(&token::Not)?;
+            }
 
             // eat a matched-delimiter token tree:
             let (delim, tts) = self.expect_delimited_token_tree()?;
@@ -1246,25 +1260,7 @@ impl<'a> Parser<'a> {
         } else {
             let (constness, unsafety, abi) = match self.parse_fn_front_matter() {
                 Ok(cua) => cua,
-                Err(e) => {
-                    loop {
-                        match self.token {
-                            token::Eof => break,
-                            token::CloseDelim(token::Brace) |
-                            token::Semi => {
-                                self.bump();
-                                break;
-                            }
-                            token::OpenDelim(token::Brace) => {
-                                self.parse_token_tree();
-                                break;
-                            }
-                            _ => self.bump(),
-                        }
-                    }
-
-                    return Err(e);
-                }
+                Err(e) => return Err(e),
             };
 
             let ident = self.parse_ident()?;
@@ -1289,11 +1285,13 @@ impl<'a> Parser<'a> {
             let body = match self.token {
                 token::Semi => {
                     self.bump();
+                    *at_end = true;
                     debug!("parse_trait_methods(): parsing required method");
                     None
                 }
                 token::OpenDelim(token::Brace) => {
                     debug!("parse_trait_methods(): parsing provided method");
+                    *at_end = true;
                     let (inner_attrs, body) = self.parse_inner_attrs_and_block()?;
                     attrs.extend(inner_attrs.iter().cloned());
                     Some(body)
@@ -1313,18 +1311,6 @@ impl<'a> Parser<'a> {
             node: node,
             span: lo.to(self.prev_span),
         })
-    }
-
-
-    /// Parse the items in a trait declaration
-    pub fn parse_trait_items(&mut self) -> PResult<'a,  Vec<TraitItem>> {
-        self.parse_unspanned_seq(
-            &token::OpenDelim(token::Brace),
-            &token::CloseDelim(token::Brace),
-            SeqSep::none(),
-            |p| -> PResult<'a, TraitItem> {
-                p.parse_trait_item()
-            })
     }
 
     /// Parse optional return type [ -> TY ] in function decl
@@ -3641,22 +3627,33 @@ impl<'a> Parser<'a> {
     //
     // We terminate when we find an unmatched `}` (without consuming it).
     fn recover_stmt(&mut self) {
-        self.recover_stmt_(SemiColonMode::Ignore)
+        self.recover_stmt_(SemiColonMode::Ignore, BlockMode::Ignore)
     }
+
     // If `break_on_semi` is `Break`, then we will stop consuming tokens after
     // finding (and consuming) a `;` outside of `{}` or `[]` (note that this is
     // approximate - it can mean we break too early due to macros, but that
     // shoud only lead to sub-optimal recovery, not inaccurate parsing).
-    fn recover_stmt_(&mut self, break_on_semi: SemiColonMode) {
+    //
+    // If `break_on_block` is `Break`, then we will stop consuming tokens
+    // after finding (and consuming) a brace-delimited block.
+    fn recover_stmt_(&mut self, break_on_semi: SemiColonMode, break_on_block: BlockMode) {
         let mut brace_depth = 0;
         let mut bracket_depth = 0;
-        debug!("recover_stmt_ enter loop");
+        let mut in_block = false;
+        debug!("recover_stmt_ enter loop (semi={:?}, block={:?})",
+               break_on_semi, break_on_block);
         loop {
             debug!("recover_stmt_ loop {:?}", self.token);
             match self.token {
                 token::OpenDelim(token::DelimToken::Brace) => {
                     brace_depth += 1;
                     self.bump();
+                    if break_on_block == BlockMode::Break &&
+                       brace_depth == 1 &&
+                       bracket_depth == 0 {
+                        in_block = true;
+                    }
                 }
                 token::OpenDelim(token::DelimToken::Bracket) => {
                     bracket_depth += 1;
@@ -3669,6 +3666,10 @@ impl<'a> Parser<'a> {
                     }
                     brace_depth -= 1;
                     self.bump();
+                    if in_block && bracket_depth == 0 && brace_depth == 0 {
+                        debug!("recover_stmt_ return - block end {:?}", self.token);
+                        return;
+                    }
                 }
                 token::CloseDelim(token::DelimToken::Bracket) => {
                     bracket_depth -= 1;
@@ -3700,7 +3701,7 @@ impl<'a> Parser<'a> {
     fn parse_stmt_(&mut self, macro_legacy_warnings: bool) -> Option<Stmt> {
         self.parse_stmt_without_recovery(macro_legacy_warnings).unwrap_or_else(|mut e| {
             e.emit();
-            self.recover_stmt_(SemiColonMode::Break);
+            self.recover_stmt_(SemiColonMode::Break, BlockMode::Ignore);
             None
         })
     }
@@ -3974,7 +3975,7 @@ impl<'a> Parser<'a> {
                     e.span_suggestion(stmt_span, "try placing this code inside a block", sugg);
                 }
                 Err(mut e) => {
-                    self.recover_stmt_(SemiColonMode::Break);
+                    self.recover_stmt_(SemiColonMode::Break, BlockMode::Ignore);
                     self.cancel(&mut e);
                 }
                 _ => ()
@@ -4663,7 +4664,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse an impl item.
-    pub fn parse_impl_item(&mut self) -> PResult<'a, ImplItem> {
+    pub fn parse_impl_item(&mut self, at_end: &mut bool) -> PResult<'a, ImplItem> {
         maybe_whole!(self, NtImplItem, |x| x);
 
         let mut attrs = self.parse_outer_attributes()?;
@@ -4686,7 +4687,7 @@ impl<'a> Parser<'a> {
             self.expect(&token::Semi)?;
             (name, ast::ImplItemKind::Const(typ, expr))
         } else {
-            let (name, inner_attrs, node) = self.parse_impl_method(&vis)?;
+            let (name, inner_attrs, node) = self.parse_impl_method(&vis, at_end)?;
             attrs.extend(inner_attrs);
             (name, node)
         };
@@ -4731,43 +4732,50 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn missing_assoc_item_kind_err(&mut self, item_type: &str, prev_span: Span)
+                                   -> DiagnosticBuilder<'a>
+    {
+        // Given this code `path(`, it seems like this is not
+        // setting the visibility of a macro invocation, but rather
+        // a mistyped method declaration.
+        // Create a diagnostic pointing out that `fn` is missing.
+        //
+        // x |     pub path(&self) {
+        //   |        ^ missing `fn`, `type`, or `const`
+        //     pub  path(
+        //        ^^ `sp` below will point to this
+        let sp = prev_span.between(self.prev_span);
+        let mut err = self.diagnostic().struct_span_err(
+            sp,
+            &format!("missing `fn`, `type`, or `const` for {}-item declaration",
+                     item_type));
+        err.span_label(sp, &"missing `fn`, `type`, or `const`");
+        err
+    }
+
     /// Parse a method or a macro invocation in a trait impl.
-    fn parse_impl_method(&mut self, vis: &Visibility)
+    fn parse_impl_method(&mut self, vis: &Visibility, at_end: &mut bool)
                          -> PResult<'a, (Ident, Vec<ast::Attribute>, ast::ImplItemKind)> {
         // code copied from parse_macro_use_or_failure... abstraction!
         if self.token.is_path_start() {
             // Method macro.
 
             let prev_span = self.prev_span;
-            // Before complaining about trying to set a macro as `pub`,
-            // check if `!` comes after the path.
-            let err = self.complain_if_pub_macro_diag(&vis, prev_span);
 
             let lo = self.span;
             let pth = self.parse_path(PathStyle::Mod)?;
-            let bang_err = self.expect(&token::Not);
-            if let Err(mut err) = err {
-                if let Err(mut bang_err) = bang_err {
-                    // Given this code `pub path(`, it seems like this is not setting the
-                    // visibility of a macro invocation, but rather a mistyped method declaration.
-                    // Create a diagnostic pointing out that `fn` is missing.
-                    //
-                    // x |     pub path(&self) {
-                    //   |        ^ missing `fn` for method declaration
-
-                    err.cancel();
-                    bang_err.cancel();
-                    //     pub  path(
-                    //        ^^ `sp` below will point to this
-                    let sp = prev_span.between(self.prev_span);
-                    err = self.diagnostic()
-                        .struct_span_err(sp, "missing `fn` for method declaration");
-                    err.span_label(sp, &"missing `fn`");
+            if pth.segments.len() == 1 {
+                if !self.eat(&token::Not) {
+                    return Err(self.missing_assoc_item_kind_err("impl", prev_span));
                 }
-                return Err(err);
+            } else {
+                self.expect(&token::Not)?;
             }
 
+            self.complain_if_pub_macro(&vis, prev_span);
+
             // eat a matched-delimiter token tree:
+            *at_end = true;
             let (delim, tts) = self.expect_delimited_token_tree()?;
             if delim != token::Brace {
                 self.expect(&token::Semi)?
@@ -4781,6 +4789,7 @@ impl<'a> Parser<'a> {
             let mut generics = self.parse_generics()?;
             let decl = self.parse_fn_decl_with_self(|p| p.parse_arg())?;
             generics.where_clause = self.parse_where_clause()?;
+            *at_end = true;
             let (inner_attrs, body) = self.parse_inner_attrs_and_block()?;
             Ok((ident, inner_attrs, ast::ImplItemKind::Method(ast::MethodSig {
                 generics: generics,
@@ -4806,8 +4815,21 @@ impl<'a> Parser<'a> {
 
         tps.where_clause = self.parse_where_clause()?;
 
-        let meths = self.parse_trait_items()?;
-        Ok((ident, ItemKind::Trait(unsafety, tps, bounds, meths), None))
+        self.expect(&token::OpenDelim(token::Brace))?;
+        let mut trait_items = vec![];
+        while !self.eat(&token::CloseDelim(token::Brace)) {
+            let mut at_end = false;
+            match self.parse_trait_item(&mut at_end) {
+                Ok(item) => trait_items.push(item),
+                Err(mut e) => {
+                    e.emit();
+                    if !at_end {
+                        self.recover_stmt_(SemiColonMode::Break, BlockMode::Break);
+                    }
+                }
+            }
+        }
+        Ok((ident, ItemKind::Trait(unsafety, tps, bounds, trait_items), None))
     }
 
     /// Parses items implementations variants
@@ -4882,7 +4904,16 @@ impl<'a> Parser<'a> {
 
             let mut impl_items = vec![];
             while !self.eat(&token::CloseDelim(token::Brace)) {
-                impl_items.push(self.parse_impl_item()?);
+                let mut at_end = false;
+                match self.parse_impl_item(&mut at_end) {
+                    Ok(item) => impl_items.push(item),
+                    Err(mut e) => {
+                        e.emit();
+                        if !at_end {
+                            self.recover_stmt_(SemiColonMode::Break, BlockMode::Break);
+                        }
+                    }
+                }
             }
 
             Ok((keywords::Invalid.ident(),
