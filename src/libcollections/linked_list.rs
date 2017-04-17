@@ -75,7 +75,7 @@ pub struct Iter<'a, T: 'a> {
 impl<'a, T: 'a + fmt::Debug> fmt::Debug for Iter<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("Iter")
-         .field(&self.clone())
+         .field(&self.len)
          .finish()
     }
 }
@@ -107,7 +107,8 @@ pub struct IterMut<'a, T: 'a> {
 impl<'a, T: 'a + fmt::Debug> fmt::Debug for IterMut<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("IterMut")
-         .field(self.clone())
+         .field(&self.list)
+         .field(&self.len)
          .finish()
     }
 }
@@ -129,7 +130,7 @@ pub struct IntoIter<T> {
 impl<T: fmt::Debug> fmt::Debug for IntoIter<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("IntoIter")
-         .field(self.clone())
+         .field(&self.list)
          .finish()
     }
 }
@@ -1128,7 +1129,7 @@ pub struct FrontPlace<'a, T: 'a> {
 impl<'a, T: 'a + fmt::Debug> fmt::Debug for FrontPlace<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("FrontPlace")
-         .field(self.clone())
+         .field(&self.list)
          .finish()
     }
 }
@@ -1183,7 +1184,7 @@ pub struct BackPlace<'a, T: 'a> {
 impl<'a, T: 'a + fmt::Debug> fmt::Debug for BackPlace<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("BackPlace")
-         .field(self.clone())
+         .field(&self.list)
          .finish()
     }
 }
