@@ -83,7 +83,7 @@ impl<'a, 'tcx> Qualif {
         if ty.is_freeze(tcx, param_env, DUMMY_SP) {
             *self = *self - Qualif::MUTABLE_INTERIOR;
         }
-        if !tcx.type_needs_drop_given_env(ty, param_env) {
+        if !ty.needs_drop(tcx, param_env) {
             *self = *self - Qualif::NEEDS_DROP;
         }
     }

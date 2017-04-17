@@ -699,31 +699,52 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
         result
     }
 
+    /// If `ty.needs_drop(...)` returns `true`, then `ty` is definitely
+    /// non-copy and *might* have a destructor attached; if it returns
+    /// `false`, then `ty` definitely has no destructor (i.e. no drop glue).
+    ///
+    /// (Note that this implies that if `ty` has a destructor attached,
+    /// then `needs_drop` will definitely return `true` for `ty`.)
     #[inline]
-    pub fn may_drop(&'tcx self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> bool {
-        if self.flags.get().intersects(TypeFlags::MAY_DROP_CACHED) {
-            return self.flags.get().intersects(TypeFlags::MAY_DROP);
+    pub fn needs_drop(&'tcx self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                    param_env: &ty::ParameterEnvironment<'tcx>) -> bool {
+        if self.flags.get().intersects(TypeFlags::NEEDS_DROP_CACHED) {
+            return self.flags.get().intersects(TypeFlags::NEEDS_DROP);
         }
 
-        self.may_drop_inner(tcx, &mut FxHashSet())
+        self.needs_drop_uncached(tcx, param_env, &mut FxHashSet())
     }
 
-    fn may_drop_inner(&'tcx self,
-                      tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                      visited: &mut FxHashSet<Ty<'tcx>>)
-                      -> bool {
-        if self.flags.get().intersects(TypeFlags::MAY_DROP_CACHED) {
-            return self.flags.get().intersects(TypeFlags::MAY_DROP);
+    fn needs_drop_inner(&'tcx self,
+                        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                        param_env: &ty::ParameterEnvironment<'tcx>,
+                        stack: &mut FxHashSet<Ty<'tcx>>)
+                        -> bool {
+        if self.flags.get().intersects(TypeFlags::NEEDS_DROP_CACHED) {
+            return self.flags.get().intersects(TypeFlags::NEEDS_DROP);
         }
 
         // This should be reported as an error by `check_representable`.
         //
         // Consider the type as not needing drop in the meanwhile to avoid
         // further errors.
-        if visited.replace(self).is_some() {
+        if let Some(_) = stack.replace(self) {
             return false;
         }
 
+        let needs_drop = self.needs_drop_uncached(tcx, param_env, stack);
+
+        // "Pop" the cycle detection "stack".
+        stack.remove(self);
+
+        needs_drop
+    }
+
+    fn needs_drop_uncached(&'tcx self,
+                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                           param_env: &ty::ParameterEnvironment<'tcx>,
+                           stack: &mut FxHashSet<Ty<'tcx>>)
+                           -> bool {
         assert!(!self.needs_infer());
 
         let result = match self.sty {
@@ -732,6 +753,21 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
             ty::TyBool | ty::TyInt(_) | ty::TyUint(_) | ty::TyFloat(_) | ty::TyNever |
             ty::TyFnDef(..) | ty::TyFnPtr(_) | ty::TyChar |
             ty::TyRawPtr(_) | ty::TyRef(..) | ty::TyStr => false,
+
+            // Issue #22536: We first query type_moves_by_default.  It sees a
+            // normalized version of the type, and therefore will definitely
+            // know whether the type implements Copy (and thus needs no
+            // cleanup/drop/zeroing) ...
+            _ if !self.moves_by_default(tcx, param_env, DUMMY_SP) => false,
+
+            // ... (issue #22536 continued) but as an optimization, still use
+            // prior logic of asking for the structural "may drop".
+
+            // FIXME(#22815): Note that this is a conservative heuristic;
+            // it may report that the type "may drop" when actual type does
+            // not actually have a destructor associated with it. But since
+            // the type absolutely did not have the `Copy` bound attached
+            // (see above), it is sound to treat it as having a destructor.
 
             // User destructors are the only way to have concrete drop types.
             ty::TyAdt(def, _) if def.has_dtor(tcx) => true,
@@ -743,16 +779,16 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
 
             // Structural recursion.
             ty::TyArray(ty, _) | ty::TySlice(ty) => {
-                ty.may_drop_inner(tcx, visited)
+                ty.needs_drop_inner(tcx, param_env, stack)
             }
 
             ty::TyClosure(def_id, ref substs) => {
                 substs.upvar_tys(def_id, tcx)
-                    .any(|ty| ty.may_drop_inner(tcx, visited))
+                    .any(|ty| ty.needs_drop_inner(tcx, param_env, stack))
             }
 
             ty::TyTuple(ref tys, _) => {
-                tys.iter().any(|ty| ty.may_drop_inner(tcx, visited))
+                tys.iter().any(|ty| ty.needs_drop_inner(tcx, param_env, stack))
             }
 
             // unions don't have destructors regardless of the child types
@@ -761,17 +797,19 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
             ty::TyAdt(def, substs) => {
                 def.variants.iter().any(|v| {
                     v.fields.iter().any(|f| {
-                        f.ty(tcx, substs).may_drop_inner(tcx, visited)
+                        f.ty(tcx, substs).needs_drop_inner(tcx, param_env, stack)
                     })
                 })
             }
         };
 
-        self.flags.set(self.flags.get() | if result {
-            TypeFlags::MAY_DROP_CACHED | TypeFlags::MAY_DROP
-        } else {
-            TypeFlags::MAY_DROP_CACHED
-        });
+        if !self.has_param_types() && !self.has_self_ty() {
+            self.flags.set(self.flags.get() | if result {
+                TypeFlags::NEEDS_DROP_CACHED | TypeFlags::NEEDS_DROP
+            } else {
+                TypeFlags::NEEDS_DROP_CACHED
+            });
+        }
 
         result
     }

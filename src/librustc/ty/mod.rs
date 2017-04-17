@@ -425,8 +425,8 @@ bitflags! {
         const MOVES_BY_DEFAULT  = 1 << 19,
         const FREEZENESS_CACHED = 1 << 20,
         const IS_FREEZE         = 1 << 21,
-        const MAY_DROP_CACHED   = 1 << 22,
-        const MAY_DROP          = 1 << 23,
+        const NEEDS_DROP_CACHED = 1 << 22,
+        const NEEDS_DROP        = 1 << 23,
     }
 }
 
@@ -2379,39 +2379,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
 
         Some(self.item_mir(did))
-    }
-
-    /// If `type_needs_drop` returns true, then `ty` is definitely
-    /// non-copy and *might* have a destructor attached; if it returns
-    /// false, then `ty` definitely has no destructor (i.e. no drop glue).
-    ///
-    /// (Note that this implies that if `ty` has a destructor attached,
-    /// then `type_needs_drop` will definitely return `true` for `ty`.)
-    pub fn type_needs_drop_given_env(self,
-                                     ty: Ty<'gcx>,
-                                     param_env: &ty::ParameterEnvironment<'gcx>) -> bool {
-        // Issue #22536: We first query type_moves_by_default.  It sees a
-        // normalized version of the type, and therefore will definitely
-        // know whether the type implements Copy (and thus needs no
-        // cleanup/drop/zeroing) ...
-        let tcx = self.global_tcx();
-        let implements_copy = !ty.moves_by_default(tcx, param_env, DUMMY_SP);
-
-        if implements_copy { return false; }
-
-        // ... (issue #22536 continued) but as an optimization, still use
-        // prior logic of asking for the structural `may_drop`.
-
-        // FIXME(#22815): Note that calling `ty::may_drop` is a
-        // conservative heuristic; it may report `true` ("may drop")
-        // when actual type does not actually have a destructor associated
-        // with it. But since `ty` absolutely did not have the `Copy`
-        // bound attached (see above), it is sound to treat it as having a
-        // destructor.
-
-        let may_drop = ty.may_drop(tcx);
-        debug!("type_needs_drop ty={:?} may_drop={:?}", ty, may_drop);
-        may_drop
     }
 
     /// Get the attributes of a definition.

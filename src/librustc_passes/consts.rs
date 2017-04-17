@@ -89,7 +89,7 @@ impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
             self.promotable = false;
         }
 
-        if self.tcx.type_needs_drop_given_env(ty, &self.param_env) {
+        if ty.needs_drop(self.tcx, &self.param_env) {
             self.promotable = false;
         }
     }

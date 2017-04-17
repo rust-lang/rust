@@ -392,7 +392,7 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
     }
 
     pub fn type_needs_drop(&self, ty: Ty<'tcx>) -> bool {
-        self.tcx.type_needs_drop_given_env(ty, &self.empty_param_env)
+        ty.needs_drop(self.tcx, &self.empty_param_env)
     }
 
     pub fn type_is_sized(&self, ty: Ty<'tcx>) -> bool {
