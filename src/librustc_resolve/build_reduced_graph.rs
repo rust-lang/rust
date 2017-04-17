@@ -521,7 +521,9 @@ impl<'a> Resolver<'a> {
             LoadedMacro::ProcMacro(ext) => return ext,
         };
 
-        let ext = Rc::new(macro_rules::compile(&self.session.parse_sess, &macro_def));
+        let ext = Rc::new(macro_rules::compile(&self.session.parse_sess,
+                                               &self.session.features,
+                                               &macro_def));
         self.macro_map.insert(def_id, ext.clone());
         ext
     }
