@@ -277,8 +277,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
 
         let mut fields = fields;
         fields.retain(|&(ref lvalue, _)| {
-            self.tcx().type_needs_drop_given_env(
-                self.lvalue_ty(lvalue), self.elaborator.param_env())
+            self.lvalue_ty(lvalue).needs_drop(self.tcx(), self.elaborator.param_env())
         });
 
         debug!("drop_ladder - fields needing drop: {:?}", fields);

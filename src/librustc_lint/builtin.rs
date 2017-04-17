@@ -1152,7 +1152,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnionsWithDropFields {
             let param_env = &ty::ParameterEnvironment::for_item(ctx.tcx, item.id);
             for field in vdata.fields() {
                 let field_ty = ctx.tcx.item_type(ctx.tcx.hir.local_def_id(field.id));
-                if ctx.tcx.type_needs_drop_given_env(field_ty, param_env) {
+                if field_ty.needs_drop(ctx.tcx, param_env) {
                     ctx.span_lint(UNIONS_WITH_DROP_FIELDS,
                                   field.span,
                                   "union contains a field with possibly non-trivial drop code, \
