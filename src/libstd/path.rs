@@ -10,10 +10,17 @@
 
 //! Cross-platform path manipulation.
 //!
-//! This module provides two types, [`PathBuf`] and [`Path`][`Path`] (akin to [`String`]
+//! This module provides two types, [`PathBuf`] and [`Path`] (akin to [`String`]
 //! and [`str`]), for working with paths abstractly. These types are thin wrappers
 //! around [`OsString`] and [`OsStr`] respectively, meaning that they work directly
 //! on strings according to the local platform's path syntax.
+//!
+//! Paths can be parsed into [`Component`]s by iterating over the structure
+//! returned by the [`components`] method on [`Path`]. [`Component`]s roughly
+//! correspond to the substrings between path separators (`/` or `\`). You can
+//! reconstruct an equivalent path from components with the [`push`] method on
+//! [`PathBuf`]; note that the paths may differ syntactically by the
+//! normalization described in the documentation for the [`components`] method.
 //!
 //! ## Simple usage
 //!
@@ -50,62 +57,11 @@
 //! path.set_extension("dll");
 //! ```
 //!
-//! ## Path components and normalization
-//!
-//! The path APIs are built around the notion of "components", which roughly
-//! correspond to the substrings between path separators (`/` and, on Windows,
-//! `\`). The APIs for path parsing are largely specified in terms of the path's
-//! components, so it's important to clearly understand how those are
-//! determined.
-//!
-//! A path can always be reconstructed into an *equivalent* path by
-//! putting together its components via `push`. Syntactically, the
-//! paths may differ by the normalization described below.
-//!
-//! ### Component types
-//!
-//! Components come in several types:
-//!
-//! * Normal components are the default: standard references to files or
-//! directories. The path `a/b` has two normal components, `a` and `b`.
-//!
-//! * Current directory components represent the `.` character. For example,
-//! `./a` has a current directory component and a normal component `a`.
-//!
-//! * The root directory component represents a separator that designates
-//!   starting from root. For example, `/a/b` has a root directory component
-//!   followed by normal components `a` and `b`.
-//!
-//! On Windows, an additional component type comes into play:
-//!
-//! * Prefix components, of which there is a large variety. For example, `C:`
-//! and `\\server\share` are prefixes. The path `C:windows` has a prefix
-//! component `C:` and a normal component `windows`; the path `C:\windows` has a
-//! prefix component `C:`, a root directory component, and a normal component
-//! `windows`.
-//!
-//! ### Normalization
-//!
-//! Aside from splitting on the separator(s), there is a small amount of
-//! "normalization":
-//!
-//! * Repeated separators are ignored: `a/b` and `a//b` both have components `a`
-//!   and `b`.
-//!
-//! * Occurrences of `.` are normalized away, *except* if they are at
-//! the beginning of the path (in which case they are often meaningful
-//! in terms of path searching). So, for example, `a/./b`, `a/b/`,
-//! `/a/b/.` and `a/b` all have components `a` and `b`, but `./a/b`
-//! has a leading current directory component.
-//!
-//! No other normalization takes place by default. In particular,
-//! `a/c` and `a/b/../c` are distinct, to account for the possibility
-//! that `b` is a symbolic link (so its parent isn't `a`). Further
-//! normalization is possible to build on top of the components APIs,
-//! and will be included in this library in the near future.
-//!
+//! [`Component`]: ../../std/path/enum.Component.html
+//! [`components`]: ../../std/path/struct.Path.html#method.components
 //! [`PathBuf`]: ../../std/path/struct.PathBuf.html
 //! [`Path`]: ../../std/path/struct.Path.html
+//! [`push`]: ../../std/path/struct.PathBuf.html#method.push
 //! [`String`]: ../../std/string/struct.String.html
 //! [`str`]: ../../std/primitive.str.html
 //! [`OsString`]: ../../std/ffi/struct.OsString.html
@@ -143,7 +99,7 @@ use sys::path::{is_sep_byte, is_verbatim_sep, MAIN_SEP_STR, parse_prefix};
 // Windows Prefixes
 ////////////////////////////////////////////////////////////////////////////////
 
-/// Path prefixes (Windows only).
+/// Windows path prefixes, e.g. `C:` or `\\server\share`.
 ///
 /// Windows uses a variety of path prefix styles, including references to drive
 /// volumes (like `C:`), network shared folders (like `\\server\share`), and
@@ -415,7 +371,8 @@ enum State {
     Done = 3,
 }
 
-/// A Windows path prefix, e.g. `C:` or `\\server\share`.
+/// A structure wrapping a Windows path prefix as well as its unparsed string
+/// representation.
 ///
 /// In addition to the parsed [`Prefix`] information returned by [`kind`],
 /// `PrefixComponent` also holds the raw and unparsed [`OsStr`] slice,
@@ -511,11 +468,11 @@ impl<'a> Hash for PrefixComponent<'a> {
 
 /// A single component of a path.
 ///
-/// See the module documentation for an in-depth explanation of components and
-/// their role in the API.
+/// A `Component` roughtly corresponds to a substring between path separators
+/// (`/` or `\`).
 ///
-/// This `enum` is created from iterating over the [`path::Components`]
-/// `struct`.
+/// This `enum` is created by iterating over [`Components`], which in turn is
+/// created by the [`components`][`Path::components`] method on [`Path`].
 ///
 /// # Examples
 ///
@@ -532,19 +489,28 @@ impl<'a> Hash for PrefixComponent<'a> {
 /// ]);
 /// ```
 ///
-/// [`path::Components`]: struct.Components.html
+/// [`Components`]: struct.Components.html
+/// [`Path`]: struct.Path.html
+/// [`Path::components`]: struct.Path.html#method.components
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum Component<'a> {
     /// A Windows path prefix, e.g. `C:` or `\\server\share`.
     ///
+    /// There is a large variety of prefix types, see [`Prefix`]'s documentation
+    /// for more.
+    ///
     /// Does not occur on Unix.
+    ///
+    /// [`Prefix`]: enum.Prefix.html
     #[stable(feature = "rust1", since = "1.0.0")]
     Prefix(
         #[stable(feature = "rust1", since = "1.0.0")] PrefixComponent<'a>
     ),
 
     /// The root directory component, appears after any prefix and before anything else.
+    ///
+    /// It represents a deperator that designates that a path starts from root.
     #[stable(feature = "rust1", since = "1.0.0")]
     RootDir,
 
@@ -557,6 +523,9 @@ pub enum Component<'a> {
     ParentDir,
 
     /// A normal component, e.g. `a` and `b` in `a/b`.
+    ///
+    /// This variant is the most common one, it represents references to files
+    /// or directories.
     #[stable(feature = "rust1", since = "1.0.0")]
     Normal(#[stable(feature = "rust1", since = "1.0.0")] &'a OsStr),
 }
@@ -1992,7 +1961,21 @@ impl Path {
         buf
     }
 
-    /// Produces an iterator over the components of the path.
+    /// Produces an iterator over the [`Component`]s of the path.
+    ///
+    /// When parsing the path, there is a small amount of normalization:
+    ///
+    /// * Repeated seperators are ignored, so `a/b` and `a//b` both have
+    ///   `a` and `b` as components.
+    ///
+    /// * Occurentces of `.` are normalized away, exept if they are at the
+    ///   beginning of the path. For example, `a/./b`, `a/b/`, `a/b/.` and
+    ///   `a/b` all have `a` and `b` as components, but `./a/b` starts with
+    ///   an additional [`CurDir`] component.
+    ///
+    /// Note that no other normalization takes place; in particular, `a/c`
+    /// and `a/b/../c` are distinct, to account for the possibility that `b`
+    /// is a symbolic link (so its parent isn't `a`).
     ///
     /// # Examples
     ///
@@ -2007,6 +1990,9 @@ impl Path {
     /// assert_eq!(components.next(), Some(Component::Normal(OsStr::new("foo.txt"))));
     /// assert_eq!(components.next(), None)
     /// ```
+    ///
+    /// [`Component`]: enum.Component.html
+    /// [`CurDir`]: enum.Component.html#variant.CurDir
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn components(&self) -> Components {
         let prefix = parse_prefix(self.as_os_str());
@@ -2019,8 +2005,13 @@ impl Path {
         }
     }
 
-    /// Produces an iterator over the path's components viewed as [`OsStr`] slices.
+    /// Produces an iterator over the path's components viewed as [`OsStr`]
+    /// slices.
     ///
+    /// For more information about the particulars of how the path is separated
+    /// into components, see [`components`].
+    ///
+    /// [`components`]: #method.components
     /// [`OsStr`]: ../ffi/struct.OsStr.html
     ///
     /// # Examples
