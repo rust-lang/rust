@@ -207,6 +207,24 @@ fn test_add_assign() {
 }
 
 #[test]
+fn test_mul() {
+    let s = String::from("abcประเทศไทย中华Việt Nam") * 0;
+    assert_eq!(s, "");
+    let s = String::from("abcประเทศไทย中华Việt Nam") * 2;
+    assert_eq!(s, "abcประเทศไทย中华Việt Namabcประเทศไทย中华Việt Nam");
+}
+
+#[test]
+fn test_mul_assign() {
+    let mut s = String::from("abcประเทศไทย中华Việt Nam");
+    s *= 0;
+    assert_eq!(s, "");
+    s = String::from("abcประเทศไทย中华Việt Nam");
+    s *= 2;
+    assert_eq!(s, "abcประเทศไทย中华Việt Namabcประเทศไทย中华Việt Nam");
+}
+
+#[test]
 fn test_push() {
     let mut data = String::from("ประเทศไทย中");
     data.push('华');
