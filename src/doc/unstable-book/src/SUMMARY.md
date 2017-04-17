@@ -78,7 +78,6 @@
 - [fmt_internals](fmt-internals.md)
 - [fn_traits](fn-traits.md)
 - [fnbox](fnbox.md)
-- [field_init_shorthand](field-init-shorthand.md)
 - [from_utf8_error_as_bytes](from_utf8_error_as_bytes.md)
 - [fundamental](fundamental.md)
 - [fused](fused.md)
