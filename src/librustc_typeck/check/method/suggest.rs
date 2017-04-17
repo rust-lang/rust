@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014, 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -248,10 +248,12 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 }
 
                 if !unsatisfied_predicates.is_empty() {
-                    let bound_list = unsatisfied_predicates.iter()
+                    let mut bound_list = unsatisfied_predicates.iter()
                         .map(|p| format!("`{} : {}`", p.self_ty(), p))
-                        .collect::<Vec<_>>()
-                        .join(", ");
+                        .collect::<Vec<_>>();
+                    bound_list.sort();
+                    bound_list.dedup();
+                    let bound_list = bound_list.join(", ");
                     err.note(&format!("the method `{}` exists but the following trait bounds \
                                        were not satisfied: {}",
                                       item_name,
