@@ -4746,8 +4746,8 @@ impl<'a> Parser<'a> {
             let lo = self.span;
             let pth = self.parse_path(PathStyle::Mod)?;
             let bang_err = self.expect(&token::Not);
-            if let Err(mut err) = err {
-                if let Err(mut bang_err) = bang_err {
+            match (err, bang_err) {
+                (Err(mut err), Err(mut bang_err)) => {
                     // Given this code `pub path(`, it seems like this is not setting the
                     // visibility of a macro invocation, but rather a mistyped method declaration.
                     // Create a diagnostic pointing out that `fn` is missing.
@@ -4760,11 +4760,13 @@ impl<'a> Parser<'a> {
                     //     pub  path(
                     //        ^^ `sp` below will point to this
                     let sp = prev_span.between(self.prev_span);
-                    err = self.diagnostic()
+                    let mut err = self.diagnostic()
                         .struct_span_err(sp, "missing `fn` for method declaration");
                     err.span_label(sp, &"missing `fn`");
+                    return Err(err);
                 }
-                return Err(err);
+                (Err(err), _) | (_, Err(err)) => return Err(err),
+                (_, _) => ()
             }
 
             // eat a matched-delimiter token tree:
