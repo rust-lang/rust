@@ -51,7 +51,7 @@ pub struct Config {
     pub uint_type: UintTy,
 }
 
-#[derive(Clone, Hash)]
+#[derive(Clone, Hash, Debug)]
 pub enum Sanitizer {
     Address,
     Leak,
