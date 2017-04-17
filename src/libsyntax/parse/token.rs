@@ -363,6 +363,7 @@ pub enum Nonterminal {
     /// Stuff inside brackets for attributes
     NtMeta(ast::MetaItem),
     NtPath(ast::Path),
+    NtVis(ast::Visibility),
     NtTT(TokenTree),
     // These are not exposed to macros, but are used by quasiquote.
     NtArm(ast::Arm),
@@ -392,6 +393,7 @@ impl fmt::Debug for Nonterminal {
             NtGenerics(..) => f.pad("NtGenerics(..)"),
             NtWhereClause(..) => f.pad("NtWhereClause(..)"),
             NtArg(..) => f.pad("NtArg(..)"),
+            NtVis(..) => f.pad("NtVis(..)"),
         }
     }
 }

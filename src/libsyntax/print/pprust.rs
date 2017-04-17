@@ -293,6 +293,7 @@ pub fn token_to_string(tok: &Token) -> String {
             token::NtGenerics(ref e)    => generics_to_string(&e),
             token::NtWhereClause(ref e) => where_clause_to_string(&e),
             token::NtArg(ref e)         => arg_to_string(&e),
+            token::NtVis(ref e)         => vis_to_string(&e),
         }
     }
 }
@@ -373,6 +374,10 @@ pub fn ident_to_string(id: ast::Ident) -> String {
     to_string(|s| s.print_ident(id))
 }
 
+pub fn vis_to_string(v: &ast::Visibility) -> String {
+    to_string(|s| s.print_visibility(v))
+}
+
 pub fn fun_to_string(decl: &ast::FnDecl,
                      unsafety: ast::Unsafety,
                      constness: ast::Constness,
@@ -427,13 +432,7 @@ pub fn mac_to_string(arg: &ast::Mac) -> String {
 }
 
 pub fn visibility_qualified(vis: &ast::Visibility, s: &str) -> String {
-    match *vis {
-        ast::Visibility::Public => format!("pub {}", s),
-        ast::Visibility::Crate(_) => format!("pub(crate) {}", s),
-        ast::Visibility::Restricted { ref path, .. } =>
-            format!("pub({}) {}", to_string(|s| s.print_path(path, false, 0, true)), s),
-        ast::Visibility::Inherited => s.to_string()
-    }
+    format!("{}{}", to_string(|s| s.print_visibility(vis)), s)
 }
 
 fn needs_parentheses(expr: &ast::Expr) -> bool {
@@ -1468,7 +1467,11 @@ impl<'a> State<'a> {
             ast::Visibility::Crate(_) => self.word_nbsp("pub(crate)"),
             ast::Visibility::Restricted { ref path, .. } => {
                 let path = to_string(|s| s.print_path(path, false, 0, true));
-                self.word_nbsp(&format!("pub({})", path))
+                if path == "self" || path == "super" {
+                    self.word_nbsp(&format!("pub({})", path))
+                } else {
+                    self.word_nbsp(&format!("pub(in {})", path))
+                }
             }
             ast::Visibility::Inherited => Ok(())
         }
