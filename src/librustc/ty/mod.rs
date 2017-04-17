@@ -71,7 +71,6 @@ pub use self::sty::InferTy::*;
 pub use self::sty::Region::*;
 pub use self::sty::TypeVariants::*;
 
-pub use self::contents::TypeContents;
 pub use self::context::{TyCtxt, GlobalArenas, tls};
 pub use self::context::{Lift, TypeckTables};
 
@@ -99,7 +98,6 @@ pub mod walk;
 pub mod wf;
 pub mod util;
 
-mod contents;
 mod context;
 mod flags;
 mod instance;
@@ -427,6 +425,8 @@ bitflags! {
         const MOVES_BY_DEFAULT  = 1 << 19,
         const FREEZENESS_CACHED = 1 << 20,
         const IS_FREEZE         = 1 << 21,
+        const MAY_DROP_CACHED   = 1 << 22,
+        const MAY_DROP          = 1 << 23,
     }
 }
 
@@ -2400,19 +2400,18 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         if implements_copy { return false; }
 
         // ... (issue #22536 continued) but as an optimization, still use
-        // prior logic of asking if the `needs_drop` bit is set; we need
-        // not zero non-Copy types if they have no destructor.
+        // prior logic of asking for the structural `may_drop`.
 
-        // FIXME(#22815): Note that calling `ty::type_contents` is a
-        // conservative heuristic; it may report that `needs_drop` is set
+        // FIXME(#22815): Note that calling `ty::may_drop` is a
+        // conservative heuristic; it may report `true` ("may drop")
         // when actual type does not actually have a destructor associated
         // with it. But since `ty` absolutely did not have the `Copy`
         // bound attached (see above), it is sound to treat it as having a
-        // destructor (e.g. zero its memory on move).
+        // destructor.
 
-        let contents = ty.type_contents(tcx);
-        debug!("type_needs_drop ty={:?} contents={:?}", ty, contents.bits());
-        contents.needs_drop(tcx)
+        let may_drop = ty.may_drop(tcx);
+        debug!("type_needs_drop ty={:?} may_drop={:?}", ty, may_drop);
+        may_drop
     }
 
     /// Get the attributes of a definition.

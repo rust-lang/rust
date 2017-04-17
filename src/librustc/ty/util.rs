@@ -21,7 +21,7 @@ use ty::fold::TypeVisitor;
 use ty::layout::{Layout, LayoutError};
 use ty::TypeVariants::*;
 use util::common::ErrorReported;
-use util::nodemap::FxHashMap;
+use util::nodemap::{FxHashMap, FxHashSet};
 use middle::lang_items;
 
 use rustc_const_math::{ConstInt, ConstIsize, ConstUsize};
@@ -695,6 +695,83 @@ impl<'a, 'tcx> ty::TyS<'tcx> {
                 TypeFlags::FREEZENESS_CACHED
             });
         }
+
+        result
+    }
+
+    #[inline]
+    pub fn may_drop(&'tcx self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> bool {
+        if self.flags.get().intersects(TypeFlags::MAY_DROP_CACHED) {
+            return self.flags.get().intersects(TypeFlags::MAY_DROP);
+        }
+
+        self.may_drop_inner(tcx, &mut FxHashSet())
+    }
+
+    fn may_drop_inner(&'tcx self,
+                      tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                      visited: &mut FxHashSet<Ty<'tcx>>)
+                      -> bool {
+        if self.flags.get().intersects(TypeFlags::MAY_DROP_CACHED) {
+            return self.flags.get().intersects(TypeFlags::MAY_DROP);
+        }
+
+        // This should be reported as an error by `check_representable`.
+        //
+        // Consider the type as not needing drop in the meanwhile to avoid
+        // further errors.
+        if visited.replace(self).is_some() {
+            return false;
+        }
+
+        assert!(!self.needs_infer());
+
+        let result = match self.sty {
+            // Fast-path for primitive types
+            ty::TyInfer(ty::FreshIntTy(_)) | ty::TyInfer(ty::FreshFloatTy(_)) |
+            ty::TyBool | ty::TyInt(_) | ty::TyUint(_) | ty::TyFloat(_) | ty::TyNever |
+            ty::TyFnDef(..) | ty::TyFnPtr(_) | ty::TyChar |
+            ty::TyRawPtr(_) | ty::TyRef(..) | ty::TyStr => false,
+
+            // User destructors are the only way to have concrete drop types.
+            ty::TyAdt(def, _) if def.has_dtor(tcx) => true,
+
+            // Can refer to a type which may drop.
+            // FIXME(eddyb) check this against a ParameterEnvironment.
+            ty::TyDynamic(..) | ty::TyProjection(..) | ty::TyParam(_) |
+            ty::TyAnon(..) | ty::TyInfer(_) | ty::TyError => true,
+
+            // Structural recursion.
+            ty::TyArray(ty, _) | ty::TySlice(ty) => {
+                ty.may_drop_inner(tcx, visited)
+            }
+
+            ty::TyClosure(def_id, ref substs) => {
+                substs.upvar_tys(def_id, tcx)
+                    .any(|ty| ty.may_drop_inner(tcx, visited))
+            }
+
+            ty::TyTuple(ref tys, _) => {
+                tys.iter().any(|ty| ty.may_drop_inner(tcx, visited))
+            }
+
+            // unions don't have destructors regardless of the child types
+            ty::TyAdt(def, _) if def.is_union() => false,
+
+            ty::TyAdt(def, substs) => {
+                def.variants.iter().any(|v| {
+                    v.fields.iter().any(|f| {
+                        f.ty(tcx, substs).may_drop_inner(tcx, visited)
+                    })
+                })
+            }
+        };
+
+        self.flags.set(self.flags.get() | if result {
+            TypeFlags::MAY_DROP_CACHED | TypeFlags::MAY_DROP
+        } else {
+            TypeFlags::MAY_DROP_CACHED
+        });
 
         result
     }
