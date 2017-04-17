@@ -146,12 +146,11 @@ pub fn rewrite_macro(mac: &ast::Mac,
         MacroStyle::Parens => {
             // Format macro invocation as function call, forcing no trailing
             // comma because not all macros support them.
-            rewrite_call(context, &macro_name, &expr_vec, mac.span, shape, true).map(|rw| {
-                match position {
-                    MacroPosition::Item => format!("{};", rw),
-                    _ => rw,
-                }
-            })
+            rewrite_call(context, &macro_name, &expr_vec, mac.span, shape, true)
+                .map(|rw| match position {
+                         MacroPosition::Item => format!("{};", rw),
+                         _ => rw,
+                     })
         }
         MacroStyle::Brackets => {
             // Format macro invocation as array literal.

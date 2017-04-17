@@ -172,9 +172,8 @@ fn format_expr(expr: &ast::Expr,
         ast::ExprKind::Mac(ref mac) => {
             // Failure to rewrite a marco should not imply failure to
             // rewrite the expression.
-            rewrite_macro(mac, None, context, shape, MacroPosition::Expression).or_else(|| {
-                wrap_str(context.snippet(expr.span), context.config.max_width, shape)
-            })
+            rewrite_macro(mac, None, context, shape, MacroPosition::Expression)
+                .or_else(|| wrap_str(context.snippet(expr.span), context.config.max_width, shape))
         }
         ast::ExprKind::Ret(None) => wrap_str("return".to_owned(), context.config.max_width, shape),
         ast::ExprKind::Ret(Some(ref expr)) => {
@@ -576,14 +575,18 @@ fn rewrite_closure(capture: ast::CaptureBy,
 
         let block_threshold = context.config.closure_block_indent_threshold;
         if block_threshold < 0 || rewrite.matches('\n').count() <= block_threshold as usize {
-            return Some(format!("{} {}", prefix, rewrite));
+            if let Some(rewrite) = wrap_str(rewrite, context.config.max_width, shape) {
+                return Some(format!("{} {}", prefix, rewrite));
+            }
         }
 
         // The body of the closure is big enough to be block indented, that
         // means we must re-format.
         let block_shape = shape.block();
         let rewrite = try_opt!(block.rewrite(&context, block_shape));
-        Some(format!("{} {}", prefix, rewrite))
+        Some(format!("{} {}",
+                     prefix,
+                     try_opt!(wrap_str(rewrite, block_shape.width, block_shape))))
     }
 }
 
