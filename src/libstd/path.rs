@@ -2236,7 +2236,26 @@ impl fmt::Debug for Path {
     }
 }
 
-/// Helper struct for safely printing paths with `format!()` and `{}`
+/// Helper struct for safely printing paths with [`format!`] and `{}`.
+///
+/// A [`Path`] might contain non-Unicode data. This `struct` implements the
+/// [`Display`] trait in a way that mitigates that. It is created by the
+/// [`display`][`Path::display`] method on [`Path`].
+///
+/// # Examples
+///
+/// ```
+/// use std::path::Path;
+///
+/// let path = Path::new("/tmp/foo.rs");
+///
+/// println!("{}", path.display());
+/// ```
+///
+/// [`Display`]: ../../std/fmt/trait.Display.html
+/// [`format!`]: ../../std/macro.format.html
+/// [`Path`]: struct.Path.html
+/// [`Path::display`]: struct.Path.html#method.display
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Display<'a> {
     path: &'a Path,
