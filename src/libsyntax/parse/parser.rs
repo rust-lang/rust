@@ -5056,7 +5056,9 @@ impl<'a> Parser<'a> {
     /// and `pub(super)` for `pub(in super)`.  If the following element can't be a tuple (i.e. it's
     /// a function definition, it's not a tuple struct field) and the contents within the parens
     /// isn't valid, emit a proper diagnostic.
-    fn parse_visibility(&mut self, can_take_tuple: bool) -> PResult<'a, Visibility> {
+    pub fn parse_visibility(&mut self, can_take_tuple: bool) -> PResult<'a, Visibility> {
+        maybe_whole!(self, NtVis, |x| x);
+
         if !self.eat_keyword(keywords::Pub) {
             return Ok(Visibility::Inherited)
         }

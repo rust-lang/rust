@@ -25,7 +25,7 @@ use externalfiles::{ExternalHtml, LoadStringError, load_string};
 use html::render::reset_ids;
 use html::escape::Escape;
 use html::markdown;
-use html::markdown::{Markdown, MarkdownWithToc, find_testable_code};
+use html::markdown::{Markdown, MarkdownWithToc, find_testable_code, old_find_testable_code};
 use test::{TestOptions, Collector};
 
 /// Separate any lines at the start of the file that begin with `# ` or `%`.
@@ -159,6 +159,7 @@ pub fn test(input: &str, cfgs: Vec<String>, libs: SearchPaths, externs: Externs,
     let mut collector = Collector::new(input.to_string(), cfgs, libs, externs,
                                        true, opts, maybe_sysroot, None,
                                        Some(input.to_owned()));
+    old_find_testable_code(&input_str, &mut collector, DUMMY_SP);
     find_testable_code(&input_str, &mut collector, DUMMY_SP);
     test_args.insert(0, "rustdoctest".to_string());
     testing::test_main(&test_args, collector.tests);
