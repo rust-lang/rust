@@ -2146,7 +2146,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 _ => false,
             }
         } else {
-            match self.sess.cstore.describe_def(def_id).expect("no def for def-id") {
+            match self.describe_def(def_id).expect("no def for def-id") {
                 Def::AssociatedConst(_) | Def::Method(_) | Def::AssociatedTy(_) => true,
                 _ => false,
             }
