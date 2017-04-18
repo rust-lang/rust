@@ -17,11 +17,13 @@ use middle::privacy::AccessLevels;
 use mir;
 use session::CompileResult;
 use ty::{self, CrateInherentImpls, Ty, TyCtxt};
+use ty::item_path;
 use ty::subst::Substs;
 use util::nodemap::NodeSet;
 
 use rustc_data_structures::indexed_vec::IndexVec;
 use std::cell::{RefCell, RefMut};
+use std::mem;
 use std::ops::Deref;
 use std::rc::Rc;
 use syntax_pos::{Span, DUMMY_SP};
@@ -139,24 +141,36 @@ pub struct CycleError<'a, 'tcx: 'a> {
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn report_cycle(self, CycleError { span, cycle }: CycleError) {
-        assert!(!cycle.is_empty());
+        // Subtle: release the refcell lock before invoking `describe()`
+        // below by dropping `cycle`.
+        let stack = cycle.to_vec();
+        mem::drop(cycle);
 
-        let mut err = struct_span_err!(self.sess, span, E0391,
-            "unsupported cyclic reference between types/traits detected");
-        err.span_label(span, &format!("cyclic reference"));
+        assert!(!stack.is_empty());
 
-        err.span_note(cycle[0].0, &format!("the cycle begins when {}...",
-                                           cycle[0].1.describe(self)));
+        // Disable naming impls with types in this path, since that
+        // sometimes cycles itself, leading to extra cycle errors.
+        // (And cycle errors around impls tend to occur during the
+        // collect/coherence phases anyhow.)
+        item_path::with_forced_impl_filename_line(|| {
+            let mut err =
+                struct_span_err!(self.sess, span, E0391,
+                                 "unsupported cyclic reference between types/traits detected");
+            err.span_label(span, &format!("cyclic reference"));
 
-        for &(span, ref query) in &cycle[1..] {
-            err.span_note(span, &format!("...which then requires {}...",
-                                         query.describe(self)));
-        }
+            err.span_note(stack[0].0, &format!("the cycle begins when {}...",
+                                               stack[0].1.describe(self)));
 
-        err.note(&format!("...which then again requires {}, completing the cycle.",
-                          cycle[0].1.describe(self)));
+            for &(span, ref query) in &stack[1..] {
+                err.span_note(span, &format!("...which then requires {}...",
+                                             query.describe(self)));
+            }
 
-        err.emit();
+            err.note(&format!("...which then again requires {}, completing the cycle.",
+                              stack[0].1.describe(self)));
+
+            err.emit();
+        });
     }
 
     fn cycle_check<F, R>(self, span: Span, query: Query<'gcx>, compute: F)
@@ -335,6 +349,11 @@ macro_rules! define_maps {
                                   -> Result<R, CycleError<'a, $tcx>>
                 where F: FnOnce(&$V) -> R
             {
+                debug!("ty::queries::{}::try_get_with(key={:?}, span={:?})",
+                       stringify!($name),
+                       key,
+                       span);
+
                 if let Some(result) = tcx.maps.$name.borrow().get(&key) {
                     return Ok(f(result));
                 }
@@ -441,7 +460,7 @@ macro_rules! define_maps {
 // the driver creates (using several `rustc_*` crates).
 define_maps! { <'tcx>
     /// Records the type of every item.
-    [pub] type_of: ItemSignature(DefId) -> Ty<'tcx>,
+    [] type_of: ItemSignature(DefId) -> Ty<'tcx>,
 
     /// Maps from the def-id of an item (trait/struct/enum/fn) to its
     /// associated generics and predicates.
@@ -480,7 +499,7 @@ define_maps! { <'tcx>
     /// Maps from a trait item to the trait item "descriptor"
     [] associated_item: AssociatedItems(DefId) -> ty::AssociatedItem,
 
-    [pub] impl_trait_ref: ItemSignature(DefId) -> Option<ty::TraitRef<'tcx>>,
+    [] impl_trait_ref: ItemSignature(DefId) -> Option<ty::TraitRef<'tcx>>,
     [] impl_polarity: ItemSignature(DefId) -> hir::ImplPolarity,
 
     /// Maps a DefId of a type to a list of its inherent impls.
