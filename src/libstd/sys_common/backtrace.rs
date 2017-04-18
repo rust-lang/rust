@@ -93,6 +93,8 @@ fn _print(w: &mut Write, format: PrintFormat) -> io::Result<()> {
     Ok(())
 }
 
+/// Returns a number of frames to remove at the beginning and at the end of the
+/// backtrace, according to the backtrace format.
 fn filter_frames(frames: &[Frame],
                  format: PrintFormat,
                  context: &BacktraceContext) -> (usize, usize)
@@ -101,59 +103,33 @@ fn filter_frames(frames: &[Frame],
         return (0, 0);
     }
 
-    // We want to filter out frames with some prefixes
-    // from both top and bottom of the call stack.
+    // Frames to remove from the top of the backtrace.
+    //
+    // The raw form is used so that we don't have to demangle the symbol names.
+    // The `a::b::c` form can show up on Windows/MSVC.
     static BAD_PREFIXES_TOP: &'static [&'static str] = &[
-        "_ZN3std3sys3imp9backtrace",
-        "ZN3std3sys3imp9backtrace",
         "std::sys::imp::backtrace",
-        "_ZN3std10sys_common9backtrace",
-        "ZN3std10sys_common9backtrace",
+        "ZN3std3sys3imp9backtrace",
+
         "std::sys_common::backtrace",
-        "_ZN3std9panicking",
-        "ZN3std9panicking",
+        "ZN3std10sys_common9backtrace",
+
         "std::panicking",
-        "_ZN4core9panicking",
-        "ZN4core9panicking",
+        "ZN3std9panicking",
+
         "core::panicking",
-        "_ZN4core6result13unwrap_failed",
-        "ZN4core6result13unwrap_failed",
+        "ZN4core9panicking",
+
         "core::result::unwrap_failed",
+        "ZN4core6result13unwrap_failed",
+
         "rust_begin_unwind",
-        "_ZN4drop",
-        "mingw_set_invalid_parameter_handler",
-    ];
-    static BAD_PREFIXES_BOTTOM: &'static [&'static str] = &[
-        "_ZN3std9panicking",
-        "ZN3std9panicking",
-        "std::panicking",
-        "_ZN3std5panic",
-        "ZN3std5panic",
-        "std::panic",
-        "_ZN4core9panicking",
-        "ZN4core9panicking",
-        "core::panicking",
-        "_ZN3std2rt10lang_start",
-        "ZN3std2rt10lang_start",
-        "std::rt::lang_start",
-        "panic_unwind::__rust_maybe_catch_panic",
-        "__rust_maybe_catch_panic",
-        "_rust_maybe_catch_panic",
-        "__libc_start_main",
-        "__rust_try",
-        "_start",
-        "main",
-        "BaseThreadInitThunk",
-        "RtlInitializeExceptionChain",
-        "__scrt_common_main_seh",
-        "_ZN4drop",
-        "mingw_set_invalid_parameter_handler",
     ];
 
     let is_good_frame = |frame: Frame, bad_prefixes: &[&str]| {
         resolve_symname(frame, |symname| {
             if let Some(mangled_symbol_name) = symname {
-                if !bad_prefixes.iter().any(|s| mangled_symbol_name.starts_with(s)) {
+                if !bad_prefixes.iter().any(|s| mangled_symbol_name.contains(s)) {
                     return Ok(())
                 }
             }
@@ -164,16 +140,36 @@ fn filter_frames(frames: &[Frame],
     let skipped_before = frames.iter().position(|frame| {
         is_good_frame(*frame, BAD_PREFIXES_TOP)
     }).unwrap_or(frames.len());
-    let skipped_after = frames[skipped_before..].iter().rev().position(|frame| {
-        is_good_frame(*frame, BAD_PREFIXES_BOTTOM)
-    }).unwrap_or(frames.len() - skipped_before);
 
-    if skipped_before + skipped_after == frames.len() {
+    let skipped_after = frames.len() - frames.iter().position(|frame| {
+        let mut is_marker = false;
+        let _ = resolve_symname(*frame, |symname| {
+            if let Some(mangled_symbol_name) = symname {
+                // Use grep to find the concerned functions
+                if mangled_symbol_name.contains("__rust_begin_short_backtrace") {
+                    is_marker = true;
+                }
+            }
+            Ok(())
+        }, context);
+        is_marker
+    }).unwrap_or(frames.len());
+
+    if skipped_before + skipped_after >= frames.len() {
         // Avoid showing completely empty backtraces
         return (0, 0);
     }
 
     (skipped_before, skipped_after)
+}
+
+
+/// Fixed frame used to clean the backtrace with `RUST_BACKTRACE=1`.
+#[inline(never)]
+pub fn __rust_begin_short_backtrace<F, T>(f: F) -> T
+    where F: FnOnce() -> T, F: Send + 'static, T: Send + 'static
+{
+    f()
 }
 
 /// Controls how the backtrace should be formated.
@@ -198,7 +194,7 @@ pub fn log_enabled() -> Option<PrintFormat> {
     }
 
     let val = match env::var_os("RUST_BACKTRACE") {
-        Some(x) => if &x == "0" {
+        Some(x) => if &x == "0" || &x == "" {
             None
         } else if &x == "full" {
             Some(PrintFormat::Full)
