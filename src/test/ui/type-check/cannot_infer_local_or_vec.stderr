@@ -1,10 +1,10 @@
 error[E0282]: type annotations needed
-  --> $DIR/issue-38812-2.rs:12:17
+  --> $DIR/cannot_infer_local_or_vec.rs:12:13
    |
-12 |     let (x,) = (vec![],);
-   |         ----    ^^^^^^ cannot infer type for `T`
+12 |     let x = vec![];
+   |         -   ^^^^^^ cannot infer type for `T`
    |         |
-   |         consider giving a type to pattern
+   |         consider giving `x` a type
    |
    = note: this error originates in a macro outside of the current crate
 

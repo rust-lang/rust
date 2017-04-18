@@ -711,16 +711,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         let cause = self.cause(expr.span, ObligationCauseCode::ExprAssignable);
         let coerce = Coerce::new(self, cause);
-        self.commit_if_ok(|_| {
-            let ok = coerce.coerce(&[expr], source, target)?;
-            let adjustment = self.register_infer_ok_obligations(ok);
-            self.apply_adjustment(expr.id, adjustment);
+        let ok = self.commit_if_ok(|_| coerce.coerce(&[expr], source, target))?;
 
-            // We should now have added sufficient adjustments etc to
-            // ensure that the type of expression, post-adjustment, is
-            // a subtype of target.
-            Ok(target)
-        })
+        let adjustment = self.register_infer_ok_obligations(ok);
+        self.apply_adjustment(expr.id, adjustment);
+
+        // We should now have added sufficient adjustments etc to
+        // ensure that the type of expression, post-adjustment, is
+        // a subtype of target.
+        Ok(target)
     }
 
     /// Given some expressions, their known unified type and another expression,
