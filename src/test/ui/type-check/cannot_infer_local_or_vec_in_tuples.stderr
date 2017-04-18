@@ -4,7 +4,7 @@ error[E0282]: type annotations needed
 12 |     let (x, ) = (vec![], );
    |         -----    ^^^^^^ cannot infer type for `T`
    |         |
-   |         consider giving a type to pattern
+   |         consider giving the pattern a type
    |
    = note: this error originates in a macro outside of the current crate
 
