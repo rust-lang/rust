@@ -104,8 +104,8 @@ use sys::path::{is_sep_byte, is_verbatim_sep, MAIN_SEP_STR, parse_prefix};
 /// Windows uses a variety of path prefix styles, including references to drive
 /// volumes (like `C:`), network shared folders (like `\\server\share`), and
 /// others. In addition, some path prefixes are "verbatim" (i.e. prefixed with
-/// `\\?\`, in which case `/` is *not* treated as a separator and essentially no
-/// normalization is performed.
+/// `\\?\`), in which case `/` is *not* treated as a separator and essentially
+/// no normalization is performed.
 ///
 /// # Examples
 ///
@@ -510,7 +510,7 @@ pub enum Component<'a> {
 
     /// The root directory component, appears after any prefix and before anything else.
     ///
-    /// It represents a deperator that designates that a path starts from root.
+    /// It represents a separator that designates that a path starts from root.
     #[stable(feature = "rust1", since = "1.0.0")]
     RootDir,
 
@@ -1965,7 +1965,7 @@ impl Path {
     ///
     /// When parsing the path, there is a small amount of normalization:
     ///
-    /// * Repeated seperators are ignored, so `a/b` and `a//b` both have
+    /// * Repeated separators are ignored, so `a/b` and `a//b` both have
     ///   `a` and `b` as components.
     ///
     /// * Occurentces of `.` are normalized away, exept if they are at the
