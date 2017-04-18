@@ -1,4 +1,4 @@
-// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -9,7 +9,5 @@
 // except according to those terms.
 
 fn main() {
-    let x = |_| {};
-    //~^ ERROR E0101
-    //~| NOTE cannot resolve type of expression
+    let x = [];
 }

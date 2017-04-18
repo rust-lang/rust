@@ -1812,6 +1812,8 @@ makes a difference in practice.)
 
 register_diagnostics! {
 //  E0006 // merged with E0005
+//  E0101, // replaced with E0282
+//  E0102, // replaced with E0282
 //  E0134,
 //  E0135,
     E0278, // requirement is not satisfied
