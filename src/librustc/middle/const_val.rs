@@ -227,7 +227,8 @@ pub fn eval_length(tcx: TyCtxt,
 {
     let count_expr = &tcx.hir.body(count).value;
     let count_def_id = tcx.hir.body_owner_def_id(count);
-    match ty::queries::monomorphic_const_eval::get(tcx, count_expr.span, count_def_id) {
+    let substs = Substs::empty();
+    match ty::queries::const_eval::get(tcx, count_expr.span, (count_def_id, substs)) {
         Ok(Integral(Usize(count))) => {
             let val = count.as_u64(tcx.sess.target.uint_type);
             assert_eq!(val as usize as u64, val);

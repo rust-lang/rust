@@ -750,16 +750,15 @@ impl<'a, 'tcx> CrateMetadata {
         }
     }
 
-    pub fn maybe_get_item_body(&self,
-                               tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                               id: DefIndex)
-                               -> Option<&'tcx hir::Body> {
-        if self.is_proc_macro(id) { return None; }
-        self.entry(id).ast.map(|ast| {
-            let def_id = self.local_def_id(id);
-            let body = ast.decode(self).body.decode(self);
-            tcx.hir.intern_inlined_body(def_id, body)
-        })
+    pub fn item_body(&self,
+                     tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                     id: DefIndex)
+                     -> &'tcx hir::Body {
+        assert!(!self.is_proc_macro(id));
+        let ast = self.entry(id).ast.unwrap();
+        let def_id = self.local_def_id(id);
+        let body = ast.decode(self).body.decode(self);
+        tcx.hir.intern_inlined_body(def_id, body)
     }
 
     pub fn item_body_tables(&self,

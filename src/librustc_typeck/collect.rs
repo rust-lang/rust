@@ -555,7 +555,8 @@ fn convert_enum_variant_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let wrapped_discr = prev_discr.map_or(initial, |d| d.wrap_incr());
         prev_discr = Some(if let Some(e) = variant.node.disr_expr {
             let expr_did = tcx.hir.local_def_id(e.node_id);
-            let result = ty::queries::monomorphic_const_eval::get(tcx, variant.span, expr_did);
+            let substs = Substs::empty();
+            let result = ty::queries::const_eval::get(tcx, variant.span, (expr_did, substs));
 
             // enum variant evaluation happens before the global constant check
             // so we need to report the real error

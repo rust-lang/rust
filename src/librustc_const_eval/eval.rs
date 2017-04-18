@@ -75,83 +75,34 @@ fn lookup_variant_by_id<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 ///
 /// `substs` is optional and is used for associated constants.
 /// This generally happens in late/trans const evaluation.
-pub fn lookup_const_by_id<'a, 'tcx: 'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                        def_id: DefId,
-                                        substs: &'tcx Substs<'tcx>)
-                                        -> Option<(&'tcx Expr,
-                                                   &'a ty::TypeckTables<'tcx>)> {
+pub fn lookup_const_by_id<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                    def_id: DefId,
+                                    substs: &'tcx Substs<'tcx>)
+                                    -> Option<(DefId, &'tcx Substs<'tcx>)> {
     if let Some(node_id) = tcx.hir.as_local_node_id(def_id) {
         match tcx.hir.find(node_id) {
-            None => None,
-            Some(hir_map::NodeItem(&hir::Item {
-                node: hir::ItemConst(_, body), ..
-            })) |
-            Some(hir_map::NodeImplItem(&hir::ImplItem {
-                node: hir::ImplItemKind::Const(_, body), ..
-            })) => {
-                Some((&tcx.hir.body(body).value,
-                      tcx.item_tables(def_id)))
+            Some(hir_map::NodeTraitItem(_)) => {
+                // If we have a trait item and the substitutions for it,
+                // `resolve_trait_associated_const` will select an impl
+                // or the default.
+                resolve_trait_associated_const(tcx, def_id, substs)
             }
-            Some(hir_map::NodeTraitItem(ti)) => match ti.node {
-                hir::TraitItemKind::Const(_, default) => {
-                    // If we have a trait item and the substitutions for it,
-                    // `resolve_trait_associated_const` will select an impl
-                    // or the default.
-                    let trait_id = tcx.hir.get_parent(node_id);
-                    let trait_id = tcx.hir.local_def_id(trait_id);
-                    let default_value = default.map(|body| {
-                        (&tcx.hir.body(body).value,
-                            tcx.item_tables(def_id))
-                    });
-                    resolve_trait_associated_const(tcx, def_id, default_value, trait_id, substs)
-                }
-                _ => None
-            },
-            Some(_) => None
+            _ => Some((def_id, substs))
         }
     } else {
-        let expr_and_tables = tcx.sess.cstore.maybe_get_item_body(tcx, def_id).map(|body| {
-            (&body.value, tcx.item_tables(def_id))
-        });
         match tcx.sess.cstore.describe_def(def_id) {
             Some(Def::AssociatedConst(_)) => {
-                let trait_id = tcx.sess.cstore.trait_of_item(def_id);
                 // As mentioned in the comments above for in-crate
                 // constants, we only try to find the expression for a
                 // trait-associated const if the caller gives us the
                 // substitutions for the reference to it.
-                if let Some(trait_id) = trait_id {
-                    resolve_trait_associated_const(tcx, def_id, expr_and_tables,
-                                                   trait_id, substs)
+                if tcx.sess.cstore.trait_of_item(def_id).is_some() {
+                    resolve_trait_associated_const(tcx, def_id, substs)
                 } else {
-                    expr_and_tables
+                    Some((def_id, substs))
                 }
-            },
-            Some(Def::Const(..)) => expr_and_tables,
-            _ => None
-        }
-    }
-}
-
-fn lookup_const_fn_by_id<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
-                                   -> Option<(&'tcx hir::Body, &'a ty::TypeckTables<'tcx>)>
-{
-    if let Some(node_id) = tcx.hir.as_local_node_id(def_id) {
-        FnLikeNode::from_node(tcx.hir.get(node_id)).and_then(|fn_like| {
-            if fn_like.constness() == hir::Constness::Const {
-                Some((tcx.hir.body(fn_like.body()),
-                      tcx.item_tables(def_id)))
-            } else {
-                None
             }
-        })
-    } else {
-        if tcx.sess.cstore.is_const_fn(def_id) {
-            tcx.sess.cstore.maybe_get_item_body(tcx, def_id).map(|body| {
-                (body, tcx.item_tables(def_id))
-            })
-        } else {
-            None
+            _ => Some((def_id, substs))
         }
     }
 }
@@ -357,21 +308,15 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
           match cx.tables.qpath_def(qpath, e.id) {
               Def::Const(def_id) |
               Def::AssociatedConst(def_id) => {
-                  if let Some((expr, tables)) = lookup_const_by_id(tcx, def_id, substs) {
-                      let cx = ConstContext::with_tables(tcx, tables);
-                      match cx.eval(expr) {
-                          Ok(val) => val,
-                          Err(ConstEvalErr { kind: TypeckError, .. }) => {
-                              signal!(e, TypeckError);
-                          }
-                          Err(err) => {
-                              debug!("bad reference: {:?}, {:?}", err.description(), err.span);
-                              signal!(e, ErroneousReferencedConstant(box err))
-                          },
-                      }
-                  } else {
-                      signal!(e, TypeckError);
-                  }
+                    match ty::queries::const_eval::get(tcx, e.span, (def_id, substs)) {
+                        Ok(val) => val,
+                        Err(ConstEvalErr { kind: TypeckError, .. }) => {
+                            signal!(e, TypeckError);
+                        }
+                        Err(err) => {
+                            debug!("bad reference: {:?}, {:?}", err.description(), err.span);
+                            signal!(e, ErroneousReferencedConstant(box err))
+                        },
               },
               Def::VariantCtor(variant_def, ..) => {
                   if let Some((expr, tables)) = lookup_variant_by_id(tcx, variant_def) {
@@ -407,14 +352,27 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
           }
       }
       hir::ExprCall(ref callee, ref args) => {
-          let (did, substs) = match cx.eval(callee)? {
-              Function(did, substs) => (did, substs),
-              Struct(_) => signal!(e, UnimplementedConstVal("tuple struct constructors")),
+          let (def_id, substs) = match cx.eval(callee)? {
+              Function(def_id, substs) => (def_id, substs),
               callee => signal!(e, CallOn(callee)),
           };
-          let (body, tables) = match lookup_const_fn_by_id(tcx, did) {
-              Some(x) => x,
-              None => signal!(e, NonConstPath),
+
+          let body = if let Some(node_id) = tcx.hir.as_local_node_id(def_id) {
+            if let Some(fn_like) = FnLikeNode::from_node(tcx.hir.get(node_id)) {
+                if fn_like.constness() == hir::Constness::Const {
+                    tcx.hir.body(fn_like.body())
+                } else {
+                    signal!(e, TypeckError)
+                }
+            } else {
+                signal!(e, TypeckError)
+            }
+          } else {
+            if tcx.sess.cstore.is_const_fn(def_id) {
+                tcx.sess.cstore.item_body(tcx, def_id)
+            } else {
+                signal!(e, TypeckError)
+            }
           };
 
           let arg_defs = body.arguments.iter().map(|arg| match arg.pat.node {
@@ -434,7 +392,7 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
           debug!("const call({:?})", call_args);
           let callee_cx = ConstContext {
             tcx: tcx,
-            tables: tables,
+            tables: tcx.item_tables(def_id),
             substs: substs,
             fn_args: Some(call_args)
           };
@@ -532,19 +490,16 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
     Ok(result)
 }
 
-fn resolve_trait_associated_const<'a, 'tcx: 'a>(
-    tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    trait_item_id: DefId,
-    default_value: Option<(&'tcx Expr, &'a ty::TypeckTables<'tcx>)>,
-    trait_id: DefId,
-    rcvr_substs: &'tcx Substs<'tcx>
-) -> Option<(&'tcx Expr, &'a ty::TypeckTables<'tcx>)>
-{
-    let trait_ref = ty::Binder(ty::TraitRef::new(trait_id, rcvr_substs));
+fn resolve_trait_associated_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                            def_id: DefId,
+                                            substs: &'tcx Substs<'tcx>)
+                                            -> Option<(DefId, &'tcx Substs<'tcx>)> {
+    let trait_item = tcx.associated_item(def_id);
+    let trait_id = trait_item.container.id();
+    let trait_ref = ty::Binder(ty::TraitRef::new(trait_id, substs));
     debug!("resolve_trait_associated_const: trait_ref={:?}",
            trait_ref);
 
-    tcx.populate_implementations_for_trait_if_necessary(trait_id);
     tcx.infer_ctxt((), Reveal::UserFacing).enter(|infcx| {
         let mut selcx = traits::SelectionContext::new(&infcx);
         let obligation = traits::Obligation::new(traits::ObligationCause::dummy(),
@@ -569,12 +524,20 @@ fn resolve_trait_associated_const<'a, 'tcx: 'a>(
         // when constructing the inference context above.
         match selection {
             traits::VtableImpl(ref impl_data) => {
-                let name = tcx.associated_item(trait_item_id).name;
+                let name = trait_item.name;
                 let ac = tcx.associated_items(impl_data.impl_def_id)
                     .find(|item| item.kind == ty::AssociatedKind::Const && item.name == name);
                 match ac {
-                    Some(ic) => lookup_const_by_id(tcx, ic.def_id, Substs::empty()),
-                    None => default_value,
+                    // FIXME(eddyb) Use proper Instance resolution to
+                    // get the correct Substs returned from here.
+                    Some(ic) => Some((ic.def_id, Substs::empty())),
+                    None => {
+                        if trait_item.defaultness.has_value() {
+                            Some((def_id, substs))
+                        } else {
+                            None
+                        }
+                    }
                 }
             }
             _ => {
@@ -796,21 +759,35 @@ impl<'a, 'tcx> ConstContext<'a, 'tcx> {
 
 pub fn provide(providers: &mut Providers) {
     *providers = Providers {
-        monomorphic_const_eval,
+        const_eval,
         ..*providers
     };
 }
 
-fn monomorphic_const_eval<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                    def_id: DefId)
-                                    -> EvalResult<'tcx> {
-    let cx = ConstContext::with_tables(tcx, tcx.item_tables(def_id));
+fn const_eval<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                        (def_id, substs): (DefId, &'tcx Substs<'tcx>))
+                        -> EvalResult<'tcx> {
+    let (def_id, substs) = if let Some(resolved) = lookup_const_by_id(tcx, def_id, substs) {
+        resolved
+    } else {
+        return Err(ConstEvalErr {
+            span: tcx.def_span(def_id),
+            kind: TypeckError
+        });
+    };
+
+    let cx = ConstContext {
+        tcx,
+        tables: tcx.item_tables(def_id),
+        substs: substs,
+        fn_args: None
+    };
 
     let body = if let Some(id) = tcx.hir.as_local_node_id(def_id) {
         ty::queries::mir_const_qualif::get(tcx, DUMMY_SP, def_id);
         tcx.hir.body(tcx.hir.body_owned_by(id))
     } else {
-        tcx.sess.cstore.maybe_get_item_body(tcx, def_id).unwrap()
+        tcx.sess.cstore.item_body(tcx, def_id)
     };
     cx.eval(&body.value)
 }
