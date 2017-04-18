@@ -19,7 +19,6 @@
 //! fixed, but for the moment it's easier to do these checks early.
 
 use constrained_type_params as ctp;
-use rustc::dep_graph::DepNode;
 use rustc::hir;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir::def_id::DefId;
@@ -63,7 +62,7 @@ pub fn impl_wf_check<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     // We will tag this as part of the WF check -- logically, it is,
     // but it's one that we must perform earlier than the rest of
     // WfCheck.
-    tcx.visit_all_item_likes_in_krate(DepNode::WfCheck, &mut ImplWfCheck { tcx: tcx });
+    tcx.hir.krate().visit_all_item_likes(&mut ImplWfCheck { tcx: tcx });
 }
 
 struct ImplWfCheck<'a, 'tcx: 'a> {
