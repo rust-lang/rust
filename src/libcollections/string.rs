@@ -1403,6 +1403,26 @@ impl String {
 }
 
 impl FromUtf8Error {
+    /// Returns a slice of [`u8`]s bytes that were attempted to convert to a `String`.
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// #![feature(from_utf8_error_as_bytes)]
+    /// // some invalid bytes, in a vector
+    /// let bytes = vec![0, 159];
+    ///
+    /// let value = String::from_utf8(bytes);
+    ///
+    /// assert_eq!(&[0, 159], value.unwrap_err().as_bytes());
+    /// ```
+    #[unstable(feature = "from_utf8_error_as_bytes", reason = "recently added", issue = "40895")]
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.bytes[..]
+    }
+
     /// Returns the bytes that were attempted to convert to a `String`.
     ///
     /// This method is carefully constructed to avoid allocation. It will
