@@ -2312,6 +2312,14 @@ impl<'a> Resolver<'a> {
                 }
             }
 
+            let mut levenshtein_worked = false;
+
+            // Try Levenshtein.
+            if let Some(candidate) = this.lookup_typo_candidate(path, ns, is_expected) {
+                err.span_label(ident_span, &format!("did you mean `{}`?", candidate));
+                levenshtein_worked = true;
+            }
+
             // Try context dependent help if relaxed lookup didn't work.
             if let Some(def) = def {
                 match (def, source) {
@@ -2354,14 +2362,10 @@ impl<'a> Resolver<'a> {
                 }
             }
 
-            // Try Levenshtein if nothing else worked.
-            if let Some(candidate) = this.lookup_typo_candidate(path, ns, is_expected) {
-                err.span_label(ident_span, &format!("did you mean `{}`?", candidate));
-                return err;
-            }
-
             // Fallback label.
-            err.span_label(base_span, &fallback_label);
+            if !levenshtein_worked {
+                err.span_label(base_span, &fallback_label);
+            }
             err
         };
         let report_errors = |this: &mut Self, def: Option<Def>| {
