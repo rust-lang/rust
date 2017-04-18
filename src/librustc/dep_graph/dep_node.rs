@@ -56,21 +56,14 @@ pub enum DepNode<D: Clone + Debug> {
     WorkProduct(Arc<WorkProductId>),
 
     // Represents different phases in the compiler.
-    CollectLanguageItems,
-    ResolveLifetimes,
     RegionResolveCrate,
-    PluginRegistrar,
-    StabilityIndex,
     Coherence,
     Resolve,
-    EntryPoint,
-    CheckEntryFn,
     CoherenceCheckTrait(D),
     CoherenceCheckImpl(D),
     CoherenceOverlapCheck(D),
     CoherenceOverlapCheckSpecial(D),
     Variance,
-    UnusedTraitCheck,
     PrivacyAccessLevels(CrateNum),
 
     // Represents the MIR for a fn; also used as the task node for
@@ -83,13 +76,10 @@ pub enum DepNode<D: Clone + Debug> {
     BorrowCheck(D),
     RvalueCheck(D),
     Reachability,
-    DeadCheck,
     LateLintCheck,
-    TransCrate,
     TransCrateItem(D),
     TransInlinedItem(D),
     TransWriteMetadata,
-    LinkBinary,
 
     // Nodes representing bits of computed IR in the tcx. Each shared
     // table in the tcx (or elsewhere) maps to one of these
@@ -200,24 +190,14 @@ impl<D: Clone + Debug> DepNode<D> {
             BorrowCheckKrate => Some(BorrowCheckKrate),
             MirKrate => Some(MirKrate),
             TypeckBodiesKrate => Some(TypeckBodiesKrate),
-            CollectLanguageItems => Some(CollectLanguageItems),
-            ResolveLifetimes => Some(ResolveLifetimes),
             RegionResolveCrate => Some(RegionResolveCrate),
-            PluginRegistrar => Some(PluginRegistrar),
-            StabilityIndex => Some(StabilityIndex),
             Coherence => Some(Coherence),
             Resolve => Some(Resolve),
-            EntryPoint => Some(EntryPoint),
-            CheckEntryFn => Some(CheckEntryFn),
             Variance => Some(Variance),
-            UnusedTraitCheck => Some(UnusedTraitCheck),
             PrivacyAccessLevels(k) => Some(PrivacyAccessLevels(k)),
             Reachability => Some(Reachability),
-            DeadCheck => Some(DeadCheck),
             LateLintCheck => Some(LateLintCheck),
-            TransCrate => Some(TransCrate),
             TransWriteMetadata => Some(TransWriteMetadata),
-            LinkBinary => Some(LinkBinary),
 
             // work product names do not need to be mapped, because
             // they are always absolute.
