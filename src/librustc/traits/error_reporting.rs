@@ -940,7 +940,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             if let Some(simple_name) = pattern.simple_name() {
                 labels.push((pattern.span, format!("consider giving `{}` a type", simple_name)));
             } else {
-                labels.push((pattern.span, format!("consider giving a type to pattern")));
+                labels.push((pattern.span, format!("consider giving the pattern a type")));
             }
         }
 
