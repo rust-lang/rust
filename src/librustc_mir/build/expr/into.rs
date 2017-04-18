@@ -16,6 +16,8 @@ use hair::*;
 use rustc::ty;
 use rustc::mir::*;
 
+use syntax::abi::Abi;
+
 impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
     /// Compile `expr`, storing the result into `destination`, which
     /// is assumed to be uninitialized.
@@ -206,25 +208,49 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
                     }
                     _ => false
                 };
-                let fun = unpack!(block = this.as_local_operand(block, fun));
-                let args: Vec<_> =
-                    args.into_iter()
-                        .map(|arg| unpack!(block = this.as_local_operand(block, arg)))
-                        .collect();
-
-                let success = this.cfg.start_new_block();
-                let cleanup = this.diverge_cleanup();
-                this.cfg.terminate(block, source_info, TerminatorKind::Call {
-                    func: fun,
-                    args: args,
-                    cleanup: cleanup,
-                    destination: if diverges {
-                        None
-                    } else {
-                        Some ((destination.clone(), success))
+                let intrinsic = match ty.sty {
+                    ty::TyFnDef(def_id, _, ref f) if
+                        f.abi() == Abi::RustIntrinsic ||
+                        f.abi() == Abi::PlatformIntrinsic =>
+                    {
+                        Some(this.hir.tcx().item_name(def_id).as_str())
                     }
-                });
-                success.unit()
+                    _ => None
+                };
+                let intrinsic = intrinsic.as_ref().map(|s| &s[..]);
+                let fun = unpack!(block = this.as_local_operand(block, fun));
+                if intrinsic == Some("move_val_init") {
+                    // `move_val_init` has "magic" semantics - the second argument is
+                    // always evaluated "directly" into the first one.
+
+                    let mut args = args.into_iter();
+                    let ptr = args.next().expect("0 arguments to `move_val_init`");
+                    let val = args.next().expect("1 argument to `move_val_init`");
+                    assert!(args.next().is_none(), ">2 arguments to `move_val_init`");
+
+                    let topmost_scope = this.topmost_scope();
+                    let ptr = unpack!(block = this.as_temp(block, Some(topmost_scope), ptr));
+                    this.into(&ptr.deref(), block, val)
+                } else {
+                    let args: Vec<_> =
+                        args.into_iter()
+                            .map(|arg| unpack!(block = this.as_local_operand(block, arg)))
+                            .collect();
+
+                    let success = this.cfg.start_new_block();
+                    let cleanup = this.diverge_cleanup();
+                    this.cfg.terminate(block, source_info, TerminatorKind::Call {
+                        func: fun,
+                        args: args,
+                        cleanup: cleanup,
+                        destination: if diverges {
+                            None
+                        } else {
+                            Some ((destination.clone(), success))
+                        }
+                    });
+                    success.unit()
+                }
             }
 
             // These cases don't actually need a destination

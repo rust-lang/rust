@@ -205,12 +205,7 @@ fn build_drop_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
                 patch: MirPatch::new(&mir),
                 tcx, param_env
             };
-            let dropee = Lvalue::Projection(
-                box Projection {
-                    base: Lvalue::Local(Local::new(1+0)),
-                    elem: ProjectionElem::Deref
-                }
-                );
+            let dropee = Lvalue::Local(Local::new(1+0)).deref();
             let resume_block = elaborator.patch.resume_block();
             elaborate_drops::elaborate_drop(
                 &mut elaborator,
@@ -310,9 +305,7 @@ fn build_call_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
 
     let rcvr = match rcvr_adjustment {
         Adjustment::Identity => Operand::Consume(rcvr_l),
-        Adjustment::Deref => Operand::Consume(Lvalue::Projection(
-            box Projection { base: rcvr_l, elem: ProjectionElem::Deref }
-        )),
+        Adjustment::Deref => Operand::Consume(rcvr_l.deref()),
         Adjustment::RefMut => {
             // let rcvr = &mut rcvr;
             let re_erased = tcx.mk_region(ty::ReErased);
@@ -352,10 +345,7 @@ fn build_call_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
     if let Some(untuple_args) = untuple_args {
         args.extend(untuple_args.iter().enumerate().map(|(i, ity)| {
             let arg_lv = Lvalue::Local(Local::new(1+1));
-            Operand::Consume(Lvalue::Projection(box Projection {
-                base: arg_lv,
-                elem: ProjectionElem::Field(Field::new(i), *ity)
-            }))
+            Operand::Consume(arg_lv.field(Field::new(i), *ity))
         }));
     } else {
         args.extend((1..sig.inputs().len()).map(|i| {
