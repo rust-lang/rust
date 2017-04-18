@@ -199,10 +199,8 @@ pub struct InferCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     // `tained_by_errors`) to avoid reporting certain kinds of errors.
     err_count_on_creation: usize,
 
-    // This flag is used for debugging, and is set to true if there are
-    // any obligations set during the current snapshot. In that case, the
-    // snapshot can't be rolled back.
-    pub obligations_in_snapshot: Cell<bool>,
+    // This flag is true while there is an active snapshot.
+    in_snapshot: Cell<bool>,
 }
 
 /// A map returned by `skolemize_late_bound_regions()` indicating the skolemized
@@ -507,7 +505,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'gcx> {
             projection_mode: Reveal::UserFacing,
             tainted_by_errors_flag: Cell::new(false),
             err_count_on_creation: self.sess.err_count(),
-            obligations_in_snapshot: Cell::new(false),
+            in_snapshot: Cell::new(false),
         }
     }
 }
@@ -545,7 +543,7 @@ impl<'a, 'gcx, 'tcx> InferCtxtBuilder<'a, 'gcx, 'tcx> {
             projection_mode: projection_mode,
             tainted_by_errors_flag: Cell::new(false),
             err_count_on_creation: tcx.sess.err_count(),
-            obligations_in_snapshot: Cell::new(false),
+            in_snapshot: Cell::new(false),
         }))
     }
 }
@@ -573,7 +571,7 @@ pub struct CombinedSnapshot {
     int_snapshot: unify::Snapshot<ty::IntVid>,
     float_snapshot: unify::Snapshot<ty::FloatVid>,
     region_vars_snapshot: RegionSnapshot,
-    obligations_in_snapshot: bool,
+    was_in_snapshot: bool,
 }
 
 /// Helper trait for shortening the lifetimes inside a
@@ -734,6 +732,10 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         self.projection_mode
     }
 
+    pub fn is_in_snapshot(&self) -> bool {
+        self.in_snapshot.get()
+    }
+
     pub fn freshen<T:TypeFoldable<'tcx>>(&self, t: T) -> T {
         t.fold_with(&mut self.freshener())
     }
@@ -861,38 +863,37 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         result.map(move |t| InferOk { value: t, obligations: fields.obligations })
     }
 
-    // Clear the "obligations in snapshot" flag, invoke the closure,
+    // Clear the "currently in a snapshot" flag, invoke the closure,
     // then restore the flag to its original value. This flag is a
     // debugging measure designed to detect cases where we start a
-    // snapshot, create type variables, register obligations involving
-    // those type variables in the fulfillment cx, and then have to
-    // unroll the snapshot, leaving "dangling type variables" behind.
-    // In such cases, the flag will be set by the fulfillment cx, and
-    // an assertion will fail when rolling the snapshot back.  Very
-    // useful, much better than grovelling through megabytes of
-    // RUST_LOG output.
+    // snapshot, create type variables, and register obligations
+    // which may involve those type variables in the fulfillment cx,
+    // potentially leaving "dangling type variables" behind.
+    // In such cases, an assertion will fail when attempting to
+    // register obligations, within a snapshot. Very useful, much
+    // better than grovelling through megabytes of RUST_LOG output.
     //
-    // HOWEVER, in some cases the flag is wrong. In particular, we
+    // HOWEVER, in some cases the flag is unhelpful. In particular, we
     // sometimes create a "mini-fulfilment-cx" in which we enroll
     // obligations. As long as this fulfillment cx is fully drained
     // before we return, this is not a problem, as there won't be any
     // escaping obligations in the main cx. In those cases, you can
     // use this function.
-    pub fn save_and_restore_obligations_in_snapshot_flag<F, R>(&self, func: F) -> R
+    pub fn save_and_restore_in_snapshot_flag<F, R>(&self, func: F) -> R
         where F: FnOnce(&Self) -> R
     {
-        let flag = self.obligations_in_snapshot.get();
-        self.obligations_in_snapshot.set(false);
+        let flag = self.in_snapshot.get();
+        self.in_snapshot.set(false);
         let result = func(self);
-        self.obligations_in_snapshot.set(flag);
+        self.in_snapshot.set(flag);
         result
     }
 
     fn start_snapshot(&self) -> CombinedSnapshot {
         debug!("start_snapshot()");
 
-        let obligations_in_snapshot = self.obligations_in_snapshot.get();
-        self.obligations_in_snapshot.set(false);
+        let in_snapshot = self.in_snapshot.get();
+        self.in_snapshot.set(true);
 
         CombinedSnapshot {
             projection_cache_snapshot: self.projection_cache.borrow_mut().snapshot(),
@@ -900,7 +901,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             int_snapshot: self.int_unification_table.borrow_mut().snapshot(),
             float_snapshot: self.float_unification_table.borrow_mut().snapshot(),
             region_vars_snapshot: self.region_vars.start_snapshot(),
-            obligations_in_snapshot: obligations_in_snapshot,
+            was_in_snapshot: in_snapshot,
         }
     }
 
@@ -911,10 +912,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                int_snapshot,
                                float_snapshot,
                                region_vars_snapshot,
-                               obligations_in_snapshot } = snapshot;
+                               was_in_snapshot } = snapshot;
 
-        assert!(!self.obligations_in_snapshot.get());
-        self.obligations_in_snapshot.set(obligations_in_snapshot);
+        self.in_snapshot.set(was_in_snapshot);
 
         self.projection_cache
             .borrow_mut()
@@ -939,9 +939,9 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                int_snapshot,
                                float_snapshot,
                                region_vars_snapshot,
-                               obligations_in_snapshot } = snapshot;
+                               was_in_snapshot } = snapshot;
 
-        self.obligations_in_snapshot.set(obligations_in_snapshot);
+        self.in_snapshot.set(was_in_snapshot);
 
         self.projection_cache
             .borrow_mut()
