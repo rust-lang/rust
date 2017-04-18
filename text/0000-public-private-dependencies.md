@@ -187,3 +187,6 @@ infrastructure:
   If yes, what is the parameter supposed to be called.
 * what is the impact of this change going to be. This most likely can be answered
   running cargobomb/crater.
+* since changing public dependency pins/ranges requires a change in semver it might
+  be worth exploring if cargo could prevent the user in pushing up new crate
+  versions that violate that constraint.
