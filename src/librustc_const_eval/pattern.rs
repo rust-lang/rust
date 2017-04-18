@@ -587,11 +587,16 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
                 let substs = self.tables.node_id_item_substs(id)
                     .unwrap_or_else(|| tcx.intern_substs(&[]));
                 match eval::lookup_const_by_id(tcx, def_id, substs) {
-                    Some((const_expr, const_tables)) => {
+                    Some((def_id, _substs)) => {
                         // Enter the inlined constant's tables temporarily.
                         let old_tables = self.tables;
-                        self.tables = const_tables;
-                        let pat = self.lower_const_expr(const_expr, pat_id, span);
+                        self.tables = tcx.item_tables(def_id);
+                        let body = if let Some(id) = tcx.hir.as_local_node_id(def_id) {
+                            tcx.hir.body(tcx.hir.body_owned_by(id))
+                        } else {
+                            tcx.sess.cstore.item_body(tcx, def_id)
+                        };
+                        let pat = self.lower_const_expr(&body.value, pat_id, span);
                         self.tables = old_tables;
                         return pat;
                     }

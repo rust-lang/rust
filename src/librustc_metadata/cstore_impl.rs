@@ -420,19 +420,18 @@ impl CrateStore for cstore::CStore {
         })
     }
 
-    fn maybe_get_item_body<'a, 'tcx>(&self,
-                                     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                     def_id: DefId)
-                                     -> Option<&'tcx hir::Body>
-    {
+    fn item_body<'a, 'tcx>(&self,
+                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                           def_id: DefId)
+                           -> &'tcx hir::Body {
         if let Some(cached) = tcx.hir.get_inlined_body(def_id) {
-            return Some(cached);
+            return cached;
         }
 
         self.dep_graph.read(DepNode::MetaData(def_id));
-        debug!("maybe_get_item_body({}): inlining item", tcx.item_path_str(def_id));
+        debug!("item_body({}): inlining item", tcx.item_path_str(def_id));
 
-        self.get_crate_data(def_id.krate).maybe_get_item_body(tcx, def_id.index)
+        self.get_crate_data(def_id.krate).item_body(tcx, def_id.index)
     }
 
     fn item_body_nested_bodies(&self, def: DefId) -> BTreeMap<hir::BodyId, hir::Body> {
