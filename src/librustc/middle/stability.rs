@@ -13,7 +13,6 @@
 
 pub use self::StabilityLevel::*;
 
-use dep_graph::DepNode;
 use hir::map as hir_map;
 use lint;
 use hir::def::Def;
@@ -383,7 +382,6 @@ impl<'a, 'tcx> Index<'tcx> {
         // Put the active features into a map for quick lookup
         self.active_features = active_lib_features.iter().map(|&(ref s, _)| s.clone()).collect();
 
-        let _task = tcx.dep_graph.in_task(DepNode::StabilityIndex);
         let krate = tcx.hir.krate();
         let mut annotator = Annotator {
             tcx: tcx,
@@ -397,7 +395,6 @@ impl<'a, 'tcx> Index<'tcx> {
     }
 
     pub fn new(hir_map: &hir_map::Map) -> Index<'tcx> {
-        let _task = hir_map.dep_graph.in_task(DepNode::StabilityIndex);
         let krate = hir_map.krate();
 
         let mut is_staged_api = false;
@@ -424,7 +421,7 @@ impl<'a, 'tcx> Index<'tcx> {
 /// features and possibly prints errors.
 pub fn check_unstable_api_usage<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let mut checker = Checker { tcx: tcx };
-    tcx.visit_all_item_likes_in_krate(DepNode::StabilityCheck, &mut checker.as_deep_visitor());
+    tcx.hir.krate().visit_all_item_likes(&mut checker.as_deep_visitor());
 }
 
 struct Checker<'a, 'tcx: 'a> {
@@ -662,7 +659,6 @@ pub fn check_unused_or_stable_features<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let access_levels = &ty::queries::privacy_access_levels::get(tcx, DUMMY_SP, LOCAL_CRATE);
 
     if tcx.stability.borrow().staged_api[&LOCAL_CRATE] && tcx.sess.features.borrow().staged_api {
-        let _task = tcx.dep_graph.in_task(DepNode::StabilityIndex);
         let krate = tcx.hir.krate();
         let mut missing = MissingStabilityAnnotations {
             tcx: tcx,

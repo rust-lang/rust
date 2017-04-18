@@ -21,7 +21,6 @@
 
 pub use self::LangItem::*;
 
-use dep_graph::DepNode;
 use hir::map as hir_map;
 use session::Session;
 use hir::def_id::DefId;
@@ -236,7 +235,6 @@ pub fn extract(attrs: &[ast::Attribute]) -> Option<Symbol> {
 pub fn collect_language_items(session: &Session,
                               map: &hir_map::Map)
                               -> LanguageItems {
-    let _task = map.dep_graph.in_task(DepNode::CollectLanguageItems);
     let krate: &hir::Crate = map.krate();
     let mut collector = LanguageItemCollector::new(session, map);
     collector.collect(krate);

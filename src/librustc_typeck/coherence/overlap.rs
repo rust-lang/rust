@@ -24,7 +24,7 @@ pub fn check_default_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
 
     // this secondary walk specifically checks for some other cases,
     // like defaulted traits, for which additional overlap rules exist
-    tcx.visit_all_item_likes_in_krate(DepNode::CoherenceOverlapCheckSpecial, &mut overlap);
+    tcx.hir.krate().visit_all_item_likes(&mut overlap);
 }
 
 pub fn check_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, node_id: ast::NodeId) {

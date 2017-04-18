@@ -18,7 +18,6 @@
 use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::ty::{self, TyCtxt, TypeFoldable};
 use rustc::ty::maps::Providers;
-use rustc::dep_graph::DepNode;
 
 use syntax::ast;
 use syntax_pos::DUMMY_SP;
@@ -132,7 +131,6 @@ fn coherent_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 pub fn check_coherence<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    let _task = tcx.dep_graph.in_task(DepNode::Coherence);
     for &trait_def_id in tcx.hir.krate().trait_impls.keys() {
         ty::queries::coherent_trait::get(tcx, DUMMY_SP, (LOCAL_CRATE, trait_def_id));
     }
