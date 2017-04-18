@@ -341,7 +341,7 @@ impl<'a, 'gcx> CheckTypeWellFormedVisitor<'a, 'gcx> {
             let predicates = fcx.instantiate_bounds(item.span, def_id, free_substs);
 
             let mut implied_bounds = vec![];
-            let free_id_outlive = fcx.tcx.region_maps.call_site_extent(item.id, body_id.node_id);
+            let free_id_outlive = fcx.tcx.region_maps().call_site_extent(item.id, body_id.node_id);
             this.check_fn_or_method(fcx, item.span, sig, &predicates,
                                     free_id_outlive, &mut implied_bounds);
             implied_bounds

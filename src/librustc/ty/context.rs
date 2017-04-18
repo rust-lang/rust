@@ -21,7 +21,7 @@ use hir::map as hir_map;
 use hir::map::DisambiguatedDefPathData;
 use middle::free_region::FreeRegionMap;
 use middle::lang_items;
-use middle::region::RegionMaps;
+use middle::region::{self, RegionMaps};
 use middle::resolve_lifetime;
 use middle::stability;
 use mir::Mir;
@@ -51,9 +51,11 @@ use std::mem;
 use std::ops::Deref;
 use std::iter;
 use std::cmp::Ordering;
+use std::rc::Rc;
 use syntax::abi;
 use syntax::ast::{self, Name, NodeId};
 use syntax::attr;
+use syntax::codemap::DUMMY_SP;
 use syntax::symbol::{Symbol, keywords};
 
 use hir;
@@ -421,8 +423,6 @@ pub struct GlobalCtxt<'tcx> {
 
     pub named_region_map: resolve_lifetime::NamedRegionMap,
 
-    pub region_maps: RegionMaps,
-
     pub hir: hir_map::Map<'tcx>,
     pub maps: maps::Maps<'tcx>,
 
@@ -663,6 +663,27 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         local as usize == global as usize
     }
 
+    pub fn region_maps(self, node_id: NodeId) -> Rc<RegionMaps> {
+        // Find the `NodeId` of the outermost function that wraps the node pointed to by node_id
+        let mut outermost_fn_id_opt = None;
+        let mut outermost_id = node_id;
+        loop {
+            if self.hir.is_fn(outermost_id) {
+                outermost_fn_id_opt = Some(outermost_id);
+            }
+            let next_id = self.hir.get_parent(outermost_id);
+            if outermost_id == next_id { break; }
+        }
+        let outermost_fn_id = outermost_fn_id_opt.expect("node_id should point inside a fn");
+
+        ty::queries::region_resolve_fn::get(self, DUMMY_SP, self.hir.local_def_id(outermost_fn_id))
+    }
+
+    pub fn with_each_region_map<F>(self, f: F) where F: FnMut(DefId, Rc<RegionMaps>) -> ()
+    {
+        region::resolve_crate(self, f);
+    }
+
     /// Create a type context and call the closure with a `TyCtxt` reference
     /// to the context. The closure enforces that the type context and any interned
     /// value (types, substs, etc.) can only be used while `ty::tls` has a valid
@@ -675,7 +696,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                   resolutions: ty::Resolutions,
                                   named_region_map: resolve_lifetime::NamedRegionMap,
                                   hir: hir_map::Map<'tcx>,
-                                  region_maps: RegionMaps,
                                   lang_items: middle::lang_items::LanguageItems,
                                   stability: stability::Index<'tcx>,
                                   crate_name: &str,
@@ -698,7 +718,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             dep_graph: dep_graph.clone(),
             types: common_types,
             named_region_map: named_region_map,
-            region_maps: region_maps,
             variance_computed: Cell::new(false),
             trait_map: resolutions.trait_map,
             export_map: resolutions.export_map,

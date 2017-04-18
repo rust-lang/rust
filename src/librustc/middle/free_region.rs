@@ -18,6 +18,7 @@
 use ty::{self, TyCtxt, FreeRegion, Region};
 use ty::wf::ImpliedBound;
 use rustc_data_structures::transitive_relation::TransitiveRelation;
+use syntax::ast::NodeId;
 
 #[derive(Clone, RustcEncodable, RustcDecodable)]
 pub struct FreeRegionMap {
@@ -124,10 +125,14 @@ impl FreeRegionMap {
 
     /// Determines whether one region is a subregion of another.  This is intended to run *after
     /// inference* and sadly the logic is somewhat duplicated with the code in infer.rs.
+    ///
+    /// `node_id` should be the id of a node in one of the regions, or of the function the regions
+    /// are in
     pub fn is_subregion_of(&self,
                            tcx: TyCtxt,
                            sub_region: &ty::Region,
-                           super_region: &ty::Region)
+                           super_region: &ty::Region,
+                           node_id: NodeId)
                            -> bool {
         let result = sub_region == super_region || {
             match (sub_region, super_region) {
@@ -136,10 +141,10 @@ impl FreeRegionMap {
                     true,
 
                 (&ty::ReScope(sub_scope), &ty::ReScope(super_scope)) =>
-                    tcx.region_maps.is_subscope_of(sub_scope, super_scope),
+                    tcx.region_maps(node_id).is_subscope_of(sub_scope, super_scope),
 
                 (&ty::ReScope(sub_scope), &ty::ReFree(fr)) =>
-                    tcx.region_maps.is_subscope_of(sub_scope, fr.scope) ||
+                    tcx.region_maps(node_id).is_subscope_of(sub_scope, fr.scope) ||
                     self.is_static(fr),
 
                 (&ty::ReFree(sub_fr), &ty::ReFree(super_fr)) =>

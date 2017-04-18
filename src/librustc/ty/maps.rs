@@ -12,6 +12,7 @@ use dep_graph::{DepGraph, DepNode, DepTrackingMap, DepTrackingMapConfig};
 use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use middle::const_val::ConstVal;
 use middle::privacy::AccessLevels;
+use middle::region::RegionMaps;
 use mir;
 use session::CompileResult;
 use ty::{self, CrateInherentImpls, Ty, TyCtxt};
@@ -449,6 +450,11 @@ define_maps! { <'tcx>
     pub privacy_access_levels: PrivacyAccessLevels(CrateNum) -> Rc<AccessLevels>,
 
     pub reachable_set: reachability_dep_node(CrateNum) -> NodeSet,
+
+    /// Per-function `RegionMaps`. Regions are referenced through their top-most containing
+    /// function, e.g. `fn outer() { fn inner() { ... } }` produces a single entry which can
+    /// be accessed using the `DefId` of `outer`.
+    pub region_resolve_fn: RegionResolveFn(DefId) -> Rc<RegionMaps>,
 
     pub mir_shims: mir_shim(ty::InstanceDef<'tcx>) -> &'tcx RefCell<mir::Mir<'tcx>>
 }
