@@ -424,7 +424,7 @@ impl<'a, 'tcx> Index<'tcx> {
 /// features and possibly prints errors.
 pub fn check_unstable_api_usage<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     let mut checker = Checker { tcx: tcx };
-    tcx.visit_all_item_likes_in_krate(DepNode::StabilityCheck, &mut checker.as_deep_visitor());
+    tcx.hir.krate().visit_all_item_likes(&mut checker.as_deep_visitor());
 }
 
 struct Checker<'a, 'tcx: 'a> {

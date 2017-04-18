@@ -61,8 +61,6 @@ pub enum DepNode<D: Clone + Debug> {
     RegionResolveCrate,
     PluginRegistrar,
     StabilityIndex,
-    CollectItem(D),
-    CollectItemSig(D),
     Coherence,
     Resolve,
     EntryPoint,
@@ -71,15 +69,9 @@ pub enum DepNode<D: Clone + Debug> {
     CoherenceCheckImpl(D),
     CoherenceOverlapCheck(D),
     CoherenceOverlapCheckSpecial(D),
-    CoherenceOrphanCheck(D),
     Variance,
-    WfCheck(D),
-    TypeckItemType(D),
     UnusedTraitCheck,
-    CheckConst(D),
     PrivacyAccessLevels(CrateNum),
-    IntrinsicCheck(D),
-    MatchCheck(D),
 
     // Represents the MIR for a fn; also used as the task node for
     // things read/modify that MIR.
@@ -92,7 +84,6 @@ pub enum DepNode<D: Clone + Debug> {
     RvalueCheck(D),
     Reachability,
     DeadCheck,
-    StabilityCheck(D),
     LateLintCheck,
     TransCrate,
     TransCrateItem(D),
@@ -184,12 +175,10 @@ impl<D: Clone + Debug> DepNode<D> {
         }
 
         check! {
-            CollectItem,
             BorrowCheck,
             Hir,
             HirBody,
             TransCrateItem,
-            TypeckItemType,
             AssociatedItems,
             ItemSignature,
             AssociatedItemDefIds,
@@ -237,18 +226,10 @@ impl<D: Clone + Debug> DepNode<D> {
             Hir(ref d) => op(d).map(Hir),
             HirBody(ref d) => op(d).map(HirBody),
             MetaData(ref d) => op(d).map(MetaData),
-            CollectItem(ref d) => op(d).map(CollectItem),
-            CollectItemSig(ref d) => op(d).map(CollectItemSig),
             CoherenceCheckTrait(ref d) => op(d).map(CoherenceCheckTrait),
             CoherenceCheckImpl(ref d) => op(d).map(CoherenceCheckImpl),
             CoherenceOverlapCheck(ref d) => op(d).map(CoherenceOverlapCheck),
             CoherenceOverlapCheckSpecial(ref d) => op(d).map(CoherenceOverlapCheckSpecial),
-            CoherenceOrphanCheck(ref d) => op(d).map(CoherenceOrphanCheck),
-            WfCheck(ref d) => op(d).map(WfCheck),
-            TypeckItemType(ref d) => op(d).map(TypeckItemType),
-            CheckConst(ref d) => op(d).map(CheckConst),
-            IntrinsicCheck(ref d) => op(d).map(IntrinsicCheck),
-            MatchCheck(ref d) => op(d).map(MatchCheck),
             Mir(ref d) => op(d).map(Mir),
             MirShim(ref def_ids) => {
                 let def_ids: Option<Vec<E>> = def_ids.iter().map(op).collect();
@@ -256,7 +237,6 @@ impl<D: Clone + Debug> DepNode<D> {
             }
             BorrowCheck(ref d) => op(d).map(BorrowCheck),
             RvalueCheck(ref d) => op(d).map(RvalueCheck),
-            StabilityCheck(ref d) => op(d).map(StabilityCheck),
             TransCrateItem(ref d) => op(d).map(TransCrateItem),
             TransInlinedItem(ref d) => op(d).map(TransInlinedItem),
             AssociatedItems(ref d) => op(d).map(AssociatedItems),
