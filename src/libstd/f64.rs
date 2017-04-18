@@ -1118,6 +1118,68 @@ impl f64 {
             }
         }
     }
+
+    /// Raw transmutation to `u64`.
+    ///
+    /// Converts the `f64` into its raw memory representation,
+    /// similar to the `transmute` function.
+    ///
+    /// Note that this function is distinct from casting.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(float_bits_conv)]
+    /// assert!((1f64).to_bits() != 1f64 as u64); // to_bits() is not casting!
+    /// assert_eq!((12.5f64).to_bits(), 0x4029000000000000);
+    ///
+    /// ```
+    #[unstable(feature = "float_bits_conv", reason = "recently added", issue = "40470")]
+    #[inline]
+    pub fn to_bits(self) -> u64 {
+        unsafe { ::mem::transmute(self) }
+    }
+
+    /// Raw transmutation from `u64`.
+    ///
+    /// Converts the given `u64` containing the float's raw memory
+    /// representation into the `f64` type, similar to the
+    /// `transmute` function.
+    ///
+    /// There is only one difference to a bare `transmute`:
+    /// Due to the implications onto Rust's safety promises being
+    /// uncertain, if the representation of a signaling NaN "sNaN" float
+    /// is passed to the function, the implementation is allowed to
+    /// return a quiet NaN instead.
+    ///
+    /// Note that this function is distinct from casting.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(float_bits_conv)]
+    /// use std::f64;
+    /// let v = f64::from_bits(0x4029000000000000);
+    /// let difference = (v - 12.5).abs();
+    /// assert!(difference <= 1e-5);
+    /// // Example for a signaling NaN value:
+    /// let snan = 0x7FF0000000000001;
+    /// assert_ne!(f64::from_bits(snan).to_bits(), snan);
+    /// ```
+    #[unstable(feature = "float_bits_conv", reason = "recently added", issue = "40470")]
+    #[inline]
+    pub fn from_bits(mut v: u64) -> Self {
+        const EXP_MASK: u64   = 0x7FF0000000000000;
+        const QNAN_MASK: u64  = 0x0001000000000000;
+        const FRACT_MASK: u64 = 0x000FFFFFFFFFFFFF;
+        if v & EXP_MASK == EXP_MASK && v & FRACT_MASK != 0 {
+            // If we have a NaN value, we
+            // convert signaling NaN values to quiet NaN
+            // by setting the the highest bit of the fraction
+            v |= QNAN_MASK;
+        }
+        unsafe { ::mem::transmute(v) }
+    }
 }
 
 #[cfg(test)]
@@ -1754,5 +1816,17 @@ mod tests {
         assert_approx_eq!(log10_e, e.log10());
         assert_approx_eq!(ln_2, 2f64.ln());
         assert_approx_eq!(ln_10, 10f64.ln());
+    }
+
+    #[test]
+    fn test_float_bits_conv() {
+        assert_eq!((1f64).to_bits(), 0x3ff0000000000000);
+        assert_eq!((12.5f64).to_bits(), 0x4029000000000000);
+        assert_eq!((1337f64).to_bits(), 0x4094e40000000000);
+        assert_eq!((-14.25f64).to_bits(), 0xc02c800000000000);
+        assert_approx_eq!(f64::from_bits(0x3ff0000000000000), 1.0);
+        assert_approx_eq!(f64::from_bits(0x4029000000000000), 12.5);
+        assert_approx_eq!(f64::from_bits(0x4094e40000000000), 1337.0);
+        assert_approx_eq!(f64::from_bits(0xc02c800000000000), -14.25);
     }
 }
