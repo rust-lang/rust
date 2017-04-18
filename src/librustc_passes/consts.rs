@@ -24,7 +24,6 @@
 // - It's not possible to take the address of a static item with unsafe interior. This is enforced
 // by borrowck::gather_loans
 
-use rustc::dep_graph::DepNode;
 use rustc::ty::cast::CastKind;
 use rustc_const_eval::ConstContext;
 use rustc::middle::const_val::ConstEvalErr;
@@ -459,15 +458,14 @@ fn check_adjustments<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>, e: &hir::Exp
 }
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    tcx.visit_all_item_likes_in_krate(DepNode::CheckConst,
-                                      &mut CheckCrateVisitor {
-                                          tcx: tcx,
-                                          tables: &ty::TypeckTables::empty(),
-                                          in_fn: false,
-                                          promotable: false,
-                                          mut_rvalue_borrows: NodeSet(),
-                                          param_env: tcx.empty_parameter_environment(),
-                                      }.as_deep_visitor());
+    tcx.hir.krate().visit_all_item_likes(&mut CheckCrateVisitor {
+        tcx: tcx,
+        tables: &ty::TypeckTables::empty(),
+        in_fn: false,
+        promotable: false,
+        mut_rvalue_borrows: NodeSet(),
+        param_env: tcx.empty_parameter_environment(),
+    }.as_deep_visitor());
     tcx.sess.abort_if_errors();
 }
 

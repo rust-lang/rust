@@ -38,7 +38,7 @@ use rustc::hir::def_id::LOCAL_CRATE;
 use middle::lang_items::StartFnLangItem;
 use middle::cstore::EncodedMetadata;
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::dep_graph::{AssertDepGraphSafe, DepNode};
+use rustc::dep_graph::AssertDepGraphSafe;
 use rustc::middle::cstore::LinkMeta;
 use rustc::hir::map as hir_map;
 use rustc::util::common::time;
@@ -1057,8 +1057,6 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              analysis: ty::CrateAnalysis,
                              incremental_hashes_map: &IncrementalHashesMap)
                              -> CrateTranslation {
-    let _task = tcx.dep_graph.in_task(DepNode::TransCrate);
-
     // Be careful with this krate: obviously it gives access to the
     // entire contents of the krate. So if you push any subtasks of
     // `TransCrate`, you need to be careful to register "reads" of the

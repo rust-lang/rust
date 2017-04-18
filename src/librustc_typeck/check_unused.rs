@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use lint;
-use rustc::dep_graph::DepNode;
 use rustc::ty::TyCtxt;
 
 use syntax::ast;
@@ -62,8 +61,6 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for CheckVisitor<'a, 'tcx> {
 }
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    let _task = tcx.dep_graph.in_task(DepNode::UnusedTraitCheck);
-
     let mut used_trait_imports = DefIdSet();
     for &body_id in tcx.hir.krate().bodies.keys() {
         let item_id = tcx.hir.body_owner(body_id);
