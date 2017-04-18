@@ -941,11 +941,14 @@ impl<T> ExactSizeIterator for IntoIter<T> {
 #[unstable(feature = "fused", issue = "35602")]
 impl<T> FusedIterator for IntoIter<T> {}
 
+#[stable(feature = "btree_range", since = "1.17.0")]
 impl<'a, T> Clone for Range<'a, T> {
     fn clone(&self) -> Range<'a, T> {
         Range { iter: self.iter.clone() }
     }
 }
+
+#[stable(feature = "btree_range", since = "1.17.0")]
 impl<'a, T> Iterator for Range<'a, T> {
     type Item = &'a T;
 
@@ -953,6 +956,8 @@ impl<'a, T> Iterator for Range<'a, T> {
         self.iter.next().map(|(k, _)| k)
     }
 }
+
+#[stable(feature = "btree_range", since = "1.17.0")]
 impl<'a, T> DoubleEndedIterator for Range<'a, T> {
     fn next_back(&mut self) -> Option<&'a T> {
         self.iter.next_back().map(|(k, _)| k)

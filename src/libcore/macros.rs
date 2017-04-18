@@ -150,7 +150,7 @@ macro_rules! assert_eq {
 /// assert_ne!(a, b, "we are testing that the values are not equal");
 /// ```
 #[macro_export]
-#[stable(feature = "assert_ne", since = "1.12.0")]
+#[stable(feature = "assert_ne", since = "1.13.0")]
 macro_rules! assert_ne {
     ($left:expr, $right:expr) => ({
         match (&$left, &$right) {
@@ -268,7 +268,7 @@ macro_rules! debug_assert_eq {
 /// debug_assert_ne!(a, b);
 /// ```
 #[macro_export]
-#[stable(feature = "assert_ne", since = "1.12.0")]
+#[stable(feature = "assert_ne", since = "1.13.0")]
 macro_rules! debug_assert_ne {
     ($($arg:tt)*) => (if cfg!(debug_assertions) { assert_ne!($($arg)*); })
 }
@@ -379,7 +379,7 @@ macro_rules! try {
 /// assert_eq!(v, b"s = \"abc 123\"");
 /// ```
 #[macro_export]
-#[stable(feature = "core", since = "1.6.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 macro_rules! write {
     ($dst:expr, $($arg:tt)*) => ($dst.write_fmt(format_args!($($arg)*)))
 }
@@ -479,7 +479,7 @@ macro_rules! writeln {
 /// }
 /// ```
 #[macro_export]
-#[stable(feature = "core", since = "1.6.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 macro_rules! unreachable {
     () => ({
         panic!("internal error: entered unreachable code")
@@ -540,7 +540,7 @@ macro_rules! unreachable {
 /// }
 /// ```
 #[macro_export]
-#[stable(feature = "core", since = "1.6.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 macro_rules! unimplemented {
     () => (panic!("not yet implemented"))
 }
