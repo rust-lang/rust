@@ -398,20 +398,21 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         let method = match trait_did {
             Some(trait_did) => {
-                self.lookup_method_in_trait_adjusted(expr.span,
-                                                     Some(lhs_expr),
-                                                     opname,
-                                                     trait_did,
-                                                     0,
-                                                     false,
-                                                     lhs_ty,
-                                                     Some(other_tys))
+                self.lookup_method_in_trait(expr.span,
+                                            Some(lhs_expr),
+                                            opname,
+                                            trait_did,
+                                            lhs_ty,
+                                            Some(other_tys))
             }
             None => None
         };
 
         match method {
-            Some(method) => {
+            Some(ok) => {
+                let method = self.register_infer_ok_obligations(ok);
+                self.select_obligations_where_possible();
+
                 let method_ty = method.ty;
 
                 // HACK(eddyb) Fully qualified path to work around a resolve bug.

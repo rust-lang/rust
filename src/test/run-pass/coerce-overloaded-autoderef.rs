@@ -68,4 +68,8 @@ fn use_vec_ref(v: &Vec<u8>) {
     use_slice(&&&mut &&&v);
 }
 
+fn use_op_rhs(s: &mut String) {
+    *s += {&String::from(" ")};
+}
+
 pub fn main() {}

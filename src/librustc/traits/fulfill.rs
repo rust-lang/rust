@@ -171,7 +171,7 @@ impl<'a, 'gcx, 'tcx> FulfillmentContext<'tcx> {
 
         debug!("register_predicate_obligation(obligation={:?})", obligation);
 
-        infcx.obligations_in_snapshot.set(true);
+        assert!(!infcx.is_in_snapshot());
 
         if infcx.tcx.fulfilled_predicates.borrow().check_duplicate(&obligation.predicate) {
             debug!("register_predicate_obligation: duplicate");
