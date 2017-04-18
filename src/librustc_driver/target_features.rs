@@ -27,6 +27,8 @@ const X86_WHITELIST: &'static [&'static str] = &["avx\0", "avx2\0", "bmi\0", "bm
                                                  "ssse3\0", "tbm\0", "lzcnt\0", "popcnt\0",
                                                  "sse4a\0", "rdrnd\0", "rdseed\0", "fma\0"];
 
+const HEXAGON_WHITELIST: &'static [&'static str] = &["hvx\0", "hvx-double\0"];
+
 /// Add `target_feature = "..."` cfgs for a variety of platform
 /// specific features (SSE, NEON etc.).
 ///
@@ -38,6 +40,7 @@ pub fn add_configuration(cfg: &mut ast::CrateConfig, sess: &Session) {
     let whitelist = match &*sess.target.target.arch {
         "arm" => ARM_WHITELIST,
         "x86" | "x86_64" => X86_WHITELIST,
+        "hexagon" => HEXAGON_WHITELIST,
         _ => &[],
     };
 
