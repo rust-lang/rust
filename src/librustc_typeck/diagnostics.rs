@@ -4102,6 +4102,8 @@ register_diagnostics! {
 //  E0068,
 //  E0085,
 //  E0086,
+//  E0103,
+//  E0104,
 //  E0123,
 //  E0127,
 //  E0129,
@@ -4118,7 +4120,7 @@ register_diagnostics! {
 //  E0188, // can not cast an immutable reference to a mutable pointer
 //  E0189, // deprecated: can only cast a boxed pointer to a boxed object
 //  E0190, // deprecated: can only cast a &-pointer to an &-object
-    E0196, // cannot determine a type for this closure // @cengizIO: this is no longer thrown. should I DELETE THIS?
+//  E0196, // cannot determine a type for this closure
     E0203, // type parameter has more than one relaxed default bound,
            // and only one is supported
     E0208,
