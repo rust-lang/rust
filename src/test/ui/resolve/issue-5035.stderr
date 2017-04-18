@@ -8,7 +8,10 @@ error[E0404]: expected trait, found type alias `K`
   --> $DIR/issue-5035.rs:13:6
    |
 13 | impl K for isize {} //~ ERROR expected trait, found type alias `K`
-   |      ^ type aliases cannot be used for traits
+   |      ^
+   |      |
+   |      type aliases cannot be used for traits
+   |      did you mean `I`?
 
 error: cannot continue compilation due to previous error
 
