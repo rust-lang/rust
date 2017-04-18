@@ -64,6 +64,8 @@ extern {
 
     fn byval_rect_with_float(a: i32, b: i32, c: f32, d: i32, e: i32, f: i32, s: Rect);
 
+    fn byval_rect_with_many_huge(a: Huge, b: Huge, c: Huge, d: Huge, e: Huge, f: Huge, g: Rect);
+
     fn split_rect(a: i32, b: i32, s: Rect);
 
     fn split_rect_floats(a: f32, b: f32, s: FloatRect);
@@ -95,6 +97,12 @@ fn main() {
         byval_many_rect(1, 2, 3, 4, 5, 6, s);
         byval_rect_floats(1., 2., 3., 4., 5., 6., 7., s, u);
         byval_rect_with_float(1, 2, 3.0, 4, 5, 6, s);
+        byval_rect_with_many_huge(v, v, v, v, v, v, Rect {
+            a: 123,
+            b: 456,
+            c: 789,
+            d: 420
+        });
         split_rect(1, 2, s);
         split_rect_floats(1., 2., u);
         split_rect_with_floats(1, 2, 3.0, 4, 5.0, 6, s);
