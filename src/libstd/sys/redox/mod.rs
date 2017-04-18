@@ -18,6 +18,8 @@ pub mod backtrace;
 pub mod condvar;
 pub mod env;
 pub mod ext;
+pub mod f32;
+pub mod f64;
 pub mod fast_thread_local;
 pub mod fd;
 pub mod fs;

@@ -106,3 +106,4 @@ pub fn parse_prefix<'a>(path: &'a OsStr) -> Option<Prefix> {
 
 pub const MAIN_SEP_STR: &'static str = "\\";
 pub const MAIN_SEP: char = '\\';
+pub const ABSOLUTE_NEEDS_PREFIX: bool = true;

@@ -37,9 +37,14 @@ pub use core::f64::{MIN, MIN_POSITIVE, MAX};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::f64::consts;
 
+#[allow(unused_imports)]
+use sys;
+
 #[allow(dead_code)]
 mod cmath {
     use libc::{c_double, c_int};
+
+    pub use sys::f64::cmath::*;
 
     #[link_name = "m"]
     extern {
@@ -77,12 +82,6 @@ mod cmath {
         pub fn y0(n: c_double) -> c_double;
         pub fn y1(n: c_double) -> c_double;
         pub fn yn(i: c_int, n: c_double) -> c_double;
-
-        #[cfg_attr(all(windows, target_env = "msvc"), link_name = "__lgamma_r")]
-        pub fn lgamma_r(n: c_double, sign: &mut c_int) -> c_double;
-
-        #[cfg_attr(all(windows, target_env = "msvc"), link_name = "_hypot")]
-        pub fn hypot(x: c_double, y: c_double) -> c_double;
     }
 }
 
@@ -517,7 +516,7 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn ln(self) -> f64 {
-        self.log_wrapper(|n| { unsafe { intrinsics::logf64(n) } })
+        sys::f64::ln(self)
     }
 
     /// Returns the logarithm of the number with respect to an arbitrary base.
@@ -552,12 +551,7 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn log2(self) -> f64 {
-        self.log_wrapper(|n| {
-            #[cfg(target_os = "android")]
-            return ::sys::android::log2f64(n);
-            #[cfg(not(target_os = "android"))]
-            return unsafe { intrinsics::log2f64(n) };
-        })
+        sys::f64::log2(self)
     }
 
     /// Returns the base 10 logarithm of the number.
@@ -573,7 +567,7 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn log10(self) -> f64 {
-        self.log_wrapper(|n| { unsafe { intrinsics::log10f64(n) } })
+        sys::f64::log10(self)
     }
 
     /// Converts radians to degrees.
@@ -1092,31 +1086,6 @@ impl f64 {
     #[inline]
     pub fn atanh(self) -> f64 {
         0.5 * ((2.0 * self) / (1.0 - self)).ln_1p()
-    }
-
-    // Solaris/Illumos requires a wrapper around log, log2, and log10 functions
-    // because of their non-standard behavior (e.g. log(-n) returns -Inf instead
-    // of expected NaN).
-    fn log_wrapper<F: Fn(f64) -> f64>(self, log_fn: F) -> f64 {
-        if !cfg!(target_os = "solaris") {
-            log_fn(self)
-        } else {
-            if self.is_finite() {
-                if self > 0.0 {
-                    log_fn(self)
-                } else if self == 0.0 {
-                    NEG_INFINITY // log(0) = -Inf
-                } else {
-                    NAN // log(-n) = NaN
-                }
-            } else if self.is_nan() {
-                self // log(NaN) = NaN
-            } else if self > 0.0 {
-                self // log(Inf) = Inf
-            } else {
-                NAN // log(-Inf) = NaN
-            }
-        }
     }
 }
 

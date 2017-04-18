@@ -127,7 +127,7 @@ use ops::{self, Deref};
 
 use ffi::{OsStr, OsString};
 
-use sys::path::{is_sep_byte, is_verbatim_sep, MAIN_SEP_STR, parse_prefix};
+use sys::path::{ABSOLUTE_NEEDS_PREFIX, is_sep_byte, is_verbatim_sep, MAIN_SEP_STR, parse_prefix};
 
 ////////////////////////////////////////////////////////////////////////////////
 // GENERAL NOTES
@@ -1544,7 +1544,7 @@ impl Path {
     #[allow(deprecated)]
     pub fn is_absolute(&self) -> bool {
         // FIXME: Remove target_os = "redox" and allow Redox prefixes
-        self.has_root() && (cfg!(unix) || cfg!(target_os = "redox") || self.prefix().is_some())
+        self.has_root() && (!ABSOLUTE_NEEDS_PREFIX || self.prefix().is_some())
     }
 
     /// A path is *relative* if it is not absolute.
