@@ -137,6 +137,21 @@ void byval_rect_with_float(int32_t a, int32_t b, float c, int32_t d,
     assert(s.d == 556);
 }
 
+// System V x86_64 ABI:
+// a, b, d, e, f should be byval pointer (on the stack)
+// g passed via register (fixes #41375)
+//
+// Win64 ABI:
+// a, b, d, e, f, g should be byval pointer
+void byval_rect_with_many_huge(struct Huge a, struct Huge b, struct Huge c,
+                               struct Huge d, struct Huge e, struct Huge f,
+                               struct Rect g) {
+    assert(g.a == 123);
+    assert(g.b == 456);
+    assert(g.c == 789);
+    assert(g.d == 420);
+}
+
 // System V x86_64 & Win64 ABI:
 // a, b should be in registers
 // s should be split across 2 integer registers
