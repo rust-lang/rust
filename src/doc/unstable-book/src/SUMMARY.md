@@ -72,6 +72,7 @@
 - [fd](fd.md)
 - [fd_read](fd-read.md)
 - [fixed_size_array](fixed-size-array.md)
+- [float_bits_conv](float-bits-conv.md)
 - [float_extras](float-extras.md)
 - [flt2dec](flt2dec.md)
 - [fmt_flags_align](fmt-flags-align.md)
