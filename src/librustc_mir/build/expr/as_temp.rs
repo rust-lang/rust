@@ -38,9 +38,10 @@ impl<'a, 'gcx, 'tcx> Builder<'a, 'gcx, 'tcx> {
         debug!("expr_as_temp(block={:?}, expr={:?})", block, expr);
         let this = self;
 
-        if let ExprKind::Scope { .. } = expr.kind {
-            span_bug!(expr.span, "unexpected scope expression in as_temp: {:?}",
-                      expr);
+        if let ExprKind::Scope { extent, value } = expr.kind {
+            return this.in_scope(extent, block, |this| {
+                this.as_temp(block, temp_lifetime, value)
+            });
         }
 
         let expr_ty = expr.ty.clone();
