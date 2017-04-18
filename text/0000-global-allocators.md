@@ -79,6 +79,8 @@ are tagged with attributes:
 /// Behavior is undefined if the requested size is 0 or the alignment is not a
 /// power of 2. The alignment must be no larger than the largest supported page
 /// size on the platform.
+///
+/// This function is required.
 #[allocator(allocate)]
 pub fn allocate(size: usize, align: usize) -> *mut u8 {
     ...
@@ -92,6 +94,9 @@ pub fn allocate(size: usize, align: usize) -> *mut u8 {
 /// Behavior is undefined if the requested size is 0 or the alignment is not a
 /// power of 2. The alignment must be no larger than the largest supported page
 /// size on the platform.
+///
+/// This function is optional. If not provided, `allocate` will be called and
+/// the resulting buffer will be zerored.
 #[allocator(allocate_zeroed)]
 pub fn allocate_zeroed(size: usize, align: usize) -> *mut u8 {
     ...
@@ -103,6 +108,8 @@ pub fn allocate_zeroed(size: usize, align: usize) -> *mut u8 {
 ///
 /// The `old_size` and `align` parameters are the parameters that were used to
 /// create the allocation referenced by `ptr`.
+///
+/// This function is required.
 #[allocator(deallocate)]
 pub fn deallocate(ptr: *mut u8, old_size: usize, align: usize) {
     ...
@@ -122,6 +129,11 @@ pub fn deallocate(ptr: *mut u8, old_size: usize, align: usize) {
 ///
 /// The `old_size` and `align` parameters are the parameters that were used to
 /// create the allocation referenced by `ptr`.
+///
+/// This function is optional. If not provided, an implementation will be
+/// generated which calls `allocate` to obtain a new buffer, copies the old
+/// memory contents to the new buffer, and then calls `deallocate` on the old
+/// buffer.
 #[allocator(reallocate)]
 pub fn reallocate(ptr: *mut u8, old_size: usize, size: usize, align: usize) -> *mut u8 {
     ...
@@ -155,9 +167,9 @@ The allocator functions must be publicly accessible, but can have any name and
 be defined in any module. However, it is recommended to use the names above in
 the crate root to minimize confusion.
 
-An allocator must provide all functions with the exception of
-`reallocate_inplace`. New functions can be added to the API in the future in a
-similar way to `reallocate_inplace`.
+Note that new functions can be added to this API in the future as long as they
+can have default implementations in a similar manner to other optional
+functions.
 
 ## Using an allocator
 
@@ -240,9 +252,47 @@ The allocator APIs could be simplified to a more "traditional"
 malloc/calloc/free API at the cost of an efficiency loss when using allocators
 with more powerful APIs.
 
+The global allocator could be an instance of the `Allocator` trait. Since that
+trait's methods take `&mut self`, things are a bit complicated however. The
+allocator would most likely need to be a `const` type implementing `Allocator`
+since it wouldn't be sound to interact with a static. This may cause confusion
+since the allocator itself will therefor not be allowed to maintain any state
+internally since a new instance will be created for each use. In addition, the
+`Allocator` trait uses a `Layout` type as a higher level encapsulation of the
+requested alignment and size of the allocation. The larger API surface area
+will most likely cause this feature to have a significantly longer stabilization
+period.
+
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
 It is currently forbidden to pass a null pointer to `deallocate`, though this is
 guaranteed to be a noop with libc's `free` at least. Some kinds of patterns in C
 are cleaner when null pointers can be `free`d - is the same true for Rust?
+
+The `Allocator` trait defines several methods that do not have corresponding
+implementations here:
+
+* `oom`, which is called after a failed allocation to provide any allocator
+  specific messaging that may exist.
+* `usable_size`, which is mentioned above as being unused, and should probably
+  be removed from this trait as well.
+* `alloc_excess`, which is like `alloc` but returns the entire usable size
+  including any extra space beyond the requested size.
+* Some other higher level convenience methods like `alloc_array`.
+
+Should any of these be added to the global allocator as well? It may make sense
+to add `alloc_excess` to the allocator API. This can either have a default
+implementation which simply calls `allocate` and returns the input size, or
+calls `allocate` followed by `reallocate_inplace`.
+
+The existing `usable_size` function (proposed for removal) only takes a size and
+align. A similar, but potentially more useful API is one that takes a pointer
+to a heap allocated region and returns the usable size of it. This is supported
+as a GNU extension `malloc_useable_size` in the system allocator, and in
+jemalloc as well. An [issue][usable_size] has been filed to add this to support
+this to aid heap usage diagnostic crates. It would presumably have to return an
+`Option` to for allocators that do not have such a function, but this limits
+its usefulness if support can't be guaranteed.
+
+[usable_size]: https://github.com/rust-lang/rust/issues/32075
