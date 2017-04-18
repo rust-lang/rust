@@ -12,7 +12,7 @@
 //! representation.  The main routine here is `ast_ty_to_ty()`: each use
 //! is parameterized by an instance of `AstConv`.
 
-use rustc_const_eval::eval_length;
+use rustc::middle::const_val::eval_length;
 use rustc_data_structures::accumulate_vec::AccumulateVec;
 use hir;
 use hir::def::Def;
@@ -1208,7 +1208,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 self.associated_path_def_to_ty(ast_ty.id, ast_ty.span, ty, def, segment).0
             }
             hir::TyArray(ref ty, length) => {
-                if let Ok(length) = eval_length(tcx.global_tcx(), length, "array length") {
+                if let Ok(length) = eval_length(tcx, length, "array length") {
                     tcx.mk_array(self.ast_ty_to_ty(&ty), length)
                 } else {
                     self.tcx().types.err

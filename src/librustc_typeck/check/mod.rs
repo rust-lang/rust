@@ -126,7 +126,7 @@ use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir::{self, PatKind};
 use rustc::middle::lang_items;
 use rustc_back::slice;
-use rustc_const_eval::eval_length;
+use rustc::middle::const_val::eval_length;
 use rustc_const_math::ConstInt;
 
 mod assoc;
@@ -3634,7 +3634,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
               tcx.mk_array(element_ty, args.len())
           }
           hir::ExprRepeat(ref element, count) => {
-            let count = eval_length(self.tcx.global_tcx(), count, "repeat count")
+            let count = eval_length(self.tcx, count, "repeat count")
                   .unwrap_or(0);
 
             let uty = match expected {

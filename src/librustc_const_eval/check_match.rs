@@ -14,8 +14,6 @@ use _match::WitnessPreference::*;
 
 use pattern::{Pattern, PatternContext, PatternError, PatternKind};
 
-use eval::report_const_eval_err;
-
 use rustc::dep_graph::DepNode;
 
 use rustc::middle::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor};
@@ -108,25 +106,27 @@ impl<'a, 'tcx> Visitor<'tcx> for MatchVisitor<'a, 'tcx> {
     }
 }
 
+impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
+    fn report_inlining_errors(&self, pat_span: Span) {
+        for error in &self.errors {
+            match *error {
+                PatternError::StaticInPattern(span) => {
+                    span_err!(self.tcx.sess, span, E0158,
+                              "statics cannot be referenced in patterns");
+                }
+                PatternError::ConstEval(ref err) => {
+                    err.report(self.tcx, pat_span, "pattern");
+                }
+            }
+        }
+    }
+}
+
 impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
     fn check_patterns(&self, has_guard: bool, pats: &[P<Pat>]) {
         check_legality_of_move_bindings(self, has_guard, pats);
         for pat in pats {
             check_legality_of_bindings_in_at_patterns(self, pat);
-        }
-    }
-
-    fn report_inlining_errors(&self, patcx: PatternContext, pat_span: Span) {
-        for error in patcx.errors {
-            match error {
-                PatternError::StaticInPattern(span) => {
-                    span_err!(self.tcx.sess, span, E0158,
-                              "statics cannot be referenced in patterns");
-                }
-                PatternError::ConstEval(err) => {
-                    report_const_eval_err(self.tcx, &err, pat_span, "pattern");
-                }
-            }
         }
     }
 
@@ -161,7 +161,7 @@ impl<'a, 'tcx> MatchVisitor<'a, 'tcx> {
                     let mut patcx = PatternContext::new(self.tcx, self.tables);
                     let pattern = expand_pattern(cx, patcx.lower_pattern(&pat));
                     if !patcx.errors.is_empty() {
-                        self.report_inlining_errors(patcx, pat.span);
+                        patcx.report_inlining_errors(pat.span);
                         have_errors = true;
                     }
                     (pattern, &**pat)
