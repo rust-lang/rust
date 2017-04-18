@@ -229,12 +229,12 @@ pub fn compute_abi_info<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fty: &mut FnType
         };
 
         if in_mem {
-            // `sret` / `byval` parameter thus one less integer register available
-            int_regs -= 1;
-
             arg.make_indirect(ccx);
             if is_arg {
                 arg.attrs.set(ArgAttribute::ByVal);
+            } else {
+                // `sret` parameter thus one less integer register available
+                int_regs -= 1;
             }
         } else {
             // split into sized chunks passed individually
