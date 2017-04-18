@@ -55,7 +55,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             })
             .next();
         let callee_ty = autoderef.unambiguous_final_ty();
-        autoderef.finalize(LvaluePreference::NoPreference, &[callee_expr]);
+        autoderef.finalize(LvaluePreference::NoPreference, callee_expr);
 
         let output = match result {
             None => {
@@ -173,7 +173,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                        adjusted_ty,
                                                        None) {
                 None => continue,
-                Some(method_callee) => {
+                Some(ok) => {
+                    let method_callee = self.register_infer_ok_obligations(ok);
                     return Some(method_callee);
                 }
             }
