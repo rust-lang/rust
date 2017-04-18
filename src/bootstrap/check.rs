@@ -78,14 +78,6 @@ pub fn linkcheck(build: &Build, host: &str) {
 pub fn cargotest(build: &Build, stage: u32, host: &str) {
     let ref compiler = Compiler::new(stage, host);
 
-    // Configure PATH to find the right rustc. NB. we have to use PATH
-    // and not RUSTC because the Cargo test suite has tests that will
-    // fail if rustc is not spelled `rustc`.
-    let path = build.sysroot(compiler).join("bin");
-    let old_path = ::std::env::var("PATH").expect("");
-    let sep = if cfg!(windows) { ";" } else {":" };
-    let ref newpath = format!("{}{}{}", path.display(), sep, old_path);
-
     // Note that this is a short, cryptic, and not scoped directory name. This
     // is currently to minimize the length of path on Windows where we otherwise
     // quickly run into path name limit constraints.
@@ -95,9 +87,47 @@ pub fn cargotest(build: &Build, stage: u32, host: &str) {
     let _time = util::timeit();
     let mut cmd = Command::new(build.tool(&Compiler::new(0, host), "cargotest"));
     build.prepare_tool_cmd(compiler, &mut cmd);
-    build.run(cmd.env("PATH", newpath)
-                 .arg(&build.cargo)
+    build.run(cmd.arg(&build.cargo)
                  .arg(&out_dir));
+}
+
+/// Runs `cargo test` for `cargo` packaged with Rust.
+pub fn cargo(build: &Build, stage: u32, host: &str) {
+    let ref compiler = Compiler::new(stage, host);
+
+    // Configure PATH to find the right rustc. NB. we have to use PATH
+    // and not RUSTC because the Cargo test suite has tests that will
+    // fail if rustc is not spelled `rustc`.
+    let path = build.sysroot(compiler).join("bin");
+    let old_path = ::std::env::var("PATH").expect("");
+    let sep = if cfg!(windows) { ";" } else {":" };
+    let ref newpath = format!("{}{}{}", path.display(), sep, old_path);
+
+    let mut cargo = build.cargo(compiler, Mode::Tool, host, "test");
+    cargo.arg("--manifest-path").arg(build.src.join("cargo/Cargo.toml"));
+
+    // Don't build tests dynamically, just a pain to work with
+    cargo.env("RUSTC_NO_PREFER_DYNAMIC", "1");
+
+    // Don't run cross-compile tests, we may not have cross-compiled libstd libs
+    // available.
+    cargo.env("CFG_DISABLE_CROSS_TESTS", "1");
+
+    // When being tested Cargo will at some point call `nmake.exe` on Windows
+    // MSVC. Unfortunately `nmake` will read these two environment variables
+    // below and try to intepret them. We're likely being run, however, from
+    // MSYS `make` which uses the same variables.
+    //
+    // As a result, to prevent confusion and errors, we remove these variables
+    // from our environment to prevent passing MSYS make flags to nmake, causing
+    // it to blow up.
+    if cfg!(target_env = "msvc") {
+        cargo.env_remove("MAKE");
+        cargo.env_remove("MAKEFLAGS");
+    }
+
+
+    build.run(cargo.env("PATH", newpath));
 }
 
 /// Runs the `tidy` tool as compiled in `stage` by the `host` compiler.
