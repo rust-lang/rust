@@ -404,14 +404,6 @@ class RustBuild(object):
                 raise Exception(err)
             sys.exit(err)
 
-        # Darwin's `uname -s` lies and always returns i386. We have to use
-        # sysctl instead.
-        if ostype == 'Darwin' and cputype == 'i686':
-            args = ['sysctl', 'hw.optional.x86_64']
-            sysctl = subprocess.check_output(args).decode(default_encoding)
-            if ': 1' in sysctl:
-                cputype = 'x86_64'
-
         # The goal here is to come up with the same triple as LLVM would,
         # at least for the subset of platforms we're willing to target.
         if ostype == 'Linux':
