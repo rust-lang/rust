@@ -9,8 +9,7 @@
 // except according to those terms.
 
 use llvm::{self, ValueRef};
-use rustc::middle::const_val::ConstVal;
-use rustc_const_eval::{ErrKind, ConstEvalErr, report_const_eval_err};
+use rustc::middle::const_val::{ConstEvalErr, ConstVal, ErrKind};
 use rustc_const_math::ConstInt::*;
 use rustc_const_math::ConstFloat::*;
 use rustc_const_math::{ConstInt, ConstMathErr};
@@ -23,7 +22,7 @@ use rustc::ty::layout::{self, LayoutTyper};
 use rustc::ty::cast::{CastTy, IntTy};
 use rustc::ty::subst::{Kind, Substs, Subst};
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
-use {abi, adt, base, Disr, machine};
+use {abi, adt, base, machine};
 use callee;
 use builder::Builder;
 use common::{self, CrateContext, const_get_elt, val_ty};
@@ -327,8 +326,8 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                             }
                         };
 
-                        let err = ConstEvalErr{ span: span, kind: err };
-                        report_const_eval_err(tcx, &err, span, "expression");
+                        let err = ConstEvalErr { span: span, kind: err };
+                        err.report(tcx, span, "expression");
                         failure = Err(err);
                     }
                     target
@@ -429,7 +428,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                     }
                     mir::ProjectionElem::Field(ref field, _) => {
                         let llprojected = adt::const_get_field(self.ccx, tr_base.ty, base.llval,
-                                                               Disr(0), field.index());
+                                                               field.index());
                         let llextra = if is_sized {
                             ptr::null_mut()
                         } else {
@@ -988,13 +987,14 @@ fn trans_const<'a, 'tcx>(
         layout::CEnum { discr: d, min, max, .. } => {
             let discr = match *kind {
                 mir::AggregateKind::Adt(adt_def, _, _, _) => {
-                    Disr::for_variant(ccx.tcx(), adt_def, variant_index)
+                    adt_def.discriminant_for_variant(ccx.tcx(), variant_index)
+                           .to_u128_unchecked() as u64
                 },
-                _ => Disr(0),
+                _ => 0,
             };
             assert_eq!(vals.len(), 0);
-            adt::assert_discr_in_range(Disr(min), Disr(max), discr);
-            C_integral(Type::from_integer(ccx, d), discr.0, true)
+            adt::assert_discr_in_range(min, max, discr);
+            C_integral(Type::from_integer(ccx, d), discr, true)
         }
         layout::General { discr: d, ref variants, .. } => {
             let variant = &variants[variant_index];

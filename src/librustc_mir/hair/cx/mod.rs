@@ -17,8 +17,8 @@
 use hair::*;
 use rustc::mir::transform::MirSource;
 
-use rustc::middle::const_val::ConstVal;
-use rustc_const_eval::{ConstContext, fatal_const_eval_err};
+use rustc::middle::const_val::{ConstEvalErr, ConstVal};
+use rustc_const_eval::ConstContext;
 use rustc_data_structures::indexed_vec::Idx;
 use rustc::hir::def_id::DefId;
 use rustc::hir::map::blocks::FnLikeNode;
@@ -115,8 +115,19 @@ impl<'a, 'gcx, 'tcx> Cx<'a, 'gcx, 'tcx> {
         let tcx = self.tcx.global_tcx();
         match ConstContext::with_tables(tcx, self.tables()).eval(e) {
             Ok(value) => Literal::Value { value: value },
-            Err(s) => fatal_const_eval_err(tcx, &s, e.span, "expression")
+            Err(s) => self.fatal_const_eval_err(&s, e.span, "expression")
         }
+    }
+
+    pub fn fatal_const_eval_err(&self,
+        err: &ConstEvalErr<'tcx>,
+        primary_span: Span,
+        primary_kind: &str)
+        -> !
+    {
+        err.report(self.tcx, primary_span, primary_kind);
+        self.tcx.sess.abort_if_errors();
+        unreachable!()
     }
 
     pub fn trait_method(&mut self,

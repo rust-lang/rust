@@ -266,6 +266,17 @@ impl<'a, 'tcx, 'm> intravisit::Visitor<'tcx> for DirtyCleanMetadataVisitor<'a, '
         intravisit::walk_item(self, item);
     }
 
+    fn visit_variant(&mut self,
+                     variant: &'tcx hir::Variant,
+                     generics: &'tcx hir::Generics,
+                     parent_id: ast::NodeId) {
+        if let Some(e) = variant.node.disr_expr {
+            self.check_item(e.node_id, variant.span);
+        }
+
+        intravisit::walk_variant(self, variant, generics, parent_id);
+    }
+
     fn visit_variant_data(&mut self,
                           variant_data: &'tcx hir::VariantData,
                           _: ast::Name,

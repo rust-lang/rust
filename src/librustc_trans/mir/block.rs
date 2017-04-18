@@ -9,9 +9,8 @@
 // except according to those terms.
 
 use llvm::{self, ValueRef, BasicBlockRef};
-use rustc_const_eval::{ErrKind, ConstEvalErr, note_const_eval_err};
 use rustc::middle::lang_items;
-use rustc::middle::const_val::ConstInt;
+use rustc::middle::const_val::{ConstEvalErr, ConstInt, ErrKind};
 use rustc::ty::{self, TypeFoldable};
 use rustc::ty::layout::{self, LayoutTyper};
 use rustc::mir;
@@ -363,7 +362,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                         let err = ConstEvalErr{ span: span, kind: err };
                         let mut diag = bcx.tcx().sess.struct_span_warn(
                             span, "this expression will panic at run-time");
-                        note_const_eval_err(bcx.tcx(), &err, span, "expression", &mut diag);
+                        err.note(bcx.tcx(), span, "expression", &mut diag);
                         diag.emit();
                     }
                 }

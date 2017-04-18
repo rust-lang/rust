@@ -27,6 +27,7 @@
 
 #![allow(warnings)]
 #![feature(rustc_attrs)]
+#![feature(stmt_expr_attributes)]
 #![crate_type="rlib"]
 
 
@@ -125,9 +126,12 @@ enum EnumChangeValueCStyleVariant0 {
 enum EnumChangeValueCStyleVariant0 {
     Variant1,
 
-    #[rustc_metadata_dirty(cfg="cfail2")]
+    #[rustc_metadata_clean(cfg="cfail2")]
     #[rustc_metadata_clean(cfg="cfail3")]
-    Variant2 = 22,
+    Variant2 =
+        #[rustc_metadata_dirty(cfg="cfail2")]
+        #[rustc_metadata_clean(cfg="cfail3")]
+        22,
 }
 
 #[cfg(cfail1)]
