@@ -14,8 +14,6 @@ use _match::WitnessPreference::*;
 
 use pattern::{Pattern, PatternContext, PatternError, PatternKind};
 
-use rustc::dep_graph::DepNode;
-
 use rustc::middle::expr_use_visitor::{ConsumeMode, Delegate, ExprUseVisitor};
 use rustc::middle::expr_use_visitor::{LoanCause, MutateMode};
 use rustc::middle::expr_use_visitor as euv;
@@ -56,8 +54,7 @@ impl<'a, 'tcx> Visitor<'tcx> for OuterVisitor<'a, 'tcx> {
 }
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    tcx.visit_all_item_likes_in_krate(DepNode::MatchCheck,
-                                      &mut OuterVisitor { tcx: tcx }.as_deep_visitor());
+    tcx.hir.krate().visit_all_item_likes(&mut OuterVisitor { tcx: tcx }.as_deep_visitor());
     tcx.sess.abort_if_errors();
 }
 
