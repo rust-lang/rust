@@ -15,7 +15,6 @@
 //! used between functions, and they operate in a purely top-down
 //! way. Therefore we break lifetime name resolution into a separate pass.
 
-use dep_graph::DepNode;
 use hir::map::Map;
 use session::Session;
 use hir::def::Def;
@@ -259,7 +258,6 @@ const ROOT_SCOPE: ScopeRef<'static> = &Scope::Root;
 pub fn krate(sess: &Session,
              hir_map: &Map)
              -> Result<NamedRegionMap, usize> {
-    let _task = hir_map.dep_graph.in_task(DepNode::ResolveLifetimes);
     let krate = hir_map.krate();
     let mut map = NamedRegionMap {
         defs: NodeMap(),
