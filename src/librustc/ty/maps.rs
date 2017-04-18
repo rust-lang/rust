@@ -10,7 +10,7 @@
 
 use dep_graph::{DepGraph, DepNode, DepTrackingMap, DepTrackingMapConfig};
 use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
-use middle::const_val::ConstVal;
+use middle::const_val;
 use middle::privacy::AccessLevels;
 use mir;
 use session::CompileResult;
@@ -443,7 +443,7 @@ define_maps! { <'tcx>
 
     /// Results of evaluating monomorphic constants embedded in
     /// other items, such as enum variant explicit discriminants.
-    pub monomorphic_const_eval: MonomorphicConstEval(DefId) -> Result<ConstVal<'tcx>, ()>,
+    pub monomorphic_const_eval: MonomorphicConstEval(DefId) -> const_val::EvalResult<'tcx>,
 
     /// Performs the privacy check and computes "access levels".
     pub privacy_access_levels: PrivacyAccessLevels(CrateNum) -> Rc<AccessLevels>,

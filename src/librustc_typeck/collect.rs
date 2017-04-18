@@ -59,14 +59,12 @@ use constrained_type_params as ctp;
 use middle::lang_items::SizedTraitLangItem;
 use middle::const_val::ConstVal;
 use middle::resolve_lifetime as rl;
-use rustc_const_eval::{ConstContext, report_const_eval_err};
 use rustc::ty::subst::Substs;
 use rustc::ty::{ToPredicate, ReprOptions};
 use rustc::ty::{self, AdtKind, ToPolyTraitRef, Ty, TyCtxt};
 use rustc::ty::maps::Providers;
 use rustc::ty::util::IntTypeExt;
 use rustc::dep_graph::DepNode;
-use util::common::MemoizationMap;
 use util::nodemap::{NodeMap, FxHashMap};
 
 use rustc_const_math::ConstInt;
@@ -587,17 +585,6 @@ fn convert_variant_ctor<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     tcx.item_predicates(def_id);
 }
 
-fn evaluate_disr_expr<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                body: hir::BodyId)
-                                -> Result<ConstVal<'tcx>, ()> {
-    let e = &tcx.hir.body(body).value;
-    ConstContext::new(tcx, body).eval(e).map_err(|err| {
-        // enum variant evaluation happens before the global constant check
-        // so we need to report the real error
-        report_const_eval_err(tcx, &err, e.span, "enum discriminant");
-    })
-}
-
 fn convert_enum_variant_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                         def_id: DefId,
                                         variants: &[hir::Variant]) {
@@ -611,9 +598,13 @@ fn convert_enum_variant_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let wrapped_discr = prev_discr.map_or(initial, |d| d.wrap_incr());
         prev_discr = Some(if let Some(e) = variant.node.disr_expr {
             let expr_did = tcx.hir.local_def_id(e.node_id);
-            let result = tcx.maps.monomorphic_const_eval.memoize(expr_did, || {
-                evaluate_disr_expr(tcx, e)
-            });
+            let result = ty::queries::monomorphic_const_eval::get(tcx, variant.span, expr_did);
+
+            // enum variant evaluation happens before the global constant check
+            // so we need to report the real error
+            if let Err(ref err) = result {
+                err.report(tcx, variant.span, "enum discriminant");
+            }
 
             match result {
                 Ok(ConstVal::Integral(x)) => Some(x),

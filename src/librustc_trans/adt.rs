@@ -41,8 +41,6 @@
 //!   used unboxed and any field can have pointers (including mutable)
 //!   taken to it, implementing them for Rust seems difficult.
 
-use super::Disr;
-
 use std;
 
 use llvm::{ValueRef, True, IntEQ, IntNE};
@@ -347,31 +345,31 @@ fn load_discr(bcx: &Builder, ity: layout::Integer, ptr: ValueRef,
 
 /// Set the discriminant for a new value of the given case of the given
 /// representation.
-pub fn trans_set_discr<'a, 'tcx>(bcx: &Builder<'a, 'tcx>, t: Ty<'tcx>, val: ValueRef, to: Disr) {
+pub fn trans_set_discr<'a, 'tcx>(bcx: &Builder<'a, 'tcx>, t: Ty<'tcx>, val: ValueRef, to: u64) {
     let l = bcx.ccx.layout_of(t);
     match *l {
         layout::CEnum{ discr, min, max, .. } => {
-            assert_discr_in_range(Disr(min), Disr(max), to);
-            bcx.store(C_integral(Type::from_integer(bcx.ccx, discr), to.0, true),
+            assert_discr_in_range(min, max, to);
+            bcx.store(C_integral(Type::from_integer(bcx.ccx, discr), to, true),
                   val, None);
         }
         layout::General{ discr, .. } => {
-            bcx.store(C_integral(Type::from_integer(bcx.ccx, discr), to.0, true),
+            bcx.store(C_integral(Type::from_integer(bcx.ccx, discr), to, true),
                   bcx.struct_gep(val, 0), None);
         }
         layout::Univariant { .. }
         | layout::UntaggedUnion { .. }
         | layout::Vector { .. } => {
-            assert_eq!(to, Disr(0));
+            assert_eq!(to, 0);
         }
         layout::RawNullablePointer { nndiscr, .. } => {
-            if to.0 != nndiscr {
+            if to != nndiscr {
                 let llptrty = val_ty(val).element_type();
                 bcx.store(C_null(llptrty), val, None);
             }
         }
         layout::StructWrappedNullablePointer { nndiscr, ref discrfield, ref nonnull, .. } => {
-            if to.0 != nndiscr {
+            if to != nndiscr {
                 if target_sets_discr_via_memset(bcx) {
                     // Issue #34427: As workaround for LLVM bug on
                     // ARM, use memset of 0 on whole struct rather
@@ -397,7 +395,7 @@ fn target_sets_discr_via_memset<'a, 'tcx>(bcx: &Builder<'a, 'tcx>) -> bool {
     bcx.sess().target.target.arch == "arm" || bcx.sess().target.target.arch == "aarch64"
 }
 
-pub fn assert_discr_in_range(min: Disr, max: Disr, discr: Disr) {
+pub fn assert_discr_in_range<D: PartialOrd>(min: D, max: D, discr: D) {
     if min <= max {
         assert!(min <= discr && discr <= max)
     } else {
@@ -415,7 +413,7 @@ fn roundup(x: u64, a: u32) -> u64 { let a = a as u64; ((x + (a - 1)) / a) * a }
 /// (Not to be confused with `common::const_get_elt`, which operates on
 /// raw LLVM-level structs and arrays.)
 pub fn const_get_field<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>,
-                       val: ValueRef, _discr: Disr,
+                       val: ValueRef,
                        ix: usize) -> ValueRef {
     let l = ccx.layout_of(t);
     match *l {

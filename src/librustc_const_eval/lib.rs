@@ -40,7 +40,6 @@ extern crate rustc_back;
 extern crate rustc_const_math;
 extern crate rustc_data_structures;
 extern crate rustc_errors;
-extern crate graphviz;
 extern crate syntax_pos;
 
 // NB: This module needs to be declared first so diagnostics are

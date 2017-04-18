@@ -503,7 +503,6 @@ name = "rustc_const_eval"
 version = "0.0.0"
 dependencies = [
  "arena 0.0.0",
- "graphviz 0.0.0",
  "log 0.3.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc 0.0.0",
  "rustc_back 0.0.0",
@@ -731,7 +730,6 @@ dependencies = [
  "rustc 0.0.0",
  "rustc_back 0.0.0",
  "rustc_bitflags 0.0.0",
- "rustc_const_eval 0.0.0",
  "rustc_const_math 0.0.0",
  "rustc_data_structures 0.0.0",
  "rustc_errors 0.0.0",
@@ -762,7 +760,6 @@ dependencies = [
  "log 0.3.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc 0.0.0",
  "rustc_back 0.0.0",
- "rustc_const_eval 0.0.0",
  "rustc_const_math 0.0.0",
  "rustc_data_structures 0.0.0",
  "rustc_errors 0.0.0",
@@ -783,7 +780,6 @@ dependencies = [
  "pulldown-cmark 0.0.14 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustc 0.0.0",
  "rustc_back 0.0.0",
- "rustc_const_eval 0.0.0",
  "rustc_data_structures 0.0.0",
  "rustc_driver 0.0.0",
  "rustc_errors 0.0.0",
