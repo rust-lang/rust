@@ -1690,7 +1690,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
         self.variants.iter().map(move |v| {
             let mut discr = prev_discr.map_or(initial, |d| d.wrap_incr());
             if let VariantDiscr::Explicit(expr_did) = v.discr {
-                match tcx.maps.monomorphic_const_eval.borrow()[&expr_did] {
+                match queries::monomorphic_const_eval::get(tcx, DUMMY_SP, expr_did) {
                     Ok(ConstVal::Integral(v)) => {
                         discr = v;
                     }
@@ -1701,6 +1701,51 @@ impl<'a, 'gcx, 'tcx> AdtDef {
 
             discr
         })
+    }
+
+    /// Compute the discriminant value used by a specific variant.
+    /// Unlike `discriminants`, this is (amortized) constant-time,
+    /// only doing at most one query for evaluating an explicit
+    /// discriminant (the last one before the requested variant),
+    /// assuming there are no constant-evaluation errors there.
+    pub fn discriminant_for_variant(&self,
+                                    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                                    variant_index: usize)
+                                    -> ConstInt {
+        let repr_type = self.repr.discr_type();
+        let mut explicit_value = repr_type.initial_discriminant(tcx.global_tcx());
+        let mut explicit_index = variant_index;
+        loop {
+            match self.variants[explicit_index].discr {
+                ty::VariantDiscr::Relative(0) => break,
+                ty::VariantDiscr::Relative(distance) => {
+                    explicit_index -= distance;
+                }
+                ty::VariantDiscr::Explicit(expr_did) => {
+                    match queries::monomorphic_const_eval::get(tcx, DUMMY_SP, expr_did) {
+                        Ok(ConstVal::Integral(v)) => {
+                            explicit_value = v;
+                            break;
+                        }
+                        _ => {
+                            explicit_index -= 1;
+                        }
+                    }
+                }
+            }
+        }
+        let discr = explicit_value.to_u128_unchecked()
+            .wrapping_add((variant_index - explicit_index) as u128);
+        match repr_type {
+            attr::UnsignedInt(ty) => {
+                ConstInt::new_unsigned_truncating(discr, ty,
+                                                  tcx.sess.target.uint_type)
+            }
+            attr::SignedInt(ty) => {
+                ConstInt::new_signed_truncating(discr as i128, ty,
+                                                tcx.sess.target.int_type)
+            }
+        }
     }
 
     pub fn destructor(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Option<Destructor> {

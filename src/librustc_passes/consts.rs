@@ -26,10 +26,11 @@
 
 use rustc::dep_graph::DepNode;
 use rustc::ty::cast::CastKind;
-use rustc_const_eval::{ConstEvalErr, ConstContext};
-use rustc_const_eval::ErrKind::{IndexOpFeatureGated, UnimplementedConstVal, MiscCatchAll, Math};
-use rustc_const_eval::ErrKind::{ErroneousReferencedConstant, MiscBinaryOp, NonConstPath};
-use rustc_const_eval::ErrKind::{TypeckError};
+use rustc_const_eval::ConstContext;
+use rustc::middle::const_val::ConstEvalErr;
+use rustc::middle::const_val::ErrKind::{IndexOpFeatureGated, UnimplementedConstVal, MiscCatchAll};
+use rustc::middle::const_val::ErrKind::{ErroneousReferencedConstant, MiscBinaryOp, NonConstPath};
+use rustc::middle::const_val::ErrKind::{TypeckError, Math};
 use rustc_const_math::{ConstMathErr, Op};
 use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::def_id::DefId;

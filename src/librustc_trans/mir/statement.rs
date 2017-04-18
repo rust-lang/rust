@@ -18,7 +18,6 @@ use builder::Builder;
 use super::MirContext;
 use super::LocalRef;
 use super::super::adt;
-use super::super::disr::Disr;
 
 impl<'a, 'tcx> MirContext<'a, 'tcx> {
     pub fn trans_statement(&mut self,
@@ -65,7 +64,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 adt::trans_set_discr(&bcx,
                     ty,
                     lvalue_transed.llval,
-                    Disr::from(variant_index));
+                    variant_index as u64);
                 bcx
             }
             mir::StatementKind::StorageLive(ref lvalue) => {

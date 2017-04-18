@@ -28,7 +28,6 @@ use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::subst::Substs;
-use rustc_const_eval::fatal_const_eval_err;
 use syntax::ast::{self, NodeId};
 use syntax::attr;
 use type_of;
@@ -82,9 +81,7 @@ impl<'a, 'tcx> TransItem<'tcx> {
                     match consts::trans_static(&ccx, m, item.id, &item.attrs) {
                         Ok(_) => { /* Cool, everything's alright. */ },
                         Err(err) => {
-                            // FIXME: shouldn't this be a `span_err`?
-                            fatal_const_eval_err(
-                                ccx.tcx(), &err, item.span, "static");
+                            err.report(ccx.tcx(), item.span, "static");
                         }
                     };
                 } else {

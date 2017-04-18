@@ -11,7 +11,7 @@
 use eval;
 
 use rustc::lint;
-use rustc::middle::const_val::ConstVal;
+use rustc::middle::const_val::{ConstEvalErr, ConstVal};
 use rustc::mir::{Field, BorrowKind, Mutability};
 use rustc::ty::{self, TyCtxt, AdtDef, Ty, TypeVariants, Region};
 use rustc::ty::subst::{Substs, Kind};
@@ -29,7 +29,7 @@ use syntax_pos::Span;
 #[derive(Clone, Debug)]
 pub enum PatternError<'tcx> {
     StaticInPattern(Span),
-    ConstEval(eval::ConstEvalErr<'tcx>),
+    ConstEval(ConstEvalErr<'tcx>),
 }
 
 #[derive(Copy, Clone, Debug)]
