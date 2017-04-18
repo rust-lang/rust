@@ -66,11 +66,15 @@ pub fn inherent_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     //
     // [the plan]: https://github.com/rust-lang/rust-roadmap/issues/4
 
+    thread_local! {
+        static EMPTY_DEF_ID_VEC: Rc<Vec<DefId>> = Rc::new(vec![])
+    }
+
     let result = tcx.dep_graph.with_ignore(|| {
         let crate_map = tcx.crate_inherent_impls(ty_def_id.krate);
         match crate_map.inherent_impls.get(&ty_def_id) {
             Some(v) => v.clone(),
-            None => Rc::new(vec![]),
+            None => EMPTY_DEF_ID_VEC.with(|v| v.clone())
         }
     });
 
