@@ -14,7 +14,6 @@ use syntax::ast;
 use syntax::attr;
 use errors;
 use syntax_pos::Span;
-use rustc::dep_graph::DepNode;
 use rustc::hir::map::Map;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 use rustc::hir;
@@ -44,7 +43,6 @@ impl<'v> ItemLikeVisitor<'v> for RegistrarFinder {
 pub fn find_plugin_registrar(diagnostic: &errors::Handler,
                              hir_map: &Map)
                              -> Option<ast::NodeId> {
-    let _task = hir_map.dep_graph.in_task(DepNode::PluginRegistrar);
     let krate = hir_map.krate();
 
     let mut finder = RegistrarFinder { registrars: Vec::new() };

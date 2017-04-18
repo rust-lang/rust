@@ -79,6 +79,7 @@
 - [fmt_internals](fmt-internals.md)
 - [fn_traits](fn-traits.md)
 - [fnbox](fnbox.md)
+- [from_utf8_error_as_bytes](from_utf8_error_as_bytes.md)
 - [fundamental](fundamental.md)
 - [fused](fused.md)
 - [future_atomic_orderings](future-atomic-orderings.md)

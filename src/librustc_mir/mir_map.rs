@@ -68,7 +68,7 @@ pub fn build_mir_for_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
                 NestedVisitorMap::None
             }
         }
-        tcx.visit_all_item_likes_in_krate(DepNode::Mir, &mut GatherCtors {
+        tcx.hir.krate().visit_all_item_likes(&mut GatherCtors {
             tcx: tcx
         }.as_deep_visitor());
     }
