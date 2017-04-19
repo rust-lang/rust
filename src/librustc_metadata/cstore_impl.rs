@@ -340,6 +340,14 @@ impl CrateStore for cstore::CStore {
         self.get_crate_data(cnum).is_no_builtins()
     }
 
+    fn compiler_working_dir(&self, cnum: CrateNum) -> String {
+        self.get_crate_data(cnum).compiler_working_dir()
+    }
+
+    fn debug_prefix_map(&self, cnum: CrateNum) -> Vec<(String, String)> {
+        self.get_crate_data(cnum).debug_prefix_map()
+    }
+
     fn retrace_path(&self,
                     cnum: CrateNum,
                     path: &[DisambiguatedDefPathData])
@@ -399,7 +407,7 @@ impl CrateStore for cstore::CStore {
         let (name, def) = data.get_macro(id.index);
         let source_name = format!("<{} macros>", name);
 
-        let filemap = sess.parse_sess.codemap().new_filemap(source_name, None, def.body);
+        let filemap = sess.parse_sess.codemap().new_filemap(source_name, def.body);
         let local_span = Span { lo: filemap.start_pos, hi: filemap.end_pos, ctxt: NO_EXPANSION };
         let body = filemap_to_stream(&sess.parse_sess, filemap);
 

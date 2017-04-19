@@ -349,7 +349,7 @@ pub fn gather_comments_and_literals(sess: &ParseSess, path: String, srdr: &mut R
     srdr.read_to_end(&mut src).unwrap();
     let src = String::from_utf8(src).unwrap();
     let cm = CodeMap::new();
-    let filemap = cm.new_filemap(path, None, src);
+    let filemap = cm.new_filemap(path, src);
     let mut rdr = lexer::StringReader::new_raw(sess, filemap);
 
     let mut comments: Vec<Comment> = Vec::new();

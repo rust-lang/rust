@@ -48,7 +48,7 @@ fn test_harness(file_text: &str, span_labels: Vec<SpanLabel>, expected_output: &
     let output = Arc::new(Mutex::new(Vec::new()));
 
     let code_map = Rc::new(CodeMap::new());
-    code_map.new_filemap_and_lines("test.rs", None, &file_text);
+    code_map.new_filemap_and_lines("test.rs", &file_text);
 
     let primary_span = make_span(&file_text, &span_labels[0].start, &span_labels[0].end);
     let mut msp = MultiSpan::from_span(primary_span);

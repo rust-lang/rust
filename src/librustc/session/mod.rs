@@ -631,15 +631,6 @@ pub fn build_session_(sopts: config::Options,
         None => Some(filesearch::get_or_default_sysroot())
     };
 
-    // Make the path absolute, if necessary
-    let local_crate_source_file = local_crate_source_file.map(|path|
-        if path.is_absolute() {
-            path.clone()
-        } else {
-            env::current_dir().unwrap().join(&path)
-        }
-    );
-
     let optimization_fuel_crate = sopts.debugging_opts.fuel.as_ref().map(|i| i.0.clone());
     let optimization_fuel_limit = Cell::new(sopts.debugging_opts.fuel.as_ref()
         .map(|i| i.1).unwrap_or(0));

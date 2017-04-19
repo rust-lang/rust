@@ -205,6 +205,8 @@ pub struct CrateRoot {
     pub def_path_table: Lazy<hir::map::definitions::DefPathTable>,
     pub impls: LazySeq<TraitImpls>,
     pub exported_symbols: LazySeq<DefIndex>,
+    pub compiler_working_dir: String,
+    pub debug_prefix_map: LazySeq<(String, String)>,
     pub index: LazySeq<index::Index>,
 }
 

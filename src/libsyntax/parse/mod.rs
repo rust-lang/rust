@@ -143,13 +143,13 @@ pub fn parse_stmt_from_source_str<'a>(name: String, source: String, sess: &'a Pa
 
 pub fn parse_stream_from_source_str<'a>(name: String, source: String, sess: &'a ParseSess)
                                         -> TokenStream {
-    filemap_to_stream(sess, sess.codemap().new_filemap(name, None, source))
+    filemap_to_stream(sess, sess.codemap().new_filemap(name, source))
 }
 
 // Create a new parser from a source string
 pub fn new_parser_from_source_str<'a>(sess: &'a ParseSess, name: String, source: String)
                                       -> Parser<'a> {
-    filemap_to_parser(sess, sess.codemap().new_filemap(name, None, source))
+    filemap_to_parser(sess, sess.codemap().new_filemap(name, source))
 }
 
 /// Create a new parser, handling errors as appropriate
