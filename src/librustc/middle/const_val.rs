@@ -85,7 +85,6 @@ pub enum ErrKind<'tcx> {
     MissingStructField,
     NegateOn(ConstVal<'tcx>),
     NotOn(ConstVal<'tcx>),
-    CallOn(ConstVal<'tcx>),
 
     NonConstPath,
     UnimplementedConstVal(&'static str),
@@ -145,7 +144,6 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
             CannotCast => simple!("can't cast this type"),
             NegateOn(ref const_val) => simple!("negate on {}", const_val.description()),
             NotOn(ref const_val) => simple!("not on {}", const_val.description()),
-            CallOn(ref const_val) => simple!("call on {}", const_val.description()),
 
             MissingStructField  => simple!("nonexistent struct field"),
             NonConstPath        => simple!("non-constant path in constant expression"),
