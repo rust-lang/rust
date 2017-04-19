@@ -2272,7 +2272,7 @@ macro_rules! __impl_slice_eq1 {
         __impl_slice_eq1! { $Lhs, $Rhs, Sized }
     };
     ($Lhs: ty, $Rhs: ty, $Bound: ident) => {
-        #[stable(feature = "vec-deque-partial-eq-slice", since = "1.16.0")]
+        #[stable(feature = "vec-deque-partial-eq-slice", since = "1.17.0")]
         impl<'a, 'b, A: $Bound, B> PartialEq<$Rhs> for $Lhs where A: PartialEq<B> {
             fn eq(&self, other: &$Rhs) -> bool {
                 if self.len() != other.len() {
