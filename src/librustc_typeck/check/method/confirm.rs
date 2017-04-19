@@ -137,7 +137,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
         assert_eq!(n, pick.autoderefs);
 
         autoderef.unambiguous_final_ty();
-        autoderef.finalize(LvaluePreference::NoPreference, &[self.self_expr]);
+        autoderef.finalize(LvaluePreference::NoPreference, self.self_expr);
 
         let target = pick.unsize.unwrap_or(autoderefd_ty);
         let target = target.adjust_for_autoref(self.tcx, autoref);
@@ -445,7 +445,7 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
                                       "expr was deref-able {} times but now isn't?",
                                       autoderefs);
                         });
-                        autoderef.finalize(PreferMutLvalue, &[expr]);
+                        autoderef.finalize(PreferMutLvalue, expr);
                     }
                 }
                 Some(_) | None => {}
@@ -543,7 +543,8 @@ impl<'a, 'gcx, 'tcx> ConfirmContext<'a, 'gcx, 'tcx> {
                                                                Some(&base_expr),
                                                                self.node_ty(base_expr.id),
                                                                PreferMutLvalue);
-                        let method = method.expect("re-trying deref failed");
+                        let ok = method.expect("re-trying deref failed");
+                        let method = self.register_infer_ok_obligations(ok);
                         self.tables.borrow_mut().method_map.insert(method_call, method);
                     }
                 }
