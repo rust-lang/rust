@@ -116,6 +116,7 @@ fn print_const_val(value: &ConstVal, f: &mut fmt::Formatter) -> fmt::Result {
         ConstVal::ByteStr(ref b) => write!(f, "{:?}", &b[..]),
         ConstVal::Bool(b) => write!(f, "{:?}", b),
         ConstVal::Char(c) => write!(f, "{:?}", c),
+        ConstVal::Variant(_) |
         ConstVal::Struct(_) |
         ConstVal::Tuple(_) |
         ConstVal::Function(..) |
@@ -620,7 +621,12 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
         let const_cx = eval::ConstContext::with_tables(self.tcx.global_tcx(), self.tables);
         match const_cx.eval(expr) {
             Ok(value) => {
-                PatternKind::Constant { value: value }
+                if let ConstVal::Variant(def_id) = value {
+                    let ty = self.tables.expr_ty(expr);
+                    self.lower_variant_or_leaf(Def::Variant(def_id), ty, vec![])
+                } else {
+                    PatternKind::Constant { value: value }
+                }
             }
             Err(e) => {
                 self.errors.push(PatternError::ConstEval(e));

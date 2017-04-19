@@ -273,6 +273,12 @@ for ::middle::const_val::ConstVal<'tcx> {
             ConstVal::Bool(value) => {
                 value.hash_stable(hcx, hasher);
             }
+            ConstVal::Char(value) => {
+                value.hash_stable(hcx, hasher);
+            }
+            ConstVal::Variant(def_id) => {
+                def_id.hash_stable(hcx, hasher);
+            }
             ConstVal::Function(def_id, substs) => {
                 def_id.hash_stable(hcx, hasher);
                 substs.hash_stable(hcx, hasher);
@@ -295,9 +301,6 @@ for ::middle::const_val::ConstVal<'tcx> {
             ConstVal::Repeat(ref value, times) => {
                 value.hash_stable(hcx, hasher);
                 times.hash_stable(hcx, hasher);
-            }
-            ConstVal::Char(value) => {
-                value.hash_stable(hcx, hasher);
             }
         }
     }
