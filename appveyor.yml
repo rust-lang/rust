@@ -151,7 +151,6 @@ on_failure:
   - cat %CD%\sccache.log || exit 0
 
 cache:
-  - C:\cache\rustsrc
   - "build/i686-pc-windows-msvc/llvm -> src/rustllvm/llvm-rebuild-trigger"
   - "build/x86_64-pc-windows-msvc/llvm -> src/rustllvm/llvm-rebuild-trigger"
   - "i686-pc-windows-msvc/llvm -> src/rustllvm/llvm-rebuild-trigger"
