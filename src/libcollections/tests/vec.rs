@@ -84,6 +84,9 @@ fn test_extend() {
     let mut v = Vec::new();
     let mut w = Vec::new();
 
+    v.extend(w.clone());
+    assert_eq!(v, &[]);
+
     v.extend(0..3);
     for i in 0..3 {
         w.push(i)
@@ -100,6 +103,25 @@ fn test_extend() {
 
     v.extend(w.clone()); // specializes to `append`
     assert!(v.iter().eq(w.iter().chain(w.iter())));
+
+    // Zero sized types
+    #[derive(PartialEq, Debug)]
+    struct Foo;
+
+    let mut a = Vec::new();
+    let b = vec![Foo, Foo];
+
+    a.extend(b);
+    assert_eq!(a, &[Foo, Foo]);
+
+    // Double drop
+    let mut count_x = 0;
+    {
+        let mut x = Vec::new();
+        let y = vec![DropCounter { count: &mut count_x }];
+        x.extend(y);
+    }
+    assert_eq!(count_x, 1);
 }
 
 #[test]
