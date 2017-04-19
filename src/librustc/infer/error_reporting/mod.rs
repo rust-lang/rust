@@ -69,6 +69,7 @@ use traits::{ObligationCause, ObligationCauseCode};
 use ty::{self, TyCtxt, TypeFoldable};
 use ty::{Region, Issue32330};
 use ty::error::TypeError;
+use syntax::ast::DUMMY_NODE_ID;
 use syntax_pos::{Pos, Span};
 use errors::{DiagnosticBuilder, DiagnosticStyledString};
 
@@ -183,7 +184,8 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                     }
                 };
 
-                let node = fr.scope.node_id(&self.region_maps());
+                let node = fr.scope.map(|s| s.node_id(&self.region_maps()))
+                                   .unwrap_or(DUMMY_NODE_ID);
                 let unknown;
                 let tag = match self.hir.find(node) {
                     Some(hir_map::NodeBlock(_)) |

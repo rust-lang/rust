@@ -23,7 +23,6 @@ use super::util::impl_trait_ref_and_oblig;
 use rustc_data_structures::fx::FxHashMap;
 use hir::def_id::DefId;
 use infer::{InferCtxt, InferOk};
-use middle::region;
 use ty::subst::{Subst, Substs};
 use traits::{self, Reveal, ObligationCause};
 use ty::{self, TyCtxt, TypeFoldable};
@@ -182,7 +181,7 @@ pub fn specializes<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // create a parameter environment corresponding to a (skolemized) instantiation of impl1
     let penv = tcx.construct_parameter_environment(DUMMY_SP,
                                                    impl1_def_id,
-                                                   region::DUMMY_CODE_EXTENT);
+                                                   None);
     let impl1_trait_ref = tcx.impl_trait_ref(impl1_def_id)
                              .unwrap()
                              .subst(tcx, &penv.free_substs);

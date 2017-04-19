@@ -330,7 +330,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// Replace any late-bound regions bound in `value` with free variants attached to scope-id
     /// `scope_id`.
     pub fn liberate_late_bound_regions<T>(self,
-        all_outlive_scope: region::CodeExtent,
+        all_outlive_scope: Option<region::CodeExtent>,
         value: &Binder<T>)
         -> T
         where T : TypeFoldable<'tcx>

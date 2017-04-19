@@ -133,7 +133,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             Some(&rl::Region::Free(scope, id)) => {
                 let name = tcx.hir.name(id);
                 tcx.mk_region(ty::ReFree(ty::FreeRegion {
-                    scope: scope.to_code_extent(&tcx.region_maps()),
+                    scope: Some(scope.to_code_extent(&tcx.region_maps())),
                     bound_region: ty::BrNamed(tcx.hir.local_def_id(id), name)
                 }))
 

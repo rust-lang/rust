@@ -785,7 +785,7 @@ fn typeck_tables_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             let fn_sig =
                 fn_sig.subst(inh.tcx, &inh.parameter_environment.free_substs);
             let fn_sig =
-                inh.tcx.liberate_late_bound_regions(fn_scope, &fn_sig);
+                inh.tcx.liberate_late_bound_regions(Some(fn_scope), &fn_sig);
             let fn_sig =
                 inh.normalize_associated_types_in(body.value.span, body_id.node_id, &fn_sig);
 

@@ -796,7 +796,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             // The environment of a closure is guaranteed to
             // outlive any bindings introduced in the body of the
             // closure itself.
-            scope: self.tcx().region_maps().item_extent(fn_body_id),
+            scope: Some(self.tcx().region_maps().item_extent(fn_body_id)),
             bound_region: ty::BrEnv
         }));
 
