@@ -44,7 +44,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for UnportableVariant {
                 let variant = &var.node;
                 if let Some(body_id) = variant.disr_expr {
                     use rustc_const_eval::*;
-                    let constcx = ConstContext::new(cx.tcx, body_id);
+                    let constcx = ConstContext::with_tables(cx.tcx, cx.tcx.body_tables(body_id));
                     let bad = match constcx.eval(&cx.tcx.hir.body(body_id).value) {
                         Ok(ConstVal::Integral(Usize(Us64(i)))) => i as u32 as u64 != i,
                         Ok(ConstVal::Integral(Isize(Is64(i)))) => i as i32 as i64 != i,
