@@ -43,8 +43,12 @@ pub struct TypeAndMut<'tcx> {
          RustcEncodable, RustcDecodable, Copy)]
 /// A "free" region `fr` can be interpreted as "some region
 /// at least as big as the scope `fr.scope`".
+///
+/// If `fr.scope` is None, then this is in some context (e.g., an
+/// impl) where lifetimes are more abstract and the notion of the
+/// caller/callee stack frames are not applicable.
 pub struct FreeRegion {
-    pub scope: region::CodeExtent,
+    pub scope: Option<region::CodeExtent>,
     pub bound_region: BoundRegion,
 }
 

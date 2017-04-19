@@ -11,7 +11,6 @@
 use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::infer;
-use rustc::middle::region::ROOT_CODE_EXTENT;
 use rustc::middle::const_val::ConstVal;
 use rustc::mir::*;
 use rustc::mir::transform::MirSource;
@@ -45,8 +44,7 @@ fn make_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
     debug!("make_shim({:?})", instance);
     let did = instance.def_id();
     let span = tcx.def_span(did);
-    let param_env =
-        tcx.construct_parameter_environment(span, did, ROOT_CODE_EXTENT);
+    let param_env = tcx.construct_parameter_environment(span, did, None);
 
     let mut result = match instance {
         ty::InstanceDef::Item(..) =>

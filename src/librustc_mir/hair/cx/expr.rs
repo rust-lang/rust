@@ -828,7 +828,7 @@ fn convert_var<'a, 'gcx, 'tcx>(cx: &mut Cx<'a, 'gcx, 'tcx>,
             // signature will be &self or &mut self and hence will
             // have a bound region with number 0
             let region = ty::Region::ReFree(ty::FreeRegion {
-                scope: cx.tcx.region_maps().node_extent(body_id),
+                scope: Some(cx.tcx.region_maps().node_extent(body_id)),
                 bound_region: ty::BoundRegion::BrAnon(0),
             });
             let region = cx.tcx.mk_region(region);

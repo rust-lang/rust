@@ -74,7 +74,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         debug!("check_closure: expr.id={:?} closure_type={:?}", expr.id, closure_type);
 
         let extent = self.tcx.region_maps().call_site_extent(expr.id, body.value.id);
-        let fn_sig = self.tcx.liberate_late_bound_regions(extent, &sig);
+        let fn_sig = self.tcx.liberate_late_bound_regions(Some(extent), &sig);
         let fn_sig = self.inh.normalize_associated_types_in(body.value.span,
                                                             body.value.id, &fn_sig);
 
