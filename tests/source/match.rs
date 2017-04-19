@@ -295,3 +295,81 @@ fn guards() {
                (bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb || cccccccccccccccccccccccccccccccccccccccc) => {}
     }
 }
+
+fn issue1371() {
+    Some(match type_ {
+        sfEvtClosed => Closed,
+        sfEvtResized => {
+            let e = unsafe { *event.size.as_ref() };
+
+            Resized {
+                width: e.width,
+                height: e.height,
+            }
+        }
+        sfEvtLostFocus => LostFocus,
+        sfEvtGainedFocus => GainedFocus,
+        sfEvtTextEntered => {
+            TextEntered {
+                unicode: unsafe {
+                    ::std::char::from_u32((*event.text.as_ref()).unicode)
+                        .expect("Invalid unicode encountered on TextEntered event")
+                },
+            }
+        }
+        sfEvtKeyPressed => {
+            let e = unsafe { event.key.as_ref() };
+
+            KeyPressed {
+                code: unsafe { ::std::mem::transmute(e.code) },
+                alt: e.alt.to_bool(),
+                ctrl: e.control.to_bool(),
+                shift: e.shift.to_bool(),
+                system: e.system.to_bool(),
+            }
+        }
+        sfEvtKeyReleased => {
+            let e = unsafe { event.key.as_ref() };
+
+            KeyReleased {
+                code: unsafe { ::std::mem::transmute(e.code) },
+                alt: e.alt.to_bool(),
+                ctrl: e.control.to_bool(),
+                shift: e.shift.to_bool(),
+                system: e.system.to_bool(),
+            }
+        }
+    })
+}
+
+fn issue1395() {
+    let bar = Some(true);
+    let foo = Some(true);
+    let mut x = false;
+    bar.and_then(|_| {
+        match foo {
+            None => None,
+            Some(b) => {
+                x = true;
+                Some(b)
+            }
+        }
+    });
+}
+
+fn issue1456() {
+    Ok(Recording {
+        artists: match reader.evaluate(".//mb:recording/mb:artist-credit/mb:name-credit")? {
+            Nodeset(nodeset) => {
+                let res: Result<Vec<ArtistRef>, ReadError> = nodeset
+                    .iter()
+                    .map(|node| {
+                        XPathNodeReader::new(node, &context).and_then(|r| ArtistRef::from_xml(&r))
+                    })
+                    .collect();
+                res?
+            }
+            _ => Vec::new(),
+        },
+    })
+}
