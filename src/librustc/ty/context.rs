@@ -190,6 +190,10 @@ pub struct CommonTypes<'tcx> {
     pub f64: Ty<'tcx>,
     pub never: Ty<'tcx>,
     pub err: Ty<'tcx>,
+
+    pub re_empty: &'tcx Region,
+    pub re_static: &'tcx Region,
+    pub re_erased: &'tcx Region,
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
@@ -360,6 +364,14 @@ impl<'tcx> TypeckTables<'tcx> {
 impl<'tcx> CommonTypes<'tcx> {
     fn new(interners: &CtxtInterners<'tcx>) -> CommonTypes<'tcx> {
         let mk = |sty| interners.intern_ty(sty, None);
+        let mk_region = |r| {
+            if let Some(r) = interners.region.borrow().get(&r) {
+                return r.0;
+            }
+            let r = interners.arena.alloc(r);
+            interners.region.borrow_mut().insert(Interned(r));
+            &*r
+        };
         CommonTypes {
             bool: mk(TyBool),
             char: mk(TyChar),
@@ -379,6 +391,10 @@ impl<'tcx> CommonTypes<'tcx> {
             u128: mk(TyUint(ast::UintTy::U128)),
             f32: mk(TyFloat(ast::FloatTy::F32)),
             f64: mk(TyFloat(ast::FloatTy::F64)),
+
+            re_empty: mk_region(Region::ReEmpty),
+            re_static: mk_region(Region::ReStatic),
+            re_erased: mk_region(Region::ReErased),
         }
     }
 }
@@ -1233,7 +1249,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn mk_static_str(self) -> Ty<'tcx> {
-        self.mk_imm_ref(self.mk_region(ty::ReStatic), self.mk_str())
+        self.mk_imm_ref(self.types.re_static, self.mk_str())
     }
 
     pub fn mk_adt(self, def: &'tcx AdtDef, substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {

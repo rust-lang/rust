@@ -507,8 +507,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
         let ty = self.lvalue_ty(self.lvalue);
         let substs = tcx.mk_substs(iter::once(Kind::from(ty)));
 
-        let re_erased = tcx.mk_region(ty::ReErased);
-        let ref_ty = tcx.mk_ref(re_erased, ty::TypeAndMut {
+        let ref_ty = tcx.mk_ref(tcx.types.re_erased, ty::TypeAndMut {
             ty: ty,
             mutbl: hir::Mutability::MutMutable
         });
@@ -520,7 +519,7 @@ impl<'l, 'b, 'tcx, D> DropCtxt<'l, 'b, 'tcx, D>
                 source_info: self.source_info,
                 kind: StatementKind::Assign(
                     Lvalue::Local(ref_lvalue),
-                    Rvalue::Ref(re_erased, BorrowKind::Mut, self.lvalue.clone())
+                    Rvalue::Ref(tcx.types.re_erased, BorrowKind::Mut, self.lvalue.clone())
                 )
             }],
             terminator: Some(Terminator {

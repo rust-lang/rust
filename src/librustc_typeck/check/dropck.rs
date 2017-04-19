@@ -627,7 +627,7 @@ fn revise_self_ty<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
             let impl_self_orig = self_substs.region_for_def(def);
             let r = if let ty::Region::ReEarlyBound(ref ebr) = *impl_self_orig {
                 if impl_bindings.region_param(ebr).pure_wrt_drop {
-                    tcx.mk_region(ty::ReStatic)
+                    tcx.types.re_static
                 } else {
                     r_orig
                 }

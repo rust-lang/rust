@@ -331,7 +331,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
 
                 let ty = tr_lvalue.ty.to_ty(bcx.tcx());
                 let ref_ty = bcx.tcx().mk_ref(
-                    bcx.tcx().mk_region(ty::ReErased),
+                    bcx.tcx().types.re_erased,
                     ty::TypeAndMut { ty: ty, mutbl: bk.to_mutbl_lossy() }
                 );
 

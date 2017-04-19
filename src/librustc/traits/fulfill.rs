@@ -433,7 +433,7 @@ fn process_predicate<'a, 'gcx, 'tcx>(
                         // Otherwise, we have something of the form
                         // `for<'a> T: 'a where 'a not in T`, which we can treat as `T: 'static`.
                         Some(t_a) => {
-                            let r_static = selcx.tcx().mk_region(ty::ReStatic);
+                            let r_static = selcx.tcx().types.re_static;
                             register_region_obligation(t_a, r_static,
                                                        obligation.cause.clone(),
                                                        region_obligations);

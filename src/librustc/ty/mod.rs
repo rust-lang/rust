@@ -2520,15 +2520,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// Construct a parameter environment suitable for static contexts or other contexts where there
     /// are no free type/lifetime parameters in scope.
     pub fn empty_parameter_environment(self) -> ParameterEnvironment<'tcx> {
-
-        // for an empty parameter environment, there ARE no free
-        // regions, so it shouldn't matter what we use for the free id
-        let free_id_outlive = self.region_maps.node_extent(ast::DUMMY_NODE_ID);
         ty::ParameterEnvironment {
             free_substs: self.intern_substs(&[]),
             caller_bounds: Vec::new(),
-            implicit_region_bound: self.mk_region(ty::ReEmpty),
-            free_id_outlive: free_id_outlive,
+            implicit_region_bound: self.types.re_empty,
+            // for an empty parameter environment, there ARE no free
+            // regions, so it shouldn't matter what we use for the free id
+            free_id_outlive: ROOT_CODE_EXTENT,
             is_copy_cache: RefCell::new(FxHashMap()),
             is_sized_cache: RefCell::new(FxHashMap()),
         }
@@ -2779,4 +2777,3 @@ pub fn provide_extern(providers: &mut ty::maps::Providers) {
 pub struct CrateInherentImpls {
     pub inherent_impls: DefIdMap<Rc<Vec<DefId>>>,
 }
-
