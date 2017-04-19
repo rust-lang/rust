@@ -36,4 +36,4 @@ is the first. After this:
 The source files from which this book is generated can be found on
 [GitHub][book].
 
-[book]: https://github.com/rust-lang/rust/tree/master/src/doc/book
+[book]: https://github.com/rust-lang/book/tree/master/first-edition/src
