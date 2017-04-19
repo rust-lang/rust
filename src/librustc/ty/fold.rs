@@ -410,7 +410,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn erase_late_bound_regions<T>(self, value: &Binder<T>) -> T
         where T : TypeFoldable<'tcx>
     {
-        self.replace_late_bound_regions(value, |_| self.mk_region(ty::ReErased)).0
+        self.replace_late_bound_regions(value, |_| self.types.re_erased).0
     }
 
     /// Rewrite any late-bound regions so that they are anonymous.  Region numbers are
@@ -538,7 +538,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                 // whenever a substitution occurs.
                 match *r {
                     ty::ReLateBound(..) => r,
-                    _ => self.tcx().mk_region(ty::ReErased)
+                    _ => self.tcx().types.re_erased
                 }
             }
         }
@@ -565,6 +565,22 @@ pub fn shift_region(region: ty::Region, amount: u32) -> ty::Region {
     }
 }
 
+pub fn shift_region_ref<'a, 'gcx, 'tcx>(
+    tcx: TyCtxt<'a, 'gcx, 'tcx>,
+    region: &'tcx ty::Region,
+    amount: u32)
+    -> &'tcx ty::Region
+{
+    match region {
+        &ty::ReLateBound(debruijn, br) if amount > 0 => {
+            tcx.mk_region(ty::ReLateBound(debruijn.shifted(amount), br))
+        }
+        _ => {
+            region
+        }
+    }
+}
+
 pub fn shift_regions<'a, 'gcx, 'tcx, T>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                                         amount: u32, value: &T) -> T
     where T: TypeFoldable<'tcx>
@@ -573,7 +589,7 @@ pub fn shift_regions<'a, 'gcx, 'tcx, T>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
            value, amount);
 
     value.fold_with(&mut RegionFolder::new(tcx, &mut false, &mut |region, _current_depth| {
-        tcx.mk_region(shift_region(*region, amount))
+        shift_region_ref(tcx, region, amount)
     }))
 }
 

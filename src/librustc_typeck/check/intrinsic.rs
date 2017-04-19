@@ -36,7 +36,7 @@ fn equate_intrinsic_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let def_id = tcx.hir.local_def_id(it.id);
 
     let substs = Substs::for_item(tcx, def_id,
-                                  |_, _| tcx.mk_region(ty::ReErased),
+                                  |_, _| tcx.types.re_erased,
                                   |def, _| tcx.mk_param_from_def(def));
 
     let fty = tcx.mk_fn_def(def_id, substs, ty::Binder(tcx.mk_fn_sig(

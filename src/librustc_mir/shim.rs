@@ -308,10 +308,9 @@ fn build_call_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
         Adjustment::Deref => Operand::Consume(rcvr_l.deref()),
         Adjustment::RefMut => {
             // let rcvr = &mut rcvr;
-            let re_erased = tcx.mk_region(ty::ReErased);
             let ref_rcvr = local_decls.push(temp_decl(
                 Mutability::Not,
-                tcx.mk_ref(re_erased, ty::TypeAndMut {
+                tcx.mk_ref(tcx.types.re_erased, ty::TypeAndMut {
                     ty: sig.inputs()[0],
                     mutbl: hir::Mutability::MutMutable
                 }),
@@ -321,7 +320,7 @@ fn build_call_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
                 source_info: source_info,
                 kind: StatementKind::Assign(
                     Lvalue::Local(ref_rcvr),
-                    Rvalue::Ref(re_erased, BorrowKind::Mut, rcvr_l)
+                    Rvalue::Ref(tcx.types.re_erased, BorrowKind::Mut, rcvr_l)
                 )
             });
             Operand::Consume(Lvalue::Local(ref_rcvr))
