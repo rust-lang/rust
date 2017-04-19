@@ -149,7 +149,7 @@ fn check(cache: &mut Cache,
 
     // mdbook uses the HTML <base> tag to handle links for subdirectories, which
     // linkchecker doesn't support
-    if file.to_str().unwrap().contains("unstable-book/") {
+    if file.to_str().unwrap().contains("unstable-book") {
         return None;
     }
 
