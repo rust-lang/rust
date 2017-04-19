@@ -138,9 +138,14 @@ impl FreeRegionMap {
                 (&ty::ReScope(sub_scope), &ty::ReScope(super_scope)) =>
                     tcx.region_maps().is_subscope_of(sub_scope, super_scope),
 
-                (&ty::ReScope(sub_scope), &ty::ReFree(fr)) =>
-                    tcx.region_maps().is_subscope_of(sub_scope, fr.scope) ||
-                    self.is_static(fr),
+                (&ty::ReScope(sub_scope), &ty::ReFree(fr)) => {
+                    // 1. It is safe to unwrap `fr.scope` because we
+                    // should only ever wind up comparing against
+                    // `ReScope` in the context of a method or fn
+                    // body, where `fr.scope` should be `Some`.
+                    tcx.region_maps().is_subscope_of(sub_scope, fr.scope.unwrap() /*1*/) ||
+                        self.is_static(fr)
+                }
 
                 (&ty::ReFree(sub_fr), &ty::ReFree(super_fr)) =>
                     self.sub_free_region(sub_fr, super_fr),
@@ -166,9 +171,7 @@ impl FreeRegionMap {
 
 #[cfg(test)]
 fn free_region(index: u32) -> FreeRegion {
-    use middle::region::DUMMY_CODE_EXTENT;
-    FreeRegion { scope: DUMMY_CODE_EXTENT,
-                 bound_region: ty::BoundRegion::BrAnon(index) }
+    FreeRegion { scope: None, bound_region: ty::BoundRegion::BrAnon(index) }
 }
 
 #[test]

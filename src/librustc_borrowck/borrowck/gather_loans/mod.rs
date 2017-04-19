@@ -353,7 +353,7 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
                 let loan_scope = match *loan_region {
                     ty::ReScope(scope) => scope,
 
-                    ty::ReFree(ref fr) => fr.scope,
+                    ty::ReFree(ref fr) => fr.scope.unwrap_or(self.item_ub),
 
                     ty::ReStatic => self.item_ub,
 

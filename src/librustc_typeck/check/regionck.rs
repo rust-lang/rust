@@ -1614,7 +1614,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
 
         // Add in the default bound of fn body that applies to all in
         // scope type parameters:
-        param_bounds.push(param_env.implicit_region_bound);
+        param_bounds.extend(param_env.implicit_region_bound);
 
         VerifyBound::AnyRegion(param_bounds)
     }

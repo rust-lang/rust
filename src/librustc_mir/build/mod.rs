@@ -11,7 +11,7 @@
 use hair::cx::Cx;
 use hair::Pattern;
 
-use rustc::middle::region::{CodeExtent, CodeExtentData, ROOT_CODE_EXTENT};
+use rustc::middle::region::{CodeExtent, CodeExtentData};
 use rustc::ty::{self, Ty};
 use rustc::mir::*;
 use rustc::util::nodemap::NodeMap;
@@ -200,11 +200,13 @@ pub fn construct_const<'a, 'gcx, 'tcx>(hir: Cx<'a, 'gcx, 'tcx>,
     let tcx = hir.tcx();
     let ast_expr = &tcx.hir.body(body_id).value;
     let ty = hir.tables().expr_ty_adjusted(ast_expr);
-    let span = tcx.hir.span(tcx.hir.body_owner(body_id));
+    let owner_id = tcx.hir.body_owner(body_id);
+    let span = tcx.hir.span(owner_id);
     let mut builder = Builder::new(hir, span, 0, ty);
 
-    let extent = tcx.region_maps().temporary_scope(ast_expr.id)
-                    .unwrap_or(ROOT_CODE_EXTENT);
+    let region_maps = tcx.region_maps();
+    let extent = region_maps.temporary_scope(ast_expr.id)
+                            .unwrap_or(region_maps.item_extent(owner_id));
     let mut block = START_BLOCK;
     let _ = builder.in_scope(extent, block, |builder| {
         let expr = builder.hir.mirror(ast_expr);
