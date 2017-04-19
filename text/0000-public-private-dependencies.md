@@ -46,9 +46,9 @@ currently exist in Cargo which sometimes prevent crates from compiling.
 A: Public dependencies are public within a reachable subgraph but can become private if a
 crate stops exposing a public dependency.  For instance it is very possible to have a
 family of crates that all depend on a utility crate that provides common types which is
-a public dependency for all of them.  However your own crate only becomes a user of this
-utility crate through another dependency that itself does not expose any of the types
-from that utility crate and as such the dependency is marked private.
+a public dependency for all of them.  However your own crate only ends up being a user of
+this utility crate but none of its types or traits become part of your own API then this
+utility crate dependency is marked private.
 
 **Q: Where is public / private defined?**<br>
 Dependencies are private by default and are made public through a `public` flag in the
@@ -63,11 +63,18 @@ publish new crates without explicitly silencing these warnings or marking the
 dependencies as public.
 
 **Q: Can I export a type from a private dependency as my own?**<br>
-For now it will not be strictly permissible to privately depend on a crate and export
-a type from their as your own.  The reason for this is that at the moment it is not
+A: For now it will not be strictly permissible to privately depend on a crate and export
+a type from there as your own.  The reason for this is that at the moment it is not
 possible to force this type to be distinct.  This means that users of the crate might
 accidentally start depending on that type to be compatible if the user starts to depend
-on the crate that actually implements that type.
+on the crate that actually implements that type.  The limitations from the previous
+answer apply (eg: you can currently overrule the restrictions).
+
+**Q: How does semver and depenencies interact?**<br>
+A: It is already the case that changing your own dependencies would require a semver
+bumb for your own library because your API contract to the outside world changes.  This
+RFC however makes it possible to only have this requirement for public dependencies and
+would permit cargo to prevent new crate releases with semver violations.
 
 # Detailed design
 [design]: #detailed-design
@@ -145,8 +152,8 @@ Cases that I anticipate that should be explained separately:
 
 The feature will be called `public_private_dependencies` and it comes with one
 lint flag called `external_private_dependency`.  For all intents and purposes this
-should be the extend of the new terms introduced in the beginning.  This RFC however
-lays the groundwork for later providing aliasing so that a private dependencies could
+should be the extent of the new terms introduced in the beginning.  This RFC however
+lays the groundwork for later providing aliasing so that a private dependency could
 be forcefully re-exported as own types.  As such it might make sense to already
 consider what this will be referred to.
 
@@ -183,7 +190,7 @@ exist.
 There are a few open questions about how to best hook into the compiler and cargo
 infrastructure:
 
-* is passing in the last of public dependencies the correct way to get around it?
+* is passing in the list of public dependencies the correct way to get around it?
   If yes, what is the parameter supposed to be called.
 * what is the impact of this change going to be. This most likely can be answered
   running cargobomb/crater.
