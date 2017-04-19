@@ -1041,33 +1041,24 @@ fn format_tuple_struct(context: &RewriteContext,
                                    .config
                                    .max_width
                                    .checked_sub(item_indent.width() + 3));
+    let shape = Shape::legacy(item_budget, item_indent);
 
-    let items =
-        itemize_list(context.codemap,
-                     fields.iter(),
-                     ")",
-                     |field| {
-                         // Include attributes and doc comments, if present
-                         if !field.attrs.is_empty() {
-                             field.attrs[0].span.lo
-                         } else {
-                             field.span.lo
-                         }
-                     },
-                     |field| field.ty.span.hi,
-                     |field| field.rewrite(context, Shape::legacy(item_budget, item_indent)),
-                     context.codemap.span_after(span, "("),
-                     span.hi);
-    let body_budget = try_opt!(context
-                                   .config
-                                   .max_width
-                                   .checked_sub(offset.block_only().width() + result.len() +
-                                                3));
-    let body = try_opt!(list_helper(items,
-                                    // TODO budget is wrong in block case
-                                    Shape::legacy(body_budget, item_indent),
-                                    context.config,
-                                    tactic));
+    let items = itemize_list(context.codemap,
+                             fields.iter(),
+                             ")",
+                             |field| {
+                                 // Include attributes and doc comments, if present
+                                 if !field.attrs.is_empty() {
+                                     field.attrs[0].span.lo
+                                 } else {
+                                     field.span.lo
+                                 }
+                             },
+                             |field| field.ty.span.hi,
+                             |field| field.rewrite(context, shape),
+                             context.codemap.span_after(span, "("),
+                             span.hi);
+    let body = try_opt!(list_helper(items, shape, context.config, tactic));
 
     if context.config.fn_args_layout == IndentStyle::Visual || !body.contains('\n') {
         result.push('(');

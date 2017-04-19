@@ -158,7 +158,7 @@ impl Indent {
         let (num_tabs, num_spaces) = if config.hard_tabs {
             (self.block_indent / config.tab_spaces, self.alignment)
         } else {
-            (0, self.block_indent + self.alignment)
+            (0, self.width())
         };
         let num_chars = num_tabs + num_spaces;
         let mut indent = String::with_capacity(num_chars);
