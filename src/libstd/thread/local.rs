@@ -139,37 +139,15 @@ macro_rules! thread_local {
     // empty (base case for the recursion)
     () => {};
 
-    // process multiple declarations where the first one is private
-    ($(#[$attr:meta])* static $name:ident: $t:ty = $init:expr; $($rest:tt)*) => (
-        __thread_local_inner!($(#[$attr])* [] $name, $t, $init);
+    // process multiple declarations
+    ($(#[$attr:meta])* $vis:vis static $name:ident: $t:ty = $init:expr; $($rest:tt)*) => (
+        __thread_local_inner!($(#[$attr])* $vis $name, $t, $init);
         thread_local!($($rest)*);
     );
 
-    // handle a single private declaration
-    ($(#[$attr:meta])* static $name:ident: $t:ty = $init:expr) => (
-        __thread_local_inner!($(#[$attr])* [] $name, $t, $init);
-    );
-
-    // handle multiple declarations where the first one is public
-    ($(#[$attr:meta])* pub static $name:ident: $t:ty = $init:expr; $($rest:tt)*) => (
-        __thread_local_inner!($(#[$attr])* [pub] $name, $t, $init);
-        thread_local!($($rest)*);
-    );
-
-    // handle a single public declaration
-    ($(#[$attr:meta])* pub static $name:ident: $t:ty = $init:expr) => (
-        __thread_local_inner!($(#[$attr])* [pub] $name, $t, $init);
-    );
-
-    // handle multiple declarations where the first one is restricted public
-    ($(#[$attr:meta])* pub $vis:tt static $name:ident: $t:ty = $init:expr; $($rest:tt)*) => (
-        __thread_local_inner!($(#[$attr])* [pub $vis] $name, $t, $init);
-        thread_local!($($rest)*);
-    );
-
-    // handle a single restricted public declaration
-    ($(#[$attr:meta])* pub $vis:tt static $name:ident: $t:ty = $init:expr) => (
-        __thread_local_inner!($(#[$attr])* [pub $vis] $name, $t, $init);
+    // handle a single declaration
+    ($(#[$attr:meta])* $vis:vis static $name:ident: $t:ty = $init:expr) => (
+        __thread_local_inner!($(#[$attr])* $vis $name, $t, $init);
     );
 }
 
@@ -180,8 +158,8 @@ macro_rules! thread_local {
 #[macro_export]
 #[allow_internal_unstable]
 macro_rules! __thread_local_inner {
-    ($(#[$attr:meta])* [$($vis:tt)*] $name:ident, $t:ty, $init:expr) => {
-        $(#[$attr])* $($vis)* static $name: $crate::thread::LocalKey<$t> = {
+    ($(#[$attr:meta])* $vis:vis $name:ident, $t:ty, $init:expr) => {
+        $(#[$attr])* $vis static $name: $crate::thread::LocalKey<$t> = {
             fn __init() -> $t { $init }
 
             fn __getit() -> $crate::option::Option<
