@@ -37,5 +37,6 @@ pub fn test() {
     // CHECK: bitcast{{.*}}personalityslot
     // CHECK-NEXT: call void @llvm.lifetime.start
     might_unwind();
+    let _t = S;
     might_unwind();
 }
