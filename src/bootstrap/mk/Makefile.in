@@ -55,6 +55,7 @@ check:
 check-aux:
 	$(Q)$(BOOTSTRAP) test \
 		src/tools/cargotest \
+		cargo \
 		src/test/pretty \
 		src/test/run-pass/pretty \
 		src/test/run-fail/pretty \
