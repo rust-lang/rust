@@ -412,7 +412,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// a suitable "empty substs" for it.
     pub fn empty_substs_for_def_id(self, item_def_id: DefId) -> &'tcx ty::Substs<'tcx> {
         ty::Substs::for_item(self, item_def_id,
-                             |_, _| self.mk_region(ty::ReErased),
+                             |_, _| self.types.re_erased,
                              |_, _| {
             bug!("empty_substs_for_def_id: {:?} has type parameters", item_def_id)
         })

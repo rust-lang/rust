@@ -497,7 +497,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                 let dest = if dest_needs_borrow(&destination.0) {
                     debug!("Creating temp for return destination");
                     let dest = Rvalue::Ref(
-                        self.tcx.mk_region(ty::ReErased),
+                        self.tcx.types.re_erased,
                         BorrowKind::Mut,
                         destination.0);
 
@@ -582,7 +582,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
     fn cast_box_free_arg(&self, arg: Lvalue<'tcx>, ptr_ty: Ty<'tcx>,
                          callsite: &CallSite<'tcx>, caller_mir: &mut Mir<'tcx>) -> Operand<'tcx> {
         let arg = Rvalue::Ref(
-            self.tcx.mk_region(ty::ReErased),
+            self.tcx.types.re_erased,
             BorrowKind::Mut,
             arg.deref());
 

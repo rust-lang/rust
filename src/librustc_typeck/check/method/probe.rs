@@ -1063,7 +1063,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
 
         // In general, during probing we erase regions. See
         // `impl_self_ty()` for an explanation.
-        let region = tcx.mk_region(ty::ReErased);
+        let region = tcx.types.re_erased;
 
         // Search through mutabilities in order to find one where pick works:
         [hir::MutImmutable, hir::MutMutable]
@@ -1325,7 +1325,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
                 } else {
                     // In general, during probe we erase regions. See
                     // `impl_self_ty()` for an explanation.
-                    self.tcx.mk_region(ty::ReErased)
+                    self.tcx.types.re_erased
                 }
             }, |def, cur_substs| {
                 let i = def.index as usize;
@@ -1345,7 +1345,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
 
         let substs = Substs::for_item(self.tcx,
                                       impl_def_id,
-                                      |_, _| self.tcx.mk_region(ty::ReErased),
+                                      |_, _| self.tcx.types.re_erased,
                                       |_, _| self.next_ty_var(
                                         TypeVariableOrigin::SubstitutionPlaceholder(
                                             self.tcx.def_span(impl_def_id))));

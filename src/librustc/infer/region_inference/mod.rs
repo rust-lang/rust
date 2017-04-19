@@ -948,7 +948,7 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
                 } else {
                     // otherwise, we don't know what the free region is,
                     // so we must conservatively say the LUB is static:
-                    self.tcx.mk_region(ReStatic)
+                    self.tcx.types.re_static
                 }
             }
 
@@ -971,7 +971,7 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
                 if a == b {
                     a
                 } else {
-                    self.tcx.mk_region(ReStatic)
+                    self.tcx.types.re_static
                 }
             }
         }
@@ -1018,7 +1018,7 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
 
     fn construct_var_data(&self) -> Vec<VarValue<'tcx>> {
         (0..self.num_vars() as usize)
-            .map(|_| Value(self.tcx.mk_region(ty::ReEmpty)))
+            .map(|_| Value(self.tcx.types.re_empty))
             .collect()
     }
 
@@ -1493,7 +1493,7 @@ fn lookup<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                           -> &'tcx ty::Region {
     match values[rid.index as usize] {
         Value(r) => r,
-        ErrorValue => tcx.mk_region(ReStatic), // Previously reported error.
+        ErrorValue => tcx.types.re_static, // Previously reported error.
     }
 }
 
