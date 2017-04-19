@@ -1525,6 +1525,24 @@ impl Path {
         PathBuf::from(self.inner.to_os_string())
     }
 
+    /// Checks whether the `Path` is empty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::path::Path;
+    ///
+    /// let path = Path::new("");
+    /// assert!(path.is_empty())
+    ///
+    /// let path = Path::new("tmp");
+    /// assert!(!path.is_empty())
+    /// ```
+    #[unstable(feature = "path_is_empty", issue = "0")]
+    pub fn is_empty(&self) -> bool {
+        self.inner.is_empty()
+    }
+
     /// A path is *absolute* if it is independent of the current directory.
     ///
     /// * On Unix, a path is absolute if it starts with the root, so
