@@ -11,28 +11,23 @@
 
 set -ex
 
+install_ndk() {
+    python2.7 android-ndk-r13b/build/tools/make_standalone_toolchain.py \
+        --install-dir /android/ndk/$1-$2 \
+        --arch $1 \
+        --api $2
+}
+
+mkdir -p /android/ndk
+cd android
+
 # Prep the Android NDK
 #
 # See https://github.com/servo/servo/wiki/Building-for-Android
-curl -O https://dl.google.com/android/repository/android-ndk-r11c-linux-x86_64.zip
-unzip -q android-ndk-r11c-linux-x86_64.zip
-bash android-ndk-r11c/build/tools/make-standalone-toolchain.sh \
-        --platform=android-9 \
-        --toolchain=arm-linux-androideabi-4.9 \
-        --install-dir=/android/ndk-arm-9 \
-        --ndk-dir=/android/android-ndk-r11c \
-        --arch=arm
-bash android-ndk-r11c/build/tools/make-standalone-toolchain.sh \
-        --platform=android-21 \
-        --toolchain=aarch64-linux-android-4.9 \
-        --install-dir=/android/ndk-aarch64 \
-        --ndk-dir=/android/android-ndk-r11c \
-        --arch=arm64
-bash android-ndk-r11c/build/tools/make-standalone-toolchain.sh \
-        --platform=android-9 \
-        --toolchain=x86-4.9 \
-        --install-dir=/android/ndk-x86-9 \
-        --ndk-dir=/android/android-ndk-r11c \
-        --arch=x86
+curl -O https://dl.google.com/android/repository/android-ndk-r13b-linux-x86_64.zip
+unzip -q android-ndk-r13b-linux-x86_64.zip
 
-rm -rf ./android-ndk-r11c-linux-x86_64.zip ./android-ndk-r11c
+install_ndk arm 9
+install_ndk x86 9
+
+rm -rf android-ndk-*

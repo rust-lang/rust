@@ -24,20 +24,26 @@ RUN curl -o /usr/local/bin/sccache \
       https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror/2017-04-04-sccache-x86_64-unknown-linux-musl && \
       chmod +x /usr/local/bin/sccache
 
-COPY install-ndk.sh /android/
-RUN sh /android/install-ndk.sh
+RUN curl -O https://dl.google.com/android/repository/android-ndk-r13b-linux-x86_64.zip && \
+    unzip -q android-ndk-r13b-linux-x86_64.zip && \
+    python2.7 android-ndk-r13b/build/tools/make_standalone_toolchain.py \
+        --install-dir /android-ndk \
+        --arch arm64 \
+        --api 21 && \
+    rm -rf android-ndk-*
 
 ENTRYPOINT ["/usr/bin/dumb-init", "--"]
 
-ENV TARGETS=arm-linux-androideabi
-ENV TARGETS=$TARGETS,armv7-linux-androideabi
-ENV TARGETS=$TARGETS,i686-linux-android
+ENV PATH=$PATH:/android-ndk/bin
+
+ENV DEP_Z_ROOT=/android-ndk/sysroot/usr/
 
 ENV RUST_CONFIGURE_ARGS \
-      --target=$TARGETS \
+      --target=aarch64-linux-android \
+      --host=aarch64-linux-android \
+      --aarch64-linux-android-ndk=/android-ndk \
+      --disable-rpath \
       --enable-extended \
-      --arm-linux-androideabi-ndk=/android/ndk/arm-9 \
-      --armv7-linux-androideabi-ndk=/android/ndk/arm-9 \
-      --i686-linux-android-ndk=/android/ndk/x86-9
+      --enable-cargo-openssl-static
 
-ENV SCRIPT python2.7 ../x.py dist --target $TARGETS
+ENV SCRIPT python2.7 ../x.py dist --target aarch64-linux-android --host aarch64-linux-android
