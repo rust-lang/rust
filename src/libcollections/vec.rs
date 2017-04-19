@@ -1386,13 +1386,26 @@ impl<T: Clone> SpecFromElem for T {
     }
 }
 
+// Computes the bitwise OR of the input, reinterpreted as [U].
+// Assumes that U is a primitive integer type and that `T` can be
+// represented exactly as a slice of elements of type `U`, i.e.
+// `mem::size_of::<T>() % mem::size_of::<U>() == 0`
 unsafe fn chunked_or<T, U: ops::BitOr<Output = U> + Copy>(x: T) -> U {
     let p = &x as *const T as *const U;
     let len = mem::size_of::<T>() / mem::size_of::<U>();
     slice::from_raw_parts(p, len).iter().fold(mem::zeroed(), |state, &x| state | x)
 }
 
+// Checks if the raw representation of the input is only binary zeroes.
+// Instead of comparing each byte with 0, the whole memory region is
+// OR-ed together and the result is compared to 0.
 fn is_zero<T: Copy>(x: T) -> bool {
+    // Find the greatest alignment that can be used to scan x, as that
+    // leads to less code and better performance.
+    // If the alignment is greater than 16, compute the OR using u128,
+    // as no bigger native integers are available.
+    // The calls to chunked_or() are safe because mem::size_of::<T>()
+    // is guaranteed to be a multiple of mem::align_of::<T>().
     unsafe {
         match mem::align_of::<T>() {
             n if n % 16 == 0 => 0u128 == chunked_or(x),
