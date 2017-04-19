@@ -1693,6 +1693,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
         }
     }
 
+    #[inline]
     pub fn discriminants(&'a self, tcx: TyCtxt<'a, 'gcx, 'tcx>)
                          -> impl Iterator<Item=ConstInt> + 'a {
         let repr_type = self.repr.discr_type();
@@ -1706,7 +1707,13 @@ impl<'a, 'gcx, 'tcx> AdtDef {
                     Ok(ConstVal::Integral(v)) => {
                         discr = v;
                     }
-                    _ => {}
+                    err => {
+                        if !expr_did.is_local() {
+                            span_bug!(tcx.def_span(expr_did),
+                                "variant discriminant evaluation succeeded \
+                                 in its crate but failed locally: {:?}", err);
+                        }
+                    }
                 }
             }
             prev_discr = Some(discr);
@@ -1740,7 +1747,15 @@ impl<'a, 'gcx, 'tcx> AdtDef {
                             explicit_value = v;
                             break;
                         }
-                        _ => {
+                        err => {
+                            if !expr_did.is_local() {
+                                span_bug!(tcx.def_span(expr_did),
+                                    "variant discriminant evaluation succeeded \
+                                     in its crate but failed locally: {:?}", err);
+                            }
+                            if explicit_index == 0 {
+                                break;
+                            }
                             explicit_index -= 1;
                         }
                     }

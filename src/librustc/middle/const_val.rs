@@ -38,12 +38,13 @@ pub enum ConstVal<'tcx> {
     Str(InternedString),
     ByteStr(Rc<Vec<u8>>),
     Bool(bool),
+    Char(char),
+    Variant(DefId),
     Function(DefId, &'tcx Substs<'tcx>),
     Struct(BTreeMap<ast::Name, ConstVal<'tcx>>),
     Tuple(Vec<ConstVal<'tcx>>),
     Array(Vec<ConstVal<'tcx>>),
     Repeat(Box<ConstVal<'tcx>>, u64),
-    Char(char),
 }
 
 impl<'tcx> ConstVal<'tcx> {
@@ -54,12 +55,13 @@ impl<'tcx> ConstVal<'tcx> {
             Str(_) => "string literal",
             ByteStr(_) => "byte string literal",
             Bool(_) => "boolean",
+            Char(..) => "char",
+            Variant(_) => "enum variant",
             Struct(_) => "struct",
             Tuple(_) => "tuple",
             Function(..) => "function definition",
             Array(..) => "array",
             Repeat(..) => "repeat",
-            Char(..) => "char",
         }
     }
 

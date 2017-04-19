@@ -100,15 +100,13 @@ impl<'tcx> Const<'tcx> {
             ConstVal::Integral(ref i) => return Const::from_constint(ccx, i),
             ConstVal::Str(ref v) => C_str_slice(ccx, v.clone()),
             ConstVal::ByteStr(ref v) => consts::addr_of(ccx, C_bytes(ccx, v), 1, "byte_str"),
+            ConstVal::Char(c) => C_integral(Type::char(ccx), c as u64, false),
+            ConstVal::Function(..) => C_null(type_of::type_of(ccx, ty)),
+            ConstVal::Variant(_) |
             ConstVal::Struct(_) | ConstVal::Tuple(_) |
             ConstVal::Array(..) | ConstVal::Repeat(..) => {
                 bug!("MIR must not use `{:?}` (aggregates are expanded to MIR rvalues)", cv)
             }
-            ConstVal::Function(..) => {
-                let llty = type_of::type_of(ccx, ty);
-                return Const::new(C_null(llty), ty);
-            }
-            ConstVal::Char(c) => C_integral(Type::char(ccx), c as u64, false),
         };
 
         assert!(!ty.has_erasable_regions());

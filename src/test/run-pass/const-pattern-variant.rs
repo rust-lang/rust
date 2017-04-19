@@ -17,11 +17,7 @@ enum Cake {
 }
 use Cake::*;
 
-struct Pair<A, B>(A, B);
-
-const BOO: Pair<Cake, Cake> = Pair(Marmor, BlackForest);
-//~^ ERROR: constant evaluation error [E0080]
-//~| unimplemented constant expression: tuple struct constructors
+const BOO: (Cake, Cake) = (Marmor, BlackForest);
 const FOO: Cake = BOO.1;
 
 const fn foo() -> Cake {
@@ -34,7 +30,7 @@ const GOO: Cake = foo();
 
 fn main() {
     match BlackForest {
-        FOO => println!("hi"), //~ NOTE: for pattern here
+        FOO => println!("hi"),
         GOO => println!("meh"),
         WORKS => println!("möp"),
         _ => println!("bye"),

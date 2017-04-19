@@ -15,7 +15,7 @@ use rustc::middle::const_val::{ConstVal, ConstEvalErr, EvalResult, ErrKind};
 use rustc::hir::map as hir_map;
 use rustc::hir::map::blocks::FnLikeNode;
 use rustc::traits;
-use rustc::hir::def::Def;
+use rustc::hir::def::{Def, CtorKind};
 use rustc::hir::def_id::DefId;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::maps::Providers;
@@ -46,28 +46,6 @@ macro_rules! math {
             Err(e) => signal!($e, ErrKind::from(e)),
         }
     }
-}
-
-fn lookup_variant_by_id<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                  variant_def: DefId)
-                                  -> Option<(&'tcx Expr, &'a ty::TypeckTables<'tcx>)> {
-    if let Some(variant_node_id) = tcx.hir.as_local_node_id(variant_def) {
-        let enum_node_id = tcx.hir.get_parent(variant_node_id);
-        if let Some(hir_map::NodeItem(it)) = tcx.hir.find(enum_node_id) {
-            if let hir::ItemEnum(ref edef, _) = it.node {
-                for variant in &edef.variants {
-                    if variant.node.data.id() == variant_node_id {
-                        return variant.node.disr_expr.map(|e| {
-                            let def_id = tcx.hir.body_owner_def_id(e);
-                            (&tcx.hir.body(e).value,
-                             tcx.item_tables(def_id))
-                        });
-                    }
-                }
-            }
-        }
-    }
-    None
 }
 
 /// * `def_id` is the id of the constant.
@@ -289,9 +267,22 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
         }
       }
       hir::ExprCast(ref base, _) => {
-        match cast_const(tcx, cx.eval(base)?, ety) {
-            Ok(val) => val,
-            Err(kind) => return Err(ConstEvalErr { span: e.span, kind: kind }),
+        let base_val = cx.eval(base)?;
+        let base_ty = cx.tables.expr_ty(base);
+
+        // Avoid applying substitutions if they're empty, that'd ICE.
+        let base_ty = if cx.substs.is_empty() {
+            base_ty
+        } else {
+            base_ty.subst(tcx, cx.substs)
+        };
+        if ety == base_ty {
+            base_val
+        } else {
+            match cast_const(tcx, base_val, ety) {
+                Ok(val) => val,
+                Err(kind) => signal!(e, kind),
+            }
         }
       }
       hir::ExprPath(ref qpath) => {
@@ -317,26 +308,19 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
                             debug!("bad reference: {:?}, {:?}", err.description(), err.span);
                             signal!(e, ErroneousReferencedConstant(box err))
                         },
+                    }
               },
-              Def::VariantCtor(variant_def, ..) => {
-                  if let Some((expr, tables)) = lookup_variant_by_id(tcx, variant_def) {
-                      let cx = ConstContext::with_tables(tcx, tables);
-                      match cx.eval(expr) {
-                          Ok(val) => val,
-                          Err(ConstEvalErr { kind: TypeckError, .. }) => {
-                              signal!(e, TypeckError);
-                          }
-                          Err(err) => {
-                              debug!("bad reference: {:?}, {:?}", err.description(), err.span);
-                              signal!(e, ErroneousReferencedConstant(box err))
-                          },
-                      }
-                  } else {
-                      signal!(e, UnimplementedConstVal("enum variants"));
-                  }
+              Def::VariantCtor(variant_def, CtorKind::Const) => {
+                Variant(variant_def)
               }
-              Def::StructCtor(..) => {
+              Def::VariantCtor(_, CtorKind::Fn) => {
+                  signal!(e, UnimplementedConstVal("enum variants"));
+              }
+              Def::StructCtor(_, CtorKind::Const) => {
                   ConstVal::Struct(Default::default())
+              }
+              Def::StructCtor(_, CtorKind::Fn) => {
+                  signal!(e, UnimplementedConstVal("tuple struct constructors"))
               }
               Def::Local(def_id) => {
                   debug!("Def::Local({:?}): {:?}", def_id, cx.fn_args);
@@ -578,7 +562,7 @@ fn cast_const_int<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             U8(u) => Ok(Char(u as char)),
             _ => bug!(),
         },
-        _ => bug!(),
+        _ => Err(CannotCast),
     }
 }
 
@@ -622,6 +606,11 @@ fn cast_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         Bool(b) => cast_const_int(tcx, U8(b as u8), ty),
         Float(f) => cast_const_float(tcx, f, ty),
         Char(c) => cast_const_int(tcx, U32(c as u32), ty),
+        Variant(v) => {
+            let adt = tcx.lookup_adt_def(tcx.parent_def_id(v).unwrap());
+            let idx = adt.variant_index_with_id(v);
+            cast_const_int(tcx, adt.discriminant_for_variant(tcx, idx), ty)
+        }
         Function(..) => Err(UnimplementedConstVal("casting fn pointers")),
         ByteStr(b) => match ty.sty {
             ty::TyRawPtr(_) => {
