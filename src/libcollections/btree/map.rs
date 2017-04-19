@@ -1442,6 +1442,7 @@ impl<'a, K, V> Clone for Values<'a, K, V> {
     }
 }
 
+#[stable(feature = "btree_range", since = "1.17.0")]
 impl<'a, K, V> Iterator for Range<'a, K, V> {
     type Item = (&'a K, &'a V);
 
@@ -1517,6 +1518,7 @@ impl<'a, K, V> Range<'a, K, V> {
     }
 }
 
+#[stable(feature = "btree_range", since = "1.17.0")]
 impl<'a, K, V> DoubleEndedIterator for Range<'a, K, V> {
     fn next_back(&mut self) -> Option<(&'a K, &'a V)> {
         if self.front == self.back {
@@ -1562,6 +1564,7 @@ impl<'a, K, V> Range<'a, K, V> {
 #[unstable(feature = "fused", issue = "35602")]
 impl<'a, K, V> FusedIterator for Range<'a, K, V> {}
 
+#[stable(feature = "btree_range", since = "1.17.0")]
 impl<'a, K, V> Clone for Range<'a, K, V> {
     fn clone(&self) -> Range<'a, K, V> {
         Range {
@@ -1571,6 +1574,7 @@ impl<'a, K, V> Clone for Range<'a, K, V> {
     }
 }
 
+#[stable(feature = "btree_range", since = "1.17.0")]
 impl<'a, K, V> Iterator for RangeMut<'a, K, V> {
     type Item = (&'a K, &'a mut V);
 
@@ -1615,6 +1619,7 @@ impl<'a, K, V> RangeMut<'a, K, V> {
     }
 }
 
+#[stable(feature = "btree_range", since = "1.17.0")]
 impl<'a, K, V> DoubleEndedIterator for RangeMut<'a, K, V> {
     fn next_back(&mut self) -> Option<(&'a K, &'a mut V)> {
         if self.front == self.back {
