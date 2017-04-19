@@ -354,7 +354,7 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
       hir::ExprCall(ref callee, ref args) => {
           let (def_id, substs) = match cx.eval(callee)? {
               Function(def_id, substs) => (def_id, substs),
-              callee => signal!(e, CallOn(callee)),
+              _ => signal!(e, TypeckError),
           };
 
           let body = if let Some(node_id) = tcx.hir.as_local_node_id(def_id) {
