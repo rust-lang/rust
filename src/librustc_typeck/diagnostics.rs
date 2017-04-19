@@ -1351,50 +1351,6 @@ extern "rust-intrinsic" {
 ```
 "##,
 
-E0101: r##"
-You hit this error because the compiler lacks the information to
-determine a type for this expression. Erroneous code example:
-
-```compile_fail,E0101
-let x = |_| {}; // error: cannot determine a type for this expression
-```
-
-You have two possibilities to solve this situation:
-
-* Give an explicit definition of the expression
-* Infer the expression
-
-Examples:
-
-```
-let x = |_ : u32| {}; // ok!
-// or:
-let x = |_| {};
-x(0u32);
-```
-"##,
-
-E0102: r##"
-You hit this error because the compiler lacks the information to
-determine the type of this variable. Erroneous code example:
-
-```compile_fail,E0282
-// could be an array of anything
-let x = []; // error: cannot determine a type for this local variable
-```
-
-To solve this situation, constrain the type of the variable.
-Examples:
-
-```
-#![allow(unused_variables)]
-
-fn main() {
-    let x: [u8; 0] = [];
-}
-```
-"##,
-
 E0107: r##"
 This error means that an incorrect number of lifetime parameters were provided
 for a type (like a struct or enum) or trait:
@@ -4146,8 +4102,8 @@ register_diagnostics! {
 //  E0068,
 //  E0085,
 //  E0086,
-    E0103, // @GuillaumeGomez: I was unable to get this error, try your best!
-    E0104,
+//  E0103,
+//  E0104,
 //  E0123,
 //  E0127,
 //  E0129,
@@ -4164,7 +4120,7 @@ register_diagnostics! {
 //  E0188, // can not cast an immutable reference to a mutable pointer
 //  E0189, // deprecated: can only cast a boxed pointer to a boxed object
 //  E0190, // deprecated: can only cast a &-pointer to an &-object
-    E0196, // cannot determine a type for this closure
+//  E0196, // cannot determine a type for this closure
     E0203, // type parameter has more than one relaxed default bound,
            // and only one is supported
     E0208,

@@ -16,5 +16,5 @@ fn main() {
     let &v = new();
     //~^ ERROR type annotations needed [E0282]
     //~| NOTE cannot infer type for `_`
-    //~| NOTE consider giving a type to pattern
+    //~| NOTE consider giving the pattern a type
 }
