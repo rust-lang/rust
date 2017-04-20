@@ -185,7 +185,6 @@
     - [rand](library-features/rand.md)
     - [range_contains](library-features/range-contains.md)
     - [raw](library-features/raw.md)
-    - [rc_would_unwrap](library-features/rc-would-unwrap.md)
     - [retain_hash_collection](library-features/retain-hash-collection.md)
     - [reverse_cmp_key](library-features/reverse-cmp-key.md)
     - [rt](library-features/rt.md)
