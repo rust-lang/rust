@@ -217,5 +217,3 @@
     - [windows_handle](library-features/windows-handle.md)
     - [windows_net](library-features/windows-net.md)
     - [windows_stdio](library-features/windows-stdio.md)
-    - [zero_one](library-features/zero-one.md)
->>>>>> Add top level sections to the Unstable Book.
