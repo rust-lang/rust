@@ -177,12 +177,12 @@ pub fn parameterized(f: &mut fmt::Formatter,
     let print_regions = |f: &mut fmt::Formatter, start: &str, skip, count| {
         // Don't print any regions if they're all erased.
         let regions = || substs.regions().skip(skip).take(count);
-        if regions().all(|r: &ty::Region| *r == ty::ReErased) {
+        if regions().all(|r: ty::Region| *r == ty::ReErased) {
             return Ok(());
         }
 
         for region in regions() {
-            let region: &ty::Region = region;
+            let region: ty::Region = region;
             start_or_continue(f, start, ", ")?;
             if verbose {
                 write!(f, "{:?}", region)?;
@@ -458,7 +458,7 @@ impl fmt::Debug for ty::BoundRegion {
     }
 }
 
-impl fmt::Debug for ty::Region {
+impl<'tcx> fmt::Debug for ty::RegionKind<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             ty::ReEarlyBound(ref data) => {
@@ -516,7 +516,7 @@ impl<'tcx> fmt::Debug for ty::ParameterEnvironment<'tcx> {
     }
 }
 
-impl fmt::Display for ty::Region {
+impl<'tcx> fmt::Display for ty::RegionKind<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         if verbose() {
             return write!(f, "{:?}", *self);
@@ -544,7 +544,7 @@ impl fmt::Display for ty::Region {
     }
 }
 
-impl fmt::Debug for ty::FreeRegion {
+impl<'tcx> fmt::Debug for ty::FreeRegion<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "ReFree({:?}, {:?})",
                self.scope, self.bound_region)
@@ -689,14 +689,14 @@ impl<'tcx> fmt::Display for ty::Binder<ty::ProjectionPredicate<'tcx>> {
     }
 }
 
-impl<'tcx> fmt::Display for ty::Binder<ty::OutlivesPredicate<Ty<'tcx>, &'tcx ty::Region>> {
+impl<'tcx> fmt::Display for ty::Binder<ty::OutlivesPredicate<Ty<'tcx>, ty::Region<'tcx>>> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         ty::tls::with(|tcx| in_binder(f, tcx, self, tcx.lift(self)))
     }
 }
 
-impl<'tcx> fmt::Display for ty::Binder<ty::OutlivesPredicate<&'tcx ty::Region,
-                                                             &'tcx ty::Region>> {
+impl<'tcx> fmt::Display for ty::Binder<ty::OutlivesPredicate<ty::Region<'tcx>,
+                                                             ty::Region<'tcx>>> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         ty::tls::with(|tcx| in_binder(f, tcx, self, tcx.lift(self)))
     }

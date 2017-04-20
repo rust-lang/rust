@@ -457,7 +457,7 @@ define_maps! { <'tcx>
 
     pub reachable_set: reachability_dep_node(CrateNum) -> NodeSet,
 
-    pub region_resolve_crate: region_resolve_crate_dep_node(CrateNum) -> Rc<RegionMaps>,
+    pub region_resolve_crate: region_resolve_crate_dep_node(CrateNum) -> Rc<RegionMaps<'tcx>>,
 
     pub mir_shims: mir_shim(ty::InstanceDef<'tcx>) -> &'tcx RefCell<mir::Mir<'tcx>>
 }

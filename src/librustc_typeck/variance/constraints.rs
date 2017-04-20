@@ -479,7 +479,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
     /// context with ambient variance `variance`
     fn add_constraints_from_region(&mut self,
                                    generics: &ty::Generics,
-                                   region: &'tcx ty::Region,
+                                   region: ty::Region<'tcx>,
                                    variance: VarianceTermPtr<'a>) {
         match *region {
             ty::ReEarlyBound(ref data) => {

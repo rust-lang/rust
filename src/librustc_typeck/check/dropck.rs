@@ -273,7 +273,7 @@ pub fn check_safety_of_destructor_if_necessary<'a, 'gcx, 'tcx>(
     rcx: &mut RegionCtxt<'a, 'gcx, 'tcx>,
     typ: ty::Ty<'tcx>,
     span: Span,
-    scope: region::CodeExtent)
+    scope: region::CodeExtent<'tcx>)
 {
     debug!("check_safety_of_destructor_if_necessary typ: {:?} scope: {:?}",
            typ, scope);
@@ -351,7 +351,7 @@ struct DropckContext<'a, 'b: 'a, 'gcx: 'b+'tcx, 'tcx: 'b> {
     /// span for error reporting
     span: Span,
     /// the scope reachable dtorck types must outlive
-    parent_scope: region::CodeExtent
+    parent_scope: region::CodeExtent<'tcx>,
 }
 
 // `context` is used for reporting overflow errors
@@ -624,7 +624,7 @@ fn revise_self_ty<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
         |def, _| {
             let r_orig = substs.region_for_def(def);
             let impl_self_orig = self_substs.region_for_def(def);
-            let r = if let ty::Region::ReEarlyBound(ref ebr) = *impl_self_orig {
+            let r = if let ty::ReEarlyBound(ref ebr) = *impl_self_orig {
                 if impl_bindings.region_param(ebr).pure_wrt_drop {
                     tcx.mk_region(ty::ReStatic)
                 } else {

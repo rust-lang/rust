@@ -583,10 +583,10 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                         scope_id: ast::NodeId,
                         to_index: CFGIndex) {
         let mut data = CFGEdgeData { exiting_scopes: vec![] };
-        let mut scope = self.tcx.region_maps().node_extent(from_expr.id);
-        let target_scope = self.tcx.region_maps().node_extent(scope_id);
+        let mut scope = self.tcx.node_extent(from_expr.id);
+        let target_scope = self.tcx.node_extent(scope_id);
         while scope != target_scope {
-            data.exiting_scopes.push(scope.node_id(&self.tcx.region_maps()));
+            data.exiting_scopes.push(scope.node_id());
             scope = self.tcx.region_maps().encl_scope(scope);
         }
         self.graph.add_edge(from_index, to_index, data);

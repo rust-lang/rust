@@ -80,7 +80,7 @@ struct WritebackCx<'cx, 'gcx: 'cx+'tcx, 'tcx: 'cx> {
     // early-bound versions of them, visible from the
     // outside of the function. This is needed by, and
     // only populated if there are any `impl Trait`.
-    free_to_bound_regions: DefIdMap<&'gcx ty::Region>
+    free_to_bound_regions: DefIdMap<ty::Region<'gcx>>
 }
 
 impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
@@ -276,7 +276,9 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
     }
 
     fn visit_free_region_map(&mut self) {
-        self.tables.free_region_map = self.fcx.tables.borrow().free_region_map.clone();
+        let free_region_map = self.tcx().lift_to_global(&self.fcx.tables.borrow().free_region_map);
+        let free_region_map = free_region_map.expect("all regions in free-region-map are global");
+        self.tables.free_region_map = free_region_map;
     }
 
     fn visit_anon_types(&mut self) {
@@ -602,7 +604,7 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Resolver<'cx, 'gcx, 'tcx> {
         }
     }
 
-    fn fold_region(&mut self, r: &'tcx ty::Region) -> &'tcx ty::Region {
+    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         match self.infcx.fully_resolve(&r) {
             Ok(r) => r,
             Err(e) => {
