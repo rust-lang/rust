@@ -310,26 +310,6 @@ impl<T> Cell<T> {
         }
     }
 
-    /// Returns a reference to the underlying `UnsafeCell`.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(as_unsafe_cell)]
-    ///
-    /// use std::cell::Cell;
-    ///
-    /// let c = Cell::new(5);
-    ///
-    /// let uc = c.as_unsafe_cell();
-    /// ```
-    #[inline]
-    #[unstable(feature = "as_unsafe_cell", issue = "27708")]
-    #[rustc_deprecated(since = "1.12.0", reason = "renamed to as_ptr")]
-    pub fn as_unsafe_cell(&self) -> &UnsafeCell<T> {
-        &self.value
-    }
-
     /// Returns a raw pointer to the underlying data in this cell.
     ///
     /// # Examples
@@ -767,29 +747,6 @@ impl<T: ?Sized> RefCell<T> {
             }),
             None => Err(BorrowMutError { _private: () }),
         }
-    }
-
-    /// Returns a reference to the underlying `UnsafeCell`.
-    ///
-    /// This can be used to circumvent `RefCell`'s safety checks.
-    ///
-    /// This function is `unsafe` because `UnsafeCell`'s field is public.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(as_unsafe_cell)]
-    ///
-    /// use std::cell::RefCell;
-    ///
-    /// let c = RefCell::new(5);
-    /// let c = unsafe { c.as_unsafe_cell() };
-    /// ```
-    #[inline]
-    #[unstable(feature = "as_unsafe_cell", issue = "27708")]
-    #[rustc_deprecated(since = "1.12.0", reason = "renamed to as_ptr")]
-    pub unsafe fn as_unsafe_cell(&self) -> &UnsafeCell<T> {
-        &self.value
     }
 
     /// Returns a raw pointer to the underlying data in this cell.
