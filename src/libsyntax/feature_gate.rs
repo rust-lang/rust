@@ -344,9 +344,6 @@ declare_features! (
     // Used to preserve symbols (see llvm.used)
     (active, used, "1.18.0", Some(40289)),
 
-    // Hack to document `-Z linker-flavor` in The Unstable Book
-    (active, linker_flavor, "1.18.0", Some(41142)),
-
     // Allows module-level inline assembly by way of global_asm!()
     (active, global_asm, "1.18.0", Some(35119)),
 

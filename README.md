@@ -198,8 +198,8 @@ The Rust community congregates in a few places:
 * [users.rust-lang.org] - General discussion and broader questions.
 * [/r/rust] - News and general discussion.
 
-[Stack Overflow]: http://stackoverflow.com/questions/tagged/rust
-[/r/rust]: http://reddit.com/r/rust
+[Stack Overflow]: https://stackoverflow.com/questions/tagged/rust
+[/r/rust]: https://reddit.com/r/rust
 [users.rust-lang.org]: https://users.rust-lang.org/
 
 ## Contributing
