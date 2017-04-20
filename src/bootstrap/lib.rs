@@ -234,8 +234,8 @@ impl Build {
             None => false,
         };
         let rust_info = channel::GitInfo::new(&src);
-        let cargo_info = channel::GitInfo::new(&src.join("cargo"));
-        let rls_info = channel::GitInfo::new(&src.join("rls"));
+        let cargo_info = channel::GitInfo::new(&src.join("src/tools/cargo"));
+        let rls_info = channel::GitInfo::new(&src.join("src/tools/rls"));
         let src_is_git = src.join(".git").exists();
 
         Build {
@@ -1071,7 +1071,7 @@ impl Build {
     /// Returns the `a.b.c` version that the given package is at.
     fn release_num(&self, package: &str) -> String {
         let mut toml = String::new();
-        let toml_file_name = self.src.join(&format!("{}/Cargo.toml", package));
+        let toml_file_name = self.src.join(&format!("src/tools/{}/Cargo.toml", package));
         t!(t!(File::open(toml_file_name)).read_to_string(&mut toml));
         for line in toml.lines() {
             let prefix = "version = \"";
