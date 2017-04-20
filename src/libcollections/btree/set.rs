@@ -138,7 +138,8 @@ pub struct Difference<'a, T: 'a> {
 impl<'a, T: 'a + fmt::Debug> fmt::Debug for Difference<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("Difference")
-         .field(&self.clone())
+         .field(&self.a)
+         .field(&self.b)
          .finish()
     }
 }
@@ -160,7 +161,8 @@ pub struct SymmetricDifference<'a, T: 'a> {
 impl<'a, T: 'a + fmt::Debug> fmt::Debug for SymmetricDifference<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("SymmetricDifference")
-         .field(&self.clone())
+         .field(&self.a)
+         .field(&self.b)
          .finish()
     }
 }
@@ -182,7 +184,8 @@ pub struct Intersection<'a, T: 'a> {
 impl<'a, T: 'a + fmt::Debug> fmt::Debug for Intersection<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("Intersection")
-         .field(&self.clone())
+         .field(&self.a)
+         .field(&self.b)
          .finish()
     }
 }
@@ -204,7 +207,8 @@ pub struct Union<'a, T: 'a> {
 impl<'a, T: 'a + fmt::Debug> fmt::Debug for Union<'a, T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("Union")
-         .field(&self.clone())
+         .field(&self.a)
+         .field(&self.b)
          .finish()
     }
 }
