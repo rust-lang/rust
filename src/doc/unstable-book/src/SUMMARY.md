@@ -130,7 +130,6 @@
     - [derive_clone_copy](library-features/derive-clone-copy.md)
     - [derive_eq](library-features/derive-eq.md)
     - [discriminant_value](library-features/discriminant-value.md)
-    - [enumset](library-features/enumset.md)
     - [error_type_id](library-features/error-type-id.md)
     - [exact_size_is_empty](library-features/exact-size-is-empty.md)
     - [fd](library-features/fd.md)
