@@ -10,7 +10,6 @@
 
 #![deny(warnings)]
 
-#![feature(binary_heap_extras)]
 #![feature(binary_heap_peek_mut_pop)]
 #![feature(box_syntax)]
 #![feature(inclusive_range_syntax)]
