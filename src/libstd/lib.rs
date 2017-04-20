@@ -248,7 +248,6 @@
 #![feature(allow_internal_unstable)]
 #![feature(asm)]
 #![feature(associated_consts)]
-#![feature(borrow_state)]
 #![feature(box_syntax)]
 #![feature(cfg_target_has_atomic)]
 #![feature(cfg_target_thread_local)]
