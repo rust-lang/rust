@@ -109,7 +109,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         let tcx = self.tcx();
         let r = match tcx.named_region_map.defs.get(&lifetime.id) {
             Some(&rl::Region::Static) => {
-                tcx.mk_region(ty::ReStatic)
+                tcx.types.re_static
             }
 
             Some(&rl::Region::LateBound(debruijn, id)) => {
@@ -171,7 +171,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                     .emit();
 
                 return Substs::for_item(tcx, def_id, |_, _| {
-                    tcx.mk_region(ty::ReStatic)
+                    tcx.types.re_static
                 }, |_, _| {
                     tcx.types.err
                 });
@@ -254,7 +254,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
             if let Some(lifetime) = lifetimes.get(i) {
                 self.ast_region_to_region(lifetime, Some(def))
             } else {
-                tcx.mk_region(ty::ReStatic)
+                tcx.types.re_static
             }
         }, |def, substs| {
             let i = def.index as usize;
@@ -715,7 +715,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                         span_err!(tcx.sess, span, E0228,
                                   "the lifetime bound for this object type cannot be deduced \
                                    from context; please supply an explicit bound");
-                        tcx.mk_region(ty::ReStatic)
+                        tcx.types.re_static
                     })
                 }
             })
@@ -1357,7 +1357,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         // If any of the derived region bounds are 'static, that is always
         // the best choice.
         if derived_region_bounds.iter().any(|&r| ty::ReStatic == *r) {
-            return Some(tcx.mk_region(ty::ReStatic));
+            return Some(tcx.types.re_static);
         }
 
         // Determine whether there is exactly one unique region in the set

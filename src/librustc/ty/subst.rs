@@ -539,6 +539,9 @@ impl<'a, 'gcx, 'tcx> SubstFolder<'a, 'gcx, 'tcx> {
     }
 
     fn shift_region_through_binders(&self, region: &'tcx ty::Region) -> &'tcx ty::Region {
+        if self.region_binders_passed == 0 || !region.has_escaping_regions() {
+            return region;
+        }
         self.tcx().mk_region(ty::fold::shift_region(*region, self.region_binders_passed))
     }
 }

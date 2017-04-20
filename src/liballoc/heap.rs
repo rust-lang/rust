@@ -158,10 +158,9 @@ unsafe fn exchange_malloc(size: usize, align: usize) -> *mut u8 {
     }
 }
 
-#[cfg(not(test))]
-#[lang = "box_free"]
+#[cfg_attr(not(test), lang = "box_free")]
 #[inline]
-unsafe fn box_free<T: ?Sized>(ptr: *mut T) {
+pub(crate) unsafe fn box_free<T: ?Sized>(ptr: *mut T) {
     let size = size_of_val(&*ptr);
     let align = min_align_of_val(&*ptr);
     // We do not allocate for Box<T> when T is ZST, so deallocation is also not necessary.
