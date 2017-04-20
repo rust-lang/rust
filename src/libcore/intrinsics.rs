@@ -46,7 +46,6 @@
             issue = "0")]
 #![allow(missing_docs)]
 
-#[cfg(not(stage0))]
 #[stable(feature = "drop_in_place", since = "1.8.0")]
 #[rustc_deprecated(reason = "no longer an intrinsic - use `ptr::drop_in_place` directly",
                    since = "1.18.0")]
@@ -645,27 +644,6 @@ extern "rust-intrinsic" {
     pub fn size_of_val<T: ?Sized>(_: &T) -> usize;
     pub fn min_align_of_val<T: ?Sized>(_: &T) -> usize;
 
-    #[cfg(stage0)]
-    /// Executes the destructor (if any) of the pointed-to value.
-    ///
-    /// This has two use cases:
-    ///
-    /// * It is *required* to use `drop_in_place` to drop unsized types like
-    ///   trait objects, because they can't be read out onto the stack and
-    ///   dropped normally.
-    ///
-    /// * It is friendlier to the optimizer to do this over `ptr::read` when
-    ///   dropping manually allocated memory (e.g. when writing Box/Rc/Vec),
-    ///   as the compiler doesn't need to prove that it's sound to elide the
-    ///   copy.
-    ///
-    /// # Undefined Behavior
-    ///
-    /// This has all the same safety problems as `ptr::read` with respect to
-    /// invalid pointers, types, and double drops.
-    #[stable(feature = "drop_in_place", since = "1.8.0")]
-    pub fn drop_in_place<T: ?Sized>(to_drop: *mut T);
-
     /// Gets a static string slice containing the name of a type.
     pub fn type_name<T: ?Sized>() -> &'static str;
 
@@ -1261,11 +1239,9 @@ extern "rust-intrinsic" {
 
     /// Performs an unchecked left shift, resulting in undefined behavior when
     /// y < 0 or y >= N, where N is the width of T in bits.
-    #[cfg(not(stage0))]
     pub fn unchecked_shl<T>(x: T, y: T) -> T;
     /// Performs an unchecked right shift, resulting in undefined behavior when
     /// y < 0 or y >= N, where N is the width of T in bits.
-    #[cfg(not(stage0))]
     pub fn unchecked_shr<T>(x: T, y: T) -> T;
 
     /// Returns (a + b) mod 2<sup>N</sup>, where N is the width of T in bits.
