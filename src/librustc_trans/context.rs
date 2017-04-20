@@ -771,6 +771,10 @@ impl<'a, 'tcx> LayoutTyper<'tcx> for &'a SharedCrateContext<'a, 'tcx> {
     type TyLayout = TyLayout<'tcx>;
 
     fn layout_of(self, ty: Ty<'tcx>) -> Self::TyLayout {
+        if let Some(&layout) = self.tcx().layout_cache.borrow().get(&ty) {
+            return TyLayout { ty: ty, layout: layout, variant_index: None };
+        }
+
         self.tcx().infer_ctxt((), traits::Reveal::All).enter(|infcx| {
             infcx.layout_of(ty).unwrap_or_else(|e| {
                 match e {
@@ -781,6 +785,10 @@ impl<'a, 'tcx> LayoutTyper<'tcx> for &'a SharedCrateContext<'a, 'tcx> {
             })
         })
     }
+
+    fn normalize_projections(self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        self.tcx().normalize_associated_type(&ty)
+    }
 }
 
 impl<'a, 'tcx> LayoutTyper<'tcx> for &'a CrateContext<'a, 'tcx> {
@@ -788,6 +796,10 @@ impl<'a, 'tcx> LayoutTyper<'tcx> for &'a CrateContext<'a, 'tcx> {
 
     fn layout_of(self, ty: Ty<'tcx>) -> Self::TyLayout {
         self.shared.layout_of(ty)
+    }
+
+    fn normalize_projections(self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        self.shared.normalize_projections(ty)
     }
 }
 
