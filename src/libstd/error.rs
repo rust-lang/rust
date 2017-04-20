@@ -216,7 +216,7 @@ impl<'a> From<&'a str> for Box<Error> {
     }
 }
 
-#[stable(feature = "never_error", since = "1.18.0")]
+#[unstable(feature = "never_type_impls", issue = "35121")]
 impl Error for ! {
     fn description(&self) -> &str { *self }
 }
