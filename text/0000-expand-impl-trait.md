@@ -53,6 +53,220 @@ This RFC is aimed squarely at resolving these questions. However, by resolving
 some of them, it also unlocks the door to an expansion of the feature to new
 locations (arguments, traits, trait impls), as we'll see.
 
+## Motivation for expanding to argument position
+
+This RFC proposes to allow `impl Trait` to be used in argument position, with
+"universal" (aka generics-style) semantics. There are three lines of argument in
+favor of doing so, given here along with rebuttals from the lang team.
+
+### Argument from learnability
+
+There's been a lot of discussion around universals vs. existentials (in today's
+Rust, generics vs `impl Trait`). The RFC makes a few assumptions:
+
+- Most programmers won't come to Rust with a crisp understanding of the distinction.
+- Even when people learn the distinction, it's often confusing and hard to remember with precision.
+- But, on the other hand, programmers have a very deep intuition around the
+  difference between arguments and return values, and "who" provides which
+  (amongst caller and callee).
+
+Now, consider a new Rust programmer, who has learned about generics:
+
+```rust
+fn take_iter<T: Iterator>(t: T)
+```
+
+What happens when they want to return an unstated iterator instead? It's pretty natural to reach for:
+
+```rust
+fn give_iter<T: Iterator>() -> T
+```
+
+if you don't have a crisp understanding of the unversal/existential
+distinction. If we only allowed `impl Trait` in return position, we'd have to
+say: when returning an unknown type, please use a completely different
+mechanism.
+
+By contrast, a programmer who first learned:
+
+```rust
+fn take_iter(t: impl Iterator)
+```
+
+and then tried:
+
+```rust
+fn give_iter() -> impl Iterator
+```
+
+would be successful, without any rigorous understanding that they just
+transitioned from a universal to an existential.
+
+What's at play here is **who gets to pick a type**? And as above, programmers
+have a strong intuition about callers providing arguments, and callees providing
+return values. The proposed `impl Trait` extension to argument aligns with this
+intuition (and with what is most definitely the common case in practice), so
+that:
+
+- If you pick the value, you also pick the type
+
+Thus in `fn f(x: impl Foo) -> impl Bar`, the caller picks the value of `x` and
+so picks the type for `impl Foo`, but the function picks the return value, so it
+picks the type for `impl Bar`.
+
+This intuitive basis lets you get a lot of work done without learning the deeper
+distinction; you can fake it 'til you make it. If we, in addition, have an
+explicit syntax, you can eventually come to a fully rigorous understanding in
+terms of that syntax. And then you can go back to mostly operating intuitively
+with `impl Trait`, reaching for the fine distinctions only when you need them
+([the "post-rigorous" stage of learning](https://terrytao.wordpress.com/career-advice/there%E2%80%99s-more-to-mathematics-than-rigour-and-proofs/)).
+
+[@solson did a great job of laying this kind of argument out.](https://github.com/rust-lang/rfcs/pull/1951#issuecomment-287493061)
+
+### Argument from ergonomics
+
+[Ergonomics is rarely about raw character count](https://blog.rust-lang.org/2017/03/02/lang-ergonomics.html),
+and the argument here isn't about shaving off a few characters. Rather, it's
+about how much you have to hold in your head.
+
+Generic syntax requires you to introduce a name for an argument's type, and to
+separate information about that type from the argument itself:
+
+```rust
+fn map<U, F: FnOnce(T) -> U>(self, f: F) -> Option<U>
+```
+
+To read this signature, you have to first parse the type parameters and bounds,
+then remember which ones applied to `F`, and then see where `F` shows up in the
+argument.
+
+By contrast:
+
+```rust
+fn map<U>(self, f: impl FnOnce(T) -> U) -> Option<U>
+```
+
+Here, there are no additional names or indirections to hold in your head, and
+the relevant information about the argument type is located right next to the
+argument's name. Even better:
+
+```rust
+fn map<U>(self, f: FnOnce(T) -> U) -> Option<U>
+```
+
+Also, when programming at speed, the fact that you can use the same `impl Trait`
+syntax in argument and return position -- and it almost always has the meaning
+you want -- means less pausing to think "hm, am I dealing with an existential
+here?"
+
+### Argument from familiarity
+
+Finally, there's an argument from familiarity, which was given eloquently by @withoutboats:
+
+> The proposal is (syntactically) more like Java. In Java, non-static methods
+> aren't parametric; generics are used at the type level, and you just use
+> interfaces at the method level.
+>
+> We'd end up with APIs that look very similar to Java or C#:
+>
+> ```rust
+> impl<T> Option<T> {
+>     fn map<U>(self, f: impl FnOnce(T) -> U) -> Option<U> { ... }
+> }
+> ```
+>
+> I think this is a good thing from the pre-rigorous/rigourous/post-rigourous
+> sense: you have this incremental onboarding experience in which at first blush
+> it is quite similar to what you're used to. What I like even more, though, is
+> that under the hood its all parametric polymorphism. In Java you actually have
+> inheritance, and interfaces, and generics, and they all interact but not in a
+> very unified way. In Rust, this is just a syntactic easement into a unitary
+> polymorphism system which is fundamentally one idea: parametric polymorphism
+> with trait constraints.
+
+### Critique from the lang team
+
+@nrc argued that there's also a learnability downside, because Rust programmers
+now have one additional syntax for generic arguments to learn.
+
+**Rebuttal**: I agree that there's an additional syntax to learn, but a key here
+is that there's no *genuine* complexity addition: it's pure sugar. In other
+words, it's not a new *concept*, and learning that there's an alternative, more
+verbose and expressive syntax tends to be a relatively easy step to take in
+practice. In addition, treating it as "anonymous generics" (for arguments) makes
+it pretty easy to understand the relationship.
+
+---
+
+@nrc argued that there would also be stylistic overhead: when to use `impl
+Trait` vs generics vs where clauses? And won't you often end up having to use
+`where` clauses anyway, when things get longer?
+
+**Rebuttal**: @withoutboats pointed out that `impl Trait` can actually help ease such style questions:
+
+```rust
+fn foo<
+    T: Whatever + SomethingElse,
+    U: Whatever,
+>(
+    t: T,
+    u: U,
+)
+
+// vs
+
+fn foo<T, U>(t: T, u: U) where
+    T: Whatever + SomethingElse,
+    U: Whatever,
+
+// vs
+
+fn foo(
+    t: impl Whatever + SomethingElse,
+    u: impl,
+)
+```
+
+It seems plausible that `impl Trait` syntax should simply *always* be used
+whenever it can be, since expanding out an argument list into multiple lines
+tends to be preferable to expanding out a `where` clause to multiple lines (and
+even more so, expanding out a generics list).
+
+----
+
+@joshtriplett raised concerns about the purported learnability benefits absent
+having an explicit syntax for the "rigorous" stage.
+
+**Rebuttal**: the RFC takes as a basic assumption that we will eventually have
+such a syntax. But I think it's worth diving into greater detail on the
+learnability tradeoffs here. I think that if we offered an explicit syntax that
+was similar to today's generic syntax, it could help tell a coherent, intuitive
+story.
+
+----
+
+@nrc raised [his point about auto traits](https://github.com/rust-lang/rfcs/pull/1951#issuecomment-290522499).
+
+**Rebuttal**: the auto trait story here is essentially the same as with generics:
+
+```rust
+fn foo(t: impl Trait) -> impl Trait { t }
+fn foo<T: Trait>(t: T) -> T { t }
+```
+
+In both of these functions, if you pass in an argument that is `Send`, you will
+be able to rely on `Send` in the return value.
+
+## Motivation for expansion to traits
+
+The argument for allowing `impl Trait` in function signatures in traits follows
+much the same line of reasoning: providing a consistent mental model and
+experience for the different places in which a function signature can appear. As
+explained below, the RFC assumes that we will eventually gain a more expressive,
+explicit notation for introducing existentials, such that the use of `impl
+Trait` in traits could be understood as sugar for that underlying feature within
+an associated type.
+
 # Detailed design
 [design]: #detailed-design
 
