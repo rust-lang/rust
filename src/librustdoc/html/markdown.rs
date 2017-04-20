@@ -32,6 +32,7 @@ use std::ascii::AsciiExt;
 use std::cell::RefCell;
 use std::collections::{HashMap, VecDeque};
 use std::default::Default;
+use std::ffi::CString;
 use std::fmt::{self, Write};
 use std::str;
 use syntax::feature_gate::UnstableFeatures;
@@ -40,21 +41,28 @@ use syntax::codemap::Span;
 use html::render::derive_id;
 use html::toc::TocBuilder;
 use html::highlight;
+use html::escape::Escape;
 use test;
 
 use pulldown_cmark::{html, Event, Tag, Parser};
 use pulldown_cmark::{Options, OPTION_ENABLE_FOOTNOTES, OPTION_ENABLE_TABLES};
 
+#[derive(PartialEq, Debug, Clone, Copy)]
+pub enum RenderType {
+    Hoedown,
+    Pulldown,
+}
+
 /// A unit struct which has the `fmt::Display` trait implemented. When
 /// formatted, this struct will emit the HTML corresponding to the rendered
 /// version of the contained markdown string.
 // The second parameter is whether we need a shorter version or not.
-pub struct Markdown<'a>(pub &'a str);
+pub struct Markdown<'a>(pub &'a str, pub RenderType);
 /// A unit struct like `Markdown`, that renders the markdown with a
 /// table of contents.
-pub struct MarkdownWithToc<'a>(pub &'a str);
+pub struct MarkdownWithToc<'a>(pub &'a str, pub RenderType);
 /// A unit struct like `Markdown`, that renders the markdown escaping HTML tags.
-pub struct MarkdownHtml<'a>(pub &'a str);
+pub struct MarkdownHtml<'a>(pub &'a str, pub RenderType);
 /// A unit struct like `Markdown`, that renders only the first paragraph.
 pub struct MarkdownSummaryLine<'a>(pub &'a str);
 
@@ -71,6 +79,14 @@ fn stripped_filtered_line<'a>(s: &'a str) -> Option<&'a str> {
     } else {
         None
     }
+}
+
+/// Returns a new string with all consecutive whitespace collapsed into
+/// single spaces.
+///
+/// Any leading or trailing whitespace will be trimmed.
+fn collapse_whitespace(s: &str) -> String {
+    s.split_whitespace().collect::<Vec<_>>().join(" ")
 }
 
 /// Convert chars from a title for an id.
@@ -368,6 +384,7 @@ const HOEDOWN_EXT_AUTOLINK: libc::c_uint = 1 << 3;
 const HOEDOWN_EXT_STRIKETHROUGH: libc::c_uint = 1 << 4;
 const HOEDOWN_EXT_SUPERSCRIPT: libc::c_uint = 1 << 8;
 const HOEDOWN_EXT_FOOTNOTES: libc::c_uint = 1 << 2;
+const HOEDOWN_HTML_ESCAPE: libc::c_uint = 1 << 1;
 
 const HOEDOWN_EXTENSIONS: libc::c_uint =
     HOEDOWN_EXT_NO_INTRA_EMPHASIS | HOEDOWN_EXT_TABLES |
@@ -462,6 +479,13 @@ struct hoedown_buffer {
     unit: libc::size_t,
 }
 
+struct MyOpaque {
+    dfltblk: extern "C" fn(*mut hoedown_buffer, *const hoedown_buffer,
+                           *const hoedown_buffer, *const hoedown_renderer_data,
+                           libc::size_t),
+    toc_builder: Option<TocBuilder>,
+}
+
 extern {
     fn hoedown_html_renderer_new(render_flags: libc::c_uint,
                                  nesting_level: libc::c_int)
@@ -478,12 +502,215 @@ extern {
     fn hoedown_document_free(md: *mut hoedown_document);
 
     fn hoedown_buffer_new(unit: libc::size_t) -> *mut hoedown_buffer;
+    fn hoedown_buffer_puts(b: *mut hoedown_buffer, c: *const libc::c_char);
     fn hoedown_buffer_free(b: *mut hoedown_buffer);
 }
 
 impl hoedown_buffer {
     fn as_bytes(&self) -> &[u8] {
         unsafe { slice::from_raw_parts(self.data, self.size as usize) }
+    }
+}
+
+pub fn render(w: &mut fmt::Formatter,
+              s: &str,
+              print_toc: bool,
+              html_flags: libc::c_uint) -> fmt::Result {
+    extern fn block(ob: *mut hoedown_buffer, orig_text: *const hoedown_buffer,
+                    lang: *const hoedown_buffer, data: *const hoedown_renderer_data,
+                    line: libc::size_t) {
+        unsafe {
+            if orig_text.is_null() { return }
+
+            let opaque = (*data).opaque as *mut hoedown_html_renderer_state;
+            let my_opaque: &MyOpaque = &*((*opaque).opaque as *const MyOpaque);
+            let text = (*orig_text).as_bytes();
+            let origtext = str::from_utf8(text).unwrap();
+            let origtext = origtext.trim_left();
+            debug!("docblock: ==============\n{:?}\n=======", text);
+            let rendered = if lang.is_null() || origtext.is_empty() {
+                false
+            } else {
+                let rlang = (*lang).as_bytes();
+                let rlang = str::from_utf8(rlang).unwrap();
+                if !LangString::parse(rlang).rust {
+                    (my_opaque.dfltblk)(ob, orig_text, lang,
+                                        opaque as *const hoedown_renderer_data,
+                                        line);
+                    true
+                } else {
+                    false
+                }
+            };
+
+            let lines = origtext.lines().filter(|l| {
+                stripped_filtered_line(*l).is_none()
+            });
+            let text = lines.collect::<Vec<&str>>().join("\n");
+            if rendered { return }
+            PLAYGROUND.with(|play| {
+                // insert newline to clearly separate it from the
+                // previous block so we can shorten the html output
+                let mut s = String::from("\n");
+                let playground_button = play.borrow().as_ref().and_then(|&(ref krate, ref url)| {
+                    if url.is_empty() {
+                        return None;
+                    }
+                    let test = origtext.lines().map(|l| {
+                        stripped_filtered_line(l).unwrap_or(l)
+                    }).collect::<Vec<&str>>().join("\n");
+                    let krate = krate.as_ref().map(|s| &**s);
+                    let test = test::maketest(&test, krate, false,
+                                              &Default::default());
+                    let channel = if test.contains("#![feature(") {
+                        "&amp;version=nightly"
+                    } else {
+                        ""
+                    };
+                    // These characters don't need to be escaped in a URI.
+                    // FIXME: use a library function for percent encoding.
+                    fn dont_escape(c: u8) -> bool {
+                        (b'a' <= c && c <= b'z') ||
+                        (b'A' <= c && c <= b'Z') ||
+                        (b'0' <= c && c <= b'9') ||
+                        c == b'-' || c == b'_' || c == b'.' ||
+                        c == b'~' || c == b'!' || c == b'\'' ||
+                        c == b'(' || c == b')' || c == b'*'
+                    }
+                    let mut test_escaped = String::new();
+                    for b in test.bytes() {
+                        if dont_escape(b) {
+                            test_escaped.push(char::from(b));
+                        } else {
+                            write!(test_escaped, "%{:02X}", b).unwrap();
+                        }
+                    }
+                    Some(format!(
+                        r#"<a class="test-arrow" target="_blank" href="{}?code={}{}">Run</a>"#,
+                        url, test_escaped, channel
+                    ))
+                });
+                s.push_str(&highlight::render_with_highlighting(
+                               &text,
+                               Some("rust-example-rendered"),
+                               None,
+                               playground_button.as_ref().map(String::as_str)));
+                let output = CString::new(s).unwrap();
+                hoedown_buffer_puts(ob, output.as_ptr());
+            })
+        }
+    }
+
+    extern fn header(ob: *mut hoedown_buffer, text: *const hoedown_buffer,
+                     level: libc::c_int, data: *const hoedown_renderer_data,
+                     _: libc::size_t) {
+        // hoedown does this, we may as well too
+        unsafe { hoedown_buffer_puts(ob, "\n\0".as_ptr() as *const _); }
+
+        // Extract the text provided
+        let s = if text.is_null() {
+            "".to_owned()
+        } else {
+            let s = unsafe { (*text).as_bytes() };
+            str::from_utf8(&s).unwrap().to_owned()
+        };
+
+        // Discard '<em>', '<code>' tags and some escaped characters,
+        // transform the contents of the header into a hyphenated string
+        // without non-alphanumeric characters other than '-' and '_'.
+        //
+        // This is a terrible hack working around how hoedown gives us rendered
+        // html for text rather than the raw text.
+        let mut id = s.clone();
+        let repl_sub = vec!["<em>", "</em>", "<code>", "</code>",
+                            "<strong>", "</strong>",
+                            "&lt;", "&gt;", "&amp;", "&#39;", "&quot;"];
+        for sub in repl_sub {
+            id = id.replace(sub, "");
+        }
+        let id = id.chars().filter_map(|c| {
+            if c.is_alphanumeric() || c == '-' || c == '_' {
+                if c.is_ascii() {
+                    Some(c.to_ascii_lowercase())
+                } else {
+                    Some(c)
+                }
+            } else if c.is_whitespace() && c.is_ascii() {
+                Some('-')
+            } else {
+                None
+            }
+        }).collect::<String>();
+
+        let opaque = unsafe { (*data).opaque as *mut hoedown_html_renderer_state };
+        let opaque = unsafe { &mut *((*opaque).opaque as *mut MyOpaque) };
+
+        let id = derive_id(id);
+
+        let sec = opaque.toc_builder.as_mut().map_or("".to_owned(), |builder| {
+            format!("{} ", builder.push(level as u32, s.clone(), id.clone()))
+        });
+
+        // Render the HTML
+        let text = format!("<h{lvl} id='{id}' class='section-header'>\
+                           <a href='#{id}'>{sec}{}</a></h{lvl}>",
+                           s, lvl = level, id = id, sec = sec);
+
+        let text = CString::new(text).unwrap();
+        unsafe { hoedown_buffer_puts(ob, text.as_ptr()) }
+    }
+
+    extern fn codespan(
+        ob: *mut hoedown_buffer,
+        text: *const hoedown_buffer,
+        _: *const hoedown_renderer_data,
+        _: libc::size_t
+    ) -> libc::c_int {
+        let content = if text.is_null() {
+            "".to_owned()
+        } else {
+            let bytes = unsafe { (*text).as_bytes() };
+            let s = str::from_utf8(bytes).unwrap();
+            collapse_whitespace(s)
+        };
+
+        let content = format!("<code>{}</code>", Escape(&content));
+        let element = CString::new(content).unwrap();
+        unsafe { hoedown_buffer_puts(ob, element.as_ptr()); }
+        // Return anything except 0, which would mean "also print the code span verbatim".
+        1
+    }
+
+    unsafe {
+        let ob = hoedown_buffer_new(DEF_OUNIT);
+        let renderer = hoedown_html_renderer_new(html_flags, 0);
+        let mut opaque = MyOpaque {
+            dfltblk: (*renderer).blockcode.unwrap(),
+            toc_builder: if print_toc {Some(TocBuilder::new())} else {None}
+        };
+        (*((*renderer).opaque as *mut hoedown_html_renderer_state)).opaque
+                = &mut opaque as *mut _ as *mut libc::c_void;
+        (*renderer).blockcode = Some(block);
+        (*renderer).header = Some(header);
+        (*renderer).codespan = Some(codespan);
+
+        let document = hoedown_document_new(renderer, HOEDOWN_EXTENSIONS, 16);
+        hoedown_document_render(document, ob, s.as_ptr(),
+                                s.len() as libc::size_t);
+        hoedown_document_free(document);
+
+        hoedown_html_renderer_free(renderer);
+
+        let mut ret = opaque.toc_builder.map_or(Ok(()), |builder| {
+            write!(w, "<nav id=\"TOC\">{}</nav>", builder.into_toc())
+        });
+
+        if ret.is_ok() {
+            let buf = (*ob).as_bytes();
+            ret = w.write_str(str::from_utf8(buf).unwrap());
+        }
+        hoedown_buffer_free(ob);
+        ret
     }
 }
 
@@ -511,7 +738,22 @@ pub fn old_find_testable_code(doc: &str, tests: &mut ::test::Collector, position
                 stripped_filtered_line(l).unwrap_or(l)
             });
             let filename = tests.get_filename();
-            tests.add_old_test(lines.collect::<Vec<&str>>().join("\n"), filename);
+
+            if tests.render_type == RenderType::Hoedown {
+                let text = (*text).as_bytes();
+                let text = str::from_utf8(text).unwrap();
+                let lines = text.lines().map(|l| {
+                    stripped_filtered_line(l).unwrap_or(l)
+                });
+                let text = lines.collect::<Vec<&str>>().join("\n");
+                tests.add_test(text.to_owned(),
+                               block_info.should_panic, block_info.no_run,
+                               block_info.ignore, block_info.test_harness,
+                               block_info.compile_fail, block_info.error_codes,
+                               line, filename);
+            } else {
+                tests.add_old_test(lines.collect::<Vec<&str>>().join("\n"), filename);
+            }
         }
     }
 
@@ -533,7 +775,6 @@ pub fn old_find_testable_code(doc: &str, tests: &mut ::test::Collector, position
     }
 
     tests.set_position(position);
-
     unsafe {
         let ob = hoedown_buffer_new(DEF_OUNIT);
         let renderer = hoedown_html_renderer_new(0, 0);
@@ -702,72 +943,84 @@ impl LangString {
 
 impl<'a> fmt::Display for Markdown<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        let Markdown(md) = *self;
+        let Markdown(md, render_type) = *self;
+
         // This is actually common enough to special-case
         if md.is_empty() { return Ok(()) }
+        if render_type == RenderType::Hoedown {
+            render(fmt, md, false, 0)
+        } else {
+            let mut opts = Options::empty();
+            opts.insert(OPTION_ENABLE_TABLES);
+            opts.insert(OPTION_ENABLE_FOOTNOTES);
 
-        let mut opts = Options::empty();
-        opts.insert(OPTION_ENABLE_TABLES);
-        opts.insert(OPTION_ENABLE_FOOTNOTES);
+            let p = Parser::new_ext(md, opts);
 
-        let p = Parser::new_ext(md, opts);
+            let mut s = String::with_capacity(md.len() * 3 / 2);
 
-        let mut s = String::with_capacity(md.len() * 3 / 2);
+            html::push_html(&mut s,
+                            Footnotes::new(CodeBlocks::new(HeadingLinks::new(p, None))));
 
-        html::push_html(&mut s,
-                        Footnotes::new(CodeBlocks::new(HeadingLinks::new(p, None))));
-
-        fmt.write_str(&s)
+            fmt.write_str(&s)
+        }
     }
 }
 
 impl<'a> fmt::Display for MarkdownWithToc<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        let MarkdownWithToc(md) = *self;
+        let MarkdownWithToc(md, render_type) = *self;
 
-        let mut opts = Options::empty();
-        opts.insert(OPTION_ENABLE_TABLES);
-        opts.insert(OPTION_ENABLE_FOOTNOTES);
+        if render_type == RenderType::Hoedown {
+            render(fmt, md, true, 0)
+        } else {
+            let mut opts = Options::empty();
+            opts.insert(OPTION_ENABLE_TABLES);
+            opts.insert(OPTION_ENABLE_FOOTNOTES);
 
-        let p = Parser::new_ext(md, opts);
+            let p = Parser::new_ext(md, opts);
 
-        let mut s = String::with_capacity(md.len() * 3 / 2);
+            let mut s = String::with_capacity(md.len() * 3 / 2);
 
-        let mut toc = TocBuilder::new();
+            let mut toc = TocBuilder::new();
 
-        html::push_html(&mut s,
-                        Footnotes::new(CodeBlocks::new(HeadingLinks::new(p, Some(&mut toc)))));
+            html::push_html(&mut s,
+                            Footnotes::new(CodeBlocks::new(HeadingLinks::new(p, Some(&mut toc)))));
 
-        write!(fmt, "<nav id=\"TOC\">{}</nav>", toc.into_toc())?;
+            write!(fmt, "<nav id=\"TOC\">{}</nav>", toc.into_toc())?;
 
-        fmt.write_str(&s)
+            fmt.write_str(&s)
+        }
     }
 }
 
 impl<'a> fmt::Display for MarkdownHtml<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        let MarkdownHtml(md) = *self;
+        let MarkdownHtml(md, render_type) = *self;
+
         // This is actually common enough to special-case
         if md.is_empty() { return Ok(()) }
+        if render_type == RenderType::Hoedown {
+            render(fmt, md, false, HOEDOWN_HTML_ESCAPE)
+        } else {
+            let mut opts = Options::empty();
+            opts.insert(OPTION_ENABLE_TABLES);
+            opts.insert(OPTION_ENABLE_FOOTNOTES);
 
-        let mut opts = Options::empty();
-        opts.insert(OPTION_ENABLE_TABLES);
-        opts.insert(OPTION_ENABLE_FOOTNOTES);
+            let p = Parser::new_ext(md, opts);
 
-        let p = Parser::new_ext(md, opts);
+            // Treat inline HTML as plain text.
+            let p = p.map(|event| match event {
+                Event::Html(text) | Event::InlineHtml(text) => Event::Text(text),
+                _ => event
+            });
 
-        // Treat inline HTML as plain text.
-        let p = p.map(|event| match event {
-            Event::Html(text) | Event::InlineHtml(text) => Event::Text(text),
-            _ => event
-        });
+            let mut s = String::with_capacity(md.len() * 3 / 2);
 
-        let mut s = String::with_capacity(md.len() * 3 / 2);
+            html::push_html(&mut s,
+                            Footnotes::new(CodeBlocks::new(HeadingLinks::new(p, None))));
 
-        html::push_html(&mut s,
-                        Footnotes::new(CodeBlocks::new(HeadingLinks::new(p, None))));
-
-        fmt.write_str(&s)
+            fmt.write_str(&s)
+        }
     }
 }
 

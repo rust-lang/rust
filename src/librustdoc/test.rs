@@ -43,7 +43,7 @@ use errors;
 use errors::emitter::ColorConfig;
 
 use clean::Attributes;
-use html::markdown;
+use html::markdown::{self, RenderType};
 
 #[derive(Clone, Default)]
 pub struct TestOptions {
@@ -57,7 +57,8 @@ pub fn run(input: &str,
            externs: Externs,
            mut test_args: Vec<String>,
            crate_name: Option<String>,
-           maybe_sysroot: Option<PathBuf>)
+           maybe_sysroot: Option<PathBuf>,
+           render_type: RenderType)
            -> isize {
     let input_path = PathBuf::from(input);
     let input = config::Input::File(input_path.clone());
@@ -106,7 +107,8 @@ pub fn run(input: &str,
                                        opts,
                                        maybe_sysroot,
                                        Some(codemap),
-                                       None);
+                                       None,
+                                       render_type);
 
     {
         let dep_graph = DepGraph::new(false);
@@ -396,12 +398,15 @@ pub struct Collector {
     position: Span,
     codemap: Option<Rc<CodeMap>>,
     filename: Option<String>,
+    // to be removed when hoedown will be removed as well
+    pub render_type: RenderType,
 }
 
 impl Collector {
     pub fn new(cratename: String, cfgs: Vec<String>, libs: SearchPaths, externs: Externs,
                use_headers: bool, opts: TestOptions, maybe_sysroot: Option<PathBuf>,
-               codemap: Option<Rc<CodeMap>>, filename: Option<String>) -> Collector {
+               codemap: Option<Rc<CodeMap>>, filename: Option<String>,
+               render_type: RenderType) -> Collector {
         Collector {
             tests: Vec::new(),
             old_tests: HashMap::new(),
@@ -418,6 +423,7 @@ impl Collector {
             position: DUMMY_SP,
             codemap: codemap,
             filename: filename,
+            render_type: render_type,
         }
     }
 
@@ -458,20 +464,22 @@ impl Collector {
                     as_test_harness: bool, compile_fail: bool, error_codes: Vec<String>,
                     line: usize, filename: String) {
         let name = self.generate_name(line, &filename);
-        let name_beg = self.generate_name_beginning(&filename);
-        let mut found = false;
-        // to be removed when hoedown is removed
-        let test = test.trim().to_owned();
-        if let Some(entry) = self.old_tests.get_mut(&name_beg) {
-            found = entry.remove_item(&test).is_some();
-        }
-        if !found {
-            let _ = writeln!(&mut io::stderr(),
-                             "WARNING: {} Code block is not currently run as a test, but will in \
-                              future versions of rustdoc. Please ensure this code block is a \
-                              runnable test, or use the `ignore` directive.",
-                             name);
-            return
+        if self.render_type == RenderType::Pulldown {
+            let name_beg = self.generate_name_beginning(&filename);
+            let mut found = false;
+            // to be removed when hoedown is removed
+            let test = test.trim().to_owned();
+            if let Some(entry) = self.old_tests.get_mut(&name_beg) {
+                found = entry.remove_item(&test).is_some();
+            }
+            if !found {
+                let _ = writeln!(&mut io::stderr(),
+                                 "WARNING: {} Code block is not currently run as a test, but will in \
+                                  future versions of rustdoc. Please ensure this code block is a \
+                                  runnable test, or use the `ignore` directive.",
+                                 name);
+                return
+            }
         }
         let cfgs = self.cfgs.clone();
         let libs = self.libs.clone();
@@ -587,10 +595,15 @@ impl<'a, 'hir> HirCollector<'a, 'hir> {
         attrs.unindent_doc_comments();
         if let Some(doc) = attrs.doc_value() {
             self.collector.cnt = 0;
-            markdown::old_find_testable_code(doc, self.collector,
+            if self.collector.render_type == RenderType::Pulldown {
+                markdown::old_find_testable_code(doc, self.collector,
+                                                 attrs.span.unwrap_or(DUMMY_SP));
+                markdown::find_testable_code(doc, self.collector,
                                              attrs.span.unwrap_or(DUMMY_SP));
-            markdown::find_testable_code(doc, self.collector,
-                                         attrs.span.unwrap_or(DUMMY_SP));
+            } else {
+                markdown::old_find_testable_code(doc, self.collector,
+                                                 attrs.span.unwrap_or(DUMMY_SP));
+            }
         }
 
         nested(self);
