@@ -345,7 +345,7 @@ pub fn coerce_unsized_info<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let mut free_regions = FreeRegionMap::new();
         free_regions.relate_free_regions_from_predicates(&infcx.parameter_environment
             .caller_bounds);
-        infcx.resolve_regions_and_report_errors(&free_regions, impl_node_id);
+        infcx.resolve_regions_and_report_errors(impl_did, &free_regions);
 
         CoerceUnsizedInfo {
             custom_kind: kind

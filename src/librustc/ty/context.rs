@@ -698,25 +698,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         local as usize == global as usize
     }
 
-    pub fn region_maps(self, node_id: NodeId) -> Rc<RegionMaps<'tcx>> {
-        // Find the `NodeId` of the outermost function that wraps the node pointed to by node_id
-        let mut outermost_fn_id_opt = None;
-        let mut outermost_id = node_id;
-        loop {
-            if self.hir.is_fn(outermost_id) {
-                outermost_fn_id_opt = Some(outermost_id);
-            }
-            let next_id = self.hir.get_parent(outermost_id);
-            if outermost_id == next_id { break; }
-        }
-        let outermost_fn_id = outermost_fn_id_opt.expect("node_id should point inside a fn");
-
-        ty::queries::region_resolve_fn::get(self, DUMMY_SP, self.hir.local_def_id(outermost_fn_id))
-    }
-
-    pub fn with_each_region_map<F>(self, f: F) where F: FnMut(DefId, Rc<RegionMaps>) -> ()
-    {
-        region::resolve_crate(self, f);
+    pub fn region_maps(self, owner_def_id: DefId) -> Rc<RegionMaps<'tcx>> {
+        assert!(owner_def_id.is_local()); // can't fetch region maps for non-local def-ids
+        ty::queries::region_resolve_fn::get(self, DUMMY_SP, owner_def_id)
     }
 
     /// Create a type context and call the closure with a `TyCtxt` reference

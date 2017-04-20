@@ -15,9 +15,11 @@ use syntax::ast;
 use syntax::ptr::P;
 
 use hir::{self, PatKind};
+use hir::def_id::DefId;
 
 struct CFGBuilder<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    owner_def_id: DefId,
     tables: &'a ty::TypeckTables<'tcx>,
     graph: CFGGraph,
     fn_exit: CFGIndex,
@@ -56,6 +58,7 @@ pub fn construct<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let mut cfg_builder = CFGBuilder {
         tcx: tcx,
+        owner_def_id,
         tables: tables,
         graph: graph,
         fn_exit: fn_exit,
@@ -585,9 +588,10 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
         let mut data = CFGEdgeData { exiting_scopes: vec![] };
         let mut scope = self.tcx.node_extent(from_expr.id);
         let target_scope = self.tcx.node_extent(scope_id);
+        let region_maps = self.tcx.region_maps(self.owner_def_id);
         while scope != target_scope {
             data.exiting_scopes.push(scope.node_id());
-            scope = self.tcx.region_maps().encl_scope(scope);
+            scope = region_maps.encl_scope(scope);
         }
         self.graph.add_edge(from_index, to_index, data);
     }

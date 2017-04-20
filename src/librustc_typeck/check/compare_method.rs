@@ -221,6 +221,7 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let normalize_cause = traits::ObligationCause::misc(impl_m_span, impl_m_body_id);
     let trait_param_env = impl_param_env.with_caller_bounds(hybrid_preds.predicates);
     let trait_param_env = traits::normalize_param_env_or_error(tcx,
+                                                               impl_m.def_id,
                                                                trait_param_env,
                                                                normalize_cause.clone());
 
@@ -360,7 +361,7 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             let mut free_regions = FreeRegionMap::new();
             free_regions.relate_free_regions_from_predicates(
                 &infcx.parameter_environment.caller_bounds);
-            infcx.resolve_regions_and_report_errors(&free_regions, impl_m_body_id);
+            infcx.resolve_regions_and_report_errors(impl_m.def_id, &free_regions);
         } else {
             let fcx = FnCtxt::new(&inh, impl_m_body_id);
             fcx.regionck_item(impl_m_body_id, impl_m_span, &[]);

@@ -30,7 +30,7 @@ use syntax::codemap::DUMMY_SP;
 use ty::TyCtxt;
 use ty::maps::Providers;
 
-use hir; use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
+use hir; use hir::def_id::DefId;
 use hir::intravisit::{self, Visitor, FnKind, NestedVisitorMap};
 use hir::{Block, Item, FnDecl, Arm, Pat, PatKind, Stmt, Expr, Local};
 
@@ -1048,12 +1048,16 @@ fn resolve_fn<'a, 'tcx>(visitor: &mut RegionResolutionVisitor<'a, 'tcx>,
                                    body.id={:?}, \
                                    cx.parent={:?})",
             id,
-            visitor.sess.codemap().span_to_string(sp),
+            visitor.tcx.sess.codemap().span_to_string(sp),
             body_id,
             visitor.cx.parent);
 
         let fn_decl_scope = visitor.new_code_extent(
             CodeExtentData::ParameterScope { fn_id: id, body_id: body_id.node_id });
+
+        if let Some(root_id) = visitor.cx.root_id {
+            visitor.region_maps.record_fn_parent(body_id.node_id, root_id);
+        }
 
         let outer_cx = visitor.cx;
         let outer_ts = mem::replace(&mut visitor.terminating_scopes, NodeSet());
@@ -1198,7 +1202,14 @@ pub fn resolve_crate<'a, 'gcx: 'a+'tcx, 'tcx: 'a, F>(tcx: TyCtxt<'a, 'gcx, 'tcx>
 fn region_resolve_fn<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, fn_id: DefId)
     -> Rc<RegionMaps<'tcx>>
 {
-    debug_assert!(crate_num == LOCAL_CRATE);
+    debug_assert!(fn_id.is_local());
+
+    // Closures' region tables come from their outermost function, as
+    // they are part of the same "inference environment".
+    let outer_fn_id = tcx.closure_base_def_id(fn_id);
+    if outer_fn_id != fn_id {
+        return tcx.region_maps(outer_fn_id);
+    }
 
     let hir_map = &tcx.hir;
 

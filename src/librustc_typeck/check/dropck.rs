@@ -119,7 +119,7 @@ fn ensure_drop_params_and_item_params_correspond<'a, 'tcx>(
         }
 
         let free_regions = FreeRegionMap::new();
-        infcx.resolve_regions_and_report_errors(&free_regions, drop_impl_node_id);
+        infcx.resolve_regions_and_report_errors(drop_impl_did, &free_regions);
         Ok(())
     })
 }
@@ -278,7 +278,7 @@ pub fn check_safety_of_destructor_if_necessary<'a, 'gcx, 'tcx>(
     debug!("check_safety_of_destructor_if_necessary typ: {:?} scope: {:?}",
            typ, scope);
 
-    let parent_scope = match rcx.tcx.region_maps().opt_encl_scope(scope) {
+    let parent_scope = match rcx.region_maps.opt_encl_scope(scope) {
       Some(parent_scope) => parent_scope,
       // If no enclosing scope, then it must be the root scope which cannot be outlived.
       None => return

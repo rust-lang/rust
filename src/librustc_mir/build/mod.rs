@@ -134,7 +134,7 @@ pub fn construct_fn<'a, 'gcx, 'tcx, A>(hir: Cx<'a, 'gcx, 'tcx>,
 
     let tcx = hir.tcx();
     let span = tcx.hir.span(fn_id);
-    let mut builder = Builder::new(hir, span, arguments.len(), return_ty);
+    let mut builder = Builder::new(hir.clone(), span, arguments.len(), return_ty);
 
     let call_site_extent =
         tcx.intern_code_extent(
@@ -202,11 +202,10 @@ pub fn construct_const<'a, 'gcx, 'tcx>(hir: Cx<'a, 'gcx, 'tcx>,
     let ty = hir.tables().expr_ty_adjusted(ast_expr);
     let owner_id = tcx.hir.body_owner(body_id);
     let span = tcx.hir.span(owner_id);
-    let mut builder = Builder::new(hir, span, 0, ty);
+    let mut builder = Builder::new(hir.clone(), span, 0, ty);
 
-    let region_maps = tcx.region_maps();
-    let extent = region_maps.temporary_scope(tcx, ast_expr.id)
-                            .unwrap_or(tcx.item_extent(owner_id));
+    let extent = hir.region_maps.temporary_scope(tcx, ast_expr.id)
+                                .unwrap_or(tcx.item_extent(owner_id));
     let mut block = START_BLOCK;
     let _ = builder.in_scope(extent, block, |builder| {
         let expr = builder.hir.mirror(ast_expr);

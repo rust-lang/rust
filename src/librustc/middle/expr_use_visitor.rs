@@ -270,19 +270,24 @@ enum PassArgs {
 
 impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
     pub fn new(delegate: &'a mut (Delegate<'tcx>+'a),
+               context: DefId,
                infcx: &'a InferCtxt<'a, 'gcx, 'tcx>)
                -> Self
     {
-        ExprUseVisitor::with_options(delegate, infcx, mc::MemCategorizationOptions::default())
+        ExprUseVisitor::with_options(delegate,
+                                     infcx,
+                                     context,
+                                     mc::MemCategorizationOptions::default())
     }
 
     pub fn with_options(delegate: &'a mut (Delegate<'tcx>+'a),
                         infcx: &'a InferCtxt<'a, 'gcx, 'tcx>,
+                        context: DefId,
                         options: mc::MemCategorizationOptions)
                -> Self
     {
         ExprUseVisitor {
-            mc: mc::MemCategorizationContext::with_options(infcx, options),
+            mc: mc::MemCategorizationContext::with_options(infcx, context, options),
             delegate: delegate
         }
     }

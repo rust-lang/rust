@@ -51,7 +51,7 @@ pub fn gather_loans_in_fn<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
     };
 
     let body = glcx.bccx.tcx.hir.body(body);
-    euv::ExprUseVisitor::new(&mut glcx, &infcx).consume_body(body);
+    euv::ExprUseVisitor::new(&mut glcx, bccx.owner_def_id, &infcx).consume_body(body);
 
     glcx.report_potential_errors();
     let GatherLoanCtxt { all_loans, move_data, .. } = glcx;
@@ -458,7 +458,7 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
         //! notably method arguments, the loan may be introduced only
         //! later, once it comes into scope.
 
-        if self.bccx.tcx.region_maps().is_subscope_of(borrow_scope, loan_scope) {
+        if self.bccx.region_maps.is_subscope_of(borrow_scope, loan_scope) {
             borrow_scope
         } else {
             loan_scope
@@ -488,12 +488,11 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
         //! with immutable `&` pointers, because borrows of such pointers
         //! do not require restrictions and hence do not cause a loan.
 
-        let lexical_scope = lp.kill_scope(self.bccx.tcx);
-        let rm = &self.bccx.tcx.region_maps();
-        if rm.is_subscope_of(lexical_scope, loan_scope) {
+        let lexical_scope = lp.kill_scope(self.bccx);
+        if self.bccx.region_maps.is_subscope_of(lexical_scope, loan_scope) {
             lexical_scope
         } else {
-            assert!(self.bccx.tcx.region_maps().is_subscope_of(loan_scope, lexical_scope));
+            assert!(self.bccx.region_maps.is_subscope_of(loan_scope, lexical_scope));
             loan_scope
         }
     }

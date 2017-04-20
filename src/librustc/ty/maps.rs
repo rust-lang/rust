@@ -451,9 +451,9 @@ define_maps! { <'tcx>
 
     pub reachable_set: reachability_dep_node(CrateNum) -> NodeSet,
 
-    /// Per-function `RegionMaps`. Regions are referenced through their top-most containing
-    /// function, e.g. `fn outer() { fn inner() { ... } }` produces a single entry which can
-    /// be accessed using the `DefId` of `outer`.
+    /// Per-function `RegionMaps`. The `DefId` should be the owner-def-id for the fn body;
+    /// in the case of closures or "inline" expressions, this will be redirected to the enclosing
+    /// fn item.
     pub region_resolve_fn: RegionResolveFn(DefId) -> Rc<RegionMaps<'tcx>>,
 
     pub mir_shims: mir_shim(ty::InstanceDef<'tcx>) -> &'tcx RefCell<mir::Mir<'tcx>>

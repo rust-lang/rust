@@ -18,6 +18,7 @@
 /// For clarity, rename the graphviz crate locally to dot.
 use graphviz as dot;
 
+use hir::def_id::{DefId, DefIndex};
 use ty::{self, TyCtxt};
 use middle::region::CodeExtent;
 use super::Constraint;
@@ -32,7 +33,6 @@ use std::fs::File;
 use std::io;
 use std::io::prelude::*;
 use std::sync::atomic::{AtomicBool, Ordering};
-use syntax::ast;
 
 fn print_help_message() {
     println!("\
@@ -55,7 +55,7 @@ graphs will be printed.                                                     \n\
 
 pub fn maybe_print_constraints_for<'a, 'gcx, 'tcx>(
     region_vars: &RegionVarBindings<'a, 'gcx, 'tcx>,
-    subject_node: ast::NodeId)
+    context: DefId)
 {
     let tcx = region_vars.tcx;
 
@@ -64,9 +64,9 @@ pub fn maybe_print_constraints_for<'a, 'gcx, 'tcx>(
     }
 
     let requested_node = env::var("RUST_REGION_GRAPH_NODE")
-        .ok().and_then(|s| s.parse().map(ast::NodeId::new).ok());
+        .ok().and_then(|s| s.parse().map(DefIndex::new).ok());
 
-    if requested_node.is_some() && requested_node != Some(subject_node) {
+    if requested_node.is_some() && requested_node != Some(context.index) {
         return;
     }
 
@@ -98,7 +98,7 @@ pub fn maybe_print_constraints_for<'a, 'gcx, 'tcx>(
             let mut new_str = String::new();
             for c in output_template.chars() {
                 if c == '%' {
-                    new_str.push_str(&subject_node.to_string());
+                    new_str.push_str(&context.index.as_usize().to_string());
                 } else {
                     new_str.push(c);
                 }
@@ -110,7 +110,7 @@ pub fn maybe_print_constraints_for<'a, 'gcx, 'tcx>(
     };
 
     let constraints = &*region_vars.constraints.borrow();
-    match dump_region_constraints_to(tcx, constraints, &output_path) {
+    match dump_region_constraints_to(tcx, context, constraints, &output_path) {
         Ok(()) => {}
         Err(e) => {
             let msg = format!("io error dumping region constraints: {}", e);
@@ -122,6 +122,7 @@ pub fn maybe_print_constraints_for<'a, 'gcx, 'tcx>(
 struct ConstraintGraph<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'gcx, 'tcx>,
     graph_name: String,
+    context: DefId,
     map: &'a FxHashMap<Constraint<'tcx>, SubregionOrigin<'tcx>>,
     node_ids: FxHashMap<Node<'tcx>, usize>,
 }
@@ -142,6 +143,7 @@ enum Edge<'tcx> {
 impl<'a, 'gcx, 'tcx> ConstraintGraph<'a, 'gcx, 'tcx> {
     fn new(tcx: TyCtxt<'a, 'gcx, 'tcx>,
            name: String,
+           context: DefId,
            map: &'a ConstraintMap<'tcx>)
            -> ConstraintGraph<'a, 'gcx, 'tcx> {
         let mut i = 0;
@@ -159,17 +161,18 @@ impl<'a, 'gcx, 'tcx> ConstraintGraph<'a, 'gcx, 'tcx> {
                 add_node(n2);
             }
 
-            tcx.region_maps().each_encl_scope(|sub, sup| {
+            tcx.region_maps(context).each_encl_scope(|sub, sup| {
                 add_node(Node::Region(ty::ReScope(sub)));
                 add_node(Node::Region(ty::ReScope(sup)));
             });
         }
 
         ConstraintGraph {
-            tcx: tcx,
+            tcx,
+            context,
+            map,
+            node_ids,
             graph_name: name,
-            map: map,
-            node_ids: node_ids,
         }
     }
 }
@@ -245,7 +248,8 @@ impl<'a, 'gcx, 'tcx> dot::GraphWalk<'a> for ConstraintGraph<'a, 'gcx, 'tcx> {
     fn edges(&self) -> dot::Edges<Edge<'tcx>> {
         debug!("constraint graph has {} edges", self.map.len());
         let mut v: Vec<_> = self.map.keys().map(|e| Edge::Constraint(*e)).collect();
-        self.tcx.region_maps().each_encl_scope(|sub, sup| v.push(Edge::EnclScope(sub, sup)));
+        self.tcx.region_maps(self.context)
+                .each_encl_scope(|sub, sup| v.push(Edge::EnclScope(sub, sup)));
         debug!("region graph has {} edges", v.len());
         Cow::Owned(v)
     }
@@ -264,13 +268,14 @@ impl<'a, 'gcx, 'tcx> dot::GraphWalk<'a> for ConstraintGraph<'a, 'gcx, 'tcx> {
 pub type ConstraintMap<'tcx> = FxHashMap<Constraint<'tcx>, SubregionOrigin<'tcx>>;
 
 fn dump_region_constraints_to<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
+                                              context: DefId,
                                               map: &ConstraintMap<'tcx>,
                                               path: &str)
                                               -> io::Result<()> {
     debug!("dump_region_constraints map (len: {}) path: {}",
            map.len(),
            path);
-    let g = ConstraintGraph::new(tcx, format!("region_constraints"), map);
+    let g = ConstraintGraph::new(tcx, format!("region_constraints"), context, map);
     debug!("dump_region_constraints calling render");
     let mut v = Vec::new();
     dot::render(&g, &mut v).unwrap();
