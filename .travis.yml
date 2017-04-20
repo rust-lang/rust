@@ -192,10 +192,6 @@ before_cache:
     grep -v missing |
     xargs docker save |
     gzip > $HOME/docker/rust-ci.tar.gz
-  - if [ ! -f $HOME/rustsrc/cache_valid1 ]; then
-        echo "WARNING rustsrc cache was invalid when saving";
-        rm -rf $HOME/rustsrc && mkdir $HOME/rustsrc;
-    fi
 before_install:
   - zcat $HOME/docker/rust-ci.tar.gz | docker load || true
   - mkdir -p $HOME/rustsrc
@@ -206,7 +202,6 @@ notifications:
 cache:
   directories:
     - $HOME/docker
-    - $HOME/rustsrc
 
 before_deploy:
   - mkdir -p deploy/$TRAVIS_COMMIT
