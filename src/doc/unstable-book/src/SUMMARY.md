@@ -133,7 +133,6 @@
     - [fd_read](library-features/fd-read.md)
     - [fixed_size_array](library-features/fixed-size-array.md)
     - [float_bits_conv](library-features/float-bits-conv.md)
-    - [float_extras](library-features/float-extras.md)
     - [flt2dec](library-features/flt2dec.md)
     - [fmt_flags_align](library-features/fmt-flags-align.md)
     - [fmt_internals](library-features/fmt-internals.md)
