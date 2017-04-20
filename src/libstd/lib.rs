@@ -318,7 +318,6 @@
 #![feature(untagged_unions)]
 #![feature(unwind_attributes)]
 #![feature(vec_push_all)]
-#![feature(zero_one)]
 #![cfg_attr(test, feature(update_panic_count))]
 #![cfg_attr(stage0, feature(pub_restricted))]
 #![cfg_attr(test, feature(float_bits_conv))]
