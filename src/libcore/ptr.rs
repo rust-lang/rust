@@ -37,11 +37,6 @@ pub use intrinsics::copy;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use intrinsics::write_bytes;
 
-#[cfg(stage0)]
-#[stable(feature = "drop_in_place", since = "1.8.0")]
-pub use intrinsics::drop_in_place;
-
-#[cfg(not(stage0))]
 /// Executes the destructor (if any) of the pointed-to value.
 ///
 /// This has two use cases:
