@@ -103,7 +103,6 @@
     - [as_c_str](library-features/as-c-str.md)
     - [as_unsafe_cell](library-features/as-unsafe-cell.md)
     - [ascii_ctype](library-features/ascii-ctype.md)
-    - [binary_heap_extras](library-features/binary-heap-extras.md)
     - [binary_heap_peek_mut_pop](library-features/binary-heap-peek-mut-pop.md)
     - [borrow_state](library-features/borrow-state.md)
     - [box_heap](library-features/box-heap.md)
