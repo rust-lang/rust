@@ -181,7 +181,7 @@ struct Crate {
 ///
 /// These entries currently correspond to the various output directories of the
 /// build system, with each mod generating output in a different directory.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 pub enum Mode {
     /// This cargo is going to build the standard library, placing output in the
     /// "stageN-std" directory.
