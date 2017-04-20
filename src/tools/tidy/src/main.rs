@@ -85,6 +85,8 @@ fn filter_dirs(path: &Path) -> bool {
         "src/liblibc",
         "src/vendor",
         "src/rt/hoedown",
+        "src/tools/cargo",
+        "src/tools/rls",
     ];
     skip.iter().any(|p| path.ends_with(p))
 }

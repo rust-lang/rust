@@ -87,7 +87,6 @@
 #![feature(needs_allocator)]
 #![feature(optin_builtin_traits)]
 #![feature(placement_in_syntax)]
-#![cfg_attr(stage0, feature(pub_restricted))]
 #![feature(shared)]
 #![feature(staged_api)]
 #![feature(unboxed_closures)]

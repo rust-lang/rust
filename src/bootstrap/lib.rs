@@ -234,8 +234,8 @@ impl Build {
             None => false,
         };
         let rust_info = channel::GitInfo::new(&src);
-        let cargo_info = channel::GitInfo::new(&src.join("cargo"));
-        let rls_info = channel::GitInfo::new(&src.join("rls"));
+        let cargo_info = channel::GitInfo::new(&src.join("src/tools/cargo"));
+        let rls_info = channel::GitInfo::new(&src.join("src/tools/rls"));
         let src_is_git = src.join(".git").exists();
 
         Build {
