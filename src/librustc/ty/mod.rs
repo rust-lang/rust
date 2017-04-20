@@ -71,7 +71,6 @@ pub use self::sty::InferTy::*;
 pub use self::sty::Region::*;
 pub use self::sty::TypeVariants::*;
 
-pub use self::contents::TypeContents;
 pub use self::context::{TyCtxt, GlobalArenas, tls};
 pub use self::context::{Lift, TypeckTables};
 
@@ -99,7 +98,6 @@ pub mod walk;
 pub mod wf;
 pub mod util;
 
-mod contents;
 mod context;
 mod flags;
 mod instance;
@@ -425,6 +423,10 @@ bitflags! {
         const IS_SIZED          = 1 << 17,
         const MOVENESS_CACHED   = 1 << 18,
         const MOVES_BY_DEFAULT  = 1 << 19,
+        const FREEZENESS_CACHED = 1 << 20,
+        const IS_FREEZE         = 1 << 21,
+        const NEEDS_DROP_CACHED = 1 << 22,
+        const NEEDS_DROP        = 1 << 23,
     }
 }
 
@@ -1181,6 +1183,9 @@ pub struct ParameterEnvironment<'tcx> {
 
     /// A cache for `type_is_sized`
     pub is_sized_cache: RefCell<FxHashMap<Ty<'tcx>, bool>>,
+
+    /// A cache for `type_is_freeze`
+    pub is_freeze_cache: RefCell<FxHashMap<Ty<'tcx>, bool>>,
 }
 
 impl<'a, 'tcx> ParameterEnvironment<'tcx> {
@@ -1195,6 +1200,7 @@ impl<'a, 'tcx> ParameterEnvironment<'tcx> {
             free_id_outlive: self.free_id_outlive,
             is_copy_cache: RefCell::new(FxHashMap()),
             is_sized_cache: RefCell::new(FxHashMap()),
+            is_freeze_cache: RefCell::new(FxHashMap()),
         }
     }
 
@@ -2375,40 +2381,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         Some(self.item_mir(did))
     }
 
-    /// If `type_needs_drop` returns true, then `ty` is definitely
-    /// non-copy and *might* have a destructor attached; if it returns
-    /// false, then `ty` definitely has no destructor (i.e. no drop glue).
-    ///
-    /// (Note that this implies that if `ty` has a destructor attached,
-    /// then `type_needs_drop` will definitely return `true` for `ty`.)
-    pub fn type_needs_drop_given_env(self,
-                                     ty: Ty<'gcx>,
-                                     param_env: &ty::ParameterEnvironment<'gcx>) -> bool {
-        // Issue #22536: We first query type_moves_by_default.  It sees a
-        // normalized version of the type, and therefore will definitely
-        // know whether the type implements Copy (and thus needs no
-        // cleanup/drop/zeroing) ...
-        let tcx = self.global_tcx();
-        let implements_copy = !ty.moves_by_default(tcx, param_env, DUMMY_SP);
-
-        if implements_copy { return false; }
-
-        // ... (issue #22536 continued) but as an optimization, still use
-        // prior logic of asking if the `needs_drop` bit is set; we need
-        // not zero non-Copy types if they have no destructor.
-
-        // FIXME(#22815): Note that calling `ty::type_contents` is a
-        // conservative heuristic; it may report that `needs_drop` is set
-        // when actual type does not actually have a destructor associated
-        // with it. But since `ty` absolutely did not have the `Copy`
-        // bound attached (see above), it is sound to treat it as having a
-        // destructor (e.g. zero its memory on move).
-
-        let contents = ty.type_contents(tcx);
-        debug!("type_needs_drop ty={:?} contents={:?}", ty, contents);
-        contents.needs_drop(tcx)
-    }
-
     /// Get the attributes of a definition.
     pub fn get_attrs(self, did: DefId) -> Cow<'gcx, [ast::Attribute]> {
         if let Some(id) = self.hir.as_local_node_id(did) {
@@ -2531,6 +2503,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             free_id_outlive: free_id_outlive,
             is_copy_cache: RefCell::new(FxHashMap()),
             is_sized_cache: RefCell::new(FxHashMap()),
+            is_freeze_cache: RefCell::new(FxHashMap()),
         }
     }
 
@@ -2603,6 +2576,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             free_id_outlive: free_id_outlive,
             is_copy_cache: RefCell::new(FxHashMap()),
             is_sized_cache: RefCell::new(FxHashMap()),
+            is_freeze_cache: RefCell::new(FxHashMap()),
         };
 
         let cause = traits::ObligationCause::misc(span, free_id_outlive.node_id(&self.region_maps));
