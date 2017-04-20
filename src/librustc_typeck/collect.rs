@@ -99,6 +99,7 @@ pub fn provide(providers: &mut Providers) {
         trait_def,
         adt_def,
         impl_trait_ref,
+        impl_polarity,
         ..*providers
     };
 }
@@ -1129,6 +1130,16 @@ fn impl_trait_ref<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             })
         }
         _ => bug!()
+    }
+}
+
+fn impl_polarity<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                           def_id: DefId)
+                           -> hir::ImplPolarity {
+    let node_id = tcx.hir.as_local_node_id(def_id).unwrap();
+    match tcx.hir.expect_item(node_id).node {
+        hir::ItemImpl(_, polarity, ..) => polarity,
+        ref item => bug!("trait_impl_polarity: {:?} not an impl", item)
     }
 }
 

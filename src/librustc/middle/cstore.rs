@@ -195,7 +195,6 @@ pub trait CrateStore {
     fn implementations_of_trait(&self, filter: Option<DefId>) -> Vec<DefId>;
 
     // impl info
-    fn impl_polarity(&self, def: DefId) -> hir::ImplPolarity;
     fn impl_parent(&self, impl_def_id: DefId) -> Option<DefId>;
 
     // trait/impl-item info
@@ -330,7 +329,6 @@ impl CrateStore for DummyCrateStore {
     fn implementations_of_trait(&self, filter: Option<DefId>) -> Vec<DefId> { vec![] }
 
     // impl info
-    fn impl_polarity(&self, def: DefId) -> hir::ImplPolarity { bug!("impl_polarity") }
     fn impl_parent(&self, def: DefId) -> Option<DefId> { bug!("impl_parent") }
 
     // trait/impl-item info

@@ -10,6 +10,7 @@
 
 use dep_graph::{DepGraph, DepNode, DepTrackingMap, DepTrackingMapConfig};
 use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
+use hir;
 use middle::const_val;
 use middle::privacy::AccessLevels;
 use mir;
@@ -391,6 +392,7 @@ define_maps! { <'tcx>
     pub associated_item: AssociatedItems(DefId) -> ty::AssociatedItem,
 
     pub impl_trait_ref: ItemSignature(DefId) -> Option<ty::TraitRef<'tcx>>,
+    pub impl_polarity: ItemSignature(DefId) -> hir::ImplPolarity,
 
     /// Maps a DefId of a type to a list of its inherent impls.
     /// Contains implementations of methods that are inherent to a type.
