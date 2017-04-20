@@ -148,7 +148,7 @@ impl CrateStore for cstore::CStore {
         self.get_crate_data(def.krate).get_generics(def.index)
     }
 
-    fn item_attrs(&self, def_id: DefId) -> Vec<ast::Attribute>
+    fn item_attrs(&self, def_id: DefId) -> Rc<[ast::Attribute]>
     {
         self.dep_graph.read(DepNode::MetaData(def_id));
         self.get_crate_data(def_id.krate).get_item_attrs(def_id.index)
@@ -405,7 +405,7 @@ impl CrateStore for cstore::CStore {
 
         // Mark the attrs as used
         let attrs = data.get_item_attrs(id.index);
-        for attr in &attrs {
+        for attr in attrs.iter() {
             attr::mark_used(attr);
         }
 
@@ -418,7 +418,7 @@ impl CrateStore for cstore::CStore {
             ident: ast::Ident::with_empty_ctxt(name),
             id: ast::DUMMY_NODE_ID,
             span: local_span,
-            attrs: attrs,
+            attrs: attrs.iter().cloned().collect(),
             node: ast::ItemKind::MacroDef(body.into()),
             vis: ast::Visibility::Inherited,
         })
