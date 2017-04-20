@@ -171,15 +171,15 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 pub struct RegionCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     pub fcx: &'a FnCtxt<'a, 'gcx, 'tcx>,
 
-    region_bound_pairs: Vec<(&'tcx ty::Region, GenericKind<'tcx>)>,
+    region_bound_pairs: Vec<(ty::Region<'tcx>, GenericKind<'tcx>)>,
 
-    free_region_map: FreeRegionMap,
+    free_region_map: FreeRegionMap<'tcx>,
 
     // id of innermost fn body id
     body_id: ast::NodeId,
 
     // call_site scope of innermost fn
-    call_site_scope: Option<CodeExtent>,
+    call_site_scope: Option<CodeExtent<'tcx>>,
 
     // id of innermost fn or loop
     repeating_scope: ast::NodeId,
@@ -215,7 +215,8 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn set_call_site_scope(&mut self, call_site_scope: Option<CodeExtent>) -> Option<CodeExtent> {
+    fn set_call_site_scope(&mut self, call_site_scope: Option<CodeExtent<'tcx>>)
+                           -> Option<CodeExtent<'tcx>> {
         mem::replace(&mut self.call_site_scope, call_site_scope)
     }
 
@@ -276,7 +277,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
 
         let body_id = body.id();
 
-        let call_site = self.tcx.region_maps().lookup_code_extent(
+        let call_site = self.tcx.intern_code_extent(
             region::CodeExtentData::CallSiteScope { fn_id: id, body_id: body_id.node_id });
         let old_call_site_scope = self.set_call_site_scope(Some(call_site));
 
@@ -302,7 +303,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
 
         let old_body_id = self.set_body_id(body_id.node_id);
         self.relate_free_regions(&fn_sig_tys[..], body_id.node_id, span);
-        self.link_fn_args(self.tcx.region_maps().node_extent(body_id.node_id), &body.arguments);
+        self.link_fn_args(self.tcx.node_extent(body_id.node_id), &body.arguments);
         self.visit_body(body);
         self.visit_region_obligations(body_id.node_id);
 
@@ -868,7 +869,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         // call occurs.
         //
         // FIXME(#6268) to support nested method calls, should be callee_id
-        let callee_scope = self.tcx.region_maps().node_extent(call_expr.id);
+        let callee_scope = self.tcx.node_extent(call_expr.id);
         let callee_region = self.tcx.mk_region(ty::ReScope(callee_scope));
 
         debug!("callee_region={:?}", callee_region);
@@ -982,8 +983,8 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
 
     pub fn mk_subregion_due_to_dereference(&mut self,
                                            deref_span: Span,
-                                           minimum_lifetime: &'tcx ty::Region,
-                                           maximum_lifetime: &'tcx ty::Region) {
+                                           minimum_lifetime: ty::Region<'tcx>,
+                                           maximum_lifetime: ty::Region<'tcx>) {
         self.sub_regions(infer::DerefPointer(deref_span),
                          minimum_lifetime, maximum_lifetime)
     }
@@ -1021,7 +1022,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         debug!("constrain_index(index_expr=?, indexed_ty={}",
                self.ty_to_string(indexed_ty));
 
-        let r_index_expr = ty::ReScope(self.tcx.region_maps().node_extent(index_expr.id));
+        let r_index_expr = ty::ReScope(self.tcx.node_extent(index_expr.id));
         if let ty::TyRef(r_ptr, mt) = indexed_ty.sty {
             match mt.ty.sty {
                 ty::TySlice(_) | ty::TyStr => {
@@ -1038,7 +1039,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
     fn type_of_node_must_outlive(&mut self,
         origin: infer::SubregionOrigin<'tcx>,
         id: ast::NodeId,
-        minimum_lifetime: &'tcx ty::Region)
+        minimum_lifetime: ty::Region<'tcx>)
     {
         // Try to resolve the type.  If we encounter an error, then typeck
         // is going to fail anyway, so just stop here and let typeck
@@ -1101,7 +1102,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
     /// Computes the guarantors for any ref bindings in a match and
     /// then ensures that the lifetime of the resulting pointer is
     /// linked to the lifetime of its guarantor (if any).
-    fn link_fn_args(&self, body_scope: CodeExtent, args: &[hir::Arg]) {
+    fn link_fn_args(&self, body_scope: CodeExtent<'tcx>, args: &[hir::Arg]) {
         debug!("regionck::link_fn_args(body_scope={:?})", body_scope);
         let mc = mc::MemCategorizationContext::new(self);
         for arg in args {
@@ -1167,7 +1168,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
     /// must outlive `callee_scope`.
     fn link_by_ref(&self,
                    expr: &hir::Expr,
-                   callee_scope: CodeExtent) {
+                   callee_scope: CodeExtent<'tcx>) {
         debug!("link_by_ref(expr={:?}, callee_scope={:?})",
                expr, callee_scope);
         let mc = mc::MemCategorizationContext::new(self);
@@ -1200,7 +1201,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
     /// between regions, as explained in `link_reborrowed_region()`.
     fn link_region(&self,
                    span: Span,
-                   borrow_region: &'tcx ty::Region,
+                   borrow_region: ty::Region<'tcx>,
                    borrow_kind: ty::BorrowKind,
                    borrow_cmt: mc::cmt<'tcx>) {
         let mut borrow_cmt = borrow_cmt;
@@ -1297,10 +1298,10 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
     /// recurse and process `ref_cmt` (see case 2 above).
     fn link_reborrowed_region(&self,
                               span: Span,
-                              borrow_region: &'tcx ty::Region,
+                              borrow_region: ty::Region<'tcx>,
                               borrow_kind: ty::BorrowKind,
                               ref_cmt: mc::cmt<'tcx>,
-                              ref_region: &'tcx ty::Region,
+                              ref_region: ty::Region<'tcx>,
                               mut ref_kind: ty::BorrowKind,
                               note: mc::Note)
                               -> Option<(mc::cmt<'tcx>, ty::BorrowKind)>
@@ -1411,7 +1412,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                           origin: infer::ParameterOrigin,
                           substs: &Substs<'tcx>,
                           expr_span: Span,
-                          expr_region: &'tcx ty::Region) {
+                          expr_region: ty::Region<'tcx>) {
         debug!("substs_wf_in_scope(substs={:?}, \
                 expr_region={:?}, \
                 origin={:?}, \
@@ -1436,7 +1437,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
     pub fn type_must_outlive(&self,
                              origin: infer::SubregionOrigin<'tcx>,
                              ty: Ty<'tcx>,
-                             region: &'tcx ty::Region)
+                             region: ty::Region<'tcx>)
     {
         let ty = self.resolve_type(ty);
 
@@ -1454,7 +1455,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
     fn components_must_outlive(&self,
                                origin: infer::SubregionOrigin<'tcx>,
                                components: Vec<ty::outlives::Component<'tcx>>,
-                               region: &'tcx ty::Region)
+                               region: ty::Region<'tcx>)
     {
         for component in components {
             let origin = origin.clone();
@@ -1485,7 +1486,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
 
     fn param_ty_must_outlive(&self,
                              origin: infer::SubregionOrigin<'tcx>,
-                             region: &'tcx ty::Region,
+                             region: ty::Region<'tcx>,
                              param_ty: ty::ParamTy) {
         debug!("param_ty_must_outlive(region={:?}, param_ty={:?}, origin={:?})",
                region, param_ty, origin);
@@ -1497,7 +1498,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
 
     fn projection_must_outlive(&self,
                                origin: infer::SubregionOrigin<'tcx>,
-                               region: &'tcx ty::Region,
+                               region: ty::Region<'tcx>,
                                projection_ty: ty::ProjectionTy<'tcx>)
     {
         debug!("projection_must_outlive(region={:?}, projection_ty={:?}, origin={:?})",
@@ -1622,7 +1623,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
     fn projection_declared_bounds(&self,
                                   span: Span,
                                   projection_ty: ty::ProjectionTy<'tcx>)
-                                  -> Vec<&'tcx ty::Region>
+                                  -> Vec<ty::Region<'tcx>>
     {
         // First assemble bounds from where clauses and traits.
 
@@ -1637,7 +1638,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
 
     fn projection_bound(&self,
                         span: Span,
-                        declared_bounds: Vec<&'tcx ty::Region>,
+                        declared_bounds: Vec<ty::Region<'tcx>>,
                         projection_ty: ty::ProjectionTy<'tcx>)
                         -> VerifyBound<'tcx> {
         debug!("projection_bound(declared_bounds={:?}, projection_ty={:?})",
@@ -1673,7 +1674,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
     }
 
     fn declared_generic_bounds_from_env(&self, generic: GenericKind<'tcx>)
-                                        -> Vec<&'tcx ty::Region>
+                                        -> Vec<ty::Region<'tcx>>
     {
         let param_env = &self.parameter_environment;
 
@@ -1707,7 +1708,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
     fn declared_projection_bounds_from_trait(&self,
                                              span: Span,
                                              projection_ty: ty::ProjectionTy<'tcx>)
-                                             -> Vec<&'tcx ty::Region>
+                                             -> Vec<ty::Region<'tcx>>
     {
         debug!("projection_bounds(projection_ty={:?})",
                projection_ty);

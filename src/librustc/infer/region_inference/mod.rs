@@ -44,17 +44,17 @@ pub enum Constraint<'tcx> {
     ConstrainVarSubVar(RegionVid, RegionVid),
 
     // Concrete region is subregion of region variable
-    ConstrainRegSubVar(&'tcx Region, RegionVid),
+    ConstrainRegSubVar(Region<'tcx>, RegionVid),
 
     // Region variable is subregion of concrete region. This does not
     // directly affect inference, but instead is checked after
     // inference is complete.
-    ConstrainVarSubReg(RegionVid, &'tcx Region),
+    ConstrainVarSubReg(RegionVid, Region<'tcx>),
 
     // A constraint where neither side is a variable. This does not
     // directly affect inference, but instead is checked after
     // inference is complete.
-    ConstrainRegSubReg(&'tcx Region, &'tcx Region),
+    ConstrainRegSubReg(Region<'tcx>, Region<'tcx>),
 }
 
 // VerifyGenericBound(T, _, R, RS): The parameter type `T` (or
@@ -66,7 +66,7 @@ pub enum Constraint<'tcx> {
 pub struct Verify<'tcx> {
     kind: GenericKind<'tcx>,
     origin: SubregionOrigin<'tcx>,
-    region: &'tcx Region,
+    region: Region<'tcx>,
     bound: VerifyBound<'tcx>,
 }
 
@@ -86,14 +86,14 @@ pub enum VerifyBound<'tcx> {
     // Put another way, the subject value is known to outlive all
     // regions in {R}, so if any of those outlives 'min, then the
     // bound is met.
-    AnyRegion(Vec<&'tcx Region>),
+    AnyRegion(Vec<Region<'tcx>>),
 
     // B = forall {R} --> all 'r in {R} must outlive 'min
     //
     // Put another way, the subject value is known to outlive some
     // region in {R}, so if all of those outlives 'min, then the bound
     // is met.
-    AllRegions(Vec<&'tcx Region>),
+    AllRegions(Vec<Region<'tcx>>),
 
     // B = exists {B} --> 'min must meet some bound b in {B}
     AnyBound(Vec<VerifyBound<'tcx>>),
@@ -104,8 +104,8 @@ pub enum VerifyBound<'tcx> {
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub struct TwoRegions<'tcx> {
-    a: &'tcx Region,
-    b: &'tcx Region,
+    a: Region<'tcx>,
+    b: Region<'tcx>,
 }
 
 #[derive(Copy, Clone, PartialEq)]
@@ -128,7 +128,7 @@ pub enum UndoLogEntry<'tcx> {
     AddVerify(usize),
 
     /// We added the given `given`
-    AddGiven(ty::FreeRegion, ty::RegionVid),
+    AddGiven(ty::FreeRegion<'tcx>, ty::RegionVid),
 
     /// We added a GLB/LUB "combinaton variable"
     AddCombination(CombineMapType, TwoRegions<'tcx>),
@@ -153,13 +153,13 @@ pub enum RegionResolutionError<'tcx> {
     /// `ConcreteFailure(o, a, b)`:
     ///
     /// `o` requires that `a <= b`, but this does not hold
-    ConcreteFailure(SubregionOrigin<'tcx>, &'tcx Region, &'tcx Region),
+    ConcreteFailure(SubregionOrigin<'tcx>, Region<'tcx>, Region<'tcx>),
 
     /// `GenericBoundFailure(p, s, a)
     ///
     /// The parameter/associated-type `p` must be known to outlive the lifetime
     /// `a` (but none of the known bounds are sufficient).
-    GenericBoundFailure(SubregionOrigin<'tcx>, GenericKind<'tcx>, &'tcx Region),
+    GenericBoundFailure(SubregionOrigin<'tcx>, GenericKind<'tcx>, Region<'tcx>),
 
     /// `SubSupConflict(v, sub_origin, sub_r, sup_origin, sup_r)`:
     ///
@@ -168,14 +168,14 @@ pub enum RegionResolutionError<'tcx> {
     /// `sub_r <= sup_r` does not hold.
     SubSupConflict(RegionVariableOrigin,
                    SubregionOrigin<'tcx>,
-                   &'tcx Region,
+                   Region<'tcx>,
                    SubregionOrigin<'tcx>,
-                   &'tcx Region),
+                   Region<'tcx>),
 }
 
 #[derive(Clone, Debug)]
 pub enum ProcessedErrorOrigin<'tcx> {
-    ConcreteFailure(SubregionOrigin<'tcx>, &'tcx Region, &'tcx Region),
+    ConcreteFailure(SubregionOrigin<'tcx>, Region<'tcx>, Region<'tcx>),
     VariableFailure(RegionVariableOrigin),
 }
 
@@ -214,7 +214,7 @@ pub struct RegionVarBindings<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
     // record the fact that `'a <= 'b` is implied by the fn signature,
     // and then ignore the constraint when solving equations. This is
     // a bit of a hack but seems to work.
-    givens: RefCell<FxHashSet<(ty::FreeRegion, ty::RegionVid)>>,
+    givens: RefCell<FxHashSet<(ty::FreeRegion<'tcx>, ty::RegionVid)>>,
 
     lubs: RefCell<CombineMap<'tcx>>,
     glbs: RefCell<CombineMap<'tcx>>,
@@ -271,12 +271,12 @@ impl TaintDirections {
 
 struct TaintSet<'tcx> {
     directions: TaintDirections,
-    regions: FxHashSet<&'tcx ty::Region>
+    regions: FxHashSet<ty::Region<'tcx>>
 }
 
 impl<'a, 'gcx, 'tcx> TaintSet<'tcx> {
     fn new(directions: TaintDirections,
-           initial_region: &'tcx ty::Region)
+           initial_region: ty::Region<'tcx>)
            -> Self {
         let mut regions = FxHashSet();
         regions.insert(initial_region);
@@ -328,7 +328,7 @@ impl<'a, 'gcx, 'tcx> TaintSet<'tcx> {
         }
     }
 
-    fn into_set(self) -> FxHashSet<&'tcx ty::Region> {
+    fn into_set(self) -> FxHashSet<ty::Region<'tcx>> {
         self.regions
     }
 
@@ -337,8 +337,8 @@ impl<'a, 'gcx, 'tcx> TaintSet<'tcx> {
     }
 
     fn add_edge(&mut self,
-                source: &'tcx ty::Region,
-                target: &'tcx ty::Region) {
+                source: ty::Region<'tcx>,
+                target: ty::Region<'tcx>) {
         if self.directions.incoming {
             if self.regions.contains(&target) {
                 self.regions.insert(source);
@@ -499,7 +499,7 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
     /// it's just there to make it explicit which snapshot bounds the
     /// skolemized region that results. It should always be the top-most snapshot.
     pub fn push_skolemized(&self, br: ty::BoundRegion, snapshot: &RegionSnapshot)
-                           -> &'tcx Region {
+                           -> Region<'tcx> {
         assert!(self.in_snapshot());
         assert!(self.undo_log.borrow()[snapshot.length] == OpenSnapshot);
 
@@ -513,7 +513,7 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
     /// completes to remove all trace of the skolemized regions
     /// created in that time.
     pub fn pop_skolemized(&self,
-                          skols: &FxHashSet<&'tcx ty::Region>,
+                          skols: &FxHashSet<ty::Region<'tcx>>,
                           snapshot: &RegionSnapshot) {
         debug!("pop_skolemized_regions(skols={:?})", skols);
 
@@ -567,7 +567,7 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
         self.skolemization_count.set(snapshot.skolemization_count);
         return;
 
-        fn kill_constraint<'tcx>(skols: &FxHashSet<&'tcx ty::Region>,
+        fn kill_constraint<'tcx>(skols: &FxHashSet<ty::Region<'tcx>>,
                                  undo_entry: &UndoLogEntry<'tcx>)
                                  -> bool {
             match undo_entry {
@@ -596,7 +596,7 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
 
     }
 
-    pub fn new_bound(&self, debruijn: ty::DebruijnIndex) -> &'tcx Region {
+    pub fn new_bound(&self, debruijn: ty::DebruijnIndex) -> Region<'tcx> {
         // Creates a fresh bound variable for use in GLB computations.
         // See discussion of GLB computation in the large comment at
         // the top of this file for more details.
@@ -662,7 +662,7 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn add_given(&self, sub: ty::FreeRegion, sup: ty::RegionVid) {
+    pub fn add_given(&self, sub: ty::FreeRegion<'tcx>, sup: ty::RegionVid) {
         // cannot add givens once regions are resolved
         assert!(self.values_are_none());
 
@@ -676,8 +676,8 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
 
     pub fn make_eqregion(&self,
                          origin: SubregionOrigin<'tcx>,
-                         sub: &'tcx Region,
-                         sup: &'tcx Region) {
+                         sub: Region<'tcx>,
+                         sup: Region<'tcx>) {
         if sub != sup {
             // Eventually, it would be nice to add direct support for
             // equating regions.
@@ -692,8 +692,8 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
 
     pub fn make_subregion(&self,
                           origin: SubregionOrigin<'tcx>,
-                          sub: &'tcx Region,
-                          sup: &'tcx Region) {
+                          sub: Region<'tcx>,
+                          sup: Region<'tcx>) {
         // cannot add constraints once regions are resolved
         assert!(self.values_are_none());
 
@@ -734,7 +734,7 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
     pub fn verify_generic_bound(&self,
                                 origin: SubregionOrigin<'tcx>,
                                 kind: GenericKind<'tcx>,
-                                sub: &'tcx Region,
+                                sub: Region<'tcx>,
                                 bound: VerifyBound<'tcx>) {
         self.add_verify(Verify {
             kind: kind,
@@ -746,9 +746,9 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
 
     pub fn lub_regions(&self,
                        origin: SubregionOrigin<'tcx>,
-                       a: &'tcx Region,
-                       b: &'tcx Region)
-                       -> &'tcx Region {
+                       a: Region<'tcx>,
+                       b: Region<'tcx>)
+                       -> Region<'tcx> {
         // cannot add constraints once regions are resolved
         assert!(self.values_are_none());
 
@@ -772,9 +772,9 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
 
     pub fn glb_regions(&self,
                        origin: SubregionOrigin<'tcx>,
-                       a: &'tcx Region,
-                       b: &'tcx Region)
-                       -> &'tcx Region {
+                       a: Region<'tcx>,
+                       b: Region<'tcx>)
+                       -> Region<'tcx> {
         // cannot add constraints once regions are resolved
         assert!(self.values_are_none());
 
@@ -796,7 +796,7 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn resolve_var(&self, rid: RegionVid) -> &'tcx ty::Region {
+    pub fn resolve_var(&self, rid: RegionVid) -> ty::Region<'tcx> {
         match *self.values.borrow() {
             None => {
                 span_bug!((*self.var_origins.borrow())[rid.index as usize].span(),
@@ -811,7 +811,7 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn opportunistic_resolve_var(&self, rid: RegionVid) -> &'tcx ty::Region {
+    pub fn opportunistic_resolve_var(&self, rid: RegionVid) -> ty::Region<'tcx> {
         let vid = self.unification_table.borrow_mut().find_value(rid).min_vid;
         self.tcx.mk_region(ty::ReVar(vid))
     }
@@ -825,12 +825,12 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
 
     pub fn combine_vars<F>(&self,
                            t: CombineMapType,
-                           a: &'tcx Region,
-                           b: &'tcx Region,
+                           a: Region<'tcx>,
+                           b: Region<'tcx>,
                            origin: SubregionOrigin<'tcx>,
                            mut relate: F)
-                           -> &'tcx Region
-        where F: FnMut(&RegionVarBindings<'a, 'gcx, 'tcx>, &'tcx Region, &'tcx Region)
+                           -> Region<'tcx>
+        where F: FnMut(&RegionVarBindings<'a, 'gcx, 'tcx>, Region<'tcx>, Region<'tcx>)
     {
         let vars = TwoRegions { a: a, b: b };
         if let Some(&c) = self.combine_map(t).borrow().get(&vars) {
@@ -869,9 +869,9 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
     /// related to other regions.
     pub fn tainted(&self,
                    mark: &RegionSnapshot,
-                   r0: &'tcx Region,
+                   r0: Region<'tcx>,
                    directions: TaintDirections)
-                   -> FxHashSet<&'tcx ty::Region> {
+                   -> FxHashSet<ty::Region<'tcx>> {
         debug!("tainted(mark={:?}, r0={:?}, directions={:?})",
                mark, r0, directions);
 
@@ -892,7 +892,7 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
     /// constraints, assuming such values can be found; if they cannot,
     /// errors are reported.
     pub fn resolve_regions(&self,
-                           free_regions: &FreeRegionMap,
+                           free_regions: &FreeRegionMap<'tcx>,
                            subject_node: ast::NodeId)
                            -> Vec<RegionResolutionError<'tcx>> {
         debug!("RegionVarBindings: resolve_regions()");
@@ -903,10 +903,10 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
     }
 
     fn lub_concrete_regions(&self,
-                            free_regions: &FreeRegionMap,
-                            a: &'tcx Region,
-                            b: &'tcx Region)
-                            -> &'tcx Region {
+                            free_regions: &FreeRegionMap<'tcx>,
+                            a: Region<'tcx>,
+                            b: Region<'tcx>)
+                            -> Region<'tcx> {
         match (a, b) {
             (&ReLateBound(..), _) |
             (_, &ReLateBound(..)) |
@@ -961,8 +961,8 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
                     self.tcx.region_maps().nearest_common_ancestor(a_id, b_id)))
             }
 
-            (&ReFree(a_fr), &ReFree(b_fr)) => {
-                self.tcx.mk_region(free_regions.lub_free_regions(a_fr, b_fr))
+            (&ReFree(_), &ReFree(_)) => {
+                free_regions.lub_free_regions(self.tcx, a, b)
             }
 
             // For these types, we cannot define any additional
@@ -983,12 +983,12 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
 
 #[derive(Copy, Clone, Debug)]
 pub enum VarValue<'tcx> {
-    Value(&'tcx Region),
+    Value(Region<'tcx>),
     ErrorValue,
 }
 
 struct RegionAndOrigin<'tcx> {
-    region: &'tcx Region,
+    region: Region<'tcx>,
     origin: SubregionOrigin<'tcx>,
 }
 
@@ -996,7 +996,7 @@ type RegionGraph<'tcx> = graph::Graph<(), Constraint<'tcx>>;
 
 impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
     fn infer_variable_values(&self,
-                             free_regions: &FreeRegionMap,
+                             free_regions: &FreeRegionMap<'tcx>,
                              errors: &mut Vec<RegionResolutionError<'tcx>>,
                              subject: ast::NodeId)
                              -> Vec<VarValue<'tcx>> {
@@ -1056,7 +1056,7 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
         }
     }
 
-    fn expansion(&self, free_regions: &FreeRegionMap, var_values: &mut [VarValue<'tcx>]) {
+    fn expansion(&self, free_regions: &FreeRegionMap<'tcx>, var_values: &mut [VarValue<'tcx>]) {
         self.iterate_until_fixed_point("Expansion", |constraint, origin| {
             debug!("expansion: constraint={:?} origin={:?}",
                    constraint, origin);
@@ -1085,8 +1085,8 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
     }
 
     fn expand_node(&self,
-                   free_regions: &FreeRegionMap,
-                   a_region: &'tcx Region,
+                   free_regions: &FreeRegionMap<'tcx>,
+                   a_region: Region<'tcx>,
                    b_vid: RegionVid,
                    b_data: &mut VarValue<'tcx>)
                    -> bool {
@@ -1132,7 +1132,7 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
     /// cases where the region cannot grow larger than a fixed point)
     /// and check that they are satisfied.
     fn collect_errors(&self,
-                      free_regions: &FreeRegionMap,
+                      free_regions: &FreeRegionMap<'tcx>,
                       var_data: &mut Vec<VarValue<'tcx>>,
                       errors: &mut Vec<RegionResolutionError<'tcx>>) {
         let constraints = self.constraints.borrow();
@@ -1209,7 +1209,7 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
     /// Go over the variables that were declared to be error variables
     /// and create a `RegionResolutionError` for each of them.
     fn collect_var_errors(&self,
-                          free_regions: &FreeRegionMap,
+                          free_regions: &FreeRegionMap<'tcx>,
                           var_data: &[VarValue<'tcx>],
                           graph: &RegionGraph<'tcx>,
                           errors: &mut Vec<RegionResolutionError<'tcx>>) {
@@ -1311,7 +1311,7 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
     }
 
     fn collect_error_for_expanding_node(&self,
-                                        free_regions: &FreeRegionMap,
+                                        free_regions: &FreeRegionMap<'tcx>,
                                         graph: &RegionGraph<'tcx>,
                                         dup_vec: &mut [u32],
                                         node_idx: RegionVid,
@@ -1480,8 +1480,8 @@ impl<'a, 'gcx, 'tcx> RegionVarBindings<'a, 'gcx, 'tcx> {
 
 fn normalize<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                              values: &Vec<VarValue<'tcx>>,
-                             r: &'tcx ty::Region)
-                             -> &'tcx ty::Region {
+                             r: ty::Region<'tcx>)
+                             -> ty::Region<'tcx> {
     match *r {
         ty::ReVar(rid) => lookup(tcx, values, rid),
         _ => r,
@@ -1491,7 +1491,7 @@ fn normalize<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
 fn lookup<'a, 'gcx, 'tcx>(tcx: TyCtxt<'a, 'gcx, 'tcx>,
                           values: &Vec<VarValue<'tcx>>,
                           rid: ty::RegionVid)
-                          -> &'tcx ty::Region {
+                          -> ty::Region<'tcx> {
     match values[rid.index as usize] {
         Value(r) => r,
         ErrorValue => tcx.types.re_static, // Previously reported error.
@@ -1539,7 +1539,7 @@ impl<'a, 'gcx, 'tcx> GenericKind<'tcx> {
 }
 
 impl<'a, 'gcx, 'tcx> VerifyBound<'tcx> {
-    fn for_each_region(&self, f: &mut FnMut(&'tcx ty::Region)) {
+    fn for_each_region(&self, f: &mut FnMut(ty::Region<'tcx>)) {
         match self {
             &VerifyBound::AnyRegion(ref rs) |
             &VerifyBound::AllRegions(ref rs) => for &r in rs {
@@ -1592,9 +1592,9 @@ impl<'a, 'gcx, 'tcx> VerifyBound<'tcx> {
     }
 
     fn is_met(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>,
-              free_regions: &FreeRegionMap,
+              free_regions: &FreeRegionMap<'tcx>,
               var_values: &Vec<VarValue<'tcx>>,
-              min: &'tcx ty::Region)
+              min: ty::Region<'tcx>)
               -> bool {
         match self {
             &VerifyBound::AnyRegion(ref rs) =>

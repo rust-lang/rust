@@ -126,7 +126,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for CheckLoanCtxt<'a, 'tcx> {
               borrow_id: ast::NodeId,
               borrow_span: Span,
               cmt: mc::cmt<'tcx>,
-              loan_region: &'tcx ty::Region,
+              loan_region: ty::Region<'tcx>,
               bk: ty::BorrowKind,
               loan_cause: euv::LoanCause)
     {
@@ -232,14 +232,14 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
         })
     }
 
-    pub fn each_in_scope_loan<F>(&self, scope: region::CodeExtent, mut op: F) -> bool where
+    pub fn each_in_scope_loan<F>(&self, scope: region::CodeExtent<'tcx>, mut op: F) -> bool where
         F: FnMut(&Loan<'tcx>) -> bool,
     {
         //! Like `each_issued_loan()`, but only considers loans that are
         //! currently in scope.
 
         let tcx = self.tcx();
-        self.each_issued_loan(scope.node_id(&tcx.region_maps()), |loan| {
+        self.each_issued_loan(scope.node_id(), |loan| {
             if tcx.region_maps().is_subscope_of(scope, loan.kill_scope) {
                 op(loan)
             } else {
@@ -249,7 +249,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
     }
 
     fn each_in_scope_loan_affecting_path<F>(&self,
-                                            scope: region::CodeExtent,
+                                            scope: region::CodeExtent<'tcx>,
                                             loan_path: &LoanPath<'tcx>,
                                             mut op: F)
                                             -> bool where
@@ -460,8 +460,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
             // 3. Where does old loan expire.
 
             let previous_end_span =
-                self.tcx().hir.span(old_loan.kill_scope.node_id(&self.tcx().region_maps()))
-                              .end_point();
+                self.tcx().hir.span(old_loan.kill_scope.node_id()).end_point();
 
             let mut err = match (new_loan.kind, old_loan.kind) {
                 (ty::MutBorrow, ty::MutBorrow) => {
@@ -710,7 +709,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
         let mut ret = UseOk;
 
         self.each_in_scope_loan_affecting_path(
-            self.tcx().region_maps().node_extent(expr_id), use_path, |loan| {
+            self.tcx().node_extent(expr_id), use_path, |loan| {
             if !compatible_borrow_kinds(loan.kind, borrow_kind) {
                 ret = UseWhileBorrowed(loan.loan_path.clone(), loan.span);
                 false
@@ -824,7 +823,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
 
         // Check that we don't invalidate any outstanding loans
         if let Some(loan_path) = opt_loan_path(&assignee_cmt) {
-            let scope = self.tcx().region_maps().node_extent(assignment_id);
+            let scope = self.tcx().node_extent(assignment_id);
             self.each_in_scope_loan_affecting_path(scope, &loan_path, |loan| {
                 self.report_illegal_mutation(assignment_span, &loan_path, loan);
                 false

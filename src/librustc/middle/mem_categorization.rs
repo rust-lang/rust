@@ -89,7 +89,7 @@ use std::rc::Rc;
 #[derive(Clone, PartialEq)]
 pub enum Categorization<'tcx> {
     // temporary val, argument is its scope
-    Rvalue(&'tcx ty::Region, &'tcx ty::Region),
+    Rvalue(ty::Region<'tcx>, ty::Region<'tcx>),
     StaticItem,
     Upvar(Upvar),                          // upvar referenced by closure env
     Local(ast::NodeId),                    // local variable
@@ -114,13 +114,13 @@ pub enum PointerKind<'tcx> {
     Unique,
 
     /// `&T`
-    BorrowedPtr(ty::BorrowKind, &'tcx ty::Region),
+    BorrowedPtr(ty::BorrowKind, ty::Region<'tcx>),
 
     /// `*T`
     UnsafePtr(hir::Mutability),
 
     /// Implicit deref of the `&T` that results from an overloaded index `[]`.
-    Implicit(ty::BorrowKind, &'tcx ty::Region),
+    Implicit(ty::BorrowKind, ty::Region<'tcx>),
 }
 
 // We use the term "interior" to mean "something reachable from the
@@ -796,7 +796,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             // The environment of a closure is guaranteed to
             // outlive any bindings introduced in the body of the
             // closure itself.
-            scope: Some(self.tcx().region_maps().item_extent(fn_body_id)),
+            scope: Some(self.tcx().item_extent(fn_body_id)),
             bound_region: ty::BrEnv
         }));
 
@@ -842,10 +842,10 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
 
     /// Returns the lifetime of a temporary created by expr with id `id`.
     /// This could be `'static` if `id` is part of a constant expression.
-    pub fn temporary_scope(&self, id: ast::NodeId) -> (&'tcx ty::Region, &'tcx ty::Region)
+    pub fn temporary_scope(&self, id: ast::NodeId) -> (ty::Region<'tcx>, ty::Region<'tcx>)
     {
         let (scope, old_scope) =
-            self.tcx().region_maps().old_and_new_temporary_scope(id);
+            self.tcx().region_maps().old_and_new_temporary_scope(self.tcx(), id);
         (self.tcx().mk_region(match scope {
             Some(scope) => ty::ReScope(scope),
             None => ty::ReStatic
@@ -887,8 +887,8 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
     pub fn cat_rvalue(&self,
                       cmt_id: ast::NodeId,
                       span: Span,
-                      temp_scope: &'tcx ty::Region,
-                      old_temp_scope: &'tcx ty::Region,
+                      temp_scope: ty::Region<'tcx>,
+                      old_temp_scope: ty::Region<'tcx>,
                       expr_ty: Ty<'tcx>) -> cmt<'tcx> {
         let ret = Rc::new(cmt_ {
             id:cmt_id,

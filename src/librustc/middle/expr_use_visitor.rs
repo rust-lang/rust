@@ -75,7 +75,7 @@ pub trait Delegate<'tcx> {
               borrow_id: ast::NodeId,
               borrow_span: Span,
               cmt: mc::cmt<'tcx>,
-              loan_region: &'tcx ty::Region,
+              loan_region: ty::Region<'tcx>,
               bk: ty::BorrowKind,
               loan_cause: LoanCause);
 
@@ -347,7 +347,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
 
     fn borrow_expr(&mut self,
                    expr: &hir::Expr,
-                   r: &'tcx ty::Region,
+                   r: ty::Region<'tcx>,
                    bk: ty::BorrowKind,
                    cause: LoanCause) {
         debug!("borrow_expr(expr={:?}, r={:?}, bk={:?})",

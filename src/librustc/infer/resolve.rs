@@ -72,7 +72,7 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for OpportunisticTypeAndRegionResolv
         }
     }
 
-    fn fold_region(&mut self, r: &'tcx ty::Region) -> &'tcx ty::Region {
+    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         match *r {
             ty::ReVar(rid) => self.infcx.region_vars.opportunistic_resolve_var(rid),
             _ => r,
@@ -138,7 +138,7 @@ impl<'a, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for FullTypeResolver<'a, 'gcx, 'tcx>
         }
     }
 
-    fn fold_region(&mut self, r: &'tcx ty::Region) -> &'tcx ty::Region {
+    fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
         match *r {
             ty::ReVar(rid) => self.infcx.region_vars.resolve_var(rid),
             _ => r,
