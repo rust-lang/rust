@@ -2348,7 +2348,7 @@ macro_rules! uint_impl {
             if self == 0 {
                 1
             } else {
-                one << (bits - self.wrapping_sub(one).leading_zeros() as usize)
+                one << (bits - (self - one).leading_zeros() as usize)
             }
         }
 
