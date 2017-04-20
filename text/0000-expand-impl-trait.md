@@ -14,8 +14,7 @@ This RFC proposes several steps forward for `impl Trait`:
 - Resolving questions around which type and lifetime parameters are considered
   in scope for an `impl Trait`.
 
-- Adding `impl Trait` to several new locations: argument positions, trait items,
-  and trait impls.
+- Adding `impl Trait` to argument position.
 
 The first two proposals, in particular, put us into a position to stabilize the
 current version of the feature in the near future.
@@ -257,24 +256,13 @@ fn foo<T: Trait>(t: T) -> T { t }
 In both of these functions, if you pass in an argument that is `Send`, you will
 be able to rely on `Send` in the return value.
 
-## Motivation for expansion to traits
-
-The argument for allowing `impl Trait` in function signatures in traits follows
-much the same line of reasoning: providing a consistent mental model and
-experience for the different places in which a function signature can appear. As
-explained below, the RFC assumes that we will eventually gain a more expressive,
-explicit notation for introducing existentials, such that the use of `impl
-Trait` in traits could be understood as sugar for that underlying feature within
-an associated type.
-
 # Detailed design
 [design]: #detailed-design
 
 ## The proposal in a nutshell
 
-- Expand `impl Trait` to allow use in arguments, and in function signatures in
-  traits and impls. In argument position, it behaves like an anonymous generic
-  parameter. **Each of these expansions will be separately feature-gated.**
+- Expand `impl Trait` to allow use in arguments, where it behaves like an
+  anonymous generic parameter. **This will be separately feature-gated**.
 
 - Stick with the `impl Trait` syntax, rather than introducing a `some`/`any`
   distinction.
@@ -612,94 +600,6 @@ bar::<u32>(0) // this is not
 
 Thus, while `impl Trait` in argument position in some sense "desugars" to a
 generic parameter, the parameter is treated fully anonymously.
-
-## Expansion to traits
-
-This RFC proposes to allow `impl Trait` in *function signatures* within both
-trait definitions and trait impl blocks. It does *not* propose allowing `impl
-Trait` to appear in associated type definitions.
-
-Allowing use in traits is motivated by many examples, most prominently:
-
-```rust
-trait Iterable {
-    type Item;
-    fn iter<'a>(&'a self) -> impl Iterator<&'a Item> + 'a
-}
-```
-
-Here `impl Trait` is used for a type whose identity isn't important, where
-introducing an associated type is overkill.
-
-### Functions in trait definitions
-
-Using `impl Trait` in a function within a trait definition is
-straightforward. Intuitively, it has the same meaning as with any other
-function: `any Trait` in argument position, `some Trait` in return position.
-
-Note, however, that the use in return position is roughly equivalent to
-introducing an anonymous associated type that's being returned:
-
-```rust
-trait Foo {
-    fn bar(&self, f: impl FnOnce());
-    fn baz(&self) -> impl Iterator;
-}
-
-// is very roughly equivalent to:
-
-trait Foo {
-    fn bar<F: FnOnce()>(&self, f: F);
-
-    type __baz: Iterator;
-    fn baz(&self) -> __baz;
-}
-```
-
-However, there are some key differences:
-
-- As mentioned above, `impl Trait` in argument position yields an "anonymous"
-  generic parameter; implementations of the trait *must* use `impl Trait` in the
-  same position.
-
-- In return position, because the underlying concrete type can close over type
-  and lifetime variables in scope, it is in general introducing an
-  [associated type constructor](https://github.com/rust-lang/rfcs/pull/1598)
-  (ATCs), *not* just an associated type. That's one reason we didn't allow `impl
-  Trait` in traits in the first place. But we're now well on our way to
-  supporting ATCs in general, so extending the design is not so problematic.
-
-- The associated type (constructor) introduced by `impl Trait` in return
-  position is anonymous, and thus not usable within any function other than the
-  one that introduced it. In other words, the "scope" of the existential is just
-  that function. Larger scopes should be possible with the more expressive and
-  explicit syntax sketched in the appendix.
-
-### Functions in trait implementations
-
-When implementing a trait, `impl Trait` can -- and must -- be used *only* when
-it appears in the corresponding function signature in the trait's definition:
-
-```rust
-trait Foo {
-    fn bar(&self, f: impl FnOnce());
-    fn baz(&self) -> impl Iterator;
-}
-
-impl Foo for MyStruct {
-    fn bar(&self, f: impl FnOnce()) { ... }
-    fn baz(&self) -> impl Iterator { ... }
-}
-```
-
-The restrictions are largely there for simplicity; there are a few possible
-relaxations that a future RFC could tackle.
-
-### Associated types
-
-While existentials should eventually be usable when defining an associated type,
-this RFC proposes to defer that feature to a fully explicit syntax. The appendix
-at the end of the RFC sketches what that might look like.
 
 ## Scoping for type and lifetime parameters
 
