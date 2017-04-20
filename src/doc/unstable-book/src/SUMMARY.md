@@ -163,7 +163,6 @@
     - [linked_list_extras](library-features/linked-list-extras.md)
     - [lookup_host](library-features/lookup-host.md)
     - [manually_drop](library-features/manually-drop.md)
-    - [map_entry_recover_keys](library-features/map-entry-recover-keys.md)
     - [mpsc_select](library-features/mpsc-select.md)
     - [n16](library-features/n16.md)
     - [never_type_impls](library-features/never-type-impls.md)
