@@ -225,7 +225,8 @@ pub struct Iter<E> {
 impl<E: fmt::Debug> fmt::Debug for Iter<E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_tuple("Iter")
-         .field(&self.clone())
+         .field(&self.index)
+         .field(&self.bits)
          .finish()
     }
 }
