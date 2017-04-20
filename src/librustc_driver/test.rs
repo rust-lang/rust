@@ -376,7 +376,7 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
     pub fn check_sub(&self, t1: Ty<'tcx>, t2: Ty<'tcx>) {
         match self.sub(t1, t2) {
             Ok(InferOk { obligations, .. }) => {
-                // FIXME(#32730) once obligations are being propagated, assert the right thing.
+                // None of these tests should require nested obligations:
                 assert!(obligations.is_empty());
             }
             Err(ref e) => {
@@ -400,7 +400,7 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
     pub fn check_lub(&self, t1: Ty<'tcx>, t2: Ty<'tcx>, t_lub: Ty<'tcx>) {
         match self.lub(t1, t2) {
             Ok(InferOk { obligations, value: t }) => {
-                // FIXME(#32730) once obligations are being propagated, assert the right thing.
+                // None of these tests should require nested obligations:
                 assert!(obligations.is_empty());
 
                 self.assert_eq(t, t_lub);
@@ -415,7 +415,7 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
         match self.glb(t1, t2) {
             Err(e) => panic!("unexpected error computing LUB: {:?}", e),
             Ok(InferOk { obligations, value: t }) => {
-                // FIXME(#32730) once obligations are being propagated, assert the right thing.
+                // None of these tests should require nested obligations:
                 assert!(obligations.is_empty());
 
                 self.assert_eq(t, t_glb);
