@@ -112,7 +112,7 @@ pub enum ObligationCauseCode<'tcx> {
     ReferenceOutlivesReferent(Ty<'tcx>),
 
     /// A type like `Box<Foo<'a> + 'b>` is WF only if `'b: 'a`.
-    ObjectTypeBound(Ty<'tcx>, &'tcx ty::Region),
+    ObjectTypeBound(Ty<'tcx>, ty::Region<'tcx>),
 
     /// Obligation incurred due to an object cast.
     ObjectCastObligation(/* Object type */ Ty<'tcx>),

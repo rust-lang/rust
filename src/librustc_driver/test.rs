@@ -293,7 +293,7 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
         self.infcx.tcx.mk_param(index, Symbol::intern(&name))
     }
 
-    pub fn re_early_bound(&self, index: u32, name: &'static str) -> &'tcx ty::Region {
+    pub fn re_early_bound(&self, index: u32, name: &'static str) -> ty::Region<'tcx> {
         let name = Symbol::intern(name);
         self.infcx.tcx.mk_region(ty::ReEarlyBound(ty::EarlyBoundRegion {
             index: index,
@@ -304,11 +304,11 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
     pub fn re_late_bound_with_debruijn(&self,
                                        id: u32,
                                        debruijn: ty::DebruijnIndex)
-                                       -> &'tcx ty::Region {
+                                       -> ty::Region<'tcx> {
         self.infcx.tcx.mk_region(ty::ReLateBound(debruijn, ty::BrAnon(id)))
     }
 
-    pub fn t_rptr(&self, r: &'tcx ty::Region) -> Ty<'tcx> {
+    pub fn t_rptr(&self, r: ty::Region<'tcx>) -> Ty<'tcx> {
         self.infcx.tcx.mk_imm_ref(r, self.tcx().types.isize)
     }
 
@@ -330,7 +330,7 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
         self.infcx.tcx.mk_imm_ref(self.infcx.tcx.mk_region(r), self.tcx().types.isize)
     }
 
-    pub fn re_free(&self, nid: ast::NodeId, id: u32) -> &'tcx ty::Region {
+    pub fn re_free(&self, nid: ast::NodeId, id: u32) -> ty::Region<'tcx> {
         self.infcx.tcx.mk_region(ty::ReFree(ty::FreeRegion {
             scope: self.tcx().region_maps.item_extent(nid),
             bound_region: ty::BrAnon(id),

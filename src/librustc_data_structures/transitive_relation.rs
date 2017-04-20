@@ -80,6 +80,27 @@ impl<T: Debug + PartialEq> TransitiveRelation<T> {
         }
     }
 
+    /// Applies the (partial) function to each edge and returns a new
+    /// relation.  If `f` returns `None` for any end-point, returns
+    /// `None`.
+    pub fn maybe_map<F, U>(&self, mut f: F) -> Option<TransitiveRelation<U>>
+        where F: FnMut(&T) -> Option<U>,
+              U: Debug + PartialEq,
+    {
+        let mut result = TransitiveRelation::new();
+        for edge in &self.edges {
+            let r = f(&self.elements[edge.source.0]).and_then(|source| {
+                f(&self.elements[edge.target.0]).and_then(|target| {
+                    Some(result.add(source, target))
+                })
+            });
+            if r.is_none() {
+                return None;
+            }
+        }
+        Some(result)
+    }
+
     /// Indicate that `a < b` (where `<` is this relation)
     pub fn add(&mut self, a: T, b: T) {
         let a = self.add_index(a);

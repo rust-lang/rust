@@ -1441,7 +1441,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         // and must outlive the *call-site* of the function.
         let fn_ret =
             self.ir.tcx.liberate_late_bound_regions(
-                Some(self.ir.tcx.region_maps().call_site_extent(id, body.value.id)),
+                Some(self.ir.tcx.call_site_extent(id, body.value.id)),
                 &fn_ret);
 
         if !fn_ret.is_never() && self.live_on_entry(entry_ln, self.s.no_ret_var).is_some() {

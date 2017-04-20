@@ -146,8 +146,8 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
 
     pub(super) fn report_concrete_failure(&self,
                                           origin: SubregionOrigin<'tcx>,
-                                          sub: &'tcx Region,
-                                          sup: &'tcx Region)
+                                          sub: Region<'tcx>,
+                                          sup: Region<'tcx>)
                                           -> DiagnosticBuilder<'tcx> {
         match origin {
             infer::Subtype(trace) => {
