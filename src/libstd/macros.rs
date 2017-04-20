@@ -143,7 +143,7 @@ macro_rules! println {
 ///
 /// Panics if writing to `io::stderr` fails.
 #[macro_export]
-#[unstable(feature = "eprint", issue="40528")]
+#[stable(feature = "eprint", since="1.18.0")]
 #[allow_internal_unstable]
 macro_rules! eprint {
     ($($arg:tt)*) => ($crate::io::_eprint(format_args!($($arg)*)));
@@ -162,7 +162,7 @@ macro_rules! eprint {
 ///
 /// Panics if writing to `io::stderr` fails.
 #[macro_export]
-#[unstable(feature = "eprint", issue="40528")]
+#[stable(feature = "eprint", since="1.18.0")]
 macro_rules! eprintln {
     () => (eprint!("\n"));
     ($fmt:expr) => (eprint!(concat!($fmt, "\n")));

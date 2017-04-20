@@ -692,7 +692,7 @@ fn print_to<T>(args: fmt::Arguments,
     }
 }
 
-#[unstable(feature = "print",
+#[unstable(feature = "print_internals",
            reason = "implementation detail which may disappear or be replaced at any time",
            issue = "0")]
 #[doc(hidden)]
@@ -700,7 +700,7 @@ pub fn _print(args: fmt::Arguments) {
     print_to(args, &LOCAL_STDOUT, stdout, "stdout");
 }
 
-#[unstable(feature = "eprint_internal",
+#[unstable(feature = "print_internals",
            reason = "implementation detail which may disappear or be replaced at any time",
            issue = "0")]
 #[doc(hidden)]
