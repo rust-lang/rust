@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(relaxed_adts)]
-
 struct S(u8, u16);
 
 fn main() {
