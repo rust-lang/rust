@@ -488,11 +488,7 @@ impl<T: ?Sized> Rc<T> {
     ///
     /// [weak]: struct.Weak.html
     #[inline]
-    #[unstable(feature = "is_unique", reason = "uniqueness has unclear meaning",
-               issue = "28356")]
-    #[rustc_deprecated(since = "1.15.0",
-                       reason = "too niche; use `strong_count` and `weak_count` instead")]
-    pub fn is_unique(this: &Self) -> bool {
+    fn is_unique(this: &Self) -> bool {
         Rc::weak_count(this) == 0 && Rc::strong_count(this) == 1
     }
 

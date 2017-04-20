@@ -155,7 +155,6 @@
     - [io_error_internals](library-features/io-error-internals.md)
     - [io](library-features/io.md)
     - [ip](library-features/ip.md)
-    - [is_unique](library-features/is-unique.md)
     - [iter_rfind](library-features/iter-rfind.md)
     - [libstd_io_internals](library-features/libstd-io-internals.md)
     - [libstd_sys_internals](library-features/libstd-sys-internals.md)
