@@ -10,7 +10,7 @@
 
 // See rsbegin.rs for details.
 
-#![feature(no_core, lang_items)]
+#![feature(no_core, lang_items, optin_builtin_traits)]
 #![crate_type="rlib"]
 #![no_core]
 
@@ -19,6 +19,18 @@ trait Sized {}
 #[lang = "sync"]
 trait Sync {}
 impl<T> Sync for T {}
+#[lang = "copy"]
+trait Copy {}
+#[lang = "freeze"]
+trait Freeze {}
+impl Freeze for .. {}
+
+#[lang="drop_in_place"]
+#[inline]
+#[allow(unconditional_recursion)]
+pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
+    drop_in_place(to_drop);
+}
 
 #[cfg(all(target_os="windows", target_arch = "x86", target_env="gnu"))]
 pub mod eh_frames {
