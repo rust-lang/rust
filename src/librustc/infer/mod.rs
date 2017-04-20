@@ -1597,9 +1597,13 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             // generic so we don't have to do anything quite this
             // terrible.
             let trace = TypeTrace::dummy(self.tcx);
-            self.equate(true, trace, a, b).map(|InferOk { obligations, .. }| {
-                // FIXME(#32730) propagate obligations
-                assert!(obligations.is_empty());
+            self.equate(true, trace, a, b).map(|InferOk { obligations: _, .. }| {
+                // We can intentionally ignore obligations here, since
+                // this is part of a simple test for general
+                // "equatability". However, it's not entirely clear
+                // that we *ought* to be, perhaps a better thing would
+                // be to use a mini-fulfillment context or something
+                // like that.
             })
         })
     }

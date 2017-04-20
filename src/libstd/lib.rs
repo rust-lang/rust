@@ -311,6 +311,7 @@
 #![feature(str_utf16)]
 #![feature(test, rustc_private)]
 #![feature(thread_local)]
+#![feature(toowned_clone_into)]
 #![feature(try_from)]
 #![feature(unboxed_closures)]
 #![feature(unicode)]

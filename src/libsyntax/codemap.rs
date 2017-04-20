@@ -441,6 +441,25 @@ impl CodeMap {
         }
     }
 
+    /// Given a `Span`, try to get a shorter span ending before the first occurrence of `c` `char`
+    pub fn span_until_char(&self, sp: Span, c: char) -> Span {
+        match self.span_to_snippet(sp) {
+            Ok(snippet) => {
+                let snippet = snippet.split(c).nth(0).unwrap_or("").trim_right();
+                if snippet.len() > 0 && !snippet.contains('\n') {
+                    Span { hi: BytePos(sp.lo.0 + snippet.len() as u32), ..sp }
+                } else {
+                    sp
+                }
+            }
+            _ => sp,
+        }
+    }
+
+    pub fn def_span(&self, sp: Span) -> Span {
+        self.span_until_char(sp, '{')
+    }
+
     pub fn get_filemap(&self, filename: &str) -> Option<Rc<FileMap>> {
         for fm in self.files.borrow().iter() {
             if filename == fm.name {

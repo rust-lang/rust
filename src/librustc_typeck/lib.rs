@@ -109,7 +109,7 @@ use rustc::infer::InferOk;
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::ty::maps::Providers;
-use rustc::traits::{ObligationCause, ObligationCauseCode, Reveal};
+use rustc::traits::{FulfillmentContext, ObligationCause, ObligationCauseCode, Reveal};
 use session::config;
 use util::common::time;
 
@@ -153,15 +153,22 @@ fn require_same_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                 expected: Ty<'tcx>,
                                 actual: Ty<'tcx>)
                                 -> bool {
-    tcx.infer_ctxt((), Reveal::UserFacing).enter(|infcx| {
+    tcx.infer_ctxt((), Reveal::UserFacing).enter(|ref infcx| {
+        let mut fulfill_cx = FulfillmentContext::new();
         match infcx.eq_types(false, &cause, expected, actual) {
             Ok(InferOk { obligations, .. }) => {
-                // FIXME(#32730) propagate obligations
-                assert!(obligations.is_empty());
-                true
+                fulfill_cx.register_predicate_obligations(infcx, obligations);
             }
             Err(err) => {
                 infcx.report_mismatched_types(cause, expected, actual, err).emit();
+                return false;
+            }
+        }
+
+        match fulfill_cx.select_all_or_error(infcx) {
+            Ok(()) => true,
+            Err(errors) => {
+                infcx.report_fulfillment_errors(&errors);
                 false
             }
         }

@@ -184,6 +184,16 @@ impl<'a, 'gcx, 'tcx> FulfillmentContext<'tcx> {
         });
     }
 
+    pub fn register_predicate_obligations(&mut self,
+                                          infcx: &InferCtxt<'a, 'gcx, 'tcx>,
+                                          obligations: Vec<PredicateObligation<'tcx>>)
+    {
+        for obligation in obligations {
+            self.register_predicate_obligation(infcx, obligation);
+        }
+    }
+
+
     pub fn region_obligations(&self,
                               body_id: ast::NodeId)
                               -> &[RegionObligation<'tcx>]
