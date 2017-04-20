@@ -218,7 +218,7 @@ fn fulfill_implication<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
                                        -> Result<&'tcx Substs<'tcx>, ()> {
     let selcx = &mut SelectionContext::new(&infcx);
     let target_substs = infcx.fresh_substs_for_item(DUMMY_SP, target_impl);
-    let (target_trait_ref, obligations) = impl_trait_ref_and_oblig(selcx,
+    let (target_trait_ref, mut obligations) = impl_trait_ref_and_oblig(selcx,
                                                                    target_impl,
                                                                    target_substs);
 
@@ -227,9 +227,8 @@ fn fulfill_implication<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
                               &ObligationCause::dummy(),
                               source_trait_ref,
                               target_trait_ref) {
-        Ok(InferOk { obligations, .. }) => {
-            // FIXME(#32730) propagate obligations
-            assert!(obligations.is_empty())
+        Ok(InferOk { obligations: o, .. }) => {
+            obligations.extend(o);
         }
         Err(_) => {
             debug!("fulfill_implication: {:?} does not unify with {:?}",

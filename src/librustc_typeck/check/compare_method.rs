@@ -294,10 +294,9 @@ fn compare_predicate_entailment<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         debug!("compare_impl_method: trait_fty={:?}", trait_fty);
 
         let sub_result = infcx.sub_types(false, &cause, impl_fty, trait_fty)
-            .map(|InferOk { obligations, .. }| {
-                // FIXME(#32730) propagate obligations
-                assert!(obligations.is_empty());
-            });
+                              .map(|InferOk { obligations, .. }| {
+                                  inh.register_predicates(obligations);
+                              });
 
         if let Err(terr) = sub_result {
             debug!("sub_types failed: impl ty {:?}, trait ty {:?}",
