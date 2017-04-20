@@ -103,7 +103,6 @@
     - [as_c_str](library-features/as-c-str.md)
     - [ascii_ctype](library-features/ascii-ctype.md)
     - [binary_heap_peek_mut_pop](library-features/binary-heap-peek-mut-pop.md)
-    - [borrow_state](library-features/borrow-state.md)
     - [box_heap](library-features/box-heap.md)
     - [c_void_variant](library-features/c-void-variant.md)
     - [char_escape_debug](library-features/char-escape-debug.md)
