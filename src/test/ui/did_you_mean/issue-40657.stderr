@@ -1,0 +1,11 @@
+error: pattern contains `Fn`, use pattern guard instead
+  --> $DIR/issue-40657.rs:21:9
+   |
+21 |         CONST => {
+   |         ^^^^^ pattern contains `Fn`
+   |
+help: use a pattern guard instead:
+   |         x if x == CONST => {
+
+error: aborting due to previous error
+
