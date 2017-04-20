@@ -2136,14 +2136,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn trait_impl_polarity(self, id: DefId) -> hir::ImplPolarity {
-        if let Some(id) = self.hir.as_local_node_id(id) {
-            match self.hir.expect_item(id).node {
-                hir::ItemImpl(_, polarity, ..) => polarity,
-                ref item => bug!("trait_impl_polarity: {:?} not an impl", item)
-            }
-        } else {
-            self.sess.cstore.impl_polarity(id)
-        }
+        queries::impl_polarity::get(self, DUMMY_SP, id)
     }
 
     pub fn trait_relevant_for_never(self, did: DefId) -> bool {

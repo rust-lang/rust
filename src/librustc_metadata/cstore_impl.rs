@@ -89,6 +89,7 @@ provide! { <'tcx> tcx, def_id, cdata
     }
     associated_item => { cdata.get_associated_item(def_id.index) }
     impl_trait_ref => { cdata.get_impl_trait(def_id.index, tcx) }
+    impl_polarity => { cdata.get_impl_polarity(def_id.index) }
     coerce_unsized_info => {
         cdata.get_coerce_unsized_info(def_id.index).unwrap_or_else(|| {
             bug!("coerce_unsized_info: `{:?}` is missing its info", def_id);
@@ -174,12 +175,6 @@ impl CrateStore for cstore::CStore {
             cdata.get_implementations_for_trait(filter, &mut result)
         });
         result
-    }
-
-    fn impl_polarity(&self, def: DefId) -> hir::ImplPolarity
-    {
-        self.dep_graph.read(DepNode::MetaData(def));
-        self.get_crate_data(def.krate).get_impl_polarity(def.index)
     }
 
     fn impl_parent(&self, impl_def: DefId) -> Option<DefId> {
