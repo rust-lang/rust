@@ -13,10 +13,7 @@ use hir::def_id::DefId;
 use ty::{self, Ty, TypeFoldable, Substs};
 use util::ppaux;
 
-use std::borrow::Cow;
 use std::fmt;
-use syntax::ast;
-
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct Instance<'tcx> {
@@ -59,7 +56,7 @@ impl<'tcx> InstanceDef<'tcx> {
     }
 
     #[inline]
-    pub fn attrs<'a>(&self, tcx: ty::TyCtxt<'a, 'tcx, 'tcx>) -> Cow<'tcx, [ast::Attribute]> {
+    pub fn attrs<'a>(&self, tcx: ty::TyCtxt<'a, 'tcx, 'tcx>) -> ty::Attributes<'tcx> {
         tcx.get_attrs(self.def_id())
     }
 
