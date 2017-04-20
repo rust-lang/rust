@@ -8,23 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::f32;
 use std::f64;
-use std::mem;
 use core::num::diy_float::Fp;
 use core::num::dec2flt::rawfp::{fp_to_float, prev_float, next_float, round_normal};
+use core::num::dec2flt::rawfp::RawFloat;
 
 fn integer_decode(f: f64) -> (u64, i16, i8) {
-    let bits: u64 = unsafe { mem::transmute(f) };
-    let sign: i8 = if bits >> 63 == 0 { 1 } else { -1 };
-    let mut exponent: i16 = ((bits >> 52) & 0x7ff) as i16;
-    let mantissa = if exponent == 0 {
-        (bits & 0xfffffffffffff) << 1
-    } else {
-        (bits & 0xfffffffffffff) | 0x10000000000000
-    };
-    // Exponent bias + mantissa shift
-    exponent -= 1023 + 52;
-    (mantissa, exponent, sign)
+    RawFloat::integer_decode(f)
 }
 
 #[test]
@@ -151,4 +142,36 @@ fn next_float_monotonic() {
         x = x1;
     }
     assert!(x > 0.5);
+}
+
+#[test]
+fn test_f32_integer_decode() {
+    assert_eq!(3.14159265359f32.integer_decode(), (13176795, -22, 1));
+    assert_eq!((-8573.5918555f32).integer_decode(), (8779358, -10, -1));
+    assert_eq!(2f32.powf(100.0).integer_decode(), (8388608, 77, 1));
+    assert_eq!(0f32.integer_decode(), (0, -150, 1));
+    assert_eq!((-0f32).integer_decode(), (0, -150, -1));
+    assert_eq!(f32::INFINITY.integer_decode(), (8388608, 105, 1));
+    assert_eq!(f32::NEG_INFINITY.integer_decode(), (8388608, 105, -1));
+
+    // Ignore the "sign" (quiet / signalling flag) of NAN.
+    // It can vary between runtime operations and LLVM folding.
+    let (nan_m, nan_e, _nan_s) = f32::NAN.integer_decode();
+    assert_eq!((nan_m, nan_e), (12582912, 105));
+}
+
+#[test]
+fn test_f64_integer_decode() {
+    assert_eq!(3.14159265359f64.integer_decode(), (7074237752028906, -51, 1));
+    assert_eq!((-8573.5918555f64).integer_decode(), (4713381968463931, -39, -1));
+    assert_eq!(2f64.powf(100.0).integer_decode(), (4503599627370496, 48, 1));
+    assert_eq!(0f64.integer_decode(), (0, -1075, 1));
+    assert_eq!((-0f64).integer_decode(), (0, -1075, -1));
+    assert_eq!(f64::INFINITY.integer_decode(), (4503599627370496, 972, 1));
+    assert_eq!(f64::NEG_INFINITY.integer_decode(), (4503599627370496, 972, -1));
+
+    // Ignore the "sign" (quiet / signalling flag) of NAN.
+    // It can vary between runtime operations and LLVM folding.
+    let (nan_m, nan_e, _nan_s) = f64::NAN.integer_decode();
+    assert_eq!((nan_m, nan_e), (6755399441055744, 972));
 }
