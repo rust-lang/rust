@@ -205,6 +205,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         module.directory.pop();
         self.cx.current_expansion.module = Rc::new(module);
 
+        let orig_mod_span = krate.module.inner;
+
         let krate_item = Expansion::Items(SmallVector::one(P(ast::Item {
             attrs: krate.attrs,
             span: krate.span,
@@ -214,10 +216,18 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             vis: ast::Visibility::Public,
         })));
 
-        match self.expand(krate_item).make_items().pop().unwrap().unwrap() {
-            ast::Item { attrs, node: ast::ItemKind::Mod(module), .. } => {
+        match self.expand(krate_item).make_items().pop().map(P::unwrap) {
+            Some(ast::Item { attrs, node: ast::ItemKind::Mod(module), .. }) => {
                 krate.attrs = attrs;
                 krate.module = module;
+            },
+            None => {
+                // Resolution failed so we return an empty expansion
+                krate.attrs = vec![];
+                krate.module = ast::Mod {
+                    inner: orig_mod_span,
+                    items: vec![],
+                };
             },
             _ => unreachable!(),
         };
