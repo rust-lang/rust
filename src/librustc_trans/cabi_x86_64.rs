@@ -375,10 +375,7 @@ pub fn compute_abi_info(ccx: &CrateContext, fty: &mut FnType) {
             let in_mem = cls.is_pass_byval() ||
                          int_regs < needed_int ||
                          sse_regs < needed_sse;
-            if in_mem {
-                // `byval` parameter thus one less integer register available
-                int_regs -= 1;
-            } else {
+            if !in_mem {
                 // split into sized chunks passed individually
                 int_regs -= needed_int;
                 sse_regs -= needed_sse;

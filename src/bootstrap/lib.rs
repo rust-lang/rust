@@ -181,7 +181,7 @@ struct Crate {
 ///
 /// These entries currently correspond to the various output directories of the
 /// build system, with each mod generating output in a different directory.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 pub enum Mode {
     /// This cargo is going to build the standard library, placing output in the
     /// "stageN-std" directory.
@@ -461,8 +461,6 @@ impl Build {
              .env("RUSTC", self.out.join("bootstrap/debug/rustc"))
              .env("RUSTC_REAL", self.compiler_path(compiler))
              .env("RUSTC_STAGE", stage.to_string())
-             .env("RUSTC_DEBUGINFO", self.config.rust_debuginfo.to_string())
-             .env("RUSTC_DEBUGINFO_LINES", self.config.rust_debuginfo_lines.to_string())
              .env("RUSTC_CODEGEN_UNITS",
                   self.config.rust_codegen_units.to_string())
              .env("RUSTC_DEBUG_ASSERTIONS",
@@ -473,6 +471,13 @@ impl Build {
              .env("RUSTDOC", self.out.join("bootstrap/debug/rustdoc"))
              .env("RUSTDOC_REAL", self.rustdoc(compiler))
              .env("RUSTC_FLAGS", self.rustc_flags(target).join(" "));
+
+        // Tools don't get debuginfo right now, e.g. cargo and rls don't get
+        // compiled with debuginfo.
+        if mode != Mode::Tool {
+             cargo.env("RUSTC_DEBUGINFO", self.config.rust_debuginfo.to_string())
+                  .env("RUSTC_DEBUGINFO_LINES", self.config.rust_debuginfo_lines.to_string());
+        }
 
         // Enable usage of unstable features
         cargo.env("RUSTC_BOOTSTRAP", "1");
