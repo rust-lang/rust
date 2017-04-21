@@ -1094,6 +1094,7 @@ pub fn plain_summary_line(md: &str) -> String {
 mod tests {
     use super::{LangString, Markdown, MarkdownHtml};
     use super::plain_summary_line;
+    use super::RenderType;
     use html::render::reset_ids;
 
     #[test]
@@ -1134,14 +1135,14 @@ mod tests {
     #[test]
     fn issue_17736() {
         let markdown = "# title";
-        format!("{}", Markdown(markdown));
+        format!("{}", Markdown(markdown, RenderType::Pulldown));
         reset_ids(true);
     }
 
     #[test]
     fn test_header() {
         fn t(input: &str, expect: &str) {
-            let output = format!("{}", Markdown(input));
+            let output = format!("{}", Markdown(input, RenderType::Pulldown));
             assert_eq!(output, expect, "original: {}", input);
             reset_ids(true);
         }
@@ -1163,7 +1164,7 @@ mod tests {
     #[test]
     fn test_header_ids_multiple_blocks() {
         fn t(input: &str, expect: &str) {
-            let output = format!("{}", Markdown(input));
+            let output = format!("{}", Markdown(input, RenderType::Pulldown));
             assert_eq!(output, expect, "original: {}", input);
         }
 
@@ -1204,7 +1205,7 @@ mod tests {
     #[test]
     fn test_markdown_html_escape() {
         fn t(input: &str, expect: &str) {
-            let output = format!("{}", MarkdownHtml(input));
+            let output = format!("{}", MarkdownHtml(input, RenderType::Pulldown));
             assert_eq!(output, expect, "original: {}", input);
         }
 
