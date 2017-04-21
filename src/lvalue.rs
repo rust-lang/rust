@@ -108,18 +108,24 @@ impl<'tcx> Global<'tcx> {
 
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     pub(super) fn eval_and_read_lvalue(&mut self, lvalue: &mir::Lvalue<'tcx>) -> EvalResult<'tcx, Value> {
+        let ty = self.lvalue_ty(lvalue);
         let lvalue = self.eval_lvalue(lvalue)?;
-        Ok(self.read_lvalue(lvalue))
-    }
 
-    pub fn read_lvalue(&self, lvalue: Lvalue<'tcx>) -> Value {
+        if ty.is_never() {
+            return Err(EvalError::Unreachable);
+        }
+
         match lvalue {
             Lvalue::Ptr { ptr, extra } => {
                 assert_eq!(extra, LvalueExtra::None);
-                Value::ByRef(ptr)
+                Ok(Value::ByRef(ptr))
             }
-            Lvalue::Local { frame, local, field } => self.stack[frame].get_local(local, field.map(|(i, _)| i)),
-            Lvalue::Global(cid) => self.globals.get(&cid).expect("global not cached").value,
+            Lvalue::Local { frame, local, field } => {
+                Ok(self.stack[frame].get_local(local, field.map(|(i, _)| i)))
+            }
+            Lvalue::Global(cid) => {
+                Ok(self.globals.get(&cid).expect("global not cached").value)
+            }
         }
     }
 
