@@ -185,7 +185,7 @@ fn generic_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 }
             }
         }
-        layout::General { discr, size, align, .. } => {
+        layout::General { discr, size, align, primitive_align, .. } => {
             // We need a representation that has:
             // * The alignment of the most-aligned field
             // * The size of the largest variant (rounded up to that alignment)
@@ -198,14 +198,15 @@ fn generic_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             // of the size.
             let size = size.bytes();
             let align = align.abi();
+            let primitive_align = primitive_align.abi();
             assert!(align <= std::u32::MAX as u64);
             let discr_ty = Type::from_integer(cx, discr);
             let discr_size = discr.size().bytes();
             let padded_discr_size = roundup(discr_size, align as u32);
             let variant_part_size = size-padded_discr_size;
-            let variant_fill = union_fill(cx, variant_part_size, align);
+            let variant_fill = union_fill(cx, variant_part_size, primitive_align);
 
-            assert_eq!(machine::llalign_of_min(cx, variant_fill), align as u32);
+            assert_eq!(machine::llalign_of_min(cx, variant_fill), primitive_align as u32);
             assert_eq!(padded_discr_size % discr_size, 0); // Ensure discr_ty can fill pad evenly
             let fields: Vec<Type> =
                 [discr_ty,
