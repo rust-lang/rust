@@ -93,7 +93,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                              ast::DUMMY_NODE_ID);
                 if suggestions.len() > 0 {
                     err.help(&format!("here are some functions which \
-                                       might fulfill your needs:\n - {}",
+                                       might fulfill your needs:\n{}",
                                       self.get_best_match(&suggestions).join("\n")));
                 }
             }
