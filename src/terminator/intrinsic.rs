@@ -1,4 +1,3 @@
-use rustc::hir::def_id::DefId;
 use rustc::mir;
 use rustc::ty::layout::{Layout, Size, Align};
 use rustc::ty::subst::Substs;
@@ -13,8 +12,7 @@ use value::{PrimVal, PrimValKind, Value};
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     pub(super) fn call_intrinsic(
         &mut self,
-        def_id: DefId,
-        substs: &'tcx Substs<'tcx>,
+        instance: ty::Instance<'tcx>,
         args: &[mir::Operand<'tcx>],
         dest: Lvalue<'tcx>,
         dest_ty: Ty<'tcx>,
@@ -30,8 +28,9 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
         let usize = self.tcx.types.usize;
         let f32 = self.tcx.types.f32;
         let f64 = self.tcx.types.f64;
+        let substs = instance.substs;
 
-        let intrinsic_name = &self.tcx.item_name(def_id).as_str()[..];
+        let intrinsic_name = &self.tcx.item_name(instance.def_id()).as_str()[..];
         match intrinsic_name {
             "add_with_overflow" =>
                 self.intrinsic_with_overflow(mir::BinOp::Add, &args[0], &args[1], dest, dest_ty)?,
@@ -169,35 +168,6 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 let adt_ptr = arg_vals[0].read_ptr(&self.memory)?;
                 let discr_val = self.read_discriminant_value(adt_ptr, ty)?;
                 self.write_primval(dest, PrimVal::Bytes(discr_val), dest_ty)?;
-            }
-
-            "drop_in_place" => {
-                let ty = substs.type_at(0);
-                trace!("drop in place on {}", ty);
-                let ptr_ty = self.tcx.mk_mut_ptr(ty);
-                let lvalue = match self.follow_by_ref_value(arg_vals[0], ptr_ty)? {
-                    Value::ByRef(_) => bug!("follow_by_ref_value returned ByRef"),
-                    Value::ByVal(value) => Lvalue::from_ptr(value.to_ptr()?),
-                    Value::ByValPair(ptr, extra) => Lvalue::Ptr {
-                        ptr: ptr.to_ptr()?,
-                        extra: match self.tcx.struct_tail(ty).sty {
-                            ty::TyDynamic(..) => LvalueExtra::Vtable(extra.to_ptr()?),
-                            ty::TyStr | ty::TySlice(_) => LvalueExtra::Length(extra.to_u64()?),
-                            _ => bug!("invalid fat pointer type: {}", ptr_ty),
-                        },
-                    },
-                };
-                let mut drops = Vec::new();
-                self.drop(lvalue, ty, &mut drops)?;
-                let span = {
-                    let frame = self.frame();
-                    frame.mir[frame.block].terminator().source_info.span
-                };
-                // need to change the block before pushing the drop impl stack frames
-                // we could do this for all intrinsics before evaluating the intrinsics, but if
-                // the evaluation fails, we should not have moved forward
-                self.goto_block(target);
-                return self.eval_drop_impls(drops, span);
             }
 
             "sinf32" | "fabsf32" | "cosf32" |

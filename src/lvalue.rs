@@ -1,11 +1,9 @@
-use rustc::hir::def_id::DefId;
 use rustc::mir;
 use rustc::ty::layout::{Size, Align};
-use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty};
 use rustc_data_structures::indexed_vec::Idx;
 
-use error::EvalResult;
+use error::{EvalError, EvalResult};
 use eval_context::{EvalContext};
 use memory::Pointer;
 use value::{PrimVal, Value};
@@ -42,15 +40,9 @@ pub enum LvalueExtra {
 /// Uniquely identifies a specific constant or static.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct GlobalId<'tcx> {
-    /// For a constant or static, the `DefId` of the item itself.
-    /// For a promoted global, the `DefId` of the function they belong to.
-    pub(super) def_id: DefId,
-
-    /// For statics and constants this is `Substs::empty()`, so only promoteds and associated
-    /// constants actually have something useful here. We could special case statics and constants,
-    /// but that would only require more branching when working with constants, and not bring any
-    /// real benefits.
-    pub(super) substs: &'tcx Substs<'tcx>,
+    /// For a constant or static, the `Instance` of the item itself.
+    /// For a promoted global, the `Instance` of the function they belong to.
+    pub(super) instance: ty::Instance<'tcx>,
 
     /// The index for promoted globals within their function's `Mir`.
     pub(super) promoted: Option<mir::Promoted>,
@@ -116,18 +108,24 @@ impl<'tcx> Global<'tcx> {
 
 impl<'a, 'tcx> EvalContext<'a, 'tcx> {
     pub(super) fn eval_and_read_lvalue(&mut self, lvalue: &mir::Lvalue<'tcx>) -> EvalResult<'tcx, Value> {
+        let ty = self.lvalue_ty(lvalue);
         let lvalue = self.eval_lvalue(lvalue)?;
-        Ok(self.read_lvalue(lvalue))
-    }
 
-    pub fn read_lvalue(&self, lvalue: Lvalue<'tcx>) -> Value {
+        if ty.is_never() {
+            return Err(EvalError::Unreachable);
+        }
+
         match lvalue {
             Lvalue::Ptr { ptr, extra } => {
                 assert_eq!(extra, LvalueExtra::None);
-                Value::ByRef(ptr)
+                Ok(Value::ByRef(ptr))
             }
-            Lvalue::Local { frame, local, field } => self.stack[frame].get_local(local, field.map(|(i, _)| i)),
-            Lvalue::Global(cid) => self.globals.get(&cid).expect("global not cached").value,
+            Lvalue::Local { frame, local, field } => {
+                Ok(self.stack[frame].get_local(local, field.map(|(i, _)| i)))
+            }
+            Lvalue::Global(cid) => {
+                Ok(self.globals.get(&cid).expect("global not cached").value)
+            }
         }
     }
 
@@ -138,8 +136,8 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
             Local(local) => Lvalue::Local { frame: self.stack.len() - 1, local, field: None },
 
             Static(ref static_) => {
-                let substs = self.tcx.intern_substs(&[]);
-                Lvalue::Global(GlobalId { def_id: static_.def_id, substs, promoted: None })
+                let instance = ty::Instance::mono(self.tcx, static_.def_id);
+                Lvalue::Global(GlobalId { instance, promoted: None })
             }
 
             Projection(ref proj) => return self.eval_lvalue_projection(proj),
@@ -206,6 +204,12 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                     _ => bug!("lvalue_field: got Array layout but non-array type {:?}", base_ty),
                 };
                 (Size::from_bytes(field * elem_size), false)
+            }
+
+            FatPointer { .. } => {
+                let bytes = field_index as u64 * self.memory.pointer_size();
+                let offset = Size::from_bytes(bytes);
+                (offset, false)
             }
 
             _ => bug!("field access on non-product type: {:?}", base_layout),

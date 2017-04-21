@@ -2,7 +2,7 @@ use std::error::Error;
 use std::fmt;
 use rustc::mir;
 use rustc::ty::{FnSig, Ty, layout};
-use memory::{Pointer, Function};
+use memory::Pointer;
 use rustc_const_math::ConstMathErr;
 use syntax::codemap::Span;
 
@@ -52,9 +52,6 @@ pub enum EvalError<'tcx> {
     DeallocatedStaticMemory,
     Layout(layout::LayoutError<'tcx>),
     Unreachable,
-    ExpectedConcreteFunction(Function<'tcx>),
-    ExpectedDropGlue(Function<'tcx>),
-    ManuallyCalledDropGlue,
     Panic,
 }
 
@@ -128,12 +125,6 @@ impl<'tcx> Error for EvalError<'tcx> {
                 "attempted to get length of a null terminated string, but no null found before end of allocation",
             EvalError::Unreachable =>
                 "entered unreachable code",
-            EvalError::ExpectedConcreteFunction(_) =>
-                "tried to use glue function as function",
-            EvalError::ExpectedDropGlue(_) =>
-                "tried to use non-drop-glue function as drop glue",
-            EvalError::ManuallyCalledDropGlue =>
-                "tried to manually invoke drop glue",
             EvalError::Panic =>
                 "the evaluated program panicked",
         }

@@ -21,7 +21,7 @@ dependencies = [
 [[package]]
 name = "byteorder"
 version = "1.0.0"
-source = "git+https://github.com/quininer/byteorder.git?branch=i128#ef51df297aa833d0b6639aae328a95597fc07d75"
+source = "git+https://github.com/quininer/byteorder.git?branch=i128#9bab6d7783f81da50feb234a120c918d9eabba6e"
 
 [[package]]
 name = "cargo_metadata"
