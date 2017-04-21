@@ -16,6 +16,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use cell::UnsafeCell;
 use cmp;
 use hash::Hash;
 use hash::Hasher;
@@ -553,3 +554,19 @@ mod impls {
     #[stable(feature = "rust1", since = "1.0.0")]
     unsafe impl<'a, T: Send + ?Sized> Send for &'a mut T {}
 }
+
+/// Compiler-internal trait used to determine whether a type contains
+/// any `UnsafeCell` internally, but not through an indirection.
+/// This affects, for example, whether a `static` of that type is
+/// placed in read-only static memory or writable static memory.
+#[cfg_attr(not(stage0), lang = "freeze")]
+unsafe trait Freeze {}
+
+unsafe impl Freeze for .. {}
+
+impl<T: ?Sized> !Freeze for UnsafeCell<T> {}
+unsafe impl<T: ?Sized> Freeze for PhantomData<T> {}
+unsafe impl<T: ?Sized> Freeze for *const T {}
+unsafe impl<T: ?Sized> Freeze for *mut T {}
+unsafe impl<'a, T: ?Sized> Freeze for &'a T {}
+unsafe impl<'a, T: ?Sized> Freeze for &'a mut T {}
