@@ -570,6 +570,12 @@ impl Config {
                                      .or_insert(Target::default());
                     target.ndk = Some(parse_configure_path(value));
                 }
+                "CFG_X86_64_LINUX_ANDROID_NDK" if value.len() > 0 => {
+                    let target = "x86_64-linux-android".to_string();
+                    let target = self.target_config.entry(target)
+                                     .or_insert(Target::default());
+                    target.ndk = Some(parse_configure_path(value));
+                }
                 "CFG_LOCAL_RUST_ROOT" if value.len() > 0 => {
                     let path = parse_configure_path(value);
                     self.rustc = Some(push_exe_path(path.clone(), &["bin", "rustc"]));
