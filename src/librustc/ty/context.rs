@@ -436,9 +436,6 @@ pub struct GlobalCtxt<'tcx> {
     // Internal cache for metadata decoding. No need to track deps on this.
     pub rcache: RefCell<FxHashMap<ty::CReaderCacheKey, Ty<'tcx>>>,
 
-    // Cache for the type-contents routine. FIXME -- track deps?
-    pub tc_cache: RefCell<FxHashMap<Ty<'tcx>, ty::contents::TypeContents>>,
-
     // FIXME dep tracking -- should be harmless enough
     pub normalized_cache: RefCell<FxHashMap<Ty<'tcx>, Ty<'tcx>>>,
 
@@ -708,7 +705,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             freevars: RefCell::new(resolutions.freevars),
             maybe_unused_trait_imports: resolutions.maybe_unused_trait_imports,
             rcache: RefCell::new(FxHashMap()),
-            tc_cache: RefCell::new(FxHashMap()),
             normalized_cache: RefCell::new(FxHashMap()),
             inhabitedness_cache: RefCell::new(FxHashMap()),
             lang_items: lang_items,

@@ -261,8 +261,7 @@ pub fn trans_static<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         // As an optimization, all shared statics which do not have interior
         // mutability are placed into read-only memory.
         if m != hir::MutMutable {
-            let tcontents = ty.type_contents(ccx.tcx());
-            if !tcontents.interior_unsafe() {
+            if ccx.shared().type_is_freeze(ty) {
                 llvm::LLVMSetGlobalConstant(g, llvm::True);
             }
         }
