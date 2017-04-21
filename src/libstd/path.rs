@@ -1189,8 +1189,13 @@ impl PathBuf {
     /// If [`self.file_name`] was [`None`], this is equivalent to pushing
     /// `file_name`.
     ///
+    /// Otherwise it is equivalent to calling [`pop`] and then pushing
+    /// `file_name`. The new path will be a sibling of the original path.
+    /// (That is, it will have the same parent.)
+    ///
     /// [`self.file_name`]: struct.PathBuf.html#method.file_name
     /// [`None`]: ../../std/option/enum.Option.html#variant.None
+    /// [`pop`]: struct.PathBuf.html#method.pop
     ///
     /// # Examples
     ///
@@ -1725,7 +1730,10 @@ impl Path {
         })
     }
 
-    /// Returns the final component of the `Path`, if it is a normal file.
+    /// Returns the final component of the `Path`, if there is one.
+    ///
+    /// If the path is a normal file, this is the file name. If it's the path of a directory, this
+    /// is the directory name.
     ///
     /// Returns [`None`] If the path terminates in `..`.
     ///
@@ -1737,10 +1745,12 @@ impl Path {
     /// use std::path::Path;
     /// use std::ffi::OsStr;
     ///
-    /// assert_eq!(Some(OsStr::new("foo.txt")), Path::new("foo.txt").file_name());
+    /// assert_eq!(Some(OsStr::new("bin")), Path::new("/usr/bin/").file_name());
+    /// assert_eq!(Some(OsStr::new("foo.txt")), Path::new("tmp/foo.txt").file_name());
     /// assert_eq!(Some(OsStr::new("foo.txt")), Path::new("foo.txt/.").file_name());
     /// assert_eq!(Some(OsStr::new("foo.txt")), Path::new("foo.txt/.//").file_name());
     /// assert_eq!(None, Path::new("foo.txt/..").file_name());
+    /// assert_eq!(None, Path::new("/").file_name());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn file_name(&self) -> Option<&OsStr> {
@@ -1926,6 +1936,9 @@ impl Path {
     ///
     /// let path = Path::new("/tmp/foo.txt");
     /// assert_eq!(path.with_file_name("bar.txt"), PathBuf::from("/tmp/bar.txt"));
+    ///
+    /// let path = Path::new("/tmp");
+    /// assert_eq!(path.with_file_name("var"), PathBuf::from("/var"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with_file_name<S: AsRef<OsStr>>(&self, file_name: S) -> PathBuf {
