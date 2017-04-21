@@ -22,8 +22,6 @@ use core::num;
 #[cfg(not(test))]
 use intrinsics;
 #[cfg(not(test))]
-use libc::c_int;
-#[cfg(not(test))]
 use num::FpCategory;
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -187,36 +185,6 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn classify(self) -> FpCategory { num::Float::classify(self) }
-
-    /// Returns the mantissa, base 2 exponent, and sign as integers, respectively.
-    /// The original number can be recovered by `sign * mantissa * 2 ^ exponent`.
-    /// The floating point encoding is documented in the [Reference][floating-point].
-    ///
-    /// ```
-    /// #![feature(float_extras)]
-    ///
-    /// let num = 2.0f64;
-    ///
-    /// // (8388608, -22, 1)
-    /// let (mantissa, exponent, sign) = num.integer_decode();
-    /// let sign_f = sign as f64;
-    /// let mantissa_f = mantissa as f64;
-    /// let exponent_f = num.powf(exponent as f64);
-    ///
-    /// // 1 * 8388608 * 2^(-22) == 2
-    /// let abs_difference = (sign_f * mantissa_f * exponent_f - num).abs();
-    ///
-    /// assert!(abs_difference < 1e-10);
-    /// ```
-    /// [floating-point]: ../reference/types.html#machine-types
-    #[unstable(feature = "float_extras", reason = "signature is undecided",
-               issue = "27752")]
-    #[rustc_deprecated(since = "1.11.0",
-                       reason = "never really came to fruition and easily \
-                                 implementable outside the standard library")]
-    #[inline]
-    #[allow(deprecated)]
-    pub fn integer_decode(self) -> (u64, i16, i8) { num::Float::integer_decode(self) }
 
     /// Returns the largest integer less than or equal to a number.
     ///
@@ -605,84 +573,6 @@ impl f64 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn to_radians(self) -> f64 { num::Float::to_radians(self) }
-
-    /// Constructs a floating point number of `x*2^exp`.
-    ///
-    /// ```
-    /// #![feature(float_extras)]
-    ///
-    /// // 3*2^2 - 12 == 0
-    /// let abs_difference = (f64::ldexp(3.0, 2) - 12.0).abs();
-    ///
-    /// assert!(abs_difference < 1e-10);
-    /// ```
-    #[unstable(feature = "float_extras",
-               reason = "pending integer conventions",
-               issue = "27752")]
-    #[rustc_deprecated(since = "1.11.0",
-                       reason = "never really came to fruition and easily \
-                                 implementable outside the standard library")]
-    #[inline]
-    pub fn ldexp(x: f64, exp: isize) -> f64 {
-        unsafe { cmath::ldexp(x, exp as c_int) }
-    }
-
-    /// Breaks the number into a normalized fraction and a base-2 exponent,
-    /// satisfying:
-    ///
-    ///  * `self = x * 2^exp`
-    ///  * `0.5 <= abs(x) < 1.0`
-    ///
-    /// ```
-    /// #![feature(float_extras)]
-    ///
-    /// let x = 4.0_f64;
-    ///
-    /// // (1/2)*2^3 -> 1 * 8/2 -> 4.0
-    /// let f = x.frexp();
-    /// let abs_difference_0 = (f.0 - 0.5).abs();
-    /// let abs_difference_1 = (f.1 as f64 - 3.0).abs();
-    ///
-    /// assert!(abs_difference_0 < 1e-10);
-    /// assert!(abs_difference_1 < 1e-10);
-    /// ```
-    #[unstable(feature = "float_extras",
-               reason = "pending integer conventions",
-               issue = "27752")]
-    #[rustc_deprecated(since = "1.11.0",
-                       reason = "never really came to fruition and easily \
-                                 implementable outside the standard library")]
-    #[inline]
-    pub fn frexp(self) -> (f64, isize) {
-        unsafe {
-            let mut exp = 0;
-            let x = cmath::frexp(self, &mut exp);
-            (x, exp as isize)
-        }
-    }
-
-    /// Returns the next representable floating-point value in the direction of
-    /// `other`.
-    ///
-    /// ```
-    /// #![feature(float_extras)]
-    ///
-    /// let x = 1.0f64;
-    ///
-    /// let abs_diff = (x.next_after(2.0) - 1.0000000000000002220446049250313_f64).abs();
-    ///
-    /// assert!(abs_diff < 1e-10);
-    /// ```
-    #[unstable(feature = "float_extras",
-               reason = "unsure about its place in the world",
-               issue = "27752")]
-    #[rustc_deprecated(since = "1.11.0",
-                       reason = "never really came to fruition and easily \
-                                 implementable outside the standard library")]
-    #[inline]
-    pub fn next_after(self, other: f64) -> f64 {
-        unsafe { cmath::nextafter(self, other) }
-    }
 
     /// Returns the maximum of the two numbers.
     ///
@@ -1354,23 +1244,6 @@ mod tests {
     }
 
     #[test]
-    #[allow(deprecated)]
-    fn test_integer_decode() {
-        assert_eq!(3.14159265359f64.integer_decode(), (7074237752028906, -51, 1));
-        assert_eq!((-8573.5918555f64).integer_decode(), (4713381968463931, -39, -1));
-        assert_eq!(2f64.powf(100.0).integer_decode(), (4503599627370496, 48, 1));
-        assert_eq!(0f64.integer_decode(), (0, -1075, 1));
-        assert_eq!((-0f64).integer_decode(), (0, -1075, -1));
-        assert_eq!(INFINITY.integer_decode(), (4503599627370496, 972, 1));
-        assert_eq!(NEG_INFINITY.integer_decode(), (4503599627370496, 972, -1));
-
-        // Ignore the "sign" (quiet / signalling flag) of NAN.
-        // It can vary between runtime operations and LLVM folding.
-        let (nan_m, nan_e, _nan_s) = NAN.integer_decode();
-        assert_eq!((nan_m, nan_e), (6755399441055744, 972));
-    }
-
-    #[test]
     fn test_floor() {
         assert_approx_eq!(1.0f64.floor(), 1.0f64);
         assert_approx_eq!(1.3f64.floor(), 1.0f64);
@@ -1679,58 +1552,6 @@ mod tests {
         assert!(nan.to_radians().is_nan());
         assert_eq!(inf.to_radians(), inf);
         assert_eq!(neg_inf.to_radians(), neg_inf);
-    }
-
-    #[test]
-    #[allow(deprecated)]
-    fn test_ldexp() {
-        let f1 = 2.0f64.powi(-123);
-        let f2 = 2.0f64.powi(-111);
-        let f3 = 1.75 * 2.0f64.powi(-12);
-        assert_eq!(f64::ldexp(1f64, -123), f1);
-        assert_eq!(f64::ldexp(1f64, -111), f2);
-        assert_eq!(f64::ldexp(1.75f64, -12), f3);
-
-        assert_eq!(f64::ldexp(0f64, -123), 0f64);
-        assert_eq!(f64::ldexp(-0f64, -123), -0f64);
-
-        let inf: f64 = INFINITY;
-        let neg_inf: f64 = NEG_INFINITY;
-        let nan: f64 = NAN;
-        assert_eq!(f64::ldexp(inf, -123), inf);
-        assert_eq!(f64::ldexp(neg_inf, -123), neg_inf);
-        assert!(f64::ldexp(nan, -123).is_nan());
-    }
-
-    #[test]
-    #[allow(deprecated)]
-    fn test_frexp() {
-        let f1 = 2.0f64.powi(-123);
-        let f2 = 2.0f64.powi(-111);
-        let f3 = 1.75 * 2.0f64.powi(-123);
-        let (x1, exp1) = f1.frexp();
-        let (x2, exp2) = f2.frexp();
-        let (x3, exp3) = f3.frexp();
-        assert_eq!((x1, exp1), (0.5f64, -122));
-        assert_eq!((x2, exp2), (0.5f64, -110));
-        assert_eq!((x3, exp3), (0.875f64, -122));
-        assert_eq!(f64::ldexp(x1, exp1), f1);
-        assert_eq!(f64::ldexp(x2, exp2), f2);
-        assert_eq!(f64::ldexp(x3, exp3), f3);
-
-        assert_eq!(0f64.frexp(), (0f64, 0));
-        assert_eq!((-0f64).frexp(), (-0f64, 0));
-    }
-
-    #[test] #[cfg_attr(windows, ignore)] // FIXME #8755
-    #[allow(deprecated)]
-    fn test_frexp_nowin() {
-        let inf: f64 = INFINITY;
-        let neg_inf: f64 = NEG_INFINITY;
-        let nan: f64 = NAN;
-        assert_eq!(match inf.frexp() { (x, _) => x }, inf);
-        assert_eq!(match neg_inf.frexp() { (x, _) => x }, neg_inf);
-        assert!(match nan.frexp() { (x, _) => x.is_nan() })
     }
 
     #[test]
