@@ -274,11 +274,15 @@ pub fn openssl(build: &Build, target: &str) {
     configure.arg("no-ssl3");
 
     let os = match target {
+        "aarch64-linux-android" => "linux-aarch64",
         "aarch64-unknown-linux-gnu" => "linux-aarch64",
+        "arm-linux-androideabi" => "android",
         "arm-unknown-linux-gnueabi" => "linux-armv4",
         "arm-unknown-linux-gnueabihf" => "linux-armv4",
+        "armv7-linux-androideabi" => "android-armv7",
         "armv7-unknown-linux-gnueabihf" => "linux-armv4",
         "i686-apple-darwin" => "darwin-i386-cc",
+        "i686-linux-android" => "android-x86",
         "i686-unknown-freebsd" => "BSD-x86-elf",
         "i686-unknown-linux-gnu" => "linux-elf",
         "i686-unknown-linux-musl" => "linux-elf",
@@ -301,6 +305,12 @@ pub fn openssl(build: &Build, target: &str) {
     configure.env("CC", build.cc(target));
     for flag in build.cflags(target) {
         configure.arg(flag);
+    }
+    // There is no specific os target for android aarch64,
+    // so we use linux-aarch64 and pass some extra cflags
+    if os == "linux-aarch64" {
+        configure.arg("-mandroid");
+        configure.arg("-fomit-frame-pointer");
     }
     configure.current_dir(&obj);
     println!("Configuring openssl for {}", target);

@@ -19,6 +19,7 @@ use std::path::{PathBuf, Path};
 use std::process::{Command, Stdio};
 
 static HOSTS: &'static [&'static str] = &[
+    "aarch64-linux-android",
     "aarch64-unknown-linux-gnu",
     "arm-unknown-linux-gnueabi",
     "arm-unknown-linux-gnueabihf",

@@ -15,6 +15,7 @@ matrix:
     - env: IMAGE=arm-android
     - env: IMAGE=armhf-gnu
     - env: IMAGE=cross DEPLOY=1
+    - env: IMAGE=dist-aarch64-android DEPLOY=1
     - env: IMAGE=dist-aarch64-linux DEPLOY=1
     - env: IMAGE=dist-android DEPLOY=1
     - env: IMAGE=dist-arm-linux DEPLOY=1
