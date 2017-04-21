@@ -116,6 +116,12 @@ help ensure that "accidental" interconversion does not occur.
 # Detailed design
 [design]: #detailed-design
 
+### Playground
+
+Note: if you wish to experiment,
+[this Rust playgroud link](https://play.rust-lang.org/?gist=9ef8effa0c1c81bc8bb8dccb07505c54&version=stable&backtrace=0)
+contains the traits and impls defined herein.
+
 ### Desugaring and the `Try` trait
 
 The desugaring of the `?` operator is changed to the following, where
@@ -190,7 +196,7 @@ impl<T,E> Try for Result<T, E> {
         Ok(v)
     }
 
-    fn from_error(v: T) -> Self {
+    fn from_error(v: E) -> Self {
         Err(v)
     }
 }
@@ -211,7 +217,7 @@ mod option {
         type Ok = T;
         type Error = Missing;
 
-        fn into_result(self) -> Self {
+        fn into_result(self) -> Result<T, Missing> {
             self.ok_or(Missing)
         }
     
