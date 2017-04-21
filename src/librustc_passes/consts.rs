@@ -46,7 +46,7 @@ use rustc::lint::builtin::CONST_ERR;
 
 use rustc::hir::{self, PatKind, RangeEnd};
 use syntax::ast;
-use syntax_pos::Span;
+use syntax_pos::{Span, DUMMY_SP};
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
 
 use std::collections::hash_map::Entry;
@@ -85,11 +85,11 @@ impl<'a, 'gcx> CheckCrateVisitor<'a, 'gcx> {
 
     // Adds the worst effect out of all the values of one type.
     fn add_type(&mut self, ty: Ty<'gcx>) {
-        if ty.type_contents(self.tcx).interior_unsafe() {
+        if !ty.is_freeze(self.tcx, &self.param_env, DUMMY_SP) {
             self.promotable = false;
         }
 
-        if self.tcx.type_needs_drop_given_env(ty, &self.param_env) {
+        if ty.needs_drop(self.tcx, &self.param_env) {
             self.promotable = false;
         }
     }

@@ -357,7 +357,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
                     // a regular goto.
                     let ty = location.ty(&callee_mir, tcx).subst(tcx, callsite.substs);
                     let ty = ty.to_ty(tcx);
-                    if tcx.type_needs_drop_given_env(ty, &param_env) {
+                    if ty.needs_drop(tcx, &param_env) {
                         cost += CALL_PENALTY;
                         if let Some(unwind) = unwind {
                             work_list.push(unwind);

@@ -322,7 +322,7 @@ fn on_all_drop_children_bits<'a, 'tcx, F>(
         let ty = lvalue.ty(mir, tcx).to_ty(tcx);
         debug!("on_all_drop_children_bits({:?}, {:?} : {:?})", path, lvalue, ty);
 
-        if tcx.type_needs_drop_given_env(ty, &ctxt.param_env) {
+        if ty.needs_drop(tcx, &ctxt.param_env) {
             each_child(child);
         } else {
             debug!("on_all_drop_children_bits - skipping")

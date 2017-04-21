@@ -151,6 +151,7 @@ pub fn build_startup_objects(build: &Build, for_compiler: &Compiler, target: &st
         if !up_to_date(src_file, dst_file) {
             let mut cmd = Command::new(&compiler_path);
             build.run(cmd.env("RUSTC_BOOTSTRAP", "1")
+                        .arg("--cfg").arg(format!("stage{}", compiler.stage))
                         .arg("--target").arg(target)
                         .arg("--emit=obj")
                         .arg("--out-dir").arg(dst_dir)
