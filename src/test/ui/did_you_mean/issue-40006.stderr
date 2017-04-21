@@ -2,17 +2,17 @@ error: missing `fn`, `type`, or `const` for impl-item declaration
   --> $DIR/issue-40006.rs:11:9
    |
 11 |   impl X {
-   |  _________^ starting here...
+   |  _________^
 12 | |     Y
-   | |____^ ...ending here: missing `fn`, `type`, or `const`
+   | |____^ missing `fn`, `type`, or `const`
 
 error: missing `fn`, `type`, or `const` for trait-item declaration
   --> $DIR/issue-40006.rs:17:10
    |
 17 |   trait X {
-   |  __________^ starting here...
+   |  __________^
 18 | |     X() {}
-   | |____^ ...ending here: missing `fn`, `type`, or `const`
+   | |____^ missing `fn`, `type`, or `const`
 
 error: expected `[`, found `#`
   --> $DIR/issue-40006.rs:19:17
@@ -24,17 +24,17 @@ error: missing `fn`, `type`, or `const` for trait-item declaration
   --> $DIR/issue-40006.rs:19:21
    |
 19 |       fn xxx() { ### }
-   |  _____________________^ starting here...
+   |  _____________________^
 20 | |     L = M;
-   | |____^ ...ending here: missing `fn`, `type`, or `const`
+   | |____^ missing `fn`, `type`, or `const`
 
 error: missing `fn`, `type`, or `const` for trait-item declaration
   --> $DIR/issue-40006.rs:20:11
    |
 20 |       L = M;
-   |  ___________^ starting here...
+   |  ___________^
 21 | |     Z = { 2 + 3 };
-   | |____^ ...ending here: missing `fn`, `type`, or `const`
+   | |____^ missing `fn`, `type`, or `const`
 
 error: expected one of `const`, `extern`, `fn`, `type`, `unsafe`, or `}`, found `;`
   --> $DIR/issue-40006.rs:21:18

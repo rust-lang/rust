@@ -263,6 +263,41 @@ impl EmitterWriter {
 
         draw_col_separator(buffer, line_offset, width_offset - 2);
 
+        // Special case when there's only one annotation involved, it is the start of a multiline
+        // span and there's no text at the beginning of the code line. Instead of doing the whole
+        // graph:
+        //
+        // 2 |   fn foo() {
+        //   |  _^
+        // 3 | |
+        // 4 | | }
+        //   | |_^ test
+        //
+        // we simplify the output to:
+        //
+        // 2 | / fn foo() {
+        // 3 | |
+        // 4 | | }
+        //   | |_^ test
+        if line.annotations.len() == 1 {
+            if let Some(ref ann) = line.annotations.get(0) {
+                if let AnnotationType::MultilineStart(depth) = ann.annotation_type {
+                    if source_string[0..ann.start_col].trim() == "" {
+                        let style = if ann.is_primary {
+                            Style::UnderlinePrimary
+                        } else {
+                            Style::UnderlineSecondary
+                        };
+                        buffer.putc(line_offset,
+                                    width_offset + depth - 1,
+                                    '/',
+                                    style);
+                        return vec![(depth, style)];
+                    }
+                }
+            }
+        }
+
         // We want to display like this:
         //
         //      vec.push(vec.pop().unwrap());
@@ -355,10 +390,8 @@ impl EmitterWriter {
         for (i, annotation) in annotations.iter().enumerate() {
             for (j, next) in annotations.iter().enumerate() {
                 if overlaps(next, annotation, 0)  // This label overlaps with another one and both
-                    && !annotation.is_line()      // take space (they have text and are not
-                    && !next.is_line()            // multiline lines).
-                    && annotation.has_label()
-                    && j > i
+                    && annotation.has_label()     // take space (they have text and are not
+                    && j > i                      // multiline lines).
                     && p == 0  // We're currently on the first line, move the label one line down
                 {
                     // This annotation needs a new line in the output.
@@ -374,7 +407,7 @@ impl EmitterWriter {
                     } else {
                         0
                     };
-                    if overlaps(next, annotation, l) // Do not allow two labels to be in the same
+                    if (overlaps(next, annotation, l) // Do not allow two labels to be in the same
                                                      // line if they overlap including padding, to
                                                      // avoid situations like:
                                                      //
@@ -383,11 +416,18 @@ impl EmitterWriter {
                                                      //      |      |
                                                      //      fn_spanx_span
                                                      //
-                        && !annotation.is_line()     // Do not add a new line if this annotation
-                        && !next.is_line()           // or the next are vertical line placeholders.
                         && annotation.has_label()    // Both labels must have some text, otherwise
-                        && next.has_label()          // they are not overlapping.
+                        && next.has_label())         // they are not overlapping.
+                                                     // Do not add a new line if this annotation
+                                                     // or the next are vertical line placeholders.
+                        || (annotation.takes_space() // If either this or the next annotation is
+                            && next.has_label())     // multiline start/end, move it to a new line
+                        || (annotation.has_label()   // so as not to overlap the orizontal lines.
+                            && next.takes_space())
+                        || (annotation.takes_space()
+                            && next.takes_space())
                     {
+                        // This annotation needs a new line in the output.
                         p += 1;
                         break;
                     }
@@ -397,6 +437,7 @@ impl EmitterWriter {
                 line_len = p;
             }
         }
+
         if line_len != 0 {
             line_len += 1;
         }
@@ -480,7 +521,7 @@ impl EmitterWriter {
             };
             let pos = pos + 1;
 
-            if pos > 1 && annotation.has_label() {
+            if pos > 1 && (annotation.has_label() || annotation.takes_space()) {
                 for p in line_offset + 1..line_offset + pos + 1 {
                     buffer.putc(p,
                                 code_offset + annotation.start_col,
@@ -514,12 +555,12 @@ impl EmitterWriter {
         // After this we will have:
         //
         // 2 |   fn foo() {
-        //   |  __________ starting here...
+        //   |  __________
         //   |      |
         //   |      something about `foo`
         // 3 |
         // 4 |   }
-        //   |  _  ...ending here: test
+        //   |  _  test
         for &(pos, annotation) in &annotations_position {
             let style = if annotation.is_primary {
                 Style::LabelPrimary
@@ -557,12 +598,12 @@ impl EmitterWriter {
         // After this we will have:
         //
         // 2 |   fn foo() {
-        //   |  ____-_____^ starting here...
+        //   |  ____-_____^
         //   |      |
         //   |      something about `foo`
         // 3 |
         // 4 |   }
-        //   |  _^  ...ending here: test
+        //   |  _^  test
         for &(_, annotation) in &annotations_position {
             let (underline, style) = if annotation.is_primary {
                 ('^', Style::UnderlinePrimary)
