@@ -942,6 +942,7 @@ fn declare_intrinsic(ccx: &CrateContext, key: &str) -> Option<ValueRef> {
     ifn!("llvm.x86.seh.recoverfp", fn(i8p, i8p) -> i8p);
 
     ifn!("llvm.assume", fn(i1) -> void);
+    ifn!("llvm.prefetch", fn(i8p, t_i32, t_i32, t_i32) -> void);
 
     if ccx.sess().opts.debuginfo != NoDebugInfo {
         ifn!("llvm.dbg.declare", fn(Type::metadata(ccx), Type::metadata(ccx)) -> void);
