@@ -97,6 +97,7 @@ fn push_expected_errors(expected_errors: &mut Vec<Error>,
     let primary_spans: Vec<_> = spans_in_this_file.iter()
         .cloned()
         .filter(|span| span.is_primary)
+        .take(1) // sometimes we have more than one showing up in the json; pick first
         .collect();
     let primary_spans = if primary_spans.is_empty() {
         // subdiagnostics often don't have a span of their own;

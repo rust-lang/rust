@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2016 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,19 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-enum Sexpression {
-    Num(()),
-    Cons(&'static mut Sexpression)
-}
+// Regression test for #40951.
 
-fn causes_ice(mut l: &mut Sexpression) {
-    loop { match l {
-        &mut Sexpression::Num(ref mut n) => {},
-        &mut Sexpression::Cons(ref mut expr) => { //~ ERROR cannot borrow `l.0`
-            l = &mut **expr; //~ ERROR cannot assign to `l`
-        }
-    }}
-}
+const FOO: [&'static str; 1] = ["foo"];
+
+fn find<T: PartialEq>(t: &[T], element: &T) { }
 
 fn main() {
+    let x = format!("hi");
+    find(&FOO, &&*x);
 }
