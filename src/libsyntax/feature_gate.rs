@@ -338,6 +338,9 @@ declare_features! (
     // Allows the `catch {...}` expression
     (active, catch_expr, "1.17.0", Some(31436)),
 
+    // Allows `repr(align(u16))` struct attribute (RFC 1358)
+    (active, repr_align, "1.17.0", Some(33626)),
+
     // See rust-lang/rfcs#1414. Allows code like `let x: &'static u32 = &42` to work.
     (active, rvalue_static_promotion, "1.15.1", Some(38865)),
 
@@ -1188,6 +1191,11 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                                                    "SIMD types are experimental \
                                                     and possibly buggy");
 
+                            }
+                            if item.check_name("align") {
+                                gate_feature_post!(&self, repr_align, i.span,
+                                                   "the struct `#[repr(align(u16))]` attribute \
+                                                    is experimental");
                             }
                         }
                     }

@@ -37,6 +37,7 @@ use serialize::{self, Encodable, Encoder};
 use std::borrow::Cow;
 use std::cell::{Cell, RefCell, Ref};
 use std::collections::BTreeMap;
+use std::cmp;
 use std::hash::{Hash, Hasher};
 use std::ops::Deref;
 use std::rc::Rc;
@@ -1464,10 +1465,12 @@ impl_stable_hash_for!(struct ReprFlags {
 #[derive(Copy, Clone, Eq, PartialEq, RustcEncodable, RustcDecodable, Default)]
 pub struct ReprOptions {
     pub int: Option<attr::IntType>,
+    pub align: u16,
     pub flags: ReprFlags,
 }
 
 impl_stable_hash_for!(struct ReprOptions {
+    align,
     int,
     flags
 });
@@ -1476,7 +1479,7 @@ impl ReprOptions {
     pub fn new(tcx: TyCtxt, did: DefId) -> ReprOptions {
         let mut flags = ReprFlags::empty();
         let mut size = None;
-
+        let mut max_align = 0;
         for attr in tcx.get_attrs(did).iter() {
             for r in attr::find_repr_attrs(tcx.sess.diagnostic(), attr) {
                 flags.insert(match r {
@@ -1485,6 +1488,10 @@ impl ReprOptions {
                     attr::ReprSimd => ReprFlags::IS_SIMD,
                     attr::ReprInt(i) => {
                         size = Some(i);
+                        ReprFlags::empty()
+                    },
+                    attr::ReprAlign(align) => {
+                        max_align = cmp::max(align, max_align);
                         ReprFlags::empty()
                     },
                 });
@@ -1500,7 +1507,7 @@ impl ReprOptions {
         if !tcx.consider_optimizing(|| format!("Reorder fields of {:?}", tcx.item_path_str(did))) {
             flags.insert(ReprFlags::IS_LINEAR);
         }
-        ReprOptions { int: size, flags: flags }
+        ReprOptions { int: size, align: max_align, flags: flags }
     }
 
     #[inline]

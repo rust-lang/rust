@@ -97,7 +97,8 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
 
     pub fn alloca(bcx: &Builder<'a, 'tcx>, ty: Ty<'tcx>, name: &str) -> LvalueRef<'tcx> {
         debug!("alloca({:?}: {:?})", name, ty);
-        let tmp = bcx.alloca(type_of::type_of(bcx.ccx, ty), name);
+        let tmp = bcx.alloca(
+            type_of::type_of(bcx.ccx, ty), name, bcx.ccx.over_align_of(ty));
         assert!(!ty.has_param_types());
         Self::new_sized_ty(tmp, ty, Alignment::AbiAligned)
     }
@@ -131,11 +132,9 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
 
         let alignment = self.alignment | Alignment::from_packed(st.packed);
 
+        let llfields = adt::struct_llfields(ccx, fields, st);
         let ptr_val = if needs_cast {
-            let fields = st.field_index_by_increasing_offset().map(|i| {
-                type_of::in_memory_type_of(ccx, fields[i])
-            }).collect::<Vec<_>>();
-            let real_ty = Type::struct_(ccx, &fields[..], st.packed);
+            let real_ty = Type::struct_(ccx, &llfields[..], st.packed);
             bcx.pointercast(self.llval, real_ty.ptr_to())
         } else {
             self.llval
@@ -147,14 +146,16 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
         //   * Field is sized - pointer is properly aligned already
         if st.offsets[ix] == layout::Size::from_bytes(0) || st.packed ||
             bcx.ccx.shared().type_is_sized(fty) {
-                return (bcx.struct_gep(ptr_val, st.memory_index[ix] as usize), alignment);
+                return (bcx.struct_gep(
+                        ptr_val, adt::struct_llfields_index(st, ix)), alignment);
             }
 
         // If the type of the last field is [T] or str, then we don't need to do
         // any adjusments
         match fty.sty {
             ty::TySlice(..) | ty::TyStr => {
-                return (bcx.struct_gep(ptr_val, st.memory_index[ix] as usize), alignment);
+                return (bcx.struct_gep(
+                        ptr_val, adt::struct_llfields_index(st, ix)), alignment);
             }
             _ => ()
         }
@@ -163,7 +164,7 @@ impl<'a, 'tcx> LvalueRef<'tcx> {
         if !self.has_extra() {
             debug!("Unsized field `{}`, of `{:?}` has no metadata for adjustment",
                 ix, Value(ptr_val));
-            return (bcx.struct_gep(ptr_val, ix), alignment);
+            return (bcx.struct_gep(ptr_val, adt::struct_llfields_index(st, ix)), alignment);
         }
 
         // We need to get the pointer manually now.

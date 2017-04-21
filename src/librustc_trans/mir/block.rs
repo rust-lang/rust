@@ -15,6 +15,7 @@ use rustc::ty::{self, TypeFoldable};
 use rustc::ty::layout::{self, LayoutTyper};
 use rustc::mir;
 use abi::{Abi, FnType, ArgType};
+use adt;
 use base::{self, Lifetime};
 use callee;
 use builder::Builder;
@@ -177,7 +178,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     };
                     let llslot = match op.val {
                         Immediate(_) | Pair(..) => {
-                            let llscratch = bcx.alloca(ret.memory_ty(bcx.ccx), "ret");
+                            let llscratch = bcx.alloca(ret.memory_ty(bcx.ccx), "ret", None);
                             self.store_operand(&bcx, llscratch, None, op);
                             llscratch
                         }
@@ -630,7 +631,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
         let (mut llval, align, by_ref) = match op.val {
             Immediate(_) | Pair(..) => {
                 if arg.is_indirect() || arg.cast.is_some() {
-                    let llscratch = bcx.alloca(arg.memory_ty(bcx.ccx), "arg");
+                    let llscratch = bcx.alloca(arg.memory_ty(bcx.ccx), "arg", None);
                     self.store_operand(bcx, llscratch, None, op);
                     (llscratch, Alignment::AbiAligned, true)
                 } else {
@@ -642,7 +643,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 // think that ATM (Rust 1.16) we only pass temporaries, but we shouldn't
                 // have scary latent bugs around.
 
-                let llscratch = bcx.alloca(arg.memory_ty(bcx.ccx), "arg");
+                let llscratch = bcx.alloca(arg.memory_ty(bcx.ccx), "arg", None);
                 base::memcpy_ty(bcx, llscratch, llval, op.ty, Some(1));
                 (llscratch, Alignment::AbiAligned, true)
             }
@@ -711,7 +712,8 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                     bug!("Not a tuple.");
                 };
                 for (n, &ty) in arg_types.iter().enumerate() {
-                    let mut elem = bcx.extract_value(llval, v.memory_index[n] as usize);
+                    let mut elem = bcx.extract_value(
+                        llval, adt::struct_llfields_index(v, n));
                     // Truncate bools to i1, if needed
                     if ty.is_bool() && common::val_ty(elem) != Type::i1(bcx.ccx) {
                         elem = bcx.trunc(elem, Type::i1(bcx.ccx));
@@ -750,7 +752,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             slot
         } else {
             let llretty = Type::struct_(ccx, &[Type::i8p(ccx), Type::i32(ccx)], false);
-            let slot = bcx.alloca(llretty, "personalityslot");
+            let slot = bcx.alloca(llretty, "personalityslot", None);
             self.llpersonalityslot = Some(slot);
             slot
         }
