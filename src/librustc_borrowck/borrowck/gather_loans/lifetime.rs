@@ -120,7 +120,7 @@ impl<'a, 'tcx> GuaranteeLifetimeContext<'a, 'tcx> {
             }
             Categorization::StaticItem |
             Categorization::Deref(.., mc::UnsafePtr(..)) => {
-                self.bccx.tcx.mk_region(ty::ReStatic)
+                self.bccx.tcx.types.re_static
             }
             Categorization::Deref(.., mc::BorrowedPtr(_, r)) |
             Categorization::Deref(.., mc::Implicit(_, r)) => {

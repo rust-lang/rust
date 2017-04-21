@@ -871,8 +871,8 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
         // we can promote to a constant, otherwise equal to enclosing temp
         // lifetime.
         let (re, old_re) = if promotable {
-            (self.tcx().mk_region(ty::ReStatic),
-             self.tcx().mk_region(ty::ReStatic))
+            (self.tcx().types.re_static,
+             self.tcx().types.re_static)
         } else {
             self.temporary_scope(id)
         };

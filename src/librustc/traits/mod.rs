@@ -628,7 +628,7 @@ pub fn get_vtable_methods<'a, 'tcx>(
             // the method may have some early-bound lifetimes, add
             // regions for those
             let substs = Substs::for_item(tcx, def_id,
-                                          |_, _| tcx.mk_region(ty::ReErased),
+                                          |_, _| tcx.types.re_erased,
                                           |def, _| trait_ref.substs().type_for_def(def));
 
             // the trait type may have higher-ranked lifetimes in it;

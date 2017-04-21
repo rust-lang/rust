@@ -225,6 +225,8 @@ pub fn compile_input(sess: &Session,
         sess.code_stats.borrow().print_type_sizes();
     }
 
+    if ::std::env::var("SKIP_LLVM").is_ok() { ::std::process::exit(0); }
+
     let phase5_result = phase_5_run_llvm_passes(sess, &trans, &outputs);
 
     controller_entry_point!(after_llvm,

@@ -822,7 +822,7 @@ impl<'a, 'gcx, 'tcx> Struct {
             }
 
             (_, &ty::TyProjection(_)) | (_, &ty::TyAnon(..)) => {
-                let normalized = normalize_associated_type(infcx, ty);
+                let normalized = infcx.normalize_projections(ty);
                 if ty == normalized {
                     return Ok(None);
                 }
@@ -1067,28 +1067,6 @@ impl<'tcx> fmt::Display for LayoutError<'tcx> {
     }
 }
 
-/// Helper function for normalizing associated types in an inference context.
-fn normalize_associated_type<'a, 'gcx, 'tcx>(infcx: &InferCtxt<'a, 'gcx, 'tcx>,
-                                             ty: Ty<'gcx>)
-                                             -> Ty<'gcx> {
-    if !ty.has_projection_types() {
-        return ty;
-    }
-
-    let mut selcx = traits::SelectionContext::new(infcx);
-    let cause = traits::ObligationCause::dummy();
-    let traits::Normalized { value: result, obligations } =
-        traits::normalize(&mut selcx, cause, &ty);
-
-    let mut fulfill_cx = traits::FulfillmentContext::new();
-
-    for obligation in obligations {
-        fulfill_cx.register_predicate_obligation(infcx, obligation);
-    }
-
-    infcx.drain_fulfillment_cx_or_panic(DUMMY_SP, &mut fulfill_cx, &result)
-}
-
 impl<'a, 'gcx, 'tcx> Layout {
     pub fn compute_uncached(ty: Ty<'gcx>,
                             infcx: &InferCtxt<'a, 'gcx, 'tcx>)
@@ -1100,7 +1078,7 @@ impl<'a, 'gcx, 'tcx> Layout {
 
         let ptr_layout = |pointee: Ty<'gcx>| {
             let non_zero = !ty.is_unsafe_ptr();
-            let pointee = normalize_associated_type(infcx, pointee);
+            let pointee = infcx.normalize_projections(pointee);
             if pointee.is_sized(tcx, &infcx.parameter_environment, DUMMY_SP) {
                 Ok(Scalar { value: Pointer, non_zero: non_zero })
             } else {
@@ -1494,7 +1472,7 @@ impl<'a, 'gcx, 'tcx> Layout {
 
             // Types with no meaningful known layout.
             ty::TyProjection(_) | ty::TyAnon(..) => {
-                let normalized = normalize_associated_type(infcx, ty);
+                let normalized = infcx.normalize_projections(ty);
                 if ty == normalized {
                     return Err(LayoutError::Unknown(ty));
                 }
@@ -1812,7 +1790,7 @@ impl<'a, 'gcx, 'tcx> SizeSkeleton<'gcx> {
             }
 
             ty::TyProjection(_) | ty::TyAnon(..) => {
-                let normalized = normalize_associated_type(infcx, ty);
+                let normalized = infcx.normalize_projections(ty);
                 if ty == normalized {
                     Err(err)
                 } else {
@@ -1882,19 +1860,39 @@ pub trait LayoutTyper<'tcx>: HasTyCtxt<'tcx> {
     type TyLayout;
 
     fn layout_of(self, ty: Ty<'tcx>) -> Self::TyLayout;
+    fn normalize_projections(self, ty: Ty<'tcx>) -> Ty<'tcx>;
 }
 
 impl<'a, 'gcx, 'tcx> LayoutTyper<'gcx> for &'a InferCtxt<'a, 'gcx, 'tcx> {
     type TyLayout = Result<TyLayout<'gcx>, LayoutError<'gcx>>;
 
     fn layout_of(self, ty: Ty<'gcx>) -> Self::TyLayout {
-        let ty = normalize_associated_type(self, ty);
+        let ty = self.normalize_projections(ty);
 
         Ok(TyLayout {
             ty: ty,
             layout: ty.layout(self)?,
             variant_index: None
         })
+    }
+
+    fn normalize_projections(self, ty: Ty<'gcx>) -> Ty<'gcx> {
+        if !ty.has_projection_types() {
+            return ty;
+        }
+
+        let mut selcx = traits::SelectionContext::new(self);
+        let cause = traits::ObligationCause::dummy();
+        let traits::Normalized { value: result, obligations } =
+            traits::normalize(&mut selcx, cause, &ty);
+
+        let mut fulfill_cx = traits::FulfillmentContext::new();
+
+        for obligation in obligations {
+            fulfill_cx.register_predicate_obligation(self, obligation);
+        }
+
+        self.drain_fulfillment_cx_or_panic(DUMMY_SP, &mut fulfill_cx, &result)
     }
 }
 
@@ -2019,6 +2017,6 @@ impl<'a, 'tcx> TyLayout<'tcx> {
     }
 
     pub fn field<C: LayoutTyper<'tcx>>(&self, cx: C, i: usize) -> C::TyLayout {
-        cx.layout_of(self.field_type(cx, i))
+        cx.layout_of(cx.normalize_projections(self.field_type(cx, i)))
     }
 }

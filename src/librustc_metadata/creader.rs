@@ -326,6 +326,7 @@ impl<'a> CrateLoader<'a> {
             cnum_map: RefCell::new(cnum_map),
             cnum: cnum,
             codemap_import_info: RefCell::new(vec![]),
+            attribute_cache: RefCell::new([Vec::new(), Vec::new()]),
             dep_kind: Cell::new(dep_kind),
             source: cstore::CrateSource {
                 dylib: dylib,
