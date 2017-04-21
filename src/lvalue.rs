@@ -3,7 +3,7 @@ use rustc::ty::layout::{Size, Align};
 use rustc::ty::{self, Ty};
 use rustc_data_structures::indexed_vec::Idx;
 
-use error::EvalResult;
+use error::{EvalError, EvalResult};
 use eval_context::{EvalContext};
 use memory::Pointer;
 use value::{PrimVal, Value};
