@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::cell::RefCell;
-use std::rc::Rc;
 use rustc::ty::TyCtxt;
+use std::cell::RefCell;
+use syntax_pos::symbol::{InternedString, Symbol};
 use trans_item::TransItem;
 use util::nodemap::FxHashMap;
 
@@ -22,7 +22,7 @@ use util::nodemap::FxHashMap;
 
 pub struct SymbolCache<'a, 'tcx: 'a> {
     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    index: RefCell<FxHashMap<TransItem<'tcx>, Rc<String>>>,
+    index: RefCell<FxHashMap<TransItem<'tcx>, Symbol>>,
 }
 
 impl<'a, 'tcx> SymbolCache<'a, 'tcx> {
@@ -33,10 +33,10 @@ impl<'a, 'tcx> SymbolCache<'a, 'tcx> {
         }
     }
 
-    pub fn get(&self, trans_item: TransItem<'tcx>) -> Rc<String> {
+    pub fn get(&self, trans_item: TransItem<'tcx>) -> InternedString {
         let mut index = self.index.borrow_mut();
         index.entry(trans_item)
-             .or_insert_with(|| Rc::new(trans_item.compute_symbol_name(self.tcx)))
-             .clone()
+             .or_insert_with(|| Symbol::intern(&trans_item.compute_symbol_name(self.tcx)))
+             .as_str()
     }
 }
