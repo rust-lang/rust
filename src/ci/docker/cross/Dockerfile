@@ -78,5 +78,7 @@ ENV RUST_CONFIGURE_ARGS \
       --target=$TARGETS \
       --musl-root-arm=/usr/local/arm-linux-musleabi \
       --musl-root-armhf=/usr/local/arm-linux-musleabihf \
-      --musl-root-armv7=/usr/local/armv7-linux-musleabihf
+      --musl-root-armv7=/usr/local/armv7-linux-musleabihf \
+      --musl-root-mips=/usr/local/mips-linux-musl \
+      --musl-root-mipsel=/usr/local/mipsel-linux-musl
 ENV SCRIPT python2.7 ../x.py dist --target $TARGETS

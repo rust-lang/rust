@@ -482,6 +482,10 @@ impl Build {
                   .env("RUSTC_DEBUGINFO_LINES", self.config.rust_debuginfo_lines.to_string());
         }
 
+        if let Some(x) = self.crt_static(target) {
+             cargo.env("RUST_CRT_STATIC", x.to_string());
+        }
+
         // Enable usage of unstable features
         cargo.env("RUSTC_BOOTSTRAP", "1");
         self.add_rust_test_threads(&mut cargo);
@@ -915,6 +919,16 @@ impl Build {
             base.push(format!("-Clinker={}", self.cc(target).display()));
         }
         return base
+    }
+
+    /// Returns if this target should statically link the C runtime, if specified
+    fn crt_static(&self, target: &str) -> Option<bool> {
+        if target.contains("pc-windows-msvc") {
+            Some(true)
+        } else {
+            self.config.target_config.get(target)
+                .and_then(|t| t.crt_static)
+        }
     }
 
     /// Returns the "musl root" for this `target`, if defined
