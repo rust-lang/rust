@@ -396,7 +396,7 @@ define_maps! { <'tcx>
     pub trait_def: ItemSignature(DefId) -> &'tcx ty::TraitDef,
     pub adt_def: ItemSignature(DefId) -> &'tcx ty::AdtDef,
     pub adt_destructor: AdtDestructor(DefId) -> Option<ty::Destructor>,
-    pub adt_sized_constraint: SizedConstraint(DefId) -> Ty<'tcx>,
+    pub adt_sized_constraint: SizedConstraint(DefId) -> &'tcx [Ty<'tcx>],
 
     /// True if this is a foreign item (i.e., linked via `extern { ... }`).
     pub is_foreign_item: IsForeignItem(DefId) -> bool,
