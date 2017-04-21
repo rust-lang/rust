@@ -1365,18 +1365,15 @@ impl<'a> Parser<'a> {
                 match ty.node {
                     // `(TY_BOUND_NOPAREN) + BOUND + ...`.
                     TyKind::Path(None, ref path) if maybe_bounds => {
-                        self.bump(); // `+`
-                        let pt = PolyTraitRef::new(Vec::new(), path.clone(), lo.to(self.prev_span));
-                        let mut bounds = vec![TraitTyParamBound(pt, TraitBoundModifier::None)];
-                        bounds.append(&mut self.parse_ty_param_bounds()?);
-                        TyKind::TraitObject(bounds)
+                        self.parse_remaining_bounds(Vec::new(), path.clone(), lo, true)?
                     }
                     TyKind::TraitObject(ref bounds)
                             if maybe_bounds && bounds.len() == 1 && !trailing_plus => {
-                        self.bump(); // `+`
-                        let mut bounds = bounds.clone();
-                        bounds.append(&mut self.parse_ty_param_bounds()?);
-                        TyKind::TraitObject(bounds)
+                        let path = match bounds[0] {
+                            TraitTyParamBound(ref pt, ..) => pt.trait_ref.path.clone(),
+                            _ => self.bug("unexpected lifetime bound"),
+                        };
+                        self.parse_remaining_bounds(Vec::new(), path, lo, true)?
                     }
                     // `(TYPE)`
                     _ => TyKind::Paren(P(ty))
@@ -1429,11 +1426,8 @@ impl<'a> Parser<'a> {
                 // Just a type path or bound list (trait object type) starting with a trait.
                 //   `Type`
                 //   `Trait1 + Trait2 + 'a`
-                if allow_plus && self.eat(&token::BinOp(token::Plus)) {
-                    let poly_trait = PolyTraitRef::new(Vec::new(), path, lo.to(self.prev_span));
-                    let mut bounds = vec![TraitTyParamBound(poly_trait, TraitBoundModifier::None)];
-                    bounds.append(&mut self.parse_ty_param_bounds()?);
-                    TyKind::TraitObject(bounds)
+                if allow_plus && self.check(&token::BinOp(token::Plus)) {
+                    self.parse_remaining_bounds(Vec::new(), path, lo, true)?
                 } else {
                     TyKind::Path(None, path)
                 }
@@ -1451,12 +1445,8 @@ impl<'a> Parser<'a> {
                 self.parse_ty_bare_fn(lifetime_defs)?
             } else {
                 let path = self.parse_path(PathStyle::Type)?;
-                let poly_trait = PolyTraitRef::new(lifetime_defs, path, lo.to(self.prev_span));
-                let mut bounds = vec![TraitTyParamBound(poly_trait, TraitBoundModifier::None)];
-                if allow_plus && self.eat(&token::BinOp(token::Plus)) {
-                    bounds.append(&mut self.parse_ty_param_bounds()?)
-                }
-                TyKind::TraitObject(bounds)
+                let parse_plus = allow_plus && self.check(&token::BinOp(token::Plus));
+                self.parse_remaining_bounds(lifetime_defs, path, lo, parse_plus)?
             }
         } else if self.eat_keyword(keywords::Impl) {
             // FIXME: figure out priority of `+` in `impl Trait1 + Trait2` (#34511).
@@ -1477,6 +1467,17 @@ impl<'a> Parser<'a> {
         self.maybe_recover_from_bad_type_plus(allow_plus, &ty)?;
 
         Ok(P(ty))
+    }
+
+    fn parse_remaining_bounds(&mut self, lifetime_defs: Vec<LifetimeDef>, path: ast::Path,
+                              lo: Span, parse_plus: bool) -> PResult<'a, TyKind> {
+        let poly_trait_ref = PolyTraitRef::new(lifetime_defs, path, lo.to(self.prev_span));
+        let mut bounds = vec![TraitTyParamBound(poly_trait_ref, TraitBoundModifier::None)];
+        if parse_plus {
+            self.bump(); // `+`
+            bounds.append(&mut self.parse_ty_param_bounds()?);
+        }
+        Ok(TyKind::TraitObject(bounds))
     }
 
     fn maybe_recover_from_bad_type_plus(&mut self, allow_plus: bool, ty: &Ty) -> PResult<'a, ()> {
