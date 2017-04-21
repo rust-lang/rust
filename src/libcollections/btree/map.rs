@@ -298,7 +298,7 @@ pub struct IterMut<'a, K: 'a, V: 'a> {
 
 /// An owning iterator over the entries of a `BTreeMap`.
 ///
-/// This `struct` is created by the [`into_iter`] method on [`BTreeMap`]
+/// This `struct` is created by the [`into_iter`] method on [`BTreeMap`][`BTreeMap`]
 /// (provided by the `IntoIterator` trait). See its documentation for more.
 ///
 /// [`into_iter`]: struct.BTreeMap.html#method.into_iter
