@@ -71,40 +71,47 @@ that in fact the original design *did* use an `enum` like `Poll`, and
 it was changed to be more compatible with the existing `try!` macro,
 and hence could be changed back to be more in line with this RFC.)
 
-### Give control over which interconversions are allowed
+### Support interconversion, but with caution
 
-While it is desirable to allow `?` to be used with types other than
-`Result`, **we don't want to allow arbitrary interconversion**. For
-example, if `x` is a value of type `Option<T>`, we do not want to
-allow `x?` to be used in a function that return a `Result<T, E>` or a
-`Poll<T, E>` (from the futures example). Typically, we would only want
-`x?` to be used in functions that return `Option<U>` (for some `U`).
+The existing `try!` macro and `?` operator already allow a limit
+amount of type conversion, specifically in the error case. That is, if
+you apply `?` to a value of type `Result<T, E>`, the surrouding
+function can have some other return type `Result<U, F>`, so long as
+the error types are related by the `From` trait (`F: From<E>`). The
+idea is that if an error occurs, we will wind up returning
+`F::from(err)`, where `err` is the actual error. This is used (for
+example) to "upcast" various errors that can occur in a function into
+a common error type (e.g., `Box<Error>`).
 
-To see why, let's consider the case where `x?` is used in a function
-that returns a `Poll<T, E>`. Consider the case where `x` is `None`,
-and hence we want to return early from the enclosing function. This
-means we have to create a `Poll<T, E>` value to return -- but which
-variant should we use?  It's not clear whether a `None` value
-represents `Poll::NotReady` or `Poll::Error` (and, if the latter, it's
-not clear what error!). The same applies, in a less clear fashion, to
-interoperability between `Option<T>` and `Result<U, E>` -- it is not
-clear whether `Some` or `None` should represent the error state, and
-it's better for users to make that interconversion themselves via a
-`match` or the `or_err()` method.
-
-At the same time, there may be some cases where it makes sense to
-allow interconversion between types. For example,
+In some cases, it would be useful to be able to convert even more
+freely. At the same time, there may be some cases where it makes sense
+to allow interconversion between types. For example,
 [a library might wish to permit a `Result<T, HttpError>` to be converted into an `HttpResponse`](https://github.com/rust-lang/rfcs/issues/1718#issuecomment-241631468)
-(or vice versa). And of course the existing `?` operator allows a
-`Result<T, E>` to be converted into a `Result<U, F>` so long as `F:
-From<E>` (note that the types `T` and `U` are irrelevant here, as we
-are only concerned with the error path). The general rule should be
-that `?` can be used to interconvert between "semantically equivalent"
-types. This notion of semantic equivalent is not something that can be
-defined a priori in the language, and hence the design in this RFC
-leaves the choice of what sorts of interconversions to enable up to
-the end-user. (However, see the unresolved question at the end
-concerning interactions with the orphan rules.)
+(or vice versa). Or, in the futures example given above, we might wish
+to apply `?` to a `Poll` value and use that in a function that itself
+returns a `Poll`:
+
+```rust
+fn foo() -> Poll<T, E> {
+    let x = bar()?; // propogate error case
+}
+```
+
+and we might wish to do the same, but in a function returning a `Result`:
+
+```rust
+fn foo() -> Result<T, E> {
+    let x = bar()?; // propogate error case
+}
+```
+
+However, we wish to be sure that this sort of interconversion is
+*intentional*. In particular, `Result` is often used with a semantic
+intent to mean an "unhandled error", and thus if `?` is used to
+convert an error case into a "non-error" type (e.g., `Option`), there
+is a risk that users accidentally overlook error cases. To mitigate
+this risk, we adopt certain conventions (see below) in that case to
+help ensure that "accidental" interconversion does not occur.
 
 # Detailed design
 [design]: #detailed-design
@@ -115,9 +122,12 @@ The desugaring of the `?` operator is changed to the following, where
 `Try` refers to a new trait that will be introduced shortly:
 
 ```rust
-match Try::try(expr) {
+match Try::into_result(expr) {
     Ok(v) => v,
-    Err(e) => return e, // presuming no `catch` in scope
+
+    // here, the `return` presumes that there is
+    // no `catch` in scope:
+    Err(e) => return Try::from_error(From::from(e)),
 }
 ```
 
@@ -130,21 +140,32 @@ This definition refers to a trait `Try`. This trait is defined in
 trait `Try` is defined as follows:
 
 ```rust
-trait Try<E> {
-    type Success;
-
+trait Try {
+    type Ok;
+    type Error;
+    
     /// Applies the "?" operator. A return of `Ok(t)` means that the
     /// execution should continue normally, and the result of `?` is the
     /// value `t`. A return of `Err(e)` means that execution should branch
     /// to the innermost enclosing `catch`, or return from the function.
-    /// The value `e` in that case is the result to be returned.
     ///
-    /// Note that the value `t` is the "unwrapped" ok value, whereas the
-    /// value `e` is the *wrapped* abrupt result. So, for example, if `?`
-    /// is applied to a `Result<i32, Error>`, then the types `T` and `E`
-    /// here might be `T = i32` and `E = Result<(), Error>`. In
-    /// particular, note that the `E` type is *not* `Error`.
-    fn try(self) -> Result<Self::Success, E>;
+    /// If an `Err(e)` result is returned, the value `e` will be "wrapped"
+    /// in the return type of the enclosing scope (which must itself implement
+    /// `Try`). Specifically, the value `X::from_error(From::from(e))`
+    /// is returned, where `X` is the return type of the enclosing function.
+    fn into_result(self) -> Result<Self::Ok, Self::Error>;
+
+    /// Wrap an error value to construct the composite result. For example,
+    /// `Result::Err(x)` and `Result::from_error(x)` are equivalent.
+    fn from_error(v: Self::Error) -> Self;
+
+    /// Wrap an OK value to construct the composite result. For example,
+    /// `Result::Ok(x)` and `Result::from_ok(x)` are equivalent.
+    ///
+    /// *The following function has an anticipated use, but is not used
+    /// in this RFC. It is included because we would not want to stabilize
+    /// the trait without including it.*
+    fn from_ok(v: Self::Ok) -> Self;
 }
 ```
 
@@ -157,14 +178,20 @@ libcore will also define the following impls for the following types.
 The `Result` type includes an impl as follows:
 
 ```rust
-impl<T,U,E,F> Try<Result<U,F>> for Result<T, E> where F: From<E> {
-    type Success = T;
+impl<T,E> Try for Result<T, E> {
+    type Ok = T;
+    type Error = E;
 
-    fn try(self) -> Result<T, Result<U, F>> {
-        match self {
-            Ok(v) => Ok(v),
-            Err(e) => Err(Err(F::from(e)))
-        }
+    fn into_result(self) -> Self {
+        self
+    }
+    
+    fn from_ok(v: T) -> Self {
+        Ok(v)
+    }
+
+    fn from_error(v: T) -> Self {
+        Err(v)
     }
 }
 ```
@@ -177,37 +204,39 @@ fashion as it is used today.
 The `Option` type includes an impl as follows:
 
 ```rust
-impl<T, U> Try<Option<U>> for Option<T> {
-    type Success = T;
+mod option {
+    pub struct Missing;
 
-    fn try(self) -> Result<T, Option<U>> {
-        match self {
-            Some(v) => Ok(v),
-            None => Err(None),
+    impl<T> Try for Option<T>  {
+        type Ok = T;
+        type Error = Missing;
+
+        fn into_result(self) -> Self {
+            self.ok_or(Missing)
+        }
+    
+        fn from_ok(v: T) -> Self {
+            Some(v)
+        }
+
+        fn from_error(_: Missing) -> Self {
+            None
         }
     }
-}
+}    
 ```
 
-**Poll**
+Note the use of the `Missing` type. This is intended to mitigate the
+risk of accidental `Result -> Option` conversion. In particular, we
+will only allow conversion from `Result<T, Missing>` to `Option<T>`.
+The idea is that if one uses the `Missing` type as an error, that
+indicates an error that can be "handled" by converting the value into
+an `Option`.
 
-The `Poll` type is not included in the standard library. But just for
-completeness, the equivalent of the `try_ready!` macro might be
-implemented as follows:
-
-```rust
-impl<T, U, E, F> Try<Poll<U, F>> for Poll<T, E> where F: From<E> {
-    type Success = T;
-
-    fn try(self) -> Result<T, Poll<U, F>> {
-        match self {
-            Poll::Ready(v) => Ok(v),
-            Poll::NotReady => Err(Poll::NotReady),
-            Poll::Err(e) => Err(Poll::Err(F::from(e))),
-        }
-    }
-}
-```
+The use of a fresh type like `Missing` is recommended whenever one
+implements `Try` for a type that does not have the `#[must_use]`
+attribute (or, more semantically, that does not represent an
+"unhandled error").
 
 ### Interaction with type inference
 
@@ -220,30 +249,22 @@ for type inference. In particular, if `?` only works on values of type
 `try!` macro days, `collect()` would have been forced to return a
 `Result<_, _>` -- but `?` leaves it more open.
 
-However, the impact of this should be limited, thanks to the rule
-that disallows arbitrary interconversion. In particular, consider the expression
-above in context:
+This implies that callers of `collect()` will have to either use
+`try!`, or write an explicit type annotation, something like this:
 
 ```rust
-fn foo() -> Result<X, Y> {
-    let v: Vec<_> = vec.iter().map(|e| ...).collect()?;
-    ...
-}    
+vec.iter().map(|e| ...).collect::<Result<_, _>>()?
 ```
 
-While it's true that `?` operator can be applied to values of many
-different types, in this context it's clear that it must be applied to
-a value of **some type that can be converted to a `Result<X, Y>` in
-the case of failure**.  Since we don't support arbitrary
-interconversion, this in fact means that the the only type which
-`collect()` could have would be some sort of `Result`. **So we ought
-to be able to infer the types in this example without further
-annotation.** However, the current implementation fails to do so (as
-can be seen in [this example](https://is.gd/v0UrMK)). This appears to
-be a limitation of the trait implementation, which should be fixed
-separately. (For example,
-[switching the role of the type parameters in `Try` resolves the problem](https://is.gd/13A7n0).)
-This merits more investigation but need not hold up the RFC.
+Another problem (which also occurs with `try!`) stems from the use of
+`From` to interconvert errors. This implies that 'nested' uses of `?`
+are
+[often insufficiently constrained for inference to make a decision](https://internals.rust-lang.org/t/pre-rfc-fold-ok-is-composable-internal-iteration/4434/23).
+The problem here is that the nested use of `?` effectively returns
+something like `From::from(From::from(err))` -- but only the starting
+point (`err`) and the final type are constrained. The inner type is
+not.  It's unclear how to address this problem without introducing
+some form of inference fallback, which seems orthogonal from this RFC.
 
 # How We Teach This
 [how-we-teach-this]: #how-we-teach-this
@@ -263,58 +284,86 @@ The reference will have to be updated to include the new trait,
 naturally.  The Rust book and Rust by example should be expanded to
 include coverage of the `?` operator being used on a variety of types.
 
-One important note is that we should develop and publish guidelines
-explaining when it is appropriate to implement a `Try` interconversion
-impl and when it is not (i.e., expand on the concept of semantic
-equivalence used to justify why we do not permit `Option` to be
-interconverted with `Result` and so forth).
+One important note is that we should publish guidelines explaining
+when it is appropriate to introduce a special error type (analogous to
+the `option::Missing` type included in this RFC) for use with `?`. As
+expressed earlier, the rule of thumb ought to be that a special error
+type should be used whenever implementing `Try` for a type that does
+not, semantically, indicates an unhandled error (i.e., a type for
+which the `#[must_use]` attribute would be inappropriate).
 
 ### Error messages
 
 Another important factor is the error message when `?` is used in a
 function whose return type is not suitable. The current error message
 in this scenario is quite opaque and directly references the `Carrer`
-trait. A better message would be contingent on whether `?` is applied
-to a value that implements the `Try` trait (for any return type). If
-not, we can give a message like
+trait. A better message would consider various possible cases.
+
+**Source type does not implement Try.** If `?` is applied to a value
+that does not implement the `Try` trait (for any return type), we can
+give a message like
 
 > `?` cannot be applied to a value of type `Foo`
 
-If, however, `?` *can* be applied to this type, but not with a function
-of the given return type, we can instead report something like this:
+**Return type does not implement Try.** Otherwise, if the return type
+of the function does not implement `Try`, then we can report something
+like this (in this case, assuming a fn that returns `()`):
 
 > cannot use the `?` operator in a function that returns `()`
 
 or perhaps if we want to be more strictly correct:
 
-> `?` cannot be applied to a `io::Result` in a function that returns `()`
+> `?` cannot be applied to a `Result<T, Box<Error>>` in a function that returns `()`
 
-We could also go further and analyze the type to which `?` is applied
-and figure out the set of legal return types for the function to
-have. So if the code is invoking `foo.write()?` (i.e., applying `?` to
-an `io::Result`), then we could offer a suggestion like "consider
-changing the return type to `Result<(), io::Error>`" or perhaps just
-"consider changing the return type to a `Result"`.
+At this point, we could likely make a suggestion such as "consider
+changing the return type to `Result<(), Box<Error>>`".
 
 Note however that if `?` is used within an impl of a trait method, or
 within `main()`, or in some other context where the user is not free
-to change the type signature, then we should not make this
-suggestion. In the case of an impl of a trait defined in the current
-crate, we could consider suggesting that the user change the
-definition of the trait.
+to change the type signature (modulo
+[RFC 1937](https://github.com/rust-lang/rfcs/pull/1937)), then we
+should not make this suggestion. In the case of an impl of a trait
+defined in the current crate, we could consider suggesting that the
+user change the definition of the trait.
 
-Especially in contexts where the return type cannot be changed, but
-possibly in other contexts as well, it would make sense to advise the
-user about how they can catch an error instead, if they chose. Once
-`catch` is implemented, this could be as simple as saying "consider
-introducing a `catch`, or changing the return type to ...". In the
-absence of `catch`, we would have to suggest the introduction of a
-`match` block.
+**Errors cannot be interconverted.** Finally, if the return type `R`
+does implement `Try`, but a value of type `R` cannot be constructed
+from the resulting error (e.g., the function returns `Option<T>`, but
+`?` is applied to a `Result<T, ()>`), then we can instead report
+something like this:
 
-In the extended error message, for those cases where the return type
-cannot easily be changed, we might consider suggesting that the
-fallible portion of the code is refactored into a helper function, thus
-roughly following this pattern:
+> `?` cannot be applied to a `Result<T, Box<Error>>` in a function that returns `Option<T>`
+
+This last part can be tricky, because the error can result for one of
+two reasons:
+
+- a missing `From` impl, perhaps a mistake;
+- the impl of `Try` is intentionally limited, as in the case of `Option`.
+
+We could help the user diagnose this, most likely, by offering some labels
+like the following:
+
+```rust
+22 | fn foo(...) -> Option<T> {
+   |                --------- requires an error of type `option::Missing`
+   |     write!(foo, ...)?;
+   |     ^^^^^^^^^^^^^^^^^ produces an error of type `io::Error`
+   | }
+```
+
+**Consider suggesting the use of catch.** Especially in contexts
+where the return type cannot be changed, but possibly in other
+contexts as well, it would make sense to advise the user about how
+they can catch an error instead, if they chose. Once `catch` is
+stabilized, this could be as simple as saying "consider introducing a
+`catch`, or changing the return type to ...". In the absence of
+`catch`, we would have to suggest the introduction of a `match` block.
+
+**Extended error message text.** In the extended error message, for
+those cases where the return type cannot easily be changed, we might
+consider suggesting that the fallible portion of the code is
+refactored into a helper function, thus roughly following this
+pattern:
 
 ```rust
 fn inner_main() -> Result<(), HLError> {
@@ -333,150 +382,69 @@ fn main() {
 }
 ```
 
-On an implementation note, it would probably be helpful for improving
-the error message if `?` were not desugared when lowering from AST to
-HIR but rather when lowering from HIR to MIR. This would also make it
-easier to implement `catch`.
+**Implementation note:** it may be helpful for improving the error
+message if `?` were not desugared when lowering from AST to HIR but
+rather when lowering from HIR to MIR; however, the use of source
+annotations may suffice.
 
 # Drawbacks
 [drawbacks]: #drawbacks
 
 One drawback of supporting more types is that type inference becomes
 harder. This is because an expression like `x?` no longer implies that
-the type of `x` is `Result`. However, type inference is still expected
-to work well in practice, as discussed in the detailed design section.
+the type of `x` is `Result`.
+
+There is also the risk that results or other "must use" values are
+accidentally converted into other types. This is mitigated by the use
+of newtypes like `option::Missing`.
 
 # Alternatives
 [alternatives]: #alternatives
 
-### Using an associated type for the success value
+### The "essentialist" approach
 
-The proposed `Try` trait has one generic type parameter (`E`) which
-encodes the type to return on error. The type to return on success is
-encoded as an associated type (`type Success`). This implies that the
-type of the expression `x?` (i.e., the `Success` type) is going to be
-determined by the type of `x` (as well as the return type `E`). An
-alternative formulation of the `Try` trait used two generic type
-parameters, one for success and one for error:
+When this RFC was first proposed, the `Try` trait looked quite different:
 
 ```rust
-trait Try<S, E> {
-    fn try(self) -> Result<S, E>
-}
-```
-
-In this formulation, the type of `x?` could be influenced by both the
-return type `E` as well as the type to which `x?` is being coerced.
-This implies that e.g. one could make a version of `?` that uses
-`Into` implicitly both on the success *and* the error values:
-
-```Rust
-impl<T,U,V,E,F> Try<V, Result<U,F>> for Result<T, E> where F: From<E>, V: From<T> {
-    fn try(self) -> Result<T, Result<U, F>> {
-        match self {
-            Ok(t) => Ok(V::from(t)),
-            Err(e) => Err(Err(F::from(e)))
-        }
-    }
-}
-```
-
-In general, having this flexibility seemed undesirable, since it would
-be surprising for `x?` to perform coercions on the unwrapped value on
-the success path, and it would also potentially present an inference
-challenge, since the type of `x?` would not necessarily be uniquely
-determined by the type of `x`.
-
-In fact, if we wanted to ensure that the type of `x?` is determined
-*solely* by `x` and not by the surrouding return type `E`, we might
-also consider introducing two traits:
-
-```rust
-trait Try<E>: TrySuccess {
-    fn try(self) -> Result<Self::Success, E>;
-}
-
-trait TrySuccess {
+trait Try<E> {
     type Success;
-}
+    fn try(self) -> Result<Self::Success, E>;
+}    
 ```
 
-One would then implement these traits as follows:
+In this version, `Try::try()` converted either to an unwrapped
+"success" value, or to a error value to be propagated. This allowed
+the conversion to take into account the context (i.e., one might
+interconvert from a `Foo` to a `Bar` in some distinct way as one
+interconverts from a `Foo` to a `Baz`).
 
-```rust
-impl<T, U> Try<Option<U>> for Option<T> { ... }
+This was changed to adopt the current "reductionist" approach, in
+which all values are *first* interconverted (in a context independent
+way) to an OK/Error value, and then interconverted again to match the
+context using `from_error`. The reasons for the change are roughly as follows:
 
-impl<T> TrySuccess for Option<T> {
-    type Success = T;
-}
-```
-
-Note in particular the second impl, which shows that the type
-`Success` is defined purely in terms of the `Option<T>` to which the
-`?` is applied, and not the `Option<U>` that it returns in the case of
-error.
-
-### Using a distinct return type
-
-The `Try` trait uses `Result` as its return type. It has also been proposed
-that we could introduce a distinct enum type for the return value. For example:
-
-```rust
-enum TryResult<T, E> {
-    Ok(T),
-    Abrupt(E),
-}
-```
-
-Re-using `Result` was chosen because it is simpler (fewer things being
-added).  It also allows manual invocations of `Try` (should there by
-any, perhaps in macros) to re-use the rich set of methods available on
-`Result`. Finally, the `Result` type seems semantically
-appropriate. In general, `Result` is used to indicate whether normal
-execution can continue (`Ok`) or whether some form of recoverable
-error occurred (`Err`).  In this case, "normal execution" means the
-rest of the function, and the recoverable error means abrupt
-termination:
-
-- returning a `Ok(v)` value means that (a) execution
-  should continue normally and (b) the result `v` represents the value to
-  be propagated;
-- returning a `Err(e)` value means that (a) execution should return
-  abruptly and (b) the result `e` is the value to be propagated (note
-  that `e` may itself be a `Result`, if the function returns
-  `Result`).
-  
-### The original `Carrier` trait proposal
-
-The original `Carrier` as proposed in RFC 243 had a rather different
-design:
-
-```rust
-trait ResultCarrier {
-    type Normal;
-    type Exception;
-    fn embed_normal(from: Normal) -> Self;
-    fn embed_exception(from: Exception) -> Self;
-    fn translate<Other: ResultCarrier<Normal=Normal, Exception=Exception>>(from: Self) -> Other;
-}
-```
-
-Whereas this `Try` trait links the type of the value being matched
-(`Self`) with the type that the enclosing function returns (`E`), the
-`Carrier` was implemented separately for each type (e.g., `Result` and
-`Option`). It allowed any kind of carrier to be converted to any other
-kind of carrier, which fails to preserve the "semantic equivalent"
-property.  It would also interact poorly with type inference, as
-discussed in the "Detailed Design" section.
+- The resulting trait feels simpler and more straight-forward. It also
+  supports `from_ok` in a simple fashion.
+- Context dependent behavior has the potential to be quite surprising.
+- The use of types like `option::Missing` mitigates the primary concern that
+  motivated the original design (avoiding overly loose interconversion).
+- It is nice that the use of the `From` trait is now part of the `?` desugaring,
+  and hence supported universally across all types.
+- The interaction with the orphan rules is made somewhat nicer. For example,
+  using the essentialist alternative, one might like to have a trait
+  that permits a `Result` to be returned in a function that yields `Poll`.
+  That would require an impl like this `impl<T,E> Try<Poll<T,E>> for Result<T, E>`,
+  but this impl runs afoul of the orphan rules.
 
 ### Traits implemented over higher-kinded types
 
-The "semantic equivalent" property might suggest that the `Carrier`
-trait ought to be defined over higher-kinded types (or generic
-associated types) in some form. The most obvious downside of such a
-design is that Rust does not offer higher-kinded types nor anything
-equivalent to them today, and hence we would have to block on that
-design effort. But it also turns out that HKT is
+The desire to avoid "free interconversion" between `Result` and
+`Option` seemed to suggest that the `Carrier` trait ought to be
+defined over higher-kinded types (or generic associated types) in some
+form. The most obvious downside of such a design is that Rust does not
+offer higher-kinded types nor anything equivalent to them today, and
+hence we would have to block on that design effort. But it also turns
+out that HKT is
 [not a particularly good fit for the problem](https://github.com/rust-lang/rust/pull/35056#issuecomment-240129923). To
 start, consider what "kind" the `Self` parameter on the `Try` trait
 would have to have.  If we were to implement `Try` on `Option`, it
@@ -510,44 +478,4 @@ question.
 # Unresolved questions
 [unresolved]: #unresolved-questions
 
-**We need to resolve the interactions with type inference.** It is
-important that expressions like `vec.iter().map(|e| ...).collect()?`
-are able to infer the type of `collect()` from context. This may
-require small tweaks to the `Try` trait, though the author considers
-that unlikely.
-
-**Should we reverse the order of the trait's type parameters?** The
-current ordering of the trait type parameters seems natural, since
-`Self` refers to the type of the value to which `?` is
-applied. However, it has
-[negative interactions with the orphan rules](https://github.com/rust-lang/rfcs/issues/1718#issuecomment-273353457).
-In particular, it means that one cannot write an impl that converts a
-`Result` into any other type. For example, in the futures library, it
-would be nice to have an impl that allows a result to be converted
-into a `Poll`:
-
-```rust
-impl<T, U, E, F> Try<Poll<U, F>> for Result<T, E>
-    where F: From<E>
-{ }
-```
-
-However, this would fall afoul of the current orphan rules. If we
-switched the order of the trait's type parameters, then this impl
-would be allowed, but of course other impls would not be (e.g.,
-something which allowed a `Poll` to be converted into a `Result`,
-although that particular conversion would not make sense). Certainly
-this is a more general problem with the orphan rules that we might
-want to consider resolving in a more general way, and indeed
-[specialization may provide a solution]. But it may still be worth
-considering redefining the trait to sidestep the problem in the short
-term. If we chose to do so, the trait would look like:
-
-```rust
-trait Try<V> {
-    type Success;
-    fn try(value: V) -> Result<Self::Success, Self>;
-}
-```
-
-[specialization may provide a solution]: https://github.com/rust-lang/rfcs/issues/1718#issuecomment-273415458
+None.
