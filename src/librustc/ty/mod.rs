@@ -34,7 +34,6 @@ use ty::walk::TypeWalker;
 use util::nodemap::{NodeSet, DefIdMap, FxHashMap};
 
 use serialize::{self, Encodable, Encoder};
-use std::borrow::Cow;
 use std::cell::{Cell, RefCell, Ref};
 use std::collections::BTreeMap;
 use std::cmp;
@@ -2036,6 +2035,23 @@ impl BorrowKind {
     }
 }
 
+#[derive(Debug, Clone)]
+pub enum Attributes<'gcx> {
+    Owned(Rc<[ast::Attribute]>),
+    Borrowed(&'gcx [ast::Attribute])
+}
+
+impl<'gcx> ::std::ops::Deref for Attributes<'gcx> {
+    type Target = [ast::Attribute];
+
+    fn deref(&self) -> &[ast::Attribute] {
+        match self {
+            &Attributes::Owned(ref data) => &data,
+            &Attributes::Borrowed(data) => data
+        }
+    }
+}
+
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn body_tables(self, body: hir::BodyId) -> &'gcx TypeckTables<'gcx> {
         self.item_tables(self.hir.body_owner_def_id(body))
@@ -2133,14 +2149,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub fn trait_impl_polarity(self, id: DefId) -> hir::ImplPolarity {
-        if let Some(id) = self.hir.as_local_node_id(id) {
-            match self.hir.expect_item(id).node {
-                hir::ItemImpl(_, polarity, ..) => polarity,
-                ref item => bug!("trait_impl_polarity: {:?} not an impl", item)
-            }
-        } else {
-            self.sess.cstore.impl_polarity(id)
-        }
+        queries::impl_polarity::get(self, DUMMY_SP, id)
     }
 
     pub fn trait_relevant_for_never(self, did: DefId) -> bool {
@@ -2389,11 +2398,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     /// Get the attributes of a definition.
-    pub fn get_attrs(self, did: DefId) -> Cow<'gcx, [ast::Attribute]> {
+    pub fn get_attrs(self, did: DefId) -> Attributes<'gcx> {
         if let Some(id) = self.hir.as_local_node_id(did) {
-            Cow::Borrowed(self.hir.attrs(id))
+            Attributes::Borrowed(self.hir.attrs(id))
         } else {
-            Cow::Owned(self.sess.cstore.item_attrs(did))
+            Attributes::Owned(self.sess.cstore.item_attrs(did))
         }
     }
 
@@ -2499,15 +2508,13 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// Construct a parameter environment suitable for static contexts or other contexts where there
     /// are no free type/lifetime parameters in scope.
     pub fn empty_parameter_environment(self) -> ParameterEnvironment<'tcx> {
-
-        // for an empty parameter environment, there ARE no free
-        // regions, so it shouldn't matter what we use for the free id
-        let free_id_outlive = self.region_maps.node_extent(ast::DUMMY_NODE_ID);
         ty::ParameterEnvironment {
             free_substs: self.intern_substs(&[]),
             caller_bounds: Vec::new(),
-            implicit_region_bound: self.mk_region(ty::ReEmpty),
-            free_id_outlive: free_id_outlive,
+            implicit_region_bound: self.types.re_empty,
+            // for an empty parameter environment, there ARE no free
+            // regions, so it shouldn't matter what we use for the free id
+            free_id_outlive: ROOT_CODE_EXTENT,
             is_copy_cache: RefCell::new(FxHashMap()),
             is_sized_cache: RefCell::new(FxHashMap()),
             is_freeze_cache: RefCell::new(FxHashMap()),
@@ -2760,4 +2767,3 @@ pub fn provide_extern(providers: &mut ty::maps::Providers) {
 pub struct CrateInherentImpls {
     pub inherent_impls: DefIdMap<Rc<Vec<DefId>>>,
 }
-

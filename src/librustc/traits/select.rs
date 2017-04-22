@@ -943,15 +943,15 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                     debug!("Retaining candidate #{}/{}: {:?}",
                            i, candidates.len(), candidates[i]);
                     i += 1;
+
+                    // If there are *STILL* multiple candidates, give up
+                    // and report ambiguity.
+                    if i > 1 {
+                        debug!("multiple matches, ambig");
+                        return Ok(None);
+                    }
                 }
             }
-        }
-
-        // If there are *STILL* multiple candidates, give up and
-        // report ambiguity.
-        if candidates.len() > 1 {
-            debug!("multiple matches, ambig");
-            return Ok(None);
         }
 
         // If there are *NO* candidates, then there are no impls --
