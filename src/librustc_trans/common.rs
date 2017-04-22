@@ -564,7 +564,7 @@ pub fn def_ty<'a, 'tcx>(shared: &SharedCrateContext<'a, 'tcx>,
                         -> Ty<'tcx>
 {
     let ty = shared.tcx().item_type(def_id);
-    monomorphize::apply_param_substs(shared, substs, &ty)
+    shared.tcx().trans_apply_param_substs(substs, &ty)
 }
 
 /// Return the substituted type of an instance.
@@ -573,5 +573,5 @@ pub fn instance_ty<'a, 'tcx>(shared: &SharedCrateContext<'a, 'tcx>,
                              -> Ty<'tcx>
 {
     let ty = instance.def.def_ty(shared.tcx());
-    monomorphize::apply_param_substs(shared, instance.substs, &ty)
+    shared.tcx().trans_apply_param_substs(instance.substs, &ty)
 }

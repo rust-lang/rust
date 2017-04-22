@@ -18,6 +18,7 @@
 use hir::map as hir_map;
 use hir::def::Def;
 use hir::def_id::{DefId, CrateNum};
+use std::rc::Rc;
 use ty::{self, TyCtxt};
 use ty::maps::Providers;
 use middle::privacy;
@@ -362,11 +363,11 @@ impl<'a, 'tcx: 'a> ItemLikeVisitor<'tcx> for CollectPrivateImplItemsVisitor<'a, 
     }
 }
 
-pub fn find_reachable<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> NodeSet {
+pub fn find_reachable<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Rc<NodeSet> {
     ty::queries::reachable_set::get(tcx, DUMMY_SP, LOCAL_CRATE)
 }
 
-fn reachable_set<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, crate_num: CrateNum) -> NodeSet {
+fn reachable_set<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, crate_num: CrateNum) -> Rc<NodeSet> {
     debug_assert!(crate_num == LOCAL_CRATE);
 
     let access_levels = &ty::queries::privacy_access_levels::get(tcx, DUMMY_SP, LOCAL_CRATE);
@@ -411,7 +412,7 @@ fn reachable_set<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, crate_num: CrateNum) -> 
     reachable_context.propagate();
 
     // Return the set of reachable symbols.
-    reachable_context.reachable_symbols
+    Rc::new(reachable_context.reachable_symbols)
 }
 
 pub fn provide(providers: &mut Providers) {

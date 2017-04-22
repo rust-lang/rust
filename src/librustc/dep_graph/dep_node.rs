@@ -88,6 +88,7 @@ pub enum DepNode<D: Clone + Debug> {
     // predicates for an item wind up in `ItemSignature`).
     AssociatedItems(D),
     ItemSignature(D),
+    IsForeignItem(D),
     TypeParamPredicates((D, D)),
     SizedConstraint(D),
     AdtDestructor(D),
@@ -171,6 +172,7 @@ impl<D: Clone + Debug> DepNode<D> {
             TransCrateItem,
             AssociatedItems,
             ItemSignature,
+            IsForeignItem,
             AssociatedItemDefIds,
             InherentImpls,
             TypeckTables,
@@ -221,6 +223,7 @@ impl<D: Clone + Debug> DepNode<D> {
             TransInlinedItem(ref d) => op(d).map(TransInlinedItem),
             AssociatedItems(ref d) => op(d).map(AssociatedItems),
             ItemSignature(ref d) => op(d).map(ItemSignature),
+            IsForeignItem(ref d) => op(d).map(IsForeignItem),
             TypeParamPredicates((ref item, ref param)) => {
                 Some(TypeParamPredicates((try_opt!(op(item)), try_opt!(op(param)))))
             }
