@@ -72,6 +72,7 @@
     - [proc_macro](language-features/proc-macro.md)
     - [quote](language-features/quote.md)
     - [relaxed_adts](language-features/relaxed-adts.md)
+    - [repr_align](language-features/repr-align.md)
     - [repr_simd](language-features/repr-simd.md)
     - [rustc_attrs](language-features/rustc-attrs.md)
     - [rustc_diagnostic_macros](language-features/rustc-diagnostic-macros.md)
