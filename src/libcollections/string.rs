@@ -56,6 +56,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use core::borrow::Borrow;
 use core::fmt;
 use core::hash;
 use core::iter::{FromIterator, FusedIterator};
@@ -476,9 +477,9 @@ impl String {
             Ok(..) => Ok(String { vec: vec }),
             Err(e) => {
                 Err(FromUtf8Error {
-                    bytes: vec,
-                    error: e,
-                })
+                        bytes: vec,
+                        error: e,
+                    })
             }
         }
     }
@@ -663,7 +664,9 @@ impl String {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn from_utf16(v: &[u16]) -> Result<String, FromUtf16Error> {
-        decode_utf16(v.iter().cloned()).collect::<Result<_, _>>().map_err(|_| FromUtf16Error(()))
+        decode_utf16(v.iter().cloned())
+            .collect::<Result<_, _>>()
+            .map_err(|_| FromUtf16Error(()))
     }
 
     /// Decode a UTF-16 encoded vector `v` into a string, replacing
@@ -685,7 +688,9 @@ impl String {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn from_utf16_lossy(v: &[u16]) -> String {
-        decode_utf16(v.iter().cloned()).map(|r| r.unwrap_or(REPLACEMENT_CHARACTER)).collect()
+        decode_utf16(v.iter().cloned())
+            .map(|r| r.unwrap_or(REPLACEMENT_CHARACTER))
+            .collect()
     }
 
     /// Creates a new `String` from a length, capacity, and pointer.
@@ -977,7 +982,10 @@ impl String {
     pub fn push(&mut self, ch: char) {
         match ch.len_utf8() {
             1 => self.vec.push(ch as u8),
-            _ => self.vec.extend_from_slice(ch.encode_utf8(&mut [0; 4]).as_bytes()),
+            _ => {
+                self.vec
+                    .extend_from_slice(ch.encode_utf8(&mut [0; 4]).as_bytes())
+            }
         }
     }
 
@@ -1520,27 +1528,9 @@ impl<'a> FromIterator<&'a char> for String {
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> FromIterator<&'a str> for String {
-    fn from_iter<I: IntoIterator<Item = &'a str>>(iter: I) -> String {
-        let mut buf = String::new();
-        buf.extend(iter);
-        buf
-    }
-}
-
-#[stable(feature = "extend_string", since = "1.4.0")]
-impl FromIterator<String> for String {
-    fn from_iter<I: IntoIterator<Item = String>>(iter: I) -> String {
-        let mut buf = String::new();
-        buf.extend(iter);
-        buf
-    }
-}
-
 #[stable(feature = "herd_cows", since = "1.9.0")]
-impl<'a> FromIterator<Cow<'a, str>> for String {
-    fn from_iter<I: IntoIterator<Item = Cow<'a, str>>>(iter: I) -> String {
+impl<T: Borrow<str>> FromIterator<T> for String {
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> String {
         let mut buf = String::new();
         buf.extend(iter);
         buf
@@ -1559,34 +1549,9 @@ impl Extend<char> for String {
     }
 }
 
-#[stable(feature = "extend_ref", since = "1.2.0")]
-impl<'a> Extend<&'a char> for String {
-    fn extend<I: IntoIterator<Item = &'a char>>(&mut self, iter: I) {
-        self.extend(iter.into_iter().cloned());
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> Extend<&'a str> for String {
-    fn extend<I: IntoIterator<Item = &'a str>>(&mut self, iter: I) {
-        for s in iter {
-            self.push_str(s)
-        }
-    }
-}
-
-#[stable(feature = "extend_string", since = "1.4.0")]
-impl Extend<String> for String {
-    fn extend<I: IntoIterator<Item = String>>(&mut self, iter: I) {
-        for s in iter {
-            self.push_str(&s)
-        }
-    }
-}
-
 #[stable(feature = "herd_cows", since = "1.9.0")]
-impl<'a> Extend<Cow<'a, str>> for String {
-    fn extend<I: IntoIterator<Item = Cow<'a, str>>>(&mut self, iter: I) {
+impl<T: Borrow<str>> Extend<T> for String {
+    fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
         for s in iter {
             self.push_str(&s)
         }
@@ -1959,7 +1924,7 @@ impl<T: fmt::Display + ?Sized> ToString for T {
         use core::fmt::Write;
         let mut buf = String::new();
         buf.write_fmt(format_args!("{}", self))
-           .expect("a Display implementation return an error unexpectedly");
+            .expect("a Display implementation return an error unexpectedly");
         buf.shrink_to_fit();
         buf
     }
