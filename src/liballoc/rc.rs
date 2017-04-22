@@ -239,7 +239,7 @@ use core::ops::CoerceUnsized;
 use core::ptr::{self, Shared};
 use core::convert::From;
 
-use heap::deallocate;
+use heap::{allocate, deallocate, box_free};
 use raw_vec::RawVec;
 
 struct RcBox<T: ?Sized> {
@@ -247,7 +247,6 @@ struct RcBox<T: ?Sized> {
     weak: Cell<usize>,
     value: T,
 }
-
 
 /// A single-threaded reference-counting pointer.
 ///
@@ -434,6 +433,38 @@ impl Rc<str> {
             let rcbox_ptr: *mut RcBox<str> = mem::transmute([ptr as usize, value.len()]);
             assert!(aligned_len * size_of::<usize>() == size_of_val(&*rcbox_ptr));
             Rc { ptr: Shared::new(rcbox_ptr) }
+        }
+    }
+}
+
+impl<T> Rc<[T]> {
+    /// Constructs a new `Rc<[T]>` from a `Box<[T]>`.
+    #[doc(hidden)]
+    #[unstable(feature = "rustc_private",
+               reason = "for internal use in rustc",
+               issue = "0")]
+    pub fn __from_array(value: Box<[T]>) -> Rc<[T]> {
+        unsafe {
+            let ptr: *mut RcBox<[T]> =
+                mem::transmute([mem::align_of::<RcBox<[T; 1]>>(), value.len()]);
+            // FIXME(custom-DST): creating this invalid &[T] is dubiously defined,
+            // we should have a better way of getting the size/align
+            // of a DST from its unsized part.
+            let ptr = allocate(size_of_val(&*ptr), align_of_val(&*ptr));
+            let ptr: *mut RcBox<[T]> = mem::transmute([ptr as usize, value.len()]);
+
+            // Initialize the new RcBox.
+            ptr::write(&mut (*ptr).strong, Cell::new(1));
+            ptr::write(&mut (*ptr).weak, Cell::new(1));
+            ptr::copy_nonoverlapping(
+                value.as_ptr(),
+                &mut (*ptr).value as *mut [T] as *mut T,
+                value.len());
+
+            // Free the original allocation without freeing its (moved) contents.
+            box_free(Box::into_raw(value));
+
+            Rc { ptr: Shared::new(ptr as *const _) }
         }
     }
 }

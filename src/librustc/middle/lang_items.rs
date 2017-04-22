@@ -223,9 +223,10 @@ impl<'a, 'tcx> LanguageItemCollector<'a, 'tcx> {
 
 pub fn extract(attrs: &[ast::Attribute]) -> Option<Symbol> {
     for attribute in attrs {
-        match attribute.value_str() {
-            Some(value) if attribute.check_name("lang") => return Some(value),
-            _ => {}
+        if attribute.check_name("lang") {
+            if let Some(value) = attribute.value_str() {
+                return Some(value)
+            }
         }
     }
 
