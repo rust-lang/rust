@@ -78,6 +78,7 @@ use errors::DiagnosticBuilder;
 use syntax::abi;
 use syntax::feature_gate;
 use syntax::ptr::P;
+use syntax_pos;
 
 use std::collections::VecDeque;
 use std::ops::Deref;
@@ -720,6 +721,16 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         // ensure that the type of expression, post-adjustment, is
         // a subtype of target.
         Ok(target)
+    }
+
+    /// Same as `try_coerce()`, but without side-effects.
+    pub fn can_coerce(&self, expr_ty: Ty<'tcx>, target: Ty<'tcx>) -> bool {
+        let source = self.resolve_type_vars_with_obligations(expr_ty);
+        debug!("coercion::can({:?} -> {:?})", source, target);
+
+        let cause = self.cause(syntax_pos::DUMMY_SP, ObligationCauseCode::ExprAssignable);
+        let coerce = Coerce::new(self, cause);
+        self.probe(|_| coerce.coerce::<hir::Expr>(&[], source, target)).is_ok()
     }
 
     /// Given some expressions, their known unified type and another expression,
