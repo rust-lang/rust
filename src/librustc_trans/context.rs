@@ -10,7 +10,7 @@
 
 use llvm;
 use llvm::{ContextRef, ModuleRef, ValueRef};
-use rustc::dep_graph::{DepGraph, DepGraphSafe, DepNode, DepTrackingMap, DepTrackingMapConfig};
+use rustc::dep_graph::{DepGraph, DepGraphSafe};
 use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::traits;
@@ -21,7 +21,6 @@ use declare;
 use monomorphize::Instance;
 
 use partitioning::CodegenUnit;
-use trans_item::TransItem;
 use type_::Type;
 use rustc_data_structures::base_n;
 use rustc::ty::subst::Substs;
@@ -30,15 +29,13 @@ use rustc::ty::layout::{LayoutTyper, TyLayout};
 use session::config::NoDebugInfo;
 use session::Session;
 use session::config;
-use symbol_map::SymbolMap;
-use util::nodemap::{NodeSet, DefIdMap, FxHashMap, FxHashSet};
+use symbol_cache::SymbolCache;
+use util::nodemap::{NodeSet, DefIdMap, FxHashMap};
 
 use std::ffi::{CStr, CString};
 use std::cell::{Cell, RefCell};
-use std::marker::PhantomData;
 use std::ptr;
 use std::iter;
-use std::rc::Rc;
 use std::str;
 use syntax::ast;
 use syntax::symbol::InternedString;
@@ -86,17 +83,13 @@ pub struct SharedCrateContext<'a, 'tcx: 'a> {
     check_overflow: bool,
 
     use_dll_storage_attrs: bool,
-
-    translation_items: RefCell<FxHashSet<TransItem<'tcx>>>,
-    trait_cache: RefCell<DepTrackingMap<TraitSelectionCache<'tcx>>>,
-    project_cache: RefCell<DepTrackingMap<ProjectionCache<'tcx>>>,
 }
 
 /// The local portion of a `CrateContext`.  There is one `LocalCrateContext`
 /// per compilation unit.  Each one has its own LLVM `ContextRef` so that
 /// several compilation units may be optimized in parallel.  All other LLVM
 /// data structures in the `LocalCrateContext` are tied to that `ContextRef`.
-pub struct LocalCrateContext<'tcx> {
+pub struct LocalCrateContext<'a, 'tcx: 'a> {
     llmod: ModuleRef,
     llcx: ContextRef,
     stats: Stats,
@@ -168,60 +161,10 @@ pub struct LocalCrateContext<'tcx> {
     /// Depth of the current type-of computation - used to bail out
     type_of_depth: Cell<usize>,
 
-    symbol_map: Rc<SymbolMap<'tcx>>,
-
     /// A counter that is used for generating local symbol names
     local_gen_sym_counter: Cell<usize>,
-}
 
-// Implement DepTrackingMapConfig for `trait_cache`
-pub struct TraitSelectionCache<'tcx> {
-    data: PhantomData<&'tcx ()>
-}
-
-impl<'tcx> DepTrackingMapConfig for TraitSelectionCache<'tcx> {
-    type Key = ty::PolyTraitRef<'tcx>;
-    type Value = traits::Vtable<'tcx, ()>;
-    fn to_dep_node(key: &ty::PolyTraitRef<'tcx>) -> DepNode<DefId> {
-        key.to_poly_trait_predicate().dep_node()
-    }
-}
-
-// # Global Cache
-
-pub struct ProjectionCache<'gcx> {
-    data: PhantomData<&'gcx ()>
-}
-
-impl<'gcx> DepTrackingMapConfig for ProjectionCache<'gcx> {
-    type Key = Ty<'gcx>;
-    type Value = Ty<'gcx>;
-    fn to_dep_node(key: &Self::Key) -> DepNode<DefId> {
-        // Ideally, we'd just put `key` into the dep-node, but we
-        // can't put full types in there. So just collect up all the
-        // def-ids of structs/enums as well as any traits that we
-        // project out of. It doesn't matter so much what we do here,
-        // except that if we are too coarse, we'll create overly
-        // coarse edges between impls and the trans. For example, if
-        // we just used the def-id of things we are projecting out of,
-        // then the key for `<Foo as SomeTrait>::T` and `<Bar as
-        // SomeTrait>::T` would both share a dep-node
-        // (`TraitSelect(SomeTrait)`), and hence the impls for both
-        // `Foo` and `Bar` would be considered inputs. So a change to
-        // `Bar` would affect things that just normalized `Foo`.
-        // Anyway, this heuristic is not ideal, but better than
-        // nothing.
-        let def_ids: Vec<DefId> =
-            key.walk()
-               .filter_map(|t| match t.sty {
-                   ty::TyAdt(adt_def, _) => Some(adt_def.did),
-                   ty::TyProjection(ref proj) => Some(proj.trait_ref.def_id),
-                   _ => None,
-               })
-               .collect();
-
-        DepNode::ProjectionCache { def_ids: def_ids }
-    }
+    symbol_cache: &'a SymbolCache<'a, 'tcx>,
 }
 
 /// A CrateContext value binds together one LocalCrateContext with the
@@ -229,12 +172,12 @@ impl<'gcx> DepTrackingMapConfig for ProjectionCache<'gcx> {
 /// pass around (SharedCrateContext, LocalCrateContext) tuples all over trans.
 pub struct CrateContext<'a, 'tcx: 'a> {
     shared: &'a SharedCrateContext<'a, 'tcx>,
-    local_ccx: &'a LocalCrateContext<'tcx>,
+    local_ccx: &'a LocalCrateContext<'a, 'tcx>,
 }
 
 impl<'a, 'tcx> CrateContext<'a, 'tcx> {
     pub fn new(shared: &'a SharedCrateContext<'a, 'tcx>,
-               local_ccx: &'a LocalCrateContext<'tcx>)
+               local_ccx: &'a LocalCrateContext<'a, 'tcx>)
                -> Self {
         CrateContext { shared, local_ccx }
     }
@@ -385,9 +328,6 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
             tcx: tcx,
             check_overflow: check_overflow,
             use_dll_storage_attrs: use_dll_storage_attrs,
-            translation_items: RefCell::new(FxHashSet()),
-            trait_cache: RefCell::new(DepTrackingMap::new(tcx.dep_graph.clone())),
-            project_cache: RefCell::new(DepTrackingMap::new(tcx.dep_graph.clone())),
         }
     }
 
@@ -407,14 +347,6 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
         &self.exported_symbols
     }
 
-    pub fn trait_cache(&self) -> &RefCell<DepTrackingMap<TraitSelectionCache<'tcx>>> {
-        &self.trait_cache
-    }
-
-    pub fn project_cache(&self) -> &RefCell<DepTrackingMap<ProjectionCache<'tcx>>> {
-        &self.project_cache
-    }
-
     pub fn tcx<'a>(&'a self) -> TyCtxt<'a, 'tcx, 'tcx> {
         self.tcx
     }
@@ -430,17 +362,13 @@ impl<'b, 'tcx> SharedCrateContext<'b, 'tcx> {
     pub fn use_dll_storage_attrs(&self) -> bool {
         self.use_dll_storage_attrs
     }
-
-    pub fn translation_items(&self) -> &RefCell<FxHashSet<TransItem<'tcx>>> {
-        &self.translation_items
-    }
 }
 
-impl<'tcx> LocalCrateContext<'tcx> {
-    pub fn new<'a>(shared: &SharedCrateContext<'a, 'tcx>,
-                   codegen_unit: CodegenUnit<'tcx>,
-                   symbol_map: Rc<SymbolMap<'tcx>>)
-                   -> LocalCrateContext<'tcx> {
+impl<'a, 'tcx> LocalCrateContext<'a, 'tcx> {
+    pub fn new(shared: &SharedCrateContext<'a, 'tcx>,
+               codegen_unit: CodegenUnit<'tcx>,
+               symbol_cache: &'a SymbolCache<'a, 'tcx>)
+               -> LocalCrateContext<'a, 'tcx> {
         unsafe {
             // Append ".rs" to LLVM module identifier.
             //
@@ -494,8 +422,8 @@ impl<'tcx> LocalCrateContext<'tcx> {
                 rust_try_fn: Cell::new(None),
                 intrinsics: RefCell::new(FxHashMap()),
                 type_of_depth: Cell::new(0),
-                symbol_map: symbol_map,
                 local_gen_sym_counter: Cell::new(0),
+                symbol_cache: symbol_cache,
             };
 
             let (int_type, opaque_vec_type, str_slice_ty, mut local_ccx) = {
@@ -529,9 +457,9 @@ impl<'tcx> LocalCrateContext<'tcx> {
     /// This is used in the `LocalCrateContext` constructor to allow calling
     /// functions that expect a complete `CrateContext`, even before the local
     /// portion is fully initialized and attached to the `SharedCrateContext`.
-    fn dummy_ccx<'a>(shared: &'a SharedCrateContext<'a, 'tcx>,
-                     local_ccxs: &'a [LocalCrateContext<'tcx>])
-                     -> CrateContext<'a, 'tcx> {
+    fn dummy_ccx(shared: &'a SharedCrateContext<'a, 'tcx>,
+                 local_ccxs: &'a [LocalCrateContext<'a, 'tcx>])
+                 -> CrateContext<'a, 'tcx> {
         assert!(local_ccxs.len() == 1);
         CrateContext {
             shared: shared,
@@ -549,7 +477,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         self.shared
     }
 
-    fn local(&self) -> &'b LocalCrateContext<'tcx> {
+    fn local(&self) -> &'b LocalCrateContext<'b, 'tcx> {
         self.local_ccx
     }
 
@@ -716,12 +644,8 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         self.shared.use_dll_storage_attrs()
     }
 
-    pub fn symbol_map(&self) -> &SymbolMap<'tcx> {
-        &*self.local().symbol_map
-    }
-
-    pub fn translation_items(&self) -> &RefCell<FxHashSet<TransItem<'tcx>>> {
-        &self.shared.translation_items
+    pub fn symbol_cache(&self) -> &'b SymbolCache<'b, 'tcx> {
+        self.local().symbol_cache
     }
 
     /// Given the def-id of some item that has no type parameters, make
@@ -867,7 +791,7 @@ impl<'a, 'tcx> LayoutTyper<'tcx> for &'a CrateContext<'a, 'tcx> {
     }
 }
 
-pub struct TypeOfDepthLock<'a, 'tcx: 'a>(&'a LocalCrateContext<'tcx>);
+pub struct TypeOfDepthLock<'a, 'tcx: 'a>(&'a LocalCrateContext<'a, 'tcx>);
 
 impl<'a, 'tcx> Drop for TypeOfDepthLock<'a, 'tcx> {
     fn drop(&mut self) {

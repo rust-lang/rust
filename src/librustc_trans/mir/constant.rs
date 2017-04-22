@@ -260,9 +260,7 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
     fn monomorphize<T>(&self, value: &T) -> T
         where T: TransNormalize<'tcx>
     {
-        monomorphize::apply_param_substs(self.ccx.shared(),
-                                         self.substs,
-                                         value)
+        self.ccx.tcx().trans_apply_param_substs(self.substs, value)
     }
 
     fn trans(&mut self) -> Result<Const<'tcx>, ConstEvalErr<'tcx>> {

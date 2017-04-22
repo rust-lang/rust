@@ -781,10 +781,11 @@ never_type : "!" ;
 ### Type parameter bounds
 
 ```antlr
+bound-list := bound | bound '+' bound-list '+' ?
 bound := ty_bound | lt_bound
 lt_bound := lifetime
-ty_bound := [?] [ for<lt_param_defs> ] simple_path
-bound-list := bound | bound '+' bound-list '+' ?
+ty_bound := ty_bound_noparen | (ty_bound_noparen)
+ty_bound_noparen := [?] [ for<lt_param_defs> ] simple_path
 ```
 
 ### Self types

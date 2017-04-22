@@ -13,17 +13,13 @@ use common::*;
 use glue;
 
 use rustc::hir::def_id::DefId;
-use rustc::infer::TransNormalize;
 use rustc::middle::lang_items::DropInPlaceFnLangItem;
-use rustc::traits::{self, SelectionContext, Reveal};
+use rustc::traits;
 use rustc::ty::adjustment::CustomCoerceUnsized;
-use rustc::ty::fold::{TypeFolder, TypeFoldable};
 use rustc::ty::subst::{Kind, Subst, Substs};
 use rustc::ty::{self, Ty, TyCtxt};
-use rustc::util::common::MemoizationMap;
 
-use syntax::ast;
-use syntax::codemap::{Span, DUMMY_SP};
+use syntax::codemap::DUMMY_SP;
 
 pub use rustc::ty::Instance;
 
@@ -104,73 +100,6 @@ pub fn resolve_closure<'a, 'tcx> (
     }
 }
 
-/// Attempts to resolve an obligation. The result is a shallow vtable resolution -- meaning that we
-/// do not (necessarily) resolve all nested obligations on the impl. Note that type check should
-/// guarantee to us that all nested obligations *could be* resolved if we wanted to.
-fn fulfill_obligation<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
-                                span: Span,
-                                trait_ref: ty::PolyTraitRef<'tcx>)
-                                -> traits::Vtable<'tcx, ()>
-{
-    let tcx = scx.tcx();
-
-    // Remove any references to regions; this helps improve caching.
-    let trait_ref = tcx.erase_regions(&trait_ref);
-
-    scx.trait_cache().memoize(trait_ref, || {
-        debug!("trans::fulfill_obligation(trait_ref={:?}, def_id={:?})",
-               trait_ref, trait_ref.def_id());
-
-        // Do the initial selection for the obligation. This yields the
-        // shallow result we are looking for -- that is, what specific impl.
-        tcx.infer_ctxt((), Reveal::All).enter(|infcx| {
-            let mut selcx = SelectionContext::new(&infcx);
-
-            let obligation_cause = traits::ObligationCause::misc(span,
-                                                             ast::DUMMY_NODE_ID);
-            let obligation = traits::Obligation::new(obligation_cause,
-                                                     trait_ref.to_poly_trait_predicate());
-
-            let selection = match selcx.select(&obligation) {
-                Ok(Some(selection)) => selection,
-                Ok(None) => {
-                    // Ambiguity can happen when monomorphizing during trans
-                    // expands to some humongo type that never occurred
-                    // statically -- this humongo type can then overflow,
-                    // leading to an ambiguous result. So report this as an
-                    // overflow bug, since I believe this is the only case
-                    // where ambiguity can result.
-                    debug!("Encountered ambiguity selecting `{:?}` during trans, \
-                            presuming due to overflow",
-                           trait_ref);
-                    tcx.sess.span_fatal(span,
-                        "reached the recursion limit during monomorphization \
-                         (selection ambiguity)");
-                }
-                Err(e) => {
-                    span_bug!(span, "Encountered error `{:?}` selecting `{:?}` during trans",
-                              e, trait_ref)
-                }
-            };
-
-            debug!("fulfill_obligation: selection={:?}", selection);
-
-            // Currently, we use a fulfillment context to completely resolve
-            // all nested obligations. This is because they can inform the
-            // inference of the impl's type parameters.
-            let mut fulfill_cx = traits::FulfillmentContext::new();
-            let vtable = selection.map(|predicate| {
-                debug!("fulfill_obligation: register_predicate_obligation {:?}", predicate);
-                fulfill_cx.register_predicate_obligation(&infcx, predicate);
-            });
-            let vtable = infcx.drain_fulfillment_cx_or_panic(span, &mut fulfill_cx, &vtable);
-
-            info!("Cache miss: {:?} => {:?}", trait_ref, vtable);
-            vtable
-        })
-    })
-}
-
 fn resolve_associated_item<'a, 'tcx>(
     scx: &SharedCrateContext<'a, 'tcx>,
     trait_item: &ty::AssociatedItem,
@@ -185,7 +114,7 @@ fn resolve_associated_item<'a, 'tcx>(
            def_id, trait_id, rcvr_substs);
 
     let trait_ref = ty::TraitRef::from_method(tcx, trait_id, rcvr_substs);
-    let vtbl = fulfill_obligation(scx, DUMMY_SP, ty::Binder(trait_ref));
+    let vtbl = tcx.trans_fulfill_obligation(DUMMY_SP, ty::Binder(trait_ref));
 
     // Now that we know which impl is being used, we can dispatch to
     // the actual function:
@@ -285,7 +214,7 @@ pub fn custom_coerce_unsize_info<'scx, 'tcx>(scx: &SharedCrateContext<'scx, 'tcx
         substs: scx.tcx().mk_substs_trait(source_ty, &[target_ty])
     });
 
-    match fulfill_obligation(scx, DUMMY_SP, trait_ref) {
+    match scx.tcx().trans_fulfill_obligation(DUMMY_SP, trait_ref) {
         traits::VtableImpl(traits::VtableImplData { impl_def_id, .. }) => {
             scx.tcx().coerce_unsized_info(impl_def_id).custom_kind.unwrap()
         }
@@ -293,21 +222,6 @@ pub fn custom_coerce_unsize_info<'scx, 'tcx>(scx: &SharedCrateContext<'scx, 'tcx
             bug!("invalid CoerceUnsized vtable: {:?}", vtable);
         }
     }
-}
-
-/// Monomorphizes a type from the AST by first applying the in-scope
-/// substitutions and then normalizing any associated types.
-pub fn apply_param_substs<'a, 'tcx, T>(scx: &SharedCrateContext<'a, 'tcx>,
-                                       param_substs: &Substs<'tcx>,
-                                       value: &T)
-                                       -> T
-    where T: TransNormalize<'tcx>
-{
-    let tcx = scx.tcx();
-    debug!("apply_param_substs(param_substs={:?}, value={:?})", param_substs, value);
-    let substituted = value.subst(tcx, param_substs);
-    let substituted = scx.tcx().erase_regions(&substituted);
-    AssociatedTypeNormalizer::new(scx).fold(&substituted)
 }
 
 /// Returns the normalized type of a struct field
@@ -319,39 +233,3 @@ pub fn field_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     tcx.normalize_associated_type(&f.ty(tcx, param_substs))
 }
 
-struct AssociatedTypeNormalizer<'a, 'b: 'a, 'gcx: 'b> {
-    shared: &'a SharedCrateContext<'b, 'gcx>,
-}
-
-impl<'a, 'b, 'gcx> AssociatedTypeNormalizer<'a, 'b, 'gcx> {
-    fn new(shared: &'a SharedCrateContext<'b, 'gcx>) -> Self {
-        AssociatedTypeNormalizer {
-            shared: shared,
-        }
-    }
-
-    fn fold<T:TypeFoldable<'gcx>>(&mut self, value: &T) -> T {
-        if !value.has_projection_types() {
-            value.clone()
-        } else {
-            value.fold_with(self)
-        }
-    }
-}
-
-impl<'a, 'b, 'gcx> TypeFolder<'gcx, 'gcx> for AssociatedTypeNormalizer<'a, 'b, 'gcx> {
-    fn tcx<'c>(&'c self) -> TyCtxt<'c, 'gcx, 'gcx> {
-        self.shared.tcx()
-    }
-
-    fn fold_ty(&mut self, ty: Ty<'gcx>) -> Ty<'gcx> {
-        if !ty.has_projection_types() {
-            ty
-        } else {
-            self.shared.project_cache().memoize(ty, || {
-                debug!("AssociatedTypeNormalizer: ty={:?}", ty);
-                self.shared.tcx().normalize_associated_type(&ty)
-            })
-        }
-    }
-}

@@ -111,6 +111,7 @@ provide! { <'tcx> tcx, def_id, cdata
     closure_kind => { cdata.closure_kind(def_id.index) }
     closure_type => { cdata.closure_ty(def_id.index, tcx) }
     inherent_impls => { Rc::new(cdata.get_inherent_implementations_for_type(def_id.index)) }
+    is_foreign_item => { cdata.is_foreign_item(def_id.index) }
 }
 
 impl CrateStore for cstore::CStore {
