@@ -1510,42 +1510,12 @@ impl Clone for String {
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
-impl FromIterator<char> for String {
-    fn from_iter<I: IntoIterator<Item = char>>(iter: I) -> String {
-        let mut buf = String::new();
-        buf.extend(iter);
-        buf
-    }
-}
-
-#[stable(feature = "string_from_iter_by_ref", since = "1.17.0")]
-impl<'a> FromIterator<&'a char> for String {
-    fn from_iter<I: IntoIterator<Item = &'a char>>(iter: I) -> String {
-        let mut buf = String::new();
-        buf.extend(iter);
-        buf
-    }
-}
-
 #[stable(feature = "herd_cows", since = "1.9.0")]
 impl<T: Borrow<str>> FromIterator<T> for String {
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> String {
         let mut buf = String::new();
         buf.extend(iter);
         buf
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl Extend<char> for String {
-    fn extend<I: IntoIterator<Item = char>>(&mut self, iter: I) {
-        let iterator = iter.into_iter();
-        let (lower_bound, _) = iterator.size_hint();
-        self.reserve(lower_bound);
-        for ch in iterator {
-            self.push(ch)
-        }
     }
 }
 
