@@ -1377,7 +1377,7 @@ pub struct IterMut<'a, K: 'a, V: 'a> {
 
 /// An owning iterator over the entries of a `HashMap`.
 ///
-/// This `struct` is created by the [`into_iter`] method on [`HashMap`]
+/// This `struct` is created by the [`into_iter`] method on [`HashMap`][`HashMap`]
 /// (provided by the `IntoIterator` trait). See its documentation for more.
 ///
 /// [`into_iter`]: struct.HashMap.html#method.into_iter
