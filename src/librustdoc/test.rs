@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::collections::HashMap;
 use std::env;
 use std::ffi::OsString;
 use std::io::prelude::*;
@@ -381,7 +382,7 @@ fn partition_source(s: &str) -> (String, String) {
 pub struct Collector {
     pub tests: Vec<testing::TestDescAndFn>,
     // to be removed when hoedown will be definitely gone
-    pub old_tests: Vec<String>,
+    pub old_tests: HashMap<String, Vec<String>>,
     names: Vec<String>,
     cfgs: Vec<String>,
     libs: SearchPaths,
@@ -403,7 +404,7 @@ impl Collector {
                codemap: Option<Rc<CodeMap>>, filename: Option<String>) -> Collector {
         Collector {
             tests: Vec::new(),
-            old_tests: Vec::new(),
+            old_tests: HashMap::new(),
             names: Vec::new(),
             cfgs: cfgs,
             libs: libs,
@@ -432,9 +433,24 @@ impl Collector {
         }
     }
 
-    pub fn add_old_test(&mut self, line: usize, filename: String) {
-        let name = self.generate_name(line, &filename);
-        self.old_tests.push(name);
+    // to be removed once hoedown is gone
+    fn generate_name_beginning(&self, filename: &str) -> String {
+        if self.use_headers {
+            if let Some(ref header) = self.current_header {
+                format!("{} - {} (line", filename, header)
+            } else {
+                format!("{} - (line", filename)
+            }
+        } else {
+            format!("{} - {} (line", filename, self.names.join("::"))
+        }
+    }
+
+    pub fn add_old_test(&mut self, test: String, filename: String) {
+        let name_beg = self.generate_name_beginning(&filename);
+        let entry = self.old_tests.entry(name_beg)
+                                  .or_insert(Vec::new());
+        entry.push(test.trim().to_owned());
     }
 
     pub fn add_test(&mut self, test: String,
@@ -442,7 +458,14 @@ impl Collector {
                     as_test_harness: bool, compile_fail: bool, error_codes: Vec<String>,
                     line: usize, filename: String) {
         let name = self.generate_name(line, &filename);
-        if self.old_tests.iter().find(|&x| x == &name).is_none() {
+        let name_beg = self.generate_name_beginning(&filename);
+        let mut found = false;
+        // to be removed when hoedown is removed
+        let test = test.trim().to_owned();
+        if let Some(entry) = self.old_tests.get_mut(&name_beg) {
+            found = entry.remove_item(&test).is_some();
+        }
+        if !found {
             let _ = writeln!(&mut io::stderr(),
                              "WARNING: {} Code block is not currently run as a test, but will in \
                               future versions of rustdoc. Please ensure this code block is a \
