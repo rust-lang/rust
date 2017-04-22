@@ -341,7 +341,18 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
             debug!("visit_region_obligations: r_o={:?} cause={:?}",
                    r_o, r_o.cause);
             let sup_type = self.resolve_type(r_o.sup_type);
-            let origin = self.code_to_origin(&r_o.cause, sup_type);
+            let origin = if let Some(origin_span) = r_o.origin{
+                // Q: This is clearly spaghetti code but we avoid having to
+                // change from_obligation_cause or code_to_origin's signature
+                // just yet. Is there a better way than just doing that?
+                SubregionOrigin::from_obligation_cause(&r_o.cause,
+                    || infer::HRTBRelateParamBound(
+                        r_o.cause.span, sup_type, origin_span),
+                    )
+            } else {
+                self.code_to_origin(&r_o.cause, sup_type)
+            };
+
             self.type_must_outlive(origin, sup_type, r_o.sub_region);
         }
 

@@ -257,6 +257,19 @@ pub enum SubregionOrigin<'tcx> {
     // and that type must outlive some region.
     RelateParamBound(Span, Ty<'tcx>),
 
+    // A RelateParamBound originating from a higher-rank trait bound, along
+    // with a Span referring to that bound.
+    //
+    // Q: this is just a placeholder. Looks like this should really be recursive
+    // (I suppose there are examples where the HRTB is not incurred through
+    // a RelateParamBound):
+    //
+    //  HigherRanked(SubregionOrigin)
+    //
+    // But that incurs a lot of code changes, so better to hold off until
+    // it's confirmed as the right thing to do.
+    HRTBRelateParamBound(Span, Ty<'tcx>, Span),
+
     // The given region parameter was instantiated with a region
     // that must outlive some other region.
     RelateRegionParamBound(Span),
@@ -1746,6 +1759,7 @@ impl<'tcx> SubregionOrigin<'tcx> {
             IndexSlice(a) => a,
             RelateObjectBound(a) => a,
             RelateParamBound(a, _) => a,
+            HRTBRelateParamBound(a, _, _) => a,
             RelateRegionParamBound(a) => a,
             RelateDefaultParamBound(a, _) => a,
             Reborrow(a) => a,

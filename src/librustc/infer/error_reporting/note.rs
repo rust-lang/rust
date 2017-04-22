@@ -122,6 +122,15 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                         lifetime bounds",
                                        self.ty_to_string(t)));
             }
+            infer::HRTBRelateParamBound(span, t, origin_span) => {
+                // Q: should test this message to check that it makes sense.
+                err.span_note(span,
+                              &format!("...so that the type `{}` will meet its required \
+                                        lifetime bounds",
+                                       self.ty_to_string(t)));
+                err.span_note(origin_span, "...which were incurred here");
+            }
+
             infer::RelateDefaultParamBound(span, t) => {
                 err.span_note(span,
                               &format!("...so that type parameter instantiated with `{}`, will \
@@ -263,6 +272,16 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                                 lifetime",
                                                self.ty_to_string(ty));
                 self.tcx.note_and_explain_region(&mut err, "type must outlive ", sub, "");
+                err
+            }
+            infer::HRTBRelateParamBound(span, ty, def_span) => {
+                let mut err = struct_span_err!(self.tcx.sess, span, E0592,
+                          "the type `{}` does not fulfill the required lifetime imposed
+by a higher-ranked trait bound",
+                          self.ty_to_string(ty));
+                self.tcx.note_and_explain_region(&mut err, "type must outlive ",
+                                        sub, "");
+                err.span_note(def_span, "this is implied by");
                 err
             }
             infer::RelateRegionParamBound(span) => {

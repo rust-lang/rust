@@ -16,6 +16,7 @@ use rustc_data_structures::obligation_forest::{ObligationForest, Error};
 use rustc_data_structures::obligation_forest::{ForestObligation, ObligationProcessor};
 use std::marker::PhantomData;
 use syntax::ast;
+use syntax_pos::Span;
 use util::nodemap::{FxHashSet, NodeMap};
 use hir::def_id::DefId;
 
@@ -87,6 +88,11 @@ pub struct RegionObligation<'tcx> {
     pub sub_region: &'tcx ty::Region,
     pub sup_type: Ty<'tcx>,
     pub cause: ObligationCause<'tcx>,
+    // The span of the definition that caused this obligation.
+    //
+    // Q: perhaps this should be an enum so that we don't have to rely on the
+    // fact that this is only set when we're massaging a HRTB error.
+    pub origin: Option<Span>,
 }
 
 #[derive(Clone, Debug)]
@@ -430,6 +436,24 @@ fn process_predicate<'a, 'gcx, 'tcx>(
             match selcx.tcx().no_late_bound_regions(binder) {
                 // If there are, inspect the underlying type further.
                 None => {
+                    // Q: what are the implications of ending up with None here? Is that even
+                    // possible? Should add examples.
+                    // Q: this doesn't quite give the right span:
+                    // --> /Users/tschottdorf/rust/i27114/main.rs:3:23
+                    //  |
+                    //  | fn foo<T>() where for<'a> T: 'a {}
+                    //  |                       ^^
+                    let origin_span =
+                        if let ty::Binder(&ty::ReLateBound(_, ty::BrNamed(def_id, _))) =
+                               binder.map_bound_ref(|pred| pred.1) {
+                            let hir = &selcx.infcx().tcx.hir;
+                            hir.as_local_node_id(def_id)
+                                .or_else(|| None)
+                                .and_then(|node_id| Some(hir.span(node_id)))
+                        } else {
+                            None
+                        };
+
                     // Convert from `Binder<OutlivesPredicate<Ty, Region>>` to `Binder<Ty>`.
                     let binder = binder.map_bound_ref(|pred| pred.0);
 
@@ -443,17 +467,26 @@ fn process_predicate<'a, 'gcx, 'tcx>(
                         // Otherwise, we have something of the form
                         // `for<'a> T: 'a where 'a not in T`, which we can treat as `T: 'static`.
                         Some(t_a) => {
+                            debug!("treating a higher-rank trait bound as 'static: {:?}",
+                                   &obligation);
                             let r_static = selcx.tcx().mk_region(ty::ReStatic);
-                            register_region_obligation(t_a, r_static,
-                                                       obligation.cause.clone(),
-                                                       region_obligations);
+                            // Q: supplying origin_span also carries the implicit bit of
+                            // information that we terminated a HRTB, which is used by the "other
+                            // end" to decide whether to emit a custom-tailored error. That is
+                            // quite implicit and not good taste.
+                            register_region_obligation_with_origin(t_a,
+                                                                   r_static,
+                                                                   obligation.cause.clone(),
+                                                                   origin_span,
+                                                                   region_obligations);
                             Ok(Some(vec![]))
                         }
                     }
                 }
                 // If there aren't, register the obligation.
                 Some(ty::OutlivesPredicate(t_a, r_b)) => {
-                    register_region_obligation(t_a, r_b,
+                    register_region_obligation(t_a,
+                                               r_b,
                                                obligation.cause.clone(),
                                                region_obligations);
                     Ok(Some(vec![]))
@@ -565,23 +598,35 @@ fn coinductive_obligation<'a,'gcx,'tcx>(selcx: &SelectionContext<'a,'gcx,'tcx>,
     }
 }
 
-fn register_region_obligation<'tcx>(t_a: Ty<'tcx>,
+fn register_region_obligation_with_origin<'tcx>(t_a: Ty<'tcx>,
                                     r_b: &'tcx ty::Region,
                                     cause: ObligationCause<'tcx>,
+                                    origin: Option<Span>,
                                     region_obligations: &mut NodeMap<Vec<RegionObligation<'tcx>>>)
 {
+
     let region_obligation = RegionObligation { sup_type: t_a,
                                                sub_region: r_b,
-                                               cause: cause };
+                                               cause: cause,
+                                               origin: origin };
 
-    debug!("register_region_obligation({:?}, cause={:?})",
-           region_obligation, region_obligation.cause);
+    debug!("register_region_obligation_with_origin({:?}, cause={:?} origin={:?})",
+           region_obligation, region_obligation.cause, origin);
 
     region_obligations.entry(region_obligation.cause.body_id)
                       .or_insert(vec![])
                       .push(region_obligation);
 
 }
+
+fn register_region_obligation<'tcx>(t_a: Ty<'tcx>,
+                                    r_b: &'tcx ty::Region,
+                                    cause: ObligationCause<'tcx>,
+                                    region_obligations: &mut NodeMap<Vec<RegionObligation<'tcx>>>)
+{
+    register_region_obligation_with_origin(t_a, r_b, cause, None, region_obligations)
+}
+
 
 impl<'a, 'gcx, 'tcx> GlobalFulfilledPredicates<'gcx> {
     pub fn new(dep_graph: DepGraph) -> GlobalFulfilledPredicates<'gcx> {

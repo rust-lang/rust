@@ -417,7 +417,7 @@ impl<'a, 'gcx, 'tcx> CombineFields<'a, 'gcx, 'tcx> {
             // whether a GLB(a,b) exists or not, because we haven't
             // run region inference (or indeed, even fully computed
             // the region hierarchy!). The current algorithm seems to
-            // works ok in practice.
+            // work ok in practice.
 
             if a_r.is_some() && b_r.is_some() && only_new_vars {
                 // Related to exactly one bound variable from each fn:
