@@ -63,11 +63,8 @@ pub trait RawFloat : Float + Copy + Debug + LowerExp
     const NAN: Self;
     const ZERO: Self;
 
-    // suffix of "2" because Float::integer_decode is deprecated
-    #[allow(deprecated)]
-    fn integer_decode2(self) -> (u64, i16, i8) {
-        Float::integer_decode(self)
-    }
+    /// Returns the mantissa, exponent and sign as integers.
+    fn integer_decode(self) -> (u64, i16, i8);
 
     /// Get the raw binary representation of the float.
     fn transmute(self) -> u64;
@@ -160,6 +157,21 @@ impl RawFloat for f32 {
     const ZERO_CUTOFF: i64 = -48;
     other_constants!(f32);
 
+    /// Returns the mantissa, exponent and sign as integers.
+    fn integer_decode(self) -> (u64, i16, i8) {
+        let bits: u32 = unsafe { transmute(self) };
+        let sign: i8 = if bits >> 31 == 0 { 1 } else { -1 };
+        let mut exponent: i16 = ((bits >> 23) & 0xff) as i16;
+        let mantissa = if exponent == 0 {
+            (bits & 0x7fffff) << 1
+        } else {
+            (bits & 0x7fffff) | 0x800000
+        };
+        // Exponent bias + mantissa shift
+        exponent -= 127 + 23;
+        (mantissa as u64, exponent, sign)
+    }
+
     fn transmute(self) -> u64 {
         let bits: u32 = unsafe { transmute(self) };
         bits as u64
@@ -171,7 +183,7 @@ impl RawFloat for f32 {
     }
 
     fn unpack(self) -> Unpacked {
-        let (sig, exp, _sig) = self.integer_decode2();
+        let (sig, exp, _sig) = self.integer_decode();
         Unpacked::new(sig, exp)
     }
 
@@ -196,6 +208,21 @@ impl RawFloat for f64 {
     const ZERO_CUTOFF: i64 = -326;
     other_constants!(f64);
 
+    /// Returns the mantissa, exponent and sign as integers.
+    fn integer_decode(self) -> (u64, i16, i8) {
+        let bits: u64 = unsafe { transmute(self) };
+        let sign: i8 = if bits >> 63 == 0 { 1 } else { -1 };
+        let mut exponent: i16 = ((bits >> 52) & 0x7ff) as i16;
+        let mantissa = if exponent == 0 {
+            (bits & 0xfffffffffffff) << 1
+        } else {
+            (bits & 0xfffffffffffff) | 0x10000000000000
+        };
+        // Exponent bias + mantissa shift
+        exponent -= 1023 + 52;
+        (mantissa, exponent, sign)
+    }
+
     fn transmute(self) -> u64 {
         let bits: u64 = unsafe { transmute(self) };
         bits
@@ -206,7 +233,7 @@ impl RawFloat for f64 {
     }
 
     fn unpack(self) -> Unpacked {
-        let (sig, exp, _sig) = self.integer_decode2();
+        let (sig, exp, _sig) = self.integer_decode();
         Unpacked::new(sig, exp)
     }
 
