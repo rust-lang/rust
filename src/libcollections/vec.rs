@@ -1041,16 +1041,20 @@ impl<T> Vec<T> {
     #[inline]
     #[stable(feature = "append", since = "1.4.0")]
     pub fn append(&mut self, other: &mut Self) {
-        self.reserve(other.len());
-        let len = self.len();
         unsafe {
-            ptr::copy_nonoverlapping(other.as_ptr(), self.get_unchecked_mut(len), other.len());
-        }
-
-        self.len += other.len();
-        unsafe {
+            self.append_elements(other.as_slice() as _);
             other.set_len(0);
         }
+    }
+
+    /// Appends elements to `Self` from other buffer.
+    #[inline]
+    unsafe fn append_elements(&mut self, other: *const [T]) {
+        let count = (*other).len();
+        self.reserve(count);
+        let len = self.len();
+        ptr::copy_nonoverlapping(other as *const T, self.get_unchecked_mut(len), count);
+        self.len += count;
     }
 
     /// Create a draining iterator that removes the specified range in the vector
@@ -1738,7 +1742,7 @@ impl<T, I> SpecExtend<T, I> for Vec<T>
         vector
     }
 
-    fn spec_extend(&mut self, iterator: I) {
+    default fn spec_extend(&mut self, iterator: I) {
         // This is the case for a TrustedLen iterator.
         let (low, high) = iterator.size_hint();
         if let Some(high_value) = high {
@@ -1782,6 +1786,13 @@ impl<T> SpecExtend<T, IntoIter<T>> for Vec<T> {
             vector.spec_extend(iterator);
             vector
         }
+    }
+
+    fn spec_extend(&mut self, mut iterator: IntoIter<T>) {
+        unsafe {
+            self.append_elements(iterator.as_slice() as _);
+        }
+        iterator.ptr = iterator.end;
     }
 }
 

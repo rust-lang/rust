@@ -71,6 +71,7 @@
     - [prelude_import](language-features/prelude-import.md)
     - [proc_macro](language-features/proc-macro.md)
     - [quote](language-features/quote.md)
+    - [repr_align](language-features/repr-align.md)
     - [repr_simd](language-features/repr-simd.md)
     - [rustc_attrs](language-features/rustc-attrs.md)
     - [rustc_diagnostic_macros](language-features/rustc-diagnostic-macros.md)
@@ -224,4 +225,3 @@
     - [windows_net](library-features/windows-net.md)
     - [windows_stdio](library-features/windows-stdio.md)
     - [zero_one](library-features/zero-one.md)
->>>>>> Add top level sections to the Unstable Book.

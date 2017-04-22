@@ -27,6 +27,7 @@
 #![feature(staged_api)]
 #![feature(test)]
 #![feature(unicode)]
+#![feature(vec_remove_item)]
 
 extern crate arena;
 extern crate getopts;

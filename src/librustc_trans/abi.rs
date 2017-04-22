@@ -553,7 +553,7 @@ impl<'a, 'tcx> ArgType<'tcx> {
                 //   bitcasting to the struct type yields invalid cast errors.
 
                 // We instead thus allocate some scratch space...
-                let llscratch = bcx.alloca(ty, "abi_cast");
+                let llscratch = bcx.alloca(ty, "abi_cast", None);
                 base::Lifetime::Start.call(bcx, llscratch);
 
                 // ...where we first store the value...
@@ -746,13 +746,13 @@ impl<'a, 'tcx> FnType<'tcx> {
                 // `&T` where `T` contains no `UnsafeCell<U>` is immutable, and can be marked as
                 // both `readonly` and `noalias`, as LLVM's definition of `noalias` is based solely
                 // on memory dependencies rather than pointer equality
-                let interior_unsafe = mt.ty.type_contents(ccx.tcx()).interior_unsafe();
+                let is_freeze = ccx.shared().type_is_freeze(mt.ty);
 
-                if mt.mutbl != hir::MutMutable && !interior_unsafe {
+                if mt.mutbl != hir::MutMutable && is_freeze {
                     arg.attrs.set(ArgAttribute::NoAlias);
                 }
 
-                if mt.mutbl == hir::MutImmutable && !interior_unsafe {
+                if mt.mutbl == hir::MutImmutable && is_freeze {
                     arg.attrs.set(ArgAttribute::ReadOnly);
                 }
 
