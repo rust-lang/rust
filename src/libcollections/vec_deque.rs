@@ -2070,7 +2070,7 @@ impl<'a, T> FusedIterator for IterMut<'a, T> {}
 
 /// An owning iterator over the elements of a `VecDeque`.
 ///
-/// This `struct` is created by the [`into_iter`] method on [`VecDeque`]
+/// This `struct` is created by the [`into_iter`] method on [`VecDeque`][`VecDeque`]
 /// (provided by the `IntoIterator` trait). See its documentation for more.
 ///
 /// [`into_iter`]: struct.VecDeque.html#method.into_iter
