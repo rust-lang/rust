@@ -464,19 +464,19 @@ impl Collector {
                     as_test_harness: bool, compile_fail: bool, error_codes: Vec<String>,
                     line: usize, filename: String) {
         let name = self.generate_name(line, &filename);
+        // to be removed when hoedown is removed
         if self.render_type == RenderType::Pulldown {
             let name_beg = self.generate_name_beginning(&filename);
             let mut found = false;
-            // to be removed when hoedown is removed
             let test = test.trim().to_owned();
             if let Some(entry) = self.old_tests.get_mut(&name_beg) {
                 found = entry.remove_item(&test).is_some();
             }
             if !found {
                 let _ = writeln!(&mut io::stderr(),
-                                 "WARNING: {} Code block is not currently run as a test, but will in \
-                                  future versions of rustdoc. Please ensure this code block is a \
-                                  runnable test, or use the `ignore` directive.",
+                                 "WARNING: {} Code block is not currently run as a test, but will \
+                                  in future versions of rustdoc. Please ensure this code block is \
+                                  a runnable test, or use the `ignore` directive.",
                                  name);
                 return
             }
