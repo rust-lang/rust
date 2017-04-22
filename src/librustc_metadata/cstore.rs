@@ -72,6 +72,7 @@ pub struct CrateMetadata {
     pub cnum_map: RefCell<CrateNumMap>,
     pub cnum: CrateNum,
     pub codemap_import_info: RefCell<Vec<ImportedFileMap>>,
+    pub attribute_cache: RefCell<[Vec<Option<Rc<[ast::Attribute]>>>; 2]>,
 
     pub root: schema::CrateRoot,
 
@@ -269,7 +270,7 @@ impl CrateMetadata {
     }
 
     pub fn is_staged_api(&self) -> bool {
-        for attr in self.get_item_attrs(CRATE_DEF_INDEX) {
+        for attr in self.get_item_attrs(CRATE_DEF_INDEX).iter() {
             if attr.path == "stable" || attr.path == "unstable" {
                 return true;
             }
