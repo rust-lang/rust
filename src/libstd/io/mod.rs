@@ -1494,6 +1494,83 @@ pub struct Chain<T, U> {
     done_first: bool,
 }
 
+impl<T, U> Chain<T, U> {
+    /// Consumes the `Chain`, returning the wrapped readers.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(more_io_inner_methods)]
+    ///
+    /// # use std::io;
+    /// use std::io::prelude::*;
+    /// use std::fs::File;
+    ///
+    /// # fn foo() -> io::Result<()> {
+    /// let mut foo_file = File::open("foo.txt")?;
+    /// let mut bar_file = File::open("bar.txt")?;
+    ///
+    /// let chain = foo_file.chain(bar_file);
+    /// let (foo_file, bar_file) = chain.into_inner();
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[unstable(feature = "more_io_inner_methods", issue="0")]
+    pub fn into_inner(self) -> (T, U) {
+        (self.first, self.second)
+    }
+
+    /// Gets references to the underlying readers in this `Chain`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(more_io_inner_methods)]
+    ///
+    /// # use std::io;
+    /// use std::io::prelude::*;
+    /// use std::fs::File;
+    ///
+    /// # fn foo() -> io::Result<()> {
+    /// let mut foo_file = File::open("foo.txt")?;
+    /// let mut bar_file = File::open("bar.txt")?;
+    ///
+    /// let chain = foo_file.chain(bar_file);
+    /// let (foo_file, bar_file) = chain.get_ref();
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[unstable(feature = "more_io_inner_methods", issue="0")]
+    pub fn get_ref(&self) -> (&T, &U) {
+        (&self.first, &self.second)
+    }
+
+    /// Gets mutable references to the underlying readers in this `Chain`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(more_io_inner_methods)]
+    ///
+    /// # use std::io;
+    /// use std::io::prelude::*;
+    /// use std::fs::File;
+    ///
+    /// # fn foo() -> io::Result<()> {
+    /// let mut foo_file = File::open("foo.txt")?;
+    /// let mut bar_file = File::open("bar.txt")?;
+    ///
+    /// let mut chain = foo_file.chain(bar_file);
+    /// let (foo_file, bar_file) = chain.get_mut();
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[unstable(feature = "more_io_inner_methods", issue="0")]
+    pub fn get_mut(&mut self) -> (&mut T, &mut U) {
+        (&mut self.first, &mut self.second)
+    }
+}
+
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl<T: fmt::Debug, U: fmt::Debug> fmt::Debug for Chain<T, U> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -1605,6 +1682,60 @@ impl<T> Take<T> {
     #[stable(feature = "io_take_into_inner", since = "1.15.0")]
     pub fn into_inner(self) -> T {
         self.inner
+    }
+
+    /// Gets a reference to the underlying reader.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(more_io_inner_methods)]
+    ///
+    /// use std::io;
+    /// use std::io::prelude::*;
+    /// use std::fs::File;
+    ///
+    /// # fn foo() -> io::Result<()> {
+    /// let mut file = File::open("foo.txt")?;
+    ///
+    /// let mut buffer = [0; 5];
+    /// let mut handle = file.take(5);
+    /// handle.read(&mut buffer)?;
+    ///
+    /// let file = handle.get_ref();
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[unstable(feature = "more_io_inner_methods", issue="0")]
+    pub fn get_ref(&self) -> &T {
+        &self.inner
+    }
+
+    /// Gets a mutable reference to the underlying reader.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(more_io_inner_methods)]
+    ///
+    /// use std::io;
+    /// use std::io::prelude::*;
+    /// use std::fs::File;
+    ///
+    /// # fn foo() -> io::Result<()> {
+    /// let mut file = File::open("foo.txt")?;
+    ///
+    /// let mut buffer = [0; 5];
+    /// let mut handle = file.take(5);
+    /// handle.read(&mut buffer)?;
+    ///
+    /// let file = handle.get_mut();
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[unstable(feature = "more_io_inner_methods", issue="0")]
+    pub fn get_mut(&mut self) -> &mut T {
+        &mut self.inner
     }
 }
 
