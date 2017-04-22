@@ -90,12 +90,12 @@ pub fn compute_fields<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>,
 /// and fill in the actual contents in a second pass to prevent
 /// unbounded recursion; see also the comments in `trans::type_of`.
 pub fn type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
-    generic_type_of(cx, t, None, false, false)
+    generic_type_of(cx, t, None)
 }
 
 pub fn incomplete_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                     t: Ty<'tcx>, name: &str) -> Type {
-    generic_type_of(cx, t, Some(name), false, false)
+    generic_type_of(cx, t, Some(name))
 }
 
 pub fn finish_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
@@ -114,7 +114,7 @@ pub fn finish_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 _ => unreachable!()
             };
             let fields = compute_fields(cx, t, nonnull_variant_index as usize, true);
-            llty.set_struct_body(&struct_llfields(cx, &fields, nonnull_variant, false, false),
+            llty.set_struct_body(&struct_llfields(cx, &fields, nonnull_variant),
                                  packed)
         },
         _ => bug!("This function cannot handle {} with layout {:#?}", t, l)
@@ -123,12 +123,9 @@ pub fn finish_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
 fn generic_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                              t: Ty<'tcx>,
-                             name: Option<&str>,
-                             sizing: bool,
-                             dst: bool) -> Type {
+                             name: Option<&str>) -> Type {
     let l = cx.layout_of(t);
-    debug!("adt::generic_type_of t: {:?} name: {:?} sizing: {} dst: {}",
-           t, name, sizing, dst);
+    debug!("adt::generic_type_of t: {:?} name: {:?}", t, name);
     match *l {
         layout::CEnum { discr, .. } => Type::from_integer(cx, discr),
         layout::RawNullablePointer { nndiscr, .. } => {
@@ -148,11 +145,10 @@ fn generic_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             let fields = compute_fields(cx, t, nndiscr as usize, false);
             match name {
                 None => {
-                    Type::struct_(cx, &struct_llfields(cx, &fields, nonnull, sizing, dst),
+                    Type::struct_(cx, &struct_llfields(cx, &fields, nonnull),
                                   nonnull.packed)
                 }
                 Some(name) => {
-                    assert_eq!(sizing, false);
                     Type::named_struct(cx, name)
                 }
             }
@@ -163,13 +159,12 @@ fn generic_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             let fields = compute_fields(cx, t, 0, true);
             match name {
                 None => {
-                    let fields = struct_llfields(cx, &fields, &variant, sizing, dst);
+                    let fields = struct_llfields(cx, &fields, &variant);
                     Type::struct_(cx, &fields, variant.packed)
                 }
                 Some(name) => {
                     // Hypothesis: named_struct's can never need a
                     // drop flag. (... needs validation.)
-                    assert_eq!(sizing, false);
                     Type::named_struct(cx, name)
                 }
             }
@@ -190,7 +185,7 @@ fn generic_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 }
             }
         }
-        layout::General { discr, size, align, .. } => {
+        layout::General { discr, size, align, primitive_align, .. } => {
             // We need a representation that has:
             // * The alignment of the most-aligned field
             // * The size of the largest variant (rounded up to that alignment)
@@ -203,14 +198,15 @@ fn generic_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             // of the size.
             let size = size.bytes();
             let align = align.abi();
+            let primitive_align = primitive_align.abi();
             assert!(align <= std::u32::MAX as u64);
             let discr_ty = Type::from_integer(cx, discr);
             let discr_size = discr.size().bytes();
             let padded_discr_size = roundup(discr_size, align as u32);
             let variant_part_size = size-padded_discr_size;
-            let variant_fill = union_fill(cx, variant_part_size, align);
+            let variant_fill = union_fill(cx, variant_part_size, primitive_align);
 
-            assert_eq!(machine::llalign_of_min(cx, variant_fill), align as u32);
+            assert_eq!(machine::llalign_of_min(cx, variant_fill), primitive_align as u32);
             assert_eq!(padded_discr_size % discr_size, 0); // Ensure discr_ty can fill pad evenly
             let fields: Vec<Type> =
                 [discr_ty,
@@ -245,15 +241,60 @@ fn union_fill(cx: &CrateContext, size: u64, align: u64) -> Type {
 }
 
 
-fn struct_llfields<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, fields: &Vec<Ty<'tcx>>,
-                             variant: &layout::Struct,
-                             sizing: bool, _dst: bool) -> Vec<Type> {
-    let fields = variant.field_index_by_increasing_offset().map(|i| fields[i as usize]);
-    if sizing {
-        bug!()
-    } else {
-        fields.map(|ty| type_of::in_memory_type_of(cx, ty)).collect()
+// Double index to account for padding (FieldPath already uses `Struct::memory_index`)
+fn struct_llfields_path(discrfield: &layout::FieldPath) -> Vec<usize> {
+    discrfield.iter().map(|&i| (i as usize) << 1).collect::<Vec<_>>()
+}
+
+
+// Lookup `Struct::memory_index` and double it to account for padding
+pub fn struct_llfields_index(variant: &layout::Struct, index: usize) -> usize {
+    (variant.memory_index[index] as usize) << 1
+}
+
+
+pub fn struct_llfields<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, field_tys: &Vec<Ty<'tcx>>,
+                             variant: &layout::Struct) -> Vec<Type> {
+    debug!("struct_llfields: variant: {:?}", variant);
+    let mut first_field = true;
+    let mut min_offset = 0;
+    let mut result: Vec<Type> = Vec::with_capacity(field_tys.len() * 2);
+    let field_iter = variant.field_index_by_increasing_offset().map(|i| {
+        (i, field_tys[i as usize], variant.offsets[i as usize].bytes()) });
+    for (index, ty, target_offset) in field_iter {
+        if first_field {
+            debug!("struct_llfields: {} ty: {} min_offset: {} target_offset: {}",
+                index, ty, min_offset, target_offset);
+            first_field = false;
+        } else {
+            assert!(target_offset >= min_offset);
+            let padding_bytes = if variant.packed { 0 } else { target_offset - min_offset };
+            result.push(Type::array(&Type::i8(cx), padding_bytes));
+            debug!("struct_llfields: {} ty: {} pad_bytes: {} min_offset: {} target_offset: {}",
+                index, ty, padding_bytes, min_offset, target_offset);
+        }
+        let llty = type_of::in_memory_type_of(cx, ty);
+        result.push(llty);
+        let layout = cx.layout_of(ty);
+        let target_size = layout.size(&cx.tcx().data_layout).bytes();
+        min_offset = target_offset + target_size;
     }
+    if variant.sized && !field_tys.is_empty() {
+        if variant.stride().bytes() < min_offset {
+            bug!("variant: {:?} stride: {} min_offset: {}", variant, variant.stride().bytes(),
+            min_offset);
+        }
+        let padding_bytes = variant.stride().bytes() - min_offset;
+        debug!("struct_llfields: pad_bytes: {} min_offset: {} min_size: {} stride: {}\n",
+               padding_bytes, min_offset, variant.min_size.bytes(), variant.stride().bytes());
+        result.push(Type::array(&Type::i8(cx), padding_bytes));
+        assert!(result.len() == (field_tys.len() * 2));
+    } else {
+        debug!("struct_llfields: min_offset: {} min_size: {} stride: {}\n",
+               min_offset, variant.min_size.bytes(), variant.stride().bytes());
+    }
+
+    result
 }
 
 pub fn is_discr_signed<'tcx>(l: &layout::Layout) -> bool {
@@ -309,8 +350,8 @@ fn struct_wrapped_nullable_bitdiscr(
     scrutinee: ValueRef,
     alignment: Alignment,
 ) -> ValueRef {
-    let llptrptr = bcx.gepi(scrutinee,
-        &discrfield.iter().map(|f| *f as usize).collect::<Vec<_>>());
+    let path = struct_llfields_path(discrfield);
+    let llptrptr = bcx.gepi(scrutinee, &path);
     let llptr = bcx.load(llptrptr, alignment.to_align());
     let cmp = if nndiscr == 0 { IntEQ } else { IntNE };
     bcx.icmp(cmp, llptr, C_null(val_ty(llptr)))
@@ -380,7 +421,7 @@ pub fn trans_set_discr<'a, 'tcx>(bcx: &Builder<'a, 'tcx>, t: Ty<'tcx>, val: Valu
                     let align = C_i32(bcx.ccx, nonnull.align.abi() as i32);
                     base::call_memset(bcx, llptr, fill_byte, size, align, false);
                 } else {
-                    let path = discrfield.iter().map(|&i| i as usize).collect::<Vec<_>>();
+                    let path = struct_llfields_path(discrfield);
                     let llptrptr = bcx.gepi(val, &path);
                     let llptrty = val_ty(llptrptr).element_type();
                     bcx.store(C_null(llptrty), llptrptr, None);

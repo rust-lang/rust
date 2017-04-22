@@ -214,6 +214,16 @@ impl<'a, 'tcx> CrateContext<'a, 'tcx> {
     pub fn size_of(&self, ty: Ty<'tcx>) -> machine::llsize {
         self.layout_of(ty).size(self).bytes() as machine::llsize
     }
+
+    pub fn over_align_of(&self, t: Ty<'tcx>)
+                              -> Option<machine::llalign> {
+        let layout = self.layout_of(t);
+        if let Some(align) = layout.over_align(&self.tcx().data_layout) {
+            Some(align as machine::llalign)
+        } else {
+            None
+        }
+    }
 }
 
 fn llvm_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> String {
