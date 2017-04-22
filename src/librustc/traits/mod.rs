@@ -55,6 +55,7 @@ mod object_safety;
 mod select;
 mod specialize;
 mod structural_impls;
+pub mod trans;
 mod util;
 
 /// An `Obligation` represents some trait reference (e.g. `int:Eq`) for

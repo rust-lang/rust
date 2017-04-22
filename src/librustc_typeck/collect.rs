@@ -99,6 +99,7 @@ pub fn provide(providers: &mut Providers) {
         trait_def,
         adt_def,
         impl_trait_ref,
+        is_foreign_item,
         ..*providers
     };
 }
@@ -1529,4 +1530,14 @@ fn compute_type_of_foreign_fn_decl<'a, 'tcx>(
 
     let substs = Substs::identity_for_item(tcx, def_id);
     tcx.mk_fn_def(def_id, substs, fty)
+}
+
+fn is_foreign_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                             def_id: DefId)
+                             -> bool {
+    match tcx.hir.get_if_local(def_id) {
+        Some(hir_map::NodeForeignItem(..)) => true,
+        Some(_) => false,
+        _ => bug!("is_foreign_item applied to non-local def-id {:?}", def_id)
+    }
 }

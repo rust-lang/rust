@@ -467,13 +467,11 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
             // have to instantiate all methods of the trait being cast to, so we
             // can build the appropriate vtable.
             mir::Rvalue::Cast(mir::CastKind::Unsize, ref operand, target_ty) => {
-                let target_ty = monomorphize::apply_param_substs(self.scx,
-                                                                 self.param_substs,
-                                                                 &target_ty);
+                let target_ty = self.scx.tcx().trans_apply_param_substs(self.param_substs,
+                                                                        &target_ty);
                 let source_ty = operand.ty(self.mir, self.scx.tcx());
-                let source_ty = monomorphize::apply_param_substs(self.scx,
-                                                                 self.param_substs,
-                                                                 &source_ty);
+                let source_ty = self.scx.tcx().trans_apply_param_substs(self.param_substs,
+                                                                        &source_ty);
                 let (source_ty, target_ty) = find_vtable_types_for_unsizing(self.scx,
                                                                             source_ty,
                                                                             target_ty);
@@ -489,10 +487,8 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
             }
             mir::Rvalue::Cast(mir::CastKind::ReifyFnPointer, ref operand, _) => {
                 let fn_ty = operand.ty(self.mir, self.scx.tcx());
-                let fn_ty = monomorphize::apply_param_substs(
-                    self.scx,
-                    self.param_substs,
-                    &fn_ty);
+                let fn_ty = self.scx.tcx().trans_apply_param_substs(self.param_substs,
+                                                                    &fn_ty);
                 visit_fn_use(self.scx, fn_ty, false, &mut self.output);
             }
             mir::Rvalue::Cast(mir::CastKind::ClosureFnPointer, ref operand, _) => {
@@ -534,9 +530,8 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
         }
 
         if let mir::Literal::Item { def_id, substs } = constant.literal {
-            let substs = monomorphize::apply_param_substs(self.scx,
-                                                          self.param_substs,
-                                                          &substs);
+            let substs = self.scx.tcx().trans_apply_param_substs(self.param_substs,
+                                                                 &substs);
             let instance = monomorphize::resolve(self.scx, def_id, substs);
             collect_neighbours(self.scx, instance, self.output);
         }
@@ -552,17 +547,14 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirNeighborCollector<'a, 'tcx> {
         match *kind {
             mir::TerminatorKind::Call { ref func, .. } => {
                 let callee_ty = func.ty(self.mir, tcx);
-                let callee_ty = monomorphize::apply_param_substs(
-                    self.scx, self.param_substs, &callee_ty);
+                let callee_ty = tcx.trans_apply_param_substs(self.param_substs, &callee_ty);
                 visit_fn_use(self.scx, callee_ty, true, &mut self.output);
             }
             mir::TerminatorKind::Drop { ref location, .. } |
             mir::TerminatorKind::DropAndReplace { ref location, .. } => {
                 let ty = location.ty(self.mir, self.scx.tcx())
                     .to_ty(self.scx.tcx());
-                let ty = monomorphize::apply_param_substs(self.scx,
-                                                          self.param_substs,
-                                                          &ty);
+                let ty = tcx.trans_apply_param_substs(self.param_substs, &ty);
                 visit_drop_use(self.scx, ty, true, self.output);
             }
             mir::TerminatorKind::Goto { .. } |

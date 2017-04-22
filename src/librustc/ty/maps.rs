@@ -380,6 +380,9 @@ define_maps! { <'tcx>
     pub adt_destructor: AdtDestructor(DefId) -> Option<ty::Destructor>,
     pub adt_sized_constraint: SizedConstraint(DefId) -> Ty<'tcx>,
 
+    /// True if this is a foreign item (i.e., linked via `extern { ... }`).
+    pub is_foreign_item: IsForeignItem(DefId) -> bool,
+
     /// Maps from def-id of a type or region parameter to its
     /// (inferred) variance.
     pub variances: ItemSignature(DefId) -> Rc<Vec<ty::Variance>>,
@@ -448,7 +451,7 @@ define_maps! { <'tcx>
     /// Performs the privacy check and computes "access levels".
     pub privacy_access_levels: PrivacyAccessLevels(CrateNum) -> Rc<AccessLevels>,
 
-    pub reachable_set: reachability_dep_node(CrateNum) -> NodeSet,
+    pub reachable_set: reachability_dep_node(CrateNum) -> Rc<NodeSet>,
 
     pub mir_shims: mir_shim(ty::InstanceDef<'tcx>) -> &'tcx RefCell<mir::Mir<'tcx>>
 }
