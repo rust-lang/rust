@@ -492,7 +492,7 @@ pub fn old_find_testable_code(doc: &str, tests: &mut ::test::Collector, position
                     text: *const hoedown_buffer,
                     lang: *const hoedown_buffer,
                     data: *const hoedown_renderer_data,
-                    line: libc::size_t) {
+                    _line: libc::size_t) {
         unsafe {
             if text.is_null() { return }
             let block_info = if lang.is_null() {
@@ -503,11 +503,15 @@ pub fn old_find_testable_code(doc: &str, tests: &mut ::test::Collector, position
                 LangString::parse(s)
             };
             if !block_info.rust { return }
+            let text = (*text).as_bytes();
             let opaque = (*data).opaque as *mut hoedown_html_renderer_state;
             let tests = &mut *((*opaque).opaque as *mut ::test::Collector);
-            let line = tests.get_line() + line;
+            let text = str::from_utf8(text).unwrap();
+            let lines = text.lines().map(|l| {
+                stripped_filtered_line(l).unwrap_or(l)
+            });
             let filename = tests.get_filename();
-            tests.add_old_test(line, filename);
+            tests.add_old_test(lines.collect::<Vec<&str>>().join("\n"), filename);
         }
     }
 
