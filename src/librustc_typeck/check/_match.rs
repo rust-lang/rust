@@ -55,7 +55,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         let expected_ty = self.structurally_resolved_type(pat.span, expected);
                         if let ty::TyRef(_, mt) = expected_ty.sty {
                             if let ty::TySlice(_) = mt.ty.sty {
-                                pat_ty = tcx.mk_imm_ref(tcx.mk_region(ty::ReStatic),
+                                pat_ty = tcx.mk_imm_ref(tcx.types.re_static,
                                                          tcx.mk_slice(tcx.types.u8))
                             }
                         }
