@@ -288,8 +288,8 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
             let outside_ty = gcx.fold_regions(&inside_ty, &mut false, |r, _| {
                 match *r {
                     // 'static is valid everywhere.
-                    ty::ReStatic |
-                    ty::ReEmpty => gcx.mk_region(*r),
+                    ty::ReStatic => gcx.types.re_static,
+                    ty::ReEmpty => gcx.types.re_empty,
 
                     // Free regions that come from early-bound regions are valid.
                     ty::ReFree(ty::FreeRegion {
@@ -307,7 +307,7 @@ impl<'cx, 'gcx, 'tcx> WritebackCx<'cx, 'gcx, 'tcx> {
                         span_err!(self.tcx().sess, span, E0564,
                                   "only named lifetimes are allowed in `impl Trait`, \
                                    but `{}` was found in the type `{}`", r, inside_ty);
-                        gcx.mk_region(ty::ReStatic)
+                        gcx.types.re_static
                     }
 
                     ty::ReVar(_) |
@@ -526,7 +526,7 @@ impl<'cx, 'gcx, 'tcx> TypeFolder<'gcx, 'tcx> for Resolver<'cx, 'gcx, 'tcx> {
         match self.infcx.fully_resolve(&r) {
             Ok(r) => r,
             Err(_) => {
-                self.tcx.mk_region(ty::ReStatic)
+                self.tcx.types.re_static
             }
         }
     }

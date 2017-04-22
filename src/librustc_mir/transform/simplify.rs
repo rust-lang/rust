@@ -124,6 +124,8 @@ impl<'a, 'tcx: 'a> CfgSimplifier<'a, 'tcx> {
                     self.collapse_goto_chain(successor, &mut changed);
                 }
 
+                changed |= self.simplify_unwind(&mut terminator);
+
                 let mut new_stmts = vec![];
                 let mut inner_changed = true;
                 while inner_changed {
@@ -236,6 +238,38 @@ impl<'a, 'tcx: 'a> CfgSimplifier<'a, 'tcx> {
         debug!("simplifying branch {:?}", terminator);
         terminator.kind = TerminatorKind::Goto { target: first_succ };
         true
+    }
+
+    // turn an unwind branch to a resume block into a None
+    fn simplify_unwind(&mut self, terminator: &mut Terminator<'tcx>) -> bool {
+        let unwind = match terminator.kind {
+            TerminatorKind::Drop { ref mut unwind, .. } |
+            TerminatorKind::DropAndReplace { ref mut unwind, .. } |
+            TerminatorKind::Call { cleanup: ref mut unwind, .. } |
+            TerminatorKind::Assert { cleanup: ref mut unwind, .. } =>
+                unwind,
+            _ => return false
+        };
+
+        if let &mut Some(unwind_block) = unwind {
+            let is_resume_block = match self.basic_blocks[unwind_block] {
+                BasicBlockData {
+                    ref statements,
+                    terminator: Some(Terminator {
+                        kind: TerminatorKind::Resume, ..
+                    }), ..
+                } if statements.is_empty() => true,
+                _ => false
+            };
+            if is_resume_block {
+                debug!("simplifying unwind to {:?} from {:?}",
+                       unwind_block, terminator.source_info);
+                *unwind = None;
+            }
+            return is_resume_block;
+        }
+
+        false
     }
 
     fn strip_nops(&mut self) {

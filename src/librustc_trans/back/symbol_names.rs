@@ -111,7 +111,8 @@ use rustc::hir::map::definitions::DefPathData;
 use rustc::util::common::record_time;
 
 use syntax::attr;
-use syntax::symbol::{Symbol, InternedString};
+
+use std::fmt::Write;
 
 fn get_symbol_hash<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
 
@@ -255,19 +256,47 @@ pub fn symbol_name<'a, 'tcx>(instance: Instance<'tcx>,
 
     let hash = get_symbol_hash(scx, Some(def_id), instance_ty, Some(substs));
 
-    let mut buffer = SymbolPathBuffer {
-        names: Vec::new()
-    };
-
+    let mut buffer = SymbolPathBuffer::new();
     item_path::with_forced_absolute_paths(|| {
         scx.tcx().push_item_path(&mut buffer, def_id);
     });
-
-    mangle(buffer.names.into_iter(), &hash)
+    buffer.finish(&hash)
 }
 
+// Follow C++ namespace-mangling style, see
+// http://en.wikipedia.org/wiki/Name_mangling for more info.
+//
+// It turns out that on macOS you can actually have arbitrary symbols in
+// function names (at least when given to LLVM), but this is not possible
+// when using unix's linker. Perhaps one day when we just use a linker from LLVM
+// we won't need to do this name mangling. The problem with name mangling is
+// that it seriously limits the available characters. For example we can't
+// have things like &T in symbol names when one would theoretically
+// want them for things like impls of traits on that type.
+//
+// To be able to work on all platforms and get *some* reasonable output, we
+// use C++ name-mangling.
 struct SymbolPathBuffer {
-    names: Vec<InternedString>,
+    result: String,
+    temp_buf: String
+}
+
+impl SymbolPathBuffer {
+    fn new() -> Self {
+        let mut result = SymbolPathBuffer {
+            result: String::with_capacity(64),
+            temp_buf: String::with_capacity(16)
+        };
+        result.result.push_str("_ZN"); // _Z == Begin name-sequence, N == nested
+        result
+    }
+
+    fn finish(mut self, hash: &str) -> String {
+        // end name-sequence
+        self.push(hash);
+        self.result.push('E');
+        self.result
+    }
 }
 
 impl ItemPathBuffer for SymbolPathBuffer {
@@ -277,7 +306,13 @@ impl ItemPathBuffer for SymbolPathBuffer {
     }
 
     fn push(&mut self, text: &str) {
-        self.names.push(Symbol::intern(text).as_str());
+        self.temp_buf.clear();
+        let need_underscore = sanitize(&mut self.temp_buf, text);
+        let _ = write!(self.result, "{}", self.temp_buf.len() + (need_underscore as usize));
+        if need_underscore {
+            self.result.push('_');
+        }
+        self.result.push_str(&self.temp_buf);
     }
 }
 
@@ -286,15 +321,17 @@ pub fn exported_name_from_type_and_prefix<'a, 'tcx>(scx: &SharedCrateContext<'a,
                                                     prefix: &str)
                                                     -> String {
     let hash = get_symbol_hash(scx, None, t, None);
-    let path = [Symbol::intern(prefix).as_str()];
-    mangle(path.iter().cloned(), &hash)
+    let mut buffer = SymbolPathBuffer::new();
+    buffer.push(prefix);
+    buffer.finish(&hash)
 }
 
 // Name sanitation. LLVM will happily accept identifiers with weird names, but
 // gas doesn't!
 // gas accepts the following characters in symbols: a-z, A-Z, 0-9, ., _, $
-pub fn sanitize(s: &str) -> String {
-    let mut result = String::new();
+//
+// returns true if an underscore must be added at the start
+pub fn sanitize(result: &mut String, s: &str) -> bool {
     for c in s.chars() {
         match c {
             // Escape these with $ sequences
@@ -331,44 +368,7 @@ pub fn sanitize(s: &str) -> String {
     }
 
     // Underscore-qualify anything that didn't start as an ident.
-    if !result.is_empty() &&
+    !result.is_empty() &&
         result.as_bytes()[0] != '_' as u8 &&
-        ! (result.as_bytes()[0] as char).is_xid_start() {
-        return format!("_{}", result);
-    }
-
-    return result;
-}
-
-fn mangle<PI: Iterator<Item=InternedString>>(path: PI, hash: &str) -> String {
-    // Follow C++ namespace-mangling style, see
-    // http://en.wikipedia.org/wiki/Name_mangling for more info.
-    //
-    // It turns out that on macOS you can actually have arbitrary symbols in
-    // function names (at least when given to LLVM), but this is not possible
-    // when using unix's linker. Perhaps one day when we just use a linker from LLVM
-    // we won't need to do this name mangling. The problem with name mangling is
-    // that it seriously limits the available characters. For example we can't
-    // have things like &T in symbol names when one would theoretically
-    // want them for things like impls of traits on that type.
-    //
-    // To be able to work on all platforms and get *some* reasonable output, we
-    // use C++ name-mangling.
-
-    let mut n = String::from("_ZN"); // _Z == Begin name-sequence, N == nested
-
-    fn push(n: &mut String, s: &str) {
-        let sani = sanitize(s);
-        n.push_str(&format!("{}{}", sani.len(), sani));
-    }
-
-    // First, connect each component with <len, name> pairs.
-    for data in path {
-        push(&mut n, &data);
-    }
-
-    push(&mut n, hash);
-
-    n.push('E'); // End name-sequence.
-    n
+        ! (result.as_bytes()[0] as char).is_xid_start()
 }
