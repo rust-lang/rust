@@ -80,7 +80,7 @@ mod cmath {
     pub use self::shims::*;
     #[cfg(target_env = "msvc")]
     mod shims {
-        use libc::{c_float, c_int};
+        use libc::c_float;
 
         #[inline]
         pub unsafe fn acosf(n: c_float) -> c_float {
