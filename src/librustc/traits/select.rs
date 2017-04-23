@@ -1300,8 +1300,13 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                             .iter()
                             .filter_map(|o| o.to_opt_poly_trait_ref());
 
+        // micro-optimization: filter out predicates relating to different
+        // traits.
         let matching_bounds =
-            all_bounds.filter(
+            all_bounds.filter(|p| p.def_id() == stack.obligation.predicate.def_id());
+
+        let matching_bounds =
+            matching_bounds.filter(
                 |bound| self.evaluate_where_clause(stack, bound.clone()).may_apply());
 
         let param_candidates =
