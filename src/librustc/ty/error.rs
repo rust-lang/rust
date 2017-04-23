@@ -117,12 +117,16 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
                 write!(f, "lifetimes do not intersect")
             }
             RegionsInsufficientlyPolymorphic(br, _, _) => {
-                write!(f, "expected bound lifetime parameter {}, \
-                           found concrete lifetime", br)
+                write!(f,
+                       "expected bound lifetime parameter{}{}, found concrete lifetime",
+                       if br.is_named() { " " } else { "" },
+                       br)
             }
             RegionsOverlyPolymorphic(br, _, _) => {
-                write!(f, "expected concrete lifetime, \
-                           found bound lifetime parameter {}", br)
+                write!(f,
+                       "expected concrete lifetime, found bound lifetime parameter{}{}",
+                       if br.is_named() { " " } else { "" },
+                       br)
             }
             Sorts(values) => ty::tls::with(|tcx| {
                 report_maybe_different(f, values.expected.sort_string(tcx),
