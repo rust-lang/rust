@@ -31,13 +31,15 @@ use ty;
 use ty::subst::{Subst, Substs};
 use ty::util::IntTypeExt;
 use ty::walk::TypeWalker;
-use util::nodemap::{NodeSet, DefIdMap, FxHashMap};
+use util::common::ErrorReported;
+use util::nodemap::{NodeSet, DefIdMap, FxHashMap, FxHashSet};
 
 use serialize::{self, Encodable, Encoder};
 use std::cell::{Cell, RefCell, Ref};
 use std::collections::BTreeMap;
 use std::cmp;
 use std::hash::{Hash, Hasher};
+use std::iter::FromIterator;
 use std::ops::Deref;
 use std::rc::Rc;
 use std::slice;
@@ -1332,17 +1334,6 @@ impl<'a, 'tcx> ParameterEnvironment<'tcx> {
 pub struct Destructor {
     /// The def-id of the destructor method
     pub did: DefId,
-    /// Invoking the destructor of a dtorck type during usual cleanup
-    /// (e.g. the glue emitted for stack unwinding) requires all
-    /// lifetimes in the type-structure of `adt` to strictly outlive
-    /// the adt value itself.
-    ///
-    /// If `adt` is not dtorck, then the adt's destructor can be
-    /// invoked even when there are lifetimes in the type-structure of
-    /// `adt` that do not strictly outlive the adt value itself.
-    /// (This allows programs to make cyclic structures without
-    /// resorting to unsafe means; see RFCs 769 and 1238).
-    pub is_dtorck: bool,
 }
 
 bitflags! {
@@ -1609,14 +1600,6 @@ impl<'a, 'gcx, 'tcx> AdtDef {
         }
     }
 
-    /// Returns whether this is a dtorck type. If this returns
-    /// true, this type being safe for destruction requires it to be
-    /// alive; Otherwise, only the contents are required to be.
-    #[inline]
-    pub fn is_dtorck(&'gcx self, tcx: TyCtxt) -> bool {
-        self.destructor(tcx).map_or(false, |d| d.is_dtorck)
-    }
-
     /// Returns whether this type is #[fundamental] for the purposes
     /// of coherence checking.
     #[inline]
@@ -1780,15 +1763,8 @@ impl<'a, 'gcx, 'tcx> AdtDef {
         queries::adt_destructor::get(tcx, DUMMY_SP, self.did)
     }
 
-    /// Returns a simpler type such that `Self: Sized` if and only
+    /// Returns a list of types such that `Self: Sized` if and only
     /// if that type is Sized, or `TyErr` if this type is recursive.
-    ///
-    /// HACK: instead of returning a list of types, this function can
-    /// return a tuple. In that case, the result is Sized only if
-    /// all elements of the tuple are Sized.
-    ///
-    /// This is generally the `struct_tail` if this is a struct, or a
-    /// tuple of them if this is an enum.
     ///
     /// Oddly enough, checking that the sized-constraint is Sized is
     /// actually more expressive than checking all members:
@@ -1797,16 +1773,16 @@ impl<'a, 'gcx, 'tcx> AdtDef {
     ///
     /// Due to normalization being eager, this applies even if
     /// the associated type is behind a pointer, e.g. issue #31299.
-    pub fn sized_constraint(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Ty<'tcx> {
+    pub fn sized_constraint(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> &'tcx [Ty<'tcx>] {
         match queries::adt_sized_constraint::try_get(tcx, DUMMY_SP, self.did) {
-            Ok(ty) => ty,
+            Ok(tys) => tys,
             Err(_) => {
                 debug!("adt_sized_constraint: {:?} is recursive", self);
                 // This should be reported as an error by `check_representable`.
                 //
                 // Consider the type as Sized in the meanwhile to avoid
                 // further errors.
-                tcx.types.err
+                tcx.intern_type_list(&[tcx.types.err])
             }
         }
     }
@@ -1836,18 +1812,13 @@ impl<'a, 'gcx, 'tcx> AdtDef {
 
             TyAdt(adt, substs) => {
                 // recursive case
-                let adt_ty =
-                    adt.sized_constraint(tcx)
-                       .subst(tcx, substs);
+                let adt_tys = adt.sized_constraint(tcx);
                 debug!("sized_constraint_for_ty({:?}) intermediate = {:?}",
-                       ty, adt_ty);
-                if let ty::TyTuple(ref tys, _) = adt_ty.sty {
-                    tys.iter().flat_map(|ty| {
-                        self.sized_constraint_for_ty(tcx, ty)
-                    }).collect()
-                } else {
-                    self.sized_constraint_for_ty(tcx, adt_ty)
-                }
+                       ty, adt_tys);
+                adt_tys.iter()
+                    .map(|ty| ty.subst(tcx, substs))
+                    .flat_map(|ty| self.sized_constraint_for_ty(tcx, ty))
+                    .collect()
             }
 
             TyProjection(..) | TyAnon(..) => {
@@ -2697,13 +2668,7 @@ fn associated_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
 
 /// Calculates the Sized-constraint.
 ///
-/// As the Sized-constraint of enums can be a *set* of types,
-/// the Sized-constraint may need to be a set also. Because introducing
-/// a new type of IVar is currently a complex affair, the Sized-constraint
-/// may be a tuple.
-///
-/// In fact, there are only a few options for the constraint:
-///     - `bool`, if the type is always Sized
+/// In fact, there are only a few options for the types in the constraint:
 ///     - an obviously-unsized type
 ///     - a type parameter or projection whose Sizedness can't be known
 ///     - a tuple of type parameters or projections, if there are multiple
@@ -2712,26 +2677,50 @@ fn associated_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
 ///       check should catch this case.
 fn adt_sized_constraint<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                   def_id: DefId)
-                                  -> Ty<'tcx> {
+                                  -> &'tcx [Ty<'tcx>] {
     let def = tcx.lookup_adt_def(def_id);
 
-    let tys: Vec<_> = def.variants.iter().flat_map(|v| {
+    let result = tcx.intern_type_list(&def.variants.iter().flat_map(|v| {
         v.fields.last()
     }).flat_map(|f| {
-        let ty = tcx.item_type(f.did);
-        def.sized_constraint_for_ty(tcx, ty)
-    }).collect();
+        def.sized_constraint_for_ty(tcx, tcx.item_type(f.did))
+    }).collect::<Vec<_>>());
 
-    let ty = match tys.len() {
-        _ if tys.references_error() => tcx.types.err,
-        0 => tcx.types.bool,
-        1 => tys[0],
-        _ => tcx.intern_tup(&tys[..], false)
-    };
+    debug!("adt_sized_constraint: {:?} => {:?}", def, result);
 
-    debug!("adt_sized_constraint: {:?} => {:?}", def, ty);
+    result
+}
 
-    ty
+/// Calculates the dtorck constraint for a type.
+fn adt_dtorck_constraint<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                   def_id: DefId)
+                                   -> DtorckConstraint<'tcx> {
+    let def = tcx.lookup_adt_def(def_id);
+    let span = tcx.def_span(def_id);
+    debug!("dtorck_constraint: {:?}", def);
+
+    if def.is_phantom_data() {
+        let result = DtorckConstraint {
+            outlives: vec![],
+            dtorck_types: vec![
+                tcx.mk_param_from_def(&tcx.item_generics(def_id).types[0])
+           ]
+        };
+        debug!("dtorck_constraint: {:?} => {:?}", def, result);
+        return result;
+    }
+
+    let mut result = def.all_fields()
+        .map(|field| tcx.item_type(field.did))
+        .map(|fty| tcx.dtorck_constraint_for_ty(span, fty, 0, fty))
+        .collect::<Result<DtorckConstraint, ErrorReported>>()
+        .unwrap_or(DtorckConstraint::empty());
+    result.outlives.extend(tcx.destructor_constraints(def));
+    result.dedup();
+
+    debug!("dtorck_constraint: {:?} => {:?}", def, result);
+
+    result
 }
 
 fn associated_item_def_ids<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -2762,6 +2751,7 @@ pub fn provide(providers: &mut ty::maps::Providers) {
         associated_item,
         associated_item_def_ids,
         adt_sized_constraint,
+        adt_dtorck_constraint,
         ..*providers
     };
 }
@@ -2769,6 +2759,7 @@ pub fn provide(providers: &mut ty::maps::Providers) {
 pub fn provide_extern(providers: &mut ty::maps::Providers) {
     *providers = ty::maps::Providers {
         adt_sized_constraint,
+        adt_dtorck_constraint,
         ..*providers
     };
 }
@@ -2783,4 +2774,47 @@ pub fn provide_extern(providers: &mut ty::maps::Providers) {
 #[derive(Clone, Debug)]
 pub struct CrateInherentImpls {
     pub inherent_impls: DefIdMap<Rc<Vec<DefId>>>,
+}
+
+/// A set of constraints that need to be satisfied in order for
+/// a type to be valid for destruction.
+#[derive(Clone, Debug)]
+pub struct DtorckConstraint<'tcx> {
+    /// Types that are required to be alive in order for this
+    /// type to be valid for destruction.
+    pub outlives: Vec<ty::subst::Kind<'tcx>>,
+    /// Types that could not be resolved: projections and params.
+    pub dtorck_types: Vec<Ty<'tcx>>,
+}
+
+impl<'tcx> FromIterator<DtorckConstraint<'tcx>> for DtorckConstraint<'tcx>
+{
+    fn from_iter<I: IntoIterator<Item=DtorckConstraint<'tcx>>>(iter: I) -> Self {
+        let mut result = Self::empty();
+
+        for constraint in iter {
+            result.outlives.extend(constraint.outlives);
+            result.dtorck_types.extend(constraint.dtorck_types);
+        }
+
+        result
+    }
+}
+
+
+impl<'tcx> DtorckConstraint<'tcx> {
+    fn empty() -> DtorckConstraint<'tcx> {
+        DtorckConstraint {
+            outlives: vec![],
+            dtorck_types: vec![]
+        }
+    }
+
+    fn dedup<'a>(&mut self) {
+        let mut outlives = FxHashSet();
+        let mut dtorck_types = FxHashSet();
+
+        self.outlives.retain(|&val| outlives.replace(val).is_none());
+        self.dtorck_types.retain(|&val| dtorck_types.replace(val).is_none());
+    }
 }

@@ -107,6 +107,13 @@ impl<'tcx> Value<'tcx> for Ty<'tcx> {
     }
 }
 
+
+impl<'tcx> Value<'tcx> for ty::DtorckConstraint<'tcx> {
+    fn from_cycle_error<'a>(_: TyCtxt<'a, 'tcx, 'tcx>) -> Self {
+        Self::empty()
+    }
+}
+
 pub struct CycleError<'a, 'tcx: 'a> {
     span: Span,
     cycle: RefMut<'a, [(Span, Query<'tcx>)]>,
@@ -396,7 +403,8 @@ define_maps! { <'tcx>
     pub trait_def: ItemSignature(DefId) -> &'tcx ty::TraitDef,
     pub adt_def: ItemSignature(DefId) -> &'tcx ty::AdtDef,
     pub adt_destructor: AdtDestructor(DefId) -> Option<ty::Destructor>,
-    pub adt_sized_constraint: SizedConstraint(DefId) -> Ty<'tcx>,
+    pub adt_sized_constraint: SizedConstraint(DefId) -> &'tcx [Ty<'tcx>],
+    pub adt_dtorck_constraint: DtorckConstraint(DefId) -> ty::DtorckConstraint<'tcx>,
 
     /// True if this is a foreign item (i.e., linked via `extern { ... }`).
     pub is_foreign_item: IsForeignItem(DefId) -> bool,

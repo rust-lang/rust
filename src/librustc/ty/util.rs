@@ -19,6 +19,7 @@ use ty::{self, Ty, TyCtxt, TypeAndMut, TypeFlags, TypeFoldable};
 use ty::ParameterEnvironment;
 use ty::fold::TypeVisitor;
 use ty::layout::{Layout, LayoutError};
+use ty::subst::{Subst, Kind};
 use ty::TypeVariants::*;
 use util::common::ErrorReported;
 use util::nodemap::{FxHashMap, FxHashSet};
@@ -385,6 +386,27 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             None => return None,
         };
 
+        Some(ty::Destructor { did: dtor_did })
+    }
+
+    /// Return the set of types that are required to be alive in
+    /// order to run the destructor of `def` (see RFCs 769 and
+    /// 1238).
+    ///
+    /// Note that this returns only the constraints for the
+    /// destructor of `def` itself. For the destructors of the
+    /// contents, you need `adt_dtorck_constraint`.
+    pub fn destructor_constraints(self, def: &'tcx ty::AdtDef)
+                                  -> Vec<ty::subst::Kind<'tcx>>
+    {
+        let dtor = match def.destructor(self) {
+            None => {
+                debug!("destructor_constraints({:?}) - no dtor", def.did);
+                return vec![]
+            }
+            Some(dtor) => dtor.did
+        };
+
         // RFC 1238: if the destructor method is tagged with the
         // attribute `unsafe_destructor_blind_to_params`, then the
         // compiler is being instructed to *assume* that the
@@ -394,11 +416,147 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         // Such access can be in plain sight (e.g. dereferencing
         // `*foo.0` of `Foo<'a>(&'a u32)`) or indirectly hidden
         // (e.g. calling `foo.0.clone()` of `Foo<T:Clone>`).
-        let is_dtorck = !self.has_attr(dtor_did, "unsafe_destructor_blind_to_params");
-        Some(ty::Destructor { did: dtor_did, is_dtorck: is_dtorck })
+        if self.has_attr(dtor, "unsafe_destructor_blind_to_params") {
+            debug!("destructor_constraint({:?}) - blind", def.did);
+            return vec![];
+        }
+
+        let impl_def_id = self.associated_item(dtor).container.id();
+        let impl_generics = self.item_generics(impl_def_id);
+
+        // We have a destructor - all the parameters that are not
+        // pure_wrt_drop (i.e, don't have a #[may_dangle] attribute)
+        // must be live.
+
+        // We need to return the list of parameters from the ADTs
+        // generics/substs that correspond to impure parameters on the
+        // impl's generics. This is a bit ugly, but conceptually simple:
+        //
+        // Suppose our ADT looks like the following
+        //
+        //     struct S<X, Y, Z>(X, Y, Z);
+        //
+        // and the impl is
+        //
+        //     impl<#[may_dangle] P0, P1, P2> Drop for S<P1, P2, P0>
+        //
+        // We want to return the parameters (X, Y). For that, we match
+        // up the item-substs <X, Y, Z> with the substs on the impl ADT,
+        // <P1, P2, P0>, and then look up which of the impl substs refer to
+        // parameters marked as pure.
+
+        let impl_substs = match self.item_type(impl_def_id).sty {
+            ty::TyAdt(def_, substs) if def_ == def => substs,
+            _ => bug!()
+        };
+
+        let item_substs = match self.item_type(def.did).sty {
+            ty::TyAdt(def_, substs) if def_ == def => substs,
+            _ => bug!()
+        };
+
+        let result = item_substs.iter().zip(impl_substs.iter())
+            .filter(|&(_, &k)| {
+                if let Some(&ty::Region::ReEarlyBound(ref ebr)) = k.as_region() {
+                    !impl_generics.region_param(ebr).pure_wrt_drop
+                } else if let Some(&ty::TyS {
+                    sty: ty::TypeVariants::TyParam(ref pt), ..
+                }) = k.as_type() {
+                    !impl_generics.type_param(pt).pure_wrt_drop
+                } else {
+                    // not a type or region param - this should be reported
+                    // as an error.
+                    false
+                }
+            }).map(|(&item_param, _)| item_param).collect();
+        debug!("destructor_constraint({:?}) = {:?}", def.did, result);
+        result
     }
 
-    pub fn closure_base_def_id(&self, def_id: DefId) -> DefId {
+    /// Return a set of constraints that needs to be satisfied in
+    /// order for `ty` to be valid for destruction.
+    pub fn dtorck_constraint_for_ty(self,
+                                    span: Span,
+                                    for_ty: Ty<'tcx>,
+                                    depth: usize,
+                                    ty: Ty<'tcx>)
+                                    -> Result<ty::DtorckConstraint<'tcx>, ErrorReported>
+    {
+        debug!("dtorck_constraint_for_ty({:?}, {:?}, {:?}, {:?})",
+               span, for_ty, depth, ty);
+
+        if depth >= self.sess.recursion_limit.get() {
+            let mut err = struct_span_err!(
+                self.sess, span, E0320,
+                "overflow while adding drop-check rules for {}", for_ty);
+            err.note(&format!("overflowed on {}", ty));
+            err.emit();
+            return Err(ErrorReported);
+        }
+
+        let result = match ty.sty {
+            ty::TyBool | ty::TyChar | ty::TyInt(_) | ty::TyUint(_) |
+            ty::TyFloat(_) | ty::TyStr | ty::TyNever |
+            ty::TyRawPtr(..) | ty::TyRef(..) | ty::TyFnDef(..) | ty::TyFnPtr(_) => {
+                // these types never have a destructor
+                Ok(ty::DtorckConstraint::empty())
+            }
+
+            ty::TyArray(ety, _) | ty::TySlice(ety) => {
+                // single-element containers, behave like their element
+                self.dtorck_constraint_for_ty(span, for_ty, depth+1, ety)
+            }
+
+            ty::TyTuple(tys, _) => {
+                tys.iter().map(|ty| {
+                    self.dtorck_constraint_for_ty(span, for_ty, depth+1, ty)
+                }).collect()
+            }
+
+            ty::TyClosure(def_id, substs) => {
+                substs.upvar_tys(def_id, self).map(|ty| {
+                    self.dtorck_constraint_for_ty(span, for_ty, depth+1, ty)
+                }).collect()
+            }
+
+            ty::TyAdt(def, substs) => {
+                let ty::DtorckConstraint {
+                    dtorck_types, outlives
+                } = ty::queries::adt_dtorck_constraint::get(self, span, def.did);
+                Ok(ty::DtorckConstraint {
+                    // FIXME: we can try to recursively `dtorck_constraint_on_ty`
+                    // there, but that needs some way to handle cycles.
+                    dtorck_types: dtorck_types.subst(self, substs),
+                    outlives: outlives.subst(self, substs)
+                })
+            }
+
+            // Objects must be alive in order for their destructor
+            // to be called.
+            ty::TyDynamic(..) => Ok(ty::DtorckConstraint {
+                outlives: vec![Kind::from(ty)],
+                dtorck_types: vec![],
+            }),
+
+            // Types that can't be resolved. Pass them forward.
+            ty::TyProjection(..) | ty::TyAnon(..) | ty::TyParam(..) => {
+                Ok(ty::DtorckConstraint {
+                    outlives: vec![],
+                    dtorck_types: vec![ty],
+                })
+            }
+
+            ty::TyInfer(..) | ty::TyError => {
+                self.sess.delay_span_bug(span, "unresolved type in dtorck");
+                Err(ErrorReported)
+            }
+        };
+
+        debug!("dtorck_constraint_for_ty({:?}) = {:?}", ty, result);
+        result
+    }
+
+    pub fn closure_base_def_id(self, def_id: DefId) -> DefId {
         let mut def_id = def_id;
         while self.def_key(def_id).disambiguated_data.data == DefPathData::ClosureExpr {
             def_id = self.parent_def_id(def_id).unwrap_or_else(|| {
