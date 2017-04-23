@@ -457,7 +457,8 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
             self.type_of_node_must_outlive(origin, id, var_region);
 
             let typ = self.resolve_node_type(id);
-            dropck::check_safety_of_destructor_if_necessary(self, typ, span, var_scope);
+            let _ = dropck::check_safety_of_destructor_if_necessary(
+                self, typ, span, var_scope);
         })
     }
 }
@@ -995,10 +996,8 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
                 match *region {
                     ty::ReScope(rvalue_scope) => {
                         let typ = self.resolve_type(cmt.ty);
-                        dropck::check_safety_of_destructor_if_necessary(self,
-                                                                        typ,
-                                                                        span,
-                                                                        rvalue_scope);
+                        let _ = dropck::check_safety_of_destructor_if_necessary(
+                            self, typ, span, rvalue_scope);
                     }
                     ty::ReStatic => {}
                     _ => {

@@ -1790,11 +1790,9 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             ty::TyAdt(def, substs) => {
                 let sized_crit = def.sized_constraint(self.tcx());
                 // (*) binder moved here
-                Where(ty::Binder(match sized_crit.sty {
-                    ty::TyTuple(tys, _) => tys.to_vec().subst(self.tcx(), substs),
-                    ty::TyBool => vec![],
-                    _ => vec![sized_crit.subst(self.tcx(), substs)]
-                }))
+                Where(ty::Binder(
+                    sized_crit.iter().map(|ty| ty.subst(self.tcx(), substs)).collect()
+                ))
             }
 
             ty::TyProjection(_) | ty::TyParam(_) | ty::TyAnon(..) => None,

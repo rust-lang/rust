@@ -91,6 +91,7 @@ pub enum DepNode<D: Clone + Debug> {
     IsForeignItem(D),
     TypeParamPredicates((D, D)),
     SizedConstraint(D),
+    DtorckConstraint(D),
     AdtDestructor(D),
     AssociatedItemDefIds(D),
     InherentImpls(D),
@@ -228,6 +229,7 @@ impl<D: Clone + Debug> DepNode<D> {
                 Some(TypeParamPredicates((try_opt!(op(item)), try_opt!(op(param)))))
             }
             SizedConstraint(ref d) => op(d).map(SizedConstraint),
+            DtorckConstraint(ref d) => op(d).map(DtorckConstraint),
             AdtDestructor(ref d) => op(d).map(AdtDestructor),
             AssociatedItemDefIds(ref d) => op(d).map(AssociatedItemDefIds),
             InherentImpls(ref d) => op(d).map(InherentImpls),
