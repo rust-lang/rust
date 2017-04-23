@@ -22,8 +22,6 @@ use core::num;
 #[cfg(not(test))]
 use intrinsics;
 #[cfg(not(test))]
-use libc::c_int;
-#[cfg(not(test))]
 use num::FpCategory;
 
 
@@ -73,8 +71,6 @@ mod cmath {
         pub fn atan2f(a: c_float, b: c_float) -> c_float;
         pub fn atanf(n: c_float) -> c_float;
         pub fn coshf(n: c_float) -> c_float;
-        pub fn frexpf(n: c_float, value: &mut c_int) -> c_float;
-        pub fn ldexpf(x: c_float, n: c_int) -> c_float;
         pub fn sinhf(n: c_float) -> c_float;
         pub fn tanf(n: c_float) -> c_float;
         pub fn tanhf(n: c_float) -> c_float;
@@ -84,7 +80,7 @@ mod cmath {
     pub use self::shims::*;
     #[cfg(target_env = "msvc")]
     mod shims {
-        use libc::{c_float, c_int};
+        use libc::c_float;
 
         #[inline]
         pub unsafe fn acosf(n: c_float) -> c_float {
@@ -109,20 +105,6 @@ mod cmath {
         #[inline]
         pub unsafe fn coshf(n: c_float) -> c_float {
             f64::cosh(n as f64) as c_float
-        }
-
-        #[inline]
-        #[allow(deprecated)]
-        pub unsafe fn frexpf(x: c_float, value: &mut c_int) -> c_float {
-            let (a, b) = f64::frexp(x as f64);
-            *value = b as c_int;
-            a as c_float
-        }
-
-        #[inline]
-        #[allow(deprecated)]
-        pub unsafe fn ldexpf(x: c_float, n: c_int) -> c_float {
-            f64::ldexp(x as f64, n as isize) as c_float
         }
 
         #[inline]
@@ -243,40 +225,6 @@ impl f32 {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn classify(self) -> FpCategory { num::Float::classify(self) }
-
-    /// Returns the mantissa, base 2 exponent, and sign as integers, respectively.
-    /// The original number can be recovered by `sign * mantissa * 2 ^ exponent`.
-    /// The floating point encoding is documented in the [Reference][floating-point].
-    ///
-    /// ```
-    /// #![feature(float_extras)]
-    ///
-    /// use std::f32;
-    ///
-    /// let num = 2.0f32;
-    ///
-    /// // (8388608, -22, 1)
-    /// let (mantissa, exponent, sign) = num.integer_decode();
-    /// let sign_f = sign as f32;
-    /// let mantissa_f = mantissa as f32;
-    /// let exponent_f = num.powf(exponent as f32);
-    ///
-    /// // 1 * 8388608 * 2^(-22) == 2
-    /// let abs_difference = (sign_f * mantissa_f * exponent_f - num).abs();
-    ///
-    /// assert!(abs_difference <= f32::EPSILON);
-    /// ```
-    /// [floating-point]: ../reference/types.html#machine-types
-    #[unstable(feature = "float_extras", reason = "signature is undecided",
-               issue = "27752")]
-    #[rustc_deprecated(since = "1.11.0",
-                       reason = "never really came to fruition and easily \
-                                 implementable outside the standard library")]
-    #[inline]
-    #[allow(deprecated)]
-    pub fn integer_decode(self) -> (u64, i16, i8) {
-        num::Float::integer_decode(self)
-    }
 
     /// Returns the largest integer less than or equal to a number.
     ///
@@ -711,89 +659,6 @@ impl f32 {
     #[stable(feature = "f32_deg_rad_conversions", since="1.7.0")]
     #[inline]
     pub fn to_radians(self) -> f32 { num::Float::to_radians(self) }
-
-    /// Constructs a floating point number of `x*2^exp`.
-    ///
-    /// ```
-    /// #![feature(float_extras)]
-    ///
-    /// use std::f32;
-    /// // 3*2^2 - 12 == 0
-    /// let abs_difference = (f32::ldexp(3.0, 2) - 12.0).abs();
-    ///
-    /// assert!(abs_difference <= f32::EPSILON);
-    /// ```
-    #[unstable(feature = "float_extras",
-               reason = "pending integer conventions",
-               issue = "27752")]
-    #[rustc_deprecated(since = "1.11.0",
-                       reason = "never really came to fruition and easily \
-                                 implementable outside the standard library")]
-    #[inline]
-    pub fn ldexp(x: f32, exp: isize) -> f32 {
-        unsafe { cmath::ldexpf(x, exp as c_int) }
-    }
-
-    /// Breaks the number into a normalized fraction and a base-2 exponent,
-    /// satisfying:
-    ///
-    ///  * `self = x * 2^exp`
-    ///  * `0.5 <= abs(x) < 1.0`
-    ///
-    /// ```
-    /// #![feature(float_extras)]
-    ///
-    /// use std::f32;
-    ///
-    /// let x = 4.0f32;
-    ///
-    /// // (1/2)*2^3 -> 1 * 8/2 -> 4.0
-    /// let f = x.frexp();
-    /// let abs_difference_0 = (f.0 - 0.5).abs();
-    /// let abs_difference_1 = (f.1 as f32 - 3.0).abs();
-    ///
-    /// assert!(abs_difference_0 <= f32::EPSILON);
-    /// assert!(abs_difference_1 <= f32::EPSILON);
-    /// ```
-    #[unstable(feature = "float_extras",
-               reason = "pending integer conventions",
-               issue = "27752")]
-    #[rustc_deprecated(since = "1.11.0",
-                       reason = "never really came to fruition and easily \
-                                 implementable outside the standard library")]
-    #[inline]
-    pub fn frexp(self) -> (f32, isize) {
-        unsafe {
-            let mut exp = 0;
-            let x = cmath::frexpf(self, &mut exp);
-            (x, exp as isize)
-        }
-    }
-
-    /// Returns the next representable floating-point value in the direction of
-    /// `other`.
-    ///
-    /// ```
-    /// #![feature(float_extras)]
-    ///
-    /// use std::f32;
-    ///
-    /// let x = 1.0f32;
-    ///
-    /// let abs_diff = (x.next_after(2.0) - 1.00000011920928955078125_f32).abs();
-    ///
-    /// assert!(abs_diff <= f32::EPSILON);
-    /// ```
-    #[unstable(feature = "float_extras",
-               reason = "unsure about its place in the world",
-               issue = "27752")]
-    #[rustc_deprecated(since = "1.11.0",
-                       reason = "never really came to fruition and easily \
-                                 implementable outside the standard library")]
-    #[inline]
-    pub fn next_after(self, other: f32) -> f32 {
-        unsafe { cmath::nextafterf(self, other) }
-    }
 
     /// Returns the maximum of the two numbers.
     ///
@@ -1463,23 +1328,6 @@ mod tests {
     }
 
     #[test]
-    #[allow(deprecated)]
-    fn test_integer_decode() {
-        assert_eq!(3.14159265359f32.integer_decode(), (13176795, -22, 1));
-        assert_eq!((-8573.5918555f32).integer_decode(), (8779358, -10, -1));
-        assert_eq!(2f32.powf(100.0).integer_decode(), (8388608, 77, 1));
-        assert_eq!(0f32.integer_decode(), (0, -150, 1));
-        assert_eq!((-0f32).integer_decode(), (0, -150, -1));
-        assert_eq!(INFINITY.integer_decode(), (8388608, 105, 1));
-        assert_eq!(NEG_INFINITY.integer_decode(), (8388608, 105, -1));
-
-        // Ignore the "sign" (quiet / signalling flag) of NAN.
-        // It can vary between runtime operations and LLVM folding.
-        let (nan_m, nan_e, _nan_s) = NAN.integer_decode();
-        assert_eq!((nan_m, nan_e), (12582912, 105));
-    }
-
-    #[test]
     fn test_floor() {
         assert_approx_eq!(1.0f32.floor(), 1.0f32);
         assert_approx_eq!(1.3f32.floor(), 1.0f32);
@@ -1788,58 +1636,6 @@ mod tests {
         assert!(nan.to_radians().is_nan());
         assert_eq!(inf.to_radians(), inf);
         assert_eq!(neg_inf.to_radians(), neg_inf);
-    }
-
-    #[test]
-    #[allow(deprecated)]
-    fn test_ldexp() {
-        let f1 = 2.0f32.powi(-123);
-        let f2 = 2.0f32.powi(-111);
-        let f3 = 1.75 * 2.0f32.powi(-12);
-        assert_eq!(f32::ldexp(1f32, -123), f1);
-        assert_eq!(f32::ldexp(1f32, -111), f2);
-        assert_eq!(f32::ldexp(1.75f32, -12), f3);
-
-        assert_eq!(f32::ldexp(0f32, -123), 0f32);
-        assert_eq!(f32::ldexp(-0f32, -123), -0f32);
-
-        let inf: f32 = f32::INFINITY;
-        let neg_inf: f32 = f32::NEG_INFINITY;
-        let nan: f32 = f32::NAN;
-        assert_eq!(f32::ldexp(inf, -123), inf);
-        assert_eq!(f32::ldexp(neg_inf, -123), neg_inf);
-        assert!(f32::ldexp(nan, -123).is_nan());
-    }
-
-    #[test]
-    #[allow(deprecated)]
-    fn test_frexp() {
-        let f1 = 2.0f32.powi(-123);
-        let f2 = 2.0f32.powi(-111);
-        let f3 = 1.75 * 2.0f32.powi(-123);
-        let (x1, exp1) = f1.frexp();
-        let (x2, exp2) = f2.frexp();
-        let (x3, exp3) = f3.frexp();
-        assert_eq!((x1, exp1), (0.5f32, -122));
-        assert_eq!((x2, exp2), (0.5f32, -110));
-        assert_eq!((x3, exp3), (0.875f32, -122));
-        assert_eq!(f32::ldexp(x1, exp1), f1);
-        assert_eq!(f32::ldexp(x2, exp2), f2);
-        assert_eq!(f32::ldexp(x3, exp3), f3);
-
-        assert_eq!(0f32.frexp(), (0f32, 0));
-        assert_eq!((-0f32).frexp(), (-0f32, 0));
-    }
-
-    #[test] #[cfg_attr(windows, ignore)] // FIXME #8755
-    #[allow(deprecated)]
-    fn test_frexp_nowin() {
-        let inf: f32 = f32::INFINITY;
-        let neg_inf: f32 = f32::NEG_INFINITY;
-        let nan: f32 = f32::NAN;
-        assert_eq!(match inf.frexp() { (x, _) => x }, inf);
-        assert_eq!(match neg_inf.frexp() { (x, _) => x }, neg_inf);
-        assert!(match nan.frexp() { (x, _) => x.is_nan() })
     }
 
     #[test]

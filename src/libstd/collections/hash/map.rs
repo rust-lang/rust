@@ -2017,13 +2017,6 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
         self.elem.read().0
     }
 
-    /// Deprecated, renamed to `remove_entry`
-    #[unstable(feature = "map_entry_recover_keys", issue = "34285")]
-    #[rustc_deprecated(since = "1.12.0", reason = "renamed to `remove_entry`")]
-    pub fn remove_pair(self) -> (K, V) {
-        self.remove_entry()
-    }
-
     /// Take the ownership of the key and value from the map.
     ///
     /// # Examples
