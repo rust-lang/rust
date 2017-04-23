@@ -2,11 +2,11 @@ error: in an 'if' condition, avoid complex blocks or closures with blocks; inste
   --> $DIR/block_in_if_condition.rs:30:8
    |
 30 |       if {
-   |  ________^ starting here...
+   |  ________^
 31 | |         let x = 3;
 32 | |         x == 3
 33 | |     } {
-   | |_____^ ...ending here
+   | |_____^
    |
 note: lint level defined here
   --> $DIR/block_in_if_condition.rs:5:9

@@ -34,11 +34,11 @@ error: this is an `else if` but the formatting might hide it
   --> $DIR/formatting.rs:45:6
    |
 45 |       } else
-   |  ______^ starting here...
+   |  ______^
 46 | |
 47 | |
 48 | |     if foo() { // the span of the above error should continue here
-   | |____^ ...ending here
+   | |____^
    |
    = note: #[deny(suspicious_else_formatting)] implied by #[deny(clippy)]
    = note: to remove this lint, remove the `else` or remove the new line between `else` and `if`
@@ -47,12 +47,12 @@ error: this is an `else if` but the formatting might hide it
   --> $DIR/formatting.rs:52:6
    |
 52 |       }
-   |  ______^ starting here...
+   |  ______^
 53 | |
 54 | |
 55 | |     else
 56 | |     if foo() { // the span of the above error should continue here
-   | |____^ ...ending here
+   | |____^
    |
    = note: #[deny(suspicious_else_formatting)] implied by #[deny(clippy)]
    = note: to remove this lint, remove the `else` or remove the new line between `else` and `if`

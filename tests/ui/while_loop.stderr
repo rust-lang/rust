@@ -1,15 +1,14 @@
 error: this loop could be written as a `while let` loop
   --> $DIR/while_loop.rs:9:5
    |
-9  |       loop {
-   |  _____^ starting here...
+9  | /     loop {
 10 | |
 11 | |
 12 | |
 ...  |
 17 | |         }
 18 | |     }
-   | |_____^ ...ending here
+   | |_____^
    |
 note: lint level defined here
   --> $DIR/while_loop.rs:4:9
@@ -22,15 +21,14 @@ help: try
 error: this loop could be written as a `while let` loop
   --> $DIR/while_loop.rs:25:5
    |
-25 |       loop {
-   |  _____^ starting here...
+25 | /     loop {
 26 | |
 27 | |
 28 | |
 ...  |
 32 | |         };
 33 | |     }
-   | |_____^ ...ending here
+   | |_____^
    |
 help: try
    |     while let Some(_x) = y { .. }
@@ -38,15 +36,14 @@ help: try
 error: this loop could be written as a `while let` loop
   --> $DIR/while_loop.rs:34:5
    |
-34 |       loop {
-   |  _____^ starting here...
+34 | /     loop {
 35 | |
 36 | |
 37 | |
 ...  |
 43 | |         let _str = "foo";
 44 | |     }
-   | |_____^ ...ending here
+   | |_____^
    |
 help: try
    |     while let Some(x) = y { .. }
@@ -54,15 +51,14 @@ help: try
 error: this loop could be written as a `while let` loop
   --> $DIR/while_loop.rs:45:5
    |
-45 |       loop {
-   |  _____^ starting here...
+45 | /     loop {
 46 | |
 47 | |
 48 | |
 ...  |
 54 | |         { let _b = "foobar"; }
 55 | |     }
-   | |_____^ ...ending here
+   | |_____^
    |
 help: try
    |     while let Some(x) = y { .. }
@@ -70,15 +66,14 @@ help: try
 error: this loop could be written as a `while let` loop
   --> $DIR/while_loop.rs:70:5
    |
-70 |       loop {
-   |  _____^ starting here...
+70 | /     loop {
 71 | |
 72 | |
 73 | |
 ...  |
 79 | |         let _ = (e, l);
 80 | |     }
-   | |_____^ ...ending here
+   | |_____^
    |
 help: try
    |     while let Some(word) = "".split_whitespace().next() { .. }
@@ -86,14 +81,13 @@ help: try
 error: this loop could be written as a `for` loop
   --> $DIR/while_loop.rs:83:5
    |
-83 |       while let Option::Some(x) = iter.next() {
-   |  _____^ starting here...
+83 | /     while let Option::Some(x) = iter.next() {
 84 | |
 85 | |
 86 | |
 87 | |         println!("{}", x);
 88 | |     }
-   | |_____^ ...ending here
+   | |_____^
    |
 note: lint level defined here
   --> $DIR/while_loop.rs:4:37
@@ -106,14 +100,13 @@ help: try
 error: this loop could be written as a `for` loop
   --> $DIR/while_loop.rs:91:5
    |
-91 |       while let Some(x) = iter.next() {
-   |  _____^ starting here...
+91 | /     while let Some(x) = iter.next() {
 92 | |
 93 | |
 94 | |
 95 | |         println!("{}", x);
 96 | |     }
-   | |_____^ ...ending here
+   | |_____^
    |
 help: try
    |     for x in iter { .. }
@@ -130,15 +123,14 @@ help: try
 error: this loop could be written as a `while let` loop
    --> $DIR/while_loop.rs:142:5
     |
-142 |       loop {
-    |  _____^ starting here...
+142 | /     loop {
 143 | |
 144 | |
 145 | |
 ...   |
 150 | |         loop {}
 151 | |     }
-    | |_____^ ...ending here
+    | |_____^
     |
 help: try
     |     while let Some(ele) = iter.next() { .. }

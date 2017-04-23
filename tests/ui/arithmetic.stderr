@@ -19,10 +19,9 @@ error: integer arithmetic detected
 error: integer arithmetic detected
   --> $DIR/arithmetic.rs:10:5
    |
-10 |       1 %
-   |  _____^ starting here...
+10 | /     1 %
 11 | |     i / 2; // no error, this is part of the expression in the preceding line
-   | |_________^ ...ending here
+   | |_________^
 
 error: integer arithmetic detected
   --> $DIR/arithmetic.rs:12:5

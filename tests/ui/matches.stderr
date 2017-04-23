@@ -1,15 +1,14 @@
 error: you seem to be trying to use match for destructuring a single pattern. Consider using `if let`
   --> $DIR/matches.rs:26:5
    |
-26 |       match ExprNode::Butterflies {
-   |  _____^ starting here...
+26 | /     match ExprNode::Butterflies {
 27 | |
 28 | |
 29 | |
 30 | |         ExprNode::ExprAddrOf => Some(&NODE),
 31 | |         _ => { let x = 5; None },
 32 | |     }
-   | |_____^ ...ending here
+   | |_____^
    |
 note: lint level defined here
   --> $DIR/matches.rs:7:9
@@ -22,15 +21,14 @@ help: try this
 error: you seem to be trying to use match for destructuring a single pattern. Consider using `if let`
   --> $DIR/matches.rs:38:5
    |
-38 |       match x {
-   |  _____^ starting here...
+38 | /     match x {
 39 | |
 40 | |
 41 | |
 42 | |         Some(y) => { println!("{:?}", y); }
 43 | |         _ => ()
 44 | |     };
-   | |_____^ ...ending here
+   | |_____^
    |
    = note: #[deny(single_match)] implied by #[deny(clippy)]
 note: lint level defined here
@@ -44,15 +42,14 @@ help: try this
 error: you seem to be trying to use match for destructuring a single pattern. Consider using `if let`
   --> $DIR/matches.rs:47:5
    |
-47 |       match z {
-   |  _____^ starting here...
+47 | /     match z {
 48 | |
 49 | |
 50 | |
 51 | |         (2...3, 7...9) => dummy(),
 52 | |         _ => {}
 53 | |     };
-   | |_____^ ...ending here
+   | |_____^
    |
    = note: #[deny(single_match)] implied by #[deny(clippy)]
 help: try this
@@ -61,15 +58,14 @@ help: try this
 error: you seem to be trying to use match for destructuring a single pattern. Consider using `if let`
   --> $DIR/matches.rs:72:5
    |
-72 |       match x {
-   |  _____^ starting here...
+72 | /     match x {
 73 | |
 74 | |
 75 | |
 76 | |         Some(y) => dummy(),
 77 | |         None => ()
 78 | |     };
-   | |_____^ ...ending here
+   | |_____^
    |
    = note: #[deny(single_match)] implied by #[deny(clippy)]
 help: try this
@@ -78,15 +74,14 @@ help: try this
 error: you seem to be trying to use match for destructuring a single pattern. Consider using `if let`
   --> $DIR/matches.rs:80:5
    |
-80 |       match y {
-   |  _____^ starting here...
+80 | /     match y {
 81 | |
 82 | |
 83 | |
 84 | |         Ok(y) => dummy(),
 85 | |         Err(..) => ()
 86 | |     };
-   | |_____^ ...ending here
+   | |_____^
    |
    = note: #[deny(single_match)] implied by #[deny(clippy)]
 help: try this
@@ -95,15 +90,14 @@ help: try this
 error: you seem to be trying to use match for destructuring a single pattern. Consider using `if let`
   --> $DIR/matches.rs:90:5
    |
-90 |       match c {
-   |  _____^ starting here...
+90 | /     match c {
 91 | |
 92 | |
 93 | |
 94 | |         Cow::Borrowed(..) => dummy(),
 95 | |         Cow::Owned(..) => (),
 96 | |     };
-   | |_____^ ...ending here
+   | |_____^
    |
    = note: #[deny(single_match)] implied by #[deny(clippy)]
 help: try this
@@ -112,15 +106,14 @@ help: try this
 error: you seem to be trying to match on a boolean expression
    --> $DIR/matches.rs:114:5
     |
-114 |       match test {
-    |  _____^ starting here...
+114 | /     match test {
 115 | |
 116 | |
 117 | |
 118 | |         true => 0,
 119 | |         false => 42,
 120 | |     };
-    | |_____^ ...ending here
+    | |_____^
     |
     = note: #[deny(match_bool)] implied by #[deny(clippy)]
 note: lint level defined here
@@ -134,15 +127,14 @@ help: consider using an if/else expression
 error: you seem to be trying to match on a boolean expression
    --> $DIR/matches.rs:123:5
     |
-123 |       match option == 1 {
-    |  _____^ starting here...
+123 | /     match option == 1 {
 124 | |
 125 | |
 126 | |
 127 | |         true => 1,
 128 | |         false => 0,
 129 | |     };
-    | |_____^ ...ending here
+    | |_____^
     |
     = note: #[deny(match_bool)] implied by #[deny(clippy)]
 help: consider using an if/else expression
@@ -151,15 +143,14 @@ help: consider using an if/else expression
 error: you seem to be trying to match on a boolean expression
    --> $DIR/matches.rs:131:5
     |
-131 |       match test {
-    |  _____^ starting here...
+131 | /     match test {
 132 | |
 133 | |
 134 | |
 135 | |         true => (),
 136 | |         false => { println!("Noooo!"); }
 137 | |     };
-    | |_____^ ...ending here
+    | |_____^
     |
     = note: #[deny(match_bool)] implied by #[deny(clippy)]
 help: consider using an if/else expression
@@ -168,15 +159,14 @@ help: consider using an if/else expression
 error: you seem to be trying to match on a boolean expression
    --> $DIR/matches.rs:139:5
     |
-139 |       match test {
-    |  _____^ starting here...
+139 | /     match test {
 140 | |
 141 | |
 142 | |
 143 | |         false => { println!("Noooo!"); }
 144 | |         _ => (),
 145 | |     };
-    | |_____^ ...ending here
+    | |_____^
     |
     = note: #[deny(match_bool)] implied by #[deny(clippy)]
 help: consider using an if/else expression
@@ -185,15 +175,14 @@ help: consider using an if/else expression
 error: you seem to be trying to match on a boolean expression
    --> $DIR/matches.rs:147:5
     |
-147 |       match test && test {
-    |  _____^ starting here...
+147 | /     match test && test {
 148 | |
 149 | |
 150 | |
 ...   |
 153 | |         _ => (),
 154 | |     };
-    | |_____^ ...ending here
+    | |_____^
     |
     = note: #[deny(match_bool)] implied by #[deny(clippy)]
 help: consider using an if/else expression
@@ -215,15 +204,14 @@ note: lint level defined here
 error: you seem to be trying to match on a boolean expression
    --> $DIR/matches.rs:156:5
     |
-156 |       match test {
-    |  _____^ starting here...
+156 | /     match test {
 157 | |
 158 | |
 159 | |
 160 | |         false => { println!("Noooo!"); }
 161 | |         true => { println!("Yes!"); }
 162 | |     };
-    | |_____^ ...ending here
+    | |_____^
     |
     = note: #[deny(match_bool)] implied by #[deny(clippy)]
 help: consider using an if/else expression
@@ -232,15 +220,14 @@ help: consider using an if/else expression
 error: you don't need to add `&` to all patterns
    --> $DIR/matches.rs:175:9
     |
-175 |           match v {
-    |  _________^ starting here...
+175 | /         match v {
 176 | |
 177 | |
 178 | |
 179 | |             &Some(v) => println!("{:?}", v),
 180 | |             &None => println!("none"),
 181 | |         }
-    | |_________^ ...ending here
+    | |_________^
     |
     = note: #[deny(match_ref_pats)] implied by #[deny(clippy)]
 note: lint level defined here
@@ -254,15 +241,14 @@ help: instead of prefixing all patterns with `&`, you can dereference the expres
 error: you don't need to add `&` to all patterns
    --> $DIR/matches.rs:188:5
     |
-188 |       match tup {
-    |  _____^ starting here...
+188 | /     match tup {
 189 | |
 190 | |
 191 | |
 192 | |         &(v, 1) => println!("{}", v),
 193 | |         _ => println!("none"),
 194 | |     }
-    | |_____^ ...ending here
+    | |_____^
     |
     = note: #[deny(match_ref_pats)] implied by #[deny(clippy)]
 help: instead of prefixing all patterns with `&`, you can dereference the expression
@@ -271,15 +257,14 @@ help: instead of prefixing all patterns with `&`, you can dereference the expres
 error: you don't need to add `&` to both the expression and the patterns
    --> $DIR/matches.rs:197:5
     |
-197 |       match &w {
-    |  _____^ starting here...
+197 | /     match &w {
 198 | |
 199 | |
 200 | |
 201 | |         &Some(v) => println!("{:?}", v),
 202 | |         &None => println!("none"),
 203 | |     }
-    | |_____^ ...ending here
+    | |_____^
     |
     = note: #[deny(match_ref_pats)] implied by #[deny(clippy)]
 help: try
@@ -288,14 +273,13 @@ help: try
 error: you don't need to add `&` to all patterns
    --> $DIR/matches.rs:211:5
     |
-211 |       if let &None = a {
-    |  _____^ starting here...
+211 | /     if let &None = a {
 212 | |
 213 | |
 214 | |
 215 | |         println!("none");
 216 | |     }
-    | |_____^ ...ending here
+    | |_____^
     |
     = note: #[deny(match_ref_pats)] implied by #[deny(clippy)]
 help: instead of prefixing all patterns with `&`, you can dereference the expression
@@ -304,14 +288,13 @@ help: instead of prefixing all patterns with `&`, you can dereference the expres
 error: you don't need to add `&` to both the expression and the patterns
    --> $DIR/matches.rs:219:5
     |
-219 |       if let &None = &b {
-    |  _____^ starting here...
+219 | /     if let &None = &b {
 220 | |
 221 | |
 222 | |
 223 | |         println!("none");
 224 | |     }
-    | |_____^ ...ending here
+    | |_____^
     |
     = note: #[deny(match_ref_pats)] implied by #[deny(clippy)]
 help: try

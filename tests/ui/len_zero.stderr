@@ -1,13 +1,12 @@
 error: item `PubOne` has a public `len` method but no corresponding `is_empty` method
   --> $DIR/len_zero.rs:9:1
    |
-9  |   impl PubOne {
-   |  _^ starting here...
+9  | / impl PubOne {
 10 | |     pub fn len(self: &Self) -> isize {
 11 | |         1
 12 | |     }
 13 | | }
-   | |_^ ...ending here
+   | |_^
    |
 note: lint level defined here
   --> $DIR/len_zero.rs:4:9
@@ -18,37 +17,34 @@ note: lint level defined here
 error: trait `PubTraitsToo` has a `len` method but no `is_empty` method
   --> $DIR/len_zero.rs:55:1
    |
-55 |   pub trait PubTraitsToo {
-   |  _^ starting here...
+55 | / pub trait PubTraitsToo {
 56 | |     fn len(self: &Self) -> isize;
 57 | | }
-   | |_^ ...ending here
+   | |_^
 
 error: item `HasIsEmpty` has a public `len` method but a private `is_empty` method
   --> $DIR/len_zero.rs:89:1
    |
-89 |   impl HasIsEmpty {
-   |  _^ starting here...
+89 | / impl HasIsEmpty {
 90 | |     pub fn len(self: &Self) -> isize {
 91 | |         1
 92 | |     }
 ...  |
 96 | |     }
 97 | | }
-   | |_^ ...ending here
+   | |_^
 
 error: item `HasWrongIsEmpty` has a public `len` method but no corresponding `is_empty` method
    --> $DIR/len_zero.rs:118:1
     |
-118 |   impl HasWrongIsEmpty {
-    |  _^ starting here...
+118 | / impl HasWrongIsEmpty {
 119 | |     pub fn len(self: &Self) -> isize {
 120 | |         1
 121 | |     }
 ...   |
 125 | |     }
 126 | | }
-    | |_^ ...ending here
+    | |_^
 
 error: length comparison to zero
    --> $DIR/len_zero.rs:130:8

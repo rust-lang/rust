@@ -1,15 +1,14 @@
 error: `if _ { .. } else { .. }` is an expression
   --> $DIR/let_if_seq.rs:57:5
    |
-57 |       let mut foo = 0;
-   |  _____^ starting here...
+57 | /     let mut foo = 0;
 58 | |
 59 | |
 60 | |
 61 | |     if f() {
 62 | |         foo = 42;
 63 | |     }
-   | |_____^ ...ending here
+   | |_____^
    |
 note: lint level defined here
   --> $DIR/let_if_seq.rs:5:9
@@ -23,15 +22,14 @@ help: it is more idiomatic to write
 error: `if _ { .. } else { .. }` is an expression
   --> $DIR/let_if_seq.rs:65:5
    |
-65 |       let mut bar = 0;
-   |  _____^ starting here...
+65 | /     let mut bar = 0;
 66 | |
 67 | |
 68 | |
 ...  |
 74 | |         f();
 75 | |     }
-   | |_____^ ...ending here
+   | |_____^
    |
 help: it is more idiomatic to write
    |     let <mut> bar = if f() { ..; 42 } else { ..; 0 };
@@ -40,15 +38,14 @@ help: it is more idiomatic to write
 error: `if _ { .. } else { .. }` is an expression
   --> $DIR/let_if_seq.rs:77:5
    |
-77 |       let quz;
-   |  _____^ starting here...
+77 | /     let quz;
 78 | |
 79 | |
 80 | |
 ...  |
 85 | |         quz = 0;
 86 | |     }
-   | |_____^ ...ending here
+   | |_____^
    |
 help: it is more idiomatic to write
    |     let quz = if f() { 42 } else { 0 };
@@ -56,15 +53,14 @@ help: it is more idiomatic to write
 error: `if _ { .. } else { .. }` is an expression
    --> $DIR/let_if_seq.rs:111:5
     |
-111 |       let mut baz = 0;
-    |  _____^ starting here...
+111 | /     let mut baz = 0;
 112 | |
 113 | |
 114 | |
 115 | |     if f() {
 116 | |         baz = 42;
 117 | |     }
-    | |_____^ ...ending here
+    | |_____^
     |
 help: it is more idiomatic to write
     |     let <mut> baz = if f() { 42 } else { 0 };

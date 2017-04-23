@@ -2,10 +2,10 @@ error: called `filter(p).map(q)` on an `Iterator`. This is more succinctly expre
   --> $DIR/filter_methods.rs:8:21
    |
 8  |       let _: Vec<_> = vec![5; 6].into_iter()
-   |  _____________________^ starting here...
+   |  _____________________^
 9  | |                               .filter(|&x| x == 0)
 10 | |                               .map(|x| x * 2)
-   | |_____________________________________________^ ...ending here
+   | |_____________________________________________^
    |
    = note: #[deny(filter_map)] implied by #[deny(clippy_pedantic)]
 note: lint level defined here
@@ -18,10 +18,10 @@ error: called `filter(p).flat_map(q)` on an `Iterator`. This is more succinctly 
   --> $DIR/filter_methods.rs:13:21
    |
 13 |       let _: Vec<_> = vec![5_i8; 6].into_iter()
-   |  _____________________^ starting here...
+   |  _____________________^
 14 | |                                 .filter(|&x| x == 0)
 15 | |                                 .flat_map(|x| x.checked_mul(2))
-   | |_______________________________________________________________^ ...ending here
+   | |_______________________________________________________________^
    |
    = note: #[deny(filter_map)] implied by #[deny(clippy_pedantic)]
 
@@ -29,10 +29,10 @@ error: called `filter_map(p).flat_map(q)` on an `Iterator`. This is more succinc
   --> $DIR/filter_methods.rs:18:21
    |
 18 |       let _: Vec<_> = vec![5_i8; 6].into_iter()
-   |  _____________________^ starting here...
+   |  _____________________^
 19 | |                                 .filter_map(|x| x.checked_mul(2))
 20 | |                                 .flat_map(|x| x.checked_mul(2))
-   | |_______________________________________________________________^ ...ending here
+   | |_______________________________________________________________^
    |
    = note: #[deny(filter_map)] implied by #[deny(clippy_pedantic)]
 
@@ -40,10 +40,10 @@ error: called `filter_map(p).map(q)` on an `Iterator`. This is more succinctly e
   --> $DIR/filter_methods.rs:23:21
    |
 23 |       let _: Vec<_> = vec![5_i8; 6].into_iter()
-   |  _____________________^ starting here...
+   |  _____________________^
 24 | |                                 .filter_map(|x| x.checked_mul(2))
 25 | |                                 .map(|x| x.checked_mul(2))
-   | |__________________________________________________________^ ...ending here
+   | |__________________________________________________________^
    |
    = note: #[deny(filter_map)] implied by #[deny(clippy_pedantic)]
 

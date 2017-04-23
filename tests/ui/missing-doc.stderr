@@ -19,12 +19,11 @@ error: missing documentation for a type alias
 error: missing documentation for a struct
   --> $DIR/missing-doc.rs:29:1
    |
-29 |   struct Foo {
-   |  _^ starting here...
+29 | / struct Foo {
 30 | |     a: isize,
 31 | |     b: isize,
 32 | | }
-   | |_^ ...ending here
+   | |_^
 
 error: missing documentation for a struct field
   --> $DIR/missing-doc.rs:30:5
@@ -41,12 +40,11 @@ error: missing documentation for a struct field
 error: missing documentation for a struct
   --> $DIR/missing-doc.rs:34:1
    |
-34 |   pub struct PubFoo {
-   |  _^ starting here...
+34 | / pub struct PubFoo {
 35 | |     pub a: isize,
 36 | |     b: isize,
 37 | | }
-   | |_^ ...ending here
+   | |_^
 
 error: missing documentation for a struct field
   --> $DIR/missing-doc.rs:35:5
@@ -87,12 +85,11 @@ error: missing documentation for a function
 error: missing documentation for a trait
   --> $DIR/missing-doc.rs:68:1
    |
-68 |   pub trait C {
-   |  _^ starting here...
+68 | / pub trait C {
 69 | |     fn foo(&self);
 70 | |     fn foo_with_impl(&self) {}
 71 | | }
-   | |_^ ...ending here
+   | |_^
 
 error: missing documentation for a trait method
   --> $DIR/missing-doc.rs:69:5
@@ -145,25 +142,23 @@ error: missing documentation for a method
 error: missing documentation for an enum
    --> $DIR/missing-doc.rs:126:1
     |
-126 |   enum Baz {
-    |  _^ starting here...
+126 | / enum Baz {
 127 | |     BazA {
 128 | |         a: isize,
 129 | |         b: isize
 130 | |     },
 131 | |     BarB
 132 | | }
-    | |_^ ...ending here
+    | |_^
 
 error: missing documentation for a variant
    --> $DIR/missing-doc.rs:127:5
     |
-127 |       BazA {
-    |  _____^ starting here...
+127 | /     BazA {
 128 | |         a: isize,
 129 | |         b: isize
 130 | |     },
-    | |_____^ ...ending here
+    | |_____^
 
 error: missing documentation for a struct field
    --> $DIR/missing-doc.rs:128:9
@@ -186,22 +181,20 @@ error: missing documentation for a variant
 error: missing documentation for an enum
    --> $DIR/missing-doc.rs:134:1
     |
-134 |   pub enum PubBaz {
-    |  _^ starting here...
+134 | / pub enum PubBaz {
 135 | |     PubBazA {
 136 | |         a: isize,
 137 | |     },
 138 | | }
-    | |_^ ...ending here
+    | |_^
 
 error: missing documentation for a variant
    --> $DIR/missing-doc.rs:135:5
     |
-135 |       PubBazA {
-    |  _____^ starting here...
+135 | /     PubBazA {
 136 | |         a: isize,
 137 | |     },
-    | |_____^ ...ending here
+    | |_____^
 
 error: missing documentation for a struct field
    --> $DIR/missing-doc.rs:136:9
@@ -236,15 +229,14 @@ error: missing documentation for a static
 error: missing documentation for a module
    --> $DIR/missing-doc.rs:180:1
     |
-180 |   mod internal_impl {
-    |  _^ starting here...
+180 | / mod internal_impl {
 181 | |     /// dox
 182 | |     pub fn documented() {}
 183 | |     pub fn undocumented1() {}
 ...   |
 192 | |     }
 193 | | }
-    | |_^ ...ending here
+    | |_^
 
 error: missing documentation for a function
    --> $DIR/missing-doc.rs:183:5
