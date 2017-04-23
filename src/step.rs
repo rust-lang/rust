@@ -163,7 +163,11 @@ impl<'a, 'b, 'tcx> ConstantExtractor<'a, 'b, 'tcx> {
         self.try(|this| {
             let mir = this.ecx.load_mir(instance.def)?;
             this.ecx.globals.insert(cid, Global::uninitialized(mir.return_ty));
-            let mutable = !shared || mir.return_ty.type_contents(this.ecx.tcx).interior_unsafe();
+            let mutable = !shared ||
+                !mir.return_ty.is_freeze(
+                    this.ecx.tcx,
+                    &this.ecx.tcx.empty_parameter_environment(),
+                    span);
             let cleanup = StackPopCleanup::MarkStatic(mutable);
             let name = ty::tls::with(|tcx| tcx.item_path_str(def_id));
             trace!("pushing stack frame for global: {}", name);

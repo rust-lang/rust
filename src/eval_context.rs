@@ -1944,13 +1944,13 @@ pub fn needs_drop_glue<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, t: Ty<'tcx>) -> bo
     // code quality is unknown at this time.)
 
     let env = tcx.empty_parameter_environment();
-    if !tcx.type_needs_drop_given_env(t, &env) {
+    if !t.needs_drop(tcx, &env) {
         return false;
     }
     match t.sty {
         ty::TyAdt(def, _) if def.is_box() => {
             let typ = t.boxed_ty();
-            if !tcx.type_needs_drop_given_env(typ, &env) && type_is_sized(tcx, typ) {
+            if !typ.needs_drop(tcx, &env) && type_is_sized(tcx, typ) {
                 tcx.infer_ctxt((), traits::Reveal::All).enter(|infcx| {
                     let layout = t.layout(&infcx).unwrap();
                     if layout.size(&tcx.data_layout).bytes() == 0 {
