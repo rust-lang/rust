@@ -89,9 +89,6 @@ pub use btree_set::BTreeSet;
 #[doc(no_inline)]
 pub use linked_list::LinkedList;
 #[doc(no_inline)]
-#[allow(deprecated)]
-pub use enum_set::EnumSet;
-#[doc(no_inline)]
 pub use vec_deque::VecDeque;
 #[doc(no_inline)]
 pub use string::String;
@@ -107,7 +104,6 @@ mod macros;
 pub mod binary_heap;
 mod btree;
 pub mod borrow;
-pub mod enum_set;
 pub mod fmt;
 pub mod linked_list;
 pub mod range;

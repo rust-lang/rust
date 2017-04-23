@@ -340,19 +340,6 @@ impl<T> Rc<T> {
         }
     }
 
-    /// Checks whether [`Rc::try_unwrap`][try_unwrap] would return
-    /// [`Ok`].
-    ///
-    /// [try_unwrap]: struct.Rc.html#method.try_unwrap
-    /// [`Ok`]: ../../std/result/enum.Result.html#variant.Ok
-    #[unstable(feature = "rc_would_unwrap",
-               reason = "just added for niche usecase",
-               issue = "28356")]
-    #[rustc_deprecated(since = "1.15.0", reason = "too niche; use `strong_count` instead")]
-    pub fn would_unwrap(this: &Self) -> bool {
-        Rc::strong_count(&this) == 1
-    }
-
     /// Consumes the `Rc`, returning the wrapped pointer.
     ///
     /// To avoid a memory leak the pointer must be converted back to an `Rc` using
@@ -532,11 +519,7 @@ impl<T: ?Sized> Rc<T> {
     ///
     /// [weak]: struct.Weak.html
     #[inline]
-    #[unstable(feature = "is_unique", reason = "uniqueness has unclear meaning",
-               issue = "28356")]
-    #[rustc_deprecated(since = "1.15.0",
-                       reason = "too niche; use `strong_count` and `weak_count` instead")]
-    pub fn is_unique(this: &Self) -> bool {
+    fn is_unique(this: &Self) -> bool {
         Rc::weak_count(this) == 0 && Rc::strong_count(this) == 1
     }
 
