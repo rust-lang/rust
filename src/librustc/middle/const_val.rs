@@ -38,12 +38,13 @@ pub enum ConstVal<'tcx> {
     Str(InternedString),
     ByteStr(Rc<Vec<u8>>),
     Bool(bool),
+    Char(char),
+    Variant(DefId),
     Function(DefId, &'tcx Substs<'tcx>),
     Struct(BTreeMap<ast::Name, ConstVal<'tcx>>),
     Tuple(Vec<ConstVal<'tcx>>),
     Array(Vec<ConstVal<'tcx>>),
     Repeat(Box<ConstVal<'tcx>>, u64),
-    Char(char),
 }
 
 impl<'tcx> ConstVal<'tcx> {
@@ -54,12 +55,13 @@ impl<'tcx> ConstVal<'tcx> {
             Str(_) => "string literal",
             ByteStr(_) => "byte string literal",
             Bool(_) => "boolean",
+            Char(..) => "char",
+            Variant(_) => "enum variant",
             Struct(_) => "struct",
             Tuple(_) => "tuple",
             Function(..) => "function definition",
             Array(..) => "array",
             Repeat(..) => "repeat",
-            Char(..) => "char",
         }
     }
 
@@ -85,7 +87,6 @@ pub enum ErrKind<'tcx> {
     MissingStructField,
     NegateOn(ConstVal<'tcx>),
     NotOn(ConstVal<'tcx>),
-    CallOn(ConstVal<'tcx>),
 
     NonConstPath,
     UnimplementedConstVal(&'static str),
@@ -145,7 +146,6 @@ impl<'a, 'gcx, 'tcx> ConstEvalErr<'tcx> {
             CannotCast => simple!("can't cast this type"),
             NegateOn(ref const_val) => simple!("negate on {}", const_val.description()),
             NotOn(ref const_val) => simple!("not on {}", const_val.description()),
-            CallOn(ref const_val) => simple!("call on {}", const_val.description()),
 
             MissingStructField  => simple!("nonexistent struct field"),
             NonConstPath        => simple!("non-constant path in constant expression"),
@@ -227,7 +227,8 @@ pub fn eval_length(tcx: TyCtxt,
 {
     let count_expr = &tcx.hir.body(count).value;
     let count_def_id = tcx.hir.body_owner_def_id(count);
-    match ty::queries::monomorphic_const_eval::get(tcx, count_expr.span, count_def_id) {
+    let substs = Substs::empty();
+    match ty::queries::const_eval::get(tcx, count_expr.span, (count_def_id, substs)) {
         Ok(Integral(Usize(count))) => {
             let val = count.as_u64(tcx.sess.target.uint_type);
             assert_eq!(val as usize as u64, val);

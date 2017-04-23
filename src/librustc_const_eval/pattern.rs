@@ -116,6 +116,7 @@ fn print_const_val(value: &ConstVal, f: &mut fmt::Formatter) -> fmt::Result {
         ConstVal::ByteStr(ref b) => write!(f, "{:?}", &b[..]),
         ConstVal::Bool(b) => write!(f, "{:?}", b),
         ConstVal::Char(c) => write!(f, "{:?}", c),
+        ConstVal::Variant(_) |
         ConstVal::Struct(_) |
         ConstVal::Tuple(_) |
         ConstVal::Function(..) |
@@ -587,11 +588,16 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
                 let substs = self.tables.node_id_item_substs(id)
                     .unwrap_or_else(|| tcx.intern_substs(&[]));
                 match eval::lookup_const_by_id(tcx, def_id, substs) {
-                    Some((const_expr, const_tables)) => {
+                    Some((def_id, _substs)) => {
                         // Enter the inlined constant's tables temporarily.
                         let old_tables = self.tables;
-                        self.tables = const_tables;
-                        let pat = self.lower_const_expr(const_expr, pat_id, span);
+                        self.tables = tcx.item_tables(def_id);
+                        let body = if let Some(id) = tcx.hir.as_local_node_id(def_id) {
+                            tcx.hir.body(tcx.hir.body_owned_by(id))
+                        } else {
+                            tcx.sess.cstore.item_body(tcx, def_id)
+                        };
+                        let pat = self.lower_const_expr(&body.value, pat_id, span);
                         self.tables = old_tables;
                         return pat;
                     }
@@ -615,7 +621,12 @@ impl<'a, 'gcx, 'tcx> PatternContext<'a, 'gcx, 'tcx> {
         let const_cx = eval::ConstContext::with_tables(self.tcx.global_tcx(), self.tables);
         match const_cx.eval(expr) {
             Ok(value) => {
-                PatternKind::Constant { value: value }
+                if let ConstVal::Variant(def_id) = value {
+                    let ty = self.tables.expr_ty(expr);
+                    self.lower_variant_or_leaf(Def::Variant(def_id), ty, vec![])
+                } else {
+                    PatternKind::Constant { value: value }
+                }
             }
             Err(e) => {
                 self.errors.push(PatternError::ConstEval(e));

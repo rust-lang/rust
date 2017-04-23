@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(const_fn)]
+#![crate_type = "lib"]
 
-fn f(x: usize) -> usize {
-    x
+#[repr(u32)]
+pub enum Foo {
+    Foo = Private::Variant as u32
 }
 
-fn main() {
-    let _ = [0; f(2)];
-    //~^ ERROR calls in constants are limited to constant functions
+#[repr(u8)]
+enum Private {
+    Variant = 42
+}
+
+#[inline(always)]
+pub fn foo() -> Foo {
+    Foo::Foo
 }

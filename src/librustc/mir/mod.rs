@@ -1307,10 +1307,11 @@ fn fmt_const_val<W: Write>(fmt: &mut W, const_val: &ConstVal) -> fmt::Result {
             write!(fmt, "b\"{}\"", escaped)
         }
         Bool(b) => write!(fmt, "{:?}", b),
+        Char(c) => write!(fmt, "{:?}", c),
+        Variant(def_id) |
         Function(def_id, _) => write!(fmt, "{}", item_path_str(def_id)),
         Struct(_) | Tuple(_) | Array(_) | Repeat(..) =>
             bug!("ConstVal `{:?}` should not be in MIR", const_val),
-        Char(c) => write!(fmt, "{:?}", c),
     }
 }
 
