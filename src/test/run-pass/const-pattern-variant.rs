@@ -10,11 +10,29 @@
 
 #![feature(const_fn)]
 
-fn f(x: usize) -> usize {
-    x
+#[derive(PartialEq, Eq)]
+enum Cake {
+    BlackForest,
+    Marmor,
+}
+use Cake::*;
+
+const BOO: (Cake, Cake) = (Marmor, BlackForest);
+const FOO: Cake = BOO.1;
+
+const fn foo() -> Cake {
+    Marmor
 }
 
+const WORKS: Cake = Marmor;
+
+const GOO: Cake = foo();
+
 fn main() {
-    let _ = [0; f(2)];
-    //~^ ERROR calls in constants are limited to constant functions
+    match BlackForest {
+        FOO => println!("hi"),
+        GOO => println!("meh"),
+        WORKS => println!("möp"),
+        _ => println!("bye"),
+    }
 }

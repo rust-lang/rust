@@ -249,8 +249,8 @@ pub trait CrateStore {
     fn load_macro(&self, did: DefId, sess: &Session) -> LoadedMacro;
 
     // misc. metadata
-    fn maybe_get_item_body<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
-                                     -> Option<&'tcx hir::Body>;
+    fn item_body<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
+                           -> &'tcx hir::Body;
     fn item_body_nested_bodies(&self, def: DefId) -> BTreeMap<hir::BodyId, hir::Body>;
     fn const_is_rvalue_promotable_to_static(&self, def: DefId) -> bool;
 
@@ -399,9 +399,9 @@ impl CrateStore for DummyCrateStore {
     fn load_macro(&self, did: DefId, sess: &Session) -> LoadedMacro { bug!("load_macro") }
 
     // misc. metadata
-    fn maybe_get_item_body<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
-                                     -> Option<&'tcx hir::Body> {
-        bug!("maybe_get_item_body")
+    fn item_body<'a, 'tcx>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>, def: DefId)
+                           -> &'tcx hir::Body {
+        bug!("item_body")
     }
     fn item_body_nested_bodies(&self, def: DefId) -> BTreeMap<hir::BodyId, hir::Body> {
         bug!("item_body_nested_bodies")

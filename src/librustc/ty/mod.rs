@@ -1693,6 +1693,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
         }
     }
 
+    #[inline]
     pub fn discriminants(&'a self, tcx: TyCtxt<'a, 'gcx, 'tcx>)
                          -> impl Iterator<Item=ConstInt> + 'a {
         let repr_type = self.repr.discr_type();
@@ -1701,11 +1702,18 @@ impl<'a, 'gcx, 'tcx> AdtDef {
         self.variants.iter().map(move |v| {
             let mut discr = prev_discr.map_or(initial, |d| d.wrap_incr());
             if let VariantDiscr::Explicit(expr_did) = v.discr {
-                match queries::monomorphic_const_eval::get(tcx, DUMMY_SP, expr_did) {
+                let substs = Substs::empty();
+                match queries::const_eval::get(tcx, DUMMY_SP, (expr_did, substs)) {
                     Ok(ConstVal::Integral(v)) => {
                         discr = v;
                     }
-                    _ => {}
+                    err => {
+                        if !expr_did.is_local() {
+                            span_bug!(tcx.def_span(expr_did),
+                                "variant discriminant evaluation succeeded \
+                                 in its crate but failed locally: {:?}", err);
+                        }
+                    }
                 }
             }
             prev_discr = Some(discr);
@@ -1733,12 +1741,21 @@ impl<'a, 'gcx, 'tcx> AdtDef {
                     explicit_index -= distance;
                 }
                 ty::VariantDiscr::Explicit(expr_did) => {
-                    match queries::monomorphic_const_eval::get(tcx, DUMMY_SP, expr_did) {
+                    let substs = Substs::empty();
+                    match queries::const_eval::get(tcx, DUMMY_SP, (expr_did, substs)) {
                         Ok(ConstVal::Integral(v)) => {
                             explicit_value = v;
                             break;
                         }
-                        _ => {
+                        err => {
+                            if !expr_did.is_local() {
+                                span_bug!(tcx.def_span(expr_did),
+                                    "variant discriminant evaluation succeeded \
+                                     in its crate but failed locally: {:?}", err);
+                            }
+                            if explicit_index == 0 {
+                                break;
+                            }
                             explicit_index -= 1;
                         }
                     }

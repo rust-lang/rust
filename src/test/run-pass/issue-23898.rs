@@ -1,4 +1,4 @@
-// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(const_fn)]
+// Note: This test was used to demonstrate #5873 (now #23898).
 
-fn f(x: usize) -> usize {
-    x
-}
+enum State { ST_NULL, ST_WHITESPACE }
 
 fn main() {
-    let _ = [0; f(2)];
-    //~^ ERROR calls in constants are limited to constant functions
+    [State::ST_NULL; (State::ST_WHITESPACE as usize)];
 }
