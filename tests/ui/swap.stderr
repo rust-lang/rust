@@ -1,11 +1,10 @@
 error: this looks like you are swapping elements of `foo` manually
   --> $DIR/swap.rs:11:5
    |
-11 |       let temp = foo[0];
-   |  _____^ starting here...
+11 | /     let temp = foo[0];
 12 | |     foo[0] = foo[1];
 13 | |     foo[1] = temp;
-   | |_________________^ ...ending here
+   | |_________________^
    |
    = note: #[deny(manual_swap)] implied by #[deny(clippy)]
 note: lint level defined here
@@ -19,11 +18,10 @@ help: try
 error: this looks like you are swapping elements of `foo` manually
   --> $DIR/swap.rs:23:5
    |
-23 |       let temp = foo[0];
-   |  _____^ starting here...
+23 | /     let temp = foo[0];
 24 | |     foo[0] = foo[1];
 25 | |     foo[1] = temp;
-   | |_________________^ ...ending here
+   | |_________________^
    |
    = note: #[deny(manual_swap)] implied by #[deny(clippy)]
 help: try
@@ -32,11 +30,10 @@ help: try
 error: this looks like you are swapping elements of `foo` manually
   --> $DIR/swap.rs:35:5
    |
-35 |       let temp = foo[0];
-   |  _____^ starting here...
+35 | /     let temp = foo[0];
 36 | |     foo[0] = foo[1];
 37 | |     foo[1] = temp;
-   | |_________________^ ...ending here
+   | |_________________^
    |
    = note: #[deny(manual_swap)] implied by #[deny(clippy)]
 help: try
@@ -46,10 +43,10 @@ error: this looks like you are swapping `a` and `b` manually
   --> $DIR/swap.rs:60:7
    |
 60 |       ; let t = a;
-   |  _______^ starting here...
+   |  _______^
 61 | |     a = b;
 62 | |     b = t;
-   | |_________^ ...ending here
+   | |_________^
    |
    = note: #[deny(manual_swap)] implied by #[deny(clippy)]
 help: try
@@ -60,10 +57,10 @@ error: this looks like you are swapping `c.0` and `a` manually
   --> $DIR/swap.rs:77:7
    |
 77 |       ; let t = c.0;
-   |  _______^ starting here...
+   |  _______^
 78 | |     c.0 = a;
 79 | |     a = t;
-   | |_________^ ...ending here
+   | |_________^
    |
    = note: #[deny(manual_swap)] implied by #[deny(clippy)]
 help: try
@@ -73,10 +70,9 @@ help: try
 error: this looks like you are trying to swap `a` and `b`
   --> $DIR/swap.rs:53:5
    |
-53 |       a = b;
-   |  _____^ starting here...
+53 | /     a = b;
 54 | |     b = a;
-   | |_________^ ...ending here
+   | |_________^
    |
    = note: #[deny(almost_swapped)] implied by #[deny(clippy)]
 note: lint level defined here
@@ -91,10 +87,9 @@ help: try
 error: this looks like you are trying to swap `c.0` and `a`
   --> $DIR/swap.rs:70:5
    |
-70 |       c.0 = a;
-   |  _____^ starting here...
+70 | /     c.0 = a;
 71 | |     a = c.0;
-   | |___________^ ...ending here
+   | |___________^
    |
    = note: #[deny(almost_swapped)] implied by #[deny(clippy)]
 help: try

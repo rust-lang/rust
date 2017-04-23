@@ -1,11 +1,10 @@
 error: this function has too many arguments (8/7)
   --> $DIR/functions.rs:11:1
    |
-11 |   fn bad(_one: u32, _two: u32, _three: &str, _four: bool, _five: f32, _six: f32, _seven: bool, _eight: ()) {
-   |  _^ starting here...
+11 | / fn bad(_one: u32, _two: u32, _three: &str, _four: bool, _five: f32, _six: f32, _seven: bool, _eight: ()) {
 12 | |
 13 | | }
-   | |_^ ...ending here
+   | |_^
    |
    = note: #[deny(too_many_arguments)] implied by #[deny(clippy)]
 note: lint level defined here

@@ -1,12 +1,11 @@
 error: this loop never actually loops
   --> $DIR/never_loop.rs:8:5
    |
-8  |       loop {
-   |  _____^ starting here...
+8  | /     loop {
 9  | |         println!("This is only ever printed once");
 10 | |         break;
 11 | |     }
-   | |_____^ ...ending here
+   | |_____^
    |
 note: lint level defined here
   --> $DIR/never_loop.rs:4:9
@@ -17,25 +16,23 @@ note: lint level defined here
 error: this loop never actually loops
   --> $DIR/never_loop.rs:21:5
    |
-21 |       loop {
-   |  _____^ starting here...
+21 | /     loop {
 22 | |         loop {
 23 | |             // another one
 24 | |             break;
 25 | |         }
 26 | |         break;
 27 | |     }
-   | |_____^ ...ending here
+   | |_____^
 
 error: this loop never actually loops
   --> $DIR/never_loop.rs:22:9
    |
-22 |           loop {
-   |  _________^ starting here...
+22 | /         loop {
 23 | |             // another one
 24 | |             break;
 25 | |         }
-   | |_________^ ...ending here
+   | |_________^
 
 error: aborting due to 3 previous errors
 
