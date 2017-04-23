@@ -1850,4 +1850,6 @@ register_diagnostics! {
     E0495, // cannot infer an appropriate lifetime due to conflicting requirements
     E0566, // conflicting representation hints
     E0587, // conflicting packed and align representation hints
+    E0593, // closure argument count mismatch
+    E0594  // closure mismatch
 }
