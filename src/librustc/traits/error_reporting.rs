@@ -35,7 +35,7 @@ use rustc::lint::builtin::EXTRA_REQUIREMENT_IN_IMPL;
 use std::fmt;
 use syntax::ast::{self, NodeId};
 use ty::{self, AdtKind, ToPredicate, ToPolyTraitRef, Ty, TyCtxt, TypeFoldable, TyInfer, TyVar};
-use ty::error::ExpectedFound;
+use ty::error::{ExpectedFound, TypeError};
 use ty::fast_reject;
 use ty::fold::TypeFolder;
 use ty::subst::Subst;
@@ -663,13 +663,63 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                 if actual_trait_ref.self_ty().references_error() {
                     return;
                 }
-                struct_span_err!(self.tcx.sess, span, E0281,
-                    "type mismatch: the type `{}` implements the trait `{}`, \
-                     but the trait `{}` is required ({})",
-                    expected_trait_ref.self_ty(),
-                    expected_trait_ref,
-                    actual_trait_ref,
-                    e)
+                let expected_trait_ty = expected_trait_ref.self_ty();
+                if expected_trait_ty.is_closure() {
+                    if let &TypeError::TupleSize(ref expected_found) = e {
+                        let mut err = struct_span_err!(self.tcx.sess, span, E0593,
+                            "closure takes {} parameter{} but {} parameter{} are required here",
+                            expected_found.found,
+                            if expected_found.found == 1 { "" } else { "s" },
+                            expected_found.expected,
+                            if expected_found.expected == 1 { "" } else { "s" });
+
+                        err.span_label(span, &format!("expected closure that takes {} parameter{}",
+                                                      expected_found.expected,
+                                                      if expected_found.expected == 1 {
+                                                          ""
+                                                      } else {
+                                                          "s"
+                                                      }));
+                        let closure_span = expected_trait_ty.ty_to_def_id().and_then(|did| {
+                            self.tcx.hir.span_if_local(did)
+                        });
+                        if let Some(span) = closure_span {
+                            err.span_label(span, &format!("takes {} parameter{}",
+                                                          expected_found.found,
+                                                          if expected_found.found == 1 {
+                                                              ""
+                                                          } else {
+                                                              "s"
+                                                          }));
+                        }
+                        err
+                    } else {
+                        let mut err = struct_span_err!(self.tcx.sess, span, E0594,
+                            "closure mismatch: `{}` implements the trait `{}`, \
+                             but the trait `{}` is required",
+                            expected_trait_ty,
+                            expected_trait_ref,
+                            actual_trait_ref);
+
+                        let closure_span = expected_trait_ty.ty_to_def_id().and_then(|did| {
+                            self.tcx.hir.span_if_local(did)
+                        });
+                        if let Some(span) = closure_span {
+                            err.span_label(span, &format!("{}", e));
+                        } else {
+                            err.note(&format!("{}", e));
+                        }
+                        err
+                    }
+                } else {
+                    struct_span_err!(self.tcx.sess, span, E0281,
+                        "type mismatch: the type `{}` implements the trait `{}`, \
+                         but the trait `{}` is required ({})",
+                        expected_trait_ty,
+                        expected_trait_ref,
+                        actual_trait_ref,
+                        e)
+                }
             }
 
             TraitNotObjectSafe(did) => {
