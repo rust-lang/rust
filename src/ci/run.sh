@@ -13,12 +13,17 @@ set -e
 
 if [ "$NO_CHANGE_USER" = "" ]; then
   if [ "$LOCAL_USER_ID" != "" ]; then
+    apt-get update && apt-get install -y eatmydata
+    ls -hl /usr/lib/x86_64-linux-gnu/libeatmydata.so
+    export LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libeatmydata.so
+
     useradd --shell /bin/bash -u $LOCAL_USER_ID -o -c "" -m user
     export HOME=/home/user
     unset LOCAL_USER_ID
     exec su --preserve-environment -c "env PATH=$PATH \"$0\"" user
   fi
 fi
+echo "PRE: $LD_PRELOAD"
 
 ci_dir=`cd $(dirname $0) && pwd`
 source "$ci_dir/shared.sh"

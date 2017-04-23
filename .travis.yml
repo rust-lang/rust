@@ -127,6 +127,7 @@ matrix:
 
 env:
   global:
+    - LD_PRELOAD=/usr/lib/libeatmydata/libeatmydata.so
     - SCCACHE_BUCKET=rust-lang-ci-sccache
     - AWS_ACCESS_KEY_ID=AKIAIMX7VLAS3PZAVLUQ
     # AWS_SECRET_ACCESS_KEY=...
