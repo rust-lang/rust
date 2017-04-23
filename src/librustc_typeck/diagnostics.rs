@@ -4154,7 +4154,6 @@ register_diagnostics! {
 //  E0248, // value used as a type, now reported earlier during resolution as E0412
 //  E0249,
 //  E0319, // trait impls for defaulted traits allowed just for structs/enums
-    E0320, // recursive overflow during dropck
 //  E0372, // coherence not object safe
     E0377, // the trait `CoerceUnsized` may only be implemented for a coercion
            // between structures with the same definition
