@@ -48,6 +48,21 @@ pub struct Constraint<'a> {
     pub variance: &'a VarianceTerm<'a>,
 }
 
+/// To build constriants, we visit one item (type, trait) at a time
+/// and look at its contents. So e.g. if we have
+///
+///     struct Foo<T> {
+///         b: Bar<T>
+///     }
+///
+/// then while we are visiting `Bar<T>`, the `CurrentItem` would have
+/// the def-id and generics of `Foo`.
+#[allow(dead_code)] // TODO -- `def_id` field not used yet
+pub struct CurrentItem<'a> {
+    def_id: DefId,
+    generics: &'a ty::Generics,
+}
+
 pub fn add_constraints_from_crate<'a, 'tcx>(terms_cx: TermsContext<'a, 'tcx>)
                                             -> ConstraintContext<'a, 'tcx> {
     let tcx = terms_cx.tcx;
@@ -73,7 +88,7 @@ pub fn add_constraints_from_crate<'a, 'tcx>(terms_cx: TermsContext<'a, 'tcx>)
 impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for ConstraintContext<'a, 'tcx> {
     fn visit_item(&mut self, item: &hir::Item) {
         let tcx = self.terms_cx.tcx;
-        let did = tcx.hir.local_def_id(item.id);
+        let def_id = tcx.hir.local_def_id(item.id);
 
         debug!("visit_item item={}", tcx.hir.node_to_string(item.id));
 
@@ -82,6 +97,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for ConstraintContext<'a, 'tcx> {
             hir::ItemStruct(..) |
             hir::ItemUnion(..) => {
                 let generics = tcx.generics_of(did);
+                let current_item = &CurrentItem { def_id, generics };
 
                 // Not entirely obvious: constraints on structs/enums do not
                 // affect the variance of their type parameters. See discussion
@@ -90,18 +106,19 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for ConstraintContext<'a, 'tcx> {
                 // self.add_constraints_from_generics(generics);
 
                 for field in tcx.adt_def(did).all_fields() {
-                    self.add_constraints_from_ty(generics,
-                                                 tcx.type_of(field.did),
+                    self.add_constraints_from_ty(current_item,
+                                                 tcx.item_type(field.did),
                                                  self.covariant);
                 }
             }
             hir::ItemTrait(..) => {
                 let generics = tcx.generics_of(did);
+                let current_item = &CurrentItem { def_id, generics };
                 let trait_ref = ty::TraitRef {
-                    def_id: did,
-                    substs: Substs::identity_for_item(tcx, did)
+                    def_id: def_id,
+                    substs: Substs::identity_for_item(tcx, def_id)
                 };
-                self.add_constraints_from_trait_ref(generics,
+                self.add_constraints_from_trait_ref(current_item,
                                                     trait_ref,
                                                     self.invariant);
             }
@@ -279,7 +296,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
     }
 
     fn add_constraints_from_trait_ref(&mut self,
-                                      generics: &ty::Generics,
+                                      current: &CurrentItem,
                                       trait_ref: ty::TraitRef<'tcx>,
                                       variance: VarianceTermPtr<'a>) {
         debug!("add_constraints_from_trait_ref: trait_ref={:?} variance={:?}",
@@ -293,7 +310,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
         // README.md for a discussion on dep-graph management.
         self.tcx().dep_graph.read(VarianceDepNode(trait_ref.def_id));
 
-        self.add_constraints_from_substs(generics,
+        self.add_constraints_from_substs(current,
                                          trait_ref.def_id,
                                          &trait_generics.types,
                                          &trait_generics.regions,
@@ -305,7 +322,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
     /// in a context with the generics defined in `generics` and
     /// ambient variance `variance`
     fn add_constraints_from_ty(&mut self,
-                               generics: &ty::Generics,
+                               current: &CurrentItem,
                                ty: Ty<'tcx>,
                                variance: VarianceTermPtr<'a>) {
         debug!("add_constraints_from_ty(ty={:?}, variance={:?})",
@@ -325,22 +342,22 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
 
             ty::TyRef(region, ref mt) => {
                 let contra = self.contravariant(variance);
-                self.add_constraints_from_region(generics, region, contra);
-                self.add_constraints_from_mt(generics, mt, variance);
+                self.add_constraints_from_region(current, region, contra);
+                self.add_constraints_from_mt(current, mt, variance);
             }
 
             ty::TyArray(typ, _) |
             ty::TySlice(typ) => {
-                self.add_constraints_from_ty(generics, typ, variance);
+                self.add_constraints_from_ty(current, typ, variance);
             }
 
             ty::TyRawPtr(ref mt) => {
-                self.add_constraints_from_mt(generics, mt, variance);
+                self.add_constraints_from_mt(current, mt, variance);
             }
 
             ty::TyTuple(subtys, _) => {
                 for &subty in subtys {
-                    self.add_constraints_from_ty(generics, subty, variance);
+                    self.add_constraints_from_ty(current, subty, variance);
                 }
             }
 
@@ -352,7 +369,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 // README.md for a discussion on dep-graph management.
                 self.tcx().dep_graph.read(VarianceDepNode(def.did));
 
-                self.add_constraints_from_substs(generics,
+                self.add_constraints_from_substs(current,
                                                  def.did,
                                                  &adt_generics.types,
                                                  &adt_generics.regions,
@@ -369,7 +386,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 // README.md for a discussion on dep-graph management.
                 self.tcx().dep_graph.read(VarianceDepNode(trait_ref.def_id));
 
-                self.add_constraints_from_substs(generics,
+                self.add_constraints_from_substs(current,
                                                  trait_ref.def_id,
                                                  &trait_generics.types,
                                                  &trait_generics.regions,
@@ -380,25 +397,25 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             ty::TyDynamic(ref data, r) => {
                 // The type `Foo<T+'a>` is contravariant w/r/t `'a`:
                 let contra = self.contravariant(variance);
-                self.add_constraints_from_region(generics, r, contra);
+                self.add_constraints_from_region(current, r, contra);
 
                 if let Some(p) = data.principal() {
                     let poly_trait_ref = p.with_self_ty(self.tcx(), self.tcx().types.err);
-                    self.add_constraints_from_trait_ref(generics, poly_trait_ref.0, variance);
+                    self.add_constraints_from_trait_ref(current, poly_trait_ref.0, variance);
                 }
 
                 for projection in data.projection_bounds() {
-                    self.add_constraints_from_ty(generics, projection.0.ty, self.invariant);
+                    self.add_constraints_from_ty(current, projection.0.ty, self.invariant);
                 }
             }
 
             ty::TyParam(ref data) => {
-                assert_eq!(generics.parent, None);
+                assert_eq!(current.generics.parent, None);
                 let mut i = data.idx as usize;
-                if !generics.has_self || i > 0 {
-                    i -= generics.regions.len();
+                if !current.generics.has_self || i > 0 {
+                    i -= current.generics.regions.len();
                 }
-                let def_id = generics.types[i].def_id;
+                let def_id = current.generics.types[i].def_id;
                 let node_id = self.tcx().hir.as_local_node_id(def_id).unwrap();
                 match self.terms_cx.inferred_map.get(&node_id) {
                     Some(&index) => {
@@ -414,7 +431,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
 
             ty::TyFnDef(.., sig) |
             ty::TyFnPtr(sig) => {
-                self.add_constraints_from_sig(generics, sig, variance);
+                self.add_constraints_from_sig(current, sig, variance);
             }
 
             ty::TyError => {
@@ -433,7 +450,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
     /// Adds constraints appropriate for a nominal type (enum, struct,
     /// object, etc) appearing in a context with ambient variance `variance`
     fn add_constraints_from_substs(&mut self,
-                                   generics: &ty::Generics,
+                                   current: &CurrentItem,
                                    def_id: DefId,
                                    type_param_defs: &[ty::TypeParameterDef],
                                    region_param_defs: &[ty::RegionParameterDef],
@@ -451,41 +468,41 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             debug!("add_constraints_from_substs: variance_decl={:?} variance_i={:?}",
                    variance_decl,
                    variance_i);
-            self.add_constraints_from_ty(generics, substs_ty, variance_i);
+            self.add_constraints_from_ty(current, substs_ty, variance_i);
         }
 
         for p in region_param_defs {
             let variance_decl = self.declared_variance(p.def_id, def_id, p.index as usize);
             let variance_i = self.xform(variance, variance_decl);
             let substs_r = substs.region_for_def(p);
-            self.add_constraints_from_region(generics, substs_r, variance_i);
+            self.add_constraints_from_region(current, substs_r, variance_i);
         }
     }
 
     /// Adds constraints appropriate for a function with signature
     /// `sig` appearing in a context with ambient variance `variance`
     fn add_constraints_from_sig(&mut self,
-                                generics: &ty::Generics,
+                                current: &CurrentItem,
                                 sig: ty::PolyFnSig<'tcx>,
                                 variance: VarianceTermPtr<'a>) {
         let contra = self.contravariant(variance);
         for &input in sig.0.inputs() {
-            self.add_constraints_from_ty(generics, input, contra);
+            self.add_constraints_from_ty(current, input, contra);
         }
-        self.add_constraints_from_ty(generics, sig.0.output(), variance);
+        self.add_constraints_from_ty(current, sig.0.output(), variance);
     }
 
     /// Adds constraints appropriate for a region appearing in a
     /// context with ambient variance `variance`
     fn add_constraints_from_region(&mut self,
-                                   generics: &ty::Generics,
+                                   current: &CurrentItem,
                                    region: ty::Region<'tcx>,
                                    variance: VarianceTermPtr<'a>) {
         match *region {
             ty::ReEarlyBound(ref data) => {
-                assert_eq!(generics.parent, None);
-                let i = data.index as usize - generics.has_self as usize;
-                let def_id = generics.regions[i].def_id;
+                assert_eq!(current.generics.parent, None);
+                let i = data.index as usize - current.generics.has_self as usize;
+                let def_id = current.generics.regions[i].def_id;
                 let node_id = self.tcx().hir.as_local_node_id(def_id).unwrap();
                 if self.is_to_be_inferred(node_id) {
                     let index = self.inferred_index(node_id);
@@ -518,17 +535,17 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
     /// Adds constraints appropriate for a mutability-type pair
     /// appearing in a context with ambient variance `variance`
     fn add_constraints_from_mt(&mut self,
-                               generics: &ty::Generics,
+                               current: &CurrentItem,
                                mt: &ty::TypeAndMut<'tcx>,
                                variance: VarianceTermPtr<'a>) {
         match mt.mutbl {
             hir::MutMutable => {
                 let invar = self.invariant(variance);
-                self.add_constraints_from_ty(generics, mt.ty, invar);
+                self.add_constraints_from_ty(current, mt.ty, invar);
             }
 
             hir::MutImmutable => {
-                self.add_constraints_from_ty(generics, mt.ty, variance);
+                self.add_constraints_from_ty(current, mt.ty, variance);
             }
         }
     }
