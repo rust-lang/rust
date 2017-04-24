@@ -959,7 +959,7 @@ impl<'tcx> MirMapPass<'tcx> for QualifyAndPromoteConstants {
             let src = MirSource::from_node(tcx, id);
 
             if let MirSource::Const(_) = src {
-                ty::queries::mir_const_qualif::get(tcx, DUMMY_SP, def_id);
+                tcx.mir_const_qualif(def_id);
                 continue;
             }
 
