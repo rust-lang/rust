@@ -217,7 +217,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         // If the type is parameterized by this region, then replace this
         // region with the current anon region binding (in other words,
         // whatever & would get replaced with).
-        let decl_generics = tcx.item_generics(def_id);
+        let decl_generics = tcx.generics_of(def_id);
         let expected_num_region_params = decl_generics.regions.len();
         let supplied_num_region_params = lifetimes.len();
         if expected_num_region_params != supplied_num_region_params {
@@ -238,7 +238,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         let is_object = self_ty.map_or(false, |ty| ty.sty == TRAIT_OBJECT_DUMMY_SELF);
         let default_needs_object_self = |p: &ty::TypeParameterDef| {
             if is_object && p.has_default {
-                if ty::queries::ty::get(tcx, span, p.def_id).has_self_ty() {
+                if ty::queries::type_of::get(tcx, span, p.def_id).has_self_ty() {
                     // There is no suitable inference default for a type parameter
                     // that references self, in an object type.
                     return true;
@@ -307,7 +307,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                     // This is a default type parameter.
                     self.normalize_ty(
                         span,
-                        ty::queries::ty::get(tcx, span, def.def_id)
+                        ty::queries::type_of::get(tcx, span, def.def_id)
                             .subst_spanned(tcx, substs, Some(span))
                     )
                 }
@@ -458,7 +458,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         debug!("create_substs_for_ast_trait_ref(trait_segment={:?})",
                trait_segment);
 
-        let trait_def = self.tcx().lookup_trait_def(trait_def_id);
+        let trait_def = self.tcx().trait_def(trait_def_id);
 
         match trait_segment.parameters {
             hir::AngleBracketedParameters(_) => {
@@ -600,7 +600,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         let substs = self.ast_path_substs_for_ty(span, did, item_segment);
         self.normalize_ty(
             span,
-            ty::queries::ty::get(self.tcx(), span, did).subst(self.tcx(), substs)
+            ty::queries::type_of::get(self.tcx(), span, did).subst(self.tcx(), substs)
         )
     }
 
@@ -1008,7 +1008,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 let node_id = tcx.hir.as_local_node_id(did).unwrap();
                 let item_id = tcx.hir.get_parent_node(node_id);
                 let item_def_id = tcx.hir.local_def_id(item_id);
-                let generics = tcx.item_generics(item_def_id);
+                let generics = tcx.generics_of(item_def_id);
                 let index = generics.type_param_to_index[&tcx.hir.local_def_id(node_id).index];
                 tcx.mk_param(index, tcx.hir.name(node_id))
             }
@@ -1018,7 +1018,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 assert_eq!(opt_self_ty, None);
                 self.prohibit_type_params(&path.segments);
 
-                let ty = ty::queries::ty::get(tcx, span, def_id);
+                let ty = ty::queries::type_of::get(tcx, span, def_id);
                 if let Some(free_substs) = self.get_free_substs() {
                     ty.subst(tcx, free_substs)
                 } else {

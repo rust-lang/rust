@@ -367,7 +367,7 @@ impl<'a, 'tcx> SpecializedDecoder<&'tcx ty::Slice<Ty<'tcx>>> for DecodeContext<'
 impl<'a, 'tcx> SpecializedDecoder<&'tcx ty::AdtDef> for DecodeContext<'a, 'tcx> {
     fn specialized_decode(&mut self) -> Result<&'tcx ty::AdtDef, Self::Error> {
         let def_id = DefId::decode(self)?;
-        Ok(self.tcx().lookup_adt_def(def_id))
+        Ok(self.tcx().adt_def(def_id))
     }
 }
 

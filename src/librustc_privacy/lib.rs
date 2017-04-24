@@ -88,7 +88,7 @@ struct ReachEverythingInTheInterfaceVisitor<'b, 'a: 'b, 'tcx: 'a> {
 
 impl<'a, 'tcx> EmbargoVisitor<'a, 'tcx> {
     fn item_ty_level(&self, item_def_id: DefId) -> Option<AccessLevel> {
-        let ty_def_id = match self.tcx.item_type(item_def_id).sty {
+        let ty_def_id = match self.tcx.type_of(item_def_id).sty {
             ty::TyAdt(adt, _) => adt.did,
             ty::TyDynamic(ref obj, ..) if obj.principal().is_some() =>
                 obj.principal().unwrap().def_id(),
@@ -236,7 +236,7 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
             hir::ItemConst(..) | hir::ItemStatic(..) |
             hir::ItemFn(..) | hir::ItemTy(..) => {
                 if item_level.is_some() {
-                    self.reach(item.id).generics().predicates().item_type();
+                    self.reach(item.id).generics().predicates().ty();
                 }
             }
             hir::ItemTrait(.., ref trait_item_refs) => {
@@ -251,7 +251,7 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
                            !trait_item_ref.defaultness.has_value() {
                             // No type to visit.
                         } else {
-                            reach.item_type();
+                            reach.ty();
                         }
                     }
                 }
@@ -264,7 +264,7 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
                     for impl_item_ref in impl_item_refs {
                         let id = impl_item_ref.id.node_id;
                         if trait_ref.is_some() || self.get(id).is_some() {
-                            self.reach(id).generics().predicates().item_type();
+                            self.reach(id).generics().predicates().ty();
                         }
                     }
                 }
@@ -278,7 +278,7 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
                 for variant in &def.variants {
                     if self.get(variant.node.data.id()).is_some() {
                         for field in variant.node.data.fields() {
-                            self.reach(field.id).item_type();
+                            self.reach(field.id).ty();
                         }
                         // Corner case: if the variant is reachable, but its
                         // enum is not, make the enum reachable as well.
@@ -290,7 +290,7 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
             hir::ItemForeignMod(ref foreign_mod) => {
                 for foreign_item in &foreign_mod.items {
                     if self.get(foreign_item.id).is_some() {
-                        self.reach(foreign_item.id).generics().predicates().item_type();
+                        self.reach(foreign_item.id).generics().predicates().ty();
                     }
                 }
             }
@@ -301,7 +301,7 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
                     self.reach(item.id).generics().predicates();
                     for field in struct_def.fields() {
                         if self.get(field.id).is_some() {
-                            self.reach(field.id).item_type();
+                            self.reach(field.id).ty();
                         }
                     }
                 }
@@ -351,7 +351,7 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
         if let hir::TyImplTrait(..) = ty.node {
             if self.get(ty.id).is_some() {
                 // Reach the (potentially private) type and the API being exposed.
-                self.reach(ty.id).item_type().predicates();
+                self.reach(ty.id).ty().predicates();
             }
         }
 
@@ -361,21 +361,21 @@ impl<'a, 'tcx> Visitor<'tcx> for EmbargoVisitor<'a, 'tcx> {
 
 impl<'b, 'a, 'tcx> ReachEverythingInTheInterfaceVisitor<'b, 'a, 'tcx> {
     fn generics(&mut self) -> &mut Self {
-        for def in &self.ev.tcx.item_generics(self.item_def_id).types {
+        for def in &self.ev.tcx.generics_of(self.item_def_id).types {
             if def.has_default {
-                self.ev.tcx.item_type(def.def_id).visit_with(self);
+                self.ev.tcx.type_of(def.def_id).visit_with(self);
             }
         }
         self
     }
 
     fn predicates(&mut self) -> &mut Self {
-        self.ev.tcx.item_predicates(self.item_def_id).visit_with(self);
+        self.ev.tcx.predicates_of(self.item_def_id).visit_with(self);
         self
     }
 
-    fn item_type(&mut self) -> &mut Self {
-        self.ev.tcx.item_type(self.item_def_id).visit_with(self);
+    fn ty(&mut self) -> &mut Self {
+        self.ev.tcx.type_of(self.item_def_id).visit_with(self);
         self
     }
 
@@ -924,21 +924,21 @@ struct SearchInterfaceForPrivateItemsVisitor<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx: 'a> SearchInterfaceForPrivateItemsVisitor<'a, 'tcx> {
     fn generics(&mut self) -> &mut Self {
-        for def in &self.tcx.item_generics(self.item_def_id).types {
+        for def in &self.tcx.generics_of(self.item_def_id).types {
             if def.has_default {
-                self.tcx.item_type(def.def_id).visit_with(self);
+                self.tcx.type_of(def.def_id).visit_with(self);
             }
         }
         self
     }
 
     fn predicates(&mut self) -> &mut Self {
-        self.tcx.item_predicates(self.item_def_id).visit_with(self);
+        self.tcx.predicates_of(self.item_def_id).visit_with(self);
         self
     }
 
-    fn item_type(&mut self) -> &mut Self {
-        self.tcx.item_type(self.item_def_id).visit_with(self);
+    fn ty(&mut self) -> &mut Self {
+        self.tcx.type_of(self.item_def_id).visit_with(self);
         self
     }
 
@@ -1104,7 +1104,7 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
             // Subitems of these items have inherited publicity
             hir::ItemConst(..) | hir::ItemStatic(..) | hir::ItemFn(..) |
             hir::ItemTy(..) => {
-                self.check(item.id, item_visibility).generics().predicates().item_type();
+                self.check(item.id, item_visibility).generics().predicates().ty();
 
                 // Recurse for e.g. `impl Trait` (see `visit_ty`).
                 self.inner_visibility = item_visibility;
@@ -1121,7 +1121,7 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
                        !trait_item_ref.defaultness.has_value() {
                         // No type to visit.
                     } else {
-                        check.item_type();
+                        check.ty();
                     }
                 }
             }
@@ -1130,7 +1130,7 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
 
                 for variant in &def.variants {
                     for field in variant.node.data.fields() {
-                        self.check(field.id, item_visibility).item_type();
+                        self.check(field.id, item_visibility).ty();
                     }
                 }
             }
@@ -1138,7 +1138,7 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
             hir::ItemForeignMod(ref foreign_mod) => {
                 for foreign_item in &foreign_mod.items {
                     let vis = ty::Visibility::from_hir(&foreign_item.vis, item.id, tcx);
-                    self.check(foreign_item.id, vis).generics().predicates().item_type();
+                    self.check(foreign_item.id, vis).generics().predicates().ty();
                 }
             }
             // Subitems of structs and unions have their own publicity
@@ -1148,7 +1148,7 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
 
                 for field in struct_def.fields() {
                     let field_visibility = ty::Visibility::from_hir(&field.vis, item.id, tcx);
-                    self.check(field.id, min(item_visibility, field_visibility)).item_type();
+                    self.check(field.id, min(item_visibility, field_visibility)).ty();
                 }
             }
             // The interface is empty
@@ -1157,7 +1157,7 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
             // Subitems of inherent impls have their own publicity
             hir::ItemImpl(.., None, _, ref impl_item_refs) => {
                 let ty_vis =
-                    self.check(item.id, ty::Visibility::Invisible).item_type().min_visibility;
+                    self.check(item.id, ty::Visibility::Invisible).ty().min_visibility;
                 self.check(item.id, ty_vis).generics().predicates();
 
                 for impl_item_ref in impl_item_refs {
@@ -1165,7 +1165,7 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
                     let impl_item_vis =
                         ty::Visibility::from_hir(&impl_item.vis, item.id, tcx);
                     self.check(impl_item.id, min(impl_item_vis, ty_vis))
-                        .generics().predicates().item_type();
+                        .generics().predicates().ty();
 
                     // Recurse for e.g. `impl Trait` (see `visit_ty`).
                     self.inner_visibility = impl_item_vis;
@@ -1176,11 +1176,11 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
             // Subitems of trait impls have inherited publicity
             hir::ItemImpl(.., Some(_), _, ref impl_item_refs) => {
                 let vis = self.check(item.id, ty::Visibility::Invisible)
-                              .item_type().impl_trait_ref().min_visibility;
+                              .ty().impl_trait_ref().min_visibility;
                 self.check(item.id, vis).generics().predicates();
                 for impl_item_ref in impl_item_refs {
                     let impl_item = self.tcx.hir.impl_item(impl_item_ref.id);
-                    self.check(impl_item.id, vis).generics().predicates().item_type();
+                    self.check(impl_item.id, vis).generics().predicates().ty();
 
                     // Recurse for e.g. `impl Trait` (see `visit_ty`).
                     self.inner_visibility = vis;
@@ -1200,7 +1200,7 @@ impl<'a, 'tcx> Visitor<'tcx> for PrivateItemsInPublicInterfacesVisitor<'a, 'tcx>
             // e.g. `impl Iterator<Item=T>` has two predicates,
             // `X: Iterator` and `<X as Iterator>::Item == T`,
             // where `X` is the `impl Iterator<Item=T>` itself,
-            // stored in `item_predicates`, not in the `Ty` itself.
+            // stored in `predicates_of`, not in the `Ty` itself.
             self.check(ty.id, self.inner_visibility).predicates();
         }
 

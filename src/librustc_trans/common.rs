@@ -563,7 +563,7 @@ pub fn def_ty<'a, 'tcx>(shared: &SharedCrateContext<'a, 'tcx>,
                         substs: &'tcx Substs<'tcx>)
                         -> Ty<'tcx>
 {
-    let ty = shared.tcx().item_type(def_id);
+    let ty = shared.tcx().type_of(def_id);
     shared.tcx().trans_apply_param_substs(substs, &ty)
 }
 

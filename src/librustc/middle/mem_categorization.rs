@@ -1159,7 +1159,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
                     Def::VariantCtor(variant_did, ..) => {
                         // univariant enums do not need downcasts
                         let enum_did = self.tcx().parent_def_id(variant_did).unwrap();
-                        if !self.tcx().lookup_adt_def(enum_did).is_univariant() {
+                        if !self.tcx().adt_def(enum_did).is_univariant() {
                             self.cat_downcast(pat, cmt.clone(), cmt.ty, variant_did)
                         } else {
                             cmt
@@ -1177,7 +1177,7 @@ impl<'a, 'gcx, 'tcx> MemCategorizationContext<'a, 'gcx, 'tcx> {
             let expected_len = match def {
                 Def::VariantCtor(def_id, CtorKind::Fn) => {
                     let enum_def = self.tcx().parent_def_id(def_id).unwrap();
-                    self.tcx().lookup_adt_def(enum_def).variant_with_id(def_id).fields.len()
+                    self.tcx().adt_def(enum_def).variant_with_id(def_id).fields.len()
                 }
                 Def::StructCtor(_, CtorKind::Fn) => {
                     match self.pat_ty(&pat)?.sty {

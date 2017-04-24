@@ -47,7 +47,7 @@ fn check_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, node_id: ast::NodeId) {
         }
 
         enforce_trait_manually_implementable(tcx, impl_def_id, trait_ref.def_id);
-        let trait_def = tcx.lookup_trait_def(trait_ref.def_id);
+        let trait_def = tcx.trait_def(trait_ref.def_id);
         trait_def.record_local_impl(tcx, impl_def_id, trait_ref);
     }
 }

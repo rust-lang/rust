@@ -42,8 +42,8 @@ use syntax_pos::Span;
 pub fn check_drop_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                  drop_impl_did: DefId)
                                  -> Result<(), ErrorReported> {
-    let dtor_self_type = tcx.item_type(drop_impl_did);
-    let dtor_predicates = tcx.item_predicates(drop_impl_did);
+    let dtor_self_type = tcx.type_of(drop_impl_did);
+    let dtor_predicates = tcx.predicates_of(drop_impl_did);
     match dtor_self_type.sty {
         ty::TyAdt(adt_def, self_to_impl_substs) => {
             ensure_drop_params_and_item_params_correspond(tcx,
@@ -85,7 +85,7 @@ fn ensure_drop_params_and_item_params_correspond<'a, 'tcx>(
         let tcx = infcx.tcx;
         let mut fulfillment_cx = traits::FulfillmentContext::new();
 
-        let named_type = tcx.item_type(self_type_did);
+        let named_type = tcx.type_of(self_type_did);
         let named_type = named_type.subst(tcx, &infcx.parameter_environment.free_substs);
 
         let drop_impl_span = tcx.def_span(drop_impl_did);
@@ -175,7 +175,7 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'a, 'tcx>(
 
     // We can assume the predicates attached to struct/enum definition
     // hold.
-    let generic_assumptions = tcx.item_predicates(self_type_did);
+    let generic_assumptions = tcx.predicates_of(self_type_did);
 
     let assumptions_in_impl_context = generic_assumptions.instantiate(tcx, &self_to_impl_substs);
     let assumptions_in_impl_context = assumptions_in_impl_context.predicates;

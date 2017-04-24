@@ -242,12 +242,12 @@ impl<'a, 'b: 'a, 'tcx: 'b> EntryBuilder<'a, 'b, 'tcx> {
     fn encode_item_variances(&mut self, def_id: DefId) -> LazySeq<ty::Variance> {
         debug!("EntryBuilder::encode_item_variances({:?})", def_id);
         let tcx = self.tcx;
-        self.lazy_seq_from_slice(&tcx.item_variances(def_id))
+        self.lazy_seq_from_slice(&tcx.variances_of(def_id))
     }
 
     fn encode_item_type(&mut self, def_id: DefId) -> Lazy<Ty<'tcx>> {
         let tcx = self.tcx;
-        let ty = tcx.item_type(def_id);
+        let ty = tcx.type_of(def_id);
         debug!("EntryBuilder::encode_item_type({:?}) => {:?}", def_id, ty);
         self.lazy(&ty)
     }
@@ -261,7 +261,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> EntryBuilder<'a, 'b, 'tcx> {
                                 (enum_did, Untracked(index)): (DefId, Untracked<usize>))
                                 -> Entry<'tcx> {
         let tcx = self.tcx;
-        let def = tcx.lookup_adt_def(enum_did);
+        let def = tcx.adt_def(enum_did);
         let variant = &def.variants[index];
         let def_id = variant.did;
         debug!("EntryBuilder::encode_enum_variant_info({:?})", def_id);
@@ -341,7 +341,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> EntryBuilder<'a, 'b, 'tcx> {
 
 impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
     fn encode_fields(&mut self, adt_def_id: DefId) {
-        let def = self.tcx.lookup_adt_def(adt_def_id);
+        let def = self.tcx.adt_def(adt_def_id);
         for (variant_index, variant) in def.variants.iter().enumerate() {
             for (field_index, field) in variant.fields.iter().enumerate() {
                 self.record(field.did,
@@ -365,7 +365,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> EntryBuilder<'a, 'b, 'tcx> {
                                                                                        usize)>))
                     -> Entry<'tcx> {
         let tcx = self.tcx;
-        let variant = &tcx.lookup_adt_def(adt_def_id).variants[variant_index];
+        let variant = &tcx.adt_def(adt_def_id).variants[variant_index];
         let field = &variant.fields[field_index];
 
         let def_id = field.did;
@@ -397,7 +397,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> EntryBuilder<'a, 'b, 'tcx> {
     fn encode_struct_ctor(&mut self, (adt_def_id, def_id): (DefId, DefId)) -> Entry<'tcx> {
         debug!("EntryBuilder::encode_struct_ctor({:?})", def_id);
         let tcx = self.tcx;
-        let variant = tcx.lookup_adt_def(adt_def_id).struct_variant();
+        let variant = tcx.adt_def(adt_def_id).struct_variant();
 
         let data = VariantData {
             ctor_kind: variant.ctor_kind,
@@ -439,13 +439,13 @@ impl<'a, 'b: 'a, 'tcx: 'b> EntryBuilder<'a, 'b, 'tcx> {
     fn encode_generics(&mut self, def_id: DefId) -> Lazy<ty::Generics> {
         debug!("EntryBuilder::encode_generics({:?})", def_id);
         let tcx = self.tcx;
-        self.lazy(tcx.item_generics(def_id))
+        self.lazy(tcx.generics_of(def_id))
     }
 
     fn encode_predicates(&mut self, def_id: DefId) -> Lazy<ty::GenericPredicates<'tcx>> {
         debug!("EntryBuilder::encode_predicates({:?})", def_id);
         let tcx = self.tcx;
-        self.lazy(&tcx.item_predicates(def_id))
+        self.lazy(&tcx.predicates_of(def_id))
     }
 
     fn encode_info_for_trait_item(&mut self, def_id: DefId) -> Entry<'tcx> {
@@ -570,7 +570,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> EntryBuilder<'a, 'b, 'tcx> {
         let (ast, mir) = if let hir::ImplItemKind::Const(_, body) = ast_item.node {
             (Some(body), true)
         } else if let hir::ImplItemKind::Method(ref sig, body) = ast_item.node {
-            let generics = self.tcx.item_generics(def_id);
+            let generics = self.tcx.generics_of(def_id);
             let types = generics.parent_types as usize + generics.types.len();
             let needs_inline = types > 0 || attr::requests_inline(&ast_item.attrs);
             let is_const_fn = sig.constness == hir::Constness::Const;
@@ -674,7 +674,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> EntryBuilder<'a, 'b, 'tcx> {
             hir::ItemTy(..) => EntryKind::Type,
             hir::ItemEnum(..) => EntryKind::Enum(get_repr_options(&tcx, def_id)),
             hir::ItemStruct(ref struct_def, _) => {
-                let variant = tcx.lookup_adt_def(def_id).struct_variant();
+                let variant = tcx.adt_def(def_id).struct_variant();
 
                 // Encode def_ids for each field and method
                 // for methods, write all the stuff get_trait_method
@@ -694,7 +694,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> EntryBuilder<'a, 'b, 'tcx> {
                 }), repr_options)
             }
             hir::ItemUnion(..) => {
-                let variant = tcx.lookup_adt_def(def_id).struct_variant();
+                let variant = tcx.adt_def(def_id).struct_variant();
                 let repr_options = get_repr_options(&tcx, def_id);
 
                 EntryKind::Union(self.lazy(&VariantData {
@@ -716,7 +716,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> EntryBuilder<'a, 'b, 'tcx> {
             hir::ItemImpl(_, polarity, ..) => {
                 let trait_ref = tcx.impl_trait_ref(def_id);
                 let parent = if let Some(trait_ref) = trait_ref {
-                    let trait_def = tcx.lookup_trait_def(trait_ref.def_id);
+                    let trait_def = tcx.trait_def(trait_ref.def_id);
                     trait_def.ancestors(def_id).skip(1).next().and_then(|node| {
                         match node {
                             specialization_graph::Node::Impl(parent) => Some(parent),
@@ -748,12 +748,12 @@ impl<'a, 'b: 'a, 'tcx: 'b> EntryBuilder<'a, 'b, 'tcx> {
                 EntryKind::Impl(self.lazy(&data))
             }
             hir::ItemTrait(..) => {
-                let trait_def = tcx.lookup_trait_def(def_id);
+                let trait_def = tcx.trait_def(def_id);
                 let data = TraitData {
                     unsafety: trait_def.unsafety,
                     paren_sugar: trait_def.paren_sugar,
                     has_default_impl: tcx.trait_has_default_impl(def_id),
-                    super_predicates: self.lazy(&tcx.item_super_predicates(def_id)),
+                    super_predicates: self.lazy(&tcx.super_predicates_of(def_id)),
                 };
 
                 EntryKind::Trait(self.lazy(&data))
@@ -774,7 +774,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> EntryBuilder<'a, 'b, 'tcx> {
                         .map(|foreign_item| tcx.hir.local_def_id(foreign_item.id).index))
                 }
                 hir::ItemEnum(..) => {
-                    let def = self.tcx.lookup_adt_def(def_id);
+                    let def = self.tcx.adt_def(def_id);
                     self.lazy_seq(def.variants.iter().map(|v| {
                         assert!(v.did.is_local());
                         v.did.index
@@ -782,7 +782,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> EntryBuilder<'a, 'b, 'tcx> {
                 }
                 hir::ItemStruct(..) |
                 hir::ItemUnion(..) => {
-                    let def = self.tcx.lookup_adt_def(def_id);
+                    let def = self.tcx.adt_def(def_id);
                     self.lazy_seq(def.struct_variant().fields.iter().map(|f| {
                         assert!(f.did.is_local());
                         f.did.index
@@ -919,7 +919,7 @@ impl<'a, 'b, 'tcx> IndexBuilder<'a, 'b, 'tcx> {
             hir::ItemEnum(..) => {
                 self.encode_fields(def_id);
 
-                let def = self.tcx.lookup_adt_def(def_id);
+                let def = self.tcx.adt_def(def_id);
                 for (i, variant) in def.variants.iter().enumerate() {
                     self.record(variant.did,
                                 EntryBuilder::encode_enum_variant_info,
@@ -1539,7 +1539,7 @@ pub fn encode_metadata<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 pub fn get_repr_options<'a, 'tcx, 'gcx>(tcx: &TyCtxt<'a, 'tcx, 'gcx>, did: DefId) -> ReprOptions {
-    let ty = tcx.item_type(did);
+    let ty = tcx.type_of(did);
     match ty.sty {
         ty::TyAdt(ref def, _) => return def.repr,
         _ => bug!("{} is not an ADT", ty),

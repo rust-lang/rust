@@ -376,7 +376,7 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
           debug!("const call({:?})", call_args);
           let callee_cx = ConstContext {
             tcx: tcx,
-            tables: tcx.item_tables(def_id),
+            tables: tcx.typeck_tables_of(def_id),
             substs: substs,
             fn_args: Some(call_args)
           };
@@ -607,7 +607,7 @@ fn cast_const<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         Float(f) => cast_const_float(tcx, f, ty),
         Char(c) => cast_const_int(tcx, U32(c as u32), ty),
         Variant(v) => {
-            let adt = tcx.lookup_adt_def(tcx.parent_def_id(v).unwrap());
+            let adt = tcx.adt_def(tcx.parent_def_id(v).unwrap());
             let idx = adt.variant_index_with_id(v);
             cast_const_int(tcx, adt.discriminant_for_variant(tcx, idx), ty)
         }
@@ -767,7 +767,7 @@ fn const_eval<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let cx = ConstContext {
         tcx,
-        tables: tcx.item_tables(def_id),
+        tables: tcx.typeck_tables_of(def_id),
         substs: substs,
         fn_args: None
     };

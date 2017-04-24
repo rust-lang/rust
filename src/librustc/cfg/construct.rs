@@ -52,7 +52,7 @@ pub fn construct<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     // Find the tables for this body.
     let owner_def_id = tcx.hir.local_def_id(tcx.hir.body_owner(body.id()));
-    let tables = tcx.item_tables(owner_def_id);
+    let tables = tcx.typeck_tables_of(owner_def_id);
 
     let mut cfg_builder = CFGBuilder {
         tcx: tcx,

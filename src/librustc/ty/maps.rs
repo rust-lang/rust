@@ -175,7 +175,7 @@ impl<M: DepTrackingMapConfig<Key=DefId>> QueryDescription for M {
     }
 }
 
-impl<'tcx> QueryDescription for queries::super_predicates<'tcx> {
+impl<'tcx> QueryDescription for queries::super_predicates_of<'tcx> {
     fn describe(tcx: TyCtxt, def_id: DefId) -> String {
         format!("computing the supertraits of `{}`",
                 tcx.item_path_str(def_id))
@@ -380,12 +380,12 @@ macro_rules! define_maps {
 // the driver creates (using several `rustc_*` crates).
 define_maps! { <'tcx>
     /// Records the type of every item.
-    pub ty: ItemSignature(DefId) -> Ty<'tcx>,
+    pub type_of: ItemSignature(DefId) -> Ty<'tcx>,
 
     /// Maps from the def-id of an item (trait/struct/enum/fn) to its
     /// associated generics and predicates.
-    pub generics: ItemSignature(DefId) -> &'tcx ty::Generics,
-    pub predicates: ItemSignature(DefId) -> ty::GenericPredicates<'tcx>,
+    pub generics_of: ItemSignature(DefId) -> &'tcx ty::Generics,
+    pub predicates_of: ItemSignature(DefId) -> ty::GenericPredicates<'tcx>,
 
     /// Maps from the def-id of a trait to the list of
     /// super-predicates. This is a subset of the full list of
@@ -393,7 +393,7 @@ define_maps! { <'tcx>
     /// evaluate them even during type conversion, often before the
     /// full predicates are available (note that supertraits have
     /// additional acyclicity requirements).
-    pub super_predicates: ItemSignature(DefId) -> ty::GenericPredicates<'tcx>,
+    pub super_predicates_of: ItemSignature(DefId) -> ty::GenericPredicates<'tcx>,
 
     /// To avoid cycles within the predicates of a single item we compute
     /// per-type-parameter predicates for resolving `T::AssocTy`.
@@ -411,7 +411,7 @@ define_maps! { <'tcx>
 
     /// Maps from def-id of a type or region parameter to its
     /// (inferred) variance.
-    pub variances: ItemSignature(DefId) -> Rc<Vec<ty::Variance>>,
+    pub variances_of: ItemSignature(DefId) -> Rc<Vec<ty::Variance>>,
 
     /// Maps from an impl/trait def-id to a list of the def-ids of its items
     pub associated_item_def_ids: AssociatedItemDefIds(DefId) -> Rc<Vec<DefId>>,
@@ -455,7 +455,7 @@ define_maps! { <'tcx>
 
     pub typeck_item_bodies: typeck_item_bodies_dep_node(CrateNum) -> CompileResult,
 
-    pub typeck_tables: TypeckTables(DefId) -> &'tcx ty::TypeckTables<'tcx>,
+    pub typeck_tables_of: TypeckTables(DefId) -> &'tcx ty::TypeckTables<'tcx>,
 
     pub coherent_trait: coherent_trait_dep_node((CrateNum, DefId)) -> (),
 

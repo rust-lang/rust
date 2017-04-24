@@ -66,7 +66,7 @@ fn unpack_option_like<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 impl<'a, 'gcx, 'tcx> ExprVisitor<'a, 'gcx, 'tcx> {
     fn def_id_is_transmute(&self, def_id: DefId) -> bool {
-        let intrinsic = match self.infcx.tcx.item_type(def_id).sty {
+        let intrinsic = match self.infcx.tcx.type_of(def_id).sty {
             ty::TyFnDef(.., bfty) => bfty.abi() == RustIntrinsic,
             _ => return false
         };

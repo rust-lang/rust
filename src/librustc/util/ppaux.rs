@@ -104,7 +104,7 @@ pub fn parameterized(f: &mut fmt::Formatter,
                 }
             }
         }
-        let mut generics = tcx.item_generics(item_def_id);
+        let mut generics = tcx.generics_of(item_def_id);
         let mut path_def_id = did;
         verbose = tcx.sess.verbose();
         has_self = generics.has_self;
@@ -114,7 +114,7 @@ pub fn parameterized(f: &mut fmt::Formatter,
             // Methods.
             assert!(is_value_path);
             child_types = generics.types.len();
-            generics = tcx.item_generics(def_id);
+            generics = tcx.generics_of(def_id);
             num_regions = generics.regions.len();
             num_types = generics.types.len();
 
@@ -144,7 +144,7 @@ pub fn parameterized(f: &mut fmt::Formatter,
                         if !def.has_default {
                             break;
                         }
-                        if tcx.item_type(def.def_id).subst(tcx, substs) != actual {
+                        if tcx.type_of(def.def_id).subst(tcx, substs) != actual {
                             break;
                         }
                         num_supplied_defaults += 1;
@@ -772,11 +772,11 @@ impl<'tcx> fmt::Display for ty::TypeVariants<'tcx> {
                 ty::tls::with(|tcx| {
                     // Grab the "TraitA + TraitB" from `impl TraitA + TraitB`,
                     // by looking up the projections associated with the def_id.
-                    let item_predicates = tcx.item_predicates(def_id);
+                    let predicates_of = tcx.predicates_of(def_id);
                     let substs = tcx.lift(&substs).unwrap_or_else(|| {
                         tcx.intern_substs(&[])
                     });
-                    let bounds = item_predicates.instantiate(tcx, substs);
+                    let bounds = predicates_of.instantiate(tcx, substs);
 
                     let mut first = true;
                     let mut is_sized = false;

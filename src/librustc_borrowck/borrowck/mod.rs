@@ -87,7 +87,7 @@ fn borrowck<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, owner_def_id: DefId) {
     let owner_id = tcx.hir.as_local_node_id(owner_def_id).unwrap();
     let body_id = tcx.hir.body_owned_by(owner_id);
     let attributes = tcx.get_attrs(owner_def_id);
-    let tables = tcx.item_tables(owner_def_id);
+    let tables = tcx.typeck_tables_of(owner_def_id);
 
     let mut bccx = &mut BorrowckCtxt {
         tcx: tcx,
@@ -169,7 +169,7 @@ pub fn build_borrowck_dataflow_data_for_fn<'a, 'tcx>(
 {
     let owner_id = tcx.hir.body_owner(body_id);
     let owner_def_id = tcx.hir.local_def_id(owner_id);
-    let tables = tcx.item_tables(owner_def_id);
+    let tables = tcx.typeck_tables_of(owner_def_id);
 
     let mut bccx = BorrowckCtxt {
         tcx: tcx,

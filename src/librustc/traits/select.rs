@@ -842,7 +842,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     fn filter_negative_impls(&self, candidate: SelectionCandidate<'tcx>)
                              -> SelectionResult<'tcx, SelectionCandidate<'tcx>> {
         if let ImplCandidate(def_id) = candidate {
-            if self.tcx().trait_impl_polarity(def_id) == hir::ImplPolarity::Negative {
+            if self.tcx().impl_polarity(def_id) == hir::ImplPolarity::Negative {
                 return Err(Unimplemented)
             }
         }
@@ -1222,8 +1222,8 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 def_id={:?}, substs={:?}",
                def_id, substs);
 
-        let item_predicates = self.tcx().item_predicates(def_id);
-        let bounds = item_predicates.instantiate(self.tcx(), substs);
+        let predicates_of = self.tcx().predicates_of(def_id);
+        let bounds = predicates_of.instantiate(self.tcx(), substs);
         debug!("match_projection_obligation_against_definition_bounds: \
                 bounds={:?}",
                bounds);
@@ -1432,7 +1432,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
     {
         debug!("assemble_candidates_from_impls(obligation={:?})", obligation);
 
-        let def = self.tcx().lookup_trait_def(obligation.predicate.def_id());
+        let def = self.tcx().trait_def(obligation.predicate.def_id());
 
         def.for_each_relevant_impl(
             self.tcx(),
@@ -1947,7 +1947,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
                 // We can resolve the `impl Trait` to its concrete type,
                 // which enforces a DAG between the functions requiring
                 // the auto trait bounds in question.
-                vec![self.tcx().item_type(def_id).subst(self.tcx(), substs)]
+                vec![self.tcx().type_of(def_id).subst(self.tcx(), substs)]
             }
         }
     }
@@ -2526,7 +2526,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
             (&ty::TyAdt(def, substs_a), &ty::TyAdt(_, substs_b)) => {
                 let fields = def
                     .all_fields()
-                    .map(|f| tcx.item_type(f.did))
+                    .map(|f| tcx.type_of(f.did))
                     .collect::<Vec<_>>();
 
                 // The last field of the structure has to exist and contain type parameters.
@@ -2844,7 +2844,7 @@ impl<'cx, 'gcx, 'tcx> SelectionContext<'cx, 'gcx, 'tcx> {
         // obligation will normalize to `<$0 as Iterator>::Item = $1` and
         // `$1: Copy`, so we must ensure the obligations are emitted in
         // that order.
-        let predicates = tcx.item_predicates(def_id);
+        let predicates = tcx.predicates_of(def_id);
         assert_eq!(predicates.parent, None);
         let predicates = predicates.predicates.iter().flat_map(|predicate| {
             let predicate = normalize_with_depth(self, cause.clone(), recursion_depth,

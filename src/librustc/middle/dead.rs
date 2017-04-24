@@ -160,7 +160,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
                 match item.node {
                     hir::ItemStruct(..) | hir::ItemUnion(..) => {
                         let def_id = self.tcx.hir.local_def_id(item.id);
-                        let def = self.tcx.lookup_adt_def(def_id);
+                        let def = self.tcx.adt_def(def_id);
                         self.struct_has_extern_repr = def.repr.c();
 
                         intravisit::walk_item(self, &item);
@@ -433,7 +433,7 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
     }
 
     fn should_warn_about_field(&mut self, field: &hir::StructField) -> bool {
-        let field_type = self.tcx.item_type(self.tcx.hir.local_def_id(field.id));
+        let field_type = self.tcx.type_of(self.tcx.hir.local_def_id(field.id));
         let is_marker_field = match field_type.ty_to_def_id() {
             Some(def_id) => self.tcx.lang_items.items().iter().any(|item| *item == Some(def_id)),
             _ => false
