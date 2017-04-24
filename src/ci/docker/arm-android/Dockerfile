@@ -44,3 +44,6 @@ ENV RUST_CONFIGURE_ARGS \
       --arm-linux-androideabi-ndk=/android/ndk-arm-9
 
 ENV SCRIPT python2.7 ../x.py test --target arm-linux-androideabi
+
+RUN dpkg --add-architecture i386 && apt-get update && apt-get install -y eatmydata libeatmydata1:i386 && ls -hl /usr/lib/x86_64-linux-gnu/libeatmydata.so
+ENV LD_PRELOAD /usr/lib/x86_64-linux-gnu/libeatmydata.so
