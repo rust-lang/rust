@@ -57,7 +57,7 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
 fn visit_implementation_of_drop<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                           _drop_did: DefId,
                                           impl_did: DefId) {
-    match tcx.item_type(impl_did).sty {
+    match tcx.type_of(impl_did).sty {
         ty::TyAdt(..) => {}
         _ => {
             // Destructors only work on nominal types.
@@ -101,7 +101,7 @@ fn visit_implementation_of_copy<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         return;
     };
 
-    let self_type = tcx.item_type(impl_did);
+    let self_type = tcx.type_of(impl_did);
     debug!("visit_implementation_of_copy: self_type={:?} (bound)",
            self_type);
 
@@ -192,7 +192,7 @@ pub fn coerce_unsized_info<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         bug!("coerce_unsized_info: invoked for non-local def-id {:?}", impl_did)
     });
 
-    let source = tcx.item_type(impl_did);
+    let source = tcx.type_of(impl_did);
     let trait_ref = tcx.impl_trait_ref(impl_did).unwrap();
     assert_eq!(trait_ref.def_id, coerce_unsized_trait);
     let target = trait_ref.substs.type_at(1);
@@ -259,7 +259,7 @@ pub fn coerce_unsized_info<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     .filter_map(|(i, f)| {
                         let (a, b) = (f.ty(tcx, substs_a), f.ty(tcx, substs_b));
 
-                        if tcx.item_type(f.did).is_phantom_data() {
+                        if tcx.type_of(f.did).is_phantom_data() {
                             // Ignore PhantomData fields
                             return None;
                         }

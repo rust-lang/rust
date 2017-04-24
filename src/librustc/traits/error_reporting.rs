@@ -258,7 +258,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         let mut self_match_impls = vec![];
         let mut fuzzy_match_impls = vec![];
 
-        self.tcx.lookup_trait_def(trait_ref.def_id)
+        self.tcx.trait_def(trait_ref.def_id)
             .for_each_relevant_impl(self.tcx, trait_self_ty, |def_id| {
                 let impl_substs = self.fresh_substs_for_item(obligation.cause.span, def_id);
                 let impl_trait_ref = tcx
@@ -314,7 +314,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
             let trait_str = self.tcx.item_path_str(trait_ref.def_id);
             if let Some(istring) = item.value_str() {
                 let istring = &*istring.as_str();
-                let generics = self.tcx.item_generics(trait_ref.def_id);
+                let generics = self.tcx.generics_of(trait_ref.def_id);
                 let generic_map = generics.types.iter().map(|param| {
                     (param.name.as_str().to_string(),
                         trait_ref.substs.type_for_def(param).to_string())
@@ -372,7 +372,7 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                                               trait_ref.skip_binder().self_ty(),
                                               true);
         let mut impl_candidates = Vec::new();
-        let trait_def = self.tcx.lookup_trait_def(trait_ref.def_id());
+        let trait_def = self.tcx.trait_def(trait_ref.def_id());
 
         match simp {
             Some(simp) => trait_def.for_each_impl(self.tcx, |def_id| {

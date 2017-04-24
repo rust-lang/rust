@@ -167,7 +167,7 @@ fn build_drop_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
     } else {
         param_env.free_substs
     };
-    let fn_ty = tcx.item_type(def_id).subst(tcx, substs);
+    let fn_ty = tcx.type_of(def_id).subst(tcx, substs);
     let sig = tcx.erase_late_bound_regions(&fn_ty.fn_sig());
     let span = tcx.def_span(def_id);
 
@@ -290,7 +290,7 @@ fn build_call_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
             call_kind={:?}, untuple_args={:?})",
            def_id, rcvr_adjustment, call_kind, untuple_args);
 
-    let fn_ty = tcx.item_type(def_id).subst(tcx, param_env.free_substs);
+    let fn_ty = tcx.type_of(def_id).subst(tcx, param_env.free_substs);
     let sig = tcx.erase_late_bound_regions(&fn_ty.fn_sig());
     let span = tcx.def_span(def_id);
 
@@ -332,7 +332,7 @@ fn build_call_shim<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>,
         CallKind::Direct(def_id) => (
             Operand::Constant(Constant {
                 span: span,
-                ty: tcx.item_type(def_id).subst(tcx, param_env.free_substs),
+                ty: tcx.type_of(def_id).subst(tcx, param_env.free_substs),
                 literal: Literal::Value {
                     value: ConstVal::Function(def_id, param_env.free_substs),
                 },
@@ -422,7 +422,7 @@ pub fn build_adt_ctor<'a, 'gcx, 'tcx>(infcx: &infer::InferCtxt<'a, 'gcx, 'tcx>,
 {
     let tcx = infcx.tcx;
     let def_id = tcx.hir.local_def_id(ctor_id);
-    let sig = match tcx.item_type(def_id).sty {
+    let sig = match tcx.type_of(def_id).sty {
         ty::TyFnDef(_, _, fty) => tcx.no_late_bound_regions(&fty)
             .expect("LBR in ADT constructor signature"),
         _ => bug!("unexpected type for ctor {:?}", def_id)

@@ -998,7 +998,7 @@ impl<'a, 'gcx, 'tcx> ExprUseVisitor<'a, 'gcx, 'tcx> {
                 Def::Variant(variant_did) |
                 Def::VariantCtor(variant_did, ..) => {
                     let enum_did = tcx.parent_def_id(variant_did).unwrap();
-                    let downcast_cmt = if tcx.lookup_adt_def(enum_did).is_univariant() {
+                    let downcast_cmt = if tcx.adt_def(enum_did).is_univariant() {
                         cmt_pat
                     } else {
                         let cmt_pat_ty = cmt_pat.ty;

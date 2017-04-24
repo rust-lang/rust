@@ -69,10 +69,10 @@ macro_rules! provide {
 }
 
 provide! { <'tcx> tcx, def_id, cdata
-    ty => { cdata.get_type(def_id.index, tcx) }
-    generics => { tcx.alloc_generics(cdata.get_generics(def_id.index)) }
-    predicates => { cdata.get_predicates(def_id.index, tcx) }
-    super_predicates => { cdata.get_super_predicates(def_id.index, tcx) }
+    type_of => { cdata.get_type(def_id.index, tcx) }
+    generics_of => { tcx.alloc_generics(cdata.get_generics(def_id.index)) }
+    predicates_of => { cdata.get_predicates(def_id.index, tcx) }
+    super_predicates_of => { cdata.get_super_predicates(def_id.index, tcx) }
     trait_def => {
         tcx.alloc_trait_def(cdata.get_trait_def(def_id.index))
     }
@@ -81,7 +81,7 @@ provide! { <'tcx> tcx, def_id, cdata
         let _ = cdata;
         tcx.calculate_dtor(def_id, &mut |_,_| Ok(()))
     }
-    variances => { Rc::new(cdata.get_item_variances(def_id.index)) }
+    variances_of => { Rc::new(cdata.get_item_variances(def_id.index)) }
     associated_item_def_ids => {
         let mut result = vec![];
         cdata.each_child_of_item(def_id.index, |child| result.push(child.def.def_id()));
@@ -108,7 +108,7 @@ provide! { <'tcx> tcx, def_id, cdata
         mir
     }
     mir_const_qualif => { cdata.mir_const_qualif(def_id.index) }
-    typeck_tables => { cdata.item_body_tables(def_id.index, tcx) }
+    typeck_tables_of => { cdata.item_body_tables(def_id.index, tcx) }
     closure_kind => { cdata.closure_kind(def_id.index) }
     closure_type => { cdata.closure_ty(def_id.index, tcx) }
     inherent_impls => { Rc::new(cdata.get_inherent_implementations_for_type(def_id.index)) }

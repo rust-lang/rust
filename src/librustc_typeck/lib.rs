@@ -179,7 +179,7 @@ fn check_main_fn_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                               main_id: ast::NodeId,
                               main_span: Span) {
     let main_def_id = tcx.hir.local_def_id(main_id);
-    let main_t = tcx.item_type(main_def_id);
+    let main_t = tcx.type_of(main_def_id);
     match main_t.sty {
         ty::TyFnDef(..) => {
             match tcx.hir.find(main_id) {
@@ -229,7 +229,7 @@ fn check_start_fn_ty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                start_id: ast::NodeId,
                                start_span: Span) {
     let start_def_id = tcx.hir.local_def_id(start_id);
-    let start_t = tcx.item_type(start_def_id);
+    let start_t = tcx.type_of(start_def_id);
     match start_t.sty {
         ty::TyFnDef(..) => {
             match tcx.hir.find(start_id) {

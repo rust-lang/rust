@@ -74,7 +74,7 @@ pub enum MethodViolationCode {
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn is_object_safe(self, trait_def_id: DefId) -> bool {
         // Because we query yes/no results frequently, we keep a cache:
-        let def = self.lookup_trait_def(trait_def_id);
+        let def = self.trait_def(trait_def_id);
 
         let result = def.object_safety().unwrap_or_else(|| {
             let result = self.object_safety_violations(trait_def_id).is_empty();
@@ -158,9 +158,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             substs: Substs::identity_for_item(self, trait_def_id)
         });
         let predicates = if supertraits_only {
-            self.item_super_predicates(trait_def_id)
+            self.super_predicates_of(trait_def_id)
         } else {
-            self.item_predicates(trait_def_id)
+            self.predicates_of(trait_def_id)
         };
         predicates
             .predicates
@@ -199,7 +199,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         // Search for a predicate like `Self : Sized` amongst the trait bounds.
         let free_substs = self.construct_free_substs(def_id,
             self.region_maps.node_extent(ast::DUMMY_NODE_ID));
-        let predicates = self.item_predicates(def_id);
+        let predicates = self.predicates_of(def_id);
         let predicates = predicates.instantiate(self, free_substs).predicates;
         elaborate_predicates(self, predicates)
             .any(|predicate| {
@@ -272,7 +272,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
         // The `Self` type is erased, so it should not appear in list of
         // arguments or return type apart from the receiver.
-        let ref sig = self.item_type(method.def_id).fn_sig();
+        let ref sig = self.type_of(method.def_id).fn_sig();
         for input_ty in &sig.skip_binder().inputs()[1..] {
             if self.contains_illegal_self_type_reference(trait_def_id, input_ty) {
                 return Some(MethodViolationCode::ReferencesSelf);
@@ -283,7 +283,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
 
         // We can't monomorphize things like `fn foo<A>(...)`.
-        if !self.item_generics(method.def_id).types.is_empty() {
+        if !self.generics_of(method.def_id).types.is_empty() {
             return Some(MethodViolationCode::Generic);
         }
 

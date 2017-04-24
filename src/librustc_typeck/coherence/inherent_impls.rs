@@ -106,7 +106,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for InherentCollect<'a, 'tcx> {
         }
 
         let def_id = self.tcx.hir.local_def_id(item.id);
-        let self_ty = self.tcx.item_type(def_id);
+        let self_ty = self.tcx.type_of(def_id);
         match self_ty.sty {
             ty::TyAdt(def, _) => {
                 self.check_def_id(item, def.did);

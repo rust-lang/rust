@@ -628,7 +628,7 @@ fn typeck_item_bodies<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, crate_num: CrateNum
     debug_assert!(crate_num == LOCAL_CRATE);
     tcx.sess.track_errors(|| {
         tcx.visit_all_bodies_in_krate(|body_owner_def_id, _body_id| {
-            tcx.item_tables(body_owner_def_id);
+            tcx.typeck_tables_of(body_owner_def_id);
         });
     })
 }
@@ -636,7 +636,7 @@ fn typeck_item_bodies<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, crate_num: CrateNum
 pub fn provide(providers: &mut Providers) {
     *providers = Providers {
         typeck_item_bodies,
-        typeck_tables,
+        typeck_tables_of,
         closure_type,
         closure_kind,
         adt_destructor,
@@ -648,14 +648,14 @@ fn closure_type<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           def_id: DefId)
                           -> ty::PolyFnSig<'tcx> {
     let node_id = tcx.hir.as_local_node_id(def_id).unwrap();
-    tcx.item_tables(def_id).closure_tys[&node_id]
+    tcx.typeck_tables_of(def_id).closure_tys[&node_id]
 }
 
 fn closure_kind<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           def_id: DefId)
                           -> ty::ClosureKind {
     let node_id = tcx.hir.as_local_node_id(def_id).unwrap();
-    tcx.item_tables(def_id).closure_kinds[&node_id]
+    tcx.typeck_tables_of(def_id).closure_kinds[&node_id]
 }
 
 fn adt_destructor<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -664,14 +664,14 @@ fn adt_destructor<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     tcx.calculate_dtor(def_id, &mut dropck::check_drop_impl)
 }
 
-fn typeck_tables<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+fn typeck_tables_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                            def_id: DefId)
                            -> &'tcx ty::TypeckTables<'tcx> {
     // Closures' tables come from their outermost function,
     // as they are part of the same "inference environment".
     let outer_def_id = tcx.closure_base_def_id(def_id);
     if outer_def_id != def_id {
-        return tcx.item_tables(outer_def_id);
+        return tcx.typeck_tables_of(outer_def_id);
     }
 
     let id = tcx.hir.as_local_node_id(def_id).unwrap();
@@ -736,7 +736,7 @@ fn typeck_tables<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     Inherited::build(tcx, id).enter(|inh| {
         let fcx = if let Some(decl) = fn_decl {
-            let fn_sig = tcx.item_type(def_id).fn_sig();
+            let fn_sig = tcx.type_of(def_id).fn_sig();
 
             check_abi(tcx, span, fn_sig.abi());
 
@@ -752,7 +752,7 @@ fn typeck_tables<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
             check_fn(&inh, fn_sig, decl, id, body)
         } else {
             let fcx = FnCtxt::new(&inh, body.value.id);
-            let expected_type = tcx.item_type(def_id);
+            let expected_type = tcx.type_of(def_id);
             let expected_type = fcx.normalize_associated_types_in(body.value.span, &expected_type);
             fcx.require_type_is_sized(expected_type, body.value.span, traits::ConstSized);
 
@@ -946,7 +946,7 @@ fn check_struct<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                           id: ast::NodeId,
                           span: Span) {
     let def_id = tcx.hir.local_def_id(id);
-    let def = tcx.lookup_adt_def(def_id);
+    let def = tcx.adt_def(def_id);
     def.destructor(tcx); // force the destructor to be evaluated
     check_representable(tcx, span, def_id);
 
@@ -956,7 +956,7 @@ fn check_struct<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     // if struct is packed and not aligned, check fields for alignment.
     // Checks for combining packed and align attrs on single struct are done elsewhere.
-    if tcx.lookup_adt_def(def_id).repr.packed() && tcx.lookup_adt_def(def_id).repr.align == 0 {
+    if tcx.adt_def(def_id).repr.packed() && tcx.adt_def(def_id).repr.align == 0 {
         check_packed(tcx, span, def_id);
     }
 }
@@ -965,7 +965,7 @@ fn check_union<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                          id: ast::NodeId,
                          span: Span) {
     let def_id = tcx.hir.local_def_id(id);
-    let def = tcx.lookup_adt_def(def_id);
+    let def = tcx.adt_def(def_id);
     def.destructor(tcx); // force the destructor to be evaluated
     check_representable(tcx, span, def_id);
 }
@@ -979,7 +979,7 @@ pub fn check_item_type<'a,'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, it: &'tcx hir::Item
       // Consts can play a role in type-checking, so they are included here.
       hir::ItemStatic(..) |
       hir::ItemConst(..) => {
-        tcx.item_tables(tcx.hir.local_def_id(it.id));
+        tcx.typeck_tables_of(tcx.hir.local_def_id(it.id));
       }
       hir::ItemEnum(ref enum_definition, _) => {
         check_enum(tcx,
@@ -1013,7 +1013,7 @@ pub fn check_item_type<'a,'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, it: &'tcx hir::Item
       }
       hir::ItemTy(_, ref generics) => {
         let def_id = tcx.hir.local_def_id(it.id);
-        let pty_ty = tcx.item_type(def_id);
+        let pty_ty = tcx.type_of(def_id);
         check_bounds_are_used(tcx, generics, pty_ty);
       }
       hir::ItemForeignMod(ref m) => {
@@ -1029,7 +1029,7 @@ pub fn check_item_type<'a,'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, it: &'tcx hir::Item
             }
         } else {
             for item in &m.items {
-                let generics = tcx.item_generics(tcx.hir.local_def_id(item.id));
+                let generics = tcx.generics_of(tcx.hir.local_def_id(item.id));
                 if !generics.types.is_empty() {
                     let mut err = struct_span_err!(tcx.sess, item.span, E0044,
                         "foreign items may not have type parameters");
@@ -1052,7 +1052,7 @@ pub fn check_item_type<'a,'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, it: &'tcx hir::Item
 fn check_on_unimplemented<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                     def_id: DefId,
                                     item: &hir::Item) {
-    let generics = tcx.item_generics(def_id);
+    let generics = tcx.generics_of(def_id);
     if let Some(ref attr) = item.attrs.iter().find(|a| {
         a.check_name("rustc_on_unimplemented")
     }) {
@@ -1159,7 +1159,7 @@ fn check_impl_items_against_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     if impl_trait_ref.references_error() { return; }
 
     // Locate trait definition and items
-    let trait_def = tcx.lookup_trait_def(impl_trait_ref.def_id);
+    let trait_def = tcx.trait_def(impl_trait_ref.def_id);
     let mut overridden_associated_type = None;
 
     let impl_items = || impl_item_refs.iter().map(|iiref| tcx.hir.impl_item(iiref.id));
@@ -1280,11 +1280,11 @@ fn check_impl_items_against_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let signature = |item: &ty::AssociatedItem| {
         match item.kind {
             ty::AssociatedKind::Method => {
-                format!("{}", tcx.item_type(item.def_id).fn_sig().0)
+                format!("{}", tcx.type_of(item.def_id).fn_sig().0)
             }
             ty::AssociatedKind::Type => format!("type {};", item.name.to_string()),
             ty::AssociatedKind::Const => {
-                format!("const {}: {:?};", item.name.to_string(), tcx.item_type(item.def_id))
+                format!("const {}: {:?};", item.name.to_string(), tcx.type_of(item.def_id))
             }
         }
     };
@@ -1330,7 +1330,7 @@ fn check_representable<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                  sp: Span,
                                  item_def_id: DefId)
                                  -> bool {
-    let rty = tcx.item_type(item_def_id);
+    let rty = tcx.type_of(item_def_id);
 
     // Check that it is possible to represent this type. This call identifies
     // (1) types that contain themselves and (2) types that contain a different
@@ -1348,7 +1348,7 @@ fn check_representable<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 pub fn check_simd<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, sp: Span, def_id: DefId) {
-    let t = tcx.item_type(def_id);
+    let t = tcx.type_of(def_id);
     match t.sty {
         ty::TyAdt(def, substs) if def.is_struct() => {
             let fields = &def.struct_variant().fields;
@@ -1387,14 +1387,14 @@ fn check_packed<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, sp: Span, def_id: DefId) 
 fn check_packed_inner<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                 def_id: DefId,
                                 stack: &mut Vec<DefId>) -> bool {
-    let t = tcx.item_type(def_id);
+    let t = tcx.type_of(def_id);
     if stack.contains(&def_id) {
         debug!("check_packed_inner: {:?} is recursive", t);
         return false;
     }
     match t.sty {
         ty::TyAdt(def, substs) if def.is_struct() => {
-            if tcx.lookup_adt_def(def.did).repr.align > 0 {
+            if tcx.adt_def(def.did).repr.align > 0 {
                 return true;
             }
             // push struct def_id before checking fields
@@ -1424,7 +1424,7 @@ pub fn check_enum<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                             vs: &'tcx [hir::Variant],
                             id: ast::NodeId) {
     let def_id = tcx.hir.local_def_id(id);
-    let def = tcx.lookup_adt_def(def_id);
+    let def = tcx.adt_def(def_id);
     def.destructor(tcx); // force the destructor to be evaluated
 
     if vs.is_empty() && tcx.has_attr(def_id, "repr") {
@@ -1445,7 +1445,7 @@ pub fn check_enum<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     for v in vs {
         if let Some(e) = v.node.disr_expr {
-            tcx.item_tables(tcx.hir.local_def_id(e.node_id));
+            tcx.typeck_tables_of(tcx.hir.local_def_id(e.node_id));
         }
     }
 
@@ -1493,7 +1493,7 @@ impl<'a, 'gcx, 'tcx> AstConv<'gcx, 'tcx> for FnCtxt<'a, 'gcx, 'tcx> {
         let node_id = tcx.hir.as_local_node_id(def_id).unwrap();
         let item_id = tcx.hir.ty_param_owner(node_id);
         let item_def_id = tcx.hir.local_def_id(item_id);
-        let generics = tcx.item_generics(item_def_id);
+        let generics = tcx.generics_of(item_def_id);
         let index = generics.type_param_to_index[&def_id.index];
         ty::GenericPredicates {
             parent: None,
@@ -1792,7 +1792,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
     /// generic type scheme.
     fn instantiate_bounds(&self, span: Span, def_id: DefId, substs: &Substs<'tcx>)
                           -> ty::InstantiatedPredicates<'tcx> {
-        let bounds = self.tcx.item_predicates(def_id);
+        let bounds = self.tcx.predicates_of(def_id);
         let result = bounds.instantiate(self.tcx, substs);
         let result = self.normalize_associated_types_in(span, &result);
         debug!("instantiate_bounds(bounds={:?}, substs={:?}) = {:?}",
@@ -1817,8 +1817,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 let ty_var = self.next_ty_var(TypeVariableOrigin::TypeInference(span));
                 self.anon_types.borrow_mut().insert(id, ty_var);
 
-                let item_predicates = self.tcx.item_predicates(def_id);
-                let bounds = item_predicates.instantiate(self.tcx, substs);
+                let predicates_of = self.tcx.predicates_of(def_id);
+                let bounds = predicates_of.instantiate(self.tcx, substs);
 
                 for predicate in bounds.predicates {
                     // Change the predicate to refer to the type variable,
@@ -2614,7 +2614,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         span: Span, // (potential) receiver for this impl
                         did: DefId)
                         -> TypeAndSubsts<'tcx> {
-        let ity = self.tcx.item_type(did);
+        let ity = self.tcx.type_of(did);
         debug!("impl_self_ty: ity={:?}", ity);
 
         let substs = self.fresh_substs_for_item(span, did);
@@ -4208,11 +4208,11 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             Def::VariantCtor(def_id, ..) => {
                 // Everything but the final segment should have no
                 // parameters at all.
-                let mut generics = self.tcx.item_generics(def_id);
+                let mut generics = self.tcx.generics_of(def_id);
                 if let Some(def_id) = generics.parent {
                     // Variant and struct constructors use the
                     // generics of their parent type definition.
-                    generics = self.tcx.item_generics(def_id);
+                    generics = self.tcx.generics_of(def_id);
                 }
                 type_segment = Some((segments.last().unwrap(), generics));
             }
@@ -4222,7 +4222,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             Def::Const(def_id) |
             Def::Static(def_id, _) => {
                 fn_segment = Some((segments.last().unwrap(),
-                                   self.tcx.item_generics(def_id)));
+                                   self.tcx.generics_of(def_id)));
             }
 
             // Case 3. Reference to a method or associated const.
@@ -4236,9 +4236,9 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                     ty::ImplContainer(_) => {}
                 }
 
-                let generics = self.tcx.item_generics(def_id);
+                let generics = self.tcx.generics_of(def_id);
                 if segments.len() >= 2 {
-                    let parent_generics = self.tcx.item_generics(generics.parent.unwrap());
+                    let parent_generics = self.tcx.generics_of(generics.parent.unwrap());
                     type_segment = Some((&segments[segments.len() - 2], parent_generics));
                 } else {
                     // `<T>::assoc` will end up here, and so can `T::assoc`.
@@ -4351,7 +4351,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 self.to_ty(ast_ty)
             } else if !infer_types && def.has_default {
                 // No type parameter provided, but a default exists.
-                let default = self.tcx.item_type(def.def_id);
+                let default = self.tcx.type_of(def.def_id);
                 self.normalize_ty(
                     span,
                     default.subst_spanned(self.tcx, substs, Some(span))
@@ -4367,7 +4367,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
 
         // The things we are substituting into the type should not contain
         // escaping late-bound regions, and nor should the base type scheme.
-        let ty = self.tcx.item_type(def.def_id());
+        let ty = self.tcx.type_of(def.def_id());
         assert!(!substs.has_escaping_regions());
         assert!(!ty.has_escaping_regions());
 
@@ -4387,7 +4387,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             // is inherent, there is no `Self` parameter, instead, the impl needs
             // type parameters, which we can infer by unifying the provided `Self`
             // with the substituted impl type.
-            let ty = self.tcx.item_type(impl_def_id);
+            let ty = self.tcx.type_of(impl_def_id);
 
             let impl_ty = self.instantiate_type_scheme(span, &substs, &ty);
             match self.sub_types(false, &self.misc(span), self_ty, impl_ty) {
