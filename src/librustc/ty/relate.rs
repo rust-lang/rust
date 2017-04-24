@@ -124,14 +124,8 @@ fn relate_item_substs<'a, 'gcx, 'tcx, R>(relation: &mut R,
            a_subst,
            b_subst);
 
-    let variances;
-    let opt_variances = if relation.tcx().variance_computed.get() {
-        variances = relation.tcx().variances_of(item_def_id);
-        Some(&*variances)
-    } else {
-        None
-    };
-    relate_substs(relation, opt_variances, a_subst, b_subst)
+    let opt_variances = relation.tcx().variances_of(item_def_id);
+    relate_substs(relation, Some(&opt_variances), a_subst, b_subst)
 }
 
 pub fn relate_substs<'a, 'gcx, 'tcx, R>(relation: &mut R,

@@ -468,9 +468,6 @@ pub struct GlobalCtxt<'tcx> {
 
     pub lang_items: middle::lang_items::LanguageItems,
 
-    /// True if the variance has been computed yet; false otherwise.
-    pub variance_computed: Cell<bool>,
-
     /// Set of used unsafe nodes (functions or blocks). Unsafe nodes not
     /// present in this set can be warned about.
     pub used_unsafe: RefCell<NodeSet>,
@@ -753,7 +750,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             dep_graph: dep_graph.clone(),
             types: common_types,
             named_region_map: named_region_map,
-            variance_computed: Cell::new(false),
             trait_map: resolutions.trait_map,
             export_map: resolutions.export_map,
             fulfilled_predicates: RefCell::new(fulfilled_predicates),

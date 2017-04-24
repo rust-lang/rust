@@ -55,6 +55,7 @@ use rustc_const_math::ConstInt;
 use rustc_data_structures::accumulate_vec::IntoIter as AccIntoIter;
 use rustc_data_structures::stable_hasher::{StableHasher, StableHasherResult,
                                            HashStable};
+use rustc_data_structures::transitive_relation::TransitiveRelation;
 
 use hir;
 use hir::itemlikevisit::ItemLikeVisitor;
@@ -307,6 +308,27 @@ pub enum Variance {
     Invariant,      // T<A> <: T<B> iff B == A -- e.g., type of mutable cell
     Contravariant,  // T<A> <: T<B> iff B <: A -- e.g., function param type
     Bivariant,      // T<A> <: T<B>            -- e.g., unused type parameter
+}
+
+/// The crate variances map is computed during typeck and contains the
+/// variance of every item in the local crate. You should not use it
+/// directly, because to do so will make your pass dependent on the
+/// HIR of every item in the local crate. Instead, use
+/// `tcx.item_variances()` to get the variance for a *particular*
+/// item.
+pub struct CrateVariancesMap {
+    /// This relation tracks the dependencies between the variance of
+    /// various items. In particular, if `a < b`, then the variance of
+    /// `a` depends on the sources of `b`.
+    pub dependencies: TransitiveRelation<DefId>,
+
+    /// For each item with generics, maps to a vector of the variance
+    /// of its generics.  If an item has no generics, it will have no
+    /// entry.
+    pub variances: FxHashMap<DefId, Rc<Vec<ty::Variance>>>,
+
+    /// An empty vector, useful for cloning.
+    pub empty_variance: Rc<Vec<ty::Variance>>,
 }
 
 #[derive(Clone, Copy, Debug, RustcDecodable, RustcEncodable)]
