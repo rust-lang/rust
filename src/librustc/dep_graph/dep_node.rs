@@ -88,15 +88,17 @@ pub enum DepNode<D: Clone + Debug> {
     // predicates for an item wind up in `ItemSignature`).
     AssociatedItems(D),
     ItemSignature(D),
+    IsForeignItem(D),
     TypeParamPredicates((D, D)),
     SizedConstraint(D),
+    DtorckConstraint(D),
     AdtDestructor(D),
     AssociatedItemDefIds(D),
     InherentImpls(D),
     TypeckBodiesKrate,
     TypeckTables(D),
     UsedTraitImports(D),
-    MonomorphicConstEval(D),
+    ConstEval(D),
 
     // The set of impls for a given trait. Ultimately, it would be
     // nice to get more fine-grained here (e.g., to include a
@@ -171,6 +173,7 @@ impl<D: Clone + Debug> DepNode<D> {
             TransCrateItem,
             AssociatedItems,
             ItemSignature,
+            IsForeignItem,
             AssociatedItemDefIds,
             InherentImpls,
             TypeckTables,
@@ -221,16 +224,18 @@ impl<D: Clone + Debug> DepNode<D> {
             TransInlinedItem(ref d) => op(d).map(TransInlinedItem),
             AssociatedItems(ref d) => op(d).map(AssociatedItems),
             ItemSignature(ref d) => op(d).map(ItemSignature),
+            IsForeignItem(ref d) => op(d).map(IsForeignItem),
             TypeParamPredicates((ref item, ref param)) => {
                 Some(TypeParamPredicates((try_opt!(op(item)), try_opt!(op(param)))))
             }
             SizedConstraint(ref d) => op(d).map(SizedConstraint),
+            DtorckConstraint(ref d) => op(d).map(DtorckConstraint),
             AdtDestructor(ref d) => op(d).map(AdtDestructor),
             AssociatedItemDefIds(ref d) => op(d).map(AssociatedItemDefIds),
             InherentImpls(ref d) => op(d).map(InherentImpls),
             TypeckTables(ref d) => op(d).map(TypeckTables),
             UsedTraitImports(ref d) => op(d).map(UsedTraitImports),
-            MonomorphicConstEval(ref d) => op(d).map(MonomorphicConstEval),
+            ConstEval(ref d) => op(d).map(ConstEval),
             TraitImpls(ref d) => op(d).map(TraitImpls),
             TraitItems(ref d) => op(d).map(TraitItems),
             ReprHints(ref d) => op(d).map(ReprHints),

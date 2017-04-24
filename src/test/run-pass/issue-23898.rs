@@ -1,4 +1,4 @@
-// Copyright 2017 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,13 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![crate_name = "foo"]
+// Note: This test was used to demonstrate #5873 (now #23898).
 
-// ignore-tidy-end-whitespace
+enum State { ST_NULL, ST_WHITESPACE }
 
-// @has foo/fn.f.html
-// @has - '<p>hard break:<br />'
-// @has - 'after hard break</p>'
-/// hard break:  
-/// after hard break
-pub fn f() {}
+fn main() {
+    [State::ST_NULL; (State::ST_WHITESPACE as usize)];
+}

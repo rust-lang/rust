@@ -298,7 +298,7 @@ pub struct IterMut<'a, K: 'a, V: 'a> {
 
 /// An owning iterator over the entries of a `BTreeMap`.
 ///
-/// This `struct` is created by the [`into_iter`] method on [`BTreeMap`]
+/// This `struct` is created by the [`into_iter`] method on [`BTreeMap`][`BTreeMap`]
 /// (provided by the `IntoIterator` trait). See its documentation for more.
 ///
 /// [`into_iter`]: struct.BTreeMap.html#method.into_iter
@@ -2215,13 +2215,6 @@ impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
     #[stable(feature = "map_entry_keys", since = "1.10.0")]
     pub fn key(&self) -> &K {
         self.handle.reborrow().into_kv().0
-    }
-
-    /// Deprecated, renamed to `remove_entry`
-    #[unstable(feature = "map_entry_recover_keys", issue = "34285")]
-    #[rustc_deprecated(since = "1.12.0", reason = "renamed to `remove_entry`")]
-    pub fn remove_pair(self) -> (K, V) {
-        self.remove_entry()
     }
 
     /// Take ownership of the key and value from the map.

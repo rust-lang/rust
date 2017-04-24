@@ -239,7 +239,7 @@ use core::ops::CoerceUnsized;
 use core::ptr::{self, Shared};
 use core::convert::From;
 
-use heap::deallocate;
+use heap::{allocate, deallocate, box_free};
 use raw_vec::RawVec;
 
 struct RcBox<T: ?Sized> {
@@ -247,7 +247,6 @@ struct RcBox<T: ?Sized> {
     weak: Cell<usize>,
     value: T,
 }
-
 
 /// A single-threaded reference-counting pointer.
 ///
@@ -341,19 +340,6 @@ impl<T> Rc<T> {
         }
     }
 
-    /// Checks whether [`Rc::try_unwrap`][try_unwrap] would return
-    /// [`Ok`].
-    ///
-    /// [try_unwrap]: struct.Rc.html#method.try_unwrap
-    /// [`Ok`]: ../../std/result/enum.Result.html#variant.Ok
-    #[unstable(feature = "rc_would_unwrap",
-               reason = "just added for niche usecase",
-               issue = "28356")]
-    #[rustc_deprecated(since = "1.15.0", reason = "too niche; use `strong_count` instead")]
-    pub fn would_unwrap(this: &Self) -> bool {
-        Rc::strong_count(&this) == 1
-    }
-
     /// Consumes the `Rc`, returning the wrapped pointer.
     ///
     /// To avoid a memory leak the pointer must be converted back to an `Rc` using
@@ -438,6 +424,38 @@ impl Rc<str> {
     }
 }
 
+impl<T> Rc<[T]> {
+    /// Constructs a new `Rc<[T]>` from a `Box<[T]>`.
+    #[doc(hidden)]
+    #[unstable(feature = "rustc_private",
+               reason = "for internal use in rustc",
+               issue = "0")]
+    pub fn __from_array(value: Box<[T]>) -> Rc<[T]> {
+        unsafe {
+            let ptr: *mut RcBox<[T]> =
+                mem::transmute([mem::align_of::<RcBox<[T; 1]>>(), value.len()]);
+            // FIXME(custom-DST): creating this invalid &[T] is dubiously defined,
+            // we should have a better way of getting the size/align
+            // of a DST from its unsized part.
+            let ptr = allocate(size_of_val(&*ptr), align_of_val(&*ptr));
+            let ptr: *mut RcBox<[T]> = mem::transmute([ptr as usize, value.len()]);
+
+            // Initialize the new RcBox.
+            ptr::write(&mut (*ptr).strong, Cell::new(1));
+            ptr::write(&mut (*ptr).weak, Cell::new(1));
+            ptr::copy_nonoverlapping(
+                value.as_ptr(),
+                &mut (*ptr).value as *mut [T] as *mut T,
+                value.len());
+
+            // Free the original allocation without freeing its (moved) contents.
+            box_free(Box::into_raw(value));
+
+            Rc { ptr: Shared::new(ptr as *const _) }
+        }
+    }
+}
+
 impl<T: ?Sized> Rc<T> {
     /// Creates a new [`Weak`][weak] pointer to this value.
     ///
@@ -501,11 +519,7 @@ impl<T: ?Sized> Rc<T> {
     ///
     /// [weak]: struct.Weak.html
     #[inline]
-    #[unstable(feature = "is_unique", reason = "uniqueness has unclear meaning",
-               issue = "28356")]
-    #[rustc_deprecated(since = "1.15.0",
-                       reason = "too niche; use `strong_count` and `weak_count` instead")]
-    pub fn is_unique(this: &Self) -> bool {
+    fn is_unique(this: &Self) -> bool {
         Rc::weak_count(this) == 0 && Rc::strong_count(this) == 1
     }
 

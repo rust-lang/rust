@@ -152,36 +152,6 @@ fn test_push_unique() {
     assert!(*heap.peek().unwrap() == box 103);
 }
 
-#[test]
-#[allow(deprecated)]
-fn test_push_pop() {
-    let mut heap = BinaryHeap::from(vec![5, 5, 2, 1, 3]);
-    assert_eq!(heap.len(), 5);
-    assert_eq!(heap.push_pop(6), 6);
-    assert_eq!(heap.len(), 5);
-    assert_eq!(heap.push_pop(0), 5);
-    assert_eq!(heap.len(), 5);
-    assert_eq!(heap.push_pop(4), 5);
-    assert_eq!(heap.len(), 5);
-    assert_eq!(heap.push_pop(1), 4);
-    assert_eq!(heap.len(), 5);
-}
-
-#[test]
-#[allow(deprecated)]
-fn test_replace() {
-    let mut heap = BinaryHeap::from(vec![5, 5, 2, 1, 3]);
-    assert_eq!(heap.len(), 5);
-    assert_eq!(heap.replace(6).unwrap(), 5);
-    assert_eq!(heap.len(), 5);
-    assert_eq!(heap.replace(0).unwrap(), 6);
-    assert_eq!(heap.len(), 5);
-    assert_eq!(heap.replace(4).unwrap(), 5);
-    assert_eq!(heap.len(), 5);
-    assert_eq!(heap.replace(1).unwrap(), 4);
-    assert_eq!(heap.len(), 5);
-}
-
 fn check_to_vec(mut data: Vec<i32>) {
     let heap = BinaryHeap::from(data.clone());
     let mut v = heap.clone().into_vec();
@@ -225,13 +195,6 @@ fn test_empty_peek() {
 fn test_empty_peek_mut() {
     let mut empty = BinaryHeap::<i32>::new();
     assert!(empty.peek_mut().is_none());
-}
-
-#[test]
-#[allow(deprecated)]
-fn test_empty_replace() {
-    let mut heap = BinaryHeap::new();
-    assert!(heap.replace(5).is_none());
 }
 
 #[test]

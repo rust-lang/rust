@@ -18,7 +18,7 @@ use asm;
 use attributes;
 use base;
 use consts;
-use context::{CrateContext, SharedCrateContext};
+use context::CrateContext;
 use common;
 use declare;
 use llvm;
@@ -118,8 +118,7 @@ impl<'a, 'tcx> TransItem<'tcx> {
                self.to_raw_string(),
                ccx.codegen_unit().name());
 
-        let symbol_name = ccx.symbol_map()
-                             .get_or_compute(ccx.shared(), *self);
+        let symbol_name = ccx.symbol_cache().get(*self);
 
         debug!("symbol {}", &symbol_name);
 
@@ -185,16 +184,15 @@ impl<'a, 'tcx> TransItem<'tcx> {
         ccx.instances().borrow_mut().insert(instance, lldecl);
     }
 
-    pub fn compute_symbol_name(&self,
-                               scx: &SharedCrateContext<'a, 'tcx>) -> String {
+    pub fn compute_symbol_name(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> String {
         match *self {
-            TransItem::Fn(instance) => symbol_names::symbol_name(instance, scx),
+            TransItem::Fn(instance) => symbol_names::symbol_name(instance, tcx),
             TransItem::Static(node_id) => {
-                let def_id = scx.tcx().hir.local_def_id(node_id);
-                symbol_names::symbol_name(Instance::mono(scx.tcx(), def_id), scx)
+                let def_id = tcx.hir.local_def_id(node_id);
+                symbol_names::symbol_name(Instance::mono(tcx, def_id), tcx)
             }
             TransItem::GlobalAsm(node_id) => {
-                let def_id = scx.tcx().hir.local_def_id(node_id);
+                let def_id = tcx.hir.local_def_id(node_id);
                 format!("global_asm_{:?}", def_id)
             }
         }

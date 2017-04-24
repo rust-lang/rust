@@ -555,82 +555,6 @@ impl<T: Ord> BinaryHeap<T> {
         self.sift_up(0, old_len);
     }
 
-    /// Pushes an item onto the binary heap, then pops the greatest item off the queue in
-    /// an optimized fashion.
-    ///
-    /// # Examples
-    ///
-    /// Basic usage:
-    ///
-    /// ```
-    /// #![feature(binary_heap_extras)]
-    /// #![allow(deprecated)]
-    ///
-    /// use std::collections::BinaryHeap;
-    /// let mut heap = BinaryHeap::new();
-    /// heap.push(1);
-    /// heap.push(5);
-    ///
-    /// assert_eq!(heap.push_pop(3), 5);
-    /// assert_eq!(heap.push_pop(9), 9);
-    /// assert_eq!(heap.len(), 2);
-    /// assert_eq!(heap.peek(), Some(&3));
-    /// ```
-    #[unstable(feature = "binary_heap_extras",
-               reason = "needs to be audited",
-               issue = "28147")]
-    #[rustc_deprecated(since = "1.13.0", reason = "use `peek_mut` instead")]
-    pub fn push_pop(&mut self, mut item: T) -> T {
-        match self.data.get_mut(0) {
-            None => return item,
-            Some(top) => {
-                if *top > item {
-                    swap(&mut item, top);
-                } else {
-                    return item;
-                }
-            }
-        }
-
-        self.sift_down(0);
-        item
-    }
-
-    /// Pops the greatest item off the binary heap, then pushes an item onto the queue in
-    /// an optimized fashion. The push is done regardless of whether the binary heap
-    /// was empty.
-    ///
-    /// # Examples
-    ///
-    /// Basic usage:
-    ///
-    /// ```
-    /// #![feature(binary_heap_extras)]
-    /// #![allow(deprecated)]
-    ///
-    /// use std::collections::BinaryHeap;
-    /// let mut heap = BinaryHeap::new();
-    ///
-    /// assert_eq!(heap.replace(1), None);
-    /// assert_eq!(heap.replace(3), Some(1));
-    /// assert_eq!(heap.len(), 1);
-    /// assert_eq!(heap.peek(), Some(&3));
-    /// ```
-    #[unstable(feature = "binary_heap_extras",
-               reason = "needs to be audited",
-               issue = "28147")]
-    #[rustc_deprecated(since = "1.13.0", reason = "use `peek_mut` instead")]
-    pub fn replace(&mut self, mut item: T) -> Option<T> {
-        if !self.is_empty() {
-            swap(&mut item, &mut self.data[0]);
-            self.sift_down(0);
-            Some(item)
-        } else {
-            self.push(item);
-            None
-        }
-    }
-
     /// Consumes the `BinaryHeap` and returns the underlying vector
     /// in arbitrary order.
     ///
@@ -1042,7 +966,7 @@ impl<'a, T> FusedIterator for Iter<'a, T> {}
 
 /// An owning iterator over the elements of a `BinaryHeap`.
 ///
-/// This `struct` is created by the [`into_iter`] method on [`BinaryHeap`]
+/// This `struct` is created by the [`into_iter`] method on [`BinaryHeap`][`BinaryHeap`]
 /// (provided by the `IntoIterator` trait). See its documentation for more.
 ///
 /// [`into_iter`]: struct.BinaryHeap.html#method.into_iter

@@ -99,6 +99,8 @@ pub fn provide(providers: &mut Providers) {
         trait_def,
         adt_def,
         impl_trait_ref,
+        impl_polarity,
+        is_foreign_item,
         ..*providers
     };
 }
@@ -553,7 +555,8 @@ fn convert_enum_variant_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         let wrapped_discr = prev_discr.map_or(initial, |d| d.wrap_incr());
         prev_discr = Some(if let Some(e) = variant.node.disr_expr {
             let expr_did = tcx.hir.local_def_id(e.node_id);
-            let result = ty::queries::monomorphic_const_eval::get(tcx, variant.span, expr_did);
+            let substs = Substs::empty();
+            let result = ty::queries::const_eval::get(tcx, variant.span, (expr_did, substs));
 
             // enum variant evaluation happens before the global constant check
             // so we need to report the real error
@@ -1132,6 +1135,16 @@ fn impl_trait_ref<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     }
 }
 
+fn impl_polarity<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                           def_id: DefId)
+                           -> hir::ImplPolarity {
+    let node_id = tcx.hir.as_local_node_id(def_id).unwrap();
+    match tcx.hir.expect_item(node_id).node {
+        hir::ItemImpl(_, polarity, ..) => polarity,
+        ref item => bug!("trait_impl_polarity: {:?} not an impl", item)
+    }
+}
+
 // Is it marked with ?Sized
 fn is_unsized<'gcx: 'tcx, 'tcx>(astconv: &AstConv<'gcx, 'tcx>,
                                 ast_bounds: &[hir::TyParamBound],
@@ -1529,4 +1542,14 @@ fn compute_type_of_foreign_fn_decl<'a, 'tcx>(
 
     let substs = Substs::identity_for_item(tcx, def_id);
     tcx.mk_fn_def(def_id, substs, fty)
+}
+
+fn is_foreign_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                             def_id: DefId)
+                             -> bool {
+    match tcx.hir.get_if_local(def_id) {
+        Some(hir_map::NodeForeignItem(..)) => true,
+        Some(_) => false,
+        _ => bug!("is_foreign_item applied to non-local def-id {:?}", def_id)
+    }
 }

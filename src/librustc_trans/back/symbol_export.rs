@@ -53,7 +53,7 @@ impl ExportedSymbols {
                 scx.tcx().hir.local_def_id(node_id)
             })
             .map(|def_id| {
-                let name = symbol_for_def_id(scx, def_id, symbol_map);
+                let name = symbol_for_def_id(scx.tcx(), def_id, symbol_map);
                 let export_level = export_level(scx, def_id);
                 debug!("EXPORTED SYMBOL (local): {} ({:?})", name, export_level);
                 (name, export_level)
@@ -108,7 +108,7 @@ impl ExportedSymbols {
                 .exported_symbols(cnum)
                 .iter()
                 .map(|&def_id| {
-                    let name = symbol_name(Instance::mono(scx.tcx(), def_id), scx);
+                    let name = symbol_name(Instance::mono(scx.tcx(), def_id), scx.tcx());
                     let export_level = if special_runtime_crate {
                         // We can probably do better here by just ensuring that
                         // it has hidden visibility rather than public
@@ -214,21 +214,21 @@ pub fn is_below_threshold(level: SymbolExportLevel,
     }
 }
 
-fn symbol_for_def_id<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
+fn symbol_for_def_id<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                                def_id: DefId,
                                symbol_map: &SymbolMap<'tcx>)
                                -> String {
     // Just try to look things up in the symbol map. If nothing's there, we
     // recompute.
-    if let Some(node_id) = scx.tcx().hir.as_local_node_id(def_id) {
+    if let Some(node_id) = tcx.hir.as_local_node_id(def_id) {
         if let Some(sym) = symbol_map.get(TransItem::Static(node_id)) {
             return sym.to_owned();
         }
     }
 
-    let instance = Instance::mono(scx.tcx(), def_id);
+    let instance = Instance::mono(tcx, def_id);
 
     symbol_map.get(TransItem::Fn(instance))
               .map(str::to_owned)
-              .unwrap_or_else(|| symbol_name(instance, scx))
+              .unwrap_or_else(|| symbol_name(instance, tcx))
 }

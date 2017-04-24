@@ -72,7 +72,7 @@ use html::format::{TyParamBounds, WhereClause, href, AbiSpace};
 use html::format::{VisSpace, Method, UnsafetySpace, MutableSpace};
 use html::format::fmt_impl_for_trait_page;
 use html::item_type::ItemType;
-use html::markdown::{self, Markdown, MarkdownHtml, MarkdownSummaryLine};
+use html::markdown::{self, Markdown, MarkdownHtml, MarkdownSummaryLine, RenderType};
 use html::{highlight, layout};
 
 /// A pair of name and its optional document.
@@ -98,6 +98,7 @@ pub struct Context {
     /// publicly reused items to redirect to the right location.
     pub render_redirect_pages: bool,
     pub shared: Arc<SharedContext>,
+    pub render_type: RenderType,
 }
 
 pub struct SharedContext {
@@ -433,7 +434,8 @@ pub fn run(mut krate: clean::Crate,
            dst: PathBuf,
            passes: FxHashSet<String>,
            css_file_extension: Option<PathBuf>,
-           renderinfo: RenderInfo) -> Result<(), Error> {
+           renderinfo: RenderInfo,
+           render_type: RenderType) -> Result<(), Error> {
     let src_root = match krate.src.parent() {
         Some(p) => p.to_path_buf(),
         None => PathBuf::new(),
@@ -495,6 +497,7 @@ pub fn run(mut krate: clean::Crate,
         dst: dst,
         render_redirect_pages: false,
         shared: Arc::new(scx),
+        render_type: render_type,
     };
 
     // Crawl the crate to build various caches used for the output
@@ -1638,11 +1641,12 @@ fn plain_summary_line(s: Option<&str>) -> String {
 
 fn document(w: &mut fmt::Formatter, cx: &Context, item: &clean::Item) -> fmt::Result {
     document_stability(w, cx, item)?;
-    document_full(w, item)?;
+    document_full(w, item, cx.render_type)?;
     Ok(())
 }
 
-fn document_short(w: &mut fmt::Formatter, item: &clean::Item, link: AssocItemLink) -> fmt::Result {
+fn document_short(w: &mut fmt::Formatter, item: &clean::Item, link: AssocItemLink,
+                  render_type: RenderType) -> fmt::Result {
     if let Some(s) = item.doc_value() {
         let markdown = if s.contains('\n') {
             format!("{} [Read more]({})",
@@ -1651,7 +1655,7 @@ fn document_short(w: &mut fmt::Formatter, item: &clean::Item, link: AssocItemLin
             format!("{}", &plain_summary_line(Some(s)))
         };
         write!(w, "<div class='docblock'>{}</div>",
-               Markdown(&markdown))?;
+               Markdown(&markdown, render_type))?;
     }
     Ok(())
 }
@@ -1681,10 +1685,11 @@ fn get_doc_value(item: &clean::Item) -> Option<&str> {
     }
 }
 
-fn document_full(w: &mut fmt::Formatter, item: &clean::Item) -> fmt::Result {
+fn document_full(w: &mut fmt::Formatter, item: &clean::Item,
+                 render_type: RenderType) -> fmt::Result {
     if let Some(s) = get_doc_value(item) {
         write!(w, "<div class='docblock'>{}</div>",
-               Markdown(&format!("{}{}", md_render_assoc_item(item), s)))?;
+               Markdown(&format!("{}{}", md_render_assoc_item(item), s), render_type))?;
     }
     Ok(())
 }
@@ -1872,7 +1877,13 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
                        </tr>",
                        name = *myitem.name.as_ref().unwrap(),
                        stab_docs = stab_docs,
-                       docs = MarkdownSummaryLine(doc_value),
+                       docs = if cx.render_type == RenderType::Hoedown {
+                           format!("{}",
+                                   shorter(Some(&Markdown(doc_value,
+                                                          RenderType::Hoedown).to_string())))
+                       } else {
+                           format!("{}", MarkdownSummaryLine(doc_value))
+                       },
                        class = myitem.type_(),
                        stab = myitem.stability_class().unwrap_or("".to_string()),
                        unsafety_flag = unsafety_flag,
@@ -1915,7 +1926,9 @@ fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Vec<S
             } else {
                 String::new()
             };
-            let text = format!("Deprecated{}{}", since, MarkdownHtml(&deprecated_reason));
+            let text = format!("Deprecated{}{}",
+                               since,
+                               MarkdownHtml(&deprecated_reason, cx.render_type));
             stability.push(format!("<div class='stab deprecated'>{}</div>", text))
         };
 
@@ -1944,7 +1957,8 @@ fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Vec<S
                     let text = format!("<summary><span class=microscope>🔬</span> \
                                         This is a nightly-only experimental API. {}\
                                         </summary>{}",
-                                       unstable_extra, MarkdownHtml(&stab.unstable_reason));
+                                       unstable_extra,
+                                       MarkdownHtml(&stab.unstable_reason, cx.render_type));
                     stability.push(format!("<div class='stab unstable'><details>{}</details></div>",
                                    text));
                 }
@@ -1964,7 +1978,7 @@ fn short_stability(item: &clean::Item, cx: &Context, show_reason: bool) -> Vec<S
             String::new()
         };
 
-        let text = format!("Deprecated{}{}", since, MarkdownHtml(&note));
+        let text = format!("Deprecated{}{}", since, MarkdownHtml(&note, cx.render_type));
         stability.push(format!("<div class='stab deprecated'>{}</div>", text))
     }
 
@@ -2900,7 +2914,7 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
         write!(w, "</span>")?;
         write!(w, "</h3>\n")?;
         if let Some(ref dox) = i.impl_item.doc_value() {
-            write!(w, "<div class='docblock'>{}</div>", Markdown(dox))?;
+            write!(w, "<div class='docblock'>{}</div>", Markdown(dox, cx.render_type))?;
         }
     }
 
@@ -2999,11 +3013,11 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
                         // because impls can't have a stability.
                         document_stability(w, cx, it)?;
                         if get_doc_value(item).is_some() {
-                            document_full(w, item)?;
+                            document_full(w, item, cx.render_type)?;
                         } else {
                             // In case the item isn't documented,
                             // provide short documentation from the trait.
-                            document_short(w, it, link)?;
+                            document_short(w, it, link, cx.render_type)?;
                         }
                     }
                 } else {
@@ -3011,7 +3025,7 @@ fn render_impl(w: &mut fmt::Formatter, cx: &Context, i: &Impl, link: AssocItemLi
                 }
             } else {
                 document_stability(w, cx, item)?;
-                document_short(w, item, link)?;
+                document_short(w, item, link, cx.render_type)?;
             }
         }
         Ok(())

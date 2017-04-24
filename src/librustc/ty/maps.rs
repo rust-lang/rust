@@ -10,11 +10,13 @@
 
 use dep_graph::{DepGraph, DepNode, DepTrackingMap, DepTrackingMapConfig};
 use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
+use hir;
 use middle::const_val;
 use middle::privacy::AccessLevels;
 use mir;
 use session::CompileResult;
 use ty::{self, CrateInherentImpls, Ty, TyCtxt};
+use ty::subst::Substs;
 use util::nodemap::NodeSet;
 
 use rustc_data_structures::indexed_vec::IndexVec;
@@ -73,6 +75,15 @@ impl Key for (CrateNum, DefId) {
     }
 }
 
+impl<'tcx> Key for (DefId, &'tcx Substs<'tcx>) {
+    fn map_crate(&self) -> CrateNum {
+        self.0.krate
+    }
+    fn default_span(&self, tcx: TyCtxt) -> Span {
+        self.0.default_span(tcx)
+    }
+}
+
 trait Value<'tcx>: Sized {
     fn from_cycle_error<'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Self;
 }
@@ -93,6 +104,13 @@ impl<'tcx, T: Default> Value<'tcx> for T {
 impl<'tcx> Value<'tcx> for Ty<'tcx> {
     fn from_cycle_error<'a>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Ty<'tcx> {
         tcx.types.err
+    }
+}
+
+
+impl<'tcx> Value<'tcx> for ty::DtorckConstraint<'tcx> {
+    fn from_cycle_error<'a>(_: TyCtxt<'a, 'tcx, 'tcx>) -> Self {
+        Self::empty()
     }
 }
 
@@ -213,6 +231,13 @@ impl<'tcx> QueryDescription for queries::typeck_item_bodies<'tcx> {
 impl<'tcx> QueryDescription for queries::reachable_set<'tcx> {
     fn describe(_: TyCtxt, _: CrateNum) -> String {
         format!("reachability")
+    }
+}
+
+impl<'tcx> QueryDescription for queries::const_eval<'tcx> {
+    fn describe(tcx: TyCtxt, (def_id, _): (DefId, &'tcx Substs<'tcx>)) -> String {
+        format!("const-evaluating `{}`",
+                tcx.item_path_str(def_id))
     }
 }
 
@@ -378,7 +403,11 @@ define_maps! { <'tcx>
     pub trait_def: ItemSignature(DefId) -> &'tcx ty::TraitDef,
     pub adt_def: ItemSignature(DefId) -> &'tcx ty::AdtDef,
     pub adt_destructor: AdtDestructor(DefId) -> Option<ty::Destructor>,
-    pub adt_sized_constraint: SizedConstraint(DefId) -> Ty<'tcx>,
+    pub adt_sized_constraint: SizedConstraint(DefId) -> &'tcx [Ty<'tcx>],
+    pub adt_dtorck_constraint: DtorckConstraint(DefId) -> ty::DtorckConstraint<'tcx>,
+
+    /// True if this is a foreign item (i.e., linked via `extern { ... }`).
+    pub is_foreign_item: IsForeignItem(DefId) -> bool,
 
     /// Maps from def-id of a type or region parameter to its
     /// (inferred) variance.
@@ -391,6 +420,7 @@ define_maps! { <'tcx>
     pub associated_item: AssociatedItems(DefId) -> ty::AssociatedItem,
 
     pub impl_trait_ref: ItemSignature(DefId) -> Option<ty::TraitRef<'tcx>>,
+    pub impl_polarity: ItemSignature(DefId) -> hir::ImplPolarity,
 
     /// Maps a DefId of a type to a list of its inherent impls.
     /// Contains implementations of methods that are inherent to a type.
@@ -441,16 +471,17 @@ define_maps! { <'tcx>
     /// (Defined only for LOCAL_CRATE)
     pub crate_inherent_impls_overlap_check: crate_inherent_impls_dep_node(CrateNum) -> (),
 
-    /// Results of evaluating monomorphic constants embedded in
-    /// other items, such as enum variant explicit discriminants.
-    pub monomorphic_const_eval: MonomorphicConstEval(DefId) -> const_val::EvalResult<'tcx>,
+    /// Results of evaluating const items or constants embedded in
+    /// other items (such as enum variant explicit discriminants).
+    pub const_eval: const_eval_dep_node((DefId, &'tcx Substs<'tcx>))
+        -> const_val::EvalResult<'tcx>,
 
     /// Performs the privacy check and computes "access levels".
     pub privacy_access_levels: PrivacyAccessLevels(CrateNum) -> Rc<AccessLevels>,
 
-    pub reachable_set: reachability_dep_node(CrateNum) -> NodeSet,
+    pub reachable_set: reachability_dep_node(CrateNum) -> Rc<NodeSet>,
 
-    pub mir_shims: mir_shim(ty::InstanceDef<'tcx>) -> &'tcx RefCell<mir::Mir<'tcx>>
+    pub mir_shims: mir_shim_dep_node(ty::InstanceDef<'tcx>) -> &'tcx RefCell<mir::Mir<'tcx>>
 }
 
 fn coherent_trait_dep_node((_, def_id): (CrateNum, DefId)) -> DepNode<DefId> {
@@ -465,10 +496,14 @@ fn reachability_dep_node(_: CrateNum) -> DepNode<DefId> {
     DepNode::Reachability
 }
 
-fn mir_shim(instance: ty::InstanceDef) -> DepNode<DefId> {
+fn mir_shim_dep_node(instance: ty::InstanceDef) -> DepNode<DefId> {
     instance.dep_node()
 }
 
 fn typeck_item_bodies_dep_node(_: CrateNum) -> DepNode<DefId> {
     DepNode::TypeckBodiesKrate
+}
+
+fn const_eval_dep_node((def_id, _): (DefId, &Substs)) -> DepNode<DefId> {
+    DepNode::ConstEval(def_id)
 }

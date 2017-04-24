@@ -93,6 +93,8 @@ pub mod test;
 
 use clean::AttributesExt;
 
+use html::markdown::RenderType;
+
 struct Output {
     krate: clean::Crate,
     renderinfo: html::render::RenderInfo,
@@ -169,6 +171,7 @@ pub fn opts() -> Vec<RustcOptGroup> {
                         "URL to send code snippets to, may be reset by --markdown-playground-url \
                          or `#![doc(html_playground_url=...)]`",
                         "URL")),
+        unstable(optflag("", "enable-commonmark", "to enable commonmark doc rendering/testing")),
     ]
 }
 
@@ -250,6 +253,12 @@ pub fn main_args(args: &[String]) -> isize {
     let css_file_extension = matches.opt_str("e").map(|s| PathBuf::from(&s));
     let cfgs = matches.opt_strs("cfg");
 
+    let render_type = if matches.opt_present("enable-commonmark") {
+        RenderType::Pulldown
+    } else {
+        RenderType::Hoedown
+    };
+
     if let Some(ref p) = css_file_extension {
         if !p.is_file() {
             writeln!(
@@ -273,15 +282,17 @@ pub fn main_args(args: &[String]) -> isize {
 
     match (should_test, markdown_input) {
         (true, true) => {
-            return markdown::test(input, cfgs, libs, externs, test_args, maybe_sysroot)
+            return markdown::test(input, cfgs, libs, externs, test_args, maybe_sysroot, render_type)
         }
         (true, false) => {
-            return test::run(input, cfgs, libs, externs, test_args, crate_name, maybe_sysroot)
+            return test::run(input, cfgs, libs, externs, test_args, crate_name, maybe_sysroot,
+                             render_type)
         }
         (false, true) => return markdown::render(input,
                                                  output.unwrap_or(PathBuf::from("doc")),
                                                  &matches, &external_html,
-                                                 !matches.opt_present("markdown-no-toc")),
+                                                 !matches.opt_present("markdown-no-toc"),
+                                                 render_type),
         (false, false) => {}
     }
 
@@ -295,7 +306,8 @@ pub fn main_args(args: &[String]) -> isize {
                                   output.unwrap_or(PathBuf::from("doc")),
                                   passes.into_iter().collect(),
                                   css_file_extension,
-                                  renderinfo)
+                                  renderinfo,
+                                  render_type)
                     .expect("failed to generate documentation");
                 0
             }

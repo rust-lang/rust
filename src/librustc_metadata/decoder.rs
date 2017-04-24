@@ -31,6 +31,7 @@ use std::cell::Ref;
 use std::collections::BTreeMap;
 use std::io;
 use std::mem;
+use std::rc::Rc;
 use std::str;
 use std::u32;
 
@@ -749,16 +750,15 @@ impl<'a, 'tcx> CrateMetadata {
         }
     }
 
-    pub fn maybe_get_item_body(&self,
-                               tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                               id: DefIndex)
-                               -> Option<&'tcx hir::Body> {
-        if self.is_proc_macro(id) { return None; }
-        self.entry(id).ast.map(|ast| {
-            let def_id = self.local_def_id(id);
-            let body = ast.decode(self).body.decode(self);
-            tcx.hir.intern_inlined_body(def_id, body)
-        })
+    pub fn item_body(&self,
+                     tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                     id: DefIndex)
+                     -> &'tcx hir::Body {
+        assert!(!self.is_proc_macro(id));
+        let ast = self.entry(id).ast.unwrap();
+        let def_id = self.local_def_id(id);
+        let body = ast.decode(self).body.decode(self);
+        tcx.hir.intern_inlined_body(def_id, body)
     }
 
     pub fn item_body_tables(&self,
@@ -859,10 +859,18 @@ impl<'a, 'tcx> CrateMetadata {
         }
     }
 
-    pub fn get_item_attrs(&self, node_id: DefIndex) -> Vec<ast::Attribute> {
+    pub fn get_item_attrs(&self, node_id: DefIndex) -> Rc<[ast::Attribute]> {
+        let (node_as, node_index) =
+            (node_id.address_space().index(), node_id.as_array_index());
         if self.is_proc_macro(node_id) {
-            return Vec::new();
+            return Rc::new([]);
         }
+
+        if let Some(&Some(ref val)) =
+            self.attribute_cache.borrow()[node_as].get(node_index) {
+            return val.clone();
+        }
+
         // The attributes for a tuple struct are attached to the definition, not the ctor;
         // we assume that someone passing in a tuple struct ctor is actually wanting to
         // look at the definition
@@ -871,7 +879,13 @@ impl<'a, 'tcx> CrateMetadata {
         if def_key.disambiguated_data.data == DefPathData::StructCtor {
             item = self.entry(def_key.parent.unwrap());
         }
-        self.get_attributes(&item)
+        let result = Rc::__from_array(self.get_attributes(&item).into_boxed_slice());
+        let vec_ = &mut self.attribute_cache.borrow_mut()[node_as];
+        if vec_.len() < node_index + 1 {
+            vec_.resize(node_index + 1, None);
+        }
+        vec_[node_index] = Some(result.clone());
+        result
     }
 
     pub fn get_struct_field_names(&self, id: DefIndex) -> Vec<ast::Name> {

@@ -343,12 +343,12 @@ impl<'a, 'gcx, 'tcx> Env<'a, 'gcx, 'tcx> {
     }
 
     pub fn t_rptr_static(&self) -> Ty<'tcx> {
-        self.infcx.tcx.mk_imm_ref(self.infcx.tcx.mk_region(ty::ReStatic),
+        self.infcx.tcx.mk_imm_ref(self.infcx.tcx.types.re_static,
                                   self.tcx().types.isize)
     }
 
     pub fn t_rptr_empty(&self) -> Ty<'tcx> {
-        self.infcx.tcx.mk_imm_ref(self.infcx.tcx.mk_region(ty::ReEmpty),
+        self.infcx.tcx.mk_imm_ref(self.infcx.tcx.types.re_empty,
                                   self.tcx().types.isize)
     }
 

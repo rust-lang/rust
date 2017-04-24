@@ -89,6 +89,7 @@ provide! { <'tcx> tcx, def_id, cdata
     }
     associated_item => { cdata.get_associated_item(def_id.index) }
     impl_trait_ref => { cdata.get_impl_trait(def_id.index, tcx) }
+    impl_polarity => { cdata.get_impl_polarity(def_id.index) }
     coerce_unsized_info => {
         cdata.get_coerce_unsized_info(def_id.index).unwrap_or_else(|| {
             bug!("coerce_unsized_info: `{:?}` is missing its info", def_id);
@@ -111,6 +112,7 @@ provide! { <'tcx> tcx, def_id, cdata
     closure_kind => { cdata.closure_kind(def_id.index) }
     closure_type => { cdata.closure_ty(def_id.index, tcx) }
     inherent_impls => { Rc::new(cdata.get_inherent_implementations_for_type(def_id.index)) }
+    is_foreign_item => { cdata.is_foreign_item(def_id.index) }
 }
 
 impl CrateStore for cstore::CStore {
@@ -148,7 +150,7 @@ impl CrateStore for cstore::CStore {
         self.get_crate_data(def.krate).get_generics(def.index)
     }
 
-    fn item_attrs(&self, def_id: DefId) -> Vec<ast::Attribute>
+    fn item_attrs(&self, def_id: DefId) -> Rc<[ast::Attribute]>
     {
         self.dep_graph.read(DepNode::MetaData(def_id));
         self.get_crate_data(def_id.krate).get_item_attrs(def_id.index)
@@ -174,12 +176,6 @@ impl CrateStore for cstore::CStore {
             cdata.get_implementations_for_trait(filter, &mut result)
         });
         result
-    }
-
-    fn impl_polarity(&self, def: DefId) -> hir::ImplPolarity
-    {
-        self.dep_graph.read(DepNode::MetaData(def));
-        self.get_crate_data(def.krate).get_impl_polarity(def.index)
     }
 
     fn impl_parent(&self, impl_def: DefId) -> Option<DefId> {
@@ -405,7 +401,7 @@ impl CrateStore for cstore::CStore {
 
         // Mark the attrs as used
         let attrs = data.get_item_attrs(id.index);
-        for attr in &attrs {
+        for attr in attrs.iter() {
             attr::mark_used(attr);
         }
 
@@ -418,25 +414,24 @@ impl CrateStore for cstore::CStore {
             ident: ast::Ident::with_empty_ctxt(name),
             id: ast::DUMMY_NODE_ID,
             span: local_span,
-            attrs: attrs,
+            attrs: attrs.iter().cloned().collect(),
             node: ast::ItemKind::MacroDef(body.into()),
             vis: ast::Visibility::Inherited,
         })
     }
 
-    fn maybe_get_item_body<'a, 'tcx>(&self,
-                                     tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                                     def_id: DefId)
-                                     -> Option<&'tcx hir::Body>
-    {
+    fn item_body<'a, 'tcx>(&self,
+                           tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                           def_id: DefId)
+                           -> &'tcx hir::Body {
         if let Some(cached) = tcx.hir.get_inlined_body(def_id) {
-            return Some(cached);
+            return cached;
         }
 
         self.dep_graph.read(DepNode::MetaData(def_id));
-        debug!("maybe_get_item_body({}): inlining item", tcx.item_path_str(def_id));
+        debug!("item_body({}): inlining item", tcx.item_path_str(def_id));
 
-        self.get_crate_data(def_id.krate).maybe_get_item_body(tcx, def_id.index)
+        self.get_crate_data(def_id.krate).item_body(tcx, def_id.index)
     }
 
     fn item_body_nested_bodies(&self, def: DefId) -> BTreeMap<hir::BodyId, hir::Body> {

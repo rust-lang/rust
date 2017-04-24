@@ -225,6 +225,8 @@ pub fn compile_input(sess: &Session,
         sess.code_stats.borrow().print_type_sizes();
     }
 
+    if ::std::env::var("SKIP_LLVM").is_ok() { ::std::process::exit(0); }
+
     let phase5_result = phase_5_run_llvm_passes(sess, &trans, &outputs);
 
     controller_entry_point!(after_llvm,
@@ -810,7 +812,7 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
         defs: resolver.definitions,
         analysis: ty::CrateAnalysis {
             access_levels: Rc::new(AccessLevels::default()),
-            reachable: NodeSet(),
+            reachable: Rc::new(NodeSet()),
             name: crate_name.to_string(),
             glob_map: if resolver.make_glob_map { Some(resolver.glob_map) } else { None },
         },
@@ -889,9 +891,10 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
     let index = stability::Index::new(&hir_map);
 
     let mut local_providers = ty::maps::Providers::default();
-    mir::provide(&mut local_providers);
-    rustc_privacy::provide(&mut local_providers);
     borrowck::provide(&mut local_providers);
+    mir::provide(&mut local_providers);
+    reachable::provide(&mut local_providers);
+    rustc_privacy::provide(&mut local_providers);
     typeck::provide(&mut local_providers);
     ty::provide(&mut local_providers);
     reachable::provide(&mut local_providers);
