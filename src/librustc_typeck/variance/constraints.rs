@@ -15,6 +15,7 @@
 
 use hir::def_id::DefId;
 use middle::resolve_lifetime as rl;
+use rustc::dep_graph::{AssertDepGraphSafe, DepNode};
 use rustc::ty::subst::Substs;
 use rustc::ty::{self, Ty, TyCtxt};
 use rustc::hir::map as hir_map;
@@ -22,11 +23,11 @@ use syntax::ast;
 use rustc::hir;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 
+use rustc_data_structures::transitive_relation::TransitiveRelation;
+
 use super::terms::*;
 use super::terms::VarianceTerm::*;
 use super::xform::*;
-
-use dep_graph::DepNode::ItemSignature as VarianceDepNode;
 
 pub struct ConstraintContext<'a, 'tcx: 'a> {
     pub terms_cx: TermsContext<'a, 'tcx>,
@@ -38,6 +39,11 @@ pub struct ConstraintContext<'a, 'tcx: 'a> {
     bivariant: VarianceTermPtr<'a>,
 
     pub constraints: Vec<Constraint<'a>>,
+
+    /// This relation tracks the dependencies between the variance of
+    /// various items. In particular, if `a < b`, then the variance of
+    /// `a` depends on the sources of `b`.
+    pub dependencies: TransitiveRelation<DefId>,
 }
 
 /// Declares that the variable `decl_id` appears in a location with
@@ -57,7 +63,6 @@ pub struct Constraint<'a> {
 ///
 /// then while we are visiting `Bar<T>`, the `CurrentItem` would have
 /// the def-id and generics of `Foo`.
-#[allow(dead_code)] // TODO -- `def_id` field not used yet
 pub struct CurrentItem<'a> {
     def_id: DefId,
     generics: &'a ty::Generics,
@@ -77,10 +82,10 @@ pub fn add_constraints_from_crate<'a, 'tcx>(terms_cx: TermsContext<'a, 'tcx>)
         invariant: invariant,
         bivariant: bivariant,
         constraints: Vec::new(),
+        dependencies: TransitiveRelation::new(),
     };
 
-    // See README.md for a discussion on dep-graph management.
-    tcx.visit_all_item_likes_in_krate(VarianceDepNode, &mut constraint_cx);
+    tcx.hir.krate().visit_all_item_likes(&mut constraint_cx);
 
     constraint_cx
 }
@@ -90,50 +95,30 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for ConstraintContext<'a, 'tcx> {
         let tcx = self.terms_cx.tcx;
         let def_id = tcx.hir.local_def_id(item.id);
 
-        debug!("visit_item item={}", tcx.hir.node_to_string(item.id));
-
+        // Encapsulate constructing the constraints into a task we can
+        // reference later. This can go away once the red-green
+        // algorithm is in place.
+        //
+        // See README.md for a detailed discussion
+        // on dep-graph management.
         match item.node {
             hir::ItemEnum(..) |
             hir::ItemStruct(..) |
             hir::ItemUnion(..) => {
-                let generics = tcx.generics_of(did);
-                let current_item = &CurrentItem { def_id, generics };
-
-                // Not entirely obvious: constraints on structs/enums do not
-                // affect the variance of their type parameters. See discussion
-                // in comment at top of module.
-                //
-                // self.add_constraints_from_generics(generics);
-
-                for field in tcx.adt_def(did).all_fields() {
-                    self.add_constraints_from_ty(current_item,
-                                                 tcx.item_type(field.did),
-                                                 self.covariant);
-                }
+                tcx.dep_graph.with_task(DepNode::ItemVarianceConstraints(def_id),
+                                        AssertDepGraphSafe(self),
+                                        def_id,
+                                        visit_item_task);
             }
-            hir::ItemTrait(..) => {
-                let generics = tcx.generics_of(did);
-                let current_item = &CurrentItem { def_id, generics };
-                let trait_ref = ty::TraitRef {
-                    def_id: def_id,
-                    substs: Substs::identity_for_item(tcx, def_id)
-                };
-                self.add_constraints_from_trait_ref(current_item,
-                                                    trait_ref,
-                                                    self.invariant);
+            _ => {
+                // Nothing to do here, skip the task.
             }
+        }
 
-            hir::ItemExternCrate(_) |
-            hir::ItemUse(..) |
-            hir::ItemStatic(..) |
-            hir::ItemConst(..) |
-            hir::ItemFn(..) |
-            hir::ItemMod(..) |
-            hir::ItemForeignMod(..) |
-            hir::ItemGlobalAsm(..) |
-            hir::ItemTy(..) |
-            hir::ItemImpl(..) |
-            hir::ItemDefaultImpl(..) => {}
+        fn visit_item_task<'a, 'tcx>(ccx: AssertDepGraphSafe<&mut ConstraintContext<'a, 'tcx>>,
+                                     def_id: DefId)
+        {
+            ccx.0.build_constraints_for_item(def_id);
         }
     }
 
@@ -157,14 +142,62 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
         self.terms_cx.tcx
     }
 
-    fn inferred_index(&self, param_id: ast::NodeId) -> InferredIndex {
-        match self.terms_cx.inferred_map.get(&param_id) {
-            Some(&index) => index,
-            None => {
-                bug!("no inferred index entry for {}",
-                     self.tcx().hir.node_to_string(param_id));
+    fn build_constraints_for_item(&mut self, def_id: DefId) {
+        let tcx = self.tcx();
+        let id = self.tcx().hir.as_local_node_id(def_id).unwrap();
+        let item = tcx.hir.expect_item(id);
+        debug!("visit_item item={}", tcx.hir.node_to_string(item.id));
+
+        match item.node {
+            hir::ItemEnum(..) |
+            hir::ItemStruct(..) |
+            hir::ItemUnion(..) => {
+                let generics = tcx.generics_of(def_id);
+                let current_item = &CurrentItem { def_id, generics };
+
+                // Not entirely obvious: constraints on structs/enums do not
+                // affect the variance of their type parameters. See discussion
+                // in comment at top of module.
+                //
+                // self.add_constraints_from_generics(generics);
+
+                for field in tcx.adt_def(def_id).all_fields() {
+                    self.add_constraints_from_ty(current_item,
+                                                 tcx.type_of(field.did),
+                                                 self.covariant);
+                }
+            }
+
+            hir::ItemTrait(..) |
+            hir::ItemExternCrate(_) |
+            hir::ItemUse(..) |
+            hir::ItemStatic(..) |
+            hir::ItemConst(..) |
+            hir::ItemFn(..) |
+            hir::ItemMod(..) |
+            hir::ItemForeignMod(..) |
+            hir::ItemGlobalAsm(..) |
+            hir::ItemTy(..) |
+            hir::ItemImpl(..) |
+            hir::ItemDefaultImpl(..) => {
+                span_bug!(item.span, "`build_constraints_for_item` invoked for non-type-def");
             }
         }
+    }
+
+    /// Load the generics for another item, adding a corresponding
+    /// relation into the dependencies to indicate that the variance
+    /// for `current` relies on `def_id`.
+    fn read_generics(&mut self, current: &CurrentItem, def_id: DefId) -> &'tcx ty::Generics {
+        let generics = self.tcx().generics_of(def_id);
+        if self.tcx().dep_graph.is_fully_enabled() {
+            self.dependencies.add(current.def_id, def_id);
+        }
+        generics
+    }
+
+    fn opt_inferred_index(&self, param_id: ast::NodeId) -> Option<&InferredIndex> {
+        self.terms_cx.inferred_map.get(&param_id)
     }
 
     fn find_binding_for_lifetime(&self, param_id: ast::NodeId) -> ast::NodeId {
@@ -245,8 +278,27 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             // Parameter on an item defined within current crate:
             // variance not yet inferred, so return a symbolic
             // variance.
-            let InferredIndex(index) = self.inferred_index(param_node_id);
-            self.terms_cx.inferred_infos[index].term
+            if let Some(&InferredIndex(index)) = self.opt_inferred_index(param_node_id) {
+                self.terms_cx.inferred_infos[index].term
+            } else {
+                // If there is no inferred entry for a type parameter,
+                // it must be declared on a (locally defiend) trait -- they don't
+                // get inferreds because they are always invariant.
+                if cfg!(debug_assertions) {
+                    let item_node_id = self.tcx().hir.as_local_node_id(item_def_id).unwrap();
+                    let item = self.tcx().hir.expect_item(item_node_id);
+                    let success = match item.node {
+                        hir::ItemTrait(..) => true,
+                        _ => false,
+                    };
+                    if !success {
+                        bug!("parameter {:?} has no inferred, but declared on non-trait: {:?}",
+                             item_def_id,
+                             item);
+                    }
+                }
+                self.invariant
+            }
         } else {
             // Parameter on an item defined within another crate:
             // variance already inferred, just look it up.
@@ -305,11 +357,6 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
 
         let trait_generics = self.tcx().generics_of(trait_ref.def_id);
 
-        // This edge is actually implied by the call to
-        // `trait_def`, but I'm trying to be future-proof. See
-        // README.md for a discussion on dep-graph management.
-        self.tcx().dep_graph.read(VarianceDepNode(trait_ref.def_id));
-
         self.add_constraints_from_substs(current,
                                          trait_ref.def_id,
                                          &trait_generics.types,
@@ -362,12 +409,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             }
 
             ty::TyAdt(def, substs) => {
-                let adt_generics = self.tcx().generics_of(def.did);
-
-                // This edge is actually implied by the call to
-                // `trait_def`, but I'm trying to be future-proof. See
-                // README.md for a discussion on dep-graph management.
-                self.tcx().dep_graph.read(VarianceDepNode(def.did));
+                let adt_generics = self.read_generics(current, def.did);
 
                 self.add_constraints_from_substs(current,
                                                  def.did,
@@ -380,11 +422,6 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             ty::TyProjection(ref data) => {
                 let trait_ref = &data.trait_ref;
                 let trait_generics = self.tcx().generics_of(trait_ref.def_id);
-
-                // This edge is actually implied by the call to
-                // `trait_def`, but I'm trying to be future-proof. See
-                // README.md for a discussion on dep-graph management.
-                self.tcx().dep_graph.read(VarianceDepNode(trait_ref.def_id));
 
                 self.add_constraints_from_substs(current,
                                                  trait_ref.def_id,
@@ -505,7 +542,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 let def_id = current.generics.regions[i].def_id;
                 let node_id = self.tcx().hir.as_local_node_id(def_id).unwrap();
                 if self.is_to_be_inferred(node_id) {
-                    let index = self.inferred_index(node_id);
+                    let &index = self.opt_inferred_index(node_id).unwrap();
                     self.add_constraint(index, variance);
                 }
             }
