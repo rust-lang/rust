@@ -1147,7 +1147,8 @@ impl<T> Vec<T> {
         self.truncate(0)
     }
 
-    /// Returns the number of elements in the vector.
+    /// Returns the number of elements in the vector, also referred to
+    /// as its 'length'.
     ///
     /// # Examples
     ///
