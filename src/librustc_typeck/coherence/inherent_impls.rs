@@ -26,7 +26,7 @@ use rustc::util::nodemap::DefIdMap;
 
 use std::rc::Rc;
 use syntax::ast;
-use syntax_pos::{DUMMY_SP, Span};
+use syntax_pos::Span;
 
 /// On-demand query: yields a map containing all types mapped to their inherent impls.
 pub fn crate_inherent_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
@@ -67,7 +67,7 @@ pub fn inherent_impls<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // [the plan]: https://github.com/rust-lang/rust-roadmap/issues/4
 
     let result = tcx.dep_graph.with_ignore(|| {
-        let crate_map = ty::queries::crate_inherent_impls::get(tcx, DUMMY_SP, ty_def_id.krate);
+        let crate_map = tcx.crate_inherent_impls(ty_def_id.krate);
         match crate_map.inherent_impls.get(&ty_def_id) {
             Some(v) => v.clone(),
             None => Rc::new(vec![]),

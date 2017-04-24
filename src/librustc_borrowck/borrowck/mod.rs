@@ -42,7 +42,7 @@ use std::fmt;
 use std::rc::Rc;
 use std::hash::{Hash, Hasher};
 use syntax::ast;
-use syntax_pos::{DUMMY_SP, MultiSpan, Span};
+use syntax_pos::{MultiSpan, Span};
 use errors::DiagnosticBuilder;
 
 use rustc::hir;
@@ -63,7 +63,7 @@ pub type LoanDataFlow<'a, 'tcx> = DataFlowContext<'a, 'tcx, LoanDataFlowOperator
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     tcx.visit_all_bodies_in_krate(|body_owner_def_id, _body_id| {
-        ty::queries::borrowck::get(tcx, DUMMY_SP, body_owner_def_id);
+        tcx.borrowck(body_owner_def_id);
     });
 }
 

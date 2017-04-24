@@ -621,7 +621,7 @@ pub fn check_item_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> CompileResult 
 }
 
 pub fn check_item_bodies<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> CompileResult {
-    ty::queries::typeck_item_bodies::get(tcx, DUMMY_SP, LOCAL_CRATE)
+    tcx.typeck_item_bodies(LOCAL_CRATE)
 }
 
 fn typeck_item_bodies<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, crate_num: CrateNum) -> CompileResult {

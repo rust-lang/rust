@@ -36,7 +36,7 @@ use syntax::ast::{self, CRATE_NODE_ID};
 use syntax::codemap::Spanned;
 use syntax::attr;
 use syntax::symbol::Symbol;
-use syntax_pos::{self, DUMMY_SP};
+use syntax_pos;
 
 use rustc::hir::{self, PatKind};
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
@@ -1169,7 +1169,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> EntryBuilder<'a, 'b, 'tcx> {
         let body = tcx.hir.body_owned_by(id);
 
         Entry {
-            kind: EntryKind::Const(ty::queries::mir_const_qualif::get(tcx, DUMMY_SP, def_id)),
+            kind: EntryKind::Const(tcx.mir_const_qualif(def_id)),
             visibility: self.lazy(&ty::Visibility::Public),
             span: self.lazy(&tcx.def_span(def_id)),
             attributes: LazySeq::empty(),

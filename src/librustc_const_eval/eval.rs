@@ -27,7 +27,7 @@ use rustc::util::nodemap::DefIdMap;
 
 use syntax::ast;
 use rustc::hir::{self, Expr};
-use syntax_pos::{Span, DUMMY_SP};
+use syntax_pos::Span;
 
 use std::cmp::Ordering;
 
@@ -773,7 +773,7 @@ fn const_eval<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     };
 
     let body = if let Some(id) = tcx.hir.as_local_node_id(def_id) {
-        ty::queries::mir_const_qualif::get(tcx, DUMMY_SP, def_id);
+        tcx.mir_const_qualif(def_id);
         tcx.hir.body(tcx.hir.body_owned_by(id))
     } else {
         tcx.sess.cstore.item_body(tcx, def_id)

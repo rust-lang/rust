@@ -26,7 +26,6 @@ use util::nodemap::FxHashSet;
 
 use syntax::{ast, codemap};
 use syntax::attr;
-use syntax::codemap::DUMMY_SP;
 use syntax_pos;
 
 // Any local node that may call something in its body block should be
@@ -593,7 +592,7 @@ impl<'a, 'tcx> Visitor<'tcx> for DeadVisitor<'a, 'tcx> {
 }
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
-    let access_levels = &ty::queries::privacy_access_levels::get(tcx, DUMMY_SP, LOCAL_CRATE);
+    let access_levels = &tcx.privacy_access_levels(LOCAL_CRATE);
     let krate = tcx.hir.krate();
     let live_symbols = find_live(tcx, access_levels, krate);
     let mut visitor = DeadVisitor { tcx: tcx, live_symbols: live_symbols };

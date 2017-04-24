@@ -369,7 +369,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             return None;
         };
 
-        ty::queries::coherent_trait::get(self, DUMMY_SP, (LOCAL_CRATE, drop_trait));
+        self.coherent_trait((LOCAL_CRATE, drop_trait));
 
         let mut dtor_did = None;
         let ty = self.type_of(adt_did);

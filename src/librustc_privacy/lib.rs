@@ -38,7 +38,7 @@ use rustc::ty::fold::TypeVisitor;
 use rustc::ty::maps::Providers;
 use rustc::util::nodemap::NodeSet;
 use syntax::ast;
-use syntax_pos::{DUMMY_SP, Span};
+use syntax_pos::Span;
 
 use std::cmp;
 use std::mem::replace;
@@ -1222,7 +1222,7 @@ pub fn provide(providers: &mut Providers) {
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Rc<AccessLevels> {
     tcx.dep_graph.with_ignore(|| { // FIXME
-        ty::queries::privacy_access_levels::get(tcx, DUMMY_SP, LOCAL_CRATE)
+        tcx.privacy_access_levels(LOCAL_CRATE)
     })
 }
 

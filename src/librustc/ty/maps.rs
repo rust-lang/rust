@@ -351,6 +351,13 @@ macro_rules! define_maps {
             }
         })*
 
+        impl<'a, $tcx, 'lcx> TyCtxt<'a, $tcx, 'lcx> {
+            $($(#[$attr])*
+            pub fn $name(self, key: $K) -> $V {
+                queries::$name::get(self, DUMMY_SP, key)
+            })*
+        }
+
         pub struct Providers<$tcx> {
             $(pub $name: for<'a> fn(TyCtxt<'a, $tcx, $tcx>, $K) -> $V),*
         }

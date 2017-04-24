@@ -15,7 +15,6 @@ use std::io;
 use std::iter::once;
 
 use syntax::ast;
-use syntax_pos::DUMMY_SP;
 use rustc::hir;
 
 use rustc::hir::def::{Def, CtorKind};
@@ -234,7 +233,7 @@ pub fn build_impls(cx: &DocContext, did: DefId) -> Vec<clean::Item> {
     let tcx = cx.tcx;
     let mut impls = Vec::new();
 
-    for &did in ty::queries::inherent_impls::get(tcx, DUMMY_SP, did).iter() {
+    for &did in tcx.inherent_impls(did).iter() {
         build_impl(cx, did, &mut impls);
     }
 

@@ -1686,7 +1686,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
             let mut discr = prev_discr.map_or(initial, |d| d.wrap_incr());
             if let VariantDiscr::Explicit(expr_did) = v.discr {
                 let substs = Substs::empty();
-                match queries::const_eval::get(tcx, DUMMY_SP, (expr_did, substs)) {
+                match tcx.const_eval((expr_did, substs)) {
                     Ok(ConstVal::Integral(v)) => {
                         discr = v;
                     }
@@ -1725,7 +1725,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
                 }
                 ty::VariantDiscr::Explicit(expr_did) => {
                     let substs = Substs::empty();
-                    match queries::const_eval::get(tcx, DUMMY_SP, (expr_did, substs)) {
+                    match tcx.const_eval((expr_did, substs)) {
                         Ok(ConstVal::Integral(v)) => {
                             explicit_value = v;
                             break;
@@ -1760,7 +1760,7 @@ impl<'a, 'gcx, 'tcx> AdtDef {
     }
 
     pub fn destructor(&self, tcx: TyCtxt<'a, 'gcx, 'tcx>) -> Option<Destructor> {
-        queries::adt_destructor::get(tcx, DUMMY_SP, self.did)
+        tcx.adt_destructor(self.did)
     }
 
     /// Returns a list of types such that `Self: Sized` if and only
@@ -2045,10 +2045,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.typeck_tables_of(self.hir.body_owner_def_id(body))
     }
 
-    pub fn typeck_tables_of(self, def_id: DefId) -> &'gcx TypeckTables<'gcx> {
-        queries::typeck_tables_of::get(self, DUMMY_SP, def_id)
-    }
-
     pub fn expr_span(self, id: NodeId) -> Span {
         match self.hir.find(id) {
             Some(hir_map::NodeExpr(e)) => {
@@ -2136,22 +2132,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             .collect()
     }
 
-    pub fn impl_polarity(self, id: DefId) -> hir::ImplPolarity {
-        queries::impl_polarity::get(self, DUMMY_SP, id)
-    }
-
     pub fn trait_relevant_for_never(self, did: DefId) -> bool {
         self.associated_items(did).any(|item| {
             item.relevant_for_never()
         })
-    }
-
-    pub fn coerce_unsized_info(self, did: DefId) -> adjustment::CoerceUnsizedInfo {
-        queries::coerce_unsized_info::get(self, DUMMY_SP, did)
-    }
-
-    pub fn associated_item(self, def_id: DefId) -> AssociatedItem {
-        queries::associated_item::get(self, DUMMY_SP, def_id)
     }
 
     fn associated_item_from_trait_item_ref(self,
@@ -2207,21 +2191,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    pub fn associated_item_def_ids(self, def_id: DefId) -> Rc<Vec<DefId>> {
-        queries::associated_item_def_ids::get(self, DUMMY_SP, def_id)
-    }
-
     #[inline] // FIXME(#35870) Avoid closures being unexported due to impl Trait.
     pub fn associated_items(self, def_id: DefId)
                             -> impl Iterator<Item = ty::AssociatedItem> + 'a {
         let def_ids = self.associated_item_def_ids(def_id);
         (0..def_ids.len()).map(move |i| self.associated_item(def_ids[i]))
-    }
-
-    /// Returns the trait-ref corresponding to a given impl, or None if it is
-    /// an inherent impl.
-    pub fn impl_trait_ref(self, id: DefId) -> Option<TraitRef<'gcx>> {
-        queries::impl_trait_ref::get(self, DUMMY_SP, id)
     }
 
     /// Returns true if the impls are the same polarity and are implementing
@@ -2325,40 +2299,9 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
     }
 
-    // If the given item is in an external crate, looks up its type and adds it to
-    // the type cache. Returns the type parameters and type.
-    pub fn type_of(self, did: DefId) -> Ty<'gcx> {
-        queries::type_of::get(self, DUMMY_SP, did)
-    }
-
-    /// Given the did of a trait, returns its canonical trait ref.
-    pub fn trait_def(self, did: DefId) -> &'gcx TraitDef {
-        queries::trait_def::get(self, DUMMY_SP, did)
-    }
-
-    /// Given the did of an ADT, return a reference to its definition.
-    pub fn adt_def(self, did: DefId) -> &'gcx AdtDef {
-        queries::adt_def::get(self, DUMMY_SP, did)
-    }
-
-    /// Given the did of an item, returns its generics.
-    pub fn generics_of(self, did: DefId) -> &'gcx Generics {
-        queries::generics_of::get(self, DUMMY_SP, did)
-    }
-
-    /// Given the did of an item, returns its full set of predicates.
-    pub fn predicates_of(self, did: DefId) -> GenericPredicates<'gcx> {
-        queries::predicates_of::get(self, DUMMY_SP, did)
-    }
-
-    /// Given the did of a trait, returns its superpredicates.
-    pub fn super_predicates_of(self, did: DefId) -> GenericPredicates<'gcx> {
-        queries::super_predicates_of::get(self, DUMMY_SP, did)
-    }
-
     /// Given the did of an item, returns its MIR, borrowed immutably.
     pub fn item_mir(self, did: DefId) -> Ref<'gcx, Mir<'gcx>> {
-        queries::mir::get(self, DUMMY_SP, did).borrow()
+        self.mir(did).borrow()
     }
 
     /// Return the possibly-auto-generated MIR of a (DefId, Subst) pair.
@@ -2367,7 +2310,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     {
         match instance {
             ty::InstanceDef::Item(did) if true => self.item_mir(did),
-            _ => queries::mir_shims::get(self, DUMMY_SP, instance).borrow(),
+            _ => self.mir_shims(instance).borrow(),
         }
     }
 
@@ -2397,10 +2340,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// Determine whether an item is annotated with an attribute
     pub fn has_attr(self, did: DefId, attr: &str) -> bool {
         self.get_attrs(did).iter().any(|item| item.check_name(attr))
-    }
-
-    pub fn variances_of(self, item_id: DefId) -> Rc<Vec<ty::Variance>> {
-        queries::variances_of::get(self, DUMMY_SP, item_id)
     }
 
     pub fn trait_has_default_impl(self, trait_def_id: DefId) -> bool {
@@ -2435,14 +2374,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         }
 
         def.flags.set(def.flags.get() | TraitFlags::HAS_REMOTE_IMPLS);
-    }
-
-    pub fn closure_kind(self, def_id: DefId) -> ty::ClosureKind {
-        queries::closure_kind::get(self, DUMMY_SP, def_id)
-    }
-
-    pub fn closure_type(self, def_id: DefId) -> ty::PolyFnSig<'tcx> {
-        queries::closure_type::get(self, DUMMY_SP, def_id)
     }
 
     /// Given the def_id of an impl, return the def_id of the trait it implements.
