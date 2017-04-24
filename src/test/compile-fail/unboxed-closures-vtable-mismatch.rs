@@ -20,8 +20,16 @@ fn call_it<F:FnMut(isize,isize)->isize>(y: isize, mut f: F) -> isize {
 
 pub fn main() {
     let f = to_fn_mut(|x: usize, y: isize| -> isize { (x as isize) + y });
+    //~^ NOTE implements
+    //~| NOTE implements
     let z = call_it(3, f);
     //~^ ERROR type mismatch
     //~| ERROR type mismatch
+    //~| NOTE expected isize, found usize
+    //~| NOTE expected isize, found usize
+    //~| NOTE requires
+    //~| NOTE requires
+    //~| NOTE required by `call_it`
+    //~| NOTE required by `call_it`
     println!("{}", z);
 }

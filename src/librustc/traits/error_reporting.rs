@@ -664,61 +664,52 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
                     return;
                 }
                 let expected_trait_ty = expected_trait_ref.self_ty();
-                if expected_trait_ty.is_closure() {
-                    if let &TypeError::TupleSize(ref expected_found) = e {
-                        let mut err = struct_span_err!(self.tcx.sess, span, E0593,
-                            "closure takes {} parameter{} but {} parameter{} are required here",
-                            expected_found.found,
-                            if expected_found.found == 1 { "" } else { "s" },
-                            expected_found.expected,
-                            if expected_found.expected == 1 { "" } else { "s" });
+                let found_span = expected_trait_ty.ty_to_def_id().and_then(|did| {
+                    self.tcx.hir.span_if_local(did)
+                });
 
-                        err.span_label(span, &format!("expected closure that takes {} parameter{}",
-                                                      expected_found.expected,
-                                                      if expected_found.expected == 1 {
-                                                          ""
-                                                      } else {
-                                                          "s"
-                                                      }));
-                        let closure_span = expected_trait_ty.ty_to_def_id().and_then(|did| {
-                            self.tcx.hir.span_if_local(did)
-                        });
-                        if let Some(span) = closure_span {
-                            err.span_label(span, &format!("takes {} parameter{}",
-                                                          expected_found.found,
-                                                          if expected_found.found == 1 {
-                                                              ""
-                                                          } else {
-                                                              "s"
-                                                          }));
-                        }
-                        err
+                if let &TypeError::TupleSize(ref expected_found) = e {
+                    // Expected `|x| { }`, found `|x, y| { }`
+                    self.report_arg_count_mismatch(span,
+                                                   found_span,
+                                                   expected_found.expected,
+                                                   expected_found.found,
+                                                   expected_trait_ty.is_closure())
+                } else if let &TypeError::Sorts(ref expected_found) = e {
+                    let expected = if let ty::TyTuple(tys, _) = expected_found.expected.sty {
+                        tys.len()
                     } else {
-                        let mut err = struct_span_err!(self.tcx.sess, span, E0594,
-                            "closure mismatch: `{}` implements the trait `{}`, \
-                             but the trait `{}` is required",
-                            expected_trait_ty,
-                            expected_trait_ref,
-                            actual_trait_ref);
+                        1
+                    };
+                    let found = if let ty::TyTuple(tys, _) = expected_found.found.sty {
+                        tys.len()
+                    } else {
+                        1
+                    };
 
-                        let closure_span = expected_trait_ty.ty_to_def_id().and_then(|did| {
-                            self.tcx.hir.span_if_local(did)
-                        });
-                        if let Some(span) = closure_span {
-                            err.span_label(span, &format!("{}", e));
-                        } else {
-                            err.note(&format!("{}", e));
-                        }
-                        err
+                    if expected != found {
+                        // Expected `|| { }`, found `|x, y| { }`
+                        // Expected `fn(x) -> ()`, found `|| { }`
+                        self.report_arg_count_mismatch(span,
+                                                       found_span,
+                                                       expected,
+                                                       found,
+                                                       expected_trait_ty.is_closure())
+                    } else {
+                        self.report_type_argument_mismatch(span,
+                                                            found_span,
+                                                            expected_trait_ty,
+                                                            expected_trait_ref,
+                                                            actual_trait_ref,
+                                                            e)
                     }
                 } else {
-                    struct_span_err!(self.tcx.sess, span, E0281,
-                        "type mismatch: the type `{}` implements the trait `{}`, \
-                         but the trait `{}` is required ({})",
-                        expected_trait_ty,
-                        expected_trait_ref,
-                        actual_trait_ref,
-                        e)
+                    self.report_type_argument_mismatch(span,
+                                                        found_span,
+                                                        expected_trait_ty,
+                                                        expected_trait_ref,
+                                                        actual_trait_ref,
+                                                        e)
                 }
             }
 
@@ -730,6 +721,60 @@ impl<'a, 'gcx, 'tcx> InferCtxt<'a, 'gcx, 'tcx> {
         };
         self.note_obligation_cause(&mut err, obligation);
         err.emit();
+    }
+
+    fn report_type_argument_mismatch(&self,
+                                      span: Span,
+                                      found_span: Option<Span>,
+                                      expected_ty: Ty<'tcx>,
+                                      expected_ref: ty::PolyTraitRef<'tcx>,
+                                      found_ref: ty::PolyTraitRef<'tcx>,
+                                      type_error: &TypeError<'tcx>)
+        -> DiagnosticBuilder<'tcx>
+    {
+        let mut err = struct_span_err!(self.tcx.sess, span, E0281,
+            "type mismatch: `{}` implements the trait `{}`, but the trait `{}` is required",
+            expected_ty,
+            expected_ref,
+            found_ref);
+
+        err.span_label(span, &format!("{}", type_error));
+
+        if let Some(sp) = found_span {
+            err.span_label(span, &format!("requires `{}`", found_ref));
+            err.span_label(sp, &format!("implements `{}`", expected_ref));
+        }
+
+        err
+    }
+
+    fn report_arg_count_mismatch(&self,
+                                 span: Span,
+                                 found_span: Option<Span>,
+                                 expected: usize,
+                                 found: usize,
+                                 is_closure: bool)
+        -> DiagnosticBuilder<'tcx>
+    {
+        let mut err = struct_span_err!(self.tcx.sess, span, E0593,
+            "{} takes {} argument{} but {} argument{} {} required",
+            if is_closure { "closure" } else { "function" },
+            found,
+            if found == 1 { "" } else { "s" },
+            expected,
+            if expected == 1 { "" } else { "s" },
+            if expected == 1 { "is" } else { "are" });
+
+        err.span_label(span, &format!("expected {} that takes {} argument{}",
+                                      if is_closure { "closure" } else { "function" },
+                                      expected,
+                                      if expected == 1 { "" } else { "s" }));
+        if let Some(span) = found_span {
+            err.span_label(span, &format!("takes {} argument{}",
+                                          found,
+                                          if found == 1 { "" } else { "s" }));
+        }
+        err
     }
 }
 
