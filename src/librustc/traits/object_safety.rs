@@ -37,6 +37,9 @@ pub enum ObjectSafetyViolation {
 
     /// Method has something illegal
     Method(ast::Name, MethodViolationCode),
+
+    /// Associated const
+    AssociatedConst(ast::Name),
 }
 
 impl ObjectSafetyViolation {
@@ -54,6 +57,8 @@ impl ObjectSafetyViolation {
                          in its arguments or return type", name).into(),
             ObjectSafetyViolation::Method(name, MethodViolationCode::Generic) =>
                 format!("method `{}` has generic type parameters", name).into(),
+            ObjectSafetyViolation::AssociatedConst(name) =>
+                format!("the trait cannot contain associated consts like `{}`", name).into(),
         }
     }
 }
@@ -140,6 +145,10 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         if self.predicates_reference_self(trait_def_id, false) {
             violations.push(ObjectSafetyViolation::SupertraitSelf);
         }
+
+        violations.extend(self.associated_items(trait_def_id)
+            .filter(|item| item.kind == ty::AssociatedKind::Const)
+            .map(|item| ObjectSafetyViolation::AssociatedConst(item.name)));
 
         debug!("object_safety_violations_for_trait(trait_def_id={:?}) = {:?}",
                trait_def_id,
