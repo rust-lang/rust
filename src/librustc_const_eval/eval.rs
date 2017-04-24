@@ -299,7 +299,7 @@ fn eval_const_expr_partial<'a, 'tcx>(cx: &ConstContext<'a, 'tcx>,
           match cx.tables.qpath_def(qpath, e.id) {
               Def::Const(def_id) |
               Def::AssociatedConst(def_id) => {
-                    match ty::queries::const_eval::get(tcx, e.span, (def_id, substs)) {
+                    match tcx.at(e.span).const_eval((def_id, substs)) {
                         Ok(val) => val,
                         Err(ConstEvalErr { kind: TypeckError, .. }) => {
                             signal!(e, TypeckError);

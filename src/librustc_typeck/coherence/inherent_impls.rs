@@ -14,7 +14,7 @@
 //! for any change, but it is very cheap to compute. In practice, most
 //! code in the compiler never *directly* requests this map. Instead,
 //! it requests the inherent impls specific to some type (via
-//! `ty::queries::inherent_impls::get(def_id)`). That value, however,
+//! `tcx.inherent_impls(def_id)`). That value, however,
 //! is computed by selecting an idea from this table.
 
 use rustc::dep_graph::DepNode;

@@ -522,7 +522,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             ty::TyAdt(def, substs) => {
                 let ty::DtorckConstraint {
                     dtorck_types, outlives
-                } = ty::queries::adt_dtorck_constraint::get(self, span, def.did);
+                } = self.at(span).adt_dtorck_constraint(def.did);
                 Ok(ty::DtorckConstraint {
                     // FIXME: we can try to recursively `dtorck_constraint_on_ty`
                     // there, but that needs some way to handle cycles.

@@ -207,7 +207,7 @@ impl<'a, 'tcx> AstConv<'tcx, 'tcx> for ItemCtxt<'a, 'tcx> {
                                  def_id: DefId)
                                  -> ty::GenericPredicates<'tcx>
     {
-        ty::queries::type_param_predicates::get(self.tcx, span, (self.item_def_id, def_id))
+        self.tcx.at(span).type_param_predicates((self.item_def_id, def_id))
     }
 
     fn get_free_substs(&self) -> Option<&Substs<'tcx>> {
@@ -475,7 +475,7 @@ fn convert_item<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, item_id: ast::NodeId) {
         hir::ItemTrait(..) => {
             tcx.generics_of(def_id);
             tcx.trait_def(def_id);
-            ty::queries::super_predicates_of::get(tcx, it.span, def_id);
+            tcx.at(it.span).super_predicates_of(def_id);
             tcx.predicates_of(def_id);
         },
         hir::ItemStruct(ref struct_def, _) |
@@ -556,7 +556,7 @@ fn convert_enum_variant_types<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         prev_discr = Some(if let Some(e) = variant.node.disr_expr {
             let expr_did = tcx.hir.local_def_id(e.node_id);
             let substs = Substs::empty();
-            let result = ty::queries::const_eval::get(tcx, variant.span, (expr_did, substs));
+            let result = tcx.at(variant.span).const_eval((expr_did, substs));
 
             // enum variant evaluation happens before the global constant check
             // so we need to report the real error
@@ -725,7 +725,7 @@ fn super_predicates_of<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // Now require that immediate supertraits are converted,
     // which will, in turn, reach indirect supertraits.
     for bound in superbounds.iter().filter_map(|p| p.to_opt_poly_trait_ref()) {
-        ty::queries::super_predicates_of::get(tcx, item.span, bound.def_id());
+        tcx.at(item.span).super_predicates_of(bound.def_id());
     }
 
     ty::GenericPredicates {

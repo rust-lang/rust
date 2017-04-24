@@ -170,7 +170,7 @@ fn visit_implementation_of_coerce_unsized<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     // course.
     if impl_did.is_local() {
         let span = tcx.def_span(impl_did);
-        ty::queries::coerce_unsized_info::get(tcx, span, impl_did);
+        tcx.at(span).coerce_unsized_info(impl_did);
     }
 }
 

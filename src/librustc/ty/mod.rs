@@ -2699,9 +2699,8 @@ pub fn provide_extern(providers: &mut ty::maps::Providers) {
 /// A map for the local crate mapping each type to a vector of its
 /// inherent impls. This is not meant to be used outside of coherence;
 /// rather, you should request the vector for a specific type via
-/// `ty::queries::inherent_impls::get(def_id)` so as to minimize your
-/// dependencies (constructing this map requires touching the entire
-/// crate).
+/// `tcx.inherent_impls(def_id)` so as to minimize your dependencies
+/// (constructing this map requires touching the entire crate).
 #[derive(Clone, Debug)]
 pub struct CrateInherentImpls {
     pub inherent_impls: DefIdMap<Rc<Vec<DefId>>>,

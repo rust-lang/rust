@@ -573,9 +573,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     if substs.types().next().is_some() {
                         self.add_type(constant.ty);
                     } else {
-                        let bits = ty::queries::mir_const_qualif::get(self.tcx,
-                                                                      constant.span,
-                                                                      def_id);
+                        let bits = self.tcx.at(constant.span).mir_const_qualif(def_id);
 
                         let qualif = Qualif::from_bits(bits).expect("invalid mir_const_qualif");
                         self.add(qualif);

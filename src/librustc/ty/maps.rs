@@ -21,6 +21,7 @@ use util::nodemap::NodeSet;
 
 use rustc_data_structures::indexed_vec::IndexVec;
 use std::cell::{RefCell, RefMut};
+use std::ops::Deref;
 use std::rc::Rc;
 use syntax_pos::{Span, DUMMY_SP};
 
@@ -329,14 +330,6 @@ macro_rules! define_maps {
                 Self::try_get_with(tcx, span, key, Clone::clone)
             }
 
-            $(#[$attr])*
-            pub fn get(tcx: TyCtxt<'a, $tcx, 'lcx>, span: Span, key: $K) -> $V {
-                Self::try_get(tcx, span, key).unwrap_or_else(|e| {
-                    tcx.report_cycle(e);
-                    Value::from_cycle_error(tcx.global_tcx())
-                })
-            }
-
             pub fn force(tcx: TyCtxt<'a, $tcx, 'lcx>, span: Span, key: $K) {
                 // FIXME(eddyb) Move away from using `DepTrackingMap`
                 // so we don't have to explicitly ignore a false edge:
@@ -351,10 +344,42 @@ macro_rules! define_maps {
             }
         })*
 
+        #[derive(Copy, Clone)]
+        pub struct TyCtxtAt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
+            pub tcx: TyCtxt<'a, 'gcx, 'tcx>,
+            pub span: Span,
+        }
+
+        impl<'a, 'gcx, 'tcx> Deref for TyCtxtAt<'a, 'gcx, 'tcx> {
+            type Target = TyCtxt<'a, 'gcx, 'tcx>;
+            fn deref(&self) -> &Self::Target {
+                &self.tcx
+            }
+        }
+
         impl<'a, $tcx, 'lcx> TyCtxt<'a, $tcx, 'lcx> {
+            /// Return a transparent wrapper for `TyCtxt` which uses
+            /// `span` as the location of queries performed through it.
+            pub fn at(self, span: Span) -> TyCtxtAt<'a, $tcx, 'lcx> {
+                TyCtxtAt {
+                    tcx: self,
+                    span
+                }
+            }
+
             $($(#[$attr])*
             pub fn $name(self, key: $K) -> $V {
-                queries::$name::get(self, DUMMY_SP, key)
+                self.at(DUMMY_SP).$name(key)
+            })*
+        }
+
+        impl<'a, $tcx, 'lcx> TyCtxtAt<'a, $tcx, 'lcx> {
+            $($(#[$attr])*
+            pub fn $name(self, key: $K) -> $V {
+                queries::$name::try_get(self.tcx, self.span, key).unwrap_or_else(|e| {
+                    self.report_cycle(e);
+                    Value::from_cycle_error(self.global_tcx())
+                })
             })*
         }
 
