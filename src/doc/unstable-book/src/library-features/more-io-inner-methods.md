@@ -1,6 +1,8 @@
 # `more_io_inner_methods`
 
-The tracking issue for this feature is: None.
+The tracking issue for this feature is: [#41519]
+
+[#41519]: https://github.com/rust-lang/rust/issues/41519
 
 ------------------------
 
