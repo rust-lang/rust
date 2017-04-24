@@ -238,7 +238,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         let is_object = self_ty.map_or(false, |ty| ty.sty == TRAIT_OBJECT_DUMMY_SELF);
         let default_needs_object_self = |p: &ty::TypeParameterDef| {
             if is_object && p.has_default {
-                if ty::queries::type_of::get(tcx, span, p.def_id).has_self_ty() {
+                if tcx.at(span).type_of(p.def_id).has_self_ty() {
                     // There is no suitable inference default for a type parameter
                     // that references self, in an object type.
                     return true;
@@ -307,7 +307,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                     // This is a default type parameter.
                     self.normalize_ty(
                         span,
-                        ty::queries::type_of::get(tcx, span, def.def_id)
+                        tcx.at(span).type_of(def.def_id)
                             .subst_spanned(tcx, substs, Some(span))
                     )
                 }
@@ -600,7 +600,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         let substs = self.ast_path_substs_for_ty(span, did, item_segment);
         self.normalize_ty(
             span,
-            ty::queries::type_of::get(self.tcx(), span, did).subst(self.tcx(), substs)
+            self.tcx().at(span).type_of(did).subst(self.tcx(), substs)
         )
     }
 
@@ -1018,7 +1018,7 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
                 assert_eq!(opt_self_ty, None);
                 self.prohibit_type_params(&path.segments);
 
-                let ty = ty::queries::type_of::get(tcx, span, def_id);
+                let ty = tcx.at(span).type_of(def_id);
                 if let Some(free_substs) = self.get_free_substs() {
                     ty.subst(tcx, free_substs)
                 } else {

@@ -547,7 +547,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> EntryBuilder<'a, 'b, 'tcx> {
         let kind = match impl_item.kind {
             ty::AssociatedKind::Const => {
                 EntryKind::AssociatedConst(container,
-                    ty::queries::mir_const_qualif::get(self.tcx, ast_item.span, def_id))
+                    self.tcx.at(ast_item.span).mir_const_qualif(def_id))
             }
             ty::AssociatedKind::Method => {
                 let fn_data = if let hir::ImplItemKind::Method(ref sig, body) = ast_item.node {
@@ -656,7 +656,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> EntryBuilder<'a, 'b, 'tcx> {
             hir::ItemStatic(_, hir::MutMutable, _) => EntryKind::MutStatic,
             hir::ItemStatic(_, hir::MutImmutable, _) => EntryKind::ImmStatic,
             hir::ItemConst(..) => {
-                EntryKind::Const(ty::queries::mir_const_qualif::get(tcx, item.span, def_id))
+                EntryKind::Const(tcx.at(item.span).mir_const_qualif(def_id))
             }
             hir::ItemFn(_, _, constness, .., body) => {
                 let data = FnData {
@@ -732,7 +732,7 @@ impl<'a, 'b: 'a, 'tcx: 'b> EntryBuilder<'a, 'b, 'tcx> {
                 let coerce_unsized_info =
                     trait_ref.and_then(|t| {
                         if Some(t.def_id) == tcx.lang_items.coerce_unsized_trait() {
-                            Some(ty::queries::coerce_unsized_info::get(tcx, item.span, def_id))
+                            Some(tcx.at(item.span).coerce_unsized_info(def_id))
                         } else {
                             None
                         }

@@ -479,7 +479,7 @@ impl<'a, 'gcx, 'tcx> ProbeContext<'a, 'gcx, 'tcx> {
     }
 
     fn assemble_inherent_impl_candidates_for_type(&mut self, def_id: DefId) {
-        let impl_def_ids = ty::queries::inherent_impls::get(self.tcx, self.span, def_id);
+        let impl_def_ids = self.tcx.at(self.span).inherent_impls(def_id);
         for &impl_def_id in impl_def_ids.iter() {
             self.assemble_inherent_impl_probe(impl_def_id);
         }
