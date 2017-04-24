@@ -635,6 +635,14 @@ fn test_splice_unbounded() {
 }
 
 #[test]
+fn test_splice_forget() {
+    let mut v = vec![1, 2, 3, 4, 5];
+    let a = [10, 11, 12];
+    ::std::mem::forget(v.splice(2..4, a.iter().cloned()));
+    assert_eq!(v, &[1, 2]);
+}
+
+#[test]
 fn test_into_boxed_slice() {
     let xs = vec![1, 2, 3];
     let ys = xs.into_boxed_slice();

@@ -476,6 +476,13 @@ fn test_splice_unbounded() {
 }
 
 #[test]
+fn test_splice_forget() {
+    let mut s = String::from("12345");
+    ::std::mem::forget(s.splice(2..4, "789"));
+    assert_eq!(s, "12345");
+}
+
+#[test]
 fn test_extend_ref() {
     let mut a = "foo".to_string();
     a.extend(&['b', 'a', 'r']);
