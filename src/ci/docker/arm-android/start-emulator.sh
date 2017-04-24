@@ -16,5 +16,5 @@ set -ex
 export SHELL=/bin/bash
 stat $LD_PRELOAD
 stat /usr/lib/i386-linux-gnu/libeatmydata.so
-LD_PRELOAD="/usr/lib/i386-linux-gnu/libeatmydata.so $LD_PRELOAD" nohup nohup emulator @arm-18 -no-window -partition-size 2047 0<&- &>/dev/null &
+LD_PRELOAD="/usr/lib/i386-linux-gnu/libeatmydata.so $LD_PRELOAD" nohup nohup emulator @arm-18 -no-boot-anim -no-window -partition-size 2047 0<&- &>/dev/null &
 exec "$@"

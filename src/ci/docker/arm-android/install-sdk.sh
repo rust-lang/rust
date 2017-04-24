@@ -32,5 +32,5 @@ echo "no" | android create avd \
                 --target android-18 \
                 --abi armeabi-v7a
 stat /root/.android/avd/arm-18.avd/config.ini
-/bin/echo -e '\nhw.audioInput=no\nhw.audioOutput=no\n' >> \
+/bin/echo -e '\nhw.audioInput=no\nhw.audioOutput=no\nhw.trackBall=no\nhw.mainKeys=no\nhw.gsmModem=no\nhw.gps=no\nhw.battery=no\nhw.accelerometer=no\nhw.sdCard=no\nhw.lcd.backlight=no\nhw.camera.back=none\nhw.sensors.proximity=no\nhw.sensors.magnetic_field=no\nhw.sensors.orientation=no\nhw.sensors.temperature=no' >> \
     /root/.android/avd/arm-18.avd/config.ini
