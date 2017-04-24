@@ -25,6 +25,7 @@ use lint;
 use middle::cstore;
 
 use syntax::ast::{self, IntTy, UintTy};
+use syntax::codemap::FilePathMapping;
 use syntax::parse::token;
 use syntax::parse;
 use syntax::symbol::Symbol;
@@ -491,6 +492,14 @@ impl Options {
     pub fn single_codegen_unit(&self) -> bool {
         self.incremental.is_none() ||
         self.cg.codegen_units == 1
+    }
+
+    pub fn file_path_mapping(&self) -> FilePathMapping {
+        FilePathMapping::new(
+            self.debugging_opts.remap_path_prefix_from.iter().zip(
+                self.debugging_opts.remap_path_prefix_to.iter()
+            ).map(|(src, dst)| (src.clone(), dst.clone())).collect()
+        )
     }
 }
 
@@ -1012,6 +1021,10 @@ options! {DebuggingOptions, DebuggingSetter, basic_debugging_options,
         "Set the optimization fuel quota for a crate."),
     print_fuel: Option<String> = (None, parse_opt_string, [TRACKED],
         "Make Rustc print the total optimization fuel used by a crate."),
+    remap_path_prefix_from: Vec<String> = (vec![], parse_string_push, [TRACKED],
+        "add a source pattern to the file path remapping config"),
+    remap_path_prefix_to: Vec<String> = (vec![], parse_string_push, [TRACKED],
+        "add a mapping target to the file path remapping config"),
 }
 
 pub fn default_lib_output() -> CrateType {
@@ -1319,7 +1332,7 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
 // Convert strings provided as --cfg [cfgspec] into a crate_cfg
 pub fn parse_cfgspecs(cfgspecs: Vec<String> ) -> ast::CrateConfig {
     cfgspecs.into_iter().map(|s| {
-        let sess = parse::ParseSess::new();
+        let sess = parse::ParseSess::new(FilePathMapping::empty());
         let mut parser =
             parse::new_parser_from_source_str(&sess, "cfgspec".to_string(), s.to_string());
 

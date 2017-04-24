@@ -129,7 +129,7 @@ pub fn run_core(search_paths: SearchPaths,
         ..config::basic_options().clone()
     };
 
-    let codemap = Rc::new(codemap::CodeMap::new());
+    let codemap = Rc::new(codemap::CodeMap::new(sessopts.file_path_mapping()));
     let diagnostic_handler = errors::Handler::with_tty_emitter(ColorConfig::Auto,
                                                                true,
                                                                false,
