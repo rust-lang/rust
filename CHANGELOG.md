@@ -1,6 +1,9 @@
 # Change Log
 All notable changes to this project will be documented in this file.
 
+## 0.0.126 — 2017-04-24
+* Update to *rustc 1.18.0-nightly (2bd4b5c6d 2017-04-23)*
+
 ## 0.0.125 — 2017-04-19
 * Update to *rustc 1.18.0-nightly (9f2abadca 2017-04-18)*
 
