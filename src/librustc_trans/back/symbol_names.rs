@@ -137,7 +137,7 @@ fn get_symbol_hash<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
                              // values for generic type parameters,
                              // if any.
                              substs: Option<&'tcx Substs<'tcx>>)
-                             -> String {
+                             -> u64 {
     debug!("get_symbol_hash(def_id={:?}, parameters={:?})", def_id, substs);
 
     let mut hasher = ty::util::TypeIdHasher::<u64>::new(tcx);
@@ -172,7 +172,7 @@ fn get_symbol_hash<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     });
 
     // 64 bits should be enough to avoid collisions.
-    format!("h{:016x}", hasher.finish())
+    hasher.finish()
 }
 
 fn def_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
@@ -280,7 +280,7 @@ fn compute_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: Instance
 
     let hash = get_symbol_hash(tcx, Some(def_id), instance_ty, Some(substs));
 
-    SymbolPathBuffer::from_interned(tcx.def_symbol_name(def_id)).finish(&hash)
+    SymbolPathBuffer::from_interned(tcx.def_symbol_name(def_id)).finish(hash)
 }
 
 // Follow C++ namespace-mangling style, see
@@ -324,10 +324,9 @@ impl SymbolPathBuffer {
         ty::SymbolName { name: Symbol::intern(&self.result).as_str() }
     }
 
-    fn finish(mut self, hash: &str) -> String {
-        // end name-sequence
-        self.push(hash);
-        self.result.push('E');
+    fn finish(mut self, hash: u64) -> String {
+        // E = end name-sequence
+        let _ = write!(self.result, "17h{:016x}E", hash);
         self.result
     }
 }
@@ -356,7 +355,7 @@ pub fn exported_name_from_type_and_prefix<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     let hash = get_symbol_hash(tcx, None, t, None);
     let mut buffer = SymbolPathBuffer::new();
     buffer.push(prefix);
-    buffer.finish(&hash)
+    buffer.finish(hash)
 }
 
 // Name sanitation. LLVM will happily accept identifiers with weird names, but
