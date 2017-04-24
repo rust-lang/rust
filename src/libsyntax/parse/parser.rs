@@ -57,10 +57,10 @@ use tokenstream::{self, Delimited, ThinTokenStream, TokenTree, TokenStream};
 use symbol::{Symbol, keywords};
 use util::ThinVec;
 
+use std::cmp;
 use std::collections::HashSet;
 use std::mem;
-use std::path::{Path, PathBuf};
-use std::rc::Rc;
+use std::path::{self, Path, PathBuf};
 use std::slice;
 
 bitflags! {
@@ -5367,7 +5367,7 @@ impl<'a> Parser<'a> {
                 "cannot declare a new module at this location");
             if id_sp != syntax_pos::DUMMY_SP {
                 let src_path = PathBuf::from(self.sess.codemap().span_to_filename(id_sp));
-                if let Some(stem) = src_path.clone().file_stem() {
+                if let Some(stem) = src_path.file_stem() {
                     let mut dest_path = src_path.clone();
                     dest_path.set_file_name(stem);
                     dest_path.push("mod.rs");
@@ -5385,10 +5385,7 @@ impl<'a> Parser<'a> {
             }
             Err(err)
         } else {
-            match paths.result {
-                Ok(succ) => Ok(succ),
-                Err(err) => Err(self.span_fatal_err(id_sp, err)),
-            }
+            paths.result.map_err(|err| self.span_fatal_err(id_sp, err))
         }
     }
 
