@@ -16,9 +16,9 @@ trait Bar {
 }
 
 fn make_bar<T:Bar>(t: &T) -> &Bar {
-        //~^ ERROR E0038
-        //~| NOTE the trait cannot contain associated consts like `X`
-        //~| NOTE the trait `Bar` cannot be made into an object
+    //~^ ERROR E0038
+    //~| NOTE the trait cannot contain associated consts like `X`
+    //~| NOTE the trait `Bar` cannot be made into an object
     t
 }
 
