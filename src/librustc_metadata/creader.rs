@@ -799,11 +799,26 @@ impl<'a> CrateLoader<'a> {
 
     fn inject_sanitizer_runtime(&mut self) {
         if let Some(ref sanitizer) = self.sess.opts.debugging_opts.sanitizer {
-            // Sanitizers can only be used with x86_64 Linux executables linked
-            // to `std`
-            if self.sess.target.target.llvm_target != "x86_64-unknown-linux-gnu" {
-                self.sess.err(&format!("Sanitizers only work with the \
-                                        `x86_64-unknown-linux-gnu` target."));
+            // Sanitizers can only be used on some tested platforms with
+            // executables linked to `std`
+            const ASAN_SUPPORTED_TARGETS: &[&str] = &["x86_64-unknown-linux-gnu",
+                                                      "x86_64-apple-darwin"];
+            const TSAN_SUPPORTED_TARGETS: &[&str] = &["x86_64-unknown-linux-gnu",
+                                                      "x86_64-apple-darwin"];
+            const LSAN_SUPPORTED_TARGETS: &[&str] = &["x86_64-unknown-linux-gnu"];
+            const MSAN_SUPPORTED_TARGETS: &[&str] = &["x86_64-unknown-linux-gnu"];
+
+            let supported_targets = match *sanitizer {
+                Sanitizer::Address => ASAN_SUPPORTED_TARGETS,
+                Sanitizer::Thread => TSAN_SUPPORTED_TARGETS,
+                Sanitizer::Leak => LSAN_SUPPORTED_TARGETS,
+                Sanitizer::Memory => MSAN_SUPPORTED_TARGETS,
+            };
+            if !supported_targets.contains(&&*self.sess.target.target.llvm_target) {
+                self.sess.err(&format!("{:?}Sanitizer only works with the `{}` target",
+                    sanitizer,
+                    supported_targets.join("` or `")
+                ));
                 return
             }
 
