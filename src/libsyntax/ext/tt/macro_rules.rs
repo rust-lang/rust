@@ -93,7 +93,9 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
                           rhses: &[quoted::TokenTree])
                           -> Box<MacResult+'cx> {
     if cx.trace_macros() {
-        println!("{}! {{ {} }}", name, arg);
+        cx.span_label_without_error(sp,
+                                    &"trace_macro",
+                                    &format!("expands to `{}! {{ {} }}`", name, arg));
     }
 
     // Which arm's failure should we report? (the one furthest along)
