@@ -62,7 +62,6 @@ pub struct Constraint<'a> {
 ///
 /// then while we are visiting `Bar<T>`, the `CurrentItem` would have
 /// the def-id and generics of `Foo`.
-#[allow(dead_code)] // TODO -- `def_id` field not used yet
 pub struct CurrentItem<'a> {
     def_id: DefId,
     generics: &'a ty::Generics,
