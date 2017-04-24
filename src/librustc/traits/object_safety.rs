@@ -58,7 +58,7 @@ impl ObjectSafetyViolation {
             ObjectSafetyViolation::Method(name, MethodViolationCode::Generic) =>
                 format!("method `{}` has generic type parameters", name).into(),
             ObjectSafetyViolation::AssociatedConst(name) =>
-                format!("the trait cannot contain associated consts, such as `{}`", name),
+                format!("the trait cannot contain associated consts like `{}`", name),
         }
     }
 }
