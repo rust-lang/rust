@@ -19,9 +19,13 @@ fn apply<T, F>(t: T, f: F) where F: FnOnce(T) {
 fn main() {
     apply(&3, takes_imm);
     apply(&3, takes_mut);
-    //~^ ERROR (types differ in mutability)
+    //~^ ERROR type mismatch
+    //~| NOTE types differ in mutability
+    //~| NOTE required by `apply`
 
     apply(&mut 3, takes_mut);
     apply(&mut 3, takes_imm);
-    //~^ ERROR (types differ in mutability)
+    //~^ ERROR type mismatch
+    //~| NOTE types differ in mutability
+    //~| NOTE required by `apply`
 }
