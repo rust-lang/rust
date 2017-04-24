@@ -31,3 +31,6 @@ echo "no" | android create avd \
                 --name arm-18 \
                 --target android-18 \
                 --abi armeabi-v7a
+stat /root/.android/avd/arm-18.avd/config.ini
+/bin/echo -e '\nhw.audioInput=no\nhw.audioOutput=no\n' >> \
+    /root/.android/avd/arm-18.avd/config.ini

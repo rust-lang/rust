@@ -12,7 +12,7 @@ matrix:
   fast_finish: true
   include:
     # Linux builders, all docker images
-    - env: IMAGE=arm-android
+    - env: IMAGE=arm-android ALLOW_PR=1
     - env: IMAGE=armhf-gnu
     - env: IMAGE=cross DEPLOY=1
     - env: IMAGE=dist-aarch64-linux DEPLOY=1
