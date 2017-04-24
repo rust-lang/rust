@@ -268,4 +268,8 @@ fn main() {
     if target.contains("windows") {
         println!("cargo:rustc-link-lib=ole32");
     }
+    if target.contains("windows-gnu") {
+        println!("cargo:rustc-link-lib=static-nobundle=gcc_s");
+        println!("cargo:rustc-link-lib=static-nobundle=pthread");
+    }
 }

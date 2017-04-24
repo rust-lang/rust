@@ -20,39 +20,28 @@ environment:
 
   # 32/64-bit MinGW builds.
   #
-  # The MinGW builds unfortunately have to both download a custom toolchain and
-  # avoid the one installed by AppVeyor by default. Interestingly, though, for
-  # different reasons!
+  # We are using MinGW with posix threads since LLVM does not compile with
+  # the win32 threads version due to missing support for C++'s std::thread.
   #
-  # For 32-bit the installed gcc toolchain on AppVeyor uses the pthread
-  # threading model. This is unfortunately not what we want, and if we compile
-  # with it then there's lots of link errors in the standard library (undefined
-  # references to pthread symbols).
-  #
-  # For 64-bit the installed gcc toolchain is currently 5.3.0 which
-  # unfortunately segfaults on Windows with --enable-llvm-assertions (segfaults
-  # in LLVM). See rust-lang/rust#28445 for more information, but to work around
-  # this we go back in time to 4.9.2 specifically.
+  # Instead of relying on the MinGW version installed on appveryor we download
+  # and install one ourselves so we won't be surprised by changes to appveyor's
+  # build image.
   #
   # Finally, note that the downloads below are all in the `rust-lang-ci` S3
   # bucket, but they cleraly didn't originate there! The downloads originally
   # came from the mingw-w64 SourceForge download site. Unfortunately
   # SourceForge is notoriously flaky, so we mirror it on our own infrastructure.
-  #
-  # And as a final point of note, the 32-bit MinGW build using the makefiles do
-  # *not* use debug assertions and llvm assertions. This is because they take
-  # too long on appveyor and this is tested by rustbuild below.
   - MSYS_BITS: 32
     RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu --enable-ninja
     SCRIPT: python x.py test
     MINGW_URL: https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror
-    MINGW_ARCHIVE: i686-6.2.0-release-win32-dwarf-rt_v5-rev1.7z
+    MINGW_ARCHIVE: i686-6.2.0-release-posix-dwarf-rt_v5-rev1.7z
     MINGW_DIR: mingw32
   - MSYS_BITS: 64
     SCRIPT: python x.py test
     RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu --enable-ninja
     MINGW_URL: https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror
-    MINGW_ARCHIVE: x86_64-6.2.0-release-win32-seh-rt_v5-rev1.7z
+    MINGW_ARCHIVE: x86_64-6.2.0-release-posix-seh-rt_v5-rev1.7z
     MINGW_DIR: mingw64
 
   # 32/64 bit MSVC and GNU deployment
@@ -71,14 +60,14 @@ environment:
     RUST_CONFIGURE_ARGS: --build=i686-pc-windows-gnu --enable-extended --enable-ninja
     SCRIPT: python x.py dist
     MINGW_URL: https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror
-    MINGW_ARCHIVE: i686-6.2.0-release-win32-dwarf-rt_v5-rev1.7z
+    MINGW_ARCHIVE: i686-6.2.0-release-posix-dwarf-rt_v5-rev1.7z
     MINGW_DIR: mingw32
     DEPLOY: 1
   - MSYS_BITS: 64
     SCRIPT: python x.py dist
     RUST_CONFIGURE_ARGS: --build=x86_64-pc-windows-gnu --enable-extended --enable-ninja
     MINGW_URL: https://s3.amazonaws.com/rust-lang-ci/rust-ci-mirror
-    MINGW_ARCHIVE: x86_64-6.2.0-release-win32-seh-rt_v5-rev1.7z
+    MINGW_ARCHIVE: x86_64-6.2.0-release-posix-seh-rt_v5-rev1.7z
     MINGW_DIR: mingw64
     DEPLOY: 1
 

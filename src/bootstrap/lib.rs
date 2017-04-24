@@ -882,6 +882,13 @@ impl Build {
         if target.contains("apple-darwin") {
             base.push("-stdlib=libc++".into());
         }
+
+        // Work around an apparently bad MinGW / GCC optimization,
+        // See: http://lists.llvm.org/pipermail/cfe-dev/2016-December/051980.html
+        // See: https://gcc.gnu.org/bugzilla/show_bug.cgi?id=78936
+        if target == "i686-pc-windows-gnu" {
+            base.push("-fno-omit-frame-pointer".into());
+        }
         return base
     }
 
