@@ -109,7 +109,7 @@ pub use intrinsics::transmute;
 /// [`Clone`][clone]. You need the value's destructor to run only once,
 /// because a double `free` is undefined behavior.
 ///
-/// An example is the (old) definition of [`mem::swap`][swap] in this module:
+/// An example is a possible implementation of [`mem::swap`][swap]:
 ///
 /// ```
 /// use std::mem;
