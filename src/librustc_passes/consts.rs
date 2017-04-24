@@ -130,7 +130,7 @@ impl<'a, 'tcx> Visitor<'tcx> for CheckCrateVisitor<'a, 'tcx> {
         };
 
         let outer_tables = self.tables;
-        self.tables = self.tcx.item_tables(self.tcx.hir.local_def_id(item_id));
+        self.tables = self.tcx.typeck_tables_of(self.tcx.hir.local_def_id(item_id));
 
         let body = self.tcx.hir.body(body_id);
         if !self.in_fn {

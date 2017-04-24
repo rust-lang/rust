@@ -1041,7 +1041,7 @@ pub fn find_exported_symbols(tcx: TyCtxt, reachable: &NodeSet) -> NodeSet {
             hir_map::NodeImplItem(&hir::ImplItem {
                 node: hir::ImplItemKind::Method(..), .. }) => {
                 let def_id = tcx.hir.local_def_id(id);
-                let generics = tcx.item_generics(def_id);
+                let generics = tcx.generics_of(def_id);
                 let attributes = tcx.get_attrs(def_id);
                 (generics.parent_types == 0 && generics.types.is_empty()) &&
                 // Functions marked with #[inline] are only ever translated

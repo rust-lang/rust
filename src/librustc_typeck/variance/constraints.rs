@@ -81,7 +81,7 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for ConstraintContext<'a, 'tcx> {
             hir::ItemEnum(..) |
             hir::ItemStruct(..) |
             hir::ItemUnion(..) => {
-                let generics = tcx.item_generics(did);
+                let generics = tcx.generics_of(did);
 
                 // Not entirely obvious: constraints on structs/enums do not
                 // affect the variance of their type parameters. See discussion
@@ -89,14 +89,14 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for ConstraintContext<'a, 'tcx> {
                 //
                 // self.add_constraints_from_generics(generics);
 
-                for field in tcx.lookup_adt_def(did).all_fields() {
+                for field in tcx.adt_def(did).all_fields() {
                     self.add_constraints_from_ty(generics,
-                                                 tcx.item_type(field.did),
+                                                 tcx.type_of(field.did),
                                                  self.covariant);
                 }
             }
             hir::ItemTrait(..) => {
-                let generics = tcx.item_generics(did);
+                let generics = tcx.generics_of(did);
                 let trait_ref = ty::TraitRef {
                     def_id: did,
                     substs: Substs::identity_for_item(tcx, did)
@@ -233,7 +233,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
         } else {
             // Parameter on an item defined within another crate:
             // variance already inferred, just look it up.
-            let variances = self.tcx().item_variances(item_def_id);
+            let variances = self.tcx().variances_of(item_def_id);
             self.constant_term(variances[index])
         }
     }
@@ -286,10 +286,10 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                trait_ref,
                variance);
 
-        let trait_generics = self.tcx().item_generics(trait_ref.def_id);
+        let trait_generics = self.tcx().generics_of(trait_ref.def_id);
 
         // This edge is actually implied by the call to
-        // `lookup_trait_def`, but I'm trying to be future-proof. See
+        // `trait_def`, but I'm trying to be future-proof. See
         // README.md for a discussion on dep-graph management.
         self.tcx().dep_graph.read(VarianceDepNode(trait_ref.def_id));
 
@@ -345,10 +345,10 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             }
 
             ty::TyAdt(def, substs) => {
-                let adt_generics = self.tcx().item_generics(def.did);
+                let adt_generics = self.tcx().generics_of(def.did);
 
                 // This edge is actually implied by the call to
-                // `lookup_trait_def`, but I'm trying to be future-proof. See
+                // `trait_def`, but I'm trying to be future-proof. See
                 // README.md for a discussion on dep-graph management.
                 self.tcx().dep_graph.read(VarianceDepNode(def.did));
 
@@ -362,10 +362,10 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
 
             ty::TyProjection(ref data) => {
                 let trait_ref = &data.trait_ref;
-                let trait_generics = self.tcx().item_generics(trait_ref.def_id);
+                let trait_generics = self.tcx().generics_of(trait_ref.def_id);
 
                 // This edge is actually implied by the call to
-                // `lookup_trait_def`, but I'm trying to be future-proof. See
+                // `trait_def`, but I'm trying to be future-proof. See
                 // README.md for a discussion on dep-graph management.
                 self.tcx().dep_graph.read(VarianceDepNode(trait_ref.def_id));
 

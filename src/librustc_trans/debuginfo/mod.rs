@@ -237,7 +237,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
     // Get_template_parameters() will append a `<...>` clause to the function
     // name if necessary.
-    let generics = cx.tcx().item_generics(fn_def_id);
+    let generics = cx.tcx().generics_of(fn_def_id);
     let substs = instance.substs.truncate_to(cx.tcx(), generics);
     let template_parameters = get_template_parameters(cx,
                                                       &generics,
@@ -382,7 +382,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
     fn get_type_parameter_names(cx: &CrateContext, generics: &ty::Generics) -> Vec<ast::Name> {
         let mut names = generics.parent.map_or(vec![], |def_id| {
-            get_type_parameter_names(cx, cx.tcx().item_generics(def_id))
+            get_type_parameter_names(cx, cx.tcx().generics_of(def_id))
         });
         names.extend(generics.types.iter().map(|param| param.name));
         names

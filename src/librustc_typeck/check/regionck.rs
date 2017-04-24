@@ -1725,7 +1725,7 @@ impl<'a, 'gcx, 'tcx> RegionCtxt<'a, 'gcx, 'tcx> {
         // ```
         //
         // we can thus deduce that `<T as SomeTrait<'a>>::SomeType : 'a`.
-        let trait_predicates = self.tcx.item_predicates(projection_ty.trait_ref.def_id);
+        let trait_predicates = self.tcx.predicates_of(projection_ty.trait_ref.def_id);
         assert_eq!(trait_predicates.parent, None);
         let predicates = trait_predicates.predicates.as_slice().to_vec();
         traits::elaborate_predicates(self.tcx, predicates)

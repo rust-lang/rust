@@ -935,14 +935,14 @@ fn create_trans_items_for_default_impls<'a, 'tcx>(scx: &SharedCrateContext<'a, '
                         continue;
                     }
 
-                    if !tcx.item_generics(method.def_id).types.is_empty() {
+                    if !tcx.generics_of(method.def_id).types.is_empty() {
                         continue;
                     }
 
                     let instance =
                         monomorphize::resolve(scx, method.def_id, callee_substs);
 
-                    let predicates = tcx.item_predicates(instance.def_id()).predicates
+                    let predicates = tcx.predicates_of(instance.def_id()).predicates
                         .subst(tcx, instance.substs);
                     if !traits::normalize_and_test_predicates(tcx, predicates) {
                         continue;
