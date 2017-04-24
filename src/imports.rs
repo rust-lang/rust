@@ -29,10 +29,7 @@ fn path_of(a: &ast::ViewPath_) -> &ast::Path {
 }
 
 fn compare_path_segments(a: &ast::PathSegment, b: &ast::PathSegment) -> Ordering {
-    a.identifier
-        .name
-        .as_str()
-        .cmp(&b.identifier.name.as_str())
+    a.identifier.name.as_str().cmp(&b.identifier.name.as_str())
 }
 
 fn compare_paths(a: &ast::Path, b: &ast::Path) -> Ordering {

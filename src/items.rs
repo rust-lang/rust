@@ -242,9 +242,7 @@ impl<'a> FmtVisitor<'a> {
         let context = self.get_context();
 
         let block_snippet = self.snippet(codemap::mk_sp(block.span.lo, block.span.hi));
-        let has_body = !block_snippet[1..block_snippet.len() - 1]
-                            .trim()
-                            .is_empty() ||
+        let has_body = !block_snippet[1..block_snippet.len() - 1].trim().is_empty() ||
                        !context.config.fn_empty_single_line;
 
         let (mut result, force_newline_brace) = try_opt!(rewrite_fn_base(&context,
@@ -1227,10 +1225,7 @@ impl Rewrite for ast::StructField {
 
         let type_offset = shape.indent.block_indent(context.config);
         let rewrite_type_in_next_line = || {
-            let budget = try_opt!(context
-                                      .config
-                                      .max_width
-                                      .checked_sub(type_offset.width()));
+            let budget = try_opt!(context.config.max_width.checked_sub(type_offset.width()));
             self.ty
                 .rewrite(context, Shape::legacy(budget, type_offset))
         };
@@ -1624,9 +1619,7 @@ fn rewrite_fn_base(context: &RewriteContext,
         .ty_params
         .last()
         .map_or(span.lo, |tp| end_typaram(tp));
-    let args_span = mk_sp(context
-                              .codemap
-                              .span_after(mk_sp(args_start, span.hi), "("),
+    let args_span = mk_sp(context.codemap.span_after(mk_sp(args_start, span.hi), "("),
                           span_for_return(&fd.output).lo);
     let arg_str = try_opt!(rewrite_args(context,
                                         &fd.inputs,
@@ -1767,10 +1760,7 @@ fn rewrite_fn_base(context: &RewriteContext,
         }
     }
 
-    let budget = try_opt!(context
-                              .config
-                              .max_width
-                              .checked_sub(indent.block_indent));
+    let budget = try_opt!(context.config.max_width.checked_sub(indent.block_indent));
     let where_clause_str = try_opt!(rewrite_where_clause(context,
                                                          where_clause,
                                                          context.config.fn_brace_style,
