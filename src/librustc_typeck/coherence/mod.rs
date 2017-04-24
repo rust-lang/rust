@@ -16,11 +16,10 @@
 // mappings. That mapping code resides here.
 
 use hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
-use rustc::ty::{self, TyCtxt, TypeFoldable};
+use rustc::ty::{TyCtxt, TypeFoldable};
 use rustc::ty::maps::Providers;
 
 use syntax::ast;
-use syntax_pos::DUMMY_SP;
 
 mod builtin;
 mod inherent_impls;
@@ -47,7 +46,7 @@ fn check_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, node_id: ast::NodeId) {
         }
 
         enforce_trait_manually_implementable(tcx, impl_def_id, trait_ref.def_id);
-        let trait_def = tcx.lookup_trait_def(trait_ref.def_id);
+        let trait_def = tcx.trait_def(trait_ref.def_id);
         trait_def.record_local_impl(tcx, impl_def_id, trait_ref);
     }
 }
@@ -132,7 +131,7 @@ fn coherent_trait<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
 pub fn check_coherence<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     for &trait_def_id in tcx.hir.krate().trait_impls.keys() {
-        ty::queries::coherent_trait::get(tcx, DUMMY_SP, (LOCAL_CRATE, trait_def_id));
+        tcx.coherent_trait((LOCAL_CRATE, trait_def_id));
     }
 
     unsafety::check(tcx);
@@ -140,6 +139,6 @@ pub fn check_coherence<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     overlap::check_default_impls(tcx);
 
     // these queries are executed for side-effects (error reporting):
-    ty::queries::crate_inherent_impls::get(tcx, DUMMY_SP, LOCAL_CRATE);
-    ty::queries::crate_inherent_impls_overlap_check::get(tcx, DUMMY_SP, LOCAL_CRATE);
+    tcx.crate_inherent_impls(LOCAL_CRATE);
+    tcx.crate_inherent_impls_overlap_check(LOCAL_CRATE);
 }

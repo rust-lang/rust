@@ -41,7 +41,7 @@ pub fn check_impl<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, node_id: ast::NodeId) {
     let _task =
         tcx.dep_graph.in_task(DepNode::CoherenceOverlapCheck(trait_def_id));
 
-    let def = tcx.lookup_trait_def(trait_def_id);
+    let def = tcx.trait_def(trait_def_id);
 
     // attempt to insert into the specialization graph
     let insert_result = def.add_impl_for_specialization(tcx, impl_def_id);

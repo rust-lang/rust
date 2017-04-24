@@ -444,7 +444,7 @@ impl<'a, 'tcx> DefPathBasedNames<'a, 'tcx> {
             },
             ty::TyClosure(def_id, ref closure_substs) => {
                 self.push_def_path(def_id, output);
-                let generics = self.tcx.item_generics(self.tcx.closure_base_def_id(def_id));
+                let generics = self.tcx.generics_of(self.tcx.closure_base_def_id(def_id));
                 let substs = closure_substs.substs.truncate_to(self.tcx, generics);
                 self.push_type_params(substs, iter::empty(), output);
             }

@@ -262,7 +262,7 @@ impl<'a, 'gcx, 'acx, 'tcx> ClosureSubsts<'tcx> {
     pub fn upvar_tys(self, def_id: DefId, tcx: TyCtxt<'a, 'gcx, 'acx>) ->
         impl Iterator<Item=Ty<'tcx>> + 'tcx
     {
-        let generics = tcx.item_generics(def_id);
+        let generics = tcx.generics_of(def_id);
         self.substs[self.substs.len()-generics.own_count()..].iter().map(
             |t| t.as_type().expect("unexpected region in upvars"))
     }
@@ -285,7 +285,7 @@ impl<'a, 'gcx, 'tcx> ExistentialPredicate<'tcx> {
             (Trait(_), Trait(_)) => Ordering::Equal,
             (Projection(ref a), Projection(ref b)) => a.sort_key(tcx).cmp(&b.sort_key(tcx)),
             (AutoTrait(ref a), AutoTrait(ref b)) =>
-                tcx.lookup_trait_def(*a).def_path_hash.cmp(&tcx.lookup_trait_def(*b).def_path_hash),
+                tcx.trait_def(*a).def_path_hash.cmp(&tcx.trait_def(*b).def_path_hash),
             (Trait(_), _) => Ordering::Less,
             (Projection(_), Trait(_)) => Ordering::Greater,
             (Projection(_), _) => Ordering::Less,
@@ -841,7 +841,7 @@ impl<'a, 'tcx, 'gcx> ExistentialProjection<'tcx> {
         // We want something here that is stable across crate boundaries.
         // The DefId isn't but the `deterministic_hash` of the corresponding
         // DefPath is.
-        let trait_def = tcx.lookup_trait_def(self.trait_ref.def_id);
+        let trait_def = tcx.trait_def(self.trait_ref.def_id);
         let def_path_hash = trait_def.def_path_hash;
 
         // An `ast::Name` is also not stable (it's just an index into an

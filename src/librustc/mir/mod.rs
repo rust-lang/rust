@@ -1015,7 +1015,7 @@ impl<'tcx> Operand<'tcx> {
     ) -> Self {
         Operand::Constant(Constant {
             span: span,
-            ty: tcx.item_type(def_id).subst(tcx, substs),
+            ty: tcx.type_of(def_id).subst(tcx, substs),
             literal: Literal::Value { value: ConstVal::Function(def_id, substs) },
         })
     }

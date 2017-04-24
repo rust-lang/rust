@@ -258,7 +258,7 @@ impl<'a, 'tcx> Qualifier<'a, 'tcx, 'tcx> {
                 let mut span = None;
 
                 self.tcx
-                    .lookup_trait_def(drop_trait_id)
+                    .trait_def(drop_trait_id)
                     .for_each_relevant_impl(self.tcx, self.mir.return_ty, |impl_did| {
                         self.tcx.hir
                             .as_local_node_id(impl_did)
@@ -573,9 +573,7 @@ impl<'a, 'tcx> Visitor<'tcx> for Qualifier<'a, 'tcx, 'tcx> {
                     if substs.types().next().is_some() {
                         self.add_type(constant.ty);
                     } else {
-                        let bits = ty::queries::mir_const_qualif::get(self.tcx,
-                                                                      constant.span,
-                                                                      def_id);
+                        let bits = self.tcx.at(constant.span).mir_const_qualif(def_id);
 
                         let qualif = Qualif::from_bits(bits).expect("invalid mir_const_qualif");
                         self.add(qualif);
@@ -959,7 +957,7 @@ impl<'tcx> MirMapPass<'tcx> for QualifyAndPromoteConstants {
             let src = MirSource::from_node(tcx, id);
 
             if let MirSource::Const(_) = src {
-                ty::queries::mir_const_qualif::get(tcx, DUMMY_SP, def_id);
+                tcx.mir_const_qualif(def_id);
                 continue;
             }
 

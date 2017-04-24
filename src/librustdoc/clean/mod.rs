@@ -606,7 +606,7 @@ impl<'tcx> Clean<TyParam> for ty::TypeParameterDef {
             did: self.def_id,
             bounds: vec![], // these are filled in from the where-clauses
             default: if self.has_default {
-                Some(cx.tcx.item_type(self.def_id).clean(cx))
+                Some(cx.tcx.type_of(self.def_id).clean(cx))
             } else {
                 None
             }
@@ -1356,19 +1356,19 @@ impl<'tcx> Clean<Item> for ty::AssociatedItem {
     fn clean(&self, cx: &DocContext) -> Item {
         let inner = match self.kind {
             ty::AssociatedKind::Const => {
-                let ty = cx.tcx.item_type(self.def_id);
+                let ty = cx.tcx.type_of(self.def_id);
                 AssociatedConstItem(ty.clean(cx), None)
             }
             ty::AssociatedKind::Method => {
-                let generics = (cx.tcx.item_generics(self.def_id),
-                                &cx.tcx.item_predicates(self.def_id)).clean(cx);
-                let sig = cx.tcx.item_type(self.def_id).fn_sig();
+                let generics = (cx.tcx.generics_of(self.def_id),
+                                &cx.tcx.predicates_of(self.def_id)).clean(cx);
+                let sig = cx.tcx.type_of(self.def_id).fn_sig();
                 let mut decl = (self.def_id, sig).clean(cx);
 
                 if self.method_has_self_argument {
                     let self_ty = match self.container {
                         ty::ImplContainer(def_id) => {
-                            cx.tcx.item_type(def_id)
+                            cx.tcx.type_of(def_id)
                         }
                         ty::TraitContainer(_) => cx.tcx.mk_self_type()
                     };
@@ -1418,8 +1418,8 @@ impl<'tcx> Clean<Item> for ty::AssociatedItem {
                     // are actually located on the trait/impl itself, so we need to load
                     // all of the generics from there and then look for bounds that are
                     // applied to this associated type in question.
-                    let predicates = cx.tcx.item_predicates(did);
-                    let generics = (cx.tcx.item_generics(did), &predicates).clean(cx);
+                    let predicates = cx.tcx.predicates_of(did);
+                    let generics = (cx.tcx.generics_of(did), &predicates).clean(cx);
                     generics.where_predicates.iter().filter_map(|pred| {
                         let (name, self_type, trait_, bounds) = match *pred {
                             WherePredicate::BoundPredicate {
@@ -1454,7 +1454,7 @@ impl<'tcx> Clean<Item> for ty::AssociatedItem {
                 }
 
                 let ty = if self.defaultness.has_value() {
-                    Some(cx.tcx.item_type(self.def_id))
+                    Some(cx.tcx.type_of(self.def_id))
                 } else {
                     None
                 };
@@ -1922,9 +1922,9 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
             ty::TyAnon(def_id, substs) => {
                 // Grab the "TraitA + TraitB" from `impl TraitA + TraitB`,
                 // by looking up the projections associated with the def_id.
-                let item_predicates = cx.tcx.item_predicates(def_id);
+                let predicates_of = cx.tcx.predicates_of(def_id);
                 let substs = cx.tcx.lift(&substs).unwrap();
-                let bounds = item_predicates.instantiate(cx.tcx, substs);
+                let bounds = predicates_of.instantiate(cx.tcx, substs);
                 ImplTrait(bounds.predicates.into_iter().filter_map(|predicate| {
                     predicate.to_opt_poly_trait_ref().clean(cx)
                 }).collect())
@@ -1963,7 +1963,7 @@ impl<'tcx> Clean<Item> for ty::FieldDef {
             stability: get_stability(cx, self.did),
             deprecation: get_deprecation(cx, self.did),
             def_id: self.did,
-            inner: StructFieldItem(cx.tcx.item_type(self.did).clean(cx)),
+            inner: StructFieldItem(cx.tcx.type_of(self.did).clean(cx)),
         }
     }
 }
@@ -2116,7 +2116,7 @@ impl<'tcx> Clean<Item> for ty::VariantDef {
             CtorKind::Const => VariantKind::CLike,
             CtorKind::Fn => {
                 VariantKind::Tuple(
-                    self.fields.iter().map(|f| cx.tcx.item_type(f.did).clean(cx)).collect()
+                    self.fields.iter().map(|f| cx.tcx.type_of(f.did).clean(cx)).collect()
                 )
             }
             CtorKind::Fictive => {
@@ -2132,7 +2132,7 @@ impl<'tcx> Clean<Item> for ty::VariantDef {
                             def_id: field.did,
                             stability: get_stability(cx, field.did),
                             deprecation: get_deprecation(cx, field.did),
-                            inner: StructFieldItem(cx.tcx.item_type(field.did).clean(cx))
+                            inner: StructFieldItem(cx.tcx.type_of(field.did).clean(cx))
                         }
                     }).collect()
                 })

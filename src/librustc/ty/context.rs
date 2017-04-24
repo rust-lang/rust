@@ -1258,7 +1258,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
 
     pub fn mk_box(self, ty: Ty<'tcx>) -> Ty<'tcx> {
         let def_id = self.require_lang_item(lang_items::OwnedBoxLangItem);
-        let adt_def = self.lookup_adt_def(def_id);
+        let adt_def = self.adt_def(def_id);
         let substs = self.mk_substs(iter::once(Kind::from(ty)));
         self.mk_ty(TyAdt(adt_def, substs))
     }

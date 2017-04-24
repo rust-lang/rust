@@ -341,7 +341,7 @@ impl<'l, 'tcx: 'l> SaveContext<'l, 'tcx> {
             let sub_span = self.span_utils.sub_span_before_token(field.span, token::Colon);
             filter!(self.span_utils, sub_span, field.span, None);
             let def_id = self.tcx.hir.local_def_id(field.id);
-            let typ = self.tcx.item_type(def_id).to_string();
+            let typ = self.tcx.type_of(def_id).to_string();
 
             let span = field.span;
             let text = self.span_utils.snippet(field.span);

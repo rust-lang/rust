@@ -1426,7 +1426,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                  entry_ln: LiveNode,
                  body: &hir::Body)
     {
-        let fn_ty = self.ir.tcx.item_type(self.ir.tcx.hir.local_def_id(id));
+        let fn_ty = self.ir.tcx.type_of(self.ir.tcx.hir.local_def_id(id));
         let fn_sig = match fn_ty.sty {
             ty::TyClosure(closure_def_id, substs) => {
                 self.ir.tcx.closure_type(closure_def_id)
