@@ -177,6 +177,13 @@ impl TcpStream {
     ///
     /// [`Shutdown`]: ../../std/net/enum.Shutdown.html
     ///
+    /// # Platform-specific behavior
+    ///
+    /// Calling this function multiple times may result in different behavior,
+    /// depending on the operating system. On Linux, the second call will
+    /// return `Ok(())`, but on macOS, it will return `ErrorKind::NotConnected`.
+    /// This may change in the future.
+    ///
     /// # Examples
     ///
     /// ```no_run
