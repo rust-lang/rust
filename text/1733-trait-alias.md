@@ -1,7 +1,7 @@
 - Feature Name: Trait alias
 - Start Date: 2016-08-31
-- RFC PR:
-- Rust Issue:
+- RFC PR: [rust-lang/rfcs#1733](https://github.com/rust-lang/rfcs/pull/1733)
+- Rust Issue: [rust-lang/rust#41517](https://github.com/rust-lang/rust/issues/41517)
 
 # Summary
 [summary]: #summary
