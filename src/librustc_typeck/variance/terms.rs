@@ -32,8 +32,6 @@ use self::VarianceTerm::*;
 
 pub type VarianceTermPtr<'a> = &'a VarianceTerm<'a>;
 
-use dep_graph::DepNode::ItemSignature as VarianceDepNode;
-
 #[derive(Copy, Clone, Debug)]
 pub struct InferredIndex(pub usize);
 
@@ -109,7 +107,7 @@ pub fn determine_parameters_to_be_inferred<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>
     };
 
     // See README.md for a discussion on dep-graph management.
-    tcx.visit_all_item_likes_in_krate(|def_id| VarianceDepNode(def_id), &mut terms_cx);
+    tcx.hir.krate().visit_all_item_likes(&mut terms_cx);
 
     terms_cx
 }

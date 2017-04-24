@@ -15,7 +15,7 @@ pub use self::IntVarValue::*;
 pub use self::LvaluePreference::*;
 pub use self::fold::TypeFoldable;
 
-use dep_graph::{self, DepNode};
+use dep_graph::DepNode;
 use hir::{map as hir_map, FreevarMap, TraitMap};
 use hir::def::{Def, CtorKind, ExportMap};
 use hir::def_id::{CrateNum, DefId, DefIndex, CRATE_DEF_INDEX, LOCAL_CRATE};
@@ -57,7 +57,6 @@ use rustc_data_structures::stable_hasher::{StableHasher, StableHasherResult,
 use rustc_data_structures::transitive_relation::TransitiveRelation;
 
 use hir;
-use hir::itemlikevisit::ItemLikeVisitor;
 
 pub use self::sty::{Binder, DebruijnIndex};
 pub use self::sty::{FnSig, PolyFnSig};
@@ -2611,14 +2610,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.mk_region(ty::ReScope(self.region_maps.node_extent(id)))
     }
 
-    pub fn visit_all_item_likes_in_krate<V,F>(self,
-                                              dep_node_fn: F,
-                                              visitor: &mut V)
-        where F: FnMut(DefId) -> DepNode<DefId>, V: ItemLikeVisitor<'gcx>
-    {
-        dep_graph::visit_all_item_likes_in_krate(self.global_tcx(), dep_node_fn, visitor);
-    }
-
     /// Invokes `callback` for each body in the krate. This will
     /// create a read edge from `DepNode::Krate` to the current task;
     /// it is meant to be run in the context of some global task like
@@ -2627,7 +2618,11 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     pub fn visit_all_bodies_in_krate<C>(self, callback: C)
         where C: Fn(/* body_owner */ DefId, /* body id */ hir::BodyId),
     {
-        dep_graph::visit_all_bodies_in_krate(self.global_tcx(), callback)
+        let krate = self.hir.krate();
+        for &body_id in &krate.body_ids {
+            let body_owner_def_id = self.hir.body_owner_def_id(body_id);
+            callback(body_owner_def_id, body_id);
+        }
     }
 
     /// Looks up the span of `impl_did` if the impl is local; otherwise returns `Err`
