@@ -10,13 +10,11 @@
 
 use context::SharedCrateContext;
 use monomorphize::Instance;
-use symbol_map::SymbolMap;
 use util::nodemap::FxHashMap;
 use rustc::hir::def_id::{DefId, CrateNum, LOCAL_CRATE};
 use rustc::session::config;
 use rustc::ty::TyCtxt;
 use syntax::attr;
-use trans_item::TransItem;
 
 /// The SymbolExportLevel of a symbols specifies from which kinds of crates
 /// the symbol will be exported. `C` symbols will be exported from any
@@ -35,16 +33,13 @@ pub struct ExportedSymbols {
 }
 
 impl ExportedSymbols {
-
     pub fn empty() -> ExportedSymbols {
         ExportedSymbols {
             exports: FxHashMap(),
         }
     }
 
-    pub fn compute_from<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>,
-                                  symbol_map: &SymbolMap<'tcx>)
-                                  -> ExportedSymbols {
+    pub fn compute<'a, 'tcx>(scx: &SharedCrateContext<'a, 'tcx>) -> ExportedSymbols {
         let mut local_crate: Vec<_> = scx
             .exported_symbols()
             .iter()
@@ -52,7 +47,7 @@ impl ExportedSymbols {
                 scx.tcx().hir.local_def_id(node_id)
             })
             .map(|def_id| {
-                let name = symbol_for_def_id(scx.tcx(), def_id, symbol_map);
+                let name = scx.tcx().symbol_name(Instance::mono(scx.tcx(), def_id));
                 let export_level = export_level(scx, def_id);
                 debug!("EXPORTED SYMBOL (local): {} ({:?})", name, export_level);
                 (str::to_owned(&name), export_level)
@@ -211,21 +206,4 @@ pub fn is_below_threshold(level: SymbolExportLevel,
     } else {
         level == SymbolExportLevel::C
     }
-}
-
-fn symbol_for_def_id<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
-                               def_id: DefId,
-                               symbol_map: &SymbolMap<'tcx>)
-                               -> String {
-    // Just try to look things up in the symbol map. If nothing's there, we
-    // recompute.
-    if let Some(node_id) = tcx.hir.as_local_node_id(def_id) {
-        if let Some(sym) = symbol_map.get(TransItem::Static(node_id)) {
-            return sym.to_owned();
-        }
-    }
-
-    let instance = Instance::mono(tcx, def_id);
-
-    str::to_owned(&tcx.symbol_name(instance))
 }

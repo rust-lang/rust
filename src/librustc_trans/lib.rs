@@ -125,7 +125,6 @@ mod meth;
 mod mir;
 mod monomorphize;
 mod partitioning;
-mod symbol_map;
 mod symbol_names_test;
 mod trans_item;
 mod tvec;
