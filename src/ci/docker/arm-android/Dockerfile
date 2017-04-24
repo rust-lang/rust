@@ -1,5 +1,8 @@
 FROM ubuntu:16.04
 
+RUN dpkg --add-architecture i386 && apt-get update && apt-get install -y eatmydata libeatmydata1:i386 && ls -hl /usr/lib/x86_64-linux-gnu/libeatmydata.so
+ENV LD_PRELOAD /usr/lib/x86_64-linux-gnu/libeatmydata.so
+
 RUN dpkg --add-architecture i386 && \
     apt-get update && \
     apt-get install -y --no-install-recommends \
