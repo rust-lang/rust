@@ -420,6 +420,62 @@ fn test_drain() {
 }
 
 #[test]
+fn test_splice() {
+    let mut s = "Hello, world!".to_owned();
+    let t: String = s.splice(7..12, "世界").collect();
+    assert_eq!(s, "Hello, 世界!");
+    assert_eq!(t, "world");
+}
+
+#[test]
+#[should_panic]
+fn test_splice_char_boundary() {
+    let mut s = "Hello, 世界!".to_owned();
+    s.splice(..8, "");
+}
+
+#[test]
+fn test_splice_inclusive_range() {
+    let mut v = String::from("12345");
+    let t: String = v.splice(2...3, "789").collect();
+    assert_eq!(v, "127895");
+    assert_eq!(t, "34");
+    let t2: String = v.splice(1...2, "A").collect();
+    assert_eq!(v, "1A895");
+    assert_eq!(t2, "27");
+}
+
+#[test]
+#[should_panic]
+fn test_splice_out_of_bounds() {
+    let mut s = String::from("12345");
+    s.splice(5..6, "789");
+}
+
+#[test]
+#[should_panic]
+fn test_splice_inclusive_out_of_bounds() {
+    let mut s = String::from("12345");
+    s.splice(5...5, "789");
+}
+
+#[test]
+fn test_splice_empty() {
+    let mut s = String::from("12345");
+    let t: String = s.splice(1..2, "").collect();
+    assert_eq!(s, "1345");
+    assert_eq!(t, "2");
+}
+
+#[test]
+fn test_splice_unbounded() {
+    let mut s = String::from("12345");
+    let t: String = s.splice(.., "").collect();
+    assert_eq!(s, "");
+    assert_eq!(t, "12345");
+}
+
+#[test]
 fn test_extend_ref() {
     let mut a = "foo".to_string();
     a.extend(&['b', 'a', 'r']);
