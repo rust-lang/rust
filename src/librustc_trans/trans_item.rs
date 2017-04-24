@@ -28,9 +28,10 @@ use rustc::hir;
 use rustc::hir::def_id::DefId;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::subst::Substs;
-use syntax_pos::symbol::Symbol;
 use syntax::ast::{self, NodeId};
 use syntax::attr;
+use syntax_pos::Span;
+use syntax_pos::symbol::Symbol;
 use type_of;
 use std::fmt::Write;
 use std::iter;
@@ -198,6 +199,18 @@ impl<'a, 'tcx> TransItem<'tcx> {
                 }
             }
         }
+    }
+
+    pub fn local_span(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Option<Span> {
+        match *self {
+            TransItem::Fn(Instance { def, .. }) => {
+                tcx.hir.as_local_node_id(def.def_id())
+            }
+            TransItem::Static(node_id) |
+            TransItem::GlobalAsm(node_id) => {
+                Some(node_id)
+            }
+        }.map(|node_id| tcx.hir.span(node_id))
     }
 
     pub fn instantiation_mode(&self,
