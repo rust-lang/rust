@@ -33,7 +33,6 @@ use ty::subst::Subst;
 use ty::{self, ToPredicate, ToPolyTraitRef, Ty, TyCtxt};
 use ty::fold::{TypeFoldable, TypeFolder};
 use util::common::FN_OUTPUT_NAME;
-use hir::{self};
 
 /// Depending on the stage of compilation, we want projection to be
 /// more or less conservative.
@@ -924,28 +923,8 @@ fn assemble_candidates_from_impls<'cx, 'gcx, 'tcx>(
                         // being invoked).
                         node_item.item.defaultness.has_value()
                     } else {
-                        let is_default = match selcx.tcx()
-                                                    .map
-                                                    .as_local_node_id(node_item.node.def_id()) {
-                            Some(node_id) => {
-                                let item = selcx.tcx().map.expect_item(node_id);
-                                if let hir::ItemImpl(_, _, defaultness, ..) = item.node {
-                                    defaultness.is_default()
-                                } else {
-                                    false
-                                }
-                            }
-                            None => {
-                                selcx.tcx()
-                                     .global_tcx()
-                                     .sess
-                                     .cstore
-                                     .impl_defaultness(node_item.node.def_id())
-                                     .is_default()
-                            }
-                        };
-
-                        node_item.item.defaultness.is_default() || is_default
+                        node_item.item.defaultness.is_default() ||
+                        selcx.tcx().impl_is_default(node_item.node.def_id())
                     };
 
                     // Only reveal a specializable default if we're past type-checking

@@ -4918,6 +4918,14 @@ impl<'a> Parser<'a> {
                                           allowed to have generics");
             }
 
+            match defaultness {
+                ast::Defaultness::Default => {
+                    self.span_err(impl_span, "`default impl` is not allowed for \
+                                               default trait implementations");
+                }
+                _ => {}
+            }
+
             self.expect(&token::OpenDelim(token::Brace))?;
             self.expect(&token::CloseDelim(token::Brace))?;
             Ok((keywords::Invalid.ident(),
@@ -5760,13 +5768,13 @@ impl<'a> Parser<'a> {
         }
         if (self.check_keyword(keywords::Unsafe) &&
             self.look_ahead(1, |t| t.is_keyword(keywords::Impl))) ||
-           (self.check_keyword(keywords::Default) &&
-            self.look_ahead(1, |t| t.is_keyword(keywords::Unsafe)) &&
+           (self.check_keyword(keywords::Unsafe) &&
+            self.look_ahead(1, |t| t.is_keyword(keywords::Default)) &&
             self.look_ahead(2, |t| t.is_keyword(keywords::Impl)))
         {
             // IMPL ITEM
-            let defaultness = self.parse_defaultness()?;
             self.expect_keyword(keywords::Unsafe)?;
+            let defaultness = self.parse_defaultness()?;
             self.expect_keyword(keywords::Impl)?;
             let (ident,
                  item_,
