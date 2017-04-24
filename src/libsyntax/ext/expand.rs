@@ -783,7 +783,7 @@ fn stream_for_item(item: &Annotatable, parse_sess: &ParseSess) -> TokenStream {
 
 fn string_to_stream(text: String, parse_sess: &ParseSess) -> TokenStream {
     let filename = String::from("<macro expansion>");
-    filemap_to_stream(parse_sess, parse_sess.codemap().new_filemap(filename, None, text))
+    filemap_to_stream(parse_sess, parse_sess.codemap().new_filemap(filename, text))
 }
 
 impl<'a, 'b> Folder for InvocationCollector<'a, 'b> {

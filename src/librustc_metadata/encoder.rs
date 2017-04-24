@@ -30,6 +30,7 @@ use std::hash::Hash;
 use std::intrinsics;
 use std::io::prelude::*;
 use std::io::Cursor;
+use std::path::Path;
 use std::rc::Rc;
 use std::u32;
 use syntax::ast::{self, CRATE_NODE_ID};
@@ -1268,13 +1269,40 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_codemap(&mut self) -> LazySeq<syntax_pos::FileMap> {
         let codemap = self.tcx.sess.codemap();
         let all_filemaps = codemap.files.borrow();
-        self.lazy_seq_ref(all_filemaps.iter()
+        let adapted = all_filemaps.iter()
             .filter(|filemap| {
                 // No need to re-export imported filemaps, as any downstream
                 // crate will import them from their original source.
                 !filemap.is_imported()
             })
-            .map(|filemap| &**filemap))
+            .map(|filemap| {
+                // When exporting FileMaps, we expand all paths to absolute
+                // paths because any relative paths are potentially relative to
+                // a wrong directory.
+                // However, if a path has been modified via
+                // `-Zremap-path-prefix` we assume the user has already set
+                // things up the way they want and don't touch the path values
+                // anymore.
+                let name = Path::new(&filemap.name);
+                let (ref working_dir, working_dir_was_remapped) = self.tcx.sess.working_dir;
+                if filemap.name_was_remapped ||
+                   (name.is_relative() && working_dir_was_remapped) {
+                    // This path of this FileMap has been modified by
+                    // path-remapping, so we use it verbatim (and avoid cloning
+                    // the whole map in the process).
+                    filemap.clone()
+                } else {
+                    let mut adapted = (**filemap).clone();
+                    let abs_path = Path::new(working_dir).join(name)
+                                                         .to_string_lossy()
+                                                         .into_owned();
+                    adapted.name = abs_path;
+                    Rc::new(adapted)
+                }
+            })
+            .collect::<Vec<_>>();
+
+        self.lazy_seq_ref(adapted.iter().map(|fm| &**fm))
     }
 
     fn encode_def_path_table(&mut self) -> Lazy<DefPathTable> {

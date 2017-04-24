@@ -296,7 +296,7 @@ fn main() {
                                          syntax::errors::registry::Registry::new(&[]),
                                          Rc::new(DummyCrateStore));
     let filemap = session.parse_sess.codemap()
-                         .new_filemap("<n/a>".to_string(), None, code);
+                         .new_filemap("<n/a>".to_string(), code);
     let mut lexer = lexer::StringReader::new(session.diagnostic(), filemap);
     let cm = session.codemap();
 
