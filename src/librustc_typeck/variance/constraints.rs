@@ -22,11 +22,11 @@ use syntax::ast;
 use rustc::hir;
 use rustc::hir::itemlikevisit::ItemLikeVisitor;
 
+use rustc_data_structures::transitive_relation::TransitiveRelation;
+
 use super::terms::*;
 use super::terms::VarianceTerm::*;
 use super::xform::*;
-
-use dep_graph::DepNode::ItemSignature as VarianceDepNode;
 
 pub struct ConstraintContext<'a, 'tcx: 'a> {
     pub terms_cx: TermsContext<'a, 'tcx>,
@@ -38,6 +38,11 @@ pub struct ConstraintContext<'a, 'tcx: 'a> {
     bivariant: VarianceTermPtr<'a>,
 
     pub constraints: Vec<Constraint<'a>>,
+
+    /// This relation tracks the dependencies between the variance of
+    /// various items. In particular, if `a < b`, then the variance of
+    /// `a` depends on the sources of `b`.
+    pub dependencies: TransitiveRelation<DefId>,
 }
 
 /// Declares that the variable `decl_id` appears in a location with
@@ -77,10 +82,11 @@ pub fn add_constraints_from_crate<'a, 'tcx>(terms_cx: TermsContext<'a, 'tcx>)
         invariant: invariant,
         bivariant: bivariant,
         constraints: Vec::new(),
+        dependencies: TransitiveRelation::new(),
     };
 
     // See README.md for a discussion on dep-graph management.
-    tcx.visit_all_item_likes_in_krate(VarianceDepNode, &mut constraint_cx);
+    tcx.hir.krate().visit_all_item_likes(&mut constraint_cx);
 
     constraint_cx
 }
@@ -111,18 +117,8 @@ impl<'a, 'tcx, 'v> ItemLikeVisitor<'v> for ConstraintContext<'a, 'tcx> {
                                                  self.covariant);
                 }
             }
-            hir::ItemTrait(..) => {
-                let generics = tcx.item_generics(def_id);
-                let current_item = &CurrentItem { def_id, generics };
-                let trait_ref = ty::TraitRef {
-                    def_id: def_id,
-                    substs: Substs::identity_for_item(tcx, def_id)
-                };
-                self.add_constraints_from_trait_ref(current_item,
-                                                    trait_ref,
-                                                    self.invariant);
-            }
 
+            hir::ItemTrait(..) |
             hir::ItemExternCrate(_) |
             hir::ItemUse(..) |
             hir::ItemStatic(..) |
@@ -157,14 +153,19 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
         self.terms_cx.tcx
     }
 
-    fn inferred_index(&self, param_id: ast::NodeId) -> InferredIndex {
-        match self.terms_cx.inferred_map.get(&param_id) {
-            Some(&index) => index,
-            None => {
-                bug!("no inferred index entry for {}",
-                     self.tcx().hir.node_to_string(param_id));
-            }
+    /// Load the generics for another item, adding a corresponding
+    /// relation into the dependencies to indicate that the variance
+    /// for `current` relies on `def_id`.
+    fn read_generics(&mut self, current: &CurrentItem, def_id: DefId) -> &'tcx ty::Generics {
+        let generics = self.tcx().item_generics(def_id);
+        if self.tcx().dep_graph.is_fully_enabled() {
+            self.dependencies.add(current.def_id, def_id);
         }
+        generics
+    }
+
+    fn opt_inferred_index(&self, param_id: ast::NodeId) -> Option<&InferredIndex> {
+        self.terms_cx.inferred_map.get(&param_id)
     }
 
     fn find_binding_for_lifetime(&self, param_id: ast::NodeId) -> ast::NodeId {
@@ -245,8 +246,27 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             // Parameter on an item defined within current crate:
             // variance not yet inferred, so return a symbolic
             // variance.
-            let InferredIndex(index) = self.inferred_index(param_node_id);
-            self.terms_cx.inferred_infos[index].term
+            if let Some(&InferredIndex(index)) = self.opt_inferred_index(param_node_id) {
+                self.terms_cx.inferred_infos[index].term
+            } else {
+                // If there is no inferred entry for a type parameter,
+                // it must be declared on a (locally defiend) trait -- they don't
+                // get inferreds because they are always invariant.
+                if cfg!(debug_assertions) {
+                    let item_node_id = self.tcx().hir.as_local_node_id(item_def_id).unwrap();
+                    let item = self.tcx().hir.expect_item(item_node_id);
+                    let success = match item.node {
+                        hir::ItemTrait(..) => true,
+                        _ => false,
+                    };
+                    if !success {
+                        bug!("parameter {:?} has no inferred, but declared on non-trait: {:?}",
+                             item_def_id,
+                             item);
+                    }
+                }
+                self.invariant
+            }
         } else {
             // Parameter on an item defined within another crate:
             // variance already inferred, just look it up.
@@ -305,11 +325,6 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
 
         let trait_generics = self.tcx().item_generics(trait_ref.def_id);
 
-        // This edge is actually implied by the call to
-        // `lookup_trait_def`, but I'm trying to be future-proof. See
-        // README.md for a discussion on dep-graph management.
-        self.tcx().dep_graph.read(VarianceDepNode(trait_ref.def_id));
-
         self.add_constraints_from_substs(current,
                                          trait_ref.def_id,
                                          &trait_generics.types,
@@ -362,12 +377,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             }
 
             ty::TyAdt(def, substs) => {
-                let adt_generics = self.tcx().item_generics(def.did);
-
-                // This edge is actually implied by the call to
-                // `lookup_trait_def`, but I'm trying to be future-proof. See
-                // README.md for a discussion on dep-graph management.
-                self.tcx().dep_graph.read(VarianceDepNode(def.did));
+                let adt_generics = self.read_generics(current, def.did);
 
                 self.add_constraints_from_substs(current,
                                                  def.did,
@@ -380,11 +390,6 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             ty::TyProjection(ref data) => {
                 let trait_ref = &data.trait_ref;
                 let trait_generics = self.tcx().item_generics(trait_ref.def_id);
-
-                // This edge is actually implied by the call to
-                // `lookup_trait_def`, but I'm trying to be future-proof. See
-                // README.md for a discussion on dep-graph management.
-                self.tcx().dep_graph.read(VarianceDepNode(trait_ref.def_id));
 
                 self.add_constraints_from_substs(current,
                                                  trait_ref.def_id,
@@ -505,7 +510,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 let def_id = current.generics.regions[i].def_id;
                 let node_id = self.tcx().hir.as_local_node_id(def_id).unwrap();
                 if self.is_to_be_inferred(node_id) {
-                    let index = self.inferred_index(node_id);
+                    let &index = self.opt_inferred_index(node_id).unwrap();
                     self.add_constraint(index, variance);
                 }
             }

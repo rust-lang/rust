@@ -209,6 +209,12 @@ impl<'tcx> QueryDescription for queries::crate_inherent_impls_overlap_check<'tcx
     }
 }
 
+impl<'tcx> QueryDescription for queries::crate_variances<'tcx> {
+    fn describe(_tcx: TyCtxt, _: CrateNum) -> String {
+        format!("computing the variances for items in this crate")
+    }
+}
+
 impl<'tcx> QueryDescription for queries::mir_shims<'tcx> {
     fn describe(tcx: TyCtxt, def: ty::InstanceDef<'tcx>) -> String {
         format!("generating MIR shim for `{}`",
@@ -409,9 +415,13 @@ define_maps! { <'tcx>
     /// True if this is a foreign item (i.e., linked via `extern { ... }`).
     pub is_foreign_item: IsForeignItem(DefId) -> bool,
 
+    /// Get a map with the variance of every item; use `item_variance`
+    /// instead.
+    pub crate_variances: crate_variances(CrateNum) -> Rc<ty::CrateVariancesMap>,
+
     /// Maps from def-id of a type or region parameter to its
     /// (inferred) variance.
-    pub variances: ItemSignature(DefId) -> Rc<Vec<ty::Variance>>,
+    pub item_variances: ItemVariances(DefId) -> Rc<Vec<ty::Variance>>,
 
     /// Maps from an impl/trait def-id to a list of the def-ids of its items
     pub associated_item_def_ids: AssociatedItemDefIds(DefId) -> Rc<Vec<DefId>>,
@@ -506,4 +516,8 @@ fn typeck_item_bodies_dep_node(_: CrateNum) -> DepNode<DefId> {
 
 fn const_eval_dep_node((def_id, _): (DefId, &Substs)) -> DepNode<DefId> {
     DepNode::ConstEval(def_id)
+}
+
+fn crate_variances(_: CrateNum) -> DepNode<DefId> {
+    DepNode::CrateVariances
 }

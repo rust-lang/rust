@@ -293,6 +293,7 @@ pub fn provide(providers: &mut Providers) {
     collect::provide(providers);
     coherence::provide(providers);
     check::provide(providers);
+    variance::provide(providers);
 }
 
 pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
@@ -306,9 +307,6 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
              collect::collect_item_types(tcx));
 
     })?;
-
-    time(time_passes, "variance inference", ||
-         variance::infer_variance(tcx));
 
     tcx.sess.track_errors(|| {
         time(time_passes, "impl wf inference", ||
