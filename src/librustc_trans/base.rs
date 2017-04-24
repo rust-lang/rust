@@ -65,7 +65,6 @@ use meth;
 use mir;
 use monomorphize::{self, Instance};
 use partitioning::{self, PartitioningStrategy, CodegenUnit};
-use symbol_cache::SymbolCache;
 use symbol_map::SymbolMap;
 use symbol_names_test;
 use trans_item::{TransItem, DefPathBasedNames};
@@ -1139,8 +1138,7 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
         let cgu_name = String::from(cgu.name());
         let cgu_id = cgu.work_product_id();
-        let symbol_cache = SymbolCache::new(scx.tcx());
-        let symbol_name_hash = cgu.compute_symbol_name_hash(scx, &symbol_cache);
+        let symbol_name_hash = cgu.compute_symbol_name_hash(scx);
 
         // Check whether there is a previous work-product we can
         // re-use.  Not only must the file exist, and the inputs not
@@ -1175,11 +1173,11 @@ pub fn trans_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         }
 
         // Instantiate translation items without filling out definitions yet...
-        let lcx = LocalCrateContext::new(scx, cgu, &symbol_cache);
+        let lcx = LocalCrateContext::new(scx, cgu);
         let module = {
             let ccx = CrateContext::new(scx, &lcx);
             let trans_items = ccx.codegen_unit()
-                                 .items_in_deterministic_order(ccx.tcx(), &symbol_cache);
+                                 .items_in_deterministic_order(ccx.tcx());
             for &(trans_item, linkage) in &trans_items {
                 trans_item.predefine(&ccx, linkage);
             }

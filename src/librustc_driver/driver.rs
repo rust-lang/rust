@@ -225,8 +225,6 @@ pub fn compile_input(sess: &Session,
         sess.code_stats.borrow().print_type_sizes();
     }
 
-    if ::std::env::var("SKIP_LLVM").is_ok() { ::std::process::exit(0); }
-
     let phase5_result = phase_5_run_llvm_passes(sess, &trans, &outputs);
 
     controller_entry_point!(after_llvm,
@@ -895,6 +893,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
     mir::provide(&mut local_providers);
     reachable::provide(&mut local_providers);
     rustc_privacy::provide(&mut local_providers);
+    trans::provide(&mut local_providers);
     typeck::provide(&mut local_providers);
     ty::provide(&mut local_providers);
     reachable::provide(&mut local_providers);
@@ -902,6 +901,7 @@ pub fn phase_3_run_analysis_passes<'tcx, F, R>(sess: &'tcx Session,
 
     let mut extern_providers = ty::maps::Providers::default();
     cstore::provide(&mut extern_providers);
+    trans::provide(&mut extern_providers);
     ty::provide_extern(&mut extern_providers);
     // FIXME(eddyb) get rid of this once we replace const_eval with miri.
     rustc_const_eval::provide(&mut extern_providers);

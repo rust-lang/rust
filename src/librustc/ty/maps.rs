@@ -24,6 +24,7 @@ use std::cell::{RefCell, RefMut};
 use std::ops::Deref;
 use std::rc::Rc;
 use syntax_pos::{Span, DUMMY_SP};
+use syntax::symbol::Symbol;
 
 trait Key {
     fn map_crate(&self) -> CrateNum;
@@ -31,6 +32,16 @@ trait Key {
 }
 
 impl<'tcx> Key for ty::InstanceDef<'tcx> {
+    fn map_crate(&self) -> CrateNum {
+        LOCAL_CRATE
+    }
+
+    fn default_span(&self, tcx: TyCtxt) -> Span {
+        tcx.def_span(self.def_id())
+    }
+}
+
+impl<'tcx> Key for ty::Instance<'tcx> {
     fn map_crate(&self) -> CrateNum {
         LOCAL_CRATE
     }
@@ -108,10 +119,15 @@ impl<'tcx> Value<'tcx> for Ty<'tcx> {
     }
 }
 
-
 impl<'tcx> Value<'tcx> for ty::DtorckConstraint<'tcx> {
     fn from_cycle_error<'a>(_: TyCtxt<'a, 'tcx, 'tcx>) -> Self {
         Self::empty()
+    }
+}
+
+impl<'tcx> Value<'tcx> for ty::SymbolName {
+    fn from_cycle_error<'a>(_: TyCtxt<'a, 'tcx, 'tcx>) -> Self {
+        ty::SymbolName { name: Symbol::intern("<error>").as_str() }
     }
 }
 
@@ -239,6 +255,12 @@ impl<'tcx> QueryDescription for queries::const_eval<'tcx> {
     fn describe(tcx: TyCtxt, (def_id, _): (DefId, &'tcx Substs<'tcx>)) -> String {
         format!("const-evaluating `{}`",
                 tcx.item_path_str(def_id))
+    }
+}
+
+impl<'tcx> QueryDescription for queries::symbol_name<'tcx> {
+    fn describe(_tcx: TyCtxt, instance: ty::Instance<'tcx>) -> String {
+        format!("computing the symbol for `{}`", instance)
     }
 }
 
@@ -513,7 +535,10 @@ define_maps! { <'tcx>
 
     pub reachable_set: reachability_dep_node(CrateNum) -> Rc<NodeSet>,
 
-    pub mir_shims: mir_shim_dep_node(ty::InstanceDef<'tcx>) -> &'tcx RefCell<mir::Mir<'tcx>>
+    pub mir_shims: mir_shim_dep_node(ty::InstanceDef<'tcx>) -> &'tcx RefCell<mir::Mir<'tcx>>,
+
+    pub def_symbol_name: SymbolName(DefId) -> ty::SymbolName,
+    pub symbol_name: symbol_name_dep_node(ty::Instance<'tcx>) -> ty::SymbolName
 }
 
 fn coherent_trait_dep_node((_, def_id): (CrateNum, DefId)) -> DepNode<DefId> {
@@ -530,6 +555,12 @@ fn reachability_dep_node(_: CrateNum) -> DepNode<DefId> {
 
 fn mir_shim_dep_node(instance: ty::InstanceDef) -> DepNode<DefId> {
     instance.dep_node()
+}
+
+fn symbol_name_dep_node(instance: ty::Instance) -> DepNode<DefId> {
+    // symbol_name uses the substs only to traverse them to find the
+    // hash, and that does not create any new dep-nodes.
+    DepNode::SymbolName(instance.def.def_id())
 }
 
 fn typeck_item_bodies_dep_node(_: CrateNum) -> DepNode<DefId> {
