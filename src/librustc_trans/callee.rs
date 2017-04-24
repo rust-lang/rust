@@ -23,7 +23,6 @@ use monomorphize::{self, Instance};
 use rustc::hir::def_id::DefId;
 use rustc::ty::TypeFoldable;
 use rustc::ty::subst::Substs;
-use trans_item::TransItem;
 use type_of;
 
 /// Translates a reference to a fn/method item, monomorphizing and
@@ -50,7 +49,7 @@ pub fn get_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         return llfn;
     }
 
-    let sym = ccx.symbol_cache().get(TransItem::Fn(instance));
+    let sym = tcx.symbol_name(instance);
     debug!("get_fn({:?}: {:?}) => {}", instance, fn_ty, sym);
 
     // This is subtle and surprising, but sometimes we have to bitcast

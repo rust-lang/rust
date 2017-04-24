@@ -36,7 +36,7 @@ impl<'tcx> SymbolMap<'tcx> {
         // Check for duplicate symbol names
         let tcx = scx.tcx();
         let mut symbols: Vec<_> = trans_items.map(|trans_item| {
-            (trans_item, trans_item.compute_symbol_name(tcx))
+            (trans_item, trans_item.symbol_name(tcx))
         }).collect();
 
         (&mut symbols[..]).sort_by(|&(_, ref sym1), &(_, ref sym2)|{
@@ -125,7 +125,7 @@ impl<'tcx> SymbolMap<'tcx> {
         if let Some(sym) = self.get(trans_item) {
             Cow::from(sym)
         } else {
-            Cow::from(trans_item.compute_symbol_name(scx.tcx()))
+            Cow::from(str::to_owned(&trans_item.symbol_name(scx.tcx())))
         }
     }
 }

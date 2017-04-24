@@ -105,13 +105,23 @@ use rustc::hir::map as hir_map;
 use rustc::ty::{self, Ty, TyCtxt, TypeFoldable};
 use rustc::ty::fold::TypeVisitor;
 use rustc::ty::item_path::{self, ItemPathBuffer, RootMode};
+use rustc::ty::maps::Providers;
 use rustc::ty::subst::Substs;
 use rustc::hir::map::definitions::DefPathData;
 use rustc::util::common::record_time;
 
 use syntax::attr;
+use syntax_pos::symbol::Symbol;
 
 use std::fmt::Write;
+
+pub fn provide(providers: &mut Providers) {
+    *providers = Providers {
+        def_symbol_name,
+        symbol_name,
+        ..*providers
+    };
+}
 
 fn get_symbol_hash<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
@@ -165,8 +175,25 @@ fn get_symbol_hash<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
     format!("h{:016x}", hasher.finish())
 }
 
-pub fn symbol_name<'a, 'tcx>(instance: Instance<'tcx>,
-                             tcx: TyCtxt<'a, 'tcx, 'tcx>) -> String {
+fn def_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
+                             -> ty::SymbolName
+{
+    let mut buffer = SymbolPathBuffer::new();
+    item_path::with_forced_absolute_paths(|| {
+        tcx.push_item_path(&mut buffer, def_id);
+    });
+    buffer.into_interned()
+}
+
+fn symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: Instance<'tcx>)
+                         -> ty::SymbolName
+{
+    ty::SymbolName { name: Symbol::intern(&compute_symbol_name(tcx, instance)).as_str() }
+}
+
+fn compute_symbol_name<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, instance: Instance<'tcx>)
+    -> String
+{
     let def_id = instance.def_id();
     let substs = instance.substs;
 
@@ -253,11 +280,7 @@ pub fn symbol_name<'a, 'tcx>(instance: Instance<'tcx>,
 
     let hash = get_symbol_hash(tcx, Some(def_id), instance_ty, Some(substs));
 
-    let mut buffer = SymbolPathBuffer::new();
-    item_path::with_forced_absolute_paths(|| {
-        tcx.push_item_path(&mut buffer, def_id);
-    });
-    buffer.finish(&hash)
+    SymbolPathBuffer::from_interned(tcx.def_symbol_name(def_id)).finish(&hash)
 }
 
 // Follow C++ namespace-mangling style, see
@@ -286,6 +309,19 @@ impl SymbolPathBuffer {
         };
         result.result.push_str("_ZN"); // _Z == Begin name-sequence, N == nested
         result
+    }
+
+    fn from_interned(symbol: ty::SymbolName) -> Self {
+        let mut result = SymbolPathBuffer {
+            result: String::with_capacity(64),
+            temp_buf: String::with_capacity(16)
+        };
+        result.result.push_str(&symbol.name);
+        result
+    }
+
+    fn into_interned(self) -> ty::SymbolName {
+        ty::SymbolName { name: Symbol::intern(&self.result).as_str() }
     }
 
     fn finish(mut self, hash: &str) -> String {

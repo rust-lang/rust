@@ -11,7 +11,6 @@
 use context::SharedCrateContext;
 use monomorphize::Instance;
 use symbol_map::SymbolMap;
-use back::symbol_names::symbol_name;
 use util::nodemap::FxHashMap;
 use rustc::hir::def_id::{DefId, CrateNum, LOCAL_CRATE};
 use rustc::session::config;
@@ -56,7 +55,7 @@ impl ExportedSymbols {
                 let name = symbol_for_def_id(scx.tcx(), def_id, symbol_map);
                 let export_level = export_level(scx, def_id);
                 debug!("EXPORTED SYMBOL (local): {} ({:?})", name, export_level);
-                (name, export_level)
+                (str::to_owned(&name), export_level)
             })
             .collect();
 
@@ -108,7 +107,7 @@ impl ExportedSymbols {
                 .exported_symbols(cnum)
                 .iter()
                 .map(|&def_id| {
-                    let name = symbol_name(Instance::mono(scx.tcx(), def_id), scx.tcx());
+                    let name = scx.tcx().symbol_name(Instance::mono(scx.tcx(), def_id));
                     let export_level = if special_runtime_crate {
                         // We can probably do better here by just ensuring that
                         // it has hidden visibility rather than public
@@ -117,9 +116,9 @@ impl ExportedSymbols {
                         //
                         // In general though we won't link right if these
                         // symbols are stripped, and LTO currently strips them.
-                        if name == "rust_eh_personality" ||
-                           name == "rust_eh_register_frames" ||
-                           name == "rust_eh_unregister_frames" {
+                        if &*name == "rust_eh_personality" ||
+                           &*name == "rust_eh_register_frames" ||
+                           &*name == "rust_eh_unregister_frames" {
                             SymbolExportLevel::C
                         } else {
                             SymbolExportLevel::Rust
@@ -128,7 +127,7 @@ impl ExportedSymbols {
                         export_level(scx, def_id)
                     };
                     debug!("EXPORTED SYMBOL (re-export): {} ({:?})", name, export_level);
-                    (name, export_level)
+                    (str::to_owned(&name), export_level)
                 })
                 .collect();
 
@@ -228,7 +227,5 @@ fn symbol_for_def_id<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 
     let instance = Instance::mono(tcx, def_id);
 
-    symbol_map.get(TransItem::Fn(instance))
-              .map(str::to_owned)
-              .unwrap_or_else(|| symbol_name(instance, tcx))
+    str::to_owned(&tcx.symbol_name(instance))
 }
