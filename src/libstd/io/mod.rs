@@ -1547,6 +1547,10 @@ impl<T, U> Chain<T, U> {
 
     /// Gets mutable references to the underlying readers in this `Chain`.
     ///
+    /// Care should be taken to avoid modifying the internal I/O state of the
+    /// underlying readers as doing so may corrupt the internal state of this
+    /// `Chain`.
+    ///
     /// # Examples
     ///
     /// ```
@@ -1712,6 +1716,10 @@ impl<T> Take<T> {
     }
 
     /// Gets a mutable reference to the underlying reader.
+    ///
+    /// Care should be taken to avoid modifying the internal I/O state of the
+    /// underlying reader as doing so may corrupt the internal limit of this
+    /// `Take`.
     ///
     /// # Examples
     ///
