@@ -13,6 +13,7 @@ use std::mem;
 use std::rc::Rc;
 use syntax::ast::{FloatTy, LitKind, StrStyle, NodeId};
 use syntax::ptr::P;
+use syntax::codemap::DUMMY_SP;
 
 #[derive(Debug, Copy, Clone)]
 pub enum FloatWidth {
@@ -286,13 +287,19 @@ impl<'c, 'cc> ConstEvalLateContext<'c, 'cc> {
                 let substs = self.tables
                     .node_id_item_substs(id)
                     .unwrap_or_else(|| self.tcx.intern_substs(&[]));
-                if let Some((const_expr, tables)) = lookup_const_by_id(self.tcx, def_id, substs) {
+                if let Some((const_expr, _)) = lookup_const_by_id(self.tcx, def_id, substs) {
                     let mut cx = ConstEvalLateContext {
                         tcx: self.tcx,
-                        tables: tables,
+                        tables: self.tcx.item_tables(const_expr),
                         needed_resolution: false,
                     };
-                    let ret = cx.expr(const_expr);
+                    let body = if let Some(id) = self.tcx.hir.as_local_node_id(def_id) {
+                        ty::queries::mir_const_qualif::get(self.tcx, DUMMY_SP, def_id);
+                        self.tcx.hir.body(self.tcx.hir.body_owned_by(id))
+                    } else {
+                        self.tcx.sess.cstore.item_body(self.tcx, def_id)
+                    };
+                    let ret = cx.expr(&body.value);
                     if ret.is_some() {
                         self.needed_resolution = true;
                     }
