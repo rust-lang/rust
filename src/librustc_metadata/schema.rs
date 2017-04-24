@@ -416,6 +416,7 @@ pub struct ImplData<'tcx> {
 
 impl_stable_hash_for!(struct ImplData<'tcx> {
     polarity,
+    defaultness,
     parent_impl,
     coerce_unsized_info,
     trait_ref

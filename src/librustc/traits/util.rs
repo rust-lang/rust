@@ -13,6 +13,7 @@ use ty::subst::{Subst, Substs};
 use ty::{self, Ty, TyCtxt, ToPredicate, ToPolyTraitRef};
 use ty::outlives::Component;
 use util::nodemap::FxHashSet;
+use hir::{self};
 
 use super::{Obligation, ObligationCause, PredicateObligation, SelectionContext, Normalized};
 
@@ -503,6 +504,26 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
             substs: self.mk_substs_trait(self_ty, &[arguments_tuple]),
         };
         ty::Binder((trait_ref, sig.skip_binder().output()))
+    }
+
+    pub fn impl_is_default(self, node_item_def_id: DefId) -> bool {
+        match self.hir.as_local_node_id(node_item_def_id) {
+            Some(node_id) => {
+                let item = self.hir.expect_item(node_id);
+                if let hir::ItemImpl(_, _, defaultness, ..) = item.node {
+                    defaultness.is_default()
+                } else {
+                    false
+                }
+            }
+            None => {
+                self.global_tcx()
+                    .sess
+                    .cstore
+                    .impl_defaultness(node_item_def_id)
+                    .is_default()
+            }
+        }
     }
 }
 

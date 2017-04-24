@@ -309,7 +309,7 @@ fn type_param_predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         NodeItem(item) => {
             match item.node {
                 ItemFn(.., ref generics, _) |
-                ItemImpl(_, _, ref generics, ..) |
+                ItemImpl(_, _, _, ref generics, ..) |
                 ItemTy(_, ref generics) |
                 ItemEnum(_, ref generics) |
                 ItemStruct(_, ref generics) |
@@ -825,7 +825,7 @@ fn generics<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         NodeItem(item) => {
             match item.node {
                 ItemFn(.., ref generics, _) |
-                ItemImpl(_, _, ref generics, ..) => generics,
+                ItemImpl(_, _, _, ref generics, ..) => generics,
 
                 ItemTy(_, ref generics) |
                 ItemEnum(_, ref generics) |
@@ -1236,7 +1236,7 @@ fn predicates<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
         NodeItem(item) => {
             match item.node {
                 ItemFn(.., ref generics, _) |
-                ItemImpl(_, _, ref generics, ..) |
+                ItemImpl(_, _, _, ref generics, ..) |
                 ItemTy(_, ref generics) |
                 ItemEnum(_, ref generics) |
                 ItemStruct(_, ref generics) |
