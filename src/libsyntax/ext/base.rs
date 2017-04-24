@@ -765,6 +765,9 @@ impl<'a> ExtCtxt<'a> {
     pub fn span_bug(&self, sp: Span, msg: &str) -> ! {
         self.parse_sess.span_diagnostic.span_bug(sp, msg);
     }
+    pub fn span_label_without_error(&self, sp: Span, msg: &str, label: &str) {
+        self.parse_sess.span_diagnostic.span_label_without_error(sp, msg, label);
+    }
     pub fn bug(&self, msg: &str) -> ! {
         self.parse_sess.span_diagnostic.bug(msg);
     }
