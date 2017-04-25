@@ -27,13 +27,8 @@ more dots means more elements.
 
 ```rust
 pub enum RangeInclusive<T> {
-  Empty {
-    at: T,
-  },
-  NonEmpty {
-    start: T,
-    end: T,
-  }
+  pub start: T,
+  pub end: T,
 }
 
 pub struct RangeToInclusive<T> {
@@ -41,7 +36,8 @@ pub struct RangeToInclusive<T> {
 }
 ```
 
-Writing `a...b` in an expression desugars to `std::ops::RangeInclusive::NonEmpty { start: a, end: b }`. Writing `...b` in an
+Writing `a...b` in an expression desugars to
+`std::ops::RangeInclusive { start: a, end: b }`. Writing `...b` in an
 expression desugars to `std::ops::RangeToInclusive { end: b }`.
 
 `RangeInclusive` implements the standard traits (`Clone`, `Debug`
@@ -57,6 +53,10 @@ now would be `1. ..` i.e. a floating point number on the left,
 however, fortunately, it is actually tokenised like `1 ...`, and is
 hence an error with the current compiler.
 
+This `struct` definition is maximally consistent with the existing `Range`.
+`a..b` and `a...b` are the same size and have the same fields, just with
+the expected difference in semantics.
+
 # Drawbacks
 
 There's a mismatch between pattern-`...` and expression-`...`, in that
@@ -66,10 +66,32 @@ semantically.)
 
 The `...` vs. `..` distinction is the exact inversion of Ruby's syntax.
 
-Having an extra field in a language-level desugaring, catering to one
-library use-case is a little non-"hygienic". It is especially strange
-that the field isn't consistent across the different `...`
-desugarings.
+Not having a separate marker for `finished` or `empty` implies a requirement
+on `T` that it's possible to provide values such that `b...a` is an empty
+range.  But a separate marker is a false invariant: whether a `finished`
+field on the struct or a `Empty` variant of an enum, the range `10...0` still
+desugars to a `RangeInclusive` with `finised: false` or of the `NonEmpty`
+variant.  And the fields are public, so even fixing the desugar cannot
+guarantee the invariant.  As a result, all code using a `RangeInclusive`
+must still check whether a "`NonEmpty`" or "un`finished`" is actually finished.
+The "can produce an empty range" requirement is not a hardship.  It's trivial
+for anything that can be stepped forward and backward, as all things which are
+iterable in `std` are today.  But ther are other possibilities as well.  The
+proof-of-concept implementation for this change is done using the `replace_one`
+and `replace_zero` methods of the (existing but unstable) `Step` trait, as
+`1...0` is of course an empty range.  Something weirder, like walking along a
+DAG, could use the fact that `PartialOrd` is sufficient, and produce a range
+similar in character to `NaN...NaN`, which is empty as `(NaN <= NaN) == false`.
+The exact details of what is required to make a range iterable is outside the
+scope of this RFC, and will be decided in the [`step_by` issue][step_by].
+
+Note that iterable ranges today have a much stronger bound than just
+steppability: they require a `b is-reachable-from a` predicate (as `a <= b`).
+Providing that efficiently for a DAG walk, or even a simpler forward list
+walk, is a substantially harder thing to do that providing a pair `(x, y)`
+such that `!(x <= y)`.
+
+[step_by]: https://github.com/rust-lang/rust/issues/27741
 
 # Alternatives
 
@@ -83,28 +105,25 @@ This RFC proposes single-ended syntax with only an end, `...b`, but not
 with only a start (`a...`) or unconstrained `...`. This balance could be
 reevaluated for usefulness and conflicts with other proposed syntax.
 
-The `Empty` variant could be omitted, leaving two options:
-
 - `RangeInclusive` could be a struct including a `finished` field.
+  This makes it easier for the struct to always be iterable, as the extra
+  field is set once the ends match.  But having the extra field in a
+  language-level desugaring, catering to one library use-case is a little
+  non-"hygienic". It is especially strange that the field isn't consistent
+  across the different `...` desugarings.
+- `RangeInclusive` could be an enum with `Empty` and `NonEmpty` variants.
+  This is cleaner than the `finished` field, but makes all uses of the
+  type substantially more complex.  For example, the clamp RFC would
+  naturally use a `RangeInclusive` parameter, but then the
+  unreliable-`Empty` vs `NonEmpty` distinction provides no value.  It does
+  prevent looking at `start` after iteration has completed, but that is
+  of questionable value when `Range` allows it without issue, and disallowing
+  looking at `start` while allowing looking at `end` feels inconsistent.
 - `a...b` only implements `IntoIterator`, not `Iterator`, by
   converting to a different type that does have the field. However,
   this means that `a.. .b` behaves differently to `a..b`, so
   `(a...b).map(|x| ...)` doesn't work (the `..` version of that is
   used reasonably often, in the author's experience)
-- `a...b` can implement `Iterator` for types that can be stepped
-  backwards: the only case that is problematic things cases like
-  `x...255u8` where the endpoint is the last value in the type's
-  range. A naive implementation that just steps `x` and compares
-  against the second value will never terminate: it will yield 254
-  (final state: `255...255`), 255 (final state: `0...255`), 0 (final
-  state: `1...255`). I.e. it will wrap around because it has no way to
-  detect whether 255 has been yielded or not. However, implementations
-  of `Iterator` can detect cases like that, and, after yielding `255`,
-  backwards-step the second piece of state to `255...254`.
-
-  This means that `a...b` can only implement `Iterator` for types that
-  can be stepped backwards, which isn't always guaranteed, e.g. types
-  might not have a unique predecessor (walking along a DAG).
 
 # Unresolved questions
 
@@ -114,3 +133,5 @@ None so far.
 
 * In rust-lang/rfcs#1320, this RFC was amended to change the `RangeInclusive`
   type from a struct with a `finished` field to an enum.
+* In rust-lang/rfcs#1980, this RFC was amended to change the `RangeInclusive`
+  type from an enum to a struct with just `start` and `end` fields.
