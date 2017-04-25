@@ -120,6 +120,18 @@ struct Target {
     extensions: Option<Vec<Component>>,
 }
 
+impl Target {
+    fn unavailable() -> Target {
+        Target {
+            available: false,
+            url: None,
+            hash: None,
+            components: None,
+            extensions: None,
+        }
+    }
+}
+
 #[derive(RustcEncodable)]
 struct Component {
     pkg: String,
@@ -242,13 +254,7 @@ impl Builder {
             let digest = match self.digests.remove(&filename) {
                 Some(digest) => digest,
                 None => {
-                    pkg.target.insert(host.to_string(), Target {
-                        available: false,
-                        url: None,
-                        hash: None,
-                        components: None,
-                        extensions: None,
-                    });
+                    pkg.target.insert(host.to_string(), Target::unavailable());
                     continue
                 }
             };
@@ -312,15 +318,7 @@ impl Builder {
             let filename = self.filename(pkgname, name);
             let digest = match self.digests.remove(&filename) {
                 Some(digest) => digest,
-                None => {
-                    return (name.to_string(), Target {
-                        available: false,
-                        url: None,
-                        hash: None,
-                        components: None,
-                        extensions: None,
-                    })
-                }
+                None => return (name.to_string(), Target::unavailable()),
             };
 
             (name.to_string(), Target {
