@@ -367,6 +367,7 @@ impl<'a, 'tcx> EvalContext<'a, 'tcx> {
                 PrimVal::Ptr(ptr)
             }
 
+            Variant(_)   => unimplemented!(),
             Struct(_)    => unimplemented!(),
             Tuple(_)     => unimplemented!(),
             // function items are zero sized and thus have no readable value
