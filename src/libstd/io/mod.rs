@@ -466,6 +466,9 @@ pub trait Read {
     /// variant will be returned. If an error is returned then it must be
     /// guaranteed that no bytes were read.
     ///
+    /// An error of the `ErrorKind::Interrupted` kind is non-fatal and the read
+    /// operation should be retried if there is nothing else to do.
+    ///
     /// # Examples
     ///
     /// [`File`][file]s implement `Read`:
@@ -481,7 +484,7 @@ pub trait Read {
     /// let mut f = File::open("foo.txt")?;
     /// let mut buffer = [0; 10];
     ///
-    /// // read 10 bytes
+    /// // read up to 10 bytes
     /// f.read(&mut buffer[..])?;
     /// # Ok(())
     /// # }
@@ -885,6 +888,9 @@ pub trait Write {
     /// It is **not** considered an error if the entire buffer could not be
     /// written to this writer.
     ///
+    /// An error of the `ErrorKind::Interrupted` kind is non-fatal and the
+    /// write operation should be retried if there is nothing else to do.
+    ///
     /// # Examples
     ///
     /// ```
@@ -894,6 +900,7 @@ pub trait Write {
     /// # fn foo() -> std::io::Result<()> {
     /// let mut buffer = File::create("foo.txt")?;
     ///
+    /// // Writes some prefix of the byte string, not necessarily all of it.
     /// buffer.write(b"some bytes")?;
     /// # Ok(())
     /// # }
@@ -929,14 +936,17 @@ pub trait Write {
 
     /// Attempts to write an entire buffer into this write.
     ///
-    /// This method will continuously call `write` while there is more data to
-    /// write. This method will not return until the entire buffer has been
-    /// successfully written or an error occurs. The first error generated from
-    /// this method will be returned.
+    /// This method will continuously call `write` until there is no more data
+    /// to be written or an error of non-`ErrorKind::Interrupted` kind is
+    /// returned. This method will not return until the entire buffer has been
+    /// successfully written or such an error occurs. The first error that is
+    /// not of `ErrorKind::Interrupted` kind generated from this method will be
+    /// returned.
     ///
     /// # Errors
     ///
-    /// This function will return the first error that `write` returns.
+    /// This function will return the first error of
+    /// non-`ErrorKind::Interrupted` kind that `write` returns.
     ///
     /// # Examples
     ///
