@@ -49,7 +49,7 @@ pub fn no_landing_pads<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, mir: &mut Mir<'tcx
 }
 
 impl<'tcx> MirPass<'tcx> for NoLandingPads {
-    fn run_pass<'a>(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    fn run_pass<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     _: MirSource, mir: &mut Mir<'tcx>) {
         no_landing_pads(tcx, mir)
     }

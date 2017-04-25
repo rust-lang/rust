@@ -942,7 +942,7 @@ pub struct QualifyAndPromoteConstants;
 impl Pass for QualifyAndPromoteConstants {}
 
 impl<'tcx> MirMapPass<'tcx> for QualifyAndPromoteConstants {
-    fn run_pass<'a>(&mut self,
+    fn run_pass<'a>(&self,
                     tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     hooks: &mut [Box<for<'s> MirPassHook<'s>>])
     {
@@ -971,7 +971,7 @@ impl<'tcx> MirMapPass<'tcx> for QualifyAndPromoteConstants {
 }
 
 impl<'tcx> QualifyAndPromoteConstants {
-    fn run_pass<'a>(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    fn run_pass<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     src: MirSource, mir: &mut Mir<'tcx>) {
         let id = src.item_id();
         let def_id = tcx.hir.local_def_id(id);

@@ -26,7 +26,7 @@ impl<'a> SimplifyBranches<'a> {
 }
 
 impl<'l, 'tcx> MirPass<'tcx> for SimplifyBranches<'l> {
-    fn run_pass<'a>(&mut self, _tcx: TyCtxt<'a, 'tcx, 'tcx>, _src: MirSource, mir: &mut Mir<'tcx>) {
+    fn run_pass<'a>(&self, _tcx: TyCtxt<'a, 'tcx, 'tcx>, _src: MirSource, mir: &mut Mir<'tcx>) {
         for block in mir.basic_blocks_mut() {
             let terminator = block.terminator_mut();
             terminator.kind = match terminator.kind {

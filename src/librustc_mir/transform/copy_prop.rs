@@ -41,7 +41,7 @@ pub struct CopyPropagation;
 impl Pass for CopyPropagation {}
 
 impl<'tcx> MirPass<'tcx> for CopyPropagation {
-    fn run_pass<'a>(&mut self,
+    fn run_pass<'a>(&self,
                     tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     source: MirSource,
                     mir: &mut Mir<'tcx>) {

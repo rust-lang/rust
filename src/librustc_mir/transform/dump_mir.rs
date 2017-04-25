@@ -23,7 +23,7 @@ use util as mir_util;
 pub struct Marker<'a>(pub &'a str);
 
 impl<'b, 'tcx> MirPass<'tcx> for Marker<'b> {
-    fn run_pass<'a>(&mut self, _tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    fn run_pass<'a>(&self, _tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     _src: MirSource, _mir: &mut Mir<'tcx>)
     {}
 }
@@ -52,7 +52,7 @@ pub struct DumpMir;
 
 impl<'tcx> MirPassHook<'tcx> for DumpMir {
     fn on_mir_pass<'a>(
-        &mut self,
+        &self,
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
         src: MirSource,
         mir: &Mir<'tcx>,

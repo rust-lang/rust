@@ -18,7 +18,7 @@ use rustc_data_structures::graph;
 
 use rustc::dep_graph::DepNode;
 use rustc::mir::*;
-use rustc::mir::transform::{MirMapPass, MirPassHook, MirSource, Pass};
+use rustc::mir::transform::{self, MirMapPass, MirPassHook, MirSource, Pass};
 use rustc::mir::visit::*;
 use rustc::traits;
 use rustc::ty::{self, Ty, TyCtxt};
@@ -44,7 +44,7 @@ pub struct Inline;
 
 impl<'tcx> MirMapPass<'tcx> for Inline {
     fn run_pass<'a>(
-        &mut self,
+        &self,
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
         hooks: &mut [Box<for<'s> MirPassHook<'s>>]) {
 
@@ -58,33 +58,13 @@ impl<'tcx> MirMapPass<'tcx> for Inline {
             tcx: tcx,
         };
 
-        for &def_id in tcx.mir_keys(LOCAL_CRATE).iter() {
-            let _task = tcx.dep_graph.in_task(DepNode::Mir(def_id));
-            let mir = &tcx.item_mir(def_id);
-
-            let id = tcx.hir.as_local_node_id(def_id).unwrap();
-            let src = MirSource::from_node(tcx, id);
-
-            for hook in &mut *hooks {
-                hook.on_mir_pass(tcx, src, mir, self, false);
-            }
-        }
+        transform::run_hooks(tcx, hooks, self, false);
 
         for scc in callgraph.scc_iter() {
             inliner.inline_scc(&callgraph, &scc);
         }
 
-        for &def_id in tcx.mir_keys(LOCAL_CRATE).iter() {
-            let _task = tcx.dep_graph.in_task(DepNode::Mir(def_id));
-            let mir = &tcx.item_mir(def_id);
-
-            let id = tcx.hir.as_local_node_id(def_id).unwrap();
-            let src = MirSource::from_node(tcx, id);
-
-            for hook in &mut *hooks {
-                hook.on_mir_pass(tcx, src, mir, self, true);
-            }
-        }
+        transform::run_hooks(tcx, hooks, self, true);
     }
 }
 

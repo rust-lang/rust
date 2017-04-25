@@ -10,7 +10,7 @@
 
 use dep_graph::DepNode;
 use hir;
-use hir::def_id::LOCAL_CRATE;
+use hir::def_id::{DefId, LOCAL_CRATE};
 use hir::map::DefPathData;
 use mir::{Mir, Promoted};
 use ty::TyCtxt;
@@ -88,14 +88,14 @@ pub trait Pass {
 /// A pass which inspects the whole Mir map.
 pub trait MirMapPass<'tcx>: Pass {
     fn run_pass<'a>(
-        &mut self,
+        &self,
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
         hooks: &mut [Box<for<'s> MirPassHook<'s>>]);
 }
 
 pub trait MirPassHook<'tcx>: Pass {
     fn on_mir_pass<'a>(
-        &mut self,
+        &self,
         tcx: TyCtxt<'a, 'tcx, 'tcx>,
         src: MirSource,
         mir: &Mir<'tcx>,
@@ -106,40 +106,58 @@ pub trait MirPassHook<'tcx>: Pass {
 
 /// A pass which inspects Mir of functions in isolation.
 pub trait MirPass<'tcx>: Pass {
-    fn run_pass<'a>(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    fn run_pass<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     src: MirSource, mir: &mut Mir<'tcx>);
 }
 
 impl<'tcx, T: MirPass<'tcx>> MirMapPass<'tcx> for T {
-    fn run_pass<'a>(&mut self,
+    fn run_pass<'a>(&self,
                     tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     hooks: &mut [Box<for<'s> MirPassHook<'s>>])
     {
         for &def_id in tcx.mir_keys(LOCAL_CRATE).iter() {
-            let _task = tcx.dep_graph.in_task(DepNode::Mir(def_id));
-            let mir = &mut tcx.mir(def_id).borrow_mut();
-            tcx.dep_graph.write(DepNode::Mir(def_id));
+            run_hooks(tcx, hooks, self, false);
+            run_map_pass_task(tcx, self, def_id);
+            run_hooks(tcx, hooks, self, false);
+        }
+    }
+}
 
-            let id = tcx.hir.as_local_node_id(def_id).unwrap();
-            let src = MirSource::from_node(tcx, id);
+fn run_map_pass_task<'a, 'tcx, T: MirPass<'tcx>>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                                 pass: &T,
+                                                 def_id: DefId) {
+    let _task = tcx.dep_graph.in_task(DepNode::Mir(def_id));
+    let mir = &mut tcx.mir(def_id).borrow_mut();
+    let id = tcx.hir.as_local_node_id(def_id).expect("mir source requires local def-id");
+    let source = MirSource::from_node(tcx, id);
+    MirPass::run_pass(pass, tcx, source, mir);
 
+    for (i, mir) in mir.promoted.iter_enumerated_mut() {
+        let source = MirSource::Promoted(id, i);
+        MirPass::run_pass(pass, tcx, source, mir);
+    }
+}
+
+/// Invokes `hooks` on all the MIR that exists. This is read-only, so
+/// new new tasks need to be created.
+pub fn run_hooks<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                           hooks: &mut [Box<for<'s> MirPassHook<'s>>],
+                           pass: &Pass,
+                           is_after: bool)
+{
+    for &def_id in tcx.mir_keys(LOCAL_CRATE).iter() {
+        let mir = tcx.item_mir(def_id);
+        let id = tcx.hir.as_local_node_id(def_id).expect("mir source requires local def-id");
+
+        let source = MirSource::from_node(tcx, id);
+        for hook in &mut *hooks {
+            hook.on_mir_pass(tcx, source, &mir, pass, is_after);
+        }
+
+        for (i, mir) in mir.promoted.iter_enumerated() {
+            let source = MirSource::Promoted(id, i);
             for hook in &mut *hooks {
-                hook.on_mir_pass(tcx, src, mir, self, false);
-            }
-            MirPass::run_pass(self, tcx, src, mir);
-            for hook in &mut *hooks {
-                hook.on_mir_pass(tcx, src, mir, self, true);
-            }
-
-            for (i, mir) in mir.promoted.iter_enumerated_mut() {
-                let src = MirSource::Promoted(id, i);
-                for hook in &mut *hooks {
-                    hook.on_mir_pass(tcx, src, mir, self, false);
-                }
-                MirPass::run_pass(self, tcx, src, mir);
-                for hook in &mut *hooks {
-                    hook.on_mir_pass(tcx, src, mir, self, true);
-                }
+                hook.on_mir_pass(tcx, source, &mir, pass, false);
             }
         }
     }
