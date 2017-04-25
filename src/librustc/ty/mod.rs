@@ -2049,6 +2049,16 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         self.typeck_tables_of(self.hir.body_owner_def_id(body))
     }
 
+    /// Returns an iterator of the def-ids for all body-owners in this
+    /// crate. If you would prefer to iterate over the bodies
+    /// themselves, you can do `self.hir.krate().body_ids.iter()`.
+    pub fn body_owners(self) -> impl Iterator<Item = DefId> + 'a {
+        self.hir.krate()
+                .body_ids
+                .iter()
+                .map(move |&body_id| self.hir.body_owner_def_id(body_id))
+    }
+
     pub fn expr_span(self, id: NodeId) -> Span {
         match self.hir.find(id) {
             Some(hir_map::NodeExpr(e)) => {
@@ -2331,7 +2341,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     /// Given the DefId of an item, returns its MIR, borrowed immutably.
     /// Returns None if there is no MIR for the DefId
     pub fn maybe_item_mir(self, did: DefId) -> Option<Ref<'gcx, Mir<'gcx>>> {
-        if did.is_local() && !self.maps.mir.borrow().contains_key(&did) {
+        if did.is_local() && !self.mir_keys(LOCAL_CRATE).contains(&did) {
             return None;
         }
 
@@ -2539,17 +2549,6 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
         where F: FnMut(DefId) -> DepNode<DefId>, V: ItemLikeVisitor<'gcx>
     {
         dep_graph::visit_all_item_likes_in_krate(self.global_tcx(), dep_node_fn, visitor);
-    }
-
-    /// Invokes `callback` for each body in the krate. This will
-    /// create a read edge from `DepNode::Krate` to the current task;
-    /// it is meant to be run in the context of some global task like
-    /// `BorrowckCrate`. The callback would then create a task like
-    /// `BorrowckBody(DefId)` to process each individual item.
-    pub fn visit_all_bodies_in_krate<C>(self, callback: C)
-        where C: Fn(/* body_owner */ DefId, /* body id */ hir::BodyId),
-    {
-        dep_graph::visit_all_bodies_in_krate(self.global_tcx(), callback)
     }
 
     /// Looks up the span of `impl_did` if the impl is local; otherwise returns `Err`

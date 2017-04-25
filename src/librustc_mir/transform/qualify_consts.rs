@@ -19,7 +19,7 @@ use rustc_data_structures::indexed_vec::{IndexVec, Idx};
 use rustc::dep_graph::DepNode;
 use rustc::hir;
 use rustc::hir::map as hir_map;
-use rustc::hir::def_id::DefId;
+use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::hir::map::blocks::FnLikeNode;
 use rustc::traits::{self, Reveal};
 use rustc::ty::{self, TyCtxt, Ty, TypeFoldable};
@@ -946,12 +946,7 @@ impl<'tcx> MirMapPass<'tcx> for QualifyAndPromoteConstants {
                     tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     hooks: &mut [Box<for<'s> MirPassHook<'s>>])
     {
-        let def_ids = tcx.maps.mir.borrow().keys();
-        for def_id in def_ids {
-            if !def_id.is_local() {
-                continue;
-            }
-
+        for &def_id in tcx.mir_keys(LOCAL_CRATE).iter() {
             let _task = tcx.dep_graph.in_task(DepNode::Mir(def_id));
             let id = tcx.hir.as_local_node_id(def_id).unwrap();
             let src = MirSource::from_node(tcx, id);
@@ -961,7 +956,7 @@ impl<'tcx> MirMapPass<'tcx> for QualifyAndPromoteConstants {
                 continue;
             }
 
-            let mir = &mut tcx.maps.mir.borrow()[&def_id].borrow_mut();
+            let mir = &mut tcx.mir(def_id).borrow_mut();
             tcx.dep_graph.write(DepNode::Mir(def_id));
 
             for hook in &mut *hooks {

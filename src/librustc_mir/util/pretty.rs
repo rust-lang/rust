@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use rustc::hir;
-use rustc::hir::def_id::DefId;
+use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc::mir::*;
 use rustc::mir::transform::MirSource;
 use rustc::ty::TyCtxt;
@@ -85,17 +85,16 @@ pub fn dump_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
 }
 
 /// Write out a human-readable textual representation for the given MIR.
-pub fn write_mir_pretty<'a, 'b, 'tcx, I>(tcx: TyCtxt<'b, 'tcx, 'tcx>,
-                                         iter: I,
-                                         w: &mut Write)
-                                         -> io::Result<()>
-    where I: Iterator<Item=DefId>, 'tcx: 'a
+pub fn write_mir_pretty<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>,
+                                  single: Option<DefId>,
+                                  w: &mut Write)
+                                  -> io::Result<()>
 {
     writeln!(w, "// WARNING: This output format is intended for human consumers only")?;
     writeln!(w, "// and is subject to change without notice. Knock yourself out.")?;
 
     let mut first = true;
-    for def_id in iter.filter(DefId::is_local) {
+    for def_id in dump_mir_def_ids(tcx, single) {
         let mir = &tcx.item_mir(def_id);
 
         if first {
@@ -311,4 +310,12 @@ fn write_temp_decls(mir: &Mir, w: &mut Write) -> io::Result<()> {
     }
 
     Ok(())
+}
+
+pub fn dump_mir_def_ids(tcx: TyCtxt, single: Option<DefId>) -> Vec<DefId> {
+    if let Some(i) = single {
+        vec![i]
+    } else {
+        tcx.mir_keys(LOCAL_CRATE).iter().cloned().collect()
+    }
 }

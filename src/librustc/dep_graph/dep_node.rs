@@ -76,6 +76,7 @@ pub enum DepNode<D: Clone + Debug> {
     BorrowCheck(D),
     RvalueCheck(D),
     Reachability,
+    MirKeys,
     LateLintCheck,
     TransCrateItem(D),
     TransInlinedItem(D),
@@ -202,6 +203,7 @@ impl<D: Clone + Debug> DepNode<D> {
             Variance => Some(Variance),
             PrivacyAccessLevels(k) => Some(PrivacyAccessLevels(k)),
             Reachability => Some(Reachability),
+            MirKeys => Some(MirKeys),
             LateLintCheck => Some(LateLintCheck),
             TransWriteMetadata => Some(TransWriteMetadata),
 
