@@ -2785,7 +2785,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             self.diverges.set(cond_diverges | then_diverges & else_diverges);
         } else {
             let else_cause = self.cause(sp, ObligationCauseCode::IfExpressionWithNoElse);
-            coerce.coerce_forced_unit(self, &else_cause, &mut |_| ());
+            coerce.coerce_forced_unit(self, &else_cause, &mut |_| (), true);
 
             // If the condition is false we can't diverge.
             self.diverges.set(cond_diverges);
@@ -3502,7 +3502,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                           coerce.coerce(self, &cause, e, e_ty, e_diverges);
                       } else {
                           assert!(e_ty.is_nil());
-                          coerce.coerce_forced_unit(self, &cause, &mut |_| ());
+                          coerce.coerce_forced_unit(self, &cause, &mut |_| (), true);
                       }
                   } else {
                       // If `ctxt.coerce` is `None`, we can just ignore
@@ -3537,7 +3537,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
             } else {
                 let mut coercion = self.ret_coercion.as_ref().unwrap().borrow_mut();
                 let cause = self.cause(expr.span, ObligationCauseCode::ReturnNoExpression);
-                coercion.coerce_forced_unit(self, &cause, &mut |_| ());
+                coercion.coerce_forced_unit(self, &cause, &mut |_| (), true);
             }
             tcx.types.never
           }
@@ -4077,6 +4077,8 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                 // expression (assuming there are no other breaks,
                 // this implies that the type of the block will be
                 // `!`).
+                //
+                // #41425 -- label the implicit `()` as being the "found type" here, rather than the "expected type".
                 if !self.diverges.get().always() {
                     coerce.coerce_forced_unit(self, &self.misc(blk.span), &mut |err| {
                         if let Some(expected_ty) = expected.only_has_type(self) {
@@ -4084,7 +4086,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                                                                         expected_ty,
                                                                         err);
                         }
-                    });
+                    }, false);
                 }
             }
         });

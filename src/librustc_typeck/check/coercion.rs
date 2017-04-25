@@ -1001,7 +1001,7 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
                       expression_ty: Ty<'tcx>,
                       expression_diverges: Diverges)
     {
-        self.coerce_inner(fcx, cause, Some(expression), expression_ty, expression_diverges, None)
+        self.coerce_inner(fcx, cause, Some(expression), expression_ty, expression_diverges, None, false)
     }
 
     /// Indicates that one of the inputs is a "forced unit". This
@@ -1019,14 +1019,16 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
     pub fn coerce_forced_unit<'a>(&mut self,
                                   fcx: &FnCtxt<'a, 'gcx, 'tcx>,
                                   cause: &ObligationCause<'tcx>,
-                                  augment_error: &mut FnMut(&mut DiagnosticBuilder))
+                                  augment_error: &mut FnMut(&mut DiagnosticBuilder),
+                                  label_unit_as_expected: bool)
     {
         self.coerce_inner(fcx,
                           cause,
                           None,
                           fcx.tcx.mk_nil(),
                           Diverges::Maybe,
-                          Some(augment_error))
+                          Some(augment_error),
+                          label_unit_as_expected)
     }
 
     /// The inner coercion "engine". If `expression` is `None`, this
@@ -1038,7 +1040,8 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
                         expression: Option<&'gcx hir::Expr>,
                         mut expression_ty: Ty<'tcx>,
                         expression_diverges: Diverges,
-                        augment_error: Option<&mut FnMut(&mut DiagnosticBuilder)>)
+                        augment_error: Option<&mut FnMut(&mut DiagnosticBuilder)>,
+                        label_expression_as_expected: bool)
     {
         // Incorporate whatever type inference information we have
         // until now; in principle we might also want to process
@@ -1119,11 +1122,7 @@ impl<'gcx, 'tcx, 'exprs, E> CoerceMany<'gcx, 'tcx, 'exprs, E>
                 }
             }
             Err(err) => {
-                let (expected, found) = if expression.is_none() {
-                    // In the case where this is a "forced unit", like
-                    // `break`, we want to call the `()` "expected"
-                    // since it is implied by the syntax.
-                    assert!(expression_ty.is_nil());
+                let (expected, found) = if label_expression_as_expected {
                     (expression_ty, self.final_ty.unwrap_or(self.expected_ty))
                 } else {
                     // Otherwise, the "expected" type for error
