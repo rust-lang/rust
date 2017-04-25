@@ -171,7 +171,7 @@ class RustBuild(object):
             if os.path.exists(self.bin_root()):
                 shutil.rmtree(self.bin_root())
             filename = "rust-std-{}-{}.tar.gz".format(channel, self.build)
-            url = "https://static.rust-lang.org/dist/" + self.stage0_rustc_date()
+            url = "https://dev-static.rust-lang.org/dist/" + self.stage0_rustc_date()
             tarball = os.path.join(rustc_cache, filename)
             if not os.path.exists(tarball):
                 get("{}/{}".format(url, filename), tarball, verbose=self.verbose)
@@ -180,7 +180,7 @@ class RustBuild(object):
                    verbose=self.verbose)
 
             filename = "rustc-{}-{}.tar.gz".format(channel, self.build)
-            url = "https://static.rust-lang.org/dist/" + self.stage0_rustc_date()
+            url = "https://dev-static.rust-lang.org/dist/" + self.stage0_rustc_date()
             tarball = os.path.join(rustc_cache, filename)
             if not os.path.exists(tarball):
                 get("{}/{}".format(url, filename), tarball, verbose=self.verbose)
@@ -192,7 +192,7 @@ class RustBuild(object):
 
             if "pc-windows-gnu" in self.build:
                 filename = "rust-mingw-{}-{}.tar.gz".format(channel, self.build)
-                url = "https://static.rust-lang.org/dist/" + self.stage0_rustc_date()
+                url = "https://dev-static.rust-lang.org/dist/" + self.stage0_rustc_date()
                 tarball = os.path.join(rustc_cache, filename)
                 if not os.path.exists(tarball):
                     get("{}/{}".format(url, filename), tarball, verbose=self.verbose)
@@ -201,8 +201,8 @@ class RustBuild(object):
         if self.cargo().startswith(self.bin_root()) and \
                 (not os.path.exists(self.cargo()) or self.cargo_out_of_date()):
             self.print_what_it_means_to_bootstrap()
-            filename = "cargo-{}-{}.tar.gz".format(channel, self.build)
-            url = "https://static.rust-lang.org/dist/" + self.stage0_rustc_date()
+            filename = "cargo-{}-{}.tar.gz".format('0.18.0', self.build)
+            url = "https://dev-static.rust-lang.org/dist/" + self.stage0_rustc_date()
             tarball = os.path.join(rustc_cache, filename)
             if not os.path.exists(tarball):
                 get("{}/{}".format(url, filename), tarball, verbose=self.verbose)
