@@ -10,7 +10,7 @@
 
 //! Inlining pass for MIR functions
 
-use rustc::hir::def_id::DefId;
+use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 
 use rustc_data_structures::bitvec::BitVector;
 use rustc_data_structures::indexed_vec::{Idx, IndexVec};
@@ -58,24 +58,15 @@ impl<'tcx> MirMapPass<'tcx> for Inline {
             tcx: tcx,
         };
 
-        let def_ids = tcx.maps.mir.borrow().keys();
-        for &def_id in &def_ids {
-            if !def_id.is_local() { continue; }
-
+        for &def_id in tcx.mir_keys(LOCAL_CRATE).iter() {
             let _task = tcx.dep_graph.in_task(DepNode::Mir(def_id));
-            let mut mir = if let Some(mir) = tcx.maps.mir.borrow().get(&def_id) {
-                mir.borrow_mut()
-            } else {
-                continue;
-            };
-
-            tcx.dep_graph.write(DepNode::Mir(def_id));
+            let mir = &tcx.item_mir(def_id);
 
             let id = tcx.hir.as_local_node_id(def_id).unwrap();
             let src = MirSource::from_node(tcx, id);
 
             for hook in &mut *hooks {
-                hook.on_mir_pass(tcx, src, &mut mir, self, false);
+                hook.on_mir_pass(tcx, src, mir, self, false);
             }
         }
 
@@ -83,18 +74,15 @@ impl<'tcx> MirMapPass<'tcx> for Inline {
             inliner.inline_scc(&callgraph, &scc);
         }
 
-        for def_id in def_ids {
-            if !def_id.is_local() { continue; }
-
+        for &def_id in tcx.mir_keys(LOCAL_CRATE).iter() {
             let _task = tcx.dep_graph.in_task(DepNode::Mir(def_id));
-            let mut mir = tcx.maps.mir.borrow()[&def_id].borrow_mut();
-            tcx.dep_graph.write(DepNode::Mir(def_id));
+            let mir = &tcx.item_mir(def_id);
 
             let id = tcx.hir.as_local_node_id(def_id).unwrap();
             let src = MirSource::from_node(tcx, id);
 
             for hook in &mut *hooks {
-                hook.on_mir_pass(tcx, src, &mut mir, self, true);
+                hook.on_mir_pass(tcx, src, mir, self, true);
             }
         }
     }
@@ -200,11 +188,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
 
                 };
 
-                let mut caller_mir = {
-                    let map = self.tcx.maps.mir.borrow();
-                    let mir = map.get(&callsite.caller).unwrap();
-                    mir.borrow_mut()
-                };
+                let mut caller_mir = self.tcx.mir(callsite.caller).borrow_mut();
 
                 let start = caller_mir.basic_blocks().len();
 
@@ -256,11 +240,7 @@ impl<'a, 'tcx> Inliner<'a, 'tcx> {
             let _task = self.tcx.dep_graph.in_task(DepNode::Mir(def_id));
             self.tcx.dep_graph.write(DepNode::Mir(def_id));
 
-            let mut caller_mir = {
-                let map = self.tcx.maps.mir.borrow();
-                let mir = map.get(&def_id).unwrap();
-                mir.borrow_mut()
-            };
+            let mut caller_mir = self.tcx.mir(def_id).borrow_mut();
 
             debug!("Running simplify cfg on {:?}", def_id);
             CfgSimplifier::new(&mut caller_mir).simplify();

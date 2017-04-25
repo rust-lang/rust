@@ -20,7 +20,7 @@ use session::CompileResult;
 use ty::{self, CrateInherentImpls, Ty, TyCtxt};
 use ty::item_path;
 use ty::subst::Substs;
-use util::nodemap::NodeSet;
+use util::nodemap::{DefIdSet, NodeSet};
 
 use rustc_data_structures::indexed_vec::IndexVec;
 use std::cell::{RefCell, RefMut};
@@ -270,8 +270,13 @@ impl<'tcx> QueryDescription for queries::reachable_set<'tcx> {
 
 impl<'tcx> QueryDescription for queries::const_eval<'tcx> {
     fn describe(tcx: TyCtxt, (def_id, _): (DefId, &'tcx Substs<'tcx>)) -> String {
-        format!("const-evaluating `{}`",
-                tcx.item_path_str(def_id))
+        format!("const-evaluating `{}`", tcx.item_path_str(def_id))
+    }
+}
+
+impl<'tcx> QueryDescription for queries::mir_keys<'tcx> {
+    fn describe(_: TyCtxt, _: CrateNum) -> String {
+        format!("getting a list of all mir_keys")
     }
 }
 
@@ -546,6 +551,11 @@ define_maps! { <'tcx>
     /// (in the `RefCell` sense) to prevent accidental mutation.
     [pub] mir: Mir(DefId) -> &'tcx RefCell<mir::Mir<'tcx>>,
 
+    /// Set of all the def-ids in this crate that have MIR associated with
+    /// them. This includes all the body owners, but also things like struct
+    /// constructors.
+    [] mir_keys: mir_keys(CrateNum) -> Rc<DefIdSet>,
+
     /// Maps DefId's that have an associated Mir to the result
     /// of the MIR qualify_consts pass. The actual meaning of
     /// the value isn't known except to the pass itself.
@@ -643,4 +653,8 @@ fn typeck_item_bodies_dep_node(_: CrateNum) -> DepNode<DefId> {
 
 fn const_eval_dep_node((def_id, _): (DefId, &Substs)) -> DepNode<DefId> {
     DepNode::ConstEval(def_id)
+}
+
+fn mir_keys(_: CrateNum) -> DepNode<DefId> {
+    DepNode::MirKeys
 }

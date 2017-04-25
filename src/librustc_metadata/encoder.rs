@@ -621,7 +621,12 @@ impl<'a, 'b: 'a, 'tcx: 'b> EntryBuilder<'a, 'b, 'tcx> {
 
     fn encode_mir(&mut self, def_id: DefId) -> Option<Lazy<mir::Mir<'tcx>>> {
         debug!("EntryBuilder::encode_mir({:?})", def_id);
-        self.tcx.maps.mir.borrow().get(&def_id).map(|mir| self.lazy(&*mir.borrow()))
+        if self.tcx.mir_keys(LOCAL_CRATE).contains(&def_id) {
+            let mir = self.tcx.item_mir(def_id);
+            Some(self.lazy(&mir))
+        } else {
+            None
+        }
     }
 
     // Encodes the inherent implementations of a structure, enumeration, or trait.

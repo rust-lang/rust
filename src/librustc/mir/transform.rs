@@ -10,6 +10,7 @@
 
 use dep_graph::DepNode;
 use hir;
+use hir::def_id::LOCAL_CRATE;
 use hir::map::DefPathData;
 use mir::{Mir, Promoted};
 use ty::TyCtxt;
@@ -114,14 +115,9 @@ impl<'tcx, T: MirPass<'tcx>> MirMapPass<'tcx> for T {
                     tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     hooks: &mut [Box<for<'s> MirPassHook<'s>>])
     {
-        let def_ids = tcx.maps.mir.borrow().keys();
-        for def_id in def_ids {
-            if !def_id.is_local() {
-                continue;
-            }
-
+        for &def_id in tcx.mir_keys(LOCAL_CRATE).iter() {
             let _task = tcx.dep_graph.in_task(DepNode::Mir(def_id));
-            let mir = &mut tcx.maps.mir.borrow()[&def_id].borrow_mut();
+            let mir = &mut tcx.mir(def_id).borrow_mut();
             tcx.dep_graph.write(DepNode::Mir(def_id));
 
             let id = tcx.hir.as_local_node_id(def_id).unwrap();

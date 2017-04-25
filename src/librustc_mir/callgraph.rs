@@ -12,7 +12,7 @@
 //!
 //! This only considers direct calls
 
-use rustc::hir::def_id::DefId;
+use rustc::hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_data_structures::graph;
 
 use rustc::mir::*;
@@ -31,16 +31,12 @@ impl CallGraph {
     // FIXME: allow for construction of a callgraph that inspects
     // cross-crate MIRs if available.
     pub fn build<'a, 'tcx>(tcx: ty::TyCtxt<'a, 'tcx, 'tcx>) -> CallGraph {
-        let def_ids = tcx.maps.mir.borrow().keys();
-
         let mut callgraph = CallGraph {
             node_map: DefIdMap(),
             graph: graph::Graph::new()
         };
 
-        for def_id in def_ids {
-            if !def_id.is_local() { continue; }
-
+        for &def_id in tcx.mir_keys(LOCAL_CRATE).iter() {
             let idx = callgraph.add_node(def_id);
 
             let mut call_visitor = CallVisitor {

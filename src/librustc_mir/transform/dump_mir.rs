@@ -81,6 +81,6 @@ pub fn emit_mir<'a, 'tcx>(
 {
     let path = outputs.path(OutputType::Mir);
     let mut f = File::create(&path)?;
-    mir_util::write_mir_pretty(tcx, tcx.maps.mir.borrow().keys().into_iter(), &mut f)?;
+    mir_util::write_mir_pretty(tcx, None, &mut f)?;
     Ok(())
 }

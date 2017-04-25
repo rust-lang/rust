@@ -17,7 +17,7 @@
 //! - `#[rustc_mir(pretty="file.mir")]`
 
 use build;
-use rustc::hir::def_id::DefId;
+use rustc::hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
 use rustc::dep_graph::DepNode;
 use rustc::mir::Mir;
 use rustc::mir::transform::MirSource;
@@ -32,50 +32,67 @@ use rustc::ty::maps::Providers;
 use rustc::ty::subst::Substs;
 use rustc::hir;
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
+use rustc::util::nodemap::DefIdSet;
 use syntax::abi::Abi;
 use syntax::ast;
 use syntax_pos::Span;
 
 use std::cell::RefCell;
 use std::mem;
+use std::rc::Rc;
 
 pub fn build_mir_for_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>) {
     tcx.dep_graph.with_task(DepNode::MirKrate, tcx, (), build_mir_for_crate_task);
 
     fn build_mir_for_crate_task<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, (): ()) {
-        tcx.visit_all_bodies_in_krate(|body_owner_def_id, _body_id| {
+        for &body_owner_def_id in tcx.mir_keys(LOCAL_CRATE).iter() {
             tcx.item_mir(body_owner_def_id);
-        });
-
-        // Tuple struct/variant constructors don't have a BodyId, so we need
-        // to build them separately.
-        struct GatherCtors<'a, 'tcx: 'a> {
-            tcx: TyCtxt<'a, 'tcx, 'tcx>
         }
-        impl<'a, 'tcx> Visitor<'tcx> for GatherCtors<'a, 'tcx> {
-            fn visit_variant_data(&mut self,
-                                  v: &'tcx hir::VariantData,
-                                  _: ast::Name,
-                                  _: &'tcx hir::Generics,
-                                  _: ast::NodeId,
-                                  _: Span) {
-                if let hir::VariantData::Tuple(_, node_id) = *v {
-                    self.tcx.item_mir(self.tcx.hir.local_def_id(node_id));
-                }
-                intravisit::walk_struct_def(self, v)
-            }
-            fn nested_visit_map<'b>(&'b mut self) -> NestedVisitorMap<'b, 'tcx> {
-                NestedVisitorMap::None
-            }
-        }
-        tcx.hir.krate().visit_all_item_likes(&mut GatherCtors {
-            tcx: tcx
-        }.as_deep_visitor());
     }
 }
 
 pub fn provide(providers: &mut Providers) {
     providers.mir = build_mir;
+    providers.mir_keys = mir_keys;
+}
+
+fn mir_keys<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, krate: CrateNum)
+                      -> Rc<DefIdSet> {
+    assert_eq!(krate, LOCAL_CRATE);
+
+    let mut set = DefIdSet();
+
+    // All body-owners have MIR associated with them.
+    set.extend(tcx.body_owners());
+
+    // Additionally, tuple struct/variant constructors have MIR, but
+    // they don't have a BodyId, so we need to build them separately.
+    struct GatherCtors<'a, 'tcx: 'a> {
+        tcx: TyCtxt<'a, 'tcx, 'tcx>,
+        set: &'a mut DefIdSet,
+    }
+    impl<'a, 'tcx> Visitor<'tcx> for GatherCtors<'a, 'tcx> {
+        fn visit_variant_data(&mut self,
+                              v: &'tcx hir::VariantData,
+                              _: ast::Name,
+                              _: &'tcx hir::Generics,
+                              _: ast::NodeId,
+                              _: Span) {
+            if let hir::VariantData::Tuple(_, node_id) = *v {
+                self.set.insert(self.tcx.hir.local_def_id(node_id));
+            }
+            intravisit::walk_struct_def(self, v)
+        }
+        fn nested_visit_map<'b>(&'b mut self) -> NestedVisitorMap<'b, 'tcx> {
+            NestedVisitorMap::None
+        }
+    }
+    tcx.hir.krate().visit_all_item_likes(&mut GatherCtors {
+        tcx: tcx,
+        set: &mut set,
+    }.as_deep_visitor());
+
+    Rc::new(set)
 }
 
 fn build_mir<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)

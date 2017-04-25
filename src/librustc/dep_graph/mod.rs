@@ -28,6 +28,5 @@ pub use self::graph::WorkProduct;
 pub use self::query::DepGraphQuery;
 pub use self::safe::AssertDepGraphSafe;
 pub use self::safe::DepGraphSafe;
-pub use self::visit::visit_all_bodies_in_krate;
 pub use self::visit::visit_all_item_likes_in_krate;
 pub use self::raii::DepTask;
