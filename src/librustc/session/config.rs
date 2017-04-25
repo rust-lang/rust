@@ -1443,6 +1443,23 @@ pub fn build_session_options_and_crate_config(matches: &getopts::Matches)
         output_types.insert(OutputType::Exe, None);
     }
 
+    let remap_path_prefix_sources = debugging_opts.remap_path_prefix_from.len();
+    let remap_path_prefix_targets = debugging_opts.remap_path_prefix_from.len();
+
+    if remap_path_prefix_targets < remap_path_prefix_sources {
+        for source in &debugging_opts.remap_path_prefix_from[remap_path_prefix_targets..] {
+            early_error(error_format,
+                &format!("option `-Zremap-path-prefix-from='{}'` does not have \
+                         a corresponding `-Zremap-path-prefix-to`", source))
+        }
+    } else if remap_path_prefix_targets > remap_path_prefix_sources {
+        for target in &debugging_opts.remap_path_prefix_to[remap_path_prefix_sources..] {
+            early_error(error_format,
+                &format!("option `-Zremap-path-prefix-to='{}'` does not have \
+                          a corresponding `-Zremap-path-prefix-from`", target))
+        }
+    }
+
     let mut cg = build_codegen_options(matches, error_format);
 
     // Issue #30063: if user requests llvm-related output to one
