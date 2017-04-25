@@ -713,22 +713,27 @@ struct Inner {
 
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
-/// A handle to a thread.
+/// A handle to a thread, its just an abstract reference and as such
+/// it can be used to identify a thread (by name, for example). In most
+/// usage cases, this struct is not used directly.
 ///
 /// # Examples
 ///
 /// ```
 /// use std::thread;
 ///
-/// let handler = thread::Builder::new()
-///     .name("foo".into())
+/// for i in 0..5 {
+///     let thread_name = format!("thread_{}", i);
+///     thread::Builder::new()
+///     .name(thread_name) // Now you can identify which thread panicked
+///                        // thanks to the handle's name
 ///     .spawn(|| {
-///         let thread = thread::current();
-///         println!("thread name: {}", thread.name().unwrap());
+///         if i == 3 {
+///             panic!("I'm scared!!!");
+///         }
 ///     })
 ///     .unwrap();
-///
-/// handler.join().unwrap();
+/// }
 /// ```
 pub struct Thread {
     inner: Arc<Inner>,
