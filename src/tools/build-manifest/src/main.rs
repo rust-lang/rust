@@ -293,7 +293,7 @@ impl Builder {
 
             pkg.target.insert(host.to_string(), Target {
                 available: true,
-                url: Some(self.url("rust", host)),
+                url: Some(self.url(&filename)),
                 hash: Some(digest),
                 components: Some(components),
                 extensions: Some(extensions),
@@ -325,7 +325,7 @@ impl Builder {
 
             (name.to_string(), Target {
                 available: true,
-                url: Some(self.url(pkgname, name)),
+                url: Some(self.url(&filename)),
                 hash: Some(digest),
                 components: None,
                 extensions: None,
@@ -338,11 +338,11 @@ impl Builder {
         });
     }
 
-    fn url(&self, component: &str, target: &str) -> String {
+    fn url(&self, filename: &str) -> String {
         format!("{}/{}/{}",
                 self.s3_address,
                 self.date,
-                self.filename(component, target))
+                filename)
     }
 
     fn filename(&self, component: &str, target: &str) -> String {
