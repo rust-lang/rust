@@ -17,7 +17,6 @@ use builder::Builder;
 
 use super::MirContext;
 use super::LocalRef;
-use super::super::adt;
 
 impl<'a, 'tcx> MirContext<'a, 'tcx> {
     pub fn trans_statement(&mut self,
@@ -59,12 +58,8 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
                 }
             }
             mir::StatementKind::SetDiscriminant{ref lvalue, variant_index} => {
-                let ty = self.monomorphized_lvalue_ty(lvalue);
-                let lvalue_transed = self.trans_lvalue(&bcx, lvalue);
-                adt::trans_set_discr(&bcx,
-                    ty,
-                    lvalue_transed.llval,
-                    variant_index as u64);
+                self.trans_lvalue(&bcx, lvalue)
+                    .trans_set_discr(&bcx, variant_index);
                 bcx
             }
             mir::StatementKind::StorageLive(local) => {

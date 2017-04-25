@@ -15,7 +15,6 @@ use libc;
 use llvm;
 use llvm::{ValueRef};
 use abi::{Abi, FnType};
-use adt;
 use mir::lvalue::{LvalueRef, Alignment};
 use base::*;
 use common::*;
@@ -379,10 +378,10 @@ pub fn trans_intrinsic_call<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
 
         "discriminant_value" => {
             let val_ty = substs.type_at(0);
+            let adt_val = LvalueRef::new_sized_ty(llargs[0], val_ty, Alignment::AbiAligned);
             match val_ty.sty {
                 ty::TyAdt(adt, ..) if adt.is_enum() => {
-                    adt::trans_get_discr(bcx, val_ty, llargs[0], Alignment::AbiAligned,
-                                         Some(llret_ty), true)
+                    adt_val.trans_get_discr(bcx, ret_ty)
                 }
                 _ => C_null(llret_ty)
             }

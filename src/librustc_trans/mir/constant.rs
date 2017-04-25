@@ -462,8 +462,32 @@ impl<'a, 'tcx> MirConstContext<'a, 'tcx> {
                         }
                     }
                     mir::ProjectionElem::Field(ref field, _) => {
-                        let llprojected = adt::const_get_field(self.ccx, tr_base.ty, base.llval,
-                                                               field.index());
+                        // Extract field of struct-like const, skipping our alignment padding.
+                        let mut ix = field.index();
+                        let layout = self.ccx.layout_of(tr_base.ty);
+                        if let layout::Univariant { ref variant, .. } = *layout {
+                            ix = variant.memory_index[ix] as usize;
+                        }
+
+                        // Get the ix-th non-undef element of the struct.
+                        let mut real_ix = 0; // actual position in the struct
+                        let mut ix = ix; // logical index relative to real_ix
+                        let mut llprojected;
+                        loop {
+                            loop {
+                                llprojected = const_get_elt(base.llval, &[real_ix]);
+                                if !is_undef(llprojected) {
+                                    break;
+                                }
+                                real_ix = real_ix + 1;
+                            }
+                            if ix == 0 {
+                                break;
+                            }
+                            ix = ix - 1;
+                            real_ix = real_ix + 1;
+                        }
+
                         let llextra = if !has_metadata {
                             ptr::null_mut()
                         } else {
