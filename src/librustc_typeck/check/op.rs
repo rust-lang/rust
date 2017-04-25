@@ -245,7 +245,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                         if let Some(missing_trait) = missing_trait {
                             if missing_trait == "std::ops::Add" &&
                                 self.check_str_addition(expr, lhs_expr, lhs_ty,
-                                                         rhs_expr, rhs_ty_var, &mut err) {
+                                                        rhs_ty, &mut err) {
                                 // This has nothing here because it means we did string
                                 // concatenation (e.g. "Hello " + "World!"). This means
                                 // we don't want the note in the else clause to be emitted
@@ -269,7 +269,6 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
                           expr: &'gcx hir::Expr,
                           lhs_expr: &'gcx hir::Expr,
                           lhs_ty: Ty<'tcx>,
-                          rhs_expr: &'gcx hir::Expr,
                           rhs_ty: Ty<'tcx>,
                           mut err: &mut errors::DiagnosticBuilder) -> bool {
         // If this function returns true it means a note was printed, so we don't need

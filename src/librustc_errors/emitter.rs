@@ -43,7 +43,7 @@ impl Emitter for EmitterWriter {
                sugg.msg.split_whitespace().count() < 10 &&
                // don't display multiline suggestions as labels
                sugg.substitutes[0].find('\n').is_none() {
-                let msg = format!("{} `{}`", sugg.msg, sugg.substitutes[0]);
+                let msg = format!("help: {} `{}`", sugg.msg, sugg.substitutes[0]);
                 primary_span.push_span_label(sugg.msp.primary_spans()[0], msg);
             } else {
                 children.push(SubDiagnostic {
