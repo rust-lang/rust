@@ -903,10 +903,16 @@ impl<'o, 'gcx: 'tcx, 'tcx> AstConv<'gcx, 'tcx>+'o {
         let ty = self.projected_ty_from_poly_trait_ref(span, bound, assoc_name);
         let ty = self.normalize_ty(span, ty);
 
-        let item = tcx.associated_items(trait_did).find(|i| i.name == assoc_name);
-        let def_id = item.expect("missing associated type").def_id;
-        tcx.check_stability(def_id, ref_id, span);
-        (ty, Def::AssociatedTy(def_id))
+        let item = tcx.associated_items(trait_did).find(|i| i.name == assoc_name)
+                                                  .expect("missing associated type");
+        let def = Def::AssociatedTy(item.def_id);
+        if !tcx.vis_is_accessible_from(item.vis, ref_id) {
+            let msg = format!("{} `{}` is private", def.kind_name(), assoc_name);
+            tcx.sess.span_err(span, &msg);
+        }
+        tcx.check_stability(item.def_id, ref_id, span);
+
+        (ty, def)
     }
 
     fn qpath_to_ty(&self,
