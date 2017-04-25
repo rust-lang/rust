@@ -3,10 +3,10 @@ error: This else block is redundant.
   --> $DIR/needless_continue.rs:26:16
    |
 26 |           } else {
-   |  ________________^ starting here...
+   |  ________________^
 27 | |             continue;
 28 | |         }
-   | |_________^ ...ending here
+   | |_________^
    |
 note: lint level defined here
   --> $DIR/needless_continue.rs:12:8
@@ -43,14 +43,13 @@ error: There is no need for an explicit `else` block for this `if` expression
 
   --> $DIR/needless_continue.rs:41:9
    |
-41 |           if (zero!(i % 2) || nonzero!(i % 5)) && i % 3 != 0 {
-   |  _________^ starting here...
+41 | /         if (zero!(i % 2) || nonzero!(i % 5)) && i % 3 != 0 {
 42 | |             continue;
 43 | |         } else {
 44 | |             println!("Blabber");
 45 | |             println!("Jabber");
 46 | |         }
-   | |_________^ ...ending here
+   | |_________^
    |
    = help: Consider dropping the else clause, and moving out the code in the else block, like so:
            if (zero!(i % 2) || nonzero!(i % 5)) && i % 3 != 0 {

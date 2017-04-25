@@ -3,18 +3,16 @@ warning: This else block is redundant.
    --> $DIR/copies.rs:128:20
     |
 128 |               } else {
-    |  ____________________^ starting here...
+    |  ____________________^
 129 | |                 continue;
 130 | |             }
-    | |_____________^ ...ending here
+    | |_____________^
     |
     = note: #[warn(needless_continue)] on by default
     = help: Consider dropping the else clause and merging the code that follows (in the loop) with the if block, like so:
             if true {
-                break;
-            
-                // Merged code follows...
-            
+            break;
+            // Merged code follows...
             }
             
 
@@ -23,18 +21,16 @@ warning: This else block is redundant.
    --> $DIR/copies.rs:138:20
     |
 138 |               } else {
-    |  ____________________^ starting here...
+    |  ____________________^
 139 | |                 continue;
 140 | |             }
-    | |_____________^ ...ending here
+    | |_____________^
     |
     = note: #[warn(needless_continue)] on by default
     = help: Consider dropping the else clause and merging the code that follows (in the loop) with the if block, like so:
             if true {
-                break;
-            
-                // Merged code follows...
-            
+            break;
+            // Merged code follows...
             }
             
 
