@@ -82,7 +82,7 @@ having a consistent impact on the project requires concerted effort
 toward consensus-building.
 
 The most common preparations for writing and submitting an RFC include
-talking the idea over on #rust-internals, filing and discusssing ideas
+talking the idea over on #rust-internals, filing and discussing ideas
 on the [RFC issue tracker][issues], and occasionally posting
 'pre-RFCs' on [the developer discussion forum][discuss] for early
 review.
