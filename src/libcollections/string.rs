@@ -60,7 +60,7 @@ use core::fmt;
 use core::hash;
 use core::iter::{FromIterator, FusedIterator};
 use core::mem;
-use core::ops::{self, Add, AddAssign, Index, IndexMut};
+use core::ops::{self, Add, AddAssign, Index, IndexMut, Mul, MulAssign};
 use core::ptr;
 use core::str as core_str;
 use core::str::pattern::Pattern;
@@ -1727,6 +1727,48 @@ impl<'a> AddAssign<&'a str> for String {
     #[inline]
     fn add_assign(&mut self, other: &str) {
         self.push_str(other);
+    }
+}
+
+/// Implements the `*` operator for multiplying `String` content.
+///
+/// ```
+/// let one = String::from("one");
+/// assert_eq!(one * 3, "oneoneone");
+/// ```
+#[stable(feature = "stringmultiply", since = "1.18.0")]
+impl Mul<usize> for String {
+    type Output = String;
+
+    #[inline]
+    fn mul(self, rhs: usize) -> String {
+        let size = self.len() * rhs;
+        let mut out = String::with_capacity(size);
+        for _ in 0..rhs {
+            out.push_str(self.as_str());
+        }
+        out
+    }
+}
+
+/// Implements the `*=` operator for multiplyng `String` content.
+///
+/// ```
+/// let mut one = String::from("one");
+/// one *= 3;
+/// assert_eq!(one, "oneoneone");
+/// ```
+#[stable(feature = "stringmultiply", since = "1.18.0")]
+impl MulAssign<usize> for String {
+    #[inline]
+    fn mul_assign(&mut self, rhs: usize) {
+        let content = self.clone();
+        let size = content.len() * rhs;
+        self.clear();
+        self.reserve(size);
+        for _ in 0..rhs {
+            self.push_str(content.as_str());
+        }
     }
 }
 
