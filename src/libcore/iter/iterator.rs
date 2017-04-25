@@ -629,8 +629,9 @@ pub trait Iterator {
     ///
     /// Note that the underlying iterator is still advanced when [`peek`] is
     /// called for the first time: In order to retrieve the next element,
-    /// [`next`] is called on the underlying iterator, hence any side effects of
-    /// the [`next`] method will occur.
+    /// [`next`] is called on the underlying iterator, hence any side effects (i.e.
+    /// anything other than fetching the next value) of the [`next`] method
+    /// will occur.
     ///
     /// [`peek`]: struct.Peekable.html#method.peek
     /// [`next`]: ../../std/iter/trait.Iterator.html#tymethod.next
