@@ -116,6 +116,8 @@ struct Target {
     available: bool,
     url: Option<String>,
     hash: Option<String>,
+    xz_url: Option<String>,
+    xz_hash: Option<String>,
     components: Option<Vec<Component>>,
     extensions: Option<Vec<Component>>,
 }
@@ -126,6 +128,8 @@ impl Target {
             available: false,
             url: None,
             hash: None,
+            xz_url: None,
+            xz_hash: None,
             components: None,
             extensions: None,
         }
@@ -258,6 +262,8 @@ impl Builder {
                     continue
                 }
             };
+            let xz_filename = filename.replace(".tar.gz", ".tar.xz");
+            let xz_digest = self.digests.remove(&xz_filename);
             let mut components = Vec::new();
             let mut extensions = Vec::new();
 
@@ -301,6 +307,8 @@ impl Builder {
                 available: true,
                 url: Some(self.url(&filename)),
                 hash: Some(digest),
+                xz_url: xz_digest.as_ref().map(|_| self.url(&xz_filename)),
+                xz_hash: xz_digest,
                 components: Some(components),
                 extensions: Some(extensions),
             });
@@ -320,11 +328,15 @@ impl Builder {
                 Some(digest) => digest,
                 None => return (name.to_string(), Target::unavailable()),
             };
+            let xz_filename = filename.replace(".tar.gz", ".tar.xz");
+            let xz_digest = self.digests.remove(&xz_filename);
 
             (name.to_string(), Target {
                 available: true,
                 url: Some(self.url(&filename)),
                 hash: Some(digest),
+                xz_url: xz_digest.as_ref().map(|_| self.url(&xz_filename)),
+                xz_hash: xz_digest,
                 components: None,
                 extensions: None,
             })
