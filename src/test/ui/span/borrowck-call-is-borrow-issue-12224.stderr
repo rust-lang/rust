@@ -5,40 +5,46 @@ error[E0499]: cannot borrow `f` as mutable more than once at a time
    |     -          ^^ second mutable borrow occurs here
    |     |
    |     first mutable borrow occurs here
-23 |     //~^ ERROR: cannot borrow `f` as mutable more than once
-24 |         f((Box::new(|| {})))
+...
+26 |         f((Box::new(|| {})))
    |         - borrow occurs due to use of `f` in closure
-25 |     }));
+27 |     }));
    |       - first borrow ends here
 
 error: cannot borrow immutable borrowed content `*f` as mutable
-  --> $DIR/borrowck-call-is-borrow-issue-12224.rs:35:5
+  --> $DIR/borrowck-call-is-borrow-issue-12224.rs:39:5
    |
-34 | fn test2<F>(f: &F) where F: FnMut() {
+37 | fn test2<F>(f: &F) where F: FnMut() {
    |                -- use `&mut F` here to make mutable
-35 |     (*f)(); //~ ERROR: cannot borrow immutable borrowed content `*f` as mutable
+38 |     //~^ NOTE use `&mut F` here to make mutable
+39 |     (*f)();
    |     ^^^^ cannot borrow as mutable
 
 error: cannot borrow immutable `Box` content `*f.f` as mutable
-  --> $DIR/borrowck-call-is-borrow-issue-12224.rs:43:5
+  --> $DIR/borrowck-call-is-borrow-issue-12224.rs:50:5
    |
-42 | fn test4(f: &Test) {
+48 | fn test4(f: &Test) {
    |             ----- use `&mut Test` here to make mutable
-43 |     f.f.call_mut(()) //~ ERROR: cannot borrow immutable `Box` content `*f.f` as mutable
+49 |     //~^ NOTE use `&mut Test` here to make mutable
+50 |     f.f.call_mut(())
    |     ^^^ cannot borrow as mutable
 
 error[E0504]: cannot move `f` into closure because it is borrowed
-  --> $DIR/borrowck-call-is-borrow-issue-12224.rs:61:13
+  --> $DIR/borrowck-call-is-borrow-issue-12224.rs:72:13
    |
-60 |     f(Box::new(|a| {
+70 |     f(Box::new(|a| {
    |     - borrow of `f` occurs here
-61 |         foo(f);
+71 |     //~^ NOTE borrow of `f` occurs here
+72 |         foo(f);
    |             ^ move into closure occurs here
 
 error[E0507]: cannot move out of captured outer variable in an `FnMut` closure
-  --> $DIR/borrowck-call-is-borrow-issue-12224.rs:61:13
+  --> $DIR/borrowck-call-is-borrow-issue-12224.rs:72:13
    |
-61 |         foo(f);
+68 |     let mut f = |g: Box<FnMut(isize)>, b: isize| {};
+   |         ----- captured outer variable
+...
+72 |         foo(f);
    |             ^ cannot move out of captured outer variable in an `FnMut` closure
 
 error: aborting due to 5 previous errors
