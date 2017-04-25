@@ -16,7 +16,6 @@
 
 #[rustc_variance]
 enum Base<'a, 'b, 'c:'b, 'd> { //~ ERROR [+, -, o, *]
-    //~^ ERROR parameter `'d` is never used
     Test8A(extern "Rust" fn(&'a isize)),
     Test8B(&'b [isize]),
     Test8C(&'b mut &'c str),
@@ -24,19 +23,16 @@ enum Base<'a, 'b, 'c:'b, 'd> { //~ ERROR [+, -, o, *]
 
 #[rustc_variance]
 struct Derived1<'w, 'x:'y, 'y, 'z> { //~ ERROR [*, o, -, +]
-    //~^ ERROR parameter `'w` is never used
     f: Base<'z, 'y, 'x, 'w>
 }
 
 #[rustc_variance] // Combine - and + to yield o
 struct Derived2<'a, 'b:'a, 'c> { //~ ERROR [o, o, *]
-    //~^ ERROR parameter `'c` is never used
     f: Base<'a, 'a, 'b, 'c>
 }
 
 #[rustc_variance] // Combine + and o to yield o (just pay attention to 'a here)
 struct Derived3<'a:'b, 'b, 'c> { //~ ERROR [o, -, *]
-    //~^ ERROR parameter `'c` is never used
     f: Base<'a, 'b, 'a, 'c>
 }
 

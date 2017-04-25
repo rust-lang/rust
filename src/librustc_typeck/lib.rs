@@ -318,6 +318,11 @@ pub fn check_crate<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>)
           coherence::check_coherence(tcx));
     })?;
 
+    tcx.sess.track_errors(|| {
+        time(time_passes, "variance testing", ||
+             variance::test::test_variance(tcx));
+    })?;
+
     time(time_passes, "wf checking", || check::check_wf_new(tcx))?;
 
     time(time_passes, "item-types checking", || check::check_item_types(tcx))?;
