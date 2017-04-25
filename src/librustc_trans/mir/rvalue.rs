@@ -135,10 +135,7 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             mir::Rvalue::Aggregate(ref kind, ref operands) => {
                 match **kind {
                     mir::AggregateKind::Adt(adt_def, variant_index, substs, active_field_index) => {
-                        let discr = adt_def.discriminant_for_variant(bcx.tcx(), variant_index)
-                           .to_u128_unchecked() as u64;
-                        let dest_ty = dest.ty.to_ty(bcx.tcx());
-                        adt::trans_set_discr(&bcx, dest_ty, dest.llval, discr);
+                        dest.trans_set_discr(&bcx, variant_index);
                         for (i, operand) in operands.iter().enumerate() {
                             let op = self.trans_operand(&bcx, operand);
                             // Do not generate stores and GEPis for zero-sized fields.
@@ -449,12 +446,9 @@ impl<'a, 'tcx> MirContext<'a, 'tcx> {
             }
 
             mir::Rvalue::Discriminant(ref lvalue) => {
-                let discr_lvalue = self.trans_lvalue(&bcx, lvalue);
-                let enum_ty = discr_lvalue.ty.to_ty(bcx.tcx());
                 let discr_ty = rvalue.ty(&*self.mir, bcx.tcx());
-                let discr_type = type_of::immediate_type_of(bcx.ccx, discr_ty);
-                let discr = adt::trans_get_discr(&bcx, enum_ty, discr_lvalue.llval,
-                                                  discr_lvalue.alignment, Some(discr_type), true);
+                let discr =  self.trans_lvalue(&bcx, lvalue)
+                    .trans_get_discr(&bcx, discr_ty);
                 (bcx, OperandRef {
                     val: OperandValue::Immediate(discr),
                     ty: discr_ty
