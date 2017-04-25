@@ -983,3 +983,4 @@ pub fn type_size<'a, 'tcx>(cx: &LateContext<'a, 'tcx>, ty: ty::Ty<'tcx>) -> Opti
         .infer_ctxt((), Reveal::All)
         .enter(|infcx| ty.layout(&infcx).ok().map(|lay| lay.size(&TargetDataLayout::parse(cx.sess())).bytes()))
 }
+

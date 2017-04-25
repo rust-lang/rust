@@ -1,3 +1,39 @@
+warning: This else block is redundant.
+
+   --> $DIR/copies.rs:128:20
+    |
+128 |               } else {
+    |  ____________________^
+129 | |                 continue;
+130 | |             }
+    | |_____________^
+    |
+    = note: #[warn(needless_continue)] on by default
+    = help: Consider dropping the else clause and merging the code that follows (in the loop) with the if block, like so:
+            if true {
+            break;
+            // Merged code follows...
+            }
+            
+
+warning: This else block is redundant.
+
+   --> $DIR/copies.rs:138:20
+    |
+138 |               } else {
+    |  ____________________^
+139 | |                 continue;
+140 | |             }
+    | |_____________^
+    |
+    = note: #[warn(needless_continue)] on by default
+    = help: Consider dropping the else clause and merging the code that follows (in the loop) with the if block, like so:
+            if true {
+            break;
+            // Merged code follows...
+            }
+            
+
 error: this `if` has identical blocks
   --> $DIR/copies.rs:40:10
    |
