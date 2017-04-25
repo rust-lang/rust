@@ -36,7 +36,7 @@ pub struct AddCallGuards;
  */
 
 impl<'tcx> MirPass<'tcx> for AddCallGuards {
-    fn run_pass<'a>(&mut self, _tcx: TyCtxt<'a, 'tcx, 'tcx>, _src: MirSource, mir: &mut Mir<'tcx>) {
+    fn run_pass<'a>(&self, _tcx: TyCtxt<'a, 'tcx, 'tcx>, _src: MirSource, mir: &mut Mir<'tcx>) {
         add_call_guards(mir);
     }
 }

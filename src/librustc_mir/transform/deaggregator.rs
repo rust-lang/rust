@@ -18,7 +18,7 @@ pub struct Deaggregator;
 impl Pass for Deaggregator {}
 
 impl<'tcx> MirPass<'tcx> for Deaggregator {
-    fn run_pass<'a>(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    fn run_pass<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     source: MirSource, mir: &mut Mir<'tcx>) {
         let node_id = source.item_id();
         let node_path = tcx.item_path_str(tcx.hir.local_def_id(node_id));

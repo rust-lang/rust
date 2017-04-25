@@ -738,7 +738,7 @@ impl TypeckMir {
 }
 
 impl<'tcx> MirPass<'tcx> for TypeckMir {
-    fn run_pass<'a>(&mut self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
+    fn run_pass<'a>(&self, tcx: TyCtxt<'a, 'tcx, 'tcx>,
                     src: MirSource, mir: &mut Mir<'tcx>) {
         let item_id = src.item_id();
         let def_id = tcx.hir.local_def_id(item_id);
