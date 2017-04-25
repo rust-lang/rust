@@ -43,9 +43,10 @@ impl<'a> CompilerCalls<'a> for ClippyCompilerCalls {
         sopts: &config::Options,
         cfg: &ast::CrateConfig,
         descriptions: &rustc_errors::registry::Registry,
-        output: ErrorOutputType
+        output: ErrorOutputType,
     ) -> Compilation {
-        self.default.early_callback(matches, sopts, cfg, descriptions, output)
+        self.default
+            .early_callback(matches, sopts, cfg, descriptions, output)
     }
     fn no_input(
         &mut self,
@@ -54,9 +55,10 @@ impl<'a> CompilerCalls<'a> for ClippyCompilerCalls {
         cfg: &ast::CrateConfig,
         odir: &Option<PathBuf>,
         ofile: &Option<PathBuf>,
-        descriptions: &rustc_errors::registry::Registry
+        descriptions: &rustc_errors::registry::Registry,
     ) -> Option<(Input, Option<PathBuf>)> {
-        self.default.no_input(matches, sopts, cfg, odir, ofile, descriptions)
+        self.default
+            .no_input(matches, sopts, cfg, odir, ofile, descriptions)
     }
     fn late_callback(
         &mut self,
@@ -64,9 +66,10 @@ impl<'a> CompilerCalls<'a> for ClippyCompilerCalls {
         sess: &Session,
         input: &Input,
         odir: &Option<PathBuf>,
-        ofile: &Option<PathBuf>
+        ofile: &Option<PathBuf>,
     ) -> Compilation {
-        self.default.late_callback(matches, sess, input, odir, ofile)
+        self.default
+            .late_callback(matches, sess, input, odir, ofile)
     }
     fn build_controller(&mut self, sess: &Session, matches: &getopts::Matches) -> driver::CompileController<'a> {
         let mut control = self.default.build_controller(sess, matches);
@@ -76,7 +79,8 @@ impl<'a> CompilerCalls<'a> for ClippyCompilerCalls {
             control.after_parse.callback = Box::new(move |state| {
                 {
                     let mut registry = rustc_plugin::registry::Registry::new(state.session,
-                                                                             state.krate
+                                                                             state
+                                                                                 .krate
                                                                                  .as_ref()
                                                                                  .expect("at this compilation stage \
                                                                                           the krate must be parsed")
@@ -84,12 +88,14 @@ impl<'a> CompilerCalls<'a> for ClippyCompilerCalls {
                     registry.args_hidden = Some(Vec::new());
                     clippy_lints::register_plugins(&mut registry);
 
-                    let rustc_plugin::registry::Registry { early_lint_passes,
-                                                           late_lint_passes,
-                                                           lint_groups,
-                                                           llvm_passes,
-                                                           attributes,
-                                                           .. } = registry;
+                    let rustc_plugin::registry::Registry {
+                        early_lint_passes,
+                        late_lint_passes,
+                        lint_groups,
+                        llvm_passes,
+                        attributes,
+                        ..
+                    } = registry;
                     let sess = &state.session;
                     let mut ls = sess.lint_store.borrow_mut();
                     for pass in early_lint_passes {
@@ -172,29 +178,35 @@ pub fn main() {
     if let Some("clippy") = std::env::args().nth(1).as_ref().map(AsRef::as_ref) {
         // this arm is executed on the initial call to `cargo clippy`
 
-        let manifest_path_arg = std::env::args().skip(2).find(|val| val.starts_with("--manifest-path="));
+        let manifest_path_arg = std::env::args()
+            .skip(2)
+            .find(|val| val.starts_with("--manifest-path="));
 
-        let mut metadata = if let Ok(metadata) = cargo_metadata::metadata(manifest_path_arg.as_ref()
-            .map(AsRef::as_ref)) {
-            metadata
-        } else {
-            let _ = io::stderr().write_fmt(format_args!("error: Could not obtain cargo metadata.\n"));
-            process::exit(101);
-        };
+        let mut metadata =
+            if let Ok(metadata) = cargo_metadata::metadata(manifest_path_arg.as_ref().map(AsRef::as_ref)) {
+                metadata
+            } else {
+                let _ = io::stderr().write_fmt(format_args!("error: Could not obtain cargo metadata.\n"));
+                process::exit(101);
+            };
 
         let manifest_path = manifest_path_arg.map(|arg| PathBuf::from(Path::new(&arg["--manifest-path=".len()..])));
 
         let current_dir = std::env::current_dir();
 
-        let package_index = metadata.packages
+        let package_index = metadata
+            .packages
             .iter()
             .position(|package| {
                 let package_manifest_path = Path::new(&package.manifest_path);
                 if let Some(ref manifest_path) = manifest_path {
                     package_manifest_path == manifest_path
                 } else {
-                    let current_dir = current_dir.as_ref().expect("could not read current directory");
-                    let package_manifest_directory = package_manifest_path.parent()
+                    let current_dir = current_dir
+                        .as_ref()
+                        .expect("could not read current directory");
+                    let package_manifest_directory = package_manifest_path
+                        .parent()
                         .expect("could not find parent directory of package manifest");
                     package_manifest_directory == current_dir
                 }
@@ -209,7 +221,9 @@ pub fn main() {
                         std::process::exit(code);
                     }
                 } else if ["bin", "example", "test", "bench"].contains(&&**first) {
-                    if let Err(code) = process(vec![format!("--{}", first), target.name].into_iter().chain(args)) {
+                    if let Err(code) = process(vec![format!("--{}", first), target.name]
+                                                   .into_iter()
+                                                   .chain(args)) {
                         std::process::exit(code);
                     }
                 }
@@ -218,7 +232,8 @@ pub fn main() {
             }
         }
     } else {
-        // this arm is executed when cargo-clippy runs `cargo rustc` with the `RUSTC` env var set to itself
+        // this arm is executed when cargo-clippy runs `cargo rustc` with the `RUSTC`
+        // env var set to itself
 
         let home = option_env!("RUSTUP_HOME").or(option_env!("MULTIRUST_HOME"));
         let toolchain = option_env!("RUSTUP_TOOLCHAIN").or(option_env!("MULTIRUST_TOOLCHAIN"));
@@ -240,31 +255,36 @@ pub fn main() {
         };
 
         rustc_driver::in_rustc_thread(|| {
-                // this conditional check for the --sysroot flag is there so users can call `cargo-clippy` directly
-                // without having to pass --sysroot or anything
-                let mut args: Vec<String> = if env::args().any(|s| s == "--sysroot") {
-                    env::args().collect()
-                } else {
-                    env::args().chain(Some("--sysroot".to_owned())).chain(Some(sys_root)).collect()
-                };
+            // this conditional check for the --sysroot flag is there so users can call
+            // `cargo-clippy` directly
+            // without having to pass --sysroot or anything
+            let mut args: Vec<String> = if env::args().any(|s| s == "--sysroot") {
+                env::args().collect()
+            } else {
+                env::args()
+                    .chain(Some("--sysroot".to_owned()))
+                    .chain(Some(sys_root))
+                    .collect()
+            };
 
-                // this check ensures that dependencies are built but not linted and the final crate is
-                // linted but not built
-                let clippy_enabled = env::args().any(|s| s == "-Zno-trans");
+            // this check ensures that dependencies are built but not linted and the final
+            // crate is
+            // linted but not built
+            let clippy_enabled = env::args().any(|s| s == "-Zno-trans");
 
-                if clippy_enabled {
-                    args.extend_from_slice(&["--cfg".to_owned(), r#"feature="cargo-clippy""#.to_owned()]);
+            if clippy_enabled {
+                args.extend_from_slice(&["--cfg".to_owned(), r#"feature="cargo-clippy""#.to_owned()]);
+            }
+
+            let mut ccc = ClippyCompilerCalls::new(clippy_enabled);
+            let (result, _) = rustc_driver::run_compiler(&args, &mut ccc, None, None);
+            if let Err(err_count) = result {
+                if err_count > 0 {
+                    std::process::exit(1);
                 }
-
-                let mut ccc = ClippyCompilerCalls::new(clippy_enabled);
-                let (result, _) = rustc_driver::run_compiler(&args, &mut ccc, None, None);
-                if let Err(err_count) = result {
-                    if err_count > 0 {
-                        std::process::exit(1);
-                    }
-                }
-            })
-            .expect("rustc_thread failed");
+            }
+        })
+                .expect("rustc_thread failed");
     }
 }
 

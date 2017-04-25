@@ -409,8 +409,7 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for Pass {
     fn check_stmt(&mut self, cx: &LateContext<'a, 'tcx>, stmt: &'tcx Stmt) {
         if let StmtSemi(ref expr, _) = stmt.node {
             if let ExprMethodCall(ref method, _, ref args) = expr.node {
-                if args.len() == 1 && method.node == "collect" &&
-                   match_trait_method(cx, expr, &paths::ITERATOR) {
+                if args.len() == 1 && method.node == "collect" && match_trait_method(cx, expr, &paths::ITERATOR) {
                     span_lint(cx,
                               UNUSED_COLLECT,
                               expr.span,

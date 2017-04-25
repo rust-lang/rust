@@ -77,27 +77,27 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for NeedlessBool {
                                    |db| { db.span_suggestion(e.span, "you can reduce it to", hint); });
             };
             if let ExprBlock(ref then_block) = then_block.node {
-            match (fetch_bool_block(then_block), fetch_bool_expr(else_expr)) {
-                (RetBool(true), RetBool(true)) |
-                (Bool(true), Bool(true)) => {
-                    span_lint(cx,
-                              NEEDLESS_BOOL,
-                              e.span,
-                              "this if-then-else expression will always return true");
-                },
-                (RetBool(false), RetBool(false)) |
-                (Bool(false), Bool(false)) => {
-                    span_lint(cx,
-                              NEEDLESS_BOOL,
-                              e.span,
-                              "this if-then-else expression will always return false");
-                },
-                (RetBool(true), RetBool(false)) => reduce(true, false),
-                (Bool(true), Bool(false)) => reduce(false, false),
-                (RetBool(false), RetBool(true)) => reduce(true, true),
-                (Bool(false), Bool(true)) => reduce(false, true),
-                _ => (),
-            }
+                match (fetch_bool_block(then_block), fetch_bool_expr(else_expr)) {
+                    (RetBool(true), RetBool(true)) |
+                    (Bool(true), Bool(true)) => {
+                        span_lint(cx,
+                                  NEEDLESS_BOOL,
+                                  e.span,
+                                  "this if-then-else expression will always return true");
+                    },
+                    (RetBool(false), RetBool(false)) |
+                    (Bool(false), Bool(false)) => {
+                        span_lint(cx,
+                                  NEEDLESS_BOOL,
+                                  e.span,
+                                  "this if-then-else expression will always return false");
+                    },
+                    (RetBool(true), RetBool(false)) => reduce(true, false),
+                    (Bool(true), Bool(false)) => reduce(false, false),
+                    (RetBool(false), RetBool(true)) => reduce(true, true),
+                    (Bool(false), Bool(true)) => reduce(false, true),
+                    _ => (),
+                }
             } else {
                 panic!("IfExpr 'then' node is not an ExprBlock");
             }

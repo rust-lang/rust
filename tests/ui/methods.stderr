@@ -65,10 +65,10 @@ error: called `map(f).unwrap_or(a)` on an Option value. This can be done more di
    --> $DIR/methods.rs:99:13
     |
 99  |       let _ = opt.map(|x| x + 1)
-    |  _____________^ starting here...
+    |  _____________^
 100 | |
 101 | |                .unwrap_or(0); // should lint even though this call is on a separate line
-    | |____________________________^ ...ending here
+    | |____________________________^
     |
     = note: #[deny(option_map_unwrap_or)] implied by #[deny(clippy_pedantic)]
 note: lint level defined here
@@ -82,11 +82,11 @@ error: called `map(f).unwrap_or(a)` on an Option value. This can be done more di
    --> $DIR/methods.rs:103:13
     |
 103 |       let _ = opt.map(|x| {
-    |  _____________^ starting here...
+    |  _____________^
 104 | |                         x + 1
 105 | |                     }
 106 | |               ).unwrap_or(0);
-    | |____________________________^ ...ending here
+    | |____________________________^
     |
     = note: #[deny(option_map_unwrap_or)] implied by #[deny(clippy_pedantic)]
 
@@ -94,11 +94,11 @@ error: called `map(f).unwrap_or(a)` on an Option value. This can be done more di
    --> $DIR/methods.rs:107:13
     |
 107 |       let _ = opt.map(|x| x + 1)
-    |  _____________^ starting here...
+    |  _____________^
 108 | |                .unwrap_or({
 109 | |                     0
 110 | |                 });
-    | |__________________^ ...ending here
+    | |__________________^
     |
     = note: #[deny(option_map_unwrap_or)] implied by #[deny(clippy_pedantic)]
 
@@ -106,10 +106,10 @@ error: called `map(f).unwrap_or_else(g)` on an Option value. This can be done mo
    --> $DIR/methods.rs:116:13
     |
 116 |       let _ = opt.map(|x| x + 1)
-    |  _____________^ starting here...
+    |  _____________^
 117 | |
 118 | |                .unwrap_or_else(|| 0); // should lint even though this call is on a separate line
-    | |____________________________________^ ...ending here
+    | |____________________________________^
     |
     = note: #[deny(option_map_unwrap_or_else)] implied by #[deny(clippy_pedantic)]
 note: lint level defined here
@@ -123,11 +123,11 @@ error: called `map(f).unwrap_or_else(g)` on an Option value. This can be done mo
    --> $DIR/methods.rs:120:13
     |
 120 |       let _ = opt.map(|x| {
-    |  _____________^ starting here...
+    |  _____________^
 121 | |                         x + 1
 122 | |                     }
 123 | |               ).unwrap_or_else(|| 0);
-    | |____________________________________^ ...ending here
+    | |____________________________________^
     |
     = note: #[deny(option_map_unwrap_or_else)] implied by #[deny(clippy_pedantic)]
 
@@ -135,11 +135,11 @@ error: called `map(f).unwrap_or_else(g)` on an Option value. This can be done mo
    --> $DIR/methods.rs:124:13
     |
 124 |       let _ = opt.map(|x| x + 1)
-    |  _____________^ starting here...
+    |  _____________^
 125 | |                .unwrap_or_else(||
 126 | |                     0
 127 | |                 );
-    | |_________________^ ...ending here
+    | |_________________^
     |
     = note: #[deny(option_map_unwrap_or_else)] implied by #[deny(clippy_pedantic)]
 
@@ -161,11 +161,11 @@ error: called `filter(p).next()` on an `Iterator`. This is more succinctly expre
    --> $DIR/methods.rs:201:13
     |
 201 |       let _ = v.iter().filter(|&x| {
-    |  _____________^ starting here...
+    |  _____________^
 202 | |                                 *x < 0
 203 | |                             }
 204 | |                    ).next();
-    | |___________________________^ ...ending here
+    | |___________________________^
     |
     = note: #[deny(filter_next)] implied by #[deny(clippy)]
 
@@ -187,11 +187,11 @@ error: called `is_some()` after searching an `Iterator` with find. This is more 
    --> $DIR/methods.rs:221:13
     |
 221 |       let _ = v.iter().find(|&x| {
-    |  _____________^ starting here...
+    |  _____________^
 222 | |                               *x < 0
 223 | |                           }
 224 | |                    ).is_some();
-    | |______________________________^ ...ending here
+    | |______________________________^
     |
     = note: #[deny(search_is_some)] implied by #[deny(clippy)]
 
@@ -208,11 +208,11 @@ error: called `is_some()` after searching an `Iterator` with position. This is m
    --> $DIR/methods.rs:232:13
     |
 232 |       let _ = v.iter().position(|&x| {
-    |  _____________^ starting here...
+    |  _____________^
 233 | |                                   x < 0
 234 | |                               }
 235 | |                    ).is_some();
-    | |______________________________^ ...ending here
+    | |______________________________^
     |
     = note: #[deny(search_is_some)] implied by #[deny(clippy)]
 
@@ -229,11 +229,11 @@ error: called `is_some()` after searching an `Iterator` with rposition. This is 
    --> $DIR/methods.rs:243:13
     |
 243 |       let _ = v.iter().rposition(|&x| {
-    |  _____________^ starting here...
+    |  _____________^
 244 | |                                    x < 0
 245 | |                                }
 246 | |                    ).is_some();
-    | |______________________________^ ...ending here
+    | |______________________________^
     |
     = note: #[deny(search_is_some)] implied by #[deny(clippy)]
 

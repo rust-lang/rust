@@ -1,14 +1,13 @@
 error: Matching on `Some` with `ok()` is redundant
   --> $DIR/ok_if_let.rs:7:5
    |
-7  |       if let Some(y) = x.parse().ok() { 
-   |  _____^ starting here...
+7  | /     if let Some(y) = x.parse().ok() {
 8  | |
 9  | |         y
 10 | |     } else {
 11 | |         0
 12 | |     }
-   | |_____^ ...ending here
+   | |_____^
    |
 note: lint level defined here
   --> $DIR/ok_if_let.rs:4:9

@@ -690,8 +690,10 @@ fn parse_attrs<F: FnMut(u64)>(sess: &Session, attrs: &[ast::Attribute], name: &'
 /// See also `is_direct_expn_of`.
 pub fn is_expn_of(mut span: Span, name: &str) -> Option<Span> {
     loop {
-        let span_name_span = span.ctxt.outer()
-            .expn_info().map(|ei| (ei.callee.name(), ei.call_site));
+        let span_name_span = span.ctxt
+            .outer()
+            .expn_info()
+            .map(|ei| (ei.callee.name(), ei.call_site));
 
         match span_name_span {
             Some((mac_name, new_span)) if mac_name == name => return Some(new_span),
@@ -709,8 +711,10 @@ pub fn is_expn_of(mut span: Span, name: &str) -> Option<Span> {
 /// `42` is considered expanded from `foo!` and `bar!` by `is_expn_of` but only `bar!` by
 /// `is_direct_expn_of`.
 pub fn is_direct_expn_of(span: Span, name: &str) -> Option<Span> {
-    let span_name_span = span.ctxt.outer()
-        .expn_info().map(|ei| (ei.callee.name(), ei.call_site));
+    let span_name_span = span.ctxt
+        .outer()
+        .expn_info()
+        .map(|ei| (ei.callee.name(), ei.call_site));
 
     match span_name_span {
         Some((mac_name, new_span)) if mac_name == name => Some(new_span),
@@ -900,7 +904,8 @@ pub fn opt_def_id(def: Def) -> Option<DefId> {
         Def::AssociatedConst(id) |
         Def::Local(id) |
         Def::Upvar(id, ..) |
-        Def::Macro(id, _) => Some(id),
+        Def::Macro(id, ..) |
+        Def::GlobalAsm(id) => Some(id),
 
         Def::Label(..) | Def::PrimTy(..) | Def::SelfTy(..) | Def::Err => None,
     }

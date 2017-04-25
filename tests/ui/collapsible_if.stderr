@@ -1,15 +1,14 @@
 error: this if statement can be collapsed
   --> $DIR/collapsible_if.rs:8:5
    |
-8  |       if x == "hello" {
-   |  _____^ starting here...
+8  | /     if x == "hello" {
 9  | |
 10 | |
 11 | |
 ...  |
 14 | |         }
 15 | |     }
-   | |_____^ ...ending here
+   | |_____^
    |
 note: lint level defined here
   --> $DIR/collapsible_if.rs:4:8
@@ -24,15 +23,14 @@ help: try
 error: this if statement can be collapsed
   --> $DIR/collapsible_if.rs:17:5
    |
-17 |       if x == "hello" || x == "world" {
-   |  _____^ starting here...
+17 | /     if x == "hello" || x == "world" {
 18 | |
 19 | |
 20 | |
 ...  |
 23 | |         }
 24 | |     }
-   | |_____^ ...ending here
+   | |_____^
    |
 help: try
    |     if (x == "hello" || x == "world") && (y == "world" || y == "hello") {
@@ -42,15 +40,14 @@ help: try
 error: this if statement can be collapsed
   --> $DIR/collapsible_if.rs:26:5
    |
-26 |       if x == "hello" && x == "world" {
-   |  _____^ starting here...
+26 | /     if x == "hello" && x == "world" {
 27 | |
 28 | |
 29 | |
 ...  |
 32 | |         }
 33 | |     }
-   | |_____^ ...ending here
+   | |_____^
    |
 help: try
    |     if x == "hello" && x == "world" && (y == "world" || y == "hello") {
@@ -60,15 +57,14 @@ help: try
 error: this if statement can be collapsed
   --> $DIR/collapsible_if.rs:35:5
    |
-35 |       if x == "hello" || x == "world" {
-   |  _____^ starting here...
+35 | /     if x == "hello" || x == "world" {
 36 | |
 37 | |
 38 | |
 ...  |
 41 | |         }
 42 | |     }
-   | |_____^ ...ending here
+   | |_____^
    |
 help: try
    |     if (x == "hello" || x == "world") && y == "world" && y == "hello" {
@@ -78,15 +74,14 @@ help: try
 error: this if statement can be collapsed
   --> $DIR/collapsible_if.rs:44:5
    |
-44 |       if x == "hello" && x == "world" {
-   |  _____^ starting here...
+44 | /     if x == "hello" && x == "world" {
 45 | |
 46 | |
 47 | |
 ...  |
 50 | |         }
 51 | |     }
-   | |_____^ ...ending here
+   | |_____^
    |
 help: try
    |     if x == "hello" && x == "world" && y == "world" && y == "hello" {
@@ -96,15 +91,14 @@ help: try
 error: this if statement can be collapsed
   --> $DIR/collapsible_if.rs:53:5
    |
-53 |       if 42 == 1337 {
-   |  _____^ starting here...
+53 | /     if 42 == 1337 {
 54 | |
 55 | |
 56 | |
 ...  |
 59 | |         }
 60 | |     }
-   | |_____^ ...ending here
+   | |_____^
    |
 help: try
    |     if 42 == 1337 && 'a' != 'A' {
@@ -115,14 +109,14 @@ error: this `else { if .. }` block can be collapsed
   --> $DIR/collapsible_if.rs:65:12
    |
 65 |       } else {
-   |  ____________^ starting here...
+   |  ____________^
 66 | |
 67 | |
 68 | |
 ...  |
 71 | |         }
 72 | |     }
-   | |_____^ ...ending here
+   | |_____^
    |
 help: try
    |     } else if y == "world" {
@@ -133,14 +127,14 @@ error: this `else { if .. }` block can be collapsed
   --> $DIR/collapsible_if.rs:76:12
    |
 76 |       } else {
-   |  ____________^ starting here...
+   |  ____________^
 77 | |
 78 | |
 79 | |
 ...  |
 82 | |         }
 83 | |     }
-   | |_____^ ...ending here
+   | |_____^
    |
 help: try
    |     } else if let Some(42) = Some(42) {
@@ -151,14 +145,14 @@ error: this `else { if .. }` block can be collapsed
   --> $DIR/collapsible_if.rs:87:12
    |
 87 |       } else {
-   |  ____________^ starting here...
+   |  ____________^
 88 | |
 89 | |
 90 | |
 ...  |
 96 | |         }
 97 | |     }
-   | |_____^ ...ending here
+   | |_____^
    |
 help: try
    |     } else if y == "world" {
@@ -172,14 +166,14 @@ error: this `else { if .. }` block can be collapsed
    --> $DIR/collapsible_if.rs:101:12
     |
 101 |       } else {
-    |  ____________^ starting here...
+    |  ____________^
 102 | |
 103 | |
 104 | |
 ...   |
 110 | |         }
 111 | |     }
-    | |_____^ ...ending here
+    | |_____^
     |
 help: try
     |     } else if let Some(42) = Some(42) {
@@ -193,14 +187,14 @@ error: this `else { if .. }` block can be collapsed
    --> $DIR/collapsible_if.rs:115:12
     |
 115 |       } else {
-    |  ____________^ starting here...
+    |  ____________^
 116 | |
 117 | |
 118 | |
 ...   |
 124 | |         }
 125 | |     }
-    | |_____^ ...ending here
+    | |_____^
     |
 help: try
     |     } else if let Some(42) = Some(42) {
@@ -214,14 +208,14 @@ error: this `else { if .. }` block can be collapsed
    --> $DIR/collapsible_if.rs:129:12
     |
 129 |       } else {
-    |  ____________^ starting here...
+    |  ____________^
 130 | |
 131 | |
 132 | |
 ...   |
 138 | |         }
 139 | |     }
-    | |_____^ ...ending here
+    | |_____^
     |
 help: try
     |     } else if x == "hello" {
@@ -235,14 +229,14 @@ error: this `else { if .. }` block can be collapsed
    --> $DIR/collapsible_if.rs:143:12
     |
 143 |       } else {
-    |  ____________^ starting here...
+    |  ____________^
 144 | |
 145 | |
 146 | |
 ...   |
 152 | |         }
 153 | |     }
-    | |_____^ ...ending here
+    | |_____^
     |
 help: try
     |     } else if let Some(42) = Some(42) {

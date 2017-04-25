@@ -46,11 +46,11 @@ impl<'a, 'tcx> LateLintPass<'a, 'tcx> for HashMapLint {
                 if let Some((ty, map, key)) = check_cond(cx, check) {
                     // in case of `if !m.contains_key(&k) { m.insert(k, v); }`
                     // we can give a better error message
-                    let sole_expr =  {
+                    let sole_expr = {
                         else_block.is_none() &&
                         if let ExprBlock(ref then_block) = then_block.node {
                             (then_block.expr.is_some() as usize) + then_block.stmts.len() == 1
-                        }  else {
+                        } else {
                             true
                         }
                     };

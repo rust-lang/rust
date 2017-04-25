@@ -1,15 +1,14 @@
 error: the function has a cyclomatic complexity of 3
   --> $DIR/cyclomatic_complexity_attr_used.rs:11:1
    |
-11 |   fn kaboom() {
-   |  _^ starting here...
+11 | / fn kaboom() {
 12 | |     if 42 == 43 {
 13 | |         panic!();
 14 | |     } else if "cake" == "lie" {
 15 | |         println!("what?");
 16 | |     }
 17 | | }
-   | |_^ ...ending here
+   | |_^
    |
 note: lint level defined here
   --> $DIR/cyclomatic_complexity_attr_used.rs:3:9
