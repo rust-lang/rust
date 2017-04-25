@@ -16,23 +16,37 @@ struct S;
 mod method {
     trait A {
         fn a(&self) { }
-        const A: u8 = 0;
     }
 
     pub trait B {
         fn b(&self) { }
-        const B: u8 = 0;
     }
 
     pub trait C: A + B {
         fn c(&self) { }
+    }
+
+    impl A for ::S {}
+    impl B for ::S {}
+    impl C for ::S {}
+}
+
+mod assoc_const {
+    trait A {
+        const A: u8 = 0;
+    }
+
+    pub trait B {
+        const B: u8 = 0;
+    }
+
+    pub trait C: A + B {
         const C: u8 = 0;
     }
 
     impl A for ::S {}
     impl B for ::S {}
     impl C for ::S {}
-
 }
 
 mod assoc_ty {
@@ -51,27 +65,9 @@ mod assoc_ty {
     impl A for ::S {}
     impl B for ::S {}
     impl C for ::S {}
-
 }
 
-fn check_assoc_ty<T: assoc_ty::C>() {
-    // A is private
-    // B is pub, not in scope
-    // C : A + B is pub, in scope
-    use assoc_ty::C;
-
-    // Associated types
-    // A, B, C are resolved as trait items, their traits need to be in scope, not implemented yet
-    let _: S::A; //~ ERROR ambiguous associated type
-    let _: S::B; //~ ERROR ambiguous associated type
-    let _: S::C; //~ ERROR ambiguous associated type
-    // A, B, C are resolved as inherent items, their traits don't need to be in scope
-    let _: T::A; //~ ERROR associated type `A` is private
-    let _: T::B; // OK
-    let _: T::C; // OK
-}
-
-fn main() {
+fn check_method() {
     // A is private
     // B is pub, not in scope
     // C : A + B is pub, in scope
@@ -97,6 +93,13 @@ fn main() {
     C::a(&S); //~ ERROR method `a` is private
     C::b(&S); // OK
     C::c(&S); // OK
+}
+
+fn check_assoc_const() {
+    // A is private
+    // B is pub, not in scope
+    // C : A + B is pub, in scope
+    use assoc_const::C;
 
     // Associated constants
     // A, B, C are resolved as trait items, their traits need to be in scope
@@ -105,6 +108,28 @@ fn main() {
     S::C; // OK
     // A, B, C are resolved as inherent items, their traits don't need to be in scope
     C::A; //~ ERROR associated constant `A` is private
-    C::B; // OK
+          //~^ ERROR the trait `assoc_const::C` cannot be made into an object
+          //~| ERROR the trait bound `assoc_const::C: assoc_const::A` is not satisfied
+    C::B; // ERROR the trait `assoc_const::C` cannot be made into an object
+          //~^ ERROR the trait bound `assoc_const::C: assoc_const::B` is not satisfied
     C::C; // OK
 }
+
+fn check_assoc_ty<T: assoc_ty::C>() {
+    // A is private
+    // B is pub, not in scope
+    // C : A + B is pub, in scope
+    use assoc_ty::C;
+
+    // Associated types
+    // A, B, C are resolved as trait items, their traits need to be in scope, not implemented yet
+    let _: S::A; //~ ERROR ambiguous associated type
+    let _: S::B; //~ ERROR ambiguous associated type
+    let _: S::C; //~ ERROR ambiguous associated type
+    // A, B, C are resolved as inherent items, their traits don't need to be in scope
+    let _: T::A; //~ ERROR associated type `A` is private
+    let _: T::B; // OK
+    let _: T::C; // OK
+}
+
+fn main() {}
